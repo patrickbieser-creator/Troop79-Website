@@ -144,7 +144,9 @@ Project/client brand guidelines: colors, typography, voice, component patterns.
 **Local-only project.** Troop79-Website is personal and does not sync with Northwoods. Do NOT run
 `/northwoods:start-session` or `/northwoods:end-session` here, and never copy, commit, or push
 anything about this project to `Northwoods-Software-Development/Project-Agents` or any other
-Northwoods repository. Agent memory lives only in this directory's `Agents/`.
+Northwoods repository. Agent memory lives only in this directory's `Agents/`. Start and close
+sessions with **`/session-start`** and **`/session-end`** (personal skills); this project's
+start-of-session health checks are in `Agents/Tracker/SESSION-CHECKS.md`.
 
 1. **Read `Agents/Tracker/Memory/STATE.md`** — understand current sprint position and test baseline
 2. **Read `Agents/Tracker/Memory/BLOCKERS.md`** — know what's blocked before planning work
