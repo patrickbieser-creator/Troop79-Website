@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ledger Audit + Bank Match — Session Summary</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #3d5a3e;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #f0eecd;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); vertical-align: top; }
+        tr:hover { background: var(--nw-sage); }
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+        code { font-family: 'Courier New', monospace; font-size: 0.85em; background: var(--nw-light-gray); padding: 0 0.3em; border-radius: 3px; }
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+        @media print { body { background: white; } header { padding: 1.5rem; } .container { padding: 1rem; } .stat { break-inside: avoid; } }
+        @media (max-width: 600px) { header h1 { font-size: 1.5rem; } .stats { flex-direction: column; } }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Ledger Audit + Bank Match</h1>
+        <p class="subtitle">The ledger kept disagreeing with the bank. The math was never the problem &mdash; the entries were. A tool that finds them, and the $100 it found first.</p>
+        <div class="meta">
+            <span>&#128197; September 29, 2026</span>
+            <span>&#129302; Operator (Opus 5.5)</span>
+            <span>&#128204; Troop79-Website</span>
+            <span>&#128640; v1.131.0 &rarr; v1.132.0 LIVE</span>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">1</div><div class="label">Release Deployed</div></div>
+            <div class="stat"><div class="number">82</div><div class="label">Tests Added (1916 &rarr; 1998)</div></div>
+            <div class="stat"><div class="number">3</div><div class="label">Decisions (D-283&ndash;285)</div></div>
+            <div class="stat"><div class="number">1</div><div class="label">Migration (DB-first)</div></div>
+            <div class="stat"><div class="number">3</div><div class="label">Reviews (tech-lead, qa-lead, Opus)</div></div>
+        </div>
+
+        <h2>What Was Accomplished</h2>
+
+        <div class="callout callout-teal">
+            <strong>The ask:</strong> a Utilities tool that re-sums every transaction for an independent audit. Then the real problem: &ldquo;Recurring incidents where the ledger does not balance with the bank accounts online. I am more suspicious of my ledger than I am of the bank.&rdquo; Before any code, a read-only pass over the 9/22 backup showed the arithmetic was sound &mdash; and that every &ldquo;balanced&rdquo; state so far had been forced with plug adjustments.
+        </div>
+
+        <h3>The $100, found</h3>
+        <ul>
+            <li>Patrick exported two years of Landmark checking and savings as CSV. Comparing ledger and bank balances day by day, most gaps were timing and closed within days &mdash; one never did.</li>
+            <li><strong>Ledger #1878</strong> (Sept 12, 2025, &minus;$100 &ldquo;Samoset Council - Reservation&rdquo;, CashFlow row 258) has no bank counterpart. The bank shows only the $200 Samoset deposit (#1877). The ledger ran $100 under the bank from that week until the +$100 plug of Aug 20, 2026.</li>
+        </ul>
+
+        <h3>v1.132.0 &mdash; Utilities &rarr; Ledger Audit (also in the Finance menu)</h3>
+        <ul>
+            <li><strong>Bank Match</strong> &mdash; upload a Landmark export; every bank row is matched to a ledger row by amount and date (checks get 60 days to clear), batched Venmo cash-outs and mobile deposits are matched as exact-sum groups, and near misses (swapped digits, flipped sign, off by cents) are called out. It lists what&rsquo;s in the ledger but not at the bank and vice versa, and shows where each lasting gap opened with the rows dated there. The file is read once and never stored.</li>
+            <li><strong>Ledger Checks</strong> &mdash; a new Postgres function re-adds every account and scout independently of the app (matches to the cent, 662 rows); reconciliations re-checked as of their own dates; rows changed after a period was reconciled; plugs; one-sided checking&harr;savings transfers; likely duplicates; reimbursement payouts; rows booked backwards.</li>
+            <li><strong>Fixed:</strong> the Financial Ledger&rsquo;s reconciliation &ldquo;drift&rdquo; compared today&rsquo;s balance to the last statement &mdash; checking read &ldquo;drift $-644.58&rdquo; when the truth was &minus;$100. It now measures as of the statement date.</li>
+        </ul>
+
+        <h3>On production, with both real exports</h3>
+        <ul>
+            <li>Checking: 240 rows matched + 7 batched deposits. Ledger is $11.26 above the bank on 9/29 = &minus;$100 (#1878) + $111.26 of rummage-sale money not yet posted (Square $101.26, a $10 pending deposit).</li>
+            <li>Savings: aligned by today&rsquo;s +$5 adjustment (#2145); that $5 predates the two years the bank will export.</li>
+        </ul>
+
+        <div class="callout callout-green">
+            <strong>Quality gate:</strong> lint 0 &middot; typecheck clean &middot; 1998 tests &middot; production build &middot; browser-verified on localhost and on production. Design reviewed by tech-lead; qa-lead SHIP (warnings fixed); Opus go for the deploy. Migration pushed DB-first; anon/authenticated confirmed unable to execute it.
+        </div>
+
+        <div class="callout callout-teal">
+            <strong>Found along the way:</strong> the 07:00 nightly production backup had failed every day since 9/23 &mdash; its <code>pg_dump</code> runs inside the local Docker database, and Docker was down. Restarted this session.
+        </div>
+
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Decision</th><th>Why</th></tr></thead>
+            <tbody>
+                <tr><td>D-283</td><td>The bank is the truth; the audit is read-only; the bank CSV is never stored</td><td>A self-audit lists suspects; only the bank&rsquo;s rows name the bad entry. Plugs hide errors, so the tool never writes one.</td></tr>
+                <tr><td>D-284</td><td>Reconciliation drift = ledger through the statement date &minus; statement</td><td>All-time comparison counted every later transaction as drift.</td></tr>
+                <tr><td>D-285</td><td>Page under Utilities with a card there, plus a Finance-menu item; nav stays single-capability</td><td>Treasurers hold finance.manage, not the news.write that gates Utilities.</td></tr>
+            </tbody>
+        </table>
+
+        <h2>Next Steps</h2>
+        <ul>
+            <li><strong>Patrick / treasurer:</strong> confirm how #1878 was paid, then void it &mdash; checking reaches $0.00 difference once the rummage deposits post. Then the March Samoset pair (#2008 likely $100 high), the May Venmo $5, a few small unrecorded bank rows, and finally void plugs #2038 (+$60.04) and #2037 (&minus;$2.37). Re-reconcile.</li>
+            <li>Confirm tomorrow&rsquo;s 07:00 backup succeeded (<code>backup.log</code>).</li>
+            <li>Add a stable <code>.order('id')</code> to every <code>fetchAllRows</code> caller (tech-lead).</li>
+            <li>Ledger Audit polish: duplicate check flags different families&rsquo; identical reimbursements; checks written before an export&rsquo;s first date.</li>
+            <li>Carried: first real review notice, orphaned proof media sweep, inline-prompt styleguide specimens, Menu Monster phase 3.</li>
+        </ul>
+
+        <h2>Files Changed</h2>
+        <table>
+            <thead><tr><th>File</th><th>Change</th></tr></thead>
+            <tbody>
+                <tr><td class="file-path">next-app/src/lib/bank-statement.ts</td><td><span class="badge badge-green">NEW</span> Landmark parser, matching, grouping, drift, shifts</td></tr>
+                <tr><td class="file-path">next-app/src/lib/finance-audit.ts</td><td><span class="badge badge-green">NEW</span> ledger-only checks</td></tr>
+                <tr><td class="file-path">next-app/src/app/admin/(workspace)/utilities/ledger-audit/</td><td><span class="badge badge-green">NEW</span> page, actions, report, styles</td></tr>
+                <tr><td class="file-path">next-app/supabase/migrations/20260929120000_finance_audit_totals.sql</td><td><span class="badge badge-green">NEW</span> independent totals function</td></tr>
+                <tr><td class="file-path">next-app/src/lib/finance.ts · finance/actions.ts</td><td><span class="badge badge-gold">MODIFIED</span> reconciliationDrift, as-of-date drift</td></tr>
+                <tr><td class="file-path">utilities/page.tsx · _components/sub-nav.tsx</td><td><span class="badge badge-gold">MODIFIED</span> per-capability cards, Finance nav item</td></tr>
+                <tr><td class="file-path">next-app/tests/ (5 new files + finance.test.ts)</td><td><span class="badge badge-green">NEW</span> 82 tests</td></tr>
+                <tr><td class="file-path">Plans/Completed/Ledger-Audit.md · changelog.html</td><td><span class="badge badge-green">NEW</span> / <span class="badge badge-gold">MODIFIED</span></td></tr>
+            </tbody>
+        </table>
+
+    </div>
+
+    <footer>
+        <strong>Troop 79</strong> — Troop79-Website<br>
+        Session Summary — September 29, 2026 — Operator
+    </footer>
+</body>
+</html>

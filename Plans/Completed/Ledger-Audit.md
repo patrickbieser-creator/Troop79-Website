@@ -1,6 +1,6 @@
 # Ledger Audit + Bank Match
 
-**Created:** 2026-09-29 · **Status:** Active · **Owner:** Patrick
+**Created:** 2026-09-29 · **Status:** SHIPPED v1.132.0 (2026-09-29, commit ee9cd27) · **Owner:** Patrick
 
 ## Why
 
