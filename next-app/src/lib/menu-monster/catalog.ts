@@ -69,6 +69,9 @@ export async function loadCatalogWith(supabase: SupabaseClient): Promise<Catalog
           'id, ingredient_id, name, store, price, yield, yield_unit_label, noun, sold_size, sold_unit, note, as_of, created_at, retired_at'
         )
         .is('retired_at', null)
+        // A scout-added package waiting on a leader stays out of every public
+        // planner until it is released; authoring (below) still lists it.
+        .is('held_at', null)
         .order('id')
         .range(from, to)
     ),

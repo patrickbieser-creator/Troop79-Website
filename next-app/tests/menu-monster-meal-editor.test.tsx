@@ -37,6 +37,8 @@ const menu = (): Menu => ({
   budgetPerPersonMeal: 4,
   dayCount: 2,
   shopping: { packageChoice: {}, qtyOverride: {}, lineSource: {} },
+  actuals: {},
+  freeItems: [],
   meals: [
     { id: 'm1', day: 0, slot: 'breakfast', headcount: null, recipeIds: ['B003'], recipeEdits: {} },
     { id: 'm2', day: 0, slot: 'lunch', headcount: null, recipeIds: [], recipeEdits: {} }
@@ -531,5 +533,141 @@ describe('MealEditor', () => {
       expect(confirm).toHaveBeenCalled();
       confirm.mockRestore();
     });
+  });
+});
+
+/**
+ * Phase 2 release A (P2.2): a recipe's open list is this menu's own version of
+ * it. Edits live in the draft (dirty-gated Save), ride in meal.recipeEdits, and
+ * never touch the shared recipe.
+ */
+describe('MealEditor recipe edits', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.localStorage.clear();
+  });
+
+  const openBacon = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(screen.getByRole('button', { name: 'Bacon' }));
+  };
+  const leaveOutBacon = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(screen.getByRole('button', { name: 'Change Bacon' }));
+    await user.click(screen.getByRole('button', { name: 'Leave out' }));
+  };
+
+  it('OpenList_OffersEditing_WithoutAnyShoppingControls', async () => {
+    const user = userEvent.setup();
+    render(editor());
+    await openBacon(user);
+    expect(screen.getByRole('button', { name: 'Change Bacon' })).toBeTruthy();
+  });
+
+  it('RecipeRow_SaysYourVersion_WhenItHasEdits', async () => {
+    const user = userEvent.setup();
+    render(editor());
+    await openBacon(user);
+    await leaveOutBacon(user);
+    expect(within(rowFor('Bacon')).getByText('Your version · 1')).toBeTruthy();
+  });
+
+  it('RecipeRow_HasNoVersionTag_WhenItHasNoEdits', () => {
+    render(editor());
+    expect(screen.queryByText(/Your version/)).toBeNull();
+  });
+
+  it('Edit_MakesSaveAvailable_WhenAnIngredientIsLeftOut', async () => {
+    const user = userEvent.setup();
+    render(editor());
+    await openBacon(user);
+    await leaveOutBacon(user);
+    expect((screen.getByRole('button', { name: 'Save changes' }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('Edit_LowersTheMealCost_WhenAnIngredientIsLeftOut', async () => {
+    const user = userEvent.setup();
+    render(editor());
+    const before = screen.getByText(/This meal:/).textContent;
+    await openBacon(user);
+    await leaveOutBacon(user);
+    expect(screen.getByText(/This meal:/).textContent).not.toBe(before);
+  });
+
+  it('Save_SendsTheRecipeEditsInTheMeal', async () => {
+    saveMenuAction.mockResolvedValue(LANDED);
+    const user = userEvent.setup();
+    render(editor());
+    await openBacon(user);
+    await leaveOutBacon(user);
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    expect(saved().meals[0].recipeEdits).toEqual({ B003: [{ op: 'leave_out', ingredientId: 'bacon' }] });
+  });
+
+  it('Edit_DoesNotChangeTheOtherMeal', async () => {
+    saveMenuAction.mockResolvedValue(LANDED);
+    const user = userEvent.setup();
+    render(editor());
+    await openBacon(user);
+    await leaveOutBacon(user);
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    expect(saved().meals[1]).toEqual(menu().meals[1]);
+  });
+
+  it('Discard_DropsTheEdits', async () => {
+    const user = userEvent.setup();
+    render(editor());
+    await openBacon(user);
+    await leaveOutBacon(user);
+    await user.click(screen.getByRole('button', { name: 'Discard changes' }));
+    expect(screen.queryByText(/Your version/)).toBeNull();
+  });
+
+  it('Edit_ThenTheSameEditsInAnotherOrder_IsNotAChange', async () => {
+    const user = userEvent.setup();
+    const m = menu();
+    m.meals[0].recipeEdits = { B003: [{ op: 'leave_out', ingredientId: 'bacon' }] };
+    render(editor('m1', m));
+    await openBacon(user);
+    await user.click(screen.getByRole('button', { name: 'Change Bacon' }));
+    await user.click(screen.getByRole('button', { name: 'Put back' }));
+    await leaveOutBacon(user);
+    expect((screen.getByRole('button', { name: 'Saved' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('RecipeMenu_GoesBackToTheTroopRecipe_AndUndoRestoresTheEdits', async () => {
+    const user = userEvent.setup();
+    const m = menu();
+    m.meals[0].recipeEdits = { B003: [{ op: 'leave_out', ingredientId: 'bacon' }] };
+    render(editor('m1', m));
+    await user.click(screen.getByRole('button', { name: 'More for Bacon' }));
+    await user.click(screen.getByRole('button', { name: 'Back to the troop recipe' }));
+    const gone = screen.queryByText(/Your version/);
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect({ gone, back: screen.getByText('Your version · 1') != null }).toEqual({ gone: null, back: true });
+  });
+
+  it('RecipeMenu_HasNoBackToTheTroopRecipe_WhenThereAreNoEdits', async () => {
+    const user = userEvent.setup();
+    render(editor());
+    await user.click(screen.getByRole('button', { name: 'More for Bacon' }));
+    expect(screen.queryByRole('button', { name: 'Back to the troop recipe' })).toBeNull();
+  });
+
+  it('RemovingARecipe_DropsItsEdits_AndUndoBringsThemBack', async () => {
+    const user = userEvent.setup();
+    const m = menu();
+    m.meals[0].recipeEdits = { B003: [{ op: 'leave_out', ingredientId: 'bacon' }] };
+    render(editor('m1', m));
+    await user.click(screen.getByRole('button', { name: 'More for Bacon' }));
+    await user.click(screen.getByRole('button', { name: 'Remove' }));
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(screen.getByText('Your version · 1')).toBeTruthy();
+  });
+
+  it('Edit_IsAnnouncedInTheStatusLine', async () => {
+    const user = userEvent.setup();
+    render(editor());
+    await openBacon(user);
+    await leaveOutBacon(user);
+    expect(screen.getByRole('status').textContent).toContain('Bacon left out of your version.');
   });
 });

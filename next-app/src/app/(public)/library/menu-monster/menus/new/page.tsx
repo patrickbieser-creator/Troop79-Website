@@ -25,6 +25,8 @@ const BLANK: Menu = {
   budgetPerPersonMeal: DEFAULT_MENU_BUDGET,
   dayCount: DEFAULT_MENU_DAYS,
   shopping: emptyShopping(),
+  actuals: {},
+  freeItems: [],
   meals: []
 };
 

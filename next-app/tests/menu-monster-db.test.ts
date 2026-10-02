@@ -21,7 +21,7 @@ import { MEALS } from '../src/lib/menu-monster/units';
  * Read-only: the seed is migration-owned data, nothing is inserted here.
  */
 
-// Seeded catalog tables (the anon test needs rows). mm_menus is scout data and starts empty: tests/menu-monster-menus-db.test.ts.
+// Seeded catalog tables (the anon test needs rows). mm_menus and mm_price_history are scout data and start empty: tests/menu-monster-menus-db.test.ts, tests/menu-monster-price-history-db.test.ts.
 const MM_TABLES = ['mm_ingredients', 'mm_conversions', 'mm_packages', 'mm_recipes', 'mm_recipe_lines', 'mm_recipe_variations', 'mm_variation_lines'];
 
 /** psql inside the local Supabase container — the db project already needs Docker up. */
@@ -113,7 +113,7 @@ describe('menu monster catalog', () => {
       .split('\n')
       .filter(Boolean);
     // bool || text casts to 'true' (not psql's bare-column 't').
-    expect(rls).toEqual([...MM_TABLES, 'mm_menus'].sort().map((t) => `${t}=true`));
+    expect(rls).toEqual([...MM_TABLES, 'mm_menus', 'mm_price_history'].sort().map((t) => `${t}=true`));
 
     const policies = localSql(`select count(*) from pg_policies where schemaname = 'public' and tablename like 'mm\\_%'`);
     expect(Number(policies)).toBe(0);

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Catalog, Recipe } from '../src/lib/menu-monster/types';
 import { MAX_HEADCOUNT, MIN_HEADCOUNT } from '../src/lib/menu-monster/engine';
-import { MAX_MENU_DAYS, MAX_MENU_MEALS, composePlan, isMenuId, menuNameError, sanitizeMenu, type Menu } from '../src/lib/menu-monster/menus';
+import { MAX_FREE_ITEMS, MAX_MENU_DAYS, MAX_MENU_MEALS, composePlan, isMenuId, menuNameError, sanitizeMenu, type Menu } from '../src/lib/menu-monster/menus';
 
 /**
  * Scout Workspace menus (Plans/Menu-Monster-Scout-Workspace.md, Phase 1).
@@ -192,4 +192,41 @@ describe('isMenuId', () => {
   it('IsMenuId_RejectsAMalformedId', () => expect(isMenuId('not-a-uuid')).toBe(false));
   it('IsMenuId_RejectsANonString', () => expect(isMenuId(5)).toBe(false));
   it('IsMenuId_RejectsAnInjectionAttempt', () => expect(isMenuId("x' or 1=1 --")).toBe(false));
+});
+
+describe('sanitizeMenu actuals + freeItems (Phase 2 release A: validated pass-through)', () => {
+  it('Menu_HasNoActualsOrFreeItems_WhenTheClientSendsNone', () => {
+    const m = sanitizeMenu(raw(), CATALOG);
+    expect({ actuals: m.actuals, freeItems: m.freeItems }).toEqual({ actuals: {}, freeItems: [] });
+  });
+
+  it('Actuals_KeepsAWellFormedEntry_AndDropsMalformedOnes', () => {
+    const m = sanitizeMenu(
+      raw({
+        actuals: {
+          eggs: { packageId: 'p-eggs', qty: 2, pricePaid: 3.49 },
+          flour: { packageId: 'p-flour', qty: 0, pricePaid: 3 },
+          rice: { packageId: 'p-rice', qty: 1, pricePaid: -1 },
+          oil: 'cheap',
+          'bad id!': { packageId: 'p', qty: 1, pricePaid: 1 }
+        }
+      }),
+      CATALOG
+    );
+    expect(m.actuals).toEqual({ eggs: { packageId: 'p-eggs', qty: 2, pricePaid: 3.49 } });
+  });
+
+  it('Actuals_IsEmpty_WhenNotAnObject', () => {
+    expect(sanitizeMenu(raw({ actuals: [1, 2] }), CATALOG).actuals).toEqual({});
+  });
+
+  it('FreeItems_KeepsObjectsWithAnId_UpToTheCap', () => {
+    const items = Array.from({ length: 50 }, (_, i) => ({ id: `new:${String(i).padStart(8, '0')}`, name: `Thing ${i}` }));
+    const m = sanitizeMenu(raw({ freeItems: [...items, 'junk', { name: 'no id' }] }), CATALOG);
+    expect(m.freeItems).toHaveLength(MAX_FREE_ITEMS);
+  });
+
+  it('FreeItems_IsEmpty_WhenNotAnArray', () => {
+    expect(sanitizeMenu(raw({ freeItems: { a: 1 } }), CATALOG).freeItems).toEqual([]);
+  });
 });

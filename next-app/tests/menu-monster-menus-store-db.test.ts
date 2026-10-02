@@ -38,6 +38,8 @@ const menu = (overrides: Partial<Menu> = {}): Menu => ({
   budgetPerPersonMeal: 4,
   dayCount: 2,
   shopping: { packageChoice: {}, qtyOverride: {}, lineSource: {} },
+  actuals: {},
+  freeItems: [],
   meals: [{ id: 'm1', day: 0, slot: 'breakfast', headcount: null, recipeIds: ['B001'], recipeEdits: {} }],
   ...overrides
 });
@@ -256,5 +258,25 @@ describe('menu store per-scout cap', () => {
   it('OtherScout_CanStillCreate_WhenAnotherScoutIsAtTheCap', async () => {
     await fill(MAX_MENUS_PER_SCOUT - (await listMenusWith(admin, CHARLIE.personId)).length);
     expect(await createMenuWith(admin, other, menu(), CATALOG)).not.toBe(MENU_LIMIT);
+  });
+});
+
+describe('menu store actuals + free items (Phase 2 release A)', () => {
+  it('Load_ReadsActualsAndFreeItems_FromTheRow', async () => {
+    const id = await createMenuWith(admin, CHARLIE, menu(), CATALOG);
+    const actuals = { eggs: { packageId: 'p-eggs', qty: 2, pricePaid: 3.49 } };
+    const freeItems = [{ id: 'new:0a1b2c3d', name: 'Marshmallows' }];
+    await admin.from('mm_menus').update({ actuals, free_items: freeItems }).eq('id', id);
+    const loaded = (await loadMenuWith(admin, id))!.menu;
+    expect({ actuals: loaded.actuals, freeItems: loaded.freeItems }).toEqual({ actuals, freeItems });
+  });
+
+  it('Save_DoesNotWriteActuals_ThroughTheNormalSavePath', async () => {
+    const id = await createMenuWith(admin, CHARLIE, menu(), CATALOG);
+    const stored = (await loadMenuWith(admin, id))!;
+    const claimed = { eggs: { packageId: 'p-eggs', qty: 99, pricePaid: 0.01 } };
+    const result = await saveMenuWith(admin, CHARLIE, id, menu({ actuals: claimed }), stored.updatedAt, CATALOG);
+    expect(result.status).toBe('saved');
+    expect((await loadMenuWith(admin, id))!.menu.actuals).toEqual({});
   });
 });

@@ -29,7 +29,7 @@ import { Badge } from '@/app/_components/badge';
 import { Notice } from '@/app/_components/notice';
 import { EmptyState } from '@/app/_components/empty-state';
 import { SectionDivider } from '@/app/_components/section-divider';
-import { PublicStepperSpecimen, PublicTabStripSpecimen } from './specimens';
+import { PublicMenuEditListSpecimen, PublicStepperSpecimen, PublicTabStripSpecimen } from './specimens';
 import { IngredientList } from '@/app/(public)/library/menu-monster/_components/ingredient-list';
 import { FormCard, Field, TextInput } from '@/app/_components/form';
 import { DateField } from '@/app/_components/date-field';
@@ -433,8 +433,8 @@ export default function PublicStyleguidePage() {
             </p>
           </div>
 
-          {/* Menu Monster ingredient list — the scout workspace's one list component (read mode live;
-              menu-edit and author are reserved modes). Rows are plain data, so the specimen needs no catalog. */}
+          {/* Menu Monster ingredient list — the scout workspace's one list component (read and menu-edit
+              modes live; author is reserved for Phase 4). Rows are plain data, so the specimens need no catalog. */}
           <div className={sg.specimenBlock}>
             <IngredientList
               mode="read"
@@ -448,8 +448,18 @@ export default function PublicStyleguidePage() {
             <p className={sg.specimenInlineNote}>
               <code>IngredientList</code> from <code>library/menu-monster/_components/ingredient-list</code> &mdash; name, a quiet diet note,
               the amount for the view (total for the meal, or per person) in a fixed right column. Built from the engine by{' '}
-              <code>lib/menu-monster/ingredient-rows</code>; <code>mode</code> reserves <code>menu-edit</code> (Phase 2) and{' '}
-              <code>author</code> (Phase 4).
+              <code>lib/menu-monster/ingredient-rows</code>; <code>mode</code> reserves <code>author</code> (Phase 4).
+            </p>
+          </div>
+
+          {/* Same component, menu-edit mode: a menu's own version of a recipe. */}
+          <div className={sg.specimenBlock}>
+            <PublicMenuEditListSpecimen />
+            <p className={sg.specimenInlineNote}>
+              <code>IngredientList mode=&quot;menu-edit&quot;</code> &mdash; a ⋯ per row (Change amount, Swap for…, Leave out; Put back,
+              Back to the troop amount, Remove where they apply), the troop&rsquo;s old value struck (changed amount, swapped item), a quiet
+              &ldquo;Added&rdquo; tag, left-out rows dimmed with &ldquo;Left out&rdquo;, and a dashed &ldquo;Add an ingredient&rdquo;
+              search. Rows from <code>menuEditRows</code>; the page turns each <code>RowAction</code> into ops.
             </p>
           </div>
 

@@ -121,3 +121,95 @@ describe('merge_people — signup_entries reassignment', () => {
     expect(loserPerson?.merged_into_person_id).toBeNull();
   });
 });
+
+/**
+ * Menu Monster workspace (Plans/Menu-Monster-Scout-Workspace.md, Phase 2): every
+ * person FK on mm_* is RESTRICT, so merge_people must re-point them to the survivor.
+ */
+describe('merge_people — Menu Monster references', () => {
+  const MM_PKG = 'vitest-merge-package';
+  let people: number[] = [];
+
+  afterEach(async () => {
+    const admin = adminClient();
+    await admin.from('mm_price_history').delete().eq('package_id', MM_PKG);
+    await admin.from('mm_packages').delete().eq('id', MM_PKG);
+    if (people.length > 0) {
+      await admin.from('mm_menus').delete().in('owner_person_id', people);
+      const { error } = await admin.from('people').delete().in('id', people);
+      if (error) throw new Error(`fixture cleanup: people delete failed: ${error.message}`);
+    }
+    people = [];
+  });
+
+  async function makePerson(label: string) {
+    const { data, error } = await adminClient()
+      .from('people')
+      .insert({ display_name: `${TEST_PREFIX} MergeMM ${label}` })
+      .select('id')
+      .single();
+    if (error || !data) throw new Error(`fixture: people insert failed: ${error?.message}`);
+    people.push(data.id);
+    return data.id as number;
+  }
+
+  async function merge(survivor: number, loser: number) {
+    const { error } = await adminClient().rpc('merge_people', {
+      p_survivor: survivor,
+      p_loser: loser,
+      p_decided_by: 'test:merge'
+    });
+    expect(error).toBeNull();
+  }
+
+  it('Merge_MovesMenusToSurvivor_WhenLoserOwnsAMenu', async () => {
+    const admin = adminClient();
+    const survivor = await makePerson('Survivor2');
+    const loser = await makePerson('Loser2');
+    const { data: menu, error } = await admin
+      .from('mm_menus')
+      .insert({ owner_person_id: loser, name: 'vitest-merge-menu', headcount: 8 })
+      .select('id')
+      .single();
+    expect(error).toBeNull();
+
+    await merge(survivor, loser);
+
+    const { data } = await admin.from('mm_menus').select('owner_person_id').eq('id', menu!.id).single();
+    expect(data?.owner_person_id).toBe(survivor);
+  });
+
+  it('Merge_MovesPriceHistoryAndPackageAuthorship_WhenLoserReportedPrices', async () => {
+    const admin = adminClient();
+    const survivor = await makePerson('Survivor3');
+    const loser = await makePerson('Loser3');
+    const { data: ing } = await admin.from('mm_ingredients').select('id').is('retired_at', null).limit(1).single();
+    const { error: pkgErr } = await admin
+      .from('mm_packages')
+      .insert({ id: MM_PKG, ingredient_id: ing!.id, name: 'vitest', price: 2, added_by_person_id: loser });
+    expect(pkgErr).toBeNull();
+    const { error: histErr } = await admin.from('mm_price_history').insert({
+      package_id: MM_PKG,
+      old_price: 2,
+      new_price: 3,
+      reported_by_person_id: loser,
+      decided_by_person_id: loser,
+      decided_at: new Date().toISOString(),
+      status: 'reverted'
+    });
+    expect(histErr).toBeNull();
+
+    await merge(survivor, loser);
+
+    const { data: pkg } = await admin.from('mm_packages').select('added_by_person_id').eq('id', MM_PKG).single();
+    const { data: hist } = await admin
+      .from('mm_price_history')
+      .select('reported_by_person_id, decided_by_person_id')
+      .eq('package_id', MM_PKG)
+      .single();
+    expect({ pkg, hist }).toEqual({
+      pkg: { added_by_person_id: survivor },
+      hist: { reported_by_person_id: survivor, decided_by_person_id: survivor }
+    });
+  });
+});

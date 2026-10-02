@@ -13,12 +13,17 @@
  *     a quiet note of the menu's diets; a Total to buy / Per person switch;
  *   - one footer line, "This meal: $X, $Y a person."
  *
+ * A recipe's open list is the menu's OWN version of it (IngredientList,
+ * menu-edit mode): change an amount, swap an ingredient, leave one out, add one.
+ * Those edits are meal.recipeEdits; the shared recipe never changes. The recipe
+ * row says "Your version · N" and its ⋯ has "Back to the troop recipe".
+ *
  * Save model (the public save-button standard): an explicit, dirty-gated Save +
- * Discard changes on the title line. Only this page's two edits — the recipe
- * list and People — are in the draft. Save writes them into menu.meals[i] and
- * sends every other field of the meal (package choice, quantities, sources,
- * recipe edits) and every other meal back exactly as loaded; those belong to the
- * Shopping tab and to Phase 2. A People equal to the menu's is stored as null.
+ * Discard changes on the title line. This page's three edits — the recipe list,
+ * People and the recipe edits — are in the draft. Save writes them into
+ * menu.meals[i] and sends every other field of the meal and every other meal
+ * back exactly as loaded; package choices and quantities belong to the Shopping
+ * tab. A People equal to the menu's is stored as null.
  *
  * No shopping controls here. Costs are derived on every render by the pure
  * engine from the meal's own catalog (menus.ts mealCatalog applies its recipe
@@ -34,27 +39,49 @@ import { Stepper } from '@/app/_components/stepper';
 import type { Catalog, Plan, Recipe } from '@/lib/menu-monster/types';
 import { RESTRICTION_BY_KEY } from '@/lib/menu-monster/units';
 import { MAX_HEADCOUNT, MIN_HEADCOUNT, buildLines, recipesForMeal, totalsOf } from '@/lib/menu-monster/engine';
-import { composePlan, mealCatalog, type Menu, type MenuMeal } from '@/lib/menu-monster/menus';
+import { composePlan, mealCatalog, type EditOp, type Menu, type MenuMeal, type RecipeEdits } from '@/lib/menu-monster/menus';
 import { DIET_ORDER, mealTitle, recipeShares } from '@/lib/menu-monster/menu-view';
-import { ingredientRows, type AmountView } from '@/lib/menu-monster/ingredient-rows';
+import {
+  defaultSwapQty,
+  menuEditRows,
+  opsWithAdded,
+  opsWithAmount,
+  opsWithLeaveOut,
+  opsWithSwap,
+  opsWithoutAdded,
+  opsWithoutOp,
+  type AmountView
+} from '@/lib/menu-monster/ingredient-rows';
 import { saveMenuAction } from '../../../_tools/menu-monster/menu-actions';
-import { IngredientList } from '../../_components/ingredient-list';
+import { IngredientList, type RowAction } from '../../_components/ingredient-list';
 import { RowMenu } from './row-menu';
 import { SaveBar } from './save-bar';
 import s from './workspace.module.css';
 
-/** What this page edits: the people eating and the recipes on the plate. */
+/** What this page edits: the people eating, the recipes on the plate and this menu's edits to them. */
 interface Draft {
   people: number;
   recipeIds: string[];
+  edits: RecipeEdits;
 }
-const keyOf = (d: Draft) => JSON.stringify(d);
+/** Order-insensitive: the same edits made in another order are not a change. */
+const keyOf = (d: Draft) =>
+  JSON.stringify({
+    people: d.people,
+    recipeIds: d.recipeIds,
+    edits: Object.keys(d.edits)
+      .sort()
+      .map((rid) => [rid, d.edits[rid].map((o) => JSON.stringify(o)).sort()])
+  });
+
+/** The part of the draft a remove, swap or "back to the troop recipe" can undo. */
+type UndoPoint = Pick<Draft, 'recipeIds' | 'edits'>;
 
 /** The line under the list: what just happened, and the way back from a remove or swap. */
 interface Status {
   text: string;
-  /** The recipe list to restore, when the change can be undone. */
-  undoIds: string[] | null;
+  /** The recipe list and edits to restore, when the change can be undone. */
+  undoTo: UndoPoint | null;
   /** Hand focus to Undo: a remove leaves nothing else focused. */
   focusUndo?: boolean;
 }
@@ -73,7 +100,7 @@ export function MealEditor({
   updatedAt: string;
 }) {
   const meal = menu.meals.find((m) => m.id === mealId) as MenuMeal;
-  const start = (): Draft => ({ people: meal.headcount ?? menu.headcount, recipeIds: [...meal.recipeIds] });
+  const start = (): Draft => ({ people: meal.headcount ?? menu.headcount, recipeIds: [...meal.recipeIds], edits: { ...(meal.recipeEdits ?? {}) } });
   const [draft, setDraft] = useState<Draft>(start);
   const [saved, setSaved] = useState<Draft>(start);
   const [version, setVersion] = useState(updatedAt);
@@ -83,7 +110,7 @@ export function MealEditor({
 
   const [view, setView] = useState<AmountView>('total');
   const [openIds, setOpenIds] = useState<ReadonlySet<string>>(() => new Set());
-  const [status, setStatus] = useState<Status>({ text: '', undoIds: null });
+  const [status, setStatus] = useState<Status>({ text: '', undoTo: null });
   const [swapId, setSwapId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [listOpen, setListOpen] = useState(false);
@@ -103,9 +130,10 @@ export function MealEditor({
   }, [status]);
 
   /* ---- Derived: this meal as the engine sees it ---- */
-  const mealNow: MenuMeal = { ...meal, headcount: draft.people === menu.headcount ? null : draft.people, recipeIds: draft.recipeIds };
+  const mealNow: MenuMeal = { ...meal, headcount: draft.people === menu.headcount ? null : draft.people, recipeIds: draft.recipeIds, recipeEdits: draft.edits };
   const plan: Plan = composePlan(menu, mealNow);
-  const cat = mealCatalog(catalog, meal);
+  const cat = mealCatalog(catalog, mealNow);
+  const choices = catalog.ingredients.map((i) => ({ id: i.id, name: i.name })).sort((a, b) => a.name.localeCompare(b.name));
   const byId = new Map(catalog.recipes.map((r) => [r.id, r]));
   const recipeName = (id: string) => byId.get(id)?.name ?? id;
   // Each recipe's share of the meal (shared packages split), so the rows add up to the footer.
@@ -141,31 +169,70 @@ export function MealEditor({
     setActive(0);
   };
 
+  const without = (edits: RecipeEdits, rid: string): RecipeEdits => {
+    const { [rid]: dropped, ...rest } = edits;
+    void dropped;
+    return rest;
+  };
+  const undoPoint = (): UndoPoint => ({ recipeIds: draft.recipeIds, edits: draft.edits });
+
   function remove(id: string) {
-    const before = draft.recipeIds;
-    change({ ...draft, recipeIds: before.filter((x) => x !== id) });
-    setStatus({ text: `${recipeName(id)} removed.`, undoIds: before, focusUndo: true });
+    const before = undoPoint();
+    // A removed recipe takes this meal's edits to it along (sanitizeMenu would drop them anyway).
+    change({ ...draft, recipeIds: before.recipeIds.filter((x) => x !== id), edits: without(draft.edits, id) });
+    setStatus({ text: `${recipeName(id)} removed.`, undoTo: before, focusUndo: true });
   }
 
   function pick(r: Recipe) {
-    const before = draft.recipeIds;
+    const before = undoPoint();
     if (swapId) {
-      change({ ...draft, recipeIds: before.map((x) => (x === swapId ? r.id : x)) });
-      setStatus({ text: `Swapped ${recipeName(swapId)} for ${r.name}.`, undoIds: before });
+      change({ ...draft, recipeIds: before.recipeIds.map((x) => (x === swapId ? r.id : x)), edits: without(draft.edits, swapId) });
+      setStatus({ text: `Swapped ${recipeName(swapId)} for ${r.name}.`, undoTo: before });
       setSwapId(null);
     } else {
-      change({ ...draft, recipeIds: [...before, r.id] });
-      setStatus({ text: `${r.name} added.`, undoIds: null });
+      change({ ...draft, recipeIds: [...before.recipeIds, r.id] });
+      setStatus({ text: `${r.name} added.`, undoTo: null });
     }
     clearSearch();
     inputRef.current?.focus();
   }
 
   function undo() {
-    if (!status.undoIds) return;
-    change({ ...draft, recipeIds: status.undoIds });
-    setStatus({ text: 'Undone.', undoIds: null });
+    if (!status.undoTo) return;
+    change({ ...draft, ...status.undoTo });
+    setStatus({ text: 'Undone.', undoTo: null });
     inputRef.current?.focus();
+  }
+
+  /* ---- This menu's version of a recipe ---- */
+  const rowsFor = (rid: string) => {
+    const recipe = byId.get(rid);
+    return recipe ? menuEditRows(recipe, draft.edits[rid] ?? [], catalog, plan, view) : [];
+  };
+  const setOps = (rid: string, next: EditOp[]) => {
+    const edits = without(draft.edits, rid);
+    change({ ...draft, edits: next.length > 0 ? { ...edits, [rid]: next } : edits });
+  };
+
+  function onIngredientAction(rid: string, a: RowAction) {
+    const ops = draft.edits[rid] ?? [];
+    if (a.type === 'add') {
+      setOps(rid, opsWithAdded(ops, a.ingredientId, 1));
+      return;
+    }
+    const e = rowsFor(rid).find((r) => r.key === a.key)?.edit;
+    if (!e) return;
+    if (a.type === 'amount') setOps(rid, opsWithAmount(ops, e, a.qtyPerPerson));
+    else if (a.type === 'swap') setOps(rid, opsWithSwap(ops, e, a.to, defaultSwapQty(e, a.to, catalog)));
+    else if (a.type === 'leave_out') setOps(rid, opsWithLeaveOut(ops, e));
+    else if (a.type === 'remove') setOps(rid, opsWithoutAdded(ops, e.ingredientId));
+    else setOps(rid, opsWithoutOp(ops, e)); // put_back, reset
+  }
+
+  function backToTroop(rid: string) {
+    const before = undoPoint();
+    change({ ...draft, edits: without(draft.edits, rid) });
+    setStatus({ text: `Back to the troop recipe for ${recipeName(rid)}.`, undoTo: before });
   }
 
   function onSearchKey(e: KeyboardEvent<HTMLInputElement>) {
@@ -192,10 +259,12 @@ export function MealEditor({
     setSaving(true);
     setError(null);
     const sent = draft;
-    // Only the two fields this page edits change; everything else rides through as loaded.
+    // Only the three fields this page edits change; everything else rides through as loaded.
     const next: Menu = {
       ...menu,
-      meals: menu.meals.map((m) => (m.id === mealId ? { ...m, headcount: sent.people === menu.headcount ? null : sent.people, recipeIds: sent.recipeIds } : m))
+      meals: menu.meals.map((m) =>
+        m.id === mealId ? { ...m, headcount: sent.people === menu.headcount ? null : sent.people, recipeIds: sent.recipeIds, recipeEdits: sent.edits } : m
+      )
     };
     let res: Awaited<ReturnType<typeof saveMenuAction>>;
     try {
@@ -231,7 +300,7 @@ export function MealEditor({
             onDiscard={() => {
               setDraft(saved);
               setError(null);
-              setStatus({ text: '', undoIds: null });
+              setStatus({ text: '', undoTo: null });
               setSwapId(null);
               clearSearch();
             }}
@@ -295,7 +364,7 @@ export function MealEditor({
           {draft.recipeIds.map((id) => {
             const name = recipeName(id);
             const open = openIds.has(id);
-            const recipe = cat.recipes.find((r) => r.id === id);
+            const edited = draft.edits[id]?.length ?? 0;
             const panel = `${uid}-ing-${id}`;
             return (
               <li key={id} className={s.row}>
@@ -306,6 +375,7 @@ export function MealEditor({
                       ›
                     </span>
                   </button>
+                  {edited > 0 && <span className={s.meta}>Your version · {edited}</span>}
                 </div>
                 <div className={s.cost}>{money(costOf(id))}</div>
                 <RowMenu
@@ -318,17 +388,22 @@ export function MealEditor({
                         inputRef.current?.focus();
                       }
                     },
+                    ...(edited > 0 ? [{ label: 'Back to the troop recipe', onSelect: () => backToTroop(id) }] : []),
                     { label: 'Remove', danger: true, onSelect: () => remove(id) }
                   ]}
                 />
                 {open && (
                   <div id={panel} className={s.inset}>
                     <IngredientList
-                      mode="read"
+                      mode="menu-edit"
                       ariaLabel={`${name} ingredients`}
-                      rows={recipe ? ingredientRows(recipe, cat, plan, view) : []}
+                      rows={rowsFor(id)}
+                      choices={choices}
                       emptyText="No ingredients on this recipe yet."
+                      onAction={(a) => onIngredientAction(id, a)}
+                      onAnnounce={(text) => setStatus({ text, undoTo: null })}
                     />
+                    <p className={s.foot}>Only this menu changes. The troop’s {name} recipe stays the same.</p>
                   </div>
                 )}
               </li>
@@ -383,7 +458,7 @@ export function MealEditor({
 
         <p className={s.statusLine} role="status">
           {status.text}
-          {status.undoIds && (
+          {status.undoTo && (
             <>
               {' '}
               <button type="button" ref={undoRef} className={s.linkBtn} onClick={undo}>

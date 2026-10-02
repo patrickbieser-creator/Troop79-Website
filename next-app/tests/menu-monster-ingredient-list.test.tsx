@@ -8,8 +8,8 @@ import { IngredientList } from '../src/app/(public)/library/menu-monster/_compon
 
 /**
  * IngredientList, read mode (slice 4b): rows of ingredient name, the amount for
- * the view, and a quiet note on diet lines. menu-edit / author are reserved
- * modes and fall back to the same read rows until their phases land.
+ * the view, and a quiet note on diet lines. author is a reserved
+ * mode and falls back to the same read rows until Phase 4 lands (menu-edit: menu-monster-menu-edit-list.test.tsx).
  */
 
 const pancakes = CATALOG.recipes.find((r) => r.id === 'B001') as Recipe;
@@ -60,8 +60,8 @@ describe('IngredientList (read)', () => {
     expect(row('Pancake mix').textContent).toMatch(/Pancake mix.*3½ cups/);
   });
 
-  it('ReservedModes_RenderTheReadRows_UntilTheirPhaseLands', () => {
-    render(<IngredientList mode="menu-edit" ariaLabel="Edit" rows={ingredientRows(pancakes, CATALOG, plan(1), 'total')} />);
+  it('AuthorMode_RendersTheReadRows_UntilPhase4Lands', () => {
+    render(<IngredientList mode="author" ariaLabel="Edit" rows={ingredientRows(pancakes, CATALOG, plan(1), 'total')} />);
     expect(screen.getByText('Almond flour')).toBeTruthy();
   });
 });

@@ -3,17 +3,19 @@
  * workspace (Plans/Menu-Monster-Scout-Workspace.md, "UI pattern of record").
  * It lives here, not in src/app/_components/, because it is Menu Monster's own
  * pattern: its rows speak recipes and diets, and its only consumers are the
- * scout pages (meal inset now, menu-local editing in Phase 2, the recipe editor
- * in Phase 4). Specimen: /admin/styleguide/public -> Ingredient list.
+ * scout pages (meal inset, menu-local editing, the recipe editor in Phase 4).
+ * Specimen: /admin/styleguide/public -> Ingredient list.
  *
  * It renders rows it is GIVEN (lib/menu-monster/ingredient-rows.ts builds them
  * from the engine), so it does no math and needs no catalog.
  *
  * Modes (one component, one row, so the keyboard and the layout are built once):
- *   'read'       Phase 1, implemented: name, quiet diet note, amount.
- *   'menu-edit'  Phase 2, RESERVED: amount / swap / leave out / add on a menu's
- *                version of a recipe, a "Your version - N" tag, struck old values
- *                (row.marker). TODO(Phase 2): onAmount, onSwap, onLeaveOut, onAdd.
+ *   'read'       name, quiet diet note, amount.
+ *   'menu-edit'  a menu's own version of a recipe (ingredient-list-edit.tsx):
+ *                a ⋯ per row (change amount / swap / leave out / put back /
+ *                back to the troop's), a dashed "Add an ingredient" search, a
+ *                struck old value, "Added" and "Left out" tags. Rows come from
+ *                menuEditRows(); the parent turns each RowAction into ops.
  *   'author'     Phase 4, RESERVED: the recipe editor: drag reorder, a per-row
  *                menu, the "What you'd buy" inset. TODO(Phase 4): onReorder,
  *                renderInset, rowMenu.
@@ -22,7 +24,10 @@
  */
 
 import type { IngredientRow } from '@/lib/menu-monster/ingredient-rows';
+import { MenuEditList, type MenuEditProps, type RowAction } from './ingredient-list-edit';
 import s from './ingredient-list.module.css';
+
+export type { RowAction };
 
 interface ListBase {
   rows: readonly IngredientRow[];
@@ -36,12 +41,7 @@ export interface ReadListProps extends ListBase {
   mode: 'read';
 }
 
-/** Phase 2 stub: the handlers the menu-local editor will add. Not wired yet. */
-export interface MenuEditListProps extends ListBase {
-  mode: 'menu-edit';
-  // TODO(Phase 2): onAmount?: (key: string, qtyPerPerson: number) => void;
-  // TODO(Phase 2): onSwap?: (key: string) => void;  onLeaveOut?: (key: string) => void;  onAdd?: () => void;
-}
+export type MenuEditListProps = MenuEditProps & { mode: 'menu-edit' };
 
 /** Phase 4 stub: the recipe editor's extras. Not wired yet. */
 export interface AuthorListProps extends ListBase {
@@ -51,9 +51,10 @@ export interface AuthorListProps extends ListBase {
 
 export type IngredientListProps = ReadListProps | MenuEditListProps | AuthorListProps;
 
-export function IngredientList({ rows, ariaLabel, emptyText = 'No ingredients.' }: IngredientListProps) {
-  // Every mode shares the read row today; menu-edit and author branch on
-  // props.mode here (and add their cells) when their phases land.
+export function IngredientList(props: IngredientListProps) {
+  if (props.mode === 'menu-edit') return <MenuEditList {...props} />;
+  const { rows, ariaLabel, emptyText = 'No ingredients.' } = props;
+  // 'author' shares the read row until Phase 4 branches on props.mode here.
   if (rows.length === 0) return <p className={s.empty}>{emptyText}</p>;
   return (
     <ul className={s.list} aria-label={ariaLabel}>

@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { TabStrip } from '@/app/_components/tab-strip';
 import sg from './public-styleguide.module.css';
 import { AmountInput, Stepper } from '@/app/_components/stepper';
+import { IngredientList } from '@/app/(public)/library/menu-monster/_components/ingredient-list';
 
 export function PublicTabStripSpecimen() {
   const [active, setActive] = useState('week');
@@ -56,5 +57,42 @@ export function PublicStepperSpecimen() {
         $ <AmountInput aria-label="Amount, dollars and cents" defaultValue="12.50" min="0.01" step="0.01" />
       </span>
     </div>
+  );
+}
+
+/**
+ * IngredientList in menu-edit mode, display-only: one row of each state a menu's
+ * own version of a recipe can show (changed, swapped, added, left out, plain).
+ * The ⋯ menus and both searches are the live component; the actions do nothing.
+ */
+export function PublicMenuEditListSpecimen() {
+  const edit = (id: string, op?: 'amount' | 'swap' | 'leave_out', kind: 'base' | 'added' = 'base') => ({
+    kind,
+    ingredientId: id,
+    currentIngredientId: id,
+    qtyPerPerson: 1,
+    unitLabel: 'cups',
+    baseQty: 1,
+    baseName: 'Pancake mix',
+    op
+  });
+  return (
+    <IngredientList
+      mode="menu-edit"
+      ariaLabel="Pancakes ingredients, menu version (specimen)"
+      rows={[
+        { key: 'a', name: 'Pancake mix', amount: '5 cups', note: null, marker: { kind: 'changed', was: '3½ cups' }, edit: edit('pancake-mix', 'amount') },
+        { key: 'b', name: 'Turkey bacon', amount: '16 slices', note: null, marker: { kind: 'swapped', was: 'Bacon' }, edit: edit('bacon', 'swap') },
+        { key: 'c', name: 'Eggs', amount: '2', note: null, edit: edit('eggs') },
+        { key: 'd', name: 'Syrup', amount: '', note: null, marker: { kind: 'out' }, edit: edit('syrup', 'leave_out') },
+        { key: 'e', name: 'Blueberries', amount: '2 cups', note: null, marker: { kind: 'added' }, edit: edit('blueberries', undefined, 'added') }
+      ]}
+      choices={[
+        { id: 'honey', name: 'Honey' },
+        { id: 'peaches', name: 'Peaches' }
+      ]}
+      onAction={() => {}}
+      onAnnounce={() => {}}
+    />
   );
 }

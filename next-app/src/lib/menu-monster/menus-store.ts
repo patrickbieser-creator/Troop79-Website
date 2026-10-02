@@ -18,7 +18,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { recordAuditAs, type AuditActor } from '@/lib/audit';
-import { MAX_MENUS_PER_SCOUT, coverDays, foldShopping, type Menu, type MenuContext, type MenuMeal } from './menus';
+import { MAX_MENUS_PER_SCOUT, coverDays, foldShopping, sanitizeActuals, sanitizeFreeItems, type Menu, type MenuContext, type MenuMeal } from './menus';
 import { buildSnapshot, type MenuSnapshot } from './menu-snapshot';
 import type { Catalog, RestrictionKey } from './types';
 
@@ -52,7 +52,7 @@ export type SaveResult =
   | { status: 'conflict' }
   | { status: 'not_found' };
 
-const COLUMNS = 'id, owner_person_id, name, context, calendar_entry_id, start_date, headcount, restrictions, budget_per_person_meal, day_count, shopping, meals, snapshot, created_at, updated_at';
+const COLUMNS = 'id, owner_person_id, name, context, calendar_entry_id, start_date, headcount, restrictions, budget_per_person_meal, day_count, shopping, actuals, free_items, meals, snapshot, created_at, updated_at';
 
 interface MenuRow {
   id: string;
@@ -67,12 +67,19 @@ interface MenuRow {
   day_count: number;
   /** '{}' on rows from before slice 5; their choices sit inside meals[]. */
   shopping: unknown;
+  actuals: unknown;
+  free_items: unknown;
   meals: MenuMeal[];
   snapshot: MenuSnapshot | null;
   created_at: string;
   updated_at: string;
 }
 
+// actuals and free_items are deliberately NOT written here. Actuals (what the
+// scout paid) feed the shared price book, so they get their own action with its
+// own band check and never ride a menu save (Phase 2 design); free items join
+// the write path with their editing UI in release C. Until then both only read
+// back, and a duplicate starts without them.
 const toRow = (m: Menu, snapshot: MenuSnapshot | null) => ({
   name: m.name,
   context: m.context,
@@ -100,6 +107,9 @@ const fromRow = (r: MenuRow): Menu => ({
   dayCount: coverDays(r.day_count, r.meals),
   // Menus saved before slice 5 kept package / quantity / bring-from-home on each meal.
   shopping: foldShopping(r.shopping, r.meals),
+  // Same validation as a write: a hand-edited row can't smuggle a bad shape in.
+  actuals: sanitizeActuals(r.actuals),
+  freeItems: sanitizeFreeItems(r.free_items),
   // Meals saved before recipeEdits existed read as having none; the old
   // per-meal shopping fields are dropped (folded into the menu above).
   meals: r.meals.map((m) => {

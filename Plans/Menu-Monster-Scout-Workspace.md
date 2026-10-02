@@ -211,6 +211,19 @@ The meal drill-in is a port of the approved `meal.html`, not the reused anonymou
 2. **`meals[].recipeEdits` reserved now** in `sanitizeMenu` (validated, empty in Phase 1; ops amount / swap / leave_out / add keyed by recipe id) and applied by one pure function on every read, before `buildLines` — the hook exists in Phase 1, so Phase 2 needs no data migration. (`compileRecipe` in `variations.ts` compiles leader diet variations, a different shape; the new function sits beside it, it does not replace it.)
 3. Diet swaps already come from the engine (`except` / `only` lines), so the list shows them with no Phase 2 work.
 
+### Phase 2 design (tech-lead review, 2026-10-02)
+
+**Releases:** (A) P2.1 schema + people-merge fix + P2.2 menu-local edits → (B) P2.5 leader side + P2.4 "What you paid" together (auto-applied prices need revert from day one) → (C) P2.3a scout-added package, P2.3b typed-in ingredient.
+
+- **Schema (one additive migration, DB-first):** `mm_price_history` (uuid id; package_id fk restrict; old_price + **old_as_of** (so a revert restores the date); new_price > 0; reported_by_person_id fk restrict; menu_id fk set null; status applied|held|reverted; created_at; decided_by_person_id, decided_at; check held ⇒ undecided; indexes (package_id, created_at desc) and partial held); `mm_packages` + `added_by_person_id`, `held_at` (both public loaders filter `held_at is null`; authoring sees them); `mm_menus` + `actuals jsonb '{}'` (per MENU, keyed by ingredient: packageId, qty, pricePaid) + `free_items jsonb '[]'`. RLS on, zero policies.
+- **Band:** compare **unit price** (price ÷ yield per recipe unit) against the picked package's own current unit price; ±50% = `PRICE_BAND` in `lib/menu-monster/price-band.ts` (not authoring's 25% `BIG_CHANGE`). Unusable package / no usable package → always held. Price ≤ 0 rejected.
+- **Concurrency:** one RPC `mm_report_price` (`select … for update` on the package; band passed in; inserts history; updates price/as_of). An unchanged price only touches `as_of`; re-saving an unchanged line calls nothing. Execute revoked from anon/authenticated (the `mm_save_recipe` precedent).
+- **Revert:** only when the package's price still equals the row's new_price (also covers leader edits), else "superseded", no change. Reverting a held row = dismiss. The leader's `updatePackage` writes history too.
+- **Actuals save:** its own action writing only `actuals` — no `updated_at` bump (no false conflict on an open Plan tab). Re-snapshot after the scout's own applied change so their drift line doesn't fire.
+- **Free items:** live in `mm_menus.free_items`; one pure `menuCatalog(base, menu, ownerHeldPackages)` overlays synthetic `new:<8hex>` ingredients/packages (also shows the owner their held packages); `sanitizeRecipeEdits` accepts those ids. Optional avoid-flag ticks; with any diet count > 0 and no ticks, the row says "Not checked for diets".
+- **Audit:** price changes under `library` (via `recordAuditAs` for scouts); menu actions stay `menus`. Read `mm_price_history` filtered/limited, never whole (1000-row cap).
+- **Owed from Phase 1:** people-merge must re-point `mm_menus.owner_person_id` (and now `mm_price_history` people columns, `mm_packages.added_by_person_id`); today a merge of a person who owns a menu fails on RESTRICT.
+
 ## Open Questions
 
 - [x] Schema review: diets as a `jsonb` map (2026-10-02).

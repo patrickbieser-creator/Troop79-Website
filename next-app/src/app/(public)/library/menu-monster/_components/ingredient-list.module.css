@@ -45,3 +45,59 @@
   color: var(--text-meta);
   padding: var(--sp-2) 0;
 }
+
+/* ---- menu-edit mode (a menu's own version of a recipe) ----------------------- */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+.rowEdit { flex-wrap: wrap; align-items: center; }
+.moreCell { flex: none; }
+/* A left-out row stays visible, dimmed, so it can be put back. */
+.rowOut .name,
+.rowOut .amount { color: var(--text-meta); }
+/* The troop's old value, struck (swapped item or changed amount). Never colour alone: the word "was" is read out. */
+.was {
+  color: var(--text-meta);
+  font-size: var(--fs-sm);
+  text-decoration: line-through;
+  margin-right: var(--sp-2);
+}
+.main .was { margin-right: 0; }
+.tag {
+  font-size: var(--fs-sm);
+  color: var(--text-meta);
+  border: 1px solid var(--rule);
+  border-radius: var(--rad-sm);
+  padding: 0 var(--sp-2);
+}
+.amountEdit {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--sp-1) var(--sp-2);
+}
+/* 16px: the iOS no-zoom floor. */
+.amountInput {
+  width: 5.5em;
+  min-height: 36px;
+  font-family: var(--font-ui);
+  font-size: 16px;
+  text-align: right;
+  color: var(--text-head);
+  background: var(--warm-white);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-sm);
+  padding: 0 var(--sp-2);
+}
+.amountInput:focus-visible { outline: var(--focus-ring); outline-offset: 1px; }
+.amountInput[aria-invalid='true'] { border-color: var(--status-danger); }
+.unit { font-size: var(--fs-sm); color: var(--text-meta); }
+.fieldError { flex-basis: 100%; text-align: right; font-size: var(--fs-sm); color: var(--status-danger); }
+.sub { flex-basis: 100%; padding: 0 0 var(--sp-2); }
+.addRow { padding: var(--sp-2) 0 0; border-top: 1px solid var(--rule); }

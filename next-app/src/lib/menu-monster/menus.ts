@@ -69,6 +69,29 @@ export interface MenuShopping {
 
 export const emptyShopping = (): MenuShopping => ({ packageChoice: {}, qtyOverride: {}, lineSource: {} });
 
+/**
+ * What the scout bought for one ingredient (Phase 2 release B writes these):
+ * the package, how many, and the price paid each. Per MENU, keyed by ingredient.
+ */
+export interface Actual {
+  packageId: string;
+  qty: number;
+  pricePaid: number;
+}
+
+/** ingredientId -> what was bought. Written only by the actuals action, never by a menu save. */
+export type Actuals = Record<string, Actual>;
+
+/**
+ * A typed-in ingredient (Phase 2 release C): a synthetic `new:<8hex>` id plus
+ * whatever the scout typed. Release A only validates the envelope (an object
+ * with a string id); release C narrows the shape with the UI that writes it.
+ */
+export type FreeItem = { id: string } & Record<string, unknown>;
+
+/** Cap on typed-in ingredients per menu (the DB only requires an array). */
+export const MAX_FREE_ITEMS = 40;
+
 /** One meal on a menu: a day index (0 = the menu's first day), a slot, and
  *  the recipes on the plate. headcount null = the menu's headcount. */
 export interface MenuMeal {
@@ -95,6 +118,10 @@ export interface Menu {
   dayCount: number;
   /** Package / quantity / bring-from-home choices for the merged shopping list. */
   shopping: MenuShopping;
+  /** What was bought, per ingredient; {} until release B. Read-only through a menu save. */
+  actuals: Actuals;
+  /** Typed-in ingredients; [] until release C. */
+  freeItems: FreeItem[];
   meals: MenuMeal[];
 }
 
@@ -131,6 +158,33 @@ export function coverDays(dayCount: unknown, meals: readonly { day: number }[]):
 function sanitizeRestrictions(raw: unknown, headcount: number): Record<RestrictionKey, number> {
   const out = {} as Record<RestrictionKey, number>;
   for (const r of RESTRICTIONS) out[r.key] = isRecord(raw) ? clampInt(raw[r.key], 0, headcount, 0) : 0;
+  return out;
+}
+
+const INGREDIENT_ID = /^[A-Za-z0-9:_-]{1,64}$/;
+const isNumberAtLeast = (v: unknown, min: number): v is number => typeof v === 'number' && Number.isFinite(v) && v >= min;
+
+/** Client actuals -> well-formed entries only (id-shaped keys, a package id, qty > 0, price >= 0). */
+export function sanitizeActuals(raw: unknown): Actuals {
+  const out: Actuals = {};
+  if (!isRecord(raw)) return out;
+  for (const [ing, a] of Object.entries(raw)) {
+    if (!INGREDIENT_ID.test(ing) || !isRecord(a)) continue;
+    if (typeof a.packageId !== 'string' || !INGREDIENT_ID.test(a.packageId)) continue;
+    if (!isNumberAtLeast(a.qty, Number.EPSILON) || !isNumberAtLeast(a.pricePaid, 0)) continue;
+    out[ing] = { packageId: a.packageId, qty: Math.min(1000, Math.round(a.qty * 10000) / 10000), pricePaid: Math.round(a.pricePaid * 100) / 100 };
+  }
+  return out;
+}
+
+/** Client free items -> objects with an id-shaped string id, capped at MAX_FREE_ITEMS. */
+export function sanitizeFreeItems(raw: unknown): FreeItem[] {
+  if (!Array.isArray(raw)) return [];
+  const out: FreeItem[] = [];
+  for (const o of raw) {
+    if (out.length >= MAX_FREE_ITEMS) break;
+    if (isRecord(o) && typeof o.id === 'string' && INGREDIENT_ID.test(o.id)) out.push({ ...o, id: o.id });
+  }
   return out;
 }
 
@@ -293,6 +347,8 @@ export function sanitizeMenu(raw: unknown, catalog: Catalog): Menu {
     budgetPerPersonMeal,
     dayCount: coverDays(r.dayCount, meals),
     shopping: sanitizeShopping(foldShopping(r.shopping, r.meals), catalog),
+    actuals: sanitizeActuals(r.actuals),
+    freeItems: sanitizeFreeItems(r.freeItems),
     meals
   };
 }
