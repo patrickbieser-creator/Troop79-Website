@@ -50,11 +50,11 @@ const ING: Ingredient[] = [
 ];
 const PK: Package[] = [
   {
-    id: 'p-milk-gal', ingredientId: 'milk', name: 'Milk, gallon', store: 'Kroger', price: 3.49, yield: 16,
+    id: 'p-milk-gal', ingredientId: 'milk', name: 'Milk, gallon', store: 'Kroger', price: 3.49, anchorPrice: 3.49, yield: 16,
     yieldUnitLabel: null, noun: 'gallon', soldSize: 1, soldUnit: 'gallon', note: null, asOf: '2026-05-01', retiredAt: null
   },
   {
-    id: 'p-mix-10lb', ingredientId: 'pancake-mix', name: 'Krusteaz Pancake Mix, 10 lb', store: 'Costco', price: 15, yield: 36,
+    id: 'p-mix-10lb', ingredientId: 'pancake-mix', name: 'Krusteaz Pancake Mix, 10 lb', store: 'Costco', price: 15, anchorPrice: 15, yield: 36,
     yieldUnitLabel: null, noun: 'bag', soldSize: 10, soldUnit: 'lb', note: null, asOf: '2026-09-01', retiredAt: null
   }
 ];

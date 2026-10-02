@@ -6,10 +6,9 @@
  * scout sees the verdict BEFORE they save, and reads a saved result after.
  */
 
-import { bandCheck } from './price-band';
+import { bandCheck, type BandPackage } from './price-band';
 import { priceText as money } from './units';
 import type { Actual, Actuals, PaidStatus } from './menus';
-import type { Package } from './types';
 
 export type PaidTag = 'updated' | 'held' | 'book' | null;
 
@@ -33,11 +32,11 @@ export function actualChanged(draft: Actual | undefined, saved: Actual | undefin
 
 /**
  * The verdict for one line. `pkg` is the package the scout says they bought
- * (live price book); `changed` says the entry differs from what is saved;
+ * (live price book; the band is measured from its leader-approved anchor); `changed` says the entry differs from what is saved;
  * `result` is what the last save reported for this line, honoured only while
  * the line is unchanged since.
  */
-export function paidVerdict(pkg: Pick<Package, 'price' | 'yield'> | undefined, entry: Actual | undefined, changed: boolean, result?: PaidStatus): PaidVerdict {
+export function paidVerdict(pkg: BandPackage | undefined, entry: Actual | undefined, changed: boolean, result?: PaidStatus): PaidVerdict {
   if (!entry) return { text: 'Not entered yet', tag: null, held: false, entered: false };
   const kept: PaidVerdict = { text: 'Kept on your menu.', tag: null, held: false, entered: true };
   if (!pkg) return kept;
@@ -61,7 +60,7 @@ export function paidVerdict(pkg: Pick<Package, 'price' | 'yield'> | undefined, e
   }
   if (verdict === 'hold') {
     return {
-      text: `${money(entry.pricePaid)} is far from the usual ${money(pkg.price)}. A leader will check it. Bought a different package? Pick it above.`,
+      text: `${money(entry.pricePaid)} is far from the usual ${money(pkg.anchorPrice ?? pkg.price)}. A leader will check it. Bought a different package? Pick it above.`,
       tag: 'held',
       held: true,
       entered: true

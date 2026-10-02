@@ -527,6 +527,8 @@ export interface MmPackageRow {
   name: string;
   store: string | null;
   price: number;
+  /** Last leader-set / leader-approved price (the scout-report band anchor); optional so old fixtures map. */
+  anchor_price?: number | null;
   /** In the ingredient's recipe unit; null = unusable until someone types it. */
   yield: number | null;
   /** Why it's unusable — the unit the label is in ('gallon'). */

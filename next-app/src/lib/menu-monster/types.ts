@@ -64,6 +64,8 @@ export interface Package {
   name: string;
   store: string | null;
   price: number;
+  /** The last price a leader set or approved; scout reports are banded against it (price-band.ts). */
+  anchorPrice: number;
   /** In the ingredient's recipe unit. null = unusable until someone types it. */
   yield: number | null;
   /** Why it's unusable — the unit the label is in ('gallon'). */

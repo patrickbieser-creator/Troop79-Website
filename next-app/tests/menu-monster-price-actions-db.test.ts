@@ -77,6 +77,23 @@ describe('updatePackage price history', () => {
     expect(rows[0]).toMatchObject({ status: 'applied', old_price: 4, new_price: 5, old_as_of: '2026-01-01', reported_by_person_id: LEADER, decided_by_person_id: LEADER });
   });
 
+  it('Leader_PriceEdit_MovesTheBandAnchorWithThePrice', async () => {
+    await makePackage();
+    await updatePackage(PKG_ID, edit(5));
+    const { data } = await admin.from('mm_packages').select('price, anchor_price, anchor_as_of').eq('id', PKG_ID).single();
+    expect(data).toMatchObject({ price: 5, anchor_price: 5, anchor_as_of: '2026-02-02' });
+  });
+
+  it('Leader_PriceEdit_ChangesNothing_WhenTheHistoryRowCannotBeWritten', async () => {
+    await makePackage();
+    mocks.personId = 2147483000; // no such person: the history insert fails inside the one transaction
+    const res = await updatePackage(PKG_ID, edit(5));
+    expect(res.ok).toBe(false);
+    const { data } = await admin.from('mm_packages').select('price, as_of, anchor_price').eq('id', PKG_ID).single();
+    expect(data).toMatchObject({ price: 4, as_of: '2026-01-01', anchor_price: 4 });
+    expect(await history()).toHaveLength(0);
+  });
+
   it('Leader_EditWithoutAPriceChange_WritesNoHistory', async () => {
     await makePackage();
     await updatePackage(PKG_ID, edit(4));

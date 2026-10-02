@@ -83,6 +83,17 @@ describe('menuViewer', () => {
     expect(await menuViewer()).toBeNull();
   });
 
+  it('Scout_IsNeverALeaderViewer_WhenTheirIdentityHoldsACapability', async () => {
+    // The youth_leader bundle: a real capability on a scout identity, with no scout session found.
+    mocks.actor = { ...LEADER, subjectKind: 'scout', capabilities: new Set(['meeting_plan.use']) };
+    expect(await menuViewer()).toBeNull();
+  });
+
+  it('Adult_IsALeaderViewer_WhenTheIdentityIsAnAdultWithCapabilities', async () => {
+    mocks.actor = { ...LEADER, subjectKind: 'adult' };
+    expect(await menuViewer()).toMatchObject({ kind: 'leader' });
+  });
+
   it('Scout_Wins_WhenALeaderActorAlsoApplies', async () => {
     mocks.session = SCOUT;
     mocks.actor = LEADER;

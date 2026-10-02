@@ -51,7 +51,7 @@ export async function menuViewer(): Promise<MenuViewer | null> {
   const scout = await scoutViewer();
   if (scout) return { kind: 'scout', ...scout };
   const actor = await resolveAdminActor();
-  if (!actor || actor.capabilities.size === 0) return null;
+  if (!actor || actor.subjectKind === 'scout' || actor.capabilities.size === 0) return null;
   return { kind: 'leader', personId: actor.personId, label: actor.label };
 }
 

@@ -4,7 +4,7 @@ import { centralToday } from '../src/lib/dates';
 import { PRICE_BAND, bandCheck } from '../src/lib/menu-monster/price-band';
 
 /**
- * mm_report_price / mm_decide_price (20261003120000_mm_report_price.sql): the
+ * mm_report_price / mm_decide_price (20261003120000_mm_report_price.sql, anchored by 20261003130000_mm_price_anchor.sql): the
  * band, the chain of old/new prices, and the revert rules. Test package and
  * history rows are removed after every test.
  */
@@ -136,14 +136,14 @@ describe('mm_decide_price', () => {
     expect(after).toMatchObject({ old_price: 5, new_price: 9 });
   });
 
-  it('Dismiss_MarksTheRowReverted_AndLeavesThePrice', async () => {
+  it('Dismiss_MarksTheRowDismissed_AndLeavesThePrice', async () => {
     await makePackage();
     await report(9);
     const [h] = await history();
     expect(await decide(h.id, 'dismiss')).toBe('dismissed');
     expect(await pkg()).toEqual({ price: 4, asOf: '2026-01-01' });
     const [after] = await history();
-    expect(after).toMatchObject({ status: 'reverted', decided_by_person_id: SCOUT });
+    expect(after).toMatchObject({ status: 'dismissed', decided_by_person_id: SCOUT });
   });
 
   it('Revert_OfAHeldRow_ActsAsDismiss', async () => {

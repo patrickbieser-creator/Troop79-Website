@@ -44,6 +44,7 @@ const pkg = (id: string, ingredientId: string, name: string, price: number, yiel
   name,
   store: 'Kroger',
   price,
+  anchorPrice: price,
   yield: yield_,
   yieldUnitLabel: yield_ == null ? 'gallon' : null,
   noun,

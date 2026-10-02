@@ -59,4 +59,24 @@ describe('price band', () => {
   it('BandCheck_UsesWholeCents_SoTheEdgeIsExact', () => {
     expect(bandCheck(pkg(0.1), 0.15)).toBe('apply');
   });
+
+  it('BandCheck_Holds_WhenThePriceIsInsideTheBandOfTheCurrentPriceButOutsideTheAnchors', () => {
+    expect(bandCheck({ price: 6, anchorPrice: 4, yield: 10 }, 8)).toBe('hold');
+  });
+
+  it('BandCheck_Applies_WhenThePriceIsInsideTheAnchorsBand_EvenFarFromTheCurrentPrice', () => {
+    expect(bandCheck({ price: 6, anchorPrice: 4, yield: 10 }, 2)).toBe('apply');
+  });
+
+  it('BandCheck_IsSame_WhenThePriceEqualsTheCurrentPrice_EvenIfTheAnchorDiffers', () => {
+    expect(bandCheck({ price: 6, anchorPrice: 4, yield: 10 }, 6)).toBe('same');
+  });
+
+  it('BandCheck_FallsBackToThePrice_WhenThereIsNoAnchor', () => {
+    expect(bandCheck({ price: 4, yield: 10 }, 6.01)).toBe('hold');
+  });
+
+  it('BandCheck_Holds_WhenTheAnchorIsZero', () => {
+    expect(bandCheck({ price: 4, anchorPrice: 0, yield: 10 }, 3)).toBe('hold');
+  });
 });

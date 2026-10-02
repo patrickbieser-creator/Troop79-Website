@@ -66,7 +66,7 @@ export async function loadCatalogWith(supabase: SupabaseClient): Promise<Catalog
       supabase
         .from('mm_packages')
         .select(
-          'id, ingredient_id, name, store, price, yield, yield_unit_label, noun, sold_size, sold_unit, note, as_of, created_at, retired_at'
+          'id, ingredient_id, name, store, price, anchor_price, yield, yield_unit_label, noun, sold_size, sold_unit, note, as_of, created_at, retired_at'
         )
         .is('retired_at', null)
         // A scout-added package waiting on a leader stays out of every public
@@ -121,6 +121,7 @@ export function mapCatalog(rows: CatalogRows): Catalog {
       name: p.name,
       store: p.store,
       price: Number(p.price),
+      anchorPrice: Number(p.anchor_price ?? p.price),
       yield: p.yield == null ? null : Number(p.yield),
       yieldUnitLabel: p.yield_unit_label,
       noun: p.noun || 'pack',
@@ -260,7 +261,7 @@ export async function loadAuthoringCatalogWith(supabase: SupabaseClient): Promis
       supabase
         .from('mm_packages')
         .select(
-          'id, ingredient_id, name, store, price, yield, yield_unit_label, noun, sold_size, sold_unit, note, as_of, created_at, retired_at'
+          'id, ingredient_id, name, store, price, anchor_price, yield, yield_unit_label, noun, sold_size, sold_unit, note, as_of, created_at, retired_at'
         )
         .order('name')
         .range(from, to)

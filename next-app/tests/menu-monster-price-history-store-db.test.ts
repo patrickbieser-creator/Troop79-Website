@@ -4,7 +4,7 @@ import {
   decidePriceWith,
   listHeldWith,
   listRecentChangesWith,
-  recordLeaderPriceChangeWith,
+  leaderSetPriceWith,
   reportPriceWith
 } from '../src/lib/menu-monster/price-history';
 import type { AuditEntry } from '../src/lib/audit';
@@ -147,10 +147,10 @@ describe('listRecentChangesWith', () => {
   });
 });
 
-describe('recordLeaderPriceChangeWith', () => {
+describe('leaderSetPriceWith', () => {
   it('Leader_EditRecordsAnAppliedRow_WithLeaderAsReporterAndDecider', async () => {
     await makePackage();
-    await recordLeaderPriceChangeWith(admin, { packageId: PKG_ID, oldPrice: 4, oldAsOf: '2026-01-01', newPrice: 4.75, leaderId: SCOUT });
+    expect(await leaderSetPriceWith(admin, { packageId: PKG_ID, newPrice: 4.75, asOf: '2026-02-02', leaderId: SCOUT })).toBe('applied');
     const { data } = await admin.from('mm_price_history').select('*').eq('package_id', PKG_ID);
     expect(data).toHaveLength(1);
     expect(data![0]).toMatchObject({ status: 'applied', old_price: 4, new_price: 4.75, old_as_of: '2026-01-01', reported_by_person_id: SCOUT, decided_by_person_id: SCOUT });
@@ -159,7 +159,7 @@ describe('recordLeaderPriceChangeWith', () => {
 
   it('Leader_EditRecordsNothing_WhenThePriceIsUnchanged', async () => {
     await makePackage();
-    await recordLeaderPriceChangeWith(admin, { packageId: PKG_ID, oldPrice: 4, oldAsOf: null, newPrice: 4, leaderId: SCOUT });
+    expect(await leaderSetPriceWith(admin, { packageId: PKG_ID, newPrice: 4, asOf: null, leaderId: SCOUT })).toBe('same');
     const { data } = await admin.from('mm_price_history').select('id').eq('package_id', PKG_ID);
     expect(data).toHaveLength(0);
   });

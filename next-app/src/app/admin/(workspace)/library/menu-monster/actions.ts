@@ -20,7 +20,7 @@ import { revalidatePath } from 'next/cache';
 import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import { recordAudit, type AuditDetail } from '@/lib/audit';
-import { decidePriceWith, recordLeaderPriceChangeWith, type DecideOutcome } from '@/lib/menu-monster/price-history';
+import { decidePriceWith, leaderSetPriceWith, type DecideOutcome } from '@/lib/menu-monster/price-history';
 import { loadAuthoringCatalogWith } from '@/lib/menu-monster/catalog';
 import {
   blockingIssues,
@@ -443,28 +443,35 @@ export async function updatePackage(id: string, input: PackageEdit): Promise<Res
     .update({
       name: value.name,
       store: value.store,
-      price: value.price,
       yield: value.yield,
       yield_unit_label: value.yieldUnitLabel,
       noun: value.noun,
       sold_size: value.soldSize,
       sold_unit: value.soldUnit,
-      note: value.note,
-      as_of: value.asOf
+      note: value.note
     })
     .eq('id', id);
   if (dbErr) return { ok: false, error: dbErr.message };
 
-  // A leader's price change is history too, so a later scout report chains
-  // from it and the revert rule (price still equals the row's new price) holds.
-  if (g.personId != null) {
-    await recordLeaderPriceChangeWith(supabase, {
-      packageId: id,
-      oldPrice: Number(b.price),
-      oldAsOf: b.as_of,
-      newPrice: value.price,
-      leaderId: g.personId
-    });
+  // The price itself goes in ONE transaction with its history row and the band
+  // anchor (mm_leader_set_price): a leader set it, so scout reports are banded
+  // from here, and a failure can never leave a new price without history.
+  const priceChanged = Math.round(Number(b.price) * 100) !== Math.round(value.price * 100) || (b.as_of ?? null) !== (value.asOf ?? null);
+  if (priceChanged) {
+    try {
+      if (g.personId != null) {
+        await leaderSetPriceWith(supabase, { packageId: id, newPrice: value.price, asOf: value.asOf, leaderId: g.personId });
+      } else {
+        // No person record to credit: no history row, so a plain update is atomic enough.
+        const { error: priceErr } = await supabase
+          .from('mm_packages')
+          .update({ price: value.price, as_of: value.asOf, anchor_price: value.price, anchor_as_of: value.asOf })
+          .eq('id', id);
+        if (priceErr) throw new Error(priceErr.message);
+      }
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : 'Could not save the price.' };
+    }
   }
 
   const details: AuditDetail[] = [];

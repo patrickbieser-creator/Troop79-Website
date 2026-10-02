@@ -139,27 +139,26 @@ export async function decidePriceWith(
 }
 
 /**
- * The leader's own price-book edit as history: an `applied` row with the
- * leader as reporter and decider, so a later scout report's chain and the
- * revert rule (current price = the row's new_price) hold. No-op when the
- * price did not change.
+ * The leader's own price-book edit (mm_leader_set_price): in one transaction
+ * with the package row locked it sets price + as_of, moves the band anchor to
+ * the new price and writes the `applied` history row (leader as reporter and
+ * decider), so a thrown error never leaves a changed price without history.
+ * Same cents -> only as_of and the anchor, no history row.
  */
-export async function recordLeaderPriceChangeWith(
+export type LeaderSetOutcome = 'applied' | 'same' | 'invalid' | 'missing';
+
+export async function leaderSetPriceWith(
   supabase: SupabaseClient,
-  input: { packageId: string; oldPrice: number; oldAsOf: string | null; newPrice: number; leaderId: number }
-): Promise<void> {
-  if (Math.round(input.oldPrice * 100) === Math.round(input.newPrice * 100) || !(input.newPrice > 0)) return;
-  const { error } = await supabase.from('mm_price_history').insert({
-    package_id: input.packageId,
-    old_price: input.oldPrice,
-    old_as_of: input.oldAsOf,
-    new_price: input.newPrice,
-    reported_by_person_id: input.leaderId,
-    status: 'applied',
-    decided_by_person_id: input.leaderId,
-    decided_at: new Date().toISOString()
+  input: { packageId: string; newPrice: number; asOf: string | null; leaderId: number }
+): Promise<LeaderSetOutcome> {
+  const { data, error } = await supabase.rpc('mm_leader_set_price', {
+    p_package_id: input.packageId,
+    p_new_price: input.newPrice,
+    p_as_of: input.asOf,
+    p_leader: input.leaderId
   });
   if (error) throw new Error(error.message);
+  return data as LeaderSetOutcome;
 }
 
 /* ── Reads ───────────────────────────────────────────────────────────────── */
@@ -172,7 +171,7 @@ interface JoinedRow {
   package_id: string;
   old_price: number;
   new_price: number;
-  status: 'applied' | 'held' | 'reverted';
+  status: 'applied' | 'held' | 'reverted' | 'dismissed';
   created_at: string;
   decided_at: string | null;
   mm_packages: One<{ name: string; price: number; yield: number | null }>;

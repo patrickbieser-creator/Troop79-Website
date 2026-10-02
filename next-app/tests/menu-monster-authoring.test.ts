@@ -35,7 +35,7 @@ const ING: Record<string, Ingredient> = {
 };
 
 const pkg = (id: string, ingredientId: string, name: string, price: number, yield_: number | null, noun = 'pack'): Package => ({
-  id, ingredientId, name, store: 'Kroger', price, yield: yield_,
+  id, ingredientId, name, store: 'Kroger', price, anchorPrice: price, yield: yield_,
   yieldUnitLabel: yield_ == null ? 'gallon' : null, noun, soldSize: null, soldUnit: null, note: null,
   asOf: '2026-08-22', retiredAt: null
 });

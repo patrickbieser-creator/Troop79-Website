@@ -35,7 +35,7 @@ const ING: Ingredient[] = [
   { id: 'bacon', name: 'Bacon', unit: UNITS.slice, section: 'meat', staple: false, avoid: ['veg'], retiredAt: null }
 ];
 const pkg = (id: string, ingredientId: string, name: string, price: number, yield_: number): Package => ({
-  id, ingredientId, name, store: 'Kroger', price, yield: yield_, yieldUnitLabel: null, noun: 'pack',
+  id, ingredientId, name, store: 'Kroger', price, anchorPrice: price, yield: yield_, yieldUnitLabel: null, noun: 'pack',
   soldSize: null, soldUnit: null, note: null, asOf: '2026-09-01', retiredAt: null
 });
 const recipe = (over: Partial<Recipe> & Pick<Recipe, 'id' | 'name' | 'lines'>): Recipe => ({

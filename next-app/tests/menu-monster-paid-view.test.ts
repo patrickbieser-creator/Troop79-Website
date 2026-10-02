@@ -7,6 +7,16 @@ const BOOK = { price: 5.99, yield: 10 };
 const entry = (pricePaid: number, packageId = 'p1') => ({ packageId, qty: 2, pricePaid });
 
 describe('paidVerdict', () => {
+  it('Scout_SeesItHeld_WhenThePriceIsInsideTheBandOfTheBookButOutsideTheAnchors', () => {
+    const v = paidVerdict({ price: 6, anchorPrice: 4, yield: 10 }, entry(8), true);
+    expect(v).toMatchObject({ held: true, tag: 'held' });
+    expect(v.text).toContain('usual $4.00');
+  });
+
+  it('Scout_SeesItApplied_WhenThePriceIsInsideTheAnchorsBand', () => {
+    expect(paidVerdict({ price: 6, anchorPrice: 4, yield: 10 }, entry(2.5), true).tag).toBe('book');
+  });
+
   it('Scout_SeesNotEnteredYet_WhenNothingIsTyped', () => {
     expect(paidVerdict(BOOK, undefined, false)).toMatchObject({ text: 'Not entered yet', entered: false, tag: null });
   });

@@ -20,6 +20,8 @@ export type BandResult = 'same' | 'apply' | 'hold' | 'invalid';
 
 export interface BandPackage {
   price: number;
+  /** The last leader-set or leader-approved price; the band is measured from it. Absent = `price`. */
+  anchorPrice?: number;
   /** Per recipe unit; null = unusable until someone types it. */
   yield: number | null;
 }
@@ -34,9 +36,9 @@ const cents = (n: number) => Math.round(n * 100);
 
 export function bandCheck(pkg: BandPackage, reportedPrice: number, band: number = PRICE_BAND): BandResult {
   if (!Number.isFinite(reportedPrice) || reportedPrice <= 0) return 'invalid';
-  const cur = cents(pkg.price);
   const next = cents(reportedPrice);
-  if (cur === next) return 'same';
-  if (unitPrice(pkg) == null || cur <= 0) return 'hold';
-  return Math.abs(next - cur) <= band * cur ? 'apply' : 'hold';
+  if (cents(pkg.price) === next) return 'same';
+  const anchor = cents(pkg.anchorPrice ?? pkg.price);
+  if (unitPrice(pkg) == null || anchor <= 0) return 'hold';
+  return Math.abs(next - anchor) <= band * anchor ? 'apply' : 'hold';
 }
