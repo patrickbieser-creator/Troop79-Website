@@ -19,7 +19,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/supabase/server';
 import { resolveAdminActor } from '@/lib/admin-actor';
 
-export const AUDIT_AREAS = ['news', 'calendar', 'roster', 'library'] as const;
+export const AUDIT_AREAS = ['news', 'calendar', 'roster', 'library', 'menus'] as const;
 export type AuditArea = (typeof AUDIT_AREAS)[number];
 
 /**

@@ -23,7 +23,8 @@ const AREA_LABEL: Record<AuditArea, string> = {
   news: 'News',
   calendar: 'Calendar',
   roster: 'Roster',
-  library: 'Library'
+  library: 'Library',
+  menus: 'Menus'
 };
 
 interface AuditRow {
