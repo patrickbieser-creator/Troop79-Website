@@ -135,6 +135,15 @@ export const HELP = {
         <p>Fields in [brackets] fill in from the signup when the email is sent.</p>
       </>
     )
+  },
+  'stores.retired': {
+    title: 'Retired stores',
+    body: (
+      <p>
+        Retired stores stay on the packages that already use them, but are not offered when adding or editing a
+        package. A store that packages use can be retired, not deleted.
+      </p>
+    )
   }
 } satisfies Record<string, HelpEntry>;
 

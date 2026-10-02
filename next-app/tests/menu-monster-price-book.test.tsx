@@ -42,6 +42,8 @@ beforeEach(() => {
 });
 
 const TODAY = '2026-09-08';
+/** The active store names the page reads from mm_stores. Aldi is not a seeded store. */
+const STORES = ['Costco', 'Kroger', 'Aldi'];
 
 const ING: Ingredient[] = [
   { id: 'milk', name: 'Milk', unit: UNITS.cup, section: 'dairy', staple: false, avoid: ['dairy'], retiredAt: null },
@@ -72,7 +74,7 @@ const row = (name: string) => screen.getByRole('row', { name: new RegExp(`^${nam
 
 describe('Price book', () => {
   it('Leader_SeesStatusPerIngredient_NeverColorOnly', () => {
-    render(<PriceBook catalog={CATALOG} today={TODAY} />);
+    render(<PriceBook catalog={CATALOG} today={TODAY} stores={STORES} />);
     expect(within(row('Orange juice')).getByText('Unpriced')).toBeTruthy();
     expect(within(row('Milk')).getByText('Stale')).toBeTruthy();
     expect(within(row('Pancake mix')).getByText('OK')).toBeTruthy();
@@ -80,7 +82,7 @@ describe('Price book', () => {
 
   it('Leader_SeesYieldSuggestion_WhileAddingPackage', async () => {
     const user = userEvent.setup();
-    render(<PriceBook catalog={CATALOG} today={TODAY} />);
+    render(<PriceBook catalog={CATALOG} today={TODAY} stores={STORES} />);
     await user.click(within(row('Milk')).getByRole('button', { name: 'Milk' }));
     const add = screen.getByRole('region', { name: 'Add a package' });
 
@@ -101,7 +103,7 @@ describe('Price book', () => {
 
   it('Leader_SeesBigChangeFlag_WhenEditingPrice', async () => {
     const user = userEvent.setup();
-    render(<PriceBook catalog={CATALOG} today={TODAY} />);
+    render(<PriceBook catalog={CATALOG} today={TODAY} stores={STORES} />);
     await user.click(within(row('Milk')).getByRole('button', { name: 'Milk' }));
     const card = screen.getByRole('region', { name: 'Milk, gallon' });
 
@@ -125,7 +127,7 @@ describe('Price book', () => {
 
   it('Leader_PreviewsUnitChange_BeforeSaving', async () => {
     const user = userEvent.setup();
-    render(<PriceBook catalog={CATALOG} today={TODAY} />);
+    render(<PriceBook catalog={CATALOG} today={TODAY} stores={STORES} />);
     await user.click(within(row('Pancake mix')).getByRole('button', { name: 'Pancake mix' }));
     await user.click(screen.getByRole('button', { name: 'Change unit' }));
     const dlg = screen.getByRole('dialog', { name: /Change the recipe unit/ });
@@ -138,7 +140,7 @@ describe('Price book', () => {
 
   it('Leader_AddsAnIngredient_ThatStartsUnpriced', async () => {
     const user = userEvent.setup();
-    render(<PriceBook catalog={CATALOG} today={TODAY} />);
+    render(<PriceBook catalog={CATALOG} today={TODAY} stores={STORES} />);
     await user.click(screen.getByRole('button', { name: '+ New ingredient' }));
     const panel = screen.getByRole('region', { name: 'New ingredient' });
     expect(within(panel).getByText('It starts unpriced — add a package below to make it usable.')).toBeTruthy();
@@ -156,5 +158,36 @@ describe('Price book', () => {
       staple: false,
       avoid: []
     });
+  });
+
+  it('Leader_PicksAStoreFromTheTable_WhenAddingAPackage', async () => {
+    const user = userEvent.setup();
+    render(<PriceBook catalog={CATALOG} today={TODAY} stores={STORES} />);
+    await user.click(within(row('Milk')).getByRole('button', { name: 'Milk' }));
+    const add = screen.getByRole('region', { name: 'Add a package' });
+    const options = within(within(add).getByLabelText('Store')).getAllByRole('option').map((o) => o.textContent);
+    expect(options).toEqual(['— pick —', 'Costco', 'Kroger', 'Aldi']);
+  });
+
+  it('Leader_PicksAStoreFromTheTable_WhenEditingAPackage', async () => {
+    const user = userEvent.setup();
+    render(<PriceBook catalog={CATALOG} today={TODAY} stores={STORES} />);
+    await user.click(within(row('Milk')).getByRole('button', { name: 'Milk' }));
+    const card = screen.getByRole('region', { name: 'Milk, gallon' });
+    const options = within(within(card).getByLabelText('Store')).getAllByRole('option').map((o) => o.textContent);
+    expect(options).toEqual(['— not set —', 'Costco', 'Kroger', 'Aldi']);
+  });
+
+  it('Leader_KeepsAPackagesRetiredStoreSelectable_WhenEditingIt', async () => {
+    const user = userEvent.setup();
+    // Kroger was retired: it is no longer in the active list, but the milk package still carries it.
+    render(<PriceBook catalog={CATALOG} today={TODAY} stores={['Costco', 'Aldi']} />);
+    await user.click(within(row('Milk')).getByRole('button', { name: 'Milk' }));
+    const card = screen.getByRole('region', { name: 'Milk, gallon' });
+    const select = within(card).getByLabelText('Store') as HTMLSelectElement;
+    expect(select.value).toBe('Kroger');
+    expect(within(select).getAllByRole('option').map((o) => o.textContent)).toContain('Kroger');
+    const add = screen.getByRole('region', { name: 'Add a package' });
+    expect(within(within(add).getByLabelText('Store')).queryByRole('option', { name: 'Kroger' })).toBeNull();
   });
 });

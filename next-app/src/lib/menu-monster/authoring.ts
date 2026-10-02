@@ -60,8 +60,6 @@ export const METHODS: readonly { key: string; label: string }[] = [
   { key: 'other', label: 'Other' }
 ];
 
-export const STORES: readonly string[] = ['Costco', 'Kroger', 'Target', 'Outpost', 'Other'];
-
 function soldLabel(key: string, n: number, ingredient: Ingredient): string {
   if (key === 'count') return n === 1 ? ingredient.unit.one : ingredient.unit.many;
   const s = SOLD_UNITS.find((u) => u.key === key);

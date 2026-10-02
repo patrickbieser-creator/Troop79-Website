@@ -19,6 +19,7 @@ import { requireCapability } from '@/lib/require-capability';
 import { loadAuthoringCatalogWith } from '@/lib/menu-monster/catalog';
 import { centralToday } from '@/lib/dates';
 import { listHeldWith, listRecentChangesWith } from '@/lib/menu-monster/price-history';
+import { listActiveStoreNamesWith } from '@/lib/menu-monster/stores';
 import { PageTitle } from '../../_components/page-title';
 import { TabStrip } from '../../_components/tab-strip';
 import { PublicPageLink } from '../../../_components/public-page-link';
@@ -41,7 +42,11 @@ export default async function MenuMonsterAdminPage({
   await requireCapability('library.moderate');
   const sp = await searchParams;
   const admin = createAdminClient();
-  const [catalog, held] = await Promise.all([loadAuthoringCatalogWith(admin), listHeldWith(admin)]);
+  const [catalog, held, stores] = await Promise.all([
+    loadAuthoringCatalogWith(admin),
+    listHeldWith(admin),
+    listActiveStoreNamesWith(admin)
+  ]);
   const today = centralToday();
 
   const unpriced = catalog.ingredients.filter(
@@ -80,7 +85,7 @@ export default async function MenuMonsterAdminPage({
       {tab === 'prices' ? (
         <>
           <PriceActivity held={held} changes={changes} />
-          <PriceBook catalog={catalog} today={today} initialIngredientId={sp.ingredient} />
+          <PriceBook catalog={catalog} today={today} stores={stores} initialIngredientId={sp.ingredient} />
         </>
       ) : (
         <RecipeBuilder catalog={catalog} initialRecipeId={sp.recipe} />

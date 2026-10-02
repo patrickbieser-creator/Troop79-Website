@@ -51,6 +51,7 @@ import { HouseholdsManager, type HouseholdMemberRow, type HouseholdRow } from '.
 import { SkillsEditor, type SkillRow } from './skills-editor';
 import { SkillAssignEditor, type AssignPerson } from './skill-assign-editor';
 import { CategoriesEditor } from './categories-editor';
+import { StoresEditor } from './stores-editor';
 import { ArticleTokensEditor } from './article-tokens-editor';
 import { SiteTextEditor } from './site-text-editor';
 import { SeoEditor } from './seo-editor';
@@ -90,6 +91,8 @@ import {
   saveSiteText,
   saveSeoSettings
 } from './actions';
+import { createStore, renameStore, retireStore, restoreStore, deleteStore, moveStore } from './store-actions';
+import { listStoresWith } from '@/lib/menu-monster/stores';
 import styles from './lookups.module.css';
 import { PageTitle } from '../../_components/page-title';
 
@@ -352,7 +355,7 @@ async function loadLookups() {
 }
 
 export default async function LookupsPage() {
-  await requireCapability('roster.manage');
+  const actor = await requireCapability('roster.manage');
   const {
     leaders,
     scouts,
@@ -369,11 +372,15 @@ export default async function LookupsPage() {
     skillIdsByScout,
     householdRows
   } = await loadLookups();
-  const [calendarCategories, articleTokens, siteTextMap, emailTemplates] = await Promise.all([
+  // The store list is Menu Monster content: its card (and read) is for people
+  // who may moderate the Library, the capability its actions check.
+  const canEditStores = actor.capabilities.has('library.moderate');
+  const [calendarCategories, articleTokens, siteTextMap, emailTemplates, stores] = await Promise.all([
     loadCalendarCategories(),
     loadArticleTokens(),
     loadSiteText(createAdminClient()),
-    loadEmailTemplates()
+    loadEmailTemplates(),
+    canEditStores ? listStoresWith(createAdminClient(), { includeRetired: true }) : Promise.resolve([])
   ]);
   const siteText: Partial<Record<SiteTextKey, string>> = {};
   for (const def of SITE_TEXT_KEYS) {
@@ -595,6 +602,25 @@ export default async function LookupsPage() {
           <SeoEditor values={seoValues} onSave={saveSeoSettings} />
         </Card>
       </div>
+
+      {canEditStores && (
+        <div className={styles.grid}>
+          <Card
+            title="Menu Monster stores"
+            sub={`${stores.filter((s) => !s.retiredAt).length} stores · the pull-down on the Menu Monster price book's packages · renaming one updates its packages too`}
+          >
+            <StoresEditor
+              rows={stores}
+              onCreate={createStore}
+              onRename={renameStore}
+              onRetire={retireStore}
+              onRestore={restoreStore}
+              onDelete={deleteStore}
+              onMove={moveStore}
+            />
+          </Card>
+        </div>
+      )}
 
       <div className={styles.grid}>
         <Card

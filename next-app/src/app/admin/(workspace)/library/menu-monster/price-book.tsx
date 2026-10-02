@@ -26,7 +26,6 @@ import { fmtDate } from '@/lib/format-date';
 import { money } from '@/lib/event-money';
 import {
   SOLD_UNITS,
-  STORES,
   changeUnitPlan,
   priceChange,
   staleText,
@@ -116,7 +115,8 @@ function useArmed(): { armed: boolean; arm: () => boolean; disarm: () => void } 
   };
 }
 
-export function PriceBook({ catalog, today, initialIngredientId }: { catalog: Catalog; today: string; initialIngredientId?: string }) {
+/** `stores` = the active store names, in order (mm_stores via lib/menu-monster/stores.ts). */
+export function PriceBook({ catalog, today, stores, initialIngredientId }: { catalog: Catalog; today: string; stores: readonly string[]; initialIngredientId?: string }) {
   const router = useRouter();
   const rows = useMemo(() => buildRows(catalog, today), [catalog, today]);
   const search = useTableSearch(rows, (r) => [r.ing.name, r.ing.section, ...r.active.map((p) => p.name)]);
@@ -211,6 +211,7 @@ export function PriceBook({ catalog, today, initialIngredientId }: { catalog: Ca
           row={selected}
           catalog={catalog}
           today={today}
+          stores={stores}
           onChanged={() => router.refresh()}
         />
       )}
@@ -357,7 +358,7 @@ function NewIngredientForm({ onDone, onCancel }: { onDone: (id: string | null) =
 
 /* ── Selected ingredient ─────────────────────────────────────────────────── */
 
-function IngredientDetail({ row, catalog, today, onChanged }: { row: Row; catalog: Catalog; today: string; onChanged: () => void }) {
+function IngredientDetail({ row, catalog, today, stores, onChanged }: { row: Row; catalog: Catalog; today: string; stores: readonly string[]; onChanged: () => void }) {
   const { ing } = row;
   const [changingUnit, setChangingUnit] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -413,12 +414,12 @@ function IngredientDetail({ row, catalog, today, onChanged }: { row: Row; catalo
       ) : (
         <div className={styles.cards}>
           {allPackages.map((p) => (
-            <PackageCard key={p.id} pkg={p} ing={ing} today={today} onChanged={onChanged} />
+            <PackageCard key={p.id} pkg={p} ing={ing} today={today} stores={stores} onChanged={onChanged} />
           ))}
         </div>
       )}
 
-      {!ing.retiredAt && <AddPackageForm ing={ing} conversions={conversions} today={today} onChanged={onChanged} />}
+      {!ing.retiredAt && <AddPackageForm ing={ing} conversions={conversions} today={today} stores={stores} onChanged={onChanged} />}
 
       <ConversionsBlock ing={ing} conversions={conversions} onChanged={onChanged} />
 
@@ -446,7 +447,7 @@ interface PackageDraft {
   yield: string;
 }
 
-function PackageCard({ pkg, ing, today, onChanged }: { pkg: Package; ing: Ingredient; today: string; onChanged: () => void }) {
+function PackageCard({ pkg, ing, today, stores, onChanged }: { pkg: Package; ing: Ingredient; today: string; stores: readonly string[]; onChanged: () => void }) {
   const initial: PackageDraft = {
     name: pkg.name,
     store: pkg.store ?? '',
@@ -573,7 +574,8 @@ function PackageCard({ pkg, ing, today, onChanged }: { pkg: Package; ing: Ingred
               </label>
               <select id={`${idp}-store`} className={lib.selectInput} value={draft.store} onChange={(e) => setDraft((d) => ({ ...d, store: e.target.value }))}>
                 <option value="">— not set —</option>
-                {STORES.map((s) => (
+                {/* A package keeps its store even after the store is retired. */}
+                {(pkg.store && !stores.includes(pkg.store) ? [...stores, pkg.store] : stores).map((s) => (
                   <option key={s} value={s}>
                     {s}
                   </option>
@@ -639,7 +641,7 @@ function PackageCard({ pkg, ing, today, onChanged }: { pkg: Package; ing: Ingred
 
 /* ── Add a package (create-once) ────────────────────────────────────────── */
 
-function AddPackageForm({ ing, conversions, today, onChanged }: { ing: Ingredient; conversions: Conversion[]; today: string; onChanged: () => void }) {
+function AddPackageForm({ ing, conversions, today, stores, onChanged }: { ing: Ingredient; conversions: Conversion[]; today: string; stores: readonly string[]; onChanged: () => void }) {
   const [name, setName] = useState('');
   const [store, setStore] = useState('');
   const [price, setPrice] = useState('');
@@ -712,7 +714,7 @@ function AddPackageForm({ ing, conversions, today, onChanged }: { ing: Ingredien
           </label>
           <select id={`${idp}-store`} className={lib.selectInput} value={store} onChange={(e) => setStore(e.target.value)}>
             <option value="">— pick —</option>
-            {STORES.map((s) => (
+            {stores.map((s) => (
               <option key={s} value={s}>
                 {s}
               </option>
