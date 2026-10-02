@@ -9,10 +9,11 @@
  * the menu total is the sum of its meals.
  */
 
-import type { Catalog } from './types';
+import type { Catalog, MealSlot, RestrictionKey } from './types';
 import { buildLines, totalsOf } from './engine';
-import { MAX_MENU_DAYS, addDays, composePlan, type Menu, type MenuMeal } from './menus';
-import { fmtDay } from '@/lib/format-date';
+import { MAX_MENU_DAYS, addDays, composePlan, mealCatalog, type Menu, type MenuMeal } from './menus';
+import { MEALS } from './units';
+import { fmtDateFull, fmtDay } from '@/lib/format-date';
 
 /** A calendar entry a menu can be linked to. endDate is never null: a
  *  single-day entry reports its own date. */
@@ -37,10 +38,37 @@ export function dayLabel(startDate: string | null, day: number): string {
   return startDate ? `${n} · ${fmtDay(addDays(startDate, day))}` : n;
 }
 
-/** What the register charges for one meal at its own headcount. */
+/** The four diets in the order Patrick approved for every dialer line and note. */
+export const DIET_ORDER: readonly RestrictionKey[] = ['gf', 'veg', 'nut', 'dairy'];
+
+/** 'Saturday breakfast' once the menu has a first date, else 'Day 2 breakfast'. */
+export function mealTitle(startDate: string | null, day: number, slot: MealSlot): string {
+  const slotName = (MEALS.find((m) => m.key === slot)?.label ?? slot).toLowerCase();
+  const lead = startDate ? fmtDateFull(addDays(startDate, day)).split(',')[0] : `Day ${day + 1}`;
+  return `${lead} ${slotName}`;
+}
+
+/** What the register charges for one meal at its own headcount, with the meal's recipe edits applied. */
 export function mealCost(menu: Menu, meal: MenuMeal, catalog: Catalog): number {
   const plan = composePlan(menu, meal);
-  return totalsOf(buildLines(plan, catalog), plan).spent;
+  return totalsOf(buildLines(plan, mealCatalog(catalog, meal)), plan).spent;
+}
+
+/**
+ * Each recipe's share of the meal's cost: every priced line's spend split by
+ * how much of it each recipe uses. Shared packages (two recipes, one carton of
+ * eggs) are split, never counted twice, so the shares add up to mealCost().
+ * Same exclusions as totalsOf: staples, bring-from-home and unpriced lines
+ * cost nothing here.
+ */
+export function recipeShares(menu: Menu, meal: MenuMeal, catalog: Catalog): Record<string, number> {
+  const plan = composePlan(menu, meal);
+  const shares: Record<string, number> = Object.fromEntries(meal.recipeIds.map((id) => [id, 0]));
+  for (const l of buildLines(plan, mealCatalog(catalog, meal))) {
+    if (l.status === 'staple' || l.status === 'bring' || l.status === 'unpriced' || !(l.need > 0)) continue;
+    for (const s of l.sources) shares[s.recipe.id] = (shares[s.recipe.id] ?? 0) + (l.spent * s.amount) / l.need;
+  }
+  return shares;
 }
 
 export interface MenuCost {

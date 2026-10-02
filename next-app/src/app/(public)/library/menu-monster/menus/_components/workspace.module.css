@@ -281,4 +281,89 @@
   padding: var(--sp-4);
 }
 /* ---- Meal page ---------------------------------------------------------------- */
-.mealBar { margin-bottom: var(--sp-4); }
+/* Section heading line: "What you're cooking" on the left, the Total / Per person switch on the right. */
+.secHead { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--sp-3); margin: 0 0 var(--sp-3); }
+.secHead .heading { margin: 0; }
+.seg { display: inline-flex; }
+.segBtn {
+  min-height: 32px;
+  padding: 0 var(--sp-3);
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--navy);
+  background: var(--warm-white);
+  border: 1px solid var(--border-mid);
+  cursor: pointer;
+}
+.segBtn:first-child { border-radius: var(--rad-sm) 0 0 var(--rad-sm); }
+.segBtn:last-child { border-radius: 0 var(--rad-sm) var(--rad-sm) 0; border-left: none; }
+.segBtn[aria-pressed='true'] { background: var(--navy); border-color: var(--navy); color: var(--warm-white); }
+.segBtn:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+
+/* A recipe's name is a disclosure: the chevron turns when its ingredient list is open. */
+.chev { display: inline-block; margin-left: var(--sp-2); color: var(--text-meta); transition: transform var(--transition); }
+.rowName[aria-expanded='true'] .chev { transform: rotate(90deg); }
+.inset { flex-basis: 100%; padding: 0 var(--sp-4) var(--sp-2) 0; }
+
+/* Dashed search: a combobox (16px, the iOS no-zoom floor) with a listbox under it. */
+.addInput {
+  display: block;
+  width: 100%;
+  min-height: 36px;
+  font-family: var(--font-ui);
+  font-size: 16px;
+  color: var(--text-head);
+  background: none;
+  border: 1px dashed var(--border-mid);
+  border-radius: var(--rad-sm);
+  padding: 0 var(--sp-3);
+}
+.addInput::placeholder { color: var(--text-meta); }
+.addInput:hover { background: var(--cream); }
+.addInput:focus-visible { outline: var(--focus-ring); outline-offset: 1px; background: var(--warm-white); }
+.results {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  z-index: 5;
+  margin: var(--sp-1) 0 0;
+  padding: var(--sp-1) 0;
+  list-style: none;
+  max-height: 260px;
+  overflow-y: auto;
+  background: var(--warm-white);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-md);
+  box-shadow: var(--shadow-hover);
+}
+.results[hidden] { display: none; }
+.option {
+  padding: var(--sp-2) var(--sp-4);
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  font-family: var(--font-ui);
+  font-size: var(--fs-md);
+  color: var(--text-head);
+  cursor: pointer;
+}
+.option[aria-selected='true'] { background: var(--cream); color: var(--navy); }
+.noMatch { font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-meta); margin: var(--sp-2) 0 0; }
+
+/* One quiet line under the list: what just happened, and Undo. Always present so screen readers hear it. */
+.statusLine { min-height: 1.5em; font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-meta); margin: var(--sp-2) 0 0; }
+.linkBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 700;
+  color: var(--navy);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.linkBtn:hover { color: var(--forest); }
+.linkBtn:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }

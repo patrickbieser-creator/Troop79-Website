@@ -84,7 +84,8 @@ const fromRow = (r: MenuRow): Menu => ({
   budgetPerPersonMeal: Number(r.budget_per_person_meal),
   // The column's default of 2 must never hide a meal saved on a later day.
   dayCount: coverDays(r.day_count, r.meals),
-  meals: r.meals
+  // Meals saved before recipeEdits existed read as having none.
+  meals: r.meals.map((m) => ({ ...m, recipeEdits: m.recipeEdits ?? {} }))
 });
 
 async function audit(sb: SupabaseClient, actor: AuditActor, action: string, id: string, summary: string) {

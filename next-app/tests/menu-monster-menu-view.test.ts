@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { CATALOG } from './helpers/menu-monster-fixture';
 import type { Menu, MenuMeal } from '../src/lib/menu-monster/menus';
-import { dayLabel, mealCost, menuCost, outingDayCount } from '../src/lib/menu-monster/menu-view';
+import { dayLabel, mealCost, mealTitle, menuCost, outingDayCount, recipeShares } from '../src/lib/menu-monster/menu-view';
 
 const meal = (id: string, over: Partial<MenuMeal> = {}): MenuMeal => ({
   id,
@@ -12,6 +12,7 @@ const meal = (id: string, over: Partial<MenuMeal> = {}): MenuMeal => ({
   packageChoice: {},
   qtyOverride: {},
   lineSource: {},
+  recipeEdits: {},
   ...over
 });
 
@@ -70,5 +71,47 @@ describe('menu-view', () => {
 
   it('Outing_SpansItsInclusiveDays', () => {
     expect(outingDayCount({ id: 1, title: 'Camporee', startDate: '2026-10-09', endDate: '2026-10-11', category: 'Campout / Overnight' })).toBe(3);
+  });
+  it('Meal_CostUsesTheMealsRecipeEdits', () => {
+    // 10 people x 1 slice = 10 slices: one Oscar Mayer pack, $7.49 (not 30 slices, $14.98).
+    const m = menu([meal('a', { recipeEdits: { B003: [{ op: 'amount', ingredientId: 'bacon', qtyPerPerson: 1 }] } })]);
+    expect(mealCost(m, m.meals[0], CATALOG)).toBeCloseTo(7.49, 2);
+  });
+
+  it('Meal_CostsNothing_WhenItsOnlyIngredientIsLeftOut', () => {
+    const m = menu([meal('a', { recipeEdits: { B003: [{ op: 'leave_out', ingredientId: 'bacon' }] } })]);
+    expect(mealCost(m, m.meals[0], CATALOG)).toBe(0);
+  });
+
+  it('MealTitle_IsTheWeekdayAndSlot_WhenStartDateKnown', () => {
+    expect(mealTitle('2026-10-10', 0, 'breakfast')).toBe('Saturday breakfast');
+  });
+
+  it('MealTitle_FollowsTheDayOffset', () => {
+    expect(mealTitle('2026-10-10', 1, 'dinner')).toBe('Sunday dinner');
+  });
+
+  it('MealTitle_IsDayNumberAndSlot_WhenNoStartDate', () => {
+    expect(mealTitle(null, 1, 'lunch')).toBe('Day 2 lunch');
+  });
+});
+
+describe('recipeShares', () => {
+  // Scrambled eggs (2 a person) + gluten-free pancakes (1 egg each for the GF
+  // scouts) share one egg purchase: each recipe's share is its part of the
+  // eggs it uses, so the rows always add up to the meal's total.
+  const eggs = { ingredientId: 'eggs', qtyPerPerson: 2, unitKey: null, servesRule: 'everyone' as const, servesRestrictions: [] };
+  const cat = { ...CATALOG, recipes: [...CATALOG.recipes, { ...CATALOG.recipes.find((r) => r.id === 'B003')!, id: 'B099', name: 'Scrambled eggs', lines: [eggs] }] };
+  const m = menu([meal('a', { recipeIds: ['B001', 'B099'] })], { headcount: 5, restrictions: { gf: 2, nut: 0, dairy: 0, veg: 0 } });
+
+  it('RecipeShares_AddUpToTheMealsCost_WhenRecipesSharePackages', () => {
+    const shares = recipeShares(m, m.meals[0], cat);
+    expect(shares.B001 + shares.B099).toBeCloseTo(mealCost(m, m.meals[0], cat), 2);
+  });
+
+  it('RecipeShares_SplitASharedPackage_ByWhatEachRecipeUses', () => {
+    // 10 scrambled + 2 GF-pancake eggs = 12: one dozen at $2.99, split 10:2.
+    const shares = recipeShares(m, m.meals[0], cat);
+    expect(shares.B099).toBeCloseTo((2.99 * 10) / 12, 2);
   });
 });

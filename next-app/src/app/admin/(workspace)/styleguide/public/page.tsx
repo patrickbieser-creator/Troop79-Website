@@ -30,6 +30,7 @@ import { Notice } from '@/app/_components/notice';
 import { EmptyState } from '@/app/_components/empty-state';
 import { SectionDivider } from '@/app/_components/section-divider';
 import { PublicStepperSpecimen, PublicTabStripSpecimen } from './specimens';
+import { IngredientList } from '@/app/(public)/library/menu-monster/_components/ingredient-list';
 import { FormCard, Field, TextInput } from '@/app/_components/form';
 import { DateField } from '@/app/_components/date-field';
 import { SignInToSignUpPanel } from '@/app/(public)/events/[id]/signup-panels';
@@ -429,6 +430,26 @@ export default function PublicStyleguidePage() {
               <code>Stepper</code> / <code>NumberBox</code> / <code>AmountInput</code> from <code>_components/stepper</code> &mdash; 32px tall,
               16px number (iOS floor), 28px buttons, commit-on-blur. Label sits left and ends in a colon. Dollars-and-cents is a framed
               AmountInput, not a dial.
+            </p>
+          </div>
+
+          {/* Menu Monster ingredient list — the scout workspace's one list component (read mode live;
+              menu-edit and author are reserved modes). Rows are plain data, so the specimen needs no catalog. */}
+          <div className={sg.specimenBlock}>
+            <IngredientList
+              mode="read"
+              ariaLabel="Pancakes ingredients (specimen)"
+              rows={[
+                { key: 'a', name: 'Pancake mix', amount: '3½ cups', note: 'everyone else' },
+                { key: 'b', name: 'Almond flour', amount: '1 cup', note: 'gluten-free only' },
+                { key: 'c', name: 'Eggs', amount: '2', note: null }
+              ]}
+            />
+            <p className={sg.specimenInlineNote}>
+              <code>IngredientList</code> from <code>library/menu-monster/_components/ingredient-list</code> &mdash; name, a quiet diet note,
+              the amount for the view (total for the meal, or per person) in a fixed right column. Built from the engine by{' '}
+              <code>lib/menu-monster/ingredient-rows</code>; <code>mode</code> reserves <code>menu-edit</code> (Phase 2) and{' '}
+              <code>author</code> (Phase 4).
             </p>
           </div>
 

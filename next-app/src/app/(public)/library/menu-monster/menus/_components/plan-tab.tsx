@@ -32,7 +32,7 @@ import type { Catalog, Plan, RestrictionKey } from '@/lib/menu-monster/types';
 import { MEALS, RESTRICTION_BY_KEY } from '@/lib/menu-monster/units';
 import { MAX_HEADCOUNT, MIN_HEADCOUNT } from '@/lib/menu-monster/engine';
 import { MAX_MENU_DAYS, MAX_MENU_MEALS, MENU_CONTEXTS, MAX_MENU_NAME, menuNameError, type Menu, type MenuContext, type MenuMeal } from '@/lib/menu-monster/menus';
-import { dayLabel, menuCost, outingDayCount, type Outing } from '@/lib/menu-monster/menu-view';
+import { DIET_ORDER, dayLabel, menuCost, outingDayCount, type Outing } from '@/lib/menu-monster/menu-view';
 import { budgetState } from '../../../_tools/menu-monster/planner';
 import { createMenuAction, saveMenuAction } from '../../../_tools/menu-monster/menu-actions';
 import { AddMeal } from './add-meal';
@@ -41,8 +41,6 @@ import { SaveBar } from './save-bar';
 import s from './workspace.module.css';
 
 const MENUS_HREF = '/library/menu-monster/menus';
-/** People first, then the four diets in the order Patrick approved. */
-const DIET_ORDER: readonly RestrictionKey[] = ['gf', 'veg', 'nut', 'dairy'];
 
 const newId = () => (typeof globalThis.crypto?.randomUUID === 'function' ? globalThis.crypto.randomUUID() : `m-${Date.now()}-${Math.floor(Math.random() * 1e6)}`);
 const slotLabel = (slot: Plan['meal']) => MEALS.find((m) => m.key === slot)?.label ?? slot;
@@ -132,7 +130,7 @@ export function PlanTab({ catalog, menuId, menu: initial, updatedAt, outings, ta
   /* ---- Meals ---- */
   const addMeal = (day: number, slot: Plan['meal']) => {
     if (menu.meals.length >= MAX_MENU_MEALS) return;
-    const meal: MenuMeal = { id: newId(), day, slot, headcount: null, recipeIds: [], packageChoice: {}, qtyOverride: {}, lineSource: {} };
+    const meal: MenuMeal = { id: newId(), day, slot, headcount: null, recipeIds: [], packageChoice: {}, qtyOverride: {}, lineSource: {}, recipeEdits: {} };
     edit((m) => ({ ...m, meals: [...m.meals, meal] }));
   };
   const removeMeal = (id: string) => edit((m) => ({ ...m, meals: m.meals.filter((x) => x.id !== id) }));

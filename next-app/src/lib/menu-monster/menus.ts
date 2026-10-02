@@ -13,7 +13,7 @@
  * can never hold what the planner couldn't.
  */
 
-import type { Catalog, MealSlot, Plan, RestrictionKey } from './types';
+import type { Catalog, MealSlot, Plan, Recipe, RecipeLine, RestrictionKey } from './types';
 import { MEALS, RESTRICTIONS } from './units';
 import { MAX_HEADCOUNT, MIN_HEADCOUNT, restorePlan } from './engine';
 import { centralToday } from '@/lib/dates';
@@ -34,6 +34,22 @@ export const DEFAULT_MENU_BUDGET = 4;
 /** A new menu starts with two days. */
 export const DEFAULT_MENU_DAYS = 2;
 
+/**
+ * A menu-local change to one recipe on one meal (Phase 2 writes them; Phase 1
+ * only reserves and applies them). They mirror mm_variation_lines' diff ops and
+ * target a recipe line by its ingredient. Quantities are per person, in the
+ * ingredient's own recipe unit for swap / add, and in the line's own unit for
+ * amount. The shared recipe is never touched.
+ */
+export type EditOp =
+  | { op: 'amount'; ingredientId: string; qtyPerPerson: number }
+  | { op: 'swap'; ingredientId: string; to: string; qtyPerPerson: number }
+  | { op: 'leave_out'; ingredientId: string }
+  | { op: 'add'; ingredientId: string; qtyPerPerson: number };
+
+/** recipeId → that recipe's ops on this meal. Stored inside meals jsonb. */
+export type RecipeEdits = Record<string, EditOp[]>;
+
 /** One meal on a menu: a day index (0 = the menu's first day), a slot, and
  *  the planner's per-meal choices. headcount null = the menu's headcount. */
 export interface MenuMeal {
@@ -45,6 +61,8 @@ export interface MenuMeal {
   packageChoice: Plan['packageChoice'];
   qtyOverride: Plan['qtyOverride'];
   lineSource: Plan['lineSource'];
+  /** Menu-local recipe changes; {} until Phase 2's editing UI writes some. */
+  recipeEdits: RecipeEdits;
 }
 
 /** What the scout edits; owner, timestamps and the priced snapshot are the server's. */
@@ -92,6 +110,87 @@ function sanitizeRestrictions(raw: unknown, headcount: number): Record<Restricti
   return out;
 }
 
+/** Safety cap per recipe; dedupe by ingredient already keeps real lists far below it. */
+export const MAX_EDIT_OPS = 60;
+const MAX_EDIT_QTY = 1000;
+
+/**
+ * Client recipeEdits → ops that are safe to apply: only recipes that are on the
+ * meal, only ingredients the catalog knows, only quantities > 0. One op per
+ * ingredient (the last wins; an add is its own slot), unknown shapes dropped.
+ */
+function sanitizeRecipeEdits(raw: unknown, recipeIds: readonly string[], catalog: Catalog): RecipeEdits {
+  const out: RecipeEdits = {};
+  if (!isRecord(raw)) return out;
+  const ING = new Set(catalog.ingredients.map((i) => i.id));
+  const qty = (v: unknown): number | null => {
+    const n = typeof v === 'number' ? v : NaN;
+    return Number.isFinite(n) && n > 0 ? Math.min(MAX_EDIT_QTY, Math.round(n * 10000) / 10000) : null;
+  };
+  const known = (v: unknown): v is string => typeof v === 'string' && ING.has(v);
+
+  for (const rid of recipeIds) {
+    const list = raw[rid];
+    if (!Array.isArray(list)) continue;
+    const ops: EditOp[] = [];
+    const slotOf = new Map<string, number>(); // `${isAdd}:${ingredientId}` -> index in ops
+    for (const o of list) {
+      if (ops.length >= MAX_EDIT_OPS || !isRecord(o) || !known(o.ingredientId)) continue;
+      let op: EditOp | null = null;
+      const q = qty(o.qtyPerPerson);
+      if (o.op === 'leave_out') op = { op: 'leave_out', ingredientId: o.ingredientId };
+      else if (o.op === 'amount' && q != null) op = { op: 'amount', ingredientId: o.ingredientId, qtyPerPerson: q };
+      else if (o.op === 'swap' && q != null && known(o.to)) op = { op: 'swap', ingredientId: o.ingredientId, to: o.to, qtyPerPerson: q };
+      else if (o.op === 'add' && q != null) op = { op: 'add', ingredientId: o.ingredientId, qtyPerPerson: q };
+      if (!op) continue;
+      const key = `${op.op === 'add'}:${op.ingredientId}`;
+      const at = slotOf.get(key);
+      if (at != null) ops[at] = op;
+      else {
+        slotOf.set(key, ops.length);
+        ops.push(op);
+      }
+    }
+    if (ops.length > 0) out[rid] = ops;
+  }
+  return out;
+}
+
+/**
+ * A recipe's lines after a menu's ops: amount re-quantifies a line, swap
+ * replaces its ingredient (and quantity, in the new ingredient's own unit),
+ * leave_out drops it, add appends a line for everyone. Ops target lines by
+ * ingredient and apply to every line of it (the serves-rule variants of one
+ * base line move together); an op whose ingredient the recipe lacks is ignored.
+ * Pure; never mutates the recipe.
+ */
+export function applyRecipeEdits(recipe: Pick<Recipe, 'lines'>, ops: readonly EditOp[]): RecipeLine[] {
+  if (ops.length === 0) return recipe.lines;
+  const target = new Map<string, Exclude<EditOp, { op: 'add' }>>();
+  for (const o of ops) if (o.op !== 'add') target.set(o.ingredientId, o);
+
+  const out: RecipeLine[] = [];
+  for (const line of recipe.lines) {
+    const o = target.get(line.ingredientId);
+    if (!o) out.push(line);
+    else if (o.op === 'amount') out.push({ ...line, qtyPerPerson: o.qtyPerPerson });
+    else if (o.op === 'swap') out.push({ ...line, ingredientId: o.to, qtyPerPerson: o.qtyPerPerson, unitKey: null });
+  }
+  for (const o of ops) {
+    if (o.op === 'add') out.push({ ingredientId: o.ingredientId, qtyPerPerson: o.qtyPerPerson, unitKey: null, servesRule: 'everyone', servesRestrictions: [] });
+  }
+  return out;
+}
+
+/** The catalog as THIS meal sees it: its recipes carry the meal's edits. The
+ *  same object back when the meal has none, so the common case costs nothing. */
+export function mealCatalog(catalog: Catalog, meal: MenuMeal): Catalog {
+  const edits: RecipeEdits = meal.recipeEdits ?? {}; // meals stored before recipeEdits existed
+  const edited = (r: Recipe) => (edits[r.id]?.length ?? 0) > 0;
+  if (!catalog.recipes.some(edited)) return catalog;
+  return { ...catalog, recipes: catalog.recipes.map((r) => (edited(r) ? { ...r, lines: applyRecipeEdits(r, edits[r.id]) } : r)) };
+}
+
 /**
  * Any client payload → a Menu. Never throws. Meals with an unknown slot, a
  * repeated day × slot, or past the cap are dropped; each surviving meal goes
@@ -124,7 +223,8 @@ export function sanitizeMenu(raw: unknown, catalog: Catalog): Menu {
       recipeIds: plan.recipeIds,
       packageChoice: plan.packageChoice,
       qtyOverride: plan.qtyOverride,
-      lineSource: plan.lineSource
+      lineSource: plan.lineSource,
+      recipeEdits: sanitizeRecipeEdits(m.recipeEdits, plan.recipeIds, catalog)
     });
   }
 

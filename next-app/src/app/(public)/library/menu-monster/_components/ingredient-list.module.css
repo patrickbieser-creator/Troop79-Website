@@ -1,0 +1,47 @@
+/* The Menu Monster ingredient list (read mode now; menu-edit and author add
+   their controls to the same row). Public tokens only. Tight ~38px rows, no
+   borders between them beyond a hairline, the amount in a fixed right column. */
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+  min-height: 38px;
+  padding: var(--sp-2) 0;
+  border-top: 1px solid var(--rule);
+  font-family: var(--font-ui);
+  font-size: var(--fs-md);
+  color: var(--text-body);
+}
+.row:first-child { border-top: none; }
+.main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--sp-1) var(--sp-3);
+}
+.name { color: var(--text-head); }
+.note {
+  font-size: var(--fs-sm);
+  color: var(--text-meta);
+}
+.amount {
+  flex: none;
+  min-width: 96px;
+  text-align: right;
+  color: var(--text-head);
+  font-variant-numeric: tabular-nums;
+}
+.empty {
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  color: var(--text-meta);
+  padding: var(--sp-2) 0;
+}

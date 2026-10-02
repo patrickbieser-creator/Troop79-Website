@@ -38,7 +38,7 @@ const base = (over: Partial<Menu> = {}): Menu => ({
   budgetPerPersonMeal: 4,
   dayCount: 2,
   meals: [
-    { id: 'm1', day: 0, slot: 'breakfast', headcount: null, recipeIds: ['B003'], packageChoice: {}, qtyOverride: {}, lineSource: {} }
+    { id: 'm1', day: 0, slot: 'breakfast', headcount: null, recipeIds: ['B003'], packageChoice: {}, qtyOverride: {}, lineSource: {}, recipeEdits: {} }
   ],
   ...over
 });
@@ -152,7 +152,7 @@ describe('PlanTab', () => {
   });
 
   it('Meals_AreGroupedUnderTheirDay', () => {
-    render(existing(base({ meals: [...base().meals, { id: 'm9', day: 1, slot: 'dinner', headcount: null, recipeIds: [], packageChoice: {}, qtyOverride: {}, lineSource: {} }] })));
+    render(existing(base({ meals: [...base().meals, { id: 'm9', day: 1, slot: 'dinner', headcount: null, recipeIds: [], packageChoice: {}, qtyOverride: {}, lineSource: {}, recipeEdits: {} }] })));
     expect(screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['Day 1', 'Day 2']);
   });
 
@@ -215,7 +215,7 @@ describe('PlanTab', () => {
     render(
       existing(
         base({
-          meals: meals.map((slot, i) => ({ id: `x${i}`, day: 0, slot, headcount: null, recipeIds: [], packageChoice: {}, qtyOverride: {}, lineSource: {} }))
+          meals: meals.map((slot, i) => ({ id: `x${i}`, day: 0, slot, headcount: null, recipeIds: [], packageChoice: {}, qtyOverride: {}, lineSource: {}, recipeEdits: {} }))
         })
       )
     );

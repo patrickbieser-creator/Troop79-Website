@@ -1,6 +1,6 @@
 /**
- * /library/menu-monster/menus/[menuId]/meals/[mealId] — one meal of a menu,
- * the anonymous planner run controlled. Owner only for now (see the Plan tab).
+ * /library/menu-monster/menus/[menuId]/meals/[mealId] — one meal of a menu:
+ * recipe rows, ingredient lists, add / swap / remove. Owner only for now (see the Plan tab).
  */
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
