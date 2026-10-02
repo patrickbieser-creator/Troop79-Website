@@ -10,7 +10,7 @@
  *   Stepper     − [n] + with a group label, per-button labels and an optional
  *               visible label ("People:") rendered to the left.
  *   NumberBox   the number input on its own. Commits on blur / Enter (clamped
- *               and rounded). While typing, a whole number inside min..max
+ *               and rounded; Enter still submits a surrounding form). While typing, a whole number inside min..max
  *               commits live; anything else waits for blur — typing "16" into
  *               a 2–50 field must not clamp "1" to 2 halfway through.
  *   AmountInput a plain framed number input for a native form field that is not
@@ -93,10 +93,11 @@ export function NumberBox({
       onChange={(e) => type(e.target.value)}
       onBlur={commit}
       onKeyDown={(e) => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          commit();
-        }
+        // Commit, but do NOT preventDefault: inside a <form> (event sign-up) Enter
+        // must still submit, as the plain number input it replaced did. React
+        // flushes the commit's state before the browser's implicit submit runs,
+        // so the form sees the clamped value. The menu dialers sit in no form.
+        if (e.key === 'Enter') commit();
       }}
     />
   );

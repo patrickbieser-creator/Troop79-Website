@@ -1,10 +1,11 @@
 import { describe, it, expect, afterEach, beforeAll } from 'vitest';
 import { adminClient } from './helpers/admin-client';
-import type { Menu } from '../src/lib/menu-monster/menus';
+import { MAX_MENUS_PER_SCOUT, type Menu } from '../src/lib/menu-monster/menus';
 import { CATALOG } from './helpers/menu-monster-fixture';
 import { buildSnapshot } from '../src/lib/menu-monster/menu-snapshot';
 import {
   createMenuWith,
+  MENU_LIMIT,
   deleteMenuWith,
   duplicateMenuWith,
   listMenusWith,
@@ -222,5 +223,38 @@ describe('menu store shopping + snapshot (slice 5)', () => {
     const id = await createMenuWith(admin, CHARLIE, menu(), CATALOG);
     const { error } = await admin.from('mm_menus').update({ shopping: [] }).eq('id', id);
     expect(error).not.toBeNull();
+  });
+});
+
+describe('menu store per-scout cap', () => {
+  const fill = async (n: number) => {
+    const rows = Array.from({ length: n }, (_, i) => ({ owner_person_id: CHARLIE.personId, name: `${MARKER} fill ${i}`, context: 'camp', headcount: 8 }));
+    const { error } = await admin.from('mm_menus').insert(rows);
+    expect(error).toBeNull();
+  };
+  const mine = async () => (await admin.from('mm_menus').select('id', { count: 'exact', head: true }).eq('owner_person_id', CHARLIE.personId).like('name', `%${MARKER}%`)).count;
+
+  it('Scout_CannotCreateAMenu_WhenAlreadyAtTheCap', async () => {
+    await fill(MAX_MENUS_PER_SCOUT - (await listMenusWith(admin, CHARLIE.personId)).length);
+    expect(await createMenuWith(admin, CHARLIE, menu(), CATALOG)).toBe(MENU_LIMIT);
+  });
+
+  it('Scout_CanCreateAMenu_WhenOneUnderTheCap', async () => {
+    await fill(MAX_MENUS_PER_SCOUT - 1 - (await listMenusWith(admin, CHARLIE.personId)).length);
+    const id = await createMenuWith(admin, CHARLIE, menu(), CATALOG);
+    expect(id).not.toBe(MENU_LIMIT);
+  });
+
+  it('Scout_CannotDuplicateAMenu_WhenAlreadyAtTheCap', async () => {
+    const id = await createMenuWith(admin, CHARLIE, menu(), CATALOG);
+    await fill(MAX_MENUS_PER_SCOUT - (await listMenusWith(admin, CHARLIE.personId)).length);
+    const before = await mine();
+    expect(await duplicateMenuWith(admin, CHARLIE, id as string)).toBe(MENU_LIMIT);
+    expect(await mine()).toBe(before);
+  });
+
+  it('OtherScout_CanStillCreate_WhenAnotherScoutIsAtTheCap', async () => {
+    await fill(MAX_MENUS_PER_SCOUT - (await listMenusWith(admin, CHARLIE.personId)).length);
+    expect(await createMenuWith(admin, other, menu(), CATALOG)).not.toBe(MENU_LIMIT);
   });
 });

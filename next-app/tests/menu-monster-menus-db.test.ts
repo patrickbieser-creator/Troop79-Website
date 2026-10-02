@@ -101,3 +101,10 @@ describe('audit_log menus area', () => {
     expect(data).toEqual([{ area: 'menus', actor_person_id: TEST_SCOUT }]);
   });
 });
+
+describe('mm_menus calendar link', () => {
+  it('MmMenus_RejectsAnUnknownCalendarEntry_WithAForeignKeyError', async () => {
+    const { error } = await admin.from('mm_menus').insert(menuRow({ calendar_entry_id: 2147483000 }));
+    expect(error?.code).toBe('23503');
+  });
+});

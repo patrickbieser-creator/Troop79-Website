@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
+import { useState } from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Stepper, NumberBox, AmountInput } from '../src/app/_components/stepper';
@@ -81,19 +82,39 @@ describe('Stepper', () => {
     expect(onChange).toHaveBeenLastCalledWith(50);
   });
 
-  it('Enter_Commits_WithoutSubmittingTheForm', async () => {
-    const submit = vi.fn((e: React.FormEvent) => e.preventDefault());
-    const onChange = vi.fn();
-    render(
-      <form onSubmit={submit}>
-        <Stepper id="n" value={8} min={2} max={50} onChange={onChange} groupLabel="People" lessLabel="-" moreLabel="+" />
-      </form>
-    );
+  it('Enter_SubmitsTheSurroundingForm_WithTheCommittedValue', async () => {
+    // Event sign-up puts Steppers inside its form: Enter must still submit, and the
+    // value the submit sees is the clamped one the box just committed.
+    const seen: string[] = [];
+    function Form() {
+      const [n, setN] = useState(8);
+      return (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            seen.push(String(new FormData(e.currentTarget).get('n')));
+          }}
+        >
+          <input type="hidden" name="n" value={n} />
+          <Stepper id="n" value={n} min={2} max={50} onChange={setN} groupLabel="People" lessLabel="-" moreLabel="+" />
+          <button type="submit">Go</button>
+        </form>
+      );
+    }
+    render(<Form />);
     const user = userEvent.setup();
     const box = screen.getByRole('spinbutton');
     await user.clear(box);
-    await user.type(box, '12{Enter}');
-    expect(submit).not.toHaveBeenCalled();
+    await user.type(box, '99{Enter}');
+    expect(seen).toEqual(['50']);
+  });
+
+  it('Enter_StillCommits_WhenThereIsNoForm', async () => {
+    const { onChange, box } = setup();
+    const user = userEvent.setup();
+    await user.clear(box);
+    await user.type(box, '99{Enter}');
+    expect(onChange).toHaveBeenLastCalledWith(50);
   });
 
   it('EmptyBox_RestoresTheValue_OnBlur', async () => {

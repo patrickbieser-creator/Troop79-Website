@@ -13,12 +13,12 @@ import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
 import { getIdentitySessionIfValid } from '@/lib/family-access';
 import { loadMenuWith, type StoredMenu } from '@/lib/menu-monster/menus-store';
+import { isMenuId } from '@/lib/menu-monster/menus';
 import { PageHeader, KickerSep } from '@/app/_components/page-header';
 import { TabStrip } from '@/app/_components/tab-strip';
 import s from './workspace.module.css';
 
 export const MENUS_HREF = '/library/menu-monster/menus';
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export interface ScoutViewer {
   personId: number;
@@ -34,7 +34,7 @@ export async function scoutViewer(): Promise<ScoutViewer | null> {
 
 /** The viewer's own menu by id, or null (missing, malformed id, or not theirs). */
 export async function loadOwnMenu(menuId: string, viewer: ScoutViewer): Promise<StoredMenu | null> {
-  if (!UUID.test(menuId)) return null;
+  if (!isMenuId(menuId)) return null;
   const stored = await loadMenuWith(createAdminClient(), menuId);
   return stored && stored.ownerPersonId === viewer.personId ? stored : null;
 }

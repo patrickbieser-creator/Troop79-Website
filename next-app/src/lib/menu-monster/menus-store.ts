@@ -18,7 +18,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { recordAuditAs, type AuditActor } from '@/lib/audit';
-import { coverDays, foldShopping, type Menu, type MenuContext, type MenuMeal } from './menus';
+import { MAX_MENUS_PER_SCOUT, coverDays, foldShopping, type Menu, type MenuContext, type MenuMeal } from './menus';
 import { buildSnapshot, type MenuSnapshot } from './menu-snapshot';
 import type { Catalog, RestrictionKey } from './types';
 
@@ -43,6 +43,9 @@ export interface StoredMenu {
   /** The version token a save hands back (compared, so a second tab can't silently overwrite). */
   updatedAt: string;
 }
+
+/** Returned instead of an id when the scout already keeps MAX_MENUS_PER_SCOUT menus. */
+export const MENU_LIMIT = 'limit' as const;
 
 export type SaveResult =
   | { status: 'saved'; updatedAt: string }
@@ -139,7 +142,16 @@ export async function loadMenuWith(sb: SupabaseClient, id: string): Promise<Stor
   return { id: r.id, ownerPersonId: r.owner_person_id, menu: fromRow(r), snapshot: r.snapshot ?? null, createdAt: r.created_at, updatedAt: r.updated_at };
 }
 
+async function atMenuLimit(sb: SupabaseClient, ownerPersonId: number | null): Promise<boolean> {
+  if (ownerPersonId == null) return false; // the insert itself refuses an ownerless row
+  const { count, error } = await sb.from('mm_menus').select('id', { count: 'exact', head: true }).eq('owner_person_id', ownerPersonId);
+  if (error) throw new Error(`count menus: ${error.message}`);
+  return (count ?? 0) >= MAX_MENUS_PER_SCOUT;
+}
+
+/** The new menu's id, or MENU_LIMIT when the scout is at the cap. */
 export async function createMenuWith(sb: SupabaseClient, actor: AuditActor, menu: Menu, catalog: Catalog): Promise<string> {
+  if (await atMenuLimit(sb, actor.personId)) return MENU_LIMIT;
   const { data, error } = await sb
     .from('mm_menus')
     .insert({ ...toRow(menu, buildSnapshot(menu, catalog)), owner_person_id: actor.personId })
@@ -176,10 +188,12 @@ export async function saveMenuWith(
   return { status: 'saved', updatedAt: data[0].updated_at as string };
 }
 
-/** A copy of the scout's own menu, as a new menu. Null when it isn't theirs. */
+/** A copy of the scout's own menu, as a new menu. Null when it isn't theirs;
+ *  MENU_LIMIT when the scout is at the cap. */
 export async function duplicateMenuWith(sb: SupabaseClient, actor: AuditActor, id: string): Promise<string | null> {
   const src = await loadMenuWith(sb, id);
   if (!src || src.ownerPersonId !== actor.personId) return null;
+  if (await atMenuLimit(sb, actor.personId)) return MENU_LIMIT;
   const { data, error } = await sb
     .from('mm_menus')
     .insert({ ...toRow({ ...src.menu, name: `Copy of ${src.menu.name}`.slice(0, 120) }, src.snapshot), owner_person_id: actor.personId })

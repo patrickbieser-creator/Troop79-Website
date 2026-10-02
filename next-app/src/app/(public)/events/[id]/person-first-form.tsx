@@ -123,7 +123,7 @@ const TierPicker = memo(function TierPicker({
             label="Days attending"
             value={days}
             min={1}
-            max={14}
+            max={30}
             onChange={(n) => onDaysChange(personKey, n)}
             groupLabel="Days attending"
             lessLabel="One fewer day"
@@ -524,7 +524,7 @@ const AdultRow = memo(function AdultRow({
                 label="Seats in your vehicle, including you"
                 value={drivesValue?.seats ?? 4}
                 min={1}
-                max={15}
+                max={99}
                 onChange={(n) => onDrivesChange(a.key, { seats: n })}
                 groupLabel="Seats in your vehicle"
                 lessLabel="One fewer seat"

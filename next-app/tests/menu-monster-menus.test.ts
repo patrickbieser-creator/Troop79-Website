@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Catalog, Recipe } from '../src/lib/menu-monster/types';
 import { MAX_HEADCOUNT, MIN_HEADCOUNT } from '../src/lib/menu-monster/engine';
-import { MAX_MENU_DAYS, MAX_MENU_MEALS, composePlan, menuNameError, sanitizeMenu, type Menu } from '../src/lib/menu-monster/menus';
+import { MAX_MENU_DAYS, MAX_MENU_MEALS, composePlan, isMenuId, menuNameError, sanitizeMenu, type Menu } from '../src/lib/menu-monster/menus';
 
 /**
  * Scout Workspace menus (Plans/Menu-Monster-Scout-Workspace.md, Phase 1).
@@ -145,4 +145,51 @@ describe('composePlan', () => {
   it('ComposePlan_UsesTheMealsHeadcount_WhenOverridden', () => {
     expect(composePlan(menu, menu.meals[1]).headcount).toBe(12);
   });
+});
+
+describe('sanitizeMenu meal ids', () => {
+  const meal = (id: unknown, day: number, slot = 'breakfast') => ({ id, day, slot, recipeIds: [] });
+  const ids = (meals: unknown[]) => sanitizeMenu(raw({ meals }), CATALOG).meals.map((m) => m.id);
+
+  it('Scout_KeepsAMealId_WhenItIsSafeAndUnique', () => {
+    expect(ids([meal('m-1', 0)])).toEqual(['m-1']);
+  });
+
+  it('SanitizeMenu_GeneratesAFreshId_WhenTheClientIdHasUnsafeCharacters', () => {
+    const [id] = ids([meal('<img src=x onerror=1>', 0)]);
+    expect(id).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  it('SanitizeMenu_GeneratesAFreshId_WhenTheClientIdIsTooLong', () => {
+    expect(ids([meal('a'.repeat(65), 0)])[0]).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  it('SanitizeMenu_GeneratesAFreshId_WhenTheClientIdIsNotAString', () => {
+    expect(ids([meal(42, 0)])[0]).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  it('SanitizeMenu_GivesTheSecondMealAFreshId_WhenTwoMealsShareAnId', () => {
+    const [a, b] = ids([meal('dup', 0), meal('dup', 1)]);
+    expect(a).toBe('dup');
+    expect(b).not.toBe('dup');
+  });
+});
+
+describe('sanitizeMenu server-owned fields', () => {
+  const m = sanitizeMenu(
+    raw({ id: 'x', ownerPersonId: 7, snapshot: { total: 1 }, updatedAt: '2020-01-01T00:00:00Z', createdAt: 'y' }),
+    CATALOG
+  ) as unknown as Record<string, unknown>;
+
+  it('SanitizeMenu_IgnoresClientSnapshot', () => expect(m).not.toHaveProperty('snapshot'));
+  it('SanitizeMenu_IgnoresClientOwner', () => expect(m).not.toHaveProperty('ownerPersonId'));
+  it('SanitizeMenu_IgnoresClientId', () => expect(m).not.toHaveProperty('id'));
+  it('SanitizeMenu_IgnoresClientUpdatedAt', () => expect(m).not.toHaveProperty('updatedAt'));
+});
+
+describe('isMenuId', () => {
+  it('IsMenuId_AcceptsAUuid', () => expect(isMenuId('0b9f8c1e-3a52-4f6e-9d3c-1a2b3c4d5e6f')).toBe(true));
+  it('IsMenuId_RejectsAMalformedId', () => expect(isMenuId('not-a-uuid')).toBe(false));
+  it('IsMenuId_RejectsANonString', () => expect(isMenuId(5)).toBe(false));
+  it('IsMenuId_RejectsAnInjectionAttempt', () => expect(isMenuId("x' or 1=1 --")).toBe(false));
 });

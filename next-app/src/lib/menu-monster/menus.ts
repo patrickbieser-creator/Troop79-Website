@@ -30,6 +30,10 @@ export const MENU_CONTEXTS: readonly { key: MenuContext; label: string }[] = [
 export const MAX_MENU_MEALS = 30;
 export const MAX_MENU_DAYS = 14;
 export const MAX_MENU_NAME = 120;
+/** Menus one scout may keep; create and duplicate refuse past it (menus-store.ts). */
+export const MAX_MENUS_PER_SCOUT = 50;
+/** Largest serialized menu the actions accept (a real 30-meal menu is a few KB). */
+export const MAX_MENU_BYTES = 200 * 1024;
 export const DEFAULT_MENU_BUDGET = 4;
 /** A new menu starts with two days. */
 export const DEFAULT_MENU_DAYS = 2;
@@ -93,6 +97,12 @@ export interface Menu {
   shopping: MenuShopping;
   meals: MenuMeal[];
 }
+
+const MENU_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** True for a well-formed menu id (a UUID) — checked before any id reaches the database. */
+export const isMenuId = (v: unknown): v is string => typeof v === 'string' && MENU_ID.test(v);
+
+const MEAL_ID = /^[A-Za-z0-9-]{1,64}$/;
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
@@ -251,6 +261,7 @@ export function sanitizeMenu(raw: unknown, catalog: Catalog): Menu {
   const entry = Number(r.calendarEntryId);
 
   const seen = new Set<string>();
+  const usedIds = new Set<string>();
   const meals: MenuMeal[] = [];
   for (const m of Array.isArray(r.meals) ? r.meals : []) {
     if (meals.length >= MAX_MENU_MEALS || !isRecord(m)) continue;
@@ -260,8 +271,10 @@ export function sanitizeMenu(raw: unknown, catalog: Catalog): Menu {
     if (seen.has(`${day}:${slot}`)) continue;
     seen.add(`${day}:${slot}`);
     const plan = restorePlan({ ...m, meal: slot, headcount, restrictions }, catalog);
+    const id = typeof m.id === 'string' && MEAL_ID.test(m.id) && !usedIds.has(m.id) ? m.id : globalThis.crypto.randomUUID();
+    usedIds.add(id);
     meals.push({
-      id: typeof m.id === 'string' && m.id.trim() ? m.id.slice(0, 64) : globalThis.crypto.randomUUID(),
+      id,
       day,
       slot,
       headcount: m.headcount == null ? null : clampInt(m.headcount, MIN_HEADCOUNT, MAX_HEADCOUNT, headcount),
