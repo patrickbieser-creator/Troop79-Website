@@ -13,6 +13,7 @@ import { loadOutingsWith } from '@/lib/menu-monster/menus-data';
 import { menuCost } from '@/lib/menu-monster/menu-view';
 import { PageShell } from '@/app/_components/page-shell';
 import { Button } from '@/app/_components/button';
+import { DraftOffer } from './_components/draft-offer';
 import { MenusList, type MenuRowData } from './_components/menus-list';
 import { LockedLine, MENUS_HREF, MenuHeader, scoutViewer } from './_components/scout-menus';
 import s from './_components/workspace.module.css';
@@ -70,6 +71,7 @@ export default async function MyMenusPage() {
           </Button>
         </div>
         <MenusList rows={rows} />
+        <DraftOffer catalog={catalog} />
       </PageShell>
     </>
   );

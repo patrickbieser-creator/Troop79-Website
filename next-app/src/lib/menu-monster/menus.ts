@@ -309,3 +309,28 @@ export function composePlan(menu: Menu, meal: MenuMeal): Plan {
     patrol: ''
   };
 }
+
+/**
+ * The anonymous planner's draft as a one-meal menu (slice 6): the meal on day 0
+ * of a one-day menu starting on the draft's date, its headcount, diets and
+ * budget carried over, and the draft's package / quantity / bring-from-home
+ * choices as the menu's shopping choices. Folded through sanitizeMenu, so the
+ * result is exactly what a stored menu can hold. Pure; the draft is not touched.
+ */
+export function menuFromDraft(plan: Plan, catalog: Catalog): Menu {
+  const label = MEALS.find((m) => m.key === plan.meal)?.label ?? 'Meal';
+  return sanitizeMenu(
+    {
+      name: `${label} from this computer`,
+      context: 'camp',
+      startDate: plan.date,
+      headcount: plan.headcount,
+      restrictions: plan.restrictions,
+      budgetPerPersonMeal: plan.budgetPerPerson,
+      dayCount: 1,
+      shopping: { packageChoice: plan.packageChoice, qtyOverride: plan.qtyOverride, lineSource: plan.lineSource },
+      meals: [{ day: 0, slot: plan.meal, headcount: null, recipeIds: plan.recipeIds }]
+    },
+    catalog
+  );
+}
