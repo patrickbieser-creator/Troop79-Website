@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>October 1, 2026</strong> &nbsp;&middot;&nbsp; v1.132.0</p>
+      <p>Last updated: <strong>October 2, 2026</strong> &nbsp;&middot;&nbsp; v1.133.0</p>
     </div>
   </div>
 
@@ -510,6 +510,27 @@ py -m http.server 8000</pre>
           <li><span><strong>What&rsquo;s coming</strong> &mdash; scouts will sign in to save their own menu plans for home and troop meals, tag the Second Class, First Class and Cooking merit badge requirements each plan covers, and see what&rsquo;s still missing. Leaders and parents can read the plans, and a scout can share a finished menu so the patrol and adults see what&rsquo;s being cooked for each outing.</span></li>
           <li><span><strong>Scouts help build the catalog</strong> &mdash; scouts can submit recipes, credited as &ldquo;Recipe by Sam K.&rdquo; once a leader publishes them; record what they actually paid after shopping, which keeps the troop price book current; and adjust a recipe just for their own menu.</span></li>
           <li><span><strong>Design approved</strong> &mdash; a calmer recipe editor whose ingredient list reads as a shopping list for the meal&rsquo;s headcount and updates as the headcount changes. Rows are tight and can be dragged to reorder, and clicking an ingredient opens its shopping details. The other planner screens follow the same style in the prototype. Patrick still has to choose how scouts move between screens.</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.133.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.133.0</span>
+        <span class="release-date">October 2, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">New</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Menu Monster: scouts save their menus</p>
+        <ul class="change-list">
+          <li><span><strong>My menus</strong> &mdash; a scout who signs in can save menus under Library &rarr; Menu Monster &rarr; My menus: create, rename, duplicate and delete them. Each menu has a name, where you&rsquo;re cooking (home, camp or trail), an optional outing from the calendar, the number of people, special diets (gluten-free, vegetarian, nut-free, dairy-free) and a budget per person per meal. Meals are planned day by day.</span></li>
+          <li><span><strong>A quiet page for each meal</strong> &mdash; one row per recipe with its share of the cost; click a recipe to see its ingredients for the whole group or per person; add, swap or remove recipes; change the number of people for one meal.</span></li>
+          <li><span><strong>One shopping list for the whole menu</strong> &mdash; every meal&rsquo;s ingredients are added up before packages are picked, so two egg breakfasts buy one flat of eggs. Choose a different package, set how many, or mark something as brought from home or from the troop pantry. A note says when the troop price book changed since you saved, with an Update prices button. Printable.</span></li>
+          <li><span><strong>A meal planned on this computer</strong> without signing in is offered once on My menus as &ldquo;Save it to My menus&rdquo;; the planner keeps its own copy.</span></li>
+          <li><span><strong>Up to 50 people</strong> per meal (it was 16), in the planner, the leader recipe builder and saved menus, for whole-troop meals.</span></li>
+          <li><span><strong>Smaller number dials across the site</strong> &mdash; the &minus;&nbsp;n&nbsp;+ controls in Menu Monster and on event sign-up (guests, days attending, vehicle seats) are now one compact shared control; the reimbursement amount takes the same look. Pressing Enter in them still submits the sign-up form.</span></li>
+          <li><span><strong>Behind the scenes:</strong> each scout reads and changes only their own menus (owner taken from the verified scout sign-in, never the browser); at most 50 menus per scout; a save from a second window can&rsquo;t overwrite a newer one; creating, renaming, duplicating and deleting a menu each write one line to the audit log (new &ldquo;Menus&rdquo; area). Three new database changes, applied before the code.</span></li>
         </ul>
       </div>
     </div>
