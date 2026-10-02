@@ -65,3 +65,43 @@ describe('IngredientList (read)', () => {
     expect(screen.getByText('Almond flour')).toBeTruthy();
   });
 });
+
+describe('IngredientList (read) with scout markers', () => {
+  const base = { note: null as string | null, amount: '' };
+  const marked = [
+    { ...base, key: 'a', name: 'Bacon', marker: { kind: 'out' as const } },
+    { ...base, key: 'b', name: 'Eggs', amount: '2 eggs', marker: { kind: 'changed' as const, was: '3 eggs' } },
+    { ...base, key: 'c', name: 'Jam', amount: '1 jar', marker: { kind: 'added' as const } },
+    { ...base, key: 'd', name: 'Rye', amount: '8 slices', marker: { kind: 'swapped' as const, was: 'Bread' } }
+  ];
+  const shown = () => render(<IngredientList mode="read" ariaLabel="Marked" rows={marked} />);
+
+  it('Leader_SeesLeftOut_OnADroppedIngredient', () => {
+    shown();
+    expect(within(row('Bacon')).getByText('Left out')).toBeTruthy();
+  });
+
+  it('Leader_SeesAdded_OnAnIngredientTheScoutAdded', () => {
+    shown();
+    expect(within(row('Jam')).getByText('Added')).toBeTruthy();
+  });
+
+  it('Leader_SeesTheTroopsAmountStruck_OnAChangedAmount', () => {
+    shown();
+    const was = within(row('Eggs')).getByText('3 eggs');
+    expect(was.closest('s')).toBeTruthy();
+    expect(row('Eggs').textContent).toContain('was 3 eggs');
+  });
+
+  it('Leader_SeesTheTroopsIngredientStruck_OnASwap', () => {
+    shown();
+    expect(within(row('Rye')).getByText('Bread').closest('s')).toBeTruthy();
+  });
+
+  it('Leader_SeesNoMarkers_OnAPlainRow', () => {
+    render(list('total'));
+    expect(screen.queryByText(/Added|Left out/)).toBeNull();
+    expect(document.querySelector('s')).toBeNull();
+  });
+});
+

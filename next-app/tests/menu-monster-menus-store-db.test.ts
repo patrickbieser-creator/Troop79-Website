@@ -13,6 +13,7 @@ import {
   listMenusWith,
   ownerCreditNamesWith,
   loadMenuWith,
+  saveActualsWith,
   saveMenuWith
 } from '../src/lib/menu-monster/menus-store';
 
@@ -280,6 +281,64 @@ describe('menu store actuals + free items (Phase 2 release A)', () => {
     const claimed = { eggs: { packageId: 'p-eggs', qty: 99, pricePaid: 0.01 } };
     const result = await saveMenuWith(admin, CHARLIE, id, menu({ actuals: claimed }), stored.updatedAt, CATALOG);
     expect(result.status).toBe('saved');
+    expect((await loadMenuWith(admin, id))!.menu.actuals).toEqual({});
+  });
+});
+
+describe('menu store actuals save (Phase 2 release B)', () => {
+  const EGGS = { eggs: { packageId: 'p-egg-store', qty: 2, pricePaid: 3.49 } };
+  // The same catalog with every package repriced, as after an applied price report.
+  const REPRICED = { ...CATALOG, packages: CATALOG.packages.map((p) => ({ ...p, price: p.price * 2 })) };
+  const bacon = () => menu({ meals: [{ id: 'm1', day: 0, slot: 'breakfast', headcount: null, recipeIds: ['B003'], recipeEdits: {} }] });
+
+  it('Scout_CanSaveActuals_OnTheirOwnMenu', async () => {
+    const id = await createMenuWith(admin, CHARLIE, menu(), CATALOG);
+    expect((await saveActualsWith(admin, CHARLIE, id, EGGS, CATALOG)).status).toBe('saved');
+    expect((await loadMenuWith(admin, id))!.menu.actuals).toEqual(EGGS);
+  });
+
+  it('Scout_CannotSaveActuals_OnAnotherScoutsMenu', async () => {
+    const id = await createMenuWith(admin, other, menu(), CATALOG);
+    expect((await saveActualsWith(admin, CHARLIE, id, EGGS, CATALOG)).status).toBe('not_found');
+    expect((await loadMenuWith(admin, id))!.menu.actuals).toEqual({});
+  });
+
+  it('ActualsSave_DoesNotBumpUpdatedAt_SoAnOpenPlanTabHasNoFalseConflict', async () => {
+    const id = await createMenuWith(admin, CHARLIE, menu(), CATALOG);
+    const before = (await loadMenuWith(admin, id))!.updatedAt;
+    await saveActualsWith(admin, CHARLIE, id, EGGS, CATALOG);
+    expect((await loadMenuWith(admin, id))!.updatedAt).toBe(before);
+    const again = await saveMenuWith(admin, CHARLIE, id, menu({ name: `${MARKER} renamed` }), before, CATALOG);
+    expect(again.status).toBe('saved');
+  });
+
+  it('ActualsSave_WritesOnlyActuals_LeavingTheMealsAndChoicesAlone', async () => {
+    const id = await createMenuWith(admin, CHARLIE, menu({ headcount: 12 }), CATALOG);
+    await saveActualsWith(admin, CHARLIE, id, EGGS, CATALOG);
+    const after = (await loadMenuWith(admin, id))!.menu;
+    expect({ headcount: after.headcount, meals: after.meals.length }).toEqual({ headcount: 12, meals: 1 });
+  });
+
+  it('ActualsSave_ReSnapshots_WhenAPriceWasApplied', async () => {
+    const id = await createMenuWith(admin, CHARLIE, bacon(), CATALOG);
+    const before = (await loadMenuWith(admin, id))!.snapshot!.totals.spent;
+    await saveActualsWith(admin, CHARLIE, id, EGGS, REPRICED, { resnapshot: true });
+    const after = (await loadMenuWith(admin, id))!.snapshot!.totals.spent;
+    expect([before, after]).toEqual([buildSnapshot(bacon(), CATALOG).totals.spent, buildSnapshot(bacon(), REPRICED).totals.spent]);
+    expect(after).not.toBe(before);
+  });
+
+  it('ActualsSave_KeepsTheSnapshot_WhenNoPriceWasApplied', async () => {
+    const id = await createMenuWith(admin, CHARLIE, bacon(), CATALOG);
+    const before = (await loadMenuWith(admin, id))!.snapshot;
+    await saveActualsWith(admin, CHARLIE, id, EGGS, REPRICED);
+    expect((await loadMenuWith(admin, id))!.snapshot).toEqual(before);
+  });
+
+  it('ActualsSave_CanClearEveryLine_WithAnEmptyObject', async () => {
+    const id = await createMenuWith(admin, CHARLIE, menu(), CATALOG);
+    await saveActualsWith(admin, CHARLIE, id, EGGS, CATALOG);
+    await saveActualsWith(admin, CHARLIE, id, {}, CATALOG);
     expect((await loadMenuWith(admin, id))!.menu.actuals).toEqual({});
   });
 });

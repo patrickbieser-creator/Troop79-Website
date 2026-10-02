@@ -20,7 +20,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 import { publicScoutName } from '@/lib/scout-name';
 import { recordAuditAs, type AuditActor } from '@/lib/audit';
-import { MAX_MENUS_PER_SCOUT, coverDays, foldShopping, sanitizeActuals, sanitizeFreeItems, type Menu, type MenuContext, type MenuMeal } from './menus';
+import { MAX_MENUS_PER_SCOUT, coverDays, foldShopping, sanitizeActuals, sanitizeFreeItems, type Actuals, type Menu, type MenuContext, type MenuMeal } from './menus';
 import { buildSnapshot, type MenuSnapshot } from './menu-snapshot';
 import type { Catalog, RestrictionKey } from './types';
 
@@ -235,6 +235,32 @@ export async function saveMenuWith(
   if (!data?.length) return { status: 'conflict' };
   if (current.menu.name !== menu.name) await audit(sb, actor, 'rename', id, `renamed menu "${current.menu.name}" to "${menu.name}"`);
   return { status: 'saved', updatedAt: data[0].updated_at as string };
+}
+
+/**
+ * What the scout paid, saved on its own (Phase 2 release B): writes ONLY the
+ * `actuals` column — and `snapshot` when `resnapshot` says one of the scout's
+ * own reported prices was just applied, so their "prices changed" line does not
+ * fire over their own change. It never touches `updated_at`: an open Plan tab
+ * holds the version token and must not see a false conflict. The snapshot is
+ * rebuilt from the LAST SAVED menu against the (fresh) catalog passed in.
+ * The caller passes already-sanitized actuals; someone else's menu is not_found.
+ */
+export async function saveActualsWith(
+  sb: SupabaseClient,
+  actor: AuditActor,
+  id: string,
+  actuals: Actuals,
+  catalog: Catalog,
+  opts: { resnapshot?: boolean } = {}
+): Promise<{ status: 'saved' | 'not_found' }> {
+  const current = await loadMenuWith(sb, id);
+  if (!current || current.ownerPersonId !== actor.personId) return { status: 'not_found' };
+  const patch: { actuals: Actuals; snapshot?: MenuSnapshot } = { actuals };
+  if (opts.resnapshot) patch.snapshot = buildSnapshot(current.menu, catalog);
+  const { data, error } = await sb.from('mm_menus').update(patch).eq('id', id).eq('owner_person_id', actor.personId).select('id');
+  if (error) throw new Error(`save actuals: ${error.message}`);
+  return { status: data?.length ? 'saved' : 'not_found' };
 }
 
 /** A copy of the scout's own menu, as a new menu. Null when it isn't theirs;

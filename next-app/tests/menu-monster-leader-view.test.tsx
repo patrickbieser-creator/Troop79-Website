@@ -18,9 +18,11 @@ vi.mock('next/navigation', () => ({ useRouter: () => router }));
 
 const saveMenuAction = vi.fn();
 const createMenuAction = vi.fn();
+const saveActualsAction = vi.fn();
 vi.mock('../src/app/(public)/library/_tools/menu-monster/menu-actions', () => ({
   createMenuAction: (...a: unknown[]) => createMenuAction(...a),
-  saveMenuAction: (...a: unknown[]) => saveMenuAction(...a)
+  saveMenuAction: (...a: unknown[]) => saveMenuAction(...a),
+  saveActualsAction: (...a: unknown[]) => saveActualsAction(...a)
 }));
 
 import { PlanTab } from '../src/app/(public)/library/menu-monster/menus/_components/plan-tab';
@@ -144,3 +146,86 @@ describe('Shopping tab, read-only', () => {
     noEditing();
   });
 });
+
+describe('Meal page, read-only: the scouts own edits', () => {
+  const edited = () =>
+    menu({
+      meals: [
+        { id: 'm1', day: 0, slot: 'breakfast', headcount: null, recipeIds: ['B003'], recipeEdits: { B003: [{ op: 'leave_out', ingredientId: 'bacon' }] } },
+        { id: 'm2', day: 1, slot: 'lunch', headcount: null, recipeIds: ['L001'], recipeEdits: {} }
+      ]
+    });
+
+  it('Leader_SeesLeftOutOnTheRow_TheScoutDropped', async () => {
+    render(<MealEditor catalog={CATALOG} menuId="menu-1" menu={edited()} mealId="m1" updatedAt={VERSION} readOnly plannedBy="Sam K." />);
+    await userEvent.setup().click(screen.getAllByRole('button', { expanded: false })[0]);
+    expect(screen.getByText('Left out')).toBeTruthy();
+  });
+});
+
+describe('Shopping tab, read-only: where a line comes from', () => {
+  const sourced = (lineSource: Menu['shopping']['lineSource']) => (
+    <ShoppingTab
+      catalog={CATALOG}
+      menuId="menu-1"
+      menu={menu({ shopping: { packageChoice: {}, qtyOverride: {}, lineSource } })}
+      updatedAt={VERSION}
+      snapshot={null}
+      readOnly
+      plannedBy="Sam K."
+    />
+  );
+  const openBacon = async () => {
+    await userEvent.setup().click(screen.getByRole('button', { name: /^Bacon/ }));
+  };
+
+  it('Leader_SeesBuyingIt_WhenTheLineIsBought', async () => {
+    render(sourced({}));
+    await openBacon();
+    expect(screen.getByText('Where it comes from: Buying it')).toBeTruthy();
+  });
+
+  it('Leader_SeesFromHomeAndTheNote_WhenTheScoutBringsIt', async () => {
+    render(sourced({ bacon: { source: 'home', note: 'Mom has some' } }));
+    await openBacon();
+    expect(screen.getByText('Where it comes from: Bringing from home · Mom has some')).toBeTruthy();
+  });
+
+  it('Leader_SeesTroopPantry_WhenTheLineComesFromThePantry', async () => {
+    render(sourced({ bacon: { source: 'pantry', note: '' } }));
+    await openBacon();
+    expect(screen.getByText('Where it comes from: From the troop pantry')).toBeTruthy();
+  });
+});
+
+describe('Shopping tab, read-only: What you paid', () => {
+  const paid = () => (
+    <ShoppingTab
+      catalog={CATALOG}
+      menuId="menu-1"
+      menu={menu({ actuals: { bacon: { packageId: 'p-bac-kirk', qty: 1, pricePaid: 19.25 } } })}
+      updatedAt={VERSION}
+      snapshot={null}
+      readOnly
+      plannedBy="Sam K."
+    />
+  );
+  const section = () => screen.getByRole('heading', { level: 2, name: 'What you paid' }).closest('section') as HTMLElement;
+
+  it('Leader_SeesWhatTheScoutPaid_AsText', () => {
+    render(paid());
+    expect(section().textContent).toContain('1 × $19.25');
+  });
+
+  it('Leader_SeesNoInputsOrSave_InWhatYouPaid', () => {
+    render(paid());
+    expect(section().querySelectorAll('input, button')).toHaveLength(0);
+    expect(saveActualsAction).not.toHaveBeenCalled();
+  });
+
+  it('Leader_IsToldTheScoutEntersPricesAfterShopping', () => {
+    render(paid());
+    expect(section().textContent).toContain('Sam K. enters these after shopping.');
+  });
+});
+

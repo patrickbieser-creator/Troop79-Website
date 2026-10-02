@@ -25,8 +25,10 @@
  * row insets stay; the package / quantity / source choices show as text, and there is
  * no Save / Discard, Update prices or leave guard.
  *
- * Phase 2 seam: the "What you paid" section renders below the list section
- * (see the marker at the end of the component); nothing of it is built.
+ * Below the list, "What you paid" (paid-section.tsx) is its own section with its own
+ * Save: what the scout bought, how many and the price paid each. An applied price
+ * changes the price book, so this tab folds it into its own copy of the catalog and
+ * snapshot — the scout's own change never shows up as "prices changed".
  *
  * Print: a print stylesheet on this page (workspace.module.css) plus the
  * `#mm-shopping-page` hook in globals.css that hides the site chrome; the
@@ -34,7 +36,7 @@
  * summary and doesn't take a merged, menu-wide list.
  */
 
-import { useId, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useId, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { priceText as money } from '@/lib/menu-monster/units';
 import { useLeaveGuard } from '@/lib/use-leave-guard';
@@ -50,6 +52,7 @@ import { buildMenuList, mealTitle, type MenuLine } from '@/lib/menu-monster/menu
 import { buildSnapshot, snapshotDrift, type MenuSnapshot } from '@/lib/menu-monster/menu-snapshot';
 import { budgetState } from '../../../_tools/menu-monster/planner';
 import { saveMenuAction } from '../../../_tools/menu-monster/menu-actions';
+import { PaidSection, type PaidSavedInfo } from './paid-section';
 import { ReadOnlyLine } from './read-only-line';
 import { SaveBar } from './save-bar';
 import s from './workspace.module.css';
@@ -79,8 +82,11 @@ export interface ShoppingTabProps {
   plannedBy?: string | null;
 }
 
-export function ShoppingTab({ catalog, menuId, menu: initial, updatedAt, snapshot: initialSnapshot, tabs, readOnly = false, plannedBy = null }: ShoppingTabProps) {
+export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updatedAt, snapshot: initialSnapshot, tabs, readOnly = false, plannedBy = null }: ShoppingTabProps) {
   const uid = useId();
+  // The price book as this page knows it: the server's, plus prices this scout just applied.
+  const [catalog, setCatalog] = useState<Catalog>(catalogProp);
+  const [paidDirty, setPaidDirty] = useState(false);
   const [saved, setSaved] = useState<{ menu: Menu; key: string }>(() => ({ menu: initial, key: keyOf(initial.shopping) }));
   const [draft, setDraft] = useState<MenuShopping>(initial.shopping);
   const [snapshot, setSnapshot] = useState<MenuSnapshot | null>(initialSnapshot);
@@ -94,7 +100,7 @@ export function ShoppingTab({ catalog, menuId, menu: initial, updatedAt, snapsho
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   const dirty = keyOf(draft) !== saved.key;
-  useLeaveGuard(dirty && !readOnly);
+  useLeaveGuard((dirty || paidDirty) && !readOnly);
 
   const menu: Menu = { ...saved.menu, shopping: draft };
   const list = buildMenuList(menu, catalog);
@@ -175,6 +181,24 @@ export function ShoppingTab({ catalog, menuId, menu: initial, updatedAt, snapsho
     // The button goes with its line; keep keyboard focus on the page.
     headingRef.current?.focus();
   }
+
+  // Prices the server just applied: fold them into this page's catalog and re-snapshot, as the server did.
+  const paidSaved = useCallback(
+    ({ actuals, results }: PaidSavedInfo) => {
+      const applied = Object.entries(results).filter(([, st]) => st === 'applied');
+      if (applied.length === 0) return;
+      const next: Catalog = {
+        ...catalog,
+        packages: catalog.packages.map((p) => {
+          const hit = applied.find(([ing]) => actuals[ing]?.packageId === p.id);
+          return hit ? { ...p, price: actuals[hit[0]].pricePaid } : p;
+        })
+      };
+      setCatalog(next);
+      setSnapshot(buildSnapshot(saved.menu, next));
+    },
+    [catalog, saved.menu]
+  );
 
   const toggle = (id: string) =>
     setOpenIds((cur) => {
@@ -289,8 +313,17 @@ export function ShoppingTab({ catalog, menuId, menu: initial, updatedAt, snapsho
         </p>
       </section>
 
-      {/* Phase 2 seam: the "What you paid" section (planned vs. paid, what you bought, price paid each)
-          goes here as a second <section> under the list, on the same Save. Not built in Phase 1. */}
+      <PaidSection
+        menuId={menuId}
+        lines={list.lines.filter((l) => l.status === 'ok' || l.status === 'short')}
+        catalog={catalog}
+        initial={initial.actuals}
+        plannedTotal={totals.spent}
+        readOnly={readOnly}
+        plannedBy={plannedBy}
+        onDirtyChange={setPaidDirty}
+        onSaved={paidSaved}
+      />
     </div>
   );
 }
@@ -359,6 +392,12 @@ function ShoppingRow({
           {buying && pkg && <p className={s.insetMuted}>{lineSentence(l)}</p>}
 
           {readOnly && buying && l.overridden && <p className={s.insetMuted}>Quantity changed from {l.autoQty} to {l.qty}.</p>}
+          {readOnly && l.status !== 'staple' && (
+            <p className={s.insetMuted}>
+              Where it comes from: {SOURCES.find((o) => o.key === l.source)?.label ?? 'Buying it'}
+              {l.source !== 'buy' && l.note ? ` · ${l.note}` : ''}
+            </p>
+          )}
 
           {l.status !== 'staple' && !readOnly && (
             <>

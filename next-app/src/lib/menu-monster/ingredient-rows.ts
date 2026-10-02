@@ -30,7 +30,7 @@ export interface IngredientRow {
   amount: string;
   /** Who a diet line is for: 'gluten-free only' / 'everyone else'; null for a plain line. */
   note: string | null;
-  /** Menu-edit mode: Changed / Added / Swapped / Left out, with the struck old value. Read mode never sets it. */
+  /** Menu-edit mode: Changed / Added / Swapped / Left out, with the struck old value. The read list shows it when present (a leader reading a scout's menu). */
   marker?: RowMarker;
   /** Menu-edit mode: what the row's actions need to build an op (see menuEditRows). */
   edit?: RowEdit;

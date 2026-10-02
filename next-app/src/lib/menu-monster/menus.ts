@@ -79,6 +79,9 @@ export interface Actual {
   pricePaid: number;
 }
 
+/** What the last actuals save reported for one line (mm_report_price's outcome, minus the failures). */
+export type PaidStatus = 'applied' | 'held' | 'same';
+
 /** ingredientId -> what was bought. Written only by the actuals action, never by a menu save. */
 export type Actuals = Record<string, Actual>;
 
@@ -162,17 +165,35 @@ function sanitizeRestrictions(raw: unknown, headcount: number): Record<Restricti
 }
 
 const INGREDIENT_ID = /^[A-Za-z0-9:_-]{1,64}$/;
-const isNumberAtLeast = (v: unknown, min: number): v is number => typeof v === 'number' && Number.isFinite(v) && v >= min;
 
-/** Client actuals -> well-formed entries only (id-shaped keys, a package id, qty > 0, price >= 0). */
-export function sanitizeActuals(raw: unknown): Actuals {
+/** Size cap on the actuals payload (a menu has at most a few dozen lines). */
+export const MAX_ACTUALS_BYTES = 32 * 1024;
+export const MAX_ACTUAL_QTY = 99;
+export const MIN_ACTUAL_PRICE = 0.01;
+export const MAX_ACTUAL_PRICE = 9999.99;
+
+/**
+ * Client actuals -> well-formed entries only: an id-shaped ingredient key, a
+ * package id, qty a whole number 0..99, price paid 0.01..9999.99 (to the cent).
+ * With a catalog the ingredient and package must also exist and belong together
+ * (a menu SAVE passes none: the stored row is shape-checked on the way out, and
+ * an actual for a since-retired package must still read back).
+ */
+export function sanitizeActuals(raw: unknown, catalog?: Catalog): Actuals {
   const out: Actuals = {};
   if (!isRecord(raw)) return out;
+  const ingredients = catalog ? new Set(catalog.ingredients.map((i) => i.id)) : null;
+  const packageIngredient = catalog ? new Map(catalog.packages.map((p) => [p.id, p.ingredientId])) : null;
   for (const [ing, a] of Object.entries(raw)) {
     if (!INGREDIENT_ID.test(ing) || !isRecord(a)) continue;
     if (typeof a.packageId !== 'string' || !INGREDIENT_ID.test(a.packageId)) continue;
-    if (!isNumberAtLeast(a.qty, Number.EPSILON) || !isNumberAtLeast(a.pricePaid, 0)) continue;
-    out[ing] = { packageId: a.packageId, qty: Math.min(1000, Math.round(a.qty * 10000) / 10000), pricePaid: Math.round(a.pricePaid * 100) / 100 };
+    if (ingredients && !ingredients.has(ing)) continue;
+    if (packageIngredient && packageIngredient.get(a.packageId) !== ing) continue;
+    if (typeof a.qty !== 'number' || !Number.isInteger(a.qty) || a.qty < 0 || a.qty > MAX_ACTUAL_QTY) continue;
+    if (typeof a.pricePaid !== 'number' || !Number.isFinite(a.pricePaid)) continue;
+    const pricePaid = Math.round(a.pricePaid * 100) / 100;
+    if (pricePaid < MIN_ACTUAL_PRICE || pricePaid > MAX_ACTUAL_PRICE) continue;
+    out[ing] = { packageId: a.packageId, qty: a.qty, pricePaid };
   }
   return out;
 }
@@ -347,7 +368,7 @@ export function sanitizeMenu(raw: unknown, catalog: Catalog): Menu {
     budgetPerPersonMeal,
     dayCount: coverDays(r.dayCount, meals),
     shopping: sanitizeShopping(foldShopping(r.shopping, r.meals), catalog),
-    actuals: sanitizeActuals(r.actuals),
+    actuals: sanitizeActuals(r.actuals, catalog),
     freeItems: sanitizeFreeItems(r.freeItems),
     meals
   };

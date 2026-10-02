@@ -194,9 +194,18 @@ describe('isMenuId', () => {
   it('IsMenuId_RejectsAnInjectionAttempt', () => expect(isMenuId("x' or 1=1 --")).toBe(false));
 });
 
+const ACT_CATALOG = {
+  ...CATALOG,
+  ingredients: [...CATALOG.ingredients, { ...CATALOG.ingredients[0], id: 'bacon', name: 'Bacon' }, { ...CATALOG.ingredients[0], id: 'oj', name: 'OJ' }],
+  packages: [
+    { id: 'p-egg-store', ingredientId: 'eggs' },
+    { id: 'p-bac-om', ingredientId: 'bacon' }
+  ]
+} as unknown as Catalog;
+
 describe('sanitizeMenu actuals + freeItems (Phase 2 release A: validated pass-through)', () => {
   it('Menu_HasNoActualsOrFreeItems_WhenTheClientSendsNone', () => {
-    const m = sanitizeMenu(raw(), CATALOG);
+    const m = sanitizeMenu(raw(), ACT_CATALOG);
     expect({ actuals: m.actuals, freeItems: m.freeItems }).toEqual({ actuals: {}, freeItems: [] });
   });
 
@@ -204,16 +213,40 @@ describe('sanitizeMenu actuals + freeItems (Phase 2 release A: validated pass-th
     const m = sanitizeMenu(
       raw({
         actuals: {
-          eggs: { packageId: 'p-eggs', qty: 2, pricePaid: 3.49 },
-          flour: { packageId: 'p-flour', qty: 0, pricePaid: 3 },
-          rice: { packageId: 'p-rice', qty: 1, pricePaid: -1 },
-          oil: 'cheap',
+          eggs: { packageId: 'p-egg-store', qty: 2, pricePaid: 3.49 },
+          bacon: { packageId: 'p-bac-om', qty: 1, pricePaid: -1 },
+          oj: 'cheap',
           'bad id!': { packageId: 'p', qty: 1, pricePaid: 1 }
         }
       }),
-      CATALOG
+      ACT_CATALOG
     );
-    expect(m.actuals).toEqual({ eggs: { packageId: 'p-eggs', qty: 2, pricePaid: 3.49 } });
+    expect(m.actuals).toEqual({ eggs: { packageId: 'p-egg-store', qty: 2, pricePaid: 3.49 } });
+  });
+
+  it('Actuals_DropsAnIngredientOrPackage_ThatIsNotInTheCatalog', () => {
+    const m = sanitizeMenu(raw({ actuals: { 'no-such': { packageId: 'p-egg-store', qty: 1, pricePaid: 3 }, eggs: { packageId: 'p-nope', qty: 1, pricePaid: 3 } } }), ACT_CATALOG);
+    expect(m.actuals).toEqual({});
+  });
+
+  it('Actuals_DropsAPackage_ThatBelongsToAnotherIngredient', () => {
+    expect(sanitizeMenu(raw({ actuals: { eggs: { packageId: 'p-bac-om', qty: 1, pricePaid: 3 } } }), ACT_CATALOG).actuals).toEqual({});
+  });
+
+  it('Actuals_AcceptsQuantityZeroTo99_AndRefusesOthers', () => {
+    const at = (qty: number) => sanitizeMenu(raw({ actuals: { eggs: { packageId: 'p-egg-store', qty, pricePaid: 3 } } }), ACT_CATALOG).actuals;
+    expect([at(0), at(99)].map((a) => a.eggs?.qty)).toEqual([0, 99]);
+    expect([at(100), at(-1), at(1.5)]).toEqual([{}, {}, {}]);
+  });
+
+  it('Actuals_AcceptsPrice1CentTo9999_99_AndRefusesOthers', () => {
+    const at = (pricePaid: number) => sanitizeMenu(raw({ actuals: { eggs: { packageId: 'p-egg-store', qty: 1, pricePaid } } }), ACT_CATALOG).actuals;
+    expect([at(0.01), at(9999.99)].map((a) => a.eggs?.pricePaid)).toEqual([0.01, 9999.99]);
+    expect([at(0), at(10000)]).toEqual([{}, {}]);
+  });
+
+  it('Actuals_RoundsThePriceToWholeCents', () => {
+    expect(sanitizeMenu(raw({ actuals: { eggs: { packageId: 'p-egg-store', qty: 1, pricePaid: 3.494 } } }), ACT_CATALOG).actuals.eggs.pricePaid).toBe(3.49);
   });
 
   it('Actuals_IsEmpty_WhenNotAnObject', () => {

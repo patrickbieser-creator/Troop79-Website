@@ -20,7 +20,8 @@ export function SaveBar({
   saving,
   saved,
   onSave,
-  onDiscard
+  onDiscard,
+  labels
 }: {
   isNew: boolean;
   newLabel?: string;
@@ -30,14 +31,16 @@ export function SaveBar({
   saved: boolean;
   onSave: () => void;
   onDiscard: () => void;
+  /** A second bar on the same page (Shopping's "What you paid") needs names the first one doesn't have. */
+  labels?: { save?: string; clean?: string; discard?: string };
 }) {
-  const label = saving ? 'Saving…' : isNew ? newLabel : dirty ? 'Save changes' : 'Saved';
+  const label = saving ? 'Saving…' : isNew ? newLabel : dirty ? (labels?.save ?? 'Save changes') : (labels?.clean ?? 'Saved');
   const off = saving || (!isNew && !dirty);
   return (
     <span className={s.actions}>
       {!isNew && (
         <Button variant="ghost" onClick={onDiscard} disabled={saving || !dirty} title={dirty ? undefined : 'No changes to discard'}>
-          Discard changes
+          {labels?.discard ?? 'Discard changes'}
         </Button>
       )}
       <Button variant="primary" onClick={onSave} disabled={off} title={off && !saving ? 'No changes to save yet' : undefined}>
