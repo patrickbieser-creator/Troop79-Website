@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn(), replace: vi.fn() }) }));
 vi.mock('@/lib/family-access', () => ({ getIdentitySessionIfValid: async () => mocks.session }));
+vi.mock('@/lib/admin-actor', () => ({ resolveAdminActor: async () => null }));
 vi.mock('@/lib/supabase/server', () => ({ createAdminClient: () => ({ stub: true }) }));
 vi.mock('@/lib/menu-monster/data', () => ({ loadMenuMonsterCatalog: async () => ({ recipes: [] }) }));
 vi.mock('@/lib/menu-monster/menus-store', () => ({

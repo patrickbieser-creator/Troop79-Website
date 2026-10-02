@@ -17,6 +17,8 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { fetchAllRows } from '@/lib/supabase/paginate';
+import { publicScoutName } from '@/lib/scout-name';
 import { recordAuditAs, type AuditActor } from '@/lib/audit';
 import { MAX_MENUS_PER_SCOUT, coverDays, foldShopping, sanitizeActuals, sanitizeFreeItems, type Menu, type MenuContext, type MenuMeal } from './menus';
 import { buildSnapshot, type MenuSnapshot } from './menu-snapshot';
@@ -31,6 +33,8 @@ export interface MenuSummary {
   headcount: number;
   mealCount: number;
   updatedAt: string;
+  /** Set only by listAllMenusWith (the leader read-only view). */
+  ownerPersonId?: number;
 }
 
 export interface StoredMenu {
@@ -140,6 +144,41 @@ export async function listMenusWith(sb: SupabaseClient, ownerPersonId: number): 
     mealCount: Array.isArray(r.meals) ? r.meals.length : 0,
     updatedAt: r.updated_at as string
   }));
+}
+
+/** Every scout's menus, most recently edited first — the leader read-only view.
+ *  Paginated: the table is not scoped to one owner, so it can pass PostgREST's 1000-row cap. */
+export async function listAllMenusWith(sb: SupabaseClient): Promise<(MenuSummary & { ownerPersonId: number })[]> {
+  const rows = await fetchAllRows<Record<string, unknown>>((from, to) =>
+    sb
+      .from('mm_menus')
+      .select('id, owner_person_id, name, context, calendar_entry_id, headcount, meals, updated_at')
+      .order('updated_at', { ascending: false })
+      .order('id')
+      .range(from, to)
+  );
+  return rows.map((r) => ({
+    id: r.id as string,
+    ownerPersonId: r.owner_person_id as number,
+    name: r.name as string,
+    context: r.context as MenuContext,
+    calendarEntryId: (r.calendar_entry_id as number | null) ?? null,
+    headcount: r.headcount as number,
+    mealCount: Array.isArray(r.meals) ? r.meals.length : 0,
+    updatedAt: r.updated_at as string
+  }));
+}
+
+/** Credit names for menu owners — first name + last initial from `people` (never the
+ *  scouts/leaders tables), the public format used everywhere a scout's name shows. */
+export async function ownerCreditNamesWith(sb: SupabaseClient, personIds: number[]): Promise<Map<number, string>> {
+  const ids = [...new Set(personIds)];
+  const out = new Map<number, string>();
+  if (ids.length === 0) return out;
+  const { data, error } = await sb.from('people').select('id, first_name, last_name').in('id', ids);
+  if (error) throw new Error(`owner names: ${error.message}`);
+  for (const p of data ?? []) out.set(p.id as number, publicScoutName({ first_name: (p.first_name as string) ?? '', last_name: (p.last_name as string) ?? '' }));
+  return out;
 }
 
 /** One menu by id, or null. Reading is not owner-scoped: the caller decides

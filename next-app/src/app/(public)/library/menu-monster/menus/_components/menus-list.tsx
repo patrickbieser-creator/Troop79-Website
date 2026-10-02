@@ -5,6 +5,10 @@
  * is linked, and the per-person-per-meal cost in a fixed right column (just the
  * dollar amount). ⋯ opens Open / Duplicate / Delete; Delete asks inline, right
  * under the row, instead of a dialog.
+ *
+ * `readOnly` (a leader's list of every scout's menus): the same rows with the
+ * scout's credit name and the last-edited date in the meta line, no ⋯ menu and
+ * so no Duplicate / Delete.
  */
 
 import { useState } from 'react';
@@ -13,6 +17,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/app/_components/button';
 import { EmptyState } from '@/app/_components/empty-state';
 import { Notice } from '@/app/_components/notice';
+import { fmtDate } from '@/lib/format-date';
 import { priceText as money } from '@/lib/menu-monster/units';
 import { deleteMenuAction, duplicateMenuAction } from '../../../_tools/menu-monster/menu-actions';
 import { RowMenu } from './row-menu';
@@ -27,9 +32,13 @@ export interface MenuRowData {
   mealCount: number;
   /** Per person, per meal; null when no meal has items yet. */
   perPersonMeal: number | null;
+  /** When it was last edited (ISO timestamp); shown to a leader. */
+  updatedAt?: string;
+  /** The owner's credit name ("Sam K."); shown to a leader. */
+  ownerName?: string | null;
 }
 
-export function MenusList({ rows }: { rows: MenuRowData[] }) {
+export function MenusList({ rows, readOnly = false, emptyText }: { rows: MenuRowData[]; readOnly?: boolean; emptyText?: string }) {
   const router = useRouter();
   const [confirming, setConfirming] = useState<string | null>(null);
   const [gone, setGone] = useState<ReadonlySet<string>>(new Set());
@@ -57,7 +66,7 @@ export function MenusList({ rows }: { rows: MenuRowData[] }) {
   }
 
   if (shown.length === 0) {
-    return <EmptyState>No menus yet. Start one with New menu, and it saves here.</EmptyState>;
+    return <EmptyState>{emptyText ?? 'No menus yet. Start one with New menu, and it saves here.'}</EmptyState>;
   }
 
   return (
@@ -75,19 +84,29 @@ export function MenusList({ rows }: { rows: MenuRowData[] }) {
                 {r.name}
               </Link>
               <span className={s.meta}>
-                {[r.contextLabel, r.outingName, `${r.mealCount} ${r.mealCount === 1 ? 'meal' : 'meals'}`].filter(Boolean).join(' · ')}
+                {[
+                  readOnly ? r.ownerName : null,
+                  r.contextLabel,
+                  r.outingName,
+                  `${r.mealCount} ${r.mealCount === 1 ? 'meal' : 'meals'}`,
+                  readOnly && r.updatedAt ? `edited ${fmtDate(r.updatedAt)}` : null
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
               </span>
             </div>
             <div className={s.cost}>{r.perPersonMeal != null ? money(r.perPersonMeal) : ''}</div>
-            <RowMenu
-              label={`More for ${r.name}`}
-              items={[
-                { label: 'Open', href: `/library/menu-monster/menus/${r.id}` },
-                { label: 'Duplicate', onSelect: () => void duplicate(r.id) },
-                { label: 'Delete', danger: true, onSelect: () => setConfirming(r.id) }
-              ]}
-            />
-            {confirming === r.id && (
+            {!readOnly && (
+              <RowMenu
+                label={`More for ${r.name}`}
+                items={[
+                  { label: 'Open', href: `/library/menu-monster/menus/${r.id}` },
+                  { label: 'Duplicate', onSelect: () => void duplicate(r.id) },
+                  { label: 'Delete', danger: true, onSelect: () => setConfirming(r.id) }
+                ]}
+              />
+            )}
+            {!readOnly && confirming === r.id && (
               <div className={s.confirm} role="group" aria-label={`Delete ${r.name}`}>
                 <span>Delete “{r.name}”? This can’t be undone.</span>
                 <Button size="sm" variant="danger" disabled={busy} onClick={() => void remove(r.id)}>

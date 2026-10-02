@@ -7,29 +7,55 @@
  * and New menu); everyone else gets one quiet sign-in line, and the anonymous
  * planner sits below either way. The shelf page is `dynamic = 'force-dynamic'`
  * (D-040), so a catalog edit by migration shows on the next load.
+ *
+ * An admin viewer (a leader holding any admin capability) gets a read-only
+ * "Scouts' menus" section instead: the ten most recently edited menus across
+ * all scouts, each with the scout's credit name, and All scouts' menus past ten.
+ * The anonymous planner stays below for everyone.
  */
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
-import { getIdentitySessionIfValid } from '@/lib/family-access';
 import { loadMenuMonsterCatalog } from '@/lib/menu-monster/data';
-import { listMenusWith } from '@/lib/menu-monster/menus-store';
+import { listAllMenusWith, listMenusWith, ownerCreditNamesWith } from '@/lib/menu-monster/menus-store';
 import { Button } from '@/app/_components/button';
 import { DraftOffer } from '../../menu-monster/menus/_components/draft-offer';
 import { loadMenuRows } from '../../menu-monster/menus/_components/menu-rows';
 import { MenusList } from '../../menu-monster/menus/_components/menus-list';
-import { LockedLine, MENUS_HREF } from '../../menu-monster/menus/_components/scout-menus';
+import { LockedLine, MENUS_HREF, menuViewer } from '../../menu-monster/menus/_components/scout-menus';
 import w from '../../menu-monster/menus/_components/workspace.module.css';
 import { MenuMonsterPlanner } from './planner';
 
 const HUB_HREF = '/library/topic/menu-monster';
 const RECENT = 5;
+const LEADER_RECENT = 10;
 
 export async function MenuMonsterShelfTool() {
-  const [catalog, session] = await Promise.all([loadMenuMonsterCatalog(), getIdentitySessionIfValid()]);
-  const scout = session?.subjectKind === 'scout' ? session : null;
+  const [catalog, viewer] = await Promise.all([loadMenuMonsterCatalog(), menuViewer()]);
+  const scout = viewer?.kind === 'scout' ? viewer : null;
 
   let myMenus: React.ReactNode;
-  if (scout) {
+  if (viewer?.kind === 'leader') {
+    const sb = createAdminClient();
+    const all = await listAllMenusWith(sb);
+    const shown = all.slice(0, LEADER_RECENT);
+    const owners = await ownerCreditNamesWith(sb, shown.map((m) => m.ownerPersonId));
+    const rows = await loadMenuRows(sb, shown, catalog, owners);
+    myMenus = (
+      <>
+        <div className={w.listHead}>
+          <h2 className={w.heading}>Scouts’ menus</h2>
+        </div>
+        <MenusList rows={rows} readOnly emptyText="No scout has saved a menu yet." />
+        {all.length > LEADER_RECENT && (
+          <p className={w.foot}>
+            <Link className={w.link} href={MENUS_HREF}>
+              All scouts’ menus
+            </Link>
+          </p>
+        )}
+      </>
+    );
+  } else if (scout) {
     const sb = createAdminClient();
     const summaries = await listMenusWith(sb, scout.personId);
     const rows = await loadMenuRows(sb, summaries.slice(0, RECENT), catalog);

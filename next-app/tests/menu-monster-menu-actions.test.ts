@@ -90,6 +90,25 @@ describe('menu actions: who may call them', () => {
     expect((await createMenuAction(payload())).ok).toBe(false);
   });
 
+  it('LeaderWithAdminGrants_CannotSaveDeleteOrDuplicate_AScoutsMenu', async () => {
+    // An identity-session adult (the kind that holds admin capabilities) is a valid session,
+    // but not a scout's: the leader read-only view never grants a write.
+    mocks.session = { ...SCOUT, subjectKind: 'adult', personId: 5, displayName: 'Pat B.' };
+    const results = await Promise.all([saveMenuAction(ID, payload(), STAMP), duplicateMenuAction(ID), deleteMenuAction(ID)]);
+    for (const r of results) expect(r.ok).toBe(false);
+    expect(mocks.saveMenuWith).not.toHaveBeenCalled();
+    expect(mocks.duplicateMenuWith).not.toHaveBeenCalled();
+    expect(mocks.deleteMenuWith).not.toHaveBeenCalled();
+  });
+
+  it('LegacyLeaderCookie_CannotSaveDeleteOrDuplicate_WithNoIdentitySession', async () => {
+    mocks.session = null;
+    const results = await Promise.all([saveMenuAction(ID, payload(), STAMP), duplicateMenuAction(ID), deleteMenuAction(ID)]);
+    for (const r of results) expect(r.ok).toBe(false);
+    expect(mocks.saveMenuWith).not.toHaveBeenCalled();
+    expect(mocks.deleteMenuWith).not.toHaveBeenCalled();
+  });
+
   it('RevokedScout_IsRefused_OnEveryAction', async () => {
     mocks.epochCurrent = false;
     for (const r of await Promise.all(callAll())) expect(r).toMatchObject({ ok: false });

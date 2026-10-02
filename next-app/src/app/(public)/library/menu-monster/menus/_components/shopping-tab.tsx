@@ -21,6 +21,10 @@
  * Update prices re-saves the LAST SAVED menu — which makes the server build a
  * fresh snapshot — and leaves any unsaved draft alone.
  *
+ * `readOnly` (a leader looking at a scout's menu): the list, totals, Print and the
+ * row insets stay; the package / quantity / source choices show as text, and there is
+ * no Save / Discard, Update prices or leave guard.
+ *
  * Phase 2 seam: the "What you paid" section renders below the list section
  * (see the marker at the end of the component); nothing of it is built.
  *
@@ -46,6 +50,7 @@ import { buildMenuList, mealTitle, type MenuLine } from '@/lib/menu-monster/menu
 import { buildSnapshot, snapshotDrift, type MenuSnapshot } from '@/lib/menu-monster/menu-snapshot';
 import { budgetState } from '../../../_tools/menu-monster/planner';
 import { saveMenuAction } from '../../../_tools/menu-monster/menu-actions';
+import { ReadOnlyLine } from './read-only-line';
 import { SaveBar } from './save-bar';
 import s from './workspace.module.css';
 
@@ -68,9 +73,13 @@ export interface ShoppingTabProps {
   snapshot: MenuSnapshot | null;
   /** The Plan / Shopping tab strip, rendered under the title line. */
   tabs?: ReactNode;
+  /** A leader's view of a scout's menu: choices shown as text, nothing edits or saves. */
+  readOnly?: boolean;
+  /** Credit name of the scout who planned it (read-only view). */
+  plannedBy?: string | null;
 }
 
-export function ShoppingTab({ catalog, menuId, menu: initial, updatedAt, snapshot: initialSnapshot, tabs }: ShoppingTabProps) {
+export function ShoppingTab({ catalog, menuId, menu: initial, updatedAt, snapshot: initialSnapshot, tabs, readOnly = false, plannedBy = null }: ShoppingTabProps) {
   const uid = useId();
   const [saved, setSaved] = useState<{ menu: Menu; key: string }>(() => ({ menu: initial, key: keyOf(initial.shopping) }));
   const [draft, setDraft] = useState<MenuShopping>(initial.shopping);
@@ -85,7 +94,7 @@ export function ShoppingTab({ catalog, menuId, menu: initial, updatedAt, snapsho
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   const dirty = keyOf(draft) !== saved.key;
-  useLeaveGuard(dirty);
+  useLeaveGuard(dirty && !readOnly);
 
   const menu: Menu = { ...saved.menu, shopping: draft };
   const list = buildMenuList(menu, catalog);
@@ -182,8 +191,9 @@ export function ShoppingTab({ catalog, menuId, menu: initial, updatedAt, snapsho
     <div id="mm-shopping-page">
       <div className={s.titleLine}>
         <h1 className={s.menuTitle}>{menu.name.trim() || 'Untitled menu'}</h1>
-        <SaveBar isNew={false} dirty={dirty} saving={saving} saved={justSaved} onSave={() => void save()} onDiscard={discard} />
+        {!readOnly && <SaveBar isNew={false} dirty={dirty} saving={saving} saved={justSaved} onSave={() => void save()} onDiscard={discard} />}
       </div>
+      {readOnly && <ReadOnlyLine plannedBy={plannedBy} />}
       {tabs != null && <div className={s.tabs}>{tabs}</div>}
 
       {error && (
@@ -250,6 +260,7 @@ export function ShoppingTab({ catalog, menuId, menu: initial, updatedAt, snapsho
                     onQty={(n) => setQty(l, n)}
                     onSource={(src, note) => setSource(l, src, note)}
                     panelId={`${uid}-ing-${l.ing.id}`}
+                    readOnly={readOnly}
                   />
                 ))}
             </ul>
@@ -265,9 +276,11 @@ export function ShoppingTab({ catalog, menuId, menu: initial, updatedAt, snapsho
         {drift && (
           <p className={s.foot}>
             Prices in the troop price book changed since you saved: {money(drift.saved)} → {money(drift.live)}.{' '}
-            <button type="button" className={s.linkBtn} disabled={saving} onClick={() => void updatePrices()}>
-              Update prices
-            </button>
+            {!readOnly && (
+              <button type="button" className={s.linkBtn} disabled={saving} onClick={() => void updatePrices()}>
+                Update prices
+              </button>
+            )}
           </p>
         )}
 
@@ -292,7 +305,8 @@ function ShoppingRow({
   onPackage,
   onQty,
   onSource,
-  panelId
+  panelId,
+  readOnly
 }: {
   line: MenuLine;
   menu: Menu;
@@ -304,6 +318,7 @@ function ShoppingRow({
   onQty: (n: number) => void;
   onSource: (source: LineSource, note: string) => void;
   panelId: string;
+  readOnly: boolean;
 }) {
   const buying = l.status === 'ok' || l.status === 'short';
   const pkg = l.pkg;
@@ -343,7 +358,9 @@ function ShoppingRow({
           </p>
           {buying && pkg && <p className={s.insetMuted}>{lineSentence(l)}</p>}
 
-          {l.status !== 'staple' && (
+          {readOnly && buying && l.overridden && <p className={s.insetMuted}>Quantity changed from {l.autoQty} to {l.qty}.</p>}
+
+          {l.status !== 'staple' && !readOnly && (
             <>
               {l.usable.length > 1 && l.source === 'buy' && (
                 <div className={s.choice}>

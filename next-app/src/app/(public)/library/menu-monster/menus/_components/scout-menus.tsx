@@ -3,16 +3,20 @@
  * read, the page header, the Plan / Shopping tabs, and the one-line locked
  * state for anyone who isn't a signed-in scout.
  *
- * Reads are owner-only for now (Phase 3 adds leaders, parents and shared
- * menus): a menu that is missing OR someone else's is the same null, so the
- * pages answer both with notFound(). Writes re-check the verified scout in the
- * server actions; this read uses the signature-only session, like every page.
+ * Reads: the owner scout edits; an admin viewer (any adult holding at least one
+ * admin capability — Plans/Menu-Monster-Scout-Workspace.md Decision 2) reads any
+ * menu read-only. A menu that is missing OR not viewable is the same null, so
+ * the pages answer both with notFound(). Phase 3 adds parents and shared
+ * viewers. Writes re-check the verified scout in the server actions, so a
+ * leader's session can never save; this read uses the signature-only session,
+ * like every page.
  */
 
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
 import { getIdentitySessionIfValid } from '@/lib/family-access';
-import { loadMenuWith, type StoredMenu } from '@/lib/menu-monster/menus-store';
+import { resolveAdminActor } from '@/lib/admin-actor';
+import { loadMenuWith, ownerCreditNamesWith, type StoredMenu } from '@/lib/menu-monster/menus-store';
 import { isMenuId } from '@/lib/menu-monster/menus';
 import { PageHeader, KickerSep } from '@/app/_components/page-header';
 import { TabStrip } from '@/app/_components/tab-strip';
@@ -32,6 +36,48 @@ export async function scoutViewer(): Promise<ScoutViewer | null> {
   return { personId: session.personId, displayName: session.displayName };
 }
 
+export interface LeaderViewer {
+  /** Null for a legacy leader-cookie session whose label does not resolve to one person. */
+  personId: number | null;
+  label: string;
+}
+
+/** Who is looking at the menus: a scout (own menus, editable), a leader (every
+ *  menu, read-only) or nobody. A scout session wins if both somehow apply. */
+export type MenuViewer = ({ kind: 'scout' } & ScoutViewer) | ({ kind: 'leader' } & LeaderViewer);
+
+/** Scout, admin viewer (an actor holding at least one capability), or null. */
+export async function menuViewer(): Promise<MenuViewer | null> {
+  const scout = await scoutViewer();
+  if (scout) return { kind: 'scout', ...scout };
+  const actor = await resolveAdminActor();
+  if (!actor || actor.capabilities.size === 0) return null;
+  return { kind: 'leader', personId: actor.personId, label: actor.label };
+}
+
+/** A menu a viewer may open, how, and (read-only) whose it is. */
+export interface ViewableMenu {
+  stored: StoredMenu;
+  readOnly: boolean;
+  /** Credit name of the owner scout ("Sam K."), set for a leader's read-only view. */
+  plannedBy: string | null;
+}
+
+/** The menu by id for this viewer, or null: the scout gets their own to edit,
+ *  a leader gets any menu read-only. */
+export async function loadViewableMenu(menuId: string, viewer: MenuViewer): Promise<ViewableMenu | null> {
+  if (viewer.kind === 'scout') {
+    const stored = await loadOwnMenu(menuId, viewer);
+    return stored ? { stored, readOnly: false, plannedBy: null } : null;
+  }
+  if (!isMenuId(menuId)) return null;
+  const sb = createAdminClient();
+  const stored = await loadMenuWith(sb, menuId);
+  if (!stored) return null;
+  const names = await ownerCreditNamesWith(sb, [stored.ownerPersonId]);
+  return { stored, readOnly: true, plannedBy: names.get(stored.ownerPersonId) ?? null };
+}
+
 /** The viewer's own menu by id, or null (missing, malformed id, or not theirs). */
 export async function loadOwnMenu(menuId: string, viewer: ScoutViewer): Promise<StoredMenu | null> {
   if (!isMenuId(menuId)) return null;
@@ -46,14 +92,25 @@ export async function loadOwnMenu(menuId: string, viewer: ScoutViewer): Promise<
  * `menu` adds the menu's name as a link back to its Plan tab (the meal page's
  * way back).
  */
-export function MenuHeader({ title, current, menu }: { title?: string; current?: string; menu?: { id: string; name: string } }) {
+export function MenuHeader({
+  title,
+  current,
+  menu,
+  listLabel = 'My menus'
+}: {
+  title?: string;
+  current?: string;
+  menu?: { id: string; name: string };
+  /** The list's name in the kicker: a leader's list is "Scouts' menus". */
+  listLabel?: string;
+}) {
   return (
     <PageHeader
       kicker={
         <>
           <Link href="/library/topic/menu-monster">Menu Monster</Link>
           <KickerSep />
-          {current ? <Link href={MENUS_HREF}>My menus</Link> : 'My menus'}
+          {current ? <Link href={MENUS_HREF}>{listLabel}</Link> : listLabel}
           {menu && (
             <>
               <KickerSep />

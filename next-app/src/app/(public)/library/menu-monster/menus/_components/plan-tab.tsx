@@ -16,6 +16,10 @@
  * (never fewer than the last meal's day + 1), so "Add a day" and "Remove day"
  * are saved, dirty-gated edits like any other. Unsaved edits are guarded by
  * useLeaveGuard (reload / close and in-app links).
+ *
+ * `readOnly` (a leader looking at a scout's menu): the same page with values as
+ * text — no Save / Discard, inputs, dialers, add / remove / ⋯ menus or leave guard.
+ * The meal rows are plain links and the shopping list is one link away.
  */
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
@@ -37,6 +41,7 @@ import { budgetState } from '../../../_tools/menu-monster/planner';
 import { createMenuAction, saveMenuAction } from '../../../_tools/menu-monster/menu-actions';
 import { AddMeal } from './add-meal';
 import { RowMenu } from './row-menu';
+import { ReadOnlyLine } from './read-only-line';
 import { SaveBar } from './save-bar';
 import s from './workspace.module.css';
 
@@ -56,9 +61,13 @@ export interface PlanTabProps {
   outings: Outing[];
   /** The Plan / Shopping tab strip, rendered under the title line. */
   tabs?: ReactNode;
+  /** A leader's view of a scout's menu: shown as text, nothing edits or saves. */
+  readOnly?: boolean;
+  /** Credit name of the scout who planned it (read-only view). */
+  plannedBy?: string | null;
 }
 
-export function PlanTab({ catalog, menuId, menu: initial, updatedAt, outings, tabs }: PlanTabProps) {
+export function PlanTab({ catalog, menuId, menu: initial, updatedAt, outings, tabs, readOnly = false, plannedBy = null }: PlanTabProps) {
   const router = useRouter();
   const [menu, setMenu] = useState<Menu>(initial);
   const [saved, setSaved] = useState<{ menu: Menu; key: string }>(() => ({ menu: initial, key: JSON.stringify(initial) }));
@@ -81,7 +90,7 @@ export function PlanTab({ catalog, menuId, menu: initial, updatedAt, outings, ta
   const priced = menu.meals.some((m) => m.recipeIds.length > 0);
   const budget = budgetState({ perSpent: cost.perPersonMeal }, menu.budgetPerPersonMeal);
 
-  useLeaveGuard(dirty);
+  useLeaveGuard(dirty && !readOnly);
 
   // A dirty meal-row click opens the "save first" notice; move focus to it so
   // keyboard and screen-reader users land on what just appeared.
@@ -189,8 +198,9 @@ export function PlanTab({ catalog, menuId, menu: initial, updatedAt, outings, ta
     <div>
       <div className={s.titleLine}>
         <h1 className={s.menuTitle}>{menu.name.trim() || (isNew ? 'New menu' : 'Untitled menu')}</h1>
-        <SaveBar isNew={isNew} dirty={dirty} saving={saving} saved={justSaved} onSave={() => void save()} onDiscard={discard} />
+        {!readOnly && <SaveBar isNew={isNew} dirty={dirty} saving={saving} saved={justSaved} onSave={() => void save()} onDiscard={discard} />}
       </div>
+      {readOnly && <ReadOnlyLine plannedBy={plannedBy} />}
       {tabs != null && <div className={s.tabs}>{tabs}</div>}
 
       {error && (
@@ -213,6 +223,15 @@ export function PlanTab({ catalog, menuId, menu: initial, updatedAt, outings, ta
         </Notice>
       )}
 
+      {readOnly ? (
+        <section className={s.basics} aria-label="Menu basics">
+          <p className={s.foot}>{[MENU_CONTEXTS.find((c) => c.key === menu.context)?.label ?? menu.context, linked?.title].filter(Boolean).join(' · ')}</p>
+          <p className={s.foot}>
+            {[`People: ${menu.headcount}`, ...DIET_ORDER.filter((k) => (menu.restrictions[k] || 0) > 0).map((k) => `${dialerLabel(k)}: ${menu.restrictions[k]}`)].join(' · ')}
+          </p>
+          <p className={s.foot}>{money(menu.budgetPerPersonMeal)} budget a person, per meal</p>
+        </section>
+      ) : (
       <section className={s.basics} aria-label="Menu name and basics">
         <div className={s.basicsTop}>
         <Field label="Menu name" error={nameError}>
@@ -297,6 +316,7 @@ export function PlanTab({ catalog, menuId, menu: initial, updatedAt, outings, ta
           <span>budget a person, per meal</span>
         </div>
       </section>
+      )}
 
       <div className={s.grid}>
         <div className={s.col}>
@@ -314,7 +334,7 @@ export function PlanTab({ catalog, menuId, menu: initial, updatedAt, outings, ta
                 <div key={d} className={s.dayBlock}>
                   <div className={s.dayHeadRow}>
                     <h3 className={s.dayHead}>{dayLabel(menu.startDate, d)}</h3>
-                    {removable && (
+                    {removable && !readOnly && (
                       <Button variant="ghost" onClick={removeLastDay} aria-label={`Remove Day ${d + 1}`}>
                         Remove day
                       </Button>
@@ -325,7 +345,7 @@ export function PlanTab({ catalog, menuId, menu: initial, updatedAt, outings, ta
                     {meals.map((meal) => {
                       const names = meal.recipeIds.map((id) => catalog.recipes.find((r) => r.id === id)?.name).filter(Boolean);
                       const label = slotLabel(meal.slot);
-                      const rowName = clean ? (
+                      const rowName = clean || readOnly ? (
                         <Link className={s.rowName} href={mealHref(meal.id)}>
                           {label}
                         </Link>
@@ -341,28 +361,34 @@ export function PlanTab({ catalog, menuId, menu: initial, updatedAt, outings, ta
                             <span className={s.meta}>{names.length ? names.join(', ') : 'Nothing picked yet'}</span>
                           </div>
                           <div className={s.cost}>{meal.recipeIds.length ? money(cost.byMeal[meal.id] ?? 0) : ''}</div>
-                          <RowMenu
-                            label={`More for Day ${d + 1} ${label.toLowerCase()}`}
-                            items={[
-                              clean ? { label: 'Open', href: mealHref(meal.id) } : { label: 'Open', onSelect: () => setNavWarn(meal.id) },
-                              { label: 'Remove', danger: true, onSelect: () => removeMeal(meal.id) }
-                            ]}
-                          />
+                          {!readOnly && (
+                            <RowMenu
+                              label={`More for Day ${d + 1} ${label.toLowerCase()}`}
+                              items={[
+                                clean ? { label: 'Open', href: mealHref(meal.id) } : { label: 'Open', onSelect: () => setNavWarn(meal.id) },
+                                { label: 'Remove', danger: true, onSelect: () => removeMeal(meal.id) }
+                              ]}
+                            />
+                          )}
                         </li>
                       );
                     })}
-                    <li className={s.addRow}>
-                      <AddMeal label={`Add a meal to Day ${d + 1}`} free={free} atCap={atCap} onAdd={(slot) => addMeal(d, slot)} />
-                    </li>
+                    {!readOnly && (
+                      <li className={s.addRow}>
+                        <AddMeal label={`Add a meal to Day ${d + 1}`} free={free} atCap={atCap} onAdd={(slot) => addMeal(d, slot)} />
+                      </li>
+                    )}
                   </ul>
                 </div>
               );
             })}
-            <div className={s.addDay}>
-              <Button variant="ghost" onClick={addDay} disabled={days >= MAX_MENU_DAYS}>
-                Add a day
-              </Button>
-            </div>
+            {!readOnly && (
+              <div className={s.addDay}>
+                <Button variant="ghost" onClick={addDay} disabled={days >= MAX_MENU_DAYS}>
+                  Add a day
+                </Button>
+              </div>
+            )}
           </section>
         </div>
 

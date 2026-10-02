@@ -18,6 +18,7 @@ vi.mock('next/navigation', () => ({
   }
 }));
 vi.mock('@/lib/family-access', () => ({ getIdentitySessionIfValid: async () => mocks.session }));
+vi.mock('@/lib/admin-actor', () => ({ resolveAdminActor: async () => null }));
 vi.mock('@/lib/supabase/server', () => ({ createAdminClient: () => ({ stub: true }) }));
 vi.mock('@/lib/menu-monster/menus-store', () => ({ loadMenuWith: mocks.loadMenuWith }));
 vi.mock('@/lib/menu-monster/data', () => ({ loadMenuMonsterCatalog: async () => ({}) }));

@@ -25,6 +25,10 @@
  * back exactly as loaded; package choices and quantities belong to the Shopping
  * tab. A People equal to the menu's is stored as null.
  *
+ * `readOnly` (a leader looking at a scout's meal): the same page with People as
+ * text, recipes opening to plain ingredient rows (IngredientList, read mode), and
+ * no Save / Discard, ⋯ menus, recipe search, Undo or leave guard.
+ *
  * No shopping controls here. Costs are derived on every render by the pure
  * engine from the meal's own catalog (menus.ts mealCatalog applies its recipe
  * edits), so nothing on this page can disagree with the shopping list.
@@ -54,6 +58,7 @@ import {
 } from '@/lib/menu-monster/ingredient-rows';
 import { saveMenuAction } from '../../../_tools/menu-monster/menu-actions';
 import { IngredientList, type RowAction } from '../../_components/ingredient-list';
+import { ReadOnlyLine } from './read-only-line';
 import { RowMenu } from './row-menu';
 import { SaveBar } from './save-bar';
 import s from './workspace.module.css';
@@ -91,13 +96,17 @@ export function MealEditor({
   menuId,
   menu,
   mealId,
-  updatedAt
+  updatedAt,
+  readOnly = false,
+  plannedBy = null
 }: {
   catalog: Catalog;
   menuId: string;
   menu: Menu;
   mealId: string;
   updatedAt: string;
+  readOnly?: boolean;
+  plannedBy?: string | null;
 }) {
   const meal = menu.meals.find((m) => m.id === mealId) as MenuMeal;
   const start = (): Draft => ({ people: meal.headcount ?? menu.headcount, recipeIds: [...meal.recipeIds], edits: { ...(meal.recipeEdits ?? {}) } });
@@ -122,7 +131,7 @@ export function MealEditor({
   const dirty = keyOf(draft) !== keyOf(saved);
 
   // Reloads, tab closes and in-app links ask before dropping unsaved changes.
-  useLeaveGuard(dirty);
+  useLeaveGuard(dirty && !readOnly);
 
   // A remove or swap hands focus to Undo (its row, and the ⋯ that was focused, are gone).
   useEffect(() => {
@@ -289,6 +298,7 @@ export function MealEditor({
     <div>
       <div className={s.titleLine}>
         <h1 className={s.menuTitle}>{mealTitle(menu.startDate, meal.day, meal.slot)}</h1>
+        {!readOnly && (
         <span className={s.actions}>
           {statusText && <span className={s.muted}>{statusText}</span>}
           <SaveBar
@@ -306,7 +316,9 @@ export function MealEditor({
             }}
           />
         </span>
+        )}
       </div>
+      {readOnly && <ReadOnlyLine plannedBy={plannedBy} />}
 
       {error && (
         <Notice tone="error" className={s.notice}>
@@ -333,6 +345,11 @@ export function MealEditor({
           </div>
         </div>
 
+        {readOnly ? (
+          <p className={s.foot}>
+            {[`People: ${draft.people}`, ...diets.map((k) => `${RESTRICTION_BY_KEY[k].label}: ${menu.restrictions[k]}`)].join(' · ')}
+          </p>
+        ) : (
         <div className={s.line}>
           <Stepper
             id="mm-meal-people"
@@ -358,9 +375,10 @@ export function MealEditor({
             <span className={s.muted}>· {diets.map((k) => `${RESTRICTION_BY_KEY[k].label}: ${menu.restrictions[k]}`).join(' · ')} (from the menu)</span>
           )}
         </div>
+        )}
 
         <ul className={s.card} aria-label="Recipes in this meal">
-          {draft.recipeIds.length === 0 && <li className={s.empty}>Nothing picked yet. Search below to add a recipe.</li>}
+          {draft.recipeIds.length === 0 && <li className={s.empty}>{readOnly ? 'Nothing picked yet.' : 'Nothing picked yet. Search below to add a recipe.'}</li>}
           {draft.recipeIds.map((id) => {
             const name = recipeName(id);
             const open = openIds.has(id);
@@ -378,6 +396,7 @@ export function MealEditor({
                   {edited > 0 && <span className={s.meta}>Your version · {edited}</span>}
                 </div>
                 <div className={s.cost}>{money(costOf(id))}</div>
+                {!readOnly && (
                 <RowMenu
                   label={`More for ${name}`}
                   items={[
@@ -392,23 +411,31 @@ export function MealEditor({
                     { label: 'Remove', danger: true, onSelect: () => remove(id) }
                   ]}
                 />
+                )}
                 {open && (
                   <div id={panel} className={s.inset}>
-                    <IngredientList
-                      mode="menu-edit"
-                      ariaLabel={`${name} ingredients`}
-                      rows={rowsFor(id)}
-                      choices={choices}
-                      emptyText="No ingredients on this recipe yet."
-                      onAction={(a) => onIngredientAction(id, a)}
-                      onAnnounce={(text) => setStatus({ text, undoTo: null })}
-                    />
-                    <p className={s.foot}>Only this menu changes. The troop’s {name} recipe stays the same.</p>
+                    {readOnly ? (
+                      <IngredientList mode="read" ariaLabel={`${name} ingredients`} rows={rowsFor(id)} emptyText="No ingredients on this recipe yet." />
+                    ) : (
+                      <>
+                        <IngredientList
+                          mode="menu-edit"
+                          ariaLabel={`${name} ingredients`}
+                          rows={rowsFor(id)}
+                          choices={choices}
+                          emptyText="No ingredients on this recipe yet."
+                          onAction={(a) => onIngredientAction(id, a)}
+                          onAnnounce={(text) => setStatus({ text, undoTo: null })}
+                        />
+                        <p className={s.foot}>Only this menu changes. The troop’s {name} recipe stays the same.</p>
+                      </>
+                    )}
                   </div>
                 )}
               </li>
             );
           })}
+          {!readOnly && (
           <li className={s.addRow}>
             <div className={s.addWrap}>
               <input
@@ -454,6 +481,7 @@ export function MealEditor({
               {listOpen && matches.length === 0 && query.trim() !== '' && <p className={s.noMatch}>No recipe for this meal matches “{query.trim()}”.</p>}
             </div>
           </li>
+          )}
         </ul>
 
         <p className={s.statusLine} role="status">

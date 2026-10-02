@@ -2,13 +2,16 @@ import { describe, it, expect, afterEach, beforeAll } from 'vitest';
 import { adminClient } from './helpers/admin-client';
 import { MAX_MENUS_PER_SCOUT, type Menu } from '../src/lib/menu-monster/menus';
 import { CATALOG } from './helpers/menu-monster-fixture';
+import { publicScoutName } from '../src/lib/scout-name';
 import { buildSnapshot } from '../src/lib/menu-monster/menu-snapshot';
 import {
   createMenuWith,
   MENU_LIMIT,
   deleteMenuWith,
   duplicateMenuWith,
+  listAllMenusWith,
   listMenusWith,
+  ownerCreditNamesWith,
   loadMenuWith,
   saveMenuWith
 } from '../src/lib/menu-monster/menus-store';
@@ -278,5 +281,38 @@ describe('menu store actuals + free items (Phase 2 release A)', () => {
     const result = await saveMenuWith(admin, CHARLIE, id, menu({ actuals: claimed }), stored.updatedAt, CATALOG);
     expect(result.status).toBe('saved');
     expect((await loadMenuWith(admin, id))!.menu.actuals).toEqual({});
+  });
+});
+
+describe('menu store leader reads (read-only view)', () => {
+  it('Leader_ListsEveryScoutsMenus_WithTheirOwner', async () => {
+    const mine = await createMenuWith(admin, CHARLIE, menu({ name: `${MARKER} a` }), CATALOG);
+    const theirs = await createMenuWith(admin, other, menu({ name: `${MARKER} b` }), CATALOG);
+    const all = (await listAllMenusWith(admin)).filter((m) => m.name.startsWith(MARKER));
+    expect(all.map((m) => [m.id, m.ownerPersonId]).sort()).toEqual(
+      [
+        [mine, CHARLIE.personId],
+        [theirs, other.personId]
+      ].sort()
+    );
+  });
+
+  it('Leader_ListsNewestEditedFirst', async () => {
+    const first = await createMenuWith(admin, CHARLIE, menu({ name: `${MARKER} old` }), CATALOG);
+    const second = await createMenuWith(admin, other, menu({ name: `${MARKER} new` }), CATALOG);
+    await admin.from('mm_menus').update({ updated_at: '2026-01-01T00:00:00Z' }).eq('id', first);
+    await admin.from('mm_menus').update({ updated_at: '2026-02-01T00:00:00Z' }).eq('id', second);
+    const ids = (await listAllMenusWith(admin)).filter((m) => m.name.startsWith(MARKER)).map((m) => m.id);
+    expect(ids).toEqual([second, first]);
+  });
+
+  it('CreditName_IsFirstNameAndLastInitial_FromThePeopleRow', async () => {
+    const { data } = await admin.from('people').select('first_name, last_name').eq('id', CHARLIE.personId).single();
+    const names = await ownerCreditNamesWith(admin, [CHARLIE.personId]);
+    expect(names.get(CHARLIE.personId)).toBe(publicScoutName(data as { first_name: string; last_name: string }));
+  });
+
+  it('CreditName_ReadsNothing_WhenNoIdsAreGiven', async () => {
+    expect((await ownerCreditNamesWith(admin, [])).size).toBe(0);
   });
 });
