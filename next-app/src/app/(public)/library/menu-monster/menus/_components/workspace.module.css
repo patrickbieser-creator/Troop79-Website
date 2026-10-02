@@ -275,6 +275,16 @@
 
 /* ---- My menus / locked line --------------------------------------------------- */
 .listHead { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); margin-bottom: var(--sp-4); flex-wrap: wrap; }
+.listHead .heading { margin: 0; }
+/* The Menu Monster hub: My menus above the anonymous planner. */
+.hubSection { margin-bottom: var(--sp-8); }
+.hubPlanHeading {
+  font-family: var(--font-ui);
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: var(--text-head);
+  margin: 0 0 var(--sp-3);
+}
 .locked {
   font-family: var(--font-ui);
   font-size: var(--fs-md);

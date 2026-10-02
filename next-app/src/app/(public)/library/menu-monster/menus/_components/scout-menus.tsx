@@ -80,8 +80,23 @@ export function MenuTabs({ menuId, active }: { menuId: string; active: 'plan' | 
   );
 }
 
-/** Not a scout: one locked line, a way in, and the planner that needs no sign-in. */
-export function LockedLine({ next }: { next: string }) {
+/**
+ * Not a scout: one locked line and a way in. On the workspace pages it also
+ * points at the planner that needs no sign-in; `hub` is the Menu Monster
+ * shelf's own quiet version (the planner is already right below it).
+ */
+export function LockedLine({ next, hub = false }: { next: string; hub?: boolean }) {
+  if (hub) {
+    return (
+      <p className={s.foot}>
+        Scouts:{' '}
+        <Link className={s.link} href={`/signin?next=${encodeURIComponent(next)}`}>
+          sign in
+        </Link>{' '}
+        to save menus, plan several meals and share a shopping list.
+      </p>
+    );
+  }
   return (
     <p className={s.locked}>
       Scouts: <Link className={s.link} href={`/signin?next=${encodeURIComponent(next)}`}>sign in to save your menu</Link>

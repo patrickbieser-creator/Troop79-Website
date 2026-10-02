@@ -524,15 +524,3 @@
 .pDl ul { margin: 0; padding-left: 12pt; }
 .sig { display: grid; grid-template-columns: 1fr 1fr; gap: 24pt; margin-top: 26pt; font-size: 8.5pt; color: var(--text-meta); }
 .sig > div { border-top: 1px solid var(--text-head); padding-top: 3pt; }
-
-/* "My menus" link above the planner for a signed-in scout (Scout Workspace). */
-.myMenus {
-  display: inline-block;
-  font-family: var(--font-ui);
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: var(--navy);
-  padding: var(--sp-2) 0;
-}
-.myMenus:hover { color: var(--forest); text-decoration: underline; text-underline-offset: 2px; }
-.myMenus:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
