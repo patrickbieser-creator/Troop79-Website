@@ -403,7 +403,8 @@ export function seedPlan(catalog: Catalog): Plan {
 /* ---- Plan edits the planner needs (pure, so they can be tested) ----------- */
 
 export const MIN_HEADCOUNT = 2;
-export const MAX_HEADCOUNT = 16;
+// Patrick, 2026-10-02: whole-troop meals run up to 50 (was 16, a patrol).
+export const MAX_HEADCOUNT = 50;
 export const MAX_QTY = 99;
 
 const clampInt = (n: unknown, lo: number, hi: number, fallback: number) => {

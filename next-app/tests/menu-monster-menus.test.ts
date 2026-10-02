@@ -41,7 +41,8 @@ describe('sanitizeMenu', () => {
   });
 
   it('Menu_ClampsHeadcount_ToThePlannersRange', () => {
-    expect(sanitizeMenu(raw({ headcount: 40 }), CATALOG).headcount).toBe(MAX_HEADCOUNT);
+    expect(sanitizeMenu(raw({ headcount: 50 }), CATALOG).headcount).toBe(50);
+    expect(sanitizeMenu(raw({ headcount: 80 }), CATALOG).headcount).toBe(MAX_HEADCOUNT);
     expect(sanitizeMenu(raw({ headcount: 0 }), CATALOG).headcount).toBe(MIN_HEADCOUNT);
   });
 
@@ -81,6 +82,7 @@ describe('sanitizeMenu', () => {
 
   it('Menu_ClampsMealHeadcountOverride', () => {
     const m = sanitizeMenu(raw({ meals: [{ id: 'a', day: 0, slot: 'breakfast', headcount: 99, recipeIds: [] }] }), CATALOG);
+    expect(MAX_HEADCOUNT).toBe(50); // Patrick, 2026-10-02: whole-troop meals run up to 50
     expect(m.meals[0].headcount).toBe(MAX_HEADCOUNT);
   });
 

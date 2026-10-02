@@ -185,8 +185,8 @@ describe('MenuMonsterPlanner', () => {
     expect(bacon()).toBe('1 pack · Kirkland Hickory Smoked Bacon, 4 x 1 lb');
     expect(live(container).textContent).toContain('16 people.');
     expect(live(container).textContent).toMatch(/Spent \$\d+(\.\d\d)? per person/);
-    // The dial stops at 16.
-    expect((plus as HTMLButtonElement).disabled).toBe(true);
+    // The dial goes on past a patrol: whole-troop meals run to MAX_HEADCOUNT (50).
+    expect((plus as HTMLButtonElement).disabled).toBe(false);
 
     // D-070: no <details> accordions anywhere in the planner.
     expect(container.querySelectorAll('details').length).toBe(0);

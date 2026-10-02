@@ -361,7 +361,7 @@ describe('menu monster engine', () => {
     const r = restorePlan(
       {
         meal: 'breakfast',
-        headcount: 40,
+        headcount: 80,
         restrictions: { gf: '3', nut: -2, bogus: 9 },
         recipeIds: ['B003', 'GONE', 'B003'],
         packageChoice: { bacon: 'p-bac-kirk', eggs: 'p-missing' },
@@ -374,7 +374,7 @@ describe('menu monster engine', () => {
       },
       CATALOG
     );
-    expect(r.headcount).toBe(16);
+    expect(r.headcount).toBe(50);
     expect(r.restrictions).toEqual({ gf: 3, nut: 0, dairy: 0, veg: 0 });
     expect(r.recipeIds).toEqual(['B003']);
     expect(r.packageChoice).toEqual({ bacon: 'p-bac-kirk' });

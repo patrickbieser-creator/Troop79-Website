@@ -27,7 +27,7 @@
 |---|---|---|
 | 8 | Advancement requirements | **Dropped.** No requirement tags, coverage checklist, requirement filter or BSA-text check. Advancement is tracked elsewhere (Fast Entry stays the sign-off path). |
 | 9 | Patrol on a menu | **Dropped entirely.** No patrol field, picker, filter or public patrol byline. |
-| 10 | Special diets | **Gluten-free, vegetarian, nut-free**, entered as counts on the menu. Diets are counts, not people: overlaps (one person both gluten-free and nut-free) are not modeled. |
+| 10 | Special diets | **Gluten-free, vegetarian, nut-free, dairy-free**, entered as counts on the menu. Diets are counts, not people: overlaps (one person both gluten-free and nut-free) are not modeled. |
 | 11 | Navigation | **Tabs** under the menu title: Plan / Shopping / Share. Meals and recipes are drill-ins with a contextual back link. |
 | 12 | Public name rule | **Everyone sees "Sam K."**, including anonymous visitors, on shared menus and recipe credits. No audience split. |
 | 13 | Price band | **±50%** of the current price updates the book; outside waits for a leader. A scout-added package is band-checked per recipe unit against the cheapest existing package. |
@@ -166,7 +166,7 @@ mm_menus          id uuid pk, owner_person_id fk people ON DELETE RESTRICT, name
                   context text check (home|camp|trail),
                   calendar_entry_id bigint fk calendar_entries ON DELETE SET NULL,   -- NOT public.events (ledger lookup)
                   start_date date null,                      -- day labels when no outing is linked
-                  headcount int (engine MIN/MAX_HEADCOUNT), restrictions jsonb,   -- RestrictionKey map, clamped on write
+                  headcount int (engine MIN/MAX_HEADCOUNT = 2–50), restrictions jsonb,   -- RestrictionKey map, clamped on write
                   budget_per_person_meal numeric(6,2) not null default 4 check >= 0,
                   meals jsonb (array, capped ~30; each { id, day, slot, headcount|null, plan }),
                   snapshot jsonb ({ v:1, asOf, totals, perPerson, lines:[…names, pkgLabel, qty, unitPrice, spent] }; server-built),
@@ -202,8 +202,8 @@ Phase 4           mm_recipes + author_person_id, attribution_label, shared_at, e
 ## Open Questions
 
 - [x] Schema review: diets as a `jsonb` map (2026-10-02).
-- [ ] Show **Dairy-free** too? The engine already supports it; the prototype shows three diets.
-- [ ] Headcount range: the engine caps a plan at 2–16 people (`engine.ts:405`); the prototype allowed 1–30. Keep 2–16?
+- [x] **Dairy-free** shows too (Patrick, 2026-10-02): four diets — gluten-free, vegetarian, nut-free, dairy-free.
+- [x] Headcount 2–50 (Patrick, 2026-10-02: whole-troop meals run up to 50). `MAX_HEADCOUNT` raised for the planner, recipe builder and menus.
 
 ## Notes
 

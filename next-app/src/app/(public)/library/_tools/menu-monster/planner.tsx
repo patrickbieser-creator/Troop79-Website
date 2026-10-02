@@ -94,7 +94,7 @@ export function budgetState(t: Totals, budget: number): BudgetState {
 }
 
 /* ---- A number box that commits on blur / Enter, not on every keystroke ----
-   Typing "16" into a 2–16 field must not clamp "1" to 2 halfway through.
+   Typing "16" into a 2–50 field must not clamp "1" to 2 halfway through.
    Prop changes (the +/− buttons, a restore) reset the draft during render —
    React's derive-from-props pattern, no effect needed. */
 

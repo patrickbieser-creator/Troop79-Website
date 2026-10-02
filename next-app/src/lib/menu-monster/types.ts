@@ -153,7 +153,7 @@ export type LineSource = 'buy' | 'pantry' | 'home';
 /** What the scout edits. Persisted to localStorage; everything else is derived. */
 export interface Plan {
   meal: MealSlot;
-  /** Scouts and adults together, 2–16. */
+  /** Scouts and adults together, 2–50 (MIN/MAX_HEADCOUNT). */
   headcount: number;
   /** Counts, never names. */
   restrictions: Record<RestrictionKey, number>;
