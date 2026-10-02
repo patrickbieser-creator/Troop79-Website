@@ -21,7 +21,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { money } from '@/lib/event-money';
+import { priceText as money } from '@/lib/menu-monster/units';
 import { fmtRange } from '@/lib/format-date';
 import { useLeaveGuard } from '@/lib/use-leave-guard';
 import { Button } from '@/app/_components/button';
@@ -130,7 +130,7 @@ export function PlanTab({ catalog, menuId, menu: initial, updatedAt, outings, ta
   /* ---- Meals ---- */
   const addMeal = (day: number, slot: Plan['meal']) => {
     if (menu.meals.length >= MAX_MENU_MEALS) return;
-    const meal: MenuMeal = { id: newId(), day, slot, headcount: null, recipeIds: [], packageChoice: {}, qtyOverride: {}, lineSource: {}, recipeEdits: {} };
+    const meal: MenuMeal = { id: newId(), day, slot, headcount: null, recipeIds: [], recipeEdits: {} };
     edit((m) => ({ ...m, meals: [...m.meals, meal] }));
   };
   const removeMeal = (id: string) => edit((m) => ({ ...m, meals: m.meals.filter((x) => x.id !== id) }));
@@ -213,91 +213,93 @@ export function PlanTab({ catalog, menuId, menu: initial, updatedAt, outings, ta
         </Notice>
       )}
 
+      <section className={s.basics} aria-label="Menu name and basics">
+        <div className={s.basicsTop}>
+        <Field label="Menu name" error={nameError}>
+          <TextInput
+            ref={nameRef}
+            value={menu.name}
+            maxLength={MAX_MENU_NAME}
+            autoComplete="off"
+            placeholder="Fall Camporee"
+            aria-invalid={nameError ? true : undefined}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </Field>
+        <div className={s.pickRow}>
+          <Field label="Where you’re cooking">
+            <SelectInput value={menu.context} onChange={(e) => setContext(e.target.value as MenuContext)}>
+              {MENU_CONTEXTS.map((c) => (
+                <option key={c.key} value={c.key}>
+                  {c.label}
+                </option>
+              ))}
+            </SelectInput>
+          </Field>
+          <Field label="Outing">
+            <SelectInput value={linked ? String(linked.id) : 'none'} onChange={(e) => setOuting(e.target.value)}>
+              {outings.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.title} · {fmtRange(o.startDate, o.endDate)}
+                </option>
+              ))}
+              <option value="none">No outing</option>
+            </SelectInput>
+          </Field>
+        </div>
+        </div>
+
+        <div className={s.line}>
+          <Stepper
+            id="mm-people"
+            label="People"
+            value={menu.headcount}
+            min={MIN_HEADCOUNT}
+            max={MAX_HEADCOUNT}
+            onChange={setHeadcount}
+            groupLabel="People"
+            lessLabel="One fewer person"
+            moreLabel="One more person"
+          />
+          {DIET_ORDER.map((k) => (
+            <span key={k} className={s.line}>
+              <span className={s.sep} aria-hidden="true">
+                ·
+              </span>
+              <Stepper
+                id={`mm-diet-${k}`}
+                label={dialerLabel(k)}
+                value={menu.restrictions[k] || 0}
+                min={0}
+                max={menu.headcount}
+                onChange={(n) => setDiet(k, n)}
+                groupLabel={`${dialerLabel(k)} people`}
+                lessLabel={`One fewer ${dialerLabel(k).toLowerCase()} person`}
+                moreLabel={`One more ${dialerLabel(k).toLowerCase()} person`}
+              />
+            </span>
+          ))}
+        </div>
+        <div className={s.line}>
+          <span className={s.moneyIn}>
+            <span aria-hidden="true">$</span>
+            <NumberBox
+              framed
+              id="mm-budget"
+              value={menu.budgetPerPersonMeal}
+              min={0}
+              max={999}
+              step={0.25}
+              ariaLabel="Budget a person, per meal, in dollars"
+              onCommit={(n) => edit((m) => ({ ...m, budgetPerPersonMeal: n }))}
+            />
+          </span>
+          <span>budget a person, per meal</span>
+        </div>
+      </section>
+
       <div className={s.grid}>
         <div className={s.col}>
-          <section className={s.basics} aria-label="Menu name and basics">
-            <Field label="Menu name" error={nameError}>
-              <TextInput
-                ref={nameRef}
-                value={menu.name}
-                maxLength={MAX_MENU_NAME}
-                autoComplete="off"
-                placeholder="Fall Camporee"
-                aria-invalid={nameError ? true : undefined}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </Field>
-            <div className={s.pickRow}>
-              <Field label="Where you’re cooking">
-                <SelectInput value={menu.context} onChange={(e) => setContext(e.target.value as MenuContext)}>
-                  {MENU_CONTEXTS.map((c) => (
-                    <option key={c.key} value={c.key}>
-                      {c.label}
-                    </option>
-                  ))}
-                </SelectInput>
-              </Field>
-              <Field label="Outing">
-                <SelectInput value={linked ? String(linked.id) : 'none'} onChange={(e) => setOuting(e.target.value)}>
-                  {outings.map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.title} · {fmtRange(o.startDate, o.endDate)}
-                    </option>
-                  ))}
-                  <option value="none">No outing</option>
-                </SelectInput>
-              </Field>
-            </div>
-
-            <div className={s.line}>
-              <Stepper
-                id="mm-people"
-                label="People"
-                value={menu.headcount}
-                min={MIN_HEADCOUNT}
-                max={MAX_HEADCOUNT}
-                onChange={setHeadcount}
-                groupLabel="People"
-                lessLabel="One fewer person"
-                moreLabel="One more person"
-              />
-              {DIET_ORDER.map((k) => (
-                <span key={k} className={s.line}>
-                  <span className={s.sep} aria-hidden="true">
-                    ·
-                  </span>
-                  <Stepper
-                    id={`mm-diet-${k}`}
-                    label={dialerLabel(k)}
-                    value={menu.restrictions[k] || 0}
-                    min={0}
-                    max={menu.headcount}
-                    onChange={(n) => setDiet(k, n)}
-                    groupLabel={`${dialerLabel(k)} people`}
-                    lessLabel={`One fewer ${dialerLabel(k).toLowerCase()} person`}
-                    moreLabel={`One more ${dialerLabel(k).toLowerCase()} person`}
-                  />
-                </span>
-              ))}
-            </div>
-            <div className={s.line}>
-              <span className={s.moneyIn}>
-                <span aria-hidden="true">$</span>
-                <NumberBox
-                  framed
-                  id="mm-budget"
-                  value={menu.budgetPerPersonMeal}
-                  min={0}
-                  max={999}
-                  step={0.25}
-                  ariaLabel="Budget a person, per meal, in dollars"
-                  onCommit={(n) => edit((m) => ({ ...m, budgetPerPersonMeal: n }))}
-                />
-              </span>
-              <span>budget a person, per meal</span>
-            </div>
-          </section>
-
           <section aria-labelledby="mm-meals-h">
             <h2 id="mm-meals-h" className={s.heading}>
               Meals

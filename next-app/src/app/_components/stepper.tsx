@@ -125,7 +125,7 @@ export function Stepper({
   groupLabel: string;
   lessLabel: string;
   moreLabel: string;
-  /** A visible label drawn to the left, ending in a colon ("People:"). It also names the number. */
+  /** A visible label drawn to the left; the colon is added here ("People" renders "People:"). It also names the number. */
   label?: ReactNode;
   /** The number's accessible name when no visible `label` or outside <label for> names it. */
   inputLabel?: string;

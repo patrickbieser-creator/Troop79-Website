@@ -50,17 +50,29 @@ export type EditOp =
 /** recipeId → that recipe's ops on this meal. Stored inside meals jsonb. */
 export type RecipeEdits = Record<string, EditOp[]>;
 
+/**
+ * How the menu-wide shopping list is bought (slice 5): the package picked in
+ * place of the recommendation, a hand-typed quantity, and what the troop
+ * brings instead of buying. One set for the whole menu — the list merges every
+ * meal's needs, so a choice about eggs is about ALL the eggs. Same shapes (and
+ * the same engine rules) as the planner's Plan fields.
+ */
+export interface MenuShopping {
+  packageChoice: Plan['packageChoice'];
+  qtyOverride: Plan['qtyOverride'];
+  lineSource: Plan['lineSource'];
+}
+
+export const emptyShopping = (): MenuShopping => ({ packageChoice: {}, qtyOverride: {}, lineSource: {} });
+
 /** One meal on a menu: a day index (0 = the menu's first day), a slot, and
- *  the planner's per-meal choices. headcount null = the menu's headcount. */
+ *  the recipes on the plate. headcount null = the menu's headcount. */
 export interface MenuMeal {
   id: string;
   day: number;
   slot: MealSlot;
   headcount: number | null;
   recipeIds: Plan['recipeIds'];
-  packageChoice: Plan['packageChoice'];
-  qtyOverride: Plan['qtyOverride'];
-  lineSource: Plan['lineSource'];
   /** Menu-local recipe changes; {} until Phase 2's editing UI writes some. */
   recipeEdits: RecipeEdits;
 }
@@ -77,6 +89,8 @@ export interface Menu {
   budgetPerPersonMeal: number;
   /** Days the menu spans (1..MAX_MENU_DAYS); never fewer than the last meal's day + 1. */
   dayCount: number;
+  /** Package / quantity / bring-from-home choices for the merged shopping list. */
+  shopping: MenuShopping;
   meals: MenuMeal[];
 }
 
@@ -191,6 +205,37 @@ export function mealCatalog(catalog: Catalog, meal: MenuMeal): Catalog {
   return { ...catalog, recipes: catalog.recipes.map((r) => (edited(r) ? { ...r, lines: applyRecipeEdits(r, edits[r.id]) } : r)) };
 }
 
+
+/**
+ * The menu's shopping choices from whatever was stored: the menu's own
+ * `shopping` first, then the per-meal packageChoice / qtyOverride / lineSource
+ * that menus saved before slice 5 carry — per ingredient the first non-empty
+ * value wins, so a choice the scout made on the menu is never overridden by an
+ * old meal's. Shape-only (no catalog): sanitizeMenu validates the result.
+ */
+export function foldShopping(own: unknown, meals: unknown): MenuShopping {
+  const out = emptyShopping();
+  const sources: unknown[] = [own, ...(Array.isArray(meals) ? meals : [])];
+  for (const src of sources) {
+    if (!isRecord(src)) continue;
+    for (const key of ['packageChoice', 'qtyOverride', 'lineSource'] as const) {
+      const part = src[key];
+      if (!isRecord(part)) continue;
+      const dest = out[key] as Record<string, unknown>;
+      for (const [ing, v] of Object.entries(part)) if (!(ing in dest)) dest[ing] = v;
+    }
+  }
+  return out;
+}
+
+/** Folded choices → ones the catalog can still honour (restorePlan's rules per field, ingredients that exist). */
+function sanitizeShopping(folded: MenuShopping, catalog: Catalog): MenuShopping {
+  const plan = restorePlan({ ...folded, meal: 'breakfast' }, catalog);
+  const ING = new Set(catalog.ingredients.map((i) => i.id));
+  const known = <T,>(rec: Record<string, T>) => Object.fromEntries(Object.entries(rec).filter(([ing]) => ING.has(ing))) as Record<string, T>;
+  return { packageChoice: known(plan.packageChoice), qtyOverride: known(plan.qtyOverride), lineSource: known(plan.lineSource) };
+}
+
 /**
  * Any client payload → a Menu. Never throws. Meals with an unknown slot, a
  * repeated day × slot, or past the cap are dropped; each surviving meal goes
@@ -221,9 +266,6 @@ export function sanitizeMenu(raw: unknown, catalog: Catalog): Menu {
       slot,
       headcount: m.headcount == null ? null : clampInt(m.headcount, MIN_HEADCOUNT, MAX_HEADCOUNT, headcount),
       recipeIds: plan.recipeIds,
-      packageChoice: plan.packageChoice,
-      qtyOverride: plan.qtyOverride,
-      lineSource: plan.lineSource,
       recipeEdits: sanitizeRecipeEdits(m.recipeEdits, plan.recipeIds, catalog)
     });
   }
@@ -237,6 +279,7 @@ export function sanitizeMenu(raw: unknown, catalog: Catalog): Menu {
     restrictions,
     budgetPerPersonMeal,
     dayCount: coverDays(r.dayCount, meals),
+    shopping: sanitizeShopping(foldShopping(r.shopping, r.meals), catalog),
     meals
   };
 }
@@ -249,16 +292,18 @@ export function addDays(date: string, n: number): string {
 }
 
 /** One menu meal as the planner's Plan: the menu's people, diets and budget,
- *  the meal's own headcount when it has one. */
+ *  the meal's own headcount when it has one. Package choices are the menu's,
+ *  not the meal's (see MenuShopping), so a meal on its own prices at the
+ *  recommended packages. */
 export function composePlan(menu: Menu, meal: MenuMeal): Plan {
   return {
     meal: meal.slot,
     headcount: meal.headcount ?? menu.headcount,
     restrictions: { ...menu.restrictions },
     recipeIds: [...meal.recipeIds],
-    packageChoice: { ...meal.packageChoice },
-    qtyOverride: { ...meal.qtyOverride },
-    lineSource: { ...meal.lineSource },
+    packageChoice: {},
+    qtyOverride: {},
+    lineSource: {},
     budgetPerPerson: menu.budgetPerPersonMeal,
     date: addDays(menu.startDate ?? centralToday(), meal.day),
     patrol: ''

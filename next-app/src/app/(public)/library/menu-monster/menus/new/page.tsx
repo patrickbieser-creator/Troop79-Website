@@ -6,7 +6,7 @@ import type { Metadata } from 'next';
 import { createAdminClient } from '@/lib/supabase/server';
 import { centralToday } from '@/lib/dates';
 import { loadMenuMonsterCatalog } from '@/lib/menu-monster/data';
-import { DEFAULT_MENU_BUDGET, DEFAULT_MENU_DAYS, type Menu } from '@/lib/menu-monster/menus';
+import { DEFAULT_MENU_BUDGET, DEFAULT_MENU_DAYS, emptyShopping, type Menu } from '@/lib/menu-monster/menus';
 import { loadOutingsWith } from '@/lib/menu-monster/menus-data';
 import { PageShell } from '@/app/_components/page-shell';
 import { PlanTab } from '../_components/plan-tab';
@@ -24,6 +24,7 @@ const BLANK: Menu = {
   restrictions: { gf: 0, nut: 0, dairy: 0, veg: 0 },
   budgetPerPersonMeal: DEFAULT_MENU_BUDGET,
   dayCount: DEFAULT_MENU_DAYS,
+  shopping: emptyShopping(),
   meals: []
 };
 

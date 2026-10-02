@@ -37,8 +37,9 @@ const base = (over: Partial<Menu> = {}): Menu => ({
   restrictions: { gf: 5, nut: 0, dairy: 0, veg: 0 },
   budgetPerPersonMeal: 4,
   dayCount: 2,
+  shopping: { packageChoice: {}, qtyOverride: {}, lineSource: {} },
   meals: [
-    { id: 'm1', day: 0, slot: 'breakfast', headcount: null, recipeIds: ['B003'], packageChoice: {}, qtyOverride: {}, lineSource: {}, recipeEdits: {} }
+    { id: 'm1', day: 0, slot: 'breakfast', headcount: null, recipeIds: ['B003'], recipeEdits: {} }
   ],
   ...over
 });
@@ -152,7 +153,7 @@ describe('PlanTab', () => {
   });
 
   it('Meals_AreGroupedUnderTheirDay', () => {
-    render(existing(base({ meals: [...base().meals, { id: 'm9', day: 1, slot: 'dinner', headcount: null, recipeIds: [], packageChoice: {}, qtyOverride: {}, lineSource: {}, recipeEdits: {} }] })));
+    render(existing(base({ meals: [...base().meals, { id: 'm9', day: 1, slot: 'dinner', headcount: null, recipeIds: [], recipeEdits: {} }] })));
     expect(screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['Day 1', 'Day 2']);
   });
 
@@ -215,7 +216,7 @@ describe('PlanTab', () => {
     render(
       existing(
         base({
-          meals: meals.map((slot, i) => ({ id: `x${i}`, day: 0, slot, headcount: null, recipeIds: [], packageChoice: {}, qtyOverride: {}, lineSource: {}, recipeEdits: {} }))
+          meals: meals.map((slot, i) => ({ id: `x${i}`, day: 0, slot, headcount: null, recipeIds: [], recipeEdits: {} }))
         })
       )
     );
@@ -468,5 +469,16 @@ describe('PlanTab', () => {
   it('OpeningAMeal_LinksStraightToIt_WhenTheMenuIsSaved', () => {
     render(existing());
     expect(screen.getByRole('link', { name: 'Breakfast' }).getAttribute('href')).toBe('/library/menu-monster/menus/menu-1/meals/m1');
+  });
+
+  describe('layout', () => {
+    it('Basics_SpanThePageAboveTheTwoColumns_SoTheDialerLineIsNotCrampedByTheMealsColumn', () => {
+      render(existing());
+      const basics = screen.getByRole('region', { name: 'Menu name and basics' });
+      const mealsHeading = screen.getByRole('heading', { level: 2, name: 'Meals' });
+      // The basics are not in the narrow left column with the meals; they sit above both columns.
+      expect(mealsHeading.closest('section')?.parentElement?.contains(basics)).toBe(false);
+      expect(basics.nextElementSibling?.contains(mealsHeading)).toBe(true);
+    });
   });
 });

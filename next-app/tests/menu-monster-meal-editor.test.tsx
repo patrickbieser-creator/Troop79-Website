@@ -36,9 +36,10 @@ const menu = (): Menu => ({
   restrictions: { gf: 0, nut: 0, dairy: 0, veg: 0 },
   budgetPerPersonMeal: 4,
   dayCount: 2,
+  shopping: { packageChoice: {}, qtyOverride: {}, lineSource: {} },
   meals: [
-    { id: 'm1', day: 0, slot: 'breakfast', headcount: null, recipeIds: ['B003'], packageChoice: {}, qtyOverride: {}, lineSource: {}, recipeEdits: {} },
-    { id: 'm2', day: 0, slot: 'lunch', headcount: null, recipeIds: [], packageChoice: {}, qtyOverride: {}, lineSource: {}, recipeEdits: {} }
+    { id: 'm1', day: 0, slot: 'breakfast', headcount: null, recipeIds: ['B003'], recipeEdits: {} },
+    { id: 'm2', day: 0, slot: 'lunch', headcount: null, recipeIds: [], recipeEdits: {} }
   ]
 });
 
@@ -432,22 +433,21 @@ describe('MealEditor', () => {
       expect(saved().meals[1]).toEqual(menu().meals[1]);
     });
 
-    it('Save_KeepsPackageChoiceQuantitiesAndSourcesUntouched', async () => {
+    it('Save_KeepsTheMenusShoppingChoicesAndTheMealsRecipeEditsUntouched', async () => {
       saveMenuAction.mockResolvedValue(LANDED);
       const m = menu();
-      m.meals[0].packageChoice = { bacon: 'p-bac-kirk' };
-      m.meals[0].qtyOverride = { bacon: { packageId: 'p-bac-kirk', qty: 2 } };
-      m.meals[0].lineSource = { bacon: { source: 'home', note: 'Mom has some' } };
+      m.shopping = {
+        packageChoice: { bacon: 'p-bac-kirk' },
+        qtyOverride: { bacon: { packageId: 'p-bac-kirk', qty: 2 } },
+        lineSource: { bacon: { source: 'home', note: 'Mom has some' } }
+      };
       m.meals[0].recipeEdits = { B003: [{ op: 'amount', ingredientId: 'bacon', qtyPerPerson: 2 }] };
       const user = userEvent.setup();
       render(editor('m1', m));
       await addRecipe(user, 'Pan', 'Pancakes');
       await user.click(screen.getByRole('button', { name: 'Save changes' }));
-      const { packageChoice, qtyOverride, lineSource, recipeEdits } = saved().meals[0];
-      expect({ packageChoice, qtyOverride, lineSource, recipeEdits }).toEqual({
-        packageChoice: m.meals[0].packageChoice,
-        qtyOverride: m.meals[0].qtyOverride,
-        lineSource: m.meals[0].lineSource,
+      expect({ shopping: saved().shopping, recipeEdits: saved().meals[0].recipeEdits }).toEqual({
+        shopping: m.shopping,
         recipeEdits: m.meals[0].recipeEdits
       });
     });

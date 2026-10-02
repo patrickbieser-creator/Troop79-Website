@@ -4,13 +4,17 @@
  *
  * Costs are derived on every render from the live catalog by the same engine
  * the planner uses — a meal is its composed Plan, so "what the meal costs" is
- * totalsOf(buildLines(plan)).spent and nothing here re-prices anything. The
- * menu-wide merged list (two egg meals buy one flat) is slice 5; until then
- * the menu total is the sum of its meals.
+ * totalsOf(buildLines(plan)).spent and nothing here re-prices anything.
+ *
+ * The menu-wide shopping list lives here too (buildMenuList): every meal's
+ * needs are gathered by the engine, merged by ingredient, and only THEN priced
+ * by the engine's own priceNeeds, so two egg meals buy one flat. It sits beside
+ * menuCost rather than in engine.ts because it reads menus.ts (composePlan,
+ * mealCatalog), which already imports the engine.
  */
 
-import type { Catalog, MealSlot, RestrictionKey } from './types';
-import { buildLines, totalsOf } from './engine';
+import type { Catalog, MealSlot, RestrictionKey, ShoppingLine, Totals } from './types';
+import { buildLines, gatherNeeds, priceNeeds, totalsOf, type Need } from './engine';
 import { MAX_MENU_DAYS, addDays, composePlan, mealCatalog, type Menu, type MenuMeal } from './menus';
 import { MEALS } from './units';
 import { fmtDateFull, fmtDay } from '@/lib/format-date';
@@ -71,6 +75,58 @@ export function recipeShares(menu: Menu, meal: MenuMeal, catalog: Catalog): Reco
   return shares;
 }
 
+/** A merged shopping line plus which meals use it (menu order) and how much
+ *  each needs, in the ingredient's recipe unit, before count units round up. */
+export interface MenuLine extends ShoppingLine {
+  usedBy: { mealId: string; amount: number }[];
+}
+
+export interface MenuList {
+  lines: MenuLine[];
+  totals: Totals;
+  /** People served, summed over every meal that has items. */
+  plates: number;
+  /** totals.spent over plates. */
+  perPersonMeal: number;
+  /** What shopping each meal on its own would cost, under the same package and bring-from-home choices. */
+  separately: number;
+  /** separately − totals.spent when positive (cents-rounded), else 0. */
+  saving: number;
+}
+
+/**
+ * The menu's shopping list: each meal composed (its own headcount, the menu's
+ * diets) with its recipe edits applied, its needs merged by ingredient, then
+ * priced once with the menu's package / quantity / bring-from-home choices.
+ */
+export function buildMenuList(menu: Menu, catalog: Catalog): MenuList {
+  const merged = new Map<string, Need>();
+  const usedBy = new Map<string, { mealId: string; amount: number }[]>();
+  let plates = 0;
+  let separately = 0;
+  const alone = { packageChoice: menu.shopping.packageChoice, qtyOverride: {}, lineSource: menu.shopping.lineSource };
+
+  for (const meal of menu.meals) {
+    if (meal.recipeIds.length === 0) continue;
+    const plan = composePlan(menu, meal);
+    const needs = gatherNeeds(plan, mealCatalog(catalog, meal));
+    plates += plan.headcount;
+    separately += totalsOf(priceNeeds(needs, alone, catalog), plan).spent;
+    for (const [id, n] of needs) {
+      const into = merged.get(id) ?? { ing: n.ing, need: 0, sources: [] };
+      into.need += n.need;
+      into.sources.push(...n.sources);
+      merged.set(id, into);
+      usedBy.set(id, [...(usedBy.get(id) ?? []), { mealId: meal.id, amount: n.need }]);
+    }
+  }
+
+  const lines = priceNeeds(merged, menu.shopping, catalog).map((l) => ({ ...l, usedBy: usedBy.get(l.ing.id) ?? [] }));
+  const totals = totalsOf(lines, { headcount: plates });
+  const gap = Math.round((separately - totals.spent) * 100) / 100;
+  return { lines, totals, plates, perPersonMeal: plates > 0 ? totals.spent / plates : 0, separately, saving: gap > 0 ? gap : 0 };
+}
+
 export interface MenuCost {
   total: number;
   /** Total over every plate served — people summed across meals that have items. */
@@ -78,16 +134,11 @@ export interface MenuCost {
   byMeal: Record<string, number>;
 }
 
+/** The menu's total is the merged list's (shopping once), not the sum of its
+ *  meals; byMeal is each meal on its own, as the meal page shows it. */
 export function menuCost(menu: Menu, catalog: Catalog): MenuCost {
   const byMeal: Record<string, number> = {};
-  let total = 0;
-  let plates = 0;
-  for (const meal of menu.meals) {
-    const cost = mealCost(menu, meal, catalog);
-    byMeal[meal.id] = cost;
-    if (meal.recipeIds.length === 0) continue;
-    total += cost;
-    plates += meal.headcount ?? menu.headcount;
-  }
-  return { total, perPersonMeal: plates > 0 ? total / plates : 0, byMeal };
+  for (const meal of menu.meals) byMeal[meal.id] = mealCost(menu, meal, catalog);
+  const list = buildMenuList(menu, catalog);
+  return { total: list.totals.spent, perPersonMeal: list.perPersonMeal, byMeal };
 }

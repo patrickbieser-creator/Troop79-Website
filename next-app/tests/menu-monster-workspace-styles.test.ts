@@ -48,4 +48,22 @@ describe('workspace.module.css', () => {
   it('QuietLink_AndAddSelect_AreGone', () => {
     expect(css).not.toMatch(/\.quietLink|\.addSelect/);
   });
+
+  it('PlanBasics_KeepTheNameAndPickersNarrow_SoOnlyTheDialerLineUsesTheFullWidth', () => {
+    expect(rule('.basicsTop')).toMatch(/max-width:\s*\d+px/);
+  });
+
+  it('PlanGrid_PutsTheShoppingColumnAt300px_OnlyFromTheDesktopBreakpoint', () => {
+    expect(css).toMatch(/@media \(min-width: 900px\)\s*\{\s*\.grid \{ grid-template-columns: minmax\(0, 1fr\) 300px; \}/);
+  });
+
+  it('ShoppingPrint_HidesTheControls_AndTheInsets', () => {
+    const print = css.slice(css.indexOf('@media print'));
+    for (const sel of ['.tabs', '.actions', '.seg', '.inset']) expect(print).toContain(sel);
+  });
+
+  it('ShoppingChips_AreAtLeast32pxTall_WithAPressedState', () => {
+    expect(rule('.chip')).toMatch(/min-height:\s*32px/);
+    expect(css).toMatch(/\.chip\[aria-pressed='true'\]/);
+  });
 });

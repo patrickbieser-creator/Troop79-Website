@@ -56,6 +56,10 @@
 
 /* ---- Basics ---------------------------------------------------------------- */
 .basics { margin-bottom: var(--sp-8); }
+/* The basics sit above the two columns so the People / diets dialer line has the
+   page's width (it needs roughly 1000px on one line) instead of the meals column's.
+   The name and pickers stay a comfortable form width. */
+.basicsTop { max-width: 640px; }
 .pickRow { display: grid; grid-template-columns: 1fr; gap: 0 var(--sp-4); }
 @media (min-width: 640px) {
   .pickRow { grid-template-columns: 1fr 1fr; }
@@ -367,3 +371,49 @@
 }
 .linkBtn:hover { color: var(--forest); }
 .linkBtn:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+
+/* ---- Shopping tab ------------------------------------------------------------- */
+.clickRow { cursor: pointer; }
+/* A quiet tag beside a row's name: "No price yet", "Short 4 slices". */
+.tag {
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  color: var(--text-meta);
+  border: 1px solid var(--border-light);
+  border-radius: var(--rad-sm);
+  padding: 0 var(--sp-2);
+}
+.insetLine { font-family: var(--font-ui); font-size: var(--fs-md); color: var(--text-body); margin: 0 0 var(--sp-1); }
+.insetMuted { font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-meta); margin: 0 0 var(--sp-3); }
+.choice { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); margin: 0 0 var(--sp-3); }
+.choiceLabel { font-family: var(--font-ui); font-size: var(--fs-sm); font-weight: 700; color: var(--text-head); }
+.chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.chip {
+  min-height: 32px;
+  padding: 0 var(--sp-3);
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  color: var(--navy);
+  background: var(--warm-white);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-sm);
+  cursor: pointer;
+}
+.chip:hover { background: var(--cream); }
+.chip[aria-pressed='true'] { background: var(--navy); border-color: var(--navy); color: var(--warm-white); }
+.chip:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+.noteRow { flex-basis: 100%; display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); max-width: 480px; }
+.noteRow input { flex: 1; min-width: 200px; }
+
+/* Print: the list and its totals, nothing to click. The site chrome is hidden by
+   the #mm-shopping-page rule in globals.css. */
+@media print {
+  .tabs,
+  .actions,
+  .seg,
+  .inset,
+  .chev,
+  .linkBtn,
+  .statusLine { display: none !important; }
+  .card { box-shadow: none; }
+}

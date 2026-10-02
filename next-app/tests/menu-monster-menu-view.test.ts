@@ -9,9 +9,6 @@ const meal = (id: string, over: Partial<MenuMeal> = {}): MenuMeal => ({
   slot: 'breakfast',
   headcount: null,
   recipeIds: ['B003'],
-  packageChoice: {},
-  qtyOverride: {},
-  lineSource: {},
   recipeEdits: {},
   ...over
 });
@@ -25,6 +22,7 @@ const menu = (meals: MenuMeal[], over: Partial<Menu> = {}): Menu => ({
   restrictions: { gf: 0, nut: 0, dairy: 0, veg: 0 },
   budgetPerPersonMeal: 4,
   dayCount: 2,
+  shopping: { packageChoice: {}, qtyOverride: {}, lineSource: {} },
   meals,
   ...over
 });
@@ -42,14 +40,15 @@ describe('menu-view', () => {
     expect(mealCost(m, m.meals[0], CATALOG)).toBeCloseTo(7.49, 2);
   });
 
-  it('Menu_TotalsItsMeals', () => {
+  it('Menu_TotalsTheMergedList_NotTheSumOfItsMeals', () => {
+    // 60 slices together: one 80-slice Kirkland pack ($18.15), not two meals at $14.98 each.
     const m = menu([meal('a'), meal('b', { day: 1 })]);
-    expect(menuCost(m, CATALOG).total).toBeCloseTo(29.96, 2);
+    expect(menuCost(m, CATALOG).total).toBeCloseTo(18.15, 2);
   });
 
   it('Menu_PerPersonPerMeal_DividesByPeopleAcrossMeals', () => {
     const m = menu([meal('a'), meal('b', { day: 1 })]);
-    expect(menuCost(m, CATALOG).perPersonMeal).toBeCloseTo(1.498, 3);
+    expect(menuCost(m, CATALOG).perPersonMeal).toBeCloseTo(18.15 / 20, 3);
   });
 
   it('Menu_PerPersonPerMeal_IgnoresMealsWithNothingPicked', () => {

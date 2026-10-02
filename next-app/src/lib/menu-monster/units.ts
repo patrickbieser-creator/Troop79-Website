@@ -238,3 +238,9 @@ export function parseQty(s: string | null | undefined): number {
   }
   return total;
 }
+
+/** A grocery price, always with cents ("$2.00") — unlike event fees, which drop
+ *  them on whole dollars (event-money.ts money()). */
+export function priceText(n: number): string {
+  return `${n < 0 ? '−' : ''}$${Math.abs(n).toFixed(2)}`;
+}

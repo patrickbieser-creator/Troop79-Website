@@ -13,7 +13,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/app/_components/button';
 import { EmptyState } from '@/app/_components/empty-state';
 import { Notice } from '@/app/_components/notice';
-import { money } from '@/lib/event-money';
+import { priceText as money } from '@/lib/menu-monster/units';
 import { deleteMenuAction, duplicateMenuAction } from '../../../_tools/menu-monster/menu-actions';
 import { RowMenu } from './row-menu';
 import s from './workspace.module.css';

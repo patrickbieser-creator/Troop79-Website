@@ -26,7 +26,7 @@
  */
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
-import { money } from '@/lib/event-money';
+import { priceText as money } from '@/lib/menu-monster/units';
 import { useLeaveGuard } from '@/lib/use-leave-guard';
 import { Button } from '@/app/_components/button';
 import { Notice } from '@/app/_components/notice';

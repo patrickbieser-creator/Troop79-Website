@@ -8,15 +8,19 @@
  * scout session — never from the client — so a scout can only touch their
  * own menus. A miss on someone else's menu looks exactly like "not found".
  *
- * Callers pass an already-sanitized Menu (sanitizeMenu, menus.ts).
+ * Callers pass an already-sanitized Menu (sanitizeMenu, menus.ts) and the live
+ * catalog: every create and save builds the priced snapshot HERE, from the
+ * merged shopping list, and stores it beside the menu — a snapshot is never
+ * accepted from a client. Duplicate carries the source's snapshot over.
  * Audit: create / rename / duplicate / delete, one line each; edits to meal
  * contents are not audited (Phase 1 criteria — too chatty).
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { recordAuditAs, type AuditActor } from '@/lib/audit';
-import { coverDays, type Menu, type MenuContext, type MenuMeal } from './menus';
-import type { RestrictionKey } from './types';
+import { coverDays, foldShopping, type Menu, type MenuContext, type MenuMeal } from './menus';
+import { buildSnapshot, type MenuSnapshot } from './menu-snapshot';
+import type { Catalog, RestrictionKey } from './types';
 
 /** A row on My menus. */
 export interface MenuSummary {
@@ -34,6 +38,8 @@ export interface StoredMenu {
   ownerPersonId: number;
   menu: Menu;
   createdAt: string;
+  /** The priced list as of the last save; null for a row that never had one. */
+  snapshot: MenuSnapshot | null;
   /** The version token a save hands back (compared, so a second tab can't silently overwrite). */
   updatedAt: string;
 }
@@ -43,7 +49,7 @@ export type SaveResult =
   | { status: 'conflict' }
   | { status: 'not_found' };
 
-const COLUMNS = 'id, owner_person_id, name, context, calendar_entry_id, start_date, headcount, restrictions, budget_per_person_meal, day_count, meals, created_at, updated_at';
+const COLUMNS = 'id, owner_person_id, name, context, calendar_entry_id, start_date, headcount, restrictions, budget_per_person_meal, day_count, shopping, meals, snapshot, created_at, updated_at';
 
 interface MenuRow {
   id: string;
@@ -56,12 +62,15 @@ interface MenuRow {
   restrictions: Record<RestrictionKey, number>;
   budget_per_person_meal: number | string;
   day_count: number;
+  /** '{}' on rows from before slice 5; their choices sit inside meals[]. */
+  shopping: unknown;
   meals: MenuMeal[];
+  snapshot: MenuSnapshot | null;
   created_at: string;
   updated_at: string;
 }
 
-const toRow = (m: Menu) => ({
+const toRow = (m: Menu, snapshot: MenuSnapshot | null) => ({
   name: m.name,
   context: m.context,
   calendar_entry_id: m.calendarEntryId,
@@ -70,7 +79,9 @@ const toRow = (m: Menu) => ({
   restrictions: m.restrictions,
   budget_per_person_meal: m.budgetPerPersonMeal,
   day_count: m.dayCount,
-  meals: m.meals
+  shopping: m.shopping,
+  meals: m.meals,
+  snapshot
 });
 
 const fromRow = (r: MenuRow): Menu => ({
@@ -84,8 +95,15 @@ const fromRow = (r: MenuRow): Menu => ({
   budgetPerPersonMeal: Number(r.budget_per_person_meal),
   // The column's default of 2 must never hide a meal saved on a later day.
   dayCount: coverDays(r.day_count, r.meals),
-  // Meals saved before recipeEdits existed read as having none.
-  meals: r.meals.map((m) => ({ ...m, recipeEdits: m.recipeEdits ?? {} }))
+  // Menus saved before slice 5 kept package / quantity / bring-from-home on each meal.
+  shopping: foldShopping(r.shopping, r.meals),
+  // Meals saved before recipeEdits existed read as having none; the old
+  // per-meal shopping fields are dropped (folded into the menu above).
+  meals: r.meals.map((m) => {
+    const { packageChoice: _p, qtyOverride: _q, lineSource: _l, ...rest } = m as MenuMeal & { packageChoice?: unknown; qtyOverride?: unknown; lineSource?: unknown };
+    void _p; void _q; void _l;
+    return { ...rest, recipeEdits: rest.recipeEdits ?? {} };
+  })
 });
 
 async function audit(sb: SupabaseClient, actor: AuditActor, action: string, id: string, summary: string) {
@@ -118,13 +136,13 @@ export async function loadMenuWith(sb: SupabaseClient, id: string): Promise<Stor
   if (error) throw new Error(`load menu: ${error.message}`);
   if (!data) return null;
   const r = data as MenuRow;
-  return { id: r.id, ownerPersonId: r.owner_person_id, menu: fromRow(r), createdAt: r.created_at, updatedAt: r.updated_at };
+  return { id: r.id, ownerPersonId: r.owner_person_id, menu: fromRow(r), snapshot: r.snapshot ?? null, createdAt: r.created_at, updatedAt: r.updated_at };
 }
 
-export async function createMenuWith(sb: SupabaseClient, actor: AuditActor, menu: Menu): Promise<string> {
+export async function createMenuWith(sb: SupabaseClient, actor: AuditActor, menu: Menu, catalog: Catalog): Promise<string> {
   const { data, error } = await sb
     .from('mm_menus')
-    .insert({ ...toRow(menu), owner_person_id: actor.personId })
+    .insert({ ...toRow(menu, buildSnapshot(menu, catalog)), owner_person_id: actor.personId })
     .select('id')
     .single();
   if (error) throw new Error(`create menu: ${error.message}`);
@@ -140,13 +158,14 @@ export async function saveMenuWith(
   actor: AuditActor,
   id: string,
   menu: Menu,
-  expectedUpdatedAt: string
+  expectedUpdatedAt: string,
+  catalog: Catalog
 ): Promise<SaveResult> {
   const current = await loadMenuWith(sb, id);
   if (!current || current.ownerPersonId !== actor.personId) return { status: 'not_found' };
   const { data, error } = await sb
     .from('mm_menus')
-    .update({ ...toRow(menu), updated_at: new Date().toISOString() })
+    .update({ ...toRow(menu, buildSnapshot(menu, catalog)), updated_at: new Date().toISOString() })
     .eq('id', id)
     .eq('owner_person_id', actor.personId)
     .eq('updated_at', expectedUpdatedAt)
@@ -163,7 +182,7 @@ export async function duplicateMenuWith(sb: SupabaseClient, actor: AuditActor, i
   if (!src || src.ownerPersonId !== actor.personId) return null;
   const { data, error } = await sb
     .from('mm_menus')
-    .insert({ ...toRow({ ...src.menu, name: `Copy of ${src.menu.name}`.slice(0, 120) }), owner_person_id: actor.personId })
+    .insert({ ...toRow({ ...src.menu, name: `Copy of ${src.menu.name}`.slice(0, 120) }, src.snapshot), owner_person_id: actor.personId })
     .select('id')
     .single();
   if (error) throw new Error(`duplicate menu: ${error.message}`);

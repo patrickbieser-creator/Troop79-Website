@@ -5,7 +5,8 @@
  *
  * Thin by design: each action checks the verified scout session, folds the
  * client's payload through sanitizeMenu(), and hands off to the menu store
- * (lib/menu-monster/menus-store.ts — the db-tested half). The owner is ALWAYS
+ * (lib/menu-monster/menus-store.ts — the db-tested half), which also builds
+ * the priced snapshot from the live catalog on every create and save. The owner is ALWAYS
  * session.personId; nothing the client sends can name another scout.
  * 'use server' files export async functions only — types and constants live
  * in lib/menu-monster/menus.ts.
@@ -33,16 +34,17 @@ const isFail = (v: AuditActor | Fail): v is Fail => 'ok' in v;
 
 /** Clean the payload and check the name; the error is what the name field shows. */
 async function cleanMenu(raw: unknown) {
-  const menu = sanitizeMenu(raw, await loadMenuMonsterCatalog());
-  return { menu, nameError: menuNameError(menu.name) };
+  const catalog = await loadMenuMonsterCatalog();
+  const menu = sanitizeMenu(raw, catalog);
+  return { menu, catalog, nameError: menuNameError(menu.name) };
 }
 
 export async function createMenuAction(raw: unknown): Promise<{ ok: true; id: string } | Fail> {
   const actor = await scoutActor();
   if (isFail(actor)) return actor;
-  const { menu, nameError } = await cleanMenu(raw);
+  const { menu, catalog, nameError } = await cleanMenu(raw);
   if (nameError) return { ok: false, error: nameError };
-  return { ok: true, id: await createMenuWith(createAdminClient(), actor, menu) };
+  return { ok: true, id: await createMenuWith(createAdminClient(), actor, menu, catalog) };
 }
 
 export async function saveMenuAction(
@@ -52,9 +54,9 @@ export async function saveMenuAction(
 ): Promise<{ ok: true; updatedAt: string } | Fail> {
   const actor = await scoutActor();
   if (isFail(actor)) return actor;
-  const { menu, nameError } = await cleanMenu(raw);
+  const { menu, catalog, nameError } = await cleanMenu(raw);
   if (nameError) return { ok: false, error: nameError };
-  const res = await saveMenuWith(createAdminClient(), actor, id, menu, expectedUpdatedAt);
+  const res = await saveMenuWith(createAdminClient(), actor, id, menu, expectedUpdatedAt, catalog);
   if (res.status === 'saved') return { ok: true, updatedAt: res.updatedAt };
   if (res.status === 'conflict') {
     return { ok: false, error: 'This menu was changed in another window since you opened it. Reload to see the latest, then make your change again.' };

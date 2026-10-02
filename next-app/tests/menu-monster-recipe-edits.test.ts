@@ -120,7 +120,7 @@ describe('applyRecipeEdits', () => {
 
 describe('mealCatalog', () => {
   const meal = (recipeEdits: MenuMeal['recipeEdits']): MenuMeal => ({
-    id: 'm1', day: 0, slot: 'breakfast', headcount: null, recipeIds: ['B003'], packageChoice: {}, qtyOverride: {}, lineSource: {}, recipeEdits
+    id: 'm1', day: 0, slot: 'breakfast', headcount: null, recipeIds: ['B003'], recipeEdits
   });
 
   it('Catalog_IsTheSameObject_WhenTheMealHasNoEdits', () => {

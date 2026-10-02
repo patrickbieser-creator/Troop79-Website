@@ -98,15 +98,25 @@ export function recommendedPackage(usable: readonly Package[], need: number): Pa
   return best;
 }
 
-/** The shopping list: one line per ingredient across every selected recipe,
- *  in store order (meat, dairy, produce, bakery, dry) then by name. */
-export function buildLines(plan: Plan, catalog: Catalog): ShoppingLine[] {
+/** What one ingredient needs, summed over every recipe line that uses it. */
+export interface Need {
+  ing: Ingredient;
+  need: number;
+  sources: LineSourceRef[];
+}
+
+/** The package choices a shopping list is priced with: a Plan's, or a menu's. */
+export type ShoppingChoices = Pick<Plan, 'packageChoice' | 'qtyOverride' | 'lineSource'>;
+
+/** Step 1 of a shopping list: one meal's raw needs by ingredient (count units
+ *  NOT yet rounded up — rounding happens once, after any merging). `into`
+ *  lets a caller add several meals to one map. */
+export function gatherNeeds(plan: Plan, catalog: Catalog, into: Map<string, Need> = new Map()): Map<string, Need> {
   const H = plan.headcount;
   const R = effectiveRestrictions(plan);
   const ING = new Map(catalog.ingredients.map((i) => [i.id, i]));
   const RCP = new Map(catalog.recipes.map((r) => [r.id, r]));
 
-  const byIng = new Map<string, { ing: Ingredient; need: number; sources: LineSourceRef[] }>();
   for (const rid of plan.recipeIds) {
     const r = RCP.get(rid);
     if (!r) continue;
@@ -119,27 +129,38 @@ export function buildLines(plan: Plan, catalog: Catalog): ShoppingLine[] {
       const people = servingsFor(ln, H, R);
       const amount = ln.qtyPerPerson * f * people;
       if (amount <= 0) continue;
-      let e = byIng.get(ing.id);
+      let e = into.get(ing.id);
       if (!e) {
         e = { ing, need: 0, sources: [] };
-        byIng.set(ing.id, e);
+        into.set(ing.id, e);
       }
       e.need += amount;
       e.sources.push({ recipe: r, line: ln, amount, people });
     }
   }
+  return into;
+}
 
+/** The shopping list: one line per ingredient across every selected recipe,
+ *  in store order (meat, dairy, produce, bakery, dry) then by name. */
+export function buildLines(plan: Plan, catalog: Catalog): ShoppingLine[] {
+  return priceNeeds(gatherNeeds(plan, catalog), plan, catalog);
+}
+
+/** Step 2: choose packages and price the needs (staples, bring, unpriced and
+ *  short rules live here, once, for one meal or a whole menu). */
+export function priceNeeds(byIng: ReadonlyMap<string, Need>, plan: ShoppingChoices, catalog: Catalog): ShoppingLine[] {
   const lines: ShoppingLine[] = [];
   for (const e of byIng.values()) {
     const ing = e.ing;
     const all = catalog.packages.filter((p) => p.ingredientId === ing.id);
     // You can't buy half a banana: count units round up to whole before any math. (E6)
-    if (ing.unit.kind === 'count') e.need = Math.ceil(e.need - EPS);
+    const need = ing.unit.kind === 'count' ? Math.ceil(e.need - EPS) : e.need;
     const usable = all.filter(isUsable);
     const src = plan.lineSource[ing.id] ?? { source: 'buy' as const, note: '' };
     const base: ShoppingLine = {
       ing,
-      need: e.need,
+      need,
       sources: e.sources,
       all,
       usable,
@@ -161,7 +182,7 @@ export function buildLines(plan: Plan, catalog: Catalog): ShoppingLine[] {
     if (ing.staple) {
       // Patrol box: nothing to buy, but Used stays honest.
       const p = usable[0] ?? null;
-      lines.push({ ...base, status: 'staple', pkg: p, used: p ? (e.need / p.yield) * p.price : 0 });
+      lines.push({ ...base, status: 'staple', pkg: p, used: p ? (need / p.yield) * p.price : 0 });
       continue;
     }
     if (usable.length === 0) {
@@ -170,7 +191,7 @@ export function buildLines(plan: Plan, catalog: Catalog): ShoppingLine[] {
       continue;
     }
 
-    const rec = recommendedPackage(usable, e.need);
+    const rec = recommendedPackage(usable, need);
     if (!rec) continue; // unreachable: usable is non-empty
     const chosenId = plan.packageChoice[ing.id];
     const chosen = chosenId ? usable.find((p) => p.id === chosenId) : undefined;
@@ -180,16 +201,16 @@ export function buildLines(plan: Plan, catalog: Catalog): ShoppingLine[] {
 
     if (src.source !== 'buy') {
       // Needed but not bought this trip: Used stays honest, Spent is zero (same rule as staples).
-      lines.push({ ...base, status: 'bring', rec: rec.p, pkg, used: (e.need / y) * pkg.price });
+      lines.push({ ...base, status: 'bring', rec: rec.p, pkg, used: (need / y) * pkg.price });
       continue;
     }
 
-    const autoQty = Math.max(1, Math.ceil(e.need / y - EPS));
+    const autoQty = Math.max(1, Math.ceil(need / y - EPS));
     const ov = plan.qtyOverride[ing.id];
     const qty = ov && ov.packageId === pkg.id ? ov.qty : autoQty;
     const spent = qty * pkg.price;
-    const used = (Math.min(e.need, qty * y) / y) * pkg.price;
-    let leftQty = qty * y - e.need;
+    const used = (Math.min(need, qty * y) / y) * pkg.price;
+    let leftQty = qty * y - need;
     let shortQty = 0;
     let status: LineStatus = 'ok';
     if (leftQty < -EPS) {
@@ -221,7 +242,7 @@ export function buildLines(plan: Plan, catalog: Catalog): ShoppingLine[] {
   return lines;
 }
 
-export function totalsOf(lines: readonly ShoppingLine[], plan: Plan): Totals {
+export function totalsOf(lines: readonly ShoppingLine[], plan: Pick<Plan, 'headcount'>): Totals {
   const t: Totals = {
     spent: 0,
     used: 0,
