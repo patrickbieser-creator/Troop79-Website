@@ -18,9 +18,11 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { requireCapability } from '@/lib/require-capability';
 import { loadAuthoringCatalogWith } from '@/lib/menu-monster/catalog';
 import { centralToday } from '@/lib/dates';
+import { listHeldWith, listRecentChangesWith } from '@/lib/menu-monster/price-history';
 import { PageTitle } from '../../_components/page-title';
 import { TabStrip } from '../../_components/tab-strip';
 import { PublicPageLink } from '../../../_components/public-page-link';
+import { PriceActivity } from './price-activity';
 import { PriceBook } from './price-book';
 import { RecipeBuilder } from './recipe-builder';
 import styles from './menu-monster.module.css';
@@ -38,7 +40,8 @@ export default async function MenuMonsterAdminPage({
 }) {
   await requireCapability('library.moderate');
   const sp = await searchParams;
-  const catalog = await loadAuthoringCatalogWith(createAdminClient());
+  const admin = createAdminClient();
+  const [catalog, held] = await Promise.all([loadAuthoringCatalogWith(admin), listHeldWith(admin)]);
   const today = centralToday();
 
   const unpriced = catalog.ingredients.filter(
@@ -46,6 +49,8 @@ export default async function MenuMonsterAdminPage({
   ).length;
   const drafts = catalog.recipes.filter((r) => r.status === 'draft').length;
   const tab: Tab = sp.tab === 'recipes' ? 'recipes' : 'prices';
+  // Recent changes only matter on the Price book tab; the 50-row read skips Recipes.
+  const changes = tab === 'prices' ? await listRecentChangesWith(admin, 50) : [];
 
   return (
     <div className={styles.wrap}>
@@ -67,13 +72,16 @@ export default async function MenuMonsterAdminPage({
         ariaLabel="Menu Monster sections"
         activeKey={tab}
         items={[
-          { key: 'prices', label: 'Price book', href: '/admin/library/menu-monster?tab=prices', ...(unpriced > 0 ? { count: unpriced } : {}) },
+          { key: 'prices', label: 'Price book', href: '/admin/library/menu-monster?tab=prices', ...(unpriced + held.length > 0 ? { count: unpriced + held.length } : {}) },
           { key: 'recipes', label: 'Recipes', href: '/admin/library/menu-monster?tab=recipes', ...(drafts > 0 ? { count: drafts } : {}) }
         ]}
       />
 
       {tab === 'prices' ? (
-        <PriceBook catalog={catalog} today={today} initialIngredientId={sp.ingredient} />
+        <>
+          <PriceActivity held={held} changes={changes} />
+          <PriceBook catalog={catalog} today={today} initialIngredientId={sp.ingredient} />
+        </>
       ) : (
         <RecipeBuilder catalog={catalog} initialRecipeId={sp.recipe} />
       )}

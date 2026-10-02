@@ -20,6 +20,7 @@ import { revalidatePath } from 'next/cache';
 import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import { recordAudit, type AuditDetail } from '@/lib/audit';
+import { decidePriceWith, recordLeaderPriceChangeWith, type DecideOutcome } from '@/lib/menu-monster/price-history';
 import { loadAuthoringCatalogWith } from '@/lib/menu-monster/catalog';
 import {
   blockingIssues,
@@ -51,6 +52,15 @@ async function guard(): Promise<Result | null> {
   try {
     await requireCapability('library.moderate');
     return null;
+  } catch {
+    return { ok: false, error: 'Not authenticated' };
+  }
+}
+
+async function guardActor(): Promise<{ personId: number | null } | Result> {
+  try {
+    const actor = await requireCapability('library.moderate');
+    return { personId: actor.personId };
   } catch {
     return { ok: false, error: 'Not authenticated' };
   }
@@ -411,8 +421,8 @@ export async function createPackage(input: PackageInput): Promise<Result> {
 export type PackageEdit = Pick<PackageInput, 'name' | 'store' | 'price' | 'yield' | 'yieldUnitLabel' | 'asOf' | 'note' | 'soldSize' | 'soldUnit' | 'noun'>;
 
 export async function updatePackage(id: string, input: PackageEdit): Promise<Result> {
-  const denied = await guard();
-  if (denied) return denied;
+  const g = await guardActor();
+  if ('ok' in g) return g;
   const supabase = createAdminClient();
   const { data: before } = await supabase
     .from('mm_packages')
@@ -445,6 +455,18 @@ export async function updatePackage(id: string, input: PackageEdit): Promise<Res
     .eq('id', id);
   if (dbErr) return { ok: false, error: dbErr.message };
 
+  // A leader's price change is history too, so a later scout report chains
+  // from it and the revert rule (price still equals the row's new price) holds.
+  if (g.personId != null) {
+    await recordLeaderPriceChangeWith(supabase, {
+      packageId: id,
+      oldPrice: Number(b.price),
+      oldAsOf: b.as_of,
+      newPrice: value.price,
+      leaderId: g.personId
+    });
+  }
+
   const details: AuditDetail[] = [];
   if (Number(b.price) !== value.price) details.push({ field: 'Price', from: money(Number(b.price)), to: money(value.price) });
   if ((b.as_of ?? '') !== (value.asOf ?? '')) details.push({ field: 'Price as of', from: b.as_of ?? '—', to: value.asOf ?? '—' });
@@ -463,6 +485,48 @@ export async function updatePackage(id: string, input: PackageEdit): Promise<Res
   });
   revalidate();
   return { ok: true };
+}
+
+/* ── Scout-reported prices (Phase 2 release B) ───────────────────────────── */
+
+export interface PriceDecisionResult extends Result {
+  outcome?: DecideOutcome;
+  /** The history row to undo with (an applied price can be reverted). */
+  historyId?: string;
+}
+
+const DECISION_ERROR: Partial<Record<DecideOutcome, string>> = {
+  superseded: 'The price has changed since, so there is nothing to revert.',
+  not_held: 'Someone already decided that one.',
+  not_applied: 'That change was already reverted.',
+  missing: 'That price report is gone.'
+};
+
+async function decidePrice(historyId: string, decision: 'apply' | 'dismiss' | 'revert'): Promise<PriceDecisionResult> {
+  const g = await guardActor();
+  if ('ok' in g) return g;
+  if (g.personId == null) return { ok: false, error: 'Sign in with your own account to decide prices.' };
+  let outcome: DecideOutcome;
+  try {
+    outcome = await decidePriceWith(createAdminClient(), { historyId, decision, decidedBy: g.personId }, recordAudit);
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Something went wrong.' };
+  }
+  revalidate();
+  const error = DECISION_ERROR[outcome];
+  return error ? { ok: false, error, outcome } : { ok: true, outcome, historyId };
+}
+
+export async function applyHeldPrice(historyId: string): Promise<PriceDecisionResult> {
+  return decidePrice(historyId, 'apply');
+}
+
+export async function dismissHeldPrice(historyId: string): Promise<PriceDecisionResult> {
+  return decidePrice(historyId, 'dismiss');
+}
+
+export async function revertPriceChange(historyId: string): Promise<PriceDecisionResult> {
+  return decidePrice(historyId, 'revert');
 }
 
 async function setPackageRetired(id: string, retired: boolean): Promise<Result> {

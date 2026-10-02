@@ -68,6 +68,24 @@ export const HELP = {
       </p>
     )
   },
+  'menu-monster.held': {
+    title: 'Why a price is held',
+    body: (
+      <p>
+        A scout&rsquo;s reported price applies on its own when the price per recipe unit is within 50% of the
+        package&rsquo;s current price. Anything further out, or a package with no yield yet, waits here for you.
+      </p>
+    )
+  },
+  'menu-monster.superseded': {
+    title: 'Why can’t this be reverted?',
+    body: (
+      <p>
+        A price can be reverted only while the package still carries it. Something changed the price since, so
+        reverting this one would overwrite a newer price. Revert the newer change first.
+      </p>
+    )
+  },
   'sample.short': {
     title: 'Short help',
     body: <p>This is one sentence of reference material.</p>
