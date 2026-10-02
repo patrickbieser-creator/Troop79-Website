@@ -31,6 +31,8 @@ export const MAX_MENU_MEALS = 30;
 export const MAX_MENU_DAYS = 14;
 export const MAX_MENU_NAME = 120;
 export const DEFAULT_MENU_BUDGET = 4;
+/** A new menu starts with two days. */
+export const DEFAULT_MENU_DAYS = 2;
 
 /** One meal on a menu: a day index (0 = the menu's first day), a slot, and
  *  the planner's per-meal choices. headcount null = the menu's headcount. */
@@ -55,6 +57,8 @@ export interface Menu {
   headcount: number;
   restrictions: Record<RestrictionKey, number>;
   budgetPerPersonMeal: number;
+  /** Days the menu spans (1..MAX_MENU_DAYS); never fewer than the last meal's day + 1. */
+  dayCount: number;
   meals: MenuMeal[];
 }
 
@@ -73,6 +77,12 @@ export function menuNameError(name: string): string | null {
   if (!t) return 'Give your menu a name so you can find it later.';
   if (t.length > MAX_MENU_NAME) return `Keep the name under ${MAX_MENU_NAME} characters.`;
   return null;
+}
+
+/** A day count covering every meal: clamped to 1..MAX_MENU_DAYS, never below last meal's day + 1. */
+export function coverDays(dayCount: unknown, meals: readonly { day: number }[]): number {
+  const lastDay = meals.reduce((m, x) => Math.max(m, x.day), -1);
+  return Math.min(MAX_MENU_DAYS, Math.max(clampInt(dayCount, 1, MAX_MENU_DAYS, DEFAULT_MENU_DAYS), lastDay + 1));
 }
 
 /** Diet counts, each clamped to 0..headcount (counts, never names). */
@@ -126,12 +136,13 @@ export function sanitizeMenu(raw: unknown, catalog: Catalog): Menu {
     headcount,
     restrictions,
     budgetPerPersonMeal,
+    dayCount: coverDays(r.dayCount, meals),
     meals
   };
 }
 
 /** The menu's first day + n, as 'YYYY-MM-DD' (UTC arithmetic on a calendar date). */
-function addDays(date: string, n: number): string {
+export function addDays(date: string, n: number): string {
   const d = new Date(`${date}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + n);
   return d.toISOString().slice(0, 10);

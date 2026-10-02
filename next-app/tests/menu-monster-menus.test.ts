@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Catalog, Recipe } from '../src/lib/menu-monster/types';
 import { MAX_HEADCOUNT, MIN_HEADCOUNT } from '../src/lib/menu-monster/engine';
-import { MAX_MENU_MEALS, composePlan, menuNameError, sanitizeMenu, type Menu } from '../src/lib/menu-monster/menus';
+import { MAX_MENU_DAYS, MAX_MENU_MEALS, composePlan, menuNameError, sanitizeMenu, type Menu } from '../src/lib/menu-monster/menus';
 
 /**
  * Scout Workspace menus (Plans/Menu-Monster-Scout-Workspace.md, Phase 1).
@@ -28,8 +28,28 @@ const raw = (overrides: Record<string, unknown> = {}) => ({
   headcount: 8,
   restrictions: { gf: 1, nut: 0, dairy: 0, veg: 0 },
   budgetPerPersonMeal: 4.5,
+  dayCount: 3,
   meals: [{ id: 'm1', day: 0, slot: 'breakfast', headcount: null, recipeIds: ['B001'] }],
   ...overrides
+});
+
+describe('sanitizeMenu dayCount', () => {
+  it('DayCount_KeepsAValidNumber', () => {
+    expect(sanitizeMenu(raw({ dayCount: 5 }), CATALOG).dayCount).toBe(5);
+  });
+
+  it('DayCount_ClampsToOneThroughMax', () => {
+    expect([sanitizeMenu(raw({ dayCount: 0, meals: [] }), CATALOG).dayCount, sanitizeMenu(raw({ dayCount: 99 }), CATALOG).dayCount]).toEqual([1, MAX_MENU_DAYS]);
+  });
+
+  it('DayCount_CoversTheLastMealsDay_WhenSmaller', () => {
+    const meals = [{ id: 'm1', day: 4, slot: 'breakfast', headcount: null, recipeIds: ['B001'] }];
+    expect(sanitizeMenu(raw({ dayCount: 2, meals }), CATALOG).dayCount).toBe(5);
+  });
+
+  it('DayCount_DefaultsToTwo_WhenMissingOrJunk', () => {
+    expect([sanitizeMenu(raw({ dayCount: undefined, meals: [] }), CATALOG).dayCount, sanitizeMenu(raw({ dayCount: 'x', meals: [] }), CATALOG).dayCount]).toEqual([2, 2]);
+  });
 });
 
 describe('sanitizeMenu', () => {

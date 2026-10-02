@@ -141,6 +141,43 @@ describe('GuestCountField (count mode)', () => {
   });
 });
 
+describe('GuestCountField — the shared dialer', () => {
+  it('Family_CanAddOneGuest_WithThePlusButton', async () => {
+    const onChange = vi.fn();
+    render(<GuestCountField count={2} note="" onChange={onChange} />);
+    await userEvent.setup().click(screen.getByRole('button', { name: 'One more guest' }));
+    expect(onChange).toHaveBeenLastCalledWith({ count: 3, note: '' });
+  });
+
+  it('Family_CanRemoveOneGuest_WithTheMinusButton', async () => {
+    const onChange = vi.fn();
+    render(<GuestCountField count={2} note="keep" onChange={onChange} />);
+    await userEvent.setup().click(screen.getByRole('button', { name: 'One fewer guest' }));
+    expect(onChange).toHaveBeenLastCalledWith({ count: 1, note: 'keep' });
+  });
+
+  it('MinusButton_IsDisabled_AtZeroGuests', () => {
+    render(<GuestCountField count={0} note="" onChange={() => {}} />);
+    expect((screen.getByRole('button', { name: 'One fewer guest' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('Count_StopsAtTwoHundred_WhenTyped', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<GuestCountField count={3} note="" onChange={onChange} />);
+    const n = screen.getByRole('spinbutton', { name: /number of guests/i });
+    await user.clear(n);
+    await user.type(n, '999');
+    await user.tab();
+    expect(onChange).toHaveBeenLastCalledWith({ count: 200, note: '' });
+  });
+
+  it('Count_ShowsAVisibleGuestsLabelEndingInAColon', () => {
+    render(<GuestCountField count={0} note="" onChange={() => {}} />);
+    expect(screen.getByText('Guests:')).toBeTruthy();
+  });
+});
+
 describe('GuestRowsEditor — lede states who is responsible for a youth guest (Patrick, 2026-08-24)', () => {
   it('Lede_SaysAnAdultFromTheHouseholdIsResponsible', () => {
     render(<GuestRowsEditor guests={[]} onChange={vi.fn()} />);

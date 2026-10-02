@@ -29,7 +29,7 @@ import { Badge } from '@/app/_components/badge';
 import { Notice } from '@/app/_components/notice';
 import { EmptyState } from '@/app/_components/empty-state';
 import { SectionDivider } from '@/app/_components/section-divider';
-import { PublicTabStripSpecimen } from './specimens';
+import { PublicStepperSpecimen, PublicTabStripSpecimen } from './specimens';
 import { FormCard, Field, TextInput } from '@/app/_components/form';
 import { DateField } from '@/app/_components/date-field';
 import { SignInToSignUpPanel } from '@/app/(public)/events/[id]/signup-panels';
@@ -137,6 +137,11 @@ const SCOREBOARD: ReadonlyArray<readonly [string, string, string]> = [
     'Form fields',
     '18 files / 88 declarations',
     'Form kit SHIPPED (A; 16px iOS floor decided C) — profile editors decoupled onto the public DateField (admin imports in public: ZERO); event sign-up forms gained named guest rows (GuestRowsEditor, 2026-08-21: name + class per guest, replacing the "+N guests" count — Plans/Participant-Classification.md; .guestRow/.guestAdd/.guestRemove on tokens in event-detail.module.css); DateField v2 (2026-08-21, Patrick): native input → rich control (tolerant typing via lib/date-entry + react-day-picker popover on public tokens — admin parity by behavior, not by import); sanctioned locals: name-search (hint-above layout), tagSelect (compact header control); Guests as People (2026-08-23, Plans/Guests-As-People.md): the guest block gained .guestRowAdult (phone column for an adult guest), .guestAgain (the "brought before" picks reuse .pickChip), .guestMatch (typed-name confirm line) and .guestCountRow (count mode: number + note) — all on existing tokens in event-detail.module.css'
+  ],
+  [
+    'Number fields / dialers',
+    '3 hand-rolled stepper copies (planner, workspace) + 4 plain number boxes (guest count, days, seats, reimbursement amount)',
+    'Stepper SHIPPED (2026-10-02, Calm-Site-Restyle Decisions 1-2) — one shared − n + at 32px/16px; planner, Menu Monster workspace and event sign-up (guests, days, seats) converted, planner .stepper/.stepBtn/.numIn deleted. Reimbursement amount is dollars-and-cents, so it stays a number box (AmountInput, same 32px look) rather than a dial'
   ],
   [
     'Cards',
@@ -415,6 +420,16 @@ export default function PublicStyleguidePage() {
                 <DateField defaultValue="2012-04-01" />
               </Field>
             </FormCard>
+          </div>
+
+          {/* Stepper — the shared compact dialer */}
+          <div className={sg.specimenBlock}>
+            <PublicStepperSpecimen />
+            <p className={sg.specimenInlineNote}>
+              <code>Stepper</code> / <code>NumberBox</code> / <code>AmountInput</code> from <code>_components/stepper</code> &mdash; 32px tall,
+              16px number (iOS floor), 28px buttons, commit-on-blur. Label sits left and ends in a colon. Dollars-and-cents is a framed
+              AmountInput, not a dial.
+            </p>
           </div>
 
           {/* Library MB requirement row — icon-only actions with tooltip

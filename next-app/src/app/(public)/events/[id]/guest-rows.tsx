@@ -30,6 +30,8 @@
  * entry 'no'); the count rides on the host entry in the `entries` field.
  */
 
+import { useId } from 'react';
+import { Stepper } from '@/app/_components/stepper';
 import { GUEST_CLASSES, PARTICIPANT_CLASS_LABEL, type GuestClass } from '@/lib/participant-class';
 import type { HouseholdGuest } from '@/lib/guest-payload';
 import styles from './event-detail.module.css';
@@ -237,6 +239,7 @@ export function GuestCountField({
   /** The builder's guest_prompt, if the leader wrote one. */
   prompt?: string | null;
 }) {
+  const countId = useId();
   return (
     <div className={styles.guestBlock}>
       <p className={styles.dayHead}>Bringing guests?</p>
@@ -244,18 +247,18 @@ export function GuestCountField({
         {prompt ?? 'How many guests are you bringing? They’re counted for seating and food, not named.'}
       </p>
       <div className={styles.guestCountRow}>
-        <label className={styles.rideField}>
-          <span className={styles.rideLeg}>Guests</span>
-          <input
-            type="number"
-            className={styles.gateInput}
-            min={0}
-            max={200}
-            value={count}
-            aria-label="Number of guests"
-            onChange={(e) => onChange({ count: Math.max(0, Math.min(200, Number(e.target.value) || 0)), note })}
-          />
-        </label>
+        <Stepper
+          id={countId}
+          label="Guests"
+          inputLabel="Number of guests"
+          value={count}
+          min={0}
+          max={200}
+          onChange={(n) => onChange({ count: n, note })}
+          groupLabel="Guests"
+          lessLabel="One fewer guest"
+          moreLabel="One more guest"
+        />
         <input
           type="text"
           className={styles.gateInput}

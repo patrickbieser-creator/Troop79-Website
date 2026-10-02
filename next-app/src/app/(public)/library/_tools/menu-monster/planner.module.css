@@ -2,7 +2,7 @@
    The prototype's CSS was NOT ported; the layout is the site's: PageHeader
    above (owned by the shelf page), SectionDividers per step, the shared
    Button / Badge / Notice / EmptyState / form kit for every control that has
-   a canon. Local classes here are the planner's own patterns — steppers,
+   a canon. Local classes here are the planner's own patterns —
    the sticky totals strip, the shopping-line cards, the print sheet. */
 
 .root { margin: var(--sp-2) 0 var(--sp-9); }
@@ -272,49 +272,6 @@
 .rLabel small { display: block; font-size: var(--fs-xs); font-weight: 400; color: var(--text-meta); }
 .rError { grid-column: 1 / -1; margin-top: 0; }
 
-/* ---- Stepper (− n +): 44px targets, 16px input --------------------------- */
-.stepper {
-  display: inline-grid;
-  grid-template-columns: 44px 72px 44px;
-  border: 1px solid var(--border-mid);
-  border-radius: var(--rad-md);
-  background: var(--warm-white);
-  overflow: hidden;
-}
-.stepperSmall { grid-template-columns: 44px 56px 44px; }
-.stepperInvalid { border-color: var(--status-danger); }
-.stepBtn {
-  min-height: 44px;
-  border: none;
-  background: var(--cream);
-  color: var(--navy);
-  font-family: var(--font-ui);
-  font-size: var(--fs-xl);
-  font-weight: 700;
-  cursor: pointer;
-}
-.stepBtn:hover { background: var(--khaki-light); }
-.stepBtn:disabled { color: var(--border-mid); cursor: default; background: var(--cream); }
-.stepBtn:focus-visible { outline: var(--focus-ring); outline-offset: -3px; }
-.numIn {
-  width: 100%;
-  min-height: 44px;
-  border: none;
-  border-left: 1px solid var(--border-light);
-  border-right: 1px solid var(--border-light);
-  text-align: center;
-  font-family: var(--font-ui);
-  font-size: 16px; /* iOS no-zoom floor (form.module.css) */
-  font-weight: 700;
-  color: var(--text-head);
-  background: var(--warm-white);
-  -moz-appearance: textfield;
-  appearance: textfield;
-}
-.numIn::-webkit-outer-spin-button,
-.numIn::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-.numIn:focus-visible { outline: var(--focus-ring); outline-offset: -2px; }
-
 /* ---- Totals strip (sticky under the site nav) ---------------------------- */
 .totals {
   position: sticky;
@@ -347,13 +304,6 @@
 .tMain { font-family: var(--font-display); font-size: var(--fs-2xl); font-weight: 700; color: var(--warm-white); line-height: 1.1; }
 .tSub { font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--on-navy-strong); margin-top: 2px; }
 .tWhy { font-family: var(--font-ui); font-size: var(--fs-xs); color: var(--on-navy-faint); margin-top: 2px; line-height: 1.4; }
-.tileBudget .numIn {
-  border: 1px solid var(--border-mid);
-  border-radius: var(--rad-sm);
-  text-align: left;
-  padding: 0 var(--sp-3);
-  max-width: 140px;
-}
 .readout {
   display: inline-flex;
   align-items: center;
@@ -534,7 +484,7 @@
 .printRow .help { margin: 0; flex: 1 1 320px; }
 
 @media (prefers-reduced-motion: reduce) {
-  .chip, .card, .stepBtn, .lineToggle { transition: none; }
+  .chip, .card, .lineToggle { transition: none; }
 }
 
 /* ---- Print sheet: rendered always, shown only on paper (D-017) ------------ */
@@ -574,3 +524,15 @@
 .pDl ul { margin: 0; padding-left: 12pt; }
 .sig { display: grid; grid-template-columns: 1fr 1fr; gap: 24pt; margin-top: 26pt; font-size: 8.5pt; color: var(--text-meta); }
 .sig > div { border-top: 1px solid var(--text-head); padding-top: 3pt; }
+
+/* "My menus" link above the planner for a signed-in scout (Scout Workspace). */
+.myMenus {
+  display: inline-block;
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--navy);
+  padding: var(--sp-2) 0;
+}
+.myMenus:hover { color: var(--forest); text-decoration: underline; text-underline-offset: 2px; }
+.myMenus:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }

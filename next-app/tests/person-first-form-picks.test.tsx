@@ -90,6 +90,28 @@ describe('PersonFirstForm — transportation', () => {
     expect(adult.ride_back).toBe('needs_ride'); // default for the leg not driven
   });
 
+  it('Driver_CanAddASeat_WithThePlusButton', async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await user.click(screen.getAllByRole('button', { name: 'Attending' })[1]);
+    await user.click(screen.getByLabelText('Drive there'));
+    await user.click(screen.getByRole('button', { name: 'One more seat' }));
+    const adult = (JSON.parse(hidden('entries').value) as Record<string, unknown>[]).find((e) => e.key === 'a:pe82')!;
+    expect(adult.vehicle_seats_out).toBe(7);
+  });
+
+  it('Driver_CannotGoBelowOneSeat', async () => {
+    const user = userEvent.setup();
+    renderForm();
+    await user.click(screen.getAllByRole('button', { name: 'Attending' })[1]);
+    await user.click(screen.getByLabelText('Drive there'));
+    const seats = screen.getByLabelText(/Seats in your vehicle, including you/) as HTMLInputElement;
+    await user.clear(seats);
+    await user.type(seats, '0');
+    await user.tab();
+    expect(seats.value).toBe('1');
+  });
+
   it('Scout_DefaultsToNeedsRideBothLegs_AndCanChangeOne', async () => {
     const user = userEvent.setup();
     renderForm();

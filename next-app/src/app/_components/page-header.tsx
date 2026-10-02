@@ -18,14 +18,15 @@ export function PageHeader({
   rule = true
 }: {
   kicker?: ReactNode;
-  title: ReactNode;
+  /** Omit when the page renders its own h1 (an editable title, a record name). */
+  title?: ReactNode;
   lede?: ReactNode;
   rule?: boolean;
 }) {
   return (
     <header className={s.pageHeader}>
       {kicker != null && <div className={s.kicker}>{kicker}</div>}
-      <h1 className={s.pageTitle}>{title}</h1>
+      {title != null && <h1 className={s.pageTitle}>{title}</h1>}
       {lede != null && <p className={s.pageLede}>{lede}</p>}
       {rule && <div className={s.headRule} />}
     </header>

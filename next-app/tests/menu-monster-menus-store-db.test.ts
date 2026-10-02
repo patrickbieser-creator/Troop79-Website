@@ -33,6 +33,7 @@ const menu = (overrides: Partial<Menu> = {}): Menu => ({
   headcount: 8,
   restrictions: { gf: 1, nut: 0, dairy: 0, veg: 0 },
   budgetPerPersonMeal: 4,
+  dayCount: 2,
   meals: [{ id: 'm1', day: 0, slot: 'breakfast', headcount: null, recipeIds: ['B001'], packageChoice: {}, qtyOverride: {}, lineSource: {} }],
   ...overrides
 });
@@ -43,7 +44,8 @@ beforeAll(async () => {
 });
 
 afterEach(async () => {
-  await admin.from('mm_menus').delete().like('name', `${MARKER}%`);
+  // %…%: duplicates are named "Copy of <MARKER>".
+  await admin.from('mm_menus').delete().like('name', `%${MARKER}%`);
   await admin.from('audit_log').delete().eq('area', 'menus').like('summary', `%${MARKER}%`);
 });
 
@@ -51,6 +53,19 @@ async function auditSummaries(): Promise<string[]> {
   const { data } = await admin.from('audit_log').select('summary').eq('area', 'menus').like('summary', `%${MARKER}%`).order('id');
   return (data ?? []).map((r) => r.summary as string);
 }
+
+describe('menu store dayCount', () => {
+  it('Scout_KeepsTheirDayCount_AcrossSaveAndLoad', async () => {
+    const id = await createMenuWith(admin, CHARLIE, menu({ dayCount: 6 }));
+    expect((await loadMenuWith(admin, id))!.menu.dayCount).toBe(6);
+  });
+
+  it('Load_CoversALateMeal_WhenTheStoredCountIsSmaller', async () => {
+    const id = await createMenuWith(admin, CHARLIE, menu({ dayCount: 2 }));
+    await admin.from('mm_menus').update({ meals: [{ id: 'm1', day: 4, slot: 'lunch', headcount: null, recipeIds: [], packageChoice: {}, qtyOverride: {}, lineSource: {} }] }).eq('id', id);
+    expect((await loadMenuWith(admin, id))!.menu.dayCount).toBe(5);
+  });
+});
 
 describe('menu store', () => {
   it('Scout_CanCreateAndListOwnMenus', async () => {

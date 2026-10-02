@@ -21,6 +21,7 @@ import { PageShell } from '@/app/_components/page-shell';
 import { Button } from '@/app/_components/button';
 import { Badge, type BadgeTone } from '@/app/_components/badge';
 import { Notice } from '@/app/_components/notice';
+import { AmountInput } from '@/app/_components/stepper';
 import surface from '@/app/_components/card.module.css';
 import memberStyles from '../member.module.css';
 import styles from './reimbursements.module.css';
@@ -128,7 +129,7 @@ export default async function ReimbursementsPage({
         <form action={submitReimbursementAction} className={`${surface.card} ${styles.form}`}>
           <label>
             Amount
-            <input type="number" name="amount" min="0.01" step="0.01" required />
+            <AmountInput name="amount" min="0.01" step="0.01" required />
           </label>
           <label className={styles.wide}>
             What was this for?

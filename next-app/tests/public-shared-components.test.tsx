@@ -28,6 +28,12 @@ describe('PageHeader', () => {
     expect(screen.getByText('Everything in one place.')).toBeTruthy();
   });
 
+  it('PageHeader_RendersNoH1_WhenThePageOwnsItsTitle', () => {
+    render(<PageHeader kicker="Menu Monster" />);
+    expect(screen.queryByRole('heading', { level: 1 })).toBeNull();
+    expect(screen.getByText('Menu Monster')).toBeTruthy();
+  });
+
   it('PageHeader_OmitsLede_WhenAbsent', () => {
     const { container } = render(<PageHeader title="Bare" />);
     expect(screen.getByRole('heading', { level: 1, name: 'Bare' })).toBeTruthy();

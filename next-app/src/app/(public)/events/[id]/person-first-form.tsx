@@ -2,7 +2,8 @@
 
 import { GuestRowsEditor, GuestCountField, GuestsLocked, type GuestRowValue } from './guest-rows';
 import { SavingOverlay, intentOf, type SaveIntent } from './save-feedback';
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useId, useMemo, useState } from 'react';
+import { Stepper } from '@/app/_components/stepper';
 import type {
   EventPrice,
   EventSignup,
@@ -92,6 +93,7 @@ const TierPicker = memo(function TierPicker({
   onTierSelect: (key: string, priceId: number) => void;
   onDaysChange: (key: string, value: number) => void;
 }) {
+  const dayId = useId();
   if (opts.length === 0) return null;
   return (
     <div className={styles.personExtra}>
@@ -115,21 +117,23 @@ const TierPicker = memo(function TierPicker({
         </div>
       )}
       {active?.per === 'day' && (
-        <label className={styles.daysRow}>
-          <span className={styles.miniLabel}>Days attending</span>
-          <input
-            type="number"
+        <div className={styles.daysRow}>
+          <Stepper
+            id={`${dayId}-days`}
+            label="Days attending"
+            value={days}
             min={1}
             max={14}
-            value={days}
-            onChange={(e) => onDaysChange(personKey, Math.max(1, Number(e.target.value) || 1))}
-            className={styles.numInput}
+            onChange={(n) => onDaysChange(personKey, n)}
+            groupLabel="Days attending"
+            lessLabel="One fewer day"
+            moreLabel="One more day"
           />
           <span className={styles.dayMath}>
             {money(active.amount)} × {days} ={' '}
             <strong>{money(active.amount * days)}</strong>
           </span>
-        </label>
+        </div>
       )}
     </div>
   );
@@ -514,18 +518,20 @@ const AdultRow = memo(function AdultRow({
             Drive back
           </label>
           {(drivesValue?.out || drivesValue?.back) && (
-            <label className={styles.daysRow}>
-              <span className={styles.miniLabel}>Seats in your vehicle, including you</span>
-              <input
-                type="number"
+            <div className={styles.daysRow}>
+              <Stepper
+                id={`seats-${a.key}`}
+                label="Seats in your vehicle, including you"
+                value={drivesValue?.seats ?? 4}
                 min={1}
                 max={15}
-                value={drivesValue?.seats ?? 4}
-                onChange={(e) => onDrivesChange(a.key, { seats: Math.max(1, Number(e.target.value) || 1) })}
-                className={styles.numInput}
+                onChange={(n) => onDrivesChange(a.key, { seats: n })}
+                groupLabel="Seats in your vehicle"
+                lessLabel="One fewer seat"
+                moreLabel="One more seat"
               />
               <span className={styles.dayMath}>{Math.max(0, (drivesValue?.seats ?? 4) - 1)} for riders</span>
-            </label>
+            </div>
           )}
           {choice === 'full' && (
             <RideFields

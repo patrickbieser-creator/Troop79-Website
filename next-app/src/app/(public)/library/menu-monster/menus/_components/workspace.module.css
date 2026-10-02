@@ -1,0 +1,284 @@
+/* Menu Monster scout workspace (My menus, Plan tab, meal drill-in) — public
+   tokens only. The approved look (Patrick, D-288/D-289): a calm page, borderless
+   white list cards, tight ~38px rows, actions on the title line, prices in a
+   fixed right column showing just the dollar amount. Shared Button / Notice /
+   form kit / TabStrip do the rest; this file holds only the workspace's own
+   list-row, row-menu and dialer-line patterns. */
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+/* ---- Title line: name on the left, Save / Discard on the right ------------- */
+.titleLine {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  margin: 0 0 var(--sp-3);
+}
+.menuTitle {
+  font-family: var(--font-display);
+  font-size: var(--fs-2xl);
+  color: var(--text-head);
+  margin: 0;
+  line-height: 1.2;
+}
+.actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+.tabs { margin: 0 0 var(--sp-6); }
+
+/* ---- Two columns: plan on the left, shopping on the right ------------------ */
+.grid { display: grid; grid-template-columns: 1fr; gap: var(--sp-8); align-items: start; }
+@media (min-width: 900px) {
+  .grid { grid-template-columns: minmax(0, 1fr) 300px; }
+}
+.col { min-width: 0; }
+
+.heading {
+  font-family: var(--font-ui);
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: var(--text-head);
+  margin: 0 0 var(--sp-3);
+}
+.section { margin-bottom: var(--sp-8); }
+
+/* ---- Basics ---------------------------------------------------------------- */
+.basics { margin-bottom: var(--sp-8); }
+.pickRow { display: grid; grid-template-columns: 1fr; gap: 0 var(--sp-4); }
+@media (min-width: 640px) {
+  .pickRow { grid-template-columns: 1fr 1fr; }
+}
+.line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-3);
+  font-family: var(--font-ui);
+  font-size: var(--fs-md);
+  color: var(--text-body);
+  margin: 0 0 var(--sp-3);
+}
+.line label { font-weight: 700; color: var(--text-head); }
+.sep { color: var(--border-mid); }
+.moneyIn { display: inline-flex; align-items: center; gap: var(--sp-2); }
+
+/* ---- Day heading + list card ------------------------------------------------ */
+.dayBlock + .dayBlock { margin-top: var(--sp-5); }
+.dayHeadRow { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); margin: 0 0 var(--sp-2); }
+/* Sentence case, quiet: the day is a label for its list, not a section. */
+.dayHead {
+  font-family: var(--font-ui);
+  font-size: 14px; /* between --fs-sm and --fs-md: the approved day-label size */
+  font-weight: 600;
+  color: var(--text-meta);
+  margin: 0;
+}
+.card {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: var(--warm-white);
+  border-radius: var(--rad-md);
+  box-shadow: var(--shadow-card);
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: 38px;
+  flex-wrap: wrap;
+  padding: 0 var(--sp-3) 0 var(--sp-4); /* the 36px ⋯ button sets the 38px row */
+  border-top: 1px solid var(--rule);
+  position: relative;
+}
+.row:first-child { border-top: none; }
+.rowMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  padding: 3px 0;
+}
+.rowName {
+  font-family: var(--font-ui);
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: var(--navy);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+.rowName:hover { color: var(--forest); text-decoration: underline; text-underline-offset: 2px; }
+.rowName:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+.meta {
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  color: var(--text-meta);
+  min-width: 0;
+}
+.cost {
+  width: 72px;
+  flex: none;
+  text-align: right;
+  font-family: var(--font-ui);
+  font-size: var(--fs-md);
+  color: var(--text-head);
+  font-variant-numeric: tabular-nums;
+}
+.empty {
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  color: var(--text-meta);
+  padding: var(--sp-3) var(--sp-4);
+}
+.addRow { padding: var(--sp-2) var(--sp-3); border-top: 1px solid var(--rule); }
+.addWrap { position: relative; }
+/* The one dashed outline in the list: the prototype's add row. */
+.addBtn {
+  display: block;
+  width: 100%;
+  min-height: 36px;
+  font-family: var(--font-ui);
+  font-size: var(--fs-md);
+  color: var(--text-meta);
+  background: none;
+  border: 1px dashed var(--border-mid);
+  border-radius: var(--rad-sm);
+  padding: 0 var(--sp-3);
+  text-align: left;
+  cursor: pointer;
+}
+.addBtn:hover:not(:disabled) { background: var(--cream); color: var(--navy); }
+.addBtn:focus-visible { outline: var(--focus-ring); outline-offset: 1px; }
+.addBtn:disabled { opacity: 0.55; cursor: default; }
+.addPop {
+  position: absolute;
+  left: 0;
+  top: 100%;
+  z-index: 5;
+  min-width: 160px;
+  background: var(--warm-white);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-md);
+  box-shadow: var(--shadow-hover);
+  padding: var(--sp-1) 0;
+  display: flex;
+  flex-direction: column;
+}
+.addDay { margin-top: var(--sp-4); }
+
+/* ---- ⋯ row menu ------------------------------------------------------------- */
+.menuWrap { position: relative; flex: none; }
+.menuBtn {
+  min-width: 36px;
+  min-height: 36px;
+  background: none;
+  border: none;
+  border-radius: var(--rad-sm);
+  color: var(--text-meta);
+  font-size: var(--fs-xl);
+  line-height: 1;
+  cursor: pointer;
+}
+.menuBtn:hover { background: var(--cream); color: var(--navy); }
+.menuBtn:focus-visible { outline: var(--focus-ring); outline-offset: -2px; }
+.menuPop {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 5;
+  min-width: 160px;
+  background: var(--warm-white);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-md);
+  box-shadow: var(--shadow-hover);
+  padding: var(--sp-1) 0;
+  display: flex;
+  flex-direction: column;
+}
+.menuItem {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font-family: var(--font-ui);
+  font-size: var(--fs-md);
+  color: var(--text-head);
+  background: none;
+  border: none;
+  padding: var(--sp-3) var(--sp-4);
+  min-height: 44px;
+  cursor: pointer;
+}
+.menuItem:hover { background: var(--cream); }
+.menuItem:focus-visible { outline: var(--focus-ring); outline-offset: -2px; }
+.menuDanger { color: var(--status-danger); }
+
+/* ---- Inline confirm under a row (Delete) ------------------------------------- */
+.confirm {
+  flex-basis: 100%;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  color: var(--status-danger);
+  padding: var(--sp-2) 0 var(--sp-3);
+}
+
+/* ---- Shopping column ---------------------------------------------------------- */
+.shopLine {
+  font-family: var(--font-ui);
+  font-size: var(--fs-md);
+  color: var(--text-body);
+  line-height: 1.5;
+  margin: 0 0 var(--sp-2);
+}
+.shopLine strong { color: var(--text-head); font-variant-numeric: tabular-nums; }
+.muted { color: var(--text-meta); }
+.foot {
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  color: var(--text-meta);
+  line-height: 1.5;
+  margin: 0 0 var(--sp-3);
+}
+.link {
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--navy);
+}
+.link:hover { color: var(--forest); text-decoration: underline; text-underline-offset: 2px; }
+.notice { margin-bottom: var(--sp-4); }
+.noticeActions { display: flex; gap: var(--sp-3); flex-wrap: wrap; margin-top: var(--sp-3); }
+
+/* ---- My menus / locked line --------------------------------------------------- */
+.listHead { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); margin-bottom: var(--sp-4); flex-wrap: wrap; }
+.locked {
+  font-family: var(--font-ui);
+  font-size: var(--fs-md);
+  color: var(--text-body);
+  background: var(--warm-white);
+  border-radius: var(--rad-md);
+  box-shadow: var(--shadow-card);
+  padding: var(--sp-4);
+}
+/* ---- Meal page ---------------------------------------------------------------- */
+.mealBar { margin-bottom: var(--sp-4); }

@@ -66,6 +66,7 @@ import {
   totalsOf,
   withMeal
 } from '@/lib/menu-monster/engine';
+import { NumberBox, Stepper } from '@/app/_components/stepper';
 import { PrintSheet } from './print-sheet';
 import s from './planner.module.css';
 
@@ -83,7 +84,7 @@ const mealLabel = (m: MealSlot) => MEALS.find((x) => x.key === m)?.label ?? cap(
 
 export type BudgetState = { tone: 'ok' | 'near' | 'over'; icon: string; msg: string };
 
-export function budgetState(t: Totals, budget: number): BudgetState {
+export function budgetState(t: Pick<Totals, 'perSpent'>, budget: number): BudgetState {
   if (t.perSpent <= budget + EPS) {
     return { tone: 'ok', icon: '✓', msg: `Under budget by ${money(budget - t.perSpent)} per person` };
   }
@@ -91,129 +92,6 @@ export function budgetState(t: Totals, budget: number): BudgetState {
     return { tone: 'near', icon: '!', msg: `Close: ${money(t.perSpent - budget)} per person over the target` };
   }
   return { tone: 'over', icon: '✗', msg: `Over budget by ${money(t.perSpent - budget)} per person` };
-}
-
-/* ---- A number box that commits on blur / Enter, not on every keystroke ----
-   Typing "16" into a 2–50 field must not clamp "1" to 2 halfway through.
-   Prop changes (the +/− buttons, a restore) reset the draft during render —
-   React's derive-from-props pattern, no effect needed. */
-
-function NumberBox({
-  id,
-  value,
-  min,
-  max,
-  step = 1,
-  onCommit,
-  ariaLabel,
-  describedBy,
-  invalid
-}: {
-  id: string;
-  value: number;
-  min: number;
-  max: number;
-  step?: number;
-  onCommit: (n: number) => void;
-  ariaLabel?: string;
-  describedBy?: string;
-  invalid?: boolean;
-}) {
-  const show = (n: number) => (step < 1 ? n.toFixed(2) : String(n));
-  const [prev, setPrev] = useState(value);
-  const [draft, setDraft] = useState(() => show(value));
-  if (prev !== value) {
-    setPrev(value);
-    setDraft(show(value));
-  }
-  function commit() {
-    const raw = Number(draft);
-    if (draft.trim() === '' || !Number.isFinite(raw)) {
-      setDraft(show(value));
-      return;
-    }
-    const rounded = step < 1 ? Math.round(raw * 100) / 100 : Math.round(raw);
-    const next = Math.min(max, Math.max(min, rounded));
-    setDraft(show(next));
-    onCommit(next);
-  }
-  return (
-    <input
-      type="number"
-      inputMode={step < 1 ? 'decimal' : 'numeric'}
-      id={id}
-      className={s.numIn}
-      value={draft}
-      min={min}
-      max={max}
-      step={step}
-      aria-label={ariaLabel}
-      aria-describedby={describedBy}
-      aria-invalid={invalid || undefined}
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={commit}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          commit();
-        }
-      }}
-    />
-  );
-}
-
-function Stepper({
-  id,
-  value,
-  min,
-  max,
-  onChange,
-  groupLabel,
-  lessLabel,
-  moreLabel,
-  describedBy,
-  invalid,
-  small
-}: {
-  id: string;
-  value: number;
-  min: number;
-  max: number;
-  onChange: (n: number) => void;
-  groupLabel: string;
-  lessLabel: string;
-  moreLabel: string;
-  describedBy?: string;
-  invalid?: boolean;
-  small?: boolean;
-}) {
-  return (
-    <div
-      className={[s.stepper, small ? s.stepperSmall : null, invalid ? s.stepperInvalid : null].filter(Boolean).join(' ')}
-      role="group"
-      aria-label={groupLabel}
-    >
-      <button
-        type="button"
-        className={s.stepBtn}
-        aria-label={lessLabel}
-        disabled={value <= min}
-        onClick={() => onChange(Math.max(min, value - 1))}
-      >
-        −
-      </button>
-      <NumberBox id={id} value={value} min={min} max={max} onCommit={onChange} describedBy={describedBy} invalid={invalid} />
-      <button
-        type="button"
-        className={s.stepBtn}
-        aria-label={moreLabel}
-        disabled={value >= max}
-        onClick={() => onChange(Math.min(max, value + 1))}
-      >
-        +
-      </button>
-    </div>
-  );
 }
 
 /**
@@ -284,8 +162,26 @@ function StatusPill({ tone, icon, children }: { tone: 'ok' | 'short' | 'staple' 
 
 /* ========================================================================== */
 
-export function MenuMonsterPlanner({ catalog }: { catalog: Catalog }) {
-  const [plan, setPlan] = useState<Plan>(() => seedPlan(catalog));
+/**
+ * Anonymous by default: the plan lives here and autosaves to localStorage.
+ * Pass BOTH `plan` and `onPlanChange` and it runs CONTROLLED — one meal of a
+ * saved scout menu (Scout Workspace). The menu owns the people, diets,
+ * budget and the slot, so the masthead, rail, meal chips, "Who's eating" and
+ * Start over are not rendered, and the browser draft is neither read nor
+ * written. The anonymous render is unchanged.
+ */
+export function MenuMonsterPlanner({
+  catalog,
+  plan: controlledPlan,
+  onPlanChange
+}: {
+  catalog: Catalog;
+  plan?: Plan;
+  onPlanChange?: (plan: Plan) => void;
+}) {
+  const controlled = controlledPlan !== undefined && onPlanChange !== undefined;
+  const [draftPlan, setPlan] = useState<Plan>(() => seedPlan(catalog));
+  const plan = controlled ? controlledPlan : draftPlan;
   const [openLines, setOpenLines] = useState<Set<string>>(() => new Set());
   const [resetArmed, setResetArmed] = useState(false);
   const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -293,6 +189,7 @@ export function MenuMonsterPlanner({ catalog }: { catalog: Catalog }) {
 
   // Hydrate the saved draft once, after first paint (library/mb-grid.tsx pattern).
   useEffect(() => {
+    if (controlled) return;
     let raw: string | null = null;
     try {
       raw = window.localStorage.getItem(PLAN_STORAGE_KEY);
@@ -308,7 +205,7 @@ export function MenuMonsterPlanner({ catalog }: { catalog: Catalog }) {
     }
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setPlan(restorePlan(parsed, catalog));
-  }, [catalog]);
+  }, [catalog, controlled]);
 
   useEffect(
     () => () => {
@@ -318,6 +215,10 @@ export function MenuMonsterPlanner({ catalog }: { catalog: Catalog }) {
   );
 
   function commit(next: Plan) {
+    if (controlled) {
+      onPlanChange(next);
+      return;
+    }
     setPlan(next);
     try {
       window.localStorage.setItem(PLAN_STORAGE_KEY, JSON.stringify(next));
@@ -423,6 +324,7 @@ export function MenuMonsterPlanner({ catalog }: { catalog: Catalog }) {
     <div className={s.root} id="menu-monster-planner">
       <div className={s.screen}>
         {/* ---- Masthead: title, print, date, patrol, autosave, start over ---- */}
+        {!controlled && (
         <div className={s.masthead}>
           <div className={s.kicker}>Troop 79 · Menu Monster · Camp cooking plan</div>
           <div className={s.titleRow}>
@@ -477,10 +379,12 @@ export function MenuMonsterPlanner({ catalog }: { catalog: Catalog }) {
             ))}
           </ol>
         </div>
+        )}
 
         <div className={s.grid}>
           {/* ================= Left column: meal + menu items ================= */}
           <div className={s.col}>
+            {!controlled && (
             <section aria-labelledby={`${uid}-meal-h`}>
               <SectionDivider label={<span id={`${uid}-meal-h`}>Step 1 · Meal</span>} />
               <fieldset className={s.mealSet}>
@@ -505,9 +409,10 @@ export function MenuMonsterPlanner({ catalog }: { catalog: Catalog }) {
                 </div>
               </fieldset>
             </section>
+            )}
 
             <section aria-labelledby={`${uid}-menu-h`}>
-              <SectionDivider label={<span id={`${uid}-menu-h`}>Step 2 · Menu items</span>} />
+              <SectionDivider label={<span id={`${uid}-menu-h`}>{controlled ? 'Menu items' : 'Step 2 · Menu items'}</span>} />
               <p className={s.help}>
                 Check what the patrol is cooking. Each item lists what one person gets; a gluten-free or other version, when
                 there is one, sits underneath. The shopping list rebuilds as you go.
@@ -589,6 +494,7 @@ export function MenuMonsterPlanner({ catalog }: { catalog: Catalog }) {
 
           {/* ============ Right column: who's eating, totals, list, print ============ */}
           <div className={s.col}>
+            {!controlled && (
             <section aria-labelledby={`${uid}-who-h`}>
               <SectionDivider label={<span id={`${uid}-who-h`}>Step 3 · Who&rsquo;s eating</span>} />
               <div className={s.who}>
@@ -630,7 +536,6 @@ export function MenuMonsterPlanner({ catalog }: { catalog: Catalog }) {
                             {r.label} <small>{r.hint} · number of people</small>
                           </label>
                           <Stepper
-                            small
                             id={`${uid}-r-${r.key}`}
                             value={v}
                             min={0}
@@ -652,6 +557,7 @@ export function MenuMonsterPlanner({ catalog }: { catalog: Catalog }) {
                 </div>
               </div>
             </section>
+            )}
 
             {/* ---- Totals strip (sticky) ---- */}
             <section className={s.totals} aria-labelledby={`${uid}-totals-h`}>
@@ -680,17 +586,27 @@ export function MenuMonsterPlanner({ catalog }: { catalog: Catalog }) {
                   <div className={s.tWhy}>Spent minus Used. Goes home or into the patrol box.</div>
                 </div>
                 <div className={`${s.tile} ${s.tileBudget}`}>
-                  <label className={s.tLabel} htmlFor={`${uid}-budget`}>
-                    Budget target, $ per person
-                  </label>
-                  <NumberBox
-                    id={`${uid}-budget`}
-                    value={plan.budgetPerPerson}
-                    min={0}
-                    max={999}
-                    step={0.25}
-                    onCommit={(n) => patch((p) => ({ ...p, budgetPerPerson: n }))}
-                  />
+                  {controlled ? (
+                    <>
+                      <div className={s.tLabel}>Budget target, $ per person</div>
+                      <div className={s.tMain}>{money(plan.budgetPerPerson)}</div>
+                    </>
+                  ) : (
+                    <>
+                      <label className={s.tLabel} htmlFor={`${uid}-budget`}>
+                        Budget target, $ per person
+                      </label>
+                      <NumberBox
+                        framed
+                        id={`${uid}-budget`}
+                        value={plan.budgetPerPerson}
+                        min={0}
+                        max={999}
+                        step={0.25}
+                        onCommit={(n) => patch((p) => ({ ...p, budgetPerPerson: n }))}
+                      />
+                    </>
+                  )}
                   <div className={`${s.readout} ${s[`readout_${budget.tone}`]}`} role="status">
                     <span className={s.statusIco} aria-hidden="true">
                       {budget.icon}
@@ -713,7 +629,7 @@ export function MenuMonsterPlanner({ catalog }: { catalog: Catalog }) {
 
             {/* ---- Shopping list ---- */}
             <section aria-labelledby={`${uid}-list-h`}>
-              <SectionDivider label={<span id={`${uid}-list-h`}>Step 4 · Cost &amp; shopping list</span>} />
+              <SectionDivider label={<span id={`${uid}-list-h`}>{controlled ? 'Cost & shopping list' : 'Step 4 · Cost & shopping list'}</span>} />
               <p className={s.help}>
                 Scaled amounts are estimates — round up for hungry scouts. Open a line to see other package choices.
               </p>
@@ -747,7 +663,7 @@ export function MenuMonsterPlanner({ catalog }: { catalog: Catalog }) {
             </section>
 
             <section aria-labelledby={`${uid}-print-h`}>
-              <SectionDivider label={<span id={`${uid}-print-h`}>Step 5 · Print</span>} />
+              <SectionDivider label={<span id={`${uid}-print-h`}>{controlled ? 'Print' : 'Step 5 · Print'}</span>} />
               <div className={s.printRow}>
                 <p className={s.help}>
                   The printed sheet has the list by store section with blank boxes for what you bought and what it cost,
@@ -977,7 +893,6 @@ function ShoppingLineCard({
             {qtyLabel} to buy
           </label>
           <Stepper
-            small
             id={`${uid}-qty-${id}`}
             value={l.qty}
             min={0}

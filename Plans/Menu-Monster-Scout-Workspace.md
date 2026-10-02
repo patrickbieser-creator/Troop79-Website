@@ -199,6 +199,18 @@ Phase 4           mm_recipes + author_person_id, attribution_label, shared_at, e
 4. **Phase 4:** scout recipes (live on share), admin New recipes list with matching and retire, credit, equipment.
 5. **Bookkeeping:** DECISIONS (reverse D-266; add the scout catalog-edit rule, the open name rule and recipes-go-live), BACKLOG (strike the replaced items, add archive/cleanup), plan → Completed.
 
+### Meal page in Phase 1 (Patrick, 2026-10-02: "build it now and look for ways to optimize the work in Phase 2")
+
+The meal drill-in is a port of the approved `meal.html`, not the reused anonymous planner:
+- One quiet row per recipe (name, cost in the right column, ⋯ Swap recipe / Remove); a dashed search adds a recipe; a `People:` dialer with Reset to the menu's number; a Total / Per person switch; one footer line ("This meal: $X, $Y a person").
+- A recipe's name opens its ingredient list (amounts as totals for the meal's headcount, diet swaps shown).
+- **No shopping controls on the meal page.** Package choice, quantity overrides and "bringing from home" move to the Shopping tab (slice 5). The anonymous planner's controlled mode is removed again; the planner stays exactly what visitors use.
+
+**Phase 2 savings built in now:**
+1. **One shared ingredient-list component** (`IngredientList`) with a mode flag: `read` (Phase 1 meal page), `menu-edit` (Phase 2: amount / swap / leave out / add, "Your version · N"), `author` (Phase 4 recipe editor, the approved recipe-editor.html). Rows, layout, keyboard, insets and tests exist after Phase 1; Phase 2 adds the edit actions only.
+2. **`meals[].recipeEdits` reserved now** in `sanitizeMenu` (validated, empty in Phase 1; ops amount / swap / leave_out / add keyed by recipe id) and applied by one pure function on every read, before `buildLines` — the hook exists in Phase 1, so Phase 2 needs no data migration. (`compileRecipe` in `variations.ts` compiles leader diet variations, a different shape; the new function sits beside it, it does not replace it.)
+3. Diet swaps already come from the engine (`except` / `only` lines), so the list shows them with no Phase 2 work.
+
 ## Open Questions
 
 - [x] Schema review: diets as a `jsonb` map (2026-10-02).

@@ -240,3 +240,5 @@
   padding: 1px 4px;
   border-radius: var(--admin-radius-sm);
 }
+
+.stepperSpecimen { display: flex; flex-wrap: wrap; gap: 16px 24px; align-items: center; }

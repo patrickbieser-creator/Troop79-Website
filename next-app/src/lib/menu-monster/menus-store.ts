@@ -15,7 +15,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { recordAuditAs, type AuditActor } from '@/lib/audit';
-import type { Menu, MenuContext, MenuMeal } from './menus';
+import { coverDays, type Menu, type MenuContext, type MenuMeal } from './menus';
 import type { RestrictionKey } from './types';
 
 /** A row on My menus. */
@@ -43,7 +43,7 @@ export type SaveResult =
   | { status: 'conflict' }
   | { status: 'not_found' };
 
-const COLUMNS = 'id, owner_person_id, name, context, calendar_entry_id, start_date, headcount, restrictions, budget_per_person_meal, meals, created_at, updated_at';
+const COLUMNS = 'id, owner_person_id, name, context, calendar_entry_id, start_date, headcount, restrictions, budget_per_person_meal, day_count, meals, created_at, updated_at';
 
 interface MenuRow {
   id: string;
@@ -55,6 +55,7 @@ interface MenuRow {
   headcount: number;
   restrictions: Record<RestrictionKey, number>;
   budget_per_person_meal: number | string;
+  day_count: number;
   meals: MenuMeal[];
   created_at: string;
   updated_at: string;
@@ -68,6 +69,7 @@ const toRow = (m: Menu) => ({
   headcount: m.headcount,
   restrictions: m.restrictions,
   budget_per_person_meal: m.budgetPerPersonMeal,
+  day_count: m.dayCount,
   meals: m.meals
 });
 
@@ -80,6 +82,8 @@ const fromRow = (r: MenuRow): Menu => ({
   restrictions: r.restrictions,
   // numeric comes back from PostgREST as a number or a string depending on precision.
   budgetPerPersonMeal: Number(r.budget_per_person_meal),
+  // The column's default of 2 must never hide a meal saved on a later day.
+  dayCount: coverDays(r.day_count, r.meals),
   meals: r.meals
 });
 
