@@ -34,7 +34,7 @@
  * edits), so nothing on this page can disagree with the shopping list.
  */
 
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { priceText as money } from '@/lib/menu-monster/units';
 import { useLeaveGuard } from '@/lib/use-leave-guard';
 import { Button } from '@/app/_components/button';
@@ -56,7 +56,8 @@ import {
   opsWithoutOp,
   type AmountView
 } from '@/lib/menu-monster/ingredient-rows';
-import { saveMenuAction } from '../../../_tools/menu-monster/menu-actions';
+import type { MenuStore, SaveResult } from '@/lib/menu-monster/menu-store';
+import { serverMenuStore } from './server-menu-store';
 import { IngredientList, type RowAction } from '../../_components/ingredient-list';
 import { ReadOnlyLine } from './read-only-line';
 import { RowMenu } from './row-menu';
@@ -98,21 +99,26 @@ export function MealEditor({
   mealId,
   updatedAt,
   readOnly = false,
-  plannedBy = null
+  plannedBy = null,
+  store: storeProp
 }: {
   catalog: Catalog;
-  menuId: string;
+  /** The saved menu's id (server store). A local menu passes `store` instead. */
+  menuId?: string;
   menu: Menu;
   mealId: string;
-  updatedAt: string;
+  updatedAt: string | null;
   readOnly?: boolean;
   plannedBy?: string | null;
+  /** Where the menu is kept. Omitted = the signed-in scout's saved menu (server). */
+  store?: MenuStore;
 }) {
+  const store = useMemo(() => storeProp ?? serverMenuStore(menuId ?? null), [storeProp, menuId]);
   const meal = menu.meals.find((m) => m.id === mealId) as MenuMeal;
   const start = (): Draft => ({ people: meal.headcount ?? menu.headcount, recipeIds: [...meal.recipeIds], edits: { ...(meal.recipeEdits ?? {}) } });
   const [draft, setDraft] = useState<Draft>(start);
   const [saved, setSaved] = useState<Draft>(start);
-  const [version, setVersion] = useState(updatedAt);
+  const [version, setVersion] = useState<string | null>(updatedAt);
   const [saving, setSaving] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -275,9 +281,9 @@ export function MealEditor({
         m.id === mealId ? { ...m, headcount: sent.people === menu.headcount ? null : sent.people, recipeIds: sent.recipeIds, recipeEdits: sent.edits } : m
       )
     };
-    let res: Awaited<ReturnType<typeof saveMenuAction>>;
+    let res: SaveResult;
     try {
-      res = await saveMenuAction(menuId, next, version);
+      res = await store.save(next, version);
     } catch {
       res = { ok: false, error: 'Something went wrong saving your meal. Try again.' };
     }
@@ -291,7 +297,7 @@ export function MealEditor({
     setJustSaved(true);
   }
 
-  const statusText = dirty ? 'Unsaved changes to this meal' : justSaved ? `Saved to ${menu.name}` : '';
+  const statusText = dirty ? 'Unsaved changes to this meal' : justSaved ? (store.caps.canSave ? `Saved to ${menu.name}` : `Saved on this computer in ${menu.name}`) : '';
   const perPerson = whole.perSpent;
 
   return (

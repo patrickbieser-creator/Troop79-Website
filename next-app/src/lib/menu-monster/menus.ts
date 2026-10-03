@@ -424,3 +424,19 @@ export function menuFromDraft(plan: Plan, catalog: Catalog): Menu {
     catalog
   );
 }
+
+/** A new, empty menu: the Plan tab's starting point for a saved or a local menu. */
+export const blankMenu = (): Menu => ({
+  name: '',
+  context: 'camp',
+  calendarEntryId: null,
+  startDate: null,
+  headcount: 8,
+  restrictions: { gf: 0, nut: 0, dairy: 0, veg: 0 },
+  budgetPerPersonMeal: DEFAULT_MENU_BUDGET,
+  dayCount: DEFAULT_MENU_DAYS,
+  shopping: emptyShopping(),
+  actuals: {},
+  freeItems: [],
+  meals: []
+});

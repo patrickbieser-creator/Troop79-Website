@@ -6,7 +6,7 @@ import type { Metadata } from 'next';
 import { createAdminClient } from '@/lib/supabase/server';
 import { centralToday } from '@/lib/dates';
 import { loadMenuMonsterCatalog } from '@/lib/menu-monster/data';
-import { DEFAULT_MENU_BUDGET, DEFAULT_MENU_DAYS, emptyShopping, type Menu } from '@/lib/menu-monster/menus';
+import { blankMenu } from '@/lib/menu-monster/menus';
 import { loadOutingsWith } from '@/lib/menu-monster/menus-data';
 import { PageShell } from '@/app/_components/page-shell';
 import { PlanTab } from '../_components/plan-tab';
@@ -14,21 +14,6 @@ import { LockedLine, MENUS_HREF, MenuHeader, scoutViewer } from '../_components/
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'New menu — Menu Monster' };
-
-const BLANK: Menu = {
-  name: '',
-  context: 'camp',
-  calendarEntryId: null,
-  startDate: null,
-  headcount: 8,
-  restrictions: { gf: 0, nut: 0, dairy: 0, veg: 0 },
-  budgetPerPersonMeal: DEFAULT_MENU_BUDGET,
-  dayCount: DEFAULT_MENU_DAYS,
-  shopping: emptyShopping(),
-  actuals: {},
-  freeItems: [],
-  meals: []
-};
 
 export default async function NewMenuPage() {
   const viewer = await scoutViewer();
@@ -47,7 +32,7 @@ export default async function NewMenuPage() {
     <>
       <MenuHeader current="new" />
       <PageShell>
-        <PlanTab catalog={catalog} menuId={null} menu={BLANK} updatedAt={null} outings={outings} />
+        <PlanTab catalog={catalog} menuId={null} menu={blankMenu()} updatedAt={null} outings={outings} />
       </PageShell>
     </>
   );

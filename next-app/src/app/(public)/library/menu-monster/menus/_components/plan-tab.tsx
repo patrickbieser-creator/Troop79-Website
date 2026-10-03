@@ -22,7 +22,7 @@
  * The meal rows are plain links and the shopping list is one link away.
  */
 
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { priceText as money } from '@/lib/menu-monster/units';
@@ -36,16 +36,14 @@ import type { Catalog, Plan, RestrictionKey } from '@/lib/menu-monster/types';
 import { MEALS, RESTRICTION_BY_KEY } from '@/lib/menu-monster/units';
 import { MAX_HEADCOUNT, MIN_HEADCOUNT } from '@/lib/menu-monster/engine';
 import { MAX_MENU_DAYS, MAX_MENU_MEALS, MENU_CONTEXTS, MAX_MENU_NAME, menuNameError, type Menu, type MenuContext, type MenuMeal } from '@/lib/menu-monster/menus';
-import { DIET_ORDER, dayLabel, menuCost, outingDayCount, type Outing } from '@/lib/menu-monster/menu-view';
-import { budgetState } from '../../../_tools/menu-monster/planner';
-import { createMenuAction, saveMenuAction } from '../../../_tools/menu-monster/menu-actions';
+import { DIET_ORDER, budgetState, dayLabel, menuCost, outingDayCount, type Outing } from '@/lib/menu-monster/menu-view';
+import type { CreateResult, MenuStore, SaveResult } from '@/lib/menu-monster/menu-store';
+import { serverMenuStore } from './server-menu-store';
 import { AddMeal } from './add-meal';
 import { RowMenu } from './row-menu';
 import { ReadOnlyLine } from './read-only-line';
 import { SaveBar } from './save-bar';
 import s from './workspace.module.css';
-
-const MENUS_HREF = '/library/menu-monster/menus';
 
 const newId = () => (typeof globalThis.crypto?.randomUUID === 'function' ? globalThis.crypto.randomUUID() : `m-${Date.now()}-${Math.floor(Math.random() * 1e6)}`);
 const slotLabel = (slot: Plan['meal']) => MEALS.find((m) => m.key === slot)?.label ?? slot;
@@ -65,10 +63,17 @@ export interface PlanTabProps {
   readOnly?: boolean;
   /** Credit name of the scout who planned it (read-only view). */
   plannedBy?: string | null;
+  /** Where the menu is kept. Omitted = the signed-in scout's saved menu (server). */
+  store?: MenuStore;
+  /** The title's heading level: the hub shows this under the page's own h1. */
+  titleAs?: 'h1' | 'h2';
 }
 
-export function PlanTab({ catalog, menuId, menu: initial, updatedAt, outings, tabs, readOnly = false, plannedBy = null }: PlanTabProps) {
+export function PlanTab({ catalog, menuId, menu: initial, updatedAt, outings, tabs, readOnly = false, plannedBy = null, store: storeProp, titleAs: Title = 'h1' }: PlanTabProps) {
   const router = useRouter();
+  const store = useMemo(() => storeProp ?? serverMenuStore(menuId), [storeProp, menuId]);
+  const { canSave } = store.caps;
+  const [isNew, setIsNew] = useState(menuId === null);
   const [menu, setMenu] = useState<Menu>(initial);
   const [saved, setSaved] = useState<{ menu: Menu; key: string }>(() => ({ menu: initial, key: JSON.stringify(initial) }));
   const [version, setVersion] = useState<string | null>(updatedAt);
@@ -80,7 +85,6 @@ export function PlanTab({ catalog, menuId, menu: initial, updatedAt, outings, ta
   const nameRef = useRef<HTMLInputElement | null>(null);
   const warnRef = useRef<HTMLDivElement | null>(null);
 
-  const isNew = menuId === null;
   const linked = outings.find((o) => o.id === menu.calendarEntryId) ?? null;
   const days = menu.dayCount;
 
@@ -158,9 +162,9 @@ export function PlanTab({ catalog, menuId, menu: initial, updatedAt, outings, ta
     setSaving(true);
     setError(null);
     const sent = menu;
-    let res: { ok: true; id?: string; updatedAt?: string } | { ok: false; error: string };
+    let res: CreateResult | SaveResult;
     try {
-      res = isNew ? await createMenuAction(sent) : await saveMenuAction(menuId, sent, version ?? '');
+      res = isNew ? await store.create(sent) : await store.save(sent, version);
     } catch {
       res = { ok: false, error: 'Something went wrong saving your menu. Try again.' };
     }
@@ -171,15 +175,22 @@ export function PlanTab({ catalog, menuId, menu: initial, updatedAt, outings, ta
     }
     setSaved({ menu: sent, key: JSON.stringify(sent) });
     setNavWarn(null);
-    if (isNew && res.id) {
-      // Stay "Saving…" — the page is replaced by the saved menu's own URL.
-      router.replace(thenOpen ? `${MENUS_HREF}/${res.id}/meals/${thenOpen}` : `${MENUS_HREF}/${res.id}`);
+    if (isNew && 'id' in res) {
+      const href = store.afterCreate(res.id, thenOpen);
+      if (href) {
+        // Stay "Saving…" — the page is replaced by the saved menu's own URL.
+        router.replace(href);
+        return true;
+      }
+      setIsNew(false);
+      setSaving(false);
+      setJustSaved(true);
       return true;
     }
     setSaving(false);
-    setVersion(res.updatedAt ?? version);
+    if ('updatedAt' in res) setVersion(res.updatedAt ?? version);
     setJustSaved(true);
-    if (thenOpen && menuId) router.push(`${MENUS_HREF}/${menuId}/meals/${thenOpen}`);
+    if (thenOpen) router.push(store.hrefs.meal(thenOpen));
     return true;
   }
 
@@ -190,15 +201,26 @@ export function PlanTab({ catalog, menuId, menu: initial, updatedAt, outings, ta
     setNavWarn(null);
   }
 
-  const mealHref = (id: string) => `${MENUS_HREF}/${menuId}/meals/${id}`;
+  const mealHref = store.hrefs.meal;
   const clean = !isNew && !dirty;
   const dialerLabel = (k: RestrictionKey) => RESTRICTION_BY_KEY[k].label;
 
   return (
     <div>
       <div className={s.titleLine}>
-        <h1 className={s.menuTitle}>{menu.name.trim() || (isNew ? 'New menu' : 'Untitled menu')}</h1>
-        {!readOnly && <SaveBar isNew={isNew} dirty={dirty} saving={saving} saved={justSaved} onSave={() => void save()} onDiscard={discard} />}
+        <Title className={s.menuTitle}>{menu.name.trim() || (isNew ? 'New menu' : 'Untitled menu')}</Title>
+        {!readOnly && (
+          <SaveBar
+            isNew={isNew}
+            newLabel={canSave ? undefined : 'Save on this computer'}
+            labels={canSave ? undefined : { clean: 'Saved on this computer' }}
+            dirty={dirty}
+            saving={saving}
+            saved={justSaved}
+            onSave={() => void save()}
+            onDiscard={discard}
+          />
+        )}
       </div>
       {readOnly && <ReadOnlyLine plannedBy={plannedBy} />}
       {tabs != null && <div className={s.tabs}>{tabs}</div>}
@@ -211,7 +233,7 @@ export function PlanTab({ catalog, menuId, menu: initial, updatedAt, outings, ta
       {navWarn && (
         <Notice tone="warning" role="alert" tabIndex={-1} ref={warnRef} className={s.notice}>
           <strong>Save your changes before opening a meal</strong>
-          <div>The meal opens your saved menu.</div>
+          <div>{canSave ? 'The meal opens your saved menu.' : 'The meal opens the menu saved on this computer.'}</div>
           <div className={s.noticeActions}>
             <Button size="sm" variant="primary" disabled={saving} onClick={() => void save(navWarn)}>
               Save and open the meal
@@ -405,8 +427,8 @@ export function PlanTab({ catalog, menuId, menu: initial, updatedAt, outings, ta
             ) : (
               <p className={s.foot}>Add a meal and pick what you’re cooking, and the shopping list builds itself.</p>
             )}
-            {menuId && (
-              <Link className={s.link} href={`${MENUS_HREF}/${menuId}/shopping`}>
+            {!isNew && (
+              <Link className={s.link} href={store.hrefs.shopping}>
                 Open the shopping list
               </Link>
             )}

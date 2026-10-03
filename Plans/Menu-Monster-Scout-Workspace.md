@@ -211,6 +211,15 @@ The meal drill-in is a port of the approved `meal.html`, not the reused anonymou
 2. **`meals[].recipeEdits` reserved now** in `sanitizeMenu` (validated, empty in Phase 1; ops amount / swap / leave_out / add keyed by recipe id) and applied by one pure function on every read, before `buildLines` — the hook exists in Phase 1, so Phase 2 needs no data migration. (`compileRecipe` in `variations.ts` compiles leader diet variations, a different shape; the new function sits beside it, it does not replace it.)
 3. Diet swaps already come from the engine (`except` / `only` lines), so the list shows them with no Phase 2 work.
 
+### IA correction (Patrick, 2026-10-02, after v1.136.0) — before release C
+
+The prototype's functional IA did not fully reach production. Patrick's calls:
+1. **The planning flow is the main Menu Monster experience for everyone.** Basics (name, where you're cooking, outing, People + diet dialers, budget) are the first thing on the page, then meals by day, then a separate page per meal. Signed-in scouts get a saved menu; visitors and leaders get the same screens as an **unsaved menu kept on this computer** ("sign in to save"). The old single-meal planner **retires** (its localStorage draft is folded into the new local menu once).
+2. **Meals by day use the prototype's dashed search per day**: "Add to Friday — search a recipe, or type breakfast, lunch…" — picking a recipe drops it into that day's meal of the right slot (creating it); typing a slot name offers an empty meal. Replaces "+ Add a meal" (a combobox, not a `<select>`, so no arrow-key accidents).
+3. **Keep the separate page per meal** (focus, little on screen).
+4. **Shopping keeps the new merged list** and gains the old planner's **Spent / Used / Leftover / Budget** panel above it.
+5. Release C (scout-added packages, typed-in ingredients) follows this.
+
 ### Phase 2 design (tech-lead review, 2026-10-02)
 
 **Releases:** (A) P2.1 schema + people-merge fix + P2.2 menu-local edits → (B) P2.5 leader side + P2.4 "What you paid" together (auto-applied prices need revert from day one) → (C) P2.3a scout-added package, P2.3b typed-in ingredient.

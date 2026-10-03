@@ -13,6 +13,7 @@
  */
 
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
 import { getIdentitySessionIfValid } from '@/lib/family-access';
 import { resolveAdminActor } from '@/lib/admin-actor';
@@ -23,6 +24,7 @@ import { TabStrip } from '@/app/_components/tab-strip';
 import s from './workspace.module.css';
 
 export const MENUS_HREF = '/library/menu-monster/menus';
+export const MENU_HUB_HREF = '/library/topic/menu-monster';
 
 export interface ScoutViewer {
   personId: number;
@@ -162,5 +164,30 @@ export function LockedLine({ next, hub = false }: { next: string; hub?: boolean 
         Plan a meal without signing in
       </Link>
     </p>
+  );
+}
+
+/**
+ * The local menu pages (/menus/local…) are for visitors and leaders. A signed-in
+ * scout has saved menus instead: send them to the hub, where an unsaved menu
+ * left on this computer is offered for saving. `redirect` throws, so nothing
+ * below the call runs for a scout.
+ */
+export async function redirectScoutFromLocal(): Promise<void> {
+  if (await scoutViewer()) redirect(MENU_HUB_HREF);
+}
+
+/** The kicker for the local menu's pages: Menu Monster › Menu on this computer. */
+export function LocalMenuHeader({ current }: { current: 'plan' | 'shopping' | 'meal' }) {
+  return (
+    <PageHeader
+      kicker={
+        <>
+          <Link href={MENU_HUB_HREF}>Menu Monster</Link>
+          <KickerSep />
+          {current === 'plan' ? 'Menu on this computer' : <Link href={`${MENUS_HREF}/local`}>Menu on this computer</Link>}
+        </>
+      }
+    />
   );
 }

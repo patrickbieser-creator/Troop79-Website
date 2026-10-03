@@ -18,6 +18,7 @@ import { buildLines, gatherNeeds, priceNeeds, totalsOf, type Need } from './engi
 import { MAX_MENU_DAYS, addDays, composePlan, mealCatalog, type Menu, type MenuMeal } from './menus';
 import { MEALS } from './units';
 import { fmtDateFull, fmtDay } from '@/lib/format-date';
+import { money } from '@/lib/event-money';
 
 /** A calendar entry a menu can be linked to. endDate is never null: a
  *  single-day entry reports its own date. */
@@ -141,4 +142,20 @@ export function menuCost(menu: Menu, catalog: Catalog): MenuCost {
   for (const meal of menu.meals) byMeal[meal.id] = mealCost(menu, meal, catalog);
   const list = buildMenuList(menu, catalog);
   return { total: list.totals.spent, perPersonMeal: list.perPersonMeal, byMeal };
+}
+
+/* ---- Budget readout: never colour-only (icon + sentence + role=status) ---- */
+
+const EPS = 1e-9;
+
+export type BudgetState = { tone: 'ok' | 'near' | 'over'; icon: string; msg: string };
+
+export function budgetState(t: Pick<Totals, 'perSpent'>, budget: number): BudgetState {
+  if (t.perSpent <= budget + EPS) {
+    return { tone: 'ok', icon: '✓', msg: `Under budget by ${money(budget - t.perSpent)} per person` };
+  }
+  if (t.perSpent <= budget * 1.1) {
+    return { tone: 'near', icon: '!', msg: `Close: ${money(t.perSpent - budget)} per person over the target` };
+  }
+  return { tone: 'over', icon: '✗', msg: `Over budget by ${money(t.perSpent - budget)} per person` };
 }

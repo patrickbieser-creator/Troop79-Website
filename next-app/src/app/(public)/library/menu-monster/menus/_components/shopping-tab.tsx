@@ -36,7 +36,7 @@
  * summary and doesn't take a merged, menu-wide list.
  */
 
-import { useCallback, useId, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { priceText as money } from '@/lib/menu-monster/units';
 import { useLeaveGuard } from '@/lib/use-leave-guard';
@@ -48,16 +48,15 @@ import type { Catalog, LineSource } from '@/lib/menu-monster/types';
 import { SECTIONS, SECTION_ORDER, qtyText } from '@/lib/menu-monster/units';
 import { MAX_QTY, lineSentence } from '@/lib/menu-monster/engine';
 import type { Menu, MenuShopping } from '@/lib/menu-monster/menus';
-import { buildMenuList, mealTitle, type MenuLine } from '@/lib/menu-monster/menu-view';
+import { budgetState, buildMenuList, mealTitle, type MenuLine } from '@/lib/menu-monster/menu-view';
+import type { MenuStore, SaveResult } from '@/lib/menu-monster/menu-store';
 import { buildSnapshot, snapshotDrift, type MenuSnapshot } from '@/lib/menu-monster/menu-snapshot';
-import { budgetState } from '../../../_tools/menu-monster/planner';
-import { saveMenuAction } from '../../../_tools/menu-monster/menu-actions';
+import { serverMenuStore } from './server-menu-store';
 import { PaidSection, type PaidSavedInfo } from './paid-section';
 import { ReadOnlyLine } from './read-only-line';
 import { SaveBar } from './save-bar';
 import s from './workspace.module.css';
 
-const MENUS_HREF = '/library/menu-monster/menus';
 const NOTE_MAX = 120; // matches restorePlan's note cap
 const keyOf = (sh: MenuShopping) => JSON.stringify(sh);
 const SOURCES: readonly { key: LineSource; label: string }[] = [
@@ -68,10 +67,11 @@ const SOURCES: readonly { key: LineSource; label: string }[] = [
 
 export interface ShoppingTabProps {
   catalog: Catalog;
-  menuId: string;
+  /** The saved menu's id (server store). A local menu passes `store` instead. */
+  menuId?: string;
   menu: Menu;
-  /** The version token the menu was loaded at. */
-  updatedAt: string;
+  /** The version token the menu was loaded at (null for a local menu). */
+  updatedAt: string | null;
   /** The priced snapshot stored at the last save (null for a row that never had one). */
   snapshot: MenuSnapshot | null;
   /** The Plan / Shopping tab strip, rendered under the title line. */
@@ -80,17 +80,21 @@ export interface ShoppingTabProps {
   readOnly?: boolean;
   /** Credit name of the scout who planned it (read-only view). */
   plannedBy?: string | null;
+  /** Where the menu is kept. Omitted = the signed-in scout's saved menu (server). */
+  store?: MenuStore;
 }
 
-export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updatedAt, snapshot: initialSnapshot, tabs, readOnly = false, plannedBy = null }: ShoppingTabProps) {
+export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updatedAt, snapshot: initialSnapshot, tabs, readOnly = false, plannedBy = null, store: storeProp }: ShoppingTabProps) {
   const uid = useId();
+  const store = useMemo(() => storeProp ?? serverMenuStore(menuId ?? null), [storeProp, menuId]);
+  const { canSave, canPay, canReport } = store.caps;
   // The price book as this page knows it: the server's, plus prices this scout just applied.
   const [catalog, setCatalog] = useState<Catalog>(catalogProp);
   const [paidDirty, setPaidDirty] = useState(false);
   const [saved, setSaved] = useState<{ menu: Menu; key: string }>(() => ({ menu: initial, key: keyOf(initial.shopping) }));
   const [draft, setDraft] = useState<MenuShopping>(initial.shopping);
   const [snapshot, setSnapshot] = useState<MenuSnapshot | null>(initialSnapshot);
-  const [version, setVersion] = useState(updatedAt);
+  const [version, setVersion] = useState<string | null>(updatedAt);
   const [saving, setSaving] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -146,9 +150,9 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
   async function persist(toSave: Menu): Promise<boolean> {
     setSaving(true);
     setError(null);
-    let res: { ok: true; updatedAt: string } | { ok: false; error: string };
+    let res: SaveResult;
     try {
-      res = await saveMenuAction(menuId, toSave, version);
+      res = await store.save(toSave, version);
     } catch {
       res = { ok: false, error: 'Something went wrong saving your menu. Try again.' };
     }
@@ -159,7 +163,7 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
     }
     setVersion(res.updatedAt);
     // Display only: the stored snapshot is built by the server from the same pure function.
-    setSnapshot(buildSnapshot(toSave, catalog));
+    if (canReport) setSnapshot(buildSnapshot(toSave, catalog));
     return true;
   }
 
@@ -215,7 +219,17 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
     <div id="mm-shopping-page">
       <div className={s.titleLine}>
         <h1 className={s.menuTitle}>{menu.name.trim() || 'Untitled menu'}</h1>
-        {!readOnly && <SaveBar isNew={false} dirty={dirty} saving={saving} saved={justSaved} onSave={() => void save()} onDiscard={discard} />}
+        {!readOnly && (
+          <SaveBar
+            isNew={false}
+            labels={canSave ? undefined : { clean: 'Saved on this computer' }}
+            dirty={dirty}
+            saving={saving}
+            saved={justSaved}
+            onSave={() => void save()}
+            onDiscard={discard}
+          />
+        )}
       </div>
       {readOnly && <ReadOnlyLine plannedBy={plannedBy} />}
       {tabs != null && <div className={s.tabs}>{tabs}</div>}
@@ -261,7 +275,7 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
 
         {!priced && (
           <p className={s.foot}>
-            Add a meal on the <Link href={`${MENUS_HREF}/${menuId}`}>Plan tab</Link> and pick what you’re cooking, and the list builds itself.
+            Add a meal on the <Link href={store.hrefs.plan}>Plan tab</Link> and pick what you’re cooking, and the list builds itself.
           </p>
         )}
 
@@ -300,7 +314,7 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
         {drift && (
           <p className={s.foot}>
             Prices in the troop price book changed since you saved: {money(drift.saved)} → {money(drift.live)}.{' '}
-            {!readOnly && (
+            {!readOnly && canReport && (
               <button type="button" className={s.linkBtn} disabled={saving} onClick={() => void updatePrices()}>
                 Update prices
               </button>
@@ -313,6 +327,7 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
         </p>
       </section>
 
+      {canPay && menuId && (
       <PaidSection
         menuId={menuId}
         lines={list.lines.filter((l) => l.status === 'ok' || l.status === 'short')}
@@ -324,6 +339,7 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
         onDirtyChange={setPaidDirty}
         onSaved={paidSaved}
       />
+      )}
     </div>
   );
 }

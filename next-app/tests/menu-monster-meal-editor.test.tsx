@@ -3,7 +3,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import Link from 'next/link';
 import userEvent from '@testing-library/user-event';
 import { CATALOG } from './helpers/menu-monster-fixture';
-import { PLAN_STORAGE_KEY } from '../src/app/(public)/library/_tools/menu-monster/planner';
+import { PLAN_STORAGE_KEY } from '../src/lib/menu-monster/legacy-draft';
 import type { Menu } from '../src/lib/menu-monster/menus';
 
 /**

@@ -42,8 +42,7 @@ import type {
   Plan,
   Recipe,
   RestrictionKey,
-  ShoppingLine,
-  Totals
+  ShoppingLine
 } from '@/lib/menu-monster/types';
 import { MEALS, RESTRICTIONS, RESTRICTION_BY_KEY, SECTIONS, SOURCE_LABELS, lineUnit, perPersonText, qtyText } from '@/lib/menu-monster/units';
 import { baseOf, diffText, variationsOf } from '@/lib/menu-monster/variations';
@@ -67,10 +66,11 @@ import {
   withMeal
 } from '@/lib/menu-monster/engine';
 import { NumberBox, Stepper } from '@/app/_components/stepper';
+import { PLAN_STORAGE_KEY } from '@/lib/menu-monster/legacy-draft';
+import { budgetState } from '@/lib/menu-monster/menu-view';
 import { PrintSheet } from './print-sheet';
 import s from './planner.module.css';
 
-export const PLAN_STORAGE_KEY = 'troop79.menuMonster.plan.v1';
 const SUGGEST_HREF = '/library/submit?target=topic%3Amenu-monster';
 const RESET_LABEL = 'Start over with a blank plan';
 const RESET_ARMED_LABEL = 'Click again to throw away this draft';
@@ -79,20 +79,6 @@ const EPS = 1e-9;
 
 const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
 const mealLabel = (m: MealSlot) => MEALS.find((x) => x.key === m)?.label ?? cap(m);
-
-/* ---- Budget readout: never colour-only (icon + sentence + role=status) ---- */
-
-export type BudgetState = { tone: 'ok' | 'near' | 'over'; icon: string; msg: string };
-
-export function budgetState(t: Pick<Totals, 'perSpent'>, budget: number): BudgetState {
-  if (t.perSpent <= budget + EPS) {
-    return { tone: 'ok', icon: '✓', msg: `Under budget by ${money(budget - t.perSpent)} per person` };
-  }
-  if (t.perSpent <= budget * 1.1) {
-    return { tone: 'near', icon: '!', msg: `Close: ${money(t.perSpent - budget)} per person over the target` };
-  }
-  return { tone: 'over', icon: '✗', msg: `Over budget by ${money(t.perSpent - budget)} per person` };
-}
 
 /**
  * A recipe's versions under its base list (Brad's concept-d treatment ii,

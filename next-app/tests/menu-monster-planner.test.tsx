@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MenuMonsterPlanner, PLAN_STORAGE_KEY } from '../src/app/(public)/library/_tools/menu-monster/planner';
+import { MenuMonsterPlanner } from '../src/app/(public)/library/_tools/menu-monster/planner';
+import { PLAN_STORAGE_KEY } from '../src/lib/menu-monster/legacy-draft';
 import { mapCatalog } from '../src/lib/menu-monster/catalog';
 import type {
   MmConversionRow,

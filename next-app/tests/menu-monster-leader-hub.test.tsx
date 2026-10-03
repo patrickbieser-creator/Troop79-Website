@@ -22,7 +22,10 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn(), push: 
 vi.mock('@/lib/family-access', () => ({ getIdentitySessionIfValid: async () => mocks.session }));
 vi.mock('@/lib/admin-actor', () => ({ resolveAdminActor: async () => mocks.actor }));
 vi.mock('@/lib/supabase/server', () => ({ createAdminClient: () => ({ stub: true }) }));
-vi.mock('@/lib/menu-monster/data', () => ({ loadMenuMonsterCatalog: async () => ({ recipes: [] }) }));
+vi.mock('@/lib/menu-monster/data', async () => {
+  const { CATALOG } = await import('./helpers/menu-monster-fixture');
+  return { loadMenuMonsterCatalog: async () => CATALOG };
+});
 vi.mock('@/lib/menu-monster/menus-store', () => ({
   listMenusWith: (...a: unknown[]) => mocks.listMenusWith(...a),
   listAllMenusWith: (...a: unknown[]) => mocks.listAllMenusWith(...a),
@@ -36,7 +39,6 @@ vi.mock('../src/app/(public)/library/_tools/menu-monster/menu-actions', () => ({
   createMenuAction: vi.fn()
 }));
 vi.mock('../src/app/(public)/library/_tools/menu-monster/planner', () => ({
-  PLAN_STORAGE_KEY: 'k',
   MenuMonsterPlanner: () => <div data-testid="planner" />
 }));
 
@@ -106,10 +108,19 @@ describe('hub, leader', () => {
     expect(screen.queryByText(/Scouts: /)).toBeNull();
   });
 
-  it('Leader_KeepsTheAnonymousPlanner_BelowTheSection', async () => {
+  it('Leader_SeesTheLocalPlanAndSignInStrip_AboveScoutsMenus', async () => {
     await shelf();
-    expect(screen.getByRole('heading', { name: 'Plan a meal without signing in' })).toBeTruthy();
-    expect(screen.getByTestId('planner')).toBeTruthy();
+    const plan = await screen.findByLabelText('Menu name');
+    const strip = screen.getByRole('link', { name: 'Sign in to save your menus' });
+    const list = screen.getByRole('heading', { name: 'Scouts’ menus' });
+    expect(strip.compareDocumentPosition(plan) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(plan.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('Leader_DoesNotSeeTheOldPlanner', async () => {
+    await shelf();
+    await screen.findByLabelText('Menu name');
+    expect(screen.queryByTestId('planner')).toBeNull();
   });
 
   it('Adult_SeesNoScoutsMenus_WhenTheyHoldNoCapabilities', async () => {
