@@ -4,9 +4,8 @@
  * The dashed search box every Menu Monster list uses: a combobox with a listbox
  * under it, fully keyboard-operable (arrows move, Enter picks, Escape clears the
  * box, or cancels when it is already empty). The caller owns WHAT can be found —
- * `options(query)` — so the same box searches ingredients (IngredientSearch) and
- * serves a day's "Add to Friday" search on the Plan tab. Look: workspace.module.css
- * .addInput / .results / .option.
+ * `options(query)` — today it searches ingredients (IngredientSearch). Look:
+ * workspace.module.css .addInput / .results / .option.
  */
 
 import { useId, useState, type KeyboardEvent, type Ref } from 'react';

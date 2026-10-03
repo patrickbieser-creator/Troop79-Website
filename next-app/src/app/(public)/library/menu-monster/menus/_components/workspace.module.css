@@ -460,3 +460,100 @@
 .paidFields { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--sp-3) var(--sp-5); margin: 0 0 var(--sp-3); }
 .paidField { display: flex; flex-direction: column; gap: var(--sp-1); }
 .verdict { font-family: var(--font-ui); font-size: var(--fs-md); color: var(--text-body); margin: 0 0 var(--sp-3); }
+
+/* ---- Recipe library popup (Plan tab, a day's "Search recipes") --------------- */
+/* The day's trigger: the dashed search box's look, as a button that opens the popup. */
+.libOpen {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  min-height: 36px;
+  font-family: var(--font-ui);
+  font-size: var(--fs-md);
+  color: var(--text-meta);
+  text-align: left;
+  background: none;
+  border: 1px dashed var(--border-mid);
+  border-radius: var(--rad-sm);
+  padding: 0 var(--sp-3);
+  cursor: pointer;
+}
+.libOpen:hover { background: var(--cream); color: var(--navy); }
+.libOpen:focus-visible { outline: var(--focus-ring); outline-offset: 1px; }
+
+.libDialog {
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  margin: auto;
+  padding: var(--sp-5) var(--sp-4) var(--sp-4);
+  border: none;
+  border-radius: var(--rad-lg);
+  background: var(--cream);
+  color: var(--text-body);
+  box-shadow: var(--shadow-hover);
+}
+.libDialog[open] { display: flex; flex-direction: column; gap: var(--sp-3); }
+.libDialog::backdrop { background: color-mix(in srgb, var(--navy) 45%, transparent); }
+.libHead { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); }
+.libTitle { font-family: var(--font-display); font-size: var(--fs-xl); font-weight: 700; color: var(--text-head); margin: 0; }
+.libFor { font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-meta); margin: var(--sp-1) 0 0; }
+.libClose {
+  min-height: 32px;
+  padding: 0 var(--sp-3);
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--navy);
+  background: var(--warm-white);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-sm);
+  cursor: pointer;
+}
+.libClose:hover { background: var(--warm-white); color: var(--forest); }
+.libClose:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+.libSearchWrap { position: relative; }
+.libSearchIcon {
+  position: absolute;
+  left: var(--sp-3);
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: var(--fs-xl);
+  color: var(--text-meta);
+  pointer-events: none;
+}
+/* 16px: the iOS no-zoom floor. */
+.libSearch {
+  display: block;
+  width: 100%;
+  min-height: 40px;
+  font-family: var(--font-ui);
+  font-size: 16px;
+  color: var(--text-head);
+  background: var(--warm-white);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-md);
+  padding: 0 var(--sp-3) 0 var(--sp-8);
+}
+.libSearch::placeholder { color: var(--text-meta); }
+.libSearch:focus-visible { outline: var(--focus-ring); outline-offset: 1px; }
+.libFilters { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); }
+.libList { overflow-y: auto; min-height: 0; flex: 1; }
+.fitCol { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--sp-1); padding: var(--sp-1) 0; }
+/* A meal the recipe fits, as the button that adds it there. */
+.fitBtn {
+  min-height: 28px;
+  padding: 0 var(--sp-2);
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  color: var(--navy);
+  background: var(--warm-white);
+  border: 1px solid var(--border-light);
+  border-radius: var(--rad-sm);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.fitBtn:hover:not(:disabled) { background: var(--cream); border-color: var(--border-mid); color: var(--forest); }
+.fitBtn:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+.fitBtn:disabled { color: var(--text-meta); cursor: default; }
+.insetHead { font-family: var(--font-ui); font-size: var(--fs-sm); font-weight: 700; color: var(--text-head); margin: var(--sp-1) 0 var(--sp-2); }

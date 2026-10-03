@@ -37,11 +37,10 @@ import { MEALS, RESTRICTION_BY_KEY } from '@/lib/menu-monster/units';
 import { MAX_HEADCOUNT, MIN_HEADCOUNT } from '@/lib/menu-monster/engine';
 import { MAX_MENU_DAYS, MAX_MENU_MEALS, MENU_CONTEXTS, MAX_MENU_NAME, menuNameError, type Menu, type MenuContext, type MenuMeal } from '@/lib/menu-monster/menus';
 import { DIET_ORDER, budgetState, dayLabel, mealTitle, menuCost, outingDayCount, type Outing } from '@/lib/menu-monster/menu-view';
-import { searchAddTargets } from '@/lib/menu-monster/menu-search';
 import type { CreateResult, MenuStore, SaveResult } from '@/lib/menu-monster/menu-store';
 import { serverMenuStore } from './server-menu-store';
-import { SearchCombobox } from '../../_components/search-combobox';
 import { RowMenu } from './row-menu';
+import { RecipeLibraryDialog } from './recipe-library-dialog';
 import { ReadOnlyLine } from './read-only-line';
 import { SaveBar } from './save-bar';
 import s from './workspace.module.css';
@@ -84,6 +83,8 @@ export function PlanTab({ catalog, menuId, menu: initial, updatedAt, outings, ta
   const [nameError, setNameError] = useState<string | null>(null);
   const [navWarn, setNavWarn] = useState<string | null>(null);
   const [status, setStatus] = useState('');
+  /** The day whose recipe library popup is open, or null. */
+  const [libraryDay, setLibraryDay] = useState<number | null>(null);
   const nameRef = useRef<HTMLInputElement | null>(null);
   const warnRef = useRef<HTMLDivElement | null>(null);
 
@@ -171,12 +172,12 @@ export function PlanTab({ catalog, menuId, menu: initial, updatedAt, outings, ta
     setStatus(`${mealTitle(menu.startDate, day, slot)} added. Save to keep it.`);
     setNavWarn(meal.id);
   };
-  /** A search result's key is `slot:<slot>` or `recipe:<recipeId>:<slot>` (menu-search.ts). */
-  const pickTarget = (day: number, key: string) => {
-    const [kind, ...rest] = key.split(':');
-    const slot = rest[rest.length - 1] as Plan['meal'];
-    if (kind === 'slot') planMeal(day, slot);
-    else addRecipe(day, slot, rest.slice(0, -1).join(':'));
+  /** The popup closed: focus goes back to the day's Search recipes, unless a save-first notice took it. */
+  const closeLibrary = (day: number) => {
+    setLibraryDay(null);
+    requestAnimationFrame(() => {
+      if (!warnRef.current?.contains(document.activeElement)) document.getElementById(`mm-lib-${day}`)?.focus();
+    });
   };
   const removeMeal = (id: string) => edit((m) => ({ ...m, meals: m.meals.filter((x) => x.id !== id) }));
   const addDay = () => edit((m) => ({ ...m, dayCount: Math.min(MAX_MENU_DAYS, m.dayCount + 1) }));
@@ -429,20 +430,27 @@ export function PlanTab({ catalog, menuId, menu: initial, updatedAt, outings, ta
                     })}
                     {!readOnly && (
                       <li className={s.addRow}>
-                        <SearchCombobox
-                          label={`Add to ${dayLabel(menu.startDate, d)}`}
-                          placeholder={`Add to ${dayLabel(menu.startDate, d)} — search a recipe, or type breakfast, lunch…`}
-                          listLabel={`Add to ${dayLabel(menu.startDate, d)} — matches`}
-                          options={(q) => searchAddTargets(catalog, menu, d, q).map((tg) => ({ id: tg.key, label: tg.label, sub: tg.sub }))}
-                          onPick={(o) => pickTarget(d, o.id)}
-                          noMatch={(q) => `Nothing matches “${q}”.`}
-                        />
+                        <button type="button" id={`mm-lib-${d}`} className={s.libOpen} aria-haspopup="dialog" aria-label={`Search recipes for ${dayLabel(menu.startDate, d)}`} onClick={() => setLibraryDay(d)}>
+                          <span aria-hidden="true">⌕</span>
+                          Search recipes
+                        </button>
                       </li>
                     )}
                   </ul>
                 </div>
               );
             })}
+            {libraryDay !== null && !readOnly && (
+              <RecipeLibraryDialog
+                catalog={catalog}
+                menu={menu}
+                day={libraryDay}
+                dayName={dayLabel(menu.startDate, libraryDay)}
+                onPick={(recipeId, slot) => addRecipe(libraryDay, slot, recipeId)}
+                onPlanEmpty={(slot) => planMeal(libraryDay, slot)}
+                onClose={() => closeLibrary(libraryDay)}
+              />
+            )}
             {!readOnly && (
               <div className={s.addDay}>
                 <Button variant="ghost" onClick={addDay} disabled={days >= MAX_MENU_DAYS}>
