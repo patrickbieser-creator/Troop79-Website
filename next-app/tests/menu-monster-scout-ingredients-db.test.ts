@@ -229,9 +229,19 @@ describe('typed-in housekeeping (qa-lead fixes)', () => {
   it('UnusedPrivateTypedIn_IsDropped_OnTheNextSave', async () => {
     const { data } = await save(SCOUT);
     const x = newId(data);
+    // Release C: an item younger than an hour is kept (the add-to-menu → save gap), so age it.
+    await admin.from('mm_ingredients').update({ created_at: new Date(Date.now() - 2 * 3600e3).toISOString() }).eq('id', x);
     const { data: v } = await admin.from('mm_recipes').select('updated_at').eq('id', ID).single();
     await save(SCOUT, { lines: [{ ingredient_id: BOOK, qty_per_person: 1 }], news: [], expected: v!.updated_at as string });
     expect((await admin.from('mm_ingredients').select('id').eq('id', x)).data).toEqual([]);
+  });
+
+  it('orphanDrop_keepsItemWithinGracePeriod', async () => {
+    const { data } = await save(SCOUT);
+    const x = newId(data);
+    const { data: v } = await admin.from('mm_recipes').select('updated_at').eq('id', ID).single();
+    await save(SCOUT, { lines: [{ ingredient_id: BOOK, qty_per_person: 1 }], news: [], expected: v!.updated_at as string });
+    expect((await admin.from('mm_ingredients').select('id').eq('id', x)).data).toEqual([{ id: x }]);
   });
 
   it('PrivateTypedIn_CantBeKept', async () => {

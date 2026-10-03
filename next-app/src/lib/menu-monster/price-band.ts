@@ -42,3 +42,26 @@ export function bandCheck(pkg: BandPackage, reportedPrice: number, band: number 
   if (unitPrice(pkg) == null || anchor <= 0) return 'hold';
   return Math.abs(next - anchor) <= band * anchor ? 'apply' : 'hold';
 }
+
+/**
+ * A scout-ADDED package (release C) has no price history of its own, so its
+ * unit price (price ÷ size in recipe units) is measured against the CHEAPEST
+ * live sibling package with a usable yield (Decision 13). No usable sibling →
+ * held for a leader. Exact: |P/Y − Pc/Yc| ≤ band·Pc/Yc is compared
+ * cross-multiplied in whole cents (mm_add_scout_package does the same in SQL).
+ */
+export function newPackageBand(
+  siblings: readonly Pick<BandPackage, 'price' | 'yield'>[],
+  price: number,
+  size: number,
+  band: number = PRICE_BAND
+): Exclude<BandResult, 'same'> {
+  if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(size) || size <= 0) return 'invalid';
+  const usable = siblings.filter((s) => s.yield != null && s.yield > 0 && s.price > 0);
+  if (usable.length === 0) return 'hold';
+  const cheapest = usable.reduce((a, b) => (b.price / (b.yield as number) < a.price / (a.yield as number) ? b : a));
+  const p = cents(price);
+  const pc = cents(cheapest.price);
+  const yc = cheapest.yield as number;
+  return Math.abs(p * yc - pc * size) <= band * pc * size ? 'apply' : 'hold';
+}
