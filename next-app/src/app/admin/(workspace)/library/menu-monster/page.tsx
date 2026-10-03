@@ -20,6 +20,7 @@ import { requireCapability } from '@/lib/require-capability';
 import { loadAuthoringCatalogWith } from '@/lib/menu-monster/catalog';
 import { centralToday } from '@/lib/dates';
 import { listHeldWith, listRecentChangesWith } from '@/lib/menu-monster/price-history';
+import { listHeldPackagesWith } from '@/lib/menu-monster/scout-packages-store';
 import { listActiveStoreNamesWith } from '@/lib/menu-monster/stores';
 import { PageTitle } from '../../_components/page-title';
 import { TabStrip } from '../../_components/tab-strip';
@@ -46,9 +47,10 @@ export default async function MenuMonsterAdminPage({
   await requireCapability('library.moderate');
   const sp = await searchParams;
   const admin = createAdminClient();
-  const [catalog, held, stores, shared, typedIns] = await Promise.all([
+  const [catalog, held, heldPackages, stores, shared, typedIns] = await Promise.all([
     loadAuthoringCatalogWith(admin),
     listHeldWith(admin),
+    listHeldPackagesWith(admin),
     listActiveStoreNamesWith(admin),
     listSharedScoutRecipesWith(admin),
     listTypedInsWith(admin)
@@ -88,7 +90,7 @@ export default async function MenuMonsterAdminPage({
         ariaLabel="Menu Monster sections"
         activeKey={tab}
         items={[
-          { key: 'prices', label: 'Price book', href: '/admin/library/menu-monster?tab=prices', ...(unpriced + held.length > 0 ? { count: unpriced + held.length } : {}) },
+          { key: 'prices', label: 'Price book', href: '/admin/library/menu-monster?tab=prices', ...(unpriced + held.length + heldPackages.length > 0 ? { count: unpriced + held.length + heldPackages.length } : {}) },
           { key: 'recipes', label: 'Recipes', href: '/admin/library/menu-monster?tab=recipes', ...(drafts > 0 ? { count: drafts } : {}) },
           { key: 'scouts', label: 'Scout recipes', href: '/admin/library/menu-monster?tab=scouts', ...(edited > 0 ? { count: edited } : {}) }
         ]}
@@ -96,7 +98,7 @@ export default async function MenuMonsterAdminPage({
 
       {tab === 'prices' ? (
         <>
-          <PriceActivity held={held} changes={changes} />
+          <PriceActivity held={held} heldPackages={heldPackages} changes={changes} />
           <PriceBook catalog={catalog} today={today} stores={stores} initialIngredientId={sp.ingredient} />
         </>
       ) : tab === 'recipes' ? (

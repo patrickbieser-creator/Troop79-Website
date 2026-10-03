@@ -8,6 +8,10 @@
  *    a package with no yield). Apply puts the price in the book with the
  *    scout's credit; Dismiss keeps the current one. The status line carries
  *    Undo after an Apply (a revert); a Dismissed price stays dismissed.
+ *  - Packages waiting (release C): packages scouts added that fell outside the
+ *    band (or had nothing to compare with). Per unit shows the package against
+ *    the cheapest live package of its ingredient. Approve puts it in the book;
+ *    Reject deletes it, or retires it when a menu still names it.
  *  - Price changes: the 50 most recent changes, newest first. An applied row
  *    can be reverted from its ⋯ menu while the package still carries that
  *    price; once a later change moved it, Revert is greyed and a help badge
@@ -25,7 +29,8 @@ import { Badge } from '../../_components/badge';
 import { Notice } from '../../_components/notice';
 import { fmtDate } from '@/lib/format-date';
 import type { HeldPrice, PriceChange } from '@/lib/menu-monster/price-history';
-import { applyHeldPrice, dismissHeldPrice, revertPriceChange, type PriceDecisionResult } from './actions';
+import type { HeldPackage } from '@/lib/menu-monster/scout-packages-store';
+import { applyHeldPrice, approveHeldPackage, dismissHeldPrice, rejectHeldPackage, revertPriceChange, type PriceDecisionResult } from './actions';
 import styles from './menu-monster.module.css';
 
 /** Always cents: a $4.00 → $4.50 change must not read as "$4 → $4.50". */
@@ -39,7 +44,7 @@ function pct(p: number | null): string {
 
 type Line = { kind: 'ok'; text: string; undoId?: string } | { kind: 'error'; text: string };
 
-export function PriceActivity({ held, changes }: { held: HeldPrice[]; changes: PriceChange[] }) {
+export function PriceActivity({ held, heldPackages = [], changes }: { held: HeldPrice[]; heldPackages?: HeldPackage[]; changes: PriceChange[] }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [line, setLine] = useState<Line | null>(null);
@@ -140,6 +145,71 @@ export function PriceActivity({ held, changes }: { held: HeldPrice[]; changes: P
           </div>
         )}
       </section>
+
+      {heldPackages.length > 0 && (
+        <section className={styles.activitySection} aria-labelledby="mm-held-pkg-title">
+          <div className={styles.activityHead}>
+            <h2 id="mm-held-pkg-title" className={styles.activityTitle}>
+              Packages waiting
+            </h2>
+            <Badge variant="warning">{heldPackages.length}</Badge>
+            <HelpBadge id="menu-monster.held-package" />
+          </div>
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Package</th>
+                  <th>Added by</th>
+                  <th className={styles.numCell}>Price</th>
+                  <th className={styles.numCell}>Per unit</th>
+                  <th className={styles.actionsCell}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {heldPackages.map((p) => (
+                  <tr key={p.id}>
+                    <td>
+                      {p.ingredientName}: {p.name}
+                      {p.store ? ` (${p.store})` : ''}
+                      <span className={styles.muted}>
+                        {' '}
+                        · {p.size} {p.unitMany}
+                      </span>
+                    </td>
+                    <td>{p.addedBy}</td>
+                    <td className={styles.numCell}>{money(p.price)}</td>
+                    <td className={styles.numCell}>
+                      {money(p.unitPrice)}
+                      {p.cheapestUnitPrice != null ? ` (${pct((p.unitPrice - p.cheapestUnitPrice) / p.cheapestUnitPrice)} vs ${money(p.cheapestUnitPrice)})` : ' (nothing to compare)'}
+                    </td>
+                    <td className={styles.actionsCell}>
+                      <span className={styles.rowActions}>
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          disabled={pending}
+                          onClick={() => run(() => approveHeldPackage(p.id), `Approved “${p.name}” for ${p.ingredientName}. It’s in the price book.`)}
+                        >
+                          Approve
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          disabled={pending}
+                          onClick={() => run(() => rejectHeldPackage(p.id), `Rejected ${p.addedBy}’s “${p.name}”.`)}
+                        >
+                          Reject
+                        </Button>
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       <section className={styles.activitySection} aria-labelledby="mm-changes-title">
         <div className={styles.activityHead}>

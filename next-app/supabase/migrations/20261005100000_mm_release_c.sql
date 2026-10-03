@@ -423,3 +423,24 @@ end;
 $$;
 
 revoke execute on function public.mm_add_scout_package(bigint, text, jsonb, numeric) from public, anon, authenticated;
+
+-- ── 6. mm_package_in_use ───────────────────────────────────────────────────
+-- Whether anything still names a package: a price-history row, or any menu's
+-- shopping choices / actuals (the id as a quoted JSON value). A leader's Reject
+-- deletes a held scout package only when this is false; otherwise it retires it.
+
+create or replace function public.mm_package_in_use(p_id text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (select 1 from mm_price_history h where h.package_id = p_id)
+      or exists (
+        select 1 from mm_menus m
+        where position(('"' || p_id || '"') in (m.shopping::text || m.actuals::text)) > 0
+      );
+$$;
+
+revoke execute on function public.mm_package_in_use(text) from public, anon, authenticated;

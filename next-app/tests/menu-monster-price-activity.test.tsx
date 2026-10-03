@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PriceActivity } from '../src/app/admin/(workspace)/library/menu-monster/price-activity';
-import { applyHeldPrice, dismissHeldPrice, revertPriceChange } from '../src/app/admin/(workspace)/library/menu-monster/actions';
+import { applyHeldPrice, approveHeldPackage, dismissHeldPrice, rejectHeldPackage, revertPriceChange } from '../src/app/admin/(workspace)/library/menu-monster/actions';
 import type { HeldPrice, PriceChange } from '../src/lib/menu-monster/price-history';
 
 /**
@@ -15,7 +15,9 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn(), refresh }
 vi.mock('../src/app/admin/(workspace)/library/menu-monster/actions', () => ({
   applyHeldPrice: vi.fn(async (id: string) => ({ ok: true, outcome: 'applied', historyId: id })),
   dismissHeldPrice: vi.fn(async () => ({ ok: true, outcome: 'dismissed' })),
-  revertPriceChange: vi.fn(async () => ({ ok: true, outcome: 'reverted' }))
+  revertPriceChange: vi.fn(async () => ({ ok: true, outcome: 'reverted' })),
+  approveHeldPackage: vi.fn(async () => ({ ok: true })),
+  rejectHeldPackage: vi.fn(async () => ({ ok: true }))
 }));
 
 beforeEach(() => {
@@ -126,5 +128,35 @@ describe('Price changes', () => {
   it('Leader_SeesAnEmptyState_WhenThereAreNoChanges', () => {
     render(<PriceActivity held={[]} changes={[]} />);
     expect(screen.getByText('No price changes yet.')).toBeTruthy();
+  });
+});
+
+describe('PriceActivity — packages waiting (release C)', () => {
+  const PKG = {
+    id: 'sp-0000beef', ingredientId: 'pancake-mix', ingredientName: 'Pancake mix', unitMany: 'cups', name: 'Big bag', store: 'Aldi',
+    price: 9, size: 10, unitPrice: 0.9, cheapestUnitPrice: 0.5, addedBy: 'Sam K.', heldAt: '2026-10-03T12:00:00Z'
+  };
+
+  it('Packages_AreListed_WithTheComparisonBasis', () => {
+    render(<PriceActivity held={[]} heldPackages={[PKG]} changes={[]} />);
+    expect(screen.getByRole('heading', { name: 'Packages waiting' })).toBeTruthy();
+    expect(screen.getByText('$0.90 (+80% vs $0.50)')).toBeTruthy();
+  });
+
+  it('Approve_SendsThePackageId', async () => {
+    render(<PriceActivity held={[]} heldPackages={[PKG]} changes={[]} />);
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Approve' }));
+    await waitFor(() => expect(approveHeldPackage).toHaveBeenCalledWith('sp-0000beef'));
+  });
+
+  it('Reject_SendsThePackageId', async () => {
+    render(<PriceActivity held={[]} heldPackages={[PKG]} changes={[]} />);
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Reject' }));
+    await waitFor(() => expect(rejectHeldPackage).toHaveBeenCalledWith('sp-0000beef'));
+  });
+
+  it('Section_IsAbsent_WhenNothingWaits', () => {
+    render(<PriceActivity held={[]} changes={[]} />);
+    expect(screen.queryByRole('heading', { name: 'Packages waiting' })).toBeNull();
   });
 });

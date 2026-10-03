@@ -24,6 +24,7 @@ import { decidePriceWith, leaderSetPriceWith, type DecideOutcome } from '@/lib/m
 import { loadAuthoringCatalogWith } from '@/lib/menu-monster/catalog';
 import { cleanGear, cleanScoutText, isScoutRecipeId } from '@/lib/menu-monster/scout-recipes';
 import { keepTypedInWith, matchTypedInWith, setScoutRecipeCreditWith } from '@/lib/menu-monster/scout-recipes-store';
+import { approveHeldPackageWith, rejectHeldPackageWith } from '@/lib/menu-monster/scout-packages-store';
 import {
   blockingIssues,
   changeUnitPlan,
@@ -899,6 +900,35 @@ export async function keepScoutIngredient(id: string, section: Section, avoid: R
       { field: 'Diets it doesn’t suit', from: '', to: clean.join(', ') || 'none' }
     ]
   });
+  revalidate();
+  return { ok: true };
+}
+
+/* ── Scout-added packages waiting for a leader (release C) ──────────────── */
+
+/** Approve: a held scout package joins the troop price book. */
+export async function approveHeldPackage(id: string): Promise<Result> {
+  const denied = await guard();
+  if (denied) return denied;
+  const supabase = createAdminClient();
+  const { data: row } = await supabase.from('mm_packages').select('name').eq('id', id).maybeSingle();
+  if (!(await approveHeldPackageWith(supabase, id))) return { ok: false, error: 'Someone already decided that one.' };
+  const name = (row as { name: string } | null)?.name ?? id;
+  await recordAudit({ area: 'library', action: 'package_approve', entityType: 'mm_package', entityId: id, summary: `Approved a scout's Menu Monster package "${name}"` });
+  revalidate();
+  return { ok: true };
+}
+
+/** Reject: deleted, or retired when a menu or a price change still names it. */
+export async function rejectHeldPackage(id: string): Promise<Result> {
+  const denied = await guard();
+  if (denied) return denied;
+  const supabase = createAdminClient();
+  const { data: row } = await supabase.from('mm_packages').select('name').eq('id', id).maybeSingle();
+  const outcome = await rejectHeldPackageWith(supabase, id);
+  if (outcome === 'missing') return { ok: false, error: 'Someone already decided that one.' };
+  const name = (row as { name: string } | null)?.name ?? id;
+  await recordAudit({ area: 'library', action: 'package_reject', entityType: 'mm_package', entityId: id, summary: `Rejected a scout's Menu Monster package "${name}" (${outcome})` });
   revalidate();
   return { ok: true };
 }

@@ -77,6 +77,16 @@ export const HELP = {
       </p>
     )
   },
+  'menu-monster.held-package': {
+    title: 'Why a package is waiting',
+    body: (
+      <p>
+        A scout added a package the price book didn&rsquo;t have. It goes live on its own when its price per recipe
+        unit is within 50% of the cheapest package of that ingredient. Anything further out, or an ingredient with no
+        priced package to compare with, waits here. Meanwhile it prices only that scout&rsquo;s menus.
+      </p>
+    )
+  },
   'menu-monster.superseded': {
     title: 'Why can’t this be reverted?',
     body: (

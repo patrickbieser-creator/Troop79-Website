@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { adminClient } from './helpers/admin-client';
 import { CATALOG } from './helpers/menu-monster-fixture';
 import { loadCatalogWith } from '../src/lib/menu-monster/catalog';
-import { addScoutPackageWith } from '../src/lib/menu-monster/scout-packages-store';
+import { addScoutPackageWith, approveHeldPackageWith, listHeldPackagesWith, rejectHeldPackageWith } from '../src/lib/menu-monster/scout-packages-store';
 import type { Menu } from '../src/lib/menu-monster/menus';
 import { addMenuIngredientWith, createMenuWith, deleteMenuWith, loadMenuWith, saveMenuWith, setMenuSharedWith } from '../src/lib/menu-monster/menus-store';
 
@@ -250,5 +250,46 @@ describe('scout package store (release C)', () => {
   it('Store_ReportsTheCap_AsAStatus', async () => {
     for (let i = 0; i < 3; i++) await addScoutPackageWith(admin, ACTOR, { ...PKG, size: 10 + i });
     expect(await addScoutPackageWith(admin, ACTOR, { ...PKG, size: 20 })).toEqual({ status: 'cap' });
+  });
+});
+
+describe('leader: packages waiting (release C)', () => {
+  const held = async () => {
+    const { data } = await addPackage({ size: 10, price: 9 });
+    expect(data.status).toBe('held');
+    return data.id as string;
+  };
+
+  it('Leader_SeesAHeldPackage_WithTheComparisonBasis', async () => {
+    const id = await held();
+    const row = (await listHeldPackagesWith(admin)).find((r) => r.id === id);
+    expect(row).toMatchObject({ ingredientName: 'Pancake mix', price: 9, size: 10 });
+    expect(row!.unitPrice).toBeCloseTo(0.9);
+    expect(row!.cheapestUnitPrice).toBeCloseTo(15 / 36);
+    expect(row!.addedBy).toMatch(/^Charlie/);
+  });
+
+  it('leaderApproveHeldPackage_makesItPublic', async () => {
+    const id = await held();
+    expect(await approveHeldPackageWith(admin, id)).toBe(true);
+    expect((await loadCatalogWith(admin)).packages.some((p) => p.id === id)).toBe(true);
+  });
+
+  it('Leader_RejectDeletesAnUnreferencedHeldPackage', async () => {
+    const id = await held();
+    expect(await rejectHeldPackageWith(admin, id)).toBe('deleted');
+    expect((await admin.from('mm_packages').select('id').eq('id', id)).data).toEqual([]);
+  });
+
+  it('Leader_RejectRetiresAHeldPackage_AMenuStillNames', async () => {
+    const id = await held();
+    await admin.from('mm_menus').insert({ owner_person_id: SCOUT, name: MARKER, context: 'camp', headcount: 8, shopping: { packageChoice: { [BOOK]: id }, qtyOverride: {}, lineSource: {} } });
+    expect(await rejectHeldPackageWith(admin, id)).toBe('retired');
+    const { data } = await admin.from('mm_packages').select('retired_at').eq('id', id).single();
+    expect(data!.retired_at).not.toBeNull();
+  });
+
+  it('Approve_IsFalse_ForAPackageThatIsNotHeld', async () => {
+    expect(await approveHeldPackageWith(admin, 'p-mix-10lb')).toBe(false);
   });
 });
