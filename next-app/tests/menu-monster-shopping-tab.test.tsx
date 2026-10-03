@@ -82,10 +82,13 @@ describe('ShoppingTab', () => {
       expect(line.textContent).toMatch(/budget|Under|Over|Close/);
     });
 
-    it('Print_IsAQuietLinkOnTheSummaryLine', async () => {
+    it('Print_IsOneButtonOnTheTitleLine', async () => {
       const print = vi.spyOn(window, 'print').mockImplementation(() => {});
       render(tab());
-      await userEvent.setup().click(screen.getByRole('button', { name: 'Print' }));
+      const button = screen.getByRole('button', { name: 'Print' });
+      expect(screen.getAllByRole('button', { name: 'Print' }).length).toBe(1);
+      expect(button.closest('div[class*="titleLine"]')?.contains(screen.getByRole('heading', { level: 1 }))).toBe(true);
+      await userEvent.setup().click(button);
       expect(print).toHaveBeenCalledTimes(1);
     });
 
@@ -96,6 +99,86 @@ describe('ShoppingTab', () => {
       await user.click(screen.getByRole('button', { name: 'Per person' }));
       expect(within(rowFor('Bacon')).getByText('$2.27')).toBeTruthy();
       expect(screen.getByRole('button', { name: 'Per person' }).getAttribute('aria-pressed')).toBe('true');
+    });
+  });
+
+  describe('totals panel', () => {
+    const figure = (label: string) => {
+      const dt = within(screen.getByRole('group', { name: 'Menu totals' })).getByText(label, { selector: 'dt' });
+      return dt.parentElement as HTMLElement;
+    };
+
+    it('Panel_ShowsSpentUsedLeftoverAndBudget_AboveTheList', () => {
+      render(tab());
+      const panel = screen.getByRole('group', { name: 'Menu totals' });
+      for (const l of ['Spent', 'Used', 'Leftover', 'Budget']) expect(within(panel).getByText(l, { selector: 'dt' })).toBeTruthy();
+      expect(panel.compareDocumentPosition(screen.getByRole('heading', { level: 2, name: 'Shopping list' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it('Panel_SpentIsTheMergedListTotal_AndPerPerson', () => {
+      render(tab());
+      expect(figure('Spent').textContent).toContain('$20.14');
+      expect(figure('Spent').textContent).toContain('$0.84 a person per meal');
+    });
+
+    it('Panel_KeepsTheOldExplanatorySublines', () => {
+      render(tab(menu({ meals: [{ id: 'm3', day: 1, slot: 'lunch', headcount: null, recipeIds: ['L001'], recipeEdits: {} }] })));
+      expect(screen.getByText(/Spent − Used = Leftover. Both totals include adults eating with the patrol./)).toBeTruthy();
+      expect(figure('Used').textContent).toContain('The true cost of what the recipes eat.');
+    });
+
+    it('Panel_BudgetTile_ShowsTheMenusBudgetAndReadout', () => {
+      render(tab());
+      expect(figure('Budget').textContent).toContain('$4.00 a person per meal');
+      expect(within(figure('Budget')).getByRole('status').textContent).toMatch(/Under budget/);
+    });
+
+    it('Panel_BudgetIsReadOnly_WithALinkToThePlanTab', () => {
+      render(tab());
+      const panel = screen.getByRole('group', { name: 'Menu totals' });
+      expect(within(panel).queryByRole('spinbutton')).toBeNull();
+      expect(within(panel).getByRole('link', { name: 'Change the budget on the Plan tab' }).getAttribute('href')).toMatch(/menus\/menu-1$/);
+    });
+
+    it('Panel_IsAbsent_WhenNoMealHasItems', () => {
+      render(tab(menu({ meals: [] })));
+      expect(screen.queryByRole('group', { name: 'Menu totals' })).toBeNull();
+    });
+  });
+
+  describe('print sheet', () => {
+    it('Panel_SaysSoInItsNote_WhenStaplesAreInUsedButNotBought', () => {
+      render(tab());
+      expect(screen.getAllByText(/of patrol-box staples \(in Used, not bought\)/).length).toBeGreaterThan(0);
+    });
+
+    const sheet = () => screen.getByTestId('print-sheet');
+
+    it('Print_CarriesTheMenuNameDateAndPeopleLine', () => {
+      render(tab(menu({ startDate: '2026-10-09', restrictions: { gf: 2, nut: 0, dairy: 0, veg: 0 } })));
+      expect(sheet().textContent).toContain('Camporee food');
+      expect(sheet().textContent).toContain('Oct 9–10, 2026');
+      expect(sheet().textContent).toContain('People: 8');
+      expect(sheet().textContent).toContain('Gluten-free: 2');
+    });
+
+    it('Print_CarriesThePanelNumbers', () => {
+      render(tab());
+      expect(sheet().textContent).toContain('Spent $20.14');
+    });
+
+    it('Print_ListsEachBoughtItemWithACheckboxAndBlanks_GroupedByAisle', () => {
+      render(tab());
+      const rows = within(sheet()).getAllByRole('row', { hidden: true });
+      const bacon = rows.find((r) => r.textContent?.includes('Bacon')) as HTMLElement;
+      expect(bacon.textContent).toContain('☐');
+      expect(within(sheet()).getAllByRole('columnheader', { name: 'Qty bought', hidden: true }).length).toBeGreaterThan(0);
+      expect(within(sheet()).getAllByRole('columnheader', { name: 'Price paid', hidden: true }).length).toBeGreaterThan(0);
+    });
+
+    it('Print_IsHiddenFromScreenReaders_BecauseTheScreenListIsTheRealOne', () => {
+      render(tab());
+      expect(sheet().getAttribute('aria-hidden')).toBe('true');
     });
   });
 

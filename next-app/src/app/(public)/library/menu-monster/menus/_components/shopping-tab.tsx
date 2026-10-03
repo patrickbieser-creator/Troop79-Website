@@ -30,10 +30,13 @@
  * changes the price book, so this tab folds it into its own copy of the catalog and
  * snapshot — the scout's own change never shows up as "prices changed".
  *
- * Print: a print stylesheet on this page (workspace.module.css) plus the
- * `#mm-shopping-page` hook in globals.css that hides the site chrome; the
- * anonymous planner's print sheet is a single-meal form with a counselor
- * summary and doesn't take a merged, menu-wide list.
+ * Totals: the old planner's Spent / Used / Leftover / Budget panel sits above the list as a
+ * quiet card (shoppingPanel in menu-view.ts); the budget is edited on the Plan tab.
+ *
+ * Print: the title line's Print button, a print-only sheet at the foot of this page (menu
+ * name, dates, People + diets, the panel numbers, the list by aisle with a box to tick and
+ * blanks for quantity bought and price paid) and a print stylesheet (workspace.module.css)
+ * that hides the screen version; the `#mm-shopping-page` hook in globals.css hides the site chrome.
  */
 
 import { useCallback, useId, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -45,10 +48,11 @@ import { Button } from '@/app/_components/button';
 import { Stepper } from '@/app/_components/stepper';
 import { TextInput } from '@/app/_components/form';
 import type { Catalog, LineSource } from '@/lib/menu-monster/types';
-import { SECTIONS, SECTION_ORDER, qtyText } from '@/lib/menu-monster/units';
+import { RESTRICTION_BY_KEY, SECTIONS, SECTION_ORDER, qtyText } from '@/lib/menu-monster/units';
+import { fmtRange } from '@/lib/format-date';
 import { MAX_QTY, lineSentence } from '@/lib/menu-monster/engine';
-import type { Menu, MenuShopping } from '@/lib/menu-monster/menus';
-import { budgetState, buildMenuList, mealTitle, type MenuLine } from '@/lib/menu-monster/menu-view';
+import { addDays, type Menu, type MenuShopping } from '@/lib/menu-monster/menus';
+import { DIET_ORDER, budgetState, buildMenuList, mealTitle, shoppingPanel, type MenuLine } from '@/lib/menu-monster/menu-view';
 import type { MenuStore, SaveResult } from '@/lib/menu-monster/menu-store';
 import { buildSnapshot, snapshotDrift, type MenuSnapshot } from '@/lib/menu-monster/menu-snapshot';
 import { serverMenuStore } from './server-menu-store';
@@ -111,6 +115,7 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
   const { totals } = list;
   const people = menu.headcount;
   const budget = budgetState({ perSpent: list.perPersonMeal }, menu.budgetPerPersonMeal);
+  const panel = shoppingPanel(list);
   const drift = snapshotDrift(snapshot, saved.menu, catalog);
   const mealOf = new Map(menu.meals.map((m) => [m.id, m]));
 
@@ -217,19 +222,25 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
 
   return (
     <div id="mm-shopping-page">
+      <div className={s.screenOnly}>
       <div className={s.titleLine}>
         <h1 className={s.menuTitle}>{menu.name.trim() || 'Untitled menu'}</h1>
-        {!readOnly && (
-          <SaveBar
-            isNew={false}
-            labels={canSave ? undefined : { clean: 'Saved on this computer' }}
-            dirty={dirty}
-            saving={saving}
-            saved={justSaved}
-            onSave={() => void save()}
-            onDiscard={discard}
-          />
-        )}
+        <div className={s.titleActions}>
+          <Button variant="secondary" onClick={() => window.print()}>
+            Print
+          </Button>
+          {!readOnly && (
+            <SaveBar
+              isNew={false}
+              labels={canSave ? undefined : { clean: 'Saved on this computer' }}
+              dirty={dirty}
+              saving={saving}
+              saved={justSaved}
+              onSave={() => void save()}
+              onDiscard={discard}
+            />
+          )}
+        </div>
       </div>
       {readOnly && <ReadOnlyLine plannedBy={plannedBy} />}
       {tabs != null && <div className={s.tabs}>{tabs}</div>}
@@ -238,6 +249,46 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
         <Notice tone="error" className={s.notice}>
           {error}
         </Notice>
+      )}
+
+      {priced && (
+        <dl className={s.totalsCard} role="group" aria-label="Menu totals">
+          <div className={s.totalsCol}>
+            <dt className={s.totalsLabel}>Spent</dt>
+            <dd className={s.totalsAmount}>{money(panel.spent)}</dd>
+            <dd className={s.totalsSub}>{money(panel.perSpent)} a person per meal</dd>
+            <dd className={s.totalsWhy}>What you pay at the register, divided by everyone eating.</dd>
+          </div>
+          <div className={s.totalsCol}>
+            <dt className={s.totalsLabel}>Used</dt>
+            <dd className={s.totalsAmount}>{money(panel.used)}</dd>
+            <dd className={s.totalsSub}>{money(panel.perUsed)} a person per meal</dd>
+            <dd className={s.totalsWhy}>The true cost of what the recipes eat.</dd>
+          </div>
+          <div className={s.totalsCol}>
+            <dt className={s.totalsLabel}>Leftover</dt>
+            <dd className={s.totalsAmount}>{money(panel.left)}</dd>
+            <dd className={s.totalsSub}>{money(panel.perLeft)} a person per meal</dd>
+            <dd className={s.totalsWhy}>Spent minus Used. Goes home or into the patrol box.</dd>
+          </div>
+          <div className={s.totalsCol}>
+            <dt className={s.totalsLabel}>Budget</dt>
+            <dd className={s.totalsAmount}>{money(menu.budgetPerPersonMeal)} a person per meal</dd>
+            <dd className={s.totalsSub}>
+              <span role="status">
+                <span aria-hidden="true">{budget.icon}</span> {budget.msg}
+              </span>
+            </dd>
+            {!readOnly && (
+              <dd className={s.totalsWhy}>
+                <Link href={store.hrefs.plan}>Change the budget on the Plan tab</Link>
+              </dd>
+            )}
+          </div>
+          <dd className={s.totalsNote}>
+            {panel.notes.length ? panel.notes.map((n) => <span key={n}>{n}</span>) : <span>Spent − Used = Leftover. Both totals include adults eating with the patrol.</span>}
+          </dd>
+        </dl>
       )}
 
       <section aria-labelledby={`${uid}-list-h`}>
@@ -266,10 +317,7 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
               {view === 'total' ? 'for' : 'a person, for'} {people} people · {money(list.perPersonMeal)} a person per meal
               {totals.unpriced.length > 0 ? ` · not counting ${totals.unpriced.length} without a price` : ''} ·
             </span>{' '}
-            <span aria-hidden="true">{budget.icon}</span> {budget.msg}{' '}
-            <button type="button" className={s.linkBtn} onClick={() => window.print()}>
-              Print
-            </button>
+            <span aria-hidden="true">{budget.icon}</span> {budget.msg}
           </p>
         )}
 
@@ -340,7 +388,60 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
         onSaved={paidSaved}
       />
       )}
+      </div>
+
+      <PrintSheet menu={menu} list={list} panel={panel} />
     </div>
+  );
+}
+
+/** Print-only: the menu as a paper shopping sheet (hidden on screen; see @media print in workspace.module.css). */
+function PrintSheet({ menu, list, panel }: { menu: Menu; list: ReturnType<typeof buildMenuList>; panel: ReturnType<typeof shoppingPanel> }) {
+  const dates = menu.startDate
+    ? fmtRange(menu.startDate, addDays(menu.startDate, Math.max(0, menu.dayCount - 1)))
+    : `${menu.dayCount} day${menu.dayCount === 1 ? '' : 's'}`;
+  const diets = DIET_ORDER.filter((k) => (menu.restrictions[k] || 0) > 0).map((k) => `${RESTRICTION_BY_KEY[k].label}: ${menu.restrictions[k]}`);
+  const buyable = list.lines.filter((l) => l.status === 'ok' || l.status === 'short' || l.status === 'unpriced');
+  const aisles = SECTION_ORDER.filter((sec) => buyable.some((l) => l.ing.section === sec));
+  return (
+    <section className={s.printSheet} data-testid="print-sheet" aria-hidden="true">
+      <h1 className={s.printTitle}>{menu.name.trim() || 'Untitled menu'}</h1>
+      <p className={s.printMeta}>{dates}</p>
+      <p className={s.printMeta}>{[`People: ${menu.headcount}`, ...diets].join(' · ')}</p>
+      <p className={s.printMeta}>
+        Spent {money(panel.spent)} · Used {money(panel.used)} · Leftover {money(panel.left)} · Budget {money(menu.budgetPerPersonMeal)} a person per meal
+      </p>
+      {aisles.map((sec) => (
+        <table key={sec} className={s.printTable}>
+          <caption>{SECTIONS[sec]}</caption>
+          <thead>
+            <tr>
+              <th scope="col">Got it</th>
+              <th scope="col">Item</th>
+              <th scope="col">Buy</th>
+              <th scope="col">Est.</th>
+              <th scope="col">Qty bought</th>
+              <th scope="col">Price paid</th>
+            </tr>
+          </thead>
+          <tbody>
+            {buyable
+              .filter((l) => l.ing.section === sec)
+              .map((l) => (
+                <tr key={l.ing.id}>
+                  <td>☐</td>
+                  <th scope="row">{l.ing.name}</th>
+                  <td>{l.status === 'unpriced' ? 'Not priced yet' : `${l.qty} × ${l.pkg?.name ?? ''}`}</td>
+                  <td>{l.status === 'unpriced' ? '' : money(l.spent)}</td>
+                  <td className={s.printBlank} />
+                  <td className={s.printBlank} />
+                </tr>
+              ))}
+          </tbody>
+        </table>
+      ))}
+      {panel.notes.length > 0 && <p className={s.printMeta}>{panel.notes.join(' ')}</p>}
+    </section>
   );
 }
 

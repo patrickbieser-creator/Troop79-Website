@@ -166,63 +166,109 @@ describe('PlanTab', () => {
     expect(row.textContent).toContain('$14.98');
   });
 
-  it('Meal_CanBeAdded_ToADay', async () => {
-    const user = userEvent.setup();
+  const daySearch = (n: number) => screen.getByRole('combobox', { name: new RegExp(`^Add to Day ${n}`) }) as HTMLInputElement;
+
+  it('Day_EndsInADashedSearch_WithThePrototypePlaceholder', () => {
     render(existing());
-    await user.click(screen.getByRole('button', { name: 'Add a meal to Day 1' }));
-    await user.click(screen.getByRole('button', { name: 'Lunch' }));
-    expect(screen.getByRole('button', { name: 'More for Day 1 lunch' })).toBeTruthy();
+    expect(daySearch(1).placeholder).toBe('Add to Day 1 — search a recipe, or type breakfast, lunch…');
   });
 
-  it('Meal_AddingOne_MakesTheMenuDirty', async () => {
+  it('PlusAddAMeal_IsGone_BecauseTheDaySearchReplacedIt', () => {
+    render(existing());
+    expect(screen.queryByRole('button', { name: /Add a meal/ })).toBeNull();
+  });
+
+  it('Scout_AddsRecipeToExistingMeal_WhenPickingItFromTheDaySearch', async () => {
     const user = userEvent.setup();
     render(existing());
-    await user.click(screen.getByRole('button', { name: 'Add a meal to Day 1' }));
-    await user.click(screen.getByRole('button', { name: 'Lunch' }));
+    await user.type(daySearch(1), 'pancak');
+    await user.click(screen.getByRole('option', { name: /Pancakes · Breakfast/ }));
+    const row = screen.getByRole('button', { name: 'Breakfast' }).closest('li') as HTMLElement;
+    expect(row.textContent).toContain('Bacon, Pancakes');
+  });
+
+  it('Scout_CreatesTheMeal_WhenPickingARecipeForASlotTheDayLacks', async () => {
+    const user = userEvent.setup();
+    render(existing());
+    await user.type(daySearch(2), 'sandw');
+    await user.click(screen.getByRole('option', { name: /Sandwiches · Lunch/ }));
+    expect(screen.getByRole('button', { name: 'More for Day 2 lunch' })).toBeTruthy();
+  });
+
+  it('Scout_MustSave_AfterAddingARecipeFromTheDaySearch', async () => {
+    const user = userEvent.setup();
+    render(existing());
+    await user.type(daySearch(2), 'sandw');
+    await user.click(screen.getByRole('option', { name: /Sandwiches · Lunch/ }));
     expect(screen.getByRole('button', { name: 'Save changes' })).toBeTruthy();
   });
 
-  it('AddAMeal_IsAButtonNotASelect_SoArrowKeysCannotAddOne', () => {
-    render(existing());
-    expect(screen.queryByRole('combobox', { name: /Add a meal/ })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Add a meal to Day 1' }).tagName).toBe('BUTTON');
-  });
-
-  it('AddAMeal_OffersOnlySlotsNotYetUsedThatDay', async () => {
+  it('Scout_HearsWhatHappened_WhenARecipeIsAddedFromTheDaySearch', async () => {
     const user = userEvent.setup();
     render(existing());
-    await user.click(screen.getByRole('button', { name: 'Add a meal to Day 1' }));
-    expect(screen.queryByRole('button', { name: 'Breakfast' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Lunch' })).toBeTruthy();
+    await user.type(daySearch(2), 'sandw');
+    await user.click(screen.getByRole('option', { name: /Sandwiches · Lunch/ }));
+    expect(screen.getByText('Sandwiches added to Day 2 lunch. Save to keep it.').getAttribute('aria-live')).toBe('polite');
   });
 
-  it('AddAMeal_AddsNothing_UntilASlotIsChosen', async () => {
+  it('Scout_PicksWithTheKeyboard_ArrowDownThenEnter', async () => {
     const user = userEvent.setup();
     render(existing());
-    await user.click(screen.getByRole('button', { name: 'Add a meal to Day 1' }));
+    await user.type(daySearch(2), 'o');
+    await user.keyboard('{ArrowDown}{Enter}');
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeTruthy();
+  });
+
+  it('DaySearch_WiresTheComboboxAria_WhileResultsShow', async () => {
+    const user = userEvent.setup();
+    render(existing());
+    const box = daySearch(2);
+    await user.type(box, 'pancak');
+    expect(box.getAttribute('aria-expanded')).toBe('true');
+    expect(document.getElementById(box.getAttribute('aria-controls') as string)?.getAttribute('role')).toBe('listbox');
+    expect(document.getElementById(box.getAttribute('aria-activedescendant') as string)?.getAttribute('role')).toBe('option');
+  });
+
+  it('DaySearch_ClearsItself_OnEscape', async () => {
+    const user = userEvent.setup();
+    render(existing());
+    await user.type(daySearch(2), 'pancak');
+    await user.keyboard('{Escape}');
+    expect(daySearch(2).value).toBe('');
+    expect(daySearch(2).getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('Scout_AddsNothing_UntilAResultIsPicked', async () => {
+    const user = userEvent.setup();
+    render(existing());
+    await user.type(daySearch(2), 'pancak');
     expect(screen.getByRole('button', { name: 'Saved' })).toBeTruthy();
   });
 
-  it('AddAMeal_ClosesAndReturnsFocus_OnEscape', async () => {
+  it('Scout_GetsAnEmptyMealAndTheSaveFirstNotice_WhenPickingASlotName', async () => {
     const user = userEvent.setup();
     render(existing());
-    const trigger = screen.getByRole('button', { name: 'Add a meal to Day 1' });
-    await user.click(trigger);
-    await user.keyboard('{Escape}');
-    expect(screen.queryByRole('button', { name: 'Lunch' })).toBeNull();
-    expect(document.activeElement).toBe(trigger);
+    await user.type(daySearch(2), 'lun');
+    await user.click(screen.getByRole('option', { name: /Plan lunch/ }));
+    expect(screen.getByRole('button', { name: 'More for Day 2 lunch' })).toBeTruthy();
+    expect(screen.getByText('Save your changes before opening a meal')).toBeTruthy();
   });
 
-  it('AddAMeal_IsGreyedNotHidden_WhenTheDayHasEverySlot', () => {
-    const meals = ['breakfast', 'lunch', 'dinner', 'snack', 'dessert'] as const;
-    render(
-      existing(
-        base({
-          meals: meals.map((slot, i) => ({ id: `x${i}`, day: 0, slot, headcount: null, recipeIds: [], recipeEdits: {} }))
-        })
-      )
-    );
-    expect((screen.getByRole('button', { name: 'Add a meal to Day 1' }) as HTMLButtonElement).disabled).toBe(true);
+  it('Scout_OpensTheNewMealAfterSaving_WhenPickingASlotName', async () => {
+    saveMenuAction.mockResolvedValue({ ok: true, updatedAt: '2026-10-02T13:00:00.000Z' });
+    const user = userEvent.setup();
+    render(existing());
+    await user.type(daySearch(2), 'lun');
+    await user.click(screen.getByRole('option', { name: /Plan lunch/ }));
+    await user.click(screen.getByRole('button', { name: 'Save and open the meal' }));
+    expect(router.push).toHaveBeenCalledWith(expect.stringMatching(/\/meals\/.+/));
+  });
+
+  it('Scout_IsNotOfferedARecipeTwice_OnTheSameMeal', async () => {
+    const user = userEvent.setup();
+    render(existing());
+    await user.type(daySearch(1), 'bacon');
+    expect(screen.queryByRole('listbox', { name: /Add to Day 1/ })).toBeNull();
   });
 
   it('Meal_CanBeRemoved_FromItsMenu', async () => {

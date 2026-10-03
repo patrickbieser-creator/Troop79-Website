@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { CATALOG } from './helpers/menu-monster-fixture';
 import { composePlan, foldShopping, sanitizeMenu, type Menu, type MenuMeal } from '../src/lib/menu-monster/menus';
-import { buildMenuList, menuCost } from '../src/lib/menu-monster/menu-view';
+import { buildMenuList, menuCost, shoppingPanel } from '../src/lib/menu-monster/menu-view';
 import { buildLines, totalsOf } from '../src/lib/menu-monster/engine';
 import { buildSnapshot, snapshotDrift } from '../src/lib/menu-monster/menu-snapshot';
 
@@ -294,5 +294,37 @@ describe('snapshotDrift', () => {
   it('Drift_IgnoresSubCentDifferences', () => {
     const snap = buildSnapshot(m, CATALOG, '2026-10-02');
     expect(snapshotDrift({ ...snap, totals: { ...snap.totals, spent: snap.totals.spent + 0.004 } }, m, CATALOG)).toBeNull();
+  });
+});
+
+describe('shoppingPanel (Spent / Used / Leftover)', () => {
+  it('Panel_AgreesWithTheSingleMealEngine_ForOneMeal', () => {
+    const m = menu([meal('a')]);
+    const plan = composePlan(m, m.meals[0]);
+    const whole = totalsOf(buildLines(plan, CATALOG), plan);
+    const panel = shoppingPanel(buildMenuList(m, CATALOG));
+    expect(panel.spent).toBeCloseTo(whole.spent, 6);
+    expect(panel.used).toBeCloseTo(whole.used, 6);
+    expect(panel.left).toBeCloseTo(whole.left, 6);
+  });
+
+  it('Panel_ShowsEachFigureAPerson_DividedByThePlates', () => {
+    const m = menu([meal('a')]);
+    const plan = composePlan(m, m.meals[0]);
+    const whole = totalsOf(buildLines(plan, CATALOG), plan);
+    const panel = shoppingPanel(buildMenuList(m, CATALOG));
+    expect(panel.perSpent).toBeCloseTo(whole.spent / plan.headcount, 6);
+    expect(panel.perUsed).toBeCloseTo(whole.used / plan.headcount, 6);
+    expect(panel.perLeft).toBeCloseTo(whole.left / plan.headcount, 6);
+  });
+
+  it('Panel_IsAllZero_WhenNoMealHasItems', () => {
+    const panel = shoppingPanel(buildMenuList(menu([meal('a', { recipeIds: [] })]), CATALOG));
+    expect([panel.perSpent, panel.perUsed, panel.perLeft]).toEqual([0, 0, 0]);
+  });
+
+  it('Panel_SpentMinusUsed_IsLeftover', () => {
+    const panel = shoppingPanel(buildMenuList(menu([meal('a'), meal('b', { day: 1 })]), CATALOG));
+    expect(panel.spent - panel.used).toBeCloseTo(panel.left, 6);
   });
 });

@@ -128,6 +128,34 @@ export function buildMenuList(menu: Menu, catalog: Catalog): MenuList {
   return { lines, totals, plates, perPersonMeal: plates > 0 ? totals.spent / plates : 0, separately, saving: gap > 0 ? gap : 0 };
 }
 
+/**
+ * The Shopping tab's Spent / Used / Leftover panel (the old planner's totals,
+ * for the whole menu): the merged list's totals, each also per person over the
+ * plates served. Nothing is re-priced here.
+ */
+export interface ShoppingPanel {
+  plates: number;
+  spent: number;
+  used: number;
+  left: number;
+  perSpent: number;
+  perUsed: number;
+  perLeft: number;
+  /** Sublines the old panel carried: staples, bring-from-home, unpriced, short. */
+  notes: string[];
+}
+
+export function shoppingPanel(list: MenuList): ShoppingPanel {
+  const { totals: t, plates } = list;
+  const per = (n: number) => (plates > 0 ? n / plates : 0);
+  const notes: string[] = [];
+  if (t.stapleUsed > 0) notes.push(`Plus about ${money(t.stapleUsed)} of patrol-box staples (in Used, not bought).`);
+  if (t.bring.length) notes.push(`Bringing, not buying: ${t.bring.join(', ')} (about ${money(t.bringUsed)} in Used, not Spent).`);
+  if (t.unpriced.length) notes.push(`Not in the totals: ${t.unpriced.join(', ')} (no price yet).`);
+  if (t.short.length) notes.push(`⚠ Short on ${t.short.join(', ')} — fix before printing.`);
+  return { plates, spent: t.spent, used: t.used, left: t.left, perSpent: per(t.spent), perUsed: per(t.used), perLeft: per(t.left), notes };
+}
+
 export interface MenuCost {
   total: number;
   /** Total over every plate served — people summed across meals that have items. */

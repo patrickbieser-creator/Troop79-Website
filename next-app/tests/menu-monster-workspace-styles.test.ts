@@ -39,10 +39,14 @@ describe('workspace.module.css', () => {
     expect(rule('.rowMain')).toMatch(/padding:\s*3px 0/);
   });
 
-  it('AddMealRow_HasOneDashedBorder_AndNo44pxHeight', () => {
+  it('DaySearchRow_HasOneDashedBorder_AndNo44pxHeight', () => {
     expect(rule('.addRow')).not.toMatch(/dashed/);
-    expect(rule('.addBtn')).toMatch(/dashed/);
-    expect(rule('.addBtn')).not.toMatch(/44px/);
+    expect(rule('.addInput')).toMatch(/dashed/);
+    expect(rule('.addInput')).not.toMatch(/44px/);
+  });
+
+  it('PlusAddAMeal_ButtonAndPopover_AreGone', () => {
+    expect(css).not.toMatch(/\.addBtn|\.addPop/);
   });
 
   it('QuietLink_AndAddSelect_AreGone', () => {

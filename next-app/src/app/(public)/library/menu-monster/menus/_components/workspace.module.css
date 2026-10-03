@@ -153,38 +153,6 @@
 }
 .addRow { padding: var(--sp-2) var(--sp-3); border-top: 1px solid var(--rule); }
 .addWrap { position: relative; }
-/* The one dashed outline in the list: the prototype's add row. */
-.addBtn {
-  display: block;
-  width: 100%;
-  min-height: 36px;
-  font-family: var(--font-ui);
-  font-size: var(--fs-md);
-  color: var(--text-meta);
-  background: none;
-  border: 1px dashed var(--border-mid);
-  border-radius: var(--rad-sm);
-  padding: 0 var(--sp-3);
-  text-align: left;
-  cursor: pointer;
-}
-.addBtn:hover:not(:disabled) { background: var(--cream); color: var(--navy); }
-.addBtn:focus-visible { outline: var(--focus-ring); outline-offset: 1px; }
-.addBtn:disabled { opacity: 0.55; cursor: default; }
-.addPop {
-  position: absolute;
-  left: 0;
-  top: 100%;
-  z-index: 5;
-  min-width: 160px;
-  background: var(--warm-white);
-  border: 1px solid var(--border-mid);
-  border-radius: var(--rad-md);
-  box-shadow: var(--shadow-hover);
-  padding: var(--sp-1) 0;
-  display: flex;
-  flex-direction: column;
-}
 .addDay { margin-top: var(--sp-4); }
 
 /* ---- ⋯ row menu ------------------------------------------------------------- */
@@ -364,6 +332,8 @@
   cursor: pointer;
 }
 .option[aria-selected='true'] { background: var(--cream); color: var(--navy); }
+.optionText { display: flex; flex-direction: column; }
+.optionSub { font-size: var(--fs-sm); color: var(--text-meta); }
 .noMatch { font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-meta); margin: var(--sp-2) 0 0; }
 
 /* One quiet line under the list: what just happened, and Undo. Always present so screen readers hear it. */
@@ -415,9 +385,54 @@
 .noteRow { flex-basis: 100%; display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); max-width: 480px; }
 .noteRow input { flex: 1; min-width: 200px; }
 
-/* Print: the list and its totals, nothing to click. The site chrome is hidden by
-   the #mm-shopping-page rule in globals.css. */
+/* Totals card: the old planner's Spent / Used / Leftover / Budget, quiet - a white card, four columns. */
+.titleActions { display: inline-flex; align-items: center; flex-wrap: wrap; gap: var(--sp-3); }
+.totalsCard {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--sp-4);
+  margin: 0 0 var(--sp-6);
+  padding: var(--sp-4);
+  background: var(--warm-white);
+  border: 1px solid var(--rule);
+  border-radius: var(--rad-md);
+}
+@media (max-width: 640px) { .totalsCard { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.totalsCol { min-width: 0; }
+.totalsCol dd, .totalsNote { margin: 0; }
+.totalsLabel { font-family: var(--font-ui); font-size: var(--fs-sm); font-weight: 600; color: var(--text-meta); }
+.totalsAmount { font-family: var(--font-ui); font-size: var(--fs-xl); color: var(--text-head); font-variant-numeric: tabular-nums; line-height: 1.3; }
+.totalsSub { font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-body); }
+.totalsWhy { font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-meta); margin-top: var(--sp-1); }
+.totalsNote {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1) var(--sp-4);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--rule);
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  color: var(--text-meta);
+}
+
+/* The paper sheet exists only for print. */
+.printSheet { display: none; }
+
+/* Print: the menu as a paper shopping sheet - name, dates, People line, the totals, then the
+   list by aisle with a box to tick and blanks for quantity and price. The site chrome is hidden
+   by the #mm-shopping-page rule in globals.css. */
 @media print {
+  .screenOnly { display: none !important; }
+  .printSheet { display: block; color: var(--text-head); font-family: var(--font-ui); }
+  .printTitle { font-size: 20pt; margin: 0 0 4pt; }
+  .printMeta { font-size: 10pt; margin: 0 0 4pt; }
+  .printTable { width: 100%; border-collapse: collapse; margin: 12pt 0 0; font-size: 10pt; break-inside: avoid; }
+  .printTable caption { text-align: left; font-weight: 700; font-size: 11pt; padding-bottom: 2pt; }
+  .printTable th, .printTable td { border-bottom: 1px solid var(--border-mid); padding: 4pt; text-align: left; font-weight: 400; vertical-align: bottom; }
+  .printTable thead th { font-weight: 700; border-bottom: 2px solid var(--text-head); }
+  .printTable tbody th { font-weight: 700; }
+  .printBlank { min-width: 70pt; }
   .tabs,
   .actions,
   .seg,

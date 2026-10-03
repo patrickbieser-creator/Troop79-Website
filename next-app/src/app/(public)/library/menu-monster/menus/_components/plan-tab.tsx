@@ -36,10 +36,11 @@ import type { Catalog, Plan, RestrictionKey } from '@/lib/menu-monster/types';
 import { MEALS, RESTRICTION_BY_KEY } from '@/lib/menu-monster/units';
 import { MAX_HEADCOUNT, MIN_HEADCOUNT } from '@/lib/menu-monster/engine';
 import { MAX_MENU_DAYS, MAX_MENU_MEALS, MENU_CONTEXTS, MAX_MENU_NAME, menuNameError, type Menu, type MenuContext, type MenuMeal } from '@/lib/menu-monster/menus';
-import { DIET_ORDER, budgetState, dayLabel, menuCost, outingDayCount, type Outing } from '@/lib/menu-monster/menu-view';
+import { DIET_ORDER, budgetState, dayLabel, mealTitle, menuCost, outingDayCount, type Outing } from '@/lib/menu-monster/menu-view';
+import { searchAddTargets } from '@/lib/menu-monster/menu-search';
 import type { CreateResult, MenuStore, SaveResult } from '@/lib/menu-monster/menu-store';
 import { serverMenuStore } from './server-menu-store';
-import { AddMeal } from './add-meal';
+import { SearchCombobox } from '../../_components/search-combobox';
 import { RowMenu } from './row-menu';
 import { ReadOnlyLine } from './read-only-line';
 import { SaveBar } from './save-bar';
@@ -82,6 +83,7 @@ export function PlanTab({ catalog, menuId, menu: initial, updatedAt, outings, ta
   const [error, setError] = useState<string | null>(null);
   const [nameError, setNameError] = useState<string | null>(null);
   const [navWarn, setNavWarn] = useState<string | null>(null);
+  const [status, setStatus] = useState('');
   const nameRef = useRef<HTMLInputElement | null>(null);
   const warnRef = useRef<HTMLDivElement | null>(null);
 
@@ -106,6 +108,7 @@ export function PlanTab({ catalog, menuId, menu: initial, updatedAt, outings, ta
     setMenu(f);
     setJustSaved(false);
     setError(null);
+    setStatus('');
   };
 
   /* ---- Basics ---- */
@@ -141,10 +144,39 @@ export function PlanTab({ catalog, menuId, menu: initial, updatedAt, outings, ta
   };
 
   /* ---- Meals ---- */
-  const addMeal = (day: number, slot: Plan['meal']) => {
+  /** Drop a recipe into the day's meal of that slot, creating the meal if the day lacks it. */
+  const addRecipe = (day: number, slot: Plan['meal'], recipeId: string) => {
+    const existing = menu.meals.find((m) => m.day === day && m.slot === slot);
+    if (!existing && menu.meals.length >= MAX_MENU_MEALS) return;
+    if (existing?.recipeIds.includes(recipeId)) return;
+    edit((m) => {
+      const here = m.meals.find((x) => x.day === day && x.slot === slot);
+      if (here) return { ...m, meals: m.meals.map((x) => (x === here ? { ...x, recipeIds: [...x.recipeIds, recipeId] } : x)) };
+      const meal: MenuMeal = { id: newId(), day, slot, headcount: null, recipeIds: [recipeId], recipeEdits: {} };
+      return { ...m, meals: [...m.meals, meal] };
+    });
+    const name = catalog.recipes.find((r) => r.id === recipeId)?.name ?? 'Recipe';
+    setStatus(`${name} added to ${mealTitle(menu.startDate, day, slot)}. Save to keep it.`);
+  };
+  /** An empty meal for the slot (if the day lacks it), then the meal page — via the save-first notice. */
+  const planMeal = (day: number, slot: Plan['meal']) => {
+    const existing = menu.meals.find((m) => m.day === day && m.slot === slot);
+    if (existing) {
+      setNavWarn(existing.id);
+      return;
+    }
     if (menu.meals.length >= MAX_MENU_MEALS) return;
     const meal: MenuMeal = { id: newId(), day, slot, headcount: null, recipeIds: [], recipeEdits: {} };
     edit((m) => ({ ...m, meals: [...m.meals, meal] }));
+    setStatus(`${mealTitle(menu.startDate, day, slot)} added. Save to keep it.`);
+    setNavWarn(meal.id);
+  };
+  /** A search result's key is `slot:<slot>` or `recipe:<recipeId>:<slot>` (menu-search.ts). */
+  const pickTarget = (day: number, key: string) => {
+    const [kind, ...rest] = key.split(':');
+    const slot = rest[rest.length - 1] as Plan['meal'];
+    if (kind === 'slot') planMeal(day, slot);
+    else addRecipe(day, slot, rest.slice(0, -1).join(':'));
   };
   const removeMeal = (id: string) => edit((m) => ({ ...m, meals: m.meals.filter((x) => x.id !== id) }));
   const addDay = () => edit((m) => ({ ...m, dayCount: Math.min(MAX_MENU_DAYS, m.dayCount + 1) }));
@@ -346,11 +378,11 @@ export function PlanTab({ catalog, menuId, menu: initial, updatedAt, outings, ta
             <h2 id="mm-meals-h" className={s.heading}>
               Meals
             </h2>
+            <p className={s.statusLine} aria-live="polite">
+              {status}
+            </p>
             {Array.from({ length: days }, (_, d) => {
               const meals = menu.meals.filter((m) => m.day === d).sort((a, b) => slotOrder(a.slot) - slotOrder(b.slot));
-              const used = new Set(meals.map((m) => m.slot));
-              const free = MEALS.filter((m) => !used.has(m.key));
-              const atCap = menu.meals.length >= MAX_MENU_MEALS;
               const removable = d === days - 1 && days > 1 && meals.length === 0;
               return (
                 <div key={d} className={s.dayBlock}>
@@ -397,7 +429,14 @@ export function PlanTab({ catalog, menuId, menu: initial, updatedAt, outings, ta
                     })}
                     {!readOnly && (
                       <li className={s.addRow}>
-                        <AddMeal label={`Add a meal to Day ${d + 1}`} free={free} atCap={atCap} onAdd={(slot) => addMeal(d, slot)} />
+                        <SearchCombobox
+                          label={`Add to ${dayLabel(menu.startDate, d)}`}
+                          placeholder={`Add to ${dayLabel(menu.startDate, d)} — search a recipe, or type breakfast, lunch…`}
+                          listLabel={`Add to ${dayLabel(menu.startDate, d)} — matches`}
+                          options={(q) => searchAddTargets(catalog, menu, d, q).map((tg) => ({ id: tg.key, label: tg.label, sub: tg.sub }))}
+                          onPick={(o) => pickTarget(d, o.id)}
+                          noMatch={(q) => `Nothing matches “${q}”.`}
+                        />
                       </li>
                     )}
                   </ul>
