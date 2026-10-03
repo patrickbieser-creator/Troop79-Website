@@ -1,6 +1,6 @@
 # Menu Monster — Scout Workspace (saved menus, shared menus, scout recipes and prices)
 
-**Status:** Parked, decisions complete (2026-10-02). Next: tech-lead + troop79-specialist schema review, then Phase 1.
+**Status:** SHIPPED v1.133.0–v1.143.0 (2026-10-02 → 2026-10-03, last code e9f46cc). Phases 1, 2 (A/B/C), 3 and 4 all live; meals inline + Food & Recipes naming added at the end. Parked follow-on: Plans/Menu-Monster-Superuser-Proxy.md.
 **Parked:** 2026-10-01
 **Priority:** High
 **Origin:** Patrick, 2026-10-01. Scouts work individually and save menu plans behind a scout sign-in. Leaders and parents can see the plans. Scouts upload recipes that others use, with credit. Scouts correct prices after shopping and edit menu items on the fly. Works for home and troop cooking.

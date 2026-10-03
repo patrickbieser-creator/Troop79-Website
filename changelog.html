@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>October 2, 2026</strong> &nbsp;&middot;&nbsp; v1.140.0</p>
+      <p>Last updated: <strong>October 3, 2026</strong> &nbsp;&middot;&nbsp; v1.143.0</p>
     </div>
   </div>
 
@@ -494,6 +494,63 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.143.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.143.0</span>
+        <span class="release-date">October 3, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">New</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Menu Monster: plan every meal on one page</p>
+        <ul class="change-list">
+          <li><span><strong>Meals open right on the menu</strong> &mdash; click a meal&rsquo;s name to open its list underneath and click again to close it. No more separate meal page: People for that meal, adding, swapping and removing, and changing a recipe&rsquo;s ingredients all happen in place.</span></li>
+          <li><span><strong>One Save for the whole menu</strong> &mdash; meal changes save with everything else, and Discard undoes them too. No more &ldquo;save before opening a meal.&rdquo;</span></li>
+          <li><span><strong>One Total to buy / Per person switch</strong> beside Meals sets every open meal and each meal&rsquo;s cost.</span></li>
+          <li><span><strong>Tighter ingredient lists</strong> when a recipe is open in a meal &mdash; no line between ingredients.</span></li>
+          <li><span><strong>&ldquo;Food &amp; Recipes&rdquo;</strong> &mdash; most of the list is single foods like apples and bacon, so the planner now just says &ldquo;Add to Saturday&rdquo;, &ldquo;Add to breakfast&rdquo; and &ldquo;Swap&hellip;&rdquo;, and the library tab and popup are called Food &amp; Recipes. &ldquo;Recipe&rdquo; stays for things with steps, like the Recipe Builder.</span></li>
+          <li><span><strong>Diet warnings</strong> &mdash; a food that isn&rsquo;t for someone the menu counts says so under it (&ldquo;1 person is gluten-free and this has instant oatmeal&rdquo;), and the warning goes away if you leave that ingredient out.</span></li>
+          <li><span><strong>Behind the scenes:</strong> the old one-meal planner is gone, and old meal links open the menu with that meal open.</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.142.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.142.0</span>
+        <span class="release-date">October 3, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">New</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Menu Monster: add what the price book doesn&rsquo;t have</p>
+        <ul class="change-list">
+          <li><span><strong>A new ingredient on a meal</strong> &mdash; in a meal&rsquo;s ingredient search, &ldquo;Add &hellip; as a new ingredient&rdquo; works on menus too, the same way as in the recipe editor. It stays private until the menu is shared, then a leader checks it.</span></li>
+          <li><span><strong>A package you bought</strong> &mdash; on the Shopping tab, &ldquo;Add a package you bought&rdquo; takes the name, store, size on the label and price. If the price is in line with the troop&rsquo;s cheapest package it joins the price book; otherwise it prices only your menus until a leader checks it.</span></li>
+          <li><span><strong>Packages waiting</strong> &mdash; leaders see scouts&rsquo; outlying packages on Admin &rsaquo; Menu Monster &rsaquo; Price book, with the price per unit next to the troop&rsquo;s cheapest, and Approve or Reject each one.</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.141.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.141.0</span>
+        <span class="release-date">October 3, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">New</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Menu Monster: share menus with the troop</p>
+        <ul class="change-list">
+          <li><span><strong>Share with the troop</strong> &mdash; a menu&rsquo;s new Share tab publishes it with your name as &ldquo;Sam K.&rdquo;. Shared menus show on the Menu Monster page under &ldquo;Shared with the troop&rdquo; and on the outing&rsquo;s event page under &ldquo;Menus for this outing&rdquo;. Changes you save show straight away; Stop sharing takes it down.</span></li>
+          <li><span><strong>Copy to My menus</strong> &mdash; a scout can copy another scout&rsquo;s shared menu and make it their own.</span></li>
+          <li><span><strong>Parents</strong> see their own scouts&rsquo; menus, read-only.</span></li>
+          <li><span><strong>Leaders</strong> can filter Scouts&rsquo; menus by scout, outing or shared, leave one note the scout sees at the top of the menu, and hide a shared menu from the shelf. A scout&rsquo;s roster record links to their menus.</span></li>
+          <li><span><strong>Privacy:</strong> anyone else sees a shared menu without what the scout paid and without recipes the scout hasn&rsquo;t shared yet.</span></li>
+        </ul>
       </div>
     </div>
 
