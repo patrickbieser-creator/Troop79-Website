@@ -20,7 +20,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 import { publicScoutName } from '@/lib/scout-name';
 import { recordAuditAs, type AuditActor } from '@/lib/audit';
-import { MAX_MENUS_PER_SCOUT, MAX_REVIEW_NOTE, coverDays, foldShopping, sanitizeActuals, sanitizeFreeItems, sanitizeMenu, type Actuals, type Menu, type MenuContext, type MenuMeal } from './menus';
+import { MAX_MENUS_PER_SCOUT, MAX_REVIEW_NOTE, coverDays, foldShopping, sanitizeActuals, sanitizeMenu, type Actuals, type Menu, type MenuContext, type MenuMeal } from './menus';
 import { SHELF_DAYS, daysBefore, isPublic } from './menu-access';
 import { buildSnapshot, type MenuSnapshot } from './menu-snapshot';
 import type { Catalog, RestrictionKey } from './types';
@@ -93,7 +93,7 @@ export type SaveResult =
   | { status: 'conflict' }
   | { status: 'not_found' };
 
-const COLUMNS = 'id, owner_person_id, name, context, calendar_entry_id, start_date, headcount, restrictions, budget_per_person_meal, day_count, shopping, actuals, free_items, meals, snapshot, created_at, updated_at, shared_at, review_note, reviewed_by_person_id, reviewed_at, calendar_entries(status)';
+const COLUMNS = 'id, owner_person_id, name, context, calendar_entry_id, start_date, headcount, restrictions, budget_per_person_meal, day_count, shopping, actuals, meals, snapshot, created_at, updated_at, shared_at, review_note, reviewed_by_person_id, reviewed_at, calendar_entries(status)';
 
 interface MenuRow {
   id: string;
@@ -109,7 +109,6 @@ interface MenuRow {
   /** '{}' on rows from before slice 5; their choices sit inside meals[]. */
   shopping: unknown;
   actuals: unknown;
-  free_items: unknown;
   meals: MenuMeal[];
   snapshot: MenuSnapshot | null;
   created_at: string;
@@ -122,11 +121,11 @@ interface MenuRow {
   calendar_entries: { status: string } | null;
 }
 
-// actuals and free_items are deliberately NOT written here. Actuals (what the
-// scout paid) feed the shared price book, so they get their own action with its
-// own band check and never ride a menu save (Phase 2 design); free items join
-// the write path with their editing UI in release C. Until then both only read
-// back, and a duplicate starts without them.
+// actuals are deliberately NOT written here. What the scout paid feeds the
+// shared price book, so it gets its own action with its own band check and
+// never rides a menu save (Phase 2 design); a duplicate starts without it.
+// Typed-in ingredients are real mm_ingredients rows (release C reuses 4B), so
+// a menu only names them in its meals' recipeEdits.
 const toRow = (m: Menu, snapshot: MenuSnapshot | null) => ({
   name: m.name,
   context: m.context,
@@ -156,7 +155,6 @@ const fromRow = (r: MenuRow): Menu => ({
   shopping: foldShopping(r.shopping, r.meals),
   // Same validation as a write: a hand-edited row can't smuggle a bad shape in.
   actuals: sanitizeActuals(r.actuals),
-  freeItems: sanitizeFreeItems(r.free_items),
   // Meals saved before recipeEdits existed read as having none; the old
   // per-meal shopping fields are dropped (folded into the menu above).
   meals: r.meals.map((m) => {
@@ -501,7 +499,7 @@ export async function copyMenuWith(
   if (!own && !isPublic(src)) return null;
   if (await atMenuLimit(sb, actor.personId)) return MENU_LIMIT;
 
-  const clean = sanitizeMenu({ ...src.menu, actuals: {}, freeItems: [] }, catalog);
+  const clean = sanitizeMenu({ ...src.menu, actuals: {} }, catalog);
   const copy = await checkOuting({ ...clean, name: `Copy of ${src.menu.name}`.slice(0, 120) });
   const { data, error } = await sb
     .from('mm_menus')

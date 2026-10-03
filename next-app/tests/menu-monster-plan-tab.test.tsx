@@ -39,7 +39,6 @@ const base = (over: Partial<Menu> = {}): Menu => ({
   dayCount: 2,
   shopping: { packageChoice: {}, qtyOverride: {}, lineSource: {} },
   actuals: {},
-  freeItems: [],
   meals: [
     { id: 'm1', day: 0, slot: 'breakfast', headcount: null, recipeIds: ['B003'], recipeEdits: {} }
   ],

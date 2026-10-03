@@ -39,7 +39,6 @@ const menu = (over: Partial<Menu> = {}): Menu => ({
   dayCount: 2,
   shopping: { packageChoice: {}, qtyOverride: {}, lineSource: {} },
   actuals: {},
-  freeItems: [],
   meals: [
     { id: 'm1', day: 0, slot: 'breakfast', headcount: null, recipeIds: ['B003', 'B014', 'B023'], recipeEdits: {} },
     { id: 'm2', day: 1, slot: 'breakfast', headcount: null, recipeIds: ['B003'], recipeEdits: {} },

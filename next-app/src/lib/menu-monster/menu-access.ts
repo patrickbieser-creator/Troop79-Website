@@ -80,14 +80,15 @@ export function onShelf(sharedAt: string | null, entry: ShelfEntry | null, today
  * gets it re-sanitized against the PUBLIC catalog, so the owner's unshared
  * draft recipes (and their edits and shopping choices) drop out —
  * `hiddenRecipes` counts them for the "aren't shared yet" line. A `shared`
- * viewer also loses what the scout paid and their typed-in items (an
- * allowlist: everything not rebuilt by sanitizeMenu is cleared here).
+ * viewer also loses what the scout paid (an allowlist: everything not rebuilt
+ * by sanitizeMenu is cleared here); the owner's unrevealed typed-in
+ * ingredients drop out with the public catalog like their drafts.
  */
 export function redactMenu(menu: Menu, access: MenuAccess, publicCatalog: Catalog): { menu: Menu; hiddenRecipes: number } {
   if (access === 'owner') return { menu, hiddenRecipes: 0 };
   const clean = sanitizeMenu(menu, publicCatalog);
   const count = (m: Menu) => m.meals.reduce((n, meal) => n + meal.recipeIds.length, 0);
   const hiddenRecipes = count(menu) - count(clean);
-  if (access === 'shared') return { menu: { ...clean, actuals: {}, freeItems: [] }, hiddenRecipes };
+  if (access === 'shared') return { menu: { ...clean, actuals: {} }, hiddenRecipes };
   return { menu: clean, hiddenRecipes };
 }

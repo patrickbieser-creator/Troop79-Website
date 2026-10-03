@@ -116,8 +116,7 @@ const ownerMenu = (): Menu =>
       headcount: 8,
       restrictions: { gf: 0, nut: 0, dairy: 0, veg: 0 },
       meals: [{ id: 'm1', day: 0, slot: 'breakfast', headcount: null, recipeIds: ['B001', 'S-0000abcd'], recipeEdits: {} }],
-      actuals: { eggs: { packageId: 'p-eggs', qty: 1, pricePaid: 3.5 } },
-      freeItems: [{ id: 'new:0000abcd', name: 'Jam' }]
+      actuals: { eggs: { packageId: 'p-eggs', qty: 1, pricePaid: 3.5 } }
     },
     OWNERS
   );
@@ -134,10 +133,9 @@ describe('redactMenu', () => {
     expect(hiddenRecipes).toBe(1);
   });
 
-  it('SharedView_HidesActualsAndFreeItems', () => {
+  it('SharedView_HidesActuals', () => {
     const { menu: m } = redactMenu(ownerMenu(), 'shared', PUBLIC);
     expect(m.actuals).toEqual({});
-    expect(m.freeItems).toEqual([]);
   });
 
   it('ParentView_KeepsActuals_ButStillHidesDrafts', () => {

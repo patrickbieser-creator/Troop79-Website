@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Catalog, Recipe } from '../src/lib/menu-monster/types';
 import { MAX_HEADCOUNT, MIN_HEADCOUNT } from '../src/lib/menu-monster/engine';
-import { MAX_FREE_ITEMS, MAX_MENU_DAYS, MAX_MENU_MEALS, composePlan, isMenuId, menuNameError, resolveMenuAliases, sanitizeMenu, type Menu } from '../src/lib/menu-monster/menus';
+import { MAX_MENU_DAYS, MAX_MENU_MEALS, composePlan, isMenuId, menuNameError, resolveMenuAliases, sanitizeMenu, type Menu } from '../src/lib/menu-monster/menus';
 
 /**
  * Scout Workspace menus (Plans/Menu-Monster-Scout-Workspace.md, Phase 1).
@@ -208,11 +208,11 @@ const ACT_CATALOG = {
   ]
 } as unknown as Catalog;
 
-describe('sanitizeMenu actuals + freeItems (Phase 2 release A: validated pass-through)', () => {
-  it('Menu_HasNoActualsOrFreeItems_WhenTheClientSendsNone', () => {
-    const m = sanitizeMenu(raw(), ACT_CATALOG);
-    expect({ actuals: m.actuals, freeItems: m.freeItems }).toEqual({ actuals: {}, freeItems: [] });
+describe('sanitizeMenu actuals (Phase 2 release A: validated pass-through)', () => {
+  it('Menu_HasNoActuals_WhenTheClientSendsNone', () => {
+    expect(sanitizeMenu(raw(), CATALOG).actuals).toEqual({});
   });
+
 
   it('Actuals_KeepsAWellFormedEntry_AndDropsMalformedOnes', () => {
     const m = sanitizeMenu(
@@ -256,16 +256,6 @@ describe('sanitizeMenu actuals + freeItems (Phase 2 release A: validated pass-th
 
   it('Actuals_IsEmpty_WhenNotAnObject', () => {
     expect(sanitizeMenu(raw({ actuals: [1, 2] }), CATALOG).actuals).toEqual({});
-  });
-
-  it('FreeItems_KeepsObjectsWithAnId_UpToTheCap', () => {
-    const items = Array.from({ length: 50 }, (_, i) => ({ id: `new:${String(i).padStart(8, '0')}`, name: `Thing ${i}` }));
-    const m = sanitizeMenu(raw({ freeItems: [...items, 'junk', { name: 'no id' }] }), CATALOG);
-    expect(m.freeItems).toHaveLength(MAX_FREE_ITEMS);
-  });
-
-  it('FreeItems_IsEmpty_WhenNotAnArray', () => {
-    expect(sanitizeMenu(raw({ freeItems: { a: 1 } }), CATALOG).freeItems).toEqual([]);
   });
 });
 

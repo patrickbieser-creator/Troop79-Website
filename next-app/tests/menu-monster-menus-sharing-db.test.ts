@@ -47,7 +47,6 @@ const menu = (overrides: Partial<Menu> = {}): Menu => ({
   dayCount: 2,
   shopping: { packageChoice: {}, qtyOverride: {}, lineSource: {} },
   actuals: {},
-  freeItems: [],
   meals: [{ id: 'm1', day: 0, slot: 'breakfast', headcount: null, recipeIds: ['B001'], recipeEdits: {} }],
   ...overrides
 });

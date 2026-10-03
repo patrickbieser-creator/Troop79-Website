@@ -88,15 +88,6 @@ export type PaidStatus = 'applied' | 'held' | 'same';
 /** ingredientId -> what was bought. Written only by the actuals action, never by a menu save. */
 export type Actuals = Record<string, Actual>;
 
-/**
- * A typed-in ingredient (Phase 2 release C): a synthetic `new:<8hex>` id plus
- * whatever the scout typed. Release A only validates the envelope (an object
- * with a string id); release C narrows the shape with the UI that writes it.
- */
-export type FreeItem = { id: string } & Record<string, unknown>;
-
-/** Cap on typed-in ingredients per menu (the DB only requires an array). */
-export const MAX_FREE_ITEMS = 40;
 
 /** One meal on a menu: a day index (0 = the menu's first day), a slot, and
  *  the recipes on the plate. headcount null = the menu's headcount. */
@@ -126,8 +117,6 @@ export interface Menu {
   shopping: MenuShopping;
   /** What was bought, per ingredient; {} until release B. Read-only through a menu save. */
   actuals: Actuals;
-  /** Typed-in ingredients; [] until release C. */
-  freeItems: FreeItem[];
   meals: MenuMeal[];
 }
 
@@ -197,17 +186,6 @@ export function sanitizeActuals(raw: unknown, catalog?: Catalog): Actuals {
     const pricePaid = Math.round(a.pricePaid * 100) / 100;
     if (pricePaid < MIN_ACTUAL_PRICE || pricePaid > MAX_ACTUAL_PRICE) continue;
     out[ing] = { packageId: a.packageId, qty: a.qty, pricePaid };
-  }
-  return out;
-}
-
-/** Client free items -> objects with an id-shaped string id, capped at MAX_FREE_ITEMS. */
-export function sanitizeFreeItems(raw: unknown): FreeItem[] {
-  if (!Array.isArray(raw)) return [];
-  const out: FreeItem[] = [];
-  for (const o of raw) {
-    if (out.length >= MAX_FREE_ITEMS) break;
-    if (isRecord(o) && typeof o.id === 'string' && INGREDIENT_ID.test(o.id)) out.push({ ...o, id: o.id });
   }
   return out;
 }
@@ -424,7 +402,6 @@ export function sanitizeMenu(raw: unknown, catalog: Catalog): Menu {
     dayCount: coverDays(r.dayCount, meals),
     shopping: sanitizeShopping(foldShopping(r.shopping, r.meals), catalog),
     actuals: sanitizeActuals(r.actuals, catalog),
-    freeItems: sanitizeFreeItems(r.freeItems),
     meals
   };
 }
@@ -492,6 +469,5 @@ export const blankMenu = (): Menu => ({
   dayCount: DEFAULT_MENU_DAYS,
   shopping: emptyShopping(),
   actuals: {},
-  freeItems: [],
   meals: []
 });
