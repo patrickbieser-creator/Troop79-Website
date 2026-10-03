@@ -35,7 +35,6 @@ export function newScoutRecipeId(rand: () => number = Math.random): string {
 /** Whether a picker may offer the recipe. Retired recipes stay in the catalog so menus keep them, but are never offered. */
 export const isPickable = (r: Pick<Recipe, 'status'>) => r.status !== 'retired';
 
-// eslint-disable-next-line no-control-regex
 const CONTROL = /[\u0000-\u001F\u007F]/g;
 const LINK = /(https?:\/\/|www\.)\S*/gi;
 
