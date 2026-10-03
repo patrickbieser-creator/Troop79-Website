@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menu Monster: scout recipes — Session Summary</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #3d5a3e;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #f0eecd;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); vertical-align: top; }
+        tr:hover { background: var(--nw-sage); }
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+        code { font-family: 'Courier New', monospace; font-size: 0.85em; background: var(--nw-light-gray); padding: 0 0.3em; border-radius: 3px; }
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+        @media print { body { background: white; } header { padding: 1.5rem; } .container { padding: 1rem; } .stat { break-inside: avoid; } }
+        @media (max-width: 600px) { header h1 { font-size: 1.5rem; } .stats { flex-direction: column; } }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Menu Monster: scouts write their own recipes</h1>
+        <p class="subtitle">A recipe library popup and hub tabs, then all of Phase 4: scout recipes, typed-in ingredients with leader matching, recipe gear, and sharing your own version of a recipe.</p>
+        <div class="meta">
+            <span>&#128197; October 2, 2026</span>
+            <span>&#129302; Operator (Opus 5.5)</span>
+            <span>&#128204; Troop79-Website</span>
+            <span>&#128640; v1.138.0 &rarr; v1.140.0</span>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">3</div><div class="label">Releases (v1.138&ndash;v1.140)</div></div>
+            <div class="stat"><div class="number">3</div><div class="label">Production migrations</div></div>
+            <div class="stat"><div class="number">6</div><div class="label">Decisions (D-299&ndash;304)</div></div>
+            <div class="stat"><div class="number">255</div><div class="label">Tests added (2928 &rarr; 3183)</div></div>
+            <div class="stat"><div class="number">4</div><div class="label">Reviews (tech-lead, specialist, qa-lead &times;2)</div></div>
+        </div>
+
+        <h2>What Was Accomplished</h2>
+
+        <div class="callout callout-teal">
+            <strong>The outcome:</strong> scouts can now write, save and share their own recipes, credited &ldquo;Recipe by Sam K.&rdquo;, add ingredients the price book doesn&rsquo;t have yet, list the gear a recipe needs, and turn their own version of a troop recipe into a new one. Leaders re-credit or retire scout recipes and match new ingredients into the price book.
+        </div>
+
+        <h3>Releases</h3>
+        <ul>
+            <li><strong>v1.138.0 &mdash; tabs and a recipe library:</strong> the Menu Monster page has Meal Planner, Recipe Library, Ingredients and Recipe Builder tabs; each day&rsquo;s &ldquo;Search recipes&rdquo; opens a library popup with breakfast / lunch / dinner / snack filters that adds a recipe in one click.</li>
+            <li><strong>v1.139.0 &mdash; scout recipes:</strong> the approved recipe editor; private drafts usable in the scout&rsquo;s own menus; Share with the troop with a frozen credit; an admin Scout recipes tab to re-credit, retire and restore.</li>
+            <li><strong>v1.140.0 &mdash; new ingredients, gear, my version:</strong> typed-in ingredients (private until shared, then matched or kept by a leader, with menus following the match); Gear you&rsquo;ll need on recipes and on a menu&rsquo;s Shopping tab and printout; Share this version as a new recipe from a meal page.</li>
+        </ul>
+
+        <div class="callout callout-gold">
+            <strong>Caught on the way:</strong> retiring a recipe would have silently dropped it from every menu (the catalog was published-only); browser checks found a constant exported from a client file that broke the New recipe link and a focus bug that turned spaces into empty steps; qa-lead found a possible save/match deadlock, orphaned typed-ins holding the cap, and a unit-mixing match &mdash; all fixed.
+        </div>
+
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Decision</th></tr></thead>
+            <tbody>
+                <tr><td>D-299</td><td>A day&rsquo;s recipe search is a popup recipe library with meal filters</td></tr>
+                <tr><td>D-300</td><td>Menu Monster hub has four ?tab= tabs</td></tr>
+                <tr><td>D-301</td><td>Scout recipes: private drafts, live on share, frozen credit; leaders retire, never unpublish</td></tr>
+                <tr><td>D-302</td><td>The menu-side catalog keeps retired recipes and the owner&rsquo;s drafts (owner required)</td></tr>
+                <tr><td>D-303</td><td>Typed-in ingredients are real rows, private until shared, matched by alias</td></tr>
+                <tr><td>D-304</td><td>Recipe gear and &ldquo;Share this version&rdquo;</td></tr>
+            </tbody>
+        </table>
+
+        <h2>Next Steps</h2>
+        <ul>
+            <li><strong>Patrick:</strong> production eyes-on for Phase 4 &mdash; a scout recipe with a typed-in ingredient and gear, a leader match, Share this version.</li>
+            <li><strong>Then:</strong> Menu Monster Phase 3 (share menus, outing page, copy, notes, parent view), release C (menu typed-ins), delete the retired planner, Phase 4 follow-ups (confirm price on Keep as new).</li>
+            <li><strong>Carried:</strong> Calm Site Restyle, ledger cleanup, <code>fetchAllRows</code> ordering, B-004.</li>
+        </ul>
+
+        <h2>Files Changed</h2>
+        <table>
+            <thead><tr><th>Area</th><th>Change</th></tr></thead>
+            <tbody>
+                <tr><td><code>next-app/supabase/migrations/20261003150000&ndash;170000</code></td><td>Scout recipes, typed-in ingredients + matching, leader gear</td></tr>
+                <tr><td><code>next-app/src/lib/menu-monster/</code></td><td>scout-recipes, scout-recipes-store, scout-ingredients, author-rows, ingredient-browse, menu-search, catalog (owner + aliases), menus (alias resolution)</td></tr>
+                <tr><td><code>next-app/src/app/(public)/library/menu-monster/</code></td><td>Recipe editor + pages, new-ingredient form, recipe browser / popup, ingredient browser, author-mode list, reorder grip, gear on Shopping</td></tr>
+                <tr><td><code>next-app/src/app/admin/.../menu-monster/</code></td><td>Scout recipes tab: shared recipes + New ingredients; leader gear field</td></tr>
+                <tr><td><code>Plans/Menu-Monster-Scout-Workspace.md</code></td><td>Phase 4 design (revised after review), Phase 4 shipped</td></tr>
+                <tr><td><code>changelog.html</code></td><td>v1.138.0&ndash;v1.140.0 entries</td></tr>
+            </tbody>
+        </table>
+
+    </div>
+</body>
+</html>

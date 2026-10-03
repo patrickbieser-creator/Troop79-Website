@@ -100,10 +100,10 @@ The anonymous planner stays as it is, and signing in adds saving and sharing.
 - [ ] A parent signed in to the scout's household sees that scout's menus read-only.
 - [ ] The scout's admin record links to their menus.
 
-**Phase 4: scout recipes**
-- [ ] A scout writes a recipe, either from scratch or from **Share this version as a new recipe**. It is usable in their own menus at once; **Share with the troop** publishes it immediately with the frozen "Recipe by Sam K." credit (editable by a leader).
-- [ ] Admin `/admin/library/menu-monster` gets a **New recipes** list: a leader matches typed-in ingredients to the price book and can **retire** a recipe. There is no publish gate.
-- [ ] Recipes gain `equipment text[]`, and a menu rolls it up into "Gear you'll need".
+**Phase 4: scout recipes** — SHIPPED v1.139.0–v1.140.0 (2026-10-02, 751cdeb / 7233a64)
+- [x] A scout writes a recipe, either from scratch or from **Share this version as a new recipe**. It is usable in their own menus at once; **Share with the troop** publishes it immediately with the frozen "Recipe by Sam K." credit (editable by a leader).
+- [x] Admin `/admin/library/menu-monster` gets a **New recipes** list: a leader matches typed-in ingredients to the price book and can **retire** a recipe. There is no publish gate.
+- [x] Recipes gain `equipment text[]`, and a menu rolls it up into "Gear you'll need".
 
 **Every phase:** quality gate green (`lint`, `typecheck`, `test`, `build`), changelog block, `mm_*` tables RLS on with zero policies, no client Supabase.
 
