@@ -81,18 +81,21 @@ export default async function LibraryTopicPage({
           </ul>
         )}
 
-        <div className={styles.ctaBand}>
-          <div className={styles.ctaBandText}>
-            <h2 className={styles.ctaBandTitle}>Got something that belongs here?</h2>
-            <p className={styles.ctaBandLede}>
-              The webmaster reviews every suggestion before it&rsquo;s published — send it in
-              even if you&rsquo;re not sure it fits.
-            </p>
+        {/* A shelf with a tool (Menu Monster) is a workspace, not a list to add to (Patrick, 2026-10-03). */}
+        {!Tool && (
+          <div className={styles.ctaBand}>
+            <div className={styles.ctaBandText}>
+              <h2 className={styles.ctaBandTitle}>Got something that belongs here?</h2>
+              <p className={styles.ctaBandLede}>
+                The webmaster reviews every suggestion before it&rsquo;s published — send it in
+                even if you&rsquo;re not sure it fits.
+              </p>
+            </div>
+            <Button variant="primary" href={suggestHref}>
+              Suggest a Resource
+            </Button>
           </div>
-          <Button variant="primary" href={suggestHref}>
-            Suggest a Resource
-          </Button>
-        </div>
+        )}
       </PageShell>
     </>
   );
