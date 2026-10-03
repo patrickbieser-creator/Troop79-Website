@@ -37,7 +37,7 @@ import { DraftOffer } from '../../menu-monster/menus/_components/draft-offer';
 import { LocalPlan } from '../../menu-monster/menus/_components/local-menu-shells';
 import { loadMenuRows } from '../../menu-monster/menus/_components/menu-rows';
 import { MenusList } from '../../menu-monster/menus/_components/menus-list';
-import { MENUS_HREF, MENU_HUB_HREF, menuViewer } from '../../menu-monster/menus/_components/scout-menus';
+import { MENUS_HREF, MENU_HUB_HREF, menuViewer, type MenuViewer } from '../../menu-monster/menus/_components/scout-menus';
 import w from '../../menu-monster/menus/_components/workspace.module.css';
 
 const RECENT = 5;
@@ -57,8 +57,10 @@ const EVERY_DIET: Pick<Plan, 'headcount' | 'restrictions'> = { headcount: 8, res
 export async function MenuMonsterShelfTool({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
   const asked = typeof searchParams.tab === 'string' ? searchParams.tab : '';
   const tab: TabKey = TABS.some((x) => x.key === asked) ? (asked as TabKey) : 'planner';
-  const catalog = await loadMenuMonsterCatalog();
-  const planner = tab === 'planner' ? await mealPlanner(catalog) : null;
+  const viewer = await menuViewer();
+  // A signed-in scout's own draft recipes join their planner and library.
+  const catalog = await loadMenuMonsterCatalog(viewer?.kind === 'scout' ? viewer.personId : null);
+  const planner = tab === 'planner' ? await mealPlanner(catalog, viewer) : null;
   return (
     <>
       <div className={w.tabs}>
@@ -77,8 +79,7 @@ export async function MenuMonsterShelfTool({ searchParams }: { searchParams: Rec
 }
 
 /** A plain async function, not a nested component: the tab is awaited here, so tests can render the tool. */
-async function mealPlanner(catalog: Catalog) {
-  const viewer = await menuViewer();
+async function mealPlanner(catalog: Catalog, viewer: MenuViewer | null) {
 
   if (viewer?.kind === 'scout') {
     const sb = createAdminClient();

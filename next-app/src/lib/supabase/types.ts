@@ -557,6 +557,11 @@ export interface MmRecipeRow {
   sort_order: number;
   created_at: string;
   updated_at: string;
+  /** Phase 4 scout recipes. Public loads never select author_person_id. */
+  author_person_id?: number | null;
+  attribution_label?: string | null;
+  shared_at?: string | null;
+  equipment?: string[] | null;
 }
 
 export interface MmRecipeLineRow {

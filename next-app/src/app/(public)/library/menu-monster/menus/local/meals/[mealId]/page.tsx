@@ -14,7 +14,7 @@ export const metadata: Metadata = { title: 'Meal — Menu Monster' };
 export default async function LocalMenuMealPage({ params }: { params: Promise<{ mealId: string }> }) {
   const { mealId } = await params;
   await redirectScoutFromLocal();
-  const catalog = await loadMenuMonsterCatalog();
+  const catalog = await loadMenuMonsterCatalog(null);
   return (
     <>
       <LocalMenuHeader current="meal" />

@@ -21,7 +21,7 @@ export default async function MenuShoppingPage({ params }: { params: Promise<{ m
   const view = await loadViewableMenu(menuId, viewer);
   if (!view) notFound();
   const { stored, readOnly, plannedBy } = view;
-  const catalog = await loadMenuMonsterCatalog();
+  const catalog = await loadMenuMonsterCatalog(stored.ownerPersonId);
   return (
     <>
       <MenuHeader current="shopping" listLabel={readOnly ? 'Scouts’ menus' : undefined} />

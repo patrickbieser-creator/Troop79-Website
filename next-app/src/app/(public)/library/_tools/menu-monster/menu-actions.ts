@@ -49,8 +49,8 @@ function tooBig(raw: unknown, cap: number = MAX_MENU_BYTES): boolean {
 }
 
 /** Clean the payload and check the name; the error is what the name field shows. */
-async function cleanMenu(raw: unknown) {
-  const catalog = await loadMenuMonsterCatalog();
+async function cleanMenu(raw: unknown, ownerPersonId: number | null) {
+  const catalog = await loadMenuMonsterCatalog(ownerPersonId);
   const menu = sanitizeMenu(raw, catalog);
   return { menu, catalog, nameError: menuNameError(menu.name) };
 }
@@ -68,7 +68,7 @@ export async function createMenuAction(raw: unknown): Promise<{ ok: true; id: st
   const actor = await scoutActor();
   if (isFail(actor)) return actor;
   if (tooBig(raw)) return { ok: false, error: TOO_BIG };
-  const { menu: cleaned, catalog, nameError } = await cleanMenu(raw);
+  const { menu: cleaned, catalog, nameError } = await cleanMenu(raw, actor.personId);
   if (nameError) return { ok: false, error: nameError };
   const menu = await allowedOuting(cleaned, null);
   const id = await createMenuWith(createAdminClient(), actor, menu, catalog);
@@ -87,7 +87,7 @@ export async function saveMenuAction(
     return { ok: false, error: 'Reload this menu, then make your change again.' };
   }
   if (tooBig(raw)) return { ok: false, error: TOO_BIG };
-  const { menu: cleaned, catalog, nameError } = await cleanMenu(raw);
+  const { menu: cleaned, catalog, nameError } = await cleanMenu(raw, actor.personId);
   if (nameError) return { ok: false, error: nameError };
   const sb = createAdminClient();
   const current = await loadMenuWith(sb, id);
@@ -138,7 +138,7 @@ export async function saveActualsAction(
   const current = await loadMenuWith(sb, menuId);
   if (!current || current.ownerPersonId !== actor.personId) return { ok: false, error: NOT_YOURS };
 
-  const catalog = await loadMenuMonsterCatalog();
+  const catalog = await loadMenuMonsterCatalog(actor.personId);
   const actuals = sanitizeActuals(rawActuals, catalog);
   const results: Record<string, PaidStatus> = {};
   let applied = 0;
@@ -157,7 +157,7 @@ export async function saveActualsAction(
   }
 
   // An applied price moved the book: re-snapshot against the fresh catalog so the scout's own change is not "drift".
-  const fresh = applied > 0 ? await loadMenuMonsterCatalog() : catalog;
+  const fresh = applied > 0 ? await loadMenuMonsterCatalog(actor.personId) : catalog;
   const saved = await saveActualsWith(sb, actor, menuId, actuals, fresh, { resnapshot: applied > 0 });
   if (saved.status !== 'saved') return { ok: false, error: NOT_YOURS };
   return { ok: true, applied, held, results };

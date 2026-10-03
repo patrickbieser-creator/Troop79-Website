@@ -16,6 +16,7 @@
 import type { Catalog, MealSlot, Recipe } from './types';
 import { MAX_MENU_MEALS, type Menu } from './menus';
 import { MEALS } from './units';
+import { isPickable } from './scout-recipes';
 
 export type LibraryTargetState = 'adds' | 'new' | 'on' | 'full';
 
@@ -36,7 +37,7 @@ const slotOrder = (slot: MealSlot) => MEALS.findIndex((m) => m.key === slot);
 export function filterRecipes(catalog: Catalog, query: string, filter: MealSlot | null): Recipe[] {
   const q = query.trim().toLowerCase();
   return catalog.recipes
-    .filter((r) => (!q || r.name.toLowerCase().includes(q)) && (!filter || r.mealFit.includes(filter)))
+    .filter((r) => isPickable(r) && (!q || r.name.toLowerCase().includes(q)) && (!filter || r.mealFit.includes(filter)))
     .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
 }
 

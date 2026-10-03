@@ -43,6 +43,7 @@ import { Stepper } from '@/app/_components/stepper';
 import type { Catalog, Plan, Recipe } from '@/lib/menu-monster/types';
 import { RESTRICTION_BY_KEY } from '@/lib/menu-monster/units';
 import { MAX_HEADCOUNT, MIN_HEADCOUNT, buildLines, recipesForMeal, totalsOf } from '@/lib/menu-monster/engine';
+import { isPickable } from '@/lib/menu-monster/scout-recipes';
 import { composePlan, mealCatalog, type EditOp, type Menu, type MenuMeal, type RecipeEdits } from '@/lib/menu-monster/menus';
 import { DIET_ORDER, mealTitle, recipeShares } from '@/lib/menu-monster/menu-view';
 import {
@@ -157,7 +158,7 @@ export function MealEditor({
   const whole = totalsOf(buildLines(plan, cat), plan);
   const diets = DIET_ORDER.filter((k) => (menu.restrictions[k] || 0) > 0);
   const overridden = draft.people !== menu.headcount;
-  const candidates = recipesForMeal(catalog, meal.slot).filter((r) => !draft.recipeIds.includes(r.id));
+  const candidates = recipesForMeal(catalog, meal.slot).filter((r) => isPickable(r) && !draft.recipeIds.includes(r.id));
   const matches = candidates.filter((r) => r.name.toLowerCase().includes(query.trim().toLowerCase()));
   const act = Math.min(active, Math.max(0, matches.length - 1));
   const showList = listOpen && matches.length > 0;

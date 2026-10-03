@@ -35,7 +35,10 @@ export default async function MyMenusPage() {
   const sb = createAdminClient();
   if (viewer.kind === 'leader') {
     const all = await listAllMenusWith(sb);
-    const [catalog, owners] = await Promise.all([loadMenuMonsterCatalog(), ownerCreditNamesWith(sb, all.map((m) => m.ownerPersonId))]);
+    const [catalog, owners] = await Promise.all([
+      // Costs for the leader's list only: an owner's draft recipe prices as missing here (read-only, never saved).
+      loadMenuMonsterCatalog(null),
+      ownerCreditNamesWith(sb, all.map((m) => m.ownerPersonId))]);
     const leaderRows = await loadMenuRows(sb, all, catalog, owners);
     return (
       <>
@@ -51,7 +54,7 @@ export default async function MyMenusPage() {
   }
 
   const summaries = await listMenusWith(sb, viewer.personId);
-  const catalog = await loadMenuMonsterCatalog();
+  const catalog = await loadMenuMonsterCatalog(viewer.personId);
   const rows = await loadMenuRows(sb, summaries, catalog);
 
   return (

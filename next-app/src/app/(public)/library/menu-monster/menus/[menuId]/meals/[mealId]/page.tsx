@@ -20,7 +20,7 @@ export default async function MenuMealPage({ params }: { params: Promise<{ menuI
   if (!view) notFound();
   const { stored, readOnly, plannedBy } = view;
   if ( !stored.menu.meals.some((m) => m.id === mealId)) notFound();
-  const catalog = await loadMenuMonsterCatalog();
+  const catalog = await loadMenuMonsterCatalog(stored.ownerPersonId);
   return (
     <>
       <MenuHeader current="meal" listLabel={readOnly ? 'Scouts’ menus' : undefined} menu={{ id: stored.id, name: stored.menu.name }} />

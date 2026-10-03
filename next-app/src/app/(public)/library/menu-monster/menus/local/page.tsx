@@ -18,7 +18,7 @@ export const metadata: Metadata = { title: 'Menu plan — Menu Monster' };
 
 export default async function LocalMenuPlanPage() {
   await redirectScoutFromLocal();
-  const [catalog, outings] = await Promise.all([loadMenuMonsterCatalog(), loadOutingsWith(createAdminClient(), centralToday())]);
+  const [catalog, outings] = await Promise.all([loadMenuMonsterCatalog(null), loadOutingsWith(createAdminClient(), centralToday())]);
   return (
     <>
       <LocalMenuHeader current="plan" />

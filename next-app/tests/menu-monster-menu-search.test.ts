@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { CATALOG } from './helpers/menu-monster-fixture';
 import { MAX_MENU_MEALS, type Menu } from '../src/lib/menu-monster/menus';
 import type { Catalog } from '../src/lib/menu-monster/types';
-import { canPlanEmptyMeal, recipeLibrary } from '../src/lib/menu-monster/menu-search';
+import { canPlanEmptyMeal, filterRecipes, recipeLibrary } from '../src/lib/menu-monster/menu-search';
 
 /**
  * Scout Workspace: the recipe library popup a day's "Search recipes" opens —
@@ -93,5 +93,12 @@ describe('canPlanEmptyMeal', () => {
 
   it('Day_CannotTakeAnEmptyMeal_AtTheMealCap', () => {
     expect(canPlanEmptyMeal(fullMenu(), 1, 'lunch')).toBe(false);
+  });
+});
+
+describe('filterRecipes (Phase 4A)', () => {
+  it('Library_NeverOffersARetiredRecipe', () => {
+    const cat: Catalog = { ...CATALOG, recipes: CATALOG.recipes.map((r) => (r.id === 'B001' ? { ...r, status: 'retired' as const } : r)) };
+    expect(filterRecipes(cat, 'pancak', null)).toEqual([]);
   });
 });

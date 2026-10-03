@@ -27,7 +27,7 @@ export default async function NewMenuPage() {
       </>
     );
   }
-  const [catalog, outings] = await Promise.all([loadMenuMonsterCatalog(), loadOutingsWith(createAdminClient(), centralToday())]);
+  const [catalog, outings] = await Promise.all([loadMenuMonsterCatalog(viewer.personId), loadOutingsWith(createAdminClient(), centralToday())]);
   return (
     <>
       <MenuHeader current="new" />

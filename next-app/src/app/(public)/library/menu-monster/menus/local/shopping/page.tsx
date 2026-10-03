@@ -14,7 +14,7 @@ export const metadata: Metadata = { title: 'Shopping — Menu Monster' };
 
 export default async function LocalMenuShoppingPage() {
   await redirectScoutFromLocal();
-  const catalog = await loadMenuMonsterCatalog();
+  const catalog = await loadMenuMonsterCatalog(null);
   return (
     <>
       <LocalMenuHeader current="shopping" />

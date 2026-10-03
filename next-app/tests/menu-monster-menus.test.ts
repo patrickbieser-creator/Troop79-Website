@@ -263,3 +263,10 @@ describe('sanitizeMenu actuals + freeItems (Phase 2 release A: validated pass-th
     expect(sanitizeMenu(raw({ freeItems: { a: 1 } }), CATALOG).freeItems).toEqual([]);
   });
 });
+
+describe('sanitizeMenu with retired recipes (Phase 4A)', () => {
+  it('Menu_KeepsRetiredRecipe_OnSave', () => {
+    const retired: Catalog = { ...CATALOG, recipes: CATALOG.recipes.map((r) => (r.id === 'B001' ? { ...r, status: 'retired' as const } : r)) };
+    expect(sanitizeMenu(raw(), retired).meals[0].recipeIds).toEqual(['B001']);
+  });
+});

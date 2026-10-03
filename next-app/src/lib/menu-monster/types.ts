@@ -140,6 +140,13 @@ export interface Recipe {
   lines: RecipeLine[];
   /** Absent on fixtures that predate variations; treated as none. */
   variations?: Variation[];
+  /** A shared scout recipe's frozen credit, "Sam K." (Phase 4); null/absent for the troop's own. */
+  credit?: string | null;
+  /** Gear the recipe needs (Phase 4C rolls it up per menu). */
+  equipment?: string[];
+  /** Leader tools only: when a scout shared it, and who wrote it. */
+  sharedAt?: string | null;
+  authorPersonId?: number | null;
 }
 
 export interface Catalog {

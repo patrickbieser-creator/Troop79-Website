@@ -6,8 +6,9 @@
  * from Vitest against local Postgres (tests/helpers/admin-client.ts) — the
  * D-049 pattern: integration-test the real query, don't mock the DB.
  *
- * Only `status = 'published'` recipes leave the server; retired ingredients
- * and packages are excluded at the query.
+ * Published and retired recipes leave the server (retired ones only so a menu
+ * keeps what it holds — pickers filter them), plus the owner's own drafts;
+ * retired ingredients and packages are excluded at the query.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -45,7 +46,21 @@ export interface CatalogRows {
   variationLines?: MmVariationLineRow[];
 }
 
-export async function loadCatalogWith(supabase: SupabaseClient): Promise<Catalog> {
+/** Recipe columns every load reads; never the author's person id on a public load. */
+const RECIPE_COLUMNS = 'id, name, status, meal_fit, food_groups, camp, trail, method, steps_md, sort_order, created_at, updated_at, attribution_label, equipment';
+
+export interface CatalogLoadOptions {
+  /** The verified scout whose own drafts join the catalog (their menus, their library). */
+  ownerPersonId?: number | null;
+}
+
+/**
+ * The menu-side catalog: published recipes, RETIRED ones too (a menu that holds
+ * a recipe keeps it after a leader retires it — pickers filter with isPickable),
+ * and the owner's own drafts. Nobody else's draft ever leaves the server.
+ */
+export async function loadCatalogWith(supabase: SupabaseClient, opts: CatalogLoadOptions = {}): Promise<Catalog> {
+  const owner = Number.isSafeInteger(opts.ownerPersonId) && (opts.ownerPersonId as number) > 0 ? (opts.ownerPersonId as number) : null;
   const [ingredients, conversions, packages, recipes, lines] = await Promise.all([
     fetchAllRows<MmIngredientRow>((from, to) =>
       supabase
@@ -78,8 +93,8 @@ export async function loadCatalogWith(supabase: SupabaseClient): Promise<Catalog
     fetchAllRows<MmRecipeRow>((from, to) =>
       supabase
         .from('mm_recipes')
-        .select('id, name, status, meal_fit, food_groups, camp, trail, method, steps_md, sort_order, created_at, updated_at')
-        .eq('status', 'published')
+        .select(RECIPE_COLUMNS)
+        .or(owner ? `status.in.(published,retired),and(status.eq.draft,author_person_id.eq.${owner})` : 'status.in.(published,retired)')
         .order('sort_order')
         .order('name')
         .range(from, to)
@@ -177,7 +192,7 @@ export function mapCatalog(rows: CatalogRows): Catalog {
     variationsByRecipe.set(v.recipe_id, list);
   }
 
-  // No status filter here: the PUBLIC query asks for published only, and the
+  // No status filter here: the PUBLIC query asks for published + retired (+ the owner's drafts), and the
   // leader tools' query asks for everything. Which statuses arrive is the
   // caller's decision, made once, in its query (tech-lead, 2026-09-08).
   const recipes: Recipe[] = rows.recipes
@@ -193,7 +208,10 @@ export function mapCatalog(rows: CatalogRows): Catalog {
       stepsMd: r.steps_md,
       sortOrder: r.sort_order,
       lines: linesByRecipe.get(r.id) ?? [],
-      variations: variationsByRecipe.get(r.id) ?? []
+      variations: variationsByRecipe.get(r.id) ?? [],
+      credit: r.attribution_label ?? null,
+      equipment: r.equipment ?? [],
+      ...(r.author_person_id !== undefined ? { authorPersonId: r.author_person_id, sharedAt: r.shared_at ?? null } : {})
     }));
 
   return { ingredients, packages, conversions, recipes };
@@ -236,7 +254,8 @@ function toIngredient(row: MmIngredientRow): Ingredient {
 }
 
 /**
- * The leader tools' load: every recipe whatever its status, and retired
+ * The leader tools' load: every recipe whatever its status (except a scout's
+ * unshared draft, which stays private to its author), and retired
  * ingredients/packages included (flagged by retiredAt) so a retired package
  * still shows under its ingredient and a retired recipe can be restored.
  * Same mapper as the public load — one row → domain rule (D-049).
@@ -269,7 +288,9 @@ export async function loadAuthoringCatalogWith(supabase: SupabaseClient): Promis
     fetchAllRows<MmRecipeRow>((from, to) =>
       supabase
         .from('mm_recipes')
-        .select('id, name, status, meal_fit, food_groups, camp, trail, method, steps_md, sort_order, created_at, updated_at')
+        .select(`${RECIPE_COLUMNS}, author_person_id, shared_at`)
+        // A scout's recipe reaches the leader tools once shared — never as a private draft.
+        .or('author_person_id.is.null,shared_at.not.is.null')
         .order('sort_order')
         .order('name')
         .range(from, to)

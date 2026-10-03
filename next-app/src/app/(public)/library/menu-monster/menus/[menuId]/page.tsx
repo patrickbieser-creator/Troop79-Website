@@ -25,7 +25,7 @@ export default async function MenuPlanPage({ params }: { params: Promise<{ menuI
   const { stored, readOnly, plannedBy } = view;
   const linked = stored.menu.calendarEntryId != null ? [stored.menu.calendarEntryId] : [];
   const [catalog, outings] = await Promise.all([
-    loadMenuMonsterCatalog(),
+    loadMenuMonsterCatalog(stored.ownerPersonId),
     loadOutingsWith(createAdminClient(), centralToday(), linked)
   ]);
   return (
