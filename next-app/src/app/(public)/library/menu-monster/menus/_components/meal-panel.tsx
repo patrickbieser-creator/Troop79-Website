@@ -9,8 +9,8 @@
  *   - one quiet row per recipe: its name is a disclosure that opens the recipe's
  *     ingredient list — the menu's OWN version of it (IngredientList, menu-edit
  *     mode: change an amount, swap, leave out, add — typed-ins too), the recipe's
- *     share of the meal in the right column, a ⋯ with Swap recipe…, Back to the
- *     troop recipe, Share this version as a new recipe, and Remove;
+ *     share of the meal in the right column, a ⋯ with Swap…, Back to the
+ *     troop's version, Share this version as a new recipe, and Remove;
  *   - a dashed search at the end adds a recipe that fits this slot (a combobox +
  *     listbox, fully keyboard-operable; "Swap X for…" while swapping);
  *   - a People dialer for this meal (Reset to the menu's number);
@@ -31,7 +31,7 @@
  */
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
-import { priceText as money } from '@/lib/menu-monster/units';
+import { MEALS, priceText as money } from '@/lib/menu-monster/units';
 import { Button } from '@/app/_components/button';
 import { Stepper } from '@/app/_components/stepper';
 import { Notice } from '@/app/_components/notice';
@@ -117,8 +117,10 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChang
   const act = Math.min(active, Math.max(0, matches.length - 1));
   const showList = listOpen && matches.length > 0;
   const swapping = swapId ? recipeName(swapId) : null;
-  const addLabel = swapping ? `Swap ${swapping} for` : `Add a recipe to ${mealTitle(menu.startDate, meal.day, meal.slot)}`;
+  // No noun (Patrick, 2026-10-03): the list holds single foods and recipes alike; the results name themselves.
+  const addLabel = swapping ? `Swap ${swapping} for` : `Add to ${mealTitle(menu.startDate, meal.day, meal.slot)}`;
   const title = mealTitle(menu.startDate, meal.day, meal.slot);
+  const slotWord = (MEALS.find((m) => m.key === meal.slot)?.label ?? meal.slot).toLowerCase();
 
   const change = (next: Partial<MenuMeal>) => onChange({ ...meal, ...next });
   const setPeople = (n: number) => {
@@ -202,7 +204,7 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChang
   function backToTroop(rid: string) {
     const before = undoPoint();
     change({ recipeEdits: without(edits, rid) });
-    setStatus({ text: `Back to the troop recipe for ${recipeName(rid)}.`, undoTo: before });
+    setStatus({ text: `Back to the troop’s version of ${recipeName(rid)}.`, undoTo: before });
   }
 
   function onSearchKey(e: KeyboardEvent<HTMLInputElement>) {
@@ -252,7 +254,7 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChang
       )}
 
       <ul className={s.card} aria-label={`Recipes in ${title}`}>
-        {meal.recipeIds.length === 0 && <li className={s.empty}>{readOnly ? 'Nothing picked yet.' : 'Nothing picked yet. Search below to add a recipe.'}</li>}
+        {meal.recipeIds.length === 0 && <li className={s.empty}>Nothing yet.</li>}
         {meal.recipeIds.map((id) => {
           const name = recipeName(id);
           const open = openIds.has(id);
@@ -284,13 +286,13 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChang
                   label={`More for ${name}`}
                   items={[
                     {
-                      label: 'Swap recipe…',
+                      label: 'Swap…',
                       onSelect: () => {
                         setSwapId(id);
                         inputRef.current?.focus();
                       }
                     },
-                    ...(edited > 0 ? [{ label: 'Back to the troop recipe', onSelect: () => backToTroop(id) }] : []),
+                    ...(edited > 0 ? [{ label: 'Back to the troop’s version', onSelect: () => backToTroop(id) }] : []),
                     // Phase 4C: a scout's saved version of a recipe can become a recipe of its own.
                     ...(edited > 0 && shareVersionMenuId
                       ? [{ label: 'Share this version as a new recipe', href: `${RECIPES_HREF}/new?menu=${encodeURIComponent(shareVersionMenuId)}&meal=${encodeURIComponent(meal.id)}&recipe=${encodeURIComponent(id)}` }]
@@ -355,7 +357,7 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChang
                 aria-controls={`${uid}-results`}
                 aria-autocomplete="list"
                 aria-activedescendant={showList ? `${uid}-opt-${act}` : undefined}
-                placeholder={swapping ? `Swap ${swapping} for…` : 'Add a recipe'}
+                placeholder={swapping ? `Swap ${swapping} for…` : `Add to ${slotWord}`}
                 onChange={(e) => {
                   setQuery(e.target.value);
                   setListOpen(true);
@@ -366,7 +368,7 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChang
                 onBlur={() => setListOpen(false)}
                 onKeyDown={onSearchKey}
               />
-              <ul id={`${uid}-results`} role="listbox" aria-label={`${addLabel} — matching recipes`} className={s.results} hidden={!showList}>
+              <ul id={`${uid}-results`} role="listbox" aria-label={`${addLabel} — matches`} className={s.results} hidden={!showList}>
                 {showList &&
                   matches.map((r, i) => (
                     <li
@@ -383,7 +385,7 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChang
                     </li>
                   ))}
               </ul>
-              {listOpen && matches.length === 0 && query.trim() !== '' && <p className={s.noMatch}>No recipe for this meal matches “{query.trim()}”.</p>}
+              {listOpen && matches.length === 0 && query.trim() !== '' && <p className={s.noMatch}>Nothing for this meal matches “{query.trim()}”.</p>}
             </div>
           </li>
         )}

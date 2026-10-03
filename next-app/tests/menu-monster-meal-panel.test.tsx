@@ -128,7 +128,7 @@ describe('MealEditor', () => {
 
     it('EmptyMeal_SaysSoAndPointsAtTheSearch', () => {
       render(editor('m2'));
-      expect(screen.getByText(/Nothing picked yet/)).toBeTruthy();
+      expect(panel().getByText('Nothing yet.')).toBeTruthy();
     });
   });
 
@@ -267,7 +267,7 @@ describe('MealEditor', () => {
       const user = userEvent.setup();
       render(editor());
       await user.click(screen.getByRole('button', { name: 'More for Bacon' }));
-      await user.click(screen.getByRole('button', { name: 'Swap recipe…' }));
+      await user.click(screen.getByRole('button', { name: 'Swap…' }));
       expect(screen.getByRole('combobox', { name: 'Swap Bacon for' })).toBeTruthy();
     });
 
@@ -275,7 +275,7 @@ describe('MealEditor', () => {
       const user = userEvent.setup();
       render(editor());
       await user.click(screen.getByRole('button', { name: 'More for Bacon' }));
-      await user.click(screen.getByRole('button', { name: 'Swap recipe…' }));
+      await user.click(screen.getByRole('button', { name: 'Swap…' }));
       await user.type(screen.getByRole('combobox', { name: 'Swap Bacon for' }), 'Oat{Enter}');
       expect([screen.queryByRole('button', { name: 'Bacon' }), screen.getByRole('button', { name: 'Oatmeal' })].map(Boolean)).toEqual([false, true]);
     });
@@ -284,9 +284,9 @@ describe('MealEditor', () => {
       const user = userEvent.setup();
       render(editor());
       await user.click(screen.getByRole('button', { name: 'More for Bacon' }));
-      await user.click(screen.getByRole('button', { name: 'Swap recipe…' }));
+      await user.click(screen.getByRole('button', { name: 'Swap…' }));
       await user.keyboard('{Escape}');
-      expect(screen.getByRole('combobox', { name: 'Add a recipe to Day 1 breakfast' })).toBeTruthy();
+      expect(screen.getByRole('combobox', { name: 'Add to Day 1 breakfast' })).toBeTruthy();
     });
 
     it('Remove_DropsTheRecipe_AndOffersUndoInTheStatusLine', async () => {
@@ -644,7 +644,7 @@ describe('MealEditor recipe edits', () => {
     m.meals[0].recipeEdits = { B003: [{ op: 'leave_out', ingredientId: 'bacon' }] };
     render(editor('m1', m));
     await user.click(screen.getByRole('button', { name: 'More for Bacon' }));
-    await user.click(screen.getByRole('button', { name: 'Back to the troop recipe' }));
+    await user.click(screen.getByRole('button', { name: 'Back to the troop’s version' }));
     const gone = screen.queryByText(/Your version/);
     await user.click(screen.getByRole('button', { name: 'Undo' }));
     expect({ gone, back: screen.getByText('Your version · 1') != null }).toEqual({ gone: null, back: true });
@@ -654,7 +654,7 @@ describe('MealEditor recipe edits', () => {
     const user = userEvent.setup();
     render(editor());
     await user.click(screen.getByRole('button', { name: 'More for Bacon' }));
-    expect(screen.queryByRole('button', { name: 'Back to the troop recipe' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Back to the troop’s version' })).toBeNull();
   });
 
   it('RemovingARecipe_DropsItsEdits_AndUndoBringsThemBack', async () => {

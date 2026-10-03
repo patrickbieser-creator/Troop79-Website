@@ -50,7 +50,7 @@ export function RecipeBrowser({
 
   return (
     <div className={w.browse}>
-      <SearchBox inputRef={searchRef} label="Search recipes" value={query} onChange={setQuery} />
+      <SearchBox inputRef={searchRef} label="Search" value={query} onChange={setQuery} />
       <FilterChips options={MEALS} value={filter} onChange={setFilter} />
       <p className={w.srOnly} aria-live="polite">
         {recipes.length === 1 ? '1 recipe' : `${recipes.length} recipes`}

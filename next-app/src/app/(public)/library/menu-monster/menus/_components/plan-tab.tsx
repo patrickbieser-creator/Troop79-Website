@@ -191,12 +191,12 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
     edit((m) => ({ ...m, meals: [...m.meals, meal] }));
     openMeal$(meal.id);
   };
-  /** The popup closed: focus goes back to the day's Search recipes. */
+  /** The popup closed: focus goes back to the day's "Add to …". */
   const closeLibrary = (day: number) => {
     setLibraryDay(null);
     requestAnimationFrame(() => document.getElementById(`mm-lib-${day}`)?.focus());
   };
-  /** The row (and its focused ⋯) goes away: focus moves to the day's Search recipes. */
+  /** The row (and its focused ⋯) goes away: focus moves to the day's "Add to …". */
   const removeMeal = (id: string, day: number) => {
     edit((m) => ({ ...m, meals: m.meals.filter((x) => x.id !== id) }));
     requestAnimationFrame(() => document.getElementById(`mm-lib-${day}`)?.focus());
@@ -439,7 +439,7 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
                                 ›
                               </span>
                             </button>
-                            {!open && <span className={s.meta}>{names.length ? names.join(', ') : 'Nothing picked yet'}</span>}
+                            {!open && <span className={s.meta}>{names.length ? names.join(', ') : 'Nothing yet'}</span>}
                           </div>
                           <div className={s.cost}>{meal.recipeIds.length ? money(view === 'total' ? mealCost : mealCost / (meal.headcount ?? menu.headcount)) : ''}</div>
                           {!readOnly && (
@@ -465,9 +465,9 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
                     })}
                     {!readOnly && (
                       <li className={s.addRow}>
-                        <button type="button" id={`mm-lib-${d}`} className={s.libOpen} aria-haspopup="dialog" aria-label={`Search recipes for ${dayLabel(menu.startDate, d)}`} onClick={() => setLibraryDay(d)}>
+                        <button type="button" id={`mm-lib-${d}`} className={s.libOpen} aria-haspopup="dialog" onClick={() => setLibraryDay(d)}>
                           <span aria-hidden="true">⌕</span>
-                          Search recipes
+                          Add to {dayLabel(menu.startDate, d)}
                         </button>
                       </li>
                     )}

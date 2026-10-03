@@ -244,6 +244,10 @@ The prototype's functional IA did not fully reach production. Patrick's calls:
 - Tests: port the meal-editor suite to the Plan tab; the access-matrix "Meal page" cases become redirect cases.
 - Then delete the retired single-meal planner (paused, untouched).
 
+### Naming: "Food & Recipes" (Patrick + Jenna, 2026-10-03)
+
+About a third of the catalog is single foods (apples, butter, bacon), so "recipe" misled. Inside the planner there is **no noun**: "Add to Saturday", "Add to breakfast", "Swap…", "Nothing yet.", "Plan lunch empty". Where a name is unavoidable (hub tab, the popup's title) it is **Food & Recipes**. "Recipe" stays only where there are steps and an author (Recipe Builder, "Recipe by Sam K.", "Share this version as a new recipe"); leader admin tabs unchanged. No "1 ingredient" tag, no Groups (Jenna: a bundle is just a scout recipe; revisit only on evidence). No schema rename (`mm_recipes` / `Recipe` stay).
+
 ### Release C design (2026-10-03; tech-lead + troop79-specialist review; Patrick decided the one conflict)
 
 **Supersedes the Phase 2 design's free_items / `new:` overlay.** Menu typed-ins REUSE 4B's real typed-in ingredients (one system, simplify-don't-layer): a real `x-` `mm_ingredients` row + one `xp-` package, leader Match / Keep as new and alias resolution unchanged.

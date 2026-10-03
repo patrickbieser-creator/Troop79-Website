@@ -51,7 +51,8 @@ const SHARED_RECENT = 5;
 
 const TABS = [
   { key: 'planner', label: 'Meal Planner' },
-  { key: 'recipes', label: 'Recipe Library' },
+  // Food & Recipes (Patrick, 2026-10-03): most entries are single foods (apples, bacon), not recipes.
+  { key: 'recipes', label: 'Food & Recipes' },
   { key: 'ingredients', label: 'Ingredients' },
   { key: 'builder', label: 'Recipe Builder' }
 ] as const;

@@ -237,7 +237,7 @@ describe('MenuMonsterShelfTool hub, tabs', () => {
 
   it('Hub_ShowsFourTabs_InOrder', async () => {
     await shelf();
-    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Meal Planner', 'Recipe Library', 'Ingredients', 'Recipe Builder']);
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Meal Planner', 'Food & Recipes', 'Ingredients', 'Recipe Builder']);
   });
 
   it('Hub_OpensOnTheMealPlanner_ByDefault', async () => {

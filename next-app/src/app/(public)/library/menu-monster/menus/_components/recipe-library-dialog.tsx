@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * The recipe library popup a day's "Search recipes" opens on the Plan tab
+ * The Food & Recipes popup a day's "Add to …" opens on the Plan tab
  * (prototype concept-e-scout-workspace/shelf.html "Recipe library", Patrick
  * 2026-10-02: a popup with the library's look, plus meal filters).
  *
@@ -85,7 +85,7 @@ export function RecipeLibraryDialog({ catalog, menu, day, dayName, onPick, onPla
       <div className={s.libHead}>
         <div>
           <h2 id={`${uid}-h`} className={s.libTitle}>
-            Recipe library
+            Food &amp; Recipes
           </h2>
           <p className={s.libFor}>For {dayName}</p>
         </div>
@@ -110,9 +110,9 @@ export function RecipeLibraryDialog({ catalog, menu, day, dayName, onPick, onPla
                   close();
                 }}
               >
-                Plan {slotLabel(filter).toLowerCase()} without a recipe
+                Plan {slotLabel(filter).toLowerCase()} empty
               </button>{' '}
-              and pick on the meal page.
+              and add to it later.
             </p>
           )
         }

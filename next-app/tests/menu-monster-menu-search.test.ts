@@ -5,7 +5,7 @@ import type { Catalog } from '../src/lib/menu-monster/types';
 import { canPlanEmptyMeal, filterRecipes, recipeLibrary } from '../src/lib/menu-monster/menu-search';
 
 /**
- * Scout Workspace: the recipe library popup a day's "Search recipes" opens —
+ * Scout Workspace: the Food & Recipes popup a day's "Add to …" opens —
  * narrowed by name and by meal; each recipe offers one button per meal it
  * fits, saying what picking it would do.
  */

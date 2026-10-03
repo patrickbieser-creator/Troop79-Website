@@ -165,17 +165,17 @@ describe('PlanTab', () => {
     expect(row.textContent).toContain('$14.98');
   });
 
-  const library = () => screen.getByRole('dialog', { name: 'Recipe library' });
+  const library = () => screen.getByRole('dialog', { name: 'Food & Recipes' });
   async function openLibrary(n: number) {
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: new RegExp(`^Search recipes for Day ${n}$`) }));
+    await user.click(screen.getByRole('button', { name: new RegExp(`^Add to Day ${n}$`) }));
     return user;
   }
 
-  it('Day_EndsInASearchRecipesButton_WithoutRepeatingTheDay', () => {
+  it('Day_EndsInAnAddToTheDayButton', () => {
     render(existing());
-    const btn = screen.getByRole('button', { name: 'Search recipes for Day 1' });
-    expect(btn.textContent).toBe('⌕Search recipes');
+    const btn = screen.getByRole('button', { name: 'Add to Day 1' });
+    expect(btn.textContent).toBe('⌕Add to Day 1');
   });
 
   it('PlusAddAMeal_IsGone_BecauseTheDaySearchReplacedIt', () => {
@@ -204,7 +204,7 @@ describe('PlanTab', () => {
   it('RecipeLibrary_NarrowsByName_WhenTyping', async () => {
     render(existing());
     const user = await openLibrary(2);
-    await user.type(within(library()).getByRole('searchbox', { name: 'Search recipes' }), 'sandw');
+    await user.type(within(library()).getByRole('searchbox', { name: 'Search' }), 'sandw');
     expect(within(library()).getAllByRole('button', { name: /^Add / }).map((b) => b.getAttribute('aria-label'))).toEqual(['Add Sandwiches to lunch']);
   });
 
@@ -256,7 +256,7 @@ describe('PlanTab', () => {
     render(existing());
     const user = await openLibrary(2);
     await user.click(screen.getByRole('button', { name: 'Add Sandwiches to lunch' }));
-    expect(screen.queryByRole('dialog', { name: 'Recipe library' })).toBeNull();
+    expect(screen.queryByRole('dialog', { name: 'Food & Recipes' })).toBeNull();
   });
 
   it('Scout_MustSave_AfterAddingARecipeFromTheLibrary', async () => {
@@ -277,7 +277,7 @@ describe('PlanTab', () => {
     render(existing());
     const user = await openLibrary(2);
     await user.click(within(library()).getByRole('button', { name: 'Close' }));
-    expect(screen.queryByRole('dialog', { name: 'Recipe library' })).toBeNull();
+    expect(screen.queryByRole('dialog', { name: 'Food & Recipes' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Saved' })).toBeTruthy();
   });
 
@@ -291,7 +291,7 @@ describe('PlanTab', () => {
     render(existing());
     const user = await openLibrary(2);
     await user.click(within(library()).getByRole('button', { name: 'Lunch' }));
-    await user.click(within(library()).getByRole('button', { name: 'Plan lunch without a recipe' }));
+    await user.click(within(library()).getByRole('button', { name: 'Plan lunch empty' }));
     expect(screen.getByRole('button', { name: 'More for Day 2 lunch' })).toBeTruthy();
     expect(screen.getByRole('list', { name: 'Recipes in Day 2 lunch' })).toBeTruthy();
   });
@@ -301,7 +301,7 @@ describe('PlanTab', () => {
     render(existing());
     const user = await openLibrary(2);
     await user.click(within(library()).getByRole('button', { name: 'Lunch' }));
-    await user.click(within(library()).getByRole('button', { name: 'Plan lunch without a recipe' }));
+    await user.click(within(library()).getByRole('button', { name: 'Plan lunch empty' }));
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
     expect((saveMenuAction.mock.calls[0][1] as Menu).meals.some((m) => m.day === 1 && m.slot === 'lunch')).toBe(true);
     expect(router.push).not.toHaveBeenCalled();
