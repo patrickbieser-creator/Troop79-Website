@@ -19,6 +19,8 @@
   color: var(--text-body);
 }
 .row:first-child { border-top: none; }
+/* Dense (a meal open on the Plan tab, Patrick 2026-10-03): no rule between ingredients, shorter rows. */
+.dense .row { border-top: none; min-height: 0; padding: 2px 0; }
 .main {
   flex: 1;
   min-width: 0;

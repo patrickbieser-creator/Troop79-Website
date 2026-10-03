@@ -35,6 +35,8 @@ interface ListBase {
   ariaLabel: string;
   /** Shown instead of the list when there are no rows. */
   emptyText?: string;
+  /** Compact rows with no rule between them (a meal open on the Plan tab — Patrick, 2026-10-03). */
+  dense?: boolean;
 }
 
 export interface ReadListProps extends ListBase {
@@ -50,10 +52,10 @@ export type IngredientListProps = ReadListProps | MenuEditListProps | AuthorMode
 export function IngredientList(props: IngredientListProps) {
   if (props.mode === 'menu-edit') return <MenuEditList {...props} />;
   if (props.mode === 'author') return <AuthorList {...props} />;
-  const { rows, ariaLabel, emptyText = 'No ingredients.' } = props;
+  const { rows, ariaLabel, emptyText = 'No ingredients.', dense = false } = props;
   if (rows.length === 0) return <p className={s.empty}>{emptyText}</p>;
   return (
-    <ul className={s.list} aria-label={ariaLabel}>
+    <ul className={`${s.list} ${dense ? s.dense : ''}`} aria-label={ariaLabel}>
       {rows.map((r) => {
         // A leader reading a scout's menu sees the scout's own edits: struck old value, Added, Left out.
         const out = r.marker?.kind === 'out';

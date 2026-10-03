@@ -302,11 +302,12 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChang
               {open && (
                 <div id={panel} className={s.inset}>
                   {readOnly ? (
-                    <IngredientList mode="read" ariaLabel={`${name} ingredients`} rows={rowsFor(id)} emptyText="No ingredients on this recipe yet." />
+                    <IngredientList mode="read" dense ariaLabel={`${name} ingredients`} rows={rowsFor(id)} emptyText="No ingredients on this recipe yet." />
                   ) : (
                     <>
                       <IngredientList
                         mode="menu-edit"
+                        dense
                         ariaLabel={`${name} ingredients`}
                         rows={rowsFor(id)}
                         choices={choices}

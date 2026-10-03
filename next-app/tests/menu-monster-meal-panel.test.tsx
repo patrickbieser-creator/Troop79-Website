@@ -787,3 +787,12 @@ describe('MealPanel diet warnings (ported from the planner)', () => {
     expect(panel().getByText(/1 person is gluten-free and this has instant oatmeal/)).toBeTruthy();
   });
 });
+
+describe('MealPanel ingredient list density (Patrick, 2026-10-03)', () => {
+  it('OpenRecipe_ListsItsIngredientsDense_WithoutRulesBetweenThem', async () => {
+    const user = userEvent.setup();
+    render(editor());
+    await user.click(panel().getByRole('button', { name: /^Bacon/ }));
+    expect(screen.getByRole('list', { name: 'Bacon ingredients' }).className).toMatch(/dense/);
+  });
+});

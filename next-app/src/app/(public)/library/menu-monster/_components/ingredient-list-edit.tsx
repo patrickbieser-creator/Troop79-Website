@@ -52,6 +52,8 @@ export interface MenuEditProps {
   /** The "new ingredient" form for typed text no ingredient matches (release C, a signed-in scout's
    *  saved menu only); it calls `done` with the id it added, or null on cancel. */
   renderNew?: (name: string, done: (ingredientId: string | null) => void) => ReactNode;
+  /** Compact rows with no rule between them (a meal open on the Plan tab). */
+  dense?: boolean;
 }
 
 const MAX_QTY = 1000;
@@ -132,7 +134,7 @@ export function AmountEditor({
   );
 }
 
-export function MenuEditList({ rows, ariaLabel, emptyText = 'No ingredients.', choices, onAction, onAnnounce, renderNew }: MenuEditProps) {
+export function MenuEditList({ rows, ariaLabel, emptyText = 'No ingredients.', choices, onAction, onAnnounce, renderNew, dense = false }: MenuEditProps) {
   const listRef = useRef<HTMLUListElement>(null);
   const addRef = useRef<HTMLInputElement>(null);
   const [editing, setEditing] = useState<string | null>(null);
@@ -218,7 +220,7 @@ export function MenuEditList({ rows, ariaLabel, emptyText = 'No ingredients.', c
   return (
     <div>
       {rows.length === 0 && <p className={s.empty}>{emptyText}</p>}
-      <ul className={s.list} aria-label={ariaLabel} ref={listRef} hidden={rows.length === 0}>
+      <ul className={`${s.list} ${dense ? s.dense : ''}`} aria-label={ariaLabel} ref={listRef} hidden={rows.length === 0}>
         {rows.map((r) => {
           const out = r.marker?.kind === 'out';
           const e = r.edit;
