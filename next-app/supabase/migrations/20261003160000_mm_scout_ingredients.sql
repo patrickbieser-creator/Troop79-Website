@@ -40,6 +40,34 @@ create index mm_ingredients_needs_match_idx on public.mm_ingredients (needs_matc
 create index mm_ingredients_added_by_idx on public.mm_ingredients (added_by_person_id)
   where added_by_person_id is not null;
 
+-- ── 2a. mm_drop_orphan_typed_ins ──────────────────────────────────────────
+-- A scout's private (never shared), unmatched typed-ins that no recipe line
+-- uses any more: deleted with their package. Called at the end of every save
+-- and draft delete, under the scout's save lock.
+
+create or replace function public.mm_drop_orphan_typed_ins(p_person bigint)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  delete from mm_packages p
+  using mm_ingredients i
+  where p.ingredient_id = i.id and i.added_by_person_id = p_person and i.shared_at is null and i.needs_match_at is not null
+    and not exists (select 1 from mm_recipe_lines l where l.ingredient_id = i.id)
+    and not exists (select 1 from mm_price_history h where h.package_id = p.id);
+  delete from mm_ingredients i
+  where i.added_by_person_id = p_person and i.shared_at is null and i.needs_match_at is not null
+    and not exists (select 1 from mm_recipe_lines l where l.ingredient_id = i.id)
+    and not exists (select 1 from mm_packages p where p.ingredient_id = i.id)
+    and not exists (select 1 from mm_variation_lines v where v.ingredient_id = i.id or v.base_ingredient_id = i.id)
+    and not exists (select 1 from mm_conversions c where c.ingredient_id = i.id);
+end;
+$$;
+
+revoke execute on function public.mm_drop_orphan_typed_ins(bigint) from public, anon, authenticated;
+
 -- ── 2. mm_save_scout_recipe v2 ────────────────────────────────────────────
 -- Same contract as 4A, plus the recipe's equipment (gear, 4C) and p_new_ingredients: [{ key: 'new:<8 hex>', name,
 -- kind: count|volume|weight, unit_one, unit_many, avoid: [...], package:
@@ -233,7 +261,15 @@ begin
   -- Lines: everyone-lines (scouts don't author diet rules). A matched-away
   -- ingredient resolves to its target; anything retired otherwise, or someone
   -- else's private typed-in, is refused. Locked so a leader can't retire or
-  -- match it underneath this save.
+  -- match it underneath this save. The ingredients are locked BEFORE the lines
+  -- (as mm_match_ingredient does) so a save and a match can't deadlock.
+  perform 1 from mm_ingredients i
+  where i.id in (
+    select coalesce(v_ids->>(l->>'ingredient_id'), l->>'ingredient_id')
+    from jsonb_array_elements(coalesce(p_lines, '[]'::jsonb)) l
+  )
+  order by i.id
+  for share;
   delete from mm_recipe_lines where recipe_id = v_id;
   for v_line in select * from jsonb_array_elements(coalesce(p_lines, '[]'::jsonb)) loop
     v_pos := v_pos + 1;
@@ -275,6 +311,10 @@ begin
     where shared_at is null and added_by_person_id = p_person
       and id in (select ingredient_id from mm_recipe_lines where recipe_id = v_id);
   end if;
+
+  -- The scout's private typed-ins no line uses any more (removed from a recipe,
+  -- or a deleted draft) would hold the 10-cap forever and never reach a leader.
+  perform mm_drop_orphan_typed_ins(p_person);
 
   return jsonb_build_object('updated_at', v_now, 'ids', v_ids);
 end;
@@ -371,6 +411,15 @@ begin
     raise exception 'MM_BAD_MATCH: target';
   end if;
 
+  -- A recipe that measures the target in another unit can't take the typed-in
+  -- amount (it is in the target's own unit): the leader edits that recipe first.
+  if exists (
+    select 1 from mm_recipe_lines f join mm_recipe_lines t on t.recipe_id = f.recipe_id and t.ingredient_id = p_to
+    where f.ingredient_id = p_from and t.unit_key is not null
+  ) then
+    raise exception 'MM_BAD_MATCH: a recipe that uses it measures the target in another unit; edit that recipe first';
+  end if;
+
   -- Recipes that already use the target: add into that line, drop the typed-in line.
   update mm_recipe_lines t set qty_per_person = least(t.qty_per_person + f.qty_per_person * p_factor, 1000)
   from mm_recipe_lines f
@@ -397,6 +446,46 @@ end;
 $$;
 
 revoke execute on function public.mm_match_ingredient(text, text, numeric) from public, anon, authenticated;
+
+-- ── 4b. mm_delete_scout_draft: also drop the typed-ins only it used ───────
+-- Body is the 20261003150000 definition plus the line marked "4B".
+
+create or replace function public.mm_delete_scout_draft(p_person bigint, p_id text)
+returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_row mm_recipes%rowtype;
+begin
+  if p_person is null then
+    raise exception 'MM_SCOUT_REQUIRED';
+  end if;
+  perform pg_advisory_xact_lock(hashtextextended('mm_scout_recipe', p_person));
+  select * into v_row from mm_recipes where id = p_id for update;
+  if not found or v_row.author_person_id is distinct from p_person then
+    raise exception 'MM_NOT_YOURS';
+  end if;
+  if v_row.shared_at is not null or v_row.status <> 'draft' then
+    raise exception 'MM_SHARED';
+  end if;
+  if exists (
+    select 1 from mm_menus m
+    where m.owner_person_id = p_person
+      and m.meals @> jsonb_build_array(jsonb_build_object('recipeIds', jsonb_build_array(p_id)))
+  ) then
+    raise exception 'MM_IN_USE';
+  end if;
+  delete from mm_recipe_lines where recipe_id = p_id;
+  delete from mm_recipes where id = p_id;
+  -- 4B: the private typed-ins only this draft used.
+  perform mm_drop_orphan_typed_ins(p_person);
+  return v_row.name;
+end;
+$$;
+
+revoke execute on function public.mm_delete_scout_draft(bigint, text) from public, anon, authenticated;
 
 -- ── 5. merge_people: + mm_ingredients.added_by_person_id ───────────────────
 -- Body is the 20261003150000 definition plus the one line marked "Phase 4B".

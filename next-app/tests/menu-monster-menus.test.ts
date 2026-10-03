@@ -302,3 +302,14 @@ describe('resolveMenuAliases (Phase 4B)', () => {
     expect(m.meals[0].recipeEdits.B001).toEqual([{ op: 'add', ingredientId: 'eggs', qtyPerPerson: 1 }]);
   });
 });
+
+describe('resolveMenuAliases collisions (Phase 4B)', () => {
+  it('TargetsOwnWhatYouPaid_WinsOverTheTypedIns', () => {
+    const base = sanitizeMenu(raw(), CATALOG);
+    const m = resolveMenuAliases(
+      { ...base, actuals: { 'x-0000aaaa': { packageId: 'xp-0000aaaa', qty: 1, pricePaid: 4 }, eggs: { packageId: 'p-egg', qty: 2, pricePaid: 6 } } },
+      { 'x-0000aaaa': { to: 'eggs', factor: 2 } }
+    );
+    expect(m.actuals).toEqual({ eggs: { packageId: 'p-egg', qty: 2, pricePaid: 6 } });
+  });
+});

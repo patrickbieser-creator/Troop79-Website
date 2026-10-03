@@ -129,6 +129,7 @@ describe('merge_people — signup_entries reassignment', () => {
 describe('merge_people — Menu Monster references', () => {
   const MM_PKG = 'vitest-merge-package';
   const MM_RECIPE = 'S-0000ab01';
+  const MM_TYPED = 'x-0000ab01';
   let people: number[] = [];
 
   afterEach(async () => {
@@ -136,6 +137,7 @@ describe('merge_people — Menu Monster references', () => {
     await admin.from('mm_price_history').delete().eq('package_id', MM_PKG);
     await admin.from('mm_packages').delete().eq('id', MM_PKG);
     await admin.from('mm_recipes').delete().eq('id', MM_RECIPE);
+    await admin.from('mm_ingredients').delete().eq('id', MM_TYPED);
     if (people.length > 0) {
       await admin.from('mm_menus').delete().in('owner_person_id', people);
       const { error } = await admin.from('people').delete().in('id', people);
@@ -232,5 +234,20 @@ describe('merge_people — Menu Monster references', () => {
 
     const { data } = await admin.from('mm_recipes').select('author_person_id, attribution_label').eq('id', MM_RECIPE).single();
     expect(data).toEqual({ author_person_id: survivor, attribution_label: 'Old N.' });
+  });
+  it('Merge_MovesTypedInIngredientAuthorship', async () => {
+    const admin = adminClient();
+    const survivor = await makePerson('Survivor5');
+    const loser = await makePerson('Loser5');
+    const { error } = await admin.from('mm_ingredients').insert({
+      id: MM_TYPED, name: 'vitest merge typed', unit_kind: 'weight', unit_key: 'ozw', unit_one: 'oz', unit_many: 'oz', section: 'dry',
+      added_by_person_id: loser, needs_match_at: new Date().toISOString()
+    });
+    expect(error).toBeNull();
+
+    await merge(survivor, loser);
+
+    const { data } = await admin.from('mm_ingredients').select('added_by_person_id').eq('id', MM_TYPED).single();
+    expect(data?.added_by_person_id).toBe(survivor);
   });
 });

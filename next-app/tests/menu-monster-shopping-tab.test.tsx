@@ -483,3 +483,12 @@ describe('ShoppingTab gear (Phase 4C)', () => {
     expect(screen.getByTestId('print-sheet').textContent).toContain('Gear: Skillet · Tongs · Cutting board');
   });
 });
+
+describe('ShoppingTab scout prices (Phase 4B)', () => {
+  it('UncheckedTypedIn_ShowsItIsAScoutsPrice', () => {
+    const cat = { ...CATALOG, ingredients: CATALOG.ingredients.map((i) => (i.id === 'bacon' ? { ...i, needsMatch: true } : i)) };
+    const m = menu();
+    render(tab(m, buildSnapshot(m, cat), cat));
+    expect(rowFor('Bacon').textContent).toContain('Scout’s price');
+  });
+});

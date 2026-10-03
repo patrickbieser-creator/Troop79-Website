@@ -189,3 +189,10 @@ describe('versionDraft (Phase 4C)', () => {
     expect(versionDraft(pancakes, [])).toMatchObject({ name: 'Pancakes (my version)', originRecipeId: 'B001', mealFit: ['breakfast'] });
   });
 });
+
+describe('stale editor after a match (Phase 4B)', () => {
+  it('Line_OnAMatchedTypedIn_FollowsTheAlias', () => {
+    const cat = { ...CATALOG, aliases: { 'x-0000aaaa': { to: 'bacon', factor: 2 } } };
+    expect(sanitizeScoutRecipe(raw({ lines: [{ ingredientId: 'x-0000aaaa', qtyPerPerson: 1.5, unitKey: null }] }), cat).lines).toEqual([{ ingredientId: 'bacon', qtyPerPerson: 3, unitKey: null }]);
+  });
+});

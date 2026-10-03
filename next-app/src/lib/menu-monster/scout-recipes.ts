@@ -87,8 +87,10 @@ export function sanitizeScoutRecipe(raw: unknown, base: Catalog): ScoutRecipeDra
   for (const l of Array.isArray(r.lines) ? r.lines : []) {
     if (lines.length >= MAX_SCOUT_LINES) break;
     if (!isRecord(l) || typeof l.ingredientId !== 'string') continue;
-    const ing = ING.get(l.ingredientId);
-    const qty = Number(l.qtyPerPerson);
+    // An editor left open across a leader's match still names the typed-in: follow it to the book ingredient.
+    const alias = catalog.aliases?.[l.ingredientId];
+    const ing = ING.get(alias ? alias.to : l.ingredientId);
+    const qty = Number(l.qtyPerPerson) * (alias ? alias.factor : 1);
     if (!ing || seen.has(ing.id) || !Number.isFinite(qty) || qty <= 0) continue;
     seen.add(ing.id);
     const unitKey = typeof l.unitKey === 'string' && l.unitKey !== ing.unit.key && supportedUnits(ing, catalog.conversions).includes(l.unitKey) ? l.unitKey : null;

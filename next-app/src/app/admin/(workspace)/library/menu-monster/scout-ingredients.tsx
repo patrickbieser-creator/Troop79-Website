@@ -33,6 +33,8 @@ export interface BookIngredient {
 }
 
 type Open = { id: string; mode: 'match' | 'keep' } | null;
+/** What a scout's diet tick means: avoid 'gf' = it contains gluten. */
+const CONTAINS: Record<RestrictionKey, string> = { gf: 'Gluten', nut: 'Nuts', dairy: 'Dairy', veg: 'Meat' };
 const money = (n: number) => `$${n.toFixed(2)}`;
 
 export function ScoutIngredients({ items, book }: { items: TypedInIngredient[]; book: BookIngredient[] }) {
@@ -106,7 +108,7 @@ export function ScoutIngredients({ items, book }: { items: TypedInIngredient[]; 
                   <tr key={t.id}>
                     <td>
                       {t.name}
-                      {t.avoid.length > 0 && <div className={styles.muted}>Contains: {t.avoid.map((k) => RESTRICTIONS.find((r) => r.key === k)?.label).join(', ')} (unverified)</div>}
+                      {t.avoid.length > 0 && <div className={styles.muted}>Contains: {t.avoid.map((k) => CONTAINS[k]).join(', ')} (unverified)</div>}
                       {open?.id === t.id && open.mode === 'match' && (
                         <form
                           className={styles.inlineForm}

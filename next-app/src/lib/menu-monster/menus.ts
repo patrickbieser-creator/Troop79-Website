@@ -338,7 +338,13 @@ export function resolveMenuAliases<M extends Pick<Menu, 'meals' | 'shopping' | '
   if (!aliases || Object.keys(aliases).length === 0) return menu;
   const id = (v: string) => aliases[v]?.to ?? v;
   const scale = (v: string, q: number) => Math.min(1000, Math.round(q * (aliases[v]?.factor ?? 1) * 10000) / 10000);
-  const rekey = <V>(rec: Record<string, V>): Record<string, V> => Object.fromEntries(Object.entries(rec).map(([k, v]) => [id(k), v]));
+  // The target's own entry wins over the typed-in's (two "what you paid" rows can't be added together).
+  const rekey = <V>(rec: Record<string, V>): Record<string, V> => {
+    const out: Record<string, V> = {};
+    for (const [k, v] of Object.entries(rec)) if (!aliases[k]) out[k] = v;
+    for (const [k, v] of Object.entries(rec)) if (aliases[k] && !(id(k) in out)) out[id(k)] = v;
+    return out;
+  };
   const op = (o: EditOp): EditOp => {
     if (o.op === 'leave_out') return { ...o, ingredientId: id(o.ingredientId) };
     if (o.op === 'swap') return { ...o, ingredientId: id(o.ingredientId), to: id(o.to), qtyPerPerson: scale(o.to, o.qtyPerPerson) };

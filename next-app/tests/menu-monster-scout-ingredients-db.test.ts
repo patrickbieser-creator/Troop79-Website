@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach, beforeAll } from 'vitest';
 import { adminClient } from './helpers/admin-client';
 import { keepTypedInWith, listTypedInsWith, matchTypedInWith } from '../src/lib/menu-monster/scout-recipes-store';
+import { loadCatalogWith } from '../src/lib/menu-monster/catalog';
 
 /**
  * Phase 4B typed-in ingredients (20261003160000_mm_scout_ingredients.sql): a
@@ -221,5 +222,34 @@ describe('typed-in ingredients, leader store', () => {
     const x = await shared();
     const res = await matchTypedInWith(admin, x, x, 1);
     expect(res.ok).toBe(false);
+  });
+});
+
+describe('typed-in housekeeping (qa-lead fixes)', () => {
+  it('UnusedPrivateTypedIn_IsDropped_OnTheNextSave', async () => {
+    const { data } = await save(SCOUT);
+    const x = newId(data);
+    const { data: v } = await admin.from('mm_recipes').select('updated_at').eq('id', ID).single();
+    await save(SCOUT, { lines: [{ ingredient_id: BOOK, qty_per_person: 1 }], news: [], expected: v!.updated_at as string });
+    expect((await admin.from('mm_ingredients').select('id').eq('id', x)).data).toEqual([]);
+  });
+
+  it('PrivateTypedIn_CantBeKept', async () => {
+    const { data } = await save(SCOUT);
+    expect(await keepTypedInWith(admin, newId(data), 'dry', [])).toBeNull();
+  });
+
+  it('Match_IsRefused_WhenARecipeMeasuresTheTargetInAnotherUnit', async () => {
+    const { data } = await save(SCOUT, { lines: [{ ingredient_id: 'new:0000aaaa', qty_per_person: 0.5 }, { ingredient_id: BOOK, qty_per_person: 3 }] });
+    await admin.from('mm_recipe_lines').update({ unit_key: 'lb' }).eq('recipe_id', ID).eq('ingredient_id', BOOK);
+    await admin.rpc('mm_share_scout_recipe', { p_person: SCOUT, p_id: ID, p_label: 'Charlie W.' });
+    const { error } = await admin.rpc('mm_match_ingredient', { p_from: newId(data), p_to: BOOK, p_factor: 2 });
+    expect(error?.message).toContain('another unit');
+  });
+
+  it('CatalogForAnotherScout_NeverCarriesAPrivateTypedInsPrice', async () => {
+    const { data } = await save(SCOUT);
+    const other = await loadCatalogWith(admin, { ownerPersonId: OTHER });
+    expect(other.packages.some((p) => p.ingredientId === newId(data))).toBe(false);
   });
 });

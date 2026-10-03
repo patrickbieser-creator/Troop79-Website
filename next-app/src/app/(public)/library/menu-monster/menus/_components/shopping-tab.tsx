@@ -511,6 +511,8 @@ function ShoppingRow({
         {meta && <span className={s.meta}>{meta}</span>}
         {l.status === 'unpriced' && <span className={s.tag}>No price yet</span>}
         {l.status === 'short' && <span className={s.tag}>Short {qtyText(l.shortQty, l.ing.unit)}</span>}
+        {/* A scout's typed-in no leader has checked yet: its price is the scout's own entry (Phase 4B). */}
+        {l.ing.needsMatch && l.status !== 'unpriced' && <span className={s.tag}>Scout’s price</span>}
       </div>
       <div className={s.cost}>{l.status === 'staple' || l.status === 'bring' ? '—' : l.status === 'unpriced' ? '' : money(cost)}</div>
       {open && (

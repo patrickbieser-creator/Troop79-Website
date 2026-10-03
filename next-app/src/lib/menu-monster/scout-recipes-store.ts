@@ -40,7 +40,8 @@ export interface StoredScoutRecipe {
 }
 
 const refusal = (message: string): ScoutSaveResult['status'] => {
-  if (message.includes('MM_STALE')) return 'conflict';
+  // A save racing a leader's match can deadlock (40P01): the scout just tries again.
+  if (message.includes('MM_STALE') || message.includes('deadlock')) return 'conflict';
   if (message.includes('MM_NOT_YOURS')) return 'not_found';
   if (message.includes('MM_RETIRED')) return 'retired';
   if (message.includes('MM_RECIPE_CAP')) return 'cap';
@@ -296,6 +297,7 @@ export async function keepTypedInWith(sb: SupabaseClient, id: string, section: S
     .update({ section, avoid, needs_match_at: null })
     .eq('id', id)
     .not('needs_match_at', 'is', null)
+    .not('shared_at', 'is', null)
     .is('retired_at', null)
     .select('name');
   if (error) throw new Error(`keep ingredient: ${error.message}`);
