@@ -120,12 +120,12 @@ export function RecipeEditor({ catalog, id: initialId, initial, status: initialS
 
   /* ---- Steps ---- */
   // Focus a step after React has rendered it (an added step's textarea doesn't exist yet when the click runs).
-  const [focusStep, setFocusStep] = useState<number | null>(null);
+  const focusStep = useRef<number | null>(null);
   useEffect(() => {
-    if (focusStep == null) return;
-    stepsRef.current?.querySelectorAll('textarea')[focusStep]?.focus();
-    setFocusStep(null);
-  }, [focusStep, draft.steps.length]);
+    if (focusStep.current == null) return;
+    stepsRef.current?.querySelectorAll('textarea')[focusStep.current]?.focus();
+    focusStep.current = null;
+  }, [draft.steps.length]);
   const moveStep = (from: number, to: number) => {
     if (to < 0 || to >= draft.steps.length || from === to) return;
     edit((d) => ({ ...d, steps: moveItem(d.steps, from, to) }));
@@ -135,7 +135,7 @@ export function RecipeEditor({ catalog, id: initialId, initial, status: initialS
   const addStep = () => {
     if (draft.steps.length >= MAX_SCOUT_STEPS) return;
     edit((d) => ({ ...d, steps: [...d.steps, { id: ++stepSeq, text: '' }] }));
-    setFocusStep(draft.steps.length);
+    focusStep.current = draft.steps.length;
   };
 
   /* ---- Save / share ---- */
