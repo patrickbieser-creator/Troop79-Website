@@ -233,6 +233,58 @@ The prototype's functional IA did not fully reach production. Patrick's calls:
 - **Audit:** price changes under `library` (via `recordAuditAs` for scouts); menu actions stay `menus`. Read `mm_price_history` filtered/limited, never whole (1000-row cap).
 - **Owed from Phase 1:** people-merge must re-point `mm_menus.owner_person_id` (and now `mm_price_history` people columns, `mm_packages.added_by_person_id`); today a merge of a person who owns a menu fails on RESTRICT.
 
+### Phase 4 design (revised 2026-10-02 after tech-lead + troop79-specialist review)
+
+Patrick, 2026-10-02: **typed-in ingredients and leader matching are IN Phase 4** (for recipes). Release C (typed-ins on *menus*, scout-added packages) stays separate.
+
+**Where it lives:** the hub's **Recipe Builder** tab — a signed-in scout sees **My recipes** + **New recipe**; anyone else one line to sign in. Editor routes `(public)/library/menu-monster/recipes/new` and `/recipes/[recipeId]`, a port of the approved `recipe-editor.html`: name; **Good for** chips; **Food groups** chips; **Ingredients** (`IngredientList` mode `author`; People dialer + Total / Per person; ⋯ Move up / Move down / Remove); **Steps** (plain text); **Gear you'll need** (4C). Title line: dirty-gated **Save** / **Discard changes** + **Share with the troop**.
+
+**Lifecycle**
+- Save = private draft (`status='draft'`, `author_person_id` from the verified scout session — never from the client). Usable at once in the author's own menus; library shows "Your draft recipe".
+- **Share with the troop** = `published` + `shared_at` + frozen `attribution_label` from `publicScoutName` (`lib/scout-name.ts`, read from `people`, ≤ 40 chars). Live at once. Library shows "Recipe by Sam K.".
+- Author may keep editing after sharing; edits are live and audited. Leader list marks "edited since shared" (`updated_at > shared_at`). Credit never changes on edit, rename or people merge — the leader credit edit is the fix (duplicates allowed).
+- Aged-out / inactive scouts: no new saves or shares (verified-scout identity already refuses them); their recipes stay.
+- Retired: leaves the library and pickers; **menus keep it** (see engine fixes). Retired recipes are read-only to the author.
+- Caps: 25 recipes per scout, 10 unmatched typed-ins per scout, enforced in the RPC under `pg_advisory_xact_lock(person)`.
+
+**Engine / menu fixes (required before any recipe can retire — tech-lead #1)**
+- `restorePlan` keeps only `recipesForMeal` ids (`engine.ts:457`) and the catalog is published-only (`catalog.ts:82`), so a retired recipe — or a draft read without its owner — silently drops from a menu on the next save. Fix: the **menu-side catalog carries published + retired (+ the owner's drafts)**; pickers filter to published (+ own drafts). `ownerPersonId` becomes a required argument wherever a menu is sanitized for save.
+- A draft a menu references can't be deleted (deleting is "Remove from your menus first"). Phase 3: a menu holding unpublished recipes can't be shared.
+
+**Typed-in ingredients (4B)**
+- Real `mm_ingredients` + one `mm_packages` row (FK targets for shared lines), `added_by_person_id`, `needs_match_at`; **hidden from everyone but the author until a recipe using it is shared** (`shared_at` on the ingredient, set by the share). Price/size bounds; exact-name duplicates of a book ingredient refused; the package carries "unchecked price" while unmatched; a price-history row records the scout's entry.
+- Diet: avoid ticks stay **unverified** — "Not checked for diets" on menus with diet counts; a recipe with an unmatched ingredient earns no diet label.
+- **Matching:** `mm_match_ingredient(from, to, factor)` — locks both rows `for update`, rejects from=to / already-retired / chains; leader enters a factor prefilled from `mm_conversions` with a preview; stores a conversion on the target so lines keep their unit; re-points `mm_recipe_lines` and `mm_variation_lines` (`ingredient_id`, `base_ingredient_id`) merging duplicates; sets `merged_into_id` + `merge_factor` on the source and retires it. **Menus are NOT rewritten** (no false `updated_at` conflicts): `sanitizeMenu` resolves aliases first (rewrites keys, converts qty in recipeEdits / shopping / actuals). **Keep as new**: leader sets section / avoid, clears `needs_match_at`.
+- `mm_save_scout_recipe` locks referenced ingredient rows `for share` and rejects retired ones.
+
+**Public text safety:** recipe name, steps, ingredient / package / store names, gear: length caps, control characters and URLs stripped, validated **inside the RPC** as well as in `sanitize`; scout text renders as plain text only (never markdown, never article tokens).
+
+**Schema**
+```
+4A  mm_recipes + author_person_id bigint fk people on delete restrict
+               + attribution_label text (≤ 40), shared_at timestamptz, origin_recipe_id text fk set null
+               + equipment text[] not null default '{}'   (column now; UI in 4C)
+               check (author_person_id is null) = (id !~ '^S-[0-9a-f]{8}$')            -- both directions
+               check status <> 'published' or author_person_id is null or (shared_at is not null and attribution_label is not null)
+               index (author_person_id, updated_at desc)
+    merge_people: full CREATE OR REPLACE from 20261003100100_merge_people_menus.sql + mm_recipes.author_person_id
+    mm_save_scout_recipe(p_person, p_recipe, p_lines, p_expected_updated_at) security definer, EXECUTE revoked from anon/authenticated:
+      advisory lock + cap; ownership (existing author = p_person) and not retired; updated_at compare; never touches status/credit;
+      text validation; lock referenced ingredients for share, reject retired.
+    mm_share_scout_recipe(p_person, p_id, p_label) — sets published/shared_at/label once.
+4B  mm_ingredients + added_by_person_id, needs_match_at, shared_at, merged_into_id, merge_factor; merge_people adds added_by
+    mm_match_ingredient(...); mm_save_scout_recipe v2 accepts p_new_ingredients
+```
+- Leader authoring load (`catalog.ts:272`) excludes scouts' unshared drafts.
+- Audit: `library` area — scout save / share / delete via `recordAuditAs`; leader retire / credit (before-value) / match via `recordAudit`.
+
+**Releases (tech-lead slicing)**
+- **4A** migration + merge fix (DB-first) → engine/menu retire-and-draft fixes → `scout-recipes.ts` → data + actions (save / share / delete-draft) → editor (price-book ingredients only) → Recipe Builder tab (My recipes) → owner catalog in menus + library credit / "Your draft recipe" → admin **New recipes** list with retire, credit edit, edited-since-shared. qa-lead → release.
+- **4B** typed-in ingredients + matching + alias resolution (one release).
+- **4C** Share this version as a new recipe; Gear field + menu rollup on Shopping and print; gear in the leader builder.
+
+**Test plan additions:** `Scout_CanSaveDraftRecipe_WhenVerifiedScoutSession`, `Scout_RecipeOwner_IgnoresClientSentPerson`, `Scout_CannotEditAnotherScoutsRecipe`, `Scout_CannotEditRetiredRecipe`, `Scout_CanUseOwnDraftRecipe_InOwnMenu`, `OtherScout_CannotSeeRecipe_UntilShared`, `SharedRecipe_IsLiveImmediately_WithFrozenCredit`, `Credit_Survives_EditAndPeopleMerge`, `Menu_KeepsRetiredRecipe_OnSave`, `Menu_KeepsOwnersDraft_WhenSanitizedWithOwner`, `Draft_CannotBeDeleted_WhileAMenuUsesIt`, `Leader_DoesNotSeeUnsharedDrafts`, `Leader_CanRetireScoutRecipe`, `Scout_RecipeCap_IsEnforced`, `ScoutText_IsStrippedAndCapped`; 4B: `TypedInIngredient_NeedsSizeAndPrice`, `TypedInIngredient_HiddenUntilShared`, `Leader_CanMatchTypedIn_RepointingLines`, `Menu_ResolvesMatchedAlias_WithoutRewrite`; 4C: `Menu_RollsUpEquipmentAcrossMeals`.
+
 ## Open Questions
 
 - [x] Schema review: diets as a `jsonb` map (2026-10-02).

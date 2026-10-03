@@ -128,12 +128,14 @@ describe('merge_people — signup_entries reassignment', () => {
  */
 describe('merge_people — Menu Monster references', () => {
   const MM_PKG = 'vitest-merge-package';
+  const MM_RECIPE = 'S-0000ab01';
   let people: number[] = [];
 
   afterEach(async () => {
     const admin = adminClient();
     await admin.from('mm_price_history').delete().eq('package_id', MM_PKG);
     await admin.from('mm_packages').delete().eq('id', MM_PKG);
+    await admin.from('mm_recipes').delete().eq('id', MM_RECIPE);
     if (people.length > 0) {
       await admin.from('mm_menus').delete().in('owner_person_id', people);
       const { error } = await admin.from('people').delete().in('id', people);
@@ -211,5 +213,24 @@ describe('merge_people — Menu Monster references', () => {
       pkg: { added_by_person_id: survivor },
       hist: { reported_by_person_id: survivor, decided_by_person_id: survivor }
     });
+  });
+  it('Merge_MovesRecipeAuthorship_AndKeepsTheFrozenCredit', async () => {
+    const admin = adminClient();
+    const survivor = await makePerson('Survivor4');
+    const loser = await makePerson('Loser4');
+    const { error } = await admin.from('mm_recipes').insert({
+      id: MM_RECIPE,
+      name: 'vitest merge recipe',
+      status: 'published',
+      author_person_id: loser,
+      shared_at: new Date().toISOString(),
+      attribution_label: 'Old N.'
+    });
+    expect(error).toBeNull();
+
+    await merge(survivor, loser);
+
+    const { data } = await admin.from('mm_recipes').select('author_person_id, attribution_label').eq('id', MM_RECIPE).single();
+    expect(data).toEqual({ author_person_id: survivor, attribution_label: 'Old N.' });
   });
 });
