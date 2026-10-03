@@ -47,7 +47,7 @@ import { Notice } from '@/app/_components/notice';
 import { Button } from '@/app/_components/button';
 import { Stepper } from '@/app/_components/stepper';
 import { TextInput } from '@/app/_components/form';
-import type { Catalog, LineSource } from '@/lib/menu-monster/types';
+import type { Catalog, Conversion, LineSource } from '@/lib/menu-monster/types';
 import { RESTRICTION_BY_KEY, SECTIONS, SECTION_ORDER, qtyText } from '@/lib/menu-monster/units';
 import { fmtRange } from '@/lib/format-date';
 import { MAX_QTY, lineSentence } from '@/lib/menu-monster/engine';
@@ -58,6 +58,7 @@ import { buildSnapshot, snapshotDrift, type MenuSnapshot } from '@/lib/menu-mons
 import { serverMenuStore } from './server-menu-store';
 import { PaidSection, type PaidSavedInfo } from './paid-section';
 import { ReadOnlyLine } from './read-only-line';
+import { AddPackageForm, type AddedPackage } from './add-package-form';
 import { SaveBar } from './save-bar';
 import s from './workspace.module.css';
 import { menuGear } from '@/lib/menu-monster/scout-recipes';
@@ -214,6 +215,19 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
     [catalog, saved.menu]
   );
 
+  // Release C: a package the scout just added joins this page's catalog and is picked for its line.
+  const packageAdded = (l: MenuLine, { pkg, status: st }: AddedPackage) => {
+    if (st !== 'same') setCatalog((c) => ({ ...c, packages: [...c.packages, pkg] }));
+    pickPackage(l, pkg.id);
+    setStatus(
+      st === 'held'
+        ? `${pkg.name} added to your menu. A leader checks the price before the rest of the troop sees it.`
+        : st === 'same'
+          ? `${pkg.name} is already in the price book, so it’s picked for you.`
+          : `${pkg.name} added to the troop price book.`
+    );
+  };
+
   const toggle = (id: string) =>
     setOpenIds((cur) => {
       const next = new Set(cur);
@@ -352,6 +366,8 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
                     onSource={(src, note) => setSource(l, src, note)}
                     panelId={`${uid}-ing-${l.ing.id}`}
                     readOnly={readOnly}
+                    conversions={catalog.conversions}
+                    onPackageAdded={canReport && !readOnly ? (added) => packageAdded(l, added) : undefined}
                   />
                 ))}
             </ul>
@@ -471,7 +487,9 @@ function ShoppingRow({
   onQty,
   onSource,
   panelId,
-  readOnly
+  readOnly,
+  conversions,
+  onPackageAdded
 }: {
   line: MenuLine;
   menu: Menu;
@@ -484,7 +502,11 @@ function ShoppingRow({
   onSource: (source: LineSource, note: string) => void;
   panelId: string;
   readOnly: boolean;
+  conversions: readonly Conversion[];
+  /** Set only where the scout may add a package (their saved menu, release C). */
+  onPackageAdded?: (a: AddedPackage) => void;
 }) {
+  const [adding, setAdding] = useState(false);
   const buying = l.status === 'ok' || l.status === 'short';
   const pkg = l.pkg;
   const mealNames = l.usedBy
@@ -544,11 +566,29 @@ function ShoppingRow({
                     {l.usable.map((p) => (
                       <button key={p.id} type="button" className={s.chip} aria-pressed={pkg?.id === p.id} onClick={() => onPackage(p.id)}>
                         {p.name} · {money(p.price)}
+                        {p.held ? ' · waiting for a leader' : ''}
                       </button>
                     ))}
                   </div>
                 </div>
               )}
+
+              {onPackageAdded && l.source === 'buy' && !l.ing.needsMatch &&
+                (adding ? (
+                  <AddPackageForm
+                    ingredient={l.ing}
+                    conversions={conversions}
+                    onCancel={() => setAdding(false)}
+                    onAdded={(a) => {
+                      setAdding(false);
+                      onPackageAdded(a);
+                    }}
+                  />
+                ) : (
+                  <Button variant="ghost" onClick={() => setAdding(true)}>
+                    Add a package you bought
+                  </Button>
+                ))}
 
               {buying && pkg && (
                 <div className={s.choice}>

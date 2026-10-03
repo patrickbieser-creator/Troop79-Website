@@ -83,12 +83,13 @@ export async function loadCatalogWith(supabase: SupabaseClient, opts: CatalogLoa
       supabase
         .from('mm_packages')
         .select(
-          'id, ingredient_id, name, store, price, anchor_price, yield, yield_unit_label, noun, sold_size, sold_unit, note, as_of, created_at, retired_at'
+          'id, ingredient_id, name, store, price, anchor_price, yield, yield_unit_label, noun, sold_size, sold_unit, note, as_of, created_at, retired_at, held_at'
         )
         .is('retired_at', null)
         // A scout-added package waiting on a leader stays out of every public
-        // planner until it is released; authoring (below) still lists it.
-        .is('held_at', null)
+        // planner until it is released — except for the scout who added it, so
+        // their own menu still prices (release C); authoring (below) lists it.
+        .or(owner ? `held_at.is.null,added_by_person_id.eq.${owner}` : 'held_at.is.null')
         .order('id')
         .range(from, to)
     ),
@@ -165,7 +166,8 @@ export function mapCatalog(rows: CatalogRows): Catalog {
       soldUnit: p.sold_unit,
       note: p.note,
       asOf: p.as_of,
-      retiredAt: p.retired_at
+      retiredAt: p.retired_at,
+      ...(p.held_at != null ? { held: true as const } : {})
     }));
 
   // A line whose ingredient was retired is dropped rather than crashing the

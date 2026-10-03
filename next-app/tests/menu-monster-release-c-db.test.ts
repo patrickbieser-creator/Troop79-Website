@@ -1,6 +1,8 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { adminClient } from './helpers/admin-client';
 import { CATALOG } from './helpers/menu-monster-fixture';
+import { loadCatalogWith } from '../src/lib/menu-monster/catalog';
+import { addScoutPackageWith } from '../src/lib/menu-monster/scout-packages-store';
 import type { Menu } from '../src/lib/menu-monster/menus';
 import { addMenuIngredientWith, createMenuWith, deleteMenuWith, loadMenuWith, saveMenuWith, setMenuSharedWith } from '../src/lib/menu-monster/menus-store';
 
@@ -24,6 +26,7 @@ const MARKER = 'vitest-mm-relc';
 const admin = adminClient();
 
 afterEach(async () => {
+  await admin.from('audit_log').delete().eq('area', 'library').like('summary', `%${MARKER}%`);
   await admin.from('mm_menus').delete().eq('name', MARKER);
   await admin.from('mm_packages').delete().eq('added_by_person_id', SCOUT).like('id', 'sp-%');
   const { data } = await admin.from('mm_ingredients').select('id').eq('added_by_person_id', SCOUT).like('id', 'x-%');
@@ -209,5 +212,43 @@ describe('menu store, typed-ins (release C)', () => {
     await age(res.id);
     await deleteMenuWith(admin, ACTOR, id);
     expect((await admin.from('mm_ingredients').select('id').eq('id', res.id)).data).toEqual([]);
+  });
+});
+
+describe('catalog and held scout packages (release C)', () => {
+  it('catalog_ownerSeesOwnHeldOthersDont', async () => {
+    const { data } = await addPackage({ size: 10, price: 9 });
+    expect(data.status).toBe('held');
+    const mine = await loadCatalogWith(admin, { ownerPersonId: SCOUT });
+    const theirs = await loadCatalogWith(admin, { ownerPersonId: 25 });
+    const everyone = await loadCatalogWith(admin);
+    expect(mine.packages.find((p) => p.id === data.id)).toMatchObject({ held: true });
+    expect(theirs.packages.some((p) => p.id === data.id)).toBe(false);
+    expect(everyone.packages.some((p) => p.id === data.id)).toBe(false);
+  });
+
+  it('catalog_marksNoBookPackageAsHeld', async () => {
+    const everyone = await loadCatalogWith(admin);
+    expect(everyone.packages.every((p) => !p.held)).toBe(true);
+  });
+});
+
+describe('scout package store (release C)', () => {
+  const PKG = { ingredientId: BOOK, name: `${MARKER} pack`, store: 'Aldi', size: 10, price: 5 };
+
+  it('Store_AddsALivePackage_AndAuditsItUnderLibrary', async () => {
+    const res = await addScoutPackageWith(admin, ACTOR, PKG);
+    expect(res).toMatchObject({ status: 'live' });
+    const { data } = await admin.from('audit_log').select('summary').eq('area', 'library').like('summary', `%${MARKER}%`);
+    expect(data!.map((r) => r.summary)).toEqual([`Charlie W. added package "${MARKER} pack" to Pancake mix`]);
+  });
+
+  it('Store_SaysHeld_WhenOutsideTheBand', async () => {
+    expect(await addScoutPackageWith(admin, ACTOR, { ...PKG, price: 9 })).toMatchObject({ status: 'held' });
+  });
+
+  it('Store_ReportsTheCap_AsAStatus', async () => {
+    for (let i = 0; i < 3; i++) await addScoutPackageWith(admin, ACTOR, { ...PKG, size: 10 + i });
+    expect(await addScoutPackageWith(admin, ACTOR, { ...PKG, size: 20 })).toEqual({ status: 'cap' });
   });
 });

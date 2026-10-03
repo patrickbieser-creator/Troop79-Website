@@ -17,7 +17,9 @@ const router = { replace: vi.fn(), push: vi.fn(), refresh: vi.fn() };
 vi.mock('next/navigation', () => ({ useRouter: () => router }));
 
 const saveMenuAction = vi.fn();
+const addScoutPackageAction = vi.fn();
 vi.mock('../src/app/(public)/library/_tools/menu-monster/menu-actions', () => ({
+  addScoutPackageAction: (...a: unknown[]) => addScoutPackageAction(...a),
   saveMenuAction: (...a: unknown[]) => saveMenuAction(...a)
 }));
 
@@ -489,5 +491,52 @@ describe('ShoppingTab scout prices (Phase 4B)', () => {
     const m = menu();
     render(tab(m, buildSnapshot(m, cat), cat));
     expect(rowFor('Bacon').textContent).toContain('Scout’s price');
+  });
+});
+
+describe('ShoppingTab — add a package you bought (release C)', () => {
+  async function addBacon(user: ReturnType<typeof userEvent.setup>, price = '4.29') {
+    await open(user, 'Bacon');
+    await user.click(screen.getByRole('button', { name: 'Add a package you bought' }));
+    const form = screen.getByRole('group', { name: 'New package of Bacon' });
+    await user.type(within(form).getByRole('textbox', { name: 'Name on the label' }), 'Bacon, 12 slices');
+    await user.type(within(form).getByRole('textbox', { name: 'One package holds' }), '12');
+    await user.type(within(form).getByRole('textbox', { name: 'Price' }), price);
+    await user.click(within(form).getByRole('button', { name: 'Add package' }));
+  }
+
+  beforeEach(() => {
+    addScoutPackageAction.mockReset();
+  });
+
+  it('Package_IsSentInTheIngredientsUnit_AndPickedForTheLine', async () => {
+    addScoutPackageAction.mockResolvedValue({ ok: true, status: 'live', id: 'sp-0000beef' });
+    const user = userEvent.setup();
+    render(tab());
+    await addBacon(user);
+    expect(addScoutPackageAction.mock.calls[0][0]).toMatchObject({ ingredientId: 'bacon', size: 12, sizeUnit: 'slice', price: 4.29 });
+    expect(screen.getByRole('button', { name: /Bacon, 12 slices · \$4\.29/, pressed: true })).toBeTruthy();
+    expect(screen.getByText('Bacon, 12 slices added to the troop price book.')).toBeTruthy();
+  });
+
+  it('HeldPackage_SaysALeaderChecksIt', async () => {
+    addScoutPackageAction.mockResolvedValue({ ok: true, status: 'held', id: 'sp-0000beef' });
+    const user = userEvent.setup();
+    render(tab());
+    await addBacon(user, '9');
+    expect(screen.getByRole('button', { name: /waiting for a leader/ })).toBeTruthy();
+    expect(screen.getByText(/A leader checks the price/)).toBeTruthy();
+  });
+
+  it('Form_RefusesAMissingSize_BeforeSending', async () => {
+    const user = userEvent.setup();
+    render(tab());
+    await open(user, 'Bacon');
+    await user.click(screen.getByRole('button', { name: 'Add a package you bought' }));
+    const form = screen.getByRole('group', { name: 'New package of Bacon' });
+    await user.type(within(form).getByRole('textbox', { name: 'Name on the label' }), 'Bacon');
+    await user.click(within(form).getByRole('button', { name: 'Add package' }));
+    expect(within(form).getByRole('alert').textContent).toMatch(/check the label/);
+    expect(addScoutPackageAction).not.toHaveBeenCalled();
   });
 });

@@ -19,6 +19,8 @@ import { MAX_ACTUALS_BYTES, MAX_MENU_BYTES, MAX_MENUS_PER_SCOUT, isMenuId, menuN
 import { MAX_REVIEW_NOTE, MENU_LIMIT, addMenuIngredientWith, copyMenuWith, createMenuWith, deleteMenuWith, duplicateMenuWith, hideMenuWith, loadMenuWith, saveActualsWith, saveMenuWith, setMenuSharedWith, setReviewNoteWith } from '@/lib/menu-monster/menus-store';
 import { resolveAdminActor } from '@/lib/admin-actor';
 import { sanitizeNewIngredients } from '@/lib/menu-monster/scout-ingredients';
+import { sanitizeScoutPackage } from '@/lib/menu-monster/scout-packages';
+import { addScoutPackageWith } from '@/lib/menu-monster/scout-packages-store';
 import { reportPriceWith } from '@/lib/menu-monster/price-history';
 import { loadOutingsWith } from '@/lib/menu-monster/menus-data';
 import { centralToday } from '@/lib/dates';
@@ -237,4 +239,26 @@ export async function addMenuIngredientAction(raw: unknown): Promise<{ ok: true;
   if (!clean) return { ok: false, error: TYPED_IN_ERRORS.invalid };
   const res = await addMenuIngredientWith(createAdminClient(), actor, clean);
   return res.status === 'added' ? { ok: true, id: res.id } : { ok: false, error: TYPED_IN_ERRORS[res.status] };
+}
+
+const PACKAGE_ERRORS = {
+  cap: 'You have packages waiting for a leader to check them. Wait for a leader before adding more.',
+  invalid: 'Check the name, the size on the label and the price, then try again.'
+} as const;
+
+/**
+ * A package the scout bought that the price book doesn't list (release C,
+ * P2.3a): name, store, size in any unit the ingredient can be bridged to, and
+ * price. Inside the band of the cheapest live package it goes live at once;
+ * outside it waits for a leader and, meanwhile, prices only this scout's menus.
+ */
+export async function addScoutPackageAction(raw: unknown): Promise<{ ok: true; status: 'live' | 'held' | 'same'; id: string } | Fail> {
+  const actor = await scoutActor();
+  if (isFail(actor)) return actor;
+  if (tooBig(raw, 2 * 1024)) return { ok: false, error: PACKAGE_ERRORS.invalid };
+  const pkg = sanitizeScoutPackage(raw, await loadMenuMonsterCatalog(actor.personId));
+  if (!pkg) return { ok: false, error: PACKAGE_ERRORS.invalid };
+  const res = await addScoutPackageWith(createAdminClient(), actor, pkg);
+  if (!('id' in res)) return { ok: false, error: PACKAGE_ERRORS[res.status] };
+  return { ok: true, status: res.status, id: res.id };
 }

@@ -17,7 +17,8 @@ const mocks = vi.hoisted(() => ({
   copyMenuWith: vi.fn(),
   setReviewNoteWith: vi.fn(),
   hideMenuWith: vi.fn(),
-  addMenuIngredientWith: vi.fn()
+  addMenuIngredientWith: vi.fn(),
+  addScoutPackageWith: vi.fn()
 }));
 
 vi.mock('next/headers', () => ({ cookies: async () => ({ get: () => ({ value: 'cookie' }) }) }));
@@ -29,6 +30,7 @@ vi.mock('@/lib/identity-session', async (orig) => ({
 vi.mock('@/lib/admin-actor', () => ({ resolveAdminActor: async () => mocks.actor }));
 vi.mock('@/lib/supabase/server', () => ({ createAdminClient: () => ({ stub: true }) }));
 vi.mock('@/lib/menu-monster/data', () => ({ loadMenuMonsterCatalog: async () => CATALOG }));
+vi.mock('@/lib/menu-monster/scout-packages-store', () => ({ addScoutPackageWith: mocks.addScoutPackageWith }));
 vi.mock('@/lib/menu-monster/menus-data', () => ({ loadOutingsWith: async () => [] }));
 vi.mock('@/lib/menu-monster/menus-store', async (orig) => ({
   ...(await orig<typeof import('../src/lib/menu-monster/menus-store')>()),
@@ -39,7 +41,7 @@ vi.mock('@/lib/menu-monster/menus-store', async (orig) => ({
   addMenuIngredientWith: mocks.addMenuIngredientWith
 }));
 
-import { addMenuIngredientAction, copyMenuAction, hideMenuAction, setReviewNoteAction, shareMenuAction } from '../src/app/(public)/library/_tools/menu-monster/menu-actions';
+import { addMenuIngredientAction, addScoutPackageAction, copyMenuAction, hideMenuAction, setReviewNoteAction, shareMenuAction } from '../src/app/(public)/library/_tools/menu-monster/menu-actions';
 import { MENU_LIMIT } from '../src/lib/menu-monster/menus-store';
 
 const SCOUT = { role: 'identity', subjectKind: 'scout', personId: 39, householdKey: 'h', displayName: 'Charlie W.', epoch: 1, iat: 0 } as IdentitySession;
@@ -55,6 +57,7 @@ beforeEach(() => {
   mocks.setReviewNoteWith.mockResolvedValue(true);
   mocks.hideMenuWith.mockResolvedValue(true);
   mocks.addMenuIngredientWith.mockResolvedValue({ status: 'added', id: 'x-0000beef' });
+  mocks.addScoutPackageWith.mockResolvedValue({ status: 'live', id: 'sp-0000beef' });
 });
 
 describe('shareMenuAction', () => {
@@ -167,5 +170,30 @@ describe('addMenuIngredientAction (release C)', () => {
   it('TypedIn_Fails_ForAnAdult', async () => {
     mocks.session = { ...SCOUT, subjectKind: 'adult' };
     expect((await addMenuIngredientAction(JAM)).ok).toBe(false);
+  });
+});
+
+describe('addScoutPackageAction (release C)', () => {
+  const PKG = { ingredientId: 'eggs', name: 'Eggs, 18 ct', store: 'Aldi', size: 18, sizeUnit: 'egg', price: 4.29 };
+
+  it('Scout_AddsACleanPackage_AsThemselves', async () => {
+    expect(await addScoutPackageAction(PKG)).toEqual({ ok: true, status: 'live', id: 'sp-0000beef' });
+    expect(mocks.addScoutPackageWith).toHaveBeenCalledWith({ stub: true }, { personId: 39, label: 'Charlie W.' }, expect.objectContaining({ ingredientId: 'eggs', size: 18, price: 4.29 }));
+  });
+
+  it('Package_IsRefused_BeforeTheDb_WithoutAPrice', async () => {
+    expect((await addScoutPackageAction({ ...PKG, price: 0 })).ok).toBe(false);
+    expect(mocks.addScoutPackageWith).not.toHaveBeenCalled();
+  });
+
+  it('Package_SaysTheCap_InWords', async () => {
+    mocks.addScoutPackageWith.mockResolvedValue({ status: 'cap' });
+    const res = await addScoutPackageAction(PKG);
+    expect(res.ok === false && res.error).toMatch(/waiting for a leader/);
+  });
+
+  it('Package_Fails_ForAnAdult', async () => {
+    mocks.session = { ...SCOUT, subjectKind: 'adult' };
+    expect((await addScoutPackageAction(PKG)).ok).toBe(false);
   });
 });

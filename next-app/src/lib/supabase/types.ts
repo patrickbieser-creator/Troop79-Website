@@ -546,6 +546,8 @@ export interface MmPackageRow {
   as_of: string | null;
   created_at: string;
   retired_at: string | null;
+  /** Set while a scout-added package waits for a leader (release C); optional so old fixtures map. */
+  held_at?: string | null;
 }
 
 export interface MmRecipeRow {

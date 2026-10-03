@@ -81,6 +81,8 @@ export interface Package {
   asOf: string | null;
   /** Set on the leader tools' authoring load only; the public load excludes retired rows. */
   retiredAt?: string | null;
+  /** A scout-added package waiting for a leader (release C); only its scout's catalog carries it. */
+  held?: true;
 }
 
 export type ServesRule = 'everyone' | 'except' | 'only';
