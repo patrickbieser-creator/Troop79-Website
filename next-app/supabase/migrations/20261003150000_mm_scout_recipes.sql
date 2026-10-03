@@ -52,6 +52,8 @@ as $$
   select p_text is not null
      and char_length(p_text) <= p_max
      and p_text !~ '[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]'
+     -- zero-width and bidi-override characters (hidden or spoofed text)
+     and p_text !~ '[​-‏‪-‮⁦-⁩]'
      and p_text !~* '(https?://|www\.)';
 $$;
 
@@ -167,11 +169,64 @@ begin
     values (v_id, v_pos, v_ing, v_qty, nullif(v_line->>'unit_key', ''), 'everyone', '{}'::text[]);
   end loop;
 
+  -- A shared recipe stays usable for everyone who uses it: it can't be saved
+  -- down to no ingredient or no meal (v_existing is null for a new draft).
+  if v_existing.status = 'published'
+     and (v_pos = 0 or cardinality((select r.meal_fit from mm_recipes r where r.id = v_id)) = 0) then
+    raise exception 'MM_NOT_READY';
+  end if;
+
   return v_now;
 end;
 $$;
 
 revoke execute on function public.mm_save_scout_recipe(bigint, jsonb, jsonb, timestamptz) from public, anon, authenticated;
+
+-- ── 3b. mm_delete_scout_draft ─────────────────────────────────────────────
+-- Deletes one of the scout's never-shared drafts in one transaction, under the
+-- same per-scout lock as saving, and only while none of their menus uses it
+-- (a draft is private, so only the owner's menus can). Returns the name.
+
+create or replace function public.mm_delete_scout_draft(p_person bigint, p_id text)
+returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_row mm_recipes%rowtype;
+begin
+  if p_person is null then
+    raise exception 'MM_SCOUT_REQUIRED';
+  end if;
+  perform pg_advisory_xact_lock(hashtextextended('mm_scout_recipe', p_person));
+  select * into v_row from mm_recipes where id = p_id for update;
+  if not found or v_row.author_person_id is distinct from p_person then
+    raise exception 'MM_NOT_YOURS';
+  end if;
+  if v_row.shared_at is not null or v_row.status <> 'draft' then
+    raise exception 'MM_SHARED';
+  end if;
+  if exists (
+    select 1 from mm_menus m
+    where m.owner_person_id = p_person
+      and m.meals @> jsonb_build_array(jsonb_build_object('recipeIds', jsonb_build_array(p_id)))
+  ) then
+    raise exception 'MM_IN_USE';
+  end if;
+  delete from mm_recipe_lines where recipe_id = p_id;
+  delete from mm_recipes where id = p_id;
+  return v_row.name;
+end;
+$$;
+
+revoke execute on function public.mm_delete_scout_draft(bigint, text) from public, anon, authenticated;
+
+-- A shared scout recipe never goes back to draft: other scouts' menus hold it,
+-- and a draft is private to its author. A leader retires it instead.
+alter table public.mm_recipes
+  add constraint mm_recipes_shared_scout_not_draft_chk
+    check (author_person_id is null or shared_at is null or status <> 'draft');
 
 -- ── 4. mm_share_scout_recipe ──────────────────────────────────────────────
 -- Publishes the scout's own draft, freezing the credit. Sharing an already

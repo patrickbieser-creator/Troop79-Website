@@ -17,7 +17,7 @@ import { creditFor, isScoutRecipeId, newScoutRecipeId, stepsFromText, stepsToTex
 
 export type ScoutSaveResult =
   | { status: 'saved'; id: string; updatedAt: string }
-  | { status: 'conflict' | 'not_found' | 'retired' | 'cap' | 'invalid' };
+  | { status: 'conflict' | 'not_found' | 'retired' | 'cap' | 'invalid' | 'not_ready' };
 export type ScoutShareResult = { status: 'shared'; credit: string } | { status: 'not_found' | 'retired' | 'not_ready' };
 export type ScoutDeleteResult = { status: 'deleted' } | { status: 'not_found' | 'shared' | 'in_use' };
 
@@ -44,6 +44,7 @@ const refusal = (message: string): ScoutSaveResult['status'] => {
   if (message.includes('MM_NOT_YOURS')) return 'not_found';
   if (message.includes('MM_RETIRED')) return 'retired';
   if (message.includes('MM_RECIPE_CAP')) return 'cap';
+  if (message.includes('MM_NOT_READY')) return 'not_ready';
   if (message.includes('MM_BAD_')) return 'invalid';
   throw new Error(`scout recipe: ${message}`);
 };
@@ -101,22 +102,15 @@ export async function shareScoutRecipeWith(sb: SupabaseClient, actor: AuditActor
 /** Delete one of the scout's own never-shared drafts — refused while one of their menus uses it. */
 export async function deleteScoutDraftWith(sb: SupabaseClient, actor: AuditActor, id: string): Promise<ScoutDeleteResult> {
   if (actor.personId == null || !isScoutRecipeId(id)) return { status: 'not_found' };
-  const { data: row, error } = await sb.from('mm_recipes').select('name, status, author_person_id, shared_at').eq('id', id).maybeSingle();
-  if (error) throw new Error(`load recipe: ${error.message}`);
-  if (!row || row.author_person_id !== actor.personId) return { status: 'not_found' };
-  if (row.shared_at != null || row.status !== 'draft') return { status: 'shared' };
-  const { count, error: cErr } = await sb
-    .from('mm_menus')
-    .select('id', { count: 'exact', head: true })
-    .eq('owner_person_id', actor.personId)
-    .filter('meals', 'cs', JSON.stringify([{ recipeIds: [id] }]));
-  if (cErr) throw new Error(`menus using recipe: ${cErr.message}`);
-  if ((count ?? 0) > 0) return { status: 'in_use' };
-  const { error: lErr } = await sb.from('mm_recipe_lines').delete().eq('recipe_id', id);
-  if (lErr) throw new Error(`delete lines: ${lErr.message}`);
-  const { error: dErr } = await sb.from('mm_recipes').delete().eq('id', id).eq('author_person_id', actor.personId).eq('status', 'draft');
-  if (dErr) throw new Error(`delete recipe: ${dErr.message}`);
-  await audit(sb, actor, 'delete', id, `deleted draft recipe "${row.name as string}"`);
+  // One transaction under the scout's save lock: ownership, never shared, no menu uses it (mm_delete_scout_draft).
+  const { data: name, error } = await sb.rpc('mm_delete_scout_draft', { p_person: actor.personId, p_id: id });
+  if (error) {
+    if (error.message.includes('MM_IN_USE')) return { status: 'in_use' };
+    if (error.message.includes('MM_SHARED')) return { status: 'shared' };
+    if (error.message.includes('MM_NOT_YOURS')) return { status: 'not_found' };
+    throw new Error(`delete recipe: ${error.message}`);
+  }
+  await audit(sb, actor, 'delete', id, `deleted draft recipe "${name as string}"`);
   return { status: 'deleted' };
 }
 

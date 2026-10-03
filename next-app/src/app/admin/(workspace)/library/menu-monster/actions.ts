@@ -22,7 +22,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { recordAudit, type AuditDetail } from '@/lib/audit';
 import { decidePriceWith, leaderSetPriceWith, type DecideOutcome } from '@/lib/menu-monster/price-history';
 import { loadAuthoringCatalogWith } from '@/lib/menu-monster/catalog';
-import { cleanScoutText } from '@/lib/menu-monster/scout-recipes';
+import { cleanScoutText, isScoutRecipeId } from '@/lib/menu-monster/scout-recipes';
 import { setScoutRecipeCreditWith } from '@/lib/menu-monster/scout-recipes-store';
 import {
   blockingIssues,
@@ -71,6 +71,7 @@ async function guardActor(): Promise<{ personId: number | null } | Result> {
 const RESTRICTION_KEYS: readonly RestrictionKey[] = ['gf', 'nut', 'dairy', 'veg'];
 const SECTIONS: readonly Section[] = ['produce', 'dairy', 'meat', 'bakery', 'dry'];
 const money = (n: number) => `$${n.toFixed(2)}`;
+const SCOUT_OWNED = 'A scout wrote this recipe, so only they can change it. You can retire it or change its credit under Scout recipes.';
 
 /* ── Ingredients ─────────────────────────────────────────────────────────── */
 
@@ -605,6 +606,8 @@ function draftOf(r: Recipe): RecipeDraft {
 export async function saveRecipe(a: RecipeAuthoring): Promise<Result> {
   const denied = await guard();
   if (denied) return denied;
+  // A scout's recipe is theirs to edit (Phase 4A); leaders retire or re-credit it from Scout recipes.
+  if (isScoutRecipeId(a.id)) return { ok: false, error: SCOUT_OWNED };
   const name = cap(a.name, MAX.name);
   if (!name) return { ok: false, error: 'Give the menu item a name.' };
 
@@ -741,6 +744,8 @@ export async function setRecipeStatus(id: string, status: RecipeStatus): Promise
   const denied = await guard();
   if (denied) return denied;
   if (!(status in STATUS_LABEL)) return { ok: false, error: 'Unknown status.' };
+  // A shared scout recipe never goes back to draft (other scouts' menus hold it): retire it instead.
+  if (status === 'draft' && isScoutRecipeId(id)) return { ok: false, error: SCOUT_OWNED };
 
   const supabase = createAdminClient();
   const catalog = await loadAuthoringCatalogWith(supabase);

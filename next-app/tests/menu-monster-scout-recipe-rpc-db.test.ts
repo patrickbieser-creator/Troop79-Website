@@ -1,4 +1,5 @@
 import { describe, it, expect, afterEach, beforeAll } from 'vitest';
+import { createClient } from '@supabase/supabase-js';
 import { adminClient } from './helpers/admin-client';
 
 /**
@@ -108,6 +109,58 @@ describe('mm_save_scout_recipe', () => {
   });
 });
 
+describe('mm_save_scout_recipe limits', () => {
+  it('Save_RefusesABadQuantity', async () => {
+    const { error } = await save(SCOUT, recipe(), [{ ingredient_id: ING, qty_per_person: 0 }]);
+    expect(error?.message).toContain('MM_BAD_LINES');
+  });
+
+  it('Save_RefusesMoreThanFortyLines', async () => {
+    const many = Array.from({ length: 41 }, () => ({ ingredient_id: ING, qty_per_person: 1 }));
+    const { error } = await save(SCOUT, recipe(), many);
+    expect(error?.message).toContain('MM_BAD_LINES');
+  });
+
+  it('Save_RefusesAZeroWidthCharacter', async () => {
+    const { error } = await save(SCOUT, recipe({ name: 'Chi​li' }));
+    expect(error?.message).toContain('MM_BAD_TEXT');
+  });
+
+  it('Scout_RecipeCap_IsEnforced', async () => {
+    const rows = Array.from({ length: 25 }, (_, i) => ({ id: `S-0000ad${String(i).padStart(2, '0')}`, name: 'cap', status: 'draft', author_person_id: SCOUT }));
+    const { error: seedErr } = await admin.from('mm_recipes').insert(rows);
+    expect(seedErr).toBeNull();
+    const { error } = await save(SCOUT);
+    await admin.from('mm_recipes').delete().like('id', 'S-0000ad%');
+    expect(error?.message).toContain('MM_RECIPE_CAP');
+  });
+
+  it('SharedRecipe_CannotBeSavedWithNoIngredients', async () => {
+    await save(SCOUT);
+    await share(SCOUT);
+    const { data: v } = await admin.from('mm_recipes').select('updated_at').eq('id', ID).single();
+    const { error } = await save(SCOUT, recipe(), [], v!.updated_at as string);
+    expect(error?.message).toContain('MM_NOT_READY');
+  });
+
+  it('SharedRecipe_CannotBeSavedWithNoMeal', async () => {
+    await save(SCOUT);
+    await share(SCOUT);
+    const { data: v } = await admin.from('mm_recipes').select('updated_at').eq('id', ID).single();
+    const { error } = await save(SCOUT, recipe({ meal_fit: [] }), lines(), v!.updated_at as string);
+    expect(error?.message).toContain('MM_NOT_READY');
+  });
+
+  it('Anon_CannotCallTheScoutRpcs', async () => {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!url || !anonKey) throw new Error('anon key env missing — is .env.local present?');
+    const anon = createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
+    const { error } = await anon.rpc('mm_save_scout_recipe', { p_person: SCOUT, p_recipe: recipe(), p_lines: lines(), p_expected_updated_at: null });
+    expect(error).not.toBeNull();
+  });
+});
+
 describe('mm_share_scout_recipe', () => {
   it('SharedRecipe_IsLiveImmediately_WithFrozenCredit', async () => {
     await save(SCOUT);
@@ -124,12 +177,18 @@ describe('mm_share_scout_recipe', () => {
     expect((await row())?.attribution_label).toBe('Charlie W.');
   });
 
-  it('Reshare_AfterALeaderSetItBackToDraft_KeepsTheFirstCredit', async () => {
+  it('SharedScoutRecipe_CannotGoBackToDraft', async () => {
     await save(SCOUT);
     await share(SCOUT);
-    await admin.from('mm_recipes').update({ status: 'draft' }).eq('id', ID);
-    await share(SCOUT, ID, 'Someone Else');
-    expect(await row()).toMatchObject({ status: 'published', attribution_label: 'Charlie W.' });
+    const { error } = await admin.from('mm_recipes').update({ status: 'draft' }).eq('id', ID);
+    expect(error).not.toBeNull();
+  });
+
+  it('Share_IsRefused_OnARetiredRecipe', async () => {
+    await save(SCOUT);
+    await admin.from('mm_recipes').update({ status: 'retired' }).eq('id', ID);
+    const { error } = await share(SCOUT);
+    expect(error?.message).toContain('MM_RETIRED');
   });
 
   it('Scout_CannotShareAnotherScoutsRecipe', async () => {

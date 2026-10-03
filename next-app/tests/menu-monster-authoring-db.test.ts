@@ -320,3 +320,17 @@ describe('menu monster leader tools — actions', () => {
     expect(vars).toEqual([{ restriction: 'gf', state: 'substituted' }, { restriction: 'veg', state: 'unsuitable' }]);
   });
 });
+
+describe('menu monster leader tools — scout recipes (Phase 4A)', () => {
+  it('Leader_CannotOverwriteAScoutRecipe_FromTheRecipeBuilder', async () => {
+    const res = await saveRecipe({
+      id: 'S-0000ae01', name: 'Hijack', status: 'published', mealFit: ['dinner'], foodGroups: [],
+      camp: true, trail: false, method: null, stepsMd: '', base: [], variations: []
+    });
+    expect(res.ok).toBe(false);
+  });
+
+  it('Leader_CannotSetAScoutRecipeBackToDraft', async () => {
+    expect((await setRecipeStatus('S-0000ae01', 'draft')).ok).toBe(false);
+  });
+});

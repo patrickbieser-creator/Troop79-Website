@@ -34,7 +34,8 @@ const MESSAGES = {
   not_found: NOT_YOURS,
   retired: 'A leader retired this recipe, so it can’t be changed.',
   cap: `You have ${MAX_SCOUT_RECIPES} recipes. Delete a draft you don’t need to make room.`,
-  invalid: 'Something in this recipe can’t be saved. Check the name and steps, then try again.'
+  invalid: 'Something in this recipe can’t be saved. Check the name and steps, then try again.',
+  not_ready: 'A shared recipe needs at least one meal and one ingredient. Add them back, then save.'
 } as const;
 
 /** Save the scout's recipe: a new one when the payload has no id, else over the version the editor loaded. */

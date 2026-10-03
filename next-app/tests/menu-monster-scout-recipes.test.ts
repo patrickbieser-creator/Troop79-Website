@@ -136,3 +136,9 @@ describe('steps budget', () => {
     expect(stepsToText(d.steps).length).toBeLessThanOrEqual(4000);
   });
 });
+
+describe('invisible characters', () => {
+  it('Text_LosesZeroWidthAndBidiCharacters', () => {
+    expect(cleanScoutText('Chi​li ‮evil', 40)).toBe('Chili evil');
+  });
+});
