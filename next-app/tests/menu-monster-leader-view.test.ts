@@ -18,6 +18,9 @@ const mocks = vi.hoisted(() => ({
 vi.mock('next/navigation', () => ({
   notFound: () => {
     throw new Error('NEXT_NOT_FOUND');
+  },
+  redirect: (to: string) => {
+    throw new Error(`NEXT_REDIRECT ${to}`);
   }
 }));
 vi.mock('@/lib/family-access', () => ({ getIdentitySessionIfValid: async () => mocks.session }));
@@ -39,7 +42,6 @@ vi.mock('@/lib/menu-monster/menu-access', async (orig) => ({
 // The pages' client components are not under test here; capture their props.
 vi.mock('../src/app/(public)/library/menu-monster/menus/_components/plan-tab', () => ({ PlanTab: (p: unknown) => p }));
 vi.mock('../src/app/(public)/library/menu-monster/menus/_components/shopping-tab', () => ({ ShoppingTab: (p: unknown) => p }));
-vi.mock('../src/app/(public)/library/menu-monster/menus/_components/meal-editor', () => ({ MealEditor: (p: unknown) => p }));
 
 import { loadViewableMenu, menuViewer } from '../src/app/(public)/library/menu-monster/menus/_components/scout-menus';
 import PlanPage from '../src/app/(public)/library/menu-monster/menus/[menuId]/page';
@@ -129,9 +131,8 @@ describe('menuViewer', () => {
 });
 
 const pages: [string, (id: string) => Promise<unknown>][] = [
-  ['Plan', (menuId) => PlanPage({ params: Promise.resolve({ menuId }) })],
-  ['Shopping', (menuId) => ShoppingPage({ params: Promise.resolve({ menuId }) })],
-  ['Meal', (menuId) => MealPage({ params: Promise.resolve({ menuId, mealId: 'm1' }) })]
+  ['Plan', (menuId) => PlanPage({ params: Promise.resolve({ menuId }), searchParams: Promise.resolve({}) })],
+  ['Shopping', (menuId) => ShoppingPage({ params: Promise.resolve({ menuId }) })]
 ];
 
 describe.each(pages)('%s page access matrix', (_name, render) => {
@@ -204,10 +205,15 @@ describe.each(pages)('%s page access matrix', (_name, render) => {
   });
 });
 
-describe('Meal page (leader)', () => {
-  it('Leader_GetsNotFound_WhenTheMealIsNotOnTheMenu', async () => {
-    mocks.actor = LEADER;
-    await expect(MealPage({ params: Promise.resolve({ menuId: ID, mealId: 'zzz' }) })).rejects.toThrow('NEXT_NOT_FOUND');
+describe('Meals inline (2026-10-03)', () => {
+  it('OldMealUrl_RedirectsToThePlanTab_WithThatMealOpen', async () => {
+    await expect(MealPage({ params: Promise.resolve({ menuId: ID, mealId: 'm1' }) })).rejects.toThrow(`NEXT_REDIRECT /library/menu-monster/menus/${ID}?meal=m1`);
+  });
+
+  it('PlanPage_OpensTheMealNamedInTheUrl', async () => {
+    mocks.session = SCOUT;
+    const out = await PlanPage({ params: Promise.resolve({ menuId: ID }), searchParams: Promise.resolve({ meal: 'm1' }) });
+    expect(find(out, (p) => 'openMeal' in p)?.openMeal).toBe('m1');
   });
 });
 

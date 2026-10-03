@@ -40,5 +40,6 @@ export interface MenuStore {
   /** First save of a brand-new menu. */
   create(menu: Menu): Promise<CreateResult>;
   /** Where to go after a create: null = stay on this page (the menu has no URL of its own to move to). */
+  /** Where a first save goes (null = stay); `openMealId` keeps that meal open there. */
   afterCreate(id: string, openMealId?: string): string | null;
 }

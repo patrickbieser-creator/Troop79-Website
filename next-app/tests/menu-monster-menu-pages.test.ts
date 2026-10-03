@@ -29,7 +29,6 @@ vi.mock('@/lib/household-scope', () => ({ resolveFamilyScope: async (_sb: unknow
 import { loadOwnMenu } from '../src/app/(public)/library/menu-monster/menus/_components/scout-menus';
 import PlanPage from '../src/app/(public)/library/menu-monster/menus/[menuId]/page';
 import ShoppingPage from '../src/app/(public)/library/menu-monster/menus/[menuId]/shopping/page';
-import MealPage from '../src/app/(public)/library/menu-monster/menus/[menuId]/meals/[mealId]/page';
 
 const ID = '0b9f8c1e-3a52-4f6e-9d3c-1a2b3c4d5e6f';
 const SCOUT = { subjectKind: 'scout', personId: 39, displayName: 'Charlie W.' };
@@ -64,9 +63,8 @@ describe('loadOwnMenu', () => {
 });
 
 const pages: [string, (id: string) => Promise<unknown>][] = [
-  ['Plan', (menuId) => PlanPage({ params: Promise.resolve({ menuId }) })],
-  ['Shopping', (menuId) => ShoppingPage({ params: Promise.resolve({ menuId }) })],
-  ['Meal', (menuId) => MealPage({ params: Promise.resolve({ menuId, mealId: 'm1' }) })]
+  ['Plan', (menuId) => PlanPage({ params: Promise.resolve({ menuId }), searchParams: Promise.resolve({}) })],
+  ['Shopping', (menuId) => ShoppingPage({ params: Promise.resolve({ menuId }) })]
 ];
 
 describe.each(pages)('%s page notFound paths', (_name, render) => {
@@ -91,8 +89,3 @@ describe.each(pages)('%s page notFound paths', (_name, render) => {
   });
 });
 
-describe('Meal page', () => {
-  it('Scout_GetsNotFound_WhenTheMealIsNotOnTheirMenu', async () => {
-    await expect(pages[2][1](ID)).rejects.toThrow('NEXT_NOT_FOUND');
-  });
-});

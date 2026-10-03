@@ -12,7 +12,8 @@ import { readLocalMenu, writeLocalMenu } from './local-menu';
 export const LOCAL_MENU_HREFS = {
   plan: '/library/menu-monster/menus/local',
   shopping: '/library/menu-monster/menus/local/shopping',
-  meal: (mealId: string) => `/library/menu-monster/menus/local/meals/${mealId}`
+  /** A meal opens inline on the Plan tab (2026-10-03); the old meal page redirects here. */
+  meal: (mealId: string) => `/library/menu-monster/menus/local?meal=${encodeURIComponent(mealId)}`
 };
 
 const BLOCKED = 'This browser won’t let us save on this computer. Sign in to save your menu instead.';
@@ -31,6 +32,7 @@ export function localMenuStore(catalog: Catalog): MenuStore {
       const res = await write(menu, null);
       return res.ok ? { ok: true, id: 'local' } : res;
     },
-    afterCreate: (_id, openMealId) => (openMealId ? LOCAL_MENU_HREFS.meal(openMealId) : null)
+    // The first save stays on the page: the open meals are already open.
+    afterCreate: () => null
   };
 }

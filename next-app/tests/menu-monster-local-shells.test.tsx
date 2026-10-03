@@ -17,7 +17,7 @@ vi.mock('next/navigation', () => ({ useRouter: () => router }));
 const actions = vi.hoisted(() => ({ createMenuAction: vi.fn(), saveMenuAction: vi.fn(), saveActualsAction: vi.fn() }));
 vi.mock('../src/app/(public)/library/_tools/menu-monster/menu-actions', () => actions);
 
-import { LocalMeal, LocalPlan, LocalShopping } from '../src/app/(public)/library/menu-monster/menus/_components/local-menu-shells';
+import { LocalPlan, LocalShopping } from '../src/app/(public)/library/menu-monster/menus/_components/local-menu-shells';
 
 const MENU = sanitizeMenu(
   {
@@ -52,7 +52,8 @@ describe('LocalPlan', () => {
     render(<LocalPlan catalog={CATALOG} outings={[]} />);
     expect((await nameBox()).value).toBe('Fall Camporee');
     expect(screen.getByRole('button', { name: 'Saved on this computer' })).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Breakfast' }).getAttribute('href')).toBe(`/library/menu-monster/menus/local/meals/${MEAL_ID}`);
+    // Meals open inline (2026-10-03): the meal name is a disclosure, not a link.
+    expect(screen.getByRole('button', { name: /^Breakfast/ }).getAttribute('aria-expanded')).toBe('false');
   });
 
   it('Visitor_SavesOnThisComputer_WithoutCallingAServerAction', async () => {
@@ -93,14 +94,16 @@ describe('LocalPlan', () => {
     expect(await screen.findByText(/won’t let us save on this computer/)).toBeTruthy();
   });
 
-  it('Visitor_IsToldTheMealOpensTheSavedMenu_WhenOpeningAMealWithUnsavedChanges', async () => {
+  it('Visitor_OpensAMeal_WithUnsavedChanges_AndKeepsThem', async () => {
+    // Meals open inline (2026-10-03): no "save first" detour, the draft stays as it is.
     put();
     render(<LocalPlan catalog={CATALOG} outings={[]} />);
     const user = userEvent.setup();
     const box = await nameBox();
     await user.type(box, '!');
-    await user.click(screen.getByRole('button', { name: 'Breakfast' }));
-    expect(screen.getByText('The meal opens the menu saved on this computer.')).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: /^Breakfast/ }));
+    expect(screen.getByRole('list', { name: /^Recipes in/ })).toBeTruthy();
+    expect((await nameBox()).value).toBe('Fall Camporee!');
   });
 
   it('Visitor_SeesTheOtherTabsMenu_WhenAnotherTabSaves', async () => {
@@ -207,17 +210,17 @@ describe('LocalShopping', () => {
   });
 });
 
-describe('LocalMeal', () => {
-  it('Visitor_SeesTheMealEditor_ForAMealOnTheLocalMenu', async () => {
+describe('LocalPlan, a meal open inline (2026-10-03)', () => {
+  it('Visitor_SeesTheMealOpen_WhenTheUrlNamesIt', async () => {
     put();
-    render(<LocalMeal catalog={CATALOG} mealId={MEAL_ID} />);
-    expect(await screen.findByRole('heading', { level: 1, name: /breakfast/i })).toBeTruthy();
+    render(<LocalPlan catalog={CATALOG} outings={[]} openMeal={MEAL_ID} />);
+    expect(await screen.findByRole('list', { name: /^Recipes in/ })).toBeTruthy();
     expect(screen.getByRole('button', { name: /^Bacon/ })).toBeTruthy();
   });
 
   it('Visitor_SavesTheMealLocally_WithoutCallingAServerAction', async () => {
     put();
-    render(<LocalMeal catalog={CATALOG} mealId={MEAL_ID} />);
+    render(<LocalPlan catalog={CATALOG} outings={[]} openMeal={MEAL_ID} />);
     const user = userEvent.setup();
     await user.click(await screen.findByRole('button', { name: 'More for Bacon' }));
     await user.click(screen.getByRole('button', { name: 'Remove' }));
@@ -226,9 +229,9 @@ describe('LocalMeal', () => {
     expect(actions.saveMenuAction).not.toHaveBeenCalled();
   });
 
-  it('Visitor_IsPointedToPlanning_WhenTheMealIsNotOnTheLocalMenu', async () => {
+  it('Visitor_SeesEveryMealClosed_WhenTheUrlNamesAMealNotOnTheMenu', async () => {
     put();
-    render(<LocalMeal catalog={CATALOG} mealId="nope" />);
-    expect(await screen.findByText(/isn’t on the menu saved on this computer/)).toBeTruthy();
+    render(<LocalPlan catalog={CATALOG} outings={[]} openMeal="nope" />);
+    expect((await screen.findByRole('button', { name: /^Breakfast/ })).getAttribute('aria-expanded')).toBe('false');
   });
 });

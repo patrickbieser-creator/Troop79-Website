@@ -7,7 +7,11 @@
  * Title line: the h1 is the live menu name + Save / Discard (the public
  * save-button standard — dirty-gated, "Saved" when clean, a new menu's first
  * save is "Save menu"). Basics: name, where you're cooking, outing, one line of
- * dialers, the budget. Meals: one list card per day, one row per meal.
+ * dialers, the budget. Meals: one list card per day, one row per meal; a
+ * meal's name opens it INLINE (MealPanel — Patrick, 2026-10-03, the separate
+ * meal page was too many clicks). Everything on the page is one draft with one
+ * Save; one Total to buy / Per person switch above the meals sets every open
+ * meal's amounts and the meal costs. `openMeal` (?meal=) opens one on load.
  * Shopping (right): the menu total and the budget readout; the merged
  * cross-meal list is the Shopping tab (slice 5).
  *
@@ -17,12 +21,12 @@
  * are saved, dirty-gated edits like any other. Unsaved edits are guarded by
  * useLeaveGuard (reload / close and in-app links).
  *
- * `readOnly` (a leader looking at a scout's menu): the same page with values as
- * text — no Save / Discard, inputs, dialers, add / remove / ⋯ menus or leave guard.
- * The meal rows are plain links and the shopping list is one link away.
+ * `readOnly` (a leader, parent or shared viewer): the same page with values as
+ * text — no Save / Discard, inputs, dialers, add / remove / ⋯ menus or leave
+ * guard. Meals still open inline, read-only; the shopping list is one link away.
  */
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { priceText as money } from '@/lib/menu-monster/units';
@@ -39,6 +43,9 @@ import { MAX_MENU_DAYS, MAX_MENU_MEALS, MENU_CONTEXTS, MAX_MENU_NAME, menuNameEr
 import { DIET_ORDER, budgetState, dayLabel, mealTitle, menuCost, outingDayCount, type Outing } from '@/lib/menu-monster/menu-view';
 import type { CreateResult, MenuStore, SaveResult } from '@/lib/menu-monster/menu-store';
 import { serverMenuStore } from './server-menu-store';
+import { MealPanel } from './meal-panel';
+import { overlayNewIngredients, type NewIngredient } from '@/lib/menu-monster/scout-ingredients';
+import type { AmountView } from '@/lib/menu-monster/ingredient-rows';
 import { RowMenu } from './row-menu';
 import { RecipeLibraryDialog } from './recipe-library-dialog';
 import { ReadOnlyLine } from './read-only-line';
@@ -69,9 +76,11 @@ export interface PlanTabProps {
   store?: MenuStore;
   /** The title's heading level: the hub shows this under the page's own h1. */
   titleAs?: 'h1' | 'h2';
+  /** A meal to open on load (?meal=, the old meal-page links redirect here). */
+  openMeal?: string | null;
 }
 
-export function PlanTab({ catalog, menuId, menu: initial, updatedAt, outings, tabs, readOnly = false, plannedBy = null, aside, store: storeProp, titleAs: Title = 'h1' }: PlanTabProps) {
+export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt, outings, tabs, readOnly = false, plannedBy = null, aside, store: storeProp, titleAs: Title = 'h1', openMeal = null }: PlanTabProps) {
   const router = useRouter();
   const store = useMemo(() => storeProp ?? serverMenuStore(menuId), [storeProp, menuId]);
   const { canSave } = store.caps;
@@ -83,12 +92,16 @@ export function PlanTab({ catalog, menuId, menu: initial, updatedAt, outings, ta
   const [justSaved, setJustSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [nameError, setNameError] = useState<string | null>(null);
-  const [navWarn, setNavWarn] = useState<string | null>(null);
   const [status, setStatus] = useState('');
+  /** Meals open inline (all closed on load, unless ?meal= names one). */
+  const [openMeals, setOpenMeals] = useState<ReadonlySet<string>>(() => new Set(openMeal && initial.meals.some((m) => m.id === openMeal) ? [openMeal] : []));
+  const [view, setView] = useState<AmountView>('total');
+  // Release C: ingredients the scout typed in on this page, until the next load brings them in the catalog.
+  const [typed, setTyped] = useState<NewIngredient[]>([]);
+  const catalog = useMemo(() => overlayNewIngredients(catalogProp, typed), [catalogProp, typed]);
   /** The day whose recipe library popup is open, or null. */
   const [libraryDay, setLibraryDay] = useState<number | null>(null);
   const nameRef = useRef<HTMLInputElement | null>(null);
-  const warnRef = useRef<HTMLDivElement | null>(null);
 
   const linked = outings.find((o) => o.id === menu.calendarEntryId) ?? null;
   const days = menu.dayCount;
@@ -100,12 +113,6 @@ export function PlanTab({ catalog, menuId, menu: initial, updatedAt, outings, ta
   const budget = budgetState({ perSpent: cost.perPersonMeal }, menu.budgetPerPersonMeal);
 
   useLeaveGuard(dirty && !readOnly);
-
-  // A dirty meal-row click opens the "save first" notice; move focus to it so
-  // keyboard and screen-reader users land on what just appeared.
-  useEffect(() => {
-    if (navWarn) warnRef.current?.focus();
-  }, [navWarn]);
 
   const edit = (f: (m: Menu) => Menu) => {
     setMenu(f);
@@ -147,46 +154,58 @@ export function PlanTab({ catalog, menuId, menu: initial, updatedAt, outings, ta
   };
 
   /* ---- Meals ---- */
+  const openMeal$ = (id: string) => setOpenMeals((cur) => new Set(cur).add(id));
+  const toggleMeal = (id: string) =>
+    setOpenMeals((cur) => {
+      const next = new Set(cur);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+  /** A meal panel's change: the whole next meal, into the one draft. */
+  const setMeal = (next: MenuMeal) => edit((m) => ({ ...m, meals: m.meals.map((x) => (x.id === next.id ? next : x)) }));
   /** Drop a recipe into the day's meal of that slot, creating the meal if the day lacks it. */
   const addRecipe = (day: number, slot: Plan['meal'], recipeId: string) => {
     const existing = menu.meals.find((m) => m.day === day && m.slot === slot);
     if (!existing && menu.meals.length >= MAX_MENU_MEALS) return;
     if (existing?.recipeIds.includes(recipeId)) return;
+    const mealId = existing?.id ?? newId();
     edit((m) => {
       const here = m.meals.find((x) => x.day === day && x.slot === slot);
       if (here) return { ...m, meals: m.meals.map((x) => (x === here ? { ...x, recipeIds: [...x.recipeIds, recipeId] } : x)) };
-      const meal: MenuMeal = { id: newId(), day, slot, headcount: null, recipeIds: [recipeId], recipeEdits: {} };
+      const meal: MenuMeal = { id: mealId, day, slot, headcount: null, recipeIds: [recipeId], recipeEdits: {} };
       return { ...m, meals: [...m.meals, meal] };
     });
+    openMeal$(mealId);
     const name = catalog.recipes.find((r) => r.id === recipeId)?.name ?? 'Recipe';
-    setStatus(`${name} added to ${mealTitle(menu.startDate, day, slot)}. Save to keep it.`);
+    setStatus(`${name} added to ${mealTitle(menu.startDate, day, slot)}.`);
   };
-  /** An empty meal for the slot (if the day lacks it), then the meal page — via the save-first notice. */
+  /** An empty meal for the slot (if the day lacks it), opened inline. */
   const planMeal = (day: number, slot: Plan['meal']) => {
     const existing = menu.meals.find((m) => m.day === day && m.slot === slot);
     if (existing) {
-      setNavWarn(existing.id);
+      openMeal$(existing.id);
       return;
     }
     if (menu.meals.length >= MAX_MENU_MEALS) return;
     const meal: MenuMeal = { id: newId(), day, slot, headcount: null, recipeIds: [], recipeEdits: {} };
     edit((m) => ({ ...m, meals: [...m.meals, meal] }));
-    setStatus(`${mealTitle(menu.startDate, day, slot)} added. Save to keep it.`);
-    setNavWarn(meal.id);
+    openMeal$(meal.id);
   };
-  /** The popup closed: focus goes back to the day's Search recipes, unless a save-first notice took it. */
+  /** The popup closed: focus goes back to the day's Search recipes. */
   const closeLibrary = (day: number) => {
     setLibraryDay(null);
-    requestAnimationFrame(() => {
-      if (!warnRef.current?.contains(document.activeElement)) document.getElementById(`mm-lib-${day}`)?.focus();
-    });
+    requestAnimationFrame(() => document.getElementById(`mm-lib-${day}`)?.focus());
   };
-  const removeMeal = (id: string) => edit((m) => ({ ...m, meals: m.meals.filter((x) => x.id !== id) }));
+  /** The row (and its focused ⋯) goes away: focus moves to the day's Search recipes. */
+  const removeMeal = (id: string, day: number) => {
+    edit((m) => ({ ...m, meals: m.meals.filter((x) => x.id !== id) }));
+    requestAnimationFrame(() => document.getElementById(`mm-lib-${day}`)?.focus());
+  };
   const addDay = () => edit((m) => ({ ...m, dayCount: Math.min(MAX_MENU_DAYS, m.dayCount + 1) }));
   const removeLastDay = () => edit((m) => ({ ...m, dayCount: Math.max(1, m.dayCount - 1) }));
 
   /* ---- Save ---- */
-  async function save(thenOpen?: string): Promise<boolean> {
+  async function save(): Promise<boolean> {
     const bad = menuNameError(menu.name);
     if (bad) {
       setNameError(bad);
@@ -209,9 +228,9 @@ export function PlanTab({ catalog, menuId, menu: initial, updatedAt, outings, ta
       return false;
     }
     setSaved({ menu: sent, key: JSON.stringify(sent) });
-    setNavWarn(null);
     if (isNew && 'id' in res) {
-      const href = store.afterCreate(res.id, thenOpen);
+      // The page is replaced by the saved menu's own URL; the first open meal stays open there.
+      const href = store.afterCreate(res.id, [...openMeals][0]);
       if (href) {
         // Stay "Saving…" — the page is replaced by the saved menu's own URL.
         router.replace(href);
@@ -225,7 +244,6 @@ export function PlanTab({ catalog, menuId, menu: initial, updatedAt, outings, ta
     setSaving(false);
     if ('updatedAt' in res) setVersion(res.updatedAt ?? version);
     setJustSaved(true);
-    if (thenOpen) router.push(store.hrefs.meal(thenOpen));
     return true;
   }
 
@@ -233,11 +251,11 @@ export function PlanTab({ catalog, menuId, menu: initial, updatedAt, outings, ta
     setMenu(saved.menu);
     setNameError(null);
     setError(null);
-    setNavWarn(null);
   }
 
-  const mealHref = store.hrefs.meal;
-  const clean = !isNew && !dirty;
+  // Release C typed-ins and 4C "Share this version" belong to a signed-in scout's saved menu.
+  const canTypeIn = !storeProp && menuId != null && !readOnly;
+  const shareVersionMenuId = canSave && !storeProp && menuId != null && !isNew && !dirty ? menuId : null;
   const dialerLabel = (k: RestrictionKey) => RESTRICTION_BY_KEY[k].label;
 
   return (
@@ -263,20 +281,6 @@ export function PlanTab({ catalog, menuId, menu: initial, updatedAt, outings, ta
       {error && (
         <Notice tone="error" className={s.notice}>
           {error}
-        </Notice>
-      )}
-      {navWarn && (
-        <Notice tone="warning" role="alert" tabIndex={-1} ref={warnRef} className={s.notice}>
-          <strong>Save your changes before opening a meal</strong>
-          <div>{canSave ? 'The meal opens your saved menu.' : 'The meal opens the menu saved on this computer.'}</div>
-          <div className={s.noticeActions}>
-            <Button size="sm" variant="primary" disabled={saving} onClick={() => void save(navWarn)}>
-              Save and open the meal
-            </Button>
-            <Button size="sm" variant="secondary" onClick={() => setNavWarn(null)}>
-              Stay here
-            </Button>
-          </div>
         </Notice>
       )}
 
@@ -378,10 +382,24 @@ export function PlanTab({ catalog, menuId, menu: initial, updatedAt, outings, ta
       <div className={s.grid}>
         <div className={s.col}>
           <section aria-labelledby="mm-meals-h">
-            <h2 id="mm-meals-h" className={s.heading}>
-              Meals
-            </h2>
-            <p className={s.statusLine} aria-live="polite">
+            <div className={s.secHead}>
+              <h2 id="mm-meals-h" className={s.heading}>
+                Meals
+              </h2>
+              <div className={s.seg} role="group" aria-label="Show amounts as">
+                {(
+                  [
+                    ['total', 'Total to buy'],
+                    ['person', 'Per person']
+                  ] as const
+                ).map(([k, label]) => (
+                  <button key={k} type="button" className={s.segBtn} aria-pressed={view === k} onClick={() => setView(k)}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <p className={status ? s.statusLine : s.srOnly} aria-live="polite">
               {status}
             </p>
             {Array.from({ length: days }, (_, d) => {
@@ -402,30 +420,45 @@ export function PlanTab({ catalog, menuId, menu: initial, updatedAt, outings, ta
                     {meals.map((meal) => {
                       const names = meal.recipeIds.map((id) => catalog.recipes.find((r) => r.id === id)?.name).filter(Boolean);
                       const label = slotLabel(meal.slot);
-                      const rowName = clean || readOnly ? (
-                        <Link className={s.rowName} href={mealHref(meal.id)}>
-                          {label}
-                        </Link>
-                      ) : (
-                        <button type="button" className={s.rowName} onClick={() => setNavWarn(meal.id)}>
-                          {label}
-                        </button>
-                      );
+                      const open = openMeals.has(meal.id);
+                      const panel = `mm-meal-${meal.id}`;
+                      const mealCost = cost.byMeal[meal.id] ?? 0;
                       return (
                         <li key={meal.id} className={s.row}>
                           <div className={s.rowMain}>
-                            {rowName}
-                            <span className={s.meta}>{names.length ? names.join(', ') : 'Nothing picked yet'}</span>
+                            <button
+                              type="button"
+                              className={s.rowName}
+                              aria-label={`${label}, ${dayLabel(menu.startDate, d)}`}
+                              aria-expanded={open}
+                              aria-controls={open ? panel : undefined}
+                              onClick={() => toggleMeal(meal.id)}
+                            >
+                              {label}
+                              <span className={s.chev} aria-hidden="true">
+                                ›
+                              </span>
+                            </button>
+                            {!open && <span className={s.meta}>{names.length ? names.join(', ') : 'Nothing picked yet'}</span>}
                           </div>
-                          <div className={s.cost}>{meal.recipeIds.length ? money(cost.byMeal[meal.id] ?? 0) : ''}</div>
+                          <div className={s.cost}>{meal.recipeIds.length ? money(view === 'total' ? mealCost : mealCost / (meal.headcount ?? menu.headcount)) : ''}</div>
                           {!readOnly && (
-                            <RowMenu
-                              label={`More for Day ${d + 1} ${label.toLowerCase()}`}
-                              items={[
-                                clean ? { label: 'Open', href: mealHref(meal.id) } : { label: 'Open', onSelect: () => setNavWarn(meal.id) },
-                                { label: 'Remove', danger: true, onSelect: () => removeMeal(meal.id) }
-                              ]}
-                            />
+                            <RowMenu label={`More for Day ${d + 1} ${label.toLowerCase()}`} items={[{ label: 'Remove meal', danger: true, onSelect: () => removeMeal(meal.id, d) }]} />
+                          )}
+                          {open && (
+                            <div id={panel} className={s.inset}>
+                              <MealPanel
+                                catalog={catalog}
+                                menu={menu}
+                                meal={meal}
+                                view={view}
+                                readOnly={readOnly}
+                                onChange={setMeal}
+                                canTypeIn={canTypeIn}
+                                onTyped={(n) => setTyped((t) => [...t, n])}
+                                shareVersionMenuId={shareVersionMenuId}
+                              />
+                            </div>
                           )}
                         </li>
                       );

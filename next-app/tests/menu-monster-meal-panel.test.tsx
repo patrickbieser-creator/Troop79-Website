@@ -7,12 +7,13 @@ import { PLAN_STORAGE_KEY } from '../src/lib/menu-monster/legacy-draft';
 import type { Menu } from '../src/lib/menu-monster/menus';
 
 /**
- * Scout Workspace slice 4b: the meal page, a port of meal.html. One quiet row
- * per recipe (its name opens the ingredient list), a dashed search to add or
- * swap a recipe, a People dialer fed from the menu, a Total / Per person
- * switch, a dirty-gated Save + Discard on the title line. No shopping controls
- * here (they live on the Shopping tab, slice 5) and a meal's package choices,
- * quantities and sources ride through Save untouched.
+ * A meal, open inline on the Plan tab (MealPanel — "Meals inline on the Plan
+ * tab", 2026-10-03; it was the meal page, a port of meal.html, and these are
+ * that page's tests moved over). One quiet row per recipe (its name opens the
+ * ingredient list), a dashed search to add or swap a recipe, a People dialer fed
+ * from the menu, the Plan tab's Total / Per person switch, and the Plan tab's
+ * one dirty-gated Save + Discard. No shopping controls here (Shopping tab) and a
+ * menu's package choices, quantities and sources ride through Save untouched.
  */
 
 const router = { replace: vi.fn(), push: vi.fn(), refresh: vi.fn() };
@@ -25,7 +26,7 @@ vi.mock('../src/app/(public)/library/_tools/menu-monster/menu-actions', () => ({
   addMenuIngredientAction: (...a: unknown[]) => addMenuIngredientAction(...a)
 }));
 
-import { MealEditor } from '../src/app/(public)/library/menu-monster/menus/_components/meal-editor';
+import { PlanTab } from '../src/app/(public)/library/menu-monster/menus/_components/plan-tab';
 
 const VERSION = '2026-10-02T12:00:00.000Z';
 const LANDED = { ok: true, updatedAt: '2026-10-02T13:00:00.000Z' };
@@ -46,10 +47,16 @@ const menu = (): Menu => ({
   ]
 });
 
-const editor = (mealId = 'm1', m: Menu = menu()) => <MealEditor catalog={CATALOG} menuId="menu-1" menu={m} mealId={mealId} updatedAt={VERSION} />;
-const people = () => screen.getByRole('spinbutton', { name: /^People/ }) as HTMLInputElement;
-const search = () => screen.getByRole('combobox');
-const rowFor = (name: string) => screen.getByRole('button', { name: new RegExp(`^${name}`) }).closest('li') as HTMLElement;
+let openId = 'm1';
+/** The Plan tab with one meal open (?meal=), the way the meal page's links land now. */
+const editor = (mealId = 'm1', m: Menu = menu()) => {
+  openId = mealId;
+  return <PlanTab catalog={CATALOG} menuId="menu-1" menu={m} updatedAt={VERSION} outings={[]} openMeal={mealId} />;
+};
+const panel = () => within(document.getElementById(`mm-meal-${openId}`) as HTMLElement);
+const people = () => panel().getByRole('spinbutton', { name: /^People/ }) as HTMLInputElement;
+const search = () => panel().getByRole('combobox');
+const rowFor = (name: string) => panel().getByRole('button', { name: new RegExp(`^${name}`) }).closest('li') as HTMLElement;
 const addRecipe = async (user: ReturnType<typeof userEvent.setup>, text: string, option: string) => {
   await user.click(search());
   await user.type(search(), text);
@@ -64,14 +71,14 @@ describe('MealEditor', () => {
   });
 
   describe('page', () => {
-    it('Title_IsTheDayAndSlot_AsTheMealsOwnH1', () => {
+    it('RecipeList_IsNamedForTheDayAndSlot', () => {
       render(editor());
-      expect(screen.getByRole('heading', { level: 1, name: 'Day 1 breakfast' })).toBeTruthy();
+      expect(screen.getByRole('list', { name: 'Recipes in Day 1 breakfast' })).toBeTruthy();
     });
 
-    it('Title_IsTheWeekdayAndSlot_WhenTheMenuHasADate', () => {
+    it('RecipeList_IsNamedForTheWeekday_WhenTheMenuHasADate', () => {
       render(editor('m1', { ...menu(), startDate: '2026-10-10' }));
-      expect(screen.getByRole('heading', { level: 1, name: 'Saturday breakfast' })).toBeTruthy();
+      expect(screen.getByRole('list', { name: 'Recipes in Saturday breakfast' })).toBeTruthy();
     });
 
     it('BackLink_IsNotRenderedHere_TheKickerCarriesIt', () => {
@@ -114,15 +121,9 @@ describe('MealEditor', () => {
       expect([screen.getByRole('button', { name: 'Per person' }).getAttribute('aria-pressed'), screen.getByRole('button', { name: 'Total to buy' }).getAttribute('aria-pressed')]).toEqual(['true', 'false']);
     });
 
-    it('Footer_SaysWhatTheMealCosts_AndPerPerson', () => {
-      render(editor());
-      expect(screen.getByText(/This meal:/).textContent).toBe('This meal: $14.98, $1.87 a person.');
-    });
 
-    it('Footer_IsAbsent_WhenNothingIsPicked', () => {
-      render(editor('m2'));
-      expect(screen.queryByText(/This meal:/)).toBeNull();
-    });
+
+
 
     it('EmptyMeal_SaysSoAndPointsAtTheSearch', () => {
       render(editor('m2'));
@@ -202,7 +203,7 @@ describe('MealEditor', () => {
       render(editor());
       await user.click(search());
       await user.type(search(), 'Sand');
-      expect(screen.queryByRole('option')).toBeNull();
+      expect(panel().queryByRole('option')).toBeNull();
     });
 
     it('Search_LeavesOutRecipesAlreadyOnTheMeal', async () => {
@@ -284,7 +285,7 @@ describe('MealEditor', () => {
       await user.click(screen.getByRole('button', { name: 'More for Bacon' }));
       await user.click(screen.getByRole('button', { name: 'Swap recipe…' }));
       await user.keyboard('{Escape}');
-      expect(screen.getByRole('combobox', { name: 'Add a recipe' })).toBeTruthy();
+      expect(screen.getByRole('combobox', { name: 'Add a recipe to Day 1 breakfast' })).toBeTruthy();
     });
 
     it('Remove_DropsTheRecipe_AndOffersUndoInTheStatusLine', async () => {
@@ -292,7 +293,7 @@ describe('MealEditor', () => {
       render(editor());
       await user.click(screen.getByRole('button', { name: 'More for Bacon' }));
       await user.click(screen.getByRole('button', { name: 'Remove' }));
-      const status = screen.getByRole('status');
+      const status = panel().getByRole('status');
       expect([screen.queryByRole('button', { name: 'Bacon' }), status.textContent]).toEqual([null, 'Bacon removed. Undo']);
     });
 
@@ -324,9 +325,9 @@ describe('MealEditor', () => {
   });
 
   describe('people', () => {
-    it('People_StartsAtTheMenusNumber_WithAQuietSourceNote', () => {
+    it('People_StartsAtTheMenusNumber_WithNoResetOffered', () => {
       render(editor());
-      expect([people().value, screen.getByText(/same as the menu/).textContent]).toEqual(['8', '· same as the menu']);
+      expect([people().value, screen.queryByRole('button', { name: /^Reset to/ })]).toEqual(['8', null]);
     });
 
     it('People_CanBeOverridden_ForJustThisMeal', async () => {
@@ -347,7 +348,6 @@ describe('MealEditor', () => {
       await user.clear(people());
       await user.type(people(), '12');
       await user.tab();
-      expect(screen.getByText(/your menu says 8/)).toBeTruthy();
       expect(screen.getByRole('button', { name: 'Reset to 8' })).toBeTruthy();
     });
 
@@ -392,11 +392,12 @@ describe('MealEditor', () => {
       expect(within(rowFor('Bacon')).getByText('$7.49')).toBeTruthy();
     });
 
-    it('Diets_AreAQuietSourceNote_OnThePeopleLine', () => {
+    it('Diets_AreNotRepeatedInTheMeal_TheMenuDialersAboveCarryThem', () => {
+      // No redundant text (Patrick's rule): on one page the menu's diet dialers are right above the meal.
       const m = menu();
       m.restrictions = { gf: 2, nut: 0, dairy: 0, veg: 1 };
       render(editor('m1', m));
-      expect(screen.getByText(/Gluten-free: 2/).textContent).toContain('Gluten-free: 2 · Vegetarian: 1 (from the menu)');
+      expect(panel().queryByText(/Gluten-free/)).toBeNull();
     });
 
     it('Diets_AreNotNoted_WhenTheMenuHasNone', () => {
@@ -587,10 +588,12 @@ describe('MealEditor recipe edits', () => {
   it('Edit_LowersTheMealCost_WhenAnIngredientIsLeftOut', async () => {
     const user = userEvent.setup();
     render(editor());
-    const before = screen.getByText(/This meal:/).textContent;
+    // The meal's cost is its Plan tab row's right column now (no footer).
+    const cost = () => (screen.getByRole('button', { name: /^Breakfast/ }).closest('li') as HTMLElement).querySelector('[class*="cost"]')?.textContent;
+    const before = cost();
     await openBacon(user);
     await leaveOutBacon(user);
-    expect(screen.getByText(/This meal:/).textContent).not.toBe(before);
+    expect(cost()).not.toBe(before);
   });
 
   it('Save_SendsTheRecipeEditsInTheMeal', async () => {
@@ -669,7 +672,7 @@ describe('MealEditor recipe edits', () => {
     render(editor());
     await openBacon(user);
     await leaveOutBacon(user);
-    expect(screen.getByRole('status').textContent).toContain('Bacon left out of your version.');
+    expect(panel().getByRole('status').textContent).toContain('Bacon left out of your version.');
   });
 });
 
@@ -741,7 +744,8 @@ describe('MealEditor typed-in ingredients (release C)', () => {
   it('LocalMenu_DoesNotOfferANewIngredient', async () => {
     const user = userEvent.setup();
     const store = { caps: { canSave: false, canPay: false, canReport: false }, hrefs: { plan: '/p', shopping: '/s', meal: () => '/m' }, load: () => null, save: vi.fn(), create: vi.fn(), afterCreate: () => '/' };
-    render(<MealEditor catalog={CATALOG} menu={menu()} mealId="m1" updatedAt={null} store={store as never} />);
+    openId = 'm1';
+    render(<PlanTab catalog={CATALOG} menuId={null} menu={menu()} updatedAt={null} outings={[]} store={store as never} openMeal="m1" />);
     await openBacon(user);
     await user.type(screen.getByRole('combobox', { name: 'Add an ingredient to your version' }), 'Gochujang');
     expect(screen.queryByRole('option', { name: 'Add “Gochujang” as a new ingredient' })).toBeNull();

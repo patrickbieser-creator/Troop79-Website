@@ -17,8 +17,8 @@ import { MenuHeader, MenuTabs, NO_INDEX, listCrumb, loadViewableMenu, menuViewer
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Menu plan — Menu Monster', robots: NO_INDEX };
 
-export default async function MenuPlanPage({ params }: { params: Promise<{ menuId: string }> }) {
-  const { menuId } = await params;
+export default async function MenuPlanPage({ params, searchParams }: { params: Promise<{ menuId: string }>; searchParams: Promise<{ meal?: string }> }) {
+  const [{ menuId }, { meal }] = await Promise.all([params, searchParams]);
   const view = await loadViewableMenu(menuId, await menuViewer());
   if (!view) notFound();
   const { stored, readOnly, plannedBy, catalog } = view;
@@ -38,6 +38,7 @@ export default async function MenuPlanPage({ params }: { params: Promise<{ menuI
           plannedBy={plannedBy}
           tabs={<MenuTabs menuId={stored.id} active="plan" access={view.access} />}
           aside={<ViewerAside view={view} page="plan" />}
+          openMeal={typeof meal === 'string' ? meal : null}
         />
       </PageShell>
     </>

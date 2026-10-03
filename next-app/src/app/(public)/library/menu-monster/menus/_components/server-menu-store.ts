@@ -17,7 +17,8 @@ export function serverMenuStore(menuId: string | null, initial: StoredState | nu
   const base = `${MENUS_HREF}/${menuId}`;
   return {
     caps: { canSave: true, canPay: true, canReport: true },
-    hrefs: { plan: base, shopping: `${base}/shopping`, meal: (mealId) => `${base}/meals/${mealId}` },
+    // A meal opens inline on the Plan tab (2026-10-03); the old meal URL redirects here.
+    hrefs: { plan: base, shopping: `${base}/shopping`, meal: (mealId) => `${base}?meal=${encodeURIComponent(mealId)}` },
     load: () => initial,
     save: async (menu, version) => {
       if (menuId === null) return { ok: false, error: 'Save this menu first.' };
@@ -25,6 +26,6 @@ export function serverMenuStore(menuId: string | null, initial: StoredState | nu
       return res.ok ? { ok: true, updatedAt: res.updatedAt } : res;
     },
     create: (menu) => createMenuAction(menu),
-    afterCreate: (id, openMealId) => `${MENUS_HREF}/${id}${openMealId ? `/meals/${openMealId}` : ''}`
+    afterCreate: (id, openMealId) => `${MENUS_HREF}/${id}${openMealId ? `?meal=${encodeURIComponent(openMealId)}` : ''}`
   };
 }

@@ -4,7 +4,7 @@
  * The local menu's pages, as thin client shells (IA correction, 2026-10-02).
  * A visitor's or leader's menu lives in this browser, so these read it after
  * mount (nothing renders before, which avoids a hydration mismatch) and hand it
- * to the SAME Plan, meal and Shopping components a scout's saved menu uses —
+ * to the SAME Plan and Shopping components a scout's saved menu uses —
  * only the store differs (local-menu-store.ts).
  *
  * Two tabs: the `storage` event reloads this tab from the other tab's write
@@ -20,7 +20,6 @@ import type { Outing } from '@/lib/menu-monster/menu-view';
 import { onLocalMenuChange, readLocalMenu } from '@/lib/menu-monster/local-menu';
 import { LOCAL_MENU_HREFS, localMenuStore } from '@/lib/menu-monster/local-menu-store';
 import { TabStrip } from '@/app/_components/tab-strip';
-import { MealEditor } from './meal-editor';
 import { PlanTab } from './plan-tab';
 import { ShoppingTab } from './shopping-tab';
 import s from './workspace.module.css';
@@ -71,7 +70,7 @@ function LocalTabs({ active }: { active: 'plan' | 'shopping' }) {
 }
 
 /** The local Plan tab. On the hub (`hub`) it sits under the page's own h1 and has no tab strip. */
-export function LocalPlan({ catalog, outings, hub = false }: { catalog: Catalog; outings: Outing[]; hub?: boolean }) {
+export function LocalPlan({ catalog, outings, hub = false, openMeal = null }: { catalog: Catalog; outings: Outing[]; hub?: boolean; openMeal?: string | null }) {
   const store = useMemo(() => localMenuStore(catalog), [catalog]);
   const { ready, menu, dropped, rev } = useLocalMenu(catalog);
   if (!ready) return null;
@@ -88,6 +87,7 @@ export function LocalPlan({ catalog, outings, hub = false }: { catalog: Catalog;
         store={store}
         titleAs={hub ? 'h2' : 'h1'}
         tabs={!hub && menu ? <LocalTabs active="plan" /> : undefined}
+        openMeal={openMeal}
       />
     </>
   );
@@ -113,19 +113,6 @@ export function LocalShopping({ catalog }: { catalog: Catalog }) {
     <>
       <DroppedLine n={dropped} />
       <ShoppingTab key={rev} catalog={catalog} menu={menu} updatedAt={null} snapshot={null} store={store} tabs={<LocalTabs active="shopping" />} />
-    </>
-  );
-}
-
-export function LocalMeal({ catalog, mealId }: { catalog: Catalog; mealId: string }) {
-  const store = useMemo(() => localMenuStore(catalog), [catalog]);
-  const { ready, menu, dropped, rev } = useLocalMenu(catalog);
-  if (!ready) return null;
-  if (!menu || !menu.meals.some((m) => m.id === mealId)) return <Missing text="That meal isn’t on the menu saved on this computer." />;
-  return (
-    <>
-      <DroppedLine n={dropped} />
-      <MealEditor key={rev} catalog={catalog} menu={menu} mealId={mealId} updatedAt={null} store={store} />
     </>
   );
 }

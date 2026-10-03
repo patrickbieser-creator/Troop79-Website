@@ -233,6 +233,17 @@ The prototype's functional IA did not fully reach production. Patrick's calls:
 - **Audit:** price changes under `library` (via `recordAuditAs` for scouts); menu actions stay `menus`. Read `mm_price_history` filtered/limited, never whole (1000-row cap).
 - **Owed from Phase 1:** people-merge must re-point `mm_menus.owner_person_id` (and now `mm_price_history` people columns, `mm_packages.added_by_person_id`); today a merge of a person who owns a menu fails on RESTRICT.
 
+### Meals inline on the Plan tab (Patrick, 2026-10-03 — REVERSES Decision 11's meal drill-in and IA correction #3)
+
+"Too many clicks." The separate meal page goes; each meal opens inline on the Plan tab.
+- **Clicking a meal name toggles its recipe list** open / closed (all closed on load). Inside, a recipe name still toggles its ingredient list (menu-edit mode, typed-ins included). Each meal keeps its People dialer + Reset to the menu's number, recipe ⋯ (swap / remove), the dashed recipe search / library.
+- **One Total to buy / Per person switch** above the meals, for every open meal and the totals.
+- **One draft, one Save / Discard** — the Plan tab's (save standard). The meal page's own save, "Saved to …" and Undo move to the Plan tab's single status line.
+- Same component for the saved menu, the local (this-computer) menu and the read-only views (leader / parent / shared).
+- `/menus/[id]/meals/[mealId]` and `/menus/local/meals/[mealId]` redirect to the Plan tab with that meal open (`?meal=`). "Add to Friday" and create-from-pick open the meal inline instead of navigating.
+- Tests: port the meal-editor suite to the Plan tab; the access-matrix "Meal page" cases become redirect cases.
+- Then delete the retired single-meal planner (paused, untouched).
+
 ### Release C design (2026-10-03; tech-lead + troop79-specialist review; Patrick decided the one conflict)
 
 **Supersedes the Phase 2 design's free_items / `new:` overlay.** Menu typed-ins REUSE 4B's real typed-in ingredients (one system, simplify-don't-layer): a real `x-` `mm_ingredients` row + one `xp-` package, leader Match / Keep as new and alias resolution unchanged.

@@ -26,7 +26,6 @@ vi.mock('../src/app/(public)/library/_tools/menu-monster/menu-actions', () => ({
 }));
 
 import { PlanTab } from '../src/app/(public)/library/menu-monster/menus/_components/plan-tab';
-import { MealEditor } from '../src/app/(public)/library/menu-monster/menus/_components/meal-editor';
 import { ShoppingTab } from '../src/app/(public)/library/menu-monster/menus/_components/shopping-tab';
 
 const OUTINGS: Outing[] = [{ id: 7, title: 'Fall Camporee', startDate: '2026-10-09', endDate: '2026-10-11', category: 'Campout / Overnight' }];
@@ -51,7 +50,8 @@ const menu = (over: Partial<Menu> = {}): Menu => ({
 });
 
 const plan = () => <PlanTab catalog={CATALOG} menuId="menu-1" menu={menu()} updatedAt={VERSION} outings={OUTINGS} readOnly plannedBy="Sam K." />;
-const meal = () => <MealEditor catalog={CATALOG} menuId="menu-1" menu={menu()} mealId="m1" updatedAt={VERSION} readOnly plannedBy="Sam K." />;
+/** A meal open inline on the read-only Plan tab (meals inline, 2026-10-03). */
+const meal = (m: Menu = menu()) => <PlanTab catalog={CATALOG} menuId="menu-1" menu={m} updatedAt={VERSION} outings={OUTINGS} readOnly plannedBy="Sam K." openMeal="m1" />;
 const shopping = () => (
   <ShoppingTab catalog={CATALOG} menuId="menu-1" menu={menu()} updatedAt={VERSION} snapshot={buildSnapshot(menu(), CATALOG)} readOnly plannedBy="Sam K." />
 );
@@ -90,13 +90,15 @@ describe('Plan tab, read-only', () => {
     expect(screen.getByText('Camp · Fall Camporee')).toBeTruthy();
   });
 
-  it('Leader_OpensAMeal_FromItsRowLink', () => {
+  it('Leader_OpensAMeal_Inline_FromItsName', async () => {
     render(plan());
-    expect(screen.getByRole('link', { name: 'Breakfast' }).getAttribute('href')).toBe('/library/menu-monster/menus/menu-1/meals/m1');
+    await userEvent.setup().click(screen.getByRole('button', { name: /^Breakfast/ }));
+    expect(screen.getByRole('list', { name: 'Recipes in Day 1 breakfast' })).toBeTruthy();
+    noEditing();
   });
 });
 
-describe('Meal page, read-only', () => {
+describe('A meal open inline, read-only', () => {
   it('Leader_SeesNoEditingControls_OnTheMealPage', () => {
     render(meal());
     noEditing();
@@ -106,12 +108,12 @@ describe('Meal page, read-only', () => {
   it('Leader_SeesPlannedByAndPeopleAsText_OnTheMealPage', () => {
     render(meal());
     expect(screen.getByText('Planned by Sam K. · Read-only')).toBeTruthy();
-    expect(screen.getByText(/People: 8/)).toBeTruthy();
+    expect(screen.getByText(/^People: 8$/)).toBeTruthy();
   });
 
   it('Leader_OpensARecipesIngredients_AsPlainRows', async () => {
     render(meal());
-    await userEvent.setup().click(screen.getAllByRole('button', { expanded: false })[0]);
+    await userEvent.setup().click(screen.getByRole('button', { name: /^Bacon/ }));
     expect(screen.getAllByRole('listitem').length).toBeGreaterThan(2);
     noEditing();
     expect(screen.queryByRole('button', { name: /Add an ingredient/ })).toBeNull();
@@ -146,7 +148,7 @@ describe('Shopping tab, read-only', () => {
   });
 });
 
-describe('Meal page, read-only: the scouts own edits', () => {
+describe('A meal open inline, read-only: the scouts own edits', () => {
   const edited = () =>
     menu({
       meals: [
@@ -156,8 +158,8 @@ describe('Meal page, read-only: the scouts own edits', () => {
     });
 
   it('Leader_SeesLeftOutOnTheRow_TheScoutDropped', async () => {
-    render(<MealEditor catalog={CATALOG} menuId="menu-1" menu={edited()} mealId="m1" updatedAt={VERSION} readOnly plannedBy="Sam K." />);
-    await userEvent.setup().click(screen.getAllByRole('button', { expanded: false })[0]);
+    render(meal(edited()));
+    await userEvent.setup().click(screen.getByRole('button', { name: /^Bacon/ }));
     expect(screen.getByText('Left out')).toBeTruthy();
   });
 });

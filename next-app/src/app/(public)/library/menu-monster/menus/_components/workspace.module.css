@@ -287,6 +287,12 @@
 .chev { display: inline-block; margin-left: var(--sp-2); color: var(--text-meta); transition: transform var(--transition); }
 .rowName[aria-expanded='true'] .chev { transform: rotate(90deg); }
 .inset { flex-basis: 100%; padding: 0 var(--sp-4) var(--sp-2) 0; }
+/* A meal open inline on the Plan tab (2026-10-03): its recipes sit one step in from the meal row,
+   as a plain list on the row's card (no card inside a card — Jenna). */
+.mealPanel { padding: var(--sp-2) 0 var(--sp-1) var(--sp-3); border-left: 2px solid var(--rule); margin-left: var(--sp-1); }
+.mealPanel .card { background: transparent; border: 0; box-shadow: none; }
+.mealPanel .inset { padding-right: 0; }
+@media (max-width: 480px) { .mealPanel { padding-left: var(--sp-2); margin-left: 0; } }
 
 /* Dashed search: a combobox (16px, the iOS no-zoom floor) with a listbox under it. */
 .addInput {

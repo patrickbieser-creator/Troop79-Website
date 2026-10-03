@@ -1,26 +1,13 @@
 /**
- * /library/menu-monster/menus/local/meals/[mealId] — one meal of the unsaved menu
- * kept on this computer. A signed-in scout is sent to the hub.
+ * /library/menu-monster/menus/local/meals/[mealId] — retired 2026-10-03: a meal
+ * opens inline on the Plan tab now (Plans/Menu-Monster-Scout-Workspace.md,
+ * "Meals inline on the Plan tab"). Old links land on the Plan tab with that
+ * meal open.
  */
-import type { Metadata } from 'next';
-import { loadMenuMonsterCatalog } from '@/lib/menu-monster/data';
-import { PageShell } from '@/app/_components/page-shell';
-import { LocalMeal } from '../../../_components/local-menu-shells';
-import { LocalMenuHeader, redirectScoutFromLocal } from '../../../_components/scout-menus';
-
-export const dynamic = 'force-dynamic';
-export const metadata: Metadata = { title: 'Meal — Menu Monster' };
+import { redirect } from 'next/navigation';
+import { LOCAL_MENU_HREFS } from '@/lib/menu-monster/local-menu-store';
 
 export default async function LocalMenuMealPage({ params }: { params: Promise<{ mealId: string }> }) {
   const { mealId } = await params;
-  await redirectScoutFromLocal();
-  const catalog = await loadMenuMonsterCatalog(null);
-  return (
-    <>
-      <LocalMenuHeader current="meal" />
-      <PageShell>
-        <LocalMeal catalog={catalog} mealId={mealId} />
-      </PageShell>
-    </>
-  );
+  redirect(LOCAL_MENU_HREFS.meal(mealId));
 }

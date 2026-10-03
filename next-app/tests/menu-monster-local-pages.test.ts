@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 /**
- * The local menu routes (/menus/local, /local/shopping, /local/meals/[mealId]):
+ * The local menu routes (/menus/local, /local/shopping; /local/meals/[mealId]
+ * redirects to /menus/local?meal= since meals open inline, 2026-10-03):
  * a signed-in scout is redirected to the hub (where the save offer shows);
  * visitors, adults and leaders get the page. Also the server MenuStore adapter:
  * a thin pass-through to the existing create / save actions.
@@ -33,9 +34,8 @@ import { blankMenu } from '../src/lib/menu-monster/menus';
 
 const HUB = 'NEXT_REDIRECT /library/topic/menu-monster';
 const pages: [string, () => Promise<unknown>][] = [
-  ['Plan', () => LocalPlanPage()],
-  ['Shopping', () => LocalShoppingPage()],
-  ['Meal', () => LocalMealPage({ params: Promise.resolve({ mealId: 'm1' }) })]
+  ['Plan', () => LocalPlanPage({ searchParams: Promise.resolve({}) })],
+  ['Shopping', () => LocalShoppingPage()]
 ];
 
 beforeEach(() => {
@@ -62,6 +62,12 @@ describe.each(pages)('Local %s page', (_name, render) => {
   it('Leader_GetsThePage', async () => {
     mocks.actor = { kind: 'identity', label: 'Pat B.', personId: 5, subjectKind: 'adult', capabilities: new Set(['roster.view']) };
     await expect(render()).resolves.toBeTruthy();
+  });
+});
+
+describe('Local meal URL (meals inline, 2026-10-03)', () => {
+  it('OldLocalMealUrl_RedirectsToThePlanTab_WithThatMealOpen', async () => {
+    await expect(LocalMealPage({ params: Promise.resolve({ mealId: 'm1' }) })).rejects.toThrow('NEXT_REDIRECT /library/menu-monster/menus/local?meal=m1');
   });
 });
 
@@ -94,7 +100,7 @@ describe('serverMenuStore', () => {
   it('Scout_MovesToTheNewMenusOwnUrl_AfterACreate', () => {
     const store = serverMenuStore(null);
     expect(store.afterCreate('abc')).toBe('/library/menu-monster/menus/abc');
-    expect(store.afterCreate('abc', 'm1')).toBe('/library/menu-monster/menus/abc/meals/m1');
+    expect(store.afterCreate('abc', 'm1')).toBe('/library/menu-monster/menus/abc?meal=m1');
   });
 
   it('Scout_CanSaveAndPayAndReport_OnAServerMenu', () => {

@@ -16,14 +16,15 @@ import { LocalMenuHeader, redirectScoutFromLocal } from '../_components/scout-me
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Menu plan — Menu Monster' };
 
-export default async function LocalMenuPlanPage() {
+export default async function LocalMenuPlanPage({ searchParams }: { searchParams: Promise<{ meal?: string }> }) {
   await redirectScoutFromLocal();
+  const { meal } = await searchParams;
   const [catalog, outings] = await Promise.all([loadMenuMonsterCatalog(null), loadOutingsWith(createAdminClient(), centralToday())]);
   return (
     <>
       <LocalMenuHeader current="plan" />
       <PageShell>
-        <LocalPlan catalog={catalog} outings={outings} />
+        <LocalPlan catalog={catalog} outings={outings} openMeal={typeof meal === 'string' ? meal : null} />
       </PageShell>
     </>
   );
