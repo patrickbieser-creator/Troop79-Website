@@ -1,0 +1,173 @@
+/**
+ * Scout recipes — data (Plans/Menu-Monster-Scout-Workspace.md, Phase 4A).
+ * `*With(supabase)` against the service role (D-239: mm_* has RLS on and zero
+ * policies). Writes go through the security-definer RPCs from
+ * 20261003150000_mm_scout_recipes.sql, which re-check ownership, the version
+ * token, the cap and the text; this module maps their refusals to outcomes and
+ * writes the audit rows (area 'library', as the scout via recordAuditAs).
+ *
+ * The actor is ALWAYS the verified scout resolved on the server (the action);
+ * nothing here takes a person id from the client.
+ */
+
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { recordAuditAs, type AuditActor } from '@/lib/audit';
+import type { FoodGroup, MealSlot, RecipeStatus } from './types';
+import { creditFor, isScoutRecipeId, newScoutRecipeId, stepsFromText, stepsToText, type ScoutRecipeDraft, type ScoutRecipeLine } from './scout-recipes';
+
+export type ScoutSaveResult =
+  | { status: 'saved'; id: string; updatedAt: string }
+  | { status: 'conflict' | 'not_found' | 'retired' | 'cap' | 'invalid' };
+export type ScoutShareResult = { status: 'shared'; credit: string } | { status: 'not_found' | 'retired' | 'not_ready' };
+export type ScoutDeleteResult = { status: 'deleted' } | { status: 'not_found' | 'shared' | 'in_use' };
+
+export interface ScoutRecipeSummary {
+  id: string;
+  name: string;
+  status: RecipeStatus;
+  mealFit: MealSlot[];
+  sharedAt: string | null;
+  credit: string | null;
+  updatedAt: string;
+}
+
+export interface StoredScoutRecipe {
+  recipe: ScoutRecipeDraft & { id: string };
+  status: RecipeStatus;
+  credit: string | null;
+  sharedAt: string | null;
+  updatedAt: string;
+}
+
+const refusal = (message: string): ScoutSaveResult['status'] => {
+  if (message.includes('MM_STALE')) return 'conflict';
+  if (message.includes('MM_NOT_YOURS')) return 'not_found';
+  if (message.includes('MM_RETIRED')) return 'retired';
+  if (message.includes('MM_RECIPE_CAP')) return 'cap';
+  if (message.includes('MM_BAD_')) return 'invalid';
+  throw new Error(`scout recipe: ${message}`);
+};
+
+async function audit(sb: SupabaseClient, actor: AuditActor, action: string, id: string, summary: string) {
+  await recordAuditAs(sb, actor, { area: 'library', action, entityType: 'scout_recipe', entityId: id, summary });
+}
+
+/** Create (draft.id null) or update the scout's recipe. `expectedUpdatedAt` is the version the editor loaded (null for a new one). */
+export async function saveScoutRecipeWith(
+  sb: SupabaseClient,
+  actor: AuditActor,
+  draft: ScoutRecipeDraft,
+  expectedUpdatedAt: string | null
+): Promise<ScoutSaveResult> {
+  if (actor.personId == null) return { status: 'not_found' };
+  const isNew = draft.id == null;
+  const id = draft.id ?? newScoutRecipeId();
+  const { data, error } = await sb.rpc('mm_save_scout_recipe', {
+    p_person: actor.personId,
+    p_recipe: {
+      id,
+      name: draft.name,
+      meal_fit: draft.mealFit,
+      food_groups: draft.foodGroups,
+      steps_md: stepsToText(draft.steps),
+      origin_recipe_id: draft.originRecipeId
+    },
+    p_lines: draft.lines.map((l) => ({ ingredient_id: l.ingredientId, qty_per_person: l.qtyPerPerson, unit_key: l.unitKey })),
+    p_expected_updated_at: isNew ? null : expectedUpdatedAt
+  });
+  if (error) return { status: refusal(error.message) } as ScoutSaveResult;
+  await audit(sb, actor, isNew ? 'create' : 'update', id, `${isNew ? 'wrote' : 'edited'} recipe "${draft.name}"`);
+  return { status: 'saved', id, updatedAt: data as string };
+}
+
+/** Share the scout's own recipe with the troop, freezing the "Sam K." credit from `people`. */
+export async function shareScoutRecipeWith(sb: SupabaseClient, actor: AuditActor, id: string): Promise<ScoutShareResult> {
+  if (actor.personId == null || !isScoutRecipeId(id)) return { status: 'not_found' };
+  const { data: person, error: pErr } = await sb.from('people').select('first_name, last_name').eq('id', actor.personId).maybeSingle();
+  if (pErr) throw new Error(`credit: ${pErr.message}`);
+  if (!person) return { status: 'not_found' };
+  const credit = creditFor(person as { first_name: string | null; last_name: string | null });
+  const { error } = await sb.rpc('mm_share_scout_recipe', { p_person: actor.personId, p_id: id, p_label: credit });
+  if (error) {
+    if (error.message.includes('MM_NOT_READY')) return { status: 'not_ready' };
+    if (error.message.includes('MM_RETIRED')) return { status: 'retired' };
+    if (error.message.includes('MM_NOT_YOURS')) return { status: 'not_found' };
+    throw new Error(`share recipe: ${error.message}`);
+  }
+  await audit(sb, actor, 'publish', id, `shared recipe ${id} with the troop as "${credit}"`);
+  return { status: 'shared', credit };
+}
+
+/** Delete one of the scout's own never-shared drafts — refused while one of their menus uses it. */
+export async function deleteScoutDraftWith(sb: SupabaseClient, actor: AuditActor, id: string): Promise<ScoutDeleteResult> {
+  if (actor.personId == null || !isScoutRecipeId(id)) return { status: 'not_found' };
+  const { data: row, error } = await sb.from('mm_recipes').select('name, status, author_person_id, shared_at').eq('id', id).maybeSingle();
+  if (error) throw new Error(`load recipe: ${error.message}`);
+  if (!row || row.author_person_id !== actor.personId) return { status: 'not_found' };
+  if (row.shared_at != null || row.status !== 'draft') return { status: 'shared' };
+  const { count, error: cErr } = await sb
+    .from('mm_menus')
+    .select('id', { count: 'exact', head: true })
+    .eq('owner_person_id', actor.personId)
+    .filter('meals', 'cs', JSON.stringify([{ recipeIds: [id] }]));
+  if (cErr) throw new Error(`menus using recipe: ${cErr.message}`);
+  if ((count ?? 0) > 0) return { status: 'in_use' };
+  const { error: lErr } = await sb.from('mm_recipe_lines').delete().eq('recipe_id', id);
+  if (lErr) throw new Error(`delete lines: ${lErr.message}`);
+  const { error: dErr } = await sb.from('mm_recipes').delete().eq('id', id).eq('author_person_id', actor.personId).eq('status', 'draft');
+  if (dErr) throw new Error(`delete recipe: ${dErr.message}`);
+  await audit(sb, actor, 'delete', id, `deleted draft recipe "${row.name as string}"`);
+  return { status: 'deleted' };
+}
+
+/** The scout's own recipes, newest edit first. */
+export async function listMyRecipesWith(sb: SupabaseClient, personId: number): Promise<ScoutRecipeSummary[]> {
+  const { data, error } = await sb
+    .from('mm_recipes')
+    .select('id, name, status, meal_fit, shared_at, attribution_label, updated_at')
+    .eq('author_person_id', personId)
+    .order('updated_at', { ascending: false });
+  if (error) throw new Error(`my recipes: ${error.message}`);
+  return (data ?? []).map((r) => ({
+    id: r.id as string,
+    name: r.name as string,
+    status: r.status as RecipeStatus,
+    mealFit: (r.meal_fit ?? []) as MealSlot[],
+    sharedAt: (r.shared_at as string | null) ?? null,
+    credit: (r.attribution_label as string | null) ?? null,
+    updatedAt: r.updated_at as string
+  }));
+}
+
+/** One of the scout's own recipes, as the editor edits it, or null (missing or not theirs). */
+export async function loadMyRecipeWith(sb: SupabaseClient, personId: number, id: string): Promise<StoredScoutRecipe | null> {
+  if (!isScoutRecipeId(id)) return null;
+  const { data: r, error } = await sb
+    .from('mm_recipes')
+    .select('id, name, status, meal_fit, food_groups, steps_md, origin_recipe_id, author_person_id, shared_at, attribution_label, updated_at')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw new Error(`load recipe: ${error.message}`);
+  if (!r || r.author_person_id !== personId) return null;
+  const { data: lines, error: lErr } = await sb
+    .from('mm_recipe_lines')
+    .select('ingredient_id, qty_per_person, unit_key')
+    .eq('recipe_id', id)
+    .order('position');
+  if (lErr) throw new Error(`load lines: ${lErr.message}`);
+  return {
+    recipe: {
+      id,
+      name: r.name as string,
+      mealFit: (r.meal_fit ?? []) as MealSlot[],
+      foodGroups: (r.food_groups ?? []) as FoodGroup[],
+      steps: stepsFromText(r.steps_md as string | null),
+      lines: (lines ?? []).map((l): ScoutRecipeLine => ({ ingredientId: l.ingredient_id as string, qtyPerPerson: Number(l.qty_per_person), unitKey: (l.unit_key as string | null) ?? null })),
+      originRecipeId: (r.origin_recipe_id as string | null) ?? null
+    },
+    status: r.status as RecipeStatus,
+    credit: (r.attribution_label as string | null) ?? null,
+    sharedAt: (r.shared_at as string | null) ?? null,
+    updatedAt: r.updated_at as string
+  };
+}
