@@ -96,6 +96,17 @@ const SCREENS: Record<string, string[]> = {
     '(public)/library/mb/[mbId]/mb-tracker.module.css',
     '(public)/advancement/advancement.module.css',
     '_components/scout-accordion.module.css'
+  ],
+  R6: [
+    'admin/(workspace)/advancement/fast-entry/fast-entry.module.css',
+    'admin/(workspace)/advancement/meeting-plan/meeting-plan.module.css',
+    'admin/(workspace)/advancement/roster/roster.module.css',
+    'admin/(workspace)/advancement/ledger/ledger.module.css',
+    'admin/(workspace)/calendar/calendar.module.css',
+    'admin/(workspace)/calendar/[id]/workbench.module.css',
+    'admin/(workspace)/finance/finance.module.css',
+    'admin/(workspace)/finance/report/report.module.css',
+    'admin/(workspace)/events/events-admin.module.css'
   ]
 };
 
@@ -104,12 +115,18 @@ const HEAVY_OK: Record<string, string[]> = {
   // The printed Clipboard's page header mirrors the troop's paper sheet (print-only, hidden on screen).
   '(public)/scouts/[id]/scout-detail.module.css': ['.printPageHeader']
 };
-const withoutExempt = (rel: string, src: string) =>
-  (HEAVY_OK[rel] ?? []).reduce((s, sel) => s.replace(new RegExp(`${sel.replace('.', '\\.')}\\s*\\{[^}]*\\}`, 'g'), ''), src);
+const withoutRules = (src: string, selectors: string[] = []) =>
+  selectors.reduce((s, sel) => s.replace(new RegExp(`${sel.replace('.', '\\.')}\\s*\\{[^}]*\\}`, 'g'), ''), src);
+const withoutExempt = (rel: string, src: string) => withoutRules(src, HEAVY_OK[rel]);
+/** Rules whose caps are data, not a label, with the reason. */
+const KEEP_CAPS: Record<string, string[]> = {
+  // Leader codes (MST, JPII…) are shown in caps as they're typed.
+  'admin/(workspace)/events/events-admin.module.css': ['.codeInput']
+};
 
 describe.each(Object.entries(SCREENS))('Calm style — %s screens', (_release, files) => {
   it.each(files)('%s_HasNoUppercaseLabels', (rel) => {
-    expect(screenCss(rel)).not.toMatch(/text-transform:\s*uppercase/);
+    expect(withoutRules(screenCss(rel), KEEP_CAPS[rel])).not.toMatch(/text-transform:\s*uppercase/);
   });
 
   it.each(files)('%s_HasNoWideLetterSpacing', (rel) => {

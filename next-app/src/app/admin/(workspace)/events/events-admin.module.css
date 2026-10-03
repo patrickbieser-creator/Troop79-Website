@@ -3,10 +3,10 @@
    (the gray-900 h1 one-off goes navy with it). */
 
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 20px; }
-.tile { background: var(--admin-white); border: 1px solid var(--admin-gray-200); border-radius: 5px; padding: 12px 14px; }
+.tile { background: var(--admin-white); border: none; box-shadow: var(--admin-shadow-sm); border-radius: 5px; padding: 12px 14px; }
 .tileOk { border-left: 3px solid var(--admin-forest); }
 .tileWarn { border-left: 3px solid var(--admin-danger); }
-.tileLabel { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--admin-gray-600); }
+.tileLabel { font-size: var(--admin-text-base); font-weight: 700; color: var(--admin-gray-600); }
 .tileValue { font-size: 24px; font-weight: 700; color: var(--admin-gray-900); margin-top: 2px; }
 .tileOf { font-size: 14px; font-weight: 400; color: var(--admin-gray-600); }
 .tileSub { font-size: 11.5px; color: var(--admin-gray-600); margin-top: 2px; }
@@ -65,8 +65,8 @@
 .fieldGrid input, .fieldGrid select, .fullField input, .fullField select, .fullField textarea { width: 100%; padding: 7px 10px; border: 1px solid var(--admin-gray-300); border-radius: 3px; font-size: 13.5px; font-family: inherit; }
 .miniTable { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 12px; }
 .miniTable td { padding: 6px 8px; border-bottom: 1px solid var(--admin-gray-100); }
-.miniTable th { text-align: left; font-size: 10px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--admin-gray-600); padding: 4px 8px; border-bottom: 1px solid var(--admin-gray-200); }
-.tag { display: inline-block; margin-left: 6px; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--admin-accent-gold); background: var(--admin-status-warning-bg); border-radius: 3px; padding: 1px 5px; }
+.miniTable th { text-align: left; font-size: var(--admin-text-base); font-weight: 700; color: var(--admin-gray-600); padding: 4px 8px; border-bottom: 1px solid var(--admin-gray-200); }
+.tag { display: inline-block; margin-left: 6px; font-size: var(--admin-text-base); color: var(--admin-accent-gold); background: var(--admin-status-warning-bg); border-radius: 3px; padding: 1px 5px; }
 .rowDel { background: none; border: none; color: var(--admin-danger); font-size: 12px; text-decoration: underline; cursor: pointer; padding: 4px 6px; min-height: 24px; }
 /* Duplicate is the bulk-entry workhorse — a rummage sale is a handful of
    stations repeated across time blocks — so it reads as a normal action, not
@@ -84,7 +84,7 @@
    down the page with every job added. Above the list, in a titled box, it
    stays put and reads as a form. */
 .addCard { border: 1px solid var(--admin-gray-300); border-radius: 4px; background: var(--admin-gray-50); padding: 12px 13px; margin-bottom: 14px; }
-.addCard h3 { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--admin-gray-700); margin-bottom: 9px; }
+.addCard h3 { font-size: 12px; font-weight: 700; color: var(--admin-gray-700); margin-bottom: 9px; }
 .addCardActions { display: flex; gap: 12px; align-items: center; margin-top: 11px; flex-wrap: wrap; }
 .addField { display: flex; flex-direction: column; gap: 3px; }
 .okNote { color: var(--admin-forest); font-size: 12.5px; font-weight: 600; margin: 0; }
@@ -181,10 +181,8 @@
 .offEventNote {
   display: block;
   margin-top: 2px;
-  font-size: var(--admin-text-2xs);
+  font-size: var(--admin-text-sm);
   font-weight: 700;
-  letter-spacing: .04em;
-  text-transform: uppercase;
   color: var(--admin-accent-gold);
   white-space: nowrap;
 }
@@ -210,8 +208,7 @@
    shade and the scouts the lighter shade". S red · JL teal · Cub gold · W
    orange · G plum (light = youth guest, dark = adult guest) · A blue (dark). */
 .classPill {
-  display: inline-block; font-size: var(--admin-text-xs); font-weight: var(--admin-weight-bold);
-  letter-spacing: var(--admin-tracking-normal); text-transform: uppercase;
+  display: inline-block; font-size: var(--admin-text-sm); font-weight: var(--admin-weight-bold);
   padding: var(--admin-space-1) var(--admin-space-4); border-radius: var(--admin-radius-pill); white-space: nowrap;
 }
 .classS   { background: var(--admin-cat-3-bg); color: var(--admin-cat-3-fg); }  /* red (Patrick, 2026-08-22) */
@@ -231,10 +228,10 @@
    Anytime". Beside a label (Edit dialog, Builder list) the code is plain
    text in parentheses — "Setup crew (SC)", same font and size (Patrick). */
 .bandRow th { border-bottom: none; padding-bottom: 0; }
-.jobBand { text-align: center; font-size: var(--admin-text-2xs); font-weight: var(--admin-weight-bold); letter-spacing: var(--admin-tracking-wide); text-transform: uppercase; color: var(--admin-gray-600); border-bottom: 1px solid var(--admin-gray-300); }
+.jobBand { text-align: center; font-size: var(--admin-text-sm); font-weight: var(--admin-weight-bold); color: var(--admin-gray-600); border-bottom: 1px solid var(--admin-gray-300); }
 .jobTick { color: var(--admin-forest); font-weight: var(--admin-weight-bold); }
 /* Builder: the job-code field is five characters wide on purpose. */
-.codeInput { width: 6.5ch !important; min-width: 0; flex: 0 0 auto; text-transform: uppercase; font-family: var(--admin-font-mono); }
+.codeInput { width: 6.5ch !important; min-width: 0; flex: 0 0 auto; text-transform: uppercase; font-family: var(--admin-font-mono); } /* data, not a label: leader codes show in caps as typed */
 /* Negative money (Patrick, 2026-08-22: "red, in parentheses, with a negative
    sign — all three to really make it stand out"). */
 .negMoney { color: var(--admin-danger); font-weight: var(--admin-weight-bold); white-space: nowrap; }

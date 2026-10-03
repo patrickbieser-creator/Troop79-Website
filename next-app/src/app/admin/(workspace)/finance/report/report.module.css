@@ -13,7 +13,7 @@
 
 .wrap {
   background: var(--admin-white);
-  border: 1px solid var(--admin-gray-200);
+  border: none; box-shadow: var(--admin-shadow-sm);
   border-radius: var(--admin-radius);
   box-shadow: var(--admin-shadow-sm);
   overflow: hidden;
@@ -22,11 +22,9 @@
 .headerRow {
   padding: 10px 12px;
   background: var(--admin-gray-50);
-  border-bottom: 2px solid var(--admin-gray-200);
-  font-size: 11px;
+  border-bottom: 1px solid var(--admin-gray-200);
+  font-size: var(--admin-text-base);
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
   color: var(--admin-gray-700);
 }
 

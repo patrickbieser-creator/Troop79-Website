@@ -56,10 +56,8 @@
 }
 .kindPill {
   display: inline-block;
-  font-size: 10px;
+  font-size: var(--admin-text-base);
   font-weight: 700;
-  letter-spacing: .04em;
-  text-transform: uppercase;
   padding: 2px 7px;
   border-radius: 8px;
   background: var(--admin-gray-100);
@@ -178,10 +176,8 @@
 }
 .editLabel {
   display: block;
-  font-size: 10px;
+  font-size: var(--admin-text-base);
   font-weight: 700;
-  letter-spacing: .08em;
-  text-transform: uppercase;
   color: var(--admin-gray-500);
   margin-bottom: 4px;
 }
@@ -267,7 +263,6 @@
   font-family: inherit;
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: .03em;
   color: var(--admin-white);
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.35);
@@ -323,8 +318,6 @@
   gap: 7px;
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: .04em;
-  text-transform: uppercase;
   color: var(--admin-gray-700);
   cursor: pointer;
   user-select: none;
@@ -356,10 +349,8 @@
   flex-wrap: wrap;
 }
 .bulkMixedTag {
-  font-size: 10px;
+  font-size: var(--admin-text-base);
   font-weight: 700;
-  letter-spacing: .06em;
-  text-transform: uppercase;
   color: var(--admin-danger);
   background: var(--admin-status-error-bg);
   border: 1px solid color-mix(in srgb, var(--admin-danger) 30%, var(--admin-white));

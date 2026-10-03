@@ -7,7 +7,7 @@
   gap: 12px;
   flex-wrap: wrap;
   background: var(--admin-white);
-  border: 1px solid var(--admin-gray-200);
+  border: none; box-shadow: var(--admin-shadow-sm);
   border-radius: var(--admin-radius);
   box-shadow: var(--admin-shadow-sm);
   padding: 14px 16px;
@@ -17,10 +17,8 @@
   display: flex;
   flex-direction: column;
   gap: 3px;
-  font-size: 10px;
+  font-size: var(--admin-text-base);
   font-weight: 700;
-  letter-spacing: .04em;
-  text-transform: uppercase;
   color: var(--admin-gray-500);
 }
 .field input,
@@ -68,7 +66,7 @@
 }
 .stat {
   background: var(--admin-white);
-  border: 1px solid var(--admin-gray-200);
+  border: none; box-shadow: var(--admin-shadow-sm);
   border-radius: var(--admin-radius);
   padding: 10px 16px;
   min-width: 130px;
@@ -80,10 +78,8 @@
   line-height: 1.1;
 }
 .statLabel {
-  font-size: 10px;
+  font-size: var(--admin-text-base);
   font-weight: 700;
-  letter-spacing: .06em;
-  text-transform: uppercase;
   color: var(--admin-gray-500);
 }
 
@@ -118,7 +114,7 @@
 }
 .sessionCard {
   background: var(--admin-white);
-  border: 1px solid var(--admin-gray-200);
+  border: none; box-shadow: var(--admin-shadow-sm);
   border-top: 3px solid var(--admin-forest);
   border-radius: var(--admin-radius);
   box-shadow: var(--admin-shadow-sm);
@@ -127,18 +123,14 @@
   flex-direction: column;
 }
 .sessionNum {
-  font-size: 10px;
+  font-size: var(--admin-text-base);
   font-weight: 700;
-  letter-spacing: .08em;
-  text-transform: uppercase;
   color: var(--admin-gray-500);
   margin-bottom: 4px;
 }
 .reqCode {
-  font-size: 11px;
+  font-size: var(--admin-text-base);
   font-weight: 700;
-  letter-spacing: .04em;
-  text-transform: uppercase;
   color: var(--admin-accent-gold);
 }
 .sessionCard h3 {
@@ -155,10 +147,8 @@
   margin-bottom: 8px;
 }
 .tag {
-  font-size: 9.5px;
+  font-size: var(--admin-text-base);
   font-weight: 700;
-  letter-spacing: .06em;
-  text-transform: uppercase;
   padding: 2px 7px;
   border-radius: 2px;
 }
@@ -202,10 +192,8 @@
   font-size: 12px;
 }
 .teachLabel {
-  font-size: 9.5px;
+  font-size: var(--admin-text-base);
   font-weight: 700;
-  letter-spacing: .08em;
-  text-transform: uppercase;
   color: var(--admin-gray-500);
   display: block;
   margin-bottom: 2px;
@@ -279,7 +267,7 @@
 }
 .rosterPanel {
   background: var(--admin-white);
-  border: 1px solid var(--admin-gray-200);
+  border: none; box-shadow: var(--admin-shadow-sm);
   border-top: 3px solid var(--admin-navy);
   border-radius: var(--admin-radius);
   box-shadow: var(--admin-shadow-sm);
@@ -364,7 +352,7 @@
   color: var(--admin-gray-500);
   font-style: italic;
   background: var(--admin-white);
-  border: 1px solid var(--admin-gray-200);
+  border: none; box-shadow: var(--admin-shadow-sm);
   border-radius: var(--admin-radius);
 }
 
