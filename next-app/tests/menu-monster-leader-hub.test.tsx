@@ -33,9 +33,11 @@ vi.mock('@/lib/menu-monster/menus-store', () => ({
   listAllMenusWith: (...a: unknown[]) => mocks.listAllMenusWith(...a),
   listSharedMenusWith: async () => mocks.shared,
   loadMenuWith: async () => null,
+  loadMenusWith: async () => [],
   ownerCreditNamesWith: async (_sb: unknown, ids: number[]) => new Map(ids.map((i) => [i, i === 40 ? 'Sam K.' : 'Ava L.']))
 }));
 vi.mock('@/lib/menu-monster/menus-data', () => ({ loadOutingsWith: async () => [{ id: 7, title: 'Fall Camporee' }] }));
+vi.mock('@/lib/identity-session', async (orig) => ({ ...(await orig<object>()), isEpochCurrent: async () => true }));
 vi.mock('@/lib/household-scope', () => ({ resolveFamilyScope: async () => mocks.family }));
 vi.mock('../src/app/(public)/library/_tools/menu-monster/menu-actions', () => ({
   deleteMenuAction: vi.fn(),

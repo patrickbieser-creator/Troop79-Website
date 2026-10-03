@@ -35,7 +35,7 @@ export function CopyMenuButton({ menuId }: { menuId: string }) {
   if (left) {
     return (
       <p className={s.foot} role="status">
-        Copied. {left.dropped === 1 ? '1 recipe isn’t shared yet, so it' : `${left.dropped} recipes aren’t shared yet, so they`} stayed behind.{' '}
+        {left.dropped === 1 ? 'Copied without 1 recipe that isn’t shared yet.' : `Copied without ${left.dropped} recipes that aren’t shared yet.`}{' '}
         <Link className={s.link} href={`${MENUS_HREF}/${left.id}`}>
           Open your copy
         </Link>

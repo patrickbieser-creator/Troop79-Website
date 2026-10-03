@@ -35,10 +35,10 @@ export function SharePanel({ menuId, credit, status }: { menuId: string; credit:
     <section className={s.hubSection}>
       <ShareStatusLine status={status} owner />
       {!shared && (
-        <p className={s.foot}>
+        <Notice tone="info" className={s.notice}>
           Anyone who visits the site can see a shared menu, with your name as {credit ? `“${credit}”` : 'your first name and last initial'}. Changes you save show
           straight away.
-        </p>
+        </Notice>
       )}
       {error && (
         <Notice tone="error" className={s.notice}>

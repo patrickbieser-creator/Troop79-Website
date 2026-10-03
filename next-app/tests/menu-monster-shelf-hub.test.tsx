@@ -28,8 +28,10 @@ vi.mock('@/lib/menu-monster/menus-store', () => ({
   listMenusWith: async () => mocks.summaries,
   listSharedMenusWith: async () => [],
   ownerCreditNamesWith: async () => new Map(),
-  loadMenuWith: async () => null
+  loadMenuWith: async () => null,
+  loadMenusWith: async () => []
 }));
+vi.mock('@/lib/identity-session', async (orig) => ({ ...(await orig<object>()), isEpochCurrent: async () => true }));
 vi.mock('@/lib/household-scope', () => ({ resolveFamilyScope: async (_sb: unknown, id: number) => [id] }));
 vi.mock('@/lib/menu-monster/menus-data', () => ({ loadOutingsWith: async () => [] }));
 vi.mock('@/lib/menu-monster/scout-recipes-store', () => ({ listMyRecipesWith: async () => mocks.recipes }));

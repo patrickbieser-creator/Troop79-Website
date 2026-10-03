@@ -92,7 +92,7 @@ export default async function MyMenusPage({ searchParams }: { searchParams: Prom
           <MenusList rows={rows} readOnly emptyText="Your scouts haven’t saved a menu yet." />
           <p className={s.foot}>
             <Link className={s.link} href={SHARED_HREF}>
-              Menus shared with the troop
+              All shared menus
             </Link>
           </p>
         </PageShell>
@@ -118,7 +118,7 @@ export default async function MyMenusPage({ searchParams }: { searchParams: Prom
         <DraftOffer catalog={catalog} />
         <p className={s.foot}>
           <Link className={s.link} href={SHARED_HREF}>
-            Menus shared with the troop
+            All shared menus
           </Link>
         </p>
       </PageShell>
@@ -163,7 +163,7 @@ function LeaderFilters({
         ))}
       </SelectInput>
       <SelectInput name="shared" defaultValue={filters.shared ? '1' : ''} aria-label="Shared">
-        <option value="">Shared or not</option>
+        <option value="">All menus</option>
         <option value="1">Shared only</option>
       </SelectInput>
       <Button variant="secondary" size="sm" type="submit">

@@ -19,13 +19,14 @@ import { SaveBar } from './save-bar';
 import { ShareStatusLine, type ShareStatus } from './share-status';
 import s from './workspace.module.css';
 
-export function ReviewPanel({ menuId, note: initial, status }: { menuId: string; note: string; status: ShareStatus }) {
+export function ReviewPanel({ menuId, note: initial, status, plannedBy }: { menuId: string; note: string; status: ShareStatus; plannedBy: string | null }) {
   const router = useRouter();
   const [saved, setSaved] = useState(initial);
   const [note, setNote] = useState(initial);
   const [saving, setSaving] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
   const [confirmHide, setConfirmHide] = useState(false);
+  const [hiding, setHiding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const dirty = note.trim() !== saved.trim();
 
@@ -43,7 +44,9 @@ export function ReviewPanel({ menuId, note: initial, status }: { menuId: string;
 
   async function hide() {
     setError(null);
+    setHiding(true);
     const res = await hideMenuAction(menuId);
+    setHiding(false);
     setConfirmHide(false);
     if (!res.ok) return setError(res.error);
     router.refresh();
@@ -56,7 +59,7 @@ export function ReviewPanel({ menuId, note: initial, status }: { menuId: string;
           {error}
         </Notice>
       )}
-      <Field label="Note to the scout" hint="Shows at the top of their menu. One note per menu; saving replaces it.">
+      <Field label="Note to the scout" hint="Shows at the top of their menu. Saving replaces any earlier note; leave it blank to remove it.">
         <TextArea
           rows={4}
           maxLength={MAX_REVIEW_NOTE}
@@ -73,9 +76,10 @@ export function ReviewPanel({ menuId, note: initial, status }: { menuId: string;
       <ShareStatusLine status={status} owner={false} />
       {status.sharedAt != null &&
         (confirmHide ? (
-          <div className={s.noticeActions}>
-            <Button variant="danger" onClick={() => void hide()}>
-              Hide it
+          <div className={s.noticeActions} role="group" aria-label="Hide from the shelf">
+            <span>Hide this menu from the shelf? {plannedBy ?? 'The scout'} can share it again.</span>
+            <Button variant="danger" onClick={() => void hide()} disabled={hiding}>
+              {hiding ? 'Hiding…' : 'Hide it'}
             </Button>
             <Button variant="ghost" onClick={() => setConfirmHide(false)}>
               Keep it shared

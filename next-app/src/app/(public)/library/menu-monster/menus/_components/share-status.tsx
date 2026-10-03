@@ -16,17 +16,23 @@ export interface ShareStatus {
 }
 
 export function ShareStatusLine({ status, owner }: { status: ShareStatus; owner: boolean }) {
-  if (!status.sharedAt) return <p className={s.foot}>{owner ? 'Only you and the troop’s leaders can see this menu.' : 'Not shared.'}</p>;
+  if (!status.sharedAt) {
+    return (
+      <p className={s.foot} role="status">
+        {owner ? 'Only you, your parents and the troop’s leaders can see this menu.' : 'Not shared.'}
+      </p>
+    );
+  }
   const since = `Shared with the troop since ${fmtDate(status.sharedAt)}`;
   if (status.outingPublished === false) {
     return (
-      <p className={s.foot}>
-        {since}, but its outing isn’t published yet, so nobody else can see it until it is.
+      <p className={s.foot} role="status">
+        {since}, but its outing isn’t published yet, so only you, your parents and leaders can see it until it is.
       </p>
     );
   }
   return (
-    <p className={s.foot}>
+    <p className={s.foot} role="status">
       {since}. It shows on the Menu Monster page{status.outingTitle ? ` and on the page for ${status.outingTitle}` : ''}.
     </p>
   );

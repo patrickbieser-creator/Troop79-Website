@@ -11,7 +11,8 @@ const mocks = vi.hoisted(() => ({
   actor: null as unknown,
   loadMenuWith: vi.fn(),
   ownerCreditNamesWith: vi.fn(),
-  family: [] as number[]
+  family: [] as number[],
+  epochCurrent: true
 }));
 
 vi.mock('next/navigation', () => ({
@@ -25,6 +26,10 @@ vi.mock('@/lib/supabase/server', () => ({ createAdminClient: () => ({ stub: true
 vi.mock('@/lib/menu-monster/menus-store', () => ({ loadMenuWith: mocks.loadMenuWith, ownerCreditNamesWith: mocks.ownerCreditNamesWith }));
 vi.mock('@/lib/menu-monster/data', () => ({ loadMenuMonsterCatalog: async () => ({}) }));
 vi.mock('@/lib/menu-monster/menus-data', () => ({ loadOutingsWith: async () => [] }));
+vi.mock('@/lib/identity-session', async (orig) => ({
+  ...(await orig<typeof import('../src/lib/identity-session')>()),
+  isEpochCurrent: async () => mocks.epochCurrent
+}));
 vi.mock('@/lib/household-scope', () => ({ resolveFamilyScope: async () => mocks.family }));
 // The rules are real; only the re-sanitizing is stubbed (the stub catalog is empty). Redaction is tested in menu-monster-menu-access.test.ts.
 vi.mock('@/lib/menu-monster/menu-access', async (orig) => ({
@@ -36,7 +41,7 @@ vi.mock('../src/app/(public)/library/menu-monster/menus/_components/plan-tab', (
 vi.mock('../src/app/(public)/library/menu-monster/menus/_components/shopping-tab', () => ({ ShoppingTab: (p: unknown) => p }));
 vi.mock('../src/app/(public)/library/menu-monster/menus/_components/meal-editor', () => ({ MealEditor: (p: unknown) => p }));
 
-import { menuViewer } from '../src/app/(public)/library/menu-monster/menus/_components/scout-menus';
+import { loadViewableMenu, menuViewer } from '../src/app/(public)/library/menu-monster/menus/_components/scout-menus';
 import PlanPage from '../src/app/(public)/library/menu-monster/menus/[menuId]/page';
 import ShoppingPage from '../src/app/(public)/library/menu-monster/menus/[menuId]/shopping/page';
 import MealPage from '../src/app/(public)/library/menu-monster/menus/[menuId]/meals/[mealId]/page';
@@ -69,6 +74,7 @@ beforeEach(() => {
   mocks.session = null;
   mocks.actor = null;
   mocks.family = [];
+  mocks.epochCurrent = true;
   mocks.loadMenuWith.mockResolvedValue(stored(39));
   mocks.ownerCreditNamesWith.mockResolvedValue(new Map([[39, 'Sam K.']]));
 });
@@ -89,6 +95,15 @@ describe('menuViewer', () => {
     mocks.actor = NO_CAPS;
     mocks.family = [6, 39];
     expect(await menuViewer()).toEqual({ kind: 'parent', personId: 6, familyIds: [6, 39] });
+  });
+
+  it('Parent_IsNobody_WhenTheirSessionWasRevoked', async () => {
+    // qa-lead: a revoked parent must not keep reading unshared menus on a still-signed cookie.
+    mocks.session = PARENT;
+    mocks.actor = NO_CAPS;
+    mocks.family = [6, 39];
+    mocks.epochCurrent = false;
+    expect(await menuViewer()).toBeNull();
   });
 
   it('Anonymous_IsNobody', async () => {
@@ -193,5 +208,42 @@ describe('Meal page (leader)', () => {
   it('Leader_GetsNotFound_WhenTheMealIsNotOnTheMenu', async () => {
     mocks.actor = LEADER;
     await expect(MealPage({ params: Promise.resolve({ menuId: ID, mealId: 'zzz' }) })).rejects.toThrow('NEXT_NOT_FOUND');
+  });
+});
+
+describe('loadViewableMenu redaction (the single redaction point)', () => {
+  const full = () =>
+    stored(39, {
+      sharedAt: '2026-10-03T12:00:00Z',
+      snapshot: { v: 1 },
+      review: { note: 'Bring water.', at: '2026-10-03T12:00:00Z', byPersonId: 5 }
+    });
+
+  it('SharedView_HidesSnapshotAndReviewNote', async () => {
+    mocks.loadMenuWith.mockResolvedValue(full());
+    const view = await loadViewableMenu(ID, null);
+    expect(view).toMatchObject({ access: 'shared', readOnly: true, canCopy: false });
+    expect(view!.stored.snapshot).toBeNull();
+    expect(view!.stored.review).toBeNull();
+  });
+
+  it('ParentView_KeepsTheReviewNote_ButNotTheSnapshot', async () => {
+    mocks.loadMenuWith.mockResolvedValue(full());
+    const view = await loadViewableMenu(ID, { kind: 'parent', personId: 6, familyIds: [6, 39] });
+    expect(view!.access).toBe('parent');
+    expect(view!.stored.review?.note).toBe('Bring water.');
+    expect(view!.stored.snapshot).toBeNull();
+  });
+
+  it('OtherScout_CanCopy_ASharedMenu', async () => {
+    mocks.loadMenuWith.mockResolvedValue(full());
+    expect((await loadViewableMenu(ID, { kind: 'scout', personId: 7, displayName: 'Ava L.' }))!.canCopy).toBe(true);
+  });
+
+  it('Owner_GetsTheSnapshotAndNote_Unredacted', async () => {
+    mocks.loadMenuWith.mockResolvedValue(full());
+    const view = await loadViewableMenu(ID, { kind: 'scout', personId: 39, displayName: 'Charlie W.' });
+    expect(view).toMatchObject({ access: 'owner', readOnly: false, canCopy: false });
+    expect(view!.stored.snapshot).toEqual({ v: 1 });
   });
 });

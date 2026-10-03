@@ -35,7 +35,7 @@ export default async function MenuSharePage({ params }: { params: Promise<{ menu
   return (
     <>
       <MenuHeader current="share" {...listCrumb(view.access)} />
-      <PageShell width="narrow">
+      <PageShell>
         <div className={s.titleLine}>
           <h1 className={s.menuTitle}>{stored.menu.name.trim() || 'Untitled menu'}</h1>
         </div>
@@ -46,7 +46,7 @@ export default async function MenuSharePage({ params }: { params: Promise<{ menu
         {view.access === 'owner' ? (
           <SharePanel menuId={stored.id} credit={credit} status={status} />
         ) : (
-          <ReviewPanel menuId={stored.id} note={stored.review?.note ?? ''} status={status} />
+          <ReviewPanel menuId={stored.id} note={stored.review?.note ?? ''} status={status} plannedBy={view.plannedBy} />
         )}
       </PageShell>
     </>

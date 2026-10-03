@@ -18,6 +18,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { getIdentitySessionIfValid } from '@/lib/family-access';
 import { resolveAdminActor } from '@/lib/admin-actor';
 import { resolveFamilyScope } from '@/lib/household-scope';
+import { isEpochCurrent } from '@/lib/identity-session';
 import { loadMenuMonsterCatalog } from '@/lib/menu-monster/data';
 import { loadMenuWith, ownerCreditNamesWith, type StoredMenu } from '@/lib/menu-monster/menus-store';
 import { isMenuId } from '@/lib/menu-monster/menus';
@@ -66,8 +67,11 @@ export async function menuViewer(): Promise<MenuViewer | null> {
   const actor = await resolveAdminActor();
   if (actor && actor.subjectKind !== 'scout' && actor.capabilities.size > 0) return { kind: 'leader', personId: actor.personId, label: actor.label };
   if (session?.subjectKind === 'adult') {
+    const sb = createAdminClient();
+    // A parent reads unshared menus (prices paid included), so a revoked session ends here, not at cookie expiry (qa-lead).
+    if (!(await isEpochCurrent(sb, session))) return null;
     // Read at request time, never cached: a removed relationship ends access on the next load (specialist review).
-    const familyIds = await resolveFamilyScope(createAdminClient(), session.personId, 'adult');
+    const familyIds = await resolveFamilyScope(sb, session.personId, 'adult');
     return { kind: 'parent', personId: session.personId, familyIds };
   }
   return null;
@@ -172,7 +176,7 @@ export const SHARED_HREF = `${MENUS_HREF}/shared`;
 export function listCrumb(access: MenuAccess): { listLabel?: string; listHref?: string } {
   if (access === 'admin') return { listLabel: 'Scouts’ menus' };
   if (access === 'parent') return { listLabel: 'Your scouts’ menus' };
-  if (access === 'shared') return { listLabel: 'Shared menus', listHref: SHARED_HREF };
+  if (access === 'shared') return { listLabel: 'Shared with the troop', listHref: SHARED_HREF };
   return {};
 }
 

@@ -18,7 +18,7 @@ import { SharedMenusList } from '../_components/shared-menus-list';
 import s from '../_components/workspace.module.css';
 
 export const dynamic = 'force-dynamic';
-export const metadata: Metadata = { title: 'Shared menus — Menu Monster', robots: NO_INDEX };
+export const metadata: Metadata = { title: 'Shared with the troop — Menu Monster', robots: NO_INDEX };
 
 export default async function SharedMenusPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const sp = await searchParams;
@@ -35,7 +35,7 @@ export default async function SharedMenusPage({ searchParams }: { searchParams: 
 
   return (
     <>
-      <MenuHeader title="Shared menus" listLabel="Shared menus" />
+      <MenuHeader title="Shared with the troop" listLabel="Shared with the troop" />
       <PageShell width="narrow">
         {outings.size > 0 && (
           <form className={s.listHead} method="get" action={SHARED_HREF} aria-label="Filter shared menus">
@@ -48,11 +48,11 @@ export default async function SharedMenusPage({ searchParams }: { searchParams: 
               ))}
             </SelectInput>
             <Button variant="secondary" size="sm" type="submit">
-              Show
+              Filter
             </Button>
           </form>
         )}
-        {rows.length === 0 ? <EmptyState>No menus shared yet.</EmptyState> : <SharedMenusList rows={rows} showOuting={outingId == null} />}
+        {rows.length === 0 ? <EmptyState>{outingId != null ? 'No menus shared for this outing.' : 'No menus shared yet.'}</EmptyState> : <SharedMenusList rows={rows} showOuting={outingId == null} />}
       </PageShell>
     </>
   );

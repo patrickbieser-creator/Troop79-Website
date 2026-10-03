@@ -166,6 +166,18 @@ const fromRow = (r: MenuRow): Menu => ({
   })
 });
 
+const toStored = (r: MenuRow): StoredMenu => ({
+  id: r.id,
+  ownerPersonId: r.owner_person_id,
+  menu: fromRow(r),
+  snapshot: r.snapshot ?? null,
+  createdAt: r.created_at,
+  updatedAt: r.updated_at,
+  sharedAt: r.shared_at,
+  entryPublished: r.calendar_entry_id == null ? null : r.calendar_entries?.status === 'published',
+  review: r.review_note != null && r.reviewed_at != null ? { note: r.review_note, at: r.reviewed_at, byPersonId: r.reviewed_by_person_id } : null
+});
+
 async function audit(sb: SupabaseClient, actor: AuditActor, action: string, id: string, summary: string) {
   await recordAuditAs(sb, actor, { area: 'menus', action, entityType: 'menu', entityId: id, summary: `${actor.label} ${summary}` });
 }
@@ -296,18 +308,16 @@ export async function loadMenuWith(sb: SupabaseClient, id: string): Promise<Stor
   const { data, error } = await sb.from('mm_menus').select(COLUMNS).eq('id', id).maybeSingle();
   if (error) throw new Error(`load menu: ${error.message}`);
   if (!data) return null;
-  const r = data as unknown as MenuRow;
-  return {
-    id: r.id,
-    ownerPersonId: r.owner_person_id,
-    menu: fromRow(r),
-    snapshot: r.snapshot ?? null,
-    createdAt: r.created_at,
-    updatedAt: r.updated_at,
-    sharedAt: r.shared_at,
-    entryPublished: r.calendar_entry_id == null ? null : r.calendar_entries?.status === 'published',
-    review: r.review_note != null && r.reviewed_at != null ? { note: r.review_note, at: r.reviewed_at, byPersonId: r.reviewed_by_person_id } : null
-  };
+  return toStored(data as unknown as MenuRow);
+}
+
+/** Several menus by id in ONE query (list rows; qa-lead: not one query per menu). Missing ids are skipped; order follows `ids`. */
+export async function loadMenusWith(sb: SupabaseClient, ids: readonly string[]): Promise<StoredMenu[]> {
+  if (ids.length === 0) return [];
+  const { data, error } = await sb.from('mm_menus').select(COLUMNS).in('id', [...ids]);
+  if (error) throw new Error(`load menus: ${error.message}`);
+  const byId = new Map(((data ?? []) as unknown as MenuRow[]).map((r) => [r.id, toStored(r)]));
+  return ids.flatMap((id) => byId.get(id) ?? []);
 }
 
 async function atMenuLimit(sb: SupabaseClient, ownerPersonId: number | null): Promise<boolean> {

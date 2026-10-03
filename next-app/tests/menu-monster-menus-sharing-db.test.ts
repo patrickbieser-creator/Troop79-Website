@@ -12,6 +12,7 @@ import {
   listMenusWith,
   listSharedMenusWith,
   loadMenuWith,
+  loadMenusWith,
   ownerCreditNamesWith,
   saveActualsWith,
   setMenuSharedWith,
@@ -268,6 +269,15 @@ describe('leader + parent lists', () => {
     const byOuting = (await listAllMenusWith(admin, { outing: e })).filter((m) => m.name.includes(MARKER));
     expect(shared.map((m) => m.name)).toEqual([`${MARKER} trip`]);
     expect(byOuting.map((m) => m.name)).toEqual([`${MARKER} trip`]);
+  });
+});
+
+describe('loadMenusWith', () => {
+  it('LoadsSeveralMenusInOneCall_InTheOrderAsked_SkippingMissing', async () => {
+    const a = await createMenuWith(admin, CHARLIE, menu({ name: `${MARKER} A` }), CATALOG);
+    const b = await createMenuWith(admin, CHARLIE, menu({ name: `${MARKER} B` }), CATALOG);
+    const rows = await loadMenusWith(admin, [b, '00000000-0000-4000-8000-000000000000', a]);
+    expect(rows.map((r) => r.menu.name)).toEqual([`${MARKER} B`, `${MARKER} A`]);
   });
 });
 

@@ -8,7 +8,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { centralToday } from '@/lib/dates';
 import { MENU_CONTEXTS } from '@/lib/menu-monster/menus';
-import { loadMenuWith, type MenuSummary } from '@/lib/menu-monster/menus-store';
+import { loadMenusWith, type MenuSummary } from '@/lib/menu-monster/menus-store';
 import { loadOutingsWith } from '@/lib/menu-monster/menus-data';
 import { menuCost } from '@/lib/menu-monster/menu-view';
 import type { Catalog } from '@/lib/menu-monster/types';
@@ -21,7 +21,7 @@ export async function loadMenuRows(
   owners?: ReadonlyMap<number, string>
 ): Promise<MenuRowData[]> {
   const [stored, outings] = await Promise.all([
-    Promise.all(summaries.map((m) => loadMenuWith(sb, m.id))),
+    loadMenusWith(sb, summaries.map((m) => m.id)).then((all) => new Map(all.map((m) => [m.id, m]))),
     loadOutingsWith(
       sb,
       centralToday(),
@@ -30,8 +30,8 @@ export async function loadMenuRows(
   ]);
   const outingName = new Map(outings.map((o) => [o.id, o.title]));
 
-  return summaries.map((m, i) => {
-    const menu = stored[i]?.menu;
+  return summaries.map((m) => {
+    const menu = stored.get(m.id)?.menu;
     const cost = menu ? menuCost(menu, catalog) : null;
     return {
       id: m.id,
