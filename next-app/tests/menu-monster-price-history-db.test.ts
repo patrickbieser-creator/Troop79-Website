@@ -7,7 +7,7 @@ import { loadCatalogWith, loadAuthoringCatalogWith } from '../src/lib/menu-monst
 /**
  * Menu Monster scout workspace, Phase 2 schema (Plans/Menu-Monster-Scout-Workspace.md,
  * "Phase 2 design"): mm_price_history, mm_packages.added_by_person_id / held_at,
- * mm_menus.actuals / free_items, and merge_people re-pointing the new person
+ * mm_menus.actuals, and merge_people re-pointing the new person
  * references. RLS-on / zero-policy is asserted with the other tables in
  * menu-monster-db.test.ts.
  *
@@ -136,15 +136,15 @@ describe('mm_packages held / added_by', () => {
   });
 });
 
-describe('mm_menus actuals / free_items', () => {
+describe('mm_menus actuals', () => {
   function menuRow(overrides: Record<string, unknown> = {}) {
     return { owner_person_id: TEST_SCOUT, name: MARKER, context: 'camp', headcount: 8, ...overrides };
   }
 
-  it('MmMenus_DefaultsActualsToAnObject_AndFreeItemsToAnArray', async () => {
-    const { data, error } = await admin.from('mm_menus').insert(menuRow()).select('actuals, free_items').single();
+  it('MmMenus_DefaultsActualsToAnObject', async () => {
+    const { data, error } = await admin.from('mm_menus').insert(menuRow()).select('actuals').single();
     expect(error).toBeNull();
-    expect(data).toEqual({ actuals: {}, free_items: [] });
+    expect(data).toEqual({ actuals: {} });
   });
 
   it('MmMenus_RejectsActualsThatAreNotAnObject', async () => {
@@ -152,8 +152,9 @@ describe('mm_menus actuals / free_items', () => {
     expect(error?.code).toBe('23514');
   });
 
-  it('MmMenus_RejectsFreeItemsThatAreNotAnArray', async () => {
-    const { error } = await admin.from('mm_menus').insert(menuRow({ free_items: {} }));
-    expect(error?.code).toBe('23514');
+  it('MmMenus_HasNoFreeItemsColumn_SinceReleaseC', async () => {
+    // Typed-ins on menus are real 4B ingredients; the never-written envelope was dropped (20261005110000).
+    const { error } = await admin.from('mm_menus').select('free_items').limit(1);
+    expect(error?.message).toContain('free_items');
   });
 });
