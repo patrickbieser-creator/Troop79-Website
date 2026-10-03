@@ -77,6 +77,37 @@ describe('Calm style — R1 public kit', () => {
   });
 });
 
+/** A screen stylesheet under src/app, by path. */
+const APP = path.join(__dirname, '..', 'src', 'app');
+const screenCss = (rel: string) => fs.readFileSync(path.join(APP, rel), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+const wideTracking = (src: string) => [...src.matchAll(/letter-spacing:\s*([\d.]+)em/g)].map((m) => Number(m[1])).filter((v) => v > 0.02);
+
+/** Each release's screen stylesheets: no uppercase labels, no wide tracking, no 1.5px/2px drawn rules. */
+const SCREENS: Record<string, string[]> = {
+  R3: [
+    '(public)/events/events.module.css',
+    '(public)/events/[id]/event-detail.module.css',
+    '(public)/profile/profile.module.css',
+    '(public)/member/member.module.css',
+    '(public)/signin/signin.module.css'
+  ]
+};
+
+describe.each(Object.entries(SCREENS))('Calm style — %s screens', (_release, files) => {
+  it.each(files)('%s_HasNoUppercaseLabels', (rel) => {
+    expect(screenCss(rel)).not.toMatch(/text-transform:\s*uppercase/);
+  });
+
+  it.each(files)('%s_HasNoWideLetterSpacing', (rel) => {
+    expect(wideTracking(screenCss(rel))).toEqual([]);
+  });
+
+  it.each(files)('%s_HasNoHeavyRules', (rel) => {
+    // Focus outlines are allowed; drawn borders of 1.5px / 2px are the loud pattern.
+    expect(screenCss(rel).match(/border(?:-(?:top|bottom|left|right))?:\s*(?:1\.5|2)px solid[^;]*/g) ?? []).toEqual([]);
+  });
+});
+
 describe('Calm style — R2 public Button', () => {
   it('Button_HasNoUppercaseLabels', () => {
     expect(css('button').replace(/\/\*[\s\S]*?\*\//g, '')).not.toMatch(/text-transform:\s*uppercase/);

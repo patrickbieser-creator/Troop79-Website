@@ -99,18 +99,18 @@
 }
 
 .signOutBtn {
-  background: var(--warm-white);
-  border: 2px solid var(--forest);
-  border-radius: var(--rad-md);
-  padding: 0.5rem 1.1rem;
-  font-family: var(--font-ui), inherit;
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--forest);
-  cursor: pointer;
-  white-space: nowrap;
+ background: var(--warm-white);
+ border: 1px solid var(--forest);
+ border-radius: var(--rad-md);
+ padding: 0.5rem 1.1rem;
+ font-family: var(--font-ui), inherit;
+ font-size: var(--fs-sm);
+ font-weight: 700;
+
+
+ color: var(--forest);
+ cursor: pointer;
+ white-space: nowrap;
 }
 .signOutBtn:hover,
 .signOutBtn:focus-visible {
