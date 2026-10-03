@@ -76,3 +76,18 @@ describe('Calm style — R1 public kit', () => {
     expect(rule(css('section-divider'), '.rule')).not.toMatch(/background/);
   });
 });
+
+describe('Calm style — R2 public Button', () => {
+  it('Button_HasNoUppercaseLabels', () => {
+    expect(css('button').replace(/\/\*[\s\S]*?\*\//g, '')).not.toMatch(/text-transform:\s*uppercase/);
+  });
+
+  it('Button_IsThirtySixPixelsTall_ByDefault', () => {
+    expect(rule(css('button'), '.btn')).toMatch(/min-height:\s*36px/);
+  });
+
+  it('Button_HasNoWideLetterSpacing', () => {
+    const spacings = [...css('button').matchAll(/letter-spacing:\s*([\d.]+)em/g)].map((m) => Number(m[1]));
+    expect(spacings.filter((v) => v > 0.02)).toEqual([]);
+  });
+});

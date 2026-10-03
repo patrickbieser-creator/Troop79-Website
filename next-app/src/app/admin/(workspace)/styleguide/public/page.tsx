@@ -128,7 +128,7 @@ const SCOREBOARD: ReadonlyArray<readonly [string, string, string]> = [
   [
     'Buttons',
     '33 distinct class names / 15 files; primary green written 5× with 3 greens, 3 radii',
-    'Button SHIPPED (A; size="sm" + dangerGhost added C) — submitBtn, passkeyRemove, mastheadJoin converted; /signin passkey CTA is primary (full-width) only on a browser with the remembered-device hint cookie, else the shared ghost variant at the bottom (2026-08-21); sanctioned locals: signOutBtn (forest outline), scout-account proxy (compact navy), about-join khaki CTA, calendar/pager chrome'
+    'Button SHIPPED (A; size="sm" + dangerGhost added C; calm R2 2026-10-03: sentence case, 600, 36px / sm 30px) —submitBtn, passkeyRemove, mastheadJoin converted; /signin passkey CTA is primary (full-width) only on a browser with the remembered-device hint cookie, else the shared ghost variant at the bottom (2026-08-21); sanctioned locals: signOutBtn (forest outline), scout-account proxy (compact navy), about-join khaki CTA, calendar/pager chrome'
   ],
   [
     'Pills / badges / tags',

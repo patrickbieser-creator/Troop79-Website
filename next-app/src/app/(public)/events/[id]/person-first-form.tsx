@@ -4,6 +4,7 @@ import { GuestRowsEditor, GuestCountField, GuestsLocked, type GuestRowValue } fr
 import { SavingOverlay, intentOf, type SaveIntent } from './save-feedback';
 import { memo, useCallback, useId, useMemo, useState } from 'react';
 import { Stepper } from '@/app/_components/stepper';
+import { SelectInput } from '@/app/_components/form';
 import type {
   EventPrice,
   EventSignup,
@@ -98,22 +99,27 @@ const TierPicker = memo(function TierPicker({
   return (
     <div className={styles.personExtra}>
       {!auto && (
+        // One choice, so a quiet pulldown rather than a pill row (calm restyle R2).
         <div className={styles.tierPick}>
-          <span className={styles.miniLabel}>Price</span>
-          <div className={styles.pillRow}>
+          <label className={styles.miniLabel} htmlFor={`${dayId}-price`}>
+            Price
+          </label>
+          <SelectInput
+            id={`${dayId}-price`}
+            className={styles.quietPick}
+            value={tierId ?? ''}
+            onChange={(e) => e.target.value && onTierSelect(personKey, Number(e.target.value))}
+          >
+            <option value="" disabled>
+              Choose a price
+            </option>
             {opts.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                className={`${styles.pill} ${tierId === p.id ? styles.pillOn : ''}`}
-                aria-pressed={tierId === p.id}
-                onClick={() => onTierSelect(personKey, p.id)}
-              >
+              <option key={p.id} value={p.id}>
                 {p.label} — {money(p.amount)}
-                {p.per === 'day' && '/day'}
-              </button>
+                {p.per === 'day' ? '/day' : ''}
+              </option>
             ))}
-          </div>
+          </SelectInput>
         </div>
       )}
       {active?.per === 'day' && (
@@ -163,19 +169,16 @@ const QuestionFields = memo(function QuestionFields({
             {!q.required && <span className={styles.optional}> (optional)</span>}
           </span>
           {q.input_type === 'choice' ? (
-            <div className={styles.pillRow}>
+            <SelectInput className={styles.quietPick} value={values?.[q.id] ?? ''} onChange={(e) => onChange(personKey, q.id, e.target.value)}>
+              <option value="" disabled={q.required}>
+                {q.required ? 'Choose one' : 'No answer'}
+              </option>
               {(q.choices ?? []).map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  className={`${styles.pill} ${values?.[q.id] === c ? styles.pillOn : ''}`}
-                  aria-pressed={values?.[q.id] === c}
-                  onClick={() => onChange(personKey, q.id, c)}
-                >
+                <option key={c} value={c}>
                   {c}
-                </button>
+                </option>
               ))}
-            </div>
+            </SelectInput>
           ) : (
             <input
               type={q.input_type === 'number' ? 'number' : 'text'}

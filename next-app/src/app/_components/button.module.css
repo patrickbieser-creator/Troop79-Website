@@ -3,7 +3,9 @@
    files; the primary green was hand-written 5× with 3 greens and 3 radii).
    Ghost is the .divLink/.linkBtn idiom; danger is the public outlined
    danger on the Phase 0 status tokens (public had NO danger canon at all —
-   13 ad-hoc reds). Canonical rendering: /admin/styleguide/public. */
+   13 ad-hoc reds). Canonical rendering: /admin/styleguide/public.
+   Calm restyle R2 (2026-10-03): sentence case, 600 weight, 36px tall (the
+   Menu Monster look; WCAG 2.2 AA's 24px target floor is well cleared). */
 
 .btn {
   display: inline-flex;
@@ -11,13 +13,11 @@
   justify-content: center;
   gap: var(--sp-2);
   font-family: var(--font-ui);
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  border-radius: var(--rad-sm);
-  padding: 12px 22px;
-  min-height: 44px;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  border-radius: var(--rad-md);
+  padding: 6px 16px;
+  min-height: 36px;
   cursor: pointer;
 }
 .btn:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
@@ -28,14 +28,14 @@
   color: var(--warm-white);
   border: none;
 }
-.primary:hover { background: var(--forest-light); box-shadow: var(--shadow-hover); }
+.primary:hover { background: var(--forest-light); }
 
 .secondary {
   background: var(--warm-white);
   color: var(--navy);
   border: 1px solid var(--border-mid);
 }
-.secondary:hover { border-color: var(--forest); color: var(--forest); background: var(--cream); }
+.secondary:hover { border-color: var(--forest); color: var(--forest); }
 
 .ghost {
   background: none;
@@ -43,8 +43,6 @@
   min-height: 0;
   padding: var(--sp-2) 0;
   color: var(--navy);
-  letter-spacing: 0.02em;
-  text-transform: none;
   font-size: var(--fs-sm);
 }
 .ghost:hover { color: var(--forest); text-decoration: underline; text-underline-offset: 2px; }
@@ -64,8 +62,6 @@
   min-height: 0;
   padding: var(--sp-2) 0;
   color: var(--status-danger);
-  letter-spacing: 0.02em;
-  text-transform: none;
   font-size: var(--fs-sm);
 }
 .dangerGhost:hover { text-decoration: underline; text-underline-offset: 2px; background: none; }
@@ -74,7 +70,7 @@
    news-controls' Submit News, the masthead JOIN). Ghost variants keep
    their own minimal padding. */
 .sm {
-  font-size: var(--fs-xs);
-  padding: 7px 14px;
-  min-height: 0;
+  font-size: var(--fs-sm);
+  padding: 4px 12px;
+  min-height: 30px;
 }

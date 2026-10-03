@@ -416,14 +416,17 @@
 .noteInput:focus { outline: 2px solid var(--forest); outline-offset: -1px; }
 
 .memberPick { margin: 0 14px 12px; padding-top: 11px; border-top: 1px dashed var(--border-mid); }
-.pickPrompt { font-size: 12.5px; font-weight: 700; color: var(--text-head); margin-bottom: 9px; }
+.pickPrompt { font-size: var(--fs-sm); font-weight: 600; color: var(--text-head); margin-bottom: var(--sp-2); }
 .pickChips { display: flex; flex-wrap: wrap; gap: 8px; }
-.pickChip { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; text-align: left; background: var(--cream); border: 1.5px solid var(--border-mid); border-radius: 3px; padding: 7px 13px; cursor: pointer; font: inherit; }
-.pickChip:hover:not(:disabled) { border-color: var(--forest); background: var(--warm-white); }
-.pickName { font-size: 13px; font-weight: 700; color: var(--text-head); }
-.pickSub { font-size: 10.5px; color: var(--text-meta); }
-.pickOn { background: var(--status-success-bg); border-color: var(--forest); box-shadow: inset 0 0 0 1px var(--forest); }
+/* Multi-select chips (volunteer slots, guests brought before): borderless on a tint, chosen = green tint (calm restyle R2). */
+.pickChip { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; text-align: left; background: var(--cream); border: none; border-radius: var(--rad-md); padding: 7px 13px; cursor: pointer; font: inherit; }
+.pickChip:hover:not(:disabled) { background: var(--warm-white); box-shadow: var(--shadow-card); }
+.pickChip:focus-visible { outline: var(--focus-ring); outline-offset: 1px; }
+.pickName { font-size: var(--fs-sm); font-weight: 600; color: var(--text-head); }
+.pickSub { font-size: var(--fs-xs); color: var(--text-meta); }
+.pickOn { background: var(--status-success-bg); }
 .pickOn .pickName { color: var(--forest); }
+.pickOn .pickName::before { content: '✓ '; }
 .pickBlocked { opacity: 0.5; cursor: not-allowed; }
 
 .fullNote { display: flex; gap: 8px; margin: 0 14px 12px; padding: 9px 12px; background: var(--status-warning-bg); border-left: 3px solid var(--bark); border-radius: 0 3px 3px 0; font-size: 12.5px; line-height: 1.45; }
@@ -448,19 +451,21 @@
 .personMain { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; }
 .personName { font-size: 14.5px; font-weight: 700; color: var(--text-head); display: flex; flex-direction: column; gap: 1px; }
 .personSub { font-size: 10.5px; font-weight: 400; letter-spacing: .06em; text-transform: uppercase; color: var(--text-meta); }
-.seg { display: inline-flex; gap: 6px; flex-wrap: wrap; }
-.segBtn { border: 1.5px solid var(--border-mid); background: var(--cream); border-radius: 3px; padding: 6px 13px; font-family: var(--font-ui); font-size: 12.5px; font-weight: 700; color: var(--text-body); cursor: pointer; }
-.segBtn:hover { border-color: var(--forest); }
-.segYes { background: var(--status-success-bg); border-color: var(--forest); color: var(--forest); }
-.segNo { background: var(--status-danger-bg); border-color: var(--status-danger); color: var(--status-danger); }
-.segDrv { background: var(--status-info-bg); border-color: var(--navy); color: var(--navy); }
-.personExtra { margin-top: 11px; padding-top: 11px; border-top: 1px dashed var(--border-mid); display: flex; flex-direction: column; gap: 9px; }
-.miniLabel { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-meta); margin-bottom: 5px; }
+/* Attending / Not / Driver only: a quiet segmented control (calm restyle R2 — the Menu
+   Monster prototype's .seg: a tinted tray, the chosen one a white tab in its tone). */
+.seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; background: var(--cream); border-radius: var(--rad-pill); }
+.segBtn { border: none; background: none; border-radius: var(--rad-pill); min-height: 32px; padding: 0 var(--sp-3); font-family: var(--font-ui); font-size: var(--fs-sm); font-weight: 600; color: var(--text-meta); cursor: pointer; }
+.segBtn:hover { color: var(--text-head); }
+.segBtn:focus-visible { outline: var(--focus-ring); outline-offset: 1px; }
+.segYes, .segNo, .segDrv { background: var(--warm-white); box-shadow: var(--shadow-card); }
+.segYes { color: var(--forest); }
+.segNo { color: var(--status-danger); }
+.segDrv { color: var(--navy); }
+.personExtra { margin-top: 11px; padding-top: 11px; border-top: 1px solid var(--rule); display: flex; flex-direction: column; gap: 9px; }
+.miniLabel { display: block; font-size: var(--fs-sm); font-weight: 600; color: var(--text-meta); margin-bottom: var(--sp-1); }
 .tierPick { }
-.pillRow { display: flex; flex-wrap: wrap; gap: 7px; }
-.pill { border: 1.5px solid var(--border-mid); background: var(--cream); border-radius: 999px; padding: 5px 13px; font-family: var(--font-ui); font-size: 12.5px; cursor: pointer; color: var(--text-body); }
-.pill:hover { border-color: var(--forest); }
-.pillOn { background: var(--status-success-bg); border-color: var(--forest); color: var(--forest); font-weight: 700; }
+/* A single choice (price, a choice question) is a quiet pulldown, not a pill row (calm restyle R2). */
+.quietPick { width: auto; max-width: 100%; padding-top: 6px; padding-bottom: 6px; }
 .daysRow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .daysRow .miniLabel { margin-bottom: 0; }
 .dayMath { font-size: 12.5px; color: var(--text-meta); }
