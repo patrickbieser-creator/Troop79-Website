@@ -42,13 +42,11 @@
   margin-bottom: 14px;
 }
 .gateLabel {
- display: block;
- font-size: var(--fs-xs);
- font-weight: 700;
-
-
- color: var(--text-meta);
- margin-bottom: 6px;
+  display: block;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--text-meta);
+  margin-bottom: 6px;
 }
 .gateRow {
   display: flex;
@@ -157,31 +155,27 @@
 .memberRole { font-size: 11px; color: var(--text-meta); }
 
 .memberFlag {
- margin-top: 3px;
- font-size: var(--fs-xs);
- font-weight: 700;
-
-
- color: var(--bark);
- background: var(--status-warning-bg);
- border: 1px solid var(--khaki);
- border-radius: 2px;
- padding: 1px 5px;
+  margin-top: 3px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--bark);
+  background: var(--status-warning-bg);
+  border: 1px solid var(--khaki);
+  border-radius: 2px;
+  padding: 1px 5px;
 }
 
 /* Unsubmitted edits, shown in place of the pending flag — a family switching
    between members needs to know which forms it has left mid-edit. */
 .memberEditFlag {
- margin-top: 3px;
- font-size: var(--fs-xs);
- font-weight: 700;
-
-
- color: var(--navy);
- background: var(--status-info-bg);
- border: 1px solid var(--border-mid);
- border-radius: 2px;
- padding: 1px 5px;
+  margin-top: 3px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--navy);
+  background: var(--status-info-bg);
+  border: 1px solid var(--border-mid);
+  border-radius: 2px;
+  padding: 1px 5px;
 }
 .memberChipActive .memberEditFlag { background: rgba(255, 255, 255, .22); color: var(--warm-white); border-color: transparent; }
 
@@ -238,17 +232,15 @@
    sits in the label; the live value sits under the input, so the form can be
    read as "what I asked for" without hiding "what it still says". */
 .pendingTag {
- margin-left: 6px;
- font-size: var(--fs-xs);
- font-weight: 700;
-
-
- color: var(--bark);
- background: var(--status-warning-bg);
- border: 1px solid var(--khaki);
- border-radius: 2px;
- padding: 1px 5px;
- vertical-align: 1px;
+  margin-left: 6px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--bark);
+  background: var(--status-warning-bg);
+  border: 1px solid var(--khaki);
+  border-radius: 2px;
+  padding: 1px 5px;
+  vertical-align: 1px;
 }
 .pendingWas {
   display: block;

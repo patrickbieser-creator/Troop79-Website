@@ -90,8 +90,22 @@ const SCREENS: Record<string, string[]> = {
     '(public)/profile/profile.module.css',
     '(public)/member/member.module.css',
     '(public)/signin/signin.module.css'
+  ],
+  R4: [
+    '(public)/scouts/[id]/scout-detail.module.css',
+    '(public)/library/mb/[mbId]/mb-tracker.module.css',
+    '(public)/advancement/advancement.module.css',
+    '_components/scout-accordion.module.css'
   ]
 };
+
+/** Rules allowed a heavy drawn rule, with the reason. Their blocks are left out of the heavy-rule check. */
+const HEAVY_OK: Record<string, string[]> = {
+  // The printed Clipboard's page header mirrors the troop's paper sheet (print-only, hidden on screen).
+  '(public)/scouts/[id]/scout-detail.module.css': ['.printPageHeader']
+};
+const withoutExempt = (rel: string, src: string) =>
+  (HEAVY_OK[rel] ?? []).reduce((s, sel) => s.replace(new RegExp(`${sel.replace('.', '\\.')}\\s*\\{[^}]*\\}`, 'g'), ''), src);
 
 describe.each(Object.entries(SCREENS))('Calm style — %s screens', (_release, files) => {
   it.each(files)('%s_HasNoUppercaseLabels', (rel) => {
@@ -104,7 +118,7 @@ describe.each(Object.entries(SCREENS))('Calm style — %s screens', (_release, f
 
   it.each(files)('%s_HasNoHeavyRules', (rel) => {
     // Focus outlines are allowed; drawn borders of 1.5px / 2px are the loud pattern.
-    expect(screenCss(rel).match(/border(?:-(?:top|bottom|left|right))?:\s*(?:1\.5|2)px solid[^;]*/g) ?? []).toEqual([]);
+    expect(withoutExempt(rel, screenCss(rel)).match(/border(?:-(?:top|bottom|left|right))?:\s*(?:1\.5|2)px solid[^;]*/g) ?? []).toEqual([]);
   });
 });
 

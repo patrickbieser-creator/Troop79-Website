@@ -144,13 +144,13 @@
 }
 
 .searchLabel {
- display: block;
- font-size: var(--fs-sm);
- font-weight: 700;
- /* folded from 0.04 */
+  display: block;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  /* folded from 0.04 */
 
- color: var(--navy);
- margin-bottom: 0.35rem;
+  color: var(--navy);
+  margin-bottom: 0.35rem;
 }
 
 .searchInput {
@@ -184,16 +184,14 @@
 }
 
 .scoutTag {
- display: inline-block;
- margin-left: 0.4rem;
- padding: 0.05rem 0.35rem;
- border-radius: var(--rad-sm); /* 3px retired */
- background: var(--status-success-bg);
- color: var(--forest);
- font-size: var(--fs-xs);
- font-weight: 600;
-
-
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: var(--rad-sm); /* 3px retired */
+  background: var(--status-success-bg);
+  color: var(--forest);
+  font-size: var(--fs-xs);
+  font-weight: 600;
 }
 
 /* Passkey sign-in sits ABOVE the password gate: it is the fastest route for

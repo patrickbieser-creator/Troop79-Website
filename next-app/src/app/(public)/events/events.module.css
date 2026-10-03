@@ -11,8 +11,8 @@
 .monthDivider { display: flex; align-items: center; gap: 12px; margin: 20px 0 10px; }
 .monthDivider:first-child { margin-top: 4px; }
 .monthLabel {
- font-family: var(--font-display); font-size: 14px; font-weight: 700;
- color: var(--navy); white-space: nowrap;
+  font-family: var(--font-display); font-size: 14px; font-weight: 700;
+  color: var(--navy); white-space: nowrap;
 }
 .monthRule { flex: 1; height: 1px; background: var(--border-light); }
 
@@ -42,8 +42,8 @@
 .itemTitle { font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--text-head); margin-bottom: 2px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; line-height: 1.3; }
 .itemTitle a:hover { color: var(--navy); }
 .dayNote {
- font-family: var(--font-ui); font-size: var(--fs-xs); font-weight: 700;
- color: var(--text-meta); background: var(--newsprint); border: none; border-radius: 999px; padding: 2px 8px;
+  font-family: var(--font-ui); font-size: var(--fs-xs); font-weight: 700;
+  color: var(--text-meta); background: var(--newsprint); border: none; border-radius: 999px; padding: 2px 8px;
 }
 .itemCategory { font-family: var(--font-ui); font-size: var(--fs-xs); font-weight: 700; }
 /*
@@ -69,14 +69,13 @@
    the rest of the row offers. */
 .colAction { display: flex; justify-content: flex-end; padding-top: 2px; }
 .rowAction {
- position: relative;
- z-index: 1;
- font-family: var(--font-ui); font-size: var(--fs-xs); font-weight: 700;
-
- color: var(--forest); background: var(--warm-white);
- border: 1px solid var(--forest); border-radius: 2px;
- padding: 5px 12px; white-space: nowrap;
- transition: background var(--transition), color var(--transition);
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-ui); font-size: var(--fs-xs); font-weight: 700;
+  color: var(--forest); background: var(--warm-white);
+  border: 1px solid var(--forest); border-radius: 2px;
+  padding: 5px 12px; white-space: nowrap;
+  transition: background var(--transition), color var(--transition);
 }
 .rowAction:hover { background: var(--forest); color: var(--warm-white); }
 .rowAction:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
@@ -247,16 +246,16 @@
 .monthNavBtn:hover { background: var(--newsprint); border-color: var(--forest); color: var(--forest); }
 .monthNavBtn svg { width: 16px; height: 16px; fill: currentColor; }
 .todayBtn {
- font-family: var(--font-ui); font-size: var(--fs-xs); font-weight: 700;
- color: var(--navy); border: 1px solid var(--border-mid); border-radius: 2px; padding: 7px 12px;
- transition: background var(--transition), border-color var(--transition), color var(--transition);
+  font-family: var(--font-ui); font-size: var(--fs-xs); font-weight: 700;
+  color: var(--navy); border: 1px solid var(--border-mid); border-radius: 2px; padding: 7px 12px;
+  transition: background var(--transition), border-color var(--transition), color var(--transition);
 }
 .todayBtn:hover { background: var(--newsprint); border-color: var(--forest); color: var(--forest); }
 
 .weekdayRow { display: grid; grid-template-columns: repeat(7, 1fr); border-bottom: 1px solid var(--border-light); background: var(--newsprint); }
 .weekdayCell {
- font-family: var(--font-ui); font-size: var(--fs-xs); font-weight: 700;
- color: var(--text-meta); text-align: center; padding: 8px 4px;
+  font-family: var(--font-ui); font-size: var(--fs-xs); font-weight: 700;
+  color: var(--text-meta); text-align: center; padding: 8px 4px;
 }
 
 /* Div/ARIA-grid rather than a literal <table>: each day cell contains its

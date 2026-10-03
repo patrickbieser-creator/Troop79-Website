@@ -14,7 +14,7 @@
   padding: 8px 12px;
   font-family: var(--font-ui);
   font-size: 13px;
-  border: 2px solid var(--border-mid);
+  border: 1px solid var(--border-mid);
   border-radius: 3px;
   background: var(--warm-white);
 }
@@ -71,10 +71,8 @@
 
 .subhead {
   font-family: var(--font-ui);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
-  letter-spacing: .06em;
-  text-transform: uppercase;
   color: var(--text-meta);
   margin-top: 10px;
 }

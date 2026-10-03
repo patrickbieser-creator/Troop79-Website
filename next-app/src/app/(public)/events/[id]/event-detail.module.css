@@ -31,15 +31,13 @@
   margin-bottom: 10px;
 }
 .cat {
- display: inline-block;
- color: var(--warm-white);
- font-family: var(--font-ui);
- font-size: var(--fs-xs);
- font-weight: 700;
-
-
- padding: 3px 10px;
- border-radius: 3px;
+  display: inline-block;
+  color: var(--warm-white);
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 3px;
 }
 .title {
   font-family: var(--font-display);
@@ -75,12 +73,10 @@
   font-family: var(--font-ui);
 }
 .fact dt {
- font-size: var(--fs-xs);
- font-weight: 700;
-
-
- color: var(--text-meta);
- margin-bottom: 4px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--text-meta);
+  margin-bottom: 4px;
 }
 .fact dd {
   font-size: 14.5px;
@@ -110,15 +106,13 @@
   margin-bottom: 26px;
 }
 .blockHead {
- font-family: var(--font-ui);
- font-size: 12px;
- font-weight: 700;
-
-
- color: var(--navy);
- padding-bottom: 7px;
- margin-bottom: 12px;
- border-bottom: 1px solid var(--rule);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--navy);
+  padding-bottom: 7px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--rule);
 }
 
 .resourceList {
@@ -153,12 +147,10 @@
   border-top: 1px solid var(--border-light);
 }
 .tierWho {
- display: block;
- font-size: var(--fs-xs);
- color: var(--text-meta);
-
-
- margin-top: 2px;
+  display: block;
+  font-size: var(--fs-xs);
+  color: var(--text-meta);
+  margin-top: 2px;
 }
 .tierAmt {
   font-weight: 700;
@@ -227,14 +219,12 @@
   flex-shrink: 0;
 }
 .elig {
- font-size: var(--fs-xs);
- font-weight: 700;
-
-
- color: var(--text-meta);
- border: 1px solid var(--border-mid);
- border-radius: 999px;
- padding: 2px 8px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--text-meta);
+  border: 1px solid var(--border-mid);
+  border-radius: 999px;
+  padding: 2px 8px;
 }
 .count {
   font-size: 12.5px;
@@ -301,13 +291,11 @@
   margin-bottom: 14px;
 }
 .gateLabel {
- display: block;
- font-size: var(--fs-xs);
- font-weight: 700;
-
-
- color: var(--text-meta);
- margin-bottom: 6px;
+  display: block;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--text-meta);
+  margin-bottom: 6px;
 }
 .gateRow {
   display: flex;

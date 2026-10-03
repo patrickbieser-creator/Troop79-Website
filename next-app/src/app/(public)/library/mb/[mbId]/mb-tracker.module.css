@@ -14,10 +14,8 @@
 
 .eagleTagLarge {
   font-family: var(--font-ui);
-  font-size: var(--fs-2xs);
+  font-size: var(--fs-xs);
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   color: var(--bark);
   background: var(--status-warning-bg);
   padding: var(--sp-1) 10px;
@@ -46,8 +44,6 @@
   font-family: var(--font-ui);
   font-size: var(--fs-xs);
   font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
   color: var(--navy);
   padding: var(--sp-2) var(--sp-4);
   border: 1px solid var(--navy);
@@ -89,10 +85,8 @@
 .statMeta { color: var(--text-meta); }
 .statLabel {
   font-family: var(--font-ui);
-  font-size: 10px; /* off-scale canon micro-label */
+  font-size: var(--fs-xs); /* off-scale canon micro-label */
   font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
   color: var(--text-meta);
   margin-top: 6px;
 }
@@ -123,12 +117,10 @@
   z-index: 4;
   min-width: 200px;
   padding: var(--sp-2) 10px;
-  border-right: 2px solid var(--border-mid);
-  border-bottom: 2px solid var(--navy);
+  border-right: 1px solid var(--border-mid);
+  border-bottom: 1px solid var(--navy);
   text-align: left;
-  font-size: var(--fs-2xs);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: var(--fs-xs);
   color: var(--text-meta);
 }
 
@@ -143,7 +135,7 @@
   letter-spacing: 0.02em;
   padding: 10px var(--sp-2);
   text-align: center;
-  border-bottom: 2px solid var(--navy);
+  border-bottom: 1px solid var(--navy);
   border-right: 1px solid var(--border-light);
 }
 
@@ -151,10 +143,8 @@
   display: inline-block;
   margin-left: var(--sp-2);
   font-family: var(--font-ui);
-  font-size: 9px;
+  font-size: var(--fs-xs);
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
   color: var(--bark);
   background: var(--status-warning-bg);
   padding: 2px var(--sp-2);
@@ -179,7 +169,7 @@
 }
 
 /* First column of each requirement group gets the heavy navy separator. */
-.groupStart { border-left: 2px solid var(--navy); }
+.groupStart { border-left: 1px solid var(--navy); }
 
 /* AWARD column — sticky beside the Scout column. The two golds are the ONLY
    raw hex in this stylesheet, deliberately: the earned-badge celebration
@@ -197,9 +187,8 @@
   text-align: center;
   font-size: var(--fs-xs);
   font-weight: 800;
-  letter-spacing: 0.04em;
-  border-right: 2px solid var(--bark);
-  border-bottom: 2px solid var(--navy);
+  border-right: 1px solid var(--bark);
+  border-bottom: 1px solid var(--navy);
 }
 .awardSubHead {
   position: sticky;
@@ -209,7 +198,7 @@
   min-width: 60px;
   padding: var(--sp-2) var(--sp-1);
   background: var(--status-warning-bg);
-  border-right: 2px solid var(--bark);
+  border-right: 1px solid var(--bark);
 }
 
 .scoutCell {
@@ -219,7 +208,7 @@
   z-index: 2;
   padding: 6px 10px;
   min-width: 200px;
-  border-right: 2px solid var(--border-mid);
+  border-right: 1px solid var(--border-mid);
   border-bottom: 1px solid var(--border-light);
   font-family: var(--font-body);
   font-size: var(--fs-sm);
@@ -228,15 +217,13 @@
 
 .rankPill {
   font-family: var(--font-ui);
-  font-size: 9px;
-  letter-spacing: 0.04em;
+  font-size: var(--fs-xs);
   color: var(--text-meta);
   padding: 1px 6px;
   background: var(--newsprint);
   border-radius: var(--rad-pill);
   margin-left: var(--sp-2);
   font-weight: 700;
-  text-transform: uppercase;
 }
 
 .cell {
@@ -270,7 +257,7 @@
   /* Sticky cells need an opaque background — "transparent" would let
      scrolled-under requirement cells show through. */
   background: var(--warm-white);
-  border-right: 2px solid var(--bark);
+  border-right: 1px solid var(--bark);
   border-bottom: 1px solid var(--border-light);
 }
 .awardCellDone {
