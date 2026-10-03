@@ -14,7 +14,7 @@
  * applies to its draft, and every change is announced through onAnnounce.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { fracText } from '@/lib/menu-monster/units';
 import { RowMenu } from '../menus/_components/row-menu';
 import { AmountEditor } from './ingredient-list-edit';
@@ -35,6 +35,8 @@ export interface AuthorRow {
   unitLabel: string;
   /** "What you'd buy": the price book's cheapest package, or null when it has none. */
   buy: string | null;
+  /** A typed-in ingredient no leader has matched yet (Phase 4B): tagged "New". */
+  isNew?: boolean;
 }
 
 export type AuthorAction =
@@ -51,9 +53,12 @@ export interface AuthorListProps {
   choices: readonly IngredientChoice[];
   onAction: (action: AuthorAction) => void;
   onAnnounce: (text: string) => void;
+  /** The "new ingredient" form for typed text (Phase 4B); it calls `done` with the id it added, or null on cancel. */
+  renderNew?: (name: string, done: (ingredientId: string | null) => void) => ReactNode;
 }
 
-export function AuthorList({ rows, ariaLabel, emptyText = 'No ingredients yet.', choices, onAction, onAnnounce }: AuthorListProps) {
+export function AuthorList({ rows, ariaLabel, emptyText = 'No ingredients yet.', choices, onAction, onAnnounce, renderNew }: AuthorListProps) {
+  const [newName, setNewName] = useState<string | null>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const addRef = useRef<HTMLInputElement>(null);
   const [editing, setEditing] = useState<string | null>(null);
@@ -101,6 +106,7 @@ export function AuthorList({ rows, ariaLabel, emptyText = 'No ingredients yet.',
                 <button type="button" className={s.nameBtn} aria-expanded={open} aria-controls={open ? panel : undefined} onClick={() => setOpenKey(open ? null : r.key)}>
                   {r.name}
                 </button>
+                {r.isNew && <span className={s.tag}>New</span>}
                 {r.note && <span className={s.note}>{r.note}</span>}
               </span>
               <span className={s.amount}>
@@ -162,11 +168,19 @@ export function AuthorList({ rows, ariaLabel, emptyText = 'No ingredients yet.',
           placeholder="Add an ingredient — search the price book"
           choices={free}
           onPick={(c) => {
+            setNewName(null);
             onAction({ type: 'add', ingredientId: c.id });
             onAnnounce(`${c.name} added. Set how much each person needs.`);
             setEditing(`ing:${c.id}`);
           }}
+          onNew={renderNew ? (name) => setNewName(name) : undefined}
         />
+        {newName != null &&
+          renderNew?.(newName, (id) => {
+            setNewName(null);
+            if (id) setEditing(`ing:${id}`);
+            else setFocusReq('add');
+          })}
       </div>
     </div>
   );

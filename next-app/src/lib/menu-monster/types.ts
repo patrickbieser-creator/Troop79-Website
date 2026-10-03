@@ -45,6 +45,8 @@ export interface Ingredient {
   avoid: RestrictionKey[];
   /** Set on the leader tools' authoring load only; the public load excludes retired rows. */
   retiredAt?: string | null;
+  /** A scout typed it in and no leader has matched it yet (Phase 4B): unverified diets and price. */
+  needsMatch?: boolean;
 }
 
 /** "1 {from} = {factor} {to}" for one ingredient — bridges unit families. */
@@ -154,6 +156,9 @@ export interface Catalog {
   packages: Package[];
   conversions: Conversion[];
   recipes: Recipe[];
+  /** Typed-in ingredients a leader matched away (Phase 4B): from id → the book ingredient and
+   *  `factor` (1 from-unit = factor to-units). Menus resolve these on read; absent = none. */
+  aliases?: Record<string, { to: string; factor: number }>;
 }
 
 /** Where a shopping line comes from. Anything but 'buy' counts in Used, never Spent. */

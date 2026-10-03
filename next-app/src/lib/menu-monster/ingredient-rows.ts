@@ -67,6 +67,7 @@ export function ingredientRows(
   const ING = new Map(catalog.ingredients.map((i) => [i.id, i]));
   const people = plan.headcount;
   const R = effectiveRestrictions(plan as Plan);
+  const dietsInPlay = Object.values(R).some((n) => n > 0);
   const rows: IngredientRow[] = [];
 
   recipe.lines.forEach((line, i) => {
@@ -89,6 +90,8 @@ export function ingredientRows(
     let note: string | null = null;
     if (line.servesRule === 'only' && line.servesRestrictions.length > 0) note = `${ruleText(line).replace(/^only /, '')} only`;
     else if (line.servesRule === 'except' && fed < people) note = 'everyone else';
+    // A scout's typed-in no leader has checked yet: its diet ticks are unverified (Phase 4B).
+    if (ing.needsMatch && dietsInPlay) note = note ? `${note} · not checked for diets` : 'Not checked for diets';
 
     rows.push({ key: `${i}:${line.ingredientId}`, name: ing.name, amount, note });
   });

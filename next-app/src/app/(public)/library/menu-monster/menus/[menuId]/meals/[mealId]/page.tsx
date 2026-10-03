@@ -5,6 +5,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { loadMenuMonsterCatalog } from '@/lib/menu-monster/data';
+import { resolveMenuAliases } from '@/lib/menu-monster/menus';
 import { PageShell } from '@/app/_components/page-shell';
 import { MealEditor } from '../../../_components/meal-editor';
 import { MenuHeader, loadViewableMenu, menuViewer } from '../../../_components/scout-menus';
@@ -25,7 +26,7 @@ export default async function MenuMealPage({ params }: { params: Promise<{ menuI
     <>
       <MenuHeader current="meal" listLabel={readOnly ? 'Scouts’ menus' : undefined} menu={{ id: stored.id, name: stored.menu.name }} />
       <PageShell>
-        <MealEditor catalog={catalog} menuId={stored.id} menu={stored.menu} mealId={mealId} updatedAt={stored.updatedAt} readOnly={readOnly} plannedBy={plannedBy} />
+        <MealEditor catalog={catalog} menuId={stored.id} menu={resolveMenuAliases(stored.menu, catalog.aliases)} mealId={mealId} updatedAt={stored.updatedAt} readOnly={readOnly} plannedBy={plannedBy} />
       </PageShell>
     </>
   );

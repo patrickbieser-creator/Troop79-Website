@@ -72,3 +72,16 @@ describe('ingredientRows', () => {
     expect(ingredientRows({ lines: [] }, CATALOG, plan(8), 'total')).toEqual([]);
   });
 });
+
+describe('ingredientRows for typed-in ingredients (Phase 4B)', () => {
+  const unchecked = { ...CATALOG, ingredients: CATALOG.ingredients.map((i) => (i.id === 'bacon' ? { ...i, needsMatch: true } : i)) };
+  const bacon = { lines: [{ ingredientId: 'bacon', qtyPerPerson: 3, unitKey: null, servesRule: 'everyone' as const, servesRestrictions: [] }] };
+
+  it('TypedIn_IsFlagged_WhenTheMenuHasDietCounts', () => {
+    expect(ingredientRows(bacon, unchecked, { headcount: 8, restrictions: { gf: 1, nut: 0, dairy: 0, veg: 0 } }, 'total')[0].note).toBe('Not checked for diets');
+  });
+
+  it('TypedIn_IsNotFlagged_WithoutDietCounts', () => {
+    expect(ingredientRows(bacon, unchecked, { headcount: 8, restrictions: { gf: 0, nut: 0, dairy: 0, veg: 0 } }, 'total')[0].note).toBeNull();
+  });
+});

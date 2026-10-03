@@ -48,6 +48,7 @@ const draft = (over: Partial<ScoutRecipeDraft> = {}): ScoutRecipeDraft => ({
   steps: ['Wrap.', 'Bake.'],
   lines: [{ ingredientId: ING, qtyPerPerson: 1, unitKey: null }],
   originRecipeId: null,
+  newIngredients: [],
   ...over
 });
 

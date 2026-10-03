@@ -61,7 +61,7 @@ describe('RecipeEditor saving', () => {
     fresh();
     await user.type(screen.getByRole('textbox', { name: 'Recipe name' }), 'Chili');
     await user.click(screen.getByRole('button', { name: 'Save draft' }));
-    expect(Object.keys(save.mock.calls[0][0]).sort()).toEqual(['foodGroups', 'id', 'lines', 'mealFit', 'name', 'originRecipeId', 'steps']);
+    expect(Object.keys(save.mock.calls[0][0]).sort()).toEqual(['foodGroups', 'id', 'lines', 'mealFit', 'name', 'newIngredients', 'originRecipeId', 'steps']);
   });
 
   it('SavedRecipe_SaysSaved_UntilSomethingChanges', () => {
@@ -170,5 +170,74 @@ describe('RecipeEditor step focus', () => {
     existing();
     await userEvent.setup().click(screen.getByRole('button', { name: 'Add a step' }));
     expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Step 2' }));
+  });
+});
+
+describe('RecipeEditor typed-in ingredients (Phase 4B)', () => {
+  async function addNew(user: ReturnType<typeof userEvent.setup>, name = 'Gochujang') {
+    await user.type(screen.getByRole('combobox', { name: 'Add an ingredient' }), name);
+    await user.click(screen.getByRole('option', { name: `Add “${name}” as a new ingredient` }));
+    const form = screen.getByRole('group', { name: 'New ingredient' });
+    await user.click(within(form).getByRole('button', { name: 'Weight' }));
+    await user.type(within(form).getByRole('textbox', { name: 'One package holds' }), '1');
+    await user.selectOptions(within(form).getByRole('combobox', { name: 'Package size unit' }), 'lb');
+    await user.type(within(form).getByRole('textbox', { name: 'Price' }), '6.99');
+    await user.click(within(form).getByRole('button', { name: 'Gluten' }));
+    await user.click(within(form).getByRole('button', { name: 'Add ingredient' }));
+  }
+
+  it('Search_OffersTypedTextAsANewIngredient', async () => {
+    const user = userEvent.setup();
+    existing();
+    await user.type(screen.getByRole('combobox', { name: 'Add an ingredient' }), 'Gochujang');
+    expect(screen.getByRole('option', { name: 'Add “Gochujang” as a new ingredient' })).toBeTruthy();
+  });
+
+  it('NewIngredient_JoinsTheList_TaggedNew', async () => {
+    const user = userEvent.setup();
+    existing();
+    await addNew(user);
+    const row = within(screen.getByRole('list', { name: 'Ingredients' })).getByRole('button', { name: 'Gochujang' }).closest('li') as HTMLElement;
+    expect(row.textContent).toContain('New');
+  });
+
+  it('NewIngredient_IsPricedFromTheForm', async () => {
+    const user = userEvent.setup();
+    existing();
+    await addNew(user);
+    await user.click(within(screen.getByRole('list', { name: 'Ingredients' })).getByRole('button', { name: 'Gochujang' }));
+    expect(screen.getByText('Gochujang · $6.99')).toBeTruthy();
+  });
+
+  it('NewIngredientForm_RefusesAMissingPrice', async () => {
+    const user = userEvent.setup();
+    existing();
+    await user.type(screen.getByRole('combobox', { name: 'Add an ingredient' }), 'Gochujang');
+    await user.click(screen.getByRole('option', { name: 'Add “Gochujang” as a new ingredient' }));
+    const form = screen.getByRole('group', { name: 'New ingredient' });
+    await user.type(within(form).getByRole('textbox', { name: 'One package holds' }), '2');
+    await user.type(within(form).getByRole('textbox', { name: 'One is called' }), 'tub');
+    await user.click(within(form).getByRole('button', { name: 'Add ingredient' }));
+    expect(within(form).getByRole('alert').textContent).toBe('Enter what one package costs, from $0.10 to $500.');
+  });
+
+  it('Save_SendsTheNewIngredient_InTheRecipeUnit', async () => {
+    const user = userEvent.setup();
+    existing();
+    await addNew(user);
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    expect(save.mock.calls[0][0].newIngredients[0]).toMatchObject({ name: 'Gochujang', kind: 'weight', avoid: ['gf'], price: 6.99, size: 16 });
+  });
+
+  it('Save_SwapsTheNewKeyForTheRealId', async () => {
+    const user = userEvent.setup();
+    existing();
+    await addNew(user);
+    const key = () => (save.mock.calls.at(-1)![0].lines as { ingredientId: string }[]).at(-1)!.ingredientId;
+    save.mockImplementationOnce(async (d: { newIngredients: { key: string }[] }) => ({ ok: true, id: 'S-0000abcd', updatedAt: STAMP, ids: { [d.newIngredients[0].key]: 'x-00000001' } }));
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    await user.type(screen.getByRole('textbox', { name: 'Recipe name' }), '!');
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    expect(key()).toBe('x-00000001');
   });
 });

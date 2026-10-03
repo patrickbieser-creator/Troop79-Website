@@ -36,6 +36,8 @@ import { RowMenu } from '../../menus/_components/row-menu';
 import { SaveBar } from '../../menus/_components/save-bar';
 import w from '../../menus/_components/workspace.module.css';
 import s from './recipe-editor.module.css';
+import { NewIngredientForm } from './new-ingredient-form';
+import { overlayNewIngredients, type NewIngredient } from '@/lib/menu-monster/scout-ingredients';
 import { RECIPES_HREF } from './paths';
 
 const DEFAULT_PEOPLE = 8;
@@ -46,6 +48,8 @@ interface Draft {
   foodGroups: FoodGroup[];
   steps: { id: number; text: string }[];
   lines: ScoutRecipeLine[];
+  /** Typed-in ingredients not saved yet (Phase 4B); lines name them by their new: key. */
+  newIngredients: NewIngredient[];
 }
 
 export interface RecipeEditorProps {
@@ -64,7 +68,8 @@ const toDraft = (i: RecipeEditorProps['initial']): Draft => ({
   mealFit: [...i.mealFit],
   foodGroups: [...i.foodGroups],
   steps: i.steps.map((text) => ({ id: ++stepSeq, text })),
-  lines: i.lines.map((l) => ({ ...l }))
+  lines: i.lines.map((l) => ({ ...l })),
+  newIngredients: []
 });
 const keyOf = (d: Draft) => JSON.stringify({ ...d, steps: d.steps.map((x) => x.text.trim()).filter(Boolean) });
 const toggle = <T,>(list: T[], v: T) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
@@ -99,8 +104,11 @@ export function RecipeEditor({ catalog, id: initialId, initial, status: initialS
   const dirty = keyOf(draft) !== savedKey;
   useLeaveGuard(dirty && !retired);
 
-  const rows = useMemo(() => authorRows(draft.lines, catalog, people, view), [draft.lines, catalog, people, view]);
-  const choices = useMemo(() => catalog.ingredients.map((i) => ({ id: i.id, name: i.name })), [catalog.ingredients]);
+  // Typed-ins saved this visit but not in this page's catalog yet, keyed by their real id.
+  const [savedTyped, setSavedTyped] = useState<NewIngredient[]>([]);
+  const view$ = useMemo(() => overlayNewIngredients(catalog, [...savedTyped, ...draft.newIngredients]), [catalog, savedTyped, draft.newIngredients]);
+  const rows = useMemo(() => authorRows(draft.lines, view$, people, view), [draft.lines, view$, people, view]);
+  const choices = useMemo(() => view$.ingredients.map((i) => ({ id: i.id, name: i.name })), [view$.ingredients]);
 
   const edit = (f: (d: Draft) => Draft) => {
     setDraft(f);
@@ -111,7 +119,9 @@ export function RecipeEditor({ catalog, id: initialId, initial, status: initialS
   function onIngredient(a: AuthorAction) {
     edit((d) => {
       if (a.type === 'add') return { ...d, lines: [...d.lines, { ingredientId: a.ingredientId, qtyPerPerson: 1, unitKey: null }] };
-      if (a.type === 'remove') return { ...d, lines: d.lines.filter((l) => l.ingredientId !== a.ingredientId) };
+      if (a.type === 'remove') {
+        return { ...d, lines: d.lines.filter((l) => l.ingredientId !== a.ingredientId), newIngredients: d.newIngredients.filter((n) => n.key !== a.ingredientId) };
+      }
       if (a.type === 'move') return { ...d, lines: moveItem(d.lines, a.from, a.to) };
       return { ...d, lines: d.lines.map((l) => (l.ingredientId === a.ingredientId ? { ...l, qtyPerPerson: a.qtyPerPerson } : l)) };
     });
@@ -149,7 +159,16 @@ export function RecipeEditor({ catalog, id: initialId, initial, status: initialS
     setError(null);
     const sent = draft;
     const res = await saveScoutRecipeAction(
-      { id, name: sent.name, mealFit: sent.mealFit, foodGroups: sent.foodGroups, steps: sent.steps.map((x) => x.text), lines: sent.lines, originRecipeId: initial.originRecipeId },
+      {
+        id,
+        name: sent.name,
+        mealFit: sent.mealFit,
+        foodGroups: sent.foodGroups,
+        steps: sent.steps.map((x) => x.text),
+        lines: sent.lines,
+        originRecipeId: initial.originRecipeId,
+        newIngredients: sent.newIngredients
+      },
       version
     ).catch(() => ({ ok: false as const, error: 'Couldn’t save your recipe. Your changes are still here — try again.' }));
     setBusy(null);
@@ -157,8 +176,15 @@ export function RecipeEditor({ catalog, id: initialId, initial, status: initialS
       setError(res.error);
       return null;
     }
-    setSavedKey(keyOf(sent));
-    setSavedDraft(sent);
+    // Typed-ins are real ingredients now: lines name their ids, and the overlay keeps them priced until the page reloads.
+    const real = (k: string) => res.ids?.[k] ?? k;
+    const landed: Draft = { ...sent, lines: sent.lines.map((l) => ({ ...l, ingredientId: real(l.ingredientId) })), newIngredients: [] };
+    if (sent.newIngredients.length > 0) {
+      setSavedTyped((prev) => [...prev, ...sent.newIngredients.map((n) => ({ ...n, key: real(n.key) }))]);
+      setDraft((d) => (keyOf(d) === keyOf(sent) ? landed : d));
+    }
+    setSavedKey(keyOf(landed));
+    setSavedDraft(landed);
     setVersion(res.updatedAt);
     setJustSaved(true);
     if (isNew) {
@@ -271,6 +297,18 @@ export function RecipeEditor({ catalog, id: initialId, initial, status: initialS
                   emptyText="No ingredients yet."
                   onAction={onIngredient}
                   onAnnounce={setAnnounce}
+                  renderNew={(name, done) => (
+                    <NewIngredientForm
+                      initialName={name}
+                      catalog={view$}
+                      onCancel={() => done(null)}
+                      onAdd={(n) => {
+                        edit((d) => ({ ...d, newIngredients: [...d.newIngredients, n], lines: [...d.lines, { ingredientId: n.key, qtyPerPerson: 1, unitKey: null }] }));
+                        setAnnounce(`${n.name} added as a new ingredient. Set how much each person needs.`);
+                        done(n.key);
+                      }}
+                    />
+                  )}
                 />
               </div>
             </section>

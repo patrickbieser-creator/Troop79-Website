@@ -21,6 +21,7 @@ export interface AuthorRowData {
   qtyPerPerson: number;
   unitLabel: string;
   buy: string | null;
+  isNew: boolean;
 }
 
 const NO_DIETS = { gf: 0, nut: 0, dairy: 0, veg: 0 };
@@ -55,7 +56,8 @@ export function authorRows(lines: readonly ScoutRecipeLine[], catalog: Catalog, 
       note: null,
       qtyPerPerson: l.qtyPerPerson,
       unitLabel: lineUnit(l.unitKey, ing).many,
-      buy: pkg ? [pkg.name, priceText(pkg.price), pkg.store].filter(Boolean).join(' · ') : null
+      buy: pkg ? [pkg.name, priceText(pkg.price), pkg.store].filter(Boolean).join(' · ') : null,
+      isNew: ing.needsMatch === true
     });
   }
   return out;

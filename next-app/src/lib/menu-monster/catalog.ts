@@ -65,8 +65,10 @@ export async function loadCatalogWith(supabase: SupabaseClient, opts: CatalogLoa
     fetchAllRows<MmIngredientRow>((from, to) =>
       supabase
         .from('mm_ingredients')
-        .select('id, name, unit_kind, unit_key, unit_one, unit_many, section, staple, avoid, created_at, retired_at')
+        .select('id, name, unit_kind, unit_key, unit_one, unit_many, section, staple, avoid, created_at, retired_at, needs_match_at')
         .is('retired_at', null)
+        // A scout's typed-in reaches others once a shared recipe reveals it; its author always sees their own.
+        .or(owner ? `added_by_person_id.is.null,shared_at.not.is.null,added_by_person_id.eq.${owner}` : 'added_by_person_id.is.null,shared_at.not.is.null')
         .order('id')
         .range(from, to)
     ),
@@ -108,8 +110,27 @@ export async function loadCatalogWith(supabase: SupabaseClient, opts: CatalogLoa
         .range(from, to)
     )
   ]);
-  const v = await loadVariationRows(supabase);
-  return mapCatalog({ ingredients, conversions, packages, recipes, lines, ...v });
+  const [v, aliases] = await Promise.all([loadVariationRows(supabase), loadAliasesWith(supabase)]);
+  return { ...mapCatalog({ ingredients, conversions, packages, recipes, lines, ...v }), aliases };
+}
+
+/** Typed-in ingredients a leader matched to the book (Phase 4B): from → { to, factor }. A chain resolves to its end. */
+export async function loadAliasesWith(supabase: SupabaseClient): Promise<Record<string, { to: string; factor: number }>> {
+  const rows = await fetchAllRows<{ id: string; merged_into_id: string; merge_factor: number }>((from, to) =>
+    supabase.from('mm_ingredients').select('id, merged_into_id, merge_factor').not('merged_into_id', 'is', null).order('id').range(from, to)
+  );
+  const direct = new Map(rows.map((r) => [r.id, { to: r.merged_into_id, factor: Number(r.merge_factor) }]));
+  const out: Record<string, { to: string; factor: number }> = {};
+  for (const id of direct.keys()) {
+    let hop = direct.get(id)!;
+    let factor = hop.factor;
+    for (let guard = 0; direct.has(hop.to) && guard < 10; guard++) {
+      hop = direct.get(hop.to)!;
+      factor *= hop.factor;
+    }
+    out[id] = { to: hop.to, factor };
+  }
+  return out;
 }
 
 /** Pure row → domain mapping; exported so fixtures can build a Catalog from rows. */
@@ -249,7 +270,8 @@ function toIngredient(row: MmIngredientRow): Ingredient {
     section: row.section,
     staple: row.staple,
     avoid: row.avoid as RestrictionKey[],
-    retiredAt: row.retired_at
+    retiredAt: row.retired_at,
+    ...(row.needs_match_at != null ? { needsMatch: true } : {})
   };
 }
 
@@ -265,7 +287,9 @@ export async function loadAuthoringCatalogWith(supabase: SupabaseClient): Promis
     fetchAllRows<MmIngredientRow>((from, to) =>
       supabase
         .from('mm_ingredients')
-        .select('id, name, unit_kind, unit_key, unit_one, unit_many, section, staple, avoid, created_at, retired_at')
+        .select('id, name, unit_kind, unit_key, unit_one, unit_many, section, staple, avoid, created_at, retired_at, needs_match_at, added_by_person_id, shared_at')
+        // Leaders see a scout's typed-in once a shared recipe uses it, never while it is private.
+        .or('added_by_person_id.is.null,shared_at.not.is.null')
         .order('name')
         .range(from, to)
     ),

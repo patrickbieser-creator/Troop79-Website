@@ -8,6 +8,7 @@ import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
 import { centralToday } from '@/lib/dates';
 import { loadMenuMonsterCatalog } from '@/lib/menu-monster/data';
+import { resolveMenuAliases } from '@/lib/menu-monster/menus';
 import { loadOutingsWith } from '@/lib/menu-monster/menus-data';
 import { PageShell } from '@/app/_components/page-shell';
 import { PlanTab } from '../_components/plan-tab';
@@ -35,7 +36,7 @@ export default async function MenuPlanPage({ params }: { params: Promise<{ menuI
         <PlanTab
           catalog={catalog}
           menuId={stored.id}
-          menu={stored.menu}
+          menu={resolveMenuAliases(stored.menu, catalog.aliases)}
           updatedAt={stored.updatedAt}
           outings={outings}
           readOnly={readOnly}

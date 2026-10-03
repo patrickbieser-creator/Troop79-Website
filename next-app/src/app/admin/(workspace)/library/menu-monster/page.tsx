@@ -28,7 +28,8 @@ import { PriceActivity } from './price-activity';
 import { PriceBook } from './price-book';
 import { RecipeBuilder } from './recipe-builder';
 import { ScoutRecipes } from './scout-recipes';
-import { listSharedScoutRecipesWith } from '@/lib/menu-monster/scout-recipes-store';
+import { listSharedScoutRecipesWith, listTypedInsWith } from '@/lib/menu-monster/scout-recipes-store';
+import { ScoutIngredients } from './scout-ingredients';
 import styles from './menu-monster.module.css';
 
 export const metadata = {
@@ -45,11 +46,12 @@ export default async function MenuMonsterAdminPage({
   await requireCapability('library.moderate');
   const sp = await searchParams;
   const admin = createAdminClient();
-  const [catalog, held, stores, shared] = await Promise.all([
+  const [catalog, held, stores, shared, typedIns] = await Promise.all([
     loadAuthoringCatalogWith(admin),
     listHeldWith(admin),
     listActiveStoreNamesWith(admin),
-    listSharedScoutRecipesWith(admin)
+    listSharedScoutRecipesWith(admin),
+    listTypedInsWith(admin)
   ]);
   const today = centralToday();
 
@@ -58,8 +60,11 @@ export default async function MenuMonsterAdminPage({
   ).length;
   const drafts = catalog.recipes.filter((r) => r.status === 'draft').length;
   const tab: Tab = sp.tab === 'recipes' || sp.tab === 'scouts' ? sp.tab : 'prices';
-  // Scout recipes worth a look: live ones changed after sharing.
-  const edited = shared.filter((r) => r.editedSinceShared && r.status !== 'retired').length;
+  // Scout recipes worth a look: live ones changed after sharing, and typed-in ingredients to match.
+  const edited = shared.filter((r) => r.editedSinceShared && r.status !== 'retired').length + typedIns.length;
+  const book = catalog.ingredients
+    .filter((i) => !i.retiredAt && !i.needsMatch)
+    .map((i) => ({ id: i.id, name: i.name, unitKey: i.unit.key, unitMany: i.unit.many }));
   // Recent changes only matter on the Price book tab; the 50-row read skips Recipes.
   const changes = tab === 'prices' ? await listRecentChangesWith(admin, 50) : [];
 
@@ -97,7 +102,10 @@ export default async function MenuMonsterAdminPage({
       ) : tab === 'recipes' ? (
         <RecipeBuilder catalog={catalog} initialRecipeId={sp.recipe} />
       ) : (
-        <ScoutRecipes recipes={shared} />
+        <>
+          <ScoutIngredients items={typedIns} book={book} />
+          <ScoutRecipes recipes={shared} />
+        </>
       )}
     </div>
   );

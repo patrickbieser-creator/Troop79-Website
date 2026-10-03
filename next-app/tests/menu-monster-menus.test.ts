@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Catalog, Recipe } from '../src/lib/menu-monster/types';
 import { MAX_HEADCOUNT, MIN_HEADCOUNT } from '../src/lib/menu-monster/engine';
-import { MAX_FREE_ITEMS, MAX_MENU_DAYS, MAX_MENU_MEALS, composePlan, isMenuId, menuNameError, sanitizeMenu, type Menu } from '../src/lib/menu-monster/menus';
+import { MAX_FREE_ITEMS, MAX_MENU_DAYS, MAX_MENU_MEALS, composePlan, isMenuId, menuNameError, resolveMenuAliases, sanitizeMenu, type Menu } from '../src/lib/menu-monster/menus';
 
 /**
  * Scout Workspace menus (Plans/Menu-Monster-Scout-Workspace.md, Phase 1).
@@ -268,5 +268,37 @@ describe('sanitizeMenu with retired recipes (Phase 4A)', () => {
   it('Menu_KeepsRetiredRecipe_OnSave', () => {
     const retired: Catalog = { ...CATALOG, recipes: CATALOG.recipes.map((r) => (r.id === 'B001' ? { ...r, status: 'retired' as const } : r)) };
     expect(sanitizeMenu(raw(), retired).meals[0].recipeIds).toEqual(['B001']);
+  });
+});
+
+describe('resolveMenuAliases (Phase 4B)', () => {
+  const ALIASES = { 'x-0000aaaa': { to: 'eggs', factor: 2 } };
+  const menu = (recipeEdits: Record<string, unknown>, extra: Record<string, unknown> = {}) =>
+    ({ ...sanitizeMenu(raw(), CATALOG), ...extra, meals: [{ id: 'm1', day: 0, slot: 'breakfast' as const, headcount: null, recipeIds: ['B001'], recipeEdits }] }) as Menu;
+
+  it('AddedTypedIn_BecomesItsTarget_WithTheAmountConverted', () => {
+    const m = resolveMenuAliases(menu({ B001: [{ op: 'add', ingredientId: 'x-0000aaaa', qtyPerPerson: 0.5 }] }), ALIASES);
+    expect(m.meals[0].recipeEdits.B001).toEqual([{ op: 'add', ingredientId: 'eggs', qtyPerPerson: 1 }]);
+  });
+
+  it('SwapToATypedIn_FollowsTheMatch', () => {
+    const m = resolveMenuAliases(menu({ B001: [{ op: 'swap', ingredientId: 'eggs', to: 'x-0000aaaa', qtyPerPerson: 3 }] }), ALIASES);
+    expect(m.meals[0].recipeEdits.B001).toEqual([{ op: 'swap', ingredientId: 'eggs', to: 'eggs', qtyPerPerson: 6 }]);
+  });
+
+  it('WhatYouPaid_MovesToTheTarget', () => {
+    const m = resolveMenuAliases(menu({}, { actuals: { 'x-0000aaaa': { packageId: 'xp-0000aaaa', qty: 1, pricePaid: 4 } } }), ALIASES);
+    expect(Object.keys(m.actuals)).toEqual(['eggs']);
+  });
+
+  it('NoAliases_LeavesTheMenuAsItIs', () => {
+    const before = menu({ B001: [{ op: 'add', ingredientId: 'x-0000aaaa', qtyPerPerson: 0.5 }] });
+    expect(resolveMenuAliases(before, undefined)).toBe(before);
+  });
+
+  it('Save_KeepsAnEditOnAMatchedTypedIn', () => {
+    const cat = { ...CATALOG, aliases: ALIASES } as Catalog;
+    const m = sanitizeMenu(raw({ meals: [{ id: 'm1', day: 0, slot: 'breakfast', headcount: null, recipeIds: ['B001'], recipeEdits: { B001: [{ op: 'add', ingredientId: 'x-0000aaaa', qtyPerPerson: 0.5 }] } }] }), cat);
+    expect(m.meals[0].recipeEdits.B001).toEqual([{ op: 'add', ingredientId: 'eggs', qtyPerPerson: 1 }]);
   });
 });

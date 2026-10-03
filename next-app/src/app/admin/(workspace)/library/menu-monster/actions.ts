@@ -23,7 +23,7 @@ import { recordAudit, type AuditDetail } from '@/lib/audit';
 import { decidePriceWith, leaderSetPriceWith, type DecideOutcome } from '@/lib/menu-monster/price-history';
 import { loadAuthoringCatalogWith } from '@/lib/menu-monster/catalog';
 import { cleanScoutText, isScoutRecipeId } from '@/lib/menu-monster/scout-recipes';
-import { setScoutRecipeCreditWith } from '@/lib/menu-monster/scout-recipes-store';
+import { keepTypedInWith, matchTypedInWith, setScoutRecipeCreditWith } from '@/lib/menu-monster/scout-recipes-store';
 import {
   blockingIssues,
   changeUnitPlan,
@@ -849,6 +849,53 @@ export async function setScoutRecipeCredit(id: string, credit: string): Promise<
       details: [{ field: 'Credit', from: done.before ?? '', to: clean }]
     });
   }
+  revalidate();
+  return { ok: true };
+}
+
+/* ── Typed-in ingredients (Phase 4B) ─────────────────────────────────────── */
+
+/** Match a scout's typed-in to a book ingredient: 1 typed-in unit = `factor` target units. */
+export async function matchScoutIngredient(from: string, to: string, factor: number): Promise<Result> {
+  const denied = await guard();
+  if (denied) return denied;
+  if (!Number.isFinite(factor) || factor <= 0) return { ok: false, error: 'Enter how many of the price-book unit one of theirs is.' };
+  const sb = createAdminClient();
+  const { data: pair } = await sb.from('mm_ingredients').select('id, name').in('id', [from, to]);
+  const name = (id: string) => (pair ?? []).find((p) => p.id === id)?.name ?? id;
+  const res = await matchTypedInWith(sb, from, to, factor);
+  if (!res.ok) return res;
+  await recordAudit({
+    area: 'library',
+    action: 'update',
+    entityType: 'mm_ingredient',
+    entityId: from,
+    summary: `Matched scout ingredient "${name(from)}" to "${name(to)}" (${res.moved} recipe line${res.moved === 1 ? '' : 's'})`,
+    details: [{ field: 'Matched to', from: name(from), to: `${name(to)} × ${factor}` }]
+  });
+  revalidate();
+  return { ok: true };
+}
+
+/** Keep a scout's typed-in as a new book ingredient, with its section and confirmed diets. */
+export async function keepScoutIngredient(id: string, section: Section, avoid: RestrictionKey[]): Promise<Result> {
+  const denied = await guard();
+  if (denied) return denied;
+  if (!SECTIONS.includes(section)) return { ok: false, error: 'Pick a store section.' };
+  const clean = RESTRICTION_KEYS.filter((k) => avoid.includes(k));
+  const name = await keepTypedInWith(createAdminClient(), id, section, clean);
+  if (!name) return { ok: false, error: 'That ingredient isn’t waiting for a match any more.' };
+  await recordAudit({
+    area: 'library',
+    action: 'update',
+    entityType: 'mm_ingredient',
+    entityId: id,
+    summary: `Kept scout ingredient "${name}" as a new price-book ingredient`,
+    details: [
+      { field: 'Section', from: '', to: section },
+      { field: 'Diets it doesn’t suit', from: '', to: clean.join(', ') || 'none' }
+    ]
+  });
   revalidate();
   return { ok: true };
 }

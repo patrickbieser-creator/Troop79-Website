@@ -9,6 +9,7 @@
 import { publicScoutName } from '@/lib/scout-name';
 import type { Catalog, FoodGroup, MealSlot, Recipe } from './types';
 import { FOOD_GROUPS, MEALS, supportedUnits } from './units';
+import { overlayNewIngredients, sanitizeNewIngredients, type NewIngredient } from './scout-ingredients';
 
 const SCOUT_ID = /^S-[0-9a-f]{8}$/;
 
@@ -64,6 +65,8 @@ export interface ScoutRecipeDraft {
   lines: ScoutRecipeLine[];
   /** The troop recipe this one started from ("Share this version", 4C). */
   originRecipeId: string | null;
+  /** Typed-in ingredients not saved yet (Phase 4B); lines name them by their new: key. */
+  newIngredients: NewIngredient[];
 }
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -71,8 +74,10 @@ const pick = <K extends string>(raw: unknown, allowed: readonly K[]): K[] =>
   Array.isArray(raw) ? allowed.filter((k) => raw.includes(k)) : [];
 
 /** Any payload → a draft the RPC will accept (unknown meals, groups, ingredients and units dropped; one line per ingredient). */
-export function sanitizeScoutRecipe(raw: unknown, catalog: Catalog): ScoutRecipeDraft {
+export function sanitizeScoutRecipe(raw: unknown, base: Catalog): ScoutRecipeDraft {
   const r = isRecord(raw) ? raw : {};
+  const typed = sanitizeNewIngredients(r.newIngredients, base);
+  const catalog = overlayNewIngredients(base, typed);
   const ING = new Map(catalog.ingredients.map((i) => [i.id, i]));
   const seen = new Set<string>();
   const lines: ScoutRecipeLine[] = [];
@@ -100,7 +105,9 @@ export function sanitizeScoutRecipe(raw: unknown, catalog: Catalog): ScoutRecipe
     foodGroups: pick(r.foodGroups, FOOD_GROUPS.map((g) => g.key)),
     steps,
     lines,
-    originRecipeId: typeof r.originRecipeId === 'string' && r.originRecipeId.length <= 64 ? r.originRecipeId : null
+    originRecipeId: typeof r.originRecipeId === 'string' && r.originRecipeId.length <= 64 ? r.originRecipeId : null,
+    // Only the typed-ins a line still uses go to the database.
+    newIngredients: typed.filter((n) => seen.has(n.key))
   };
 }
 

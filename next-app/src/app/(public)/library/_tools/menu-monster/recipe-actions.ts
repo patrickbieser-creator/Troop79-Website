@@ -35,11 +35,16 @@ const MESSAGES = {
   retired: 'A leader retired this recipe, so it can’t be changed.',
   cap: `You have ${MAX_SCOUT_RECIPES} recipes. Delete a draft you don’t need to make room.`,
   invalid: 'Something in this recipe can’t be saved. Check the name and steps, then try again.',
-  not_ready: 'A shared recipe needs at least one meal and one ingredient. Add them back, then save.'
+  not_ready: 'A shared recipe needs at least one meal and one ingredient. Add them back, then save.',
+  ingredient_cap: 'You have 10 new ingredients waiting for a leader to check them. Use one from the price book for now.',
+  duplicate_ingredient: 'One of your new ingredients is already in the price book. Pick it from the search instead.'
 } as const;
 
 /** Save the scout's recipe: a new one when the payload has no id, else over the version the editor loaded. */
-export async function saveScoutRecipeAction(raw: unknown, expectedUpdatedAt: string | null): Promise<{ ok: true; id: string; updatedAt: string } | Fail> {
+export async function saveScoutRecipeAction(
+  raw: unknown,
+  expectedUpdatedAt: string | null
+): Promise<{ ok: true; id: string; updatedAt: string; ids: Record<string, string> } | Fail> {
   const actor = await scoutActor();
   if (isFail(actor)) return actor;
   const draft = sanitizeScoutRecipe(raw, await loadMenuMonsterCatalog(actor.personId));
@@ -48,7 +53,7 @@ export async function saveScoutRecipeAction(raw: unknown, expectedUpdatedAt: str
     return { ok: false, error: MESSAGES.conflict };
   }
   const res = await saveScoutRecipeWith(createAdminClient(), actor, draft, expectedUpdatedAt);
-  return res.status === 'saved' ? { ok: true, id: res.id, updatedAt: res.updatedAt } : { ok: false, error: MESSAGES[res.status] };
+  return res.status === 'saved' ? { ok: true, id: res.id, updatedAt: res.updatedAt, ids: res.ids } : { ok: false, error: MESSAGES[res.status] };
 }
 
 /** Share the scout's saved recipe with the troop ("Recipe by Sam K."). */

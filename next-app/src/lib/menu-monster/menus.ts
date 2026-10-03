@@ -327,8 +327,54 @@ function sanitizeShopping(folded: MenuShopping, catalog: Catalog): MenuShopping 
  * through restorePlan(), which drops recipes that don't fit the slot and
  * packages that no longer exist.
  */
+/**
+ * Typed-in ingredients a leader matched to the book (Phase 4B, catalog.aliases):
+ * every place a menu names one by id — recipe-edit ops, the shopping choices and
+ * what-you-paid — now names its target, amounts × factor. Pure; runs inside
+ * sanitizeMenu (save) and on the saved-menu pages (read), so a match never
+ * rewrites stored menus (no false version conflicts). No aliases → same object.
+ */
+export function resolveMenuAliases<M extends Pick<Menu, 'meals' | 'shopping' | 'actuals'>>(menu: M, aliases: Catalog['aliases']): M {
+  if (!aliases || Object.keys(aliases).length === 0) return menu;
+  const id = (v: string) => aliases[v]?.to ?? v;
+  const scale = (v: string, q: number) => Math.min(1000, Math.round(q * (aliases[v]?.factor ?? 1) * 10000) / 10000);
+  const rekey = <V>(rec: Record<string, V>): Record<string, V> => Object.fromEntries(Object.entries(rec).map(([k, v]) => [id(k), v]));
+  const op = (o: EditOp): EditOp => {
+    if (o.op === 'leave_out') return { ...o, ingredientId: id(o.ingredientId) };
+    if (o.op === 'swap') return { ...o, ingredientId: id(o.ingredientId), to: id(o.to), qtyPerPerson: scale(o.to, o.qtyPerPerson) };
+    return { ...o, ingredientId: id(o.ingredientId), qtyPerPerson: scale(o.ingredientId, o.qtyPerPerson) };
+  };
+  return {
+    ...menu,
+    meals: menu.meals.map((m) => ({ ...m, recipeEdits: Object.fromEntries(Object.entries(m.recipeEdits ?? {}).map(([rid, ops]) => [rid, ops.map(op)])) })),
+    shopping: { packageChoice: rekey(menu.shopping.packageChoice), qtyOverride: rekey(menu.shopping.qtyOverride), lineSource: rekey(menu.shopping.lineSource) },
+    actuals: rekey(menu.actuals)
+  };
+}
+
+/** resolveMenuAliases for an unchecked payload: only well-shaped parts are touched; the sanitizers check the rest. */
+function aliasRaw(r: Record<string, unknown>, aliases: NonNullable<Catalog['aliases']>): Record<string, unknown> {
+  const meals = Array.isArray(r.meals) ? r.meals : [];
+  const shopping = isRecord(r.shopping) ? r.shopping : {};
+  const asMenu = {
+    meals: meals.map((m) => (isRecord(m) && isRecord(m.recipeEdits)
+      ? { ...m, recipeEdits: Object.fromEntries(Object.entries(m.recipeEdits).map(([k, v]) => [k, Array.isArray(v) ? v.filter((o) => isRecord(o) && typeof o.ingredientId === 'string' && (o.op !== 'swap' || typeof o.to === 'string') && (o.op === 'leave_out' || typeof o.qtyPerPerson === 'number')) : []])) }
+      : m)) as unknown as MenuMeal[],
+    shopping: {
+      packageChoice: isRecord(shopping.packageChoice) ? shopping.packageChoice : {},
+      qtyOverride: isRecord(shopping.qtyOverride) ? shopping.qtyOverride : {},
+      lineSource: isRecord(shopping.lineSource) ? shopping.lineSource : {}
+    } as MenuShopping,
+    actuals: (isRecord(r.actuals) ? r.actuals : {}) as Actuals
+  };
+  const out = resolveMenuAliases(asMenu, aliases);
+  return { ...r, meals: out.meals, ...(isRecord(r.shopping) ? { shopping: { ...shopping, ...out.shopping } } : {}), ...(isRecord(r.actuals) ? { actuals: out.actuals } : {}) };
+}
+
 export function sanitizeMenu(raw: unknown, catalog: Catalog): Menu {
-  const r = isRecord(raw) ? raw : {};
+  const r0 = isRecord(raw) ? raw : {};
+  // Matched-away typed-ins name their book ingredient before anything is checked against the catalog.
+  const r: Record<string, unknown> = catalog.aliases && Object.keys(catalog.aliases).length > 0 ? aliasRaw(r0, catalog.aliases) : r0;
   const headcount = clampInt(r.headcount, MIN_HEADCOUNT, MAX_HEADCOUNT, 8);
   const restrictions = sanitizeRestrictions(r.restrictions, headcount);
   const budget = Number(r.budgetPerPersonMeal);

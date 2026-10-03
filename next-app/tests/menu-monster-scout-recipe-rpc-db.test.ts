@@ -54,7 +54,7 @@ describe('mm_save_scout_recipe', () => {
 
   it('Scout_CannotEditAnotherScoutsRecipe', async () => {
     const first = await save(SCOUT);
-    const { error } = await save(OTHER, recipe({ name: 'Mine now' }), lines(), first.data as string);
+    const { error } = await save(OTHER, recipe({ name: 'Mine now' }), lines(), (first.data as { updated_at: string }).updated_at);
     expect(error?.message).toContain('MM_NOT_YOURS');
   });
 
@@ -66,7 +66,7 @@ describe('mm_save_scout_recipe', () => {
 
   it('Save_Updates_WhenTheVersionMatches', async () => {
     const first = await save(SCOUT);
-    const { error } = await save(SCOUT, recipe({ name: 'Second' }), lines(), first.data as string);
+    const { error } = await save(SCOUT, recipe({ name: 'Second' }), lines(), (first.data as { updated_at: string }).updated_at);
     expect(error).toBeNull();
     expect((await row())?.name).toBe('Second');
   });
@@ -74,7 +74,7 @@ describe('mm_save_scout_recipe', () => {
   it('Scout_CannotEditRetiredRecipe', async () => {
     const first = await save(SCOUT);
     await admin.from('mm_recipes').update({ status: 'retired' }).eq('id', ID);
-    const { error } = await save(SCOUT, recipe(), lines(), first.data as string);
+    const { error } = await save(SCOUT, recipe(), lines(), (first.data as { updated_at: string }).updated_at);
     expect(error?.message).toContain('MM_RETIRED');
   });
 

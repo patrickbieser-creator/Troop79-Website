@@ -47,6 +47,7 @@ export function IngredientBrowser({ catalog }: { catalog: Catalog }) {
                   </span>
                 </button>
                 {i.staple && <span className={w.meta}>Patrol box</span>}
+                {i.needsMatch && <span className={w.tag}>New</span>}
               </div>
               <div className={w.fitCol}>
                 <span className={w.meta}>{from == null ? 'No price yet' : priceText(from)}</span>

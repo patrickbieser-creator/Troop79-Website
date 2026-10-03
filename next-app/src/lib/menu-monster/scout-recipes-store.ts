@@ -12,12 +12,12 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { recordAuditAs, type AuditActor } from '@/lib/audit';
-import type { FoodGroup, MealSlot, RecipeStatus } from './types';
+import type { FoodGroup, MealSlot, RecipeStatus, RestrictionKey, Section } from './types';
 import { creditFor, isScoutRecipeId, newScoutRecipeId, stepsFromText, stepsToText, type ScoutRecipeDraft, type ScoutRecipeLine } from './scout-recipes';
 
 export type ScoutSaveResult =
-  | { status: 'saved'; id: string; updatedAt: string }
-  | { status: 'conflict' | 'not_found' | 'retired' | 'cap' | 'invalid' | 'not_ready' };
+  | { status: 'saved'; id: string; updatedAt: string; /** new:<key> → the x-<hex> id each typed-in became. */ ids: Record<string, string> }
+  | { status: 'conflict' | 'not_found' | 'retired' | 'cap' | 'invalid' | 'not_ready' | 'ingredient_cap' | 'duplicate_ingredient' };
 export type ScoutShareResult = { status: 'shared'; credit: string } | { status: 'not_found' | 'retired' | 'not_ready' };
 export type ScoutDeleteResult = { status: 'deleted' } | { status: 'not_found' | 'shared' | 'in_use' };
 
@@ -45,6 +45,8 @@ const refusal = (message: string): ScoutSaveResult['status'] => {
   if (message.includes('MM_RETIRED')) return 'retired';
   if (message.includes('MM_RECIPE_CAP')) return 'cap';
   if (message.includes('MM_NOT_READY')) return 'not_ready';
+  if (message.includes('MM_INGREDIENT_CAP')) return 'ingredient_cap';
+  if (message.includes('MM_DUPLICATE_INGREDIENT')) return 'duplicate_ingredient';
   if (message.includes('MM_BAD_')) return 'invalid';
   throw new Error(`scout recipe: ${message}`);
 };
@@ -74,11 +76,22 @@ export async function saveScoutRecipeWith(
       origin_recipe_id: draft.originRecipeId
     },
     p_lines: draft.lines.map((l) => ({ ingredient_id: l.ingredientId, qty_per_person: l.qtyPerPerson, unit_key: l.unitKey })),
-    p_expected_updated_at: isNew ? null : expectedUpdatedAt
+    p_expected_updated_at: isNew ? null : expectedUpdatedAt,
+    p_new_ingredients: draft.newIngredients.map((n) => ({
+      key: n.key,
+      name: n.name,
+      kind: n.kind,
+      unit_one: n.one,
+      unit_many: n.many,
+      avoid: n.avoid,
+      package: { size: n.size, price: n.price, store: n.store }
+    }))
   });
   if (error) return { status: refusal(error.message) } as ScoutSaveResult;
   await audit(sb, actor, isNew ? 'create' : 'update', id, `${isNew ? 'wrote' : 'edited'} recipe "${draft.name}"`);
-  return { status: 'saved', id, updatedAt: data as string };
+  // 4B returns { updated_at, ids }; 4A returned the timestamp alone (kept for the deploy window).
+  const out = typeof data === 'string' ? { updated_at: data, ids: {} } : (data as { updated_at: string; ids: Record<string, string> });
+  return { status: 'saved', id, updatedAt: out.updated_at, ids: out.ids ?? {} };
 }
 
 /** Share the scout's own recipe with the troop, freezing the "Sam K." credit from `people`. */
@@ -157,7 +170,8 @@ export async function loadMyRecipeWith(sb: SupabaseClient, personId: number, id:
       foodGroups: (r.food_groups ?? []) as FoodGroup[],
       steps: stepsFromText(r.steps_md as string | null),
       lines: (lines ?? []).map((l): ScoutRecipeLine => ({ ingredientId: l.ingredient_id as string, qtyPerPerson: Number(l.qty_per_person), unitKey: (l.unit_key as string | null) ?? null })),
-      originRecipeId: (r.origin_recipe_id as string | null) ?? null
+      originRecipeId: (r.origin_recipe_id as string | null) ?? null,
+      newIngredients: []
     },
     status: r.status as RecipeStatus,
     credit: (r.attribution_label as string | null) ?? null,
@@ -209,4 +223,79 @@ export async function setScoutRecipeCreditWith(sb: SupabaseClient, id: string, c
   const { error: uErr } = await sb.from('mm_recipes').update({ attribution_label: credit }).eq('id', id);
   if (uErr) throw new Error(`credit: ${uErr.message}`);
   return { before: (row.attribution_label as string | null) ?? null, name: row.name as string };
+}
+
+/* ---- Typed-in ingredients, leader side (Phase 4B) ------------------------- */
+
+export interface TypedInIngredient {
+  id: string;
+  name: string;
+  unit: { key: string; one: string; many: string; kind: 'count' | 'volume' | 'weight' };
+  avoid: RestrictionKey[];
+  /** The scout's one package: price, size in the recipe unit, store. */
+  pkg: { price: number; size: number | null; store: string | null } | null;
+  /** "Sam K." — who typed it in. */
+  addedBy: string;
+  /** Names of the recipes that use it. */
+  usedIn: string[];
+}
+
+/** Typed-ins a shared recipe revealed and no leader has matched yet, oldest first. A private one never shows here. */
+export async function listTypedInsWith(sb: SupabaseClient): Promise<TypedInIngredient[]> {
+  const { data, error } = await sb
+    .from('mm_ingredients')
+    .select('id, name, unit_key, unit_one, unit_many, unit_kind, avoid, added_by_person_id')
+    .not('needs_match_at', 'is', null)
+    .not('shared_at', 'is', null)
+    .is('retired_at', null)
+    .order('needs_match_at');
+  if (error) throw new Error(`typed-in ingredients: ${error.message}`);
+  const rows = data ?? [];
+  if (rows.length === 0) return [];
+  const ids = rows.map((r) => r.id as string);
+  const people = [...new Set(rows.map((r) => r.added_by_person_id as number))];
+  const [pkgs, lines, names] = await Promise.all([
+    sb.from('mm_packages').select('ingredient_id, price, yield, store').in('ingredient_id', ids).is('retired_at', null),
+    sb.from('mm_recipe_lines').select('ingredient_id, recipe_id, mm_recipes(name)').in('ingredient_id', ids),
+    sb.from('people').select('id, first_name, last_name').in('id', people)
+  ]);
+  for (const r of [pkgs, lines, names]) if (r.error) throw new Error(`typed-in details: ${r.error.message}`);
+  const credit = new Map((names.data ?? []).map((p) => [p.id as number, creditFor(p as { first_name: string | null; last_name: string | null })]));
+  return rows.map((r) => {
+    const p = (pkgs.data ?? []).find((x) => x.ingredient_id === r.id);
+    return {
+      id: r.id as string,
+      name: r.name as string,
+      unit: { key: r.unit_key as string, one: r.unit_one as string, many: r.unit_many as string, kind: r.unit_kind as TypedInIngredient['unit']['kind'] },
+      avoid: (r.avoid ?? []) as RestrictionKey[],
+      pkg: p ? { price: Number(p.price), size: p.yield == null ? null : Number(p.yield), store: (p.store as string | null) ?? null } : null,
+      addedBy: credit.get(r.added_by_person_id as number) ?? 'A scout',
+      usedIn: (lines.data ?? [])
+        .filter((l) => l.ingredient_id === r.id)
+        .map((l) => (l.mm_recipes as unknown as { name: string } | null)?.name ?? (l.recipe_id as string))
+    };
+  });
+}
+
+/** A leader's match: every recipe line on the typed-in moves to `to` (1 typed-in unit = factor target units). */
+export async function matchTypedInWith(sb: SupabaseClient, from: string, to: string, factor: number): Promise<{ ok: true; moved: number } | { ok: false; error: string }> {
+  const { data, error } = await sb.rpc('mm_match_ingredient', { p_from: from, p_to: to, p_factor: factor });
+  if (error) {
+    if (error.message.includes('MM_BAD_MATCH')) return { ok: false, error: error.message.replace(/^.*MM_BAD_MATCH: ?/, 'Can’t match: ') };
+    throw new Error(`match ingredient: ${error.message}`);
+  }
+  return { ok: true, moved: Number(data) };
+}
+
+/** A leader keeps a typed-in as a new book ingredient: its store section and confirmed diets; it stops waiting. */
+export async function keepTypedInWith(sb: SupabaseClient, id: string, section: Section, avoid: RestrictionKey[]): Promise<string | null> {
+  const { data, error } = await sb
+    .from('mm_ingredients')
+    .update({ section, avoid, needs_match_at: null })
+    .eq('id', id)
+    .not('needs_match_at', 'is', null)
+    .is('retired_at', null)
+    .select('name');
+  if (error) throw new Error(`keep ingredient: ${error.message}`);
+  return (data?.[0]?.name as string | undefined) ?? null;
 }

@@ -53,3 +53,23 @@
 @media (min-width: 900px) {
   .grid.grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 }
+
+/* The inline "New ingredient" form under the ingredient search (Phase 4B). */
+.newForm {
+  margin: var(--sp-3) 0 var(--sp-2);
+  padding: var(--sp-3);
+  border: 1px solid var(--border-light);
+  border-radius: var(--rad-md);
+  background: var(--cream);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.newHead { font-family: var(--font-ui); font-size: var(--fs-md); font-weight: 700; color: var(--text-head); margin: 0; }
+.pair { display: grid; grid-template-columns: 1fr; gap: 0 var(--sp-3); }
+@media (min-width: 480px) {
+  .pair { grid-template-columns: 1fr 1fr; }
+}
+.sizeRow { display: flex; gap: var(--sp-2); }
+.sizeRow > * { min-width: 0; }
+.formError { margin: 0; font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--status-danger); }

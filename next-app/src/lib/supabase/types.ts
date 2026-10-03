@@ -508,6 +508,10 @@ export interface MmIngredientRow {
   /** Restriction keys this ingredient conflicts with (warn only). */
   avoid: string[];
   created_at: string;
+  /** Phase 4B: a scout's typed-in waiting for a leader's match (public loads read only this, never who added it). */
+  needs_match_at?: string | null;
+  added_by_person_id?: number | null;
+  shared_at?: string | null;
   retired_at: string | null;
 }
 

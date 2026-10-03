@@ -7,6 +7,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { loadMenuMonsterCatalog } from '@/lib/menu-monster/data';
+import { resolveMenuAliases } from '@/lib/menu-monster/menus';
 import { PageShell } from '@/app/_components/page-shell';
 import { ShoppingTab } from '../../_components/shopping-tab';
 import { MenuHeader, MenuTabs, loadViewableMenu, menuViewer } from '../../_components/scout-menus';
@@ -29,7 +30,7 @@ export default async function MenuShoppingPage({ params }: { params: Promise<{ m
         <ShoppingTab
           catalog={catalog}
           menuId={stored.id}
-          menu={stored.menu}
+          menu={resolveMenuAliases(stored.menu, catalog.aliases)}
           updatedAt={stored.updatedAt}
           snapshot={stored.snapshot}
           readOnly={readOnly}
