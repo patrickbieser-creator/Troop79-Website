@@ -25,7 +25,7 @@
  * onAnnounce (the meal page's status line).
  */
 
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { fracText, parseQty } from '@/lib/menu-monster/units';
 import type { IngredientRow } from '@/lib/menu-monster/ingredient-rows';
 import { RowMenu, type RowMenuItem } from '../menus/_components/row-menu';
@@ -49,6 +49,9 @@ export interface MenuEditProps {
   onAction: (action: RowAction) => void;
   /** A sentence for the live region: 'Swapped Pancake mix for Eggs.' */
   onAnnounce: (text: string) => void;
+  /** The "new ingredient" form for typed text no ingredient matches (release C, a signed-in scout's
+   *  saved menu only); it calls `done` with the id it added, or null on cancel. */
+  renderNew?: (name: string, done: (ingredientId: string | null) => void) => ReactNode;
 }
 
 const MAX_QTY = 1000;
@@ -129,10 +132,11 @@ export function AmountEditor({
   );
 }
 
-export function MenuEditList({ rows, ariaLabel, emptyText = 'No ingredients.', choices, onAction, onAnnounce }: MenuEditProps) {
+export function MenuEditList({ rows, ariaLabel, emptyText = 'No ingredients.', choices, onAction, onAnnounce, renderNew }: MenuEditProps) {
   const listRef = useRef<HTMLUListElement>(null);
   const addRef = useRef<HTMLInputElement>(null);
   const [editing, setEditing] = useState<string | null>(null);
+  const [newName, setNewName] = useState<string | null>(null);
   const [swapping, setSwapping] = useState<string | null>(null);
   // Where focus goes after the next render: a row's ⋯ (by key) or the add box.
   const [focusReq, setFocusReq] = useState<string | 'add' | null>(null);
@@ -297,11 +301,19 @@ export function MenuEditList({ rows, ariaLabel, emptyText = 'No ingredients.', c
           placeholder="Add an ingredient — search the troop’s ingredients"
           choices={free}
           onPick={(c) => {
+            setNewName(null);
             onAction({ type: 'add', ingredientId: c.id });
             onAnnounce(`${c.name} added to your version. Set how much each person needs.`);
             setEditing(`add:${c.id}`);
           }}
+          onNew={renderNew ? (name) => setNewName(name) : undefined}
         />
+        {newName != null &&
+          renderNew?.(newName, (id) => {
+            setNewName(null);
+            if (id) setEditing(`add:${id}`);
+            else setFocusReq('add');
+          })}
       </div>
     </div>
   );

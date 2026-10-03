@@ -19,8 +19,10 @@ const router = { replace: vi.fn(), push: vi.fn(), refresh: vi.fn() };
 vi.mock('next/navigation', () => ({ useRouter: () => router }));
 
 const saveMenuAction = vi.fn();
+const addMenuIngredientAction = vi.fn();
 vi.mock('../src/app/(public)/library/_tools/menu-monster/menu-actions', () => ({
-  saveMenuAction: (...a: unknown[]) => saveMenuAction(...a)
+  saveMenuAction: (...a: unknown[]) => saveMenuAction(...a),
+  addMenuIngredientAction: (...a: unknown[]) => addMenuIngredientAction(...a)
 }));
 
 import { MealEditor } from '../src/app/(public)/library/menu-monster/menus/_components/meal-editor';
@@ -687,5 +689,61 @@ describe('MealEditor — Share this version (Phase 4C)', () => {
     render(editor());
     await userEvent.setup().click(screen.getByRole('button', { name: 'More for Bacon' }));
     expect(screen.queryByRole('link', { name: 'Share this version as a new recipe' })).toBeNull();
+  });
+});
+
+describe('MealEditor typed-in ingredients (release C)', () => {
+  const openBacon = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(screen.getByRole('button', { name: 'Bacon' }));
+  };
+  async function typeNew(user: ReturnType<typeof userEvent.setup>, name = 'Gochujang') {
+    await openBacon(user);
+    await user.type(screen.getByRole('combobox', { name: 'Add an ingredient to your version' }), name);
+    await user.click(screen.getByRole('option', { name: `Add “${name}” as a new ingredient` }));
+    const form = screen.getByRole('group', { name: 'New ingredient' });
+    await user.click(within(form).getByRole('button', { name: 'Weight' }));
+    await user.type(within(form).getByRole('textbox', { name: 'One package holds' }), '1');
+    await user.selectOptions(within(form).getByRole('combobox', { name: 'Package size unit' }), 'lb');
+    await user.type(within(form).getByRole('textbox', { name: 'Price' }), '6.99');
+    await user.click(within(form).getByRole('button', { name: 'Add ingredient' }));
+  }
+
+  beforeEach(() => {
+    addMenuIngredientAction.mockReset();
+    addMenuIngredientAction.mockResolvedValue({ ok: true, id: 'x-0000beef' });
+    saveMenuAction.mockResolvedValue(LANDED);
+  });
+
+  it('SavedMenu_SendsTheNewIngredientToTheServer_InTheRecipeUnit', async () => {
+    const user = userEvent.setup();
+    render(editor());
+    await typeNew(user);
+    expect(addMenuIngredientAction.mock.calls[0][0]).toMatchObject({ name: 'Gochujang', kind: 'weight', size: 16, price: 6.99 });
+  });
+
+  it('SavedTypedIn_IsAddedToTheMeal_ByItsRealId', async () => {
+    const user = userEvent.setup();
+    render(editor());
+    await typeNew(user);
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    expect(saved().meals[0].recipeEdits.B003).toContainEqual(expect.objectContaining({ op: 'add', ingredientId: 'x-0000beef' }));
+  });
+
+  it('Refusal_ShowsUnderTheForm_AndKeepsItOpen', async () => {
+    addMenuIngredientAction.mockResolvedValue({ ok: false, error: 'You have 10 new ingredients waiting.' });
+    const user = userEvent.setup();
+    render(editor());
+    await typeNew(user);
+    expect(screen.getByText('You have 10 new ingredients waiting.')).toBeTruthy();
+    expect(screen.getByRole('group', { name: 'New ingredient' })).toBeTruthy();
+  });
+
+  it('LocalMenu_DoesNotOfferANewIngredient', async () => {
+    const user = userEvent.setup();
+    const store = { caps: { canSave: false, canPay: false, canReport: false }, hrefs: { plan: '/p', shopping: '/s', meal: () => '/m' }, load: () => null, save: vi.fn(), create: vi.fn(), afterCreate: () => '/' };
+    render(<MealEditor catalog={CATALOG} menu={menu()} mealId="m1" updatedAt={null} store={store as never} />);
+    await openBacon(user);
+    await user.type(screen.getByRole('combobox', { name: 'Add an ingredient to your version' }), 'Gochujang');
+    expect(screen.queryByRole('option', { name: 'Add “Gochujang” as a new ingredient' })).toBeNull();
   });
 });

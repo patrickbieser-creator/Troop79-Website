@@ -97,6 +97,16 @@ export function newIngredientProblem(n: Pick<NewIngredient, 'name' | 'kind' | 'o
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
 /** Any payload → the typed-ins the RPC will accept (bad ones dropped, at most 10, keys unique). */
+/** A typed-in as the RPCs take it (mm_create_typed_in via the recipe save or mm_add_menu_ingredient). */
+export function typedInPayload(n: NewIngredient) {
+  return { key: n.key, name: n.name, kind: n.kind, unit_one: n.one, unit_many: n.many, avoid: n.avoid, package: { size: n.size, price: n.price, store: n.store } };
+}
+
+/** Every typed-in id (x-<8 hex>) a menu's meals, shopping choices or actuals name. */
+export function typedInIdsIn(value: unknown): string[] {
+  return [...new Set(JSON.stringify(value ?? null).match(/x-[0-9a-f]{8}/g) ?? [])];
+}
+
 export function sanitizeNewIngredients(raw: unknown, catalog: Catalog): NewIngredient[] {
   const out: NewIngredient[] = [];
   for (const r of Array.isArray(raw) ? raw : []) {

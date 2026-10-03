@@ -60,6 +60,8 @@ import {
 } from '@/lib/menu-monster/ingredient-rows';
 import type { MenuStore, SaveResult } from '@/lib/menu-monster/menu-store';
 import { serverMenuStore } from './server-menu-store';
+import { MenuNewIngredient } from './menu-new-ingredient';
+import { overlayNewIngredients, type NewIngredient } from '@/lib/menu-monster/scout-ingredients';
 import { IngredientList, type RowAction } from '../../_components/ingredient-list';
 import { ReadOnlyLine } from './read-only-line';
 import { RowMenu } from './row-menu';
@@ -95,7 +97,7 @@ interface Status {
 }
 
 export function MealEditor({
-  catalog,
+  catalog: catalogProp,
   menuId,
   menu,
   mealId,
@@ -119,6 +121,11 @@ export function MealEditor({
   store?: MenuStore;
 }) {
   const store = useMemo(() => storeProp ?? serverMenuStore(menuId ?? null), [storeProp, menuId]);
+  // Release C: ingredients the scout typed in on this page, until the next page load brings them in the catalog.
+  const [typed, setTyped] = useState<NewIngredient[]>([]);
+  const catalog = useMemo(() => overlayNewIngredients(catalogProp, typed), [catalogProp, typed]);
+  // Only a signed-in scout's saved menu can add one (it is saved to the price book's waiting list).
+  const canTypeIn = !storeProp && menuId != null && !readOnly;
   const meal = menu.meals.find((m) => m.id === mealId) as MenuMeal;
   const start = (): Draft => ({ people: meal.headcount ?? menu.headcount, recipeIds: [...meal.recipeIds], edits: { ...(meal.recipeEdits ?? {}) } });
   const [draft, setDraft] = useState<Draft>(start);
@@ -441,6 +448,23 @@ export function MealEditor({
                           emptyText="No ingredients on this recipe yet."
                           onAction={(a) => onIngredientAction(id, a)}
                           onAnnounce={(text) => setStatus({ text, undoTo: null })}
+                          renderNew={
+                            canTypeIn
+                              ? (typedName, done) => (
+                                  <MenuNewIngredient
+                                    name={typedName}
+                                    catalog={catalog}
+                                    onCancel={() => done(null)}
+                                    onAdded={(n) => {
+                                      setTyped((t) => [...t, n]);
+                                      onIngredientAction(id, { type: 'add', ingredientId: n.key });
+                                      setStatus({ text: `${n.name} added as a new ingredient. Set how much each person needs.`, undoTo: null });
+                                      done(n.key);
+                                    }}
+                                  />
+                                )
+                              : undefined
+                          }
                         />
                         <p className={s.foot}>Only this menu changes. The troop’s {name} recipe stays the same.</p>
                       </>

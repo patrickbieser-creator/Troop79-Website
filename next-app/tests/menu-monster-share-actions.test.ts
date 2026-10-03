@@ -16,7 +16,8 @@ const mocks = vi.hoisted(() => ({
   setMenuSharedWith: vi.fn(),
   copyMenuWith: vi.fn(),
   setReviewNoteWith: vi.fn(),
-  hideMenuWith: vi.fn()
+  hideMenuWith: vi.fn(),
+  addMenuIngredientWith: vi.fn()
 }));
 
 vi.mock('next/headers', () => ({ cookies: async () => ({ get: () => ({ value: 'cookie' }) }) }));
@@ -34,10 +35,11 @@ vi.mock('@/lib/menu-monster/menus-store', async (orig) => ({
   setMenuSharedWith: mocks.setMenuSharedWith,
   copyMenuWith: mocks.copyMenuWith,
   setReviewNoteWith: mocks.setReviewNoteWith,
-  hideMenuWith: mocks.hideMenuWith
+  hideMenuWith: mocks.hideMenuWith,
+  addMenuIngredientWith: mocks.addMenuIngredientWith
 }));
 
-import { copyMenuAction, hideMenuAction, setReviewNoteAction, shareMenuAction } from '../src/app/(public)/library/_tools/menu-monster/menu-actions';
+import { addMenuIngredientAction, copyMenuAction, hideMenuAction, setReviewNoteAction, shareMenuAction } from '../src/app/(public)/library/_tools/menu-monster/menu-actions';
 import { MENU_LIMIT } from '../src/lib/menu-monster/menus-store';
 
 const SCOUT = { role: 'identity', subjectKind: 'scout', personId: 39, householdKey: 'h', displayName: 'Charlie W.', epoch: 1, iat: 0 } as IdentitySession;
@@ -52,6 +54,7 @@ beforeEach(() => {
   mocks.copyMenuWith.mockResolvedValue({ id: ID, droppedRecipes: 0 });
   mocks.setReviewNoteWith.mockResolvedValue(true);
   mocks.hideMenuWith.mockResolvedValue(true);
+  mocks.addMenuIngredientWith.mockResolvedValue({ status: 'added', id: 'x-0000beef' });
 });
 
 describe('shareMenuAction', () => {
@@ -135,5 +138,34 @@ describe('leader actions', () => {
   it('Scout_CannotHideAMenu', async () => {
     expect((await hideMenuAction(ID)).ok).toBe(false);
     expect(mocks.hideMenuWith).not.toHaveBeenCalled();
+  });
+});
+
+describe('addMenuIngredientAction (release C)', () => {
+  const JAM = { key: 'new:0000beef', name: 'Strawberry jam', kind: 'count', one: 'jar', many: 'jars', avoid: ['x', 'nut'], size: 1, price: 3.5, store: '' };
+
+  it('Scout_AddsACleanTypedIn_AsThemselves', async () => {
+    expect(await addMenuIngredientAction(JAM)).toEqual({ ok: true, id: 'x-0000beef' });
+    expect(mocks.addMenuIngredientWith).toHaveBeenCalledWith(
+      { stub: true },
+      { personId: 39, label: 'Charlie W.' },
+      expect.objectContaining({ name: 'Strawberry jam', avoid: ['nut'], store: null })
+    );
+  });
+
+  it('TypedIn_NeedsSizeAndPrice', async () => {
+    expect((await addMenuIngredientAction({ ...JAM, size: 0 })).ok).toBe(false);
+    expect(mocks.addMenuIngredientWith).not.toHaveBeenCalled();
+  });
+
+  it('TypedIn_SaysTheCap_InWords', async () => {
+    mocks.addMenuIngredientWith.mockResolvedValue({ status: 'ingredient_cap' });
+    const res = await addMenuIngredientAction(JAM);
+    expect(res.ok === false && res.error).toMatch(/10 new ingredients/);
+  });
+
+  it('TypedIn_Fails_ForAnAdult', async () => {
+    mocks.session = { ...SCOUT, subjectKind: 'adult' };
+    expect((await addMenuIngredientAction(JAM)).ok).toBe(false);
   });
 });

@@ -16,8 +16,9 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { requireVerifiedScoutIdentity } from '@/lib/family-access';
 import { loadMenuMonsterCatalog } from '@/lib/menu-monster/data';
 import { MAX_ACTUALS_BYTES, MAX_MENU_BYTES, MAX_MENUS_PER_SCOUT, isMenuId, menuNameError, sanitizeActuals, sanitizeMenu, type Menu, type PaidStatus } from '@/lib/menu-monster/menus';
-import { MAX_REVIEW_NOTE, MENU_LIMIT, copyMenuWith, createMenuWith, deleteMenuWith, duplicateMenuWith, hideMenuWith, loadMenuWith, saveActualsWith, saveMenuWith, setMenuSharedWith, setReviewNoteWith } from '@/lib/menu-monster/menus-store';
+import { MAX_REVIEW_NOTE, MENU_LIMIT, addMenuIngredientWith, copyMenuWith, createMenuWith, deleteMenuWith, duplicateMenuWith, hideMenuWith, loadMenuWith, saveActualsWith, saveMenuWith, setMenuSharedWith, setReviewNoteWith } from '@/lib/menu-monster/menus-store';
 import { resolveAdminActor } from '@/lib/admin-actor';
+import { sanitizeNewIngredients } from '@/lib/menu-monster/scout-ingredients';
 import { reportPriceWith } from '@/lib/menu-monster/price-history';
 import { loadOutingsWith } from '@/lib/menu-monster/menus-data';
 import { centralToday } from '@/lib/dates';
@@ -213,4 +214,27 @@ export async function hideMenuAction(id: string): Promise<{ ok: true } | Fail> {
   if (isFail(actor)) return actor;
   if (!isMenuId(id)) return { ok: false, error: 'That menu is gone.' };
   return (await hideMenuWith(createAdminClient(), actor, id)) ? { ok: true } : { ok: false, error: 'That menu is not shared any more.' };
+}
+
+const TYPED_IN_ERRORS = {
+  ingredient_cap: 'You have 10 new ingredients waiting for a leader to check them. Share a menu or recipe that uses one, or remove one you don’t need.',
+  duplicate_ingredient: 'The troop’s price book already has that. Pick it from the search instead.',
+  invalid: 'Check the name, the package size and the price, then try again.'
+} as const;
+
+/**
+ * An ingredient the price book doesn't have, added from a menu meal (release
+ * C): the same typed-in as a recipe's (4B) — a name, how it's measured, one
+ * package (size in the recipe unit + price). Cleaned with the recipe editor's
+ * rules, owned by the session scout; the meal then adds it like any other.
+ */
+export async function addMenuIngredientAction(raw: unknown): Promise<{ ok: true; id: string } | Fail> {
+  const actor = await scoutActor();
+  if (isFail(actor)) return actor;
+  if (tooBig(raw, 4 * 1024)) return { ok: false, error: TYPED_IN_ERRORS.invalid };
+  const catalog = await loadMenuMonsterCatalog(actor.personId);
+  const [clean] = sanitizeNewIngredients([raw], catalog);
+  if (!clean) return { ok: false, error: TYPED_IN_ERRORS.invalid };
+  const res = await addMenuIngredientWith(createAdminClient(), actor, clean);
+  return res.status === 'added' ? { ok: true, id: res.id } : { ok: false, error: TYPED_IN_ERRORS[res.status] };
 }

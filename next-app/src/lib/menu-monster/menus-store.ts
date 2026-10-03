@@ -22,6 +22,7 @@ import { publicScoutName } from '@/lib/scout-name';
 import { recordAuditAs, type AuditActor } from '@/lib/audit';
 import { MAX_MENUS_PER_SCOUT, MAX_REVIEW_NOTE, coverDays, foldShopping, sanitizeActuals, sanitizeMenu, type Actuals, type Menu, type MenuContext, type MenuMeal } from './menus';
 import { SHELF_DAYS, daysBefore, isPublic } from './menu-access';
+import { typedInIdsIn, typedInPayload, type NewIngredient } from './scout-ingredients';
 import { buildSnapshot, type MenuSnapshot } from './menu-snapshot';
 import type { Catalog, RestrictionKey } from './types';
 
@@ -361,6 +362,7 @@ export async function saveMenuWith(
   if (error) throw new Error(`save menu: ${error.message}`);
   if (!data?.length) return { status: 'conflict' };
   if (current.menu.name !== menu.name) await audit(sb, actor, 'rename', id, `renamed menu "${current.menu.name}" to "${menu.name}"`);
+  await dropOrphanTypedIns(sb, actor);
   return { status: 'saved', updatedAt: data[0].updated_at as string };
 }
 
@@ -417,6 +419,7 @@ export async function deleteMenuWith(sb: SupabaseClient, actor: AuditActor, id: 
   if (error) throw new Error(`delete menu: ${error.message}`);
   if (!data?.length) return false;
   await audit(sb, actor, 'delete', id, `deleted menu "${data[0].name as string}"`);
+  await dropOrphanTypedIns(sb, actor);
   return true;
 }
 
@@ -431,10 +434,11 @@ export async function setMenuSharedWith(sb: SupabaseClient, actor: AuditActor, i
     .update({ shared_at: on ? new Date().toISOString() : null })
     .eq('id', id)
     .eq('owner_person_id', actor.personId)
-    .select('name');
+    .select('name, meals, shopping, actuals');
   if (error) throw new Error(`share menu: ${error.message}`);
   if (!data?.length) return false;
   const name = data[0].name as string;
+  if (on) await revealTypedIns(sb, actor, typedInIdsIn([data[0].meals, data[0].shopping, data[0].actuals]));
   await audit(sb, actor, on ? 'share' : 'unshare', id, on ? `shared menu "${name}" with the troop` : `stopped sharing menu "${name}"`);
   return true;
 }
@@ -511,4 +515,44 @@ export async function copyMenuWith(
   const from = own ? 'themselves' : ((await ownerCreditNamesWith(sb, [src.ownerPersonId])).get(src.ownerPersonId) ?? 'a scout');
   await audit(sb, actor, 'copy', id, `copied menu "${src.menu.name}" from ${from}`);
   return { id, droppedRecipes: recipeCount(src.menu) - recipeCount(clean) };
+}
+
+export type AddTypedInResult = { status: 'added'; id: string } | { status: 'ingredient_cap' | 'duplicate_ingredient' | 'invalid' };
+
+/**
+ * A typed-in ingredient from a menu meal (release C): a real x- ingredient +
+ * package owned by the session scout, through the same validator and 10-cap as
+ * recipe typed-ins (mm_add_menu_ingredient). The menu's next save names it in
+ * a recipeEdits `add` op; the 1-hour orphan grace covers the gap. The caller
+ * passes an already-sanitized NewIngredient (sanitizeNewIngredients).
+ */
+export async function addMenuIngredientWith(sb: SupabaseClient, actor: AuditActor, n: NewIngredient): Promise<AddTypedInResult> {
+  if (actor.personId == null) return { status: 'invalid' };
+  const { data, error } = await sb.rpc('mm_add_menu_ingredient', { p_person: actor.personId, p_new: typedInPayload(n) });
+  if (error) {
+    if (error.message.includes('MM_INGREDIENT_CAP')) return { status: 'ingredient_cap' };
+    if (error.message.includes('MM_DUPLICATE_INGREDIENT')) return { status: 'duplicate_ingredient' };
+    if (error.message.includes('MM_BAD_')) return { status: 'invalid' };
+    throw new Error(`add menu ingredient: ${error.message}`);
+  }
+  return { status: 'added', id: data as string };
+}
+
+/** Sharing a menu reveals the owner's typed-ins it uses (Patrick, 2026-10-03: like a shared recipe, Decision 14). Never un-revealed. */
+async function revealTypedIns(sb: SupabaseClient, actor: AuditActor, ids: string[]) {
+  if (ids.length === 0 || actor.personId == null) return;
+  const { error } = await sb
+    .from('mm_ingredients')
+    .update({ shared_at: new Date().toISOString() })
+    .in('id', ids)
+    .eq('added_by_person_id', actor.personId)
+    .is('shared_at', null);
+  if (error) throw new Error(`reveal typed-ins: ${error.message}`);
+}
+
+/** The scout's private typed-ins nothing uses any more (no recipe, no menu, older than an hour) — they would hold the cap. */
+async function dropOrphanTypedIns(sb: SupabaseClient, actor: AuditActor) {
+  if (actor.personId == null) return;
+  const { error } = await sb.rpc('mm_drop_orphan_typed_ins', { p_person: actor.personId });
+  if (error) throw new Error(`drop orphan typed-ins: ${error.message}`);
 }

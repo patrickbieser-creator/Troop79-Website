@@ -1,5 +1,8 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { adminClient } from './helpers/admin-client';
+import { CATALOG } from './helpers/menu-monster-fixture';
+import type { Menu } from '../src/lib/menu-monster/menus';
+import { addMenuIngredientWith, createMenuWith, deleteMenuWith, loadMenuWith, saveMenuWith, setMenuSharedWith } from '../src/lib/menu-monster/menus-store';
 
 /**
  * Menu Monster release C (Plans/Menu-Monster-Scout-Workspace.md, "Release C
@@ -148,5 +151,63 @@ describe('mm_add_scout_package', () => {
   it('addScoutPackage_refusesLinkTextInTheName', async () => {
     const { error } = await addPackage({ size: 10, price: 5, name: 'Buy at https://x.example' });
     expect(error?.message).toContain('MM_BAD_TEXT');
+  });
+});
+
+const ACTOR = { personId: SCOUT, label: 'Charlie W.' };
+const JAM = { key: 'new:0000beef', name: 'Vitest jam', kind: 'count' as const, one: 'jar', many: 'jars', avoid: [], size: 1, price: 3.5, store: null };
+const menuWith = (ingredientId: string | null): Menu => ({
+  name: MARKER,
+  context: 'camp',
+  calendarEntryId: null,
+  startDate: null,
+  headcount: 8,
+  restrictions: { gf: 0, nut: 0, dairy: 0, veg: 0 },
+  budgetPerPersonMeal: 4,
+  dayCount: 2,
+  shopping: { packageChoice: {}, qtyOverride: {}, lineSource: {} },
+  actuals: {},
+  meals: [{ id: 'm1', day: 0, slot: 'breakfast', headcount: null, recipeIds: ['B001'], recipeEdits: ingredientId ? { B001: [{ op: 'add', ingredientId, qtyPerPerson: 1 }] } : {} }]
+});
+
+describe('menu store, typed-ins (release C)', () => {
+  it('Store_AddsAMenuTypedIn_AsTheSessionScouts', async () => {
+    const res = await addMenuIngredientWith(admin, ACTOR, JAM);
+    if (res.status !== 'added') throw new Error(res.status);
+    const { data } = await admin.from('mm_ingredients').select('added_by_person_id').eq('id', res.id).single();
+    expect(data!.added_by_person_id).toBe(SCOUT);
+  });
+
+  it('Store_ReportsTheCap_AsAStatus', async () => {
+    for (let i = 0; i < 10; i++) await addMenuIngredientWith(admin, ACTOR, { ...JAM, name: `Vitest item ${i}` });
+    expect((await addMenuIngredientWith(admin, ACTOR, { ...JAM, name: 'Vitest item 10' })).status).toBe('ingredient_cap');
+  });
+
+  it('shareMenu_revealsItsTypedIns', async () => {
+    const res = await addMenuIngredientWith(admin, ACTOR, JAM);
+    if (res.status !== 'added') throw new Error(res.status);
+    const id = await createMenuWith(admin, ACTOR, menuWith(res.id), CATALOG);
+    await setMenuSharedWith(admin, ACTOR, id, true);
+    const { data } = await admin.from('mm_ingredients').select('shared_at').eq('id', res.id).single();
+    expect(data!.shared_at).not.toBeNull();
+  });
+
+  it('Save_DropsATypedIn_TheMenuNoLongerUses', async () => {
+    const res = await addMenuIngredientWith(admin, ACTOR, JAM);
+    if (res.status !== 'added') throw new Error(res.status);
+    const id = await createMenuWith(admin, ACTOR, menuWith(res.id), CATALOG);
+    await age(res.id);
+    const stored = (await loadMenuWith(admin, id))!;
+    await saveMenuWith(admin, ACTOR, id, menuWith(null), stored.updatedAt, CATALOG);
+    expect((await admin.from('mm_ingredients').select('id').eq('id', res.id)).data).toEqual([]);
+  });
+
+  it('Delete_DropsTheDeletedMenusTypedIns', async () => {
+    const res = await addMenuIngredientWith(admin, ACTOR, JAM);
+    if (res.status !== 'added') throw new Error(res.status);
+    const id = await createMenuWith(admin, ACTOR, menuWith(res.id), CATALOG);
+    await age(res.id);
+    await deleteMenuWith(admin, ACTOR, id);
+    expect((await admin.from('mm_ingredients').select('id').eq('id', res.id)).data).toEqual([]);
   });
 });

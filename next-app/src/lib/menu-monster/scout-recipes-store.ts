@@ -11,6 +11,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { typedInPayload } from './scout-ingredients';
 import { recordAuditAs, type AuditActor } from '@/lib/audit';
 import type { FoodGroup, MealSlot, RecipeStatus, RestrictionKey, Section } from './types';
 import { creditFor, isScoutRecipeId, newScoutRecipeId, stepsFromText, stepsToText, type ScoutRecipeDraft, type ScoutRecipeLine } from './scout-recipes';
@@ -79,15 +80,7 @@ export async function saveScoutRecipeWith(
     },
     p_lines: draft.lines.map((l) => ({ ingredient_id: l.ingredientId, qty_per_person: l.qtyPerPerson, unit_key: l.unitKey })),
     p_expected_updated_at: isNew ? null : expectedUpdatedAt,
-    p_new_ingredients: draft.newIngredients.map((n) => ({
-      key: n.key,
-      name: n.name,
-      kind: n.kind,
-      unit_one: n.one,
-      unit_many: n.many,
-      avoid: n.avoid,
-      package: { size: n.size, price: n.price, store: n.store }
-    }))
+    p_new_ingredients: draft.newIngredients.map(typedInPayload)
   });
   if (error) return { status: refusal(error.message) } as ScoutSaveResult;
   await audit(sb, actor, isNew ? 'create' : 'update', id, `${isNew ? 'wrote' : 'edited'} recipe "${draft.name}"`);
