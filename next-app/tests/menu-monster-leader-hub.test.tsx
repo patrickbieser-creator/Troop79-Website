@@ -111,7 +111,8 @@ describe('hub, leader', () => {
   it('Leader_SeesTheLocalPlanAndSignInStrip_AboveScoutsMenus', async () => {
     await shelf();
     const plan = await screen.findByLabelText('Menu name');
-    const strip = screen.getByRole('link', { name: 'Sign in to save your menus' });
+    const strip = screen.getByText(/Saving to My menus is for signed-in scouts/);
+    expect(screen.queryByRole('link', { name: 'Sign in to save your menus' })).toBeNull();
     const list = screen.getByRole('heading', { name: 'Scouts’ menus' });
     expect(strip.compareDocumentPosition(plan) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(plan.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();

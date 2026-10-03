@@ -211,7 +211,8 @@ describe('MenuMonsterShelfTool hub, visitor', () => {
     mocks.session = { subjectKind: 'adult', personId: 5, displayName: 'Pat' };
     mocks.summaries = [summary(1)];
     await shelf();
-    expect(screen.getByRole('link', { name: 'Sign in to save your menus' })).toBeTruthy();
+    expect(screen.getByText(/Saving to My menus is for signed-in scouts/)).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'Sign in to save your menus' })).toBeNull();
     expect(await screen.findByLabelText('Menu name')).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'Menu 1' })).toBeNull();
     expect(screen.queryByTestId('planner')).toBeNull();

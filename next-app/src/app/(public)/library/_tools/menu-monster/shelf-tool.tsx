@@ -19,6 +19,7 @@
  */
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
+import { getIdentitySessionIfValid } from '@/lib/family-access';
 import { centralToday } from '@/lib/dates';
 import { loadMenuMonsterCatalog } from '@/lib/menu-monster/data';
 import { listAllMenusWith, listMenusWith, ownerCreditNamesWith } from '@/lib/menu-monster/menus-store';
@@ -74,7 +75,8 @@ export async function MenuMonsterShelfTool() {
     );
   }
 
-  const outings = await loadOutingsWith(createAdminClient(), centralToday());
+  const [outings, identity] = await Promise.all([loadOutingsWith(createAdminClient(), centralToday()), getIdentitySessionIfValid()]);
+  const signedIn = viewer?.kind === 'leader' || identity != null;
   let scoutsMenus: React.ReactNode = null;
   if (viewer?.kind === 'leader') {
     const sb = createAdminClient();
@@ -101,12 +103,17 @@ export async function MenuMonsterShelfTool() {
 
   return (
     <>
-      <p className={w.foot}>
-        <Link className={w.link} href={`/signin?next=${encodeURIComponent(MENU_HUB_HREF)}`}>
-          Sign in to save your menus
-        </Link>
-        . Until then, your menu stays on this computer.
-      </p>
+      {signedIn ? (
+        // Already signed in as an adult or leader: a sign-in link would be a dead end.
+        <p className={w.foot}>Your menu stays on this computer. Saving to My menus is for signed-in scouts.</p>
+      ) : (
+        <p className={w.foot}>
+          <Link className={w.link} href={`/signin?next=${encodeURIComponent(MENU_HUB_HREF)}`}>
+            Sign in to save your menus
+          </Link>
+          . Until then, your menu stays on this computer.
+        </p>
+      )}
       <LocalPlan catalog={catalog} outings={outings} hub />
       {scoutsMenus}
     </>
