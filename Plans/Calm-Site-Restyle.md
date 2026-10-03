@@ -1,6 +1,6 @@
 # Calm Site Restyle — carry the Menu Monster style across the site
 
-**Status:** Parked (starts after Menu Monster Scout Workspace Phase 1 ships)
+**Status:** Active — sweep done (`Plans/Calm-Site-Restyle-Sweep.md`), order picked; R1 in progress (2026-10-03)
 **Parked:** 2026-10-02
 **Priority:** High
 
@@ -20,6 +20,9 @@ Patrick, 2026-10-02: the rest of the site "suffers from the same loud UX that le
 | 2 | Number fields | Plain number boxes on the public site become the shared dialer: event sign-up guest counts and the reimbursement amount. **Done in Phase 1 of Menu Monster** with the shared component (see Notes). |
 | 3 | Scope | **Public and admin**, after Menu Monster Scout Workspace Phase 1. Each side keeps its own token sheet (the admin↔public firewall stands); each adopts the same look in its own tokens. |
 | 4 | Approach | **Jenna MACRO sweep first**: inventory the loud patterns, rank screens, propose an order. Then restyle shared components first (one change, many screens), then per-screen leftovers. |
+| 5 | Release order (2026-10-03) | **R1→R7 as Jenna proposed** — see `Plans/Calm-Site-Restyle-Sweep.md` §4. |
+| 6 | Editorial pages (2026-10-03) | **News, article and Home keep the NYT editorial look** (display type, serif body, masthead); only their loud chrome calms (caps kickers, 2px rules, bordered feed cards). App-like screens get the white-card list look. |
+| 7 | Admin label size (2026-10-03) | Admin labels go sentence case **and step up one size** at the same time (applied in R5). |
 
 ## Acceptance Criteria
 

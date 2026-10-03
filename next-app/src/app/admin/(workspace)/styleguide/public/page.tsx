@@ -29,6 +29,7 @@ import { Badge } from '@/app/_components/badge';
 import { Notice } from '@/app/_components/notice';
 import { EmptyState } from '@/app/_components/empty-state';
 import { SectionDivider } from '@/app/_components/section-divider';
+import cardS from '@/app/_components/card.module.css';
 import { PublicMenuEditListSpecimen, PublicStepperSpecimen, PublicTabStripSpecimen } from './specimens';
 import { IngredientList } from '@/app/(public)/library/menu-monster/_components/ingredient-list';
 import { FormCard, Field, TextInput } from '@/app/_components/form';
@@ -132,7 +133,7 @@ const SCOREBOARD: ReadonlyArray<readonly [string, string, string]> = [
   [
     'Pills / badges / tags',
     '46 distinct class names / 16 files',
-    'Badge SHIPPED (A; caps={false} added C) — reqDoneBadge converted, class deleted; CATEGORICAL tags stay by rule. ONE taxonomy (2026-08-21, Patrick): news articles join calendar_categories (article_categories) — article and event cards both chip their category via articleCategoryLabel/.catEvents; the home "Browse by Category" cloud (loadCategoryCloud, live counts, .tagCount) and /category/<slug> (events + news + resources) read the same list'
+    'Badge SHIPPED (A; caps={false} added C, removed in calm R1 2026-10-03 — every badge sentence case) —reqDoneBadge converted, class deleted; CATEGORICAL tags stay by rule. ONE taxonomy (2026-08-21, Patrick): news articles join calendar_categories (article_categories) — article and event cards both chip their category via articleCategoryLabel/.catEvents; the home "Browse by Category" cloud (loadCategoryCloud, live counts, .tagCount) and /category/<slug> (events + news + resources) read the same list'
   ],
   [
     'Form fields',
@@ -147,7 +148,7 @@ const SCOREBOARD: ReadonlyArray<readonly [string, string, string]> = [
   [
     'Cards',
     '~14 hand-written surface recipes / 4 radii',
-    '.card SHIPPED (A) — member/reimbursement surfaces converted; content-card recipes (resourceCard, storyCard…) remain, fold in Phase C'
+    '.card SHIPPED (A) — member/reimbursement surfaces converted; content-card recipes (resourceCard, storyCard…) remain, fold in Phase C. Calm R1 (2026-10-03): .card borderless; .list/.listRow/.listEnd = the Menu Monster tight list card (38px rows) — the recipe R3/R4 screens migrate onto'
   ],
   [
     'Tab strips',
@@ -356,7 +357,7 @@ export default function PublicStyleguidePage() {
                 </>
               }
               title="Page Header Specimen"
-              lede="Kicker, display title, lede, and the hairline rule — PageHeader, adopted by 20+ pages in Phase A."
+              lede="Quiet kicker, display title, plain lede — no header rule since the calm restyle (R1, 2026-10-03)."
             />
           </div>
 
@@ -389,11 +390,9 @@ export default function PublicStyleguidePage() {
             <Badge tone="neutral">Neutral</Badge> <Badge tone="success">Approved</Badge>{' '}
             <Badge tone="warning">Submitted</Badge> <Badge tone="danger">Denied</Badge>{' '}
             <Badge tone="info">Paid</Badge> <Badge tone="accent">Your scout</Badge>{' '}
-            <Badge tone="accent" caps={false}>
-              ✓ Completed Mar 2026
-            </Badge>{' '}
+            <Badge tone="accent">✓ Completed Mar 2026</Badge>{' '}
             <span className={sg.specimenInlineNote}>
-              caps=&#123;false&#125; — mixed-case content (dates, names)
+              Sentence case, tint only, no outline (calm restyle R1) — the old caps=&#123;false&#125; switch is gone
             </span>
           </div>
 
@@ -406,6 +405,25 @@ export default function PublicStyleguidePage() {
             <Notice tone="warning">Warning notice — khaki/bark family.</Notice>
             <div className={sg.specimenGap} />
             <Notice tone="info">Info notice — navy family.</Notice>
+          </div>
+
+          {/* List card (calm restyle R1) */}
+          <div className={sg.specimenBlock}>
+            <ul className={cardS.list} aria-label="List card specimen">
+              <li className={cardS.listRow}>
+                Fall Camporee <span className={cardS.listEnd}>Oct 9</span>
+              </li>
+              <li className={cardS.listRow}>
+                Klondike Derby <span className={cardS.listEnd}>Jan 23</span>
+              </li>
+              <li className={cardS.listRow}>
+                Summer camp <span className={cardS.listEnd}>Jul 11</span>
+              </li>
+            </ul>
+            <div className={sg.specimenGap} />
+            <span className={sg.specimenInlineNote}>
+              card.module.css .list / .listRow / .listEnd — borderless white list, 38px rows, a fixed right column
+            </span>
           </div>
 
           {/* Form kit */}

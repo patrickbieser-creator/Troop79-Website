@@ -3,17 +3,18 @@
    .fieldHint/.fieldError), the most complete of the 18 files re-declaring
    field styles (88 declarations at audit). The error box moves off its
    ad-hoc red hexes onto the Phase 0 status tokens. Canonical rendering:
-   /admin/styleguide/public. */
+   /admin/styleguide/public.
+   Calm restyle R1 (2026-10-03, Plans/Calm-Site-Restyle.md): the Menu Monster
+   look — a borderless white card, quiet sentence-case labels, slimmer fields. */
 
 .formCard {
   background: var(--warm-white);
-  border: 1px solid var(--border-light);
-  border-radius: var(--rad-sm);
+  border-radius: var(--rad-md);
   box-shadow: var(--shadow-card);
-  padding: 26px 28px;
+  padding: var(--sp-5);
 }
 @media (max-width: 640px) {
-  .formCard { padding: var(--sp-5) 18px; }
+  .formCard { padding: var(--sp-4); }
 }
 
 .fieldRow { margin-bottom: var(--sp-4); }
@@ -21,10 +22,8 @@
 .fieldLabel {
   display: block;
   font-family: var(--font-ui);
-  font-size: var(--fs-2xs);
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 14px; /* the approved Menu Monster label size, between --fs-sm and --fs-md */
+  font-weight: 600;
   color: var(--text-meta);
   margin-bottom: 6px;
 }
@@ -35,12 +34,12 @@
   width: 100%;
   background: var(--warm-white);
   border: 1px solid var(--border-mid);
-  border-radius: var(--rad-sm);
+  border-radius: var(--rad-md);
   font-family: var(--font-ui);
   font-size: 16px; /* DECIDED (Patrick, 2026-08-21, Phase C): 16px is the
                       iOS no-zoom floor — below it Safari zooms every field
                       focus. Deliberately off the --fs-* scale. */
-  padding: 11px 13px;
+  padding: 9px 12px;
   color: var(--text-body);
 }
 .textInput:focus-visible,
@@ -50,10 +49,10 @@
 
 .fieldHint {
   font-family: var(--font-ui);
-  font-size: var(--fs-xs);
+  font-size: var(--fs-sm);
   color: var(--text-meta);
-  margin-top: 6px;
-  line-height: 1.5;
+  margin-top: var(--sp-1);
+  line-height: 1.45;
 }
 
 .fieldError {
@@ -63,7 +62,7 @@
   color: var(--status-danger);
   background: var(--status-danger-bg);
   border: 1px solid color-mix(in srgb, var(--status-danger) 35%, var(--border-mid));
-  border-radius: var(--rad-sm);
+  border-radius: var(--rad-md);
   padding: 10px 14px;
   margin-top: var(--sp-2);
 }

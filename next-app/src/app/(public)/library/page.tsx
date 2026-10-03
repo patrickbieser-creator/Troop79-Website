@@ -296,7 +296,7 @@ function RankDrill({ data }: { data: HomeData }) {
                       <span className={`${styles.reqTag} ${styles.reqTagGhost}`}>{req.code}</span>
                       <span className={styles.reqLabel}>{req.label}</span>
                       {doneDate && (
-                        <Badge tone="accent" caps={false}>
+                        <Badge tone="accent">
                           ✓{' '}
                           {fmtMonthYear(doneDate)}
                         </Badge>

@@ -151,7 +151,7 @@ export default async function LibraryRequirementPage({
             <span className={`${styles.reqTag} ${styles.reqTagLarge}`}>{code}</span>
             <span className={styles.reqTitleLabel}>{node.label}</span>
             {isLeaf && ownDoneDate && (
-              <Badge tone="accent" caps={false}>
+              <Badge tone="accent">
                 ✓ Completed{' '}
                 {fmtMonthYear(ownDoneDate)}
               </Badge>
@@ -247,7 +247,7 @@ export default async function LibraryRequirementPage({
                       <span className={`${styles.reqTag} ${styles.reqTagGhost}`}>{child.code}</span>
                       <span className={styles.reqLabel}>{child.label}</span>
                       {childDone && (
-                        <Badge tone="accent" caps={false}>
+                        <Badge tone="accent">
                           ✓{' '}
                           {fmtMonthYear(childDone)}
                         </Badge>

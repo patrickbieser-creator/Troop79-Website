@@ -1,9 +1,8 @@
 /**
- * Shared public TabStrip — segmented joined tabs with optional counts.
- * API mirrors the admin TabStrip (items / activeKey / ariaLabel; items take
- * href OR onSelect), implemented on the public tokens with the report
- * screen's joined-rectangle look rather than admin's pills. Canonical
- * rendering: /admin/styleguide/public.
+ * Shared public TabStrip — text tabs with optional "(n)" counts (calm
+ * restyle R1, 2026-10-03; was a joined segmented row). API mirrors the admin
+ * TabStrip (items / activeKey / ariaLabel; items take href OR onSelect),
+ * implemented on the public tokens. Canonical rendering: /admin/styleguide/public.
  */
 'use client';
 
@@ -32,7 +31,7 @@ export function TabStrip({
       {items.map((item) => {
         const active = item.key === activeKey;
         const cls = active ? `${s.tab} ${s.active}` : s.tab;
-        const count = item.count != null ? <span className={s.count}>{item.count}</span> : null;
+        const count = item.count != null ? <span className={s.count}> ({item.count})</span> : null;
         if (item.href != null) {
           return (
             <Link

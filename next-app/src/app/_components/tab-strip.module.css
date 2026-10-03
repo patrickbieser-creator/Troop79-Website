@@ -1,39 +1,37 @@
-/* Shared public TabStrip — the joined segmented row, promoted from
-   advancement/report's .viewTab/.viewTabActive (canon among 5 re-declaring
-   files: report, events' viewToggle, event-detail's seg, meeting-plan and
-   scout-account tabs). Canonical rendering: /admin/styleguide/public. */
+/* Shared public TabStrip, promoted from advancement/report's view tabs (canon
+   among 5 re-declaring files: report, events' viewToggle, event-detail's seg,
+   meeting-plan and scout-account tabs). Canonical rendering: /admin/styleguide/public.
+   Calm restyle R1 (2026-10-03): text tabs (the Menu Monster prototype's
+   .menutabs) — quiet labels on a hairline, the active one dark with a navy
+   underline; a count is plain "(n)". */
 
-.strip { display: flex; gap: 2px; }
+.strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--sp-6);
+  border-bottom: 1px solid var(--rule);
+}
 
 .tab {
   font-family: var(--font-ui);
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  border: 1px solid var(--border-mid);
-  padding: var(--sp-2) var(--sp-4);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  min-height: 44px;
+  padding: 0;
+  margin-bottom: -1px;
   cursor: pointer;
-  background: var(--warm-white);
-  color: var(--text-head);
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: var(--text-meta);
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-1);
   text-decoration: none;
 }
-.tab:first-child { border-radius: var(--rad-sm) 0 0 var(--rad-sm); }
-.tab:last-child { border-radius: 0 var(--rad-sm) var(--rad-sm) 0; }
-.tab:not(:first-child) { border-left: none; }
-.tab:focus-visible { outline: var(--focus-ring); outline-offset: 1px; }
-.tab:hover { background: var(--cream); }
+.tab:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+.tab:hover { color: var(--text-head); }
 
-.active {
-  background: var(--navy);
-  border-color: var(--navy);
-  color: var(--warm-white);
-}
-.active:hover { background: var(--navy); }
+.active { color: var(--text-head); border-bottom-color: var(--navy); }
 
-.count {
-  font-size: 10.5px; /* off-scale canon; Phase C may fold to --fs-2xs */
-  font-weight: 700;
-  opacity: 0.75;
-}
+.count { font-weight: 400; color: var(--text-meta); }

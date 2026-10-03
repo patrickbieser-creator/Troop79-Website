@@ -1,40 +1,43 @@
 /* Shared public PageHeader — promoted verbatim from library.module.css's
-   .pageHeader/.kicker/.pageTitle/.pageLede/.headRule, the de-facto canon the
+   .pageHeader/.kicker/.pageTitle/.pageLede, the de-facto canon the
    2026-08-21 audit found re-declared across 11 files (+2 pages inline).
-   Canonical rendering: /admin/styleguide/public. Off-grid paddings are the
-   canon's own values; Phase C may fold them onto the --sp-* grid. */
+   Canonical rendering: /admin/styleguide/public.
+   Calm restyle R1 (2026-10-03): the Menu Monster title line — a quiet
+   sentence-case kicker, a 700 display title, a plain lede, no header rule.
+   Editorial pages (Home, news, articles) don't use PageHeader and keep their
+   own type (Plans/Calm-Site-Restyle.md decision 6). */
 
 .pageHeader {
   max-width: 1180px;
   margin: 0 auto;
-  padding: 32px 24px 0;
+  padding: var(--sp-6) 24px var(--sp-4);
 }
 .kicker {
   font-family: var(--font-ui);
-  font-size: var(--fs-2xs);
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-size: var(--fs-sm);
+  font-weight: 600;
   color: var(--text-meta);
-  margin-bottom: 10px;
+  margin-bottom: var(--sp-2);
 }
 .kicker a { color: var(--navy); }
 .kicker a:hover { color: var(--forest); text-decoration: underline; text-underline-offset: 2px; }
 .kickerSep { margin: 0 6px; color: var(--border-mid); }
 .pageTitle {
   font-family: var(--font-display);
-  font-weight: 900;
+  font-weight: 700;
   color: var(--text-head);
-  font-size: var(--fs-display);
-  line-height: 1.08;
-  margin-bottom: 10px;
+  font-size: var(--fs-3xl);
+  line-height: 1.12;
+  margin-bottom: var(--sp-2);
   text-wrap: balance;
 }
+@media (max-width: 640px) {
+  .pageTitle { font-size: var(--fs-2xl); }
+}
 .pageLede {
-  font-family: var(--font-body);
-  font-size: var(--fs-lg);
-  font-style: italic;
+  font-family: var(--font-ui);
+  font-size: var(--fs-md);
   color: var(--text-meta);
   line-height: 1.5;
+  max-width: 68ch;
 }
-.headRule { height: 2px; background: var(--border-mid); margin-top: 20px; }

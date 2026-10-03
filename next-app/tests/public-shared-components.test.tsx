@@ -89,13 +89,10 @@ describe('Badge', () => {
     expect(screen.getByText('Paid').className).toMatch(/success/i);
   });
 
-  it('PublicBadge_SkipsUppercase_WhenCapsFalse', () => {
-    render(
-      <Badge tone="accent" caps={false}>
-        ✓ Completed Mar 2026
-      </Badge>
-    );
-    expect(screen.getByText('✓ Completed Mar 2026').className).toMatch(/noCaps/i);
+  // Calm restyle R1 (2026-10-03): every badge is sentence case, so there is no caps switch.
+  it('PublicBadge_HasNoCapsVariant', () => {
+    render(<Badge tone="accent">✓ Completed Mar 2026</Badge>);
+    expect(screen.getByText('✓ Completed Mar 2026').className).not.toMatch(/noCaps/i);
   });
 });
 
@@ -112,6 +109,12 @@ describe('TabStrip', () => {
       />
     );
     expect(screen.getByRole('tab', { name: /This Week/ }).textContent).toContain('4');
+  });
+
+  // Calm restyle R1: a count is plain "(n)" after the label, not a chip.
+  it('PublicTabStrip_ShowsTheCountInParentheses', () => {
+    render(<TabStrip items={[{ key: 'week', label: 'This Week', count: 4 }]} activeKey="week" ariaLabel="Report range" />);
+    expect(screen.getByRole('tab', { name: /This Week/ }).textContent).toBe('This Week (4)');
   });
 
   it('PublicTabStrip_MarksOnlyActiveTab_AsSelected', () => {
