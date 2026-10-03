@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session Summary — Calm Site Restyle</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #3d5a3e;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #f0eecd;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); vertical-align: top; }
+        tr:hover { background: var(--nw-sage); }
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+        code { font-family: 'Courier New', monospace; font-size: 0.85em; background: var(--nw-light-gray); padding: 0 0.3em; border-radius: 3px; }
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+        @media print { body { background: white; } header { padding: 1.5rem; } .container { padding: 1rem; } .stat { break-inside: avoid; } }
+        @media (max-width: 600px) { header h1 { font-size: 1.5rem; } .stats { flex-direction: column; } }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>The calm restyle, start to finish</h1>
+        <p class="subtitle">Menu Monster&rsquo;s add controls split into one job each, then the whole site &mdash; public and the leader workspace &mdash; restyled to the calm Menu Monster look in seven releases, locked by a site-wide test.</p>
+        <div class="meta">
+            <span>&#128197; October 3, 2026</span>
+            <span>&#129302; Operator (Opus 5.5)</span>
+            <span>&#128204; Troop79-Website</span>
+            <span>&#128640; v1.143.0 &rarr; v1.152.0</span>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">9</div><div class="label">Releases (v1.144&ndash;v1.152)</div></div>
+            <div class="stat"><div class="number">0</div><div class="label">Production migrations</div></div>
+            <div class="stat"><div class="number">4</div><div class="label">Decisions (D-310&ndash;313)</div></div>
+            <div class="stat"><div class="number">122</div><div class="label">Tests net (3321 &rarr; 3443)</div></div>
+            <div class="stat"><div class="number">2</div><div class="label">Jenna reviews (MICRO + MACRO)</div></div>
+        </div>
+
+        <h2>What Was Accomplished</h2>
+
+        <div class="callout callout-teal">
+            <strong>The outcome:</strong> every page on the site now reads like Menu Monster &mdash; sentence-case labels, borderless white cards, no heavy rules, quiet buttons and text tabs &mdash; and a test fails if a new stylesheet brings the loud patterns back. News, articles and Home keep their newspaper look.
+        </div>
+
+        <h3>Releases</h3>
+        <ul>
+            <li><strong>v1.144.0 &mdash; Menu Monster, one control per job:</strong> a day&rsquo;s &ldquo;+ Add a meal&rdquo; offers only the meals it lacks; a meal&rsquo;s search ends in &ldquo;Browse all recipes&hellip;&rdquo; (Food &amp; Recipes for that meal). The day-level recipe popup is gone.</li>
+            <li><strong>v1.145.0 R1 &mdash; shared public kit:</strong> forms, page headers, dividers, cards (+ a tight list recipe), notices, badges, tabs.</li>
+            <li><strong>v1.146.0 R2 &mdash; buttons + event sign-up:</strong> sentence-case 36px buttons; price and choice questions become pulldowns.</li>
+            <li><strong>v1.147.0 R3 &mdash; events, event detail, Profile, Member, Sign-in.</strong></li>
+            <li><strong>v1.148.0 R4 &mdash; Clipboard, merit badge tracker, advancement</strong> (print unchanged).</li>
+            <li><strong>v1.149.0 R5 &mdash; admin shared kit:</strong> panels, sections, tables, titles, tabs &ldquo;(n)&rdquo;, notices, badges; labels sentence case and one size up.</li>
+            <li><strong>v1.150.0 R6 &mdash; nine busiest admin screens.</strong></li>
+            <li><strong>v1.151.0 R7 &mdash; the long tail + styleguides;</strong> plan archived.</li>
+            <li><strong>v1.152.0 &mdash; no &ldquo;Suggest a Resource&rdquo; band</strong> on Menu Monster pages.</li>
+        </ul>
+
+        <div class="callout callout-gold">
+            <strong>Caught on the way:</strong> the bulk CSS script collapsed indentation in the R3 files (repaired in R4, no value changes, script fixed); it also stripped caps from the leader-code input (restored &mdash; data, not a label). Browser checks were thin: Chrome wouldn&rsquo;t hold 375px and later stalled on screenshots, so R2&ndash;R7 rest on tests and builds.
+        </div>
+
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Decision</th></tr></thead>
+            <tbody>
+                <tr><td>D-310</td><td>Menu Monster: the day adds meals, the meal adds food</td></tr>
+                <tr><td>D-311</td><td>Calm restyle: R1&rarr;R7 order; editorial pages keep their look; admin labels one size up</td></tr>
+                <tr><td>D-312</td><td>One site-wide calm-style test with named exemptions (codes, date-block months, print, masthead, functional borders)</td></tr>
+                <tr><td>D-313</td><td>A library shelf with a tool has no Suggest a Resource band</td></tr>
+            </tbody>
+        </table>
+
+        <h2>Next Steps</h2>
+        <ul>
+            <li><strong>Patrick:</strong> phone eyes-on in production &mdash; event sign-up with several prices or a choice question, Clipboard (screen + print), MB tracker, admin forms with numbered sections, Fast Entry, Add a meal / Browse all recipes.</li>
+            <li><strong>Then:</strong> the full suite&rsquo;s load-timeout flakes; superuser proxy as a scout; Phase 4 follow-ups.</li>
+            <li><strong>Carried:</strong> ledger cleanup, <code>fetchAllRows</code> ordering, B-004.</li>
+        </ul>
+
+        <h2>Files Changed</h2>
+        <table>
+            <thead><tr><th>Area</th><th>Change</th></tr></thead>
+            <tbody>
+                <tr><td><code>next-app/src/app/(public)/library/menu-monster/menus/_components/</code></td><td>add-meal-menu (new), meal-panel, plan-tab, recipe-library-dialog; <code>lib/menu-monster/menu-search.ts</code> mealsToAdd</td></tr>
+                <tr><td><code>next-app/src/app/_components/</code>, <code>admin/_components/</code>, <code>admin/(workspace)/_components/</code></td><td>The shared kits on both sides (CSS + Badge, PageHeader, TabStrip tsx)</td></tr>
+                <tr><td>~70 screen stylesheets</td><td>Public and admin screens, R3&ndash;R7</td></tr>
+                <tr><td><code>next-app/tests/calm-style.test.ts</code></td><td>New: shared-kit locks, per-release screen locks, the whole-tree lock</td></tr>
+                <tr><td><code>library/topic/[slug]/page.tsx</code></td><td>No suggest band on a tool shelf</td></tr>
+                <tr><td><code>Plans/Completed/</code></td><td>Calm-Site-Restyle + its sweep</td></tr>
+                <tr><td><code>changelog.html</code></td><td>v1.144.0&ndash;v1.152.0 entries</td></tr>
+            </tbody>
+        </table>
+
+    </div>
+</body>
+</html>
