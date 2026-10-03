@@ -82,7 +82,7 @@ export const HELP = {
     body: (
       <p>
         A scout added a package the price book didn&rsquo;t have. It goes live on its own when its price per recipe
-        unit is within 50% of the cheapest package of that ingredient. Anything further out, or an ingredient with no
+        unit is within 50% of the cheapest troop package of that ingredient (packages scouts added don&rsquo;t count). Anything further out, or an ingredient with no
         priced package to compare with, waits here. Meanwhile it prices only that scout&rsquo;s menus.
       </p>
     )

@@ -46,7 +46,8 @@ export function bandCheck(pkg: BandPackage, reportedPrice: number, band: number 
 /**
  * A scout-ADDED package (release C) has no price history of its own, so its
  * unit price (price ÷ size in recipe units) is measured against the CHEAPEST
- * live sibling package with a usable yield (Decision 13). No usable sibling →
+ * live sibling package with a usable yield (Decision 13) — the caller passes
+ * the troop's own packages only, never scout-added ones (no downward ratchet). No usable sibling →
  * held for a leader. Exact: |P/Y − Pc/Yc| ≤ band·Pc/Yc is compared
  * cross-multiplied in whole cents (mm_add_scout_package does the same in SQL).
  */

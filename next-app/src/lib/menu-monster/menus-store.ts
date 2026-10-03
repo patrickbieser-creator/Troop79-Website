@@ -523,7 +523,7 @@ export type AddTypedInResult = { status: 'added'; id: string } | { status: 'ingr
  * A typed-in ingredient from a menu meal (release C): a real x- ingredient +
  * package owned by the session scout, through the same validator and 10-cap as
  * recipe typed-ins (mm_add_menu_ingredient). The menu's next save names it in
- * a recipeEdits `add` op; the 1-hour orphan grace covers the gap. The caller
+ * a recipeEdits `add` op; the 1-day orphan grace covers the gap. The caller
  * passes an already-sanitized NewIngredient (sanitizeNewIngredients).
  */
 export async function addMenuIngredientWith(sb: SupabaseClient, actor: AuditActor, n: NewIngredient): Promise<AddTypedInResult> {
@@ -550,7 +550,7 @@ async function revealTypedIns(sb: SupabaseClient, actor: AuditActor, ids: string
   if (error) throw new Error(`reveal typed-ins: ${error.message}`);
 }
 
-/** The scout's private typed-ins nothing uses any more (no recipe, no menu, older than an hour) — they would hold the cap. */
+/** The scout's private typed-ins nothing uses any more (no recipe, no menu, older than a day) — they would hold the cap. */
 async function dropOrphanTypedIns(sb: SupabaseClient, actor: AuditActor) {
   if (actor.personId == null) return;
   const { error } = await sb.rpc('mm_drop_orphan_typed_ins', { p_person: actor.personId });

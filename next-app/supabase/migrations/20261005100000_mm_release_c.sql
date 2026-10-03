@@ -5,7 +5,7 @@
 --                               extracted from mm_save_scout_recipe so recipes and menus share it.
 --   2. mm_add_menu_ingredient   a typed-in from a menu: same lock, same 10-unmatched cap as recipes.
 --   3. mm_drop_orphan_typed_ins also keeps an item one of the person's menus mentions, and anything
---                               younger than an hour (the gap between adding it and saving the menu).
+--                               younger than a day (the gap between adding it and saving the menu).
 --   4. mm_save_scout_recipe v3  the 160000 body with its typed-in loop calling (1). Nothing else changes.
 --   5. mm_add_scout_package     a scout's package on a book ingredient: live inside ±band of the
 --                               cheapest live usable package's unit price, else held for a leader.
@@ -102,7 +102,7 @@ revoke execute on function public.mm_create_typed_in(bigint, jsonb) from public,
 
 -- ── 2. mm_add_menu_ingredient ──────────────────────────────────────────────
 -- A typed-in added from a menu meal. The menu's next save stores a recipeEdits
--- `add` op naming the returned id; until then the 1-hour grace in (3) keeps it.
+-- `add` op naming the returned id; until then the 1-day grace in (3) keeps it.
 
 create or replace function public.mm_add_menu_ingredient(p_person bigint, p_new jsonb)
 returns text
@@ -121,7 +121,7 @@ revoke execute on function public.mm_add_menu_ingredient(bigint, jsonb) from pub
 -- ── 3. mm_drop_orphan_typed_ins ────────────────────────────────────────────
 -- A scout's private (never shared), unmatched typed-ins that nothing uses any
 -- more: no recipe line, none of the scout's menus (meals / shopping / actuals —
--- the id appears as a quoted JSON value or key), and older than an hour.
+-- the id appears as a quoted JSON value or key), and older than a day.
 
 create or replace function public.mm_drop_orphan_typed_ins(p_person bigint)
 returns void
@@ -132,9 +132,11 @@ as $$
 declare
   v_ids text[];
 begin
+  -- The scout's own saves already hold this lock (re-entrant); menu save / delete calls take it here.
+  perform pg_advisory_xact_lock(hashtextextended('mm_scout_recipe', p_person));
   select coalesce(array_agg(i.id), '{}') into v_ids from mm_ingredients i
   where i.added_by_person_id = p_person and i.shared_at is null and i.needs_match_at is not null
-    and i.created_at < now() - interval '1 hour'
+    and i.created_at < now() - interval '24 hours'
     and not exists (select 1 from mm_recipe_lines l where l.ingredient_id = i.id)
     and not exists (select 1 from mm_variation_lines v where v.ingredient_id = i.id or v.base_ingredient_id = i.id)
     and not exists (select 1 from mm_conversions c where c.ingredient_id = i.id)
@@ -337,8 +339,8 @@ revoke execute on function public.mm_save_scout_recipe(bigint, jsonb, jsonb, tim
 -- p_pkg: { name, store, size, price } with `size` in the ingredient's recipe
 -- unit (the client converts from the ingredient's own kind). Book ingredients
 -- only. Band (p_band, the caller's PRICE_BAND): |P·Yc − Pc·Y| ≤ band·Pc·Y in
--- whole cents against the cheapest live usable sibling — newPackageBand() in
--- price-band.ts is the same rule. Returns { status: live|held|same, id }.
+-- whole cents against the cheapest live usable BOOK package (not scout-added) —
+-- newPackageBand() in price-band.ts is the same rule, given those siblings. Returns { status: live|held|same, id }.
 
 create or replace function public.mm_add_scout_package(
   p_person bigint,
@@ -387,6 +389,8 @@ begin
 
   select id into v_same from mm_packages
   where ingredient_id = p_ingredient_id and retired_at is null
+    -- never another scout's held package (qa-lead: it would leak an id they can't see)
+    and (held_at is null or added_by_person_id = p_person)
     and coalesce(lower(store), '') = coalesce(lower(v_store), '') and yield = v_size and price = v_price
   limit 1;
   if v_same is not null then
@@ -399,8 +403,11 @@ begin
     raise exception 'MM_PACKAGE_CAP: ingredient';
   end if;
 
+  -- The basis is the troop's OWN packages (added_by_person_id is null): scout-added ones that
+  -- went live must not drag the cheapest down step by step without a leader (qa-lead).
   select price, yield into v_pc, v_yc from mm_packages
   where ingredient_id = p_ingredient_id and retired_at is null and held_at is null and yield > 0 and price > 0
+    and added_by_person_id is null
   order by price / yield, id
   limit 1;
   v_held := v_pc is null

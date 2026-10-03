@@ -1,4 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest';
+import { createClient } from '@supabase/supabase-js';
 import { adminClient } from './helpers/admin-client';
 import { CATALOG } from './helpers/menu-monster-fixture';
 import { loadCatalogWith } from '../src/lib/menu-monster/catalog';
@@ -20,12 +21,14 @@ import { addMenuIngredientWith, createMenuWith, deleteMenuWith, loadMenuWith, sa
  */
 
 const SCOUT = 39;
+const OTHER_SCOUT = 25;
 const BOOK = 'pancake-mix';
 const NO_SIBLINGS = 'oj';
 const MARKER = 'vitest-mm-relc';
 const admin = adminClient();
 
 afterEach(async () => {
+  await admin.from('mm_packages').delete().eq('added_by_person_id', OTHER_SCOUT).like('id', 'sp-%');
   await admin.from('audit_log').delete().eq('area', 'library').like('summary', `%${MARKER}%`);
   await admin.from('mm_menus').delete().eq('name', MARKER);
   await admin.from('mm_packages').delete().eq('added_by_person_id', SCOUT).like('id', 'sp-%');
@@ -53,7 +56,7 @@ const addMenuIngredient = (name: string, over: Record<string, unknown> = {}) =>
 const addPackage = (pkg: Record<string, unknown>, ingredient = BOOK) =>
   admin.rpc('mm_add_scout_package', { p_person: SCOUT, p_ingredient_id: ingredient, p_pkg: { name: `${MARKER} pack`, store: 'Aldi', ...pkg }, p_band: 0.5 });
 
-const age = (id: string) => admin.from('mm_ingredients').update({ created_at: new Date(Date.now() - 2 * 3600e3).toISOString() }).eq('id', id);
+const age = (id: string) => admin.from('mm_ingredients').update({ created_at: new Date(Date.now() - 25 * 3600e3).toISOString() }).eq('id', id);
 
 describe('mm_add_menu_ingredient', () => {
   it('menuTypedIn_createsXIngredientAndPackage', async () => {
@@ -291,5 +294,53 @@ describe('leader: packages waiting (release C)', () => {
 
   it('Approve_IsFalse_ForAPackageThatIsNotHeld', async () => {
     expect(await approveHeldPackageWith(admin, 'p-mix-10lb')).toBe(false);
+  });
+});
+
+describe('qa-lead fixes (release C)', () => {
+  it('addScoutPackage_sameIgnoresAnotherScoutsHeldPackage', async () => {
+    const { data: theirs } = await admin.rpc('mm_add_scout_package', { p_person: OTHER_SCOUT, p_ingredient_id: BOOK, p_pkg: { name: `${MARKER} pack`, store: 'Aldi', size: 10, price: 9 }, p_band: 0.5 });
+    expect(theirs.status).toBe('held');
+    const { data: mine } = await addPackage({ size: 10, price: 9 });
+    expect(mine.status).toBe('held');
+    expect(mine.id).not.toBe(theirs.id);
+  });
+
+  it('addScoutPackage_measuresAgainstBookPackagesOnly', async () => {
+    // $0.25 a unit: −40% on the book's cheapest $0.4167 — live.
+    expect((await addPackage({ size: 10, price: 2.5 })).data.status).toBe('live');
+    // $0.13 a unit: −69% on the book (held), though only −48% on the scout's own $0.25.
+    expect((await addPackage({ size: 100, price: 13 })).data.status).toBe('held');
+  });
+
+  it('orphanDrop_keepsAnItemYoungerThanADay', async () => {
+    const { data: id } = await addMenuIngredient('Vitest jam');
+    await admin.from('mm_ingredients').update({ created_at: new Date(Date.now() - 2 * 3600e3).toISOString() }).eq('id', id);
+    await admin.rpc('mm_drop_orphan_typed_ins', { p_person: SCOUT });
+    expect((await admin.from('mm_ingredients').select('id').eq('id', id)).data).toEqual([{ id }]);
+  });
+});
+
+describe('posture (release C)', () => {
+  it.each([
+    ['mm_create_typed_in', { p_person: SCOUT, p_new: {} }],
+    ['mm_add_menu_ingredient', { p_person: SCOUT, p_new: {} }],
+    ['mm_add_scout_package', { p_person: SCOUT, p_ingredient_id: BOOK, p_pkg: {}, p_band: 0.5 }],
+    ['mm_package_in_use', { p_id: 'p-mix-10lb' }],
+    ['mm_drop_orphan_typed_ins', { p_person: SCOUT }]
+  ])('Anon_CannotExecute_%s', async (fn, args) => {
+    const anon = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { auth: { persistSession: false, autoRefreshToken: false } });
+    const { error } = await anon.rpc(fn, args);
+    expect(error?.code).toBe('42501');
+  });
+
+  it('shareMenu_leavesAnotherScoutsTypedInPrivate', async () => {
+    const { data: theirs } = await admin.rpc('mm_add_menu_ingredient', { p_person: OTHER_SCOUT, p_new: typedIn('Vitest their jam') });
+    const id = await createMenuWith(admin, ACTOR, menuWith(theirs as string), CATALOG);
+    await setMenuSharedWith(admin, ACTOR, id, true);
+    const { data } = await admin.from('mm_ingredients').select('shared_at').eq('id', theirs).single();
+    expect(data!.shared_at).toBeNull();
+    await admin.from('mm_packages').delete().eq('ingredient_id', theirs);
+    await admin.from('mm_ingredients').delete().eq('id', theirs);
   });
 });

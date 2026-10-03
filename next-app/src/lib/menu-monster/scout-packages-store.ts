@@ -1,7 +1,8 @@
 /**
  * A scout's package on a price-book ingredient (release C, P2.3a). One RPC,
  * mm_add_scout_package, does the band check under a lock on the ingredient:
- * inside ±PRICE_BAND of the cheapest live usable package's unit price it is
+ * inside ±PRICE_BAND of the cheapest live usable book package's unit price (a
+ * scout-added one never sets the basis — qa-lead: no downward ratchet) it is
  * live at once; outside, or with nothing to compare against, it is held for a
  * leader (only its scout's catalog carries it meanwhile). An identical package
  * already in the book is 'same' — nothing is added. Audited under `library`,
@@ -56,7 +57,7 @@ export interface HeldPackage {
   price: number;
   size: number;
   unitPrice: number;
-  /** The cheapest live usable package's unit price (the band's basis); null = nothing to compare with. */
+  /** The cheapest live usable BOOK package's unit price (the band's basis — never a scout-added one); null = nothing to compare with. */
   cheapestUnitPrice: number | null;
   addedBy: string;
   heldAt: string;
@@ -79,7 +80,7 @@ export async function listHeldPackagesWith(sb: SupabaseClient): Promise<HeldPack
   const ingredientIds = [...new Set(rows.map((r) => r.ingredient_id))];
   const people = [...new Set(rows.flatMap((r) => (r.added_by_person_id == null ? [] : [r.added_by_person_id])))];
   const [{ data: live, error: e2 }, credits] = await Promise.all([
-    sb.from('mm_packages').select('ingredient_id, price, yield').in('ingredient_id', ingredientIds).is('held_at', null).is('retired_at', null).gt('yield', 0),
+    sb.from('mm_packages').select('ingredient_id, price, yield').in('ingredient_id', ingredientIds).is('held_at', null).is('retired_at', null).is('added_by_person_id', null).gt('yield', 0),
     ownerCredits(sb, people)
   ]);
   if (e2) throw new Error(`held package basis: ${e2.message}`);
