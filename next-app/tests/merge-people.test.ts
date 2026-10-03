@@ -183,6 +183,24 @@ describe('merge_people — Menu Monster references', () => {
     expect(data?.owner_person_id).toBe(survivor);
   });
 
+  it('Merge_RepointsReviewedBy_WhenLoserLeftAReviewNote', async () => {
+    const admin = adminClient();
+    const owner = await makePerson('Owner3');
+    const survivor = await makePerson('Survivor3');
+    const loser = await makePerson('Loser3');
+    const { data: menu, error } = await admin
+      .from('mm_menus')
+      .insert({ owner_person_id: owner, name: 'vitest-merge-menu', headcount: 8, review_note: 'Nice.', reviewed_at: new Date().toISOString(), reviewed_by_person_id: loser })
+      .select('id')
+      .single();
+    expect(error).toBeNull();
+
+    await merge(survivor, loser);
+
+    const { data } = await admin.from('mm_menus').select('reviewed_by_person_id').eq('id', menu!.id).single();
+    expect(data?.reviewed_by_person_id).toBe(survivor);
+  });
+
   it('Merge_MovesPriceHistoryAndPackageAuthorship_WhenLoserReportedPrices', async () => {
     const admin = adminClient();
     const survivor = await makePerson('Survivor3');

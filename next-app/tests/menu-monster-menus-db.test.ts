@@ -82,9 +82,17 @@ describe('mm_menus schema', () => {
   it('MmMenus_BlocksDeletingAnOwnerWhoHasMenus', () => {
     // confdeltype: r = RESTRICT. Menus are never cascade-deleted with a person.
     const rule = localSql(
-      `select confdeltype from pg_constraint where conrelid = 'public.mm_menus'::regclass and confrelid = 'public.people'::regclass`
+      `select confdeltype from pg_constraint where conrelid = 'public.mm_menus'::regclass and conname = 'mm_menus_owner_person_id_fkey'`
     );
     expect(rule).toBe('r');
+  });
+
+  it('MmMenus_KeepsTheReviewNote_WhenItsLeaderIsDeleted', () => {
+    // confdeltype: n = SET NULL (Phase 3 review): the note outlives the leader's person row.
+    const rule = localSql(
+      `select confdeltype from pg_constraint where conrelid = 'public.mm_menus'::regclass and conname = 'mm_menus_reviewed_by_person_id_fkey'`
+    );
+    expect(rule).toBe('n');
   });
 });
 

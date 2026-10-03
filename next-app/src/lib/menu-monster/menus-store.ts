@@ -20,7 +20,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 import { publicScoutName } from '@/lib/scout-name';
 import { recordAuditAs, type AuditActor } from '@/lib/audit';
-import { MAX_MENUS_PER_SCOUT, coverDays, foldShopping, sanitizeActuals, sanitizeFreeItems, type Actuals, type Menu, type MenuContext, type MenuMeal } from './menus';
+import { MAX_MENUS_PER_SCOUT, coverDays, foldShopping, sanitizeActuals, sanitizeFreeItems, sanitizeMenu, type Actuals, type Menu, type MenuContext, type MenuMeal } from './menus';
+import { SHELF_DAYS, daysBefore, isPublic } from './menu-access';
 import { buildSnapshot, type MenuSnapshot } from './menu-snapshot';
 import type { Catalog, RestrictionKey } from './types';
 
@@ -33,8 +34,9 @@ export interface MenuSummary {
   headcount: number;
   mealCount: number;
   updatedAt: string;
-  /** Set only by listAllMenusWith (the leader read-only view). */
-  ownerPersonId?: number;
+  ownerPersonId: number;
+  /** When the owner shared it with the troop; null = not shared. */
+  sharedAt: string | null;
 }
 
 export interface StoredMenu {
@@ -46,7 +48,43 @@ export interface StoredMenu {
   snapshot: MenuSnapshot | null;
   /** The version token a save hands back (compared, so a second tab can't silently overwrite). */
   updatedAt: string;
+  /** When the owner shared it with the troop (Phase 3); null = not shared. */
+  sharedAt: string | null;
+  /** null = no outing linked; false = linked to an entry that is not published (then only owner, leaders and parents see it). */
+  entryPublished: boolean | null;
+  /** A leader's one review note (Phase 3), or null. */
+  review: MenuReview | null;
 }
+
+export interface MenuReview {
+  note: string;
+  at: string;
+  /** Null once that leader's person row is gone (ON DELETE SET NULL). */
+  byPersonId: number | null;
+}
+
+/** A row on the shelf's "Shared with the troop" list and an outing's "Menus for this outing". */
+export interface SharedMenuRow {
+  id: string;
+  name: string;
+  ownerPersonId: number;
+  /** "Sam K." — the public credit, the same for every viewer (Decision 12). */
+  credit: string;
+  calendarEntryId: number | null;
+  outingTitle: string | null;
+  mealCount: number;
+  sharedAt: string;
+}
+
+/** The leader list's filters (Phase 3: the existing list, filtered in SQL — no second admin surface). */
+export interface MenuFilters {
+  scout?: number;
+  outing?: number;
+  shared?: boolean;
+}
+
+/** Longest review note a leader can leave (the column's CHECK agrees). */
+export const MAX_REVIEW_NOTE = 1000;
 
 /** Returned instead of an id when the scout already keeps MAX_MENUS_PER_SCOUT menus. */
 export const MENU_LIMIT = 'limit' as const;
@@ -56,7 +94,7 @@ export type SaveResult =
   | { status: 'conflict' }
   | { status: 'not_found' };
 
-const COLUMNS = 'id, owner_person_id, name, context, calendar_entry_id, start_date, headcount, restrictions, budget_per_person_meal, day_count, shopping, actuals, free_items, meals, snapshot, created_at, updated_at';
+const COLUMNS = 'id, owner_person_id, name, context, calendar_entry_id, start_date, headcount, restrictions, budget_per_person_meal, day_count, shopping, actuals, free_items, meals, snapshot, created_at, updated_at, shared_at, review_note, reviewed_by_person_id, reviewed_at, calendar_entries(status)';
 
 interface MenuRow {
   id: string;
@@ -77,6 +115,12 @@ interface MenuRow {
   snapshot: MenuSnapshot | null;
   created_at: string;
   updated_at: string;
+  shared_at: string | null;
+  review_note: string | null;
+  reviewed_by_person_id: number | null;
+  reviewed_at: string | null;
+  /** The linked entry, embedded through the FK; null when none is linked. */
+  calendar_entries: { status: string } | null;
 }
 
 // actuals and free_items are deliberately NOT written here. Actuals (what the
@@ -127,45 +171,111 @@ async function audit(sb: SupabaseClient, actor: AuditActor, action: string, id: 
   await recordAuditAs(sb, actor, { area: 'menus', action, entityType: 'menu', entityId: id, summary: `${actor.label} ${summary}` });
 }
 
-/** A scout's own menus, most recently edited first. */
-export async function listMenusWith(sb: SupabaseClient, ownerPersonId: number): Promise<MenuSummary[]> {
+const SUMMARY_COLS = 'id, owner_person_id, name, context, calendar_entry_id, headcount, meals, updated_at, shared_at';
+
+const toSummary = (r: Record<string, unknown>): MenuSummary => ({
+  id: r.id as string,
+  ownerPersonId: r.owner_person_id as number,
+  name: r.name as string,
+  context: r.context as MenuContext,
+  calendarEntryId: (r.calendar_entry_id as number | null) ?? null,
+  headcount: r.headcount as number,
+  mealCount: Array.isArray(r.meals) ? r.meals.length : 0,
+  updatedAt: r.updated_at as string,
+  sharedAt: (r.shared_at as string | null) ?? null
+});
+
+/** The menus of one scout (My menus) or of several (a parent's scouts), most recently edited first. */
+export async function listMenusWith(sb: SupabaseClient, owners: number | readonly number[]): Promise<MenuSummary[]> {
+  const ids = typeof owners === 'number' ? [owners] : [...owners];
+  if (ids.length === 0) return [];
   const { data, error } = await sb
     .from('mm_menus')
-    .select('id, name, context, calendar_entry_id, headcount, meals, updated_at')
-    .eq('owner_person_id', ownerPersonId)
-    .order('updated_at', { ascending: false });
+    .select(SUMMARY_COLS)
+    .in('owner_person_id', ids)
+    .order('updated_at', { ascending: false })
+    .order('id');
   if (error) throw new Error(`list menus: ${error.message}`);
-  return (data ?? []).map((r) => ({
-    id: r.id as string,
-    name: r.name as string,
-    context: r.context as MenuContext,
-    calendarEntryId: (r.calendar_entry_id as number | null) ?? null,
-    headcount: r.headcount as number,
-    mealCount: Array.isArray(r.meals) ? r.meals.length : 0,
-    updatedAt: r.updated_at as string
-  }));
+  return (data ?? []).map(toSummary);
 }
 
-/** Every scout's menus, most recently edited first — the leader read-only view.
- *  Paginated: the table is not scoped to one owner, so it can pass PostgREST's 1000-row cap. */
-export async function listAllMenusWith(sb: SupabaseClient): Promise<(MenuSummary & { ownerPersonId: number })[]> {
-  const rows = await fetchAllRows<Record<string, unknown>>((from, to) =>
-    sb
-      .from('mm_menus')
-      .select('id, owner_person_id, name, context, calendar_entry_id, headcount, meals, updated_at')
-      .order('updated_at', { ascending: false })
-      .order('id')
-      .range(from, to)
-  );
+/** Every scout's menus, most recently edited first — the leader read-only view,
+ *  filtered in SQL. Paginated: the table is not scoped to one owner, so it can
+ *  pass PostgREST's 1000-row cap. */
+export async function listAllMenusWith(sb: SupabaseClient, filters: MenuFilters = {}): Promise<MenuSummary[]> {
+  const rows = await fetchAllRows<Record<string, unknown>>((from, to) => {
+    let q = sb.from('mm_menus').select(SUMMARY_COLS);
+    if (filters.scout != null) q = q.eq('owner_person_id', filters.scout);
+    if (filters.outing != null) q = q.eq('calendar_entry_id', filters.outing);
+    if (filters.shared) q = q.not('shared_at', 'is', null);
+    return q.order('updated_at', { ascending: false }).order('id').range(from, to);
+  });
+  return rows.map(toSummary);
+}
+
+/**
+ * Shared menus, newest share first, with the owner's public credit.
+ *   - no `outingId`: the shelf — shared, and either linked to a PUBLISHED entry
+ *     that ended within SHELF_DAYS, or linked to nothing and shared within
+ *     SHELF_DAYS (menu-access.ts onShelf is the spec). Filtered in the query,
+ *     so a `limit` returns full pages.
+ *   - `outingId`: that outing's menus ("Menus for this outing", the shelf's
+ *     outing filter) — every one shared for it, no time limit, and none at all
+ *     when the entry is not published.
+ */
+export async function listSharedMenusWith(
+  sb: SupabaseClient,
+  today: string,
+  opts: { outingId?: number; limit?: number } = {}
+): Promise<SharedMenuRow[]> {
+  const cutoff = daysBefore(today, SHELF_DAYS);
+  let entryIds: number[];
+  if (opts.outingId != null) {
+    const { data, error } = await sb.from('calendar_entries').select('id').eq('id', opts.outingId).eq('status', 'published');
+    if (error) throw new Error(`shared menus outing: ${error.message}`);
+    entryIds = (data ?? []).map((r) => r.id as number);
+    if (entryIds.length === 0) return [];
+  } else {
+    const { data, error } = await sb
+      .from('calendar_entries')
+      .select('id')
+      .eq('status', 'published')
+      .or(`end_date.gte.${cutoff},and(end_date.is.null,entry_date.gte.${cutoff})`);
+    if (error) throw new Error(`shelf outings: ${error.message}`);
+    entryIds = (data ?? []).map((r) => r.id as number);
+  }
+
+  let q = sb
+    .from('mm_menus')
+    .select('id, owner_person_id, name, calendar_entry_id, meals, shared_at, calendar_entries(title)')
+    .not('shared_at', 'is', null);
+  if (opts.outingId != null) q = q.eq('calendar_entry_id', opts.outingId);
+  else {
+    const linked = entryIds.length > 0 ? `calendar_entry_id.in.(${entryIds.join(',')}),` : '';
+    q = q.or(`${linked}and(calendar_entry_id.is.null,shared_at.gte.${cutoff})`);
+  }
+  q = q.order('shared_at', { ascending: false }).order('id');
+  const { data, error } = await (opts.limit != null ? q.limit(opts.limit) : q);
+  if (error) throw new Error(`shared menus: ${error.message}`);
+  const rows = (data ?? []) as unknown as {
+    id: string;
+    owner_person_id: number;
+    name: string;
+    calendar_entry_id: number | null;
+    meals: unknown;
+    shared_at: string;
+    calendar_entries: { title: string } | null;
+  }[];
+  const credits = await ownerCreditNamesWith(sb, rows.map((r) => r.owner_person_id));
   return rows.map((r) => ({
-    id: r.id as string,
-    ownerPersonId: r.owner_person_id as number,
-    name: r.name as string,
-    context: r.context as MenuContext,
-    calendarEntryId: (r.calendar_entry_id as number | null) ?? null,
-    headcount: r.headcount as number,
+    id: r.id,
+    name: r.name,
+    ownerPersonId: r.owner_person_id,
+    credit: credits.get(r.owner_person_id) ?? '',
+    calendarEntryId: r.calendar_entry_id,
+    outingTitle: r.calendar_entries?.title ?? null,
     mealCount: Array.isArray(r.meals) ? r.meals.length : 0,
-    updatedAt: r.updated_at as string
+    sharedAt: r.shared_at
   }));
 }
 
@@ -187,8 +297,18 @@ export async function loadMenuWith(sb: SupabaseClient, id: string): Promise<Stor
   const { data, error } = await sb.from('mm_menus').select(COLUMNS).eq('id', id).maybeSingle();
   if (error) throw new Error(`load menu: ${error.message}`);
   if (!data) return null;
-  const r = data as MenuRow;
-  return { id: r.id, ownerPersonId: r.owner_person_id, menu: fromRow(r), snapshot: r.snapshot ?? null, createdAt: r.created_at, updatedAt: r.updated_at };
+  const r = data as unknown as MenuRow;
+  return {
+    id: r.id,
+    ownerPersonId: r.owner_person_id,
+    menu: fromRow(r),
+    snapshot: r.snapshot ?? null,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+    sharedAt: r.shared_at,
+    entryPublished: r.calendar_entry_id == null ? null : r.calendar_entries?.status === 'published',
+    review: r.review_note != null && r.reviewed_at != null ? { note: r.review_note, at: r.reviewed_at, byPersonId: r.reviewed_by_person_id } : null
+  };
 }
 
 async function atMenuLimit(sb: SupabaseClient, ownerPersonId: number | null): Promise<boolean> {
@@ -291,4 +411,97 @@ export async function deleteMenuWith(sb: SupabaseClient, actor: AuditActor, id: 
   if (!data?.length) return false;
   await audit(sb, actor, 'delete', id, `deleted menu "${data[0].name as string}"`);
   return true;
+}
+
+/**
+ * Share with the troop (`on`) or Stop sharing — the owner only. Re-sharing
+ * resets shared_at (the shelf's clock). Never touches updated_at: an open Plan
+ * tab keeps its version token. False when the menu isn't the actor's.
+ */
+export async function setMenuSharedWith(sb: SupabaseClient, actor: AuditActor, id: string, on: boolean): Promise<boolean> {
+  const { data, error } = await sb
+    .from('mm_menus')
+    .update({ shared_at: on ? new Date().toISOString() : null })
+    .eq('id', id)
+    .eq('owner_person_id', actor.personId)
+    .select('name');
+  if (error) throw new Error(`share menu: ${error.message}`);
+  if (!data?.length) return false;
+  const name = data[0].name as string;
+  await audit(sb, actor, on ? 'share' : 'unshare', id, on ? `shared menu "${name}" with the troop` : `stopped sharing menu "${name}"`);
+  return true;
+}
+
+/**
+ * A leader's take-down: clears shared_at on any shared menu (scout text goes
+ * public with no review, so an adult can pull it). The caller has checked the
+ * actor is an admin viewer. False when the menu is missing or not shared.
+ */
+export async function hideMenuWith(sb: SupabaseClient, actor: AuditActor, id: string): Promise<boolean> {
+  const { data, error } = await sb
+    .from('mm_menus')
+    .update({ shared_at: null })
+    .eq('id', id)
+    .not('shared_at', 'is', null)
+    .select('name, owner_person_id');
+  if (error) throw new Error(`hide menu: ${error.message}`);
+  if (!data?.length) return false;
+  const ownerId = data[0].owner_person_id as number;
+  const owner = (await ownerCreditNamesWith(sb, [ownerId])).get(ownerId) ?? 'a scout';
+  await audit(sb, actor, 'hide', id, `hid menu "${data[0].name as string}" by ${owner} from the shelf`);
+  return true;
+}
+
+/**
+ * A leader's one review note, replacing the last; blank clears it. The caller
+ * has checked the actor is an admin viewer. No updated_at bump. False when the
+ * menu is missing.
+ */
+export async function setReviewNoteWith(sb: SupabaseClient, actor: AuditActor, id: string, raw: string | null): Promise<boolean> {
+  const note = (raw ?? '').trim().slice(0, MAX_REVIEW_NOTE);
+  const patch = note
+    ? { review_note: note, reviewed_at: new Date().toISOString(), reviewed_by_person_id: actor.personId }
+    : { review_note: null, reviewed_at: null, reviewed_by_person_id: null };
+  const { data, error } = await sb.from('mm_menus').update(patch).eq('id', id).select('name');
+  if (error) throw new Error(`review note: ${error.message}`);
+  if (!data?.length) return false;
+  const name = data[0].name as string;
+  await audit(sb, actor, 'review_note', id, note ? `left a review note on menu "${name}"` : `cleared the review note on menu "${name}"`);
+  return true;
+}
+
+const recipeCount = (m: Menu) => m.meals.reduce((n, meal) => n + meal.recipeIds.length, 0);
+
+/**
+ * Copy another scout's SHARED menu (or one of the actor's own) into the
+ * actor's menus. The copy is re-sanitized against the COPIER's catalog — a
+ * recipe they can't see drops out and is counted — and starts unshared, with
+ * no actuals, typed-in items or review note. `checkOuting` re-applies the
+ * action's outing rule. Null when the source isn't copyable; MENU_LIMIT at the cap.
+ */
+export async function copyMenuWith(
+  sb: SupabaseClient,
+  actor: AuditActor,
+  sourceId: string,
+  catalog: Catalog,
+  checkOuting: (menu: Menu) => Menu | Promise<Menu> = (m) => m
+): Promise<{ id: string; droppedRecipes: number } | typeof MENU_LIMIT | null> {
+  const src = await loadMenuWith(sb, sourceId);
+  if (!src) return null;
+  const own = src.ownerPersonId === actor.personId;
+  if (!own && !isPublic(src)) return null;
+  if (await atMenuLimit(sb, actor.personId)) return MENU_LIMIT;
+
+  const clean = sanitizeMenu({ ...src.menu, actuals: {}, freeItems: [] }, catalog);
+  const copy = await checkOuting({ ...clean, name: `Copy of ${src.menu.name}`.slice(0, 120) });
+  const { data, error } = await sb
+    .from('mm_menus')
+    .insert({ ...toRow(copy, buildSnapshot(copy, catalog)), owner_person_id: actor.personId })
+    .select('id')
+    .single();
+  if (error) throw new Error(`copy menu: ${error.message}`);
+  const id = data.id as string;
+  const from = own ? 'themselves' : ((await ownerCreditNamesWith(sb, [src.ownerPersonId])).get(src.ownerPersonId) ?? 'a scout');
+  await audit(sb, actor, 'copy', id, `copied menu "${src.menu.name}" from ${from}`);
+  return { id, droppedRecipes: recipeCount(src.menu) - recipeCount(clean) };
 }

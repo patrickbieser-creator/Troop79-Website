@@ -17,6 +17,7 @@ import type { Catalog, MealSlot, Plan, Recipe, RecipeLine, RestrictionKey } from
 import { MEALS, RESTRICTIONS } from './units';
 import { MAX_HEADCOUNT, MIN_HEADCOUNT, restorePlan } from './engine';
 import { centralToday } from '@/lib/dates';
+import { cleanScoutText } from './scout-text';
 
 export type MenuContext = 'home' | 'camp' | 'trail';
 
@@ -411,7 +412,7 @@ export function sanitizeMenu(raw: unknown, catalog: Catalog): Menu {
   }
 
   return {
-    name: typeof r.name === 'string' ? r.name.trim().slice(0, MAX_MENU_NAME) : '',
+    name: cleanScoutText(r.name, MAX_MENU_NAME),
     context: MENU_CONTEXTS.find((c) => c.key === r.context)?.key ?? 'camp',
     calendarEntryId: Number.isInteger(entry) && entry > 0 ? entry : null,
     startDate: isDate(r.startDate) ? r.startDate : null,

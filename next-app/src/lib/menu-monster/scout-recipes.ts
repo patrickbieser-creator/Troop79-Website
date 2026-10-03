@@ -11,6 +11,7 @@ import type { Catalog, FoodGroup, MealSlot, Recipe } from './types';
 import { FOOD_GROUPS, MEALS, supportedUnits } from './units';
 import { overlayNewIngredients, sanitizeNewIngredients, type NewIngredient } from './scout-ingredients';
 import { applyRecipeEdits, type EditOp } from './menus';
+import { cleanScoutText } from './scout-text';
 
 const SCOUT_ID = /^S-[0-9a-f]{8}$/;
 
@@ -37,16 +38,7 @@ export function newScoutRecipeId(rand: () => number = Math.random): string {
 /** Whether a picker may offer the recipe. Retired recipes stay in the catalog so menus keep them, but are never offered. */
 export const isPickable = (r: Pick<Recipe, 'status'>) => r.status !== 'retired';
 
-const CONTROL = /[\u0000-\u001F\u007F]/g;
-const LINK = /(https?:\/\/|www\.)\S*/gi;
-/** Zero-width and bidi-override characters: hidden or spoofed text (mm_scout_text_ok refuses them too). */
-const INVISIBLE = /[\u200B-\u200F\u202A-\u202E\u2066-\u2069]/g;
-
-/** Scout text as it may be stored and shown: no control characters, no links, single spaces, within `max`. */
-export function cleanScoutText(raw: unknown, max: number): string {
-  if (typeof raw !== 'string') return '';
-  return raw.replace(INVISIBLE, '').replace(CONTROL, ' ').replace(LINK, ' ').replace(/\s+/g, ' ').trim().slice(0, max).trim();
-}
+export { cleanScoutText };
 
 export interface ScoutRecipeLine {
   ingredientId: string;

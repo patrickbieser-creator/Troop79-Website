@@ -60,6 +60,11 @@ describe('sanitizeMenu', () => {
     expect(m.meals[0]).toMatchObject({ id: 'm1', day: 0, slot: 'breakfast', headcount: null, recipeIds: ['B001'] });
   });
 
+  it('MenuName_IsCleanedLikeScoutText_WhenItCarriesLinksOrHiddenCharacters', () => {
+    // Shared menus show their name to anonymous visitors (Phase 3 review): same rule as a scout recipe (D-301).
+    expect(sanitizeMenu(raw({ name: 'Fall‮ Camp https://x.example now' }), CATALOG).name).toBe('Fall Camp now');
+  });
+
   it('Menu_ClampsHeadcount_ToThePlannersRange', () => {
     expect(sanitizeMenu(raw({ headcount: 50 }), CATALOG).headcount).toBe(50);
     expect(sanitizeMenu(raw({ headcount: 80 }), CATALOG).headcount).toBe(MAX_HEADCOUNT);
