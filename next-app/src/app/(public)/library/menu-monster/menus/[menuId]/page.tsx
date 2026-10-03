@@ -7,31 +7,26 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
 import { centralToday } from '@/lib/dates';
-import { loadMenuMonsterCatalog } from '@/lib/menu-monster/data';
 import { resolveMenuAliases } from '@/lib/menu-monster/menus';
 import { loadOutingsWith } from '@/lib/menu-monster/menus-data';
 import { PageShell } from '@/app/_components/page-shell';
 import { PlanTab } from '../_components/plan-tab';
-import { MenuHeader, MenuTabs, loadViewableMenu, menuViewer } from '../_components/scout-menus';
+import { ViewerAside } from '../_components/viewer-aside';
+import { MenuHeader, MenuTabs, NO_INDEX, listCrumb, loadViewableMenu, menuViewer } from '../_components/scout-menus';
 
 export const dynamic = 'force-dynamic';
-export const metadata: Metadata = { title: 'Menu plan — Menu Monster' };
+export const metadata: Metadata = { title: 'Menu plan — Menu Monster', robots: NO_INDEX };
 
 export default async function MenuPlanPage({ params }: { params: Promise<{ menuId: string }> }) {
   const { menuId } = await params;
-  const viewer = await menuViewer();
-  if (!viewer) notFound();
-  const view = await loadViewableMenu(menuId, viewer);
+  const view = await loadViewableMenu(menuId, await menuViewer());
   if (!view) notFound();
-  const { stored, readOnly, plannedBy } = view;
+  const { stored, readOnly, plannedBy, catalog } = view;
   const linked = stored.menu.calendarEntryId != null ? [stored.menu.calendarEntryId] : [];
-  const [catalog, outings] = await Promise.all([
-    loadMenuMonsterCatalog(stored.ownerPersonId),
-    loadOutingsWith(createAdminClient(), centralToday(), linked)
-  ]);
+  const outings = await loadOutingsWith(createAdminClient(), centralToday(), linked);
   return (
     <>
-      <MenuHeader current="plan" listLabel={readOnly ? 'Scouts’ menus' : undefined} />
+      <MenuHeader current="plan" {...listCrumb(view.access)} />
       <PageShell>
         <PlanTab
           catalog={catalog}
@@ -41,7 +36,8 @@ export default async function MenuPlanPage({ params }: { params: Promise<{ menuI
           outings={outings}
           readOnly={readOnly}
           plannedBy={plannedBy}
-          tabs={<MenuTabs menuId={stored.id} active="plan" />}
+          tabs={<MenuTabs menuId={stored.id} active="plan" access={view.access} />}
+          aside={<ViewerAside view={view} page="plan" />}
         />
       </PageShell>
     </>

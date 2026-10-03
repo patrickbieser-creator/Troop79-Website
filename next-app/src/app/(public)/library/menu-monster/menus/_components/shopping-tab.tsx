@@ -85,11 +85,13 @@ export interface ShoppingTabProps {
   readOnly?: boolean;
   /** Credit name of the scout who planned it (read-only view). */
   plannedBy?: string | null;
+  /** What the page says about who is looking (menu name credit, copy, review note…); replaces the read-only line. */
+  aside?: ReactNode;
   /** Where the menu is kept. Omitted = the signed-in scout's saved menu (server). */
   store?: MenuStore;
 }
 
-export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updatedAt, snapshot: initialSnapshot, tabs, readOnly = false, plannedBy = null, store: storeProp }: ShoppingTabProps) {
+export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updatedAt, snapshot: initialSnapshot, tabs, readOnly = false, plannedBy = null, aside, store: storeProp }: ShoppingTabProps) {
   const uid = useId();
   const store = useMemo(() => storeProp ?? serverMenuStore(menuId ?? null), [storeProp, menuId]);
   const { canSave, canPay, canReport } = store.caps;
@@ -245,7 +247,7 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
           )}
         </div>
       </div>
-      {readOnly && <ReadOnlyLine plannedBy={plannedBy} />}
+      {aside ?? (readOnly && <ReadOnlyLine plannedBy={plannedBy} />)}
       {tabs != null && <div className={s.tabs}>{tabs}</div>}
 
       {error && (

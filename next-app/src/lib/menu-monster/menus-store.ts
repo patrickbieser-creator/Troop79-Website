@@ -20,7 +20,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 import { publicScoutName } from '@/lib/scout-name';
 import { recordAuditAs, type AuditActor } from '@/lib/audit';
-import { MAX_MENUS_PER_SCOUT, coverDays, foldShopping, sanitizeActuals, sanitizeFreeItems, sanitizeMenu, type Actuals, type Menu, type MenuContext, type MenuMeal } from './menus';
+import { MAX_MENUS_PER_SCOUT, MAX_REVIEW_NOTE, coverDays, foldShopping, sanitizeActuals, sanitizeFreeItems, sanitizeMenu, type Actuals, type Menu, type MenuContext, type MenuMeal } from './menus';
 import { SHELF_DAYS, daysBefore, isPublic } from './menu-access';
 import { buildSnapshot, type MenuSnapshot } from './menu-snapshot';
 import type { Catalog, RestrictionKey } from './types';
@@ -83,8 +83,7 @@ export interface MenuFilters {
   shared?: boolean;
 }
 
-/** Longest review note a leader can leave (the column's CHECK agrees). */
-export const MAX_REVIEW_NOTE = 1000;
+export { MAX_REVIEW_NOTE };
 
 /** Returned instead of an id when the scout already keeps MAX_MENUS_PER_SCOUT menus. */
 export const MENU_LIMIT = 'limit' as const;

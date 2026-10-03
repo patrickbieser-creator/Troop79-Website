@@ -26,7 +26,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { getIdentitySessionIfValid } from '@/lib/family-access';
 import { centralToday } from '@/lib/dates';
 import { loadMenuMonsterCatalog } from '@/lib/menu-monster/data';
-import { listAllMenusWith, listMenusWith, ownerCreditNamesWith } from '@/lib/menu-monster/menus-store';
+import { listAllMenusWith, listMenusWith, listSharedMenusWith, ownerCreditNamesWith } from '@/lib/menu-monster/menus-store';
 import { loadOutingsWith } from '@/lib/menu-monster/menus-data';
 import { Button } from '@/app/_components/button';
 import { TabStrip } from '@/app/_components/tab-strip';
@@ -40,11 +40,14 @@ import { DraftOffer } from '../../menu-monster/menus/_components/draft-offer';
 import { LocalPlan } from '../../menu-monster/menus/_components/local-menu-shells';
 import { loadMenuRows } from '../../menu-monster/menus/_components/menu-rows';
 import { MenusList } from '../../menu-monster/menus/_components/menus-list';
-import { MENUS_HREF, MENU_HUB_HREF, menuViewer, type MenuViewer } from '../../menu-monster/menus/_components/scout-menus';
+import { MENUS_HREF, MENU_HUB_HREF, SHARED_HREF, menuViewer, type MenuViewer } from '../../menu-monster/menus/_components/scout-menus';
+import { SharedMenusList } from '../../menu-monster/menus/_components/shared-menus-list';
 import w from '../../menu-monster/menus/_components/workspace.module.css';
 
 const RECENT = 5;
 const LEADER_RECENT = 10;
+/** Shared menus on the hub; the rest are one link away (tech-lead review: one full list). */
+const SHARED_RECENT = 5;
 
 const TABS = [
   { key: 'planner', label: 'Meal Planner' },
@@ -117,6 +120,7 @@ async function mealPlanner(catalog: Catalog, viewer: MenuViewer | null) {
     const rows = await loadMenuRows(sb, summaries.slice(0, RECENT), catalog);
     const latest = summaries[0];
     return (
+      <>
       <section className={w.hubSection}>
         <div className={w.listHead}>
           <h2 className={w.heading}>My menus</h2>
@@ -145,12 +149,17 @@ async function mealPlanner(catalog: Catalog, viewer: MenuViewer | null) {
         )}
         <DraftOffer catalog={catalog} />
       </section>
+      {await sharedWithTroop()}
+      </>
     );
   }
 
   const [outings, identity] = await Promise.all([loadOutingsWith(createAdminClient(), centralToday()), getIdentitySessionIfValid()]);
   const signedIn = viewer?.kind === 'leader' || identity != null;
   let scoutsMenus: React.ReactNode = null;
+  if (viewer?.kind === 'parent') {
+    scoutsMenus = await parentsScouts(catalog, viewer.familyIds.filter((id) => id !== viewer.personId));
+  }
   if (viewer?.kind === 'leader') {
     const sb = createAdminClient();
     const all = await listAllMenusWith(sb);
@@ -189,6 +198,53 @@ async function mealPlanner(catalog: Catalog, viewer: MenuViewer | null) {
       )}
       <LocalPlan catalog={catalog} outings={outings} hub />
       {scoutsMenus}
+      {await sharedWithTroop()}
     </>
+  );
+}
+
+/** A parent's read-only list of their scouts' menus (Phase 3), under the plan like a leader's. */
+async function parentsScouts(catalog: Catalog, scouts: number[]) {
+  if (scouts.length === 0) return null;
+  const sb = createAdminClient();
+  const summaries = await listMenusWith(sb, scouts);
+  const shown = summaries.slice(0, RECENT);
+  const owners = await ownerCreditNamesWith(sb, shown.map((m) => m.ownerPersonId));
+  const rows = await loadMenuRows(sb, shown, catalog, owners);
+  return (
+    <section className={w.hubSection}>
+      <div className={w.listHead}>
+        <h2 className={w.heading}>Your scouts’ menus</h2>
+      </div>
+      <MenusList rows={rows} readOnly emptyText="Your scouts haven’t saved a menu yet." />
+      {summaries.length > RECENT && (
+        <p className={w.foot}>
+          <Link className={w.link} href={MENUS_HREF}>
+            All your scouts’ menus
+          </Link>
+        </p>
+      )}
+    </section>
+  );
+}
+
+/** "Shared with the troop" (Phase 3): the newest shared menus on the shelf, for everyone. Absent when there are none. */
+async function sharedWithTroop() {
+  const rows = await listSharedMenusWith(createAdminClient(), centralToday(), { limit: SHARED_RECENT + 1 });
+  if (rows.length === 0) return null;
+  return (
+    <section className={w.hubSection}>
+      <div className={w.listHead}>
+        <h2 className={w.heading}>Shared with the troop</h2>
+      </div>
+      <SharedMenusList rows={rows.slice(0, SHARED_RECENT)} />
+      {rows.length > SHARED_RECENT && (
+        <p className={w.foot}>
+          <Link className={w.link} href={SHARED_HREF}>
+            All shared menus
+          </Link>
+        </p>
+      )}
+    </section>
   );
 }

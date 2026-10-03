@@ -15,7 +15,9 @@ const mocks = vi.hoisted(() => ({
   own: [] as unknown[],
   all: [] as unknown[],
   listMenusWith: vi.fn(),
-  listAllMenusWith: vi.fn()
+  listAllMenusWith: vi.fn(),
+  family: [] as number[],
+  shared: [] as unknown[]
 }));
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn(), replace: vi.fn() }) }));
@@ -29,10 +31,12 @@ vi.mock('@/lib/menu-monster/data', async () => {
 vi.mock('@/lib/menu-monster/menus-store', () => ({
   listMenusWith: (...a: unknown[]) => mocks.listMenusWith(...a),
   listAllMenusWith: (...a: unknown[]) => mocks.listAllMenusWith(...a),
+  listSharedMenusWith: async () => mocks.shared,
   loadMenuWith: async () => null,
   ownerCreditNamesWith: async (_sb: unknown, ids: number[]) => new Map(ids.map((i) => [i, i === 40 ? 'Sam K.' : 'Ava L.']))
 }));
 vi.mock('@/lib/menu-monster/menus-data', () => ({ loadOutingsWith: async () => [{ id: 7, title: 'Fall Camporee' }] }));
+vi.mock('@/lib/household-scope', () => ({ resolveFamilyScope: async () => mocks.family }));
 vi.mock('../src/app/(public)/library/_tools/menu-monster/menu-actions', () => ({
   deleteMenuAction: vi.fn(),
   duplicateMenuAction: vi.fn(),
@@ -59,9 +63,11 @@ const summary = (n: number, ownerPersonId = 40) => ({
   ownerPersonId
 });
 const shelf = async (tab?: string) => render(await MenuMonsterShelfTool({ searchParams: tab ? { tab } : {} }));
-const page = async () => render(await MyMenusPage());
+const page = async (sp: Record<string, string> = {}) => render(await MyMenusPage({ searchParams: Promise.resolve(sp) }));
 
 beforeEach(() => {
+  mocks.family = [];
+  mocks.shared = [];
   vi.clearAllMocks();
   mocks.session = null;
   mocks.actor = LEADER;
@@ -128,10 +134,31 @@ describe('hub, leader', () => {
     mocks.actor = NO_CAPS;
     mocks.session = { subjectKind: 'adult', personId: 6, displayName: 'Parent P.' };
     mocks.all = [summary(1)];
+    mocks.family = [6];
     await shelf();
     expect(screen.queryByRole('heading', { name: 'Scouts’ menus' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Menu 1' })).toBeNull();
     expect(mocks.listAllMenusWith).not.toHaveBeenCalled();
+  });
+
+  it('Parent_SeesTheirScoutsMenus_UnderThePlan', async () => {
+    mocks.actor = NO_CAPS;
+    mocks.session = { subjectKind: 'adult', personId: 6, displayName: 'Parent P.' };
+    mocks.family = [6, 40];
+    mocks.own = [summary(1)];
+    await shelf();
+    expect(screen.getByRole('heading', { name: 'Your scouts’ menus' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Menu 1' })).toBeTruthy();
+    expect(mocks.listMenusWith).toHaveBeenCalledWith(expect.anything(), [40]);
+  });
+
+  it('Everyone_SeesSharedWithTheTroop_WhenMenusAreShared', async () => {
+    mocks.actor = null;
+    mocks.shared = [{ id: 's1', name: 'Shared stew', ownerPersonId: 40, credit: 'Sam K.', calendarEntryId: null, outingTitle: null, mealCount: 2, sharedAt: '2026-10-03T12:00:00Z' }];
+    await shelf();
+    expect(screen.getByRole('heading', { name: 'Shared with the troop' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Shared stew' })).toBeTruthy();
+    expect(screen.getByText(/Sam K\. · 2 meals/)).toBeTruthy();
   });
 
   it('Scout_SeesOnlyTheirOwnMenus_NotTheLeadersSection', async () => {
@@ -173,12 +200,23 @@ describe('menus page', () => {
     expect(screen.getByRole('link', { name: 'New menu' })).toBeTruthy();
   });
 
-  it('Adult_SeesTheLockedLine_WhenTheyHoldNoCapabilities', async () => {
+  it('Parent_SeesTheirScoutsMenusReadOnly_WhenTheyHoldNoCapabilities', async () => {
     mocks.actor = NO_CAPS;
     mocks.session = { subjectKind: 'adult', personId: 6, displayName: 'Parent P.' };
+    mocks.family = [6, 40];
+    mocks.own = [summary(1)];
     await page();
-    expect(screen.getByText(/sign in to save your menu/)).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Your scouts’ menus' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Menu 1' })).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'New menu' })).toBeNull();
+    expect(mocks.listMenusWith).toHaveBeenCalledWith(expect.anything(), [40]);
     expect(mocks.listAllMenusWith).not.toHaveBeenCalled();
+  });
+
+  it('Leader_FiltersTheList_FromTheUrl', async () => {
+    mocks.actor = LEADER;
+    await page({ scout: '40', shared: '1', outing: 'x' });
+    expect(mocks.listAllMenusWith).toHaveBeenCalledWith(expect.anything(), { scout: 40, outing: undefined, shared: true });
   });
 
   it('Anonymous_SeesTheLockedLine', async () => {

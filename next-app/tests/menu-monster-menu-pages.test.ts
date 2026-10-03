@@ -23,6 +23,7 @@ vi.mock('@/lib/supabase/server', () => ({ createAdminClient: () => ({ stub: true
 vi.mock('@/lib/menu-monster/menus-store', () => ({ loadMenuWith: mocks.loadMenuWith }));
 vi.mock('@/lib/menu-monster/data', () => ({ loadMenuMonsterCatalog: async () => ({}) }));
 vi.mock('@/lib/menu-monster/menus-data', () => ({ loadOutingsWith: async () => [] }));
+vi.mock('@/lib/household-scope', () => ({ resolveFamilyScope: async (_sb: unknown, id: number) => [id] }));
 
 import { loadOwnMenu } from '../src/app/(public)/library/menu-monster/menus/_components/scout-menus';
 import PlanPage from '../src/app/(public)/library/menu-monster/menus/[menuId]/page';
@@ -73,10 +74,9 @@ describe.each(pages)('%s page notFound paths', (_name, render) => {
     await expect(render(ID)).rejects.toThrow('NEXT_NOT_FOUND');
   });
 
-  it('Adult_GetsNotFound_BecauseOnlyScoutsHaveMenus', async () => {
-    mocks.session = { ...SCOUT, subjectKind: 'adult' };
+  it('Adult_GetsNotFound_WhenTheUnsharedMenuIsNotTheirScouts', async () => {
+    mocks.session = { ...SCOUT, personId: 6, subjectKind: 'adult' };
     await expect(render(ID)).rejects.toThrow('NEXT_NOT_FOUND');
-    expect(mocks.loadMenuWith).not.toHaveBeenCalled();
   });
 
   it('Scout_GetsNotFound_WhenTheIdIsNotAUuid', async () => {

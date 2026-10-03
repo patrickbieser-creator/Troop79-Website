@@ -26,8 +26,11 @@ vi.mock('@/lib/menu-monster/data', async () => {
 });
 vi.mock('@/lib/menu-monster/menus-store', () => ({
   listMenusWith: async () => mocks.summaries,
+  listSharedMenusWith: async () => [],
+  ownerCreditNamesWith: async () => new Map(),
   loadMenuWith: async () => null
 }));
+vi.mock('@/lib/household-scope', () => ({ resolveFamilyScope: async (_sb: unknown, id: number) => [id] }));
 vi.mock('@/lib/menu-monster/menus-data', () => ({ loadOutingsWith: async () => [] }));
 vi.mock('@/lib/menu-monster/scout-recipes-store', () => ({ listMyRecipesWith: async () => mocks.recipes }));
 vi.mock('../src/app/(public)/library/_tools/menu-monster/recipe-actions', () => ({ deleteScoutRecipeAction: vi.fn() }));

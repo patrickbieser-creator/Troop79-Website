@@ -16,7 +16,8 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { requireVerifiedScoutIdentity } from '@/lib/family-access';
 import { loadMenuMonsterCatalog } from '@/lib/menu-monster/data';
 import { MAX_ACTUALS_BYTES, MAX_MENU_BYTES, MAX_MENUS_PER_SCOUT, isMenuId, menuNameError, sanitizeActuals, sanitizeMenu, type Menu, type PaidStatus } from '@/lib/menu-monster/menus';
-import { MENU_LIMIT, createMenuWith, deleteMenuWith, duplicateMenuWith, loadMenuWith, saveActualsWith, saveMenuWith } from '@/lib/menu-monster/menus-store';
+import { MAX_REVIEW_NOTE, MENU_LIMIT, copyMenuWith, createMenuWith, deleteMenuWith, duplicateMenuWith, hideMenuWith, loadMenuWith, saveActualsWith, saveMenuWith, setMenuSharedWith, setReviewNoteWith } from '@/lib/menu-monster/menus-store';
+import { resolveAdminActor } from '@/lib/admin-actor';
 import { reportPriceWith } from '@/lib/menu-monster/price-history';
 import { loadOutingsWith } from '@/lib/menu-monster/menus-data';
 import { centralToday } from '@/lib/dates';
@@ -37,6 +38,7 @@ const isFail = (v: AuditActor | Fail): v is Fail => 'ok' in v;
 
 const NOT_YOURS = 'That menu isn’t one of yours.';
 const LIMIT_MESSAGE = `You have ${MAX_MENUS_PER_SCOUT} menus — delete one you don’t need to make room.`;
+const NOT_SHARED = 'That menu isn’t shared any more.';
 const TOO_BIG = 'This menu is too big to save. Remove some meals or edits and try again.';
 
 /** True when the payload serializes past MAX_MENU_BYTES (or can't serialize at all). */
@@ -161,4 +163,54 @@ export async function saveActualsAction(
   const saved = await saveActualsWith(sb, actor, menuId, actuals, fresh, { resnapshot: applied > 0 });
   if (saved.status !== 'saved') return { ok: false, error: NOT_YOURS };
   return { ok: true, applied, held, results };
+}
+
+/** Share with the troop (`on`) or Stop sharing — the session scout's own menu only (Phase 3). */
+export async function shareMenuAction(id: string, on: boolean): Promise<{ ok: true } | Fail> {
+  const actor = await scoutActor();
+  if (isFail(actor)) return actor;
+  if (!isMenuId(id)) return { ok: false, error: NOT_YOURS };
+  return (await setMenuSharedWith(createAdminClient(), actor, id, on === true)) ? { ok: true } : { ok: false, error: NOT_YOURS };
+}
+
+/**
+ * Copy to My menus (Phase 3): another scout's shared menu (or one of their
+ * own) becomes a new, unshared menu the session scout owns. Recipes they can't
+ * see stay behind and are counted; the outing link follows the create rule.
+ */
+export async function copyMenuAction(id: string): Promise<{ ok: true; id: string; droppedRecipes: number } | Fail> {
+  const actor = await scoutActor();
+  if (isFail(actor)) return actor;
+  if (!isMenuId(id)) return { ok: false, error: NOT_SHARED };
+  const catalog = await loadMenuMonsterCatalog(actor.personId);
+  const res = await copyMenuWith(createAdminClient(), actor, id, catalog, (m) => allowedOuting(m, m.calendarEntryId));
+  if (res === MENU_LIMIT) return { ok: false, error: LIMIT_MESSAGE };
+  if (!res) return { ok: false, error: NOT_SHARED };
+  return { ok: true, id: res.id, droppedRecipes: res.droppedRecipes };
+}
+
+/** Any adult with admin access (Decision 2) — never a scout identity, even one holding a capability. */
+async function leaderActor(): Promise<AuditActor | Fail> {
+  const actor = await resolveAdminActor();
+  if (!actor || actor.subjectKind === 'scout' || actor.capabilities.size === 0) {
+    return { ok: false, error: 'Only leaders can do that.' };
+  }
+  return { personId: actor.personId, label: actor.label };
+}
+
+/** A leader's one review note on a menu, replacing the last; blank clears it (Phase 3). */
+export async function setReviewNoteAction(id: string, note: string): Promise<{ ok: true } | Fail> {
+  const actor = await leaderActor();
+  if (isFail(actor)) return actor;
+  if (!isMenuId(id) || typeof note !== 'string') return { ok: false, error: 'That note could not be saved.' };
+  if (note.trim().length > MAX_REVIEW_NOTE) return { ok: false, error: `Keep the note under ${MAX_REVIEW_NOTE} characters.` };
+  return (await setReviewNoteWith(createAdminClient(), actor, id, note)) ? { ok: true } : { ok: false, error: 'That menu is gone.' };
+}
+
+/** Hide from the shelf: a leader stops a menu being shared (Phase 3 take-down). */
+export async function hideMenuAction(id: string): Promise<{ ok: true } | Fail> {
+  const actor = await leaderActor();
+  if (isFail(actor)) return actor;
+  if (!isMenuId(id)) return { ok: false, error: 'That menu is gone.' };
+  return (await hideMenuWith(createAdminClient(), actor, id)) ? { ok: true } : { ok: false, error: 'That menu is not shared any more.' };
 }

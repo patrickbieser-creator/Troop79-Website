@@ -34,7 +34,7 @@
  * edits), so nothing on this page can disagree with the shopping list.
  */
 
-import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { priceText as money } from '@/lib/menu-monster/units';
 import { useLeaveGuard } from '@/lib/use-leave-guard';
 import { Button } from '@/app/_components/button';
@@ -102,6 +102,7 @@ export function MealEditor({
   updatedAt,
   readOnly = false,
   plannedBy = null,
+  aside,
   store: storeProp
 }: {
   catalog: Catalog;
@@ -112,6 +113,8 @@ export function MealEditor({
   updatedAt: string | null;
   readOnly?: boolean;
   plannedBy?: string | null;
+  /** What the page says about who is looking (menu name credit, copy, review note…); replaces the read-only line. */
+  aside?: ReactNode;
   /** Where the menu is kept. Omitted = the signed-in scout's saved menu (server). */
   store?: MenuStore;
 }) {
@@ -326,7 +329,7 @@ export function MealEditor({
         </span>
         )}
       </div>
-      {readOnly && <ReadOnlyLine plannedBy={plannedBy} />}
+      {aside ?? (readOnly && <ReadOnlyLine plannedBy={plannedBy} />)}
 
       {error && (
         <Notice tone="error" className={s.notice}>

@@ -41,7 +41,8 @@ export async function loadMenuRows(
       mealCount: m.mealCount,
       perPersonMeal: cost && cost.total > 0 ? cost.perPersonMeal : null,
       updatedAt: m.updatedAt,
-      ownerName: m.ownerPersonId != null ? (owners?.get(m.ownerPersonId) ?? null) : null
+      ownerName: owners?.get(m.ownerPersonId) ?? null,
+      shared: m.sharedAt != null
     };
   });
 }

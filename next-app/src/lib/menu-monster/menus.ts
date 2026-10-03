@@ -36,6 +36,8 @@ export const MAX_MENUS_PER_SCOUT = 50;
 /** Largest serialized menu the actions accept (a real 30-meal menu is a few KB). */
 export const MAX_MENU_BYTES = 200 * 1024;
 export const DEFAULT_MENU_BUDGET = 4;
+/** Longest review note a leader can leave on a menu (Phase 3; the column's CHECK agrees). */
+export const MAX_REVIEW_NOTE = 1000;
 /** A new menu starts with two days. */
 export const DEFAULT_MENU_DAYS = 2;
 

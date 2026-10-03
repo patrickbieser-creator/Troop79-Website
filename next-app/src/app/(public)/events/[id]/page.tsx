@@ -18,6 +18,9 @@ import { JsonLd } from '@/app/_components/json-ld';
 import { siteUrl } from '@/lib/site-url';
 import { eventJsonLd, breadcrumbJsonLd } from '@/lib/seo';
 import { loadSiteSettings } from '@/lib/site-settings';
+import { createAdminClient } from '@/lib/supabase/server';
+import { listSharedMenusWith } from '@/lib/menu-monster/menus-store';
+import { OUTING_CATEGORIES } from '@/lib/menu-monster/menus-data';
 import styles from './event-detail.module.css';
 
 /*
@@ -137,6 +140,12 @@ export default async function EventDetailPage({
      which filter — rather than the top of the calendar. See lib/calendar-return
      for why this is a pure function over params and not history.back(). */
   const back = calendarReturn(sp);
+  /* Menu Monster Phase 3: scouts' menus shared for this outing. Its own narrow
+     query, only for the overnight categories a menu can link to; the loader
+     returns nothing for an unpublished entry. */
+  const outingMenus = (OUTING_CATEGORIES as readonly string[]).includes(entry.category)
+    ? await listSharedMenusWith(createAdminClient(), centralToday(), { outingId: entry.id })
+    : [];
 
   /*
    * Which template this entry renders through (Calendar unification). The
@@ -276,6 +285,20 @@ export default async function EventDetailPage({
                 <a href={r.url} target="_blank" rel="noopener noreferrer">
                   {r.label}
                 </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {outingMenus.length > 0 && (
+        <section className={styles.block}>
+          <h2 className={styles.blockHead}>Menus for this outing</h2>
+          <ul className={styles.resourceList}>
+            {outingMenus.map((m) => (
+              <li key={m.id}>
+                <Link href={`/library/menu-monster/menus/${m.id}`}>{m.name}</Link>
+                {m.credit ? ` — ${m.credit}` : ''}
               </li>
             ))}
           </ul>

@@ -36,6 +36,8 @@ export interface MenuRowData {
   updatedAt?: string;
   /** The owner's credit name ("Sam K."); shown to a leader. */
   ownerName?: string | null;
+  /** Shared with the troop (Phase 3). */
+  shared?: boolean;
 }
 
 export function MenusList({ rows, readOnly = false, emptyText }: { rows: MenuRowData[]; readOnly?: boolean; emptyText?: string }) {
@@ -89,6 +91,7 @@ export function MenusList({ rows, readOnly = false, emptyText }: { rows: MenuRow
                   r.contextLabel,
                   r.outingName,
                   `${r.mealCount} ${r.mealCount === 1 ? 'meal' : 'meals'}`,
+                  r.shared ? 'Shared' : null,
                   readOnly && r.updatedAt ? `edited ${fmtDate(r.updatedAt)}` : null
                 ]
                   .filter(Boolean)

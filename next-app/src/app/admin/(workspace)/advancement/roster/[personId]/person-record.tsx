@@ -38,6 +38,7 @@ import type { PersonEmailRow } from '@/lib/person-emails';
 import { PageTitle } from '../../../_components/page-title';
 import { Badge } from '../../../_components/badge';
 import { Notice } from '../../../_components/notice';
+import { Button } from '../../../../_components/button';
 import type { PersonDetail } from '../person-actions';
 import { StatusCard, reasonLabel } from './status-card';
 import { SectionEditProvider } from './section-card';
@@ -230,6 +231,12 @@ export function PersonRecord({ record, from }: { record: PersonRecordData; from:
           </>
         }
       >
+        {kind === 'scout' && (
+          // Menu Monster Phase 3: the leader list of a scout's saved menus lives on the public side (no second admin surface).
+          <Button href={`/library/menu-monster/menus?scout=${record.personId}`} variant="secondary" size="sm">
+            Menus
+          </Button>
+        )}
         <SendSignInLink personId={record.personId} kind={kind} emails={emails} onResult={onLinkResult} />
       </PageTitle>
 

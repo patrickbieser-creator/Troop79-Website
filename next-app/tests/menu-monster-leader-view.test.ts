@@ -10,7 +10,8 @@ const mocks = vi.hoisted(() => ({
   session: null as unknown,
   actor: null as unknown,
   loadMenuWith: vi.fn(),
-  ownerCreditNamesWith: vi.fn()
+  ownerCreditNamesWith: vi.fn(),
+  family: [] as number[]
 }));
 
 vi.mock('next/navigation', () => ({
@@ -24,6 +25,12 @@ vi.mock('@/lib/supabase/server', () => ({ createAdminClient: () => ({ stub: true
 vi.mock('@/lib/menu-monster/menus-store', () => ({ loadMenuWith: mocks.loadMenuWith, ownerCreditNamesWith: mocks.ownerCreditNamesWith }));
 vi.mock('@/lib/menu-monster/data', () => ({ loadMenuMonsterCatalog: async () => ({}) }));
 vi.mock('@/lib/menu-monster/menus-data', () => ({ loadOutingsWith: async () => [] }));
+vi.mock('@/lib/household-scope', () => ({ resolveFamilyScope: async () => mocks.family }));
+// The rules are real; only the re-sanitizing is stubbed (the stub catalog is empty). Redaction is tested in menu-monster-menu-access.test.ts.
+vi.mock('@/lib/menu-monster/menu-access', async (orig) => ({
+  ...(await orig<typeof import('../src/lib/menu-monster/menu-access')>()),
+  redactMenu: (menu: unknown) => ({ menu, hiddenRecipes: 0 })
+}));
 // The pages' client components are not under test here; capture their props.
 vi.mock('../src/app/(public)/library/menu-monster/menus/_components/plan-tab', () => ({ PlanTab: (p: unknown) => p }));
 vi.mock('../src/app/(public)/library/menu-monster/menus/_components/shopping-tab', () => ({ ShoppingTab: (p: unknown) => p }));
@@ -38,7 +45,10 @@ const ID = '0b9f8c1e-3a52-4f6e-9d3c-1a2b3c4d5e6f';
 const SCOUT = { subjectKind: 'scout', personId: 39, displayName: 'Charlie W.' };
 const LEADER = { kind: 'identity', label: 'Pat B.', personId: 5, capabilities: new Set(['roster.view']) };
 const NO_CAPS = { kind: 'identity', label: 'Parent P.', personId: 6, capabilities: new Set() };
-const stored = (ownerPersonId: number) => ({ id: ID, ownerPersonId, menu: { meals: [{ id: 'm1' }] }, snapshot: null, createdAt: '', updatedAt: 'u' });
+const PARENT = { subjectKind: 'adult', personId: 6, displayName: 'Parent P.' };
+const stored = (ownerPersonId: number, over: Record<string, unknown> = {}) => ({
+  id: ID, ownerPersonId, menu: { meals: [{ id: 'm1' }] }, snapshot: null, createdAt: '', updatedAt: 'u', sharedAt: null, entryPublished: null, review: null, ...over
+});
 
 /** The element a page returns: find the first node whose props satisfy `pred`. */
 function find(node: unknown, pred: (p: Record<string, unknown>) => boolean): Record<string, unknown> | null {
@@ -58,6 +68,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.session = null;
   mocks.actor = null;
+  mocks.family = [];
   mocks.loadMenuWith.mockResolvedValue(stored(39));
   mocks.ownerCreditNamesWith.mockResolvedValue(new Map([[39, 'Sam K.']]));
 });
@@ -73,10 +84,11 @@ describe('menuViewer', () => {
     expect(await menuViewer()).toEqual({ kind: 'leader', personId: 5, label: 'Pat B.' });
   });
 
-  it('Adult_IsNobody_WhenTheyHoldNoCapabilities', async () => {
-    mocks.session = { subjectKind: 'adult', personId: 6, displayName: 'Parent P.' };
+  it('Adult_IsAParentViewer_WhenTheyHoldNoCapabilities', async () => {
+    mocks.session = PARENT;
     mocks.actor = NO_CAPS;
-    expect(await menuViewer()).toBeNull();
+    mocks.family = [6, 39];
+    expect(await menuViewer()).toEqual({ kind: 'parent', personId: 6, familyIds: [6, 39] });
   });
 
   it('Anonymous_IsNobody', async () => {
@@ -130,15 +142,38 @@ describe.each(pages)('%s page access matrix', (_name, render) => {
     await expect(render(ID)).rejects.toThrow('NEXT_NOT_FOUND');
   });
 
-  it('Parent_GetsNotFound_WhenTheyHoldNoCapabilities', async () => {
-    mocks.session = { subjectKind: 'adult', personId: 6, displayName: 'Parent P.' };
+  it('Parent_ReadsReadOnly_WhenTheMenuIsTheirScouts', async () => {
+    mocks.session = PARENT;
     mocks.actor = NO_CAPS;
-    await expect(render(ID)).rejects.toThrow('NEXT_NOT_FOUND');
-    expect(mocks.loadMenuWith).not.toHaveBeenCalled();
+    mocks.family = [6, 39];
+    expect(await readOnlyOf()).toBe(true);
   });
 
-  it('Anonymous_GetsNotFound', async () => {
+  it('Parent_GetsNotFound_ForAnotherFamilysUnsharedMenu', async () => {
+    mocks.session = PARENT;
+    mocks.actor = NO_CAPS;
+    mocks.family = [6, 40];
     await expect(render(ID)).rejects.toThrow('NEXT_NOT_FOUND');
+  });
+
+  it('Anonymous_GetsNotFound_WhenTheMenuIsNotShared', async () => {
+    await expect(render(ID)).rejects.toThrow('NEXT_NOT_FOUND');
+  });
+
+  it('Anonymous_ReadsReadOnly_WhenTheMenuIsShared', async () => {
+    mocks.loadMenuWith.mockResolvedValue(stored(39, { sharedAt: '2026-10-03T12:00:00Z' }));
+    expect(await readOnlyOf()).toBe(true);
+  });
+
+  it('Anonymous_GetsNotFound_WhenSharedOnAnUnpublishedOuting', async () => {
+    mocks.loadMenuWith.mockResolvedValue(stored(39, { sharedAt: '2026-10-03T12:00:00Z', entryPublished: false }));
+    await expect(render(ID)).rejects.toThrow('NEXT_NOT_FOUND');
+  });
+
+  it('OtherScout_ReadsReadOnly_WhenTheMenuIsShared', async () => {
+    mocks.session = { ...SCOUT, personId: 7 };
+    mocks.loadMenuWith.mockResolvedValue(stored(39, { sharedAt: '2026-10-03T12:00:00Z' }));
+    expect(await readOnlyOf()).toBe(true);
   });
 
   it('Leader_GetsNotFound_WhenTheIdIsNotAUuid', async () => {

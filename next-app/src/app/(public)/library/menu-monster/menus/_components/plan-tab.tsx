@@ -63,13 +63,15 @@ export interface PlanTabProps {
   readOnly?: boolean;
   /** Credit name of the scout who planned it (read-only view). */
   plannedBy?: string | null;
+  /** What the page says about who is looking (menu name credit, copy, review note…); replaces the read-only line. */
+  aside?: ReactNode;
   /** Where the menu is kept. Omitted = the signed-in scout's saved menu (server). */
   store?: MenuStore;
   /** The title's heading level: the hub shows this under the page's own h1. */
   titleAs?: 'h1' | 'h2';
 }
 
-export function PlanTab({ catalog, menuId, menu: initial, updatedAt, outings, tabs, readOnly = false, plannedBy = null, store: storeProp, titleAs: Title = 'h1' }: PlanTabProps) {
+export function PlanTab({ catalog, menuId, menu: initial, updatedAt, outings, tabs, readOnly = false, plannedBy = null, aside, store: storeProp, titleAs: Title = 'h1' }: PlanTabProps) {
   const router = useRouter();
   const store = useMemo(() => storeProp ?? serverMenuStore(menuId), [storeProp, menuId]);
   const { canSave } = store.caps;
@@ -255,7 +257,7 @@ export function PlanTab({ catalog, menuId, menu: initial, updatedAt, outings, ta
           />
         )}
       </div>
-      {readOnly && <ReadOnlyLine plannedBy={plannedBy} />}
+      {aside ?? (readOnly && <ReadOnlyLine plannedBy={plannedBy} />)}
       {tabs != null && <div className={s.tabs}>{tabs}</div>}
 
       {error && (
