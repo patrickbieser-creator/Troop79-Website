@@ -56,7 +56,7 @@ describe('Roll Call — optimistic checkbox', () => {
     expect(blake.checked).toBe(true);
     expect(blake.disabled).toBe(true);
     expect(avery.disabled).toBe(false);
-    expect(screen.getByRole('tab', { name: /Scouts/ }).textContent).toBe('Scouts2');
+    expect(screen.getByRole('tab', { name: /Scouts/ }).textContent).toBe('Scouts (2)');
 
     settle({ ok: true });
     await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1), { timeout: 3000 });

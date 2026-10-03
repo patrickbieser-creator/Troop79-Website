@@ -32,7 +32,7 @@ function renderBuilder(over: Partial<Parameters<typeof BuilderPanels>[0]> = {}) 
   );
 }
 
-const tabNames = () => within(screen.getByRole('tablist', { name: /builder sections/i })).getAllByRole('tab').map((t) => t.textContent?.replace(/\d+/g, '').trim());
+const tabNames = () => within(screen.getByRole('tablist', { name: /builder sections/i })).getAllByRole('tab').map((t) => t.textContent?.replace(/\s*\(\d+\)|\d+/g, '').trim());
 
 describe('Builder — Blocks stay, every other section is a tab', () => {
   it('Tabs_AreGeneratedInSectionOrder_SettingsFirstAndOpenByDefault', () => {

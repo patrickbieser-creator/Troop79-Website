@@ -4,12 +4,11 @@
  * and their per-file tint drift into one component on the status tokens.
  * Base shape: meetings' .statusPill, generalized to the pill radius.
  */
+/* Calm restyle R5 (2026-10-03): sentence case, one size up, tint only. */
 .badge {
   display: inline-block;
-  font-size: var(--admin-text-xs);
-  font-weight: var(--admin-weight-bold);
-  letter-spacing: var(--admin-tracking-normal);
-  text-transform: uppercase;
+  font-size: var(--admin-text-sm);
+  font-weight: var(--admin-weight-semibold);
   padding: var(--admin-space-1) var(--admin-space-4);
   border-radius: var(--admin-radius-pill);
   white-space: nowrap;

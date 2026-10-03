@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Shared pill tab strip with optional count badges (Phase A,
+ * Shared text tab strip with optional "(n)" counts (calm restyle R5; Phase A,
  * Plans/Admin-Design-System.md) — replaces the 4 byte-identical per-screen
  * copies found by the 2026-08-21 audit. Canonical rendering lives at
  * /admin/styleguide/admin.
@@ -47,7 +47,7 @@ export function TabStrip({
         const inner = (
           <>
             {item.label}
-            {item.count !== undefined && <span className={styles.tabCount}>{item.count}</span>}
+            {item.count !== undefined && <span className={styles.tabCount}> ({item.count})</span>}
           </>
         );
         return item.href ? (

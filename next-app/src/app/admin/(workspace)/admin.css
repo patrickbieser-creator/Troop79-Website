@@ -203,11 +203,10 @@
    (the audit found it re-declared in 32 of 35 module files as .editLabel /
    .importSection / table th / …). Phase A ships the utility; per-screen
    copies retire screen-by-screen in Phases B/C. Typography only, no
-   layout — consumers add display/margin in their own class if needed. */
+   layout — consumers add display/margin in their own class if needed.
+   Calm restyle R5 (2026-10-03, decision 7): sentence case AND one size up. */
 .adminLabel {
-  font-size: var(--admin-text-sm);
-  font-weight: var(--admin-weight-bold);
-  letter-spacing: var(--admin-tracking-wider);
-  text-transform: uppercase;
+  font-size: var(--admin-text-base);
+  font-weight: var(--admin-weight-semibold);
   color: var(--admin-gray-500);
 }

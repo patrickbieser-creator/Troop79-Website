@@ -35,6 +35,12 @@ describe('TabStrip', () => {
     expect(screen.getByRole('tab', { name: /Upcoming/ }).textContent).toContain('12');
   });
 
+  // Calm restyle R5 (2026-10-03): text tabs, the count a plain "(n)" after the label.
+  it('TabStrip_ShowsTheCountInParentheses', () => {
+    render(<TabStrip items={TABS} activeKey="upcoming" ariaLabel="Calendar range" />);
+    expect(screen.getByRole('tab', { name: /Upcoming/ }).textContent).toBe('Upcoming (12)');
+  });
+
   it('TabStrip_OmitsCountPill_WhenCountAbsent', () => {
     render(
       <TabStrip
@@ -50,7 +56,7 @@ describe('TabStrip', () => {
     render(<TabStrip items={TABS} activeKey="past" ariaLabel="Calendar range" />);
     expect(
       screen.getAllByRole('tab', { selected: true }).map((el) => el.textContent)
-    ).toEqual(['Past48']);
+    ).toEqual(['Past (48)']);
   });
 
   it('TabStrip_FiresOnSelect_WhenTabClicked', async () => {

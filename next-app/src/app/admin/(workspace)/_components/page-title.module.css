@@ -11,8 +11,7 @@
   justify-content: space-between;
   gap: var(--admin-space-8);
   margin-bottom: var(--admin-space-10);
-  border-bottom: 1px solid var(--admin-gray-200);
-  padding-bottom: var(--admin-space-7);
+  padding-bottom: var(--admin-space-2); /* calm restyle R5: no rule under the title */
 }
 /* 22px is the legacy-exact heading size every copy used — off the type
    scale (20/24); rounds in Phase C if at all. */

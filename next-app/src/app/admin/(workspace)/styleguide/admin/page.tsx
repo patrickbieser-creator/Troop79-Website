@@ -183,7 +183,7 @@ const SCOREBOARD: {
       'events-admin’s solid one-off → outlined; roster + access hardcoded reds re-tokened; all outlined copies now share the color-mix border + status-error-bg hover'
   },
   {
-    pattern: 'Pill tab strips + count badges',
+    pattern: 'Tab strips + counts (text tabs since calm R5)',
     copies: '✓ DONE — 0 copies left',
     canonical: '✓ SHIPPED: shared TabStrip (calendar, articles, roster ×2, roster-import converted 2026-08-21; per-screen copies deleted)',
     phase: 'A',
@@ -283,7 +283,7 @@ const SCOREBOARD: {
       'Retired the same day: people-table’s PersonEditor dialog (status / demographics / emails / household / roles / relationships / merge / delete), ScoutForm’s edit branch (create-once “+ Add Scout” stays), scout-relations.tsx, pending-update-panel.tsx. Save-model rule amended in AGENTS.md: per-section Edit is a valid alternative to one whole-form dirty gate'
   },
   {
-    pattern: 'Eyebrow labels (11px/700/uppercase)',
+    pattern: 'Eyebrow labels (12px/600 sentence case since calm R5; was 11px/700/uppercase)',
     copies: '✓ DONE — 0 label re-declarations left (Phase D, 2026-08-21); ~96 adminLabel call sites',
     canonical: '✓ SHIPPED: global .adminLabel utility in admin.css (2026-08-21)',
     phase: 'A',
@@ -428,7 +428,7 @@ export default function StyleguidePage() {
         </p>
         <div className={sg.specimenGrid}>
           <Specimen
-            label=".adminLabel — the eyebrow label"
+            label=".adminLabel — the label utility (sentence case, calm R5)"
             canonical
             note="SHIPPED Phase A, adoption COMPLETE Phase D (2026-08-21): ~96 call sites; the 32 per-file re-declarations are gone. Typography only — consumers add display/margin themselves; overrides of utility-set props (e.g. a navy label) must out-specify (0,1,0) via an element qualifier or doubled class, never rely on stylesheet order."
           >
@@ -504,7 +504,7 @@ export default function StyleguidePage() {
         </p>
         <div className={sg.specimenGrid}>
           <Specimen
-            label="Pill tabs — shared TabStrip component"
+            label="Text tabs — shared TabStrip component (calm R5)"
             canonical
             note="THE tab pattern — data tabs and view/mode toggles alike. Import from _components/tab-strip; href items render Links, onSelect items render buttons; count renders the pill badge."
           >
@@ -520,7 +520,7 @@ export default function StyleguidePage() {
           <Specimen
             label="Tabbed workbench — long multipart editors"
             canonical
-            note="Patrick 2026-08-24 (calendar entry workbench): a record with several independently-saved parts gets ONE pill tab per part, above the panel, so the options are evident at the top instead of stacked down the page. Rules: the same TabStrip in onSelect mode; every panel stays MOUNTED and is hidden with the `hidden` attribute (role=tabpanel, aria-label = tab name) so an unsaved draft on one tab survives a look at another; a tab whose part has content shows it as the count pill (Roll Call: people present); a tab with an unsaved draft gets a trailing • in its label; tabs a record can't have (Agenda on a non-meeting) are omitted, not disabled. Optional ?tab= deep link for back links from the part's own screen. A part with its own groups may nest a second TabStrip as a SUB-tab bar inside its panel (Roll Call's Scouts / Leaders / Adults) — the layer tabs stay put. Reference: calendar/[id]/workbench.tsx."
+            note="Patrick 2026-08-24 (calendar entry workbench): a record with several independently-saved parts gets ONE pill tab per part, above the panel, so the options are evident at the top instead of stacked down the page. Rules: the same TabStrip in onSelect mode; every panel stays MOUNTED and is hidden with the `hidden` attribute (role=tabpanel, aria-label = tab name) so an unsaved draft on one tab survives a look at another; a tab whose part has content shows it as a plain “(n)” count (Roll Call: people present); a tab with an unsaved draft gets a trailing • in its label; tabs a record can't have (Agenda on a non-meeting) are omitted, not disabled. Optional ?tab= deep link for back links from the part's own screen. A part with its own groups may nest a second TabStrip as a SUB-tab bar inside its panel (Roll Call's Scouts / Leaders / Adults) — the layer tabs stay put. Reference: calendar/[id]/workbench.tsx."
           >
             <TabStrip
               ariaLabel="Specimen workbench"
@@ -765,7 +765,7 @@ export default function StyleguidePage() {
           <Specimen
             label="Compact cluster"
             canonical
-            note="calendar canon — 12.5px, tight padding, uppercase gray headers. Members: calendar, albums, meetings, roster, scoutbook-export, meeting-plan."
+            note="calendar canon — 12.5px, tight padding, sentence-case gray headers with no band (calm R5). Members: calendar, albums, meetings, roster, scoutbook-export, meeting-plan."
           >
             <table className={cal.table}>
               <thead>
@@ -838,7 +838,7 @@ export default function StyleguidePage() {
           <Specimen
             label="DataTable·Card — shared .cardWrap / .card / .numCell / .actionsCell"
             canonical
-            note="Rendered straight from data-table.module.css. Ledger canon: white card with shadow (the card is the scroll-x container), 13px, 10px 12px cells, 11px uppercase headers over a 2px rule. Money is .numCell (right, tabular-nums; negatives red-in-parens-with-minus per 2026-08-22). Row actions are the shared Button, quiet / danger, size sm, in an .actionsCell. Composed by ledger, records, finance, articles, access."
+            note="Rendered straight from data-table.module.css. Ledger canon: borderless white card with shadow (the card is the scroll-x container), 13px, 10px 12px cells, sentence-case 12px gray headers over one hairline (calm R5; was 11px uppercase over a 2px rule). Money is .numCell (right, tabular-nums; negatives red-in-parens-with-minus per 2026-08-22). Row actions are the shared Button, quiet / danger, size sm, in an .actionsCell. Composed by ledger, records, finance, articles, access."
           >
             <div className={dt.cardWrap}>
               <table className={dt.card}>
@@ -869,7 +869,7 @@ export default function StyleguidePage() {
           <Specimen
             label="DataTable·Dense Grid — shared .dense"
             canonical
-            note="Rendered straight from data-table.module.css. Events-admin roster canon: the table is its own bordered white surface, 13.5px, 9px 12px cells, 10.5px uppercase gray-600 headers on a 1px rule, top-aligned cells. For a matrix (people × slots, scouts × requirements) with many narrow columns; the stacked-header / class-pill / job-tick extras stay in events-admin.module.css (specimen above)."
+            note="Rendered straight from data-table.module.css. Events-admin roster canon: the table is its own bordered white surface, 13.5px, 9px 12px cells, 12px sentence-case gray headers on a 1px rule (calm R5), top-aligned cells. For a matrix (people × slots, scouts × requirements) with many narrow columns; the stacked-header / class-pill / job-tick extras stay in events-admin.module.css (specimen above)."
           >
             <table className={dt.dense}>
               <thead>
@@ -955,7 +955,7 @@ export default function StyleguidePage() {
           <Specimen
             label="Shared FormPanel + FormSection — the surfaces that hold fields"
             canonical
-            note="2026-08-24 (the FormPanel backlog item): import from admin/_components/form-panel. FormPanel = the tinted field surface (--admin-form-bg, gray-200 border, radius, shadow-sm) with optional uppercase title, actions slot (Save / Discard / feedback) and note; inputs inside it read white automatically. FormSection = the numbered section card promoted from the scout editor (navy left rule, circled number, uppercase title, actions, sectionRef for scroll-spy). Adopt on every long admin form; the next surface-tint decision is then ONE file, not an 11-stylesheet sweep. 2026-08-26 (adoption sweep): the last per-screen tinted-surface classes — ledger/lookups/meetings/scoutbook-export/calendar/workbench/events/photo-albums — moved onto FormPanel/FormSection and were deleted from their stylesheets; finance's .formPanel was already-dead CSS, removed outright; media-picker's .panel is a display:none tab toggle, not a form surface, and stays as-is."
+            note="2026-08-24 (the FormPanel backlog item): import from admin/_components/form-panel. FormPanel = the tinted field surface (--admin-form-bg, borderless since calm R5, radius-lg) with an optional sentence-case title, actions slot (Save / Discard / feedback) and note; inputs inside it read white automatically. FormSection = the numbered section card promoted from the scout editor (calm R5: no navy rule, the number as quiet gray text, a sentence-case title; actions, sectionRef for scroll-spy). Adopt on every long admin form; the next surface-tint decision is then ONE file, not an 11-stylesheet sweep. 2026-08-26 (adoption sweep): the last per-screen tinted-surface classes — ledger/lookups/meetings/scoutbook-export/calendar/workbench/events/photo-albums — moved onto FormPanel/FormSection and were deleted from their stylesheets; finance's .formPanel was already-dead CSS, removed outright; media-picker's .panel is a display:none tab toggle, not a form surface, and stays as-is."
           >
             <FormPanel title="Logistics" note="Where and when, for the public page." actions={<Button variant="primary" size="sm">Saved</Button>}>
               <label className="adminLabel">

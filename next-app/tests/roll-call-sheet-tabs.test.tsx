@@ -50,7 +50,7 @@ describe('Roll Call sheet — one tab per group', () => {
   it('OffersScoutsLeadersAdultsInactive_InThatOrder_WithPresentCounts', () => {
     renderSheet();
     const tabs = screen.getAllByRole('tab').map((t) => t.textContent);
-    expect(tabs).toEqual(['Scouts1', 'Leaders0', 'Adults0', 'Inactive scouts0']);
+    expect(tabs).toEqual(['Scouts (1)', 'Leaders (0)', 'Adults (0)', 'Inactive scouts (0)']);
   });
 
   it('OpensOnScouts_AndOnlyThatPanelIsVisible', () => {

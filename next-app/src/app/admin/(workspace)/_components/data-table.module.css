@@ -3,17 +3,17 @@
  * (Patrick approved the seven; prototype linked from /admin/styleguide).
  *
  *   .compact  — DataTable · Compact: a list you scan and click into. The
- *               calendar list is the canon; 12.5px, 8px 10px cells, 10px
- *               uppercase headers on gray-50.
+ *               calendar list is the canon; 12.5px, 8px 10px cells.
  *   .card     — DataTable · Card: rows carrying money or per-row buttons.
  *               The ledger is the canon; lives inside a `.cardWrap` surface
- *               (white card, shadow, scroll-x), 13px, 10px 12px cells, 11px
- *               headers over a 2px rule. Row actions are the shared Button
- *               (quiet / danger, size sm).
+ *               (borderless white card, shadow, scroll-x), 13px, 10px 12px
+ *               cells. Row actions are the shared Button (quiet / danger, sm).
  *   .dense    — DataTable · Dense Grid: a matrix (people × slots) with many
  *               narrow columns. The events-admin roster is the canon; the
- *               table is its own bordered surface, 13.5px, 9px 12px cells,
- *               10.5px headers on gray-600.
+ *               table is its own bordered surface, 13.5px, 9px 12px cells.
+ *
+ * Headers (calm restyle R5, 2026-10-03): sentence case at --admin-text-base,
+ * semibold gray-500, no gray band and no 2px rule — one hairline under them.
  *
  * A screen adopts a pattern with
  *   `.table { composes: compact from '../_components/data-table.module.css'; }`
@@ -44,13 +44,12 @@
   text-align: left;
   vertical-align: top;
 }
+/* Calm restyle R5: sentence-case headers one size up, no gray band. */
 .compact th {
-  background: var(--admin-gray-50);
-  font-size: 10px;
-  font-weight: var(--admin-weight-bold);
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: var(--admin-gray-700);
+  font-size: var(--admin-text-base);
+  font-weight: var(--admin-weight-semibold);
+  color: var(--admin-gray-500);
+  border-bottom-color: var(--admin-gray-200);
   white-space: nowrap;
 }
 .compact tbody tr:last-child td { border-bottom: none; }
@@ -58,8 +57,7 @@
 /* ── DataTable · Card (ledger canon) ─────────────────────────────────── */
 .cardWrap {
   background: var(--admin-white);
-  border: 1px solid var(--admin-gray-200);
-  border-radius: var(--admin-radius);
+  border-radius: var(--admin-radius-lg);
   box-shadow: var(--admin-shadow-sm);
   overflow-x: auto;
 }
@@ -75,13 +73,10 @@
   text-align: left;
 }
 .card th {
-  background: var(--admin-gray-50);
-  border-bottom: 2px solid var(--admin-gray-200);
-  font-size: 11px;
-  font-weight: var(--admin-weight-bold);
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  color: var(--admin-gray-700);
+  border-bottom: 1px solid var(--admin-gray-200);
+  font-size: var(--admin-text-base);
+  font-weight: var(--admin-weight-semibold);
+  color: var(--admin-gray-500);
   white-space: nowrap;
 }
 /* Sortable header links (ledger / finance) inherit the header colour. */
@@ -104,11 +99,9 @@
 }
 .dense th {
   text-align: left;
-  font-size: 10.5px;
-  font-weight: var(--admin-weight-bold);
-  letter-spacing: .07em;
-  text-transform: uppercase;
-  color: var(--admin-gray-600);
+  font-size: var(--admin-text-base);
+  font-weight: var(--admin-weight-semibold);
+  color: var(--admin-gray-500);
   padding: 9px 12px;
   border-bottom: 1px solid var(--admin-gray-200);
 }

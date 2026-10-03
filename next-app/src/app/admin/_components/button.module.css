@@ -36,7 +36,6 @@
   background: var(--admin-navy);
   border-color: var(--admin-navy);
   color: var(--admin-white);
-  letter-spacing: .04em;
 }
 .primary:hover:not(:disabled) { background: var(--admin-navy-hover); border-color: var(--admin-navy-hover); }
 

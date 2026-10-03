@@ -122,6 +122,68 @@ describe.each(Object.entries(SCREENS))('Calm style — %s screens', (_release, f
   });
 });
 
+/** R5: the admin shared kit, in its own tokens (the firewall stands). Labels sentence case AND one size up (decision 7). */
+const ADMIN_SHARED = [
+  'admin/_components/form-panel.module.css',
+  'admin/_components/button.module.css',
+  'admin/(workspace)/_components/data-table.module.css',
+  'admin/(workspace)/_components/page-title.module.css',
+  'admin/(workspace)/_components/tab-strip.module.css',
+  'admin/(workspace)/_components/notice.module.css',
+  'admin/(workspace)/_components/badge.module.css'
+];
+const ruleIn = (rel: string, selector: string) => rule(screenCss(rel), selector) ?? '';
+
+describe('Calm style — R5 admin shared kit', () => {
+  it.each(ADMIN_SHARED)('%s_HasNoUppercaseLabels', (rel) => {
+    expect(screenCss(rel)).not.toMatch(/text-transform:\s*uppercase/);
+  });
+
+  it.each(ADMIN_SHARED)('%s_HasNoWideLetterSpacing', (rel) => {
+    expect(wideTracking(screenCss(rel))).toEqual([]);
+  });
+
+  it('FormPanel_HasNoBorder', () => {
+    expect(ruleIn('admin/_components/form-panel.module.css', '.panel')).not.toMatch(/border\s*:/);
+  });
+
+  it('FormSection_HasNoNavyBarOrBorder', () => {
+    expect(ruleIn('admin/_components/form-panel.module.css', '.section')).not.toMatch(/border(-left)?\s*:/);
+  });
+
+  it('FormSection_NumberIsNotANavyCircle', () => {
+    expect(ruleIn('admin/_components/form-panel.module.css', '.num')).not.toMatch(/background:\s*var\(--admin-navy\)/);
+  });
+
+  it.each(['.compact th', '.card th'])('DataTable_%s_HasNoGrayBand', (sel) => {
+    expect(ruleIn('admin/(workspace)/_components/data-table.module.css', sel)).not.toMatch(/background/);
+  });
+
+  it('DataTable_CardHeader_HasNoTwoPixelRule', () => {
+    expect(screenCss('admin/(workspace)/_components/data-table.module.css')).not.toMatch(/2px solid/);
+  });
+
+  it('DataTable_CardWrap_HasNoBorder', () => {
+    expect(ruleIn('admin/(workspace)/_components/data-table.module.css', '.cardWrap')).not.toMatch(/border\s*:/);
+  });
+
+  it('PageTitle_HasNoBottomRule', () => {
+    expect(ruleIn('admin/(workspace)/_components/page-title.module.css', '.pageTitle')).not.toMatch(/border-bottom/);
+  });
+
+  it('Notice_DrawsABorderOnlyForErrors', () => {
+    expect(ruleIn('admin/(workspace)/_components/notice.module.css', '.notice')).not.toMatch(/border\s*:/);
+  });
+
+  it('TabStrip_IsTextTabsNotAGrayTray', () => {
+    expect(ruleIn('admin/(workspace)/_components/tab-strip.module.css', '.tabs')).not.toMatch(/background/);
+  });
+
+  it('AdminLabelUtility_IsSentenceCase', () => {
+    expect(ruleIn('admin/(workspace)/admin.css', '.adminLabel')).not.toMatch(/uppercase/);
+  });
+});
+
 describe('Calm style — R2 public Button', () => {
   it('Button_HasNoUppercaseLabels', () => {
     expect(css('button').replace(/\/\*[\s\S]*?\*\//g, '')).not.toMatch(/text-transform:\s*uppercase/);
