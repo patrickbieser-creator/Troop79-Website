@@ -95,7 +95,7 @@ const line = (
   serves_restrictions: restriction ? [restriction] : []
 });
 
-const ROWS = {
+export const ROWS = {
   ingredients: [
     ing('pancake-mix', 'Pancake mix', ['volume', 'cup', 'cup', 'cups'], 'dry', { avoid: ['gf'] }),
     ing('almond-flour', 'Almond flour', ['volume', 'cup', 'cup', 'cups'], 'dry', { avoid: ['nut'] }),

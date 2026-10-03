@@ -292,6 +292,8 @@
 .mealPanel { padding: var(--sp-2) 0 var(--sp-1) var(--sp-3); border-left: 2px solid var(--rule); margin-left: var(--sp-1); }
 .mealPanel .card { background: transparent; border: 0; box-shadow: none; }
 .mealPanel .inset { padding-right: 0; }
+/* A diet warning under a recipe row, full width (ported from the retired planner). */
+.mealWarn { flex-basis: 100%; margin: 0 0 var(--sp-2); }
 @media (max-width: 480px) { .mealPanel { padding-left: var(--sp-2); margin-left: 0; } }
 
 /* Dashed search: a combobox (16px, the iOS no-zoom floor) with a listbox under it. */

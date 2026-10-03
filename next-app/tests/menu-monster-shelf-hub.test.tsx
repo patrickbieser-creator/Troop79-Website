@@ -42,9 +42,6 @@ vi.mock('../src/app/(public)/library/_tools/menu-monster/menu-actions', () => ({
   createMenuAction: vi.fn(),
   saveMenuAction: vi.fn()
 }));
-vi.mock('../src/app/(public)/library/_tools/menu-monster/planner', () => ({
-  MenuMonsterPlanner: () => <div data-testid="planner" />
-}));
 
 import { MenuMonsterShelfTool } from '../src/app/(public)/library/_tools/menu-monster/shelf-tool';
 import { createMenuAction } from '../src/app/(public)/library/_tools/menu-monster/menu-actions';
@@ -112,10 +109,9 @@ describe('MenuMonsterShelfTool hub, scout', () => {
     expect(screen.queryByRole('link', { name: /^Continue/ })).toBeNull();
   });
 
-  it('Scout_SeesNeitherTheLocalPlanNorTheOldPlanner', async () => {
+  it('Scout_DoesNotSeeTheLocalPlan', async () => {
     await shelf();
     expect(screen.queryByLabelText('Menu name')).toBeNull();
-    expect(screen.queryByTestId('planner')).toBeNull();
   });
 
   it('Scout_SeesTheSaveOfferRow_WhenThisComputerHoldsAMenu', async () => {
@@ -194,11 +190,10 @@ describe('MenuMonsterShelfTool hub, visitor', () => {
     expect(screen.queryByRole('heading', { name: 'My menus' })).toBeNull();
   });
 
-  it('Visitor_DoesNotSeeTheOldPlanner_WhenNotSignedIn', async () => {
+  it('Visitor_SeesTheLocalPlan_WhenNotSignedIn', async () => {
     mocks.session = null;
     await shelf();
     await screen.findByLabelText('Menu name');
-    expect(screen.queryByTestId('planner')).toBeNull();
     expect(screen.queryByRole('heading', { name: 'Plan a meal without signing in' })).toBeNull();
   });
 
@@ -224,7 +219,6 @@ describe('MenuMonsterShelfTool hub, visitor', () => {
     expect(screen.queryByRole('link', { name: 'Sign in to save your menus' })).toBeNull();
     expect(await screen.findByLabelText('Menu name')).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'Menu 1' })).toBeNull();
-    expect(screen.queryByTestId('planner')).toBeNull();
   });
 
   it('Visitor_KeepsAnOldPlannerDraft_AsTheLocalMenu', async () => {

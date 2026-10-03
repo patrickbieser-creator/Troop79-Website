@@ -14,7 +14,9 @@
  *   - a dashed search at the end adds a recipe that fits this slot (a combobox +
  *     listbox, fully keyboard-operable; "Swap X for…" while swapping);
  *   - a People dialer for this meal (Reset to the menu's number);
- *   - its own status line — what just happened, Undo after a remove or swap.
+ *   - its own status line — what just happened, Undo after a remove or swap;
+ *   - a quiet warning under a recipe that isn't for someone the menu counts
+ *     (ported from the retired planner: unsuitable, or gluten / nuts with no swap).
  * The meal's cost is the Plan tab row's right column (Jenna, 2026-10-03: no
  * footer repeating it).
  *
@@ -32,11 +34,12 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import { priceText as money } from '@/lib/menu-monster/units';
 import { Button } from '@/app/_components/button';
 import { Stepper } from '@/app/_components/stepper';
+import { Notice } from '@/app/_components/notice';
 import type { Catalog, Plan, Recipe } from '@/lib/menu-monster/types';
-import { MAX_HEADCOUNT, MIN_HEADCOUNT, recipesForMeal } from '@/lib/menu-monster/engine';
+import { MAX_HEADCOUNT, MIN_HEADCOUNT, recipesForMeal, restrictionWarnings } from '@/lib/menu-monster/engine';
 import { isPickable } from '@/lib/menu-monster/scout-recipes';
 import { RECIPES_HREF } from '../../recipes/_components/paths';
-import { composePlan, type EditOp, type Menu, type MenuMeal, type RecipeEdits } from '@/lib/menu-monster/menus';
+import { composePlan, mealCatalog, type EditOp, type Menu, type MenuMeal, type RecipeEdits } from '@/lib/menu-monster/menus';
 import { mealTitle, recipeShares } from '@/lib/menu-monster/menu-view';
 import {
   defaultSwapQty,
@@ -99,6 +102,9 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChang
   const people = meal.headcount ?? menu.headcount;
   const edits = meal.recipeEdits ?? {};
   const plan: Plan = composePlan(menu, meal);
+  // Ported from the retired planner: a recipe that isn't for someone the menu counts says so. Measured
+  // on the meal's own version (its edits applied), so leaving the ingredient out clears the warning.
+  const warnings = restrictionWarnings(plan, mealCatalog(catalog, meal));
   const choices = catalog.ingredients.map((i) => ({ id: i.id, name: i.name })).sort((a, b) => a.name.localeCompare(b.name));
   const byId = new Map(catalog.recipes.map((r) => [r.id, r]));
   const recipeName = (id: string) => byId.get(id)?.name ?? id;
@@ -264,6 +270,15 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChang
                 {edited > 0 && <span className={s.meta}>Your version · {edited}</span>}
               </div>
               <div className={s.cost}>{money(costOf(id))}</div>
+              {warnings
+                .filter((w) => w.recipe.id === id)
+                .map((w) => (
+                  <Notice key={w.restriction.key} tone="warning" className={s.mealWarn}>
+                    <span aria-hidden="true">⚠ </span>
+                    {w.count === 1 ? '1 person is' : `${w.count} people are`} {w.restriction.label.toLowerCase()} and this{' '}
+                    {w.kind === 'unsuitable' ? 'isn’t for them' : `has ${w.ingredients.join(', ').toLowerCase()}`}. Plan something else for them.
+                  </Notice>
+                ))}
               {!readOnly && (
                 <RowMenu
                   label={`More for ${name}`}

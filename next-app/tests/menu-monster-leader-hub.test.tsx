@@ -44,9 +44,6 @@ vi.mock('../src/app/(public)/library/_tools/menu-monster/menu-actions', () => ({
   duplicateMenuAction: vi.fn(),
   createMenuAction: vi.fn()
 }));
-vi.mock('../src/app/(public)/library/_tools/menu-monster/planner', () => ({
-  MenuMonsterPlanner: () => <div data-testid="planner" />
-}));
 
 import { MenuMonsterShelfTool } from '../src/app/(public)/library/_tools/menu-monster/shelf-tool';
 import MyMenusPage from '../src/app/(public)/library/menu-monster/menus/page';
@@ -126,10 +123,9 @@ describe('hub, leader', () => {
     expect(plan.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('Leader_DoesNotSeeTheOldPlanner', async () => {
+  it('Leader_SeesTheLocalPlan', async () => {
     await shelf();
     await screen.findByLabelText('Menu name');
-    expect(screen.queryByTestId('planner')).toBeNull();
   });
 
   it('Adult_SeesNoScoutsMenus_WhenTheyHoldNoCapabilities', async () => {

@@ -2,7 +2,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import Link from 'next/link';
 import userEvent from '@testing-library/user-event';
-import { CATALOG } from './helpers/menu-monster-fixture';
+import { CATALOG, ROWS } from './helpers/menu-monster-fixture';
+import { mapCatalog } from '../src/lib/menu-monster/catalog';
 import { PLAN_STORAGE_KEY } from '../src/lib/menu-monster/legacy-draft';
 import type { Menu } from '../src/lib/menu-monster/menus';
 
@@ -749,5 +750,40 @@ describe('MealEditor typed-in ingredients (release C)', () => {
     await openBacon(user);
     await user.type(screen.getByRole('combobox', { name: 'Add an ingredient to your version' }), 'Gochujang');
     expect(screen.queryByRole('option', { name: 'Add “Gochujang” as a new ingredient' })).toBeNull();
+  });
+});
+
+/**
+ * Ported from the retired single-meal planner (Planner_ShowsNotSuitable_…_AndWarnsWhenCounted):
+ * a recipe that isn't for someone the menu counts says so under its row, open or not.
+ */
+describe('MealPanel diet warnings (ported from the planner)', () => {
+  const unsuitableBacon = mapCatalog({
+    ...ROWS,
+    variations: [{ recipe_id: 'B003', restriction: 'veg', state: 'unsuitable', note: null, updated_at: '2026-09-08T00:00:00Z' }],
+    variationLines: []
+  });
+  const withVeg = (n: number): Menu => ({ ...menu(), restrictions: { gf: 0, nut: 0, dairy: 0, veg: n } });
+
+  it('Warning_SaysHowManyArentServed_WhenARecipeIsNotForADietTheMenuCounts', () => {
+    openId = 'm1';
+    render(<PlanTab catalog={unsuitableBacon} menuId="menu-1" menu={withVeg(2)} updatedAt={VERSION} outings={[]} openMeal="m1" />);
+    expect(panel().getByText(/2 people are vegetarian and this isn’t for them/)).toBeTruthy();
+  });
+
+  it('Warning_IsAbsent_WhenTheMenuCountsNobodyOnThatDiet', () => {
+    openId = 'm1';
+    render(<PlanTab catalog={unsuitableBacon} menuId="menu-1" menu={withVeg(0)} updatedAt={VERSION} outings={[]} openMeal="m1" />);
+    expect(panel().queryByText(/isn’t for them/)).toBeNull();
+  });
+
+  it('AllergenWarning_NamesTheIngredient_ForGlutenFreeWithNoSwap', () => {
+    // Oatmeal without its gluten-free swap line: everyone gets the regular packets.
+    const noSwap = mapCatalog({ ...ROWS, lines: ROWS.lines.filter((l) => l.ingredient_id !== 'gf-oatmeal').map((l) => (l.recipe_id === 'B014' ? { ...l, serves_rule: 'everyone', serves_restrictions: [] } : l)) });
+    openId = 'm1';
+    const m: Menu = { ...menu(), restrictions: { gf: 1, nut: 0, dairy: 0, veg: 0 } };
+    m.meals[0].recipeIds = ['B014'];
+    render(<PlanTab catalog={noSwap} menuId="menu-1" menu={m} updatedAt={VERSION} outings={[]} openMeal="m1" />);
+    expect(panel().getByText(/1 person is gluten-free and this has instant oatmeal/)).toBeTruthy();
   });
 });
