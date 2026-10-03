@@ -28,8 +28,6 @@
 .tagFilterLabel {
   font-size: var(--fs-xs);
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
   color: var(--text-meta);
 }
 

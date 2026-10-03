@@ -68,10 +68,8 @@
   text-decoration: underline;
 }
 .rankTag {
-  font-size: 10px;
+  font-size: var(--admin-text-base);
   font-weight: 700;
-  letter-spacing: .06em;
-  text-transform: uppercase;
   color: var(--admin-gray-700);
   background: var(--admin-gray-100);
   border-radius: 8px;
@@ -144,10 +142,8 @@
   display: flex;
   flex-direction: column;
   gap: 3px;
-  font-size: 10px;
+  font-size: var(--admin-text-base);
   font-weight: 700;
-  letter-spacing: .04em;
-  text-transform: uppercase;
   color: var(--admin-gray-500);
 }
 .fillField input,
@@ -208,10 +204,8 @@
   font-variant-numeric: tabular-nums;
 }
 .dupDefaultTag {
-  font-size: 9.5px;
+  font-size: var(--admin-text-base);
   font-weight: 700;
-  letter-spacing: .04em;
-  text-transform: uppercase;
   color: var(--admin-forest);
   background: var(--admin-status-success-bg);
   border-radius: 8px;

@@ -3,12 +3,10 @@
 
 .groupTitle {
   margin-top: var(--admin-space-12);
-  font-size: var(--admin-text-sm);
+  font-size: var(--admin-text-base);
   font-weight: var(--admin-weight-bold);
-  letter-spacing: var(--admin-tracking-wider);
-  text-transform: uppercase;
   color: var(--admin-navy);
-  border-bottom: 2px solid var(--admin-navy);
+  border-bottom: 1px solid var(--admin-navy);
   padding-bottom: var(--admin-space-2);
 }
 .groupTitle + .cards { margin-top: var(--admin-space-6); }

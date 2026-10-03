@@ -86,9 +86,7 @@
 }
 .title {
   font-weight: var(--admin-weight-semibold);
-  font-size: var(--admin-text-xs);
-  letter-spacing: var(--admin-tracking-wide);
-  text-transform: uppercase;
+  font-size: var(--admin-text-sm);
   color: var(--admin-gray-700);
 }
 .close {

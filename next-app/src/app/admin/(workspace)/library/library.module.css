@@ -73,10 +73,8 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 10.5px;
+  font-size: var(--admin-text-base);
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   padding: 3px 10px;
   border-radius: var(--admin-radius-pill);
   border: 1px solid transparent;
@@ -170,10 +168,8 @@
 
 /* Published tab — grouped drill-in (mirrors the public IA) */
 .groupSectionLabel {
-  font-size: var(--admin-text-sm);
+  font-size: var(--admin-text-base);
   font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
   color: var(--admin-gray-500);
   margin: 20px 0 10px;
 }

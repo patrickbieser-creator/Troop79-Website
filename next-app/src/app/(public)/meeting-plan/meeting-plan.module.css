@@ -18,7 +18,7 @@
   line-height: 1.6;
 }
 .pageHeaderRule {
-  border-bottom: 2px solid var(--navy);
+  border-bottom: 1px solid var(--navy);
   margin-top: 20px;
 }
 .meetingMeta {
@@ -69,10 +69,8 @@
 }
 .sessionNum {
   font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
-  font-size: 10.5px;
+  font-size: var(--fs-xs);
   font-weight: 700;
-  letter-spacing: .1em;
-  text-transform: uppercase;
   color: var(--text-meta);
   margin-bottom: 5px;
 }
@@ -100,10 +98,8 @@
 }
 .tag {
   font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 700;
-  letter-spacing: .08em;
-  text-transform: uppercase;
   padding: 3px 8px;
   border-radius: 2px;
 }
@@ -145,10 +141,8 @@
   font-size: 12.5px;
 }
 .teachLabel {
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 700;
-  letter-spacing: .1em;
-  text-transform: uppercase;
   color: var(--text-meta);
   display: block;
   margin-bottom: 3px;
@@ -178,8 +172,6 @@
   font-family: var(--font-ui, 'Open Sans', Arial, sans-serif);
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: .05em;
-  text-transform: uppercase;
   text-align: left;
   padding: 10px 14px;
 }

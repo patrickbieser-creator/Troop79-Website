@@ -27,8 +27,8 @@
 }
 .editorPaneHead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
 .editorPaneHead h2 {
-  font-family: var(--admin-font-ui); font-size: 11px; font-weight: 700; letter-spacing: .14em;
-  text-transform: uppercase; color: var(--admin-navy); border-bottom: 2px solid var(--admin-navy); padding-bottom: 6px;
+  font-family: var(--admin-font-ui); font-size: var(--admin-text-base); font-weight: 700;
+  color: var(--admin-navy); border-bottom: 1px solid var(--admin-navy); padding-bottom: 6px;
 }
 /* .statusPill retired Phase A (2026-08-21) — shared Badge component. */
 
@@ -65,8 +65,8 @@
 
 .tagPicker { display: flex; gap: 8px; flex-wrap: wrap; }
 .tagChip {
-  font-family: var(--admin-font-ui); font-size: 11px; font-weight: 700; letter-spacing: .05em;
-  text-transform: uppercase; padding: 6px 12px; border-radius: var(--admin-radius-pill); border: 1px solid var(--admin-gray-300);
+  font-family: var(--admin-font-ui); font-size: var(--admin-text-base); font-weight: 700;
+  padding: 6px 12px; border-radius: var(--admin-radius-pill); border: 1px solid var(--admin-gray-300);
   background: var(--admin-white); color: var(--admin-gray-500); cursor: pointer; transition: all var(--admin-transition);
 }
 .tagChip:hover { border-color: var(--admin-forest); color: var(--admin-forest); }

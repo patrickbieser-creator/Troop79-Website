@@ -11,7 +11,7 @@
 .searchInput {
   width: 100%;
   background: var(--warm-white);
-  border: 2px solid var(--border-mid);
+  border: 1px solid var(--border-mid);
   border-radius: 3px;
   font-family: var(--font-ui);
   font-size: 17px;
@@ -27,8 +27,6 @@
   font-family: var(--font-ui);
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
   background: var(--navy);
   color: var(--warm-white);
   border: none;
@@ -72,10 +70,8 @@
   top: 10px;
   right: 12px;
   font-family: var(--font-ui);
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   color: var(--bark);
 }
 .resIcon {
@@ -122,10 +118,8 @@
 .postCardPinned { border-left: 4px solid var(--bark); }
 .postDate {
   font-family: var(--font-ui);
-  font-size: 10.5px;
+  font-size: var(--fs-xs);
   font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
   color: var(--text-meta);
   margin-bottom: 6px;
 }
@@ -196,7 +190,7 @@
 }
 .mbTile:hover { border-color: var(--navy); box-shadow: var(--shadow-hover); }
 .mbName { flex: 1; font-size: 13.5px; font-weight: 600; color: var(--text-head); line-height: 1.3; }
-.eagleDot { font-size: 10px; color: var(--bark); font-weight: 700; letter-spacing: 0.05em; }
+.eagleDot { font-size: 10px; color: var(--bark); font-weight: 700; }
 .mbCount { font-size: 11px; font-weight: 700; color: var(--forest); }
 .mbCountZero { color: var(--border-mid); font-weight: 400; }
 
@@ -244,7 +238,7 @@
   gap: 10px;
   flex-wrap: wrap;
   background: var(--cream);
-  border: 2px solid var(--bark);
+  border: none;
   border-radius: 3px;
   padding: 8px 14px;
   margin-bottom: 14px;
@@ -273,10 +267,8 @@
 .shelfBlurb { font-family: var(--font-body); font-size: 13.5px; color: var(--text-body); line-height: 1.5; flex: 1; margin: 0; }
 .shelfMeta {
   font-family: var(--font-ui);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
   color: var(--forest);
   margin-top: 8px;
 }
@@ -345,10 +337,8 @@
 .ctxNumBark { color: var(--bark); }
 .ctxLabel {
   font-family: var(--font-ui);
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
   color: var(--text-meta);
   margin-top: 5px;
 }

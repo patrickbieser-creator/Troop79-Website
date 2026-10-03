@@ -158,10 +158,8 @@
 .editField { display: block; margin-bottom: 12px; }
 .editLabel {
   display: block;
-  font-size: 10px;
+  font-size: var(--admin-text-base);
   font-weight: 700;
-  letter-spacing: .08em;
-  text-transform: uppercase;
   color: var(--admin-gray-500);
   margin-bottom: 4px;
 }
@@ -187,7 +185,6 @@
   font-family: inherit;
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: .04em;
   background: var(--admin-danger);
   color: var(--admin-white);
   border: 1px solid var(--admin-danger);

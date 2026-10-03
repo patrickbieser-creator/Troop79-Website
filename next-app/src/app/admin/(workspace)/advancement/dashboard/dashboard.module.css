@@ -20,10 +20,8 @@
   border-top: 1px solid color-mix(in srgb, var(--admin-warning) 30%, white);
 }
 .attentionGroupLabel {
-  font-size: 10.5px;
+  font-size: var(--admin-text-base);
   font-weight: 700;
-  letter-spacing: .06em;
-  text-transform: uppercase;
   color: var(--admin-gray-700);
   margin-bottom: 6px;
 }
@@ -80,10 +78,8 @@
   box-shadow: var(--admin-shadow-sm);
 }
 .statLabel {
-  font-size: 10px;
+  font-size: var(--admin-text-base);
   font-weight: 700;
-  letter-spacing: .12em;
-  text-transform: uppercase;
   color: var(--admin-gray-500);
   margin-bottom: 6px;
 }
@@ -185,10 +181,8 @@
 }
 .kindPill {
   display: inline-block;
-  font-size: 9px;
+  font-size: var(--admin-text-base);
   font-weight: 700;
-  letter-spacing: .04em;
-  text-transform: uppercase;
   padding: 1px 6px;
   border-radius: 8px;
   background: var(--admin-gray-100);

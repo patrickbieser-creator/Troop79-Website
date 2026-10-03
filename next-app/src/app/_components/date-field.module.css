@@ -138,9 +138,7 @@
 .calendarRoot :global(.rdp-weekday) {
   color: var(--text-meta);
   font-weight: 700;
-  text-transform: uppercase;
-  font-size: var(--fs-2xs);
-  letter-spacing: .06em;
+  font-size: var(--fs-xs);
 }
 .calendarRoot :global(.rdp-chevron) { fill: var(--text-meta); }
 .calendarRoot :global(.rdp-button_previous):hover :global(.rdp-chevron),

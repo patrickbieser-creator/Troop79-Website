@@ -6,7 +6,7 @@ import type { EventPrice, EventSignup, SignupQuestion } from '../src/lib/event-s
 import type { Household } from '../src/lib/households';
 
 /**
- * Calm restyle R2 (Plans/Calm-Site-Restyle-Sweep.md §1, "chip rows for single
+ * Calm restyle R2 (Plans/Completed/Calm-Site-Restyle-Sweep.md §1, "chip rows for single
  * choices"): a person's price and a choice question are quiet pulldowns, not
  * pill rows — one choice, so a select says it and takes one line on a phone.
  */

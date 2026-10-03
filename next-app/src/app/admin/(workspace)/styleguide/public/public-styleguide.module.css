@@ -9,10 +9,8 @@
 }
 
 .sectionLabel {
-  font-size: var(--admin-text-sm);
+  font-size: var(--admin-text-base);
   font-weight: var(--admin-weight-bold);
-  text-transform: uppercase;
-  letter-spacing: var(--admin-tracking-wider);
   color: var(--admin-gray-500);
   margin: 0 0 var(--admin-space-4);
 }
@@ -149,9 +147,7 @@
 
 .scoreTable th {
   text-align: left;
-  font-size: var(--admin-text-sm);
-  text-transform: uppercase;
-  letter-spacing: var(--admin-tracking-wide);
+  font-size: var(--admin-text-base);
   color: var(--admin-gray-500);
   background: var(--admin-gray-50);
   padding: var(--admin-space-4) var(--admin-space-6);

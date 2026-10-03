@@ -5,8 +5,8 @@
 /* .pageTitle retired Phase B (2026-08-21) — shared PageTitle component. */
 
 .fieldLabel {
-  display: block; font-size: 10px; font-weight: 700; letter-spacing: .06em;
-  text-transform: uppercase; color: var(--admin-gray-500); margin-bottom: 4px;
+  display: block; font-size: var(--admin-text-base); font-weight: 700;
+  color: var(--admin-gray-500); margin-bottom: 4px;
 }
 .fieldInput {
   border: 1px solid var(--admin-gray-300); border-radius: 3px; padding: 7px 9px;
@@ -24,7 +24,7 @@
 
 .filterRow { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
 .chip, .chipActive {
-  font-family: inherit; font-size: 11px; font-weight: 700; letter-spacing: .03em;
+  font-family: inherit; font-size: 11px; font-weight: 700;
   border-radius: 3px; padding: 5px 10px; cursor: pointer;
   border: 1px solid var(--admin-gray-300); background: var(--admin-white); color: var(--admin-gray-700);
 }
@@ -88,8 +88,8 @@
 
 .fieldTable { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 12.5px; }
 .fieldTable th {
-  text-align: left; font-size: 10px; font-weight: 700; letter-spacing: .06em;
-  text-transform: uppercase; color: var(--admin-gray-500);
+  text-align: left; font-size: var(--admin-text-base); font-weight: 700;
+  color: var(--admin-gray-500);
   padding: 5px 8px; border-bottom: 1px solid var(--admin-gray-200);
 }
 .fieldTable td { padding: 6px 8px; border-bottom: 1px solid var(--admin-gray-100); vertical-align: top; }
@@ -131,7 +131,7 @@
   background: var(--admin-gray-50); border: 1px solid var(--admin-gray-200); border-radius: 3px;
 }
 .guardianTag {
-  margin-left: 8px; font-size: 10px; font-weight: 700; letter-spacing: .04em;
+  margin-left: 8px; font-size: 10px; font-weight: 700;
   background: var(--admin-status-success-bg); color: var(--admin-forest-dark); border: 1px solid color-mix(in srgb, var(--admin-forest) 30%, var(--admin-white));
   border-radius: 2px; padding: 1px 6px;
 }

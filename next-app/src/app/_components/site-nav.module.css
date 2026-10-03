@@ -27,13 +27,11 @@
   font-family: var(--font-ui);
   font-size: var(--fs-2xs);
   color: var(--text-meta);
-  letter-spacing: 0.03em;
   font-weight: 600;
 }
 .signedInAs {
   font-family: var(--font-ui);
   font-size: var(--fs-2xs);
-  letter-spacing: 0.04em;
   color: var(--text-meta);
   text-decoration: none;
 }

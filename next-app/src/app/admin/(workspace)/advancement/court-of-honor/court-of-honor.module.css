@@ -20,7 +20,7 @@
 
 .dateRow { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
 .dateField { display: flex; flex-direction: column; gap: 4px; }
-.dateLabel { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--admin-gray-500); }
+.dateLabel { font-size: var(--admin-text-base); font-weight: 700; color: var(--admin-gray-500); }
 
 /* .primaryBtn retired 2026-08-24 → shared Button (variant="primary"); CSS kept
    only because /admin/styleguide/admin's Buttons section still renders

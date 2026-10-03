@@ -5,7 +5,7 @@
    Calm restyle R1 (2026-10-03): the Menu Monster title line — a quiet
    sentence-case kicker, a 700 display title, a plain lede, no header rule.
    Editorial pages (Home, news, articles) don't use PageHeader and keep their
-   own type (Plans/Calm-Site-Restyle.md decision 6). */
+   own type (Plans/Completed/Calm-Site-Restyle.md decision 6). */
 
 .pageHeader {
   max-width: 1180px;

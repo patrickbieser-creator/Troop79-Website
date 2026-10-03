@@ -49,9 +49,7 @@
   background: var(--admin-white);
 }
 .statLabel {
-  font-size: var(--admin-text-sm);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-size: var(--admin-text-base);
   color: var(--admin-gray-500);
 }
 .statValue {

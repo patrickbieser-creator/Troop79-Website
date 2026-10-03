@@ -45,10 +45,8 @@
 }
 .thisWeekTag {
   display: inline-block;
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 700;
-  letter-spacing: .08em;
-  text-transform: uppercase;
   color: var(--warm-white);
   background: var(--forest);
   padding: 2px 8px;
@@ -140,10 +138,8 @@
 }
 .glanceDayLabel {
   font-family: var(--font-ui);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
-  letter-spacing: .12em;
-  text-transform: uppercase;
   color: var(--text-meta);
   margin-bottom: 2px;
 }
@@ -163,10 +159,8 @@
 .uniformBadge {
   display: inline-block;
   font-family: var(--font-ui);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
-  letter-spacing: .06em;
-  text-transform: uppercase;
   color: var(--warm-white);
   padding: 5px 12px;
   border-radius: 2px;
@@ -182,10 +176,8 @@
 .glanceItem { padding: 10px 0; border-top: 1px solid var(--border-light); }
 .glanceLabel {
   font-family: var(--font-ui);
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 700;
-  letter-spacing: .1em;
-  text-transform: uppercase;
   color: var(--text-meta);
   margin-bottom: 3px;
 }
@@ -202,10 +194,8 @@
 /* ── section labels ── */
 .sectionLabel {
   font-family: var(--font-ui);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
-  letter-spacing: .14em;
-  text-transform: uppercase;
   color: var(--forest);
   border-left: 3px solid var(--forest);
   padding-left: 8px;
@@ -227,7 +217,6 @@
   font-size: 12px;
   font-weight: 700;
   color: var(--bark);
-  letter-spacing: .04em;
   margin-bottom: 2px;
 }
 .preTitle {
@@ -258,7 +247,7 @@
 .timeCol {
   padding: 16px 12px 16px 0;
   text-align: right;
-  border-right: 2px solid var(--border-mid, var(--border-mid));
+  border-right: 1px solid var(--border-mid, var(--border-mid));
   position: relative;
 }
 .timeCol::after {
@@ -291,10 +280,8 @@
 .trackBadge {
   display: inline-block;
   font-family: var(--font-ui);
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 700;
-  letter-spacing: .08em;
-  text-transform: uppercase;
   color: var(--warm-white);
   padding: 2px 8px;
   border-radius: 1px;
@@ -383,10 +370,8 @@
 }
 .sideCard h4 {
   font-family: var(--font-ui);
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 700;
-  letter-spacing: .12em;
-  text-transform: uppercase;
   color: var(--forest);
   margin-bottom: 10px;
 }
@@ -442,8 +427,6 @@
   font-size: 14px;
   font-weight: 600;
   color: var(--bark);
-  letter-spacing: .04em;
-  text-transform: uppercase;
   margin-bottom: 16px;
 }
 .noMeetingMsg {

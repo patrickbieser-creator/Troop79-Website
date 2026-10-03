@@ -47,10 +47,8 @@
   min-width: 0;
 }
 .factKey {
-  font-size: var(--admin-text-xs);
+  font-size: var(--admin-text-sm);
   font-weight: var(--admin-weight-bold);
-  letter-spacing: var(--admin-tracking-wide);
-  text-transform: uppercase;
   color: var(--admin-gray-500);
 }
 .factVal {
@@ -132,10 +130,8 @@
   margin: 0;
 }
 .dl dt {
-  font-size: var(--admin-text-sm);
+  font-size: var(--admin-text-base);
   font-weight: var(--admin-weight-bold);
-  letter-spacing: var(--admin-tracking-wide);
-  text-transform: uppercase;
   color: var(--admin-gray-500);
   padding-top: var(--admin-space-1);
 }
@@ -246,10 +242,8 @@
   gap: var(--admin-space-3);
 }
 .listHead {
-  font-size: var(--admin-text-sm);
+  font-size: var(--admin-text-base);
   font-weight: var(--admin-weight-bold);
-  letter-spacing: var(--admin-tracking-wide);
-  text-transform: uppercase;
   color: var(--admin-gray-500);
   margin: 0 0 var(--admin-space-2);
 }
@@ -368,10 +362,8 @@
   color: var(--admin-gray-900);
 }
 .immTag {
-  font-size: var(--admin-text-xs);
+  font-size: var(--admin-text-sm);
   font-weight: var(--admin-weight-bold);
-  letter-spacing: var(--admin-tracking-wide);
-  text-transform: uppercase;
   color: var(--admin-accent-gold);
   background: var(--admin-status-warning-bg);
   padding: var(--admin-space-1) var(--admin-space-3);
@@ -569,10 +561,8 @@
   overflow-wrap: anywhere;
 }
 .diff th {
-  font-size: var(--admin-text-xs);
+  font-size: var(--admin-text-sm);
   font-weight: var(--admin-weight-bold);
-  letter-spacing: var(--admin-tracking-wide);
-  text-transform: uppercase;
   color: var(--admin-gray-500);
 }
 

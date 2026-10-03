@@ -6,7 +6,7 @@
   max-width: 1180px;
   margin: 24px auto 0;
   padding: 0 24px 14px;
-  border-bottom: 2px solid var(--border-mid);
+  border-bottom: 1px solid var(--border-mid);
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
@@ -36,7 +36,7 @@
 .filterSelect:focus { border-color: var(--navy); }
 .sectionLabel {
   font-family: var(--font-ui);
-  font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+  font-size: var(--fs-xs); font-weight: 700;
   color: var(--forest); border-left: 3px solid var(--forest); padding-left: 8px;
   display: inline-block; margin-bottom: 10px;
 }
@@ -75,7 +75,7 @@
 }
 .resultsCount {
   font-family: var(--font-ui);
-  font-size: 11px; color: var(--text-meta); letter-spacing: .03em;
+  font-size: 11px; color: var(--text-meta);
 }
 .resultsCount strong { color: var(--text-body); font-weight: 600; }
 
@@ -87,7 +87,7 @@
 }
 .yearCount {
   font-family: var(--font-ui);
-  font-size: 11px; color: var(--text-meta); letter-spacing: .04em;
+  font-size: 11px; color: var(--text-meta);
 }
 .yearRule { flex: 1; height: 1px; background: var(--border-mid); align-self: center; }
 
@@ -116,7 +116,7 @@
 }
 .monoLabel {
   font-family: var(--font-ui);
-  font-size: 9px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+  font-size: var(--fs-xs); font-weight: 700;
   color: rgba(30, 58, 74, .4);
 }
 
@@ -124,7 +124,7 @@
   position: absolute; bottom: 8px; right: 8px; z-index: 2;
   display: inline-flex; align-items: center; gap: 5px;
   font-family: var(--font-ui);
-  font-size: 9.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+  font-size: var(--fs-xs); font-weight: 700;
   color: rgba(255, 255, 255, .92); background: rgba(20, 32, 40, .62);
   padding: 4px 8px; border-radius: 2px;
   backdrop-filter: blur(2px);
@@ -150,7 +150,7 @@
 }
 .clearBtn {
   font-family: var(--font-ui);
-  font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  font-size: var(--fs-xs); font-weight: 700;
   background: var(--forest); color: var(--warm-white); border: none;
   padding: 9px 18px; border-radius: 1px; cursor: pointer;
   transition: background .18s ease;
@@ -366,12 +366,12 @@
 .ledgerWrap { overflow-x: auto; }
 .ledger { width: 100%; border-collapse: collapse; font-family: var(--font-ui); }
 .ledger th {
-  text-align: left; border-bottom: 2px solid var(--navy);
+  text-align: left; border-bottom: 1px solid var(--navy);
   padding: 0 var(--sp-3) var(--sp-2);
 }
 .ledger th button {
-  font: inherit; font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .1em;
-  text-transform: uppercase; color: var(--navy);
+  font: inherit; font-size: var(--fs-xs); font-weight: 700;
+  color: var(--navy);
   background: none; border: none; padding: 0; cursor: pointer;
   display: inline-flex; align-items: center; gap: var(--sp-1);
 }
@@ -406,9 +406,9 @@
    column-header treatment (uppercase, 2xs, navy underline) made the years read
    as headings of the wrong kind. */
 .almanac thead th {
-  font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+  font-size: var(--fs-xs); font-weight: 700;
   color: var(--navy); text-align: left;
-  padding: 0 var(--sp-3) var(--sp-2); border-bottom: 2px solid var(--navy);
+  padding: 0 var(--sp-3) var(--sp-2); border-bottom: 1px solid var(--navy);
 }
 .almanac td {
   vertical-align: top; padding: var(--sp-3);
@@ -426,7 +426,7 @@
 }
 .almYr small {
   display: block; font-family: var(--font-ui); font-size: var(--fs-2xs);
-  font-weight: 600; color: var(--text-meta); letter-spacing: .04em;
+  font-weight: 600; color: var(--text-meta);
   text-transform: none;
 }
 /* A year with nothing in it still gets a row — a skipped year is a fact about
@@ -444,8 +444,8 @@
 .almItem:last-child { margin-bottom: 0; }
 .almItem:hover { background: var(--cream); }
 .almDay {
-  display: block; font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .06em;
-  text-transform: uppercase; color: var(--text-meta);
+  display: block; font-size: var(--fs-xs); font-weight: 700;
+  color: var(--text-meta);
 }
 .almTitle {
   display: block; font-family: var(--font-display);

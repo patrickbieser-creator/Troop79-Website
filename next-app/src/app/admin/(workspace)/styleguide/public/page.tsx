@@ -171,6 +171,11 @@ const SCOREBOARD: ReadonlyArray<readonly [string, string, string]> = [
     'SectionDivider SHIPPED (A) — home/about/join editorial variant FOLDED (C, Patrick call); one sanctioned local: the printed Clipboard (print-load-bearing + meta slot)'
   ],
   [
+    'Calm restyle (loud labels, outlines, heavy rules)',
+    'Jenna MACRO sweep 2026-10-03: 9 loud-pattern families across ~97 routes / 107 stylesheets (Plans/Completed/Calm-Site-Restyle-Sweep.md)',
+    'STRUCK (R1–R7, 2026-10-03) — shared kit, Button, sign-up pulldowns, public screens, Clipboard/MB/advancement, admin kit (labels one size up), admin screens, long tail. tests/calm-style.test.ts locks the WHOLE tree: no uppercase, no wide tracking, no 1.5/2px rules except named data/print/glyph/functional exemptions (codes, date-block months, print sheets, masthead, tab underline, rings, spinners)'
+  ],
+  [
     'Stylesheet-less screens',
     'merit-badges ×2 (46 inline sites) — RETIRED 2026-08-22, folded into the Library; site-footer (no media queries)',
     'STRUCK (B) — merit-badges.module.css + site-footer.module.css + signed-in-as shipped; footer gained its first mobile stacking (640px); zero stylesheet-less screens remain'

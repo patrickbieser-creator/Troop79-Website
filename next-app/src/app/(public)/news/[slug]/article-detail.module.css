@@ -38,8 +38,8 @@
 .articleHero img { width: 100%; height: auto; display: block; }
 
 .catTag {
-  display: inline-block; font-family: var(--font-ui); font-size: 10px; font-weight: 700;
-  letter-spacing: 0.1em; text-transform: uppercase; padding: 3px 7px; margin-bottom: 10px; border-radius: var(--rad-sm); /* 1px folded */
+  display: inline-block; font-family: var(--font-ui); font-size: var(--fs-xs); font-weight: 700;
+  padding: 3px 7px; margin-bottom: 10px; border-radius: var(--rad-sm); /* 1px folded */
 }
 .catNews        { background: var(--khaki); color: var(--navy); }
 .catEvents      { background: var(--forest); color: var(--warm-white); }
@@ -47,7 +47,7 @@
 
 .tagRow { display: flex; flex-wrap: wrap; gap: 8px; max-width: 760px; margin: 30px auto 0; }
 .tagChip {
-  font-family: var(--font-ui); font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+  font-family: var(--font-ui); font-size: var(--fs-xs); font-weight: 700;
   padding: 5px 11px; border-radius: var(--rad-pill); border: 1px solid var(--border-mid); color: var(--text-meta);
   transition: all var(--transition);
 }
@@ -64,11 +64,11 @@
 .eventPanelDateBlock .eDay { font-family: var(--font-display); font-size: 26px; font-weight: 700; line-height: 1.1; }
 .eventPanelFacts { flex: 1; min-width: 200px; }
 .eventPanelRow { display: flex; gap: 8px; font-family: var(--font-ui); font-size: 13px; color: var(--text-body); padding: 2px 0; }
-.eventPanelRow .epLabel { font-weight: 700; color: var(--text-meta); min-width: 64px; text-transform: uppercase; font-size: 10px; letter-spacing: 0.06em; padding-top: 2px; }
+.eventPanelRow .epLabel { font-weight: 700; color: var(--text-meta); min-width: 64px; font-size: var(--fs-xs); padding-top: 2px; }
 .eventPanelActions { flex-shrink: 0; }
 .btnRegister {
   display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-ui); font-size: 13px;
-  font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--warm-white); background: var(--forest);
+  font-weight: 700; color: var(--warm-white); background: var(--forest);
   padding: 11px 20px; border-radius: var(--rad-sm); border: none; cursor: pointer; transition: background var(--transition);
 }
 .btnRegister:hover { background: var(--forest-light); }

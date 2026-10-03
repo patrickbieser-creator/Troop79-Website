@@ -52,7 +52,6 @@
 }
 .topBarBrand {
   font-weight: 700;
-  letter-spacing: .06em;
   font-size: 13px;
   display: flex;
   align-items: center;
@@ -69,7 +68,6 @@
   color: var(--admin-white);
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: .08em;
   padding: 3px 8px;
   border-radius: 3px;
 }
@@ -88,12 +86,10 @@
   border: 1px solid rgba(255,255,255,.25);
   color: var(--admin-white);
   font-family: inherit;
-  font-size: 11px;
+  font-size: var(--admin-text-base);
   font-weight: 600;
-  letter-spacing: .06em;
   padding: 5px 12px;
   border-radius: 3px;
-  text-transform: uppercase;
   cursor: pointer;
   transition: background .15s ease;
 }
@@ -137,8 +133,6 @@
 .subNavSection {
   font-size: var(--admin-text-lg);
   font-weight: 700;
-  letter-spacing: .1em;
-  text-transform: uppercase;
   color: var(--admin-navy);
   padding: 16px 18px 6px;
   margin-top: 12px;
@@ -183,15 +177,13 @@
 }
 .soonTag {
   display: inline-block;
-  font-size: 9px;
+  font-size: var(--admin-text-base);
   font-weight: 700;
-  letter-spacing: .08em;
   background: var(--admin-gray-200);
   color: var(--admin-gray-500);
   padding: 1px 6px;
   border-radius: 8px;
   margin-left: 6px;
-  text-transform: uppercase;
 }
 
 /* Main content area */
@@ -245,10 +237,8 @@
   .subNavSection {
     display: block;
     flex: 0 0 auto;
-    font-size: var(--admin-text-sm);
+    font-size: var(--admin-text-base);
     font-weight: 700;
-    letter-spacing: .08em;
-    text-transform: uppercase;
     color: var(--admin-navy);
     padding: 0 8px 0 2px;
     margin: 0 2px 0 0;

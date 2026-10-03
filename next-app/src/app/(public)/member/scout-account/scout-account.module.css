@@ -49,8 +49,6 @@
   margin: 0 0 0.3rem;
   font-size: var(--fs-xs);
   font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
   color: var(--text-meta);
 }
 
@@ -85,8 +83,6 @@
   background: var(--cream);
   font-size: var(--fs-xs);
   font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
   color: var(--text-meta);
   white-space: nowrap;
 }

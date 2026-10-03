@@ -1,6 +1,6 @@
 # Calm Site Restyle — carry the Menu Monster style across the site
 
-**Status:** Active — sweep done (`Plans/Calm-Site-Restyle-Sweep.md`), order picked; R1 in progress (2026-10-03)
+**Status:** COMPLETE 2026-10-03 — R1–R7 shipped (v1.145.0–v1.151.0); `tests/calm-style.test.ts` locks the whole tree. Open item: phone-width eyes-on (see criterion 5).
 **Parked:** 2026-10-02
 **Priority:** High
 
@@ -26,16 +26,16 @@ Patrick, 2026-10-02: the rest of the site "suffers from the same loud UX that le
 
 ## Acceptance Criteria
 
-- [ ] Jenna's sweep lists every loud pattern with the screens that use it, and a ranked order.
-- [ ] Shared public components (`src/app/_components/`) and admin components carry the calm style, each with an updated styleguide specimen in the same commit (AGENTS.md rule).
-- [ ] `tests/design-system-census.test.ts` stays green with no growth in allowlists.
-- [ ] Every restyled form still meets the save-button standard and the 16px input floor.
-- [ ] A phone-width check (375px) of each restyled screen.
+- [x] Jenna's sweep lists every loud pattern with the screens that use it, and a ranked order.
+- [x] Shared public components (`src/app/_components/`) and admin components carry the calm style, each with an updated styleguide specimen in the same commit (AGENTS.md rule).
+- [x] `tests/design-system-census.test.ts` stays green with no growth in allowlists.
+- [x] Every restyled form still meets the save-button standard and the 16px input floor.
+- [ ] A phone-width check (375px) of each restyled screen. **Partial:** R1 screens checked at ~375px (Library, report, My menus); R2–R7 verified by tests + build only — Chrome would not hold 375px and later stalled on screenshots. Patrick to eyes-on in production.
 
 ## Test Plan
 
-- [ ] Census test unchanged or tightened.
-- [ ] Per shared component: dom tests for behavior kept (keyboard, disabled states, aria labels).
+- [x] Census test unchanged or tightened.
+- [x] Per shared component: dom tests for behavior kept (keyboard, disabled states, aria labels).
 
 ## Technical Approach
 
@@ -50,8 +50,8 @@ TBD after Jenna's sweep. Likely order: tokens (spacing, borders, label style) �
 
 ## Open Questions
 
-- [ ] Which screens first? (after the sweep)
-- [ ] Does the cream page + white card look replace the current public page background everywhere, or only on app-like screens (forms, lists) and not on news/article pages?
+- [x] Which screens first? (after the sweep) — R1→R7 as proposed (decision 5).
+- [x] Does the cream page + white card look replace the current public page background everywhere, or only on app-like screens (forms, lists) and not on news/article pages? — app-like screens get the white-card list look; Home/news/articles keep the editorial look, chrome calmed (decision 6).
 
 ## Notes
 

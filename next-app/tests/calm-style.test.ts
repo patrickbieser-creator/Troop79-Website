@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 /**
- * Calm Site Restyle (Plans/Calm-Site-Restyle.md, sweep: Plans/Calm-Site-Restyle-Sweep.md).
+ * Calm Site Restyle (Plans/Completed/Calm-Site-Restyle.md, sweep: Plans/Completed/Calm-Site-Restyle-Sweep.md).
  * The Menu Monster look carried to the shared kit: no uppercase tracked labels,
  * no hairline-bordered cards, no 2px header rules, quiet notices and badges,
  * text tabs. These lock each release's shared stylesheets so a later edit can't
@@ -198,6 +198,72 @@ describe('Calm style — R5 admin shared kit', () => {
 
   it('AdminLabelUtility_IsSentenceCase', () => {
     expect(ruleIn('admin/(workspace)/admin.css', '.adminLabel')).not.toMatch(/uppercase/);
+  });
+});
+
+/**
+ * R7 — the whole tree. After the long tail, no stylesheet under src/app uses
+ * uppercase or wide tracking except these, each with its reason. A new caps
+ * label fails here; add to this list only for data, print or a glyph.
+ */
+const PRINT_SHEETS = ['admin/roster-print/roster-print.module.css', 'admin/snapshot/[id]/snapshot.module.css'];
+const SITE_KEEP: Record<string, string[]> = {
+  ...KEEP_CAPS,
+  // The masthead tagline is the site's editorial identity (decision 6).
+  '_components/site-nav.module.css': ['.mastheadPlace'],
+  // Calendar date blocks: the month is a glyph ("OCT"), not a label.
+  '(public)/category/tags.module.css': ['.eMonth'],
+  '(public)/news/[slug]/article-detail.module.css': ['.eMonth'],
+  '_components/news-cards.module.css': ['.eMonth'],
+  // Photo album print stickers and spines mirror the printed album labels.
+  '(public)/photos/photos.module.css': ['.printSticker', '.printDate', '.spineMon'],
+  // Codes are data shown in caps.
+  '(public)/meeting-plan/meeting-plan.module.css': ['.reqCode'],
+  'admin/(workspace)/advancement/meetings/meetings.module.css': ['.candidateCode'],
+  'admin/(workspace)/advancement/roster-import/roster-import.module.css': ['.roleCode']
+};
+const allCss = (dir: string): string[] =>
+  fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+    const p = path.join(dir, e.name);
+    return e.isDirectory() ? allCss(p) : e.name.endsWith('.css') ? [path.relative(APP, p).replace(/\\/g, '/')] : [];
+  });
+const keptSelectors = (rel: string) => (SITE_KEEP[rel] ?? []).map((s) => s);
+/** Rules (any selector ending in a kept one) dropped before checking. */
+const withoutKept = (rel: string, src: string) =>
+  keptSelectors(rel).reduce((s, sel) => s.replace(new RegExp(`[^{}]*${sel.replace(/\./g, '\\.')}\\s*\\{[^}]*\\}`, 'g'), ''), src);
+
+describe('Calm style — R7 the whole tree', () => {
+  const files = allCss(APP).filter((rel) => !PRINT_SHEETS.includes(rel) && rel !== 'globals.css');
+
+  it('EveryStylesheet_HasNoUppercaseLabels_ExceptDataPrintAndGlyphs', () => {
+    expect(files.filter((rel) => /text-transform:\s*uppercase/.test(withoutKept(rel, screenCss(rel))))).toEqual([]);
+  });
+
+  it('EveryStylesheet_HasNoWideLetterSpacing_ExceptDataPrintAndGlyphs', () => {
+    expect(files.filter((rel) => wideTracking(withoutKept(rel, screenCss(rel))).length > 0)).toEqual([]);
+  });
+
+  /** Heavy borders that do a job, with the reason. */
+  const HEAVY_SITE_KEEP: Record<string, string[]> = {
+    ...HEAVY_OK,
+    // The masthead's rule is part of the editorial masthead (decision 6).
+    '_components/site-nav.module.css': ['.masthead'],
+    // The active tab's underline is the selection indicator.
+    'admin/(workspace)/_components/tab-strip.module.css': ['.tab'],
+    // Menu Monster's approved inset rule for a meal open inline; its print table is print-only.
+    '(public)/library/menu-monster/menus/_components/workspace.module.css': ['.mealPanel', '.printTable thead th'],
+    // Rings around timeline dots, a selected-thumbnail frame, a check badge and a spinner.
+    '(public)/photos/photos.module.css': ['.spineRow::before'],
+    '(public)/events/[id]/meeting-agenda.module.css': ['.timeCol::after'],
+    'admin/(workspace)/news/_components/media-picker.module.css': ['.thumb', '.thumbCheck'],
+    'admin/(workspace)/_components/save-state.module.css': ['.spinner']
+  };
+  const withoutHeavyKept = (rel: string, src: string) =>
+    (HEAVY_SITE_KEEP[rel] ?? []).reduce((s, sel) => s.replace(new RegExp(`[^{}]*${sel.replace(/[.:()]/g, (c) => `\\${c}`)}\\s*\\{[^}]*\\}`, 'g'), ''), src);
+
+  it('EveryStylesheet_HasNoHeavyRules_ExceptFunctionalOnes', () => {
+    const heavy = (src: string) => /border(?:-(?:top|bottom|left|right))?:\s*(?:1\.5|2)px solid/.test(src);
+    expect(files.filter((rel) => heavy(withoutHeavyKept(rel, screenCss(rel))))).toEqual([]);
   });
 });
 

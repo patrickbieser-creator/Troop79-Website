@@ -39,8 +39,8 @@
 .statStrip {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  border-top: 2px solid var(--border-mid);
-  border-bottom: 2px solid var(--border-mid);
+  border-top: 1px solid var(--border-mid);
+  border-bottom: 1px solid var(--border-mid);
   margin-bottom: 30px;
 }
 .statCell {
@@ -58,10 +58,8 @@
 }
 .statLabel {
   font-family: var(--font-ui);
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 700;
-  letter-spacing: .12em;
-  text-transform: uppercase;
   color: var(--text-meta);
   margin-top: 4px;
 }
@@ -144,10 +142,8 @@
 .factRow:last-child { border-bottom: none; }
 .factLabel {
   font-family: var(--font-ui);
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 700;
-  letter-spacing: .1em;
-  text-transform: uppercase;
   color: var(--text-meta);
   padding-top: 3px;
   flex-shrink: 0;
@@ -226,8 +222,6 @@
   font-family: var(--font-ui);
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: .08em;
-  text-transform: uppercase;
   background: var(--khaki);
   color: var(--navy);
   padding: 11px 22px;
@@ -240,8 +234,6 @@
   font-family: var(--font-ui);
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: .08em;
-  text-transform: uppercase;
   border: 1px solid var(--on-navy-faint);
   color: var(--cream);
   padding: 10px 22px;

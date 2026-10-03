@@ -60,7 +60,7 @@
 .groupHead {
   display: flex; align-items: center; justify-content: space-between;
   font-family: var(--admin-font-ui);
-  font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  font-size: var(--admin-text-base); font-weight: 700;
   color: var(--admin-forest); margin: 0 0 6px; padding-bottom: 4px;
   border-bottom: 1px solid var(--admin-gray-200);
 }

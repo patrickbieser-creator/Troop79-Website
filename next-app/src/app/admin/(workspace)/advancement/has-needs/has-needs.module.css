@@ -191,10 +191,8 @@
   text-decoration: underline;
 }
 .resultRank {
-  font-size: 9px;
+  font-size: var(--admin-text-base);
   font-weight: 700;
-  letter-spacing: .04em;
-  text-transform: uppercase;
   color: var(--admin-gray-500);
   flex-shrink: 0;
 }

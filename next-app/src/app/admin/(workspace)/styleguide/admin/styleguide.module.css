@@ -10,12 +10,10 @@
   margin-bottom: var(--admin-space-13);
 }
 .sectionHead {
-  font-size: var(--admin-text-sm);
+  font-size: var(--admin-text-base);
   font-weight: var(--admin-weight-bold);
-  letter-spacing: var(--admin-tracking-wider);
-  text-transform: uppercase;
   color: var(--admin-navy);
-  border-bottom: 2px solid var(--admin-navy);
+  border-bottom: 1px solid var(--admin-navy);
   padding-bottom: var(--admin-space-2);
   margin-bottom: var(--admin-space-6);
 }
@@ -62,10 +60,8 @@
 }
 .swatchNew {
   display: inline-block;
-  font-size: var(--admin-text-2xs);
+  font-size: var(--admin-text-sm);
   font-weight: var(--admin-weight-bold);
-  letter-spacing: var(--admin-tracking-wider);
-  text-transform: uppercase;
   background: var(--admin-forest);
   color: var(--admin-white);
   border-radius: var(--admin-radius-pill);
@@ -110,10 +106,8 @@
   border-width: 2px;
 }
 .specimenLabel {
-  font-size: var(--admin-text-xs);
+  font-size: var(--admin-text-sm);
   font-weight: var(--admin-weight-bold);
-  letter-spacing: var(--admin-tracking-wide);
-  text-transform: uppercase;
   color: var(--admin-gray-500);
   margin-bottom: var(--admin-space-4);
 }
@@ -154,10 +148,8 @@
 }
 .scoreTable th {
   text-align: left;
-  font-size: var(--admin-text-xs);
+  font-size: var(--admin-text-sm);
   font-weight: var(--admin-weight-bold);
-  letter-spacing: var(--admin-tracking-wide);
-  text-transform: uppercase;
   color: var(--admin-gray-500);
   background: var(--admin-gray-50);
   padding: var(--admin-space-3) var(--admin-space-5);

@@ -35,8 +35,6 @@
   border-radius: var(--admin-radius-sm);
   font-weight: var(--admin-weight-bold);
   font-size: var(--admin-text-md);
-  letter-spacing: var(--admin-tracking-normal);
-  text-transform: uppercase;
 }
 .hint {
   font-size: var(--admin-text-base);

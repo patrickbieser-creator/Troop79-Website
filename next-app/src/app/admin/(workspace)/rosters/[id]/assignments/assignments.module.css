@@ -16,7 +16,7 @@
 .cardHead { display: flex; align-items: baseline; justify-content: space-between; gap: var(--admin-space-2); margin-bottom: var(--admin-space-2); }
 .cardTitle { font-size: var(--admin-text-base); font-weight: var(--admin-weight-bold); color: var(--admin-gray-900); }
 .cardSub { display: block; font-size: var(--admin-text-2xs); color: var(--admin-gray-600); font-weight: var(--admin-weight-regular); }
-.capPill { font-size: var(--admin-text-2xs); font-weight: var(--admin-weight-bold); letter-spacing: var(--admin-tracking-wide); text-transform: uppercase; color: var(--admin-gray-600); border: 1px solid var(--admin-gray-300); border-radius: var(--admin-radius-pill); padding: 2px 8px; white-space: nowrap; }
+.capPill { font-size: var(--admin-text-sm); font-weight: var(--admin-weight-bold); color: var(--admin-gray-600); border: 1px solid var(--admin-gray-300); border-radius: var(--admin-radius-pill); padding: 2px 8px; white-space: nowrap; }
 .capFull { color: var(--admin-danger); border-color: var(--admin-danger); background: var(--admin-status-error-bg); }
 .capOpen { color: var(--admin-forest); border-color: var(--admin-forest); background: var(--admin-status-success-bg); }
 
@@ -28,14 +28,14 @@
 .chip:active { cursor: grabbing; }
 .chip[data-dragging='true'] { opacity: .5; }
 .chipName { flex: 1 1 100%; min-width: 0; font-weight: var(--admin-weight-semibold); color: var(--admin-gray-900); }
-.chipRole { font-size: var(--admin-text-2xs); font-weight: var(--admin-weight-bold); letter-spacing: var(--admin-tracking-wide); text-transform: uppercase; color: var(--admin-navy); }
+.chipRole { font-size: var(--admin-text-sm); font-weight: var(--admin-weight-bold); color: var(--admin-navy); }
 .chipX { background: none; border: none; color: var(--admin-gray-400); font-size: var(--admin-text-md); line-height: 1; cursor: pointer; padding: 0 2px; }
 .chipX:hover:not(:disabled) { color: var(--admin-danger); }
 .moveSelect { max-width: 120px; font-size: var(--admin-text-xs); border: 1px solid var(--admin-gray-300); border-radius: var(--admin-radius-sm); padding: 2px 4px; background: var(--admin-white); color: var(--admin-gray-700); }
 .empty { font-size: var(--admin-text-xs); color: var(--admin-gray-500); font-style: italic; padding: var(--admin-space-2) 0; }
 
 .side { margin-top: var(--admin-space-5); }
-.sideHead { font-size: var(--admin-text-2xs); font-weight: var(--admin-weight-bold); letter-spacing: var(--admin-tracking-wide); text-transform: uppercase; color: var(--admin-gray-600); margin-bottom: var(--admin-space-2); }
+.sideHead { font-size: var(--admin-text-sm); font-weight: var(--admin-weight-bold); color: var(--admin-gray-600); margin-bottom: var(--admin-space-2); }
 .sideList { display: flex; flex-wrap: wrap; gap: var(--admin-space-2); list-style: none; margin: 0; padding: 0; }
 .sideList .chip { cursor: default; }
 

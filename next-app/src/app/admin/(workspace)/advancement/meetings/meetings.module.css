@@ -27,7 +27,7 @@
    filter toolbar on purpose — see the comment at its render site. */
 .createRow { display: flex; align-items: flex-end; justify-content: flex-end; gap: 10px; margin-bottom: 12px; padding: 11px 13px; background: var(--admin-white); border: 1px solid var(--admin-gray-200); border-radius: 5px; }
 .createField { display: flex; flex-direction: column; gap: 4px; }
-.createLabel { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--admin-gray-600); }
+.createLabel { font-size: var(--admin-text-base); font-weight: 700; color: var(--admin-gray-600); }
 .srOnly {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
@@ -86,8 +86,8 @@
 .sessionDesc { font-size: 12px; color: var(--admin-gray-700); margin-top: 3px; line-height: 1.45; }
 .sessionScouts { font-size: 11.5px; color: var(--admin-gray-500); margin-top: 3px; }
 .trackBadge {
-  display: inline-block; font-size: 9.5px; font-weight: 700; letter-spacing: .05em;
-  text-transform: uppercase; padding: 1px 7px; border-radius: 9px; margin-left: 6px;
+  display: inline-block; font-size: var(--admin-text-base); font-weight: 700;
+  padding: 1px 7px; border-radius: 9px; margin-left: 6px;
   background: var(--admin-gray-100); color: var(--admin-gray-700); vertical-align: middle;
 }
 .sessionBtns { display: flex; flex-direction: column; gap: 3px; }
@@ -119,7 +119,7 @@
 .rollPatrol { margin-bottom: 12px; }
 .rollPatrol:last-child { margin-bottom: 0; }
 .rollPatrolName {
-  font-size: 10px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+  font-size: var(--admin-text-base); font-weight: 700;
   color: var(--admin-gray-500); margin-bottom: 6px;
 }
 .rollGrid { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -135,7 +135,7 @@
   background: var(--admin-status-success-bg); border-color: var(--admin-forest); color: var(--admin-forest); font-weight: 600;
 }
 .rollCommitted {
-  font-size: 9px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  font-size: var(--admin-text-base); font-weight: 700;
   color: var(--admin-accent-gold); background: var(--admin-status-warning-bg); border-radius: 8px; padding: 1px 6px;
 }
 
@@ -154,7 +154,7 @@
 .editField { display: block; margin-bottom: 12px; }
 .editFieldFull { display: block; grid-column: 1 / -1; margin-bottom: 12px; }
 .editLabel {
-  display: block; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  display: block; font-size: var(--admin-text-base); font-weight: 700;
   color: var(--admin-gray-500); margin-bottom: 4px;
 }
 .editInput {
