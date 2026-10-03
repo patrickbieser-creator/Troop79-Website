@@ -8,7 +8,9 @@
  *
  * Two homes: the hub's Recipe Library tab (the right column is plain text) and
  * the Plan tab's popup (recipe-library-dialog.tsx), which passes `actions` so
- * the right column holds its add-to-meal buttons. What shows is
+ * the right column holds its add-to-meal buttons. A shared scout recipe says
+ * "Recipe by Sam K."; the viewer's own draft (only theirs ever reaches the
+ * client) says "Your draft recipe". What shows is
  * lib/menu-monster/menu-search.ts filterRecipes().
  */
 
@@ -68,6 +70,7 @@ export function RecipeBrowser({
                       ›
                     </span>
                   </button>
+                  {r.credit ? <span className={w.meta}>Recipe by {r.credit}</span> : r.status === 'draft' ? <span className={w.meta}>Your draft recipe</span> : null}
                 </div>
                 <div className={w.fitCol}>{actions ? actions(r, filter) : <span className={w.meta}>{fitSlots(r, null).map(slotLabel).join(', ')}</span>}</div>
                 {open && (

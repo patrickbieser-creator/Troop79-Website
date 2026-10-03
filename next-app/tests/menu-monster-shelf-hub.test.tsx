@@ -11,7 +11,8 @@ import userEvent from '@testing-library/user-event';
 
 const mocks = vi.hoisted(() => ({
   session: null as unknown,
-  summaries: [] as unknown[]
+  summaries: [] as unknown[],
+  recipes: [] as unknown[]
 }));
 
 const router = vi.hoisted(() => ({ refresh: vi.fn(), push: vi.fn(), replace: vi.fn() }));
@@ -28,6 +29,8 @@ vi.mock('@/lib/menu-monster/menus-store', () => ({
   loadMenuWith: async () => null
 }));
 vi.mock('@/lib/menu-monster/menus-data', () => ({ loadOutingsWith: async () => [] }));
+vi.mock('@/lib/menu-monster/scout-recipes-store', () => ({ listMyRecipesWith: async () => mocks.recipes }));
+vi.mock('../src/app/(public)/library/_tools/menu-monster/recipe-actions', () => ({ deleteScoutRecipeAction: vi.fn() }));
 vi.mock('../src/app/(public)/library/_tools/menu-monster/menu-actions', () => ({
   deleteMenuAction: vi.fn(),
   duplicateMenuAction: vi.fn(),
@@ -61,6 +64,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.session = SCOUT;
   mocks.summaries = [];
+  mocks.recipes = [];
 });
 
 describe('MenuMonsterShelfTool hub, scout', () => {
@@ -288,8 +292,21 @@ describe('MenuMonsterShelfTool hub, tabs', () => {
     expect(screen.queryByRole('button', { name: /^Bacon/ })).toBeNull();
   });
 
-  it('RecipeBuilderTab_SaysWhereToChangeARecipeToday', async () => {
+  it('RecipeBuilderTab_ListsTheScoutsRecipes', async () => {
+    mocks.recipes = [{ id: 'S-0000abcd', name: 'Campfire chili', status: 'published', credit: 'Charlie W.' }];
     await shelf('builder');
-    expect(screen.getByText(/change a recipe for one menu from its meal page/)).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Campfire chili' }).getAttribute('href')).toBe('/library/menu-monster/recipes/S-0000abcd');
   });
+
+  it('RecipeBuilderTab_OffersANewRecipe', async () => {
+    await shelf('builder');
+    expect(screen.getByRole('link', { name: 'New recipe' }).getAttribute('href')).toBe('/library/menu-monster/recipes/new');
+  });
+
+  it('RecipeBuilderTab_AsksAVisitorToSignIn', async () => {
+    mocks.session = null;
+    await shelf('builder');
+    expect(screen.getByRole('link', { name: 'sign in' }).getAttribute('href')).toContain('tab%3Dbuilder');
+  });
+
 });

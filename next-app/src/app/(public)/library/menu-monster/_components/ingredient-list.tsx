@@ -17,15 +17,14 @@
  *                back to the troop's), a dashed "Add an ingredient" search, a
  *                struck old value, "Added" and "Left out" tags. Rows come from
  *                menuEditRows(); the parent turns each RowAction into ops.
- *   'author'     Phase 4, RESERVED: the recipe editor: drag reorder, a per-row
- *                menu, the "What you'd buy" inset. TODO(Phase 4): onReorder,
- *                renderInset, rowMenu.
- * A reserved mode renders the read rows until its phase fills it in, so a page
- * can already pass the final mode name.
+ *   'author'     a scout's own recipe (ingredient-list-author.tsx, Phase 4): a
+ *                reorder grip, the name toggles "What you'd buy", a ⋯ (change
+ *                amount / move / remove) and a dashed price-book search.
  */
 
 import type { IngredientRow } from '@/lib/menu-monster/ingredient-rows';
 import { MenuEditList, type MenuEditProps, type RowAction } from './ingredient-list-edit';
+import { AuthorList, type AuthorListProps } from './ingredient-list-author';
 import s from './ingredient-list.module.css';
 
 export type { RowAction };
@@ -44,18 +43,14 @@ export interface ReadListProps extends ListBase {
 
 export type MenuEditListProps = MenuEditProps & { mode: 'menu-edit' };
 
-/** Phase 4 stub: the recipe editor's extras. Not wired yet. */
-export interface AuthorListProps extends ListBase {
-  mode: 'author';
-  // TODO(Phase 4): onReorder?: (keys: string[]) => void;  renderInset?: (key: string) => ReactNode;
-}
+export type AuthorModeProps = AuthorListProps & { mode: 'author' };
 
-export type IngredientListProps = ReadListProps | MenuEditListProps | AuthorListProps;
+export type IngredientListProps = ReadListProps | MenuEditListProps | AuthorModeProps;
 
 export function IngredientList(props: IngredientListProps) {
   if (props.mode === 'menu-edit') return <MenuEditList {...props} />;
+  if (props.mode === 'author') return <AuthorList {...props} />;
   const { rows, ariaLabel, emptyText = 'No ingredients.' } = props;
-  // 'author' shares the read row until Phase 4 branches on props.mode here.
   if (rows.length === 0) return <p className={s.empty}>{emptyText}</p>;
   return (
     <ul className={s.list} aria-label={ariaLabel}>

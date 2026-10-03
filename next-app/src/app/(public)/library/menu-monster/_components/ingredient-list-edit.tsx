@@ -53,8 +53,8 @@ export interface MenuEditProps {
 
 const MAX_QTY = 1000;
 
-/** The amount box: one number per person, Enter or leaving the box commits, Escape cancels. */
-function AmountEditor({
+/** The amount box: one number per person, Enter or leaving the box commits, Escape cancels. Shared with author mode. */
+export function AmountEditor({
   name,
   unitLabel,
   value,

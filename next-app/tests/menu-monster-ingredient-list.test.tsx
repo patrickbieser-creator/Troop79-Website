@@ -59,11 +59,6 @@ describe('IngredientList (read)', () => {
     render(list('total'));
     expect(row('Pancake mix').textContent).toMatch(/Pancake mix.*3½ cups/);
   });
-
-  it('AuthorMode_RendersTheReadRows_UntilPhase4Lands', () => {
-    render(<IngredientList mode="author" ariaLabel="Edit" rows={ingredientRows(pancakes, CATALOG, plan(1), 'total')} />);
-    expect(screen.getByText('Almond flour')).toBeTruthy();
-  });
 });
 
 describe('IngredientList (read) with scout markers', () => {

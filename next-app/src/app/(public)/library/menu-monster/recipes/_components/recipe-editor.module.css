@@ -1,0 +1,50 @@
+/* The scout recipe editor's own pieces (the rest comes from workspace.module.css
+   and ingredient-list.module.css). Public tokens only. */
+
+/* A retired recipe disables every control at once; the fieldset itself is invisible. */
+.fieldset { border: none; margin: 0; padding: 0; min-width: 0; }
+
+.listCard {
+  background: var(--warm-white);
+  border-radius: var(--rad-md);
+  box-shadow: var(--shadow-card);
+  padding: 0 var(--sp-3) var(--sp-2);
+  margin-top: var(--sp-3);
+}
+
+.problems { margin: var(--sp-2) 0 0; padding-left: var(--sp-5); }
+
+.steps { list-style: none; margin: 0 0 var(--sp-3); padding: 0; }
+.step {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  padding: var(--sp-2) 0;
+  border-top: 1px solid var(--rule);
+}
+.step:first-child { border-top: none; }
+.step[data-drop-target] { box-shadow: inset 0 2px 0 var(--navy); }
+.stepNum {
+  flex: none;
+  width: 20px;
+  padding-top: var(--sp-2);
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--text-meta);
+  text-align: right;
+}
+/* 16px: the iOS no-zoom floor. */
+.stepText {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-ui);
+  font-size: 16px;
+  color: var(--text-head);
+  background: var(--warm-white);
+  border: 1px solid var(--border-light);
+  border-radius: var(--rad-sm);
+  padding: var(--sp-2);
+  resize: vertical;
+}
+.stepText:focus-visible { outline: var(--focus-ring); outline-offset: 1px; }

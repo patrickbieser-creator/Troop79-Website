@@ -33,6 +33,9 @@ import { TabStrip } from '@/app/_components/tab-strip';
 import type { Catalog, Plan } from '@/lib/menu-monster/types';
 import { RecipeBrowser } from '../../menu-monster/_components/recipe-browser';
 import { IngredientBrowser } from '../../menu-monster/_components/ingredient-browser';
+import { listMyRecipesWith } from '@/lib/menu-monster/scout-recipes-store';
+import { MyRecipesList } from '../../menu-monster/recipes/_components/my-recipes-list';
+import { RECIPES_HREF } from '../../menu-monster/recipes/_components/recipe-editor';
 import { DraftOffer } from '../../menu-monster/menus/_components/draft-offer';
 import { LocalPlan } from '../../menu-monster/menus/_components/local-menu-shells';
 import { loadMenuRows } from '../../menu-monster/menus/_components/menu-rows';
@@ -73,8 +76,35 @@ export async function MenuMonsterShelfTool({ searchParams }: { searchParams: Rec
       {planner}
       {tab === 'recipes' && <RecipeBrowser catalog={catalog} plan={EVERY_DIET} />}
       {tab === 'ingredients' && <IngredientBrowser catalog={catalog} />}
-      {tab === 'builder' && <p className={w.foot}>Writing your own recipes is coming. For now, change a recipe for one menu from its meal page.</p>}
+      {tab === 'builder' && (await recipeBuilder(viewer))}
     </>
+  );
+}
+
+/** Recipe Builder: a scout's own recipes + New recipe; anyone else one line to sign in. */
+async function recipeBuilder(viewer: MenuViewer | null) {
+  if (viewer?.kind !== 'scout') {
+    return (
+      <p className={w.foot}>
+        Scouts:{' '}
+        <Link className={w.link} href={`/signin?next=${encodeURIComponent(`${MENU_HUB_HREF}?tab=builder`)}`}>
+          sign in
+        </Link>{' '}
+        to write a recipe.
+      </p>
+    );
+  }
+  const mine = await listMyRecipesWith(createAdminClient(), viewer.personId);
+  return (
+    <section className={w.hubSection}>
+      <div className={w.listHead}>
+        <h2 className={w.heading}>My recipes</h2>
+        <Button variant="primary" size="sm" href={`${RECIPES_HREF}/new`}>
+          New recipe
+        </Button>
+      </div>
+      <MyRecipesList rows={mine.map((r) => ({ id: r.id, name: r.name, status: r.status, credit: r.credit }))} />
+    </section>
   );
 }
 

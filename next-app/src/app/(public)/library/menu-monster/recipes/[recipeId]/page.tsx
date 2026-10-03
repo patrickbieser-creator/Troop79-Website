@@ -1,0 +1,42 @@
+/**
+ * /library/menu-monster/recipes/[recipeId] — one of the signed-in scout's own
+ * recipes in the editor. Someone else's recipe, or a missing one, is notFound();
+ * anyone who isn't a signed-in scout gets the one-line sign-in state.
+ */
+import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
+import { createAdminClient } from '@/lib/supabase/server';
+import { loadMenuMonsterCatalog } from '@/lib/menu-monster/data';
+import { loadMyRecipeWith } from '@/lib/menu-monster/scout-recipes-store';
+import { PageShell } from '@/app/_components/page-shell';
+import { scoutViewer } from '../../menus/_components/scout-menus';
+import { RecipeEditor, RECIPES_HREF } from '../_components/recipe-editor';
+import { RecipeHeader, RecipeLocked } from '../_components/recipe-pages';
+
+export const dynamic = 'force-dynamic';
+export const metadata: Metadata = { title: 'Recipe — Menu Monster' };
+
+export default async function RecipePage({ params }: { params: Promise<{ recipeId: string }> }) {
+  const { recipeId } = await params;
+  const viewer = await scoutViewer();
+  if (!viewer) {
+    return (
+      <>
+        <RecipeHeader />
+        <PageShell width="narrow">
+          <RecipeLocked next={`${RECIPES_HREF}/${recipeId}`} />
+        </PageShell>
+      </>
+    );
+  }
+  const [stored, catalog] = await Promise.all([loadMyRecipeWith(createAdminClient(), viewer.personId, recipeId), loadMenuMonsterCatalog(viewer.personId)]);
+  if (!stored) notFound();
+  return (
+    <>
+      <RecipeHeader />
+      <PageShell>
+        <RecipeEditor catalog={catalog} id={stored.recipe.id} initial={stored.recipe} status={stored.status} credit={stored.credit} updatedAt={stored.updatedAt} />
+      </PageShell>
+    </>
+  );
+}
