@@ -60,6 +60,7 @@ import { PaidSection, type PaidSavedInfo } from './paid-section';
 import { ReadOnlyLine } from './read-only-line';
 import { SaveBar } from './save-bar';
 import s from './workspace.module.css';
+import { menuGear } from '@/lib/menu-monster/scout-recipes';
 
 const NOTE_MAX = 120; // matches restorePlan's note cap
 const keyOf = (sh: MenuShopping) => JSON.stringify(sh);
@@ -112,6 +113,8 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
 
   const menu: Menu = { ...saved.menu, shopping: draft };
   const list = buildMenuList(menu, catalog);
+  // Gear you'll need (4C): every recipe's gear across the menu's meals.
+  const gear = menuGear(menu, catalog);
   const { totals } = list;
   const people = menu.headcount;
   const budget = budgetState({ perSpent: list.perPersonMeal }, menu.budgetPerPersonMeal);
@@ -375,6 +378,15 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
         </p>
       </section>
 
+      {gear.length > 0 && (
+        <section className={s.section} aria-labelledby={`${uid}-gear-h`}>
+          <h2 id={`${uid}-gear-h`} className={s.heading}>
+            Gear you’ll need
+          </h2>
+          <p className={s.foot}>{gear.join(' · ')}</p>
+        </section>
+      )}
+
       {canPay && menuId && (
       <PaidSection
         menuId={menuId}
@@ -390,13 +402,13 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
       )}
       </div>
 
-      <PrintSheet menu={menu} list={list} panel={panel} />
+      <PrintSheet menu={menu} list={list} panel={panel} gear={gear} />
     </div>
   );
 }
 
 /** Print-only: the menu as a paper shopping sheet (hidden on screen; see @media print in workspace.module.css). */
-function PrintSheet({ menu, list, panel }: { menu: Menu; list: ReturnType<typeof buildMenuList>; panel: ReturnType<typeof shoppingPanel> }) {
+function PrintSheet({ menu, list, panel, gear }: { menu: Menu; list: ReturnType<typeof buildMenuList>; panel: ReturnType<typeof shoppingPanel>; gear: string[] }) {
   const dates = menu.startDate
     ? fmtRange(menu.startDate, addDays(menu.startDate, Math.max(0, menu.dayCount - 1)))
     : `${menu.dayCount} day${menu.dayCount === 1 ? '' : 's'}`;
@@ -440,6 +452,7 @@ function PrintSheet({ menu, list, panel }: { menu: Menu; list: ReturnType<typeof
           </tbody>
         </table>
       ))}
+      {gear.length > 0 && <p className={s.printMeta}>Gear: {gear.join(' · ')}</p>}
       {panel.notes.length > 0 && <p className={s.printMeta}>{panel.notes.join(' ')}</p>}
     </section>
   );

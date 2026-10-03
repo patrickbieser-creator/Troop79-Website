@@ -49,6 +49,7 @@ const draft = (over: Partial<ScoutRecipeDraft> = {}): ScoutRecipeDraft => ({
   lines: [{ ingredientId: ING, qtyPerPerson: 1, unitKey: null }],
   originRecipeId: null,
   newIngredients: [],
+  equipment: [],
   ...over
 });
 
@@ -162,5 +163,12 @@ describe('shared scout recipes for leaders', () => {
     await shareScoutRecipeWith(sb, actor, res.id);
     await setScoutRecipeCreditWith(sb, res.id, 'Charlie W. and Jack P.');
     expect((await listSharedScoutRecipesWith(sb)).find((r) => r.id === res.id)?.credit).toBe('Charlie W. and Jack P.');
+  });
+});
+
+describe('gear (Phase 4C)', () => {
+  it('Gear_IsSavedAndLoadedBack', async () => {
+    const res = await create({ equipment: ['Dutch oven', 'Tongs'] });
+    expect((await loadMyRecipeWith(sb, SCOUT, res.id))?.recipe.equipment).toEqual(['Dutch oven', 'Tongs']);
   });
 });

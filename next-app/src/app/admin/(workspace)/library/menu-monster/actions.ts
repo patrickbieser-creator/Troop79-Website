@@ -22,7 +22,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { recordAudit, type AuditDetail } from '@/lib/audit';
 import { decidePriceWith, leaderSetPriceWith, type DecideOutcome } from '@/lib/menu-monster/price-history';
 import { loadAuthoringCatalogWith } from '@/lib/menu-monster/catalog';
-import { cleanScoutText, isScoutRecipeId } from '@/lib/menu-monster/scout-recipes';
+import { cleanGear, cleanScoutText, isScoutRecipeId } from '@/lib/menu-monster/scout-recipes';
 import { keepTypedInWith, matchTypedInWith, setScoutRecipeCreditWith } from '@/lib/menu-monster/scout-recipes-store';
 import {
   blockingIssues,
@@ -699,7 +699,9 @@ export async function saveRecipe(a: RecipeAuthoring): Promise<Result> {
       trail: a.trail,
       method: a.method ? cap(a.method, MAX.method) : null,
       steps_md: cap(a.stepsMd ?? '', MAX.steps),
-      sort_order: sortOrder
+      sort_order: sortOrder,
+      // 4C: gear, cleaned like scout text; left out when the form didn't carry it (the RPC keeps the stored list).
+      ...(a.gear !== undefined ? { equipment: cleanGear(a.gear.split(',')) } : {})
     },
     p_lines: compiled.map((l) => ({
       ingredient_id: l.ingredientId,
@@ -795,7 +797,8 @@ export async function duplicateRecipe(id: string): Promise<Result> {
       trail: recipe.trail,
       method: recipe.method,
       steps_md: recipe.stepsMd,
-      sort_order: recipe.sortOrder + 1
+      sort_order: recipe.sortOrder + 1,
+      equipment: recipe.equipment ?? []
     },
     p_lines: recipe.lines.map((l) => ({
       ingredient_id: l.ingredientId,

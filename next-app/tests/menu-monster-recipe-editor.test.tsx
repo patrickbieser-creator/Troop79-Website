@@ -22,7 +22,7 @@ vi.mock('../src/app/(public)/library/_tools/menu-monster/recipe-actions', () => 
 import { RecipeEditor } from '../src/app/(public)/library/menu-monster/recipes/_components/recipe-editor';
 
 const STAMP = '2026-10-02T12:00:00.000Z';
-const READY = { name: 'Bacon bowl', mealFit: ['breakfast' as const], foodGroups: [], steps: ['Fry it.'], lines: [{ ingredientId: 'bacon', qtyPerPerson: 3, unitKey: null }], originRecipeId: null };
+const READY = { name: 'Bacon bowl', mealFit: ['breakfast' as const], foodGroups: [], steps: ['Fry it.'], lines: [{ ingredientId: 'bacon', qtyPerPerson: 3, unitKey: null }], originRecipeId: null, equipment: [] as string[] };
 const BLANK = { name: '', mealFit: [], foodGroups: [], steps: [], lines: [], originRecipeId: null };
 
 const fresh = () => render(<RecipeEditor catalog={CATALOG} id={null} initial={BLANK} status="draft" credit={null} updatedAt={null} />);
@@ -61,7 +61,7 @@ describe('RecipeEditor saving', () => {
     fresh();
     await user.type(screen.getByRole('textbox', { name: 'Recipe name' }), 'Chili');
     await user.click(screen.getByRole('button', { name: 'Save draft' }));
-    expect(Object.keys(save.mock.calls[0][0]).sort()).toEqual(['foodGroups', 'id', 'lines', 'mealFit', 'name', 'newIngredients', 'originRecipeId', 'steps']);
+    expect(Object.keys(save.mock.calls[0][0]).sort()).toEqual(['equipment', 'foodGroups', 'id', 'lines', 'mealFit', 'name', 'newIngredients', 'originRecipeId', 'steps']);
   });
 
   it('SavedRecipe_SaysSaved_UntilSomethingChanges', () => {
@@ -239,5 +239,44 @@ describe('RecipeEditor typed-in ingredients (Phase 4B)', () => {
     await user.type(screen.getByRole('textbox', { name: 'Recipe name' }), '!');
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
     expect(key()).toBe('x-00000001');
+  });
+});
+
+describe('RecipeEditor gear (Phase 4C)', () => {
+  it('OftenUsedGear_AddsWithOneTap', async () => {
+    const user = userEvent.setup();
+    existing();
+    await user.click(screen.getByRole('button', { name: '+ Dutch oven' }));
+    expect(within(screen.getByRole('list', { name: 'Gear' })).getByText('Dutch oven')).toBeTruthy();
+  });
+
+  it('AddedGear_LeavesTheSuggestions', async () => {
+    const user = userEvent.setup();
+    existing();
+    await user.click(screen.getByRole('button', { name: '+ Dutch oven' }));
+    expect(screen.queryByRole('button', { name: '+ Dutch oven' })).toBeNull();
+  });
+
+  it('OtherGear_IsTypedIn', async () => {
+    const user = userEvent.setup();
+    existing();
+    await user.click(screen.getByRole('button', { name: 'Something else…' }));
+    await user.type(screen.getByRole('textbox', { name: 'Other gear' }), 'Ladle{Enter}');
+    expect(within(screen.getByRole('list', { name: 'Gear' })).getByText('Ladle')).toBeTruthy();
+  });
+
+  it('Gear_CanBeRemoved', async () => {
+    const user = userEvent.setup();
+    existing('draft', { ...READY, equipment: ['Skillet'] });
+    await user.click(screen.getByRole('button', { name: 'Remove Skillet' }));
+    expect(screen.queryByRole('list', { name: 'Gear' })).toBeNull();
+  });
+
+  it('Gear_IsSaved', async () => {
+    const user = userEvent.setup();
+    existing();
+    await user.click(screen.getByRole('button', { name: '+ Tongs' }));
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    expect(save.mock.calls[0][0].equipment).toEqual(['Tongs']);
   });
 });

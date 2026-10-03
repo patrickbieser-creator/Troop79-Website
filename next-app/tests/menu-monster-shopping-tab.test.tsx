@@ -461,3 +461,25 @@ describe('ShoppingTab', () => {
     });
   });
 });
+
+describe('ShoppingTab gear (Phase 4C)', () => {
+  const geared = { ...CATALOG, recipes: CATALOG.recipes.map((r) => (r.id === 'B003' ? { ...r, equipment: ['Skillet', 'Tongs'] } : r.id === 'L001' ? { ...r, equipment: ['skillet', 'Cutting board'] } : r)) };
+
+  it('Shopping_ListsGearYoullNeed_OncePerItem', () => {
+    const m = menu();
+    render(tab(m, buildSnapshot(m, geared), geared));
+    const h = screen.getByRole('heading', { name: 'Gear you’ll need' });
+    expect(h.closest('section')?.textContent).toContain('Skillet · Tongs · Cutting board');
+  });
+
+  it('Shopping_HasNoGearSection_WhenNoRecipeNeedsGear', () => {
+    render(tab());
+    expect(screen.queryByRole('heading', { name: 'Gear you’ll need' })).toBeNull();
+  });
+
+  it('PrintSheet_ListsTheGear', () => {
+    const m = menu();
+    render(tab(m, buildSnapshot(m, geared), geared));
+    expect(screen.getByTestId('print-sheet').textContent).toContain('Gear: Skillet · Tongs · Cutting board');
+  });
+});

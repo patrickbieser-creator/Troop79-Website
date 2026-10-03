@@ -73,7 +73,8 @@ export async function saveScoutRecipeWith(
       meal_fit: draft.mealFit,
       food_groups: draft.foodGroups,
       steps_md: stepsToText(draft.steps),
-      origin_recipe_id: draft.originRecipeId
+      origin_recipe_id: draft.originRecipeId,
+      equipment: draft.equipment
     },
     p_lines: draft.lines.map((l) => ({ ingredient_id: l.ingredientId, qty_per_person: l.qtyPerPerson, unit_key: l.unitKey })),
     p_expected_updated_at: isNew ? null : expectedUpdatedAt,
@@ -151,7 +152,7 @@ export async function loadMyRecipeWith(sb: SupabaseClient, personId: number, id:
   if (!isScoutRecipeId(id)) return null;
   const { data: r, error } = await sb
     .from('mm_recipes')
-    .select('id, name, status, meal_fit, food_groups, steps_md, origin_recipe_id, author_person_id, shared_at, attribution_label, updated_at')
+    .select('id, name, status, meal_fit, food_groups, steps_md, origin_recipe_id, author_person_id, shared_at, attribution_label, equipment, updated_at')
     .eq('id', id)
     .maybeSingle();
   if (error) throw new Error(`load recipe: ${error.message}`);
@@ -171,7 +172,8 @@ export async function loadMyRecipeWith(sb: SupabaseClient, personId: number, id:
       steps: stepsFromText(r.steps_md as string | null),
       lines: (lines ?? []).map((l): ScoutRecipeLine => ({ ingredientId: l.ingredient_id as string, qtyPerPerson: Number(l.qty_per_person), unitKey: (l.unit_key as string | null) ?? null })),
       originRecipeId: (r.origin_recipe_id as string | null) ?? null,
-      newIngredients: []
+      newIngredients: [],
+      equipment: (r.equipment ?? []) as string[]
     },
     status: r.status as RecipeStatus,
     credit: (r.attribution_label as string | null) ?? null,

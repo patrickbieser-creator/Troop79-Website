@@ -26,7 +26,7 @@ import { FOOD_GROUPS, MEALS } from '@/lib/menu-monster/units';
 import { MAX_HEADCOUNT, MIN_HEADCOUNT } from '@/lib/menu-monster/engine';
 import type { AmountView } from '@/lib/menu-monster/ingredient-rows';
 import { authorRows } from '@/lib/menu-monster/author-rows';
-import { MAX_SCOUT_RECIPE_NAME, MAX_SCOUT_STEP, MAX_SCOUT_STEPS, shareProblems, type ScoutRecipeLine } from '@/lib/menu-monster/scout-recipes';
+import { GEAR_SUGGESTIONS, MAX_GEAR, MAX_SCOUT_RECIPE_NAME, MAX_SCOUT_STEP, MAX_SCOUT_STEPS, cleanGear, shareProblems, type ScoutRecipeLine } from '@/lib/menu-monster/scout-recipes';
 import type { RecipeStatus } from '@/lib/menu-monster/types';
 import { saveScoutRecipeAction, shareScoutRecipeAction } from '../../../_tools/menu-monster/recipe-actions';
 import { IngredientList } from '../../_components/ingredient-list';
@@ -50,16 +50,20 @@ interface Draft {
   lines: ScoutRecipeLine[];
   /** Typed-in ingredients not saved yet (Phase 4B); lines name them by their new: key. */
   newIngredients: NewIngredient[];
+  /** Gear you'll need (4C). */
+  equipment: string[];
 }
 
 export interface RecipeEditorProps {
   catalog: Catalog;
   /** null = a new recipe, not saved yet. */
   id: string | null;
-  initial: { name: string; mealFit: MealSlot[]; foodGroups: FoodGroup[]; steps: string[]; lines: ScoutRecipeLine[]; originRecipeId: string | null };
+  initial: { name: string; mealFit: MealSlot[]; foodGroups: FoodGroup[]; steps: string[]; lines: ScoutRecipeLine[]; originRecipeId: string | null; equipment?: string[] };
   status: RecipeStatus;
   credit: string | null;
   updatedAt: string | null;
+  /** "Started from your version of …" (4C, Share this version): one quiet line under the basics. */
+  fromNote?: string | null;
 }
 
 let stepSeq = 0;
@@ -69,7 +73,8 @@ const toDraft = (i: RecipeEditorProps['initial']): Draft => ({
   foodGroups: [...i.foodGroups],
   steps: i.steps.map((text) => ({ id: ++stepSeq, text })),
   lines: i.lines.map((l) => ({ ...l })),
-  newIngredients: []
+  newIngredients: [],
+  equipment: [...(i.equipment ?? [])]
 });
 const keyOf = (d: Draft) => JSON.stringify({ ...d, steps: d.steps.map((x) => x.text.trim()).filter(Boolean) });
 const toggle = <T,>(list: T[], v: T) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
@@ -80,7 +85,7 @@ const moveItem = <T,>(list: T[], from: number, to: number) => {
   return next;
 };
 
-export function RecipeEditor({ catalog, id: initialId, initial, status: initialStatus, credit: initialCredit, updatedAt }: RecipeEditorProps) {
+export function RecipeEditor({ catalog, id: initialId, initial, status: initialStatus, credit: initialCredit, updatedAt, fromNote = null }: RecipeEditorProps) {
   const router = useRouter();
   const [id, setId] = useState(initialId);
   const [draft, setDraft] = useState<Draft>(() => toDraft(initial));
@@ -167,7 +172,8 @@ export function RecipeEditor({ catalog, id: initialId, initial, status: initialS
         steps: sent.steps.map((x) => x.text),
         lines: sent.lines,
         originRecipeId: initial.originRecipeId,
-        newIngredients: sent.newIngredients
+        newIngredients: sent.newIngredients,
+        equipment: sent.equipment
       },
       version
     ).catch(() => ({ ok: false as const, error: 'Couldn’t save your recipe. Your changes are still here — try again.' }));
@@ -265,6 +271,7 @@ export function RecipeEditor({ catalog, id: initialId, initial, status: initialS
               </Field>
               <ChipGroup label="Good for" options={MEALS} value={draft.mealFit} onToggle={(k) => edit((d) => ({ ...d, mealFit: toggle(d.mealFit, k) }))} />
               <ChipGroup label="Food groups" options={FOOD_GROUPS} value={draft.foodGroups} onToggle={(k) => edit((d) => ({ ...d, foodGroups: toggle(d.foodGroups, k) }))} />
+              {fromNote && isNew && <p className={w.foot}>{fromNote}</p>}
             </section>
 
             <section aria-labelledby="re-ing-h">
@@ -359,10 +366,105 @@ export function RecipeEditor({ catalog, id: initialId, initial, status: initialS
                 </Button>
               )}
             </section>
+
+            <GearSection
+              gear={draft.equipment}
+              onChange={(equipment) => edit((d) => ({ ...d, equipment }))}
+              onAnnounce={setAnnounce}
+            />
           </div>
         </div>
       </fieldset>
     </div>
+  );
+}
+
+/** Gear you'll need (4C): the recipe's gear, removable; "Often used" adds one tap at a time; anything else is typed. */
+function GearSection({ gear, onChange, onAnnounce }: { gear: string[]; onChange: (g: string[]) => void; onAnnounce: (t: string) => void }) {
+  const [other, setOther] = useState<string | null>(null);
+  const has = (g: string) => gear.some((x) => x.toLowerCase() === g.toLowerCase());
+  const add = (g: string) => {
+    const next = cleanGear([...gear, g]);
+    if (next.length === gear.length) return;
+    onChange(next);
+    onAnnounce(`${next[next.length - 1]} added to gear.`);
+  };
+  const full = gear.length >= MAX_GEAR;
+  return (
+    <section aria-labelledby="re-gear-h" className={s.gear}>
+      <h2 id="re-gear-h" className={w.heading}>
+        Gear you’ll need
+      </h2>
+      {gear.length > 0 && (
+        <ul className={s.gearList} aria-label="Gear">
+          {gear.map((g) => (
+            <li key={g} className={s.gearItem}>
+              {g}
+              <button
+                type="button"
+                className={s.gearRemove}
+                aria-label={`Remove ${g}`}
+                onClick={() => {
+                  onChange(gear.filter((x) => x !== g));
+                  onAnnounce(`${g} removed from gear.`);
+                }}
+              >
+                ×
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className={w.choice} role="group" aria-label="Often used">
+        <span className={w.choiceLabel} aria-hidden="true">
+          Often used
+        </span>
+        <div className={w.chips}>
+          {GEAR_SUGGESTIONS.filter((g) => !has(g)).map((g) => (
+            <button key={g} type="button" className={w.chip} disabled={full} onClick={() => add(g)}>
+              + {g}
+            </button>
+          ))}
+          {other == null ? (
+            <button type="button" className={w.chip} disabled={full} onClick={() => setOther('')}>
+              Something else…
+            </button>
+          ) : (
+            <span className={s.gearOther}>
+              <input
+                className={s.gearInput}
+                value={other}
+                maxLength={40}
+                aria-label="Other gear"
+                placeholder="Ladle"
+                autoFocus
+                onChange={(e) => setOther(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (other.trim()) add(other);
+                    setOther(null);
+                  } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    setOther(null);
+                  }
+                }}
+              />
+              <button
+                type="button"
+                className={w.chip}
+                onClick={() => {
+                  if (other.trim()) add(other);
+                  setOther(null);
+                }}
+              >
+                Add
+              </button>
+            </span>
+          )}
+        </div>
+      </div>
+    </section>
   );
 }
 

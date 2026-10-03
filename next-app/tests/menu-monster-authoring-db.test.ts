@@ -334,3 +334,19 @@ describe('menu monster leader tools — scout recipes (Phase 4A)', () => {
     expect((await setRecipeStatus('S-0000ae01', 'draft')).ok).toBe(false);
   });
 });
+
+describe('menu monster leader tools — gear (Phase 4C)', () => {
+  const base = { id: RECIPE, name: 'ZZ Test Pancakes', status: 'draft' as const, mealFit: ['breakfast' as const], foodGroups: [], camp: true, trail: false, method: null, stepsMd: '', base: [], variations: [] };
+  const gearOf = async () => ((await admin.from('mm_recipes').select('equipment').eq('id', RECIPE).single()).data as { equipment: string[] }).equipment;
+
+  it('Leader_SavesGear_FromACommaList', async () => {
+    expect((await saveRecipe({ ...base, gear: 'Skillet, spatula, skillet' })).ok).toBe(true);
+    expect(await gearOf()).toEqual(['Skillet', 'spatula']);
+  });
+
+  it('SaveWithoutGear_KeepsTheStoredGear', async () => {
+    await saveRecipe({ ...base, gear: 'Dutch oven' });
+    await saveRecipe(base);
+    expect(await gearOf()).toEqual(['Dutch oven']);
+  });
+});

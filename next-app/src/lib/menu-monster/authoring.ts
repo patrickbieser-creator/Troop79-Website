@@ -247,6 +247,8 @@ export interface RecipeAuthoring {
   stepsMd: string;
   base: DraftBaseLine[];
   variations: DraftVariation[];
+  /** Gear you'll need (4C), as the leader types it: comma-separated. Absent = keep what is stored. */
+  gear?: string;
 }
 
 const blank = (a: RecipeAuthoring) => ({
@@ -306,6 +308,7 @@ export function authoringOf(r: Recipe): RecipeAuthoring {
     trail: r.trail,
     method: r.method,
     stepsMd: r.stepsMd ?? '',
+    gear: (r.equipment ?? []).join(', '),
     base: derived.base.map((b) => ({ ingredientId: b.ingredientId, amount: String(b.qtyPerPerson), unitKey: b.unitKey })),
     variations: source.map((v) => ({
       restriction: v.restriction,

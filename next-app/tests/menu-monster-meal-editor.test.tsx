@@ -671,3 +671,22 @@ describe('MealEditor recipe edits', () => {
     expect(screen.getByRole('status').textContent).toContain('Bacon left out of your version.');
   });
 });
+
+describe('MealEditor — Share this version (Phase 4C)', () => {
+  const edited = (): Menu => {
+    const m = menu();
+    return { ...m, meals: m.meals.map((x) => (x.id === 'm1' ? { ...x, recipeEdits: { B003: [{ op: 'amount' as const, ingredientId: 'bacon', qtyPerPerson: 4 }] } } : x)) };
+  };
+
+  it('EditedRecipe_OffersShareThisVersion_ToTheEditor', async () => {
+    render(editor('m1', edited()));
+    await userEvent.setup().click(screen.getByRole('button', { name: 'More for Bacon' }));
+    expect(screen.getByRole('link', { name: 'Share this version as a new recipe' }).getAttribute('href')).toBe('/library/menu-monster/recipes/new?menu=menu-1&meal=m1&recipe=B003');
+  });
+
+  it('UneditedRecipe_DoesNotOfferIt', async () => {
+    render(editor());
+    await userEvent.setup().click(screen.getByRole('button', { name: 'More for Bacon' }));
+    expect(screen.queryByRole('link', { name: 'Share this version as a new recipe' })).toBeNull();
+  });
+});

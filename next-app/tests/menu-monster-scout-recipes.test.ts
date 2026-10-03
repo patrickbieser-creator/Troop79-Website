@@ -1,7 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { CATALOG } from './helpers/menu-monster-fixture';
 import {
+  cleanGear,
   cleanScoutText,
+  menuGear,
+  versionDraft,
   creditFor,
   isScoutRecipeId,
   newScoutRecipeId,
@@ -140,5 +143,49 @@ describe('steps budget', () => {
 describe('invisible characters', () => {
   it('Text_LosesZeroWidthAndBidiCharacters', () => {
     expect(cleanScoutText('Chi​li ‮evil', 40)).toBe('Chili evil');
+  });
+});
+
+describe('gear (Phase 4C)', () => {
+  it('Gear_IsCleanedDedupedAndCapped', () => {
+    expect(cleanGear([' Dutch oven ', 'dutch OVEN', '', 'Tongs', ...Array.from({ length: 30 }, (_, i) => `Thing ${i}`)]).slice(0, 3)).toEqual(['Dutch oven', 'Tongs', 'Thing 0']);
+  });
+
+  it('Gear_KeepsAtMostTwenty', () => {
+    expect(cleanGear(Array.from({ length: 30 }, (_, i) => `Thing ${i}`))).toHaveLength(20);
+  });
+
+  it('Draft_CarriesItsGear', () => {
+    expect(sanitizeScoutRecipe(raw({ equipment: ['Skillet', 'skillet'] }), CATALOG).equipment).toEqual(['Skillet']);
+  });
+});
+
+describe('menuGear (Phase 4C)', () => {
+  const cat = { ...CATALOG, recipes: CATALOG.recipes.map((r) => (r.id === 'B001' ? { ...r, equipment: ['Skillet', 'Spatula'] } : r.id === 'B003' ? { ...r, equipment: ['skillet', 'Tongs'] } : r)) };
+  const menu = { meals: [{ id: 'm1', day: 0, slot: 'breakfast' as const, headcount: null, recipeIds: ['B001', 'B003'], recipeEdits: {} }] };
+
+  it('Menu_RollsUpEquipmentAcrossMeals', () => {
+    expect(menuGear(menu, cat)).toEqual(['Skillet', 'Spatula', 'Tongs']);
+  });
+
+  it('MenuWithoutGear_HasNone', () => {
+    expect(menuGear(menu, CATALOG)).toEqual([]);
+  });
+});
+
+describe('versionDraft (Phase 4C)', () => {
+  const pancakes = CATALOG.recipes.find((r) => r.id === 'B001')!;
+
+  it('Version_StartsFromTheMenusEdits', () => {
+    const d = versionDraft(pancakes, [{ op: 'add', ingredientId: 'bacon', qtyPerPerson: 2 }]);
+    expect(d.lines.map((l) => l.ingredientId)).toEqual(['pancake-mix', 'bacon']);
+  });
+
+  it('Version_LeavesOutLinesOnlyForOneDiet', () => {
+    expect(versionDraft(pancakes, []).lines.some((l) => l.ingredientId === 'almond-flour')).toBe(false);
+  });
+
+  it('Version_IsNamedAsTheScoutsVersion_AndRemembersItsOrigin', () => {
+    expect(versionDraft(pancakes, [])).toMatchObject({ name: 'Pancakes (my version)', originRecipeId: 'B001', mealFit: ['breakfast'] });
   });
 });

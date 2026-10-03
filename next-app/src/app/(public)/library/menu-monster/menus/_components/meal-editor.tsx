@@ -44,6 +44,7 @@ import type { Catalog, Plan, Recipe } from '@/lib/menu-monster/types';
 import { RESTRICTION_BY_KEY } from '@/lib/menu-monster/units';
 import { MAX_HEADCOUNT, MIN_HEADCOUNT, buildLines, recipesForMeal, totalsOf } from '@/lib/menu-monster/engine';
 import { isPickable } from '@/lib/menu-monster/scout-recipes';
+import { RECIPES_HREF } from '../../recipes/_components/paths';
 import { composePlan, mealCatalog, type EditOp, type Menu, type MenuMeal, type RecipeEdits } from '@/lib/menu-monster/menus';
 import { DIET_ORDER, mealTitle, recipeShares } from '@/lib/menu-monster/menu-view';
 import {
@@ -415,6 +416,10 @@ export function MealEditor({
                       }
                     },
                     ...(edited > 0 ? [{ label: 'Back to the troop recipe', onSelect: () => backToTroop(id) }] : []),
+                    // Phase 4C: a scout's saved version of a recipe can become a recipe of its own.
+                    ...(edited > 0 && store.caps.canSave && menuId && !dirty
+                      ? [{ label: 'Share this version as a new recipe', href: `${RECIPES_HREF}/new?menu=${encodeURIComponent(menuId)}&meal=${encodeURIComponent(meal.id)}&recipe=${encodeURIComponent(id)}` }]
+                      : []),
                     { label: 'Remove', danger: true, onSelect: () => remove(id) }
                   ]}
                 />

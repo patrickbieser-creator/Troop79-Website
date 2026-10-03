@@ -79,7 +79,8 @@ const blankDraft = (): RecipeAuthoring => ({
   method: null,
   stepsMd: '',
   base: [],
-  variations: []
+  variations: [],
+  gear: ''
 });
 
 /** The base as numbers, for the state rules (unparseable amounts count as 0). */
@@ -441,6 +442,10 @@ function RecipeEditor({
             How to make it (optional)
           </label>
           <textarea id="mm-r-steps" className={lib.textArea} value={draft.stepsMd} maxLength={600} onChange={(e) => setDraft((d) => ({ ...d, stepsMd: e.target.value }))} />
+          <label className={`adminLabel ${lib.fieldLabel}`} htmlFor="mm-r-gear">
+            Gear you’ll need (optional, separated by commas)
+          </label>
+          <input id="mm-r-gear" className={lib.textInput} value={draft.gear ?? ''} maxLength={400} placeholder="Dutch oven, Tongs" onChange={(e) => setDraft((d) => ({ ...d, gear: e.target.value }))} />
         </FormSection>
 
         {errors.length > 0 && (

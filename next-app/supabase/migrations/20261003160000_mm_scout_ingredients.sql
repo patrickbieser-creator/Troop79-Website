@@ -41,7 +41,7 @@ create index mm_ingredients_added_by_idx on public.mm_ingredients (added_by_pers
   where added_by_person_id is not null;
 
 -- ── 2. mm_save_scout_recipe v2 ────────────────────────────────────────────
--- Same contract as 4A, plus p_new_ingredients: [{ key: 'new:<8 hex>', name,
+-- Same contract as 4A, plus the recipe's equipment (gear, 4C) and p_new_ingredients: [{ key: 'new:<8 hex>', name,
 -- kind: count|volume|weight, unit_one, unit_many, avoid: [...], package:
 -- { size, price, store } }] where `size` is already in the recipe unit (count:
 -- how many; volume: cups; weight: oz). Lines may name 'new:<key>' for one of
@@ -86,6 +86,8 @@ declare
   v_price numeric;
   v_store text;
   v_new_id text;
+  -- Gear you'll need (4C): trimmed, at most 20, each public-safe text.
+  v_gear text[] := coalesce((select array_agg(btrim(x)) from jsonb_array_elements_text(coalesce(p_recipe->'equipment', '[]'::jsonb)) x), '{}'::text[]);
 begin
   if p_person is null then
     raise exception 'MM_SCOUT_REQUIRED';
@@ -101,6 +103,9 @@ begin
   end if;
   if jsonb_typeof(coalesce(p_lines, '[]'::jsonb)) <> 'array' or jsonb_array_length(coalesce(p_lines, '[]'::jsonb)) > 40 then
     raise exception 'MM_BAD_LINES';
+  end if;
+  if cardinality(v_gear) > 20 or exists (select 1 from unnest(v_gear) g where char_length(g) < 1 or not mm_scout_text_ok(g, 40)) then
+    raise exception 'MM_BAD_TEXT: gear';
   end if;
   if jsonb_typeof(coalesce(p_new_ingredients, '[]'::jsonb)) <> 'array' or jsonb_array_length(coalesce(p_new_ingredients, '[]'::jsonb)) > 10 then
     raise exception 'MM_BAD_INGREDIENT: too many new ingredients';
@@ -125,6 +130,7 @@ begin
       meal_fit    = coalesce((select array_agg(x) from jsonb_array_elements_text(coalesce(p_recipe->'meal_fit', '[]'::jsonb)) x), '{}'::text[]),
       food_groups = coalesce((select array_agg(x) from jsonb_array_elements_text(coalesce(p_recipe->'food_groups', '[]'::jsonb)) x), '{}'::text[]),
       steps_md    = nullif(v_steps, ''),
+      equipment   = v_gear,
       updated_at  = v_now
     where id = v_id;
   else
@@ -133,7 +139,7 @@ begin
       raise exception 'MM_RECIPE_CAP';
     end if;
     insert into mm_recipes (id, name, status, meal_fit, food_groups, camp, trail, steps_md, sort_order,
-                            author_person_id, origin_recipe_id, created_at, updated_at)
+                            author_person_id, origin_recipe_id, equipment, created_at, updated_at)
     values (
       v_id,
       v_name,
@@ -146,6 +152,7 @@ begin
       1000,
       p_person,
       (select r.id from mm_recipes r where r.id = nullif(p_recipe->>'origin_recipe_id', '') and r.status = 'published'),
+      v_gear,
       v_now,
       v_now
     );
