@@ -22,6 +22,8 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { recordAudit, type AuditDetail } from '@/lib/audit';
 import { decidePriceWith, leaderSetPriceWith, type DecideOutcome } from '@/lib/menu-monster/price-history';
 import { loadAuthoringCatalogWith } from '@/lib/menu-monster/catalog';
+import { cleanScoutText } from '@/lib/menu-monster/scout-recipes';
+import { setScoutRecipeCreditWith } from '@/lib/menu-monster/scout-recipes-store';
 import {
   blockingIssues,
   changeUnitPlan,
@@ -820,4 +822,28 @@ export async function duplicateRecipe(id: string): Promise<Result> {
   });
   revalidate();
   return { ok: true, id: newId };
+}
+
+/* ── Scout recipes (Phase 4A) ────────────────────────────────────────────── */
+
+/** A leader's change to a shared scout recipe's credit ("Recipe by …"). The scout's own edits never touch it. */
+export async function setScoutRecipeCredit(id: string, credit: string): Promise<Result> {
+  const denied = await guard();
+  if (denied) return denied;
+  const clean = cleanScoutText(credit, 40);
+  if (!clean) return { ok: false, error: 'Enter the name the credit should show.' };
+  const done = await setScoutRecipeCreditWith(createAdminClient(), id, clean);
+  if (!done) return { ok: false, error: 'That isn’t a shared scout recipe.' };
+  if (done.before !== clean) {
+    await recordAudit({
+      area: 'library',
+      action: 'update',
+      entityType: 'scout_recipe',
+      entityId: id,
+      summary: `Changed the credit on "${done.name}"`,
+      details: [{ field: 'Credit', from: done.before ?? '', to: clean }]
+    });
+  }
+  revalidate();
+  return { ok: true };
 }

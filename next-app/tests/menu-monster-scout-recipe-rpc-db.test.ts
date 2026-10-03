@@ -124,6 +124,14 @@ describe('mm_share_scout_recipe', () => {
     expect((await row())?.attribution_label).toBe('Charlie W.');
   });
 
+  it('Reshare_AfterALeaderSetItBackToDraft_KeepsTheFirstCredit', async () => {
+    await save(SCOUT);
+    await share(SCOUT);
+    await admin.from('mm_recipes').update({ status: 'draft' }).eq('id', ID);
+    await share(SCOUT, ID, 'Someone Else');
+    expect(await row()).toMatchObject({ status: 'published', attribution_label: 'Charlie W.' });
+  });
+
   it('Scout_CannotShareAnotherScoutsRecipe', async () => {
     await save(SCOUT);
     const { error } = await share(OTHER);

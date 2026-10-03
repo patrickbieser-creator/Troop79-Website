@@ -2,6 +2,8 @@ import { describe, it, expect, afterEach, beforeAll } from 'vitest';
 import { adminClient } from './helpers/admin-client';
 import {
   deleteScoutDraftWith,
+  listSharedScoutRecipesWith,
+  setScoutRecipeCreditWith,
   listMyRecipesWith,
   loadMyRecipeWith,
   saveScoutRecipeWith,
@@ -129,5 +131,35 @@ describe('scout recipe store', () => {
   it('OtherScout_CannotDeleteTheDraft', async () => {
     const res = await create();
     expect((await deleteScoutDraftWith(sb, other, res.id)).status).toBe('not_found');
+  });
+});
+
+describe('shared scout recipes for leaders', () => {
+  it('Leader_SeesSharedRecipes_WithTheirCredit', async () => {
+    const res = await create();
+    await shareScoutRecipeWith(sb, actor, res.id);
+    const row = (await listSharedScoutRecipesWith(sb)).find((r) => r.id === res.id);
+    expect(row).toMatchObject({ name: 'Vitest foil packs', status: 'published', editedSinceShared: false });
+  });
+
+  it('Leader_DoesNotSeeUnsharedDrafts', async () => {
+    const res = await create();
+    expect((await listSharedScoutRecipesWith(sb)).some((r) => r.id === res.id)).toBe(false);
+  });
+
+  it('SharedRecipe_IsMarkedEdited_WhenTheAuthorChangesItAfterSharing', async () => {
+    const res = await create();
+    await shareScoutRecipeWith(sb, actor, res.id);
+    const { data: v } = await sb.from('mm_recipes').select('updated_at').eq('id', res.id).single();
+    await new Promise((r) => setTimeout(r, 1100));
+    await saveScoutRecipeWith(sb, actor, draft({ id: res.id, name: 'Edited' }), v!.updated_at as string);
+    expect((await listSharedScoutRecipesWith(sb)).find((r) => r.id === res.id)?.editedSinceShared).toBe(true);
+  });
+
+  it('Leader_CanChangeTheCredit', async () => {
+    const res = await create();
+    await shareScoutRecipeWith(sb, actor, res.id);
+    await setScoutRecipeCreditWith(sb, res.id, 'Charlie W. and Jack P.');
+    expect((await listSharedScoutRecipesWith(sb)).find((r) => r.id === res.id)?.credit).toBe('Charlie W. and Jack P.');
   });
 });

@@ -174,8 +174,9 @@ $$;
 revoke execute on function public.mm_save_scout_recipe(bigint, jsonb, jsonb, timestamptz) from public, anon, authenticated;
 
 -- ── 4. mm_share_scout_recipe ──────────────────────────────────────────────
--- Publishes the scout's own draft once, freezing the credit. Sharing an already
--- shared recipe is a no-op that keeps the first credit and date.
+-- Publishes the scout's own draft, freezing the credit. Sharing an already
+-- shared recipe is a no-op; re-sharing one a leader set back to draft keeps the
+-- first credit and date (only a leader's credit edit changes it).
 
 create or replace function public.mm_share_scout_recipe(
   p_person bigint,
@@ -212,12 +213,14 @@ begin
     raise exception 'MM_NOT_READY';
   end if;
 
+  -- A recipe a leader set back to draft keeps its first credit and share date.
   update mm_recipes set
     status = 'published',
-    shared_at = now(),
-    attribution_label = btrim(p_label)
-  where id = p_id;
-  return now();
+    shared_at = coalesce(shared_at, now()),
+    attribution_label = coalesce(attribution_label, btrim(p_label))
+  where id = p_id
+  returning shared_at into v_row.shared_at;
+  return v_row.shared_at;
 end;
 $$;
 

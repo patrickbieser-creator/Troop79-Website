@@ -2,8 +2,9 @@
  * /admin/library/menu-monster — Menu Monster leader tools
  * (Plans/Menu-Monster-Leader-Tools.md).
  *
- * Two tabs: the Price book (ingredients, packages with prices, unit
- * conversions) and Recipes (menu items with per-line diet rules). Gated by
+ * Three tabs: the Price book (ingredients, packages with prices, unit
+ * conversions), Recipes (menu items with per-line diet rules) and Scout
+ * recipes (what scouts shared — live at once, Phase 4A — to retire or re-credit). Gated by
  * `library.moderate` here and again in every action; reads with the service
  * role because the mm_* tables have RLS on with zero policies (D-239).
  * Depth-2 under Resource Library — its own nav item rather than an eighth
@@ -26,13 +27,15 @@ import { PublicPageLink } from '../../../_components/public-page-link';
 import { PriceActivity } from './price-activity';
 import { PriceBook } from './price-book';
 import { RecipeBuilder } from './recipe-builder';
+import { ScoutRecipes } from './scout-recipes';
+import { listSharedScoutRecipesWith } from '@/lib/menu-monster/scout-recipes-store';
 import styles from './menu-monster.module.css';
 
 export const metadata = {
   title: 'Menu Monster — Troop 79 Admin'
 };
 
-type Tab = 'prices' | 'recipes';
+type Tab = 'prices' | 'recipes' | 'scouts';
 
 export default async function MenuMonsterAdminPage({
   searchParams
@@ -42,10 +45,11 @@ export default async function MenuMonsterAdminPage({
   await requireCapability('library.moderate');
   const sp = await searchParams;
   const admin = createAdminClient();
-  const [catalog, held, stores] = await Promise.all([
+  const [catalog, held, stores, shared] = await Promise.all([
     loadAuthoringCatalogWith(admin),
     listHeldWith(admin),
-    listActiveStoreNamesWith(admin)
+    listActiveStoreNamesWith(admin),
+    listSharedScoutRecipesWith(admin)
   ]);
   const today = centralToday();
 
@@ -53,7 +57,9 @@ export default async function MenuMonsterAdminPage({
     (i) => !i.retiredAt && !catalog.packages.some((p) => p.ingredientId === i.id && !p.retiredAt && p.yield != null)
   ).length;
   const drafts = catalog.recipes.filter((r) => r.status === 'draft').length;
-  const tab: Tab = sp.tab === 'recipes' ? 'recipes' : 'prices';
+  const tab: Tab = sp.tab === 'recipes' || sp.tab === 'scouts' ? sp.tab : 'prices';
+  // Scout recipes worth a look: live ones changed after sharing.
+  const edited = shared.filter((r) => r.editedSinceShared && r.status !== 'retired').length;
   // Recent changes only matter on the Price book tab; the 50-row read skips Recipes.
   const changes = tab === 'prices' ? await listRecentChangesWith(admin, 50) : [];
 
@@ -65,8 +71,8 @@ export default async function MenuMonsterAdminPage({
         sub={
           <>
             Leaders keep the shared menu items and prices here; the planner shows only <strong>published</strong>{' '}
-            items. Scouts can&rsquo;t change anything here — their ideas land in the{' '}
-            <Link href="/admin/library?tab=queue">Library Queue</Link> for you to review.
+            items. Recipes scouts share go live at once — find them under Scout recipes; other ideas land in the{' '}
+            <Link href="/admin/library?tab=queue">Library Queue</Link>.
           </>
         }
       >
@@ -78,7 +84,8 @@ export default async function MenuMonsterAdminPage({
         activeKey={tab}
         items={[
           { key: 'prices', label: 'Price book', href: '/admin/library/menu-monster?tab=prices', ...(unpriced + held.length > 0 ? { count: unpriced + held.length } : {}) },
-          { key: 'recipes', label: 'Recipes', href: '/admin/library/menu-monster?tab=recipes', ...(drafts > 0 ? { count: drafts } : {}) }
+          { key: 'recipes', label: 'Recipes', href: '/admin/library/menu-monster?tab=recipes', ...(drafts > 0 ? { count: drafts } : {}) },
+          { key: 'scouts', label: 'Scout recipes', href: '/admin/library/menu-monster?tab=scouts', ...(edited > 0 ? { count: edited } : {}) }
         ]}
       />
 
@@ -87,8 +94,10 @@ export default async function MenuMonsterAdminPage({
           <PriceActivity held={held} changes={changes} />
           <PriceBook catalog={catalog} today={today} stores={stores} initialIngredientId={sp.ingredient} />
         </>
-      ) : (
+      ) : tab === 'recipes' ? (
         <RecipeBuilder catalog={catalog} initialRecipeId={sp.recipe} />
+      ) : (
+        <ScoutRecipes recipes={shared} />
       )}
     </div>
   );

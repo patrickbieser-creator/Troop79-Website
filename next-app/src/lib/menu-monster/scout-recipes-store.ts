@@ -171,3 +171,48 @@ export async function loadMyRecipeWith(sb: SupabaseClient, personId: number, id:
     updatedAt: r.updated_at as string
   };
 }
+
+/* ---- Leader side (admin › Menu Monster › Scout recipes) ------------------- */
+
+export interface SharedScoutRecipe {
+  id: string;
+  name: string;
+  status: RecipeStatus;
+  credit: string | null;
+  sharedAt: string;
+  updatedAt: string;
+  /** The author changed it after sharing (updated_at more than a second past shared_at) — live, with no review. */
+  editedSinceShared: boolean;
+}
+
+/** Every recipe a scout has shared (never an unshared draft), newest share first. */
+export async function listSharedScoutRecipesWith(sb: SupabaseClient, limit = 200): Promise<SharedScoutRecipe[]> {
+  const { data, error } = await sb
+    .from('mm_recipes')
+    .select('id, name, status, attribution_label, shared_at, updated_at')
+    .not('author_person_id', 'is', null)
+    .not('shared_at', 'is', null)
+    .order('shared_at', { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(`shared scout recipes: ${error.message}`);
+  return (data ?? []).map((r) => ({
+    id: r.id as string,
+    name: r.name as string,
+    status: r.status as RecipeStatus,
+    credit: (r.attribution_label as string | null) ?? null,
+    sharedAt: r.shared_at as string,
+    updatedAt: r.updated_at as string,
+    editedSinceShared: Date.parse(r.updated_at as string) - Date.parse(r.shared_at as string) > 1000
+  }));
+}
+
+/** A leader's credit change on a shared scout recipe. Returns the old credit, or null when the recipe isn't a shared scout recipe. */
+export async function setScoutRecipeCreditWith(sb: SupabaseClient, id: string, credit: string): Promise<{ before: string | null; name: string } | null> {
+  if (!isScoutRecipeId(id)) return null;
+  const { data: row, error } = await sb.from('mm_recipes').select('name, attribution_label, shared_at').eq('id', id).maybeSingle();
+  if (error) throw new Error(`load recipe: ${error.message}`);
+  if (!row || row.shared_at == null) return null;
+  const { error: uErr } = await sb.from('mm_recipes').update({ attribution_label: credit }).eq('id', id);
+  if (uErr) throw new Error(`credit: ${uErr.message}`);
+  return { before: (row.attribution_label as string | null) ?? null, name: row.name as string };
+}
