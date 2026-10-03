@@ -1,45 +1,43 @@
 'use client';
 
 /**
- * The Food & Recipes popup a day's "Add to …" opens on the Plan tab
+ * The Food & Recipes popup a meal's "Browse all recipes…" opens on the Plan tab
  * (prototype concept-e-scout-workspace/shelf.html "Recipe library", Patrick
- * 2026-10-02: a popup with the library's look, plus meal filters).
+ * 2026-10-02: a popup with the library's look, plus meal filters). Since
+ * 2026-10-03 (one control per job, Jenna) it belongs to ONE meal: it opens
+ * filtered to that meal (All is one press away — a scout may want a dinner
+ * recipe for lunch) and each recipe has one Add, greyed "Added" when it is
+ * already on the meal. While the meal is swapping, the button says Swap.
  *
  * A native modal <dialog> around the shared RecipeBrowser (the hub's Recipe
- * Library tab is the same list), whose right column here holds one button per
- * meal the recipe fits. Picking one drops the recipe onto that day's meal of that
- * slot (creating the meal when the day lacks it) and closes the popup; the Plan
- * tab announces what happened. Esc / Close cancel. What each meal button would
- * do is lib/menu-monster/menu-search.ts libraryTargets().
+ * Library tab is the same list). Picking closes it; Esc / Close cancel. The
+ * meal panel owns what a pick does and where focus goes back to.
  */
 
 import { useEffect, useId, useRef } from 'react';
-import type { Catalog, MealSlot, Recipe } from '@/lib/menu-monster/types';
+import type { Catalog, Recipe } from '@/lib/menu-monster/types';
 import { MEALS } from '@/lib/menu-monster/units';
-import { MAX_MENU_MEALS, type Menu } from '@/lib/menu-monster/menus';
-import { canPlanEmptyMeal, libraryTargets, type LibraryTarget } from '@/lib/menu-monster/menu-search';
+import type { Menu, MenuMeal } from '@/lib/menu-monster/menus';
+import { mealTitle } from '@/lib/menu-monster/menu-view';
 import { RecipeBrowser } from '../../_components/recipe-browser';
 import s from './workspace.module.css';
-
-const slotLabel = (slot: MealSlot) => MEALS.find((m) => m.key === slot)?.label ?? slot;
 
 export interface RecipeLibraryDialogProps {
   catalog: Catalog;
   menu: Menu;
-  day: number;
-  /** 'Fri, Oct 9' or 'Day 2' — the day the popup adds to. */
-  dayName: string;
-  onPick: (recipeId: string, slot: MealSlot) => void;
-  /** An empty meal of the slot, its recipes picked on the meal page. */
-  onPlanEmpty: (slot: MealSlot) => void;
+  meal: MenuMeal;
+  /** The name of the recipe being swapped out, or null when adding. */
+  swapping: string | null;
+  onPick: (recipe: Recipe) => void;
   /** Fires once the dialog has closed, whether by a pick, Close or Esc. */
   onClose: () => void;
 }
 
-export function RecipeLibraryDialog({ catalog, menu, day, dayName, onPick, onPlanEmpty, onClose }: RecipeLibraryDialogProps) {
+export function RecipeLibraryDialog({ catalog, menu, meal, swapping, onPick, onClose }: RecipeLibraryDialogProps) {
   const uid = useId();
   const ref = useRef<HTMLDialogElement | null>(null);
   const searchRef = useRef<HTMLInputElement | null>(null);
+  const slotWord = (MEALS.find((m) => m.key === meal.slot)?.label ?? meal.slot).toLowerCase();
 
   useEffect(() => {
     const dlg = ref.current;
@@ -48,34 +46,24 @@ export function RecipeLibraryDialog({ catalog, menu, day, dayName, onPick, onPla
   }, []);
 
   const close = () => ref.current?.close();
-  const pick = (recipeId: string, slot: MealSlot) => {
-    onPick(recipeId, slot);
+  const pick = (r: Recipe) => {
+    onPick(r);
     close();
   };
 
-  // With a meal filter on, the chip already names the meal: the button just says Add.
-  const targetButton = (r: Recipe, t: LibraryTarget, filtered: boolean) => {
-    const label = slotLabel(t.slot);
-    const lower = label.toLowerCase();
-    if (t.state === 'on') {
+  const action = (r: Recipe) => {
+    if (meal.recipeIds.includes(r.id)) {
       return (
-        <button key={t.slot} type="button" className={s.fitBtn} disabled aria-label={`${r.name} is already on ${lower}`} title={`Already on ${dayName} ${lower}`}>
+        <button type="button" className={s.fitBtn} disabled aria-label={`${r.name} is already on ${slotWord}`}>
           <span aria-hidden="true">✓ </span>
-          {filtered ? 'Added' : label}
-        </button>
-      );
-    }
-    if (t.state === 'full') {
-      return (
-        <button key={t.slot} type="button" className={s.fitBtn} disabled aria-label={`Add ${r.name} to ${lower}`} title={`This menu already has ${MAX_MENU_MEALS} meals`}>
-          {filtered ? 'Add' : label}
+          Added
         </button>
       );
     }
     return (
-      <button key={t.slot} type="button" className={s.fitBtn} aria-label={`Add ${r.name} to ${lower}`} title={t.state === 'adds' ? `Adds to ${dayName} ${lower}` : `New ${lower} on ${dayName}`} onClick={() => pick(r.id, t.slot)}>
+      <button type="button" className={s.fitBtn} aria-label={swapping ? `Swap ${swapping} for ${r.name}` : `Add ${r.name} to ${slotWord}`} onClick={() => pick(r)}>
         <span aria-hidden="true">+ </span>
-        {filtered ? 'Add' : label}
+        {swapping ? 'Swap' : 'Add'}
       </button>
     );
   };
@@ -87,36 +75,13 @@ export function RecipeLibraryDialog({ catalog, menu, day, dayName, onPick, onPla
           <h2 id={`${uid}-h`} className={s.libTitle}>
             Food &amp; Recipes
           </h2>
-          <p className={s.libFor}>For {dayName}</p>
+          <p className={s.libFor}>For {mealTitle(menu.startDate, meal.day, meal.slot)}</p>
         </div>
         <button type="button" className={s.libClose} onClick={close}>
           Close
         </button>
       </div>
-      <RecipeBrowser
-        catalog={catalog}
-        plan={menu}
-        searchRef={searchRef}
-        actions={(r, filter) => libraryTargets(r, menu, day, filter).map((t) => targetButton(r, t, filter !== null))}
-        footer={(filter) =>
-          filter &&
-          canPlanEmptyMeal(menu, day, filter) && (
-            <p className={s.foot}>
-              <button
-                type="button"
-                className={s.linkBtn}
-                onClick={() => {
-                  onPlanEmpty(filter);
-                  close();
-                }}
-              >
-                Plan {slotLabel(filter).toLowerCase()} empty
-              </button>{' '}
-              and add to it later.
-            </p>
-          )
-        }
-      />
+      <RecipeBrowser catalog={catalog} plan={menu} searchRef={searchRef} initialFilter={meal.slot} actions={action} />
     </dialog>
   );
 }

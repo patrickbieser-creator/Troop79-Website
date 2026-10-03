@@ -12,7 +12,9 @@
  *     share of the meal in the right column, a ⋯ with Swap…, Back to the
  *     troop's version, Share this version as a new recipe, and Remove;
  *   - a dashed search at the end adds a recipe that fits this slot (a combobox +
- *     listbox, fully keyboard-operable; "Swap X for…" while swapping);
+ *     listbox, fully keyboard-operable; "Swap X for…" while swapping). The list
+ *     always ends in "Browse all recipes…": the Food & Recipes popup for this
+ *     meal (the only way to add food — the day's control adds meals, 2026-10-03);
  *   - a People dialer for this meal (Reset to the menu's number);
  *   - its own status line — what just happened, Undo after a remove or swap;
  *   - a quiet warning under a recipe that isn't for someone the menu counts
@@ -56,6 +58,7 @@ import type { NewIngredient } from '@/lib/menu-monster/scout-ingredients';
 import { MenuNewIngredient } from './menu-new-ingredient';
 import { IngredientList, type RowAction } from '../../_components/ingredient-list';
 import { RowMenu } from './row-menu';
+import { RecipeLibraryDialog } from './recipe-library-dialog';
 import s from './workspace.module.css';
 
 /** The part of a meal a remove, swap or "back to the troop recipe" can undo. */
@@ -82,22 +85,32 @@ export interface MealPanelProps {
   onTyped?: (n: NewIngredient) => void;
   /** Set when "Share this version as a new recipe" may link out: a saved menu, no unsaved changes. */
   shareVersionMenuId?: string | null;
+  /** A meal the scout just added ("Add a meal"): focus lands in its search. */
+  autoFocusAdd?: boolean;
 }
 
-export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChange, canTypeIn = false, onTyped, shareVersionMenuId = null }: MealPanelProps) {
+export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChange, canTypeIn = false, onTyped, shareVersionMenuId = null, autoFocusAdd = false }: MealPanelProps) {
   const uid = useId();
   const [openIds, setOpenIds] = useState<ReadonlySet<string>>(() => new Set());
   const [status, setStatus] = useState<Status>({ text: '', undoTo: null });
   const [swapId, setSwapId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [listOpen, setListOpen] = useState(false);
-  const [active, setActive] = useState(0);
+  /** The highlighted option; null = the default (the first match, or none when nothing matches). */
+  const [active, setActive] = useState<number | null>(null);
+  const [browsing, setBrowsing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const undoRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (status.focusUndo) undoRef.current?.focus();
   }, [status]);
+
+  useEffect(() => {
+    if (autoFocusAdd) requestAnimationFrame(() => inputRef.current?.focus());
+    // Mount only: a just-added meal, once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const people = meal.headcount ?? menu.headcount;
   const edits = meal.recipeEdits ?? {};
@@ -114,8 +127,11 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChang
   const overridden = people !== menu.headcount;
   const candidates = recipesForMeal(catalog, meal.slot).filter((r) => isPickable(r) && !meal.recipeIds.includes(r.id));
   const matches = candidates.filter((r) => r.name.toLowerCase().includes(query.trim().toLowerCase()));
-  const act = Math.min(active, Math.max(0, matches.length - 1));
-  const showList = listOpen && matches.length > 0;
+  // The list always ends in "Browse all recipes…" (the Food & Recipes popup, for this meal); it is never
+  // the default, so Enter on a typo does nothing rather than open a popup.
+  const browseAt = matches.length;
+  const act = Math.min(active ?? (matches.length > 0 ? 0 : -1), browseAt);
+  const showList = listOpen;
   const swapping = swapId ? recipeName(swapId) : null;
   // No noun (Patrick, 2026-10-03): the list holds single foods and recipes alike; the results name themselves.
   const addLabel = swapping ? `Swap ${swapping} for` : `Add to ${mealTitle(menu.startDate, meal.day, meal.slot)}`;
@@ -138,8 +154,18 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChang
   const clearSearch = () => {
     setQuery('');
     setListOpen(false);
-    setActive(0);
+    setActive(null);
   };
+
+  const openBrowse = () => {
+    clearSearch();
+    setBrowsing(true);
+  };
+  const closeBrowse = () => {
+    setBrowsing(false);
+    requestAnimationFrame(() => inputRef.current?.focus());
+  };
+  const choose = (i: number) => (i < browseAt ? pick(matches[i]) : openBrowse());
 
   const without = (e: RecipeEdits, rid: string): RecipeEdits => {
     const { [rid]: dropped, ...rest } = e;
@@ -211,14 +237,14 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChang
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       if (!listOpen) setListOpen(true);
-      else setActive(Math.min(act + 1, matches.length - 1));
+      else setActive(Math.min(act + 1, browseAt));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setActive(Math.max(act - 1, 0));
     } else if (e.key === 'Enter') {
-      if (showList) {
+      if (showList && act >= 0) {
         e.preventDefault();
-        pick(matches[act]);
+        choose(act);
       }
     } else if (e.key === 'Escape') {
       e.preventDefault();
@@ -356,12 +382,12 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChang
                 aria-expanded={showList}
                 aria-controls={`${uid}-results`}
                 aria-autocomplete="list"
-                aria-activedescendant={showList ? `${uid}-opt-${act}` : undefined}
+                aria-activedescendant={showList && act >= 0 ? `${uid}-opt-${act}` : undefined}
                 placeholder={swapping ? `Swap ${swapping} for…` : `Add to ${slotWord}`}
                 onChange={(e) => {
                   setQuery(e.target.value);
                   setListOpen(true);
-                  setActive(0);
+                  setActive(null);
                 }}
                 onFocus={() => setListOpen(true)}
                 onClick={() => setListOpen(true)}
@@ -384,12 +410,32 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChang
                       {r.name}
                     </li>
                   ))}
+                {showList && matches.length === 0 && query.trim() !== '' && (
+                  <li role="none" className={s.noMatchItem}>
+                    Nothing for this meal matches “{query.trim()}”.
+                  </li>
+                )}
+                {showList && (
+                  <li
+                    id={`${uid}-opt-${browseAt}`}
+                    role="option"
+                    aria-selected={act === browseAt}
+                    className={`${s.option} ${s.browseOption}`}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onMouseMove={() => setActive(browseAt)}
+                    onClick={openBrowse}
+                  >
+                    Browse all recipes…
+                  </li>
+                )}
               </ul>
-              {listOpen && matches.length === 0 && query.trim() !== '' && <p className={s.noMatch}>Nothing for this meal matches “{query.trim()}”.</p>}
             </div>
           </li>
         )}
       </ul>
+      {browsing && (
+        <RecipeLibraryDialog catalog={catalog} menu={menu} meal={meal} swapping={swapping} onPick={pick} onClose={closeBrowse} />
+      )}
 
       <p className={status.text ? s.statusLine : s.srOnly} role="status">
         {status.text}

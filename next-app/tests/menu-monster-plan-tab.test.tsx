@@ -165,146 +165,83 @@ describe('PlanTab', () => {
     expect(row.textContent).toContain('$14.98');
   });
 
-  const library = () => screen.getByRole('dialog', { name: 'Food & Recipes' });
-  async function openLibrary(n: number) {
+  // One control per job (Patrick + Jenna, 2026-10-03): the day adds MEALS, the meal's own search adds food.
+  const addMeal = (n: number) => screen.getByRole('button', { name: new RegExp(`^Add a meal to Day ${n}$`) });
+  async function pickMeal(n: number, slot: string) {
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: new RegExp(`^Add to Day ${n}$`) }));
+    await user.click(addMeal(n));
+    await user.click(within(screen.getByRole('group', { name: `Meals not yet on Day ${n}` })).getByRole('button', { name: slot }));
     return user;
   }
+  const everyMeal = (day: number) =>
+    (['breakfast', 'lunch', 'dinner', 'snack', 'dessert'] as const).map((slot) => ({ id: `${slot}-${day}`, day, slot, headcount: null, recipeIds: [], recipeEdits: {} }));
 
-  it('Day_EndsInAnAddToTheDayButton', () => {
+  it('Day_EndsInAnAddAMealButton', () => {
     render(existing());
-    const btn = screen.getByRole('button', { name: 'Add to Day 1' });
-    expect(btn.textContent).toBe('⌕Add to Day 1');
+    expect(addMeal(1).textContent).toBe('+Add a meal');
   });
 
-  it('PlusAddAMeal_IsGone_BecauseTheDaySearchReplacedIt', () => {
+  it('DayRecipeSearch_IsGone_BecauseTheMealsOwnSearchAddsFood', () => {
     render(existing());
-    expect(screen.queryByRole('button', { name: /Add a meal/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Add to Day/ })).toBeNull();
   });
 
-  it('SearchRecipes_OpensTheRecipeLibraryPopup', async () => {
+  it('AddAMeal_OffersOnlyTheMealsTheDayLacks', async () => {
+    const user = userEvent.setup();
     render(existing());
-    await openLibrary(1);
-    expect(library().hasAttribute('open')).toBe(true);
+    await user.click(addMeal(1));
+    const group = screen.getByRole('group', { name: 'Meals not yet on Day 1' });
+    expect(within(group).getAllByRole('button').map((b) => b.textContent)).toEqual(['Lunch', 'Dinner', 'Snack', 'Dessert']);
   });
 
-  it('RecipeLibrary_ListsEveryRecipe_BeforeAnythingIsTyped', async () => {
+  it('AddAMeal_CreatesTheMealOpenInline', async () => {
     render(existing());
-    await openLibrary(2);
-    expect(within(library()).getAllByRole('button', { expanded: false }).map((b) => b.textContent?.replace('›', ''))).toEqual([
-      'Pancakes',
-      'Bacon',
-      'Oatmeal',
-      'Orange juice',
-      'Sandwiches'
-    ]);
-  });
-
-  it('RecipeLibrary_NarrowsByName_WhenTyping', async () => {
-    render(existing());
-    const user = await openLibrary(2);
-    await user.type(within(library()).getByRole('searchbox', { name: 'Search' }), 'sandw');
-    expect(within(library()).getAllByRole('button', { name: /^Add / }).map((b) => b.getAttribute('aria-label'))).toEqual(['Add Sandwiches to lunch']);
-  });
-
-  it('RecipeLibrary_NarrowsByMeal_WhenAFilterIsPressed', async () => {
-    render(existing());
-    const user = await openLibrary(2);
-    await user.click(within(library()).getByRole('button', { name: 'Lunch' }));
-    expect(within(library()).queryByRole('button', { name: 'Add Pancakes to breakfast' })).toBeNull();
-  });
-
-  it('RecipeLibrary_MealButtonSaysJustAdd_WhenTheFilterAlreadyNamesTheMeal', async () => {
-    render(existing());
-    const user = await openLibrary(2);
-    await user.click(within(library()).getByRole('button', { name: 'Lunch' }));
-    expect(within(library()).getByRole('button', { name: 'Add Sandwiches to lunch' }).textContent).toBe('+ Add');
-  });
-
-  it('RecipeLibrary_FilterButton_SaysItIsPressed', async () => {
-    render(existing());
-    const user = await openLibrary(2);
-    await user.click(within(library()).getByRole('button', { name: 'Lunch' }));
-    expect(within(library()).getByRole('button', { name: 'Lunch' }).getAttribute('aria-pressed')).toBe('true');
-  });
-
-  it('RecipeLibrary_ShowsWhatEachPersonGets_WhenARecipeIsOpened', async () => {
-    render(existing());
-    const user = await openLibrary(2);
-    await user.click(within(library()).getByRole('button', { name: /^Sandwiches/ }));
-    expect(within(library()).getByRole('list', { name: 'Sandwiches ingredients' }).textContent).toContain('Bread');
-  });
-
-  it('Scout_AddsRecipeToExistingMeal_WhenPickingItInTheLibrary', async () => {
-    render(existing());
-    const user = await openLibrary(1);
-    await user.click(screen.getByRole('button', { name: 'Add Pancakes to breakfast' }));
-    // The meal opens inline to show it (2026-10-03).
-    const list = screen.getByRole('list', { name: 'Recipes in Day 1 breakfast' });
-    expect([within(list).getByRole('button', { name: /^Bacon/ }), within(list).getByRole('button', { name: /^Pancakes/ })].every(Boolean)).toBe(true);
-  });
-
-  it('Scout_CreatesTheMeal_WhenPickingARecipeForASlotTheDayLacks', async () => {
-    render(existing());
-    const user = await openLibrary(2);
-    await user.click(screen.getByRole('button', { name: 'Add Sandwiches to lunch' }));
-    expect(screen.getByRole('button', { name: 'More for Day 2 lunch' })).toBeTruthy();
-  });
-
-  it('RecipeLibrary_Closes_WhenARecipeIsPicked', async () => {
-    render(existing());
-    const user = await openLibrary(2);
-    await user.click(screen.getByRole('button', { name: 'Add Sandwiches to lunch' }));
-    expect(screen.queryByRole('dialog', { name: 'Food & Recipes' })).toBeNull();
-  });
-
-  it('Scout_MustSave_AfterAddingARecipeFromTheLibrary', async () => {
-    render(existing());
-    const user = await openLibrary(2);
-    await user.click(screen.getByRole('button', { name: 'Add Sandwiches to lunch' }));
-    expect(screen.getByRole('button', { name: 'Save changes' })).toBeTruthy();
-  });
-
-  it('Scout_HearsWhatHappened_WhenARecipeIsAddedFromTheLibrary', async () => {
-    render(existing());
-    const user = await openLibrary(2);
-    await user.click(screen.getByRole('button', { name: 'Add Sandwiches to lunch' }));
-    expect(screen.getByText('Sandwiches added to Day 2 lunch.').getAttribute('aria-live')).toBe('polite');
-  });
-
-  it('RecipeLibrary_ClosesWithoutAdding_OnClose', async () => {
-    render(existing());
-    const user = await openLibrary(2);
-    await user.click(within(library()).getByRole('button', { name: 'Close' }));
-    expect(screen.queryByRole('dialog', { name: 'Food & Recipes' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Saved' })).toBeTruthy();
-  });
-
-  it('Scout_IsNotOfferedARecipeTwice_OnTheSameMeal', async () => {
-    render(existing());
-    await openLibrary(1);
-    expect((within(library()).getByRole('button', { name: 'Bacon is already on breakfast' }) as HTMLButtonElement).disabled).toBe(true);
-  });
-
-  it('Scout_GetsAnEmptyMealOpenInline_WhenPlanningAMealWithoutARecipe', async () => {
-    render(existing());
-    const user = await openLibrary(2);
-    await user.click(within(library()).getByRole('button', { name: 'Lunch' }));
-    await user.click(within(library()).getByRole('button', { name: 'Plan lunch empty' }));
-    expect(screen.getByRole('button', { name: 'More for Day 2 lunch' })).toBeTruthy();
+    await pickMeal(2, 'Lunch');
     expect(screen.getByRole('list', { name: 'Recipes in Day 2 lunch' })).toBeTruthy();
+  });
+
+  it('AddAMeal_PutsFocusInTheNewMealsSearch', async () => {
+    render(existing());
+    await pickMeal(2, 'Lunch');
+    await new Promise((r) => requestAnimationFrame(() => r(null)));
+    expect(document.activeElement).toBe(screen.getByRole('combobox', { name: 'Add to Day 2 lunch' }));
+  });
+
+  it('AddAMeal_IsAnnounced', async () => {
+    render(existing());
+    await pickMeal(2, 'Lunch');
+    expect(screen.getByText('Lunch added to Day 2.').getAttribute('aria-live')).toBe('polite');
+  });
+
+  it('AddAMeal_MakesTheMenuDirty', async () => {
+    render(existing());
+    await pickMeal(2, 'Lunch');
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeTruthy();
   });
 
   it('Scout_SavesTheNewMeal_WithTheMenu_AndStaysOnThePage', async () => {
     saveMenuAction.mockResolvedValue({ ok: true, updatedAt: '2026-10-02T13:00:00.000Z' });
     render(existing());
-    const user = await openLibrary(2);
-    await user.click(within(library()).getByRole('button', { name: 'Lunch' }));
-    await user.click(within(library()).getByRole('button', { name: 'Plan lunch empty' }));
+    const user = await pickMeal(2, 'Lunch');
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
     expect((saveMenuAction.mock.calls[0][1] as Menu).meals.some((m) => m.day === 1 && m.slot === 'lunch')).toBe(true);
     expect(router.push).not.toHaveBeenCalled();
+  });
+
+  it('AddAMeal_IsGone_WhenTheDayHasEveryMeal', () => {
+    render(existing(base({ meals: everyMeal(0) })));
+    expect(screen.queryByRole('button', { name: 'Add a meal to Day 1' })).toBeNull();
+  });
+
+  it('AddAMeal_IsGreyedWithTheReason_AtTheMenusMealCap', () => {
+    const meals = Array.from({ length: 6 }, (_, d) => everyMeal(d)).flat();
+    render(existing(base({ dayCount: 7, meals })));
+    expect([(addMeal(7) as HTMLButtonElement).disabled, screen.getByText('Menu has 30 meals')].map(Boolean)).toEqual([true, true]);
+  });
+
+  it('AddAMeal_IsAbsent_WhenReadOnly', () => {
+    render(<PlanTab catalog={CATALOG} menuId="menu-1" menu={base()} updatedAt={VERSION} outings={OUTINGS} readOnly />);
+    expect(screen.queryByRole('button', { name: /^Add a meal/ })).toBeNull();
   });
 
 
@@ -316,13 +253,13 @@ describe('PlanTab', () => {
     expect(screen.queryByText('Bacon')).toBeNull();
   });
 
-  it('RemovingAMeal_MovesFocusToTheDaysRecipeSearch', async () => {
+  it('RemovingAMeal_MovesFocusToTheDaysAddAMeal', async () => {
     const user = userEvent.setup();
     render(existing());
     await user.click(screen.getByRole('button', { name: 'More for Day 1 breakfast' }));
     await user.click(screen.getByRole('button', { name: 'Remove meal' }));
     await new Promise((r) => requestAnimationFrame(() => r(null)));
-    expect(document.activeElement?.id).toBe('mm-lib-0');
+    expect(document.activeElement?.id).toBe('mm-add-0');
   });
 
   it('MealButtons_AreNamedWithTheirDay', () => {

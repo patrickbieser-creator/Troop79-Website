@@ -9,7 +9,9 @@
  * save is "Save menu"). Basics: name, where you're cooking, outing, one line of
  * dialers, the budget. Meals: one list card per day, one row per meal; a
  * meal's name opens it INLINE (MealPanel — Patrick, 2026-10-03, the separate
- * meal page was too many clicks). Everything on the page is one draft with one
+ * meal page was too many clicks). One control per job (2026-10-03): a day ends in
+ * "+ Add a meal" (AddMealMenu — the meals it lacks), and food goes in through the
+ * meal's own search. Everything on the page is one draft with one
  * Save; one Total to buy / Per person switch above the meals sets every open
  * meal's amounts and the meal costs. `openMeal` (?meal=) opens one on load.
  * Shopping (right): the menu total and the budget readout; the merged
@@ -40,14 +42,15 @@ import type { Catalog, Plan, RestrictionKey } from '@/lib/menu-monster/types';
 import { MEALS, RESTRICTION_BY_KEY } from '@/lib/menu-monster/units';
 import { MAX_HEADCOUNT, MIN_HEADCOUNT } from '@/lib/menu-monster/engine';
 import { MAX_MENU_DAYS, MAX_MENU_MEALS, MENU_CONTEXTS, MAX_MENU_NAME, menuNameError, type Menu, type MenuContext, type MenuMeal } from '@/lib/menu-monster/menus';
-import { DIET_ORDER, budgetState, dayLabel, mealTitle, menuCost, outingDayCount, type Outing } from '@/lib/menu-monster/menu-view';
+import { DIET_ORDER, budgetState, dayLabel, menuCost, outingDayCount, type Outing } from '@/lib/menu-monster/menu-view';
 import type { CreateResult, MenuStore, SaveResult } from '@/lib/menu-monster/menu-store';
 import { serverMenuStore } from './server-menu-store';
 import { MealPanel } from './meal-panel';
 import { overlayNewIngredients, type NewIngredient } from '@/lib/menu-monster/scout-ingredients';
 import type { AmountView } from '@/lib/menu-monster/ingredient-rows';
 import { RowMenu } from './row-menu';
-import { RecipeLibraryDialog } from './recipe-library-dialog';
+import { AddMealMenu } from './add-meal-menu';
+import { mealsToAdd } from '@/lib/menu-monster/menu-search';
 import { ReadOnlyLine } from './read-only-line';
 import { SaveBar } from './save-bar';
 import s from './workspace.module.css';
@@ -99,8 +102,8 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
   // Release C: ingredients the scout typed in on this page, until the next load brings them in the catalog.
   const [typed, setTyped] = useState<NewIngredient[]>([]);
   const catalog = useMemo(() => overlayNewIngredients(catalogProp, typed), [catalogProp, typed]);
-  /** The day whose recipe library popup is open, or null. */
-  const [libraryDay, setLibraryDay] = useState<number | null>(null);
+  /** The meal "Add a meal" just created: its panel takes focus into its search, once. */
+  const [focusMeal, setFocusMeal] = useState<string | null>(null);
   const nameRef = useRef<HTMLInputElement | null>(null);
 
   const linked = outings.find((o) => o.id === menu.calendarEntryId) ?? null;
@@ -163,43 +166,19 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
     });
   /** A meal panel's change: the whole next meal, into the one draft. */
   const setMeal = (next: MenuMeal) => edit((m) => ({ ...m, meals: m.meals.map((x) => (x.id === next.id ? next : x)) }));
-  /** Drop a recipe into the day's meal of that slot, creating the meal if the day lacks it. */
-  const addRecipe = (day: number, slot: Plan['meal'], recipeId: string) => {
-    const existing = menu.meals.find((m) => m.day === day && m.slot === slot);
-    if (!existing && menu.meals.length >= MAX_MENU_MEALS) return;
-    if (existing?.recipeIds.includes(recipeId)) return;
-    const mealId = existing?.id ?? newId();
-    edit((m) => {
-      const here = m.meals.find((x) => x.day === day && x.slot === slot);
-      if (here) return { ...m, meals: m.meals.map((x) => (x === here ? { ...x, recipeIds: [...x.recipeIds, recipeId] } : x)) };
-      const meal: MenuMeal = { id: mealId, day, slot, headcount: null, recipeIds: [recipeId], recipeEdits: {} };
-      return { ...m, meals: [...m.meals, meal] };
-    });
-    openMeal$(mealId);
-    const name = catalog.recipes.find((r) => r.id === recipeId)?.name ?? 'Recipe';
-    setStatus(`${name} added to ${mealTitle(menu.startDate, day, slot)}.`);
-  };
-  /** An empty meal for the slot (if the day lacks it), opened inline. */
-  const planMeal = (day: number, slot: Plan['meal']) => {
-    const existing = menu.meals.find((m) => m.day === day && m.slot === slot);
-    if (existing) {
-      openMeal$(existing.id);
-      return;
-    }
-    if (menu.meals.length >= MAX_MENU_MEALS) return;
+  /** "Add a meal": an empty meal for the slot, opened inline with focus in its search. */
+  const addMeal = (day: number, slot: Plan['meal']) => {
+    if (menu.meals.length >= MAX_MENU_MEALS || menu.meals.some((m) => m.day === day && m.slot === slot)) return;
     const meal: MenuMeal = { id: newId(), day, slot, headcount: null, recipeIds: [], recipeEdits: {} };
     edit((m) => ({ ...m, meals: [...m.meals, meal] }));
     openMeal$(meal.id);
+    setFocusMeal(meal.id);
+    setStatus(`${slotLabel(slot)} added to Day ${day + 1}.`);
   };
-  /** The popup closed: focus goes back to the day's "Add to …". */
-  const closeLibrary = (day: number) => {
-    setLibraryDay(null);
-    requestAnimationFrame(() => document.getElementById(`mm-lib-${day}`)?.focus());
-  };
-  /** The row (and its focused ⋯) goes away: focus moves to the day's "Add to …". */
+  /** The row (and its focused ⋯) goes away: focus moves to the day's "Add a meal" (a removal always leaves it room). */
   const removeMeal = (id: string, day: number) => {
     edit((m) => ({ ...m, meals: m.meals.filter((x) => x.id !== id) }));
-    requestAnimationFrame(() => document.getElementById(`mm-lib-${day}`)?.focus());
+    requestAnimationFrame(() => document.getElementById(`mm-add-${day}`)?.focus());
   };
   const addDay = () => edit((m) => ({ ...m, dayCount: Math.min(MAX_MENU_DAYS, m.dayCount + 1) }));
   const removeLastDay = () => edit((m) => ({ ...m, dayCount: Math.max(1, m.dayCount - 1) }));
@@ -405,6 +384,7 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
             {Array.from({ length: days }, (_, d) => {
               const meals = menu.meals.filter((m) => m.day === d).sort((a, b) => slotOrder(a.slot) - slotOrder(b.slot));
               const removable = d === days - 1 && days > 1 && meals.length === 0;
+              const toAdd = mealsToAdd(menu, d);
               return (
                 <div key={d} className={s.dayBlock}>
                   <div className={s.dayHeadRow}>
@@ -457,35 +437,22 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
                                 canTypeIn={canTypeIn}
                                 onTyped={(n) => setTyped((t) => [...t, n])}
                                 shareVersionMenuId={shareVersionMenuId}
+                                autoFocusAdd={meal.id === focusMeal}
                               />
                             </div>
                           )}
                         </li>
                       );
                     })}
-                    {!readOnly && (
+                    {!readOnly && toAdd.slots.length > 0 && (
                       <li className={s.addRow}>
-                        <button type="button" id={`mm-lib-${d}`} className={s.libOpen} aria-haspopup="dialog" onClick={() => setLibraryDay(d)}>
-                          <span aria-hidden="true">⌕</span>
-                          Add to {dayLabel(menu.startDate, d)}
-                        </button>
+                        <AddMealMenu id={`mm-add-${d}`} dayName={dayLabel(menu.startDate, d)} slots={toAdd.slots} full={toAdd.full} onPick={(slot) => addMeal(d, slot)} />
                       </li>
                     )}
                   </ul>
                 </div>
               );
             })}
-            {libraryDay !== null && !readOnly && (
-              <RecipeLibraryDialog
-                catalog={catalog}
-                menu={menu}
-                day={libraryDay}
-                dayName={dayLabel(menu.startDate, libraryDay)}
-                onPick={(recipeId, slot) => addRecipe(libraryDay, slot, recipeId)}
-                onPlanEmpty={(slot) => planMeal(libraryDay, slot)}
-                onClose={() => closeLibrary(libraryDay)}
-              />
-            )}
             {!readOnly && (
               <div className={s.addDay}>
                 <Button variant="ghost" onClick={addDay} disabled={days >= MAX_MENU_DAYS}>

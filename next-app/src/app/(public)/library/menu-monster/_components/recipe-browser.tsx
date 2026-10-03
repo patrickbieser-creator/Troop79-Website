@@ -7,8 +7,8 @@
  * (IngredientList, read mode) and its right column says which meals it fits.
  *
  * Two homes: the hub's Recipe Library tab (the right column is plain text) and
- * the Plan tab's popup (recipe-library-dialog.tsx), which passes `actions` so
- * the right column holds its add-to-meal buttons. A shared scout recipe says
+ * a meal's "Browse all recipes…" popup (recipe-library-dialog.tsx), which passes
+ * `actions` so the right column holds its Add button. A shared scout recipe says
  * "Recipe by Sam K."; the viewer's own draft (only theirs ever reaches the
  * client) says "Your draft recipe". What shows is
  * lib/menu-monster/menu-search.ts filterRecipes().
@@ -30,7 +30,8 @@ export function RecipeBrowser({
   plan,
   actions,
   footer,
-  searchRef
+  searchRef,
+  initialFilter = null
 }: {
   catalog: Catalog;
   /** Who eats, for the "Each person gets" rows (diet-only lines show when someone has that diet). */
@@ -40,10 +41,12 @@ export function RecipeBrowser({
   /** A line under the list, given the meal filter. */
   footer?: (filter: MealSlot | null) => ReactNode;
   searchRef?: Ref<HTMLInputElement>;
+  /** The meal filter it opens on (the popup opened from a meal starts on that meal; All is one press away). */
+  initialFilter?: MealSlot | null;
 }) {
   const uid = useId();
   const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState<MealSlot | null>(null);
+  const [filter, setFilter] = useState<MealSlot | null>(initialFilter);
   const [openId, setOpenId] = useState<string | null>(null);
   const recipes = filterRecipes(catalog, query, filter);
   const q = query.trim();

@@ -343,6 +343,9 @@
 .optionText { display: flex; flex-direction: column; }
 .optionSub { font-size: var(--fs-sm); color: var(--text-meta); }
 .noMatch { font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-meta); margin: var(--sp-2) 0 0; }
+/* A meal search's list: the no-match line inside it, and the quiet "Browse all recipes…" that always ends it. */
+.noMatchItem { padding: var(--sp-2) var(--sp-4); font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-meta); }
+.option.browseOption { color: var(--text-meta); font-size: var(--fs-sm); border-top: 1px solid var(--rule); }
 
 /* One quiet line under the list: what just happened, and Undo. Always present so screen readers hear it. */
 .statusLine { min-height: 1.5em; font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-meta); margin: var(--sp-2) 0 0; }
@@ -469,13 +472,26 @@
 .paidField { display: flex; flex-direction: column; gap: var(--sp-1); }
 .verdict { font-family: var(--font-ui); font-size: var(--fs-md); color: var(--text-body); margin: 0 0 var(--sp-3); }
 
-/* ---- Recipe library popup (Plan tab, a day's "Search recipes") --------------- */
-/* The day's trigger: the dashed search box's look, as a button that opens the popup. */
-.libOpen {
+/* ---- A day's "+ Add a meal" (Plan tab): the dashed add-row look, opening a short list of the meals the day lacks. */
+.addMealWrap { position: relative; display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
+.addMealPop {
+  position: absolute;
+  left: 0;
+  top: 100%;
+  z-index: 5;
+  min-width: 160px;
+  margin-top: var(--sp-1);
+  background: var(--warm-white);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-md);
+  box-shadow: var(--shadow-hover);
+  padding: var(--sp-1) 0;
+}
+.addMealBtn {
   display: flex;
   align-items: center;
   gap: var(--sp-2);
-  width: 100%;
+  flex: 1 1 auto;
   min-height: 36px;
   font-family: var(--font-ui);
   font-size: var(--fs-md);
@@ -487,8 +503,11 @@
   padding: 0 var(--sp-3);
   cursor: pointer;
 }
-.libOpen:hover { background: var(--cream); color: var(--navy); }
-.libOpen:focus-visible { outline: var(--focus-ring); outline-offset: 1px; }
+.addMealBtn:hover:not(:disabled) { background: var(--cream); color: var(--navy); }
+.addMealBtn:focus-visible { outline: var(--focus-ring); outline-offset: 1px; }
+.addMealBtn:disabled { cursor: default; opacity: 0.6; }
+
+/* ---- Food & Recipes popup (a meal's "Browse all recipes…") ------------------- */
 
 .libDialog {
   width: min(560px, calc(100vw - 32px));

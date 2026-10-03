@@ -204,7 +204,7 @@ describe('MealEditor', () => {
       render(editor());
       await user.click(search());
       await user.type(search(), 'Sand');
-      expect(panel().queryByRole('option')).toBeNull();
+      expect(panel().getAllByRole('option').map((o) => o.textContent)).toEqual(['Browse all recipes…']);
     });
 
     it('Search_LeavesOutRecipesAlreadyOnTheMeal', async () => {
@@ -322,6 +322,113 @@ describe('MealEditor', () => {
       await user.click(screen.getByRole('button', { name: 'More for Bacon' }));
       await user.click(screen.getByRole('button', { name: 'Remove' }));
       expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Undo' }));
+    });
+  });
+
+  // "Browse all recipes…" (Patrick + Jenna, 2026-10-03): the Food & Recipes popup, opened from a meal, adds to that meal.
+  describe('browse all recipes', () => {
+    const library = () => screen.getByRole('dialog', { name: 'Food & Recipes' });
+    async function browse(text = '') {
+      const user = userEvent.setup();
+      await user.click(search());
+      if (text) await user.type(search(), text);
+      await user.click(screen.getByRole('option', { name: 'Browse all recipes…' }));
+      return user;
+    }
+
+    it('Search_EndsInBrowseAllRecipes', async () => {
+      const user = userEvent.setup();
+      render(editor());
+      await user.click(search());
+      expect(panel().getAllByRole('option').at(-1)?.textContent).toBe('Browse all recipes…');
+    });
+
+    it('Search_StillOffersBrowse_WhenNothingMatches', async () => {
+      const user = userEvent.setup();
+      render(editor());
+      await user.click(search());
+      await user.type(search(), 'zzz');
+      expect([panel().getByText('Nothing for this meal matches “zzz”.'), panel().getByRole('option', { name: 'Browse all recipes…' })].every(Boolean)).toBe(true);
+    });
+
+    it('Search_Enter_DoesNotOpenBrowse_WhenNothingMatches', async () => {
+      const user = userEvent.setup();
+      render(editor());
+      await user.click(search());
+      await user.type(search(), 'zzz{Enter}');
+      expect(screen.queryByRole('dialog', { name: 'Food & Recipes' })).toBeNull();
+    });
+
+    it('Search_ArrowDown_ReachesBrowse_WhenNothingMatches', async () => {
+      const user = userEvent.setup();
+      render(editor());
+      await user.click(search());
+      await user.type(search(), 'zzz{ArrowDown}{Enter}');
+      expect(library().hasAttribute('open')).toBe(true);
+    });
+
+    it('Browse_NamesTheMealItAddsTo', async () => {
+      render(editor());
+      await browse();
+      expect(within(library()).getByText('For Day 1 breakfast')).toBeTruthy();
+    });
+
+    it('Browse_StartsFilteredToThisMeal', async () => {
+      render(editor());
+      await browse();
+      expect(within(library()).getByRole('button', { name: 'Breakfast' }).getAttribute('aria-pressed')).toBe('true');
+    });
+
+    it('Browse_ShowsEveryRecipe_WhenTheFilterIsSetToAll', async () => {
+      render(editor());
+      const user = await browse();
+      await user.click(within(library()).getByRole('button', { name: 'All' }));
+      expect(within(library()).getByRole('button', { name: 'Add Sandwiches to breakfast' })).toBeTruthy();
+    });
+
+    it('Browse_ShowsWhatEachPersonGets_WhenARecipeIsOpened', async () => {
+      render(editor());
+      const user = await browse();
+      await user.click(within(library()).getByRole('button', { name: /^Pancakes/ }));
+      expect(within(library()).getByRole('list', { name: 'Pancakes ingredients' }).textContent).toContain('Pancake mix');
+    });
+
+    it('Browse_AddsThePickedRecipeToThisMeal_AndCloses', async () => {
+      render(editor());
+      const user = await browse();
+      await user.click(within(library()).getByRole('button', { name: 'Add Pancakes to breakfast' }));
+      expect([screen.queryByRole('dialog', { name: 'Food & Recipes' }), panel().getByRole('button', { name: 'Pancakes' })].map(Boolean)).toEqual([false, true]);
+    });
+
+    it('Browse_SaysARecipeIsAlreadyOnTheMeal', async () => {
+      render(editor());
+      await browse();
+      expect((within(library()).getByRole('button', { name: 'Bacon is already on breakfast' }) as HTMLButtonElement).disabled).toBe(true);
+    });
+
+    it('Browse_ReturnsFocusToTheSearch_OnClose', async () => {
+      render(editor());
+      const user = await browse();
+      await user.click(within(library()).getByRole('button', { name: 'Close' }));
+      await new Promise((r) => requestAnimationFrame(() => r(null)));
+      expect([screen.queryByRole('dialog', { name: 'Food & Recipes' }), document.activeElement === search()]).toEqual([null, true]);
+    });
+
+    it('Browse_ChangesNothing_OnClose', async () => {
+      render(editor());
+      const user = await browse();
+      await user.click(within(library()).getByRole('button', { name: 'Close' }));
+      expect(screen.getByRole('button', { name: 'Saved' })).toBeTruthy();
+    });
+
+    it('Browse_Swaps_WhenOpenedWhileSwapping', async () => {
+      const user = userEvent.setup();
+      render(editor());
+      await user.click(screen.getByRole('button', { name: 'More for Bacon' }));
+      await user.click(screen.getByRole('button', { name: 'Swap…' }));
+      await browse();
+      await user.click(within(library()).getByRole('button', { name: 'Swap Bacon for Oatmeal' }));
+      expect([panel().queryByRole('button', { name: 'Bacon' }), panel().getByRole('button', { name: 'Oatmeal' })].map(Boolean)).toEqual([false, true]);
     });
   });
 

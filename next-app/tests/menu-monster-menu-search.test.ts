@@ -2,12 +2,12 @@ import { describe, it, expect } from 'vitest';
 import { CATALOG } from './helpers/menu-monster-fixture';
 import { MAX_MENU_MEALS, type Menu } from '../src/lib/menu-monster/menus';
 import type { Catalog } from '../src/lib/menu-monster/types';
-import { canPlanEmptyMeal, filterRecipes, recipeLibrary } from '../src/lib/menu-monster/menu-search';
+import { filterRecipes, fitSlots, mealsToAdd } from '../src/lib/menu-monster/menu-search';
 
 /**
- * Scout Workspace: the Food & Recipes popup a day's "Add to …" opens —
- * narrowed by name and by meal; each recipe offers one button per meal it
- * fits, saying what picking it would do.
+ * Scout Workspace: the Food & Recipes popup a meal's "Browse all recipes…"
+ * opens (narrowed by name and by meal), and the day's "Add a meal" (only the
+ * meals the day doesn't have yet, greyed at the menu's meal cap).
  */
 
 const menu = (over: Partial<Menu> = {}): Menu => ({
@@ -25,79 +25,61 @@ const menu = (over: Partial<Menu> = {}): Menu => ({
   ...over
 });
 
-/** Orange juice also fits snack, so one recipe has two meal buttons. */
-const TWO_FIT: Catalog = { ...CATALOG, recipes: CATALOG.recipes.map((r) => (r.id === 'B023' ? { ...r, mealFit: ['snack', 'breakfast'] } : r)) };
-
 const fullMenu = () =>
   menu({
     meals: Array.from({ length: MAX_MENU_MEALS }, (_, i) => ({ id: `x${i}`, day: 0, slot: 'dinner' as const, headcount: null, recipeIds: [], recipeEdits: {} }))
   });
 
-describe('recipeLibrary', () => {
+const names = (cat: Catalog, q: string, f: Parameters<typeof filterRecipes>[2]) => filterRecipes(cat, q, f).map((r) => r.name);
+
+describe('filterRecipes', () => {
   it('Scout_SeesEveryRecipe_WhenNothingIsTypedOrFiltered', () => {
-    expect(recipeLibrary(CATALOG, menu(), 0, '', null).map((e) => e.name)).toEqual(['Pancakes', 'Bacon', 'Oatmeal', 'Orange juice', 'Sandwiches']);
+    expect(names(CATALOG, '', null)).toEqual(['Pancakes', 'Bacon', 'Oatmeal', 'Orange juice', 'Sandwiches']);
   });
 
   it('Scout_NarrowsByName_WhenTyping', () => {
-    expect(recipeLibrary(CATALOG, menu(), 0, ' PANCAK ', null).map((e) => e.name)).toEqual(['Pancakes']);
+    expect(names(CATALOG, ' PANCAK ', null)).toEqual(['Pancakes']);
   });
 
   it('Scout_NarrowsByMeal_WhenAFilterIsOn', () => {
-    expect(recipeLibrary(CATALOG, menu(), 0, '', 'lunch').map((e) => e.name)).toEqual(['Sandwiches']);
+    expect(names(CATALOG, '', 'lunch')).toEqual(['Sandwiches']);
   });
 
   it('Scout_SeesNothing_WhenNameAndFilterDisagree', () => {
-    expect(recipeLibrary(CATALOG, menu(), 0, 'pancak', 'lunch')).toEqual([]);
+    expect(names(CATALOG, 'pancak', 'lunch')).toEqual([]);
   });
 
-  it('Recipe_OffersEveryMealItFits_InMealOrder', () => {
-    const oj = recipeLibrary(TWO_FIT, menu(), 1, 'orange', null)[0];
-    expect(oj.targets.map((t) => t.slot)).toEqual(['breakfast', 'snack']);
-  });
-
-  it('Recipe_OffersOnlyTheFilteredMeal_WhenAFilterIsOn', () => {
-    const oj = recipeLibrary(TWO_FIT, menu(), 1, '', 'snack')[0];
-    expect(oj.targets).toEqual([{ slot: 'snack', state: 'new' }]);
-  });
-
-  it('Target_AddsToTheMeal_WhenTheDayHasThatSlot', () => {
-    expect(recipeLibrary(CATALOG, menu(), 0, 'pancak', null)[0].targets).toEqual([{ slot: 'breakfast', state: 'adds' }]);
-  });
-
-  it('Target_IsANewMeal_WhenTheDayLacksThatSlot', () => {
-    expect(recipeLibrary(CATALOG, menu(), 1, 'pancak', null)[0].targets).toEqual([{ slot: 'breakfast', state: 'new' }]);
-  });
-
-  it('Target_IsOn_WhenTheRecipeIsAlreadyOnThatMeal', () => {
-    expect(recipeLibrary(CATALOG, menu(), 0, 'bacon', null)[0].targets).toEqual([{ slot: 'breakfast', state: 'on' }]);
-  });
-
-  it('Target_IsNew_ForTheSameRecipeOnAnotherDay', () => {
-    expect(recipeLibrary(CATALOG, menu(), 1, 'bacon', null)[0].targets).toEqual([{ slot: 'breakfast', state: 'new' }]);
-  });
-
-  it('Target_IsFull_WhenANewMealWouldPassTheMealCap', () => {
-    expect(recipeLibrary(CATALOG, fullMenu(), 1, 'pancak', null)[0].targets).toEqual([{ slot: 'breakfast', state: 'full' }]);
-  });
-});
-
-describe('canPlanEmptyMeal', () => {
-  it('Day_CanTakeAnEmptyMeal_WhenItLacksThatSlot', () => {
-    expect(canPlanEmptyMeal(menu(), 0, 'lunch')).toBe(true);
-  });
-
-  it('Day_CannotTakeASecondMeal_OfASlotItHas', () => {
-    expect(canPlanEmptyMeal(menu(), 0, 'breakfast')).toBe(false);
-  });
-
-  it('Day_CannotTakeAnEmptyMeal_AtTheMealCap', () => {
-    expect(canPlanEmptyMeal(fullMenu(), 1, 'lunch')).toBe(false);
-  });
-});
-
-describe('filterRecipes (Phase 4A)', () => {
   it('Library_NeverOffersARetiredRecipe', () => {
     const cat: Catalog = { ...CATALOG, recipes: CATALOG.recipes.map((r) => (r.id === 'B001' ? { ...r, status: 'retired' as const } : r)) };
     expect(filterRecipes(cat, 'pancak', null)).toEqual([]);
+  });
+});
+
+describe('fitSlots', () => {
+  it('Recipe_ListsEveryMealItFits_InMealOrder', () => {
+    expect(fitSlots({ mealFit: ['snack', 'breakfast'] }, null)).toEqual(['breakfast', 'snack']);
+  });
+});
+
+describe('mealsToAdd', () => {
+  it('Day_OffersOnlyTheMealsItLacks_InMealOrder', () => {
+    expect(mealsToAdd(menu(), 0).slots).toEqual(['lunch', 'dinner', 'snack', 'dessert']);
+  });
+
+  it('EmptyDay_OffersEveryMeal', () => {
+    expect(mealsToAdd(menu(), 1).slots).toEqual(['breakfast', 'lunch', 'dinner', 'snack', 'dessert']);
+  });
+
+  it('Day_IsNotFull_UnderTheMealCap', () => {
+    expect(mealsToAdd(menu(), 1).full).toBe(false);
+  });
+
+  it('Day_IsFull_AtTheMenusMealCap', () => {
+    expect(mealsToAdd(fullMenu(), 1).full).toBe(true);
+  });
+
+  it('Day_OffersNothing_WhenItHasEveryMeal', () => {
+    const all = menu({ meals: (['breakfast', 'lunch', 'dinner', 'snack', 'dessert'] as const).map((slot) => ({ id: slot, day: 0, slot, headcount: null, recipeIds: [], recipeEdits: {} })) });
+    expect(mealsToAdd(all, 0).slots).toEqual([]);
   });
 });
