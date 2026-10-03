@@ -48,3 +48,8 @@
   resize: vertical;
 }
 .stepText:focus-visible { outline: var(--focus-ring); outline-offset: 1px; }
+
+/* Steps are prose: on wide screens the editor splits evenly instead of the workspace's 300px side column. */
+@media (min-width: 900px) {
+  .grid.grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}

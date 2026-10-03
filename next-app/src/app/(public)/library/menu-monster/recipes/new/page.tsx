@@ -6,7 +6,8 @@ import type { Metadata } from 'next';
 import { loadMenuMonsterCatalog } from '@/lib/menu-monster/data';
 import { PageShell } from '@/app/_components/page-shell';
 import { scoutViewer } from '../../menus/_components/scout-menus';
-import { RecipeEditor, RECIPES_HREF } from '../_components/recipe-editor';
+import { RecipeEditor } from '../_components/recipe-editor';
+import { RECIPES_HREF } from '../_components/paths';
 import { RecipeHeader, RecipeLocked } from '../_components/recipe-pages';
 
 export const dynamic = 'force-dynamic';

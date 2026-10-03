@@ -164,3 +164,11 @@ describe('RecipeEditor retired', () => {
     expect(screen.queryByRole('button', { name: 'Saved' })).toBeNull();
   });
 });
+
+describe('RecipeEditor step focus', () => {
+  it('AddAStep_MovesFocusIntoTheNewStep', async () => {
+    existing();
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Add a step' }));
+    expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Step 2' }));
+  });
+});

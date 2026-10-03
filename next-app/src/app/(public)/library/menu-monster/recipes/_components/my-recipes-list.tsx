@@ -15,7 +15,7 @@ import type { RecipeStatus } from '@/lib/menu-monster/types';
 import { deleteScoutRecipeAction } from '../../../_tools/menu-monster/recipe-actions';
 import { RowMenu } from '../../menus/_components/row-menu';
 import w from '../../menus/_components/workspace.module.css';
-import { RECIPES_HREF } from './recipe-editor';
+import { RECIPES_HREF } from './paths';
 
 export interface MyRecipeRow {
   id: string;

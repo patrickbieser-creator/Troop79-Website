@@ -14,7 +14,7 @@
  * keep editing (live); a retired recipe is read-only.
  */
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLeaveGuard } from '@/lib/use-leave-guard';
 import { Button } from '@/app/_components/button';
@@ -36,8 +36,8 @@ import { RowMenu } from '../../menus/_components/row-menu';
 import { SaveBar } from '../../menus/_components/save-bar';
 import w from '../../menus/_components/workspace.module.css';
 import s from './recipe-editor.module.css';
+import { RECIPES_HREF } from './paths';
 
-export const RECIPES_HREF = '/library/menu-monster/recipes';
 const DEFAULT_PEOPLE = 8;
 
 interface Draft {
@@ -119,7 +119,13 @@ export function RecipeEditor({ catalog, id: initialId, initial, status: initialS
   }
 
   /* ---- Steps ---- */
-  const focusStep = (index: number) => requestAnimationFrame(() => stepsRef.current?.querySelectorAll('textarea')[index]?.focus());
+  // Focus a step after React has rendered it (an added step's textarea doesn't exist yet when the click runs).
+  const [focusStep, setFocusStep] = useState<number | null>(null);
+  useEffect(() => {
+    if (focusStep == null) return;
+    stepsRef.current?.querySelectorAll('textarea')[focusStep]?.focus();
+    setFocusStep(null);
+  }, [focusStep, draft.steps.length]);
   const moveStep = (from: number, to: number) => {
     if (to < 0 || to >= draft.steps.length || from === to) return;
     edit((d) => ({ ...d, steps: moveItem(d.steps, from, to) }));
@@ -129,7 +135,7 @@ export function RecipeEditor({ catalog, id: initialId, initial, status: initialS
   const addStep = () => {
     if (draft.steps.length >= MAX_SCOUT_STEPS) return;
     edit((d) => ({ ...d, steps: [...d.steps, { id: ++stepSeq, text: '' }] }));
-    focusStep(draft.steps.length);
+    setFocusStep(draft.steps.length);
   };
 
   /* ---- Save / share ---- */
@@ -225,7 +231,7 @@ export function RecipeEditor({ catalog, id: initialId, initial, status: initialS
       )}
 
       <fieldset className={s.fieldset} disabled={retired}>
-        <div className={w.grid}>
+        <div className={`${w.grid} ${s.grid}`}>
           <div className={w.col}>
             <section className={w.basics} aria-label="Recipe name, meals and food groups">
               <Field label="Recipe name">

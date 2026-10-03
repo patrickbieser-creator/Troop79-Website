@@ -35,7 +35,7 @@ import { RecipeBrowser } from '../../menu-monster/_components/recipe-browser';
 import { IngredientBrowser } from '../../menu-monster/_components/ingredient-browser';
 import { listMyRecipesWith } from '@/lib/menu-monster/scout-recipes-store';
 import { MyRecipesList } from '../../menu-monster/recipes/_components/my-recipes-list';
-import { RECIPES_HREF } from '../../menu-monster/recipes/_components/recipe-editor';
+import { RECIPES_HREF } from '../../menu-monster/recipes/_components/paths';
 import { DraftOffer } from '../../menu-monster/menus/_components/draft-offer';
 import { LocalPlan } from '../../menu-monster/menus/_components/local-menu-shells';
 import { loadMenuRows } from '../../menu-monster/menus/_components/menu-rows';
