@@ -58,7 +58,7 @@ const summary = (n: number, ownerPersonId = 40) => ({
   updatedAt: '2026-10-01T15:00:00Z',
   ownerPersonId
 });
-const shelf = async () => render(await MenuMonsterShelfTool());
+const shelf = async (tab?: string) => render(await MenuMonsterShelfTool({ searchParams: tab ? { tab } : {} }));
 const page = async () => render(await MyMenusPage());
 
 beforeEach(() => {

@@ -16,6 +16,10 @@
  *     (the hub never opens it for them), and, when this browser holds an unsaved
  *     local menu, a row offering to save it to My menus.
  * The old anonymous planner is no longer rendered here.
+ *
+ * Tabs (Patrick, 2026-10-02): Meal Planner (the above, the default) | Recipe
+ * Library | Ingredients | Recipe Builder, as `?tab=` links so each is shareable.
+ * The browse tabs need only the catalog; the planner's loads run on its tab only.
  */
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
@@ -25,6 +29,10 @@ import { loadMenuMonsterCatalog } from '@/lib/menu-monster/data';
 import { listAllMenusWith, listMenusWith, ownerCreditNamesWith } from '@/lib/menu-monster/menus-store';
 import { loadOutingsWith } from '@/lib/menu-monster/menus-data';
 import { Button } from '@/app/_components/button';
+import { TabStrip } from '@/app/_components/tab-strip';
+import type { Catalog, Plan } from '@/lib/menu-monster/types';
+import { RecipeBrowser } from '../../menu-monster/_components/recipe-browser';
+import { IngredientBrowser } from '../../menu-monster/_components/ingredient-browser';
 import { DraftOffer } from '../../menu-monster/menus/_components/draft-offer';
 import { LocalPlan } from '../../menu-monster/menus/_components/local-menu-shells';
 import { loadMenuRows } from '../../menu-monster/menus/_components/menu-rows';
@@ -35,8 +43,42 @@ import w from '../../menu-monster/menus/_components/workspace.module.css';
 const RECENT = 5;
 const LEADER_RECENT = 10;
 
-export async function MenuMonsterShelfTool() {
-  const [catalog, viewer] = await Promise.all([loadMenuMonsterCatalog(), menuViewer()]);
+const TABS = [
+  { key: 'planner', label: 'Meal Planner' },
+  { key: 'recipes', label: 'Recipe Library' },
+  { key: 'ingredients', label: 'Ingredients' },
+  { key: 'builder', label: 'Recipe Builder' }
+] as const;
+type TabKey = (typeof TABS)[number]['key'];
+
+/** One person of every diet, so the library shows each recipe's diet swaps ("gluten-free only", "everyone else"). */
+const EVERY_DIET: Pick<Plan, 'headcount' | 'restrictions'> = { headcount: 8, restrictions: { gf: 1, nut: 1, dairy: 1, veg: 1 } };
+
+export async function MenuMonsterShelfTool({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
+  const asked = typeof searchParams.tab === 'string' ? searchParams.tab : '';
+  const tab: TabKey = TABS.some((x) => x.key === asked) ? (asked as TabKey) : 'planner';
+  const catalog = await loadMenuMonsterCatalog();
+  const planner = tab === 'planner' ? await mealPlanner(catalog) : null;
+  return (
+    <>
+      <div className={w.tabs}>
+        <TabStrip
+          ariaLabel="Menu Monster"
+          activeKey={tab}
+          items={TABS.map((x) => ({ key: x.key, label: x.label, href: x.key === 'planner' ? MENU_HUB_HREF : `${MENU_HUB_HREF}?tab=${x.key}` }))}
+        />
+      </div>
+      {planner}
+      {tab === 'recipes' && <RecipeBrowser catalog={catalog} plan={EVERY_DIET} />}
+      {tab === 'ingredients' && <IngredientBrowser catalog={catalog} />}
+      {tab === 'builder' && <p className={w.foot}>Writing your own recipes is coming. For now, change a recipe for one menu from its meal page.</p>}
+    </>
+  );
+}
+
+/** A plain async function, not a nested component: the tab is awaited here, so tests can render the tool. */
+async function mealPlanner(catalog: Catalog) {
+  const viewer = await menuViewer();
 
   if (viewer?.kind === 'scout') {
     const sb = createAdminClient();

@@ -20,11 +20,13 @@ import styles from '../../library.module.css';
 export const dynamic = 'force-dynamic';
 
 export default async function LibraryTopicPage({
-  params
+  params,
+  searchParams
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { slug } = await params;
+  const [{ slug }, query] = await Promise.all([params, searchParams]);
   const supabase = createAdminClient();
   const isLeader = await viewerIsLeader();
 
@@ -64,7 +66,7 @@ export default async function LibraryTopicPage({
       />
 
       <PageShell>
-        {Tool && <Tool />}
+        {Tool && <Tool searchParams={query} />}
         {resources.length === 0 && !Tool && (
           <EmptyState>
             This shelf is waiting for its first item.{' '}

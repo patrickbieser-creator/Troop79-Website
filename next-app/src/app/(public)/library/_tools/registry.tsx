@@ -15,6 +15,9 @@
 import type { ComponentType } from 'react';
 import { MenuMonsterShelfTool } from './menu-monster/shelf-tool';
 
-export const TOPIC_TOOLS: Record<string, ComponentType> = {
+/** A tool reads the shelf URL's query (Menu Monster's `?tab=`). */
+export type TopicToolProps = { searchParams: Record<string, string | string[] | undefined> };
+
+export const TOPIC_TOOLS: Record<string, ComponentType<TopicToolProps>> = {
   'menu-monster': MenuMonsterShelfTool
 };

@@ -53,7 +53,7 @@ const summary = (n: number) => ({
   mealCount: 3,
   updatedAt: ''
 });
-const shelf = async () => render(await MenuMonsterShelfTool());
+const shelf = async (tab?: string) => render(await MenuMonsterShelfTool({ searchParams: tab ? { tab } : {} }));
 const putLocal = () => window.localStorage.setItem(LOCAL_MENU_KEY, JSON.stringify({ name: 'Fall Camporee', headcount: 10 }));
 
 beforeEach(() => {
@@ -226,5 +226,70 @@ describe('MenuMonsterShelfTool hub, visitor', () => {
     );
     await shelf();
     expect(((await screen.findByLabelText('Menu name')) as HTMLInputElement).value).toBe('Breakfast from this computer');
+  });
+});
+
+describe('MenuMonsterShelfTool hub, tabs', () => {
+  const tab = (name: string) => screen.getByRole('tab', { name });
+
+  it('Hub_ShowsFourTabs_InOrder', async () => {
+    await shelf();
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Meal Planner', 'Recipe Library', 'Ingredients', 'Recipe Builder']);
+  });
+
+  it('Hub_OpensOnTheMealPlanner_ByDefault', async () => {
+    await shelf();
+    expect(tab('Meal Planner').getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('Tabs_AreLinks_SoEachCanBeShared', async () => {
+    await shelf();
+    expect(tab('Ingredients').getAttribute('href')).toBe('/library/topic/menu-monster?tab=ingredients');
+  });
+
+  it('Hub_FallsBackToTheMealPlanner_OnAnUnknownTab', async () => {
+    await shelf('nope');
+    expect(tab('Meal Planner').getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('RecipeLibraryTab_ListsRecipes_WithTheMealsTheyFit', async () => {
+    await shelf('recipes');
+    const row = screen.getByRole('button', { name: /^Sandwiches/ }).closest('li') as HTMLElement;
+    expect(row.textContent).toContain('Lunch');
+  });
+
+  it('RecipeLibraryTab_HidesThePlanner', async () => {
+    mocks.summaries = [summary(1)];
+    await shelf('recipes');
+    expect(screen.queryByRole('heading', { name: 'My menus' })).toBeNull();
+  });
+
+  it('RecipeLibraryTab_NarrowsByMeal_WhenAFilterIsPressed', async () => {
+    await shelf('recipes');
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Lunch' }));
+    expect(screen.queryByRole('button', { name: /^Pancakes/ })).toBeNull();
+  });
+
+  it('IngredientsTab_ShowsEachIngredientsLowestPrice', async () => {
+    await shelf('ingredients');
+    const row = screen.getByRole('button', { name: /^Bacon/ }).closest('li') as HTMLElement;
+    expect(row.textContent).toContain('$7.49');
+  });
+
+  it('IngredientsTab_OpensAnIngredientsPackages', async () => {
+    await shelf('ingredients');
+    await userEvent.setup().click(screen.getByRole('button', { name: /^Bacon/ }));
+    expect(screen.getByRole('list', { name: 'Bacon packages' }).textContent).toContain('Costco');
+  });
+
+  it('IngredientsTab_NarrowsBySection_WhenAFilterIsPressed', async () => {
+    await shelf('ingredients');
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Bakery' }));
+    expect(screen.queryByRole('button', { name: /^Bacon/ })).toBeNull();
+  });
+
+  it('RecipeBuilderTab_SaysWhereToChangeARecipeToday', async () => {
+    await shelf('builder');
+    expect(screen.getByText(/change a recipe for one menu from its meal page/)).toBeTruthy();
   });
 });
