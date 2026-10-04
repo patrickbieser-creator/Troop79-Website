@@ -78,7 +78,6 @@ export function RecipeBrowser({
                 <div className={w.fitCol}>{actions ? actions(r, filter) : <span className={w.meta}>{fitSlots(r, null).map(slotLabel).join(', ')}</span>}</div>
                 {open && (
                   <div id={panel} className={w.inset}>
-                    <h3 className={w.insetHead}>Each person gets</h3>
                     <IngredientList mode="read" ariaLabel={`${r.name} ingredients`} rows={ingredientRows(r, catalog, plan, 'person')} emptyText="No ingredients on this recipe yet." />
                   </div>
                 )}

@@ -55,7 +55,9 @@ const editor = (mealId = 'm1', m: Menu = menu()) => {
   return <PlanTab catalog={CATALOG} menuId="menu-1" menu={m} updatedAt={VERSION} outings={[]} openMeal={mealId} />;
 };
 const panel = () => within(document.getElementById(`mm-meal-${openId}`) as HTMLElement);
-const people = () => panel().getByRole('spinbutton', { name: /^People/ }) as HTMLInputElement;
+/** The meal's row: its name, its People dialer and its cost (the dialer left the panel 2026-10-03). */
+const mealRow = () => within((document.getElementById(`mm-meal-${openId}`) as HTMLElement).closest('li') as HTMLElement);
+const people = () => mealRow().getByRole('spinbutton', { name: / people$/ }) as HTMLInputElement;
 const search = () => panel().getByRole('combobox');
 const rowFor = (name: string) => panel().getByRole('button', { name: new RegExp(`^${name}`) }).closest('li') as HTMLElement;
 const addRecipe = async (user: ReturnType<typeof userEvent.setup>, text: string, option: string) => {
@@ -433,6 +435,28 @@ describe('MealEditor', () => {
   });
 
   describe('people', () => {
+    it('People_DialerSitsOnTheMealsOwnLine_NotInsideThePanel', () => {
+      render(editor());
+      expect(panel().queryByRole('spinbutton')).toBeNull();
+      expect(people().value).toBe('8');
+    });
+
+    it('People_DialerDoesNotOpenOrCloseTheMeal', async () => {
+      const user = userEvent.setup();
+      render(editor());
+      await user.click(mealRow().getByRole('button', { name: 'One more person' }));
+      expect([people().value, document.getElementById('mm-meal-m1') != null]).toEqual(['9', true]);
+    });
+
+    it('AddList_IsAlphabetical', async () => {
+      const user = userEvent.setup();
+      render(editor());
+      await user.click(search());
+      const names = within(screen.getByRole('listbox')).getAllByRole('option').map((o) => o.textContent ?? '').filter((t) => !t.startsWith('Browse'));
+      expect(names.length).toBeGreaterThan(1);
+      expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)));
+    });
+
     it('People_StartsAtTheMenusNumber_WithNoResetOffered', () => {
       render(editor());
       expect([people().value, screen.queryByRole('button', { name: /^Reset to/ })]).toEqual(['8', null]);

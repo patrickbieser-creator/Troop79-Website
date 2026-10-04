@@ -42,7 +42,7 @@ import type { Catalog, Plan, RestrictionKey } from '@/lib/menu-monster/types';
 import { MEALS, RESTRICTION_BY_KEY } from '@/lib/menu-monster/units';
 import { MAX_HEADCOUNT, MIN_HEADCOUNT } from '@/lib/menu-monster/engine';
 import { MAX_MENU_DAYS, MAX_MENU_MEALS, MENU_CONTEXTS, MAX_MENU_NAME, menuNameError, type Menu, type MenuContext, type MenuMeal } from '@/lib/menu-monster/menus';
-import { DIET_ORDER, budgetState, dayLabel, menuCost, outingDayCount, type Outing } from '@/lib/menu-monster/menu-view';
+import { DIET_ORDER, budgetState, dayLabel, mealTitle, menuCost, outingDayCount, type Outing } from '@/lib/menu-monster/menu-view';
 import type { CreateResult, MenuStore, SaveResult } from '@/lib/menu-monster/menu-store';
 import { serverMenuStore } from './server-menu-store';
 import { MealPanel } from './meal-panel';
@@ -166,6 +166,11 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
     });
   /** A meal panel's change: the whole next meal, into the one draft. */
   const setMeal = (next: MenuMeal) => edit((m) => ({ ...m, meals: m.meals.map((x) => (x.id === next.id ? next : x)) }));
+  /** A meal's own People (on its line): the menu's number is stored as null, so going back to it is not a change. */
+  const setMealPeople = (meal: MenuMeal, n: number) => {
+    const v = Math.min(MAX_HEADCOUNT, Math.max(MIN_HEADCOUNT, Math.round(n) || MIN_HEADCOUNT));
+    setMeal({ ...meal, headcount: v === menu.headcount ? null : v });
+  };
   /** "Add a meal": an empty meal for the slot, opened inline with focus in its search. */
   const addMeal = (day: number, slot: Plan['meal']) => {
     if (menu.meals.length >= MAX_MENU_MEALS || menu.meals.some((m) => m.day === day && m.slot === slot)) return;
@@ -403,6 +408,8 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
                       const open = openMeals.has(meal.id);
                       const panel = `mm-meal-${meal.id}`;
                       const mealCost = cost.byMeal[meal.id] ?? 0;
+                      const people = meal.headcount ?? menu.headcount;
+                      const title = mealTitle(menu.startDate, meal.day, meal.slot);
                       return (
                         <li key={meal.id} className={s.row}>
                           <div className={s.rowMain}>
@@ -421,6 +428,29 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
                             </button>
                             {!open && <span className={s.meta}>{names.length ? names.join(', ') : 'Nothing yet'}</span>}
                           </div>
+                          {/* Breakfast · [dialer] · $ (Patrick, 2026-10-03): the meal's People on its own line, not inside the panel. */}
+                          {readOnly ? (
+                            <span className={s.meta}>{people} people</span>
+                          ) : (
+                            <span className={s.mealPeople}>
+                              {people !== menu.headcount && (
+                                <Button variant="ghost" onClick={() => setMealPeople(meal, menu.headcount)}>
+                                  Reset to {menu.headcount}
+                                </Button>
+                              )}
+                              <Stepper
+                                id={`mm-people-${meal.id}`}
+                                value={people}
+                                min={MIN_HEADCOUNT}
+                                max={MAX_HEADCOUNT}
+                                onChange={(n) => setMealPeople(meal, n)}
+                                groupLabel={`${title} people`}
+                                inputLabel={`${title} people`}
+                                lessLabel="One fewer person"
+                                moreLabel="One more person"
+                              />
+                            </span>
+                          )}
                           <div className={s.cost}>{meal.recipeIds.length ? money(view === 'total' ? mealCost : mealCost / (meal.headcount ?? menu.headcount)) : ''}</div>
                           {!readOnly && (
                             <RowMenu label={`More for Day ${d + 1} ${label.toLowerCase()}`} items={[{ label: 'Remove meal', danger: true, onSelect: () => removeMeal(meal.id, d) }]} />

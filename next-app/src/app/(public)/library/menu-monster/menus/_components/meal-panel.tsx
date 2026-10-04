@@ -15,7 +15,7 @@
  *     listbox, fully keyboard-operable; "Swap X for…" while swapping). The list
  *     always ends in "Browse all recipes…": the Food & Recipes popup for this
  *     meal (the only way to add food — the day's control adds meals, 2026-10-03);
- *   - a People dialer for this meal (Reset to the menu's number);
+ *   - (the meal's People dialer sits on the meal's own line in the Plan tab — Patrick, 2026-10-03);
  *   - its own status line — what just happened, Undo after a remove or swap;
  *   - a quiet warning under a recipe that isn't for someone the menu counts
  *     (ported from the retired planner: unsuitable, or gluten / nuts with no swap).
@@ -34,11 +34,11 @@
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import { MEALS, priceText as money } from '@/lib/menu-monster/units';
-import { Button } from '@/app/_components/button';
-import { Stepper } from '@/app/_components/stepper';
+
+
 import { Notice } from '@/app/_components/notice';
 import type { Catalog, Plan, Recipe } from '@/lib/menu-monster/types';
-import { MAX_HEADCOUNT, MIN_HEADCOUNT, recipesForMeal, restrictionWarnings } from '@/lib/menu-monster/engine';
+import { recipesForMeal, restrictionWarnings } from '@/lib/menu-monster/engine';
 import { isPickable } from '@/lib/menu-monster/scout-recipes';
 import { RECIPES_HREF } from '../../recipes/_components/paths';
 import { composePlan, mealCatalog, type EditOp, type Menu, type MenuMeal, type RecipeEdits } from '@/lib/menu-monster/menus';
@@ -112,7 +112,6 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChang
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const people = meal.headcount ?? menu.headcount;
   const edits = meal.recipeEdits ?? {};
   const plan: Plan = composePlan(menu, meal);
   // Ported from the retired planner: a recipe that isn't for someone the menu counts says so. Measured
@@ -124,8 +123,10 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChang
   // Each recipe's share of the meal (shared packages split), so the rows add up to the footer.
   const shares = recipeShares(menu, meal, catalog);
   const costOf = (id: string) => (view === 'total' ? (shares[id] ?? 0) : (shares[id] ?? 0) / plan.headcount);
-  const overridden = people !== menu.headcount;
-  const candidates = recipesForMeal(catalog, meal.slot).filter((r) => isPickable(r) && !meal.recipeIds.includes(r.id));
+  // A to Z (Patrick, 2026-10-03): a scout looks a food up by name, not by the leaders' catalog order.
+  const candidates = recipesForMeal(catalog, meal.slot)
+    .filter((r) => isPickable(r) && !meal.recipeIds.includes(r.id))
+    .sort((a, b) => a.name.localeCompare(b.name));
   const matches = candidates.filter((r) => r.name.toLowerCase().includes(query.trim().toLowerCase()));
   // The list always ends in "Browse all recipes…" (the Food & Recipes popup, for this meal); it is never
   // the default, so Enter on a typo does nothing rather than open a popup.
@@ -139,10 +140,6 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChang
   const slotWord = (MEALS.find((m) => m.key === meal.slot)?.label ?? meal.slot).toLowerCase();
 
   const change = (next: Partial<MenuMeal>) => onChange({ ...meal, ...next });
-  const setPeople = (n: number) => {
-    const v = Math.min(MAX_HEADCOUNT, Math.max(MIN_HEADCOUNT, Math.round(n) || MIN_HEADCOUNT));
-    change({ headcount: v === menu.headcount ? null : v });
-  };
 
   const toggle = (id: string) =>
     setOpenIds((cur) => {
@@ -255,30 +252,6 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChang
 
   return (
     <div className={s.mealPanel}>
-      {readOnly ? (
-        // The menu's diets are on the line above this meal; only the meal's own count is repeated here.
-        <p className={s.foot}>People: {people}</p>
-      ) : (
-        <div className={s.line}>
-          <Stepper
-            id={`${uid}-people`}
-            label="People"
-            value={people}
-            min={MIN_HEADCOUNT}
-            max={MAX_HEADCOUNT}
-            onChange={setPeople}
-            groupLabel={`People for ${title}`}
-            lessLabel="One fewer person"
-            moreLabel="One more person"
-          />
-          {overridden && (
-            <Button variant="ghost" onClick={() => setPeople(menu.headcount)}>
-              Reset to {menu.headcount}
-            </Button>
-          )}
-        </div>
-      )}
-
       <ul className={s.card} aria-label={`Recipes in ${title}`}>
         {meal.recipeIds.length === 0 && <li className={s.empty}>Nothing yet.</li>}
         {meal.recipeIds.map((id) => {

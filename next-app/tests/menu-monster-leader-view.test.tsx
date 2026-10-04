@@ -108,7 +108,7 @@ describe('A meal open inline, read-only', () => {
   it('Leader_SeesPlannedByAndPeopleAsText_OnTheMealPage', () => {
     render(meal());
     expect(screen.getByText('Planned by Sam K. · Read-only')).toBeTruthy();
-    expect(screen.getByText(/^People: 8$/)).toBeTruthy();
+    expect(screen.getAllByText(/^8 people$/).length).toBeGreaterThan(0);
   });
 
   it('Leader_OpensARecipesIngredients_AsPlainRows', async () => {

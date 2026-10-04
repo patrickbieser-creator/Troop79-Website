@@ -136,6 +136,8 @@
   color: var(--text-meta);
   min-width: 0;
 }
+/* A meal's People dialer on the meal's own line, with its quiet Reset link. */
+.mealPeople { display: inline-flex; align-items: center; gap: var(--sp-2); flex: none; }
 .cost {
   width: 72px;
   flex: none;
