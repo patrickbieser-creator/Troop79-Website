@@ -216,3 +216,20 @@ choice." Decisions made on his behalf:
   full editor. Renaming renames the ingredient only while the two names still match. Prices and packages stay
   in the Price book (one link away); brands are edited right there.
 - **Done** sits under the brand chooser on the Plan tab; the Shopping tab's chooser already closes with its row.
+
+### R8 — v1.163.0, 2026-10-04 (admin Food & recipes: one list, problems marked)
+
+Patrick: the list "is going to get very long… alphabetical order, possibly tabs?" and Orange juice "needs
+fixes" still did not say what or where. Jenna's recommendation, built as given:
+
+- **One A–Z list**; tabs All / Single foods / Recipes / Needs fixes / Retired with counts; a name search; **meal
+  is a filter, not a heading** (an item that fits two meals was hidden under the first). Retired sorts last.
+  Rejected: a tab per meal (duplicates or hides multi-meal items). "N to look at" left the rows (the pill and
+  the Needs fixes tab carry it).
+- **Needs fixing** is a red alert box with a link to the exact fix, and the place is outlined in red with the
+  sentence beside it. The message had been there since v1.153.1, but as small grey text.
+- **Correction to R7:** the short form required "no steps, no gear", and R2 had written steps and gear onto
+  all 29 troop foods — so the short form never opened for any of them. A single food is now one ingredient
+  with no diet swap; Steps and Gear appear in the short form only when the food has them.
+- Not independently reviewed by qa-lead (admin presentation only). No styleguide specimen added for the
+  `.bad` / `.badNote` marker classes — owed.

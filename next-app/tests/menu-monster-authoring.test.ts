@@ -272,6 +272,10 @@ describe('isSingleFood', () => {
     expect(isSingleFood(food())).toBe(true);
   });
 
+  it('StepsAndGear_DoNotMakeItARecipe', () => {
+    expect(isSingleFood(food({ stepsMd: 'Fry until crisp.', gear: 'Griddle' }))).toBe(true);
+  });
+
   it('ADietAnswerWithNoLines_IsStillASingleFood', () => {
     expect(isSingleFood(food({ variations: [{ restriction: 'gf', state: 'unsuitable', note: '', lines: [] }] }))).toBe(true);
   });
@@ -280,8 +284,6 @@ describe('isSingleFood', () => {
     ['two ingredients', { base: [{ ingredientId: 'a', amount: '1', unitKey: null }, { ingredientId: 'b', amount: '1', unitKey: null }] }],
     ['no ingredient yet', { base: [{ ingredientId: '', amount: '', unitKey: null }] }],
     ['no lines', { base: [] }],
-    ['steps', { stepsMd: 'Open the box.' }],
-    ['gear', { gear: 'Tongs' }],
     ['a diet swap', { variations: [{ restriction: 'gf' as const, state: 'substituted' as const, note: '', lines: [{ op: 'swap' as const, baseIngredientId: 'cookies', ingredientId: 'gf-cookies', amount: '2', unitKey: null }] }] }]
   ])('With_%s_ItIsARecipe', (_what, over) => {
     expect(isSingleFood(food(over as Partial<RecipeAuthoring>))).toBe(false);

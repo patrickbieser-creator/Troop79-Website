@@ -264,11 +264,12 @@ const blank = (a: RecipeAuthoring) => ({
 });
 
 /**
- * A single food (Cookies, Apples, Bacon): one thing each person gets — one ingredient line, no steps, no gear
- * and no diet swap that changes a line. The leader tools edit it in the short form; anything more is a recipe.
+ * A single food (Cookies, Apples, Bacon): one thing each person gets — one ingredient line and no diet swap
+ * that changes a line. It may still have steps and gear (bacon is cooked on a griddle). The leader tools edit
+ * it in the short form; two ingredients or a swap make it a recipe.
  */
 export function isSingleFood(a: RecipeAuthoring): boolean {
-  return a.base.length === 1 && a.base[0].ingredientId !== '' && !a.stepsMd.trim() && !(a.gear ?? '').trim() && a.variations.every((v) => v.lines.length === 0);
+  return a.base.length === 1 && a.base[0].ingredientId !== '' && a.variations.every((v) => v.lines.length === 0);
 }
 
 /** Diff → compiled draft lines, with the raw amounts intact so an error can quote them. */
@@ -353,6 +354,10 @@ export interface RecipeIssue {
   text: string;
   /** The editor offers a link to the Price book for these. */
   fix?: 'price-book';
+  /** Where the problem is, so the editor can mark the spot: a whole field, or the line(s) of one ingredient
+   *  ('' = a line with no ingredient picked). */
+  field?: 'name' | 'lines' | 'mealFit';
+  ingredientId?: string;
 }
 
 export const blockingIssues = (issues: readonly RecipeIssue[]): RecipeIssue[] => issues.filter((i) => i.level === 'error');
@@ -394,12 +399,13 @@ function hasUsablePackage(ingredientId: string, catalog: Catalog): boolean {
 
 export function recipeIssues(draft: RecipeDraft, catalog: Catalog): RecipeIssue[] {
   const issues: RecipeIssue[] = [];
-  const err = (text: string, line?: number, fix?: 'price-book') => issues.push({ level: 'error', text, line, fix });
+  const err = (text: string, line?: number, fix?: 'price-book', where: Pick<RecipeIssue, 'field' | 'ingredientId'> = {}) =>
+    issues.push({ level: 'error', text, line, fix, ...(line != null ? { ingredientId: draft.lines[line]?.ingredientId ?? '' } : {}), ...where });
   const warn = (text: string, line?: number) => issues.push({ level: 'warning', text, line });
 
-  if (!draft.name.trim()) err('Give the menu item a name.');
-  if (draft.lines.length === 0) err('Add at least one ingredient line.');
-  if (draft.mealFit.length === 0) err('Pick at least one meal it fits.');
+  if (!draft.name.trim()) err('Give the menu item a name.', undefined, undefined, { field: 'name' });
+  if (draft.lines.length === 0) err('Add at least one ingredient line.', undefined, undefined, { field: 'lines' });
+  if (draft.mealFit.length === 0) err('Pick at least one meal it fits.', undefined, undefined, { field: 'mealFit' });
 
   const byId = new Map(catalog.ingredients.map((i) => [i.id, i]));
   const seen = new Set<string>();

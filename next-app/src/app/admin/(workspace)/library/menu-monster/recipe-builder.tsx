@@ -20,10 +20,11 @@
  * whole draft, variations included; Publish waits for a save and for zero
  * blocking issues — and the action enforces the same gate.
  *
- * A SINGLE FOOD (authoring.ts isSingleFood: one ingredient, no steps, gear or diet swaps — Cookies, Bacon)
+ * A SINGLE FOOD (authoring.ts isSingleFood: one ingredient, no diet swaps — Cookies, Bacon)
  * opens in a short form instead (Patrick, 2026-10-04; prototype concept-f-kinds/admin-food.html): its name,
- * what each person gets, meal fit and food groups, then its brands and their packages. No ingredient line,
- * no Steps. "Open the full editor" is the way to steps, gear and diet swaps; saving a new name renames the
+ * what each person gets, meal fit and food groups, then its brands and their packages. No ingredient line;
+ * Steps and Gear show only when the food already has some (bacon), so Cookies stays three fields. "Open the
+ * full editor" is the way to a diet swap or a second ingredient; saving a new name renames the
  * ingredient too while the two still match.
  */
 import { useEffect, useMemo, useState, useTransition } from 'react';
@@ -34,6 +35,7 @@ import { FormPanel, FormSection } from '../../../_components/form-panel';
 import { Badge } from '../../_components/badge';
 import { Notice } from '../../_components/notice';
 import { TabStrip } from '../../_components/tab-strip';
+import { SearchField, useTableSearch } from '../../_components/search-field';
 import { DiscardButton, SaveButton, SaveFeedback, useDraftSnapshot, useSavePhase } from '../../_components/save-state';
 import { money } from '@/lib/event-money';
 import {
@@ -78,6 +80,17 @@ const NEW_ID = '__new__';
 /** The one-step form for a single food (Cookies): ingredient + price + its one-line menu item. */
 const NEW_FOOD = '__food__';
 const ARM_MS = 4000;
+/** The list's kind tabs. Retired items show under All (last, muted) and Retired only. */
+type ListTab = 'all' | 'recipes' | 'foods' | 'fixes' | 'retired';
+interface ListRow {
+  recipe: Recipe;
+  pill: Pill;
+  /** One ingredient, no steps: Cookies, Bacon. */
+  food: boolean;
+}
+const rowName = (x: ListRow) => [x.recipe.name];
+/** "Line 3: Bacon has no price" → "Bacon has no price", for the note under the line itself. */
+const sansLine = (text: string) => text.replace(/^Line \d+: /, '');
 type Tab = 'everyone' | RestrictionKey;
 
 const blankDraft = (): RecipeAuthoring => ({
@@ -172,60 +185,94 @@ export function RecipeBuilder({ catalog, initialRecipeId, stores = [], today = n
   const [note, setNote] = useState<string | null>(null);
   const selected = selectedId === NEW_ID || selectedId === NEW_FOOD ? null : (catalog.recipes.find((r) => r.id === selectedId) ?? null);
 
-  const groups = useMemo(() => {
-    const by = new Map<string, Recipe[]>();
-    for (const r of catalog.recipes) {
-      const slot = r.mealFit[0] ?? 'unplaced';
-      by.set(slot, [...(by.get(slot) ?? []), r]);
-    }
-    const out: { key: string; label: string; recipes: Recipe[] }[] = [];
-    for (const m of MEALS) {
-      const rs = by.get(m.key);
-      if (rs?.length) out.push({ key: m.key, label: m.label, recipes: rs });
-    }
-    const rest = by.get('unplaced');
-    if (rest?.length) out.push({ key: 'unplaced', label: 'No meal picked yet', recipes: rest });
-    return out;
-  }, [catalog.recipes]);
+  const [listTab, setListTab] = useState<ListTab>('all');
+  const [meal, setMeal] = useState<MealSlot | ''>('');
+  // One list, A to Z (Patrick + Jenna, 2026-10-04): a leader looks a food up by its name, so meal is a filter,
+  // not a heading — and an item that fits two meals is found under both. Retired items go last.
+  const rows = useMemo<ListRow[]>(
+    () =>
+      catalog.recipes
+        .map((recipe) => {
+          const a = authoringOf(recipe);
+          return { recipe, pill: pillOf(a, catalog), food: isSingleFood(a) };
+        })
+        .sort((x, y) => Number(x.pill === 'Retired') - Number(y.pill === 'Retired') || x.recipe.name.localeCompare(y.recipe.name)),
+    [catalog]
+  );
+  const { q, setQ, visible } = useTableSearch(rows, rowName);
+  const inTab = (x: ListRow, t: ListTab) =>
+    t === 'all' ? true : t === 'retired' ? x.pill === 'Retired' : t === 'fixes' ? x.pill === 'Needs fixes' : x.pill !== 'Retired' && (t === 'foods') === x.food;
+  const count = (t: ListTab) => rows.filter((x) => inTab(x, t)).length;
+  const shown = visible.filter((x) => inTab(x, listTab) && (meal === '' || x.recipe.mealFit.includes(meal)));
+  const filtered = q.trim() !== '' || listTab !== 'all' || meal !== '';
 
   return (
-    <div className={styles.builder}>
-      <nav className={styles.itemList} aria-label="Menu items">
-        <div className={styles.toolbar}>
-          <span className={styles.spacer} />
-          <Button variant="secondary" onClick={() => setSelectedId(NEW_FOOD)}>
-            + New single food
-          </Button>
-          <Button variant="secondary" onClick={() => setSelectedId(NEW_ID)}>
-            + New recipe
-          </Button>
-        </div>
-        {groups.map((g) => (
-          <div key={g.key} className={styles.itemGroup}>
-            <p className={`adminLabel ${styles.itemGroupTitle}`}>{g.label}</p>
-            {g.recipes.map((r) => {
-              const a = authoringOf(r);
-              const pill = pillOf(a, catalog);
-              const toLook = RESTRICTIONS.filter((x) => viewFor(a, x.key, catalog) === 'needs_look').length;
-              return (
-                <button
-                  key={r.id}
-                  type="button"
-                  className={r.id === selectedId ? `${styles.itemBtn} ${styles.itemBtnOn}` : styles.itemBtn}
-                  aria-current={r.id === selectedId ? 'true' : undefined}
-                  onClick={() => setSelectedId(r.id)}
-                >
-                  <span className={styles.grow}>
-                    {r.name}
-                    {toLook > 0 && <span className={styles.muted}> · {toLook} to look at</span>}
-                  </span>
-                  <Badge variant={PILL_VARIANT[pill]}>{pill}</Badge>
-                </button>
-              );
-            })}
-          </div>
+    <>
+    <div className={styles.listTools}>
+      <TabStrip
+        ariaLabel="Kinds of menu item"
+        activeKey={listTab}
+        items={[
+          { key: 'all', label: 'All', count: count('all'), onSelect: () => setListTab('all') },
+          { key: 'foods', label: 'Single foods', count: count('foods'), onSelect: () => setListTab('foods') },
+          { key: 'recipes', label: 'Recipes', count: count('recipes'), onSelect: () => setListTab('recipes') },
+          ...(count('fixes') > 0 || listTab === 'fixes' ? [{ key: 'fixes', label: 'Needs fixes', count: count('fixes'), onSelect: () => setListTab('fixes') }] : []),
+          ...(count('retired') > 0 || listTab === 'retired' ? [{ key: 'retired', label: 'Retired', count: count('retired'), onSelect: () => setListTab('retired') }] : [])
+        ]}
+      />
+      <SearchField value={q} onChange={setQ} label="Search food and recipes" resultCount={shown.length} totalCount={rows.length} />
+      <select className={`${lib.selectInput} ${styles.mealFilter}`} aria-label="Meal" value={meal} onChange={(e) => setMeal(e.target.value as MealSlot | '')}>
+        <option value="">Any meal</option>
+        {MEALS.map((m) => (
+          <option key={m.key} value={m.key}>
+            {m.label}
+          </option>
         ))}
-        {catalog.recipes.length === 0 && <p className={styles.muted}>No menu items yet.</p>}
+      </select>
+      <span className={styles.spacer} />
+      <Button variant="secondary" onClick={() => setSelectedId(NEW_FOOD)}>
+        + New single food
+      </Button>
+      <Button variant="secondary" onClick={() => setSelectedId(NEW_ID)}>
+        + New recipe
+      </Button>
+    </div>
+    <div className={styles.builder}>
+      <nav className={styles.itemScroll} aria-label="Menu items">
+        {shown.map(({ recipe: r, pill, food }) => (
+          <button
+            key={r.id}
+            type="button"
+            className={r.id === selectedId ? `${styles.itemBtn} ${styles.itemBtnOn}` : styles.itemBtn}
+            aria-current={r.id === selectedId ? 'true' : undefined}
+            onClick={() => setSelectedId(r.id)}
+          >
+            <span className={styles.grow}>
+              {r.name}
+              {listTab === 'all' && <span className={styles.muted}> · {food ? 'food' : 'recipe'}</span>}
+            </span>
+            <Badge variant={PILL_VARIANT[pill]}>{pill}</Badge>
+          </button>
+        ))}
+        {rows.length === 0 && <p className={styles.muted}>No menu items yet.</p>}
+        {rows.length > 0 && shown.length === 0 && (
+          <div>
+            <p className={styles.muted}>No items match.</p>
+            {filtered && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setQ('');
+                  setListTab('all');
+                  setMeal('');
+                }}
+              >
+                Clear filters
+              </Button>
+            )}
+          </div>
+        )}
       </nav>
 
       {selectedId === NEW_FOOD ? (
@@ -258,6 +305,7 @@ export function RecipeBuilder({ catalog, initialRecipeId, stores = [], today = n
         </div>
       )}
     </div>
+    </>
   );
 }
 
@@ -300,6 +348,9 @@ function RecipeEditor({
   const ingredients = catalog.ingredients.filter((i) => !i.retiredAt);
   const ingById = new Map(catalog.ingredients.map((i) => [i.id, i]));
   const compiled = compileAuthoring(draft).lines;
+  // Where each blocking problem is, so the spot is marked as well as listed at the top.
+  const badField = (f: 'name' | 'lines' | 'mealFit') => errors.some((i) => i.field === f);
+  const lineProblems = (ingredientId: string) => errors.filter((i) => i.field == null && i.ingredientId === ingredientId).map((i) => sansLine(i.text));
   // Decided from what is SAVED, so typing never flips the form mid-edit.
   const single = !isNew && isSingleFood(snap.saved);
   const compact = single && !full;
@@ -374,27 +425,32 @@ function RecipeEditor({
       {error && <Notice>{error}</Notice>}
       {/* What "Needs fixes" means, right under the pill that says it — not below the whole form. */}
       {errors.length > 0 && (
-        <div className={styles.issues}>
-          <p className={`adminLabel ${styles.issuesTitle}`}>{snap.saved.status === 'published' ? 'Needs fixing' : 'Needs fixing before it can publish'}</p>
-          <ul className={styles.issueList} aria-label="Needs fixing">
-            {errors.map((i, n) => (
-              <li key={n}>
-                {i.text}
-                {i.fix === 'price-book' && (
-                  <>
-                    {' '}
-                    <Link href="/admin/library/menu-monster?tab=prices">Open the Price book</Link>
-                  </>
-                )}
-              </li>
-            ))}
+        <Notice>
+          <strong>{snap.saved.status === 'published' ? 'Needs fixing' : 'Needs fixing before it can publish'}</strong>
+          <ul className={styles.fixList} aria-label="Needs fixing">
+            {errors.map((i, n) => {
+              const ing = i.ingredientId ? ingById.get(i.ingredientId) : undefined;
+              return (
+                <li key={n}>
+                  {i.text}
+                  {i.fix === 'price-book' && (
+                    <>
+                      {' '}
+                      <Link href={`/admin/library/menu-monster?tab=prices${ing ? `&ingredient=${encodeURIComponent(ing.id)}` : ''}`}>
+                        {ing ? `Add a price for ${ing.name} →` : 'Open the Price book →'}
+                      </Link>
+                    </>
+                  )}
+                </li>
+              );
+            })}
           </ul>
-        </div>
+        </Notice>
       )}
 
       <FormPanel>
         {compact ? (
-          <SingleFoodFields draft={draft} setDraft={setDraft} food={food} catalog={catalog} onFull={() => setFull(true)} />
+          <SingleFoodFields draft={draft} setDraft={setDraft} food={food} catalog={catalog} onFull={() => setFull(true)} make={snap.saved.stepsMd.trim() !== '' || (snap.saved.gear ?? '').trim() !== ''} bad={{ name: badField('name'), mealFit: badField('mealFit'), amount: lineProblems(food?.id ?? '').filter((t) => !/priced package/.test(t)) }} />
         ) : (
           <>
         <FormSection num={1} title="Basics">
@@ -403,7 +459,7 @@ function RecipeEditor({
               <label className={`adminLabel ${lib.fieldLabel}`} htmlFor="mm-r-name">
                 Name
               </label>
-              <input id="mm-r-name" className={lib.textInput} value={draft.name} maxLength={80} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} placeholder="Required" />
+              <input id="mm-r-name" className={badField('name') ? `${lib.textInput} ${styles.bad}` : lib.textInput} aria-invalid={badField('name') || undefined} value={draft.name} maxLength={80} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} placeholder="Required" />
             </div>
             <div>
               <label className={`adminLabel ${lib.fieldLabel}`} htmlFor="mm-r-method">
@@ -427,13 +483,14 @@ function RecipeEditor({
                 <input type="checkbox" checked={draft.trail} onChange={(e) => setDraft((d) => ({ ...d, trail: e.target.checked }))} /> Trail (no fridge, light)
               </label>
             </div>
-            <fieldset className={styles.fieldset}>
+            <fieldset className={badField('mealFit') ? `${styles.fieldset} ${styles.bad}` : styles.fieldset}>
               <legend className={`adminLabel ${lib.fieldLabel}`}>Meal fit</legend>
               {MEALS.map((m) => (
                 <label key={m.key} className={styles.listRow}>
                   <input type="checkbox" checked={draft.mealFit.includes(m.key)} onChange={(e) => setDraft((d) => ({ ...d, mealFit: toggle(d.mealFit, m.key, e.target.checked) }))} /> {m.label}
                 </label>
               ))}
+              {badField('mealFit') && <p className={styles.badNote}>Pick at least one meal.</p>}
             </fieldset>
             <fieldset className={styles.fieldset}>
               <legend className={`adminLabel ${lib.fieldLabel}`}>Food groups (MyPlate)</legend>
@@ -489,7 +546,7 @@ function RecipeEditor({
                 One line per ingredient — what an unrestricted person gets. Gluten-free, nut-free, dairy-free and vegetarian swaps go on their own
                 tab, so this list stays the plain recipe.
               </p>
-              {draft.base.length === 0 && <p className={styles.muted}>No ingredients yet.</p>}
+              {draft.base.length === 0 && <p className={badField('lines') ? styles.badNote : styles.muted}>No ingredients yet{badField('lines') ? ' — add at least one.' : '.'}</p>}
               <ul className={styles.lineList} aria-label="Ingredient lines">
                 {draft.base.map((l, idx) => (
                   <BaseLineRow
@@ -499,6 +556,7 @@ function RecipeEditor({
                     ingredients={ingredients}
                     ingredient={ingById.get(l.ingredientId) ?? null}
                     catalog={catalog}
+                    problems={lineProblems(l.ingredientId)}
                     onChange={(patch) => setBase(idx, patch)}
                     onRemove={() => setDraft((d) => ({ ...d, base: d.base.filter((_, i) => i !== idx) }))}
                   />
@@ -622,7 +680,8 @@ function RecipeEditor({
       </FormPanel>
 
       {compact && food && (
-        <FormPanel>
+        <FormPanel className={errors.some((i) => i.fix === 'price-book') ? styles.bad : undefined}>
+          {errors.some((i) => i.fix === 'price-book') && <p className={styles.badNote}>{food.name} has no priced package yet, so menus can’t cost it.</p>}
           <BrandsBlock ing={food} catalog={catalog} onChanged={onChanged} />
           <p className={styles.hint}>
             <Link href={`/admin/library/menu-monster?tab=prices&ingredient=${encodeURIComponent(food.id)}`}>Prices, packages and stores for {food.name.toLowerCase()} are in the Price book →</Link>
@@ -693,6 +752,7 @@ function BaseLineRow({
   ingredients,
   ingredient,
   catalog,
+  problems = [],
   onChange,
   onRemove
 }: {
@@ -701,12 +761,14 @@ function BaseLineRow({
   ingredients: Ingredient[];
   ingredient: Ingredient | null;
   catalog: Catalog;
+  /** What is wrong with this line (the same sentences the Needs fixing box lists). */
+  problems?: string[];
   onChange: (patch: Partial<DraftBaseLine>) => void;
   onRemove: () => void;
 }) {
   const n = idx + 1;
   return (
-    <li className={styles.lineRow}>
+    <li className={problems.length > 0 ? `${styles.lineRow} ${styles.bad}` : styles.lineRow}>
       <div className={styles.grow}>
         <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`mm-l-${idx}-ing`}>
           Ingredient
@@ -728,6 +790,11 @@ function BaseLineRow({
       <Button variant="quiet" size="sm" aria-label={`Remove line ${n}`} onClick={onRemove}>
         Remove
       </Button>
+      {problems.map((text) => (
+        <p key={text} className={styles.badNote}>
+          {text}
+        </p>
+      ))}
     </li>
   );
 }
@@ -739,8 +806,13 @@ function SingleFoodFields({
   setDraft,
   food,
   catalog,
-  onFull
+  onFull,
+  make,
+  bad
 }: {
+  /** The food already has steps or gear: show both fields. */
+  make: boolean;
+  bad: { name: boolean; mealFit: boolean; amount: string[] };
   draft: RecipeAuthoring;
   setDraft: (fn: (d: RecipeAuthoring) => RecipeAuthoring) => void;
   food: Ingredient | null;
@@ -757,13 +829,13 @@ function SingleFoodFields({
           <label className={`adminLabel ${lib.fieldLabel}`} htmlFor="mm-f-name">
             Name
           </label>
-          <input id="mm-f-name" className={lib.textInput} value={draft.name} maxLength={80} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} />
+          <input id="mm-f-name" className={bad.name ? `${lib.textInput} ${styles.bad}` : lib.textInput} aria-invalid={bad.name || undefined} value={draft.name} maxLength={80} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} />
         </div>
         <div>
           <label className={`adminLabel ${lib.fieldLabel}`} htmlFor="mm-f-amt">
             Each person gets
           </label>
-          <div className={styles.inlineForm}>
+          <div className={bad.amount.length > 0 ? `${styles.inlineForm} ${styles.bad}` : styles.inlineForm}>
             <input
               id="mm-f-amt"
               className={`${lib.textInput} ${styles.narrow}`}
@@ -781,15 +853,21 @@ function SingleFoodFields({
                 onChange={(k) => setDraft((d) => ({ ...d, base: d.base.map((l, i) => (i === 0 ? { ...l, unitKey: k } : l)) }))}
               />
             </div>
+            {bad.amount.map((text) => (
+              <p key={text} className={styles.badNote}>
+                {text}
+              </p>
+            ))}
           </div>
         </div>
-        <fieldset className={styles.fieldset}>
+        <fieldset className={bad.mealFit ? `${styles.fieldset} ${styles.bad}` : styles.fieldset}>
           <legend className={`adminLabel ${lib.fieldLabel}`}>Meal fit</legend>
           {MEALS.map((m) => (
             <label key={m.key} className={styles.listRow}>
               <input type="checkbox" checked={draft.mealFit.includes(m.key)} onChange={(e) => setDraft((d) => ({ ...d, mealFit: toggle(d.mealFit, m.key, e.target.checked) }))} /> {m.label}
             </label>
           ))}
+          {bad.mealFit && <p className={styles.badNote}>Pick at least one meal.</p>}
         </fieldset>
         <fieldset className={styles.fieldset}>
           <legend className={`adminLabel ${lib.fieldLabel}`}>Food groups (MyPlate)</legend>
@@ -819,11 +897,27 @@ function SingleFoodFields({
           ))}
         </ul>
       )}
+      {make && (
+        <div className={lib.fieldGrid}>
+          <div className={lib.fieldFull}>
+            <label className={`adminLabel ${lib.fieldLabel}`} htmlFor="mm-f-steps">
+              How to make it
+            </label>
+            <textarea id="mm-f-steps" className={lib.textArea} value={draft.stepsMd} maxLength={600} onChange={(e) => setDraft((d) => ({ ...d, stepsMd: e.target.value }))} />
+          </div>
+          <div className={lib.fieldFull}>
+            <label className={`adminLabel ${lib.fieldLabel}`} htmlFor="mm-f-gear">
+              Gear you’ll need (separated by commas)
+            </label>
+            <input id="mm-f-gear" className={lib.textInput} value={draft.gear ?? ''} maxLength={400} onChange={(e) => setDraft((d) => ({ ...d, gear: e.target.value }))} />
+          </div>
+        </div>
+      )}
       <p className={styles.hint}>
         <Button variant="quiet" size="sm" onClick={onFull}>
           Open the full editor
         </Button>{' '}
-        for steps, gear, a diet swap, or a second ingredient.
+        for {make ? '' : 'steps, gear, '}a diet swap or a second ingredient.
       </p>
     </>
   );

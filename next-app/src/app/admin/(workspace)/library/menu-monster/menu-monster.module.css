@@ -138,3 +138,12 @@
 .brandPackageRow { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) 130px auto; gap: 8px; align-items: center; font-size: var(--admin-text-base); }
 @media (max-width: 720px) { .brandPackageRow { grid-template-columns: 1fr 1fr; } }
 .suggestSelect { max-width: 280px; }
+
+/* Where a "Needs fixes" problem is (2026-10-04): the field, fieldset or ingredient line it is about. */
+.bad { outline: 1px solid var(--admin-danger); outline-offset: 4px; border-radius: var(--admin-radius); background: var(--admin-status-error-bg); }
+.badNote { flex-basis: 100%; margin: 4px 0 0; color: var(--admin-danger-dark); font-size: var(--admin-text-sm); font-weight: 700; }
+.fixList { margin: 4px 0 0; padding-left: 18px; line-height: 1.6; }
+/* Food & recipes list (2026-10-04): one A–Z list under a search, kind tabs and a meal filter. */
+.listTools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+.itemScroll { display: grid; gap: 2px; max-height: calc(100vh - 240px); overflow-y: auto; padding: 2px; }
+.mealFilter { max-width: 160px; }

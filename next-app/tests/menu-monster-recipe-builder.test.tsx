@@ -122,7 +122,8 @@ describe('Recipe builder', () => {
     const editor = screen.getByRole('region', { name: 'Edit Orange juice' });
     const fixes = within(editor).getByRole('list', { name: 'Needs fixing' });
     expect(fixes.textContent).toMatch(/Orange juice has no priced package yet/);
-    expect(within(fixes).getByRole('link', { name: 'Open the Price book' })).toBeTruthy();
+    // The link goes straight to the ingredient that has no price.
+    expect(within(fixes).getByRole('link', { name: 'Add a price for Orange juice →' }).getAttribute('href')).toBe('/admin/library/menu-monster?tab=prices&ingredient=oj');
     // It sits before the first field, not under the whole form.
     const name = within(editor).getByLabelText('Name');
     expect(fixes.compareDocumentPosition(name) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -291,6 +292,20 @@ describe('Recipe builder — a single food opens in the short form (2026-10-04)'
     expect([bacon().getByRole('list', { name: 'Ingredient lines' }) != null, bacon().getByRole('button', { name: 'Back to the short form' }) != null]).toEqual([true, true]);
   });
 
+  it('AFoodWithNoStepsOrGear_ShowsNeitherField', () => {
+    open();
+    expect([bacon().queryByLabelText('How to make it'), bacon().queryByLabelText(/Gear you.ll need/)]).toEqual([null, null]);
+  });
+
+  it('AFoodThatIsCooked_KeepsItsStepsAndGear_InTheShortForm', async () => {
+    const user = userEvent.setup();
+    open({ ...CATALOG, recipes: CATALOG.recipes.map((r) => (r.id === 'bacon' ? { ...r, stepsMd: 'Fry until crisp.', equipment: ['Griddle'] } : r)) });
+    expect((bacon().getByLabelText('How to make it') as HTMLTextAreaElement).value).toBe('Fry until crisp.');
+    await user.type(bacon().getByLabelText(/Gear you.ll need/), ', Tongs');
+    await save(user);
+    expect(vi.mocked(saveRecipe).mock.calls[0][0]).toMatchObject({ stepsMd: 'Fry until crisp.', gear: 'Griddle, Tongs' });
+  });
+
   it('ItsBrands_AreRightThere', () => {
     open();
     expect(bacon().getByRole('region', { name: 'Bacon brands' })).toBeTruthy();
@@ -299,5 +314,116 @@ describe('Recipe builder — a single food opens in the short form (2026-10-04)'
   it('ThePriceBook_IsOneLinkAway', () => {
     open();
     expect(bacon().getByRole('link', { name: /Price book →/ }).getAttribute('href')).toBe('/admin/library/menu-monster?tab=prices&ingredient=bacon');
+  });
+});
+
+describe('Recipe builder — the problem is marked where it is (2026-10-04)', () => {
+  const OJ: Catalog = {
+    ...CATALOG,
+    ingredients: [...ING, { id: 'oj', name: 'Orange juice', unit: UNITS.cup, section: 'dairy', staple: false, avoid: [], retiredAt: null }],
+    recipes: [
+      recipe({
+        id: 'oj', name: 'Orange juice',
+        lines: [
+          { ingredientId: 'oj', qtyPerPerson: 1, unitKey: null, servesRule: 'everyone', servesRestrictions: [] },
+          { ingredientId: 'eggs', qtyPerPerson: 1, unitKey: null, servesRule: 'everyone', servesRestrictions: [] }
+        ]
+      }),
+      recipe({ id: 'ojf', name: 'Juice box', lines: [{ ingredientId: 'oj', qtyPerPerson: 1, unitKey: null, servesRule: 'everyone', servesRestrictions: [] }] })
+    ]
+  };
+
+  it('TheNeedsFixingBox_IsAnAlert', () => {
+    render(<RecipeBuilder catalog={OJ} initialRecipeId="oj" />);
+    const fixes = within(screen.getByRole('region', { name: 'Edit Orange juice' })).getByRole('list', { name: 'Needs fixing' });
+    expect(fixes.closest('[role="alert"], [role="status"], [class*="notice" i]')).not.toBeNull();
+  });
+
+  it('TheLineWithTheProblem_SaysItRightThere', () => {
+    render(<RecipeBuilder catalog={OJ} initialRecipeId="oj" />);
+    const [juice, eggs] = within(screen.getByRole('list', { name: 'Ingredient lines' })).getAllByRole('listitem');
+    expect([/Orange juice has no priced package yet/.test(juice.textContent ?? ''), /priced package/.test(eggs.textContent ?? '')]).toEqual([true, false]);
+  });
+
+  it('ALineWithNoProblem_SaysNothing', () => {
+    render(<RecipeBuilder catalog={CATALOG} initialRecipeId="pancakes" />);
+    const lines = within(screen.getByRole('list', { name: 'Ingredient lines' })).getAllByRole('listitem');
+    expect(lines.some((l) => /priced package|pick an ingredient/.test(l.textContent ?? ''))).toBe(false);
+  });
+
+  it('NoMealPicked_MarksMealFit', () => {
+    render(<RecipeBuilder catalog={{ ...CATALOG, recipes: [recipe({ id: 'pancakes', name: 'Pancakes', mealFit: [], lines: CATALOG.recipes[0].lines })] }} initialRecipeId="pancakes" />);
+    expect(within(screen.getByRole('group', { name: 'Meal fit' })).getByText('Pick at least one meal.')).toBeTruthy();
+  });
+
+  it('ASingleFoodWithNoPrice_MarksItsBrandsAndPrices', () => {
+    render(<RecipeBuilder catalog={OJ} initialRecipeId="ojf" />);
+    expect(within(screen.getByRole('region', { name: 'Edit Juice box' })).getByText('Orange juice has no priced package yet, so menus can’t cost it.')).toBeTruthy();
+  });
+});
+
+describe('Recipe builder — one A–Z list with filters (2026-10-04)', () => {
+  const names = () => within(list()).getAllByRole('button').map((b) => (b.textContent ?? '').split(' · ')[0].replace(/(Needs fixes|Draft|Published|Retired)$/, ''));
+  const BIG: Catalog = {
+    ...CATALOG,
+    recipes: [
+      ...CATALOG.recipes,
+      recipe({ id: 'apple', name: 'Apple', mealFit: ['lunch', 'breakfast'], lines: [{ ingredientId: 'eggs', qtyPerPerson: 1, unitKey: null, servesRule: 'everyone', servesRestrictions: [] }] }),
+      recipe({ id: 'old', name: 'Aardvark stew', status: 'retired', lines: CATALOG.recipes[0].lines })
+    ]
+  };
+
+  it('Items_AreListedAToZ_WithRetiredLast', () => {
+    render(<RecipeBuilder catalog={BIG} />);
+    expect(names()).toEqual(['Apple', 'Bacon', 'Pancakes', 'Toast', 'Aardvark stew']);
+  });
+
+  it('SingleFoods_ShowsOnlyOneIngredientItems', async () => {
+    render(<RecipeBuilder catalog={BIG} />);
+    await userEvent.setup().click(screen.getByRole('tab', { name: /^Single foods/ }));
+    expect(names()).toEqual(['Apple', 'Bacon']);
+  });
+
+  it('Recipes_ShowsTheRest_WithoutRetired', async () => {
+    render(<RecipeBuilder catalog={BIG} />);
+    await userEvent.setup().click(screen.getByRole('tab', { name: /^Recipes/ }));
+    expect(names()).toEqual(['Pancakes', 'Toast']);
+  });
+
+  it('NeedsFixes_IsItsOwnList', async () => {
+    render(<RecipeBuilder catalog={BIG} />);
+    await userEvent.setup().click(screen.getByRole('tab', { name: /^Needs fixes/ }));
+    expect(names()).toEqual(['Toast']);
+  });
+
+  it('Tabs_CarryCounts', () => {
+    render(<RecipeBuilder catalog={BIG} />);
+    expect(screen.getByRole('tab', { name: /^Single foods/ }).textContent).toMatch(/2/);
+  });
+
+  it('Search_FindsByName', async () => {
+    render(<RecipeBuilder catalog={BIG} />);
+    await userEvent.setup().type(screen.getByRole('searchbox', { name: 'Search food and recipes' }), 'pan');
+    expect(names()).toEqual(['Pancakes']);
+  });
+
+  it('TheMealFilter_FindsAnItemUnderEveryMealItFits', async () => {
+    render(<RecipeBuilder catalog={BIG} />);
+    await userEvent.setup().selectOptions(screen.getByRole('combobox', { name: 'Meal' }), 'lunch');
+    expect(names()).toEqual(['Apple']);
+  });
+
+  it('NothingMatching_OffersToClearTheFilters', async () => {
+    const user = userEvent.setup();
+    render(<RecipeBuilder catalog={BIG} />);
+    await user.type(screen.getByRole('searchbox', { name: 'Search food and recipes' }), 'zzz');
+    await user.click(within(list()).getByRole('button', { name: 'Clear filters' }));
+    expect(names()).toHaveLength(5);
+  });
+
+  it('TheOpenItem_StaysOpen_WhenFilteredOutOfTheList', async () => {
+    render(<RecipeBuilder catalog={BIG} initialRecipeId="pancakes" />);
+    await userEvent.setup().click(screen.getByRole('tab', { name: /^Single foods/ }));
+    expect(screen.getByRole('region', { name: 'Edit Pancakes' })).toBeTruthy();
   });
 });
