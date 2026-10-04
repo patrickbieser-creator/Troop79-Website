@@ -2,7 +2,8 @@
  * /admin/library/menu-monster — Menu Monster leader tools
  * (Plans/Menu-Monster-Leader-Tools.md).
  *
- * Four tabs (Gear — the troop's gear list — is the fourth): the Price book (ingredients, packages with prices, unit
+ * Six tabs. Needs attention comes first (release 6: one line per kind of thing waiting on a leader) and
+ * Purchases last (each outing's planned vs paid). Between them: the Price book (ingredients, packages with prices, unit
  * conversions), Food & recipes (menu items: single foods and recipes, with per-line diet rules) and Scout
  * recipes (what scouts shared — live at once, Phase 4A — to retire or re-credit). Gated by
  * `library.moderate` here and again in every action; reads with the service
@@ -33,13 +34,22 @@ import { listSharedScoutRecipesWith, listTypedInsWith } from '@/lib/menu-monster
 import { ScoutIngredients } from './scout-ingredients';
 import { GearAdmin } from './gear-admin';
 import { listGearAdminWith } from '@/lib/menu-monster/gear-store';
+import { loadMenuMonsterCatalog } from '@/lib/menu-monster/data';
+import { listPurchasesWith, unfinishedPurchases } from '@/lib/menu-monster/purchases';
+import { ownerCreditNamesWith } from '@/lib/menu-monster/menus-store';
+import { recentTypedBrands } from '@/lib/menu-monster/brands-store';
+import { Attention, type NewBrand } from './attention';
+import { Purchases } from './purchases';
 import styles from './menu-monster.module.css';
 
 export const metadata = {
   title: 'Menu Monster — Troop 79 Admin'
 };
 
-type Tab = 'prices' | 'recipes' | 'scouts' | 'gear';
+type Tab = 'attention' | 'prices' | 'recipes' | 'scouts' | 'gear' | 'purchases';
+const TABS: readonly Tab[] = ['attention', 'prices', 'recipes', 'scouts', 'gear', 'purchases'];
+/** How far back "Brands typed in lately" looks. */
+const NEW_BRAND_DAYS = 30;
 
 export default async function MenuMonsterAdminPage({
   searchParams
@@ -63,7 +73,8 @@ export default async function MenuMonsterAdminPage({
     (i) => !i.retiredAt && !catalog.packages.some((p) => p.ingredientId === i.id && !p.retiredAt && p.yield != null)
   ).length;
   const drafts = catalog.recipes.filter((r) => r.status === 'draft').length;
-  const tab: Tab = sp.tab === 'recipes' || sp.tab === 'scouts' || sp.tab === 'gear' ? sp.tab : 'prices';
+  // An old link that names an ingredient or a recipe but no tab still lands on its editor.
+  const tab: Tab = TABS.includes(sp.tab as Tab) ? (sp.tab as Tab) : sp.ingredient ? 'prices' : sp.recipe ? 'recipes' : 'attention';
   // The gear list only matters on its own tab.
   const gear = tab === 'gear' ? await listGearAdminWith(admin) : [];
   // Scout recipes worth a look: live ones changed after sharing, and typed-in ingredients to match.
@@ -73,6 +84,25 @@ export default async function MenuMonsterAdminPage({
     .map((i) => ({ id: i.id, name: i.name, unitKey: i.unit.key, unitMany: i.unit.many }));
   // Recent changes only matter on the Price book tab; the 50-row read skips Recipes.
   const changes = tab === 'prices' ? await listRecentChangesWith(admin, 50) : [];
+  // Purchases are priced menu by menu: only for the two tabs that show them.
+  const purchases = tab === 'purchases' || tab === 'attention' ? await listPurchasesWith(admin, await loadMenuMonsterCatalog(null)) : [];
+  const unfinished = unfinishedPurchases(purchases, today).length;
+  const editedRecipes = shared.filter((r) => r.editedSinceShared && r.status !== 'retired').length;
+  const waiting = held.length + heldPackages.length + typedIns.length + editedRecipes + unfinished;
+  let newBrands: NewBrand[] = [];
+  if (tab === 'attention') {
+    const typed = recentTypedBrands(catalog.brands ?? [], today, NEW_BRAND_DAYS);
+    const who = await ownerCreditNamesWith(admin, typed.map((b) => b.addedBy as number));
+    newBrands = typed.map((b) => ({
+        id: b.id,
+        name: b.name,
+        ingredientId: b.ingredientId,
+        ingredientName: catalog.ingredients.find((i) => i.id === b.ingredientId)?.name ?? b.ingredientId,
+        addedBy: who.get(b.addedBy as number) ?? 'Someone',
+        createdAt: b.createdAt ?? '',
+        unpriced: !catalog.packages.some((p) => p.brandId === b.id && !p.retiredAt && p.yield != null)
+      }));
+  }
 
   return (
     <div className={styles.wrap}>
@@ -94,14 +124,23 @@ export default async function MenuMonsterAdminPage({
         ariaLabel="Menu Monster sections"
         activeKey={tab}
         items={[
+          { key: 'attention', label: 'Needs attention', href: '/admin/library/menu-monster?tab=attention', ...(waiting > 0 ? { count: waiting } : {}) },
           { key: 'prices', label: 'Price book', href: '/admin/library/menu-monster?tab=prices', ...(unpriced + held.length + heldPackages.length > 0 ? { count: unpriced + held.length + heldPackages.length } : {}) },
           { key: 'recipes', label: 'Food & recipes', href: '/admin/library/menu-monster?tab=recipes', ...(drafts > 0 ? { count: drafts } : {}) },
           { key: 'scouts', label: 'Scout recipes', href: '/admin/library/menu-monster?tab=scouts', ...(edited > 0 ? { count: edited } : {}) },
-          { key: 'gear', label: 'Gear', href: '/admin/library/menu-monster?tab=gear' }
+          { key: 'gear', label: 'Gear', href: '/admin/library/menu-monster?tab=gear' },
+          { key: 'purchases', label: 'Purchases', href: '/admin/library/menu-monster?tab=purchases', ...(unfinished > 0 ? { count: unfinished } : {}) }
         ]}
       />
 
-      {tab === 'prices' ? (
+      {tab === 'attention' ? (
+        <Attention
+          counts={{ heldPrices: held.length, heldPackages: heldPackages.length, ingredients: typedIns.length, editedRecipes, unpriced, drafts, unfinishedOutings: unfinished }}
+          brands={newBrands}
+        />
+      ) : tab === 'purchases' ? (
+        <Purchases outings={purchases} />
+      ) : tab === 'prices' ? (
         <>
           <PriceActivity held={held} heldPackages={heldPackages} changes={changes} />
           <PriceBook catalog={catalog} today={today} stores={stores} initialIngredientId={sp.ingredient} />

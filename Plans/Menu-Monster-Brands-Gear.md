@@ -146,3 +146,19 @@ Decisions made on Patrick's behalf:
   moved to R6.
 - qa-lead reviewed (ship): fixed the count-override skew, limited the page to overnight outings, labelled the
   planned column "on its own".
+
+### R6a — v1.159.0, 2026-10-04 (admin: Needs attention + Purchases)
+
+Decisions made on Patrick's behalf:
+
+- **Needs attention is the tab the admin page opens on.** It decides nothing: each line is a count and a link
+  to the tab that handles it. The tab's own number counts only what is truly waiting (held prices, held
+  packages, typed-in ingredients, edited shared recipes, unfinished past outings); unpriced ingredients and
+  drafts are listed but do not light the number, since they can sit for weeks.
+- **"Brands typed in lately" = the last 30 days**, no "seen" tick to maintain. A brand opens its ingredient in
+  the Price book, where the Brands block already renames / merges / removes.
+- **Purchases is read-only.** A leader corrects a purchase on the menu's own What we bought tab (leaders can
+  record there), so there is one place to record. "Unfinished" = the outing is over and a menu still has
+  unrecorded lines with no "We're done shopping".
+- Old links without `?tab=` that name an ingredient or recipe still open the Price book / Food & recipes.
+- Not independently reviewed by qa-lead (read-only views behind the existing `library.moderate` gate).

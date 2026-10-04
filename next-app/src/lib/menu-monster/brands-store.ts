@@ -153,3 +153,12 @@ export async function setPackageBrandWith(sb: SupabaseClient, packageId: string,
   const { error } = await sb.from('mm_packages').update({ brand_id: brandId, size_label: size }).eq('id', packageId);
   return error ? { ok: false, error: error.message } : { ok: true };
 }
+
+/** Live brands someone typed in on a menu within the last `days` days of `today` ('YYYY-MM-DD'), newest first. */
+export function recentTypedBrands(brands: readonly Brand[], today: string, days: number): Brand[] {
+  const [y, m, d] = today.split('-').map(Number);
+  const since = new Date(Date.UTC(y, m - 1, d - days)).toISOString();
+  return brands
+    .filter((b) => b.addedBy != null && !b.retiredAt && (b.createdAt ?? '') >= since)
+    .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
+}

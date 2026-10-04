@@ -570,3 +570,11 @@ export async function listOutingMenusWith(sb: SupabaseClient, outingId: number):
   if (error) throw new Error(`outing menus: ${error.message}`);
   return ((data ?? []) as unknown as MenuRow[]).map(toStored);
 }
+
+/** Every menu linked to an outing (any owner), oldest first — the leader tools' Purchases. Paginated. */
+export async function listLinkedMenusWith(sb: SupabaseClient): Promise<StoredMenu[]> {
+  const rows = await fetchAllRows<Record<string, unknown>>((from, to) =>
+    sb.from('mm_menus').select(COLUMNS).not('calendar_entry_id', 'is', null).order('created_at').order('id').range(from, to)
+  );
+  return (rows as unknown as MenuRow[]).map(toStored);
+}

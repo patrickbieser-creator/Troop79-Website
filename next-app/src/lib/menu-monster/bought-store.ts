@@ -16,6 +16,18 @@ export async function loadBoughtWith(sb: SupabaseClient, menuId: string): Promis
   return sanitizeBought(data?.bought);
 }
 
+/** Several menus' recorded purchases in one query; a menu with none is absent. */
+export async function loadBoughtManyWith(sb: SupabaseClient, menuIds: readonly string[]): Promise<Map<string, Bought>> {
+  const out = new Map<string, Bought>();
+  // 100 ids a query keeps the URL short; the table is small.
+  for (let i = 0; i < menuIds.length; i += 100) {
+    const { data, error } = await sb.from('mm_menus').select('id, bought').in('id', menuIds.slice(i, i + 100));
+    if (error) throw new Error(`bought: ${error.message}`);
+    for (const r of (data ?? []) as { id: string; bought: unknown }[]) out.set(r.id, sanitizeBought(r.bought));
+  }
+  return out;
+}
+
 export interface Recorder {
   personId: number | null;
   name: string;
