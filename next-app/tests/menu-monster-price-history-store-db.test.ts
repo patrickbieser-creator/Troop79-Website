@@ -112,10 +112,10 @@ describe('decidePriceWith', () => {
 
   it('Leader_WritesNoAudit_WhenARevertIsSuperseded', async () => {
     await makePackage();
+    await reportPriceWith(admin, { packageId: PKG_ID, newPrice: 4.5, reportedBy: SCOUT }, spy());
     await reportPriceWith(admin, { packageId: PKG_ID, newPrice: 5, reportedBy: SCOUT }, spy());
-    await reportPriceWith(admin, { packageId: PKG_ID, newPrice: 6, reportedBy: SCOUT }, spy());
     const changes = (await listRecentChangesWith(admin)).filter((c) => c.packageId === PKG_ID);
-    const older = changes.find((c) => c.newPrice === 5)!;
+    const older = changes.find((c) => c.newPrice === 4.5)!;
     const record = spy();
     expect(await decidePriceWith(admin, { historyId: older.id, decision: 'revert', decidedBy: SCOUT }, record)).toBe('superseded');
     expect(record).not.toHaveBeenCalled();
@@ -125,12 +125,12 @@ describe('decidePriceWith', () => {
 describe('listRecentChangesWith', () => {
   it('Leader_SeesChangesNewestFirst_OnlyTheLatestRevertable', async () => {
     await makePackage();
+    await reportPriceWith(admin, { packageId: PKG_ID, newPrice: 4.5, reportedBy: SCOUT }, spy());
     await reportPriceWith(admin, { packageId: PKG_ID, newPrice: 5, reportedBy: SCOUT }, spy());
-    await reportPriceWith(admin, { packageId: PKG_ID, newPrice: 6, reportedBy: SCOUT }, spy());
     const changes = (await listRecentChangesWith(admin)).filter((c) => c.packageId === PKG_ID);
-    expect(changes.map((c) => c.newPrice)).toEqual([6, 5]);
+    expect(changes.map((c) => c.newPrice)).toEqual([5, 4.5]);
     expect(changes.map((c) => c.canRevert)).toEqual([true, false]);
-    expect(changes[0]).toMatchObject({ reporter: 'Charlie W.', packageName: PKG_NAME, oldPrice: 5 });
+    expect(changes[0]).toMatchObject({ reporter: 'Charlie W.', packageName: PKG_NAME, oldPrice: 4.5 });
   });
 
   it('Leader_DoesNotSeeHeldRows_InRecentChanges', async () => {
@@ -141,8 +141,8 @@ describe('listRecentChangesWith', () => {
 
   it('Leader_GetsAtMostTheLimit', async () => {
     await makePackage();
+    await reportPriceWith(admin, { packageId: PKG_ID, newPrice: 4.5, reportedBy: SCOUT }, spy());
     await reportPriceWith(admin, { packageId: PKG_ID, newPrice: 5, reportedBy: SCOUT }, spy());
-    await reportPriceWith(admin, { packageId: PKG_ID, newPrice: 6, reportedBy: SCOUT }, spy());
     expect(await listRecentChangesWith(admin, 1)).toHaveLength(1);
   });
 });

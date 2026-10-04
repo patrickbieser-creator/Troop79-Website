@@ -60,23 +60,23 @@ describe('mm_report_price', () => {
 
   it('Report_AppliesAndRecordsHistory_WhenInsideTheBand', async () => {
     await makePackage();
-    expect(await report(5.5)).toBe('applied');
-    expect(await pkg()).toEqual({ price: 5.5, asOf: centralToday() });
+    expect(await report(5)).toBe('applied');
+    expect(await pkg()).toEqual({ price: 5, asOf: centralToday() });
     const [h] = await history();
-    expect(h).toMatchObject({ status: 'applied', old_price: 4, new_price: 5.5, old_as_of: '2026-01-01', reported_by_person_id: SCOUT, decided_at: null });
+    expect(h).toMatchObject({ status: 'applied', old_price: 4, new_price: 5, old_as_of: '2026-01-01', reported_by_person_id: SCOUT, decided_at: null });
   });
 
   it('Report_Applies_ExactlyAtTheEdge', async () => {
     await makePackage();
-    expect(await report(6)).toBe('applied');
+    expect(await report(5.2)).toBe('applied');
   });
 
   it('Report_Holds_WhenOutsideTheBand_AndLeavesThePriceAlone', async () => {
     await makePackage();
-    expect(await report(6.01)).toBe('held');
+    expect(await report(5.21)).toBe('held');
     expect(await pkg()).toEqual({ price: 4, asOf: '2026-01-01' });
     const [h] = await history();
-    expect(h).toMatchObject({ status: 'held', old_price: 4, new_price: 6.01 });
+    expect(h).toMatchObject({ status: 'held', old_price: 4, new_price: 5.21 });
   });
 
   it('Report_Holds_WhenThePackageHasNoYield', async () => {
@@ -97,15 +97,15 @@ describe('mm_report_price', () => {
 
   it('Report_ChainsOldToNew_AcrossTwoSequentialReports', async () => {
     await makePackage();
+    await report(4.5);
     await report(5);
-    await report(6);
     const [first, second] = await history();
-    expect(first).toMatchObject({ old_price: 4, new_price: 5 });
-    expect(second).toMatchObject({ old_price: 5, new_price: 6, old_as_of: centralToday() });
+    expect(first).toMatchObject({ old_price: 4, new_price: 4.5 });
+    expect(second).toMatchObject({ old_price: 4.5, new_price: 5, old_as_of: centralToday() });
   });
 
   it.each([
-    [4, 4.5], [4, 6], [4, 6.01], [4, 2], [4, 1.99], [4, 4], [0.1, 0.15]
+    [4, 4.5], [4, 5.2], [4, 5.21], [4, 2.8], [4, 2.79], [4, 4], [0.1, 0.13]
   ])('Report_AgreesWithTheTypeScriptBand_ForPrice%sTo%s', async (cur, next) => {
     await makePackage({ price: cur });
     const sql = await report(next);
@@ -165,11 +165,11 @@ describe('mm_decide_price', () => {
 
   it('Revert_IsSuperseded_WhenALaterChangeMovedThePrice', async () => {
     await makePackage();
+    await report(4.5);
     await report(5);
-    await report(6);
     const [first] = await history();
     expect(await decide(first.id, 'revert')).toBe('superseded');
-    expect(await pkg()).toMatchObject({ price: 6 });
+    expect(await pkg()).toMatchObject({ price: 5 });
     const [still] = await history();
     expect(still).toMatchObject({ status: 'applied', decided_at: null });
   });

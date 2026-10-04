@@ -198,35 +198,3 @@ describe('Shopping tab, read-only: where a line comes from', () => {
     expect(screen.getByText('Where it comes from: From the troop store room')).toBeTruthy();
   });
 });
-
-describe('Shopping tab, read-only: What you paid', () => {
-  const paid = () => (
-    <ShoppingTab
-      catalog={CATALOG}
-      menuId="menu-1"
-      menu={menu({ actuals: { bacon: { packageId: 'p-bac-kirk', qty: 1, pricePaid: 19.25 } } })}
-      updatedAt={VERSION}
-      snapshot={null}
-      readOnly
-      plannedBy="Sam K."
-    />
-  );
-  const section = () => screen.getByRole('heading', { level: 2, name: 'What you paid' }).closest('section') as HTMLElement;
-
-  it('Leader_SeesWhatTheScoutPaid_AsText', () => {
-    render(paid());
-    expect(section().textContent).toContain('1 × $19.25');
-  });
-
-  it('Leader_SeesNoInputsOrSave_InWhatYouPaid', () => {
-    render(paid());
-    expect(section().querySelectorAll('input, button')).toHaveLength(0);
-    expect(saveActualsAction).not.toHaveBeenCalled();
-  });
-
-  it('Leader_IsToldTheScoutEntersPricesAfterShopping', () => {
-    render(paid());
-    expect(section().textContent).toContain('Sam K. enters these after shopping.');
-  });
-});
-

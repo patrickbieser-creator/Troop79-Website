@@ -2,15 +2,15 @@ import { describe, it, expect } from 'vitest';
 import { PRICE_BAND, bandCheck, newPackageBand, unitPrice } from '../src/lib/menu-monster/price-band';
 
 /**
- * The +/-50% price band (Plans/Menu-Monster-Scout-Workspace.md, "Phase 2
+ * The +/-30% price band (Plans/Menu-Monster-Scout-Workspace.md, "Phase 2
  * design"). The SQL in mm_report_price mirrors this rule; the db tests run the
  * same cases through the function.
  */
 const pkg = (price: number, yld: number | null = 10) => ({ price, yield: yld });
 
 describe('price band', () => {
-  it('PriceBand_IsHalf', () => {
-    expect(PRICE_BAND).toBe(0.5);
+  it('PriceBand_IsThirtyPercent', () => {
+    expect(PRICE_BAND).toBe(0.3);
   });
 
   it('UnitPrice_DividesPriceByYield', () => {
@@ -26,20 +26,20 @@ describe('price band', () => {
   });
 
   it('BandCheck_Applies_WhenUnitPriceMovesWithinBand', () => {
-    expect(bandCheck(pkg(4), 5.5)).toBe('apply');
+    expect(bandCheck(pkg(4), 5)).toBe('apply');
   });
 
   it('BandCheck_Applies_ExactlyAtTheEdge', () => {
-    expect(bandCheck(pkg(4), 6)).toBe('apply');
-    expect(bandCheck(pkg(4), 2)).toBe('apply');
+    expect(bandCheck(pkg(4), 5.2)).toBe('apply');
+    expect(bandCheck(pkg(4), 2.8)).toBe('apply');
   });
 
   it('BandCheck_Holds_WhenUnitPriceRisesPastBand', () => {
-    expect(bandCheck(pkg(4), 6.01)).toBe('hold');
+    expect(bandCheck(pkg(4), 5.21)).toBe('hold');
   });
 
   it('BandCheck_Holds_WhenUnitPriceFallsPastBand', () => {
-    expect(bandCheck(pkg(4), 1.99)).toBe('hold');
+    expect(bandCheck(pkg(4), 2.79)).toBe('hold');
   });
 
   it('BandCheck_Holds_WhenThePackageHasNoYield', () => {
@@ -57,23 +57,23 @@ describe('price band', () => {
   });
 
   it('BandCheck_UsesWholeCents_SoTheEdgeIsExact', () => {
-    expect(bandCheck(pkg(0.1), 0.15)).toBe('apply');
+    expect(bandCheck(pkg(0.1), 0.13)).toBe('apply');
   });
 
   it('BandCheck_Holds_WhenThePriceIsInsideTheBandOfTheCurrentPriceButOutsideTheAnchors', () => {
-    expect(bandCheck({ price: 6, anchorPrice: 4, yield: 10 }, 8)).toBe('hold');
+    expect(bandCheck({ price: 8, anchorPrice: 4, yield: 10 }, 9)).toBe('hold');
   });
 
   it('BandCheck_Applies_WhenThePriceIsInsideTheAnchorsBand_EvenFarFromTheCurrentPrice', () => {
-    expect(bandCheck({ price: 6, anchorPrice: 4, yield: 10 }, 2)).toBe('apply');
+    expect(bandCheck({ price: 8, anchorPrice: 4, yield: 10 }, 5)).toBe('apply');
   });
 
   it('BandCheck_IsSame_WhenThePriceEqualsTheCurrentPrice_EvenIfTheAnchorDiffers', () => {
-    expect(bandCheck({ price: 6, anchorPrice: 4, yield: 10 }, 6)).toBe('same');
+    expect(bandCheck({ price: 8, anchorPrice: 4, yield: 10 }, 8)).toBe('same');
   });
 
   it('BandCheck_FallsBackToThePrice_WhenThereIsNoAnchor', () => {
-    expect(bandCheck({ price: 4, yield: 10 }, 6.01)).toBe('hold');
+    expect(bandCheck({ price: 4, yield: 10 }, 5.21)).toBe('hold');
   });
 
   it('BandCheck_Holds_WhenTheAnchorIsZero', () => {
@@ -99,7 +99,7 @@ describe('newPackageBand', () => {
   });
 
   it('NewPackage_Applies_AtExactlyTheBandEdge', () => {
-    expect(newPackageBand([{ price: 4, yield: 4 }], 6, 4)).toBe('apply'); // $1.00 → $1.50, +50%
+    expect(newPackageBand([{ price: 4, yield: 4 }], 5.2, 4)).toBe('apply'); // $1.00 → $1.30, +30%
   });
 
   it('NewPackage_IsHeld_WhenNoSiblingHasAUsableYield', () => {

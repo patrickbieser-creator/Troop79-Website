@@ -107,3 +107,20 @@ Migration `20261008100000_mm_brands` in production (the split ran there). Decisi
 - **"Check the label"** shows when the menu counts a diet that the ingredient (or one of its brands) is
   flagged for and the line is any-brand or names a New brand; always for an unreviewed typed-in ingredient.
 - Not built yet: a "new brands" list on the admin home (R6), a recipe's suggested brand (R6).
+
+### R4 — What we bought — LIVE v1.157.0 (2026-10-04)
+Migration `20261009100000_mm_bought` in production. Decisions made on Patrick's behalf:
+- **Recorded per MENU, one line at a time** (`mm_menus.bought`, mm_set_bought_line merges a line under a row
+  lock). The outing-wide list (R5) reads these; it does not replace them.
+- **A line nobody touched has no stored entry**: "not confirmed" until the done tick, then "as planned".
+- **Only a price the recorder actually changed is reported to the price book** (the page sends the price each
+  box first showed); a line confirmed with no brand named teaches the book nothing (his "a nod").
+- **"Something else"** needs a brand, a size and a price; the brand joins at once and its package is banded
+  against the troop's packages like any scout-added one (held when far out). At most two new brands per line.
+- **±30%** (`PRICE_BAND`), from 50%.
+- **A shared (public) viewer has no "What we bought" tab** — what was paid was never shown to them.
+- **The old "What you paid"** section, its component and `paid-view.ts` are deleted; `mm_menus.actuals` and
+  `saveActualsAction` stay (old entries read as a fallback until a line is recorded the new way).
+- Prices are typed as dollars and cents only ("5,50" is refused, not read as 550).
+- qa-lead reviewed: validate before creating a brand/package, no report for an untouched price, inputs wait
+  while saving, legacy lines survive a save.

@@ -610,3 +610,16 @@
 .brandSubs { flex-basis: 100%; list-style: none; margin: 0 0 var(--sp-2); padding: 0 calc(72px + 36px + var(--sp-3) * 2) 0 var(--sp-4); }
 .brandSub { display: flex; justify-content: space-between; gap: var(--sp-3); font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-meta); }
 .brandSubCost { font-variant-numeric: tabular-nums; }
+
+/* What we bought (release 4): the price box in the right column, small boxes in an open row, the done line. */
+.rowDim .rowName { color: var(--text-meta); }
+.priceBox { width: 84px; min-height: 32px; padding: 0 var(--sp-2); font-family: var(--font-ui); font-size: 16px; text-align: right; font-variant-numeric: tabular-nums; color: var(--text-head); background: var(--warm-white); border: 1px solid var(--border-light); border-radius: var(--rad-sm); }
+.priceBox:focus-visible, .qtyBox:focus-visible, .textBox:focus-visible, .unitBox:focus-visible { outline: var(--focus-ring); outline-offset: 1px; }
+.priceBox[aria-invalid='true'] { border-color: var(--status-danger); }
+.qtyBox { width: 56px; min-height: 32px; padding: 0 var(--sp-2); font-family: var(--font-ui); font-size: 16px; text-align: right; background: var(--warm-white); border: 1px solid var(--border-light); border-radius: var(--rad-sm); }
+.textBox { width: 180px; min-height: 32px; padding: 0 var(--sp-2); font-family: var(--font-ui); font-size: 16px; background: var(--warm-white); border: 1px solid var(--border-light); border-radius: var(--rad-sm); }
+.unitBox { min-height: 32px; font-family: var(--font-ui); font-size: 16px; background: var(--warm-white); border: 1px solid var(--border-light); border-radius: var(--rad-sm); }
+.newBrand { display: inline-flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2); }
+.doneLine { display: flex; align-items: center; gap: var(--sp-2); margin: var(--sp-4) 0 var(--sp-2); font-family: var(--font-ui); font-size: var(--fs-md); color: var(--text-head); }
+
+.plainFieldset { border: 0; margin: 0; padding: 0; min-width: 0; }

@@ -1,7 +1,7 @@
 /**
  * The price band for scout-reported prices (Plans/Menu-Monster-Scout-Workspace.md,
  * "Phase 2 design"): a reported price whose UNIT price (price ÷ yield per
- * recipe unit) is within ±50% of the package's current unit price applies
+ * recipe unit) is within ±30% of the package's current unit price applies
  * straight away; anything further out, or against an unusable package, is
  * held for a leader. Authoring's 25% `BIG_CHANGE` is a different, softer flag.
  *
@@ -14,7 +14,9 @@
  * on divided floats, so an edge value like 4 → 6 is never on the wrong side.
  */
 
-export const PRICE_BAND = 0.5;
+// ±30% since 2026-10-04 (Patrick + Brad): at 50% a scout typing the total for two packages of a $3 item as
+// $5.80 quietly raised every menu's cost. Each change stays in the package's price history with Revert.
+export const PRICE_BAND = 0.3;
 
 export type BandResult = 'same' | 'apply' | 'hold' | 'invalid';
 

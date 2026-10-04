@@ -12,9 +12,9 @@ import type { AuditEntry } from '../src/lib/audit';
 
 /**
  * The leader-approved anchor (20261003130000_mm_price_anchor.sql, Patrick
- * 2026-10-02): the +/-50% band is measured from the last price a LEADER set or
+ * 2026-10-02): the +/-30% band is measured from the last price a LEADER set or
  * approved, so scouts can update as often as they like but never drift past it.
- * Fixture package: price 4, yield 10, so the band is 2.00 .. 6.00 until a
+ * Fixture package: price 4, yield 10, so the band is 2.80 .. 5.20 until a
  * leader moves it. Everything the tests touch is removed afterwards.
  */
 const SCOUT = 39;
@@ -68,7 +68,7 @@ describe('scout reports are banded against the anchor', () => {
     const outcomes: string[] = [];
     let current = 4;
     for (let i = 0; i < 6; i++) {
-      const next = Math.round(current * 1.4 * 100) / 100; // always inside +/-50% of the CURRENT price
+      const next = Math.round(current * 1.2 * 100) / 100; // always inside +/-30% of the CURRENT price
       outcomes.push(await report(next));
       current = (await pkg()).price;
     }
@@ -83,7 +83,7 @@ describe('scout reports are banded against the anchor', () => {
     await makePackage();
     let current = 4;
     for (let i = 0; i < 6; i++) {
-      await report(Math.round(current * 0.6 * 100) / 100);
+      await report(Math.round(current * 0.8 * 100) / 100);
       current = (await pkg()).price;
     }
     expect((await pkg()).price).toBeGreaterThanOrEqual(4 * (1 - PRICE_BAND));
@@ -91,21 +91,21 @@ describe('scout reports are banded against the anchor', () => {
 
   it('Scout_AppliedChange_DoesNotMoveTheAnchor', async () => {
     await makePackage();
-    expect(await report(5.5)).toBe('applied');
-    expect(await pkg()).toMatchObject({ price: 5.5, anchor: 4, anchorAsOf: '2026-01-01' });
+    expect(await report(5)).toBe('applied');
+    expect(await pkg()).toMatchObject({ price: 5, anchor: 4, anchorAsOf: '2026-01-01' });
   });
 
   it('Scout_IsHeld_WhenInsideTheBandOfTheCurrentPriceButOutsideTheAnchors', async () => {
     await makePackage();
-    await report(6);
-    expect(await report(8)).toBe('held');
-    expect((await pkg()).price).toBe(6);
+    await report(5.2);
+    expect(await report(6.5)).toBe('held');
+    expect((await pkg()).price).toBe(5.2);
   });
 
   it('Scout_IsApplied_WhenBackInsideTheAnchorsBand', async () => {
     await makePackage();
-    await report(6);
-    expect(await report(2)).toBe('applied');
+    await report(5.2);
+    expect(await report(3)).toBe('applied');
   });
 });
 
@@ -123,7 +123,7 @@ describe('leader decisions move the anchor', () => {
     await report(9);
     const [held] = await history();
     await decide(held.id, 'apply');
-    expect(await report(13.5)).toBe('applied');
+    expect(await report(11)).toBe('applied');
   });
 
   it('Leader_SettingAPrice_MovesThePriceAndTheAnchorTogether', async () => {

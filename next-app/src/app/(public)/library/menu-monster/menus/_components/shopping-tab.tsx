@@ -25,10 +25,9 @@
  * row insets stay; the package / quantity / source choices show as text, and there is
  * no Save / Discard, Update prices or leave guard.
  *
- * Below the list, "What you paid" (paid-section.tsx) is its own section with its own
- * Save: what the scout bought, how many and the price paid each. An applied price
- * changes the price book, so this tab folds it into its own copy of the catalog and
- * snapshot — the scout's own change never shows up as "prices changed".
+ * What was really bought, and for how much, is recorded on the "What we bought" tab
+ * (bought-tab.tsx, release 4 of Plans/Menu-Monster-Brands-Gear.md); it replaced the
+ * "What you paid" section that sat below this list.
  *
  * Totals: the old planner's Spent / Used / Leftover / Budget panel sits above the list as a
  * quiet card (shoppingPanel in menu-view.ts); the budget is edited on the Plan tab.
@@ -39,7 +38,7 @@
  * that hides the screen version; the `#mm-shopping-page` hook in globals.css hides the site chrome.
  */
 
-import { useCallback, useId, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { priceText as money } from '@/lib/menu-monster/units';
 import { useLeaveGuard } from '@/lib/use-leave-guard';
@@ -58,7 +57,6 @@ import { addBrandAction } from '../../../_tools/menu-monster/brand-actions';
 import type { MenuStore, SaveResult } from '@/lib/menu-monster/menu-store';
 import { buildSnapshot, snapshotDrift, type MenuSnapshot } from '@/lib/menu-monster/menu-snapshot';
 import { serverMenuStore } from './server-menu-store';
-import { PaidSection, type PaidSavedInfo } from './paid-section';
 import { ReadOnlyLine } from './read-only-line';
 import { AddPackageForm, type AddedPackage } from './add-package-form';
 import { SaveBar } from './save-bar';
@@ -100,7 +98,6 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
   const { canSave, canPay, canReport } = store.caps;
   // The price book as this page knows it: the server's, plus prices this scout just applied.
   const [catalog, setCatalog] = useState<Catalog>(catalogProp);
-  const [paidDirty, setPaidDirty] = useState(false);
   const [saved, setSaved] = useState<{ menu: Menu; key: string }>(() => ({ menu: initial, key: keyOf(initial.shopping) }));
   const [draft, setDraft] = useState<MenuShopping>(initial.shopping);
   const [snapshot, setSnapshot] = useState<MenuSnapshot | null>(initialSnapshot);
@@ -114,7 +111,7 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   const dirty = keyOf(draft) !== saved.key;
-  useLeaveGuard((dirty || paidDirty) && !readOnly);
+  useLeaveGuard(dirty && !readOnly);
 
   const menu: Menu = { ...saved.menu, shopping: draft };
   const list = buildMenuList(menu, catalog);
@@ -227,24 +224,6 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
     // The button goes with its line; keep keyboard focus on the page.
     headingRef.current?.focus();
   }
-
-  // Prices the server just applied: fold them into this page's catalog and re-snapshot, as the server did.
-  const paidSaved = useCallback(
-    ({ actuals, results }: PaidSavedInfo) => {
-      const applied = Object.entries(results).filter(([, st]) => st === 'applied');
-      if (applied.length === 0) return;
-      const next: Catalog = {
-        ...catalog,
-        packages: catalog.packages.map((p) => {
-          const hit = applied.find(([ing]) => actuals[ing]?.packageId === p.id);
-          return hit ? { ...p, price: actuals[hit[0]].pricePaid } : p;
-        })
-      };
-      setCatalog(next);
-      setSnapshot(buildSnapshot(saved.menu, next));
-    },
-    [catalog, saved.menu]
-  );
 
   // Release C: a package the scout just added joins this page's catalog and is picked for its line.
   const packageAdded = (l: MenuLine, { pkg, status: st }: AddedPackage) => {
@@ -433,18 +412,14 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
       </section>
 
 
-      {canPay && menuId && (
-      <PaidSection
-        menuId={menuId}
-        lines={list.lines.filter((l) => l.status === 'ok' || l.status === 'short')}
-        catalog={catalog}
-        initial={initial.actuals}
-        plannedTotal={totals.spent}
-        readOnly={readOnly}
-        plannedBy={plannedBy}
-        onDirtyChange={setPaidDirty}
-        onSaved={paidSaved}
-      />
+      {canPay && menuId && !readOnly && (
+        <p className={s.foot}>
+          After the trip, record prices and what was really bought on the{' '}
+          <Link className={s.link} href={`/library/menu-monster/menus/${menuId}/bought`}>
+            What we bought
+          </Link>{' '}
+          tab.
+        </p>
       )}
       </div>
 

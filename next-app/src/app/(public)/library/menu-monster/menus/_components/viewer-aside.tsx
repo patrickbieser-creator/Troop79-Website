@@ -15,14 +15,14 @@ import { ReadOnlyLine } from './read-only-line';
 import type { ViewableMenu } from './scout-menus';
 import s from './workspace.module.css';
 
-export function ViewerAside({ view, page }: { view: ViewableMenu; page: 'plan' | 'shopping' | 'meal' | 'gear' }) {
+export function ViewerAside({ view, page }: { view: ViewableMenu; page: 'plan' | 'shopping' | 'meal' | 'gear' | 'bought' }) {
   const { readOnly, plannedBy, hiddenRecipes, canCopy, stored } = view;
   const review = page === 'plan' ? stored.review : null;
   return (
     <>
       {readOnly && (
         <div className={s.listHead}>
-          <ReadOnlyLine plannedBy={plannedBy} writable={page === 'gear' && canRecord(view.access)} />
+          <ReadOnlyLine plannedBy={plannedBy} writable={(page === 'gear' || page === 'bought') && canRecord(view.access)} />
           {canCopy && <CopyMenuButton menuId={stored.id} />}
         </div>
       )}

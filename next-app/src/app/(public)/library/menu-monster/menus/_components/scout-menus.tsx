@@ -219,7 +219,7 @@ export function listCrumb(access: MenuAccess): { listLabel?: string; listHref?: 
 export const NO_INDEX = { index: false, follow: false } as const;
 
 /** Plan / Shopping, plus Share for the owner (Decision 11) or Review for a leader (note + Hide from the shelf). */
-export function MenuTabs({ menuId, active, access = 'owner' }: { menuId: string; active: 'plan' | 'shopping' | 'gear' | 'share'; access?: MenuAccess }) {
+export function MenuTabs({ menuId, active, access = 'owner' }: { menuId: string; active: 'plan' | 'shopping' | 'gear' | 'bought' | 'share'; access?: MenuAccess }) {
   const third = access === 'owner' ? 'Share' : access === 'admin' ? 'Review' : null;
   return (
     <TabStrip
@@ -229,6 +229,8 @@ export function MenuTabs({ menuId, active, access = 'owner' }: { menuId: string;
         { key: 'plan', label: 'Plan', href: `${MENUS_HREF}/${menuId}` },
         { key: 'shopping', label: 'Shopping', href: `${MENUS_HREF}/${menuId}/shopping` },
         { key: 'gear', label: 'Gear', href: `${MENUS_HREF}/${menuId}/gear` },
+        // What was paid is never shown to a shared viewer.
+        ...(access !== 'shared' ? [{ key: 'bought', label: 'What we bought', href: `${MENUS_HREF}/${menuId}/bought` }] : []),
         ...(third ? [{ key: 'share', label: third, href: `${MENUS_HREF}/${menuId}/share` }] : [])
       ]}
     />
