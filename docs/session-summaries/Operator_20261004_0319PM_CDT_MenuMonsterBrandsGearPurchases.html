@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menu Monster: brands, gear, purchases, and menus for everyone — Troop 79</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #3d5a3e;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #f0eecd;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); vertical-align: top; }
+        tr:hover { background: var(--nw-sage); }
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+        code { font-family: 'Courier New', monospace; font-size: 0.85em; background: var(--nw-light-gray); padding: 0 0.3em; border-radius: 3px; }
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+        @media print { body { background: white; } header { padding: 1.5rem; } .container { padding: 1rem; } .stat { break-inside: avoid; } }
+        @media (max-width: 600px) { header h1 { font-size: 1.5rem; } .stats { flex-direction: column; } }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Menu Monster: brands, gear, purchases, and menus for everyone</h1>
+        <p class="subtitle">The meal planner learned what a troop actually does: choose brands, pack gear per patrol, shop together for an outing, and record what was bought afterwards &mdash; built and deployed in eleven releases, most of them overnight on Patrick&rsquo;s go-ahead.</p>
+        <div class="meta">
+            <span>&#128197; October 3&ndash;4, 2026</span>
+            <span>&#129302; Operator (Fable 5.1)</span>
+            <span>&#128204; Troop79-Website</span>
+            <span>&#128640; v1.152.0 &rarr; v1.163.0</span>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">13</div><div class="label">Releases (v1.153&ndash;v1.163)</div></div>
+            <div class="stat"><div class="number">9</div><div class="label">Production migrations</div></div>
+            <div class="stat"><div class="number">9</div><div class="label">Decisions (D-314&ndash;322)</div></div>
+            <div class="stat"><div class="number">344</div><div class="label">Tests net (3443 &rarr; 3787)</div></div>
+            <div class="stat"><div class="number">7</div><div class="label">Independent QA reviews</div></div>
+        </div>
+
+        <h2>What Was Accomplished</h2>
+
+        <div class="callout callout-teal">
+            <strong>The outcome:</strong> a patrol plans a menu, picks brands, sees its gear, and the troop gets one shopping list for the whole outing; afterwards any scout on the outing records what was bought. Parents and leaders can now write recipes and save menus too, and the leader tools open on what needs attention.
+        </div>
+
+        <h3>Releases</h3>
+        <ul>
+            <li><strong>v1.153.0&ndash;v1.153.1:</strong> a single food is added in one form; signed-in people can add an ingredient (a scout&rsquo;s waits for a leader); stores list updated; the recipe editor lists what needs fixing.</li>
+            <li><strong>v1.154.0:</strong> People dialer on the meal&rsquo;s line; A&ndash;Z add list.</li>
+            <li><strong>v1.155.0:</strong> Gear tab per menu, the troop&rsquo;s gear list, gear and steps on the troop&rsquo;s 29 foods, store-room staples.</li>
+            <li><strong>v1.156.0:</strong> brands &mdash; several per ingredient, a typed brand joins the troop&rsquo;s list at once.</li>
+            <li><strong>v1.157.0:</strong> What we bought &mdash; a prefilled checklist any scout on the outing can record.</li>
+            <li><strong>v1.158.0:</strong> a menu&rsquo;s patrol, and one merged, printable shopping list for the outing.</li>
+            <li><strong>v1.159.0:</strong> the leader tools open on Needs attention; a Purchases tab.</li>
+            <li><strong>v1.160.0:</strong> anyone signed in can write a recipe.</li>
+            <li><strong>v1.161.0:</strong> a recipe can suggest a brand; a menu that adds it starts with that brand.</li>
+            <li><strong>v1.162.0:</strong> saved menus for parents and leaders; a short form for a single food; Done on the brand chooser.</li>
+            <li><strong>v1.163.0:</strong> Food &amp; recipes as one A&ndash;Z list with tabs, search and a meal filter; problems outlined in red where they are.</li>
+        </ul>
+
+        <div class="callout callout-gold">
+            <strong>Caught on the way:</strong> one commit went out under the previous release&rsquo;s message (explained by a follow-up commit, history not rewritten); a store change pushed without the full suite broke a test (fixed the same hour); and the single-food short form shipped in v1.162.0 never opened for the existing foods, because they all carry steps and gear &mdash; corrected in v1.163.0. Most screens were verified by automated tests rather than by eye.
+        </div>
+
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Decision</th></tr></thead>
+            <tbody>
+                <tr><td>D-314</td><td>Ingredient &rarr; brands &rarr; packages; several brands per ingredient per menu; a typed brand joins at once</td></tr>
+                <tr><td>D-315</td><td>Gear is planned per patrol menu; no owned counts; a Packed tick clears when the plan changes</td></tr>
+                <tr><td>D-316</td><td>What we bought: any signed-in scout on an outing&rsquo;s menu records; &plusmn;30% price band</td></tr>
+                <tr><td>D-317</td><td>Patrol on the menu; one merged shopping list per outing</td></tr>
+                <tr><td>D-318</td><td>Leader tools open on Needs attention; Purchases is read-only</td></tr>
+                <tr><td>D-319</td><td>Anyone signed in as one person writes recipes and saves menus; an outing&rsquo;s menu stays open to its scout crew</td></tr>
+                <tr><td>D-320</td><td>A recipe suggests one brand per ingredient; used when a menu has chosen none</td></tr>
+                <tr><td>D-321</td><td>A single food is one ingredient with no diet swap, edited in a short form</td></tr>
+                <tr><td>D-322</td><td>Food &amp; recipes is one A&ndash;Z list with tabs, search and a meal filter; problems are marked where they are</td></tr>
+            </tbody>
+        </table>
+
+        <h2>Next Steps</h2>
+        <ul>
+            <li><strong>Patrick:</strong> eyes-on with real data &mdash; link two menus to one outing and set patrols, open the outing&rsquo;s shopping list, record What we bought as a second scout, save a menu and write a recipe as a parent, check Needs attention, Purchases and the new Food &amp; recipes list.</li>
+            <li><strong>Data to correct:</strong> the package-to-brand split, gear homes, staple prices, a price for Orange juice.</li>
+            <li><strong>Not built:</strong> outing-level recording; the Gear tab for menus kept on this computer; a styleguide specimen for the red problem marker.</li>
+        </ul>
+
+        <h2>Files Changed</h2>
+        <table>
+            <thead><tr><th>Area</th><th>Change</th></tr></thead>
+            <tbody>
+                <tr><td><code>next-app/supabase/migrations/</code></td><td>nine migrations, 20261006100000 &rarr; 20261011100000 (ingredient requests, stores, gear, recipe gear and steps, brands, bought, patrol, brand suggestions)</td></tr>
+                <tr><td><code>next-app/src/lib/menu-monster/</code></td><td>gear, brands-store, bought, purchases (new); engine, menus, menu-view, menu-access, catalog, authoring</td></tr>
+                <tr><td><code>next-app/src/app/(public)/library/menu-monster/</code></td><td>Gear, What we bought and outing pages (new); Plan and Shopping tabs, meal panel, brand chooser, recipe pages</td></tr>
+                <tr><td><code>next-app/src/app/admin/(workspace)/library/menu-monster/</code></td><td>Needs attention, Purchases, Gear, Brands block, Suggested brands (new); recipe builder list and short form</td></tr>
+                <tr><td><code>Plans/Completed/Menu-Monster-Brands-Gear.md</code></td><td>the plan and its build log: every decision made on Patrick&rsquo;s behalf, release by release</td></tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

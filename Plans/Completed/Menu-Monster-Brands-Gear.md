@@ -1,7 +1,7 @@
 # Menu Monster — brands, gear, and "What we bought"
 
-**Status:** IN BUILD (started 2026-10-03, overnight, on Patrick's go-ahead: "build the plan and build and deploy the
-updates while I sleep making reasonable decisions on my behalf. I need to see a live working version with real data").
+**Status:** SHIPPED v1.163.0 (2026-10-04, 6d27160) — releases R1–R8, v1.154.0–v1.163.0. Not built: outing-level recording and the
+smaller leftovers, now in `Agents/Tracker/Memory/BACKLOG.md`.
 **Design of record:** `D:\Projects\Troop Menu Monster\prototypes\concept-f-kinds\` — `BRIEF.md` (every decision,
 dated), `JENNA-NOTES.md`, `ADMIN-CONSIDERATIONS.md`, and the clickable prototype (Brad). Approved look: concept-e.
 **Data drafts:** `D:\Projects\Troop Menu Monster\data\recipe-gear-steps-draft.md`, `package-brand-split.json`.
