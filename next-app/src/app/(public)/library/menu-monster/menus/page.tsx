@@ -2,6 +2,7 @@
  * /library/menu-monster/menus — My menus (Scout Workspace, Phase 1 + 3).
  * Per-user data: force-dynamic, nothing cached.
  *   - a scout: their own menus.
+ *   - since 2026-10-04 a leader or parent has their own menus too, listed first (MyMenus).
  *   - a leader (admin viewer): every scout's menus read-only, filterable by
  *     scout, outing and shared (Phase 3 — filtered in SQL; the scout's roster
  *     record links here with ?scout=). This is the leader list of record: no
@@ -55,6 +56,7 @@ export default async function MyMenusPage({ searchParams }: { searchParams: Prom
   }
 
   const sb = createAdminClient();
+  const mine = viewer.kind !== 'scout' && viewer.personId != null ? await myMenus(viewer.personId) : null;
   if (viewer.kind === 'leader') {
     const filters = menuFilters(await searchParams);
     const filtered = filters.scout != null || filters.outing != null || filters.shared === true;
@@ -71,10 +73,11 @@ export default async function MyMenusPage({ searchParams }: { searchParams: Prom
     ]);
     return (
       <>
-        <MenuHeader title="Scouts’ menus" listLabel="Scouts’ menus" />
+        <MenuHeader title="Everyone’s menus" listLabel="Everyone’s menus" />
         <PageShell width="narrow">
+          {mine}
           <LeaderFilters all={all} outings={outings} owners={owners} filters={filters} />
-          <MenusList rows={rows} readOnly emptyText={filtered ? 'No menus match.' : 'No scout has saved a menu yet.'} />
+          <MenusList rows={rows} readOnly emptyText={filtered ? 'No menus match.' : 'Nobody has saved a menu yet.'} />
         </PageShell>
       </>
     );
@@ -89,6 +92,7 @@ export default async function MyMenusPage({ searchParams }: { searchParams: Prom
       <>
         <MenuHeader title="Your scouts’ menus" listLabel="Your scouts’ menus" />
         <PageShell width="narrow">
+          {mine}
           <MenusList rows={rows} readOnly emptyText="Your scouts haven’t saved a menu yet." />
           <p className={s.foot}>
             <Link className={s.link} href={SHARED_HREF}>
@@ -123,6 +127,25 @@ export default async function MyMenusPage({ searchParams }: { searchParams: Prom
         </p>
       </PageShell>
     </>
+  );
+}
+
+/** An adult's own saved menus, above the read-only list a leader or parent already had. */
+async function myMenus(personId: number) {
+  const sb = createAdminClient();
+  const [summaries, catalog] = await Promise.all([listMenusWith(sb, personId), loadMenuMonsterCatalog(personId)]);
+  const rows = await loadMenuRows(sb, summaries, catalog);
+  return (
+    <section className={s.hubSection}>
+      <div className={s.listHead}>
+        <h2 className={s.heading}>My menus</h2>
+        <Button variant="primary" size="sm" href={`${MENUS_HREF}/new`}>
+          New menu
+        </Button>
+      </div>
+      <MenusList rows={rows} emptyText="You haven’t saved a menu yet." />
+      <DraftOffer catalog={catalog} />
+    </section>
   );
 }
 

@@ -195,3 +195,25 @@ Decisions made on Patrick's behalf:
 - **Outing-level recording**: purchases are recorded per menu and added up on the outing page and in
   Admin › Purchases.
 - Gear tab for on-this-device menus; accent-insensitive brand matching; deleting the old `actuals` fallback.
+
+### R7 — v1.162.0, 2026-10-04 (adults' saved menus, short form for a single food, Done on the brand chooser)
+
+Patrick: "adults do need to get access to saved menus also. Go ahead and build the compact, single food,
+editor." and "after a person chooses a brand, we need a way to close that brand selector and reflect the new
+choice." Decisions made on his behalf:
+
+- **Whoever saves a menu owns it** — a scout, a parent, or a leader signed in as themselves. A signed-in adult no
+  longer plans on-this-computer; the hub offers to save a menu left on the computer, as it does for scouts.
+- **An outing's menu is open to the outing's crew whoever saved it** (signed-in scouts open it and record what
+  was bought; leaders too). The Plan tab says this under the Outing box once one is picked. A menu with no
+  outing stays private to its owner, leaders, and (a scout's) parents. *qa-lead raised this as a privacy
+  question; kept because the troop shops together — say if adults' outing menus should be closed to scouts.*
+- **Parents are still not crew**: a parent cannot open other people's unshared outing menus or the outing's
+  shopping list, even when they own a menu on that outing. Leaders can.
+- A leader's read-only list is now "Everyone's menus" (scouts' and adults', minus their own).
+- "Copy to My menus" is offered only on a menu that is shared.
+- **Single food short form:** a menu item with one ingredient, no steps, no gear and no diet swap. It decides
+  from what is saved, so typing never flips the form. A diet that needs a look is listed; fixing it is in the
+  full editor. Renaming renames the ingredient only while the two names still match. Prices and packages stay
+  in the Price book (one link away); brands are edited right there.
+- **Done** sits under the brand chooser on the Plan tab; the Shopping tab's chooser already closes with its row.

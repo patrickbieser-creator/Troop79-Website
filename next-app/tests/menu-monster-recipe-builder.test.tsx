@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RecipeBuilder } from '../src/app/admin/(workspace)/library/menu-monster/recipe-builder';
-import { saveRecipe, setRecipeStatus } from '../src/app/admin/(workspace)/library/menu-monster/actions';
+import { saveRecipe, setRecipeStatus, updateIngredient } from '../src/app/admin/(workspace)/library/menu-monster/actions';
 import { UNITS } from '../src/lib/menu-monster/units';
 import type { Catalog, Ingredient, Package, Recipe } from '../src/lib/menu-monster/types';
 
@@ -19,12 +19,15 @@ vi.mock('next/navigation', () => ({
 vi.mock('../src/app/admin/(workspace)/library/menu-monster/actions', () => ({
   saveRecipe: vi.fn(async () => ({ ok: true, id: 'toast' })),
   setRecipeStatus: vi.fn(async () => ({ ok: true })),
-  duplicateRecipe: vi.fn(async () => ({ ok: true, id: 'toast-copy' }))
+  duplicateRecipe: vi.fn(async () => ({ ok: true, id: 'toast-copy' })),
+  updateIngredient: vi.fn(async () => ({ ok: true })),
+  suggestRecipeBrand: vi.fn(async () => ({ ok: true }))
 }));
 
 beforeEach(() => {
   vi.mocked(saveRecipe).mockClear().mockResolvedValue({ ok: true, id: 'toast' });
   vi.mocked(setRecipeStatus).mockClear().mockResolvedValue({ ok: true });
+  vi.mocked(updateIngredient).mockClear().mockResolvedValue({ ok: true });
 });
 
 const ING: Ingredient[] = [
@@ -203,6 +206,8 @@ describe('Recipe builder', () => {
     const user = userEvent.setup();
     render(<RecipeBuilder catalog={CATALOG} initialRecipeId="bacon" />);
     const editor = screen.getByRole('region', { name: 'Edit Bacon' });
+    // Bacon is a single food: its diet swaps live in the full editor.
+    await user.click(within(editor).getByRole('button', { name: 'Open the full editor' }));
     await user.click(within(editor).getByRole('button', { name: /\+ Add a variation/ }));
     await user.click(within(within(editor).getByRole('group', { name: 'Variations to add' })).getByRole('button', { name: /^Vegetarian/ }));
     const panel = within(editor).getByRole('region', { name: 'Vegetarian version' });
@@ -213,5 +218,86 @@ describe('Recipe builder', () => {
     expect(vi.mocked(saveRecipe).mock.calls[0][0]).toMatchObject({
       variations: [{ restriction: 'veg', state: 'unsuitable', lines: [] }]
     });
+  });
+});
+
+describe('Recipe builder — a single food opens in the short form (2026-10-04)', () => {
+  const bacon = () => within(screen.getByRole('region', { name: 'Edit Bacon' }));
+  const open = (catalog: Catalog = CATALOG) => render(<RecipeBuilder catalog={catalog} initialRecipeId="bacon" />);
+  const save = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(bacon().getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(saveRecipe).toHaveBeenCalledTimes(1));
+  };
+
+  it('ASingleFood_HasNoIngredientLinesAndNoSteps', () => {
+    open();
+    expect([bacon().queryByRole('list', { name: 'Ingredient lines' }), bacon().queryByLabelText(/How to make it/)]).toEqual([null, null]);
+  });
+
+  it('ASingleFood_ShowsWhatEachPersonGets', () => {
+    open();
+    expect((bacon().getByLabelText('Each person gets') as HTMLInputElement).value).toBe('3');
+  });
+
+  it('ARecipeWithSeveralIngredients_StillOpensInTheFullEditor', () => {
+    render(<RecipeBuilder catalog={CATALOG} initialRecipeId="pancakes" />);
+    expect(within(screen.getByRole('region', { name: 'Edit Pancakes' })).getByRole('list', { name: 'Ingredient lines' })).toBeTruthy();
+  });
+
+  it('ChangingTheAmount_SavesTheOneLine', async () => {
+    const user = userEvent.setup();
+    open();
+    await user.clear(bacon().getByLabelText('Each person gets'));
+    await user.type(bacon().getByLabelText('Each person gets'), '4');
+    await save(user);
+    expect(vi.mocked(saveRecipe).mock.calls[0][0]).toMatchObject({ id: 'bacon', base: [{ ingredientId: 'bacon', amount: '4', unitKey: null }] });
+  });
+
+  it('ANewName_RenamesTheIngredientToo_WhileTheyMatch', async () => {
+    const user = userEvent.setup();
+    open();
+    await user.clear(bacon().getByLabelText('Name'));
+    await user.type(bacon().getByLabelText('Name'), 'Thick bacon');
+    await save(user);
+    await waitFor(() => expect(updateIngredient).toHaveBeenCalledWith('bacon', { name: 'Thick bacon', section: 'meat', staple: false, avoid: ['veg'] }));
+  });
+
+  it('ANewName_LeavesTheIngredientAlone_WhenItWasAlreadyCalledSomethingElse', async () => {
+    const user = userEvent.setup();
+    open({ ...CATALOG, ingredients: CATALOG.ingredients.map((i) => (i.id === 'bacon' ? { ...i, name: 'Bacon, sliced' } : i)) });
+    await user.clear(bacon().getByLabelText('Name'));
+    await user.type(bacon().getByLabelText('Name'), 'Thick bacon');
+    await save(user);
+    expect(updateIngredient).not.toHaveBeenCalled();
+  });
+
+  it('SavingWithoutANewName_DoesNotTouchTheIngredient', async () => {
+    const user = userEvent.setup();
+    open();
+    await user.click(bacon().getByRole('checkbox', { name: 'Lunch' }));
+    await save(user);
+    expect(updateIngredient).not.toHaveBeenCalled();
+  });
+
+  it('ADietThatNeedsALook_IsSaid', () => {
+    open();
+    expect(within(bacon().getByRole('list', { name: 'Diets' })).getByRole('listitem').textContent).toMatch(/Vegetarian.*Needs a look/);
+  });
+
+  it('OpenTheFullEditor_ShowsTheIngredientLines_AndAWayBack', async () => {
+    const user = userEvent.setup();
+    open();
+    await user.click(bacon().getByRole('button', { name: 'Open the full editor' }));
+    expect([bacon().getByRole('list', { name: 'Ingredient lines' }) != null, bacon().getByRole('button', { name: 'Back to the short form' }) != null]).toEqual([true, true]);
+  });
+
+  it('ItsBrands_AreRightThere', () => {
+    open();
+    expect(bacon().getByRole('region', { name: 'Bacon brands' })).toBeTruthy();
+  });
+
+  it('ThePriceBook_IsOneLinkAway', () => {
+    open();
+    expect(bacon().getByRole('link', { name: /Price book →/ }).getAttribute('href')).toBe('/admin/library/menu-monster?tab=prices&ingredient=bacon');
   });
 });

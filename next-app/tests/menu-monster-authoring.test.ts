@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import type { Catalog, Conversion, Ingredient, Package, Recipe } from '../src/lib/menu-monster/types';
 import { UNITS } from '../src/lib/menu-monster/units';
 import {
+  isSingleFood,
+  type RecipeAuthoring,
   BIG_CHANGE,
   STALE_DAYS,
   blockingIssues,
@@ -257,5 +259,31 @@ describe('domain types carry retirement', () => {
   it('Authoring_RecipeType_AcceptsRetiredAt', () => {
     const r: Recipe = { id: 'x', name: 'X', status: 'retired', mealFit: [], foodGroups: [], camp: true, trail: false, method: null, stepsMd: null, sortOrder: 0, lines: [] };
     expect(r.status).toBe('retired');
+  });
+});
+
+describe('isSingleFood', () => {
+  const food = (over: Partial<RecipeAuthoring> = {}): RecipeAuthoring => ({
+    id: 'cookies', name: 'Cookies', status: 'published', mealFit: ['snack'], foodGroups: [], camp: true, trail: true, method: null, stepsMd: '',
+    base: [{ ingredientId: 'cookies', amount: '2', unitKey: null }], variations: [], gear: '', ...over
+  });
+
+  it('OneIngredient_NoStepsGearOrSwaps_IsASingleFood', () => {
+    expect(isSingleFood(food())).toBe(true);
+  });
+
+  it('ADietAnswerWithNoLines_IsStillASingleFood', () => {
+    expect(isSingleFood(food({ variations: [{ restriction: 'gf', state: 'unsuitable', note: '', lines: [] }] }))).toBe(true);
+  });
+
+  it.each([
+    ['two ingredients', { base: [{ ingredientId: 'a', amount: '1', unitKey: null }, { ingredientId: 'b', amount: '1', unitKey: null }] }],
+    ['no ingredient yet', { base: [{ ingredientId: '', amount: '', unitKey: null }] }],
+    ['no lines', { base: [] }],
+    ['steps', { stepsMd: 'Open the box.' }],
+    ['gear', { gear: 'Tongs' }],
+    ['a diet swap', { variations: [{ restriction: 'gf' as const, state: 'substituted' as const, note: '', lines: [{ op: 'swap' as const, baseIngredientId: 'cookies', ingredientId: 'gf-cookies', amount: '2', unitKey: null }] }] }]
+  ])('With_%s_ItIsARecipe', (_what, over) => {
+    expect(isSingleFood(food(over as Partial<RecipeAuthoring>))).toBe(false);
   });
 });

@@ -42,10 +42,12 @@ export interface AccessTarget {
 }
 
 export function menuAccess(viewer: AccessViewer, menu: AccessTarget): MenuAccess | null {
-  if (viewer.kind === 'scout' && viewer.personId === menu.ownerPersonId) return 'owner';
+  // Anyone signed in saves menus (Patrick, 2026-10-04: adults too), so the owner is whoever's it is — before 'admin'.
+  if (viewer.kind !== 'anon' && viewer.personId != null && viewer.personId === menu.ownerPersonId) return 'owner';
   if (viewer.kind === 'leader') return 'admin';
   if (viewer.kind === 'parent' && viewer.familyIds.includes(menu.ownerPersonId)) return 'parent';
-  // entryPublished is null only when no outing is linked.
+  // entryPublished is null only when no outing is linked. Crew reaches an outing's menu whoever saved it — a scout,
+  // a parent or a leader: the troop shops together, and the Plan tab says so beside the Outing field.
   if (viewer.kind === 'scout' && viewer.personId != null && menu.entryPublished != null) return 'crew';
   return isPublic(menu) ? 'shared' : null;
 }

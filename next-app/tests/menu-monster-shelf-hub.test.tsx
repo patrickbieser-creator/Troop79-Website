@@ -211,14 +211,24 @@ describe('MenuMonsterShelfTool hub, visitor', () => {
     expect(await screen.findByRole('button', { name: 'Save on this computer' })).toBeTruthy();
   });
 
-  it('Adult_SeesTheSignInStripAndTheLocalPlanAndNoRows_WhenSignedInAsAnAdult', async () => {
+  it('Adult_SeesTheirMenusAndNewMenu_WhenSignedInAsAnAdult', async () => {
     mocks.session = { subjectKind: 'adult', personId: 5, displayName: 'Pat' };
     mocks.summaries = [summary(1)];
     await shelf();
-    expect(screen.getByText(/Saving to My menus is for signed-in scouts/)).toBeTruthy();
-    expect(screen.queryByRole('link', { name: 'Sign in to save your menus' })).toBeNull();
-    expect(await screen.findByLabelText('Menu name')).toBeTruthy();
-    expect(screen.queryByRole('link', { name: 'Menu 1' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Menu 1' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'New menu' })).toBeTruthy();
+  });
+
+  it('Adult_DoesNotGetTheLocalPlan_WhenSignedInAsAnAdult', async () => {
+    mocks.session = { subjectKind: 'adult', personId: 5, displayName: 'Pat' };
+    await shelf();
+    expect(screen.queryByLabelText('Menu name')).toBeNull();
+  });
+
+  it('Adult_SeesNoSignInStrip_WhenSignedInAsAnAdult', async () => {
+    mocks.session = { subjectKind: 'adult', personId: 5, displayName: 'Pat' };
+    await shelf();
+    expect(screen.queryByText(/Your menu stays on this computer/)).toBeNull();
   });
 
   it('Visitor_KeepsAnOldPlannerDraft_AsTheLocalMenu', async () => {

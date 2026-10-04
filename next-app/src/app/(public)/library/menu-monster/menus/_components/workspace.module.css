@@ -628,3 +628,6 @@
 .outingCheck { font-size: var(--fs-md); color: var(--text-meta); }
 .outingName { font-family: var(--font-ui); font-size: var(--fs-md); font-weight: 700; color: var(--text-head); }
 .outingShares { flex-basis: 100%; margin: 0 0 var(--sp-2); padding-left: var(--sp-6); font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-meta); }
+
+/* The brand chooser's Done (Plan tab): closes the chooser under an ingredient. */
+.brandDone { margin: var(--sp-2) 0 0; }

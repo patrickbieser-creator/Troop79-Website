@@ -214,3 +214,46 @@ describe('Plan tab — a recipe’s suggested brand (release 6)', () => {
     await waitFor(() => expect(panel().getByText(/Only the person who wrote a recipe/)).toBeTruthy());
   });
 });
+
+describe('Plan tab — closing the brand chooser (2026-10-04)', () => {
+  const pickKirkland = async (user: ReturnType<typeof userEvent.setup>) => {
+    await openBacon(user);
+    await user.click(panel().getByRole('button', { name: 'Choose a brand for Bacon' }));
+    await user.click(within(panel().getByRole('group', { name: 'Brand for Bacon' })).getByRole('button', { name: /^Kirkland/ }));
+  };
+
+  it('Done_ClosesTheChooser', async () => {
+    const user = userEvent.setup();
+    render(plan());
+    await pickKirkland(user);
+    await user.click(panel().getByRole('button', { name: 'Done choosing a brand for Bacon' }));
+    expect(panel().queryByRole('group', { name: 'Brand for Bacon' })).toBeNull();
+  });
+
+  it('AfterDone_TheRowShowsTheBrandChosen_AndOffersChange', async () => {
+    const user = userEvent.setup();
+    render(plan());
+    await pickKirkland(user);
+    await user.click(panel().getByRole('button', { name: 'Done choosing a brand for Bacon' }));
+    const list = within(panel().getByRole('list', { name: 'Bacon ingredients' }));
+    expect([list.getByText('Kirkland') != null, list.getByRole('button', { name: 'Change for Bacon' }).getAttribute('aria-expanded')]).toEqual([true, 'false']);
+  });
+
+  it('Done_SaysWhatWasChosen', async () => {
+    const user = userEvent.setup();
+    render(plan());
+    await pickKirkland(user);
+    await user.click(panel().getByRole('button', { name: 'Done choosing a brand for Bacon' }));
+    expect(panel().getByText('Bacon: Kirkland.')).toBeTruthy();
+  });
+
+  it('Done_KeepsTheChoice_ForTheMenusSave', async () => {
+    const user = userEvent.setup();
+    render(plan());
+    await pickKirkland(user);
+    await user.click(panel().getByRole('button', { name: 'Done choosing a brand for Bacon' }));
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(saveMenuAction).toHaveBeenCalledTimes(1));
+    expect(sent().shopping.brands).toEqual({ bacon: [{ brandId: 'b-kirk', qty: null }] });
+  });
+});

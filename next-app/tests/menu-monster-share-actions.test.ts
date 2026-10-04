@@ -28,12 +28,14 @@ vi.mock('@/lib/identity-session', async (orig) => ({
   isEpochCurrent: async () => true
 }));
 vi.mock('@/lib/admin-actor', () => ({ resolveAdminActor: async () => mocks.actor }));
+vi.mock('@/lib/household-scope', () => ({ resolveFamilyScope: async () => [5] }));
 vi.mock('@/lib/supabase/server', () => ({ createAdminClient: () => ({ stub: true }) }));
 vi.mock('@/lib/menu-monster/data', () => ({ loadMenuMonsterCatalog: async () => CATALOG }));
 vi.mock('@/lib/menu-monster/scout-packages-store', () => ({ addScoutPackageWith: mocks.addScoutPackageWith }));
 vi.mock('@/lib/menu-monster/menus-data', () => ({ loadOutingsWith: async () => [], loadPatrolNamesWith: async () => [] }));
 vi.mock('@/lib/menu-monster/menus-store', async (orig) => ({
   ...(await orig<typeof import('../src/lib/menu-monster/menus-store')>()),
+  ownerCreditNamesWith: async (_sb: unknown, ids: number[]) => new Map(ids.map((id) => [id, 'Pat B.'])),
   setMenuSharedWith: mocks.setMenuSharedWith,
   copyMenuWith: mocks.copyMenuWith,
   setReviewNoteWith: mocks.setReviewNoteWith,
@@ -46,6 +48,7 @@ import { MENU_LIMIT } from '../src/lib/menu-monster/menus-store';
 
 const SCOUT = { role: 'identity', subjectKind: 'scout', personId: 39, householdKey: 'h', displayName: 'Charlie W.', epoch: 1, iat: 0 } as IdentitySession;
 const LEADER = { kind: 'identity', subjectKind: 'adult', label: 'Pat B.', personId: 5, capabilities: new Set(['roster.view']) };
+const ADULT = { ...SCOUT, subjectKind: 'adult', personId: 5, displayName: 'Pat B.' } as IdentitySession;
 const ID = '0b9f8c1e-3a52-4f6e-9d3c-1a2b3c4d5e6f';
 
 beforeEach(() => {
@@ -100,10 +103,22 @@ describe('copyMenuAction', () => {
     expect(res.ok === false && res.error).toMatch(/delete one/);
   });
 
-  it('Copy_Fails_ForAnAdult', async () => {
-    mocks.session = { ...SCOUT, subjectKind: 'adult' };
+  it('Adult_CopiesIntoTheirOwnMenus_AsThemselves', async () => {
+    mocks.session = ADULT;
+    await copyMenuAction(ID);
+    expect(mocks.copyMenuWith.mock.calls[0][1]).toEqual({ personId: 5, label: 'Pat B.' });
+  });
+
+  it('Copy_Fails_ForAnonymous', async () => {
+    mocks.session = null;
     expect((await copyMenuAction(ID)).ok).toBe(false);
     expect(mocks.copyMenuWith).not.toHaveBeenCalled();
+  });
+
+  it('Adult_IsToldItIsNotShared_WhenTheStoreFindsNoSharedMenu', async () => {
+    mocks.session = ADULT;
+    mocks.copyMenuWith.mockResolvedValue(null);
+    expect((await copyMenuAction(ID)).ok).toBe(false);
   });
 });
 
@@ -167,9 +182,16 @@ describe('addMenuIngredientAction (release C)', () => {
     expect(res.ok === false && res.error).toMatch(/10 new ingredients/);
   });
 
-  it('TypedIn_Fails_ForAnAdult', async () => {
-    mocks.session = { ...SCOUT, subjectKind: 'adult' };
+  it('Adult_AddsATypedIn_AsThemselves', async () => {
+    mocks.session = ADULT;
+    await addMenuIngredientAction(JAM);
+    expect(mocks.addMenuIngredientWith.mock.calls[0][1]).toEqual({ personId: 5, label: 'Pat B.' });
+  });
+
+  it('TypedIn_Fails_ForAnonymous', async () => {
+    mocks.session = null;
     expect((await addMenuIngredientAction(JAM)).ok).toBe(false);
+    expect(mocks.addMenuIngredientWith).not.toHaveBeenCalled();
   });
 });
 
@@ -192,8 +214,15 @@ describe('addScoutPackageAction (release C)', () => {
     expect(res.ok === false && res.error).toMatch(/waiting for a leader/);
   });
 
-  it('Package_Fails_ForAnAdult', async () => {
-    mocks.session = { ...SCOUT, subjectKind: 'adult' };
+  it('Adult_AddsAPackage_AsThemselves', async () => {
+    mocks.session = ADULT;
+    await addScoutPackageAction(PKG);
+    expect(mocks.addScoutPackageWith.mock.calls[0][1]).toEqual({ personId: 5, label: 'Pat B.' });
+  });
+
+  it('Package_Fails_ForAnonymous', async () => {
+    mocks.session = null;
     expect((await addScoutPackageAction(PKG)).ok).toBe(false);
+    expect(mocks.addScoutPackageWith).not.toHaveBeenCalled();
   });
 });

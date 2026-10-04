@@ -25,15 +25,24 @@ import { reportPriceWith } from '@/lib/menu-monster/price-history';
 import { loadOutingsWith } from '@/lib/menu-monster/menus-data';
 import { centralToday } from '@/lib/dates';
 import { recordAuditAs, type AuditActor } from '@/lib/audit';
+import { menuViewer, recipeAuthor } from '../../menu-monster/menus/_components/scout-menus';
 
 type Fail = { ok: false; error: string };
 
+/** The menu's owner-to-be: a verified scout (the epoch check every scout write makes), else any other signed-in
+ *  person (a leader, a parent — menuViewer re-checks a parent's sign-in). Never taken from the payload. */
 async function scoutActor(): Promise<AuditActor | Fail> {
   try {
     const s = await requireVerifiedScoutIdentity();
     return { personId: s.personId, label: s.displayName };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : 'Scouts: sign in to save your menu.' };
+    const viewer = await menuViewer();
+    if (viewer && viewer.kind !== 'scout' && viewer.personId != null) {
+      const who = await recipeAuthor();
+      if (who) return { personId: who.personId, label: who.displayName };
+    }
+    // A scout hears why their sign-in ended; everyone else is simply asked to sign in.
+    return { ok: false, error: e instanceof Error && viewer?.kind === 'scout' ? e.message : 'Sign in to save your menu.' };
   }
 }
 

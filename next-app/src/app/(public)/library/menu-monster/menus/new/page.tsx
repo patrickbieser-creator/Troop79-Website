@@ -10,13 +10,13 @@ import { blankMenu } from '@/lib/menu-monster/menus';
 import { loadOutingsWith, loadPatrolNamesWith } from '@/lib/menu-monster/menus-data';
 import { PageShell } from '@/app/_components/page-shell';
 import { PlanTab } from '../_components/plan-tab';
-import { LockedLine, MENUS_HREF, MenuHeader, scoutViewer } from '../_components/scout-menus';
+import { LockedLine, MENUS_HREF, MenuHeader, recipeAuthor } from '../_components/scout-menus';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'New menu — Menu Monster' };
 
 export default async function NewMenuPage() {
-  const viewer = await scoutViewer();
+  const viewer = await recipeAuthor();
   if (!viewer) {
     return (
       <>

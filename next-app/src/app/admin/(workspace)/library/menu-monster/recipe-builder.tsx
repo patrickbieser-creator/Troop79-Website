@@ -19,6 +19,12 @@
  * leader sees exactly what a patrol will get. Save is dirty-gated over the
  * whole draft, variations included; Publish waits for a save and for zero
  * blocking issues — and the action enforces the same gate.
+ *
+ * A SINGLE FOOD (authoring.ts isSingleFood: one ingredient, no steps, gear or diet swaps — Cookies, Bacon)
+ * opens in a short form instead (Patrick, 2026-10-04; prototype concept-f-kinds/admin-food.html): its name,
+ * what each person gets, meal fit and food groups, then its brands and their packages. No ingredient line,
+ * no Steps. "Open the full editor" is the way to steps, gear and diet swaps; saving a new name renames the
+ * ingredient too while the two still match.
  */
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
@@ -36,6 +42,7 @@ import {
   authoringOf,
   blockingIssues,
   compileAuthoring,
+  isSingleFood,
   type DraftBaseLine,
   type DraftVariation,
   type DraftVariationLine,
@@ -46,7 +53,8 @@ import { VIEW_LABEL, flaggedIngredients, variationView, type BaseLine, type Vari
 import { buildLines, ruleText, totalsOf, MAX_HEADCOUNT, MIN_HEADCOUNT } from '@/lib/menu-monster/engine';
 import { FOOD_GROUPS, MEALS, RESTRICTIONS, RESTRICTION_BY_KEY, SECTIONS, SECTION_ORDER, lineUnit, parseQty, perPersonText, supportedUnits } from '@/lib/menu-monster/units';
 import type { Catalog, Ingredient, MealSlot, Plan, Recipe, RecipeLine, RestrictionKey, VariationState } from '@/lib/menu-monster/types';
-import { duplicateRecipe, saveRecipe, setRecipeStatus } from './actions';
+import { duplicateRecipe, saveRecipe, setRecipeStatus, updateIngredient } from './actions';
+import { BrandsBlock } from './brands-block';
 import { NewFoodForm } from './new-food-form';
 import lib from '../library.module.css';
 import { SuggestedBrands } from './suggested-brands';
@@ -280,6 +288,8 @@ function RecipeEditor({
   const [error, setError] = useState<string | null>(null);
   const retire = useArmed();
   const isNew = draft.id === NEW_ID;
+  /** The leader asked for the full editor on a single food (steps, gear, a diet swap). */
+  const [full, setFull] = useState(false);
 
   const issues = authoringIssues(draft, catalog);
   const errors = issues.filter((i) => i.level === 'error');
@@ -290,6 +300,10 @@ function RecipeEditor({
   const ingredients = catalog.ingredients.filter((i) => !i.retiredAt);
   const ingById = new Map(catalog.ingredients.map((i) => [i.id, i]));
   const compiled = compileAuthoring(draft).lines;
+  // Decided from what is SAVED, so typing never flips the form mid-edit.
+  const single = !isNew && isSingleFood(snap.saved);
+  const compact = single && !full;
+  const food = compact ? (ingById.get(draft.base[0]?.ingredientId ?? '') ?? null) : null;
   const missing = RESTRICTIONS.filter((r) => !draft.variations.some((v) => v.restriction === r.key));
   const toLook = missing.filter((r) => viewFor(draft, r.key, catalog) === 'needs_look').length;
   const activeTab: Tab = tab === 'everyone' || draft.variations.some((v) => v.restriction === tab) ? tab : 'everyone';
@@ -310,8 +324,17 @@ function RecipeEditor({
 
   function save() {
     feedback.start();
+    // A single food's name is its ingredient's name: while the two still match, one rename covers both.
+    const rename = food && food.name === snap.saved.name && draft.name.trim() && draft.name.trim() !== food.name ? food : null;
     run(
-      () => saveRecipe(isNew ? { ...draft, id: '' } : draft),
+      async () => {
+        const res = await saveRecipe(isNew ? { ...draft, id: '' } : draft);
+        if (!res.ok || !rename) return res;
+        const renamed = await updateIngredient(rename.id, { name: draft.name.trim(), section: rename.section, staple: rename.staple, avoid: rename.avoid });
+        // The food IS saved: say what did not follow, and let the save land (the list and title refresh).
+        if (!renamed.ok) setError(`Saved, but the ingredient is still called “${rename.name}”: ${renamed.error ?? 'it could not be renamed'}`);
+        return res;
+      },
       (id) => {
         feedback.done();
         snap.markSaved();
@@ -340,6 +363,11 @@ function RecipeEditor({
     <section className={styles.editor} aria-label={isNew ? 'New recipe' : `Edit ${snap.saved.name}`}>
       <div className={styles.detailHead}>
         <h2 className={styles.detailTitle}>{isNew ? 'New recipe' : snap.saved.name}</h2>
+        {single && !compact && (
+          <Button variant="quiet" size="sm" disabled={snap.dirty} title={snap.dirty ? 'Save or discard your changes first' : undefined} onClick={() => setFull(false)}>
+            Back to the short form
+          </Button>
+        )}
         <Badge variant={PILL_VARIANT[pill]}>{pill}</Badge>
         {snap.dirty && <Badge variant="warning">Unsaved edits</Badge>}
       </div>
@@ -365,6 +393,10 @@ function RecipeEditor({
       )}
 
       <FormPanel>
+        {compact ? (
+          <SingleFoodFields draft={draft} setDraft={setDraft} food={food} catalog={catalog} onFull={() => setFull(true)} />
+        ) : (
+          <>
         <FormSection num={1} title="Basics">
           <div className={lib.fieldGrid}>
             <div className={lib.fieldFull}>
@@ -520,6 +552,8 @@ function RecipeEditor({
           </label>
           <input id="mm-r-gear" className={lib.textInput} value={draft.gear ?? ''} maxLength={400} placeholder="Dutch oven, Tongs" onChange={(e) => setDraft((d) => ({ ...d, gear: e.target.value }))} />
         </FormSection>
+          </>
+        )}
 
         {warnings.length > 0 && (
           <div className={styles.issues}>
@@ -532,7 +566,7 @@ function RecipeEditor({
           </div>
         )}
 
-        {compiled.length > 0 && (
+        {!compact && compiled.length > 0 && (
           <div className={styles.issues}>
             <p className={`adminLabel ${styles.issuesTitle}`}>What the planner will compute</p>
             <ul className={styles.compileList} aria-label="What the planner will compute">
@@ -586,6 +620,15 @@ function RecipeEditor({
           <p className={styles.hint}>{snap.saved.name} is retired. Patrols can&rsquo;t pick it any more; old plans keep their copy.</p>
         )}
       </FormPanel>
+
+      {compact && food && (
+        <FormPanel>
+          <BrandsBlock ing={food} catalog={catalog} onChanged={onChanged} />
+          <p className={styles.hint}>
+            <Link href={`/admin/library/menu-monster?tab=prices&ingredient=${encodeURIComponent(food.id)}`}>Prices, packages and stores for {food.name.toLowerCase()} are in the Price book →</Link>
+          </p>
+        </FormPanel>
+      )}
 
       {!isNew && <SuggestedBrands recipeId={draft.id} catalog={catalog} onChanged={onChanged} />}
 
@@ -686,6 +729,103 @@ function BaseLineRow({
         Remove
       </Button>
     </li>
+  );
+}
+
+/* ── A single food's short form ───────────────────────────────────────── */
+
+function SingleFoodFields({
+  draft,
+  setDraft,
+  food,
+  catalog,
+  onFull
+}: {
+  draft: RecipeAuthoring;
+  setDraft: (fn: (d: RecipeAuthoring) => RecipeAuthoring) => void;
+  food: Ingredient | null;
+  catalog: Catalog;
+  onFull: () => void;
+}) {
+  const line = draft.base[0];
+  // Diets worth saying: a flagged ingredient with no answer yet, or an answer a leader gave.
+  const diets = RESTRICTIONS.map((r) => ({ r, view: viewFor(draft, r.key, catalog) })).filter((x) => x.view !== 'not_needed');
+  return (
+    <>
+      <div className={lib.fieldGrid}>
+        <div>
+          <label className={`adminLabel ${lib.fieldLabel}`} htmlFor="mm-f-name">
+            Name
+          </label>
+          <input id="mm-f-name" className={lib.textInput} value={draft.name} maxLength={80} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} />
+        </div>
+        <div>
+          <label className={`adminLabel ${lib.fieldLabel}`} htmlFor="mm-f-amt">
+            Each person gets
+          </label>
+          <div className={styles.inlineForm}>
+            <input
+              id="mm-f-amt"
+              className={`${lib.textInput} ${styles.narrow}`}
+              value={line?.amount ?? ''}
+              placeholder="½"
+              onChange={(e) => setDraft((d) => ({ ...d, base: d.base.map((l, i) => (i === 0 ? { ...l, amount: e.target.value } : l)) }))}
+            />
+            <div className={styles.narrow}>
+              <UnitSelect
+                id="mm-f-unit"
+                label="Each person gets, unit"
+                ingredient={food}
+                unitKey={line?.unitKey ?? null}
+                catalog={catalog}
+                onChange={(k) => setDraft((d) => ({ ...d, base: d.base.map((l, i) => (i === 0 ? { ...l, unitKey: k } : l)) }))}
+              />
+            </div>
+          </div>
+        </div>
+        <fieldset className={styles.fieldset}>
+          <legend className={`adminLabel ${lib.fieldLabel}`}>Meal fit</legend>
+          {MEALS.map((m) => (
+            <label key={m.key} className={styles.listRow}>
+              <input type="checkbox" checked={draft.mealFit.includes(m.key)} onChange={(e) => setDraft((d) => ({ ...d, mealFit: toggle(d.mealFit, m.key, e.target.checked) }))} /> {m.label}
+            </label>
+          ))}
+        </fieldset>
+        <fieldset className={styles.fieldset}>
+          <legend className={`adminLabel ${lib.fieldLabel}`}>Food groups (MyPlate)</legend>
+          {FOOD_GROUPS.map((g) => (
+            <label key={g.key} className={styles.listRow}>
+              <input type="checkbox" checked={draft.foodGroups.includes(g.key)} onChange={(e) => setDraft((d) => ({ ...d, foodGroups: toggle(d.foodGroups, g.key, e.target.checked) }))} /> {g.label}
+            </label>
+          ))}
+        </fieldset>
+        <fieldset className={styles.fieldset}>
+          <legend className={`adminLabel ${lib.fieldLabel}`}>Where it works</legend>
+          <label className={styles.listRow}>
+            <input type="checkbox" checked={draft.camp} onChange={(e) => setDraft((d) => ({ ...d, camp: e.target.checked }))} /> Camp
+          </label>
+          <label className={styles.listRow}>
+            <input type="checkbox" checked={draft.trail} onChange={(e) => setDraft((d) => ({ ...d, trail: e.target.checked }))} /> Trail (no fridge, light)
+          </label>
+        </fieldset>
+      </div>
+      {diets.length > 0 && (
+        <ul className={styles.list} aria-label="Diets">
+          {diets.map(({ r, view }) => (
+            <li key={r.key} className={styles.listRow}>
+              <span>{r.label}</span>
+              <Badge variant={VIEW_VARIANT[view]}>{VIEW_LABEL[view]}</Badge>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className={styles.hint}>
+        <Button variant="quiet" size="sm" onClick={onFull}>
+          Open the full editor
+        </Button>{' '}
+        for steps, gear, a diet swap, or a second ingredient.
+      </p>
+    </>
   );
 }
 

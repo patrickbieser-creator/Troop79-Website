@@ -576,3 +576,18 @@ describe('PlanTab patrol (release 5)', () => {
     expect(saveMenuAction).toHaveBeenCalledWith('menu-1', expect.objectContaining({ patrol: 'Whole troop' }), VERSION);
   });
 });
+
+describe('PlanTab outing: who can open the menu (2026-10-04)', () => {
+  const HINT = /Signed-in scouts and leaders can open this menu from the outing/;
+
+  it('NoOuting_SaysNothing', () => {
+    render(fresh());
+    expect(screen.queryByText(HINT)).toBeNull();
+  });
+
+  it('PickingAnOuting_SaysTheCrewCanOpenIt', async () => {
+    render(fresh());
+    await userEvent.setup().selectOptions(screen.getByRole('combobox', { name: 'Outing' }), '7');
+    expect(screen.getByText(HINT)).toBeTruthy();
+  });
+});

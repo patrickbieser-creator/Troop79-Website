@@ -22,7 +22,7 @@ import { isEpochCurrent } from '@/lib/identity-session';
 import { loadMenuMonsterCatalog } from '@/lib/menu-monster/data';
 import { loadMenuWith, ownerCreditNamesWith, type StoredMenu } from '@/lib/menu-monster/menus-store';
 import { isMenuId } from '@/lib/menu-monster/menus';
-import { canRecord, menuAccess, redactMenu, type AccessViewer, type MenuAccess } from '@/lib/menu-monster/menu-access';
+import { canRecord, menuAccess, redactMenu, type AccessViewer, type MenuAccess, isPublic } from '@/lib/menu-monster/menu-access';
 import type { Catalog } from '@/lib/menu-monster/types';
 import { PageHeader, KickerSep } from '@/app/_components/page-header';
 import { TabStrip } from '@/app/_components/tab-strip';
@@ -44,8 +44,9 @@ export async function scoutViewer(): Promise<ScoutViewer | null> {
 }
 
 /**
- * Who may write a recipe: anyone signed in who is one person — a scout, a leader, a parent (Patrick,
- * 2026-10-03: "anyone signed in can create recipes, not just scouts"). The name is the public credit form
+ * Who may write a recipe or save a menu: anyone signed in who is one person — a scout, a leader, a parent
+ * (Patrick, 2026-10-03: "anyone signed in can create recipes, not just scouts"; 2026-10-04: "adults do need
+ * to get access to saved menus also"). The name is the public credit form
  * ("Sam K."), read from `people`. Null for everyone else, and for a leader cookie that names no one person.
  */
 export async function recipeAuthor(): Promise<ScoutViewer | null> {
@@ -140,7 +141,7 @@ export async function loadViewableMenu(menuId: string, viewer: MenuViewer | null
   const [catalog, names] = await Promise.all([loadMenuMonsterCatalog(null), ownerCreditNamesWith(sb, [raw.ownerPersonId])]);
   const { menu, hiddenRecipes } = redactMenu(raw.menu, access, catalog);
   const stored: StoredMenu = { ...raw, menu, snapshot: null, review: access === 'shared' || access === 'crew' ? null : raw.review };
-  return { stored, access, readOnly: true, plannedBy: names.get(raw.ownerPersonId) ?? null, catalog, hiddenRecipes, canCopy: viewer?.kind === 'scout' };
+  return { stored, access, readOnly: true, plannedBy: names.get(raw.ownerPersonId) ?? null, catalog, hiddenRecipes, canCopy: viewer != null && viewer.personId != null && isPublic(raw) };
 }
 
 /**
@@ -166,7 +167,8 @@ export async function menuRecorder(menuId: string): Promise<{ access: MenuAccess
     const names = await ownerCreditNamesWith(sb, [viewer.personId]);
     return { access: access as MenuAccess, stored, personId: viewer.personId, name: names.get(viewer.personId) ?? viewer.displayName };
   }
-  return { access: access as MenuAccess, stored, personId: viewer.personId, name: viewer.kind === 'leader' ? viewer.label : 'A parent' };
+  const adult = viewer.personId != null ? (await ownerCreditNamesWith(sb, [viewer.personId])).get(viewer.personId) : undefined;
+  return { access: access as MenuAccess, stored, personId: viewer.personId, name: adult ?? (viewer.kind === 'leader' ? viewer.label : 'A parent') };
 }
 
 /** The viewer's own menu by id, or null (missing, malformed id, or not theirs). */
@@ -222,7 +224,7 @@ export const SHARED_HREF = `${MENUS_HREF}/shared`;
 
 /** The kicker's list crumb for a viewer: their own list, or the shared-menus list. */
 export function listCrumb(access: MenuAccess): { listLabel?: string; listHref?: string } {
-  if (access === 'admin') return { listLabel: 'Scouts’ menus' };
+  if (access === 'admin') return { listLabel: 'Everyone’s menus' };
   if (access === 'parent') return { listLabel: 'Your scouts’ menus' };
   if (access === 'shared' || access === 'crew') return { listLabel: 'Shared with the troop', listHref: SHARED_HREF };
   return {};
@@ -259,9 +261,8 @@ export function LockedLine({ next, hub = false }: { next: string; hub?: boolean 
   if (hub) {
     return (
       <p className={s.foot}>
-        Scouts:{' '}
         <Link className={s.link} href={`/signin?next=${encodeURIComponent(next)}`}>
-          sign in
+          Sign in
         </Link>{' '}
         to save menus, plan several meals and share a shopping list.
       </p>
@@ -269,7 +270,7 @@ export function LockedLine({ next, hub = false }: { next: string; hub?: boolean 
   }
   return (
     <p className={s.locked}>
-      Scouts: <Link className={s.link} href={`/signin?next=${encodeURIComponent(next)}`}>sign in to save your menu</Link>
+      <Link className={s.link} href={`/signin?next=${encodeURIComponent(next)}`}>Sign in to save your menu</Link>
       {'. '}
       <Link className={s.link} href="/library/topic/menu-monster">
         Plan a meal without signing in
@@ -279,13 +280,13 @@ export function LockedLine({ next, hub = false }: { next: string; hub?: boolean 
 }
 
 /**
- * The local menu pages (/menus/local…) are for visitors and leaders. A signed-in
- * scout has saved menus instead: send them to the hub, where an unsaved menu
+ * The local menu pages (/menus/local…) are for visitors. Anyone signed in as one
+ * person has saved menus instead: send them to the hub, where an unsaved menu
  * left on this computer is offered for saving. `redirect` throws, so nothing
  * below the call runs for a scout.
  */
 export async function redirectScoutFromLocal(): Promise<void> {
-  if (await scoutViewer()) redirect(MENU_HUB_HREF);
+  if (await recipeAuthor()) redirect(MENU_HUB_HREF);
 }
 
 /** The kicker for the local menu's pages: Menu Monster › Menu on this computer. */

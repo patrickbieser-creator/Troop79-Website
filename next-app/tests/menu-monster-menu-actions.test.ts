@@ -18,7 +18,8 @@ const mocks = vi.hoisted(() => ({
   duplicateMenuWith: vi.fn(),
   deleteMenuWith: vi.fn(),
   loadMenuWith: vi.fn(),
-  loadOutingsWith: vi.fn()
+  loadOutingsWith: vi.fn(),
+  actor: null as unknown
 }));
 
 vi.mock('next/headers', () => ({ cookies: async () => ({ get: () => ({ value: 'cookie' }) }) }));
@@ -28,10 +29,13 @@ vi.mock('@/lib/identity-session', async (orig) => ({
   isEpochCurrent: async () => mocks.epochCurrent
 }));
 vi.mock('@/lib/supabase/server', () => ({ createAdminClient: () => ({ stub: true }) }));
+vi.mock('@/lib/household-scope', () => ({ resolveFamilyScope: async () => [5] }));
+vi.mock('@/lib/admin-actor', () => ({ resolveAdminActor: async () => mocks.actor }));
 vi.mock('@/lib/menu-monster/data', () => ({ loadMenuMonsterCatalog: async () => CATALOG }));
 vi.mock('@/lib/menu-monster/menus-data', () => ({ loadOutingsWith: mocks.loadOutingsWith }));
 vi.mock('@/lib/menu-monster/menus-store', async (orig) => ({
   ...(await orig<typeof import('../src/lib/menu-monster/menus-store')>()),
+  ownerCreditNamesWith: async (_sb: unknown, ids: number[]) => new Map(ids.map((id) => [id, 'Pat B.'])),
   createMenuWith: mocks.createMenuWith,
   saveMenuWith: mocks.saveMenuWith,
   duplicateMenuWith: mocks.duplicateMenuWith,
@@ -57,6 +61,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.session = SCOUT;
   mocks.epochCurrent = true;
+  mocks.actor = null;
   mocks.createMenuWith.mockResolvedValue(ID);
   mocks.saveMenuWith.mockResolvedValue({ status: 'saved', updatedAt: STAMP });
   mocks.duplicateMenuWith.mockResolvedValue(ID);
@@ -79,26 +84,69 @@ describe('menu actions: who may call them', () => {
     expect(mocks.createMenuWith).not.toHaveBeenCalled();
   });
 
-  it('Adult_IsRefused_OnEveryAction', async () => {
-    mocks.session = { ...SCOUT, subjectKind: 'adult' };
+  it('Adult_SavesTheirOwnMenu_AsThemselves', async () => {
+    mocks.session = { ...SCOUT, subjectKind: 'adult', personId: 5, displayName: 'Pat B.' };
+    await saveMenuAction(ID, payload(), STAMP);
+    expect(mocks.saveMenuWith.mock.calls[0][1]).toMatchObject({ personId: 5 });
+  });
+
+  it('Adult_CreatesTheirOwnMenu_AsThemselves', async () => {
+    mocks.session = { ...SCOUT, subjectKind: 'adult', personId: 5, displayName: 'Pat B.' };
+    await createMenuAction(payload({ ownerPersonId: 7 }));
+    expect(mocks.createMenuWith.mock.calls[0][1]).toMatchObject({ personId: 5 });
+  });
+
+  it('Adult_DeletesAndDuplicates_AsThemselves', async () => {
+    mocks.session = { ...SCOUT, subjectKind: 'adult', personId: 5, displayName: 'Pat B.' };
+    await Promise.all([duplicateMenuAction(ID), deleteMenuAction(ID)]);
+    expect([mocks.duplicateMenuWith.mock.calls[0][1], mocks.deleteMenuWith.mock.calls[0][1]]).toEqual([
+      expect.objectContaining({ personId: 5 }),
+      expect.objectContaining({ personId: 5 })
+    ]);
+  });
+
+  it('RevokedAdult_IsRefused_OnEveryAction', async () => {
+    mocks.session = { ...SCOUT, subjectKind: 'adult', personId: 5, displayName: 'Pat B.' };
+    mocks.epochCurrent = false;
     for (const r of await Promise.all(callAll())) expect(r.ok).toBe(false);
+    expect(mocks.createMenuWith).not.toHaveBeenCalled();
+  });
+
+  it('Anonymous_IsToldToSignIn_WhenSaving', async () => {
+    mocks.session = null;
+    expect(await saveMenuAction(ID, payload(), STAMP)).toEqual({ ok: false, error: 'Sign in to save your menu.' });
+  });
+
+  it('Leader_WithAPerson_SavesTheirOwnMenu_AsThemselves', async () => {
+    mocks.session = null;
+    mocks.actor = { subjectKind: 'adult', personId: 82, label: 'Patrick B.', capabilities: new Set(['library.moderate']) };
+    await saveMenuAction(ID, payload(), STAMP);
+    expect(mocks.saveMenuWith.mock.calls[0][1]).toMatchObject({ personId: 82 });
+  });
+
+  it('Leader_WithoutAPerson_IsRefused', async () => {
+    // A legacy leader cookie resolves to no one person, so there is nobody to own a menu.
+    mocks.session = null;
+    mocks.actor = { subjectKind: 'adult', personId: null, label: 'Leader', capabilities: new Set(['library.moderate']) };
+    expect((await createMenuAction(payload())).ok).toBe(false);
   });
 
   it('Leader_WithoutAScoutIdentity_IsRefused', async () => {
-    // A leader session has no identity cookie at all, so it reads as anonymous here.
+    // No identity cookie and no leader actor: anonymous.
     mocks.session = null;
     expect((await createMenuAction(payload())).ok).toBe(false);
   });
 
-  it('LeaderWithAdminGrants_CannotSaveDeleteOrDuplicate_AScoutsMenu', async () => {
-    // An identity-session adult (the kind that holds admin capabilities) is a valid session,
-    // but not a scout's: the leader read-only view never grants a write.
+  it('Adult_IsToldTheMenuIsntTheirs_WhenSavingSomeoneElsesMenu', async () => {
     mocks.session = { ...SCOUT, subjectKind: 'adult', personId: 5, displayName: 'Pat B.' };
-    const results = await Promise.all([saveMenuAction(ID, payload(), STAMP), duplicateMenuAction(ID), deleteMenuAction(ID)]);
-    for (const r of results) expect(r.ok).toBe(false);
-    expect(mocks.saveMenuWith).not.toHaveBeenCalled();
-    expect(mocks.duplicateMenuWith).not.toHaveBeenCalled();
-    expect(mocks.deleteMenuWith).not.toHaveBeenCalled();
+    mocks.saveMenuWith.mockResolvedValue({ status: 'not_found' });
+    expect(await saveMenuAction(ID, payload(), STAMP)).toEqual({ ok: false, error: 'That menu isn’t one of yours.' });
+  });
+
+  it('Adult_IsToldTheMenuIsntTheirs_WhenDeletingSomeoneElsesMenu', async () => {
+    mocks.session = { ...SCOUT, subjectKind: 'adult', personId: 5, displayName: 'Pat B.' };
+    mocks.deleteMenuWith.mockResolvedValue(false);
+    expect(await deleteMenuAction(ID)).toMatchObject({ ok: false });
   });
 
   it('LegacyLeaderCookie_CannotSaveDeleteOrDuplicate_WithNoIdentitySession', async () => {

@@ -281,6 +281,7 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChang
           {brandText(ingredientId)}
           <button
             type="button"
+            id={`${uid}-brand-${key}`}
             className={s.linkBtn}
             aria-expanded={open}
             aria-label={`${verb} for ${name}`}
@@ -308,6 +309,27 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChang
             onAnnounce={(text) => setStatus({ text, undoTo: null })}
           />
           {suggestLine(rid, ingredientId)}
+          {/* Patrick, 2026-10-04: a way to close the chooser once the brand is picked; the row above then shows it. */}
+          <p className={s.brandDone}>
+            <button
+              type="button"
+              className={s.linkBtn}
+              aria-label={`Done choosing a brand for ${name}`}
+              onClick={() => {
+                setBrandOpen((cur) => {
+                  const next = new Set(cur);
+                  next.delete(key);
+                  return next;
+                });
+                const said = brandSummary(picksOf(ingredientId), ingredientId, catalog);
+                setStatus({ text: said && said !== 'any brand' ? `${name}: ${said}.` : `${name}: any brand.`, undoTo: null });
+                // The chooser is gone: focus goes back to the control that opened it.
+                requestAnimationFrame(() => document.getElementById(`${uid}-brand-${key}`)?.focus());
+              }}
+            >
+              Done
+            </button>
+          </p>
         </>
       ) : null
     };

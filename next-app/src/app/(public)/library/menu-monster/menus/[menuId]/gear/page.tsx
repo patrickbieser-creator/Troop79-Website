@@ -28,9 +28,10 @@ export default async function MenuGearPage({ params }: { params: Promise<{ menuI
   const [gearList, state, names] = await Promise.all([
     listGearWith(sb),
     loadMenuGearWith(sb, stored.id),
-    viewer?.kind === 'scout' ? ownerCreditNamesWith(sb, [viewer.personId]) : Promise.resolve(new Map<number, string>())
+    viewer?.personId != null ? ownerCreditNamesWith(sb, [viewer.personId]) : Promise.resolve(new Map<number, string>())
   ]);
-  const viewerName = viewer?.kind === 'scout' ? (names.get(viewer.personId) ?? viewer.displayName) : viewer?.kind === 'leader' ? viewer.label : '';
+  const known = viewer?.personId != null ? names.get(viewer.personId) : undefined;
+  const viewerName = known ?? (viewer?.kind === 'scout' ? viewer.displayName : viewer?.kind === 'leader' ? viewer.label : '');
   return (
     <>
       <MenuHeader current="gear" {...listCrumb(view.access)} />

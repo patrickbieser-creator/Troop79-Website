@@ -23,11 +23,14 @@ vi.mock('@/lib/identity-session', async (orig) => ({
   verifyIdentitySession: async () => mocks.session,
   isEpochCurrent: async () => mocks.epochCurrent
 }));
+vi.mock('@/lib/household-scope', () => ({ resolveFamilyScope: async () => [5] }));
+vi.mock('@/lib/admin-actor', () => ({ resolveAdminActor: async () => null }));
 vi.mock('@/lib/supabase/server', () => ({ createAdminClient: () => ({ stub: true }) }));
 vi.mock('@/lib/menu-monster/data', () => ({ loadMenuMonsterCatalog: () => mocks.loadCatalog() }));
 vi.mock('@/lib/menu-monster/menus-data', () => ({ loadOutingsWith: vi.fn() }));
 vi.mock('@/lib/menu-monster/menus-store', async (orig) => ({
   ...(await orig<typeof import('../src/lib/menu-monster/menus-store')>()),
+  ownerCreditNamesWith: async (_sb: unknown, ids: number[]) => new Map(ids.map((id) => [id, 'Pat B.'])),
   loadMenuWith: mocks.loadMenuWith,
   saveActualsWith: mocks.saveActualsWith
 }));
@@ -62,8 +65,35 @@ describe('saveActualsAction: who may call it', () => {
     expect(mocks.reportPriceWith).not.toHaveBeenCalled();
   });
 
-  it('Adult_IsRefused_SoALeaderCannotReportPricesThroughAScoutsMenu', async () => {
+  it('Adult_IsToldTheMenuIsntTheirs_WhenItBelongsToAScout', async () => {
     mocks.session = { ...SCOUT, subjectKind: 'adult', personId: 5 };
+    mocks.loadMenuWith.mockResolvedValue(stored({}, 39));
+    expect(await saveActualsAction(ID, { eggs: EGGS })).toEqual({ ok: false, error: 'That menu isn’t one of yours.' });
+  });
+
+  it('Adult_ReportsNoPrice_WhenTheMenuBelongsToAScout', async () => {
+    mocks.session = { ...SCOUT, subjectKind: 'adult', personId: 5 };
+    mocks.loadMenuWith.mockResolvedValue(stored({}, 39));
+    await saveActualsAction(ID, { eggs: EGGS });
+    expect(mocks.reportPriceWith).not.toHaveBeenCalled();
+  });
+
+  it('Adult_SavesNothing_WhenTheMenuBelongsToAScout', async () => {
+    mocks.session = { ...SCOUT, subjectKind: 'adult', personId: 5 };
+    mocks.loadMenuWith.mockResolvedValue(stored({}, 39));
+    await saveActualsAction(ID, { eggs: EGGS });
+    expect(mocks.saveActualsWith).not.toHaveBeenCalled();
+  });
+
+  it('Adult_SavesActuals_WhenTheMenuIsTheirOwn', async () => {
+    mocks.session = { ...SCOUT, subjectKind: 'adult', personId: 5 };
+    mocks.loadMenuWith.mockResolvedValue(stored({}, 5));
+    expect((await saveActualsAction(ID, { eggs: EGGS })).ok).toBe(true);
+  });
+
+  it('RevokedAdult_IsRefused', async () => {
+    mocks.session = { ...SCOUT, subjectKind: 'adult', personId: 5 };
+    mocks.epochCurrent = false;
     expect((await saveActualsAction(ID, { eggs: EGGS })).ok).toBe(false);
     expect(mocks.saveActualsWith).not.toHaveBeenCalled();
   });

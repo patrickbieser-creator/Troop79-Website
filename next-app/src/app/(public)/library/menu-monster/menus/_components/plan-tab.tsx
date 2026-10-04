@@ -333,7 +333,8 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
               ))}
             </SelectInput>
           </Field>
-          <Field label="Outing">
+          {/* A consequence to know before choosing (qa-lead, 2026-10-04): an outing's menu is open to its crew, whoever saved it. */}
+          <Field label="Outing" hint={linked ? 'Signed-in scouts and leaders can open this menu from the outing, and record what was bought.' : undefined}>
             <SelectInput value={linked ? String(linked.id) : 'none'} onChange={(e) => setOuting(e.target.value)}>
               {outings.map((o) => (
                 <option key={o.id} value={o.id}>

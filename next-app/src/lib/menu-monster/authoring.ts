@@ -263,6 +263,14 @@ const blank = (a: RecipeAuthoring) => ({
   stepsMd: a.stepsMd
 });
 
+/**
+ * A single food (Cookies, Apples, Bacon): one thing each person gets — one ingredient line, no steps, no gear
+ * and no diet swap that changes a line. The leader tools edit it in the short form; anything more is a recipe.
+ */
+export function isSingleFood(a: RecipeAuthoring): boolean {
+  return a.base.length === 1 && a.base[0].ingredientId !== '' && !a.stepsMd.trim() && !(a.gear ?? '').trim() && a.variations.every((v) => v.lines.length === 0);
+}
+
 /** Diff → compiled draft lines, with the raw amounts intact so an error can quote them. */
 export function compileAuthoring(a: RecipeAuthoring): RecipeDraft {
   const compiled = compileRecipe<string>(

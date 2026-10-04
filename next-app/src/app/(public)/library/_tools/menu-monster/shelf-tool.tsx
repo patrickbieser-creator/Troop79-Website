@@ -7,12 +7,11 @@
  *
  * The planning flow is the main experience for everyone (IA correction,
  * 2026-10-02):
- *   - visitors and leaders: the page IS the Plan tab of an unsaved menu kept on
- *     this computer (the same component a scout's saved menu uses), under one
- *     quiet "Sign in to save your menus" strip. A leader also gets a read-only
- *     "Scouts' menus" section BELOW the plan: the plan is what the page is for,
- *     and the list is a reference, so it stays out of the way.
- *   - signed-in scouts: My menus + New menu, a "Continue <latest menu>" link
+ *   - visitors: the page IS the Plan tab of an unsaved menu kept on this computer
+ *     (the same component a saved menu uses), under one quiet "Sign in to save
+ *     your menus" strip.
+ *   - anyone signed in — scouts, and since 2026-10-04 parents and leaders too
+ *     (Patrick: "adults do need to get access to saved menus also"): My menus + New menu, a "Continue <latest menu>" link
  *     (the hub never opens it for them), and, when this browser holds an unsaved
  *     local menu, a row offering to save it to My menus.
  * The old anonymous planner is no longer rendered here.
@@ -66,8 +65,8 @@ export async function MenuMonsterShelfTool({ searchParams }: { searchParams: Rec
   const asked = typeof searchParams.tab === 'string' ? searchParams.tab : '';
   const tab: TabKey = TABS.some((x) => x.key === asked) ? (asked as TabKey) : 'planner';
   const viewer = await menuViewer();
-  // An adult's own drafts and requested ingredients join every tab but the planner (they have no saved menus).
-  const catalog = await loadMenuMonsterCatalog(viewer?.kind === 'scout' || tab !== 'planner' ? (viewer?.personId ?? null) : null);
+  // The signed-in person's own draft recipes and requested ingredients join every tab.
+  const catalog = await loadMenuMonsterCatalog(viewer?.personId ?? null);
   const planner = tab === 'planner' ? await mealPlanner(catalog, viewer) : null;
   return (
     <>
@@ -123,9 +122,10 @@ async function recipeBuilder(viewer: MenuViewer | null) {
 
 /** A plain async function, not a nested component: the tab is awaited here, so tests can render the tool. */
 async function mealPlanner(catalog: Catalog, viewer: MenuViewer | null) {
-
-  if (viewer?.kind === 'scout') {
+  if (viewer && viewer.personId != null) {
     const sb = createAdminClient();
+    // Below a parent's own menus, their scouts'; below a leader's, everyone's (both read-only).
+    const others = viewer.kind === 'parent' ? await parentsScouts(catalog, viewer.familyIds.filter((id) => id !== viewer.personId)) : viewer.kind === 'leader' ? await everyonesMenus(catalog, viewer.personId) : null;
     const summaries = await listMenusWith(sb, viewer.personId);
     const rows = await loadMenuRows(sb, summaries.slice(0, RECENT), catalog);
     const latest = summaries[0];
@@ -159,45 +159,22 @@ async function mealPlanner(catalog: Catalog, viewer: MenuViewer | null) {
         )}
         <DraftOffer catalog={catalog} />
       </section>
+      {others}
       {await sharedWithTroop()}
       </>
     );
   }
 
+  // Not signed in as one person: a visitor, or a leader on the old shared password (nobody to save for).
   const [outings, identity] = await Promise.all([loadOutingsWith(createAdminClient(), centralToday()), getIdentitySessionIfValid()]);
   const signedIn = viewer?.kind === 'leader' || identity != null;
-  let scoutsMenus: React.ReactNode = null;
-  if (viewer?.kind === 'parent') {
-    scoutsMenus = await parentsScouts(catalog, viewer.familyIds.filter((id) => id !== viewer.personId));
-  }
-  if (viewer?.kind === 'leader') {
-    const sb = createAdminClient();
-    const all = await listAllMenusWith(sb);
-    const shown = all.slice(0, LEADER_RECENT);
-    const owners = await ownerCreditNamesWith(sb, shown.map((m) => m.ownerPersonId));
-    const rows = await loadMenuRows(sb, shown, catalog, owners);
-    scoutsMenus = (
-      <section className={w.hubSection}>
-        <div className={w.listHead}>
-          <h2 className={w.heading}>Scouts’ menus</h2>
-        </div>
-        <MenusList rows={rows} readOnly emptyText="No scout has saved a menu yet." />
-        {all.length > LEADER_RECENT && (
-          <p className={w.foot}>
-            <Link className={w.link} href={MENUS_HREF}>
-              All scouts’ menus
-            </Link>
-          </p>
-        )}
-      </section>
-    );
-  }
+  const scoutsMenus = viewer?.kind === 'leader' ? await everyonesMenus(catalog) : null;
 
   return (
     <>
       {signedIn ? (
         // Already signed in as an adult or leader: a sign-in link would be a dead end.
-        <p className={w.foot}>Your menu stays on this computer. Saving to My menus is for signed-in scouts.</p>
+        <p className={w.foot}>Your menu stays on this computer. To save menus, sign in as yourself.</p>
       ) : (
         <p className={w.foot}>
           <Link className={w.link} href={`/signin?next=${encodeURIComponent(MENU_HUB_HREF)}`}>
@@ -213,7 +190,31 @@ async function mealPlanner(catalog: Catalog, viewer: MenuViewer | null) {
   );
 }
 
-/** A parent's read-only list of their scouts' menus (Phase 3), under the plan like a leader's. */
+/** A leader's read-only list of the menus everyone else has saved — scouts and adults (their own are in My menus). */
+async function everyonesMenus(catalog: Catalog, selfPersonId: number | null = null) {
+  const sb = createAdminClient();
+  const all = (await listAllMenusWith(sb)).filter((m) => m.ownerPersonId !== selfPersonId);
+  const shown = all.slice(0, LEADER_RECENT);
+  const owners = await ownerCreditNamesWith(sb, shown.map((m) => m.ownerPersonId));
+  const rows = await loadMenuRows(sb, shown, catalog, owners);
+  return (
+    <section className={w.hubSection}>
+      <div className={w.listHead}>
+        <h2 className={w.heading}>Everyone’s menus</h2>
+      </div>
+      <MenusList rows={rows} readOnly emptyText="Nobody else has saved a menu yet." />
+      {all.length > LEADER_RECENT && (
+        <p className={w.foot}>
+          <Link className={w.link} href={MENUS_HREF}>
+            All saved menus
+          </Link>
+        </p>
+      )}
+    </section>
+  );
+}
+
+/** A parent's read-only list of their scouts' menus (Phase 3), under their own menus like a leader's. */
 async function parentsScouts(catalog: Catalog, scouts: number[]) {
   if (scouts.length === 0) return null;
   const sb = createAdminClient();

@@ -21,6 +21,30 @@ describe('menuAccess', () => {
     expect(menuAccess(viewer('scout', OWNER), menu(null))).toBe('owner');
   });
 
+  it('Parent_GetsOwnerAccess_ToTheirOwnMenu', () => {
+    expect(menuAccess(viewer('parent', OWNER, [OWNER]), menu(null))).toBe('owner');
+  });
+
+  it('Leader_GetsOwnerNotAdmin_ToTheirOwnMenu', () => {
+    expect(menuAccess(viewer('leader', OWNER), menu(null))).toBe('owner');
+  });
+
+  it('Leader_StillGetsAdmin_ToSomeoneElsesMenu', () => {
+    expect(menuAccess(viewer('leader', OTHER), menu(null))).toBe('admin');
+  });
+
+  it('Anonymous_IsNeverOwner_EvenWithAMatchingId', () => {
+    expect(menuAccess(viewer('anon', OWNER), menu(null))).toBeNull();
+  });
+
+  it('Leader_WithNoPerson_GetsAdminNotOwner', () => {
+    expect(menuAccess(viewer('leader', null), menu(null))).toBe('admin');
+  });
+
+  it('Parent_GetsNothing_ForAnotherAdultsUnsharedMenuTheyDoNotOwn', () => {
+    expect(menuAccess(viewer('parent', OTHER, [OTHER]), menu(null))).toBeNull();
+  });
+
   it('Leader_GetsAdminAccess_ToAnUnsharedMenu', () => {
     expect(menuAccess(viewer('leader', 82), menu(null))).toBe('admin');
   });
@@ -172,5 +196,19 @@ describe('redactMenu', () => {
 
   it('AdminView_HidesDrafts', () => {
     expect(redactMenu(ownerMenu(), 'admin', PUBLIC).hiddenRecipes).toBe(1);
+  });
+});
+
+describe('menuAccess: an outing menu saved by an adult (2026-10-04)', () => {
+  it('Scout_IsCrew_OnAnOutingMenu_WhoeverSavedIt', () => {
+    expect(menuAccess(viewer('scout', OTHER), menu(null, true))).toBe('crew');
+  });
+
+  it('Parent_WhoIsNotFamily_CannotOpenAnUnsharedOutingMenu', () => {
+    expect(menuAccess(viewer('parent', OTHER, [OTHER]), menu(null, true))).toBeNull();
+  });
+
+  it('Scout_CannotOpenAnAdultsMenu_ThatHasNoOuting', () => {
+    expect(menuAccess(viewer('scout', OTHER), menu(null, null))).toBeNull();
   });
 });
