@@ -206,8 +206,7 @@ choice." Decisions made on his behalf:
   longer plans on-this-computer; the hub offers to save a menu left on the computer, as it does for scouts.
 - **An outing's menu is open to the outing's crew whoever saved it** (signed-in scouts open it and record what
   was bought; leaders too). The Plan tab says this under the Outing box once one is picked. A menu with no
-  outing stays private to its owner, leaders, and (a scout's) parents. *qa-lead raised this as a privacy
-  question; kept because the troop shops together — say if adults' outing menus should be closed to scouts.*
+  outing stays private to its owner, leaders, and (a scout's) parents. *qa-lead raised this as a privacy question.* **Confirmed by Patrick, 2026-10-04: "Keep adults' outing menus open to scouts."**
 - **Parents are still not crew**: a parent cannot open other people's unshared outing menus or the outing's
   shopping list, even when they own a menu on that outing. Leaders can.
 - A leader's read-only list is now "Everyone's menus" (scouts' and adults', minus their own).
