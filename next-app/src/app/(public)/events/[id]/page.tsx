@@ -21,6 +21,7 @@ import { loadSiteSettings } from '@/lib/site-settings';
 import { createAdminClient } from '@/lib/supabase/server';
 import { listSharedMenusWith } from '@/lib/menu-monster/menus-store';
 import { OUTING_CATEGORIES } from '@/lib/menu-monster/menus-data';
+import { menuViewer } from '../../library/menu-monster/menus/_components/scout-menus';
 import styles from './event-detail.module.css';
 
 /*
@@ -41,6 +42,13 @@ import styles from './event-detail.module.css';
  * Phase 1 slice: READ-ONLY. The gate works and the blocks render; the signup
  * form itself is the next step.
  */
+
+/** A signed-in scout or leader sees every menu linked to the outing, shared or not: they may pack its gear and
+ *  record what was bought (menu-access.ts 'crew'). Everyone else sees the shared ones. */
+async function outingCrew(): Promise<boolean> {
+  const v = await menuViewer();
+  return v?.kind === 'scout' || v?.kind === 'leader';
+}
 
 function parseId(raw: string): number | null {
   const n = Number(raw);
@@ -144,7 +152,7 @@ export default async function EventDetailPage({
      query, only for the overnight categories a menu can link to; the loader
      returns nothing for an unpublished entry. */
   const outingMenus = (OUTING_CATEGORIES as readonly string[]).includes(entry.category)
-    ? await listSharedMenusWith(createAdminClient(), centralToday(), { outingId: entry.id })
+    ? await listSharedMenusWith(createAdminClient(), centralToday(), { outingId: entry.id, includeUnshared: await outingCrew() })
     : [];
 
   /*

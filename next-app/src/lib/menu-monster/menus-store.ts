@@ -236,7 +236,7 @@ export async function listAllMenusWith(sb: SupabaseClient, filters: MenuFilters 
 export async function listSharedMenusWith(
   sb: SupabaseClient,
   today: string,
-  opts: { outingId?: number; limit?: number } = {}
+  opts: { outingId?: number; limit?: number; /** An outing's crew sees its unshared menus too (menu-access.ts 'crew'). */ includeUnshared?: boolean } = {}
 ): Promise<SharedMenuRow[]> {
   const cutoff = daysBefore(today, SHELF_DAYS);
   let entryIds: number[];
@@ -257,8 +257,8 @@ export async function listSharedMenusWith(
 
   let q = sb
     .from('mm_menus')
-    .select('id, owner_person_id, name, calendar_entry_id, meals, shared_at, calendar_entries(title)')
-    .not('shared_at', 'is', null);
+    .select('id, owner_person_id, name, calendar_entry_id, meals, shared_at, calendar_entries(title)');
+  if (!(opts.includeUnshared && opts.outingId != null)) q = q.not('shared_at', 'is', null);
   if (opts.outingId != null) q = q.eq('calendar_entry_id', opts.outingId);
   else {
     const linked = entryIds.length > 0 ? `calendar_entry_id.in.(${entryIds.join(',')}),` : '';
@@ -273,7 +273,7 @@ export async function listSharedMenusWith(
     name: string;
     calendar_entry_id: number | null;
     meals: unknown;
-    shared_at: string;
+    shared_at: string | null;
     calendar_entries: { title: string } | null;
   }[];
   const credits = await ownerCreditNamesWith(sb, rows.map((r) => r.owner_person_id));
@@ -285,7 +285,7 @@ export async function listSharedMenusWith(
     calendarEntryId: r.calendar_entry_id,
     outingTitle: r.calendar_entries?.title ?? null,
     mealCount: Array.isArray(r.meals) ? r.meals.length : 0,
-    sharedAt: r.shared_at
+    sharedAt: r.shared_at ?? ''
   }));
 }
 

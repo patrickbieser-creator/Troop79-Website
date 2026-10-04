@@ -15,6 +15,7 @@ import type { AuditActor } from '@/lib/audit';
 import { loadMenuMonsterCatalog } from '@/lib/menu-monster/data';
 import { MAX_SCOUT_RECIPES, isScoutRecipeId, sanitizeScoutRecipe } from '@/lib/menu-monster/scout-recipes';
 import { deleteScoutDraftWith, saveScoutRecipeWith, shareScoutRecipeWith } from '@/lib/menu-monster/scout-recipes-store';
+import { ensureGearWith } from '@/lib/menu-monster/gear-store';
 
 type Fail = { ok: false; error: string };
 
@@ -52,7 +53,10 @@ export async function saveScoutRecipeAction(
   if (draft.id != null && (typeof expectedUpdatedAt !== 'string' || !Number.isFinite(Date.parse(expectedUpdatedAt)))) {
     return { ok: false, error: MESSAGES.conflict };
   }
-  const res = await saveScoutRecipeWith(createAdminClient(), actor, draft, expectedUpdatedAt);
+  const sb = createAdminClient();
+  const res = await saveScoutRecipeWith(sb, actor, draft, expectedUpdatedAt);
+  // Gear the troop's list lacks joins it at once (scouts add to the gear list by naming gear).
+  if (res.status === 'saved') await ensureGearWith(sb, draft.equipment, actor.personId);
   return res.status === 'saved' ? { ok: true, id: res.id, updatedAt: res.updatedAt, ids: res.ids } : { ok: false, error: MESSAGES[res.status] };
 }
 

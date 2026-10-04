@@ -136,6 +136,12 @@
   color: var(--text-meta);
   min-width: 0;
 }
+/* An open food's "Steps · Gear (n)" line and what it opens. */
+.stepsGear { margin: var(--sp-2) 0 var(--sp-3); }
+.stepList { margin: var(--sp-2) 0 var(--sp-2); padding-left: var(--sp-6); font-family: var(--font-ui); font-size: var(--fs-md); color: var(--text-body); line-height: 1.5; }
+/* Gear tab: the Packed tick at the start of a row, and the dashed add field under the lists. */
+.gearCheck { width: 18px; height: 18px; flex: none; align-self: center; accent-color: var(--forest); }
+.gearAdd { margin: 0 0 var(--sp-3); }
 /* A meal's People dialer on the meal's own line, with its quiet Reset link. */
 .mealPeople { display: inline-flex; align-items: center; gap: var(--sp-2); flex: none; }
 .cost {

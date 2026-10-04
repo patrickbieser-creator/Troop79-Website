@@ -63,3 +63,28 @@ Logged here as they are made, each with the reason, so he can reverse any of the
 ## Build log
 
 (appended per release)
+
+### R1 — planner polish — LIVE v1.154.0 (0711b1a, 2026-10-03)
+Dialer on the meal's line, A–Z add list, no "Each person gets". No schema.
+
+### R2 — Gear — LIVE v1.155.0 (2026-10-04)
+Migrations `20261007100000_mm_gear` (mm_gear, mm_menus.gear_extras / gear_packed, mm_set_gear_packed) and
+`20261007110000_mm_recipe_gear_steps` (data: gear + steps on 29 recipes, six staples), both in production.
+Decisions made on Patrick's behalf:
+- **`crew` access** (menu-access.ts): any signed-in scout who is not the owner may open an outing's menu
+  read-only, shared or not, and tick gear (and, from R4, record purchases). Leaders may tick too; parents
+  read only. The outing's page lists every linked menu for signed-in scouts and leaders. Reason: his "any
+  signed-in scout can record, for menus linked to an outing" needs the scout to be able to reach the menu.
+- **A scout's practice menu linked to a real outing is now visible to other signed-in scouts.** Unlink the
+  outing to keep it private. Worth telling scouts.
+- **Gear state lives beside the plan** (not in the Menu draft): ticks and extras save at once and never bump
+  the menu's version. A menu holds at most 100 ticks.
+- **Where gear lives** (trailer / patrol box / home) is my guess for the 27 seeded items — leaders correct it
+  in Admin › Menu Monster › Gear.
+- **Staples** are `staple = true` ingredients (store room: in Used, never Spent) with ESTIMATED package prices
+  (note on each package). They cannot yet be switched to "buy this time" — that comes with the Shopping work in R3.
+- **Shopping tab's flat "Gear you'll need" line is gone** (one place: the Gear tab); the printed shopping sheet
+  keeps its gear line.
+- **Local (not signed in) menus have no Gear tab yet.**
+- qa-lead reviewed: tick cap, crew reads epoch-checked, packers' names hidden from shared viewers, rename
+  rewrite paginated and error-checked.

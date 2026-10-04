@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { Catalog, Recipe } from '../src/lib/menu-monster/types';
-import { menuAccess, onShelf, redactMenu, SHELF_DAYS, type AccessViewer } from '../src/lib/menu-monster/menu-access';
+import { canRecord, menuAccess, onShelf, redactMenu, SHELF_DAYS, type AccessViewer } from '../src/lib/menu-monster/menu-access';
 import { sanitizeMenu, type Menu } from '../src/lib/menu-monster/menus';
 
 /**
@@ -56,6 +56,27 @@ describe('menuAccess', () => {
   it('ScoutSibling_GetsNothing_FromAFamilyList', () => {
     // A scout identity's scope is only themselves; a family list on a scout viewer is ignored.
     expect(menuAccess(viewer('scout', OTHER, [OTHER, OWNER]), menu(null))).toBeNull();
+  });
+
+  it('OtherScout_IsCrew_OnAnOutingsMenu_SharedOrNot', () => {
+    // Patrick, 2026-10-03: any signed-in scout can record, for menus linked to an outing.
+    expect([menuAccess(viewer('scout', OTHER), menu(null, true)), menuAccess(viewer('scout', OTHER), menu('2026-10-03T12:00:00Z', true))]).toEqual(['crew', 'crew']);
+  });
+
+  it('OtherScout_IsCrew_EvenWhileTheOutingIsADraft', () => {
+    expect(menuAccess(viewer('scout', OTHER), menu(null, false))).toBe('crew');
+  });
+
+  it('Anonymous_IsNeverCrew', () => {
+    expect(menuAccess(viewer('anon'), menu(null, true))).toBeNull();
+  });
+
+  it('Parent_OfAnotherScout_IsNotCrew', () => {
+    expect(menuAccess(viewer('parent', 100, [100, OTHER]), menu(null, true))).toBeNull();
+  });
+
+  it('OnlyOwnerCrewAndLeaders_MayRecord', () => {
+    expect((['owner', 'crew', 'admin', 'parent', 'shared', null] as const).map(canRecord)).toEqual([true, true, true, false, false, false]);
   });
 
   it('Leader_GetsAdmin_EvenWhenAlsoTheParent', () => {
@@ -136,6 +157,11 @@ describe('redactMenu', () => {
   it('SharedView_HidesActuals', () => {
     const { menu: m } = redactMenu(ownerMenu(), 'shared', PUBLIC);
     expect(m.actuals).toEqual({});
+  });
+
+  it('CrewView_KeepsActuals_ButStillHidesDrafts', () => {
+    const { menu: m, hiddenRecipes } = redactMenu(ownerMenu(), 'crew', PUBLIC);
+    expect([m.meals[0].recipeIds, hiddenRecipes, Object.keys(m.actuals)]).toEqual([['B001'], 1, ['eggs']]);
   });
 
   it('ParentView_KeepsActuals_ButStillHidesDrafts', () => {

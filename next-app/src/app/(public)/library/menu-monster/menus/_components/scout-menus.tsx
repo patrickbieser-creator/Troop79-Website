@@ -15,14 +15,14 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
-import { getIdentitySessionIfValid } from '@/lib/family-access';
+import { getIdentitySessionIfValid, requireVerifiedScoutIdentity } from '@/lib/family-access';
 import { resolveAdminActor } from '@/lib/admin-actor';
 import { resolveFamilyScope } from '@/lib/household-scope';
 import { isEpochCurrent } from '@/lib/identity-session';
 import { loadMenuMonsterCatalog } from '@/lib/menu-monster/data';
 import { loadMenuWith, ownerCreditNamesWith, type StoredMenu } from '@/lib/menu-monster/menus-store';
 import { isMenuId } from '@/lib/menu-monster/menus';
-import { menuAccess, redactMenu, type AccessViewer, type MenuAccess } from '@/lib/menu-monster/menu-access';
+import { canRecord, menuAccess, redactMenu, type AccessViewer, type MenuAccess } from '@/lib/menu-monster/menu-access';
 import type { Catalog } from '@/lib/menu-monster/types';
 import { PageHeader, KickerSep } from '@/app/_components/page-header';
 import { TabStrip } from '@/app/_components/tab-strip';
@@ -115,10 +115,45 @@ export async function loadViewableMenu(menuId: string, viewer: MenuViewer | null
     const catalog = await loadMenuMonsterCatalog(raw.ownerPersonId);
     return { stored: raw, access, readOnly: false, plannedBy: null, catalog, hiddenRecipes: 0, canCopy: false };
   }
+  // Crew reads another scout's unshared menu, so a revoked sign-in ends here, not at cookie expiry (qa-lead; the
+  // parent branch of menuViewer makes the same check).
+  if (access === 'crew') {
+    try {
+      await requireVerifiedScoutIdentity();
+    } catch {
+      return null;
+    }
+  }
   const [catalog, names] = await Promise.all([loadMenuMonsterCatalog(null), ownerCreditNamesWith(sb, [raw.ownerPersonId])]);
   const { menu, hiddenRecipes } = redactMenu(raw.menu, access, catalog);
-  const stored: StoredMenu = { ...raw, menu, snapshot: null, review: access === 'shared' ? null : raw.review };
+  const stored: StoredMenu = { ...raw, menu, snapshot: null, review: access === 'shared' || access === 'crew' ? null : raw.review };
   return { stored, access, readOnly: true, plannedBy: names.get(raw.ownerPersonId) ?? null, catalog, hiddenRecipes, canCopy: viewer?.kind === 'scout' };
+}
+
+/**
+ * Who is acting on a menu for a write its crew may make — a Gear tab tick, what was bought — or null when
+ * they may not (menu-access.ts canRecord: the owner, any signed-in scout on an outing's menu, a leader).
+ * A scout's sign-in is epoch-checked here, like every other scout write. `name` is what the row will show.
+ */
+export async function menuRecorder(menuId: string): Promise<{ access: MenuAccess; stored: StoredMenu; personId: number | null; name: string } | null> {
+  if (!isMenuId(menuId)) return null;
+  const viewer = await menuViewer();
+  if (!viewer) return null;
+  const sb = createAdminClient();
+  const stored = await loadMenuWith(sb, menuId);
+  if (!stored) return null;
+  const access = menuAccess(accessViewer(viewer), stored);
+  if (!canRecord(access)) return null;
+  if (viewer.kind === 'scout') {
+    try {
+      await requireVerifiedScoutIdentity();
+    } catch {
+      return null;
+    }
+    const names = await ownerCreditNamesWith(sb, [viewer.personId]);
+    return { access: access as MenuAccess, stored, personId: viewer.personId, name: names.get(viewer.personId) ?? viewer.displayName };
+  }
+  return { access: access as MenuAccess, stored, personId: viewer.personId, name: viewer.kind === 'leader' ? viewer.label : 'A parent' };
 }
 
 /** The viewer's own menu by id, or null (missing, malformed id, or not theirs). */
@@ -176,7 +211,7 @@ export const SHARED_HREF = `${MENUS_HREF}/shared`;
 export function listCrumb(access: MenuAccess): { listLabel?: string; listHref?: string } {
   if (access === 'admin') return { listLabel: 'Scouts’ menus' };
   if (access === 'parent') return { listLabel: 'Your scouts’ menus' };
-  if (access === 'shared') return { listLabel: 'Shared with the troop', listHref: SHARED_HREF };
+  if (access === 'shared' || access === 'crew') return { listLabel: 'Shared with the troop', listHref: SHARED_HREF };
   return {};
 }
 
@@ -184,7 +219,7 @@ export function listCrumb(access: MenuAccess): { listLabel?: string; listHref?: 
 export const NO_INDEX = { index: false, follow: false } as const;
 
 /** Plan / Shopping, plus Share for the owner (Decision 11) or Review for a leader (note + Hide from the shelf). */
-export function MenuTabs({ menuId, active, access = 'owner' }: { menuId: string; active: 'plan' | 'shopping' | 'share'; access?: MenuAccess }) {
+export function MenuTabs({ menuId, active, access = 'owner' }: { menuId: string; active: 'plan' | 'shopping' | 'gear' | 'share'; access?: MenuAccess }) {
   const third = access === 'owner' ? 'Share' : access === 'admin' ? 'Review' : null;
   return (
     <TabStrip
@@ -193,6 +228,7 @@ export function MenuTabs({ menuId, active, access = 'owner' }: { menuId: string;
       items={[
         { key: 'plan', label: 'Plan', href: `${MENUS_HREF}/${menuId}` },
         { key: 'shopping', label: 'Shopping', href: `${MENUS_HREF}/${menuId}/shopping` },
+        { key: 'gear', label: 'Gear', href: `${MENUS_HREF}/${menuId}/gear` },
         ...(third ? [{ key: 'share', label: third, href: `${MENUS_HREF}/${menuId}/share` }] : [])
       ]}
     />

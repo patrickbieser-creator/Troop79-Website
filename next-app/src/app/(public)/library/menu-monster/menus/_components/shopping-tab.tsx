@@ -116,7 +116,7 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
 
   const menu: Menu = { ...saved.menu, shopping: draft };
   const list = buildMenuList(menu, catalog);
-  // Gear you'll need (4C): every recipe's gear across the menu's meals.
+  // Every recipe's gear across the menu's meals, for the paper sheet; on screen it is the Gear tab's.
   const gear = menuGear(menu, catalog);
   const { totals } = list;
   const people = menu.headcount;
@@ -396,14 +396,6 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
         </p>
       </section>
 
-      {gear.length > 0 && (
-        <section className={s.section} aria-labelledby={`${uid}-gear-h`}>
-          <h2 id={`${uid}-gear-h`} className={s.heading}>
-            Gear you’ll need
-          </h2>
-          <p className={s.foot}>{gear.join(' · ')}</p>
-        </section>
-      )}
 
       {canPay && menuId && (
       <PaidSection

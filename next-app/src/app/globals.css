@@ -163,7 +163,8 @@ img { display: block; max-width: 100%; }
    its own list: hide the site chrome like the planner's sheet does; the page's
    controls hide themselves in workspace.module.css. */
 @media print {
-  body:has(#mm-shopping-page) > :not(main) {
+  body:has(#mm-shopping-page) > :not(main),
+  body:has([data-mm-print]) > :not(main) {
     display: none !important;
   }
 }

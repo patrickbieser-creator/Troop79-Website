@@ -12,6 +12,11 @@
  *                  parent_of / guardian_of, read at request time) includes the
  *                  owner — read-only, shared or not. A scout identity's scope is
  *                  only themselves, so a sibling never reads an unshared menu.
+ *   crew           any other signed-in SCOUT, when the menu is linked to an outing
+ *                  (Patrick, 2026-10-03: whoever shops and packs is fluid — "any
+ *                  signed-in scout can record, for menus linked to an outing"). The
+ *                  menu reads read-only, shared or not; the crew writes only the
+ *                  Gear tab's Packed ticks and what was bought. No review note.
  *   shared         anyone else, signed in or not — only while the menu is shared
  *                  and its outing, if it has one, is published.
  * A leader who is also a parent stays `admin` (a superset).
@@ -20,7 +25,7 @@
 import { sanitizeMenu, type Menu } from './menus';
 import type { Catalog } from './types';
 
-export type MenuAccess = 'owner' | 'admin' | 'parent' | 'shared';
+export type MenuAccess = 'owner' | 'admin' | 'parent' | 'crew' | 'shared';
 
 export interface AccessViewer {
   kind: 'scout' | 'leader' | 'parent' | 'anon';
@@ -40,8 +45,13 @@ export function menuAccess(viewer: AccessViewer, menu: AccessTarget): MenuAccess
   if (viewer.kind === 'scout' && viewer.personId === menu.ownerPersonId) return 'owner';
   if (viewer.kind === 'leader') return 'admin';
   if (viewer.kind === 'parent' && viewer.familyIds.includes(menu.ownerPersonId)) return 'parent';
+  // entryPublished is null only when no outing is linked.
+  if (viewer.kind === 'scout' && viewer.personId != null && menu.entryPublished != null) return 'crew';
   return isPublic(menu) ? 'shared' : null;
 }
+
+/** Who may tick gear as packed and record what was bought: the owner, the outing's crew, and leaders helping. */
+export const canRecord = (access: MenuAccess | null): boolean => access === 'owner' || access === 'crew' || access === 'admin';
 
 /** Shared, and not tied to an unpublished outing. A direct link works as long as this holds (no 120-day cut). */
 export const isPublic = (menu: Pick<AccessTarget, 'sharedAt' | 'entryPublished'>): boolean => menu.sharedAt != null && menu.entryPublished !== false;

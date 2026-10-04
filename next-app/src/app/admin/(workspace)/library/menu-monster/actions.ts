@@ -25,6 +25,7 @@ import { loadAuthoringCatalogWith } from '@/lib/menu-monster/catalog';
 import { cleanGear, cleanScoutText, isScoutRecipeId } from '@/lib/menu-monster/scout-recipes';
 import { keepTypedInWith, matchTypedInWith, rejectTypedInWith, setScoutRecipeCreditWith } from '@/lib/menu-monster/scout-recipes-store';
 import { approveHeldPackageWith, rejectHeldPackageWith } from '@/lib/menu-monster/scout-packages-store';
+import { createGearWith, deleteGearWith, ensureGearWith, retireGearWith, updateGearWith } from '@/lib/menu-monster/gear-store';
 import {
   blockingIssues,
   changeUnitPlan,
@@ -726,6 +727,8 @@ export async function saveRecipe(a: RecipeAuthoring): Promise<Result> {
     }))
   });
   if (error) return { ok: false, error: error.message };
+  // Gear the troop's list lacks joins it (leaders name gear on recipes too).
+  if (a.gear !== undefined) await ensureGearWith(supabase, cleanGear(a.gear.split(',')), null);
 
   await recordAudit({
     area: 'library',
@@ -1018,6 +1021,63 @@ export async function rejectScoutIngredient(id: string): Promise<Result> {
     entityId: id,
     summary: `Rejected the request to add "${name}" to the Menu Monster price book`
   });
+  revalidate();
+  return { ok: true };
+}
+
+/* ── The troop's gear list (release 2 of Plans/Menu-Monster-Brands-Gear.md) ─ */
+
+export interface GearInput {
+  name: string;
+  home: string;
+  perPerson: boolean;
+}
+
+export async function createGear(input: GearInput): Promise<Result> {
+  const who = await guardActor();
+  if ('ok' in who) return who;
+  const res = await createGearWith(createAdminClient(), input, who.personId);
+  if (!res.ok) return res;
+  await recordAudit({ area: 'library', action: 'create', entityType: 'mm_gear', entityId: String(res.id), summary: `Added "${input.name.trim()}" to the Menu Monster gear list` });
+  revalidate();
+  return { ok: true };
+}
+
+/** Rename / move / re-flag. A rename rewrites the recipes that name it; onto an existing name it merges. */
+export async function updateGear(id: number, input: GearInput): Promise<Result & { note?: string }> {
+  const denied = await guard();
+  if (denied) return denied;
+  const res = await updateGearWith(createAdminClient(), id, input);
+  if (!res.ok) return res;
+  const name = input.name.trim();
+  const touched = res.recipes ? ` (${res.recipes} recipe${res.recipes === 1 ? '' : 's'} updated)` : '';
+  await recordAudit({
+    area: 'library',
+    action: 'update',
+    entityType: 'mm_gear',
+    entityId: String(id),
+    summary: res.merged ? `Merged a Menu Monster gear item into "${name}"${touched}` : `Saved Menu Monster gear item "${name}"${touched}`
+  });
+  revalidate();
+  return { ok: true, note: res.merged ? `Merged into “${name}”${touched}.` : `Saved “${name}”${touched}.` };
+}
+
+export async function setGearRetired(id: number, retired: boolean): Promise<Result> {
+  const denied = await guard();
+  if (denied) return denied;
+  const res = await retireGearWith(createAdminClient(), id, retired);
+  if (!res.ok) return res;
+  await recordAudit({ area: 'library', action: retired ? 'retire' : 'update', entityType: 'mm_gear', entityId: String(id), summary: `${retired ? 'Retired' : 'Restored'} a Menu Monster gear item` });
+  revalidate();
+  return { ok: true };
+}
+
+export async function deleteGear(id: number): Promise<Result> {
+  const denied = await guard();
+  if (denied) return denied;
+  const res = await deleteGearWith(createAdminClient(), id);
+  if (!res.ok) return res;
+  await recordAudit({ area: 'library', action: 'delete', entityType: 'mm_gear', entityId: String(id), summary: 'Deleted a Menu Monster gear item' });
   revalidate();
   return { ok: true };
 }

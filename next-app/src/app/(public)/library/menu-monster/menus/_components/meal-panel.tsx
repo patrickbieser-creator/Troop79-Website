@@ -39,7 +39,8 @@ import { MEALS, priceText as money } from '@/lib/menu-monster/units';
 import { Notice } from '@/app/_components/notice';
 import type { Catalog, Plan, Recipe } from '@/lib/menu-monster/types';
 import { recipesForMeal, restrictionWarnings } from '@/lib/menu-monster/engine';
-import { isPickable } from '@/lib/menu-monster/scout-recipes';
+import { isPickable, stepsFromText } from '@/lib/menu-monster/scout-recipes';
+import { recipeGear } from '@/lib/menu-monster/gear';
 import { RECIPES_HREF } from '../../recipes/_components/paths';
 import { composePlan, mealCatalog, type EditOp, type Menu, type MenuMeal, type RecipeEdits } from '@/lib/menu-monster/menus';
 import { mealTitle, recipeShares } from '@/lib/menu-monster/menu-view';
@@ -303,7 +304,10 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChang
               {open && (
                 <div id={panel} className={s.inset}>
                   {readOnly ? (
-                    <IngredientList mode="read" dense ariaLabel={`${name} ingredients`} rows={rowsFor(id)} emptyText="No ingredients on this recipe yet." />
+                    <>
+                      <IngredientList mode="read" dense ariaLabel={`${name} ingredients`} rows={rowsFor(id)} emptyText="No ingredients on this recipe yet." />
+                      <StepsGear recipe={byId.get(id)} />
+                    </>
                   ) : (
                     <>
                       <IngredientList
@@ -334,6 +338,7 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChang
                         }
                       />
                       <p className={s.foot}>Only this menu changes. The troop’s {name} recipe stays the same.</p>
+                      <StepsGear recipe={byId.get(id)} />
                     </>
                   )}
                 </div>
@@ -422,6 +427,39 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChang
         )}
       </p>
 
+    </div>
+  );
+}
+
+/**
+ * One quiet line under an open food's ingredients — "Steps · Gear (4)" — that opens how to make it and what
+ * gear it needs (Patrick, 2026-10-03: available as the plan unfolds, without cluttering it). Nothing at all
+ * for a food with neither. The whole menu's gear adds up on the Gear tab.
+ */
+function StepsGear({ recipe }: { recipe: Recipe | undefined }) {
+  const uid = useId();
+  const [open, setOpen] = useState(false);
+  const steps = stepsFromText(recipe?.stepsMd);
+  const gear = recipeGear(recipe);
+  if (!recipe || (steps.length === 0 && gear.length === 0)) return null;
+  const label = [steps.length > 0 ? 'Steps' : null, gear.length > 0 ? `Gear (${gear.length})` : null].filter(Boolean).join(' · ');
+  return (
+    <div className={s.stepsGear}>
+      <button type="button" className={s.linkBtn} aria-expanded={open} aria-controls={open ? uid : undefined} onClick={() => setOpen((v) => !v)}>
+        {label}
+      </button>
+      {open && (
+        <div id={uid}>
+          {steps.length > 0 && (
+            <ol className={s.stepList} aria-label={`How to make ${recipe.name}`}>
+              {steps.map((t, i) => (
+                <li key={i}>{t}</li>
+              ))}
+            </ol>
+          )}
+          {gear.length > 0 && <p className={s.insetMuted}>Gear: {gear.join(' · ')}</p>}
+        </div>
+      )}
     </div>
   );
 }

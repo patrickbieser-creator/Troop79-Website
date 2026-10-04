@@ -434,6 +434,39 @@ describe('MealEditor', () => {
     });
   });
 
+  describe('steps and gear', () => {
+    const GEARED = {
+      ...CATALOG,
+      recipes: CATALOG.recipes.map((r) => (r.id === 'B003' ? { ...r, stepsMd: 'Lay the slices in a cold skillet.\nTurn until crisp.', equipment: ['Camp stove', 'Skillet', 'Long tongs'] } : r))
+    };
+    const geared = () => <PlanTab catalog={GEARED} menuId="menu-1" menu={menu()} updatedAt={VERSION} outings={[]} openMeal="m1" />;
+
+    it('AnOpenFood_HasOneQuietLine_ForItsStepsAndGear', async () => {
+      const user = userEvent.setup();
+      render(geared());
+      await user.click(panel().getByRole('button', { name: /^Bacon/ }));
+      const line = panel().getByRole('button', { name: 'Steps · Gear (3)' });
+      expect(line.getAttribute('aria-expanded')).toBe('false');
+      expect(panel().queryByRole('list', { name: 'How to make Bacon' })).toBeNull();
+    });
+
+    it('TheLine_OpensTheStepsAndTheGear', async () => {
+      const user = userEvent.setup();
+      render(geared());
+      await user.click(panel().getByRole('button', { name: /^Bacon/ }));
+      await user.click(panel().getByRole('button', { name: 'Steps · Gear (3)' }));
+      expect(within(panel().getByRole('list', { name: 'How to make Bacon' })).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Lay the slices in a cold skillet.', 'Turn until crisp.']);
+      expect(panel().getByText('Gear: Camp stove · Skillet · Long tongs')).toBeTruthy();
+    });
+
+    it('AFoodWithNeither_HasNoSuchLine', async () => {
+      const user = userEvent.setup();
+      render(editor());
+      await user.click(panel().getByRole('button', { name: /^Bacon/ }));
+      expect(panel().queryByRole('button', { name: /Steps|Gear/ })).toBeNull();
+    });
+  });
+
   describe('people', () => {
     it('People_DialerSitsOnTheMealsOwnLine_NotInsideThePanel', () => {
       render(editor());

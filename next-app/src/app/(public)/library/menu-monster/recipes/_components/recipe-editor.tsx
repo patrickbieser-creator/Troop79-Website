@@ -64,6 +64,8 @@ export interface RecipeEditorProps {
   updatedAt: string | null;
   /** "Started from your version of …" (4C, Share this version): one quiet line under the basics. */
   fromNote?: string | null;
+  /** The troop's gear list, by name: the Gear chips and the typed field draw on it. Absent = the built-in few. */
+  gearNames?: readonly string[];
 }
 
 let stepSeq = 0;
@@ -85,7 +87,7 @@ const moveItem = <T,>(list: T[], from: number, to: number) => {
   return next;
 };
 
-export function RecipeEditor({ catalog, id: initialId, initial, status: initialStatus, credit: initialCredit, updatedAt, fromNote = null }: RecipeEditorProps) {
+export function RecipeEditor({ catalog, id: initialId, initial, status: initialStatus, credit: initialCredit, updatedAt, fromNote = null, gearNames }: RecipeEditorProps) {
   const router = useRouter();
   const [id, setId] = useState(initialId);
   const [draft, setDraft] = useState<Draft>(() => toDraft(initial));
@@ -369,6 +371,7 @@ export function RecipeEditor({ catalog, id: initialId, initial, status: initialS
 
             <GearSection
               gear={draft.equipment}
+              names={gearNames}
               onChange={(equipment) => edit((d) => ({ ...d, equipment }))}
               onAnnounce={setAnnounce}
             />
@@ -379,8 +382,14 @@ export function RecipeEditor({ catalog, id: initialId, initial, status: initialS
   );
 }
 
+/** The "Often used" chips when the troop's gear list is at hand, in its spelling (lower case here). */
+const OFTEN_USED = ['camp stove', 'dutch oven (12 in)', 'griddle', 'skillet', 'large pot', 'spatula', 'long tongs', 'cutting board', 'cooler'];
+
 /** Gear you'll need (4C): the recipe's gear, removable; "Often used" adds one tap at a time; anything else is typed. */
-function GearSection({ gear, onChange, onAnnounce }: { gear: string[]; onChange: (g: string[]) => void; onAnnounce: (t: string) => void }) {
+function GearSection({ gear, names, onChange, onAnnounce }: { gear: string[]; names?: readonly string[]; onChange: (g: string[]) => void; onAnnounce: (t: string) => void }) {
+  // The troop's own spelling for the usual chips, so every recipe names an item the same way and the Gear tab adds it up.
+  const lower = new Map((names ?? []).map((n) => [n.toLowerCase(), n]));
+  const often = names && names.length > 0 ? OFTEN_USED.map((g) => lower.get(g)).filter((g): g is string => !!g) : [...GEAR_SUGGESTIONS];
   const [other, setOther] = useState<string | null>(null);
   const has = (g: string) => gear.some((x) => x.toLowerCase() === g.toLowerCase());
   const add = (g: string) => {
@@ -420,7 +429,7 @@ function GearSection({ gear, onChange, onAnnounce }: { gear: string[]; onChange:
           Often used
         </span>
         <div className={w.chips}>
-          {GEAR_SUGGESTIONS.filter((g) => !has(g)).map((g) => (
+          {often.filter((g) => !has(g)).map((g) => (
             <button key={g} type="button" className={w.chip} disabled={full} onClick={() => add(g)}>
               + {g}
             </button>
@@ -436,6 +445,7 @@ function GearSection({ gear, onChange, onAnnounce }: { gear: string[]; onChange:
                 value={other}
                 maxLength={40}
                 aria-label="Other gear"
+                list={names && names.length > 0 ? 're-gear-names' : undefined}
                 placeholder="Ladle"
                 autoFocus
                 onChange={(e) => setOther(e.target.value)}
@@ -450,6 +460,13 @@ function GearSection({ gear, onChange, onAnnounce }: { gear: string[]; onChange:
                   }
                 }}
               />
+              {names && names.length > 0 && (
+                <datalist id="re-gear-names">
+                  {names.filter((g) => !has(g)).map((g) => (
+                    <option key={g} value={g} />
+                  ))}
+                </datalist>
+              )}
               <button
                 type="button"
                 className={w.chip}

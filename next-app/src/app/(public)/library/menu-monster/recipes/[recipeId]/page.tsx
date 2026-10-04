@@ -7,6 +7,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
 import { loadMenuMonsterCatalog } from '@/lib/menu-monster/data';
+import { listGearWith } from '@/lib/menu-monster/gear-store';
 import { loadMyRecipeWith } from '@/lib/menu-monster/scout-recipes-store';
 import { PageShell } from '@/app/_components/page-shell';
 import { scoutViewer } from '../../menus/_components/scout-menus';
@@ -32,11 +33,12 @@ export default async function RecipePage({ params }: { params: Promise<{ recipeI
   }
   const [stored, catalog] = await Promise.all([loadMyRecipeWith(createAdminClient(), viewer.personId, recipeId), loadMenuMonsterCatalog(viewer.personId)]);
   if (!stored) notFound();
+  const gearNames = (await listGearWith(createAdminClient())).map((g) => g.name);
   return (
     <>
       <RecipeHeader />
       <PageShell>
-        <RecipeEditor catalog={catalog} id={stored.recipe.id} initial={stored.recipe} status={stored.status} credit={stored.credit} updatedAt={stored.updatedAt} />
+        <RecipeEditor gearNames={gearNames} catalog={catalog} id={stored.recipe.id} initial={stored.recipe} status={stored.status} credit={stored.credit} updatedAt={stored.updatedAt} />
       </PageShell>
     </>
   );

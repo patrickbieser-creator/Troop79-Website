@@ -8,7 +8,9 @@
  * doesn't resolve falls back to a blank recipe.
  */
 import type { Metadata } from 'next';
+import { createAdminClient } from '@/lib/supabase/server';
 import { loadMenuMonsterCatalog } from '@/lib/menu-monster/data';
+import { listGearWith } from '@/lib/menu-monster/gear-store';
 import { mealTitle } from '@/lib/menu-monster/menu-view';
 import { resolveMenuAliases } from '@/lib/menu-monster/menus';
 import { versionDraft } from '@/lib/menu-monster/scout-recipes';
@@ -38,6 +40,7 @@ export default async function NewRecipePage({ searchParams }: { searchParams: Pr
   }
   const sp = await searchParams;
   const catalog = await loadMenuMonsterCatalog(viewer.personId);
+  const gearNames = (await listGearWith(createAdminClient())).map((g) => g.name);
 
   let initial: Parameters<typeof RecipeEditor>[0]['initial'] = BLANK;
   let fromNote: string | null = null;
@@ -57,7 +60,7 @@ export default async function NewRecipePage({ searchParams }: { searchParams: Pr
     <>
       <RecipeHeader />
       <PageShell>
-        <RecipeEditor catalog={catalog} id={null} initial={initial} status="draft" credit={null} updatedAt={null} fromNote={fromNote} />
+        <RecipeEditor gearNames={gearNames} catalog={catalog} id={null} initial={initial} status="draft" credit={null} updatedAt={null} fromNote={fromNote} />
       </PageShell>
     </>
   );
