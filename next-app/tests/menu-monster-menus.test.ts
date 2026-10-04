@@ -308,3 +308,17 @@ describe('resolveMenuAliases collisions (Phase 4B)', () => {
     expect(m.actuals).toEqual({ eggs: { packageId: 'p-egg', qty: 2, pricePaid: 6 } });
   });
 });
+
+describe('sanitizeMenu patrol (release 5)', () => {
+  it('Patrol_IsKept_Trimmed', () => {
+    expect(sanitizeMenu(raw({ patrol: '  Screaming Eagles ' }), CATALOG).patrol).toBe('Screaming Eagles');
+  });
+
+  it('Patrol_IsAbsent_WhenBlankOrNotText', () => {
+    expect(['patrol' in sanitizeMenu(raw({ patrol: '   ' }), CATALOG), 'patrol' in sanitizeMenu(raw({ patrol: 7 }), CATALOG), 'patrol' in sanitizeMenu(raw(), CATALOG)]).toEqual([false, false, false]);
+  });
+
+  it('Patrol_IsCut_AtFortyCharacters', () => {
+    expect(sanitizeMenu(raw({ patrol: 'x'.repeat(90) }), CATALOG).patrol).toHaveLength(40);
+  });
+});

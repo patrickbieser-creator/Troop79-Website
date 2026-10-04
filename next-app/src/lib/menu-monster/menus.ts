@@ -31,6 +31,9 @@ export const MENU_CONTEXTS: readonly { key: MenuContext; label: string }[] = [
 export const MAX_MENU_MEALS = 30;
 export const MAX_MENU_DAYS = 14;
 export const MAX_MENU_NAME = 120;
+export const MAX_PATROL_NAME = 40;
+/** A small outing planned for everyone is one menu for this "patrol" (Patrick, 2026-10-03). */
+export const WHOLE_TROOP = 'Whole troop';
 /** Menus one scout may keep; create and duplicate refuse past it (menus-store.ts). */
 export const MAX_MENUS_PER_SCOUT = 50;
 /** Largest serialized menu the actions accept (a real 30-meal menu is a few KB). */
@@ -118,6 +121,8 @@ export interface Menu {
   budgetPerPersonMeal: number;
   /** Days the menu spans (1..MAX_MENU_DAYS); never fewer than the last meal's day + 1. */
   dayCount: number;
+  /** The patrol it is for ("Screaming Eagles", "Whole troop") — release 5. Absent = not said. */
+  patrol?: string;
   /** Package / quantity / bring-from-home choices for the merged shopping list. */
   shopping: MenuShopping;
   /** What was bought, per ingredient; {} until release B. Read-only through a menu save. */
@@ -432,6 +437,7 @@ export function sanitizeMenu(raw: unknown, catalog: Catalog): Menu {
     restrictions,
     budgetPerPersonMeal,
     dayCount: coverDays(r.dayCount, meals),
+    ...(cleanScoutText(r.patrol, MAX_PATROL_NAME) ? { patrol: cleanScoutText(r.patrol, MAX_PATROL_NAME) } : {}),
     shopping: sanitizeShopping(foldShopping(r.shopping, r.meals), catalog),
     actuals: sanitizeActuals(r.actuals, catalog),
     meals

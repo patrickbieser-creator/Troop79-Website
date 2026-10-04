@@ -75,6 +75,8 @@ export interface SharedMenuRow {
   outingTitle: string | null;
   mealCount: number;
   sharedAt: string;
+  /** The patrol the menu is for, when said. */
+  patrol: string | null;
 }
 
 /** The leader list's filters (Phase 3: the existing list, filtered in SQL — no second admin surface). */
@@ -94,7 +96,7 @@ export type SaveResult =
   | { status: 'conflict' }
   | { status: 'not_found' };
 
-const COLUMNS = 'id, owner_person_id, name, context, calendar_entry_id, start_date, headcount, restrictions, budget_per_person_meal, day_count, shopping, actuals, meals, snapshot, created_at, updated_at, shared_at, review_note, reviewed_by_person_id, reviewed_at, calendar_entries(status)';
+const COLUMNS = 'id, owner_person_id, name, context, calendar_entry_id, start_date, headcount, restrictions, budget_per_person_meal, day_count, patrol, shopping, actuals, meals, snapshot, created_at, updated_at, shared_at, review_note, reviewed_by_person_id, reviewed_at, calendar_entries(status)';
 
 interface MenuRow {
   id: string;
@@ -107,6 +109,7 @@ interface MenuRow {
   restrictions: Record<RestrictionKey, number>;
   budget_per_person_meal: number | string;
   day_count: number;
+  patrol?: string | null;
   /** '{}' on rows from before slice 5; their choices sit inside meals[]. */
   shopping: unknown;
   actuals: unknown;
@@ -136,6 +139,7 @@ const toRow = (m: Menu, snapshot: MenuSnapshot | null) => ({
   restrictions: m.restrictions,
   budget_per_person_meal: m.budgetPerPersonMeal,
   day_count: m.dayCount,
+  patrol: m.patrol ?? null,
   shopping: m.shopping,
   meals: m.meals,
   snapshot
@@ -152,6 +156,7 @@ const fromRow = (r: MenuRow): Menu => ({
   budgetPerPersonMeal: Number(r.budget_per_person_meal),
   // The column's default of 2 must never hide a meal saved on a later day.
   dayCount: coverDays(r.day_count, r.meals),
+  ...(r.patrol ? { patrol: r.patrol } : {}),
   // Menus saved before slice 5 kept package / quantity / bring-from-home on each meal.
   shopping: foldShopping(r.shopping, r.meals),
   // Same validation as a write: a hand-edited row can't smuggle a bad shape in.
@@ -257,7 +262,7 @@ export async function listSharedMenusWith(
 
   let q = sb
     .from('mm_menus')
-    .select('id, owner_person_id, name, calendar_entry_id, meals, shared_at, calendar_entries(title)');
+    .select('id, owner_person_id, name, calendar_entry_id, meals, shared_at, patrol, calendar_entries(title)');
   if (!(opts.includeUnshared && opts.outingId != null)) q = q.not('shared_at', 'is', null);
   if (opts.outingId != null) q = q.eq('calendar_entry_id', opts.outingId);
   else {
@@ -274,6 +279,7 @@ export async function listSharedMenusWith(
     calendar_entry_id: number | null;
     meals: unknown;
     shared_at: string | null;
+    patrol: string | null;
     calendar_entries: { title: string } | null;
   }[];
   const credits = await ownerCreditNamesWith(sb, rows.map((r) => r.owner_person_id));
@@ -285,7 +291,8 @@ export async function listSharedMenusWith(
     calendarEntryId: r.calendar_entry_id,
     outingTitle: r.calendar_entries?.title ?? null,
     mealCount: Array.isArray(r.meals) ? r.meals.length : 0,
-    sharedAt: r.shared_at ?? ''
+    sharedAt: r.shared_at ?? '',
+    patrol: r.patrol ?? null
   }));
 }
 
@@ -555,4 +562,11 @@ async function dropOrphanTypedIns(sb: SupabaseClient, actor: AuditActor) {
   if (actor.personId == null) return;
   const { error } = await sb.rpc('mm_drop_orphan_typed_ins', { p_person: actor.personId });
   if (error) throw new Error(`drop orphan typed-ins: ${error.message}`);
+}
+
+/** Every menu linked to an outing, oldest first — for the outing's own page (its crew sees them all). */
+export async function listOutingMenusWith(sb: SupabaseClient, outingId: number): Promise<StoredMenu[]> {
+  const { data, error } = await sb.from('mm_menus').select(COLUMNS).eq('calendar_entry_id', outingId).order('created_at').order('id').limit(40);
+  if (error) throw new Error(`outing menus: ${error.message}`);
+  return ((data ?? []) as unknown as MenuRow[]).map(toStored);
 }

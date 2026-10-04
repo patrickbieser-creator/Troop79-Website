@@ -41,7 +41,7 @@ import { NumberBox, Stepper } from '@/app/_components/stepper';
 import type { Brand, BrandPick, Catalog, Plan, RestrictionKey } from '@/lib/menu-monster/types';
 import { MEALS, RESTRICTION_BY_KEY } from '@/lib/menu-monster/units';
 import { MAX_HEADCOUNT, MIN_HEADCOUNT } from '@/lib/menu-monster/engine';
-import { MAX_MENU_DAYS, MAX_MENU_MEALS, MENU_CONTEXTS, MAX_MENU_NAME, menuNameError, type Menu, type MenuContext, type MenuMeal } from '@/lib/menu-monster/menus';
+import { MAX_MENU_DAYS, MAX_MENU_MEALS, MENU_CONTEXTS, MAX_MENU_NAME, MAX_PATROL_NAME, menuNameError, type Menu, type MenuContext, type MenuMeal } from '@/lib/menu-monster/menus';
 import { DIET_ORDER, budgetState, buildMenuList, dayLabel, mealTitle, menuCost, outingDayCount, type Outing } from '@/lib/menu-monster/menu-view';
 import { addBrandAction } from '../../../_tools/menu-monster/brand-actions';
 import type { CreateResult, MenuStore, SaveResult } from '@/lib/menu-monster/menu-store';
@@ -82,9 +82,11 @@ export interface PlanTabProps {
   titleAs?: 'h1' | 'h2';
   /** A meal to open on load (?meal=, the old meal-page links redirect here). */
   openMeal?: string | null;
+  /** The troop's patrol names, as suggestions for the Patrol field (release 5). */
+  patrols?: readonly string[];
 }
 
-export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt, outings, tabs, readOnly = false, plannedBy = null, aside, store: storeProp, titleAs: Title = 'h1', openMeal = null }: PlanTabProps) {
+export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt, outings, tabs, readOnly = false, plannedBy = null, aside, store: storeProp, titleAs: Title = 'h1', openMeal = null, patrols = [] }: PlanTabProps) {
   const router = useRouter();
   const store = useMemo(() => storeProp ?? serverMenuStore(menuId), [storeProp, menuId]);
   const { canSave } = store.caps;
@@ -301,7 +303,7 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
 
       {readOnly ? (
         <section className={s.basics} aria-label="Menu basics">
-          <p className={s.foot}>{[MENU_CONTEXTS.find((c) => c.key === menu.context)?.label ?? menu.context, linked?.title].filter(Boolean).join(' · ')}</p>
+          <p className={s.foot}>{[MENU_CONTEXTS.find((c) => c.key === menu.context)?.label ?? menu.context, linked?.title, menu.patrol].filter(Boolean).join(' · ')}</p>
           <p className={s.foot}>
             {[`People: ${menu.headcount}`, ...DIET_ORDER.filter((k) => (menu.restrictions[k] || 0) > 0).map((k) => `${dialerLabel(k)}: ${menu.restrictions[k]}`)].join(' · ')}
           </p>
@@ -340,6 +342,26 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
               ))}
               <option value="none">No outing</option>
             </SelectInput>
+          </Field>
+          <Field label="Patrol">
+            <TextInput
+              value={menu.patrol ?? ''}
+              maxLength={MAX_PATROL_NAME}
+              autoComplete="off"
+              list="mm-patrols"
+              onChange={(e) =>
+                edit((m) => {
+                  const { patrol: _old, ...rest } = m;
+                  void _old;
+                  return e.target.value.trim() ? { ...rest, patrol: e.target.value } : rest;
+                })
+              }
+            />
+            <datalist id="mm-patrols">
+              {patrols.map((name) => (
+                <option key={name} value={name} />
+              ))}
+            </datalist>
           </Field>
         </div>
         </div>

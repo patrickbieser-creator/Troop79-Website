@@ -60,3 +60,18 @@ export async function loadOutingsWith(sb: SupabaseClient, today: string, linkedI
   }
   return rows.map(toOuting);
 }
+
+/** The troop's patrol names (active scouts), A to Z, then "Whole troop": the Plan tab's patrol suggestions. */
+export async function loadPatrolNamesWith(sb: SupabaseClient): Promise<string[]> {
+  const { data, error } = await sb.from('scouts').select('patrol').eq('active', true).not('patrol', 'is', null);
+  if (error) throw new Error(`load patrols: ${error.message}`);
+  const names = [...new Set(((data ?? []) as { patrol: string | null }[]).map((r) => (r.patrol ?? '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  return [...names, 'Whole troop'];
+}
+
+/** One overnight calendar entry as an outing (any status: the caller decides who may see it), or null. */
+export async function loadOutingWith(sb: SupabaseClient, id: number): Promise<(Outing & { status: string }) | null> {
+  const { data, error } = await sb.from('calendar_entries').select(`${COLS}, status`).eq('id', id).in('category', [...OUTING_CATEGORIES]).maybeSingle();
+  if (error) throw new Error(`load outing: ${error.message}`);
+  return data ? { ...toOuting(data as unknown as EntryRow), status: (data as unknown as { status: string }).status } : null;
+}

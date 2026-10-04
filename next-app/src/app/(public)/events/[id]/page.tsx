@@ -151,9 +151,9 @@ export default async function EventDetailPage({
   /* Menu Monster Phase 3: scouts' menus shared for this outing. Its own narrow
      query, only for the overnight categories a menu can link to; the loader
      returns nothing for an unpublished entry. */
-  const outingMenus = (OUTING_CATEGORIES as readonly string[]).includes(entry.category)
-    ? await listSharedMenusWith(createAdminClient(), centralToday(), { outingId: entry.id, includeUnshared: await outingCrew() })
-    : [];
+  const isOuting = (OUTING_CATEGORIES as readonly string[]).includes(entry.category);
+  const crew = isOuting && (await outingCrew());
+  const outingMenus = isOuting ? await listSharedMenusWith(createAdminClient(), centralToday(), { outingId: entry.id, includeUnshared: crew }) : [];
 
   /*
    * Which template this entry renders through (Calendar unification). The
@@ -306,9 +306,15 @@ export default async function EventDetailPage({
             {outingMenus.map((m) => (
               <li key={m.id}>
                 <Link href={`/library/menu-monster/menus/${m.id}`}>{m.name}</Link>
+                {m.patrol ? ` · ${m.patrol}` : ''}
                 {m.credit ? ` — ${m.credit}` : ''}
               </li>
             ))}
+            {crew && (
+              <li>
+                <Link href={`/library/menu-monster/outings/${entry.id}`}>Shopping list for the whole outing</Link>
+              </li>
+            )}
           </ul>
         </section>
       )}

@@ -31,7 +31,7 @@ vi.mock('@/lib/admin-actor', () => ({ resolveAdminActor: async () => mocks.actor
 vi.mock('@/lib/supabase/server', () => ({ createAdminClient: () => ({ stub: true }) }));
 vi.mock('@/lib/menu-monster/data', () => ({ loadMenuMonsterCatalog: async () => CATALOG }));
 vi.mock('@/lib/menu-monster/scout-packages-store', () => ({ addScoutPackageWith: mocks.addScoutPackageWith }));
-vi.mock('@/lib/menu-monster/menus-data', () => ({ loadOutingsWith: async () => [] }));
+vi.mock('@/lib/menu-monster/menus-data', () => ({ loadOutingsWith: async () => [], loadPatrolNamesWith: async () => [] }));
 vi.mock('@/lib/menu-monster/menus-store', async (orig) => ({
   ...(await orig<typeof import('../src/lib/menu-monster/menus-store')>()),
   setMenuSharedWith: mocks.setMenuSharedWith,

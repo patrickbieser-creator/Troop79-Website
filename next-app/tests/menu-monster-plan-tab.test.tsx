@@ -553,3 +553,26 @@ describe('PlanTab', () => {
     });
   });
 });
+
+describe('PlanTab patrol (release 5)', () => {
+  const withPatrols = (menu: Menu) => <PlanTab catalog={CATALOG} menuId="menu-1" menu={menu} updatedAt={VERSION} outings={OUTINGS} patrols={['FireQuacker', 'Screaming Eagles', 'Whole troop']} />;
+
+  it('Patrol_SuggestsTheTroopsPatrols', () => {
+    const { container } = render(withPatrols(base()));
+    expect([...container.querySelectorAll('#mm-patrols option')].map((o) => o.getAttribute('value'))).toEqual(['FireQuacker', 'Screaming Eagles', 'Whole troop']);
+  });
+
+  it('Patrol_ShowsWhatIsSaved', () => {
+    render(withPatrols(base({ patrol: 'FireQuacker' })));
+    expect((screen.getByRole('combobox', { name: 'Patrol' }) as HTMLInputElement).value).toBe('FireQuacker');
+  });
+
+  it('Patrol_IsSaved_WithTheMenu', async () => {
+    saveMenuAction.mockResolvedValue({ ok: true, updatedAt: '2026-10-02T13:00:00.000Z' });
+    render(withPatrols(base()));
+    const user = userEvent.setup();
+    await user.type(screen.getByRole('combobox', { name: 'Patrol' }), 'Whole troop');
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    expect(saveMenuAction).toHaveBeenCalledWith('menu-1', expect.objectContaining({ patrol: 'Whole troop' }), VERSION);
+  });
+});

@@ -28,7 +28,7 @@ vi.mock('@/lib/admin-actor', () => ({ resolveAdminActor: async () => mocks.actor
 vi.mock('@/lib/supabase/server', () => ({ createAdminClient: () => ({ stub: true }) }));
 vi.mock('@/lib/menu-monster/menus-store', () => ({ loadMenuWith: mocks.loadMenuWith, ownerCreditNamesWith: mocks.ownerCreditNamesWith }));
 vi.mock('@/lib/menu-monster/data', () => ({ loadMenuMonsterCatalog: async () => ({}) }));
-vi.mock('@/lib/menu-monster/menus-data', () => ({ loadOutingsWith: async () => [] }));
+vi.mock('@/lib/menu-monster/menus-data', () => ({ loadOutingsWith: async () => [], loadPatrolNamesWith: async () => [] }));
 vi.mock('@/lib/identity-session', async (orig) => ({
   ...(await orig<typeof import('../src/lib/identity-session')>()),
   isEpochCurrent: async () => mocks.epochCurrent

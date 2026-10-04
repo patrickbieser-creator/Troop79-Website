@@ -128,6 +128,93 @@ export function buildMenuList(menu: Menu, catalog: Catalog): MenuList {
   return { lines, totals, plates, perPersonMeal: plates > 0 ? totals.spent / plates : 0, separately, saving: gap > 0 ? gap : 0 };
 }
 
+/** A menu on an outing, as the outing's list names it. */
+export interface OutingMenuRef {
+  id: string;
+  /** "Screaming Eagles", or the menu's name when it names no patrol. */
+  label: string;
+  menu: Menu;
+}
+
+/** A merged line plus how much of it each menu needs (recipe unit, before count units round up). */
+export interface OutingLine extends ShoppingLine {
+  byMenu: { menuId: string; label: string; amount: number }[];
+}
+
+export interface OutingList {
+  lines: OutingLine[];
+  totals: Totals;
+  /** People served, summed over every meal of every menu. */
+  plates: number;
+  /** What each menu shopping on its own would spend, added up. */
+  separately: number;
+  /** separately − totals.spent when positive, else 0: what shopping together saves. */
+  saving: number;
+}
+
+/**
+ * One shopping list for an outing (Patrick, 2026-10-03: "the troop shops together, all at once"): every
+ * meal of every menu gathered by ingredient, THEN priced once — so two patrols that each need half a gallon
+ * of milk buy one gallon. The brands are the union of what the menus chose for the ingredient (each brand
+ * once, sharing the need); a line is bought unless every menu that needs it brings it from somewhere else —
+ * so when one patrol brings bacon from home and another buys it, the list buys for both (a little over,
+ * never short). Counts are what the recipes need: a count a scout changed on one menu's Shopping tab, or a
+ * count set on a brand, is that menu's own and is not carried here — and `separately` leaves them out too,
+ * so the saving compares like with like.
+ */
+export function buildOutingList(menus: readonly OutingMenuRef[], catalog: Catalog): OutingList {
+  const merged = new Map<string, Need>();
+  const byMenu = new Map<string, { menuId: string; label: string; amount: number }[]>();
+  const brands: NonNullable<Menu['shopping']['brands']> = {};
+  const sources = new Map<string, Set<string>>();
+  const notes = new Map<string, string>();
+  const packageChoice: Menu['shopping']['packageChoice'] = {};
+  let plates = 0;
+  let separately = 0;
+  for (const ref of menus) {
+    const own = new Map<string, number>();
+    for (const meal of ref.menu.meals) {
+      if (meal.recipeIds.length === 0) continue;
+      const plan = composePlan(ref.menu, meal);
+      plates += plan.headcount;
+      for (const [id, n] of gatherNeeds(plan, mealCatalog(catalog, meal))) {
+        const into = merged.get(id) ?? { ing: n.ing, need: 0, sources: [] };
+        into.need += n.need;
+        into.sources.push(...n.sources);
+        merged.set(id, into);
+        own.set(id, (own.get(id) ?? 0) + n.need);
+      }
+    }
+    const picks = Object.fromEntries(Object.entries(ref.menu.shopping.brands ?? {}).map(([id, list]) => [id, list.map((x) => ({ ...x, qty: null }))]));
+    separately += buildMenuList({ ...ref.menu, shopping: { ...ref.menu.shopping, qtyOverride: {}, brands: picks } }, catalog).totals.spent;
+    for (const [id, amount] of own) {
+      byMenu.set(id, [...(byMenu.get(id) ?? []), { menuId: ref.id, label: ref.label, amount }]);
+      const src = ref.menu.shopping.lineSource[id];
+      sources.set(id, (sources.get(id) ?? new Set()).add(src?.source ?? 'default'));
+      if (src?.note && !notes.has(id)) notes.set(id, src.note);
+      for (const pick of ref.menu.shopping.brands?.[id] ?? []) {
+        if (!(brands[id] ?? []).some((x) => x.brandId === pick.brandId)) brands[id] = [...(brands[id] ?? []), { brandId: pick.brandId, qty: null }];
+      }
+      const chosen = ref.menu.shopping.packageChoice[id];
+      if (chosen && !(id in packageChoice)) packageChoice[id] = chosen;
+    }
+  }
+  // One answer per ingredient: the menus agree on a source, or it is bought.
+  const lineSource: Menu['shopping']['lineSource'] = {};
+  for (const [id, set] of sources) {
+    if (set.size !== 1) {
+      if (set.has('buy')) lineSource[id] = { source: 'buy', note: '' };
+      continue;
+    }
+    const only = [...set][0];
+    if (only === 'buy' || only === 'home' || only === 'pantry') lineSource[id] = { source: only, note: only === 'buy' ? '' : (notes.get(id) ?? '') };
+  }
+  const lines = priceNeeds(merged, { packageChoice, qtyOverride: {}, lineSource, brands }, catalog).map((l) => ({ ...l, byMenu: byMenu.get(l.ing.id) ?? [] }));
+  const totals = totalsOf(lines, { headcount: plates });
+  const gap = Math.round((separately - totals.spent) * 100) / 100;
+  return { lines, totals, plates, separately, saving: gap > 0 ? gap : 0 };
+}
+
 /**
  * The Shopping tab's Spent / Used / Leftover panel (the old planner's totals,
  * for the whole menu): the merged list's totals, each also per person over the

@@ -8,7 +8,7 @@ import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
 import { centralToday } from '@/lib/dates';
 import { resolveMenuAliases } from '@/lib/menu-monster/menus';
-import { loadOutingsWith } from '@/lib/menu-monster/menus-data';
+import { loadOutingsWith, loadPatrolNamesWith } from '@/lib/menu-monster/menus-data';
 import { PageShell } from '@/app/_components/page-shell';
 import { PlanTab } from '../_components/plan-tab';
 import { ViewerAside } from '../_components/viewer-aside';
@@ -23,7 +23,7 @@ export default async function MenuPlanPage({ params, searchParams }: { params: P
   if (!view) notFound();
   const { stored, readOnly, plannedBy, catalog } = view;
   const linked = stored.menu.calendarEntryId != null ? [stored.menu.calendarEntryId] : [];
-  const outings = await loadOutingsWith(createAdminClient(), centralToday(), linked);
+  const [outings, patrols] = await Promise.all([loadOutingsWith(createAdminClient(), centralToday(), linked), readOnly ? Promise.resolve([]) : loadPatrolNamesWith(createAdminClient())]);
   return (
     <>
       <MenuHeader current="plan" {...listCrumb(view.access)} />
@@ -34,6 +34,7 @@ export default async function MenuPlanPage({ params, searchParams }: { params: P
           menu={resolveMenuAliases(stored.menu, catalog.aliases)}
           updatedAt={stored.updatedAt}
           outings={outings}
+          patrols={patrols}
           readOnly={readOnly}
           plannedBy={plannedBy}
           tabs={<MenuTabs menuId={stored.id} active="plan" access={view.access} />}

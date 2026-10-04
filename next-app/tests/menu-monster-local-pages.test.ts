@@ -23,7 +23,7 @@ vi.mock('@/lib/family-access', () => ({ getIdentitySessionIfValid: async () => m
 vi.mock('@/lib/admin-actor', () => ({ resolveAdminActor: async () => mocks.actor }));
 vi.mock('@/lib/supabase/server', () => ({ createAdminClient: () => ({ stub: true }) }));
 vi.mock('@/lib/menu-monster/data', () => ({ loadMenuMonsterCatalog: async () => ({}) }));
-vi.mock('@/lib/menu-monster/menus-data', () => ({ loadOutingsWith: async () => [] }));
+vi.mock('@/lib/menu-monster/menus-data', () => ({ loadOutingsWith: async () => [], loadPatrolNamesWith: async () => [] }));
 vi.mock('../src/app/(public)/library/_tools/menu-monster/menu-actions', () => actions);
 
 import LocalPlanPage from '../src/app/(public)/library/menu-monster/menus/local/page';

@@ -7,7 +7,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { centralToday } from '@/lib/dates';
 import { loadMenuMonsterCatalog } from '@/lib/menu-monster/data';
 import { blankMenu } from '@/lib/menu-monster/menus';
-import { loadOutingsWith } from '@/lib/menu-monster/menus-data';
+import { loadOutingsWith, loadPatrolNamesWith } from '@/lib/menu-monster/menus-data';
 import { PageShell } from '@/app/_components/page-shell';
 import { PlanTab } from '../_components/plan-tab';
 import { LockedLine, MENUS_HREF, MenuHeader, scoutViewer } from '../_components/scout-menus';
@@ -27,12 +27,12 @@ export default async function NewMenuPage() {
       </>
     );
   }
-  const [catalog, outings] = await Promise.all([loadMenuMonsterCatalog(viewer.personId), loadOutingsWith(createAdminClient(), centralToday())]);
+  const [catalog, outings, patrols] = await Promise.all([loadMenuMonsterCatalog(viewer.personId), loadOutingsWith(createAdminClient(), centralToday()), loadPatrolNamesWith(createAdminClient())]);
   return (
     <>
       <MenuHeader current="new" />
       <PageShell>
-        <PlanTab catalog={catalog} menuId={null} menu={blankMenu()} updatedAt={null} outings={outings} />
+        <PlanTab catalog={catalog} menuId={null} menu={blankMenu()} updatedAt={null} outings={outings} patrols={patrols} />
       </PageShell>
     </>
   );

@@ -623,3 +623,8 @@
 .doneLine { display: flex; align-items: center; gap: var(--sp-2); margin: var(--sp-4) 0 var(--sp-2); font-family: var(--font-ui); font-size: var(--fs-md); color: var(--text-head); }
 
 .plainFieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+
+/* The outing's merged shopping list (release 5): a tick box to print, the item, and each patrol's share. */
+.outingCheck { font-size: var(--fs-md); color: var(--text-meta); }
+.outingName { font-family: var(--font-ui); font-size: var(--fs-md); font-weight: 700; color: var(--text-head); }
+.outingShares { flex-basis: 100%; margin: 0 0 var(--sp-2); padding-left: var(--sp-6); font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-meta); }

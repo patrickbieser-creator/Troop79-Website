@@ -33,7 +33,7 @@ vi.mock('@/lib/menu-monster/menus-store', () => ({
 }));
 vi.mock('@/lib/identity-session', async (orig) => ({ ...(await orig<object>()), isEpochCurrent: async () => true }));
 vi.mock('@/lib/household-scope', () => ({ resolveFamilyScope: async (_sb: unknown, id: number) => [id] }));
-vi.mock('@/lib/menu-monster/menus-data', () => ({ loadOutingsWith: async () => [] }));
+vi.mock('@/lib/menu-monster/menus-data', () => ({ loadOutingsWith: async () => [], loadPatrolNamesWith: async () => [] }));
 vi.mock('@/lib/menu-monster/scout-recipes-store', () => ({ listMyRecipesWith: async () => mocks.recipes }));
 vi.mock('../src/app/(public)/library/_tools/menu-monster/recipe-actions', () => ({ deleteScoutRecipeAction: vi.fn() }));
 vi.mock('../src/app/(public)/library/_tools/menu-monster/menu-actions', () => ({

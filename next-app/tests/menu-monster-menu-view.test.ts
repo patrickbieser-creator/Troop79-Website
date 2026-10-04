@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { CATALOG } from './helpers/menu-monster-fixture';
 import type { Menu, MenuMeal } from '../src/lib/menu-monster/menus';
-import { dayLabel, mealCost, mealTitle, menuCost, outingDayCount, recipeShares } from '../src/lib/menu-monster/menu-view';
+import { buildMenuList, buildOutingList, dayLabel, mealCost, mealTitle, menuCost, outingDayCount, recipeShares } from '../src/lib/menu-monster/menu-view';
 
 const meal = (id: string, over: Partial<MenuMeal> = {}): MenuMeal => ({
   id,
@@ -113,5 +113,58 @@ describe('recipeShares', () => {
     // 10 scrambled + 2 GF-pancake eggs = 12: one dozen at $2.99, split 10:2.
     const shares = recipeShares(m, m.meals[0], cat);
     expect(shares.B099).toBeCloseTo((2.99 * 10) / 12, 2);
+  });
+});
+
+describe('buildOutingList (release 5: the troop shops together)', () => {
+  const eagles = { id: 'a', label: 'Screaming Eagles', menu: menu([meal('m1')], { patrol: 'Screaming Eagles' }) };
+  const quackers = { id: 'b', label: 'FireQuacker', menu: menu([meal('m1')], { patrol: 'FireQuacker', headcount: 6 }) };
+  const bacon = (list: ReturnType<typeof buildOutingList>) => list.lines.find((l) => l.ing.id === 'bacon')!;
+
+  it('Needs_AreAdded_AcrossMenus', () => {
+    expect(bacon(buildOutingList([eagles, quackers], CATALOG)).need).toBe(48);
+  });
+
+  it('EachMenusShare_IsListed_UnderTheLine', () => {
+    expect(bacon(buildOutingList([eagles, quackers], CATALOG)).byMenu).toEqual([
+      { menuId: 'a', label: 'Screaming Eagles', amount: 30 },
+      { menuId: 'b', label: 'FireQuacker', amount: 18 }
+    ]);
+  });
+
+  it('Plates_CountEveryMealOfEveryMenu', () => {
+    expect(buildOutingList([eagles, quackers], CATALOG).plates).toBe(16);
+  });
+
+  it('ACountChangedOnOneMenu_IsNotCarried_AndDoesNotSkewTheSaving', () => {
+    const more = { ...eagles, menu: { ...eagles.menu, shopping: { ...eagles.menu.shopping, qtyOverride: { bacon: { packageId: 'p-bac-om', qty: 9 } } } } };
+    const [plain, changed] = [buildOutingList([eagles, quackers], CATALOG), buildOutingList([more, quackers], CATALOG)];
+    expect([changed.totals.spent, changed.separately]).toEqual([plain.totals.spent, plain.separately]);
+  });
+
+  it('Separately_IsEachMenusOwnTotal_AddedUp', () => {
+    const own = buildMenuList(eagles.menu, CATALOG).totals.spent + buildMenuList(quackers.menu, CATALOG).totals.spent;
+    expect(buildOutingList([eagles, quackers], CATALOG).separately).toBeCloseTo(own, 2);
+  });
+
+  it('Saving_IsTheGap_AndNeverNegative', () => {
+    const list = buildOutingList([eagles, quackers], CATALOG);
+    expect(list.saving).toBeCloseTo(Math.max(0, list.separately - list.totals.spent), 2);
+  });
+
+  it('OneMenu_ShopsForExactlyItsOwnList', () => {
+    expect(buildOutingList([eagles], CATALOG).totals.spent).toBeCloseTo(buildMenuList(eagles.menu, CATALOG).totals.spent, 2);
+  });
+
+  it('Line_IsBrought_OnlyWhenEveryMenuBringsIt', () => {
+    const home = { packageChoice: {}, qtyOverride: {}, lineSource: { bacon: { source: 'home' as const, note: '' } } };
+    const both = buildOutingList([{ ...eagles, menu: { ...eagles.menu, shopping: home } }, { ...quackers, menu: { ...quackers.menu, shopping: home } }], CATALOG);
+    const one = buildOutingList([{ ...eagles, menu: { ...eagles.menu, shopping: home } }, quackers], CATALOG);
+    expect([bacon(both).status, bacon(one).status]).toEqual(['bring', 'ok']);
+  });
+
+  it('NoMenus_GiveAnEmptyList', () => {
+    const list = buildOutingList([], CATALOG);
+    expect([list.lines.length, list.plates, list.saving]).toEqual([0, 0, 0]);
   });
 });

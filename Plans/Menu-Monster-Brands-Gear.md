@@ -124,3 +124,25 @@ Migration `20261009100000_mm_bought` in production. Decisions made on Patrick's 
 - Prices are typed as dollars and cents only ("5,50" is refused, not read as 550).
 - qa-lead reviewed: validate before creating a brand/package, no report for an untouched price, inputs wait
   while saving, legacy lines survive a save.
+
+### R5 — v1.158.0, 2026-10-04 (patrols + the outing's shopping list)
+
+Decisions made on Patrick's behalf:
+
+- **Patrol is a free-text box with suggestions** (the active scouts' patrols + "Whole troop"), not a required
+  pick: a menu that names no patrol still works, and the outing page then calls it by the menu's name.
+- **The outing page lives at `/library/menu-monster/outings/[entryId]`**, linked from the event page's "Menus
+  for this outing" for signed-in scouts and leaders only. Parents and the public do not get it. A draft outing
+  is leaders-only; only overnight categories have one.
+- **The merged list is read-only.** Needs are added across every menu and priced once. Brands = every brand any
+  menu chose for the ingredient. A line is "not buying" only when every menu that needs it brings it; if one
+  patrol brings and another buys, the list buys for both (a little over, never short).
+- **A count changed on one menu's Shopping tab is NOT carried to the outing list** (two menus could disagree);
+  the page says so. The "less than each patrol shopping alone" figure leaves those changes out on both sides.
+- **Everyone sees the same page**: menus are read the crew's way, so a recipe its author has not shared is left
+  off even for the author.
+- **Recording stays per menu** ("What we bought" on each patrol's menu); the outing page adds them up and says
+  "projected" until every menu has ticked "We're done shopping". Outing-level recording and Admin › Purchases
+  moved to R6.
+- qa-lead reviewed (ship): fixed the count-override skew, limited the page to overnight outings, labelled the
+  planned column "on its own".

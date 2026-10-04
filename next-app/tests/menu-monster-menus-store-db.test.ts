@@ -11,6 +11,7 @@ import {
   duplicateMenuWith,
   listAllMenusWith,
   listMenusWith,
+  listOutingMenusWith,
   ownerCreditNamesWith,
   loadMenuWith,
   saveActualsWith,
@@ -55,6 +56,7 @@ beforeAll(async () => {
 afterEach(async () => {
   // %…%: duplicates are named "Copy of <MARKER>".
   await admin.from('mm_menus').delete().like('name', `%${MARKER}%`);
+  await admin.from('calendar_entries').delete().like('title', `${MARKER}%`);
   await admin.from('audit_log').delete().eq('area', 'menus').like('summary', `%${MARKER}%`);
 });
 
@@ -370,5 +372,36 @@ describe('menu store leader reads (read-only view)', () => {
 
   it('CreditName_ReadsNothing_WhenNoIdsAreGiven', async () => {
     expect((await ownerCreditNamesWith(admin, [])).size).toBe(0);
+  });
+});
+
+describe('menu store patrol + outing menus (release 5)', () => {
+  const outing = async (title: string): Promise<number> => {
+    const { data, error } = await admin
+      .from('calendar_entries')
+      .insert({ entry_date: '2026-09-10', end_date: '2026-09-12', category: 'Campout / Overnight', title: `${MARKER} ${title}`, status: 'published', on_calendar: true })
+      .select('id')
+      .single();
+    if (error) throw new Error(error.message);
+    return data.id as number;
+  };
+
+  it('Patrol_RoundTrips', async () => {
+    const id = await createMenuWith(admin, CHARLIE, menu({ patrol: 'Screaming Eagles' }), CATALOG);
+    expect((await loadMenuWith(admin, id))?.menu.patrol).toBe('Screaming Eagles');
+  });
+
+  it('Patrol_IsAbsent_WhenNeverSaid', async () => {
+    const id = await createMenuWith(admin, CHARLIE, menu(), CATALOG);
+    expect('patrol' in (await loadMenuWith(admin, id))!.menu).toBe(false);
+  });
+
+  it('OutingMenus_AreEveryOwnersMenus_ForThatOutingOnly', async () => {
+    const [here, elsewhere] = [await outing('here'), await outing('elsewhere')];
+    const a = await createMenuWith(admin, CHARLIE, menu({ calendarEntryId: here, patrol: 'A' }), CATALOG);
+    const b = await createMenuWith(admin, other, menu({ calendarEntryId: here, patrol: 'B' }), CATALOG);
+    await createMenuWith(admin, CHARLIE, menu({ calendarEntryId: elsewhere }), CATALOG);
+    await createMenuWith(admin, CHARLIE, menu(), CATALOG);
+    expect((await listOutingMenusWith(admin, here)).map((m) => m.id).sort()).toEqual([a, b].sort());
   });
 });
