@@ -39,7 +39,7 @@ import { MEALS, priceText as money } from '@/lib/menu-monster/units';
 import { Notice } from '@/app/_components/notice';
 import type { Brand, BrandPick, Catalog, Plan, Recipe, ShoppingLine } from '@/lib/menu-monster/types';
 import { BrandChooser, brandSummary } from './brand-chooser';
-import { recipesForMeal, restrictionWarnings } from '@/lib/menu-monster/engine';
+import { livePicks, recipeSuggestions, recipesForMeal, restrictionWarnings } from '@/lib/menu-monster/engine';
 import { isPickable, stepsFromText } from '@/lib/menu-monster/scout-recipes';
 import { recipeGear } from '@/lib/menu-monster/gear';
 import { RECIPES_HREF } from '../../recipes/_components/paths';
@@ -94,9 +94,13 @@ export interface MealPanelProps {
   onBrands?: (ingredientId: string, picks: BrandPick[]) => void;
   lineFor?: (ingredientId: string) => ShoppingLine | undefined;
   onTypeBrand?: (ingredientId: string, name: string) => Promise<{ ok: true; brand: Brand } | { ok: false; error: string }>;
+  /** Release 6 — the recipe's author sets (or with null clears) the brand their recipe suggests. Absent = not offered. */
+  onSuggestBrand?: (recipeId: string, ingredientId: string, brandId: string | null) => Promise<{ ok: true } | { ok: false; error: string }>;
 }
 
-export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChange, canTypeIn = false, onTyped, shareVersionMenuId = null, autoFocusAdd = false, onBrands, lineFor, onTypeBrand }: MealPanelProps) {
+export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChange, canTypeIn = false, onTyped, shareVersionMenuId = null, autoFocusAdd = false, onBrands, lineFor, onTypeBrand, onSuggestBrand }: MealPanelProps) {
+  /** Suggestions changed this visit ("recipe:ingredient" → brand id, or null for cleared): the catalog prop is as loaded. */
+  const [suggested, setSuggested] = useState<Readonly<Record<string, string | null>>>({});
   const uid = useId();
   const [openIds, setOpenIds] = useState<ReadonlySet<string>>(() => new Set());
   const [status, setStatus] = useState<Status>({ text: '', undoTo: null });
@@ -187,15 +191,28 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChang
     setStatus({ text: `${recipeName(id)} removed.`, undoTo: before, focusUndo: true });
   }
 
+  /** The recipe's suggested brands become this menu's choice — only where the menu has chosen none yet. */
+  function applySuggestions(r: Recipe): string[] {
+    if (!onBrands) return [];
+    const used: string[] = [];
+    for (const [ingredientId, brand] of recipeSuggestions(r, catalog)) {
+      if (livePicks(menu.shopping.brands?.[ingredientId], ingredientId, catalog).length > 0) continue;
+      onBrands(ingredientId, [{ brandId: brand.id, qty: null }]);
+      used.push(brand.name);
+    }
+    return used;
+  }
+
   function pick(r: Recipe) {
     const before = undoPoint();
+    const brandNote = (names: string[]) => (names.length > 0 ? ` Using ${names.join(', ')}, as the recipe suggests.` : '');
     if (swapId) {
       change({ recipeIds: before.recipeIds.map((x) => (x === swapId ? r.id : x)), recipeEdits: without(edits, swapId) });
-      setStatus({ text: `Swapped ${recipeName(swapId)} for ${r.name}.`, undoTo: before });
+      setStatus({ text: `Swapped ${recipeName(swapId)} for ${r.name}.${brandNote(applySuggestions(r))}`, undoTo: before });
       setSwapId(null);
     } else {
       change({ recipeIds: [...before.recipeIds, r.id] });
-      setStatus({ text: `${r.name} added.`, undoTo: null });
+      setStatus({ text: `${r.name} added.${brandNote(applySuggestions(r))}`, undoTo: null });
     }
     clearSearch();
     inputRef.current?.focus();
@@ -215,6 +232,38 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChang
   const brandText = (ingredientId: string) => {
     const text = brandSummary(picksOf(ingredientId), ingredientId, catalog);
     return text ? <span className={`${s.brandText} ${text === 'any brand' ? '' : s.brandSet}`}>{text}</span> : null;
+  };
+  /** Under the chooser, for the recipe's author: suggest the one chosen brand for the recipe, or stop suggesting. */
+  const suggestLine = (rid: string, ingredientId: string) => {
+    const recipe = byId.get(rid);
+    if (!recipe?.mine || !onSuggestBrand) return null;
+    const key = `${rid}:${ingredientId}`;
+    const currentId = key in suggested ? suggested[key] : (recipe.brandSuggestions?.[ingredientId] ?? null);
+    const current = currentId ? (livePicks([{ brandId: currentId, qty: null }], ingredientId, catalog)[0]?.brand ?? null) : null;
+    const chosen = livePicks(picksOf(ingredientId), ingredientId, catalog);
+    const offer = chosen.length === 1 && chosen[0].brand.id !== current?.id ? chosen[0].brand : null;
+    if (!current && !offer) return null;
+    const send = async (brand: Brand | null) => {
+      const res = await onSuggestBrand(rid, ingredientId, brand?.id ?? null);
+      if (!res.ok) return setStatus({ text: res.error, undoTo: null });
+      setSuggested((cur) => ({ ...cur, [key]: brand?.id ?? null }));
+      setStatus({ text: brand ? `${recipe.name} now suggests ${brand.name}.` : `${recipe.name} no longer suggests a brand here.`, undoTo: null });
+    };
+    return (
+      <p className={s.foot}>
+        {current && <>Your recipe suggests {current.name}. </>}
+        {offer && (
+          <button type="button" className={s.linkBtn} onClick={() => void send(offer)}>
+            Suggest {offer.name} for the recipe
+          </button>
+        )}
+        {current && !offer && (
+          <button type="button" className={s.linkBtn} onClick={() => void send(null)}>
+            Stop suggesting
+          </button>
+        )}
+      </p>
+    );
   };
   const brandSlot = (rid: string) => (ingredientId: string, name: string) => {
     const ing = ingById.get(ingredientId);
@@ -248,15 +297,18 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChang
         </>
       ),
       inset: open ? (
-        <BrandChooser
-          ingredient={ing}
-          catalog={catalog}
-          picks={picksOf(ingredientId)}
-          line={lineFor?.(ingredientId)}
-          onChange={(next) => onBrands(ingredientId, next)}
-          onType={onTypeBrand ? (typed) => onTypeBrand(ingredientId, typed) : undefined}
-          onAnnounce={(text) => setStatus({ text, undoTo: null })}
-        />
+        <>
+          <BrandChooser
+            ingredient={ing}
+            catalog={catalog}
+            picks={picksOf(ingredientId)}
+            line={lineFor?.(ingredientId)}
+            onChange={(next) => onBrands(ingredientId, next)}
+            onType={onTypeBrand ? (typed) => onTypeBrand(ingredientId, typed) : undefined}
+            onAnnounce={(text) => setStatus({ text, undoTo: null })}
+          />
+          {suggestLine(rid, ingredientId)}
+        </>
       ) : null
     };
   };

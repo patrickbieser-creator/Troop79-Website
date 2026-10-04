@@ -559,3 +559,18 @@ export function restorePlan(raw: unknown, catalog: Catalog): Plan {
     patrol: typeof raw.patrol === 'string' ? raw.patrol.slice(0, 60) : ''
   };
 }
+
+/**
+ * A recipe's suggested brands that can be used: the ingredient is one the recipe has, and the brand is a live
+ * brand of it (a merged brand follows its alias). [ingredientId, brand] pairs, in the recipe's line order. Pure.
+ */
+export function recipeSuggestions(recipe: Pick<Recipe, 'lines' | 'brandSuggestions'>, catalog: Pick<Catalog, 'brands' | 'brandAliases'>): [string, Brand][] {
+  const out: [string, Brand][] = [];
+  for (const line of recipe.lines) {
+    const brandId = recipe.brandSuggestions?.[line.ingredientId];
+    if (!brandId || out.some(([id]) => id === line.ingredientId)) continue;
+    const [live] = livePicks([{ brandId, qty: null }], line.ingredientId, catalog);
+    if (live) out.push([line.ingredientId, live.brand]);
+  }
+  return out;
+}

@@ -43,7 +43,7 @@ import { MEALS, RESTRICTION_BY_KEY } from '@/lib/menu-monster/units';
 import { MAX_HEADCOUNT, MIN_HEADCOUNT } from '@/lib/menu-monster/engine';
 import { MAX_MENU_DAYS, MAX_MENU_MEALS, MENU_CONTEXTS, MAX_MENU_NAME, MAX_PATROL_NAME, menuNameError, type Menu, type MenuContext, type MenuMeal } from '@/lib/menu-monster/menus';
 import { DIET_ORDER, budgetState, buildMenuList, dayLabel, mealTitle, menuCost, outingDayCount, type Outing } from '@/lib/menu-monster/menu-view';
-import { addBrandAction } from '../../../_tools/menu-monster/brand-actions';
+import { addBrandAction, suggestRecipeBrandAction } from '../../../_tools/menu-monster/brand-actions';
 import type { CreateResult, MenuStore, SaveResult } from '@/lib/menu-monster/menu-store';
 import { serverMenuStore } from './server-menu-store';
 import { MealPanel } from './meal-panel';
@@ -524,6 +524,7 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
                                 onBrands={readOnly ? undefined : setBrands}
                                 lineFor={(id) => lineByIng.get(id)}
                                 onTypeBrand={canTypeBrand ? typeBrand : undefined}
+                                onSuggestBrand={canTypeBrand ? suggestRecipeBrandAction : undefined}
                               />
                             </div>
                           )}

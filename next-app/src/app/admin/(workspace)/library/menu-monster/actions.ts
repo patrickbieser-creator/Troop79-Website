@@ -26,7 +26,7 @@ import { cleanGear, cleanScoutText, isScoutRecipeId } from '@/lib/menu-monster/s
 import { keepTypedInWith, matchTypedInWith, rejectTypedInWith, setScoutRecipeCreditWith } from '@/lib/menu-monster/scout-recipes-store';
 import { approveHeldPackageWith, rejectHeldPackageWith } from '@/lib/menu-monster/scout-packages-store';
 import { createGearWith, deleteGearWith, ensureGearWith, retireGearWith, updateGearWith } from '@/lib/menu-monster/gear-store';
-import { createBrandWith, mergeBrandWith, moveBrandWith, removeBrandWith, renameBrandWith, setBrandDietsWith, setPackageBrandWith, type BrandWrite } from '@/lib/menu-monster/brands-store';
+import { createBrandWith, mergeBrandWith, moveBrandWith, removeBrandWith, renameBrandWith, setBrandDietsWith, setPackageBrandWith, type BrandWrite, suggestRecipeBrandWith } from '@/lib/menu-monster/brands-store';
 import {
   blockingIssues,
   changeUnitPlan,
@@ -1068,6 +1068,14 @@ export async function removeBrand(id: string): Promise<BrandResult> {
 
 export async function setPackageBrand(packageId: string, brandId: string | null, sizeLabel: string): Promise<BrandResult> {
   return brandWrite(packageId, 'Set a Menu Monster package’s brand and size', () => setPackageBrandWith(createAdminClient(), packageId, brandId, sizeLabel));
+}
+
+/** A leader sets (brandId null: clears) the brand a recipe suggests for one of its ingredients. */
+export async function suggestRecipeBrand(recipeId: string, ingredientId: string, brandId: string | null): Promise<BrandResult> {
+  return brandWrite(recipeId, brandId ? 'Set a Menu Monster recipe’s suggested brand' : 'Cleared a Menu Monster recipe’s suggested brand', async () => {
+    const res = await suggestRecipeBrandWith(createAdminClient(), null, recipeId, ingredientId, brandId);
+    return res === 'ok' ? { ok: true } : { ok: false, error: res === 'bad_brand' ? 'That brand is not one of this ingredient’s live brands, or the recipe no longer uses the ingredient.' : 'That recipe is gone. Reload the page.' };
+  });
 }
 
 /* ── The troop's gear list (release 2 of Plans/Menu-Monster-Brands-Gear.md) ─ */

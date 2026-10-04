@@ -137,3 +137,4 @@
 /* One line per package: its name, the brand it is a size of, the size, Save. */
 .brandPackageRow { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) 130px auto; gap: 8px; align-items: center; font-size: var(--admin-text-base); }
 @media (max-width: 720px) { .brandPackageRow { grid-template-columns: 1fr 1fr; } }
+.suggestSelect { max-width: 280px; }

@@ -50,7 +50,7 @@ export interface CatalogRows {
 }
 
 /** Recipe columns every load reads; never the author's person id on a public load. */
-const RECIPE_COLUMNS = 'id, name, status, meal_fit, food_groups, camp, trail, method, steps_md, sort_order, created_at, updated_at, attribution_label, equipment';
+const RECIPE_COLUMNS = 'id, name, status, meal_fit, food_groups, camp, trail, method, steps_md, sort_order, created_at, updated_at, attribution_label, equipment, brand_suggestions';
 
 export interface CatalogLoadOptions {
   /** The verified scout whose own drafts join the catalog (their menus, their library). */
@@ -99,7 +99,8 @@ export async function loadCatalogWith(supabase: SupabaseClient, opts: CatalogLoa
     fetchAllRows<MmRecipeRow>((from, to) =>
       supabase
         .from('mm_recipes')
-        .select(RECIPE_COLUMNS)
+        // The author's id is read only to mark the owner's own recipes (`mine`); it never leaves this function.
+        .select(`${RECIPE_COLUMNS}, author_person_id`)
         .or(owner ? `status.in.(published,retired),and(status.eq.draft,author_person_id.eq.${owner})` : 'status.in.(published,retired)')
         .order('sort_order')
         .order('name')
@@ -120,7 +121,19 @@ export async function loadCatalogWith(supabase: SupabaseClient, opts: CatalogLoa
     loadBrandRows(supabase, { includeRetired: false }),
     loadBrandAliasesWith(supabase)
   ]);
-  return { ...mapCatalog({ ingredients, conversions, packages, recipes, lines, brands, ...v }), aliases, brandAliases };
+  const catalog = mapCatalog({ ingredients, conversions, packages, recipes, lines, brands, ...v });
+  const mine = new Set(owner == null ? [] : recipes.filter((r) => r.author_person_id === owner).map((r) => r.id));
+  return {
+    ...catalog,
+    recipes: catalog.recipes.map((recipe) => {
+      const { authorPersonId, sharedAt, ...r } = recipe;
+      void authorPersonId;
+      void sharedAt;
+      return mine.has(r.id) ? { ...r, mine: true } : r;
+    }),
+    aliases,
+    brandAliases
+  };
 }
 
 /** Typed-in ingredients a leader matched to the book (Phase 4B): from → { to, factor }. A chain resolves to its end. */
@@ -257,6 +270,7 @@ export function mapCatalog(rows: CatalogRows): Catalog {
       variations: variationsByRecipe.get(r.id) ?? [],
       credit: r.attribution_label ?? null,
       equipment: r.equipment ?? [],
+      ...(r.brand_suggestions && Object.keys(r.brand_suggestions).length > 0 ? { brandSuggestions: r.brand_suggestions } : {}),
       ...(r.author_person_id !== undefined ? { authorPersonId: r.author_person_id, sharedAt: r.shared_at ?? null } : {})
     }));
 

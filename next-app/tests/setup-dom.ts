@@ -51,5 +51,6 @@ if (typeof HTMLDialogElement !== 'undefined') {
  * cares what the action is called with mocks the module itself, which wins over this default.
  */
 vi.mock('@/app/(public)/library/_tools/menu-monster/brand-actions', () => ({
-  addBrandAction: vi.fn(async () => ({ ok: false, error: 'not available in tests' }))
+  addBrandAction: vi.fn(async () => ({ ok: false, error: 'not available in tests' })),
+  suggestRecipeBrandAction: vi.fn(async () => ({ ok: false, error: 'not available in tests' }))
 }));

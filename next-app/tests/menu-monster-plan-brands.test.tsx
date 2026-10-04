@@ -18,7 +18,11 @@ vi.mock('../src/app/(public)/library/_tools/menu-monster/menu-actions', () => ({
   addMenuIngredientAction: vi.fn()
 }));
 const addBrandAction = vi.fn();
-vi.mock('@/app/(public)/library/_tools/menu-monster/brand-actions', () => ({ addBrandAction: (...a: unknown[]) => addBrandAction(...a) }));
+const suggestRecipeBrandAction = vi.fn();
+vi.mock('@/app/(public)/library/_tools/menu-monster/brand-actions', () => ({
+  addBrandAction: (...a: unknown[]) => addBrandAction(...a),
+  suggestRecipeBrandAction: (...a: unknown[]) => suggestRecipeBrandAction(...a)
+}));
 
 import { PlanTab } from '../src/app/(public)/library/menu-monster/menus/_components/plan-tab';
 
@@ -120,5 +124,93 @@ describe('Plan tab — brands', () => {
     await user.click(panel().getByRole('button', { name: /^Pancakes/ }));
     // Pancake mix has no brands in this catalog, and a local menu cannot type one.
     expect(within(panel().getByRole('list', { name: 'Pancakes ingredients' })).queryByRole('button', { name: /Choose a brand/ })).toBeNull();
+  });
+});
+
+describe('Plan tab — a recipe’s suggested brand (release 6)', () => {
+  const withRecipe = (over: Record<string, unknown>): Catalog => ({ ...CATALOG, recipes: CATALOG.recipes.map((r) => (r.id === 'B003' ? { ...r, ...over } : r)) });
+  const empty = (over: Partial<Menu> = {}) => menu({ meals: [{ id: 'm1', day: 0, slot: 'breakfast', headcount: null, recipeIds: [], recipeEdits: {} }], ...over });
+  const addBacon = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(panel().getByRole('combobox'));
+    await user.type(panel().getByRole('combobox'), 'Bac');
+    await user.click(screen.getByRole('option', { name: /^Bacon/ }));
+  };
+  const save = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(saveMenuAction).toHaveBeenCalledTimes(1));
+  };
+
+  it('AddingTheRecipe_ChoosesItsSuggestedBrand', async () => {
+    const user = userEvent.setup();
+    render(plan(empty(), { catalog: withRecipe({ brandSuggestions: { bacon: 'b-kirk' } }) }));
+    await addBacon(user);
+    await save(user);
+    expect(sent().shopping.brands).toEqual({ bacon: [{ brandId: 'b-kirk', qty: null }] });
+  });
+
+  it('AddingTheRecipe_SaysWhichBrandItUsed', async () => {
+    const user = userEvent.setup();
+    render(plan(empty(), { catalog: withRecipe({ brandSuggestions: { bacon: 'b-kirk' } }) }));
+    await addBacon(user);
+    expect(panel().getByText(/Using Kirkland, as the recipe suggests\./)).toBeTruthy();
+  });
+
+  it('ABrandTheMenuAlreadyChose_IsKept', async () => {
+    const user = userEvent.setup();
+    const m = empty({ shopping: { packageChoice: {}, qtyOverride: {}, lineSource: {}, brands: { bacon: [{ brandId: 'b-om', qty: null }] } } });
+    render(plan(m, { catalog: withRecipe({ brandSuggestions: { bacon: 'b-kirk' } }) }));
+    await addBacon(user);
+    await save(user);
+    expect(sent().shopping.brands).toEqual({ bacon: [{ brandId: 'b-om', qty: null }] });
+  });
+
+  it('ASuggestionForABrandThatIsGone_IsIgnored', async () => {
+    const user = userEvent.setup();
+    render(plan(empty(), { catalog: withRecipe({ brandSuggestions: { bacon: 'b-gone' } }) }));
+    await addBacon(user);
+    await save(user);
+    expect(sent().shopping.brands ?? {}).toEqual({});
+  });
+
+  const chooseKirkland = async (user: ReturnType<typeof userEvent.setup>) => {
+    await openBacon(user);
+    await user.click(panel().getByRole('button', { name: 'Choose a brand for Bacon' }));
+    await user.click(within(panel().getByRole('group', { name: 'Brand for Bacon' })).getByRole('button', { name: /^Kirkland/ }));
+  };
+
+  it('TheAuthor_IsOfferedToSuggestTheOneChosenBrand', async () => {
+    suggestRecipeBrandAction.mockResolvedValue({ ok: true });
+    const user = userEvent.setup();
+    render(plan(menu(), { catalog: withRecipe({ mine: true }) }));
+    await chooseKirkland(user);
+    await user.click(panel().getByRole('button', { name: 'Suggest Kirkland for the recipe' }));
+    expect(suggestRecipeBrandAction).toHaveBeenCalledWith('B003', 'bacon', 'b-kirk');
+    await waitFor(() => expect(panel().getByText(/Your recipe suggests Kirkland\./)).toBeTruthy());
+  });
+
+  it('TheAuthor_CanStopSuggesting', async () => {
+    suggestRecipeBrandAction.mockResolvedValue({ ok: true });
+    const user = userEvent.setup();
+    render(plan(menu(), { catalog: withRecipe({ mine: true, brandSuggestions: { bacon: 'b-kirk' } }) }));
+    await openBacon(user);
+    await user.click(panel().getByRole('button', { name: 'Choose a brand for Bacon' }));
+    await user.click(panel().getByRole('button', { name: 'Stop suggesting' }));
+    expect(suggestRecipeBrandAction).toHaveBeenCalledWith('B003', 'bacon', null);
+  });
+
+  it('SomeoneWhoDidNotWriteTheRecipe_IsNotOffered', async () => {
+    const user = userEvent.setup();
+    render(plan());
+    await chooseKirkland(user);
+    expect(panel().queryByRole('button', { name: /Suggest .* for the recipe/ })).toBeNull();
+  });
+
+  it('ARefusal_IsSaid', async () => {
+    suggestRecipeBrandAction.mockResolvedValue({ ok: false, error: 'Only the person who wrote a recipe can suggest a brand for it.' });
+    const user = userEvent.setup();
+    render(plan(menu(), { catalog: withRecipe({ mine: true }) }));
+    await chooseKirkland(user);
+    await user.click(panel().getByRole('button', { name: 'Suggest Kirkland for the recipe' }));
+    await waitFor(() => expect(panel().getByText(/Only the person who wrote a recipe/)).toBeTruthy());
   });
 });

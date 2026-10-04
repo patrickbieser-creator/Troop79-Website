@@ -49,6 +49,7 @@ import type { Catalog, Ingredient, MealSlot, Plan, Recipe, RecipeLine, Restricti
 import { duplicateRecipe, saveRecipe, setRecipeStatus } from './actions';
 import { NewFoodForm } from './new-food-form';
 import lib from '../library.module.css';
+import { SuggestedBrands } from './suggested-brands';
 import styles from './menu-monster.module.css';
 
 type Pill = 'Needs fixes' | 'Draft' | 'Published' | 'Retired';
@@ -585,6 +586,8 @@ function RecipeEditor({
           <p className={styles.hint}>{snap.saved.name} is retired. Patrols can&rsquo;t pick it any more; old plans keep their copy.</p>
         )}
       </FormPanel>
+
+      {!isNew && <SuggestedBrands recipeId={draft.id} catalog={catalog} onChanged={onChanged} />}
 
       <Preview draft={draft} tab={activeTab} catalog={catalog} />
     </section>

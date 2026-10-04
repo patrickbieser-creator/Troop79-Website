@@ -162,3 +162,19 @@ export function recentTypedBrands(brands: readonly Brand[], today: string, days:
     .filter((b) => b.addedBy != null && !b.retiredAt && (b.createdAt ?? '') >= since)
     .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
 }
+
+export type SuggestResult = 'ok' | 'not_found' | 'not_yours' | 'bad_brand';
+
+/**
+ * Set (or with brandId null, clear) the brand a recipe suggests for one of its ingredients.
+ * personId = the author making the change; null = a leader (the caller has checked the capability).
+ */
+export async function suggestRecipeBrandWith(sb: SupabaseClient, personId: number | null, recipeId: string, ingredientId: string, brandId: string | null): Promise<SuggestResult> {
+  const { data, error } = await sb.rpc('mm_suggest_recipe_brand', { p_recipe: recipeId, p_person: personId, p_ingredient: ingredientId, p_brand: brandId });
+  if (error) {
+    if (error.message.includes('MM_NOT_YOURS')) return 'not_yours';
+    if (error.message.includes('MM_BAD_BRAND')) return 'bad_brand';
+    throw new Error(`suggest brand: ${error.message}`);
+  }
+  return data === true ? 'ok' : 'not_found';
+}

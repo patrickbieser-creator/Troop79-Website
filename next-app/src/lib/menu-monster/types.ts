@@ -181,6 +181,11 @@ export interface Recipe {
   credit?: string | null;
   /** Gear the recipe needs (Phase 4C rolls it up per menu). */
   equipment?: string[];
+  /** ingredientId → the brand the recipe suggests (release 6). Chosen on a menu when the recipe is added and
+   *  the menu has no brand for that ingredient yet; the planner can change it. Absent = none. */
+  brandSuggestions?: Record<string, string>;
+  /** The signed-in person loading the catalog wrote it (never set on a public load). */
+  mine?: boolean;
   /** Leader tools only: when a scout shared it, and who wrote it. */
   sharedAt?: string | null;
   authorPersonId?: number | null;

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildLines, livePicks } from '../src/lib/menu-monster/engine';
+import { buildLines, livePicks, recipeSuggestions } from '../src/lib/menu-monster/engine';
 import { sanitizeMenu } from '../src/lib/menu-monster/menus';
 import { buildMenuList } from '../src/lib/menu-monster/menu-view';
 import type { Brand, BrandPicks, Catalog, Package, Plan } from '../src/lib/menu-monster/types';
@@ -139,5 +139,30 @@ describe('a menu’s stored brands', () => {
     const m = sanitizeMenu(raw({ cereal: [{ brandId: 'b-chex', qty: null }] }), CATALOG);
     const line = buildMenuList(m, CATALOG).lines.find((l) => l.ing.id === 'cereal');
     expect([line?.parts?.[0].brand.name, line?.qty, line?.spent]).toEqual(['Rice Chex', 2, 13]);
+  });
+});
+
+describe('a recipe’s suggested brands (release 6)', () => {
+  const live = CATALOG.brands![0];
+  const line = (ingredientId: string) => ({ ingredientId, qtyPerPerson: 1, unitKey: null, servesRule: 'everyone' as const, servesRestrictions: [] });
+
+  it('ALiveBrandOfAnIngredientTheRecipeUses_IsASuggestion', () => {
+    expect(recipeSuggestions({ lines: [line('cereal')], brandSuggestions: { cereal: live.id } }, CATALOG).map(([id, b]) => [id, b.id])).toEqual([['cereal', live.id]]);
+  });
+
+  it('AnIngredientTheRecipeNoLongerUses_IsNot', () => {
+    expect(recipeSuggestions({ lines: [line('milk')], brandSuggestions: { cereal: live.id } }, CATALOG)).toEqual([]);
+  });
+
+  it('ABrandThatIsGone_IsNot', () => {
+    expect(recipeSuggestions({ lines: [line('cereal')], brandSuggestions: { cereal: 'b-nope' } }, CATALOG)).toEqual([]);
+  });
+
+  it('NoSuggestions_GiveNone', () => {
+    expect(recipeSuggestions({ lines: [line('cereal')] }, CATALOG)).toEqual([]);
+  });
+
+  it('AnIngredientOnTwoLines_IsSuggestedOnce', () => {
+    expect(recipeSuggestions({ lines: [line('cereal'), line('cereal')], brandSuggestions: { cereal: live.id } }, CATALOG)).toHaveLength(1);
   });
 });

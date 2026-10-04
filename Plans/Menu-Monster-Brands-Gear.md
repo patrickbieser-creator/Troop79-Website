@@ -172,3 +172,26 @@ Decisions made on Patrick's behalf:
   with the on-this-device planner as before.
 - A leader signed in only with a legacy cookie that names no person cannot write a recipe (nobody to credit).
 - qa-lead reviewed: ship (a revoked scout cannot come back in as an adult; message fixed for adults).
+
+### R6c — v1.161.0, 2026-10-04 (a recipe's suggested brand)
+
+Decisions made on Patrick's behalf:
+
+- **One suggested brand per ingredient of a recipe** (not several). It is used when the recipe is added or
+  swapped into a meal and the menu has no brand for that ingredient yet; a brand the menu already chose wins.
+  After that it is an ordinary choice: change it, add more, or go back to any brand.
+- **Menus that already hold the recipe are not changed** when a suggestion is set later.
+- **The author suggests from their own menu** — the link appears under the brand chooser when exactly one
+  brand is chosen ("Suggest Kirkland for the recipe"), and "Stop suggesting" when it is already the one.
+  Leaders suggest for any recipe in admin (Food & recipes › the recipe › Suggested brands, saved at once).
+- A suggestion for a brand that was later removed, or an ingredient the recipe dropped, is simply ignored.
+- Setting a suggestion does not count as editing the recipe (no "edited since shared" flag, no save conflict).
+- qa-lead reviewed: ship.
+
+### Still open after R6 (not built)
+
+- **Compact single-food editor** in admin: creating a single food is one form since v1.153.0; editing one
+  still opens the full recipe editor. Left for Patrick to look at with the live admin in front of him.
+- **Outing-level recording**: purchases are recorded per menu and added up on the outing page and in
+  Admin › Purchases.
+- Gear tab for on-this-device menus; accent-insensitive brand matching; deleting the old `actuals` fallback.

@@ -585,6 +585,8 @@ export interface MmRecipeRow {
   attribution_label?: string | null;
   shared_at?: string | null;
   equipment?: string[] | null;
+  /** { ingredientId: brandId } — release 6. */
+  brand_suggestions?: Record<string, string> | null;
 }
 
 export interface MmRecipeLineRow {
