@@ -290,6 +290,7 @@ function RecipeEditor({
   const ingById = new Map(catalog.ingredients.map((i) => [i.id, i]));
   const compiled = compileAuthoring(draft).lines;
   const missing = RESTRICTIONS.filter((r) => !draft.variations.some((v) => v.restriction === r.key));
+  const toLook = missing.filter((r) => viewFor(draft, r.key, catalog) === 'needs_look').length;
   const activeTab: Tab = tab === 'everyone' || draft.variations.some((v) => v.restriction === tab) ? tab : 'everyone';
 
   function run(fn: () => Promise<{ ok: boolean; error?: string; id?: string }>, after?: (id?: string) => void) {
@@ -342,6 +343,25 @@ function RecipeEditor({
         {snap.dirty && <Badge variant="warning">Unsaved edits</Badge>}
       </div>
       {error && <Notice>{error}</Notice>}
+      {/* What "Needs fixes" means, right under the pill that says it — not below the whole form. */}
+      {errors.length > 0 && (
+        <div className={styles.issues}>
+          <p className={`adminLabel ${styles.issuesTitle}`}>{snap.saved.status === 'published' ? 'Needs fixing' : 'Needs fixing before it can publish'}</p>
+          <ul className={styles.issueList} aria-label="Needs fixing">
+            {errors.map((i, n) => (
+              <li key={n}>
+                {i.text}
+                {i.fix === 'price-book' && (
+                  <>
+                    {' '}
+                    <Link href="/admin/library/menu-monster?tab=prices">Open the Price book</Link>
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <FormPanel>
         <FormSection num={1} title="Basics">
@@ -405,9 +425,10 @@ function RecipeEditor({
             />
             <span className={styles.spacer} />
             {missing.length > 0 && (
-              <Button variant="secondary" size="sm" onClick={() => setAdding((v) => !v)} aria-expanded={adding}>
+              <Button variant="secondary" onClick={() => setAdding((v) => !v)} aria-expanded={adding}>
                 + Add a variation
-                {missing.some((r) => viewFor(draft, r.key, catalog) === 'needs_look') ? ` (${missing.filter((r) => viewFor(draft, r.key, catalog) === 'needs_look').length} need a look)` : ''}
+                {/* The same amber "needs a look" the item list and the variation chips use, so it reads as a to-do. */}
+                {toLook > 0 && <Badge variant="warning">{toLook === 1 ? '1 needs a look' : `${toLook} need a look`}</Badge>}
               </Button>
             )}
           </div>
@@ -499,24 +520,6 @@ function RecipeEditor({
           <input id="mm-r-gear" className={lib.textInput} value={draft.gear ?? ''} maxLength={400} placeholder="Dutch oven, Tongs" onChange={(e) => setDraft((d) => ({ ...d, gear: e.target.value }))} />
         </FormSection>
 
-        {errors.length > 0 && (
-          <div className={styles.issues}>
-            <p className={`adminLabel ${styles.issuesTitle}`}>Needs fixing before it can publish</p>
-            <ul className={styles.issueList} aria-label="Needs fixing">
-              {errors.map((i, n) => (
-                <li key={n}>
-                  {i.text}
-                  {i.fix === 'price-book' && (
-                    <>
-                      {' '}
-                      <Link href="/admin/library/menu-monster?tab=prices">Open the Price book</Link>
-                    </>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
         {warnings.length > 0 && (
           <div className={styles.issues}>
             <p className={`adminLabel ${styles.issuesTitle}`}>Worth a look</p>

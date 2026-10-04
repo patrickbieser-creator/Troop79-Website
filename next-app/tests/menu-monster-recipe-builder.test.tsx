@@ -108,6 +108,25 @@ describe('Recipe builder', () => {
     await waitFor(() => expect(setRecipeStatus).toHaveBeenCalledWith('toast', 'published'));
   });
 
+  it('Leader_SeesWhatNeedsFixing_AboveTheForm_OnAPublishedItem', () => {
+    // Published, but its one ingredient has no priced package: the list says "Needs fixes".
+    const catalog: Catalog = {
+      ...CATALOG,
+      ingredients: [...ING, { id: 'oj', name: 'Orange juice', unit: UNITS.cup, section: 'dairy', staple: false, avoid: [], retiredAt: null }],
+      recipes: [recipe({ id: 'oj', name: 'Orange juice', lines: [{ ingredientId: 'oj', qtyPerPerson: 1, unitKey: null, servesRule: 'everyone', servesRestrictions: [] }] })]
+    };
+    render(<RecipeBuilder catalog={catalog} initialRecipeId="oj" />);
+    const editor = screen.getByRole('region', { name: 'Edit Orange juice' });
+    const fixes = within(editor).getByRole('list', { name: 'Needs fixing' });
+    expect(fixes.textContent).toMatch(/Orange juice has no priced package yet/);
+    expect(within(fixes).getByRole('link', { name: 'Open the Price book' })).toBeTruthy();
+    // It sits before the first field, not under the whole form.
+    const name = within(editor).getByLabelText('Name');
+    expect(fixes.compareDocumentPosition(name) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // Published already: the heading does not talk about publishing.
+    expect(within(editor).queryByText('Needs fixing before it can publish')).toBeNull();
+  });
+
   it('Leader_SeesDuplicateLineError_ForSameIngredient', async () => {
     const user = userEvent.setup();
     render(<RecipeBuilder catalog={CATALOG} initialRecipeId="pancakes" />);
