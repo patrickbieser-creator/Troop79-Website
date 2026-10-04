@@ -22,7 +22,9 @@ import type { AuditEntry } from '../src/lib/audit';
  */
 const admin = adminClient();
 const PKG_ID = 'vitest-stores-package';
-const SEED = ['Costco', 'Kroger', 'Target', 'Outpost', 'Other'];
+/** Stores from the seed that are still on the list. The list is leader-maintained now (Lookups & Admin) and
+ *  later migrations added stores and removed Kroger, so nothing here asserts the whole list or its order. */
+const SEED = ['Costco', 'Target', 'Outpost', 'Other'];
 
 const entries: AuditEntry[] = [];
 const record = vi.fn(async (e: AuditEntry) => {
@@ -59,9 +61,9 @@ afterEach(async () => {
 });
 
 describe('mm_stores seed', () => {
-  it('Migration_SeedsTheFiveStoresInOrder_WithoutDuplicates', async () => {
+  it('Migration_SeedsTheStores_WithoutDuplicates', async () => {
     const all = await listStoresWith(admin, { includeRetired: true });
-    expect(all.slice(0, 5).map((s) => s.name)).toEqual(SEED);
+    expect(all.map((s) => s.name)).toEqual(expect.arrayContaining(SEED));
     const lowered = all.map((s) => s.name.toLowerCase());
     expect(new Set(lowered).size).toBe(lowered.length);
   });
@@ -98,7 +100,7 @@ describe('mm_rename_store', () => {
     await admin.from('mm_stores').insert({ name: 'vitest solo', sort_order: 900 });
     const id = await storeId('vitest solo');
     await makePackage('vitest solo');
-    const { data } = await admin.rpc('mm_rename_store', { p_id: id, p_name: 'KROGER' });
+    const { data } = await admin.rpc('mm_rename_store', { p_id: id, p_name: 'COSTCO' });
     expect(data).toBe('duplicate');
     expect(await pkgStore()).toBe('vitest solo');
   });
@@ -146,7 +148,7 @@ describe('stores lib', () => {
   it.each([
     ['empty', '   ', /name/i],
     ['too long', 'v'.repeat(41), /40/],
-    ['a duplicate ignoring case', 'kROGER', /already/i]
+    ['a duplicate ignoring case', 'cOSTCO', /already/i]
   ])('Leader_CannotAddAStore_WhenTheNameIs_%s', async (_label, name, msg) => {
     const res = await addStoreWith(admin, name, record);
     expect(res.ok).toBe(false);
