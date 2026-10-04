@@ -13,9 +13,9 @@
  * can never hold what the planner couldn't.
  */
 
-import type { Catalog, MealSlot, Plan, Recipe, RecipeLine, RestrictionKey } from './types';
+import type { BrandPick, BrandPicks, Catalog, MealSlot, Plan, Recipe, RecipeLine, RestrictionKey } from './types';
 import { MEALS, RESTRICTIONS } from './units';
-import { MAX_HEADCOUNT, MIN_HEADCOUNT, restorePlan } from './engine';
+import { MAX_BRANDS_PER_INGREDIENT, MAX_HEADCOUNT, MIN_HEADCOUNT, livePicks, restorePlan } from './engine';
 import { centralToday } from '@/lib/dates';
 import { cleanScoutText } from './scout-text';
 
@@ -68,6 +68,11 @@ export interface MenuShopping {
   packageChoice: Plan['packageChoice'];
   qtyOverride: Plan['qtyOverride'];
   lineSource: Plan['lineSource'];
+  /**
+   * The brands chosen per ingredient, for the whole menu (release 3). Absent = every line is "any brand".
+   * Present only when at least one ingredient has a brand, so a menu with none stores exactly what it did.
+   */
+  brands?: BrandPicks;
 }
 
 export const emptyShopping = (): MenuShopping => ({ packageChoice: {}, qtyOverride: {}, lineSource: {} });
@@ -291,6 +296,27 @@ export function foldShopping(own: unknown, meals: unknown): MenuShopping {
       for (const [ing, v] of Object.entries(part)) if (!(ing in dest)) dest[ing] = v;
     }
   }
+  // Brands only ever lived on the menu itself (never on a meal).
+  if (isRecord(own) && isRecord(own.brands)) out.brands = own.brands as BrandPicks;
+  return out;
+}
+
+/** Stored picks → ones the catalog can honour: known ingredients, live brands of that ingredient, whole counts. */
+function sanitizeBrands(raw: unknown, catalog: Catalog): BrandPicks {
+  const out: BrandPicks = {};
+  if (!isRecord(raw) || !catalog.brands) return out;
+  const ING = new Set(catalog.ingredients.map((i) => i.id));
+  for (const [ing, list] of Object.entries(raw)) {
+    if (!ING.has(ing) || !Array.isArray(list)) continue;
+    const picks: BrandPick[] = [];
+    for (const x of list.slice(0, MAX_BRANDS_PER_INGREDIENT * 2)) {
+      if (!isRecord(x) || typeof x.brandId !== 'string' || x.brandId.length > 100) continue;
+      const q = typeof x.qty === 'number' && Number.isInteger(x.qty) && x.qty >= 0 && x.qty <= 99 ? x.qty : null;
+      picks.push({ brandId: x.brandId, qty: q });
+    }
+    const live = livePicks(picks, ing, catalog).map(({ brand, qty }) => ({ brandId: brand.id, qty }));
+    if (live.length > 0) out[ing] = live;
+  }
   return out;
 }
 
@@ -299,7 +325,13 @@ function sanitizeShopping(folded: MenuShopping, catalog: Catalog): MenuShopping 
   const plan = restorePlan({ ...folded, meal: 'breakfast' }, catalog);
   const ING = new Set(catalog.ingredients.map((i) => i.id));
   const known = <T,>(rec: Record<string, T>) => Object.fromEntries(Object.entries(rec).filter(([ing]) => ING.has(ing))) as Record<string, T>;
-  return { packageChoice: known(plan.packageChoice), qtyOverride: known(plan.qtyOverride), lineSource: known(plan.lineSource) };
+  const brands = sanitizeBrands(folded.brands, catalog);
+  return {
+    packageChoice: known(plan.packageChoice),
+    qtyOverride: known(plan.qtyOverride),
+    lineSource: known(plan.lineSource),
+    ...(Object.keys(brands).length > 0 ? { brands } : {})
+  };
 }
 
 /**
@@ -334,7 +366,7 @@ export function resolveMenuAliases<M extends Pick<Menu, 'meals' | 'shopping' | '
   return {
     ...menu,
     meals: menu.meals.map((m) => ({ ...m, recipeEdits: Object.fromEntries(Object.entries(m.recipeEdits ?? {}).map(([rid, ops]) => [rid, ops.map(op)])) })),
-    shopping: { packageChoice: rekey(menu.shopping.packageChoice), qtyOverride: rekey(menu.shopping.qtyOverride), lineSource: rekey(menu.shopping.lineSource) },
+    shopping: { ...menu.shopping, packageChoice: rekey(menu.shopping.packageChoice), qtyOverride: rekey(menu.shopping.qtyOverride), lineSource: rekey(menu.shopping.lineSource) },
     actuals: rekey(menu.actuals)
   };
 }
@@ -428,8 +460,17 @@ export function composePlan(menu: Menu, meal: MenuMeal): Plan {
     lineSource: {},
     budgetPerPerson: menu.budgetPerPersonMeal,
     date: addDays(menu.startDate ?? centralToday(), meal.day),
-    patrol: ''
+    patrol: '',
+    ...mealBrands(menu)
   };
+}
+
+/** The menu's brands as ONE meal prices them: the same brands, each buying its own share of this meal (the
+ *  per-brand package counts are the whole menu's, so they are not carried). */
+function mealBrands(menu: Pick<Menu, 'shopping'>): { brands?: BrandPicks } {
+  const b = menu.shopping.brands;
+  if (!b || Object.keys(b).length === 0) return {};
+  return { brands: Object.fromEntries(Object.entries(b).map(([ing, picks]) => [ing, picks.map((x) => ({ brandId: x.brandId, qty: null }))])) };
 }
 
 /**

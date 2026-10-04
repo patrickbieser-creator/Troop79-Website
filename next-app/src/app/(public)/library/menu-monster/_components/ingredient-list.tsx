@@ -22,6 +22,7 @@
  *                amount / move / remove) and a dashed price-book search.
  */
 
+import type { ReactNode } from 'react';
 import type { IngredientRow } from '@/lib/menu-monster/ingredient-rows';
 import { MenuEditList, type MenuEditProps, type RowAction } from './ingredient-list-edit';
 import { AuthorList, type AuthorListProps } from './ingredient-list-author';
@@ -41,6 +42,8 @@ interface ListBase {
 
 export interface ReadListProps extends ListBase {
   mode: 'read';
+  /** Release 3: the brand chosen for the ingredient a row shows (quiet text), when the menu has one. */
+  brandText?: (ingredientId: string) => ReactNode;
 }
 
 export type MenuEditListProps = MenuEditProps & { mode: 'menu-edit' };
@@ -52,7 +55,7 @@ export type IngredientListProps = ReadListProps | MenuEditListProps | AuthorMode
 export function IngredientList(props: IngredientListProps) {
   if (props.mode === 'menu-edit') return <MenuEditList {...props} />;
   if (props.mode === 'author') return <AuthorList {...props} />;
-  const { rows, ariaLabel, emptyText = 'No ingredients.', dense = false } = props;
+  const { rows, ariaLabel, emptyText = 'No ingredients.', dense = false, brandText } = props;
   if (rows.length === 0) return <p className={s.empty}>{emptyText}</p>;
   return (
     <ul className={`${s.list} ${dense ? s.dense : ''}`} aria-label={ariaLabel}>
@@ -73,6 +76,7 @@ export function IngredientList(props: IngredientListProps) {
               {r.marker?.kind === 'added' && <span className={s.tag}>Added</span>}
               {out && <span className={s.tag}>Left out</span>}
               {r.note && <span className={s.note}>{r.note}</span>}
+              {!out && r.edit && brandText?.(r.edit.currentIngredientId)}
             </span>
             <span className={s.amount}>
               {r.marker?.kind === 'changed' && was && (

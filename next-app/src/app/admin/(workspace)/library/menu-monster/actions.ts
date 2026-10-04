@@ -26,6 +26,7 @@ import { cleanGear, cleanScoutText, isScoutRecipeId } from '@/lib/menu-monster/s
 import { keepTypedInWith, matchTypedInWith, rejectTypedInWith, setScoutRecipeCreditWith } from '@/lib/menu-monster/scout-recipes-store';
 import { approveHeldPackageWith, rejectHeldPackageWith } from '@/lib/menu-monster/scout-packages-store';
 import { createGearWith, deleteGearWith, ensureGearWith, retireGearWith, updateGearWith } from '@/lib/menu-monster/gear-store';
+import { createBrandWith, mergeBrandWith, moveBrandWith, removeBrandWith, renameBrandWith, setBrandDietsWith, setPackageBrandWith, type BrandWrite } from '@/lib/menu-monster/brands-store';
 import {
   blockingIssues,
   changeUnitPlan,
@@ -1023,6 +1024,50 @@ export async function rejectScoutIngredient(id: string): Promise<Result> {
   });
   revalidate();
   return { ok: true };
+}
+
+/* ── Brands (release 3 of Plans/Menu-Monster-Brands-Gear.md) ────────────── */
+
+type BrandResult = Result & { note?: string };
+
+/** Every brand action: the capability check, the store call, one audit row, revalidate. */
+async function brandWrite(entityId: string, summary: string, write: () => Promise<BrandWrite>): Promise<BrandResult> {
+  const denied = await guard();
+  if (denied) return denied;
+  const res = await write();
+  if (!res.ok) return res;
+  await recordAudit({ area: 'library', action: 'update', entityType: 'mm_brand', entityId, summary });
+  revalidate();
+  return { ok: true, note: res.note };
+}
+
+export async function createBrand(ingredientId: string, name: string): Promise<BrandResult> {
+  return brandWrite(ingredientId, `Added the Menu Monster brand "${String(name).trim()}"`, () => createBrandWith(createAdminClient(), ingredientId, name));
+}
+
+export async function renameBrand(id: string, name: string): Promise<BrandResult> {
+  return brandWrite(id, `Renamed a Menu Monster brand to "${String(name).trim()}"`, () => renameBrandWith(createAdminClient(), id, name));
+}
+
+/** A brand's own diet flags; null = the ingredient's. */
+export async function setBrandDiets(id: string, avoid: RestrictionKey[] | null): Promise<BrandResult> {
+  return brandWrite(id, 'Set a Menu Monster brand’s diet flags', () => setBrandDietsWith(createAdminClient(), id, avoid));
+}
+
+export async function mergeBrand(from: string, to: string): Promise<BrandResult> {
+  return brandWrite(from, 'Merged a Menu Monster brand into another', () => mergeBrandWith(createAdminClient(), from, to));
+}
+
+export async function moveBrand(id: string, toIngredientId: string): Promise<BrandResult> {
+  return brandWrite(id, 'Moved a Menu Monster brand to another ingredient', () => moveBrandWith(createAdminClient(), id, toIngredientId));
+}
+
+export async function removeBrand(id: string): Promise<BrandResult> {
+  return brandWrite(id, 'Removed a Menu Monster brand', () => removeBrandWith(createAdminClient(), id));
+}
+
+export async function setPackageBrand(packageId: string, brandId: string | null, sizeLabel: string): Promise<BrandResult> {
+  return brandWrite(packageId, 'Set a Menu Monster package’s brand and size', () => setPackageBrandWith(createAdminClient(), packageId, brandId, sizeLabel));
 }
 
 /* ── The troop's gear list (release 2 of Plans/Menu-Monster-Brands-Gear.md) ─ */

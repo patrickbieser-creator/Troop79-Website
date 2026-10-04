@@ -47,12 +47,14 @@ import { Notice } from '@/app/_components/notice';
 import { Button } from '@/app/_components/button';
 import { Stepper } from '@/app/_components/stepper';
 import { TextInput } from '@/app/_components/form';
-import type { Catalog, Conversion, LineSource } from '@/lib/menu-monster/types';
+import type { Brand, BrandPick, Catalog, Conversion, LineSource, Package } from '@/lib/menu-monster/types';
 import { RESTRICTION_BY_KEY, SECTIONS, SECTION_ORDER, qtyText } from '@/lib/menu-monster/units';
 import { fmtRange } from '@/lib/format-date';
 import { MAX_QTY, lineSentence } from '@/lib/menu-monster/engine';
 import { addDays, type Menu, type MenuShopping } from '@/lib/menu-monster/menus';
-import { DIET_ORDER, budgetState, buildMenuList, mealTitle, shoppingPanel, type MenuLine } from '@/lib/menu-monster/menu-view';
+import { DIET_ORDER, budgetState, buildMenuList, lineUpdated, mealTitle, needsLabelCheck, shoppingPanel, type MenuLine } from '@/lib/menu-monster/menu-view';
+import { BrandChooser } from './brand-chooser';
+import { addBrandAction } from '../../../_tools/menu-monster/brand-actions';
 import type { MenuStore, SaveResult } from '@/lib/menu-monster/menu-store';
 import { buildSnapshot, snapshotDrift, type MenuSnapshot } from '@/lib/menu-monster/menu-snapshot';
 import { serverMenuStore } from './server-menu-store';
@@ -68,7 +70,7 @@ const keyOf = (sh: MenuShopping) => JSON.stringify(sh);
 const SOURCES: readonly { key: LineSource; label: string }[] = [
   { key: 'buy', label: 'Buying it' },
   { key: 'home', label: 'Bringing from home' },
-  { key: 'pantry', label: 'From the troop pantry' }
+  { key: 'pantry', label: 'From the troop store room' }
 ];
 
 export interface ShoppingTabProps {
@@ -142,8 +144,33 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
       delete qtyOverride[l.ing.id];
       return { ...d, packageChoice, qtyOverride };
     });
+  /** The brands for one ingredient, for the whole menu (none = any brand: the key goes away). */
+  const setBrands = (ingredientId: string, picks: BrandPick[]) =>
+    edit((d) => {
+      const brands = { ...(d.brands ?? {}) };
+      if (picks.length > 0) brands[ingredientId] = picks;
+      else delete brands[ingredientId];
+      const { brands: _old, ...rest } = d;
+      void _old;
+      // A count typed for the old package choice is not the new brands' count.
+      const qtyOverride = { ...rest.qtyOverride };
+      delete qtyOverride[ingredientId];
+      const next = { ...rest, qtyOverride };
+      return Object.keys(brands).length > 0 ? { ...next, brands } : next;
+    });
+  const typeBrand = async (ingredientId: string, name: string) => {
+    const res = await addBrandAction(ingredientId, name);
+    if (res.ok) setCatalog((c) => ((c.brands ?? []).some((b) => b.id === res.brand.id) ? c : { ...c, brands: [...(c.brands ?? []), res.brand] }));
+    return res;
+  };
   const setQty = (l: MenuLine, n: number) =>
     edit((d) => {
+      // One brand chosen: the count is that brand's (the engine reads it from the pick, not the override).
+      if (l.parts?.length === 1) {
+        const part = l.parts[0];
+        const q = Math.min(MAX_QTY, Math.max(0, n));
+        return { ...d, brands: { ...(d.brands ?? {}), [l.ing.id]: [{ brandId: part.brand.id, qty: q === part.autoQty ? null : q }] } };
+      }
       const qtyOverride = { ...d.qtyOverride };
       if (!l.pkg || n === l.autoQty) delete qtyOverride[l.ing.id];
       else qtyOverride[l.ing.id] = { packageId: l.pkg.id, qty: Math.min(MAX_QTY, Math.max(0, n)) };
@@ -152,7 +179,11 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
   const setSource = (l: MenuLine, source: LineSource, note: string) =>
     edit((d) => {
       const lineSource = { ...d.lineSource };
-      if (source === 'buy') delete lineSource[l.ing.id];
+      // A staple's default is the store room (no entry); "Buying it" must be said out loud for it.
+      if (l.ing.staple) {
+        if (source === 'pantry') delete lineSource[l.ing.id];
+        else lineSource[l.ing.id] = { source, note: source === 'buy' ? '' : note.slice(0, NOTE_MAX) };
+      } else if (source === 'buy') delete lineSource[l.ing.id];
       else lineSource[l.ing.id] = { source, note: note.slice(0, NOTE_MAX) };
       return { ...d, lineSource };
     });
@@ -368,6 +399,11 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
                     readOnly={readOnly}
                     conversions={catalog.conversions}
                     onPackageAdded={canReport && !readOnly ? (added) => packageAdded(l, added) : undefined}
+                    catalog={catalog}
+                    picks={draft.brands?.[l.ing.id] ?? []}
+                    onBrands={(picks) => setBrands(l.ing.id, picks)}
+                    onTypeBrand={!storeProp && !readOnly ? (name) => typeBrand(l.ing.id, name) : undefined}
+                    labelCheck={needsLabelCheck(l, menu.restrictions, catalog)}
                   />
                 ))}
             </ul>
@@ -453,8 +489,17 @@ function PrintSheet({ menu, list, panel, gear }: { menu: Menu; list: ReturnType<
                 <tr key={l.ing.id}>
                   <td>☐</td>
                   <th scope="row">{l.ing.name}</th>
-                  <td>{l.status === 'unpriced' ? 'Not priced yet' : `${l.qty} × ${l.pkg?.name ?? ''}`}</td>
-                  <td>{l.status === 'unpriced' ? '' : money(l.spent)}</td>
+                  <td>
+                    {l.status === 'unpriced'
+                      ? 'Not priced yet'
+                      : l.parts && l.parts.length > 0
+                        ? l.parts.map((x) => `${x.qty} × ${x.brand.name}${x.estimated ? '' : `, ${x.pkg.sizeLabel ?? x.pkg.name}`}`).join('; ')
+                        : l.estimated
+                          ? `any brand · ${l.qty} × ${l.pkg?.sizeLabel ?? l.pkg?.name ?? ''} · brand bought: ________`
+                          : `${l.qty} × ${l.pkg?.name ?? ''}`}
+                    {lineUpdated(l) ? ' (updated)' : ''}
+                  </td>
+                  <td>{l.status === 'unpriced' ? '' : `${l.estimated ? 'about ' : ''}${money(l.spent)}`}</td>
                   <td className={s.printBlank} />
                   <td className={s.printBlank} />
                 </tr>
@@ -481,8 +526,19 @@ function ShoppingRow({
   panelId,
   readOnly,
   conversions,
-  onPackageAdded
+  onPackageAdded,
+  catalog,
+  picks,
+  onBrands,
+  onTypeBrand,
+  labelCheck
 }: {
+  /** Release 3: the brand chooser's catalog, the menu's picks for this ingredient and their writers. */
+  catalog: Catalog;
+  picks: readonly BrandPick[];
+  onBrands: (picks: BrandPick[]) => void;
+  onTypeBrand?: (name: string) => Promise<{ ok: true; brand: Brand } | { ok: false; error: string }>;
+  labelCheck: boolean;
   line: MenuLine;
   menu: Menu;
   mealOf: ReadonlyMap<string, Menu['meals'][number]>;
@@ -507,11 +563,21 @@ function ShoppingRow({
     .map((m) => mealTitle(menu.startDate, m.day, m.slot));
   const sourceNote = l.note ? ` · ${l.note}` : '';
 
+  const parts = l.parts ?? [];
+  const hasBrands = (catalog.brands ?? []).some((b) => b.ingredientId === l.ing.id && !b.retiredAt);
+  const sizeOf = (p: Package) => p.sizeLabel ?? p.name;
   let meta: string;
-  if (l.status === 'staple') meta = 'Troop staple, no need to buy';
-  else if (l.status === 'bring') meta = `${l.source === 'pantry' ? 'From the troop pantry' : 'Bringing from home'}${sourceNote}`;
+  if (l.status === 'staple') meta = 'From the troop store room';
+  else if (l.status === 'bring') meta = `${l.source === 'pantry' ? 'From the troop store room' : 'Bringing from home'}${sourceNote}`;
   else if (l.status === 'unpriced') meta = '';
+  // One brand: "2 × Rice Chex, 18 oz". Several: their names (each has its own line under the row).
+  else if (parts.length === 1) meta = `${parts[0].qty} × ${parts[0].brand.name}${parts[0].estimated ? '' : `, ${sizeOf(parts[0].pkg)}`}`;
+  else if (parts.length > 1) meta = parts.map((x) => x.brand.name).join(', ');
+  // Any brand: the shopper's choice — say how much, in the cheapest known package.
+  else if (l.estimated && pkg) meta = `any brand · ${l.qty} × ${sizeOf(pkg)}`;
   else meta = `${l.qty} × ${pkg?.name ?? ''}`;
+  const about = l.estimated ? 'about ' : '';
+  const updated = lineUpdated(l);
 
   const noteId = `${panelId}-note`;
   return (
@@ -529,15 +595,39 @@ function ShoppingRow({
         {l.status === 'short' && <span className={s.tag}>Short {qtyText(l.shortQty, l.ing.unit)}</span>}
         {/* A scout's typed-in no leader has checked yet: its price is the scout's own entry (Phase 4B). */}
         {l.ing.needsMatch && l.status !== 'unpriced' && <span className={s.tag}>Scout’s price</span>}
+        {parts.some((x) => x.estimated) && <span className={s.tag}>New brand</span>}
+        {labelCheck && <span className={s.meta}>check the label</span>}
+        {updated && (
+          <span className={s.tag} aria-label={`${l.ing.name}, updated`}>
+            Updated
+          </span>
+        )}
       </div>
-      <div className={s.cost}>{l.status === 'staple' || l.status === 'bring' ? '—' : l.status === 'unpriced' ? '' : money(cost)}</div>
+      <div className={s.cost}>{l.status === 'staple' || l.status === 'bring' ? '—' : l.status === 'unpriced' ? '' : `${about}${money(cost)}`}</div>
+      {parts.length > 1 && (
+        <ul className={s.brandSubs} aria-label={`${l.ing.name} brands`}>
+          {parts.map((x) => (
+            <li key={x.brand.id} className={s.brandSub}>
+              <span>
+                {x.qty} × {x.brand.name}
+                {x.estimated ? '' : `, ${sizeOf(x.pkg)}`}
+              </span>
+              <span className={s.brandSubCost}>
+                {x.estimated ? 'about ' : ''}
+                {money(x.spent)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
       {open && (
         <div id={panelId} className={s.inset}>
           <p className={s.insetLine}>
             Needs {qtyText(l.need, l.ing.unit)}
             {mealNames.length > 0 ? ` for ${mealNames.join(', ')}` : ''}.
           </p>
-          {buying && pkg && <p className={s.insetMuted}>{lineSentence(l)}</p>}
+          {buying && pkg && parts.length < 2 && <p className={s.insetMuted}>{lineSentence(l)}</p>}
+          {readOnly && l.status === 'staple' && <p className={s.insetMuted}>It comes from the troop’s store room, so it isn’t bought.</p>}
 
           {readOnly && buying && l.overridden && <p className={s.insetMuted}>Quantity changed from {l.autoQty} to {l.qty}.</p>}
           {readOnly && l.status !== 'staple' && (
@@ -547,9 +637,28 @@ function ShoppingRow({
             </p>
           )}
 
+          {l.status === 'staple' && !readOnly && (
+            <div className={s.choice}>
+              <div className={s.choiceLabel} id={`${panelId}-src`}>
+                Where it comes from
+              </div>
+              <div className={s.chips} role="group" aria-labelledby={`${panelId}-src`}>
+                <button type="button" className={s.chip} aria-pressed onClick={() => onSource('pantry', '')}>
+                  From the troop store room
+                </button>
+                <button type="button" className={s.chip} aria-pressed={false} onClick={() => onSource('buy', '')}>
+                  Buying it
+                </button>
+              </div>
+            </div>
+          )}
           {l.status !== 'staple' && !readOnly && (
             <>
-              {l.usable.length > 1 && l.source === 'buy' && (
+              {/* Brands (release 3): chosen here or on the Plan tab — one set per ingredient for the menu. */}
+              {l.source === 'buy' && (hasBrands || onTypeBrand) && (
+                <BrandChooser ingredient={l.ing} catalog={catalog} picks={picks} line={l} onChange={onBrands} onType={onTypeBrand} />
+              )}
+              {l.usable.length > 1 && l.source === 'buy' && !hasBrands && (
                 <div className={s.choice}>
                   <div className={s.choiceLabel} id={`${panelId}-pkg`}>
                     Package
@@ -582,7 +691,7 @@ function ShoppingRow({
                   </Button>
                 ))}
 
-              {buying && pkg && (
+              {buying && pkg && parts.length < 2 && (
                 <div className={s.choice}>
                   <Stepper
                     id={`${panelId}-qty`}

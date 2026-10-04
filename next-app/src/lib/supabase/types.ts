@@ -550,6 +550,21 @@ export interface MmPackageRow {
   retired_at: string | null;
   /** Set while a scout-added package waits for a leader (release C); optional so old fixtures map. */
   held_at?: string | null;
+  /** Release 3: the brand this package is a size of, and the size without the brand. */
+  brand_id?: string | null;
+  size_label?: string | null;
+}
+
+/** mm_brands (20261008100000_mm_brands.sql). */
+export interface MmBrandRow {
+  id: string;
+  ingredient_id: string;
+  name: string;
+  avoid: string[] | null;
+  added_by_person_id?: number | null;
+  created_at?: string;
+  retired_at: string | null;
+  merged_into_id?: string | null;
 }
 
 export interface MmRecipeRow {

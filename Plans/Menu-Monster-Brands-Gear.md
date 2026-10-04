@@ -88,3 +88,22 @@ Decisions made on Patrick's behalf:
 - **Local (not signed in) menus have no Gear tab yet.**
 - qa-lead reviewed: tick cap, crew reads epoch-checked, packers' names hidden from shared viewers, rename
   rewrite paginated and error-checked.
+
+### R3 — Brands — LIVE v1.156.0 (2026-10-04)
+Migration `20261008100000_mm_brands` in production (the split ran there). Decisions made on Patrick's behalf:
+- **A brand pick is menu-wide and lives in `shopping.brands`** — set from the Plan tab or the Shopping tab,
+  the same field. (Jenna's "a shopper's pick is only a note" is moot: only the owner edits these; the crew
+  records what was really bought in R4.)
+- **Several brands split the need evenly**, each in its own cheapest package; each brand's count is editable.
+  Changing the set of brands resets the counts to the split.
+- **"About"** = no brand chosen and brands exist, or a chosen brand has no price. An ingredient with no brands
+  at all (bananas) is never "about".
+- **Typed brands**: signed-in people only (a menu kept on this computer can choose known brands, not type
+  one). Cap: 40 unpriced brands of your own. Matching ignores case and punctuation but not accents.
+- **Removing a brand that has packages** retires it and leaves the packages in the price book with no brand.
+- **Moving a brand** is only offered while it has no packages (a package's size is in its ingredient's unit).
+- **Store-room staples** default to the store room; "Buying it" stores an explicit choice for the menu.
+  The label "From the troop pantry" became "From the troop store room" everywhere.
+- **"Check the label"** shows when the menu counts a diet that the ingredient (or one of its brands) is
+  flagged for and the line is any-brand or names a New brand; always for an unreviewed typed-in ingredient.
+- Not built yet: a "new brands" list on the admin home (R6), a recipe's suggested brand (R6).

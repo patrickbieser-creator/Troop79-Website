@@ -195,7 +195,7 @@ describe('Shopping tab, read-only: where a line comes from', () => {
   it('Leader_SeesTroopPantry_WhenTheLineComesFromThePantry', async () => {
     render(sourced({ bacon: { source: 'pantry', note: '' } }));
     await openBacon();
-    expect(screen.getByText('Where it comes from: From the troop pantry')).toBeTruthy();
+    expect(screen.getByText('Where it comes from: From the troop store room')).toBeTruthy();
   });
 });
 

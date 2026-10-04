@@ -22,8 +22,11 @@
 
 import { centralToday } from '@/lib/dates';
 import type {
+  Brand,
+  BrandPick,
   Catalog,
   Ingredient,
+  LinePart,
   LineSourceRef,
   LineStatus,
   MealSlot,
@@ -106,7 +109,28 @@ export interface Need {
 }
 
 /** The package choices a shopping list is priced with: a Plan's, or a menu's. */
-export type ShoppingChoices = Pick<Plan, 'packageChoice' | 'qtyOverride' | 'lineSource'>;
+export type ShoppingChoices = Pick<Plan, 'packageChoice' | 'qtyOverride' | 'lineSource' | 'brands'>;
+
+export const MAX_BRANDS_PER_INGREDIENT = 8;
+
+/**
+ * A menu's stored picks for one ingredient → the live brands they name, in the order chosen: merged-away
+ * brands follow their alias, a brand that is gone, retired or another ingredient's is dropped, and a brand
+ * is listed once. Pure.
+ */
+export function livePicks(raw: readonly BrandPick[] | undefined, ingredientId: string, catalog: Pick<Catalog, 'brands' | 'brandAliases'>): { brand: Brand; qty: number | null }[] {
+  if (!raw || raw.length === 0 || !catalog.brands) return [];
+  const byId = new Map(catalog.brands.map((b) => [b.id, b]));
+  const out: { brand: Brand; qty: number | null }[] = [];
+  for (const pick of raw) {
+    if (pick == null || typeof pick !== 'object' || typeof pick.brandId !== 'string') continue; // a hand-edited row
+    const brand = byId.get(catalog.brandAliases?.[pick.brandId] ?? pick.brandId);
+    if (!brand || brand.retiredAt || brand.ingredientId !== ingredientId || out.some((o) => o.brand.id === brand.id)) continue;
+    out.push({ brand, qty: pick.qty });
+    if (out.length >= MAX_BRANDS_PER_INGREDIENT) break;
+  }
+  return out;
+}
 
 /** Step 1 of a shopping list: one meal's raw needs by ingredient (count units
  *  NOT yet rounded up — rounding happens once, after any merging). `into`
@@ -179,8 +203,10 @@ export function priceNeeds(byIng: ReadonlyMap<string, Need>, plan: ShoppingChoic
       note: src.note || ''
     };
 
-    if (ing.staple) {
-      // Patrol box: nothing to buy, but Used stays honest.
+    // A staple comes from the troop's store room unless this menu says it is buying it (Patrick, 2026-10-03:
+    // "often, but not always, in our kitchen store room") — an explicit 'buy' is the only way to say so.
+    if (ing.staple && plan.lineSource[ing.id]?.source !== 'buy') {
+      // Store room: nothing to buy, but Used stays honest.
       const p = usable[0] ?? null;
       lines.push({ ...base, status: 'staple', pkg: p, used: p ? (need / p.yield) * p.price : 0 });
       continue;
@@ -193,6 +219,42 @@ export function priceNeeds(byIng: ReadonlyMap<string, Need>, plan: ShoppingChoic
 
     const rec = recommendedPackage(usable, need);
     if (!rec) continue; // unreachable: usable is non-empty
+    // Release 3: the menu named one or more brands. Each brand buys its share in its own cheapest package
+    // (or, with no price of its own yet, the cheapest known — an estimate); the shares add up to the line.
+    const picks = src.source === 'buy' ? livePicks(plan.brands?.[ing.id], ing.id, catalog) : [];
+    if (picks.length > 0) {
+      const share = need / picks.length;
+      const parts: LinePart[] = picks.map(({ brand, qty }) => {
+        const own = usable.filter((p) => p.brandId === brand.id);
+        const best = recommendedPackage(own.length > 0 ? own : usable, share);
+        const chosenPkg = own.find((p) => p.id === plan.packageChoice[ing.id]);
+        const pkg = (chosenPkg ?? best?.p ?? rec.p) as Package & { yield: number };
+        const autoQty = Math.max(1, Math.ceil(share / pkg.yield - EPS));
+        const q = qty != null && qty >= 0 ? qty : autoQty;
+        return { brand, pkg, qty: q, autoQty, spent: q * pkg.price, estimated: own.length === 0 };
+      });
+      const covered = parts.reduce((n, x) => n + x.qty * (x.pkg.yield as number), 0);
+      const spent = parts.reduce((n, x) => n + x.spent, 0);
+      const used = covered > 0 ? spent * Math.min(1, need / covered) : 0;
+      const short = covered < need - EPS;
+      lines.push({
+        ...base,
+        rec: rec.p,
+        pkg: parts[0].pkg,
+        autoQty: parts.reduce((n, x) => n + x.autoQty, 0),
+        qty: parts.reduce((n, x) => n + x.qty, 0),
+        overridden: parts.some((x) => x.qty !== x.autoQty),
+        spent,
+        used,
+        leftQty: short ? 0 : covered - need,
+        leftMoney: spent - used,
+        shortQty: short ? need - covered : 0,
+        status: short ? 'short' : 'ok',
+        parts,
+        estimated: parts.some((x) => x.estimated)
+      });
+      continue;
+    }
     const chosenId = plan.packageChoice[ing.id];
     const chosen = chosenId ? usable.find((p) => p.id === chosenId) : undefined;
     const pkg = chosen ?? rec.p;
@@ -230,7 +292,9 @@ export function priceNeeds(byIng: ReadonlyMap<string, Need>, plan: ShoppingChoic
       leftQty,
       leftMoney: spent - used,
       shortQty,
-      status
+      status,
+      // Any brand will do, and there are brands to choose from: the cost is the cheapest known — "about".
+      ...(!chosen && (catalog.brands ?? []).some((b) => b.ingredientId === ing.id && !b.retiredAt) ? { estimated: true } : {})
     });
   }
 

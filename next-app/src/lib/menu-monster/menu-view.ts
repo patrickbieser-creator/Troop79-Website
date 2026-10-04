@@ -105,7 +105,7 @@ export function buildMenuList(menu: Menu, catalog: Catalog): MenuList {
   const usedBy = new Map<string, { mealId: string; amount: number }[]>();
   let plates = 0;
   let separately = 0;
-  const alone = { packageChoice: menu.shopping.packageChoice, qtyOverride: {}, lineSource: menu.shopping.lineSource };
+  const alone = { packageChoice: menu.shopping.packageChoice, qtyOverride: {}, lineSource: menu.shopping.lineSource, brands: composePlan(menu, { id: '', day: 0, slot: 'breakfast', headcount: null, recipeIds: [], recipeEdits: {} }).brands };
 
   for (const meal of menu.meals) {
     if (meal.recipeIds.length === 0) continue;
@@ -170,6 +170,29 @@ export function menuCost(menu: Menu, catalog: Catalog): MenuCost {
   for (const meal of menu.meals) byMeal[meal.id] = mealCost(menu, meal, catalog);
   const list = buildMenuList(menu, catalog);
   return { total: list.totals.spent, perPersonMeal: list.perPersonMeal, byMeal };
+}
+
+/**
+ * "Check the label" (Patrick + Brad, 2026-10-03): only where it could matter for a diet the menu counts. The
+ * ingredient, or one of its brands, is flagged for that diet AND the line does not name priced, known brands
+ * (any brand will do, or a chosen brand is new); or the ingredient itself is one no leader has reviewed yet.
+ */
+export function needsLabelCheck(l: ShoppingLine, restrictions: Record<RestrictionKey, number>, catalog: Pick<Catalog, 'brands'>): boolean {
+  const diets = (Object.keys(restrictions) as RestrictionKey[]).filter((k) => (restrictions[k] || 0) > 0);
+  if (diets.length === 0 || l.status === 'staple') return false;
+  if (l.ing.needsMatch) return true;
+  const brands = (catalog.brands ?? []).filter((b) => b.ingredientId === l.ing.id && !b.retiredAt);
+  const matters = diets.some((d) => l.ing.avoid.includes(d) || brands.some((b) => b.avoid != null && b.avoid.includes(d)) || brands.some((b) => b.avoid != null && l.ing.avoid.includes(d)));
+  if (!matters) return false;
+  if (!l.parts || l.parts.length === 0) return brands.length > 0;
+  return l.parts.some((x) => x.brand.isNew);
+}
+
+/** A shopping line the scout changed from what the plan produced: a count, a source, or (staples) buying it. */
+export function lineUpdated(l: ShoppingLine): boolean {
+  if (l.overridden) return true;
+  if (l.ing.staple) return l.status !== 'staple';
+  return l.source !== 'buy';
 }
 
 /* ---- Budget readout: never colour-only (icon + sentence + role=status) ---- */

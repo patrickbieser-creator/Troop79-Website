@@ -47,6 +47,7 @@ import {
   type PackageEdit
 } from './actions';
 import { NewFoodForm } from './new-food-form';
+import { BrandsBlock } from './brands-block';
 import lib from '../library.module.css';
 import styles from './menu-monster.module.css';
 
@@ -276,6 +277,8 @@ function IngredientDetail({ row, catalog, today, stores, onChanged }: { row: Row
         )}
       </div>
       {error && <Notice>{error}</Notice>}
+
+      <BrandsBlock ing={ing} catalog={catalog} onChanged={onChanged} />
 
       {allPackages.length === 0 ? (
         <p className={styles.muted}>No packages yet — add one below so recipes can cost it out.</p>

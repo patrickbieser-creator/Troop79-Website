@@ -54,6 +54,9 @@ export interface MenuEditProps {
   renderNew?: (name: string, done: (ingredientId: string | null) => void) => ReactNode;
   /** Compact rows with no rule between them (a meal open on the Plan tab). */
   dense?: boolean;
+  /** Release 3: the brand beside an ingredient's name (quiet text + one action) and the chooser it opens,
+   *  for the ingredient a row shows now. The parent owns what is open; null = nothing to show. */
+  brandSlot?: (ingredientId: string, name: string) => { text: ReactNode; inset: ReactNode } | null;
 }
 
 const MAX_QTY = 1000;
@@ -134,7 +137,7 @@ export function AmountEditor({
   );
 }
 
-export function MenuEditList({ rows, ariaLabel, emptyText = 'No ingredients.', choices, onAction, onAnnounce, renderNew, dense = false }: MenuEditProps) {
+export function MenuEditList({ rows, ariaLabel, emptyText = 'No ingredients.', choices, onAction, onAnnounce, renderNew, dense = false, brandSlot }: MenuEditProps) {
   const listRef = useRef<HTMLUListElement>(null);
   const addRef = useRef<HTMLInputElement>(null);
   const [editing, setEditing] = useState<string | null>(null);
@@ -224,6 +227,7 @@ export function MenuEditList({ rows, ariaLabel, emptyText = 'No ingredients.', c
         {rows.map((r) => {
           const out = r.marker?.kind === 'out';
           const e = r.edit;
+          const brand = !out && e ? brandSlot?.(e.currentIngredientId, r.name) : null;
           return (
             <li key={r.key} data-key={r.key} className={`${s.row} ${s.rowEdit} ${out ? s.rowOut : ''}`}>
               <span className={s.main}>
@@ -237,6 +241,7 @@ export function MenuEditList({ rows, ariaLabel, emptyText = 'No ingredients.', c
                 {r.marker?.kind === 'added' && <span className={s.tag}>Added</span>}
                 {out && <span className={s.tag}>Left out</span>}
                 {r.note && <span className={s.note}>{r.note}</span>}
+                {brand?.text}
               </span>
               <span className={s.amount}>
                 {editing === r.key && e ? (
@@ -292,6 +297,7 @@ export function MenuEditList({ rows, ariaLabel, emptyText = 'No ingredients.', c
                   />
                 </div>
               )}
+              {brand?.inset && <div className={s.sub}>{brand.inset}</div>}
             </li>
           );
         })}

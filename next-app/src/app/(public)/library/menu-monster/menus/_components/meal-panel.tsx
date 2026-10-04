@@ -37,7 +37,8 @@ import { MEALS, priceText as money } from '@/lib/menu-monster/units';
 
 
 import { Notice } from '@/app/_components/notice';
-import type { Catalog, Plan, Recipe } from '@/lib/menu-monster/types';
+import type { Brand, BrandPick, Catalog, Plan, Recipe, ShoppingLine } from '@/lib/menu-monster/types';
+import { BrandChooser, brandSummary } from './brand-chooser';
 import { recipesForMeal, restrictionWarnings } from '@/lib/menu-monster/engine';
 import { isPickable, stepsFromText } from '@/lib/menu-monster/scout-recipes';
 import { recipeGear } from '@/lib/menu-monster/gear';
@@ -88,9 +89,14 @@ export interface MealPanelProps {
   shareVersionMenuId?: string | null;
   /** A meal the scout just added ("Add a meal"): focus lands in its search. */
   autoFocusAdd?: boolean;
+  /** Release 3 — brands, one set per ingredient for the whole menu: change them (absent = read-only text),
+   *  the menu's priced lines by ingredient (for per-brand counts), and adding a typed brand (signed in only). */
+  onBrands?: (ingredientId: string, picks: BrandPick[]) => void;
+  lineFor?: (ingredientId: string) => ShoppingLine | undefined;
+  onTypeBrand?: (ingredientId: string, name: string) => Promise<{ ok: true; brand: Brand } | { ok: false; error: string }>;
 }
 
-export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChange, canTypeIn = false, onTyped, shareVersionMenuId = null, autoFocusAdd = false }: MealPanelProps) {
+export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChange, canTypeIn = false, onTyped, shareVersionMenuId = null, autoFocusAdd = false, onBrands, lineFor, onTypeBrand }: MealPanelProps) {
   const uid = useId();
   const [openIds, setOpenIds] = useState<ReadonlySet<string>>(() => new Set());
   const [status, setStatus] = useState<Status>({ text: '', undoTo: null });
@@ -100,6 +106,8 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChang
   /** The highlighted option; null = the default (the first match, or none when nothing matches). */
   const [active, setActive] = useState<number | null>(null);
   const [browsing, setBrowsing] = useState(false);
+  /** Brand choosers open in this meal, by `recipe:ingredient` (several stay open together — Patrick, 2026-10-03). */
+  const [brandOpen, setBrandOpen] = useState<ReadonlySet<string>>(() => new Set());
   const inputRef = useRef<HTMLInputElement>(null);
   const undoRef = useRef<HTMLButtonElement>(null);
 
@@ -199,6 +207,59 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChang
     setStatus({ text: 'Undone.', undoTo: null });
     inputRef.current?.focus();
   }
+
+  /* ---- Brands (one set per ingredient, for the whole menu) ---- */
+  const ingById = new Map(catalog.ingredients.map((i) => [i.id, i]));
+  const picksOf = (ingredientId: string) => menu.shopping.brands?.[ingredientId] ?? [];
+  /** The quiet text beside an ingredient: "any brand", or the brands chosen. Null when it has no brands at all. */
+  const brandText = (ingredientId: string) => {
+    const text = brandSummary(picksOf(ingredientId), ingredientId, catalog);
+    return text ? <span className={`${s.brandText} ${text === 'any brand' ? '' : s.brandSet}`}>{text}</span> : null;
+  };
+  const brandSlot = (rid: string) => (ingredientId: string, name: string) => {
+    const ing = ingById.get(ingredientId);
+    if (!ing || !onBrands) return null;
+    const known = (catalog.brands ?? []).some((b) => b.ingredientId === ingredientId && !b.retiredAt);
+    // Nothing to choose and nothing can be typed: no control at all.
+    if (!known && !onTypeBrand) return null;
+    const key = `${rid}:${ingredientId}`;
+    const open = brandOpen.has(key);
+    const chosen = brandSummary(picksOf(ingredientId), ingredientId, catalog);
+    const verb = chosen && chosen !== 'any brand' ? 'Change' : 'Choose a brand';
+    return {
+      text: (
+        <>
+          {brandText(ingredientId)}
+          <button
+            type="button"
+            className={s.linkBtn}
+            aria-expanded={open}
+            aria-label={`${verb} for ${name}`}
+            onClick={() =>
+              setBrandOpen((cur) => {
+                const next = new Set(cur);
+                if (!next.delete(key)) next.add(key);
+                return next;
+              })
+            }
+          >
+            {verb}
+          </button>
+        </>
+      ),
+      inset: open ? (
+        <BrandChooser
+          ingredient={ing}
+          catalog={catalog}
+          picks={picksOf(ingredientId)}
+          line={lineFor?.(ingredientId)}
+          onChange={(next) => onBrands(ingredientId, next)}
+          onType={onTypeBrand ? (typed) => onTypeBrand(ingredientId, typed) : undefined}
+          onAnnounce={(text) => setStatus({ text, undoTo: null })}
+        />
+      ) : null
+    };
+  };
 
   /* ---- This menu's version of a recipe ---- */
   const rowsFor = (rid: string) => {
@@ -305,7 +366,7 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChang
                 <div id={panel} className={s.inset}>
                   {readOnly ? (
                     <>
-                      <IngredientList mode="read" dense ariaLabel={`${name} ingredients`} rows={rowsFor(id)} emptyText="No ingredients on this recipe yet." />
+                      <IngredientList mode="read" dense ariaLabel={`${name} ingredients`} rows={rowsFor(id)} emptyText="No ingredients on this recipe yet." brandText={brandText} />
                       <StepsGear recipe={byId.get(id)} />
                     </>
                   ) : (
@@ -319,6 +380,7 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChang
                         emptyText="No ingredients on this recipe yet."
                         onAction={(a) => onIngredientAction(id, a)}
                         onAnnounce={(text) => setStatus({ text, undoTo: null })}
+                        brandSlot={brandSlot(id)}
                         renderNew={
                           canTypeIn
                             ? (typedName, done) => (

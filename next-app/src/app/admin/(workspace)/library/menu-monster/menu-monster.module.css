@@ -130,3 +130,10 @@
 .actionsCell { composes: actionsCell from '../../_components/data-table.module.css'; }
 .rowActions { display: inline-flex; gap: 6px; align-items: center; justify-content: flex-end; }
 .emptyLine { margin: 0; color: var(--admin-gray-500); font-size: var(--admin-text-base); }
+
+/* Brands of the selected ingredient (release 3): a card table, the add field, and the package → brand rows. */
+.brands { display: grid; gap: 10px; min-width: 0; }
+.brandPackages { display: grid; gap: 4px; }
+/* One line per package: its name, the brand it is a size of, the size, Save. */
+.brandPackageRow { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) 130px auto; gap: 8px; align-items: center; font-size: var(--admin-text-base); }
+@media (max-width: 720px) { .brandPackageRow { grid-template-columns: 1fr 1fr; } }

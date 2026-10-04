@@ -136,6 +136,16 @@
   color: var(--text-meta);
   min-width: 0;
 }
+/* Brand chooser (release 3): chips, a dashed "Type a brand" field, and a line per brand when several are chosen. */
+.brandChooser { display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-2) 0 var(--sp-2); }
+.chipMeta { opacity: 0.8; font-variant-numeric: tabular-nums; }
+.brandType { max-width: 280px; }
+.brandLine { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); font-family: var(--font-ui); font-size: var(--fs-md); color: var(--text-body); margin: 0 0 var(--sp-1); }
+.brandLineName { min-width: 140px; }
+.fieldError { margin: 0; font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--status-danger); }
+/* The quiet brand text beside an ingredient's name, and the one text action after it. */
+.brandText { font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-meta); }
+.brandSet { color: var(--text-body); }
 /* An open food's "Steps · Gear (n)" line and what it opens. */
 .stepsGear { margin: var(--sp-2) 0 var(--sp-3); }
 .stepList { margin: var(--sp-2) 0 var(--sp-2); padding-left: var(--sp-6); font-family: var(--font-ui); font-size: var(--fs-md); color: var(--text-body); line-height: 1.5; }
@@ -595,3 +605,8 @@
 .plainList { list-style: none; margin: 0 0 var(--sp-2); padding: 0; }
 /* A browse list (Recipe Library, Ingredients, the recipe popup): search, filters, list, stacked. */
 .browse { display: flex; flex-direction: column; gap: var(--sp-3); min-height: 0; }
+
+/* Shopping: one quiet line per brand under a row that buys several (release 3). */
+.brandSubs { flex-basis: 100%; list-style: none; margin: 0 0 var(--sp-2); padding: 0 calc(72px + 36px + var(--sp-3) * 2) 0 var(--sp-4); }
+.brandSub { display: flex; justify-content: space-between; gap: var(--sp-3); font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-meta); }
+.brandSubCost { font-variant-numeric: tabular-nums; }

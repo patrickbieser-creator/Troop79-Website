@@ -1,4 +1,4 @@
-import { afterEach } from 'vitest';
+import { afterEach, vi } from 'vitest';
 import { cleanup, configure } from '@testing-library/react';
 
 /**
@@ -44,3 +44,12 @@ if (typeof HTMLDialogElement !== 'undefined') {
     this.dispatchEvent(new Event('close'));
   };
 }
+
+/**
+ * The Plan tab can add a typed brand through a server action whose module reaches server-only code
+ * (the identity cookie, the service-role client). No component test wants that import; a test that
+ * cares what the action is called with mocks the module itself, which wins over this default.
+ */
+vi.mock('@/app/(public)/library/_tools/menu-monster/brand-actions', () => ({
+  addBrandAction: vi.fn(async () => ({ ok: false, error: 'not available in tests' }))
+}));

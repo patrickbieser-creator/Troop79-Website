@@ -76,7 +76,7 @@ export const FOOD_GROUPS: readonly { key: FoodGroup; label: string }[] = [
 
 export const SOURCE_LABELS = {
   buy: 'Buy at the store',
-  pantry: 'From the troop pantry',
+  pantry: 'From the troop store room',
   home: 'Bringing from home'
 } as const;
 

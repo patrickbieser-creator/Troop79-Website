@@ -200,7 +200,7 @@ describe('ShoppingTab', () => {
     it('Staple_ReadsTroopStapleNoNeedToBuy_WithADash', () => {
       render(tab());
       const row = rowFor('Instant oatmeal');
-      expect(within(row).getByText('Troop staple, no need to buy')).toBeTruthy();
+      expect(within(row).getByText('From the troop store room')).toBeTruthy();
       expect(within(row).getByText('—')).toBeTruthy();
     });
 
@@ -387,8 +387,8 @@ describe('ShoppingTab', () => {
       const user = userEvent.setup();
       render(tab());
       const row = await open(user, 'Bacon');
-      await user.click(within(row).getByRole('button', { name: 'From the troop pantry' }));
-      expect(within(rowFor('Bacon')).getAllByText('From the troop pantry')).toHaveLength(2); // the choice chip and the row's meta
+      await user.click(within(row).getByRole('button', { name: 'From the troop store room' }));
+      expect(within(rowFor('Bacon')).getAllByText('From the troop store room')).toHaveLength(2); // the choice chip and the row's meta
     });
 
     it('BuyingItAgain_ClearsTheBringChoice', async () => {

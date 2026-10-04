@@ -85,7 +85,38 @@ export interface Package {
   retiredAt?: string | null;
   /** A scout-added package waiting for a leader (release C); only its scout's catalog carries it. */
   held?: true;
+  /** The brand it is a size of; null / absent = no brand. */
+  brandId?: string | null;
+  /** "12 oz", "family size (18 oz)" — the size without the brand. */
+  sizeLabel?: string | null;
 }
+
+/**
+ * A brand or varietal of an ingredient (Chips Ahoy, Fuji, Whole, Thick cut) — release 3 of
+ * Plans/Menu-Monster-Brands-Gear.md. Packages are sizes of a brand at a store. A menu may ask for an
+ * ingredient with any brand, or name one or several.
+ */
+export interface Brand {
+  id: string;
+  ingredientId: string;
+  name: string;
+  /** This brand's own diet flags when a leader set them; null = the ingredient's. */
+  avoid: RestrictionKey[] | null;
+  /** Nobody has priced it yet (no usable package): costs are estimated from the cheapest known. */
+  isNew?: boolean;
+  /** Leader tools only. */
+  retiredAt?: string | null;
+  addedBy?: number | null;
+  createdAt?: string;
+}
+
+/** One brand a menu chose for an ingredient. qty = packages of it; null = the engine's share. */
+export interface BrandPick {
+  brandId: string;
+  qty: number | null;
+}
+/** ingredientId → the brands chosen for the whole menu; absent / empty = any brand. */
+export type BrandPicks = Record<string, BrandPick[]>;
 
 export type ServesRule = 'everyone' | 'except' | 'only';
 
@@ -163,6 +194,10 @@ export interface Catalog {
   /** Typed-in ingredients a leader matched away (Phase 4B): from id → the book ingredient and
    *  `factor` (1 from-unit = factor to-units). Menus resolve these on read; absent = none. */
   aliases?: Record<string, { to: string; factor: number }>;
+  /** Live brands (the leader tools' load also carries retired ones, flagged). Absent on old fixtures = none. */
+  brands?: Brand[];
+  /** A brand a leader merged away → the brand kept. Menus resolve these on read. */
+  brandAliases?: Record<string, string>;
 }
 
 /** Where a shopping line comes from. Anything but 'buy' counts in Used, never Spent. */
@@ -185,6 +220,8 @@ export interface Plan {
   /** 'YYYY-MM-DD' — a calendar day. */
   date: string;
   patrol: string;
+  /** The brands chosen per ingredient (a menu's; the old one-meal planner has none). */
+  brands?: BrandPicks;
 }
 
 export type LineStatus = 'ok' | 'short' | 'unpriced' | 'staple' | 'bring';
@@ -226,6 +263,22 @@ export interface ShoppingLine {
   status: LineStatus;
   source: LineSource;
   note: string;
+  /** Set when the menu chose brands for this ingredient: one part per brand, in the order chosen. */
+  parts?: LinePart[];
+  /** The cost is a guess: any brand will do (and brands exist to choose from), or a chosen brand has no price yet. */
+  estimated?: boolean;
+}
+
+/** One chosen brand's share of a shopping line. */
+export interface LinePart {
+  brand: Brand;
+  /** The package priced: the brand's own, or the cheapest known when the brand has none yet. */
+  pkg: Package;
+  qty: number;
+  autoQty: number;
+  spent: number;
+  /** No priced package of this brand yet. */
+  estimated: boolean;
 }
 
 export interface Totals {

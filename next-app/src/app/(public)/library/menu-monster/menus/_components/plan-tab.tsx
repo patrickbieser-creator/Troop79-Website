@@ -38,11 +38,12 @@ import { Button } from '@/app/_components/button';
 import { Field, SelectInput, TextInput } from '@/app/_components/form';
 import { Notice } from '@/app/_components/notice';
 import { NumberBox, Stepper } from '@/app/_components/stepper';
-import type { Catalog, Plan, RestrictionKey } from '@/lib/menu-monster/types';
+import type { Brand, BrandPick, Catalog, Plan, RestrictionKey } from '@/lib/menu-monster/types';
 import { MEALS, RESTRICTION_BY_KEY } from '@/lib/menu-monster/units';
 import { MAX_HEADCOUNT, MIN_HEADCOUNT } from '@/lib/menu-monster/engine';
 import { MAX_MENU_DAYS, MAX_MENU_MEALS, MENU_CONTEXTS, MAX_MENU_NAME, menuNameError, type Menu, type MenuContext, type MenuMeal } from '@/lib/menu-monster/menus';
-import { DIET_ORDER, budgetState, dayLabel, mealTitle, menuCost, outingDayCount, type Outing } from '@/lib/menu-monster/menu-view';
+import { DIET_ORDER, budgetState, buildMenuList, dayLabel, mealTitle, menuCost, outingDayCount, type Outing } from '@/lib/menu-monster/menu-view';
+import { addBrandAction } from '../../../_tools/menu-monster/brand-actions';
 import type { CreateResult, MenuStore, SaveResult } from '@/lib/menu-monster/menu-store';
 import { serverMenuStore } from './server-menu-store';
 import { MealPanel } from './meal-panel';
@@ -101,7 +102,14 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
   const [view, setView] = useState<AmountView>('total');
   // Release C: ingredients the scout typed in on this page, until the next load brings them in the catalog.
   const [typed, setTyped] = useState<NewIngredient[]>([]);
-  const catalog = useMemo(() => overlayNewIngredients(catalogProp, typed), [catalogProp, typed]);
+  // Release 3: brands typed on this page join the troop's list at once; until the next load they ride here.
+  const [typedBrands, setTypedBrands] = useState<Brand[]>([]);
+  const catalog = useMemo(() => {
+    const withTyped = overlayNewIngredients(catalogProp, typed);
+    const have = new Set((withTyped.brands ?? []).map((b) => b.id));
+    const fresh = typedBrands.filter((b) => !have.has(b.id));
+    return fresh.length > 0 ? { ...withTyped, brands: [...(withTyped.brands ?? []), ...fresh] } : withTyped;
+  }, [catalogProp, typed, typedBrands]);
   /** The meal "Add a meal" just created: its panel takes focus into its search, once. */
   const [focusMeal, setFocusMeal] = useState<string | null>(null);
   const nameRef = useRef<HTMLInputElement | null>(null);
@@ -112,6 +120,8 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
   const draftKey = JSON.stringify(menu);
   const dirty = draftKey !== saved.key;
   const cost = menuCost(menu, catalog);
+  // The menu's priced lines by ingredient: a brand chooser shows each brand's package count from here.
+  const lineByIng = useMemo(() => new Map(buildMenuList(menu, catalog).lines.map((l) => [l.ing.id, l])), [menu, catalog]);
   const priced = menu.meals.some((m) => m.recipeIds.length > 0);
   const budget = budgetState({ perSpent: cost.perPersonMeal }, menu.budgetPerPersonMeal);
 
@@ -164,6 +174,25 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
       if (!next.delete(id)) next.add(id);
       return next;
     });
+  /** The brands for one ingredient, for the whole menu (an empty list = any brand: the key goes away). */
+  const setBrands = (ingredientId: string, picks: BrandPick[]) =>
+    edit((m) => {
+      const brands = { ...(m.shopping.brands ?? {}) };
+      if (picks.length > 0) brands[ingredientId] = picks;
+      else delete brands[ingredientId];
+      const { brands: _old, ...rest } = m.shopping;
+      void _old;
+      // A count typed for the old package choice is not the new brands' count.
+      const qtyOverride = { ...rest.qtyOverride };
+      delete qtyOverride[ingredientId];
+      const next = { ...rest, qtyOverride };
+      return { ...m, shopping: Object.keys(brands).length > 0 ? { ...next, brands } : next };
+    });
+  const typeBrand = async (ingredientId: string, name: string) => {
+    const res = await addBrandAction(ingredientId, name);
+    if (res.ok) setTypedBrands((cur) => [...cur.filter((b) => b.id !== res.brand.id), res.brand]);
+    return res;
+  };
   /** A meal panel's change: the whole next meal, into the one draft. */
   const setMeal = (next: MenuMeal) => edit((m) => ({ ...m, meals: m.meals.map((x) => (x.id === next.id ? next : x)) }));
   /** A meal's own People (on its line): the menu's number is stored as null, so going back to it is not a change. */
@@ -239,6 +268,8 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
 
   // Release C typed-ins and 4C "Share this version" belong to a signed-in scout's saved menu.
   const canTypeIn = !storeProp && menuId != null && !readOnly;
+  // A typed brand needs a signed-in person to add it; a menu kept on this computer can still choose known brands.
+  const canTypeBrand = !storeProp && !readOnly;
   const shareVersionMenuId = canSave && !storeProp && menuId != null && !isNew && !dirty ? menuId : null;
   const dialerLabel = (k: RestrictionKey) => RESTRICTION_BY_KEY[k].label;
 
@@ -468,6 +499,9 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
                                 onTyped={(n) => setTyped((t) => [...t, n])}
                                 shareVersionMenuId={shareVersionMenuId}
                                 autoFocusAdd={meal.id === focusMeal}
+                                onBrands={readOnly ? undefined : setBrands}
+                                lineFor={(id) => lineByIng.get(id)}
+                                onTypeBrand={canTypeBrand ? typeBrand : undefined}
                               />
                             </div>
                           )}

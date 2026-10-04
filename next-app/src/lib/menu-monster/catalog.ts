@@ -14,6 +14,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 import type {
+  MmBrandRow,
   MmConversionRow,
   MmIngredientRow,
   MmPackageRow,
@@ -23,6 +24,7 @@ import type {
   MmVariationLineRow
 } from '@/lib/supabase/types';
 import type {
+  Brand,
   Catalog,
   Conversion,
   FoodGroup,
@@ -44,6 +46,7 @@ export interface CatalogRows {
   lines: MmRecipeLineRow[];
   variations?: MmRecipeVariationRow[];
   variationLines?: MmVariationLineRow[];
+  brands?: MmBrandRow[];
 }
 
 /** Recipe columns every load reads; never the author's person id on a public load. */
@@ -83,7 +86,7 @@ export async function loadCatalogWith(supabase: SupabaseClient, opts: CatalogLoa
       supabase
         .from('mm_packages')
         .select(
-          'id, ingredient_id, name, store, price, anchor_price, yield, yield_unit_label, noun, sold_size, sold_unit, note, as_of, created_at, retired_at, held_at'
+          'id, ingredient_id, name, store, price, anchor_price, yield, yield_unit_label, noun, sold_size, sold_unit, note, as_of, created_at, retired_at, held_at, brand_id, size_label'
         )
         .is('retired_at', null)
         // A scout-added package waiting on a leader stays out of every public
@@ -111,8 +114,13 @@ export async function loadCatalogWith(supabase: SupabaseClient, opts: CatalogLoa
         .range(from, to)
     )
   ]);
-  const [v, aliases] = await Promise.all([loadVariationRows(supabase), loadAliasesWith(supabase)]);
-  return { ...mapCatalog({ ingredients, conversions, packages, recipes, lines, ...v }), aliases };
+  const [v, aliases, brands, brandAliases] = await Promise.all([
+    loadVariationRows(supabase),
+    loadAliasesWith(supabase),
+    loadBrandRows(supabase, { includeRetired: false }),
+    loadBrandAliasesWith(supabase)
+  ]);
+  return { ...mapCatalog({ ingredients, conversions, packages, recipes, lines, brands, ...v }), aliases, brandAliases };
 }
 
 /** Typed-in ingredients a leader matched to the book (Phase 4B): from → { to, factor }. A chain resolves to its end. */
@@ -167,7 +175,22 @@ export function mapCatalog(rows: CatalogRows): Catalog {
       note: p.note,
       asOf: p.as_of,
       retiredAt: p.retired_at,
-      ...(p.held_at != null ? { held: true as const } : {})
+      ...(p.held_at != null ? { held: true as const } : {}),
+      ...(p.brand_id !== undefined ? { brandId: p.brand_id ?? null, sizeLabel: p.size_label ?? null } : {})
+    }));
+
+  // Brands of ingredients this load carries. "New" = nobody has priced it yet (no usable live package).
+  const priced = new Set(packages.filter((p) => p.brandId && p.yield != null && p.yield > 0 && !p.retiredAt && !p.held).map((p) => p.brandId));
+  const brands: Brand[] = (rows.brands ?? [])
+    .filter((b) => known.has(b.ingredient_id) && b.merged_into_id == null)
+    .map((b) => ({
+      id: b.id,
+      ingredientId: b.ingredient_id,
+      name: b.name,
+      avoid: b.avoid == null ? null : (b.avoid as RestrictionKey[]),
+      ...(priced.has(b.id) ? {} : { isNew: true }),
+      retiredAt: b.retired_at,
+      ...(b.added_by_person_id !== undefined ? { addedBy: b.added_by_person_id ?? null, createdAt: b.created_at } : {})
     }));
 
   // A line whose ingredient was retired is dropped rather than crashing the
@@ -237,7 +260,48 @@ export function mapCatalog(rows: CatalogRows): Catalog {
       ...(r.author_person_id !== undefined ? { authorPersonId: r.author_person_id, sharedAt: r.shared_at ?? null } : {})
     }));
 
-  return { ingredients, packages, conversions, recipes };
+  return { ingredients, packages, conversions, recipes, ...(rows.brands ? { brands } : {}) };
+}
+
+/** mm_brands for a load: live ones for menus; every one (retired flagged) for the leader tools. */
+async function loadBrandRows(supabase: SupabaseClient, opts: { includeRetired: boolean }): Promise<MmBrandRow[]> {
+  // Who typed a brand, and when, is for the leader tools only: a menu-side catalog reaches the browser (qa-lead).
+  if (opts.includeRetired) {
+    return fetchAllRows<MmBrandRow>((from, to) =>
+      supabase
+        .from('mm_brands')
+        .select('id, ingredient_id, name, avoid, added_by_person_id, created_at, retired_at, merged_into_id')
+        .is('merged_into_id', null)
+        .order('name')
+        .order('id')
+        .range(from, to)
+    );
+  }
+  return fetchAllRows<MmBrandRow>((from, to) =>
+    supabase
+      .from('mm_brands')
+      .select('id, ingredient_id, name, avoid, retired_at, merged_into_id')
+      .is('merged_into_id', null)
+      .is('retired_at', null)
+      .order('name')
+      .order('id')
+      .range(from, to)
+  );
+}
+
+/** Brands a leader merged away → the brand kept (a chain resolves to its end). */
+export async function loadBrandAliasesWith(supabase: SupabaseClient): Promise<Record<string, string>> {
+  const rows = await fetchAllRows<{ id: string; merged_into_id: string }>((from, to) =>
+    supabase.from('mm_brands').select('id, merged_into_id').not('merged_into_id', 'is', null).order('id').range(from, to)
+  );
+  const direct = new Map(rows.map((r) => [r.id, r.merged_into_id]));
+  const out: Record<string, string> = {};
+  for (const id of direct.keys()) {
+    let to = direct.get(id)!;
+    for (let guard = 0; direct.has(to) && guard < 10; guard++) to = direct.get(to)!;
+    out[id] = to;
+  }
+  return out;
 }
 
 /** The two variation tables, for both loaders. Paginated like the rest. */
@@ -307,7 +371,7 @@ export async function loadAuthoringCatalogWith(supabase: SupabaseClient): Promis
       supabase
         .from('mm_packages')
         .select(
-          'id, ingredient_id, name, store, price, anchor_price, yield, yield_unit_label, noun, sold_size, sold_unit, note, as_of, created_at, retired_at'
+          'id, ingredient_id, name, store, price, anchor_price, yield, yield_unit_label, noun, sold_size, sold_unit, note, as_of, created_at, retired_at, brand_id, size_label'
         )
         .order('name')
         .range(from, to)
@@ -331,6 +395,6 @@ export async function loadAuthoringCatalogWith(supabase: SupabaseClient): Promis
         .range(from, to)
     )
   ]);
-  const v = await loadVariationRows(supabase);
-  return mapCatalog({ ingredients, conversions, packages, recipes, lines, ...v });
+  const [v, brands] = await Promise.all([loadVariationRows(supabase), loadBrandRows(supabase, { includeRetired: true })]);
+  return mapCatalog({ ingredients, conversions, packages, recipes, lines, brands, ...v });
 }
