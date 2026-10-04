@@ -6,15 +6,17 @@
  * measured, one package (size + price, store optional) and what it contains —
  * the diet ticks a leader confirms when matching it. Validation is
  * newIngredientProblem(); the package size is stored in the recipe unit
- * (sizeInRecipeUnit). Escape or Cancel closes it.
+ * (sizeInRecipeUnit). Escape or Cancel closes it. The Ingredients tab reuses it:
+ * `withSection` adds the store section a price-book keeper picks, and `busy` /
+ * `failure` show the request it then makes.
  */
 
 import { useId, useState, type KeyboardEvent } from 'react';
 import { Button } from '@/app/_components/button';
 import { Field, SelectInput, TextInput } from '@/app/_components/form';
-import type { Catalog, RestrictionKey } from '@/lib/menu-monster/types';
+import type { Catalog, RestrictionKey, Section } from '@/lib/menu-monster/types';
 import { SIZE_UNITS, newIngredientKey, newIngredientProblem, sizeInRecipeUnit, type NewIngredient, type NewIngredientKind } from '@/lib/menu-monster/scout-ingredients';
-import { parseQty } from '@/lib/menu-monster/units';
+import { SECTIONS, SECTION_ORDER, parseQty } from '@/lib/menu-monster/units';
 import w from '../../menus/_components/workspace.module.css';
 import s from './recipe-editor.module.css';
 
@@ -33,12 +35,21 @@ const CONTAINS: { key: RestrictionKey; label: string }[] = [
 export function NewIngredientForm({
   initialName,
   catalog,
+  withSection = false,
+  busy = false,
+  failure = null,
   onAdd,
   onCancel
 }: {
   initialName: string;
   catalog: Catalog;
-  onAdd: (n: NewIngredient) => void;
+  /** Ask for the store section too (the second argument of onAdd). */
+  withSection?: boolean;
+  /** The caller is saving it: the buttons wait. */
+  busy?: boolean;
+  /** What the caller's save said went wrong. */
+  failure?: string | null;
+  onAdd: (n: NewIngredient, section: Section) => void;
   onCancel: () => void;
 }) {
   const uid = useId();
@@ -51,6 +62,7 @@ export function NewIngredientForm({
   const [price, setPrice] = useState('');
   const [store, setStore] = useState('');
   const [avoid, setAvoid] = useState<RestrictionKey[]>([]);
+  const [section, setSection] = useState<Section>('dry');
   const [error, setError] = useState<string | null>(null);
 
   const pickKind = (k: NewIngredientKind) => {
@@ -77,7 +89,8 @@ export function NewIngredientForm({
       setError(problem);
       return;
     }
-    onAdd(n);
+    setError(null);
+    onAdd(n, section);
   }
 
   function onKey(e: KeyboardEvent<HTMLDivElement>) {
@@ -137,6 +150,17 @@ export function NewIngredientForm({
       <Field label="Store (optional)">
         <TextInput value={store} maxLength={40} autoComplete="off" onChange={(e) => setStore(e.target.value)} />
       </Field>
+      {withSection && (
+        <Field label="Store section">
+          <SelectInput value={section} onChange={(e) => setSection(e.target.value as Section)}>
+            {SECTION_ORDER.map((k) => (
+              <option key={k} value={k}>
+                {SECTIONS[k]}
+              </option>
+            ))}
+          </SelectInput>
+        </Field>
+      )}
       <div className={w.choice} role="group" aria-label="Contains">
         <span className={w.choiceLabel} aria-hidden="true">
           Contains
@@ -155,16 +179,16 @@ export function NewIngredientForm({
           ))}
         </div>
       </div>
-      {error && (
+      {(error ?? failure) && (
         <p className={s.formError} role="alert">
-          {error}
+          {error ?? failure}
         </p>
       )}
       <div className={w.noticeActions}>
-        <Button size="sm" variant="primary" onClick={submit}>
-          Add ingredient
+        <Button size="sm" variant="primary" disabled={busy} onClick={submit}>
+          {busy ? 'Adding…' : 'Add ingredient'}
         </Button>
-        <Button size="sm" variant="secondary" onClick={onCancel}>
+        <Button size="sm" variant="secondary" disabled={busy} onClick={onCancel}>
           Cancel
         </Button>
       </div>

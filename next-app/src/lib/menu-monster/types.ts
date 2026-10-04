@@ -47,6 +47,8 @@ export interface Ingredient {
   retiredAt?: string | null;
   /** A scout typed it in and no leader has matched it yet (Phase 4B): unverified diets and price. */
   needsMatch?: boolean;
+  /** Its author asked for it to join the price book and no leader has decided yet; only its author's catalog carries it. */
+  waiting?: boolean;
 }
 
 /** "1 {from} = {factor} {to}" for one ingredient — bridges unit families. */

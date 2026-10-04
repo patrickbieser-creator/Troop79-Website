@@ -3,8 +3,9 @@
 /**
  * New ingredients, the leader side (Plans/Menu-Monster-Scout-Workspace.md,
  * Phase 4B; approved design: concept-e admin.html › New recipes). A scout's
- * typed-in ingredient shows here once a shared recipe uses it — priced from the
- * scout's own entry, its diet ticks unverified. Per row:
+ * typed-in ingredient shows here once a shared recipe uses it, or when someone
+ * asks for it from the public Ingredients tab ("Asked to add it") — priced from
+ * their own entry, its diet ticks unverified. Per row:
  *
  *  - Match… — pick the price-book ingredient it really is and say how many of
  *    that one unit makes ("1 jar = 17.6 oz", prefilled when the units share a
@@ -12,6 +13,8 @@
  *    alias on their next read.
  *  - Keep as new — it becomes a book ingredient: a store section and the diets
  *    it doesn't suit, confirmed.
+ *  - Reject — a request only (nothing shared uses it): it leaves this list and
+ *    stays its author's own.
  */
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
@@ -21,7 +24,7 @@ import { Notice } from '../../_components/notice';
 import type { TypedInIngredient } from '@/lib/menu-monster/scout-recipes-store';
 import type { RestrictionKey, Section } from '@/lib/menu-monster/types';
 import { RESTRICTIONS, SECTIONS, SECTION_ORDER, famFactor } from '@/lib/menu-monster/units';
-import { keepScoutIngredient, matchScoutIngredient } from './actions';
+import { keepScoutIngredient, matchScoutIngredient, rejectScoutIngredient } from './actions';
 import lib from '../library.module.css';
 import styles from './menu-monster.module.css';
 
@@ -176,7 +179,7 @@ export function ScoutIngredients({ items, book }: { items: TypedInIngredient[]; 
                     </td>
                     <td>{t.pkg ? [t.pkg.size != null ? `${t.pkg.size} ${t.unit.many}` : null, money(t.pkg.price), t.pkg.store].filter(Boolean).join(' · ') : '—'}</td>
                     <td>{t.addedBy}</td>
-                    <td>{t.usedIn.join(', ') || '—'}</td>
+                    <td>{t.usedIn.join(', ') || (t.requested ? 'Asked to add it' : '—')}</td>
                     <td className={styles.actionsCell}>
                       <ActionsMenu
                         ariaLabel={`More for ${t.name}`}
@@ -184,9 +187,10 @@ export function ScoutIngredients({ items, book }: { items: TypedInIngredient[]; 
                         disabled={pending}
                         options={[
                           { value: 'match', label: 'Match to a price-book ingredient…' },
-                          { value: 'keep', label: 'Keep as new' }
+                          { value: 'keep', label: 'Keep as new' },
+                          ...(t.requested ? [{ value: 'reject', label: 'Reject' }] : [])
                         ]}
-                        onAction={(v) => (v === 'match' ? openMatch(t) : openKeep(t))}
+                        onAction={(v) => (v === 'match' ? openMatch(t) : v === 'keep' ? openKeep(t) : run(() => rejectScoutIngredient(t.id), `Rejected “${t.name}”.`))}
                       />
                     </td>
                   </tr>

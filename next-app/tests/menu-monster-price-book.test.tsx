@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { PriceBook } from '../src/app/admin/(workspace)/library/menu-monster/price-book';
 import {
   changeIngredientUnit,
-  createIngredient,
+  createFood,
   createPackage,
   updatePackage
 } from '../src/app/admin/(workspace)/library/menu-monster/actions';
@@ -21,7 +21,7 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() })
 }));
 vi.mock('../src/app/admin/(workspace)/library/menu-monster/actions', () => ({
-  createIngredient: vi.fn(async () => ({ ok: true, id: 'new-thing' })),
+  createFood: vi.fn(async () => ({ ok: true, id: 'new-thing' })),
   updateIngredient: vi.fn(async () => ({ ok: true })),
   retireIngredient: vi.fn(async () => ({ ok: true })),
   restoreIngredient: vi.fn(async () => ({ ok: true })),
@@ -37,7 +37,7 @@ vi.mock('../src/app/admin/(workspace)/library/menu-monster/actions', () => ({
 beforeEach(() => {
   vi.mocked(createPackage).mockClear();
   vi.mocked(updatePackage).mockClear();
-  vi.mocked(createIngredient).mockClear();
+  vi.mocked(createFood).mockClear();
   vi.mocked(changeIngredientUnit).mockClear();
 });
 
@@ -143,20 +143,18 @@ describe('Price book', () => {
     render(<PriceBook catalog={CATALOG} today={TODAY} stores={STORES} />);
     await user.click(screen.getByRole('button', { name: '+ New ingredient' }));
     const panel = screen.getByRole('region', { name: 'New ingredient' });
-    expect(within(panel).getByText('It starts unpriced — add a package below to make it usable.')).toBeTruthy();
     await user.type(within(panel).getByLabelText('Name'), 'Bananas');
     await user.selectOptions(within(panel).getByLabelText('Measured by'), 'count');
     await user.type(within(panel).getByLabelText('One is called'), 'banana');
     await user.type(within(panel).getByLabelText('Several are called'), 'bananas');
     await user.selectOptions(within(panel).getByLabelText('Store section'), 'produce');
     await user.click(within(panel).getByRole('button', { name: 'Add ingredient' }));
-    await waitFor(() => expect(createIngredient).toHaveBeenCalledTimes(1));
-    expect(vi.mocked(createIngredient).mock.calls[0][0]).toMatchObject({
-      name: 'Bananas',
-      unit: { kind: 'count', key: 'count', one: 'banana', many: 'bananas' },
-      section: 'produce',
-      staple: false,
-      avoid: []
+    await waitFor(() => expect(createFood).toHaveBeenCalledTimes(1));
+    // No price typed and not on the menu by itself: an ingredient only.
+    expect(vi.mocked(createFood).mock.calls[0][0]).toMatchObject({
+      ingredient: { name: 'Bananas', unit: { kind: 'count', key: 'count', one: 'banana', many: 'bananas' }, section: 'produce', staple: false, avoid: [] },
+      package: null,
+      menu: null
     });
   });
 

@@ -3,7 +3,7 @@
  * (Plans/Menu-Monster-Leader-Tools.md).
  *
  * Three tabs: the Price book (ingredients, packages with prices, unit
- * conversions), Recipes (menu items with per-line diet rules) and Scout
+ * conversions), Food & recipes (menu items: single foods and recipes, with per-line diet rules) and Scout
  * recipes (what scouts shared — live at once, Phase 4A — to retire or re-credit). Gated by
  * `library.moderate` here and again in every action; reads with the service
  * role because the mm_* tables have RLS on with zero policies (D-239).
@@ -91,7 +91,7 @@ export default async function MenuMonsterAdminPage({
         activeKey={tab}
         items={[
           { key: 'prices', label: 'Price book', href: '/admin/library/menu-monster?tab=prices', ...(unpriced + held.length + heldPackages.length > 0 ? { count: unpriced + held.length + heldPackages.length } : {}) },
-          { key: 'recipes', label: 'Recipes', href: '/admin/library/menu-monster?tab=recipes', ...(drafts > 0 ? { count: drafts } : {}) },
+          { key: 'recipes', label: 'Food & recipes', href: '/admin/library/menu-monster?tab=recipes', ...(drafts > 0 ? { count: drafts } : {}) },
           { key: 'scouts', label: 'Scout recipes', href: '/admin/library/menu-monster?tab=scouts', ...(edited > 0 ? { count: edited } : {}) }
         ]}
       />
@@ -102,7 +102,7 @@ export default async function MenuMonsterAdminPage({
           <PriceBook catalog={catalog} today={today} stores={stores} initialIngredientId={sp.ingredient} />
         </>
       ) : tab === 'recipes' ? (
-        <RecipeBuilder catalog={catalog} initialRecipeId={sp.recipe} />
+        <RecipeBuilder catalog={catalog} initialRecipeId={sp.recipe} stores={stores} today={today} />
       ) : (
         <>
           <ScoutIngredients items={typedIns} book={book} />

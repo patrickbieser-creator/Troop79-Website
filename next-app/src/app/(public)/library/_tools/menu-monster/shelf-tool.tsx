@@ -25,6 +25,7 @@ import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
 import { getIdentitySessionIfValid } from '@/lib/family-access';
 import { centralToday } from '@/lib/dates';
+import { resolveAdminActor } from '@/lib/admin-actor';
 import { loadMenuMonsterCatalog } from '@/lib/menu-monster/data';
 import { listAllMenusWith, listMenusWith, listSharedMenusWith, ownerCreditNamesWith } from '@/lib/menu-monster/menus-store';
 import { loadOutingsWith } from '@/lib/menu-monster/menus-data';
@@ -66,7 +67,8 @@ export async function MenuMonsterShelfTool({ searchParams }: { searchParams: Rec
   const tab: TabKey = TABS.some((x) => x.key === asked) ? (asked as TabKey) : 'planner';
   const viewer = await menuViewer();
   // A signed-in scout's own draft recipes join their planner and library.
-  const catalog = await loadMenuMonsterCatalog(viewer?.kind === 'scout' ? viewer.personId : null);
+  // An adult's own requested ingredients join only the Ingredients tab (they have no drafts or saved menus).
+  const catalog = await loadMenuMonsterCatalog(viewer?.kind === 'scout' || tab === 'ingredients' ? (viewer?.personId ?? null) : null);
   const planner = tab === 'planner' ? await mealPlanner(catalog, viewer) : null;
   return (
     <>
@@ -79,10 +81,19 @@ export async function MenuMonsterShelfTool({ searchParams }: { searchParams: Rec
       </div>
       {planner}
       {tab === 'recipes' && <RecipeBrowser catalog={catalog} plan={EVERY_DIET} />}
-      {tab === 'ingredients' && <IngredientBrowser catalog={catalog} />}
+      {tab === 'ingredients' && <IngredientBrowser catalog={catalog} adder={await ingredientAdder(viewer)} signInHref={`/signin?next=${encodeURIComponent(`${MENU_HUB_HREF}?tab=ingredients`)}`} />}
       {tab === 'builder' && (await recipeBuilder(viewer))}
     </>
   );
+}
+
+/** Who may add an ingredient from the Ingredients tab: a leader who keeps the price book adds it at once ('live');
+ *  any other signed-in person sends it to a leader ('review'); a visitor is asked to sign in (null). */
+async function ingredientAdder(viewer: MenuViewer | null): Promise<'live' | 'review' | null> {
+  if (viewer == null || viewer.personId == null) return null;
+  if (viewer.kind !== 'leader') return 'review';
+  const actor = await resolveAdminActor();
+  return actor?.capabilities.has('library.moderate') ? 'live' : 'review';
 }
 
 /** Recipe Builder: a scout's own recipes + New recipe; anyone else one line to sign in. */

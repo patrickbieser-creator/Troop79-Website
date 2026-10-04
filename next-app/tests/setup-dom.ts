@@ -1,5 +1,5 @@
 import { afterEach } from 'vitest';
-import { cleanup } from '@testing-library/react';
+import { cleanup, configure } from '@testing-library/react';
 
 /**
  * Setup for the `dom` Vitest project (vitest.config.ts).
@@ -15,6 +15,15 @@ import { cleanup } from '@testing-library/react';
 afterEach(() => {
   cleanup();
 });
+
+/**
+ * waitFor / findBy* get 5 s instead of Testing Library's 1 s. Under the full
+ * suite's load a server-action mock's follow-up render can land later than a
+ * second; with the per-test timeout raised to 20 s (vitest.config.ts) this was
+ * the last source of load-only failures (2026-10-03). A real miss still fails,
+ * just four seconds later.
+ */
+configure({ asyncUtilTimeout: 5000 });
 
 /**
  * jsdom doesn't implement <dialog>'s imperative API (showModal/close nor the

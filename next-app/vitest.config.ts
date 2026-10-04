@@ -66,6 +66,9 @@ export default defineConfig({
           name: 'dom',
           environment: 'jsdom',
           include: ['tests/**/*.test.tsx'],
+          // Same room as `db`: under the full suite's load, form-heavy tests (userEvent typing a dozen
+          // fields) ran past the 5 s default, and a red run hid real failures (2026-10-03).
+          testTimeout: 20000,
           setupFiles: ['tests/setup-dom.ts']
         }
       }

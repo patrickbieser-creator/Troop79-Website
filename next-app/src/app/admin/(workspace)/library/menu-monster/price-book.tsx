@@ -33,11 +33,10 @@ import {
   unusableText
 } from '@/lib/menu-monster/authoring';
 import { RESTRICTIONS, SECTIONS, UNITS } from '@/lib/menu-monster/units';
-import type { Catalog, Conversion, Ingredient, Package, RestrictionKey, Section, Unit, UnitKind } from '@/lib/menu-monster/types';
+import type { Catalog, Conversion, Ingredient, Package, Unit, UnitKind } from '@/lib/menu-monster/types';
 import {
   addConversion,
   changeIngredientUnit,
-  createIngredient,
   createPackage,
   deleteConversion,
   restoreIngredient,
@@ -47,6 +46,7 @@ import {
   updatePackage,
   type PackageEdit
 } from './actions';
+import { NewFoodForm } from './new-food-form';
 import lib from '../library.module.css';
 import styles from './menu-monster.module.css';
 
@@ -60,7 +60,6 @@ const STATUS_VARIANT: Record<Status, 'danger' | 'warning' | 'success' | 'muted'>
 
 const VOLUME_UNITS = ['cup', 'tbsp', 'tsp', 'oz'];
 const WEIGHT_UNITS = ['gram', 'ozw', 'lb'];
-const SECTION_KEYS = Object.keys(SECTIONS) as Section[];
 const ARM_MS = 4000;
 
 interface Row {
@@ -122,6 +121,7 @@ export function PriceBook({ catalog, today, stores, initialIngredientId }: { cat
   const search = useTableSearch(rows, (r) => [r.ing.name, r.ing.section, ...r.active.map((p) => p.name)]);
   const [selectedId, setSelectedId] = useState<string | null>(initialIngredientId ?? null);
   const [adding, setAdding] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
   const selected = rows.find((r) => r.ing.id === selectedId) ?? null;
 
   return (
@@ -136,16 +136,21 @@ export function PriceBook({ catalog, today, stores, initialIngredientId }: { cat
           totalCount={rows.length}
         />
         <span className={styles.spacer} />
-        <Button variant="secondary" size="sm" onClick={() => setAdding((v) => !v)}>
+        <Button variant="secondary" onClick={() => setAdding((v) => !v)}>
           + New ingredient
         </Button>
       </div>
 
+      {note && <Notice variant="success">{note}</Notice>}
       {adding && (
-        <NewIngredientForm
-          onDone={(id) => {
-            setAdding(false);
-            if (id) setSelectedId(id);
+        <NewFoodForm
+          title="New ingredient"
+          stores={stores}
+          today={today}
+          onDone={(res) => {
+            if (res.ok) setAdding(false);
+            if (res.id) setSelectedId(res.id);
+            setNote(res.ok ? (res.note ?? null) : null);
             router.refresh();
           }}
           onCancel={() => setAdding(false)}
@@ -216,143 +221,6 @@ export function PriceBook({ catalog, today, stores, initialIngredientId }: { cat
         />
       )}
     </div>
-  );
-}
-
-/* ── New ingredient ─────────────────────────────────────────────────────── */
-
-function NewIngredientForm({ onDone, onCancel }: { onDone: (id: string | null) => void; onCancel: () => void }) {
-  const [name, setName] = useState('');
-  const [kind, setKind] = useState<UnitKind>('volume');
-  const [key, setKey] = useState('cup');
-  const [one, setOne] = useState('');
-  const [many, setMany] = useState('');
-  const [section, setSection] = useState<Section>('dry');
-  const [staple, setStaple] = useState(false);
-  const [avoid, setAvoid] = useState<RestrictionKey[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, start] = useTransition();
-  const feedback = useSavePhase();
-
-  const ready = name.trim().length > 0 && (kind !== 'count' || (one.trim() && many.trim()));
-
-  function submit() {
-    setError(null);
-    feedback.start();
-    start(async () => {
-      const res = await createIngredient({ name, unit: unitFromChoice(kind, key, one, many), section, staple, avoid });
-      if (!res.ok) {
-        feedback.fail();
-        setError(res.error ?? 'Something went wrong.');
-        return;
-      }
-      feedback.done();
-      onDone(res.id ?? null);
-    });
-  }
-
-  return (
-    <FormPanel
-      title="New ingredient"
-      aria-label="New ingredient"
-      actions={<SaveFeedback phase={feedback.phase} />}
-      note="It starts unpriced — add a package below to make it usable."
-    >
-      {error && <Notice>{error}</Notice>}
-      <div className={lib.fieldGrid}>
-        <div className={lib.fieldFull}>
-          <label className={`adminLabel ${lib.fieldLabel}`} htmlFor="mm-new-name">
-            Name
-          </label>
-          <input id="mm-new-name" className={lib.textInput} value={name} onChange={(e) => setName(e.target.value)} placeholder="Required" />
-        </div>
-        <div>
-          <label className={`adminLabel ${lib.fieldLabel}`} htmlFor="mm-new-kind">
-            Measured by
-          </label>
-          <select
-            id="mm-new-kind"
-            className={lib.selectInput}
-            value={kind}
-            onChange={(e) => {
-              const k = e.target.value as UnitKind;
-              setKind(k);
-              setKey(k === 'weight' ? 'gram' : 'cup');
-            }}
-          >
-            <option value="volume">Volume (cups, Tbsp…)</option>
-            <option value="weight">Weight (g, oz, lb)</option>
-            <option value="count">Count (one, two, three…)</option>
-          </select>
-        </div>
-        {kind !== 'count' ? (
-          <div>
-            <label className={`adminLabel ${lib.fieldLabel}`} htmlFor="mm-new-unit">
-              Recipe unit
-            </label>
-            <select id="mm-new-unit" className={lib.selectInput} value={key} onChange={(e) => setKey(e.target.value)}>
-              {(kind === 'volume' ? VOLUME_UNITS : WEIGHT_UNITS).map((k) => (
-                <option key={k} value={k}>
-                  {UNITS[k].many}
-                </option>
-              ))}
-            </select>
-            <p className={styles.hint}>Packages state their yield in this unit.</p>
-          </div>
-        ) : (
-          <>
-            <div>
-              <label className={`adminLabel ${lib.fieldLabel}`} htmlFor="mm-new-one">
-                One is called
-              </label>
-              <input id="mm-new-one" className={lib.textInput} value={one} onChange={(e) => setOne(e.target.value)} placeholder="banana" />
-            </div>
-            <div>
-              <label className={`adminLabel ${lib.fieldLabel}`} htmlFor="mm-new-many">
-                Several are called
-              </label>
-              <input id="mm-new-many" className={lib.textInput} value={many} onChange={(e) => setMany(e.target.value)} placeholder="bananas" />
-            </div>
-          </>
-        )}
-        <div>
-          <label className={`adminLabel ${lib.fieldLabel}`} htmlFor="mm-new-section">
-            Store section
-          </label>
-          <select id="mm-new-section" className={lib.selectInput} value={section} onChange={(e) => setSection(e.target.value as Section)}>
-            {SECTION_KEYS.map((s) => (
-              <option key={s} value={s}>
-                {SECTIONS[s]}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <span className={`adminLabel ${lib.fieldLabel}`}>Flags</span>
-          <label className={styles.listRow}>
-            <input type="checkbox" checked={staple} onChange={(e) => setStaple(e.target.checked)} /> Patrol-box staple (counts in Used, never Spent)
-          </label>
-          {RESTRICTIONS.map((r) => (
-            <label key={r.key} className={styles.listRow}>
-              <input
-                type="checkbox"
-                checked={avoid.includes(r.key)}
-                onChange={(e) => setAvoid((prev) => (e.target.checked ? [...prev, r.key] : prev.filter((k) => k !== r.key)))}
-              />{' '}
-              Warn {r.label.toLowerCase()} people
-            </label>
-          ))}
-        </div>
-      </div>
-      <div className={lib.actionsRow}>
-        <Button variant="primary" disabled={pending || !ready} title={ready ? undefined : 'Name it first'} onClick={submit}>
-          {pending ? 'Adding…' : 'Add ingredient'}
-        </Button>
-        <Button variant="secondary" disabled={pending} onClick={onCancel}>
-          Cancel
-        </Button>
-      </div>
-    </FormPanel>
   );
 }
 

@@ -85,7 +85,7 @@ describe('Recipe builder', () => {
     expect(publish.getAttribute('title')).toBe('Add at least one ingredient line.');
     expect(within(editor).getByRole('list', { name: 'Needs fixing' }).textContent).toMatch(/Add at least one ingredient line/);
 
-    await user.click(within(editor).getByRole('button', { name: '+ Add a line' }));
+    await user.click(within(editor).getByRole('button', { name: '+ Add an ingredient' }));
     await user.selectOptions(within(editor).getByLabelText('Line 1 ingredient'), 'bread');
     await user.type(within(editor).getByLabelText('Line 1 amount'), '2');
     expect(within(editor).queryByRole('list', { name: 'Needs fixing' })).toBeNull();
@@ -113,7 +113,7 @@ describe('Recipe builder', () => {
     render(<RecipeBuilder catalog={CATALOG} initialRecipeId="pancakes" />);
     const editor = screen.getByRole('region', { name: 'Edit Pancakes' });
 
-    await user.click(within(editor).getByRole('button', { name: '+ Add a line' }));
+    await user.click(within(editor).getByRole('button', { name: '+ Add an ingredient' }));
     await user.selectOptions(within(editor).getByLabelText('Line 3 ingredient'), 'eggs');
     await user.type(within(editor).getByLabelText('Line 3 amount'), '1');
     expect(within(editor).getByRole('list', { name: 'Needs fixing' }).textContent).toMatch(

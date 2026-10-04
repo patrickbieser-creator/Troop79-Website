@@ -23,7 +23,7 @@ import { recordAudit, type AuditDetail } from '@/lib/audit';
 import { decidePriceWith, leaderSetPriceWith, type DecideOutcome } from '@/lib/menu-monster/price-history';
 import { loadAuthoringCatalogWith } from '@/lib/menu-monster/catalog';
 import { cleanGear, cleanScoutText, isScoutRecipeId } from '@/lib/menu-monster/scout-recipes';
-import { keepTypedInWith, matchTypedInWith, setScoutRecipeCreditWith } from '@/lib/menu-monster/scout-recipes-store';
+import { keepTypedInWith, matchTypedInWith, rejectTypedInWith, setScoutRecipeCreditWith } from '@/lib/menu-monster/scout-recipes-store';
 import { approveHeldPackageWith, rejectHeldPackageWith } from '@/lib/menu-monster/scout-packages-store';
 import {
   blockingIssues,
@@ -37,7 +37,7 @@ import {
 } from '@/lib/menu-monster/authoring';
 import { compileRecipe, type BaseLine } from '@/lib/menu-monster/variations';
 import { RESTRICTION_BY_KEY, UNITS, parseQty } from '@/lib/menu-monster/units';
-import type { Recipe, RecipeStatus, RestrictionKey, Section, Unit, Variation, VariationLine } from '@/lib/menu-monster/types';
+import type { FoodGroup, MealSlot, Recipe, RecipeStatus, RestrictionKey, Section, Unit, Variation, VariationLine } from '@/lib/menu-monster/types';
 
 export interface Result {
   ok: boolean;
@@ -673,7 +673,8 @@ export async function saveRecipe(a: RecipeAuthoring): Promise<Result> {
   const existing = ((rows ?? []) as { id: string; status: RecipeStatus; sort_order: number }[]);
   const taken = new Set(existing.map((r) => r.id));
   const current = existing.find((r) => r.id === a.id);
-  const id = current ? a.id : a.id && !taken.has(a.id) ? a.id : slugId(name, taken);
+  // A new item keeps a caller-chosen id only when it is a real slug — never the editor’s `__new__` placeholder.
+  const id = current ? a.id : /^[a-z0-9][a-z0-9-]*$/i.test(a.id ?? "") && !taken.has(a.id) ? a.id : slugId(name, taken);
   const status: RecipeStatus = current ? current.status : 'draft';
   const sortOrder = current ? current.sort_order : Math.max(0, ...existing.map((r) => r.sort_order)) + 10;
 
@@ -833,6 +834,106 @@ export async function duplicateRecipe(id: string): Promise<Result> {
   return { ok: true, id: newId };
 }
 
+/* ── A single food in one step ───────────────────────────────────────────── */
+
+/**
+ * What a single food is (Cookies, Apples, Bacon): an ingredient, one priced
+ * package and — when it goes on the menu by itself — a one-line menu item,
+ * "each person gets 2 cookies". The model keeps the three rows (the engine
+ * reads only recipe lines, a menu holds only recipe ids); this is the one form
+ * that writes them together so a leader never visits two tabs for one food.
+ */
+export interface FoodInput {
+  ingredient: IngredientInput;
+  /** The first package; `holds` is in the ingredient's own unit. null = price it later. */
+  package: { name: string; store: string | null; price: number; holds: number; asOf: string | null } | null;
+  /** null = an ingredient only (it goes into recipes, not on the menu by itself). */
+  menu: { amount: string; mealFit: MealSlot[]; foodGroups: FoodGroup[] } | null;
+}
+
+export interface FoodResult extends Result {
+  /** The menu item created, when one was asked for. */
+  recipeId?: string;
+  /** Created, but something still needs a leader (saved as a draft, no price yet). */
+  note?: string;
+}
+
+/**
+ * Everything is checked before the first write, so the later steps only fail
+ * on a database error; if one does, the message says what was already saved.
+ */
+export async function createFood(input: FoodInput): Promise<FoodResult> {
+  const denied = await guard();
+  if (denied) return denied;
+  const { value, error } = cleanIngredient(input.ingredient ?? {});
+  if (error) return { ok: false, error };
+  const unitError = validUnit(input.ingredient.unit);
+  if (unitError) return { ok: false, error: unitError };
+
+  const pkg = input.package;
+  if (pkg) {
+    if (!Number.isFinite(Number(pkg.price)) || Number(pkg.price) < 0) return { ok: false, error: 'Type what one package costs.' };
+    if (!(Number(pkg.holds) > 0)) return { ok: false, error: `Type how many ${input.ingredient.unit.many.trim()} one package holds.` };
+  }
+  const menu = input.menu;
+  let amount = 0;
+  if (menu) {
+    amount = parseQty(String(menu.amount ?? '').trim());
+    if (!Number.isFinite(amount) || amount <= 0) return { ok: false, error: 'Type how much each person gets — something like 2, ½ or 0.5.' };
+    if (!Array.isArray(menu.mealFit) || menu.mealFit.length === 0) return { ok: false, error: 'Pick at least one meal it fits.' };
+  }
+
+  const supabase = createAdminClient();
+  const [{ data: ings }, { data: recs }] = await Promise.all([
+    supabase.from('mm_ingredients').select('name').is('retired_at', null).is('added_by_person_id', null),
+    supabase.from('mm_recipes').select('name').neq('status', 'retired').is('author_person_id', null)
+  ]);
+  const same = (rows: unknown) => ((rows ?? []) as { name: string }[]).some((r) => r.name.trim().toLowerCase() === value.name.toLowerCase());
+  if (same(ings)) return { ok: false, error: `“${value.name}” is already in the price book.` };
+  if (menu && same(recs)) return { ok: false, error: `There is already a menu item called “${value.name}”.` };
+
+  const made = await createIngredient(input.ingredient);
+  if (!made.ok || !made.id) return made;
+  const id = made.id;
+
+  if (pkg) {
+    const p = await createPackage({
+      ingredientId: id,
+      name: pkg.name?.trim() || value.name,
+      store: pkg.store,
+      price: Number(pkg.price),
+      soldSize: null,
+      soldUnit: null,
+      yield: Number(pkg.holds),
+      yieldUnitLabel: null,
+      noun: 'pack',
+      asOf: pkg.asOf,
+      note: null
+    });
+    if (!p.ok) return { ok: false, id, error: `${value.name} is in the price book, but its package was not saved: ${p.error}` };
+  }
+  if (!menu) return { ok: true, id, ...(pkg ? {} : { note: `${value.name} has no price yet — add a package to make it usable.` }) };
+
+  const saved = await saveRecipe({
+    id: '',
+    name: value.name,
+    status: 'draft',
+    mealFit: menu.mealFit,
+    foodGroups: menu.foodGroups ?? [],
+    camp: true,
+    trail: false,
+    method: 'no-cook',
+    stepsMd: '',
+    base: [{ ingredientId: id, amount: String(menu.amount).trim(), unitKey: null }],
+    variations: []
+  });
+  if (!saved.ok || !saved.id) return { ok: false, id, error: `${value.name} is in the price book, but its menu item was not saved: ${saved.error}` };
+  if (!pkg) return { ok: true, id, recipeId: saved.id, note: `${value.name} is saved as a draft — it goes on the menu once it has a price.` };
+  const live = await setRecipeStatus(saved.id, 'published');
+  if (!live.ok) return { ok: true, id, recipeId: saved.id, note: `${value.name} is saved as a draft: ${live.error}` };
+  return { ok: true, id, recipeId: saved.id };
+}
+
 /* ── Scout recipes (Phase 4A) ────────────────────────────────────────────── */
 
 /** A leader's change to a shared scout recipe's credit ("Recipe by …"). The scout's own edits never touch it. */
@@ -899,6 +1000,23 @@ export async function keepScoutIngredient(id: string, section: Section, avoid: R
       { field: 'Section', from: '', to: section },
       { field: 'Diets it doesn’t suit', from: '', to: clean.join(', ') || 'none' }
     ]
+  });
+  revalidate();
+  return { ok: true };
+}
+
+/** Reject a request to add an ingredient (public Ingredients tab): it stays its author's own, and leaves the queue. */
+export async function rejectScoutIngredient(id: string): Promise<Result> {
+  const denied = await guard();
+  if (denied) return denied;
+  const name = await rejectTypedInWith(createAdminClient(), id);
+  if (!name) return { ok: false, error: 'That ingredient isn’t waiting any more.' };
+  await recordAudit({
+    area: 'library',
+    action: 'update',
+    entityType: 'mm_ingredient',
+    entityId: id,
+    summary: `Rejected the request to add "${name}" to the Menu Monster price book`
   });
   revalidate();
   return { ok: true };

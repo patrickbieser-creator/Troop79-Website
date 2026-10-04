@@ -11,7 +11,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { typedInPayload } from './scout-ingredients';
+import { typedInPayload, type NewIngredient } from './scout-ingredients';
 import { recordAuditAs, type AuditActor } from '@/lib/audit';
 import type { FoodGroup, MealSlot, RecipeStatus, RestrictionKey, Section } from './types';
 import { creditFor, isScoutRecipeId, newScoutRecipeId, stepsFromText, stepsToText, type ScoutRecipeDraft, type ScoutRecipeLine } from './scout-recipes';
@@ -234,15 +234,18 @@ export interface TypedInIngredient {
   addedBy: string;
   /** Names of the recipes that use it. */
   usedIn: string[];
+  /** Its author asked for it to be added (public Ingredients tab) and nothing shared uses it: a leader may Reject it. */
+  requested: boolean;
 }
 
-/** Typed-ins a shared recipe revealed and no leader has matched yet, oldest first. A private one never shows here. */
+/** Typed-ins waiting for a leader, oldest first: revealed by a shared recipe or menu, or sent in from the public
+ *  Ingredients tab (submitted_at). A private one nobody asked about never shows here. */
 export async function listTypedInsWith(sb: SupabaseClient): Promise<TypedInIngredient[]> {
   const { data, error } = await sb
     .from('mm_ingredients')
-    .select('id, name, unit_key, unit_one, unit_many, unit_kind, avoid, added_by_person_id')
+    .select('id, name, unit_key, unit_one, unit_many, unit_kind, avoid, added_by_person_id, shared_at, submitted_at')
     .not('needs_match_at', 'is', null)
-    .not('shared_at', 'is', null)
+    .or('shared_at.not.is.null,submitted_at.not.is.null')
     .is('retired_at', null)
     .order('needs_match_at');
   if (error) throw new Error(`typed-in ingredients: ${error.message}`);
@@ -252,7 +255,7 @@ export async function listTypedInsWith(sb: SupabaseClient): Promise<TypedInIngre
   const people = [...new Set(rows.map((r) => r.added_by_person_id as number))];
   const [pkgs, lines, names] = await Promise.all([
     sb.from('mm_packages').select('ingredient_id, price, yield, store').in('ingredient_id', ids).is('retired_at', null),
-    sb.from('mm_recipe_lines').select('ingredient_id, recipe_id, mm_recipes(name)').in('ingredient_id', ids),
+    sb.from('mm_recipe_lines').select('ingredient_id, recipe_id, mm_recipes(name, shared_at)').in('ingredient_id', ids),
     sb.from('people').select('id, first_name, last_name').in('id', people)
   ]);
   for (const r of [pkgs, lines, names]) if (r.error) throw new Error(`typed-in details: ${r.error.message}`);
@@ -266,8 +269,10 @@ export async function listTypedInsWith(sb: SupabaseClient): Promise<TypedInIngre
       avoid: (r.avoid ?? []) as RestrictionKey[],
       pkg: p ? { price: Number(p.price), size: p.yield == null ? null : Number(p.yield), store: (p.store as string | null) ?? null } : null,
       addedBy: credit.get(r.added_by_person_id as number) ?? 'A scout',
+      requested: r.submitted_at != null && r.shared_at == null,
       usedIn: (lines.data ?? [])
-        .filter((l) => l.ingredient_id === r.id)
+        // Shared recipes only: a request may also sit in its author's private draft, whose name is not a leader's to read.
+        .filter((l) => l.ingredient_id === r.id && (l.mm_recipes as unknown as { shared_at: string | null } | null)?.shared_at != null)
         .map((l) => (l.mm_recipes as unknown as { name: string } | null)?.name ?? (l.recipe_id as string))
     };
   });
@@ -285,14 +290,48 @@ export async function matchTypedInWith(sb: SupabaseClient, from: string, to: str
 
 /** A leader keeps a typed-in as a new book ingredient: its store section and confirmed diets; it stops waiting. */
 export async function keepTypedInWith(sb: SupabaseClient, id: string, section: Section, avoid: RestrictionKey[]): Promise<string | null> {
+  // A request from the Ingredients tab was never revealed: keeping it is what puts it in everyone's catalog.
+  const { data: row } = await sb.from('mm_ingredients').select('shared_at').eq('id', id).maybeSingle();
   const { data, error } = await sb
     .from('mm_ingredients')
-    .update({ section, avoid, needs_match_at: null })
+    .update({ section, avoid, needs_match_at: null, shared_at: (row?.shared_at as string | null | undefined) ?? new Date().toISOString() })
     .eq('id', id)
     .not('needs_match_at', 'is', null)
-    .not('shared_at', 'is', null)
+    .or('shared_at.not.is.null,submitted_at.not.is.null')
     .is('retired_at', null)
     .select('name');
   if (error) throw new Error(`keep ingredient: ${error.message}`);
   return (data?.[0]?.name as string | undefined) ?? null;
+}
+
+export type SubmitIngredientResult = { status: 'added'; id: string } | { status: 'ingredient_cap' | 'duplicate_ingredient' | 'invalid' };
+
+/**
+ * A request to add an ingredient to the price book, from the public Ingredients
+ * tab: a typed-in (same validator and 10-cap as a recipe's) marked submitted_at,
+ * private to `personId` until a leader keeps, matches or rejects it. The caller
+ * passes an already-sanitized NewIngredient.
+ */
+export async function submitIngredientWith(sb: SupabaseClient, personId: number, n: NewIngredient): Promise<SubmitIngredientResult> {
+  const { data, error } = await sb.rpc('mm_submit_ingredient', { p_person: personId, p_new: typedInPayload(n) });
+  if (error) {
+    if (error.message.includes('MM_INGREDIENT_CAP')) return { status: 'ingredient_cap' };
+    if (error.message.includes('MM_DUPLICATE_INGREDIENT')) return { status: 'duplicate_ingredient' };
+    if (error.message.includes('MM_BAD_')) return { status: 'invalid' };
+    throw new Error(`submit ingredient: ${error.message}`);
+  }
+  return { status: 'added', id: data as string };
+}
+
+/**
+ * A leader's Reject of a request nothing shared uses (mm_reject_ingredient): it
+ * stops waiting and, when nothing of its author's uses it, is removed at once —
+ * so a rejected request never holds their 10-waiting cap or its name. One their
+ * own recipe or menu uses stays a private typed-in. Returns its name, or null
+ * when it is no longer a pending request.
+ */
+export async function rejectTypedInWith(sb: SupabaseClient, id: string): Promise<string | null> {
+  const { data, error } = await sb.rpc('mm_reject_ingredient', { p_id: id });
+  if (error) throw new Error(`reject ingredient: ${error.message}`);
+  return (data as string | null) ?? null;
 }

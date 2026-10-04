@@ -512,6 +512,8 @@ export interface MmIngredientRow {
   needs_match_at?: string | null;
   added_by_person_id?: number | null;
   shared_at?: string | null;
+  /** Its author asked a leader to add it to the price book (public Ingredients tab); cleared by a Reject. */
+  submitted_at?: string | null;
   retired_at: string | null;
 }
 

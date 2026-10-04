@@ -22,7 +22,7 @@ const ITEM = {
   avoid: ['gf' as const],
   pkg: { price: 6.99, size: 17.6, store: 'H Mart' },
   addedBy: 'Charlie W.',
-  usedIn: ['Bibimbap']
+  requested: false, usedIn: ['Bibimbap']
 };
 const BOOK = [
   { id: 'chili-paste', name: 'Chili paste', unitKey: 'lb', unitMany: 'lb' },

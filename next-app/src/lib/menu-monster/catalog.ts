@@ -65,7 +65,7 @@ export async function loadCatalogWith(supabase: SupabaseClient, opts: CatalogLoa
     fetchAllRows<MmIngredientRow>((from, to) =>
       supabase
         .from('mm_ingredients')
-        .select('id, name, unit_kind, unit_key, unit_one, unit_many, section, staple, avoid, created_at, retired_at, needs_match_at')
+        .select('id, name, unit_kind, unit_key, unit_one, unit_many, section, staple, avoid, created_at, retired_at, needs_match_at, submitted_at, shared_at')
         .is('retired_at', null)
         // A scout's typed-in reaches others once a shared recipe reveals it; its author always sees their own.
         .or(owner ? `added_by_person_id.is.null,shared_at.not.is.null,added_by_person_id.eq.${owner}` : 'added_by_person_id.is.null,shared_at.not.is.null')
@@ -273,7 +273,8 @@ function toIngredient(row: MmIngredientRow): Ingredient {
     staple: row.staple,
     avoid: row.avoid as RestrictionKey[],
     retiredAt: row.retired_at,
-    ...(row.needs_match_at != null ? { needsMatch: true } : {})
+    ...(row.needs_match_at != null ? { needsMatch: true } : {}),
+    ...(row.needs_match_at != null && row.submitted_at != null && row.shared_at == null ? { waiting: true } : {})
   };
 }
 

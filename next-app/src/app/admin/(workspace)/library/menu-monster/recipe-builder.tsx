@@ -47,6 +47,7 @@ import { buildLines, ruleText, totalsOf, MAX_HEADCOUNT, MIN_HEADCOUNT } from '@/
 import { FOOD_GROUPS, MEALS, RESTRICTIONS, RESTRICTION_BY_KEY, SECTIONS, SECTION_ORDER, lineUnit, parseQty, perPersonText, supportedUnits } from '@/lib/menu-monster/units';
 import type { Catalog, Ingredient, MealSlot, Plan, Recipe, RecipeLine, RestrictionKey, VariationState } from '@/lib/menu-monster/types';
 import { duplicateRecipe, saveRecipe, setRecipeStatus } from './actions';
+import { NewFoodForm } from './new-food-form';
 import lib from '../library.module.css';
 import styles from './menu-monster.module.css';
 
@@ -65,6 +66,8 @@ const VIEW_VARIANT: Record<VariationView, 'danger' | 'warning' | 'success' | 'mu
   unsuitable: 'danger'
 };
 const NEW_ID = '__new__';
+/** The one-step form for a single food (Cookies): ingredient + price + its one-line menu item. */
+const NEW_FOOD = '__food__';
 const ARM_MS = 4000;
 type Tab = 'everyone' | RestrictionKey;
 
@@ -154,10 +157,11 @@ function useArmed(): { armed: boolean; arm: () => boolean } {
   };
 }
 
-export function RecipeBuilder({ catalog, initialRecipeId }: { catalog: Catalog; initialRecipeId?: string }) {
+export function RecipeBuilder({ catalog, initialRecipeId, stores = [], today = null }: { catalog: Catalog; initialRecipeId?: string; stores?: readonly string[]; today?: string | null }) {
   const router = useRouter();
   const [selectedId, setSelectedId] = useState<string | null>(initialRecipeId ?? null);
-  const selected = selectedId === NEW_ID ? null : (catalog.recipes.find((r) => r.id === selectedId) ?? null);
+  const [note, setNote] = useState<string | null>(null);
+  const selected = selectedId === NEW_ID || selectedId === NEW_FOOD ? null : (catalog.recipes.find((r) => r.id === selectedId) ?? null);
 
   const groups = useMemo(() => {
     const by = new Map<string, Recipe[]>();
@@ -180,8 +184,11 @@ export function RecipeBuilder({ catalog, initialRecipeId }: { catalog: Catalog; 
       <nav className={styles.itemList} aria-label="Menu items">
         <div className={styles.toolbar}>
           <span className={styles.spacer} />
-          <Button variant="secondary" size="sm" onClick={() => setSelectedId(NEW_ID)}>
-            + New menu item
+          <Button variant="secondary" onClick={() => setSelectedId(NEW_FOOD)}>
+            + New single food
+          </Button>
+          <Button variant="secondary" onClick={() => setSelectedId(NEW_ID)}>
+            + New recipe
           </Button>
         </div>
         {groups.map((g) => (
@@ -212,12 +219,34 @@ export function RecipeBuilder({ catalog, initialRecipeId }: { catalog: Catalog; 
         {catalog.recipes.length === 0 && <p className={styles.muted}>No menu items yet.</p>}
       </nav>
 
-      {selectedId === NEW_ID ? (
-        <RecipeEditor key={NEW_ID} initial={blankDraft()} catalog={catalog} onSelect={setSelectedId} onChanged={() => router.refresh()} />
+      {selectedId === NEW_FOOD ? (
+        <div>
+          <p className={styles.hint}>One thing each person gets, like cookies or an apple. Something with several ingredients or steps is a recipe.</p>
+          <NewFoodForm
+            title="New single food"
+            menuFirst
+            stores={stores}
+            today={today}
+            onDone={(res) => {
+              setNote(res.ok ? (res.note ?? null) : null);
+              if (res.ok) setSelectedId(res.recipeId ?? null);
+              router.refresh();
+            }}
+            onCancel={() => setSelectedId(null)}
+          />
+        </div>
+      ) : selectedId === NEW_ID ? (
+        <RecipeEditor key={NEW_ID} initial={blankDraft()} catalog={catalog} stores={stores} today={today} onSelect={setSelectedId} onChanged={() => router.refresh()} />
       ) : selected ? (
-        <RecipeEditor key={selected.id} initial={authoringOf(selected)} catalog={catalog} onSelect={setSelectedId} onChanged={() => router.refresh()} />
+        <div>
+          {note && <Notice variant="success">{note}</Notice>}
+          <RecipeEditor key={selected.id} initial={authoringOf(selected)} catalog={catalog} stores={stores} today={today} onSelect={setSelectedId} onChanged={() => router.refresh()} />
+        </div>
       ) : (
-        <p className={styles.muted}>{selectedId ? 'Refreshing…' : 'Pick a menu item, or add one.'}</p>
+        <div>
+          {note && <Notice variant="success">{note}</Notice>}
+          <p className={styles.muted}>{selectedId ? 'Refreshing…' : 'Pick a menu item, or add one.'}</p>
+        </div>
       )}
     </div>
   );
@@ -228,17 +257,22 @@ export function RecipeBuilder({ catalog, initialRecipeId }: { catalog: Catalog; 
 function RecipeEditor({
   initial,
   catalog,
+  stores,
+  today,
   onSelect,
   onChanged
 }: {
   initial: RecipeAuthoring;
   catalog: Catalog;
+  stores: readonly string[];
+  today: string | null;
   onSelect: (id: string) => void;
   onChanged: () => void;
 }) {
   const [draft, setDraft] = useState<RecipeAuthoring>(initial);
   const [tab, setTab] = useState<Tab>('everyone');
   const [adding, setAdding] = useState(false);
+  const [newIngredient, setNewIngredient] = useState(false);
   const snap = useDraftSnapshot(draft);
   const feedback = useSavePhase();
   const [pending, start] = useTransition();
@@ -275,7 +309,7 @@ function RecipeEditor({
   function save() {
     feedback.start();
     run(
-      () => saveRecipe(draft),
+      () => saveRecipe(isNew ? { ...draft, id: '' } : draft),
       (id) => {
         feedback.done();
         snap.markSaved();
@@ -301,9 +335,9 @@ function RecipeEditor({
   }
 
   return (
-    <section className={styles.editor} aria-label={isNew ? 'New menu item' : `Edit ${snap.saved.name}`}>
+    <section className={styles.editor} aria-label={isNew ? 'New recipe' : `Edit ${snap.saved.name}`}>
       <div className={styles.detailHead}>
-        <h2 className={styles.detailTitle}>{isNew ? 'New menu item' : snap.saved.name}</h2>
+        <h2 className={styles.detailTitle}>{isNew ? 'New recipe' : snap.saved.name}</h2>
         <Badge variant={PILL_VARIANT[pill]}>{pill}</Badge>
         {snap.dirty && <Badge variant="warning">Unsaved edits</Badge>}
       </div>
@@ -401,7 +435,7 @@ function RecipeEditor({
                 One line per ingredient — what an unrestricted person gets. Gluten-free, nut-free, dairy-free and vegetarian swaps go on their own
                 tab, so this list stays the plain recipe.
               </p>
-              {draft.base.length === 0 && <p className={styles.muted}>No lines yet.</p>}
+              {draft.base.length === 0 && <p className={styles.muted}>No ingredients yet.</p>}
               <ul className={styles.lineList} aria-label="Ingredient lines">
                 {draft.base.map((l, idx) => (
                   <BaseLineRow
@@ -417,10 +451,27 @@ function RecipeEditor({
                 ))}
               </ul>
               <div className={lib.actionsRow}>
-                <Button variant="secondary" size="sm" onClick={() => setDraft((d) => ({ ...d, base: [...d.base, { ingredientId: '', amount: '', unitKey: null }] }))}>
-                  + Add a line
+                <Button variant="secondary" onClick={() => setDraft((d) => ({ ...d, base: [...d.base, { ingredientId: '', amount: '', unitKey: null }] }))}>
+                  + Add an ingredient
+                </Button>
+                <Button variant="quiet" aria-expanded={newIngredient} onClick={() => setNewIngredient((v) => !v)}>
+                  Not in the list? New ingredient…
                 </Button>
               </div>
+              {newIngredient && (
+                <NewFoodForm
+                  title="New ingredient"
+                  stores={stores}
+                  today={today}
+                  onDone={(res) => {
+                    // It joins the pickers on the refresh; its line is added now so the leader only types the amount.
+                    if (res.id) setDraft((d) => ({ ...d, base: [...d.base, { ingredientId: res.id as string, amount: '', unitKey: null }] }));
+                    if (res.ok) setNewIngredient(false);
+                    onChanged();
+                  }}
+                  onCancel={() => setNewIngredient(false)}
+                />
+              )}
             </div>
           ) : (
             <VariationPanel
