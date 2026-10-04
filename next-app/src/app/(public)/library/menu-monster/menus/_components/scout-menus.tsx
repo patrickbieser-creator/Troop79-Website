@@ -43,6 +43,19 @@ export async function scoutViewer(): Promise<ScoutViewer | null> {
   return { personId: session.personId, displayName: session.displayName };
 }
 
+/**
+ * Who may write a recipe: anyone signed in who is one person — a scout, a leader, a parent (Patrick,
+ * 2026-10-03: "anyone signed in can create recipes, not just scouts"). The name is the public credit form
+ * ("Sam K."), read from `people`. Null for everyone else, and for a leader cookie that names no one person.
+ */
+export async function recipeAuthor(): Promise<ScoutViewer | null> {
+  const viewer = await menuViewer();
+  if (!viewer || viewer.personId == null) return null;
+  if (viewer.kind === 'scout') return { personId: viewer.personId, displayName: viewer.displayName };
+  const names = await ownerCreditNamesWith(createAdminClient(), [viewer.personId]);
+  return { personId: viewer.personId, displayName: names.get(viewer.personId) ?? (viewer.kind === 'leader' ? viewer.label : 'A parent') };
+}
+
 export interface LeaderViewer {
   /** Null for a legacy leader-cookie session whose label does not resolve to one person. */
   personId: number | null;

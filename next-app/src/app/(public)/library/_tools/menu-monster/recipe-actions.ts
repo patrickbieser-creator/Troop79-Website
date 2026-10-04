@@ -16,15 +16,24 @@ import { loadMenuMonsterCatalog } from '@/lib/menu-monster/data';
 import { MAX_SCOUT_RECIPES, isScoutRecipeId, sanitizeScoutRecipe } from '@/lib/menu-monster/scout-recipes';
 import { deleteScoutDraftWith, saveScoutRecipeWith, shareScoutRecipeWith } from '@/lib/menu-monster/scout-recipes-store';
 import { ensureGearWith } from '@/lib/menu-monster/gear-store';
+import { menuViewer, recipeAuthor } from '../../menu-monster/menus/_components/scout-menus';
 
 type Fail = { ok: false; error: string };
 
+/** The author: a verified scout (the epoch check every scout write makes), else any other signed-in person
+ *  (a leader, a parent — menuViewer re-checks a parent's sign-in). The name is never taken from the payload. */
 async function scoutActor(): Promise<AuditActor | Fail> {
   try {
     const s = await requireVerifiedScoutIdentity();
     return { personId: s.personId, label: s.displayName };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : 'Scouts: sign in to write a recipe.' };
+    const viewer = await menuViewer();
+    if (viewer && viewer.kind !== 'scout' && viewer.personId != null) {
+      const author = await recipeAuthor();
+      if (author) return { personId: author.personId, label: author.displayName };
+    }
+    // A scout hears why their sign-in ended; everyone else is simply asked to sign in.
+    return { ok: false, error: e instanceof Error && viewer?.kind === 'scout' ? e.message : 'Sign in to write a recipe.' };
   }
 }
 const isFail = (v: AuditActor | Fail): v is Fail => 'ok' in v;

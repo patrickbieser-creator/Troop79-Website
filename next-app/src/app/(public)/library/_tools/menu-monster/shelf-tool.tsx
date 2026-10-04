@@ -66,9 +66,8 @@ export async function MenuMonsterShelfTool({ searchParams }: { searchParams: Rec
   const asked = typeof searchParams.tab === 'string' ? searchParams.tab : '';
   const tab: TabKey = TABS.some((x) => x.key === asked) ? (asked as TabKey) : 'planner';
   const viewer = await menuViewer();
-  // A signed-in scout's own draft recipes join their planner and library.
-  // An adult's own requested ingredients join only the Ingredients tab (they have no drafts or saved menus).
-  const catalog = await loadMenuMonsterCatalog(viewer?.kind === 'scout' || tab === 'ingredients' ? (viewer?.personId ?? null) : null);
+  // An adult's own drafts and requested ingredients join every tab but the planner (they have no saved menus).
+  const catalog = await loadMenuMonsterCatalog(viewer?.kind === 'scout' || tab !== 'planner' ? (viewer?.personId ?? null) : null);
   const planner = tab === 'planner' ? await mealPlanner(catalog, viewer) : null;
   return (
     <>
@@ -96,14 +95,13 @@ async function ingredientAdder(viewer: MenuViewer | null): Promise<'live' | 'rev
   return actor?.capabilities.has('library.moderate') ? 'live' : 'review';
 }
 
-/** Recipe Builder: a scout's own recipes + New recipe; anyone else one line to sign in. */
+/** Recipe Builder: the signed-in person's own recipes + New recipe (scout, leader or parent); anyone else one line to sign in. */
 async function recipeBuilder(viewer: MenuViewer | null) {
-  if (viewer?.kind !== 'scout') {
+  if (!viewer || viewer.personId == null) {
     return (
       <p className={w.foot}>
-        Scouts:{' '}
         <Link className={w.link} href={`/signin?next=${encodeURIComponent(`${MENU_HUB_HREF}?tab=builder`)}`}>
-          sign in
+          Sign in
         </Link>{' '}
         to write a recipe.
       </p>

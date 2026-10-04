@@ -302,10 +302,16 @@ describe('MenuMonsterShelfTool hub, tabs', () => {
     expect(screen.getByRole('link', { name: 'New recipe' }).getAttribute('href')).toBe('/library/menu-monster/recipes/new');
   });
 
+  it('RecipeBuilderTab_OffersAParentANewRecipe', async () => {
+    mocks.session = { subjectKind: 'adult', personId: 5, displayName: 'Pat' };
+    await shelf('builder');
+    expect(screen.getByRole('link', { name: 'New recipe' }).getAttribute('href')).toBe('/library/menu-monster/recipes/new');
+  });
+
   it('RecipeBuilderTab_AsksAVisitorToSignIn', async () => {
     mocks.session = null;
     await shelf('builder');
-    expect(screen.getByRole('link', { name: 'sign in' }).getAttribute('href')).toContain('tab%3Dbuilder');
+    expect(screen.getByRole('link', { name: 'Sign in' }).getAttribute('href')).toContain('tab%3Dbuilder');
   });
 
 });

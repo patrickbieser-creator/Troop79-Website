@@ -15,7 +15,7 @@ import { mealTitle } from '@/lib/menu-monster/menu-view';
 import { resolveMenuAliases } from '@/lib/menu-monster/menus';
 import { versionDraft } from '@/lib/menu-monster/scout-recipes';
 import { PageShell } from '@/app/_components/page-shell';
-import { loadOwnMenu, scoutViewer } from '../../menus/_components/scout-menus';
+import { loadOwnMenu, recipeAuthor } from '../../menus/_components/scout-menus';
 import { RecipeEditor } from '../_components/recipe-editor';
 import { RECIPES_HREF } from '../_components/paths';
 import { RecipeHeader, RecipeLocked } from '../_components/recipe-pages';
@@ -27,7 +27,7 @@ const BLANK = { name: '', mealFit: [], foodGroups: [], steps: [], lines: [], ori
 const one = (v: string | string[] | undefined) => (typeof v === 'string' ? v : null);
 
 export default async function NewRecipePage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const viewer = await scoutViewer();
+  const viewer = await recipeAuthor();
   if (!viewer) {
     return (
       <>

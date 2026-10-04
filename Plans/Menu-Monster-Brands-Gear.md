@@ -162,3 +162,13 @@ Decisions made on Patrick's behalf:
   unrecorded lines with no "We're done shopping".
 - Old links without `?tab=` that name an ingredient or recipe still open the Price book / Food & recipes.
 - Not independently reviewed by qa-lead (read-only views behind the existing `library.moderate` gate).
+
+### R6b — v1.160.0, 2026-10-04 (anyone signed in writes recipes)
+
+- Patrick: "anyone signed in can create recipes. Not just scouts." A parent or leader now has the Recipe
+  Builder, the editor, sharing and deleting. Same rules as a scout: 25 recipes each, a shared recipe goes live
+  at once with the "Recipe by Pat B." credit, a leader can retire it in admin.
+- **Decision on his behalf: adults still do not get saved menus** (only recipes were asked for). An adult plans
+  with the on-this-device planner as before.
+- A leader signed in only with a legacy cookie that names no person cannot write a recipe (nobody to credit).
+- qa-lead reviewed: ship (a revoked scout cannot come back in as an adult; message fixed for adults).

@@ -10,7 +10,7 @@ import { loadMenuMonsterCatalog } from '@/lib/menu-monster/data';
 import { listGearWith } from '@/lib/menu-monster/gear-store';
 import { loadMyRecipeWith } from '@/lib/menu-monster/scout-recipes-store';
 import { PageShell } from '@/app/_components/page-shell';
-import { scoutViewer } from '../../menus/_components/scout-menus';
+import { recipeAuthor } from '../../menus/_components/scout-menus';
 import { RecipeEditor } from '../_components/recipe-editor';
 import { RECIPES_HREF } from '../_components/paths';
 import { RecipeHeader, RecipeLocked } from '../_components/recipe-pages';
@@ -20,7 +20,7 @@ export const metadata: Metadata = { title: 'Recipe — Menu Monster' };
 
 export default async function RecipePage({ params }: { params: Promise<{ recipeId: string }> }) {
   const { recipeId } = await params;
-  const viewer = await scoutViewer();
+  const viewer = await recipeAuthor();
   if (!viewer) {
     return (
       <>

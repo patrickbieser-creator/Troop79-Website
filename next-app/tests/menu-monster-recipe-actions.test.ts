@@ -24,6 +24,12 @@ vi.mock('@/lib/identity-session', async (orig) => ({
   isEpochCurrent: async () => mocks.epochCurrent
 }));
 vi.mock('@/lib/supabase/server', () => ({ createAdminClient: () => ({ stub: true }) }));
+vi.mock('@/lib/household-scope', () => ({ resolveFamilyScope: async () => [39] }));
+vi.mock('@/lib/admin-actor', () => ({ resolveAdminActor: async () => null }));
+vi.mock('@/lib/menu-monster/menus-store', async (orig) => ({
+  ...(await orig<object>()),
+  ownerCreditNamesWith: async (_sb: unknown, ids: number[]) => new Map(ids.map((id) => [id, 'Pat W.']))
+}));
 vi.mock('@/lib/menu-monster/data', () => ({ loadMenuMonsterCatalog: async () => CATALOG }));
 vi.mock('@/lib/menu-monster/scout-recipes-store', () => ({
   saveScoutRecipeWith: mocks.save,
@@ -106,5 +112,34 @@ describe('recipe actions: share and delete', () => {
   it('Delete_ExplainsAMenuStillUsesIt', async () => {
     mocks.del.mockResolvedValue({ status: 'in_use' });
     expect(await deleteScoutRecipeAction(ID)).toEqual({ ok: false, error: 'One of your menus uses this recipe. Take it off the menu first.' });
+  });
+});
+
+describe('recipe actions: anyone signed in writes recipes (release 6)', () => {
+  const PARENT = { ...SCOUT, subjectKind: 'adult', personId: 50, displayName: 'Patricia Walters' } as IdentitySession;
+
+  it('Parent_SavesARecipe_AsThemselves', async () => {
+    mocks.session = PARENT;
+    await saveScoutRecipeAction(payload({ authorPersonId: 7 }), null);
+    expect(mocks.save.mock.calls[0][1]).toEqual({ personId: 50, label: 'Pat W.' });
+  });
+
+  it('Parent_CanShareAndDelete', async () => {
+    mocks.session = PARENT;
+    const [shared, deleted] = [await shareScoutRecipeAction(ID), await deleteScoutRecipeAction(ID)];
+    expect([shared.ok, deleted.ok]).toEqual([true, true]);
+  });
+
+  it('Parent_IsRefused_WhenTheSignInWasRevoked', async () => {
+    mocks.session = PARENT;
+    mocks.epochCurrent = false;
+    expect((await saveScoutRecipeAction(payload(), null)).ok).toBe(false);
+    expect(mocks.save).not.toHaveBeenCalled();
+  });
+
+  it('Scout_IsRefused_WhenTheSignInWasRevoked_NotLetInAsSomeoneElse', async () => {
+    mocks.epochCurrent = false;
+    expect((await saveScoutRecipeAction(payload(), null)).ok).toBe(false);
+    expect(mocks.save).not.toHaveBeenCalled();
   });
 });
