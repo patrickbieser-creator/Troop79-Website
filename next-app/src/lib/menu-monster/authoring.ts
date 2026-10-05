@@ -289,6 +289,9 @@ export interface RecipeAuthoring {
   variations: DraftVariation[];
   /** Gear you'll need (4C), as the leader types it: comma-separated. Absent = keep what is stored. */
   gear?: string;
+  /** The food this menu item is, served by itself (types.ts Recipe.foodIngredientId). Absent = keep what is
+   *  stored; null = not tied to a food. The database drops it if the item stops being one line of that food. */
+  foodIngredientId?: string | null;
 }
 
 const blank = (a: RecipeAuthoring) => ({
@@ -318,11 +321,14 @@ export function isSingleFood(a: RecipeAuthoring): boolean {
  * lines (a swap that changes a line is what makes something a recipe). Whether a diet is still marked
  * unsuitable, the steps and the gear are kept — bacon is one food and is still cooked.
  */
-export function asSingleFood(a: RecipeAuthoring, ingredientId: string, amount: string): RecipeAuthoring {
+export function asSingleFood(a: RecipeAuthoring, ingredientId: string, amount: string, tie = false): RecipeAuthoring {
   return {
     ...a,
     base: [{ ingredientId, amount, unitKey: null }],
-    variations: a.variations.map((v) => ({ ...v, lines: [] }))
+    variations: a.variations.map((v) => ({ ...v, lines: [] })),
+    // `tie`: it IS that food (same name, nothing else tied to it) — one entry from here on. Otherwise it is
+    // a dish made of one food, under its own name.
+    foodIngredientId: tie ? ingredientId : null
   };
 }
 
@@ -372,6 +378,7 @@ export function authoringOf(r: Recipe): RecipeAuthoring {
     method: r.method,
     stepsMd: r.stepsMd ?? '',
     gear: (r.equipment ?? []).join(', '),
+    ...(r.foodIngredientId ? { foodIngredientId: r.foodIngredientId } : {}),
     base: derived.base.map((b) => ({ ingredientId: b.ingredientId, amount: String(b.qtyPerPerson), unitKey: b.unitKey })),
     variations: source.map((v) => ({
       restriction: v.restriction,

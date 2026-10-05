@@ -587,6 +587,8 @@ export interface MmRecipeRow {
   equipment?: string[] | null;
   /** { ingredientId: brandId } — release 6. */
   brand_suggestions?: Record<string, string> | null;
+  /** Set = this menu item is that food served by itself (migration 20261015100000). */
+  food_ingredient_id?: string | null;
 }
 
 export interface MmRecipeLineRow {

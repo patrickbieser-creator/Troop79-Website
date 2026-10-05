@@ -28,6 +28,7 @@ import { approveHeldPackageWith, rejectHeldPackageWith } from '@/lib/menu-monste
 import { createGearWith, deleteGearWith, ensureGearWith, retireGearWith, updateGearWith } from '@/lib/menu-monster/gear-store';
 import { createBrandWith, mergeBrandWith, moveBrandWith, removeBrandWith, renameBrandWith, setBrandDietsWith, setPackageBrandWith, type BrandWrite, suggestRecipeBrandWith } from '@/lib/menu-monster/brands-store';
 import {
+  authoringOf,
   blockingIssues,
   changeUnitPlan,
   learnedConversion,
@@ -191,15 +192,17 @@ export async function updateIngredient(id: string, input: Omit<IngredientInput, 
 }
 
 /** The non-retired recipes whose lines use this ingredient. */
+/** The live recipes an ingredient is IN. Its own "served by itself" menu item is not one of them: that item
+ *  is the food, and retires with it (migration 20261015100000, mm_food_link_follow). */
 async function recipesUsing(supabase: ReturnType<typeof createAdminClient>, ingredientId: string): Promise<string[]> {
   const { data } = await supabase
     .from('mm_recipe_lines')
-    .select('recipe_id, mm_recipes!inner(name, status)')
+    .select('recipe_id, mm_recipes!inner(name, status, food_ingredient_id)')
     .eq('ingredient_id', ingredientId)
     .neq('mm_recipes.status', 'retired');
   const names = new Set<string>();
-  for (const row of (data ?? []) as unknown as { mm_recipes: { name: string } | null }[]) {
-    if (row.mm_recipes) names.add(row.mm_recipes.name);
+  for (const row of (data ?? []) as unknown as { mm_recipes: { name: string; food_ingredient_id: string | null } | null }[]) {
+    if (row.mm_recipes && row.mm_recipes.food_ingredient_id !== ingredientId) names.add(row.mm_recipes.name);
   }
   return [...names].sort();
 }
@@ -725,8 +728,8 @@ export async function saveRecipe(a: RecipeAuthoring): Promise<Result> {
   const compiled = compileRecipe<number>(base, variations);
 
   const supabase = createAdminClient();
-  const { data: rows } = await supabase.from('mm_recipes').select('id, status, sort_order');
-  const existing = ((rows ?? []) as { id: string; status: RecipeStatus; sort_order: number }[]);
+  const { data: rows } = await supabase.from('mm_recipes').select('id, status, sort_order, food_ingredient_id');
+  const existing = ((rows ?? []) as { id: string; status: RecipeStatus; sort_order: number; food_ingredient_id: string | null }[]);
   const taken = new Set(existing.map((r) => r.id));
   const current = existing.find((r) => r.id === a.id);
   // A new item keeps a caller-chosen id only when it is a real slug — never the editor’s `__new__` placeholder.
@@ -737,10 +740,18 @@ export async function saveRecipe(a: RecipeAuthoring): Promise<Result> {
   // qa-lead, 2026-09-08: a clean message beats a foreign-key error from a
   // stale page, and a PUBLISHED recipe must not quietly take a zero line
   // (the publish gate only runs at publish time).
-  const { data: ingRows } = await supabase.from('mm_ingredients').select('id');
-  const known = new Set(((ingRows ?? []) as { id: string }[]).map((r) => r.id));
+  const { data: ingRows } = await supabase.from('mm_ingredients').select('id, name, retired_at, added_by_person_id');
+  const ings = (ingRows ?? []) as { id: string; name: string; retired_at: string | null; added_by_person_id: number | null }[];
+  const known = new Set(ings.map((r) => r.id));
   const unknown = compiled.find((l) => !known.has(l.ingredientId));
   if (unknown) return { ok: false, error: `Unknown ingredient "${unknown.ingredientId}" — reload the page and try again.` };
+  // A menu item tied to its food is renamed WITH it (mm_save_recipe), so a new name here is a new name in
+  // the Price book: refuse one another food already has, the same check a new food gets (qa-lead).
+  const tiedFood = a.foodIngredientId !== undefined ? a.foodIngredientId : (current?.food_ingredient_id ?? null);
+  if (tiedFood && compiled.length === 1 && compiled[0].ingredientId === tiedFood) {
+    const clash = ings.find((i) => i.id !== tiedFood && !i.retired_at && i.added_by_person_id == null && i.name.trim().toLowerCase() === name.toLowerCase());
+    if (clash) return { ok: false, error: `“${clash.name}” is already in the price book. Pick another name.` };
+  }
   if (status === 'published') {
     const zero = compiled.findIndex((l) => !(l.qtyPerPerson > 0));
     if (zero >= 0) return { ok: false, error: `Line ${zero + 1}: the amount per person must be more than zero on a published item.` };
@@ -759,7 +770,9 @@ export async function saveRecipe(a: RecipeAuthoring): Promise<Result> {
       steps_md: cap(a.stepsMd ?? '', MAX.steps),
       sort_order: sortOrder,
       // 4C: gear, cleaned like scout text; left out when the form didn't carry it (the RPC keeps the stored list).
-      ...(a.gear !== undefined ? { equipment: cleanGear(a.gear.split(',')) } : {})
+      ...(a.gear !== undefined ? { equipment: cleanGear(a.gear.split(',')) } : {}),
+      // The food it is, served by itself; left out when the form didn't carry it (the RPC keeps the stored link).
+      ...(a.foodIngredientId !== undefined ? { food_ingredient_id: a.foodIngredientId } : {})
     },
     p_lines: compiled.map((l) => ({
       ingredient_id: l.ingredientId,
@@ -983,13 +996,74 @@ export async function createFood(input: FoodInput): Promise<FoodResult> {
     method: 'no-cook',
     stepsMd: '',
     base: [{ ingredientId: id, amount: String(menu.amount).trim(), unitKey: null }],
-    variations: []
+    variations: [],
+    // One entry: the menu item IS this food (the database keeps its name and retirement in step).
+    foodIngredientId: id
   });
   if (!saved.ok || !saved.id) return { ok: false, id, error: `${value.name} is in the price book, but its menu item was not saved: ${saved.error}` };
   if (!pkg) return { ok: true, id, recipeId: saved.id, note: `${value.name} is saved as a draft — it goes on the menu once it has a price.` };
   const live = await setRecipeStatus(saved.id, 'published');
   if (!live.ok) return { ok: true, id, recipeId: saved.id, note: `${value.name} is saved as a draft: ${live.error}` };
   return { ok: true, id, recipeId: saved.id };
+}
+
+/**
+ * "On the menu by itself" for a food already in the Price book (single-food-entry plan, release 2): how many
+ * each person gets and which meals it fits. The food's own tied menu item is created the first time, and
+ * updated — or brought back from retired — after that, so there is only ever one. It publishes when it can;
+ * a food with no price yet waits as a draft and the note says so.
+ */
+export async function putFoodOnMenu(ingredientId: string, input: { amount: string; mealFit: MealSlot[]; foodGroups: FoodGroup[] }): Promise<FoodResult> {
+  const denied = await guard();
+  if (denied) return denied;
+  const amountText = String(input.amount ?? '').trim();
+  const amount = parseQty(amountText);
+  if (!Number.isFinite(amount) || amount <= 0) return { ok: false, error: 'Type how much each person gets — something like 2, ½ or 0.5.' };
+  if (!Array.isArray(input.mealFit) || input.mealFit.length === 0) return { ok: false, error: 'Pick at least one meal it fits.' };
+
+  const supabase = createAdminClient();
+  const catalog = await loadAuthoringCatalogWith(supabase);
+  const ing = catalog.ingredients.find((i) => i.id === ingredientId);
+  if (!ing || ing.retiredAt) return { ok: false, error: 'That food is gone or retired.' };
+  if (ing.needsMatch) return { ok: false, error: 'A scout typed this one in. Keep or match it first.' };
+
+  const tied = catalog.recipes.find((r) => r.foodIngredientId === ingredientId);
+  if (!tied) {
+    const clash = catalog.recipes.find((r) => r.status !== 'retired' && r.authorPersonId == null && r.name.trim().toLowerCase() === ing.name.trim().toLowerCase());
+    if (clash) return { ok: false, error: `There is already a menu item called “${clash.name}”. Open it under Food & recipes and use Make it a single food.` };
+  }
+  const base = tied ? authoringOf(tied) : null;
+  const saved = await saveRecipe({
+    id: tied?.id ?? '',
+    name: ing.name,
+    status: tied?.status ?? 'draft',
+    camp: base?.camp ?? true,
+    trail: base?.trail ?? false,
+    method: base?.method ?? 'no-cook',
+    stepsMd: base?.stepsMd ?? '',
+    variations: (base?.variations ?? []).map((v) => ({ ...v, lines: [] })),
+    mealFit: input.mealFit,
+    foodGroups: input.foodGroups ?? [],
+    base: [{ ingredientId, amount: amountText, unitKey: null }],
+    foodIngredientId: ingredientId
+  });
+  if (!saved.ok || !saved.id) return saved;
+  if (tied?.status === 'published') return { ok: true, id: ingredientId, recipeId: saved.id };
+  // New, a draft, or coming back from retired: publish it if nothing blocks (a food with no price waits as a draft).
+  const live = await setRecipeStatus(saved.id, 'published');
+  if (live.ok) return { ok: true, id: ingredientId, recipeId: saved.id };
+  if (tied?.status === 'retired') await setRecipeStatus(saved.id, 'draft');
+  return { ok: true, id: ingredientId, recipeId: saved.id, note: `${ing.name} is saved as a draft: ${live.error}` };
+}
+
+/** Off the menu, still in the Price book: the tied menu item is retired (never deleted — saved menus may use it). */
+export async function takeFoodOffMenu(ingredientId: string): Promise<Result> {
+  const denied = await guard();
+  if (denied) return denied;
+  const { data } = await createAdminClient().from('mm_recipes').select('id').eq('food_ingredient_id', ingredientId).maybeSingle();
+  const id = (data as { id: string } | null)?.id;
+  if (!id) return { ok: false, error: 'It is not on the menu by itself.' };
+  return setRecipeStatus(id, 'retired');
 }
 
 /* ── Scout recipes (Phase 4A) ────────────────────────────────────────────── */

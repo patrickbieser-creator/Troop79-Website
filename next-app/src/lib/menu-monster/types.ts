@@ -184,6 +184,10 @@ export interface Recipe {
   /** ingredientId → the brand the recipe suggests (release 6). Chosen on a menu when the recipe is added and
    *  the menu has no brand for that ingredient yet; the planner can change it. Absent = none. */
   brandSuggestions?: Record<string, string>;
+  /** Set = this menu item IS that food, served by itself (Plans/Menu-Monster-Single-Food-Entry.md): one line on
+   *  it, the food's name, retired with it. The database keeps it true and clears it when it stops holding. A
+   *  one-ingredient DISH under its own name ("Eggs - Hard-boiled") has none. */
+  foodIngredientId?: string | null;
   /** The signed-in person loading the catalog wrote it (never set on a public load). */
   mine?: boolean;
   /** Leader tools only: when a scout shared it, and who wrote it. */

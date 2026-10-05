@@ -50,7 +50,7 @@ export interface CatalogRows {
 }
 
 /** Recipe columns every load reads; never the author's person id on a public load. */
-const RECIPE_COLUMNS = 'id, name, status, meal_fit, food_groups, camp, trail, method, steps_md, sort_order, created_at, updated_at, attribution_label, equipment, brand_suggestions';
+const RECIPE_COLUMNS = 'id, name, status, meal_fit, food_groups, camp, trail, method, steps_md, sort_order, created_at, updated_at, attribution_label, equipment, brand_suggestions, food_ingredient_id';
 
 export interface CatalogLoadOptions {
   /** The verified scout whose own drafts join the catalog (their menus, their library). */
@@ -271,6 +271,7 @@ export function mapCatalog(rows: CatalogRows): Catalog {
       credit: r.attribution_label ?? null,
       equipment: r.equipment ?? [],
       ...(r.brand_suggestions && Object.keys(r.brand_suggestions).length > 0 ? { brandSuggestions: r.brand_suggestions } : {}),
+      ...(r.food_ingredient_id ? { foodIngredientId: r.food_ingredient_id } : {}),
       ...(r.author_person_id !== undefined ? { authorPersonId: r.author_person_id, sharedAt: r.shared_at ?? null } : {})
     }));
 

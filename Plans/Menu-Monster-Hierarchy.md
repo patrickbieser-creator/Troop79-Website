@@ -135,9 +135,11 @@ what it holds:
 | Shared | private · shared with the troop | For scout recipes. |
 | Copied from | another recipe | |
 
-**Differs from the outline:** the outline treats a single food as one thing that is both an ingredient and
-a menu item. Today those are two records: a food (level 1) and a one-line menu item (level 4) wrapped
-around it. See the open decision at the end.
+**Differs from the outline (less than it did):** the outline treats a single food as one thing that is both
+an ingredient and a menu item. Underneath there are still two records — a food (level 1) and a one-line
+menu item (level 4) — but since v1.172.0 they are **tied** and behave as one entry: the Price book's "On
+the menu by itself" section creates and edits the menu item, the two share one name, and retiring the food
+takes it off the menu. A one-ingredient *dish* with its own name ("Eggs - Hard-boiled") is not tied.
 
 ### Level 4a — Ingredient line (belongs to a menu item)
 
@@ -254,4 +256,5 @@ of several confusions: Cookies could exist as a "recipe" with no ingredient; ren
 The outline's model is simpler: a food with a switch for "can be served on its own", carrying how many each
 person gets, its meal fit, and any steps and gear for serving it. Salt and flour would have the switch off.
 
-Not decided. It changes the data model and both admin tabs, so it would get its own plan if wanted.
+**Decided 2026-10-05:** one entry to people, two tied rows underneath. Shipped as v1.172.0; the reasons a
+true merge was set aside and what was built are in `Plans/Completed/Menu-Monster-Single-Food-Entry.md`.

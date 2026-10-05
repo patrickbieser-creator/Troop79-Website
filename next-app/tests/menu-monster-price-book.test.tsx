@@ -4,6 +4,8 @@ import userEvent from '@testing-library/user-event';
 import { PriceBook } from '../src/app/admin/(workspace)/library/menu-monster/price-book';
 import {
   addBought,
+  putFoodOnMenu,
+  takeFoodOffMenu,
   createBrand,
   changeIngredientUnit,
   createFood,
@@ -33,6 +35,8 @@ vi.mock('../src/app/admin/(workspace)/library/menu-monster/actions', () => ({
   deleteConversion: vi.fn(async () => ({ ok: true })),
   addBought: vi.fn(async () => ({ ok: true, id: 'p-new' })),
   setPackageBrand: vi.fn(async () => ({ ok: true })),
+  putFoodOnMenu: vi.fn(async () => ({ ok: true })),
+  takeFoodOffMenu: vi.fn(async () => ({ ok: true })),
   createBrand: vi.fn(async () => ({ ok: true })),
   renameBrand: vi.fn(async () => ({ ok: true })),
   setBrandDiets: vi.fn(async () => ({ ok: true })),
@@ -46,6 +50,8 @@ vi.mock('../src/app/admin/(workspace)/library/menu-monster/actions', () => ({
 
 beforeEach(() => {
   vi.mocked(addBought).mockClear();
+  vi.mocked(putFoodOnMenu).mockClear();
+  vi.mocked(takeFoodOffMenu).mockClear();
   vi.mocked(setPackageBrand).mockClear();
   vi.mocked(updateIngredient).mockClear();
   vi.mocked(updatePackage).mockClear();
@@ -342,6 +348,45 @@ describe('Price book — brands and what is priced under them', () => {
     await user.type(name, 'Table salt');
     await user.click(within(form).getByRole('button', { name: 'Save changes' }));
     await waitFor(() => expect(updateIngredient).toHaveBeenCalledWith('salt', { name: 'Table salt', section: 'dry', staple: true, avoid: [] }));
+  });
+
+  // One entry for a single food (Plans/Menu-Monster-Single-Food-Entry.md): the Price book says whether the
+  // food is on the menu by itself, and puts it there or takes it off, without a second entry on another tab.
+  it('Leader_SeesAFoodIsNotOnTheMenuByItself_AndPutsItThere', async () => {
+    const user = userEvent.setup();
+    await openSalt(user);
+    const section = within(screen.getByRole('region', { name: 'Salt on the menu by itself' }));
+    expect(section.getByText('No. It is only an ingredient in recipes.')).toBeTruthy();
+    await user.click(section.getByRole('button', { name: 'Put it on the menu' }));
+    const amount = section.getByLabelText('Each person gets');
+    await user.clear(amount);
+    await user.type(amount, '2');
+    // Nothing to save until it fits a meal.
+    expect((section.getByRole('button', { name: 'Put it on the menu' }) as HTMLButtonElement).disabled).toBe(true);
+    await user.click(section.getByLabelText('Snack'));
+    await user.click(section.getByRole('button', { name: 'Put it on the menu' }));
+    await waitFor(() => expect(putFoodOnMenu).toHaveBeenCalledWith('salt', { amount: '2', mealFit: ['snack'], foodGroups: [] }));
+  });
+
+  it('Leader_SeesAFoodThatIsOnTheMenu_AndTakesItOff', async () => {
+    const user = userEvent.setup();
+    const onMenu: Catalog = {
+      ...SALT,
+      recipes: [
+        {
+          id: 'salt-item', name: 'Salt', status: 'published', mealFit: ['snack', 'dessert'], foodGroups: [], camp: true, trail: false, method: 'no-cook', stepsMd: null, sortOrder: 10,
+          lines: [{ ingredientId: 'salt', qtyPerPerson: 2, unitKey: null, servesRule: 'everyone', servesRestrictions: [] }], foodIngredientId: 'salt'
+        }
+      ]
+    };
+    render(<PriceBook catalog={onMenu} today={TODAY} stores={STORES} />);
+    await user.click(within(row('Salt')).getByRole('button', { name: 'Salt' }));
+    const section = within(screen.getByRole('region', { name: 'Salt on the menu by itself' }));
+    expect(section.getByText('2 tsp each · Snack, Dessert')).toBeTruthy();
+    expect(section.getByText('Published')).toBeTruthy();
+    expect(section.getByRole('link', { name: 'Steps, gear and diets for salt →' }).getAttribute('href')).toBe('/admin/library/menu-monster?tab=recipes&recipe=salt-item');
+    await user.click(section.getByRole('button', { name: 'Take it off the menu' }));
+    await waitFor(() => expect(takeFoodOffMenu).toHaveBeenCalledWith('salt'));
   });
 
   it('Leader_OpensConversions_OnlyWhenTheyWantThem', async () => {

@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>October 5, 2026</strong> &nbsp;&middot;&nbsp; v1.171.0</p>
+      <p>Last updated: <strong>October 5, 2026</strong> &nbsp;&middot;&nbsp; v1.172.0</p>
     </div>
   </div>
 
@@ -494,6 +494,24 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.172.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.172.0</span>
+        <span class="release-date">October 5, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Improved</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Menu Monster admin: a single food is one entry</p>
+        <ul class="change-list">
+          <li><span><strong>On the menu by itself.</strong> A food in the Price book now says whether it can be picked for a meal on its own. &ldquo;Put it on the menu&rdquo; asks how many each person gets and which meals it fits; &ldquo;Take it off the menu&rdquo; removes it as a choice and keeps the food. No second entry on the Food &amp; recipes tab.</span></li>
+          <li><span><strong>One name.</strong> A single food and its menu item are tied: renaming it in either place renames both, and a name another food already has is refused.</span></li>
+          <li><span><strong>Retiring a food takes it off the menu too.</strong> Its own menu item no longer blocks the retire; a real recipe that uses the food still does.</span></li>
+          <li><span>Giving a single food a second ingredient or a diet swap makes it a recipe, and the editor says so before you save. A one-ingredient dish with its own name (&ldquo;Eggs - Hard-boiled&rdquo;) stays as it is. Existing single foods with the same name as their food were tied automatically.</span></li>
+        </ul>
       </div>
     </div>
 

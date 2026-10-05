@@ -31,6 +31,7 @@ import type { Catalog, Conversion, Ingredient, Package, Section, Unit, UnitKind 
 import { addConversion, changeIngredientUnit, deleteConversion, restoreIngredient, retireIngredient, updateIngredient } from './actions';
 import { NewFoodForm } from './new-food-form';
 import { BrandsAndPrices } from './brands-prices';
+import { FoodOnMenu } from './food-on-menu';
 import { useArmed } from './use-armed';
 import lib from '../library.module.css';
 import styles from './menu-monster.module.css';
@@ -251,6 +252,10 @@ function IngredientDetail({ row, catalog, today, stores, scrollIntoView = false,
       {error && <Notice>{error}</Notice>}
 
       {editing && <IngredientEditForm ing={ing} onClose={() => setEditing(false)} onChanged={onChanged} />}
+
+      {/* Whether it can be picked for a meal on its own — one entry, not a second one on another tab. Not for a
+          retired food, or one a scout typed in that a leader has not kept yet. */}
+      {!ing.retiredAt && !ing.needsMatch && <FoodOnMenu ing={ing} catalog={catalog} onChanged={onChanged} />}
 
       <BrandsAndPrices ing={ing} catalog={catalog} today={today} stores={stores} onChanged={onChanged} />
 

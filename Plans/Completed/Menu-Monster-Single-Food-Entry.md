@@ -1,8 +1,22 @@
 # Menu Monster — a single food is one entry
 
-**Status:** Drafted, waiting for Patrick's answers to the open questions
+**Status:** Shipped 2026-10-05 as v1.172.0 (all three releases in one deploy; migration `20261015100000_mm_food_link`)
 **Parked:** 2026-10-05
 **Priority:** High
+
+**Patrick's answers (2026-10-05):** 1 yes — dishes keep their own name. 2 yes — retiring a food takes it off
+the menu. 3 yes — a new Price-book food is off the menu unless asked. 4 retired, not deleted.
+
+**What changed from this plan while building it:**
+- Tech-lead review (GO-WITH-CHANGES): the rename had to work from today's editor in release 1, so
+  `mm_save_recipe` renames the FOOD when a tied item is saved under a new name, and drops the tie itself
+  when the save makes it a recipe (so the typed name is the one kept). A matched-away food is not treated
+  as retired. Scout-owned rows are never tied.
+- The validity rule CLEARS the tie instead of refusing the save ("add a second ingredient" just makes it a
+  recipe), so the test names below that say "IsRefused" became "IsDropped" — except one item per food,
+  which the unique index does refuse.
+- A rename to a name another food already has is refused (qa-lead).
+- Not built: the saved-menu before/after costing test (nothing that reads a menu changed).
 
 ## Overview
 

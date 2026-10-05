@@ -379,7 +379,10 @@ function RecipeEditor({
   function save() {
     feedback.start();
     // A single food's name is its ingredient's name: while the two still match, one rename covers both.
-    const rename = food && food.name === snap.saved.name && draft.name.trim() && draft.name.trim() !== food.name ? food : null;
+    // A menu item TIED to its food is renamed with it by the save itself (mm_save_recipe); the follow-up rename
+    // below is only for an older single food that merely shares its food's name.
+    const tied = snap.saved.foodIngredientId != null;
+    const rename = !tied && food && food.name === snap.saved.name && draft.name.trim() && draft.name.trim() !== food.name ? food : null;
     run(
       async () => {
         const res = await saveRecipe(isNew ? { ...draft, id: '' } : draft);
@@ -434,13 +437,20 @@ function RecipeEditor({
         )}
       </div>
       {error && <Notice>{error}</Notice>}
+      {/* A single food that is being given a second ingredient or a diet swap: said before the save, not after. */}
+      {snap.saved.foodIngredientId && !isSingleFood(draft) && (
+        <p className={styles.hint} role="status">
+          Saving this makes {snap.saved.name} a recipe. {ingById.get(snap.saved.foodIngredientId)?.name ?? 'The food'} stays in the Price book as an ingredient.
+        </p>
+      )}
       {makingFood && (
         <MakeSingleFood
           recipe={draft}
           ingredients={ingredients}
           onClose={() => setMakingFood(false)}
-          onUse={(ingredientId, amount) => {
-            setDraft((d) => asSingleFood(d, ingredientId, amount));
+          tiedFoods={new Set(catalog.recipes.filter((r) => r.id !== draft.id && r.foodIngredientId).map((r) => r.foodIngredientId as string))}
+          onUse={(ingredientId, amount, tie) => {
+            setDraft((d) => asSingleFood(d, ingredientId, amount, tie));
             setTab('everyone');
             setMakingFood(false);
             // A new ingredient has to reach the catalog before the line can name it.
@@ -737,12 +747,16 @@ function MakeSingleFood({
   recipe,
   ingredients,
   onClose,
+  tiedFoods,
   onUse
 }: {
   recipe: RecipeAuthoring;
   ingredients: Ingredient[];
   onClose: () => void;
-  onUse: (ingredientId: string, amount: string) => void;
+  /** Foods another menu item is already tied to (one "by itself" item per food). */
+  tiedFoods: ReadonlySet<string>;
+  /** `tie`: the food has this recipe's name and nothing else is tied to it, so the two become one entry. */
+  onUse: (ingredientId: string, amount: string, tie: boolean) => void;
 }) {
   const sorted = [...ingredients].sort((a, b) => a.name.localeCompare(b.name));
   const wanted = recipe.name.trim().toLowerCase();
@@ -770,7 +784,8 @@ function MakeSingleFood({
   function use() {
     setError(null);
     if (!isNewIngredient) {
-      onUse(pick, amount.trim());
+      const picked = sorted.find((i) => i.id === pick);
+      onUse(pick, amount.trim(), picked?.name.trim().toLowerCase() === wanted && !tiedFoods.has(pick));
       return;
     }
     start(async () => {
@@ -779,7 +794,7 @@ function MakeSingleFood({
         setError(res.error ?? 'Something went wrong.');
         return;
       }
-      onUse(res.id, amount.trim());
+      onUse(res.id, amount.trim(), name.trim().toLowerCase() === wanted);
     });
   }
 
