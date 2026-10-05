@@ -312,6 +312,20 @@ export function isSingleFood(a: RecipeAuthoring): boolean {
   return a.base.length === 1 && a.base[0].ingredientId !== '' && a.variations.every((v) => v.lines.length === 0);
 }
 
+/**
+ * A recipe turned into a single food (Patrick, 2026-10-05: "cookies are listed under a recipe. I need a way
+ * to move it"): the one thing each person gets replaces every ingredient line, and the diet swaps lose their
+ * lines (a swap that changes a line is what makes something a recipe). Whether a diet is still marked
+ * unsuitable, the steps and the gear are kept — bacon is one food and is still cooked.
+ */
+export function asSingleFood(a: RecipeAuthoring, ingredientId: string, amount: string): RecipeAuthoring {
+  return {
+    ...a,
+    base: [{ ingredientId, amount, unitKey: null }],
+    variations: a.variations.map((v) => ({ ...v, lines: [] }))
+  };
+}
+
 /** Diff → compiled draft lines, with the raw amounts intact so an error can quote them. */
 export function compileAuthoring(a: RecipeAuthoring): RecipeDraft {
   const compiled = compileRecipe<string>(

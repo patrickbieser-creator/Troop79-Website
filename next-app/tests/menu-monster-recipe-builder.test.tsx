@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RecipeBuilder } from '../src/app/admin/(workspace)/library/menu-monster/recipe-builder';
-import { saveRecipe, setRecipeStatus, updateIngredient } from '../src/app/admin/(workspace)/library/menu-monster/actions';
+import { createIngredient, saveRecipe, setRecipeStatus, updateIngredient } from '../src/app/admin/(workspace)/library/menu-monster/actions';
 import { UNITS } from '../src/lib/menu-monster/units';
 import type { Catalog, Ingredient, Package, Recipe } from '../src/lib/menu-monster/types';
 
@@ -21,6 +21,7 @@ vi.mock('../src/app/admin/(workspace)/library/menu-monster/actions', () => ({
   setRecipeStatus: vi.fn(async () => ({ ok: true })),
   duplicateRecipe: vi.fn(async () => ({ ok: true, id: 'toast-copy' })),
   updateIngredient: vi.fn(async () => ({ ok: true })),
+  createIngredient: vi.fn(async () => ({ ok: true, id: 'toast-new' })),
   suggestRecipeBrand: vi.fn(async () => ({ ok: true })),
   addBought: vi.fn(async () => ({ ok: true })),
   updatePackage: vi.fn(async () => ({ ok: true })),
@@ -39,6 +40,7 @@ beforeEach(() => {
   vi.mocked(saveRecipe).mockClear().mockResolvedValue({ ok: true, id: 'toast' });
   vi.mocked(setRecipeStatus).mockClear().mockResolvedValue({ ok: true });
   vi.mocked(updateIngredient).mockClear().mockResolvedValue({ ok: true });
+  vi.mocked(createIngredient).mockClear().mockResolvedValue({ ok: true, id: 'toast-new' });
 });
 
 const ING: Ingredient[] = [
@@ -370,6 +372,67 @@ describe('Recipe builder — the problem is marked where it is (2026-10-04)', ()
   it('ASingleFoodWithNoPrice_MarksItsBrandsAndPrices', () => {
     render(<RecipeBuilder catalog={OJ} initialRecipeId="ojf" />);
     expect(within(screen.getByRole('region', { name: 'Edit Juice box' })).getByText('Orange juice has no priced package yet, so menus can’t cost it.')).toBeTruthy();
+  });
+});
+
+/**
+ * Patrick, 2026-10-05: "cookies are listed under a recipe. I need a way to move it to a single food
+ * classification." What something is follows from what it holds — one ingredient, no swap — so the move is
+ * choosing that one thing. Toast here is a draft with no ingredients at all, the same state Cookies was in.
+ */
+describe('Recipe builder — make a recipe a single food (2026-10-05)', () => {
+  const toast = () => within(screen.getByRole('region', { name: 'Edit Toast' }));
+  const openToast = () => render(<RecipeBuilder catalog={CATALOG} initialRecipeId="toast" />);
+
+  it('ARecipe_OffersToBecomeASingleFood_AndASingleFoodDoesNot', () => {
+    openToast();
+    expect(toast().getByRole('button', { name: 'Make it a single food' })).toBeTruthy();
+    render(<RecipeBuilder catalog={CATALOG} initialRecipeId="bacon" />);
+    expect(within(screen.getByRole('region', { name: 'Edit Bacon' })).queryByRole('button', { name: 'Make it a single food' })).toBeNull();
+  });
+
+  it('PickingAnIngredientOnFile_PutsThatOneThingOnTheRecipe_ReadyToSave', async () => {
+    const user = userEvent.setup();
+    openToast();
+    await user.click(toast().getByRole('button', { name: 'Make it a single food' }));
+    const panel = within(screen.getByRole('region', { name: 'Make Toast a single food' }));
+    await user.selectOptions(panel.getByLabelText('What each person gets'), 'bread');
+    const amount = panel.getByLabelText('How many each');
+    await user.clear(amount);
+    await user.type(amount, '2');
+    await user.click(panel.getByRole('button', { name: 'Use this' }));
+    // Nothing is written until the leader saves, like every other edit here.
+    expect(saveRecipe).not.toHaveBeenCalled();
+    await user.click(toast().getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(saveRecipe).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(saveRecipe).mock.calls[0][0]).toMatchObject({ id: 'toast', base: [{ ingredientId: 'bread', amount: '2', unitKey: null }] });
+  });
+
+  it('ANewIngredient_IsMadeFromTheRecipesName_WhenNothingOnFileFits', async () => {
+    const user = userEvent.setup();
+    openToast();
+    await user.click(toast().getByRole('button', { name: 'Make it a single food' }));
+    const panel = within(screen.getByRole('region', { name: 'Make Toast a single food' }));
+    // Nothing on file is called Toast, so the form starts on a new ingredient named after it.
+    expect((panel.getByLabelText('What each person gets') as HTMLSelectElement).value).toBe('__new');
+    expect((panel.getByLabelText('Name') as HTMLInputElement).value).toBe('Toast');
+    await user.clear(panel.getByLabelText('One is called'));
+    await user.type(panel.getByLabelText('One is called'), 'slice');
+    await user.clear(panel.getByLabelText('Several are called'));
+    await user.type(panel.getByLabelText('Several are called'), 'slices');
+    await user.click(panel.getByRole('button', { name: 'Use this' }));
+    await waitFor(() => expect(createIngredient).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(createIngredient).mock.calls[0][0]).toMatchObject({ name: 'Toast', unit: { kind: 'count', key: 'count', one: 'slice', many: 'slices' } });
+    // The panel closes and the recipe now has unsaved edits (the new line; Save follows once the page reloads the catalog).
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'Make Toast a single food' })).toBeNull());
+    expect(toast().getByText('Unsaved edits')).toBeTruthy();
+  });
+
+  it('ARecipeWithIngredients_IsToldWhatTheMoveReplaces', async () => {
+    const user = userEvent.setup();
+    render(<RecipeBuilder catalog={CATALOG} initialRecipeId="pancakes" />);
+    await user.click(within(screen.getByRole('region', { name: 'Edit Pancakes' })).getByRole('button', { name: 'Make it a single food' }));
+    expect(within(screen.getByRole('region', { name: 'Make Pancakes a single food' })).getByText(/This replaces its 2 ingredients with that one thing\./)).toBeTruthy();
   });
 });
 

@@ -40,6 +40,7 @@ import { DiscardButton, SaveButton, SaveFeedback, useDraftSnapshot, useSavePhase
 import { money } from '@/lib/event-money';
 import {
   METHODS,
+  asSingleFood,
   authoringIssues,
   authoringOf,
   blockingIssues,
@@ -54,8 +55,8 @@ import {
 import { VIEW_LABEL, flaggedIngredients, variationView, type BaseLine, type VariationView } from '@/lib/menu-monster/variations';
 import { buildLines, ruleText, totalsOf, MAX_HEADCOUNT, MIN_HEADCOUNT } from '@/lib/menu-monster/engine';
 import { FOOD_GROUPS, MEALS, RESTRICTIONS, RESTRICTION_BY_KEY, SECTIONS, SECTION_ORDER, lineUnit, parseQty, perPersonText, supportedUnits } from '@/lib/menu-monster/units';
-import type { Catalog, Ingredient, MealSlot, Plan, Recipe, RecipeLine, RestrictionKey, VariationState } from '@/lib/menu-monster/types';
-import { duplicateRecipe, saveRecipe, setRecipeStatus, updateIngredient } from './actions';
+import type { Catalog, Ingredient, MealSlot, Plan, Recipe, RecipeLine, RestrictionKey, Section, VariationState } from '@/lib/menu-monster/types';
+import { createIngredient, duplicateRecipe, saveRecipe, setRecipeStatus, updateIngredient } from './actions';
 import { BrandsAndPrices } from './brands-prices';
 import { NewFoodForm } from './new-food-form';
 import lib from '../library.module.css';
@@ -338,6 +339,8 @@ function RecipeEditor({
   const isNew = draft.id === NEW_ID;
   /** The leader asked for the full editor on a single food (steps, gear, a diet swap). */
   const [full, setFull] = useState(false);
+  /** The "Make it a single food" panel is open (a recipe only). */
+  const [makingFood, setMakingFood] = useState(false);
 
   const issues = authoringIssues(draft, catalog);
   const errors = issues.filter((i) => i.level === 'error');
@@ -421,8 +424,30 @@ function RecipeEditor({
         )}
         <Badge variant={PILL_VARIANT[pill]}>{pill}</Badge>
         {snap.dirty && <Badge variant="warning">Unsaved edits</Badge>}
+        {!isNew && !single && snap.saved.status !== 'retired' && (
+          <>
+            <span className={styles.spacer} />
+            <Button variant="secondary" size="sm" disabled={makingFood} onClick={() => setMakingFood(true)}>
+              Make it a single food
+            </Button>
+          </>
+        )}
       </div>
       {error && <Notice>{error}</Notice>}
+      {makingFood && (
+        <MakeSingleFood
+          recipe={draft}
+          ingredients={ingredients}
+          onClose={() => setMakingFood(false)}
+          onUse={(ingredientId, amount) => {
+            setDraft((d) => asSingleFood(d, ingredientId, amount));
+            setTab('everyone');
+            setMakingFood(false);
+            // A new ingredient has to reach the catalog before the line can name it.
+            onChanged();
+          }}
+        />
+      )}
       {/* What "Needs fixes" means, right under the pill that says it — not below the whole form. */}
       {errors.length > 0 && (
         <Notice>
@@ -693,6 +718,142 @@ function RecipeEditor({
 
       <Preview draft={draft} tab={activeTab} catalog={catalog} />
     </section>
+  );
+}
+
+/* ── A recipe → a single food ─────────────────────────────────────────────── */
+
+const NEW_INGREDIENT = '__new';
+const FOOD_SECTIONS = Object.keys(SECTIONS) as Section[];
+
+/**
+ * "Cookies are listed under a recipe. I need a way to move it to a single food" (Patrick, 2026-10-05).
+ * Nothing stores which kind a menu item is: one ingredient and no diet swap IS a single food. So the move is
+ * choosing that one thing — an ingredient on file, or a new one named after the recipe — and how many each
+ * person gets. It lands in the draft like any other edit; Save changes writes it. Only a brand-new ingredient
+ * is written at once, because the line has to name something that exists.
+ */
+function MakeSingleFood({
+  recipe,
+  ingredients,
+  onClose,
+  onUse
+}: {
+  recipe: RecipeAuthoring;
+  ingredients: Ingredient[];
+  onClose: () => void;
+  onUse: (ingredientId: string, amount: string) => void;
+}) {
+  const sorted = [...ingredients].sort((a, b) => a.name.localeCompare(b.name));
+  const wanted = recipe.name.trim().toLowerCase();
+  const match = sorted.find((i) => i.name.toLowerCase() === wanted);
+  const [pick, setPick] = useState(match?.id ?? NEW_INGREDIENT);
+  const [name, setName] = useState(recipe.name.trim());
+  const [one, setOne] = useState(wanted.endsWith('s') ? wanted.slice(0, -1) : wanted);
+  const [many, setMany] = useState(wanted);
+  const [section, setSection] = useState<Section>('dry');
+  const [amount, setAmount] = useState('1');
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+
+  const isNewIngredient = pick === NEW_INGREDIENT;
+  const amountOk = parseQty(amount) > 0;
+  const ready = amountOk && (!isNewIngredient || (name.trim() !== '' && one.trim() !== '' && many.trim() !== ''));
+  const swaps = recipe.variations.filter((v) => v.lines.length > 0).length;
+  const replaced = [
+    recipe.base.length > 0 ? `its ${recipe.base.length} ingredient${recipe.base.length === 1 ? '' : 's'}` : null,
+    swaps > 0 ? `${swaps} diet swap${swaps === 1 ? '' : 's'}` : null
+  ].filter(Boolean);
+  const title = `Make ${recipe.name.trim() || 'this'} a single food`;
+  const idp = `mm-food-${recipe.id}`;
+
+  function use() {
+    setError(null);
+    if (!isNewIngredient) {
+      onUse(pick, amount.trim());
+      return;
+    }
+    start(async () => {
+      const res = await createIngredient({ name: name.trim(), unit: { kind: 'count', key: 'count', one: one.trim(), many: many.trim() }, section, staple: false, avoid: [] });
+      if (!res.ok || !res.id) {
+        setError(res.error ?? 'Something went wrong.');
+        return;
+      }
+      onUse(res.id, amount.trim());
+    });
+  }
+
+  return (
+    <FormPanel title={title} aria-label={title}>
+      {error && <Notice>{error}</Notice>}
+      <p className={styles.hint}>
+        A single food is one thing each person gets, like cookies or an apple.
+        {replaced.length > 0 ? ` This replaces ${replaced.join(' and ')} with that one thing.` : ''} Its name, meals, steps and gear stay.
+      </p>
+      <div className={lib.fieldGrid}>
+        <div>
+          <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-pick`}>
+            What each person gets
+          </label>
+          <select id={`${idp}-pick`} className={lib.selectInput} value={pick} onChange={(e) => setPick(e.target.value)}>
+            <option value={NEW_INGREDIENT}>A new ingredient…</option>
+            {sorted.map((i) => (
+              <option key={i.id} value={i.id}>
+                {i.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-amount`}>
+            How many each
+          </label>
+          <input id={`${idp}-amount`} className={lib.textInput} inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
+        </div>
+        {isNewIngredient && (
+          <>
+            <div>
+              <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-name`}>
+                Name
+              </label>
+              <input id={`${idp}-name`} className={lib.textInput} value={name} maxLength={80} onChange={(e) => setName(e.target.value)} />
+            </div>
+            <div>
+              <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-section`}>
+                Store section
+              </label>
+              <select id={`${idp}-section`} className={lib.selectInput} value={section} onChange={(e) => setSection(e.target.value as Section)}>
+                {FOOD_SECTIONS.map((k) => (
+                  <option key={k} value={k}>
+                    {SECTIONS[k]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-one`}>
+                One is called
+              </label>
+              <input id={`${idp}-one`} className={lib.textInput} value={one} maxLength={40} onChange={(e) => setOne(e.target.value)} placeholder="cookie" />
+            </div>
+            <div>
+              <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-many`}>
+                Several are called
+              </label>
+              <input id={`${idp}-many`} className={lib.textInput} value={many} maxLength={40} onChange={(e) => setMany(e.target.value)} placeholder="cookies" />
+            </div>
+          </>
+        )}
+      </div>
+      <div className={lib.actionsRow}>
+        <Button variant="primary" disabled={pending || !ready} title={ready ? undefined : amountOk ? 'Name it and say what one and several are called' : 'Type how many each person gets'} onClick={use}>
+          {pending ? 'Adding…' : 'Use this'}
+        </Button>
+        <Button variant="secondary" disabled={pending} onClick={onClose}>
+          Cancel
+        </Button>
+      </div>
+    </FormPanel>
   );
 }
 

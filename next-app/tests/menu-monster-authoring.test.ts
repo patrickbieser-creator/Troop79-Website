@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { Catalog, Conversion, Ingredient, Package, Recipe } from '../src/lib/menu-monster/types';
 import { UNITS } from '../src/lib/menu-monster/units';
 import {
+  asSingleFood,
   isSingleFood,
   type RecipeAuthoring,
   BIG_CHANGE,
@@ -296,6 +297,32 @@ describe('domain types carry retirement', () => {
   it('Authoring_RecipeType_AcceptsRetiredAt', () => {
     const r: Recipe = { id: 'x', name: 'X', status: 'retired', mealFit: [], foodGroups: [], camp: true, trail: false, method: null, stepsMd: null, sortOrder: 0, lines: [] };
     expect(r.status).toBe('retired');
+  });
+});
+
+describe('asSingleFood — a recipe moved to a single food', () => {
+  const stew: RecipeAuthoring = {
+    id: 'cookies', name: 'Cookies', status: 'draft', mealFit: ['snack'], foodGroups: [], camp: true, trail: true, method: 'no-cook', stepsMd: 'Open the box.',
+    base: [
+      { ingredientId: 'pancake-mix', amount: '½', unitKey: null },
+      { ingredientId: 'eggs', amount: '1', unitKey: null }
+    ],
+    variations: [{ restriction: 'gf', state: 'substituted', note: 'almond', lines: [{ op: 'swap', baseIngredientId: 'pancake-mix', ingredientId: 'almond-flour', amount: '½', unitKey: null }] }],
+    gear: 'Plate'
+  };
+
+  it('AsSingleFood_LeavesOneLine_SoItCountsAsASingleFood', () => {
+    const food = asSingleFood(stew, 'oranges', '2');
+    expect(food.base).toEqual([{ ingredientId: 'oranges', amount: '2', unitKey: null }]);
+    expect(isSingleFood(food)).toBe(true);
+  });
+
+  it('AsSingleFood_KeepsItsNameMealsStepsAndGear', () => {
+    expect(asSingleFood(stew, 'oranges', '2')).toMatchObject({ id: 'cookies', name: 'Cookies', mealFit: ['snack'], stepsMd: 'Open the box.', gear: 'Plate' });
+  });
+
+  it('AsSingleFood_WorksOnARecipeWithNoIngredientsYet', () => {
+    expect(isSingleFood(asSingleFood({ ...stew, base: [], variations: [] }, 'oranges', '1'))).toBe(true);
   });
 });
 
