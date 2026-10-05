@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { Catalog, Recipe } from '../src/lib/menu-monster/types';
-import { canRecord, menuAccess, onShelf, redactMenu, SHELF_DAYS, type AccessViewer } from '../src/lib/menu-monster/menu-access';
+import { canEditPlan, canRecord, menuAccess, onShelf, redactMenu, SHELF_DAYS, type AccessViewer } from '../src/lib/menu-monster/menu-access';
 import { sanitizeMenu, type Menu } from '../src/lib/menu-monster/menus';
 
 /**
@@ -101,6 +101,11 @@ describe('menuAccess', () => {
 
   it('OnlyOwnerCrewAndLeaders_MayRecord', () => {
     expect((['owner', 'crew', 'admin', 'parent', 'shared', null] as const).map(canRecord)).toEqual([true, true, true, false, false, false]);
+  });
+
+  it('OnlyTheOwnerAndLeaders_MayEditThePlan', () => {
+    // Patrick, 2026-10-05: leaders fix scout menus before the shopping trip. Crew, parents and shared viewers only read.
+    expect((['owner', 'admin', 'crew', 'parent', 'shared', null] as const).map(canEditPlan)).toEqual([true, true, false, false, false, false]);
   });
 
   it('Leader_GetsAdmin_EvenWhenAlsoTheParent', () => {

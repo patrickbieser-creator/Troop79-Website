@@ -103,6 +103,59 @@ describe('menu store', () => {
     expect((await loadMenuWith(admin, id))?.menu.headcount).toBe(8);
   });
 
+  it('Leader_SavesAScoutsMenu_AndTheMenuStaysTheScouts', async () => {
+    const id = await createMenuWith(admin, other, menu(), CATALOG);
+    const loaded = await loadMenuWith(admin, id);
+    const res = await saveMenuWith(admin, CHARLIE, id, menu({ headcount: 12 }), loaded!.updatedAt, CATALOG, { asLeader: true });
+    expect(res.status).toBe('saved');
+    const after = await loadMenuWith(admin, id);
+    expect(after?.menu.headcount).toBe(12);
+    expect(after?.ownerPersonId).toBe(other.personId);
+    // The owner is told: the row says the latest save was a leader's, and whose.
+    expect(after?.leaderEdit?.byPersonId).toBe(CHARLIE.personId);
+  });
+
+  it('LeaderSave_LeavesWhatTheScoutPaidAlone', async () => {
+    const id = await createMenuWith(admin, other, menu(), CATALOG);
+    await admin.from('mm_menus').update({ actuals: { milk: { packageId: 'p-milk', qty: 1, pricePaid: 3.5 } }, gear_extras: ['Tarp'] }).eq('id', id);
+    const loaded = await loadMenuWith(admin, id);
+    await saveMenuWith(admin, CHARLIE, id, menu({ headcount: 12 }), loaded!.updatedAt, CATALOG, { asLeader: true });
+    const { data } = await admin.from('mm_menus').select('actuals, gear_extras').eq('id', id).single();
+    expect(data).toEqual({ actuals: { milk: { packageId: 'p-milk', qty: 1, pricePaid: 3.5 } }, gear_extras: ['Tarp'] });
+  });
+
+  it('LeaderCannotDelete_AScoutsMenu', async () => {
+    const id = await createMenuWith(admin, other, menu(), CATALOG);
+    expect(await deleteMenuWith(admin, CHARLIE, id)).toBe(false);
+    expect(await loadMenuWith(admin, id)).not.toBeNull();
+  });
+
+  it('OwnersNextSave_ClearsTheLeaderEditedMark', async () => {
+    const id = await createMenuWith(admin, other, menu(), CATALOG);
+    const first = await loadMenuWith(admin, id);
+    const led = await saveMenuWith(admin, CHARLIE, id, menu({ headcount: 12 }), first!.updatedAt, CATALOG, { asLeader: true });
+    if (led.status !== 'saved') throw new Error('fixture: the leader save did not land');
+    const own = await saveMenuWith(admin, other, id, menu({ headcount: 10 }), led.updatedAt, CATALOG);
+    expect(own.status).toBe('saved');
+    expect((await loadMenuWith(admin, id))?.leaderEdit).toBeNull();
+  });
+
+  it('LeaderSave_IsAConflict_WhenTheScoutSavedFirst', async () => {
+    const id = await createMenuWith(admin, other, menu(), CATALOG);
+    const loaded = await loadMenuWith(admin, id);
+    await saveMenuWith(admin, other, id, menu({ headcount: 9 }), loaded!.updatedAt, CATALOG);
+    const res = await saveMenuWith(admin, CHARLIE, id, menu({ headcount: 12 }), loaded!.updatedAt, CATALOG, { asLeader: true });
+    expect(res.status).toBe('conflict');
+    expect((await loadMenuWith(admin, id))?.menu.headcount).toBe(9);
+  });
+
+  it('LeaderSave_IsAudited', async () => {
+    const id = await createMenuWith(admin, other, menu(), CATALOG);
+    const loaded = await loadMenuWith(admin, id);
+    await saveMenuWith(admin, CHARLIE, id, menu({ headcount: 12 }), loaded!.updatedAt, CATALOG, { asLeader: true });
+    expect((await auditSummaries()).some((s) => /edited menu .* as a leader/.test(s))).toBe(true);
+  });
+
   it('Scout_CannotDeleteMenu_OwnedByAnotherScout', async () => {
     const id = await createMenuWith(admin, other, menu(), CATALOG);
     expect(await deleteMenuWith(admin, CHARLIE, id)).toBe(false);

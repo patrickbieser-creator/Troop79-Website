@@ -55,6 +55,8 @@ export interface StoredMenu {
   entryPublished: boolean | null;
   /** A leader's one review note (Phase 3), or null. */
   review: MenuReview | null;
+  /** Set while the latest save of the plan was a leader's, not the owner's (2026-10-05); the owner's next save clears it. */
+  leaderEdit: { at: string; byPersonId: number | null } | null;
 }
 
 export interface MenuReview {
@@ -96,7 +98,7 @@ export type SaveResult =
   | { status: 'conflict' }
   | { status: 'not_found' };
 
-const COLUMNS = 'id, owner_person_id, name, context, calendar_entry_id, start_date, headcount, restrictions, budget_per_person_meal, day_count, patrol, shopping, actuals, meals, snapshot, created_at, updated_at, shared_at, review_note, reviewed_by_person_id, reviewed_at, calendar_entries(status)';
+const COLUMNS = 'id, owner_person_id, name, context, calendar_entry_id, start_date, headcount, restrictions, budget_per_person_meal, day_count, patrol, shopping, actuals, meals, snapshot, created_at, updated_at, shared_at, review_note, reviewed_by_person_id, reviewed_at, leader_edited_at, leader_edited_by_person_id, calendar_entries(status)';
 
 interface MenuRow {
   id: string;
@@ -121,6 +123,8 @@ interface MenuRow {
   review_note: string | null;
   reviewed_by_person_id: number | null;
   reviewed_at: string | null;
+  leader_edited_at?: string | null;
+  leader_edited_by_person_id?: number | null;
   /** The linked entry, embedded through the FK; null when none is linked. */
   calendar_entries: { status: string } | null;
 }
@@ -179,7 +183,8 @@ const toStored = (r: MenuRow): StoredMenu => ({
   updatedAt: r.updated_at,
   sharedAt: r.shared_at,
   entryPublished: r.calendar_entry_id == null ? null : r.calendar_entries?.status === 'published',
-  review: r.review_note != null && r.reviewed_at != null ? { note: r.review_note, at: r.reviewed_at, byPersonId: r.reviewed_by_person_id } : null
+  review: r.review_note != null && r.reviewed_at != null ? { note: r.review_note, at: r.reviewed_at, byPersonId: r.reviewed_by_person_id } : null,
+  leaderEdit: r.leader_edited_at ? { at: r.leader_edited_at, byPersonId: r.leader_edited_by_person_id ?? null } : null
 });
 
 async function audit(sb: SupabaseClient, actor: AuditActor, action: string, id: string, summary: string) {
@@ -347,29 +352,46 @@ export async function createMenuWith(sb: SupabaseClient, actor: AuditActor, menu
   return id;
 }
 
-/** Save over the version the scout loaded. A newer save in between is a
- *  conflict, not an overwrite; someone else's menu is not_found. */
+/**
+ * Save over the version that was loaded. A newer save in between is a conflict, not an overwrite; someone
+ * else's menu is not_found.
+ *
+ * `asLeader` (the caller has already established the actor is a leader — menu-actions.ts): the actor is not
+ * the owner and saves anyway (Patrick, 2026-10-05: leaders fix scout menus before the shopping trip). The
+ * owner never changes; the row is marked as leader-edited so the owner is told, every such save is audited,
+ * and the owner's typed-in ingredients are left alone. The owner's own save clears the mark.
+ */
 export async function saveMenuWith(
   sb: SupabaseClient,
   actor: AuditActor,
   id: string,
   menu: Menu,
   expectedUpdatedAt: string,
-  catalog: Catalog
+  catalog: Catalog,
+  opts: { asLeader?: boolean } = {}
 ): Promise<SaveResult> {
   const current = await loadMenuWith(sb, id);
-  if (!current || current.ownerPersonId !== actor.personId) return { status: 'not_found' };
+  if (!current) return { status: 'not_found' };
+  const own = current.ownerPersonId === actor.personId;
+  if (!own && !opts.asLeader) return { status: 'not_found' };
+  const now = new Date().toISOString();
   const { data, error } = await sb
     .from('mm_menus')
-    .update({ ...toRow(menu, buildSnapshot(menu, catalog)), updated_at: new Date().toISOString() })
+    .update({
+      ...toRow(menu, buildSnapshot(menu, catalog)),
+      updated_at: now,
+      leader_edited_at: own ? null : now,
+      leader_edited_by_person_id: own ? null : actor.personId
+    })
     .eq('id', id)
-    .eq('owner_person_id', actor.personId)
+    .eq('owner_person_id', current.ownerPersonId)
     .eq('updated_at', expectedUpdatedAt)
     .select('updated_at');
   if (error) throw new Error(`save menu: ${error.message}`);
   if (!data?.length) return { status: 'conflict' };
   if (current.menu.name !== menu.name) await audit(sb, actor, 'rename', id, `renamed menu "${current.menu.name}" to "${menu.name}"`);
-  await dropOrphanTypedIns(sb, actor);
+  if (own) await dropOrphanTypedIns(sb, actor);
+  else await audit(sb, actor, 'update', id, `edited menu "${menu.name}" as a leader (it belongs to person ${current.ownerPersonId})`);
   return { status: 'saved', updatedAt: data[0].updated_at as string };
 }
 

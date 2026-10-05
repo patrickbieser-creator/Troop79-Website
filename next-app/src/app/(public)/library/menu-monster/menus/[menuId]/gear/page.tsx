@@ -44,7 +44,7 @@ export default async function MenuGearPage({ params }: { params: Promise<{ menuI
           // A shared (possibly anonymous) viewer sees what is packed, not which scout packed it.
           state={view.access === 'shared' ? { ...state, packed: Object.fromEntries(Object.entries(state.packed).map(([k, t]) => [k, { ...t, by: '', personId: null }])) } : state}
           canPack={canRecord(view.access)}
-          canEdit={view.access === 'owner'}
+          canEdit={view.access === 'owner' || view.helping}
           viewerName={viewerName}
           tabs={<MenuTabs menuId={stored.id} active="gear" access={view.access} />}
           aside={<ViewerAside view={view} page="gear" />}

@@ -36,6 +36,7 @@ export default async function MenuPlanPage({ params, searchParams }: { params: P
           outings={outings}
           patrols={patrols}
           readOnly={readOnly}
+          helper={view.helping}
           plannedBy={plannedBy}
           tabs={<MenuTabs menuId={stored.id} active="plan" access={view.access} />}
           aside={<ViewerAside view={view} page="plan" />}

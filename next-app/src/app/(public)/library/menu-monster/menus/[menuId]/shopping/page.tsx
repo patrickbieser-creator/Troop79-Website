@@ -31,6 +31,7 @@ export default async function MenuShoppingPage({ params }: { params: Promise<{ m
           updatedAt={stored.updatedAt}
           snapshot={stored.snapshot}
           readOnly={readOnly}
+          helper={view.helping}
           plannedBy={plannedBy}
           tabs={<MenuTabs menuId={stored.id} active="shopping" access={view.access} />}
           aside={<ViewerAside view={view} page="shopping" />}

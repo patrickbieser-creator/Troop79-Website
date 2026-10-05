@@ -22,7 +22,7 @@ import { isEpochCurrent } from '@/lib/identity-session';
 import { loadMenuMonsterCatalog } from '@/lib/menu-monster/data';
 import { loadMenuWith, ownerCreditNamesWith, type StoredMenu } from '@/lib/menu-monster/menus-store';
 import { isMenuId } from '@/lib/menu-monster/menus';
-import { canRecord, menuAccess, redactMenu, type AccessViewer, type MenuAccess, isPublic } from '@/lib/menu-monster/menu-access';
+import { canEditPlan, canRecord, menuAccess, redactMenu, type AccessViewer, type MenuAccess, isPublic } from '@/lib/menu-monster/menu-access';
 import type { Catalog } from '@/lib/menu-monster/types';
 import { PageHeader, KickerSep } from '@/app/_components/page-header';
 import { TabStrip } from '@/app/_components/tab-strip';
@@ -97,7 +97,11 @@ export interface ViewableMenu {
   stored: StoredMenu;
   access: MenuAccess;
   readOnly: boolean;
-  /** Credit name of the owner scout ("Sam K."), set for every read-only view. */
+  /** A leader editing a menu that is not theirs (menu-access.ts canEditPlan): everything saves, as the owner's menu. */
+  helping: boolean;
+  /** For the owner: who made the latest save when it was a leader ("Pat B.", or "A leader"); null otherwise. */
+  leaderEditBy: string | null;
+  /** Credit name of the owner scout ("Sam K."), set for every view that is not the owner's. */
   plannedBy: string | null;
   /** The owner's catalog for the owner; the public catalog for everyone else. */
   catalog: Catalog;
@@ -126,8 +130,21 @@ export async function loadViewableMenu(menuId: string, viewer: MenuViewer | null
   const access = menuAccess(accessViewer(viewer), raw);
   if (!access) return null;
   if (access === 'owner') {
-    const catalog = await loadMenuMonsterCatalog(raw.ownerPersonId);
-    return { stored: raw, access, readOnly: false, plannedBy: null, catalog, hiddenRecipes: 0, canCopy: false };
+    const by = raw.leaderEdit?.byPersonId ?? null;
+    const [catalog, names] = await Promise.all([
+      loadMenuMonsterCatalog(raw.ownerPersonId),
+      by != null ? ownerCreditNamesWith(sb, [by]) : Promise.resolve(new Map<number, string>())
+    ]);
+    const leaderEditBy = raw.leaderEdit ? ((by != null ? names.get(by) : null) ?? 'A leader') : null;
+    return { stored: raw, access, readOnly: false, helping: false, leaderEditBy, plannedBy: null, catalog, hiddenRecipes: 0, canCopy: false };
+  }
+  // A leader signed in as one person edits the menu (Patrick, 2026-10-05). They get it exactly as the owner
+  // has it — the OWNER'S catalog, nothing redacted — because a save writes back what was loaded: the public
+  // catalog would silently drop the scout's unshared recipes and typed-in ingredients from their own menu.
+  // A legacy leader cookie that names no person still only reads (a save needs someone to credit).
+  if (canEditPlan(access) && viewer?.personId != null) {
+    const [catalog, names] = await Promise.all([loadMenuMonsterCatalog(raw.ownerPersonId), ownerCreditNamesWith(sb, [raw.ownerPersonId])]);
+    return { stored: raw, access, readOnly: false, helping: true, leaderEditBy: null, plannedBy: names.get(raw.ownerPersonId) ?? null, catalog, hiddenRecipes: 0, canCopy: false };
   }
   // Crew reads another scout's unshared menu, so a revoked sign-in ends here, not at cookie expiry (qa-lead; the
   // parent branch of menuViewer makes the same check).
@@ -140,8 +157,8 @@ export async function loadViewableMenu(menuId: string, viewer: MenuViewer | null
   }
   const [catalog, names] = await Promise.all([loadMenuMonsterCatalog(null), ownerCreditNamesWith(sb, [raw.ownerPersonId])]);
   const { menu, hiddenRecipes } = redactMenu(raw.menu, access, catalog);
-  const stored: StoredMenu = { ...raw, menu, snapshot: null, review: access === 'shared' || access === 'crew' ? null : raw.review };
-  return { stored, access, readOnly: true, plannedBy: names.get(raw.ownerPersonId) ?? null, catalog, hiddenRecipes, canCopy: viewer != null && viewer.personId != null && isPublic(raw) };
+  const stored: StoredMenu = { ...raw, menu, snapshot: null, review: access === 'shared' || access === 'crew' ? null : raw.review, leaderEdit: null };
+  return { stored, access, readOnly: true, helping: false, leaderEditBy: null, plannedBy: names.get(raw.ownerPersonId) ?? null, catalog, hiddenRecipes, canCopy: viewer != null && viewer.personId != null && isPublic(raw) };
 }
 
 /**

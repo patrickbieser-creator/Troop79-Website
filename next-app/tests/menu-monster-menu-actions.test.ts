@@ -66,7 +66,7 @@ beforeEach(() => {
   mocks.saveMenuWith.mockResolvedValue({ status: 'saved', updatedAt: STAMP });
   mocks.duplicateMenuWith.mockResolvedValue(ID);
   mocks.deleteMenuWith.mockResolvedValue(true);
-  mocks.loadMenuWith.mockResolvedValue(null);
+  mocks.loadMenuWith.mockResolvedValue({ ownerPersonId: 39, menu: { calendarEntryId: null } });
   mocks.loadOutingsWith.mockResolvedValue([]);
 });
 
@@ -86,8 +86,10 @@ describe('menu actions: who may call them', () => {
 
   it('Adult_SavesTheirOwnMenu_AsThemselves', async () => {
     mocks.session = { ...SCOUT, subjectKind: 'adult', personId: 5, displayName: 'Pat B.' };
+    mocks.loadMenuWith.mockResolvedValue({ ownerPersonId: 5, menu: { calendarEntryId: null } });
     await saveMenuAction(ID, payload(), STAMP);
     expect(mocks.saveMenuWith.mock.calls[0][1]).toMatchObject({ personId: 5 });
+    expect(mocks.saveMenuWith.mock.calls[0][6]).toEqual({ asLeader: false });
   });
 
   it('Adult_CreatesTheirOwnMenu_AsThemselves', async () => {
@@ -120,8 +122,68 @@ describe('menu actions: who may call them', () => {
   it('Leader_WithAPerson_SavesTheirOwnMenu_AsThemselves', async () => {
     mocks.session = null;
     mocks.actor = { subjectKind: 'adult', personId: 82, label: 'Patrick B.', capabilities: new Set(['library.moderate']) };
+    mocks.loadMenuWith.mockResolvedValue({ ownerPersonId: 82, menu: { calendarEntryId: null } });
     await saveMenuAction(ID, payload(), STAMP);
     expect(mocks.saveMenuWith.mock.calls[0][1]).toMatchObject({ personId: 82 });
+  });
+
+  // Patrick, 2026-10-05: "Adult leaders need full rights to edit (and fix) scout menus before they go shopping."
+  it('Leader_SavesAScoutsMenu_AsALeader_NotAsItsOwner', async () => {
+    mocks.session = null;
+    mocks.actor = { subjectKind: 'adult', personId: 82, label: 'Patrick B.', capabilities: new Set(['library.moderate']) };
+    expect(await saveMenuAction(ID, payload(), STAMP)).toEqual({ ok: true, updatedAt: STAMP });
+    expect(mocks.saveMenuWith.mock.calls[0][1]).toMatchObject({ personId: 82 });
+    expect(mocks.saveMenuWith.mock.calls[0][6]).toEqual({ asLeader: true });
+  });
+
+  it('Leader_KeepsTheOutingTheScoutLinked_WhenSavingTheirMenu', async () => {
+    mocks.session = null;
+    mocks.actor = { subjectKind: 'adult', personId: 82, label: 'Patrick B.', capabilities: new Set(['library.moderate']) };
+    mocks.loadMenuWith.mockResolvedValue({ ownerPersonId: 39, menu: { calendarEntryId: 5 } });
+    mocks.loadOutingsWith.mockResolvedValue([{ id: 5 }]);
+    await saveMenuAction(ID, payload({ calendarEntryId: 5 }), STAMP);
+    expect(mocks.loadOutingsWith.mock.calls[0][2]).toEqual([5]);
+    expect(mocks.saveMenuWith.mock.calls[0][3].calendarEntryId).toBe(5);
+  });
+
+  it('AdultWithNoAdminAccess_CannotSaveAScoutsMenu', async () => {
+    // A parent reads their scout's menu; reading is not editing.
+    mocks.session = { ...SCOUT, subjectKind: 'adult', personId: 5, displayName: 'Pat B.' };
+    mocks.actor = { subjectKind: 'adult', personId: 5, label: 'Pat B.', capabilities: new Set() };
+    expect(await saveMenuAction(ID, payload(), STAMP)).toEqual({ ok: false, error: 'That menu isn’t one of yours.' });
+    expect(mocks.saveMenuWith).not.toHaveBeenCalled();
+  });
+
+  it('Scout_CannotSaveAnotherScoutsMenu_EvenWhenTheirIdentityHoldsACapability', async () => {
+    mocks.actor = { subjectKind: 'scout', personId: 39, label: 'Charlie W.', capabilities: new Set(['library.moderate']) };
+    mocks.loadMenuWith.mockResolvedValue({ ownerPersonId: 7, menu: { calendarEntryId: null } });
+    expect(await saveMenuAction(ID, payload(), STAMP)).toEqual({ ok: false, error: 'That menu isn’t one of yours.' });
+    expect(mocks.saveMenuWith).not.toHaveBeenCalled();
+  });
+
+  it('CrewScout_CannotSaveTheOutingMenuTheyCanRead', async () => {
+    // A scout on the outing reads the menu and ticks gear; the plan is not theirs to change.
+    mocks.session = { ...SCOUT, personId: 7 };
+    mocks.loadMenuWith.mockResolvedValue({ ownerPersonId: 39, menu: { calendarEntryId: 5 }, entryPublished: true });
+    expect(await saveMenuAction(ID, payload(), STAMP)).toEqual({ ok: false, error: 'That menu isn’t one of yours.' });
+    expect(mocks.saveMenuWith).not.toHaveBeenCalled();
+  });
+
+  it('Leader_CannotDeleteOrDuplicateAScoutsMenu', async () => {
+    // Editing is not owning: the store answers for the owner only, and the action passes the leader as themselves.
+    mocks.session = null;
+    mocks.actor = { subjectKind: 'adult', personId: 82, label: 'Patrick B.', capabilities: new Set(['library.moderate']) };
+    mocks.deleteMenuWith.mockResolvedValue(false);
+    mocks.duplicateMenuWith.mockResolvedValue(null);
+    expect((await deleteMenuAction(ID)).ok).toBe(false);
+    expect((await duplicateMenuAction(ID)).ok).toBe(false);
+    expect(mocks.deleteMenuWith.mock.calls[0][1]).toMatchObject({ personId: 82 });
+  });
+
+  it('Anyone_IsToldTheMenuIsntTheirs_WhenItDoesNotExist', async () => {
+    mocks.loadMenuWith.mockResolvedValue(null);
+    expect(await saveMenuAction(ID, payload(), STAMP)).toEqual({ ok: false, error: 'That menu isn’t one of yours.' });
+    expect(mocks.saveMenuWith).not.toHaveBeenCalled();
   });
 
   it('Leader_WithoutAPerson_IsRefused', async () => {
@@ -186,7 +248,7 @@ describe('menu actions: messages', () => {
   it('Scout_IsToldToReload_WhenTheMenuChangedInAnotherWindow', async () => {
     mocks.saveMenuWith.mockResolvedValue({ status: 'conflict' });
     const r = await saveMenuAction(ID, payload(), STAMP);
-    expect(r.ok === false && r.error).toMatch(/changed in another window/);
+    expect(r.ok === false && r.error).toMatch(/changed since you opened it, in another window or by someone else/);
   });
 
   it('Scout_IsToldToDeleteOne_WhenCreatingPastTheCap', async () => {
@@ -269,9 +331,11 @@ describe('menu actions: the outing link', () => {
   });
 
   it('Scout_CannotLinkSomeoneElsesLinkedOuting_ByNamingAnotherScoutsMenu', async () => {
+    // Someone else's menu is refused outright, before any outing is looked up or anything is written.
     mocks.loadMenuWith.mockResolvedValue({ ownerPersonId: 7, menu: { calendarEntryId: 5 } });
-    await saveMenuAction(ID, payload({ calendarEntryId: 5 }), STAMP);
-    expect(mocks.loadOutingsWith.mock.calls[0][2]).toEqual([]);
+    expect(await saveMenuAction(ID, payload({ calendarEntryId: 5 }), STAMP)).toEqual({ ok: false, error: 'That menu isn’t one of yours.' });
+    expect(mocks.loadOutingsWith).not.toHaveBeenCalled();
+    expect(mocks.saveMenuWith).not.toHaveBeenCalled();
   });
 
   it('Scout_SkipsTheOutingLookup_WhenNoOutingIsChosen', async () => {

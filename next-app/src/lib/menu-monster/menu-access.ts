@@ -6,8 +6,9 @@
  *
  * Order (one place, tech-lead + troop79-specialist review 2026-10-03):
  *   owner          the scout who owns it — edits.
- *   admin          any adult holding an admin capability — every menu, read-only,
- *                  plus the review note and Hide from the shelf.
+ *   admin          any adult holding an admin capability — every menu. Since 2026-10-05 a
+ *                  leader signed in as a person also EDITS it (canEditPlan); plus the
+ *                  review note and Hide from the shelf.
  *   parent         an ADULT identity whose family scope (resolveFamilyScope:
  *                  parent_of / guardian_of, read at request time) includes the
  *                  owner — read-only, shared or not. A scout identity's scope is
@@ -54,6 +55,13 @@ export function menuAccess(viewer: AccessViewer, menu: AccessTarget): MenuAccess
 
 /** Who may tick gear as packed and record what was bought: the owner, the outing's crew, and leaders helping. */
 export const canRecord = (access: MenuAccess | null): boolean => access === 'owner' || access === 'crew' || access === 'admin';
+
+/**
+ * Who may change a menu's plan, shopping choices and extra gear: the owner, and a leader (Patrick,
+ * 2026-10-05: "Adult leaders need full rights to edit (and fix) scout menus before they go shopping").
+ * Deleting, sharing and duplicating stay the owner's. A parent, the crew and a shared viewer only read.
+ */
+export const canEditPlan = (access: MenuAccess | null): boolean => access === 'owner' || access === 'admin';
 
 /** Shared, and not tied to an unpublished outing. A direct link works as long as this holds (no 120-day cut). */
 export const isPublic = (menu: Pick<AccessTarget, 'sharedAt' | 'entryPublished'>): boolean => menu.sharedAt != null && menu.entryPublished !== false;

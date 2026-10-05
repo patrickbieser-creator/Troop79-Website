@@ -143,9 +143,25 @@ describe.each(pages)('%s page access matrix', (_name, render) => {
     expect(await readOnlyOf()).toBeFalsy();
   });
 
-  it('Leader_ReadsReadOnly_WhenTheMenuBelongsToAScout', async () => {
+  it('Leader_Edits_AScoutsMenu_WhenSignedInAsAPerson', async () => {
+    // Patrick, 2026-10-05: leaders fix scout menus before the shopping trip.
     mocks.actor = LEADER;
-    expect(await readOnlyOf()).toBe(true);
+    const props = find(await render(ID), (p) => 'menuId' in p);
+    expect(props?.readOnly).toBeFalsy();
+    expect(props?.helper).toBe(true);
+  });
+
+  it('Leader_StillOnlyReads_WhenTheirSignInNamesNoPerson', async () => {
+    // A legacy leader cookie: nobody to credit a change to, so nothing saves.
+    mocks.actor = { ...LEADER, personId: null };
+    const props = find(await render(ID), (p) => 'menuId' in p);
+    expect(props?.readOnly).toBe(true);
+    expect(props?.helper).toBeFalsy();
+  });
+
+  it('Owner_IsNotAHelper_OnTheirOwnMenu', async () => {
+    mocks.session = SCOUT;
+    expect(find(await render(ID), (p) => 'menuId' in p)?.helper).toBeFalsy();
   });
 
   it('Leader_SeesWhoPlannedIt_WhenReadingReadOnly', async () => {

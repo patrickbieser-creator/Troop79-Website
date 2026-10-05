@@ -12,6 +12,7 @@
 
 import { createAdminClient } from '@/lib/supabase/server';
 import { MAX_GEAR_COUNT, gearKey } from '@/lib/menu-monster/gear';
+import { canEditPlan } from '@/lib/menu-monster/menu-access';
 import { setGearExtrasWith, setGearPackedWith } from '@/lib/menu-monster/gear-store';
 import { menuRecorder } from '../../menu-monster/menus/_components/scout-menus';
 
@@ -30,7 +31,8 @@ export async function setGearPackedAction(menuId: unknown, key: unknown, count: 
 export async function setGearExtrasAction(menuId: unknown, extras: unknown): Promise<{ ok: true; extras: string[] } | Fail> {
   if (typeof menuId !== 'string' || !Array.isArray(extras) || extras.length > 60) return { ok: false, error: 'That didn’t save. Try again.' };
   const who = await menuRecorder(menuId);
-  if (!who || who.access !== 'owner' || who.personId == null) return { ok: false, error: 'Only the scout who planned this menu can change its gear.' };
-  const saved = await setGearExtrasWith(createAdminClient(), menuId, who.personId, extras);
+  // The owner, or a leader fixing the menu (menu-access.ts canEditPlan); the crew only ticks.
+  if (!who || !canEditPlan(who.access) || who.personId == null) return { ok: false, error: 'Only the person who planned this menu, or a leader, can change its gear.' };
+  const saved = await setGearExtrasWith(createAdminClient(), menuId, who.stored.ownerPersonId, extras, who.personId);
   return saved ? { ok: true, extras: saved } : { ok: false, error: 'That menu is gone.' };
 }

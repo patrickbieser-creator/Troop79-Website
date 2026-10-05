@@ -74,6 +74,9 @@ export interface PlanTabProps {
   readOnly?: boolean;
   /** Credit name of the scout who planned it (read-only view). */
   plannedBy?: string | null;
+  /** A leader editing someone else's menu: it saves, but nothing is typed in under the leader's name
+   *  (a new ingredient or brand would be theirs, not the owner's) and no recipe version is shared. */
+  helper?: boolean;
   /** What the page says about who is looking (menu name credit, copy, review note…); replaces the read-only line. */
   aside?: ReactNode;
   /** Where the menu is kept. Omitted = the signed-in scout's saved menu (server). */
@@ -86,7 +89,7 @@ export interface PlanTabProps {
   patrols?: readonly string[];
 }
 
-export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt, outings, tabs, readOnly = false, plannedBy = null, aside, store: storeProp, titleAs: Title = 'h1', openMeal = null, patrols = [] }: PlanTabProps) {
+export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt, outings, tabs, readOnly = false, helper = false, plannedBy = null, aside, store: storeProp, titleAs: Title = 'h1', openMeal = null, patrols = [] }: PlanTabProps) {
   const router = useRouter();
   const store = useMemo(() => storeProp ?? serverMenuStore(menuId), [storeProp, menuId]);
   const { canSave } = store.caps;
@@ -269,10 +272,10 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
   }
 
   // Release C typed-ins and 4C "Share this version" belong to a signed-in scout's saved menu.
-  const canTypeIn = !storeProp && menuId != null && !readOnly;
+  const canTypeIn = !storeProp && menuId != null && !readOnly && !helper;
   // A typed brand needs a signed-in person to add it; a menu kept on this computer can still choose known brands.
-  const canTypeBrand = !storeProp && !readOnly;
-  const shareVersionMenuId = canSave && !storeProp && menuId != null && !isNew && !dirty ? menuId : null;
+  const canTypeBrand = !storeProp && !readOnly && !helper;
+  const shareVersionMenuId = canSave && !storeProp && menuId != null && !isNew && !dirty && !helper ? menuId : null;
   const dialerLabel = (k: RestrictionKey) => RESTRICTION_BY_KEY[k].label;
 
   return (

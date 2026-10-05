@@ -71,12 +71,19 @@ export async function ensureGearWith(sb: SupabaseClient, entries: readonly strin
 }
 
 /** The owner's extras, replaced whole. Returns the stored list, or null when the menu is not theirs. */
-export async function setGearExtrasWith(sb: SupabaseClient, menuId: string, ownerPersonId: number, extras: unknown): Promise<string[] | null> {
+export async function setGearExtrasWith(
+  sb: SupabaseClient,
+  menuId: string,
+  ownerPersonId: number,
+  extras: unknown,
+  /** Who typed any new gear name: the owner, or a leader fixing the menu. */
+  addedByPersonId: number = ownerPersonId
+): Promise<string[] | null> {
   const clean = cleanGearExtras(extras);
   const { data, error } = await sb.from('mm_menus').update({ gear_extras: clean }).eq('id', menuId).eq('owner_person_id', ownerPersonId).select('id');
   if (error) throw new Error(`gear extras: ${error.message}`);
   if (!data?.length) return null;
-  await ensureGearWith(sb, clean, ownerPersonId);
+  await ensureGearWith(sb, clean, addedByPersonId);
   return clean;
 }
 

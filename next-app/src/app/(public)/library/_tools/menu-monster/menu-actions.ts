@@ -101,16 +101,28 @@ export async function saveMenuAction(
     return { ok: false, error: 'Reload this menu, then make your change again.' };
   }
   if (tooBig(raw)) return { ok: false, error: TOO_BIG };
-  const { menu: cleaned, catalog, nameError } = await cleanMenu(raw, actor.personId);
-  if (nameError) return { ok: false, error: nameError };
   const sb = createAdminClient();
   const current = await loadMenuWith(sb, id);
-  const owned = current && current.ownerPersonId === actor.personId ? current : null;
-  const menu = await allowedOuting(cleaned, owned?.menu.calendarEntryId ?? null);
-  const res = await saveMenuWith(sb, actor, id, menu, expectedUpdatedAt, catalog);
+  if (!current) return { ok: false, error: NOT_YOURS };
+  // Whose menu it is comes from the row, never the payload. The owner saves it; so does a leader (Patrick,
+  // 2026-10-05: "Adult leaders need full rights to edit (and fix) scout menus before they go shopping") —
+  // an adult holding an admin capability and signed in as one person, re-checked here on every save.
+  // Anyone else gets the same answer as for a menu that does not exist.
+  const own = current.ownerPersonId === actor.personId;
+  if (!own) {
+    // The leader check and the person the save is credited to must be the same sign-in (qa-lead).
+    const leader = await leaderActor();
+    if (isFail(leader) || leader.personId == null || leader.personId !== actor.personId) return { ok: false, error: NOT_YOURS };
+  }
+  // Cleaned against the OWNER'S catalog either way: the menu keeps the owner's own recipes and typed-in
+  // ingredients, and a leader cannot put one of their private recipes on a scout's menu.
+  const { menu: cleaned, catalog, nameError } = await cleanMenu(raw, current.ownerPersonId);
+  if (nameError) return { ok: false, error: nameError };
+  const menu = await allowedOuting(cleaned, current.menu.calendarEntryId);
+  const res = await saveMenuWith(sb, actor, id, menu, expectedUpdatedAt, catalog, { asLeader: !own });
   if (res.status === 'saved') return { ok: true, updatedAt: res.updatedAt };
   if (res.status === 'conflict') {
-    return { ok: false, error: 'This menu was changed in another window since you opened it. Reload to see the latest, then make your change again.' };
+    return { ok: false, error: 'This menu was changed since you opened it, in another window or by someone else. Reload to see the latest, then make your change again.' };
   }
   return { ok: false, error: NOT_YOURS };
 }
