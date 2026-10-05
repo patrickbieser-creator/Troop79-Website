@@ -132,6 +132,46 @@ export function suggestYield(
   };
 }
 
+export interface LearnedConversion {
+  from: string;
+  to: string;
+  factor: number;
+  label: string;
+}
+
+/**
+ * The conversion a leader states by typing a package's yield (Patrick,
+ * 2026-10-05): "this 20 oz bag makes 4 cups" IS "1 oz = 0.2 cups" for that
+ * food, so it is saved once instead of being re-entered in the Conversions
+ * block. Only when the label is a real measure (weight or volume) that nothing
+ * on file bridges yet — a pack or an each differs product to product, and an
+ * existing conversion is never overwritten by one package's numbers.
+ */
+export function learnedConversion(
+  ingredient: Ingredient,
+  size: number | null,
+  soldUnit: string | null,
+  yieldInRecipeUnit: number | null,
+  conversions: readonly Conversion[],
+  productName: string
+): LearnedConversion | null {
+  if (!soldUnit || size == null || !(size > 0) || yieldInRecipeUnit == null || !(yieldInRecipeUnit > 0)) return null;
+  const measured = stepFactor(soldUnit, 'tsp') != null || stepFactor(soldUnit, 'gram') != null;
+  if (!measured || conv(soldUnit, ingredient, conversions) != null) return null;
+  const made = `${num(size)} ${soldLabel(soldUnit, size, ingredient)} made ${num(yieldInRecipeUnit)} ${yieldInRecipeUnit === 1 ? ingredient.unit.one : ingredient.unit.many}`;
+  return {
+    from: soldUnit,
+    to: ingredient.unit.key,
+    factor: Math.round((yieldInRecipeUnit / size) * 10000) / 10000,
+    label: `${made} — ${productName}`
+  };
+}
+
+/** "1 oz = 0.2 cups" — how a learned conversion is reported back to the form. */
+export function learnedText(c: LearnedConversion, ingredient: Ingredient): string {
+  return `1 ${soldLabel(c.from, 1, ingredient)} = ${c.factor} ${c.factor === 1 ? ingredient.unit.one : ingredient.unit.many}`;
+}
+
 /** "Can't use yet: sold by the gallon, and nobody has said how many cups that makes." */
 export function unusableText(pkg: Package, ingredient: Ingredient): string {
   const by = pkg.yieldUnitLabel ?? (pkg.soldUnit ? soldLabel(pkg.soldUnit, 1, ingredient) : 'label size');

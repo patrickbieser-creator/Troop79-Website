@@ -101,6 +101,19 @@ describe('Price book', () => {
     expect(sent).toMatchObject({ ingredientId: 'milk', name: 'Kroger 2% Milk', price: 3.29, soldSize: 1, soldUnit: 'gallon', yield: 16, asOf: TODAY });
   });
 
+  it('Leader_IsToldTheTypedYieldBecomesTheConversion_WhenNoneIsOnFile', async () => {
+    const user = userEvent.setup();
+    render(<PriceBook catalog={CATALOG} today={TODAY} stores={STORES} />);
+    await user.click(within(row('Orange juice')).getByRole('button', { name: 'Orange juice' }));
+    const add = screen.getByRole('region', { name: 'Add a package' });
+    await user.type(within(add).getByLabelText('Package size'), '20');
+    await user.selectOptions(within(add).getByLabelText('Sold by'), 'ozw');
+    expect(within(add).getByText(/^No conversion on file for Orange juice sold by the oz\./)).toBeTruthy();
+
+    await user.type(within(add).getByLabelText('How many cups it makes'), '4');
+    expect(within(add).getByText('Saves 1 oz = 0.2 cups as the conversion for Orange juice.')).toBeTruthy();
+  });
+
   it('Leader_SeesBigChangeFlag_WhenEditingPrice', async () => {
     const user = userEvent.setup();
     render(<PriceBook catalog={CATALOG} today={TODAY} stores={STORES} />);

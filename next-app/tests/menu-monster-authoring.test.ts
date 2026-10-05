@@ -8,6 +8,7 @@ import {
   STALE_DAYS,
   blockingIssues,
   changeUnitPlan,
+  learnedConversion,
   priceChange,
   recipeIssues,
   staleDays,
@@ -73,6 +74,42 @@ const draft = (over: Partial<RecipeDraft> = {}): RecipeDraft => ({
     { ingredientId: 'almond-flour', amount: '0.5', unitKey: null, servesRule: 'only', servesRestrictions: ['gf'] }
   ],
   ...over
+});
+
+describe('learnedConversion — the yield a leader types is the conversion', () => {
+  it('LearnedConversion_IsTheTypedYieldPerLabelUnit_WhenNoConversionIsOnFile', () => {
+    // "This 1 lb pack makes 16 slices" is the bacon conversion.
+    expect(learnedConversion(ING.bacon, 1, 'lb', 16, CONVERSIONS, 'Oscar Mayer Bacon')).toEqual({
+      from: 'lb',
+      to: 'slice',
+      factor: 16,
+      label: '1 lb made 16 slices — Oscar Mayer Bacon'
+    });
+  });
+
+  it('LearnedConversion_DividesByTheLabelSize', () => {
+    expect(learnedConversion(ING['almond-flour'], 20, 'ozw', 4, CONVERSIONS, 'Bag')?.factor).toBe(0.2);
+  });
+
+  it('LearnedConversion_IsNothing_WhenAConversionAlreadyBridgesTheLabelUnit', () => {
+    expect(learnedConversion(ING['pancake-mix'], 10, 'lb', 30, CONVERSIONS, 'Krusteaz')).toBeNull();
+  });
+
+  it('LearnedConversion_IsNothing_WhenTheLabelUnitIsInTheRecipeUnitsFamily', () => {
+    expect(learnedConversion(ING.milk, 1, 'gallon', 16, CONVERSIONS, 'Milk')).toBeNull();
+  });
+
+  it('LearnedConversion_IsNothing_ForAPackOrEach_SinceThoseDifferByProduct', () => {
+    expect(learnedConversion(ING.bacon, 1, 'pack', 16, CONVERSIONS, 'Bacon')).toBeNull();
+    expect(learnedConversion(ING.bacon, 1, 'each', 16, CONVERSIONS, 'Bacon')).toBeNull();
+    expect(learnedConversion(ING.bacon, 16, 'count', 16, CONVERSIONS, 'Bacon')).toBeNull();
+  });
+
+  it('LearnedConversion_IsNothing_WithoutASizeOrAYield', () => {
+    expect(learnedConversion(ING.bacon, null, 'lb', 16, CONVERSIONS, 'Bacon')).toBeNull();
+    expect(learnedConversion(ING.bacon, 1, 'lb', null, CONVERSIONS, 'Bacon')).toBeNull();
+    expect(learnedConversion(ING.bacon, 1, null, 16, CONVERSIONS, 'Bacon')).toBeNull();
+  });
 });
 
 describe('yield helper (Option C)', () => {

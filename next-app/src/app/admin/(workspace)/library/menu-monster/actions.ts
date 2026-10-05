@@ -30,6 +30,8 @@ import { createBrandWith, mergeBrandWith, moveBrandWith, removeBrandWith, rename
 import {
   blockingIssues,
   changeUnitPlan,
+  learnedConversion,
+  learnedText,
   recipeIssues,
   slugId,
   variationsSummary,
@@ -39,13 +41,15 @@ import {
 } from '@/lib/menu-monster/authoring';
 import { compileRecipe, type BaseLine } from '@/lib/menu-monster/variations';
 import { RESTRICTION_BY_KEY, UNITS, parseQty } from '@/lib/menu-monster/units';
-import type { FoodGroup, MealSlot, Recipe, RecipeStatus, RestrictionKey, Section, Unit, Variation, VariationLine } from '@/lib/menu-monster/types';
+import type { FoodGroup, Ingredient, MealSlot, Recipe, RecipeStatus, RestrictionKey, Section, Unit, Variation, VariationLine } from '@/lib/menu-monster/types';
 
 export interface Result {
   ok: boolean;
   error?: string;
   /** The id a create produced. */
   id?: string;
+  /** A package save that taught the ingredient a conversion: "1 oz = 0.2 cups". */
+  learned?: string;
 }
 
 const PATHS = ['/admin/library/menu-monster', '/library/topic/menu-monster'];
@@ -387,6 +391,54 @@ function cleanPackage(input: Partial<PackageInput>): { value: PackageInput; erro
   return { value };
 }
 
+/** A package saved with a size, a weight/volume label unit and a typed yield
+ *  states the ingredient's conversion — save it when none bridges that unit yet
+ *  (authoring.ts learnedConversion), so the next package gets its yield
+ *  suggested and nobody enters it by hand. Best-effort: the package is already
+ *  saved, and a failure here only means the conversion is typed later. */
+async function rememberConversion(supabase: ReturnType<typeof createAdminClient>, value: PackageInput): Promise<string | undefined> {
+  if (value.yield == null || value.soldSize == null || !value.soldUnit) return undefined;
+  const [{ data: ing }, { data: rows }] = await Promise.all([
+    supabase.from('mm_ingredients').select('id, name, unit_kind, unit_key, unit_one, unit_many, section').eq('id', value.ingredientId).maybeSingle(),
+    supabase.from('mm_conversions').select('ingredient_id, from_unit, to_unit, factor, label').eq('ingredient_id', value.ingredientId)
+  ]);
+  const i = ing as { id: string; name: string; unit_kind: Unit['kind']; unit_key: string; unit_one: string; unit_many: string; section: Section } | null;
+  if (!i) return undefined;
+  const ingredient: Ingredient = {
+    id: i.id,
+    name: i.name,
+    unit: { key: i.unit_key, one: i.unit_one, many: i.unit_many, kind: i.unit_kind },
+    section: i.section,
+    staple: false,
+    avoid: [],
+    retiredAt: null
+  };
+  const onFile = ((rows ?? []) as { ingredient_id: string; from_unit: string; to_unit: string; factor: number; label: string | null }[]).map((c) => ({
+    ingredientId: c.ingredient_id,
+    from: c.from_unit,
+    to: c.to_unit,
+    factor: Number(c.factor),
+    label: c.label
+  }));
+  const learned = learnedConversion(ingredient, value.soldSize, value.soldUnit, value.yield, onFile, value.name);
+  if (!learned) return undefined;
+  const { data, error } = await supabase
+    .from('mm_conversions')
+    .insert({ ingredient_id: i.id, from_unit: learned.from, to_unit: learned.to, factor: learned.factor, label: cap(learned.label, MAX.label) })
+    .select('id')
+    .single();
+  if (error) return undefined;
+  const text = learnedText(learned, ingredient);
+  await recordAudit({
+    area: 'library',
+    action: 'create',
+    entityType: 'mm_conversion',
+    entityId: (data as { id: number }).id,
+    summary: `Remembered a Menu Monster conversion for ${i.id} from package "${value.name}": ${text}`
+  });
+  return text;
+}
+
 export async function createPackage(input: PackageInput): Promise<Result> {
   const denied = await guard();
   if (denied) return denied;
@@ -420,8 +472,9 @@ export async function createPackage(input: PackageInput): Promise<Result> {
     summary: `Added Menu Monster package "${value.name}" (${value.ingredientId})`,
     details: [{ field: 'Price', from: '—', to: money(value.price) }]
   });
+  const learned = await rememberConversion(supabase, value);
   revalidate();
-  return { ok: true, id };
+  return { ok: true, id, learned };
 }
 
 export type PackageEdit = Pick<PackageInput, 'name' | 'store' | 'price' | 'yield' | 'yieldUnitLabel' | 'asOf' | 'note' | 'soldSize' | 'soldUnit' | 'noun'>;
@@ -496,8 +549,9 @@ export async function updatePackage(id: string, input: PackageEdit): Promise<Res
     summary: `Updated Menu Monster package "${value.name}" (${b.ingredient_id})`,
     details
   });
+  const learned = await rememberConversion(supabase, value);
   revalidate();
-  return { ok: true };
+  return { ok: true, learned };
 }
 
 /* ── Scout-reported prices (Phase 2 release B) ───────────────────────────── */

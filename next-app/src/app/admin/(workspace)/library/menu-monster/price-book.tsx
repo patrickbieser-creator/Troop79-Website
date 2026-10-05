@@ -30,6 +30,8 @@ import {
   priceChange,
   staleText,
   suggestYield,
+  learnedConversion,
+  learnedText,
   unusableText
 } from '@/lib/menu-monster/authoring';
 import { RESTRICTIONS, SECTIONS, UNITS } from '@/lib/menu-monster/units';
@@ -533,6 +535,9 @@ function AddPackageForm({ ing, conversions, today, stores, onChanged }: { ing: I
   const priceNum = Number(price);
   const ready = name.trim().length > 0 && price.trim() !== '' && Number.isFinite(priceNum) && priceNum >= 0 && (yieldNum == null || yieldNum > 0);
   const perUnit = yieldNum != null && yieldNum > 0 && Number.isFinite(priceNum) ? priceNum / yieldNum : null;
+  // A typed yield with nothing on file to suggest it IS the conversion; saving
+  // the package saves it too (actions.ts rememberConversion) — said before the click.
+  const learned = learnedConversion(ing, Number.isFinite(sizeNum as number) ? sizeNum : null, soldUnit || null, yieldNum != null && Number.isFinite(yieldNum) ? yieldNum : null, conversions, name);
   const idp = `mm-add-${ing.id}`;
 
   function submit() {
@@ -632,7 +637,7 @@ function AddPackageForm({ ing, conversions, today, stores, onChanged }: { ing: I
             }}
           />
           <p className={styles.hint}>
-            <span>{suggestion.text}</span>
+            <span>{learned ? `Saves ${learnedText(learned, ing)} as the conversion for ${ing.name}.` : suggestion.text}</span>
             {suggestion.sub ? <span className={styles.muted}> {suggestion.sub}</span> : null}
             {yieldTouched && suggestion.value != null && String(suggestion.value) !== yieldText ? (
               <>
