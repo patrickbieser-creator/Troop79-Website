@@ -174,14 +174,14 @@ interface JoinedRow {
   status: 'applied' | 'held' | 'reverted' | 'dismissed';
   created_at: string;
   decided_at: string | null;
-  mm_packages: One<{ name: string; price: number; yield: number | null }>;
+  mm_packages: One<{ name: string; price: number; yield: number | null; ingredient_id?: string }>;
   people: One<PersonRow>;
   mm_menus: One<{ name: string }>;
 }
 
 const JOIN =
   'id, package_id, old_price, new_price, status, created_at, decided_at, ' +
-  'mm_packages(name, price, yield), people!reported_by_person_id(first_name, last_name), mm_menus(name)';
+  'mm_packages(name, price, yield, ingredient_id), people!reported_by_person_id(first_name, last_name), mm_menus(name)';
 
 export interface HeldPrice {
   id: string;
@@ -201,6 +201,8 @@ export interface PriceChange {
   status: 'applied' | 'reverted';
   packageId: string;
   packageName: string;
+  /** The package's ingredient — where Edit opens the Price book. */
+  ingredientId: string | null;
   reporter: string;
   oldPrice: number;
   newPrice: number;
@@ -244,11 +246,13 @@ export async function listHeldWith(supabase: SupabaseClient): Promise<HeldPrice[
   });
 }
 
+/** The changes nobody has acknowledged yet (2026-10-05), newest first. */
 export async function listRecentChangesWith(supabase: SupabaseClient, limit = 50): Promise<PriceChange[]> {
   const { data, error } = await supabase
     .from('mm_price_history')
     .select(JOIN)
     .in('status', ['applied', 'reverted'])
+    .is('acknowledged_at', null)
     .order('created_at', { ascending: false })
     .limit(limit);
   if (error) throw new Error(error.message);
@@ -259,6 +263,7 @@ export async function listRecentChangesWith(supabase: SupabaseClient, limit = 50
       status: r.status as 'applied' | 'reverted',
       packageId: r.package_id,
       packageName: pkg?.name ?? r.package_id,
+      ingredientId: pkg?.ingredient_id ?? null,
       reporter: reporterOf(r),
       oldPrice: Number(r.old_price),
       newPrice: Number(r.new_price),
@@ -267,4 +272,17 @@ export async function listRecentChangesWith(supabase: SupabaseClient, limit = 50
       canRevert: r.status === 'applied' && pkg != null && Math.round(Number(pkg.price) * 100) === Math.round(Number(r.new_price) * 100)
     };
   });
+}
+
+/** A leader has seen this change: it leaves the Price changes list. False when the row is gone or already acknowledged. */
+export async function acknowledgePriceChangeWith(supabase: SupabaseClient, historyId: string, byPersonId: number | null): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('mm_price_history')
+    .update({ acknowledged_at: new Date().toISOString(), acknowledged_by_person_id: byPersonId })
+    .eq('id', historyId)
+    .is('acknowledged_at', null)
+    .in('status', ['applied', 'reverted'])
+    .select('id');
+  if (error) throw new Error(error.message);
+  return (data?.length ?? 0) > 0;
 }

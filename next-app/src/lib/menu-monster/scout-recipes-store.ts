@@ -210,6 +210,59 @@ export async function listSharedScoutRecipesWith(sb: SupabaseClient, limit = 200
   }));
 }
 
+/** One row of the admin Scout recipes list (Patrick, 2026-10-05: every scout recipe, shared or not, with who owns it and when). */
+export interface ScoutRecipeRow {
+  id: string;
+  name: string;
+  status: RecipeStatus;
+  ownerPersonId: number;
+  /** "Sam K." — the owner's public name; "Someone" once the person row is gone. */
+  owner: string;
+  credit: string | null;
+  createdAt: string;
+  updatedAt: string;
+  /** null = a private draft the scout has not shared. */
+  sharedAt: string | null;
+  /** The author changed it after sharing (updated_at more than a second past shared_at) — live, with no review. */
+  editedSinceShared: boolean;
+}
+
+/** Every recipe a scout wrote — shared ones AND unshared drafts — newest change first. */
+export async function listScoutRecipesWith(sb: SupabaseClient, ownerName: (ids: number[]) => Promise<Map<number, string>>, limit = 500): Promise<ScoutRecipeRow[]> {
+  const { data, error } = await sb
+    .from('mm_recipes')
+    .select('id, name, status, author_person_id, attribution_label, created_at, shared_at, updated_at')
+    .not('author_person_id', 'is', null)
+    .order('updated_at', { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(`scout recipes: ${error.message}`);
+  const rows = data ?? [];
+  const names = await ownerName(rows.map((r) => r.author_person_id as number));
+  return rows.map((r) => ({
+    id: r.id as string,
+    name: r.name as string,
+    status: r.status as RecipeStatus,
+    ownerPersonId: r.author_person_id as number,
+    owner: names.get(r.author_person_id as number) ?? 'Someone',
+    credit: (r.attribution_label as string | null) ?? null,
+    createdAt: r.created_at as string,
+    updatedAt: r.updated_at as string,
+    sharedAt: (r.shared_at as string | null) ?? null,
+    editedSinceShared: r.shared_at != null && Date.parse(r.updated_at as string) - Date.parse(r.shared_at as string) > 1000
+  }));
+}
+
+/** A leader renames a scout recipe. Returns the old name, or null when it isn't a scout recipe. */
+export async function renameScoutRecipeWith(sb: SupabaseClient, id: string, name: string): Promise<{ before: string } | null> {
+  if (!isScoutRecipeId(id)) return null;
+  const { data: row, error } = await sb.from('mm_recipes').select('name').eq('id', id).maybeSingle();
+  if (error) throw new Error(`load recipe: ${error.message}`);
+  if (!row) return null;
+  const { error: uErr } = await sb.from('mm_recipes').update({ name, updated_at: new Date().toISOString() }).eq('id', id);
+  if (uErr) throw new Error(`rename: ${uErr.message}`);
+  return { before: row.name as string };
+}
+
 /** A leader's credit change on a shared scout recipe. Returns the old credit, or null when the recipe isn't a shared scout recipe. */
 export async function setScoutRecipeCreditWith(sb: SupabaseClient, id: string, credit: string): Promise<{ before: string | null; name: string } | null> {
   if (!isScoutRecipeId(id)) return null;

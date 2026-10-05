@@ -321,17 +321,34 @@ describe('menu monster leader tools — actions', () => {
   });
 });
 
-describe('menu monster leader tools — scout recipes (Phase 4A)', () => {
-  it('Leader_CannotOverwriteAScoutRecipe_FromTheRecipeBuilder', async () => {
-    const res = await saveRecipe({
-      id: 'S-0000ae01', name: 'Hijack', status: 'published', mealFit: ['dinner'], foodGroups: [],
-      camp: true, trail: false, method: null, stepsMd: '', base: [], variations: []
-    });
-    expect(res.ok).toBe(false);
+describe('menu monster leader tools — scout recipes (Phase 4A; leaders may edit since 2026-10-05)', () => {
+  const SCOUT_RECIPE = 'S-0000ae01';
+  const seeded = { author_person_id: 39, attribution_label: 'Charlie W.', shared_at: '2026-10-01T12:00:00+00:00' };
+  beforeAll(async () => {
+    await admin.from('mm_recipe_lines').delete().eq('recipe_id', SCOUT_RECIPE);
+    await admin.from('mm_recipes').delete().eq('id', SCOUT_RECIPE);
+    const { error } = await admin.from('mm_recipes').insert({ id: SCOUT_RECIPE, name: 'ZZ Scout chili', status: 'published', meal_fit: ['dinner'], food_groups: [], ...seeded });
+    if (error) throw new Error(`fixture scout recipe: ${error.message}`);
+    await admin.from('mm_recipe_lines').insert({ recipe_id: SCOUT_RECIPE, position: 1, ...line(EGGS, 1) });
+  });
+  afterAll(async () => {
+    await admin.from('audit_log').delete().eq('entity_id', SCOUT_RECIPE);
+    await admin.from('mm_recipe_lines').delete().eq('recipe_id', SCOUT_RECIPE);
+    await admin.from('mm_recipes').delete().eq('id', SCOUT_RECIPE);
   });
 
-  it('Leader_CannotSetAScoutRecipeBackToDraft', async () => {
-    expect((await setRecipeStatus('S-0000ae01', 'draft')).ok).toBe(false);
+  it('Leader_CanEditAScoutRecipe_AndItStaysTheScouts', async () => {
+    const res = await saveRecipe({
+      id: SCOUT_RECIPE, name: 'ZZ Scout chili, edited by a leader', status: 'published', mealFit: ['dinner'], foodGroups: [],
+      camp: true, trail: false, method: null, stepsMd: '', base: [{ ingredientId: EGGS, amount: '2', unitKey: null }], variations: []
+    });
+    expect(res).toMatchObject({ ok: true });
+    const { data: after } = await admin.from('mm_recipes').select('author_person_id, attribution_label, shared_at, name').eq('id', SCOUT_RECIPE).single();
+    expect(after).toMatchObject({ ...seeded, name: 'ZZ Scout chili, edited by a leader' });
+  });
+
+  it('Leader_CannotSetASharedScoutRecipeBackToDraft', async () => {
+    expect((await setRecipeStatus(SCOUT_RECIPE, 'draft')).ok).toBe(false);
   });
 });
 

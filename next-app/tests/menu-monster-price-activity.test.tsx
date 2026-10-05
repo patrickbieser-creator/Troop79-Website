@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PriceActivity } from '../src/app/admin/(workspace)/library/menu-monster/price-activity';
-import { applyHeldPrice, approveHeldPackage, dismissHeldPrice, rejectHeldPackage, revertPriceChange } from '../src/app/admin/(workspace)/library/menu-monster/actions';
+import { acknowledgePriceChange, applyHeldPrice, approveHeldPackage, dismissHeldPrice, rejectHeldPackage, revertPriceChange } from '../src/app/admin/(workspace)/library/menu-monster/actions';
 import type { HeldPrice, PriceChange } from '../src/lib/menu-monster/price-history';
 
 /**
@@ -16,6 +16,7 @@ vi.mock('../src/app/admin/(workspace)/library/menu-monster/actions', () => ({
   applyHeldPrice: vi.fn(async (id: string) => ({ ok: true, outcome: 'applied', historyId: id })),
   dismissHeldPrice: vi.fn(async () => ({ ok: true, outcome: 'dismissed' })),
   revertPriceChange: vi.fn(async () => ({ ok: true, outcome: 'reverted' })),
+  acknowledgePriceChange: vi.fn(async () => ({ ok: true })),
   approveHeldPackage: vi.fn(async () => ({ ok: true })),
   rejectHeldPackage: vi.fn(async () => ({ ok: true }))
 }));
@@ -39,15 +40,15 @@ const HELD: HeldPrice[] = [
 ];
 const CHANGES: PriceChange[] = [
   {
-    id: 'c1', status: 'applied', packageId: 'p-eggs', packageName: 'Eggs, dozen', reporter: 'Sam K.', oldPrice: 3, newPrice: 3.5,
+    id: 'c1', status: 'applied', packageId: 'p-eggs', packageName: 'Eggs, dozen', ingredientId: 'eggs', reporter: 'Sam K.', oldPrice: 3, newPrice: 3.5,
     createdAt: '2026-10-02T15:00:00Z', decidedAt: null, canRevert: true
   },
   {
-    id: 'c2', status: 'applied', packageId: 'p-eggs', packageName: 'Eggs, dozen', reporter: 'Ava R.', oldPrice: 2.5, newPrice: 3,
+    id: 'c2', status: 'applied', packageId: 'p-eggs', packageName: 'Eggs, dozen', ingredientId: 'eggs', reporter: 'Ava R.', oldPrice: 2.5, newPrice: 3,
     createdAt: '2026-10-01T15:00:00Z', decidedAt: null, canRevert: false
   },
   {
-    id: 'c3', status: 'reverted', packageId: 'p-rice', packageName: 'Rice, bag', reporter: 'Sam K.', oldPrice: 5, newPrice: 6,
+    id: 'c3', status: 'reverted', packageId: 'p-rice', packageName: 'Rice, bag', ingredientId: null, reporter: 'Sam K.', oldPrice: 5, newPrice: 6,
     createdAt: '2026-09-30T15:00:00Z', decidedAt: '2026-10-01T10:00:00Z', canRevert: false
   }
 ];
@@ -125,9 +126,29 @@ describe('Price changes', () => {
     expect(within(row).getByRole('button', { name: /Why can.t this be reverted/ })).toBeTruthy();
   });
 
+  // Patrick, 2026-10-05: "catch mistakes and typos right at this point and fix them".
+  it('Leader_CanOpenTheChangedPackage_InThePriceBook', () => {
+    render(<PriceActivity held={[]} changes={CHANGES} />);
+    const row = screen.getByRole('row', { name: /Sam K\..*3\.50/ });
+    expect(within(row).getByRole('link', { name: 'Edit' }).getAttribute('href')).toBe('/admin/library/menu-monster?tab=prices&ingredient=eggs');
+  });
+
+  it('AChangeWhosePackageIsGone_HasNoEdit', () => {
+    render(<PriceActivity held={[]} changes={CHANGES} />);
+    expect(within(screen.getByRole('row', { name: /Rice, bag/ })).queryByRole('link', { name: 'Edit' })).toBeNull();
+  });
+
+  it('Leader_CanAcknowledgeAChange', async () => {
+    const user = userEvent.setup();
+    render(<PriceActivity held={[]} changes={CHANGES} />);
+    await user.click(within(screen.getByRole('row', { name: /Rice, bag/ })).getByRole('button', { name: 'Acknowledge' }));
+    await waitFor(() => expect(acknowledgePriceChange).toHaveBeenCalledWith('c3'));
+    expect(screen.getByText('Acknowledged the change to “Rice, bag”.')).toBeTruthy();
+  });
+
   it('Leader_SeesAnEmptyState_WhenThereAreNoChanges', () => {
     render(<PriceActivity held={[]} changes={[]} />);
-    expect(screen.getByText('No price changes yet.')).toBeTruthy();
+    expect(screen.getByText('No price changes waiting for a look.')).toBeTruthy();
   });
 });
 

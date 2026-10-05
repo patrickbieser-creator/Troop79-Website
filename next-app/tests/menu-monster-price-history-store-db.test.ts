@@ -3,6 +3,7 @@ import { adminClient } from './helpers/admin-client';
 import {
   decidePriceWith,
   listHeldWith,
+  acknowledgePriceChangeWith,
   listRecentChangesWith,
   leaderSetPriceWith,
   reportPriceWith
@@ -137,6 +138,22 @@ describe('listRecentChangesWith', () => {
     await makePackage();
     await reportPriceWith(admin, { packageId: PKG_ID, newPrice: 9, reportedBy: SCOUT }, spy());
     expect((await listRecentChangesWith(admin)).some((c) => c.packageId === PKG_ID)).toBe(false);
+  });
+
+  it('AnAcknowledgedChange_LeavesTheList', async () => {
+    await makePackage();
+    await reportPriceWith(admin, { packageId: PKG_ID, newPrice: 4.5, reportedBy: SCOUT }, spy());
+    const [change] = (await listRecentChangesWith(admin)).filter((c) => c.packageId === PKG_ID);
+    expect(await acknowledgePriceChangeWith(admin, change.id, SCOUT)).toBe(true);
+    expect((await listRecentChangesWith(admin)).some((c) => c.id === change.id)).toBe(false);
+    // Only once.
+    expect(await acknowledgePriceChangeWith(admin, change.id, SCOUT)).toBe(false);
+  });
+
+  it('AChange_NamesItsIngredient_ForTheEditLink', async () => {
+    await makePackage();
+    await reportPriceWith(admin, { packageId: PKG_ID, newPrice: 4.5, reportedBy: SCOUT }, spy());
+    expect((await listRecentChangesWith(admin)).find((c) => c.packageId === PKG_ID)?.ingredientId).toBeTruthy();
   });
 
   it('Leader_GetsAtMostTheLimit', async () => {

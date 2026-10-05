@@ -34,6 +34,7 @@ export interface MenuSummary {
   calendarEntryId: number | null;
   headcount: number;
   mealCount: number;
+  createdAt: string;
   updatedAt: string;
   ownerPersonId: number;
   /** When the owner shared it with the troop; null = not shared. */
@@ -191,7 +192,7 @@ async function audit(sb: SupabaseClient, actor: AuditActor, action: string, id: 
   await recordAuditAs(sb, actor, { area: 'menus', action, entityType: 'menu', entityId: id, summary: `${actor.label} ${summary}` });
 }
 
-const SUMMARY_COLS = 'id, owner_person_id, name, context, calendar_entry_id, headcount, meals, updated_at, shared_at';
+const SUMMARY_COLS = 'id, owner_person_id, name, context, calendar_entry_id, headcount, meals, created_at, updated_at, shared_at';
 
 const toSummary = (r: Record<string, unknown>): MenuSummary => ({
   id: r.id as string,
@@ -201,6 +202,7 @@ const toSummary = (r: Record<string, unknown>): MenuSummary => ({
   calendarEntryId: (r.calendar_entry_id as number | null) ?? null,
   headcount: r.headcount as number,
   mealCount: Array.isArray(r.meals) ? r.meals.length : 0,
+  createdAt: r.created_at as string,
   updatedAt: r.updated_at as string,
   sharedAt: (r.shared_at as string | null) ?? null
 });
@@ -443,6 +445,23 @@ export async function duplicateMenuWith(sb: SupabaseClient, actor: AuditActor, i
   if (error) throw new Error(`duplicate menu: ${error.message}`);
   await audit(sb, actor, 'duplicate', data.id as string, `duplicated menu "${src.menu.name}"${asLeaderNote(actor, ownerId)}`);
   return data.id as string;
+}
+
+/**
+ * A new name for the owner's menu (the admin Menus tab, 2026-10-05). Bumps updated_at: an open Plan tab of it
+ * is told on its next save, the same as any other edit. False when the menu isn't the owner's.
+ */
+export async function renameMenuWith(sb: SupabaseClient, actor: AuditActor, id: string, name: string, ownerId: number | null = actor.personId): Promise<boolean> {
+  const { data, error } = await sb
+    .from('mm_menus')
+    .update({ name, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .eq('owner_person_id', ownerId)
+    .select('id');
+  if (error) throw new Error(`rename menu: ${error.message}`);
+  if (!data?.length) return false;
+  await audit(sb, actor, 'rename', id, `renamed a menu to "${name}"${asLeaderNote(actor, ownerId)}`);
+  return true;
 }
 
 /** True when the owner's menu was deleted. */

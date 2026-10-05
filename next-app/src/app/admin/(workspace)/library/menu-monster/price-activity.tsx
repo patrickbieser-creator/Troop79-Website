@@ -12,10 +12,10 @@
  *    band (or had nothing to compare with). Per unit shows the package against
  *    the cheapest live package of its ingredient. Approve puts it in the book;
  *    Reject deletes it, or retires it when a menu still names it.
- *  - Price changes: the 50 most recent changes, newest first. An applied row
- *    can be reverted from its ⋯ menu while the package still carries that
- *    price; once a later change moved it, Revert is greyed and a help badge
- *    says why.
+ *  - Price changes: the 50 most recent changes nobody has acknowledged, newest first (Patrick, 2026-10-05:
+ *    a typo is caught here, so each row has Edit — the package's line in the Price book — and Acknowledge,
+ *    which takes it off the list). An applied row can be reverted from its ⋯ menu while the package still
+ *    carries that price; once a later change moved it, Revert is greyed and a help badge says why.
  *
  * The decisions are server actions gated by library.moderate (actions.ts);
  * this panel only sends the row id.
@@ -30,7 +30,7 @@ import { Notice } from '../../_components/notice';
 import { fmtDate } from '@/lib/format-date';
 import type { HeldPrice, PriceChange } from '@/lib/menu-monster/price-history';
 import type { HeldPackage } from '@/lib/menu-monster/scout-packages-store';
-import { applyHeldPrice, approveHeldPackage, dismissHeldPrice, rejectHeldPackage, revertPriceChange, type PriceDecisionResult } from './actions';
+import { acknowledgePriceChange, applyHeldPrice, approveHeldPackage, dismissHeldPrice, rejectHeldPackage, revertPriceChange, type PriceDecisionResult } from './actions';
 import styles from './menu-monster.module.css';
 
 /** Always cents: a $4.00 → $4.50 change must not read as "$4 → $4.50". */
@@ -218,7 +218,7 @@ export function PriceActivity({ held, heldPackages = [], changes }: { held: Held
           </h2>
         </div>
         {changes.length === 0 ? (
-          <p className={styles.emptyLine}>No price changes yet.</p>
+          <p className={styles.emptyLine}>No price changes waiting for a look.</p>
         ) : (
           <div className={styles.tableWrap}>
             <table className={styles.table}>
@@ -241,22 +241,32 @@ export function PriceActivity({ held, heldPackages = [], changes }: { held: Held
                     <td className={styles.numCell}>{`${money(c.oldPrice)} → ${money(c.newPrice)}`}</td>
                     <td>{c.status === 'reverted' ? <Badge variant="muted">Reverted</Badge> : <Badge variant="success">Applied</Badge>}</td>
                     <td className={styles.actionsCell}>
-                      {c.status === 'applied' && (
-                        <span className={styles.rowActions}>
-                          {!c.canRevert && <HelpBadge id="menu-monster.superseded" />}
-                          <ActionsMenu
-                            ariaLabel={`More for ${c.packageName}`}
-                            placeholder="⋯"
-                            disabled={pending}
-                            options={[
-                              { value: 'revert', label: `Revert to ${money(c.oldPrice)}`, disabled: !c.canRevert }
-                            ]}
-                            onAction={() =>
-                              run(() => revertPriceChange(c.id), `Reverted “${c.packageName}” to ${money(c.oldPrice)}.`)
-                            }
-                          />
-                        </span>
-                      )}
+                      <span className={styles.rowActions}>
+                        {c.ingredientId && (
+                          <Button variant="secondary" size="sm" href={`/admin/library/menu-monster?tab=prices&ingredient=${encodeURIComponent(c.ingredientId)}`}>
+                            Edit
+                          </Button>
+                        )}
+                        <Button variant="secondary" size="sm" disabled={pending} onClick={() => run(() => acknowledgePriceChange(c.id), `Acknowledged the change to “${c.packageName}”.`)}>
+                          Acknowledge
+                        </Button>
+                        {c.status === 'applied' && (
+                          <>
+                            {!c.canRevert && <HelpBadge id="menu-monster.superseded" />}
+                            <ActionsMenu
+                              ariaLabel={`More for ${c.packageName}`}
+                              placeholder="⋯"
+                              disabled={pending}
+                              options={[
+                                { value: 'revert', label: `Revert to ${money(c.oldPrice)}`, disabled: !c.canRevert }
+                              ]}
+                              onAction={() =>
+                                run(() => revertPriceChange(c.id), `Reverted “${c.packageName}” to ${money(c.oldPrice)}.`)
+                              }
+                            />
+                          </>
+                        )}
+                      </span>
                     </td>
                   </tr>
                 ))}

@@ -42,17 +42,23 @@ export function RecipeScreen({
 
   return (
     <>
-      {recipe && (
-        <nav className={styles.toolbar} aria-label="Other recipes">
+      {/* Close is the plain way out (Patrick, 2026-10-05: the breadcrumb alone was missed); it keeps the list's filters. */}
+      <nav className={styles.toolbar} aria-label="Other recipes">
+        {recipe && (
           <Button variant="quiet" size="sm" disabled={!prev} onClick={() => prev && navigate(recipeHref(prev.recipe.id, filter))}>
             {prev ? `← Previous: ${prev.recipe.name}` : '← Previous'}
           </Button>
-          <span className={styles.spacer} />
+        )}
+        <span className={styles.spacer} />
+        <Button variant="secondary" size="sm" onClick={() => navigate(foodListHref(filter))}>
+          Close
+        </Button>
+        {recipe && (
           <Button variant="quiet" size="sm" disabled={!next} onClick={() => next && navigate(recipeHref(next.recipe.id, filter))}>
             {next ? `Next: ${next.recipe.name} →` : 'Next →'}
           </Button>
-        </nav>
-      )}
+        )}
+      </nav>
       <RecipeEditor
         key={recipe?.id ?? NEW_ID}
         mode="page"

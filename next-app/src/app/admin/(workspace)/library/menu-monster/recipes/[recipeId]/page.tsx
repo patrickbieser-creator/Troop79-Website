@@ -42,7 +42,8 @@ export default async function MenuMonsterRecipePage({
         back={{
           crumbs: [
             { label: 'Resource Library', href: '/admin/library' },
-            { label: 'Menu Monster', href: foodListHref(filter) }
+            { label: 'Menu Monster', href: '/admin/library/menu-monster' },
+            { label: 'Food & recipes', href: foodListHref(filter) }
           ],
           current: name
         }}

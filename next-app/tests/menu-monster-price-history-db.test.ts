@@ -101,11 +101,12 @@ describe('mm_price_history schema', () => {
     expect(rule).toBe('r');
   });
 
-  it('PriceHistory_BlocksDeletingAReporterAndDecider_WhoHaveHistory', () => {
+  it('PriceHistory_BlocksDeletingAReporterAndDecider_WhoHaveHistory_ButNotAnAcknowledger', () => {
+    // r = RESTRICT for the reporter and the decider; n = SET NULL for who acknowledged a change (2026-10-05).
     const rules = localSql(
-      `select confdeltype from pg_constraint where conrelid = 'public.mm_price_history'::regclass and confrelid = 'public.people'::regclass`
+      `select conname || ' ' || confdeltype::text from pg_constraint where conrelid = 'public.mm_price_history'::regclass and confrelid = 'public.people'::regclass order by conname`
     );
-    expect(rules.split('\n')).toEqual(['r', 'r']);
+    expect(rules.split('\n')).toEqual(['mm_price_history_acknowledged_by_person_id_fkey n', 'mm_price_history_decided_by_person_id_fkey r', 'mm_price_history_reported_by_person_id_fkey r']);
   });
 
   it('PriceHistory_KeepsTheRow_WhenItsMenuIsDeleted', () => {

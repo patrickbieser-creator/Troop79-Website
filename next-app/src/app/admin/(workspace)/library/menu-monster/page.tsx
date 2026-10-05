@@ -2,11 +2,12 @@
  * /admin/library/menu-monster — Menu Monster leader tools
  * (Plans/Menu-Monster-Leader-Tools.md).
  *
- * Six tabs. Needs attention comes first (release 6: one line per kind of thing waiting on a leader) and
+ * Seven tabs. Needs attention comes first (release 6: one line per kind of thing waiting on a leader) and
  * Purchases last (each outing's planned vs paid). Between them: the Price book (ingredients, packages with prices, unit
  * conversions), Food & recipes (menu items: single foods open in the list, a recipe on its own page under
- * recipes/[recipeId]) and Scout
- * recipes (what scouts shared — live at once, Phase 4A — to retire or re-credit). Gated by
+ * recipes/[recipeId]), Scout recipes (every recipe a scout wrote — a shared one is live at once, Phase 4A —
+ * to edit, copy, rename, re-credit or retire) and Menus (every saved menu, with the owner's controls; leaders
+ * have full rights on any menu, D-327). Gated by
  * `library.moderate` here and again in every action; reads with the service
  * role because the mm_* tables have RLS on with zero policies (D-239).
  * Depth-2 under Resource Library — its own nav item rather than an eighth
@@ -34,7 +35,9 @@ import { PriceActivity } from './price-activity';
 import { PriceBook } from './price-book';
 import { RecipeBuilder } from './recipe-builder';
 import { ScoutRecipes } from './scout-recipes';
-import { listSharedScoutRecipesWith, listTypedInsWith } from '@/lib/menu-monster/scout-recipes-store';
+import { listScoutRecipesWith, listTypedInsWith } from '@/lib/menu-monster/scout-recipes-store';
+import { listAllMenusWith } from '@/lib/menu-monster/menus-store';
+import { MenusAdmin, type MenuAdminRow } from './menus-admin';
 import { ScoutIngredients } from './scout-ingredients';
 import { GearAdmin } from './gear-admin';
 import { listGearAdminWith } from '@/lib/menu-monster/gear-store';
@@ -50,8 +53,8 @@ export const metadata = {
   title: 'Menu Monster — Troop 79 Admin'
 };
 
-type Tab = 'attention' | 'prices' | 'recipes' | 'scouts' | 'gear' | 'purchases';
-const TABS: readonly Tab[] = ['attention', 'prices', 'recipes', 'scouts', 'gear', 'purchases'];
+type Tab = 'attention' | 'prices' | 'recipes' | 'scouts' | 'menus' | 'gear' | 'purchases';
+const TABS: readonly Tab[] = ['attention', 'prices', 'recipes', 'scouts', 'menus', 'gear', 'purchases'];
 /** How far back "Brands typed in lately" looks. */
 const NEW_BRAND_DAYS = 30;
 
@@ -68,7 +71,7 @@ export default async function MenuMonsterAdminPage({
     listHeldWith(admin),
     listHeldPackagesWith(admin),
     listActiveStoreNamesWith(admin),
-    listSharedScoutRecipesWith(admin),
+    listScoutRecipesWith(admin, (ids) => ownerCreditNamesWith(admin, ids)),
     listTypedInsWith(admin)
   ]);
   const today = centralToday();
@@ -89,6 +92,16 @@ export default async function MenuMonsterAdminPage({
   const gear = tab === 'gear' ? await listGearAdminWith(admin) : [];
   // Scout recipes worth a look: live ones changed after sharing, and typed-in ingredients to match.
   const edited = shared.filter((r) => r.editedSinceShared && r.status !== 'retired').length + typedIns.length;
+  // Every saved menu, with its owner's name and its outing's title: only for the Menus tab.
+  let menus: MenuAdminRow[] = [];
+  if (tab === 'menus') {
+    const all = await listAllMenusWith(admin);
+    const owners = await ownerCreditNamesWith(admin, all.map((m) => m.ownerPersonId));
+    const entryIds = [...new Set(all.map((m) => m.calendarEntryId).filter((id): id is number => id != null))];
+    const { data: entries } = entryIds.length ? await admin.from('calendar_entries').select('id, title').in('id', entryIds) : { data: [] };
+    const titles = new Map((entries ?? []).map((e) => [e.id as number, e.title as string]));
+    menus = all.map((m) => ({ ...m, owner: owners.get(m.ownerPersonId) ?? 'Someone', outing: m.calendarEntryId != null ? (titles.get(m.calendarEntryId) ?? null) : null }));
+  }
   const book = catalog.ingredients
     .filter((i) => !i.retiredAt && !i.needsMatch)
     .map((i) => ({ id: i.id, name: i.name, unitKey: i.unit.key, unitMany: i.unit.many }));
@@ -138,6 +151,7 @@ export default async function MenuMonsterAdminPage({
           { key: 'prices', label: 'Price book', href: '/admin/library/menu-monster?tab=prices', ...(unpriced + held.length + heldPackages.length > 0 ? { count: unpriced + held.length + heldPackages.length } : {}) },
           { key: 'recipes', label: 'Food & recipes', href: '/admin/library/menu-monster?tab=recipes', ...(drafts > 0 ? { count: drafts } : {}) },
           { key: 'scouts', label: 'Scout recipes', href: '/admin/library/menu-monster?tab=scouts', ...(edited > 0 ? { count: edited } : {}) },
+          { key: 'menus', label: 'Menus', href: '/admin/library/menu-monster?tab=menus' },
           { key: 'gear', label: 'Gear', href: '/admin/library/menu-monster?tab=gear' },
           { key: 'purchases', label: 'Purchases', href: '/admin/library/menu-monster?tab=purchases', ...(unfinished > 0 ? { count: unfinished } : {}) }
         ]}
@@ -155,6 +169,8 @@ export default async function MenuMonsterAdminPage({
           <PriceActivity held={held} heldPackages={heldPackages} changes={changes} />
           <PriceBook catalog={catalog} today={today} stores={stores} initialIngredientId={sp.ingredient} />
         </>
+      ) : tab === 'menus' ? (
+        <MenusAdmin menus={menus} />
       ) : tab === 'gear' ? (
         <GearAdmin items={gear} />
       ) : tab === 'recipes' ? (

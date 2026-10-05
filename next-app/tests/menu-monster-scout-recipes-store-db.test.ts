@@ -2,7 +2,9 @@ import { describe, it, expect, afterEach, beforeAll } from 'vitest';
 import { adminClient } from './helpers/admin-client';
 import {
   deleteScoutDraftWith,
+  listScoutRecipesWith,
   listSharedScoutRecipesWith,
+  renameScoutRecipeWith,
   setScoutRecipeCreditWith,
   listMyRecipesWith,
   loadMyRecipeWith,
@@ -163,6 +165,35 @@ describe('shared scout recipes for leaders', () => {
     await shareScoutRecipeWith(sb, actor, res.id);
     await setScoutRecipeCreditWith(sb, res.id, 'Charlie W. and Jack P.');
     expect((await listSharedScoutRecipesWith(sb)).find((r) => r.id === res.id)?.credit).toBe('Charlie W. and Jack P.');
+  });
+});
+
+/** The admin Scout recipes tab (2026-10-05): every scout recipe, shared or not, with its owner and dates. */
+describe('all scout recipes for leaders', () => {
+  const names = async (ids: number[]) => new Map(ids.map((id) => [id, id === SCOUT ? 'Charlie W.' : 'Someone else']));
+
+  it('Leader_SeesAnUnsharedDraft_WithItsOwner', async () => {
+    const res = await create();
+    const row = (await listScoutRecipesWith(sb, names)).find((r) => r.id === res.id);
+    expect(row).toMatchObject({ name: 'Vitest foil packs', status: 'draft', owner: 'Charlie W.', ownerPersonId: SCOUT, sharedAt: null, editedSinceShared: false });
+    expect([typeof row?.createdAt, typeof row?.updatedAt]).toEqual(['string', 'string']);
+  });
+
+  it('ASharedRecipe_CarriesItsShareDate', async () => {
+    const res = await create();
+    await shareScoutRecipeWith(sb, actor, res.id);
+    const row = (await listScoutRecipesWith(sb, names)).find((r) => r.id === res.id);
+    expect([row?.status, typeof row?.sharedAt]).toEqual(['published', 'string']);
+  });
+
+  it('Leader_CanRenameAScoutRecipe', async () => {
+    const res = await create();
+    expect(await renameScoutRecipeWith(sb, res.id, 'Vitest foil packs, deluxe')).toEqual({ before: 'Vitest foil packs' });
+    expect((await listScoutRecipesWith(sb, names)).find((r) => r.id === res.id)?.name).toBe('Vitest foil packs, deluxe');
+  });
+
+  it('Rename_RefusesATroopRecipe', async () => {
+    expect(await renameScoutRecipeWith(sb, 'B003', 'Nope')).toBeNull();
   });
 });
 

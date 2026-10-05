@@ -601,9 +601,37 @@ describe('Recipe page — the recipes either side (2026-10-05)', () => {
     expect((others().getByRole('button', { name: '← Previous' }) as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it('ANewRecipe_HasNoNeighbours', () => {
+  it('ANewRecipe_HasNoNeighbours_ButCanStillBeClosed', () => {
     render(<RecipeScreen catalog={CATALOG} recipeId="new" />);
-    expect(screen.queryByRole('navigation', { name: 'Other recipes' })).toBeNull();
+    expect([others().queryByRole('button', { name: /Previous/ }), others().queryByRole('button', { name: /Next/ }), others().getByRole('button', { name: 'Close' }) != null]).toEqual([null, null, true]);
+  });
+
+  it('Close_ReturnsToTheListItCameFrom', async () => {
+    render(<RecipeScreen catalog={CATALOG} recipeId="pancakes" filter={{ kind: 'recipes', meal: 'breakfast', q: '' }} />);
+    await userEvent.setup().click(others().getByRole('button', { name: 'Close' }));
+    expect(nav.push).toHaveBeenCalledWith('/admin/library/menu-monster?tab=recipes&kind=recipes&meal=breakfast');
+  });
+
+  it('ABlockedSave_SaysWhyBesideTheButton', async () => {
+    // Patrick, 2026-10-05: a swap line with no amount blocked the save, and the only word of it was a tooltip.
+    const user = userEvent.setup();
+    render(<RecipeScreen catalog={CATALOG} recipeId="toast" />);
+    const editor = within(screen.getByRole('region', { name: 'Edit Toast' }));
+    await user.click(editor.getByRole('button', { name: '+ Add an ingredient' }));
+    await user.selectOptions(editor.getByLabelText('Line 1 ingredient'), 'bread');
+    expect(editor.getByRole('status').textContent).toBe('Can’t save yet: Line 1: type an amount per person.');
+  });
+
+  it('ASwapWithNoAmount_IsOutlinedInPlace', async () => {
+    const user = userEvent.setup();
+    render(<RecipeScreen catalog={CATALOG} recipeId="pancakes" />);
+    const editor = within(screen.getByRole('region', { name: 'Edit Pancakes' }));
+    await user.click(editor.getByRole('button', { name: /\+ Add a variation/ }));
+    await user.click(within(editor.getByRole('group', { name: 'Variations to add' })).getByRole('button', { name: /^Gluten-free/ }));
+    const panel = within(editor.getByRole('region', { name: 'Gluten-free version' }));
+    await user.selectOptions(panel.getByLabelText('Pancake mix for gluten-free scouts'), 'swap');
+    await user.selectOptions(panel.getByLabelText('Swap Pancake mix for'), 'almond-flour');
+    expect(panel.getByRole('textbox', { name: 'Amount of Almond flour per person' }).getAttribute('aria-invalid')).toBe('true');
   });
 
   it('ANewRecipe_OnceSaved_MovesToItsOwnAddress', async () => {

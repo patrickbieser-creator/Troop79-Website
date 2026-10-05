@@ -778,10 +778,17 @@ export function RecipeEditor({
           </div>
         )}
 
-        <div className={lib.actionsRow}>
+        {/* On its own page the form is long: the save row stays in view, and says in words why a save is blocked
+            (Patrick, 2026-10-05: the "Needs fixing" box was scrolled away and Save looked like it did nothing). */}
+        <div className={mode === 'page' ? `${lib.actionsRow} ${styles.saveBar}` : lib.actionsRow}>
           <SaveButton dirty={snap.dirty} pending={pending} isNew={isNew} newLabel="Save draft" blocked={blocker != null} blockedReason={blocker ?? undefined} onClick={save} />
           <DiscardButton dirty={snap.dirty} pending={pending} onClick={() => setDraft(snap.saved)} />
           <SaveFeedback phase={feedback.phase} />
+          {blocker && snap.dirty && (
+            <span className={styles.saveBlocker} role="status">
+              Can’t save yet: {blocker}
+            </span>
+          )}
           <span className={styles.spacer} />
           {!isNew && snap.saved.status !== 'retired' && snap.saved.status !== 'published' && (
             <Button variant="primary" disabled={pending || publishTitle != null} title={publishTitle} onClick={() => run(() => setRecipeStatus(draft.id, 'published'), () => setDraft((d) => ({ ...d, status: 'published' })))}>
@@ -1331,7 +1338,8 @@ function VariationPanel({
                           <input
                             id={`mm-v-${restriction}-${b.ingredientId}-amt`}
                             aria-label={`Amount of ${swapIng?.name ?? 'the swap'} per person`}
-                            className={lib.textInput}
+                            className={op.ingredientId && !(parseQty(op.amount) > 0) ? `${lib.textInput} ${styles.bad}` : lib.textInput}
+                            aria-invalid={(op.ingredientId && !(parseQty(op.amount) > 0)) || undefined}
                             value={op.amount}
                             placeholder="½"
                             onChange={(e) => patchOp(b.ingredientId, { amount: e.target.value })}
@@ -1367,7 +1375,7 @@ function VariationPanel({
                       <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`mm-va-${restriction}-${i}-amt`}>
                         Amount per person
                       </label>
-                      <input id={`mm-va-${restriction}-${i}-amt`} aria-label={`Extra line ${n + 1} amount`} className={lib.textInput} value={l.amount} placeholder="½" onChange={(e) => patchAdd(i, { amount: e.target.value })} />
+                      <input id={`mm-va-${restriction}-${i}-amt`} aria-label={`Extra line ${n + 1} amount`} className={l.ingredientId && !(parseQty(l.amount) > 0) ? `${lib.textInput} ${styles.bad}` : lib.textInput} aria-invalid={(l.ingredientId && !(parseQty(l.amount) > 0)) || undefined} value={l.amount} placeholder="½" onChange={(e) => patchAdd(i, { amount: e.target.value })} />
                     </div>
                     <div className={styles.narrow}>
                       <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`mm-va-${restriction}-${i}-unit`}>

@@ -20,10 +20,12 @@ import { revalidatePath } from 'next/cache';
 import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import { recordAudit, type AuditDetail } from '@/lib/audit';
-import { decidePriceWith, leaderSetPriceWith, type DecideOutcome } from '@/lib/menu-monster/price-history';
+import { acknowledgePriceChangeWith, decidePriceWith, leaderSetPriceWith, type DecideOutcome } from '@/lib/menu-monster/price-history';
 import { loadAuthoringCatalogWith } from '@/lib/menu-monster/catalog';
 import { cleanGear, cleanScoutText, isScoutRecipeId } from '@/lib/menu-monster/scout-recipes';
-import { keepTypedInWith, matchTypedInWith, rejectTypedInWith, setScoutRecipeCreditWith } from '@/lib/menu-monster/scout-recipes-store';
+import { keepTypedInWith, matchTypedInWith, rejectTypedInWith, renameScoutRecipeWith, setScoutRecipeCreditWith } from '@/lib/menu-monster/scout-recipes-store';
+import { deleteMenuWith, duplicateMenuWith, loadMenuWith, renameMenuWith, setMenuSharedWith, MENU_LIMIT } from '@/lib/menu-monster/menus-store';
+import { isMenuId } from '@/lib/menu-monster/menus';
 import { approveHeldPackageWith, rejectHeldPackageWith } from '@/lib/menu-monster/scout-packages-store';
 import { createGearWith, deleteGearWith, ensureGearWith, retireGearWith, updateGearWith } from '@/lib/menu-monster/gear-store';
 import { createBrandWith, mergeBrandWith, moveBrandWith, removeBrandWith, renameBrandWith, setBrandDietsWith, setPackageBrandWith, type BrandWrite, suggestRecipeBrandWith } from '@/lib/menu-monster/brands-store';
@@ -67,10 +69,10 @@ async function guard(): Promise<Result | null> {
   }
 }
 
-async function guardActor(): Promise<{ personId: number | null } | Result> {
+async function guardActor(): Promise<{ personId: number | null; label: string } | Result> {
   try {
     const actor = await requireCapability('library.moderate');
-    return { personId: actor.personId };
+    return { personId: actor.personId, label: actor.label };
   } catch {
     return { ok: false, error: 'Not authenticated' };
   }
@@ -79,7 +81,7 @@ async function guardActor(): Promise<{ personId: number | null } | Result> {
 const RESTRICTION_KEYS: readonly RestrictionKey[] = ['gf', 'nut', 'dairy', 'veg'];
 const SECTIONS: readonly Section[] = ['produce', 'dairy', 'meat', 'bakery', 'dry'];
 const money = (n: number) => `$${n.toFixed(2)}`;
-const SCOUT_OWNED = 'A scout wrote this recipe, so only they can change it. You can retire it or change its credit under Scout recipes.';
+const SCOUT_OWNED = 'A scout shared this recipe, so it never goes back to a draft: retire it instead.';
 
 /* ── Ingredients ─────────────────────────────────────────────────────────── */
 
@@ -599,6 +601,16 @@ export async function revertPriceChange(historyId: string): Promise<PriceDecisio
   return decidePrice(historyId, 'revert');
 }
 
+/** Seen: the change leaves the Price changes list (2026-10-05). */
+export async function acknowledgePriceChange(historyId: string): Promise<Result> {
+  const g = await guardActor();
+  if ('ok' in g) return g;
+  const done = await acknowledgePriceChangeWith(createAdminClient(), historyId, g.personId);
+  if (!done) return { ok: false, error: 'That change is already off the list.' };
+  revalidate();
+  return { ok: true };
+}
+
 async function setPackageRetired(id: string, retired: boolean): Promise<Result> {
   const denied = await guard();
   if (denied) return denied;
@@ -666,8 +678,8 @@ function draftOf(r: Recipe): RecipeDraft {
 export async function saveRecipe(a: RecipeAuthoring): Promise<Result> {
   const denied = await guard();
   if (denied) return denied;
-  // A scout's recipe is theirs to edit (Phase 4A); leaders retire or re-credit it from Scout recipes.
-  if (isScoutRecipeId(a.id)) return { ok: false, error: SCOUT_OWNED };
+  // A scout's recipe stays theirs (mm_save_recipe never touches author, credit or shared_at), but a leader may
+  // edit it too (Patrick, 2026-10-05 — the same rights leaders have on anyone's menu, D-327).
   const name = cap(a.name, MAX.name);
   if (!name) return { ok: false, error: 'Give the menu item a name.' };
 
@@ -819,13 +831,16 @@ export async function setRecipeStatus(id: string, status: RecipeStatus): Promise
   const denied = await guard();
   if (denied) return denied;
   if (!(status in STATUS_LABEL)) return { ok: false, error: 'Unknown status.' };
-  // A shared scout recipe never goes back to draft (other scouts' menus hold it): retire it instead.
-  if (status === 'draft' && isScoutRecipeId(id)) return { ok: false, error: SCOUT_OWNED };
-
   const supabase = createAdminClient();
   const catalog = await loadAuthoringCatalogWith(supabase);
   const recipe = catalog.recipes.find((r) => r.id === id);
   if (!recipe) return { ok: false, error: 'That menu item is gone.' };
+  // A SHARED scout recipe never goes back to draft (other scouts' menus hold it): retire it instead. An
+  // unshared one is only ever a draft or retired — publishing is the scout's share.
+  if (isScoutRecipeId(id)) {
+    if (status === 'draft' && recipe.sharedAt) return { ok: false, error: SCOUT_OWNED };
+    if (status === 'published' && !recipe.sharedAt) return { ok: false, error: 'A scout recipe goes live when the scout shares it; until then it is their draft.' };
+  }
   if (status === 'published') {
     const blocking = blockingIssues(recipeIssues(draftOf(recipe), catalog));
     if (blocking.length > 0) return { ok: false, error: blocking[0].text };
@@ -1086,6 +1101,84 @@ export async function setScoutRecipeCredit(id: string, credit: string): Promise<
       details: [{ field: 'Credit', from: done.before ?? '', to: clean }]
     });
   }
+  revalidate();
+  return { ok: true };
+}
+
+/** A leader renames a scout's recipe (the Scout recipes tab, 2026-10-05). */
+export async function renameScoutRecipe(id: string, name: string): Promise<Result> {
+  const denied = await guard();
+  if (denied) return denied;
+  const clean = cap(name, MAX.name);
+  if (!clean) return { ok: false, error: 'Give the recipe a name.' };
+  const done = await renameScoutRecipeWith(createAdminClient(), id, clean);
+  if (!done) return { ok: false, error: 'That isn’t a scout recipe.' };
+  if (done.before !== clean) {
+    await recordAudit({
+      area: 'library',
+      action: 'update',
+      entityType: 'scout_recipe',
+      entityId: id,
+      summary: `Renamed "${done.before}" to "${clean}"`,
+      details: [{ field: 'Name', from: done.before, to: clean }]
+    });
+  }
+  revalidate();
+  return { ok: true };
+}
+
+/* ── Menus (the admin Menus tab, 2026-10-05) ─────────────────────────────── */
+// Leaders have full rights on anyone's menu (D-327). Each write goes through the menus store as the
+// signed-in leader acting for the menu's owner, so the audit trail says who did it and whose menu it was.
+
+const MENU_GONE = 'That menu is gone.';
+
+async function menuOwner(id: string): Promise<{ actor: { personId: number | null; label: string }; ownerId: number } | Result> {
+  const actor = await guardActor();
+  if ('ok' in actor) return actor;
+  if (!isMenuId(id)) return { ok: false, error: MENU_GONE };
+  const menu = await loadMenuWith(createAdminClient(), id);
+  if (!menu) return { ok: false, error: MENU_GONE };
+  return { actor, ownerId: menu.ownerPersonId };
+}
+
+/** The owner's copy of the menu, whoever makes it. */
+export async function duplicateMenu(id: string): Promise<Result> {
+  const who = await menuOwner(id);
+  if ('ok' in who) return who;
+  const copy = await duplicateMenuWith(createAdminClient(), who.actor, id, who.ownerId);
+  if (copy === MENU_LIMIT) return { ok: false, error: 'They already have as many menus as one person may keep. Delete one they don’t need to make room.' };
+  if (!copy) return { ok: false, error: MENU_GONE };
+  revalidate();
+  return { ok: true, id: copy };
+}
+
+export async function renameMenu(id: string, name: string): Promise<Result> {
+  const who = await menuOwner(id);
+  if ('ok' in who) return who;
+  const clean = name.trim().slice(0, 120);
+  if (!clean) return { ok: false, error: 'Give the menu a name.' };
+  const ok = await renameMenuWith(createAdminClient(), who.actor, id, clean, who.ownerId);
+  if (!ok) return { ok: false, error: MENU_GONE };
+  revalidate();
+  return { ok: true };
+}
+
+/** Share with the troop, or stop sharing. */
+export async function setMenuShared(id: string, on: boolean): Promise<Result> {
+  const who = await menuOwner(id);
+  if ('ok' in who) return who;
+  const ok = await setMenuSharedWith(createAdminClient(), who.actor, id, on === true, who.ownerId);
+  if (!ok) return { ok: false, error: MENU_GONE };
+  revalidate();
+  return { ok: true };
+}
+
+export async function deleteMenu(id: string): Promise<Result> {
+  const who = await menuOwner(id);
+  if ('ok' in who) return who;
+  const ok = await deleteMenuWith(createAdminClient(), who.actor, id, who.ownerId);
+  if (!ok) return { ok: false, error: MENU_GONE };
   revalidate();
   return { ok: true };
 }
