@@ -15,7 +15,7 @@ import { ReadOnlyLine } from './read-only-line';
 import type { ViewableMenu } from './scout-menus';
 import s from './workspace.module.css';
 
-export function ViewerAside({ view, page }: { view: ViewableMenu; page: 'plan' | 'shopping' | 'meal' | 'gear' | 'bought' }) {
+export function ViewerAside({ view, page }: { view: ViewableMenu; page: 'plan' | 'shopping' | 'meal' | 'gear' | 'bought' | 'conversions' }) {
   const { readOnly, plannedBy, hiddenRecipes, canCopy, stored } = view;
   const review = page === 'plan' ? stored.review : null;
   return (

@@ -631,3 +631,18 @@
 
 /* The brand chooser's Done (Plan tab): closes the chooser under an ingredient. */
 .brandDone { margin: var(--sp-2) 0 0; }
+
+/* The Conversions tab (a read-only lesson): a lede, each worked food on a list row, the unit ladders side by
+   side, and the foods' own numbers as a quiet table on the same white card. */
+.lessonLede { max-width: 640px; font-family: var(--font-ui); font-size: var(--fs-md); color: var(--text-body); line-height: 1.5; margin: 0 0 var(--sp-6); }
+.lessonName { font-family: var(--font-ui); font-size: var(--fs-md); font-weight: 700; color: var(--text-head); }
+.lessonBuy { flex: none; font-family: var(--font-ui); font-size: var(--fs-md); color: var(--text-head); font-variant-numeric: tabular-nums; }
+.ladders { display: grid; grid-template-columns: 1fr; gap: var(--sp-4) var(--sp-8); }
+@media (min-width: 640px) {
+  .ladders { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+.lessonTable { width: 100%; border-collapse: collapse; background: var(--warm-white); border-radius: var(--rad-md); box-shadow: var(--shadow-card); font-family: var(--font-ui); font-size: var(--fs-md); color: var(--text-body); }
+.lessonTable th, .lessonTable td { padding: var(--sp-2) var(--sp-4); text-align: left; vertical-align: baseline; border-top: 1px solid var(--rule); }
+.lessonTable thead th { border-top: none; font-size: var(--fs-sm); font-weight: 600; color: var(--text-meta); }
+.lessonTable tbody th { font-weight: 700; color: var(--text-head); }
+.lessonTable td:nth-child(2) { white-space: nowrap; font-variant-numeric: tabular-nums; }
