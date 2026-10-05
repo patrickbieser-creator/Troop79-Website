@@ -86,6 +86,8 @@ const CATALOG: Catalog = {
 };
 
 const list = () => screen.getByRole('table', { name: 'Food and recipes' });
+/** Record-level commands live in the one "More actions…" menu (2026-10-05). */
+const more = async (scope: ReturnType<typeof within>, value: string) => userEvent.setup().selectOptions(scope.getByRole('combobox', { name: 'More actions' }), value);
 
 describe('Recipe builder', () => {
   it('Leader_SeesStatusPills_ComputedFromIssues', () => {
@@ -99,9 +101,12 @@ describe('Recipe builder', () => {
     render(<RecipeScreen catalog={CATALOG} recipeId="toast" />);
     const editor = screen.getByRole('region', { name: 'Edit Toast' });
 
+    // Publish stays clickable (greyed means nothing to do, never not valid yet); a click says what is missing.
     const publish = within(editor).getByRole('button', { name: 'Publish' });
-    expect((publish as HTMLButtonElement).disabled).toBe(true);
-    expect(publish.getAttribute('title')).toBe('Add at least one ingredient line.');
+    expect((publish as HTMLButtonElement).disabled).toBe(false);
+    await user.click(publish);
+    expect(setRecipeStatus).not.toHaveBeenCalled();
+    expect(within(editor).getByText(/^Can’t save yet/).textContent).toBe('Can’t save yet: Add at least one ingredient line.');
     expect(within(editor).getByRole('list', { name: 'Needs fixing' }).textContent).toMatch(/Add at least one ingredient line/);
 
     await user.click(within(editor).getByRole('button', { name: '+ Add an ingredient' }));
@@ -111,8 +116,8 @@ describe('Recipe builder', () => {
     // Bread has gluten and everyone gets it — a warning, never a block.
     expect(within(editor).getByRole('list', { name: 'Worth a look' }).textContent).toMatch(/isn't gluten-free/);
 
-    // Publish waits for the save.
-    expect(publish.getAttribute('title')).toBe('Save changes first');
+    // Publish waits for the save, and says so.
+    expect(within(editor).getByRole('button', { name: 'Save, then publish' })).toBeTruthy();
     await user.click(within(editor).getByRole('button', { name: 'Save changes' }));
     await waitFor(() => expect(saveRecipe).toHaveBeenCalledTimes(1));
     expect(vi.mocked(saveRecipe).mock.calls[0][0]).toMatchObject({
@@ -122,7 +127,7 @@ describe('Recipe builder', () => {
       variations: []
     });
 
-    await waitFor(() => expect((within(editor).getByRole('button', { name: 'Publish' }) as HTMLButtonElement).disabled).toBe(false));
+    await waitFor(() => expect(within(editor).getByRole('button', { name: 'Publish' })).toBeTruthy());
     await user.click(within(editor).getByRole('button', { name: 'Publish' }));
     await waitFor(() => expect(setRecipeStatus).toHaveBeenCalledWith('toast', 'published'));
   });
@@ -155,9 +160,10 @@ describe('Recipe builder', () => {
     expect(within(editor).getByRole('list', { name: 'Needs fixing' }).textContent).toMatch(
       /Line 3: Eggs already has a line for everyone — combine them\./
     );
-    const save = within(editor).getByRole('button', { name: 'Save changes' });
-    expect((save as HTMLButtonElement).disabled).toBe(true);
-    expect(save.getAttribute('title')).toMatch(/combine them/);
+    // Save stays clickable; the click says the reason in words and saves nothing.
+    await user.click(within(editor).getByRole('button', { name: 'Save changes' }));
+    expect(saveRecipe).not.toHaveBeenCalled();
+    expect(within(editor).getByText(/^Can’t save yet/).textContent).toMatch(/combine them/);
   });
 
   it('Leader_SeesWhatOnePersonGets_AndCostPerPerson', () => {
@@ -224,8 +230,8 @@ describe('Recipe builder', () => {
     await user.click(within(editor).getByRole('button', { name: /\+ Add a variation/ }));
     await user.click(within(within(editor).getByRole('group', { name: 'Variations to add' })).getByRole('button', { name: /^Vegetarian/ }));
     const panel = within(editor).getByRole('region', { name: 'Vegetarian version' });
-    await user.click(within(panel).getByRole('button', { name: 'Not suitable' }));
-    expect(within(panel).getAllByText('Not suitable').length).toBeGreaterThan(0);
+    await user.click(within(panel).getByRole('radio', { name: 'Not suitable' }));
+    expect((within(panel).getByRole('radio', { name: 'Not suitable' }) as HTMLInputElement).checked).toBe(true);
     await user.click(within(editor).getByRole('button', { name: 'Save changes' }));
     await waitFor(() => expect(saveRecipe).toHaveBeenCalledTimes(1));
     expect(vi.mocked(saveRecipe).mock.calls[0][0]).toMatchObject({
@@ -310,7 +316,7 @@ describe('Recipe builder — a single food opens in the short form (2026-10-04)'
 
   it('OnItsOwnPage_BackToTheShortForm_ReturnsToTheListWithTheFoodOpen', async () => {
     render(<RecipeScreen catalog={CATALOG} recipeId="bacon" />);
-    await userEvent.setup().click(bacon().getByRole('button', { name: 'Back to the short form' }));
+    await more(bacon(), 'short');
     expect(nav.push).toHaveBeenCalledWith('/admin/library/menu-monster?tab=recipes&recipe=bacon');
   });
 
@@ -406,17 +412,19 @@ describe('Recipe builder — make a recipe a single food (2026-10-05)', () => {
   const toast = () => within(screen.getByRole('region', { name: 'Edit Toast' }));
   const openToast = () => render(<RecipeScreen catalog={CATALOG} recipeId="toast" />);
 
+  const option = (scope: ReturnType<typeof within>, name: string) => within(scope.getByRole('combobox', { name: 'More actions' })).queryByRole('option', { name });
+
   it('ARecipe_OffersToBecomeASingleFood_AndASingleFoodDoesNot', () => {
     openToast();
-    expect(toast().getByRole('button', { name: 'Make it a single food' })).toBeTruthy();
+    expect(option(toast(), 'Make it a single food')).toBeTruthy();
     render(<RecipeBuilder catalog={CATALOG} initialRecipeId="bacon" />);
-    expect(within(screen.getByRole('region', { name: 'Edit Bacon' })).queryByRole('button', { name: 'Make it a single food' })).toBeNull();
+    expect(option(within(screen.getByRole('region', { name: 'Edit Bacon' })), 'Make it a single food')).toBeNull();
   });
 
   it('PickingAnIngredientOnFile_PutsThatOneThingOnTheRecipe_ReadyToSave', async () => {
     const user = userEvent.setup();
     openToast();
-    await user.click(toast().getByRole('button', { name: 'Make it a single food' }));
+    await more(toast(), 'food');
     const panel = within(screen.getByRole('region', { name: 'Make Toast a single food' }));
     await user.selectOptions(panel.getByLabelText('What each person gets'), 'bread');
     const amount = panel.getByLabelText('How many each');
@@ -433,7 +441,7 @@ describe('Recipe builder — make a recipe a single food (2026-10-05)', () => {
   it('ANewIngredient_IsMadeFromTheRecipesName_WhenNothingOnFileFits', async () => {
     const user = userEvent.setup();
     openToast();
-    await user.click(toast().getByRole('button', { name: 'Make it a single food' }));
+    await more(toast(), 'food');
     const panel = within(screen.getByRole('region', { name: 'Make Toast a single food' }));
     // Nothing on file is called Toast, so the form starts on a new ingredient named after it.
     expect((panel.getByLabelText('What each person gets') as HTMLSelectElement).value).toBe('__new');
@@ -451,9 +459,8 @@ describe('Recipe builder — make a recipe a single food (2026-10-05)', () => {
   });
 
   it('ARecipeWithIngredients_IsToldWhatTheMoveReplaces', async () => {
-    const user = userEvent.setup();
     render(<RecipeScreen catalog={CATALOG} recipeId="pancakes" />);
-    await user.click(within(screen.getByRole('region', { name: 'Edit Pancakes' })).getByRole('button', { name: 'Make it a single food' }));
+    await more(within(screen.getByRole('region', { name: 'Edit Pancakes' })), 'food');
     expect(within(screen.getByRole('region', { name: 'Make Pancakes a single food' })).getByText(/This replaces its 2 ingredients with that one thing\./)).toBeTruthy();
   });
 });
@@ -612,14 +619,62 @@ describe('Recipe page — the recipes either side (2026-10-05)', () => {
     expect(nav.push).toHaveBeenCalledWith('/admin/library/menu-monster?tab=recipes&kind=recipes&meal=breakfast');
   });
 
-  it('ABlockedSave_SaysWhyBesideTheButton', async () => {
+  it('ABlockedSave_SaysWhyBesideTheButton_AndFocusesTheField', async () => {
     // Patrick, 2026-10-05: a swap line with no amount blocked the save, and the only word of it was a tooltip.
     const user = userEvent.setup();
     render(<RecipeScreen catalog={CATALOG} recipeId="toast" />);
     const editor = within(screen.getByRole('region', { name: 'Edit Toast' }));
     await user.click(editor.getByRole('button', { name: '+ Add an ingredient' }));
     await user.selectOptions(editor.getByLabelText('Line 1 ingredient'), 'bread');
-    expect(editor.getByRole('status').textContent).toBe('Can’t save yet: Line 1: type an amount per person.');
+    // Nothing said while they are still typing…
+    expect(editor.queryByText(/^Can’t save yet/)).toBeNull();
+    const save = editor.getByRole('button', { name: 'Save changes' }) as HTMLButtonElement;
+    expect(save.disabled).toBe(false);
+    await user.click(save);
+    // …and on the click: nothing saved, the reason in words, the field marked and focused.
+    expect(saveRecipe).not.toHaveBeenCalled();
+    expect(editor.getByText(/^Can’t save yet/).textContent).toBe('Can’t save yet: Line 1: type an amount per person.');
+    const amount = editor.getByLabelText('Line 1 amount');
+    expect([amount.getAttribute('aria-invalid'), document.activeElement === amount]).toEqual(['true', true]);
+    // Fixed: the note goes away by itself.
+    await user.type(amount, '2');
+    expect(editor.queryByText(/^Can’t save yet/)).toBeNull();
+  });
+
+  it('ABlockedSave_OnAnotherVersionTab_SwitchesToIt_AndMarksTheTab', async () => {
+    const user = userEvent.setup();
+    render(<RecipeScreen catalog={CATALOG} recipeId="pancakes" />);
+    const editor = within(screen.getByRole('region', { name: 'Edit Pancakes' }));
+    await user.click(editor.getByRole('button', { name: /\+ Add a variation/ }));
+    await user.click(within(editor.getByRole('group', { name: 'Variations to add' })).getByRole('button', { name: /^Gluten-free/ }));
+    const panel = within(editor.getByRole('region', { name: 'Gluten-free version' }));
+    await user.selectOptions(panel.getByLabelText('Pancake mix for gluten-free scouts'), 'swap');
+    await user.selectOptions(panel.getByLabelText('Swap Pancake mix for'), 'almond-flour');
+    await user.click(editor.getByRole('tab', { name: 'Everyone' }));
+    await user.click(editor.getByRole('button', { name: 'Save changes' }));
+    const gf = editor.getByRole('tab', { name: /Gluten-free/ });
+    expect([gf.getAttribute('aria-selected'), within(gf).getByRole('img', { name: 'needs fixing' }) != null]).toEqual(['true', true]);
+    // The panel re-rendered with the tab switch: query it afresh.
+    expect(document.activeElement).toBe(within(editor.getByRole('region', { name: 'Gluten-free version' })).getByRole('textbox', { name: 'Amount of Almond flour per person' }));
+  });
+
+  it('Retire_AsksFirst_FromTheMoreMenu', async () => {
+    const user = userEvent.setup();
+    render(<RecipeScreen catalog={CATALOG} recipeId="pancakes" />);
+    await more(within(screen.getByRole('region', { name: 'Edit Pancakes' })), 'retire');
+    expect(setRecipeStatus).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Retire' }));
+    await waitFor(() => expect(setRecipeStatus).toHaveBeenCalledWith('pancakes', 'retired'));
+  });
+
+  it('OnlyOnePrimary_SaveWhileDirty', async () => {
+    const user = userEvent.setup();
+    render(<RecipeScreen catalog={CATALOG} recipeId="toast" />);
+    const region = screen.getByRole('region', { name: 'Edit Toast' });
+    const primaries = () => Array.from(region.querySelectorAll('button')).filter((b) => /primary/.test(b.className)).map((b) => b.textContent);
+    expect(primaries()).toEqual(['Saved']);
+    await user.type(within(region).getByLabelText('Name'), '!');
+    expect(primaries()).toEqual(['Save changes']);
   });
 
   it('ASwapWithNoAmount_IsOutlinedInPlace', async () => {

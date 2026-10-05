@@ -24,6 +24,16 @@
  * whole draft, variations included; Publish waits for a save and for zero
  * blocking issues — and the action enforces the same gate.
  *
+ * CONTROLS (Jenna's hierarchy, Patrick 2026-10-05 — "too many competing for attention"): one sticky bar
+ * holds every record-level command. Save is the one primary while the draft is dirty; Publish takes over
+ * once it is saved and publishable; Duplicate, Retire / Restore, Make it a single food and Back to the
+ * short form live in "More actions…". Section actions ("+ Add …") are quiet; a variation's state is a
+ * segmented control. The form is never tabbed to hide fields: a version tab with a bad field is marked.
+ *
+ * A SAVE THE FORM CAN'T TAKE (same day): Save stays enabled. Clicking it saves nothing — it marks every
+ * bad field in place, switches to the version tab that holds the first one, focuses it, and says
+ * "Can't save yet: …" beside the button. Greyed means nothing to do, never not valid yet.
+ *
  * A SINGLE FOOD (authoring.ts isSingleFood: one ingredient, no diet swaps — Cookies, Bacon)
  * opens in a short form instead (Patrick, 2026-10-04; prototype concept-f-kinds/admin-food.html): its name,
  * what each person gets, meal fit and food groups, then its brands and their packages. No ingredient line;
@@ -31,7 +41,7 @@
  * full editor" goes to the food's own page — the way to a diet swap or a second ingredient; saving a new
  * name renames the ingredient too while the two still match.
  */
-import { Fragment, useEffect, useMemo, useState, useTransition, type MouseEvent } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState, useTransition, type MouseEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '../../../_components/button';
@@ -41,7 +51,10 @@ import { Notice } from '../../_components/notice';
 import { TabStrip } from '../../_components/tab-strip';
 import { SearchField } from '../../_components/search-field';
 import { useGuardedNav } from '../../_components/guarded-nav';
-import { DiscardButton, SaveButton, SaveFeedback, useDraftSnapshot, useSavePhase } from '../../_components/save-state';
+import { DiscardButton, SaveButton, SaveFeedback, SaveProblem, useDraftSnapshot, useSavePhase } from '../../_components/save-state';
+import { ActionsMenu } from '../../_components/actions-menu';
+import { Dialog, DialogActions, DialogBody, DialogHeader } from '../../_components/dialog';
+import { SegmentedControl } from '../../_components/segmented-control';
 import { money } from '@/lib/event-money';
 import {
   METHODS,
@@ -82,7 +95,6 @@ const VIEW_VARIANT: Record<VariationView, 'danger' | 'warning' | 'success' | 'mu
   unsuitable: 'danger'
 };
 export const NEW_ID = '__new__';
-const ARM_MS = 4000;
 /** "Line 3: Bacon has no price" → "Bacon has no price", for the note under the line itself. */
 const sansLine = (text: string) => text.replace(/^Line \d+: /, '');
 type Tab = 'everyone' | RestrictionKey;
@@ -136,26 +148,6 @@ function previewRecipe(a: RecipeAuthoring, tab: Tab): Recipe {
     sortOrder: 0,
     lines,
     variations: []
-  };
-}
-
-function useArmed(): { armed: boolean; arm: () => boolean } {
-  const [armed, setArmed] = useState(false);
-  useEffect(() => {
-    if (!armed) return;
-    const t = setTimeout(() => setArmed(false), ARM_MS);
-    return () => clearTimeout(t);
-  }, [armed]);
-  return {
-    armed,
-    arm: () => {
-      if (armed) {
-        setArmed(false);
-        return true;
-      }
-      setArmed(true);
-      return false;
-    }
   };
 }
 
@@ -423,8 +415,17 @@ export function RecipeEditor({
   const feedback = useSavePhase();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const retire = useArmed();
   const isNew = draft.id === NEW_ID;
+  /** The leader tried to save or publish an incomplete form: the problems are said in words and marked in place. */
+  const [attempted, setAttempted] = useState(false);
+  /** After a blocked click: which version tab the first problem is on, so the next render can focus it. */
+  const [focusAsk, setFocusAsk] = useState(0);
+  const form = useRef<HTMLElement>(null);
+  const [retiring, setRetiring] = useState(false);
+  const retireDialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    if (retiring) retireDialog.current?.showModal();
+  }, [retiring]);
   /** The "Make it a single food" panel is open (a recipe only). */
   const [makingFood, setMakingFood] = useState(false);
 
@@ -432,7 +433,9 @@ export function RecipeEditor({
   const errors = issues.filter((i) => i.level === 'error');
   const warnings = issues.filter((i) => i.level === 'warning');
   const blocker = saveBlocker(draft, issues);
-  const publishTitle = errors.length > 0 ? errors[0].text : snap.dirty ? 'Save changes first' : isNew ? 'Save it first' : undefined;
+  // Publish is the primary once the record is saved and whole; before that Save is, and Publish waits quietly.
+  const publishable = !isNew && snap.saved.status !== 'retired' && snap.saved.status !== 'published';
+  const publishReady = publishable && !snap.dirty && errors.length === 0;
   const pill = pillOf(snap.saved, catalog);
   const ingredients = catalog.ingredients.filter((i) => !i.retiredAt);
   const ingById = new Map(catalog.ingredients.map((i) => [i.id, i]));
@@ -448,6 +451,30 @@ export function RecipeEditor({
   const missing = RESTRICTIONS.filter((r) => !draft.variations.some((v) => v.restriction === r.key));
   const toLook = missing.filter((r) => viewFor(draft, r.key, catalog) === 'needs_look').length;
   const activeTab: Tab = tab === 'everyone' || draft.variations.some((v) => v.restriction === tab) ? tab : 'everyone';
+  /** The version tab an issue's field is on: a swap or extra line names its ingredient on that variation. */
+  const tabOf = (i: RecipeIssue): Tab => {
+    if (i.ingredientId == null) return 'everyone';
+    const v = draft.variations.find((x) => x.lines.some((l) => l.ingredientId === i.ingredientId));
+    return v ? v.restriction : 'everyone';
+  };
+  const tabsWithErrors = new Set(errors.map(tabOf));
+  const problems = attempted ? errors.filter((i) => saveBlocker(draft, [i]) != null || i.field != null) : [];
+  const firstProblem = blocker ?? (attempted && errors.length > 0 ? errors[0].text : null);
+
+  /** A click on Save or Publish the form can't take: say it, mark it, and go to it. */
+  function refuse() {
+    setAttempted(true);
+    const first = errors[0];
+    if (first) setTab(tabOf(first));
+    setFocusAsk((n) => n + 1);
+  }
+  // The bad field may be on a tab that only just became visible: focus it once it has rendered.
+  useEffect(() => {
+    if (focusAsk === 0) return;
+    const bad = form.current?.querySelector<HTMLElement>('[aria-invalid="true"]');
+    bad?.scrollIntoView?.({ block: 'center' });
+    bad?.focus();
+  }, [focusAsk]);
 
   function run(fn: () => Promise<{ ok: boolean; error?: string; id?: string }>, after?: (id?: string) => void) {
     setError(null);
@@ -482,12 +509,21 @@ export function RecipeEditor({
       (id) => {
         feedback.done();
         snap.markSaved();
+        setAttempted(false);
         if (isNew && id) {
           setDraft((d) => ({ ...d, id }));
           onSelect(id);
         }
       }
     );
+  }
+
+  function publish() {
+    if (errors.length > 0) {
+      refuse();
+      return;
+    }
+    run(() => setRecipeStatus(draft.id, 'published'), () => setDraft((d) => ({ ...d, status: 'published' })));
   }
 
   const setBase = (idx: number, patch: Partial<DraftBaseLine>) =>
@@ -504,25 +540,12 @@ export function RecipeEditor({
   }
 
   return (
-    <section className={styles.editor} aria-label={isNew ? 'New recipe' : `Edit ${snap.saved.name}`}>
+    <section ref={form} className={styles.editor} aria-label={isNew ? 'New recipe' : `Edit ${snap.saved.name}`}>
       {/* Under a row there is nothing to say until something is unsaved: the row has the name and the status. */}
       {(mode === 'page' || snap.dirty) && (
       <div className={styles.detailHead}>
-        {single && !compact && onShortForm && (
-          <Button variant="quiet" size="sm" disabled={snap.dirty} title={snap.dirty ? 'Save or discard your changes first' : undefined} onClick={onShortForm}>
-            Back to the short form
-          </Button>
-        )}
         {mode === 'page' && <Badge variant={PILL_VARIANT[pill]}>{pill}</Badge>}
         {snap.dirty && <Badge variant="warning">Unsaved edits</Badge>}
-        {!isNew && !single && snap.saved.status !== 'retired' && (
-          <>
-            <span className={styles.spacer} />
-            <Button variant="secondary" size="sm" disabled={makingFood} onClick={() => setMakingFood(true)}>
-              Make it a single food
-            </Button>
-          </>
-        )}
       </div>
       )}
       {error && <Notice>{error}</Notice>}
@@ -633,13 +656,13 @@ export function RecipeEditor({
               ariaLabel="Recipe versions"
               activeKey={activeTab}
               items={[
-                { key: 'everyone', label: 'Everyone', onSelect: () => setTab('everyone') },
-                ...draft.variations.map((v) => ({ key: v.restriction, label: RESTRICTION_BY_KEY[v.restriction].label, onSelect: () => setTab(v.restriction) }))
+                { key: 'everyone', label: 'Everyone', onSelect: () => setTab('everyone'), alert: attempted && tabsWithErrors.has('everyone') },
+                ...draft.variations.map((v) => ({ key: v.restriction, label: RESTRICTION_BY_KEY[v.restriction].label, onSelect: () => setTab(v.restriction), alert: attempted && tabsWithErrors.has(v.restriction) }))
               ]}
             />
             <span className={styles.spacer} />
             {missing.length > 0 && (
-              <Button variant="secondary" onClick={() => setAdding((v) => !v)} aria-expanded={adding}>
+              <Button variant="quiet" onClick={() => setAdding((v) => !v)} aria-expanded={adding}>
                 + Add a variation
                 {/* The same amber "needs a look" the item list and the variation chips use, so it reads as a to-do. */}
                 {toLook > 0 && <Badge variant="warning">{toLook === 1 ? '1 needs a look' : `${toLook} need a look`}</Badge>}
@@ -687,7 +710,7 @@ export function RecipeEditor({
                 ))}
               </ul>
               <div className={lib.actionsRow}>
-                <Button variant="secondary" onClick={() => setDraft((d) => ({ ...d, base: [...d.base, { ingredientId: '', amount: '', unitKey: null }] }))}>
+                <Button variant="quiet" onClick={() => setDraft((d) => ({ ...d, base: [...d.base, { ingredientId: '', amount: '', unitKey: null }] }))}>
                   + Add an ingredient
                 </Button>
                 <Button variant="quiet" aria-expanded={newIngredient} onClick={() => setNewIngredient((v) => !v)}>
@@ -778,45 +801,70 @@ export function RecipeEditor({
           </div>
         )}
 
-        {/* On its own page the form is long: the save row stays in view, and says in words why a save is blocked
-            (Patrick, 2026-10-05: the "Needs fixing" box was scrolled away and Save looked like it did nothing). */}
-        <div className={mode === 'page' ? `${lib.actionsRow} ${styles.saveBar}` : lib.actionsRow}>
-          <SaveButton dirty={snap.dirty} pending={pending} isNew={isNew} newLabel="Save draft" blocked={blocker != null} blockedReason={blocker ?? undefined} onClick={save} />
-          <DiscardButton dirty={snap.dirty} pending={pending} onClick={() => setDraft(snap.saved)} />
+        {/* ONE bar, pinned to the bottom of the window: Save and Discard on the left with the reason a save can't
+            happen; Publish and "More actions…" on the right. (Patrick, 2026-10-05: the "Needs fixing" box was
+            scrolled away, Save looked like it did nothing, and nine loose buttons fought for attention.) */}
+        <div className={`${lib.actionsRow} ${styles.saveBar}`}>
+          <SaveButton dirty={snap.dirty} pending={pending} isNew={isNew} newLabel="Save draft" blocked={blocker != null} blockedReason={blocker ?? undefined} onBlocked={refuse} onClick={save} />
+          <DiscardButton
+            dirty={snap.dirty}
+            pending={pending}
+            onClick={() => {
+              setDraft(snap.saved);
+              setAttempted(false);
+            }}
+          />
           <SaveFeedback phase={feedback.phase} />
-          {blocker && snap.dirty && (
-            <span className={styles.saveBlocker} role="status">
-              Can’t save yet: {blocker}
-            </span>
-          )}
+          {attempted && firstProblem && <SaveProblem reason={firstProblem} more={Math.max(0, problems.length - 1)} />}
           <span className={styles.spacer} />
-          {!isNew && snap.saved.status !== 'retired' && snap.saved.status !== 'published' && (
-            <Button variant="primary" disabled={pending || publishTitle != null} title={publishTitle} onClick={() => run(() => setRecipeStatus(draft.id, 'published'), () => setDraft((d) => ({ ...d, status: 'published' })))}>
-              Publish
-            </Button>
-          )}
-          {!isNew && snap.saved.status === 'retired' && (
-            <Button variant="secondary" disabled={pending} onClick={() => run(() => setRecipeStatus(draft.id, 'draft'))}>
-              Restore as draft
+          {publishable && (
+            <Button variant={publishReady ? 'primary' : 'secondary'} disabled={pending} onClick={snap.dirty ? () => (blocker ? refuse() : save()) : publish}>
+              {snap.dirty ? 'Save, then publish' : 'Publish'}
             </Button>
           )}
           {!isNew && (
-            <Button variant="secondary" disabled={pending || snap.dirty} title={snap.dirty ? 'Save changes first' : undefined} onClick={() => run(() => duplicateRecipe(draft.id), (id) => id && onSelect(id))}>
-              Duplicate
-            </Button>
-          )}
-          {!isNew && snap.saved.status !== 'retired' && (
-            <Button
-              variant="danger"
+            <ActionsMenu
+              ariaLabel="More actions"
+              placeholder="More actions…"
               disabled={pending}
-              onClick={() => {
-                if (retire.arm()) run(() => setRecipeStatus(draft.id, 'retired'));
+              options={[
+                ...(!single && snap.saved.status !== 'retired' ? [{ value: 'food', label: 'Make it a single food', disabled: makingFood }] : []),
+                ...(single && !compact && onShortForm ? [{ value: 'short', label: 'Back to the short form', disabled: snap.dirty }] : []),
+                { value: 'duplicate', label: 'Duplicate', disabled: snap.dirty },
+                snap.saved.status === 'retired' ? { value: 'restore', label: 'Restore as draft' } : { value: 'retire', label: 'Retire' }
+              ]}
+              onAction={(v) => {
+                if (v === 'food') setMakingFood(true);
+                else if (v === 'short') onShortForm?.();
+                else if (v === 'duplicate') run(() => duplicateRecipe(draft.id), (id) => id && onSelect(id));
+                else if (v === 'restore') run(() => setRecipeStatus(draft.id, 'draft'));
+                else setRetiring(true);
               }}
-            >
-              {retire.armed ? 'Click again to retire' : 'Retire'}
-            </Button>
+            />
           )}
         </div>
+        {snap.dirty && publishable && <p className={styles.hint}>Duplicate and the short form wait for a save.</p>}
+        {retiring && (
+          <Dialog ref={retireDialog} danger onClose={() => setRetiring(false)}>
+            <DialogHeader title={`Retire ${snap.saved.name}?`} sub="Patrols can’t pick it any more. Old plans keep their copy, and it can be restored as a draft later." />
+            <DialogBody>{null}</DialogBody>
+            <DialogActions>
+              <Button variant="secondary" size="sm" onClick={() => setRetiring(false)}>
+                Keep it
+              </Button>
+              <Button
+                variant="dangerSolid"
+                size="sm"
+                onClick={() => {
+                  setRetiring(false);
+                  run(() => setRecipeStatus(draft.id, 'retired'));
+                }}
+              >
+                Retire
+              </Button>
+            </DialogActions>
+          </Dialog>
+        )}
         {snap.saved.status === 'retired' && (
           <p className={styles.hint}>{snap.saved.name} is retired. Patrols can&rsquo;t pick it any more; old plans keep their copy.</p>
         )}
@@ -985,9 +1033,9 @@ function toggle<T>(list: T[], key: T, on: boolean): T[] {
 
 /* ── Ingredient picker + unit select, shared by base and variation rows ─── */
 
-function IngredientSelect({ id, label, value, ingredients, onChange }: { id: string; label: string; value: string; ingredients: Ingredient[]; onChange: (id: string) => void }) {
+function IngredientSelect({ id, label, value, ingredients, invalid = false, onChange }: { id: string; label: string; value: string; ingredients: Ingredient[]; invalid?: boolean; onChange: (id: string) => void }) {
   return (
-    <select id={id} aria-label={label} className={lib.selectInput} value={value} onChange={(e) => onChange(e.target.value)}>
+    <select id={id} aria-label={label} className={lib.selectInput} aria-invalid={invalid || undefined} value={value} onChange={(e) => onChange(e.target.value)}>
       <option value="">— pick —</option>
       {SECTION_ORDER.map((s) => (
         <optgroup key={s} label={SECTIONS[s]}>
@@ -1056,13 +1104,13 @@ function BaseLineRow({
         <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`mm-l-${idx}-ing`}>
           Ingredient
         </label>
-        <IngredientSelect id={`mm-l-${idx}-ing`} label={`Line ${n} ingredient`} value={line.ingredientId} ingredients={ingredients} onChange={(id) => onChange({ ingredientId: id, unitKey: null })} />
+        <IngredientSelect id={`mm-l-${idx}-ing`} label={`Line ${n} ingredient`} value={line.ingredientId} ingredients={ingredients} invalid={problems.some((t) => !/amount/.test(t))} onChange={(id) => onChange({ ingredientId: id, unitKey: null })} />
       </div>
       <div className={styles.narrow}>
         <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`mm-l-${idx}-amt`}>
           Amount per person
         </label>
-        <input id={`mm-l-${idx}-amt`} aria-label={`Line ${n} amount`} className={lib.textInput} value={line.amount} placeholder="½" onChange={(e) => onChange({ amount: e.target.value })} />
+        <input id={`mm-l-${idx}-amt`} aria-label={`Line ${n} amount`} className={lib.textInput} aria-invalid={problems.some((t) => /amount/.test(t)) || undefined} value={line.amount} placeholder="½" onChange={(e) => onChange({ amount: e.target.value })} />
       </div>
       <div className={styles.narrow}>
         <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`mm-l-${idx}-unit`}>
@@ -1249,6 +1297,7 @@ function VariationPanel({
   return (
     <div role="region" aria-label={`${label} version`} className={styles.variation}>
       <div className={styles.detailHead}>
+        <h3 className={styles.variationTitle}>{label} version</h3>
         <Badge variant={VIEW_VARIANT[view]}>{VIEW_LABEL[view]}</Badge>
         {flagged.length > 0 ? (
           <span className={styles.muted}>Flagged: {flagged.map((i) => i.name).join(', ')}</span>
@@ -1260,16 +1309,18 @@ function VariationPanel({
           Remove this variation
         </Button>
       </div>
-      <div className={styles.stateRow} role="group" aria-label={`What ${lower} scouts get`}>
-        <Button variant={v.state === 'substituted' ? 'primary' : 'secondary'} size="sm" aria-pressed={v.state === 'substituted'} onClick={() => setState('substituted')}>
-          Substitute
-        </Button>
-        <Button variant={v.state === 'nothing' ? 'primary' : 'secondary'} size="sm" aria-pressed={v.state === 'nothing'} onClick={() => setState('nothing')}>
-          Nothing to change
-        </Button>
-        <Button variant={v.state === 'unsuitable' ? 'primary' : 'secondary'} size="sm" aria-pressed={v.state === 'unsuitable'} onClick={() => setState('unsuitable')}>
-          Not suitable
-        </Button>
+      <div className={styles.stateRow}>
+        <SegmentedControl
+          name={`mm-v-${restriction}-state`}
+          label={`What ${lower} scouts get`}
+          value={v.state}
+          options={[
+            { value: 'substituted', label: 'Substitute' },
+            { value: 'nothing', label: 'Nothing to change' },
+            { value: 'unsuitable', label: 'Not suitable' }
+          ]}
+          onChange={setState}
+        />
       </div>
 
       {v.state === 'nothing' && <p className={styles.hint}>{label} scouts get the Everyone recipe as it is. The planner counts them with everyone else.</p>}
@@ -1392,7 +1443,7 @@ function VariationPanel({
             </ul>
           )}
           <div className={lib.actionsRow}>
-            <Button variant="secondary" size="sm" onClick={() => onChange((x) => ({ ...x, lines: [...x.lines, { op: 'add', baseIngredientId: null, ingredientId: null, amount: '', unitKey: null }] }))}>
+            <Button variant="quiet" size="sm" onClick={() => onChange((x) => ({ ...x, lines: [...x.lines, { op: 'add', baseIngredientId: null, ingredientId: null, amount: '', unitKey: null }] }))}>
               + Add a line just for {lower} scouts
             </Button>
           </div>

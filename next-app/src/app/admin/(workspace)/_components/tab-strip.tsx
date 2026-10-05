@@ -21,6 +21,8 @@ export interface TabStripItem {
   label: string;
   /** Renders the count pill only when provided. */
   count?: number;
+  /** The tab holds a field that needs fixing (2026-10-05): a red mark, so a failed save on another tab points here. */
+  alert?: boolean;
   /** Link mode — tab state lives in the URL. */
   href?: string;
   /** Button mode — tab state is client state. Ignored when href is set. */
@@ -48,6 +50,11 @@ export function TabStrip({
           <>
             {item.label}
             {item.count !== undefined && <span className={styles.tabCount}> ({item.count})</span>}
+            {item.alert && (
+              <span className={styles.tabAlert} role="img" aria-label="needs fixing">
+                !
+              </span>
+            )}
           </>
         );
         return item.href ? (

@@ -58,3 +58,7 @@
 }
 @keyframes saveSpin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+
+/* "Can't save yet: …" beside the Save button (2026-10-05). */
+.problem { color: var(--admin-danger-dark); font-size: var(--admin-text-sm); font-weight: var(--admin-weight-semibold); }
+.problemMore { font-weight: var(--admin-weight-regular); }

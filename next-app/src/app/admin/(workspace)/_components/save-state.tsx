@@ -219,9 +219,16 @@ export function SaveButton({
   dirtyLabel = 'Save changes',
   savedLabel = 'Saved',
   pendingLabel = 'Saving…',
-  /** Extra reason the button is off even when dirty (a required field blank). */
+  /**
+   * The form can't be saved as it stands (a required field blank). With `onBlocked` the button STAYS
+   * enabled and a click calls that instead of `onClick` — the standard since 2026-10-05 ("greyed means
+   * nothing to do, never not valid yet"): the caller marks the bad fields in place, focuses the first and
+   * shows a <SaveProblem>. Without `onBlocked` (older forms, not yet converted) it still greys the button
+   * with `blockedReason` as its title.
+   */
   blocked = false,
   blockedReason,
+  onBlocked,
   className,
   onClick,
   type = 'button'
@@ -235,14 +242,16 @@ export function SaveButton({
   pendingLabel?: string;
   blocked?: boolean;
   blockedReason?: string;
+  onBlocked?: () => void;
   className?: string;
   onClick?: () => void;
   type?: 'button' | 'submit';
 }) {
   const clean = !isNew && !dirty;
-  const disabled = pending || clean || blocked;
+  const greyedForValidity = blocked && !onBlocked;
+  const disabled = pending || clean || greyedForValidity;
   const label = pending ? pendingLabel : isNew ? newLabel : dirty ? dirtyLabel : savedLabel;
-  const title = clean ? 'No changes to save yet' : blocked ? blockedReason : undefined;
+  const title = clean ? 'No changes to save yet' : greyedForValidity ? blockedReason : undefined;
   // Navy primary from the shared Button (2026-08-24) — every Save looks the
   // same without each screen lending its own class. `className` still stacks.
   return (
@@ -253,10 +262,25 @@ export function SaveButton({
       disabled={disabled}
       title={title}
       aria-disabled={disabled || undefined}
-      onClick={onClick}
+      onClick={blocked && onBlocked ? onBlocked : onClick}
     >
       {label}
     </Button>
+  );
+}
+
+/**
+ * "Can't save yet: <reason>" beside the Save button, after a click on an incomplete form (2026-10-05). A
+ * reason that lives only in a title, a Notice above the fold, or nowhere is a defect; this is the one
+ * place it is said in words. Render it only once the person has tried (not while they are still typing)
+ * and drop it the moment the form is whole.
+ */
+export function SaveProblem({ reason, more = 0 }: { reason: string; more?: number }) {
+  return (
+    <span className={styles.problem} role="alert">
+      Can’t save yet: {reason}
+      {more > 0 && <span className={styles.problemMore}> (+{more} more)</span>}
+    </span>
   );
 }
 

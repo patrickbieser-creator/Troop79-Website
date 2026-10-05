@@ -23,7 +23,7 @@
  */
 import sg from './styleguide.module.css';
 import { DialogDemo } from './dialog-demo';
-import { SaveDemo } from './save-demo';
+import { BlockedSaveDemo, SaveDemo, SegmentedDemo } from './save-demo';
 import { fmtDate, fmtDateLong, fmtDateFull, fmtDay, fmtDateTime, fmtMonthYear, fmtRange } from '@/lib/format-date';
 import { ActionsMenuSpecimen, SearchFieldSpecimen, SortHeaderSpecimen } from './specimens';
 import {
@@ -458,6 +458,27 @@ export default function StyleguidePage() {
             <Button disabled>Disabled</Button>
           </Specimen>
           <Specimen
+            label="Control hierarchy on an edit screen — one primary, one bar, a More actions… menu"
+            canonical
+            note="Jenna's rule, Patrick 2026-10-05 (the recipe editor showed nine loose buttons — 'too many competing for attention'): (1) at most ONE primary per screen state — Save while the draft is dirty, Publish once it is saved and publishable; (2) record-level actions live in ONE sticky bar: Save + Discard on the left with the 'Can't save yet' note, Publish + a 'More actions…' ActionsMenu on the right — Duplicate, Retire/Restore, 'make it a …', Back-to-… go in the menu, never as loose buttons, and a destructive item opens a danger Dialog that names the consequence; (3) section actions ('+ Add …', 'New …') are quiet buttons inside their section, below the list they add to — never primary; (4) choosing one of 2–4 states is a SegmentedControl (radio group), not a row of buttons; (5) per-row actions are one quiet Edit or a ⋯ menu; (6) long forms stay numbered FormSections under the sticky bar — never tabbed to hide fields; a tab holding a bad field shows the TabStrip `alert` mark and a failed save switches to it. Reference: library/menu-monster/recipe-builder.tsx."
+          >
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', width: '100%' }}>
+              <Button variant="primary">Save changes</Button>
+              <Button>Discard changes</Button>
+              <span style={{ flex: 1 }} />
+              <Button>Publish</Button>
+              <ActionsMenuSpecimen />
+            </div>
+            <Button variant="quiet">+ Add an ingredient</Button>
+          </Specimen>
+          <Specimen
+            label="Segmented control — one of 2–4 states (SegmentedControl)"
+            canonical
+            note="2026-10-05: three navy buttons with aria-pressed read as three more primaries. Import from _components/segmented-control: a real radio group (arrow keys move), the chosen segment dark, the rest quiet. name must be unique on the page; label names what is being chosen."
+          >
+            <SegmentedDemo />
+          </Specimen>
+          <Specimen
             label="Add button — shared AddButton component"
             canonical
             note="Phase A COMPLETE (2026-08-21): every green Add in the workspace renders this component — calendar, articles, albums, the 7 lookups editors, roster (converted from its navy one-off, Patrick's call), and roll-call's seed action. Import from _components/add-button; href renders a Link, onClick a button; disabled supported."
@@ -506,14 +527,15 @@ export default function StyleguidePage() {
           <Specimen
             label="Text tabs — shared TabStrip component (calm R5)"
             canonical
-            note="THE tab pattern — data tabs and view/mode toggles alike. Import from _components/tab-strip; href items render Links, onSelect items render buttons; count renders the pill badge."
+            note="THE tab pattern — data tabs and view/mode toggles alike. Import from _components/tab-strip; href items render Links, onSelect items render buttons; count renders the pill badge. `alert` (2026-10-05) marks a tab that holds a field needing fixing — the mark a failed save on another tab points at."
           >
             <TabStrip
               ariaLabel="Specimen"
               activeKey="upcoming"
               items={[
                 { key: 'upcoming', label: 'Upcoming', count: 12 },
-                { key: 'past', label: 'Past', count: 48 }
+                { key: 'past', label: 'Past', count: 48 },
+                { key: 'bad', label: 'Gluten-free', alert: true }
               ]}
             />
           </Specimen>
@@ -1310,6 +1332,13 @@ export default function StyleguidePage() {
             note="Patrick's rule (2026-08-23, rolled out across the workstation 2026-08-24): every Save on an already-saved thing is DISABLED until the draft differs from what is saved, reads “Saved” when clean and “Save changes” when dirty (a first-ever save keeps its own verb, e.g. Add Entry), shows “Saving changes…” the moment it submits and a brief “Done” when it lands, is greyed — never hidden — when it would do nothing, and (2026-08-24, Patrick) has a Discard changes beside it that returns the form to the LAST SAVED state; dialogs and inline row editors satisfy that with Cancel. Import from _components/save-state; pass the screen's own primary class so behaviour is shared and paint stays local. Public twin: events/[id]/save-feedback.tsx (no cross-firewall import)."
           >
             <SaveDemo />
+          </Specimen>
+          <Specimen
+            label="A save the form can't take — enabled, marked in place, said in words (SaveButton onBlocked + SaveProblem)"
+            canonical
+            note="Greyed means 'nothing to do', never 'not valid yet' (Jenna's rule, Patrick 2026-10-05, after a recipe's blocked Save had its reason only in a tooltip at the bottom of a long form). A Save/Add/Publish control is disabled only when the draft equals what is saved, a save is in flight, or a create-once form is still empty. A dirty but incomplete form keeps the button ENABLED: pass `blocked` + `onBlocked`, and the click saves nothing — the caller marks every bad field in place (red outline, aria-invalid, a note under the field), moves focus to the first one, and renders <SaveProblem reason more /> beside the button. Show the note only after a try, not while they are still typing, and drop it when the form is whole. A reason that lives only in a title, a Notice above the fold, or nowhere is a defect. The old disabled+title mode (blocked without onBlocked) is the legacy shape, converted screen by screen. Exception: a target picker (Merge / Move) may stay disabled until a target is chosen — the select's placeholder is the gate."
+          >
+            <BlockedSaveDemo />
           </Specimen>
         </div>
       </section>
