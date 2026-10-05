@@ -66,12 +66,13 @@ describe('menu monster leader tools — a single food in one step', () => {
     expect(data).toHaveLength(1);
   });
 
-  it('Leader_AddsAnUnpricedFood_SavedAsADraftThatSaysWhy', async () => {
+  it('Leader_AddsAnUnpricedFood_AndItGoesOnTheMenu_SayingItHasNoPriceYet', async () => {
+    // 2026-10-05: no price is not a reason to stay off the menu.
     const res = await createFood(cookies({ ingredient: { ...cookies().ingredient, name: 'ZZ Food Brownies' }, package: null }));
     expect(res).toMatchObject({ ok: true, recipeId: 'zz-food-brownies' });
-    expect(res.note).toMatch(/draft/);
+    expect(res.note).toMatch(/on the menu with no price yet/);
     const { data } = await admin.from('mm_recipes').select('status').eq('id', 'zz-food-brownies').single();
-    expect((data as { status: string }).status).toBe('draft');
+    expect((data as { status: string }).status).toBe('published');
   });
 
   it('Leader_AddsAnIngredientOnly_WithNoMenuItem', async () => {

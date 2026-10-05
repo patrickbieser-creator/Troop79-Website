@@ -125,18 +125,15 @@ describe('Recipe builder', () => {
   });
 
   it('Leader_SeesWhatNeedsFixing_AboveTheForm_OnAPublishedItem', () => {
-    // Published, but its one ingredient has no priced package: the list says "Needs fixes".
+    // Published, but it fits no meal: the list says "Needs fixes".
     const catalog: Catalog = {
       ...CATALOG,
-      ingredients: [...ING, { id: 'oj', name: 'Orange juice', unit: UNITS.cup, section: 'dairy', staple: false, avoid: [], retiredAt: null }],
-      recipes: [recipe({ id: 'oj', name: 'Orange juice', lines: [{ ingredientId: 'oj', qtyPerPerson: 1, unitKey: null, servesRule: 'everyone', servesRestrictions: [] }] })]
+      recipes: [recipe({ id: 'oj', name: 'Orange juice', mealFit: [], lines: [{ ingredientId: 'eggs', qtyPerPerson: 1, unitKey: null, servesRule: 'everyone', servesRestrictions: [] }] })]
     };
     render(<RecipeBuilder catalog={catalog} initialRecipeId="oj" />);
     const editor = screen.getByRole('region', { name: 'Edit Orange juice' });
     const fixes = within(editor).getByRole('list', { name: 'Needs fixing' });
-    expect(fixes.textContent).toMatch(/Orange juice has no priced package yet/);
-    // The link goes straight to the ingredient that has no price.
-    expect(within(fixes).getByRole('link', { name: 'Add a price for Orange juice →' }).getAttribute('href')).toBe('/admin/library/menu-monster?tab=prices&ingredient=oj');
+    expect(fixes.textContent).toMatch(/Pick at least one meal it fits/);
     // It sits before the first field, not under the whole form.
     const name = within(editor).getByLabelText('Name');
     expect(fixes.compareDocumentPosition(name) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -347,15 +344,21 @@ describe('Recipe builder — the problem is marked where it is (2026-10-04)', ()
   };
 
   it('TheNeedsFixingBox_IsAnAlert', () => {
-    render(<RecipeBuilder catalog={OJ} initialRecipeId="oj" />);
+    render(<RecipeBuilder catalog={{ ...OJ, recipes: OJ.recipes.map((r) => (r.id === 'oj' ? { ...r, mealFit: [] } : r)) }} initialRecipeId="oj" />);
     const fixes = within(screen.getByRole('region', { name: 'Edit Orange juice' })).getByRole('list', { name: 'Needs fixing' });
     expect(fixes.closest('[role="alert"], [role="status"], [class*="notice" i]')).not.toBeNull();
   });
 
-  it('TheLineWithTheProblem_SaysItRightThere', () => {
+  // No price is not a problem that blocks anything (2026-10-05): the item publishes, is not "Needs fixes",
+  // and the editor mentions it under "Worth a look" with the way to add one.
+  it('AnIngredientWithNoPrice_IsWorthALook_NotAFix', () => {
     render(<RecipeBuilder catalog={OJ} initialRecipeId="oj" />);
-    const [juice, eggs] = within(screen.getByRole('list', { name: 'Ingredient lines' })).getAllByRole('listitem');
-    expect([/Orange juice has no priced package yet/.test(juice.textContent ?? ''), /priced package/.test(eggs.textContent ?? '')]).toEqual([true, false]);
+    const editor = within(screen.getByRole('region', { name: 'Edit Orange juice' }));
+    expect(editor.queryByRole('list', { name: 'Needs fixing' })).toBeNull();
+    const look = editor.getByRole('list', { name: 'Worth a look' });
+    expect(look.textContent).toContain('Orange juice has no price yet. Menus will show it as not priced until one is added.');
+    expect(within(look).getByRole('link', { name: 'Add a price for Orange juice →' }).getAttribute('href')).toBe('/admin/library/menu-monster?tab=prices&ingredient=oj');
+    expect(editor.queryByText('Needs fixes')).toBeNull();
   });
 
   it('ALineWithNoProblem_SaysNothing', () => {
@@ -369,9 +372,11 @@ describe('Recipe builder — the problem is marked where it is (2026-10-04)', ()
     expect(within(screen.getByRole('group', { name: 'Meal fit' })).getByText('Pick at least one meal.')).toBeTruthy();
   });
 
-  it('ASingleFoodWithNoPrice_MarksItsBrandsAndPrices', () => {
+  it('ASingleFoodWithNoPrice_SaysSoWhereThePriceGoes_AndOffersToAddOne', () => {
     render(<RecipeBuilder catalog={OJ} initialRecipeId="ojf" />);
-    expect(within(screen.getByRole('region', { name: 'Edit Juice box' })).getByText('Orange juice has no priced package yet, so menus can’t cost it.')).toBeTruthy();
+    const editor = within(screen.getByRole('region', { name: 'Edit Juice box' }));
+    expect(editor.getByText(/^No price yet\. Menus can use orange juice and show it as not priced until one is added\./)).toBeTruthy();
+    expect(editor.getByRole('button', { name: 'Add a price' })).toBeTruthy();
   });
 });
 

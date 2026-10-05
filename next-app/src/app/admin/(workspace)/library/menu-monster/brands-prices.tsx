@@ -88,7 +88,7 @@ export function BrandsAndPrices({
   return (
     <section aria-label={`${ing.name} brands and prices`} className={styles.brands}>
       {live.length === 0 && active.length === 0 && (
-        <p className={styles.muted}>Nothing priced yet. Add what you bought so recipes can cost {ing.name.toLowerCase()} out.</p>
+        <p className={styles.muted}>No price yet. Menus can use {ing.name.toLowerCase()} and show it as not priced until one is added. A shelf price or a best guess is fine.</p>
       )}
 
       {live.map((b) => {
@@ -147,7 +147,7 @@ export function BrandsAndPrices({
         ) : (
           <div className={styles.inlineForm}>
             <Button variant="primary" onClick={() => setAdding('')}>
-              Add what you bought
+              Add a price
             </Button>
             <AddBrand ing={ing} onChanged={onChanged} />
           </div>
@@ -543,7 +543,7 @@ function AddBoughtForm({
   }
 
   return (
-    <FormPanel title="Add what you bought" aria-label="Add what you bought" actions={<SaveFeedback phase={feedback.phase} />}>
+    <FormPanel title="Add a price" aria-label="Add a price" actions={<SaveFeedback phase={feedback.phase} />}>
       {error && <Notice>{error}</Notice>}
       <div className={lib.fieldGrid}>
         <div>

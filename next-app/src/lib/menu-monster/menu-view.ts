@@ -76,6 +76,21 @@ export function recipeShares(menu: Menu, meal: MenuMeal, catalog: Catalog): Reco
   return shares;
 }
 
+/**
+ * The foods in a meal that have no price yet, by the recipe that needs each (an item with none is absent).
+ * They cost nothing in mealCost() and recipeShares(), so the Plan tab says so beside the figure instead of
+ * letting a $0.00 read as free. A food someone is bringing from home is not "unpriced": nobody is buying it.
+ */
+export function mealUnpriced(menu: Menu, meal: MenuMeal, catalog: Catalog): Record<string, string[]> {
+  const plan = composePlan(menu, meal);
+  const out: Record<string, string[]> = {};
+  for (const l of buildLines(plan, mealCatalog(catalog, meal))) {
+    if (l.status !== 'unpriced' || !(l.need > 0)) continue;
+    for (const s of l.sources) (out[s.recipe.id] ??= []).push(l.ing.name);
+  }
+  return out;
+}
+
 /** A merged shopping line plus which meals use it (menu order) and how much
  *  each needs, in the ingredient's recipe unit, before count units round up. */
 export interface MenuLine extends ShoppingLine {
@@ -248,15 +263,24 @@ export interface MenuCost {
   /** Total over every plate served — people summed across meals that have items. */
   perPersonMeal: number;
   byMeal: Record<string, number>;
+  /** Foods with no price yet, per meal (names, once each); a meal with none is absent. */
+  unpricedByMeal: Record<string, string[]>;
+  /** The same for the whole menu: what the total leaves out. */
+  unpriced: string[];
 }
 
 /** The menu's total is the merged list's (shopping once), not the sum of its
  *  meals; byMeal is each meal on its own, as the meal page shows it. */
 export function menuCost(menu: Menu, catalog: Catalog): MenuCost {
   const byMeal: Record<string, number> = {};
-  for (const meal of menu.meals) byMeal[meal.id] = mealCost(menu, meal, catalog);
+  const unpricedByMeal: Record<string, string[]> = {};
+  for (const meal of menu.meals) {
+    byMeal[meal.id] = mealCost(menu, meal, catalog);
+    const names = [...new Set(Object.values(mealUnpriced(menu, meal, catalog)).flat())];
+    if (names.length > 0) unpricedByMeal[meal.id] = names;
+  }
   const list = buildMenuList(menu, catalog);
-  return { total: list.totals.spent, perPersonMeal: list.perPersonMeal, byMeal };
+  return { total: list.totals.spent, perPersonMeal: list.perPersonMeal, byMeal, unpricedByMeal, unpriced: list.totals.unpriced };
 }
 
 /**

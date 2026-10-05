@@ -88,10 +88,10 @@ const CATALOG: Catalog = {
   ]
 };
 
-/** Opens "Add what you bought" (closed until asked for) and returns its form. */
+/** Opens "Add a price" (closed until asked for) and returns its form. A price, not a purchase: a shelf price or a guess will do. */
 const openAdd = async (user: ReturnType<typeof userEvent.setup>) => {
-  await user.click(screen.getByRole('button', { name: 'Add what you bought' }));
-  return screen.getByRole('region', { name: 'Add what you bought' });
+  await user.click(screen.getByRole('button', { name: 'Add a price' }));
+  return screen.getByRole('region', { name: 'Add a price' });
 };
 const row = (name: string) => screen.getByRole('row', { name: new RegExp(`^${name}\\b`) });
 
@@ -293,7 +293,7 @@ describe('Price book — brands and what is priced under them', () => {
     const user = userEvent.setup();
     await openSalt(user);
     await user.click(screen.getByRole('button', { name: 'Add a size or store for Store brand' }));
-    const add = screen.getByRole('region', { name: 'Add what you bought' });
+    const add = screen.getByRole('region', { name: 'Add a price' });
     expect((within(add).getByLabelText('Brand') as HTMLSelectElement).value).toBe('b-store');
     await user.type(within(add).getByLabelText('Package size'), '26');
     await user.selectOptions(within(add).getByLabelText('Sold by'), 'ozw');

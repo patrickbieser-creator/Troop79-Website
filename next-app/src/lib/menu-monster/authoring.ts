@@ -462,7 +462,8 @@ export function recipeIssues(draft: RecipeDraft, catalog: Catalog): RecipeIssue[
   const issues: RecipeIssue[] = [];
   const err = (text: string, line?: number, fix?: 'price-book', where: Pick<RecipeIssue, 'field' | 'ingredientId'> = {}) =>
     issues.push({ level: 'error', text, line, fix, ...(line != null ? { ingredientId: draft.lines[line]?.ingredientId ?? '' } : {}), ...where });
-  const warn = (text: string, line?: number) => issues.push({ level: 'warning', text, line });
+  const warn = (text: string, line?: number, fix?: 'price-book') =>
+    issues.push({ level: 'warning', text, line, fix, ...(line != null && fix ? { ingredientId: draft.lines[line]?.ingredientId ?? '' } : {}) });
 
   if (!draft.name.trim()) err('Give the menu item a name.', undefined, undefined, { field: 'name' });
   if (draft.lines.length === 0) err('Add at least one ingredient line.', undefined, undefined, { field: 'lines' });
@@ -477,8 +478,11 @@ export function recipeIssues(draft: RecipeDraft, catalog: Catalog): RecipeIssue[
       err(`Line ${n}: pick an ingredient.`, idx);
       return;
     }
+    // No price is NOT a reason to stay off the menu (Patrick, 2026-10-05: "This is realistically how 90% of
+    // MM will be used" — foods and recipes go in long before anyone has shopped). It publishes; menus mark it
+    // "no price yet" and leave it out of the cost until a price arrives.
     if (!hasUsablePackage(ing.id, catalog)) {
-      err(`Line ${n}: ${ing.name} has no priced package yet — add one in the Price book.`, idx, 'price-book');
+      warn(`${ing.name} has no price yet. Menus will show it as not priced until one is added.`, idx, 'price-book');
     }
     const raw = l.amount.trim();
     if (!raw) err(`Line ${n}: type an amount per person.`, idx);

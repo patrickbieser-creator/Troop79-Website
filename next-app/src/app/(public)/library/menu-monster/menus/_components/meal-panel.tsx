@@ -44,7 +44,7 @@ import { isPickable, stepsFromText } from '@/lib/menu-monster/scout-recipes';
 import { recipeGear } from '@/lib/menu-monster/gear';
 import { RECIPES_HREF } from '../../recipes/_components/paths';
 import { composePlan, mealCatalog, type EditOp, type Menu, type MenuMeal, type RecipeEdits } from '@/lib/menu-monster/menus';
-import { mealTitle, recipeShares } from '@/lib/menu-monster/menu-view';
+import { mealTitle, mealUnpriced, recipeShares } from '@/lib/menu-monster/menu-view';
 import {
   defaultSwapQty,
   menuEditRows,
@@ -135,6 +135,8 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChang
   const recipeName = (id: string) => byId.get(id)?.name ?? id;
   // Each recipe's share of the meal (shared packages split), so the rows add up to the footer.
   const shares = recipeShares(menu, meal, catalog);
+  // Foods with no price yet, by item: the cost beside an item leaves them out, so the row says so.
+  const noPrice = mealUnpriced(menu, meal, catalog);
   const costOf = (id: string) => (view === 'total' ? (shares[id] ?? 0) : (shares[id] ?? 0) / plan.headcount);
   // A to Z (Patrick, 2026-10-03): a scout looks a food up by name, not by the leaders' catalog order.
   const candidates = recipesForMeal(catalog, meal.slot)
@@ -405,6 +407,12 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChang
                   </span>
                 </button>
                 {edited > 0 && <span className={s.meta}>Your version · {edited}</span>}
+                {noPrice[id] && (
+                  <span className={s.tag} title={noPrice[id].join(', ')}>
+                    No price yet
+                    <span className={s.srOnly}>: {noPrice[id].join(', ')}</span>
+                  </span>
+                )}
               </div>
               <div className={s.cost}>{money(costOf(id))}</div>
               {warnings

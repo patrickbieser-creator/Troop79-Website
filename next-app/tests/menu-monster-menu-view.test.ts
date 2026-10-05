@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { CATALOG } from './helpers/menu-monster-fixture';
 import type { Menu, MenuMeal } from '../src/lib/menu-monster/menus';
-import { buildMenuList, buildOutingList, dayLabel, mealCost, mealTitle, menuCost, outingDayCount, recipeShares } from '../src/lib/menu-monster/menu-view';
+import { buildMenuList, buildOutingList, dayLabel, mealCost, mealTitle, mealUnpriced, menuCost, outingDayCount, recipeShares } from '../src/lib/menu-monster/menu-view';
 
 const meal = (id: string, over: Partial<MenuMeal> = {}): MenuMeal => ({
   id,
@@ -50,6 +50,25 @@ describe('menu-view', () => {
   it('Menu_PerPersonPerMeal_DividesByPeopleAcrossMeals', () => {
     const m = menu([meal('a'), meal('b', { day: 1 })]);
     expect(menuCost(m, CATALOG).perPersonMeal).toBeCloseTo(18.15 / 20, 3);
+  });
+
+  // Foods go in long before anyone has shopped (Patrick, 2026-10-05), so a menu says which of its items have
+  // no price yet instead of letting them read as free. B023 in the fixture is orange juice, which has none.
+  it('Meal_NamesItsUnpricedFoods_ByTheItemThatNeedsThem', () => {
+    const m = menu([meal('a', { recipeIds: ['B001', 'B023'] })]);
+    expect(mealUnpriced(m, m.meals[0], CATALOG)).toEqual({ B023: ['Orange juice'] });
+  });
+
+  it('Meal_HasNoUnpricedFoods_WhenEverythingHasAPrice', () => {
+    const m = menu([meal('a', { recipeIds: ['B001'] })]);
+    expect(mealUnpriced(m, m.meals[0], CATALOG)).toEqual({});
+  });
+
+  it('Menu_SaysWhichMealsAndFoodsItsTotalLeavesOut', () => {
+    const m = menu([meal('a', { recipeIds: ['B001'] }), meal('b', { day: 1, recipeIds: ['B023'] })]);
+    const c = menuCost(m, CATALOG);
+    expect(c.unpricedByMeal).toEqual({ b: ['Orange juice'] });
+    expect(c.unpriced).toEqual(['Orange juice']);
   });
 
   it('Menu_PerPersonPerMeal_IgnoresMealsWithNothingPicked', () => {

@@ -66,6 +66,34 @@ describe('PlanTab', () => {
     vi.clearAllMocks();
   });
 
+  // Foods and recipes go in long before anyone has shopped (Patrick, 2026-10-05), so a menu marks what has no
+  // price yet instead of letting it read as free. B023 in the fixture is orange juice, which has none.
+  const withJuice = () => existing(base({ restrictions: { gf: 0, nut: 0, dairy: 0, veg: 0 }, meals: [{ id: 'm1', day: 0, slot: 'breakfast', headcount: null, recipeIds: ['B003', 'B023'], recipeEdits: {} }] }));
+
+  it('Meal_SaysHowManyOfItsFoodsHaveNoPriceYet_AndWhich', () => {
+    render(withJuice());
+    const tag = screen.getByText('1 not priced');
+    expect(tag.textContent).toBe('1 not priced: Orange juice');
+  });
+
+  it('Menu_SaysWhatItsTotalLeavesOut', () => {
+    render(withJuice());
+    expect(screen.getByText('Not counting 1 food with no price yet: Orange juice.')).toBeTruthy();
+  });
+
+  it('OpenMeal_MarksTheItemThatHasNoPriceYet_AndNotTheOthers', async () => {
+    render(withJuice());
+    await userEvent.setup().click(screen.getByRole('button', { name: /^Breakfast/ }));
+    const tags = screen.getAllByText('No price yet');
+    expect(tags).toHaveLength(1);
+    expect(tags[0].closest('li')?.textContent).toMatch(/juice/i);
+  });
+
+  it('Menu_SaysNothingAboutPrices_WhenEverythingHasOne', () => {
+    render(existing(base({ restrictions: { gf: 0, nut: 0, dairy: 0, veg: 0 } })));
+    expect(screen.queryByText(/not priced|no price yet/i)).toBeNull();
+  });
+
   it('Save_IsDisabledAndSaid_WhenNothingChanged', () => {
     render(existing());
     const save = screen.getByRole('button', { name: 'Saved' }) as HTMLButtonElement;

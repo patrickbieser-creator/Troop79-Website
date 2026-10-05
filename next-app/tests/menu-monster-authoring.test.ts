@@ -185,6 +185,14 @@ describe('publish gate', () => {
     expect(recipeIssues(draft(), CATALOG)).toEqual([]);
   });
 
+  // Patrick, 2026-10-05: foods and recipes go in long before anyone has shopped — "this is realistically how
+  // 90% of MM will be used". No price is something to know, not a reason to stay off the menu.
+  it('Authoring_RecipeIssues_DoNotBlockPublish_ForAFoodWithNoPriceYet', () => {
+    const issues = recipeIssues(draft({ lines: [{ ingredientId: 'oj', amount: '1', unitKey: null, servesRule: 'everyone', servesRestrictions: [] }] }), CATALOG);
+    expect(blockingIssues(issues)).toEqual([]);
+    expect(issues).toEqual([expect.objectContaining({ level: 'warning', fix: 'price-book', ingredientId: 'oj', text: 'Orange juice has no price yet. Menus will show it as not priced until one is added.' })]);
+  });
+
   it('Authoring_RecipeIssues_BlocksPublish_ForEachRule', () => {
     const one = (d: RecipeDraft) => {
       const errors = blockingIssues(recipeIssues(d, CATALOG));
@@ -196,8 +204,6 @@ describe('publish gate', () => {
     expect(one(draft({ mealFit: [] }))).toBe('Pick at least one meal it fits.');
     expect(one(draft({ lines: [{ ingredientId: '', amount: '1', unitKey: null, servesRule: 'everyone', servesRestrictions: [] }] })))
       .toBe('Line 1: pick an ingredient.');
-    expect(one(draft({ lines: [{ ingredientId: 'oj', amount: '1', unitKey: null, servesRule: 'everyone', servesRestrictions: [] }] })))
-      .toBe('Line 1: Orange juice has no priced package yet — add one in the Price book.');
     expect(one(draft({ lines: [{ ingredientId: 'eggs', amount: 'two', unitKey: null, servesRule: 'everyone', servesRestrictions: [] }] })))
       .toBe("Line 1: 'two' isn't a number. Type something like ½, 1/2 or 0.5.");
     expect(one(draft({ lines: [{ ingredientId: 'eggs', amount: '', unitKey: null, servesRule: 'everyone', servesRestrictions: [] }] })))

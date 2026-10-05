@@ -1001,10 +1001,10 @@ export async function createFood(input: FoodInput): Promise<FoodResult> {
     foodIngredientId: id
   });
   if (!saved.ok || !saved.id) return { ok: false, id, error: `${value.name} is in the price book, but its menu item was not saved: ${saved.error}` };
-  if (!pkg) return { ok: true, id, recipeId: saved.id, note: `${value.name} is saved as a draft — it goes on the menu once it has a price.` };
+  // No price yet is fine (2026-10-05): it goes on the menu now and shows as "not priced" until one is added.
   const live = await setRecipeStatus(saved.id, 'published');
   if (!live.ok) return { ok: true, id, recipeId: saved.id, note: `${value.name} is saved as a draft: ${live.error}` };
-  return { ok: true, id, recipeId: saved.id };
+  return { ok: true, id, recipeId: saved.id, ...(pkg ? {} : { note: `${value.name} is on the menu with no price yet. Add one in the Price book when you have it.` }) };
 }
 
 /**

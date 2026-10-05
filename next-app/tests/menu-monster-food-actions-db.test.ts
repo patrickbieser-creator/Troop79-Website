@@ -139,12 +139,12 @@ describe('one entry for a single food', () => {
     expect(after.recs[0]).toMatchObject({ id: made.recipeId, status: 'published' });
   });
 
-  it('AFoodWithNoPrice_GoesOnAsADraft_AndSaysWhy', async () => {
+  it('AFoodWithNoPrice_StillGoesOnTheMenu', async () => {
+    // Foods go in long before anyone has shopped (2026-10-05); menus mark it "no price yet".
     const made = await createFood(food({ menu: null, package: null }));
     const res = await putFoodOnMenu(made.id as string, { amount: '2', mealFit: ['snack'], foodGroups: [] });
     expect(res.ok).toBe(true);
-    expect(res.note).toMatch(/saved as a draft/);
-    expect((await rows()).recs[0].status).toBe('draft');
+    expect((await rows()).recs[0].status).toBe('published');
   });
 
   it('Leader_CannotRetireAFood_StillUsedInARealRecipe', async () => {

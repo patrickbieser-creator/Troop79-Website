@@ -652,9 +652,21 @@ function RecipeEditor({
           <div className={styles.issues}>
             <p className={`adminLabel ${styles.issuesTitle}`}>Worth a look</p>
             <ul className={styles.issueList} aria-label="Worth a look">
-              {warnings.map((i, n) => (
-                <li key={n}>{i.text}</li>
-              ))}
+              {warnings.map((i, n) => {
+                const ing = i.fix === 'price-book' && i.ingredientId ? ingById.get(i.ingredientId) : undefined;
+                return (
+                  <li key={n}>
+                    {i.text}
+                    {/* A single food has its prices right on this page; a recipe's ingredient is one click away. */}
+                    {ing && !compact && (
+                      <>
+                        {' '}
+                        <Link href={`/admin/library/menu-monster?tab=prices&ingredient=${encodeURIComponent(ing.id)}`}>Add a price for {ing.name} →</Link>
+                      </>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </div>
         )}
@@ -715,8 +727,7 @@ function RecipeEditor({
       </FormPanel>
 
       {compact && food && (
-        <FormPanel className={errors.some((i) => i.fix === 'price-book') ? styles.bad : undefined}>
-          {errors.some((i) => i.fix === 'price-book') && <p className={styles.badNote}>{food.name} has no priced package yet, so menus can’t cost it.</p>}
+        <FormPanel>
           <BrandsAndPrices ing={food} catalog={catalog} today={today} stores={stores} onChanged={onChanged} />
           <p className={styles.hint}>
             <Link href={`/admin/library/menu-monster?tab=prices&ingredient=${encodeURIComponent(food.id)}`}>Conversions and the unit for {food.name.toLowerCase()} are in the Price book →</Link>

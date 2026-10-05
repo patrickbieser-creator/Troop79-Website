@@ -466,6 +466,7 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
                       const open = openMeals.has(meal.id);
                       const panel = `mm-meal-${meal.id}`;
                       const mealCost = cost.byMeal[meal.id] ?? 0;
+                      const noPrice = cost.unpricedByMeal[meal.id] ?? [];
                       const people = meal.headcount ?? menu.headcount;
                       const title = mealTitle(menu.startDate, meal.day, meal.slot);
                       return (
@@ -507,6 +508,13 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
                                 lessLabel="One fewer person"
                                 moreLabel="One more person"
                               />
+                            </span>
+                          )}
+                          {/* The figure beside it leaves these out, so it says so (and which, to a screen reader and on hover). */}
+                          {noPrice.length > 0 && (
+                            <span className={s.tag} title={noPrice.join(', ')}>
+                              {noPrice.length === 1 ? '1 not priced' : `${noPrice.length} not priced`}
+                              <span className={s.srOnly}>: {noPrice.join(', ')}</span>
                             </span>
                           )}
                           <div className={s.cost}>{meal.recipeIds.length ? money(view === 'total' ? mealCost : mealCost / (meal.headcount ?? menu.headcount)) : ''}</div>
@@ -568,6 +576,11 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
               </p>
             ) : (
               <p className={s.foot}>Add a meal and pick what you’re cooking, and the shopping list builds itself.</p>
+            )}
+            {cost.unpriced.length > 0 && (
+              <p className={s.foot} role="status">
+                Not counting {cost.unpriced.length === 1 ? '1 food' : `${cost.unpriced.length} foods`} with no price yet: {cost.unpriced.join(', ')}.
+              </p>
             )}
             {!isNew && (
               <Link className={s.link} href={store.hrefs.shopping}>
