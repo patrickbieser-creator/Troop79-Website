@@ -96,7 +96,15 @@ export function BrandHead({
           {b.name}
         </h3>
         {priced === 0 && <Badge variant="warning">No price yet</Badge>}
-        {dietText && <span className={styles.cardMeta}>{dietText}</span>}
+        {dietText && (
+          <span className={styles.cardMeta}>
+            {dietText}{' '}
+            {/* A brand's own diet answer replaces the food's; this puts it back. */}
+            <button type="button" className={styles.rowBtn} disabled={pending} onClick={() => run(() => setBrandDiets(b.id, null), `${b.name} uses ${ing.name.toLowerCase()}’s diets again.`)}>
+              Same as {ing.name.toLowerCase()}
+            </button>
+          </span>
+        )}
         <span className={styles.spacer} />
         <ActionsMenu
           ariaLabel={`More for ${b.name}`}
@@ -104,7 +112,7 @@ export function BrandHead({
           disabled={pending}
           options={[
             { value: 'rename', label: 'Rename…' },
-            { value: 'diets', label: 'Diets…' },
+            { value: 'diets', label: 'Diets different from the food…' },
             ...(mergeTargets.length > 0 ? [{ value: 'merge', label: 'Merge into…' }] : []),
             // A package's size is in this ingredient's unit, so a priced brand cannot follow.
             ...(priced === 0 ? [{ value: 'move', label: 'Move to another ingredient…' }] : []),
@@ -128,7 +136,8 @@ export function BrandHead({
         </form>
       )}
       {mode === 'diets' && (
-        <form className={styles.inlineForm} onSubmit={(e) => { e.preventDefault(); run(() => setBrandDiets(b.id, diets), `Saved ${b.name}’s diets.`); }}>
+        <form className={styles.inlineForm} onSubmit={(e) => { e.preventDefault(); run(() => setBrandDiets(b.id, diets), diets == null ? `${b.name} uses ${ing.name.toLowerCase()}’s diets.` : `Saved ${b.name}’s own diets.`); }}>
+          <span className={styles.muted}>Only for a brand that differs from the food: Rice Chex is gluten-free though cereal is not.</span>
           <label className={styles.listRow}>
             <input type="checkbox" checked={diets == null} onChange={(e) => setDiets(e.target.checked ? null : [...ing.avoid])} /> Same as {ing.name.toLowerCase()}
           </label>

@@ -103,8 +103,9 @@ describe('newPackageBand', () => {
   });
 
   it('NewPackage_IsHeld_WhenNoSiblingHasAUsableYield', () => {
-    expect(newPackageBand([{ price: 9, yield: null }], 5, 10)).toBe('hold');
-    expect(newPackageBand([], 5, 10)).toBe('hold');
+    // Nothing to measure against: it is the food's first price, and it applies (2026-10-05).
+    expect(newPackageBand([{ price: 9, yield: null }], 5, 10)).toBe('apply');
+    expect(newPackageBand([], 5, 10)).toBe('apply');
   });
 
   it('NewPackage_IsInvalid_WithoutAPositivePriceAndSize', () => {

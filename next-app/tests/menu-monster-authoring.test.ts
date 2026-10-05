@@ -131,7 +131,7 @@ describe('yield helper (Option C)', () => {
   it('Authoring_PromptsForSize_WhenNothingTypedYet', () => {
     const r = suggestYield(ING.milk, null, 'gallon', CONVERSIONS);
     expect(r.value).toBeNull();
-    expect(r.text).toBe('Type the size on the label and the tool will suggest how many cups it makes.');
+    expect(r.text).toBe('Type the size on the label and the tool will suggest how many cups are in it.');
   });
 
   it('Authoring_ReturnsNoPath_WhenLabelUnitCannotBridge', () => {
@@ -139,13 +139,13 @@ describe('yield helper (Option C)', () => {
     expect(r.value).toBeNull();
     expect(r.via).toBeNull();
     expect(r.text).toBe(
-      "No conversion on file for Bacon sold by the lb. Type how many slices this package makes. Until then it can't be used."
+      "No conversion on file for Bacon sold by the lb. Type how many slices are in this package. Until then it can't be used."
     );
   });
 
   it('Authoring_ExplainsUnusablePackage_InTheIngredientUnit', () => {
     expect(unusableText(PACKAGES[5], ING.oj)).toBe(
-      "Can't use yet: sold by the gallon, and nobody has said how many cups that makes."
+      "Can't use yet: sold by the gallon, and nobody has said how many cups that is."
     );
   });
 });

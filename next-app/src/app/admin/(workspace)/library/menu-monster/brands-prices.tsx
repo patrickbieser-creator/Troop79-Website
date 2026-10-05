@@ -405,7 +405,7 @@ function PackageEditor({ pkg, ing, brands, today, stores, onChanged }: { pkg: Pa
         </div>
         <div>
           <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-yield`}>
-            How many {ing.unit.many} it makes
+            How many {ing.unit.many} are in it
           </label>
           <input
             id={`${idp}-yield`}
@@ -481,7 +481,8 @@ function AddBoughtForm({
   const [store, setStore] = useState('');
   const [price, setPrice] = useState('');
   const [size, setSize] = useState('');
-  const [soldUnit, setSoldUnit] = useState('');
+  // A counted food (cookies, apples) is nearly always sold by the count: start there.
+  const [soldUnit, setSoldUnit] = useState(ing.unit.kind === 'count' ? 'count' : '');
   const [yieldText, setYieldText] = useState('');
   const [yieldTouched, setYieldTouched] = useState(false);
   const [asOf, setAsOf] = useState(today ?? '');
@@ -490,6 +491,9 @@ function AddBoughtForm({
   const [pending, start] = useTransition();
   const feedback = useSavePhase();
 
+  // The label is already in the food's own unit ("40 cookies"): the size IS how many are in it, so there is
+  // one box, not two (Patrick, 2026-10-05: "How many cookies does it make makes no sense here").
+  const ownUnit = soldUnit === 'count' || soldUnit === ing.unit.key;
   const typingBrand = brandId === NEW_BRAND;
   const brandName = typingBrand ? newBrand.trim() : (brands.find((b) => b.id === brandId)?.name ?? '');
   const sizeNum = size.trim() === '' ? null : Number(size);
@@ -571,23 +575,23 @@ function AddBoughtForm({
           )}
         </div>
         <div>
-          <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-size`}>
-            Package size
-          </label>
-          <input id={`${idp}-size`} className={lib.textInput} inputMode="decimal" value={size} onChange={(e) => setSize(e.target.value)} placeholder="e.g. 26" />
-        </div>
-        <div>
           <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-sold`}>
-            Sold by
+            The label is in
           </label>
           <select id={`${idp}-sold`} className={lib.selectInput} value={soldUnit} onChange={(e) => setSoldUnit(e.target.value)}>
             <option value="">— pick —</option>
             {SOLD_UNITS.map((u) => (
               <option key={u.key} value={u.key}>
-                {u.key === 'count' ? `${ing.unit.many} (count)` : u.one === u.many ? u.one : `${u.one} / ${u.many}`}
+                {u.key === 'count' ? ing.unit.many : u.one === u.many ? u.one : `${u.one} / ${u.many}`}
               </option>
             ))}
           </select>
+        </div>
+        <div>
+          <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-size`}>
+            {ownUnit ? `How many ${ing.unit.many} in the package` : 'Package size'}
+          </label>
+          <input id={`${idp}-size`} className={lib.textInput} inputMode="decimal" value={size} onChange={(e) => setSize(e.target.value)} placeholder={ownUnit ? 'e.g. 40' : 'e.g. 18.2'} />
         </div>
         <div>
           <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-store`}>
@@ -608,9 +612,10 @@ function AddBoughtForm({
           </label>
           <input id={`${idp}-price`} className={lib.textInput} inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0.00" />
         </div>
-        <div className={lib.fieldFull}>
+        {/* Asked only when the label is in another unit (ounces, pounds): then someone has to say how many are in it. */}
+        <div className={lib.fieldFull} hidden={ownUnit}>
           <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-yield`}>
-            How many {ing.unit.many} it makes
+            How many {ing.unit.many} are in it
           </label>
           <input
             id={`${idp}-yield`}

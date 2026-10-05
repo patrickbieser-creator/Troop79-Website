@@ -126,9 +126,26 @@ describe('mm_add_scout_package', () => {
     expect(row!.held_at).not.toBeNull();
   });
 
-  it('addScoutPackage_heldWhenNoUsableSibling', async () => {
+  // Patrick, 2026-10-05: most foods start with no price, so a food's FIRST price goes live at once
+  // (migration 20261016100000) instead of waiting for a leader with nothing to compare it against.
+  it('addScoutPackage_liveWhenItIsTheFoodsFirstPrice', async () => {
     const { data } = await addPackage({ size: 4, price: 5 }, NO_SIBLINGS);
-    expect(data).toMatchObject({ status: 'held' });
+    expect(data).toMatchObject({ status: 'live' });
+    const { data: row } = await admin.from('mm_packages').select('held_at').eq('id', data.id).single();
+    expect(row!.held_at).toBeNull();
+  });
+
+  it('addScoutPackage_measuresLaterOnes_AgainstThatFirstPrice', async () => {
+    expect((await addPackage({ size: 4, price: 5 }, NO_SIBLINGS)).data.status).toBe('live'); // $1.25 a unit: the anchor
+    expect((await addPackage({ size: 4, price: 6 }, NO_SIBLINGS)).data.status).toBe('live'); // $1.50, +20%
+    expect((await addPackage({ size: 4, price: 12 }, NO_SIBLINGS)).data.status).toBe('held'); // $3.00, +140%
+  });
+
+  it('addScoutPackage_theFirstPriceStaysTheAnchor_SoLaterAddsCannotWalkItDown', async () => {
+    expect((await addPackage({ size: 4, price: 5 }, NO_SIBLINGS)).data.status).toBe('live'); // $1.25, the anchor
+    expect((await addPackage({ size: 4, price: 3 }, NO_SIBLINGS)).data.status).toBe('live'); // $0.75, −40% on the anchor
+    // $0.45 a unit: −40% on the scout's own $0.75, but −64% on the anchor — held.
+    expect((await addPackage({ size: 4, price: 1.8 }, NO_SIBLINGS)).data.status).toBe('held');
   });
 
   it('addScoutPackage_sameIsNoop', async () => {
@@ -138,8 +155,11 @@ describe('mm_add_scout_package', () => {
 
   it('addScoutPackage_enforcesHeldCap', async () => {
     for (let i = 0; i < 3; i++) expect((await addPackage({ size: 10 + i, price: 9 })).data.status).toBe('held');
-    for (let i = 0; i < 2; i++) expect((await addPackage({ size: 4 + i, price: 5 }, NO_SIBLINGS)).data.status).toBe('held');
-    const { error } = await addPackage({ size: 9, price: 5 }, NO_SIBLINGS);
+    // A food with no price: the first goes live and is the anchor; two far from it are held (five held in all).
+    expect((await addPackage({ size: 4, price: 5 }, NO_SIBLINGS)).data.status).toBe('live');
+    for (let i = 0; i < 2; i++) expect((await addPackage({ size: 4, price: 20 + i }, NO_SIBLINGS)).data.status).toBe('held');
+    // The sixth held would be over the cap — but this scout also has three packages on this food already.
+    const { error } = await addPackage({ size: 4, price: 30 }, NO_SIBLINGS);
     expect(error?.message).toContain('MM_PACKAGE_CAP');
   });
 

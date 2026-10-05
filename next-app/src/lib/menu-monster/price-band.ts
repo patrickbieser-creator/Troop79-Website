@@ -49,8 +49,9 @@ export function bandCheck(pkg: BandPackage, reportedPrice: number, band: number 
  * A scout-ADDED package (release C) has no price history of its own, so its
  * unit price (price ÷ size in recipe units) is measured against the CHEAPEST
  * live sibling package with a usable yield (Decision 13) — the caller passes
- * the troop's own packages only, never scout-added ones (no downward ratchet). No usable sibling →
- * held for a leader. Exact: |P/Y − Pc/Yc| ≤ band·Pc/Yc is compared
+ * the troop's own packages, or — when the troop has priced none — the first scout package that went live
+ * (a fixed anchor: no downward ratchet). No usable sibling → it is the food's first price and applies
+ * (2026-10-05; it used to wait for a leader). Exact: |P/Y − Pc/Yc| ≤ band·Pc/Yc is compared
  * cross-multiplied in whole cents (mm_add_scout_package does the same in SQL).
  */
 export function newPackageBand(
@@ -61,7 +62,7 @@ export function newPackageBand(
 ): Exclude<BandResult, 'same'> {
   if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(size) || size <= 0) return 'invalid';
   const usable = siblings.filter((s) => s.yield != null && s.yield > 0 && s.price > 0);
-  if (usable.length === 0) return 'hold';
+  if (usable.length === 0) return 'apply';
   const cheapest = usable.reduce((a, b) => (b.price / (b.yield as number) < a.price / (a.yield as number) ? b : a));
   const p = cents(price);
   const pc = cents(cheapest.price);

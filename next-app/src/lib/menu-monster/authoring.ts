@@ -100,7 +100,7 @@ export function suggestYield(
 ): YieldSuggestion {
   const many = ingredient.unit.many;
   if (size == null || !Number.isFinite(size) || size <= 0 || !soldUnit) {
-    return { value: null, via: null, text: `Type the size on the label and the tool will suggest how many ${many} it makes.`, sub: null };
+    return { value: null, via: null, text: `Type the size on the label and the tool will suggest how many ${many} are in it.`, sub: null };
   }
   const key = soldUnit === 'count' ? ingredient.unit.key : soldUnit;
   const direct = stepFactor(key, ingredient.unit.key);
@@ -127,7 +127,7 @@ export function suggestYield(
   return {
     value: null,
     via: null,
-    text: `No conversion on file for ${ingredient.name} sold by the ${soldLabel(soldUnit, 1, ingredient)}. Type how many ${many} this package makes. Until then it can't be used.`,
+    text: `No conversion on file for ${ingredient.name} sold by the ${soldLabel(soldUnit, 1, ingredient)}. Type how many ${many} are in this package. Until then it can't be used.`,
     sub: null
   };
 }
@@ -172,10 +172,10 @@ export function learnedText(c: LearnedConversion, ingredient: Ingredient): strin
   return `1 ${soldLabel(c.from, 1, ingredient)} = ${c.factor} ${c.factor === 1 ? ingredient.unit.one : ingredient.unit.many}`;
 }
 
-/** "Can't use yet: sold by the gallon, and nobody has said how many cups that makes." */
+/** "Can't use yet: sold by the gallon, and nobody has said how many cups that is." */
 export function unusableText(pkg: Package, ingredient: Ingredient): string {
   const by = pkg.yieldUnitLabel ?? (pkg.soldUnit ? soldLabel(pkg.soldUnit, 1, ingredient) : 'label size');
-  return `Can't use yet: sold by the ${by}, and nobody has said how many ${ingredient.unit.many} that makes.`;
+  return `Can't use yet: sold by the ${by}, and nobody has said how many ${ingredient.unit.many} that is.`;
 }
 
 /* ---- Price flags ------------------------------------------------------------ */

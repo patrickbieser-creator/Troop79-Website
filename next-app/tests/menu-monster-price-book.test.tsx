@@ -121,14 +121,14 @@ describe('Price book', () => {
     await user.click(within(row('Milk')).getByRole('button', { name: 'Milk' }));
     const add = await openAdd(user);
 
-    expect(within(add).getByText('Type the size on the label and the tool will suggest how many cups it makes.')).toBeTruthy();
+    expect(within(add).getByText('Type the size on the label and the tool will suggest how many cups are in it.')).toBeTruthy();
     await user.type(within(add).getByLabelText('Product name (optional)'), 'Kroger 2% Milk');
     await user.type(within(add).getByLabelText('Price'), '3.29');
     await user.type(within(add).getByLabelText('Package size'), '1');
-    await user.selectOptions(within(add).getByLabelText('Sold by'), 'gallon');
+    await user.selectOptions(within(add).getByLabelText('The label is in'), 'gallon');
     expect(within(add).getByText('Suggested: ≈ 16 cups from 1 gallon.')).toBeTruthy();
     // The suggestion lands in the yield field until the leader types over it.
-    expect((within(add).getByLabelText('How many cups it makes') as HTMLInputElement).value).toBe('16');
+    expect((within(add).getByLabelText('How many cups are in it') as HTMLInputElement).value).toBe('16');
 
     await user.click(within(add).getByRole('button', { name: 'Add' }));
     await waitFor(() => expect(addBought).toHaveBeenCalledTimes(1));
@@ -142,10 +142,10 @@ describe('Price book', () => {
     await user.click(within(row('Orange juice')).getByRole('button', { name: 'Orange juice' }));
     const add = await openAdd(user);
     await user.type(within(add).getByLabelText('Package size'), '20');
-    await user.selectOptions(within(add).getByLabelText('Sold by'), 'ozw');
+    await user.selectOptions(within(add).getByLabelText('The label is in'), 'ozw');
     expect(within(add).getByText(/^No conversion on file for Orange juice sold by the oz\./)).toBeTruthy();
 
-    await user.type(within(add).getByLabelText('How many cups it makes'), '4');
+    await user.type(within(add).getByLabelText('How many cups are in it'), '4');
     expect(within(add).getByText('Saves 1 oz = 0.2 cups as the conversion for Orange juice.')).toBeTruthy();
   });
 
@@ -296,8 +296,8 @@ describe('Price book — brands and what is priced under them', () => {
     const add = screen.getByRole('region', { name: 'Add a price' });
     expect((within(add).getByLabelText('Brand') as HTMLSelectElement).value).toBe('b-store');
     await user.type(within(add).getByLabelText('Package size'), '26');
-    await user.selectOptions(within(add).getByLabelText('Sold by'), 'ozw');
-    await user.type(within(add).getByLabelText('How many tsp it makes'), '122');
+    await user.selectOptions(within(add).getByLabelText('The label is in'), 'ozw');
+    await user.type(within(add).getByLabelText('How many tsp are in it'), '122');
     await user.type(within(add).getByLabelText('Price'), '0.79');
     await user.click(within(add).getByRole('button', { name: 'Add' }));
     await waitFor(() => expect(addBought).toHaveBeenCalledTimes(1));
@@ -395,5 +395,54 @@ describe('Price book — brands and what is priced under them', () => {
     expect(screen.queryByRole('region', { name: 'Conversions' })).toBeNull();
     await user.click(screen.getByRole('button', { name: /^Conversions \(0\)/ }));
     expect(screen.getByRole('region', { name: 'Conversions' })).toBeTruthy();
+  });
+});
+
+/**
+ * Patrick, adding a price for Cookies (2026-10-05): "Under package size do I put in the cookie count or
+ * 1 lb 2.2 oz? … 'How many cookies does it make' makes no sense here." A counted food starts on its own
+ * unit and asks one thing: how many are in the package.
+ */
+describe('Price book — adding a price for a counted food', () => {
+  const COOKIES: Catalog = {
+    ingredients: [{ id: 'cookies', name: 'Cookies', unit: { key: 'count', one: 'cookie', many: 'cookies', kind: 'count' }, section: 'dry', staple: false, avoid: [], retiredAt: null }],
+    packages: [],
+    conversions: [],
+    recipes: [],
+    brands: [{ id: 'b-ahoy', ingredientId: 'cookies', name: 'Chips Ahoy', avoid: null, isNew: true }]
+  };
+  const openCookies = async (user: ReturnType<typeof userEvent.setup>) => {
+    render(<PriceBook catalog={COOKIES} today={TODAY} stores={STORES} />);
+    await user.click(within(row('Cookies')).getByRole('button', { name: 'Cookies' }));
+    await user.click(screen.getByRole('button', { name: 'Add a size or store for Chips Ahoy' }));
+    return screen.getByRole('region', { name: 'Add a price' });
+  };
+
+  it('AsksHowManyAreInThePackage_AndNothingAboutWhatItMakes', async () => {
+    const add = await openCookies(userEvent.setup());
+    expect((within(add).getByLabelText('The label is in') as HTMLSelectElement).value).toBe('count');
+    expect(within(add).getByLabelText('How many cookies in the package')).toBeTruthy();
+    // The second box is not shown: for a label in cookies, the size is the answer.
+    expect(within(add).getByLabelText('How many cookies are in it').closest('[hidden]')).not.toBeNull();
+  });
+
+  it('SendsTheCountAsWhatThePackageHolds', async () => {
+    const user = userEvent.setup();
+    const add = await openCookies(user);
+    await user.type(within(add).getByLabelText('How many cookies in the package'), '40');
+    await user.type(within(add).getByLabelText('Price'), '7.29');
+    await user.click(within(add).getByRole('button', { name: 'Add' }));
+    await waitFor(() => expect(addBought).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(addBought).mock.calls[0][0]).toMatchObject({ name: 'Chips Ahoy Cookies, 40 cookies', brandId: 'b-ahoy', soldSize: 40, soldUnit: 'count', yield: 40, price: 7.29, sizeLabel: '40 cookies' });
+  });
+
+  it('ALabelInOunces_AsksHowManyCookiesThatIs', async () => {
+    const user = userEvent.setup();
+    const add = await openCookies(user);
+    await user.selectOptions(within(add).getByLabelText('The label is in'), 'ozw');
+    expect(within(add).getByLabelText('Package size')).toBeTruthy();
+    expect(within(add).getByLabelText('How many cookies are in it').closest('[hidden]')).toBeNull();
+    await user.type(within(add).getByLabelText('Package size'), '18.2');
+    expect(within(add).getByText(/^No conversion on file for Cookies sold by the oz\. Type how many cookies are in this package\./)).toBeTruthy();
   });
 });
