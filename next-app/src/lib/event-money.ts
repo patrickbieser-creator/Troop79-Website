@@ -22,6 +22,15 @@ export function isNotionalAccount(account: string | null | undefined): boolean {
 export function feeAmount(t: { amount: number; kind: string; account?: string | null }): number {
   return t.kind === 'event_fee' && isNotionalAccount(t.account) ? -t.amount : t.amount;
 }
+/** Whose scout account a refund should default to: the family member whose
+ *  account made the latest live payment on the entry, or null (the attendee's
+ *  own) when none did. Rows are in date order, as the Money tab holds them. */
+export function refundAccountDefault(
+  transactions: readonly { amount: number; kind: string; voidedAt: string | null; accountPersonId: number | null }[]
+): number | null {
+  const paid = transactions.filter((t) => !t.voidedAt && t.kind === 'event_fee' && t.amount > 0 && t.accountPersonId != null);
+  return paid.length > 0 ? paid[paid.length - 1].accountPersonId : null;
+}
 /** A payment method as offered in the Record payment dialog — the ledger's
  *  methods plus the scholarship fund (stored as account 'scholarship', method 'other'). */
 export type PayMethod = 'venmo' | 'check' | 'cash' | 'scout_account' | 'scholarship' | 'bank' | 'other';

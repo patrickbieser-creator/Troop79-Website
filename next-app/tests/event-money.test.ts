@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { feeAmount, milestoneStanding, money, sortMilestones, summarizeEventMoney, uncreditedOverpayment, type Milestone } from '../src/lib/event-money';
+import { feeAmount, refundAccountDefault, milestoneStanding, money, sortMilestones, summarizeEventMoney, uncreditedOverpayment, type Milestone } from '../src/lib/event-money';
 
 describe('feeAmount (notional accounts)', () => {
   it('FeeAmount_FlipsScoutAccountAndScholarshipFeeRows_ToTheEventsSign', () => {
@@ -13,6 +13,25 @@ describe('feeAmount (notional accounts)', () => {
     expect(feeAmount({ amount: -10, kind: 'event_fee', account: 'checking' })).toBe(-10);
     // Only fees flip — a scout-account credit (adjustment) keeps its sign.
     expect(feeAmount({ amount: 30, kind: 'adjustment', account: 'scout_account' })).toBe(30);
+  });
+});
+
+describe('refundAccountDefault', () => {
+  const row = (over: Partial<{ amount: number; kind: string; voidedAt: string | null; accountPersonId: number | null }>) => ({
+    amount: 30,
+    kind: 'event_fee',
+    voidedAt: null,
+    accountPersonId: null,
+    ...over
+  });
+  it('RefundAccountDefault_IsTheFamilyMemberWhoseAccountPaidLast', () => {
+    expect(refundAccountDefault([row({ accountPersonId: 22 }), row({ accountPersonId: 31 })])).toBe(31);
+  });
+  it('RefundAccountDefault_IsTheAttendeesOwn_WhenNoFamilyAccountPaid', () => {
+    expect(refundAccountDefault([row({})])).toBeNull();
+  });
+  it('RefundAccountDefault_IgnoresVoidedPaymentsAndEarlierRefunds', () => {
+    expect(refundAccountDefault([row({ accountPersonId: 22, voidedAt: '2026-10-01' }), row({ accountPersonId: 31, amount: -30 })])).toBeNull();
   });
 });
 

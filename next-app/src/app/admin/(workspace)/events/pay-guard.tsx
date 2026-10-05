@@ -5,8 +5,12 @@
  * acknowledgement before Record is allowed, and offer the scholarship fund as
  * the alternative — all inside the same dialog. Pure: the two dialogs
  * (roster row, Money tab) render this with their own state.
+ *
+ * The scout account need not be the attendee's own: PayFrom picks a family
+ * member's, and the dialogs pass factsFrom(facts, picked) to the guard.
  */
 import type { PayMethod } from '@/lib/event-money';
+import type { FamilyScoutAccount } from '@/lib/family-scout-accounts';
 import styles from './events-admin.module.css';
 
 export interface AccountFacts {
@@ -14,6 +18,61 @@ export interface AccountFacts {
   /** null = no person on the entry (a guest has no scout account). */
   balance: number | null;
   scholarshipBalance: number;
+  /** Everyone else in the attendee's family with a scout account — any of
+   *  them can pay this fee (Patrick, 2026-10-05; lib/family-scout-accounts). */
+  family: FamilyScoutAccount[];
+}
+
+/** The facts as the guard should read them once a family member's account is
+ *  chosen: that account's balance in place of the attendee's own. */
+export function factsFrom(facts: AccountFacts | null, fromPersonId: number | null): AccountFacts | null {
+  const chosen = facts && fromPersonId != null ? facts.family.find((a) => a.personId === fromPersonId) : undefined;
+  return facts && chosen ? { ...facts, balance: chosen.balance } : facts;
+}
+
+/** True while a guest's scout-account payment has no account chosen — a guest
+ *  has none of their own, so Record stays off until a family member's is picked. */
+export function needsAccountPick(method: PayMethod, facts: AccountFacts | null, fromPersonId: number | null): boolean {
+  return method === 'scout_account' && !!facts && facts.balance == null && fromPersonId == null;
+}
+
+const plainMoney =(n: number) => (n < 0 ? `−$${Math.abs(n)}` : `$${n}`);
+
+/** "Whose account" — shown under Method when it is the scout account and the
+ *  family has another account to draw on. null = the attendee's own. */
+export function PayFrom({
+  method,
+  facts,
+  selfName,
+  value,
+  onChange
+}: {
+  method: PayMethod;
+  facts: AccountFacts | null;
+  selfName: string;
+  value: number | null;
+  onChange: (personId: number | null) => void;
+}) {
+  if (method !== 'scout_account' || !facts || facts.family.length === 0) return null;
+  return (
+    <label className={`adminLabel ${styles.payField}`}>
+      Whose account
+      <select value={value ?? ''} onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}>
+        {facts.balance == null ? (
+          <option value="">Choose a family member…</option>
+        ) : (
+          <option value="">
+            {selfName} — {plainMoney(facts.balance)}
+          </option>
+        )}
+        {facts.family.map((a) => (
+          <option key={a.personId} value={a.personId}>
+            {a.name} — {plainMoney(a.balance)}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
 }
 
 /** What the guard knows for the chosen method: the available figure, or null
@@ -53,7 +112,13 @@ export function PayGuard({
   const a = availableFor(method, facts);
   if (!a) return null;
   if (loading || !facts) return <p className={styles.panelHint} aria-live="polite">Checking the {a.label.toLowerCase()}…</p>;
-  if (a.available == null) return <p className={styles.panelHint}>No scout account for this row (a guest).</p>;
+  if (a.available == null) {
+    return (
+      <p className={styles.panelHint}>
+        {facts.family.length > 0 ? 'A guest has no scout account — choose a family member’s.' : 'No scout account for this row (a guest).'}
+      </p>
+    );
+  }
   const short = wouldGoNegative(method, facts, amount);
   return (
     <div className={styles.panelHint} aria-live="polite">

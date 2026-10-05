@@ -2,6 +2,12 @@
 
 import { feeAmount, isNotionalAccount, money, uncreditedOverpayment, type PayMethod } from '@/lib/event-money';
 import { GUEST_CLASSES } from '@/lib/participant-class';
+import {
+  loadFamilyScoutAccounts,
+  resolveScoutAccountPayer,
+  type FamilyScoutAccount,
+  type ScoutAccountPayer
+} from '@/lib/family-scout-accounts';
 
 /**
  * Troop Finances — read + write actions (Plans/Troop-Finances.md).
@@ -483,6 +489,10 @@ export interface RecordEventFeePaymentInput {
   memo?: string | null;
   /** Client-minted; a retried click with the same key is a no-op. */
   idempotencyKey?: string;
+  /** Method 'scout_account' only: whose account pays. Omitted = the attendee's
+   *  own; otherwise it must be someone in the attendee's family
+   *  (lib/family-scout-accounts — checked here, not trusted from the client). */
+  scoutAccountPersonId?: number | null;
 }
 
 /** Resolve the event (calendar entry id + title) behind a signup entry, so a
@@ -510,6 +520,23 @@ async function eventForSignupEntry(
     .maybeSingle();
   const s = sig as unknown as { calendar_entry_id: number; calendar_entries: { title: string } } | null;
   return { entry: e, calendarEntryId: s?.calendar_entry_id ?? null, title: s?.calendar_entries?.title ?? null };
+}
+
+/** Whose scout account a fee row lands on. Cash and scholarship rows keep the
+ *  attendee; a scout-account row may name a family member instead, and a guest
+ *  (no account of their own) must. */
+async function scoutAccountPayerFor(
+  supabase: ReturnType<typeof createAdminClient>,
+  ctx: { entry: { person_id: number | null; isGuest: boolean } },
+  method: PayMethod,
+  requestedPersonId: number | null | undefined
+): Promise<ScoutAccountPayer> {
+  if (method !== 'scout_account') return { ok: true, personId: ctx.entry.person_id, onBehalfOf: null };
+  const payer = await resolveScoutAccountPayer(supabase, ctx.entry.person_id, requestedPersonId);
+  if (payer.ok && ctx.entry.isGuest && payer.personId === ctx.entry.person_id) {
+    return { ok: false, error: 'A guest has no scout account — choose a family member’s account.' };
+  }
+  return payer;
 }
 
 function revalidateEventMoney(signupId?: number) {
@@ -545,17 +572,24 @@ export async function recordEventFeePaymentAction(input: RecordEventFeePaymentIn
   // (the balances view flips notional fee rows). Cash methods land in checking.
   const account: Account = input.method === 'scout_account' ? 'scout_account' : input.method === 'scholarship' ? 'scholarship' : 'checking';
   const storedMethod: TransactionMethod = input.method === 'scholarship' ? 'other' : input.method;
+  const payer = await scoutAccountPayerFor(supabase, ctx, input.method, input.scoutAccountPersonId);
+  if (!payer.ok) return { ok: false, error: payer.error };
   const { error: insertError } = await supabase.from('financial_transactions').insert({
     occurred_on: input.occurredOn ?? centralToday(),
     account,
     amount: isNotionalAccount(account) ? -Math.abs(input.amount) : input.amount,
     kind: 'event_fee',
     method: storedMethod,
-    person_id: ctx.entry.person_id,
+    person_id: payer.personId,
     signup_entry_id: ctx.entry.id,
     calendar_entry_id: ctx.calendarEntryId,
     activity_label: ctx.title,
-    memo: input.method === 'scholarship' ? `Scholarship fund${input.memo?.trim() ? ` — ${input.memo.trim()}` : ''}` : input.memo?.trim() || null,
+    // Paid from a family member's account: the memo says who the fee was for,
+    // so that family's scout-account history and the ledger both read right.
+    memo:
+      input.method === 'scholarship'
+        ? `Scholarship fund${input.memo?.trim() ? ` — ${input.memo.trim()}` : ''}`
+        : [payer.onBehalfOf ? `For ${payer.onBehalfOf}` : null, input.memo?.trim() || null].filter(Boolean).join(' — ') || null,
     source: 'app',
     entered_by_person_id: actor.personId,
     idempotency_key: input.idempotencyKey ?? null
@@ -614,6 +648,8 @@ export async function refundEventFeeAction(input: {
   memo?: string | null;
   signupId?: number;
   idempotencyKey?: string;
+  /** As on a payment: whose scout account the refund goes back into. */
+  scoutAccountPersonId?: number | null;
 }): Promise<Result> {
   const actor = await requireAnyOf(['calendar.write', 'finance.manage']);
   if (!(input.amount > 0)) return { ok: false, error: 'Refund amount must be positive.' };
@@ -621,6 +657,8 @@ export async function refundEventFeeAction(input: {
   const ctx = await eventForSignupEntry(supabase, input.signupEntryId);
   if (!ctx) return { ok: false, error: 'Signup entry not found.' };
   const account: Account = input.method === 'scout_account' ? 'scout_account' : input.method === 'scholarship' ? 'scholarship' : 'checking';
+  const payer = await scoutAccountPayerFor(supabase, ctx, input.method, input.scoutAccountPersonId);
+  if (!payer.ok) return { ok: false, error: payer.error };
   const { error } = await supabase.from('financial_transactions').insert({
     occurred_on: centralToday(),
     account,
@@ -629,11 +667,11 @@ export async function refundEventFeeAction(input: {
     amount: isNotionalAccount(account) ? Math.abs(input.amount) : -Math.abs(input.amount),
     kind: 'event_fee',
     method: input.method === 'scholarship' ? 'other' : input.method,
-    person_id: ctx.entry.person_id,
+    person_id: payer.personId,
     signup_entry_id: ctx.entry.id,
     calendar_entry_id: ctx.calendarEntryId,
     activity_label: ctx.title,
-    memo: input.memo?.trim() || 'Refund',
+    memo: [input.memo?.trim() || 'Refund', payer.onBehalfOf ? `for ${payer.onBehalfOf}` : null].filter(Boolean).join(' — '),
     source: 'app',
     entered_by_person_id: actor.personId,
     idempotency_key: input.idempotencyKey ?? null
@@ -817,6 +855,11 @@ export interface EventMoneyPerson {
     method: string | null;
     memo: string | null;
     voidedAt: string | null;
+    /** Set when a family member's scout account paid (or was refunded) —
+     *  the row's person is not this attendee. */
+    accountOf: string | null;
+    /** That family member's person id — the refund dialog defaults to it. */
+    accountPersonId: number | null;
   }[];
 }
 
@@ -924,7 +967,13 @@ export async function getEventMoneyAction(signupId: number): Promise<EventMoneyD
         kind: t.kind,
         method: t.account === 'scholarship' ? 'scholarship' : t.method,
         memo: t.memo,
-        voidedAt: t.voided_at
+        voidedAt: t.voided_at,
+        accountOf:
+          t.account === 'scout_account' && t.person_id != null && t.person_id !== Number(e.person_id)
+            ? (nameOf.get(t.person_id) ?? null)
+            : null,
+        accountPersonId:
+          t.account === 'scout_account' && t.person_id != null && t.person_id !== Number(e.person_id) ? t.person_id : null
       }))
     };
   });
@@ -1533,10 +1582,12 @@ export async function getActivityReportAction(): Promise<
  *  payment dialog when the method is "Scout account balance" (Patrick,
  *  2026-08-22: "we need to see how much that Scout has available"). Derived
  *  from the FULL scout_account history for that person (never a stored
- *  figure); null balance = no person on the entry (a guest row). */
+ *  figure); null balance = a guest (no scout account). `family` is every
+ *  other account in the attendee's family, any of which may pay the fee
+ *  (Patrick, 2026-10-05). */
 export async function getScoutAccountBalanceForEntryAction(
   signupEntryId: number
-): Promise<{ personId: number | null; balance: number | null; scholarshipBalance: number }> {
+): Promise<{ personId: number | null; balance: number | null; scholarshipBalance: number; family: FamilyScoutAccount[] }> {
   await requireAnyOf(['calendar.write', 'finance.manage']);
   const supabase = createAdminClient();
   const { data: entry } = await supabase.from('signup_entries').select('person_id').eq('id', signupEntryId).maybeSingle();
@@ -1545,14 +1596,7 @@ export async function getScoutAccountBalanceForEntryAction(
     supabase.from('financial_transactions').select('account, amount, person_id, voided_at').eq('account', 'scholarship').range(from, to)
   );
   const scholarshipBalance = computeBalance(scholarshipRows, { account: 'scholarship' });
-  if (personId == null) return { personId: null, balance: null, scholarshipBalance };
-  const rows = await fetchAllRows<FinancialTransactionRow>((from, to) =>
-    supabase
-      .from('financial_transactions')
-      .select('account, amount, person_id, voided_at')
-      .eq('account', 'scout_account')
-      .eq('person_id', personId)
-      .range(from, to)
-  );
-  return { personId, balance: computeScoutAccountBalances(rows).get(personId) ?? 0, scholarshipBalance };
+  if (personId == null) return { personId: null, balance: null, scholarshipBalance, family: [] };
+  const accounts = await loadFamilyScoutAccounts(supabase, personId);
+  return { personId, balance: accounts.ownBalance, scholarshipBalance, family: accounts.family };
 }

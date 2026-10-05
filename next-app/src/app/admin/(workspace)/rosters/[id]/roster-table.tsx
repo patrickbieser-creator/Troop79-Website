@@ -35,7 +35,7 @@ import { TabStrip } from '../../_components/tab-strip';
 import { SearchField, useTableSearch } from '../../_components/search-field';
 import { ClassPill } from '../../events/class-pill';
 import { getScoutAccountBalanceForEntryAction, recordEventFeePaymentAction } from '../../finance/actions';
-import { PayGuard, wouldGoNegative, type AccountFacts } from '../../events/pay-guard';
+import { PayFrom, PayGuard, factsFrom, needsAccountPick, wouldGoNegative, type AccountFacts } from '../../events/pay-guard';
 import { PAY_METHOD_LABEL, type PayMethod } from '@/lib/event-money';
 import { fmtDate } from '@/lib/format-date';
 import { diffClaimEdits, type ClaimEdit } from '@/lib/event-signup-admin';
@@ -255,17 +255,20 @@ export function RosterTable({
   // "Scout account balance" as the method: show what that account holds
   // (Patrick, 2026-08-22). Fetched on demand, per entry, from the full history.
   const [acctBalance, setAcctBalance] = useState<AccountFacts | null>(null);
+  // Whose scout account: null = the attendee's own, else a family member's.
+  const [payFrom, setPayFrom] = useState<number | null>(null);
   useEffect(() => {
     if (!payingRow || (payMethod !== 'scout_account' && payMethod !== 'scholarship')) return;
     let live = true;
     getScoutAccountBalanceForEntryAction(payingRow.id).then((r) => {
-      if (live) setAcctBalance({ entryId: payingRow.id, balance: r.balance, scholarshipBalance: r.scholarshipBalance });
+      if (live) setAcctBalance({ entryId: payingRow.id, balance: r.balance, scholarshipBalance: r.scholarshipBalance, family: r.family });
     });
     return () => {
       live = false;
     };
   }, [payingRow, payMethod]);
-  const payFacts = payingRow && acctBalance?.entryId === payingRow.id ? acctBalance : null;
+  const ownFacts = payingRow && acctBalance?.entryId === payingRow.id ? acctBalance : null;
+  const payFacts = factsFrom(ownFacts, payFrom);
   const payNeedsAck = !!payingRow && wouldGoNegative(payMethod, payFacts, Number(payAmountText)) && !ackNegative;
 
   useEffect(() => {
@@ -489,6 +492,7 @@ export function RosterTable({
   function openPayDialog(r: RosterRow) {
     setPayMethod('venmo');
     setAckNegative(false);
+    setPayFrom(null);
     // Default to what is still due — installments are the common case now.
     setPayAmountText(String(r.balance > 0 ? r.balance : r.owed));
     setPayingRow(r);
@@ -512,6 +516,7 @@ export function RosterTable({
           signupEntryId: row.id,
           amount,
           method: payMethod,
+          scoutAccountPersonId: payMethod === 'scout_account' ? payFrom : null,
           signupId,
           // Retry-safe: a double click or a flaky network records once.
           idempotencyKey: typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : undefined
@@ -1155,6 +1160,16 @@ export function RosterTable({
                   ))}
                 </select>
               </label>
+              <PayFrom
+                method={payMethod}
+                facts={ownFacts}
+                selfName={payingRow.name}
+                value={payFrom}
+                onChange={(id) => {
+                  setPayFrom(id);
+                  setAckNegative(false);
+                }}
+              />
               <PayGuard
                 method={payMethod}
                 facts={payFacts}
@@ -1182,7 +1197,7 @@ export function RosterTable({
               <button type="button" className={styles.rowEdit} onClick={() => setPayingRow(null)}>
                 Cancel
               </button>
-              <Button variant="primary" disabled={pending || payNeedsAck} onClick={confirmPayment}>
+              <Button variant="primary" disabled={pending || payNeedsAck || needsAccountPick(payMethod, ownFacts, payFrom)} onClick={confirmPayment}>
                 Record payment
               </Button>
             </DialogActions>

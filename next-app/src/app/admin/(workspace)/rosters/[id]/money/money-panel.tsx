@@ -15,8 +15,8 @@ import {
 } from '../../../finance/actions';
 import { addMilestone, deleteMilestone, emailPaymentReminders } from '../../../events/actions';
 import { TRANSACTION_METHODS, type TransactionMethod } from '@/lib/finance';
-import { PayGuard, wouldGoNegative, type AccountFacts } from '../../../events/pay-guard';
-import { PAY_METHOD_LABEL, type PayMethod } from '@/lib/event-money';
+import { PayFrom, PayGuard, factsFrom, needsAccountPick, wouldGoNegative, type AccountFacts } from '../../../events/pay-guard';
+import { PAY_METHOD_LABEL, refundAccountDefault, type PayMethod } from '@/lib/event-money';
 import { milestoneStanding, money, summarizeEventMoney, uncreditedOverpayment, type Milestone } from '@/lib/event-money';
 import { Badge } from '../../../_components/badge';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../../_components/dialog';
@@ -133,18 +133,21 @@ export function MoneyPanel({
   const [amountText, setAmountText] = useState('');
   const [method, setMethod] = useState<PayMethod>('venmo');
   const [ackNegative, setAckNegative] = useState(false);
+  // Whose scout account: null = the attendee's own, else a family member's.
+  const [payFrom, setPayFrom] = useState<number | null>(null);
   useEffect(() => {
-    if (!dlg || dlg.mode !== 'pay' || (method !== 'scout_account' && method !== 'scholarship')) return;
+    if (!dlg || dlg.mode === 'credit' || (method !== 'scout_account' && method !== 'scholarship')) return;
     let live = true;
     const entryId = dlg.person.entryId;
     getScoutAccountBalanceForEntryAction(entryId).then((r) => {
-      if (live) setAcctBalance({ entryId, balance: r.balance, scholarshipBalance: r.scholarshipBalance });
+      if (live) setAcctBalance({ entryId, balance: r.balance, scholarshipBalance: r.scholarshipBalance, family: r.family });
     });
     return () => {
       live = false;
     };
   }, [dlg, method]);
-  const payFacts = dlg && acctBalance?.entryId === dlg.person.entryId ? acctBalance : null;
+  const ownFacts = dlg && acctBalance?.entryId === dlg.person.entryId ? acctBalance : null;
+  const payFacts = factsFrom(ownFacts, payFrom);
   // The guard (pay-guard.tsx): Record stays disabled until a would-go-negative
   // amount is acknowledged (Patrick, 2026-08-22).
   const payNeedsAck = !!dlg && dlg.mode === 'pay' && wouldGoNegative(method, payFacts, Number(amountText)) && !ackNegative;
@@ -160,6 +163,8 @@ export function MoneyPanel({
     setMethod('venmo');
     setMemo('');
     setAckNegative(false);
+    // A refund goes back to the account that paid (a family member's, if one did).
+    setPayFrom(mode === 'refund' ? refundAccountDefault(person.transactions) : null);
     setAmountText(
       mode === 'pay'
         ? String(person.balance > 0 ? person.balance : person.owed)
@@ -175,12 +180,13 @@ export function MoneyPanel({
     if (!Number.isFinite(amount) || amount <= 0) return;
     const { mode, person } = dlg;
     const idempotencyKey = newKey();
+    const scoutAccountPersonId = method === 'scout_account' ? payFrom : null;
     run(
       () =>
         mode === 'pay'
-          ? recordEventFeePaymentAction({ signupEntryId: person.entryId, amount, method, memo, signupId, idempotencyKey })
+          ? recordEventFeePaymentAction({ signupEntryId: person.entryId, amount, method, memo, signupId, idempotencyKey, scoutAccountPersonId })
           : mode === 'refund'
-            ? refundEventFeeAction({ signupEntryId: person.entryId, amount, method, memo, signupId, idempotencyKey })
+            ? refundEventFeeAction({ signupEntryId: person.entryId, amount, method, memo, signupId, idempotencyKey, scoutAccountPersonId })
             : creditOverpaymentAction({ signupEntryId: person.entryId, amount, signupId, idempotencyKey }),
       () => setDlg(null)
     );
@@ -392,7 +398,10 @@ export function MoneyPanel({
                               <td>{fmtDate(t.occurredOn)}</td>
                               <td>{money(t.amount)}</td>
                               <td>{t.kind === 'event_fee' ? (t.amount < 0 ? 'refund' : 'payment') : t.kind}</td>
-                              <td>{t.method ? (METHOD_LABEL[t.method] ?? t.method) : '—'}</td>
+                              <td>
+                                {t.method ? (METHOD_LABEL[t.method] ?? t.method) : '—'}
+                                {t.accountOf && ` (${t.accountOf})`}
+                              </td>
                               <td>{t.memo ?? ''}</td>
                               <td>
                                 {t.voidedAt ? (
@@ -710,6 +719,18 @@ export function MoneyPanel({
                   </select>
                 </label>
               )}
+              {dlg.mode !== 'credit' && (
+                <PayFrom
+                  method={method}
+                  facts={ownFacts}
+                  selfName={dlg.person.name}
+                  value={payFrom}
+                  onChange={(id) => {
+                    setPayFrom(id);
+                    setAckNegative(false);
+                  }}
+                />
+              )}
               {dlg.mode === 'pay' && (
                 <PayGuard
                   method={method}
@@ -746,7 +767,7 @@ export function MoneyPanel({
               <button type="button" className={styles.rowEdit} onClick={() => setDlg(null)} disabled={pending}>
                 Cancel
               </button>
-              <Button variant="primary" onClick={submitDlg} disabled={pending || payNeedsAck}>
+              <Button variant="primary" onClick={submitDlg} disabled={pending || payNeedsAck || (dlg.mode !== 'credit' && needsAccountPick(method, ownFacts, payFrom))}>
                 {pending ? 'Saving…' : dlg.mode === 'pay' ? 'Record payment' : dlg.mode === 'refund' ? 'Record refund' : 'Credit account'}
               </Button>
             </DialogActions>
