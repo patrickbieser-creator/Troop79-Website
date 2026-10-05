@@ -110,7 +110,15 @@ export function plannedItems(l: ShoppingLine): BoughtItem[] {
   return [{ brandId: l.estimated ? null : (l.pkg.brandId ?? null), packageId: l.estimated ? null : l.pkg.id, qty: l.qty, pricePaid: round2(l.pkg.price) }];
 }
 
-export type RowState = 'unconfirmed' | 'as_planned' | 'changed' | 'not_bought';
+/**
+ * 'no_price': the food has no price yet and nobody has recorded buying it. Most foods start this way (Patrick,
+ * 2026-10-05: "this is realistically how 90% of MM will be used"), so they are ON the checklist — the receipt
+ * is where their first price comes from. There is no plan to confirm, so the done tick does not touch them.
+ */
+export type RowState = 'unconfirmed' | 'as_planned' | 'changed' | 'not_bought' | 'no_price';
+
+/** A line the checklist carries: one the plan priced, or one with no price yet. Store-room and bring-from-home lines are neither. */
+export const onChecklist = (l: ShoppingLine): boolean => plannedItems(l).length > 0 || l.status === 'unpriced';
 
 /** One row of the checklist. */
 export interface BoughtRow {
@@ -129,16 +137,19 @@ const sameItems = (a: readonly BoughtItem[], b: readonly BoughtItem[]) =>
   a.length === b.length && a.every((x, i) => x.brandId === b[i].brandId && x.packageId === b[i].packageId && x.qty === b[i].qty && Math.abs(x.pricePaid - b[i].pricePaid) < 0.005);
 
 /**
- * The checklist: the menu's buying lines (store-room, bring-from-home and unpriced lines are not bought, so
- * they are not here), each with what was recorded or, failing that, what the plan expected.
+ * The checklist: the menu's buying lines (store-room and bring-from-home lines are not bought, so they are
+ * not here), each with what was recorded or, failing that, what the plan expected. A food with no price yet
+ * has nothing planned: it waits as 'no_price' until someone records what it cost.
  */
 export function boughtRows(lines: readonly ShoppingLine[], bought: Bought): BoughtRow[] {
   const rows: BoughtRow[] = [];
   for (const line of lines) {
+    if (!onChecklist(line)) continue;
     const planned = plannedItems(line);
-    if (planned.length === 0) continue;
     const entry = bought.lines[line.ing.id];
-    if (!entry) {
+    if (!entry && planned.length === 0) {
+      rows.push({ line, planned, items: [], state: 'no_price', stamp: null, total: 0 });
+    } else if (!entry) {
       rows.push({ line, planned, items: planned, state: bought.done ? 'as_planned' : 'unconfirmed', stamp: null, total: sum(planned) });
     } else if (entry.status === 'not_bought') {
       rows.push({ line, planned, items: [], state: 'not_bought', stamp: entry, total: 0 });
@@ -160,17 +171,20 @@ export interface BoughtTotals {
   notBought: number;
   /** Lines nobody has recorded yet (always 0 once done is ticked). */
   unconfirmed: number;
+  /** Foods with no price yet that nobody has recorded: nothing is planned or projected for them. */
+  noPrice: number;
   total: number;
   /** True until "We're done shopping": `paid` still leans on the plan for untouched lines. */
   projected: boolean;
 }
 
 export function boughtTotals(rows: readonly BoughtRow[], done: boolean): BoughtTotals {
-  const t: BoughtTotals = { planned: 0, paid: 0, bought: 0, notBought: 0, unconfirmed: 0, total: rows.length, projected: false };
+  const t: BoughtTotals = { planned: 0, paid: 0, bought: 0, notBought: 0, unconfirmed: 0, noPrice: 0, total: rows.length, projected: false };
   for (const r of rows) {
     t.planned += sum(r.planned);
     t.paid += r.total;
     if (r.state === 'not_bought') t.notBought++;
+    else if (r.state === 'no_price') t.noPrice++;
     else if (r.state === 'unconfirmed') t.unconfirmed++;
     else t.bought++;
   }

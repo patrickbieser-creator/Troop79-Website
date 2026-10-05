@@ -42,7 +42,7 @@ describe('Attention', () => {
   });
 });
 
-const totals = (over: Record<string, unknown> = {}) => ({ planned: 40, paid: 42.5, bought: 3, notBought: 0, unconfirmed: 1, total: 4, projected: true, ...over });
+const totals = (over: Record<string, unknown> = {}) => ({ planned: 40, paid: 42.5, bought: 3, notBought: 0, unconfirmed: 1, noPrice: 0, total: 4, projected: true, ...over });
 const outing = (menus: PurchaseOuting['menus'], over: Partial<PurchaseOuting> = {}): PurchaseOuting => ({
   id: 7,
   title: 'Fall Camporee',

@@ -106,6 +106,18 @@ describe('saveBoughtAction', () => {
     expect(row.updated_at).toBe(before);
   });
 
+  it('AFoodWithNoPriceYet_CanBeRecorded_AndTheSpendIsKept', async () => {
+    // Most foods start unpriced (2026-10-05): the checklist carries them and takes what was paid.
+    await admin.from('mm_packages').update({ retired_at: new Date().toISOString() }).eq('ingredient_id', ING);
+    try {
+      const res = await saveBoughtAction(MENU, bought([{ brandId: null, packageId: null, qty: 2, pricePaid: 3.25 }]));
+      expect(res).toMatchObject({ ok: true, results: { [ING]: 'saved' } });
+      expect((await stored()).bought.lines?.[ING]).toMatchObject({ status: 'bought', items: [{ brandId: null, packageId: null, qty: 2, pricePaid: 3.25 }] });
+    } finally {
+      await admin.from('mm_packages').update({ retired_at: null }).eq('ingredient_id', ING);
+    }
+  });
+
   it('APriceInsideTheBand_UpdatesThePriceBook', async () => {
     const res = await saveBoughtAction(MENU, bought([{ packageId: P_OREO, qty: 1, pricePaid: 4.8 }]));
     expect(res).toMatchObject({ ok: true, results: { [ING]: 'applied' } });

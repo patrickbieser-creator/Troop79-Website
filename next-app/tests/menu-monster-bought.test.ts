@@ -66,6 +66,46 @@ describe('the plan as a prefilled checklist', () => {
   });
 });
 
+// Most foods start with no price (Patrick, 2026-10-05), so they are on the checklist: the receipt is where the
+// first price comes from. Here milk has lost its only package.
+describe('a food with no price yet', () => {
+  const NO_MILK: Catalog = { ...CATALOG, packages: CATALOG.packages.filter((p) => p.ingredientId !== 'milk') };
+  const unpricedLines = () => {
+    const plan: Plan = {
+      meal: 'breakfast', headcount: 8, restrictions: { gf: 0, nut: 0, dairy: 0, veg: 0 }, recipeIds: ['cereal'], packageChoice: {}, qtyOverride: {}, lineSource: {},
+      budgetPerPerson: 4, date: '2026-10-10', patrol: ''
+    };
+    return buildLines(plan, NO_MILK);
+  };
+  const milk = (b: Bought) => boughtRows(unpricedLines(), b).find((r) => r.line.ing.id === 'milk')!;
+
+  it('IsOnTheChecklist_WithNothingPlanned', () => {
+    expect(milk(none)).toMatchObject({ state: 'no_price', planned: [], items: [], total: 0 });
+  });
+
+  it('StaysUnrecorded_WhenShoppingIsMarkedDone', () => {
+    // "As planned" means something only where there was a plan.
+    expect(milk({ lines: {}, done: stamp('Maya O.') }).state).toBe('no_price');
+  });
+
+  it('ShowsWhatWasRecorded_OnceSomeoneDoes', () => {
+    const b: Bought = { lines: { milk: { status: 'bought', items: [{ brandId: null, packageId: null, qty: 1, pricePaid: 4.29 }], ...stamp('Maya O.') } }, done: null };
+    expect(milk(b)).toMatchObject({ state: 'changed', total: 4.29, stamp: { by: 'Maya O.' } });
+  });
+
+  it('IsCountedOnItsOwn_NotAsUnconfirmedOrProjected', () => {
+    const t = boughtTotals(boughtRows(unpricedLines(), none), false);
+    expect(t).toMatchObject({ noPrice: 1, unconfirmed: 1, total: 2, planned: 6.5 });
+  });
+
+  it('MayBeRecordedWithNoBrandOrPackageNamed', () => {
+    expect(cleanLineInput('milk', { status: 'bought', items: [{ brandId: null, packageId: null, qty: 2, pricePaid: 4.29 }] }, NO_MILK)).toEqual({
+      status: 'bought',
+      items: [{ brandId: null, packageId: null, qty: 2, pricePaid: 4.29 }]
+    });
+  });
+});
+
 describe('rows', () => {
   it('AnUntouchedLine_IsUnconfirmed_UntilTheDoneTick', () => {
     expect(boughtRows(lines(), none).map((r) => r.state)).toEqual(['unconfirmed', 'unconfirmed']);

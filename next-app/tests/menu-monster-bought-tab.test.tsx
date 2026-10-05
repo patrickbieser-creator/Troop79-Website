@@ -292,3 +292,73 @@ describe('What we bought — who recorded, done, held', () => {
     expect(rowFor('Milk').textContent).toContain('$5.49');
   });
 });
+
+/**
+ * Most foods start with no price (Patrick, 2026-10-05: "this is realistically how 90% of MM will be used"),
+ * so they are on the checklist: the receipt is where their first price comes from. Here orange juice has
+ * lost its package and its brand.
+ */
+describe('What we bought — a food with no price yet', () => {
+  const NO_OJ: Catalog = { ...CATALOG, packages: CATALOG.packages.filter((p) => p.ingredientId !== 'oj'), brands: (CATALOG.brands ?? []).filter((b) => b.ingredientId !== 'oj') };
+  const NO_OJ_MENU: Menu = { ...MENU, shopping: { ...MENU.shopping, brands: { cereal: [{ brandId: 'b-chex', qty: null }] } } };
+  const unpriced = (over: Partial<Parameters<typeof BoughtTab>[0]> = {}) => <BoughtTab catalog={NO_OJ} menuId="menu-1" menu={NO_OJ_MENU} bought={NONE} canRecord {...over} />;
+
+  it('IsOnTheList_SaysNoPriceYet_AndIsNotTicked', () => {
+    render(unpriced());
+    const row = rowFor('Orange juice');
+    expect(row.textContent).toContain('No price yet');
+    expect(row.textContent).toContain('not recorded');
+    expect((screen.getByRole('checkbox', { name: 'Orange juice bought' }) as HTMLInputElement).checked).toBe(false);
+    expect(screen.queryByRole('textbox', { name: 'Price for Orange juice, dollars' })).toBeNull();
+  });
+
+  it('TheTotalLine_CountsItSeparately', () => {
+    render(unpriced());
+    expect(screen.getByText(/0 of 3 recorded · 1 with no price yet/)).toBeTruthy();
+  });
+
+  it('TickingIt_AsksWhatWasBought_AndSendsTheBrandSizeAndPrice', async () => {
+    const user = userEvent.setup();
+    render(unpriced());
+    await user.click(screen.getByRole('checkbox', { name: 'Orange juice bought' }));
+    await user.type(screen.getByRole('textbox', { name: 'Brand of Orange juice' }), 'Tropicana');
+    await user.type(screen.getByRole('textbox', { name: 'How much one package holds' }), '8');
+    await user.type(price('Orange juice'), '4.50');
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(saveBoughtAction).toHaveBeenCalledTimes(1));
+    expect(sent().oj).toMatchObject({ status: 'bought', items: [{ qty: 1, pricePaid: 4.5, newBrand: { name: 'Tropicana', size: 8, sizeUnit: 'cup' } }] });
+  });
+
+  it('JustThePrice_RecordsTheSpend_WithNoBrandOrSize', async () => {
+    const user = userEvent.setup();
+    render(unpriced());
+    await user.click(screen.getByRole('checkbox', { name: 'Orange juice bought' }));
+    await user.click(within(rowFor('Orange juice')).getByRole('button', { name: 'Just the price' }));
+    await user.type(price('Orange juice'), '4.50');
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(saveBoughtAction).toHaveBeenCalledTimes(1));
+    expect(sent().oj).toEqual({ status: 'bought', items: [{ brandId: null, packageId: null, qty: 1, pricePaid: 4.5 }] });
+  });
+
+  it('Save_IsStopped_UntilItHasAPrice', async () => {
+    const user = userEvent.setup();
+    render(unpriced());
+    await user.click(screen.getByRole('checkbox', { name: 'Orange juice bought' }));
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    expect(await screen.findByText('Enter what Orange juice cost.')).toBeTruthy();
+    expect(saveBoughtAction).not.toHaveBeenCalled();
+  });
+
+  it('OnceRecorded_ItReadsRecorded_WithWhoAndWhatWasPaid', () => {
+    const b: Bought = { lines: { oj: { status: 'bought', items: [{ brandId: null, packageId: null, qty: 1, pricePaid: 4.5 }], by: 'Maya O.', personId: 5, at: '2026-10-12T15:00:00Z' } }, done: null };
+    render(unpriced({ bought: b }));
+    expect(rowFor('Orange juice').textContent).toContain('recorded · Maya O.');
+    expect(price('Orange juice').value).toBe('4.50');
+  });
+
+  it('AReader_SeesItOnTheList_WithNothingToPress', () => {
+    render(unpriced({ canRecord: false }));
+    expect(rowFor('Orange juice').textContent).toContain('No price yet');
+    expect(screen.queryAllByRole('checkbox')).toHaveLength(0);
+  });
+});

@@ -19,7 +19,7 @@ import { loadMenuMonsterCatalog } from '@/lib/menu-monster/data';
 import { resolveMenuAliases } from '@/lib/menu-monster/menus';
 import { buildMenuList } from '@/lib/menu-monster/menu-view';
 import { redactMenu } from '@/lib/menu-monster/menu-access';
-import { MAX_BOUGHT_ITEMS, cleanLineInput, plannedItems, sanitizeItems, type Bought } from '@/lib/menu-monster/bought';
+import { MAX_BOUGHT_ITEMS, cleanLineInput, onChecklist, sanitizeItems, type Bought } from '@/lib/menu-monster/bought';
 import { loadBoughtWith, setBoughtLineWith, setShoppingDoneWith } from '@/lib/menu-monster/bought-store';
 import { addBrandWith } from '@/lib/menu-monster/brands-store';
 import { sanitizeScoutPackage } from '@/lib/menu-monster/scout-packages';
@@ -52,7 +52,8 @@ export async function saveBoughtAction(menuId: unknown, changes: unknown): Promi
   const owner = who.access === 'owner';
   let catalog = await loadMenuMonsterCatalog(owner ? who.stored.ownerPersonId : null);
   const menu = resolveMenuAliases(owner ? who.stored.menu : redactMenu(who.stored.menu, who.access, catalog).menu, catalog.aliases);
-  const onList = new Map(buildMenuList(menu, catalog).lines.filter((l) => plannedItems(l).length > 0).map((l) => [l.ing.id, l]));
+  // Everything the checklist shows can be recorded — a food with no price yet included: its first price comes from here.
+  const onList = new Map(buildMenuList(menu, catalog).lines.filter(onChecklist).map((l) => [l.ing.id, l]));
   const before = await loadBoughtWith(sb, menuId);
   const actor = { personId: who.personId, label: who.name };
   const results: Record<string, LineOutcome> = {};

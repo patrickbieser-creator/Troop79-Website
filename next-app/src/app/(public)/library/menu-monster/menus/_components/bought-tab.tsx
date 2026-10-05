@@ -13,6 +13,9 @@
  *   - a line nobody touched reads "not confirmed" until someone ticks "We're done shopping"; after that it
  *     counts as bought as planned, and the total stops saying "projected".
  *   - a price far from the troop's (±30%) is kept on the menu and held for a leader — the row says so after Save.
+ *   - a food with NO PRICE YET is on the list too (most start that way — Patrick, 2026-10-05): nothing is
+ *     prefilled, the row says "No price yet", and ticking it asks what was bought. Naming the brand and the
+ *     size gives the price book its first price for that food; "Just the price" records the spend only.
  *
  * `canRecord`: the owner, any signed-in scout on an outing's menu, a leader. Everyone else who may open the
  * menu reads the same rows as text.
@@ -91,6 +94,15 @@ export function BoughtTab({ catalog, menuId, menu, bought: initial, legacy, canR
   const mealOf = new Map(menu.meals.map((m) => [m.id, m]));
 
   const draftOf = (r: BoughtRow): DraftLine => edits[r.line.ing.id] ?? (r.state === 'not_bought' ? { status: 'not_bought' } : { status: 'bought', items: toDraft(r.items) });
+  /** A food with no price yet: start recording it. With brands on file the scout picks one; otherwise the row
+   *  opens on "which brand, what size" — the food's first price. */
+  const startUnpriced = (r: BoughtRow) => {
+    const ing = r.line.ing;
+    const known = brandsFor(ing.id, catalog).length > 0;
+    setLine(ing.id, { status: 'bought', items: known ? [] : [{ brandId: null, packageId: null, qty: 1, price: '', newBrand: { name: '', size: '', sizeUnit: ing.unit.key } }] });
+    setOpen((cur) => new Set(cur).add(ing.id));
+    setChoosing(known ? { ing: ing.id, mode: 'different' } : null);
+  };
   const setLine = (ing: string, line: DraftLine) => {
     setEdits((cur) => ({ ...cur, [ing]: line }));
     setJustSaved(false);
@@ -126,6 +138,7 @@ export function BoughtTab({ catalog, menuId, menu, bought: initial, legacy, canR
     for (const [ing, d] of Object.entries(edits)) {
       if (d.status !== 'bought') continue;
       const name = rows.find((r) => r.line.ing.id === ing)?.line.ing.name ?? ing;
+      if (d.items.length === 0) return `Say what was bought for ${name.toLowerCase()}, or undo it.`;
       for (const it of d.items) {
         if (!validPrice(it.price)) return `Enter what ${name} cost.`;
         if (it.newBrand && (!it.newBrand.name.trim() || !(Number(it.newBrand.size) > 0))) return `Say which brand of ${name.toLowerCase()} it was and how much one package holds.`;
@@ -214,7 +227,7 @@ export function BoughtTab({ catalog, menuId, menu, bought: initial, legacy, canR
       )}
 
       {rows.length === 0 ? (
-        <p className={s.foot}>Nothing to buy yet. Food on the Plan tab shows up here once it has a price.</p>
+        <p className={s.foot}>Nothing to buy yet. Food on the Plan tab shows up here.</p>
       ) : (
         <section aria-labelledby={`${uid}-h`}>
           <div className={s.secHead}>
@@ -227,6 +240,7 @@ export function BoughtTab({ catalog, menuId, menu, bought: initial, legacy, canR
             <strong>{money(totals.paid)}</strong>{' '}
             <span className={s.muted}>
               {totals.projected ? 'projected' : 'paid'} · planned {money(totals.planned)} · {totals.bought + totals.notBought} of {totals.total} recorded
+              {totals.noPrice > 0 ? ` · ${totals.noPrice} with no price yet` : ''}
             </span>
           </p>
           {who.names.length > 0 && who.latest && (
@@ -246,8 +260,22 @@ export function BoughtTab({ catalog, menuId, menu, bought: initial, legacy, canR
                 const panel = `${uid}-b-${ing.id}`;
                 const items = d.status === 'bought' ? d.items : [];
                 const notBought = d.status === 'not_bought';
+                // No price yet and nobody has started recording it: nothing is prefilled.
+                const waiting = r.state === 'no_price' && !edited;
                 const meals = r.line.sources.length > 0 ? mealsOf(list, ing.id, mealOf, menu) : [];
-                const stateText = edited ? 'changed, not saved' : r.state === 'unconfirmed' ? 'not confirmed' : r.state === 'as_planned' ? 'as planned' : r.state === 'not_bought' ? 'not bought' : 'changed';
+                const stateText = edited
+                  ? 'changed, not saved'
+                  : r.state === 'no_price'
+                    ? 'not recorded'
+                    : r.state === 'unconfirmed'
+                      ? 'not confirmed'
+                      : r.state === 'as_planned'
+                        ? 'as planned'
+                        : r.state === 'not_bought'
+                          ? 'not bought'
+                          : r.planned.length === 0
+                            ? 'recorded'
+                            : 'changed';
                 const sum = items.reduce((n, x) => n + x.qty * (validPrice(x.price) ? priceOf(x.price) : 0), 0);
                 return (
                   <li key={ing.id} className={`${s.row} ${notBought ? s.rowDim : ''}`}>
@@ -256,9 +284,13 @@ export function BoughtTab({ catalog, menuId, menu, bought: initial, legacy, canR
                         <input
                           type="checkbox"
                           className={s.gearCheck}
-                          checked={!notBought}
+                          checked={!notBought && !waiting}
                           aria-label={`${ing.name} bought`}
-                          onChange={(e) => setLine(ing.id, e.target.checked ? { status: 'bought', items: toDraft(r.items.length > 0 ? r.items : r.planned) } : { status: 'not_bought' })}
+                          onChange={(e) => {
+                            if (!e.target.checked) setLine(ing.id, { status: 'not_bought' });
+                            else if (r.items.length === 0 && r.planned.length === 0) startUnpriced(r);
+                            else setLine(ing.id, { status: 'bought', items: toDraft(r.items.length > 0 ? r.items : r.planned) });
+                          }}
                         />
                       )}
                       <button type="button" className={s.rowName} aria-expanded={isOpen} aria-controls={isOpen ? panel : undefined} onClick={() => toggleOpen(ing.id)}>
@@ -267,7 +299,8 @@ export function BoughtTab({ catalog, menuId, menu, bought: initial, legacy, canR
                           ›
                         </span>
                       </button>
-                      {!notBought && <span className={s.meta}>{items.map((x) => `${x.qty} × ${brandName(x)}`).join(', ')}</span>}
+                      {r.planned.length === 0 && r.state !== 'not_bought' && <span className={s.tag}>No price yet</span>}
+                      {!notBought && items.length > 0 && <span className={s.meta}>{items.map((x) => `${x.qty} × ${brandName(x)}`).join(', ')}</span>}
                       <span className={s.meta}>
                         {notBought && <span aria-hidden="true">✕ </span>}
                         {stateText}
@@ -277,8 +310,8 @@ export function BoughtTab({ catalog, menuId, menu, bought: initial, legacy, canR
                     </div>
                     <div className={s.rcol}>
                       {notBought ? (
-                        <s className={s.muted}>{money(r.planned.reduce((n, x) => n + x.qty * x.pricePaid, 0))}</s>
-                      ) : items.length === 1 && canRecord ? (
+                        r.planned.length > 0 && <s className={s.muted}>{money(r.planned.reduce((n, x) => n + x.qty * x.pricePaid, 0))}</s>
+                      ) : items.length === 0 ? null : items.length === 1 && canRecord ? (
                         <span className={s.moneyIn}>
                           <span aria-hidden="true">$</span>
                           <input
@@ -302,9 +335,16 @@ export function BoughtTab({ catalog, menuId, menu, bought: initial, legacy, canR
                     {isOpen && (
                       <div id={panel} className={s.inset}>
                         <p className={s.insetLine}>
-                          Planned: {r.planned.map((x) => `${x.qty} × ${brandName(x)}`).join(', ')}
+                          {r.planned.length > 0 ? `Planned: ${r.planned.map((x) => `${x.qty} × ${brandName(x)}`).join(', ')}` : 'No price yet, so nothing was planned'}
                           {meals.length > 0 ? `, for ${meals.join(', ')}` : ''}. Needs {qtyText(r.line.need, ing.unit)}.
                         </p>
+                        {waiting && canRecord && (
+                          <div className={s.noticeActions}>
+                            <Button size="sm" variant="secondary" onClick={() => startUnpriced(r)}>
+                              Record what was bought
+                            </Button>
+                          </div>
+                        )}
                         {!notBought && (items.length > 1 || isOpen) && canRecord && (
                           <ul className={s.plainList} aria-label={`What was bought for ${ing.name}`}>
                             {items.map((it, i) => (
@@ -348,6 +388,12 @@ export function BoughtTab({ catalog, menuId, menu, bought: initial, legacy, canR
                                     onChange={(nb) => setItems(r, (cur) => cur.map((x, j) => (j === i ? { ...x, newBrand: nb } : x)))}
                                   />
                                 )}
+                                {/* No brand or size to hand: the spend still counts, the price book just learns nothing from it. */}
+                                {it.newBrand && r.planned.length === 0 && (
+                                  <button type="button" className={s.linkBtn} onClick={() => setItems(r, (cur) => cur.map((x, j) => (j === i ? { brandId: null, packageId: null, qty: x.qty, price: x.price } : x)))}>
+                                    Just the price
+                                  </button>
+                                )}
                                 {items.length > 1 && (
                                   <button type="button" className={s.linkBtn} onClick={() => setItems(r, (cur) => cur.filter((_, j) => j !== i))}>
                                     Remove
@@ -357,10 +403,10 @@ export function BoughtTab({ catalog, menuId, menu, bought: initial, legacy, canR
                             ))}
                           </ul>
                         )}
-                        {canRecord && (
+                        {canRecord && !waiting && (
                           <div className={s.noticeActions}>
                             {notBought ? (
-                              <Button size="sm" variant="secondary" onClick={() => setLine(ing.id, { status: 'bought', items: toDraft(r.items.length > 0 ? r.items : r.planned) })}>
+                              <Button size="sm" variant="secondary" onClick={() => (r.items.length === 0 && r.planned.length === 0 ? startUnpriced(r) : setLine(ing.id, { status: 'bought', items: toDraft(r.items.length > 0 ? r.items : r.planned) }))}>
                                 We did buy it
                               </Button>
                             ) : (
