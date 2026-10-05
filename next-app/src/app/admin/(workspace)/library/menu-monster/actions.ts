@@ -1124,6 +1124,47 @@ export async function setPackageBrand(packageId: string, brandId: string | null,
   return brandWrite(packageId, 'Set a Menu Monster package’s brand and size', () => setPackageBrandWith(createAdminClient(), packageId, brandId, sizeLabel));
 }
 
+export interface BoughtInput extends PackageInput {
+  /** An existing brand of the ingredient; null = no brand. Ignored when `newBrand` is typed. */
+  brandId: string | null;
+  /** A brand typed in the form: created under the ingredient, then given this package. */
+  newBrand: string | null;
+  /** The size as the label says it, without the brand ("26 oz"). */
+  sizeLabel: string | null;
+}
+
+/**
+ * "Add what you bought" (Patrick, 2026-10-05: "How is adding a package different than adding a brand?"). A
+ * leader does one thing — Morton, 26 oz, Metro Market, $1.99 — so it is one action: the brand is made if it
+ * was typed, the package is saved, and the package is put under the brand. A typed brand that fails (a
+ * duplicate) stops before anything is saved; if the brand cannot be attached afterwards the package still
+ * stands and the error says so.
+ */
+export async function addBought(input: BoughtInput): Promise<Result> {
+  const denied = await guard();
+  if (denied) return denied;
+  const { brandId: pickedBrand, newBrand, sizeLabel, ...pkg } = input;
+  const supabase = createAdminClient();
+
+  let brandId = pickedBrand;
+  const typed = newBrand?.trim();
+  if (typed) {
+    const made = await createBrandWith(supabase, pkg.ingredientId, typed);
+    if (!made.ok) return { ok: false, error: made.error };
+    brandId = made.id ?? null;
+    await recordAudit({ area: 'library', action: 'update', entityType: 'mm_brand', entityId: pkg.ingredientId, summary: `Added the Menu Monster brand "${typed}"` });
+  }
+
+  const res = await createPackage(pkg);
+  if (!res.ok || !res.id) return res;
+  if (brandId || sizeLabel?.trim()) {
+    const set = await setPackageBrandWith(supabase, res.id, brandId, sizeLabel ?? '');
+    if (!set.ok) return { ok: false, id: res.id, error: `Saved ${pkg.name}, but could not set its brand: ${set.error}` };
+    revalidate();
+  }
+  return res;
+}
+
 /** A leader sets (brandId null: clears) the brand a recipe suggests for one of its ingredients. */
 export async function suggestRecipeBrand(recipeId: string, ingredientId: string, brandId: string | null): Promise<BrandResult> {
   return brandWrite(recipeId, brandId ? 'Set a Menu Monster recipe’s suggested brand' : 'Cleared a Menu Monster recipe’s suggested brand', async () => {

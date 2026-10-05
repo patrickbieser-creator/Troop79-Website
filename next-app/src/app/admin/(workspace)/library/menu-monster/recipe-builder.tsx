@@ -56,7 +56,7 @@ import { buildLines, ruleText, totalsOf, MAX_HEADCOUNT, MIN_HEADCOUNT } from '@/
 import { FOOD_GROUPS, MEALS, RESTRICTIONS, RESTRICTION_BY_KEY, SECTIONS, SECTION_ORDER, lineUnit, parseQty, perPersonText, supportedUnits } from '@/lib/menu-monster/units';
 import type { Catalog, Ingredient, MealSlot, Plan, Recipe, RecipeLine, RestrictionKey, VariationState } from '@/lib/menu-monster/types';
 import { duplicateRecipe, saveRecipe, setRecipeStatus, updateIngredient } from './actions';
-import { BrandsBlock } from './brands-block';
+import { BrandsAndPrices } from './brands-prices';
 import { NewFoodForm } from './new-food-form';
 import lib from '../library.module.css';
 import { SuggestedBrands } from './suggested-brands';
@@ -682,9 +682,9 @@ function RecipeEditor({
       {compact && food && (
         <FormPanel className={errors.some((i) => i.fix === 'price-book') ? styles.bad : undefined}>
           {errors.some((i) => i.fix === 'price-book') && <p className={styles.badNote}>{food.name} has no priced package yet, so menus can’t cost it.</p>}
-          <BrandsBlock ing={food} catalog={catalog} onChanged={onChanged} />
+          <BrandsAndPrices ing={food} catalog={catalog} today={today} stores={stores} onChanged={onChanged} />
           <p className={styles.hint}>
-            <Link href={`/admin/library/menu-monster?tab=prices&ingredient=${encodeURIComponent(food.id)}`}>Prices, packages and stores for {food.name.toLowerCase()} are in the Price book →</Link>
+            <Link href={`/admin/library/menu-monster?tab=prices&ingredient=${encodeURIComponent(food.id)}`}>Conversions and the unit for {food.name.toLowerCase()} are in the Price book →</Link>
           </p>
         </FormPanel>
       )}

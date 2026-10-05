@@ -4,9 +4,10 @@
  * Menu Monster leader tools — Price book (Plans/Menu-Monster-Leader-Tools.md).
  *
  * One table of ingredients, one selected at a time; under it that
- * ingredient's packages (each an inline dirty-gated edit), an Add-a-package
- * form with the Option C yield helper, its unit conversions, and Change unit
- * behind a dialog that previews the consequences before anything is written.
+ * ingredient's title line (Edit fixes its name, aisle and flags), its brands
+ * with what is priced under each (brands-prices.tsx — one list, one "Add what
+ * you bought" form), its unit conversions folded away, and Change unit behind
+ * a dialog that previews the consequences before anything is written.
  * Every number and every line of copy comes from lib/menu-monster/authoring
  * — this file only lays them out.
  *
@@ -21,35 +22,16 @@ import { Badge } from '../../_components/badge';
 import { Notice } from '../../_components/notice';
 import { Dialog, DialogActions, DialogBody, DialogHeader } from '../../_components/dialog';
 import { SearchField, useTableSearch } from '../../_components/search-field';
-import { DiscardButton, SaveButton, SaveFeedback, useDraftSnapshot, useSavePhase } from '../../_components/save-state';
+import { SaveButton } from '../../_components/save-state';
 import { fmtDate } from '@/lib/format-date';
 import { money } from '@/lib/event-money';
-import {
-  SOLD_UNITS,
-  changeUnitPlan,
-  priceChange,
-  staleText,
-  suggestYield,
-  learnedConversion,
-  learnedText,
-  unusableText
-} from '@/lib/menu-monster/authoring';
+import { changeUnitPlan, staleText } from '@/lib/menu-monster/authoring';
 import { RESTRICTIONS, SECTIONS, UNITS } from '@/lib/menu-monster/units';
-import type { Catalog, Conversion, Ingredient, Package, Unit, UnitKind } from '@/lib/menu-monster/types';
-import {
-  addConversion,
-  changeIngredientUnit,
-  createPackage,
-  deleteConversion,
-  restoreIngredient,
-  restorePackage,
-  retireIngredient,
-  retirePackage,
-  updatePackage,
-  type PackageEdit
-} from './actions';
+import type { Catalog, Conversion, Ingredient, Package, Section, Unit, UnitKind } from '@/lib/menu-monster/types';
+import { addConversion, changeIngredientUnit, deleteConversion, restoreIngredient, retireIngredient, updateIngredient } from './actions';
 import { NewFoodForm } from './new-food-form';
-import { BrandsBlock } from './brands-block';
+import { BrandsAndPrices } from './brands-prices';
+import { useArmed } from './use-armed';
 import lib from '../library.module.css';
 import styles from './menu-monster.module.css';
 
@@ -63,7 +45,6 @@ const STATUS_VARIANT: Record<Status, 'danger' | 'warning' | 'success' | 'muted'>
 
 const VOLUME_UNITS = ['cup', 'tbsp', 'tsp', 'oz'];
 const WEIGHT_UNITS = ['gram', 'ozw', 'lb'];
-const ARM_MS = 4000;
 
 interface Row {
   ing: Ingredient;
@@ -93,28 +74,6 @@ function buildRows(catalog: Catalog, today: string): Row[] {
 function unitFromChoice(kind: UnitKind, key: string, one: string, many: string): Unit {
   if (kind === 'count') return { key: 'count', one: one.trim(), many: many.trim(), kind: 'count' };
   return UNITS[key] ?? UNITS.cup;
-}
-
-/** A two-click arm for the one-way actions (D-070: no confirm()). */
-function useArmed(): { armed: boolean; arm: () => boolean; disarm: () => void } {
-  const [armed, setArmed] = useState(false);
-  useEffect(() => {
-    if (!armed) return;
-    const t = setTimeout(() => setArmed(false), ARM_MS);
-    return () => clearTimeout(t);
-  }, [armed]);
-  return {
-    armed,
-    arm: () => {
-      if (armed) {
-        setArmed(false);
-        return true;
-      }
-      setArmed(true);
-      return false;
-    },
-    disarm: () => setArmed(false)
-  };
 }
 
 /** `stores` = the active store names, in order (mm_stores via lib/menu-monster/stores.ts). */
@@ -231,12 +190,13 @@ export function PriceBook({ catalog, today, stores, initialIngredientId }: { cat
 
 function IngredientDetail({ row, catalog, today, stores, onChanged }: { row: Row; catalog: Catalog; today: string; stores: readonly string[]; onChanged: () => void }) {
   const { ing } = row;
+  const [editing, setEditing] = useState(false);
   const [changingUnit, setChangingUnit] = useState(false);
+  const [showConversions, setShowConversions] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const retire = useArmed();
   const conversions = catalog.conversions.filter((c) => c.ingredientId === ing.id);
-  const allPackages = catalog.packages.filter((p) => p.ingredientId === ing.id);
 
   function run(fn: () => Promise<{ ok: boolean; error?: string }>) {
     setError(null);
@@ -256,6 +216,11 @@ function IngredientDetail({ row, catalog, today, stores, onChanged }: { row: Row
           {ing.retiredAt ? ' · retired' : ''}
         </span>
         <span className={styles.spacer} />
+        {!ing.retiredAt && (
+          <Button variant="secondary" size="sm" disabled={pending || editing} onClick={() => setEditing(true)}>
+            Edit
+          </Button>
+        )}
         {!ing.retiredAt && (
           <Button variant="secondary" size="sm" disabled={pending} onClick={() => setChangingUnit(true)}>
             Change unit
@@ -280,21 +245,16 @@ function IngredientDetail({ row, catalog, today, stores, onChanged }: { row: Row
       </div>
       {error && <Notice>{error}</Notice>}
 
-      <BrandsBlock ing={ing} catalog={catalog} onChanged={onChanged} />
+      {editing && <IngredientEditForm ing={ing} onClose={() => setEditing(false)} onChanged={onChanged} />}
 
-      {allPackages.length === 0 ? (
-        <p className={styles.muted}>No packages yet — add one below so recipes can cost it out.</p>
-      ) : (
-        <div className={styles.cards}>
-          {allPackages.map((p) => (
-            <PackageCard key={p.id} pkg={p} ing={ing} today={today} stores={stores} onChanged={onChanged} />
-          ))}
-        </div>
-      )}
+      <BrandsAndPrices ing={ing} catalog={catalog} today={today} stores={stores} onChanged={onChanged} />
 
-      {!ing.retiredAt && <AddPackageForm ing={ing} conversions={conversions} today={today} stores={stores} onChanged={onChanged} />}
-
-      <ConversionsBlock ing={ing} conversions={conversions} onChanged={onChanged} />
+      <div>
+        <button type="button" className={styles.rowBtn} aria-expanded={showConversions} onClick={() => setShowConversions((v) => !v)}>
+          Conversions ({conversions.length}) {showConversions ? '▾' : '▸'}
+        </button>
+      </div>
+      {showConversions && <ConversionsBlock ing={ing} conversions={conversions} onChanged={onChanged} />}
 
       {changingUnit && (
         <ChangeUnitDialog
@@ -309,370 +269,76 @@ function IngredientDetail({ row, catalog, today, stores, onChanged }: { row: Row
   );
 }
 
-/* ── One package: inline dirty-gated edit ───────────────────────────────── */
+/* ── The ingredient itself: name, aisle, flags ───────────────────────────── */
 
-interface PackageDraft {
-  name: string;
-  store: string;
-  price: string;
-  asOf: string;
-  note: string;
-  yield: string;
-}
+const SECTION_KEYS = Object.keys(SECTIONS) as Section[];
 
-function PackageCard({ pkg, ing, today, stores, onChanged }: { pkg: Package; ing: Ingredient; today: string; stores: readonly string[]; onChanged: () => void }) {
-  const initial: PackageDraft = {
-    name: pkg.name,
-    store: pkg.store ?? '',
-    price: pkg.price.toFixed(2),
-    asOf: pkg.asOf ?? '',
-    note: pkg.note ?? '',
-    yield: pkg.yield == null ? '' : String(pkg.yield)
-  };
-  const [draft, setDraft] = useState<PackageDraft>(initial);
-  const snap = useDraftSnapshot(draft);
-  const feedback = useSavePhase();
-  const [pending, start] = useTransition();
+/** Fix a typo, move it to another aisle, change what it warns about (Patrick, 2026-10-05: "No way I can
+ *  find to rename an item"). The unit is not here — changing it rewrites yields, so it keeps its own dialog. */
+function IngredientEditForm({ ing, onClose, onChanged }: { ing: Ingredient; onClose: () => void; onChanged: () => void }) {
+  const initial = { name: ing.name, section: ing.section, staple: ing.staple, avoid: ing.avoid };
+  const [draft, setDraft] = useState(initial);
   const [error, setError] = useState<string | null>(null);
-  const retire = useArmed();
-
-  const savedPrice = Number(snap.saved.price);
-  const newPrice = Number(draft.price);
-  const change = Number.isFinite(newPrice) ? priceChange(savedPrice, newPrice, draft.asOf !== snap.saved.asOf) : null;
-  const stale = staleText(snap.saved.asOf || null, today);
-  const usable = pkg.yield != null;
-  const perUnit = usable ? pkg.price / (pkg.yield as number) : null;
-  const yieldNum = Number(draft.yield);
-  const blocked = !draft.name.trim() || !Number.isFinite(newPrice) || newPrice < 0 || (draft.yield.trim() !== '' && !(yieldNum > 0));
-  const idp = `mm-pkg-${pkg.id}`;
+  const [pending, start] = useTransition();
+  const dirty = JSON.stringify(draft) !== JSON.stringify(initial);
+  const idp = `mm-ing-${ing.id}`;
 
   function save() {
     setError(null);
-    feedback.start();
     start(async () => {
-      const edit: PackageEdit = {
-        name: draft.name,
-        store: draft.store || null,
-        price: newPrice,
-        asOf: draft.asOf || null,
-        note: draft.note || null,
-        yield: draft.yield.trim() === '' ? null : yieldNum,
-        yieldUnitLabel: draft.yield.trim() === '' ? (pkg.yieldUnitLabel ?? pkg.soldUnit ?? 'label size') : null,
-        soldSize: pkg.soldSize,
-        soldUnit: pkg.soldUnit,
-        noun: pkg.noun
-      };
-      const res = await updatePackage(pkg.id, edit);
+      const res = await updateIngredient(ing.id, { ...draft, name: draft.name.trim() });
       if (!res.ok) {
-        feedback.fail();
         setError(res.error ?? 'Something went wrong.');
         return;
       }
-      snap.markSaved();
-      feedback.done();
       onChanged();
+      onClose();
     });
   }
 
   return (
-    <section className={`${styles.card}${pkg.retiredAt ? ` ${styles.cardRetired}` : ''}`} aria-label={pkg.name}>
-      <div className={styles.cardHead}>
-        <h3 className={styles.cardName}>{pkg.name}</h3>
-        <span className={styles.cardMeta}>
-          {pkg.store ?? 'store not set'}
-          {pkg.soldSize != null && pkg.soldUnit ? ` · ${pkg.soldSize} ${pkg.soldUnit}` : ''}
-          {pkg.retiredAt ? ' · retired' : ''}
-        </span>
-      </div>
-      {usable ? (
-        <p className={styles.readout}>
-          {money(pkg.price)} → {money(perUnit as number)} per {ing.unit.one} ({pkg.yield} {ing.unit.many} per {pkg.noun})
-          {pkg.asOf ? ` · as of ${fmtDate(pkg.asOf)}` : ''}
-        </p>
-      ) : (
-        <p className={`${styles.readout} ${styles.readoutWarn}`}>{unusableText(pkg, ing)}</p>
-      )}
-      {stale && !pkg.retiredAt && <p className={`${styles.readout} ${styles.readoutWarn}`}>{stale}</p>}
-      {error && <Notice>{error}</Notice>}
-
-      {!pkg.retiredAt && (
-        <>
-          <div className={lib.fieldGrid}>
-            <div>
-              <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-price`}>
-                Price
-              </label>
-              <input
-                id={`${idp}-price`}
-                className={lib.textInput}
-                inputMode="decimal"
-                value={draft.price}
-                onChange={(e) => {
-                  const price = e.target.value;
-                  // A new price is a price as of today unless the leader says otherwise.
-                  setDraft((d) => ({ ...d, price, asOf: Number(price) !== savedPrice ? today : d.asOf }));
-                }}
-              />
-              {change?.text && <p className={`${styles.readout}${change.big ? ` ${styles.readoutWarn}` : ''}`}>{change.text}</p>}
-            </div>
-            <div>
-              <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-asof`}>
-                Price as of
-              </label>
-              <input
-                id={`${idp}-asof`}
-                type="date"
-                max={today}
-                className={lib.textInput}
-                value={draft.asOf}
-                onChange={(e) => setDraft((d) => ({ ...d, asOf: e.target.value }))}
-              />
-            </div>
-            <div>
-              <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-yield`}>
-                How many {ing.unit.many} it makes
-              </label>
-              <input
-                id={`${idp}-yield`}
-                className={lib.textInput}
-                inputMode="decimal"
-                value={draft.yield}
-                placeholder={usable ? undefined : 'Type it to make this package usable'}
-                onChange={(e) => setDraft((d) => ({ ...d, yield: e.target.value }))}
-              />
-            </div>
-            <div>
-              <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-store`}>
-                Store
-              </label>
-              <select id={`${idp}-store`} className={lib.selectInput} value={draft.store} onChange={(e) => setDraft((d) => ({ ...d, store: e.target.value }))}>
-                <option value="">— not set —</option>
-                {/* A package keeps its store even after the store is retired. */}
-                {(pkg.store && !stores.includes(pkg.store) ? [...stores, pkg.store] : stores).map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className={lib.fieldFull}>
-              <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-name`}>
-                Product name
-              </label>
-              <input id={`${idp}-name`} className={lib.textInput} value={draft.name} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} />
-            </div>
-            <div className={lib.fieldFull}>
-              <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-note`}>
-                Note
-              </label>
-              <input id={`${idp}-note`} className={lib.textInput} value={draft.note} onChange={(e) => setDraft((d) => ({ ...d, note: e.target.value }))} />
-            </div>
-          </div>
-          <div className={lib.actionsRow}>
-            <SaveButton dirty={snap.dirty} pending={pending} blocked={blocked} blockedReason="Name, a price, and a yield above zero (or blank) are needed" onClick={save} />
-            <DiscardButton dirty={snap.dirty} pending={pending} onClick={() => setDraft(snap.saved)} />
-            <SaveFeedback phase={feedback.phase} />
-            <span className={styles.spacer} />
-            <Button
-              variant="quiet"
-              size="sm"
-              disabled={pending}
-              onClick={() => {
-                if (retire.arm()) start(async () => {
-                  const res = await retirePackage(pkg.id);
-                  if (!res.ok) setError(res.error ?? 'Could not retire it.');
-                  else onChanged();
-                });
-              }}
-            >
-              {retire.armed ? 'Click again to retire' : 'Retire'}
-            </Button>
-          </div>
-        </>
-      )}
-      {pkg.retiredAt && (
-        <div className={lib.actionsRow}>
-          <Button
-            variant="secondary"
-            size="sm"
-            disabled={pending}
-            onClick={() =>
-              start(async () => {
-                const res = await restorePackage(pkg.id);
-                if (!res.ok) setError(res.error ?? 'Could not restore it.');
-                else onChanged();
-              })
-            }
-          >
-            Restore
-          </Button>
-        </div>
-      )}
-    </section>
-  );
-}
-
-/* ── Add a package (create-once) ────────────────────────────────────────── */
-
-function AddPackageForm({ ing, conversions, today, stores, onChanged }: { ing: Ingredient; conversions: Conversion[]; today: string; stores: readonly string[]; onChanged: () => void }) {
-  const [name, setName] = useState('');
-  const [store, setStore] = useState('');
-  const [price, setPrice] = useState('');
-  const [size, setSize] = useState('');
-  const [soldUnit, setSoldUnit] = useState('');
-  const [yieldText, setYieldText] = useState('');
-  const [yieldTouched, setYieldTouched] = useState(false);
-  const [asOf, setAsOf] = useState(today);
-  const [note, setNote] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [pending, start] = useTransition();
-  const feedback = useSavePhase();
-
-  const sizeNum = size.trim() === '' ? null : Number(size);
-  const suggestion = suggestYield(ing, Number.isFinite(sizeNum as number) ? sizeNum : null, soldUnit || null, conversions);
-  const effectiveYield = yieldTouched ? yieldText : suggestion.value == null ? '' : String(suggestion.value);
-  const yieldNum = effectiveYield.trim() === '' ? null : Number(effectiveYield);
-  const priceNum = Number(price);
-  const ready = name.trim().length > 0 && price.trim() !== '' && Number.isFinite(priceNum) && priceNum >= 0 && (yieldNum == null || yieldNum > 0);
-  const perUnit = yieldNum != null && yieldNum > 0 && Number.isFinite(priceNum) ? priceNum / yieldNum : null;
-  // A typed yield with nothing on file to suggest it IS the conversion; saving
-  // the package saves it too (actions.ts rememberConversion) — said before the click.
-  const learned = learnedConversion(ing, Number.isFinite(sizeNum as number) ? sizeNum : null, soldUnit || null, yieldNum != null && Number.isFinite(yieldNum) ? yieldNum : null, conversions, name);
-  const idp = `mm-add-${ing.id}`;
-
-  function submit() {
-    setError(null);
-    feedback.start();
-    start(async () => {
-      const res = await createPackage({
-        ingredientId: ing.id,
-        name,
-        store: store || null,
-        price: priceNum,
-        soldSize: sizeNum != null && Number.isFinite(sizeNum) ? sizeNum : null,
-        soldUnit: soldUnit || null,
-        yield: yieldNum,
-        yieldUnitLabel: yieldNum == null ? (soldUnit || 'label size') : null,
-        noun: soldUnit === 'dozen' ? 'dozen' : soldUnit === 'each' ? 'each' : 'pack',
-        asOf: asOf || null,
-        note: note || null
-      });
-      if (!res.ok) {
-        feedback.fail();
-        setError(res.error ?? 'Something went wrong.');
-        return;
-      }
-      feedback.done();
-      setName('');
-      setPrice('');
-      setSize('');
-      setSoldUnit('');
-      setYieldText('');
-      setYieldTouched(false);
-      setNote('');
-      onChanged();
-    });
-  }
-
-  return (
-    <FormPanel title="Add a package" aria-label="Add a package" actions={<SaveFeedback phase={feedback.phase} />}>
+    <FormPanel title={`Edit ${ing.name}`} aria-label={`Edit ${ing.name}`}>
       {error && <Notice>{error}</Notice>}
       <div className={lib.fieldGrid}>
-        <div className={lib.fieldFull}>
+        <div>
           <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-name`}>
-            Product name
+            Name
           </label>
-          <input id={`${idp}-name`} className={lib.textInput} value={name} onChange={(e) => setName(e.target.value)} placeholder="As it reads on the label" />
+          <input id={`${idp}-name`} className={lib.textInput} value={draft.name} maxLength={80} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} />
         </div>
         <div>
-          <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-store`}>
-            Store
+          <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-section`}>
+            Store section
           </label>
-          <select id={`${idp}-store`} className={lib.selectInput} value={store} onChange={(e) => setStore(e.target.value)}>
-            <option value="">— pick —</option>
-            {stores.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-price`}>
-            Price
-          </label>
-          <input id={`${idp}-price`} className={lib.textInput} inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0.00" />
-        </div>
-        <div>
-          <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-size`}>
-            Package size
-          </label>
-          <input id={`${idp}-size`} className={lib.textInput} inputMode="decimal" value={size} onChange={(e) => setSize(e.target.value)} placeholder="e.g. 10" />
-        </div>
-        <div>
-          <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-sold`}>
-            Sold by
-          </label>
-          <select id={`${idp}-sold`} className={lib.selectInput} value={soldUnit} onChange={(e) => setSoldUnit(e.target.value)}>
-            <option value="">— pick —</option>
-            {SOLD_UNITS.map((u) => (
-              <option key={u.key} value={u.key}>
-                {u.key === 'count' ? `${ing.unit.many} (count)` : u.one === u.many ? u.one : `${u.one} / ${u.many}`}
+          <select id={`${idp}-section`} className={lib.selectInput} value={draft.section} onChange={(e) => setDraft((d) => ({ ...d, section: e.target.value as Section }))}>
+            {SECTION_KEYS.map((k) => (
+              <option key={k} value={k}>
+                {SECTIONS[k]}
               </option>
             ))}
           </select>
         </div>
         <div className={lib.fieldFull}>
-          <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-yield`}>
-            How many {ing.unit.many} it makes
+          <span className={`adminLabel ${lib.fieldLabel}`}>Flags</span>
+          <label className={styles.listRow}>
+            <input type="checkbox" checked={draft.staple} onChange={(e) => setDraft((d) => ({ ...d, staple: e.target.checked }))} /> Patrol-box staple (counts in Used, never Spent)
           </label>
-          <input
-            id={`${idp}-yield`}
-            className={lib.textInput}
-            inputMode="decimal"
-            value={effectiveYield}
-            onChange={(e) => {
-              setYieldTouched(true);
-              setYieldText(e.target.value);
-            }}
-          />
-          <p className={styles.hint}>
-            <span>{learned ? `Saves ${learnedText(learned, ing)} as the conversion for ${ing.name}.` : suggestion.text}</span>
-            {suggestion.sub ? <span className={styles.muted}> {suggestion.sub}</span> : null}
-            {yieldTouched && suggestion.value != null && String(suggestion.value) !== yieldText ? (
-              <>
-                {' '}
-                <button
-                  type="button"
-                  className={styles.rowBtn}
-                  onClick={() => {
-                    setYieldTouched(false);
-                    setYieldText('');
-                  }}
-                >
-                  Use {suggestion.value}
-                </button>
-              </>
-            ) : null}
-            {perUnit != null ? <> · {money(perUnit)} per {ing.unit.one}</> : null}
-          </p>
-        </div>
-        <div>
-          <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-asof`}>
-            Price as of
-          </label>
-          <input id={`${idp}-asof`} type="date" max={today} className={lib.textInput} value={asOf} onChange={(e) => setAsOf(e.target.value)} />
-        </div>
-        <div>
-          <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-note`}>
-            Note
-          </label>
-          <input id={`${idp}-note`} className={lib.textInput} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional" />
+          {RESTRICTIONS.map((r) => (
+            <label key={r.key} className={styles.listRow}>
+              <input
+                type="checkbox"
+                checked={draft.avoid.includes(r.key)}
+                onChange={(e) => setDraft((d) => ({ ...d, avoid: e.target.checked ? [...d.avoid, r.key] : d.avoid.filter((k) => k !== r.key) }))}
+              />{' '}
+              Warn {r.label.toLowerCase()} people
+            </label>
+          ))}
         </div>
       </div>
       <div className={lib.actionsRow}>
-        <Button variant="primary" disabled={pending || !ready} title={ready ? undefined : 'A product name and a price are needed'} onClick={submit}>
-          {pending ? 'Adding…' : 'Add package'}
+        <SaveButton dirty={dirty} pending={pending} blocked={!draft.name.trim()} blockedReason="It needs a name" onClick={save} />
+        <Button variant="secondary" disabled={pending} onClick={onClose}>
+          Cancel
         </Button>
       </div>
     </FormPanel>

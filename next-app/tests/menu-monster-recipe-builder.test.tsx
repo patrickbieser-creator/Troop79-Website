@@ -21,7 +21,17 @@ vi.mock('../src/app/admin/(workspace)/library/menu-monster/actions', () => ({
   setRecipeStatus: vi.fn(async () => ({ ok: true })),
   duplicateRecipe: vi.fn(async () => ({ ok: true, id: 'toast-copy' })),
   updateIngredient: vi.fn(async () => ({ ok: true })),
-  suggestRecipeBrand: vi.fn(async () => ({ ok: true }))
+  suggestRecipeBrand: vi.fn(async () => ({ ok: true })),
+  addBought: vi.fn(async () => ({ ok: true })),
+  updatePackage: vi.fn(async () => ({ ok: true })),
+  retirePackage: vi.fn(async () => ({ ok: true })),
+  restorePackage: vi.fn(async () => ({ ok: true })),
+  setPackageBrand: vi.fn(async () => ({ ok: true })),
+  renameBrand: vi.fn(async () => ({ ok: true })),
+  setBrandDiets: vi.fn(async () => ({ ok: true })),
+  mergeBrand: vi.fn(async () => ({ ok: true })),
+  moveBrand: vi.fn(async () => ({ ok: true })),
+  removeBrand: vi.fn(async () => ({ ok: true }))
 }));
 
 beforeEach(() => {
@@ -308,7 +318,7 @@ describe('Recipe builder — a single food opens in the short form (2026-10-04)'
 
   it('ItsBrands_AreRightThere', () => {
     open();
-    expect(bacon().getByRole('region', { name: 'Bacon brands' })).toBeTruthy();
+    expect(bacon().getByRole('region', { name: 'Bacon brands and prices' })).toBeTruthy();
   });
 
   it('ThePriceBook_IsOneLinkAway', () => {

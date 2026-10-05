@@ -147,3 +147,13 @@
 .listTools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
 .itemScroll { display: grid; gap: 2px; max-height: calc(100vh - 240px); overflow-y: auto; padding: 2px; }
 .mealFilter { max-width: 160px; }
+
+/* Brands and prices (2026-10-05): each brand is a heading, what is priced under it is a line that opens to
+   edit. One list in place of the brands table + "which brand" list + package cards. */
+.group { display: grid; gap: 6px; min-width: 0; padding: 10px 12px; background: var(--admin-white); border: 1px solid var(--admin-gray-200); border-radius: var(--admin-radius); }
+.groupHead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.groupAdd { justify-self: start; font-size: var(--admin-text-sm); }
+.pkgList { list-style: none; margin: 0; padding: 0; display: grid; }
+.pkgRow { display: grid; gap: 4px; padding: 6px 0; border-top: 1px solid var(--admin-gray-200); font-size: var(--admin-text-base); }
+.pkgLine { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pkgEditor { display: grid; gap: 10px; padding: 8px 0 4px; }
