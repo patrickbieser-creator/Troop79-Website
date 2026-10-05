@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session Summary — Menu Monster rethought from the admin chair</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #3d5a3e;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #f0eecd;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); vertical-align: top; }
+        tr:hover { background: var(--nw-sage); }
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+        code { font-family: 'Courier New', monospace; font-size: 0.85em; background: var(--nw-light-gray); padding: 0 0.3em; border-radius: 3px; }
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+        @media print { body { background: white; } header { padding: 1.5rem; } .container { padding: 1rem; } .stat { break-inside: avoid; } }
+        @media (max-width: 600px) { header h1 { font-size: 1.5rem; } .stats { flex-direction: column; } }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Menu Monster rethought from the admin chair; family scout-account payments</h1>
+        <p class="subtitle">Patrick spent the day filling in Menu Monster for real and said what confused him. Each answer became a release: twelve of them, from how prices are entered to who may edit a scout&rsquo;s menu.</p>
+        <div class="meta">
+            <span>&#128197; October 5, 2026</span>
+            <span>&#129302; Operator (Fable 5.1)</span>
+            <span>&#128204; Troop79-Website</span>
+            <span>&#128640; v1.163.0 &rarr; v1.175.0</span>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">12</div><div class="label">Releases (v1.164&ndash;v1.175)</div></div>
+            <div class="stat"><div class="number">5</div><div class="label">Production migrations</div></div>
+            <div class="stat"><div class="number">6</div><div class="label">Decisions (D-323&ndash;328)</div></div>
+            <div class="stat"><div class="number">161</div><div class="label">Tests net (3787 &rarr; 3948)</div></div>
+            <div class="stat"><div class="number">5</div><div class="label">Independent reviews</div></div>
+        </div>
+
+        <h2>What Was Accomplished</h2>
+
+        <div class="callout callout-teal">
+            <strong>The outcome:</strong> a leader can add foods and recipes without knowing the data model or having shopped yet. A single food is one entry, a price is one small form, nothing needs a price to go on the menu, and a leader can sit beside a scout and fix the scout&rsquo;s menu directly.
+        </div>
+
+        <h3>Releases</h3>
+        <ul>
+            <li><strong>v1.164.0:</strong> a scout account can pay an event fee for anyone in the scout&rsquo;s household; &ldquo;Whose account&rdquo; in both Record payment dialogs.</li>
+            <li><strong>v1.165.0:</strong> the yield typed for a package is remembered as that food&rsquo;s conversion; nine conversions pre-filled.</li>
+            <li><strong>v1.166.0:</strong> a read-only Conversions tab on every saved menu, written as a lesson for scouts.</li>
+            <li><strong>v1.167.0&ndash;v1.168.0:</strong> the Price book shows each brand with its prices as one list, has one add form, opens an ingredient under the row clicked, and can rename an ingredient.</li>
+            <li><strong>v1.169.0:</strong> &ldquo;Make it a single food&rdquo; on a recipe; the Cookies entry that could not be opened was repaired.</li>
+            <li><strong>v1.170.0&ndash;v1.171.0:</strong> leaders have full rights on a scout&rsquo;s menu (edit, duplicate, delete, share); the scout is told a leader changed it.</li>
+            <li><strong>v1.172.0:</strong> a single food is one entry: the food and its menu item are tied, share one name, and retire together. &ldquo;On the menu by itself&rdquo; lives on the food in the Price book.</li>
+            <li><strong>v1.173.0:</strong> foods and recipes publish without a price; menus mark what is not priced.</li>
+            <li><strong>v1.174.0:</strong> What we bought lists foods with no price, so the receipt can give the first one.</li>
+            <li><strong>v1.175.0:</strong> a food&rsquo;s first price goes live at once; adding a price for a counted food asks one question.</li>
+        </ul>
+
+        <div class="callout callout-gold">
+            <strong>Caught on the way:</strong> one commit went out under a release message while carrying only a file move, because a failed <code>git add</code> had its error hidden (explained by the next commit; history not rewritten). A claim that new recipes could overwrite Cookies was wrong and was corrected in the same hour. Most screens were verified by automated tests; only the Conversions tab and the Price book were looked at in a browser.
+        </div>
+
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Decision</th></tr></thead>
+            <tbody>
+                <tr><td>D-323</td><td>A scout account can pay an event fee for anyone in the scout&rsquo;s household; the server checks the family rule</td></tr>
+                <tr><td>D-324</td><td>Conversions stay per food and are remembered from a package; no admin tab; a read-only Conversions tab for scouts</td></tr>
+                <tr><td>D-325</td><td>Price book: one brand &rarr; price list, one add form, opens under its row; leaders never have to learn &ldquo;package&rdquo;</td></tr>
+                <tr><td>D-326</td><td>A single food is one entry: the food and its menu item are tied, not merged; dishes keep their own name</td></tr>
+                <tr><td>D-327</td><td>Leaders have full rights on anyone&rsquo;s menu; the menu stays its owner&rsquo;s and the owner is told</td></tr>
+                <tr><td>D-328</td><td>No price is needed to publish; menus mark what is unpriced; a first price goes live at once</td></tr>
+            </tbody>
+        </table>
+
+        <h2>Next Steps</h2>
+        <ul>
+            <li><strong>Patrick:</strong> eyes-on with real data &mdash; a family scout-account payment (Winnie &rarr; Michael at High Cliff), the new Price book, a leader editing a scout&rsquo;s menu, and an unpriced food recorded on What we bought.</li>
+            <li><strong>To confirm:</strong> whether leaders&rsquo; rights should cover other adults&rsquo; menus and every kind of admin access.</li>
+            <li><strong>Data to correct:</strong> three package yields that disagree with standard weights (black pepper, salt, ketchup); a price for Cookies, then Publish.</li>
+            <li><strong>Expected soon:</strong> an AI feature that shops local stores to keep prices current. Nothing is planned yet.</li>
+        </ul>
+
+        <h2>Files Changed</h2>
+        <table>
+            <thead><tr><th>Area</th><th>Change</th></tr></thead>
+            <tbody>
+                <tr><td>Event money</td><td><code>lib/family-scout-accounts.ts</code> (new), finance actions, the two Record payment dialogs, the pay guard</td></tr>
+                <tr><td>Menu Monster admin</td><td><code>brands-prices.tsx</code>, <code>food-on-menu.tsx</code>, <code>use-armed.ts</code> (new); <code>price-book.tsx</code>, <code>brands-block.tsx</code>, <code>recipe-builder.tsx</code>, <code>actions.ts</code> reworked</td></tr>
+                <tr><td>Menu Monster for scouts</td><td>Conversions tab and <code>conversion-lesson.ts</code> (new); Plan tab, meal panel and What we bought mark unpriced foods; menu actions and store take a leader acting on the owner&rsquo;s menu</td></tr>
+                <tr><td>Database</td><td>Five migrations: seeded conversions, the Cookies id repair, <code>leader_edited_*</code> on menus, the food link with its triggers, first price live</td></tr>
+                <tr><td>Docs</td><td><code>Plans/Menu-Monster-Hierarchy.md</code> (new reference); <code>Plans/Completed/Menu-Monster-Single-Food-Entry.md</code>; changelog entries v1.164.0&ndash;v1.175.0</td></tr>
+                <tr><td>Tests</td><td>Ten new test files; 3787 &rarr; 3948 passing</td></tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
