@@ -27,6 +27,7 @@ vi.mock('../src/app/admin/(workspace)/library/menu-monster/actions', () => ({
   retirePackage: vi.fn(async () => ({ ok: true })),
   restorePackage: vi.fn(async () => ({ ok: true })),
   setPackageBrand: vi.fn(async () => ({ ok: true })),
+  createBrand: vi.fn(async () => ({ ok: true })),
   renameBrand: vi.fn(async () => ({ ok: true })),
   setBrandDiets: vi.fn(async () => ({ ok: true })),
   mergeBrand: vi.fn(async () => ({ ok: true })),

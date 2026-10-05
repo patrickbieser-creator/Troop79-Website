@@ -14,7 +14,7 @@
  * Status is never colour-only: the pill text says Unpriced / Stale / OK /
  * Retired, and the flags beside a price are sentences.
  */
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '../../../_components/button';
 import { FormPanel } from '../../../_components/form-panel';
@@ -84,7 +84,6 @@ export function PriceBook({ catalog, today, stores, initialIngredientId }: { cat
   const [selectedId, setSelectedId] = useState<string | null>(initialIngredientId ?? null);
   const [adding, setAdding] = useState(false);
   const [note, setNote] = useState<string | null>(null);
-  const selected = rows.find((r) => r.ing.id === selectedId) ?? null;
 
   return (
     <div className={styles.wrap}>
@@ -135,9 +134,11 @@ export function PriceBook({ catalog, today, stores, initialIngredientId }: { cat
           </thead>
           <tbody>
             {search.visible.map((r) => (
-              <tr key={r.ing.id} className={r.ing.id === selectedId ? styles.rowSelected : undefined}>
+              <Fragment key={r.ing.id}>
+              <tr className={r.ing.id === selectedId ? styles.rowSelected : undefined}>
                 <td>
-                  <button type="button" className={styles.rowBtn} onClick={() => setSelectedId(r.ing.id)}>
+                  {/* Click a row to open it right there; click it again to close it. */}
+                  <button type="button" className={styles.rowBtn} aria-expanded={r.ing.id === selectedId} onClick={() => setSelectedId((cur) => (cur === r.ing.id ? null : r.ing.id))}>
                     {r.ing.name}
                   </button>
                 </td>
@@ -160,6 +161,15 @@ export function PriceBook({ catalog, today, stores, initialIngredientId }: { cat
                   <Badge variant={STATUS_VARIANT[r.status]}>{r.status}</Badge>
                 </td>
               </tr>
+              {/* The open ingredient sits directly under its own row (Patrick, 2026-10-05), not below all 66. */}
+              {r.ing.id === selectedId && (
+                <tr className={styles.detailRow} aria-label={`Details for ${r.ing.name}`}>
+                  <td colSpan={8}>
+                    <IngredientDetail row={r} catalog={catalog} today={today} stores={stores} scrollIntoView={r.ing.id === initialIngredientId} onChanged={() => router.refresh()} />
+                  </td>
+                </tr>
+              )}
+              </Fragment>
             ))}
             {search.visible.length === 0 && (
               <tr>
@@ -172,24 +182,19 @@ export function PriceBook({ catalog, today, stores, initialIngredientId }: { cat
         </table>
       </div>
 
-      {selected && (
-        <IngredientDetail
-          key={selected.ing.id}
-          row={selected}
-          catalog={catalog}
-          today={today}
-          stores={stores}
-          onChanged={() => router.refresh()}
-        />
-      )}
     </div>
   );
 }
 
 /* ── Selected ingredient ─────────────────────────────────────────────────── */
 
-function IngredientDetail({ row, catalog, today, stores, onChanged }: { row: Row; catalog: Catalog; today: string; stores: readonly string[]; onChanged: () => void }) {
+function IngredientDetail({ row, catalog, today, stores, scrollIntoView = false, onChanged }: { row: Row; catalog: Catalog; today: string; stores: readonly string[]; scrollIntoView?: boolean; onChanged: () => void }) {
   const { ing } = row;
+  // Arriving by a link to one ingredient (?ingredient=): bring its row into view once.
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (scrollIntoView) box.current?.scrollIntoView?.({ block: 'center' });
+  }, [scrollIntoView]);
   const [editing, setEditing] = useState(false);
   const [changingUnit, setChangingUnit] = useState(false);
   const [showConversions, setShowConversions] = useState(false);
@@ -208,7 +213,7 @@ function IngredientDetail({ row, catalog, today, stores, onChanged }: { row: Row
   }
 
   return (
-    <div className={styles.detail} aria-label={`${ing.name} details`} role="region">
+    <div ref={box} className={styles.detail} aria-label={`${ing.name} details`} role="region">
       <div className={styles.detailHead}>
         <h2 className={styles.detailTitle}>{ing.name}</h2>
         <span className={styles.cardMeta}>

@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { PriceBook } from '../src/app/admin/(workspace)/library/menu-monster/price-book';
 import {
   addBought,
+  createBrand,
   changeIngredientUnit,
   createFood,
   setPackageBrand,
@@ -32,6 +33,7 @@ vi.mock('../src/app/admin/(workspace)/library/menu-monster/actions', () => ({
   deleteConversion: vi.fn(async () => ({ ok: true })),
   addBought: vi.fn(async () => ({ ok: true, id: 'p-new' })),
   setPackageBrand: vi.fn(async () => ({ ok: true })),
+  createBrand: vi.fn(async () => ({ ok: true })),
   renameBrand: vi.fn(async () => ({ ok: true })),
   setBrandDiets: vi.fn(async () => ({ ok: true })),
   mergeBrand: vi.fn(async () => ({ ok: true })),
@@ -93,6 +95,18 @@ describe('Price book', () => {
     expect(within(row('Orange juice')).getByText('Unpriced')).toBeTruthy();
     expect(within(row('Milk')).getByText('Stale')).toBeTruthy();
     expect(within(row('Pancake mix')).getByText('OK')).toBeTruthy();
+  });
+
+  it('Leader_OpensAnIngredient_DirectlyUnderTheRowTheyClicked', async () => {
+    const user = userEvent.setup();
+    render(<PriceBook catalog={CATALOG} today={TODAY} stores={STORES} />);
+    await user.click(within(row('Milk')).getByRole('button', { name: 'Milk' }));
+    // The very next table row is Milk's own detail, not something below the whole list.
+    const next = row('Milk').nextElementSibling as HTMLElement;
+    expect(within(next).getByRole('region', { name: 'Milk details' })).toBeTruthy();
+    // Clicking the row again closes it.
+    await user.click(within(row('Milk')).getByRole('button', { name: 'Milk' }));
+    expect(screen.queryByRole('region', { name: 'Milk details' })).toBeNull();
   });
 
   it('Leader_SeesYieldSuggestion_WhileAddingWhatTheyBought', async () => {
@@ -297,6 +311,15 @@ describe('Price book — brands and what is priced under them', () => {
     await user.click(within(add).getByRole('button', { name: 'Add' }));
     await waitFor(() => expect(addBought).toHaveBeenCalledTimes(1));
     expect(vi.mocked(addBought).mock.calls[0][0]).toMatchObject({ name: 'Diamond Crystal Salt', brandId: null, newBrand: 'Diamond Crystal' });
+  });
+
+  it('Leader_AddsABrandByNameOnly_BeforeAnyoneHasAPrice', async () => {
+    const user = userEvent.setup();
+    await openSalt(user);
+    await user.click(screen.getByRole('button', { name: 'Add a brand' }));
+    await user.type(screen.getByLabelText('New brand of salt'), 'Diamond Crystal');
+    await user.click(screen.getByRole('button', { name: 'Add brand' }));
+    await waitFor(() => expect(createBrand).toHaveBeenCalledWith('salt', 'Diamond Crystal'));
   });
 
   it('Leader_MovesAPricedThingToABrand_FromItsOwnEditor', async () => {

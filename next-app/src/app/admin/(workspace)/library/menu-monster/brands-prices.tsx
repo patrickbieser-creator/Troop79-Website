@@ -33,7 +33,7 @@ import { fmtDate } from '@/lib/format-date';
 import { money } from '@/lib/event-money';
 import { SOLD_UNITS, learnedConversion, learnedText, priceChange, staleText, suggestYield, unusableText } from '@/lib/menu-monster/authoring';
 import type { Brand, Catalog, Conversion, Ingredient, Package } from '@/lib/menu-monster/types';
-import { addBought, restorePackage, retirePackage, setPackageBrand, updatePackage, type PackageEdit } from './actions';
+import { addBought, createBrand, restorePackage, retirePackage, setPackageBrand, updatePackage, type PackageEdit } from './actions';
 import { BrandHead, brandsOf } from './brands-block';
 import { useArmed } from './use-armed';
 import lib from '../library.module.css';
@@ -145,13 +145,61 @@ export function BrandsAndPrices({
             onChanged={onChanged}
           />
         ) : (
-          <div>
+          <div className={styles.inlineForm}>
             <Button variant="primary" onClick={() => setAdding('')}>
               Add what you bought
             </Button>
+            <AddBrand ing={ing} onChanged={onChanged} />
           </div>
         ))}
     </section>
+  );
+}
+
+/* ── A brand by name only (nothing bought yet) ───────────────────────────── */
+
+/** For a brand the troop wants on the list before anyone has a price for it (Patrick, 2026-10-05: "we need
+ *  a way to add a brand on this screen"). It shows up as a heading marked "No price yet". */
+function AddBrand({ ing, onChanged }: { ing: Ingredient; onChanged: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+
+  if (!open) {
+    return (
+      <Button variant="secondary" onClick={() => setOpen(true)}>
+        Add a brand
+      </Button>
+    );
+  }
+  return (
+    <form
+      className={styles.inlineForm}
+      onSubmit={(e) => {
+        e.preventDefault();
+        setError(null);
+        start(async () => {
+          const res = await createBrand(ing.id, name);
+          if (!res.ok) {
+            setError(res.error ?? 'Something went wrong.');
+            return;
+          }
+          setName('');
+          setOpen(false);
+          onChanged();
+        });
+      }}
+    >
+      <input className={lib.textInput} aria-label={`New brand of ${ing.name.toLowerCase()}`} value={name} maxLength={60} autoFocus onChange={(e) => setName(e.target.value)} />
+      <Button type="submit" variant="primary" disabled={pending || !name.trim()}>
+        Add brand
+      </Button>
+      <Button type="button" variant="secondary" disabled={pending} onClick={() => setOpen(false)}>
+        Cancel
+      </Button>
+      {error && <Notice>{error}</Notice>}
+    </form>
   );
 }
 
