@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RecipeBuilder } from '../src/app/admin/(workspace)/library/menu-monster/recipe-builder';
+import { RecipeScreen } from '../src/app/admin/(workspace)/library/menu-monster/recipe-screen';
 import { createFood, saveRecipe } from '../src/app/admin/(workspace)/library/menu-monster/actions';
 import { UNITS } from '../src/lib/menu-monster/units';
 import type { Catalog } from '../src/lib/menu-monster/types';
@@ -13,7 +14,7 @@ import type { Catalog } from '../src/lib/menu-monster/types';
  * the editor's `__new__` placeholder. The mock boundary is the actions module.
  */
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() })
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() })
 }));
 vi.mock('../src/app/admin/(workspace)/library/menu-monster/actions', () => ({
   createFood: vi.fn(async () => ({ ok: true, id: 'cookies', recipeId: 'cookies' })),
@@ -69,8 +70,7 @@ describe('Food & recipes — a single food', () => {
   it('Leader_AddsAnIngredient_FromInsideARecipe', async () => {
     const user = userEvent.setup();
     vi.mocked(createFood).mockResolvedValue({ ok: true, id: 'sprinkles' });
-    render(<RecipeBuilder catalog={CATALOG} stores={STORES} today="2026-10-03" />);
-    await user.click(screen.getByRole('button', { name: '+ New recipe' }));
+    render(<RecipeScreen catalog={CATALOG} recipeId="new" stores={STORES} today="2026-10-03" />);
     const editor = screen.getByRole('region', { name: 'New recipe' });
     await user.click(within(editor).getByRole('button', { name: 'Not in the list? New ingredient…' }));
     const form = within(editor).getByRole('region', { name: 'New ingredient' });
@@ -84,8 +84,7 @@ describe('Food & recipes — a single food', () => {
 
   it('Leader_SavesANewRecipe_WithoutThePlaceholderId', async () => {
     const user = userEvent.setup();
-    render(<RecipeBuilder catalog={CATALOG} stores={STORES} today="2026-10-03" />);
-    await user.click(screen.getByRole('button', { name: '+ New recipe' }));
+    render(<RecipeScreen catalog={CATALOG} recipeId="new" stores={STORES} today="2026-10-03" />);
     const editor = screen.getByRole('region', { name: 'New recipe' });
     await user.type(within(editor).getByLabelText('Name'), 'Trail mix');
     await user.click(within(editor).getByRole('button', { name: 'Save draft' }));

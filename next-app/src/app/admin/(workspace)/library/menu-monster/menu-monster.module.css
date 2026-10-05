@@ -19,7 +19,7 @@
 .numCell { composes: numCell from '../../_components/data-table.module.css'; }
 .rowSelected td { background: var(--admin-status-info-bg); }
 
-/* The ingredient name is the row's one control: a link-styled button. */
+/* The name is the row's one control: a link-styled button (opens under the row) or a link (a recipe's own page). */
 .rowBtn {
   border: 0;
   background: none;
@@ -29,6 +29,9 @@
   color: var(--admin-navy);
   cursor: pointer;
   text-align: left;
+  text-decoration: none;
+  /* One solid target even when a long name wraps: an inline link leaves a dead gap between its lines. */
+  display: inline-block;
 }
 .rowBtn:hover,
 .rowBtn:focus-visible { text-decoration: underline; text-underline-offset: 2px; }
@@ -70,9 +73,6 @@
 
 .consequences { margin: 8px 0 0; padding-left: 18px; line-height: 1.5; }
 
-/* Recipe builder: list on the left, editor + preview on the right. */
-.builder { display: grid; grid-template-columns: 260px 1fr; gap: 16px; align-items: start; margin-top: 12px; }
-@media (max-width: 900px) { .builder { grid-template-columns: 1fr; } }
 .itemList { display: grid; gap: 10px; }
 .itemGroup { display: grid; gap: 2px; }
 .itemGroupTitle { margin: 6px 0 2px; }
@@ -145,7 +145,6 @@
 .fixList { margin: 4px 0 0; padding-left: 18px; line-height: 1.6; }
 /* Food & recipes list (2026-10-04): one A–Z list under a search, kind tabs and a meal filter. */
 .listTools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
-.itemScroll { display: grid; gap: 2px; max-height: calc(100vh - 240px); overflow-y: auto; padding: 2px; }
 .mealFilter { max-width: 160px; }
 
 /* Brands and prices (2026-10-05): each brand is a heading, what is priced under it is a line that opens to

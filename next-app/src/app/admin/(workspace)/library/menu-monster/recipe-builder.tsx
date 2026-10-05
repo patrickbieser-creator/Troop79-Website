@@ -4,8 +4,12 @@
  * Menu Monster leader tools — Recipe builder (Plans/Menu-Monster-Leader-Tools.md,
  * Plans/Menu-Monster-Recipe-Variations.md).
  *
- * Menu items grouped by meal on the left; the selected one's editor on the
- * right. A recipe is an EVERYONE tab (the base lines) plus a tab per
+ * One screen-wide table of menu items, like the Price book (Patrick, 2026-10-05): kind, meals, what each
+ * person gets, diets, cost and status (lib/menu-monster/food-list.ts builds the rows). A SINGLE FOOD opens
+ * under its own row; a RECIPE's editor is too long for that and has its own page (recipe-screen.tsx,
+ * recipes/[recipeId]) — the list's filters ride along in the URL so the way back lands where it left.
+ *
+ * A recipe is an EVERYONE tab (the base lines) plus a tab per
  * restriction a leader has added — each a small DIFF on the base (swap this
  * line for that, leave this out, add this) with a computed state chip:
  * Needs a look / Nothing to change / Substituted / Not suitable. "+ Add a
@@ -24,10 +28,10 @@
  * opens in a short form instead (Patrick, 2026-10-04; prototype concept-f-kinds/admin-food.html): its name,
  * what each person gets, meal fit and food groups, then its brands and their packages. No ingredient line;
  * Steps and Gear show only when the food already has some (bacon), so Cookies stays three fields. "Open the
- * full editor" is the way to a diet swap or a second ingredient; saving a new name renames the
- * ingredient too while the two still match.
+ * full editor" goes to the food's own page — the way to a diet swap or a second ingredient; saving a new
+ * name renames the ingredient too while the two still match.
  */
-import { useEffect, useMemo, useState, useTransition } from 'react';
+import { Fragment, useEffect, useMemo, useState, useTransition, type MouseEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '../../../_components/button';
@@ -35,7 +39,8 @@ import { FormPanel, FormSection } from '../../../_components/form-panel';
 import { Badge } from '../../_components/badge';
 import { Notice } from '../../_components/notice';
 import { TabStrip } from '../../_components/tab-strip';
-import { SearchField, useTableSearch } from '../../_components/search-field';
+import { SearchField } from '../../_components/search-field';
+import { useGuardedNav } from '../../_components/guarded-nav';
 import { DiscardButton, SaveButton, SaveFeedback, useDraftSnapshot, useSavePhase } from '../../_components/save-state';
 import { money } from '@/lib/event-money';
 import {
@@ -43,7 +48,6 @@ import {
   asSingleFood,
   authoringIssues,
   authoringOf,
-  blockingIssues,
   compileAuthoring,
   isSingleFood,
   type DraftBaseLine,
@@ -52,7 +56,8 @@ import {
   type RecipeAuthoring,
   type RecipeIssue
 } from '@/lib/menu-monster/authoring';
-import { VIEW_LABEL, flaggedIngredients, variationView, type BaseLine, type VariationView } from '@/lib/menu-monster/variations';
+import { VIEW_LABEL, flaggedIngredients, type VariationView } from '@/lib/menu-monster/variations';
+import { NO_FILTER, buildFoodRows, filterFoodRows, foodListHref, inKind, numericBase, pillOf, recipeHref, viewFor, type FoodFilter, type FoodRow, type ListKind, type Pill } from '@/lib/menu-monster/food-list';
 import { buildLines, ruleText, totalsOf, MAX_HEADCOUNT, MIN_HEADCOUNT } from '@/lib/menu-monster/engine';
 import { FOOD_GROUPS, MEALS, RESTRICTIONS, RESTRICTION_BY_KEY, SECTIONS, SECTION_ORDER, lineUnit, parseQty, perPersonText, supportedUnits } from '@/lib/menu-monster/units';
 import type { Catalog, Ingredient, MealSlot, Plan, Recipe, RecipeLine, RestrictionKey, Section, VariationState } from '@/lib/menu-monster/types';
@@ -63,7 +68,6 @@ import lib from '../library.module.css';
 import { SuggestedBrands } from './suggested-brands';
 import styles from './menu-monster.module.css';
 
-type Pill = 'Needs fixes' | 'Draft' | 'Published' | 'Retired';
 const PILL_VARIANT: Record<Pill, 'danger' | 'warning' | 'success' | 'muted'> = {
   'Needs fixes': 'danger',
   Draft: 'warning',
@@ -77,24 +81,13 @@ const VIEW_VARIANT: Record<VariationView, 'danger' | 'warning' | 'success' | 'mu
   substituted: 'info',
   unsuitable: 'danger'
 };
-const NEW_ID = '__new__';
-/** The one-step form for a single food (Cookies): ingredient + price + its one-line menu item. */
-const NEW_FOOD = '__food__';
+export const NEW_ID = '__new__';
 const ARM_MS = 4000;
-/** The list's kind tabs. Retired items show under All (last, muted) and Retired only. */
-type ListTab = 'all' | 'recipes' | 'foods' | 'fixes' | 'retired';
-interface ListRow {
-  recipe: Recipe;
-  pill: Pill;
-  /** One ingredient, no steps: Cookies, Bacon. */
-  food: boolean;
-}
-const rowName = (x: ListRow) => [x.recipe.name];
 /** "Line 3: Bacon has no price" → "Bacon has no price", for the note under the line itself. */
 const sansLine = (text: string) => text.replace(/^Line \d+: /, '');
 type Tab = 'everyone' | RestrictionKey;
 
-const blankDraft = (): RecipeAuthoring => ({
+export const blankDraft = (): RecipeAuthoring => ({
   id: NEW_ID,
   name: '',
   status: 'draft',
@@ -108,20 +101,6 @@ const blankDraft = (): RecipeAuthoring => ({
   variations: [],
   gear: ''
 });
-
-/** The base as numbers, for the state rules (unparseable amounts count as 0). */
-const numericBase = (a: RecipeAuthoring): BaseLine[] =>
-  a.base.map((b) => ({ ingredientId: b.ingredientId, qtyPerPerson: parseQty(b.amount) || 0, unitKey: b.unitKey }));
-
-function viewFor(a: RecipeAuthoring, r: RestrictionKey, catalog: Catalog): VariationView {
-  return variationView(numericBase(a), a.variations.find((v) => v.restriction === r), r, catalog);
-}
-
-function pillOf(a: RecipeAuthoring, catalog: Catalog): Pill {
-  if (a.status === 'retired') return 'Retired';
-  if (blockingIssues(authoringIssues(a, catalog)).length > 0) return 'Needs fixes';
-  return a.status === 'published' ? 'Published' : 'Draft';
-}
 
 /** Issues the TABLES cannot hold — these block Save, not only Publish. */
 function saveBlocker(a: RecipeAuthoring, issues: RecipeIssue[]): string | null {
@@ -180,103 +159,93 @@ function useArmed(): { armed: boolean; arm: () => boolean } {
   };
 }
 
-export function RecipeBuilder({ catalog, initialRecipeId, stores = [], today = null }: { catalog: Catalog; initialRecipeId?: string; stores?: readonly string[]; today?: string | null }) {
-  const router = useRouter();
-  const [selectedId, setSelectedId] = useState<string | null>(initialRecipeId ?? null);
-  const [note, setNote] = useState<string | null>(null);
-  const selected = selectedId === NEW_ID || selectedId === NEW_FOOD ? null : (catalog.recipes.find((r) => r.id === selectedId) ?? null);
+const KIND_TABS: readonly { key: ListKind; label: string; always: boolean }[] = [
+  { key: 'all', label: 'All', always: true },
+  { key: 'foods', label: 'Single foods', always: true },
+  { key: 'recipes', label: 'Recipes', always: true },
+  { key: 'fixes', label: 'Needs fixes', always: false },
+  { key: 'retired', label: 'Retired', always: false }
+];
+const COLUMNS = 7;
 
-  const [listTab, setListTab] = useState<ListTab>('all');
-  const [meal, setMeal] = useState<MealSlot | ''>('');
-  // One list, A to Z (Patrick + Jenna, 2026-10-04): a leader looks a food up by its name, so meal is a filter,
-  // not a heading — and an item that fits two meals is found under both. Retired items go last.
-  const rows = useMemo<ListRow[]>(
-    () =>
-      catalog.recipes
-        .map((recipe) => {
-          const a = authoringOf(recipe);
-          return { recipe, pill: pillOf(a, catalog), food: isSingleFood(a) };
-        })
-        .sort((x, y) => Number(x.pill === 'Retired') - Number(y.pill === 'Retired') || x.recipe.name.localeCompare(y.recipe.name)),
-    [catalog]
-  );
-  const { q, setQ, visible } = useTableSearch(rows, rowName);
-  const inTab = (x: ListRow, t: ListTab) =>
-    t === 'all' ? true : t === 'retired' ? x.pill === 'Retired' : t === 'fixes' ? x.pill === 'Needs fixes' : x.pill !== 'Retired' && (t === 'foods') === x.food;
-  const count = (t: ListTab) => rows.filter((x) => inTab(x, t)).length;
-  const shown = visible.filter((x) => inTab(x, listTab) && (meal === '' || x.recipe.mealFit.includes(meal)));
-  const filtered = q.trim() !== '' || listTab !== 'all' || meal !== '';
+/** `initialFilter` and `initialRecipeId` come from the URL (?kind= &meal= &q= &recipe=), so a link or the way back from a recipe's page lands on the same list. */
+export function RecipeBuilder({
+  catalog,
+  initialRecipeId,
+  initialFilter = NO_FILTER,
+  stores = [],
+  today = null
+}: {
+  catalog: Catalog;
+  initialRecipeId?: string;
+  initialFilter?: FoodFilter;
+  stores?: readonly string[];
+  today?: string | null;
+}) {
+  const router = useRouter();
+  const { navigate, dialog } = useGuardedNav();
+  const [selectedId, setSelectedId] = useState<string | null>(initialRecipeId ?? null);
+  const [filter, setFilterState] = useState<FoodFilter>(initialFilter);
+  const [adding, setAdding] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+
+  const rows = useMemo(() => buildFoodRows(catalog), [catalog]);
+  // The open food stays listed whatever the filter, so its editor never vanishes mid-edit.
+  const shown = filterFoodRows(rows, filter, selectedId);
+  const count = (k: ListKind) => rows.filter((x) => inKind(x, k)).length;
+  const filtered = filter.q.trim() !== '' || filter.kind !== 'all' || filter.meal !== '';
+
+  // The address keeps up with the list, so the browser's Back from a recipe's page returns to the same view.
+  const remember = (f: FoodFilter, openId: string | null) => window.history.replaceState(null, '', foodListHref(f, openId));
+  function setFilter(patch: Partial<FoodFilter>) {
+    const next = { ...filter, ...patch };
+    setFilterState(next);
+    remember(next, selectedId);
+  }
+  function open(id: string | null) {
+    setSelectedId(id);
+    remember(filter, id);
+  }
+  /** A recipe's own page; asks first when the food open in the list has unsaved edits. */
+  function toRecipe(e: MouseEvent<HTMLAnchorElement>, href: string) {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+    e.preventDefault();
+    navigate(href);
+  }
 
   return (
-    <>
-    <div className={styles.listTools}>
-      <TabStrip
-        ariaLabel="Kinds of menu item"
-        activeKey={listTab}
-        items={[
-          { key: 'all', label: 'All', count: count('all'), onSelect: () => setListTab('all') },
-          { key: 'foods', label: 'Single foods', count: count('foods'), onSelect: () => setListTab('foods') },
-          { key: 'recipes', label: 'Recipes', count: count('recipes'), onSelect: () => setListTab('recipes') },
-          ...(count('fixes') > 0 || listTab === 'fixes' ? [{ key: 'fixes', label: 'Needs fixes', count: count('fixes'), onSelect: () => setListTab('fixes') }] : []),
-          ...(count('retired') > 0 || listTab === 'retired' ? [{ key: 'retired', label: 'Retired', count: count('retired'), onSelect: () => setListTab('retired') }] : [])
-        ]}
-      />
-      <SearchField value={q} onChange={setQ} label="Search food and recipes" resultCount={shown.length} totalCount={rows.length} />
-      <select className={`${lib.selectInput} ${styles.mealFilter}`} aria-label="Meal" value={meal} onChange={(e) => setMeal(e.target.value as MealSlot | '')}>
-        <option value="">Any meal</option>
-        {MEALS.map((m) => (
-          <option key={m.key} value={m.key}>
-            {m.label}
-          </option>
-        ))}
-      </select>
-      <span className={styles.spacer} />
-      <Button variant="secondary" onClick={() => setSelectedId(NEW_FOOD)}>
-        + New single food
-      </Button>
-      <Button variant="secondary" onClick={() => setSelectedId(NEW_ID)}>
-        + New recipe
-      </Button>
-    </div>
-    <div className={styles.builder}>
-      <nav className={styles.itemScroll} aria-label="Menu items">
-        {shown.map(({ recipe: r, pill, food }) => (
-          <button
-            key={r.id}
-            type="button"
-            className={r.id === selectedId ? `${styles.itemBtn} ${styles.itemBtnOn}` : styles.itemBtn}
-            aria-current={r.id === selectedId ? 'true' : undefined}
-            onClick={() => setSelectedId(r.id)}
-          >
-            <span className={styles.grow}>
-              {r.name}
-              {listTab === 'all' && <span className={styles.muted}> · {food ? 'food' : 'recipe'}</span>}
-            </span>
-            <Badge variant={PILL_VARIANT[pill]}>{pill}</Badge>
-          </button>
-        ))}
-        {rows.length === 0 && <p className={styles.muted}>No menu items yet.</p>}
-        {rows.length > 0 && shown.length === 0 && (
-          <div>
-            <p className={styles.muted}>No items match.</p>
-            {filtered && (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  setQ('');
-                  setListTab('all');
-                  setMeal('');
-                }}
-              >
-                Clear filters
-              </Button>
-            )}
-          </div>
-        )}
-      </nav>
+    <div className={styles.wrap}>
+      <div className={styles.listTools}>
+        <TabStrip
+          ariaLabel="Kinds of menu item"
+          activeKey={filter.kind}
+          items={KIND_TABS.filter((t) => t.always || count(t.key) > 0 || filter.kind === t.key).map((t) => ({
+            key: t.key,
+            label: t.label,
+            count: count(t.key),
+            onSelect: () => setFilter({ kind: t.key })
+          }))}
+        />
+        <SearchField value={filter.q} onChange={(q) => setFilter({ q })} label="Search food and recipes" resultCount={shown.length} totalCount={rows.length} />
+        <select className={`${lib.selectInput} ${styles.mealFilter}`} aria-label="Meal" value={filter.meal} onChange={(e) => setFilter({ meal: e.target.value as MealSlot | '' })}>
+          <option value="">Any meal</option>
+          {MEALS.map((m) => (
+            <option key={m.key} value={m.key}>
+              {m.label}
+            </option>
+          ))}
+        </select>
+        <span className={styles.spacer} />
+        <Button variant="secondary" aria-expanded={adding} onClick={() => setAdding((v) => !v)}>
+          + New single food
+        </Button>
+        <Button variant="secondary" href={recipeHref('new', filter)}>
+          + New recipe
+        </Button>
+      </div>
 
-      {selectedId === NEW_FOOD ? (
+      {note && <Notice variant="success">{note}</Notice>}
+      {adding && (
         <div>
           <p className={styles.hint}>One thing each person gets, like cookies or an apple. Something with several ingredients or steps is a recipe.</p>
           <NewFoodForm
@@ -286,46 +255,165 @@ export function RecipeBuilder({ catalog, initialRecipeId, stores = [], today = n
             today={today}
             onDone={(res) => {
               setNote(res.ok ? (res.note ?? null) : null);
-              if (res.ok) setSelectedId(res.recipeId ?? null);
+              if (res.ok) {
+                setAdding(false);
+                open(res.recipeId ?? null);
+              }
               router.refresh();
             }}
-            onCancel={() => setSelectedId(null)}
+            onCancel={() => setAdding(false)}
           />
         </div>
-      ) : selectedId === NEW_ID ? (
-        <RecipeEditor key={NEW_ID} initial={blankDraft()} catalog={catalog} stores={stores} today={today} onSelect={setSelectedId} onChanged={() => router.refresh()} />
-      ) : selected ? (
-        <div>
-          {note && <Notice variant="success">{note}</Notice>}
-          <RecipeEditor key={selected.id} initial={authoringOf(selected)} catalog={catalog} stores={stores} today={today} onSelect={setSelectedId} onChanged={() => router.refresh()} />
-        </div>
-      ) : (
-        <div>
-          {note && <Notice variant="success">{note}</Notice>}
-          <p className={styles.muted}>{selectedId ? 'Refreshing…' : 'Pick a menu item, or add one.'}</p>
-        </div>
       )}
+
+      <div className={styles.tableWrap}>
+        <table className={styles.table} aria-label="Food and recipes">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Kind</th>
+              <th>Meals</th>
+              <th>Each person gets</th>
+              <th>Variations</th>
+              <th className={styles.numCell}>Cost / person</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {shown.map((row) => {
+              const { recipe: r } = row;
+              const isOpen = row.food && r.id === selectedId;
+              return (
+                <Fragment key={r.id}>
+                  <tr className={isOpen ? styles.rowSelected : undefined}>
+                    <td>
+                      {row.food ? (
+                        // A single food opens right under its row; click it again to close it.
+                        <button type="button" className={styles.rowBtn} aria-expanded={isOpen} onClick={() => open(isOpen ? null : r.id)}>
+                          {r.name}
+                        </button>
+                      ) : (
+                        <Link className={styles.rowBtn} href={recipeHref(r.id, filter)} onClick={(e) => toRecipe(e, recipeHref(r.id, filter))}>
+                          {r.name}
+                        </Link>
+                      )}
+                    </td>
+                    <td>{row.food ? 'Food' : 'Recipe'}</td>
+                    <td>{r.mealFit.length === 0 ? '—' : MEALS.filter((m) => r.mealFit.includes(m.key)).map((m) => m.label).join(', ')}</td>
+                    <td>{row.eachGets || '—'}</td>
+                    <td>
+                      <VariationFlags row={row} />
+                    </td>
+                    <td className={styles.numCell}>
+                      {row.cost.kind === 'priced' ? money(row.cost.perPerson) : row.cost.kind === 'unpriced' ? <span className={styles.muted}>No price yet</span> : '—'}
+                    </td>
+                    <td>
+                      <Badge variant={PILL_VARIANT[row.pill]}>{row.pill}</Badge>
+                    </td>
+                  </tr>
+                  {isOpen && (
+                    <tr className={styles.detailRow} aria-label={`Details for ${r.name}`}>
+                      <td colSpan={COLUMNS}>
+                        <RecipeEditor
+                          key={r.id}
+                          mode="inline"
+                          initial={authoringOf(r)}
+                          catalog={catalog}
+                          stores={stores}
+                          today={today}
+                          onSelect={open}
+                          onOpenFull={() => navigate(recipeHref(r.id, filter))}
+                          onChanged={() => router.refresh()}
+                        />
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
+            {shown.length === 0 && (
+              <tr>
+                <td colSpan={COLUMNS} className={styles.muted}>
+                  {rows.length === 0 ? 'No menu items yet.' : 'No items match.'}
+                  {rows.length > 0 && filtered && (
+                    <>
+                      {' '}
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => {
+                          setFilterState(NO_FILTER);
+                          remember(NO_FILTER, selectedId);
+                        }}
+                      >
+                        Clear filters
+                      </Button>
+                    </>
+                  )}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      {dialog}
     </div>
-    </>
+  );
+}
+
+/** The diets a leader has answered, and how many flagged ones nobody has. Never colour alone: each says what it is. */
+function VariationFlags({ row }: { row: FoodRow }) {
+  const look = row.toLook + row.diets.filter((d) => d.view === 'needs_look').length;
+  const answered = row.diets.filter((d) => d.view !== 'needs_look');
+  if (look === 0 && answered.length === 0) return <>—</>;
+  return (
+    <span className={styles.flags}>
+      {answered.map((d) => {
+        const label = RESTRICTION_BY_KEY[d.key].label;
+        return d.view === 'unsuitable' ? (
+          <Badge key={d.key} variant="danger">
+            not {label.toLowerCase()}
+          </Badge>
+        ) : (
+          <Badge key={d.key} variant="muted">
+            {label}
+          </Badge>
+        );
+      })}
+      {look > 0 && <Badge variant="warning">{look === 1 ? '1 needs a look' : `${look} need a look`}</Badge>}
+    </span>
   );
 }
 
 /* ── Editor ─────────────────────────────────────────────────────────────── */
 
-function RecipeEditor({
+/**
+ * `mode` is where it sits: 'inline' under a single food's row in the list (the short form; the row above
+ * already says its name and status), or 'page' on the item's own page (always the full editor; the page
+ * title says its name).
+ */
+export function RecipeEditor({
+  mode,
   initial,
   catalog,
   stores,
   today,
   onSelect,
-  onChanged
+  onChanged,
+  onOpenFull,
+  onShortForm
 }: {
+  mode: 'inline' | 'page';
   initial: RecipeAuthoring;
   catalog: Catalog;
   stores: readonly string[];
   today: string | null;
   onSelect: (id: string) => void;
   onChanged: () => void;
+  /** Inline: go to this food's own page for the full editor. */
+  onOpenFull?: () => void;
+  /** Page: go back to this single food's short form in the list. */
+  onShortForm?: () => void;
 }) {
   const [draft, setDraft] = useState<RecipeAuthoring>(initial);
   const [tab, setTab] = useState<Tab>('everyone');
@@ -337,8 +425,6 @@ function RecipeEditor({
   const [error, setError] = useState<string | null>(null);
   const retire = useArmed();
   const isNew = draft.id === NEW_ID;
-  /** The leader asked for the full editor on a single food (steps, gear, a diet swap). */
-  const [full, setFull] = useState(false);
   /** The "Make it a single food" panel is open (a recipe only). */
   const [makingFood, setMakingFood] = useState(false);
 
@@ -356,7 +442,8 @@ function RecipeEditor({
   const lineProblems = (ingredientId: string) => errors.filter((i) => i.field == null && i.ingredientId === ingredientId).map((i) => sansLine(i.text));
   // Decided from what is SAVED, so typing never flips the form mid-edit.
   const single = !isNew && isSingleFood(snap.saved);
-  const compact = single && !full;
+  // The short form lives in the list; a single food on its own page is there for the full editor.
+  const compact = single && mode === 'inline';
   const food = compact ? (ingById.get(draft.base[0]?.ingredientId ?? '') ?? null) : null;
   const missing = RESTRICTIONS.filter((r) => !draft.variations.some((v) => v.restriction === r.key));
   const toLook = missing.filter((r) => viewFor(draft, r.key, catalog) === 'needs_look').length;
@@ -418,14 +505,15 @@ function RecipeEditor({
 
   return (
     <section className={styles.editor} aria-label={isNew ? 'New recipe' : `Edit ${snap.saved.name}`}>
+      {/* Under a row there is nothing to say until something is unsaved: the row has the name and the status. */}
+      {(mode === 'page' || snap.dirty) && (
       <div className={styles.detailHead}>
-        <h2 className={styles.detailTitle}>{isNew ? 'New recipe' : snap.saved.name}</h2>
-        {single && !compact && (
-          <Button variant="quiet" size="sm" disabled={snap.dirty} title={snap.dirty ? 'Save or discard your changes first' : undefined} onClick={() => setFull(false)}>
+        {single && !compact && onShortForm && (
+          <Button variant="quiet" size="sm" disabled={snap.dirty} title={snap.dirty ? 'Save or discard your changes first' : undefined} onClick={onShortForm}>
             Back to the short form
           </Button>
         )}
-        <Badge variant={PILL_VARIANT[pill]}>{pill}</Badge>
+        {mode === 'page' && <Badge variant={PILL_VARIANT[pill]}>{pill}</Badge>}
         {snap.dirty && <Badge variant="warning">Unsaved edits</Badge>}
         {!isNew && !single && snap.saved.status !== 'retired' && (
           <>
@@ -436,6 +524,7 @@ function RecipeEditor({
           </>
         )}
       </div>
+      )}
       {error && <Notice>{error}</Notice>}
       {/* A single food that is being given a second ingredient or a diet swap: said before the save, not after. */}
       {snap.saved.foodIngredientId && !isSingleFood(draft) && (
@@ -485,7 +574,7 @@ function RecipeEditor({
 
       <FormPanel>
         {compact ? (
-          <SingleFoodFields draft={draft} setDraft={setDraft} food={food} catalog={catalog} onFull={() => setFull(true)} make={snap.saved.stepsMd.trim() !== '' || (snap.saved.gear ?? '').trim() !== ''} bad={{ name: badField('name'), mealFit: badField('mealFit'), amount: lineProblems(food?.id ?? '').filter((t) => !/priced package/.test(t)) }} />
+          <SingleFoodFields draft={draft} setDraft={setDraft} food={food} catalog={catalog} onFull={() => onOpenFull?.()} make={snap.saved.stepsMd.trim() !== '' || (snap.saved.gear ?? '').trim() !== ''} bad={{ name: badField('name'), mealFit: badField('mealFit'), amount: lineProblems(food?.id ?? '').filter((t) => !/priced package/.test(t)) }} />
         ) : (
           <>
         <FormSection num={1} title="Basics">

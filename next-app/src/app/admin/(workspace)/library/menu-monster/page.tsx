@@ -4,7 +4,8 @@
  *
  * Six tabs. Needs attention comes first (release 6: one line per kind of thing waiting on a leader) and
  * Purchases last (each outing's planned vs paid). Between them: the Price book (ingredients, packages with prices, unit
- * conversions), Food & recipes (menu items: single foods and recipes, with per-line diet rules) and Scout
+ * conversions), Food & recipes (menu items: single foods open in the list, a recipe on its own page under
+ * recipes/[recipeId]) and Scout
  * recipes (what scouts shared — live at once, Phase 4A — to retire or re-credit). Gated by
  * `library.moderate` here and again in every action; reads with the service
  * role because the mm_* tables have RLS on with zero policies (D-239).
@@ -16,7 +17,10 @@
  * Library Queue like any other submission.
  */
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
+import { authoringOf, isSingleFood } from '@/lib/menu-monster/authoring';
+import { parseFoodFilter, recipeHref } from '@/lib/menu-monster/food-list';
 import { requireCapability } from '@/lib/require-capability';
 import { loadAuthoringCatalogWith } from '@/lib/menu-monster/catalog';
 import { centralToday } from '@/lib/dates';
@@ -54,7 +58,7 @@ const NEW_BRAND_DAYS = 30;
 export default async function MenuMonsterAdminPage({
   searchParams
 }: {
-  searchParams: Promise<{ tab?: string; ingredient?: string; recipe?: string }>;
+  searchParams: Promise<{ tab?: string; ingredient?: string; recipe?: string; kind?: string; meal?: string; q?: string }>;
 }) {
   await requireCapability('library.moderate');
   const sp = await searchParams;
@@ -75,6 +79,12 @@ export default async function MenuMonsterAdminPage({
   const drafts = catalog.recipes.filter((r) => r.status === 'draft').length;
   // An old link that names an ingredient or a recipe but no tab still lands on its editor.
   const tab: Tab = TABS.includes(sp.tab as Tab) ? (sp.tab as Tab) : sp.ingredient ? 'prices' : sp.recipe ? 'recipes' : 'attention';
+  // Food & recipes: a single food opens under its row; a recipe has its own page, so a link that names one goes there.
+  const foodFilter = parseFoodFilter(sp);
+  if (tab === 'recipes' && sp.recipe) {
+    const named = catalog.recipes.find((r) => r.id === sp.recipe);
+    if (named && !isSingleFood(authoringOf(named))) redirect(recipeHref(named.id, foodFilter));
+  }
   // The gear list only matters on its own tab.
   const gear = tab === 'gear' ? await listGearAdminWith(admin) : [];
   // Scout recipes worth a look: live ones changed after sharing, and typed-in ingredients to match.
@@ -148,7 +158,7 @@ export default async function MenuMonsterAdminPage({
       ) : tab === 'gear' ? (
         <GearAdmin items={gear} />
       ) : tab === 'recipes' ? (
-        <RecipeBuilder catalog={catalog} initialRecipeId={sp.recipe} stores={stores} today={today} />
+        <RecipeBuilder catalog={catalog} initialRecipeId={sp.recipe} initialFilter={foodFilter} stores={stores} today={today} />
       ) : (
         <>
           <ScoutIngredients items={typedIns} book={book} />

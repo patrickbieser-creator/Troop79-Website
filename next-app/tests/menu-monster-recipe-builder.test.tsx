@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RecipeBuilder } from '../src/app/admin/(workspace)/library/menu-monster/recipe-builder';
+import { RecipeScreen } from '../src/app/admin/(workspace)/library/menu-monster/recipe-screen';
 import { createIngredient, saveRecipe, setRecipeStatus, updateIngredient } from '../src/app/admin/(workspace)/library/menu-monster/actions';
 import { UNITS } from '../src/lib/menu-monster/units';
 import type { Catalog, Ingredient, Package, Recipe } from '../src/lib/menu-monster/types';
@@ -13,8 +14,9 @@ import type { Catalog, Ingredient, Package, Recipe } from '../src/lib/menu-monst
  * diff on the base with a computed state chip. The publish gate the editor
  * shows is authoringIssues(); the mock boundary is the actions module.
  */
+const nav = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }));
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() })
+  useRouter: () => nav
 }));
 vi.mock('../src/app/admin/(workspace)/library/menu-monster/actions', () => ({
   saveRecipe: vi.fn(async () => ({ ok: true, id: 'toast' })),
@@ -37,6 +39,9 @@ vi.mock('../src/app/admin/(workspace)/library/menu-monster/actions', () => ({
 }));
 
 beforeEach(() => {
+  nav.push.mockClear();
+  nav.replace.mockClear();
+  window.history.replaceState(null, '', '/');
   vi.mocked(saveRecipe).mockClear().mockResolvedValue({ ok: true, id: 'toast' });
   vi.mocked(setRecipeStatus).mockClear().mockResolvedValue({ ok: true });
   vi.mocked(updateIngredient).mockClear().mockResolvedValue({ ok: true });
@@ -80,20 +85,18 @@ const CATALOG: Catalog = {
   ]
 };
 
-const list = () => screen.getByRole('navigation', { name: 'Menu items' });
+const list = () => screen.getByRole('table', { name: 'Food and recipes' });
 
 describe('Recipe builder', () => {
   it('Leader_SeesStatusPills_ComputedFromIssues', () => {
     render(<RecipeBuilder catalog={CATALOG} />);
-    const toast = within(list()).getByRole('button', { name: /^Toast/ });
-    expect(toast.textContent).toMatch(/Needs fixes/);
-    const pancakes = within(list()).getByRole('button', { name: /^Pancakes/ });
-    expect(pancakes.textContent).toMatch(/Published/);
+    const status = (name: string) => (within(list()).getByText(name).closest('tr') as HTMLElement).lastElementChild?.textContent;
+    expect([status('Toast'), status('Pancakes')]).toEqual(['Needs fixes', 'Published']);
   });
 
   it('Leader_CannotPublish_WhileRecipeHasBlockingIssue', async () => {
     const user = userEvent.setup();
-    render(<RecipeBuilder catalog={CATALOG} initialRecipeId="toast" />);
+    render(<RecipeScreen catalog={CATALOG} recipeId="toast" />);
     const editor = screen.getByRole('region', { name: 'Edit Toast' });
 
     const publish = within(editor).getByRole('button', { name: 'Publish' });
@@ -143,7 +146,7 @@ describe('Recipe builder', () => {
 
   it('Leader_SeesDuplicateLineError_ForSameIngredient', async () => {
     const user = userEvent.setup();
-    render(<RecipeBuilder catalog={CATALOG} initialRecipeId="pancakes" />);
+    render(<RecipeScreen catalog={CATALOG} recipeId="pancakes" />);
     const editor = screen.getByRole('region', { name: 'Edit Pancakes' });
 
     await user.click(within(editor).getByRole('button', { name: '+ Add an ingredient' }));
@@ -158,7 +161,7 @@ describe('Recipe builder', () => {
   });
 
   it('Leader_SeesWhatOnePersonGets_AndCostPerPerson', () => {
-    render(<RecipeBuilder catalog={CATALOG} initialRecipeId="pancakes" />);
+    render(<RecipeScreen catalog={CATALOG} recipeId="pancakes" />);
     const preview = screen.getByRole('region', { name: 'Preview' });
     expect(preview.textContent).toMatch(/½ cup pancake mix/);
     expect(preview.textContent).toMatch(/1 egg/);
@@ -169,7 +172,7 @@ describe('Recipe builder', () => {
   // Plans/Menu-Monster-Recipe-Variations.md — the tab per restriction.
   it('Leader_AddsAVariation_AndSwapsOneLine', async () => {
     const user = userEvent.setup();
-    render(<RecipeBuilder catalog={CATALOG} initialRecipeId="pancakes" />);
+    render(<RecipeScreen catalog={CATALOG} recipeId="pancakes" />);
     const editor = screen.getByRole('region', { name: 'Edit Pancakes' });
 
     // Only Everyone to start; the add menu names the restrictions with a flagged ingredient.
@@ -215,10 +218,9 @@ describe('Recipe builder', () => {
 
   it('Leader_MarksNotSuitable_InOneClick', async () => {
     const user = userEvent.setup();
-    render(<RecipeBuilder catalog={CATALOG} initialRecipeId="bacon" />);
+    render(<RecipeScreen catalog={CATALOG} recipeId="bacon" />);
     const editor = screen.getByRole('region', { name: 'Edit Bacon' });
-    // Bacon is a single food: its diet swaps live in the full editor.
-    await user.click(within(editor).getByRole('button', { name: 'Open the full editor' }));
+    // Bacon is a single food: its diet swaps live in the full editor, which is its own page.
     await user.click(within(editor).getByRole('button', { name: /\+ Add a variation/ }));
     await user.click(within(within(editor).getByRole('group', { name: 'Variations to add' })).getByRole('button', { name: /^Vegetarian/ }));
     const panel = within(editor).getByRole('region', { name: 'Vegetarian version' });
@@ -251,7 +253,7 @@ describe('Recipe builder — a single food opens in the short form (2026-10-04)'
   });
 
   it('ARecipeWithSeveralIngredients_StillOpensInTheFullEditor', () => {
-    render(<RecipeBuilder catalog={CATALOG} initialRecipeId="pancakes" />);
+    render(<RecipeScreen catalog={CATALOG} recipeId="pancakes" />);
     expect(within(screen.getByRole('region', { name: 'Edit Pancakes' })).getByRole('list', { name: 'Ingredient lines' })).toBeTruthy();
   });
 
@@ -295,11 +297,26 @@ describe('Recipe builder — a single food opens in the short form (2026-10-04)'
     expect(within(bacon().getByRole('list', { name: 'Diets' })).getByRole('listitem').textContent).toMatch(/Vegetarian.*Needs a look/);
   });
 
-  it('OpenTheFullEditor_ShowsTheIngredientLines_AndAWayBack', async () => {
-    const user = userEvent.setup();
+  it('OpenTheFullEditor_GoesToTheFoodsOwnPage', async () => {
     open();
-    await user.click(bacon().getByRole('button', { name: 'Open the full editor' }));
-    expect([bacon().getByRole('list', { name: 'Ingredient lines' }) != null, bacon().getByRole('button', { name: 'Back to the short form' }) != null]).toEqual([true, true]);
+    await userEvent.setup().click(bacon().getByRole('button', { name: 'Open the full editor' }));
+    expect(nav.push).toHaveBeenCalledWith('/admin/library/menu-monster/recipes/bacon');
+  });
+
+  it('OnItsOwnPage_ASingleFoodShowsItsIngredientLines', () => {
+    render(<RecipeScreen catalog={CATALOG} recipeId="bacon" />);
+    expect(bacon().getByRole('list', { name: 'Ingredient lines' })).toBeTruthy();
+  });
+
+  it('OnItsOwnPage_BackToTheShortForm_ReturnsToTheListWithTheFoodOpen', async () => {
+    render(<RecipeScreen catalog={CATALOG} recipeId="bacon" />);
+    await userEvent.setup().click(bacon().getByRole('button', { name: 'Back to the short form' }));
+    expect(nav.push).toHaveBeenCalledWith('/admin/library/menu-monster?tab=recipes&recipe=bacon');
+  });
+
+  it('UnderItsRow_TheNameAndStatusAreNotRepeated', () => {
+    open();
+    expect([bacon().queryByRole('heading', { name: 'Bacon' }), bacon().queryByText('Published')]).toEqual([null, null]);
   });
 
   it('AFoodWithNoStepsOrGear_ShowsNeitherField', () => {
@@ -344,7 +361,7 @@ describe('Recipe builder — the problem is marked where it is (2026-10-04)', ()
   };
 
   it('TheNeedsFixingBox_IsAnAlert', () => {
-    render(<RecipeBuilder catalog={{ ...OJ, recipes: OJ.recipes.map((r) => (r.id === 'oj' ? { ...r, mealFit: [] } : r)) }} initialRecipeId="oj" />);
+    render(<RecipeScreen catalog={{ ...OJ, recipes: OJ.recipes.map((r) => (r.id === 'oj' ? { ...r, mealFit: [] } : r)) }} recipeId="oj" />);
     const fixes = within(screen.getByRole('region', { name: 'Edit Orange juice' })).getByRole('list', { name: 'Needs fixing' });
     expect(fixes.closest('[role="alert"], [role="status"], [class*="notice" i]')).not.toBeNull();
   });
@@ -352,7 +369,7 @@ describe('Recipe builder — the problem is marked where it is (2026-10-04)', ()
   // No price is not a problem that blocks anything (2026-10-05): the item publishes, is not "Needs fixes",
   // and the editor mentions it under "Worth a look" with the way to add one.
   it('AnIngredientWithNoPrice_IsWorthALook_NotAFix', () => {
-    render(<RecipeBuilder catalog={OJ} initialRecipeId="oj" />);
+    render(<RecipeScreen catalog={OJ} recipeId="oj" />);
     const editor = within(screen.getByRole('region', { name: 'Edit Orange juice' }));
     expect(editor.queryByRole('list', { name: 'Needs fixing' })).toBeNull();
     const look = editor.getByRole('list', { name: 'Worth a look' });
@@ -362,13 +379,13 @@ describe('Recipe builder — the problem is marked where it is (2026-10-04)', ()
   });
 
   it('ALineWithNoProblem_SaysNothing', () => {
-    render(<RecipeBuilder catalog={CATALOG} initialRecipeId="pancakes" />);
+    render(<RecipeScreen catalog={CATALOG} recipeId="pancakes" />);
     const lines = within(screen.getByRole('list', { name: 'Ingredient lines' })).getAllByRole('listitem');
     expect(lines.some((l) => /priced package|pick an ingredient/.test(l.textContent ?? ''))).toBe(false);
   });
 
   it('NoMealPicked_MarksMealFit', () => {
-    render(<RecipeBuilder catalog={{ ...CATALOG, recipes: [recipe({ id: 'pancakes', name: 'Pancakes', mealFit: [], lines: CATALOG.recipes[0].lines })] }} initialRecipeId="pancakes" />);
+    render(<RecipeScreen catalog={{ ...CATALOG, recipes: [recipe({ id: 'pancakes', name: 'Pancakes', mealFit: [], lines: CATALOG.recipes[0].lines })] }} recipeId="pancakes" />);
     expect(within(screen.getByRole('group', { name: 'Meal fit' })).getByText('Pick at least one meal.')).toBeTruthy();
   });
 
@@ -387,7 +404,7 @@ describe('Recipe builder — the problem is marked where it is (2026-10-04)', ()
  */
 describe('Recipe builder — make a recipe a single food (2026-10-05)', () => {
   const toast = () => within(screen.getByRole('region', { name: 'Edit Toast' }));
-  const openToast = () => render(<RecipeBuilder catalog={CATALOG} initialRecipeId="toast" />);
+  const openToast = () => render(<RecipeScreen catalog={CATALOG} recipeId="toast" />);
 
   it('ARecipe_OffersToBecomeASingleFood_AndASingleFoodDoesNot', () => {
     openToast();
@@ -435,14 +452,14 @@ describe('Recipe builder — make a recipe a single food (2026-10-05)', () => {
 
   it('ARecipeWithIngredients_IsToldWhatTheMoveReplaces', async () => {
     const user = userEvent.setup();
-    render(<RecipeBuilder catalog={CATALOG} initialRecipeId="pancakes" />);
+    render(<RecipeScreen catalog={CATALOG} recipeId="pancakes" />);
     await user.click(within(screen.getByRole('region', { name: 'Edit Pancakes' })).getByRole('button', { name: 'Make it a single food' }));
     expect(within(screen.getByRole('region', { name: 'Make Pancakes a single food' })).getByText(/This replaces its 2 ingredients with that one thing\./)).toBeTruthy();
   });
 });
 
 describe('Recipe builder — one A–Z list with filters (2026-10-04)', () => {
-  const names = () => within(list()).getAllByRole('button').map((b) => (b.textContent ?? '').split(' · ')[0].replace(/(Needs fixes|Draft|Published|Retired)$/, ''));
+  const names = () => Array.from(list().querySelectorAll('tbody tr > td:first-child:not([colspan])')).map((c) => c.textContent);
   const BIG: Catalog = {
     ...CATALOG,
     recipes: [
@@ -500,9 +517,106 @@ describe('Recipe builder — one A–Z list with filters (2026-10-04)', () => {
     expect(names()).toHaveLength(5);
   });
 
-  it('TheOpenItem_StaysOpen_WhenFilteredOutOfTheList', async () => {
-    render(<RecipeBuilder catalog={BIG} initialRecipeId="pancakes" />);
+  it('TheOpenFood_StaysOpen_WhenFilteredOutOfTheList', async () => {
+    render(<RecipeBuilder catalog={BIG} initialRecipeId="bacon" />);
+    await userEvent.setup().click(screen.getByRole('tab', { name: /^Recipes/ }));
+    expect(screen.getByRole('region', { name: 'Edit Bacon' })).toBeTruthy();
+  });
+});
+
+/**
+ * Patrick, 2026-10-05: "more like the UX of the Price Book tab — a screen wide list with useful columns of
+ * data with an editor that opens." A single food opens under its row; a recipe's editor is too long for
+ * that, so its name is a link to its own page and the list's filters go with it.
+ */
+describe('Recipe builder — a wide list; foods open in it, recipes on their own page (2026-10-05)', () => {
+  const cells = (name: string) => within(within(list()).getByText(name).closest('tr') as HTMLElement).getAllByRole('cell').map((c) => c.textContent);
+
+  it('TheList_HasAColumnForEachThingALeaderScansFor', () => {
+    render(<RecipeBuilder catalog={CATALOG} />);
+    expect(within(list()).getAllByRole('columnheader').map((h) => h.textContent)).toEqual(['Name', 'Kind', 'Meals', 'Each person gets', 'Variations', 'Cost / person', 'Status']);
+  });
+
+  it('ASingleFoodRow_SaysWhatEachPersonGets_AndItsCost', () => {
+    render(<RecipeBuilder catalog={CATALOG} />);
+    // 3 slices of a $7.49 / 16-slice pack.
+    expect(cells('Bacon')).toEqual(['Bacon', 'Food', 'Breakfast', '3 slices', '1 needs a look', '$1.40', 'Published']);
+  });
+
+  it('ARecipeRow_CountsItsIngredients', () => {
+    render(<RecipeBuilder catalog={CATALOG} />);
+    expect(cells('Pancakes').slice(1, 4)).toEqual(['Recipe', 'Breakfast', '2 ingredients']);
+  });
+
+  it('ASingleFood_OpensUnderItsRow_AndClosesOnASecondClick', async () => {
+    const user = userEvent.setup();
+    render(<RecipeBuilder catalog={CATALOG} />);
+    const name = within(list()).getByRole('button', { name: 'Bacon' });
+    await user.click(name);
+    const opened = within(list()).getByRole('row', { name: 'Details for Bacon' }).previousElementSibling === name.closest('tr');
+    await user.click(name);
+    expect([opened, screen.queryByRole('region', { name: 'Edit Bacon' })]).toEqual([true, null]);
+  });
+
+  it('ARecipe_IsALinkToItsOwnPage_CarryingTheFilter', async () => {
+    render(<RecipeBuilder catalog={CATALOG} />);
+    await userEvent.setup().click(screen.getByRole('tab', { name: /^Recipes/ }));
+    expect(within(list()).getByRole('link', { name: 'Pancakes' }).getAttribute('href')).toBe('/admin/library/menu-monster/recipes/pancakes?kind=recipes');
+  });
+
+  it('ALinkThatNamesARecipe_OpensNothingInTheList', () => {
+    render(<RecipeBuilder catalog={CATALOG} initialRecipeId="pancakes" />);
+    expect(screen.queryByRole('region', { name: 'Edit Pancakes' })).toBeNull();
+  });
+
+  it('NewRecipe_IsALinkToABlankPage', () => {
+    render(<RecipeBuilder catalog={CATALOG} />);
+    expect(screen.getByRole('link', { name: '+ New recipe' }).getAttribute('href')).toBe('/admin/library/menu-monster/recipes/new');
+  });
+
+  it('TheList_StartsFromTheFilterInTheUrl', () => {
+    render(<RecipeBuilder catalog={CATALOG} initialFilter={{ kind: 'recipes', meal: '', q: 'pan' }} />);
+    expect(within(list()).getAllByRole('row').slice(1).map((r) => within(r).getAllByRole('cell')[0].textContent)).toEqual(['Pancakes']);
+  });
+
+  it('AFilterChange_IsRememberedInTheAddress', async () => {
+    render(<RecipeBuilder catalog={CATALOG} />);
     await userEvent.setup().click(screen.getByRole('tab', { name: /^Single foods/ }));
-    expect(screen.getByRole('region', { name: 'Edit Pancakes' })).toBeTruthy();
+    expect(window.location.search).toBe('?tab=recipes&kind=foods');
+  });
+});
+
+describe('Recipe page — the recipes either side (2026-10-05)', () => {
+  const others = () => within(screen.getByRole('navigation', { name: 'Other recipes' }));
+
+  it('Next_GoesToTheNextRecipeInTheList', async () => {
+    render(<RecipeScreen catalog={CATALOG} recipeId="pancakes" />);
+    await userEvent.setup().click(others().getByRole('button', { name: 'Next: Toast →' }));
+    expect(nav.push).toHaveBeenCalledWith('/admin/library/menu-monster/recipes/toast');
+  });
+
+  it('Previous_IsGreyedAtTheStartOfTheList', () => {
+    // Bacon comes first A to Z, but it is a single food: it opens in the list, not on a page.
+    render(<RecipeScreen catalog={CATALOG} recipeId="pancakes" />);
+    expect((others().getByRole('button', { name: '← Previous' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('ANewRecipe_HasNoNeighbours', () => {
+    render(<RecipeScreen catalog={CATALOG} recipeId="new" />);
+    expect(screen.queryByRole('navigation', { name: 'Other recipes' })).toBeNull();
+  });
+
+  it('ANewRecipe_OnceSaved_MovesToItsOwnAddress', async () => {
+    const user = userEvent.setup();
+    render(<RecipeScreen catalog={CATALOG} recipeId="new" />);
+    const editor = within(screen.getByRole('region', { name: 'New recipe' }));
+    await user.type(editor.getByLabelText('Name'), 'Trail mix');
+    await user.click(editor.getByRole('button', { name: 'Save draft' }));
+    await waitFor(() => expect(nav.replace).toHaveBeenCalledWith('/admin/library/menu-monster/recipes/toast'));
+  });
+
+  it('TheStatus_IsSaidOnThePage', () => {
+    render(<RecipeScreen catalog={CATALOG} recipeId="toast" />);
+    expect(within(screen.getByRole('region', { name: 'Edit Toast' })).getByText('Needs fixes')).toBeTruthy();
   });
 });
