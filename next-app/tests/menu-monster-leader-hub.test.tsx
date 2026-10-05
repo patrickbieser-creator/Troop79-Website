@@ -235,11 +235,11 @@ describe('menus page', () => {
     expect(screen.queryByText(/Sign in to save your menu/)).toBeNull();
   });
 
-  it('Leader_HasNoDuplicateOrDeleteOnTheReadOnlyList_OnTheMenusPage', async () => {
+  it('Leader_HasTheRowMenu_OnEveryScoutsMenu_OnTheMenusPage', async () => {
+    // Patrick, 2026-10-05: leaders have full rights to scout menus, the list's Duplicate and Delete included.
     mocks.all = [summary(1)];
     await page();
-    expect(screen.queryByRole('button', { name: /^More for/ })).toBeNull();
-    expect(screen.queryByRole('button', { name: /Delete|Duplicate/ })).toBeNull();
+    expect(screen.getByRole('button', { name: 'More for Menu 1' })).toBeTruthy();
   });
 
   it('Leader_SeesMyMenusAndNewMenu_OnTheMenusPage', async () => {

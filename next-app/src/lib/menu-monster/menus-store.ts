@@ -421,34 +421,42 @@ export async function saveActualsWith(
   return { status: data?.length ? 'saved' : 'not_found' };
 }
 
-/** A copy of the scout's own menu, as a new menu. Null when it isn't theirs;
- *  MENU_LIMIT when the scout is at the cap. */
-export async function duplicateMenuWith(sb: SupabaseClient, actor: AuditActor, id: string): Promise<string | null> {
+/**
+ * `ownerId` on the writes below: whose menu it is. It defaults to the actor (someone acting on their own
+ * menu). A LEADER working on a scout's menu passes the scout's id (the caller — menu-actions.ts menuWriter —
+ * has established they are a leader): the row is found and written as the owner's, the copy / the typed-in
+ * clean-up / the reveal are the owner's, and the audit row still names the leader who did it.
+ */
+const asLeaderNote = (actor: AuditActor, ownerId: number | null) => (ownerId !== actor.personId ? ` as a leader (it belongs to person ${ownerId})` : '');
+
+/** A copy of the owner's menu, as a new menu of the owner's. Null when it isn't theirs;
+ *  MENU_LIMIT when the owner is at the cap. */
+export async function duplicateMenuWith(sb: SupabaseClient, actor: AuditActor, id: string, ownerId: number | null = actor.personId): Promise<string | null> {
   const src = await loadMenuWith(sb, id);
-  if (!src || src.ownerPersonId !== actor.personId) return null;
-  if (await atMenuLimit(sb, actor.personId)) return MENU_LIMIT;
+  if (!src || src.ownerPersonId !== ownerId) return null;
+  if (await atMenuLimit(sb, ownerId)) return MENU_LIMIT;
   const { data, error } = await sb
     .from('mm_menus')
-    .insert({ ...toRow({ ...src.menu, name: `Copy of ${src.menu.name}`.slice(0, 120) }, src.snapshot), owner_person_id: actor.personId })
+    .insert({ ...toRow({ ...src.menu, name: `Copy of ${src.menu.name}`.slice(0, 120) }, src.snapshot), owner_person_id: ownerId })
     .select('id')
     .single();
   if (error) throw new Error(`duplicate menu: ${error.message}`);
-  await audit(sb, actor, 'duplicate', data.id as string, `duplicated menu "${src.menu.name}"`);
+  await audit(sb, actor, 'duplicate', data.id as string, `duplicated menu "${src.menu.name}"${asLeaderNote(actor, ownerId)}`);
   return data.id as string;
 }
 
-/** True when the scout's own menu was deleted. */
-export async function deleteMenuWith(sb: SupabaseClient, actor: AuditActor, id: string): Promise<boolean> {
+/** True when the owner's menu was deleted. */
+export async function deleteMenuWith(sb: SupabaseClient, actor: AuditActor, id: string, ownerId: number | null = actor.personId): Promise<boolean> {
   const { data, error } = await sb
     .from('mm_menus')
     .delete()
     .eq('id', id)
-    .eq('owner_person_id', actor.personId)
+    .eq('owner_person_id', ownerId)
     .select('name');
   if (error) throw new Error(`delete menu: ${error.message}`);
   if (!data?.length) return false;
-  await audit(sb, actor, 'delete', id, `deleted menu "${data[0].name as string}"`);
-  await dropOrphanTypedIns(sb, actor);
+  await audit(sb, actor, 'delete', id, `deleted menu "${data[0].name as string}"${asLeaderNote(actor, ownerId)}`);
+  await dropOrphanTypedIns(sb, { ...actor, personId: ownerId });
   return true;
 }
 
@@ -457,18 +465,18 @@ export async function deleteMenuWith(sb: SupabaseClient, actor: AuditActor, id: 
  * resets shared_at (the shelf's clock). Never touches updated_at: an open Plan
  * tab keeps its version token. False when the menu isn't the actor's.
  */
-export async function setMenuSharedWith(sb: SupabaseClient, actor: AuditActor, id: string, on: boolean): Promise<boolean> {
+export async function setMenuSharedWith(sb: SupabaseClient, actor: AuditActor, id: string, on: boolean, ownerId: number | null = actor.personId): Promise<boolean> {
   const { data, error } = await sb
     .from('mm_menus')
     .update({ shared_at: on ? new Date().toISOString() : null })
     .eq('id', id)
-    .eq('owner_person_id', actor.personId)
+    .eq('owner_person_id', ownerId)
     .select('name, meals, shopping, actuals');
   if (error) throw new Error(`share menu: ${error.message}`);
   if (!data?.length) return false;
   const name = data[0].name as string;
-  if (on) await revealTypedIns(sb, actor, typedInIdsIn([data[0].meals, data[0].shopping, data[0].actuals]));
-  await audit(sb, actor, on ? 'share' : 'unshare', id, on ? `shared menu "${name}" with the troop` : `stopped sharing menu "${name}"`);
+  if (on) await revealTypedIns(sb, { ...actor, personId: ownerId }, typedInIdsIn([data[0].meals, data[0].shopping, data[0].actuals]));
+  await audit(sb, actor, on ? 'share' : 'unshare', id, (on ? `shared menu "${name}" with the troop` : `stopped sharing menu "${name}"`) + asLeaderNote(actor, ownerId));
   return true;
 }
 

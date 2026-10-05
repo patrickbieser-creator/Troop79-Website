@@ -74,8 +74,9 @@ export interface PlanTabProps {
   readOnly?: boolean;
   /** Credit name of the scout who planned it (read-only view). */
   plannedBy?: string | null;
-  /** A leader editing someone else's menu: it saves, but nothing is typed in under the leader's name
-   *  (a new ingredient or brand would be theirs, not the owner's) and no recipe version is shared. */
+  /** A leader working on someone else's menu: everything saves as the owner's menu, and a new ingredient
+   *  typed here is filed under the owner (HelperMenu). Only "Share this version as a new recipe" is held
+   *  back — that recipe would be the leader's, not the scout's. */
   helper?: boolean;
   /** What the page says about who is looking (menu name credit, copy, review note…); replaces the read-only line. */
   aside?: ReactNode;
@@ -272,9 +273,9 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
   }
 
   // Release C typed-ins and 4C "Share this version" belong to a signed-in scout's saved menu.
-  const canTypeIn = !storeProp && menuId != null && !readOnly && !helper;
+  const canTypeIn = !storeProp && menuId != null && !readOnly;
   // A typed brand needs a signed-in person to add it; a menu kept on this computer can still choose known brands.
-  const canTypeBrand = !storeProp && !readOnly && !helper;
+  const canTypeBrand = !storeProp && !readOnly;
   const shareVersionMenuId = canSave && !storeProp && menuId != null && !isNew && !dirty && !helper ? menuId : null;
   const dialerLabel = (k: RestrictionKey) => RESTRICTION_BY_KEY[k].label;
 
@@ -528,7 +529,8 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
                                 onBrands={readOnly ? undefined : setBrands}
                                 lineFor={(id) => lineByIng.get(id)}
                                 onTypeBrand={canTypeBrand ? typeBrand : undefined}
-                                onSuggestBrand={canTypeBrand ? suggestRecipeBrandAction : undefined}
+                                // A recipe's suggested brand is its author's to set: not offered to a leader on the scout's menu (qa-lead).
+                                onSuggestBrand={canTypeBrand && !helper ? suggestRecipeBrandAction : undefined}
                               />
                             </div>
                           )}

@@ -136,7 +136,7 @@ const pages: [string, (id: string) => Promise<unknown>][] = [
 ];
 
 describe.each(pages)('%s page access matrix', (_name, render) => {
-  const readOnlyOf = async () => find(await render(ID), (p) => 'menuId' in p)?.readOnly;
+  const readOnlyOf = async () => find(await render(ID), (p) => 'updatedAt' in p)?.readOnly;
 
   it('Owner_Edits_WhenTheScoutOwnsTheMenu', async () => {
     mocks.session = SCOUT;
@@ -146,7 +146,7 @@ describe.each(pages)('%s page access matrix', (_name, render) => {
   it('Leader_Edits_AScoutsMenu_WhenSignedInAsAPerson', async () => {
     // Patrick, 2026-10-05: leaders fix scout menus before the shopping trip.
     mocks.actor = LEADER;
-    const props = find(await render(ID), (p) => 'menuId' in p);
+    const props = find(await render(ID), (p) => 'updatedAt' in p);
     expect(props?.readOnly).toBeFalsy();
     expect(props?.helper).toBe(true);
   });
@@ -154,14 +154,14 @@ describe.each(pages)('%s page access matrix', (_name, render) => {
   it('Leader_StillOnlyReads_WhenTheirSignInNamesNoPerson', async () => {
     // A legacy leader cookie: nobody to credit a change to, so nothing saves.
     mocks.actor = { ...LEADER, personId: null };
-    const props = find(await render(ID), (p) => 'menuId' in p);
+    const props = find(await render(ID), (p) => 'updatedAt' in p);
     expect(props?.readOnly).toBe(true);
     expect(props?.helper).toBeFalsy();
   });
 
   it('Owner_IsNotAHelper_OnTheirOwnMenu', async () => {
     mocks.session = SCOUT;
-    expect(find(await render(ID), (p) => 'menuId' in p)?.helper).toBeFalsy();
+    expect(find(await render(ID), (p) => 'updatedAt' in p)?.helper).toBeFalsy();
   });
 
   it('Leader_SeesWhoPlannedIt_WhenReadingReadOnly', async () => {

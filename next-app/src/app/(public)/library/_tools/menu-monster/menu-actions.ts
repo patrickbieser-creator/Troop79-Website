@@ -78,6 +78,29 @@ async function allowedOuting(menu: Menu, linkedId: number | null): Promise<Menu>
   return outings.some((o) => o.id === menu.calendarEntryId) ? menu : { ...menu, calendarEntryId: null };
 }
 
+/**
+ * Who is writing to this menu, and whose it is. The owner writes their own. A LEADER — an adult holding an
+ * admin capability, signed in as one person, re-checked on every call — writes anyone's (Patrick,
+ * 2026-10-05: "Leaders need full rights to scout menus. They often will work side by side with scouts on
+ * their menus at troop meetings"). The owner always comes from the row, never the payload; everyone else
+ * gets the answer a missing menu gets.
+ */
+async function menuWriter(id: unknown): Promise<{ actor: AuditActor; ownerId: number; own: boolean; current: NonNullable<Awaited<ReturnType<typeof loadMenuWith>>> } | Fail> {
+  const actor = await scoutActor();
+  if (isFail(actor)) return actor;
+  if (!isMenuId(id)) return { ok: false, error: NOT_YOURS };
+  const current = await loadMenuWith(createAdminClient(), id);
+  if (!current) return { ok: false, error: NOT_YOURS };
+  const own = current.ownerPersonId === actor.personId;
+  if (!own) {
+    // The leader check and the person the write is credited to must be the same sign-in (qa-lead).
+    const leader = await leaderActor();
+    if (isFail(leader) || leader.personId == null || leader.personId !== actor.personId) return { ok: false, error: NOT_YOURS };
+  }
+  return { actor, ownerId: current.ownerPersonId, own, current };
+}
+const isRefused = (v: object): v is Fail => 'ok' in v;
+
 export async function createMenuAction(raw: unknown): Promise<{ ok: true; id: string } | Fail> {
   const actor = await scoutActor();
   if (isFail(actor)) return actor;
@@ -94,26 +117,17 @@ export async function saveMenuAction(
   raw: unknown,
   expectedUpdatedAt: string
 ): Promise<{ ok: true; updatedAt: string } | Fail> {
-  const actor = await scoutActor();
-  if (isFail(actor)) return actor;
+  const signedIn = await scoutActor();
+  if (isFail(signedIn)) return signedIn;
   if (!isMenuId(id)) return { ok: false, error: NOT_YOURS };
   if (typeof expectedUpdatedAt !== 'string' || !Number.isFinite(Date.parse(expectedUpdatedAt))) {
     return { ok: false, error: 'Reload this menu, then make your change again.' };
   }
   if (tooBig(raw)) return { ok: false, error: TOO_BIG };
+  const who = await menuWriter(id);
+  if (isRefused(who)) return who;
+  const { actor, own, current } = who;
   const sb = createAdminClient();
-  const current = await loadMenuWith(sb, id);
-  if (!current) return { ok: false, error: NOT_YOURS };
-  // Whose menu it is comes from the row, never the payload. The owner saves it; so does a leader (Patrick,
-  // 2026-10-05: "Adult leaders need full rights to edit (and fix) scout menus before they go shopping") —
-  // an adult holding an admin capability and signed in as one person, re-checked here on every save.
-  // Anyone else gets the same answer as for a menu that does not exist.
-  const own = current.ownerPersonId === actor.personId;
-  if (!own) {
-    // The leader check and the person the save is credited to must be the same sign-in (qa-lead).
-    const leader = await leaderActor();
-    if (isFail(leader) || leader.personId == null || leader.personId !== actor.personId) return { ok: false, error: NOT_YOURS };
-  }
   // Cleaned against the OWNER'S catalog either way: the menu keeps the owner's own recipes and typed-in
   // ingredients, and a leader cannot put one of their private recipes on a scout's menu.
   const { menu: cleaned, catalog, nameError } = await cleanMenu(raw, current.ownerPersonId);
@@ -127,20 +141,19 @@ export async function saveMenuAction(
   return { ok: false, error: NOT_YOURS };
 }
 
+/** A copy of the menu — the OWNER'S copy, whoever made it (a leader duplicating a scout's menu leaves the scout with two). */
 export async function duplicateMenuAction(id: string): Promise<{ ok: true; id: string } | Fail> {
-  const actor = await scoutActor();
-  if (isFail(actor)) return actor;
-  if (!isMenuId(id)) return { ok: false, error: NOT_YOURS };
-  const copy = await duplicateMenuWith(createAdminClient(), actor, id);
-  if (copy === MENU_LIMIT) return { ok: false, error: LIMIT_MESSAGE };
+  const who = await menuWriter(id);
+  if (isRefused(who)) return who;
+  const copy = await duplicateMenuWith(createAdminClient(), who.actor, id, who.ownerId);
+  if (copy === MENU_LIMIT) return { ok: false, error: who.own ? LIMIT_MESSAGE : `They already have ${MAX_MENUS_PER_SCOUT} menus. Delete one they don’t need to make room.` };
   return copy ? { ok: true, id: copy } : { ok: false, error: NOT_YOURS };
 }
 
 export async function deleteMenuAction(id: string): Promise<{ ok: true } | Fail> {
-  const actor = await scoutActor();
-  if (isFail(actor)) return actor;
-  if (!isMenuId(id)) return { ok: false, error: NOT_YOURS };
-  return (await deleteMenuWith(createAdminClient(), actor, id)) ? { ok: true } : { ok: false, error: NOT_YOURS };
+  const who = await menuWriter(id);
+  if (isRefused(who)) return who;
+  return (await deleteMenuWith(createAdminClient(), who.actor, id, who.ownerId)) ? { ok: true } : { ok: false, error: NOT_YOURS };
 }
 
 /**
@@ -191,10 +204,9 @@ export async function saveActualsAction(
 
 /** Share with the troop (`on`) or Stop sharing — the session scout's own menu only (Phase 3). */
 export async function shareMenuAction(id: string, on: boolean): Promise<{ ok: true } | Fail> {
-  const actor = await scoutActor();
-  if (isFail(actor)) return actor;
-  if (!isMenuId(id)) return { ok: false, error: NOT_YOURS };
-  return (await setMenuSharedWith(createAdminClient(), actor, id, on === true)) ? { ok: true } : { ok: false, error: NOT_YOURS };
+  const who = await menuWriter(id);
+  if (isRefused(who)) return who;
+  return (await setMenuSharedWith(createAdminClient(), who.actor, id, on === true, who.ownerId)) ? { ok: true } : { ok: false, error: NOT_YOURS };
 }
 
 /**
@@ -239,6 +251,19 @@ export async function hideMenuAction(id: string): Promise<{ ok: true } | Fail> {
   return (await hideMenuWith(createAdminClient(), actor, id)) ? { ok: true } : { ok: false, error: 'That menu is not shared any more.' };
 }
 
+/**
+ * Who a typed-in ingredient or package belongs to. Normally the person typing. When a leader types one while
+ * working on a scout's menu (`onMenuId`, checked by menuWriter), it is filed under the MENU'S OWNER: a
+ * typed-in is private to its owner until a leader keeps it, so one filed under the leader could not be used
+ * on the scout's menu at all. The label stays the leader's, so the audit trail says who typed it.
+ */
+async function typedInOwner(onMenuId: string | undefined): Promise<AuditActor | Fail> {
+  if (onMenuId === undefined) return scoutActor();
+  const who = await menuWriter(onMenuId);
+  if (isRefused(who)) return who;
+  return who.own ? who.actor : { personId: who.ownerId, label: `${who.actor.label} (a leader, on their menu)` };
+}
+
 const TYPED_IN_ERRORS = {
   ingredient_cap: 'You have 10 new ingredients waiting for a leader to check them. Share a menu or recipe that uses one, or remove one you don’t need.',
   duplicate_ingredient: 'The troop’s price book already has that. Pick it from the search instead.',
@@ -251,8 +276,8 @@ const TYPED_IN_ERRORS = {
  * package (size in the recipe unit + price). Cleaned with the recipe editor's
  * rules, owned by the session scout; the meal then adds it like any other.
  */
-export async function addMenuIngredientAction(raw: unknown): Promise<{ ok: true; id: string } | Fail> {
-  const actor = await scoutActor();
+export async function addMenuIngredientAction(raw: unknown, onMenuId?: string): Promise<{ ok: true; id: string } | Fail> {
+  const actor = await typedInOwner(onMenuId);
   if (isFail(actor)) return actor;
   if (tooBig(raw, 4 * 1024)) return { ok: false, error: TYPED_IN_ERRORS.invalid };
   const catalog = await loadMenuMonsterCatalog(actor.personId);
@@ -273,8 +298,8 @@ const PACKAGE_ERRORS = {
  * price. Inside the band of the cheapest live package it goes live at once;
  * outside it waits for a leader and, meanwhile, prices only this scout's menus.
  */
-export async function addScoutPackageAction(raw: unknown): Promise<{ ok: true; status: 'live' | 'held' | 'same'; id: string } | Fail> {
-  const actor = await scoutActor();
+export async function addScoutPackageAction(raw: unknown, onMenuId?: string): Promise<{ ok: true; status: 'live' | 'held' | 'same'; id: string } | Fail> {
+  const actor = await typedInOwner(onMenuId);
   if (isFail(actor)) return actor;
   if (tooBig(raw, 2 * 1024)) return { ok: false, error: PACKAGE_ERRORS.invalid };
   const pkg = sanitizeScoutPackage(raw, await loadMenuMonsterCatalog(actor.personId));

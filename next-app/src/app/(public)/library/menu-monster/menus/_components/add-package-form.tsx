@@ -9,13 +9,14 @@
  * menus until a leader checks it. Escape or Cancel closes it.
  */
 
-import { useId, useState, type KeyboardEvent } from 'react';
+import { useContext, useId, useState, type KeyboardEvent } from 'react';
 import { Button } from '@/app/_components/button';
 import { Field, SelectInput, TextInput } from '@/app/_components/form';
 import type { Conversion, Ingredient, Package } from '@/lib/menu-monster/types';
 import { packageSizeUnits, packageYield, scoutPackageProblem } from '@/lib/menu-monster/scout-packages';
 import { parseQty } from '@/lib/menu-monster/units';
 import { addScoutPackageAction } from '../../../_tools/menu-monster/menu-actions';
+import { HelperMenu } from './helper-menu';
 import s from './workspace.module.css';
 
 export type AddedPackage = { pkg: Package; status: 'live' | 'held' | 'same' };
@@ -32,6 +33,8 @@ export function AddPackageForm({
   onCancel: () => void;
 }) {
   const uid = useId();
+  // A leader on a scout's menu: the package is filed under the scout (helper-menu.ts).
+  const onMenu = useContext(HelperMenu);
   const units = packageSizeUnits(ingredient, conversions);
   const [name, setName] = useState('');
   const [store, setStore] = useState('');
@@ -49,7 +52,8 @@ export function AddPackageForm({
     if (problem || yld == null) return setError(problem ?? 'Enter how much one package holds — check the label.');
     setBusy(true);
     setError(null);
-    const res = await addScoutPackageAction({ ingredientId: ingredient.id, name, store, size: n, sizeUnit: unit, price: p });
+    const payload = { ingredientId: ingredient.id, name, store, size: n, sizeUnit: unit, price: p };
+    const res = await (onMenu ? addScoutPackageAction(payload, onMenu) : addScoutPackageAction(payload));
     setBusy(false);
     if (!res.ok) return setError(res.error);
     const pkg: Package = {

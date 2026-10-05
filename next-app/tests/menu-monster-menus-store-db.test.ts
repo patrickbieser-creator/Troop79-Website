@@ -124,9 +124,33 @@ describe('menu store', () => {
     expect(data).toEqual({ actuals: { milk: { packageId: 'p-milk', qty: 1, pricePaid: 3.5 } }, gear_extras: ['Tarp'] });
   });
 
-  it('LeaderCannotDelete_AScoutsMenu', async () => {
+  // "Leaders need full rights to scout menus" (Patrick, 2026-10-05): the store acts on the OWNER'S menu when
+  // the caller names the owner — and only then. Without it, someone else's menu is still out of reach.
+  it('SomeoneElse_CannotDelete_WithoutNamingTheOwner', async () => {
     const id = await createMenuWith(admin, other, menu(), CATALOG);
     expect(await deleteMenuWith(admin, CHARLIE, id)).toBe(false);
+    expect(await loadMenuWith(admin, id)).not.toBeNull();
+  });
+
+  it('Leader_DeletesAScoutsMenu_WhenActingOnTheOwnersMenu', async () => {
+    const id = await createMenuWith(admin, other, menu(), CATALOG);
+    expect(await deleteMenuWith(admin, CHARLIE, id, other.personId)).toBe(true);
+    expect(await loadMenuWith(admin, id)).toBeNull();
+    expect((await auditSummaries()).some((x) => /deleted menu .* as a leader/.test(x))).toBe(true);
+  });
+
+  it('Leader_DuplicatesAScoutsMenu_AndTheCopyIsTheScouts', async () => {
+    const id = await createMenuWith(admin, other, menu(), CATALOG);
+    const copy = await duplicateMenuWith(admin, CHARLIE, id, other.personId);
+    expect(typeof copy).toBe('string');
+    expect((await loadMenuWith(admin, copy as string))?.ownerPersonId).toBe(other.personId);
+  });
+
+  it('NamingTheWrongOwner_FindsNothing', async () => {
+    // The owner named must be the row's owner: naming yourself on someone else's menu deletes nothing.
+    const id = await createMenuWith(admin, other, menu(), CATALOG);
+    expect(await deleteMenuWith(admin, CHARLIE, id, CHARLIE.personId)).toBe(false);
+    expect(await duplicateMenuWith(admin, CHARLIE, id, CHARLIE.personId)).toBeNull();
     expect(await loadMenuWith(admin, id)).not.toBeNull();
   });
 

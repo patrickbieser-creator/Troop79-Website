@@ -10,11 +10,12 @@
  * form and leaves it open.
  */
 
-import { useState } from 'react';
+import { useContext, useState } from 'react';
 import type { Catalog } from '@/lib/menu-monster/types';
 import type { NewIngredient } from '@/lib/menu-monster/scout-ingredients';
 import { NewIngredientForm } from '../../recipes/_components/new-ingredient-form';
 import { addMenuIngredientAction } from '../../../_tools/menu-monster/menu-actions';
+import { HelperMenu } from './helper-menu';
 import s from './workspace.module.css';
 
 export function MenuNewIngredient({
@@ -31,12 +32,14 @@ export function MenuNewIngredient({
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // A leader on a scout's menu: the new ingredient is filed under the scout (helper-menu.ts).
+  const onMenu = useContext(HelperMenu);
 
   async function add(n: NewIngredient) {
     if (busy) return;
     setBusy(true);
     setError(null);
-    const res = await addMenuIngredientAction(n);
+    const res = await (onMenu ? addMenuIngredientAction(n, onMenu) : addMenuIngredientAction(n));
     setBusy(false);
     if (!res.ok) return setError(res.error);
     onAdded({ ...n, key: res.id });

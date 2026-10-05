@@ -43,11 +43,9 @@ export default async function MenuSharePage({ params }: { params: Promise<{ menu
         <div className={s.tabs}>
           <MenuTabs menuId={stored.id} active="share" access={view.access} />
         </div>
-        {view.access === 'owner' ? (
-          <SharePanel menuId={stored.id} credit={credit} status={status} />
-        ) : (
-          <ReviewPanel menuId={stored.id} note={stored.review?.note ?? ''} status={status} plannedBy={view.plannedBy} />
-        )}
+        {/* The owner shares; a leader reviews — and, working on the scout's menu, can share it for them too. */}
+        {(view.access === 'owner' || view.helping) && <SharePanel menuId={stored.id} credit={credit} status={status} />}
+        {view.access !== 'owner' && <ReviewPanel menuId={stored.id} note={stored.review?.note ?? ''} status={status} plannedBy={view.plannedBy} />}
       </PageShell>
     </>
   );

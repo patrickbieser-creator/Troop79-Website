@@ -40,7 +40,18 @@ export interface MenuRowData {
   shared?: boolean;
 }
 
-export function MenusList({ rows, readOnly = false, emptyText }: { rows: MenuRowData[]; readOnly?: boolean; emptyText?: string }) {
+export function MenusList({
+  rows,
+  readOnly = false,
+  showOwner = readOnly,
+  emptyText
+}: {
+  rows: MenuRowData[];
+  readOnly?: boolean;
+  /** Say whose each menu is and when it was edited: any list that is not the viewer's own. */
+  showOwner?: boolean;
+  emptyText?: string;
+}) {
   const router = useRouter();
   const [confirming, setConfirming] = useState<string | null>(null);
   const [gone, setGone] = useState<ReadonlySet<string>>(new Set());
@@ -87,12 +98,12 @@ export function MenusList({ rows, readOnly = false, emptyText }: { rows: MenuRow
               </Link>
               <span className={s.meta}>
                 {[
-                  readOnly ? r.ownerName : null,
+                  showOwner ? r.ownerName : null,
                   r.contextLabel,
                   r.outingName,
                   `${r.mealCount} ${r.mealCount === 1 ? 'meal' : 'meals'}`,
                   r.shared ? 'Shared' : null,
-                  readOnly && r.updatedAt ? `edited ${fmtDate(r.updatedAt)}` : null
+                  showOwner && r.updatedAt ? `edited ${fmtDate(r.updatedAt)}` : null
                 ]
                   .filter(Boolean)
                   .join(' · ')}
@@ -111,7 +122,9 @@ export function MenusList({ rows, readOnly = false, emptyText }: { rows: MenuRow
             )}
             {!readOnly && confirming === r.id && (
               <div className={s.confirm} role="group" aria-label={`Delete ${r.name}`}>
-                <span>Delete “{r.name}”? This can’t be undone.</span>
+                <span>
+                  Delete “{r.name}”{showOwner && r.ownerName ? `, ${r.ownerName}’s menu` : ''}? This can’t be undone.
+                </span>
                 <Button size="sm" variant="danger" disabled={busy} onClick={() => void remove(r.id)}>
                   Delete menu
                 </Button>

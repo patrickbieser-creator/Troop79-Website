@@ -11,6 +11,7 @@ import { PageShell } from '@/app/_components/page-shell';
 import { ShoppingTab } from '../../_components/shopping-tab';
 import { MenuHeader, MenuTabs, NO_INDEX, listCrumb, loadViewableMenu, menuViewer } from '../../_components/scout-menus';
 import { ViewerAside } from '../../_components/viewer-aside';
+import { HelperMenuScope } from '../../_components/helper-menu';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Shopping — Menu Monster', robots: NO_INDEX };
@@ -24,6 +25,7 @@ export default async function MenuShoppingPage({ params }: { params: Promise<{ m
     <>
       <MenuHeader current="shopping" {...listCrumb(view.access)} />
       <PageShell>
+        <HelperMenuScope menuId={view.helping ? stored.id : null}>
         <ShoppingTab
           catalog={catalog}
           menuId={stored.id}
@@ -36,6 +38,7 @@ export default async function MenuShoppingPage({ params }: { params: Promise<{ m
           tabs={<MenuTabs menuId={stored.id} active="shopping" access={view.access} />}
           aside={<ViewerAside view={view} page="shopping" />}
         />
+        </HelperMenuScope>
       </PageShell>
     </>
   );

@@ -12,6 +12,7 @@ import { loadOutingsWith, loadPatrolNamesWith } from '@/lib/menu-monster/menus-d
 import { PageShell } from '@/app/_components/page-shell';
 import { PlanTab } from '../_components/plan-tab';
 import { ViewerAside } from '../_components/viewer-aside';
+import { HelperMenuScope } from '../_components/helper-menu';
 import { MenuHeader, MenuTabs, NO_INDEX, listCrumb, loadViewableMenu, menuViewer } from '../_components/scout-menus';
 
 export const dynamic = 'force-dynamic';
@@ -28,6 +29,7 @@ export default async function MenuPlanPage({ params, searchParams }: { params: P
     <>
       <MenuHeader current="plan" {...listCrumb(view.access)} />
       <PageShell>
+        <HelperMenuScope menuId={view.helping ? stored.id : null}>
         <PlanTab
           catalog={catalog}
           menuId={stored.id}
@@ -42,6 +44,7 @@ export default async function MenuPlanPage({ params, searchParams }: { params: P
           aside={<ViewerAside view={view} page="plan" />}
           openMeal={typeof meal === 'string' ? meal : null}
         />
+        </HelperMenuScope>
       </PageShell>
     </>
   );

@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   copyMenuWith: vi.fn(),
   setReviewNoteWith: vi.fn(),
   hideMenuWith: vi.fn(),
+  loadMenuWith: vi.fn(),
   addMenuIngredientWith: vi.fn(),
   addScoutPackageWith: vi.fn()
 }));
@@ -40,6 +41,7 @@ vi.mock('@/lib/menu-monster/menus-store', async (orig) => ({
   copyMenuWith: mocks.copyMenuWith,
   setReviewNoteWith: mocks.setReviewNoteWith,
   hideMenuWith: mocks.hideMenuWith,
+  loadMenuWith: mocks.loadMenuWith,
   addMenuIngredientWith: mocks.addMenuIngredientWith
 }));
 
@@ -55,6 +57,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.session = SCOUT;
   mocks.actor = null;
+  // A write on a menu reads whose it is first; by default it is the session scout's own.
+  mocks.loadMenuWith.mockResolvedValue({ ownerPersonId: 39, menu: { calendarEntryId: null } });
   mocks.setMenuSharedWith.mockResolvedValue(true);
   mocks.copyMenuWith.mockResolvedValue({ id: ID, droppedRecipes: 0 });
   mocks.setReviewNoteWith.mockResolvedValue(true);
@@ -66,7 +70,43 @@ beforeEach(() => {
 describe('shareMenuAction', () => {
   it('Scout_SharesAsThemselves_NeverAClientNamedPerson', async () => {
     expect(await shareMenuAction(ID, true)).toEqual({ ok: true });
-    expect(mocks.setMenuSharedWith).toHaveBeenCalledWith({ stub: true }, { personId: 39, label: 'Charlie W.' }, ID, true);
+    expect(mocks.setMenuSharedWith).toHaveBeenCalledWith({ stub: true }, { personId: 39, label: 'Charlie W.' }, ID, true, 39);
+  });
+
+  it('Leader_SharesAScoutsMenuForThem', async () => {
+    mocks.session = null;
+    mocks.actor = LEADER;
+    expect(await shareMenuAction(ID, true)).toEqual({ ok: true });
+    // Done by the leader (5), on the scout's (39) menu.
+    expect(mocks.setMenuSharedWith.mock.calls[0].slice(1)).toEqual([expect.objectContaining({ personId: 5 }), ID, true, 39]);
+  });
+
+  it('AnotherScout_CannotShareOrUnshareIt', async () => {
+    mocks.session = { ...SCOUT, personId: 7 };
+    expect((await shareMenuAction(ID, false)).ok).toBe(false);
+    expect(mocks.setMenuSharedWith).not.toHaveBeenCalled();
+  });
+
+  it('LeaderTypingAnIngredientOnAScoutsMenu_FilesItUnderTheScout', async () => {
+    // A typed-in is private to its owner until a leader keeps it; under the leader it could not go on the scout's menu.
+    mocks.session = null;
+    mocks.actor = LEADER;
+    await addMenuIngredientAction({ key: 'new:0000beef', name: 'Strawberry jam', kind: 'count', one: 'jar', many: 'jars', avoid: [], size: 1, price: 3.5, store: '' }, ID);
+    const call = mocks.addMenuIngredientWith.mock.calls[0];
+    expect(call?.[1]).toMatchObject({ personId: 39 });
+    // Without a menu named, a leader's typed-in is their own, as before.
+    mocks.addMenuIngredientWith.mockClear();
+    await addMenuIngredientAction({ key: 'new:0000beef', name: 'Strawberry jam', kind: 'count', one: 'jar', many: 'jars', avoid: [], size: 1, price: 3.5, store: '' });
+    const own = mocks.addMenuIngredientWith.mock.calls[0];
+    expect(own?.[1]).toMatchObject({ personId: 5 });
+  });
+
+  it('ParentTypingOnAScoutsMenu_IsRefused', async () => {
+    mocks.session = ADULT;
+    mocks.actor = { ...LEADER, capabilities: new Set() };
+    const res = await addMenuIngredientAction({ name: 'x' }, ID);
+    expect(res.ok).toBe(false);
+    expect(mocks.addMenuIngredientWith).not.toHaveBeenCalled();
   });
 
   it('Share_Fails_WhenNotSignedInAsAScout', async () => {

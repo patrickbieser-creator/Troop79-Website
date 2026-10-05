@@ -77,7 +77,8 @@ export default async function MyMenusPage({ searchParams }: { searchParams: Prom
         <PageShell width="narrow">
           {mine}
           <LeaderFilters all={all} outings={outings} owners={owners} filters={filters} />
-          <MenusList rows={rows} readOnly emptyText={filtered ? 'No menus match.' : 'Nobody has saved a menu yet.'} />
+          {/* A leader signed in as themselves has the owner's row menu (Open / Duplicate / Delete) on every menu. */}
+          <MenusList rows={rows} readOnly={viewer.personId == null} showOwner emptyText={filtered ? 'No menus match.' : 'Nobody has saved a menu yet.'} />
         </PageShell>
       </>
     );

@@ -100,6 +100,7 @@ describe('menu actions: who may call them', () => {
 
   it('Adult_DeletesAndDuplicates_AsThemselves', async () => {
     mocks.session = { ...SCOUT, subjectKind: 'adult', personId: 5, displayName: 'Pat B.' };
+    mocks.loadMenuWith.mockResolvedValue({ ownerPersonId: 5, menu: { calendarEntryId: null } });
     await Promise.all([duplicateMenuAction(ID), deleteMenuAction(ID)]);
     expect([mocks.duplicateMenuWith.mock.calls[0][1], mocks.deleteMenuWith.mock.calls[0][1]]).toEqual([
       expect.objectContaining({ personId: 5 }),
@@ -169,15 +170,31 @@ describe('menu actions: who may call them', () => {
     expect(mocks.saveMenuWith).not.toHaveBeenCalled();
   });
 
-  it('Leader_CannotDeleteOrDuplicateAScoutsMenu', async () => {
-    // Editing is not owning: the store answers for the owner only, and the action passes the leader as themselves.
+  // Patrick, 2026-10-05: "Leaders need full rights to scout menus. They often will work side by side with scouts."
+  it('Leader_DeletesAndDuplicatesAScoutsMenu_AsTheScoutsMenu', async () => {
     mocks.session = null;
     mocks.actor = { subjectKind: 'adult', personId: 82, label: 'Patrick B.', capabilities: new Set(['library.moderate']) };
-    mocks.deleteMenuWith.mockResolvedValue(false);
-    mocks.duplicateMenuWith.mockResolvedValue(null);
-    expect((await deleteMenuAction(ID)).ok).toBe(false);
+    expect((await duplicateMenuAction(ID)).ok).toBe(true);
+    expect((await deleteMenuAction(ID)).ok).toBe(true);
+    // The leader is who did it (the audit actor); the scout (39) is whose menu it is — the copy is the scout's.
+    expect(mocks.duplicateMenuWith.mock.calls[0].slice(1)).toEqual([expect.objectContaining({ personId: 82 }), ID, 39]);
+    expect(mocks.deleteMenuWith.mock.calls[0].slice(1)).toEqual([expect.objectContaining({ personId: 82 }), ID, 39]);
+  });
+
+  it('AdultWithNoAdminAccess_CannotDeleteOrDuplicateAScoutsMenu', async () => {
+    mocks.session = { ...SCOUT, subjectKind: 'adult', personId: 5, displayName: 'Pat B.' };
+    mocks.actor = { subjectKind: 'adult', personId: 5, label: 'Pat B.', capabilities: new Set() };
     expect((await duplicateMenuAction(ID)).ok).toBe(false);
-    expect(mocks.deleteMenuWith.mock.calls[0][1]).toMatchObject({ personId: 82 });
+    expect((await deleteMenuAction(ID)).ok).toBe(false);
+    expect(mocks.duplicateMenuWith).not.toHaveBeenCalled();
+    expect(mocks.deleteMenuWith).not.toHaveBeenCalled();
+  });
+
+  it('Scout_CannotDeleteOrDuplicateAnotherScoutsMenu', async () => {
+    mocks.loadMenuWith.mockResolvedValue({ ownerPersonId: 7, menu: { calendarEntryId: null } });
+    expect((await duplicateMenuAction(ID)).ok).toBe(false);
+    expect((await deleteMenuAction(ID)).ok).toBe(false);
+    expect(mocks.deleteMenuWith).not.toHaveBeenCalled();
   });
 
   it('Anyone_IsToldTheMenuIsntTheirs_WhenItDoesNotExist', async () => {

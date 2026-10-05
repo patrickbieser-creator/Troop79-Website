@@ -86,7 +86,7 @@ export interface ShoppingTabProps {
   readOnly?: boolean;
   /** Credit name of the scout who planned it (read-only view). */
   plannedBy?: string | null;
-  /** A leader editing someone else's menu: choices save, but prices are not reported and nothing is typed in from here. */
+  /** A leader working on someone else's menu. Nothing differs here: choices save as the owner's, and a package added from this tab is filed under the owner (HelperMenu, set by the page). */
   helper?: boolean;
   /** What the page says about who is looking (menu name credit, copy, review note…); replaces the read-only line. */
   aside?: ReactNode;
@@ -94,13 +94,10 @@ export interface ShoppingTabProps {
   store?: MenuStore;
 }
 
-export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updatedAt, snapshot: initialSnapshot, tabs, readOnly = false, helper = false, plannedBy = null, aside, store: storeProp }: ShoppingTabProps) {
+export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updatedAt, snapshot: initialSnapshot, tabs, readOnly = false, plannedBy = null, aside, store: storeProp }: ShoppingTabProps) {
   const uid = useId();
   const store = useMemo(() => storeProp ?? serverMenuStore(menuId ?? null), [storeProp, menuId]);
-  const { canSave } = store.caps;
-  // What the owner paid and the prices they report are theirs to record (and What we bought is the crew's tab).
-  const canPay = store.caps.canPay && !helper;
-  const canReport = store.caps.canReport && !helper;
+  const { canSave, canPay, canReport } = store.caps;
   // The price book as this page knows it: the server's, plus prices this scout just applied.
   const [catalog, setCatalog] = useState<Catalog>(catalogProp);
   const [saved, setSaved] = useState<{ menu: Menu; key: string }>(() => ({ menu: initial, key: keyOf(initial.shopping) }));
@@ -386,7 +383,7 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
                     catalog={catalog}
                     picks={draft.brands?.[l.ing.id] ?? []}
                     onBrands={(picks) => setBrands(l.ing.id, picks)}
-                    onTypeBrand={!storeProp && !readOnly && !helper ? (name) => typeBrand(l.ing.id, name) : undefined}
+                    onTypeBrand={!storeProp && !readOnly ? (name) => typeBrand(l.ing.id, name) : undefined}
                     labelCheck={needsLabelCheck(l, menu.restrictions, catalog)}
                   />
                 ))}
