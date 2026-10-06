@@ -150,6 +150,8 @@ export function BoughtTab({ catalog, menuId, menu, bought: initial, legacy, canR
   async function save() {
     if (problem) {
       setError(problem);
+      // Land on the first price that is wrong (D-331); a brand problem has no price box to mark.
+      listRef.current?.querySelector<HTMLInputElement>('input[data-price][aria-invalid="true"]')?.focus();
       return;
     }
     setSaving(true);

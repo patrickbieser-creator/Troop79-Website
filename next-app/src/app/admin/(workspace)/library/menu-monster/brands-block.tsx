@@ -60,6 +60,8 @@ export function BrandHead({
   const [line, setLine] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   const [mode, setMode] = useState<Mode | null>(null);
   const [text, setText] = useState('');
+  /** Save pressed with the name emptied: the input is marked until a name is typed. */
+  const [tried, setTried] = useState(false);
   const [target, setTarget] = useState('');
   const [diets, setDiets] = useState<RestrictionKey[] | null>(null);
 
@@ -84,6 +86,7 @@ export function BrandHead({
   function open(next: Mode) {
     setMode(next);
     setText(b.name);
+    setTried(false);
     setTarget('');
     setDiets(b.avoid);
   }
@@ -140,9 +143,10 @@ export function BrandHead({
       {line && (line.kind === 'error' ? <Notice>{line.text}</Notice> : <Notice variant="success">{line.text}</Notice>)}
 
       {mode === 'rename' && (
-        <form className={styles.inlineForm} onSubmit={(e) => { e.preventDefault(); run(() => renameBrand(b.id, text), `Renamed to “${text.trim()}”.`); }}>
-          <input className={lib.textInput} aria-label={`New name for ${b.name}`} value={text} maxLength={60} autoFocus onChange={(e) => setText(e.target.value)} />
-          <Button type="submit" size="sm" variant="primary" disabled={pending || !text.trim() || text.trim() === b.name} title={text.trim() === b.name ? 'No changes to save yet' : undefined}>
+        <form className={styles.inlineForm} onSubmit={(e) => { e.preventDefault(); if (!text.trim()) { setTried(true); (e.currentTarget.querySelector('input') as HTMLElement | null)?.focus(); return; } run(() => renameBrand(b.id, text), `Renamed to “${text.trim()}”.`); }}>
+          <input className={tried && !text.trim() ? `${lib.textInput} ${styles.bad}` : lib.textInput} aria-invalid={(tried && !text.trim()) || undefined} aria-label={`New name for ${b.name}`} value={text} maxLength={60} autoFocus onChange={(e) => setText(e.target.value)} />
+          {tried && !text.trim() && <p className={styles.badNote}>It needs a name.</p>}
+          <Button type="submit" size="sm" variant="primary" disabled={pending || text.trim() === b.name} title={text.trim() === b.name ? 'No changes to save yet' : undefined}>
             Save changes
           </Button>
           {cancel}

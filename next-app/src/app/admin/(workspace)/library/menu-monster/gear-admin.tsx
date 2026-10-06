@@ -37,6 +37,8 @@ export function GearAdmin({ items }: { items: GearAdminRow[] }) {
   /** Which item's "Used in" list is open (Patrick, 2026-10-06: the comma list was getting long and unruly). */
   const [usedOpen, setUsedOpen] = useState<number | null>(null);
   const [draft, setDraft] = useState<Draft>(BLANK);
+  /** The leader pressed Save with the name emptied: the name is marked in place until it is typed. */
+  const [tried, setTried] = useState(false);
   /** The item being merged away, and the one picked to take its place (Patrick, 2026-10-05: "Charcoal and Charcoal briquettes"). */
   const [merging, setMerging] = useState<{ id: number; into: number | null } | null>(null);
 
@@ -49,6 +51,7 @@ export function GearAdmin({ items }: { items: GearAdminRow[] }) {
         return;
       }
       setEditing(null);
+      setTried(false);
       setLine({ kind: 'ok', text: res.note ?? okText });
       router.refresh();
     });
@@ -61,6 +64,11 @@ export function GearAdmin({ items }: { items: GearAdminRow[] }) {
         className={styles.inlineForm}
         onSubmit={(e) => {
           e.preventDefault();
+          if (!draft.name.trim()) {
+            setTried(true);
+            (e.currentTarget.querySelector('#mm-gear-name') as HTMLElement | null)?.focus();
+            return;
+          }
           onSubmit();
         }}
       >
@@ -68,7 +76,8 @@ export function GearAdmin({ items }: { items: GearAdminRow[] }) {
           <label className={`adminLabel ${lib.fieldLabel}`} htmlFor="mm-gear-name">
             Name
           </label>
-          <input id="mm-gear-name" className={lib.textInput} value={draft.name} maxLength={MAX_GEAR_NAME} autoFocus onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} />
+          <input id="mm-gear-name" className={tried && !draft.name.trim() ? `${lib.textInput} ${styles.bad}` : lib.textInput} aria-invalid={(tried && !draft.name.trim()) || undefined} value={draft.name} maxLength={MAX_GEAR_NAME} autoFocus onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} />
+          {tried && !draft.name.trim() && <p className={styles.badNote}>It needs a name.</p>}
         </div>
         <div>
           <label className={`adminLabel ${lib.fieldLabel}`} htmlFor="mm-gear-home">
@@ -91,10 +100,10 @@ export function GearAdmin({ items }: { items: GearAdminRow[] }) {
           </label>
           <textarea id="mm-gear-desc" className={lib.textArea} rows={2} value={draft.description} maxLength={MAX_GEAR_DESCRIPTION} onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))} />
         </div>
-        <Button type="submit" size="sm" variant="primary" disabled={pending || !dirty || !draft.name.trim()} title={dirty ? undefined : 'No changes to save yet'}>
+        <Button type="submit" size="sm" variant="primary" disabled={pending || !dirty} title={dirty ? undefined : 'No changes to save yet'}>
           {submitLabel}
         </Button>
-        <Button type="button" size="sm" variant="secondary" disabled={pending} onClick={() => setEditing(null)}>
+        <Button type="button" size="sm" variant="secondary" disabled={pending} onClick={() => { setTried(false); setEditing(null); }}>
           Cancel
         </Button>
       </form>

@@ -222,11 +222,11 @@ export function SaveButton({
   savedLabel = 'Saved',
   pendingLabel = 'Saving…',
   /**
-   * The form can't be saved as it stands (a required field blank). With `onBlocked` the button STAYS
-   * enabled and a click calls that instead of `onClick` — the standard since 2026-10-05 ("greyed means
-   * nothing to do, never not valid yet"): the caller marks the bad fields in place, focuses the first and
-   * shows a <SaveProblem>. Without `onBlocked` (older forms, not yet converted) it still greys the button
-   * with `blockedReason` as its title.
+   * `onBlocked` is the standard shape (2026-10-05, "greyed means nothing to do, never not valid yet"): pass
+   * `blocked` while the form is incomplete AND `onBlocked`, and the button STAYS enabled; a click calls
+   * `onBlocked` instead of `onClick` so the caller can mark every bad field in place, focus the first and show
+   * a <SaveProblem>. `blocked` without `onBlocked` is the legacy shape (not yet converted): it greys the button
+   * and the reason lives only in `blockedReason` as a title, which is a defect on a converted form.
    */
   blocked = false,
   blockedReason,

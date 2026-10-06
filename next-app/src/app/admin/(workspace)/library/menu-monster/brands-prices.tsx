@@ -28,7 +28,7 @@ import { useId, useState, useTransition } from 'react';
 import { Button } from '../../../_components/button';
 import { FormPanel } from '../../../_components/form-panel';
 import { Notice } from '../../_components/notice';
-import { DiscardButton, SaveButton, SaveFeedback, useDraftSnapshot, useSavePhase } from '../../_components/save-state';
+import { DiscardButton, SaveButton, SaveFeedback, SaveProblem, useDraftSnapshot, useSavePhase } from '../../_components/save-state';
 import { fmtDate } from '@/lib/format-date';
 import { money } from '@/lib/event-money';
 import { SOLD_UNITS, learnedConversion, learnedText, priceChange, staleText, suggestYield, unusableText } from '@/lib/menu-monster/authoring';
@@ -36,6 +36,7 @@ import type { Brand, Catalog, Conversion, Ingredient, Package } from '@/lib/menu
 import { addBought, createBrand, restorePackage, retirePackage, setPackageBrand, suggestRecipeBrand, updatePackage, type PackageEdit } from './actions';
 import { BrandHead, brandsOf } from './brands-block';
 import { useArmed } from './use-armed';
+import { useAttempt, type FieldProblem } from './use-attempt';
 import lib from '../library.module.css';
 import styles from './menu-monster.module.css';
 
@@ -170,7 +171,7 @@ export function BrandsAndPrices({
           />
         ) : (
           <div className={styles.inlineForm}>
-            <Button variant="primary" onClick={() => setAdding('')}>
+            <Button variant="secondary" onClick={() => setAdding('')}>
               Add a price
             </Button>
             <AddBrand ing={ing} onChanged={onChanged} />
@@ -192,7 +193,7 @@ function AddBrand({ ing, onChanged }: { ing: Ingredient; onChanged: () => void }
 
   if (!open) {
     return (
-      <Button variant="secondary" onClick={() => setOpen(true)}>
+      <Button variant="quiet" onClick={() => setOpen(true)}>
         Add a brand
       </Button>
     );
@@ -270,7 +271,7 @@ function PackageRow({ pkg, ing, brands, today, stores, onChanged }: { pkg: Packa
         {pkg.asOf && <span className={styles.cardMeta}>{fmtDate(pkg.asOf)}</span>}
         {pkg.retiredAt ? (
           <Button
-            variant="secondary"
+            variant="quiet"
             size="sm"
             disabled={pending}
             aria-label={`Restore ${pkg.name}`}
@@ -285,7 +286,7 @@ function PackageRow({ pkg, ing, brands, today, stores, onChanged }: { pkg: Packa
             Restore
           </Button>
         ) : (
-          <Button variant="secondary" size="sm" aria-label={`${open ? 'Close' : 'Edit'} ${pkg.name}`} aria-expanded={open} aria-controls={open ? panel : undefined} onClick={() => setOpen((v) => !v)}>
+          <Button variant="quiet" size="sm" aria-label={`${open ? 'Close' : 'Edit'} ${pkg.name}`} aria-expanded={open} aria-controls={open ? panel : undefined} onClick={() => setOpen((v) => !v)}>
             {open ? 'Close' : 'Edit'}
           </Button>
         )}
@@ -325,7 +326,15 @@ function PackageEditor({ pkg, ing, brands, today, stores, onChanged }: { pkg: Pa
   const change = Number.isFinite(newPrice) ? priceChange(savedPrice, newPrice, draft.asOf !== snap.saved.asOf) : null;
   const usable = pkg.yield != null;
   const yieldNum = Number(draft.yield);
-  const blocked = !draft.name.trim() || !Number.isFinite(newPrice) || newPrice < 0 || (draft.yield.trim() !== '' && !(yieldNum > 0));
+  const { attempted, container, refuse, clear } = useAttempt();
+  const problems: FieldProblem[] = [
+    ...(!draft.name.trim() ? [{ field: 'name', note: 'Give it a product name.', reason: 'it needs a product name' }] : []),
+    ...(draft.price.trim() === '' || !Number.isFinite(newPrice) || newPrice < 0 ? [{ field: 'price', note: 'Add a price, zero or more.', reason: 'it needs a price' }] : []),
+    ...(draft.yield.trim() !== '' && !(yieldNum > 0) ? [{ field: 'yield', note: 'Above zero, or leave it blank.', reason: `the number of ${ing.unit.many} must be above zero` }] : [])
+  ];
+  const shown = attempted ? problems : [];
+  const bad = (f: string) => shown.some((x) => x.field === f);
+  const noteOf = (f: string) => shown.find((x) => x.field === f)?.note;
   const idp = `mm-pkg-${pkg.id}`;
 
   function save() {
@@ -363,14 +372,15 @@ function PackageEditor({ pkg, ing, brands, today, stores, onChanged }: { pkg: Pa
   return (
     <>
       {error && <Notice>{error}</Notice>}
-      <div className={lib.fieldGrid}>
+      <div ref={container} className={lib.fieldGrid}>
         <div>
           <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-price`}>
             Price
           </label>
           <input
             id={`${idp}-price`}
-            className={lib.textInput}
+            className={bad('price') ? `${lib.textInput} ${styles.bad}` : lib.textInput}
+            aria-invalid={bad('price') || undefined}
             inputMode="decimal"
             value={draft.price}
             onChange={(e) => {
@@ -379,6 +389,7 @@ function PackageEditor({ pkg, ing, brands, today, stores, onChanged }: { pkg: Pa
               setDraft((d) => ({ ...d, price, asOf: today && Number(price) !== savedPrice ? today : d.asOf }));
             }}
           />
+          {bad('price') && <p className={styles.badNote}>{noteOf('price')}</p>}
           {change?.text && <p className={`${styles.readout}${change.big ? ` ${styles.readoutWarn}` : ''}`}>{change.text}</p>}
         </div>
         <div>
@@ -433,18 +444,21 @@ function PackageEditor({ pkg, ing, brands, today, stores, onChanged }: { pkg: Pa
           </label>
           <input
             id={`${idp}-yield`}
-            className={lib.textInput}
+            className={bad('yield') ? `${lib.textInput} ${styles.bad}` : lib.textInput}
+            aria-invalid={bad('yield') || undefined}
             inputMode="decimal"
             value={draft.yield}
             placeholder={usable ? undefined : 'Type it so menus can use this'}
             onChange={(e) => setDraft((d) => ({ ...d, yield: e.target.value }))}
           />
+          {bad('yield') && <p className={styles.badNote}>{noteOf('yield')}</p>}
         </div>
         <div className={lib.fieldFull}>
           <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-name`}>
             Product name
           </label>
-          <input id={`${idp}-name`} className={lib.textInput} value={draft.name} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} />
+          <input id={`${idp}-name`} className={bad('name') ? `${lib.textInput} ${styles.bad}` : lib.textInput} aria-invalid={bad('name') || undefined} value={draft.name} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} />
+          {bad('name') && <p className={styles.badNote}>{noteOf('name')}</p>}
         </div>
         <div className={lib.fieldFull}>
           <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-note`}>
@@ -454,9 +468,17 @@ function PackageEditor({ pkg, ing, brands, today, stores, onChanged }: { pkg: Pa
         </div>
       </div>
       <div className={lib.actionsRow}>
-        <SaveButton dirty={snap.dirty} pending={pending} blocked={blocked} blockedReason="Name, a price, and a yield above zero (or blank) are needed" onClick={save} />
-        <DiscardButton dirty={snap.dirty} pending={pending} onClick={() => setDraft(snap.saved)} />
+        <SaveButton dirty={snap.dirty} pending={pending} blocked={problems.length > 0} blockedReason={problems[0]?.reason} onBlocked={refuse} onClick={save} />
+        <DiscardButton
+          dirty={snap.dirty}
+          pending={pending}
+          onClick={() => {
+            setDraft(snap.saved);
+            clear();
+          }}
+        />
         <SaveFeedback phase={feedback.phase} />
+        {shown.length > 0 && <SaveProblem reason={shown[0].reason} more={shown.length - 1} />}
         <span className={styles.spacer} />
         <Button
           variant="quiet"
@@ -530,7 +552,19 @@ function AddBoughtForm({
   const effectiveYield = yieldTouched ? yieldText : suggestion.value == null ? '' : String(suggestion.value);
   const yieldNum = effectiveYield.trim() === '' ? null : Number(effectiveYield);
   const priceNum = Number(price);
-  const ready = price.trim() !== '' && Number.isFinite(priceNum) && priceNum >= 0 && (yieldNum == null || yieldNum > 0) && (!typingBrand || brandName.length > 0);
+  const { attempted, container, refuse } = useAttempt();
+  // Create-once: nothing to add until something is typed. After that a click marks what is missing.
+  const nothingTyped = !price.trim() && !newBrand.trim() && !size.trim() && !name.trim() && !yieldTouched && !note.trim();
+  const yieldBad = yieldNum != null && !(yieldNum > 0);
+  const problems: FieldProblem[] = [
+    ...(typingBrand && !brandName ? [{ field: 'newbrand', note: 'Name the new brand.', reason: 'the new brand needs a name' }] : []),
+    ...(price.trim() === '' || !Number.isFinite(priceNum) || priceNum < 0 ? [{ field: 'price', note: 'Add a price, even a guess.', reason: 'it needs a price' }] : []),
+    // A label in the food's own unit has no yield box: the size is the number, so the size field carries the mark.
+    ...(yieldBad ? [{ field: ownUnit ? 'size' : 'yield', note: ownUnit ? 'Above zero.' : 'Above zero, or leave it blank.', reason: `the number of ${ing.unit.many} must be above zero` }] : [])
+  ];
+  const shown = attempted ? problems : [];
+  const bad = (f: string) => shown.some((x) => x.field === f);
+  const noteOf = (f: string) => shown.find((x) => x.field === f)?.note;
   const perUnit = yieldNum != null && yieldNum > 0 && Number.isFinite(priceNum) ? priceNum / yieldNum : null;
   // A typed yield with nothing on file to suggest it IS the conversion; saving
   // saves it too (actions.ts rememberConversion) — said before the click.
@@ -573,7 +607,7 @@ function AddBoughtForm({
   return (
     <FormPanel title="Add a price" aria-label="Add a price" actions={<SaveFeedback phase={feedback.phase} />}>
       {error && <Notice>{error}</Notice>}
-      <div className={lib.fieldGrid}>
+      <div ref={container} className={lib.fieldGrid}>
         <div>
           <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-brand`}>
             Brand
@@ -594,7 +628,8 @@ function AddBoughtForm({
               <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-newbrand`}>
                 New brand
               </label>
-              <input id={`${idp}-newbrand`} className={lib.textInput} value={newBrand} maxLength={60} autoFocus onChange={(e) => setNewBrand(e.target.value)} />
+              <input id={`${idp}-newbrand`} className={bad('newbrand') ? `${lib.textInput} ${styles.bad}` : lib.textInput} aria-invalid={bad('newbrand') || undefined} value={newBrand} maxLength={60} autoFocus onChange={(e) => setNewBrand(e.target.value)} />
+              {bad('newbrand') && <p className={styles.badNote}>{noteOf('newbrand')}</p>}
             </>
           )}
         </div>
@@ -615,7 +650,8 @@ function AddBoughtForm({
           <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-size`}>
             {ownUnit ? `How many ${ing.unit.many} in the package` : 'Package size'}
           </label>
-          <input id={`${idp}-size`} className={lib.textInput} inputMode="decimal" value={size} onChange={(e) => setSize(e.target.value)} placeholder={ownUnit ? 'e.g. 40' : 'e.g. 18.2'} />
+          <input id={`${idp}-size`} className={bad('size') ? `${lib.textInput} ${styles.bad}` : lib.textInput} aria-invalid={bad('size') || undefined} inputMode="decimal" value={size} onChange={(e) => setSize(e.target.value)} placeholder={ownUnit ? 'e.g. 40' : 'e.g. 18.2'} />
+          {bad('size') && <p className={styles.badNote}>{noteOf('size')}</p>}
         </div>
         <div>
           <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-store`}>
@@ -634,7 +670,8 @@ function AddBoughtForm({
           <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-price`}>
             Price
           </label>
-          <input id={`${idp}-price`} className={lib.textInput} inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0.00" />
+          <input id={`${idp}-price`} className={bad('price') ? `${lib.textInput} ${styles.bad}` : lib.textInput} aria-invalid={bad('price') || undefined} inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0.00" />
+          {bad('price') && <p className={styles.badNote}>{noteOf('price')}</p>}
         </div>
         {/* Asked only when the label is in another unit (ounces, pounds): then someone has to say how many are in it. */}
         <div className={lib.fieldFull} hidden={ownUnit}>
@@ -643,7 +680,8 @@ function AddBoughtForm({
           </label>
           <input
             id={`${idp}-yield`}
-            className={lib.textInput}
+            className={bad('yield') ? `${lib.textInput} ${styles.bad}` : lib.textInput}
+            aria-invalid={bad('yield') || undefined}
             inputMode="decimal"
             value={effectiveYield}
             onChange={(e) => {
@@ -651,6 +689,7 @@ function AddBoughtForm({
               setYieldText(e.target.value);
             }}
           />
+          {bad('yield') && <p className={styles.badNote}>{noteOf('yield')}</p>}
           <p className={styles.hint}>
             <span>{learned ? `Saves ${learnedText(learned, ing)} as the conversion for ${ing.name}.` : suggestion.text}</span>
             {suggestion.sub ? <span className={styles.muted}> {suggestion.sub}</span> : null}
@@ -692,12 +731,13 @@ function AddBoughtForm({
         </div>
       </div>
       <div className={lib.actionsRow}>
-        <Button variant="primary" disabled={pending || !ready} title={ready ? undefined : typingBrand && !brandName ? 'Name the new brand' : 'A price is needed'} onClick={submit}>
+        <Button variant="primary" disabled={pending || nothingTyped} onClick={() => (problems.length > 0 ? refuse() : submit())}>
           {pending ? 'Adding…' : 'Add'}
         </Button>
         <Button variant="secondary" disabled={pending} onClick={onClose}>
           Cancel
         </Button>
+        {shown.length > 0 && <SaveProblem reason={shown[0].reason} more={shown.length - 1} />}
       </div>
     </FormPanel>
   );

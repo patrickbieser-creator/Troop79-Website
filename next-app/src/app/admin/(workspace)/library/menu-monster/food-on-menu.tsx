@@ -12,13 +12,13 @@
  * Off by default (Patrick, 2026-10-05). Taking it off the menu retires the menu item: saved menus that use
  * it keep it, and putting it back restores the same one.
  */
-import { useState, useTransition } from 'react';
+import { useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { Button } from '../../../_components/button';
 import { FormPanel } from '../../../_components/form-panel';
 import { Badge } from '../../_components/badge';
 import { Notice } from '../../_components/notice';
-import { SaveButton } from '../../_components/save-state';
+import { SaveButton, SaveProblem } from '../../_components/save-state';
 import { FOOD_GROUPS, MEALS, fracText, parseQty } from '@/lib/menu-monster/units';
 import type { Catalog, FoodGroup, Ingredient, MealSlot } from '@/lib/menu-monster/types';
 import { putFoodOnMenu, takeFoodOffMenu } from './actions';
@@ -44,6 +44,21 @@ export function FoodOnMenu({ ing, catalog, onChanged }: { ing: Ingredient; catal
   const amountOk = parseQty(draft.amount) > 0;
   const ready = amountOk && draft.mealFit.length > 0;
   const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
+  // A try on an incomplete form marks the fields in place instead of greying the button.
+  const [attempted, setAttempted] = useState(false);
+  const panel = useRef<HTMLDivElement>(null);
+  const problems = [...(amountOk ? [] : [{ field: 'amount', text: 'Type how many each person gets' }]), ...(draft.mealFit.length > 0 ? [] : [{ field: 'meal', text: 'Pick at least one meal' }])];
+  const badAmount = attempted && !amountOk;
+  const badMeal = attempted && draft.mealFit.length === 0;
+  function refuse() {
+    setAttempted(true);
+    setTimeout(() => {
+      const first = panel.current?.querySelector<HTMLElement>('[aria-invalid="true"]');
+      first?.scrollIntoView?.({ block: 'center' });
+      first?.focus();
+    }, 0);
+  }
+  const trySave = () => (ready ? run(() => putFoodOnMenu(ing.id, draft), () => setEditing(false)) : refuse());
 
   function run(fn: () => Promise<{ ok: boolean; error?: string; note?: string }>, after?: () => void) {
     setError(null);
@@ -84,6 +99,7 @@ export function FoodOnMenu({ ing, catalog, onChanged }: { ing: Ingredient; catal
             disabled={pending}
             onClick={() => {
               setDraft(saved);
+              setAttempted(false);
               setEditing(true);
             }}
           >
@@ -106,23 +122,26 @@ export function FoodOnMenu({ ing, catalog, onChanged }: { ing: Ingredient; catal
 
       {editing && (
         <FormPanel aria-label={`Put ${ing.name} on the menu`}>
+          <div ref={panel}>
           <div className={lib.fieldGrid}>
             <div>
               <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-amount`}>
                 Each person gets
               </label>
               <div className={styles.inlineForm}>
-                <input id={`${idp}-amount`} className={`${lib.textInput} ${styles.narrow}`} value={draft.amount} placeholder="2" onChange={(e) => setDraft((d) => ({ ...d, amount: e.target.value }))} />
+                <input id={`${idp}-amount`} className={`${lib.textInput} ${styles.narrow}${badAmount ? ` ${styles.bad}` : ''}`} aria-invalid={badAmount || undefined} value={draft.amount} placeholder="2" onChange={(e) => setDraft((d) => ({ ...d, amount: e.target.value }))} />
                 <span className={styles.cardMeta}>{ing.unit.many}</span>
               </div>
+              {badAmount && <p className={styles.badNote}>Type how many each person gets.</p>}
             </div>
-            <fieldset className={styles.fieldset}>
+            <fieldset className={badMeal ? `${styles.fieldset} ${styles.bad}` : styles.fieldset}>
               <legend className={`adminLabel ${lib.fieldLabel}`}>Meal fit</legend>
               {MEALS.map((m) => (
                 <label key={m.key} className={styles.listRow}>
-                  <input type="checkbox" checked={draft.mealFit.includes(m.key)} onChange={(e) => setDraft((d) => ({ ...d, mealFit: toggle(d.mealFit, m.key, e.target.checked) }))} /> {m.label}
+                  <input type="checkbox" aria-invalid={(badMeal && m.key === MEALS[0].key) || undefined} checked={draft.mealFit.includes(m.key)} onChange={(e) => setDraft((d) => ({ ...d, mealFit: toggle(d.mealFit, m.key, e.target.checked) }))} /> {m.label}
                 </label>
               ))}
+              {badMeal && <p className={styles.badNote}>Pick at least one meal.</p>}
             </fieldset>
             <fieldset className={styles.fieldset}>
               <legend className={`adminLabel ${lib.fieldLabel}`}>Food groups (MyPlate)</legend>
@@ -135,15 +154,17 @@ export function FoodOnMenu({ ing, catalog, onChanged }: { ing: Ingredient; catal
           </div>
           <div className={lib.actionsRow}>
             {on ? (
-              <SaveButton dirty={dirty} pending={pending} blocked={!ready} blockedReason={amountOk ? 'Pick at least one meal' : 'Type how many each person gets'} onClick={() => run(() => putFoodOnMenu(ing.id, draft), () => setEditing(false))} />
+              <SaveButton dirty={dirty} pending={pending} blocked={!ready} onBlocked={refuse} onClick={trySave} />
             ) : (
-              <Button variant="primary" disabled={pending || !ready} title={ready ? undefined : amountOk ? 'Pick at least one meal' : 'Type how many each person gets'} onClick={() => run(() => putFoodOnMenu(ing.id, draft), () => setEditing(false))}>
+              <Button variant="primary" disabled={pending} onClick={trySave}>
                 {pending ? 'Saving…' : 'Put it on the menu'}
               </Button>
             )}
             <Button variant="secondary" disabled={pending} onClick={() => setEditing(false)}>
               Cancel
             </Button>
+            {attempted && problems.length > 0 && <SaveProblem reason={problems[0].text} more={problems.length - 1} />}
+          </div>
           </div>
         </FormPanel>
       )}

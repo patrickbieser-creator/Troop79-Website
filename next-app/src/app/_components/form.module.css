@@ -66,3 +66,11 @@
   padding: 10px 14px;
   margin-top: var(--sp-2);
 }
+
+/* Blocked-save marks (D-331): the control outlined in red, a plain sentence under it, and the line beside the button. */
+.textInput[aria-invalid='true'],
+.selectInput[aria-invalid='true'],
+.textArea[aria-invalid='true'] { border-color: var(--status-danger); box-shadow: 0 0 0 1px var(--status-danger); }
+.fieldProblem { margin: var(--sp-1) 0 0; font-family: var(--font-ui); font-size: var(--fs-sm); font-weight: 600; color: var(--status-danger); line-height: 1.45; }
+.saveProblem { font-family: var(--font-ui); font-size: var(--fs-sm); font-weight: 600; color: var(--status-danger); }
+.saveProblemMore { font-weight: 400; }

@@ -11,7 +11,9 @@ import {
   createFood,
   setPackageBrand,
   updateIngredient,
-  updatePackage
+  updatePackage,
+  retireIngredient,
+  addConversion
 } from '../src/app/admin/(workspace)/library/menu-monster/actions';
 import { UNITS } from '../src/lib/menu-monster/units';
 import type { Catalog, Ingredient, Package } from '../src/lib/menu-monster/types';
@@ -57,6 +59,8 @@ beforeEach(() => {
   vi.mocked(updatePackage).mockClear();
   vi.mocked(createFood).mockClear();
   vi.mocked(changeIngredientUnit).mockClear();
+  vi.mocked(retireIngredient).mockClear();
+  vi.mocked(addConversion).mockClear();
 });
 
 const TODAY = '2026-09-08';
@@ -181,7 +185,7 @@ describe('Price book', () => {
     const user = userEvent.setup();
     render(<PriceBook catalog={CATALOG} today={TODAY} stores={STORES} />);
     await user.click(within(row('Pancake mix')).getByRole('button', { name: 'Pancake mix' }));
-    await user.click(screen.getByRole('button', { name: 'Change unit' }));
+    await user.selectOptions(screen.getByRole('combobox', { name: 'More actions' }), 'Change unit');
     const dlg = screen.getByRole('dialog', { name: /Change the recipe unit/ });
     await user.selectOptions(within(dlg).getByLabelText('Recipe unit'), 'tbsp');
     expect(within(dlg).getByText('1 package will convert automatically (1 cup = 16 Tbsp).')).toBeTruthy();
@@ -310,9 +314,11 @@ describe('Price book — brands and what is priced under them', () => {
     await openSalt(user);
     const add = await openAdd(user);
     await user.selectOptions(within(add).getByLabelText('Brand'), 'A new brand…');
-    // Nothing to add until the brand has a name.
+    // A price is typed but the brand has no name yet: Add stays enabled and the click marks the brand field.
     await user.type(within(add).getByLabelText('Price'), '2.49');
-    expect((within(add).getByRole('button', { name: 'Add' }) as HTMLButtonElement).disabled).toBe(true);
+    await user.click(within(add).getByRole('button', { name: 'Add' }));
+    expect(within(add).getByLabelText('New brand').getAttribute('aria-invalid')).toBe('true');
+    expect(addBought).not.toHaveBeenCalled();
     await user.type(within(add).getByLabelText('New brand'), 'Diamond Crystal');
     await user.click(within(add).getByRole('button', { name: 'Add' }));
     await waitFor(() => expect(addBought).toHaveBeenCalledTimes(1));
@@ -361,8 +367,11 @@ describe('Price book — brands and what is priced under them', () => {
     const amount = section.getByLabelText('Each person gets');
     await user.clear(amount);
     await user.type(amount, '2');
-    // Nothing to save until it fits a meal.
-    expect((section.getByRole('button', { name: 'Put it on the menu' }) as HTMLButtonElement).disabled).toBe(true);
+    // Saving before it fits a meal saves nothing and marks the meal group (D-331: enabled, not greyed).
+    expect((section.getByRole('button', { name: 'Put it on the menu' }) as HTMLButtonElement).disabled).toBe(false);
+    await user.click(section.getByRole('button', { name: 'Put it on the menu' }));
+    expect(putFoodOnMenu).not.toHaveBeenCalled();
+    expect(section.getByRole('alert').textContent).toContain('Pick at least one meal');
     await user.click(section.getByLabelText('Snack'));
     await user.click(section.getByRole('button', { name: 'Put it on the menu' }));
     await waitFor(() => expect(putFoodOnMenu).toHaveBeenCalledWith('salt', { amount: '2', mealFit: ['snack'], foodGroups: [] }));
@@ -444,5 +453,100 @@ describe('Price book — adding a price for a counted food', () => {
     expect(within(add).getByLabelText('How many cookies are in it').closest('[hidden]')).toBeNull();
     await user.type(within(add).getByLabelText('Package size'), '18.2');
     expect(within(add).getByText(/^No conversion on file for Cookies sold by the oz\. Type how many cookies are in this package\./)).toBeTruthy();
+  });
+});
+
+describe('Price book — a Save that cannot happen says why, in place (D-331)', () => {
+  it('Leader_SeesWhichFieldIsBad_WhenSavingAnIngredientWithoutAName', async () => {
+    const user = userEvent.setup();
+    render(<PriceBook catalog={CATALOG} today={TODAY} stores={STORES} />);
+    await user.click(within(row('Milk')).getByRole('button', { name: 'Milk' }));
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+    const form = screen.getByRole('region', { name: 'Edit Milk' });
+    await user.clear(within(form).getByLabelText('Name'));
+    await user.click(within(form).getByRole('button', { name: 'Save changes' }));
+    expect(within(form).getByLabelText('Name').getAttribute('aria-invalid')).toBe('true');
+    expect(within(form).getByRole('alert').textContent).toMatch(/^Can.t save yet: /);
+    expect(updateIngredient).not.toHaveBeenCalled();
+  });
+
+  it('Leader_SeesWhichFieldIsBad_WhenAddingAPriceWithoutOne', async () => {
+    const user = userEvent.setup();
+    render(<PriceBook catalog={CATALOG} today={TODAY} stores={STORES} />);
+    await user.click(within(row('Milk')).getByRole('button', { name: 'Milk' }));
+    const add = await openAdd(user);
+    // Empty create-once form: nothing to add yet.
+    expect((within(add).getByRole('button', { name: 'Add' }) as HTMLButtonElement).disabled).toBe(true);
+    await user.type(within(add).getByLabelText('Package size'), '1');
+    await user.click(within(add).getByRole('button', { name: 'Add' }));
+    expect(within(add).getByLabelText('Price').getAttribute('aria-invalid')).toBe('true');
+    expect(within(add).getByRole('alert').textContent).toMatch(/^Can.t save yet: /);
+    expect(addBought).not.toHaveBeenCalled();
+  });
+
+  it('Leader_SeesWhichFieldIsBad_WhenAddingAConversionWithoutAFactor', async () => {
+    const user = userEvent.setup();
+    render(<PriceBook catalog={CATALOG} today={TODAY} stores={STORES} />);
+    await user.click(within(row('Pancake mix')).getByRole('button', { name: 'Pancake mix' }));
+    await user.click(screen.getByRole('button', { name: /^Conversions/ }));
+    const panel = screen.getByRole('region', { name: 'Conversions' });
+    await user.type(within(panel).getByLabelText('Where it comes from'), 'the label');
+    await user.click(within(panel).getByRole('button', { name: 'Add conversion' }));
+    expect(within(panel).getByLabelText('equals').getAttribute('aria-invalid')).toBe('true');
+    expect(within(panel).getByRole('alert').textContent).toMatch(/^Can.t save yet: /);
+    expect(addConversion).not.toHaveBeenCalled();
+  });
+
+  it('Leader_SeesWhichFieldIsBad_WhenChangingToACountWithoutNames', async () => {
+    const user = userEvent.setup();
+    render(<PriceBook catalog={CATALOG} today={TODAY} stores={STORES} />);
+    await user.click(within(row('Pancake mix')).getByRole('button', { name: 'Pancake mix' }));
+    await user.selectOptions(screen.getByRole('combobox', { name: 'More actions' }), 'Change unit');
+    const dlg = screen.getByRole('dialog', { name: /Change the recipe unit/ });
+    await user.selectOptions(within(dlg).getByLabelText('Measured by'), 'count');
+    await user.click(within(dlg).getByRole('button', { name: 'Change unit' }));
+    expect(within(dlg).getByLabelText('One is called').getAttribute('aria-invalid')).toBe('true');
+    expect(within(dlg).getByRole('alert').textContent).toMatch(/^Can.t save yet: /);
+    expect(changeIngredientUnit).not.toHaveBeenCalled();
+  });
+
+  it('Leader_SeesWhichFieldIsBad_WhenSavingAPackageWithoutAName', async () => {
+    const user = userEvent.setup();
+    render(<PriceBook catalog={CATALOG} today={TODAY} stores={STORES} />);
+    await user.click(within(row('Milk')).getByRole('button', { name: 'Milk' }));
+    const line = screen.getByRole('listitem', { name: 'Milk, gallon' });
+    await user.click(within(line).getByRole('button', { name: 'Edit Milk, gallon' }));
+    await user.clear(within(line).getByLabelText('Product name'));
+    const yld = within(line).getByLabelText('How many cups are in it');
+    await user.clear(yld);
+    await user.type(yld, '0');
+    await user.click(within(line).getByRole('button', { name: 'Save changes' }));
+    expect(within(line).getByLabelText('Product name').getAttribute('aria-invalid')).toBe('true');
+    expect(within(line).getByLabelText('How many cups are in it').getAttribute('aria-invalid')).toBe('true');
+    expect(within(line).getByRole('alert').textContent).toMatch(/\(\+1 more\)/);
+    expect(updatePackage).not.toHaveBeenCalled();
+  });
+});
+
+describe('Price book — one hierarchy on the ingredient header (D-332)', () => {
+  it('Leader_SeesEditAsTheOnlyLooseAction_WithTheRestUnderMoreActions', async () => {
+    const user = userEvent.setup();
+    render(<PriceBook catalog={CATALOG} today={TODAY} stores={STORES} />);
+    await user.click(within(row('Pancake mix')).getByRole('button', { name: 'Pancake mix' }));
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Change unit' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Retire/ })).toBeNull();
+    expect(within(screen.getByRole('combobox', { name: 'More actions' })).getByRole('option', { name: 'Retire' })).toBeTruthy();
+  });
+
+  it('Leader_ConfirmsRetiring_InADialogThatNamesTheConsequence', async () => {
+    const user = userEvent.setup();
+    render(<PriceBook catalog={CATALOG} today={TODAY} stores={STORES} />);
+    await user.click(within(row('Pancake mix')).getByRole('button', { name: 'Pancake mix' }));
+    await user.selectOptions(screen.getByRole('combobox', { name: 'More actions' }), 'Retire');
+    expect(retireIngredient).not.toHaveBeenCalled();
+    const dlg = screen.getByRole('dialog', { name: /Retire Pancake mix/ });
+    await user.click(within(dlg).getByRole('button', { name: 'Retire' }));
+    await waitFor(() => expect(retireIngredient).toHaveBeenCalledWith('pancake-mix'));
   });
 });

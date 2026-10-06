@@ -59,6 +59,12 @@
 @keyframes saveSpin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
 
+/* A problem marked in place (2026-10-04, shared 2026-10-06): the field, fieldset or line a blocked Save
+   is about gets .bad (red outline, tinted); a sentence naming the problem sits beside/under it as .badNote.
+   Pair with aria-invalid. Specimen: /admin/styleguide/admin -> Save Buttons. */
+.bad { outline: 1px solid var(--admin-danger); outline-offset: 4px; border-radius: var(--admin-radius); background: var(--admin-status-error-bg); }
+.badNote { flex-basis: 100%; margin: 4px 0 0; color: var(--admin-danger-dark); font-size: var(--admin-text-sm); font-weight: 700; }
+
 /* "Can't save yet: …" beside the Save button (2026-10-05). */
 .problem { color: var(--admin-danger-dark); font-size: var(--admin-text-sm); font-weight: var(--admin-weight-semibold); }
 .problemMore { font-weight: var(--admin-weight-regular); }

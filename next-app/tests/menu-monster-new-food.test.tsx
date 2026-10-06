@@ -37,6 +37,25 @@ const CATALOG: Catalog = {
 const STORES = ['Costco', 'Kroger'];
 
 describe('Food & recipes — a single food', () => {
+  it('Leader_SeesWhichFieldIsBad_WhenSavingAnIncompleteFood', async () => {
+    const user = userEvent.setup();
+    render(<RecipeBuilder catalog={CATALOG} stores={STORES} today="2026-10-03" />);
+    await user.click(screen.getByRole('button', { name: '+ New single food' }));
+    const form = screen.getByRole('region', { name: 'New single food' });
+    await user.type(within(form).getByLabelText('Name'), 'Cookies');
+    await user.type(within(form).getByLabelText('One is called'), 'cookie');
+    const add = within(form).getByRole('button', { name: 'Add food' }) as HTMLButtonElement;
+    expect(add.disabled).toBe(false);
+    expect(within(form).queryByRole('alert')).toBeNull();
+    await user.click(add);
+    expect(createFood).not.toHaveBeenCalled();
+    expect(within(form).getByLabelText('Several are called').getAttribute('aria-invalid')).toBe('true');
+    expect(within(form).getByText('Say what several are called.')).toBeTruthy();
+    expect(within(form).getByRole('alert').textContent).toContain('Can’t save yet: Say what several are called');
+    expect(within(form).getByRole('alert').textContent).toContain('(+2 more)');
+    expect(document.activeElement).toBe(within(form).getByLabelText('Several are called'));
+  });
+
   // A dozen typed fields: slow under the full suite's load, so it gets room (BACKLOG: load-timeout flakes).
   it('Leader_AddsCookies_InOneForm', { timeout: 20000 }, async () => {
     const user = userEvent.setup();
@@ -55,7 +74,7 @@ describe('Food & recipes — a single food', () => {
     await user.type(within(form).getByLabelText('One package costs'), '$4.29');
     await user.type(within(form).getByLabelText('One package holds (cookies)'), '36');
     await user.type(within(form).getByLabelText('Each person gets (cookies)'), '2');
-    expect(add().getAttribute('title')).toBe('Pick at least one meal it fits');
+    expect(add().disabled).toBe(false);
     await user.click(within(form).getByLabelText('Dessert'));
 
     await user.click(add());

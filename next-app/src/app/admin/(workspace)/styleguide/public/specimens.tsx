@@ -6,9 +6,14 @@
 
 import { useState } from 'react';
 import { TabStrip } from '@/app/_components/tab-strip';
+import { Button } from '@/app/_components/button';
+import { Field, SaveProblem, TextInput } from '@/app/_components/form';
 import sg from './public-styleguide.module.css';
 import { AmountInput, Stepper } from '@/app/_components/stepper';
 import { IngredientList } from '@/app/(public)/library/menu-monster/_components/ingredient-list';
+import { GearChips, GearPicker } from '@/app/(public)/library/menu-monster/_components/gear-picker';
+import { sortGear, type GearItem } from '@/lib/menu-monster/gear';
+import type { RestrictionKey } from '@/lib/menu-monster/types';
 
 export function PublicTabStripSpecimen() {
   const [active, setActive] = useState('week');
@@ -57,6 +62,80 @@ export function PublicStepperSpecimen() {
         $ <AmountInput aria-label="Amount, dollars and cents" defaultValue="12.50" min="0.01" step="0.01" />
       </span>
     </div>
+  );
+}
+
+/** A small fixed gear list for the GearPicker / GearChips specimens. */
+const SPECIMEN_GEAR: GearItem[] = ['Dutch oven', 'Griddle', 'Lantern', 'Skillet', 'Two-burner stove'].map((name, i) => ({
+  id: i + 1,
+  name,
+  home: 'trailer',
+  perPerson: false,
+  retiredAt: null
+}));
+
+/** The blocked-save standard (D-331), live: Add stays enabled; pressed empty it marks the field and says why beside the button. */
+export function PublicBlockedSaveSpecimen() {
+  const [name, setName] = useState('');
+  const [tried, setTried] = useState(false);
+  const bad = tried && !name.trim();
+  return (
+    <div className={sg.stepperSpecimen}>
+      <Field label="Name" problem={bad ? 'Give it a name.' : undefined}>
+        <TextInput value={name} autoComplete="off" onChange={(e) => setName(e.target.value)} />
+      </Field>
+      <span>
+        <Button size="sm" variant="primary" onClick={() => setTried(true)}>
+          Add food
+        </Button>{' '}
+        <SaveProblem action="add" reason={bad ? 'give it a name' : null} />
+      </span>
+    </div>
+  );
+}
+
+/** GearPicker + GearChips live: pick from the troop's list (never typed in), then dial the count or remove. */
+export function PublicGearSpecimen() {
+  const [gear, setGear] = useState<string[]>(['Skillet × 2', 'Griddle']);
+  return (
+    <div>
+      <GearChips gear={gear} onChange={setGear} idPrefix="sg-" />
+      <GearPicker list={SPECIMEN_GEAR} taken={gear} onPick={(name) => setGear(sortGear([...gear, name]))} />
+    </div>
+  );
+}
+
+/**
+ * IngredientList in menu-edit mode on a meal with a gluten-free and a vegetarian scout: the three
+ * diet-scoped row states (only for a diet, everyone except a diet, a diet nobody on the meal is in)
+ * and the "Add for" choice beside the add search. Display-only.
+ */
+export function PublicDietRowsSpecimen() {
+  const edit = (id: string, scope?: RestrictionKey) => ({
+    kind: 'base' as const,
+    ingredientId: id,
+    currentIngredientId: id,
+    qtyPerPerson: 1,
+    unitLabel: 'cups',
+    scope
+  });
+  return (
+    <IngredientList
+      mode="menu-edit"
+      ariaLabel="Pancakes ingredients, diet rows (specimen)"
+      rows={[
+        { key: 'a', name: 'Pancake mix', amount: '3½ cups', note: null, scope: { mode: 'except', restrictions: ['gf'], idle: false }, edit: edit('pancake-mix') },
+        { key: 'b', name: 'Almond flour', amount: '1 cup', note: null, scope: { mode: 'only', restrictions: ['gf'], idle: false }, marker: { kind: 'added' }, edit: edit('almond-flour', 'gf') },
+        { key: 'c', name: 'Dairy-free butter', amount: '', note: null, scope: { mode: 'only', restrictions: ['dairy'], idle: true }, marker: { kind: 'added' }, edit: edit('df-butter', 'dairy') }
+      ]}
+      choices={[
+        { id: 'honey', name: 'Honey' },
+        { id: 'peaches', name: 'Peaches' }
+      ]}
+      restrictions={{ gf: 2, nut: 0, dairy: 0, veg: 1 }}
+      onAction={() => {}}
+      onAnnounce={() => {}}
+    />
   );
 }
 

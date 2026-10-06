@@ -135,6 +135,16 @@ describe('What we bought — the prefilled checklist', () => {
   });
 });
 
+describe('What we bought — a blocked save', () => {
+  it('Scout_LandsOnTheFirstBadPrice_WhenSavingWithoutAPrice', async () => {
+    const user = userEvent.setup();
+    render(tab());
+    await user.clear(price('Milk'));
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    expect(document.activeElement).toBe(price('Milk'));
+  });
+});
+
 describe('What we bought — the accordion', () => {
   it('OpeningARow_ShowsThePlan_AndTheChoicesInline', async () => {
     const user = userEvent.setup();

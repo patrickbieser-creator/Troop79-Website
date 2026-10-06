@@ -92,6 +92,19 @@ describe('MenusAdmin', () => {
     expect(renameMenu).toHaveBeenCalledWith('M-0000abcd', 'Fall campout, patrol 2');
   });
 
+  it('Leader_SeesTheNameMarked_WhenRenamingToNothing', async () => {
+    const user = userEvent.setup();
+    render(<MenusAdmin menus={[row()]} />);
+    await pick('rename');
+    const box = screen.getByRole('textbox', { name: 'New name for Fall campout' });
+    expect((screen.getByRole('button', { name: 'Save' }) as HTMLButtonElement).disabled).toBe(true);
+    await user.clear(box);
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(renameMenu).not.toHaveBeenCalled();
+    expect(box.getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByText('It needs a name.')).toBeTruthy();
+  });
+
   it('ASharedMenu_OffersStopSharing_AndAnUnsharedOneOffersShare', async () => {
     render(<MenusAdmin menus={[row(), row({ id: 'M-0000ef01', name: 'Day hike', sharedAt: null })]} />);
     await pick('unshare');

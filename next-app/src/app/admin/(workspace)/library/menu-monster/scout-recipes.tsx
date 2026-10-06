@@ -35,6 +35,8 @@ export function ScoutRecipes({ recipes }: { recipes: ScoutRecipeRow[] }) {
   const [pending, start] = useTransition();
   const [line, setLine] = useState<Line | null>(null);
   const [editing, setEditing] = useState<Editing | null>(null);
+  /** Save pressed with the field emptied: the input is marked until something is typed. */
+  const [tried, setTried] = useState(false);
   const search = useTableSearch(recipes, (r) => [r.name, r.owner, r.credit]);
 
   function run(action: () => Promise<{ ok: boolean; error?: string; id?: string }>, okText: string, then?: (id?: string) => void) {
@@ -46,38 +48,50 @@ export function ScoutRecipes({ recipes }: { recipes: ScoutRecipeRow[] }) {
         return;
       }
       setEditing(null);
+      setTried(false);
       setLine({ kind: 'ok', text: okText });
       then?.(res.id);
       router.refresh();
     });
   }
 
-  const inlineForm = (r: ScoutRecipeRow, e: Editing) => (
+  const inlineForm = (r: ScoutRecipeRow, e: Editing) => {
+    const bad = tried && !e.value.trim();
+    const need = e.field === 'name' ? 'It needs a name.' : 'It needs a credit.';
+    return (
     <form
       className={styles.inlineForm}
       onSubmit={(ev) => {
         ev.preventDefault();
         const v = e.value.trim();
+        if (!v) {
+          setTried(true);
+          (ev.currentTarget.querySelector('input') as HTMLElement | null)?.focus();
+          return;
+        }
         if (e.field === 'name') run(() => renameScoutRecipe(r.id, v), `Renamed “${r.name}” to “${v}”.`);
         else run(() => setScoutRecipeCredit(r.id, v), `The credit on “${r.name}” now reads “Recipe by ${v}”.`);
       }}
     >
       <input
-        className={lib.textInput}
+        className={bad ? `${lib.textInput} ${styles.bad}` : lib.textInput}
+        aria-invalid={bad || undefined}
         value={e.value}
         maxLength={e.field === 'name' ? 80 : 40}
         aria-label={e.field === 'name' ? `New name for ${r.name}` : `Credit for ${r.name}`}
         autoFocus
         onChange={(ev) => setEditing({ ...e, value: ev.target.value })}
       />
-      <Button type="submit" size="sm" variant="primary" disabled={pending || !e.value.trim() || e.value.trim() === (e.field === 'name' ? r.name : r.credit)}>
+      {bad && <p className={styles.badNote}>{need}</p>}
+      <Button type="submit" size="sm" variant="primary" disabled={pending || e.value.trim() === (e.field === 'name' ? r.name : r.credit)}>
         Save
       </Button>
       <Button type="button" size="sm" variant="secondary" onClick={() => setEditing(null)}>
         Cancel
       </Button>
     </form>
-  );
+    );
+  };
 
   return (
     <div className={styles.wrap}>

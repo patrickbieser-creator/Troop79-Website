@@ -11,11 +11,11 @@
  * Ingredients tab reuses it: `busy` / `failure` show the request it then makes.
  */
 
-import { useId, useState, type KeyboardEvent } from 'react';
+import { useId, useRef, useState, type KeyboardEvent } from 'react';
 import { Button } from '@/app/_components/button';
-import { Field, SelectInput, TextInput } from '@/app/_components/form';
+import { Field, SaveProblem, SelectInput, TextInput } from '@/app/_components/form';
 import type { Catalog, RestrictionKey, Section } from '@/lib/menu-monster/types';
-import { SIZE_UNITS, newIngredientKey, newIngredientProblem, sizeInRecipeUnit, type NewIngredient, type NewIngredientKind } from '@/lib/menu-monster/scout-ingredients';
+import { MAX_PRICE, MIN_PRICE, SIZE_UNITS, newIngredientKey, newIngredientProblem, sizeInRecipeUnit, type NewIngredient, type NewIngredientKind } from '@/lib/menu-monster/scout-ingredients';
 import { SECTIONS, SECTION_ORDER, parseQty } from '@/lib/menu-monster/units';
 import w from '../../menus/_components/workspace.module.css';
 import s from './recipe-editor.module.css';
@@ -60,35 +60,60 @@ export function NewIngredientForm({
   const [store, setStore] = useState('');
   const [avoid, setAvoid] = useState<RestrictionKey[]>([]);
   const [section, setSection] = useState<Section>('dry');
-  const [error, setError] = useState<string | null>(null);
+  const [tried, setTried] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   const pickKind = (k: NewIngredientKind) => {
     setKind(k);
     setSizeUnit(SIZE_UNITS[k][0].key);
-    setError(null);
   };
 
+  const draftOf = (): NewIngredient => ({
+    key: newIngredientKey(),
+    name: name.trim(),
+    kind,
+    one: kind === 'count' ? one.trim() : '',
+    many: kind === 'count' ? many.trim() || '' : '',
+    avoid,
+    size: sizeInRecipeUnit(kind, parseQty(size), sizeUnit) ?? NaN,
+    price: Number(price.replace(/[$,\s]/g, '')),
+    section,
+    store: store.trim() || null
+  });
+
+  type FieldKey = 'name' | 'one' | 'size' | 'price';
+  /** Everything wrong, in form order, with the field it belongs to (an incomplete Add marks these, D-331). */
+  function problems(): { field: FieldKey; reason: string; note: string }[] {
+    const n = draftOf();
+    const out: { field: FieldKey; reason: string; note: string }[] = [];
+    if (!n.name) out.push({ field: 'name', reason: 'give it a name', note: 'Give the ingredient a name.' });
+    else {
+      const dup = newIngredientProblem({ ...n, one: n.one || 'x', size: 1, price: 1 }, catalog, { requirePackage: true });
+      if (dup) out.push({ field: 'name', reason: 'pick it from the search instead', note: dup });
+    }
+    if (kind === 'count' && !one.trim()) out.push({ field: 'one', reason: 'say what one is called', note: 'Say what one is called (can, tortilla…).' });
+    if (!(Number.isFinite(n.size) && n.size > 0)) out.push({ field: 'size', reason: 'say how much one package holds', note: 'How big is one package?' });
+    if (!(Number.isFinite(n.price) && n.price >= MIN_PRICE && n.price <= MAX_PRICE)) {
+      out.push({ field: 'price', reason: 'enter what one package costs', note: `Enter what one package costs, from $${MIN_PRICE.toFixed(2)} to $${MAX_PRICE}.` });
+    }
+    // Anything else the shared check refuses (a package past the size cap) lands on the size.
+    if (out.length === 0) {
+      const rest = newIngredientProblem(n, catalog, { requirePackage: true });
+      if (rest) out.push({ field: 'size', reason: 'check the package size', note: rest });
+    }
+    return out;
+  }
+  const found = tried ? problems() : [];
+  const noteFor = (f: FieldKey) => found.find((p) => p.field === f)?.note;
+
   function submit() {
-    const inUnit = sizeInRecipeUnit(kind, parseQty(size), sizeUnit) ?? NaN;
-    const n: NewIngredient = {
-      key: newIngredientKey(),
-      name: name.trim(),
-      kind,
-      one: kind === 'count' ? one.trim() : '',
-      many: kind === 'count' ? many.trim() || '' : '',
-      avoid,
-      size: inUnit,
-      price: Number(price.replace(/[$,\s]/g, '')),
-      section,
-      store: store.trim() || null
-    };
-    const problem = newIngredientProblem(n, catalog, { requirePackage: true });
-    if (problem) {
-      setError(problem);
+    const now = problems();
+    if (now.length > 0) {
+      setTried(true);
+      rootRef.current?.querySelector<HTMLElement>(`[data-field="${now[0].field}"]`)?.focus();
       return;
     }
-    setError(null);
-    onAdd(n, section);
+    onAdd(draftOf(), section);
   }
 
   function onKey(e: KeyboardEvent<HTMLDivElement>) {
@@ -99,12 +124,12 @@ export function NewIngredientForm({
   }
 
   return (
-    <div className={s.newForm} role="group" aria-labelledby={`${uid}-h`} onKeyDown={onKey}>
+    <div ref={rootRef} className={s.newForm} role="group" aria-labelledby={`${uid}-h`} onKeyDown={onKey}>
       <h3 id={`${uid}-h`} className={s.newHead}>
         New ingredient
       </h3>
-      <Field label="Name">
-        <TextInput value={name} maxLength={60} autoComplete="off" autoFocus onChange={(e) => setName(e.target.value)} />
+      <Field label="Name" problem={noteFor('name')}>
+        <TextInput data-field="name" value={name} maxLength={60} autoComplete="off" autoFocus onChange={(e) => setName(e.target.value)} />
       </Field>
       <div className={w.choice} role="group" aria-label="Measured by">
         <span className={w.choiceLabel} aria-hidden="true">
@@ -120,8 +145,8 @@ export function NewIngredientForm({
       </div>
       {kind === 'count' && (
         <div className={s.pair}>
-          <Field label="One is called">
-            <TextInput value={one} maxLength={20} placeholder="tortilla" autoComplete="off" onChange={(e) => setOne(e.target.value)} />
+          <Field label="One is called" problem={noteFor('one')}>
+            <TextInput data-field="one" value={one} maxLength={20} placeholder="tortilla" autoComplete="off" onChange={(e) => setOne(e.target.value)} />
           </Field>
           <Field label="Several are called">
             <TextInput value={many} maxLength={20} placeholder="tortillas" autoComplete="off" onChange={(e) => setMany(e.target.value)} />
@@ -129,9 +154,9 @@ export function NewIngredientForm({
         </div>
       )}
       <div className={s.pair}>
-        <Field label="One package holds">
+        <Field label="One package holds" problem={noteFor('size')}>
           <span className={s.sizeRow}>
-            <TextInput value={size} inputMode="decimal" autoComplete="off" onChange={(e) => setSize(e.target.value)} />
+            <TextInput data-field="size" value={size} inputMode="decimal" autoComplete="off" onChange={(e) => setSize(e.target.value)} />
             <SelectInput value={sizeUnit} aria-label="Package size unit" onChange={(e) => setSizeUnit(e.target.value)}>
               {SIZE_UNITS[kind].map((u) => (
                 <option key={u.key} value={u.key}>
@@ -141,8 +166,8 @@ export function NewIngredientForm({
             </SelectInput>
           </span>
         </Field>
-        <Field label="Price">
-          <TextInput value={price} inputMode="decimal" placeholder="$" autoComplete="off" onChange={(e) => setPrice(e.target.value)} />
+        <Field label="Price" problem={noteFor('price')}>
+          <TextInput data-field="price" value={price} inputMode="decimal" placeholder="$" autoComplete="off" onChange={(e) => setPrice(e.target.value)} />
         </Field>
       </div>
       <Field label="Store (optional)">
@@ -175,9 +200,9 @@ export function NewIngredientForm({
           ))}
         </div>
       </div>
-      {(error ?? failure) && (
+      {failure && (
         <p className={s.formError} role="alert">
-          {error ?? failure}
+          {failure}
         </p>
       )}
       <div className={w.noticeActions}>
@@ -187,6 +212,7 @@ export function NewIngredientForm({
         <Button size="sm" variant="secondary" disabled={busy} onClick={onCancel}>
           Cancel
         </Button>
+        <SaveProblem action="add" reason={found[0]?.reason} more={found.length - 1} />
       </div>
     </div>
   );

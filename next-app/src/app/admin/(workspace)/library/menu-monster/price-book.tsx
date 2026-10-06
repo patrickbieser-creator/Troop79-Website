@@ -22,7 +22,8 @@ import { Badge } from '../../_components/badge';
 import { Notice } from '../../_components/notice';
 import { Dialog, DialogActions, DialogBody, DialogHeader } from '../../_components/dialog';
 import { SearchField, useTableSearch } from '../../_components/search-field';
-import { SaveButton } from '../../_components/save-state';
+import { ActionsMenu } from '../../_components/actions-menu';
+import { SaveButton, SaveProblem } from '../../_components/save-state';
 import { fmtDate } from '@/lib/format-date';
 import { money } from '@/lib/event-money';
 import { changeUnitPlan, staleText } from '@/lib/menu-monster/authoring';
@@ -32,7 +33,7 @@ import { addConversion, changeIngredientUnit, deleteConversion, restoreIngredien
 import { NewFoodForm } from './new-food-form';
 import { BrandsAndPrices } from './brands-prices';
 import { FoodOnMenu } from './food-on-menu';
-import { useArmed } from './use-armed';
+import { useAttempt } from './use-attempt';
 import lib from '../library.module.css';
 import styles from './menu-monster.module.css';
 
@@ -201,7 +202,11 @@ function IngredientDetail({ row, catalog, today, stores, scrollIntoView = false,
   const [showConversions, setShowConversions] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
-  const retire = useArmed();
+  const [retiring, setRetiring] = useState(false);
+  const retireDialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    if (retiring) retireDialog.current?.showModal();
+  }, [retiring]);
   const conversions = catalog.conversions.filter((c) => c.ingredientId === ing.id);
 
   function run(fn: () => Promise<{ ok: boolean; error?: string }>) {
@@ -227,27 +232,17 @@ function IngredientDetail({ row, catalog, today, stores, scrollIntoView = false,
             Edit
           </Button>
         )}
-        {!ing.retiredAt && (
-          <Button variant="secondary" size="sm" disabled={pending} onClick={() => setChangingUnit(true)}>
-            Change unit
-          </Button>
-        )}
-        {ing.retiredAt ? (
-          <Button variant="secondary" size="sm" disabled={pending} onClick={() => run(() => restoreIngredient(ing.id))}>
-            Restore
-          </Button>
-        ) : (
-          <Button
-            variant="danger"
-            size="sm"
-            disabled={pending}
-            onClick={() => {
-              if (retire.arm()) run(() => retireIngredient(ing.id));
-            }}
-          >
-            {retire.armed ? 'Click again to retire' : 'Retire ingredient'}
-          </Button>
-        )}
+        <ActionsMenu
+          ariaLabel="More actions"
+          placeholder="More actions…"
+          disabled={pending}
+          options={ing.retiredAt ? [{ value: 'restore', label: 'Restore' }] : [{ value: 'unit', label: 'Change unit' }, { value: 'retire', label: 'Retire' }]}
+          onAction={(v) => {
+            if (v === 'unit') setChangingUnit(true);
+            else if (v === 'retire') setRetiring(true);
+            else run(() => restoreIngredient(ing.id));
+          }}
+        />
       </div>
       {error && <Notice>{error}</Notice>}
 
@@ -265,6 +260,28 @@ function IngredientDetail({ row, catalog, today, stores, scrollIntoView = false,
         </button>
       </div>
       {showConversions && <ConversionsBlock ing={ing} conversions={conversions} onChanged={onChanged} />}
+
+      {retiring && (
+        <Dialog ref={retireDialog} danger aria-label={`Retire ${ing.name}`} onClose={() => setRetiring(false)}>
+          <DialogHeader title={`Retire ${ing.name}?`} sub="Menus and recipes can’t pick it any more, and its prices stop counting. It can be restored later." />
+          <DialogBody>{null}</DialogBody>
+          <DialogActions>
+            <Button variant="secondary" size="sm" onClick={() => setRetiring(false)}>
+              Keep it
+            </Button>
+            <Button
+              variant="dangerSolid"
+              size="sm"
+              onClick={() => {
+                setRetiring(false);
+                run(() => retireIngredient(ing.id));
+              }}
+            >
+              Retire
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
 
       {changingUnit && (
         <ChangeUnitDialog
@@ -292,6 +309,8 @@ function IngredientEditForm({ ing, onClose, onChanged }: { ing: Ingredient; onCl
   const [pending, start] = useTransition();
   const dirty = JSON.stringify(draft) !== JSON.stringify(initial);
   const idp = `mm-ing-${ing.id}`;
+  const { attempted, container, refuse } = useAttempt();
+  const noName = !draft.name.trim();
 
   function save() {
     setError(null);
@@ -309,12 +328,13 @@ function IngredientEditForm({ ing, onClose, onChanged }: { ing: Ingredient; onCl
   return (
     <FormPanel title={`Edit ${ing.name}`} aria-label={`Edit ${ing.name}`}>
       {error && <Notice>{error}</Notice>}
-      <div className={lib.fieldGrid}>
+      <div ref={container} className={lib.fieldGrid}>
         <div>
           <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-name`}>
             Name
           </label>
-          <input id={`${idp}-name`} className={lib.textInput} value={draft.name} maxLength={80} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} />
+          <input id={`${idp}-name`} className={attempted && noName ? `${lib.textInput} ${styles.bad}` : lib.textInput} aria-invalid={(attempted && noName) || undefined} value={draft.name} maxLength={80} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} />
+          {attempted && noName && <p className={styles.badNote}>Give it a name.</p>}
         </div>
         <div>
           <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-section`}>
@@ -346,10 +366,11 @@ function IngredientEditForm({ ing, onClose, onChanged }: { ing: Ingredient; onCl
         </div>
       </div>
       <div className={lib.actionsRow}>
-        <SaveButton dirty={dirty} pending={pending} blocked={!draft.name.trim()} blockedReason="It needs a name" onClick={save} />
+        <SaveButton dirty={dirty} pending={pending} blocked={noName} blockedReason="It needs a name" onBlocked={refuse} onClick={save} />
         <Button variant="secondary" disabled={pending} onClick={onClose}>
           Cancel
         </Button>
+        {attempted && noName && <SaveProblem reason="it needs a name" />}
       </div>
     </FormPanel>
   );
@@ -368,7 +389,16 @@ function ConversionsBlock({ ing, conversions, onChanged }: { ing: Ingredient; co
   const [pending, start] = useTransition();
   const idp = `mm-conv-${ing.id}`;
   const factorNum = Number(factor);
-  const ready = from !== to && factor.trim() !== '' && factorNum > 0;
+  const { attempted, container, refuse, clear } = useAttempt();
+  const nothingTyped = factor.trim() === '' && label.trim() === '';
+  const badFactor = !(factor.trim() !== '' && factorNum > 0);
+  const sameUnit = from === to;
+  const problems = [
+    ...(badFactor ? [{ field: 'factor', note: 'Needs a number above zero.', reason: 'say how many' }] : []),
+    ...(sameUnit ? [{ field: 'to', note: 'Pick two different units.', reason: 'pick two different units' }] : [])
+  ];
+  const shown = attempted ? problems : [];
+  const isBad = (f: string) => shown.some((x) => x.field === f);
   const unitLabel = (k: string) => (k === ing.unit.key ? ing.unit.many : UNITS[k]?.many ?? k);
 
   function run(fn: () => Promise<{ ok: boolean; error?: string }>, after?: () => void) {
@@ -409,7 +439,7 @@ function ConversionsBlock({ ing, conversions, onChanged }: { ing: Ingredient; co
           ))}
         </ul>
       )}
-      <div className={styles.inlineForm}>
+      <div ref={container} className={styles.inlineForm}>
         <div>
           <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-from`}>
             1 of
@@ -426,19 +456,21 @@ function ConversionsBlock({ ing, conversions, onChanged }: { ing: Ingredient; co
           <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-factor`}>
             equals
           </label>
-          <input id={`${idp}-factor`} className={lib.textInput} inputMode="decimal" value={factor} onChange={(e) => setFactor(e.target.value)} placeholder="16" />
+          <input id={`${idp}-factor`} className={isBad('factor') ? `${lib.textInput} ${styles.bad}` : lib.textInput} aria-invalid={isBad('factor') || undefined} inputMode="decimal" value={factor} onChange={(e) => setFactor(e.target.value)} placeholder="16" />
+          {isBad('factor') && <p className={styles.badNote}>{problems.find((x) => x.field === 'factor')?.note}</p>}
         </div>
         <div>
           <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-to`}>
             of
           </label>
-          <select id={`${idp}-to`} className={lib.selectInput} value={to} onChange={(e) => setTo(e.target.value)}>
+          <select id={`${idp}-to`} className={isBad('to') ? `${lib.selectInput} ${styles.bad}` : lib.selectInput} aria-invalid={isBad('to') || undefined} value={to} onChange={(e) => setTo(e.target.value)}>
             {CONV_UNITS.map((k) => (
               <option key={k} value={k}>
                 {k}
               </option>
             ))}
           </select>
+          {isBad('to') && <p className={styles.badNote}>{problems.find((x) => x.field === 'to')?.note}</p>}
         </div>
         <div className={styles.grow}>
           <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-label`}>
@@ -448,20 +480,25 @@ function ConversionsBlock({ ing, conversions, onChanged }: { ing: Ingredient; co
         </div>
         <Button
           variant="secondary"
-          disabled={pending || !ready}
-          title={ready ? undefined : 'Two different units and a factor above zero'}
-          onClick={() =>
+          disabled={pending || nothingTyped}
+          onClick={() => {
+            if (problems.length > 0) {
+              refuse();
+              return;
+            }
             run(
               () => addConversion(ing.id, { from, to, factor: factorNum, label: label || null }),
               () => {
                 setFactor('');
                 setLabel('');
+                clear();
               }
-            )
-          }
+            );
+          }}
         >
           Add conversion
         </Button>
+        {shown.length > 0 && <SaveProblem reason={shown[0].reason} more={shown.length - 1} />}
       </div>
     </FormPanel>
   );
@@ -489,6 +526,10 @@ function ChangeUnitDialog({ ing, packages, catalog, onClose, onChanged }: { ing:
     .flatMap((r) => r.lines.filter((l) => l.ingredientId === ing.id).map((l) => ({ recipeId: r.id, recipeName: r.name, unitKey: l.unitKey })));
   const same = unit.kind === ing.unit.kind && unit.key === ing.unit.key && unit.one === ing.unit.one && unit.many === ing.unit.many;
   const ready = !same && (kind !== 'count' || (one.trim() && many.trim()));
+  const { attempted, container, refuse } = useAttempt();
+  const badOne = kind === 'count' && !one.trim();
+  const badMany = kind === 'count' && !many.trim();
+  const shown = attempted ? [...(badOne ? ['name what one is called'] : []), ...(badMany ? ['name what several are called'] : [])] : [];
   const plan = ready ? changeUnitPlan(ing, unit, packages, lines, catalog.conversions) : null;
 
   return (
@@ -496,7 +537,7 @@ function ChangeUnitDialog({ ing, packages, catalog, onClose, onChanged }: { ing:
       <DialogHeader title={`Change the recipe unit of ${ing.name}`} sub={`Today: ${ing.unit.many}. Package yields and recipe lines follow the rules below.`} />
       <DialogBody>
         {error && <Notice>{error}</Notice>}
-        <div className={lib.fieldGrid}>
+        <div ref={container} className={lib.fieldGrid}>
           <div>
             <label className={`adminLabel ${lib.fieldLabel}`} htmlFor="mm-cu-kind">
               Measured by
@@ -535,13 +576,15 @@ function ChangeUnitDialog({ ing, packages, catalog, onClose, onChanged }: { ing:
                 <label className={`adminLabel ${lib.fieldLabel}`} htmlFor="mm-cu-one">
                   One is called
                 </label>
-                <input id="mm-cu-one" className={lib.textInput} value={one} onChange={(e) => setOne(e.target.value)} />
+                <input id="mm-cu-one" className={attempted && badOne ? `${lib.textInput} ${styles.bad}` : lib.textInput} aria-invalid={(attempted && badOne) || undefined} value={one} onChange={(e) => setOne(e.target.value)} />
+                {attempted && badOne && <p className={styles.badNote}>Say what one is called.</p>}
               </div>
               <div>
                 <label className={`adminLabel ${lib.fieldLabel}`} htmlFor="mm-cu-many">
                   Several are called
                 </label>
-                <input id="mm-cu-many" className={lib.textInput} value={many} onChange={(e) => setMany(e.target.value)} />
+                <input id="mm-cu-many" className={attempted && badMany ? `${lib.textInput} ${styles.bad}` : lib.textInput} aria-invalid={(attempted && badMany) || undefined} value={many} onChange={(e) => setMany(e.target.value)} />
+                {attempted && badMany && <p className={styles.badNote}>Say what several are called.</p>}
               </div>
             </>
           )}
@@ -557,13 +600,18 @@ function ChangeUnitDialog({ ing, packages, catalog, onClose, onChanged }: { ing:
         )}
       </DialogBody>
       <DialogActions>
+        {shown.length > 0 && <SaveProblem reason={shown[0]} more={shown.length - 1} />}
         <Button variant="secondary" disabled={pending} onClick={() => ref.current?.close()}>
           Cancel
         </Button>
         <Button
           variant="primary"
-          disabled={pending || !ready}
+          disabled={pending || same}
           onClick={() => {
+            if (!ready) {
+              refuse();
+              return;
+            }
             setError(null);
             start(async () => {
               const res = await changeIngredientUnit(ing.id, unit);

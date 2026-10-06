@@ -9,6 +9,7 @@
 import { useState } from 'react';
 import sg from './styleguide.module.css';
 import { DiscardButton, SaveButton, SaveFeedback, SaveProblem, useDraftSnapshot, useSavePhase } from '../../_components/save-state';
+import marks from '../../_components/save-state.module.css';
 import { SegmentedControl } from '../../_components/segmented-control';
 
 export function SaveDemo() {
@@ -60,8 +61,10 @@ export function BlockedSaveDemo() {
         aria-invalid={bad || undefined}
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        style={{ minWidth: '14em', outline: bad ? '1px solid var(--admin-danger)' : undefined }}
+        className={bad ? marks.bad : undefined}
+        style={{ minWidth: '14em' }}
       />
+      {bad && <p className={marks.badNote}>Title is required.</p>}
       <DiscardButton
         dirty={dirty}
         onClick={() => {

@@ -43,6 +43,8 @@ export function MenusAdmin({ menus, owners = [], patrols = [] }: { menus: MenuAd
   const [pending, start] = useTransition();
   const [line, setLine] = useState<Line | null>(null);
   const [renaming, setRenaming] = useState<{ id: string; value: string } | null>(null);
+  /** Save pressed with the name emptied: the input is marked until a name is typed. */
+  const [renameTried, setRenameTried] = useState(false);
   /** One inline edit at a time: a new owner or a patrol for one menu. */
   const [editing, setEditing] = useState<{ id: string; field: 'owner' | 'patrol'; value: string } | null>(null);
   // Delete takes two clicks (D-070: no confirm()): the first arms one row, the second deletes it.
@@ -106,11 +108,17 @@ export function MenusAdmin({ menus, owners = [], patrols = [] }: { menus: MenuAd
                         onSubmit={(e) => {
                           e.preventDefault();
                           const v = renaming.value.trim();
+                          if (!v) {
+                            setRenameTried(true);
+                            (e.currentTarget.querySelector('input') as HTMLElement | null)?.focus();
+                            return;
+                          }
                           run(() => renameMenu(m.id, v), `Renamed “${m.name}” to “${v}”.`);
                         }}
                       >
-                        <input className={lib.textInput} value={renaming.value} maxLength={120} aria-label={`New name for ${m.name}`} autoFocus onChange={(e) => setRenaming({ id: m.id, value: e.target.value })} />
-                        <Button type="submit" size="sm" variant="primary" disabled={pending || !renaming.value.trim() || renaming.value.trim() === m.name}>
+                        <input className={renameTried && !renaming.value.trim() ? `${lib.textInput} ${styles.bad}` : lib.textInput} aria-invalid={(renameTried && !renaming.value.trim()) || undefined} value={renaming.value} maxLength={120} aria-label={`New name for ${m.name}`} autoFocus onChange={(e) => setRenaming({ id: m.id, value: e.target.value })} />
+                        {renameTried && !renaming.value.trim() && <p className={styles.badNote}>It needs a name.</p>}
+                        <Button type="submit" size="sm" variant="primary" disabled={pending || renaming.value.trim() === m.name}>
                           Save
                         </Button>
                         <Button type="button" size="sm" variant="secondary" onClick={() => setRenaming(null)}>

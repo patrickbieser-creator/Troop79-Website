@@ -48,6 +48,19 @@ describe('RecipeEditor saving', () => {
     expect(save).not.toHaveBeenCalled();
   });
 
+  it('Scout_SeesTheNameMarked_WhenSavingWithoutOne', async () => {
+    const user = userEvent.setup();
+    fresh();
+    await user.click(screen.getByRole('button', { name: 'Save draft' }));
+    const name = screen.getByRole('textbox', { name: 'Recipe name' });
+    expect(name.getAttribute('aria-invalid')).toBe('true');
+    expect(document.activeElement).toBe(name);
+    expect(screen.getByRole('alert').textContent).toBe('Can’t save yet: give your recipe a name');
+    await user.type(name, 'C');
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(name.getAttribute('aria-invalid')).toBeNull();
+  });
+
   it('NewRecipe_MovesToItsOwnUrl_AfterTheFirstSave', async () => {
     const user = userEvent.setup();
     fresh();
@@ -95,11 +108,27 @@ describe('RecipeEditor saving', () => {
 });
 
 describe('RecipeEditor sharing', () => {
-  it('Share_ListsWhatIsMissing_BeforeSharing', async () => {
+  it('Scout_SeesWhichFieldIsBad_WhenSharingAnIncompleteRecipe', async () => {
     existing('draft', { ...READY, mealFit: [], lines: [] });
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Share with the troop' }));
-    expect(screen.getByRole('alert').textContent).toContain('Add at least one ingredient.');
+    const share$ = screen.getByRole('button', { name: 'Share with the troop' }) as HTMLButtonElement;
+    expect(share$.disabled).toBe(false);
+    await userEvent.setup().click(share$);
+    expect(screen.getByText('Pick at least one meal it’s good for.')).toBeTruthy();
+    expect(screen.getByText('Add at least one ingredient.')).toBeTruthy();
+    expect(screen.getByRole('textbox', { name: 'Recipe name' }).getAttribute('aria-invalid')).toBeNull();
+    expect(screen.getByRole('alert').textContent).toBe('Can’t share yet: pick a meal it’s good for (+1 more)');
+    expect(document.activeElement).toBe(within(screen.getByRole('group', { name: 'Good for' })).getAllByRole('button')[0]);
     expect(share).not.toHaveBeenCalled();
+  });
+
+  it('Scout_LosesTheProblemLine_WhenTheRecipeBecomesWhole', async () => {
+    const user = userEvent.setup();
+    existing('draft', { ...READY, mealFit: [] });
+    await user.click(screen.getByRole('button', { name: 'Share with the troop' }));
+    expect(screen.getByRole('alert')).toBeTruthy();
+    await user.click(within(screen.getByRole('group', { name: 'Good for' })).getByRole('button', { name: 'Breakfast' }));
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByText('Pick at least one meal it’s good for.')).toBeNull();
   });
 
   it('Share_SavesFirst_WhenThereAreUnsavedChanges', async () => {
@@ -218,7 +247,25 @@ describe('RecipeEditor typed-in ingredients (Phase 4B)', () => {
     await user.type(within(form).getByRole('textbox', { name: 'One package holds' }), '2');
     await user.type(within(form).getByRole('textbox', { name: 'One is called' }), 'tub');
     await user.click(within(form).getByRole('button', { name: 'Add ingredient' }));
-    expect(within(form).getByRole('alert').textContent).toBe('Enter what one package costs, from $0.10 to $500.');
+    expect(within(form).getByText('Enter what one package costs, from $0.10 to $500.')).toBeTruthy();
+    expect(within(form).getByRole('alert').textContent).toBe('Can’t add yet: enter what one package costs');
+  });
+
+  it('Scout_SeesWhichFieldIsBad_WhenAddingAnIncompleteIngredient', async () => {
+    const user = userEvent.setup();
+    existing();
+    await user.type(screen.getByRole('combobox', { name: 'Add an ingredient' }), 'Gochujang');
+    await user.click(screen.getByRole('option', { name: 'Add “Gochujang” as a new ingredient' }));
+    const form = screen.getByRole('group', { name: 'New ingredient' });
+    const add = within(form).getByRole('button', { name: 'Add ingredient' }) as HTMLButtonElement;
+    expect(add.disabled).toBe(false);
+    await user.click(add);
+    expect(within(form).getByRole('textbox', { name: 'One is called' }).getAttribute('aria-invalid')).toBe('true');
+    expect(within(form).getByRole('textbox', { name: 'One package holds' }).getAttribute('aria-invalid')).toBe('true');
+    expect(within(form).getByRole('textbox', { name: 'Price' }).getAttribute('aria-invalid')).toBe('true');
+    expect(within(form).getByRole('alert').textContent).toBe('Can’t add yet: say what one is called (+2 more)');
+    expect(document.activeElement).toBe(within(form).getByRole('textbox', { name: 'One is called' }));
+    expect(within(form).getByText('How big is one package?')).toBeTruthy();
   });
 
   it('Save_SendsTheNewIngredient_InTheRecipeUnit', async () => {

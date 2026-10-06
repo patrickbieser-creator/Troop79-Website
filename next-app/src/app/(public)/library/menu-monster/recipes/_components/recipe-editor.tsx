@@ -18,7 +18,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLeaveGuard } from '@/lib/use-leave-guard';
 import { Button } from '@/app/_components/button';
-import { Field, TextInput } from '@/app/_components/form';
+import { Field, FieldProblem, SaveProblem, TextInput } from '@/app/_components/form';
 import { Notice } from '@/app/_components/notice';
 import { Stepper } from '@/app/_components/stepper';
 import type { Catalog, FoodGroup, MealSlot } from '@/lib/menu-monster/types';
@@ -26,7 +26,7 @@ import { FOOD_GROUPS, MEALS } from '@/lib/menu-monster/units';
 import { MAX_HEADCOUNT, MIN_HEADCOUNT } from '@/lib/menu-monster/engine';
 import type { AmountView } from '@/lib/menu-monster/ingredient-rows';
 import { authorRows } from '@/lib/menu-monster/author-rows';
-import { MAX_GEAR, MAX_SCOUT_RECIPE_NAME, MAX_SCOUT_STEP, MAX_SCOUT_STEPS, shareProblems, type ScoutRecipeLine } from '@/lib/menu-monster/scout-recipes';
+import { MAX_GEAR, MAX_SCOUT_RECIPE_NAME, MAX_SCOUT_STEP, MAX_SCOUT_STEPS, type ScoutRecipeLine } from '@/lib/menu-monster/scout-recipes';
 import { gearKey, gearText, parseGear, sortGear, type GearItem } from '@/lib/menu-monster/gear';
 import type { RecipeStatus } from '@/lib/menu-monster/types';
 import { saveScoutRecipeAction, shareScoutRecipeAction } from '../../../_tools/menu-monster/recipe-actions';
@@ -101,7 +101,8 @@ export function RecipeEditor({ catalog, id: initialId, initial, status: initialS
   const [busy, setBusy] = useState<'save' | 'share' | null>(null);
   const [justSaved, setJustSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [problems, setProblems] = useState<string[]>([]);
+  /** Which button was pressed on an incomplete recipe (D-331): its problems are marked in place until the recipe is whole. */
+  const [tried, setTried] = useState<'save' | 'share' | null>(null);
   const [announce, setAnnounce] = useState('');
   /** Gear the last save did not keep because it is not on the troop's gear list. */
   const [gearDropped, setGearDropped] = useState<string[]>([]);
@@ -109,6 +110,7 @@ export function RecipeEditor({ catalog, id: initialId, initial, status: initialS
   const [view, setView] = useState<AmountView>('total');
   const nameRef = useRef<HTMLInputElement | null>(null);
   const stepsRef = useRef<HTMLOListElement | null>(null);
+  const formRef = useRef<HTMLFieldSetElement | null>(null);
 
   const isNew = id === null;
   const retired = status === 'retired';
@@ -120,6 +122,28 @@ export function RecipeEditor({ catalog, id: initialId, initial, status: initialS
   const view$ = useMemo(() => overlayNewIngredients(catalog, [...savedTyped, ...draft.newIngredients]), [catalog, savedTyped, draft.newIngredients]);
   const rows = useMemo(() => authorRows(draft.lines, view$, people, view), [draft.lines, view$, people, view]);
   const choices = useMemo(() => view$.ingredients.map((i) => ({ id: i.id, name: i.name })), [view$.ingredients]);
+
+  /** What stops a save (the name) or a share (name, a meal, an ingredient), in form order. */
+  const problemsFor = (kind: 'save' | 'share'): { field: 'name' | 'mealFit' | 'lines'; reason: string; note: string }[] => {
+    const out: { field: 'name' | 'mealFit' | 'lines'; reason: string; note: string }[] = [];
+    if (!draft.name.trim()) out.push({ field: 'name', reason: 'give your recipe a name', note: 'Give your recipe a name.' });
+    if (kind === 'share' && draft.mealFit.length === 0) out.push({ field: 'mealFit', reason: 'pick a meal it’s good for', note: 'Pick at least one meal it’s good for.' });
+    if (kind === 'share' && draft.lines.length === 0) out.push({ field: 'lines', reason: 'add an ingredient', note: 'Add at least one ingredient.' });
+    return out;
+  };
+  const found = tried ? problemsFor(tried) : [];
+  const noteFor = (f: 'name' | 'mealFit' | 'lines') => found.find((p) => p.field === f)?.note;
+
+  /** Mark what is wrong and move to the first of it. Returns true when the recipe is whole. */
+  function whole(kind: 'save' | 'share'): boolean {
+    const now = problemsFor(kind);
+    if (now.length === 0) return true;
+    setTried(kind);
+    const first = now[0].field;
+    const el = formRef.current?.querySelector<HTMLElement>(`[data-field="${first}"]`);
+    (first === 'name' ? nameRef.current : first === 'mealFit' ? el?.querySelector<HTMLElement>('button') : el?.querySelector<HTMLElement>('input'))?.focus();
+    return false;
+  }
 
   const edit = (f: (d: Draft) => Draft) => {
     setDraft(f);
@@ -136,7 +160,6 @@ export function RecipeEditor({ catalog, id: initialId, initial, status: initialS
       if (a.type === 'move') return { ...d, lines: moveItem(d.lines, a.from, a.to) };
       return { ...d, lines: d.lines.map((l) => (l.ingredientId === a.ingredientId ? { ...l, qtyPerPerson: a.qtyPerPerson } : l)) };
     });
-    if (a.type !== 'add') setProblems([]);
   }
 
   /* ---- Steps ---- */
@@ -161,11 +184,7 @@ export function RecipeEditor({ catalog, id: initialId, initial, status: initialS
 
   /* ---- Save / share ---- */
   async function save(): Promise<string | null> {
-    if (!draft.name.trim()) {
-      setError('Give your recipe a name.');
-      nameRef.current?.focus();
-      return null;
-    }
+    if (!whole('save')) return null;
     setBusy('save');
     setError(null);
     setGearDropped([]);
@@ -215,9 +234,7 @@ export function RecipeEditor({ catalog, id: initialId, initial, status: initialS
   }
 
   async function share() {
-    const missing = shareProblems({ name: draft.name.trim(), mealFit: draft.mealFit, lines: draft.lines });
-    setProblems(missing);
-    if (missing.length > 0) return;
+    if (!whole('share')) return;
     const savedId = dirty || isNew ? await save() : id;
     if (!savedId) return;
     setBusy('share');
@@ -235,7 +252,7 @@ export function RecipeEditor({ catalog, id: initialId, initial, status: initialS
   function discard() {
     setDraft(savedDraft);
     setError(null);
-    setProblems([]);
+    setTried(null);
   }
 
   const title = draft.name.trim() || (isNew ? 'New recipe' : 'Untitled recipe');
@@ -252,6 +269,7 @@ export function RecipeEditor({ catalog, id: initialId, initial, status: initialS
                 {busy === 'share' ? 'Sharing…' : 'Share with the troop'}
               </Button>
             )}
+            <SaveProblem action={tried === 'share' ? 'share' : 'save'} reason={found[0]?.reason} more={found.length - 1} />
           </span>
         )}
       </div>
@@ -265,25 +283,16 @@ export function RecipeEditor({ catalog, id: initialId, initial, status: initialS
           {error}
         </Notice>
       )}
-      {problems.length > 0 && (
-        <Notice tone="error" role="alert" className={w.notice}>
-          <strong>Before sharing</strong>
-          <ul className={s.problems}>
-            {problems.map((p) => (
-              <li key={p}>{p}</li>
-            ))}
-          </ul>
-        </Notice>
-      )}
 
-      <fieldset className={s.fieldset} disabled={retired}>
+      <fieldset ref={formRef} className={s.fieldset} disabled={retired}>
         <div className={`${w.grid} ${s.grid}`}>
           <div className={w.col}>
             <section className={w.basics} aria-label="Recipe name, meals and food groups">
-              <Field label="Recipe name">
-                <TextInput ref={nameRef} value={draft.name} maxLength={MAX_SCOUT_RECIPE_NAME} autoComplete="off" placeholder="Campfire chili" onChange={(e) => edit((d) => ({ ...d, name: e.target.value }))} />
+              <Field label="Recipe name" problem={noteFor('name')}>
+                <TextInput ref={nameRef} data-field="name" value={draft.name} maxLength={MAX_SCOUT_RECIPE_NAME} autoComplete="off" placeholder="Campfire chili" onChange={(e) => edit((d) => ({ ...d, name: e.target.value }))} />
               </Field>
-              <ChipGroup label="Good for" options={MEALS} value={draft.mealFit} onToggle={(k) => edit((d) => ({ ...d, mealFit: toggle(d.mealFit, k) }))} />
+              <ChipGroup label="Good for" field="mealFit" describedBy={noteFor('mealFit') ? 're-mealfit-problem' : undefined} options={MEALS} value={draft.mealFit} onToggle={(k) => edit((d) => ({ ...d, mealFit: toggle(d.mealFit, k) }))} />
+              <FieldProblem id="re-mealfit-problem">{noteFor('mealFit')}</FieldProblem>
               <ChipGroup label="Food groups" options={FOOD_GROUPS} value={draft.foodGroups} onToggle={(k) => edit((d) => ({ ...d, foodGroups: toggle(d.foodGroups, k) }))} />
               {fromNote && isNew && <p className={w.foot}>{fromNote}</p>}
             </section>
@@ -309,7 +318,7 @@ export function RecipeEditor({ catalog, id: initialId, initial, status: initialS
               <div className={w.line}>
                 <Stepper id="re-people" label="People" value={people} min={MIN_HEADCOUNT} max={MAX_HEADCOUNT} onChange={setPeople} groupLabel="People" lessLabel="One fewer person" moreLabel="One more person" />
               </div>
-              <div className={s.listCard}>
+              <div className={noteFor('lines') ? `${s.listCard} ${s.listBad}` : s.listCard} data-field="lines">
                 <IngredientList
                   mode="author"
                   ariaLabel="Ingredients"
@@ -332,6 +341,7 @@ export function RecipeEditor({ catalog, id: initialId, initial, status: initialS
                   )}
                 />
               </div>
+              <FieldProblem>{noteFor('lines')}</FieldProblem>
             </section>
           </div>
 
@@ -425,9 +435,9 @@ function GearSection({ gear, list, dropped, onChange, onAnnounce }: { gear: stri
   );
 }
 
-function ChipGroup<K extends string>({ label, options, value, onToggle }: { label: string; options: readonly { key: K; label: string }[]; value: K[]; onToggle: (k: K) => void }) {
+function ChipGroup<K extends string>({ label, field, describedBy, options, value, onToggle }: { label: string; field?: string; describedBy?: string; options: readonly { key: K; label: string }[]; value: K[]; onToggle: (k: K) => void }) {
   return (
-    <div className={w.choice} role="group" aria-label={label}>
+    <div className={w.choice} role="group" aria-label={label} data-field={field} aria-describedby={describedBy}>
       <span className={w.choiceLabel} aria-hidden="true">
         {label}
       </span>

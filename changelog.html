@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>October 6, 2026</strong> &nbsp;&middot;&nbsp; v1.192.0</p>
+      <p>Last updated: <strong>October 6, 2026</strong> &nbsp;&middot;&nbsp; v1.193.0</p>
     </div>
   </div>
 
@@ -494,6 +494,24 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.193.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.193.0</span>
+        <span class="release-date">October 6, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Improved</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Menu Monster: every form says what is missing, in place</p>
+        <ul class="change-list">
+          <li><span><strong>No more greyed-out Save with the reason in a tooltip.</strong> On every Menu Monster form a Save, Add or Share that cannot go through yet stays live; pressing it saves nothing and instead outlines each field that needs something, says why under it, lands on the first one, and prints &ldquo;Can&rsquo;t save yet: &hellip; (+N more)&rdquo; beside the button. A button is greyed only when there is nothing to do.</span></li>
+          <li><span><strong>Admin:</strong> the new food form, &ldquo;Put it on the menu by itself&rdquo;, a gear item&rsquo;s edit, the menu / scout-recipe / brand renames, the Price book ingredient edit, Add conversion, the Change unit dialog, Add a price, and the package editor (a blank price is now a marked problem rather than $0).</span></li>
+          <li><span><strong>Scouts:</strong> the recipe editor&rsquo;s Save and Share (the &ldquo;Before sharing&rdquo; box is gone), the new-ingredient and add-a-package forms, and What we bought lands on the first price that is wrong.</span></li>
+          <li><span><strong>One hierarchy on the Price book.</strong> An ingredient&rsquo;s header keeps Edit as its one loose action; Change unit and Retire / Restore are under <strong>More actions&hellip;</strong>, and Retire now confirms in a dialog that names the consequence. &ldquo;Add a price&rdquo; is secondary, &ldquo;Add a brand&rdquo; and per-package Edit are quiet.</span></li>
+        </ul>
       </div>
     </div>
 

@@ -23,8 +23,10 @@
  */
 import sg from './styleguide.module.css';
 import { DialogDemo } from './dialog-demo';
+import { EditorPromptsSpecimen } from './editor-prompts-specimen';
+import { FoodListRowsSpecimen } from './food-list-rows-specimen';
 import { BlockedSaveDemo, SaveDemo, SegmentedDemo } from './save-demo';
-import { fmtDate, fmtDateLong, fmtDateFull, fmtDay, fmtDateTime, fmtMonthYear, fmtRange } from '@/lib/format-date';
+import { fmtDate, fmtDateLong, fmtDateFull, fmtDay, fmtDateTime, fmtMonthYear, fmtRange, fmtWhen } from '@/lib/format-date';
 import { ActionsMenuSpecimen, GearPickerSpecimen, SearchFieldSpecimen, SortHeaderSpecimen } from './specimens';
 import {
   DangerZoneSpecimen,
@@ -948,6 +950,12 @@ export default function StyleguidePage() {
           >
             <p className={sg.specimenNote}>Live at <strong>/admin/roster-print</strong> and <strong>/admin/snapshot/[id]</strong>.</p>
           </Specimen>
+          <Specimen
+            label="Food & recipes list — row kinds"
+            note="DataTable·Card (composed by Menu Monster's .table). Beside a menu item (a Draft row shows its status Badge): an Ingredient row — a Price book food with no item of its own, always listed, one quiet “Put it on the menu by itself” that opens the same two questions (each person gets, meal fit) under the row; and a scout's single food, shown only when searched for, with one quiet “Keep for the troop” and a warning Badge. Neither opens an editor; both report in words through the list's Notice. library/menu-monster/list-extra-rows.tsx."
+          >
+            <FoodListRowsSpecimen />
+          </Specimen>
         </div>
       </section>
 
@@ -1324,6 +1332,17 @@ export default function StyleguidePage() {
                 <td>timestamptz (America/Chicago)</td>
               </tr>
               <tr>
+                <td><code>fmtWhen</code></td>
+                <td>
+                  The day and clock of an instant: arrival / departure times on the signup, the ride board and the sheet; <code>{'{ long: true }'}</code> spells the weekday.
+                </td>
+                <td>
+                  {fmtWhen('2026-07-11T14:00:00.000Z')}
+                  <span className={sg.dateAlt}>{fmtWhen('2026-07-11T14:00:00.000Z', { long: true })} (long: true)</span>
+                </td>
+                <td>timestamptz (America/Chicago)</td>
+              </tr>
+              <tr>
                 <td><code>fmtMonthYear</code></td>
                 <td>Almanacs, &ldquo;updated&rdquo;, &ldquo;earned&rdquo; badges.</td>
                 <td>{fmtMonthYear('2026-07-12')}</td>
@@ -1343,6 +1362,28 @@ export default function StyleguidePage() {
         </div>
       </section>
 
+      {/* ════ EDITOR INLINE PROMPTS ════ */}
+      <section className={sg.section}>
+        <h2 className={sg.sectionHead}>Editor Inline Prompts</h2>
+        <p className={sg.sectionNote}>
+          The markdown editor&rsquo;s insert forms (<code>_components/markdown-block-tools</code>, shared by the news editor and the
+          calendar entry form) open <strong>inline between toolbar and textarea</strong>, never in a dialog: Gallery link (album URL,
+          caption, optional cover), Video (YouTube or Vimeo URL, caption) and Image (caption, then &ldquo;Link to&rdquo; as one radio
+          group: None, full-size, a web address). All share <code>.inlinePrompt</code>, Cancel (secondary) and Insert (primary,
+          disabled until the URL is in); opened on an existing block from the preview, the hint says &ldquo;Editing existing &hellip;&rdquo;
+          and the primary reads &ldquo;Save changes&rdquo;. Shown here opened on a block.
+        </p>
+        <div className={sg.specimenGrid}>
+          <Specimen
+            label="Gallery link, Video and Image prompts — useMarkdownBlockTools"
+            canonical
+            note="Radios are .radioGroup / .radio (a fieldset + legend), not a SegmentedControl: the third choice reveals a URL field. A page on this site opens in the same tab; anywhere else in a new one."
+          >
+            <EditorPromptsSpecimen />
+          </Specimen>
+        </div>
+      </section>
+
       {/* ════ SAVE BUTTONS ════ */}
       <section className={sg.section}>
         <h2 className={sg.sectionHead}>Save Buttons</h2>
@@ -1357,7 +1398,7 @@ export default function StyleguidePage() {
           <Specimen
             label="A save the form can't take — enabled, marked in place, said in words (SaveButton onBlocked + SaveProblem)"
             canonical
-            note="Greyed means 'nothing to do', never 'not valid yet' (Jenna's rule, Patrick 2026-10-05, after a recipe's blocked Save had its reason only in a tooltip at the bottom of a long form). A Save/Add/Publish control is disabled only when the draft equals what is saved, a save is in flight, or a create-once form is still empty. A dirty but incomplete form keeps the button ENABLED: pass `blocked` + `onBlocked`, and the click saves nothing — the caller marks every bad field in place (red outline, aria-invalid, a note under the field), moves focus to the first one, and renders <SaveProblem reason more /> beside the button. Show the note only after a try, not while they are still typing, and drop it when the form is whole. A reason that lives only in a title, a Notice above the fold, or nowhere is a defect. The old disabled+title mode (blocked without onBlocked) is the legacy shape, converted screen by screen. Exception: a target picker (Merge / Move) may stay disabled until a target is chosen — the select's placeholder is the gate."
+            note="Greyed means 'nothing to do', never 'not valid yet' (Jenna's rule, Patrick 2026-10-05, after a recipe's blocked Save had its reason only in a tooltip at the bottom of a long form). A Save/Add/Publish control is disabled only when the draft equals what is saved, a save is in flight, or a create-once form is still empty. A dirty but incomplete form keeps the button ENABLED: pass `blocked` + `onBlocked`, and the click saves nothing — the caller marks every bad field in place (red outline, aria-invalid, a note under the field), moves focus to the first one, and renders <SaveProblem reason more /> beside the button. Show the note only after a try, not while they are still typing, and drop it when the form is whole. The field itself is marked with the shared .bad (red outline, tinted) and a sentence in .badNote beside or under it — both from _components/save-state.module.css (promoted from menu-monster.module.css 2026-10-06; that sheet now composes them); clear the title and click Save to see both. A reason that lives only in a title, a Notice above the fold, or nowhere is a defect. The old disabled+title mode (blocked without onBlocked) is the legacy shape, converted screen by screen. Exception: a target picker (Merge / Move) may stay disabled until a target is chosen — the select's placeholder is the gate."
           >
             <BlockedSaveDemo />
           </Specimen>

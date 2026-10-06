@@ -100,6 +100,19 @@ describe('ScoutRecipes', () => {
     expect(renameScoutRecipe).toHaveBeenCalledWith('S-0000abcd', 'Dutch-oven chili');
   });
 
+  it('Leader_SeesTheNameMarked_WhenRenamingToNothing', async () => {
+    const user = userEvent.setup();
+    render(<ScoutRecipes recipes={[row()]} />);
+    await pick('rename');
+    const box = screen.getByRole('textbox', { name: 'New name for Campfire chili' });
+    expect((screen.getByRole('button', { name: 'Save' }) as HTMLButtonElement).disabled).toBe(true);
+    await user.clear(box);
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(renameScoutRecipe).not.toHaveBeenCalled();
+    expect(box.getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByText('It needs a name.')).toBeTruthy();
+  });
+
   it('Leader_CanRetireScoutRecipe', async () => {
     render(<ScoutRecipes recipes={[row()]} />);
     await pick('retire');

@@ -30,7 +30,7 @@ import { Notice } from '@/app/_components/notice';
 import { EmptyState } from '@/app/_components/empty-state';
 import { SectionDivider } from '@/app/_components/section-divider';
 import cardS from '@/app/_components/card.module.css';
-import { PublicMenuEditListSpecimen, PublicStepperSpecimen, PublicTabStripSpecimen } from './specimens';
+import { PublicBlockedSaveSpecimen, PublicDietRowsSpecimen, PublicGearSpecimen, PublicMenuEditListSpecimen, PublicStepperSpecimen, PublicTabStripSpecimen } from './specimens';
 import { IngredientList } from '@/app/(public)/library/menu-monster/_components/ingredient-list';
 import { StepStrip } from '@/app/(public)/library/menu-monster/menus/_components/step-strip';
 import { SummaryRail } from '@/app/(public)/library/menu-monster/menus/_components/summary-rail';
@@ -532,6 +532,59 @@ export default function PublicStyleguidePage() {
               Back to the troop amount, Remove where they apply), the troop&rsquo;s old value struck (changed amount, swapped item), a quiet
               &ldquo;Added&rdquo; tag, left-out rows dimmed with &ldquo;Left out&rdquo;, and a dashed &ldquo;Add an ingredient&rdquo;
               search. Rows from <code>menuEditRows</code>; the page turns each <code>RowAction</code> into ops.
+            </p>
+          </div>
+
+          {/* Diet rows + the "Add for" choice (menu-edit; the read list shows the same markers). */}
+          <div className={sg.specimenBlock}>
+            <PublicDietRowsSpecimen />
+            <div className={sg.specimenGap} />
+            <IngredientList
+              mode="read"
+              ariaLabel="Pancakes ingredients, diet rows, read-only (specimen)"
+              rows={[
+                { key: 'a', name: 'Pancake mix', amount: '3½ cups', note: null, scope: { mode: 'except', restrictions: ['gf'], idle: false } },
+                { key: 'b', name: 'Almond flour', amount: '1 cup', note: null, scope: { mode: 'only', restrictions: ['gf'], idle: true } }
+              ]}
+            />
+            <p className={sg.specimenInlineNote}>
+              <strong>Diet rows</strong> &mdash; a line for one diet&rsquo;s scouts: a quiet tag from <code>scopeLabel</code> (&ldquo;Gluten-free
+              scouts only&rdquo;, &ldquo;except gluten-free&rdquo;); with nobody on the meal in that diet the row dims and <code>idleLabel</code> says
+              why. Never colour alone. <strong>Add for</strong> &mdash; the select beside the add search (Everyone, or a diet on the meal); a
+              brand-new food lands for those scouts too. Shown only when the meal has a diet. Both modes of <code>IngredientList</code>.
+            </p>
+          </div>
+
+          {/* StepStrip, a leader's five steps (Review joins as a fifth step). */}
+          <div className={sg.specimenBlock}>
+            <StepStrip
+              config={{ people: '#', plan: '#', gear: '#', shopping: '#', review: '#', share: { label: 'Share', href: '#' } }}
+              done={{ eating: true, meals: true, gear: true, shopping: false }}
+              current="review"
+            />
+            <p className={sg.specimenInlineNote}>
+              <code>StepStrip</code> with <code>config.review</code> &mdash; a leader&rsquo;s fifth step, Review, after Shopping; ticks on the four
+              planning steps, none on Review. Absent for everyone else.
+            </p>
+          </div>
+
+          {/* Blocked save (D-331) */}
+          <div className={sg.specimenBlock}>
+            <PublicBlockedSaveSpecimen />
+            <p className={sg.specimenInlineNote}>
+              <code>Field problem</code> + <code>SaveProblem</code> from <code>_components/form</code> &mdash; Add/Save/Share stays enabled on an
+              incomplete form; pressed, it outlines each bad field (<code>aria-invalid</code>), says why in a sentence under it, focuses the first,
+              and prints &ldquo;Can&rsquo;t add yet: &hellip; (+N more)&rdquo; beside the button until the form is whole.
+            </p>
+          </div>
+
+          {/* GearPicker + GearChips */}
+          <div className={sg.specimenBlock}>
+            <PublicGearSpecimen />
+            <p className={sg.specimenInlineNote}>
+              <code>GearPicker</code> + <code>GearChips</code> from <code>library/menu-monster/_components/gear-picker</code> &mdash; gear is picked
+              from the troop&rsquo;s list, never typed (no match says so, and never offers to create it). Chips A to Z, each with a &minus; n +
+              count (&ldquo;Skillet &times; 2&rdquo;) and a remove. The recipe editor and a meal use both; the menu&rsquo;s Gear tab the picker alone.
             </p>
           </div>
 

@@ -105,3 +105,19 @@ describe('GearAdmin — Used in, and a description', () => {
     expect(updateGear).toHaveBeenCalledWith(4, { name: 'Chef kit', home: 'trailer', perPerson: false, description: 'Knives and a cutting board. Blue tub.' });
   });
 });
+
+describe('GearAdmin — an emptied name', () => {
+  it('Leader_SeesTheNameMarked_WhenSavingGearWithNoName', async () => {
+    const user = userEvent.setup();
+    render(<GearAdmin items={[row(4, 'Chef kit')]} />);
+    await user.selectOptions(screen.getByRole('combobox', { name: 'More for Chef kit' }), 'edit');
+    const name = screen.getByLabelText('Name');
+    expect((screen.getByRole('button', { name: 'Save changes' }) as HTMLButtonElement).disabled).toBe(true);
+    await user.clear(name);
+    const save = screen.getByRole('button', { name: 'Save changes' }) as HTMLButtonElement;
+    expect(save.disabled).toBe(false);
+    await user.click(save);
+    expect(name.getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByText('It needs a name.')).toBeTruthy();
+  });
+});

@@ -77,3 +77,5 @@
 /* Gear you'll need: the picked chips live in _components/gear-picker.module.css. */
 .gear { margin-top: var(--sp-6); }
 .gearFull { margin: 0; font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-meta); }
+/* The ingredient list marked in place when a share needs one (D-331). */
+.listBad { border-radius: var(--rad-md); box-shadow: 0 0 0 1px var(--status-danger); }

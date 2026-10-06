@@ -9,11 +9,12 @@
  * menus until a leader checks it. Escape or Cancel closes it.
  */
 
-import { useContext, useId, useState, type KeyboardEvent } from 'react';
+import { useContext, useId, useRef, useState, type KeyboardEvent } from 'react';
 import { Button } from '@/app/_components/button';
-import { Field, SelectInput, TextInput } from '@/app/_components/form';
+import { Field, SaveProblem, SelectInput, TextInput } from '@/app/_components/form';
 import type { Conversion, Ingredient, Package } from '@/lib/menu-monster/types';
-import { packageSizeUnits, packageYield, scoutPackageProblem } from '@/lib/menu-monster/scout-packages';
+import { MAX_PACKAGE_SIZE, packageSizeUnits, packageYield } from '@/lib/menu-monster/scout-packages';
+import { MAX_PRICE, MIN_PRICE } from '@/lib/menu-monster/scout-ingredients';
 import { parseQty } from '@/lib/menu-monster/units';
 import { addScoutPackageAction } from '../../../_tools/menu-monster/menu-actions';
 import { HelperMenu } from './helper-menu';
@@ -43,13 +44,35 @@ export function AddPackageForm({
   const [price, setPrice] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tried, setTried] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  /** Everything wrong, in form order, with the field it belongs to (an incomplete Add marks these, D-331). */
+  function problems(): { field: 'name' | 'size' | 'price'; reason: string; note: string }[] {
+    const out: { field: 'name' | 'size' | 'price'; reason: string; note: string }[] = [];
+    const yld = packageYield(ingredient, conversions, parseQty(size), unit);
+    if (!name.trim()) out.push({ field: 'name', reason: 'give the package a name', note: 'Give the package a name, like the label says.' });
+    if (!(parseQty(size) > 0) || yld == null || !(yld > 0)) out.push({ field: 'size', reason: 'say how much one package holds', note: 'Enter how much one package holds — check the label.' });
+    else if (yld > MAX_PACKAGE_SIZE) out.push({ field: 'size', reason: 'check the package size', note: 'That package is too big. Check the size.' });
+    const p = Number(price.replace(/^\$/, ''));
+    if (!(p >= MIN_PRICE && p <= MAX_PRICE)) out.push({ field: 'price', reason: 'enter what one package costs', note: `Enter what one package costs, from $${MIN_PRICE.toFixed(2)} to $${MAX_PRICE}.` });
+    return out;
+  }
+  const found = tried ? problems() : [];
+  const noteFor = (f: 'name' | 'size' | 'price') => found.find((x) => x.field === f)?.note;
 
   async function add() {
+    if (busy) return;
+    const now = problems();
+    if (now.length > 0) {
+      setTried(true);
+      rootRef.current?.querySelector<HTMLElement>(`[data-field="${now[0].field}"]`)?.focus();
+      return;
+    }
     const n = parseQty(size);
     const p = Number(price.replace(/^\$/, ''));
     const yld = packageYield(ingredient, conversions, n, unit);
-    const problem = scoutPackageProblem({ name, size: n, price: p, yield: yld });
-    if (problem || yld == null) return setError(problem ?? 'Enter how much one package holds — check the label.');
+    if (yld == null) return;
     setBusy(true);
     setError(null);
     const payload = { ingredientId: ingredient.id, name, store, size: n, sizeUnit: unit, price: p };
@@ -80,16 +103,16 @@ export function AddPackageForm({
   };
 
   return (
-    <div className={s.choice} role="group" aria-label={`New package of ${ingredient.name}`} onKeyDown={onKey}>
-      <Field label="Name on the label">
-        <TextInput value={name} maxLength={60} autoComplete="off" onChange={(e) => setName(e.target.value)} />
+    <div ref={rootRef} className={s.choice} role="group" aria-label={`New package of ${ingredient.name}`} onKeyDown={onKey}>
+      <Field label="Name on the label" problem={noteFor('name')}>
+        <TextInput data-field="name" value={name} maxLength={60} autoComplete="off" onChange={(e) => setName(e.target.value)} />
       </Field>
       <Field label="Store (optional)">
         <TextInput value={store} maxLength={40} autoComplete="off" onChange={(e) => setStore(e.target.value)} />
       </Field>
       <div className={s.noteRow}>
-        <Field label="One package holds">
-          <TextInput value={size} inputMode="decimal" autoComplete="off" onChange={(e) => setSize(e.target.value)} />
+        <Field label="One package holds" problem={noteFor('size')}>
+          <TextInput data-field="size" value={size} inputMode="decimal" autoComplete="off" onChange={(e) => setSize(e.target.value)} />
         </Field>
         <Field label="Unit">
           <SelectInput id={`${uid}-unit`} value={unit} onChange={(e) => setUnit(e.target.value)}>
@@ -101,8 +124,8 @@ export function AddPackageForm({
           </SelectInput>
         </Field>
       </div>
-      <Field label="Price">
-        <TextInput value={price} inputMode="decimal" autoComplete="off" onChange={(e) => setPrice(e.target.value)} />
+      <Field label="Price" problem={noteFor('price')}>
+        <TextInput data-field="price" value={price} inputMode="decimal" autoComplete="off" onChange={(e) => setPrice(e.target.value)} />
       </Field>
       {error && (
         <p className={s.foot} role="alert">
@@ -116,6 +139,7 @@ export function AddPackageForm({
         <Button variant="ghost" onClick={onCancel}>
           Cancel
         </Button>
+        <SaveProblem action="add" reason={found[0]?.reason} more={found.length - 1} />
       </div>
     </div>
   );

@@ -14,11 +14,11 @@
  * `menuFirst` ticks "on the menu by itself" to start with; the price is
  * optional (an unpriced food is saved as a draft and says so).
  */
-import { useState, useTransition } from 'react';
+import { useRef, useState, useTransition } from 'react';
 import { Button } from '../../../_components/button';
 import { FormPanel } from '../../../_components/form-panel';
 import { Notice } from '../../_components/notice';
-import { SaveFeedback, useSavePhase } from '../../_components/save-state';
+import { SaveFeedback, SaveProblem, useSavePhase } from '../../_components/save-state';
 import { FOOD_GROUPS, MEALS, RESTRICTIONS, SECTIONS, UNITS } from '@/lib/menu-monster/units';
 import type { FoodGroup, MealSlot, RestrictionKey, Section, Unit, UnitKind } from '@/lib/menu-monster/types';
 import { createFood, type FoodResult } from './actions';
@@ -75,19 +75,35 @@ export function NewFoodForm({
   const unit = unitFromChoice(kind, key, one, many);
   const unitWord = unit.many || 'of them';
   const priced = price.trim() !== '' || holds.trim() !== '';
-  const blocker = !name.trim()
-    ? 'Name it first'
-    : kind === 'count' && !(one.trim() && many.trim())
-      ? 'Say what one is called and what several are called'
-      : priced && !(Number(price) >= 0 && price.trim() !== '' && Number(holds) > 0)
-        ? 'A price needs both what the package costs and how much it holds'
-        : onMenu && !amount.trim()
-          ? 'Say how much each person gets'
-          : onMenu && mealFit.length === 0
-            ? 'Pick at least one meal it fits'
-            : null;
+  const priceOk = Number(price) >= 0 && price.trim() !== '' && Number(holds) > 0;
+  // Every failing field, in page order, each with its own sentence: marked in place after a try.
+  const problems: { field: string; text: string }[] = [];
+  if (!name.trim()) problems.push({ field: 'name', text: 'Name it first' });
+  if (kind === 'count' && !one.trim()) problems.push({ field: 'one', text: 'Say what one is called' });
+  if (kind === 'count' && !many.trim()) problems.push({ field: 'many', text: 'Say what several are called' });
+  if (priced && !priceOk) problems.push({ field: 'price', text: 'A price needs both what the package costs and how much it holds' });
+  if (onMenu && !amount.trim()) problems.push({ field: 'amount', text: 'Say how much each person gets' });
+  if (onMenu && mealFit.length === 0) problems.push({ field: 'meal', text: 'Pick at least one meal it fits' });
+  const [attempted, setAttempted] = useState(false);
+  const form = useRef<HTMLDivElement>(null);
+  const bad = (f: string) => attempted && problems.some((p) => p.field === f);
+  const note = (f: string) => (bad(f) ? <p className={styles.badNote}>{problems.find((p) => p.field === f)?.text}.</p> : null);
+  const inputCls = (f: string, extra = '') => `${lib.textInput}${extra ? ` ${extra}` : ''}${bad(f) ? ` ${styles.bad}` : ''}`;
+  // Create-once: greyed only while saving or while nothing at all is filled in.
+  const empty = !name.trim() && !one.trim() && !many.trim() && !product.trim() && !price.trim() && !holds.trim() && !amount.trim() && mealFit.length === 0 && foodGroups.length === 0;
+
+  function refuse() {
+    setAttempted(true);
+    // The marks render on the next pass; focus the first one then.
+    setTimeout(() => {
+      const first = form.current?.querySelector<HTMLElement>('[aria-invalid="true"]');
+      first?.scrollIntoView?.({ block: 'center' });
+      first?.focus();
+    }, 0);
+  }
 
   function submit() {
+    if (problems.length > 0) return refuse();
     setError(null);
     feedback.start();
     start(async () => {
@@ -110,13 +126,15 @@ export function NewFoodForm({
 
   return (
     <FormPanel title={title} aria-label={title} actions={<SaveFeedback phase={feedback.phase} />}>
+      <div ref={form}>
       {error && <Notice>{error}</Notice>}
       <div className={lib.fieldGrid}>
         <div className={lib.fieldFull}>
           <label className={`adminLabel ${lib.fieldLabel}`} htmlFor="mm-new-name">
             Name
           </label>
-          <input id="mm-new-name" className={lib.textInput} value={name} maxLength={80} onChange={(e) => setName(e.target.value)} placeholder="Required" />
+          <input id="mm-new-name" className={inputCls('name')} aria-invalid={bad('name') || undefined} value={name} maxLength={80} onChange={(e) => setName(e.target.value)} placeholder="Required" />
+          {note('name')}
         </div>
         <div>
           <label className={`adminLabel ${lib.fieldLabel}`} htmlFor="mm-new-kind">
@@ -156,13 +174,15 @@ export function NewFoodForm({
               <label className={`adminLabel ${lib.fieldLabel}`} htmlFor="mm-new-one">
                 One is called
               </label>
-              <input id="mm-new-one" className={lib.textInput} value={one} maxLength={20} onChange={(e) => setOne(e.target.value)} placeholder="cookie" />
+              <input id="mm-new-one" className={inputCls('one')} aria-invalid={bad('one') || undefined} value={one} maxLength={20} onChange={(e) => setOne(e.target.value)} placeholder="cookie" />
+              {note('one')}
             </div>
             <div>
               <label className={`adminLabel ${lib.fieldLabel}`} htmlFor="mm-new-many">
                 Several are called
               </label>
-              <input id="mm-new-many" className={lib.textInput} value={many} maxLength={20} onChange={(e) => setMany(e.target.value)} placeholder="cookies" />
+              <input id="mm-new-many" className={inputCls('many')} aria-invalid={bad('many') || undefined} value={many} maxLength={20} onChange={(e) => setMany(e.target.value)} placeholder="cookies" />
+              {note('many')}
             </div>
           </>
         )}
@@ -217,15 +237,16 @@ export function NewFoodForm({
             <label className={`adminLabel ${lib.fieldLabel}`} htmlFor="mm-new-price">
               One package costs
             </label>
-            <input id="mm-new-price" className={lib.textInput} inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value.replace(/[$,\s]/g, ''))} placeholder="4.29" />
+            <input id="mm-new-price" className={inputCls('price')} aria-invalid={bad('price') || undefined} inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value.replace(/[$,\s]/g, ''))} placeholder="4.29" />
           </div>
           <div>
             <label className={`adminLabel ${lib.fieldLabel}`} htmlFor="mm-new-holds">
               One package holds ({unitWord})
             </label>
-            <input id="mm-new-holds" className={lib.textInput} inputMode="decimal" value={holds} onChange={(e) => setHolds(e.target.value)} placeholder="36" />
+            <input id="mm-new-holds" className={inputCls('price')} aria-invalid={bad('price') || undefined} inputMode="decimal" value={holds} onChange={(e) => setHolds(e.target.value)} placeholder="36" />
           </div>
         </div>
+        {note('price')}
       </fieldset>
 
       <label className={styles.listRow}>
@@ -237,15 +258,17 @@ export function NewFoodForm({
             <label className={`adminLabel ${lib.fieldLabel}`} htmlFor="mm-new-amount">
               Each person gets ({unitWord})
             </label>
-            <input id="mm-new-amount" className={`${lib.textInput} ${styles.narrow}`} value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="2" />
+            <input id="mm-new-amount" className={inputCls('amount', styles.narrow)} aria-invalid={bad('amount') || undefined} value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="2" />
+            {note('amount')}
           </div>
-          <fieldset className={styles.fieldset}>
+          <fieldset className={bad('meal') ? `${styles.fieldset} ${styles.bad}` : styles.fieldset}>
             <legend className={`adminLabel ${lib.fieldLabel}`}>Meal fit</legend>
             {MEALS.map((m) => (
               <label key={m.key} className={styles.listRow}>
-                <input type="checkbox" checked={mealFit.includes(m.key)} onChange={(e) => setMealFit((p) => toggle(p, m.key, e.target.checked))} /> {m.label}
+                <input type="checkbox" aria-invalid={(bad('meal') && m.key === MEALS[0].key) || undefined} checked={mealFit.includes(m.key)} onChange={(e) => setMealFit((p) => toggle(p, m.key, e.target.checked))} /> {m.label}
               </label>
             ))}
+            {note('meal')}
           </fieldset>
           <fieldset className={styles.fieldset}>
             <legend className={`adminLabel ${lib.fieldLabel}`}>Food groups (MyPlate)</legend>
@@ -259,12 +282,14 @@ export function NewFoodForm({
       )}
 
       <div className={lib.actionsRow}>
-        <Button variant="primary" disabled={pending || blocker != null} title={blocker ?? undefined} onClick={submit}>
+        <Button variant="primary" disabled={pending || empty} onClick={submit}>
           {pending ? 'Adding…' : onMenu ? 'Add food' : 'Add ingredient'}
         </Button>
         <Button variant="secondary" disabled={pending} onClick={onCancel}>
           Cancel
         </Button>
+        {attempted && problems.length > 0 && <SaveProblem reason={problems[0].text} more={problems.length - 1} />}
+      </div>
       </div>
     </FormPanel>
   );
