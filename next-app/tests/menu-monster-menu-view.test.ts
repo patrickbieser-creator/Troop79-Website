@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { CATALOG } from './helpers/menu-monster-fixture';
 import type { Menu, MenuMeal } from '../src/lib/menu-monster/menus';
-import { buildMenuList, buildOutingList, dayLabel, mealCost, mealTitle, mealUnpriced, menuCost, outingDayCount, recipeShares } from '../src/lib/menu-monster/menu-view';
+import { buildMenuList, buildOutingList, dayLabel, mealCost, mealTitle, mealUnpriced, mealUnpricedItems, menuCost, outingDayCount, recipeShares } from '../src/lib/menu-monster/menu-view';
 
 const meal = (id: string, over: Partial<MenuMeal> = {}): MenuMeal => ({
   id,
@@ -57,6 +57,11 @@ describe('menu-view', () => {
   it('Meal_NamesItsUnpricedFoods_ByTheItemThatNeedsThem', () => {
     const m = menu([meal('a', { recipeIds: ['B001', 'B023'] })]);
     expect(mealUnpriced(m, m.meals[0], CATALOG)).toEqual({ B023: ['Orange juice'] });
+  });
+
+  it('UnpricedItems_CarryTheIngredientIdForTheShoppingLink', () => {
+    const m = menu([meal('m1', { recipeIds: ['B003', 'B023'] })]);
+    expect(mealUnpricedItems(m, m.meals[0], CATALOG)).toEqual({ B023: [{ id: 'oj', name: 'Orange juice' }] });
   });
 
   it('Meal_HasNoUnpricedFoods_WhenEverythingHasAPrice', () => {

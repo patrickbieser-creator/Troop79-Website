@@ -70,4 +70,8 @@ describe('workspace.module.css', () => {
     expect(rule('.chip')).toMatch(/min-height:\s*32px/);
     expect(css).toMatch(/\.chip\[aria-pressed='true'\]/);
   });
+
+  it('CostLine_CompactReadout_IsHiddenFromDesktopWidth', () => {
+    expect(css).toMatch(/@media \(min-width: 900px\) \{ \.costCompact \{ display: none; \} \}/);
+  });
 });

@@ -55,7 +55,7 @@ const editor = (mealId = 'm1', m: Menu = menu()) => {
   return <PlanTab catalog={CATALOG} menuId="menu-1" menu={m} updatedAt={VERSION} outings={[]} openMeal={mealId} />;
 };
 const panel = () => within(document.getElementById(`mm-meal-${openId}`) as HTMLElement);
-/** The meal's row: its name, its People dialer and its cost (the dialer left the panel 2026-10-03). */
+/** The meal's row (its name, cost and badges) with its open panel, which holds the People dialer (it moved into the panel 2026-10-06). */
 const mealRow = () => within((document.getElementById(`mm-meal-${openId}`) as HTMLElement).closest('li') as HTMLElement);
 const people = () => mealRow().getByRole('spinbutton', { name: / people$/ }) as HTMLInputElement;
 const search = () => panel().getByRole('combobox');
@@ -468,10 +468,15 @@ describe('MealEditor', () => {
   });
 
   describe('people', () => {
-    it('People_DialerSitsOnTheMealsOwnLine_NotInsideThePanel', () => {
+    it('Stepper_LivesInTheMealPanel', () => {
       render(editor());
-      expect(panel().queryByRole('spinbutton')).toBeNull();
+      expect(panel().getByRole('spinbutton', { name: 'Day 1 breakfast people' })).toBe(people());
       expect(people().value).toBe('8');
+    });
+
+    it('Stepper_IsNotOnTheMealRow_WhenThePanelIsClosed', () => {
+      render(<PlanTab catalog={CATALOG} menuId="menu-1" menu={menu()} updatedAt={VERSION} outings={[]} />);
+      expect(screen.queryByRole('spinbutton', { name: / people$/ })).toBeNull();
     });
 
     it('People_DialerDoesNotOpenOrCloseTheMeal', async () => {

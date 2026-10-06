@@ -82,11 +82,16 @@ export function recipeShares(menu: Menu, meal: MenuMeal, catalog: Catalog): Reco
  * letting a $0.00 read as free. A food someone is bringing from home is not "unpriced": nobody is buying it.
  */
 export function mealUnpriced(menu: Menu, meal: MenuMeal, catalog: Catalog): Record<string, string[]> {
+  return Object.fromEntries(Object.entries(mealUnpricedItems(menu, meal, catalog)).map(([rid, items]) => [rid, items.map((i) => i.name)]));
+}
+
+/** The same foods as mealUnpriced(), with each item's id: the "No price yet" badge links to that item's Shopping row. */
+export function mealUnpricedItems(menu: Menu, meal: MenuMeal, catalog: Catalog): Record<string, { id: string; name: string }[]> {
   const plan = composePlan(menu, meal);
-  const out: Record<string, string[]> = {};
+  const out: Record<string, { id: string; name: string }[]> = {};
   for (const l of buildLines(plan, mealCatalog(catalog, meal))) {
     if (l.status !== 'unpriced' || !(l.need > 0)) continue;
-    for (const s of l.sources) (out[s.recipe.id] ??= []).push(l.ing.name);
+    for (const s of l.sources) (out[s.recipe.id] ??= []).push({ id: l.ing.id, name: l.ing.name });
   }
   return out;
 }

@@ -30,7 +30,7 @@ vi.mock('@/lib/menu-monster/menus-store', async (orig) => ({
 }));
 vi.mock('@/lib/supabase/server', () => ({ createAdminClient: () => ({ stub: true }) }));
 vi.mock('@/lib/menu-monster/data', () => ({ loadMenuMonsterCatalog: async () => ({}) }));
-vi.mock('@/lib/menu-monster/menus-data', () => ({ loadOutingsWith: async () => [], loadPatrolNamesWith: async () => [] }));
+vi.mock('@/lib/menu-monster/menus-data', () => ({ loadOutingsWith: async () => [], loadPatrolNamesWith: async () => [], loadScoutPatrolWith: async () => null }));
 vi.mock('../src/app/(public)/library/_tools/menu-monster/menu-actions', () => actions);
 
 import LocalPlanPage from '../src/app/(public)/library/menu-monster/menus/local/page';

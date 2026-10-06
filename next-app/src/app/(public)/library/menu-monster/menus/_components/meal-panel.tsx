@@ -15,7 +15,8 @@
  *     listbox, fully keyboard-operable; "Swap X for…" while swapping). The list
  *     always ends in "Browse all recipes…": the Food & Recipes popup for this
  *     meal (the only way to add food — the day's control adds meals, 2026-10-03);
- *   - (the meal's People dialer sits on the meal's own line in the Plan tab — Patrick, 2026-10-03);
+ *   - the meal's People dialer at the top (2026-10-06, guideline 6: a meal's own headcount is a detail of that meal; its
+ *     Plan-tab row says "6 people" only when it differs from the menu's);
  *   - its own status line — what just happened, Undo after a remove or swap;
  *   - a quiet warning under a recipe that isn't for someone the menu counts
  *     (ported from the retired planner: unsuitable, or gluten / nuts with no swap).
@@ -28,24 +29,25 @@
  * is open, the search, the swap). The Total to buy / Per person switch is the
  * Plan tab's, passed in as `view`.
  *
- * `readOnly`: People as text, recipes opening to plain ingredient rows, and no
+ * `readOnly`: no People dialer (the row says it), recipes opening to plain ingredient rows, and no
  * ⋯ menus, search or Undo.
  */
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
+import Link from 'next/link';
 import { MEALS, priceText as money } from '@/lib/menu-monster/units';
-
-
+import { Button } from '@/app/_components/button';
+import { Stepper } from '@/app/_components/stepper';
 import { Notice } from '@/app/_components/notice';
 import type { Brand, BrandPick, Catalog, Plan, Recipe, ShoppingLine } from '@/lib/menu-monster/types';
 import { BrandChooser, brandSummary } from './brand-chooser';
-import { livePicks, recipeSuggestions, recipesForMeal, restrictionWarnings } from '@/lib/menu-monster/engine';
+import { MAX_HEADCOUNT, MIN_HEADCOUNT, livePicks, recipeSuggestions, recipesForMeal, restrictionWarnings } from '@/lib/menu-monster/engine';
 import { isPickable, stepsFromText } from '@/lib/menu-monster/scout-recipes';
 import { mealRecipeGear, recipeGear, sortGear, type GearItem } from '@/lib/menu-monster/gear';
 import { GearChips, GearPicker } from '../../_components/gear-picker';
 import { RECIPES_HREF } from '../../recipes/_components/paths';
 import { composePlan, mealCatalog, type EditOp, type Menu, type MenuMeal, type RecipeEdits } from '@/lib/menu-monster/menus';
-import { mealTitle, mealUnpriced, recipeShares } from '@/lib/menu-monster/menu-view';
+import { mealTitle, mealUnpricedItems, recipeShares } from '@/lib/menu-monster/menu-view';
 import {
   defaultSwapQty,
   menuEditRows,
@@ -85,6 +87,8 @@ export interface MealPanelProps {
   /** The troop's gear list (not retired): "More gear for this meal" picks from it. Absent = no picker. */
   gearList?: readonly GearItem[];
   onChange: (next: MenuMeal) => void;
+  /** Where a "No price yet" food is answered: the Shopping tab's row for that ingredient. Absent = the badge stays plain text (read-only, a new or local menu). */
+  shoppingHref?: (ingredientId: string) => string;
   /** A signed-in scout's saved menu: "Add “x” as a new ingredient" (release C). */
   canTypeIn?: boolean;
   onTyped?: (n: NewIngredient) => void;
@@ -101,7 +105,7 @@ export interface MealPanelProps {
   onSuggestBrand?: (recipeId: string, ingredientId: string, brandId: string | null) => Promise<{ ok: true } | { ok: false; error: string }>;
 }
 
-export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearList, onChange, canTypeIn = false, onTyped, shareVersionMenuId = null, autoFocusAdd = false, onBrands, lineFor, onTypeBrand, onSuggestBrand }: MealPanelProps) {
+export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearList, shoppingHref, onChange, canTypeIn = false, onTyped, shareVersionMenuId = null, autoFocusAdd = false, onBrands, lineFor, onTypeBrand, onSuggestBrand }: MealPanelProps) {
   /** Suggestions changed this visit ("recipe:ingredient" → brand id, or null for cleared): the catalog prop is as loaded. */
   const [suggested, setSuggested] = useState<Readonly<Record<string, string | null>>>({});
   const uid = useId();
@@ -139,7 +143,7 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
   // Each recipe's share of the meal (shared packages split), so the rows add up to the footer.
   const shares = recipeShares(menu, meal, catalog);
   // Foods with no price yet, by item: the cost beside an item leaves them out, so the row says so.
-  const noPrice = mealUnpriced(menu, meal, catalog);
+  const noPrice = mealUnpricedItems(menu, meal, catalog);
   const costOf = (id: string) => (view === 'total' ? (shares[id] ?? 0) : (shares[id] ?? 0) / plan.headcount);
   // A to Z (Patrick, 2026-10-03): a scout looks a food up by name, not by the leaders' catalog order.
   const candidates = recipesForMeal(catalog, meal.slot)
@@ -158,6 +162,11 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
   const slotWord = (MEALS.find((m) => m.key === meal.slot)?.label ?? meal.slot).toLowerCase();
 
   const change = (next: Partial<MenuMeal>) => onChange({ ...meal, ...next });
+  /** This meal's own People: the menu's number is stored as null, so going back to it is not a change. */
+  const setPeople = (n: number) => {
+    const v = Math.min(MAX_HEADCOUNT, Math.max(MIN_HEADCOUNT, Math.round(n) || MIN_HEADCOUNT));
+    change({ headcount: v === menu.headcount ? null : v });
+  };
   // Gear for the meal itself (soap, wash basins), with what its foods already ask for shown beside it.
   const ownGear = meal.gear ?? [];
   const foodGear = mealRecipeGear(meal, catalog);
@@ -396,6 +405,29 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
 
   return (
     <div className={s.mealPanel}>
+      {!readOnly && (
+        <span className={s.mealPeople}>
+          <span className={s.choiceLabel} aria-hidden="true">
+            People for this meal
+          </span>
+          <Stepper
+            id={`mm-people-${meal.id}`}
+            value={plan.headcount}
+            min={MIN_HEADCOUNT}
+            max={MAX_HEADCOUNT}
+            onChange={setPeople}
+            groupLabel={`${title} people`}
+            inputLabel={`${title} people`}
+            lessLabel="One fewer person"
+            moreLabel="One more person"
+          />
+          {plan.headcount !== menu.headcount && (
+            <Button variant="ghost" onClick={() => setPeople(menu.headcount)}>
+              Reset to {menu.headcount}
+            </Button>
+          )}
+        </span>
+      )}
       <ul className={s.card} aria-label={`Recipes in ${title}`}>
         {meal.recipeIds.length === 0 && <li className={s.empty}>Nothing yet.</li>}
         {meal.recipeIds.map((id) => {
@@ -413,12 +445,23 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
                   </span>
                 </button>
                 {edited > 0 && <span className={s.meta}>Your version · {edited}</span>}
-                {noPrice[id] && (
-                  <span className={s.tag} title={noPrice[id].join(', ')}>
-                    No price yet
-                    <span className={s.srOnly}>: {noPrice[id].join(', ')}</span>
-                  </span>
-                )}
+                {noPrice[id] &&
+                  (shoppingHref ? (
+                    <Link
+                      className={`${s.tag} ${s.tagBtn}`}
+                      href={shoppingHref(noPrice[id][0].id)}
+                      title={noPrice[id].map((i) => i.name).join(', ')}
+                      aria-label={`No price yet — add one: ${noPrice[id].map((i) => i.name).join(', ')}`}
+                    >
+                      No price yet
+                      <span className={s.srOnly}>: {noPrice[id].map((i) => i.name).join(', ')}</span>
+                    </Link>
+                  ) : (
+                    <span className={s.tag} title={noPrice[id].map((i) => i.name).join(', ')}>
+                      No price yet
+                      <span className={s.srOnly}>: {noPrice[id].map((i) => i.name).join(', ')}</span>
+                    </span>
+                  ))}
               </div>
               <div className={s.cost}>{money(costOf(id))}</div>
               {warnings

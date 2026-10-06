@@ -243,6 +243,11 @@
   margin: 0 0 var(--sp-2);
 }
 .shopLine strong { color: var(--text-head); font-variant-numeric: tabular-nums; }
+/* The phone's cost line: the Shopping column sits under the meals below 900px, so the same readout (compact) sits above them. */
+.costCompact { font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-body); margin: 0 0 var(--sp-4); font-variant-numeric: tabular-nums; }
+@media (min-width: 900px) { .costCompact { display: none; } }
+/* A saved menu's "Who's eating": one summary line and a quiet Edit. */
+.basicsSummary { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-3); font-family: var(--font-ui); font-size: var(--fs-md); color: var(--text-head); margin: 0 0 var(--sp-2); }
 .muted { color: var(--text-meta); }
 .foot {
   font-family: var(--font-ui);
@@ -312,6 +317,7 @@
 .mealPanel { padding: var(--sp-2) 0 var(--sp-1) var(--sp-3); border-left: 2px solid var(--rule); margin-left: var(--sp-1); }
 .mealPanel .card { background: transparent; border: 0; box-shadow: none; }
 .mealPanel .inset { padding-right: 0; }
+.mealPanel .mealPeople { margin-bottom: var(--sp-2); flex-wrap: wrap; }
 /* A diet warning under a recipe row, full width (ported from the retired planner). */
 .mealWarn { flex-basis: 100%; margin: 0 0 var(--sp-2); }
 @media (max-width: 480px) { .mealPanel { padding-left: var(--sp-2); margin-left: 0; } }
@@ -394,6 +400,16 @@
   border-radius: var(--rad-sm);
   padding: 0 var(--sp-2);
 }
+/* A tag that asks for something is a button (or a link): same quiet look, but it reads as pressable. */
+.tagBtn {
+  background: none;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  color: var(--navy);
+}
+.tagBtn:hover { background: var(--cream); }
+.tagBtn:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
 .insetLine { font-family: var(--font-ui); font-size: var(--fs-md); color: var(--text-body); margin: 0 0 var(--sp-1); }
 .insetMuted { font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-meta); margin: 0 0 var(--sp-3); }
 .choice { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); margin: 0 0 var(--sp-3); }
@@ -419,16 +435,18 @@
 /* Totals card: the old planner's Spent / Used / Leftover / Budget, quiet - a white card, four columns. */
 .titleActions { display: inline-flex; align-items: center; flex-wrap: wrap; gap: var(--sp-3); }
 .totalsCard {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-3);
   margin: 0 0 var(--sp-6);
   padding: var(--sp-4);
   background: var(--warm-white);
   border: 1px solid var(--rule);
   border-radius: var(--rad-md);
 }
-@media (max-width: 640px) { .totalsCard { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* Spent and Budget side by side; Used and Leftover (the disclosure) use the same two columns. */
+.totalsGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-4); margin: 0; width: 100%; }
 .totalsCol { min-width: 0; }
 .totalsCol dd, .totalsNote { margin: 0; }
 .totalsLabel { font-family: var(--font-ui); font-size: var(--fs-sm); font-weight: 600; color: var(--text-meta); }
@@ -437,6 +455,7 @@
 .totalsWhy { font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-meta); margin-top: var(--sp-1); }
 .totalsNote {
   grid-column: 1 / -1;
+  width: 100%;
   display: flex;
   flex-wrap: wrap;
   gap: var(--sp-1) var(--sp-4);

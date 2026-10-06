@@ -38,7 +38,7 @@
  * that hides the screen version; the `#mm-shopping-page` hook in globals.css hides the site chrome.
  */
 
-import { useId, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { priceText as money } from '@/lib/menu-monster/units';
 import { useLeaveGuard } from '@/lib/use-leave-guard';
@@ -96,9 +96,11 @@ export interface ShoppingTabProps {
   /** For the printed sheet's gear line (same roll-up as the Gear tab): the troop's list (names the per-person items) and the menu's own extras. */
   gearList?: readonly GearItem[];
   gearExtras?: readonly string[];
+  /** An ingredient to open on load (?item=): the Plan tab's "N not priced" and the meal panel's "No price yet" land here, on that row's "Add a package you bought" form. */
+  openItem?: string | null;
 }
 
-export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updatedAt, snapshot: initialSnapshot, tabs, readOnly = false, plannedBy = null, aside, store: storeProp, gearList = [], gearExtras = [] }: ShoppingTabProps) {
+export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updatedAt, snapshot: initialSnapshot, tabs, readOnly = false, plannedBy = null, aside, store: storeProp, gearList = [], gearExtras = [], openItem = null }: ShoppingTabProps) {
   const uid = useId();
   const store = useMemo(() => storeProp ?? serverMenuStore(menuId ?? null), [storeProp, menuId]);
   const { canSave, canPay, canReport } = store.caps;
@@ -113,7 +115,8 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState('');
   const [view, setView] = useState<'total' | 'person'>('total');
-  const [openIds, setOpenIds] = useState<ReadonlySet<string>>(() => new Set());
+  const [openIds, setOpenIds] = useState<ReadonlySet<string>>(() => new Set(openItem ? [openItem] : []));
+  const [showWhy, setShowWhy] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   const dirty = keyOf(draft) !== saved.key;
@@ -251,6 +254,9 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
       return next;
     });
 
+  /** A badge that asks for something opens its row (never closes it). */
+  const openRow = (id: string) => setOpenIds((cur) => (cur.has(id) ? cur : new Set(cur).add(id)));
+
   const costOf = (l: MenuLine) => (view === 'total' ? l.spent : l.spent / people);
   const sections = SECTION_ORDER.filter((sec) => list.lines.some((l) => l.ing.section === sec));
   const priced = list.lines.length > 0;
@@ -287,43 +293,60 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
       )}
 
       {priced && (
-        <dl className={s.totalsCard} role="group" aria-label="Menu totals">
-          <div className={s.totalsCol}>
-            <dt className={s.totalsLabel}>Spent</dt>
-            <dd className={s.totalsAmount}>{money(panel.spent)}</dd>
-            <dd className={s.totalsSub}>{money(panel.perSpent)} a person per meal</dd>
-            <dd className={s.totalsWhy}>What you pay at the register, divided by everyone eating.</dd>
-          </div>
-          <div className={s.totalsCol}>
-            <dt className={s.totalsLabel}>Used</dt>
-            <dd className={s.totalsAmount}>{money(panel.used)}</dd>
-            <dd className={s.totalsSub}>{money(panel.perUsed)} a person per meal</dd>
-            <dd className={s.totalsWhy}>The true cost of what the recipes eat.</dd>
-          </div>
-          <div className={s.totalsCol}>
-            <dt className={s.totalsLabel}>Leftover</dt>
-            <dd className={s.totalsAmount}>{money(panel.left)}</dd>
-            <dd className={s.totalsSub}>{money(panel.perLeft)} a person per meal</dd>
-            <dd className={s.totalsWhy}>Spent minus Used. Goes home or into the patrol box.</dd>
-          </div>
-          <div className={s.totalsCol}>
-            <dt className={s.totalsLabel}>Budget</dt>
-            <dd className={s.totalsAmount}>{money(menu.budgetPerPersonMeal)} a person per meal</dd>
-            <dd className={s.totalsSub}>
-              <span role="status">
-                <span aria-hidden="true">{budget.icon}</span> {budget.msg}
-              </span>
-            </dd>
-            {!readOnly && (
-              <dd className={s.totalsWhy}>
-                <Link href={store.hrefs.plan}>Change the budget on the Plan tab</Link>
+        <div className={s.totalsCard} role="group" aria-label="Menu totals">
+          <dl className={s.totalsGrid}>
+            <div className={s.totalsCol}>
+              <dt className={s.totalsLabel}>Spent</dt>
+              <dd className={s.totalsAmount}>{money(panel.spent)}</dd>
+              <dd className={s.totalsSub}>{money(panel.perSpent)} a person per meal</dd>
+              <dd className={s.totalsWhy}>What you pay at the register, divided by everyone eating.</dd>
+            </div>
+            <div className={s.totalsCol}>
+              <dt className={s.totalsLabel}>Budget</dt>
+              <dd className={s.totalsAmount}>{money(menu.budgetPerPersonMeal)} a person per meal</dd>
+              <dd className={s.totalsSub}>
+                <span role="status">
+                  <span aria-hidden="true">{budget.icon}</span> {budget.msg}
+                </span>
               </dd>
-            )}
-          </div>
-          <dd className={s.totalsNote}>
-            {panel.notes.length ? panel.notes.map((n) => <span key={n}>{n}</span>) : <span>Spent − Used = Leftover. Both totals include adults eating with the patrol.</span>}
-          </dd>
-        </dl>
+              {!readOnly && (
+                <dd className={s.totalsWhy}>
+                  <Link href={store.hrefs.plan}>Change the budget on the Plan tab</Link>
+                </dd>
+              )}
+            </div>
+          </dl>
+          {panel.notes.length > 0 && (
+            <p className={s.totalsNote}>
+              {panel.notes.map((n) => (
+                <span key={n}>{n}</span>
+              ))}
+            </p>
+          )}
+          {/* Used and Leftover answer "where did the difference go?": there when a scout asks, not on every visit. */}
+          <button type="button" className={s.linkBtn} aria-expanded={showWhy} aria-controls={`${uid}-why`} onClick={() => setShowWhy((v) => !v)}>
+            Show how this is worked out
+          </button>
+          {showWhy && (
+            <dl id={`${uid}-why`} className={s.totalsGrid}>
+              <div className={s.totalsCol}>
+                <dt className={s.totalsLabel}>Used</dt>
+                <dd className={s.totalsAmount}>{money(panel.used)}</dd>
+                <dd className={s.totalsSub}>{money(panel.perUsed)} a person per meal</dd>
+                <dd className={s.totalsWhy}>The true cost of what the recipes eat.</dd>
+              </div>
+              <div className={s.totalsCol}>
+                <dt className={s.totalsLabel}>Leftover</dt>
+                <dd className={s.totalsAmount}>{money(panel.left)}</dd>
+                <dd className={s.totalsSub}>{money(panel.perLeft)} a person per meal</dd>
+                <dd className={s.totalsWhy}>Spent minus Used. Goes home or into the patrol box.</dd>
+              </div>
+              <div className={s.totalsNote}>
+                <span>Spent − Used = Leftover. Both totals include adults eating with the patrol.</span>
+              </div>
+            </dl>
+          )}
+        </div>
       )}
 
       <section aria-labelledby={`${uid}-list-h`}>
@@ -376,6 +399,8 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
                     mealOf={mealOf}
                     open={openIds.has(l.ing.id)}
                     onToggle={() => toggle(l.ing.id)}
+                    onOpen={() => openRow(l.ing.id)}
+                    autoAdd={l.ing.id === openItem}
                     cost={costOf(l)}
                     onPackage={(id) => pickPackage(l, id)}
                     onQty={(n) => setQty(l, n)}
@@ -500,6 +525,8 @@ function ShoppingRow({
   mealOf,
   open,
   onToggle,
+  onOpen,
+  autoAdd,
   cost,
   onPackage,
   onQty,
@@ -525,6 +552,10 @@ function ShoppingRow({
   mealOf: ReadonlyMap<string, Menu['meals'][number]>;
   open: boolean;
   onToggle: () => void;
+  /** Opens the row without closing it: the "No price yet" badge's first move. */
+  onOpen: () => void;
+  /** Arrived by ?item=: the add-a-package form starts open. */
+  autoAdd: boolean;
   cost: number;
   onPackage: (pkgId: string) => void;
   onQty: (n: number) => void;
@@ -535,7 +566,14 @@ function ShoppingRow({
   /** Set only where the scout may add a package (their saved menu, release C). */
   onPackageAdded?: (a: AddedPackage) => void;
 }) {
-  const [adding, setAdding] = useState(false);
+  const [adding, setAdding] = useState(autoAdd && !readOnly);
+  const formRef = useRef<HTMLDivElement>(null);
+  // The form just opened (from the badge, or by arriving on ?item=): bring it into view and put focus in it.
+  useEffect(() => {
+    if (!adding) return;
+    formRef.current?.scrollIntoView?.({ block: 'nearest' });
+    formRef.current?.querySelector('input')?.focus();
+  }, [adding]);
   const buying = l.status === 'ok' || l.status === 'short';
   const pkg = l.pkg;
   const mealNames = l.usedBy
@@ -561,6 +599,8 @@ function ShoppingRow({
   const updated = lineUpdated(l);
 
   const noteId = `${panelId}-note`;
+  // The form is offered only where a scout may add a package to this line.
+  const canAddPackage = !readOnly && !!onPackageAdded && l.source === 'buy' && !l.ing.needsMatch;
   return (
     <li className={s.row}>
       {/* The whole row opens the inset; the name button is the keyboard and screen-reader target. */}
@@ -572,14 +612,31 @@ function ShoppingRow({
           </span>
         </button>
         {meta && <span className={s.meta}>{meta}</span>}
-        {l.status === 'unpriced' && <span className={s.tag}>No price yet</span>}
+        {/* A badge that asks for something is the button that answers it (guideline 4): it opens this row's add-a-package form. */}
+        {l.status === 'unpriced' &&
+          (canAddPackage ? (
+            <button
+              type="button"
+              className={`${s.tag} ${s.tagBtn}`}
+              aria-label="No price yet — add one"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpen();
+                setAdding(true);
+              }}
+            >
+              No price yet
+            </button>
+          ) : (
+            <span className={s.tag}>No price yet</span>
+          ))}
         {l.status === 'short' && <span className={s.tag}>Short {qtyText(l.shortQty, l.ing.unit)}</span>}
         {/* A scout's typed-in no leader has checked yet: its price is the scout's own entry (Phase 4B). */}
-        {l.ing.needsMatch && l.status !== 'unpriced' && <span className={s.tag}>Scout’s price</span>}
-        {parts.some((x) => x.estimated) && <span className={s.tag}>New brand</span>}
+        {l.ing.needsMatch && l.status !== 'unpriced' && <span className={s.meta}>Scout’s price</span>}
+        {parts.some((x) => x.estimated) && <span className={s.meta}>New brand</span>}
         {labelCheck && <span className={s.meta}>check the label</span>}
         {updated && (
-          <span className={s.tag} aria-label={`${l.ing.name}, updated`}>
+          <span className={s.meta} aria-label={`${l.ing.name}, updated`}>
             Updated
           </span>
         )}
@@ -655,17 +712,19 @@ function ShoppingRow({
                 </div>
               )}
 
-              {onPackageAdded && l.source === 'buy' && !l.ing.needsMatch &&
+              {canAddPackage &&
                 (adding ? (
-                  <AddPackageForm
-                    ingredient={l.ing}
-                    conversions={conversions}
-                    onCancel={() => setAdding(false)}
-                    onAdded={(a) => {
-                      setAdding(false);
-                      onPackageAdded(a);
-                    }}
-                  />
+                  <div ref={formRef}>
+                    <AddPackageForm
+                      ingredient={l.ing}
+                      conversions={conversions}
+                      onCancel={() => setAdding(false)}
+                      onAdded={(a) => {
+                        setAdding(false);
+                        onPackageAdded?.(a);
+                      }}
+                    />
+                  </div>
                 ) : (
                   <Button variant="ghost" onClick={() => setAdding(true)}>
                     Add a package you bought

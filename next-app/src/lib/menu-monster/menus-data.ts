@@ -69,6 +69,14 @@ export async function loadPatrolNamesWith(sb: SupabaseClient): Promise<string[]>
   return [...names, 'Whole troop'];
 }
 
+/** The signed-in scout's own patrol (scouts.patrol by person_id), or null: the Plan tab's Patrol field starts there on a new menu. */
+export async function loadScoutPatrolWith(sb: SupabaseClient, personId: number): Promise<string | null> {
+  const { data, error } = await sb.from('scouts').select('patrol').eq('person_id', personId).maybeSingle();
+  if (error) throw new Error(`load scout patrol: ${error.message}`);
+  const name = ((data as { patrol: string | null } | null)?.patrol ?? '').trim();
+  return name || null;
+}
+
 /** One overnight calendar entry as an outing (any status: the caller decides who may see it), or null. */
 export async function loadOutingWith(sb: SupabaseClient, id: number): Promise<(Outing & { status: string }) | null> {
   const { data, error } = await sb.from('calendar_entries').select(`${COLS}, status`).eq('id', id).in('category', [...OUTING_CATEGORIES]).maybeSingle();

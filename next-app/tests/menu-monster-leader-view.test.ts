@@ -30,7 +30,7 @@ vi.mock('@/lib/menu-monster/menus-store', () => ({ loadMenuWith: mocks.loadMenuW
 vi.mock('@/lib/menu-monster/data', () => ({ loadMenuMonsterCatalog: async () => ({}) }));
 // The gear list is read for the meal panels' picker (Plan) and the printed sheet's gear line (Shopping).
 vi.mock('@/lib/menu-monster/gear-store', () => ({ listGearWith: async () => [{ id: 1, name: 'Skillet', home: 'trailer', perPerson: false, retiredAt: null }], loadMenuGearWith: async () => ({ extras: ['Water jug'], packed: {} }) }));
-vi.mock('@/lib/menu-monster/menus-data', () => ({ loadOutingsWith: async () => [], loadPatrolNamesWith: async () => [] }));
+vi.mock('@/lib/menu-monster/menus-data', () => ({ loadOutingsWith: async () => [], loadPatrolNamesWith: async () => [], loadScoutPatrolWith: async () => null }));
 vi.mock('@/lib/identity-session', async (orig) => ({
   ...(await orig<typeof import('../src/lib/identity-session')>()),
   isEpochCurrent: async () => mocks.epochCurrent
@@ -134,7 +134,7 @@ describe('menuViewer', () => {
 
 const pages: [string, (id: string) => Promise<unknown>][] = [
   ['Plan', (menuId) => PlanPage({ params: Promise.resolve({ menuId }), searchParams: Promise.resolve({}) })],
-  ['Shopping', (menuId) => ShoppingPage({ params: Promise.resolve({ menuId }) })]
+  ['Shopping', (menuId) => ShoppingPage({ params: Promise.resolve({ menuId }), searchParams: Promise.resolve({}) })]
 ];
 
 describe.each(pages)('%s page access matrix', (_name, render) => {
@@ -239,7 +239,7 @@ describe('gear on the pages (gear-from-the-list release 2)', () => {
 
   it('ShoppingPage_GivesThePrintSheetTheListAndTheMenusExtras', async () => {
     mocks.session = SCOUT;
-    const props = find(await ShoppingPage({ params: Promise.resolve({ menuId: ID }) }), (p) => 'updatedAt' in p);
+    const props = find(await ShoppingPage({ params: Promise.resolve({ menuId: ID }), searchParams: Promise.resolve({}) }), (p) => 'updatedAt' in p);
     expect([props?.gearList, props?.gearExtras]).toEqual([[expect.objectContaining({ name: 'Skillet' })], ['Water jug']]);
   });
 });

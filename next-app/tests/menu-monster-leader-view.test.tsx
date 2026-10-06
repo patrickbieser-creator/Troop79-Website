@@ -140,7 +140,8 @@ describe('Shopping tab, read-only', () => {
   it('Leader_OpensARowToSeeDetailsWithoutChoices_OnTheShoppingTab', async () => {
     render(shopping());
     const user = userEvent.setup();
-    await user.click(screen.getAllByRole('button', { expanded: false })[0]);
+    // A row's name, not "the first collapsed button": the totals card now has a disclosure ahead of the list.
+    await user.click(screen.getByRole('button', { name: /^Bacon/ }));
     expect(screen.getByText(/^Needs /)).toBeTruthy();
     expect(screen.queryAllByRole('button', { pressed: true })).toHaveLength(1); // only the Total to buy switch
     expect(screen.queryByRole('button', { name: 'Buying it' })).toBeNull();

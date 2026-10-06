@@ -33,7 +33,7 @@ vi.mock('@/lib/menu-monster/menus-store', () => ({
 }));
 vi.mock('@/lib/identity-session', async (orig) => ({ ...(await orig<object>()), isEpochCurrent: async () => true }));
 vi.mock('@/lib/household-scope', () => ({ resolveFamilyScope: async (_sb: unknown, id: number) => [id] }));
-vi.mock('@/lib/menu-monster/menus-data', () => ({ loadOutingsWith: async () => [], loadPatrolNamesWith: async () => [] }));
+vi.mock('@/lib/menu-monster/menus-data', () => ({ loadOutingsWith: async () => [], loadPatrolNamesWith: async () => [], loadScoutPatrolWith: async () => null }));
 vi.mock('@/lib/menu-monster/scout-recipes-store', () => ({ listMyRecipesWith: async () => mocks.recipes }));
 vi.mock('../src/app/(public)/library/_tools/menu-monster/recipe-actions', () => ({ deleteScoutRecipeAction: vi.fn() }));
 vi.mock('../src/app/(public)/library/_tools/menu-monster/menu-actions', () => ({
@@ -238,7 +238,8 @@ describe('MenuMonsterShelfTool hub, visitor', () => {
       JSON.stringify({ meal: 'breakfast', headcount: 10, recipeIds: ['B003'], restrictions: {}, budgetPerPerson: 4, date: '2026-10-10' })
     );
     await shelf();
-    expect(((await screen.findByLabelText('Menu name')) as HTMLInputElement).value).toBe('Breakfast from this computer');
+    // The adopted draft is a saved menu: its basics are the one summary line with Edit (2026-10-06), not the form.
+    expect(await screen.findByText(/^Breakfast from this computer · 10 people/)).toBeTruthy();
   });
 });
 

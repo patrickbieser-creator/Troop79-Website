@@ -109,10 +109,12 @@ describe('ShoppingTab', () => {
       return dt.parentElement as HTMLElement;
     };
 
-    it('Panel_ShowsSpentUsedLeftoverAndBudget_AboveTheList', () => {
+    const showWhy = () => userEvent.setup().click(screen.getByRole('button', { name: 'Show how this is worked out' }));
+
+    it('Panel_ShowsSpentAndBudget_AboveTheList', () => {
       render(tab());
       const panel = screen.getByRole('group', { name: 'Menu totals' });
-      for (const l of ['Spent', 'Used', 'Leftover', 'Budget']) expect(within(panel).getByText(l, { selector: 'dt' })).toBeTruthy();
+      for (const l of ['Spent', 'Budget']) expect(within(panel).getByText(l, { selector: 'dt' })).toBeTruthy();
       expect(panel.compareDocumentPosition(screen.getByRole('heading', { level: 2, name: 'Shopping list' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
 
@@ -122,8 +124,18 @@ describe('ShoppingTab', () => {
       expect(figure('Spent').textContent).toContain('$0.84 a person per meal');
     });
 
-    it('Panel_KeepsTheOldExplanatorySublines', () => {
+    it('ShoppingTotals_HideUsedAndLeftoverBehindADisclosure', async () => {
+      render(tab());
+      const panel = screen.getByRole('group', { name: 'Menu totals' });
+      const toggle = screen.getByRole('button', { name: 'Show how this is worked out' });
+      expect([toggle.getAttribute('aria-expanded'), within(panel).queryByText('Used', { selector: 'dt' }), within(panel).queryByText('Leftover', { selector: 'dt' })]).toEqual(['false', null, null]);
+      await userEvent.setup().click(toggle);
+      expect([toggle.getAttribute('aria-expanded'), within(panel).getByText('Used', { selector: 'dt' }) != null, within(panel).getByText('Leftover', { selector: 'dt' }) != null]).toEqual(['true', true, true]);
+    });
+
+    it('Panel_KeepsTheOldExplanatorySublines', async () => {
       render(tab(menu({ meals: [{ id: 'm3', day: 1, slot: 'lunch', headcount: null, recipeIds: ['L001'], recipeEdits: {} }] })));
+      await showWhy(); // Used / Leftover and their sentences moved behind "Show how this is worked out" (2026-10-06)
       expect(screen.getByText(/Spent − Used = Leftover. Both totals include adults eating with the patrol./)).toBeTruthy();
       expect(figure('Used').textContent).toContain('The true cost of what the recipes eat.');
     });
@@ -202,6 +214,46 @@ describe('ShoppingTab', () => {
       const row = rowFor('Instant oatmeal');
       expect(within(row).getByText('From the troop store room')).toBeTruthy();
       expect(within(row).getByText('—')).toBeTruthy();
+    });
+
+    it('NoPriceYet_OpensTheAddPackageForm', async () => {
+      const user = userEvent.setup();
+      render(tab());
+      await user.click(within(rowFor('Orange juice')).getByRole('button', { name: 'No price yet — add one' }));
+      expect(screen.getByRole('group', { name: 'New package of Orange juice' })).toBeTruthy();
+      expect(rowFor('Orange juice').querySelector('[aria-expanded="true"]')).not.toBeNull();
+    });
+
+    it('NoPriceYet_PutsFocusInTheForm', async () => {
+      const user = userEvent.setup();
+      render(tab());
+      await user.click(within(rowFor('Orange juice')).getByRole('button', { name: 'No price yet — add one' }));
+      expect(document.activeElement).toBe(within(screen.getByRole('group', { name: 'New package of Orange juice' })).getByRole('textbox', { name: 'Name on the label' }));
+    });
+
+    it('NoPriceYet_KeepsTheRowOpen_WhenItIsAlreadyOpen', async () => {
+      const user = userEvent.setup();
+      render(tab());
+      await open(user, 'Orange juice');
+      await user.click(within(rowFor('Orange juice')).getByRole('button', { name: 'No price yet — add one' }));
+      expect(screen.getByRole('group', { name: 'New package of Orange juice' })).toBeTruthy();
+    });
+
+    it('OpenItem_OpensThatRowWithTheFormReady_WhenLandedFromAPlanBadge', () => {
+      render(<ShoppingTab catalog={CATALOG} menuId="menu-1" menu={menu()} updatedAt={VERSION} snapshot={null} openItem="oj" />);
+      expect(screen.getByRole('group', { name: 'New package of Orange juice' })).toBeTruthy();
+    });
+
+    it('NoPriceYet_IsPlainText_ForAReadOnlyViewer', () => {
+      render(<ShoppingTab catalog={CATALOG} menuId="menu-1" menu={menu()} updatedAt={VERSION} snapshot={null} readOnly />);
+      expect([within(rowFor('Orange juice')).getByText('No price yet').tagName, screen.queryByRole('button', { name: /add one/ })]).toEqual(['SPAN', null]);
+    });
+
+    it('InformingTags_ArePlainMetaText_NotBadges', () => {
+      const cat = { ...CATALOG, ingredients: CATALOG.ingredients.map((i) => (i.id === 'bacon' ? { ...i, needsMatch: true } : i)) };
+      const m = menu();
+      render(tab(m, buildSnapshot(m, cat), cat));
+      expect(within(rowFor('Bacon')).getByText('Scout’s price').className).not.toMatch(/tag/);
     });
 
     it('Unpriced_ShowsAQuietNoPriceYetTag', () => {

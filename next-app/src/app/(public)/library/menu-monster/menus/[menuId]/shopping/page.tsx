@@ -18,8 +18,8 @@ import { HelperMenuScope } from '../../_components/helper-menu';
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Shopping — Menu Monster', robots: NO_INDEX };
 
-export default async function MenuShoppingPage({ params }: { params: Promise<{ menuId: string }> }) {
-  const { menuId } = await params;
+export default async function MenuShoppingPage({ params, searchParams }: { params: Promise<{ menuId: string }>; searchParams: Promise<{ item?: string }> }) {
+  const [{ menuId }, { item }] = await Promise.all([params, searchParams]);
   const view = await loadViewableMenu(menuId, await menuViewer());
   if (!view) notFound();
   const { stored, readOnly, plannedBy, catalog } = view;
@@ -40,6 +40,7 @@ export default async function MenuShoppingPage({ params }: { params: Promise<{ m
           gearList={gearList}
           gearExtras={gearState.extras}
           readOnly={readOnly}
+          openItem={typeof item === 'string' ? item : null}
           helper={view.helping}
           plannedBy={plannedBy}
           tabs={<MenuTabs menuId={stored.id} active="shopping" access={view.access} />}

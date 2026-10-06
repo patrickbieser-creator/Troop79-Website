@@ -1,6 +1,6 @@
 # Menu Monster: the scout planner as a stepped flow
 
-**Status:** Parked (design pass done 2026-10-06; awaits Patrick's five decisions below)
+**Status:** Active — (a) shipping as v1.183.0; (b) next, on Patrick's decisions of 2026-10-06
 **Opened:** 2026-10-06
 **Priority:** High
 
@@ -50,8 +50,8 @@ answer exists only inside a closed shopping row; (3) a meal row's 3-part people 
 
 ## Technical Approach — the flow Jenna recommends
 
-Steps: **Who's eating → Meals → Shopping → Gear**; **What we bought** appears once the outing has passed or
-shopping is marked done. Shopping before Gear because Shopping carries decisions and cost; Gear is derived.
+Steps: **Who's eating → Meals → Gear → Shopping** (Patrick: gear is packed days before the shopping trip);
+**What we bought** appears once the outing has passed or shopping is marked done. Shopping's top is the review.
 Overview with drill-down, NOT a locked wizard (patrol members plan out of order).
 
 | Step | Shows | Done when |
@@ -99,10 +99,13 @@ separate drafts of one menu.
 "Ready to shop"); surface What we bought once the date passes; apply guidelines 2 and 6 to the recipe editor;
 settle the hub's New menu vs Continue emphasis.
 
-## Open Questions (Patrick)
+## Decisions (Patrick, 2026-10-06)
 
-1. A meal opening as a phone sheet partly revisits the 2026-10-03 "inline, not a separate page" decision — OK?
-2. Shopping before Gear?
-3. Save becoming "Next: …" when clean — a small variation on the "Saved" label in the save standard.
-4. Prefill headcount from outing signups? (Jenna would NOT prefill diets — health data.)
-5. Demote the Conversions tab and Share to links/actions?
+1. A meal may open as its own page/sheet — with clear navigation for saving, cancelling and going back.
+2. **Gear before Shopping.** "Typically, gear is packed many days before shopping. The order is: menus are planned,
+   gear is selected based on the menus, then shopping occurs several days later." Steps: Who's eating → Meals →
+   Gear → Shopping (→ What we bought after the trip). Shopping's top is still the review.
+3. Save becomes "Next: …" when clean.
+4. **Never prefill headcounts** from signups — "headcounts are often highly fluid"; the data as entered by hand.
+   (Diets were never going to be prefilled.)
+5. Demote the Conversions tab and Share to links/actions — "ok for now".

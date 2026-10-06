@@ -22,7 +22,7 @@ vi.mock('@/lib/admin-actor', () => ({ resolveAdminActor: async () => null }));
 vi.mock('@/lib/supabase/server', () => ({ createAdminClient: () => ({ stub: true }) }));
 vi.mock('@/lib/menu-monster/menus-store', () => ({ loadMenuWith: mocks.loadMenuWith }));
 vi.mock('@/lib/menu-monster/data', () => ({ loadMenuMonsterCatalog: async () => ({}) }));
-vi.mock('@/lib/menu-monster/menus-data', () => ({ loadOutingsWith: async () => [], loadPatrolNamesWith: async () => [] }));
+vi.mock('@/lib/menu-monster/menus-data', () => ({ loadOutingsWith: async () => [], loadPatrolNamesWith: async () => [], loadScoutPatrolWith: async () => null }));
 vi.mock('@/lib/identity-session', async (orig) => ({ ...(await orig<object>()), isEpochCurrent: async () => true }));
 vi.mock('@/lib/household-scope', () => ({ resolveFamilyScope: async (_sb: unknown, id: number) => [id] }));
 
@@ -64,7 +64,7 @@ describe('loadOwnMenu', () => {
 
 const pages: [string, (id: string) => Promise<unknown>][] = [
   ['Plan', (menuId) => PlanPage({ params: Promise.resolve({ menuId }), searchParams: Promise.resolve({}) })],
-  ['Shopping', (menuId) => ShoppingPage({ params: Promise.resolve({ menuId }) })]
+  ['Shopping', (menuId) => ShoppingPage({ params: Promise.resolve({ menuId }), searchParams: Promise.resolve({}) })]
 ];
 
 describe.each(pages)('%s page notFound paths', (_name, render) => {

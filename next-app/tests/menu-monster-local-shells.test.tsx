@@ -31,7 +31,15 @@ const MENU = sanitizeMenu(
 const MEAL_ID = MENU.meals[0].id;
 const put = (m: unknown = MENU) => window.localStorage.setItem(LOCAL_MENU_KEY, JSON.stringify(m));
 const stored = () => JSON.parse(window.localStorage.getItem(LOCAL_MENU_KEY) ?? 'null');
-const nameBox = () => screen.findByLabelText('Menu name') as Promise<HTMLInputElement>;
+/** A stored menu's basics are one summary line with Edit (2026-10-06): open it to reach the name; a blank menu's form is already open. */
+const nameBox = async () => {
+  await waitFor(() => {
+    if (!screen.queryByLabelText('Menu name') && !screen.queryByRole('button', { name: 'Edit menu basics' })) throw new Error('plan not ready');
+  });
+  const edit = screen.queryByRole('button', { name: 'Edit menu basics' });
+  if (edit) await userEvent.click(edit);
+  return (await screen.findByLabelText('Menu name')) as HTMLInputElement;
+};
 
 beforeEach(() => {
   window.localStorage.clear();

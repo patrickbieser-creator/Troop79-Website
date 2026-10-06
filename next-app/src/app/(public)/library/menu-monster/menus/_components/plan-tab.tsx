@@ -28,7 +28,7 @@
  * guard. Meals still open inline, read-only; the shopping list is one link away.
  */
 
-import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { priceText as money } from '@/lib/menu-monster/units';
@@ -42,7 +42,7 @@ import type { Brand, BrandPick, Catalog, Plan, RestrictionKey } from '@/lib/menu
 import { MEALS, RESTRICTION_BY_KEY } from '@/lib/menu-monster/units';
 import { MAX_HEADCOUNT, MIN_HEADCOUNT } from '@/lib/menu-monster/engine';
 import { MAX_MENU_DAYS, MAX_MENU_MEALS, MENU_CONTEXTS, MAX_MENU_NAME, MAX_PATROL_NAME, menuNameError, type Menu, type MenuContext, type MenuMeal } from '@/lib/menu-monster/menus';
-import { DIET_ORDER, budgetState, buildMenuList, dayLabel, mealTitle, menuCost, outingDayCount, type Outing } from '@/lib/menu-monster/menu-view';
+import { DIET_ORDER, budgetState, buildMenuList, dayLabel, mealUnpricedItems, menuCost, outingDayCount, type Outing } from '@/lib/menu-monster/menu-view';
 import { addBrandAction, suggestRecipeBrandAction } from '../../../_tools/menu-monster/brand-actions';
 import type { CreateResult, MenuStore, SaveResult } from '@/lib/menu-monster/menu-store';
 import { serverMenuStore } from './server-menu-store';
@@ -52,6 +52,7 @@ import { overlayNewIngredients, type NewIngredient } from '@/lib/menu-monster/sc
 import type { AmountView } from '@/lib/menu-monster/ingredient-rows';
 import { RowMenu } from './row-menu';
 import { AddMealMenu } from './add-meal-menu';
+import { AddDietMenu } from './add-diet-menu';
 import { mealsToAdd } from '@/lib/menu-monster/menu-search';
 import { ReadOnlyLine } from './read-only-line';
 import { SaveBar } from './save-bar';
@@ -91,15 +92,31 @@ export interface PlanTabProps {
   patrols?: readonly string[];
   /** The troop's gear list (not retired) for each meal's "More gear for this meal" picker. Absent = no picker (a menu kept on this computer, a read-only view). */
   gearList?: readonly GearItem[];
+  /** The signed-in scout's own patrol: a NEW menu's Patrol field starts there (guideline 5). Absent = nothing to default to. */
+  myPatrol?: string | null;
 }
 
-export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt, outings, tabs, readOnly = false, helper = false, plannedBy = null, aside, store: storeProp, titleAs: Title = 'h1', openMeal = null, patrols = [], gearList }: PlanTabProps) {
+export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt, outings, tabs, readOnly = false, helper = false, plannedBy = null, aside, store: storeProp, titleAs: Title = 'h1', openMeal = null, patrols = [], gearList, myPatrol = null }: PlanTabProps) {
   const router = useRouter();
   const store = useMemo(() => storeProp ?? serverMenuStore(menuId), [storeProp, menuId]);
   const { canSave } = store.caps;
   const [isNew, setIsNew] = useState(menuId === null);
-  const [menu, setMenu] = useState<Menu>(initial);
-  const [saved, setSaved] = useState<{ menu: Menu; key: string }>(() => ({ menu: initial, key: JSON.stringify(initial) }));
+  // A scout's new menu starts with their own patrol; a saved menu's patrol (or none) is theirs to leave as it is.
+  const start: Menu = menuId === null && myPatrol && !initial.patrol ? { ...initial, patrol: myPatrol } : initial;
+  const [menu, setMenu] = useState<Menu>(start);
+  const [saved, setSaved] = useState<{ menu: Menu; key: string }>(() => ({ menu: start, key: JSON.stringify(start) }));
+  /** "Who's eating" is one summary line once a menu has been saved; a new menu opens the form. */
+  const [editingBasics, setEditingBasics] = useState(menuId === null);
+  /** Diets that show a dialer: those above zero on load, plus any added with "Add a diet…" (so a dialer stepped back to 0 stays put). */
+  const [shownDiets, setShownDiets] = useState<ReadonlySet<RestrictionKey>>(() => new Set(DIET_ORDER.filter((k) => (initial.restrictions[k] || 0) > 0)));
+  const contextTouched = useRef(false);
+  /** Which control takes focus once the form opens (the name) or closes (the Edit button): set by the click, spent by the effect. */
+  const focusAfter = useRef<'name' | 'edit' | null>(null);
+  useEffect(() => {
+    const el = focusAfter.current === 'name' ? nameRef.current : focusAfter.current === 'edit' ? document.getElementById('mm-basics-edit') : null;
+    focusAfter.current = null;
+    el?.focus();
+  }, [editingBasics]);
   const [version, setVersion] = useState<string | null>(updatedAt);
   const [saving, setSaving] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
@@ -157,15 +174,21 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
     });
   const setDiet = (k: RestrictionKey, n: number) =>
     edit((m) => ({ ...m, restrictions: { ...m.restrictions, [k]: Math.min(m.headcount, Math.max(0, Math.round(n) || 0)) } }));
-  const setContext = (context: MenuContext) => edit((m) => ({ ...m, context }));
+  const setContext = (context: MenuContext) => {
+    contextTouched.current = true;
+    edit((m) => ({ ...m, context }));
+  };
   const setOuting = (value: string) => {
     const outing = outings.find((o) => String(o.id) === value);
     if (!outing) {
       edit((m) => ({ ...m, calendarEntryId: null }));
       return;
     }
+    // An outing is a camp trip: a new menu whose context nobody has chosen yet takes Camp (guideline 5).
+    const campByDefault = isNew && !contextTouched.current;
     edit((m) => ({
       ...m,
+      context: campByDefault ? 'camp' : m.context,
       calendarEntryId: outing.id,
       startDate: outing.startDate,
       // An empty menu takes the outing's span; one with meals keeps its days.
@@ -204,11 +227,6 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
   };
   /** A meal panel's change: the whole next meal, into the one draft. */
   const setMeal = (next: MenuMeal) => edit((m) => ({ ...m, meals: m.meals.map((x) => (x.id === next.id ? next : x)) }));
-  /** A meal's own People (on its line): the menu's number is stored as null, so going back to it is not a change. */
-  const setMealPeople = (meal: MenuMeal, n: number) => {
-    const v = Math.min(MAX_HEADCOUNT, Math.max(MIN_HEADCOUNT, Math.round(n) || MIN_HEADCOUNT));
-    setMeal({ ...meal, headcount: v === menu.headcount ? null : v });
-  };
   /** "Add a meal": an empty meal for the slot, opened inline with focus in its search. */
   const addMeal = (day: number, slot: Plan['meal']) => {
     if (menu.meals.length >= MAX_MENU_MEALS || menu.meals.some((m) => m.day === day && m.slot === slot)) return;
@@ -231,7 +249,12 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
     const bad = menuNameError(menu.name);
     if (bad) {
       setNameError(bad);
-      nameRef.current?.focus();
+      // The name field lives in the form: a saved menu's collapsed summary opens it first.
+      if (editingBasics) nameRef.current?.focus();
+      else {
+        focusAfter.current = 'name';
+        setEditingBasics(true);
+      }
       return false;
     }
     setNameError(null);
@@ -288,6 +311,25 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
   const canTypeBrand = !storeProp && !readOnly;
   const shareVersionMenuId = canSave && !storeProp && menuId != null && !isNew && !dirty && !helper ? menuId : null;
   const dialerLabel = (k: RestrictionKey) => RESTRICTION_BY_KEY[k].label;
+  const visibleDiets = DIET_ORDER.filter((k) => shownDiets.has(k) || (menu.restrictions[k] || 0) > 0);
+  const hiddenDiets = DIET_ORDER.filter((k) => !visibleDiets.includes(k));
+  const addDiet = (k: RestrictionKey) => {
+    setShownDiets((cur) => new Set(cur).add(k));
+    requestAnimationFrame(() => document.getElementById(`mm-diet-${k}`)?.focus());
+  };
+  const summary = [
+    menu.name.trim() || 'Untitled menu',
+    `${menu.headcount} people`,
+    ...DIET_ORDER.filter((k) => (menu.restrictions[k] || 0) > 0).map((k) => `${menu.restrictions[k]} ${dialerLabel(k).toLowerCase()}`),
+    MENU_CONTEXTS.find((c) => c.key === menu.context)?.label ?? menu.context
+  ].join(' · ');
+  // The foods a total leaves out, by meal, with their ids: "N not priced" and "No price yet" link to that item's Shopping row.
+  const unpricedItems = useMemo(
+    () => Object.fromEntries(menu.meals.map((m) => [m.id, [...new Map(Object.values(mealUnpricedItems(menu, m, catalog)).flat().map((i) => [i.id, i])).values()]])),
+    [menu, catalog]
+  );
+  // Only where the Shopping tab can answer it: a saved menu the viewer can edit, kept on the server.
+  const fixHref = !readOnly && !isNew && store.caps.canReport ? (ingredientId: string) => `${store.hrefs.shopping}?item=${encodeURIComponent(ingredientId)}` : null;
 
   return (
     <div>
@@ -325,114 +367,163 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
         </section>
       ) : (
       <section className={s.basics} aria-label="Menu name and basics">
-        <div className={s.basicsTop}>
-        <Field label="Menu name" error={nameError}>
-          <TextInput
-            ref={nameRef}
-            value={menu.name}
-            maxLength={MAX_MENU_NAME}
-            autoComplete="off"
-            placeholder="Fall Camporee"
-            aria-invalid={nameError ? true : undefined}
-            onChange={(e) => setName(e.target.value)}
-          />
-        </Field>
-        <div className={s.pickRow}>
-          <Field label="Where you’re cooking">
-            <SelectInput value={menu.context} onChange={(e) => setContext(e.target.value as MenuContext)}>
-              {MENU_CONTEXTS.map((c) => (
-                <option key={c.key} value={c.key}>
-                  {c.label}
-                </option>
-              ))}
-            </SelectInput>
-          </Field>
-          {/* A consequence to know before choosing (qa-lead, 2026-10-04): an outing's menu is open to its crew, whoever saved it. */}
-          <Field label="Outing" hint={linked ? 'Signed-in scouts and leaders can open this menu from the outing, and record what was bought.' : undefined}>
-            <SelectInput value={linked ? String(linked.id) : 'none'} onChange={(e) => setOuting(e.target.value)}>
-              {outings.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.title} · {fmtRange(o.startDate, o.endDate)}
-                </option>
-              ))}
-              <option value="none">No outing</option>
-            </SelectInput>
-          </Field>
-          <Field label="Patrol">
+        {!editingBasics ? (
+          <p className={s.basicsSummary}>
+            <span>{summary}</span>
+            <Button
+              variant="ghost"
+              id="mm-basics-edit"
+              aria-label="Edit menu basics"
+              aria-expanded={false}
+              aria-controls="mm-basics-form"
+              onClick={() => {
+                focusAfter.current = 'name';
+                setEditingBasics(true);
+              }}
+            >
+              Edit
+            </Button>
+          </p>
+        ) : (
+          <div id="mm-basics-form">
+          <div className={s.basicsTop}>
+          <Field label="Menu name" error={nameError}>
             <TextInput
-              value={menu.patrol ?? ''}
-              maxLength={MAX_PATROL_NAME}
+              ref={nameRef}
+              value={menu.name}
+              maxLength={MAX_MENU_NAME}
               autoComplete="off"
-              list="mm-patrols"
-              onChange={(e) =>
-                edit((m) => {
-                  const { patrol: _old, ...rest } = m;
-                  void _old;
-                  return e.target.value.trim() ? { ...rest, patrol: e.target.value } : rest;
-                })
-              }
+              placeholder="Fall Camporee"
+              aria-invalid={nameError ? true : undefined}
+              onChange={(e) => setName(e.target.value)}
             />
-            <datalist id="mm-patrols">
-              {patrols.map((name) => (
-                <option key={name} value={name} />
-              ))}
-            </datalist>
           </Field>
-        </div>
-        </div>
+          <div className={s.pickRow}>
+            <Field label="Where you’re cooking">
+              <SelectInput value={menu.context} onChange={(e) => setContext(e.target.value as MenuContext)}>
+                {MENU_CONTEXTS.map((c) => (
+                  <option key={c.key} value={c.key}>
+                    {c.label}
+                  </option>
+                ))}
+              </SelectInput>
+            </Field>
+            {/* A consequence to know before choosing (qa-lead, 2026-10-04): an outing's menu is open to its crew, whoever saved it. */}
+            <Field label="Outing" hint={linked ? 'Signed-in scouts and leaders can open this menu from the outing, and record what was bought.' : undefined}>
+              <SelectInput value={linked ? String(linked.id) : 'none'} onChange={(e) => setOuting(e.target.value)}>
+                {outings.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.title} · {fmtRange(o.startDate, o.endDate)}
+                  </option>
+                ))}
+                <option value="none">No outing</option>
+              </SelectInput>
+            </Field>
+            <Field label="Patrol">
+              <TextInput
+                value={menu.patrol ?? ''}
+                maxLength={MAX_PATROL_NAME}
+                autoComplete="off"
+                list="mm-patrols"
+                onChange={(e) =>
+                  edit((m) => {
+                    const { patrol: _old, ...rest } = m;
+                    void _old;
+                    return e.target.value.trim() ? { ...rest, patrol: e.target.value } : rest;
+                  })
+                }
+              />
+              <datalist id="mm-patrols">
+                {patrols.map((name) => (
+                  <option key={name} value={name} />
+                ))}
+              </datalist>
+            </Field>
+          </div>
+          </div>
 
-        <div className={s.line}>
-          <Stepper
-            id="mm-people"
-            label="People"
-            value={menu.headcount}
-            min={MIN_HEADCOUNT}
-            max={MAX_HEADCOUNT}
-            onChange={setHeadcount}
-            groupLabel="People"
-            lessLabel="One fewer person"
-            moreLabel="One more person"
-          />
-          {DIET_ORDER.map((k) => (
-            <span key={k} className={s.line}>
-              <span className={s.sep} aria-hidden="true">
-                ·
+          <div className={s.line}>
+            <Stepper
+              id="mm-people"
+              label="People"
+              value={menu.headcount}
+              min={MIN_HEADCOUNT}
+              max={MAX_HEADCOUNT}
+              onChange={setHeadcount}
+              groupLabel="People"
+              lessLabel="One fewer person"
+              moreLabel="One more person"
+            />
+            {visibleDiets.map((k) => (
+              <span key={k} className={s.line}>
+                <span className={s.sep} aria-hidden="true">
+                  ·
+                </span>
+                <Stepper
+                  id={`mm-diet-${k}`}
+                  label={dialerLabel(k)}
+                  value={menu.restrictions[k] || 0}
+                  min={0}
+                  max={menu.headcount}
+                  onChange={(n) => setDiet(k, n)}
+                  groupLabel={`${dialerLabel(k)} people`}
+                  lessLabel={`One fewer ${dialerLabel(k).toLowerCase()} person`}
+                  moreLabel={`One more ${dialerLabel(k).toLowerCase()} person`}
+                />
               </span>
-              <Stepper
-                id={`mm-diet-${k}`}
-                label={dialerLabel(k)}
-                value={menu.restrictions[k] || 0}
+            ))}
+            {hiddenDiets.length > 0 && (
+              <span className={s.line}>
+                <span className={s.sep} aria-hidden="true">
+                  ·
+                </span>
+                <AddDietMenu id="mm-add-diet" diets={hiddenDiets} onPick={addDiet} />
+              </span>
+            )}
+          </div>
+          <div className={s.line}>
+            <span className={s.moneyIn}>
+              <span aria-hidden="true">$</span>
+              <NumberBox
+                framed
+                id="mm-budget"
+                value={menu.budgetPerPersonMeal}
                 min={0}
-                max={menu.headcount}
-                onChange={(n) => setDiet(k, n)}
-                groupLabel={`${dialerLabel(k)} people`}
-                lessLabel={`One fewer ${dialerLabel(k).toLowerCase()} person`}
-                moreLabel={`One more ${dialerLabel(k).toLowerCase()} person`}
+                max={999}
+                step={0.25}
+                ariaLabel="Budget a person, per meal, in dollars"
+                onCommit={(n) => edit((m) => ({ ...m, budgetPerPersonMeal: n }))}
               />
             </span>
-          ))}
-        </div>
-        <div className={s.line}>
-          <span className={s.moneyIn}>
-            <span aria-hidden="true">$</span>
-            <NumberBox
-              framed
-              id="mm-budget"
-              value={menu.budgetPerPersonMeal}
-              min={0}
-              max={999}
-              step={0.25}
-              ariaLabel="Budget a person, per meal, in dollars"
-              onCommit={(n) => edit((m) => ({ ...m, budgetPerPersonMeal: n }))}
-            />
-          </span>
-          <span>budget a person, per meal</span>
-        </div>
+            <span>budget a person, per meal</span>
+          </div>
+            {!isNew && (
+              <Button
+                variant="ghost"
+                aria-expanded
+                aria-controls="mm-basics-form"
+                onClick={() => {
+                  focusAfter.current = 'edit';
+                  setEditingBasics(false);
+                }}
+              >
+                Done
+              </Button>
+            )}
+          </div>
+        )}
       </section>
       )}
 
       <div className={s.grid}>
         <div className={s.col}>
+          {/* On a phone the Shopping column is under the meals; its readout also sits here (CSS hides this one from 900px up). */}
+          {priced && (
+            <p className={s.costCompact} data-testid="cost-compact">
+              {money(cost.perPersonMeal)}/person/meal · budget {money(menu.budgetPerPersonMeal)}
+              {cost.unpriced.length > 0 && ` · ${cost.unpriced.length} not priced`}
+            </p>
+          )}
           <section aria-labelledby="mm-meals-h">
             <div className={s.secHead}>
               <h2 id="mm-meals-h" className={s.heading}>
@@ -476,9 +567,8 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
                       const open = openMeals.has(meal.id);
                       const panel = `mm-meal-${meal.id}`;
                       const mealCost = cost.byMeal[meal.id] ?? 0;
-                      const noPrice = cost.unpricedByMeal[meal.id] ?? [];
+                      const noPrice = unpricedItems[meal.id] ?? [];
                       const people = meal.headcount ?? menu.headcount;
-                      const title = mealTitle(menu.startDate, meal.day, meal.slot);
                       return (
                         <li key={meal.id} className={s.row}>
                           <div className={s.rowMain}>
@@ -497,36 +587,26 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
                             </button>
                             {!open && <span className={s.meta}>{names.length ? names.join(', ') : 'Nothing yet'}</span>}
                           </div>
-                          {/* Breakfast · [dialer] · $ (Patrick, 2026-10-03): the meal's People on its own line, not inside the panel. */}
-                          {readOnly ? (
-                            <span className={s.meta}>{people} people</span>
-                          ) : (
-                            <span className={s.mealPeople}>
-                              {people !== menu.headcount && (
-                                <Button variant="ghost" onClick={() => setMealPeople(meal, menu.headcount)}>
-                                  Reset to {menu.headcount}
-                                </Button>
-                              )}
-                              <Stepper
-                                id={`mm-people-${meal.id}`}
-                                value={people}
-                                min={MIN_HEADCOUNT}
-                                max={MAX_HEADCOUNT}
-                                onChange={(n) => setMealPeople(meal, n)}
-                                groupLabel={`${title} people`}
-                                inputLabel={`${title} people`}
-                                lessLabel="One fewer person"
-                                moreLabel="One more person"
-                              />
-                            </span>
-                          )}
+                          {/* Per-meal People is a detail of the meal (guideline 6): its dialer lives in the open panel; the row says so only when it differs. */}
+                          {(readOnly || people !== menu.headcount) && <span className={s.meta}>{people} people</span>}
                           {/* The figure beside it leaves these out, so it says so (and which, to a screen reader and on hover). */}
-                          {noPrice.length > 0 && (
-                            <span className={s.tag} title={noPrice.join(', ')}>
-                              {noPrice.length === 1 ? '1 not priced' : `${noPrice.length} not priced`}
-                              <span className={s.srOnly}>: {noPrice.join(', ')}</span>
-                            </span>
-                          )}
+                          {noPrice.length > 0 &&
+                            (fixHref ? (
+                              <Link
+                                className={`${s.tag} ${s.tagBtn}`}
+                                href={fixHref(noPrice[0].id)}
+                                title={noPrice.map((i) => i.name).join(', ')}
+                                aria-label={`${noPrice.length === 1 ? '1 not priced' : `${noPrice.length} not priced`}: ${noPrice.map((i) => i.name).join(', ')}. Add a price in Shopping`}
+                              >
+                                {noPrice.length === 1 ? '1 not priced' : `${noPrice.length} not priced`}
+                                <span className={s.srOnly}>: {noPrice.map((i) => i.name).join(', ')}</span>
+                              </Link>
+                            ) : (
+                              <span className={s.tag} title={noPrice.map((i) => i.name).join(', ')}>
+                                {noPrice.length === 1 ? '1 not priced' : `${noPrice.length} not priced`}
+                                <span className={s.srOnly}>: {noPrice.map((i) => i.name).join(', ')}</span>
+                              </span>
+                            ))}
                           <div className={s.cost}>{meal.recipeIds.length ? money(view === 'total' ? mealCost : mealCost / (meal.headcount ?? menu.headcount)) : ''}</div>
                           {!readOnly && (
                             <RowMenu label={`More for Day ${d + 1} ${label.toLowerCase()}`} items={[{ label: 'Remove meal', danger: true, onSelect: () => removeMeal(meal.id, d) }]} />
@@ -540,6 +620,7 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
                                 view={view}
                                 readOnly={readOnly}
                                 gearList={gearList}
+                                shoppingHref={fixHref ?? undefined}
                                 onChange={setMeal}
                                 canTypeIn={canTypeIn}
                                 onTyped={(n) => setTyped((t) => [...t, n])}
