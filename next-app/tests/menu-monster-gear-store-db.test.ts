@@ -5,6 +5,7 @@ import {
   deleteGearWith,
   listGearAdminWith,
   listGearWith,
+  mergeGearWith,
   loadMenuGearWith,
   resolveGearWith,
   retireGearWith,
@@ -93,6 +94,23 @@ describe('the troop’s gear list', () => {
     expect(res).toMatchObject({ ok: true, merged: true });
     expect(await recipeGear()).toEqual(['Skillet']);
     expect(await item('ZZ Vitest fry pan')).toBeUndefined();
+  });
+
+  // Patrick, 2026-10-05: "Charcoal and Charcoal briquettes".
+  it('Merge_RepointsEveryRecipeAndMenu_AndTheItemGoesAway', async () => {
+    await createGearWith(admin, { name: 'ZZ Vitest briquettes', home: 'trailer', perPerson: false }, null);
+    await makeRecipe(['ZZ Vitest briquettes × 2', 'Skillet']);
+    const from = await item('ZZ Vitest briquettes');
+    const into = await item('Skillet');
+    const res = await mergeGearWith(admin, from!.id, into!.id);
+    expect(res).toMatchObject({ ok: true, merged: true, recipes: 1 });
+    expect(await recipeGear()).toEqual(['Skillet × 2']);
+    expect(await item('ZZ Vitest briquettes')).toBeUndefined();
+  });
+
+  it('Merge_IntoItself_IsRefused', async () => {
+    const skillet = await item('Skillet');
+    expect((await mergeGearWith(admin, skillet!.id, skillet!.id)).ok).toBe(false);
   });
 
   it('AdminList_SaysWhichRecipesUseAnItem', async () => {

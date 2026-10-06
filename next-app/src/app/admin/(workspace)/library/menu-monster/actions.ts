@@ -27,7 +27,7 @@ import { keepTypedInWith, matchTypedInWith, rejectTypedInWith, renameScoutRecipe
 import { deleteMenuWith, duplicateMenuWith, loadMenuWith, renameMenuWith, setMenuSharedWith, MENU_LIMIT } from '@/lib/menu-monster/menus-store';
 import { isMenuId } from '@/lib/menu-monster/menus';
 import { approveHeldPackageWith, rejectHeldPackageWith } from '@/lib/menu-monster/scout-packages-store';
-import { createGearWith, deleteGearWith, resolveGearWith, retireGearWith, storedRecipeGearWith, updateGearWith } from '@/lib/menu-monster/gear-store';
+import { createGearWith, deleteGearWith, mergeGearWith, resolveGearWith, retireGearWith, storedRecipeGearWith, updateGearWith } from '@/lib/menu-monster/gear-store';
 import { createBrandWith, mergeBrandWith, moveBrandWith, removeBrandWith, renameBrandWith, setBrandDietsWith, setPackageBrandWith, type BrandWrite, suggestRecipeBrandWith } from '@/lib/menu-monster/brands-store';
 import {
   authoringOf,
@@ -1379,6 +1379,28 @@ export async function updateGear(id: number, input: GearInput): Promise<Result &
   });
   revalidate();
   return { ok: true, note: res.merged ? `Merged into “${name}”${touched}.` : `Saved “${name}”${touched}.` };
+}
+
+/** Merge gear item `id` into `intoId`: recipes and menus that named it now name the target; `id` goes away. */
+export async function mergeGear(id: number, intoId: number): Promise<Result & { note?: string }> {
+  const denied = await guard();
+  if (denied) return denied;
+  const sb = createAdminClient();
+  const { data: rows } = await sb.from('mm_gear').select('id, name').in('id', [id, intoId]);
+  const nameOf = (x: number) => (rows ?? []).find((r) => r.id === x)?.name ?? String(x);
+  const from = nameOf(id);
+  const res = await mergeGearWith(sb, id, intoId);
+  if (!res.ok) return res;
+  const touched = res.recipes ? ` (${res.recipes} recipe${res.recipes === 1 ? '' : 's'} updated)` : '';
+  await recordAudit({
+    area: 'library',
+    action: 'update',
+    entityType: 'mm_gear',
+    entityId: String(intoId),
+    summary: `Merged Menu Monster gear item "${from}" into "${nameOf(intoId)}"${touched}`
+  });
+  revalidate();
+  return { ok: true, note: `Merged “${from}” into “${nameOf(intoId)}”${touched}.` };
 }
 
 export async function setGearRetired(id: number, retired: boolean): Promise<Result> {

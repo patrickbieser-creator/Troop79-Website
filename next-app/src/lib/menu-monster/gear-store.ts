@@ -221,6 +221,20 @@ export async function updateGearWith(sb: SupabaseClient, id: number, input: { na
   return { ok: true, id, recipes };
 }
 
+/**
+ * Merge one gear item into another (Patrick, 2026-10-05: "Charcoal and Charcoal briquettes"). Every recipe and
+ * menu that names `id` says the target's name instead (a recipe that already named both keeps one, with the
+ * first count), then `id` goes away. The same path a rename onto an existing name takes.
+ */
+export async function mergeGearWith(sb: SupabaseClient, id: number, intoId: number): Promise<GearWrite> {
+  if (id === intoId) return { ok: false, error: 'Pick a different item to merge into.' };
+  const all = await listGearWith(sb, { includeRetired: true });
+  const target = all.find((g) => g.id === intoId);
+  if (!target) return { ok: false, error: 'That item is gone.' };
+  const res = await updateGearWith(sb, id, { name: target.name, home: target.home, perPerson: target.perPerson });
+  return res.ok && !res.merged ? { ok: false, error: 'Nothing to merge into.' } : res;
+}
+
 /** Retire (no longer offered; recipes that name it keep the word) or restore. */
 export async function retireGearWith(sb: SupabaseClient, id: number, retired: boolean): Promise<GearWrite> {
   const { data, error } = await sb.from('mm_gear').update({ retired_at: retired ? new Date().toISOString() : null }).eq('id', id).select('id');

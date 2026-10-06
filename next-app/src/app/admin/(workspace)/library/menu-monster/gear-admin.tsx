@@ -9,7 +9,7 @@
  * one-per-person items (the troop's mess kits), and merge duplicates by renaming one onto the other. There are
  * no owned counts (Patrick, 2026-10-03). An item a recipe names can be retired, not deleted.
  */
-import { useState, useTransition } from 'react';
+import { Fragment, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '../../../_components/button';
 import { ActionsMenu } from '../../_components/actions-menu';
@@ -18,7 +18,7 @@ import { Notice } from '../../_components/notice';
 import { SearchField, useTableSearch } from '../../_components/search-field';
 import { GEAR_HOMES, GEAR_HOME_LABEL, MAX_GEAR_NAME, type GearHome } from '@/lib/menu-monster/gear';
 import type { GearAdminRow } from '@/lib/menu-monster/gear-store';
-import { createGear, deleteGear, setGearRetired, updateGear } from './actions';
+import { createGear, deleteGear, mergeGear, setGearRetired, updateGear } from './actions';
 import lib from '../library.module.css';
 import styles from './menu-monster.module.css';
 
@@ -33,6 +33,8 @@ export function GearAdmin({ items }: { items: GearAdminRow[] }) {
   /** 'new', an item's id, or null. */
   const [editing, setEditing] = useState<number | 'new' | null>(null);
   const [draft, setDraft] = useState<Draft>(BLANK);
+  /** The item being merged away, and the one picked to take its place (Patrick, 2026-10-05: "Charcoal and Charcoal briquettes"). */
+  const [merging, setMerging] = useState<{ id: number; into: number | null } | null>(null);
 
   function run(action: () => Promise<{ ok: boolean; error?: string; note?: string }>, okText: string) {
     setLine(null);
@@ -129,7 +131,8 @@ export function GearAdmin({ items }: { items: GearAdminRow[] }) {
               </tr>
             )}
             {search.visible.map((g) => (
-              <tr key={g.id}>
+              <Fragment key={g.id}>
+              <tr>
                 <td>
                   {g.name} {g.perPerson && <Badge variant="info">One per person</Badge>} {g.retiredAt && <Badge variant="muted">Retired</Badge>}
                   {editing === g.id &&
@@ -148,6 +151,7 @@ export function GearAdmin({ items }: { items: GearAdminRow[] }) {
                     disabled={pending}
                     options={[
                       { value: 'edit', label: 'Edit…' },
+                      { value: 'merge', label: 'Merge into…' },
                       g.retiredAt ? { value: 'restore', label: 'Restore' } : { value: 'retire', label: 'Retire' },
                       // Don't offer a button that can only fail: a recipe still names it.
                       ...(g.recipes.length === 0 ? [{ value: 'delete', label: 'Delete' }] : [])
@@ -156,6 +160,9 @@ export function GearAdmin({ items }: { items: GearAdminRow[] }) {
                       if (v === 'edit') {
                         setDraft({ name: g.name, home: g.home, perPerson: g.perPerson });
                         setEditing(g.id);
+                      } else if (v === 'merge') {
+                        setEditing(null);
+                        setMerging({ id: g.id, into: null });
                       } else if (v === 'retire') run(() => setGearRetired(g.id, true), `Retired “${g.name}”. Recipes that name it keep the word.`);
                       else if (v === 'restore') run(() => setGearRetired(g.id, false), `Restored “${g.name}”.`);
                       else run(() => deleteGear(g.id), `Deleted “${g.name}”.`);
@@ -163,6 +170,45 @@ export function GearAdmin({ items }: { items: GearAdminRow[] }) {
                   />
                 </td>
               </tr>
+              {merging?.id === g.id && (
+                <tr className={styles.detailRow} aria-label={`Merge ${g.name}`}>
+                  <td colSpan={4}>
+                    {/* The target picker stays greyed until a target is chosen (Patrick, 2026-10-05): the select's placeholder is the gate. */}
+                    <form
+                      className={styles.inlineForm}
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        if (merging.into != null) run(() => mergeGear(g.id, merging.into as number), `Merged “${g.name}”.`);
+                      }}
+                    >
+                      <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`mm-gear-merge-${g.id}`}>
+                        Merge “{g.name}” into
+                      </label>
+                      <select id={`mm-gear-merge-${g.id}`} className={lib.selectInput} value={merging.into ?? ''} onChange={(e) => setMerging({ id: g.id, into: e.target.value ? Number(e.target.value) : null })}>
+                        <option value="">— pick —</option>
+                        {items
+                          .filter((x) => x.id !== g.id)
+                          .map((x) => (
+                            <option key={x.id} value={x.id}>
+                              {x.name}
+                              {x.retiredAt ? ' (retired)' : ''}
+                            </option>
+                          ))}
+                      </select>
+                      <Button type="submit" size="sm" variant="primary" disabled={pending || merging.into == null}>
+                        Merge
+                      </Button>
+                      <Button type="button" size="sm" variant="secondary" onClick={() => setMerging(null)}>
+                        Cancel
+                      </Button>
+                      <p className={styles.hint}>
+                        Recipes and menus that name “{g.name}” will say the other item’s name instead, and “{g.name}” goes away.
+                      </p>
+                    </form>
+                  </td>
+                </tr>
+              )}
+              </Fragment>
             ))}
           </tbody>
         </table>
