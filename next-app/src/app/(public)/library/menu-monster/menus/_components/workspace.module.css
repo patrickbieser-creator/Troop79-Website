@@ -152,6 +152,8 @@
 /* Gear tab: the Packed tick at the start of a row, and the dashed add field under the lists. */
 .gearCheck { width: 18px; height: 18px; flex: none; align-self: center; accent-color: var(--forest); }
 .gearAdd { margin: 0 0 var(--sp-3); }
+/* A meal's own gear (soap, wash basins): the foot of its panel, quiet, under the foods. */
+.mealGear { margin: var(--sp-3) 0 0; }
 /* A meal's People dialer on the meal's own line, with its quiet Reset link. */
 .mealPeople { display: inline-flex; align-items: center; gap: var(--sp-2); flex: none; }
 .cost {

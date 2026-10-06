@@ -47,6 +47,7 @@ import { addBrandAction, suggestRecipeBrandAction } from '../../../_tools/menu-m
 import type { CreateResult, MenuStore, SaveResult } from '@/lib/menu-monster/menu-store';
 import { serverMenuStore } from './server-menu-store';
 import { MealPanel } from './meal-panel';
+import { withoutMealGear, type GearItem } from '@/lib/menu-monster/gear';
 import { overlayNewIngredients, type NewIngredient } from '@/lib/menu-monster/scout-ingredients';
 import type { AmountView } from '@/lib/menu-monster/ingredient-rows';
 import { RowMenu } from './row-menu';
@@ -88,9 +89,11 @@ export interface PlanTabProps {
   openMeal?: string | null;
   /** The troop's patrol names, as suggestions for the Patrol field (release 5). */
   patrols?: readonly string[];
+  /** The troop's gear list (not retired) for each meal's "More gear for this meal" picker. Absent = no picker (a menu kept on this computer, a read-only view). */
+  gearList?: readonly GearItem[];
 }
 
-export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt, outings, tabs, readOnly = false, helper = false, plannedBy = null, aside, store: storeProp, titleAs: Title = 'h1', openMeal = null, patrols = [] }: PlanTabProps) {
+export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt, outings, tabs, readOnly = false, helper = false, plannedBy = null, aside, store: storeProp, titleAs: Title = 'h1', openMeal = null, patrols = [], gearList }: PlanTabProps) {
   const router = useRouter();
   const store = useMemo(() => storeProp ?? serverMenuStore(menuId), [storeProp, menuId]);
   const { canSave } = store.caps;
@@ -246,7 +249,14 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
       setError(res.error);
       return false;
     }
-    setSaved({ menu: sent, key: JSON.stringify(sent) });
+    // Gear is picked from the troop's list; a name the server did not keep comes off the draft too, and is said.
+    const dropped = res.dropped ?? [];
+    const kept = dropped.length > 0 ? withoutMealGear(sent, dropped) : sent;
+    setSaved({ menu: kept, key: JSON.stringify(kept) });
+    if (dropped.length > 0) {
+      setMenu((cur) => withoutMealGear(cur, dropped));
+      setError(`Not on the gear list, so not kept: ${dropped.join(', ')}.`);
+    }
     if (isNew && 'id' in res) {
       // The page is replaced by the saved menu's own URL; the first open meal stays open there.
       const href = store.afterCreate(res.id, [...openMeals][0]);
@@ -529,6 +539,7 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
                                 meal={meal}
                                 view={view}
                                 readOnly={readOnly}
+                                gearList={gearList}
                                 onChange={setMeal}
                                 canTypeIn={canTypeIn}
                                 onTyped={(n) => setTyped((t) => [...t, n])}

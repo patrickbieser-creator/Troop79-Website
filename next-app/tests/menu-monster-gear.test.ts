@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { cleanGearEntry, cleanGearExtras, gearPickOptions, menuGearRows, packedSummary, parseGear, sortGear, unknownGearNames, type GearItem, type MenuGearState } from '../src/lib/menu-monster/gear';
+import { cleanGearEntry, cleanGearExtras, cleanMealGear, gearPickOptions, mealRecipeGear, menuGearRows, packedSummary, parseGear, sortGear, unknownGearNames, withoutMealGear, type GearItem, type MenuGearState } from '../src/lib/menu-monster/gear';
 import type { Catalog, Recipe } from '../src/lib/menu-monster/types';
 import type { Menu, MenuMeal } from '../src/lib/menu-monster/menus';
 
@@ -103,6 +103,63 @@ describe('a menu’s gear', () => {
   it('Rows_AreGroupedByWhereTheyLive_ThenByName', () => {
     const rows = rowsOf(menu([meal('m1', ['pancakes'])]));
     expect(rows.map((r) => `${r.home}:${r.name}`)).toEqual(['trailer:Camp stove', 'trailer:Griddle', 'trailer:Troop mess kit', 'patrol_box:Spatula']);
+  });
+});
+
+describe('gear for a meal (release 2)', () => {
+  const withGear = (m: MenuMeal, gear: string[]): MenuMeal => ({ ...m, gear });
+
+  it('MealGear_JoinsTheRecipeAndMenuGear_OneRowPerItem', () => {
+    const m = menu([withGear(meal('m1', ['bacon']), ['Skillet × 3', 'Spatula'])]);
+    const rows = rowsOf(m, { extras: ['Griddle'], packed: {} });
+    expect(rows.map((r) => r.name).sort()).toEqual(['Camp stove', 'Griddle', 'Long tongs', 'Skillet', 'Spatula', 'Troop mess kit']);
+    expect(rows.filter((r) => r.name === 'Skillet')).toHaveLength(1);
+  });
+
+  it('MealGear_KeepsTheMostNotTheSum_AcrossRecipeMealAndMenu', () => {
+    // Recipe asks for 2 skillets, the meal 3, the menu 1: three, not six.
+    const m = menu([withGear(meal('m1', ['eggs']), ['Skillet × 3'])]);
+    expect(count(m, 'Skillet', { extras: ['Skillet'], packed: {} })).toBe(3);
+  });
+
+  it('AMealWithNoFood_CarriesItsGear', () => {
+    const rows = rowsOf(menu([withGear(meal('m1', []), ['Spatula × 2'])]));
+    expect(rows.find((r) => r.name === 'Spatula')).toMatchObject({ count: 2, extra: false });
+  });
+
+  it('AMealWithNoFood_StillOwesNoMessKits', () => {
+    // The per-person rule stays tied to meals that cook.
+    expect(rowsOf(menu([withGear(meal('m1', []), ['Spatula'])])).some((r) => r.perPerson)).toBe(false);
+  });
+
+  it('MealGear_AddsAUsedByEntryWithNoRecipes', () => {
+    const row = rowsOf(menu([withGear(meal('m1', []), ['Spatula'])])).find((r) => r.name === 'Spatula');
+    expect(row?.usedBy).toEqual([{ mealId: 'm1', recipes: [] }]);
+  });
+
+  it('MealGear_OnAMealWhoseFoodAlsoNeedsIt_KeepsTheFoodsListedOnce', () => {
+    const row = rowsOf(menu([withGear(meal('m1', ['pancakes']), ['Spatula']), withGear(meal('m2', []), ['Spatula'])])).find((r) => r.name === 'Spatula');
+    expect(row?.usedBy).toEqual([{ mealId: 'm1', recipes: ['Pancakes'] }, { mealId: 'm2', recipes: [] }]);
+  });
+
+  it('MealGear_IsNotARemovableMenuExtra', () => {
+    expect(rowsOf(menu([withGear(meal('m1', []), ['Spatula'])])).find((r) => r.name === 'Spatula')?.extra).toBe(false);
+  });
+
+  it('CleanMealGear_IsCleanedDedupedSortedAndCapped', () => {
+    expect(cleanMealGear(['Wash bin × 2', ' soap ', 'SOAP × 3', '', 7])).toEqual(['soap', 'Wash bin × 2']);
+    expect(cleanMealGear(Array.from({ length: 40 }, (_, i) => `Thing ${String(i).padStart(2, '0')}`))).toHaveLength(30);
+  });
+
+  it('MealRecipeGear_IsTheMostEachFoodAsksFor_AToZ', () => {
+    expect(mealRecipeGear(meal('m1', ['bacon', 'eggs']), CATALOG)).toEqual(['Camp stove', 'Long tongs', 'Skillet × 2', 'Spatula']);
+  });
+
+  it('WithoutMealGear_TakesTheNamedGearOffEveryMeal', () => {
+    const m = menu([withGear(meal('m1', []), ['Spatula', 'Soap']), withGear(meal('m2', []), ['spatula × 2'])]);
+    const next = withoutMealGear(m, ['Spatula']);
+    expect(next.meals[0].gear).toEqual(['Soap']);
+    expect(next.meals[1]).not.toHaveProperty('gear');
   });
 });
 

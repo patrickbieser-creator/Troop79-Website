@@ -23,7 +23,7 @@ export function serverMenuStore(menuId: string | null, initial: StoredState | nu
     save: async (menu, version) => {
       if (menuId === null) return { ok: false, error: 'Save this menu first.' };
       const res = await saveMenuAction(menuId, menu, version ?? '');
-      return res.ok ? { ok: true, updatedAt: res.updatedAt } : res;
+      return res.ok ? { ok: true, updatedAt: res.updatedAt, ...(res.dropped ? { dropped: res.dropped } : {}) } : res;
     },
     create: (menu) => createMenuAction(menu),
     afterCreate: (id, openMealId) => `${MENUS_HREF}/${id}${openMealId ? `?meal=${encodeURIComponent(openMealId)}` : ''}`

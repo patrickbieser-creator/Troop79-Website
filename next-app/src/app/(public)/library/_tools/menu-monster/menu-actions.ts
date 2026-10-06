@@ -17,6 +17,7 @@ import { requireVerifiedScoutIdentity } from '@/lib/family-access';
 import { loadMenuMonsterCatalog } from '@/lib/menu-monster/data';
 import { MAX_ACTUALS_BYTES, MAX_MENU_BYTES, MAX_MENUS_PER_SCOUT, isMenuId, menuNameError, sanitizeActuals, sanitizeMenu, type Menu, type PaidStatus } from '@/lib/menu-monster/menus';
 import { MAX_REVIEW_NOTE, MENU_LIMIT, addMenuIngredientWith, copyMenuWith, createMenuWith, deleteMenuWith, duplicateMenuWith, hideMenuWith, loadMenuWith, saveActualsWith, saveMenuWith, setMenuSharedWith, setReviewNoteWith } from '@/lib/menu-monster/menus-store';
+import { resolveMealGearWith } from '@/lib/menu-monster/gear-store';
 import { resolveAdminActor } from '@/lib/admin-actor';
 import { sanitizeNewIngredients } from '@/lib/menu-monster/scout-ingredients';
 import { sanitizeScoutPackage } from '@/lib/menu-monster/scout-packages';
@@ -101,22 +102,24 @@ async function menuWriter(id: unknown): Promise<{ actor: AuditActor; ownerId: nu
 }
 const isRefused = (v: object): v is Fail => 'ok' in v;
 
-export async function createMenuAction(raw: unknown): Promise<{ ok: true; id: string } | Fail> {
+export async function createMenuAction(raw: unknown): Promise<{ ok: true; id: string; dropped?: string[] } | Fail> {
   const actor = await scoutActor();
   if (isFail(actor)) return actor;
   if (tooBig(raw)) return { ok: false, error: TOO_BIG };
   const { menu: cleaned, catalog, nameError } = await cleanMenu(raw, actor.personId);
   if (nameError) return { ok: false, error: nameError };
-  const menu = await allowedOuting(cleaned, null);
-  const id = await createMenuWith(createAdminClient(), actor, menu, catalog);
-  return id === MENU_LIMIT ? { ok: false, error: LIMIT_MESSAGE } : { ok: true, id };
+  const sb = createAdminClient();
+  // A meal's gear is picked from the troop's list (Patrick, 2026-10-05): a name not on it is dropped, and said so.
+  const { menu: listed, dropped } = await resolveMealGearWith(sb, await allowedOuting(cleaned, null));
+  const id = await createMenuWith(sb, actor, listed, catalog);
+  return id === MENU_LIMIT ? { ok: false, error: LIMIT_MESSAGE } : { ok: true, id, ...(dropped.length > 0 ? { dropped } : {}) };
 }
 
 export async function saveMenuAction(
   id: string,
   raw: unknown,
   expectedUpdatedAt: string
-): Promise<{ ok: true; updatedAt: string } | Fail> {
+): Promise<{ ok: true; updatedAt: string; dropped?: string[] } | Fail> {
   const signedIn = await scoutActor();
   if (isFail(signedIn)) return signedIn;
   if (!isMenuId(id)) return { ok: false, error: NOT_YOURS };
@@ -132,9 +135,10 @@ export async function saveMenuAction(
   // ingredients, and a leader cannot put one of their private recipes on a scout's menu.
   const { menu: cleaned, catalog, nameError } = await cleanMenu(raw, current.ownerPersonId);
   if (nameError) return { ok: false, error: nameError };
-  const menu = await allowedOuting(cleaned, current.menu.calendarEntryId);
+  // A meal's gear is picked from the troop's list (Patrick, 2026-10-05): a name not on it is dropped, and said so.
+  const { menu, dropped } = await resolveMealGearWith(sb, await allowedOuting(cleaned, current.menu.calendarEntryId), current.menu);
   const res = await saveMenuWith(sb, actor, id, menu, expectedUpdatedAt, catalog, { asLeader: !own });
-  if (res.status === 'saved') return { ok: true, updatedAt: res.updatedAt };
+  if (res.status === 'saved') return { ok: true, updatedAt: res.updatedAt, ...(dropped.length > 0 ? { dropped } : {}) };
   if (res.status === 'conflict') {
     return { ok: false, error: 'This menu was changed since you opened it, in another window or by someone else. Reload to see the latest, then make your change again.' };
   }

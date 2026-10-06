@@ -960,3 +960,108 @@ describe('MealPanel ingredient list density (Patrick, 2026-10-03)', () => {
     expect(screen.getByRole('list', { name: 'Bacon ingredients' }).className).toMatch(/dense/);
   });
 });
+
+describe('MealPanel — More gear for this meal (gear-from-the-list release 2)', () => {
+  const GEAR_LIST = [
+    { id: 1, name: 'Dish soap', home: 'trailer' as const, perPerson: false, retiredAt: null },
+    { id: 2, name: 'Skillet', home: 'trailer' as const, perPerson: false, retiredAt: null },
+    { id: 3, name: 'Wash basin', home: 'trailer' as const, perPerson: false, retiredAt: null }
+  ];
+  const GEARED = { ...CATALOG, recipes: CATALOG.recipes.map((r) => (r.id === 'B003' ? { ...r, equipment: ['Tongs', 'Skillet × 2'] } : r)) };
+  const withGear = (gear?: string[]): Menu => ({ ...menu(), meals: menu().meals.map((m) => (m.id === 'm1' && gear ? { ...m, gear } : m)) });
+  const plan = (m: Menu, over: Partial<Parameters<typeof PlanTab>[0]> = {}) => (
+    <PlanTab catalog={GEARED} menuId="menu-1" menu={m} updatedAt={VERSION} outings={[]} openMeal="m1" gearList={GEAR_LIST} {...over} />
+  );
+  const gearBox = () => screen.getByRole('combobox', { name: 'More gear for Day 1 breakfast' });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    openId = 'm1';
+  });
+
+  it('TheBlock_ShowsTheFoodsGear_ReadOnly_AToZ', () => {
+    render(plan(withGear()));
+    expect(screen.getByText('Gear for the foods: Skillet × 2 · Tongs')).toBeTruthy();
+  });
+
+  it('AFoodlessMeal_StillOffersTheMealGearPicker', () => {
+    openId = 'm2';
+    render(plan(withGear(), { openMeal: 'm2' }));
+    expect(screen.getByRole('combobox', { name: 'More gear for Day 1 lunch' })).toBeTruthy();
+    expect(screen.queryByText(/Gear for the foods/)).toBeNull();
+  });
+
+  it('Picker_OffersTheMasterList_AToZ_AndNeverACreateRow', async () => {
+    const user = userEvent.setup();
+    render(plan(withGear(['Dish soap'])));
+    await user.click(gearBox());
+    expect(within(screen.getByRole('listbox', { name: 'Gear on the list' })).getAllByRole('option').map((o) => o.textContent)).toEqual(['Skillet', 'Wash basin']);
+    await user.type(gearBox(), 'ladle');
+    expect(screen.getByText(/Nothing on the gear list matches “ladle”/)).toBeTruthy();
+    expect(screen.queryByText(/^Add “/)).toBeNull();
+  });
+
+  it('PickingGear_AddsItToTheMeal_MarksThePlanDirty_AndSavesItWithThePlan', async () => {
+    saveMenuAction.mockResolvedValue(LANDED);
+    const user = userEvent.setup();
+    render(plan(withGear()));
+    expect((screen.getByRole('button', { name: 'Saved' }) as HTMLButtonElement).disabled).toBe(true);
+    await user.type(gearBox(), 'wash{Enter}');
+    expect(screen.getByRole('list', { name: 'Gear' }).textContent).toContain('Wash basin');
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    expect(saved().meals[0].gear).toEqual(['Wash basin']);
+  });
+
+  it('GearOnTheMeal_StaysAToZ_WhateverOrderItWasPicked', async () => {
+    const user = userEvent.setup();
+    render(plan(withGear(['Wash basin'])));
+    await user.type(gearBox(), 'dish{Enter}');
+    expect(within(screen.getByRole('list', { name: 'Gear' })).getAllByRole('listitem').map((li) => li.textContent)).toEqual([expect.stringContaining('Dish soap'), expect.stringContaining('Wash basin')]);
+  });
+
+  it('TheCount_CanBeRaised_AndIsSaved', async () => {
+    saveMenuAction.mockResolvedValue(LANDED);
+    const user = userEvent.setup();
+    render(plan(withGear(['Wash basin'])));
+    await user.click(screen.getByRole('button', { name: 'More Wash basin' }));
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    expect(saved().meals[0].gear).toEqual(['Wash basin × 2']);
+  });
+
+  it('RemovingTheOnlyGear_PutsThePlanBackToSaved_WithNoGearKey', async () => {
+    const user = userEvent.setup();
+    render(plan(withGear()));
+    await user.type(gearBox(), 'wash{Enter}');
+    expect((screen.getByRole('button', { name: 'Save changes' }) as HTMLButtonElement).disabled).toBe(false);
+    await user.click(screen.getByRole('button', { name: 'Remove Wash basin' }));
+    expect((screen.getByRole('button', { name: 'Saved' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('AServerDrop_IsSaid_AndTheNameLeavesTheDraft', async () => {
+    saveMenuAction.mockResolvedValue({ ...LANDED, dropped: ['Wash basin'] });
+    const user = userEvent.setup();
+    render(plan(withGear()));
+    await user.type(gearBox(), 'wash{Enter}');
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    expect(await screen.findByText('Not on the gear list, so not kept: Wash basin.')).toBeTruthy();
+    expect(screen.queryByRole('list', { name: 'Gear' })).toBeNull();
+  });
+
+  it('AReadOnlyViewer_SeesTheMealGear_WithNoPicker', () => {
+    render(plan(withGear(['Dish soap', 'Wash basin × 2']), { readOnly: true }));
+    expect(screen.getByText('More gear for this meal: Dish soap · Wash basin × 2')).toBeTruthy();
+    expect(screen.queryByRole('combobox', { name: /More gear/ })).toBeNull();
+    expect(screen.getByText('Gear for the foods: Skillet × 2 · Tongs')).toBeTruthy();
+  });
+
+  it('AReadOnlyViewer_OfAMealWithNoGear_SeesNoEmptyBlock', () => {
+    openId = 'm2';
+    render(plan(withGear(), { readOnly: true, openMeal: 'm2' }));
+    expect(screen.queryByRole('region', { name: 'More gear for this meal' })).toBeNull();
+  });
+
+  it('AMenuKeptOnThisComputer_HasNoPicker_AsThereIsNoListToPickFrom', () => {
+    render(plan(withGear(), { gearList: undefined }));
+    expect(screen.queryByRole('combobox', { name: /More gear/ })).toBeNull();
+  });
+});

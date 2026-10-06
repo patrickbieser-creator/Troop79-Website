@@ -143,7 +143,13 @@ export function GearAdmin({ items }: { items: GearAdminRow[] }) {
                     )}
                 </td>
                 <td>{GEAR_HOME_LABEL[g.home]}</td>
-                <td>{g.recipes.length === 0 ? <span className={styles.muted}>—</span> : g.recipes.join(', ')}</td>
+                <td>
+                  {g.recipes.length === 0 && g.menus === 0 ? (
+                    <span className={styles.muted}>—</span>
+                  ) : (
+                    [...g.recipes, ...(g.menus > 0 ? [g.menus === 1 ? '1 menu' : `${g.menus} menus`] : [])].join(', ')
+                  )}
+                </td>
                 <td className={styles.actionsCell}>
                   <ActionsMenu
                     ariaLabel={`More for ${g.name}`}
@@ -153,8 +159,8 @@ export function GearAdmin({ items }: { items: GearAdminRow[] }) {
                       { value: 'edit', label: 'Edit…' },
                       { value: 'merge', label: 'Merge into…' },
                       g.retiredAt ? { value: 'restore', label: 'Restore' } : { value: 'retire', label: 'Retire' },
-                      // Don't offer a button that can only fail: a recipe still names it.
-                      ...(g.recipes.length === 0 ? [{ value: 'delete', label: 'Delete' }] : [])
+                      // Don't offer a button that can only fail: a recipe or a menu still names it.
+                      ...(g.recipes.length === 0 && g.menus === 0 ? [{ value: 'delete', label: 'Delete' }] : [])
                     ]}
                     onAction={(v) => {
                       if (v === 'edit') {

@@ -21,7 +21,7 @@ import { resolveFamilyScope } from '@/lib/household-scope';
 import { isEpochCurrent } from '@/lib/identity-session';
 import { loadMenuMonsterCatalog } from '@/lib/menu-monster/data';
 import { loadMenuWith, ownerCreditNamesWith, type StoredMenu } from '@/lib/menu-monster/menus-store';
-import { isMenuId } from '@/lib/menu-monster/menus';
+import { isMenuId, menuCredit } from '@/lib/menu-monster/menus';
 import { canEditPlan, canRecord, menuAccess, redactMenu, type AccessViewer, type MenuAccess, isPublic } from '@/lib/menu-monster/menu-access';
 import type { Catalog } from '@/lib/menu-monster/types';
 import { PageHeader, KickerSep } from '@/app/_components/page-header';
@@ -144,7 +144,7 @@ export async function loadViewableMenu(menuId: string, viewer: MenuViewer | null
   // A legacy leader cookie that names no person still only reads (a save needs someone to credit).
   if (canEditPlan(access) && viewer?.personId != null) {
     const [catalog, names] = await Promise.all([loadMenuMonsterCatalog(raw.ownerPersonId), ownerCreditNamesWith(sb, [raw.ownerPersonId])]);
-    return { stored: raw, access, readOnly: false, helping: true, leaderEditBy: null, plannedBy: names.get(raw.ownerPersonId) ?? null, catalog, hiddenRecipes: 0, canCopy: false };
+    return { stored: raw, access, readOnly: false, helping: true, leaderEditBy: null, plannedBy: menuCredit(raw.menu.patrol, names.get(raw.ownerPersonId) ?? null), catalog, hiddenRecipes: 0, canCopy: false };
   }
   // Crew reads another scout's unshared menu, so a revoked sign-in ends here, not at cookie expiry (qa-lead; the
   // parent branch of menuViewer makes the same check).
@@ -158,7 +158,7 @@ export async function loadViewableMenu(menuId: string, viewer: MenuViewer | null
   const [catalog, names] = await Promise.all([loadMenuMonsterCatalog(null), ownerCreditNamesWith(sb, [raw.ownerPersonId])]);
   const { menu, hiddenRecipes } = redactMenu(raw.menu, access, catalog);
   const stored: StoredMenu = { ...raw, menu, snapshot: null, review: access === 'shared' || access === 'crew' ? null : raw.review, leaderEdit: null };
-  return { stored, access, readOnly: true, helping: false, leaderEditBy: null, plannedBy: names.get(raw.ownerPersonId) ?? null, catalog, hiddenRecipes, canCopy: viewer != null && viewer.personId != null && isPublic(raw) };
+  return { stored, access, readOnly: true, helping: false, leaderEditBy: null, plannedBy: menuCredit(raw.menu.patrol, names.get(raw.ownerPersonId) ?? null), catalog, hiddenRecipes, canCopy: viewer != null && viewer.personId != null && isPublic(raw) };
 }
 
 /**

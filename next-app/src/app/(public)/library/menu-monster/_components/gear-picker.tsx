@@ -44,14 +44,14 @@ export function GearPicker({
   );
 }
 
-export function GearChips({ gear, onChange, onAnnounce }: { gear: readonly string[]; onChange: (next: string[]) => void; onAnnounce?: (text: string) => void }) {
+export function GearChips({ gear, onChange, onAnnounce, idPrefix = '' }: { gear: readonly string[]; onChange: (next: string[]) => void; onAnnounce?: (text: string) => void; /** Keeps the count inputs' ids unique when several lists are on one page (one per open meal). */ idPrefix?: string }) {
   if (gear.length === 0) return null;
   const same = (a: string, b: string) => gearKey(parseGear(a).name) === gearKey(parseGear(b).name);
   return (
     <ul className={s.chips} aria-label="Gear">
       {sortGear(gear).map((entry) => {
         const { name, count } = parseGear(entry);
-        const id = `gear-n-${gearKey(name).replace(/[^a-z0-9]+/g, '-')}`;
+        const id = `${idPrefix}gear-n-${gearKey(name).replace(/[^a-z0-9]+/g, '-')}`;
         return (
           <li key={gearKey(name)} className={s.chip}>
             <span className={s.chipName}>{gearText(name, count)}</span>

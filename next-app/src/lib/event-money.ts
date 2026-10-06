@@ -33,9 +33,10 @@ export function refundAccountDefault(
 }
 /** A payment method as offered in the Record payment dialog — the ledger's
  *  methods plus the scholarship fund (stored as account 'scholarship', method 'other'). */
-export type PayMethod = 'venmo' | 'check' | 'cash' | 'scout_account' | 'scholarship' | 'bank' | 'other';
+export type PayMethod = 'venmo' | 'paypal' | 'check' | 'cash' | 'scout_account' | 'scholarship' | 'bank' | 'other';
 export const PAY_METHOD_LABEL: Record<PayMethod, string> = {
   venmo: 'Venmo',
+  paypal: 'PayPal',
   check: 'Check',
   cash: 'Cash',
   scout_account: 'Scout account balance',

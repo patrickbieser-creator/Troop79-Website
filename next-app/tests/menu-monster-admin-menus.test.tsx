@@ -14,11 +14,15 @@ const duplicateMenu = vi.fn();
 const renameMenu = vi.fn();
 const setMenuShared = vi.fn();
 const deleteMenu = vi.fn();
+const setMenuOwner = vi.fn();
+const setMenuPatrol = vi.fn();
 vi.mock('../src/app/admin/(workspace)/library/menu-monster/actions', () => ({
   duplicateMenu: (...a: unknown[]) => duplicateMenu(...a),
   renameMenu: (...a: unknown[]) => renameMenu(...a),
   setMenuShared: (...a: unknown[]) => setMenuShared(...a),
-  deleteMenu: (...a: unknown[]) => deleteMenu(...a)
+  deleteMenu: (...a: unknown[]) => deleteMenu(...a),
+  setMenuOwner: (...a: unknown[]) => setMenuOwner(...a),
+  setMenuPatrol: (...a: unknown[]) => setMenuPatrol(...a)
 }));
 
 import { MenusAdmin, type MenuAdminRow } from '../src/app/admin/(workspace)/library/menu-monster/menus-admin';
@@ -31,6 +35,7 @@ const row = (over: Partial<MenuAdminRow> = {}): MenuAdminRow => ({
   outing: 'Fall Campout at Camp Long Lake',
   headcount: 8,
   mealCount: 5,
+  patrol: null,
   createdAt: '2026-09-20T15:00:00.000Z',
   updatedAt: '2026-10-03T15:00:00.000Z',
   ownerPersonId: 39,
@@ -41,7 +46,7 @@ const row = (over: Partial<MenuAdminRow> = {}): MenuAdminRow => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
-  for (const fn of [duplicateMenu, renameMenu, setMenuShared, deleteMenu]) fn.mockResolvedValue({ ok: true });
+  for (const fn of [duplicateMenu, renameMenu, setMenuShared, deleteMenu, setMenuOwner, setMenuPatrol]) fn.mockResolvedValue({ ok: true });
 });
 
 const pick = async (value: string) => userEvent.setup().selectOptions(screen.getByRole('combobox', { name: 'More for Fall campout' }), value);
@@ -51,18 +56,18 @@ describe('MenusAdmin', () => {
   it('TheList_HasAColumnForEachThingALeaderAskedFor', () => {
     render(<MenusAdmin menus={[row()]} />);
     expect(within(screen.getByRole('table', { name: 'Menus' })).getAllByRole('columnheader').map((h) => h.textContent)).toEqual([
-      'Menu', 'Owner', 'For', 'People', 'Meals', 'Created', 'Last edited', 'Shared', 'Who can edit', 'Actions'
+      'Menu', 'Owner', 'Patrol', 'For', 'People', 'Meals', 'Created', 'Last edited', 'Shared', 'Who can edit', 'Actions'
     ]);
   });
 
   it('ARow_SaysWhoseItIs_WhatItIsFor_AndWhoMayEditIt', () => {
     render(<MenusAdmin menus={[row()]} />);
-    expect(cells().slice(1, 9)).toEqual(['Charlie W.', 'Fall Campout at Camp Long Lake', '8', '5', 'Sep 20, 2026', 'Oct 3, 2026', 'Oct 1, 2026', 'Owner and leaders']);
+    expect(cells().slice(1, 10)).toEqual(['Charlie W.', '—', 'Fall Campout at Camp Long Lake', '8', '5', 'Sep 20, 2026', 'Oct 3, 2026', 'Oct 1, 2026', 'Owner and leaders']);
   });
 
   it('AMenuWithNoOuting_SaysItsKind', () => {
     render(<MenusAdmin menus={[row({ outing: null, calendarEntryId: null, context: 'trail', sharedAt: null })]} />);
-    expect(cells().slice(2, 3).concat(cells().slice(7, 8))).toEqual(['Trail', 'Not shared']);
+    expect(cells().slice(3, 4).concat(cells().slice(8, 9))).toEqual(['Trail', 'Not shared']);
   });
 
   it('Open_GoesToTheMenuItself', () => {
@@ -107,6 +112,33 @@ describe('MenusAdmin', () => {
     render(<MenusAdmin menus={[row(), row({ id: 'M-0000ef01', name: 'Day hike', outing: 'Ice Age Trail hike' })]} />);
     await userEvent.setup().type(screen.getByRole('searchbox', { name: 'Search menus' }), 'ice age');
     expect([screen.queryByText('Fall campout'), screen.getByText('Day hike')].map((x) => x != null)).toEqual([false, true]);
+  });
+
+  // Patrick, 2026-10-05: the High Cliff menu was entered under the wrong scout, by a patrol.
+  it('Leader_CanHandAMenuToSomeoneElse_PickerGreyedUntilChosen', async () => {
+    const user = userEvent.setup();
+    render(<MenusAdmin menus={[row()]} owners={[{ personId: 39, name: 'Charlie W.', kind: 'scout' }, { personId: 25, name: 'Jack P.', kind: 'scout' }, { personId: 82, name: 'Patrick B.', kind: 'leader' }]} />);
+    await pick('owner');
+    const sel = screen.getByRole('combobox', { name: 'New owner for Fall campout' });
+    expect(within(sel).getAllByRole('option').map((o) => o.textContent)).toEqual(['— pick —', 'Charlie W.', 'Jack P.', 'Patrick B. (leader)']);
+    expect((screen.getByRole('button', { name: 'Save' }) as HTMLButtonElement).disabled).toBe(true);
+    await user.selectOptions(sel, '25');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(setMenuOwner).toHaveBeenCalledWith('M-0000abcd', 25);
+  });
+
+  it('Leader_CanCreditAPatrol', async () => {
+    const user = userEvent.setup();
+    render(<MenusAdmin menus={[row()]} patrols={['Screaming Eagles', 'Whole troop']} />);
+    await pick('patrol');
+    await user.type(screen.getByRole('combobox', { name: 'Patrol for Fall campout' }), 'Screaming Eagles');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(setMenuPatrol).toHaveBeenCalledWith('M-0000abcd', 'Screaming Eagles');
+  });
+
+  it('AMenuWithAPatrol_ShowsIt', () => {
+    render(<MenusAdmin menus={[row({ patrol: 'Screaming Eagles' })]} />);
+    expect(cells()[2]).toBe('Screaming Eagles');
   });
 
   it('EmptyList_SaysSo', () => {

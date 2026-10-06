@@ -7,6 +7,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { centralToday } from '@/lib/dates';
 import { loadMenuMonsterCatalog } from '@/lib/menu-monster/data';
 import { blankMenu } from '@/lib/menu-monster/menus';
+import { listGearWith } from '@/lib/menu-monster/gear-store';
 import { loadOutingsWith, loadPatrolNamesWith } from '@/lib/menu-monster/menus-data';
 import { PageShell } from '@/app/_components/page-shell';
 import { PlanTab } from '../_components/plan-tab';
@@ -27,12 +28,17 @@ export default async function NewMenuPage() {
       </>
     );
   }
-  const [catalog, outings, patrols] = await Promise.all([loadMenuMonsterCatalog(viewer.personId), loadOutingsWith(createAdminClient(), centralToday()), loadPatrolNamesWith(createAdminClient())]);
+  const [catalog, outings, patrols, gearList] = await Promise.all([
+    loadMenuMonsterCatalog(viewer.personId),
+    loadOutingsWith(createAdminClient(), centralToday()),
+    loadPatrolNamesWith(createAdminClient()),
+    listGearWith(createAdminClient())
+  ]);
   return (
     <>
       <MenuHeader current="new" />
       <PageShell>
-        <PlanTab catalog={catalog} menuId={null} menu={blankMenu()} updatedAt={null} outings={outings} patrols={patrols} />
+        <PlanTab catalog={catalog} menuId={null} menu={blankMenu()} updatedAt={null} outings={outings} patrols={patrols} gearList={gearList} />
       </PageShell>
     </>
   );

@@ -480,7 +480,25 @@ describe('ShoppingTab gear (Phase 4C)', () => {
   it('PrintSheet_ListsTheGear', () => {
     const m = menu();
     render(tab(m, buildSnapshot(m, geared), geared));
-    expect(screen.getByTestId('print-sheet').textContent).toContain('Gear: Skillet · Tongs · Cutting board');
+    // Release 2 (2026-10-06): the sheet uses the Gear tab's roll-up, which is A to Z (it was the recipes' order).
+    expect(screen.getByTestId('print-sheet').textContent).toContain('Gear: Cutting board · Skillet · Tongs');
+  });
+
+  it('PrintSheet_IncludesTheMealsOwnGear_AndTheMenusExtras_OneOfEach', () => {
+    const base = menu();
+    const m = { ...base, meals: base.meals.map((x) => (x.id === 'm3' ? { ...x, gear: ['Wash basin × 2', 'Skillet'] } : x)) };
+    render(
+      <ShoppingTab catalog={geared} menuId="menu-1" menu={m} updatedAt={VERSION} snapshot={buildSnapshot(m, geared)} gearExtras={['Water jug × 3', 'tongs']} />
+    );
+    // Recipes' Skillet / Tongs / Cutting board, the meal's Wash basin (a count kept), the menu's Water jug; Skillet and Tongs once.
+    expect(screen.getByTestId('print-sheet').textContent).toContain('Gear: Cutting board · Skillet · Tongs · Wash basin × 2 · Water jug × 3');
+  });
+
+  it('PrintSheet_NamesThePerPersonItems_WhenGivenTheTroopList', () => {
+    const m = menu();
+    const list = [{ id: 1, name: 'Troop mess kit', home: 'trailer' as const, perPerson: true, retiredAt: null }];
+    render(<ShoppingTab catalog={geared} menuId="menu-1" menu={m} updatedAt={VERSION} snapshot={buildSnapshot(m, geared)} gearList={list} />);
+    expect(screen.getByTestId('print-sheet').textContent).toContain('Troop mess kit × 8');
   });
 });
 

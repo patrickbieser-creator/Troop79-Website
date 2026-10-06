@@ -5,7 +5,7 @@
  * The gear crew's packing list, live as the plan changes: while one group of scouts plans the meals, another
  * waits for this list so they can pull the right gear before the campout.
  *
- * One row per item, grouped by where it comes from (troop trailer, patrol box, home): a Packed tick, the
+ * One row per item, grouped by where it comes from (4th Floor Northwoods — the troop's gear store, patrol box, home): a Packed tick, the
  * name (a disclosure: which meals and foods need it), who packed it, and how many in the fixed right column.
  * Reusable gear is shared — the count is the most any one food needs, never the sum (lib/menu-monster/gear.ts);
  * the troop's mess kits follow People. A tick remembers the count it was made at: when the plan later changes
@@ -184,7 +184,7 @@ export function GearTab({ catalog, menuId, menu, gearList, state: initial, canPa
                           <ul className={s.plainList} aria-label={`What needs ${r.name}`}>
                             {r.usedBy.map((u) => (
                               <li key={u.mealId} className={s.insetLine}>
-                                {mealName(u.mealId)}: {u.recipes.join(', ')}
+                                {mealName(u.mealId)}: {u.recipes.length > 0 ? u.recipes.join(', ') : 'Added to this meal'}
                               </li>
                             ))}
                           </ul>

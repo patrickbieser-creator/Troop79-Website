@@ -34,6 +34,8 @@ export interface MenuSummary {
   calendarEntryId: number | null;
   headcount: number;
   mealCount: number;
+  /** The patrol it is credited to, when said. */
+  patrol: string | null;
   createdAt: string;
   updatedAt: string;
   ownerPersonId: number;
@@ -192,7 +194,7 @@ async function audit(sb: SupabaseClient, actor: AuditActor, action: string, id: 
   await recordAuditAs(sb, actor, { area: 'menus', action, entityType: 'menu', entityId: id, summary: `${actor.label} ${summary}` });
 }
 
-const SUMMARY_COLS = 'id, owner_person_id, name, context, calendar_entry_id, headcount, meals, created_at, updated_at, shared_at';
+const SUMMARY_COLS = 'id, owner_person_id, name, context, calendar_entry_id, headcount, meals, patrol, created_at, updated_at, shared_at';
 
 const toSummary = (r: Record<string, unknown>): MenuSummary => ({
   id: r.id as string,
@@ -202,6 +204,7 @@ const toSummary = (r: Record<string, unknown>): MenuSummary => ({
   calendarEntryId: (r.calendar_entry_id as number | null) ?? null,
   headcount: r.headcount as number,
   mealCount: Array.isArray(r.meals) ? r.meals.length : 0,
+  patrol: (r.patrol as string | null) ?? null,
   createdAt: r.created_at as string,
   updatedAt: r.updated_at as string,
   sharedAt: (r.shared_at as string | null) ?? null
@@ -461,6 +464,61 @@ export async function renameMenuWith(sb: SupabaseClient, actor: AuditActor, id: 
   if (error) throw new Error(`rename menu: ${error.message}`);
   if (!data?.length) return false;
   await audit(sb, actor, 'rename', id, `renamed a menu to "${name}"${asLeaderNote(actor, ownerId)}`);
+  return true;
+}
+
+/** Someone a leader may hand a menu to: an active scout or a leader, A→Z. */
+export interface MenuOwnerCandidate {
+  personId: number;
+  name: string;
+  kind: 'scout' | 'leader';
+}
+
+export async function listMenuOwnerCandidatesWith(sb: SupabaseClient): Promise<MenuOwnerCandidate[]> {
+  const [scouts, leaders] = await Promise.all([
+    sb.from('scouts').select('person_id').eq('active', true).not('person_id', 'is', null),
+    sb.from('leaders').select('person_id').not('person_id', 'is', null)
+  ]);
+  if (scouts.error) throw new Error(`scouts: ${scouts.error.message}`);
+  if (leaders.error) throw new Error(`leaders: ${leaders.error.message}`);
+  const kinds = new Map<number, 'scout' | 'leader'>();
+  for (const r of leaders.data ?? []) kinds.set(r.person_id as number, 'leader');
+  for (const r of scouts.data ?? []) kinds.set(r.person_id as number, 'scout');
+  const names = await ownerCreditNamesWith(sb, [...kinds.keys()]);
+  return [...kinds.entries()]
+    .map(([personId, kind]) => ({ personId, kind, name: names.get(personId) ?? `Person ${personId}` }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * A leader hands a menu to a different owner (Patrick, 2026-10-05: a camp menu "was entered under a scout
+ * named Todd. This was incorrect"). The new owner's menu count is respected; nothing else on the menu
+ * changes, and updated_at is left alone (an open Plan tab keeps its version). False when the menu is gone.
+ */
+export async function setMenuOwnerWith(sb: SupabaseClient, actor: AuditActor, id: string, newOwnerId: number): Promise<boolean | typeof MENU_LIMIT> {
+  const { data: cur, error } = await sb.from('mm_menus').select('name, owner_person_id').eq('id', id).maybeSingle();
+  if (error) throw new Error(`load menu: ${error.message}`);
+  if (!cur) return false;
+  if (cur.owner_person_id === newOwnerId) return true;
+  if (await atMenuLimit(sb, newOwnerId)) return MENU_LIMIT;
+  const { error: uErr } = await sb.from('mm_menus').update({ owner_person_id: newOwnerId }).eq('id', id);
+  if (uErr) throw new Error(`set owner: ${uErr.message}`);
+  const names = await ownerCreditNamesWith(sb, [cur.owner_person_id as number, newOwnerId]);
+  await audit(sb, actor, 'reassign', id, `moved menu "${cur.name as string}" from ${names.get(cur.owner_person_id as number) ?? 'someone'} to ${names.get(newOwnerId) ?? 'someone'}`);
+  return true;
+}
+
+/** The patrol a menu is for ("Screaming Eagles"), set by a leader; blank clears it. Bumps updated_at like any plan edit. */
+export async function setMenuPatrolWith(sb: SupabaseClient, actor: AuditActor, id: string, patrol: string): Promise<boolean> {
+  const clean = patrol.trim().slice(0, 40);
+  const { data, error } = await sb
+    .from('mm_menus')
+    .update({ patrol: clean || null, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select('name');
+  if (error) throw new Error(`set patrol: ${error.message}`);
+  if (!data?.length) return false;
+  await audit(sb, actor, 'update', id, clean ? `set the patrol on menu "${data[0].name as string}" to ${clean}` : `cleared the patrol on menu "${data[0].name as string}"`);
   return true;
 }
 

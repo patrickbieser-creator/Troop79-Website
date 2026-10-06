@@ -17,11 +17,13 @@ import {
   parseGear,
   resolveGear,
   sanitizePacked,
+  sortGear,
   type GearHome,
   type GearItem,
   type MenuGearState
 } from './gear';
 import { cleanScoutText } from './scout-text';
+import type { Menu } from './menus';
 
 interface GearRowDb {
   id: number;
@@ -60,6 +62,27 @@ export async function loadMenuGearWith(sb: SupabaseClient, menuId: string): Prom
 export async function resolveGearWith(sb: SupabaseClient, entries: readonly unknown[], stored: readonly string[] = []): Promise<{ kept: string[]; dropped: string[] }> {
   if (entries.length === 0) return { kept: [], dropped: [] };
   return resolveGear(entries, await listGearWith(sb, { includeRetired: true }), stored);
+}
+
+/**
+ * A menu's meal gear as a save keeps it: each entry in the master list's spelling, A to Z; names not on the list
+ * are dropped and named once in `dropped`. `stored` is the menu as it stands: a retired item stays on the meal
+ * that already holds it. Meal gear rides the menu's own version guard — this only cleans it.
+ */
+export async function resolveMealGearWith(sb: SupabaseClient, menu: Menu, stored: Pick<Menu, 'meals'> | null = null): Promise<{ menu: Menu; dropped: string[] }> {
+  if (!menu.meals.some((m) => (m.gear?.length ?? 0) > 0)) return { menu, dropped: [] };
+  const list = await listGearWith(sb, { includeRetired: true });
+  const dropped: string[] = [];
+  const meals = menu.meals.map((m) => {
+    if (!m.gear?.length) return m;
+    const had = stored?.meals.find((x) => x.id === m.id)?.gear ?? [];
+    const res = resolveGear(m.gear, list, had);
+    for (const d of res.dropped) if (!dropped.some((x) => gearKey(x) === gearKey(d))) dropped.push(d);
+    const { gear: _gear, ...rest } = m;
+    void _gear;
+    return res.kept.length > 0 ? { ...rest, gear: res.kept } : rest;
+  });
+  return { menu: { ...menu, meals }, dropped };
 }
 
 /** A recipe's stored gear ([] when the recipe is new or gone). */
@@ -117,6 +140,21 @@ export async function setGearPackedWith(
 export interface GearAdminRow extends GearItem {
   /** Recipes whose gear names it (any count). */
   recipes: string[];
+  /** Menus that name it: in the menu's own extras or in any meal's gear (the delete guard counts them too). */
+  menus: number;
+}
+
+interface MenuGearRowDb {
+  id: string;
+  updated_at: string;
+  gear_extras: string[] | null;
+  meals: { id?: string; gear?: string[] }[] | null;
+}
+
+/** Every menu that names any gear (its extras or a meal's own), for the Gear tab's counts and rewrites. */
+async function menusWithGear(sb: SupabaseClient): Promise<MenuGearRowDb[]> {
+  const all = await fetchAllRows<MenuGearRowDb>((from, to) => sb.from('mm_menus').select('id, updated_at, gear_extras, meals').order('id').range(from, to));
+  return all.filter((m) => (m.gear_extras?.length ?? 0) > 0 || (m.meals ?? []).some((x) => (x.gear?.length ?? 0) > 0));
 }
 
 interface RecipeGearRow {
@@ -133,7 +171,12 @@ async function recipesWithGear(sb: SupabaseClient): Promise<RecipeGearRow[]> {
 
 /** Every item, retired ones last, with the recipes that use it. */
 export async function listGearAdminWith(sb: SupabaseClient): Promise<GearAdminRow[]> {
-  const [items, recipes] = await Promise.all([listGearWith(sb, { includeRetired: true }), recipesWithGear(sb)]);
+  const [items, recipes, menus] = await Promise.all([listGearWith(sb, { includeRetired: true }), recipesWithGear(sb), menusWithGear(sb)]);
+  const menuCount = new Map<string, number>();
+  for (const m of menus) {
+    const keys = new Set([...(m.gear_extras ?? []), ...(m.meals ?? []).flatMap((x) => x.gear ?? [])].map((e) => gearKey(parseGear(e).name)));
+    for (const k of keys) menuCount.set(k, (menuCount.get(k) ?? 0) + 1);
+  }
   const usedBy = new Map<string, string[]>();
   for (const r of recipes) {
     for (const e of r.equipment ?? []) {
@@ -142,7 +185,7 @@ export async function listGearAdminWith(sb: SupabaseClient): Promise<GearAdminRo
     }
   }
   return items
-    .map((g) => ({ ...g, recipes: usedBy.get(gearKey(g.name)) ?? [] }))
+    .map((g) => ({ ...g, recipes: usedBy.get(gearKey(g.name)) ?? [], menus: menuCount.get(gearKey(g.name)) ?? 0 }))
     .sort((a, b) => Number(a.retiredAt != null) - Number(b.retiredAt != null) || a.name.localeCompare(b.name));
 }
 
@@ -159,6 +202,57 @@ export async function createGearWith(sb: SupabaseClient, input: { name: unknown;
   const { data, error } = await sb.from('mm_gear').insert({ name, home: input.home, per_person: input.perPerson === true, added_by_person_id: personId }).select('id').single();
   if (error) return { ok: false, error: error.message };
   return { ok: true, id: data.id as number };
+}
+
+async function readMenuGear(sb: SupabaseClient, id: string): Promise<MenuGearRowDb | null> {
+  const { data, error } = await sb.from('mm_menus').select('id, updated_at, gear_extras, meals').eq('id', id).maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data as MenuGearRowDb | null) ?? null;
+}
+
+/**
+ * Rewrite the gear every menu names (its extras and each meal's own gear). A menu's plan carries a version
+ * (updated_at) that an open Plan tab checks, so a rewrite must not bump it: each menu is written with a
+ * compare-and-set on the updated_at it was read at (update ... where id = X and updated_at = <read value>), never
+ * touching updated_at itself. A miss means someone saved in between: read that menu again and retry once.
+ * Returns an error message, or null when every menu is done.
+ */
+async function rewriteMenusGear(sb: SupabaseClient, rewrite: (entries: readonly string[]) => string[] | null): Promise<string | null> {
+  const patchFor = (m: MenuGearRowDb) => {
+    const patch: { gear_extras?: string[]; meals?: unknown[] } = {};
+    const extras = rewrite(m.gear_extras ?? []);
+    if (extras) patch.gear_extras = extras;
+    let mealsTouched = false;
+    const meals = (m.meals ?? []).map((meal) => {
+      const next = rewrite(meal.gear ?? []);
+      if (!next) return meal;
+      mealsTouched = true;
+      return { ...meal, gear: sortGear(next) };
+    });
+    if (mealsTouched) patch.meals = meals;
+    return extras || mealsTouched ? patch : null;
+  };
+  for (const listed of await menusWithGear(sb)) {
+    let current: MenuGearRowDb | null = listed;
+    for (let attempt = 0; attempt < 2 && current; attempt++) {
+      const patch = patchFor(current);
+      if (!patch) break;
+      const { data, error } = await sb.from('mm_menus').update(patch).eq('id', current.id).eq('updated_at', current.updated_at).select('id');
+      if (error) return error.message;
+      if (data?.length) {
+        current = null;
+        break;
+      }
+      // Missed: the menu was saved since we read it. Read it again (gone = nothing left to rewrite).
+      try {
+        current = await readMenuGear(sb, current.id);
+      } catch (e) {
+        return e instanceof Error ? e.message : 'Could not read the menu.';
+      }
+      if (current && attempt === 1) return 'A menu was being saved while the name changed. Try again.';
+    }
+  }
+  return null;
 }
 
 /**
@@ -202,13 +296,8 @@ export async function updateGearWith(sb: SupabaseClient, id: number, input: { na
       if (error) return { ok: false, error: error.message };
       recipes++;
     }
-    const menus = await fetchAllRows<{ id: string; gear_extras: string[] }>((a, b) => sb.from('mm_menus').select('id, gear_extras').neq('gear_extras', '{}').order('id').range(a, b));
-    for (const m of menus) {
-      const next = rewrite(m.gear_extras ?? []);
-      if (!next) continue;
-      const { error } = await sb.from('mm_menus').update({ gear_extras: next }).eq('id', m.id);
-      if (error) return { ok: false, error: error.message };
-    }
+    const failed = await rewriteMenusGear(sb, rewrite);
+    if (failed) return { ok: false, error: failed };
   }
 
   if (twin) {
@@ -242,12 +331,13 @@ export async function retireGearWith(sb: SupabaseClient, id: number, retired: bo
   return data?.length ? { ok: true, id } : { ok: false, error: 'That item is gone.' };
 }
 
-/** Delete an item no recipe names. */
+/** Delete an item no recipe or menu names. */
 export async function deleteGearWith(sb: SupabaseClient, id: number): Promise<GearWrite> {
   const rows = await listGearAdminWith(sb);
   const row = rows.find((g) => g.id === id);
   if (!row) return { ok: false, error: 'That item is gone.' };
   if (row.recipes.length > 0) return { ok: false, error: `${row.recipes.length === 1 ? 'A recipe names' : `${row.recipes.length} recipes name`} it. Retire it instead, or rename it onto another item to merge them.` };
+  if (row.menus > 0) return { ok: false, error: `${row.menus === 1 ? 'A menu names' : `${row.menus} menus name`} it. Retire it instead, or rename it onto another item to merge them.` };
   const { error } = await sb.from('mm_gear').delete().eq('id', id);
   if (error) return { ok: false, error: error.message };
   return { ok: true, id };

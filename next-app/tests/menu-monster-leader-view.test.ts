@@ -28,6 +28,8 @@ vi.mock('@/lib/admin-actor', () => ({ resolveAdminActor: async () => mocks.actor
 vi.mock('@/lib/supabase/server', () => ({ createAdminClient: () => ({ stub: true }) }));
 vi.mock('@/lib/menu-monster/menus-store', () => ({ loadMenuWith: mocks.loadMenuWith, ownerCreditNamesWith: mocks.ownerCreditNamesWith }));
 vi.mock('@/lib/menu-monster/data', () => ({ loadMenuMonsterCatalog: async () => ({}) }));
+// The gear list is read for the meal panels' picker (Plan) and the printed sheet's gear line (Shopping).
+vi.mock('@/lib/menu-monster/gear-store', () => ({ listGearWith: async () => [{ id: 1, name: 'Skillet', home: 'trailer', perPerson: false, retiredAt: null }], loadMenuGearWith: async () => ({ extras: ['Water jug'], packed: {} }) }));
 vi.mock('@/lib/menu-monster/menus-data', () => ({ loadOutingsWith: async () => [], loadPatrolNamesWith: async () => [] }));
 vi.mock('@/lib/identity-session', async (orig) => ({
   ...(await orig<typeof import('../src/lib/identity-session')>()),
@@ -218,6 +220,27 @@ describe.each(pages)('%s page access matrix', (_name, render) => {
     mocks.actor = LEADER;
     mocks.loadMenuWith.mockResolvedValue(null);
     await expect(render(ID)).rejects.toThrow('NEXT_NOT_FOUND');
+  });
+});
+
+describe('gear on the pages (gear-from-the-list release 2)', () => {
+  it('PlanPage_GivesTheOwnerTheGearList_ForTheMealPicker', async () => {
+    mocks.session = SCOUT;
+    const out = await PlanPage({ params: Promise.resolve({ menuId: ID }), searchParams: Promise.resolve({}) });
+    expect(find(out, (p) => 'updatedAt' in p)?.gearList).toEqual([expect.objectContaining({ name: 'Skillet' })]);
+  });
+
+  it('PlanPage_GivesAReadOnlyViewerNoGearList_SoNoPicker', async () => {
+    mocks.session = { ...SCOUT, personId: 7 };
+    mocks.loadMenuWith.mockResolvedValue(stored(39, { sharedAt: '2026-10-03T12:00:00Z' }));
+    const out = await PlanPage({ params: Promise.resolve({ menuId: ID }), searchParams: Promise.resolve({}) });
+    expect(find(out, (p) => 'updatedAt' in p)?.gearList).toBeUndefined();
+  });
+
+  it('ShoppingPage_GivesThePrintSheetTheListAndTheMenusExtras', async () => {
+    mocks.session = SCOUT;
+    const props = find(await ShoppingPage({ params: Promise.resolve({ menuId: ID }) }), (p) => 'updatedAt' in p);
+    expect([props?.gearList, props?.gearExtras]).toEqual([[expect.objectContaining({ name: 'Skillet' })], ['Water jug']]);
   });
 });
 

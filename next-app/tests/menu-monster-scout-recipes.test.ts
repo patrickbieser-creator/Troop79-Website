@@ -171,6 +171,16 @@ describe('menuGear (Phase 4C)', () => {
   it('MenuWithoutGear_HasNone', () => {
     expect(menuGear(menu, CATALOG)).toEqual([]);
   });
+
+  // Release 2: the printed sheet rolls up like the Gear tab (menuGearRows).
+  it('Menu_IncludesAMealsOwnGear_AndTheMenusExtras_DedupedAToZ', () => {
+    const withMealGear = { meals: [{ ...menu.meals[0], gear: ['Wash basin × 2', 'tongs'] }, { id: 'm2', day: 0, slot: 'lunch' as const, headcount: null, recipeIds: [], recipeEdits: {}, gear: ['Soap'] }] };
+    expect(menuGear(withMealGear, cat, [], ['Water jug × 3', 'Skillet × 2'])).toEqual(['Skillet × 2', 'Soap', 'Spatula', 'Tongs', 'Wash basin × 2', 'Water jug × 3']);
+  });
+
+  it('AMealWithNoFood_StillContributesItsGear', () => {
+    expect(menuGear({ meals: [{ id: 'm1', day: 0, slot: 'dinner' as const, headcount: null, recipeIds: [], recipeEdits: {}, gear: ['Soap'] }] }, CATALOG)).toEqual(['Soap']);
+  });
 });
 
 describe('versionDraft (Phase 4C)', () => {

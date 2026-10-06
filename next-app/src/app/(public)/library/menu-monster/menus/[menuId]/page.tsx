@@ -8,6 +8,7 @@ import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
 import { centralToday } from '@/lib/dates';
 import { resolveMenuAliases } from '@/lib/menu-monster/menus';
+import { listGearWith } from '@/lib/menu-monster/gear-store';
 import { loadOutingsWith, loadPatrolNamesWith } from '@/lib/menu-monster/menus-data';
 import { PageShell } from '@/app/_components/page-shell';
 import { PlanTab } from '../_components/plan-tab';
@@ -24,7 +25,12 @@ export default async function MenuPlanPage({ params, searchParams }: { params: P
   if (!view) notFound();
   const { stored, readOnly, plannedBy, catalog } = view;
   const linked = stored.menu.calendarEntryId != null ? [stored.menu.calendarEntryId] : [];
-  const [outings, patrols] = await Promise.all([loadOutingsWith(createAdminClient(), centralToday(), linked), readOnly ? Promise.resolve([]) : loadPatrolNamesWith(createAdminClient())]);
+  const [outings, patrols, gearList] = await Promise.all([
+    loadOutingsWith(createAdminClient(), centralToday(), linked),
+    readOnly ? Promise.resolve([]) : loadPatrolNamesWith(createAdminClient()),
+    // The meal panels' "More gear for this meal" picks from the troop's list; a read-only view has no picker.
+    readOnly ? Promise.resolve(undefined) : listGearWith(createAdminClient())
+  ]);
   return (
     <>
       <MenuHeader current="plan" {...listCrumb(view.access)} />
@@ -37,6 +43,7 @@ export default async function MenuPlanPage({ params, searchParams }: { params: P
           updatedAt={stored.updatedAt}
           outings={outings}
           patrols={patrols}
+          gearList={gearList}
           readOnly={readOnly}
           helper={view.helping}
           plannedBy={plannedBy}

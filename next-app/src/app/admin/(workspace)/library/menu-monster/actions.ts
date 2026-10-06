@@ -24,7 +24,7 @@ import { acknowledgePriceChangeWith, decidePriceWith, leaderSetPriceWith, type D
 import { loadAuthoringCatalogWith } from '@/lib/menu-monster/catalog';
 import { cleanScoutText, isScoutRecipeId } from '@/lib/menu-monster/scout-recipes';
 import { keepTypedInWith, matchTypedInWith, rejectTypedInWith, renameScoutRecipeWith, setScoutRecipeCreditWith } from '@/lib/menu-monster/scout-recipes-store';
-import { deleteMenuWith, duplicateMenuWith, loadMenuWith, renameMenuWith, setMenuSharedWith, MENU_LIMIT } from '@/lib/menu-monster/menus-store';
+import { deleteMenuWith, duplicateMenuWith, loadMenuWith, renameMenuWith, setMenuOwnerWith, setMenuPatrolWith, setMenuSharedWith, MENU_LIMIT } from '@/lib/menu-monster/menus-store';
 import { isMenuId } from '@/lib/menu-monster/menus';
 import { approveHeldPackageWith, rejectHeldPackageWith } from '@/lib/menu-monster/scout-packages-store';
 import { createGearWith, deleteGearWith, mergeGearWith, resolveGearWith, retireGearWith, storedRecipeGearWith, updateGearWith } from '@/lib/menu-monster/gear-store';
@@ -1173,6 +1173,28 @@ export async function setMenuShared(id: string, on: boolean): Promise<Result> {
   const who = await menuOwner(id);
   if ('ok' in who) return who;
   const ok = await setMenuSharedWith(createAdminClient(), who.actor, id, on === true, who.ownerId);
+  if (!ok) return { ok: false, error: MENU_GONE };
+  revalidate();
+  return { ok: true };
+}
+
+/** Hand a menu to a different owner (an active scout or a leader). */
+export async function setMenuOwner(id: string, personId: number): Promise<Result> {
+  const who = await menuOwner(id);
+  if ('ok' in who) return who;
+  if (!Number.isInteger(personId) || personId < 1) return { ok: false, error: 'Pick who it belongs to.' };
+  const res = await setMenuOwnerWith(createAdminClient(), who.actor, id, personId);
+  if (res === MENU_LIMIT) return { ok: false, error: 'They already have as many menus as one person may keep. Delete one they don’t need to make room.' };
+  if (!res) return { ok: false, error: MENU_GONE };
+  revalidate();
+  return { ok: true };
+}
+
+/** The patrol a menu is credited to; blank clears it. */
+export async function setMenuPatrol(id: string, patrol: string): Promise<Result> {
+  const who = await menuOwner(id);
+  if ('ok' in who) return who;
+  const ok = await setMenuPatrolWith(createAdminClient(), who.actor, id, patrol);
   if (!ok) return { ok: false, error: MENU_GONE };
   revalidate();
   return { ok: true };

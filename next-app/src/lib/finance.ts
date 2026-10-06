@@ -58,7 +58,7 @@ export interface TransactionKindRow {
 
 /** Must stay in lockstep with financial_transactions' `method` check constraint.
  *  No 'online' value — no payment processing in this build (deferred, not rejected). */
-export const TRANSACTION_METHODS = ['venmo', 'check', 'cash', 'scout_account', 'bank', 'other'] as const;
+export const TRANSACTION_METHODS = ['venmo', 'paypal', 'check', 'cash', 'scout_account', 'bank', 'other'] as const;
 export type TransactionMethod = (typeof TRANSACTION_METHODS)[number];
 
 export function isAccount(value: string): value is Account {

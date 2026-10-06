@@ -15,7 +15,10 @@ import {
   ownerCreditNamesWith,
   loadMenuWith,
   saveActualsWith,
-  saveMenuWith
+  saveMenuWith,
+  setMenuOwnerWith,
+  setMenuPatrolWith,
+  listMenuOwnerCandidatesWith
 } from '../src/lib/menu-monster/menus-store';
 
 /**
@@ -75,6 +78,31 @@ describe('menu store dayCount', () => {
     const id = await createMenuWith(admin, CHARLIE, menu({ dayCount: 2 }), CATALOG);
     await admin.from('mm_menus').update({ meals: [{ id: 'm1', day: 4, slot: 'lunch', headcount: null, recipeIds: [], recipeEdits: {} }] }).eq('id', id);
     expect((await loadMenuWith(admin, id))!.menu.dayCount).toBe(5);
+  });
+});
+
+describe('menu store — a leader hands a menu on (2026-10-05)', () => {
+  it('Leader_MovesAMenuToAnotherScout_AndAuditsIt', async () => {
+    const id = await createMenuWith(admin, CHARLIE, menu(), CATALOG);
+    const before = (await loadMenuWith(admin, id))!.updatedAt;
+    expect(await setMenuOwnerWith(admin, { personId: null, label: 'Vitest leader' }, id, other.personId as number)).toBe(true);
+    const after = (await loadMenuWith(admin, id))!;
+    expect([after.ownerPersonId, after.updatedAt]).toEqual([other.personId, before]);
+    const { data: rows } = await admin.from('audit_log').select('summary').eq('entity_id', id).eq('action', 'reassign');
+    expect(rows?.[0]?.summary).toMatch(/moved menu/);
+  });
+
+  it('Leader_CreditsAPatrol', async () => {
+    const id = await createMenuWith(admin, CHARLIE, menu(), CATALOG);
+    expect(await setMenuPatrolWith(admin, CHARLIE, id, 'Screaming Eagles')).toBe(true);
+    expect((await loadMenuWith(admin, id))!.menu.patrol).toBe('Screaming Eagles');
+  });
+
+  it('OwnerCandidates_AreScoutsAndLeaders_AToZ', async () => {
+    const list = await listMenuOwnerCandidatesWith(admin);
+    expect(list.length).toBeGreaterThan(1);
+    expect(list.map((c) => c.name)).toEqual([...list.map((c) => c.name)].sort((x, y) => x.localeCompare(y)));
+    expect(list.some((c) => c.kind === 'leader') && list.some((c) => c.kind === 'scout')).toBe(true);
   });
 });
 

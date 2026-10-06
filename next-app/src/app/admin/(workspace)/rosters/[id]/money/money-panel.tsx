@@ -33,6 +33,7 @@ import { fmtDate } from '@/lib/format-date';
 
 const METHOD_LABEL: Record<string, string> = {
   venmo: 'Venmo',
+  paypal: 'PayPal',
   check: 'Check',
   cash: 'Cash',
   scout_account: 'Scout account',

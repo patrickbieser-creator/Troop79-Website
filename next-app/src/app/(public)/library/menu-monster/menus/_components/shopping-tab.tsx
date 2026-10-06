@@ -62,6 +62,7 @@ import { AddPackageForm, type AddedPackage } from './add-package-form';
 import { SaveBar } from './save-bar';
 import s from './workspace.module.css';
 import { menuGear } from '@/lib/menu-monster/scout-recipes';
+import type { GearItem } from '@/lib/menu-monster/gear';
 
 const NOTE_MAX = 120; // matches restorePlan's note cap
 const keyOf = (sh: MenuShopping) => JSON.stringify(sh);
@@ -92,9 +93,12 @@ export interface ShoppingTabProps {
   aside?: ReactNode;
   /** Where the menu is kept. Omitted = the signed-in scout's saved menu (server). */
   store?: MenuStore;
+  /** For the printed sheet's gear line (same roll-up as the Gear tab): the troop's list (names the per-person items) and the menu's own extras. */
+  gearList?: readonly GearItem[];
+  gearExtras?: readonly string[];
 }
 
-export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updatedAt, snapshot: initialSnapshot, tabs, readOnly = false, plannedBy = null, aside, store: storeProp }: ShoppingTabProps) {
+export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updatedAt, snapshot: initialSnapshot, tabs, readOnly = false, plannedBy = null, aside, store: storeProp, gearList = [], gearExtras = [] }: ShoppingTabProps) {
   const uid = useId();
   const store = useMemo(() => storeProp ?? serverMenuStore(menuId ?? null), [storeProp, menuId]);
   const { canSave, canPay, canReport } = store.caps;
@@ -118,7 +122,7 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
   const menu: Menu = { ...saved.menu, shopping: draft };
   const list = buildMenuList(menu, catalog);
   // Every recipe's gear across the menu's meals, for the paper sheet; on screen it is the Gear tab's.
-  const gear = menuGear(menu, catalog);
+  const gear = menuGear(menu, catalog, gearList, gearExtras);
   const { totals } = list;
   const people = menu.headcount;
   const budget = budgetState({ perSpent: list.perPersonMeal }, menu.budgetPerPersonMeal);

@@ -6,7 +6,9 @@
  */
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { createAdminClient } from '@/lib/supabase/server';
 import { resolveMenuAliases } from '@/lib/menu-monster/menus';
+import { listGearWith, loadMenuGearWith } from '@/lib/menu-monster/gear-store';
 import { PageShell } from '@/app/_components/page-shell';
 import { ShoppingTab } from '../../_components/shopping-tab';
 import { MenuHeader, MenuTabs, NO_INDEX, listCrumb, loadViewableMenu, menuViewer } from '../../_components/scout-menus';
@@ -21,6 +23,9 @@ export default async function MenuShoppingPage({ params }: { params: Promise<{ m
   const view = await loadViewableMenu(menuId, await menuViewer());
   if (!view) notFound();
   const { stored, readOnly, plannedBy, catalog } = view;
+  // The printed sheet's gear line rolls up recipe, meal and menu gear exactly as the Gear tab does.
+  const sb = createAdminClient();
+  const [gearList, gearState] = await Promise.all([listGearWith(sb), loadMenuGearWith(sb, stored.id)]);
   return (
     <>
       <MenuHeader current="shopping" {...listCrumb(view.access)} />
@@ -32,6 +37,8 @@ export default async function MenuShoppingPage({ params }: { params: Promise<{ m
           menu={resolveMenuAliases(stored.menu, catalog.aliases)}
           updatedAt={stored.updatedAt}
           snapshot={stored.snapshot}
+          gearList={gearList}
+          gearExtras={gearState.extras}
           readOnly={readOnly}
           helper={view.helping}
           plannedBy={plannedBy}

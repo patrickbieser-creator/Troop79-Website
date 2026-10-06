@@ -18,6 +18,7 @@ import { MEALS, RESTRICTIONS } from './units';
 import { MAX_BRANDS_PER_INGREDIENT, MAX_HEADCOUNT, MIN_HEADCOUNT, livePicks, restorePlan } from './engine';
 import { centralToday } from '@/lib/dates';
 import { cleanScoutText } from './scout-text';
+import { cleanMealGear } from './gear';
 
 export type MenuContext = 'home' | 'camp' | 'trail';
 
@@ -32,6 +33,17 @@ export const MAX_MENU_MEALS = 30;
 export const MAX_MENU_DAYS = 14;
 export const MAX_MENU_NAME = 120;
 export const MAX_PATROL_NAME = 40;
+/**
+ * Who a menu is credited to (Patrick, 2026-10-05: "the menu was created by a patrol, not an individual.
+ * Members of that patrol should get credit"): the patrol when the menu names one, with the person who
+ * entered it in brackets; otherwise the owner alone.
+ */
+export function menuCredit(patrol: string | null | undefined, ownerName: string | null): string | null {
+  const p = (patrol ?? '').trim();
+  if (p && p.toLowerCase() !== 'whole troop') return ownerName ? `the ${p} patrol (entered by ${ownerName})` : `the ${p} patrol`;
+  return ownerName;
+}
+
 /** A small outing planned for everyone is one menu for this "patrol" (Patrick, 2026-10-03). */
 export const WHOLE_TROOP = 'Whole troop';
 /** Menus one scout may keep; create and duplicate refuse past it (menus-store.ts). */
@@ -107,6 +119,8 @@ export interface MenuMeal {
   recipeIds: Plan['recipeIds'];
   /** Menu-local recipe changes; {} until Phase 2's editing UI writes some. */
   recipeEdits: RecipeEdits;
+  /** Gear for the meal itself (soap, wash basins), picked from the master list: "Name × n", A to Z. Absent = none. */
+  gear?: string[];
 }
 
 /** What the scout edits; owner, timestamps and the priced snapshot are the server's. */
@@ -418,13 +432,15 @@ export function sanitizeMenu(raw: unknown, catalog: Catalog): Menu {
     const plan = restorePlan({ ...m, meal: slot, headcount, restrictions }, catalog);
     const id = typeof m.id === 'string' && MEAL_ID.test(m.id) && !usedIds.has(m.id) ? m.id : globalThis.crypto.randomUUID();
     usedIds.add(id);
+    const gear = cleanMealGear(m.gear);
     meals.push({
       id,
       day,
       slot,
       headcount: m.headcount == null ? null : clampInt(m.headcount, MIN_HEADCOUNT, MAX_HEADCOUNT, headcount),
       recipeIds: plan.recipeIds,
-      recipeEdits: sanitizeRecipeEdits(m.recipeEdits, plan.recipeIds, catalog)
+      recipeEdits: sanitizeRecipeEdits(m.recipeEdits, plan.recipeIds, catalog),
+      ...(gear.length > 0 ? { gear } : {})
     });
   }
 

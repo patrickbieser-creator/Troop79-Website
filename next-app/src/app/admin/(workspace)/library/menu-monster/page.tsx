@@ -36,7 +36,8 @@ import { PriceBook } from './price-book';
 import { RecipeBuilder } from './recipe-builder';
 import { ScoutRecipes } from './scout-recipes';
 import { listScoutRecipesWith, listTypedInsWith } from '@/lib/menu-monster/scout-recipes-store';
-import { listAllMenusWith } from '@/lib/menu-monster/menus-store';
+import { listAllMenusWith, listMenuOwnerCandidatesWith, type MenuOwnerCandidate } from '@/lib/menu-monster/menus-store';
+import { loadPatrolNamesWith } from '@/lib/menu-monster/menus-data';
 import { MenusAdmin, type MenuAdminRow } from './menus-admin';
 import { ScoutIngredients } from './scout-ingredients';
 import { GearAdmin } from './gear-admin';
@@ -96,13 +97,16 @@ export default async function MenuMonsterAdminPage({
   const edited = shared.filter((r) => r.editedSinceShared && r.status !== 'retired').length + typedIns.length;
   // Every saved menu, with its owner's name and its outing's title: only for the Menus tab.
   let menus: MenuAdminRow[] = [];
+  let owners: MenuOwnerCandidate[] = [];
+  let patrols: string[] = [];
   if (tab === 'menus') {
     const all = await listAllMenusWith(admin);
-    const owners = await ownerCreditNamesWith(admin, all.map((m) => m.ownerPersonId));
+    [owners, patrols] = await Promise.all([listMenuOwnerCandidatesWith(admin), loadPatrolNamesWith(admin)]);
+    const ownerNames = await ownerCreditNamesWith(admin, all.map((m) => m.ownerPersonId));
     const entryIds = [...new Set(all.map((m) => m.calendarEntryId).filter((id): id is number => id != null))];
     const { data: entries } = entryIds.length ? await admin.from('calendar_entries').select('id, title').in('id', entryIds) : { data: [] };
     const titles = new Map((entries ?? []).map((e) => [e.id as number, e.title as string]));
-    menus = all.map((m) => ({ ...m, owner: owners.get(m.ownerPersonId) ?? 'Someone', outing: m.calendarEntryId != null ? (titles.get(m.calendarEntryId) ?? null) : null }));
+    menus = all.map((m) => ({ ...m, owner: ownerNames.get(m.ownerPersonId) ?? 'Someone', patrol: m.patrol, outing: m.calendarEntryId != null ? (titles.get(m.calendarEntryId) ?? null) : null }));
   }
   const book = catalog.ingredients
     .filter((i) => !i.retiredAt && !i.needsMatch)
@@ -172,7 +176,7 @@ export default async function MenuMonsterAdminPage({
           <PriceBook catalog={catalog} today={today} stores={stores} initialIngredientId={sp.ingredient} />
         </>
       ) : tab === 'menus' ? (
-        <MenusAdmin menus={menus} />
+        <MenusAdmin menus={menus} owners={owners} patrols={patrols} />
       ) : tab === 'gear' ? (
         <GearAdmin items={gear} />
       ) : tab === 'recipes' ? (

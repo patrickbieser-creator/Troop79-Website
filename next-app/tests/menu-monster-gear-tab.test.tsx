@@ -57,7 +57,7 @@ beforeEach(() => {
 describe('Gear tab', () => {
   it('Lists_GroupedByWhereItLives', () => {
     render(tab());
-    expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['Troop trailer', 'Patrol box']);
+    expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['4th Floor Northwoods', 'Patrol box']);
     expect(within(screen.getByRole('list', { name: 'Patrol box' })).getByRole('button', { name: /^Spatula/ })).toBeTruthy();
   });
 
@@ -161,5 +161,29 @@ describe('Gear tab', () => {
   it('AnEmptyMenu_SaysWhereGearComesFrom', () => {
     render(tab({ menu: { ...MENU, meals: [] } }));
     expect(screen.getByText('Nothing to pack yet. Gear shows up here as food goes on the Plan tab.')).toBeTruthy();
+  });
+});
+
+describe('Gear tab: gear for a meal (release 2)', () => {
+  const WITH_MEAL_GEAR: Menu = { ...MENU, meals: [...MENU.meals, { id: 'm2', day: 0, slot: 'lunch', headcount: null, recipeIds: [], recipeEdits: {}, gear: ['Water jug × 2'] }] };
+
+  it('AMealGearRow_SaysItWasAddedToThatMeal_AndCountsEvenWithNoFoodOnIt', async () => {
+    render(tab({ menu: WITH_MEAL_GEAR }));
+    expect(rowFor('Water jug').textContent).toContain('× 2');
+    await userEvent.setup().click(screen.getByRole('button', { name: /^Water jug/ }));
+    expect(within(screen.getByRole('list', { name: 'What needs Water jug' })).getByText('Saturday lunch: Added to this meal')).toBeTruthy();
+  });
+
+  it('AMealGearRow_IsNotARemovableMenuExtra', async () => {
+    render(tab({ menu: WITH_MEAL_GEAR }));
+    await userEvent.setup().click(screen.getByRole('button', { name: /^Water jug/ }));
+    expect(screen.queryByRole('button', { name: 'Remove from this menu' })).toBeNull();
+  });
+
+  it('TheMealGearItem_IsLeftOutOfTheMenuLevelPicker', async () => {
+    const user = userEvent.setup();
+    render(tab({ menu: WITH_MEAL_GEAR }));
+    await user.click(screen.getByRole('combobox', { name: 'Add gear' }));
+    expect(screen.queryByRole('option', { name: 'Water jug' })).toBeNull();
   });
 });

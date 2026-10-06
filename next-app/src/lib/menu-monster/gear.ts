@@ -22,13 +22,14 @@ import { cleanScoutText } from './scout-text';
 
 export type GearHome = 'patrol_box' | 'trailer' | 'home';
 
-/** In the order the Gear tab lists them. */
+/** In the order the Gear tab lists them. The troop's gear lives on the 4th floor at Northwoods (Patrick,
+ *  2026-10-05, "change all references to Troop Trailer"); the stored key stays 'trailer'. */
 export const GEAR_HOMES: readonly { key: GearHome; label: string }[] = [
-  { key: 'trailer', label: 'Troop trailer' },
+  { key: 'trailer', label: '4th Floor Northwoods' },
   { key: 'patrol_box', label: 'Patrol box' },
   { key: 'home', label: 'Bring from home' }
 ];
-export const GEAR_HOME_LABEL: Record<GearHome, string> = { trailer: 'Troop trailer', patrol_box: 'Patrol box', home: 'Bring from home' };
+export const GEAR_HOME_LABEL: Record<GearHome, string> = { trailer: '4th Floor Northwoods', patrol_box: 'Patrol box', home: 'Bring from home' };
 
 /** One item on the troop's gear list (mm_gear). */
 export interface GearItem {
@@ -81,6 +82,9 @@ export function cleanGearExtras(raw: unknown): string[] {
   }
   return out;
 }
+
+/** A meal's own gear as stored in the plan (Patrick, 2026-10-05: soap and wash basins belong to the meal, not a food): cleaned, one of each, A to Z, at most 30. */
+export const cleanMealGear = (raw: unknown): string[] => sortGear(cleanGearExtras(raw));
 
 /** One Packed tick, as stored in mm_menus.gear_packed under the item's key. */
 export interface PackedTick {
@@ -163,6 +167,16 @@ export function menuGearRows(menu: Pick<Menu, 'meals' | 'headcount'>, catalog: C
       }
     }
   }
+  // A meal's own gear (soap, wash basins): it counts even when the meal has no food on it.
+  for (const meal of menu.meals) {
+    for (const entry of meal.gear ?? []) {
+      const { name, count } = parseGear(entry);
+      if (!name) continue;
+      const r = row(name, false);
+      r.count = Math.max(r.count, count);
+      if (!r.usedBy.some((u) => u.mealId === meal.id)) r.usedBy.push({ mealId: meal.id, recipes: [] });
+    }
+  }
   if (cooking.length > 0) {
     const most = Math.max(...cooking.map((m) => m.headcount ?? menu.headcount));
     for (const g of list) {
@@ -188,6 +202,38 @@ export function menuGearRows(menu: Pick<Menu, 'meals' | 'headcount'>, catalog: C
   }
   const order = (h: GearHome) => GEAR_HOMES.findIndex((x) => x.key === h);
   return [...rows.values()].sort((a, b) => order(a.home) - order(b.home) || a.name.localeCompare(b.name));
+}
+
+/** The gear a meal's foods ask for, one of each (the most any one food asks for), A to Z — read-only on the meal panel. */
+export function mealRecipeGear(meal: { recipeIds: readonly string[] }, catalog: Pick<Catalog, 'recipes'>): string[] {
+  const byId = new Map(catalog.recipes.map((r) => [r.id, r]));
+  const most = new Map<string, { name: string; count: number }>();
+  for (const rid of meal.recipeIds) {
+    for (const entry of byId.get(rid)?.equipment ?? []) {
+      const { name, count } = parseGear(entry);
+      const key = gearKey(name);
+      if (!key) continue;
+      const have = most.get(key);
+      if (!have) most.set(key, { name, count });
+      else have.count = Math.max(have.count, count);
+    }
+  }
+  return sortGear([...most.values()].map((g) => gearText(g.name, g.count)));
+}
+
+/** A menu with the named gear taken off every meal (what a save reported as not on the list). */
+export function withoutMealGear<M extends { meals: readonly { gear?: string[] }[] }>(menu: M, names: readonly string[]): M {
+  const gone = new Set(names.map((n) => gearKey(n)));
+  if (gone.size === 0) return menu;
+  return {
+    ...menu,
+    meals: menu.meals.map((m) => {
+      if (!m.gear) return m;
+      const { gear, ...rest } = m;
+      const kept = gear.filter((e) => !gone.has(gearKey(parseGear(e).name)));
+      return kept.length > 0 ? { ...rest, gear: kept } : rest;
+    })
+  };
 }
 
 /** "7 of 12 packed". */

@@ -1,5 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { adminClient } from './helpers/admin-client';
+import { sanitizeMenu } from '../src/lib/menu-monster/menus';
+import type { Catalog } from '../src/lib/menu-monster/types';
 import {
   createGearWith,
   deleteGearWith,
@@ -8,6 +10,7 @@ import {
   mergeGearWith,
   loadMenuGearWith,
   resolveGearWith,
+  resolveMealGearWith,
   retireGearWith,
   setGearExtrasWith,
   setGearPackedWith,
@@ -34,6 +37,16 @@ async function makeMenu(): Promise<{ id: string; updatedAt: string }> {
   if (error) throw new Error(error.message);
   return { id: data.id as string, updatedAt: data.updated_at as string };
 }
+const meal = (id: string, slot: string, gear?: string[]) => ({ id, day: 0, slot, headcount: null, recipeIds: [], recipeEdits: {}, ...(gear ? { gear } : {}) });
+async function makeMenuWith(meals: unknown[], extras: string[] = []): Promise<{ id: string; updatedAt: string }> {
+  const m = await makeMenu();
+  const { error } = await admin.from('mm_menus').update({ meals, gear_extras: extras }).eq('id', m.id);
+  if (error) throw new Error(error.message);
+  // The update above is a plain write; the version the row has NOW is the baseline.
+  const { data } = await admin.from('mm_menus').select('updated_at').eq('id', m.id).single();
+  return { id: m.id, updatedAt: data!.updated_at as string };
+}
+const menuRow = async (id: string) => (await admin.from('mm_menus').select('updated_at, gear_extras, meals').eq('id', id).single()).data as { updated_at: string; gear_extras: string[]; meals: { id: string; gear?: string[] }[] };
 async function makeRecipe(equipment: string[]) {
   const { error } = await admin.from('mm_recipes').insert({ id: RECIPE, name: 'ZZ Vitest gear recipe', status: 'draft', equipment, sort_order: 9999 });
   if (error) throw new Error(error.message);
@@ -180,5 +193,105 @@ describe('a menu’s gear state', () => {
     const anon = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string);
     const { error } = await anon.rpc('mm_set_gear_packed', { p_menu: '00000000-0000-4000-8000-000000000000', p_key: 'x', p_packed: true, p_count: 1, p_person: 1, p_label: 'x' });
     expect(error).not.toBeNull();
+  });
+});
+
+describe('gear for a meal in the Gear tab (release 2)', () => {
+  it('Rename_RewritesMealGearAndExtras_KeepingCounts_WithoutBumpingTheMenusVersion', async () => {
+    await createGearWith(admin, { name: 'ZZ Vitest soap', home: 'trailer', perPerson: false }, null);
+    const m = await makeMenuWith([meal('m1', 'breakfast', ['Skillet', 'ZZ Vitest soap × 2']), meal('m2', 'lunch')], ['ZZ Vitest soap']);
+    const g = await item('ZZ Vitest soap');
+    const res = await updateGearWith(admin, g!.id, { name: 'ZZ Vitest dish soap', home: 'trailer', perPerson: false });
+    expect(res.ok).toBe(true);
+    const row = await menuRow(m.id);
+    // Renamed, count kept, still A to Z.
+    expect(row.meals[0].gear).toEqual(['Skillet', 'ZZ Vitest dish soap × 2']);
+    expect(row.meals[1]).not.toHaveProperty('gear');
+    expect(row.gear_extras).toEqual(['ZZ Vitest dish soap']);
+    expect(row.updated_at).toBe(m.updatedAt);
+  });
+
+  it('Merge_RewritesMealGear_AndKeepsOneWhenTheMealNamedBoth', async () => {
+    await createGearWith(admin, { name: 'ZZ Vitest bucket', home: 'trailer', perPerson: false }, null);
+    await createGearWith(admin, { name: 'ZZ Vitest pail', home: 'trailer', perPerson: false }, null);
+    const m = await makeMenuWith([meal('m1', 'breakfast', ['ZZ Vitest bucket × 2', 'ZZ Vitest pail']), meal('m2', 'lunch', ['ZZ Vitest bucket'])]);
+    const res = await mergeGearWith(admin, (await item('ZZ Vitest bucket'))!.id, (await item('ZZ Vitest pail'))!.id);
+    expect(res).toMatchObject({ ok: true, merged: true });
+    const row = await menuRow(m.id);
+    expect(row.meals[0].gear).toEqual(['ZZ Vitest pail × 2']);
+    expect(row.meals[1].gear).toEqual(['ZZ Vitest pail']);
+    expect(row.updated_at).toBe(m.updatedAt);
+  });
+
+  it('Rename_LeavesAMenuThatDoesNotNameTheItemAlone', async () => {
+    await createGearWith(admin, { name: 'ZZ Vitest mop', home: 'trailer', perPerson: false }, null);
+    const m = await makeMenuWith([meal('m1', 'breakfast', ['Skillet'])]);
+    await updateGearWith(admin, (await item('ZZ Vitest mop'))!.id, { name: 'ZZ Vitest mop 2', home: 'trailer', perPerson: false });
+    expect((await menuRow(m.id)).meals[0].gear).toEqual(['Skillet']);
+  });
+
+  it('AdminList_CountsTheMenusThatNameAnItem_InExtrasOrInAMealsGear', async () => {
+    await createGearWith(admin, { name: 'ZZ Vitest sponge', home: 'trailer', perPerson: false }, null);
+    await createGearWith(admin, { name: 'ZZ Vitest rag', home: 'trailer', perPerson: false }, null);
+    await makeMenuWith([meal('m1', 'breakfast', ['ZZ Vitest sponge × 2']), meal('m2', 'lunch', ['zz vitest sponge'])], ['ZZ Vitest rag']);
+    const list = await listGearAdminWith(admin);
+    // Two meals on ONE menu are one menu.
+    expect(list.find((g) => g.name === 'ZZ Vitest sponge')).toMatchObject({ menus: 1, recipes: [] });
+    expect(list.find((g) => g.name === 'ZZ Vitest rag')?.menus).toBe(1);
+  });
+
+  it('Delete_IsRefused_WhenAMealNamesTheItem_AndAllowedOnceItIsGone', async () => {
+    await createGearWith(admin, { name: 'ZZ Vitest sponge', home: 'trailer', perPerson: false }, null);
+    const m = await makeMenuWith([meal('m1', 'breakfast', ['ZZ Vitest sponge'])]);
+    const g = await item('ZZ Vitest sponge');
+    const refused = await deleteGearWith(admin, g!.id);
+    expect(refused.ok).toBe(false);
+    expect(refused.ok === false && refused.error).toMatch(/menu/);
+    await admin.from('mm_menus').delete().eq('id', m.id);
+    expect((await deleteGearWith(admin, g!.id)).ok).toBe(true);
+  });
+
+  it('Delete_IsRefused_WhenAMenusExtrasNameTheItem', async () => {
+    await createGearWith(admin, { name: 'ZZ Vitest sponge', home: 'trailer', perPerson: false }, null);
+    await makeMenuWith([], ['ZZ Vitest sponge']);
+    expect((await deleteGearWith(admin, (await item('ZZ Vitest sponge'))!.id)).ok).toBe(false);
+  });
+});
+
+describe('resolveMealGearWith (a menu save keeps meal gear to the troop’s list)', () => {
+  const catalog = { ingredients: [], packages: [], conversions: [], recipes: [] } as unknown as Catalog;
+  const menuOf = (gear: string[][]) => sanitizeMenu({ name: 'm', headcount: 8, meals: gear.map((g, i) => ({ id: `m${i}`, day: i, slot: 'breakfast', gear: g })) }, catalog);
+
+  it('MealGear_TakesTheListsSpelling_AToZ_AndDropsAndReportsAnUnknownName', async () => {
+    const { menu, dropped } = await resolveMealGearWith(admin, menuOf([['spatula', 'ZZ Vitest wash bin × 3', 'SKILLET × 2']]));
+    expect(menu.meals[0].gear).toEqual(['Skillet × 2', 'Spatula']);
+    expect(dropped).toEqual(['ZZ Vitest wash bin']);
+    expect(await item('ZZ Vitest wash bin')).toBeUndefined();
+  });
+
+  it('AMealLeftWithNothing_LosesItsGearKey', async () => {
+    const { menu } = await resolveMealGearWith(admin, menuOf([['ZZ Vitest wash bin']]));
+    expect(menu.meals[0]).not.toHaveProperty('gear');
+  });
+
+  it('ANameDroppedOnTwoMeals_IsReportedOnce', async () => {
+    const { dropped } = await resolveMealGearWith(admin, menuOf([['ZZ Vitest wash bin'], ['zz vitest WASH BIN']]));
+    expect(dropped).toEqual(['ZZ Vitest wash bin']);
+  });
+
+  it('ARetiredItem_StaysOnlyOnTheMealThatAlreadyHoldsIt', async () => {
+    await createGearWith(admin, { name: 'ZZ Vitest wok', home: 'trailer', perPerson: false }, null);
+    await retireGearWith(admin, (await item('ZZ Vitest wok'))!.id, true);
+    const stored = menuOf([['ZZ Vitest wok']]);
+    const next = menuOf([['ZZ Vitest wok'], ['ZZ Vitest wok']]);
+    const { menu, dropped } = await resolveMealGearWith(admin, next, stored);
+    expect(menu.meals[0].gear).toEqual(['ZZ Vitest wok']);
+    expect(menu.meals[1]).not.toHaveProperty('gear');
+    expect(dropped).toEqual(['ZZ Vitest wok']);
+  });
+
+  it('AMenuWithNoMealGear_IsReturnedAsIs', async () => {
+    const m = menuOf([[]]);
+    expect(await resolveMealGearWith(admin, m)).toEqual({ menu: m, dropped: [] });
   });
 });

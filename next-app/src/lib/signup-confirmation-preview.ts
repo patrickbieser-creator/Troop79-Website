@@ -79,7 +79,7 @@ export function samplePreviewContext(siteUrl = ''): ConfirmationContext {
     endTime: '11:00:00',
     location: 'Camp Long Lake, St. Cloud, WI',
     deadline: '2026-10-04',
-    paymentInstructions: 'Venmo @troop79 or a check to the treasurer.',
+    paymentInstructions: 'Venmo @troop79, PayPal, or a check to the treasurer.',
     siteUrl
   });
 }

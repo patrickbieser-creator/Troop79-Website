@@ -41,7 +41,8 @@ import type { Brand, BrandPick, Catalog, Plan, Recipe, ShoppingLine } from '@/li
 import { BrandChooser, brandSummary } from './brand-chooser';
 import { livePicks, recipeSuggestions, recipesForMeal, restrictionWarnings } from '@/lib/menu-monster/engine';
 import { isPickable, stepsFromText } from '@/lib/menu-monster/scout-recipes';
-import { recipeGear } from '@/lib/menu-monster/gear';
+import { mealRecipeGear, recipeGear, sortGear, type GearItem } from '@/lib/menu-monster/gear';
+import { GearChips, GearPicker } from '../../_components/gear-picker';
 import { RECIPES_HREF } from '../../recipes/_components/paths';
 import { composePlan, mealCatalog, type EditOp, type Menu, type MenuMeal, type RecipeEdits } from '@/lib/menu-monster/menus';
 import { mealTitle, mealUnpriced, recipeShares } from '@/lib/menu-monster/menu-view';
@@ -81,6 +82,8 @@ export interface MealPanelProps {
   meal: MenuMeal;
   view: AmountView;
   readOnly?: boolean;
+  /** The troop's gear list (not retired): "More gear for this meal" picks from it. Absent = no picker. */
+  gearList?: readonly GearItem[];
   onChange: (next: MenuMeal) => void;
   /** A signed-in scout's saved menu: "Add “x” as a new ingredient" (release C). */
   canTypeIn?: boolean;
@@ -98,7 +101,7 @@ export interface MealPanelProps {
   onSuggestBrand?: (recipeId: string, ingredientId: string, brandId: string | null) => Promise<{ ok: true } | { ok: false; error: string }>;
 }
 
-export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChange, canTypeIn = false, onTyped, shareVersionMenuId = null, autoFocusAdd = false, onBrands, lineFor, onTypeBrand, onSuggestBrand }: MealPanelProps) {
+export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearList, onChange, canTypeIn = false, onTyped, shareVersionMenuId = null, autoFocusAdd = false, onBrands, lineFor, onTypeBrand, onSuggestBrand }: MealPanelProps) {
   /** Suggestions changed this visit ("recipe:ingredient" → brand id, or null for cleared): the catalog prop is as loaded. */
   const [suggested, setSuggested] = useState<Readonly<Record<string, string | null>>>({});
   const uid = useId();
@@ -155,6 +158,9 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChang
   const slotWord = (MEALS.find((m) => m.key === meal.slot)?.label ?? meal.slot).toLowerCase();
 
   const change = (next: Partial<MenuMeal>) => onChange({ ...meal, ...next });
+  // Gear for the meal itself (soap, wash basins), with what its foods already ask for shown beside it.
+  const ownGear = meal.gear ?? [];
+  const foodGear = mealRecipeGear(meal, catalog);
 
   const toggle = (id: string) =>
     setOpenIds((cur) => {
@@ -558,6 +564,31 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, onChang
       {browsing && (
         <RecipeLibraryDialog catalog={catalog} menu={menu} meal={meal} swapping={swapping} onPick={pick} onClose={closeBrowse} />
       )}
+
+      {(readOnly ? ownGear.length > 0 : gearList != null) || foodGear.length > 0 ? (
+        <section className={s.mealGear} aria-label="More gear for this meal">
+          {foodGear.length > 0 && <p className={s.insetMuted}>Gear for the foods: {foodGear.join(' · ')}</p>}
+          {readOnly ? (
+            ownGear.length > 0 && <p className={s.insetMuted}>More gear for this meal: {ownGear.join(' · ')}</p>
+          ) : (
+            gearList != null && (
+              <>
+                <GearChips idPrefix={`${uid}-`} gear={ownGear}onChange={(next) => change({ gear: next.length > 0 ? next : undefined })} onAnnounce={(text) => setStatus({ text, undoTo: null })} />
+                <GearPicker
+                  list={gearList}
+                  taken={ownGear}
+                  onPick={(name) => {
+                    change({ gear: sortGear([...ownGear, name]) });
+                    setStatus({ text: `${name} added to ${title}.`, undoTo: null });
+                  }}
+                  label={`More gear for ${title}`}
+                  placeholder="More gear for this meal"
+                />
+              </>
+            )
+          )}
+        </section>
+      ) : null}
 
       <p className={status.text ? s.statusLine : s.srOnly} role="status">
         {status.text}

@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   deleteMenuWith: vi.fn(),
   loadMenuWith: vi.fn(),
   loadOutingsWith: vi.fn(),
+  resolveMealGearWith: vi.fn(),
   actor: null as unknown
 }));
 
@@ -33,6 +34,8 @@ vi.mock('@/lib/household-scope', () => ({ resolveFamilyScope: async () => [5] })
 vi.mock('@/lib/admin-actor', () => ({ resolveAdminActor: async () => mocks.actor }));
 vi.mock('@/lib/menu-monster/data', () => ({ loadMenuMonsterCatalog: async () => CATALOG }));
 vi.mock('@/lib/menu-monster/menus-data', () => ({ loadOutingsWith: mocks.loadOutingsWith }));
+// The real resolver is db-tested (menu-monster-gear-store-db); here only the wiring is observable.
+vi.mock('@/lib/menu-monster/gear-store', () => ({ resolveMealGearWith: mocks.resolveMealGearWith }));
 vi.mock('@/lib/menu-monster/menus-store', async (orig) => ({
   ...(await orig<typeof import('../src/lib/menu-monster/menus-store')>()),
   ownerCreditNamesWith: async (_sb: unknown, ids: number[]) => new Map(ids.map((id) => [id, 'Pat B.'])),
@@ -68,6 +71,7 @@ beforeEach(() => {
   mocks.deleteMenuWith.mockResolvedValue(true);
   mocks.loadMenuWith.mockResolvedValue({ ownerPersonId: 39, menu: { calendarEntryId: null } });
   mocks.loadOutingsWith.mockResolvedValue([]);
+  mocks.resolveMealGearWith.mockImplementation(async (_sb: unknown, menu: unknown) => ({ menu, dropped: [] }));
 });
 
 describe('menu actions: who may call them', () => {
@@ -358,5 +362,33 @@ describe('menu actions: the outing link', () => {
   it('Scout_SkipsTheOutingLookup_WhenNoOutingIsChosen', async () => {
     await createMenuAction(payload());
     expect(mocks.loadOutingsWith).not.toHaveBeenCalled();
+  });
+});
+
+describe('menu actions: gear for a meal is kept to the troop’s list', () => {
+  const MEAL = { id: 'm1', day: 0, slot: 'breakfast', headcount: null, recipeIds: [], gear: ['Soap', 'Wash basin'] };
+
+  it('Save_HandsTheMealGearToTheResolver_AndSavesWhatItKept', async () => {
+    mocks.resolveMealGearWith.mockImplementation(async (_sb: unknown, menu: { meals: object[] }) => ({ menu: { ...menu, meals: menu.meals.map((m) => ({ ...m, gear: ['Soap'] })) }, dropped: ['Wash basin'] }));
+    const res = await saveMenuAction(ID, payload({ meals: [MEAL] }), STAMP);
+    expect(mocks.resolveMealGearWith.mock.calls[0][1].meals[0].gear).toEqual(['Soap', 'Wash basin']);
+    expect(mocks.saveMenuWith.mock.calls[0][3].meals[0].gear).toEqual(['Soap']);
+    expect(res).toEqual({ ok: true, updatedAt: STAMP, dropped: ['Wash basin'] });
+  });
+
+  it('Save_ChecksRetiredGearAgainstTheMenuAsStored', async () => {
+    const stored = { calendarEntryId: null, meals: [MEAL] };
+    mocks.loadMenuWith.mockResolvedValue({ ownerPersonId: 39, menu: stored });
+    await saveMenuAction(ID, payload({ meals: [MEAL] }), STAMP);
+    expect(mocks.resolveMealGearWith.mock.calls[0][2]).toBe(stored);
+  });
+
+  it('Save_SaysNothingAboutGear_WhenNothingWasDropped', async () => {
+    expect(await saveMenuAction(ID, payload({ meals: [MEAL] }), STAMP)).toEqual({ ok: true, updatedAt: STAMP });
+  });
+
+  it('Create_ReportsDroppedMealGear_Too', async () => {
+    mocks.resolveMealGearWith.mockImplementation(async (_sb: unknown, menu: unknown) => ({ menu, dropped: ['Wash basin'] }));
+    expect(await createMenuAction(payload({ meals: [MEAL] }))).toEqual({ ok: true, id: ID, dropped: ['Wash basin'] });
   });
 });

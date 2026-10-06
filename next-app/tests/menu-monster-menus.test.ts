@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Catalog, Recipe } from '../src/lib/menu-monster/types';
 import { MAX_HEADCOUNT, MIN_HEADCOUNT } from '../src/lib/menu-monster/engine';
-import { MAX_MENU_DAYS, MAX_MENU_MEALS, composePlan, isMenuId, menuNameError, resolveMenuAliases, sanitizeMenu, type Menu } from '../src/lib/menu-monster/menus';
+import { MAX_MENU_DAYS, MAX_MENU_MEALS, composePlan, isMenuId, menuCredit, menuNameError, resolveMenuAliases, sanitizeMenu, type Menu } from '../src/lib/menu-monster/menus';
 
 /**
  * Scout Workspace menus (Plans/Menu-Monster-Scout-Workspace.md, Phase 1).
@@ -320,5 +320,56 @@ describe('sanitizeMenu patrol (release 5)', () => {
 
   it('Patrol_IsCut_AtFortyCharacters', () => {
     expect(sanitizeMenu(raw({ patrol: 'x'.repeat(90) }), CATALOG).patrol).toHaveLength(40);
+  });
+});
+
+/** Patrick, 2026-10-05: a menu a patrol planned credits the patrol, naming who typed it in. */
+describe('menuCredit', () => {
+  it('APatrol_GetsTheCredit_WithWhoEnteredIt', () => {
+    expect(menuCredit('Screaming Eagles', 'Todd W.')).toBe('the Screaming Eagles patrol (entered by Todd W.)');
+  });
+  it('NoPatrol_CreditsTheOwner', () => {
+    expect(menuCredit(null, 'Todd W.')).toBe('Todd W.');
+  });
+  it('WholeTroop_IsNotAPatrol', () => {
+    expect(menuCredit('Whole troop', 'Todd W.')).toBe('Todd W.');
+  });
+});
+
+describe('sanitizeMenu meal gear (gear-from-the-list release 2)', () => {
+  const withGear = (gear: unknown) => raw({ meals: [{ id: 'm1', day: 0, slot: 'breakfast', headcount: null, recipeIds: ['B001'], gear }] });
+
+  it('MealGear_RoundTrips_ThroughASecondSanitize', () => {
+    const once = sanitizeMenu(withGear(['Soap', 'Wash basin × 2']), CATALOG);
+    expect(once.meals[0].gear).toEqual(['Soap', 'Wash basin × 2']);
+    expect(sanitizeMenu(once, CATALOG).meals[0].gear).toEqual(['Soap', 'Wash basin × 2']);
+  });
+
+  it('MealGear_IsSortedAToZ', () => {
+    expect(sanitizeMenu(withGear(['Wash basin', 'Dish soap', 'Bucket']), CATALOG).meals[0].gear).toEqual(['Bucket', 'Dish soap', 'Wash basin']);
+  });
+
+  it('MealGear_IsDedupedByName_IgnoringCaseAndCount', () => {
+    expect(sanitizeMenu(withGear(['Soap', 'soap × 3']), CATALOG).meals[0].gear).toEqual(['Soap']);
+  });
+
+  it('MealGear_KeepsAtMostThirty_AndDropsJunk', () => {
+    const many = Array.from({ length: 40 }, (_, i) => `Thing ${String(i).padStart(2, '0')}`);
+    expect(sanitizeMenu(withGear([...many, 12, null]), CATALOG).meals[0].gear).toHaveLength(30);
+  });
+
+  it('MealGear_CutsAnEntryToSixtyCharacters', () => {
+    const [entry] = sanitizeMenu(withGear(['x'.repeat(200)]), CATALOG).meals[0].gear ?? [];
+    expect(entry.length).toBeLessThanOrEqual(60);
+  });
+
+  it('AMealWithNoGear_HasNoGearKey', () => {
+    expect(sanitizeMenu(withGear([]), CATALOG).meals[0]).not.toHaveProperty('gear');
+    expect(sanitizeMenu(withGear('soap'), CATALOG).meals[0]).not.toHaveProperty('gear');
+  });
+
+  it('MealGear_SurvivesAliasResolution', () => {
+    const cat = { ...CATALOG, aliases: { eggs: 'eggs' } } as unknown as Catalog;
+    expect(sanitizeMenu(withGear(['Soap']), cat).meals[0].gear).toEqual(['Soap']);
   });
 });

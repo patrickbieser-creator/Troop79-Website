@@ -10,7 +10,8 @@ import { publicScoutName } from '@/lib/scout-name';
 import type { Catalog, FoodGroup, MealSlot, Recipe } from './types';
 import { FOOD_GROUPS, MEALS, supportedUnits } from './units';
 import { overlayNewIngredients, sanitizeNewIngredients, type NewIngredient } from './scout-ingredients';
-import { applyRecipeEdits, type EditOp } from './menus';
+import { applyRecipeEdits, type EditOp, type MenuMeal } from './menus';
+import { gearText, menuGearRows, type GearItem } from './gear';
 import { cleanScoutText } from './scout-text';
 
 const SCOUT_ID = /^S-[0-9a-f]{8}$/;
@@ -146,10 +147,18 @@ export function cleanGear(raw: unknown): string[] {
   return out;
 }
 
-/** "Gear you'll need" for a menu: every recipe's gear across its meals, one of each (ignoring case), first spelling wins. */
-export function menuGear(menu: { meals: readonly { recipeIds: readonly string[] }[] }, catalog: Catalog): string[] {
-  const byId = new Map(catalog.recipes.map((r) => [r.id, r]));
-  return cleanGear(menu.meals.flatMap((m) => m.recipeIds.flatMap((id) => byId.get(id)?.equipment ?? [])));
+/**
+ * The gear for a menu's printed sheet: the SAME roll-up as the Gear tab (menuGearRows) — recipe gear, each
+ * meal's own gear and the menu's extras, one of each, the most any one asks for ("Skillet × 2"). Given the
+ * troop's list it also names the per-person items; without it only what the plan names. Grouped as the Gear tab is.
+ */
+export function menuGear(
+  menu: { meals: readonly MenuMeal[]; headcount?: number },
+  catalog: Catalog,
+  list: readonly GearItem[] = [],
+  extras: readonly string[] = []
+): string[] {
+  return menuGearRows({ meals: [...menu.meals], headcount: menu.headcount ?? 0 }, catalog, list, { extras: [...extras], packed: {} }).map((r) => gearText(r.name, r.count));
 }
 
 /**
