@@ -98,6 +98,9 @@
 /* A single food's diets (2026-10-05): one bordered row per diet, answered in place. */
 .dietRows { display: grid; gap: 8px; margin: 4px 0 8px; }
 /* Tools & utilities (2026-10-06): one row per tool, its result under the text. */
+/* The one suggested brand for a single food (2026-10-06): a star after its name. */
+.star { color: var(--admin-warning); font-weight: 400; }
+.srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .usedList { margin: 4px 0 0; padding-left: 18px; line-height: 1.5; font-size: var(--admin-text-sm); }
 .toolRow { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--admin-gray-200); }
 .dietRow { display: grid; gap: 6px; padding: 8px 10px; border: 1px solid var(--admin-gray-200); border-radius: var(--admin-radius); }

@@ -41,7 +41,9 @@ export function BrandHead({
   catalog,
   priced,
   headingId,
-  onChanged
+  onChanged,
+  suggested = false,
+  onSuggest
 }: {
   brand: Brand;
   ing: Ingredient;
@@ -50,6 +52,9 @@ export function BrandHead({
   priced: number;
   headingId: string;
   onChanged: () => void;
+  /** A single food's one suggested brand (Patrick, 2026-10-06): a star after its name, and the menu promotes or clears it. */
+  suggested?: boolean;
+  onSuggest?: (brandId: string | null) => void;
 }) {
   const [pending, start] = useTransition();
   const [line, setLine] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
@@ -94,6 +99,11 @@ export function BrandHead({
       <div className={styles.groupHead}>
         <h3 id={headingId} className={styles.cardName}>
           {b.name}
+          {suggested && (
+            <span className={styles.star} title="The suggested brand — a menu that adds this food starts with it">
+              {' '}★<span className={styles.srOnly}> (suggested)</span>
+            </span>
+          )}
         </h3>
         {priced === 0 && <Badge variant="warning">No price yet</Badge>}
         {dietText && (
@@ -111,6 +121,7 @@ export function BrandHead({
           placeholder="Brand options"
           disabled={pending}
           options={[
+            ...(onSuggest ? [suggested ? { value: 'unsuggest', label: 'Stop suggesting this brand' } : { value: 'suggest', label: 'Suggest this brand' }] : []),
             { value: 'rename', label: 'Rename…' },
             { value: 'diets', label: 'Diets different from the food…' },
             ...(mergeTargets.length > 0 ? [{ value: 'merge', label: 'Merge into…' }] : []),
@@ -120,6 +131,8 @@ export function BrandHead({
           ]}
           onAction={(v) => {
             if (v === 'remove') run(() => removeBrand(b.id), `Removed “${b.name}”. Menus that chose it go back to any brand.`);
+            else if (v === 'suggest') onSuggest?.(b.id);
+            else if (v === 'unsuggest') onSuggest?.(null);
             else open(v as Mode);
           }}
         />

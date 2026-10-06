@@ -74,7 +74,7 @@ import {
 } from '@/lib/menu-monster/authoring';
 import { VIEW_LABEL, flaggedIngredients, type VariationView } from '@/lib/menu-monster/variations';
 import { NO_FILTER, buildFoodRows, filterFoodRows, foodListHref, inKind, numericBase, pillOf, recipeHref, viewFor, type FoodFilter, type FoodRow, type ListKind, type Pill } from '@/lib/menu-monster/food-list';
-import { buildLines, ruleText, totalsOf, MAX_HEADCOUNT, MIN_HEADCOUNT } from '@/lib/menu-monster/engine';
+import { buildLines, recipeSuggestions, ruleText, totalsOf, MAX_HEADCOUNT, MIN_HEADCOUNT } from '@/lib/menu-monster/engine';
 import { FOOD_GROUPS, MEALS, RESTRICTIONS, RESTRICTION_BY_KEY, SECTIONS, SECTION_ORDER, lineUnit, parseQty, perPersonText, supportedUnits } from '@/lib/menu-monster/units';
 import type { Catalog, Ingredient, MealSlot, Plan, Recipe, RecipeLine, RestrictionKey, Section, VariationState } from '@/lib/menu-monster/types';
 import { createIngredient, duplicateRecipe, saveRecipe, setRecipeStatus, updateIngredient } from './actions';
@@ -462,6 +462,9 @@ export function RecipeEditor({
   // The short form lives in the list; a single food on its own page is there for the full editor.
   const compact = single && mode === 'inline';
   const food = compact ? (ingById.get(draft.base[0]?.ingredientId ?? '') ?? null) : null;
+  // The one suggested brand on a single food's item (★ on its brand list): from the SAVED recipe's brand_suggestions.
+  const savedRecipe = !isNew ? catalog.recipes.find((r) => r.id === draft.id) : undefined;
+  const suggestedBrandId = food && savedRecipe ? (recipeSuggestions(savedRecipe, catalog).find(([id]) => id === food.id)?.[1].id ?? null) : null;
   const missing = RESTRICTIONS.filter((r) => !draft.variations.some((v) => v.restriction === r.key));
   const toLook = missing.filter((r) => viewFor(draft, r.key, catalog) === 'needs_look').length;
   const activeTab: Tab = tab === 'everyone' || draft.variations.some((v) => v.restriction === tab) ? tab : 'everyone';
@@ -900,14 +903,15 @@ export function RecipeEditor({
 
       {compact && food && (
         <FormPanel>
-          <BrandsAndPrices ing={food} catalog={catalog} today={today} stores={stores} onChanged={onChanged} />
+          <BrandsAndPrices ing={food} catalog={catalog} today={today} stores={stores} onChanged={onChanged} suggestFor={{ recipeId: draft.id, brandId: suggestedBrandId }} />
           <p className={styles.hint}>
             <Link href={`/admin/library/menu-monster?tab=prices&ingredient=${encodeURIComponent(food.id)}`}>Conversions and the unit for {food.name.toLowerCase()} are in the Price book →</Link>
           </p>
         </FormPanel>
       )}
 
-      {!isNew && <SuggestedBrands recipeId={draft.id} catalog={catalog} onChanged={onChanged} />}
+      {/* A single food's suggestion lives on its brand list (★) since 2026-10-06; a recipe keeps the per-ingredient panel. */}
+      {!isNew && !compact && <SuggestedBrands recipeId={draft.id} catalog={catalog} onChanged={onChanged} />}
 
       <Preview draft={draft} tab={activeTab} catalog={catalog} />
     </section>

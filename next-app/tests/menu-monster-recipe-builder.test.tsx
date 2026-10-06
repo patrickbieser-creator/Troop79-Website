@@ -403,6 +403,38 @@ describe('Recipe builder — a single food opens in the short form (2026-10-04)'
     expect(bacon().getByRole('region', { name: 'Bacon brands and prices' })).toBeTruthy();
   });
 
+  // Patrick, 2026-10-06: "consolidate the suggested brands into the main brand list ... promote it to the suggested
+  // brand ... put a star behind the brand name ... Only one is allowed to be promoted."
+  describe('the one suggested brand lives on the brand list', () => {
+    const BRANDED: Catalog = {
+      ...CATALOG,
+      brands: [
+        { id: 'b-om', ingredientId: 'bacon', name: 'Oscar Mayer', avoid: null },
+        { id: 'b-hf', ingredientId: 'bacon', name: 'Hormel', avoid: null }
+      ],
+      packages: CATALOG.packages.map((p) => (p.id === 'p-bac' ? { ...p, brandId: 'b-om' } : p)),
+      recipes: CATALOG.recipes.map((r) => (r.id === 'bacon' ? { ...r, brandSuggestions: { bacon: 'b-om' } } : r))
+    };
+
+    it('TheSuggestedBrand_WearsAStar_AndTheOthersDoNot', () => {
+      open(BRANDED);
+      const list = bacon().getByRole('region', { name: 'Bacon brands and prices' });
+      expect(within(list).getByRole('heading', { name: /Oscar Mayer/ }).textContent).toMatch(/★/);
+      expect(within(list).getByRole('heading', { name: /Hormel/ }).textContent).not.toMatch(/★/);
+      expect(bacon().queryByRole('region', { name: /Suggested brands/ })).toBeNull();
+    });
+
+    it('SuggestThisBrand_PromotesIt_AndTheOldOneCanBeCleared', async () => {
+      const { suggestRecipeBrand } = await import('../src/app/admin/(workspace)/library/menu-monster/actions');
+      const user = userEvent.setup();
+      open(BRANDED);
+      await user.selectOptions(bacon().getByRole('combobox', { name: 'More for Hormel' }), 'suggest');
+      await waitFor(() => expect(suggestRecipeBrand).toHaveBeenCalledWith('bacon', 'bacon', 'b-hf'));
+      await user.selectOptions(bacon().getByRole('combobox', { name: 'More for Oscar Mayer' }), 'unsuggest');
+      await waitFor(() => expect(suggestRecipeBrand).toHaveBeenCalledWith('bacon', 'bacon', null));
+    });
+  });
+
   it('ThePriceBook_IsOneLinkAway', () => {
     open();
     expect(bacon().getByRole('link', { name: /Price book →/ }).getAttribute('href')).toBe('/admin/library/menu-monster?tab=prices&ingredient=bacon');

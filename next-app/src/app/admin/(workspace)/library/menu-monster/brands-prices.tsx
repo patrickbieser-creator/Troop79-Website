@@ -33,7 +33,7 @@ import { fmtDate } from '@/lib/format-date';
 import { money } from '@/lib/event-money';
 import { SOLD_UNITS, learnedConversion, learnedText, priceChange, staleText, suggestYield, unusableText } from '@/lib/menu-monster/authoring';
 import type { Brand, Catalog, Conversion, Ingredient, Package } from '@/lib/menu-monster/types';
-import { addBought, createBrand, restorePackage, retirePackage, setPackageBrand, updatePackage, type PackageEdit } from './actions';
+import { addBought, createBrand, restorePackage, retirePackage, setPackageBrand, suggestRecipeBrand, updatePackage, type PackageEdit } from './actions';
 import { BrandHead, brandsOf } from './brands-block';
 import { useArmed } from './use-armed';
 import lib from '../library.module.css';
@@ -54,6 +54,7 @@ export function BrandsAndPrices({
   ing,
   catalog,
   today,
+  suggestFor = null,
   stores,
   onChanged
 }: {
@@ -63,10 +64,13 @@ export function BrandsAndPrices({
   today: string | null;
   stores: readonly string[];
   onChanged: () => void;
+  /** A single food's menu item (Patrick, 2026-10-06): consolidated here — one brand may be the suggestion (★). */
+  suggestFor?: { recipeId: string; brandId: string | null } | null;
 }) {
   const uid = useId();
   /** null = the add form is closed; otherwise the brand it opens on ('' = none chosen). */
   const [adding, setAdding] = useState<string | null>(null);
+  const [note, setNote] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
 
   const brands = brandsOf(catalog, ing.id);
   const live = brands.filter((b) => !b.retiredAt);
@@ -76,6 +80,16 @@ export function BrandsAndPrices({
   const retired = all.filter((p) => p.retiredAt);
   const conversions = catalog.conversions.filter((c) => c.ingredientId === ing.id);
   const unbranded = active.filter((p) => !p.brandId || !live.some((b) => b.id === p.brandId));
+
+  /** Only one brand is the suggestion: setting one replaces the last; null clears it. Takes effect at once. */
+  function suggest(brandId: string | null) {
+    if (!suggestFor) return;
+    setNote(null);
+    void suggestRecipeBrand(suggestFor.recipeId, ing.id, brandId).then((res) => {
+      setNote(res.ok ? { kind: 'ok', text: brandId ? `${live.find((b) => b.id === brandId)?.name ?? 'That brand'} is the suggested brand for ${ing.name.toLowerCase()}.` : `No brand is suggested for ${ing.name.toLowerCase()} now.` } : { kind: 'error', text: res.error ?? 'Something went wrong.' });
+      onChanged();
+    });
+  }
 
   const rows = (packages: Package[], label: string) => (
     <ul className={styles.pkgList} aria-label={label}>
@@ -87,6 +101,7 @@ export function BrandsAndPrices({
 
   return (
     <section aria-label={`${ing.name} brands and prices`} className={styles.brands}>
+      {note && (note.kind === 'error' ? <Notice>{note.text}</Notice> : <Notice variant="success">{note.text}</Notice>)}
       {live.length === 0 && active.length === 0 && (
         <p className={styles.muted}>No price yet. Menus can use {ing.name.toLowerCase()} and show it as not priced until one is added. A shelf price or a best guess is fine.</p>
       )}
@@ -96,7 +111,16 @@ export function BrandsAndPrices({
         const hid = `${uid}-b-${b.id}`;
         return (
           <section key={b.id} className={styles.group} aria-labelledby={hid}>
-            <BrandHead brand={b} ing={ing} catalog={catalog} priced={own.length} headingId={hid} onChanged={onChanged} />
+            <BrandHead
+              brand={b}
+              ing={ing}
+              catalog={catalog}
+              priced={own.length}
+              headingId={hid}
+              onChanged={onChanged}
+              suggested={suggestFor?.brandId === b.id}
+              onSuggest={suggestFor ? (brandId) => suggest(brandId) : undefined}
+            />
             {own.length > 0 && rows(own, `${b.name} sizes and prices`)}
             {!ing.retiredAt && (
               <button type="button" className={`${styles.rowBtn} ${styles.groupAdd}`} aria-label={`Add a size or store for ${b.name}`} onClick={() => setAdding(b.id)}>
