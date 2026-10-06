@@ -133,3 +133,8 @@
 .nameBtn:hover { color: var(--navy); text-decoration: underline; text-underline-offset: 2px; }
 .nameBtn:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
 .buy { margin: 0; padding-left: 32px; font-size: var(--fs-sm); color: var(--text-meta); }
+
+/* ---- menu-edit: the "Add for <diet>" choice beside the add search (a meal with diets on it) ---- */
+.forRow { display: flex; align-items: center; gap: var(--sp-2); padding: 0 0 var(--sp-2); font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-meta); }
+.forLabel { flex: none; }
+.forRow .forSelect { width: auto; min-width: 0; }

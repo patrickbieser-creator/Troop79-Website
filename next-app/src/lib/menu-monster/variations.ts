@@ -147,6 +147,70 @@ export function variationsFromLines(lines: readonly RecipeLine[]): { base: BaseL
   return { base, variations };
 }
 
+/** A menu's change to one recipe that is for ONE diet only (menus.ts EditOp with `for` set). */
+export interface ScopedOp {
+  op: 'swap' | 'leave_out' | 'add';
+  /** swap / leave_out: the recipe's base ingredient it targets; add: the ingredient added. */
+  ingredientId: string;
+  /** swap: the ingredient swapped in. */
+  to?: string;
+  /** swap / add: per person, in the new ingredient's own unit. */
+  qtyPerPerson?: number;
+  for: RestrictionKey;
+}
+
+/**
+ * A menu's diet-scoped ops folded into a recipe's lines — NOT a second compiler:
+ * each op becomes a diff line ({swap | leave_out | add}) in that diet's variation,
+ * merged over the recipe's own diffs (a meal's swap of a base line replaces the
+ * recipe's own change to that line; an add of the same ingredient replaces the
+ * recipe's), and compileRecipe() turns the result into the same 'except' / 'only'
+ * serves-rule lines the engine, the shopping list and the print sheets already read.
+ *
+ * `lines` are the recipe's lines (after any unscoped ops); `stored` the recipe's own
+ * variations, used only when they still describe `lines` (pass undefined otherwise —
+ * the diffs the lines imply are used instead). A swap / leave_out whose base line the
+ * recipe lacks is ignored. Also returns the merged variations: a diet the menu changed
+ * is no longer 'unsuitable' (the scout gave them something).
+ */
+export function applyScopedOps(
+  lines: readonly RecipeLine[],
+  ops: readonly ScopedOp[],
+  stored?: readonly Variation[]
+): { lines: RecipeLine[]; variations: Variation[] } {
+  const implied = variationsFromLines(lines);
+  const base = implied.base;
+  const own = stored && stored.length > 0 ? stored : implied.variations;
+  const baseIds = new Set(base.map((b) => b.ingredientId));
+  const byRestriction = new Map<RestrictionKey, Variation>(own.map((v) => [v.restriction, v]));
+
+  for (const o of ops) {
+    const cur = byRestriction.get(o.for);
+    const kept = cur?.state === 'substituted' ? [...cur.lines] : [];
+    let next: VariationLine[];
+    if (o.op === 'add') {
+      if (!(o.qtyPerPerson != null && o.qtyPerPerson > 0)) continue;
+      next = [
+        ...kept.filter((l) => !(l.op === 'add' && l.ingredientId === o.ingredientId)),
+        { op: 'add', baseIngredientId: null, ingredientId: o.ingredientId, qtyPerPerson: o.qtyPerPerson, unitKey: null }
+      ];
+    } else {
+      if (!baseIds.has(o.ingredientId)) continue;
+      const rest = kept.filter((l) => !((l.op === 'swap' || l.op === 'leave_out') && l.baseIngredientId === o.ingredientId));
+      if (o.op === 'leave_out') {
+        next = [...rest, { op: 'leave_out', baseIngredientId: o.ingredientId, ingredientId: null, qtyPerPerson: null, unitKey: null }];
+      } else {
+        if (!o.to || !(o.qtyPerPerson != null && o.qtyPerPerson > 0)) continue;
+        next = [...rest, { op: 'swap', baseIngredientId: o.ingredientId, ingredientId: o.to, qtyPerPerson: o.qtyPerPerson, unitKey: null }];
+      }
+    }
+    byRestriction.set(o.for, { restriction: o.for, state: 'substituted', note: cur?.note ?? null, lines: next });
+  }
+
+  const variations = sortKeys(byRestriction.keys()).map((k) => byRestriction.get(k) as Variation);
+  return { lines: compileRecipe(base, variations), variations };
+}
+
 /** Which base ingredients carry this restriction's avoid flag. */
 export function flaggedIngredients(base: readonly BaseLine[], restriction: RestrictionKey, catalog: Catalog): Ingredient[] {
   const byId = new Map(catalog.ingredients.map((i) => [i.id, i]));

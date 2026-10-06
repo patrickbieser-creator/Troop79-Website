@@ -14,7 +14,8 @@
  */
 
 import type { BrandPick, BrandPicks, Catalog, MealSlot, Plan, Recipe, RecipeLine, RestrictionKey } from './types';
-import { MEALS, RESTRICTIONS } from './units';
+import { MEALS, RESTRICTIONS, RESTRICTION_BY_KEY } from './units';
+import { applyScopedOps, type ScopedOp } from './variations';
 import { MAX_BRANDS_PER_INGREDIENT, MAX_HEADCOUNT, MIN_HEADCOUNT, livePicks, restorePlan } from './engine';
 import { centralToday } from '@/lib/dates';
 import { cleanScoutText } from './scout-text';
@@ -62,12 +63,19 @@ export const DEFAULT_MENU_DAYS = 2;
  * target a recipe line by its ingredient. Quantities are per person, in the
  * ingredient's own recipe unit for swap / add, and in the line's own unit for
  * amount. The shared recipe is never touched.
+ *
+ * swap / leave_out / add may carry `for`: the change is for that diet's scouts only
+ * (the same "only gluten-free" / "everyone except gluten-free" serves-rule lines a
+ * recipe's own diet tab compiles to). Absent = everyone, as stored menus always were.
  */
 export type EditOp =
   | { op: 'amount'; ingredientId: string; qtyPerPerson: number }
-  | { op: 'swap'; ingredientId: string; to: string; qtyPerPerson: number }
-  | { op: 'leave_out'; ingredientId: string }
-  | { op: 'add'; ingredientId: string; qtyPerPerson: number };
+  | { op: 'swap'; ingredientId: string; to: string; qtyPerPerson: number; for?: RestrictionKey }
+  | { op: 'leave_out'; ingredientId: string; for?: RestrictionKey }
+  | { op: 'add'; ingredientId: string; qtyPerPerson: number; for?: RestrictionKey };
+
+/** The diet an op is for, or undefined when it is for everyone. */
+export const scopeOf = (o: EditOp): RestrictionKey | undefined => (o.op === 'amount' ? undefined : o.for);
 
 /** recipeId → that recipe's ops on this meal. Stored inside meals jsonb. */
 export type RecipeEdits = Record<string, EditOp[]>;
@@ -242,12 +250,15 @@ function sanitizeRecipeEdits(raw: unknown, recipeIds: readonly string[], catalog
       if (ops.length >= MAX_EDIT_OPS || !isRecord(o) || !known(o.ingredientId)) continue;
       let op: EditOp | null = null;
       const q = qty(o.qtyPerPerson);
-      if (o.op === 'leave_out') op = { op: 'leave_out', ingredientId: o.ingredientId };
+      // A diet scope must name a real restriction; an unknown one drops the op (never widens it to everyone).
+      if (o.for !== undefined && !(typeof o.for === 'string' && Object.hasOwn(RESTRICTION_BY_KEY, o.for))) continue;
+      const scope: { for?: RestrictionKey } = o.for === undefined ? {} : { for: o.for as RestrictionKey };
+      if (o.op === 'leave_out') op = { op: 'leave_out', ingredientId: o.ingredientId, ...scope };
       else if (o.op === 'amount' && q != null) op = { op: 'amount', ingredientId: o.ingredientId, qtyPerPerson: q };
-      else if (o.op === 'swap' && q != null && known(o.to)) op = { op: 'swap', ingredientId: o.ingredientId, to: o.to, qtyPerPerson: q };
-      else if (o.op === 'add' && q != null) op = { op: 'add', ingredientId: o.ingredientId, qtyPerPerson: q };
+      else if (o.op === 'swap' && q != null && known(o.to)) op = { op: 'swap', ingredientId: o.ingredientId, to: o.to, qtyPerPerson: q, ...scope };
+      else if (o.op === 'add' && q != null) op = { op: 'add', ingredientId: o.ingredientId, qtyPerPerson: q, ...scope };
       if (!op) continue;
-      const key = `${op.op === 'add'}:${op.ingredientId}`;
+      const key = `${op.op === 'add'}:${scopeOf(op) ?? ''}:${op.ingredientId}`;
       const at = slotOf.get(key);
       if (at != null) ops[at] = op;
       else {
@@ -268,22 +279,45 @@ function sanitizeRecipeEdits(raw: unknown, recipeIds: readonly string[], catalog
  * base line move together); an op whose ingredient the recipe lacks is ignored.
  * Pure; never mutates the recipe.
  */
-export function applyRecipeEdits(recipe: Pick<Recipe, 'lines'>, ops: readonly EditOp[]): RecipeLine[] {
-  if (ops.length === 0) return recipe.lines;
-  const target = new Map<string, Exclude<EditOp, { op: 'add' }>>();
-  for (const o of ops) if (o.op !== 'add') target.set(o.ingredientId, o);
+export function applyRecipeEdits(recipe: Pick<Recipe, 'lines'> & { variations?: Recipe['variations'] }, ops: readonly EditOp[]): RecipeLine[] {
+  return editedRecipe(recipe, ops).lines;
+}
 
-  const out: RecipeLine[] = [];
+/** applyRecipeEdits plus the variations the result carries (a diet the menu changed is no longer 'unsuitable'). */
+function editedRecipe(recipe: Pick<Recipe, 'lines'> & { variations?: Recipe['variations'] }, ops: readonly EditOp[]): { lines: RecipeLine[]; variations: Recipe['variations'] } {
+  if (ops.length === 0) return { lines: recipe.lines, variations: recipe.variations };
+  const plain = ops.filter((o) => scopeOf(o) === undefined);
+  const scoped = ops.filter((o) => scopeOf(o) !== undefined) as (EditOp & { for: RestrictionKey })[];
+  const target = new Map<string, Exclude<EditOp, { op: 'add' }>>();
+  for (const o of plain) if (o.op !== 'add') target.set(o.ingredientId, o);
+
+  const lines: RecipeLine[] = [];
   for (const line of recipe.lines) {
     const o = target.get(line.ingredientId);
-    if (!o) out.push(line);
-    else if (o.op === 'amount') out.push({ ...line, qtyPerPerson: o.qtyPerPerson });
-    else if (o.op === 'swap') out.push({ ...line, ingredientId: o.to, qtyPerPerson: o.qtyPerPerson, unitKey: null });
+    if (!o) lines.push(line);
+    else if (o.op === 'amount') lines.push({ ...line, qtyPerPerson: o.qtyPerPerson });
+    else if (o.op === 'swap') lines.push({ ...line, ingredientId: o.to, qtyPerPerson: o.qtyPerPerson, unitKey: null });
   }
-  for (const o of ops) {
-    if (o.op === 'add') out.push({ ingredientId: o.ingredientId, qtyPerPerson: o.qtyPerPerson, unitKey: null, servesRule: 'everyone', servesRestrictions: [] });
+  for (const o of plain) {
+    if (o.op === 'add') lines.push({ ingredientId: o.ingredientId, qtyPerPerson: o.qtyPerPerson, unitKey: null, servesRule: 'everyone', servesRestrictions: [] });
   }
-  return out;
+  if (scoped.length === 0) return { lines, variations: recipe.variations };
+
+  // The recipe's own diffs describe its lines only until an unscoped op has changed them.
+  const stored = plain.length === 0 ? recipe.variations : undefined;
+  // A scoped swap / leave-out follows an unscoped swap of the same line to its new ingredient.
+  const retarget = (id: string) => {
+    const u = target.get(id);
+    return u?.op === 'swap' ? u.to : id;
+  };
+  const bridge: ScopedOp[] = scoped.map((o) => ({
+    op: o.op as ScopedOp['op'],
+    ingredientId: o.op === 'add' ? o.ingredientId : retarget(o.ingredientId),
+    to: o.op === 'swap' ? o.to : undefined,
+    qtyPerPerson: o.op === 'amount' || o.op === 'leave_out' ? undefined : o.qtyPerPerson,
+    for: o.for
+  }));
+  return applyScopedOps(lines, bridge, stored);
 }
 
 /** The catalog as THIS meal sees it: its recipes carry the meal's edits. The
@@ -292,7 +326,14 @@ export function mealCatalog(catalog: Catalog, meal: MenuMeal): Catalog {
   const edits: RecipeEdits = meal.recipeEdits ?? {}; // meals stored before recipeEdits existed
   const edited = (r: Recipe) => (edits[r.id]?.length ?? 0) > 0;
   if (!catalog.recipes.some(edited)) return catalog;
-  return { ...catalog, recipes: catalog.recipes.map((r) => (edited(r) ? { ...r, lines: applyRecipeEdits(r, edits[r.id]) } : r)) };
+  return {
+    ...catalog,
+    recipes: catalog.recipes.map((r) => {
+      if (!edited(r)) return r;
+      const e = editedRecipe(r, edits[r.id]);
+      return { ...r, lines: e.lines, variations: e.variations };
+    })
+  };
 }
 
 

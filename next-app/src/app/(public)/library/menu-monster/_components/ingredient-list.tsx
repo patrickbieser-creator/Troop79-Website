@@ -23,7 +23,7 @@
  */
 
 import type { ReactNode } from 'react';
-import type { IngredientRow } from '@/lib/menu-monster/ingredient-rows';
+import { idleLabel, scopeLabel, type IngredientRow } from '@/lib/menu-monster/ingredient-rows';
 import { MenuEditList, type MenuEditProps, type RowAction } from './ingredient-list-edit';
 import { AuthorList, type AuthorListProps } from './ingredient-list-author';
 import s from './ingredient-list.module.css';
@@ -64,7 +64,7 @@ export function IngredientList(props: IngredientListProps) {
         const out = r.marker?.kind === 'out';
         const was = r.marker?.kind === 'swapped' || r.marker?.kind === 'changed' ? r.marker.was : null;
         return (
-          <li key={r.key} className={`${s.row} ${out ? s.rowOut : ''}`}>
+          <li key={r.key} className={`${s.row} ${out || r.scope?.idle ? s.rowOut : ''}`}>
             <span className={s.main}>
               <span className={s.name}>{r.name}</span>
               {r.marker?.kind === 'swapped' && was && (
@@ -75,6 +75,8 @@ export function IngredientList(props: IngredientListProps) {
               )}
               {r.marker?.kind === 'added' && <span className={s.tag}>Added</span>}
               {out && <span className={s.tag}>Left out</span>}
+              {r.scope && <span className={s.tag}>{scopeLabel(r.scope)}</span>}
+              {r.scope?.idle && <span className={s.note}>{idleLabel(r.scope)}</span>}
               {r.note && <span className={s.note}>{r.note}</span>}
               {!out && r.edit && brandText?.(r.edit.currentIngredientId)}
             </span>

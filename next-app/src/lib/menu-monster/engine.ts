@@ -361,7 +361,7 @@ export function restrictionWarnings(plan: Plan, catalog: Catalog): RestrictionWa
       // A leader said so: Not suitable warns for every restriction (decision 6).
       const unsuitable = (r.variations ?? []).some((v) => v.restriction === rs.key && v.state === 'unsuitable');
       if (unsuitable) {
-        out.push({ kind: 'unsuitable', recipe: r, restriction: rs, count: R[rs.key], ingredients: [] });
+        out.push({ kind: 'unsuitable', recipe: r, restriction: rs, count: R[rs.key], ingredients: [], ingredientIds: [] });
         continue;
       }
       if (!WARN_ALLERGENS.includes(rs.key)) continue;
@@ -377,7 +377,8 @@ export function restrictionWarnings(plan: Plan, catalog: Catalog): RestrictionWa
           recipe: r,
           restriction: rs,
           count: R[rs.key],
-          ingredients: bad.map((l) => ING.get(l.ingredientId)?.name ?? l.ingredientId)
+          ingredients: bad.map((l) => ING.get(l.ingredientId)?.name ?? l.ingredientId),
+          ingredientIds: bad.map((l) => l.ingredientId)
         });
       }
     }

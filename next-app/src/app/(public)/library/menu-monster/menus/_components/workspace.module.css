@@ -689,3 +689,7 @@
 .lessonTable thead th { border-top: none; font-size: var(--fs-sm); font-weight: 600; color: var(--text-meta); }
 .lessonTable tbody th { font-weight: 700; color: var(--text-head); }
 .lessonTable td:nth-child(2) { white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* The answers beside a diet warning: "Swap bread for gluten-free scouts…" / "Leave bread out for …". */
+.warnActions { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-4); margin-top: var(--sp-1); font-size: var(--fs-sm); }
+.warnPair { display: inline-flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-4); }

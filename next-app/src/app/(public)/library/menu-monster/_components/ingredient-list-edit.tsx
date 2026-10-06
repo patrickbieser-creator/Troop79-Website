@@ -23,11 +23,20 @@
  * focus to the row's ⋯; a swap or an add moves on to the amount box (the new
  * ingredient's unit is not the old one's); every change is announced through
  * onAnnounce (the meal page's status line).
+ *
+ * Diets (Patrick, 2026-10-06): given the meal's `restrictions`, a troop row's ⋯ also offers
+ * "Swap for <diet> scouts…" / "Leave out for <diet> scouts" for each diet with people on the
+ * meal, and the add search carries a "For" choice (Everyone by default). A row that is for one
+ * diet says so in words ("Gluten-free scouts only", "except gluten-free"); one for a diet with
+ * nobody on the meal stays, dimmed, and says why. The ops are the parent's; the rules are the
+ * recipe variations' own (lib/menu-monster/variations.ts).
  */
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
-import { fracText, parseQty } from '@/lib/menu-monster/units';
-import type { IngredientRow } from '@/lib/menu-monster/ingredient-rows';
+import type { RestrictionKey } from '@/lib/menu-monster/types';
+import { RESTRICTIONS, RESTRICTION_BY_KEY, fracText, parseQty } from '@/lib/menu-monster/units';
+import { idleLabel, scopeLabel, type IngredientRow } from '@/lib/menu-monster/ingredient-rows';
+import { SelectInput } from '@/app/_components/form';
 import { RowMenu, type RowMenuItem } from '../menus/_components/row-menu';
 import { IngredientSearch, type IngredientChoice } from './ingredient-search';
 import s from './ingredient-list.module.css';
@@ -35,9 +44,15 @@ import s from './ingredient-list.module.css';
 /** What a row's ⋯, amount box or search asked for. The parent builds the ops. */
 export type RowAction =
   | { type: 'amount'; key: string; qtyPerPerson: number }
-  | { type: 'swap'; key: string; to: string }
-  | { type: 'leave_out' | 'put_back' | 'reset' | 'remove'; key: string }
-  | { type: 'add'; ingredientId: string };
+  /** `scope`: for that diet's scouts only (absent on a scoped row = that row's own diet). */
+  | { type: 'swap'; key: string; to: string; scope?: RestrictionKey }
+  | { type: 'leave_out' | 'put_back' | 'reset' | 'remove'; key: string; scope?: RestrictionKey }
+  | { type: 'add'; ingredientId: string; scope?: RestrictionKey };
+
+/** What the warning under a recipe asked this list to open (the meal panel remounts the list with it). */
+export type ListIntent =
+  | { kind: 'swap'; ingredientId: string; scope: RestrictionKey }
+  | { kind: 'add'; scope: RestrictionKey };
 
 export interface MenuEditProps {
   rows: readonly IngredientRow[];
@@ -57,6 +72,10 @@ export interface MenuEditProps {
   /** Release 3: the brand beside an ingredient's name (quiet text + one action) and the chooser it opens,
    *  for the ingredient a row shows now. The parent owns what is open; null = nothing to show. */
   brandSlot?: (ingredientId: string, name: string) => { text: ReactNode; inset: ReactNode } | null;
+  /** The meal's diet counts. Absent = no diet actions (a list with nobody on a diet offers none). */
+  restrictions?: Record<RestrictionKey, number>;
+  /** Open on a diet's swap search (or the add search set to that diet) — the answer a warning offers. */
+  initialIntent?: ListIntent;
 }
 
 const MAX_QTY = 1000;
@@ -137,12 +156,23 @@ export function AmountEditor({
   );
 }
 
-export function MenuEditList({ rows, ariaLabel, emptyText = 'No ingredients.', choices, onAction, onAnnounce, renderNew, dense = false, brandSlot }: MenuEditProps) {
+const dietLower = (k: RestrictionKey) => RESTRICTION_BY_KEY[k].label.toLowerCase();
+
+export function MenuEditList({ rows, ariaLabel, emptyText = 'No ingredients.', choices, onAction, onAnnounce, renderNew, dense = false, brandSlot, restrictions, initialIntent }: MenuEditProps) {
   const listRef = useRef<HTMLUListElement>(null);
   const addRef = useRef<HTMLInputElement>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [newName, setNewName] = useState<string | null>(null);
-  const [swapping, setSwapping] = useState<string | null>(null);
+  const [swapping, setSwapping] = useState<{ key: string; scope?: RestrictionKey } | null>(() => {
+    if (initialIntent?.kind !== 'swap') return null;
+    const row = rows.find((r) => r.edit?.kind === 'base' && !r.edit.scope && r.edit.ingredientId === initialIntent.ingredientId);
+    return row ? { key: row.key, scope: initialIntent.scope } : null;
+  });
+  /** The diet the next added ingredient is for ('' = everyone). */
+  const [addFor, setAddFor] = useState<RestrictionKey | ''>(initialIntent?.kind === 'add' ? initialIntent.scope : '');
+  const addForId = useId();
+  /** Diets with people on this meal: the ones worth offering. */
+  const diets = restrictions ? RESTRICTIONS.filter((d) => (restrictions[d.key] ?? 0) > 0) : [];
   // Where focus goes after the next render: a row's ⋯ (by key) or the add box.
   const [focusReq, setFocusReq] = useState<string | 'add' | null>(null);
 
@@ -183,6 +213,21 @@ export function MenuEditList({ rows, ariaLabel, emptyText = 'No ingredients.', c
         }
       ];
     }
+    if (e.scope) {
+      // A line just for one diet's scouts (swapped in): its own amount, another swap, or back to the troop's.
+      return [
+        change,
+        { label: 'Swap for something else…', onSelect: () => { setEditing(null); setSwapping({ key: r.key, scope: e.scope }); } },
+        {
+          label: `Back to ${e.baseName ?? 'the troop ingredient'}`,
+          onSelect: () => {
+            onAction({ type: 'reset', key: r.key });
+            onAnnounce(`Back to ${e.baseName} for ${dietLower(e.scope as RestrictionKey)} scouts, as the troop wrote it.`);
+            setFocusReq(r.key);
+          }
+        }
+      ];
+    }
     if (e.op === 'leave_out') {
       return [
         {
@@ -197,7 +242,7 @@ export function MenuEditList({ rows, ariaLabel, emptyText = 'No ingredients.', c
     }
     const items: RowMenuItem[] = [
       change,
-      { label: e.op === 'swap' ? 'Swap for something else…' : 'Swap for…', onSelect: () => { setEditing(null); setSwapping(r.key); } },
+      { label: e.op === 'swap' ? 'Swap for something else…' : 'Swap for…', onSelect: () => { setEditing(null); setSwapping({ key: r.key }); } },
       {
         label: 'Leave out',
         onSelect: () => {
@@ -217,6 +262,32 @@ export function MenuEditList({ rows, ariaLabel, emptyText = 'No ingredients.', c
         }
       });
     }
+    if (e.scopable) {
+      for (const d of diets) {
+        if (e.recipeOut?.includes(d.key)) continue; // the troop's recipe already leaves it out for them
+        const who = `${dietLower(d.key)} scouts`;
+        items.push({ label: `Swap for ${who}…`, onSelect: () => { setEditing(null); setSwapping({ key: r.key, scope: d.key }); } });
+        if (e.scopedOut?.includes(d.key)) {
+          items.push({
+            label: `Put back for ${who}`,
+            onSelect: () => {
+              onAction({ type: 'put_back', key: r.key, scope: d.key });
+              onAnnounce(`${r.name} is back for ${who}.`);
+              setFocusReq(r.key);
+            }
+          });
+        } else {
+          items.push({
+            label: `Leave out for ${who}`,
+            onSelect: () => {
+              onAction({ type: 'leave_out', key: r.key, scope: d.key });
+              onAnnounce(`${r.name} left out for ${who}.`);
+              setFocusReq(r.key);
+            }
+          });
+        }
+      }
+    }
     return items;
   }
 
@@ -227,9 +298,10 @@ export function MenuEditList({ rows, ariaLabel, emptyText = 'No ingredients.', c
         {rows.map((r) => {
           const out = r.marker?.kind === 'out';
           const e = r.edit;
-          const brand = !out && e ? brandSlot?.(e.currentIngredientId, r.name) : null;
+          const idle = r.scope?.idle === true;
+          const brand = !out && !idle && e ? brandSlot?.(e.currentIngredientId, r.name) : null;
           return (
-            <li key={r.key} data-key={r.key} className={`${s.row} ${s.rowEdit} ${out ? s.rowOut : ''}`}>
+            <li key={r.key} data-key={r.key} className={`${s.row} ${s.rowEdit} ${out || idle ? s.rowOut : ''}`}>
               <span className={s.main}>
                 <span className={s.name}>{r.name}</span>
                 {r.marker?.kind === 'swapped' && (
@@ -240,6 +312,8 @@ export function MenuEditList({ rows, ariaLabel, emptyText = 'No ingredients.', c
                 )}
                 {r.marker?.kind === 'added' && <span className={s.tag}>Added</span>}
                 {out && <span className={s.tag}>Left out</span>}
+                {r.scope && <span className={s.tag}>{scopeLabel(r.scope)}</span>}
+                {r.scope?.idle && <span className={s.note}>{idleLabel(r.scope)}</span>}
                 {r.note && <span className={s.note}>{r.note}</span>}
                 {brand?.text}
               </span>
@@ -277,18 +351,19 @@ export function MenuEditList({ rows, ariaLabel, emptyText = 'No ingredients.', c
               <div data-more className={s.moreCell}>
                 <RowMenu label={`Change ${r.name}`} items={menuItems(r)} />
               </div>
-              {swapping === r.key && e && (
+              {swapping?.key === r.key && e && (
                 <div className={s.sub}>
                   <IngredientSearch
                     autoFocus
-                    label={`Swap ${e.baseName ?? r.name} for`}
-                    placeholder={`Swap ${e.baseName ?? r.name} for… search the ingredients`}
+                    label={`Swap ${e.baseName ?? r.name} for${swapping.scope ? ` ${dietLower(swapping.scope)} scouts` : ''}`}
+                    placeholder={`Swap ${e.baseName ?? r.name} for${swapping.scope ? ` ${dietLower(swapping.scope)} scouts` : ''}… search the ingredients`}
                     choices={free.filter((c) => c.id !== e.ingredientId)}
                     onPick={(c) => {
+                      const scope = swapping.scope;
                       setSwapping(null);
-                      onAction({ type: 'swap', key: r.key, to: c.id });
-                      onAnnounce(`Swapped ${e.baseName ?? r.name} for ${c.name}. Set how much each person needs.`);
-                      setEditing(r.key);
+                      onAction({ type: 'swap', key: r.key, to: c.id, ...(scope ? { scope } : {}) });
+                      onAnnounce(`Swapped ${e.baseName ?? r.name} for ${c.name}${scope ? ` for ${dietLower(scope)} scouts` : ''}. Set how much each person needs.`);
+                      setEditing(scope && !e.scope ? `swap:${scope}:${e.ingredientId}` : r.key);
                     }}
                     onCancel={() => {
                       setSwapping(null);
@@ -303,6 +378,21 @@ export function MenuEditList({ rows, ariaLabel, emptyText = 'No ingredients.', c
         })}
       </ul>
       <div className={s.addRow}>
+        {diets.length > 0 && (
+          <div className={s.forRow}>
+            <label htmlFor={addForId} className={s.forLabel}>
+              Add for
+            </label>
+            <SelectInput id={addForId} className={s.forSelect} value={addFor} onChange={(ev) => setAddFor(ev.target.value as RestrictionKey | '')}>
+              <option value="">Everyone</option>
+              {diets.map((d) => (
+                <option key={d.key} value={d.key}>
+                  {d.label} scouts
+                </option>
+              ))}
+            </SelectInput>
+          </div>
+        )}
         <IngredientSearch
           inputRef={addRef}
           label="Add an ingredient to your version"
@@ -310,9 +400,11 @@ export function MenuEditList({ rows, ariaLabel, emptyText = 'No ingredients.', c
           choices={free}
           onPick={(c) => {
             setNewName(null);
-            onAction({ type: 'add', ingredientId: c.id });
-            onAnnounce(`${c.name} added to your version. Set how much each person needs.`);
-            setEditing(`add:${c.id}`);
+            const scope = addFor || undefined;
+            onAction({ type: 'add', ingredientId: c.id, ...(scope ? { scope } : {}) });
+            onAnnounce(`${c.name} added to your version${scope ? ` for ${dietLower(scope)} scouts` : ''}. Set how much each person needs.`);
+            setEditing(scope ? `add:${scope}:${c.id}` : `add:${c.id}`);
+            setAddFor('');
           }}
           onNew={renderNew ? (name) => setNewName(name) : undefined}
         />

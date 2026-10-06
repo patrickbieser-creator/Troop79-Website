@@ -318,4 +318,6 @@ export interface RestrictionWarning {
   restriction: Restriction;
   count: number;
   ingredients: string[];
+  /** The same ingredients by id (parallel to `ingredients`), so the warning can offer a swap for them. */
+  ingredientIds: string[];
 }

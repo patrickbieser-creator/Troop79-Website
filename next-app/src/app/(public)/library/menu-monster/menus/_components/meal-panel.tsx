@@ -19,7 +19,10 @@
  *     Plan-tab row says "6 people" only when it differs from the menu's);
  *   - its own status line — what just happened, Undo after a remove or swap;
  *   - a quiet warning under a recipe that isn't for someone the menu counts
- *     (ported from the retired planner: unsuitable, or gluten / nuts with no swap).
+ *     (ported from the retired planner: unsuitable, or gluten / nuts with no swap),
+ *     with the answer beside it (Patrick, 2026-10-06; "a badge is never a dead end"):
+ *     "Swap bread for gluten-free scouts…" / "Leave bread out for gluten-free scouts"
+ *     — a diet-scoped op on this meal's version, which clears the warning.
  * The meal's cost is the Plan tab row's right column (Jenna, 2026-10-03: no
  * footer repeating it).
  *
@@ -35,13 +38,14 @@
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import Link from 'next/link';
-import { MEALS, priceText as money } from '@/lib/menu-monster/units';
+import { MEALS, RESTRICTION_BY_KEY, priceText as money } from '@/lib/menu-monster/units';
 import { Button } from '@/app/_components/button';
 import { Stepper } from '@/app/_components/stepper';
 import { Notice } from '@/app/_components/notice';
 import type { Brand, BrandPick, Catalog, Plan, Recipe, ShoppingLine } from '@/lib/menu-monster/types';
 import { BrandChooser, brandSummary } from './brand-chooser';
-import { MAX_HEADCOUNT, MIN_HEADCOUNT, livePicks, recipeSuggestions, recipesForMeal, restrictionWarnings } from '@/lib/menu-monster/engine';
+import { MAX_HEADCOUNT, MIN_HEADCOUNT, effectiveRestrictions, livePicks, recipeSuggestions, recipesForMeal, restrictionWarnings } from '@/lib/menu-monster/engine';
+import type { RestrictionKey } from '@/lib/menu-monster/types';
 import { isPickable, stepsFromText } from '@/lib/menu-monster/scout-recipes';
 import { gearKey, gearText, mealRecipeGear, parseGear, recipeGear, sortGear, type GearItem } from '@/lib/menu-monster/gear';
 import { GearChips, GearPicker } from '../../_components/gear-picker';
@@ -63,6 +67,7 @@ import type { NewIngredient } from '@/lib/menu-monster/scout-ingredients';
 import { MenuNewIngredient } from './menu-new-ingredient';
 import { MealNewFood, type FoodAdded } from './meal-new-food';
 import { IngredientList, type RowAction } from '../../_components/ingredient-list';
+import type { ListIntent } from '../../_components/ingredient-list-edit';
 import { RowMenu } from './row-menu';
 import { RecipeLibraryDialog } from './recipe-library-dialog';
 import s from './workspace.module.css';
@@ -115,6 +120,8 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
   const [openIds, setOpenIds] = useState<ReadonlySet<string>>(() => new Set());
   const [status, setStatus] = useState<Status>({ text: '', undoTo: null });
   const [swapId, setSwapId] = useState<string | null>(null);
+  /** What a warning's answer asked a recipe's ingredient list to open (the list is remounted with it, keyed by `n`). */
+  const [intent, setIntent] = useState<(ListIntent & { rid: string; n: number }) | null>(null);
   const [query, setQuery] = useState('');
   const [listOpen, setListOpen] = useState(false);
   /** The highlighted option; null = the default (the first match, or none when nothing matches). */
@@ -180,12 +187,16 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
   /** The master list's description for each gear item, by name key (Patrick, 2026-10-06): a muted line under the item. */
   const gearNotes = gearDescriptions(gearList);
 
-  const toggle = (id: string) =>
+  const toggle = (id: string) => {
+    // A closed list forgets what a warning asked it to open, so reopening it later starts plain.
+    if (openIds.has(id)) setIntent((cur) => (cur?.rid === id ? null : cur));
     setOpenIds((cur) => {
       const next = new Set(cur);
       if (!next.delete(id)) next.add(id);
       return next;
     });
+  };
+  const openList = (id: string) => setOpenIds((cur) => new Set(cur).add(id));
 
   const clearSearch = () => {
     setQuery('');
@@ -394,6 +405,8 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
   };
 
   /* ---- This menu's version of a recipe ---- */
+  /** The diets with people on this meal, clamped like the engine does. */
+  const mealDiets = effectiveRestrictions(plan);
   const rowsFor = (rid: string) => {
     const recipe = byId.get(rid);
     return recipe ? menuEditRows(recipe, edits[rid] ?? [], catalog, plan, view) : [];
@@ -406,16 +419,36 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
   function onIngredientAction(rid: string, a: RowAction) {
     const ops = edits[rid] ?? [];
     if (a.type === 'add') {
-      setOps(rid, opsWithAdded(ops, a.ingredientId, 1));
+      setOps(rid, opsWithAdded(ops, a.ingredientId, 1, a.scope));
       return;
     }
     const e = rowsFor(rid).find((r) => r.key === a.key)?.edit;
     if (!e) return;
+    // A scope on the action is the diet the scout picked; without one, a diet row works on its own diet's op.
+    const scope = a.type === 'amount' ? undefined : (a.scope ?? e.scope);
     if (a.type === 'amount') setOps(rid, opsWithAmount(ops, e, a.qtyPerPerson));
-    else if (a.type === 'swap') setOps(rid, opsWithSwap(ops, e, a.to, defaultSwapQty(e, a.to, catalog)));
-    else if (a.type === 'leave_out') setOps(rid, opsWithLeaveOut(ops, e));
-    else if (a.type === 'remove') setOps(rid, opsWithoutAdded(ops, e.ingredientId));
-    else setOps(rid, opsWithoutOp(ops, e)); // put_back, reset
+    else if (a.type === 'swap') setOps(rid, opsWithSwap(ops, e, a.to, defaultSwapQty(e, a.to, catalog), scope));
+    else if (a.type === 'leave_out') setOps(rid, opsWithLeaveOut(ops, e, scope));
+    else if (a.type === 'remove') setOps(rid, opsWithoutAdded(ops, e.ingredientId, e.scope));
+    else setOps(rid, opsWithoutOp(ops, e, scope)); // put_back, reset
+  }
+
+  /** The warning's answers. The list opens under its recipe; a leave-out is applied at once and can be undone. */
+  function askSwap(rid: string, ingredientId: string, scope: RestrictionKey) {
+    openList(rid);
+    setIntent((cur) => ({ kind: 'swap', ingredientId, scope, rid, n: (cur?.n ?? 0) + 1 }));
+  }
+  function askAdd(rid: string, scope: RestrictionKey) {
+    openList(rid);
+    setIntent((cur) => ({ kind: 'add', scope, rid, n: (cur?.n ?? 0) + 1 }));
+  }
+  function leaveOutFor(rid: string, ingredientId: string, scope: RestrictionKey, name: string) {
+    const e = rowsFor(rid).find((r) => r.edit?.kind === 'base' && !r.edit.scope && r.edit.currentIngredientId === ingredientId)?.edit;
+    if (!e) return;
+    const before = undoPoint();
+    setOps(rid, opsWithLeaveOut(edits[rid] ?? [], e, scope));
+    openList(rid);
+    setStatus({ text: `${name} left out for ${RESTRICTION_BY_KEY[scope].label.toLowerCase()} scouts.`, undoTo: before });
   }
 
   function backToTroop(rid: string) {
@@ -507,13 +540,39 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
               <div className={s.cost}>{money(costOf(id))}</div>
               {warnings
                 .filter((w) => w.recipe.id === id)
-                .map((w) => (
-                  <Notice key={w.restriction.key} tone="warning" className={s.mealWarn}>
-                    <span aria-hidden="true">⚠ </span>
-                    {w.count === 1 ? '1 person is' : `${w.count} people are`} {w.restriction.label.toLowerCase()} and this{' '}
-                    {w.kind === 'unsuitable' ? 'isn’t for them' : `has ${w.ingredients.join(', ').toLowerCase()}`}. Plan something else for them.
-                  </Notice>
-                ))}
+                .map((w) => {
+                  const diet = w.restriction.label.toLowerCase();
+                  return (
+                    <Notice key={w.restriction.key} tone="warning" className={s.mealWarn}>
+                      <span aria-hidden="true">⚠ </span>
+                      {w.count === 1 ? '1 person is' : `${w.count} people are`} {diet} and this{' '}
+                      {w.kind === 'unsuitable' ? 'isn’t for them' : `has ${w.ingredients.join(', ').toLowerCase()}`}. Plan something else for them.
+                      {!readOnly && (
+                        <span className={s.warnActions}>
+                          {w.kind === 'unsuitable' ? (
+                            <button type="button" className={s.linkBtn} onClick={() => askAdd(id, w.restriction.key)}>
+                              Add something for {diet} scouts…
+                            </button>
+                          ) : (
+                            w.ingredientIds.map((ingId, k) => {
+                              const ing = (w.ingredients[k] ?? ingId).toLowerCase();
+                              return (
+                                <span key={ingId} className={s.warnPair}>
+                                  <button type="button" className={s.linkBtn} onClick={() => askSwap(id, ingId, w.restriction.key)}>
+                                    Swap {ing} for {diet} scouts…
+                                  </button>
+                                  <button type="button" className={s.linkBtn} onClick={() => leaveOutFor(id, ingId, w.restriction.key, w.ingredients[k] ?? ingId)}>
+                                    Leave {ing} out for {diet} scouts
+                                  </button>
+                                </span>
+                              );
+                            })
+                          )}
+                        </span>
+                      )}
+                    </Notice>
+                  );
+                })}
               {!readOnly && (
                 <RowMenu
                   label={`More for ${name}`}
@@ -544,7 +603,10 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
                   ) : (
                     <>
                       <IngredientList
+                        key={intent?.rid === id ? intent.n : 0}
                         mode="menu-edit"
+                        restrictions={mealDiets}
+                        initialIntent={intent?.rid === id ? intent : undefined}
                         dense
                         ariaLabel={`${name} ingredients`}
                         rows={rowsFor(id)}
