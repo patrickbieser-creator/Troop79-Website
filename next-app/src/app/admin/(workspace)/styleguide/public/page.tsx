@@ -483,18 +483,18 @@ export default function PublicStyleguidePage() {
           {/* Menu Monster planner flow (2026-10-06): the step strip and the summary rail, as the scout planner draws them. */}
           <div className={sg.specimenBlock}>
             <StepStrip
-              config={{ plan: '#', gear: '#', shopping: '#', bought: '#', share: { label: 'Share', href: '#' } }}
+              config={{ people: '#', plan: '#', gear: '#', shopping: '#', bought: '#', share: { label: 'Share', href: '#' } }}
               done={{ eating: true, meals: false, gear: true, shopping: false }}
-              current={['eating', 'meals']}
+              current="eating"
             />
             <p className={sg.specimenInlineNote}>
               <code>StepStrip</code> from <code>menu-monster/menus/_components/step-strip</code> &mdash; Who&rsquo;s eating &rarr; Meals &rarr; Gear &rarr;
-              Shopping (What we bought joins after the outing). Each step is a link to its route, done ones ticked, the current one underlined, none ever
+              Shopping, each its own screen (What we bought joins after the outing). Each step is a link to its route, done ones ticked, the current one underlined, none ever
               locked; the strip scrolls sideways on a phone. Share is a quiet action at the end, not a step.
             </p>
           </div>
           <div className={sg.specimenBlock}>
-            <SummaryRail progress={SPECIMEN_PROGRESS} hrefs={{ plan: '#', gear: '#', shopping: '#' }} unsaved>
+            <SummaryRail progress={SPECIMEN_PROGRESS} hrefs={{ people: '#', plan: '#', gear: '#', shopping: '#' }} unsaved>
               <Button variant="primary">Save changes</Button>
             </SummaryRail>
             <p className={sg.specimenInlineNote}>

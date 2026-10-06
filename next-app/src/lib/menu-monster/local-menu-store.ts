@@ -10,6 +10,7 @@ import type { MenuStore } from './menu-store';
 import { readLocalMenu, writeLocalMenu } from './local-menu';
 
 export const LOCAL_MENU_HREFS = {
+  people: '/library/menu-monster/menus/local/people',
   plan: '/library/menu-monster/menus/local',
   shopping: '/library/menu-monster/menus/local/shopping',
   /** A meal opens inline on the Plan tab (2026-10-03); the old meal page redirects here. */

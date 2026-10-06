@@ -96,7 +96,8 @@ describe('Recipe builder', () => {
     expect([status('Toast'), status('Pancakes')]).toEqual(['Needs fixes', 'Published']);
   });
 
-  it('Leader_CannotPublish_WhileRecipeHasBlockingIssue', async () => {
+  // Many typed steps: under full-suite load it overran the 8 s default (2026-10-06), so it gets the long budget.
+  it('Leader_CannotPublish_WhileRecipeHasBlockingIssue', { timeout: 20000 }, async () => {
     const user = userEvent.setup();
     render(<RecipeScreen catalog={CATALOG} recipeId="toast" />);
     const editor = screen.getByRole('region', { name: 'Edit Toast' });

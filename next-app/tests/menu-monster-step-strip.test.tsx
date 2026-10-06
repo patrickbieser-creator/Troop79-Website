@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import { StepStrip, type StepStripConfig } from '../src/app/(public)/library/menu-monster/menus/_components/step-strip';
 
-const CONFIG: StepStripConfig = { plan: '/m/1', gear: '/m/1/gear', shopping: '/m/1/shopping' };
+const CONFIG: StepStripConfig = { people: '/m/1/people', plan: '/m/1', gear: '/m/1/gear', shopping: '/m/1/shopping' };
 const links = () => within(screen.getByRole('navigation', { name: 'Menu steps' })).getAllByRole('link');
 
 describe('StepStrip', () => {
@@ -11,9 +11,9 @@ describe('StepStrip', () => {
     expect(links().map((a) => a.textContent)).toEqual(['Who’s eating', 'Meals', 'Gear', 'Shopping']);
   });
 
-  it('Steps_AreEachALinkToTheirRoute_MealsScrollsToItsSection', () => {
+  it('Steps_AreEachALinkToTheirRoute_WhosEatingAndMealsAreTwoRoutes', () => {
     render(<StepStrip config={CONFIG} current="eating" />);
-    expect(links().map((a) => a.getAttribute('href'))).toEqual(['/m/1', '/m/1#meals', '/m/1/gear', '/m/1/shopping']);
+    expect(links().map((a) => a.getAttribute('href'))).toEqual(['/m/1/people', '/m/1', '/m/1/gear', '/m/1/shopping']);
   });
 
   it('StepStrip_ShowsDoneTicks_NeverLocks', () => {
@@ -32,9 +32,14 @@ describe('StepStrip', () => {
     expect(links().filter((a) => a.getAttribute('aria-current') === 'step').map((a) => a.textContent)).toEqual(['Gear']);
   });
 
-  it('Current_CanBeTwoSteps_WhenTheyShareAPage', () => {
-    render(<StepStrip config={CONFIG} current={['eating', 'meals']} />);
-    expect(links().filter((a) => a.getAttribute('aria-current') === 'step').map((a) => a.textContent)).toEqual(['Who’s eating', 'Meals']);
+  it('Current_IsOneStep_WhosEatingAndMealsAreNoLongerOnePage', () => {
+    render(<StepStrip config={CONFIG} current="eating" />);
+    expect(links().filter((a) => a.getAttribute('aria-current') === 'step').map((a) => a.textContent)).toEqual(['Who’s eating']);
+  });
+
+  it('NoStepRoute_UsesAHashAnchor', () => {
+    render(<StepStrip config={CONFIG} current="meals" />);
+    expect(links().some((a) => (a.getAttribute('href') ?? '').includes('#'))).toBe(false);
   });
 
   it('WhatWeBought_AppearsAsAFifthStep_OnlyWhenGivenARoute', () => {

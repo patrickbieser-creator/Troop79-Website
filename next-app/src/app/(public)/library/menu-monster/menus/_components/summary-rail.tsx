@@ -19,7 +19,9 @@ import { priceText as money } from '@/lib/menu-monster/units';
 import s from './summary-rail.module.css';
 
 export interface RailHrefs {
-  /** The plan route. */
+  /** The Who's eating route. Null where there is no such page yet (a menu not saved: you are on it). Absent = the plan route. */
+  people?: string | null;
+  /** The plan route (the Meals step). */
   plan: string;
   /** Null where there is no such page to link to (a menu not saved yet): the row is plain text. */
   gear: string | null;
@@ -30,9 +32,9 @@ export interface RailHrefs {
 export function fixHref(t: FixTarget, h: RailHrefs): string | null {
   switch (t.step) {
     case 'eating':
-      return h.plan;
+      return h.people === undefined ? h.plan : h.people;
     case 'meals':
-      return t.mealId ? `${h.plan}#meal-${t.mealId}` : `${h.plan}#meals`;
+      return t.mealId ? `${h.plan}#meal-${t.mealId}` : h.plan;
     case 'gear':
       return h.gear;
     case 'shopping':

@@ -21,7 +21,7 @@ const menu = (meals: MenuMeal[], over: Partial<Menu> = {}): Menu => ({
   ...over
 });
 
-const HREFS: RailHrefs = { plan: '/m/1', gear: '/m/1/gear', shopping: '/m/1/shopping' };
+const HREFS: RailHrefs = { people: '/m/1/people', plan: '/m/1', gear: '/m/1/gear', shopping: '/m/1/shopping' };
 // One empty meal (b) and one unpriced food (orange juice, B023 in the fixture).
 const m = menu([meal('a', { recipeIds: ['B003', 'B023'] }), meal('b', { slot: 'lunch', recipeIds: [] })]);
 const progress = () => planProgress(m, CATALOG);
@@ -86,6 +86,19 @@ describe('SummaryRail', () => {
     expect(within(dialog).getByRole('link', { name: /^1 not priced/ }).getAttribute('href')).toBe(`/m/1/shopping?item=${ing}`);
   });
 
+  it('WhosEatingFixes_LinkToThePeopleStep_NotTheMealsPage', () => {
+    render(<SummaryRail progress={planProgress(menu([meal('a')], { name: ' ', headcount: 0 }), CATALOG)} hrefs={HREFS} />);
+    open();
+    const dialog = screen.getByRole('dialog');
+    expect([within(dialog).getByRole('link', { name: /^Name the menu/ }).getAttribute('href'), within(dialog).getByRole('link', { name: /^Set how many are eating/ }).getAttribute('href')]).toEqual(['/m/1/people', '/m/1/people']);
+  });
+
+  it('AddAMealFix_LinksToTheMealsRoute_WithNoHashAnchor', () => {
+    render(<SummaryRail progress={planProgress(menu([]), CATALOG)} hrefs={HREFS} />);
+    open();
+    expect(within(screen.getByRole('dialog')).getByRole('link', { name: /^Add a meal/ }).getAttribute('href')).toBe('/m/1');
+  });
+
   it('Sheet_SaysNothingToFix_WhenThereIsNone', () => {
     render(<SummaryRail progress={planProgress(menu([meal('a')]), CATALOG)} hrefs={HREFS} />);
     open();
@@ -93,7 +106,7 @@ describe('SummaryRail', () => {
   });
 
   it('Sheet_RowsAreText_WhereThereIsNoPageToLinkTo', () => {
-    render(<SummaryRail progress={progress()} hrefs={{ plan: '', gear: null, shopping: null }} />);
+    render(<SummaryRail progress={progress()} hrefs={{ people: null, plan: '', gear: null, shopping: null }} />);
     open();
     const dialog = screen.getByRole('dialog');
     expect(within(dialog).getByRole('link', { name: /^1 meal empty/ }).getAttribute('href')).toBe('#meal-b');
@@ -109,8 +122,9 @@ describe('SummaryRail', () => {
   });
 
   it('FixHref_PointsEachStepAtItsRoute', () => {
-    expect(fixHref({ step: 'eating' }, HREFS)).toBe('/m/1');
-    expect(fixHref({ step: 'meals' }, HREFS)).toBe('/m/1#meals');
+    expect(fixHref({ step: 'eating' }, HREFS)).toBe('/m/1/people');
+    expect(fixHref({ step: 'meals' }, HREFS)).toBe('/m/1');
+    expect(fixHref({ step: 'meals', mealId: 'b' }, HREFS)).toBe('/m/1#meal-b');
     expect(fixHref({ step: 'gear' }, HREFS)).toBe('/m/1/gear');
     expect(fixHref({ step: 'shopping' }, HREFS)).toBe('/m/1/shopping');
   });

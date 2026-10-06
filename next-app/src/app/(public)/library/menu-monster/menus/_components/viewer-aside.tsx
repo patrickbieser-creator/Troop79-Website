@@ -15,7 +15,7 @@ import { ReadOnlyLine } from './read-only-line';
 import type { ViewableMenu } from './scout-menus';
 import s from './workspace.module.css';
 
-export function ViewerAside({ view, page }: { view: ViewableMenu; page: 'plan' | 'shopping' | 'meal' | 'gear' | 'bought' | 'conversions' }) {
+export function ViewerAside({ view, page }: { view: ViewableMenu; page: 'people' | 'plan' | 'shopping' | 'meal' | 'gear' | 'bought' | 'conversions' }) {
   const { readOnly, plannedBy, hiddenRecipes, canCopy, stored } = view;
   const review = page === 'plan' ? stored.review : null;
   return (
@@ -23,7 +23,7 @@ export function ViewerAside({ view, page }: { view: ViewableMenu; page: 'plan' |
       {/* A leader fixing someone's menu: whose it is, and that their changes save. */}
       {view.helping && <p className={s.foot}>{plannedBy ? `Planned by ${plannedBy} · You’re editing it as a leader` : 'You’re editing it as a leader'}</p>}
       {/* The owner, after a leader's save: told once, until their own next save. */}
-      {view.leaderEditBy && stored.leaderEdit && (page === 'plan' || page === 'shopping') && (
+      {view.leaderEditBy && stored.leaderEdit && (page === 'people' || page === 'plan' || page === 'shopping') && (
         <Notice tone="info" className={s.notice}>
           {view.leaderEditBy} changed this menu on {fmtDate(stored.leaderEdit.at)}.
         </Notice>

@@ -1,5 +1,5 @@
 /**
- * /library/menu-monster/menus/[menuId] — the Plan tab. The owner scout edits; a
+ * /library/menu-monster/menus/[menuId] — the Meals step (Who's eating is /people, its own screen). The owner scout edits; a
  * leader (admin viewer) reads any menu read-only; anyone else (or a missing
  * menu) gets notFound(). Phase 3 adds parents and shared viewers.
  */
@@ -9,7 +9,6 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { centralToday } from '@/lib/dates';
 import { resolveMenuAliases } from '@/lib/menu-monster/menus';
 import { listGearWith } from '@/lib/menu-monster/gear-store';
-import { loadOutingsWith, loadPatrolNamesWith } from '@/lib/menu-monster/menus-data';
 import { PageShell } from '@/app/_components/page-shell';
 import { PlanTab } from '../_components/plan-tab';
 import { ViewerAside } from '../_components/viewer-aside';
@@ -24,13 +23,8 @@ export default async function MenuPlanPage({ params, searchParams }: { params: P
   const view = await loadViewableMenu(menuId, await menuViewer());
   if (!view) notFound();
   const { stored, readOnly, plannedBy, catalog } = view;
-  const linked = stored.menu.calendarEntryId != null ? [stored.menu.calendarEntryId] : [];
-  const [outings, patrols, gearList] = await Promise.all([
-    loadOutingsWith(createAdminClient(), centralToday(), linked),
-    readOnly ? Promise.resolve([]) : loadPatrolNamesWith(createAdminClient()),
-    // The meal panels' "More gear for this meal" picks from the troop's list; a read-only view has no picker.
-    readOnly ? Promise.resolve(undefined) : listGearWith(createAdminClient())
-  ]);
+  // The meal panels' "More gear for this meal" picks from the troop's list; a read-only view has no picker.
+  const gearList = readOnly ? undefined : await listGearWith(createAdminClient());
   return (
     <>
       <MenuHeader current="plan" {...listCrumb(view.access)} />
@@ -41,8 +35,7 @@ export default async function MenuPlanPage({ params, searchParams }: { params: P
           menuId={stored.id}
           menu={resolveMenuAliases(stored.menu, catalog.aliases)}
           updatedAt={stored.updatedAt}
-          outings={outings}
-          patrols={patrols}
+          outings={[]}
           gearList={gearList}
           readOnly={readOnly}
           helper={view.helping}

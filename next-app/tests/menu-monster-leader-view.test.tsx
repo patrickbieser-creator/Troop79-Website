@@ -26,6 +26,7 @@ vi.mock('../src/app/(public)/library/_tools/menu-monster/menu-actions', () => ({
 }));
 
 import { PlanTab } from '../src/app/(public)/library/menu-monster/menus/_components/plan-tab';
+import { PeopleTab } from '../src/app/(public)/library/menu-monster/menus/_components/people-tab';
 import { ShoppingTab } from '../src/app/(public)/library/menu-monster/menus/_components/shopping-tab';
 
 const OUTINGS: Outing[] = [{ id: 7, title: 'Fall Camporee', startDate: '2026-10-09', endDate: '2026-10-11', category: 'Campout / Overnight' }];
@@ -51,6 +52,7 @@ const menu = (over: Partial<Menu> = {}): Menu => ({
 
 const plan = () => <PlanTab catalog={CATALOG} menuId="menu-1" menu={menu()} updatedAt={VERSION} outings={OUTINGS} readOnly plannedBy="Sam K." />;
 /** A meal open inline on the read-only Plan tab (meals inline, 2026-10-03). */
+const people = () => <PeopleTab catalog={CATALOG} menuId="menu-1" menu={menu()} updatedAt={VERSION} outings={OUTINGS} readOnly plannedBy="Sam K." />;
 const meal = (m: Menu = menu()) => <PlanTab catalog={CATALOG} menuId="menu-1" menu={m} updatedAt={VERSION} outings={OUTINGS} readOnly plannedBy="Sam K." openMeal="m1" />;
 const shopping = () => (
   <ShoppingTab catalog={CATALOG} menuId="menu-1" menu={menu()} updatedAt={VERSION} snapshot={buildSnapshot(menu(), CATALOG)} readOnly plannedBy="Sam K." />
@@ -80,14 +82,19 @@ describe('Plan tab, read-only', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Camporee food' })).toBeTruthy();
   });
 
-  it('Leader_SeesPeopleAndDietsAsText_OnThePlanTab', () => {
-    render(plan());
+  it('Leader_SeesPeopleAndDietsAsText_OnTheWhosEatingStep', () => {
+    render(people());
     expect(screen.getByText(/People: 8 · Gluten-free: 1/)).toBeTruthy();
   });
 
-  it('Leader_SeesContextAndOutingAsText_OnThePlanTab', () => {
-    render(plan());
+  it('Leader_SeesContextAndOutingAsText_OnTheWhosEatingStep', () => {
+    render(people());
     expect(screen.getByText('Camp · Fall Camporee')).toBeTruthy();
+  });
+
+  it('Leader_SeesNoWhosEatingValues_OnTheMealsStep', () => {
+    render(plan());
+    expect(screen.queryByText(/People: 8/)).toBeNull();
   });
 
   it('Leader_OpensAMeal_Inline_FromItsName', async () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CATALOG } from './helpers/menu-monster-fixture';
 import { LOCAL_MENU_KEY } from '../src/lib/menu-monster/local-menu';
@@ -31,15 +31,8 @@ const MENU = sanitizeMenu(
 const MEAL_ID = MENU.meals[0].id;
 const put = (m: unknown = MENU) => window.localStorage.setItem(LOCAL_MENU_KEY, JSON.stringify(m));
 const stored = () => JSON.parse(window.localStorage.getItem(LOCAL_MENU_KEY) ?? 'null');
-/** A stored menu's basics are one summary line with Edit (2026-10-06): open it to reach the name; a blank menu's form is already open. */
-const nameBox = async () => {
-  await waitFor(() => {
-    if (!screen.queryByLabelText('Menu name') && !screen.queryByRole('button', { name: 'Edit menu basics' })) throw new Error('plan not ready');
-  });
-  const edit = screen.queryByRole('button', { name: 'Edit menu basics' });
-  if (edit) await userEvent.click(edit);
-  return (await screen.findByLabelText('Menu name')) as HTMLInputElement;
-};
+/** Who's eating is its own screen (2026-10-06): the name box is on the people page, always open. */
+const nameBox = async () => (await screen.findByLabelText('Menu name')) as HTMLInputElement;
 
 beforeEach(() => {
   window.localStorage.clear();
@@ -50,23 +43,38 @@ afterEach(() => vi.restoreAllMocks());
 
 describe('LocalPlan', () => {
   it('Visitor_SeesABlankPlanTab_WhenNothingIsStored', async () => {
-    render(<LocalPlan catalog={CATALOG} outings={[]} />);
+    render(<LocalPlan catalog={CATALOG} outings={[]} page="people" />);
     expect((await nameBox()).value).toBe('');
     expect(screen.getByRole('button', { name: 'Save on this computer' })).toBeTruthy();
   });
 
-  it('Visitor_SeesTheirStoredMenu_OnThePlanTab', async () => {
+  it('Visitor_SeesTheirStoredMenu_OnTheMealsStep', async () => {
     put();
     render(<LocalPlan catalog={CATALOG} outings={[]} />);
-    expect((await nameBox()).value).toBe('Fall Camporee');
     // Planner part b: a clean menu's primary is Next (no Gear page on this computer, so Shopping), not a greyed "Saved".
-    expect(screen.getByRole('link', { name: 'Next: Shopping ›' })).toBeTruthy();
+    expect(await screen.findByRole('link', { name: 'Next: Shopping ›' })).toBeTruthy();
     // Meals open inline (2026-10-03): the meal name is a disclosure, not a link.
     expect(screen.getByRole('button', { name: /^Breakfast/ }).getAttribute('aria-expanded')).toBe('false');
+    // Who's eating is its own screen: no form on the meals step.
+    expect(screen.queryByLabelText('Menu name')).toBeNull();
+  });
+
+  it('Visitor_SeesTheirStoredMenu_OnTheWhosEatingStep_WithNextMeals', async () => {
+    put();
+    render(<LocalPlan catalog={CATALOG} outings={[]} page="people" />);
+    expect((await nameBox()).value).toBe('Fall Camporee');
+    expect(screen.getByRole('link', { name: 'Next: Meals ›' }).getAttribute('href')).toBe('/library/menu-monster/menus/local');
+    expect(screen.queryByRole('button', { name: /^Breakfast/ })).toBeNull();
+  });
+
+  it('Visitor_WithNothingStored_StartsOnWhosEating_EvenOnTheMealsRoute', async () => {
+    render(<LocalPlan catalog={CATALOG} outings={[]} />);
+    expect((await nameBox()).value).toBe('');
+    expect(screen.queryByRole('button', { name: 'Add a day' })).toBeNull();
   });
 
   it('Visitor_SavesOnThisComputer_WithoutCallingAServerAction', async () => {
-    render(<LocalPlan catalog={CATALOG} outings={[]} />);
+    render(<LocalPlan catalog={CATALOG} outings={[]} page="people" />);
     const user = userEvent.setup();
     await user.type(await nameBox(), 'Winter Camp');
     await user.click(screen.getByRole('button', { name: 'Save on this computer' }));
@@ -77,23 +85,22 @@ describe('LocalPlan', () => {
   });
 
   it('Visitor_StaysOnThePage_AfterTheFirstSave', async () => {
-    render(<LocalPlan catalog={CATALOG} outings={[]} />);
+    render(<LocalPlan catalog={CATALOG} outings={[]} page="people" />);
     const user = userEvent.setup();
     await user.type(await nameBox(), 'Winter Camp');
     await user.click(screen.getByRole('button', { name: 'Save on this computer' }));
-    expect(await screen.findByRole('link', { name: 'Next: Shopping ›' })).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Open the shopping list' }).getAttribute('href')).toBe('/library/menu-monster/menus/local/shopping');
+    expect(await screen.findByRole('link', { name: 'Next: Meals ›' })).toBeTruthy();
   });
 
   it('Visitor_MustNameTheMenu_BeforeTheFirstSave', async () => {
-    render(<LocalPlan catalog={CATALOG} outings={[]} />);
+    render(<LocalPlan catalog={CATALOG} outings={[]} page="people" />);
     await nameBox();
     await userEvent.setup().click(screen.getByRole('button', { name: 'Save on this computer' }));
     expect(stored()).toBeNull();
   });
 
   it('Visitor_IsToldWhySaveFailed_WhenStorageIsBlocked', async () => {
-    render(<LocalPlan catalog={CATALOG} outings={[]} />);
+    render(<LocalPlan catalog={CATALOG} outings={[]} page="people" />);
     const user = userEvent.setup();
     await user.type(await nameBox(), 'Winter Camp');
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
@@ -108,16 +115,15 @@ describe('LocalPlan', () => {
     put();
     render(<LocalPlan catalog={CATALOG} outings={[]} />);
     const user = userEvent.setup();
-    const box = await nameBox();
-    await user.type(box, '!');
+    await user.click(await screen.findByRole('button', { name: 'Add a day' }));
     await user.click(screen.getByRole('button', { name: /^Breakfast/ }));
     expect(screen.getByRole('list', { name: /^Recipes in/ })).toBeTruthy();
-    expect((await nameBox()).value).toBe('Fall Camporee!');
+    expect(screen.getAllByRole('heading', { level: 3 })).toHaveLength(2);
   });
 
   it('Visitor_SeesTheOtherTabsMenu_WhenAnotherTabSaves', async () => {
     put();
-    render(<LocalPlan catalog={CATALOG} outings={[]} />);
+    render(<LocalPlan catalog={CATALOG} outings={[]} page="people" />);
     expect((await nameBox()).value).toBe('Fall Camporee');
     put({ ...MENU, name: 'Changed elsewhere' });
     await act(async () => {
@@ -128,7 +134,7 @@ describe('LocalPlan', () => {
 
   it('Visitor_LastWriteWins_WhenBothTabsSave', async () => {
     put();
-    render(<LocalPlan catalog={CATALOG} outings={[]} />);
+    render(<LocalPlan catalog={CATALOG} outings={[]} page="people" />);
     const user = userEvent.setup();
     await user.type(await nameBox(), ' (mine)');
     put({ ...MENU, name: 'Other tab' });
@@ -138,13 +144,13 @@ describe('LocalPlan', () => {
 
   it('Visitor_IsTold_WhenACatalogChangeDroppedARecipe', async () => {
     put({ ...MENU, meals: [{ ...MENU.meals[0], recipeIds: ['B003', 'GONE'] }] });
-    render(<LocalPlan catalog={CATALOG} outings={[]} />);
+    render(<LocalPlan catalog={CATALOG} outings={[]} page="people" />);
     expect(await screen.findByText(/1 recipe on this menu is no longer in the library, so it was left out/)).toBeTruthy();
   });
 
   it('Visitor_SeesNoNotice_WhenNothingWasDropped', async () => {
     put();
-    render(<LocalPlan catalog={CATALOG} outings={[]} />);
+    render(<LocalPlan catalog={CATALOG} outings={[]} page="people" />);
     await nameBox();
     expect(screen.queryByText(/no longer in the library/)).toBeNull();
   });
@@ -152,21 +158,22 @@ describe('LocalPlan', () => {
   it('Visitor_SeesTheTitleAsAnH2_OnTheHub', async () => {
     put();
     render(<LocalPlan catalog={CATALOG} outings={[]} hub />);
-    await nameBox();
-    expect(screen.getByRole('heading', { level: 2, name: 'Fall Camporee' })).toBeTruthy();
-    expect(screen.queryByRole('tablist', { name: 'Menu sections' })).toBeNull();
+    expect(await screen.findByRole('heading', { level: 2, name: 'Fall Camporee' })).toBeTruthy();
+    // The hub has no page of its own, but a stored menu's two steps are two pages: the tabs are the way to the other one.
+    expect(screen.getByRole('tab', { name: 'Who’s eating' }).getAttribute('href')).toBe('/library/menu-monster/menus/local/people');
   });
 
   it('Visitor_SeesTheTabStrip_OnTheLocalPlanPage', async () => {
     put();
-    render(<LocalPlan catalog={CATALOG} outings={[]} />);
+    render(<LocalPlan catalog={CATALOG} outings={[]} page="people" />);
     await nameBox();
     expect(screen.getByRole('heading', { level: 1, name: 'Fall Camporee' })).toBeTruthy();
-    expect(screen.getByRole('tablist', { name: 'Menu sections' })).toBeTruthy();
+    const tabs = within(screen.getByRole('tablist', { name: 'Menu sections' })).getAllByRole('tab');
+    expect(tabs.map((t) => t.textContent)).toEqual(['Who’s eating', 'Meals', 'Shopping']);
   });
 
   it('Visitor_RendersNothing_BeforeTheShellHasMounted', () => {
-    const { container } = render(<LocalPlan catalog={CATALOG} outings={[]} />);
+    const { container } = render(<LocalPlan catalog={CATALOG} outings={[]} page="people" />);
     // First paint (before the mount effect flushes) is empty; React Testing Library flushes effects, so assert the end state exists too.
     expect(container).toBeTruthy();
   });

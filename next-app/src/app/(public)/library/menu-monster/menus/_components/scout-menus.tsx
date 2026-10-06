@@ -255,10 +255,11 @@ export function listCrumb(access: MenuAccess): { listLabel?: string; listHref?: 
 /** Menu pages are per-viewer and carry scouts' names: never indexed (tech-lead review). */
 export const NO_INDEX = { index: false, follow: false } as const;
 
-export type MenuPage = 'plan' | 'shopping' | 'gear' | 'bought' | 'conversions' | 'share';
+export type MenuPage = 'people' | 'plan' | 'shopping' | 'gear' | 'bought' | 'conversions' | 'share';
 
 const CURRENT: Record<MenuPage, StepCurrent[]> = {
-  plan: ['eating', 'meals'],
+  people: ['eating'],
+  plan: ['meals'],
   gear: ['gear'],
   shopping: ['shopping'],
   // Conversions is a quiet link from the Shopping footer: it belongs to that step.
@@ -277,6 +278,7 @@ export function stepConfig(menuId: string, access: MenuAccess, menu: Menu, page:
   const showBought = access !== 'shared' && (page === 'bought' || outingOver(menu, today));
   const shareLabel = access === 'owner' ? 'Share' : access === 'admin' ? 'Review' : null;
   return {
+    people: `${base}/people`,
     plan: base,
     gear: `${base}/gear`,
     shopping: `${base}/shopping`,
@@ -301,9 +303,9 @@ export function MenuSteps({ menuId, active, access = 'owner', menu, catalog }: {
 export function MenuRail({ menuId, active, access = 'owner', menu, catalog }: { menuId: string; active: MenuPage; access?: MenuAccess; menu: Menu; catalog: Catalog }) {
   const base = `${MENUS_HREF}/${menuId}`;
   const share = access === 'owner' ? 'Share' : access === 'admin' ? 'Review' : null;
-  const next = active === 'gear' ? { label: 'Next: Shopping ›', href: `${base}/shopping` } : active === 'shopping' && share ? { label: `Next: ${share} ›`, href: `${base}/share` } : null;
+  const next = active === 'people' ? { label: 'Next: Meals ›', href: base } : active === 'plan' ? { label: 'Next: Gear ›', href: `${base}/gear` } : active === 'gear' ? { label: 'Next: Shopping ›', href: `${base}/shopping` } : active === 'shopping' && share ? { label: `Next: ${share} ›`, href: `${base}/share` } : null;
   return (
-    <SummaryRail progress={planProgress(menu, catalog)} hrefs={{ plan: base, gear: `${base}/gear`, shopping: `${base}/shopping` }}>
+    <SummaryRail progress={planProgress(menu, catalog)} hrefs={{ people: `${base}/people`, plan: base, gear: `${base}/gear`, shopping: `${base}/shopping` }}>
       {next && (
         <Button variant="primary" href={next.href}>
           {next.label}

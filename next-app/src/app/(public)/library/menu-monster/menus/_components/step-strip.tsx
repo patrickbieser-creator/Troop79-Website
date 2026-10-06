@@ -2,8 +2,8 @@
  * The planner's step strip (Plans/Menu-Monster-Planner-Flow.md, part b): Who's eating → Meals → Gear →
  * Shopping, with What we bought joining once the outing is over. Each step is a link to its own route, a
  * done one is ticked, the current one is highlighted — and none is ever locked (a patrol plans out of order;
- * a locked step is a stalled patrol). Who's eating and Meals live on one page, so both point at the plan route
- * and Meals scrolls to its section with #meals. Share is a quiet action at the end, not a step.
+ * a locked step is a stalled patrol). Who's eating and Meals are two screens, two routes (2026-10-06).
+ * Share is a quiet action at the end, not a step.
  *
  * Pure markup on public tokens: it renders for a server page (saved progress) and for the Plan tab (the
  * draft's progress) alike. Canonical rendering: /admin/styleguide/public.
@@ -16,7 +16,9 @@ import s from './step-strip.module.css';
 export type StepCurrent = StepKey | 'bought' | 'share';
 
 export interface StepStripConfig {
-  /** The plan route (Who's eating and Meals). */
+  /** The Who's eating route. */
+  people: string;
+  /** The plan route: the Meals step. */
   plan: string;
   gear: string;
   shopping: string;
@@ -31,8 +33,8 @@ const LABELS: Record<StepKey, string> = { eating: 'Who’s eating', meals: 'Meal
 export function StepStrip({ config, done = {}, current }: { config: StepStripConfig; done?: Partial<Record<StepKey, boolean>>; current: StepCurrent | StepCurrent[] }) {
   const now = new Set(Array.isArray(current) ? current : [current]);
   const steps: { key: StepCurrent; label: string; href: string }[] = [
-    { key: 'eating', label: LABELS.eating, href: config.plan },
-    { key: 'meals', label: LABELS.meals, href: `${config.plan}#meals` },
+    { key: 'eating', label: LABELS.eating, href: config.people },
+    { key: 'meals', label: LABELS.meals, href: config.plan },
     { key: 'gear', label: LABELS.gear, href: config.gear },
     { key: 'shopping', label: LABELS.shopping, href: config.shopping },
     ...(config.bought ? [{ key: 'bought' as const, label: 'What we bought', href: config.bought }] : [])

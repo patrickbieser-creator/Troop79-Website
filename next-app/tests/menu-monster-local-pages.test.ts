@@ -34,6 +34,7 @@ vi.mock('@/lib/menu-monster/menus-data', () => ({ loadOutingsWith: async () => [
 vi.mock('../src/app/(public)/library/_tools/menu-monster/menu-actions', () => actions);
 
 import LocalPlanPage from '../src/app/(public)/library/menu-monster/menus/local/page';
+import LocalPeoplePage from '../src/app/(public)/library/menu-monster/menus/local/people/page';
 import LocalShoppingPage from '../src/app/(public)/library/menu-monster/menus/local/shopping/page';
 import LocalMealPage from '../src/app/(public)/library/menu-monster/menus/local/meals/[mealId]/page';
 import { serverMenuStore } from '../src/app/(public)/library/menu-monster/menus/_components/server-menu-store';
@@ -42,6 +43,7 @@ import { blankMenu } from '../src/lib/menu-monster/menus';
 const HUB = 'NEXT_REDIRECT /library/topic/menu-monster';
 const pages: [string, () => Promise<unknown>][] = [
   ['Plan', () => LocalPlanPage({ searchParams: Promise.resolve({}) })],
+  ["Who's eating", () => LocalPeoplePage()],
   ['Shopping', () => LocalShoppingPage()]
 ];
 
@@ -118,8 +120,14 @@ describe('serverMenuStore', () => {
 
   it('Scout_MovesToTheNewMenusOwnUrl_AfterACreate', () => {
     const store = serverMenuStore(null);
+    // The first save lands on the Meals step (the plan route), not back on Who's eating.
     expect(store.afterCreate('abc')).toBe('/library/menu-monster/menus/abc');
     expect(store.afterCreate('abc', 'm1')).toBe('/library/menu-monster/menus/abc?meal=m1');
+  });
+
+  it('Scout_HasTwoRoutes_WhosEatingAndMeals', () => {
+    const { hrefs } = serverMenuStore('menu-1');
+    expect([hrefs.people, hrefs.plan]).toEqual(['/library/menu-monster/menus/menu-1/people', '/library/menu-monster/menus/menu-1']);
   });
 
   it('Scout_CanSaveAndPayAndReport_OnAServerMenu', () => {

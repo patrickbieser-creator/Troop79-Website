@@ -435,6 +435,8 @@ describe('MealEditor', () => {
     });
   });
 
+  const itemsOf = (list: HTMLElement) => within(list).getAllByRole('listitem').map((li) => li.firstChild?.textContent);
+
   describe('steps and gear', () => {
     const GEARED = {
       ...CATALOG,
@@ -457,7 +459,60 @@ describe('MealEditor', () => {
       await user.click(panel().getByRole('button', { name: /^Bacon/ }));
       await user.click(panel().getByRole('button', { name: 'Steps · Gear (3)' }));
       expect(within(panel().getByRole('list', { name: 'How to make Bacon' })).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Lay the slices in a cold skillet.', 'Turn until crisp.']);
-      expect(panel().getByText('Gear: Camp stove · Skillet · Long tongs')).toBeTruthy();
+      expect(itemsOf(panel().getByRole('list', { name: 'Gear' }))).toEqual(['Camp stove', 'Skillet', 'Long tongs']);
+    });
+
+    it('TheSteps_AreAnOrderedList_UnderAStepsLabel', async () => {
+      const user = userEvent.setup();
+      render(geared());
+      await user.click(panel().getByRole('button', { name: /^Bacon/ }));
+      await user.click(panel().getByRole('button', { name: 'Steps · Gear (3)' }));
+      expect(panel().getByRole('list', { name: 'How to make Bacon' }).tagName).toBe('OL');
+      expect(panel().getByText('Steps', { selector: 'p' })).toBeTruthy();
+    });
+
+    it('TheGear_IsABulletedList_OneItemPerEntry_NeverCommaJoined', async () => {
+      const user = userEvent.setup();
+      render(geared());
+      await user.click(panel().getByRole('button', { name: /^Bacon/ }));
+      await user.click(panel().getByRole('button', { name: 'Steps · Gear (3)' }));
+      const list = panel().getByRole('list', { name: 'Gear' });
+      expect([list.tagName, within(list).getAllByRole('listitem').length]).toEqual(['UL', 3]);
+      expect(panel().queryByText(/Camp stove ·/)).toBeNull();
+    });
+
+    it('AGearEntry_WithACount_ShowsTimesN_AndOneWithout_ShowsNone', async () => {
+      const user = userEvent.setup();
+      const counted = { ...CATALOG, recipes: CATALOG.recipes.map((r) => (r.id === 'B003' ? { ...r, equipment: ['Skillet x2', 'Tongs'] } : r)) };
+      render(<PlanTab catalog={counted} menuId="menu-1" menu={menu()} updatedAt={VERSION} outings={[]} openMeal="m1" />);
+      await user.click(panel().getByRole('button', { name: /^Bacon/ }));
+      await user.click(panel().getByRole('button', { name: 'Gear (2)' }));
+      expect(itemsOf(panel().getByRole('list', { name: 'Gear' }))).toEqual(['Skillet × 2', 'Tongs']);
+    });
+
+    it('AStepsBlock_WithNoGear_AndAGearBlock_WithNoSteps_AreLeftOut', async () => {
+      const user = userEvent.setup();
+      const onlySteps = { ...CATALOG, recipes: CATALOG.recipes.map((r) => (r.id === 'B003' ? { ...r, stepsMd: 'Fry it.' } : r)) };
+      const { unmount } = render(<PlanTab catalog={onlySteps} menuId="menu-1" menu={menu()} updatedAt={VERSION} outings={[]} openMeal="m1" />);
+      await user.click(panel().getByRole('button', { name: /^Bacon/ }));
+      await user.click(panel().getByRole('button', { name: 'Steps' }));
+      expect([panel().queryByRole('list', { name: 'Gear' }), panel().queryByRole('list', { name: 'How to make Bacon' }) != null]).toEqual([null, true]);
+      unmount();
+      const onlyGear = { ...CATALOG, recipes: CATALOG.recipes.map((r) => (r.id === 'B003' ? { ...r, equipment: ['Skillet'] } : r)) };
+      render(<PlanTab catalog={onlyGear} menuId="menu-1" menu={menu()} updatedAt={VERSION} outings={[]} openMeal="m1" />);
+      await user.click(panel().getByRole('button', { name: /^Bacon/ }));
+      await user.click(panel().getByRole('button', { name: 'Gear (1)' }));
+      expect([panel().queryByRole('list', { name: 'How to make Bacon' }), panel().queryByText('Steps', { selector: 'p' })]).toEqual([null, null]);
+    });
+
+    it('AGearItem_ShowsItsMasterListDescription_AsAMutedLine', async () => {
+      const user = userEvent.setup();
+      const list = [{ id: 1, name: 'Skillet', home: 'trailer' as const, perPerson: false, retiredAt: null, description: '12-inch cast iron, in the patrol box' }];
+      render(<PlanTab catalog={GEARED} menuId="menu-1" menu={menu()} updatedAt={VERSION} outings={[]} openMeal="m1" gearList={list} />);
+      await user.click(panel().getByRole('button', { name: /^Bacon/ }));
+      await user.click(panel().getByRole('button', { name: 'Steps · Gear (3)' }));
+      const skillet = within(panel().getByRole('list', { name: 'Gear' })).getAllByRole('listitem')[1];
+      expect(within(skillet).getByText('12-inch cast iron, in the patrol box')).toBeTruthy();
     });
 
     it('AFoodWithNeither_HasNoSuchLine', async () => {
@@ -978,6 +1033,7 @@ describe('MealPanel — More gear for this meal (gear-from-the-list release 2)',
   const plan = (m: Menu, over: Partial<Parameters<typeof PlanTab>[0]> = {}) => (
     <PlanTab catalog={GEARED} menuId="menu-1" menu={m} updatedAt={VERSION} outings={[]} openMeal="m1" gearList={GEAR_LIST} {...over} />
   );
+  const foodItems = () => within(screen.getByRole('list', { name: 'Gear for the foods' })).getAllByRole('listitem').map((li) => li.firstChild?.textContent);
   const gearBox = () => screen.getByRole('combobox', { name: 'More gear for Day 1 breakfast' });
 
   beforeEach(() => {
@@ -987,7 +1043,31 @@ describe('MealPanel — More gear for this meal (gear-from-the-list release 2)',
 
   it('TheBlock_ShowsTheFoodsGear_ReadOnly_AToZ', () => {
     render(plan(withGear()));
-    expect(screen.getByText('Gear for the foods: Skillet × 2 · Tongs')).toBeTruthy();
+    expect(foodItems()).toEqual(['Skillet × 2', 'Tongs']);
+  });
+
+  it('TheFoodsGear_IsABulletedList_NotOneJoinedLine', () => {
+    render(plan(withGear()));
+    expect([screen.getByRole('list', { name: 'Gear for the foods' }).tagName, screen.queryByText(/Skillet × 2 ·/)]).toEqual(['UL', null]);
+  });
+
+  it('TheFoodsGear_ShowsTheMostAnyOneFoodAsks_OncePerItem_AToZ', () => {
+    const two = { ...CATALOG, recipes: CATALOG.recipes.map((r) => (r.id === 'B003' ? { ...r, equipment: ['Skillet', 'Tongs'] } : r.id === 'B014' ? { ...r, equipment: ['skillet × 3'] } : r)) };
+    const base = withGear();
+    render(plan({ ...base, meals: base.meals.map((m) => (m.id === 'm1' ? { ...m, recipeIds: ['B003', 'B014'] } : m)) }, { catalog: two }));
+    expect(foodItems()).toEqual(['Skillet × 3', 'Tongs']);
+  });
+
+  it('AFoodsGearItem_ShowsItsDescription_UnderIt_WhenTheMasterListHasOne', () => {
+    const described = GEAR_LIST.map((g) => (g.name === 'Skillet' ? { ...g, description: 'Cast iron, 12 inch' } : g));
+    render(plan(withGear(), { gearList: described }));
+    const [skillet, tongs] = within(screen.getByRole('list', { name: 'Gear for the foods' })).getAllByRole('listitem');
+    expect([within(skillet).queryByText('Cast iron, 12 inch') != null, within(tongs).queryByText('Cast iron, 12 inch')]).toEqual([true, null]);
+  });
+
+  it('AGearItem_WithNoDescription_ShowsOnlyItsName', () => {
+    render(plan(withGear()));
+    expect(within(screen.getByRole('list', { name: 'Gear for the foods' })).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Skillet × 2', 'Tongs']);
   });
 
   it('AFoodlessMeal_StillOffersTheMealGearPicker', () => {
@@ -1055,9 +1135,9 @@ describe('MealPanel — More gear for this meal (gear-from-the-list release 2)',
 
   it('AReadOnlyViewer_SeesTheMealGear_WithNoPicker', () => {
     render(plan(withGear(['Dish soap', 'Wash basin × 2']), { readOnly: true }));
-    expect(screen.getByText('More gear for this meal: Dish soap · Wash basin × 2')).toBeTruthy();
+    expect(within(screen.getByRole('list', { name: 'More gear for this meal' })).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Dish soap', 'Wash basin × 2']);
     expect(screen.queryByRole('combobox', { name: /More gear/ })).toBeNull();
-    expect(screen.getByText('Gear for the foods: Skillet × 2 · Tongs')).toBeTruthy();
+    expect(foodItems()).toEqual(['Skillet × 2', 'Tongs']);
   });
 
   it('AReadOnlyViewer_OfAMealWithNoGear_SeesNoEmptyBlock', () => {

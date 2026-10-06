@@ -238,8 +238,9 @@ describe('MenuMonsterShelfTool hub, visitor', () => {
       JSON.stringify({ meal: 'breakfast', headcount: 10, recipeIds: ['B003'], restrictions: {}, budgetPerPerson: 4, date: '2026-10-10' })
     );
     await shelf();
-    // The adopted draft is a saved menu: its basics are the one summary line with Edit (2026-10-06), not the form.
-    expect(await screen.findByText(/^Breakfast from this computer · 10 people/)).toBeTruthy();
+    // The adopted draft is a saved menu: the hub shows its Meals step (Who's eating is its own screen, 2026-10-06), with the tabs to reach it.
+    expect(await screen.findByRole('heading', { level: 2, name: 'Breakfast from this computer' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Who’s eating' }).getAttribute('href')).toBe('/library/menu-monster/menus/local/people');
   });
 });
 

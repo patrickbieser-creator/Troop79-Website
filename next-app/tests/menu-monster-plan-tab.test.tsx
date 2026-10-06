@@ -53,16 +53,8 @@ const fresh = () => (
   <PlanTab catalog={CATALOG} menuId={null} menu={base({ name: '', meals: [], restrictions: { gf: 0, nut: 0, dairy: 0, veg: 0 } })} updatedAt={null} outings={OUTINGS} />
 );
 
-const num = (name: RegExp | string) => screen.getByRole('spinbutton', { name }) as HTMLInputElement;
-async function typeInto(el: HTMLInputElement, text: string) {
-  const user = userEvent.setup();
-  await user.clear(el);
-  await user.type(el, text);
-  await user.tab();
-}
-
-/** A saved menu's "Who's eating" is one summary line with Edit (2026-10-06): a test that uses the form opens it first. */
-const openBasics = () => fireEvent.click(screen.getByRole('button', { name: 'Edit menu basics' }));
+/** Who's eating is its own screen now (whos-eating.test.tsx); on the Meals screen the quickest edit to the draft is another day. */
+const dirtyIt = () => fireEvent.click(screen.getByRole('button', { name: 'Add a day' }));
 
 describe('PlanTab', () => {
   beforeEach(() => {
@@ -103,112 +95,6 @@ describe('PlanTab', () => {
     render(existing());
     expect(screen.queryByRole('button', { name: 'Saved' })).toBeNull();
     expect(screen.getByRole('link', { name: 'Next: Gear ›' }).getAttribute('href')).toBe('/library/menu-monster/menus/menu-1/gear');
-  });
-
-  it('Discard_IsGone_WhenNothingChanged_AndEnabledOnceItIsDirty', async () => {
-    render(existing());
-    expect(screen.queryByRole('button', { name: 'Discard changes' })).toBeNull();
-    openBasics();
-    await userEvent.setup().type(screen.getByRole('textbox', { name: 'Menu name' }), '!');
-    expect((screen.getByRole('button', { name: 'Discard changes' }) as HTMLButtonElement).disabled).toBe(false);
-  });
-
-  it('Save_SaysSaveChangesAndEnables_WhenTheNameChanges', async () => {
-    render(existing());
-    openBasics();
-    await userEvent.setup().type(screen.getByRole('textbox', { name: 'Menu name' }), '!');
-    expect((screen.getByRole('button', { name: 'Save changes' }) as HTMLButtonElement).disabled).toBe(false);
-  });
-
-  it('NewMenu_OffersSaveMenu', () => {
-    render(fresh());
-    expect(screen.getByRole('button', { name: 'Save menu' })).toBeTruthy();
-  });
-
-  it('Diets_ClampToPeople_WhenPeopleDropsBelowThem', async () => {
-    render(existing());
-    openBasics();
-    await typeInto(num(/^People/), '3');
-    expect(num(/^Gluten-free/).value).toBe('3');
-  });
-
-  it('Diets_CannotExceedPeople_WhenTyped', async () => {
-    render(existing());
-    openBasics();
-    // Gluten-free, not Nut-free: only diets above zero show a dialer (2026-10-06); the cap is the same for each.
-    await typeInto(num(/^Gluten-free/), '20');
-    expect(num(/^Gluten-free/).value).toBe('8');
-  });
-
-  it('People_StopAtFifty', async () => {
-    render(existing());
-    openBasics();
-    await typeInto(num(/^People/), '99');
-    expect(num(/^People/).value).toBe('50');
-  });
-
-  it('People_StartAtTwo', async () => {
-    render(existing());
-    openBasics();
-    await typeInto(num(/^People/), '1');
-    expect(num(/^People/).value).toBe('2');
-  });
-
-  it('Dialers_ReadPeopleThenDietsInTheApprovedOrder', () => {
-    // Every diet above zero, so every dialer shows (a diet at zero is behind "Add a diet…").
-    render(existing(base({ restrictions: { gf: 1, nut: 1, dairy: 1, veg: 1 } })));
-    openBasics();
-    const names = screen.getAllByRole('spinbutton').map((e) => e.getAttribute('id'));
-    const labels = names.map((id) => document.querySelector(`label[for="${id}"]`)?.textContent);
-    expect(labels.slice(0, 5)).toEqual(['People:', 'Gluten-free:', 'Vegetarian:', 'Nut-free:', 'Dairy-free:']);
-  });
-
-  it('Dialers_ShareOneRow_WithNoSeparatorDotsOrNestedLines', () => {
-    render(existing(base({ restrictions: { gf: 1, nut: 1, dairy: 0, veg: 0 } })));
-    openBasics();
-    const row = num(/^People/).closest('div[class*="dialers"]') as HTMLElement;
-    expect(row).toBeTruthy();
-    // People, Gluten-free, Nut-free steppers and "Add a diet" are direct children: one flex row, nothing wrapping a pair.
-    expect(row.textContent).not.toContain('·');
-    expect(Array.from(row.children).every((c) => c.querySelector('[class*="line"]') == null)).toBe(true);
-    expect(row.children.length).toBe(4);
-  });
-
-  it('Context_IsASelect', () => {
-    render(existing());
-    openBasics();
-    expect(screen.getByRole('combobox', { name: /Where you.re cooking/ }).tagName).toBe('SELECT');
-  });
-
-  it('Outing_IsASelect_WithNoOutingLast', () => {
-    render(existing());
-    openBasics();
-    const sel = screen.getByRole('combobox', { name: 'Outing' });
-    const opts = within(sel).getAllByRole('option').map((o) => o.textContent);
-    expect(opts).toEqual(['Fall Camporee · Oct 9–11, 2026', 'Winter Camp · Dec 4–6, 2026', 'No outing']);
-  });
-
-  it('Outing_NamesAnUnnamedMenu_WhenPicked', async () => {
-    render(fresh());
-    await userEvent.setup().selectOptions(screen.getByRole('combobox', { name: 'Outing' }), '7');
-    expect((screen.getByRole('textbox', { name: 'Menu name' }) as HTMLInputElement).value).toBe('Fall Camporee');
-  });
-
-  it('Outing_KeepsAnExistingName_WhenPicked', async () => {
-    render(existing());
-    openBasics();
-    await userEvent.setup().selectOptions(screen.getByRole('combobox', { name: 'Outing' }), '7');
-    expect((screen.getByRole('textbox', { name: 'Menu name' }) as HTMLInputElement).value).toBe('Camporee food');
-  });
-
-  it('Outing_SetsOneDayPerOutingDate_WhenTheMenuHasNoMeals', async () => {
-    render(fresh());
-    await userEvent.setup().selectOptions(screen.getByRole('combobox', { name: 'Outing' }), '7');
-    expect(screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual([
-      'Day 1 · Fri, Oct 9',
-      'Day 2 · Sat, Oct 10',
-      'Day 3 · Sun, Oct 11'
-    ]);
   });
 
   it('Meals_AreGroupedUnderTheirDay', () => {
@@ -367,41 +253,6 @@ describe('PlanTab', () => {
     expect(screen.getAllByRole('heading', { level: 3 }).length).toBe(4);
   });
 
-  it('Outing_SavesItsSpanAsTheDayCount', async () => {
-    createMenuAction.mockResolvedValue({ ok: true, id: 'new-id' });
-    const user = userEvent.setup();
-    render(fresh());
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Outing' }), '7');
-    await user.type(screen.getByRole('textbox', { name: 'Menu name' }), '!');
-    await user.click(screen.getByRole('button', { name: 'Save menu' }));
-    expect(createMenuAction).toHaveBeenCalledWith(expect.objectContaining({ dayCount: 3 }));
-  });
-
-  it('Title_IsOneH1_ThatFollowsTheMenuName', async () => {
-    render(existing());
-    openBasics();
-    await userEvent.setup().type(screen.getByRole('textbox', { name: 'Menu name' }), '!');
-    expect(screen.getAllByRole('heading', { level: 1 }).map((h) => h.textContent)).toEqual(['Camporee food!']);
-  });
-
-  it('Discard_IsAbsent_OnABrandNewMenu', () => {
-    render(fresh());
-    expect(screen.queryByRole('button', { name: 'Discard changes' })).toBeNull();
-  });
-
-  it('Saving_IsAnnounced_WhileTheSaveRuns', async () => {
-    let finish: (v: unknown) => void = () => {};
-    saveMenuAction.mockReturnValue(new Promise((r) => (finish = r)));
-    const user = userEvent.setup();
-    const { container } = render(existing());
-    openBasics();
-    await user.type(screen.getByRole('textbox', { name: 'Menu name' }), '!');
-    await user.click(screen.getByRole('button', { name: 'Save changes' }));
-    expect(container.querySelector('[aria-live="polite"]')?.textContent).toBe('Saving…');
-    finish({ ok: true, updatedAt: '2026-10-02T13:00:00.000Z' });
-    expect(await screen.findByRole('link', { name: 'Next: Gear ›' })).toBeTruthy();
-  });
-
   it('RowMenu_IsAPlainDisclosure_NotAnAriaMenu', async () => {
     const user = userEvent.setup();
     render(existing());
@@ -426,81 +277,9 @@ describe('PlanTab', () => {
   it('RowMenu_Closes_WhenFocusMovesOutOfIt', async () => {
     const user = userEvent.setup();
     render(existing());
-    openBasics();
     await user.click(screen.getByRole('button', { name: 'More for Day 1 breakfast' }));
-    act(() => screen.getByRole('textbox', { name: 'Menu name' }).focus());
+    act(() => screen.getByRole('button', { name: 'Add a day' }).focus());
     expect(screen.queryByRole('button', { name: 'Remove' })).toBeNull();
-  });
-
-  it('Save_IsBlockedWithTheNameError_WhenTheNameIsEmpty', async () => {
-    render(fresh());
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Save menu' }));
-    expect(screen.getByRole('alert').textContent).toContain('Give your menu a name');
-  });
-
-  it('Save_DoesNotCallTheServer_WhenTheNameIsEmpty', async () => {
-    render(fresh());
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Save menu' }));
-    expect(createMenuAction).not.toHaveBeenCalled();
-  });
-
-  it('NewMenu_CreatesThenReplacesTheUrlWithTheNewId', async () => {
-    createMenuAction.mockResolvedValue({ ok: true, id: 'new-id' });
-    const user = userEvent.setup();
-    render(fresh());
-    await user.type(screen.getByRole('textbox', { name: 'Menu name' }), 'Spring hike');
-    await user.click(screen.getByRole('button', { name: 'Save menu' }));
-    expect(router.replace).toHaveBeenCalledWith('/library/menu-monster/menus/new-id');
-  });
-
-  it('Save_SendsTheVersionTokenItLoaded', async () => {
-    saveMenuAction.mockResolvedValue({ ok: true, updatedAt: '2026-10-02T13:00:00.000Z' });
-    const user = userEvent.setup();
-    render(existing());
-    openBasics();
-    await user.type(screen.getByRole('textbox', { name: 'Menu name' }), '!');
-    await user.click(screen.getByRole('button', { name: 'Save changes' }));
-    expect(saveMenuAction).toHaveBeenCalledWith('menu-1', expect.objectContaining({ name: 'Camporee food!' }), VERSION);
-  });
-
-  it('Save_ReturnsToSaved_AfterItLands', async () => {
-    saveMenuAction.mockResolvedValue({ ok: true, updatedAt: '2026-10-02T13:00:00.000Z' });
-    const user = userEvent.setup();
-    render(existing());
-    openBasics();
-    await user.type(screen.getByRole('textbox', { name: 'Menu name' }), '!');
-    await user.click(screen.getByRole('button', { name: 'Save changes' }));
-    expect(await screen.findByRole('link', { name: 'Next: Gear ›' })).toBeTruthy();
-  });
-
-  it('Save_ShowsTheServersError_InAnAlert', async () => {
-    saveMenuAction.mockResolvedValue({ ok: false, error: 'This menu was changed in another window since you opened it.' });
-    const user = userEvent.setup();
-    render(existing());
-    openBasics();
-    await user.type(screen.getByRole('textbox', { name: 'Menu name' }), '!');
-    await user.click(screen.getByRole('button', { name: 'Save changes' }));
-    expect((await screen.findByRole('alert')).textContent).toContain('changed in another window');
-  });
-
-  it('Save_StaysDirty_WhenTheServerRefuses', async () => {
-    saveMenuAction.mockResolvedValue({ ok: false, error: 'nope' });
-    const user = userEvent.setup();
-    render(existing());
-    openBasics();
-    await user.type(screen.getByRole('textbox', { name: 'Menu name' }), '!');
-    await user.click(screen.getByRole('button', { name: 'Save changes' }));
-    await screen.findByRole('alert');
-    expect(screen.getByRole('button', { name: 'Save changes' })).toBeTruthy();
-  });
-
-  it('Discard_RestoresTheLastSavedMenu', async () => {
-    const user = userEvent.setup();
-    render(existing());
-    openBasics();
-    await user.type(screen.getByRole('textbox', { name: 'Menu name' }), '!');
-    await user.click(screen.getByRole('button', { name: 'Discard changes' }));
-    expect((screen.getByRole('textbox', { name: 'Menu name' }) as HTMLInputElement).value).toBe('Camporee food');
   });
 
   it('Shopping_ShowsTheMenuTotalAndBudgetReadout', () => {
@@ -511,26 +290,24 @@ describe('PlanTab', () => {
   it('OpeningAMeal_WithUnsavedChanges_KeepsThemAndAsksNothing', async () => {
     const user = userEvent.setup();
     render(existing());
-    openBasics();
-    await user.type(screen.getByRole('textbox', { name: 'Menu name' }), '!');
+    dirtyIt();
     await user.click(screen.getByRole('button', { name: /^Breakfast/ }));
     expect(screen.queryByRole('alert')).toBeNull();
     expect(screen.getByRole('list', { name: 'Recipes in Day 1 breakfast' })).toBeTruthy();
-    expect((screen.getByRole('textbox', { name: 'Menu name' }) as HTMLInputElement).value.endsWith('!')).toBe(true);
+    expect(screen.getAllByRole('heading', { level: 3 })).toHaveLength(3);
   });
 
   it('MealEdit_IsPartOfTheMenusOneSave', async () => {
     saveMenuAction.mockResolvedValue({ ok: true, updatedAt: '2026-10-02T13:00:00.000Z' });
     const user = userEvent.setup();
     render(existing());
-    openBasics();
     await user.click(screen.getByRole('button', { name: /^Breakfast/ }));
     await user.click(screen.getByRole('button', { name: 'More for Bacon' }));
     await user.click(screen.getByRole('button', { name: 'Remove' }));
-    await user.type(screen.getByRole('textbox', { name: 'Menu name' }), '!');
+    dirtyIt();
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
     const sent = saveMenuAction.mock.calls[0][1] as Menu;
-    expect([sent.name.endsWith('!'), sent.meals.find((m) => m.id === 'm1')?.recipeIds.includes('B003')]).toEqual([true, false]);
+    expect([sent.dayCount, sent.meals.find((m) => m.id === 'm1')?.recipeIds.includes('B003')]).toEqual([3, false]);
   });
 
   it('Discard_UndoesAMealEdit_Too', async () => {
@@ -544,40 +321,11 @@ describe('PlanTab', () => {
   });
 
 
-  it('LeavingByReload_AsksToConfirm_WhenTheMenuIsDirty', async () => {
-    render(existing());
-    openBasics();
-    await userEvent.setup().type(screen.getByRole('textbox', { name: 'Menu name' }), '!');
-    const ev = new Event('beforeunload', { cancelable: true });
-    window.dispatchEvent(ev);
-    expect(ev.defaultPrevented).toBe(true);
-  });
-
   it('LeavingByReload_IsNotBlocked_WhenTheMenuIsSaved', () => {
     render(existing());
     const ev = new Event('beforeunload', { cancelable: true });
     window.dispatchEvent(ev);
     expect(ev.defaultPrevented).toBe(false);
-  });
-
-  it('InAppLink_StaysPut_WhenDirtyAndTheScoutDeclines', async () => {
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
-    render(existing());
-    openBasics();
-    await userEvent.setup().type(screen.getByRole('textbox', { name: 'Menu name' }), '!');
-    const proceeded = fireEvent.click(screen.getByRole('link', { name: 'Open the shopping list' }));
-    expect(proceeded).toBe(false);
-    expect(confirm).toHaveBeenCalled();
-    confirm.mockRestore();
-  });
-
-  it('InAppLink_Proceeds_WhenDirtyAndTheScoutConfirms', async () => {
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
-    render(existing());
-    openBasics();
-    await userEvent.setup().type(screen.getByRole('textbox', { name: 'Menu name' }), '!');
-    expect(fireEvent.click(screen.getByRole('link', { name: 'Open the shopping list' }))).toBe(true);
-    confirm.mockRestore();
   });
 
   it('InAppLink_DoesNotAsk_WhenTheMenuIsSaved', () => {
@@ -613,86 +361,11 @@ describe('PlanTab', () => {
   });
 
 
-  describe('layout', () => {
-    it('Basics_SpanThePageAboveTheTwoColumns_SoTheDialerLineIsNotCrampedByTheMealsColumn', () => {
-      render(existing());
-      const basics = screen.getByRole('region', { name: 'Menu name and basics' });
-      const mealsHeading = screen.getByRole('heading', { level: 2, name: 'Meals' });
-      // The basics are not in the narrow left column with the meals; they sit above both columns.
-      expect(mealsHeading.closest('section')?.parentElement?.contains(basics)).toBe(false);
-      expect(basics.nextElementSibling?.contains(mealsHeading)).toBe(true);
-    });
-  });
-});
-
-describe('PlanTab patrol (release 5)', () => {
-  const withPatrols = (menu: Menu) => <PlanTab catalog={CATALOG} menuId="menu-1" menu={menu} updatedAt={VERSION} outings={OUTINGS} patrols={['FireQuacker', 'Screaming Eagles', 'Whole troop']} />;
-
-  // Patrick, 2026-10-06: Patrol is a pull-down of the troop's patrols (a leader keeps the list), not a free-text field.
-  it('Patrol_IsAPullDown_OfThePickOptionThenTheTroopsPatrols', () => {
-    render(withPatrols(base()));
-    openBasics();
-    const sel = screen.getByRole('combobox', { name: 'Patrol' });
-    expect(sel.tagName).toBe('SELECT');
-    expect(within(sel).getAllByRole('option').map((o) => o.textContent)).toEqual(['— pick —', 'FireQuacker', 'Screaming Eagles', 'Whole troop']);
-  });
-
-  it('Patrol_KeepsASavedPatrolThatIsNoLongerOnTheList', () => {
-    render(withPatrols(base({ patrol: 'Old Patrol' })));
-    openBasics();
-    const sel = screen.getByRole('combobox', { name: 'Patrol' }) as HTMLSelectElement;
-    expect([sel.value, within(sel).getAllByRole('option').map((o) => o.textContent).pop()]).toEqual(['Old Patrol', 'Old Patrol']);
-  });
-
-  it('Patrol_PickingNone_RemovesThePatrolFromTheMenu', async () => {
-    saveMenuAction.mockResolvedValue({ ok: true, updatedAt: '2026-10-02T13:00:00.000Z' });
-    render(withPatrols(base({ patrol: 'FireQuacker' })));
-    openBasics();
-    const user = userEvent.setup();
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Patrol' }), '');
-    await user.click(screen.getByRole('button', { name: 'Save changes' }));
-    expect(saveMenuAction.mock.calls[0][1]).not.toHaveProperty('patrol');
-  });
-
-  it('Patrol_ShowsWhatIsSaved', () => {
-    render(withPatrols(base({ patrol: 'FireQuacker' })));
-    openBasics();
-    expect((screen.getByRole('combobox', { name: 'Patrol' }) as HTMLSelectElement).value).toBe('FireQuacker');
-  });
-
-  it('Patrol_IsSaved_WithTheMenu', async () => {
-    saveMenuAction.mockResolvedValue({ ok: true, updatedAt: '2026-10-02T13:00:00.000Z' });
-    render(withPatrols(base()));
-    openBasics();
-    const user = userEvent.setup();
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Patrol' }), 'Whole troop');
-    await user.click(screen.getByRole('button', { name: 'Save changes' }));
-    expect(saveMenuAction).toHaveBeenCalledWith('menu-1', expect.objectContaining({ patrol: 'Whole troop' }), VERSION);
-  });
-});
-
-describe('PlanTab outing: who can open the menu (2026-10-04)', () => {
-  const HINT = /Signed-in scouts and leaders can open this menu from the outing/;
-
-  it('NoOuting_SaysNothing', () => {
-    render(fresh());
-    expect(screen.queryByText(HINT)).toBeNull();
-  });
-
-  it('PickingAnOuting_SaysTheCrewCanOpenIt', async () => {
-    render(fresh());
-    await userEvent.setup().selectOptions(screen.getByRole('combobox', { name: 'Outing' }), '7');
-    expect(screen.getByText(HINT)).toBeTruthy();
-  });
 });
 
 describe('PlanTab planner flow, this week (2026-10-06)', () => {
   beforeEach(() => vi.clearAllMocks());
   const withJuice = () => existing(base({ restrictions: { gf: 0, nut: 0, dairy: 0, veg: 0 }, meals: [{ id: 'm1', day: 0, slot: 'breakfast', headcount: null, recipeIds: ['B003', 'B023'], recipeEdits: {} }] }));
-  const blank = (over: Partial<Menu> = {}) => base({ name: '', meals: [], restrictions: { gf: 0, nut: 0, dairy: 0, veg: 0 }, ...over });
-  const newMenu = (over: Partial<Menu> = {}, extra: { myPatrol?: string | null } = {}) => (
-    <PlanTab catalog={CATALOG} menuId={null} menu={blank(over)} updatedAt={null} outings={OUTINGS} {...extra} />
-  );
 
   describe('badges become answers', () => {
     it('NotPriced_LinksToTheShoppingItem', () => {
@@ -712,63 +385,6 @@ describe('PlanTab planner flow, this week (2026-10-06)', () => {
       await userEvent.setup().click(screen.getByRole('button', { name: /^Breakfast/ }));
       const link = screen.getByRole('link', { name: /No price yet — add one/ });
       expect(link.getAttribute('href')).toBe('/library/menu-monster/menus/menu-1/shopping?item=oj');
-    });
-  });
-
-  describe("who's eating", () => {
-    it('WhosEating_IsOneLineWithEdit_OnASavedMenu', () => {
-      render(existing());
-      expect(screen.getByText('Camporee food · 8 people · 5 gluten-free · Camp')).toBeTruthy();
-      expect([screen.queryByRole('textbox', { name: 'Menu name' }), screen.getByRole('button', { name: 'Edit menu basics' }).getAttribute('aria-expanded')]).toEqual([null, 'false']);
-    });
-
-    it('WhosEating_EditExpandsTheForm_AndFocusesTheName', async () => {
-      render(existing());
-      await userEvent.setup().click(screen.getByRole('button', { name: 'Edit menu basics' }));
-      await new Promise((r) => requestAnimationFrame(() => r(null)));
-      expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Menu name' }));
-    });
-
-    it('WhosEating_IsExpanded_OnANewMenu', () => {
-      render(fresh());
-      expect([screen.getByRole('textbox', { name: 'Menu name' }) != null, screen.queryByRole('button', { name: 'Edit menu basics' })]).toEqual([true, null]);
-    });
-
-    it('WhosEating_DoneCollapsesItAgain_WithoutLosingTheEdit', async () => {
-      const user = userEvent.setup();
-      render(existing());
-      await user.click(screen.getByRole('button', { name: 'Edit menu basics' }));
-      await user.type(screen.getByRole('textbox', { name: 'Menu name' }), '!');
-      await user.click(screen.getByRole('button', { name: 'Done' }));
-      expect(screen.getByText(/^Camporee food! · 8 people/)).toBeTruthy();
-    });
-
-    it('Diets_ShowOnlyThoseAboveZero_WithAddADietForTheRest', async () => {
-      const user = userEvent.setup();
-      render(existing());
-      openBasics();
-      expect(screen.queryByRole('spinbutton', { name: /^Nut-free/ })).toBeNull();
-      await user.click(screen.getByRole('button', { name: 'Add a diet' }));
-      expect(within(screen.getByRole('group', { name: 'Diets the menu does not count yet' })).getAllByRole('button').map((b) => b.textContent)).toEqual(['Vegetarian', 'Nut-free', 'Dairy-free']);
-      await user.click(screen.getByRole('button', { name: 'Nut-free' }));
-      expect(num(/^Nut-free/).value).toBe('0');
-    });
-
-    it('Diets_AddADietIsGone_WhenEveryDietShows', () => {
-      render(existing(base({ restrictions: { gf: 1, nut: 1, dairy: 1, veg: 1 } })));
-      openBasics();
-      expect(screen.queryByRole('button', { name: 'Add a diet' })).toBeNull();
-    });
-
-    it('Save_KeepsTheNameFieldReachable_WhenTheNameIsEmpty', async () => {
-      const user = userEvent.setup();
-      render(existing(base({ name: 'x' })));
-      openBasics();
-      await user.clear(screen.getByRole('textbox', { name: 'Menu name' }));
-      await user.click(screen.getByRole('button', { name: 'Done' }));
-      await user.click(screen.getByRole('button', { name: 'Save changes' }));
-      expect(screen.getByRole('alert').textContent).toContain('Give your menu a name');
-      expect(screen.getByRole('textbox', { name: 'Menu name' })).toBeTruthy();
     });
   });
 
@@ -793,33 +409,6 @@ describe('PlanTab planner flow, this week (2026-10-06)', () => {
       expect(summary().textContent).toMatch(/^8 people · \d to fix›$/);
     });
 
-    it('Rail_ReplacesTheSaveBar_OneSavePrimary', async () => {
-      render(existing());
-      openBasics();
-      await userEvent.setup().type(screen.getByRole('textbox', { name: 'Menu name' }), '!');
-      expect(within(rail()).getByRole('button', { name: 'Save changes' })).toBeTruthy();
-      expect(screen.getAllByRole('button', { name: 'Save changes' })).toHaveLength(1);
-    });
-
-    it('Rail_FollowsTheUnsavedDraft_AndSaysUnsaved', async () => {
-      render(existing());
-      expect(screen.queryByText('unsaved')).toBeNull();
-      openBasics();
-      await userEvent.setup().click(screen.getByRole('button', { name: 'One more person' }));
-      expect(summary().textContent).toMatch(/^9 people/);
-      expect(screen.getByText('unsaved')).toBeTruthy();
-    });
-
-    it('Rail_GoesBackToSaved_AndUnsavedGoes_AfterDiscard', async () => {
-      const user = userEvent.setup();
-      render(existing());
-      openBasics();
-      await user.click(screen.getByRole('button', { name: 'One more person' }));
-      await user.click(screen.getByRole('button', { name: 'Discard changes' }));
-      expect(summary().textContent).toMatch(/^8 people/);
-      expect(screen.queryByText('unsaved')).toBeNull();
-    });
-
     it('Rail_EndsInNextShopping_OnAMenuKeptOnThisComputer', () => {
       const store = { caps: { canSave: false, canPay: false, canReport: false }, hrefs: { plan: '/p', shopping: '/s', meal: () => '/m' }, load: () => null, save: vi.fn(), create: vi.fn(), afterCreate: () => null };
       render(<PlanTab catalog={CATALOG} menuId="local" menu={base()} updatedAt={null} outings={OUTINGS} store={store} />);
@@ -830,17 +419,6 @@ describe('PlanTab planner flow, this week (2026-10-06)', () => {
       render(<PlanTab catalog={CATALOG} menuId="menu-1" menu={base()} updatedAt={VERSION} outings={OUTINGS} readOnly />);
       expect(within(rail()).getByRole('link', { name: 'Next: Gear ›' })).toBeTruthy();
       expect(screen.queryByRole('button', { name: /^Save/ })).toBeNull();
-    });
-
-    it('Rail_NewMenu_KeepsSaveMenu_AsItsPrimary', () => {
-      render(fresh());
-      expect(within(rail()).getByRole('button', { name: 'Save menu' })).toBeTruthy();
-      expect(screen.queryByRole('link', { name: /^Next:/ })).toBeNull();
-    });
-
-    it('Rail_NeverFillsInHeadcount_ItShowsWhatWasGiven', () => {
-      render(<PlanTab catalog={CATALOG} menuId={null} menu={base({ name: '', headcount: 0, meals: [] })} updatedAt={null} outings={OUTINGS} />);
-      expect(summary().textContent).toMatch(/^0 people/);
     });
 
     it('Meals_HaveAnAnchor_AndEachRowItsOwn', () => {
@@ -861,30 +439,88 @@ describe('PlanTab planner flow, this week (2026-10-06)', () => {
   });
 
   describe('step strip', () => {
-    const CFG = { plan: '/p', gear: '/p/gear', shopping: '/p/shopping' };
+    const CFG = { people: '/p/people', plan: '/p', gear: '/p/gear', shopping: '/p/shopping' };
     const withSteps = (menu: Menu) => <PlanTab catalog={CATALOG} menuId="menu-1" menu={menu} updatedAt={VERSION} outings={OUTINGS} steps={CFG} />;
     const strip = () => screen.getByRole('navigation', { name: 'Menu steps' });
 
     it('Strip_ReplacesTheTabs_OnTheSameRoutes', () => {
       render(withSteps(base()));
-      expect(within(strip()).getAllByRole('link').map((a) => a.getAttribute('href'))).toEqual(['/p', '/p#meals', '/p/gear', '/p/shopping']);
+      expect(within(strip()).getAllByRole('link').map((a) => a.getAttribute('href'))).toEqual(['/p/people', '/p', '/p/gear', '/p/shopping']);
       expect(screen.queryByRole('tablist')).toBeNull();
     });
 
     const texts = () => within(strip()).getAllByRole('link').map((a) => a.textContent);
 
-    it('Strip_TicksFollowTheDraft_NotTheSavedMenu', async () => {
-      render(withSteps(base({ name: '' })));
-      expect(texts()[0]).toBe('Who’s eating');
-      openBasics();
-      await userEvent.setup().type(screen.getByRole('textbox', { name: 'Menu name' }), 'Camp');
-      expect(texts()[0]).toBe('✓Who’s eating (done)');
-    });
-
-    it('Strip_MarksWhosEatingAndMealsCurrent_OnThePlanPage', () => {
+    it('Strip_MarksOnlyMealsCurrent_OnTheMealsPage', () => {
       render(withSteps(base()));
       const cur = within(strip()).getAllByRole('link').filter((a) => a.getAttribute('aria-current') === 'step');
-      expect(cur.map((a) => a.textContent)).toEqual(['✓Who’s eating (done)', '✓Meals (done)']);
+      expect(cur.map((a) => a.textContent)).toEqual(['✓Meals (done)']);
+    });
+
+    it('Strip_ShowsTheDraftsEatingTick_OnTheMealsPage_Too', () => {
+      render(withSteps(base({ name: '' })));
+      expect(texts()[0]).toBe('Who’s eating');
+    });
+  });
+
+  describe("who's eating is not on the Meals page", () => {
+    it('MealsPage_HasNoWhosEatingForm_NoSummaryLine_AndNoEditButton', () => {
+      render(existing());
+      expect([
+        screen.queryByRole('textbox', { name: 'Menu name' }),
+        screen.queryByRole('button', { name: 'Edit menu basics' }),
+        screen.queryByRole('region', { name: /Who.s eating/ }),
+        screen.queryByText(/Camporee food · 8 people/)
+      ]).toEqual([null, null, null, null]);
+    });
+
+    it('MealsPage_HoldsTheMeals_AndTheAddADayButton', () => {
+      render(existing());
+      expect([screen.getByRole('heading', { level: 2, name: 'Meals' }) != null, screen.getByRole('button', { name: 'Add a day' }) != null]).toEqual([true, true]);
+    });
+
+    it('MealsPage_ClaimsNoDialers_People_Diets_Budget', () => {
+      render(existing());
+      expect([screen.queryByRole('spinbutton', { name: /^People/ }), screen.queryByRole('spinbutton', { name: /^Budget/ })]).toEqual([null, null]);
+    });
+
+    it('MealsPage_Save_SendsTheVersionTokenItLoaded', async () => {
+      saveMenuAction.mockResolvedValue({ ok: true, updatedAt: '2026-10-02T13:00:00.000Z' });
+      render(existing());
+      dirtyIt();
+      await userEvent.setup().click(screen.getByRole('button', { name: 'Save changes' }));
+      expect(saveMenuAction).toHaveBeenCalledWith('menu-1', expect.objectContaining({ dayCount: 3 }), VERSION);
+    });
+
+    it('MealsPage_Save_ReturnsToNextGear_AfterItLands', async () => {
+      saveMenuAction.mockResolvedValue({ ok: true, updatedAt: '2026-10-02T13:00:00.000Z' });
+      render(existing());
+      dirtyIt();
+      await userEvent.setup().click(screen.getByRole('button', { name: 'Save changes' }));
+      expect(await screen.findByRole('link', { name: 'Next: Gear ›' })).toBeTruthy();
+    });
+
+    it('LeavingByReload_AsksToConfirm_WhenTheMealsDraftIsDirty', () => {
+      render(existing());
+      dirtyIt();
+      const ev = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(ev);
+      expect(ev.defaultPrevented).toBe(true);
+    });
+
+    it('InAppLink_StaysPut_WhenTheMealsDraftIsDirtyAndTheScoutDeclines', () => {
+      const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+      render(existing());
+      dirtyIt();
+      expect(fireEvent.click(screen.getByRole('link', { name: 'Open the shopping list' }))).toBe(false);
+      expect(confirm).toHaveBeenCalled();
+      confirm.mockRestore();
+    });
+
+    it('Rail_SendsAnEatingFix_ToTheWhosEatingStep', () => {
+      render(existing(base({ name: '' })));
+      fireEvent.click(within(screen.getByRole('region', { name: 'Menu summary' })).getByRole('button', { name: /people?/ }));
+      expect(within(screen.getByRole('dialog')).getByRole('link', { name: /Name the menu/ }).getAttribute('href')).toBe('/library/menu-monster/menus/menu-1/people');
     });
   });
 
@@ -986,8 +622,7 @@ describe('PlanTab planner flow, this week (2026-10-06)', () => {
       phone(true);
       const user = userEvent.setup();
       render(existing());
-      openBasics();
-      await user.click(screen.getByRole('button', { name: 'One more person' }));
+      dirtyIt();
       await user.click(screen.getByRole('button', { name: /^Breakfast/ }));
       expect(router.push).not.toHaveBeenCalled();
       expect(screen.getByRole('spinbutton', { name: 'Day 1 breakfast people' })).toBeTruthy();
@@ -1016,58 +651,4 @@ describe('PlanTab planner flow, this week (2026-10-06)', () => {
     });
   });
 
-  describe('defaults', () => {
-    const context = () => (screen.getByRole('combobox', { name: /Where you.re cooking/ }) as HTMLSelectElement).value;
-
-    it('PickingAnOuting_SetsCampByDefault', async () => {
-      render(newMenu({ context: 'home' }));
-      await userEvent.setup().selectOptions(screen.getByRole('combobox', { name: 'Outing' }), '7');
-      expect(context()).toBe('camp');
-    });
-
-    it('PickingAnOuting_KeepsWhatTheScoutChose', async () => {
-      const user = userEvent.setup();
-      render(newMenu({ context: 'home' }));
-      await user.selectOptions(screen.getByRole('combobox', { name: /Where you.re cooking/ }), 'trail');
-      await user.selectOptions(screen.getByRole('combobox', { name: 'Outing' }), '7');
-      expect(context()).toBe('trail');
-    });
-
-    it('PickingAnOuting_LeavesASavedMenusContextAlone', async () => {
-      render(existing(base({ context: 'home' })));
-      openBasics();
-      await userEvent.setup().selectOptions(screen.getByRole('combobox', { name: 'Outing' }), '7');
-      expect(context()).toBe('home');
-    });
-
-    it('Patrol_DefaultsToTheScoutsOwn', () => {
-      render(newMenu({}, { myPatrol: 'FireQuacker' }));
-      expect((screen.getByRole('combobox', { name: 'Patrol' }) as HTMLSelectElement).value).toBe('FireQuacker');
-    });
-
-    it('Patrol_Default_IsSentOnTheFirstSave', async () => {
-      createMenuAction.mockResolvedValue({ ok: true, id: 'new-id' });
-      const user = userEvent.setup();
-      render(newMenu({}, { myPatrol: 'FireQuacker' }));
-      await user.type(screen.getByRole('textbox', { name: 'Menu name' }), 'Hike');
-      await user.click(screen.getByRole('button', { name: 'Save menu' }));
-      expect(createMenuAction).toHaveBeenCalledWith(expect.objectContaining({ patrol: 'FireQuacker' }));
-    });
-
-    it('Patrol_KeepsTheMenusOwn_OverTheScoutsPatrol', () => {
-      render(newMenu({ patrol: 'Screaming Eagles' }, { myPatrol: 'FireQuacker' }));
-      expect((screen.getByRole('combobox', { name: 'Patrol' }) as HTMLSelectElement).value).toBe('Screaming Eagles');
-    });
-
-    it('Patrol_IsBlank_WhenThereIsNoPatrolToDefaultTo', () => {
-      render(newMenu());
-      expect((screen.getByRole('combobox', { name: 'Patrol' }) as HTMLSelectElement).value).toBe('');
-    });
-
-    it('Patrol_IsNotDefaulted_OnASavedMenu', () => {
-      render(<PlanTab catalog={CATALOG} menuId="menu-1" menu={base()} updatedAt={VERSION} outings={OUTINGS} myPatrol="FireQuacker" />);
-      openBasics();
-      expect((screen.getByRole('combobox', { name: 'Patrol' }) as HTMLSelectElement).value).toBe('');
-    });
-  });
 });

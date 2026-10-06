@@ -311,7 +311,7 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
               </dd>
               {!readOnly && (
                 <dd className={s.totalsWhy}>
-                  <Link href={store.hrefs.plan}>Change the budget on the Plan tab</Link>
+                  <Link href={store.hrefs.people ?? store.hrefs.plan}>Change the budget under Who’s eating</Link>
                 </dd>
               )}
             </div>
@@ -381,7 +381,7 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
 
         {!priced && (
           <p className={s.foot}>
-            Add a meal on the <Link href={store.hrefs.plan}>Plan tab</Link> and pick what you’re cooking, and the list builds itself.
+            Add a meal on the <Link href={store.hrefs.plan}>Meals step</Link> and pick what you’re cooking, and the list builds itself.
           </p>
         )}
 

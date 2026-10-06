@@ -158,11 +158,11 @@ describe('ShoppingTab', () => {
       expect(within(figure('Budget')).getByRole('status').textContent).toMatch(/Under budget/);
     });
 
-    it('Panel_BudgetIsReadOnly_WithALinkToThePlanTab', () => {
+    it('Panel_BudgetIsReadOnly_WithALinkToTheWhosEatingStep', () => {
       render(tab());
       const panel = screen.getByRole('group', { name: 'Menu totals' });
       expect(within(panel).queryByRole('spinbutton')).toBeNull();
-      expect(within(panel).getByRole('link', { name: 'Change the budget on the Plan tab' }).getAttribute('href')).toMatch(/menus\/menu-1$/);
+      expect(within(panel).getByRole('link', { name: 'Change the budget under Who’s eating' }).getAttribute('href')).toMatch(/menus\/menu-1\/people$/);
     });
 
     it('Panel_IsAbsent_WhenNoMealHasItems', () => {
@@ -284,12 +284,12 @@ describe('ShoppingTab', () => {
       expect(screen.queryByText(/Shopping once for every meal saves/)).toBeNull();
     });
 
-    it('Empty_PointsBackToThePlanTab_WhenNoMealHasItems', () => {
+    it('Empty_PointsBackToTheMealsStep_WhenNoMealHasItems', () => {
       const m = menu({ meals: [] });
       render(tab(m));
-      const link = screen.getByRole('link', { name: 'Plan tab' });
+      const link = screen.getByRole('link', { name: 'Meals step' });
       expect(link.getAttribute('href')).toBe('/library/menu-monster/menus/menu-1');
-      expect(link.closest('p')?.textContent).toMatch(/Add a meal on the Plan tab/);
+      expect(link.closest('p')?.textContent).toMatch(/Add a meal on the Meals step/);
     });
   });
 

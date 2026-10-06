@@ -39,7 +39,7 @@ const steps = () => within(screen.getByRole('navigation', { name: 'Menu steps' }
 
 describe('stepConfig', () => {
   it('Routes_AreTheSameOnesTheTabsHad', () => {
-    expect(stepConfig(ID, 'owner', menu({ startDate: null }), 'plan', '2026-10-06')).toMatchObject({ plan: base, gear: `${base}/gear`, shopping: `${base}/shopping` });
+    expect(stepConfig(ID, 'owner', menu({ startDate: null }), 'plan', '2026-10-06')).toMatchObject({ people: `${base}/people`, plan: base, gear: `${base}/gear`, shopping: `${base}/shopping` });
   });
 
   it('WhatWeBought_JoinsOnlyAfterTheOutingsLastDay', () => {
@@ -67,6 +67,17 @@ describe('stepConfig', () => {
 });
 
 describe('MenuSteps', () => {
+  it('WhosEatingPage_MarksOnlyWhosEatingCurrent_OnItsOwnRoute', () => {
+    render(<MenuSteps menuId={ID} active="people" menu={menu()} catalog={CATALOG} />);
+    expect(steps().filter((a) => a.getAttribute('aria-current') === 'step').map((a) => a.textContent?.replace(/✓| \(done\)/g, ''))).toEqual(['Who’s eating']);
+    expect(steps().slice(0, 2).map((a) => a.getAttribute('href'))).toEqual([`${base}/people`, base]);
+  });
+
+  it('MealsPage_MarksOnlyMealsCurrent', () => {
+    render(<MenuSteps menuId={ID} active="plan" menu={menu()} catalog={CATALOG} />);
+    expect(steps().filter((a) => a.getAttribute('aria-current') === 'step').map((a) => a.textContent?.replace(/✓| \(done\)/g, ''))).toEqual(['Meals']);
+  });
+
   it('Strip_ReplacesTheTabs_OnEveryPage', () => {
     render(<MenuSteps menuId={ID} active="gear" menu={menu()} catalog={CATALOG} />);
     expect(screen.queryByRole('tablist')).toBeNull();
@@ -100,6 +111,11 @@ describe('MenuSteps', () => {
 });
 
 describe('MenuRail', () => {
+  it('WhosEating_EndsInNextMeals', () => {
+    render(<MenuRail menuId={ID} active="people" menu={menu()} catalog={CATALOG} />);
+    expect(screen.getByRole('link', { name: 'Next: Meals ›' }).getAttribute('href')).toBe(base);
+  });
+
   it('Rail_ShowsTheSavedMenusHeadcountAndCost', () => {
     render(<MenuRail menuId={ID} active="gear" menu={menu()} catalog={CATALOG} />);
     expect(screen.getByRole('region', { name: 'Menu summary' }).textContent).toMatch(/^8 people · \$\d+\.\d\d\/person\/meal · nothing to fix›/);

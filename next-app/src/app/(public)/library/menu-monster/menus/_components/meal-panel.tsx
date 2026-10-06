@@ -43,7 +43,7 @@ import type { Brand, BrandPick, Catalog, Plan, Recipe, ShoppingLine } from '@/li
 import { BrandChooser, brandSummary } from './brand-chooser';
 import { MAX_HEADCOUNT, MIN_HEADCOUNT, livePicks, recipeSuggestions, recipesForMeal, restrictionWarnings } from '@/lib/menu-monster/engine';
 import { isPickable, stepsFromText } from '@/lib/menu-monster/scout-recipes';
-import { mealRecipeGear, recipeGear, sortGear, type GearItem } from '@/lib/menu-monster/gear';
+import { gearKey, gearText, mealRecipeGear, parseGear, recipeGear, sortGear, type GearItem } from '@/lib/menu-monster/gear';
 import { GearChips, GearPicker } from '../../_components/gear-picker';
 import { RECIPES_HREF } from '../../recipes/_components/paths';
 import { composePlan, mealCatalog, type EditOp, type Menu, type MenuMeal, type RecipeEdits } from '@/lib/menu-monster/menus';
@@ -177,6 +177,8 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
   // Gear for the meal itself (soap, wash basins), with what its foods already ask for shown beside it.
   const ownGear = meal.gear ?? [];
   const foodGear = mealRecipeGear(meal, catalog);
+  /** The master list's description for each gear item, by name key (Patrick, 2026-10-06): a muted line under the item. */
+  const gearNotes = gearDescriptions(gearList);
 
   const toggle = (id: string) =>
     setOpenIds((cur) => {
@@ -537,7 +539,7 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
                   {readOnly ? (
                     <>
                       <IngredientList mode="read" dense ariaLabel={`${name} ingredients`} rows={rowsFor(id)} emptyText="No ingredients on this recipe yet." brandText={brandText} />
-                      <StepsGear recipe={byId.get(id)} />
+                      <StepsGear recipe={byId.get(id)} descriptions={gearNotes} />
                     </>
                   ) : (
                     <>
@@ -570,7 +572,7 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
                         }
                       />
                       <p className={s.foot}>Only this menu changes. The troop’s {name} recipe stays the same.</p>
-                      <StepsGear recipe={byId.get(id)} />
+                      <StepsGear recipe={byId.get(id)} descriptions={gearNotes} />
                     </>
                   )}
                 </div>
@@ -673,9 +675,9 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
 
       {(readOnly ? ownGear.length > 0 : gearList != null) || foodGear.length > 0 ? (
         <section className={s.mealGear} aria-label="More gear for this meal">
-          {foodGear.length > 0 && <p className={s.insetMuted}>Gear for the foods: {foodGear.join(' · ')}</p>}
+          {foodGear.length > 0 && <GearList label="Gear for the foods" entries={foodGear} descriptions={gearNotes} />}
           {readOnly ? (
-            ownGear.length > 0 && <p className={s.insetMuted}>More gear for this meal: {ownGear.join(' · ')}</p>
+            ownGear.length > 0 && <GearList label="More gear for this meal" entries={ownGear} descriptions={gearNotes} />
           ) : (
             gearList != null && (
               <>
@@ -712,12 +714,51 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
   );
 }
 
+/** The troop gear list's descriptions by name key; an item with none (or no list at all) is simply absent. */
+function gearDescriptions(list: readonly GearItem[] | undefined): ReadonlyMap<string, string> {
+  const out = new Map<string, string>();
+  for (const g of list ?? []) {
+    const d = g.description?.trim();
+    if (d) out.set(gearKey(g.name), d);
+  }
+  return out;
+}
+
+/**
+ * Gear as a labelled bulleted list, one item per entry with "× n" when more than one — never one comma-joined
+ * line (Patrick, 2026-10-06). An item whose master-list entry has a description shows it as a muted line under
+ * it: the first place descriptions appear, so it stays quiet.
+ */
+function GearList({ label, entries, descriptions }: { label: string; entries: readonly string[]; descriptions: ReadonlyMap<string, string> }) {
+  const uid = useId();
+  return (
+    <div className={s.gearBlock}>
+      <p id={uid} className={s.blockLabel}>
+        {label}
+      </p>
+      <ul className={s.gearList} aria-labelledby={uid}>
+        {entries.map((entry, i) => {
+          const { name, count } = parseGear(entry);
+          const note = descriptions.get(gearKey(name));
+          return (
+            <li key={`${gearKey(name)}-${i}`}>
+              {gearText(name, count)}
+              {note && <span className={s.gearNote}>{note}</span>}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
 /**
  * One quiet line under an open food's ingredients — "Steps · Gear (4)" — that opens how to make it and what
- * gear it needs (Patrick, 2026-10-03: available as the plan unfolds, without cluttering it). Nothing at all
- * for a food with neither. The whole menu's gear adds up on the Gear tab.
+ * gear it needs (Patrick, 2026-10-03: available as the plan unfolds, without cluttering it), as two labelled
+ * blocks: Steps, an ordered list, and Gear, a bulleted list; a block with nothing in it is left out
+ * (2026-10-06). Nothing at all for a food with neither. The whole menu's gear adds up on the Gear tab.
  */
-function StepsGear({ recipe }: { recipe: Recipe | undefined }) {
+function StepsGear({ recipe, descriptions }: { recipe: Recipe | undefined; descriptions: ReadonlyMap<string, string> }) {
   const uid = useId();
   const [open, setOpen] = useState(false);
   const steps = stepsFromText(recipe?.stepsMd);
@@ -732,13 +773,16 @@ function StepsGear({ recipe }: { recipe: Recipe | undefined }) {
       {open && (
         <div id={uid}>
           {steps.length > 0 && (
-            <ol className={s.stepList} aria-label={`How to make ${recipe.name}`}>
-              {steps.map((t, i) => (
-                <li key={i}>{t}</li>
-              ))}
-            </ol>
+            <div className={s.gearBlock}>
+              <p className={s.blockLabel}>Steps</p>
+              <ol className={s.stepList} aria-label={`How to make ${recipe.name}`}>
+                {steps.map((t, i) => (
+                  <li key={i}>{t}</li>
+                ))}
+              </ol>
+            </div>
           )}
-          {gear.length > 0 && <p className={s.insetMuted}>Gear: {gear.join(' · ')}</p>}
+          {gear.length > 0 && <GearList label="Gear" entries={gear} descriptions={descriptions} />}
         </div>
       )}
     </div>

@@ -1,6 +1,6 @@
 /**
- * /library/menu-monster/menus/new — a blank Plan tab. Nothing is stored until
- * the scout's first Save, which creates the menu and moves to its own URL.
+ * /library/menu-monster/menus/new — a blank Who's eating step (Patrick, 2026-10-06: a new menu starts there).
+ * Nothing is stored until the scout's first Save, which creates the menu and lands on its Meals step.
  */
 import type { Metadata } from 'next';
 import { createAdminClient } from '@/lib/supabase/server';
@@ -10,7 +10,7 @@ import { blankMenu } from '@/lib/menu-monster/menus';
 import { listGearWith } from '@/lib/menu-monster/gear-store';
 import { loadOutingsWith, loadPatrolNamesWith, loadScoutPatrolWith } from '@/lib/menu-monster/menus-data';
 import { PageShell } from '@/app/_components/page-shell';
-import { PlanTab } from '../_components/plan-tab';
+import { PeopleTab } from '../_components/people-tab';
 import { LockedLine, MENUS_HREF, MenuHeader, recipeAuthor, scoutViewer } from '../_components/scout-menus';
 
 export const dynamic = 'force-dynamic';
@@ -41,7 +41,7 @@ export default async function NewMenuPage() {
     <>
       <MenuHeader current="new" />
       <PageShell>
-        <PlanTab catalog={catalog} menuId={null} menu={blankMenu()} updatedAt={null} outings={outings} patrols={patrols} gearList={gearList} myPatrol={myPatrol} />
+        <PeopleTab catalog={catalog} menuId={null} menu={blankMenu()} updatedAt={null} outings={outings} patrols={patrols} gearList={gearList} myPatrol={myPatrol} />
       </PageShell>
     </>
   );

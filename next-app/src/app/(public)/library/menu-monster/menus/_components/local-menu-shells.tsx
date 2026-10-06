@@ -56,21 +56,26 @@ function DroppedLine({ n }: { n: number }) {
   );
 }
 
-function LocalTabs({ active }: { active: 'plan' | 'shopping' }) {
+function LocalTabs({ active }: { active: 'people' | 'plan' | 'shopping' }) {
   return (
     <TabStrip
       ariaLabel="Menu sections"
       activeKey={active}
       items={[
-        { key: 'plan', label: 'Plan', href: LOCAL_MENU_HREFS.plan },
+        { key: 'people', label: 'Who’s eating', href: LOCAL_MENU_HREFS.people },
+        { key: 'plan', label: 'Meals', href: LOCAL_MENU_HREFS.plan },
         { key: 'shopping', label: 'Shopping', href: LOCAL_MENU_HREFS.shopping }
       ]}
     />
   );
 }
 
-/** The local Plan tab. On the hub (`hub`) it sits under the page's own h1 and has no tab strip. */
-export function LocalPlan({ catalog, outings, hub = false, openMeal = null }: { catalog: Catalog; outings: Outing[]; hub?: boolean; openMeal?: string | null }) {
+/**
+ * The local Who's eating (`page="people"`) and Meals (the default) steps, two routes like a saved menu's. A menu
+ * not stored yet has no meals to show, so it always starts on Who's eating. On the hub (`hub`) it sits under
+ * the page's own h1.
+ */
+export function LocalPlan({ catalog, outings, hub = false, openMeal = null, page = 'plan' }: { catalog: Catalog; outings: Outing[]; hub?: boolean; openMeal?: string | null; page?: 'people' | 'plan' }) {
   const store = useMemo(() => localMenuStore(catalog), [catalog]);
   const { ready, menu, dropped, rev } = useLocalMenu(catalog);
   if (!ready) return null;
@@ -84,9 +89,11 @@ export function LocalPlan({ catalog, outings, hub = false, openMeal = null }: { 
         menu={menu ?? blankMenu()}
         updatedAt={null}
         outings={outings}
+        page={menu && page === 'plan' ? 'meals' : 'people'}
         store={store}
         titleAs={hub ? 'h2' : 'h1'}
-        tabs={!hub && menu ? <LocalTabs active="plan" /> : undefined}
+        // The hub has no tab strip of its own, but a stored menu's two steps are two pages: the strip is how you reach the other one.
+        tabs={menu ? <LocalTabs active={page} /> : undefined}
         openMeal={openMeal}
       />
     </>
