@@ -1,6 +1,6 @@
 # Menu Monster: gear picked from the master list; gear for a meal
 
-**Status:** Active (release 1 in progress 2026-10-05; release 2 next)
+**Status:** SHIPPED v1.180.0 + v1.182.0 (2026-10-05/06, 1ab354f + fb88031)
 **Opened:** 2026-10-05
 **Priority:** High
 

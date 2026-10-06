@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session 48 — Two standards for the editors; every recipe and menu; gear from the list — Troop79-Website</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #3d5a3e;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #f0eecd;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); vertical-align: top; }
+        tr:hover { background: var(--nw-sage); }
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+        code { font-family: 'Courier New', monospace; font-size: 0.85em; background: var(--nw-light-gray); padding: 0 0.3em; border-radius: 3px; }
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+        @media print { body { background: white; } header { padding: 1.5rem; } .container { padding: 1rem; } .stat { break-inside: avoid; } }
+        @media (max-width: 600px) { header h1 { font-size: 1.5rem; } .stats { flex-direction: column; } }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Two standards for the editors; every recipe and menu in the admin; gear from the list</h1>
+        <p class="subtitle">Patrick asked for a wide Food &amp; recipes list and then, over an afternoon and a night, for the things that list exposed: who may edit what, a save that says why it can&rsquo;t, fewer buttons, a single food that keeps its diet swaps, gear picked from one list, and a menu that can be handed to the right scout. Seven releases.</p>
+        <div class="meta">
+            <span>&#128197; October 5&ndash;6, 2026</span>
+            <span>&#129302; Operator (Fable 5.1)</span>
+            <span>&#128204; Troop79-Website</span>
+            <span>&#128640; v1.175.0 &rarr; v1.182.0</span>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">7</div><div class="label">Releases (v1.176&ndash;v1.182)</div></div>
+            <div class="stat"><div class="number">4</div><div class="label">Production migrations</div></div>
+            <div class="stat"><div class="number">7</div><div class="label">Decisions (D-329&ndash;335)</div></div>
+            <div class="stat"><div class="number">179</div><div class="label">Tests net (3948 &rarr; 4127)</div></div>
+            <div class="stat"><div class="number">4</div><div class="label">Design reviews (Jenna &times;3, tech-lead)</div></div>
+        </div>
+
+        <h2>What Was Accomplished</h2>
+
+        <div class="callout callout-teal">
+            <strong>The outcome:</strong> a leader sees every food, recipe and menu in one wide list each, with the controls on the row; a save the form can&rsquo;t take says why beside the button and marks the field; the recipe editor has one bar and one dark button; a food keeps &ldquo;vegetarians get veggie bacon instead&rdquo; as a note on itself; gear is chosen, never typed; and the High Cliff menu can be given to the patrol that planned it.
+        </div>
+
+        <h3>Releases</h3>
+        <ul>
+            <li><strong>v1.176.0:</strong> Food &amp; recipes is a screen-wide table (kind, meals, each person gets, variations, cost per person, status). A single food opens under its row; a recipe opens its own page; the filters travel with you and come back.</li>
+            <li><strong>v1.177.0:</strong> Scout recipes shows every scout recipe with owner, dates, sharing, who can edit, and Edit / Copy / Rename / Change credit / Retire &mdash; leaders may now edit a scout&rsquo;s recipe. A Menus tab with the same shape. Price changes get Edit and Acknowledge. Close on the recipe page; the Save row pinned to the bottom with the blocking reason in words.</li>
+            <li><strong>v1.178.0 / .1:</strong> the two standards on the recipe editor: Save stays clickable and a click on an incomplete form marks the field, switches to its tab, focuses it and says &ldquo;Can&rsquo;t save yet: &hellip;&rdquo;; one sticky bar with Save, Discard, Publish and More actions&hellip;; quiet &ldquo;+ Add&rdquo; links; a segmented control for a diet&rsquo;s state; a titled box per variation. Previous / Next and the scout record&rsquo;s Menus button removed.</li>
+            <li><strong>v1.179.0:</strong> a single food keeps its diet swaps; each flagged diet is answered right under the row (Same as everyone / Instead&hellip; / Not suitable); only a second ingredient makes a recipe; &ldquo;Make it a single food&rdquo; says what it drops first.</li>
+            <li><strong>v1.180.0 / v1.181.0:</strong> gear is picked from the master list everywhere (nothing added on the fly; anything off the list is dropped and named); Merge into&hellip; on the Gear tab; the inline short form in its own box.</li>
+            <li><strong>v1.182.0:</strong> each meal carries its own gear (wash basins, soap), rolled up with recipe and menu gear on the Gear tab and the printed sheet; Change owner and Set patrol on the Menus tab, with a patrol credit line; PayPal as a payment method; &ldquo;Troop trailer&rdquo; is &ldquo;4th Floor Northwoods&rdquo;.</li>
+        </ul>
+
+        <h3>Design work</h3>
+        <ul>
+            <li><strong>Blocked saves:</strong> Jenna inventoried 21 gated controls (six behaviours) and wrote the rule now in AGENTS.md: greyed means nothing to do, never not valid yet.</li>
+            <li><strong>Control hierarchy:</strong> Jenna counted four primaries on one screen and wrote the one-bar rule, also in AGENTS.md. Patrick agreed to both as written and to one exception (target pickers stay greyed until chosen).</li>
+            <li><strong>Single food vs variations:</strong> Jenna&rsquo;s walk-through found the round trip destroyed data; the model changed to &ldquo;one food, one line; diet answers are notes on it.&rdquo;</li>
+            <li><strong>Gear:</strong> tech-lead&rsquo;s design (no id switch, server-side resolve, meal gear in the plan JSON) was built as two releases by build agents from his brief and gated here.</li>
+            <li><strong>The scout planner:</strong> Jenna&rsquo;s MACRO pass (travel-booking patterns applied to a campout) is parked in <code>Plans/Menu-Monster-Planner-Flow.md</code> with an audit, a stepped flow, eight guidelines and five decisions for Patrick.</li>
+        </ul>
+
+        <div class="callout callout-gold">
+            <strong>Verification honesty:</strong> every release passed lint, typecheck, the full suite and the build before it shipped. Browser eyes-on was local dev only: the Food &amp; recipes list, a food under its row, a recipe page, the new control bar and a refused save. The gear releases and the later batch were built by sonnet agents and gated, not reviewed independently. A production audit before the gear change found no stored gear name off the master list. Patrick&rsquo;s eyes-on list is in BACKLOG.
+        </div>
+
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Decision</th></tr></thead>
+            <tbody>
+                <tr><td>D-329</td><td>Food &amp; recipes is a wide list; a single food opens under its row, a recipe on its own page; filters in the URL</td></tr>
+                <tr><td>D-330</td><td>Leaders edit anyone&rsquo;s scout recipe; Scout recipes and Menus tabs list everything with controls; a patrol gets the credit</td></tr>
+                <tr><td>D-331</td><td>Greyed means &ldquo;nothing to do&rdquo;, never &ldquo;not valid yet&rdquo; &mdash; a blocked save marks the fields and says why</td></tr>
+                <tr><td>D-332</td><td>One control hierarchy on an edit screen: one primary, one sticky bar, More actions&hellip;, quiet section actions, segmented state choices</td></tr>
+                <tr><td>D-333</td><td>A single food keeps its diet swaps; diets are answered in the short form (amends D-326)</td></tr>
+                <tr><td>D-334</td><td>Gear is picked from the master list; a meal has its own gear; the gear store is the 4th floor at Northwoods</td></tr>
+                <tr><td>D-335</td><td>PayPal is an accepted payment method</td></tr>
+            </tbody>
+        </table>
+
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Patrick: eyes-on for v1.176&ndash;v1.182 (list in BACKLOG), and merge the two charcoal items as the Merge test.</li>
+            <li>Patrick: say whether the recipe editor&rsquo;s bar and blocked-save behaviour work; then roll both standards out to the Price book, brands and new-food forms (Jenna&rsquo;s inventory in BACKLOG).</li>
+            <li>Patrick: the five planner-flow decisions in <code>Plans/Menu-Monster-Planner-Flow.md</code>; then its &ldquo;this week&rdquo; list, starting with badges that open the control that answers them.</li>
+            <li>Carried: session 47 eyes-on and data to correct; leader-rights scope; B-004 password rotation.</li>
+        </ul>
+
+        <h2>Files Changed</h2>
+        <table>
+            <thead><tr><th>Area</th><th>Change</th></tr></thead>
+            <tbody>
+                <tr><td>Admin Menu Monster</td><td>recipe-builder.tsx (list + editor rework), recipe-screen.tsx + recipes/[recipeId] (new), scout-recipes.tsx, menus-admin.tsx (new), price-activity.tsx, gear-admin.tsx, gear-picker.tsx (new), actions.ts, page.tsx, menu-monster.module.css</td></tr>
+                <tr><td>Shared admin components</td><td>save-state.tsx (onBlocked, SaveProblem), tab-strip.tsx (alert), segmented-control.tsx (new), styleguide specimens</td></tr>
+                <tr><td>Library</td><td>food-list.ts (new), authoring.ts, scout-recipes-store.ts, menus-store.ts, menus.ts, gear.ts, gear-store.ts, price-history.ts, scout-recipes.ts, finance.ts, event-money.ts</td></tr>
+                <tr><td>Public planner</td><td>meal-panel.tsx, plan-tab.tsx, gear-tab.tsx, shopping-tab.tsx, recipe-editor.tsx, gear-picker.tsx (new), menu-actions.ts, recipe-actions.ts, scout-menus.tsx</td></tr>
+                <tr><td>Database</td><td>20261017 mm_save_recipe carries the scout author; 20261018 price_history.acknowledged_at; 20261019 the food tie survives swaps; 20261020 paypal</td></tr>
+                <tr><td>Docs</td><td>AGENTS.md (two rules), changelog.html, Plans/Menu-Monster-Planner-Flow.md (new), Plans/Completed/Menu-Monster-Gear-From-The-List.md, Agents/ memory</td></tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

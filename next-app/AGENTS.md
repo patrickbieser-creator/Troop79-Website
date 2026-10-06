@@ -179,12 +179,35 @@ already saved follows one standard** — no exceptions, public or admin:
    `SavingOverlay` + `SavedFlash`, keyed on `?saved=1`; admin forms use the same idea with the
    admin tokens — add an admin twin rather than importing across the firewall).
 4. **A control that will do nothing is greyed, not hidden** — the user should see it exists and
-   learn why it's off.
+   learn why it's off. "Nothing to do" only (clean, saving, or an empty create-once form) — never
+   "not valid yet"; an incomplete form keeps its button enabled (the rule below, 2026-10-05).
 5. **A way back (Patrick, 2026-08-24):** every in-page form that stays open after saving has a
    **Discard changes** beside Save — greyed until dirty, and it returns the form to the LAST SAVED
    state (not what the page loaded with). Dialogs and inline row editors satisfy this with their
    Cancel: closing is discarding. Admin: `DiscardButton` + `useDraftSnapshot(draft).saved` for
    controlled forms, `useFormDirty(ref).reset()` for uncontrolled ones.
+
+**Greyed means "nothing to do", never "not valid yet" (Jenna's rule, Patrick 2026-10-05; D-331):** a Save/Add/Publish/Apply
+control is disabled only when the draft equals what is saved, a save is in flight, or a create-once form is still empty.
+A dirty but incomplete form keeps the button ENABLED. Pressing it (or Enter) saves nothing and instead: marks every bad
+field in place (red outline, `aria-invalid`, a note under the field); switches to the tab that holds the first one
+(TabStrip `alert` marks it) and moves focus there; and prints "Can't save yet: <reason> (+N more)" beside the button
+(`SaveButton onBlocked` + `SaveProblem`, shown only after a try and dropped when the form is whole). A reason that lives
+only in a `title`, a Notice above the fold, or nowhere is a defect. Exception: a target picker (Merge / Move) may stay
+disabled until a target is chosen — the select's placeholder is the gate. `blocked` without `onBlocked` is the legacy
+shape, converted screen by screen (BACKLOG has the inventory). Reference: `library/menu-monster/recipe-builder.tsx`;
+specimen: /admin/styleguide/admin → Save Buttons.
+
+**Controls on an edit screen have one hierarchy (Jenna's rule, Patrick 2026-10-05; D-332):** (1) at most ONE primary
+(navy) button is visible per screen state — Save while the draft is dirty, Publish when it is saved and publishable.
+(2) Record-level actions live in ONE sticky bar: Save + Discard changes on the left (with the "Can't save yet" note),
+Publish + a "More actions…" `ActionsMenu` on the right; Duplicate, Retire/Restore, "make it a …" and Back-to-… live in
+the menu, never as loose buttons; a destructive menu item opens a danger Dialog that names the consequence. (3) Section
+actions ("+ Add …", "New …") are quiet buttons inside their section, below the list they add to — never primary.
+(4) Choosing one of 2–4 states is a `SegmentedControl` (radio group), not a row of buttons. (5) Per-row actions are one
+quiet Edit or a ⋯ menu. (6) Long forms stay numbered `FormSection`s under the sticky bar — never tabbed to hide fields.
+`primary` is reserved for the single commit; the outlined `danger` variant is for menu items and dialogs. Specimens:
+/admin/styleguide/admin → Buttons → Control hierarchy, Segmented control.
 
 **Per-section Edit is a valid alternative to one whole-form dirty gate (2026-09-07):** a record page may give each section its own Edit → dirty-gated Save/Cancel using the same `save-state.tsx` pieces, rather than one Save for the whole page — provided only one section is editable at a time (opening a second section's Edit while another is dirty prompts to discard) and one-click actions (emails, roles, relationships) are visually separated as a labelled "Takes effect immediately" block, never inside a draft form. Reference: `roster/[personId]/`.
 
