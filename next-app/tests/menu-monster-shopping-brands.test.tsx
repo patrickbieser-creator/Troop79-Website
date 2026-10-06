@@ -54,17 +54,19 @@ beforeEach(() => {
 });
 
 describe('Shopping tab — brands', () => {
-  it('AnyBrand_ReadsAnyBrand_WithAnAboutPrice', () => {
+  it('AnyBrand_ReadsAnyBrand_WithAPlainPrice', () => {
     render(tab());
     const row = rowFor('Bacon');
     expect(row.textContent).toContain('any brand · 2 × 16 oz');
-    expect(row.textContent).toContain('~$14.98');
+    expect(row.textContent).toContain('$14.98 (estimated)'); // the "(estimated)" is screen-reader text only (2026-10-06)
   });
 
-  it('EstimatedPrice_SaysItIsEstimated_ToAScreenReaderAndOnHover', () => {
+  // Patrick, 2026-10-06: no per-line marker ("~" read as a minus; "about" was clutter) — the rule is said once.
+  it('EstimatedPrice_IsAPlainPrice_SaidOnceUnderTheTotals', () => {
     render(tab());
-    const est = rowFor('Bacon').querySelector('[title="Estimated — cheapest known brand"]');
-    expect(est?.textContent).toBe('~$14.98 (estimated)');
+    expect(rowFor('Bacon').textContent).not.toMatch(/~|about/);
+    expect(rowFor('Bacon').textContent).toContain('$14.98');
+    expect(screen.getByText('Prices before a brand is chosen use the cheapest brand we know.')).toBeTruthy();
   });
 
   it('AnIngredientWithNoBrands_HasNoAbout', () => {
@@ -86,10 +88,10 @@ describe('Shopping tab — brands', () => {
     expect(subs).toEqual(['1 × Kirkland, 4 × 1 lb$18.15', '1 × Oscar Mayer, 16 oz$7.49']);
   });
 
-  it('ABrandNobodyHasPriced_IsTaggedNew_AndAbout', () => {
+  it('ABrandNobodyHasPriced_IsTaggedNew_WithAPlainPrice', () => {
     render(tab(withBrands({ bacon: [{ brandId: 'xb-new', qty: null }] })));
     const row = rowFor('Bacon');
-    expect([row.textContent?.includes('New brand'), row.textContent?.includes('~$')]).toEqual([true, true]);
+    expect([row.textContent?.includes('New brand'), row.textContent?.includes('~$')]).toEqual([true, false]);
   });
 
   it('ChoosingABrandHere_SavesItOnTheMenu', async () => {

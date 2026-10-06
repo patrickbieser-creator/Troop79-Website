@@ -323,6 +323,9 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
               ))}
             </p>
           )}
+          {list.lines.some((l) => l.estimated) && (
+            <p className={s.totalsNote}>Prices before a brand is chosen use the cheapest brand we know.</p>
+          )}
           {/* Used and Leftover answer "where did the difference go?": there when a scout asks, not on every visit. */}
           <button type="button" className={s.linkBtn} aria-expanded={showWhy} aria-controls={`${uid}-why`} onClick={() => setShowWhy((v) => !v)}>
             Show how this is worked out
@@ -528,12 +531,16 @@ function PrintSheet({ menu, list, panel, gear }: { menu: Menu; list: ReturnType<
   );
 }
 
-/** An estimated price reads "~$18.15"; the tilde is not read aloud, so the estimate is also said (title and screen reader text). */
+/**
+ * An estimated price is a plain price (Patrick, 2026-10-06: "~" read as a minus sign and "about" was clutter).
+ * The uncertainty belongs to "no brand chosen yet", which the row already says with "Choose a brand"; the rule
+ * is stated once under the totals. Only a screen reader still hears "(estimated)" per line.
+ */
 function EstPrice({ estimated, amount }: { estimated?: boolean; amount: string }) {
   if (!estimated) return <>{amount}</>;
   return (
-    <span title="Estimated — cheapest known brand">
-      ~{amount}
+    <span>
+      {amount}
       <span className={s.srOnly}> (estimated)</span>
     </span>
   );
