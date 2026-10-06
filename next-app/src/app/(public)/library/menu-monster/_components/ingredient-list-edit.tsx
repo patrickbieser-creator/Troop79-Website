@@ -66,7 +66,8 @@ export interface MenuEditProps {
   onAnnounce: (text: string) => void;
   /** The "new ingredient" form for typed text no ingredient matches (release C, a signed-in scout's
    *  saved menu only); it calls `done` with the id it added, or null on cancel. */
-  renderNew?: (name: string, done: (ingredientId: string | null) => void) => ReactNode;
+  /** `scope`: the "Add for" choice at the moment the name was typed, so a brand-new food lands for those scouts too (2026-10-06). */
+  renderNew?: (name: string, done: (ingredientId: string | null) => void, scope?: RestrictionKey) => ReactNode;
   /** Compact rows with no rule between them (a meal open on the Plan tab). */
   dense?: boolean;
   /** Release 3: the brand beside an ingredient's name (quiet text + one action) and the chooser it opens,
@@ -409,11 +410,15 @@ export function MenuEditList({ rows, ariaLabel, emptyText = 'No ingredients.', c
           onNew={renderNew ? (name) => setNewName(name) : undefined}
         />
         {newName != null &&
-          renderNew?.(newName, (id) => {
-            setNewName(null);
-            if (id) setEditing(`add:${id}`);
-            else setFocusReq('add');
-          })}
+          renderNew?.(
+            newName,
+            (id) => {
+              setNewName(null);
+              if (id) setEditing(`add:${id}`);
+              else setFocusReq('add');
+            },
+            addFor || undefined
+          )}
       </div>
     </div>
   );

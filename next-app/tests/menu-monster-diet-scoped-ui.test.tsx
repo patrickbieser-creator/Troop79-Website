@@ -144,6 +144,39 @@ describe('IngredientList (menu-edit) — diets', () => {
     expect(screen.queryByText('Gluten-free scouts only')).toBeNull();
   });
 
+  // Patrick, 2026-10-06: "Make the 'Add for' choice work for typed-in new foods too."
+  it('ATypedInNewFood_CarriesTheAddForChoice', async () => {
+    const u = user();
+    let seen: string | undefined = 'untouched';
+    render(
+      <IngredientList
+        mode="menu-edit"
+        ariaLabel="Sandwiches ingredients"
+        rows={[]}
+        choices={CHOICES}
+        restrictions={GF2}
+        onAction={() => {}}
+        onAnnounce={() => {}}
+        renderNew={(name, done, scope) => (
+          <button
+            type="button"
+            onClick={() => {
+              seen = scope;
+              done('x-new');
+            }}
+          >
+            Save {name}
+          </button>
+        )}
+      />
+    );
+    await u.selectOptions(screen.getByRole('combobox', { name: 'Add for' }), 'gf');
+    await u.type(screen.getByRole('combobox', { name: 'Add an ingredient to your version' }), 'Kool-Aid');
+    await u.click(screen.getByRole('option', { name: 'Add “Kool-Aid” as a new ingredient' }));
+    await u.click(screen.getByRole('button', { name: 'Save Kool-Aid' }));
+    expect(seen).toBe('gf');
+  });
+
   it('AnAddForEveryone_HasNoScopeMarker', async () => {
     const u = user();
     render(<Harness restrictions={GF2} />);

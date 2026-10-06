@@ -617,15 +617,16 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
                         brandSlot={brandSlot(id)}
                         renderNew={
                           canTypeIn
-                            ? (typedName, done) => (
+                            ? (typedName, done, scope) => (
                                 <MenuNewIngredient
                                   name={typedName}
                                   catalog={catalog}
                                   onCancel={() => done(null)}
                                   onAdded={(n) => {
                                     onTyped?.(n);
-                                    onIngredientAction(id, { type: 'add', ingredientId: n.key });
-                                    setStatus({ text: `${n.name} added as a new ingredient. Set how much each person needs.`, undoTo: null });
+                                    // The "Add for" choice reaches a brand-new food too (Patrick, 2026-10-06).
+                                    onIngredientAction(id, { type: 'add', ingredientId: n.key, ...(scope ? { scope } : {}) });
+                                    setStatus({ text: `${n.name} added as a new ingredient${scope ? ` for ${RESTRICTION_BY_KEY[scope].label.toLowerCase()} scouts` : ''}. Set how much each person needs.`, undoTo: null });
                                     done(n.key);
                                   }}
                                 />
