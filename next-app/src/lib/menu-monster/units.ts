@@ -50,13 +50,14 @@ export const WARN_ALLERGENS: readonly RestrictionKey[] = ['gf', 'nut'];
 export const SECTIONS: Record<Section, string> = {
   produce: 'Produce',
   dairy: 'Dairy & eggs',
+  beverage: 'Beverages',
   meat: 'Meat',
   bakery: 'Bakery',
   dry: 'Dry goods & pantry'
 };
 
 /** Shopping-list order: the walk through the store the prototype settled on. */
-export const SECTION_ORDER: readonly Section[] = ['meat', 'dairy', 'produce', 'bakery', 'dry'];
+export const SECTION_ORDER: readonly Section[] = ['meat', 'dairy', 'beverage', 'produce', 'bakery', 'dry'];
 
 export const MEALS: readonly { key: MealSlot; label: string }[] = [
   { key: 'breakfast', label: 'Breakfast' },

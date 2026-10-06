@@ -20,6 +20,9 @@ import { MAX_REVIEW_NOTE, MENU_LIMIT, addMenuIngredientWith, copyMenuWith, creat
 import { resolveMealGearWith } from '@/lib/menu-monster/gear-store';
 import { resolveAdminActor } from '@/lib/admin-actor';
 import { sanitizeNewIngredients } from '@/lib/menu-monster/scout-ingredients';
+import { MAX_SCOUT_RECIPES } from '@/lib/menu-monster/scout-recipes';
+import { listMyRecipesWith, saveScoutRecipeWith } from '@/lib/menu-monster/scout-recipes-store';
+import { sanitizeSingleFood, singleFoodDraft } from '@/lib/menu-monster/single-food';
 import { sanitizeScoutPackage } from '@/lib/menu-monster/scout-packages';
 import { addScoutPackageWith } from '@/lib/menu-monster/scout-packages-store';
 import { reportPriceWith } from '@/lib/menu-monster/price-history';
@@ -289,6 +292,48 @@ export async function addMenuIngredientAction(raw: unknown, onMenuId?: string): 
   if (!clean) return { ok: false, error: TYPED_IN_ERRORS.invalid };
   const res = await addMenuIngredientWith(createAdminClient(), actor, clean);
   return res.status === 'added' ? { ok: true, id: res.id } : { ok: false, error: TYPED_IN_ERRORS[res.status] };
+}
+
+const SCOUT_RECIPE_CAP = `You already have ${MAX_SCOUT_RECIPES} recipes of your own. Delete one you don’t need to make room for a new food.`;
+
+/**
+ * A food the price book doesn't have, added straight onto a meal (Patrick, 2026-10-06: "Scouts need the
+ * ability to add items right at this point, without too much friction"). Only the name and its Kind of
+ * food (the store section) are required; the package is optional, so an unpriced food is saved and
+ * shows "No price yet" until someone prices it. Two writes under the owner (typedInOwner): the
+ * typed-in ingredient (addMenuIngredientWith — private, a leader checks it later from Needs attention)
+ * and the owner's unshared one-line recipe that puts it on a menu. `existingIngredientId` skips the
+ * first for a food the book already has. The caller adds `recipeId` to the meal.
+ */
+export async function addFoodToMealAction(
+  raw: unknown,
+  onMenuId?: string
+): Promise<{ ok: true; ingredientId: string; recipeId: string; name: string } | (Fail & { existingIngredientId?: string })> {
+  const actor = await typedInOwner(onMenuId);
+  if (isFail(actor)) return actor;
+  if (tooBig(raw, 4 * 1024)) return { ok: false, error: TYPED_IN_ERRORS.invalid };
+  const sb = createAdminClient();
+  const catalog = await loadMenuMonsterCatalog(actor.personId);
+  const clean = sanitizeSingleFood(raw, catalog);
+  if (!clean.ok) return clean;
+  const { food } = clean;
+  // Refuse a full recipe shelf BEFORE the typed-in is written, so a refusal leaves nothing behind.
+  if (actor.personId == null) return { ok: false, error: 'Sign in to add a food.' };
+  const mine = await listMyRecipesWith(sb, actor.personId);
+  if (mine.filter((r) => r.status !== 'retired').length >= MAX_SCOUT_RECIPES) return { ok: false, error: SCOUT_RECIPE_CAP };
+
+  let ingredientId = food.existingIngredientId;
+  let name = catalog.ingredients.find((i) => i.id === ingredientId)?.name ?? '';
+  if (food.ingredient) {
+    const added = await addMenuIngredientWith(sb, actor, food.ingredient);
+    if (added.status !== 'added') return { ok: false, error: TYPED_IN_ERRORS[added.status] };
+    ingredientId = added.id;
+    name = food.ingredient.name;
+  }
+  if (!ingredientId) return { ok: false, error: TYPED_IN_ERRORS.invalid };
+  const saved = await saveScoutRecipeWith(sb, actor, singleFoodDraft(name, food.mealSlot, ingredientId, food.eachPerson, food.unit), null);
+  if (saved.status !== 'saved') return { ok: false, error: saved.status === 'cap' ? SCOUT_RECIPE_CAP : TYPED_IN_ERRORS.invalid };
+  return { ok: true, ingredientId, recipeId: saved.id, name };
 }
 
 const PACKAGE_ERRORS = {

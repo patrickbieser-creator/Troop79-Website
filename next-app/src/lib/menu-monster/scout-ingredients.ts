@@ -11,8 +11,8 @@
  * once, here, into the recipe unit the database stores.
  */
 
-import type { Catalog, Ingredient, Package, RestrictionKey, Unit } from './types';
-import { UNITS, famFactor } from './units';
+import type { Catalog, Ingredient, Package, RestrictionKey, Section, Unit } from './types';
+import { SECTION_ORDER, UNITS, famFactor } from './units';
 import { cleanScoutText } from './scout-recipes';
 
 export type NewIngredientKind = 'count' | 'volume' | 'weight';
@@ -27,7 +27,9 @@ export interface NewIngredient {
   many: string;
   /** Diets it doesn't suit (contains gluten → 'gf'). Unverified. */
   avoid: RestrictionKey[];
-  /** One package, in the recipe unit (cups / oz / count). */
+  /** The store section (Kind of food). The old callers that never send one get 'dry'. */
+  section: Section;
+  /** One package, in the recipe unit (cups / oz / count). 0 with a 0 price = no package: the food is unpriced until someone prices it. */
   size: number;
   price: number;
   store: string | null;
@@ -39,6 +41,9 @@ export const MAX_PRICE = 500;
 const MAX_SIZE = 100000;
 const NEW_KEY = /^new:[0-9a-f]{8}$/;
 const DIETS: readonly RestrictionKey[] = ['gf', 'nut', 'dairy', 'veg'];
+
+/** Whether the typed-in carries a package (a size and a price); without one it is saved unpriced. */
+export const hasPackage = (n: Pick<NewIngredient, 'size' | 'price'>) => n.size > 0 && n.price > 0;
 
 export const isNewKey = (v: unknown): v is string => typeof v === 'string' && NEW_KEY.test(v);
 
@@ -82,13 +87,21 @@ export function sizeInRecipeUnit(kind: NewIngredientKind, size: number, sizeUnit
 const plural = (one: string) => (/(s|x|ch|sh)$/i.test(one) ? `${one}es` : /[^aeiou]y$/i.test(one) ? `${one.slice(0, -1)}ies` : `${one}s`);
 
 /** What the add form says is wrong, or null. */
-export function newIngredientProblem(n: Pick<NewIngredient, 'name' | 'kind' | 'one' | 'size' | 'price'>, catalog: Catalog): string | null {
+export function newIngredientProblem(
+  n: Pick<NewIngredient, 'name' | 'kind' | 'one' | 'size' | 'price'>,
+  catalog: Catalog,
+  /** The recipe editor's form wants the package; the on-the-fly food does not (it can be priced later). */
+  opts: { requirePackage?: boolean } = {}
+): string | null {
   const name = cleanScoutText(n.name, 60);
   if (!name) return 'Give the ingredient a name.';
   if (catalog.ingredients.some((i) => i.name.toLowerCase() === name.toLowerCase() && !i.needsMatch)) {
     return `“${name}” is already in the price book. Pick it from the search instead.`;
   }
   if (n.kind === 'count' && !cleanScoutText(n.one, 20)) return 'Say what one is called (can, tortilla…).';
+  // No package at all (size and price both empty) is a food nobody has priced yet — fine unless the form needs one.
+  const none = !(n.size > 0) && !(n.price > 0);
+  if (none && !opts.requirePackage) return null;
   if (!(Number.isFinite(n.size) && n.size > 0 && n.size <= MAX_SIZE)) return 'How big is one package?';
   if (!(Number.isFinite(n.price) && n.price >= MIN_PRICE && n.price <= MAX_PRICE)) return `Enter what one package costs, from $${MIN_PRICE.toFixed(2)} to $${MAX_PRICE}.`;
   return null;
@@ -99,7 +112,7 @@ const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'obj
 /** Any payload → the typed-ins the RPC will accept (bad ones dropped, at most 10, keys unique). */
 /** A typed-in as the RPCs take it (mm_create_typed_in via the recipe save or mm_add_menu_ingredient). */
 export function typedInPayload(n: NewIngredient) {
-  return { key: n.key, name: n.name, kind: n.kind, unit_one: n.one, unit_many: n.many, avoid: n.avoid, package: { size: n.size, price: n.price, store: n.store } };
+  return { key: n.key, name: n.name, kind: n.kind, unit_one: n.one, unit_many: n.many, avoid: n.avoid, section: n.section, package: hasPackage(n) ? { size: n.size, price: n.price, store: n.store } : null };
 }
 
 /** Every typed-in id (x-<8 hex>) a menu's meals, shopping choices or actuals name. */
@@ -123,8 +136,9 @@ export function sanitizeNewIngredients(raw: unknown, catalog: Catalog): NewIngre
       one,
       many,
       avoid: DIETS.filter((d) => Array.isArray(r.avoid) && r.avoid.includes(d)),
-      size: Math.round(Number(r.size) * 1000) / 1000,
-      price: Math.round(Number(r.price) * 100) / 100,
+      section: SECTION_ORDER.find((k) => k === r.section) ?? 'dry',
+      size: Math.round((Number(r.size) || 0) * 1000) / 1000,
+      price: Math.round((Number(r.price) || 0) * 100) / 100,
       store: cleanScoutText(r.store, 40) || null
     };
     if (newIngredientProblem(n, catalog) == null) out.push(n);
@@ -142,12 +156,12 @@ export function overlayNewIngredients(catalog: Catalog, list: readonly NewIngred
     id: n.key,
     name: n.name,
     unit: recipeUnitFor(n.kind, n.one, n.many),
-    section: 'dry',
+    section: n.section,
     staple: false,
     avoid: n.avoid,
     needsMatch: true
   }));
-  const packages: Package[] = list.map((n) => ({
+  const packages: Package[] = list.filter(hasPackage).map((n) => ({
     id: `pkg:${n.key}`,
     ingredientId: n.key,
     name: n.name,

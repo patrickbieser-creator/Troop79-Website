@@ -6,9 +6,9 @@
  * measured, one package (size + price, store optional) and what it contains —
  * the diet ticks a leader confirms when matching it. Validation is
  * newIngredientProblem(); the package size is stored in the recipe unit
- * (sizeInRecipeUnit). Escape or Cancel closes it. The Ingredients tab reuses it:
- * `withSection` adds the store section a price-book keeper picks, and `busy` /
- * `failure` show the request it then makes.
+ * (sizeInRecipeUnit; the package is required here — the meal's on-the-fly food, MealNewFood, does not
+ * need one). Escape or Cancel closes it. The store section is always asked (Dry goods unless changed). The
+ * Ingredients tab reuses it: `busy` / `failure` show the request it then makes.
  */
 
 import { useId, useState, type KeyboardEvent } from 'react';
@@ -35,7 +35,6 @@ const CONTAINS: { key: RestrictionKey; label: string }[] = [
 export function NewIngredientForm({
   initialName,
   catalog,
-  withSection = false,
   busy = false,
   failure = null,
   onAdd,
@@ -43,8 +42,6 @@ export function NewIngredientForm({
 }: {
   initialName: string;
   catalog: Catalog;
-  /** Ask for the store section too (the second argument of onAdd). */
-  withSection?: boolean;
   /** The caller is saving it: the buttons wait. */
   busy?: boolean;
   /** What the caller's save said went wrong. */
@@ -82,9 +79,10 @@ export function NewIngredientForm({
       avoid,
       size: inUnit,
       price: Number(price.replace(/[$,\s]/g, '')),
+      section,
       store: store.trim() || null
     };
-    const problem = newIngredientProblem(n, catalog);
+    const problem = newIngredientProblem(n, catalog, { requirePackage: true });
     if (problem) {
       setError(problem);
       return;
@@ -150,17 +148,15 @@ export function NewIngredientForm({
       <Field label="Store (optional)">
         <TextInput value={store} maxLength={40} autoComplete="off" onChange={(e) => setStore(e.target.value)} />
       </Field>
-      {withSection && (
-        <Field label="Store section">
-          <SelectInput value={section} onChange={(e) => setSection(e.target.value as Section)}>
-            {SECTION_ORDER.map((k) => (
-              <option key={k} value={k}>
-                {SECTIONS[k]}
-              </option>
-            ))}
-          </SelectInput>
-        </Field>
-      )}
+      <Field label="Store section">
+        <SelectInput value={section} onChange={(e) => setSection(e.target.value as Section)}>
+          {SECTION_ORDER.map((k) => (
+            <option key={k} value={k}>
+              {SECTIONS[k]}
+            </option>
+          ))}
+        </SelectInput>
+      </Field>
       <div className={w.choice} role="group" aria-label="Contains">
         <span className={w.choiceLabel} aria-hidden="true">
           Contains

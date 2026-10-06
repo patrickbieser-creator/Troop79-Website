@@ -61,6 +61,7 @@ import {
 } from '@/lib/menu-monster/ingredient-rows';
 import type { NewIngredient } from '@/lib/menu-monster/scout-ingredients';
 import { MenuNewIngredient } from './menu-new-ingredient';
+import { MealNewFood, type FoodAdded } from './meal-new-food';
 import { IngredientList, type RowAction } from '../../_components/ingredient-list';
 import { RowMenu } from './row-menu';
 import { RecipeLibraryDialog } from './recipe-library-dialog';
@@ -92,6 +93,8 @@ export interface MealPanelProps {
   /** A signed-in scout's saved menu: "Add “x” as a new ingredient" (release C). */
   canTypeIn?: boolean;
   onTyped?: (n: NewIngredient) => void;
+  /** A menu item made on the fly ("Add “x” as a new food"): the Plan tab keeps it in the catalog until the next load. */
+  onNewRecipe?: (r: Recipe) => void;
   /** Set when "Share this version as a new recipe" may link out: a saved menu, no unsaved changes. */
   shareVersionMenuId?: string | null;
   /** A meal the scout just added ("Add a meal"): focus lands in its search. */
@@ -105,7 +108,7 @@ export interface MealPanelProps {
   onSuggestBrand?: (recipeId: string, ingredientId: string, brandId: string | null) => Promise<{ ok: true } | { ok: false; error: string }>;
 }
 
-export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearList, shoppingHref, onChange, canTypeIn = false, onTyped, shareVersionMenuId = null, autoFocusAdd = false, onBrands, lineFor, onTypeBrand, onSuggestBrand }: MealPanelProps) {
+export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearList, shoppingHref, onChange, canTypeIn = false, onTyped, onNewRecipe, shareVersionMenuId = null, autoFocusAdd = false, onBrands, lineFor, onTypeBrand, onSuggestBrand }: MealPanelProps) {
   /** Suggestions changed this visit ("recipe:ingredient" → brand id, or null for cleared): the catalog prop is as loaded. */
   const [suggested, setSuggested] = useState<Readonly<Record<string, string | null>>>({});
   const uid = useId();
@@ -117,6 +120,8 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
   /** The highlighted option; null = the default (the first match, or none when nothing matches). */
   const [active, setActive] = useState<number | null>(null);
   const [browsing, setBrowsing] = useState(false);
+  /** The food typed in the search that the book doesn't have, while its "Add as a new food" panel is open. */
+  const [newFood, setNewFood] = useState<string | null>(null);
   /** Brand choosers open in this meal, by `recipe:ingredient` (several stay open together — Patrick, 2026-10-03). */
   const [brandOpen, setBrandOpen] = useState<ReadonlySet<string>>(() => new Set());
   const inputRef = useRef<HTMLInputElement>(null);
@@ -152,7 +157,9 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
   const matches = candidates.filter((r) => r.name.toLowerCase().includes(query.trim().toLowerCase()));
   // The list always ends in "Browse all recipes…" (the Food & Recipes popup, for this meal); it is never
   // the default, so Enter on a typo does nothing rather than open a popup.
-  const browseAt = matches.length;
+  // "Add “x” as a new food…" sits above Browse when nothing matches what was typed (a signed-in scout's own menu only).
+  const addAt = canTypeIn && matches.length === 0 && query.trim() !== '' ? 0 : -1;
+  const browseAt = matches.length + (addAt >= 0 ? 1 : 0);
   const act = Math.min(active ?? (matches.length > 0 ? 0 : -1), browseAt);
   const showList = listOpen;
   const swapping = swapId ? recipeName(swapId) : null;
@@ -192,7 +199,16 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
     setBrowsing(false);
     requestAnimationFrame(() => inputRef.current?.focus());
   };
-  const choose = (i: number) => (i < browseAt ? pick(matches[i]) : openBrowse());
+  const openNewFood = () => {
+    const typedName = query.trim();
+    clearSearch();
+    setNewFood(typedName);
+  };
+  const closeNewFood = () => {
+    setNewFood(null);
+    requestAnimationFrame(() => inputRef.current?.focus());
+  };
+  const choose = (i: number) => (i === addAt ? openNewFood() : i < matches.length ? pick(matches[i]) : openBrowse());
 
   const without = (e: RecipeEdits, rid: string): RecipeEdits => {
     const { [rid]: dropped, ...rest } = e;
@@ -220,7 +236,30 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
     return used;
   }
 
+  /** A food made on the fly joins the meal (or takes the swapped one's place) and is announced. */
+  function foodAdded(res: FoodAdded) {
+    const before = undoPoint();
+    if (res.ingredient) onTyped?.(res.ingredient);
+    onNewRecipe?.(res.recipe);
+    if (swapId) {
+      change({ recipeIds: before.recipeIds.map((x) => (x === swapId ? res.recipe.id : x)), recipeEdits: without(edits, swapId) });
+      setSwapId(null);
+      setStatus({ text: `Swapped ${recipeName(swapId)} for ${res.name}.`, undoTo: before });
+    } else {
+      change({ recipeIds: [...before.recipeIds, res.recipe.id] });
+      setStatus({
+        text: res.ingredient
+          ? `${res.name} added to this meal as your new food — a leader will check it later. Set how much each person needs if it isn’t right.`
+          : `${res.name} added.`,
+        undoTo: null
+      });
+    }
+    setNewFood(null);
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }
+
   function pick(r: Recipe) {
+    setNewFood(null);
     const before = undoPoint();
     const brandNote = (names: string[]) => (names.length > 0 ? ` Using ${names.join(', ')}, as the recipe suggests.` : '');
     if (swapId) {
@@ -586,6 +625,19 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
                     Nothing for this meal matches “{query.trim()}”.
                   </li>
                 )}
+                {showList && addAt >= 0 && (
+                  <li
+                    id={`${uid}-opt-${addAt}`}
+                    role="option"
+                    aria-selected={act === addAt}
+                    className={`${s.option} ${s.addFoodOption}`}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onMouseMove={() => setActive(addAt)}
+                    onClick={openNewFood}
+                  >
+                    Add “{query.trim()}” as a new food…
+                  </li>
+                )}
                 {showList && (
                   <li
                     id={`${uid}-opt-${browseAt}`}
@@ -601,6 +653,17 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
                 )}
               </ul>
             </div>
+            {newFood !== null && (
+              <MealNewFood
+                name={newFood}
+                slot={meal.slot}
+                meal={meal}
+                catalog={catalog}
+                onAdded={foodAdded}
+                onPickRecipe={pick}
+                onCancel={closeNewFood}
+              />
+            )}
           </li>
         )}
       </ul>

@@ -38,7 +38,7 @@ import { Button } from '@/app/_components/button';
 import { Field, SelectInput, TextInput } from '@/app/_components/form';
 import { Notice } from '@/app/_components/notice';
 import { NumberBox, Stepper } from '@/app/_components/stepper';
-import type { Brand, BrandPick, Catalog, Plan, RestrictionKey } from '@/lib/menu-monster/types';
+import type { Brand, BrandPick, Catalog, Plan, Recipe, RestrictionKey } from '@/lib/menu-monster/types';
 import { MEALS, RESTRICTION_BY_KEY } from '@/lib/menu-monster/units';
 import { MAX_HEADCOUNT, MIN_HEADCOUNT } from '@/lib/menu-monster/engine';
 import { MAX_MENU_DAYS, MAX_MENU_MEALS, MENU_CONTEXTS, MAX_MENU_NAME, menuNameError, type Menu, type MenuContext, type MenuMeal } from '@/lib/menu-monster/menus';
@@ -49,6 +49,7 @@ import { serverMenuStore } from './server-menu-store';
 import { MealPanel } from './meal-panel';
 import { withoutMealGear, type GearItem } from '@/lib/menu-monster/gear';
 import { overlayNewIngredients, type NewIngredient } from '@/lib/menu-monster/scout-ingredients';
+import { overlayNewRecipes } from '@/lib/menu-monster/single-food';
 import type { AmountView } from '@/lib/menu-monster/ingredient-rows';
 import { RowMenu } from './row-menu';
 import { AddMealMenu } from './add-meal-menu';
@@ -149,12 +150,14 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
   const [typed, setTyped] = useState<NewIngredient[]>([]);
   // Release 3: brands typed on this page join the troop's list at once; until the next load they ride here.
   const [typedBrands, setTypedBrands] = useState<Brand[]>([]);
+  // Foods added on the fly from a meal: their menu items ride here too.
+  const [madeRecipes, setMadeRecipes] = useState<Recipe[]>([]);
   const catalog = useMemo(() => {
-    const withTyped = overlayNewIngredients(catalogProp, typed);
+    const withTyped = overlayNewRecipes(overlayNewIngredients(catalogProp, typed), madeRecipes);
     const have = new Set((withTyped.brands ?? []).map((b) => b.id));
     const fresh = typedBrands.filter((b) => !have.has(b.id));
     return fresh.length > 0 ? { ...withTyped, brands: [...(withTyped.brands ?? []), ...fresh] } : withTyped;
-  }, [catalogProp, typed, typedBrands]);
+  }, [catalogProp, typed, madeRecipes, typedBrands]);
   /** The meal "Add a meal" just created: its panel takes focus into its search, once. */
   const [focusMeal, setFocusMeal] = useState<string | null>(null);
   const nameRef = useRef<HTMLInputElement | null>(null);
@@ -377,6 +380,7 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
       onChange={setMeal}
       canTypeIn={canTypeIn}
       onTyped={(n) => setTyped((t) => [...t, n])}
+      onNewRecipe={(r) => setMadeRecipes((c) => [...c, r])}
       shareVersionMenuId={shareVersionMenuId}
       autoFocusAdd={meal.id === focusMeal}
       onBrands={readOnly ? undefined : setBrands}

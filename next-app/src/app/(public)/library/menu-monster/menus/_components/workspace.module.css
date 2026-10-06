@@ -387,6 +387,7 @@
 .noMatch { font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-meta); margin: var(--sp-2) 0 0; }
 /* A meal search's list: the no-match line inside it, and the quiet "Browse all recipes…" that always ends it. */
 .noMatchItem { padding: var(--sp-2) var(--sp-4); font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-meta); }
+.option.addFoodOption { color: var(--navy); font-weight: 700; }
 .option.browseOption { color: var(--text-meta); font-size: var(--fs-sm); border-top: 1px solid var(--rule); }
 
 /* One quiet line under the list: what just happened, and Undo. Always present so screen readers hear it. */

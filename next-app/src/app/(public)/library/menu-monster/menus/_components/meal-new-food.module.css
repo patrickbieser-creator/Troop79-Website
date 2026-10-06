@@ -1,0 +1,60 @@
+/* "Add a new food" under a meal's search (Patrick, 2026-10-06). A modal-like panel that stays inline:
+   a tinted ground, a full border and a heavy left rule so it reads as "resolve me" and cannot be
+   mistaken for another row. Public tokens only. */
+.panel {
+  margin: var(--sp-3) 0 var(--sp-2);
+  padding: var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  background: var(--status-info-bg);
+  border: 1px solid var(--border-mid);
+  border-left: 4px solid var(--navy);
+  border-radius: var(--rad-md);
+}
+.head { margin: 0; font-family: var(--font-ui); font-size: var(--fs-md); font-weight: 700; color: var(--text-head); }
+.lead { margin: 0; font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-meta); line-height: 1.5; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
+.sizeRow { display: flex; gap: var(--sp-2); }
+.sizeRow > :first-child { flex: 1 1 auto; min-width: 0; }
+.moreBtn {
+  align-self: flex-start;
+  background: none;
+  border: 0;
+  padding: var(--sp-1) 0;
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--navy);
+  cursor: pointer;
+}
+.moreBtn::before { content: '▸ '; }
+.moreBtn[aria-expanded='true']::before { content: '▾ '; }
+.moreBtn:hover { text-decoration: underline; text-underline-offset: 2px; }
+.moreBtn:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+.more { display: flex; flex-direction: column; gap: var(--sp-3); }
+.more[hidden] { display: none; }
+.choice { display: flex; flex-direction: column; gap: var(--sp-1); }
+.choiceLabel { font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-meta); }
+.chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.chip {
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  color: var(--text-head);
+  background: var(--warm-white);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-md);
+  padding: var(--sp-1) var(--sp-3);
+  min-height: 32px;
+  cursor: pointer;
+}
+.chip[aria-pressed='true'] { background: var(--navy); border-color: var(--navy); color: var(--warm-white); }
+.chip:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+.actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-3); }
+.problem { margin: 0; font-family: var(--font-ui); font-size: var(--fs-sm); font-weight: 600; color: var(--status-danger); }
+.problemMore { font-weight: 400; }
+/* A field marked in place: the red outline, in addition to the note under it. */
+.panel [aria-invalid='true'] { border-color: var(--status-danger); box-shadow: 0 0 0 1px var(--status-danger); }
+@media (max-width: 640px) {
+  .pair { grid-template-columns: 1fr; }
+}

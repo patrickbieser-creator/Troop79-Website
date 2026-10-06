@@ -27,7 +27,7 @@ export interface Restriction {
 }
 
 /** Store aisle grouping — also the shopping-list sort order (see SECTION_ORDER). */
-export type Section = 'produce' | 'dairy' | 'meat' | 'bakery' | 'dry';
+export type Section = 'produce' | 'dairy' | 'beverage' | 'meat' | 'bakery' | 'dry';
 
 export type MealSlot = 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'dessert';
 

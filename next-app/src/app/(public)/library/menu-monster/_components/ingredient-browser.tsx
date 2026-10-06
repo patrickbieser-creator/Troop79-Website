@@ -74,7 +74,6 @@ export function IngredientBrowser({ catalog, adder = null, signInHref }: { catal
         <NewIngredientForm
           initialName={q}
           catalog={catalog}
-          withSection={adder === 'live'}
           busy={busy}
           failure={failure}
           onCancel={() => setAdding(false)}

@@ -22,7 +22,7 @@ afterEach(async () => {
 });
 
 const cookies = (over: Partial<NewIngredient> = {}): NewIngredient => ({
-  key: 'new:0000c00c', name: 'Vitest cookies', kind: 'count', one: 'cookie', many: 'cookies', avoid: ['gf'], size: 36, price: 4.29, store: 'Kroger', ...over
+  key: 'new:0000c00c', name: 'Vitest cookies', kind: 'count', one: 'cookie', many: 'cookies', avoid: ['gf'], section: 'dry', size: 36, price: 4.29, store: 'Kroger', ...over
 });
 
 async function submit(person = SCOUT, n = cookies()) {

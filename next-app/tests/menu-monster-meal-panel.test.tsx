@@ -207,7 +207,7 @@ describe('MealEditor', () => {
       render(editor());
       await user.click(search());
       await user.type(search(), 'Sand');
-      expect(panel().getAllByRole('option').map((o) => o.textContent)).toEqual(['Browse all recipes…']);
+      expect(panel().getAllByRole('option').map((o) => o.textContent)).toEqual(['Add “Sand” as a new food…', 'Browse all recipes…']); // an unmatched name now also offers adding it as a new food
     });
 
     it('Search_LeavesOutRecipesAlreadyOnTheMeal', async () => {
@@ -366,7 +366,7 @@ describe('MealEditor', () => {
       const user = userEvent.setup();
       render(editor());
       await user.click(search());
-      await user.type(search(), 'zzz{ArrowDown}{Enter}');
+      await user.type(search(), 'zzz{ArrowDown}{ArrowDown}{Enter}');
       expect(library().hasAttribute('open')).toBe(true);
     });
 

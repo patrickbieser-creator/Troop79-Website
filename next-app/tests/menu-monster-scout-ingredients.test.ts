@@ -8,6 +8,7 @@ import {
   overlayNewIngredients,
   sanitizeNewIngredients,
   sizeInRecipeUnit,
+  typedInPayload,
   type NewIngredient
 } from '../src/lib/menu-monster/scout-ingredients';
 
@@ -24,6 +25,7 @@ const gochujang = (over: Partial<NewIngredient> = {}): NewIngredient => ({
   one: '',
   many: '',
   avoid: ['gf'],
+  section: 'dry',
   size: 17.6,
   price: 6.99,
   store: 'H Mart',
@@ -109,5 +111,54 @@ describe('overlayNewIngredients', () => {
 
   it('Overlay_LeavesTheCatalogAlone', () => {
     expect(CATALOG.ingredients.some((i) => i.id === 'new:0000aaaa')).toBe(false);
+  });
+});
+
+describe('section and the optional package (food on the fly, 2026-10-06)', () => {
+  it('Problem_NoPackageAtAll_IsFine_ForAFoodPricedLater', () => {
+    expect(newIngredientProblem(gochujang({ size: 0, price: 0 }), CATALOG)).toBeNull();
+  });
+
+  it('Problem_NoPackageAtAll_IsRefused_WhenTheFormRequiresOne', () => {
+    expect(newIngredientProblem(gochujang({ size: 0, price: 0 }), CATALOG, { requirePackage: true })).toBe('How big is one package?');
+  });
+
+  it('Problem_PriceWithoutSize_IsStillRefused', () => {
+    expect(newIngredientProblem(gochujang({ size: 0, price: 4 }), CATALOG)).toBe('How big is one package?');
+  });
+
+  it('Problem_SizeWithoutPrice_IsStillRefused', () => {
+    expect(newIngredientProblem(gochujang({ size: 8, price: 0 }), CATALOG)).toBe('Enter what one package costs, from $0.10 to $500.');
+  });
+
+  it('Sanitize_KeepsAValidSection', () => {
+    expect(sanitizeNewIngredients([gochujang({ section: 'beverage' })], CATALOG)[0].section).toBe('beverage');
+  });
+
+  it('Sanitize_DefaultsAMissingSection_ToDry_ForTheOldCallers', () => {
+    const { section, ...old } = gochujang();
+    void section;
+    expect(sanitizeNewIngredients([old], CATALOG)[0].section).toBe('dry');
+  });
+
+  it('Sanitize_DefaultsAnUnknownSection_ToDry', () => {
+    expect(sanitizeNewIngredients([{ ...gochujang(), section: 'candy' }], CATALOG)[0].section).toBe('dry');
+  });
+
+  it('Sanitize_KeepsAFoodWithNoPackage_AsSizeAndPriceZero', () => {
+    expect(sanitizeNewIngredients([{ ...gochujang(), size: undefined, price: undefined }], CATALOG)[0]).toMatchObject({ size: 0, price: 0 });
+  });
+
+  it('Payload_CarriesTheSection', () => {
+    expect(typedInPayload(gochujang({ section: 'beverage' })).section).toBe('beverage');
+  });
+
+  it('Payload_HasNoPackage_WhenNoneWasGiven', () => {
+    expect(typedInPayload(gochujang({ size: 0, price: 0 })).package).toBeNull();
+  });
+
+  it('Overlay_UsesTheSection_AndAddsNoPackage_WhenUnpriced', () => {
+    const cat = overlayNewIngredients(CATALOG, [gochujang({ section: 'beverage', size: 0, price: 0 })]);
+    expect([cat.ingredients.find((i) => i.id === 'new:0000aaaa')?.section, cat.packages.some((p) => p.ingredientId === 'new:0000aaaa')]).toEqual(['beverage', false]);
   });
 });

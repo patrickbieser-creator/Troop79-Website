@@ -502,7 +502,7 @@ export interface MmIngredientRow {
   unit_key: string;
   unit_one: string;
   unit_many: string;
-  section: 'produce' | 'dairy' | 'meat' | 'bakery' | 'dry';
+  section: 'produce' | 'dairy' | 'beverage' | 'meat' | 'bakery' | 'dry';
   /** Patrol-box item: counts toward Used, never toward Spent. */
   staple: boolean;
   /** Restriction keys this ingredient conflicts with (warn only). */

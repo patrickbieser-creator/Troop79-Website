@@ -82,7 +82,7 @@ async function guardActor(): Promise<{ personId: number | null; label: string } 
 }
 
 const RESTRICTION_KEYS: readonly RestrictionKey[] = ['gf', 'nut', 'dairy', 'veg'];
-const SECTIONS: readonly Section[] = ['produce', 'dairy', 'meat', 'bakery', 'dry'];
+const SECTIONS: readonly Section[] = ['produce', 'dairy', 'beverage', 'meat', 'bakery', 'dry'];
 const money = (n: number) => `$${n.toFixed(2)}`;
 const SCOUT_OWNED = 'A scout shared this recipe, so it never goes back to a draft: retire it instead.';
 

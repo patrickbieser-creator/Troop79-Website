@@ -166,7 +166,7 @@ export function gatherNeeds(plan: Plan, catalog: Catalog, into: Map<string, Need
 }
 
 /** The shopping list: one line per ingredient across every selected recipe,
- *  in store order (meat, dairy, produce, bakery, dry) then by name. */
+ *  in store order (meat, dairy, beverages, produce, bakery, dry) then by name. */
 export function buildLines(plan: Plan, catalog: Catalog): ShoppingLine[] {
   return priceNeeds(gatherNeeds(plan, catalog), plan, catalog);
 }

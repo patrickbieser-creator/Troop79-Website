@@ -181,7 +181,7 @@ describe('mm_add_scout_package', () => {
 });
 
 const ACTOR = { personId: SCOUT, label: 'Charlie W.' };
-const JAM = { key: 'new:0000beef', name: 'Vitest jam', kind: 'count' as const, one: 'jar', many: 'jars', avoid: [], size: 1, price: 3.5, store: null };
+const JAM = { key: 'new:0000beef', name: 'Vitest jam', kind: 'count' as const, one: 'jar', many: 'jars', avoid: [], section: 'dry' as const, size: 1, price: 3.5, store: null };
 const menuWith = (ingredientId: string | null): Menu => ({
   name: MARKER,
   context: 'camp',
@@ -362,5 +362,38 @@ describe('posture (release C)', () => {
     expect(data!.shared_at).toBeNull();
     await admin.from('mm_packages').delete().eq('ingredient_id', theirs);
     await admin.from('mm_ingredients').delete().eq('id', theirs);
+  });
+});
+
+describe('a typed-in with no package, and its section (food on the fly, 2026-10-06)', () => {
+  it('TypedIn_WithNoPackage_WritesNoPackageRow_AndStoresTheSection', async () => {
+    const res = await addMenuIngredientWith(admin, ACTOR, { ...JAM, name: 'Vitest Kool-Aid', section: 'beverage', size: 0, price: 0 });
+    if (res.status !== 'added') throw new Error(res.status);
+    const { data: ing } = await admin.from('mm_ingredients').select('section, needs_match_at').eq('id', res.id).single();
+    const { data: pkgs } = await admin.from('mm_packages').select('id').eq('ingredient_id', res.id);
+    expect([ing!.section, ing!.needs_match_at !== null, pkgs]).toEqual(['beverage', true, []]);
+  });
+
+  it('TypedIn_WithAPackage_StillWritesIt', async () => {
+    const res = await addMenuIngredientWith(admin, ACTOR, { ...JAM, name: 'Vitest Kool-Aid', section: 'beverage', size: 8, price: 3.5 });
+    if (res.status !== 'added') throw new Error(res.status);
+    const { data: pkgs } = await admin.from('mm_packages').select('price, yield').eq('ingredient_id', res.id);
+    expect(pkgs).toEqual([{ price: 3.5, yield: 8 }]);
+  });
+
+  it('TypedIn_WithNoSection_IsDry_ForTheOldCallers', async () => {
+    const res = await addMenuIngredient('Vitest jam');
+    const { data: ing } = await admin.from('mm_ingredients').select('section').eq('id', res.data as string).single();
+    expect(ing!.section).toBe('dry');
+  });
+
+  it('TypedIn_RefusesAnUnknownSection', async () => {
+    const { error } = await addMenuIngredient('Vitest jam', { section: 'candy' });
+    expect(error?.message).toContain('MM_BAD_INGREDIENT');
+  });
+
+  it('IngredientsTable_AcceptsBeverage_AsASection', async () => {
+    const res = await addMenuIngredientWith(admin, ACTOR, { ...JAM, name: 'Vitest lemonade', section: 'beverage', size: 0, price: 0 });
+    expect(res.status).toBe('added');
   });
 });

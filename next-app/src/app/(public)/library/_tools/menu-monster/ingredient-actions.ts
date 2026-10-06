@@ -32,7 +32,7 @@ const ERRORS = {
   duplicate_ingredient: 'The troop’s price book already has that.',
   invalid: 'Check the name, the package size and the price, then try again.'
 } as const;
-const SECTIONS: readonly Section[] = ['produce', 'dairy', 'meat', 'bakery', 'dry'];
+const SECTIONS: readonly Section[] = ['produce', 'dairy', 'beverage', 'meat', 'bakery', 'dry'];
 
 export async function submitIngredientAction(raw: unknown, section?: unknown): Promise<{ ok: true; status: 'live' | 'review'; name: string } | Fail> {
   const viewer = await menuViewer();

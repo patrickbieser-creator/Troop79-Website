@@ -12,6 +12,7 @@ import {
   shareScoutRecipeWith
 } from '../src/lib/menu-monster/scout-recipes-store';
 import type { ScoutRecipeDraft } from '../src/lib/menu-monster/scout-recipes';
+import { singleFoodDraft } from '../src/lib/menu-monster/single-food';
 
 /**
  * Phase 4A scout-recipe store against local Postgres: save / share / delete-draft
@@ -201,5 +202,23 @@ describe('gear (Phase 4C)', () => {
   it('Gear_IsSavedAndLoadedBack', async () => {
     const res = await create({ equipment: ['Dutch oven', 'Tongs'] });
     expect((await loadMyRecipeWith(sb, SCOUT, res.id))?.recipe.equipment).toEqual(['Dutch oven', 'Tongs']);
+  });
+});
+
+describe('a food on the fly (the meal planner, 2026-10-06)', () => {
+  it('SingleFood_IsAnUnsharedOneLineRecipe_FittingTheSlot', async () => {
+    const draftFor = singleFoodDraft('Vitest Kool-Aid', 'snack', ING, 2, null);
+    const res = await saveScoutRecipeWith(sb, actor, draftFor, null);
+    if (res.status !== 'saved') throw new Error(res.status);
+    made.push(res.id);
+    const mine = await loadMyRecipeWith(sb, SCOUT, res.id);
+    expect(mine).toMatchObject({ status: 'draft', sharedAt: null, recipe: { name: 'Vitest Kool-Aid', mealFit: ['snack'], foodGroups: [], steps: [], lines: [{ ingredientId: ING, qtyPerPerson: 2, unitKey: null }] } });
+  });
+
+  it('SingleFood_IsPrivateToItsOwner', async () => {
+    const res = await saveScoutRecipeWith(sb, actor, singleFoodDraft('Vitest Kool-Aid', 'snack', ING, 1, null), null);
+    if (res.status !== 'saved') throw new Error(res.status);
+    made.push(res.id);
+    expect(await loadMyRecipeWith(sb, OTHER, res.id)).toBeNull();
   });
 });

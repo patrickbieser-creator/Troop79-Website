@@ -64,8 +64,8 @@ describe('Ingredients tab — add an ingredient', () => {
     render(<IngredientBrowser catalog={CATALOG} adder="review" />);
     await user.click(screen.getByRole('button', { name: 'Add an ingredient' }));
     const form = await fillCookies(user);
-    // No store section for a request: the leader picks it when keeping it.
-    expect(within(form).queryByLabelText('Store section')).toBeNull();
+    // The store section is asked of everyone now (Dry goods unless changed): it travels with the request, and the leader still decides when keeping it.
+    expect((within(form).getByLabelText('Store section') as HTMLSelectElement).value).toBe('dry');
     await user.click(within(form).getByRole('button', { name: 'Add ingredient' }));
     await waitFor(() => expect(submitIngredientAction).toHaveBeenCalledTimes(1));
     expect(submitIngredientAction.mock.calls[0][0]).toMatchObject({ name: 'Cookies', kind: 'count', one: 'cookie', many: 'cookies', size: 36, price: 4.29 });
