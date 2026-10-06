@@ -6,7 +6,8 @@ import {
   fmtDay,
   fmtDateTime,
   fmtMonthYear,
-  fmtRange
+  fmtRange,
+  fmtWhen
 } from '../src/lib/format-date';
 
 /**
@@ -80,5 +81,19 @@ describe('fmtRange — collapses what it can', () => {
   it('SameDayOrMissingEnd_IsJustTheDate', () => {
     expect(fmtRange('2026-07-12', '2026-07-12')).toBe('Jul 12, 2026');
     expect(fmtRange('2026-07-12', null)).toBe('Jul 12, 2026');
+  });
+});
+
+describe('format-date — fmtWhen (an arrival / departure instant)', () => {
+  it('FmtWhen_ReadsTheInstantInCentral_AsDayAndClock', () => {
+    expect(fmtWhen('2026-10-24T14:00:00Z')).toBe('Sat 9:00 am'); // CDT, UTC-5
+    expect(fmtWhen('2026-10-24T14:00:00Z', { long: true })).toBe('Saturday 9:00 am');
+    expect(fmtWhen('2026-10-23T22:30:00+00:00')).toBe('Fri 5:30 pm');
+    expect(fmtWhen('2026-11-07T22:00:00Z')).toBe('Sat 4:00 pm'); // CST, UTC-6
+  });
+
+  it('FmtWhen_RendersADash_ForBlank', () => {
+    expect(fmtWhen(null)).toBe('—');
+    expect(fmtWhen('nope')).toBe('—');
   });
 });

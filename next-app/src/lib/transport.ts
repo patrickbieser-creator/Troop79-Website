@@ -14,6 +14,8 @@
  * without a browser; the Server Actions only apply what these compute.
  */
 
+import { fmtWhen } from '@/lib/format-date';
+
 export type Leg = 'out' | 'back';
 export const LEGS: readonly Leg[] = ['out', 'back'];
 export const LEG_LABEL: Record<Leg, string> = { out: 'There', back: 'Back' };
@@ -46,6 +48,10 @@ export interface TransportEntry {
   vehicleSeatsBack: number | null;
   rideOut: RideStatus | null;
   rideBack: RideStatus | null;
+  /** When this person arrives (There) / leaves (Back) if not with the group — an
+   *  ISO instant. Absent or null = with the group (the event's own times). */
+  outDepartsAt?: string | null;
+  backDepartsAt?: string | null;
 }
 
 export interface TransportCar {
@@ -55,6 +61,8 @@ export interface TransportCar {
   capacity: number;
   /** Every member, driver included. */
   memberEntryIds: number[];
+  /** The car's wave — its driver's leg time. Absent or null = with the group. */
+  departsAt?: string | null;
 }
 
 export interface LegTiles {
@@ -189,4 +197,108 @@ export function summarizePlacements(rows: readonly PlacementRow[]): PlacementLin
     byEntry.set(r.entryId, line);
   }
   return [...byEntry.values()];
+}
+
+/* ── When: a leg's departure time and the waves cars fall into ─────────────
+ * Plans/Event-Signup-Arrival-Times.md. A leg carries an optional instant —
+ * NULL is "with the group" (the event's own times). Cars inherit their
+ * driver's time. A "wave" is every car and rider sharing one departure, so the
+ * board, the sheet and the roster all read the same grouping and one rule.
+ */
+
+export const WITH_THE_GROUP = 'With the group';
+
+/** The leg's own departure instant, null = with the group. */
+export function legDepartsAt(e: TransportEntry, leg: Leg): string | null {
+  return (leg === 'out' ? e.outDepartsAt : e.backDepartsAt) ?? null;
+}
+
+/** Identity of a departure: null → '', otherwise epoch ms — so '…14:00:00Z' and
+ *  '…14:00:00+00:00' are the same wave. */
+function waveKey(departsAt: string | null | undefined): string {
+  if (!departsAt) return '';
+  const ms = Date.parse(departsAt);
+  return Number.isNaN(ms) ? '' : String(ms);
+}
+
+/** "With the group" / "Sat 9:00 am" ("Saturday 9:00 am" with `{long:true}`). */
+export function waveLabel(departsAt: string | null | undefined, o: { long?: boolean } = {}): string {
+  return waveKey(departsAt) === '' ? WITH_THE_GROUP : fmtWhen(departsAt, o);
+}
+
+export interface Wave {
+  key: string;
+  departsAt: string | null;
+  label: string;
+  carIds: number[];
+  /** Attending non-drivers who need a seat on this leg at this time, placed or not. */
+  riderIds: number[];
+}
+
+/** Cars and needs-a-ride riders for one leg, grouped by departure — "with the
+ *  group" first, then later times in order. A wave with neither is not listed. */
+export function wavesFor(leg: Leg, entries: readonly TransportEntry[], cars: readonly TransportCar[]): Wave[] {
+  const waves = new Map<string, Wave>();
+  const wave = (departsAt: string | null | undefined): Wave => {
+    const key = waveKey(departsAt);
+    let w = waves.get(key);
+    if (!w) {
+      w = { key, departsAt: key === '' ? null : new Date(Number(key)).toISOString(), label: waveLabel(departsAt), carIds: [], riderIds: [] };
+      waves.set(key, w);
+    }
+    return w;
+  };
+  for (const c of cars) if (c.leg === leg) wave(c.departsAt).carIds.push(c.id);
+  for (const e of entries) {
+    if (e.status !== 'yes' || e.participation === 'contributor') continue;
+    if (drives(e, leg) || ride(e, leg) !== 'needs_ride') continue;
+    wave(legDepartsAt(e, leg)).riderIds.push(e.id);
+  }
+  return [...waves.values()].sort((a, b) => (a.key === '' ? -1 : b.key === '' ? 1 : Number(a.key) - Number(b.key)));
+}
+
+export type PlacementCheck =
+  | { ok: true; crossesWaves: boolean }
+  | { ok: false; riderWave: string; carWave: string; message: string };
+
+/** May this rider go in this car? Only when their departures match, unless a
+ *  leader overrides (`override: true`) — then it is allowed and says it crosses. */
+export function placementCheck(
+  leg: Leg,
+  rider: TransportEntry,
+  car: TransportCar,
+  o: { override?: boolean } = {}
+): PlacementCheck {
+  const riderAt = legDepartsAt(rider, leg);
+  if (waveKey(riderAt) === waveKey(car.departsAt)) return { ok: true, crossesWaves: false };
+  if (o.override) return { ok: true, crossesWaves: true };
+  const riderWave = waveLabel(riderAt);
+  const carWave = waveLabel(car.departsAt);
+  return {
+    ok: false,
+    riderWave,
+    carWave,
+    message: `This car leaves ${carWave === WITH_THE_GROUP ? 'with the group' : carWave}; they ride ${riderWave === WITH_THE_GROUP ? 'with the group' : riderWave}.`
+  };
+}
+
+/** A driver's family name for "with Bieser" — the last word. */
+export function familyName(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  return parts[parts.length - 1] ?? name;
+}
+
+/** The sheet / roster line for a leg that has a time: "Arrives Sat 9:00 am (own
+ *  car)", "Leaves Sat 4:00 pm with Bieser". Null when the leg is with the group
+ *  or not travelled — the event's own times are not repeated per person. */
+export function legTimeLine(e: TransportEntry, leg: Leg, carDriverName: string | null): string | null {
+  const at = legDepartsAt(e, leg);
+  if (!at) return null;
+  const r = ride(e, leg);
+  if (!drives(e, leg) && r === 'not_traveling') return null;
+  const head = `${leg === 'out' ? 'Arrives' : 'Leaves'} ${fmtWhen(at)}`;
+  if (drives(e, leg)) return `${head} (driving)`;
+  if (r === 'self') return `${head} (own car)`;
+  if (r === 'meeting_there') return `${head} (meeting there)`;
+  return carDriverName ? `${head} with ${familyName(carDriverName)}` : `${head} (needs a ride)`;
 }

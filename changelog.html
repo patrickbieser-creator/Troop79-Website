@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>October 6, 2026</strong> &nbsp;&middot;&nbsp; v1.190.0</p>
+      <p>Last updated: <strong>October 6, 2026</strong> &nbsp;&middot;&nbsp; v1.191.0</p>
     </div>
   </div>
 
@@ -494,6 +494,24 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.191.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.191.0</span>
+        <span class="release-date">October 6, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">New</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Event signup: when people arrive and leave, and cars by departure</p>
+        <ul class="change-list">
+          <li><span><strong>Each leg can carry a time.</strong> On the family signup, There offers &ldquo;With the group&rdquo; or &ldquo;Later&rdquo; and Back offers &ldquo;With the group&rdquo; or &ldquo;Earlier&rdquo;; choosing one reveals a day and a time. The ride statuses (needs a ride, driving separately, meeting there) are unchanged, and an adult who arrives Saturday morning but can drive scouts home is finally sayable.</span></li>
+          <li><span><strong>The ride board groups cars by departure</strong> &mdash; &ldquo;With the group &mdash; Porter, 4 seats&rdquo;, &ldquo;Sat 9:00 am &mdash; Bieser, 3 seats&rdquo; &mdash; and a rider who needs a Saturday ride is offered Saturday cars first. Putting someone in a car that leaves at another time asks a leader to confirm, on screen and on the server.</span></li>
+          <li><span><strong>The roster and the campout sheet say it:</strong> &ldquo;Arrives Sat 9:00 am (own car)&rdquo;, &ldquo;Leaves Sat 4:00 pm with Bieser&rdquo; on the Logistics tab, in the CSV, and on the printed sheet; leaders set a leg time on anyone&rsquo;s entry from the roster edit dialog, where ride status already lives.</span></li>
+          <li><span>Not yet: nights attended as an offered headcount for Menu Monster (parked until Patrick says how), and the confirmation email does not mention times.</span></li>
+        </ul>
       </div>
     </div>
 

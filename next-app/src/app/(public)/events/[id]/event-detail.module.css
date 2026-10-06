@@ -546,3 +546,9 @@
    person when an address is shared, and the quiet "Not you?" beneath. */
 .hintChoices { display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-2); margin-bottom: var(--sp-2); }
 .hintNotYou { margin: var(--sp-2) 0 0; }
+
+/* When: a leg's own day + time (Plans/Event-Signup-Arrival-Times.md). */
+.whenRow { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; }
+.whenAt { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.whenTime { width: 7.5rem; }
+.whenProblem { flex-basis: 100%; margin: 0; font-size: var(--fs-sm); color: var(--status-danger-text, var(--text-body)); }

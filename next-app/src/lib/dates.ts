@@ -34,3 +34,39 @@ export function nextSunday(from: string = centralToday()): string {
 // date goes through lib/format-date (fmtDateFull is the "Sunday, July 12,
 // 2026" form; the mm/dd/yy form was retired by the date display standard).
 // This module is "what day is it" only.
+
+/** Minutes Central is ahead of UTC at a given instant (negative: -300 CDT, -360 CST). */
+function centralOffsetMinutes(utcMs: number): number {
+  const p = new Intl.DateTimeFormat('en-US', {
+    timeZone: TIME_ZONE,
+    hourCycle: 'h23',
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric'
+  }).formatToParts(new Date(utcMs));
+  const n = (t: string) => Number(p.find((x) => x.type === t)?.value);
+  return Math.round((Date.UTC(n('year'), n('month') - 1, n('day'), n('hour'), n('minute')) - utcMs) / 60000);
+}
+
+/** A Central wall-clock moment ('YYYY-MM-DD' + 'HH:MM') → the ISO instant it names,
+ *  DST-correct and host-timezone independent. '' when either half is missing or
+ *  malformed. The signup's arrival / departure pickers speak in this. */
+export function centralToInstant(date: string, time: string): string {
+  const d = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+  const t = /^(\d{1,2}):(\d{2})$/.exec(time);
+  if (!d || !t) return '';
+  const wall = Date.UTC(Number(d[1]), Number(d[2]) - 1, Number(d[3]), Number(t[1]), Number(t[2]));
+  let ms = wall - centralOffsetMinutes(wall) * 60000;
+  ms = wall - centralOffsetMinutes(ms) * 60000; // re-check across a DST edge
+  return new Date(ms).toISOString();
+}
+
+/** The inverse: an instant → its Central 'YYYY-MM-DD' and 'HH:MM' (picker values). */
+export function instantToCentral(iso: string | null | undefined): { date: string; time: string } {
+  const ms = iso ? Date.parse(iso) : NaN;
+  if (Number.isNaN(ms)) return { date: '', time: '' };
+  const wall = new Date(ms + centralOffsetMinutes(ms) * 60000).toISOString();
+  return { date: wall.slice(0, 10), time: wall.slice(11, 16) };
+}

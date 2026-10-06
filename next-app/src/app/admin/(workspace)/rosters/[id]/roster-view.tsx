@@ -57,6 +57,9 @@ export interface RosterRow {
   /** Ride status for legs not driven; null on a driven leg. */
   rideOut: RideStatus | null;
   rideBack: RideStatus | null;
+  /** Arrives / leaves if not with the group (ISO instant); null = with the group. */
+  outDepartsAt?: string | null;
+  backDepartsAt?: string | null;
   /** Driver's name when placed in a car for that leg. */
   carOut: string | null;
   carBack: string | null;
@@ -197,7 +200,7 @@ export async function loadRoster(signupId: number) {
   // reads it needs are independent of each other.
   const [{ data: allGroups }, { data: allMembers }] = allSetIds.length
     ? await Promise.all([
-        supabase.from('signup_groups').select('id, set_id, name, driver_entry_id, capacity').in('set_id', allSetIds),
+        supabase.from('signup_groups').select('id, set_id, name, driver_entry_id, capacity, departs_at').in('set_id', allSetIds),
         supabase.from('signup_group_members').select('group_id, entry_id, set_id').in('set_id', allSetIds)
       ])
     : [{ data: [] as unknown[] }, { data: [] as unknown[] }];
@@ -207,6 +210,7 @@ export async function loadRoster(signupId: number) {
     name: string;
     driver_entry_id: number | null;
     capacity: number | null;
+    departs_at: string | null;
   }[];
   const groupById = new Map(groupRows.map((g) => [g.id, g]));
   const membersByGroup = new Map<number, number[]>();
@@ -228,7 +232,8 @@ export async function loadRoster(signupId: number) {
       leg: legBySet.get(g.set_id) ?? 'out',
       driverEntryId: g.driver_entry_id as number,
       capacity: g.capacity ?? 1,
-      memberEntryIds: membersByGroup.get(g.id) ?? []
+      memberEntryIds: membersByGroup.get(g.id) ?? [],
+      departsAt: g.departs_at
     }));
   // entry id → driver entry id, per leg
   const carDriverByEntry: Record<Leg, Map<number, number>> = { out: new Map(), back: new Map() };
@@ -360,6 +365,8 @@ export async function loadRoster(signupId: number) {
       vehicleSeatsBack: e.vehicle_seats_back ? Number(e.vehicle_seats_back) : null,
       rideOut: isRideStatus(e.ride_out) ? e.ride_out : null,
       rideBack: isRideStatus(e.ride_back) ? e.ride_back : null,
+      outDepartsAt: typeof e.out_departs_at === 'string' ? e.out_departs_at : null,
+      backDepartsAt: typeof e.back_departs_at === 'string' ? e.back_departs_at : null,
       carOut: e.drives_out === true ? null : carNameFor(Number(e.id), 'out'),
       carBack: e.drives_back === true ? null : carNameFor(Number(e.id), 'back'),
       groupBySet: groupBySetByEntry.get(Number(e.id)) ?? {},
@@ -416,7 +423,9 @@ export async function loadRoster(signupId: number) {
     vehicleSeatsOut: r.vehicleSeatsOut,
     vehicleSeatsBack: r.vehicleSeatsBack,
     rideOut: r.rideOut,
-    rideBack: r.rideBack
+    rideBack: r.rideBack,
+    outDepartsAt: r.outDepartsAt,
+    backDepartsAt: r.backDepartsAt
   }));
   const ridesOut = legTiles(transportEntries, cars, 'out');
   const ridesBack = legTiles(transportEntries, cars, 'back');

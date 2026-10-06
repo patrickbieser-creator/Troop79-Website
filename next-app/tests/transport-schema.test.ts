@@ -214,3 +214,68 @@ describe('submit_household_signup carries the new columns', () => {
     await admin.from('signup_entries').delete().eq('id', entryId);
   });
 });
+
+describe('leg departure times (Plans/Event-Signup-Arrival-Times.md)', () => {
+  const SAT = '2026-10-24T14:00:00+00:00';
+  const SAT_PM = '2026-10-24T21:00:00+00:00';
+
+  it('LegTimes_DefaultToNull_WithTheGroup', async () => {
+    const row = await entry(admin, { person_kind: 'scout', person_id: scout.personId });
+    const { data } = await admin.from('signup_entries').select('out_departs_at, back_departs_at').eq('id', row.id as number).single();
+    expect(data).toEqual({ out_departs_at: null, back_departs_at: null });
+    await admin.from('signup_entries').delete().eq('id', row.id as number);
+  });
+
+  it('DriversCar_InheritsTheDriversLegTime_AndFollowsAChange', async () => {
+    await admin.from('event_signups').update({ drivers_needed: true }).eq('id', event.eventSignupId);
+    const row = await entry(admin, {
+      person_kind: 'adult',
+      person_id: adultPersonId,
+      drives_out: true,
+      vehicle_seats_out: 4,
+      out_departs_at: SAT
+    });
+    const car = async () => {
+      const { data } = await admin
+        .from('signup_groups')
+        .select('departs_at, signup_group_sets!inner(kind, leg)')
+        .eq('driver_entry_id', row.id as number)
+        .eq('signup_group_sets.leg', 'out')
+        .single();
+      return data?.departs_at as string | null;
+    };
+    expect(new Date((await car()) as string).toISOString()).toBe(new Date(SAT).toISOString());
+
+    await admin.from('signup_entries').update({ out_departs_at: SAT_PM }).eq('id', row.id as number);
+    expect(new Date((await car()) as string).toISOString()).toBe(new Date(SAT_PM).toISOString());
+
+    await admin.from('signup_entries').update({ out_departs_at: null }).eq('id', row.id as number);
+    expect(await car()).toBeNull();
+    await admin.from('signup_entries').delete().eq('id', row.id as number);
+  });
+});
+
+describe('the family submit carries leg times', () => {
+  it('SubmitHouseholdSignup_StoresAndClearsTheLegTimes', async () => {
+    const submit = (extra: Record<string, unknown>) =>
+      admin.rpc('submit_household_signup', {
+        p_event_signup_id: event.eventSignupId,
+        p_entries: [{ key: 's', person_kind: 'scout', person_id: scout.personId, status: 'yes', ...extra }],
+        p_actor: 'vitest',
+        p_allowed_person_ids: [scout.personId]
+      });
+    const read = async (id: number) =>
+      (await admin.from('signup_entries').select('out_departs_at, back_departs_at').eq('id', id).single()).data;
+
+    const first = await submit({ out_departs_at: '2026-10-24T14:00:00.000Z', back_departs_at: '' });
+    expect(first.error).toBeNull();
+    const id = (first.data as { entry_id: number }[])[0].entry_id;
+    const stored = await read(id);
+    expect(new Date(stored?.out_departs_at as string).toISOString()).toBe('2026-10-24T14:00:00.000Z');
+    expect(stored?.back_departs_at).toBeNull();
+
+    expect((await submit({})).error).toBeNull(); // a resubmit without a time is "with the group"
+    expect(await read(id)).toEqual({ out_departs_at: null, back_departs_at: null });
+    await admin.from('signup_entries').delete().eq('id', id);
+  });
+});

@@ -42,7 +42,7 @@ export async function loadAssignments(signupId: number) {
     supabase
       .from('signup_entries')
       .select(
-        'id, person_id, participant_class, status, participation, drives_out, drives_back, vehicle_seats_out, vehicle_seats_back, ride_out, ride_back'
+        'id, person_id, participant_class, status, participation, drives_out, drives_back, vehicle_seats_out, vehicle_seats_back, ride_out, ride_back, out_departs_at, back_departs_at'
       )
       .eq('event_signup_id', sig.id)
       .neq('status', 'cancelled'),
@@ -61,7 +61,7 @@ export async function loadAssignments(signupId: number) {
   const { data: groups } = setIds.length
     ? await supabase
         .from('signup_groups')
-        .select('id, set_id, name, capacity, driver_entry_id, notes, sort')
+        .select('id, set_id, name, capacity, driver_entry_id, notes, sort, departs_at')
         .in('set_id', setIds)
         .order('sort')
         .order('name')
@@ -87,6 +87,7 @@ export async function loadAssignments(signupId: number) {
       capacity: number | null;
       driver_entry_id: number | null;
       notes: string | null;
+      departs_at: string | null;
     }[])
       .filter((g) => g.set_id === s.id)
       .map((g) => ({
@@ -95,6 +96,7 @@ export async function loadAssignments(signupId: number) {
         capacity: g.capacity,
         driverEntryId: g.driver_entry_id,
         notes: g.notes,
+        departsAt: g.departs_at,
         memberEntryIds: membersByGroup.get(g.id) ?? []
       }))
   }));
@@ -118,6 +120,8 @@ export async function loadAssignments(signupId: number) {
       vehicleSeatsBack: e.vehicle_seats_back ? Number(e.vehicle_seats_back) : null,
       rideOut: isRideStatus(e.ride_out) ? e.ride_out : null,
       rideBack: isRideStatus(e.ride_back) ? e.ride_back : null,
+      outDepartsAt: typeof e.out_departs_at === 'string' ? e.out_departs_at : null,
+      backDepartsAt: typeof e.back_departs_at === 'string' ? e.back_departs_at : null,
       phone: person?.primary_phone ?? null
     };
   });

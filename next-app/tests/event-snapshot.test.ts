@@ -174,6 +174,33 @@ describe('car manifests', () => {
   });
 });
 
+describe('arrival and departure times on the sheet', () => {
+  const SAT = '2026-10-24T14:00:00+00:00';
+  const timedInput: SnapshotInput = {
+    ...input,
+    people: input.people.map((p) =>
+      p.name === 'Violet' || p.name === 'Anjali' ? { ...p, outDepartsAt: SAT } : p
+    ),
+    sets: input.sets.map((s) =>
+      s.kind === 'car' ? { ...s, groups: s.groups.map((g) => (g.driverEntryId === 1 ? { ...g, departsAt: SAT } : g)) } : s
+    )
+  };
+
+  it('Sheet_SaysArrivesAndLeaves_WithWhom', () => {
+    const out = buildCarManifests(timedInput)[0];
+    expect(out.timed).toEqual([
+      { name: 'Anjali', line: 'Arrives Sat 9:00 am with Porter' },
+      { name: 'Violet', line: 'Arrives Sat 9:00 am (meeting there)' }
+    ]);
+    expect(out.cars.find((c) => c.driverName === 'Jason Porter')?.when).toBe('Sat 9:00 am');
+    expect(out.cars.find((c) => c.driverName === 'Mindy')?.when).toBeNull();
+  });
+
+  it('Sheet_SaysNothingExtra_WhenEveryoneIsWithTheGroup', () => {
+    expect(buildCarManifests(input)[0].timed).toEqual([]);
+  });
+});
+
 describe('other sets, contacts, money, counts', () => {
   it('OtherSets_ExcludeCarsAndThePatrolSet', () => {
     expect(buildOtherSets(input)).toEqual([{ label: 'Tents', groups: [{ name: 'Tent A', capacity: 2, members: ['Anjali', 'Owen'] }] }]);

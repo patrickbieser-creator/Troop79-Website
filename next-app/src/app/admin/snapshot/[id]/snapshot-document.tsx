@@ -70,7 +70,7 @@ export async function loadSnapshot(signupId: number): Promise<{ input: SnapshotI
       supabase.from('calendar_entries').select('id, title, entry_date, end_date, start_time, end_time, location').eq('id', s.calendar_entry_id).maybeSingle(),
       supabase
         .from('signup_entries')
-        .select('id, person_id, participant_class, person_kind, status, participation, drives_out, drives_back, vehicle_seats_out, vehicle_seats_back, ride_out, ride_back, permission_slip_received, notes, household_id, guest_count')
+        .select('id, person_id, participant_class, person_kind, status, participation, drives_out, drives_back, vehicle_seats_out, vehicle_seats_back, ride_out, ride_back, out_departs_at, back_departs_at, permission_slip_received, notes, household_id, guest_count')
         .eq('event_signup_id', s.id)
         .neq('status', 'cancelled'),
       supabase.from('signup_entry_balances').select('entry_id, owed, paid, balance').eq('event_signup_id', s.id),
@@ -155,6 +155,8 @@ export async function loadSnapshot(signupId: number): Promise<{ input: SnapshotI
       vehicleSeatsBack: e.vehicle_seats_back ? Number(e.vehicle_seats_back) : null,
       rideOut: isRideStatus(e.ride_out) ? e.ride_out : null,
       rideBack: isRideStatus(e.ride_back) ? e.ride_back : null,
+      outDepartsAt: typeof e.out_departs_at === 'string' ? e.out_departs_at : null,
+      backDepartsAt: typeof e.back_departs_at === 'string' ? e.back_departs_at : null,
       slipReceived: e.permission_slip_received === true,
       owed: Number(bal?.owed ?? 0),
       paid: Number(bal?.paid ?? 0),
@@ -170,7 +172,7 @@ export async function loadSnapshot(signupId: number): Promise<{ input: SnapshotI
   const setIds = setRows.map((x) => x.id);
   const [{ data: groups }, { data: members }] = setIds.length
     ? await Promise.all([
-        supabase.from('signup_groups').select('id, set_id, name, capacity, driver_entry_id, notes, sort').in('set_id', setIds).order('sort').order('name'),
+        supabase.from('signup_groups').select('id, set_id, name, capacity, driver_entry_id, notes, sort, departs_at').in('set_id', setIds).order('sort').order('name'),
         supabase.from('signup_group_members').select('group_id, entry_id').in('set_id', setIds)
       ])
     : [{ data: [] as unknown[] }, { data: [] as unknown[] }];
@@ -181,9 +183,9 @@ export async function loadSnapshot(signupId: number): Promise<{ input: SnapshotI
     label: x.label,
     kind: x.kind,
     leg: x.leg,
-    groups: ((groups ?? []) as { id: number; set_id: number; name: string; capacity: number | null; driver_entry_id: number | null; notes: string | null }[])
+    groups: ((groups ?? []) as { id: number; set_id: number; name: string; capacity: number | null; driver_entry_id: number | null; notes: string | null; departs_at: string | null }[])
       .filter((g) => g.set_id === x.id)
-      .map((g) => ({ id: g.id, name: g.name, capacity: g.capacity, driverEntryId: g.driver_entry_id, notes: g.notes, memberEntryIds: membersByGroup.get(g.id) ?? [] }))
+      .map((g) => ({ id: g.id, name: g.name, capacity: g.capacity, driverEntryId: g.driver_entry_id, notes: g.notes, departsAt: g.departs_at, memberEntryIds: membersByGroup.get(g.id) ?? [] }))
   }));
 
   // Jobs + claims (the Jobs section — the readable assignment list for
@@ -381,7 +383,10 @@ export async function SnapshotDocument({
                 {leg.cars.map((c) => (
                   <div key={c.driverName} className={styles.car}>
                     <div className={styles.carHead}>
-                      <span>{c.driverName}</span>
+                      <span>
+                        {c.driverName}
+                        {c.when ? <span className={styles.carMeta}> · {c.when}</span> : null}
+                      </span>
                       <span className={styles.carMeta}>
                         {c.riders.length + 1}
                         {c.capacity != null ? ` of ${c.capacity}` : ''} seats
@@ -409,6 +414,9 @@ export async function SnapshotDocument({
                 <p>
                   <strong>Still need a seat:</strong> {leg.unplaced.join(', ')}
                 </p>
+              )}
+              {leg.timed.length > 0 && (
+                <p className={styles.muted}>{leg.timed.map((t) => `${t.name}: ${t.line}`).join(' · ')}</p>
               )}
               {leg.onTheirOwn.length > 0 && (
                 <p className={styles.muted}>On their own: {leg.onTheirOwn.map((o) => `${o.name} (${o.how.toLowerCase()})`).join(', ')}</p>

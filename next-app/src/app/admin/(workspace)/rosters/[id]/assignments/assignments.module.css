@@ -50,3 +50,7 @@
 .addGroup input[type='number'] { width: 96px; }
 .err { color: var(--admin-danger); font-size: var(--admin-text-sm); font-weight: var(--admin-weight-semibold); margin: var(--admin-space-2) 0; }
 .noSets { font-size: var(--admin-text-sm); color: var(--admin-gray-600); }
+
+/* Cars grouped by departure (Plans/Event-Signup-Arrival-Times.md): one quiet heading per wave. */
+.waveHead { font-size: var(--admin-text-sm); font-weight: var(--admin-weight-bold); color: var(--admin-gray-600); margin: var(--admin-space-5) 0 var(--admin-space-2); }
+.waveRow { margin-bottom: var(--admin-space-2); }

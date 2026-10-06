@@ -7,7 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { eventRevalidatePaths } from '@/lib/event-signup-shared';
 import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
-import { isRideStatus } from '@/lib/transport';
+import { isRideStatus, placementCheck, type Leg, type TransportEntry } from '@/lib/transport';
 import { isValidJobCode, normalizeJobCode, JOB_CODE_MAX } from '@/lib/job-codes';
 import { normalizeGroupName, normalizeSetLabel, validateNewSet } from '@/lib/group-sets';
 import { sendEmail, renderEmail } from '@/lib/email';
@@ -1200,6 +1200,9 @@ export async function setEntryTransport(
     vehicleSeatsBack: number | null;
     rideOut: string | null;
     rideBack: string | null;
+    /** ISO instants; null = with the group; undefined = leave as saved. */
+    outDepartsAt?: string | null;
+    backDepartsAt?: string | null;
   },
   signupId: number,
   calendarEntryId: number
@@ -1212,10 +1215,15 @@ export async function setEntryTransport(
     return { ok: false, error: 'A driver needs a seat count (including themselves).' };
   if (transport.drivesBack && !(transport.vehicleSeatsBack && transport.vehicleSeatsBack >= 1))
     return { ok: false, error: 'A driver needs a seat count (including themselves).' };
+  for (const t of [transport.outDepartsAt, transport.backDepartsAt]) {
+    if (t != null && Number.isNaN(Date.parse(t))) return { ok: false, error: 'That time is not valid.' };
+  }
   const supabase = createAdminClient();
   const { error } = await supabase
     .from('signup_entries')
     .update({
+      ...(transport.outDepartsAt !== undefined ? { out_departs_at: transport.outDepartsAt } : {}),
+      ...(transport.backDepartsAt !== undefined ? { back_departs_at: transport.backDepartsAt } : {}),
       drives_out: transport.drivesOut,
       drives_back: transport.drivesBack,
       vehicle_seats_out: transport.drivesOut ? transport.vehicleSeatsOut : null,
@@ -1261,6 +1269,15 @@ export async function setRideStatus(
   return { ok: true };
 }
 
+/** Only the leg time matters to placementCheck; the rest is the type's required shape. */
+function ridersEntry(leg: Leg, departsAt: string | null): TransportEntry {
+  return {
+    id: 0, status: 'yes', participation: 'full', drivesOut: false, drivesBack: false,
+    vehicleSeatsOut: null, vehicleSeatsBack: null, rideOut: 'needs_ride', rideBack: 'needs_ride',
+    outDepartsAt: leg === 'out' ? departsAt : null, backDepartsAt: leg === 'back' ? departsAt : null
+  };
+}
+
 export type PlaceOutcome = 'placed' | 'moved' | 'already' | 'full' | 'gone';
 
 /**
@@ -1273,10 +1290,35 @@ export async function placeInGroup(
   groupId: number,
   entryId: number,
   signupId: number,
-  calendarEntryId: number
+  calendarEntryId: number,
+  /** A leader confirmed putting someone in a car that leaves at another time. */
+  override = false
 ): Promise<Result & { outcome?: PlaceOutcome }> {
   const session = await requireCapability('calendar.write');
   const supabase = createAdminClient();
+  if (!override) {
+    // A car belongs to one departure; the rider's own leg time must match unless a leader overrides.
+    const { data: g } = await supabase
+      .from('signup_groups')
+      .select('id, departs_at, capacity, signup_group_sets!inner(kind, leg)')
+      .eq('id', groupId)
+      .maybeSingle();
+    const set = (g as { signup_group_sets?: { kind: string; leg: 'out' | 'back' | null } } | null)?.signup_group_sets;
+    if (g && set?.kind === 'car' && set.leg) {
+      const { data: e } = await supabase
+        .from('signup_entries')
+        .select('out_departs_at, back_departs_at')
+        .eq('id', entryId)
+        .eq('event_signup_id', signupId)
+        .maybeSingle();
+      if (e) {
+        const rider = { out: e.out_departs_at as string | null, back: e.back_departs_at as string | null }[set.leg];
+        const car = (g as { departs_at: string | null }).departs_at;
+        const check = placementCheck(set.leg, ridersEntry(set.leg, rider), { id: groupId, leg: set.leg, driverEntryId: 0, capacity: 1, memberEntryIds: [], departsAt: car });
+        if (!check.ok) return { ok: false, error: `${check.message} A leader can confirm it on the board.` };
+      }
+    }
+  }
   const { data, error } = await supabase.rpc('place_in_group', {
     p_group_id: groupId,
     p_entry_id: entryId,

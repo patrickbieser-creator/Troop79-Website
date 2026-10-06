@@ -134,6 +134,61 @@ describe('AssignmentsBoard — cars', () => {
   });
 });
 
+describe('AssignmentsBoard — cars by departure', () => {
+  const SAT = '2026-10-24T14:00:00+00:00'; // Sat 9:00 am Central
+  const satDriver = person({
+    entryId: 20,
+    name: 'Patrick Bieser',
+    participantClass: 'adult',
+    drivesOut: true,
+    vehicleSeatsOut: 3,
+    rideOut: null,
+    outDepartsAt: SAT
+  });
+  const waveSet: BoardSet = {
+    ...carSet,
+    groups: [
+      { id: 100, name: 'Jason Porter', capacity: 4, driverEntryId: 1, notes: null, memberEntryIds: [1], departsAt: null },
+      { id: 101, name: 'Patrick Bieser', capacity: 3, driverEntryId: 20, notes: null, memberEntryIds: [20], departsAt: SAT }
+    ]
+  };
+  const wavePeople = [
+    driver,
+    satDriver,
+    person({ entryId: 2, name: 'Anjali' }),
+    person({ entryId: 3, name: 'Owen', outDepartsAt: SAT })
+  ];
+
+  it('Board_GroupsCarsByDeparture_AndPlacesANeedsRideInAMatchingWave', async () => {
+    const user = userEvent.setup();
+    render(<AssignmentsBoard signupId={1} calendarEntryId={2} sets={[waveSet]} people={wavePeople} />);
+    expect(screen.getByText('With the group — Porter, 4 seats')).toBeTruthy();
+    expect(screen.getByText('Sat 9:00 am — Bieser, 3 seats')).toBeTruthy();
+    // Owen needs a Saturday ride: the Saturday car is offered first, the other under "another time".
+    const move = screen.getByLabelText('Move Owen') as HTMLSelectElement;
+    const groups = [...move.querySelectorAll('optgroup')];
+    expect(groups.map((g) => g.label)).toEqual(['Leaves at another time']);
+    expect(within(groups[0] as HTMLElement).getByText(/Jason Porter/)).toBeTruthy();
+    await user.selectOptions(move, '101');
+    expect(placeInGroup).toHaveBeenCalledWith(101, 3, 1, 2);
+  });
+
+  it('Board_AsksALeaderToConfirm_BeforePlacingIntoAnotherWave', async () => {
+    const user = userEvent.setup();
+    render(<AssignmentsBoard signupId={1} calendarEntryId={2} sets={[waveSet]} people={wavePeople} />);
+    await user.selectOptions(screen.getByLabelText('Move Owen'), '100');
+    expect(placeInGroup).not.toHaveBeenCalled();
+    expect(screen.getByText(/Put them in it anyway/)).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Put them in this car' }));
+    expect(placeInGroup).toHaveBeenCalledWith(100, 3, 1, 2, true);
+  });
+
+  it('Board_ShowsNoHeadings_WhenEveryCarLeavesWithTheGroup', () => {
+    render(<AssignmentsBoard signupId={1} calendarEntryId={2} sets={[carSet]} people={people} />);
+    expect(screen.queryByText(/With the group —/)).toBeNull();
+  });
+});
+
 describe('AssignmentsBoard — any other set', () => {
   it('GroupBoard_PoolIsEveryoneNotPlaced_AndFullGroupsAreDisabledInTheMove', () => {
     render(<AssignmentsBoard signupId={1} calendarEntryId={2} sets={[tentSet]} people={people} />);

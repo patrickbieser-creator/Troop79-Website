@@ -22,7 +22,9 @@ import {
   LEADER_PRESETS,
   type LeaderQuestion
 } from '@/lib/leader-columns';
-import { LEG_LABEL, RIDE_STATUSES, RIDE_STATUS_LABEL, rideCell, rideShort, type Leg, type RideStatus } from '@/lib/transport';
+import { LEG_LABEL, RIDE_STATUSES, RIDE_STATUS_LABEL, legTimeLine, rideCell, rideShort, type Leg, type RideStatus } from '@/lib/transport';
+import { fmtWhen } from '@/lib/format-date';
+import { DateTimeField } from '../../_components/date-time-field';
 import {
   PARTICIPANT_CLASSES,
   PARTICIPANT_CLASS_LABEL,
@@ -373,7 +375,12 @@ export function RosterTable({
     seatsOut: 4,
     seatsBack: 4,
     rideOut: 'needs_ride' as RideStatus,
-    rideBack: 'needs_ride' as RideStatus
+    rideBack: 'needs_ride' as RideStatus,
+    // When they arrive / leave if not with the group: ISO instant, '' = with the group.
+    outAt: '',
+    backAt: '',
+    outTimed: false,
+    backTimed: false
   });
 
   function openJobsEditor(r: RosterRow) {
@@ -388,7 +395,11 @@ export function RosterTable({
       seatsOut: r.vehicleSeatsOut ?? r.vehicleSeatsBack ?? 4,
       seatsBack: r.vehicleSeatsBack ?? r.vehicleSeatsOut ?? 4,
       rideOut: r.rideOut ?? 'needs_ride',
-      rideBack: r.rideBack ?? 'needs_ride'
+      rideBack: r.rideBack ?? 'needs_ride',
+      outAt: r.outDepartsAt ?? '',
+      backAt: r.backDepartsAt ?? '',
+      outTimed: !!r.outDepartsAt,
+      backTimed: !!r.backDepartsAt
     });
     setEditingRow(r);
   }
@@ -401,7 +412,9 @@ export function RosterTable({
       (t.drivesOut && t.seatsOut !== r.vehicleSeatsOut) ||
       (t.drivesBack && t.seatsBack !== r.vehicleSeatsBack) ||
       (!t.drivesOut && t.rideOut !== (r.rideOut ?? 'needs_ride')) ||
-      (!t.drivesBack && t.rideBack !== (r.rideBack ?? 'needs_ride'))
+      (!t.drivesBack && t.rideBack !== (r.rideBack ?? 'needs_ride')) ||
+      (t.outTimed ? t.outAt : '') !== (r.outDepartsAt ?? '') ||
+      (t.backTimed ? t.backAt : '') !== (r.backDepartsAt ?? '')
     );
   }
 
@@ -443,7 +456,9 @@ export function RosterTable({
               vehicleSeatsOut: t.drivesOut ? t.seatsOut : null,
               vehicleSeatsBack: t.drivesBack ? t.seatsBack : null,
               rideOut: t.drivesOut ? null : t.rideOut,
-              rideBack: t.drivesBack ? null : t.rideBack
+              rideBack: t.drivesBack ? null : t.rideBack,
+              outDepartsAt: t.outTimed && t.outAt ? t.outAt : null,
+              backDepartsAt: t.backTimed && t.backAt ? t.backAt : null
             },
             signupId,
             calendarEntryId
@@ -563,7 +578,8 @@ export function RosterTable({
       PARTICIPANT_CLASS_LABEL[r.participantClass], r.name, r.household, r.status, r.participation, r.tierLabel ?? '',
       r.days ?? '', r.owed, r.guests, r.guestNote ?? '',
       r.drivesOut ? (r.vehicleSeatsOut ?? '') : '', r.drivesBack ? (r.vehicleSeatsBack ?? '') : '',
-      rideCell(r, 'out', r.carOut), rideCell(r, 'back', r.carBack),
+      [rideCell(r, 'out', r.carOut), legTimeLine(r, 'out', r.carOut)].filter(Boolean).join(' · '),
+      [rideCell(r, 'back', r.carBack), legTimeLine(r, 'back', r.carBack)].filter(Boolean).join(' · '),
       ...groupSets.map((s) => r.groupBySet[s.id] ?? ''),
       r.owed === 0 ? '' : r.settled ? 'Paid' : `${r.balance} due`,
       r.claimsDisplay.join(' | '), r.answers.join(' | '),
@@ -788,10 +804,13 @@ export function RosterTable({
                 const travels = r.status === 'yes' && r.participation !== 'contributor';
                 const car = leg === 'out' ? r.carOut : r.carBack;
                 // Full wording ("Needs a ride", "Driving · 4 seats") stays on hover.
-                const full = travels ? rideCell(r, leg, car) : '—';
+                const when = travels ? legTimeLine(r, leg, car) : null;
+                const at = leg === 'out' ? r.outDepartsAt : r.backDepartsAt;
+                const full = travels ? [rideCell(r, leg, car), when].filter(Boolean).join(' · ') : '—';
                 return (
                   <td key={leg} className={`${styles.cellTight} ${styles.cellMuted}`} title={full}>
                     {travels ? rideShort(r, leg, car, r.name) : '—'}
+                    {when && at ? <span className={styles.evCat}>{fmtWhen(at)}</span> : null}
                   </td>
                 );
               })}
@@ -972,6 +991,24 @@ export function RosterTable({
                                 </option>
                               ))}
                             </select>
+                          )}
+                          {/* When: with the group (the event's own times) or a day + time of their own. */}
+                          <select
+                            aria-label={`${LEG_LABEL[leg]} time`}
+                            value={(leg === 'out' ? editTransport.outTimed : editTransport.backTimed) ? 'own' : 'group'}
+                            onChange={(e) =>
+                              setEditTransport((t) => ({ ...t, [leg === 'out' ? 'outTimed' : 'backTimed']: e.target.value === 'own' }))
+                            }
+                          >
+                            <option value="group">With the group</option>
+                            <option value="own">{leg === 'out' ? 'Arrives later' : 'Leaves earlier'}</option>
+                          </select>
+                          {(leg === 'out' ? editTransport.outTimed : editTransport.backTimed) && (
+                            <DateTimeField
+                              value={leg === 'out' ? editTransport.outAt : editTransport.backAt}
+                              defaultTime="09:00"
+                              onChange={(iso) => setEditTransport((t) => ({ ...t, [leg === 'out' ? 'outAt' : 'backAt']: iso }))}
+                            />
                           )}
                         </li>
                       );

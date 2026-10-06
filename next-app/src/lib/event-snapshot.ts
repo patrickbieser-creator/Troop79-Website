@@ -13,7 +13,7 @@
  * always print.
  */
 
-import { LEG_LABEL, type Leg, type RideStatus, RIDE_STATUS_LABEL } from '@/lib/transport';
+import { LEG_LABEL, legTimeLine, waveLabel, type Leg, type RideStatus, RIDE_STATUS_LABEL } from '@/lib/transport';
 import { money } from '@/lib/event-money';
 import { bandJobsByDay, jobCoverage, jobWhen, resolveJobCodes } from '@/lib/job-codes';
 
@@ -38,6 +38,9 @@ export interface SnapshotPerson {
   vehicleSeatsBack: number | null;
   rideOut: RideStatus | null;
   rideBack: RideStatus | null;
+  /** Arrives / leaves if not with the group (ISO instant); absent or null = with the group. */
+  outDepartsAt?: string | null;
+  backDepartsAt?: string | null;
   slipReceived: boolean;
   owed: number;
   paid: number;
@@ -65,7 +68,7 @@ export interface SnapshotSet {
   label: string;
   kind: string;
   leg: Leg | null;
-  groups: { id: number; name: string; capacity: number | null; driverEntryId: number | null; notes: string | null; memberEntryIds: number[] }[];
+  groups: { id: number; name: string; capacity: number | null; driverEntryId: number | null; notes: string | null; memberEntryIds: number[]; departsAt?: string | null }[];
 }
 
 /** A job (signup_slots row) with who claimed it — the Jobs section is the
@@ -181,6 +184,8 @@ export interface SnapshotCar {
   capacity: number | null;
   notes: string | null;
   riders: string[];
+  /** The car's departure when it is not with the group ("Sat 9:00 am"); null otherwise. */
+  when: string | null;
 }
 
 /** Car manifests per leg, driver first, plus who still needs a seat and who
@@ -190,6 +195,8 @@ export function buildCarManifests(input: SnapshotInput): {
   cars: SnapshotCar[];
   unplaced: string[];
   onTheirOwn: { name: string; how: string }[];
+  /** "Arrives Sat 9:00 am (own car)" / "Leaves Sat 4:00 pm with Bieser" — only people with a time of their own. */
+  timed: { name: string; line: string }[];
 }[] {
   const byId = new Map(input.people.map((p) => [p.entryId, p]));
   return (['out', 'back'] as Leg[])
@@ -211,7 +218,8 @@ export function buildCarManifests(input: SnapshotInput): {
           driverPhone: driver?.phone ?? null,
           capacity: g.capacity,
           notes: g.notes,
-          riders
+          riders,
+          when: g.departsAt ? waveLabel(g.departsAt) : null
         };
       });
       const drives = (p: SnapshotPerson) => (leg === 'out' ? p.drivesOut : p.drivesBack);
@@ -222,7 +230,35 @@ export function buildCarManifests(input: SnapshotInput): {
         .filter((p) => !drives(p) && ride(p) && ride(p) !== 'needs_ride')
         .map((p) => ({ name: p.name, how: RIDE_STATUS_LABEL[ride(p) as RideStatus] }))
         .sort((a, b) => a.name.localeCompare(b.name));
-      return { leg, cars: cars.sort((a, b) => a.driverName.localeCompare(b.driverName)), unplaced, onTheirOwn };
+      const carOf = new Map<number, string>();
+      for (const g of set.groups) {
+        const d = g.driverEntryId != null ? byId.get(g.driverEntryId)?.name ?? g.name : g.name;
+        for (const id of g.memberEntryIds) if (id !== g.driverEntryId) carOf.set(id, d);
+      }
+      const timed = live
+        .map((p) => ({
+          name: p.name,
+          line: legTimeLine(
+            {
+              id: p.entryId,
+              status: p.status,
+              participation: p.participation,
+              drivesOut: p.drivesOut,
+              drivesBack: p.drivesBack,
+              vehicleSeatsOut: p.vehicleSeatsOut,
+              vehicleSeatsBack: p.vehicleSeatsBack,
+              rideOut: p.rideOut,
+              rideBack: p.rideBack,
+              outDepartsAt: p.outDepartsAt,
+              backDepartsAt: p.backDepartsAt
+            },
+            leg,
+            carOf.get(p.entryId) ?? null
+          )
+        }))
+        .filter((t): t is { name: string; line: string } => !!t.line)
+        .sort((a, b) => a.name.localeCompare(b.name));
+      return { leg, cars: cars.sort((a, b) => a.driverName.localeCompare(b.driverName)), unplaced, onTheirOwn, timed };
     })
     .filter((x): x is NonNullable<typeof x> => x != null);
 }

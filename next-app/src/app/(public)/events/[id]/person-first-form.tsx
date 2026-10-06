@@ -4,7 +4,9 @@ import { GuestRowsEditor, GuestCountField, GuestsLocked, type GuestRowValue } fr
 import { SavingOverlay, intentOf, type SaveIntent } from './save-feedback';
 import { memo, useCallback, useId, useMemo, useState } from 'react';
 import { Stepper } from '@/app/_components/stepper';
-import { SelectInput } from '@/app/_components/form';
+import { SelectInput, TextInput } from '@/app/_components/form';
+import { DateField } from '@/app/_components/date-field';
+import { centralToInstant, instantToCentral } from '@/lib/dates';
 import type {
   EventPrice,
   EventSignup,
@@ -237,6 +239,78 @@ const RideFields = memo(function RideFields({
   );
 });
 
+/** One leg's own time: with the group (the event's own times), or a day + time of
+ *  their own — Later (There) / Earlier (Back). Plans/Event-Signup-Arrival-Times.md. */
+type LegWhen = { on: boolean; date: string; time: string };
+type LegWhens = Record<Leg, LegWhen>;
+const NO_WHEN: LegWhen = { on: false, date: '', time: '' };
+const whenToInstant = (w: LegWhen | undefined): string | null => (w?.on ? centralToInstant(w.date, w.time) || null : null);
+const whenOf = (iso: string | null | undefined): LegWhen => {
+  const p = instantToCentral(iso);
+  return p.date ? { on: true, date: p.date, time: p.time } : NO_WHEN;
+};
+
+const LegWhenFields = memo(function LegWhenFields({
+  personKey,
+  name,
+  driversNeeded,
+  values,
+  onChange
+}: {
+  personKey: string;
+  name: string;
+  driversNeeded: boolean;
+  values: LegWhens | undefined;
+  onChange: (key: string, leg: Leg, patch: Partial<LegWhen>) => void;
+}) {
+  if (!driversNeeded) return null;
+  return (
+    <div className={styles.rideRow}>
+      {(['out', 'back'] as Leg[]).map((leg) => {
+        const w = values?.[leg] ?? NO_WHEN;
+        const incomplete = w.on && !(w.date && w.time);
+        return (
+          <div key={leg} className={styles.whenRow}>
+            <label className={styles.rideField}>
+              <span className={styles.rideLeg}>{LEG_LABEL[leg]} time</span>
+              <select
+                className={styles.rideSelect}
+                aria-label={`${name} — ${LEG_LABEL[leg].toLowerCase()} time`}
+                value={w.on ? 'own' : 'group'}
+                onChange={(e) => onChange(personKey, leg, { on: e.target.value === 'own' })}
+              >
+                <option value="group">With the group</option>
+                <option value="own">{leg === 'out' ? 'Later' : 'Earlier'}</option>
+              </select>
+            </label>
+            {w.on && (
+              <span className={styles.whenAt}>
+                <DateField
+                  value={w.date}
+                  aria-describedby={incomplete ? `when-${personKey}-${leg}` : undefined}
+                  onChange={(iso) => onChange(personKey, leg, { date: iso })}
+                />
+                <TextInput
+                  type="time"
+                  className={styles.whenTime}
+                  aria-label={`${name} — ${LEG_LABEL[leg].toLowerCase()} clock time`}
+                  value={w.time}
+                  onChange={(e) => onChange(personKey, leg, { time: e.target.value })}
+                />
+              </span>
+            )}
+            {incomplete && (
+              <p id={`when-${personKey}-${leg}`} className={styles.whenProblem} role="status">
+                Pick a day and a time, or this leg saves as with the group.
+              </p>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+});
+
 /** "Tent preference" pickers — one select per self-select set, for an
  *  attending person. A full group is offered only if it's the one they're
  *  already in. Blank = the leader places them. Memoised. */
@@ -303,6 +377,7 @@ const ScoutRow = memo(function ScoutRow({
   questions,
   answers,
   rides,
+  whens,
   driversNeeded,
   groupSets,
   picks,
@@ -311,6 +386,7 @@ const ScoutRow = memo(function ScoutRow({
   onDaysChange,
   onAnswerChange,
   onRideChange,
+  onWhenChange,
   onPickChange,
   renderProbe
 }: {
@@ -324,6 +400,7 @@ const ScoutRow = memo(function ScoutRow({
   questions: SignupQuestion[];
   answers: Record<number, string> | undefined;
   rides: Record<Leg, RideStatus> | undefined;
+  whens: LegWhens | undefined;
   driversNeeded: boolean;
   groupSets: PublicGroupSet[];
   picks: Record<number, number | ''> | undefined;
@@ -332,6 +409,7 @@ const ScoutRow = memo(function ScoutRow({
   onDaysChange: (key: string, value: number) => void;
   onAnswerChange: (key: string, questionId: number, value: string) => void;
   onRideChange: (key: string, leg: Leg, value: RideStatus) => void;
+  onWhenChange: (key: string, leg: Leg, patch: Partial<LegWhen>) => void;
   onPickChange: (key: string, setId: number, groupId: number | '') => void;
   renderProbe?: (key: string) => void;
 }) {
@@ -384,6 +462,9 @@ const ScoutRow = memo(function ScoutRow({
         />
       )}
       {choice === 'yes' && (
+        <LegWhenFields personKey={key} name={s.displayName} driversNeeded={driversNeeded} values={whens} onChange={onWhenChange} />
+      )}
+      {choice === 'yes' && (
         <PickFields personKey={key} name={s.displayName} groupSets={groupSets} values={picks} onChange={onPickChange} />
       )}
     </div>
@@ -404,6 +485,7 @@ const AdultRow = memo(function AdultRow({
   answers,
   drivesValue,
   rides,
+  whens,
   driversNeeded,
   groupSets,
   picks,
@@ -412,6 +494,7 @@ const AdultRow = memo(function AdultRow({
   onDaysChange,
   onAnswerChange,
   onRideChange,
+  onWhenChange,
   onPickChange,
   onDrivesChange,
   renderProbe
@@ -427,6 +510,7 @@ const AdultRow = memo(function AdultRow({
   answers: Record<number, string> | undefined;
   drivesValue: { out: boolean; back: boolean; seats: number } | undefined;
   rides: Record<Leg, RideStatus> | undefined;
+  whens: LegWhens | undefined;
   driversNeeded: boolean;
   groupSets: PublicGroupSet[];
   picks: Record<number, number | ''> | undefined;
@@ -435,6 +519,7 @@ const AdultRow = memo(function AdultRow({
   onDaysChange: (key: string, value: number) => void;
   onAnswerChange: (key: string, questionId: number, value: string) => void;
   onRideChange: (key: string, leg: Leg, value: RideStatus) => void;
+  onWhenChange: (key: string, leg: Leg, patch: Partial<LegWhen>) => void;
   onPickChange: (key: string, setId: number, groupId: number | '') => void;
   onDrivesChange: (key: string, patch: Partial<{ out: boolean; back: boolean; seats: number }>) => void;
   renderProbe?: (key: string) => void;
@@ -546,6 +631,7 @@ const AdultRow = memo(function AdultRow({
               onChange={onRideChange}
             />
           )}
+          <LegWhenFields personKey={key} name={a.name} driversNeeded={driversNeeded} values={whens} onChange={onWhenChange} />
         </div>
       )}
       {choice === 'full' && (
@@ -672,6 +758,26 @@ export default function PersonFirstForm({
   const setRide = useCallback(
     (key: string, leg: Leg, value: RideStatus) =>
       setRides((v) => ({ ...v, [key]: { ...(v[key] ?? { out: 'needs_ride', back: 'needs_ride' }), [leg]: value } })),
+    []
+  );
+
+  // When each leg happens, per person: with the group (null) or a day + time of
+  // their own, kept as Central wall-clock parts and sent as an ISO instant.
+  const [whens, setWhens] = useState<Record<string, LegWhens>>(() => {
+    const init: Record<string, LegWhens> = {};
+    for (const s of scouts) {
+      const p = priorScout(s);
+      init[`s:${s.id}`] = { out: whenOf(p?.out_departs_at), back: whenOf(p?.back_departs_at) };
+    }
+    for (const a of adults) {
+      const p = priorAdult(a);
+      init[`a:${a.key}`] = { out: whenOf(p?.out_departs_at), back: whenOf(p?.back_departs_at) };
+    }
+    return init;
+  });
+  const setWhen = useCallback(
+    (key: string, leg: Leg, patch: Partial<LegWhen>) =>
+      setWhens((v) => ({ ...v, [key]: { ...(v[key] ?? { out: NO_WHEN, back: NO_WHEN }), [leg]: { ...(v[key]?.[leg] ?? NO_WHEN), ...patch } } })),
     []
   );
 
@@ -885,6 +991,8 @@ export default function PersonFirstForm({
         notes: notes || null,
         ride_out: signup.drivers_needed ? (rides[`s:${s.id}`]?.out ?? 'needs_ride') : null,
         ride_back: signup.drivers_needed ? (rides[`s:${s.id}`]?.back ?? 'needs_ride') : null,
+        out_departs_at: c === 'yes' && signup.drivers_needed ? whenToInstant(whens[`s:${s.id}`]?.out) : null,
+        back_departs_at: c === 'yes' && signup.drivers_needed ? whenToInstant(whens[`s:${s.id}`]?.back) : null,
         answers:
           c === 'yes'
             ? scoutQuestions
@@ -918,6 +1026,8 @@ export default function PersonFirstForm({
         vehicle_seats_back: d.back ? d.seats : null,
         ride_out: d.out || !signup.drivers_needed ? null : (rides[`a:${a.key}`]?.out ?? 'needs_ride'),
         ride_back: d.back || !signup.drivers_needed ? null : (rides[`a:${a.key}`]?.back ?? 'needs_ride'),
+        out_departs_at: signup.drivers_needed ? whenToInstant(whens[`a:${a.key}`]?.out) : null,
+        back_departs_at: signup.drivers_needed ? whenToInstant(whens[`a:${a.key}`]?.back) : null,
         // Legacy count stays 0 — guests are NAMED ROWS now (hidden `guests`
         // field, written by the submit action under this party's host entry).
         guest_count: 0,
@@ -949,6 +1059,7 @@ export default function PersonFirstForm({
     days,
     drives,
     rides,
+    whens,
     notes,
     scouts,
     adults,
@@ -1015,6 +1126,7 @@ export default function PersonFirstForm({
               questions={scoutQuestions}
               answers={answers[`s:${s.id}`]}
               rides={rides[`s:${s.id}`]}
+              whens={whens[`s:${s.id}`]}
               driversNeeded={!!signup.drivers_needed}
               groupSets={groupSets}
               picks={picks[`s:${s.id}`]}
@@ -1023,6 +1135,7 @@ export default function PersonFirstForm({
               onDaysChange={handleDaysChange}
               onAnswerChange={handleAnswerChange}
               onRideChange={setRide}
+              onWhenChange={setWhen}
               onPickChange={setPick}
               renderProbe={renderProbe}
             />
@@ -1047,6 +1160,7 @@ export default function PersonFirstForm({
               answers={answers[`a:${a.key}`]}
               drivesValue={drives[a.key]}
               rides={rides[`a:${a.key}`]}
+              whens={whens[`a:${a.key}`]}
               driversNeeded={!!signup.drivers_needed}
               groupSets={groupSets}
               picks={picks[`a:${a.key}`]}
@@ -1055,6 +1169,7 @@ export default function PersonFirstForm({
               onDaysChange={handleDaysChange}
               onAnswerChange={handleAnswerChange}
               onRideChange={setRide}
+              onWhenChange={setWhen}
               onPickChange={setPick}
               onDrivesChange={handleDrivesChange}
               renderProbe={renderProbe}

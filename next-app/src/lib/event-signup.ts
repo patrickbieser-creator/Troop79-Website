@@ -168,6 +168,10 @@ export interface HouseholdEntry {
   vehicle_seats_back: number | null;
   ride_out: RideStatus | null;
   ride_back: RideStatus | null;
+  /** When this person arrives / leaves if not with the group (ISO instant);
+   *  null or absent = with the group (Plans/Event-Signup-Arrival-Times.md). */
+  out_departs_at?: string | null;
+  back_departs_at?: string | null;
   /** slot ids this entry currently holds. */
   claims: number[];
   /** slot id -> the note written about doing that job, for the claims above.
@@ -192,7 +196,7 @@ export interface PartyIdentities {
 const ENTRY_COLUMNS =
   'id, person_kind, person_id, participant_class, host_entry_id, status, participation, ' +
   'price_id, days, guest_count, guest_note, notes, permission_slip_received, ' +
-  'drives_out, drives_back, vehicle_seats_out, vehicle_seats_back, ride_out, ride_back';
+  'drives_out, drives_back, vehicle_seats_out, vehicle_seats_back, ride_out, ride_back, out_departs_at, back_departs_at';
 
 /**
  * One signup party's live entries for an event. GATE-ONLY — this returns names

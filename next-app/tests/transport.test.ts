@@ -6,6 +6,11 @@ import {
   capacityLabel,
   defaultSeats,
   legTiles,
+  legDepartsAt,
+  legTimeLine,
+  placementCheck,
+  waveLabel,
+  wavesFor,
   rideCell,
   summarizePlacements,
   type TransportCar,
@@ -154,5 +159,98 @@ describe('summarizePlacements (family-facing)', () => {
       { entryId: 1, personName: 'Maya', setLabel: 'Cars there', kind: 'car', leg: 'out', groupName: 'x', driverFamilyName: 'Hess' }
     ]);
     expect(line.parts).toEqual(['riding with the Hess family (there)']);
+  });
+});
+
+/**
+ * Plans/Event-Signup-Arrival-Times.md: a leg also says WHEN. NULL is "with the
+ * group" (the event's own times); a time makes a wave, and a car inherits its
+ * driver's time.
+ */
+const FRI = '2026-10-23T22:30:00+00:00'; // Fri 5:30 pm Central
+const SAT = '2026-10-24T14:00:00+00:00'; // Sat 9:00 am Central
+const SAT_PM = '2026-10-24T21:00:00Z'; // Sat 4:00 pm Central
+
+describe('leg departure time', () => {
+  it('Leg_CarriesADepartureTime_DefaultingToTheEvents', () => {
+    const onTime = entry({ id: 1 });
+    const late = entry({ id: 2, outDepartsAt: SAT, backDepartsAt: SAT_PM });
+    expect(legDepartsAt(onTime, 'out')).toBeNull();
+    expect(legDepartsAt(onTime, 'back')).toBeNull();
+    expect(legDepartsAt(late, 'out')).toBe(SAT);
+    expect(legDepartsAt(late, 'back')).toBe(SAT_PM);
+    expect(waveLabel(null)).toBe('With the group');
+    expect(waveLabel(SAT)).toBe('Sat 9:00 am');
+    expect(waveLabel(SAT, { long: true })).toBe('Saturday 9:00 am');
+  });
+
+  it('LegTiles_AreUnchangedByATime', () => {
+    const entries = [driver, entry({ id: 2, outDepartsAt: SAT })];
+    expect(legTiles(entries, [carOut], 'out').riders).toBe(1);
+  });
+});
+
+describe('wavesFor', () => {
+  const satDriver = entry({ id: 10, drivesOut: true, vehicleSeatsOut: 3, rideOut: null, outDepartsAt: SAT });
+  const friCar: TransportCar = { id: 200, leg: 'out', driverEntryId: 1, capacity: 4, memberEntryIds: [1, 2], departsAt: null };
+  const satCar: TransportCar = { id: 201, leg: 'out', driverEntryId: 10, capacity: 3, memberEntryIds: [10], departsAt: SAT };
+  const entries = [driver, entry({ id: 2 }), entry({ id: 3, outDepartsAt: SAT }), satDriver, entry({ id: 4, rideOut: 'self' })];
+
+  it('Waves_GroupCarsAndRidersByDeparture_WithTheGroupFirst', () => {
+    const waves = wavesFor('out', entries, [satCar, friCar]);
+    expect(waves.map((w) => w.label)).toEqual(['With the group', 'Sat 9:00 am']);
+    expect(waves[0]).toMatchObject({ departsAt: null, carIds: [200], riderIds: [2] });
+    expect(waves[1]).toMatchObject({ carIds: [201], riderIds: [3] });
+  });
+
+  it('Waves_TreatTheSameInstantInDifferentSpellingsAsOne', () => {
+    const waves = wavesFor('out', [entry({ id: 3, outDepartsAt: '2026-10-24T14:00:00Z' })], [satCar]);
+    expect(waves).toHaveLength(1);
+    expect(waves[0]).toMatchObject({ carIds: [201], riderIds: [3] });
+  });
+
+  it('Waves_OrderLaterDeparturesChronologically', () => {
+    const noon = { ...satCar, id: 202, departsAt: SAT_PM };
+    const waves = wavesFor('out', [], [noon, { ...friCar, departsAt: FRI }, satCar]);
+    expect(waves.map((w) => w.label)).toEqual(['Fri 5:30 pm', 'Sat 9:00 am', 'Sat 4:00 pm']);
+  });
+
+  it('Waves_OnlyCountTheLegAsked', () => {
+    expect(wavesFor('back', entries, [satCar, friCar]).flatMap((w) => w.carIds)).toEqual([]);
+  });
+});
+
+describe('placementCheck', () => {
+  const satRider = entry({ id: 3, outDepartsAt: SAT });
+  const friCar: TransportCar = { id: 200, leg: 'out', driverEntryId: 1, capacity: 4, memberEntryIds: [1], departsAt: null };
+  const satCar: TransportCar = { id: 201, leg: 'out', driverEntryId: 10, capacity: 3, memberEntryIds: [10], departsAt: SAT };
+
+  it('Placement_AllowsACarInTheRidersOwnWave', () => {
+    expect(placementCheck('out', satRider, satCar)).toEqual({ ok: true, crossesWaves: false });
+    expect(placementCheck('out', entry({ id: 2 }), friCar)).toEqual({ ok: true, crossesWaves: false });
+  });
+
+  it('Placement_RefusesACarInAnotherWave_UnlessALeaderOverrides', () => {
+    const refused = placementCheck('out', satRider, friCar);
+    expect(refused).toMatchObject({ ok: false, riderWave: 'Sat 9:00 am', carWave: 'With the group' });
+    expect(placementCheck('out', satRider, friCar, { override: true })).toEqual({ ok: true, crossesWaves: true });
+  });
+});
+
+describe('legTimeLine (sheet and roster wording)', () => {
+  it('Line_SaysNothing_ForALegWithTheGroup', () => {
+    expect(legTimeLine(entry({ id: 1 }), 'out', null)).toBeNull();
+  });
+
+  it('Line_SaysArrivesAndLeaves_WithWhom', () => {
+    expect(legTimeLine(entry({ id: 1, outDepartsAt: SAT, rideOut: 'self' }), 'out', null)).toBe('Arrives Sat 9:00 am (own car)');
+    expect(legTimeLine(entry({ id: 1, backDepartsAt: SAT_PM }), 'back', 'Patrick Bieser')).toBe('Leaves Sat 4:00 pm with Bieser');
+    expect(legTimeLine(entry({ id: 1, backDepartsAt: SAT_PM }), 'back', null)).toBe('Leaves Sat 4:00 pm (needs a ride)');
+    expect(legTimeLine(entry({ id: 1, outDepartsAt: SAT, rideOut: 'meeting_there' }), 'out', null)).toBe('Arrives Sat 9:00 am (meeting there)');
+    expect(legTimeLine(entry({ id: 1, backDepartsAt: SAT_PM, drivesBack: true, vehicleSeatsBack: 4, rideBack: null }), 'back', null)).toBe('Leaves Sat 4:00 pm (driving)');
+  });
+
+  it('Line_SaysNothing_ForALegNotTravelled', () => {
+    expect(legTimeLine(entry({ id: 1, outDepartsAt: SAT, rideOut: 'not_traveling' }), 'out', null)).toBeNull();
   });
 });

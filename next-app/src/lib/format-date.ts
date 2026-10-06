@@ -104,3 +104,19 @@ export function fmtRange(start: DateInput, end: DateInput): string {
   if (ay === by) return `${am} ${ad} – ${bm} ${bd}, ${ay}`;
   return `${fmtDate(start)} – ${fmtDate(end)}`;
 }
+
+/** The day + clock of an instant, Central: 'Sat 9:00 am' (`{long:true}` → 'Saturday 9:00 am').
+ *  Arrival / departure times on the signup, the ride board and the sheet — never a
+ *  date column (a calendar day has no clock). Blank or unparseable input renders '—'. */
+export function fmtWhen(input: DateInput, o: { long?: boolean } = {}): string {
+  const r = resolve(input);
+  if (!r) return '—';
+  const parts = new Intl.DateTimeFormat('en-US', {
+    weekday: o.long ? 'long' : 'short',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: r.tz
+  }).formatToParts(r.d);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '';
+  return `${get('weekday')} ${get('hour')}:${get('minute')} ${get('dayPeriod').toLowerCase()}`;
+}

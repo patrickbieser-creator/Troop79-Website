@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useTransition, type DragEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition, type DragEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   placeInGroup,
@@ -17,15 +17,22 @@ import {
   RIDE_STATUSES,
   RIDE_STATUS_LABEL,
   capacityLabel,
+  familyName,
+  legDepartsAt,
   legTiles,
+  placementCheck,
+  waveLabel,
+  wavesFor,
   type Leg,
   type RideStatus,
-  type TransportCar
+  type TransportCar,
+  type TransportEntry
 } from '@/lib/transport';
 import ev from '../../../events/events-admin.module.css';
 import styles from './assignments.module.css';
 import { SaveButton, SaveFeedback, useSavePhase } from '../../../_components/save-state';
 import { Button } from '../../../../_components/button';
+import { Dialog, DialogActions, DialogBody, DialogHeader } from '../../../_components/dialog';
 
 /** The group editor's draft, seeded from the group — the same shape is
  *  "saved", so the Save standard's dirty gate is a comparison against it. */
@@ -68,6 +75,8 @@ export interface BoardGroup {
   driverEntryId: number | null;
   notes: string | null;
   memberEntryIds: number[];
+  /** A car's wave: its driver's leg time. Absent or null = with the group. */
+  departsAt?: string | null;
 }
 export interface BoardPerson {
   entryId: number;
@@ -81,9 +90,26 @@ export interface BoardPerson {
   vehicleSeatsBack: number | null;
   rideOut: RideStatus | null;
   rideBack: RideStatus | null;
+  /** Arrives (There) / leaves (Back) if not with the group; null or absent = with the group. */
+  outDepartsAt?: string | null;
+  backDepartsAt?: string | null;
   /** Leader-only surface: a driver's phone goes on their car card. */
   phone: string | null;
 }
+
+const toTransportEntry = (p: BoardPerson): TransportEntry => ({
+  id: p.entryId,
+  status: p.status,
+  participation: p.participation,
+  drivesOut: p.drivesOut,
+  drivesBack: p.drivesBack,
+  vehicleSeatsOut: p.vehicleSeatsOut,
+  vehicleSeatsBack: p.vehicleSeatsBack,
+  rideOut: p.rideOut,
+  rideBack: p.rideBack,
+  outDepartsAt: p.outDepartsAt ?? null,
+  backDepartsAt: p.backDepartsAt ?? null
+});
 
 export function AssignmentsBoard({
   signupId,
@@ -112,6 +138,16 @@ export function AssignmentsBoard({
   const [newCap, setNewCap] = useState('');
   const [editingGroup, setEditingGroup] = useState<{ id: number; name: string; capacity: string; notes: string } | null>(null);
 
+  // A placement across departures asks a leader first (placementCheck's override).
+  const [confirmCross, setConfirmCross] = useState<{ groupId: number; entryId: number; name: string; riderWave: string; carWave: string } | null>(null);
+  const crossRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dlg = crossRef.current;
+    if (!dlg) return;
+    if (confirmCross && !dlg.open) dlg.showModal();
+    if (!confirmCross && dlg.open) dlg.close();
+  }, [confirmCross]);
+
   const active = sets.find((s) => s.id === activeId) ?? sets[0] ?? null;
   const byId = useMemo(() => new Map(people.map((p) => [p.entryId, p])), [people]);
   const live = useMemo(() => people.filter((p) => p.status === 'yes'), [people]);
@@ -125,8 +161,26 @@ export function AssignmentsBoard({
       router.refresh();
     });
 
-  const place = (groupId: number, entryId: number) =>
+  const place = (groupId: number, entryId: number) => {
+    const set = sets.find((s) => s.id === activeId) ?? sets[0];
+    const group = set?.groups.find((g) => g.id === groupId);
+    const rider = byId.get(entryId);
+    if (set && set.kind === 'car' && set.leg && group && rider) {
+      const check = placementCheck(set.leg, toTransportEntry(rider), {
+        id: group.id,
+        leg: set.leg,
+        driverEntryId: group.driverEntryId ?? 0,
+        capacity: group.capacity ?? 1,
+        memberEntryIds: group.memberEntryIds,
+        departsAt: group.departsAt ?? null
+      });
+      if (!check.ok) {
+        setConfirmCross({ groupId, entryId, name: rider.name, riderWave: check.riderWave, carWave: check.carWave });
+        return;
+      }
+    }
     run(() => placeInGroup(groupId, entryId, signupId, calendarEntryId));
+  };
   const unplace = (groupId: number, entryId: number) =>
     run(() => unplaceFromGroup(groupId, entryId, signupId, calendarEntryId));
 
@@ -193,9 +247,13 @@ export function AssignmentsBoard({
           leg,
           driverEntryId: g.driverEntryId as number,
           capacity: g.capacity ?? 1,
-          memberEntryIds: g.memberEntryIds
+          memberEntryIds: g.memberEntryIds,
+          departsAt: g.departsAt ?? null
         }))
     : [];
+  const waves = isCar ? wavesFor(leg, live.map(toTransportEntry), cars).filter((w) => w.carIds.length > 0) : [];
+  const showWaves = waves.length > 1;
+  const riderTime = (p: BoardPerson) => legDepartsAt(toTransportEntry(p), leg);
   const tiles = isCar
     ? legTiles(
         live.map((p) => ({
@@ -230,12 +288,29 @@ export function AssignmentsBoard({
       }}
     >
       <option value="">{isCar ? 'Needs a ride' : 'Unassigned'}</option>
-      {active.groups.map((g) => (
-        <option key={g.id} value={g.id} disabled={g.capacity != null && g.memberEntryIds.length >= g.capacity && g.id !== currentGroupId}>
-          {g.name}
-          {g.capacity != null ? ` (${g.memberEntryIds.length}/${g.capacity})` : ''}
-        </option>
-      ))}
+      {(showWaves
+        ? [
+            active.groups.filter((g) => waveLabel(g.departsAt) === waveLabel(riderTime(p))),
+            active.groups.filter((g) => waveLabel(g.departsAt) !== waveLabel(riderTime(p)))
+          ]
+        : [active.groups]
+      ).map((list, i) => {
+        const options = list.map((g) => (
+          <option key={g.id} value={g.id} disabled={g.capacity != null && g.memberEntryIds.length >= g.capacity && g.id !== currentGroupId}>
+            {g.name}
+            {g.capacity != null ? ` (${g.memberEntryIds.length}/${g.capacity})` : ''}
+          </option>
+        ));
+        return showWaves && i === 1 ? (
+          list.length > 0 && (
+            <optgroup key="other" label="Leaves at another time">
+              {options}
+            </optgroup>
+          )
+        ) : (
+          options
+        );
+      })}
     </select>
   );
 
@@ -252,6 +327,7 @@ export function AssignmentsBoard({
       {/* Class pill on patrol / tent / crew chips only — same short colored pill
           as the roster; car chips stay bare (Patrick, 2026-08-22). */}
       {role === 'driver' ? <span className={styles.chipRole}>driver</span> : !isCar && <ClassPill cls={p.participantClass} />}
+      {isCar && role !== 'driver' && riderTime(p) && <span className={styles.chipRole}>{waveLabel(riderTime(p))}</span>}
       {role !== 'driver' && moveSelect(p, groupId)}
       {role !== 'driver' && groupId != null && (
         <button
@@ -266,6 +342,130 @@ export function AssignmentsBoard({
       )}
     </li>
   );
+
+  const waveHeading = (label: string, waveCars: BoardGroup[]) =>
+    waveCars.length === 1
+      ? `${label} — ${familyName(waveCars[0].name)}, ${waveCars[0].capacity ?? '?'} seats`
+      : `${label} — ${waveCars.length} cars`;
+
+  const renderGroup = (g: BoardGroup) => {
+    const full = g.capacity != null && g.memberEntryIds.length >= g.capacity;
+    const key = `g${g.id}`;
+    return (
+      <section
+        key={g.id}
+        className={styles.card}
+        data-over={over === key ? 'true' : undefined}
+        data-full={full ? 'true' : undefined}
+        onDragOver={allowDrop(key)}
+        onDragLeave={() => setOver((o) => (o === key ? null : o))}
+        onDrop={onDropGroup(g)}
+        aria-label={g.name}
+      >
+        {editingGroup?.id === g.id ? (
+          <div className={styles.groupEdit}>
+            {!isCar && (
+              <input
+                aria-label="Group name"
+                value={editingGroup.name}
+                onChange={(e) => setEditingGroup({ ...editingGroup, name: e.target.value })}
+              />
+            )}
+            {!isCar && (
+              <input
+                type="number"
+                min={1}
+                placeholder="Capacity"
+                aria-label="Group capacity"
+                value={editingGroup.capacity}
+                onChange={(e) => setEditingGroup({ ...editingGroup, capacity: e.target.value })}
+              />
+            )}
+            <input
+              placeholder="Note (e.g. pulling trailer)"
+              aria-label="Group note"
+              value={editingGroup.notes}
+              onChange={(e) => setEditingGroup({ ...editingGroup, notes: e.target.value })}
+            />
+            <div className={styles.groupEditActions}>
+              <SaveButton
+                dirty={JSON.stringify(editingGroup) !== JSON.stringify(groupDraft(g))}
+                pending={pending}
+                blocked={!isCar && !editingGroup.name.trim()}
+                blockedReason="A group name is required"
+                onClick={() => {
+                  feedback.start();
+                  run(async () => {
+                    const res = await updateGroup(g.id, signupId, calendarEntryId, {
+                      name: isCar ? undefined : editingGroup.name,
+                      capacity: isCar ? undefined : editingGroup.capacity ? Number(editingGroup.capacity) : null,
+                      notes: editingGroup.notes
+                    });
+                    if (res.ok) {
+                      setEditingGroup(null);
+                      feedback.done();
+                    } else feedback.fail();
+                    return res;
+                  });
+                }}
+              />
+              <button type="button" className={ev.rowEdit} onClick={() => setEditingGroup(null)}>
+                Cancel
+              </button>
+              {!isCar && (
+                <button
+                  type="button"
+                  className={ev.rowDel}
+                  disabled={pending || g.memberEntryIds.length > 0}
+                  title={g.memberEntryIds.length > 0 ? 'Move everyone out first' : undefined}
+                  onClick={() =>
+                    run(async () => {
+                      const res = await deleteGroup(g.id, signupId, calendarEntryId);
+                      if (res.ok) setEditingGroup(null);
+                      return res;
+                    })
+                  }
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className={styles.cardHead}>
+            <span className={styles.cardTitle}>
+              {g.name}
+              {/* No phone on the card (Patrick, 2026-08-22) — the roster/contacts carry it. */}
+              {g.notes && <span className={styles.cardSub}>{g.notes}</span>}
+            </span>
+            <span className={styles.cardTools}>
+              <span
+                className={`${styles.capPill} ${full ? styles.capFull : g.capacity != null ? styles.capOpen : ''}`}
+              >
+                {capacityLabel(g.memberEntryIds.length, g.capacity)}
+              </span>
+              <button
+                type="button"
+                className={styles.cardEdit}
+                aria-label={`Edit ${g.name}`}
+                disabled={pending}
+                onClick={() => setEditingGroup(groupDraft(g))}
+              >
+                Edit
+              </button>
+            </span>
+          </div>
+        )}
+        <ul className={styles.chips}>
+          {g.memberEntryIds
+            .map((id) => byId.get(id))
+            .filter((p): p is BoardPerson => !!p)
+            .sort((a, b) => (a.entryId === g.driverEntryId ? -1 : b.entryId === g.driverEntryId ? 1 : 0))
+            .map((p) => chip(p, g.id, p.entryId === g.driverEntryId ? 'driver' : null))}
+        </ul>
+      </section>
+    );
+  };
 
   return (
     <>
@@ -361,125 +561,18 @@ export function AssignmentsBoard({
           )}
         </section>
 
-        {active.groups.map((g) => {
-          const full = g.capacity != null && g.memberEntryIds.length >= g.capacity;
-          const key = `g${g.id}`;
+        {(showWaves ? [] : active.groups).map(renderGroup)}
+      </div>
+      {showWaves &&
+        waves.map((w) => {
+          const waveCars = active.groups.filter((g) => w.carIds.includes(g.id));
           return (
-            <section
-              key={g.id}
-              className={styles.card}
-              data-over={over === key ? 'true' : undefined}
-              data-full={full ? 'true' : undefined}
-              onDragOver={allowDrop(key)}
-              onDragLeave={() => setOver((o) => (o === key ? null : o))}
-              onDrop={onDropGroup(g)}
-              aria-label={g.name}
-            >
-              {editingGroup?.id === g.id ? (
-                <div className={styles.groupEdit}>
-                  {!isCar && (
-                    <input
-                      aria-label="Group name"
-                      value={editingGroup.name}
-                      onChange={(e) => setEditingGroup({ ...editingGroup, name: e.target.value })}
-                    />
-                  )}
-                  {!isCar && (
-                    <input
-                      type="number"
-                      min={1}
-                      placeholder="Capacity"
-                      aria-label="Group capacity"
-                      value={editingGroup.capacity}
-                      onChange={(e) => setEditingGroup({ ...editingGroup, capacity: e.target.value })}
-                    />
-                  )}
-                  <input
-                    placeholder="Note (e.g. pulling trailer)"
-                    aria-label="Group note"
-                    value={editingGroup.notes}
-                    onChange={(e) => setEditingGroup({ ...editingGroup, notes: e.target.value })}
-                  />
-                  <div className={styles.groupEditActions}>
-                    <SaveButton
-                      dirty={JSON.stringify(editingGroup) !== JSON.stringify(groupDraft(g))}
-                      pending={pending}
-                      blocked={!isCar && !editingGroup.name.trim()}
-                      blockedReason="A group name is required"
-                      onClick={() => {
-                        feedback.start();
-                        run(async () => {
-                          const res = await updateGroup(g.id, signupId, calendarEntryId, {
-                            name: isCar ? undefined : editingGroup.name,
-                            capacity: isCar ? undefined : editingGroup.capacity ? Number(editingGroup.capacity) : null,
-                            notes: editingGroup.notes
-                          });
-                          if (res.ok) {
-                            setEditingGroup(null);
-                            feedback.done();
-                          } else feedback.fail();
-                          return res;
-                        });
-                      }}
-                    />
-                    <button type="button" className={ev.rowEdit} onClick={() => setEditingGroup(null)}>
-                      Cancel
-                    </button>
-                    {!isCar && (
-                      <button
-                        type="button"
-                        className={ev.rowDel}
-                        disabled={pending || g.memberEntryIds.length > 0}
-                        title={g.memberEntryIds.length > 0 ? 'Move everyone out first' : undefined}
-                        onClick={() =>
-                          run(async () => {
-                            const res = await deleteGroup(g.id, signupId, calendarEntryId);
-                            if (res.ok) setEditingGroup(null);
-                            return res;
-                          })
-                        }
-                      >
-                        Remove
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className={styles.cardHead}>
-                  <span className={styles.cardTitle}>
-                    {g.name}
-                    {/* No phone on the card (Patrick, 2026-08-22) — the roster/contacts carry it. */}
-                    {g.notes && <span className={styles.cardSub}>{g.notes}</span>}
-                  </span>
-                  <span className={styles.cardTools}>
-                    <span
-                      className={`${styles.capPill} ${full ? styles.capFull : g.capacity != null ? styles.capOpen : ''}`}
-                    >
-                      {capacityLabel(g.memberEntryIds.length, g.capacity)}
-                    </span>
-                    <button
-                      type="button"
-                      className={styles.cardEdit}
-                      aria-label={`Edit ${g.name}`}
-                      disabled={pending}
-                      onClick={() => setEditingGroup(groupDraft(g))}
-                    >
-                      Edit
-                    </button>
-                  </span>
-                </div>
-              )}
-              <ul className={styles.chips}>
-                {g.memberEntryIds
-                  .map((id) => byId.get(id))
-                  .filter((p): p is BoardPerson => !!p)
-                  .sort((a, b) => (a.entryId === g.driverEntryId ? -1 : b.entryId === g.driverEntryId ? 1 : 0))
-                  .map((p) => chip(p, g.id, p.entryId === g.driverEntryId ? 'driver' : null))}
-              </ul>
+            <section key={w.key || 'group'} className={styles.waveRow} aria-label={w.label}>
+              <p className={styles.waveHead}>{waveHeading(w.label, waveCars)}</p>
+              <div className={styles.columns}>{waveCars.map(renderGroup)}</div>
             </section>
           );
         })}
-      </div>
 
       {isCar && onTheirOwn.length > 0 && (
         <div className={styles.side}>
@@ -508,6 +601,33 @@ export function AssignmentsBoard({
           </ul>
         </div>
       )}
+
+      <Dialog ref={crossRef} onClose={() => setConfirmCross(null)}>
+        <DialogHeader title="Different departure time" />
+        <DialogBody>
+          {confirmCross && (
+            <p>
+              {confirmCross.name} goes {confirmCross.riderWave === 'With the group' ? 'with the group' : confirmCross.riderWave}, but this car
+              leaves {confirmCross.carWave === 'With the group' ? 'with the group' : confirmCross.carWave}. Put them in it anyway?
+            </p>
+          )}
+        </DialogBody>
+        <DialogActions>
+          <Button variant="secondary" onClick={() => setConfirmCross(null)}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            onClick={() => {
+              const c = confirmCross;
+              setConfirmCross(null);
+              if (c) run(() => placeInGroup(c.groupId, c.entryId, signupId, calendarEntryId, true));
+            }}
+          >
+            Put them in this car
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }
