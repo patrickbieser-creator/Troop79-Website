@@ -4,8 +4,7 @@
  *
  * One row per menu item, A to Z, with what a leader scans for: kind, meals, what each person gets, diets,
  * cost and status. A single food opens under its row; a recipe's editor is too long for that and has its own
- * page — so the filters travel in the URL, and the page can offer the recipe before and after it in the list
- * the leader came from. A plain module: the table (client) and the recipe page (server) both read it.
+ * page — so the filters travel in the URL and the way back lands on the same list. A plain module: the table (client) and the recipe page (server) both read it.
  */
 import { authoringIssues, authoringOf, blockingIssues, isSingleFood, type RecipeAuthoring } from './authoring';
 import { buildLines, totalsOf } from './engine';
@@ -155,12 +154,4 @@ export function foodListHref(filter: FoodFilter, openId?: string | null): string
 export function recipeHref(id: string, filter: FoodFilter): string {
   const q = filterParams(filter).toString();
   return `${BASE}/recipes/${encodeURIComponent(id)}${q ? `?${q}` : ''}`;
-}
-
-/** The recipes before and after this one in the filtered list. Single foods open in the list, so they are skipped. */
-export function neighbours(rows: readonly FoodRow[], filter: FoodFilter, id: string): { prev: FoodRow | null; next: FoodRow | null } {
-  const pages = filterFoodRows(rows, filter, id).filter((x) => !x.food || x.recipe.id === id);
-  const at = pages.findIndex((x) => x.recipe.id === id);
-  if (at < 0) return { prev: null, next: null };
-  return { prev: pages[at - 1] ?? null, next: pages[at + 1] ?? null };
 }

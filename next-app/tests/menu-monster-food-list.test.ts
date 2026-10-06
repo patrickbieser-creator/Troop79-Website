@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildFoodRows, filterFoodRows, foodListHref, neighbours, parseFoodFilter, recipeHref, NO_FILTER } from '../src/lib/menu-monster/food-list';
+import { buildFoodRows, filterFoodRows, foodListHref, parseFoodFilter, recipeHref, NO_FILTER } from '../src/lib/menu-monster/food-list';
 import { UNITS } from '../src/lib/menu-monster/units';
 import type { Catalog, Ingredient, Package, Recipe } from '../src/lib/menu-monster/types';
 
@@ -134,16 +134,5 @@ describe('Food & recipes list — links', () => {
 
   it('AnUnknownFilterValue_IsIgnored', () => {
     expect(parseFoodFilter({ kind: 'nope', meal: 'brunch' })).toEqual(NO_FILTER);
-  });
-
-  it('Neighbours_AreTheRecipesEitherSide_SkippingSingleFoods', () => {
-    // Bacon and Cookies open in the list, so they are not stops on the way through the recipe pages.
-    const n = neighbours(rows, NO_FILTER, 'toast');
-    expect([n.prev?.recipe.id, n.next?.recipe.id]).toEqual(['pancakes', 'waffles']);
-  });
-
-  it('Neighbours_StopAtTheEnds', () => {
-    const n = neighbours(rows, { ...NO_FILTER, kind: 'recipes' }, 'pancakes');
-    expect([n.prev, n.next?.recipe.id]).toEqual([null, 'toast']);
   });
 });

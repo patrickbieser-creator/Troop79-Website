@@ -593,24 +593,18 @@ describe('Recipe builder — a wide list; foods open in it, recipes on their own
   });
 });
 
-describe('Recipe page — the recipes either side (2026-10-05)', () => {
-  const others = () => within(screen.getByRole('navigation', { name: 'Other recipes' }));
+describe('Recipe page — Close (2026-10-05)', () => {
+  const others = () => within(screen.getByRole('navigation', { name: 'Recipe page' }));
 
-  it('Next_GoesToTheNextRecipeInTheList', async () => {
+  it('ThePage_HasOnlyClose_AtTheTop', () => {
+    // Patrick, 2026-10-05: Previous / Next at the top of a long form were one pair of links too many.
     render(<RecipeScreen catalog={CATALOG} recipeId="pancakes" />);
-    await userEvent.setup().click(others().getByRole('button', { name: 'Next: Toast →' }));
-    expect(nav.push).toHaveBeenCalledWith('/admin/library/menu-monster/recipes/toast');
+    expect(others().getAllByRole('button').map((b) => b.textContent)).toEqual(['Close']);
   });
 
-  it('Previous_IsGreyedAtTheStartOfTheList', () => {
-    // Bacon comes first A to Z, but it is a single food: it opens in the list, not on a page.
-    render(<RecipeScreen catalog={CATALOG} recipeId="pancakes" />);
-    expect((others().getByRole('button', { name: '← Previous' }) as HTMLButtonElement).disabled).toBe(true);
-  });
-
-  it('ANewRecipe_HasNoNeighbours_ButCanStillBeClosed', () => {
+  it('ANewRecipe_CanBeClosedToo', () => {
     render(<RecipeScreen catalog={CATALOG} recipeId="new" />);
-    expect([others().queryByRole('button', { name: /Previous/ }), others().queryByRole('button', { name: /Next/ }), others().getByRole('button', { name: 'Close' }) != null]).toEqual([null, null, true]);
+    expect(others().getByRole('button', { name: 'Close' })).toBeTruthy();
   });
 
   it('Close_ReturnsToTheListItCameFrom', async () => {
