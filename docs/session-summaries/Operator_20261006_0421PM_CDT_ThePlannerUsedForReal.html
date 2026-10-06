@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session 48b — The planner, used for real — Troop79-Website</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #3d5a3e;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #f0eecd;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); vertical-align: top; }
+        tr:hover { background: var(--nw-sage); }
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+        code { font-family: 'Courier New', monospace; font-size: 0.85em; background: var(--nw-light-gray); padding: 0 0.3em; border-radius: 3px; }
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+        @media print { body { background: white; } header { padding: 1.5rem; } .container { padding: 1rem; } .stat { break-inside: avoid; } }
+        @media (max-width: 600px) { header h1 { font-size: 1.5rem; } .stats { flex-direction: column; } }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>The planner, used for real: a food on the fly, diets per meal, one search that finds everything</h1>
+        <p class="subtitle">The afternoon half of session 48. Patrick planned the High Cliff menu in the live planner and asked for each thing the moment it got in his way: Kool-Aid on the fly, Who&rsquo;s eating as its own screen, gluten-free bread for just the gluten-free scouts, a suggested-brand star, and a Food &amp; recipes list that finds hot cocoa. Eight releases.</p>
+        <div class="meta">
+            <span>&#128197; October 6, 2026</span>
+            <span>&#129302; Operator (Fable 5.1)</span>
+            <span>&#128204; Troop79-Website</span>
+            <span>&#128640; v1.184.0 &rarr; v1.190.0</span>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">8</div><div class="label">Releases (v1.185&ndash;v1.190)</div></div>
+            <div class="stat"><div class="number">1</div><div class="label">Production migration</div></div>
+            <div class="stat"><div class="number">5</div><div class="label">Decisions (D-338&ndash;342)</div></div>
+            <div class="stat"><div class="number">242</div><div class="label">Tests net (4250 &rarr; 4492)</div></div>
+            <div class="stat"><div class="number">1</div><div class="label">Plan parked</div></div>
+        </div>
+
+        <h2>What Was Accomplished</h2>
+
+        <div class="callout callout-teal">
+            <strong>The outcome:</strong> a scout at a meal can type a food the troop has never heard of and have it on the meal in four fields; say that the gluten-free bread is only for the two gluten-free scouts and see it priced that way; move through Who&rsquo;s eating, Meals, Gear and Shopping as steps; and a leader can find hot cocoa, keep a scout&rsquo;s Hot chocolate for the troop, and star the brand to suggest &mdash; all from one list.
+        </div>
+
+        <h3>Releases</h3>
+        <ul>
+            <li><strong>v1.185.0:</strong> &ldquo;Add &lsquo;Kool-Aid&rsquo; as a new food&hellip;&rdquo; at the meal&rsquo;s search &mdash; name and kind of food required, the rest optional; Beverages as a kind; a typed-in ingredient no longer needs a price.</li>
+            <li><strong>v1.186.0:</strong> Who&rsquo;s eating is its own step and screen; a meal&rsquo;s recipe shows Steps and Gear as two lists, with gear descriptions.</li>
+            <li><strong>v1.187.0:</strong> Review is a leader&rsquo;s fifth step; menus open on Who&rsquo;s eating; no shopping link on Meals.</li>
+            <li><strong>v1.188.0&ndash;.2:</strong> per-diet swap / leave out / add on a meal, the warning carrying its answer &mdash; through the recipes&rsquo; own variation compiler, not a second one; &ldquo;Add for&rdquo; on typed-in foods; estimated prices shown plain, the rule said once.</li>
+            <li><strong>v1.189.0:</strong> a single food&rsquo;s suggested brand is a &#9733; on its brand list; Suggest this brand in the brand menu; one at a time.</li>
+            <li><strong>v1.190.0:</strong> Food &amp; recipes lists Price book ingredients (an Ingredients tab, &ldquo;Put it on the menu by itself&rdquo;), finds ingredients inside recipes, shows a scout&rsquo;s on-the-fly food with Keep for the troop; the meal search says when a name is a draft.</li>
+        </ul>
+
+        <div class="callout callout-gold">
+            <strong>Verification honesty:</strong> every release passed lint, typecheck, the full suite and the build before it shipped; a production query confirmed Cookies is a draft (Patrick still has to publish it). The builds from v1.185.0 on were done by sonnet agents from briefs and gated here; nobody looked at them in a browser this half of the session, and no independent QA review ran. Two things need Patrick&rsquo;s confirmation: leaders now see a scout&rsquo;s private single-food drafts in the admin search, and the 10-typed-in / 25-recipe caps will bite a snack-heavy menu.
+        </div>
+
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Decision</th></tr></thead>
+            <tbody>
+                <tr><td>D-338</td><td>A food is added on the fly at a meal: name + kind only; Beverages is a section</td></tr>
+                <tr><td>D-339</td><td>Who&rsquo;s eating is its own step; Review is a leader&rsquo;s fifth step; Steps and Gear are two lists on a meal</td></tr>
+                <tr><td>D-340</td><td>A meal&rsquo;s per-diet changes go through the recipes&rsquo; own variation compiler</td></tr>
+                <tr><td>D-341</td><td>A single food&rsquo;s suggested brand is a &#9733; on its brand list, one at a time</td></tr>
+                <tr><td>D-342</td><td>Food &amp; recipes lists ingredients and finds them inside recipes; Keep for the troop; the meal search names a draft; plain estimated prices</td></tr>
+            </tbody>
+        </table>
+
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Patrick: eyes-on v1.176&ndash;v1.190 (three lists in BACKLOG), publish Cookies, and the two confirmations above.</li>
+            <li>Planner follow-ups: the rail&rsquo;s hash link, Discard hidden when clean, the print sheet&rsquo;s gear line, local menus, public styleguide specimens.</li>
+            <li>Roll the two edit-screen standards out to the Price book, brands and new-food forms.</li>
+            <li>Parked: <code>Plans/Event-Signup-Arrival-Times.md</code> (late arrivals who drive scouts home); <code>Plans/Menu-Monster-Planner-Flow.md</code> (c).</li>
+        </ul>
+
+        <h2>Files Changed</h2>
+        <table>
+            <thead><tr><th>Area</th><th>Change</th></tr></thead>
+            <tbody>
+                <tr><td>Public planner</td><td>meal-panel.tsx, meal-new-food.tsx (new), whos-eating.tsx + people-tab.tsx (new), [menuId]/people + review + meals/[mealId] pages, plan-tab.tsx, step-strip.tsx, summary-rail.tsx, scout-menus.tsx, shopping-tab.tsx, ingredient-list-edit.tsx, menus-list.tsx</td></tr>
+                <tr><td>Library</td><td>variations.ts (applyScopedOps), menus.ts (scoped EditOp), ingredient-rows.ts, engine.ts, scout-ingredients.ts, single-food.ts (new), draft-items.ts (new), food-list.ts, scout-recipes-store.ts, units.ts / types.ts (beverage)</td></tr>
+                <tr><td>Admin Menu Monster</td><td>recipe-builder.tsx, list-extra-rows.tsx (new), brands-block.tsx, brands-prices.tsx, actions.ts (addFoodToMeal, keepScoutFood), page.tsx</td></tr>
+                <tr><td>Database</td><td>20261023 beverage section + mm_create_typed_in without a package</td></tr>
+                <tr><td>Docs</td><td>changelog.html, Plans/Event-Signup-Arrival-Times.md (new), Agents/ memory</td></tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
