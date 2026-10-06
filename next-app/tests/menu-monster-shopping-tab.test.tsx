@@ -83,12 +83,12 @@ describe('ShoppingTab', () => {
       expect(line.textContent).toMatch(/budget|Under|Over|Close/);
     });
 
-    it('Print_IsOneButtonOnTheTitleLine', async () => {
+    it('Print_IsOneButton_OnTheFinishingLine', async () => {
       const print = vi.spyOn(window, 'print').mockImplementation(() => {});
       render(tab());
       const button = screen.getByRole('button', { name: 'Print' });
       expect(screen.getAllByRole('button', { name: 'Print' }).length).toBe(1);
-      expect(button.closest('div[class*="titleLine"]')?.contains(screen.getByRole('heading', { level: 1 }))).toBe(true);
+      expect(button.closest('[aria-label="Shopping status"]')).not.toBeNull();
       await userEvent.setup().click(button);
       expect(print).toHaveBeenCalledTimes(1);
     });
@@ -628,5 +628,36 @@ describe('ShoppingTab — add a package you bought (release C)', () => {
     expect(within(form).getByText(/check the label/)).toBeTruthy();
     expect(within(form).getByRole('alert').textContent).toMatch(/^Can’t add yet: say how much one package holds/);
     expect(addScoutPackageAction).not.toHaveBeenCalled();
+  });
+});
+
+describe('ShoppingTab finishing line', () => {
+  const ready = () => menu({ meals: menu().meals.slice(1) });
+  const status = () => screen.getByRole('group', { name: 'Shopping status' });
+  const withShare = (m: Menu, shareHref: string | null) => (
+    <ShoppingTab catalog={CATALOG} menuId="menu-1" menu={m} updatedAt={VERSION} snapshot={buildSnapshot(m, CATALOG)} shareHref={shareHref} tabs={<nav aria-label="Menu sections" />} />
+  );
+
+  it('Scout_SeesReadyToShop_WithPrintAndShare_WhenNothingIsLeftToFix', () => {
+    render(withShare(ready(), '/library/menu-monster/menus/menu-1/share'));
+    expect(within(status()).getByText('Ready to shop')).toBeTruthy();
+    expect(within(status()).getByRole('button', { name: 'Print' })).toBeTruthy();
+    expect(within(status()).getByRole('link', { name: 'Share' }).getAttribute('href')).toBe('/library/menu-monster/menus/menu-1/share');
+  });
+
+  it('Scout_SeesNToFix_AsALink_WhenSomethingIsLeft', async () => {
+    const user = userEvent.setup();
+    render(withShare(menu(), '/library/menu-monster/menus/menu-1/share'));
+    expect(within(status()).queryByText('Ready to shop')).toBeNull();
+    expect(within(status()).queryByRole('link', { name: 'Share' })).toBeNull();
+    await user.click(within(status()).getByRole('button', { name: '1 to fix before shopping' }));
+    expect(rowFor('Orange juice').querySelector('[aria-expanded="true"]')).not.toBeNull();
+  });
+
+  it('Helper_GetsPrintButNotShare', () => {
+    render(withShare(ready(), null));
+    expect(within(status()).getByText('Ready to shop')).toBeTruthy();
+    expect(within(status()).getByRole('button', { name: 'Print' })).toBeTruthy();
+    expect(within(status()).queryByRole('link', { name: 'Share' })).toBeNull();
   });
 });

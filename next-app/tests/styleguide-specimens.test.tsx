@@ -15,7 +15,7 @@ vi.mock('../src/app/admin/(workspace)/library/menu-monster/actions', () => ({
 }));
 vi.mock('../src/app/admin/(workspace)/news/_components/media-picker', () => ({ MediaPicker: () => null }));
 
-import { PublicBlockedSaveSpecimen, PublicDietRowsSpecimen, PublicGearSpecimen } from '../src/app/admin/(workspace)/styleguide/public/specimens';
+import { PublicBlockedSaveSpecimen, PublicDietRowsSpecimen, PublicFinishLineSpecimen, PublicGearSpecimen } from '../src/app/admin/(workspace)/styleguide/public/specimens';
 import { StepStrip } from '../src/app/(public)/library/menu-monster/menus/_components/step-strip';
 import { BlockedSaveDemo } from '../src/app/admin/(workspace)/styleguide/admin/save-demo';
 import { FoodListRowsSpecimen } from '../src/app/admin/(workspace)/styleguide/admin/food-list-rows-specimen';
@@ -39,6 +39,13 @@ describe('Public styleguide specimens', () => {
     render(<StepStrip config={{ people: '#', plan: '#', gear: '#', shopping: '#', review: '#' }} done={{ eating: true }} current="review" />);
     const review = screen.getByRole('link', { name: 'Review' });
     expect(review.getAttribute('aria-current')).toBe('step');
+  });
+
+  it('FinishLine_ShowsReadyWithShare_AndAnNToFixLink_WhenRendered', () => {
+    render(<PublicFinishLineSpecimen />);
+    expect(screen.getByText('Ready to shop')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Share' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: '2 to fix before shopping' })).toBeTruthy();
   });
 
   it('GearPickerAndChips_ShowSearchAndCountedChips_WhenRendered', () => {

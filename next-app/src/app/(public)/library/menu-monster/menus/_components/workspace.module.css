@@ -290,6 +290,7 @@
 /* ---- My menus / locked line --------------------------------------------------- */
 .listHead { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); margin-bottom: var(--sp-4); flex-wrap: wrap; }
 .listHead .heading { margin: 0; }
+.hubActions { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
 /* The Menu Monster hub: My menus above the anonymous planner. */
 .hubSection { margin-bottom: var(--sp-8); }
 .hubPlanHeading {
@@ -455,6 +456,11 @@
 .noteRow input { flex: 1; min-width: 200px; }
 
 /* Totals card: the old planner's Spent / Used / Leftover / Budget, quiet - a white card, four columns. */
+.finishLine { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-3); margin: 0 0 var(--sp-6); }
+.finishReady { font-family: var(--font-ui); font-weight: 600; color: var(--text-head); margin-right: auto; }
+.finishFix { font-family: var(--font-ui); font-weight: 600; color: var(--text-head); margin-right: auto; background: none; border: 0; padding: 0; text-decoration: underline; cursor: pointer; font-size: inherit; }
+.finishShare { font-family: var(--font-ui); font-weight: 600; }
+@media print { .finishLine { display: none; } }
 .titleActions { display: inline-flex; align-items: center; flex-wrap: wrap; gap: var(--sp-3); }
 .totalsCard {
   display: flex;

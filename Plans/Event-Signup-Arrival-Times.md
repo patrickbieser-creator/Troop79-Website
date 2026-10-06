@@ -1,7 +1,7 @@
 # Event signup: when people arrive and leave, and cars by departure
 
-**Status:** Parked
-**Parked:** 2026-10-06
+**Status:** Active — steps 1–3 SHIPPED v1.191.0 (3ffe392, migration 20261024100000 on production); step 4 (nights → an offered Menu Monster headcount) waits on Patrick's OK on how it is offered. Not yet: the confirmation email and "You're signed up" line do not mention times.
+**Parked:** 2026-10-06 (unparked the same day)
 **Priority:** Medium
 
 ## Overview

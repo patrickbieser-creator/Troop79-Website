@@ -306,6 +306,26 @@ describe('PeopleTab — Who’s eating on its own screen', () => {
     expect(createMenuAction).toHaveBeenCalledWith(expect.objectContaining({ dayCount: 3, startDate: '2026-10-09' }));
   });
 
+  it('Scout_GetsTheStandardMeals_WhenPickingAnOutingOnAnEmptyMenu', async () => {
+    createMenuAction.mockResolvedValue({ ok: true, id: 'new-id' });
+    const user = userEvent.setup();
+    render(fresh());
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Outing' }), '7');
+    await user.click(screen.getByRole('button', { name: 'Save menu' }));
+    const meals = createMenuAction.mock.calls[0][0].meals as Menu['meals'];
+    expect(meals.map((m) => `${m.day}:${m.slot}:${m.headcount}:${m.recipeIds.length}`)).toEqual(['0:dinner:null:0', '1:breakfast:null:0', '1:lunch:null:0', '1:dinner:null:0', '2:breakfast:null:0']);
+  });
+
+  it('Scout_KeepsTheirMeals_WhenPickingAnOutingLater', async () => {
+    saveMenuAction.mockResolvedValue({ ok: true, updatedAt: VERSION });
+    const user = userEvent.setup();
+    render(existing());
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Outing' }), '7');
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    const meals = saveMenuAction.mock.calls[0].flat().find((x) => x && typeof x === 'object' && 'meals' in x).meals as Menu['meals'];
+    expect(meals.map((m) => m.id)).toEqual(['m1']);
+  });
+
   it('Outing_SavesItsSpanAsTheDayCount', async () => {
     createMenuAction.mockResolvedValue({ ok: true, id: 'new-id' });
     const user = userEvent.setup();

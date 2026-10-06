@@ -51,7 +51,7 @@ import { RESTRICTION_BY_KEY, SECTIONS, SECTION_ORDER, qtyText } from '@/lib/menu
 import { fmtRange } from '@/lib/format-date';
 import { MAX_QTY, lineSentence } from '@/lib/menu-monster/engine';
 import { addDays, type Menu, type MenuShopping } from '@/lib/menu-monster/menus';
-import { DIET_ORDER, budgetState, buildMenuList, lineUpdated, mealTitle, needsLabelCheck, shoppingPanel, type MenuLine } from '@/lib/menu-monster/menu-view';
+import { DIET_ORDER, budgetState, buildMenuList, lineUpdated, mealTitle, needsLabelCheck, planProgress, shoppingPanel, type MenuLine } from '@/lib/menu-monster/menu-view';
 import { BrandChooser } from './brand-chooser';
 import { addBrandAction } from '../../../_tools/menu-monster/brand-actions';
 import type { MenuStore, SaveResult } from '@/lib/menu-monster/menu-store';
@@ -60,6 +60,8 @@ import { serverMenuStore } from './server-menu-store';
 import { ReadOnlyLine } from './read-only-line';
 import { AddPackageForm, type AddedPackage } from './add-package-form';
 import { SaveBar } from './save-bar';
+import { fixHref } from './summary-rail';
+import { FinishLine } from './finish-line';
 import s from './workspace.module.css';
 import { menuGear } from '@/lib/menu-monster/scout-recipes';
 import type { GearItem } from '@/lib/menu-monster/gear';
@@ -98,9 +100,11 @@ export interface ShoppingTabProps {
   gearExtras?: readonly string[];
   /** An ingredient to open on load (?item=): the Plan tab's "N not priced" and the meal panel's "No price yet" land here, on that row's "Add a package you bought" form. */
   openItem?: string | null;
+  /** The menu's /share route, for the owner of a saved menu only: Share joins Print on the finishing line. Absent for a helper, a read-only viewer and a menu kept on this computer. */
+  shareHref?: string | null;
 }
 
-export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updatedAt, snapshot: initialSnapshot, tabs, readOnly = false, plannedBy = null, aside, store: storeProp, gearList = [], gearExtras = [], openItem = null }: ShoppingTabProps) {
+export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updatedAt, snapshot: initialSnapshot, tabs, readOnly = false, plannedBy = null, aside, store: storeProp, gearList = [], gearExtras = [], openItem = null, shareHref = null }: ShoppingTabProps) {
   const uid = useId();
   const store = useMemo(() => storeProp ?? serverMenuStore(menuId ?? null), [storeProp, menuId]);
   const { canSave, canPay, canReport } = store.caps;
@@ -131,6 +135,8 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
   const budget = budgetState({ perSpent: list.perPersonMeal }, menu.budgetPerPersonMeal);
   const panel = shoppingPanel(list);
   const drift = snapshotDrift(snapshot, saved.menu, catalog);
+  const progress = planProgress(menu, catalog, { list });
+  const firstFix = progress.fixes[0];
   const mealOf = new Map(menu.meals.map((m) => [m.id, m]));
 
   /* ---- Edits to the menu's shopping choices ---- */
@@ -257,6 +263,12 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
   /** A badge that asks for something opens its row (never closes it). */
   const openRow = (id: string) => setOpenIds((cur) => (cur.has(id) ? cur : new Set(cur).add(id)));
 
+  /** "N to fix" on this page: open the first unpriced row (its add-a-package form) and bring it into view. */
+  const fixFirst = (id: string) => {
+    openRow(id);
+    window.requestAnimationFrame(() => document.getElementById(`${uid}-ing-${id}`)?.scrollIntoView?.({ block: 'center' }));
+  };
+
   const costOf = (l: MenuLine) => (view === 'total' ? l.spent : l.spent / people);
   const sections = SECTION_ORDER.filter((sec) => list.lines.some((l) => l.ing.section === sec));
   const priced = list.lines.length > 0;
@@ -267,9 +279,6 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
       <div className={s.titleLine}>
         <h1 className={s.menuTitle}>{menu.name.trim() || 'Untitled menu'}</h1>
         <div className={s.titleActions}>
-          <Button variant="secondary" onClick={() => window.print()}>
-            Print
-          </Button>
           {!readOnly && (
             <SaveBar
               isNew={false}
@@ -351,6 +360,17 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
           )}
         </div>
       )}
+
+      <FinishLine
+        toFix={progress.toFix}
+        fix={
+          firstFix?.target.step === 'shopping' && firstFix.target.ingredientId
+            ? { onClick: () => fixFirst(firstFix.target.ingredientId!) }
+            : { href: firstFix ? (fixHref(firstFix.target, { people: store.hrefs.people, plan: store.hrefs.plan, gear: store.hrefs.gear ?? null, shopping: store.hrefs.shopping }) ?? store.hrefs.plan) : store.hrefs.plan }
+        }
+        onPrint={() => window.print()}
+        shareHref={shareHref && !dirty && !readOnly ? shareHref : null}
+      />
 
       <section aria-labelledby={`${uid}-list-h`}>
         <div className={s.secHead}>

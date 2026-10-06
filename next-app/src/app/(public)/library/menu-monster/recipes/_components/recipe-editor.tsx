@@ -111,9 +111,13 @@ export function RecipeEditor({ catalog, id: initialId, initial, status: initialS
   const nameRef = useRef<HTMLInputElement | null>(null);
   const stepsRef = useRef<HTMLOListElement | null>(null);
   const formRef = useRef<HTMLFieldSetElement | null>(null);
+  /** Planner-flow guideline 2: a saved recipe's basics are one summary line until Edit (or a blocked save) opens them. */
+  const [basicsOpen, setBasicsOpen] = useState(initialId === null);
+  const focusBasics = useRef<'name' | 'mealFit' | null>(null);
 
   const isNew = id === null;
   const retired = status === 'retired';
+  const basicsCollapsed = !isNew && !retired && !basicsOpen;
   const dirty = keyOf(draft) !== savedKey;
   useLeaveGuard(dirty && !retired);
 
@@ -140,10 +144,24 @@ export function RecipeEditor({ catalog, id: initialId, initial, status: initialS
     if (now.length === 0) return true;
     setTried(kind);
     const first = now[0].field;
+    if (basicsCollapsed && first !== 'lines') {
+      focusBasics.current = first;
+      setBasicsOpen(true);
+      return false;
+    }
     const el = formRef.current?.querySelector<HTMLElement>(`[data-field="${first}"]`);
     (first === 'name' ? nameRef.current : first === 'mealFit' ? el?.querySelector<HTMLElement>('button') : el?.querySelector<HTMLElement>('input'))?.focus();
     return false;
   }
+
+  // A blocked save opened the basics: focus the bad field once it exists.
+  useEffect(() => {
+    if (!basicsOpen || !focusBasics.current) return;
+    const first = focusBasics.current;
+    focusBasics.current = null;
+    const el = formRef.current?.querySelector<HTMLElement>(`[data-field="${first}"]`);
+    (first === 'name' ? nameRef.current : el?.querySelector<HTMLElement>('button'))?.focus();
+  }, [basicsOpen]);
 
   const edit = (f: (d: Draft) => Draft) => {
     setDraft(f);
@@ -255,6 +273,13 @@ export function RecipeEditor({ catalog, id: initialId, initial, status: initialS
     setTried(null);
   }
 
+  const summary = [
+    draft.name.trim() || 'Untitled recipe',
+    MEALS.filter((m) => draft.mealFit.includes(m.key)).map((m) => m.label).join(', '),
+    FOOD_GROUPS.filter((g) => draft.foodGroups.includes(g.key)).map((g) => g.label).join(', ')
+  ]
+    .filter(Boolean)
+    .join(' · ');
   const title = draft.name.trim() || (isNew ? 'New recipe' : 'Untitled recipe');
 
   return (
@@ -288,12 +313,23 @@ export function RecipeEditor({ catalog, id: initialId, initial, status: initialS
         <div className={`${w.grid} ${s.grid}`}>
           <div className={w.col}>
             <section className={w.basics} aria-label="Recipe name, meals and food groups">
-              <Field label="Recipe name" problem={noteFor('name')}>
-                <TextInput ref={nameRef} data-field="name" value={draft.name} maxLength={MAX_SCOUT_RECIPE_NAME} autoComplete="off" placeholder="Campfire chili" onChange={(e) => edit((d) => ({ ...d, name: e.target.value }))} />
-              </Field>
-              <ChipGroup label="Good for" field="mealFit" describedBy={noteFor('mealFit') ? 're-mealfit-problem' : undefined} options={MEALS} value={draft.mealFit} onToggle={(k) => edit((d) => ({ ...d, mealFit: toggle(d.mealFit, k) }))} />
-              <FieldProblem id="re-mealfit-problem">{noteFor('mealFit')}</FieldProblem>
-              <ChipGroup label="Food groups" options={FOOD_GROUPS} value={draft.foodGroups} onToggle={(k) => edit((d) => ({ ...d, foodGroups: toggle(d.foodGroups, k) }))} />
+              {basicsCollapsed ? (
+                <p className={w.basicsSummary}>
+                  <span>{summary}</span>
+                  <Button variant="ghost" onClick={() => setBasicsOpen(true)}>
+                    Edit
+                  </Button>
+                </p>
+              ) : (
+                <>
+                <Field label="Recipe name" problem={noteFor('name')}>
+                  <TextInput ref={nameRef} data-field="name" value={draft.name} maxLength={MAX_SCOUT_RECIPE_NAME} autoComplete="off" placeholder="Campfire chili" onChange={(e) => edit((d) => ({ ...d, name: e.target.value }))} />
+                </Field>
+                <ChipGroup label="Good for" field="mealFit" describedBy={noteFor('mealFit') ? 're-mealfit-problem' : undefined} options={MEALS} value={draft.mealFit} onToggle={(k) => edit((d) => ({ ...d, mealFit: toggle(d.mealFit, k) }))} />
+                <FieldProblem id="re-mealfit-problem">{noteFor('mealFit')}</FieldProblem>
+                <ChipGroup label="Food groups" options={FOOD_GROUPS} value={draft.foodGroups} onToggle={(k) => edit((d) => ({ ...d, foodGroups: toggle(d.foodGroups, k) }))} />
+                </>
+              )}
               {fromNote && isNew && <p className={w.foot}>{fromNote}</p>}
             </section>
 

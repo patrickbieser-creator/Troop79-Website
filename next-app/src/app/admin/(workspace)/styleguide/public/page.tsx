@@ -30,7 +30,7 @@ import { Notice } from '@/app/_components/notice';
 import { EmptyState } from '@/app/_components/empty-state';
 import { SectionDivider } from '@/app/_components/section-divider';
 import cardS from '@/app/_components/card.module.css';
-import { PublicBlockedSaveSpecimen, PublicDietRowsSpecimen, PublicGearSpecimen, PublicMenuEditListSpecimen, PublicStepperSpecimen, PublicTabStripSpecimen } from './specimens';
+import { PublicBlockedSaveSpecimen, PublicDietRowsSpecimen, PublicFinishLineSpecimen, PublicGearSpecimen, PublicMenuEditListSpecimen, PublicStepperSpecimen, PublicTabStripSpecimen } from './specimens';
 import { IngredientList } from '@/app/(public)/library/menu-monster/_components/ingredient-list';
 import { StepStrip } from '@/app/(public)/library/menu-monster/menus/_components/step-strip';
 import { SummaryRail } from '@/app/(public)/library/menu-monster/menus/_components/summary-rail';
@@ -575,6 +575,16 @@ export default function PublicStyleguidePage() {
               <code>Field problem</code> + <code>SaveProblem</code> from <code>_components/form</code> &mdash; Add/Save/Share stays enabled on an
               incomplete form; pressed, it outlines each bad field (<code>aria-invalid</code>), says why in a sentence under it, focuses the first,
               and prints &ldquo;Can&rsquo;t add yet: &hellip; (+N more)&rdquo; beside the button until the form is whole.
+            </p>
+          </div>
+
+          {/* Shopping finishing line */}
+          <div className={sg.specimenBlock}>
+            <PublicFinishLineSpecimen />
+            <p className={sg.specimenInlineNote}>
+              <code>FinishLine</code> from <code>menu-monster/menus/_components/finish-line</code> &mdash; the Shopping step&rsquo;s done-state under
+              the totals, derived from planProgress and never stored. Nothing to fix reads &ldquo;Ready to shop&rdquo; with Print and (owner of a
+              saved menu only) Share; otherwise &ldquo;N to fix before shopping&rdquo; is a link to the first fix.
             </p>
           </div>
 

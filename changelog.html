@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>October 6, 2026</strong> &nbsp;&middot;&nbsp; v1.193.0</p>
+      <p>Last updated: <strong>October 6, 2026</strong> &nbsp;&middot;&nbsp; v1.194.0</p>
     </div>
   </div>
 
@@ -494,6 +494,24 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.194.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.194.0</span>
+        <span class="release-date">October 6, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Improved</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Menu Monster planner: the flow finishes (plan part c)</p>
+        <ul class="change-list">
+          <li><span><strong>Picking an outing lays out the meals.</strong> On a menu with no meals yet, choosing the outing sets the days and adds the standard empty meals &mdash; a one-day outing gets lunch; otherwise the first day gets dinner, each middle day gets breakfast, lunch and dinner, and the last day gets breakfast (a weekend campout = 5 meals). Headcounts are never filled in; a menu that already has meals is left alone.</span></li>
+          <li><span><strong>Shopping ends in &ldquo;Ready to shop&rdquo;.</strong> Under the totals a line says Ready to shop with <strong>Print</strong> and <strong>Share</strong> beside it (Share for the owner of a saved menu), or &ldquo;N to fix before shopping&rdquo; as a link that opens the first thing to fix. Share is no longer a &ldquo;Next&rdquo;; a leader&rsquo;s Next: Review now goes to the Review step.</span></li>
+          <li><span><strong>A saved recipe&rsquo;s basics are one line</strong> &mdash; &ldquo;Pancakes &middot; Breakfast &middot; Grain, Dairy&rdquo; &mdash; with a quiet Edit; a new recipe still opens with the fields showing, and a blocked Save opens them to show the mark. Ingredient rows already kept their brand and amount inside the row.</span></li>
+          <li><span><strong>The hub leads with Continue.</strong> With a menu in progress, &ldquo;Continue &lt;menu&gt;&rdquo; is the one primary and New menu is secondary; with none, New menu stays primary.</span></li>
+        </ul>
       </div>
     </div>
 

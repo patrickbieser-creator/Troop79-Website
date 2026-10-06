@@ -313,8 +313,9 @@ export function MenuSteps({ menuId, active, access = 'owner', menu, catalog, sho
 /** The summary rail on every page but the Plan tab: the SAVED menu's headcount, cost and things to fix, and the next step. */
 export function MenuRail({ menuId, active, access = 'owner', menu, catalog }: { menuId: string; active: MenuPage; access?: MenuAccess; menu: Menu; catalog: Catalog }) {
   const base = `${MENUS_HREF}/${menuId}`;
-  const share = access === 'owner' ? 'Share' : access === 'admin' ? 'Review' : null;
-  const next = active === 'people' ? { label: 'Next: Meals ›', href: base } : active === 'plan' ? { label: 'Next: Gear ›', href: `${base}/gear` } : active === 'gear' ? { label: 'Next: Shopping ›', href: `${base}/shopping` } : active === 'shopping' && share ? { label: `Next: ${share} ›`, href: `${base}/share` } : null;
+  // Shopping is the last step: the owner's Share is an end-of-flow action on the Shopping page's finishing line, not a "Next".
+  const review = access === 'admin';
+  const next = active === 'people' ? { label: 'Next: Meals ›', href: base } : active === 'plan' ? { label: 'Next: Gear ›', href: `${base}/gear` } : active === 'gear' ? { label: 'Next: Shopping ›', href: `${base}/shopping` } : active === 'shopping' && review ? { label: 'Next: Review ›', href: `${base}/review` } : null;
   return (
     <SummaryRail progress={planProgress(menu, catalog)} hrefs={{ people: `${base}/people`, plan: base, gear: `${base}/gear`, shopping: `${base}/shopping` }}>
       {next && (

@@ -41,6 +41,7 @@ import type { Brand, BrandPick, Catalog, Plan, Recipe, RestrictionKey } from '@/
 import { MEALS } from '@/lib/menu-monster/units';
 import { MAX_HEADCOUNT, MIN_HEADCOUNT } from '@/lib/menu-monster/engine';
 import { MAX_MENU_DAYS, MAX_MENU_MEALS, MAX_MENU_NAME, menuNameError, type Menu, type MenuContext, type MenuMeal } from '@/lib/menu-monster/menus';
+import { standardMeals } from '@/lib/menu-monster/menu-prefill';
 import { DIET_ORDER, budgetState, buildMenuList, dayLabel, mealTitle, mealUnpricedItems, menuCost, outingDayCount, planProgress, type Outing } from '@/lib/menu-monster/menu-view';
 import { addBrandAction, suggestRecipeBrandAction } from '../../../_tools/menu-monster/brand-actions';
 import type { CreateResult, MenuStore, SaveResult } from '@/lib/menu-monster/menu-store';
@@ -217,8 +218,8 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
       context: campByDefault ? 'camp' : m.context,
       calendarEntryId: outing.id,
       startDate: outing.startDate,
-      // An empty menu takes the outing's span; one with meals keeps its days.
-      dayCount: m.meals.length === 0 ? outingDayCount(outing) : m.dayCount,
+      // An empty menu takes the outing's span and its standard meals (empty, no headcount); one with meals keeps both.
+      ...(m.meals.length === 0 ? { dayCount: outingDayCount(outing), meals: standardMeals(outing, newId) } : {}),
       name: m.name.trim() ? m.name : outing.title.slice(0, MAX_MENU_NAME)
     }));
     if (!menu.name.trim()) setNameError(null);

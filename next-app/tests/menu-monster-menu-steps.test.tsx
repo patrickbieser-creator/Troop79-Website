@@ -115,6 +115,17 @@ describe('MenuSteps', () => {
     expect(steps().map((a) => a.textContent)).toContain('Meals');
   });
 
+  it('ShoppingTick_IsDone_WhenNothingIsLeftToPrice', () => {
+    render(<MenuSteps menuId={ID} active="plan" menu={menu()} catalog={CATALOG} />);
+    expect(steps().map((a) => a.textContent)).toContain('✓Shopping (done)');
+  });
+
+  it('ShoppingTick_IsAbsent_WhenAFoodHasNoPrice', () => {
+    const meals = [{ id: 'm1', day: 0, slot: 'breakfast' as const, headcount: null, recipeIds: ['B003', 'B014', 'B023'], recipeEdits: {} }];
+    render(<MenuSteps menuId={ID} active="plan" menu={menu({ meals })} catalog={CATALOG} />);
+    expect(steps().map((a) => a.textContent)).toContain('Shopping');
+  });
+
   it('ReadOnlyViewer_GetsTheSameStrip_WithoutShare', () => {
     render(<MenuSteps menuId={ID} active="plan" access="parent" menu={menu()} catalog={CATALOG} />);
     expect(steps().map((a) => a.textContent?.replace(/✓| \(done\)/g, ''))).toEqual(['Who’s eating', 'Meals', 'Gear', 'Shopping', 'What we bought']);
@@ -142,9 +153,14 @@ describe('MenuRail', () => {
     expect(screen.getByRole('link', { name: 'Next: Shopping ›' }).getAttribute('href')).toBe(`${base}/shopping`);
   });
 
-  it('Shopping_EndsInNextShare_ForTheOwner', () => {
+  it('Shopping_HasNoNext_ForTheOwner_BecauseShareLivesOnTheFinishingLine', () => {
     render(<MenuRail menuId={ID} active="shopping" menu={menu()} catalog={CATALOG} />);
-    expect(screen.getByRole('link', { name: 'Next: Share ›' }).getAttribute('href')).toBe(`${base}/share`);
+    expect(screen.queryByRole('link', { name: /^Next:/ })).toBeNull();
+  });
+
+  it('Shopping_EndsInNextReview_ForALeader_AtTheReviewStep', () => {
+    render(<MenuRail menuId={ID} active="shopping" access="admin" menu={menu()} catalog={CATALOG} />);
+    expect(screen.getByRole('link', { name: 'Next: Review ›' }).getAttribute('href')).toBe(`${base}/review`);
   });
 
   it('Shopping_HasNoNext_ForAReadOnlyViewer', () => {

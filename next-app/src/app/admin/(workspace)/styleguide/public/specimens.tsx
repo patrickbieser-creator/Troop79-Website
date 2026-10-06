@@ -13,6 +13,7 @@ import { AmountInput, Stepper } from '@/app/_components/stepper';
 import { IngredientList } from '@/app/(public)/library/menu-monster/_components/ingredient-list';
 import { GearChips, GearPicker } from '@/app/(public)/library/menu-monster/_components/gear-picker';
 import { sortGear, type GearItem } from '@/lib/menu-monster/gear';
+import { FinishLine } from '@/app/(public)/library/menu-monster/menus/_components/finish-line';
 import type { RestrictionKey } from '@/lib/menu-monster/types';
 
 export function PublicTabStripSpecimen() {
@@ -173,5 +174,15 @@ export function PublicMenuEditListSpecimen() {
       onAction={() => {}}
       onAnnounce={() => {}}
     />
+  );
+}
+
+/** The Shopping step's finishing line in both states: ready (Print + Share) and something left to fix (a link to it). Display-only. */
+export function PublicFinishLineSpecimen() {
+  return (
+    <div>
+      <FinishLine toFix={0} fix={{ href: '#' }} onPrint={() => {}} shareHref="#" />
+      <FinishLine toFix={2} fix={{ href: '#' }} onPrint={() => {}} />
+    </div>
   );
 }

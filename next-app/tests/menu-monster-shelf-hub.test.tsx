@@ -123,6 +123,20 @@ describe('MenuMonsterShelfTool hub, scout', () => {
     expect(screen.getByRole('link', { name: 'Continue Menu 1' }).getAttribute('href')).toBe('/library/menu-monster/menus/id-1/people');
   });
 
+  it('Scout_SeesContinueAsThePrimary_WhenAMenuExists', async () => {
+    mocks.summaries = [summary(1)];
+    await shelf();
+    expect([
+      screen.getByRole('link', { name: 'Continue Menu 1' }).className.includes('primary'),
+      screen.getByRole('link', { name: 'New menu' }).className.includes('primary')
+    ]).toEqual([true, false]);
+  });
+
+  it('Scout_SeesNewMenuAsThePrimary_WithNoMenus', async () => {
+    await shelf();
+    expect(screen.getByRole('link', { name: 'New menu' }).className.includes('primary')).toBe(true);
+  });
+
   it('Scout_SeesNoContinue_WhenTheyHaveNoMenus', async () => {
     await shelf();
     expect(screen.queryByRole('link', { name: /^Continue/ })).toBeNull();

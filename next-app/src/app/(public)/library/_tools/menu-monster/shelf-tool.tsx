@@ -136,17 +136,21 @@ async function mealPlanner(catalog: Catalog, viewer: MenuViewer | null) {
       <section className={w.hubSection}>
         <div className={w.listHead}>
           <h2 className={w.heading}>My menus</h2>
-          <Button variant="primary" size="sm" href={`${MENUS_HREF}/new`}>
-            New menu
-          </Button>
+          {latest ? (
+            <div className={w.hubActions}>
+              <Button variant="primary" size="sm" href={`${MENUS_HREF}/${latest.id}/people`}>
+                Continue {latest.name}
+              </Button>
+              <Button variant="secondary" size="sm" href={`${MENUS_HREF}/new`}>
+                New menu
+              </Button>
+            </div>
+          ) : (
+            <Button variant="primary" size="sm" href={`${MENUS_HREF}/new`}>
+              New menu
+            </Button>
+          )}
         </div>
-        {latest && (
-          <p className={w.foot}>
-            <Link className={w.link} href={`${MENUS_HREF}/${latest.id}/people`}>
-              Continue {latest.name}
-            </Link>
-          </p>
-        )}
         {rows.length === 0 ? (
           <p className={w.foot}>No menus yet. Start one to save meals, people and a shopping list.</p>
         ) : (

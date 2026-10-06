@@ -22,7 +22,7 @@ vi.mock('../src/app/(public)/library/_tools/menu-monster/recipe-actions', () => 
 import { RecipeEditor } from '../src/app/(public)/library/menu-monster/recipes/_components/recipe-editor';
 
 const STAMP = '2026-10-02T12:00:00.000Z';
-const READY = { name: 'Bacon bowl', mealFit: ['breakfast' as const], foodGroups: [], steps: ['Fry it.'], lines: [{ ingredientId: 'bacon', qtyPerPerson: 3, unitKey: null }], originRecipeId: null, equipment: [] as string[] };
+const READY = { name: 'Bacon bowl', mealFit: ['breakfast' as const], foodGroups: [] as ('grain' | 'dairy')[], steps: ['Fry it.'], lines: [{ ingredientId: 'bacon', qtyPerPerson: 3, unitKey: null }], originRecipeId: null, equipment: [] as string[] };
 const BLANK = { name: '', mealFit: [], foodGroups: [], steps: [], lines: [], originRecipeId: null };
 
 const fresh = () => render(<RecipeEditor catalog={CATALOG} id={null} initial={BLANK} status="draft" credit={null} updatedAt={null} />);
@@ -85,6 +85,7 @@ describe('RecipeEditor saving', () => {
   it('Save_PassesTheLoadedVersion', async () => {
     const user = userEvent.setup();
     existing();
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
     await user.type(screen.getByRole('textbox', { name: 'Recipe name' }), '!');
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
     expect(save.mock.calls[0][1]).toBe(STAMP);
@@ -93,6 +94,7 @@ describe('RecipeEditor saving', () => {
   it('Discard_ReturnsToTheSavedRecipe', async () => {
     const user = userEvent.setup();
     existing();
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
     await user.type(screen.getByRole('textbox', { name: 'Recipe name' }), ' deluxe');
     await user.click(screen.getByRole('button', { name: 'Discard changes' }));
     expect((screen.getByRole('textbox', { name: 'Recipe name' }) as HTMLInputElement).value).toBe('Bacon bowl');
@@ -101,9 +103,43 @@ describe('RecipeEditor saving', () => {
   it('MealChip_IsAToggle', async () => {
     const user = userEvent.setup();
     existing();
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
     const chip = within(screen.getByRole('group', { name: 'Good for' })).getByRole('button', { name: 'Dinner' });
     await user.click(chip);
     expect(chip.getAttribute('aria-pressed')).toBe('true');
+  });
+});
+
+describe('RecipeEditor basics summary (planner-flow guideline 2)', () => {
+  it('Scout_SeesTheBasicsAsOneLine_OnASavedRecipe', () => {
+    existing('draft', { ...READY, name: 'Pancakes', mealFit: ['breakfast' as const], foodGroups: ['grain', 'dairy'] as ('grain' | 'dairy')[] });
+    expect(screen.getByText('Pancakes · Breakfast · Grain, Dairy')).toBeTruthy();
+    expect(screen.queryByRole('textbox', { name: 'Recipe name' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeTruthy();
+  });
+
+  it('Scout_SeesTheFieldsOpen_OnANewRecipe', () => {
+    fresh();
+    expect(screen.getByRole('textbox', { name: 'Recipe name' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull();
+  });
+
+  it('Scout_SeesTheBasicsOpen_WhenASaveMarksTheName', async () => {
+    const user = userEvent.setup();
+    existing('draft', { ...READY, name: '' });
+    expect(screen.queryByRole('textbox', { name: 'Recipe name' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Share with the troop' }));
+    const name = screen.getByRole('textbox', { name: 'Recipe name' });
+    expect(name.getAttribute('aria-invalid')).toBe('true');
+    expect(document.activeElement).toBe(name);
+  });
+
+  it('Scout_SeesTheFieldsOpen_AfterPressingEdit', async () => {
+    const user = userEvent.setup();
+    existing();
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+    expect(screen.getByRole('textbox', { name: 'Recipe name' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull();
   });
 });
 
@@ -134,6 +170,7 @@ describe('RecipeEditor sharing', () => {
   it('Share_SavesFirst_WhenThereAreUnsavedChanges', async () => {
     const user = userEvent.setup();
     existing();
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
     await user.type(screen.getByRole('textbox', { name: 'Recipe name' }), '!');
     await user.click(screen.getByRole('button', { name: 'Share with the troop' }));
     expect([save.mock.calls.length, share.mock.calls[0]?.[0]]).toEqual([1, 'S-0000abcd']);
@@ -283,6 +320,7 @@ describe('RecipeEditor typed-in ingredients (Phase 4B)', () => {
     const key = () => (save.mock.calls.at(-1)![0].lines as { ingredientId: string }[]).at(-1)!.ingredientId;
     save.mockImplementationOnce(async (d: { newIngredients: { key: string }[] }) => ({ ok: true, id: 'S-0000abcd', updatedAt: STAMP, ids: { [d.newIngredients[0].key]: 'x-00000001' } }));
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
     await user.type(screen.getByRole('textbox', { name: 'Recipe name' }), '!');
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
     expect(key()).toBe('x-00000001');
@@ -351,6 +389,7 @@ describe('RecipeEditor gear (picked from the master list)', () => {
     const user = userEvent.setup();
     save.mockResolvedValue({ ok: true, id: 'S-0000abcd', updatedAt: STAMP, dropped: ['Spork'] });
     withGear({ ...READY, equipment: ['Spork', 'Tongs'] });
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
     await user.type(screen.getByRole('textbox', { name: 'Recipe name' }), '!');
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
     expect((await screen.findByText(/Not on the gear list, so not kept: Spork/)).textContent).toContain('Spork');

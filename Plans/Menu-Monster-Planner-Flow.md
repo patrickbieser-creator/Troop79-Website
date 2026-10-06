@@ -1,6 +1,6 @@
 # Menu Monster: the scout planner as a stepped flow
 
-**Status:** Active — (a) SHIPPED v1.183.0 (f9d3eac), (b) SHIPPED v1.184.0 (32aabdf); (c) remains
+**Status:** Complete — (a) SHIPPED v1.183.0 (f9d3eac), (b) SHIPPED v1.184.0 (32aabdf), (c) SHIPPED v1.194.0 (standard meals from an outing, the Shopping finishing line with Print / Share / "Ready to shop", What we bought on "done shopping" (v1.192.0), guideline 2 on the recipe editor — guideline 6 already held, hub Continue as the primary)
 **Opened:** 2026-10-06
 **Priority:** High
 

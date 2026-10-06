@@ -43,6 +43,7 @@ export default async function MenuShoppingPage({ params, searchParams }: { param
           readOnly={readOnly}
           openItem={typeof item === 'string' ? item : null}
           helper={view.helping}
+          shareHref={view.access === 'owner' && !readOnly ? `/library/menu-monster/menus/${stored.id}/share` : null}
           plannedBy={plannedBy}
           tabs={<MenuSteps menuId={stored.id} active="shopping" access={view.access} menu={resolveMenuAliases(stored.menu, catalog.aliases)} catalog={catalog} shoppingDone={view.shoppingDone} />}
           aside={<ViewerAside view={view} page="shopping" />}
