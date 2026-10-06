@@ -6,12 +6,12 @@
  * a shared viewer gets notFound() here.
  */
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
 import { resolveMenuAliases } from '@/lib/menu-monster/menus';
 import { ownerCreditNamesWith } from '@/lib/menu-monster/menus-store';
 import { PageShell } from '@/app/_components/page-shell';
-import { MenuHeader, MenuRail, MenuSteps, NO_INDEX, listCrumb, loadViewableMenu, menuViewer } from '../../_components/scout-menus';
+import { MENUS_HREF, MenuHeader, MenuRail, MenuSteps, NO_INDEX, listCrumb, loadViewableMenu, menuViewer } from '../../_components/scout-menus';
 import { ReadOnlyLine } from '../../_components/read-only-line';
 import { ReviewPanel } from '../../_components/review-panel';
 import { SharePanel } from '../../_components/share-panel';
@@ -24,6 +24,8 @@ export default async function MenuSharePage({ params }: { params: Promise<{ menu
   const { menuId } = await params;
   const view = await loadViewableMenu(menuId, await menuViewer());
   if (!view || (view.access !== 'owner' && view.access !== 'admin')) notFound();
+  // A leader's Review is its own step (2026-10-06); this page is the owner's Share.
+  if (view.access === 'admin') redirect(`${MENUS_HREF}/${menuId}/review`);
   const { stored } = view;
   const menu = resolveMenuAliases(stored.menu, view.catalog.aliases);
   const sb = createAdminClient();

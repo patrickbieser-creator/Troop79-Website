@@ -255,7 +255,7 @@ export function listCrumb(access: MenuAccess): { listLabel?: string; listHref?: 
 /** Menu pages are per-viewer and carry scouts' names: never indexed (tech-lead review). */
 export const NO_INDEX = { index: false, follow: false } as const;
 
-export type MenuPage = 'people' | 'plan' | 'shopping' | 'gear' | 'bought' | 'conversions' | 'share';
+export type MenuPage = 'people' | 'plan' | 'shopping' | 'gear' | 'bought' | 'conversions' | 'review' | 'share';
 
 const CURRENT: Record<MenuPage, StepCurrent[]> = {
   people: ['eating'],
@@ -265,25 +265,27 @@ const CURRENT: Record<MenuPage, StepCurrent[]> = {
   // Conversions is a quiet link from the Shopping footer: it belongs to that step.
   conversions: ['shopping'],
   bought: ['bought'],
+  review: ['review'],
   share: ['share']
 };
 
 /**
  * The step strip's routes for a menu (also the Plan tab's, so its ticks can follow the draft). What we bought
  * joins once the outing's last day has passed, or while you are on it (never locked, never lost); a shared
- * viewer never sees what was paid. Share is a quiet action for the owner, Review for a leader.
+ * viewer never sees what was paid. Share is a quiet action for the owner; Review is a leader's fifth step
+ * (Patrick, 2026-10-06), with the same treatment as the others.
  */
 export function stepConfig(menuId: string, access: MenuAccess, menu: Menu, page: MenuPage, today: string): StepStripConfig {
   const base = `${MENUS_HREF}/${menuId}`;
   const showBought = access !== 'shared' && (page === 'bought' || outingOver(menu, today));
-  const shareLabel = access === 'owner' ? 'Share' : access === 'admin' ? 'Review' : null;
   return {
     people: `${base}/people`,
     plan: base,
     gear: `${base}/gear`,
     shopping: `${base}/shopping`,
     ...(showBought ? { bought: `${base}/bought` } : {}),
-    ...(shareLabel ? { share: { label: shareLabel, href: `${base}/share` } } : {})
+    ...(access === 'admin' ? { review: `${base}/review` } : {}),
+    ...(access === 'owner' ? { share: { label: 'Share', href: `${base}/share` } } : {})
   };
 }
 

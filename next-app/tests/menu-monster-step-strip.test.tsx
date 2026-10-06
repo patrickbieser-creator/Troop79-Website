@@ -50,6 +50,14 @@ describe('StepStrip', () => {
     expect(links().map((a) => a.textContent)).toEqual(['Who’s eating', 'Meals', 'Gear', 'Shopping', 'What we bought']);
   });
 
+  // Patrick, 2026-10-06: Review was "almost invisible on the right side" — it is a leader's fifth step now.
+  it('Review_IsAFifthStep_WhenGivenARoute_AfterWhatWeBought', () => {
+    render(<StepStrip config={{ ...CONFIG, bought: '/m/1/bought', review: '/m/1/review' }} current="review" />);
+    expect(links().map((a) => a.textContent)).toEqual(['Who’s eating', 'Meals', 'Gear', 'Shopping', 'What we bought', 'Review']);
+    expect(screen.getByRole('link', { name: 'Review' }).getAttribute('aria-current')).toBe('step');
+    expect(screen.getAllByRole('listitem')).toHaveLength(6);
+  });
+
   it('Share_IsAQuietActionAtTheEnd_NotAStep', () => {
     render(<StepStrip config={{ ...CONFIG, share: { label: 'Share', href: '/m/1/share' } }} current="shopping" />);
     const all = links();

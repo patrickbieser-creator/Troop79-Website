@@ -73,7 +73,7 @@ describe('MenuMonsterShelfTool hub, scout', () => {
   it('Scout_SeesTheirMenusAndNewMenu_WhenTheyHaveSome', async () => {
     mocks.summaries = [summary(1), summary(2)];
     await shelf();
-    expect(screen.getByRole('link', { name: 'Menu 1' }).getAttribute('href')).toBe('/library/menu-monster/menus/id-1');
+    expect(screen.getByRole('link', { name: 'Menu 1' }).getAttribute('href')).toBe('/library/menu-monster/menus/id-1/people');
     expect(screen.getByRole('link', { name: 'Menu 2' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'New menu' }).getAttribute('href')).toBe('/library/menu-monster/menus/new');
   });
@@ -101,7 +101,8 @@ describe('MenuMonsterShelfTool hub, scout', () => {
   it('Scout_SeesContinueWithTheMostRecentMenu_WhenTheyHaveMenus', async () => {
     mocks.summaries = [summary(1), summary(2)];
     await shelf();
-    expect(screen.getByRole('link', { name: 'Continue Menu 1' }).getAttribute('href')).toBe('/library/menu-monster/menus/id-1');
+    // A menu opens on its first step, Who's eating (Patrick, 2026-10-06).
+    expect(screen.getByRole('link', { name: 'Continue Menu 1' }).getAttribute('href')).toBe('/library/menu-monster/menus/id-1/people');
   });
 
   it('Scout_SeesNoContinue_WhenTheyHaveNoMenus', async () => {

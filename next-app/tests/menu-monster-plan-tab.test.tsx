@@ -328,12 +328,19 @@ describe('PlanTab', () => {
     expect(ev.defaultPrevented).toBe(false);
   });
 
+  // 2026-10-06: "Open the shopping list" left the Meals step (the strip and the rail's Next are the way there);
+  // the rail's Next and the strip's steps are the in-app links now.
   it('InAppLink_DoesNotAsk_WhenTheMenuIsSaved', () => {
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
     render(existing());
-    fireEvent.click(screen.getByRole('link', { name: 'Open the shopping list' }));
+    fireEvent.click(screen.getByRole('link', { name: 'Next: Gear ›' }));
     expect(confirm).not.toHaveBeenCalled();
     confirm.mockRestore();
+  });
+
+  it('TheMealsStep_HasNoOpenTheShoppingListLink', () => {
+    render(existing());
+    expect(screen.queryByRole('link', { name: 'Open the shopping list' })).toBeNull();
   });
 
   it('Meals_StartClosed', () => {
@@ -510,9 +517,10 @@ describe('PlanTab planner flow, this week (2026-10-06)', () => {
 
     it('InAppLink_StaysPut_WhenTheMealsDraftIsDirtyAndTheScoutDeclines', () => {
       const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
-      render(existing());
+      // With the strip, a step is the in-app link a dirty draft guards.
+      render(<PlanTab catalog={CATALOG} menuId="menu-1" menu={base()} updatedAt={VERSION} outings={OUTINGS} steps={{ people: '/m/1/people', plan: '/m/1', gear: '/m/1/gear', shopping: '/m/1/shopping' }} />);
       dirtyIt();
-      expect(fireEvent.click(screen.getByRole('link', { name: 'Open the shopping list' }))).toBe(false);
+      expect(fireEvent.click(screen.getByRole('link', { name: /^Shopping/ }))).toBe(false);
       expect(confirm).toHaveBeenCalled();
       confirm.mockRestore();
     });

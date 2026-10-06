@@ -56,13 +56,23 @@ describe('stepConfig', () => {
     expect(stepConfig(ID, 'shared', menu(), 'plan', '2026-10-12').bought).toBeUndefined();
   });
 
-  it('Share_IsAQuietAction_ForTheOwner_AndReviewForALeader_ButNotOthers', () => {
+  it('Share_IsAQuietAction_ForTheOwnerOnly', () => {
     expect([
       stepConfig(ID, 'owner', menu(), 'plan', '2026-10-06').share?.label,
-      stepConfig(ID, 'admin', menu(), 'plan', '2026-10-06').share?.label,
+      stepConfig(ID, 'admin', menu(), 'plan', '2026-10-06').share,
       stepConfig(ID, 'parent', menu(), 'plan', '2026-10-06').share,
       stepConfig(ID, 'shared', menu(), 'plan', '2026-10-06').share
-    ]).toEqual(['Share', 'Review', undefined, undefined]);
+    ]).toEqual(['Share', undefined, undefined, undefined]);
+  });
+
+  // Patrick, 2026-10-06: "Add Review as a 5th step ... only show it to those who are authorized."
+  it('Review_IsALeadersFifthStep_AndNobodyElses', () => {
+    expect([
+      stepConfig(ID, 'admin', menu(), 'plan', '2026-10-06').review,
+      stepConfig(ID, 'owner', menu(), 'plan', '2026-10-06').review,
+      stepConfig(ID, 'parent', menu(), 'plan', '2026-10-06').review,
+      stepConfig(ID, 'shared', menu(), 'plan', '2026-10-06').review
+    ]).toEqual([`/library/menu-monster/menus/${ID}/review`, undefined, undefined, undefined]);
   });
 });
 

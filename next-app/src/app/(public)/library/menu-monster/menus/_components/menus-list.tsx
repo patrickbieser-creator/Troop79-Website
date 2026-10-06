@@ -93,7 +93,8 @@ export function MenusList({
         {shown.map((r) => (
           <li key={r.id} className={s.row}>
             <div className={s.rowMain}>
-              <Link className={s.rowName} href={`/library/menu-monster/menus/${r.id}`}>
+              {/* A menu opens on its first step, Who's eating (Patrick, 2026-10-06); a read-only list opens the meals. */}
+              <Link className={s.rowName} href={`/library/menu-monster/menus/${r.id}${readOnly ? '' : '/people'}`}>
                 {r.name}
               </Link>
               <span className={s.meta}>

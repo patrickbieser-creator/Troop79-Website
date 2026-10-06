@@ -13,7 +13,7 @@ import Link from 'next/link';
 import type { StepKey } from '@/lib/menu-monster/menu-view';
 import s from './step-strip.module.css';
 
-export type StepCurrent = StepKey | 'bought' | 'share';
+export type StepCurrent = StepKey | 'bought' | 'review' | 'share';
 
 export interface StepStripConfig {
   /** The Who's eating route. */
@@ -24,7 +24,9 @@ export interface StepStripConfig {
   shopping: string;
   /** Present once What we bought should show. */
   bought?: string;
-  /** A quiet action at the end ("Share", or "Review" for a leader). */
+  /** A leader's fifth step (Patrick, 2026-10-06: Review was "almost invisible on the right"); absent for everyone else. */
+  review?: string;
+  /** A quiet action at the end: the owner's "Share". */
   share?: { label: string; href: string };
 }
 
@@ -37,13 +39,14 @@ export function StepStrip({ config, done = {}, current }: { config: StepStripCon
     { key: 'meals', label: LABELS.meals, href: config.plan },
     { key: 'gear', label: LABELS.gear, href: config.gear },
     { key: 'shopping', label: LABELS.shopping, href: config.shopping },
-    ...(config.bought ? [{ key: 'bought' as const, label: 'What we bought', href: config.bought }] : [])
+    ...(config.bought ? [{ key: 'bought' as const, label: 'What we bought', href: config.bought }] : []),
+    ...(config.review ? [{ key: 'review' as const, label: 'Review', href: config.review }] : [])
   ];
   return (
     <nav aria-label="Menu steps" className={s.nav}>
       <ol className={s.strip}>
         {steps.map((st) => {
-          const isDone = st.key !== 'bought' && st.key !== 'share' && done[st.key] === true;
+          const isDone = st.key !== 'bought' && st.key !== 'review' && st.key !== 'share' && done[st.key] === true;
           const isNow = now.has(st.key);
           return (
             <li key={st.key} className={s.item}>

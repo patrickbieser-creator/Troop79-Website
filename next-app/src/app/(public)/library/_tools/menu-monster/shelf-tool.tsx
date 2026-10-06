@@ -140,7 +140,7 @@ async function mealPlanner(catalog: Catalog, viewer: MenuViewer | null) {
         </div>
         {latest && (
           <p className={w.foot}>
-            <Link className={w.link} href={`${MENUS_HREF}/${latest.id}`}>
+            <Link className={w.link} href={`${MENUS_HREF}/${latest.id}/people`}>
               Continue {latest.name}
             </Link>
           </p>

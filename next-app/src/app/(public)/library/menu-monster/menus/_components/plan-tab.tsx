@@ -619,11 +619,6 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
                 Not counting {cost.unpriced.length === 1 ? '1 food' : `${cost.unpriced.length} foods`} with no price yet: {cost.unpriced.join(', ')}.
               </p>
             )}
-            {!isNew && (
-              <Link className={s.link} href={store.hrefs.shopping}>
-                Open the shopping list
-              </Link>
-            )}
           </section>
         </div>
       </div>
