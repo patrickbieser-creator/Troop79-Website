@@ -3,9 +3,10 @@ import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RecipeBuilder } from '../src/app/admin/(workspace)/library/menu-monster/recipe-builder';
 import { RecipeScreen } from '../src/app/admin/(workspace)/library/menu-monster/recipe-screen';
-import { createIngredient, saveRecipe, setRecipeStatus, updateIngredient } from '../src/app/admin/(workspace)/library/menu-monster/actions';
+import { createIngredient, keepScoutFood, putFoodOnMenu, saveRecipe, setRecipeStatus, updateIngredient } from '../src/app/admin/(workspace)/library/menu-monster/actions';
 import { UNITS } from '../src/lib/menu-monster/units';
 import type { Catalog, Ingredient, Package, Recipe } from '../src/lib/menu-monster/types';
+import type { ScoutFood } from '../src/lib/menu-monster/scout-recipes-store';
 
 /**
  * Menu Monster leader tools — Recipe builder (Plans/Menu-Monster-Leader-Tools.md
@@ -35,7 +36,9 @@ vi.mock('../src/app/admin/(workspace)/library/menu-monster/actions', () => ({
   setBrandDiets: vi.fn(async () => ({ ok: true })),
   mergeBrand: vi.fn(async () => ({ ok: true })),
   moveBrand: vi.fn(async () => ({ ok: true })),
-  removeBrand: vi.fn(async () => ({ ok: true }))
+  removeBrand: vi.fn(async () => ({ ok: true })),
+  putFoodOnMenu: vi.fn(async () => ({ ok: true })),
+  keepScoutFood: vi.fn(async () => ({ ok: true, note: 'Kept it.' }))
 }));
 
 beforeEach(() => {
@@ -557,7 +560,11 @@ describe('Recipe builder — make a recipe a single food (2026-10-05)', () => {
 });
 
 describe('Recipe builder — one A–Z list with filters (2026-10-04)', () => {
-  const names = () => Array.from(list().querySelectorAll('tbody tr > td:first-child:not([colspan])')).map((c) => c.textContent);
+  // Menu items only: the list now also carries a row per Price book ingredient with no item (2026-10-06), tested below.
+  const names = () =>
+    Array.from(list().querySelectorAll('tbody tr:not(:has(td[colspan]))'))
+      .filter((tr) => tr.children[1]?.textContent !== 'Ingredient')
+      .map((tr) => tr.children[0].textContent);
   const BIG: Catalog = {
     ...CATALOG,
     recipes: [
@@ -597,8 +604,9 @@ describe('Recipe builder — one A–Z list with filters (2026-10-04)', () => {
 
   it('Search_FindsByName', async () => {
     render(<RecipeBuilder catalog={BIG} />);
-    await userEvent.setup().type(screen.getByRole('searchbox', { name: 'Search food and recipes' }), 'pan');
-    expect(names()).toEqual(['Pancakes']);
+    // 2026-10-06: 'pan' now also finds recipes through the Pancake mix ingredient, so this asserts a name only an item has.
+    await userEvent.setup().type(screen.getByRole('searchbox', { name: 'Search food and recipes' }), 'toa');
+    expect(names()).toEqual(['Toast']);
   });
 
   it('TheMealFilter_FindsAnItemUnderEveryMealItFits', async () => {
@@ -635,8 +643,11 @@ describe('Recipe builder — a wide list; foods open in it, recipes on their own
     expect(within(list()).getAllByRole('columnheader').map((h) => h.textContent)).toEqual(['Name', 'Kind', 'Meals', 'Each person gets', 'Variations', 'Cost / person', 'Status']);
   });
 
+  // 2026-10-06: tied to its food, as every real single food is — else Bacon would also be an ingredient row.
+  const TIED: Catalog = { ...CATALOG, recipes: CATALOG.recipes.map((r) => (r.id === 'bacon' ? { ...r, foodIngredientId: 'bacon' } : r)) };
+
   it('ASingleFoodRow_SaysWhatEachPersonGets_AndItsCost', () => {
-    render(<RecipeBuilder catalog={CATALOG} />);
+    render(<RecipeBuilder catalog={TIED} />);
     // 3 slices of a $7.49 / 16-slice pack.
     expect(cells('Bacon')).toEqual(['Bacon', 'Food', 'Breakfast', '3 slices', '1 needs a look', '$1.40', 'Published']);
   });
@@ -644,7 +655,7 @@ describe('Recipe builder — a wide list; foods open in it, recipes on their own
   it('AFoodWithADietSwap_IsStillAFood_AndTheListSaysSo', () => {
     const swapped: Catalog = {
       ...CATALOG,
-      recipes: CATALOG.recipes.map((r) =>
+      recipes: TIED.recipes.map((r) =>
         r.id === 'bacon' ? { ...r, variations: [{ restriction: 'veg', state: 'substituted', note: null, lines: [{ op: 'swap', baseIngredientId: 'bacon', ingredientId: 'eggs', qtyPerPerson: 2, unitKey: null }] }] } : r
       )
     };
@@ -797,5 +808,134 @@ describe('Recipe page — Close (2026-10-05)', () => {
   it('TheStatus_IsSaidOnThePage', () => {
     render(<RecipeScreen catalog={CATALOG} recipeId="toast" />);
     expect(within(screen.getByRole('region', { name: 'Edit Toast' })).getByText('Needs fixes')).toBeTruthy();
+  });
+});
+
+/**
+ * Patrick, 2026-10-06: a food added at the meal planner (hot chocolate) and an ingredient inside a recipe (hot
+ * cocoa in "Hot beverages") were both missing from this search. Search reads the ingredients on a recipe's
+ * lines; a Price book food with no menu item is a row of its own, always listed; a scout's own new food shows
+ * when searched for, with a way to keep it.
+ */
+describe('Recipe builder — ingredients in the list and in the search (2026-10-06)', () => {
+  const COCOA: Ingredient = { id: 'cocoa', name: 'Hot cocoa', unit: UNITS.cup, section: 'dry', staple: false, avoid: [], retiredAt: null };
+  const WITH_COCOA: Catalog = {
+    ...CATALOG,
+    ingredients: [...ING, COCOA],
+    recipes: [
+      // Bacon is tied to its food, so only Bread, Eggs, Pancake mix, Almond flour and Hot cocoa are ingredient rows.
+      ...CATALOG.recipes.map((r) => (r.id === 'bacon' ? { ...r, foodIngredientId: 'bacon' } : r)),
+      recipe({ id: 'hot-beverages', name: 'Hot beverages', mealFit: ['snack'], lines: [{ ingredientId: 'cocoa', qtyPerPerson: 1, unitKey: null, servesRule: 'everyone', servesRestrictions: [] }, { ingredientId: 'eggs', qtyPerPerson: 1, unitKey: null, servesRule: 'everyone', servesRestrictions: [] }] })
+    ]
+  };
+  const SCOUT: ScoutFood = {
+    id: 'S-0000aaaa', name: 'Hot chocolate', status: 'draft', owner: 'Sam K.', createdAt: '2026-10-06T15:00:00Z', mealFit: ['snack'], amount: 1,
+    ingredientId: 'x-0000aaaa', ingredientName: 'Hot chocolate', section: 'dry', avoid: [], unit: { key: 'cup', one: 'cup', many: 'cups', kind: 'volume' }, pkg: null
+  };
+  const rowOf = (name: string) => within(list()).getByText(name).closest('tr') as HTMLElement;
+  const cellsOf = (name: string) => within(rowOf(name)).getAllByRole('cell').map((c) => c.textContent);
+
+  beforeEach(() => {
+    vi.mocked(putFoodOnMenu).mockClear().mockResolvedValue({ ok: true });
+    vi.mocked(keepScoutFood).mockClear().mockResolvedValue({ ok: true, note: 'Kept “Hot chocolate” for the troop and put it on the menu.' });
+  });
+
+  it('APriceBookFoodWithNoMenuItem_IsARowWithNoSearch', () => {
+    render(<RecipeBuilder catalog={WITH_COCOA} />);
+    expect(cellsOf('Hot cocoa')).toEqual(['Hot cocoaPut it on the menu by itself', 'Ingredient', '—', '—', '—', '—', 'In the Price book']);
+  });
+
+  it('AFoodWithAMenuItem_IsNotAlsoAnIngredientRow', () => {
+    render(<RecipeBuilder catalog={WITH_COCOA} />);
+    expect(within(list()).getAllByText('Bacon')).toHaveLength(1);
+  });
+
+  it('TheKindStrip_HasAnIngredientsTab_WithItsCount', () => {
+    render(<RecipeBuilder catalog={WITH_COCOA} />);
+    expect(screen.getByRole('tab', { name: /^Ingredients/ }).textContent).toMatch(/5/);
+  });
+
+  it('TheIngredientsTab_ListsOnlyIngredients', async () => {
+    render(<RecipeBuilder catalog={WITH_COCOA} />);
+    await userEvent.setup().click(screen.getByRole('tab', { name: /^Ingredients/ }));
+    expect(within(list()).getAllByRole('row').slice(1).map((r) => within(r).getAllByRole('cell')[1].textContent)).toEqual(['Ingredient', 'Ingredient', 'Ingredient', 'Ingredient', 'Ingredient']);
+  });
+
+  it('Search_FindsARecipeThroughItsIngredient_AndSaysSo', () => {
+    render(<RecipeBuilder catalog={WITH_COCOA} initialFilter={{ kind: 'all', meal: '', q: 'cocoa' }} />);
+    expect(within(rowOf('Hot beverages')).getByText('has hot cocoa')).toBeTruthy();
+  });
+
+  it('Search_ByTheRecipesOwnName_SaysNothingExtra', () => {
+    render(<RecipeBuilder catalog={WITH_COCOA} initialFilter={{ kind: 'all', meal: '', q: 'hot bev' }} />);
+    expect(screen.queryByText(/^has /)).toBeNull();
+  });
+
+  it('PutItOnTheMenuByItself_AsksHowMuchAndWhichMeals_ThenCallsTheAction', async () => {
+    const user = userEvent.setup();
+    render(<RecipeBuilder catalog={WITH_COCOA} />);
+    await user.click(within(rowOf('Hot cocoa')).getByRole('button', { name: 'Put it on the menu by itself' }));
+    const form = screen.getByRole('region', { name: 'Put Hot cocoa on the menu' });
+    await user.click(within(form).getByRole('checkbox', { name: 'Snack' }));
+    await user.click(within(form).getByRole('button', { name: 'Put it on the menu' }));
+    await waitFor(() => expect(putFoodOnMenu).toHaveBeenCalledWith('cocoa', { amount: '1', mealFit: ['snack'], foodGroups: [] }));
+  });
+
+  it('PutItOnTheMenu_WithNoMeal_SaysWhatIsMissing', async () => {
+    const user = userEvent.setup();
+    render(<RecipeBuilder catalog={WITH_COCOA} />);
+    await user.click(within(rowOf('Hot cocoa')).getByRole('button', { name: 'Put it on the menu by itself' }));
+    await user.click(within(screen.getByRole('region', { name: 'Put Hot cocoa on the menu' })).getByRole('button', { name: 'Put it on the menu' }));
+    expect(screen.getByRole('alert').textContent).toBe('Pick at least one meal it fits.');
+  });
+
+  it('PutItOnTheMenu_WithNoMeal_SavesNothing', async () => {
+    const user = userEvent.setup();
+    render(<RecipeBuilder catalog={WITH_COCOA} />);
+    await user.click(within(rowOf('Hot cocoa')).getByRole('button', { name: 'Put it on the menu by itself' }));
+    await user.click(within(screen.getByRole('region', { name: 'Put Hot cocoa on the menu' })).getByRole('button', { name: 'Put it on the menu' }));
+    expect(putFoodOnMenu).not.toHaveBeenCalled();
+  });
+
+  it('AScoutsNewFood_IsNotListed_WithNoSearch', () => {
+    render(<RecipeBuilder catalog={WITH_COCOA} scoutFoods={[SCOUT]} />);
+    expect(screen.queryByText('Hot chocolate')).toBeNull();
+  });
+
+  it('AScoutsNewFood_AppearsWhenSearched_WithWhoAndWhen', () => {
+    render(<RecipeBuilder catalog={WITH_COCOA} scoutFoods={[SCOUT]} initialFilter={{ kind: 'all', meal: '', q: 'choc' }} />);
+    expect(cellsOf('Hot chocolate')[0]).toBe('Hot chocolateKeep for the troopSam K. · Oct 6, 2026');
+  });
+
+  it('AScoutsNewFood_IsTagged_WaitingForALeader', () => {
+    render(<RecipeBuilder catalog={WITH_COCOA} scoutFoods={[SCOUT]} initialFilter={{ kind: 'all', meal: '', q: 'choc' }} />);
+    expect(cellsOf('Hot chocolate')[6]).toBe('Scout’s — waiting for a leader');
+  });
+
+  it('AScoutsNewFood_StaysHidden_WhenTheSearchDoesNotMatchIt', () => {
+    render(<RecipeBuilder catalog={WITH_COCOA} scoutFoods={[SCOUT]} initialFilter={{ kind: 'all', meal: '', q: 'bacon' }} />);
+    expect(screen.queryByText('Hot chocolate')).toBeNull();
+  });
+
+  it('KeepForTheTroop_CallsTheKeepAction', async () => {
+    const user = userEvent.setup();
+    render(<RecipeBuilder catalog={WITH_COCOA} scoutFoods={[SCOUT]} initialFilter={{ kind: 'all', meal: '', q: 'choc' }} />);
+    await user.click(within(rowOf('Hot chocolate')).getByRole('button', { name: 'Keep for the troop' }));
+    await waitFor(() => expect(keepScoutFood).toHaveBeenCalledWith('S-0000aaaa'));
+  });
+
+  it('KeepForTheTroop_SaysWhatHappened_InWords', async () => {
+    const user = userEvent.setup();
+    render(<RecipeBuilder catalog={WITH_COCOA} scoutFoods={[SCOUT]} initialFilter={{ kind: 'all', meal: '', q: 'choc' }} />);
+    await user.click(within(rowOf('Hot chocolate')).getByRole('button', { name: 'Keep for the troop' }));
+    expect((await screen.findByText(/Kept “Hot chocolate” for the troop/)).textContent).toMatch(/put it on the menu/);
+  });
+
+  it('KeepForTheTroop_WhenRefused_ShowsTheReasonInPlace', async () => {
+    vi.mocked(keepScoutFood).mockResolvedValue({ ok: false, error: 'That item isn’t waiting for a leader any more.' });
+    const user = userEvent.setup();
+    render(<RecipeBuilder catalog={WITH_COCOA} scoutFoods={[SCOUT]} initialFilter={{ kind: 'all', meal: '', q: 'choc' }} />);
+    await user.click(within(rowOf('Hot chocolate')).getByRole('button', { name: 'Keep for the troop' }));
+    expect((await screen.findByRole('alert')).textContent).toMatch(/isn’t waiting/);
   });
 });

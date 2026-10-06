@@ -35,7 +35,7 @@ import { PriceActivity } from './price-activity';
 import { PriceBook } from './price-book';
 import { RecipeBuilder } from './recipe-builder';
 import { ScoutRecipes } from './scout-recipes';
-import { listScoutRecipesWith, listTypedInsWith } from '@/lib/menu-monster/scout-recipes-store';
+import { listScoutFoodsWith, listScoutRecipesWith, listTypedInsWith } from '@/lib/menu-monster/scout-recipes-store';
 import { listAllMenusWith, listMenuOwnerCandidatesWith, type MenuOwnerCandidate } from '@/lib/menu-monster/menus-store';
 import { loadPatrolNamesWith } from '@/lib/menu-monster/menus-data';
 import { MenusAdmin, type MenuAdminRow } from './menus-admin';
@@ -94,6 +94,8 @@ export default async function MenuMonsterAdminPage({
   const gear = tab === 'gear' ? await listGearAdminWith(admin) : [];
   // The gear picker in the recipe editors offers the live master list, A to Z.
   const gearList = tab === 'recipes' ? await listGearWith(admin) : [];
+  // A scout's own new food (private until shared) is findable here by search, with a way to keep it.
+  const scoutFoods = tab === 'recipes' ? await listScoutFoodsWith(admin, (ids) => ownerCreditNamesWith(admin, ids)) : [];
   // Scout recipes worth a look: live ones changed after sharing, and typed-in ingredients to match.
   const edited = shared.filter((r) => r.editedSinceShared && r.status !== 'retired').length + typedIns.length;
   // Every saved menu, with its owner's name and its outing's title: only for the Menus tab.
@@ -184,7 +186,7 @@ export default async function MenuMonsterAdminPage({
       ) : tab === 'tools' ? (
         <ToolsAdmin />
       ) : tab === 'recipes' ? (
-        <RecipeBuilder catalog={catalog} initialRecipeId={sp.recipe} initialFilter={foodFilter} stores={stores} today={today} gearList={gearList} />
+        <RecipeBuilder catalog={catalog} initialRecipeId={sp.recipe} initialFilter={foodFilter} stores={stores} today={today} gearList={gearList} scoutFoods={scoutFoods} />
       ) : (
         <>
           <ScoutIngredients items={typedIns} book={book} />

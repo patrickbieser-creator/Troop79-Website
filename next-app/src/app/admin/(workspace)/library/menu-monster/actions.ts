@@ -23,7 +23,7 @@ import { recordAudit, type AuditDetail } from '@/lib/audit';
 import { acknowledgePriceChangeWith, decidePriceWith, leaderSetPriceWith, type DecideOutcome } from '@/lib/menu-monster/price-history';
 import { loadAuthoringCatalogWith } from '@/lib/menu-monster/catalog';
 import { cleanScoutText, isScoutRecipeId } from '@/lib/menu-monster/scout-recipes';
-import { keepTypedInWith, matchTypedInWith, rejectTypedInWith, renameScoutRecipeWith, setScoutRecipeCreditWith } from '@/lib/menu-monster/scout-recipes-store';
+import { keepTypedInWith, listScoutFoodsWith, matchTypedInWith, rejectTypedInWith, renameScoutRecipeWith, setScoutRecipeCreditWith } from '@/lib/menu-monster/scout-recipes-store';
 import { deleteMenuWith, duplicateMenuWith, loadMenuWith, renameMenuWith, setMenuOwnerWith, setMenuPatrolWith, setMenuSharedWith, MENU_LIMIT } from '@/lib/menu-monster/menus-store';
 import { isMenuId } from '@/lib/menu-monster/menus';
 import { resyncPatrolsWith } from '@/lib/menu-monster/menus-data';
@@ -44,7 +44,7 @@ import {
   type RecipeDraft
 } from '@/lib/menu-monster/authoring';
 import { compileRecipe, type BaseLine } from '@/lib/menu-monster/variations';
-import { RESTRICTION_BY_KEY, UNITS, parseQty } from '@/lib/menu-monster/units';
+import { RESTRICTION_BY_KEY, UNITS, fracText, parseQty } from '@/lib/menu-monster/units';
 import type { FoodGroup, Ingredient, MealSlot, Recipe, RecipeStatus, RestrictionKey, Section, Unit, Variation, VariationLine } from '@/lib/menu-monster/types';
 
 export interface Result {
@@ -1278,6 +1278,48 @@ export async function keepScoutIngredient(id: string, section: Section, avoid: R
   });
   revalidate();
   return { ok: true };
+}
+
+/**
+ * "Keep for the troop" on a scout's single food (a typed-in ingredient + the scout's own one-line item). A
+ * typed-in ingredient can never carry a troop menu item (the database ties those only to troop ingredients), so
+ * keeping makes a real troop ingredient from it (name, unit, section, diets and the scout's price), matches the
+ * typed-in to it — which re-points the scout's item at the troop ingredient and leaves the item the scout's —
+ * and puts the troop ingredient on the menu by itself with the scout's meal fit and amount. Without a meal on
+ * the scout's item the ingredient is still kept and the note says the menu item is what is left to do.
+ */
+export async function keepScoutFood(recipeId: string): Promise<FoodResult> {
+  const denied = await guard();
+  if (denied) return denied;
+  if (!isScoutRecipeId(recipeId)) return { ok: false, error: 'That is not a scout’s item.' };
+  const sb = createAdminClient();
+  const [food] = await listScoutFoodsWith(sb, async () => new Map(), recipeId);
+  if (!food) return { ok: false, error: 'That item isn’t waiting for a leader any more.' };
+
+  const made = await createFood({
+    ingredient: { name: food.ingredientName, unit: food.unit, section: food.section, staple: false, avoid: food.avoid },
+    package: food.pkg && food.pkg.size != null && food.pkg.size > 0 ? { name: food.ingredientName, store: food.pkg.store, price: food.pkg.price, holds: food.pkg.size, asOf: null } : null,
+    menu: null
+  });
+  if (!made.ok || !made.id) return { ok: false, error: made.error ?? 'The troop ingredient was not saved.' };
+  const name = food.ingredientName;
+  const matched = await matchTypedInWith(sb, food.ingredientId, made.id, 1);
+  if (!matched.ok) return { ok: true, id: made.id, note: `“${name}” is in the price book now, but the scout's own entry was not linked to it: ${matched.error}` };
+  await recordAudit({
+    area: 'library',
+    action: 'update',
+    entityType: 'mm_ingredient',
+    entityId: food.ingredientId,
+    summary: `Kept scout food "${name}" for the troop (scout item ${recipeId}, now on troop ingredient ${made.id})`
+  });
+  revalidate();
+  if (food.mealFit.length === 0) {
+    return { ok: true, id: made.id, note: `Kept “${name}” for the troop. It is not on the menu yet: the scout's item had no meal. Use “Put it on the menu by itself” to pick meals.` };
+  }
+  const put = await putFoodOnMenu(made.id, { amount: fracText(food.amount), mealFit: food.mealFit, foodGroups: [] });
+  if (!put.ok) return { ok: true, id: made.id, note: `Kept “${name}” for the troop, but it is not on the menu yet: ${put.error} Use “Put it on the menu by itself” when ready.` };
+  const tail = put.note ? ` ${put.note}` : '';
+  return { ok: true, id: made.id, recipeId: put.recipeId, note: `Kept “${name}” for the troop and put it on the menu. The scout's own item stays theirs.${tail}` };
 }
 
 /** Reject a request to add an ingredient (public Ingredients tab): it stays its author's own, and leaves the queue. */

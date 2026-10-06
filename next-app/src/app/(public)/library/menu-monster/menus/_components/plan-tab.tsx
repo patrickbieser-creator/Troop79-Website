@@ -58,6 +58,7 @@ import { ReadOnlyLine } from './read-only-line';
 import { SaveBar } from './save-bar';
 import { StepStrip, type StepStripConfig } from './step-strip';
 import { SummaryRail } from './summary-rail';
+import type { DraftItem } from '@/lib/menu-monster/draft-items';
 import s from './workspace.module.css';
 
 const newId = () => (typeof globalThis.crypto?.randomUUID === 'function' ? globalThis.crypto.randomUUID() : `m-${Date.now()}-${Math.floor(Math.random() * 1e6)}`);
@@ -102,9 +103,13 @@ export interface PlanTabProps {
   gearList?: readonly GearItem[];
   /** The signed-in scout's own patrol: a NEW menu's Patrol field starts there (guideline 5). Absent = nothing to default to. */
   myPatrol?: string | null;
+  /** The troop's DRAFT items (names only), for a meal search that finds nothing to say a draft has that name. Absent = not said (a read-only view). */
+  draftItems?: readonly DraftItem[];
+  /** The viewer has admin access (a leader): a draft's name links to its admin recipe page. */
+  adminLinks?: boolean;
 }
 
-export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt, outings, page = 'meals', tabs, readOnly = false, helper = false, plannedBy = null, aside, store: storeProp, titleAs: Title = 'h1', openMeal = null, steps, mealOnly = null, patrols = [], gearList, myPatrol = null }: PlanTabProps) {
+export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt, outings, page = 'meals', tabs, readOnly = false, helper = false, plannedBy = null, aside, store: storeProp, titleAs: Title = 'h1', openMeal = null, steps, mealOnly = null, patrols = [], gearList, myPatrol = null, draftItems, adminLinks = false }: PlanTabProps) {
   const router = useRouter();
   const store = useMemo(() => storeProp ?? serverMenuStore(menuId), [storeProp, menuId]);
   const { canSave } = store.caps;
@@ -354,6 +359,8 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
       view={view}
       readOnly={readOnly}
       gearList={gearList}
+      draftItems={draftItems}
+      adminLinks={adminLinks}
       shoppingHref={fixHref ?? undefined}
       onChange={setMeal}
       canTypeIn={canTypeIn}

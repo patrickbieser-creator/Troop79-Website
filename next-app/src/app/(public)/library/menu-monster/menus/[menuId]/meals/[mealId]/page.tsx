@@ -12,6 +12,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { centralToday } from '@/lib/dates';
 import { resolveMenuAliases } from '@/lib/menu-monster/menus';
 import { listGearWith } from '@/lib/menu-monster/gear-store';
+import { listDraftItemsWith } from '@/lib/menu-monster/draft-items';
 import { loadOutingsWith } from '@/lib/menu-monster/menus-data';
 import { PageShell } from '@/app/_components/page-shell';
 import { PlanTab } from '../../../_components/plan-tab';
@@ -28,10 +29,12 @@ export default async function MenuMealPage({ params }: { params: Promise<{ menuI
   if (!view) notFound();
   const { stored, readOnly, plannedBy, catalog } = view;
   const linked = stored.menu.calendarEntryId != null ? [stored.menu.calendarEntryId] : [];
-  const [outings, gearList] = await Promise.all([
+  const [outings, gearList, draftItems] = await Promise.all([
     loadOutingsWith(createAdminClient(), centralToday(), linked),
     // The meal's "More gear for this meal" picks from the troop's list; a read-only view has no picker.
-    readOnly ? Promise.resolve(undefined) : listGearWith(createAdminClient())
+    readOnly ? Promise.resolve(undefined) : listGearWith(createAdminClient()),
+    // Names of the troop's drafts, for a search that finds nothing.
+    readOnly ? Promise.resolve(undefined) : listDraftItemsWith(createAdminClient())
   ]);
   return (
     <>
@@ -45,6 +48,8 @@ export default async function MenuMealPage({ params }: { params: Promise<{ menuI
             updatedAt={stored.updatedAt}
             outings={outings}
             gearList={gearList}
+            draftItems={draftItems}
+            adminLinks={view.access === 'admin'}
             readOnly={readOnly}
             helper={view.helping}
             plannedBy={plannedBy}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildFoodRows, filterFoodRows, foodListHref, parseFoodFilter, recipeHref, NO_FILTER } from '../src/lib/menu-monster/food-list';
+import { buildFoodRows, buildIngredientRows, filterFoodRows, foodListHref, isIngredientRow, listRows, parseFoodFilter, recipeHref, viaIngredient, NO_FILTER } from '../src/lib/menu-monster/food-list';
 import { UNITS } from '../src/lib/menu-monster/units';
 import type { Catalog, Ingredient, Package, Recipe } from '../src/lib/menu-monster/types';
 
@@ -112,7 +112,8 @@ describe('Food & recipes list — filters', () => {
   });
 
   it('Search_IsByName_AnyCase', () => {
-    expect(names(filterFoodRows(rows, { ...NO_FILTER, q: ' PAN ' }))).toEqual(['Pancakes']);
+    // 2026-10-06: search also reads ingredients, and 'pan' is in Pancake mix — so this one asserts a query only a name has.
+    expect(names(filterFoodRows(rows, { ...NO_FILTER, q: ' TOA ' }))).toEqual(['Toast']);
   });
 
   it('TheOpenItem_StaysListed_WhenFilteredOut', () => {
@@ -142,5 +143,86 @@ describe('Food & recipes list — links', () => {
 
   it('AnUnknownFilterValue_IsIgnored', () => {
     expect(parseFoodFilter({ kind: 'nope', meal: 'brunch' })).toEqual(NO_FILTER);
+  });
+});
+
+describe('Food & recipes list — search reaches the ingredients inside a recipe', () => {
+  it('Row_CarriesTheNamesOfItsIngredients', () => {
+    expect(row('pancakes').ingredientNames).toEqual(['Pancake mix', 'Eggs']);
+  });
+
+  it('Search_FindsARecipeByAnIngredientOnItsLines', () => {
+    expect(names(filterFoodRows(rows, { ...NO_FILTER, q: 'egg' }))).toEqual(['Pancakes', 'Waffles', 'Aardvark stew']);
+  });
+
+  it('Search_StillFindsByName', () => {
+    expect(names(filterFoodRows(rows, { ...NO_FILTER, q: 'bacon' }))).toEqual(['Bacon']);
+  });
+
+  it('ViaIngredient_NamesTheIngredient_WhenOnlyItMatched', () => {
+    expect(viaIngredient(row('pancakes'), 'EGG')).toBe('eggs');
+  });
+
+  it('ViaIngredient_IsNothing_WhenTheNameMatched', () => {
+    // Bacon is both the item and its ingredient: the name matched, so nothing is said.
+    expect(viaIngredient(row('bacon'), 'bacon')).toBeNull();
+  });
+
+  it('ViaIngredient_IsNothing_WithNoQuery', () => {
+    expect(viaIngredient(row('pancakes'), '')).toBeNull();
+  });
+});
+
+describe('Food & recipes list — ingredients with no menu item of their own', () => {
+  // The fixture's four foods have no tied item (no foodIngredientId): all four are ingredient rows.
+  const ings = buildIngredientRows(CATALOG);
+  const withTied = { ...CATALOG, recipes: CATALOG.recipes.map((r) => (r.id === 'bacon' ? { ...r, foodIngredientId: 'bacon' } : r)) };
+
+  it('AFoodNoItemIsTiedTo_IsAnIngredientRow_AToZ', () => {
+    expect(ings.map((i) => i.ingredient.name)).toEqual(['Bacon', 'Cookies', 'Eggs', 'Pancake mix']);
+  });
+
+  it('AFoodWithATiedItem_IsNotAnIngredientRow', () => {
+    expect(buildIngredientRows(withTied).map((i) => i.ingredient.id)).not.toContain('bacon');
+  });
+
+  it('AFoodWhoseTiedItemIsRetired_IsNotAnIngredientRow_TheRetiredItemIsListed', () => {
+    const retired = { ...CATALOG, recipes: CATALOG.recipes.map((r) => (r.id === 'bacon' ? { ...r, status: 'retired' as const, foodIngredientId: 'bacon' } : r)) };
+    expect(buildIngredientRows(retired).map((i) => i.ingredient.id)).not.toContain('bacon');
+  });
+
+  it('ARetiredIngredient_IsLeftOut', () => {
+    const gone = { ...CATALOG, ingredients: CATALOG.ingredients.map((i) => (i.id === 'eggs' ? { ...i, retiredAt: '2026-09-01' } : i)) };
+    expect(buildIngredientRows(gone).map((i) => i.ingredient.id)).not.toContain('eggs');
+  });
+
+  it('ATypedInStillWaitingOnALeader_IsLeftOut', () => {
+    const typed = { ...CATALOG, ingredients: [...CATALOG.ingredients, { ...ING[0], id: 'x-0000aaaa', name: 'Hot chocolate', needsMatch: true }] };
+    expect(buildIngredientRows(typed).map((i) => i.ingredient.id)).not.toContain('x-0000aaaa');
+  });
+
+  it('IngredientRow_IsTold_FromAnItemRow', () => {
+    expect([isIngredientRow(ings[0]), isIngredientRow(rows[0])]).toEqual([true, false]);
+  });
+
+  it('All_ListsItemsAndIngredientsMergedAToZ_RetiredLast', () => {
+    const merged = listRows(rows, ings, NO_FILTER).map((r) => (isIngredientRow(r) ? `${r.ingredient.name} (ingredient)` : r.recipe.name));
+    expect(merged).toEqual(['Bacon', 'Bacon (ingredient)', 'Cookies', 'Cookies (ingredient)', 'Eggs (ingredient)', 'Pancake mix (ingredient)', 'Pancakes', 'Toast', 'Waffles', 'Aardvark stew']);
+  });
+
+  it('IngredientsTab_ListsOnlyIngredients', () => {
+    expect(listRows(rows, ings, { ...NO_FILTER, kind: 'ingredients' }).every(isIngredientRow)).toBe(true);
+  });
+
+  it('OtherKindTabs_LeaveIngredientsOut', () => {
+    expect(listRows(rows, ings, { ...NO_FILTER, kind: 'recipes' }).some(isIngredientRow)).toBe(false);
+  });
+
+  it('Search_FindsAnIngredientRowByName', () => {
+    expect(listRows(rows, ings, { ...NO_FILTER, q: 'cook' }).filter(isIngredientRow).map((r) => r.ingredient.name)).toEqual(['Cookies']);
+  });
+
+  it('PickingAMeal_LeavesIngredientsOut_TheyFitNoMeal', () => {
+    expect(listRows(rows, ings, { ...NO_FILTER, meal: 'lunch' }).some(isIngredientRow)).toBe(false);
   });
 });

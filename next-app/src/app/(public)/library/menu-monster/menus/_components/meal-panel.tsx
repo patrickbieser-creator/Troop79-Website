@@ -47,6 +47,7 @@ import { BrandChooser, brandSummary } from './brand-chooser';
 import { MAX_HEADCOUNT, MIN_HEADCOUNT, effectiveRestrictions, livePicks, recipeSuggestions, recipesForMeal, restrictionWarnings } from '@/lib/menu-monster/engine';
 import type { RestrictionKey } from '@/lib/menu-monster/types';
 import { isPickable, stepsFromText } from '@/lib/menu-monster/scout-recipes';
+import { draftsMatching, type DraftItem } from '@/lib/menu-monster/draft-items';
 import { gearKey, gearText, mealRecipeGear, parseGear, recipeGear, sortGear, type GearItem } from '@/lib/menu-monster/gear';
 import { GearChips, GearPicker } from '../../_components/gear-picker';
 import { RECIPES_HREF } from '../../recipes/_components/paths';
@@ -111,9 +112,13 @@ export interface MealPanelProps {
   onTypeBrand?: (ingredientId: string, name: string) => Promise<{ ok: true; brand: Brand } | { ok: false; error: string }>;
   /** Release 6 — the recipe's author sets (or with null clears) the brand their recipe suggests. Absent = not offered. */
   onSuggestBrand?: (recipeId: string, ingredientId: string, brandId: string | null) => Promise<{ ok: true } | { ok: false; error: string }>;
+  /** The troop's DRAFT items (names only): a search that finds nothing says when a draft has the name — the list is published items only. */
+  draftItems?: readonly DraftItem[];
+  /** The viewer has admin access: a draft's name links to its admin recipe page. */
+  adminLinks?: boolean;
 }
 
-export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearList, shoppingHref, onChange, canTypeIn = false, onTyped, onNewRecipe, shareVersionMenuId = null, autoFocusAdd = false, onBrands, lineFor, onTypeBrand, onSuggestBrand }: MealPanelProps) {
+export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearList, shoppingHref, onChange, canTypeIn = false, onTyped, onNewRecipe, shareVersionMenuId = null, autoFocusAdd = false, onBrands, lineFor, onTypeBrand, onSuggestBrand, draftItems = [], adminLinks = false }: MealPanelProps) {
   /** Suggestions changed this visit ("recipe:ingredient" → brand id, or null for cleared): the catalog prop is as loaded. */
   const [suggested, setSuggested] = useState<Readonly<Record<string, string | null>>>({});
   const uid = useId();
@@ -162,6 +167,8 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
     .filter((r) => isPickable(r) && !meal.recipeIds.includes(r.id))
     .sort((a, b) => a.name.localeCompare(b.name));
   const matches = candidates.filter((r) => r.name.toLowerCase().includes(query.trim().toLowerCase()));
+  // A draft is not offered (published items only), but a search for its name says it exists.
+  const draftHits = matches.length === 0 ? draftsMatching(draftItems, query, meal.slot) : [];
   // The list always ends in "Browse all recipes…" (the Food & Recipes popup, for this meal); it is never
   // the default, so Enter on a typo does nothing rather than open a popup.
   // "Add “x” as a new food…" sits above Browse when nothing matches what was typed (a signed-in scout's own menu only).
@@ -690,6 +697,19 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
                     Nothing for this meal matches “{query.trim()}”.
                   </li>
                 )}
+                {showList &&
+                  draftHits.map((d) => (
+                    <li key={d.id} role="none" className={s.noMatchItem}>
+                      {adminLinks ? (
+                        <Link href={`/admin/library/menu-monster/recipes/${encodeURIComponent(d.id)}`} onMouseDown={(e) => e.preventDefault()}>
+                          {d.name}
+                        </Link>
+                      ) : (
+                        d.name
+                      )}{' '}
+                      is a draft in the troop’s list — a leader can publish it.
+                    </li>
+                  ))}
                 {showList && addAt >= 0 && (
                   <li
                     id={`${uid}-opt-${addAt}`}

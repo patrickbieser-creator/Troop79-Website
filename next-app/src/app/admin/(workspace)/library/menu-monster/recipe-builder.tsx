@@ -53,6 +53,7 @@ import { Notice } from '../../_components/notice';
 import { TabStrip } from '../../_components/tab-strip';
 import { SearchField } from '../../_components/search-field';
 import { useGuardedNav } from '../../_components/guarded-nav';
+import { IngredientListRow, ScoutFoodListRow } from './list-extra-rows';
 import { DiscardButton, SaveButton, SaveFeedback, SaveProblem, useDraftSnapshot, useSavePhase } from '../../_components/save-state';
 import { ActionsMenu } from '../../_components/actions-menu';
 import { Dialog, DialogActions, DialogBody, DialogHeader } from '../../_components/dialog';
@@ -72,8 +73,9 @@ import {
   type RecipeAuthoring,
   type RecipeIssue
 } from '@/lib/menu-monster/authoring';
+import type { ScoutFood } from '@/lib/menu-monster/scout-recipes-store';
 import { VIEW_LABEL, flaggedIngredients, type VariationView } from '@/lib/menu-monster/variations';
-import { NO_FILTER, buildFoodRows, filterFoodRows, foodListHref, inKind, numericBase, pillOf, recipeHref, viewFor, type FoodFilter, type FoodRow, type ListKind, type Pill } from '@/lib/menu-monster/food-list';
+import { NO_FILTER, buildFoodRows, buildIngredientRows, foodListHref, inKind, isIngredientRow, listRows, numericBase, pillOf, recipeHref, viaIngredient, viewFor, type FoodFilter, type FoodRow, type ListKind, type Pill } from '@/lib/menu-monster/food-list';
 import { buildLines, recipeSuggestions, ruleText, totalsOf, MAX_HEADCOUNT, MIN_HEADCOUNT } from '@/lib/menu-monster/engine';
 import { FOOD_GROUPS, MEALS, RESTRICTIONS, RESTRICTION_BY_KEY, SECTIONS, SECTION_ORDER, lineUnit, parseQty, perPersonText, supportedUnits } from '@/lib/menu-monster/units';
 import type { Catalog, Ingredient, MealSlot, Plan, Recipe, RecipeLine, RestrictionKey, Section, VariationState } from '@/lib/menu-monster/types';
@@ -160,6 +162,7 @@ const KIND_TABS: readonly { key: ListKind; label: string; always: boolean }[] = 
   { key: 'all', label: 'All', always: true },
   { key: 'foods', label: 'Single foods', always: true },
   { key: 'recipes', label: 'Recipes', always: true },
+  { key: 'ingredients', label: 'Ingredients', always: true },
   { key: 'fixes', label: 'Needs fixes', always: false },
   { key: 'retired', label: 'Retired', always: false }
 ];
@@ -172,7 +175,8 @@ export function RecipeBuilder({
   initialFilter = NO_FILTER,
   stores = [],
   today = null,
-  gearList = []
+  gearList = [],
+  scoutFoods = []
 }: {
   catalog: Catalog;
   initialRecipeId?: string;
@@ -181,6 +185,8 @@ export function RecipeBuilder({
   today?: string | null;
   /** The master gear list (active items): what the gear picker offers. */
   gearList?: readonly GearItem[];
+  /** Scouts' own new single foods, waiting on a leader: each shows only when the search matches it. */
+  scoutFoods?: readonly ScoutFood[];
 }) {
   const router = useRouter();
   const { navigate, dialog } = useGuardedNav();
@@ -190,9 +196,16 @@ export function RecipeBuilder({
   const [note, setNote] = useState<string | null>(null);
 
   const rows = useMemo(() => buildFoodRows(catalog), [catalog]);
+  const ingredientRows = useMemo(() => buildIngredientRows(catalog), [catalog]);
   // The open food stays listed whatever the filter, so its editor never vanishes mid-edit.
-  const shown = filterFoodRows(rows, filter, selectedId);
-  const count = (k: ListKind) => rows.filter((x) => inKind(x, k)).length;
+  const shown = listRows(rows, ingredientRows, filter, selectedId);
+  const term = filter.q.trim().toLowerCase();
+  // A scout's new food is listed only when searched for (leaders do not need every private draft in the list).
+  const scoutShown =
+    term === '' || filter.meal !== '' || (filter.kind !== 'all' && filter.kind !== 'foods')
+      ? []
+      : scoutFoods.filter((f) => f.name.toLowerCase().includes(term) || f.ingredientName.toLowerCase().includes(term));
+  const count = (k: ListKind) => (k === 'all' ? rows.length + ingredientRows.length : k === 'ingredients' ? ingredientRows.length : rows.filter((x) => inKind(x, k)).length);
   const filtered = filter.q.trim() !== '' || filter.kind !== 'all' || filter.meal !== '';
 
   // The address keeps up with the list, so the browser's Back from a recipe's page returns to the same view.
@@ -205,6 +218,11 @@ export function RecipeBuilder({
   function open(id: string | null) {
     setSelectedId(id);
     remember(filter, id);
+  }
+  /** An ingredient row or a scout's food finished: say what happened in words, and let the page reload behind it. */
+  function done(message: string) {
+    setNote(message);
+    router.refresh();
   }
   /** A recipe's own page; asks first when the food open in the list has unsaved edits. */
   function toRecipe(e: MouseEvent<HTMLAnchorElement>, href: string) {
@@ -226,7 +244,7 @@ export function RecipeBuilder({
             onSelect: () => setFilter({ kind: t.key })
           }))}
         />
-        <SearchField value={filter.q} onChange={(q) => setFilter({ q })} label="Search food and recipes" resultCount={shown.length} totalCount={rows.length} />
+        <SearchField value={filter.q} onChange={(q) => setFilter({ q })} label="Search food and recipes" resultCount={shown.length + scoutShown.length} totalCount={rows.length + ingredientRows.length} />
         <select className={`${lib.selectInput} ${styles.mealFilter}`} aria-label="Meal" value={filter.meal} onChange={(e) => setFilter({ meal: e.target.value as MealSlot | '' })}>
           <option value="">Any meal</option>
           {MEALS.map((m) => (
@@ -281,6 +299,7 @@ export function RecipeBuilder({
           </thead>
           <tbody>
             {shown.map((row) => {
+              if (isIngredientRow(row)) return <IngredientListRow key={`ing-${row.ingredient.id}`} row={row} colSpan={COLUMNS} onDone={done} />;
               const { recipe: r } = row;
               const isOpen = row.food && r.id === selectedId;
               return (
@@ -297,6 +316,7 @@ export function RecipeBuilder({
                           {r.name}
                         </Link>
                       )}
+                      {viaIngredient(row, filter.q) && <p className={styles.hint}>has {viaIngredient(row, filter.q)}</p>}
                     </td>
                     <td>{row.food ? (row.swaps ? 'Food · diet swaps' : 'Food') : 'Recipe'}</td>
                     <td>{r.mealFit.length === 0 ? '—' : MEALS.filter((m) => r.mealFit.includes(m.key)).map((m) => m.label).join(', ')}</td>
@@ -332,11 +352,14 @@ export function RecipeBuilder({
                 </Fragment>
               );
             })}
-            {shown.length === 0 && (
+            {scoutShown.map((f) => (
+              <ScoutFoodListRow key={f.id} food={f} onDone={done} />
+            ))}
+            {shown.length + scoutShown.length === 0 && (
               <tr>
                 <td colSpan={COLUMNS} className={styles.muted}>
-                  {rows.length === 0 ? 'No menu items yet.' : 'No items match.'}
-                  {rows.length > 0 && filtered && (
+                  {rows.length + ingredientRows.length === 0 ? 'No menu items yet.' : 'No items match.'}
+                  {rows.length + ingredientRows.length > 0 && filtered && (
                     <>
                       {' '}
                       <Button

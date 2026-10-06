@@ -388,3 +388,78 @@ export async function rejectTypedInWith(sb: SupabaseClient, id: string): Promise
   if (error) throw new Error(`reject ingredient: ${error.message}`);
   return (data as string | null) ?? null;
 }
+
+/** A scout's single food — one line, a typed-in ingredient a leader has not kept yet — as the leaders' Food & recipes search offers it. */
+export interface ScoutFood {
+  id: string;
+  name: string;
+  status: RecipeStatus;
+  /** "Sam K." */
+  owner: string;
+  createdAt: string;
+  mealFit: MealSlot[];
+  /** Per person, in the ingredient's own unit. */
+  amount: number;
+  ingredientId: string;
+  ingredientName: string;
+  section: Section;
+  avoid: RestrictionKey[];
+  unit: TypedInIngredient['unit'];
+  /** The scout's one package, when they typed a price and size. */
+  pkg: TypedInIngredient['pkg'];
+}
+
+/**
+ * Every scout recipe that is one typed-in ingredient still waiting on a leader — private drafts included, so the
+ * leaders' search can find what a scout just added at the meal planner. `onlyId` narrows it to one recipe.
+ */
+export async function listScoutFoodsWith(sb: SupabaseClient, ownerName: (ids: number[]) => Promise<Map<number, string>>, onlyId?: string): Promise<ScoutFood[]> {
+  let q = sb
+    .from('mm_recipes')
+    .select('id, name, status, author_person_id, created_at, meal_fit, mm_recipe_lines(ingredient_id, qty_per_person)')
+    .not('author_person_id', 'is', null)
+    .neq('status', 'retired')
+    .order('created_at', { ascending: false })
+    .limit(500);
+  if (onlyId) q = q.eq('id', onlyId);
+  const { data, error } = await q;
+  if (error) throw new Error(`scout foods: ${error.message}`);
+  type Line = { ingredient_id: string; qty_per_person: number | string };
+  const single = (data ?? []).filter((r) => ((r.mm_recipe_lines as unknown as Line[]) ?? []).length === 1);
+  const ingIds = [...new Set(single.map((r) => (r.mm_recipe_lines as unknown as Line[])[0].ingredient_id))].filter((i) => i.startsWith('x-'));
+  if (ingIds.length === 0) return [];
+  const { data: ings, error: iErr } = await sb
+    .from('mm_ingredients')
+    .select('id, name, section, avoid, unit_key, unit_one, unit_many, unit_kind')
+    .in('id', ingIds)
+    .not('needs_match_at', 'is', null)
+    .is('retired_at', null);
+  if (iErr) throw new Error(`scout foods: ${iErr.message}`);
+  const waiting = new Map((ings ?? []).map((i) => [i.id as string, i]));
+  const { data: pk, error: pErr } = await sb.from('mm_packages').select('ingredient_id, price, yield, store').in('ingredient_id', [...waiting.keys()]).is('retired_at', null);
+  if (pErr) throw new Error(`scout foods: ${pErr.message}`);
+  const mine = single.filter((r) => waiting.has((r.mm_recipe_lines as unknown as Line[])[0].ingredient_id));
+  const names = await ownerName(mine.map((r) => r.author_person_id as number));
+  return mine.map((r) => {
+    const l = (r.mm_recipe_lines as unknown as Line[])[0];
+    const ing = waiting.get(l.ingredient_id)!;
+    return {
+      id: r.id as string,
+      name: r.name as string,
+      status: r.status as RecipeStatus,
+      owner: names.get(r.author_person_id as number) ?? 'Someone',
+      createdAt: r.created_at as string,
+      mealFit: (r.meal_fit ?? []) as MealSlot[],
+      amount: Number(l.qty_per_person),
+      ingredientId: l.ingredient_id,
+      ingredientName: ing.name as string,
+      section: ing.section as Section,
+      avoid: (ing.avoid ?? []) as RestrictionKey[],
+      unit: { key: ing.unit_key as string, one: ing.unit_one as string, many: ing.unit_many as string, kind: ing.unit_kind as TypedInIngredient['unit']['kind'] },
+      pkg: (() => {
+        const p = (pk ?? []).find((x) => x.ingredient_id === l.ingredient_id);
+        return p ? { price: Number(p.price), size: p.yield == null ? null : Number(p.yield), store: (p.store as string | null) ?? null } : null;
+      })()
+    };
+  });
+}

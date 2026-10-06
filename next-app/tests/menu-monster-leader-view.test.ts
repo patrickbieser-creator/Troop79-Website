@@ -30,6 +30,8 @@ vi.mock('@/lib/menu-monster/menus-store', () => ({ loadMenuWith: mocks.loadMenuW
 vi.mock('@/lib/menu-monster/data', () => ({ loadMenuMonsterCatalog: async () => ({}) }));
 // The gear list is read for the meal panels' picker (Plan) and the printed sheet's gear line (Shopping).
 vi.mock('@/lib/menu-monster/gear-store', () => ({ listGearWith: async () => [{ id: 1, name: 'Skillet', home: 'trailer', perPerson: false, retiredAt: null }], loadMenuGearWith: async () => ({ extras: ['Water jug'], packed: {} }) }));
+// The troop's draft item names (for a meal search that finds nothing): read for the Plan page and a meal's own page.
+vi.mock('@/lib/menu-monster/draft-items', () => ({ listDraftItemsWith: async () => [{ id: 'cookies', name: 'Cookies', mealFit: ['snack'] }] }));
 vi.mock('@/lib/menu-monster/menus-data', () => ({ loadOutingsWith: async () => [], loadPatrolNamesWith: async () => [], loadScoutPatrolWith: async () => null }));
 vi.mock('@/lib/identity-session', async (orig) => ({
   ...(await orig<typeof import('../src/lib/identity-session')>()),
@@ -241,6 +243,41 @@ describe('gear on the pages (gear-from-the-list release 2)', () => {
     mocks.session = SCOUT;
     const props = find(await ShoppingPage({ params: Promise.resolve({ menuId: ID }), searchParams: Promise.resolve({}) }), (p) => 'updatedAt' in p);
     expect([props?.gearList, props?.gearExtras]).toEqual([[expect.objectContaining({ name: 'Skillet' })], ['Water jug']]);
+  });
+});
+
+describe('draft names on the pages (2026-10-06)', () => {
+  const plan = async () => find(await PlanPage({ params: Promise.resolve({ menuId: ID }), searchParams: Promise.resolve({}) }), (p) => 'updatedAt' in p);
+  const meal = async () => find(await MealPage({ params: Promise.resolve({ menuId: ID, mealId: 'm1' }) }), (p) => 'updatedAt' in p);
+
+  it('PlanPage_GivesTheOwnerTheDraftNames_WithNoAdminLinks', async () => {
+    mocks.session = SCOUT;
+    const props = await plan();
+    expect([props?.draftItems, props?.adminLinks]).toEqual([[expect.objectContaining({ name: 'Cookies' })], false]);
+  });
+
+  it('PlanPage_GivesAHelpingLeaderTheAdminLinks', async () => {
+    mocks.actor = LEADER;
+    mocks.loadMenuWith.mockResolvedValue(stored(39));
+    const props = await plan();
+    expect([props?.draftItems, props?.adminLinks]).toEqual([[expect.objectContaining({ name: 'Cookies' })], true]);
+  });
+
+  it('PlanPage_GivesAReadOnlyViewerNoDraftNames', async () => {
+    mocks.session = { ...SCOUT, personId: 7 };
+    mocks.loadMenuWith.mockResolvedValue(stored(39, { sharedAt: '2026-10-03T12:00:00Z' }));
+    expect((await plan())?.draftItems).toBeUndefined();
+  });
+
+  it('MealPage_GivesTheOwnerTheDraftNames', async () => {
+    mocks.session = SCOUT;
+    expect((await meal())?.draftItems).toEqual([expect.objectContaining({ name: 'Cookies' })]);
+  });
+
+  it('MealPage_GivesAReadOnlyViewerNoDraftNames', async () => {
+    mocks.session = { ...SCOUT, personId: 7 };
+    mocks.loadMenuWith.mockResolvedValue(stored(39, { sharedAt: '2026-10-03T12:00:00Z' }));
+    expect((await meal())?.draftItems).toBeUndefined();
   });
 });
 

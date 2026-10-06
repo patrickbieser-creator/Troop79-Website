@@ -1151,3 +1151,64 @@ describe('MealPanel — More gear for this meal (gear-from-the-list release 2)',
     expect(screen.queryByRole('combobox', { name: /More gear/ })).toBeNull();
   });
 });
+
+/**
+ * Patrick, 2026-10-06: "Cookies" (a troop single food, still a draft) was missing from a meal's search and nothing
+ * said why — the planner lists published items only. The no-match line now names a draft that matches, and a
+ * leader gets a link to it. The "Add as a new food" option still follows.
+ */
+describe('a draft the search cannot list says so', () => {
+  const DRAFTS = [{ id: 'cookies', name: 'Cookies', mealFit: ['lunch' as const] }, { id: 'chili', name: 'Chili', mealFit: ['dinner' as const] }];
+  const withDrafts = (extra: { adminLinks?: boolean; draftItems?: typeof DRAFTS } = {}) => {
+    openId = 'm2';
+    return <PlanTab catalog={CATALOG} menuId="menu-1" menu={menu()} updatedAt={VERSION} outings={[]} openMeal="m2" draftItems={DRAFTS} {...extra} />;
+  };
+  const type = async (text: string) => {
+    const user = userEvent.setup();
+    await user.click(search());
+    await user.type(search(), text);
+  };
+
+  it('NoMatch_NamesTheDraft_AndSaysALeaderCanPublishIt', async () => {
+    render(withDrafts());
+    await type('cookies');
+    expect(panel().getByText(/^Cookies is a draft in the troop’s list — a leader can publish it\.$/)).toBeTruthy();
+  });
+
+  it('NoMatch_StillSaysNothingMatches_BeforeNamingTheDraft', async () => {
+    render(withDrafts());
+    await type('cookies');
+    expect(panel().getByText('Nothing for this meal matches “cookies”.')).toBeTruthy();
+  });
+
+  it('TheAddAsANewFoodOption_IsStillOffered_AfterTheDraftLine', async () => {
+    render(withDrafts());
+    await type('cookies');
+    const items = Array.from(panel().getByRole('listbox', { name: /matches$/ }).children).map((li) => li.textContent);
+    expect(items.indexOf('Add “cookies” as a new food…')).toBeGreaterThan(items.findIndex((t) => /is a draft/.test(t ?? '')));
+  });
+
+  it('ADraftForAnotherMeal_IsNotNamed', async () => {
+    render(withDrafts());
+    await type('chili');
+    expect(panel().queryByText(/is a draft/)).toBeNull();
+  });
+
+  it('ForAViewerWithoutAdminAccess_TheNameIsPlainText', async () => {
+    render(withDrafts());
+    await type('cookies');
+    expect(panel().queryByRole('link', { name: 'Cookies' })).toBeNull();
+  });
+
+  it('ForALeader_TheNameLinksToTheAdminRecipePage', async () => {
+    render(withDrafts({ adminLinks: true }));
+    await type('cookies');
+    expect(panel().getByRole('link', { name: 'Cookies' }).getAttribute('href')).toBe('/admin/library/menu-monster/recipes/cookies');
+  });
+
+  it('AFoodThatMatches_ListsNormally_WithNoDraftLine', async () => {
+    render(withDrafts());
+    await type('bacon');
+    expect(panel().queryByText(/is a draft/)).toBeNull();
+  });
+});
