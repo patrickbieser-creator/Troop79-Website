@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { CATALOG } from './helpers/menu-monster-fixture';
 import type { Menu, MenuMeal } from '../src/lib/menu-monster/menus';
-import { buildMenuList, buildOutingList, dayLabel, mealCost, mealTitle, mealUnpriced, mealUnpricedItems, menuCost, outingDayCount, recipeShares } from '../src/lib/menu-monster/menu-view';
+import { buildMenuList, buildOutingList, dayLabel, outingOver, planProgress, mealCost, mealTitle, mealUnpriced, mealUnpricedItems, menuCost, outingDayCount, recipeShares } from '../src/lib/menu-monster/menu-view';
 
 const meal = (id: string, over: Partial<MenuMeal> = {}): MenuMeal => ({
   id,
@@ -190,5 +190,74 @@ describe('buildOutingList (release 5: the troop shops together)', () => {
   it('NoMenus_GiveAnEmptyList', () => {
     const list = buildOutingList([], CATALOG);
     expect([list.lines.length, list.plates, list.saving]).toEqual([0, 0, 0]);
+  });
+});
+
+describe('planProgress', () => {
+  const ID = 'B023'; // orange juice: unpriced in the fixture
+  const mealWithJuice = (id: string, over: Partial<MenuMeal> = {}) => meal(id, { recipeIds: ['B003', ID], ...over });
+
+  it('planProgress_CountsEmptyMealsAndUnpriced', () => {
+    const m = menu([meal('a'), meal('b', { day: 0, slot: 'lunch', recipeIds: [] }), meal('c', { day: 1, slot: 'dinner', recipeIds: [] }), mealWithJuice('d', { day: 1, slot: 'breakfast' })]);
+    const p = planProgress(m, CATALOG);
+    expect(p.steps.meals.fixes.map((f) => [f.text, f.target])).toEqual([['2 meals empty', { step: 'meals', mealId: 'b' }]]);
+    const unpriced = mealUnpricedItems(m, m.meals[3], CATALOG)[ID][0].id;
+    expect(p.steps.shopping.fixes.map((f) => [f.text, f.target])).toEqual([['1 not priced', { step: 'shopping', ingredientId: unpriced }]]);
+    expect(p.toFix).toBe(3);
+  });
+
+  it('Meals_EmptyMealsAreFoundInDayAndSlotOrder_NotArrayOrder', () => {
+    const m = menu([meal('late', { day: 1, slot: 'dinner', recipeIds: [] }), meal('early', { day: 0, slot: 'dinner', recipeIds: [] })]);
+    expect(planProgress(m, CATALOG).steps.meals.fixes[0].target.mealId).toBe('early');
+  });
+
+  it('Meals_AMenuWithNoMealsIsNotDone_AndSaysToAddOne', () => {
+    const p = planProgress(menu([]), CATALOG);
+    expect([p.steps.meals.done, p.steps.meals.fixes[0].text]).toEqual([false, 'Add a meal']);
+  });
+
+  it('Eating_IsDone_WhenNamedAndPeopleAreSet', () => {
+    expect(planProgress(menu([meal('a')]), CATALOG).steps.eating.done).toBe(true);
+    const p = planProgress(menu([meal('a')], { name: '  ' }), CATALOG);
+    expect([p.steps.eating.done, p.steps.eating.fixes.map((f) => f.text)]).toEqual([false, ['Name the menu']]);
+  });
+
+  it('Eating_NeverInfersHeadcount_ZeroPeopleIsNotDone', () => {
+    const p = planProgress(menu([meal('a')], { headcount: 0 }), CATALOG);
+    expect([p.steps.eating.done, p.headcount, p.steps.eating.fixes.map((f) => f.text)]).toEqual([false, 0, ['Set how many are eating']]);
+  });
+
+  it('Gear_IsAlwaysDone', () => {
+    expect(planProgress(menu([]), CATALOG).steps.gear).toEqual({ done: true, fixes: [] });
+  });
+
+  it('Shopping_IsDone_WhenNothingIsUnpriced', () => {
+    const p = planProgress(menu([meal('a')]), CATALOG);
+    expect([p.steps.shopping.done, p.toFix]).toEqual([true, 0]);
+  });
+
+  it('Progress_CarriesHeadcountDietsCostAndBudget', () => {
+    const m = menu([meal('a'), meal('b', { day: 1 })], { restrictions: { gf: 3, nut: 0, dairy: 0, veg: 1 } });
+    const p = planProgress(m, CATALOG);
+    expect(p.headcount).toBe(10);
+    expect(p.diets).toEqual([{ key: 'gf', label: 'Gluten-free', count: 3 }, { key: 'veg', label: 'Vegetarian', count: 1 }]);
+    expect(p.perPersonMeal).toBeCloseTo(menuCost(m, CATALOG).perPersonMeal, 4);
+    expect([p.total, p.budget]).toEqual([menuCost(m, CATALOG).total, 4]);
+  });
+
+  it('Progress_HasNoCost_UntilAMealHasFood', () => {
+    expect(planProgress(menu([meal('a', { recipeIds: [] })]), CATALOG).hasCost).toBe(false);
+    expect(planProgress(menu([meal('a')]), CATALOG).hasCost).toBe(true);
+  });
+
+  it('Progress_ListsEveryFixInStepOrder', () => {
+    const m = menu([meal('a', { recipeIds: [] })], { name: '' });
+    expect(planProgress(m, CATALOG).fixes.map((f) => f.target.step)).toEqual(['eating', 'meals']);
+  });
+
+  it('OutingOver_IsTrueOnlyAfterTheLastDay', () => {
+    const m = menu([], { startDate: '2026-10-09', dayCount: 3 });
+    expect([outingOver(m, '2026-10-11'), outingOver(m, '2026-10-12')]).toEqual([false, true]);
+    expect(outingOver(menu([]), '2026-10-12')).toBe(false);
   });
 });

@@ -41,6 +41,7 @@ import { loadPatrolNamesWith } from '@/lib/menu-monster/menus-data';
 import { MenusAdmin, type MenuAdminRow } from './menus-admin';
 import { ScoutIngredients } from './scout-ingredients';
 import { GearAdmin } from './gear-admin';
+import { ToolsAdmin } from './tools-admin';
 import { listGearAdminWith, listGearWith } from '@/lib/menu-monster/gear-store';
 import { loadMenuMonsterCatalog } from '@/lib/menu-monster/data';
 import { listPurchasesWith, unfinishedPurchases } from '@/lib/menu-monster/purchases';
@@ -54,8 +55,8 @@ export const metadata = {
   title: 'Menu Monster — Troop 79 Admin'
 };
 
-type Tab = 'attention' | 'prices' | 'recipes' | 'scouts' | 'menus' | 'gear' | 'purchases';
-const TABS: readonly Tab[] = ['attention', 'prices', 'recipes', 'scouts', 'menus', 'gear', 'purchases'];
+type Tab = 'attention' | 'prices' | 'recipes' | 'scouts' | 'menus' | 'gear' | 'purchases' | 'tools';
+const TABS: readonly Tab[] = ['attention', 'prices', 'recipes', 'scouts', 'menus', 'gear', 'purchases', 'tools'];
 /** How far back "Brands typed in lately" looks. */
 const NEW_BRAND_DAYS = 30;
 
@@ -159,7 +160,8 @@ export default async function MenuMonsterAdminPage({
           { key: 'scouts', label: 'Scout recipes', href: '/admin/library/menu-monster?tab=scouts', ...(edited > 0 ? { count: edited } : {}) },
           { key: 'menus', label: 'Menus', href: '/admin/library/menu-monster?tab=menus' },
           { key: 'gear', label: 'Gear', href: '/admin/library/menu-monster?tab=gear' },
-          { key: 'purchases', label: 'Purchases', href: '/admin/library/menu-monster?tab=purchases', ...(unfinished > 0 ? { count: unfinished } : {}) }
+          { key: 'purchases', label: 'Purchases', href: '/admin/library/menu-monster?tab=purchases', ...(unfinished > 0 ? { count: unfinished } : {}) },
+          { key: 'tools', label: 'Tools & utilities', href: '/admin/library/menu-monster?tab=tools' }
         ]}
       />
 
@@ -179,6 +181,8 @@ export default async function MenuMonsterAdminPage({
         <MenusAdmin menus={menus} owners={owners} patrols={patrols} />
       ) : tab === 'gear' ? (
         <GearAdmin items={gear} />
+      ) : tab === 'tools' ? (
+        <ToolsAdmin />
       ) : tab === 'recipes' ? (
         <RecipeBuilder catalog={catalog} initialRecipeId={sp.recipe} initialFilter={foodFilter} stores={stores} today={today} gearList={gearList} />
       ) : (

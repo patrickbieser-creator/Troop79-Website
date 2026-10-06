@@ -25,11 +25,11 @@ export type GearHome = 'patrol_box' | 'trailer' | 'home';
 /** In the order the Gear tab lists them. The troop's gear lives on the 4th floor at Northwoods (Patrick,
  *  2026-10-05, "change all references to Troop Trailer"); the stored key stays 'trailer'. */
 export const GEAR_HOMES: readonly { key: GearHome; label: string }[] = [
-  { key: 'trailer', label: '4th Floor Northwoods' },
+  { key: 'trailer', label: '4th Floor NWS' },
   { key: 'patrol_box', label: 'Patrol box' },
   { key: 'home', label: 'Bring from home' }
 ];
-export const GEAR_HOME_LABEL: Record<GearHome, string> = { trailer: '4th Floor Northwoods', patrol_box: 'Patrol box', home: 'Bring from home' };
+export const GEAR_HOME_LABEL: Record<GearHome, string> = { trailer: '4th Floor NWS', patrol_box: 'Patrol box', home: 'Bring from home' };
 
 /** One item on the troop's gear list (mm_gear). */
 export interface GearItem {
@@ -38,7 +38,10 @@ export interface GearItem {
   home: GearHome;
   perPerson: boolean;
   retiredAt: string | null;
+  /** What is in it, where it is found, its size (Patrick, 2026-10-06) — captured on the Gear tab; null = none yet. */
+  description?: string | null;
 }
+export const MAX_GEAR_DESCRIPTION = 600;
 
 export const MAX_GEAR_NAME = 40;
 export const MAX_GEAR_EXTRAS = 30;

@@ -26,6 +26,7 @@ import { cleanScoutText, isScoutRecipeId } from '@/lib/menu-monster/scout-recipe
 import { keepTypedInWith, matchTypedInWith, rejectTypedInWith, renameScoutRecipeWith, setScoutRecipeCreditWith } from '@/lib/menu-monster/scout-recipes-store';
 import { deleteMenuWith, duplicateMenuWith, loadMenuWith, renameMenuWith, setMenuOwnerWith, setMenuPatrolWith, setMenuSharedWith, MENU_LIMIT } from '@/lib/menu-monster/menus-store';
 import { isMenuId } from '@/lib/menu-monster/menus';
+import { resyncPatrolsWith } from '@/lib/menu-monster/menus-data';
 import { approveHeldPackageWith, rejectHeldPackageWith } from '@/lib/menu-monster/scout-packages-store';
 import { createGearWith, deleteGearWith, mergeGearWith, resolveGearWith, retireGearWith, storedRecipeGearWith, updateGearWith } from '@/lib/menu-monster/gear-store';
 import { createBrandWith, mergeBrandWith, moveBrandWith, removeBrandWith, renameBrandWith, setBrandDietsWith, setPackageBrandWith, type BrandWrite, suggestRecipeBrandWith } from '@/lib/menu-monster/brands-store';
@@ -1131,6 +1132,29 @@ export async function renameScoutRecipe(id: string, name: string): Promise<Resul
   return { ok: true };
 }
 
+/* ── Tools & utilities (2026-10-06) ──────────────────────────────────────── */
+
+/** Tool 1: the planner's patrol pull-down becomes the roster's patrols + "Whole troop". */
+export async function resyncPatrolsFromRoster(): Promise<Result & { note?: string }> {
+  const denied = await guard();
+  if (denied) return denied;
+  const res = await resyncPatrolsWith(createAdminClient());
+  await recordAudit({
+    area: 'library',
+    action: 'update',
+    entityType: 'mm_patrols',
+    entityId: 'all',
+    summary: `Resynced the Menu Monster patrol list from the roster (${res.patrols.length} patrols; added ${res.added.length}, removed ${res.removed.length})`
+  });
+  revalidate();
+  revalidatePath('/library/menu-monster/menus', 'layout');
+  const parts = [`${res.patrols.length} patrols: ${res.patrols.join(', ')}.`];
+  if (res.added.length) parts.push(`Added ${res.added.join(', ')}.`);
+  if (res.removed.length) parts.push(`Removed ${res.removed.join(', ')}.`);
+  if (!res.added.length && !res.removed.length) parts.push('Nothing had changed.');
+  return { ok: true, note: parts.join(' ') };
+}
+
 /* ── Menus (the admin Menus tab, 2026-10-05) ─────────────────────────────── */
 // Leaders have full rights on anyone's menu (D-327). Each write goes through the menus store as the
 // signed-in leader acting for the menu's owner, so the audit trail says who did it and whose menu it was.
@@ -1372,6 +1396,8 @@ export interface GearInput {
   name: string;
   home: string;
   perPerson: boolean;
+  /** What is in it, where it is found, its size (2026-10-06). */
+  description?: string;
 }
 
 export async function createGear(input: GearInput): Promise<Result> {

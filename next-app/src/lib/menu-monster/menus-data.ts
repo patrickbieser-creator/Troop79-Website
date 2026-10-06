@@ -61,12 +61,42 @@ export async function loadOutingsWith(sb: SupabaseClient, today: string, linkedI
   return rows.map(toOuting);
 }
 
-/** The troop's patrol names (active scouts), A to Z, then "Whole troop": the Plan tab's patrol suggestions. */
-export async function loadPatrolNamesWith(sb: SupabaseClient): Promise<string[]> {
+/** The roster's patrol names (active scouts), A to Z — what the resync tool copies into mm_patrols. */
+export async function loadRosterPatrolNamesWith(sb: SupabaseClient): Promise<string[]> {
   const { data, error } = await sb.from('scouts').select('patrol').eq('active', true).not('patrol', 'is', null);
   if (error) throw new Error(`load patrols: ${error.message}`);
-  const names = [...new Set(((data ?? []) as { patrol: string | null }[]).map((r) => (r.patrol ?? '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-  return [...names, 'Whole troop'];
+  return [...new Set(((data ?? []) as { patrol: string | null }[]).map((r) => (r.patrol ?? '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+}
+
+/**
+ * The Plan tab's patrol pull-down (Patrick, 2026-10-06): Menu Monster's own list, `mm_patrols`, in its sort order —
+ * the roster's patrols then "Whole troop". A leader refreshes it from the roster with the admin tool
+ * (resyncPatrolsWith); until the table has rows it falls back to the roster directly.
+ */
+export async function loadPatrolNamesWith(sb: SupabaseClient): Promise<string[]> {
+  const { data, error } = await sb.from('mm_patrols').select('name, sort_order').order('sort_order').order('name');
+  if (error) throw new Error(`load mm_patrols: ${error.message}`);
+  if (data && data.length > 0) return data.map((r) => r.name as string);
+  return [...(await loadRosterPatrolNamesWith(sb)), 'Whole troop'];
+}
+
+/** The "Resync patrol list from roster" tool: mm_patrols becomes the roster's patrols + "Whole troop". Returns what changed. */
+export async function resyncPatrolsWith(sb: SupabaseClient): Promise<{ patrols: string[]; added: string[]; removed: string[] }> {
+  const roster = await loadRosterPatrolNamesWith(sb);
+  const wanted = [...roster, 'Whole troop'];
+  const { data: cur, error } = await sb.from('mm_patrols').select('name');
+  if (error) throw new Error(`load mm_patrols: ${error.message}`);
+  const have = new Set((cur ?? []).map((r) => r.name as string));
+  const added = wanted.filter((n) => !have.has(n));
+  const removed = [...have].filter((n) => !wanted.includes(n));
+  if (removed.length) {
+    const { error: dErr } = await sb.from('mm_patrols').delete().in('name', removed);
+    if (dErr) throw new Error(`mm_patrols delete: ${dErr.message}`);
+  }
+  const rows = wanted.map((name, i) => ({ name, sort_order: name === 'Whole troop' ? 1000 : i + 1, synced_at: new Date().toISOString() }));
+  const { error: uErr } = await sb.from('mm_patrols').upsert(rows, { onConflict: 'name' });
+  if (uErr) throw new Error(`mm_patrols upsert: ${uErr.message}`);
+  return { patrols: wanted, added, removed };
 }
 
 /** The signed-in scout's own patrol (scouts.patrol by person_id), or null: the Plan tab's Patrol field starts there on a new menu. */

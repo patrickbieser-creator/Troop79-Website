@@ -28,6 +28,7 @@ vi.mock('../src/app/(public)/library/_tools/menu-monster/menu-actions', () => ({
 }));
 
 import { PlanTab } from '../src/app/(public)/library/menu-monster/menus/_components/plan-tab';
+// Planner part b (2026-10-06): a clean saved menu's primary is the link "Next: Gear ›" (Save becomes Next), not a disabled "Saved" button.
 
 const VERSION = '2026-10-02T12:00:00.000Z';
 const LANDED = { ok: true, updatedAt: '2026-10-02T13:00:00.000Z' };
@@ -315,7 +316,7 @@ describe('MealEditor', () => {
       await user.click(screen.getByRole('button', { name: 'More for Bacon' }));
       await user.click(screen.getByRole('button', { name: 'Remove' }));
       await user.click(screen.getByRole('button', { name: 'Undo' }));
-      expect((screen.getByRole('button', { name: 'Saved' }) as HTMLButtonElement).disabled).toBe(true);
+      expect(screen.getByRole('link', { name: 'Next: Gear ›' })).toBeTruthy();
     });
 
     it('Undo_MovesFocusToItself_AfterARemove', async () => {
@@ -420,7 +421,7 @@ describe('MealEditor', () => {
       render(editor());
       const user = await browse();
       await user.click(within(library()).getByRole('button', { name: 'Close' }));
-      expect(screen.getByRole('button', { name: 'Saved' })).toBeTruthy();
+      expect(screen.getByRole('link', { name: 'Next: Gear ›' })).toBeTruthy();
     });
 
     it('Browse_Swaps_WhenOpenedWhileSwapping', async () => {
@@ -538,7 +539,7 @@ describe('MealEditor', () => {
       await user.type(people(), '12');
       await user.tab();
       await user.click(screen.getByRole('button', { name: 'Reset to 8' }));
-      expect((screen.getByRole('button', { name: 'Saved' }) as HTMLButtonElement).disabled).toBe(true);
+      expect(screen.getByRole('link', { name: 'Next: Gear ›' })).toBeTruthy();
     });
 
     it('People_SavesNull_WhenItEqualsTheMenusNumber', async () => {
@@ -579,7 +580,7 @@ describe('MealEditor', () => {
   describe('save', () => {
     it('Save_IsDisabledAndSaid_WhenNothingChanged', () => {
       render(editor());
-      expect((screen.getByRole('button', { name: 'Saved' }) as HTMLButtonElement).disabled).toBe(true);
+      expect(screen.getByRole('link', { name: 'Next: Gear ›' })).toBeTruthy();
     });
 
     it('Save_Enables_WhenARecipeIsAdded', async () => {
@@ -641,7 +642,7 @@ describe('MealEditor', () => {
       render(editor());
       await addRecipe(user, 'Pan', 'Pancakes');
       await user.click(screen.getByRole('button', { name: 'Save changes' }));
-      expect(await screen.findByRole('button', { name: 'Saved' })).toBeTruthy();
+      expect(await screen.findByRole('link', { name: 'Next: Gear ›' })).toBeTruthy();
     });
 
     it('Save_ShowsTheServersError_InAnAlert', async () => {
@@ -667,7 +668,7 @@ describe('MealEditor', () => {
       render(editor());
       await addRecipe(user, 'Pan', 'Pancakes');
       await user.click(screen.getByRole('button', { name: 'Save changes' }));
-      await screen.findByRole('button', { name: 'Saved' });
+      await screen.findByRole('link', { name: 'Next: Gear ›' });
       await addRecipe(user, 'Oat', 'Oatmeal');
       await user.click(screen.getByRole('button', { name: 'Discard changes' }));
       expect([screen.getByRole('button', { name: 'Pancakes' }), screen.queryByRole('button', { name: 'Oatmeal' })].map(Boolean)).toEqual([true, false]);
@@ -804,7 +805,7 @@ describe('MealEditor recipe edits', () => {
     await user.click(screen.getByRole('button', { name: 'Change Bacon' }));
     await user.click(screen.getByRole('button', { name: 'Put back' }));
     await leaveOutBacon(user);
-    expect((screen.getByRole('button', { name: 'Saved' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByRole('link', { name: 'Next: Gear ›' })).toBeTruthy();
   });
 
   it('RecipeMenu_GoesBackToTheTroopRecipe_AndUndoRestoresTheEdits', async () => {
@@ -1010,7 +1011,7 @@ describe('MealPanel — More gear for this meal (gear-from-the-list release 2)',
     saveMenuAction.mockResolvedValue(LANDED);
     const user = userEvent.setup();
     render(plan(withGear()));
-    expect((screen.getByRole('button', { name: 'Saved' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByRole('link', { name: 'Next: Gear ›' })).toBeTruthy();
     await user.type(gearBox(), 'wash{Enter}');
     expect(screen.getByRole('list', { name: 'Gear' }).textContent).toContain('Wash basin');
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
@@ -1039,7 +1040,7 @@ describe('MealPanel — More gear for this meal (gear-from-the-list release 2)',
     await user.type(gearBox(), 'wash{Enter}');
     expect((screen.getByRole('button', { name: 'Save changes' }) as HTMLButtonElement).disabled).toBe(false);
     await user.click(screen.getByRole('button', { name: 'Remove Wash basin' }));
-    expect((screen.getByRole('button', { name: 'Saved' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByRole('link', { name: 'Next: Gear ›' })).toBeTruthy();
   });
 
   it('AServerDrop_IsSaid_AndTheNameLeavesTheDraft', async () => {

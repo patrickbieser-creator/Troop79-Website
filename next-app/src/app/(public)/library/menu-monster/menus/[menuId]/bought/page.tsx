@@ -13,7 +13,7 @@ import { boughtFromActuals } from '@/lib/menu-monster/bought';
 import { loadBoughtWith } from '@/lib/menu-monster/bought-store';
 import { PageShell } from '@/app/_components/page-shell';
 import { BoughtTab } from '../../_components/bought-tab';
-import { MenuHeader, MenuTabs, NO_INDEX, listCrumb, loadViewableMenu, menuViewer } from '../../_components/scout-menus';
+import { MenuHeader, MenuRail, MenuSteps, NO_INDEX, listCrumb, loadViewableMenu, menuViewer } from '../../_components/scout-menus';
 import { ViewerAside } from '../../_components/viewer-aside';
 
 export const dynamic = 'force-dynamic';
@@ -32,6 +32,7 @@ export default async function MenuBoughtPage({ params }: { params: Promise<{ men
     <>
       <MenuHeader current="bought" {...listCrumb(view.access)} />
       <PageShell>
+      <MenuRail menuId={stored.id} active="bought" access={view.access} menu={menu} catalog={catalog} />
         <BoughtTab
           catalog={catalog}
           menuId={stored.id}
@@ -39,7 +40,7 @@ export default async function MenuBoughtPage({ params }: { params: Promise<{ men
           bought={bought}
           legacy={legacy}
           canRecord={canRecord(view.access)}
-          tabs={<MenuTabs menuId={stored.id} active="bought" access={view.access} />}
+          tabs={<MenuSteps menuId={stored.id} active="bought" access={view.access} menu={menu} catalog={catalog} />}
           aside={<ViewerAside view={view} page="bought" />}
         />
       </PageShell>

@@ -75,7 +75,19 @@
   margin: 0 0 var(--sp-3);
 }
 .line label { font-weight: 700; color: var(--text-head); }
-.sep { color: var(--border-mid); }
+/* The People / diets dialer row: ONE flex row, every label+stepper pair a direct child, so they share a
+   centre line; one gap between pairs, no separator dots (Patrick 2026-10-06: the nested .line wrappers each
+   carried a bottom margin and lifted the diets above "People:"). Wraps cleanly on a phone. */
+.dialers {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3) var(--sp-6);
+  font-family: var(--font-ui);
+  font-size: var(--fs-md);
+  color: var(--text-body);
+  margin: 0 0 var(--sp-3);
+}
 .moneyIn { display: inline-flex; align-items: center; gap: var(--sp-2); }
 
 /* ---- Day heading + list card ------------------------------------------------ */
@@ -243,9 +255,13 @@
   margin: 0 0 var(--sp-2);
 }
 .shopLine strong { color: var(--text-head); font-variant-numeric: tabular-nums; }
-/* The phone's cost line: the Shopping column sits under the meals below 900px, so the same readout (compact) sits above them. */
-.costCompact { font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-body); margin: 0 0 var(--sp-4); font-variant-numeric: tabular-nums; }
-@media (min-width: 900px) { .costCompact { display: none; } }
+/* The summary rail is sticky under the site nav (about 48px) and is itself about 44px: a link to #meals or
+   #meal-<id> must land below both. */
+.anchor { scroll-margin-top: 100px; }
+.backLine { margin: 0 0 var(--sp-2); font-family: var(--font-ui); font-size: var(--fs-md); }
+/* A meal as its own page: the panel is the whole content, a comfortable reading width. */
+.mealPage { max-width: 720px; }
+
 /* A saved menu's "Who's eating": one summary line and a quiet Edit. */
 .basicsSummary { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-3); font-family: var(--font-ui); font-size: var(--fs-md); color: var(--text-head); margin: 0 0 var(--sp-2); }
 .muted { color: var(--text-meta); }

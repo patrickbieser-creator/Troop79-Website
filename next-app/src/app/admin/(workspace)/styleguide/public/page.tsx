@@ -32,6 +32,9 @@ import { SectionDivider } from '@/app/_components/section-divider';
 import cardS from '@/app/_components/card.module.css';
 import { PublicMenuEditListSpecimen, PublicStepperSpecimen, PublicTabStripSpecimen } from './specimens';
 import { IngredientList } from '@/app/(public)/library/menu-monster/_components/ingredient-list';
+import { StepStrip } from '@/app/(public)/library/menu-monster/menus/_components/step-strip';
+import { SummaryRail } from '@/app/(public)/library/menu-monster/menus/_components/summary-rail';
+import type { PlanProgress } from '@/lib/menu-monster/menu-view';
 import { FormCard, Field, TextInput } from '@/app/_components/form';
 import { DateField } from '@/app/_components/date-field';
 import { SignInToSignUpPanel } from '@/app/(public)/events/[id]/signup-panels';
@@ -196,6 +199,27 @@ const SCOREBOARD: ReadonlyArray<readonly [string, string, string]> = [
     'STRUCK (C) — 7 distinct remain, every one commented deliberate: Clipboard pencil-grid print fidelity (#999/#aaa/#efeae0), categorical ramps (#7a7068, #f5eeda), merit-badge celebration gold (#f5d76a/#5a3a00 — mint --award-gold on a 3rd use)'
   ]
 ];
+
+/** A made-up progress for the SummaryRail specimen (a real one comes from planProgress in menu-view.ts). */
+const SPECIMEN_PROGRESS: PlanProgress = {
+  steps: {
+    eating: { done: true, fixes: [] },
+    meals: { done: false, fixes: [{ text: '2 meals empty', count: 2, target: { step: 'meals', mealId: 'x' } }] },
+    gear: { done: true, fixes: [] },
+    shopping: { done: false, fixes: [{ text: '1 not priced', count: 1, target: { step: 'shopping', ingredientId: 'y' } }] }
+  },
+  headcount: 8,
+  diets: [{ key: 'gf', label: 'Gluten-free', count: 2 }],
+  total: 24.8,
+  perPersonMeal: 3.1,
+  budget: 4,
+  hasCost: true,
+  toFix: 3,
+  fixes: [
+    { text: '2 meals empty', count: 2, target: { step: 'meals', mealId: 'x' } },
+    { text: '1 not priced', count: 1, target: { step: 'shopping', ingredientId: 'y' } }
+  ]
+};
 
 export default function PublicStyleguidePage() {
   return (
@@ -453,6 +477,31 @@ export default function PublicStyleguidePage() {
               <code>Stepper</code> / <code>NumberBox</code> / <code>AmountInput</code> from <code>_components/stepper</code> &mdash; 32px tall,
               16px number (iOS floor), 28px buttons, commit-on-blur. Label sits left and ends in a colon. Dollars-and-cents is a framed
               AmountInput, not a dial.
+            </p>
+          </div>
+
+          {/* Menu Monster planner flow (2026-10-06): the step strip and the summary rail, as the scout planner draws them. */}
+          <div className={sg.specimenBlock}>
+            <StepStrip
+              config={{ plan: '#', gear: '#', shopping: '#', bought: '#', share: { label: 'Share', href: '#' } }}
+              done={{ eating: true, meals: false, gear: true, shopping: false }}
+              current={['eating', 'meals']}
+            />
+            <p className={sg.specimenInlineNote}>
+              <code>StepStrip</code> from <code>menu-monster/menus/_components/step-strip</code> &mdash; Who&rsquo;s eating &rarr; Meals &rarr; Gear &rarr;
+              Shopping (What we bought joins after the outing). Each step is a link to its route, done ones ticked, the current one underlined, none ever
+              locked; the strip scrolls sideways on a phone. Share is a quiet action at the end, not a step.
+            </p>
+          </div>
+          <div className={sg.specimenBlock}>
+            <SummaryRail progress={SPECIMEN_PROGRESS} hrefs={{ plan: '#', gear: '#', shopping: '#' }} unsaved>
+              <Button variant="primary">Save changes</Button>
+            </SummaryRail>
+            <p className={sg.specimenInlineNote}>
+              <code>SummaryRail</code> from <code>menu-monster/menus/_components/summary-rail</code> &mdash; one sticky line under the site nav
+              (headcount, cost per person per meal, things to fix); tap the text for the bottom sheet. Its right end is the screen&rsquo;s one primary:
+              Save while dirty, &ldquo;Next: &hellip;&rdquo; when clean. &ldquo;unsaved&rdquo; shows only when the Plan tab&rsquo;s draft differs from
+              what is saved.
             </p>
           </div>
 

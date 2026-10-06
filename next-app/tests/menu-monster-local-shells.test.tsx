@@ -59,7 +59,8 @@ describe('LocalPlan', () => {
     put();
     render(<LocalPlan catalog={CATALOG} outings={[]} />);
     expect((await nameBox()).value).toBe('Fall Camporee');
-    expect(screen.getByRole('button', { name: 'Saved on this computer' })).toBeTruthy();
+    // Planner part b: a clean menu's primary is Next (no Gear page on this computer, so Shopping), not a greyed "Saved".
+    expect(screen.getByRole('link', { name: 'Next: Shopping ›' })).toBeTruthy();
     // Meals open inline (2026-10-03): the meal name is a disclosure, not a link.
     expect(screen.getByRole('button', { name: /^Breakfast/ }).getAttribute('aria-expanded')).toBe('false');
   });
@@ -80,7 +81,7 @@ describe('LocalPlan', () => {
     const user = userEvent.setup();
     await user.type(await nameBox(), 'Winter Camp');
     await user.click(screen.getByRole('button', { name: 'Save on this computer' }));
-    expect(await screen.findByRole('button', { name: 'Saved on this computer' })).toBeTruthy();
+    expect(await screen.findByRole('link', { name: 'Next: Shopping ›' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Open the shopping list' }).getAttribute('href')).toBe('/library/menu-monster/menus/local/shopping');
   });
 

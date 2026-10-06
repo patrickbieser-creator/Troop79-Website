@@ -20,8 +20,7 @@ import {
   sortGear,
   type GearHome,
   type GearItem,
-  type MenuGearState
-} from './gear';
+  type MenuGearState, MAX_GEAR_DESCRIPTION } from './gear';
 import { cleanScoutText } from './scout-text';
 import type { Menu } from './menus';
 
@@ -31,9 +30,10 @@ interface GearRowDb {
   home: GearHome;
   per_person: boolean;
   retired_at: string | null;
+  description?: string | null;
 }
-const COLS = 'id, name, home, per_person, retired_at';
-const toItem = (r: GearRowDb): GearItem => ({ id: r.id, name: r.name, home: r.home, perPerson: r.per_person, retiredAt: r.retired_at });
+const COLS = 'id, name, home, per_person, retired_at, description';
+const toItem = (r: GearRowDb): GearItem => ({ id: r.id, name: r.name, home: r.home, perPerson: r.per_person, retiredAt: r.retired_at, description: r.description ?? null });
 const HOMES: readonly GearHome[] = ['trailer', 'patrol_box', 'home'];
 export const isGearHome = (v: unknown): v is GearHome => HOMES.includes(v as GearHome);
 
@@ -140,6 +140,8 @@ export async function setGearPackedWith(
 export interface GearAdminRow extends GearItem {
   /** Recipes whose gear names it (any count). */
   recipes: string[];
+  /** The same recipes with their ids, for links to their editors. */
+  recipeLinks: { id: string; name: string }[];
   /** Menus that name it: in the menu's own extras or in any meal's gear (the delete guard counts them too). */
   menus: number;
 }
@@ -177,15 +179,18 @@ export async function listGearAdminWith(sb: SupabaseClient): Promise<GearAdminRo
     const keys = new Set([...(m.gear_extras ?? []), ...(m.meals ?? []).flatMap((x) => x.gear ?? [])].map((e) => gearKey(parseGear(e).name)));
     for (const k of keys) menuCount.set(k, (menuCount.get(k) ?? 0) + 1);
   }
-  const usedBy = new Map<string, string[]>();
+  const usedBy = new Map<string, { id: string; name: string }[]>();
   for (const r of recipes) {
     for (const e of r.equipment ?? []) {
       const k = gearKey(parseGear(e).name);
-      usedBy.set(k, [...(usedBy.get(k) ?? []), r.name]);
+      usedBy.set(k, [...(usedBy.get(k) ?? []), { id: r.id, name: r.name }]);
     }
   }
   return items
-    .map((g) => ({ ...g, recipes: usedBy.get(gearKey(g.name)) ?? [], menus: menuCount.get(gearKey(g.name)) ?? 0 }))
+    .map((g) => {
+      const links = (usedBy.get(gearKey(g.name)) ?? []).sort((a, b) => a.name.localeCompare(b.name));
+      return { ...g, recipes: links.map((l) => l.name), recipeLinks: links, menus: menuCount.get(gearKey(g.name)) ?? 0 };
+    })
     .sort((a, b) => Number(a.retiredAt != null) - Number(b.retiredAt != null) || a.name.localeCompare(b.name));
 }
 
@@ -193,13 +198,15 @@ export type GearWrite = { ok: true; id?: number; merged?: boolean; recipes?: num
 
 const cleanName = (raw: unknown) => parseGear(cleanScoutText(raw, 60)).name.slice(0, MAX_GEAR_NAME).trim();
 
-export async function createGearWith(sb: SupabaseClient, input: { name: unknown; home: unknown; perPerson: unknown }, personId: number | null): Promise<GearWrite> {
+const cleanDescription = (raw: unknown): string | null => (typeof raw === 'string' && raw.trim() ? raw.trim().slice(0, MAX_GEAR_DESCRIPTION) : null);
+
+export async function createGearWith(sb: SupabaseClient, input: { name: unknown; home: unknown; perPerson: unknown; description?: unknown }, personId: number | null): Promise<GearWrite> {
   const name = cleanName(input.name);
   if (!name) return { ok: false, error: 'Give it a name.' };
   if (!isGearHome(input.home)) return { ok: false, error: 'Pick where it lives.' };
   const all = await listGearWith(sb, { includeRetired: true });
   if (all.some((g) => gearKey(g.name) === gearKey(name))) return { ok: false, error: `“${name}” is already on the list.` };
-  const { data, error } = await sb.from('mm_gear').insert({ name, home: input.home, per_person: input.perPerson === true, added_by_person_id: personId }).select('id').single();
+  const { data, error } = await sb.from('mm_gear').insert({ name, home: input.home, per_person: input.perPerson === true, description: cleanDescription(input.description), added_by_person_id: personId }).select('id').single();
   if (error) return { ok: false, error: error.message };
   return { ok: true, id: data.id as number };
 }
@@ -261,7 +268,7 @@ async function rewriteMenusGear(sb: SupabaseClient, rewrite: (entries: readonly 
  * the recipes move and this row is removed. Not one transaction: a failure midway reports the error and a
  * retry finishes the job (every step is idempotent). Packed ticks made under the old name are not carried over.
  */
-export async function updateGearWith(sb: SupabaseClient, id: number, input: { name: unknown; home: unknown; perPerson: unknown }): Promise<GearWrite> {
+export async function updateGearWith(sb: SupabaseClient, id: number, input: { name: unknown; home: unknown; perPerson: unknown; description?: unknown }): Promise<GearWrite> {
   const name = cleanName(input.name);
   if (!name) return { ok: false, error: 'Give it a name.' };
   if (!isGearHome(input.home)) return { ok: false, error: 'Pick where it lives.' };
@@ -305,7 +312,7 @@ export async function updateGearWith(sb: SupabaseClient, id: number, input: { na
     if (error) return { ok: false, error: error.message };
     return { ok: true, id: twin.id, merged: true, recipes };
   }
-  const { error } = await sb.from('mm_gear').update({ name, home: input.home, per_person: input.perPerson === true }).eq('id', id);
+  const { error } = await sb.from('mm_gear').update({ name, home: input.home, per_person: input.perPerson === true, ...(input.description !== undefined ? { description: cleanDescription(input.description) } : {}) }).eq('id', id);
   if (error) return { ok: false, error: error.message };
   return { ok: true, id, recipes };
 }

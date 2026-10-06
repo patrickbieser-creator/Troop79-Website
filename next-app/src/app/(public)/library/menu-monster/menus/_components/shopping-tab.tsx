@@ -452,6 +452,15 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
           tab.
         </p>
       )}
+      {/* Conversions is a reference page, not a step (2026-10-06): a quiet link here, for everyone who can open the menu. */}
+      {canPay && menuId && (
+        <p className={s.foot}>
+          Wondering how cups become ounces?{' '}
+          <Link className={s.link} href={`/library/menu-monster/menus/${menuId}/conversions`}>
+            Conversions
+          </Link>
+        </p>
+      )}
       </div>
 
       <PrintSheet menu={menu} list={list} panel={panel} gear={gear} />
@@ -505,7 +514,7 @@ function PrintSheet({ menu, list, panel, gear }: { menu: Menu; list: ReturnType<
                           : `${l.qty} × ${l.pkg?.name ?? ''}`}
                     {lineUpdated(l) ? ' (updated)' : ''}
                   </td>
-                  <td>{l.status === 'unpriced' ? '' : `${l.estimated ? 'about ' : ''}${money(l.spent)}`}</td>
+                  <td>{l.status === 'unpriced' ? '' : <EstPrice estimated={l.estimated} amount={money(l.spent)} />}</td>
                   <td className={s.printBlank} />
                   <td className={s.printBlank} />
                 </tr>
@@ -516,6 +525,17 @@ function PrintSheet({ menu, list, panel, gear }: { menu: Menu; list: ReturnType<
       {gear.length > 0 && <p className={s.printMeta}>Gear: {gear.join(' · ')}</p>}
       {panel.notes.length > 0 && <p className={s.printMeta}>{panel.notes.join(' ')}</p>}
     </section>
+  );
+}
+
+/** An estimated price reads "~$18.15"; the tilde is not read aloud, so the estimate is also said (title and screen reader text). */
+function EstPrice({ estimated, amount }: { estimated?: boolean; amount: string }) {
+  if (!estimated) return <>{amount}</>;
+  return (
+    <span title="Estimated — cheapest known brand">
+      ~{amount}
+      <span className={s.srOnly}> (estimated)</span>
+    </span>
   );
 }
 
@@ -595,7 +615,6 @@ function ShoppingRow({
   // Any brand: the shopper's choice — say how much, in the cheapest known package.
   else if (l.estimated && pkg) meta = `any brand · ${l.qty} × ${sizeOf(pkg)}`;
   else meta = `${l.qty} × ${pkg?.name ?? ''}`;
-  const about = l.estimated ? 'about ' : '';
   const updated = lineUpdated(l);
 
   const noteId = `${panelId}-note`;
@@ -641,7 +660,7 @@ function ShoppingRow({
           </span>
         )}
       </div>
-      <div className={s.cost}>{l.status === 'staple' || l.status === 'bring' ? '—' : l.status === 'unpriced' ? '' : `${about}${money(cost)}`}</div>
+      <div className={s.cost}>{l.status === 'staple' || l.status === 'bring' ? '—' : l.status === 'unpriced' ? '' : <EstPrice estimated={l.estimated} amount={money(cost)} />}</div>
       {parts.length > 1 && (
         <ul className={s.brandSubs} aria-label={`${l.ing.name} brands`}>
           {parts.map((x) => (
@@ -651,8 +670,7 @@ function ShoppingRow({
                 {x.estimated ? '' : `, ${sizeOf(x.pkg)}`}
               </span>
               <span className={s.brandSubCost}>
-                {x.estimated ? 'about ' : ''}
-                {money(x.spent)}
+                <EstPrice estimated={x.estimated} amount={money(x.spent)} />
               </span>
             </li>
           ))}

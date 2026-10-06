@@ -12,7 +12,7 @@ import { listGearWith, loadMenuGearWith } from '@/lib/menu-monster/gear-store';
 import { ownerCreditNamesWith } from '@/lib/menu-monster/menus-store';
 import { PageShell } from '@/app/_components/page-shell';
 import { GearTab } from '../../_components/gear-tab';
-import { MenuHeader, MenuTabs, NO_INDEX, listCrumb, loadViewableMenu, menuViewer } from '../../_components/scout-menus';
+import { MenuHeader, MenuRail, MenuSteps, NO_INDEX, listCrumb, loadViewableMenu, menuViewer } from '../../_components/scout-menus';
 import { ViewerAside } from '../../_components/viewer-aside';
 
 export const dynamic = 'force-dynamic';
@@ -36,6 +36,7 @@ export default async function MenuGearPage({ params }: { params: Promise<{ menuI
     <>
       <MenuHeader current="gear" {...listCrumb(view.access)} />
       <PageShell>
+        <MenuRail menuId={stored.id} active="gear" access={view.access} menu={resolveMenuAliases(stored.menu, catalog.aliases)} catalog={catalog} />
         <GearTab
           catalog={catalog}
           menuId={stored.id}
@@ -46,7 +47,7 @@ export default async function MenuGearPage({ params }: { params: Promise<{ menuI
           canPack={canRecord(view.access)}
           canEdit={view.access === 'owner' || view.helping}
           viewerName={viewerName}
-          tabs={<MenuTabs menuId={stored.id} active="gear" access={view.access} />}
+          tabs={<MenuSteps menuId={stored.id} active="gear" access={view.access} menu={resolveMenuAliases(stored.menu, catalog.aliases)} catalog={catalog} />}
           aside={<ViewerAside view={view} page="gear" />}
         />
       </PageShell>

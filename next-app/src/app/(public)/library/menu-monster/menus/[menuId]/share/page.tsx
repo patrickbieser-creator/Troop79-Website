@@ -8,9 +8,10 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
+import { resolveMenuAliases } from '@/lib/menu-monster/menus';
 import { ownerCreditNamesWith } from '@/lib/menu-monster/menus-store';
 import { PageShell } from '@/app/_components/page-shell';
-import { MenuHeader, MenuTabs, NO_INDEX, listCrumb, loadViewableMenu, menuViewer } from '../../_components/scout-menus';
+import { MenuHeader, MenuRail, MenuSteps, NO_INDEX, listCrumb, loadViewableMenu, menuViewer } from '../../_components/scout-menus';
 import { ReadOnlyLine } from '../../_components/read-only-line';
 import { ReviewPanel } from '../../_components/review-panel';
 import { SharePanel } from '../../_components/share-panel';
@@ -24,6 +25,7 @@ export default async function MenuSharePage({ params }: { params: Promise<{ menu
   const view = await loadViewableMenu(menuId, await menuViewer());
   if (!view || (view.access !== 'owner' && view.access !== 'admin')) notFound();
   const { stored } = view;
+  const menu = resolveMenuAliases(stored.menu, view.catalog.aliases);
   const sb = createAdminClient();
   const [credit, outing] = await Promise.all([
     ownerCreditNamesWith(sb, [stored.ownerPersonId]).then((m) => m.get(stored.ownerPersonId) ?? null),
@@ -36,13 +38,12 @@ export default async function MenuSharePage({ params }: { params: Promise<{ menu
     <>
       <MenuHeader current="share" {...listCrumb(view.access)} />
       <PageShell>
+        <MenuRail menuId={stored.id} active="share" access={view.access} menu={menu} catalog={view.catalog} />
         <div className={s.titleLine}>
           <h1 className={s.menuTitle}>{stored.menu.name.trim() || 'Untitled menu'}</h1>
         </div>
         {view.readOnly && <ReadOnlyLine plannedBy={view.plannedBy} />}
-        <div className={s.tabs}>
-          <MenuTabs menuId={stored.id} active="share" access={view.access} />
-        </div>
+        <MenuSteps menuId={stored.id} active="share" access={view.access} menu={menu} catalog={view.catalog} />
         {/* The owner shares; a leader reviews — and, working on the scout's menu, can share it for them too. */}
         {(view.access === 'owner' || view.helping) && <SharePanel menuId={stored.id} credit={credit} status={status} />}
         {view.access !== 'owner' && <ReviewPanel menuId={stored.id} note={stored.review?.note ?? ''} status={status} plannedBy={view.plannedBy} />}

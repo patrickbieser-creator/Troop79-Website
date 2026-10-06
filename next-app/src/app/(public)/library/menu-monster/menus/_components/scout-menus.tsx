@@ -1,6 +1,6 @@
 /**
  * Server-side pieces the menu pages share: who is looking, the owner-only menu
- * read, the page header, the Plan / Shopping tabs, and the one-line locked
+ * read, the page header, the step strip and summary rail, and the one-line locked
  * state for anyone who isn't a signed-in scout.
  *
  * Reads (Phase 3, menu-access.ts): the owner scout edits; an admin viewer (any
@@ -24,8 +24,13 @@ import { loadMenuWith, ownerCreditNamesWith, type StoredMenu } from '@/lib/menu-
 import { isMenuId, menuCredit } from '@/lib/menu-monster/menus';
 import { canEditPlan, canRecord, menuAccess, redactMenu, type AccessViewer, type MenuAccess, isPublic } from '@/lib/menu-monster/menu-access';
 import type { Catalog } from '@/lib/menu-monster/types';
+import type { Menu } from '@/lib/menu-monster/menus';
+import { outingOver, planProgress } from '@/lib/menu-monster/menu-view';
+import { centralToday } from '@/lib/dates';
 import { PageHeader, KickerSep } from '@/app/_components/page-header';
-import { TabStrip } from '@/app/_components/tab-strip';
+import { Button } from '@/app/_components/button';
+import { StepStrip, type StepCurrent, type StepStripConfig } from './step-strip';
+import { SummaryRail } from './summary-rail';
 import s from './workspace.module.css';
 
 export const MENUS_HREF = '/library/menu-monster/menus';
@@ -250,24 +255,61 @@ export function listCrumb(access: MenuAccess): { listLabel?: string; listHref?: 
 /** Menu pages are per-viewer and carry scouts' names: never indexed (tech-lead review). */
 export const NO_INDEX = { index: false, follow: false } as const;
 
-/** Plan / Shopping, plus Share for the owner (Decision 11) or Review for a leader (note + Hide from the shelf). */
-export function MenuTabs({ menuId, active, access = 'owner' }: { menuId: string; active: 'plan' | 'shopping' | 'gear' | 'bought' | 'conversions' | 'share'; access?: MenuAccess }) {
-  const third = access === 'owner' ? 'Share' : access === 'admin' ? 'Review' : null;
+export type MenuPage = 'plan' | 'shopping' | 'gear' | 'bought' | 'conversions' | 'share';
+
+const CURRENT: Record<MenuPage, StepCurrent[]> = {
+  plan: ['eating', 'meals'],
+  gear: ['gear'],
+  shopping: ['shopping'],
+  // Conversions is a quiet link from the Shopping footer: it belongs to that step.
+  conversions: ['shopping'],
+  bought: ['bought'],
+  share: ['share']
+};
+
+/**
+ * The step strip's routes for a menu (also the Plan tab's, so its ticks can follow the draft). What we bought
+ * joins once the outing's last day has passed, or while you are on it (never locked, never lost); a shared
+ * viewer never sees what was paid. Share is a quiet action for the owner, Review for a leader.
+ */
+export function stepConfig(menuId: string, access: MenuAccess, menu: Menu, page: MenuPage, today: string): StepStripConfig {
+  const base = `${MENUS_HREF}/${menuId}`;
+  const showBought = access !== 'shared' && (page === 'bought' || outingOver(menu, today));
+  const shareLabel = access === 'owner' ? 'Share' : access === 'admin' ? 'Review' : null;
+  return {
+    plan: base,
+    gear: `${base}/gear`,
+    shopping: `${base}/shopping`,
+    ...(showBought ? { bought: `${base}/bought` } : {}),
+    ...(shareLabel ? { share: { label: shareLabel, href: `${base}/share` } } : {})
+  };
+}
+
+/** The strip on every page but the Plan tab (which draws its own from the draft): ticks come from the saved menu. */
+export function MenuSteps({ menuId, active, access = 'owner', menu, catalog }: { menuId: string; active: MenuPage; access?: MenuAccess; menu: Menu; catalog: Catalog }) {
+  const p = planProgress(menu, catalog);
   return (
-    <TabStrip
-      ariaLabel="Menu sections"
-      activeKey={active}
-      items={[
-        { key: 'plan', label: 'Plan', href: `${MENUS_HREF}/${menuId}` },
-        { key: 'shopping', label: 'Shopping', href: `${MENUS_HREF}/${menuId}/shopping` },
-        { key: 'gear', label: 'Gear', href: `${MENUS_HREF}/${menuId}/gear` },
-        // What was paid is never shown to a shared viewer.
-        ...(access !== 'shared' ? [{ key: 'bought', label: 'What we bought', href: `${MENUS_HREF}/${menuId}/bought` }] : []),
-        // Read-only for everyone: how cups become ounces (the lesson behind the shopping list).
-        { key: 'conversions', label: 'Conversions', href: `${MENUS_HREF}/${menuId}/conversions` },
-        ...(third ? [{ key: 'share', label: third, href: `${MENUS_HREF}/${menuId}/share` }] : [])
-      ]}
+    <StepStrip
+      config={stepConfig(menuId, access, menu, active, centralToday())}
+      done={{ eating: p.steps.eating.done, meals: p.steps.meals.done, gear: p.steps.gear.done, shopping: p.steps.shopping.done }}
+      current={CURRENT[active]}
     />
+  );
+}
+
+/** The summary rail on every page but the Plan tab: the SAVED menu's headcount, cost and things to fix, and the next step. */
+export function MenuRail({ menuId, active, access = 'owner', menu, catalog }: { menuId: string; active: MenuPage; access?: MenuAccess; menu: Menu; catalog: Catalog }) {
+  const base = `${MENUS_HREF}/${menuId}`;
+  const share = access === 'owner' ? 'Share' : access === 'admin' ? 'Review' : null;
+  const next = active === 'gear' ? { label: 'Next: Shopping ›', href: `${base}/shopping` } : active === 'shopping' && share ? { label: `Next: ${share} ›`, href: `${base}/share` } : null;
+  return (
+    <SummaryRail progress={planProgress(menu, catalog)} hrefs={{ plan: base, gear: `${base}/gear`, shopping: `${base}/shopping` }}>
+      {next && (
+        <Button variant="primary" href={next.href}>
+          {next.label}
+        </Button>
+      )}
+    </SummaryRail>
   );
 }
 

@@ -1,0 +1,64 @@
+/* The planner's step strip — public tokens only. A horizontally scrollable row of steps (never wraps, so
+   it stays one line on a 390px phone), ticks for done steps, the current one dark with a navy underline,
+   a quiet action (Share) at the far end. Same hairline-and-underline language as the shared TabStrip. */
+
+.nav {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  border-bottom: 1px solid var(--rule);
+  margin: 0 0 var(--sp-6);
+}
+
+.strip {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  gap: 0 var(--sp-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.strip::-webkit-scrollbar { display: none; }
+.item { flex: none; }
+
+.step,
+.action {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  min-height: 44px;
+  margin-bottom: -1px;
+  border-bottom: 3px solid transparent;
+  font-family: var(--font-ui);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--text-meta);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.step:hover,
+.action:hover { color: var(--text-head); }
+.step:focus-visible,
+.action:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+
+.current { color: var(--text-head); border-bottom-color: var(--navy); }
+.tick { color: var(--forest); font-weight: 700; }
+
+/* Quiet: a link at the end of the flow, lighter than the steps. */
+.action { flex: none; font-weight: 400; font-size: var(--fs-sm); }
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+@media print { .nav { display: none; } }

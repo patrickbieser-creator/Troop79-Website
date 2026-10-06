@@ -41,8 +41,8 @@ import { NumberBox, Stepper } from '@/app/_components/stepper';
 import type { Brand, BrandPick, Catalog, Plan, RestrictionKey } from '@/lib/menu-monster/types';
 import { MEALS, RESTRICTION_BY_KEY } from '@/lib/menu-monster/units';
 import { MAX_HEADCOUNT, MIN_HEADCOUNT } from '@/lib/menu-monster/engine';
-import { MAX_MENU_DAYS, MAX_MENU_MEALS, MENU_CONTEXTS, MAX_MENU_NAME, MAX_PATROL_NAME, menuNameError, type Menu, type MenuContext, type MenuMeal } from '@/lib/menu-monster/menus';
-import { DIET_ORDER, budgetState, buildMenuList, dayLabel, mealUnpricedItems, menuCost, outingDayCount, type Outing } from '@/lib/menu-monster/menu-view';
+import { MAX_MENU_DAYS, MAX_MENU_MEALS, MENU_CONTEXTS, MAX_MENU_NAME, menuNameError, type Menu, type MenuContext, type MenuMeal } from '@/lib/menu-monster/menus';
+import { DIET_ORDER, budgetState, buildMenuList, dayLabel, mealTitle, mealUnpricedItems, menuCost, outingDayCount, planProgress, type Outing } from '@/lib/menu-monster/menu-view';
 import { addBrandAction, suggestRecipeBrandAction } from '../../../_tools/menu-monster/brand-actions';
 import type { CreateResult, MenuStore, SaveResult } from '@/lib/menu-monster/menu-store';
 import { serverMenuStore } from './server-menu-store';
@@ -56,6 +56,8 @@ import { AddDietMenu } from './add-diet-menu';
 import { mealsToAdd } from '@/lib/menu-monster/menu-search';
 import { ReadOnlyLine } from './read-only-line';
 import { SaveBar } from './save-bar';
+import { StepStrip, type StepStripConfig } from './step-strip';
+import { SummaryRail } from './summary-rail';
 import s from './workspace.module.css';
 
 const newId = () => (typeof globalThis.crypto?.randomUUID === 'function' ? globalThis.crypto.randomUUID() : `m-${Date.now()}-${Math.floor(Math.random() * 1e6)}`);
@@ -88,6 +90,10 @@ export interface PlanTabProps {
   titleAs?: 'h1' | 'h2';
   /** A meal to open on load (?meal=, the old meal-page links redirect here). */
   openMeal?: string | null;
+  /** The step strip's routes (a saved menu's own pages); its ticks come from this draft. Omitted = `tabs`, or nothing. */
+  steps?: StepStripConfig;
+  /** Show only this meal, as its own page (Patrick, 2026-10-06, decision 1): its own Save / Cancel and a way back to the meals. */
+  mealOnly?: string | null;
   /** The troop's patrol names, as suggestions for the Patrol field (release 5). */
   patrols?: readonly string[];
   /** The troop's gear list (not retired) for each meal's "More gear for this meal" picker. Absent = no picker (a menu kept on this computer, a read-only view). */
@@ -96,7 +102,7 @@ export interface PlanTabProps {
   myPatrol?: string | null;
 }
 
-export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt, outings, tabs, readOnly = false, helper = false, plannedBy = null, aside, store: storeProp, titleAs: Title = 'h1', openMeal = null, patrols = [], gearList, myPatrol = null }: PlanTabProps) {
+export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt, outings, tabs, readOnly = false, helper = false, plannedBy = null, aside, store: storeProp, titleAs: Title = 'h1', openMeal = null, steps, mealOnly = null, patrols = [], gearList, myPatrol = null }: PlanTabProps) {
   const router = useRouter();
   const store = useMemo(() => storeProp ?? serverMenuStore(menuId), [storeProp, menuId]);
   const { canSave } = store.caps;
@@ -126,6 +132,19 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
   /** Meals open inline (all closed on load, unless ?meal= names one). */
   const [openMeals, setOpenMeals] = useState<ReadonlySet<string>>(() => new Set(openMeal && initial.meals.some((m) => m.id === openMeal) ? [openMeal] : []));
   const [view, setView] = useState<AmountView>('total');
+  // A link to #meal-<id> (the rail's "3 meals empty", the meal page's way back) opens that meal's row.
+  useEffect(() => {
+    const go = () => {
+      const m = /^#meal-(.+)$/.exec(window.location.hash);
+      if (!m) return;
+      const id = decodeURIComponent(m[1]);
+      setOpenMeals((cur) => new Set(cur).add(id));
+      requestAnimationFrame(() => document.getElementById(`meal-${id}`)?.scrollIntoView?.());
+    };
+    go();
+    window.addEventListener('hashchange', go);
+    return () => window.removeEventListener('hashchange', go);
+  }, []);
   // Release C: ingredients the scout typed in on this page, until the next load brings them in the catalog.
   const [typed, setTyped] = useState<NewIngredient[]>([]);
   // Release 3: brands typed on this page join the troop's list at once; until the next load they ride here.
@@ -147,7 +166,10 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
   const dirty = draftKey !== saved.key;
   const cost = menuCost(menu, catalog);
   // The menu's priced lines by ingredient: a brand chooser shows each brand's package count from here.
-  const lineByIng = useMemo(() => new Map(buildMenuList(menu, catalog).lines.map((l) => [l.ing.id, l])), [menu, catalog]);
+  const list = useMemo(() => buildMenuList(menu, catalog), [menu, catalog]);
+  const lineByIng = useMemo(() => new Map(list.lines.map((l) => [l.ing.id, l])), [list]);
+  // The rail and the step ticks read the DRAFT (what is on screen), not the saved menu.
+  const progress = useMemo(() => planProgress(menu, catalog, { list }), [menu, catalog, list]);
   const priced = menu.meals.some((m) => m.recipeIds.length > 0);
   const budget = budgetState({ perSpent: cost.perPersonMeal }, menu.budgetPerPersonMeal);
 
@@ -244,6 +266,16 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
   const addDay = () => edit((m) => ({ ...m, dayCount: Math.min(MAX_MENU_DAYS, m.dayCount + 1) }));
   const removeLastDay = () => edit((m) => ({ ...m, dayCount: Math.max(1, m.dayCount - 1) }));
 
+  /** On a phone a saved, unedited menu opens a meal as its own page; everywhere else it opens inline. */
+  const canOpenPage = !storeProp && menuId != null && !isNew && !dirty;
+  const onRowName = (id: string, isOpen: boolean) => {
+    if (canOpenPage && !isOpen && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 639px)').matches) {
+      router.push(store.hrefs.meal(id));
+      return;
+    }
+    toggleMeal(id);
+  };
+
   /* ---- Save ---- */
   async function save(): Promise<boolean> {
     const bad = menuNameError(menu.name);
@@ -311,6 +343,8 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
   const canTypeBrand = !storeProp && !readOnly;
   const shareVersionMenuId = canSave && !storeProp && menuId != null && !isNew && !dirty && !helper ? menuId : null;
   const dialerLabel = (k: RestrictionKey) => RESTRICTION_BY_KEY[k].label;
+  // The troop's patrols, plus the menu's own when it is not on the list (a retired or typed-in one): nothing is lost.
+  const patrolOptions = menu.patrol && !patrols.includes(menu.patrol) ? [...patrols, menu.patrol] : patrols;
   const visibleDiets = DIET_ORDER.filter((k) => shownDiets.has(k) || (menu.restrictions[k] || 0) > 0);
   const hiddenDiets = DIET_ORDER.filter((k) => !visibleDiets.includes(k));
   const addDiet = (k: RestrictionKey) => {
@@ -331,25 +365,109 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
   // Only where the Shopping tab can answer it: a saved menu the viewer can edit, kept on the server.
   const fixHref = !readOnly && !isNew && store.caps.canReport ? (ingredientId: string) => `${store.hrefs.shopping}?item=${encodeURIComponent(ingredientId)}` : null;
 
+  const panelFor = (meal: MenuMeal) => (
+    <MealPanel
+      catalog={catalog}
+      menu={menu}
+      meal={meal}
+      view={view}
+      readOnly={readOnly}
+      gearList={gearList}
+      shoppingHref={fixHref ?? undefined}
+      onChange={setMeal}
+      canTypeIn={canTypeIn}
+      onTyped={(n) => setTyped((t) => [...t, n])}
+      shareVersionMenuId={shareVersionMenuId}
+      autoFocusAdd={meal.id === focusMeal}
+      onBrands={readOnly ? undefined : setBrands}
+      lineFor={(id) => lineByIng.get(id)}
+      onTypeBrand={canTypeBrand ? typeBrand : undefined}
+      // A recipe's suggested brand is its author's to set: not offered to a leader on the scout's menu (qa-lead).
+      onSuggestBrand={canTypeBrand && !helper ? suggestRecipeBrandAction : undefined}
+    />
+  );
+  // A menu not saved yet has no pages of its own to link to: its rail rows that need one are plain text.
+  const railHrefs = { plan: isNew ? '' : store.hrefs.plan, gear: isNew ? null : (store.hrefs.gear ?? null), shopping: isNew ? null : store.hrefs.shopping };
+  // Gear is the next step on a saved menu; a menu kept on this computer has no Gear page, so Shopping.
+  const nextStep = isNew ? undefined : store.hrefs.gear ? { label: 'Next: Gear ›', href: store.hrefs.gear } : { label: 'Next: Shopping ›', href: store.hrefs.shopping };
+  const rail = (extra?: { next?: { label: string; href: string }; labels?: { discard?: string }; onDiscard?: () => void }) => (
+    <SummaryRail progress={progress} hrefs={railHrefs} unsaved={dirty && !readOnly}>
+      {readOnly ? (
+        nextStep && (
+          <Button variant="primary" href={extra?.next?.href ?? nextStep.href}>
+            {extra?.next?.label ?? nextStep.label}
+          </Button>
+        )
+      ) : (
+        <SaveBar
+          isNew={isNew}
+          newLabel={canSave ? undefined : 'Save on this computer'}
+          labels={canSave ? { discard: extra?.labels?.discard } : { clean: 'Saved on this computer', discard: extra?.labels?.discard }}
+          dirty={dirty}
+          saving={saving}
+          saved={justSaved}
+          onSave={() => void save()}
+          onDiscard={extra?.onDiscard ?? discard}
+          next={extra?.next ?? nextStep}
+        />
+      )}
+    </SummaryRail>
+  );
+
+  if (mealOnly != null) {
+    const target = menu.meals.find((m) => m.id === mealOnly);
+    const back = `${store.hrefs.plan}#meal-${mealOnly}`;
+    if (!target) {
+      return (
+        <p className={s.foot}>
+          That meal is not on this menu.{' '}
+          <Link className={s.link} href={store.hrefs.plan}>
+            Back to meals
+          </Link>
+        </p>
+      );
+    }
+    return (
+      <div>
+        {rail({
+          next: { label: 'Done', href: back },
+          labels: { discard: 'Cancel' },
+          // Cancel throws this meal's edits away and goes back; Back (the link) asks first when there are unsaved edits.
+          onDiscard: () => {
+            discard();
+            router.push(back);
+          }
+        })}
+        <p className={s.backLine}>
+          <Link className={s.link} href={back}>
+            ← Back to meals
+          </Link>
+        </p>
+        <div className={s.titleLine}>
+          <Title className={s.menuTitle}>{mealTitle(menu.startDate, target.day, target.slot)}</Title>
+        </div>
+        {aside ?? (readOnly && <ReadOnlyLine plannedBy={plannedBy} />)}
+        {error && (
+          <Notice tone="error" className={s.notice}>
+            {error}
+          </Notice>
+        )}
+        <p className={status ? s.statusLine : s.srOnly} aria-live="polite">
+          {status}
+        </p>
+        <div className={s.mealPage}>{panelFor(target)}</div>
+      </div>
+    );
+  }
+
   return (
     <div>
+      {rail()}
       <div className={s.titleLine}>
         <Title className={s.menuTitle}>{menu.name.trim() || (isNew ? 'New menu' : 'Untitled menu')}</Title>
-        {!readOnly && (
-          <SaveBar
-            isNew={isNew}
-            newLabel={canSave ? undefined : 'Save on this computer'}
-            labels={canSave ? undefined : { clean: 'Saved on this computer' }}
-            dirty={dirty}
-            saving={saving}
-            saved={justSaved}
-            onSave={() => void save()}
-            onDiscard={discard}
-          />
-        )}
       </div>
       {aside ?? (readOnly && <ReadOnlyLine plannedBy={plannedBy} />)}
-      {tabs != null && <div className={s.tabs}>{tabs}</div>}
+      {steps ? <StepStrip config={steps} done={{ eating: progress.steps.eating.done, meals: progress.steps.meals.done, gear: progress.steps.gear.done, shopping: progress.steps.shopping.done }} current={['eating', 'meals']} /> : tabs != null && <div className={s.tabs}>{tabs}</div>}
 
       {error && (
         <Notice tone="error" className={s.notice}>
@@ -420,11 +538,8 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
               </SelectInput>
             </Field>
             <Field label="Patrol">
-              <TextInput
+              <SelectInput
                 value={menu.patrol ?? ''}
-                maxLength={MAX_PATROL_NAME}
-                autoComplete="off"
-                list="mm-patrols"
                 onChange={(e) =>
                   edit((m) => {
                     const { patrol: _old, ...rest } = m;
@@ -432,17 +547,19 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
                     return e.target.value.trim() ? { ...rest, patrol: e.target.value } : rest;
                   })
                 }
-              />
-              <datalist id="mm-patrols">
-                {patrols.map((name) => (
-                  <option key={name} value={name} />
+              >
+                <option value="">— pick —</option>
+                {patrolOptions.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
                 ))}
-              </datalist>
+              </SelectInput>
             </Field>
           </div>
           </div>
 
-          <div className={s.line}>
+          <div className={s.dialers}>
             <Stepper
               id="mm-people"
               label="People"
@@ -455,31 +572,20 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
               moreLabel="One more person"
             />
             {visibleDiets.map((k) => (
-              <span key={k} className={s.line}>
-                <span className={s.sep} aria-hidden="true">
-                  ·
-                </span>
-                <Stepper
-                  id={`mm-diet-${k}`}
-                  label={dialerLabel(k)}
-                  value={menu.restrictions[k] || 0}
-                  min={0}
-                  max={menu.headcount}
-                  onChange={(n) => setDiet(k, n)}
-                  groupLabel={`${dialerLabel(k)} people`}
-                  lessLabel={`One fewer ${dialerLabel(k).toLowerCase()} person`}
-                  moreLabel={`One more ${dialerLabel(k).toLowerCase()} person`}
-                />
-              </span>
+              <Stepper
+                key={k}
+                id={`mm-diet-${k}`}
+                label={dialerLabel(k)}
+                value={menu.restrictions[k] || 0}
+                min={0}
+                max={menu.headcount}
+                onChange={(n) => setDiet(k, n)}
+                groupLabel={`${dialerLabel(k)} people`}
+                lessLabel={`One fewer ${dialerLabel(k).toLowerCase()} person`}
+                moreLabel={`One more ${dialerLabel(k).toLowerCase()} person`}
+              />
             ))}
-            {hiddenDiets.length > 0 && (
-              <span className={s.line}>
-                <span className={s.sep} aria-hidden="true">
-                  ·
-                </span>
-                <AddDietMenu id="mm-add-diet" diets={hiddenDiets} onPick={addDiet} />
-              </span>
-            )}
+            {hiddenDiets.length > 0 && <AddDietMenu id="mm-add-diet" diets={hiddenDiets} onPick={addDiet} />}
           </div>
           <div className={s.line}>
             <span className={s.moneyIn}>
@@ -517,14 +623,7 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
 
       <div className={s.grid}>
         <div className={s.col}>
-          {/* On a phone the Shopping column is under the meals; its readout also sits here (CSS hides this one from 900px up). */}
-          {priced && (
-            <p className={s.costCompact} data-testid="cost-compact">
-              {money(cost.perPersonMeal)}/person/meal · budget {money(menu.budgetPerPersonMeal)}
-              {cost.unpriced.length > 0 && ` · ${cost.unpriced.length} not priced`}
-            </p>
-          )}
-          <section aria-labelledby="mm-meals-h">
+          <section id="meals" className={s.anchor} aria-labelledby="mm-meals-h">
             <div className={s.secHead}>
               <h2 id="mm-meals-h" className={s.heading}>
                 Meals
@@ -570,7 +669,7 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
                       const noPrice = unpricedItems[meal.id] ?? [];
                       const people = meal.headcount ?? menu.headcount;
                       return (
-                        <li key={meal.id} className={s.row}>
+                        <li key={meal.id} id={`meal-${meal.id}`} className={`${s.row} ${s.anchor}`}>
                           <div className={s.rowMain}>
                             <button
                               type="button"
@@ -578,7 +677,7 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
                               aria-label={`${label}, ${dayLabel(menu.startDate, d)}`}
                               aria-expanded={open}
                               aria-controls={open ? panel : undefined}
-                              onClick={() => toggleMeal(meal.id)}
+                              onClick={() => onRowName(meal.id, open)}
                             >
                               {label}
                               <span className={s.chev} aria-hidden="true">
@@ -613,25 +712,7 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
                           )}
                           {open && (
                             <div id={panel} className={s.inset}>
-                              <MealPanel
-                                catalog={catalog}
-                                menu={menu}
-                                meal={meal}
-                                view={view}
-                                readOnly={readOnly}
-                                gearList={gearList}
-                                shoppingHref={fixHref ?? undefined}
-                                onChange={setMeal}
-                                canTypeIn={canTypeIn}
-                                onTyped={(n) => setTyped((t) => [...t, n])}
-                                shareVersionMenuId={shareVersionMenuId}
-                                autoFocusAdd={meal.id === focusMeal}
-                                onBrands={readOnly ? undefined : setBrands}
-                                lineFor={(id) => lineByIng.get(id)}
-                                onTypeBrand={canTypeBrand ? typeBrand : undefined}
-                                // A recipe's suggested brand is its author's to set: not offered to a leader on the scout's menu (qa-lead).
-                                onSuggestBrand={canTypeBrand && !helper ? suggestRecipeBrandAction : undefined}
-                              />
+                              {panelFor(meal)}
                             </div>
                           )}
                         </li>

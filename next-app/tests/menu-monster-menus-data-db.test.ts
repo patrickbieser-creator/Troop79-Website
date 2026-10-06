@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { adminClient } from './helpers/admin-client';
-import { loadOutingsWith } from '../src/lib/menu-monster/menus-data';
+import { loadOutingsWith, loadPatrolNamesWith, loadRosterPatrolNamesWith, resyncPatrolsWith } from '../src/lib/menu-monster/menus-data';
 
 /**
  * Scout Workspace slice 4: the outing pulldown's loader against local
@@ -89,5 +89,28 @@ describe('loadOutingsWith', () => {
     await entry('b', { entry_date: '2026-11-01', end_date: '2026-11-02' });
     await entry('a', { entry_date: '2026-10-05', end_date: '2026-10-06' });
     expect(await titles()).toEqual([`${MARKER} a`, `${MARKER} b`]);
+  });
+});
+
+/** Patrick, 2026-10-06: the planner's patrol pull-down is Menu Monster's own list, refreshed from the roster by a tool. */
+describe('mm_patrols', () => {
+  const sb = adminClient();
+  afterEach(async () => {
+    await sb.from('mm_patrols').delete().eq('name', 'ZZ Vitest patrol');
+  });
+
+  it('Resync_MakesTheListTheRostersPatrols_PlusWholeTroop', async () => {
+    await sb.from('mm_patrols').upsert({ name: 'ZZ Vitest patrol', sort_order: 5 });
+    const res = await resyncPatrolsWith(sb);
+    const roster = await loadRosterPatrolNamesWith(sb);
+    expect(res.patrols).toEqual([...roster, 'Whole troop']);
+    expect(res.removed).toContain('ZZ Vitest patrol');
+    expect(await loadPatrolNamesWith(sb)).toEqual([...roster, 'Whole troop']);
+  });
+
+  it('Resync_ReportsNothingChanged_TheSecondTime', async () => {
+    await resyncPatrolsWith(sb);
+    const again = await resyncPatrolsWith(sb);
+    expect([again.added, again.removed]).toEqual([[], []]);
   });
 });

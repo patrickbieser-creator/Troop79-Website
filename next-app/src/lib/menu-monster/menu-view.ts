@@ -16,7 +16,7 @@
 import type { Catalog, MealSlot, RestrictionKey, ShoppingLine, Totals } from './types';
 import { buildLines, gatherNeeds, priceNeeds, totalsOf, type Need } from './engine';
 import { MAX_MENU_DAYS, addDays, composePlan, mealCatalog, type Menu, type MenuMeal } from './menus';
-import { MEALS } from './units';
+import { MEALS, RESTRICTION_BY_KEY } from './units';
 import { fmtDateFull, fmtDay } from '@/lib/format-date';
 import { money } from '@/lib/event-money';
 
@@ -325,4 +325,98 @@ export function budgetState(t: Pick<Totals, 'perSpent'>, budget: number): Budget
     return { tone: 'near', icon: '!', msg: `Close: ${money(t.perSpent - budget)} per person over the target` };
   }
   return { tone: 'over', icon: '✗', msg: `Over budget by ${money(t.perSpent - budget)} per person` };
+}
+
+/* ---- Planner progress: the step strip's ticks and the summary rail's "N to fix" ---- */
+
+/** The planner's steps, in the order a patrol works them: gear is packed days before the shopping trip. */
+export type StepKey = 'eating' | 'meals' | 'gear' | 'shopping';
+
+/** Where a "to fix" row leads: a step, and optionally the meal (#meal-<id>) or ingredient (?item=<id>) inside it. */
+export interface FixTarget {
+  step: StepKey;
+  mealId?: string;
+  ingredientId?: string;
+}
+
+export interface FixItem {
+  text: string;
+  /** How many things the row stands for ("3 meals empty" is 3). */
+  count: number;
+  target: FixTarget;
+  /** Every ingredient / meal behind the row, in the order the row's target is the first. */
+  ingredientIds?: string[];
+  mealIds?: string[];
+}
+
+export interface StepProgress {
+  done: boolean;
+  fixes: FixItem[];
+}
+
+export interface PlanProgress {
+  steps: Record<StepKey, StepProgress>;
+  headcount: number;
+  /** Diets above zero, in the approved order. */
+  diets: { key: RestrictionKey; label: string; count: number }[];
+  total: number;
+  perPersonMeal: number;
+  budget: number;
+  /** Some meal has a food, so the cost figures mean something. */
+  hasCost: boolean;
+  /** Things to fix, summed over every step. */
+  toFix: number;
+  /** Every fix, in step order. */
+  fixes: FixItem[];
+}
+
+const STEP_ORDER: readonly StepKey[] = ['eating', 'meals', 'gear', 'shopping'];
+
+/**
+ * What is left to do on a menu (pure; the same answer for a saved menu or an unsaved draft). Headcount is only
+ * ever what was entered by hand — "0 people" is a thing to fix, never something to fill in (Patrick, 2026-10-06).
+ * `extras.list` lets a caller that already built the menu's shopping list hand it in instead of building it twice.
+ */
+export function planProgress(menu: Menu, catalog: Catalog, extras?: { list?: MenuList }): PlanProgress {
+  const list = extras?.list ?? buildMenuList(menu, catalog);
+  const slotRank = (slot: MealSlot) => MEALS.findIndex((m) => m.key === slot);
+
+  const eating: FixItem[] = [];
+  if (!menu.name.trim()) eating.push({ text: 'Name the menu', count: 1, target: { step: 'eating' } });
+  if (!(menu.headcount > 0)) eating.push({ text: 'Set how many are eating', count: 1, target: { step: 'eating' } });
+
+  const meals: FixItem[] = [];
+  if (menu.meals.length === 0) meals.push({ text: 'Add a meal', count: 1, target: { step: 'meals' } });
+  const empty = menu.meals.filter((m) => m.recipeIds.length === 0).sort((a, b) => a.day - b.day || slotRank(a.slot) - slotRank(b.slot));
+  if (empty.length > 0) {
+    meals.push({ text: `${empty.length} ${empty.length === 1 ? 'meal' : 'meals'} empty`, count: empty.length, target: { step: 'meals', mealId: empty[0].id }, mealIds: empty.map((m) => m.id) });
+  }
+
+  const unpriced = list.lines.filter((l) => l.status === 'unpriced' && l.need > 0).map((l) => l.ing.id);
+  const shopping: FixItem[] = unpriced.length > 0 ? [{ text: `${unpriced.length} not priced`, count: unpriced.length, target: { step: 'shopping', ingredientId: unpriced[0] }, ingredientIds: unpriced }] : [];
+
+  const steps: Record<StepKey, StepProgress> = {
+    eating: { done: eating.length === 0, fixes: eating },
+    meals: { done: meals.length === 0, fixes: meals },
+    gear: { done: true, fixes: [] },
+    shopping: { done: shopping.length === 0, fixes: shopping }
+  };
+  const fixes = STEP_ORDER.flatMap((k) => steps[k].fixes);
+  return {
+    steps,
+    headcount: menu.headcount,
+    diets: DIET_ORDER.filter((k) => (menu.restrictions[k] || 0) > 0).map((k) => ({ key: k, label: RESTRICTION_BY_KEY[k].label, count: menu.restrictions[k] })),
+    total: list.totals.spent,
+    perPersonMeal: list.perPersonMeal,
+    budget: menu.budgetPerPersonMeal,
+    hasCost: menu.meals.some((m) => m.recipeIds.length > 0),
+    toFix: fixes.reduce((n, f) => n + f.count, 0),
+    fixes
+  };
+}
+
+/** The outing's last day is behind us (a menu with no date is never "over"): What we bought joins the steps. */
+export function outingOver(menu: Menu, today: string): boolean {
+  if (!menu.startDate) return false;
+  return addDays(menu.startDate, Math.max(1, menu.dayCount) - 1) < today;
 }

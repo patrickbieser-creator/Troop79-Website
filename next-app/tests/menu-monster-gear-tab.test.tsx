@@ -57,7 +57,7 @@ beforeEach(() => {
 describe('Gear tab', () => {
   it('Lists_GroupedByWhereItLives', () => {
     render(tab());
-    expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['4th Floor Northwoods', 'Patrol box']);
+    expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['4th Floor NWS', 'Patrol box']);
     expect(within(screen.getByRole('list', { name: 'Patrol box' })).getByRole('button', { name: /^Spatula/ })).toBeTruthy();
   });
 

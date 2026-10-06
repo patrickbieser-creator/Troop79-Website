@@ -1,0 +1,102 @@
+/* The planner's summary rail — public tokens only. One sticky line (~44px) under the site header (the main nav
+   is sticky at top: 0, about 48px tall), safe at 390px: the text truncates and the actions wrap to a second
+   line rather than overflow. Tapping the text opens a bottom sheet. */
+
+.rail {
+  position: sticky;
+  top: 48px; /* just under the sticky main nav */
+  z-index: 50;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--sp-3);
+  min-height: 44px;
+  margin: 0 0 var(--sp-3);
+  padding: 0 var(--sp-3);
+  background: var(--cream);
+  border-bottom: 1px solid var(--rule);
+  font-family: var(--font-ui);
+}
+
+.summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-head);
+}
+.summary:hover .text { text-decoration: underline; text-underline-offset: 2px; }
+.summary:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+.text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.chev { flex: none; color: var(--text-meta); }
+
+.unsaved { flex: none; font-size: var(--fs-2xs); color: var(--text-meta); }
+.right { flex: none; margin-left: auto; padding: var(--sp-1) 0; }
+
+/* ---- Bottom sheet ---- */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 190;
+  border: none;
+  padding: 0;
+  background: color-mix(in srgb, var(--navy) 45%, transparent);
+  cursor: default;
+}
+.sheet {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  z-index: 200;
+  width: min(560px, 100vw);
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: var(--sp-4) var(--sp-4) var(--sp-6);
+  background: var(--warm-white);
+  color: var(--text-body);
+  border-radius: var(--rad-lg) var(--rad-lg) 0 0;
+  box-shadow: var(--shadow-hover);
+}
+.sheetHead { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); margin: 0 0 var(--sp-3); }
+.sheetTitle { font-family: var(--font-display); font-size: var(--fs-xl); font-weight: 700; color: var(--text-head); margin: 0; }
+.close {
+  min-height: 32px;
+  padding: 0 var(--sp-3);
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--navy);
+  background: var(--warm-white);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-md);
+  cursor: pointer;
+}
+.close:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+
+.facts { margin: 0 0 var(--sp-4); font-size: var(--fs-md); }
+.fact { display: flex; justify-content: space-between; gap: var(--sp-4); padding: var(--sp-1) 0; border-bottom: 1px solid var(--border-light); }
+.fact dt { color: var(--text-meta); }
+.fact dd { margin: 0; font-weight: 600; color: var(--text-head); font-variant-numeric: tabular-nums; }
+
+.fixHead { font-size: var(--fs-md); font-weight: 700; color: var(--text-head); margin: 0 0 var(--sp-2); }
+.none { margin: 0; font-size: var(--fs-md); color: var(--text-meta); }
+.fixes { list-style: none; margin: 0; padding: 0; }
+.fixLink,
+.fixPlain { display: flex; align-items: center; justify-content: space-between; min-height: 44px; font-size: var(--fs-md); border-bottom: 1px solid var(--border-light); }
+.fixLink { color: var(--navy); font-weight: 600; text-decoration: none; }
+.fixLink:hover { color: var(--forest); }
+.fixLink:focus-visible { outline: var(--focus-ring); outline-offset: -2px; }
+.fixPlain { color: var(--text-body); }
+
+@media print { .rail { display: none; } }

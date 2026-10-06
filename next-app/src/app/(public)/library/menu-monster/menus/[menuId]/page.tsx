@@ -14,7 +14,7 @@ import { PageShell } from '@/app/_components/page-shell';
 import { PlanTab } from '../_components/plan-tab';
 import { ViewerAside } from '../_components/viewer-aside';
 import { HelperMenuScope } from '../_components/helper-menu';
-import { MenuHeader, MenuTabs, NO_INDEX, listCrumb, loadViewableMenu, menuViewer } from '../_components/scout-menus';
+import { MenuHeader, stepConfig, NO_INDEX, listCrumb, loadViewableMenu, menuViewer } from '../_components/scout-menus';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Menu plan — Menu Monster', robots: NO_INDEX };
@@ -47,7 +47,7 @@ export default async function MenuPlanPage({ params, searchParams }: { params: P
           readOnly={readOnly}
           helper={view.helping}
           plannedBy={plannedBy}
-          tabs={<MenuTabs menuId={stored.id} active="plan" access={view.access} />}
+          steps={stepConfig(stored.id, view.access, resolveMenuAliases(stored.menu, catalog.aliases), 'plan', centralToday())}
           aside={<ViewerAside view={view} page="plan" />}
           openMeal={typeof meal === 'string' ? meal : null}
         />

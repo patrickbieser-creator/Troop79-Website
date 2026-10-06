@@ -11,7 +11,7 @@ import { buildMenuList } from '@/lib/menu-monster/menu-view';
 import { foodRules, unitLadders, workedExamples } from '@/lib/menu-monster/conversion-lesson';
 import { PageShell } from '@/app/_components/page-shell';
 import { ConversionsTab } from '../../_components/conversions-tab';
-import { MenuHeader, MenuTabs, NO_INDEX, listCrumb, loadViewableMenu, menuViewer } from '../../_components/scout-menus';
+import { MenuHeader, MenuRail, MenuSteps, NO_INDEX, listCrumb, loadViewableMenu, menuViewer } from '../../_components/scout-menus';
 import { ViewerAside } from '../../_components/viewer-aside';
 
 export const dynamic = 'force-dynamic';
@@ -27,12 +27,13 @@ export default async function MenuConversionsPage({ params }: { params: Promise<
     <>
       <MenuHeader current="conversions" {...listCrumb(view.access)} />
       <PageShell>
+      <MenuRail menuId={stored.id} active="conversions" access={view.access} menu={menu} catalog={catalog} />
         <ConversionsTab
           menuName={menu.name}
           examples={workedExamples(buildMenuList(menu, catalog).lines, catalog)}
           ladders={unitLadders()}
           rules={foodRules(catalog)}
-          tabs={<MenuTabs menuId={stored.id} active="conversions" access={view.access} />}
+          tabs={<MenuSteps menuId={stored.id} active="conversions" access={view.access} menu={menu} catalog={catalog} />}
           aside={<ViewerAside view={view} page="conversions" />}
         />
       </PageShell>

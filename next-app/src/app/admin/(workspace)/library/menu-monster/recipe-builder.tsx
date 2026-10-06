@@ -776,6 +776,10 @@ export function RecipeEditor({
             How to make it (optional)
           </label>
           <textarea id="mm-r-steps" className={lib.textArea} value={draft.stepsMd} maxLength={600} onChange={(e) => setDraft((d) => ({ ...d, stepsMd: e.target.value }))} />
+        </FormSection>
+
+        {/* Steps and gear are two things, kept apart on screen as they are in the data (Patrick, 2026-10-06). */}
+        <FormSection num={4} title="Gear">
           <span id="mm-r-gear-label" className={`adminLabel ${lib.fieldLabel}`}>
             Gear you’ll need (optional)
           </span>

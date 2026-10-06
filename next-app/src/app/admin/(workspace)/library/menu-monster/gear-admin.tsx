@@ -11,19 +11,21 @@
  */
 import { Fragment, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Button } from '../../../_components/button';
 import { ActionsMenu } from '../../_components/actions-menu';
 import { Badge } from '../../_components/badge';
 import { Notice } from '../../_components/notice';
 import { SearchField, useTableSearch } from '../../_components/search-field';
-import { GEAR_HOMES, GEAR_HOME_LABEL, MAX_GEAR_NAME, type GearHome } from '@/lib/menu-monster/gear';
+import { GEAR_HOMES, GEAR_HOME_LABEL, MAX_GEAR_DESCRIPTION, MAX_GEAR_NAME, type GearHome } from '@/lib/menu-monster/gear';
+import { recipeHref, NO_FILTER } from '@/lib/menu-monster/food-list';
 import type { GearAdminRow } from '@/lib/menu-monster/gear-store';
 import { createGear, deleteGear, mergeGear, setGearRetired, updateGear } from './actions';
 import lib from '../library.module.css';
 import styles from './menu-monster.module.css';
 
-type Draft = { name: string; home: GearHome; perPerson: boolean };
-const BLANK: Draft = { name: '', home: 'trailer', perPerson: false };
+type Draft = { name: string; home: GearHome; perPerson: boolean; description: string };
+const BLANK: Draft = { name: '', home: 'trailer', perPerson: false, description: '' };
 
 export function GearAdmin({ items }: { items: GearAdminRow[] }) {
   const router = useRouter();
@@ -32,6 +34,8 @@ export function GearAdmin({ items }: { items: GearAdminRow[] }) {
   const [line, setLine] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   /** 'new', an item's id, or null. */
   const [editing, setEditing] = useState<number | 'new' | null>(null);
+  /** Which item's "Used in" list is open (Patrick, 2026-10-06: the comma list was getting long and unruly). */
+  const [usedOpen, setUsedOpen] = useState<number | null>(null);
   const [draft, setDraft] = useState<Draft>(BLANK);
   /** The item being merged away, and the one picked to take its place (Patrick, 2026-10-05: "Charcoal and Charcoal briquettes"). */
   const [merging, setMerging] = useState<{ id: number; into: number | null } | null>(null);
@@ -51,7 +55,7 @@ export function GearAdmin({ items }: { items: GearAdminRow[] }) {
   }
 
   const form = (onSubmit: () => void, submitLabel: string, saved: Draft | null) => {
-    const dirty = saved == null ? draft.name.trim() !== '' : draft.name !== saved.name || draft.home !== saved.home || draft.perPerson !== saved.perPerson;
+    const dirty = saved == null ? draft.name.trim() !== '' : draft.name !== saved.name || draft.home !== saved.home || draft.perPerson !== saved.perPerson || draft.description !== saved.description;
     return (
       <form
         className={styles.inlineForm}
@@ -81,6 +85,12 @@ export function GearAdmin({ items }: { items: GearAdminRow[] }) {
         <label className={styles.listRow}>
           <input type="checkbox" checked={draft.perPerson} onChange={(e) => setDraft((d) => ({ ...d, perPerson: e.target.checked }))} /> One per person
         </label>
+        <div className={styles.grow}>
+          <label className={`adminLabel ${lib.fieldLabel}`} htmlFor="mm-gear-desc">
+            Description (optional) — what’s in it, where it’s found, its size
+          </label>
+          <textarea id="mm-gear-desc" className={lib.textArea} rows={2} value={draft.description} maxLength={MAX_GEAR_DESCRIPTION} onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))} />
+        </div>
         <Button type="submit" size="sm" variant="primary" disabled={pending || !dirty || !draft.name.trim()} title={dirty ? undefined : 'No changes to save yet'}>
           {submitLabel}
         </Button>
@@ -135,20 +145,17 @@ export function GearAdmin({ items }: { items: GearAdminRow[] }) {
               <tr>
                 <td>
                   {g.name} {g.perPerson && <Badge variant="info">One per person</Badge>} {g.retiredAt && <Badge variant="muted">Retired</Badge>}
+                  {g.description && <p className={styles.hint}>{g.description}</p>}
                   {editing === g.id &&
                     form(
                       () => run(() => updateGear(g.id, draft), `Saved “${draft.name.trim()}”.`),
                       'Save changes',
-                      { name: g.name, home: g.home, perPerson: g.perPerson }
+                      { name: g.name, home: g.home, perPerson: g.perPerson, description: g.description ?? '' }
                     )}
                 </td>
                 <td>{GEAR_HOME_LABEL[g.home]}</td>
                 <td>
-                  {g.recipes.length === 0 && g.menus === 0 ? (
-                    <span className={styles.muted}>—</span>
-                  ) : (
-                    [...g.recipes, ...(g.menus > 0 ? [g.menus === 1 ? '1 menu' : `${g.menus} menus`] : [])].join(', ')
-                  )}
+                  <UsedIn row={g} open={usedOpen === g.id} onToggle={() => setUsedOpen((cur) => (cur === g.id ? null : g.id))} />
                 </td>
                 <td className={styles.actionsCell}>
                   <ActionsMenu
@@ -164,7 +171,7 @@ export function GearAdmin({ items }: { items: GearAdminRow[] }) {
                     ]}
                     onAction={(v) => {
                       if (v === 'edit') {
-                        setDraft({ name: g.name, home: g.home, perPerson: g.perPerson });
+                        setDraft({ name: g.name, home: g.home, perPerson: g.perPerson, description: g.description ?? '' });
                         setEditing(g.id);
                       } else if (v === 'merge') {
                         setEditing(null);
@@ -219,6 +226,35 @@ export function GearAdmin({ items }: { items: GearAdminRow[] }) {
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+/** "Used in 7 foods or recipes · 2 menus" — a count that opens the bulleted list, instead of every name on the row. */
+function UsedIn({ row, open, onToggle }: { row: GearAdminRow; open: boolean; onToggle: () => void }) {
+  const n = row.recipeLinks.length;
+  if (n === 0 && row.menus === 0) return <span className={styles.muted}>—</span>;
+  const foods = n === 0 ? null : n === 1 ? '1 food or recipe' : `${n} foods or recipes`;
+  const menus = row.menus === 0 ? null : row.menus === 1 ? '1 menu' : `${row.menus} menus`;
+  return (
+    <div>
+      {foods ? (
+        <Button variant="quiet" size="sm" aria-expanded={open} onClick={onToggle}>
+          Used in {foods}
+        </Button>
+      ) : (
+        <span>Used in</span>
+      )}
+      {menus && <span className={styles.muted}>{foods ? ' · ' : ' '}{menus}</span>}
+      {open && n > 0 && (
+        <ul className={styles.usedList} aria-label={`Foods and recipes that use ${row.name}`}>
+          {row.recipeLinks.map((r) => (
+            <li key={r.id}>
+              <Link href={recipeHref(r.id, NO_FILTER)}>{r.name}</Link>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

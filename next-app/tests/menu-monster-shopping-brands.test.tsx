@@ -58,7 +58,13 @@ describe('Shopping tab — brands', () => {
     render(tab());
     const row = rowFor('Bacon');
     expect(row.textContent).toContain('any brand · 2 × 16 oz');
-    expect(row.textContent).toContain('about $14.98');
+    expect(row.textContent).toContain('~$14.98');
+  });
+
+  it('EstimatedPrice_SaysItIsEstimated_ToAScreenReaderAndOnHover', () => {
+    render(tab());
+    const est = rowFor('Bacon').querySelector('[title="Estimated — cheapest known brand"]');
+    expect(est?.textContent).toBe('~$14.98 (estimated)');
   });
 
   it('AnIngredientWithNoBrands_HasNoAbout', () => {
@@ -83,7 +89,7 @@ describe('Shopping tab — brands', () => {
   it('ABrandNobodyHasPriced_IsTaggedNew_AndAbout', () => {
     render(tab(withBrands({ bacon: [{ brandId: 'xb-new', qty: null }] })));
     const row = rowFor('Bacon');
-    expect([row.textContent?.includes('New brand'), row.textContent?.includes('about $')]).toEqual([true, true]);
+    expect([row.textContent?.includes('New brand'), row.textContent?.includes('~$')]).toEqual([true, true]);
   });
 
   it('ChoosingABrandHere_SavesItOnTheMenu', async () => {

@@ -103,6 +103,18 @@ describe('ShoppingTab', () => {
     });
   });
 
+  describe('footer', () => {
+    it('Conversions_IsAQuietLinkInTheFooter_NotATab', () => {
+      render(tab());
+      expect(screen.getByRole('link', { name: 'Conversions' }).getAttribute('href')).toBe('/library/menu-monster/menus/menu-1/conversions');
+    });
+
+    it('Conversions_IsStillThereForAReadOnlyViewer', () => {
+      render(<ShoppingTab catalog={CATALOG} menuId="menu-1" menu={menu()} updatedAt={VERSION} snapshot={null} readOnly />);
+      expect(screen.getByRole('link', { name: 'Conversions' })).toBeTruthy();
+    });
+  });
+
   describe('totals panel', () => {
     const figure = (label: string) => {
       const dt = within(screen.getByRole('group', { name: 'Menu totals' })).getByText(label, { selector: 'dt' });

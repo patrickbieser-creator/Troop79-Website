@@ -33,7 +33,7 @@ export interface StoredState {
 export interface MenuStore {
   caps: MenuCaps;
   /** Where the menu's own pages live. */
-  hrefs: { plan: string; shopping: string; meal: (mealId: string) => string };
+  hrefs: { plan: string; shopping: string; /** Absent on a menu kept on this computer (it has no Gear page): Next goes to Shopping. */ gear?: string; meal: (mealId: string) => string };
   /** The menu as it stands now (null when nothing is stored yet). */
   load(): StoredState | null;
   /** Save an existing menu. `version` is the token from the last load / save. */

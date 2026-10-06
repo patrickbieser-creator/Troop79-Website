@@ -71,7 +71,26 @@ describe('workspace.module.css', () => {
     expect(css).toMatch(/\.chip\[aria-pressed='true'\]/);
   });
 
-  it('CostLine_CompactReadout_IsHiddenFromDesktopWidth', () => {
-    expect(css).toMatch(/@media \(min-width: 900px\) \{ \.costCompact \{ display: none; \} \}/);
+  it('Anchors_LandBelowTheStickyNavAndRail', () => {
+    expect(rule('.anchor')).toMatch(/scroll-margin-top:\s*100px/);
+  });
+
+  // Superseded 2026-10-06 (planner part b): the summary rail shows the cost on every width, so the compact line is gone.
+  it('CostLine_CompactReadout_IsGone_TheRailCarriesTheCost', () => {
+    expect(css).not.toContain('costCompact');
+  });
+
+  // Patrick, 2026-10-06 (screenshot): "People:" sat lower than the diets and the dots floated. The cause was each
+  // diet wrapped in its own .line (which carries a bottom margin); now one flex row, one baseline, one gap.
+  it('Dialers_AreOneCenteredFlexRow_WithOneGapBetweenPairs', () => {
+    const r = rule('.dialers');
+    expect(r).toMatch(/display:\s*flex/);
+    expect(r).toMatch(/flex-wrap:\s*wrap/);
+    expect(r).toMatch(/align-items:\s*center/);
+    expect(r).toMatch(/gap:\s*var\(--sp-3\)\s+var\(--sp-6\)/);
+  });
+
+  it('Dialers_HaveNoSeparatorClass', () => {
+    expect(css).not.toMatch(/\.sep/);
   });
 });

@@ -245,8 +245,16 @@ describe('gear on the pages (gear-from-the-list release 2)', () => {
 });
 
 describe('Meals inline (2026-10-03)', () => {
-  it('OldMealUrl_RedirectsToThePlanTab_WithThatMealOpen', async () => {
-    await expect(MealPage({ params: Promise.resolve({ menuId: ID, mealId: 'm1' }) })).rejects.toThrow(`NEXT_REDIRECT /library/menu-monster/menus/${ID}?meal=m1`);
+  // Planner part b (2026-10-06, decision 1): the old meal URL is a real page again — one meal, its own Save / Cancel.
+  it('MealUrl_RendersThatMealAsItsOwnPage', async () => {
+    mocks.session = SCOUT;
+    const out = await MealPage({ params: Promise.resolve({ menuId: ID, mealId: 'm1' }) });
+    expect(find(out, (p) => 'mealOnly' in p)?.mealOnly).toBe('m1');
+  });
+
+  it('MealUrl_IsNotFound_ForSomeoneWhoCannotOpenTheMenu', async () => {
+    mocks.session = null;
+    await expect(MealPage({ params: Promise.resolve({ menuId: ID, mealId: 'm1' }) })).rejects.toThrow('NEXT_NOT_FOUND');
   });
 
   it('PlanPage_OpensTheMealNamedInTheUrl', async () => {
