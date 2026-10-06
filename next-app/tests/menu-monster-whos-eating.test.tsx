@@ -212,9 +212,9 @@ describe('PeopleTab — Who’s eating on its own screen', () => {
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Untitled menu');
   });
 
-  it('Discard_IsGone_WhenNothingChanged_AndEnabledOnceItIsDirty', async () => {
+  it('Discard_IsGreyed_WhenNothingChanged_AndEnabledOnceItIsDirty', async () => {
     render(existing());
-    expect(screen.queryByRole('button', { name: 'Discard changes' })).toBeNull();
+    expect((screen.getByRole('button', { name: 'Discard changes' }) as HTMLButtonElement).disabled).toBe(true);
     await userEvent.setup().type(screen.getByRole('textbox', { name: 'Menu name' }), '!');
     expect((screen.getByRole('button', { name: 'Discard changes' }) as HTMLButtonElement).disabled).toBe(false);
   });

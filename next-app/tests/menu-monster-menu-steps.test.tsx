@@ -52,6 +52,12 @@ describe('stepConfig', () => {
     expect(stepConfig(ID, 'owner', menu({ startDate: null }), 'bought', '2026-10-06').bought).toBe(`${base}/bought`);
   });
 
+  it('WhatWeBought_Joins_OnceWereDoneShoppingIsTicked_EvenBeforeTheOutingEnds', () => {
+    expect(stepConfig(ID, 'owner', menu(), 'plan', '2026-10-06', true).bought).toBe(`${base}/bought`);
+    expect(stepConfig(ID, 'owner', menu(), 'plan', '2026-10-06', false).bought).toBeUndefined();
+    expect(stepConfig(ID, 'shared', menu(), 'plan', '2026-10-06', true).bought).toBeUndefined();
+  });
+
   it('WhatWeBought_IsNeverShown_ToASharedViewer', () => {
     expect(stepConfig(ID, 'shared', menu(), 'plan', '2026-10-12').bought).toBeUndefined();
   });

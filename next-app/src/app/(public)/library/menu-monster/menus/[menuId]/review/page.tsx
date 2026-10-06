@@ -42,7 +42,7 @@ export default async function MenuReviewPage({ params }: { params: Promise<{ men
           <h1 className={s.menuTitle}>{stored.menu.name.trim() || 'Untitled menu'}</h1>
         </div>
         {view.readOnly && <ReadOnlyLine plannedBy={view.plannedBy} />}
-        <MenuSteps menuId={stored.id} active="review" access={view.access} menu={menu} catalog={view.catalog} />
+        <MenuSteps menuId={stored.id} active="review" access={view.access} menu={menu} catalog={view.catalog} shoppingDone={view.shoppingDone} />
         <ReviewPanel menuId={stored.id} note={stored.review?.note ?? ''} status={status} plannedBy={view.plannedBy} />
         {/* Working on the scout's menu, a leader can share it for them too. */}
         {view.helping && <SharePanel menuId={stored.id} credit={credit} status={status} />}

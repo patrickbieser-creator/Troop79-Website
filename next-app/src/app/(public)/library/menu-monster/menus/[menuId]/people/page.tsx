@@ -44,7 +44,7 @@ export default async function MenuPeoplePage({ params }: { params: Promise<{ men
             readOnly={readOnly}
             helper={view.helping}
             plannedBy={plannedBy}
-            steps={stepConfig(stored.id, view.access, menu, 'people', centralToday())}
+            steps={stepConfig(stored.id, view.access, menu, 'people', centralToday(), view.shoppingDone)}
             aside={<ViewerAside view={view} page="people" />}
           />
         </HelperMenuScope>

@@ -525,7 +525,16 @@ function PrintSheet({ menu, list, panel, gear }: { menu: Menu; list: ReturnType<
           </tbody>
         </table>
       ))}
-      {gear.length > 0 && <p className={s.printMeta}>Gear: {gear.join(' · ')}</p>}
+      {gear.length > 0 && (
+        <>
+          <h2 className={s.printHead}>Gear</h2>
+          <ul className={s.printGear} aria-label="Gear">
+            {gear.map((g) => (
+              <li key={g}>{g}</li>
+            ))}
+          </ul>
+        </>
+      )}
       {panel.notes.length > 0 && <p className={s.printMeta}>{panel.notes.join(' ')}</p>}
     </section>
   );

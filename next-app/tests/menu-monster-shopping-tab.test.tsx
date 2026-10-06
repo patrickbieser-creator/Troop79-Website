@@ -529,6 +529,7 @@ describe('ShoppingTab', () => {
 
 describe('ShoppingTab gear (Phase 4C)', () => {
   const geared = { ...CATALOG, recipes: CATALOG.recipes.map((r) => (r.id === 'B003' ? { ...r, equipment: ['Skillet', 'Tongs'] } : r.id === 'L001' ? { ...r, equipment: ['skillet', 'Cutting board'] } : r)) };
+  const printedGear = () => within(screen.getByTestId('print-sheet')).getAllByRole('listitem', { hidden: true }).map((li) => li.textContent);
 
   it('Shopping_LeavesGearToTheGearTab', () => {
     const m = { ...menu(), meals: [{ ...menu().meals[0], recipeIds: ['B003'] }] };
@@ -545,7 +546,14 @@ describe('ShoppingTab gear (Phase 4C)', () => {
     const m = menu();
     render(tab(m, buildSnapshot(m, geared), geared));
     // Release 2 (2026-10-06): the sheet uses the Gear tab's roll-up, which is A to Z (it was the recipes' order).
-    expect(screen.getByTestId('print-sheet').textContent).toContain('Gear: Cutting board · Skillet · Tongs');
+    expect(printedGear()).toEqual(['Cutting board', 'Skillet', 'Tongs']);
+  });
+
+  it('PrintSheet_RendersEachGearItemAsItsOwnListItem', () => {
+    const m = menu();
+    render(tab(m, buildSnapshot(m, geared), geared));
+    const list = within(screen.getByTestId('print-sheet')).getByRole('list', { name: 'Gear', hidden: true });
+    expect(within(list).getAllByRole('listitem', { hidden: true })).toHaveLength(3);
   });
 
   it('PrintSheet_IncludesTheMealsOwnGear_AndTheMenusExtras_OneOfEach', () => {
@@ -555,7 +563,7 @@ describe('ShoppingTab gear (Phase 4C)', () => {
       <ShoppingTab catalog={geared} menuId="menu-1" menu={m} updatedAt={VERSION} snapshot={buildSnapshot(m, geared)} gearExtras={['Water jug × 3', 'tongs']} />
     );
     // Recipes' Skillet / Tongs / Cutting board, the meal's Wash basin (a count kept), the menu's Water jug; Skillet and Tongs once.
-    expect(screen.getByTestId('print-sheet').textContent).toContain('Gear: Cutting board · Skillet · Tongs · Wash basin × 2 · Water jug × 3');
+    expect(printedGear()).toEqual(['Cutting board', 'Skillet', 'Tongs', 'Wash basin × 2', 'Water jug × 3']);
   });
 
   it('PrintSheet_NamesThePerPersonItems_WhenGivenTheTroopList', () => {
@@ -617,7 +625,8 @@ describe('ShoppingTab — add a package you bought (release C)', () => {
     const form = screen.getByRole('group', { name: 'New package of Bacon' });
     await user.type(within(form).getByRole('textbox', { name: 'Name on the label' }), 'Bacon');
     await user.click(within(form).getByRole('button', { name: 'Add package' }));
-    expect(within(form).getByRole('alert').textContent).toMatch(/check the label/);
+    expect(within(form).getByText(/check the label/)).toBeTruthy();
+    expect(within(form).getByRole('alert').textContent).toMatch(/^Can’t add yet: say how much one package holds/);
     expect(addScoutPackageAction).not.toHaveBeenCalled();
   });
 });

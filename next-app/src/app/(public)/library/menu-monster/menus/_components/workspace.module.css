@@ -505,6 +505,9 @@
   .printTable thead th { font-weight: 700; border-bottom: 2px solid var(--text-head); }
   .printTable tbody th { font-weight: 700; }
   .printBlank { min-width: 70pt; }
+  .printHead { font-size: 11pt; margin: 12pt 0 2pt; }
+  .printGear { columns: 2; column-gap: 18pt; margin: 0 0 4pt; padding-left: 14pt; font-size: 10pt; }
+  .printGear li { break-inside: avoid; }
   .tabs,
   .actions,
   .seg,

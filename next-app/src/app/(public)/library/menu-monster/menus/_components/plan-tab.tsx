@@ -524,9 +524,7 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
                   <div className={s.dayHeadRow}>
                     <h3 className={s.dayHead}>{dayLabel(menu.startDate, d)}</h3>
                     {removable && !readOnly && (
-                      <Button variant="ghost" onClick={removeLastDay} aria-label={`Remove Day ${d + 1}`}>
-                        Remove day
-                      </Button>
+                      <RowMenu label={`More for Day ${d + 1}`} items={[{ label: 'Remove day', danger: true, onSelect: removeLastDay }]} />
                     )}
                   </div>
                   <ul className={s.card}>

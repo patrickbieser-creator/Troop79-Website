@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CATALOG } from './helpers/menu-monster-fixture';
 import type { Menu } from '../src/lib/menu-monster/menus';
@@ -95,6 +95,29 @@ describe('PlanTab', () => {
     render(existing());
     expect(screen.queryByRole('button', { name: 'Saved' })).toBeNull();
     expect(screen.getByRole('link', { name: 'Next: Gear ›' }).getAttribute('href')).toBe('/library/menu-monster/menus/menu-1/gear');
+  });
+
+  it('Discard_IsGreyedNotHidden_WhenCleanMenuShowsNext', async () => {
+    render(existing());
+    expect(screen.getByRole('link', { name: 'Next: Gear ›' })).toBeTruthy();
+    expect((screen.getByRole('button', { name: 'Discard changes' }) as HTMLButtonElement).disabled).toBe(true);
+    dirtyIt();
+    expect((screen.getByRole('button', { name: 'Discard changes' }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  afterEach(() => window.history.replaceState(null, '', '/'));
+
+  it('RailFixLink_ToThisPagesMeal_OpensTheMealInPlace', async () => {
+    const plan = '/library/menu-monster/menus/menu-1';
+    const empty = base({ meals: [{ id: 'm1', day: 0, slot: 'breakfast', headcount: null, recipeIds: [], recipeEdits: {} }] });
+    window.history.replaceState(null, '', plan);
+    render(existing(empty));
+    expect(screen.getByRole('button', { name: /^Breakfast/ }).getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(screen.getByRole('button', { name: /^8 people/ }));
+    fireEvent.click(screen.getByRole('link', { name: /meal empty/ }));
+    expect(window.location.hash).toBe('#meal-m1');
+    // jsdom fires hashchange on a later task.
+    await waitFor(() => expect(screen.getByRole('button', { name: /^Breakfast/ }).getAttribute('aria-expanded')).toBe('true'));
   });
 
   it('Meals_AreGroupedUnderTheirDay', () => {
@@ -239,13 +262,15 @@ describe('PlanTab', () => {
   it('Day_EmptyLastDay_CanBeRemoved', async () => {
     const user = userEvent.setup();
     render(existing());
-    await user.click(screen.getByRole('button', { name: 'Remove Day 2' }));
+    expect(screen.queryByRole('button', { name: 'Remove day' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'More for Day 2' }));
+    await user.click(screen.getByRole('button', { name: 'Remove day' }));
     expect(screen.getAllByRole('heading', { level: 3 }).length).toBe(1);
   });
 
   it('Day_WithMeals_CannotBeRemoved', () => {
     render(existing());
-    expect(screen.queryByRole('button', { name: 'Remove Day 1' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'More for Day 1' })).toBeNull();
   });
 
   it('Day_StoredCount_ShowsEmptyDaysAfterReload', () => {
@@ -553,7 +578,7 @@ describe('PlanTab planner flow, this week (2026-10-06)', () => {
     it('MealPage_Clean_PrimaryIsDone_BackToTheMeal', () => {
       render(page());
       expect(screen.getByRole('link', { name: 'Done' }).getAttribute('href')).toBe(BACK);
-      expect(screen.queryByRole('button', { name: 'Cancel' })).toBeNull();
+      expect((screen.getByRole('button', { name: 'Cancel' }) as HTMLButtonElement).disabled).toBe(true);
     });
 
     it('MealPage_Edited_OffersSaveAndCancel_AndSaveIsDirtyGated', async () => {

@@ -16,6 +16,13 @@ export async function loadBoughtWith(sb: SupabaseClient, menuId: string): Promis
   return sanitizeBought(data?.bought);
 }
 
+/** True once "We're done shopping" is ticked: reads only that one key of the bought column (the step strip's gate). */
+export async function loadShoppingDoneWith(sb: SupabaseClient, menuId: string): Promise<boolean> {
+  const { data, error } = await sb.from('mm_menus').select('done:bought->done').eq('id', menuId).maybeSingle();
+  if (error) throw new Error(`shopping done: ${error.message}`);
+  return sanitizeBought({ done: (data as { done?: unknown } | null)?.done }).done != null;
+}
+
 /** Several menus' recorded purchases in one query; a menu with none is absent. */
 export async function loadBoughtManyWith(sb: SupabaseClient, menuIds: readonly string[]): Promise<Map<string, Bought>> {
   const out = new Map<string, Bought>();

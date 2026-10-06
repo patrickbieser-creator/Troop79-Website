@@ -12,7 +12,10 @@ import userEvent from '@testing-library/user-event';
 const mocks = vi.hoisted(() => ({
   session: null as unknown,
   summaries: [] as unknown[],
-  recipes: [] as unknown[]
+  recipes: [] as unknown[],
+  gear: [] as unknown[],
+  drafts: [] as unknown[],
+  planProps: [] as Array<{ gearList?: unknown; draftItems?: unknown }>
 }));
 
 const router = vi.hoisted(() => ({ refresh: vi.fn(), push: vi.fn(), replace: vi.fn() }));
@@ -34,6 +37,18 @@ vi.mock('@/lib/menu-monster/menus-store', () => ({
 vi.mock('@/lib/identity-session', async (orig) => ({ ...(await orig<object>()), isEpochCurrent: async () => true }));
 vi.mock('@/lib/household-scope', () => ({ resolveFamilyScope: async (_sb: unknown, id: number) => [id] }));
 vi.mock('@/lib/menu-monster/menus-data', () => ({ loadOutingsWith: async () => [], loadPatrolNamesWith: async () => [], loadScoutPatrolWith: async () => null }));
+vi.mock('@/lib/menu-monster/gear-store', () => ({ listGearWith: async () => mocks.gear }));
+vi.mock('@/lib/menu-monster/draft-items', () => ({ listDraftItemsWith: async () => mocks.drafts }));
+vi.mock('../src/app/(public)/library/menu-monster/menus/_components/local-menu-shells', async (orig) => {
+  const real = await orig<typeof import('../src/app/(public)/library/menu-monster/menus/_components/local-menu-shells')>();
+  return {
+    ...real,
+    LocalPlan: (props: Parameters<typeof real.LocalPlan>[0]) => {
+      mocks.planProps.push(props);
+      return real.LocalPlan(props);
+    }
+  };
+});
 vi.mock('@/lib/menu-monster/scout-recipes-store', () => ({ listMyRecipesWith: async () => mocks.recipes }));
 vi.mock('../src/app/(public)/library/_tools/menu-monster/recipe-actions', () => ({ deleteScoutRecipeAction: vi.fn() }));
 vi.mock('../src/app/(public)/library/_tools/menu-monster/menu-actions', () => ({
@@ -67,6 +82,9 @@ beforeEach(() => {
   mocks.session = SCOUT;
   mocks.summaries = [];
   mocks.recipes = [];
+  mocks.gear = [];
+  mocks.drafts = [];
+  mocks.planProps = [];
 });
 
 describe('MenuMonsterShelfTool hub, scout', () => {
@@ -189,6 +207,16 @@ describe('MenuMonsterShelfTool hub, visitor', () => {
     expect(screen.queryByRole('link', { name: 'Menu 1' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'New menu' })).toBeNull();
     expect(screen.queryByRole('heading', { name: 'My menus' })).toBeNull();
+  });
+
+  it('Visitor_LocalPlanOnTheHub_GetsTheTroopsGearListAndDraftNames', async () => {
+    mocks.session = null;
+    mocks.gear = [{ id: 1, name: 'Dish soap', home: 'trailer', perPerson: false, retiredAt: null }];
+    mocks.drafts = [{ id: 'cookies', name: 'Cookies', mealFit: ['lunch'] }];
+    await shelf();
+    await screen.findByLabelText('Menu name');
+    expect(mocks.planProps[0].gearList).toEqual(mocks.gear);
+    expect(mocks.planProps[0].draftItems).toEqual(mocks.drafts);
   });
 
   it('Visitor_SeesTheLocalPlan_WhenNotSignedIn', async () => {

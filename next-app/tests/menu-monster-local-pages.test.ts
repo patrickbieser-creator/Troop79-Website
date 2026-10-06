@@ -29,6 +29,9 @@ vi.mock('@/lib/menu-monster/menus-store', async (orig) => ({
   ownerCreditNamesWith: async (_sb: unknown, ids: number[]) => new Map(ids.map((id) => [id, 'Pat B.']))
 }));
 vi.mock('@/lib/supabase/server', () => ({ createAdminClient: () => ({ stub: true }) }));
+// A local menu now gets the troop's gear list and draft names (v1.191.0) through the same stub client.
+vi.mock('@/lib/menu-monster/gear-store', async (orig) => ({ ...(await orig<typeof import('../src/lib/menu-monster/gear-store')>()), listGearWith: async () => [] }));
+vi.mock('@/lib/menu-monster/draft-items', async (orig) => ({ ...(await orig<typeof import('../src/lib/menu-monster/draft-items')>()), listDraftItemsWith: async () => [] }));
 vi.mock('@/lib/menu-monster/data', () => ({ loadMenuMonsterCatalog: async () => ({}) }));
 vi.mock('@/lib/menu-monster/menus-data', () => ({ loadOutingsWith: async () => [], loadPatrolNamesWith: async () => [], loadScoutPatrolWith: async () => null }));
 vi.mock('../src/app/(public)/library/_tools/menu-monster/menu-actions', () => actions);

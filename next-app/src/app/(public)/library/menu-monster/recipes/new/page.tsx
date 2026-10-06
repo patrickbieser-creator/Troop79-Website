@@ -13,7 +13,7 @@ import { loadMenuMonsterCatalog } from '@/lib/menu-monster/data';
 import { listGearWith } from '@/lib/menu-monster/gear-store';
 import { mealTitle } from '@/lib/menu-monster/menu-view';
 import { resolveMenuAliases } from '@/lib/menu-monster/menus';
-import { versionDraft } from '@/lib/menu-monster/scout-recipes';
+import { versionDietLinesLeftOut, versionDraft } from '@/lib/menu-monster/scout-recipes';
 import { PageShell } from '@/app/_components/page-shell';
 import { loadOwnMenu, recipeAuthor } from '../../menus/_components/scout-menus';
 import { RecipeEditor } from '../_components/recipe-editor';
@@ -51,8 +51,11 @@ export default async function NewRecipePage({ searchParams }: { searchParams: Pr
     const meal = menu?.meals.find((m) => m.id === mealId);
     const recipe = meal?.recipeIds.includes(recipeId) ? catalog.recipes.find((r) => r.id === recipeId) : undefined;
     if (menu && meal && recipe) {
-      initial = versionDraft(recipe, meal.recipeEdits[recipe.id] ?? []);
-      fromNote = `Started from your version of ${recipe.name} in ${mealTitle(menu.startDate, meal.day, meal.slot)}. Lines only for one diet were left out.`;
+      const ops = meal.recipeEdits[recipe.id] ?? [];
+      initial = versionDraft(recipe, ops);
+      // Scout recipes are for everyone (no diet variations), so say what a diet-only line cost only when there was one.
+      const left = versionDietLinesLeftOut(recipe, ops);
+      fromNote = `Started from your version of ${recipe.name} in ${mealTitle(menu.startDate, meal.day, meal.slot)}.${left > 0 ? ` ${left === 1 ? 'One line' : `${left} lines`} for a single diet ${left === 1 ? 'was' : 'were'} left out: a recipe of your own is the same for everyone.` : ''}`;
     }
   }
 

@@ -1,13 +1,13 @@
 /* The planner's summary rail — public tokens only. One sticky line (~44px) under the site header (the main nav
-   is sticky at top: 0, about 48px tall), safe at 390px: the text truncates and the actions wrap to a second
-   line rather than overflow. Tapping the text opens a bottom sheet. */
+   is sticky at top: 0, about 48px tall), safe at 390px: the text truncates (ellipsis) and the actions stay on
+   the same line rather than wrap or overflow. Tapping the text opens a bottom sheet. */
 
 .rail {
   position: sticky;
   top: 48px; /* just under the sticky main nav */
   z-index: 50;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 0 var(--sp-3);
   min-height: 44px;
@@ -42,6 +42,11 @@
 
 .unsaved { flex: none; font-size: var(--fs-2xs); color: var(--text-meta); }
 .right { flex: none; margin-left: auto; padding: var(--sp-1) 0; }
+/* Under 480px the actions need the width: the "unsaved" tag goes (the sheet's title still says it) and the text truncates. */
+@media (max-width: 479px) {
+  .unsaved { display: none; }
+  .rail { gap: 0 var(--sp-2); }
+}
 
 /* ---- Bottom sheet ---- */
 .backdrop {

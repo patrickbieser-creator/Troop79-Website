@@ -5,6 +5,7 @@ import {
   cleanScoutText,
   menuGear,
   versionDraft,
+  versionDietLinesLeftOut,
   creditFor,
   isScoutRecipeId,
   newScoutRecipeId,
@@ -193,6 +194,13 @@ describe('versionDraft (Phase 4C)', () => {
 
   it('Version_LeavesOutLinesOnlyForOneDiet', () => {
     expect(versionDraft(pancakes, []).lines.some((l) => l.ingredientId === 'almond-flour')).toBe(false);
+  });
+
+  it('Version_CountsTheDietOnlyLinesItLeftOut_SoThePageSaysSoOnlyThen', () => {
+    expect(versionDietLinesLeftOut(pancakes, [])).toBeGreaterThanOrEqual(0);
+    const gfAdd = [{ op: 'add' as const, ingredientId: 'bacon', qtyPerPerson: 2, for: 'gf' as const }];
+    expect(versionDietLinesLeftOut(pancakes, gfAdd)).toBe(versionDietLinesLeftOut(pancakes, []) + 1);
+    expect(versionDraft(pancakes, gfAdd).lines.some((l) => l.ingredientId === 'bacon')).toBe(false);
   });
 
   it('Version_IsNamedAsTheScoutsVersion_AndRemembersItsOrigin', () => {

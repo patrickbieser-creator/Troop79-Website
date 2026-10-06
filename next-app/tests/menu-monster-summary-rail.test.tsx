@@ -121,6 +121,26 @@ describe('SummaryRail', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
+  it('FixLink_ToThisPage_SetsTheHashInsteadOfRouting', () => {
+    window.history.replaceState(null, '', '/m/1');
+    render(<SummaryRail progress={progress()} hrefs={HREFS} />);
+    open();
+    const ev = fireEvent.click(within(screen.getByRole('dialog')).getByRole('link', { name: /^1 meal empty/ }));
+    expect(ev).toBe(false);
+    expect(window.location.hash).toBe('#meal-b');
+    window.history.replaceState(null, '', '/');
+  });
+
+  it('FixLink_ToAnotherPage_StaysAPlainLink', () => {
+    window.history.replaceState(null, '', '/m/1');
+    render(<SummaryRail progress={progress()} hrefs={HREFS} />);
+    open();
+    const ev = fireEvent.click(within(screen.getByRole('dialog')).getByRole('link', { name: /^1 not priced/ }));
+    expect(ev).toBe(true);
+    expect(window.location.hash).toBe('');
+    window.history.replaceState(null, '', '/');
+  });
+
   it('FixHref_PointsEachStepAtItsRoute', () => {
     expect(fixHref({ step: 'eating' }, HREFS)).toBe('/m/1/people');
     expect(fixHref({ step: 'meals' }, HREFS)).toBe('/m/1');

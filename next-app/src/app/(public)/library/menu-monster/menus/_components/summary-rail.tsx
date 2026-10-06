@@ -42,6 +42,14 @@ export function fixHref(t: FixTarget, h: RailHrefs): string | null {
   }
 }
 
+/** The "#hash" of a link that stays on the page we are on (an empty path counts); null for a link to another page or with no hash. */
+export function samePageHash(href: string): string | null {
+  const i = href.indexOf('#');
+  if (i < 0) return null;
+  const path = href.slice(0, i);
+  return path === '' || path === window.location.pathname ? href.slice(i) : null;
+}
+
 export function SummaryRail({ progress, hrefs, unsaved = false, children }: { progress: PlanProgress; hrefs: RailHrefs; unsaved?: boolean; children?: ReactNode }) {
   const [open, setOpen] = useState(false);
   const uid = useId();
@@ -120,7 +128,19 @@ export function SummaryRail({ progress, hrefs, unsaved = false, children }: { pr
                   return (
                     <li key={`${f.target.step}-${f.text}`}>
                       {href != null ? (
-                        <Link className={s.fixLink} href={href} onClick={() => setOpen(false)}>
+                        <Link
+                          className={s.fixLink}
+                          href={href}
+                          onClick={(e) => {
+                            // Same page, new hash: <Link> would pushState (no hashchange), so the meal would scroll but not open.
+                            const hash = samePageHash(href);
+                            if (hash != null && !e.metaKey && !e.ctrlKey && !e.shiftKey && e.button === 0) {
+                              e.preventDefault();
+                              window.location.hash = hash;
+                            }
+                            setOpen(false);
+                          }}
+                        >
                           {f.text}
                           <span aria-hidden="true"> ›</span>
                         </Link>

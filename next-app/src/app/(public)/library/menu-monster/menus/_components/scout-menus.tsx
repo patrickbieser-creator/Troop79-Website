@@ -21,6 +21,7 @@ import { resolveFamilyScope } from '@/lib/household-scope';
 import { isEpochCurrent } from '@/lib/identity-session';
 import { loadMenuMonsterCatalog } from '@/lib/menu-monster/data';
 import { loadMenuWith, ownerCreditNamesWith, type StoredMenu } from '@/lib/menu-monster/menus-store';
+import { loadShoppingDoneWith } from '@/lib/menu-monster/bought-store';
 import { isMenuId, menuCredit } from '@/lib/menu-monster/menus';
 import { canEditPlan, canRecord, menuAccess, redactMenu, type AccessViewer, type MenuAccess, isPublic } from '@/lib/menu-monster/menu-access';
 import type { Catalog } from '@/lib/menu-monster/types';
@@ -114,6 +115,8 @@ export interface ViewableMenu {
   hiddenRecipes: number;
   /** A signed-in scout looking at someone else's menu: Copy to My menus. */
   canCopy: boolean;
+  /** "We're done shopping" has been ticked (bought.done): the step strip then shows What we bought. */
+  shoppingDone?: boolean;
 }
 
 const accessViewer = (v: MenuViewer | null): AccessViewer =>
@@ -128,6 +131,12 @@ const accessViewer = (v: MenuViewer | null): AccessViewer =>
  * comes through here.
  */
 export async function loadViewableMenu(menuId: string, viewer: MenuViewer | null): Promise<ViewableMenu | null> {
+  const v = await resolveViewable(menuId, viewer);
+  // The step strip shows What we bought once "We're done shopping" is ticked: one cheap read of that flag.
+  return v ? { ...v, shoppingDone: await loadShoppingDoneWith(createAdminClient(), v.stored.id) } : null;
+}
+
+async function resolveViewable(menuId: string, viewer: MenuViewer | null): Promise<ViewableMenu | null> {
   if (!isMenuId(menuId)) return null;
   const sb = createAdminClient();
   const raw = await loadMenuWith(sb, menuId);
@@ -272,12 +281,12 @@ const CURRENT: Record<MenuPage, StepCurrent[]> = {
 /**
  * The step strip's routes for a menu (also the Plan tab's, so its ticks can follow the draft). What we bought
  * joins once the outing's last day has passed, or while you are on it (never locked, never lost); a shared
- * viewer never sees what was paid. Share is a quiet action for the owner; Review is a leader's fifth step
+ * viewer never sees what was paid. It also joins once "We're done shopping" is ticked (`shoppingDone`). Share is a quiet action for the owner; Review is a leader's fifth step
  * (Patrick, 2026-10-06), with the same treatment as the others.
  */
-export function stepConfig(menuId: string, access: MenuAccess, menu: Menu, page: MenuPage, today: string): StepStripConfig {
+export function stepConfig(menuId: string, access: MenuAccess, menu: Menu, page: MenuPage, today: string, shoppingDone = false): StepStripConfig {
   const base = `${MENUS_HREF}/${menuId}`;
-  const showBought = access !== 'shared' && (page === 'bought' || outingOver(menu, today));
+  const showBought = access !== 'shared' && (page === 'bought' || shoppingDone || outingOver(menu, today));
   return {
     people: `${base}/people`,
     plan: base,
@@ -290,11 +299,11 @@ export function stepConfig(menuId: string, access: MenuAccess, menu: Menu, page:
 }
 
 /** The strip on every page but the Plan tab (which draws its own from the draft): ticks come from the saved menu. */
-export function MenuSteps({ menuId, active, access = 'owner', menu, catalog }: { menuId: string; active: MenuPage; access?: MenuAccess; menu: Menu; catalog: Catalog }) {
+export function MenuSteps({ menuId, active, access = 'owner', menu, catalog, shoppingDone = false }: { menuId: string; active: MenuPage; access?: MenuAccess; menu: Menu; catalog: Catalog; shoppingDone?: boolean }) {
   const p = planProgress(menu, catalog);
   return (
     <StepStrip
-      config={stepConfig(menuId, access, menu, active, centralToday())}
+      config={stepConfig(menuId, access, menu, active, centralToday(), shoppingDone)}
       done={{ eating: p.steps.eating.done, meals: p.steps.meals.done, gear: p.steps.gear.done, shopping: p.steps.shopping.done }}
       current={CURRENT[active]}
     />

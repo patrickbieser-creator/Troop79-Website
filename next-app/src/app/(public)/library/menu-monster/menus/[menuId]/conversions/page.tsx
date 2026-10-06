@@ -33,7 +33,7 @@ export default async function MenuConversionsPage({ params }: { params: Promise<
           examples={workedExamples(buildMenuList(menu, catalog).lines, catalog)}
           ladders={unitLadders()}
           rules={foodRules(catalog)}
-          tabs={<MenuSteps menuId={stored.id} active="conversions" access={view.access} menu={menu} catalog={catalog} />}
+          tabs={<MenuSteps menuId={stored.id} active="conversions" access={view.access} menu={menu} catalog={catalog} shoppingDone={view.shoppingDone} />}
           aside={<ViewerAside view={view} page="conversions" />}
         />
       </PageShell>

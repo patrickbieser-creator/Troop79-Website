@@ -26,6 +26,8 @@ vi.mock('next/navigation', () => ({
 vi.mock('@/lib/family-access', () => ({ getIdentitySessionIfValid: async () => mocks.session }));
 vi.mock('@/lib/admin-actor', () => ({ resolveAdminActor: async () => mocks.actor }));
 vi.mock('@/lib/supabase/server', () => ({ createAdminClient: () => ({ stub: true }) }));
+// The step strip's "We're done shopping" read (v1.191.0) goes through the same stub client.
+vi.mock('@/lib/menu-monster/bought-store', async (orig) => ({ ...(await orig<typeof import('../src/lib/menu-monster/bought-store')>()), loadShoppingDoneWith: async () => false }));
 vi.mock('@/lib/menu-monster/menus-store', () => ({ loadMenuWith: mocks.loadMenuWith, ownerCreditNamesWith: mocks.ownerCreditNamesWith }));
 vi.mock('@/lib/menu-monster/data', () => ({ loadMenuMonsterCatalog: async () => ({}) }));
 // The gear list is read for the meal panels' picker (Plan) and the printed sheet's gear line (Shopping).

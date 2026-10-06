@@ -10,7 +10,8 @@
  * screen readers.
  *
  * `next` (the planner's one-primary rule: "Save while dirty, Next when clean"): once a saved menu is clean the
- * primary becomes a link to the next step and the Discard beside it goes — there is no pair left to grey.
+ * primary becomes a link to the next step; the Discard beside it stays, greyed (a control that will do nothing is
+ * greyed, not hidden — AGENTS.md "Save buttons" point 4).
  */
 
 import { Button } from '@/app/_components/button';
@@ -45,8 +46,8 @@ export function SaveBar({
   const goNext = next != null && !isNew && !dirty && !saving;
   return (
     <span className={s.actions}>
-      {!isNew && !goNext && (
-        <Button variant="ghost" onClick={onDiscard} disabled={saving || !dirty} title={dirty ? undefined : 'No changes to discard'}>
+      {!isNew && (
+        <Button variant="secondary" onClick={onDiscard} disabled={saving || !dirty} title={dirty ? undefined : 'No changes to discard'}>
           {labels?.discard ?? 'Discard changes'}
         </Button>
       )}

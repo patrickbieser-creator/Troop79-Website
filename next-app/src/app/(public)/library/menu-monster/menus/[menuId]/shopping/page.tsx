@@ -44,7 +44,7 @@ export default async function MenuShoppingPage({ params, searchParams }: { param
           openItem={typeof item === 'string' ? item : null}
           helper={view.helping}
           plannedBy={plannedBy}
-          tabs={<MenuSteps menuId={stored.id} active="shopping" access={view.access} menu={resolveMenuAliases(stored.menu, catalog.aliases)} catalog={catalog} />}
+          tabs={<MenuSteps menuId={stored.id} active="shopping" access={view.access} menu={resolveMenuAliases(stored.menu, catalog.aliases)} catalog={catalog} shoppingDone={view.shoppingDone} />}
           aside={<ViewerAside view={view} page="shopping" />}
         />
         </HelperMenuScope>

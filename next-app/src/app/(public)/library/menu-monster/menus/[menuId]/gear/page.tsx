@@ -47,7 +47,7 @@ export default async function MenuGearPage({ params }: { params: Promise<{ menuI
           canPack={canRecord(view.access)}
           canEdit={view.access === 'owner' || view.helping}
           viewerName={viewerName}
-          tabs={<MenuSteps menuId={stored.id} active="gear" access={view.access} menu={resolveMenuAliases(stored.menu, catalog.aliases)} catalog={catalog} />}
+          tabs={<MenuSteps menuId={stored.id} active="gear" access={view.access} menu={resolveMenuAliases(stored.menu, catalog.aliases)} catalog={catalog} shoppingDone={view.shoppingDone} />}
           aside={<ViewerAside view={view} page="gear" />}
         />
       </PageShell>

@@ -162,6 +162,15 @@ export function menuGear(
 }
 
 /**
+ * How many of this meal's lines are for one diet only and so cannot come along into "Share this version":
+ * a scout recipe is everyone-only by design (mm_save_scout_recipe writes serves_rule 'everyone'; scouts do
+ * not author diet variations), so the page says so only when something was actually left out.
+ */
+export function versionDietLinesLeftOut(recipe: Recipe, ops: readonly EditOp[]): number {
+  return applyRecipeEdits(recipe, [...ops]).filter((l) => l.servesRule === 'only' && l.qtyPerPerson > 0).length;
+}
+
+/**
  * The editor's starting point for "Share this version as a new recipe": the
  * recipe as this meal's edits left it. Lines only for one diet are left out (a
  * scout recipe's lines feed everyone); the troop's steps, meals, food groups and

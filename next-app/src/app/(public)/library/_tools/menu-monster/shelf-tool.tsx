@@ -37,6 +37,8 @@ import { listMyRecipesWith } from '@/lib/menu-monster/scout-recipes-store';
 import { MyRecipesList } from '../../menu-monster/recipes/_components/my-recipes-list';
 import { RECIPES_HREF } from '../../menu-monster/recipes/_components/paths';
 import { DraftOffer } from '../../menu-monster/menus/_components/draft-offer';
+import { listGearWith } from '@/lib/menu-monster/gear-store';
+import { listDraftItemsWith } from '@/lib/menu-monster/draft-items';
 import { LocalPlan } from '../../menu-monster/menus/_components/local-menu-shells';
 import { loadMenuRows } from '../../menu-monster/menus/_components/menu-rows';
 import { MenusList } from '../../menu-monster/menus/_components/menus-list';
@@ -166,7 +168,9 @@ async function mealPlanner(catalog: Catalog, viewer: MenuViewer | null) {
   }
 
   // Not signed in as one person: a visitor, or a leader on the old shared password (nobody to save for).
-  const [outings, identity] = await Promise.all([loadOutingsWith(createAdminClient(), centralToday()), getIdentitySessionIfValid()]);
+  // Gear list and draft food names are troop-public; the kept-here menu's meals use them like a saved menu's.
+  const sbHub = createAdminClient();
+  const [outings, identity, gearList, draftItems] = await Promise.all([loadOutingsWith(sbHub, centralToday()), getIdentitySessionIfValid(), listGearWith(sbHub), listDraftItemsWith(sbHub)]);
   const signedIn = viewer?.kind === 'leader' || identity != null;
   const scoutsMenus = viewer?.kind === 'leader' ? await everyonesMenus(catalog) : null;
 
@@ -183,7 +187,7 @@ async function mealPlanner(catalog: Catalog, viewer: MenuViewer | null) {
           . Until then, your menu stays on this computer.
         </p>
       )}
-      <LocalPlan catalog={catalog} outings={outings} hub />
+      <LocalPlan catalog={catalog} outings={outings} hub gearList={gearList} draftItems={draftItems} />
       {scoutsMenus}
       {await sharedWithTroop()}
     </>

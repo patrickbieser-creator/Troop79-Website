@@ -17,6 +17,8 @@ import Link from 'next/link';
 import type { Catalog } from '@/lib/menu-monster/types';
 import { blankMenu, type Menu } from '@/lib/menu-monster/menus';
 import type { Outing } from '@/lib/menu-monster/menu-view';
+import type { GearItem } from '@/lib/menu-monster/gear';
+import type { DraftItem } from '@/lib/menu-monster/draft-items';
 import { onLocalMenuChange, readLocalMenu } from '@/lib/menu-monster/local-menu';
 import { LOCAL_MENU_HREFS, localMenuStore } from '@/lib/menu-monster/local-menu-store';
 import { TabStrip } from '@/app/_components/tab-strip';
@@ -75,7 +77,25 @@ function LocalTabs({ active }: { active: 'people' | 'plan' | 'shopping' }) {
  * not stored yet has no meals to show, so it always starts on Who's eating. On the hub (`hub`) it sits under
  * the page's own h1.
  */
-export function LocalPlan({ catalog, outings, hub = false, openMeal = null, page = 'plan' }: { catalog: Catalog; outings: Outing[]; hub?: boolean; openMeal?: string | null; page?: 'people' | 'plan' }) {
+export function LocalPlan({
+  catalog,
+  outings,
+  hub = false,
+  openMeal = null,
+  page = 'plan',
+  gearList,
+  draftItems
+}: {
+  catalog: Catalog;
+  outings: Outing[];
+  hub?: boolean;
+  openMeal?: string | null;
+  page?: 'people' | 'plan';
+  /** The troop's gear list (troop-public: names and descriptions) for each meal's gear picker. Absent = no picker. */
+  gearList?: readonly GearItem[];
+  /** The troop's own draft foods, by name, for the no-match line. A visitor gets no admin link. */
+  draftItems?: readonly DraftItem[];
+}) {
   const store = useMemo(() => localMenuStore(catalog), [catalog]);
   const { ready, menu, dropped, rev } = useLocalMenu(catalog);
   if (!ready) return null;
@@ -95,6 +115,8 @@ export function LocalPlan({ catalog, outings, hub = false, openMeal = null, page
         // The hub has no tab strip of its own, but a stored menu's two steps are two pages: the strip is how you reach the other one.
         tabs={menu ? <LocalTabs active={page} /> : undefined}
         openMeal={openMeal}
+        gearList={gearList}
+        draftItems={draftItems}
       />
     </>
   );
