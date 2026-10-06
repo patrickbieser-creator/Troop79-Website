@@ -1,0 +1,123 @@
+/* Admin GearPicker (screen-local, admin tokens only). Specimen: /admin/styleguide/admin -> Gear Picker. */
+
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--admin-space-4);
+}
+
+.searchWrap {
+  position: relative;
+}
+
+.search {
+  width: 100%;
+  background: var(--admin-field-bg);
+  border: 1px solid var(--admin-gray-300);
+  border-radius: var(--admin-radius-sm);
+  font-family: inherit;
+  font-size: var(--admin-text-md);
+  padding: var(--admin-space-4) var(--admin-space-5);
+  color: var(--admin-gray-700);
+}
+
+.options {
+  position: absolute;
+  z-index: 10;
+  left: 0;
+  right: 0;
+  margin: var(--admin-space-1) 0 0;
+  padding: var(--admin-space-2) 0;
+  list-style: none;
+  max-height: 14rem;
+  overflow-y: auto;
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-300);
+  border-radius: var(--admin-radius-sm);
+  box-shadow: var(--admin-shadow-md);
+}
+.options[hidden] {
+  display: none;
+}
+
+.option {
+  padding: var(--admin-space-3) var(--admin-space-5);
+  font-size: var(--admin-text-md);
+  color: var(--admin-gray-700);
+  cursor: pointer;
+}
+.option[aria-selected='true'] {
+  background: var(--admin-gray-100);
+  color: var(--admin-navy);
+}
+
+.noMatch {
+  margin: var(--admin-space-2) 0 0;
+  font-size: var(--admin-text-base);
+  color: var(--admin-gray-500);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--admin-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--admin-space-3);
+  padding: var(--admin-space-2) var(--admin-space-3) var(--admin-space-2) var(--admin-space-5);
+  background: var(--admin-gray-100);
+  border: 1px solid var(--admin-gray-300);
+  border-radius: var(--admin-radius-pill);
+  font-size: var(--admin-text-md);
+  color: var(--admin-gray-800);
+}
+
+.chipName {
+  font-weight: var(--admin-weight-semibold);
+}
+
+.stepper {
+  display: inline-flex;
+  gap: var(--admin-space-1);
+}
+
+.step,
+.remove {
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-300);
+  border-radius: var(--admin-radius-circle);
+  font-family: inherit;
+  font-size: var(--admin-text-md);
+  line-height: 1;
+  color: var(--admin-navy);
+  cursor: pointer;
+}
+.step:hover:not(:disabled),
+.remove:hover {
+  background: var(--admin-gray-100);
+}
+.step:disabled {
+  color: var(--admin-gray-400);
+  cursor: not-allowed;
+}
+.remove {
+  color: var(--admin-danger);
+}
+.search:focus-visible,
+.step:focus-visible,
+.remove:focus-visible {
+  outline: 2px solid var(--admin-navy);
+  outline-offset: 1px;
+}

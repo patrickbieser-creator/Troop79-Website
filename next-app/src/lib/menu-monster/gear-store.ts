@@ -15,8 +15,8 @@ import {
   gearKey,
   gearText,
   parseGear,
+  resolveGear,
   sanitizePacked,
-  unknownGearNames,
   type GearHome,
   type GearItem,
   type MenuGearState
@@ -52,39 +52,42 @@ export async function loadMenuGearWith(sb: SupabaseClient, menuId: string): Prom
 }
 
 /**
- * Names the troop's list does not have yet join it at once (Patrick, 2026-10-03: scouts can add to the gear
- * list; leaders tidy it in admin). A name that exists retired is left retired. Never throws for a duplicate:
- * two scouts naming the same new thing at the same moment is fine.
+ * Gear as a save keeps it (Patrick, 2026-10-05: gear is picked from the master list; only a leader's "+ New
+ * gear" adds to it). Each entry takes the master list's spelling; anything not on the list is dropped and
+ * named in `dropped` so the screen can say so. `stored` is what the recipe or menu already holds: a retired
+ * item stays only when it is in there.
  */
-export async function ensureGearWith(sb: SupabaseClient, entries: readonly string[], personId: number | null): Promise<string[]> {
-  if (entries.length === 0) return [];
-  const all = await listGearWith(sb, { includeRetired: true });
-  const fresh = unknownGearNames(entries, all);
-  if (fresh.length === 0) return [];
-  // One insert per name: the unique index is on lower(name), which an upsert cannot target, and a racing
-  // duplicate (23505) must not lose the other names.
-  for (const name of fresh) {
-    const { error } = await sb.from('mm_gear').insert({ name, added_by_person_id: personId });
-    if (error && error.code !== '23505') throw new Error(`add gear: ${error.message}`);
-  }
-  return fresh;
+export async function resolveGearWith(sb: SupabaseClient, entries: readonly unknown[], stored: readonly string[] = []): Promise<{ kept: string[]; dropped: string[] }> {
+  if (entries.length === 0) return { kept: [], dropped: [] };
+  return resolveGear(entries, await listGearWith(sb, { includeRetired: true }), stored);
 }
 
-/** The owner's extras, replaced whole. Returns the stored list, or null when the menu is not theirs. */
+/** A recipe's stored gear ([] when the recipe is new or gone). */
+export async function storedRecipeGearWith(sb: SupabaseClient, recipeId: string | null): Promise<string[]> {
+  if (!recipeId) return [];
+  const { data, error } = await sb.from('mm_recipes').select('equipment').eq('id', recipeId).maybeSingle();
+  if (error) throw new Error(`recipe gear: ${error.message}`);
+  return (data?.equipment as string[] | null) ?? [];
+}
+
+/**
+ * The owner's extras, replaced whole, each in the master list's spelling; names not on the list are dropped
+ * and returned. Returns null when the menu is not theirs.
+ */
 export async function setGearExtrasWith(
   sb: SupabaseClient,
   menuId: string,
   ownerPersonId: number,
-  extras: unknown,
-  /** Who typed any new gear name: the owner, or a leader fixing the menu. */
-  addedByPersonId: number = ownerPersonId
-): Promise<string[] | null> {
-  const clean = cleanGearExtras(extras);
-  const { data, error } = await sb.from('mm_menus').update({ gear_extras: clean }).eq('id', menuId).eq('owner_person_id', ownerPersonId).select('id');
+  extras: unknown
+): Promise<{ extras: string[]; dropped: string[] } | null> {
+  const { data: row, error: readError } = await sb.from('mm_menus').select('gear_extras').eq('id', menuId).eq('owner_person_id', ownerPersonId).maybeSingle();
+  if (readError) throw new Error(`gear extras: ${readError.message}`);
+  if (!row) return null;
+  const { kept, dropped } = await resolveGearWith(sb, cleanGearExtras(extras), cleanGearExtras(row.gear_extras));
+  const { data, error } = await sb.from('mm_menus').update({ gear_extras: kept }).eq('id', menuId).eq('owner_person_id', ownerPersonId).select('id');
   if (error) throw new Error(`gear extras: ${error.message}`);
   if (!data?.length) return null;
-  await ensureGearWith(sb, clean, addedByPersonId);
-  return clean;
+  return { extras: kept, dropped };
 }
 
 /** One Packed tick on or off (mm_set_gear_packed merges it atomically). False when the menu is gone. */

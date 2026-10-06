@@ -213,3 +213,48 @@ export function unknownGearNames(entries: readonly string[], list: readonly Pick
   }
   return out;
 }
+
+/** Gear entries A to Z by name (case and count ignored); equal names keep their order. */
+export function sortGear<T extends string>(entries: readonly T[]): T[] {
+  return entries
+    .map((e, i) => ({ e, i, k: gearKey(parseGear(e).name) }))
+    .sort((a, b) => a.k.localeCompare(b.k) || a.i - b.i)
+    .map((x) => x.e);
+}
+
+/**
+ * What a gear picker offers (Patrick, 2026-10-05: gear is picked from the master list, never added on the
+ * fly): the live master items whose name contains the query, not already taken, A to Z. `taken` is entries
+ * as stored ("Skillet × 2"); only the name counts.
+ */
+export function gearPickOptions(list: readonly GearItem[], query: string, taken: readonly string[]): GearItem[] {
+  const q = gearKey(query);
+  const have = new Set(taken.map((t) => gearKey(parseGear(t).name)));
+  return list
+    .filter((g) => !g.retiredAt && !have.has(gearKey(g.name)) && gearKey(g.name).includes(q))
+    .sort((a, b) => gearKey(a.name).localeCompare(gearKey(b.name)));
+}
+
+/**
+ * Gear as a write keeps it (Patrick, 2026-10-05: gear is picked from the master list, never added on the
+ * fly): each entry in the master list's own spelling (count kept), A to Z, one of each. Anything the list
+ * lacks is dropped and reported by name. A RETIRED item is kept only when `stored` (what the recipe or menu
+ * already holds) names it, so retiring an item never strips it from the recipes that use it.
+ */
+export function resolveGear(entries: readonly unknown[], list: readonly GearItem[], stored: readonly string[] = []): { kept: string[]; dropped: string[] } {
+  const master = new Map(list.map((g) => [gearKey(g.name), g]));
+  const had = new Set(stored.map((e) => gearKey(parseGear(e).name)));
+  const kept: string[] = [];
+  const dropped: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of entries.slice(0, MAX_GEAR_EXTRAS * 2)) {
+    const { name, count } = parseGear(cleanGearEntry(raw));
+    const k = gearKey(name);
+    if (!k || seen.has(k)) continue;
+    seen.add(k);
+    const item = master.get(k);
+    if (item && (!item.retiredAt || had.has(k))) kept.push(gearText(item.name, count));
+    else dropped.push(name);
+  }
+  return { kept: sortGear(kept).slice(0, MAX_GEAR_EXTRAS), dropped };
+}

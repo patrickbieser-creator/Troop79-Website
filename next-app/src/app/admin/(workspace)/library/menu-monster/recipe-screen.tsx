@@ -13,6 +13,7 @@ import { Button } from '../../../_components/button';
 import { useGuardedNav } from '../../_components/guarded-nav';
 import { authoringOf } from '@/lib/menu-monster/authoring';
 import { NO_FILTER, foodListHref, recipeHref, type FoodFilter } from '@/lib/menu-monster/food-list';
+import type { GearItem } from '@/lib/menu-monster/gear';
 import type { Catalog } from '@/lib/menu-monster/types';
 import { NEW_ID, RecipeEditor, blankDraft } from './recipe-builder';
 import styles from './menu-monster.module.css';
@@ -23,13 +24,16 @@ export function RecipeScreen({
   recipeId,
   filter = NO_FILTER,
   stores = [],
-  today = null
+  today = null,
+  gearList = []
 }: {
   catalog: Catalog;
   recipeId: string;
   filter?: FoodFilter;
   stores?: readonly string[];
   today?: string | null;
+  /** The master gear list (active items), for the gear picker. */
+  gearList?: readonly GearItem[];
 }) {
   const router = useRouter();
   const { navigate, dialog } = useGuardedNav();
@@ -54,6 +58,7 @@ export function RecipeScreen({
         catalog={catalog}
         stores={stores}
         today={today}
+        gearList={gearList}
         // A first save moves from the blank page to the recipe's own address; a duplicate is a new stop.
         onSelect={(id) => (isNew ? router.replace(recipeHref(id, filter)) : router.push(recipeHref(id, filter)))}
         onChanged={() => router.refresh()}

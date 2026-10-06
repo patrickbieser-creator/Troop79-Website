@@ -1,0 +1,35 @@
+/* GearChips: the picked gear, each with a count dial and a remove. Public tokens only. */
+.chips {
+  list-style: none;
+  margin: 0 0 var(--sp-3);
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 40px;
+  padding: 0 var(--sp-1) 0 var(--sp-3);
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  color: var(--text-head);
+  background: var(--warm-white);
+  border: 1px solid var(--border-light);
+  border-radius: var(--rad-sm);
+}
+.chipName { font-weight: 600; }
+.remove {
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  background: none;
+  border: none;
+  font-size: var(--fs-md);
+  color: var(--text-meta);
+  cursor: pointer;
+}
+.remove:hover { color: var(--status-danger); }
+.remove:focus-visible { outline: var(--focus-ring); outline-offset: 1px; }

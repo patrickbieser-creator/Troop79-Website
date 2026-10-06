@@ -33,12 +33,12 @@ export default async function RecipePage({ params }: { params: Promise<{ recipeI
   }
   const [stored, catalog] = await Promise.all([loadMyRecipeWith(createAdminClient(), viewer.personId, recipeId), loadMenuMonsterCatalog(viewer.personId)]);
   if (!stored) notFound();
-  const gearNames = (await listGearWith(createAdminClient())).map((g) => g.name);
+  const gearList = await listGearWith(createAdminClient());
   return (
     <>
       <RecipeHeader />
       <PageShell>
-        <RecipeEditor gearNames={gearNames} catalog={catalog} id={stored.recipe.id} initial={stored.recipe} status={stored.status} credit={stored.credit} updatedAt={stored.updatedAt} />
+        <RecipeEditor gearList={gearList} catalog={catalog} id={stored.recipe.id} initial={stored.recipe} status={stored.status} credit={stored.credit} updatedAt={stored.updatedAt} />
       </PageShell>
     </>
   );

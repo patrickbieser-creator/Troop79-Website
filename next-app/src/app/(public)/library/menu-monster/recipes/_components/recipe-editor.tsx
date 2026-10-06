@@ -26,12 +26,14 @@ import { FOOD_GROUPS, MEALS } from '@/lib/menu-monster/units';
 import { MAX_HEADCOUNT, MIN_HEADCOUNT } from '@/lib/menu-monster/engine';
 import type { AmountView } from '@/lib/menu-monster/ingredient-rows';
 import { authorRows } from '@/lib/menu-monster/author-rows';
-import { GEAR_SUGGESTIONS, MAX_GEAR, MAX_SCOUT_RECIPE_NAME, MAX_SCOUT_STEP, MAX_SCOUT_STEPS, cleanGear, shareProblems, type ScoutRecipeLine } from '@/lib/menu-monster/scout-recipes';
+import { MAX_GEAR, MAX_SCOUT_RECIPE_NAME, MAX_SCOUT_STEP, MAX_SCOUT_STEPS, shareProblems, type ScoutRecipeLine } from '@/lib/menu-monster/scout-recipes';
+import { gearKey, gearText, parseGear, sortGear, type GearItem } from '@/lib/menu-monster/gear';
 import type { RecipeStatus } from '@/lib/menu-monster/types';
 import { saveScoutRecipeAction, shareScoutRecipeAction } from '../../../_tools/menu-monster/recipe-actions';
 import { IngredientList } from '../../_components/ingredient-list';
 import type { AuthorAction } from '../../_components/ingredient-list-author';
 import { Grip, useDragReorder } from '../../_components/reorder';
+import { GearChips, GearPicker } from '../../_components/gear-picker';
 import { RowMenu } from '../../menus/_components/row-menu';
 import { SaveBar } from '../../menus/_components/save-bar';
 import w from '../../menus/_components/workspace.module.css';
@@ -64,8 +66,8 @@ export interface RecipeEditorProps {
   updatedAt: string | null;
   /** "Started from your version of …" (4C, Share this version): one quiet line under the basics. */
   fromNote?: string | null;
-  /** The troop's gear list, by name: the Gear chips and the typed field draw on it. Absent = the built-in few. */
-  gearNames?: readonly string[];
+  /** The troop's master gear list (live items): the only gear the picker offers. Absent = nothing to pick. */
+  gearList?: readonly GearItem[];
 }
 
 let stepSeq = 0;
@@ -87,7 +89,7 @@ const moveItem = <T,>(list: T[], from: number, to: number) => {
   return next;
 };
 
-export function RecipeEditor({ catalog, id: initialId, initial, status: initialStatus, credit: initialCredit, updatedAt, fromNote = null, gearNames }: RecipeEditorProps) {
+export function RecipeEditor({ catalog, id: initialId, initial, status: initialStatus, credit: initialCredit, updatedAt, fromNote = null, gearList = [] }: RecipeEditorProps) {
   const router = useRouter();
   const [id, setId] = useState(initialId);
   const [draft, setDraft] = useState<Draft>(() => toDraft(initial));
@@ -101,6 +103,8 @@ export function RecipeEditor({ catalog, id: initialId, initial, status: initialS
   const [error, setError] = useState<string | null>(null);
   const [problems, setProblems] = useState<string[]>([]);
   const [announce, setAnnounce] = useState('');
+  /** Gear the last save did not keep because it is not on the troop's gear list. */
+  const [gearDropped, setGearDropped] = useState<string[]>([]);
   const [people, setPeople] = useState(DEFAULT_PEOPLE);
   const [view, setView] = useState<AmountView>('total');
   const nameRef = useRef<HTMLInputElement | null>(null);
@@ -164,6 +168,7 @@ export function RecipeEditor({ catalog, id: initialId, initial, status: initialS
     }
     setBusy('save');
     setError(null);
+    setGearDropped([]);
     const sent = draft;
     const res = await saveScoutRecipeAction(
       {
@@ -186,11 +191,18 @@ export function RecipeEditor({ catalog, id: initialId, initial, status: initialS
     }
     // Typed-ins are real ingredients now: lines name their ids, and the overlay keeps them priced until the page reloads.
     const real = (k: string) => res.ids?.[k] ?? k;
-    const landed: Draft = { ...sent, lines: sent.lines.map((l) => ({ ...l, ingredientId: real(l.ingredientId) })), newIngredients: [] };
-    if (sent.newIngredients.length > 0) {
-      setSavedTyped((prev) => [...prev, ...sent.newIngredients.map((n) => ({ ...n, key: real(n.key) }))]);
-      setDraft((d) => (keyOf(d) === keyOf(sent) ? landed : d));
-    }
+    // Gear the troop's list lacks was not kept (Patrick, 2026-10-05: gear is picked, never added): say so, and
+    // take it off the form so the saved recipe and the screen agree.
+    const gone = new Set((res.dropped ?? []).map((g) => gearKey(g)));
+    const landed: Draft = {
+      ...sent,
+      lines: sent.lines.map((l) => ({ ...l, ingredientId: real(l.ingredientId) })),
+      newIngredients: [],
+      equipment: sent.equipment.filter((g) => !gone.has(gearKey(parseGear(g).name)))
+    };
+    if (gone.size > 0) setGearDropped(res.dropped ?? []);
+    if (sent.newIngredients.length > 0) setSavedTyped((prev) => [...prev, ...sent.newIngredients.map((n) => ({ ...n, key: real(n.key) }))]);
+    if (sent.newIngredients.length > 0 || gone.size > 0) setDraft((d) => (keyOf(d) === keyOf(sent) ? landed : d));
     setSavedKey(keyOf(landed));
     setSavedDraft(landed);
     setVersion(res.updatedAt);
@@ -371,7 +383,8 @@ export function RecipeEditor({ catalog, id: initialId, initial, status: initialS
 
             <GearSection
               gear={draft.equipment}
-              names={gearNames}
+              list={gearList}
+              dropped={gearDropped}
               onChange={(equipment) => edit((d) => ({ ...d, equipment }))}
               onAnnounce={setAnnounce}
             />
@@ -382,105 +395,32 @@ export function RecipeEditor({ catalog, id: initialId, initial, status: initialS
   );
 }
 
-/** The "Often used" chips when the troop's gear list is at hand, in its spelling (lower case here). */
-const OFTEN_USED = ['camp stove', 'dutch oven (12 in)', 'griddle', 'skillet', 'large pot', 'spatula', 'long tongs', 'cutting board', 'cooler'];
-
-/** Gear you'll need (4C): the recipe's gear, removable; "Often used" adds one tap at a time; anything else is typed. */
-function GearSection({ gear, names, onChange, onAnnounce }: { gear: string[]; names?: readonly string[]; onChange: (g: string[]) => void; onAnnounce: (t: string) => void }) {
-  // The troop's own spelling for the usual chips, so every recipe names an item the same way and the Gear tab adds it up.
-  const lower = new Map((names ?? []).map((n) => [n.toLowerCase(), n]));
-  const often = names && names.length > 0 ? OFTEN_USED.map((g) => lower.get(g)).filter((g): g is string => !!g) : [...GEAR_SUGGESTIONS];
-  const [other, setOther] = useState<string | null>(null);
-  const has = (g: string) => gear.some((x) => x.toLowerCase() === g.toLowerCase());
-  const add = (g: string) => {
-    const next = cleanGear([...gear, g]);
-    if (next.length === gear.length) return;
-    onChange(next);
-    onAnnounce(`${next[next.length - 1]} added to gear.`);
-  };
+/** Gear you'll need: picked from the troop's gear list (search, A to Z) and counted; never typed in. */
+function GearSection({ gear, list, dropped, onChange, onAnnounce }: { gear: string[]; list: readonly GearItem[]; dropped: string[]; onChange: (g: string[]) => void; onAnnounce: (t: string) => void }) {
   const full = gear.length >= MAX_GEAR;
   return (
     <section aria-labelledby="re-gear-h" className={s.gear}>
       <h2 id="re-gear-h" className={w.heading}>
         Gear you’ll need
       </h2>
-      {gear.length > 0 && (
-        <ul className={s.gearList} aria-label="Gear">
-          {gear.map((g) => (
-            <li key={g} className={s.gearItem}>
-              {g}
-              <button
-                type="button"
-                className={s.gearRemove}
-                aria-label={`Remove ${g}`}
-                onClick={() => {
-                  onChange(gear.filter((x) => x !== g));
-                  onAnnounce(`${g} removed from gear.`);
-                }}
-              >
-                ×
-              </button>
-            </li>
-          ))}
-        </ul>
+      <GearChips gear={gear} onChange={onChange} onAnnounce={onAnnounce} />
+      {full ? (
+        <p className={s.gearFull}>That’s the most gear one recipe can list.</p>
+      ) : (
+        <GearPicker
+          list={list}
+          taken={gear}
+          onPick={(name) => {
+            onChange(sortGear([...gear, gearText(name, 1)]));
+            onAnnounce(`${name} added to gear.`);
+          }}
+        />
       )}
-      <div className={w.choice} role="group" aria-label="Often used">
-        <span className={w.choiceLabel} aria-hidden="true">
-          Often used
-        </span>
-        <div className={w.chips}>
-          {often.filter((g) => !has(g)).map((g) => (
-            <button key={g} type="button" className={w.chip} disabled={full} onClick={() => add(g)}>
-              + {g}
-            </button>
-          ))}
-          {other == null ? (
-            <button type="button" className={w.chip} disabled={full} onClick={() => setOther('')}>
-              Something else…
-            </button>
-          ) : (
-            <span className={s.gearOther}>
-              <input
-                className={s.gearInput}
-                value={other}
-                maxLength={40}
-                aria-label="Other gear"
-                list={names && names.length > 0 ? 're-gear-names' : undefined}
-                placeholder="Ladle"
-                autoFocus
-                onChange={(e) => setOther(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    if (other.trim()) add(other);
-                    setOther(null);
-                  } else if (e.key === 'Escape') {
-                    e.preventDefault();
-                    setOther(null);
-                  }
-                }}
-              />
-              {names && names.length > 0 && (
-                <datalist id="re-gear-names">
-                  {names.filter((g) => !has(g)).map((g) => (
-                    <option key={g} value={g} />
-                  ))}
-                </datalist>
-              )}
-              <button
-                type="button"
-                className={w.chip}
-                onClick={() => {
-                  if (other.trim()) add(other);
-                  setOther(null);
-                }}
-              >
-                Add
-              </button>
-            </span>
-          )}
-        </div>
-      </div>
+      {dropped.length > 0 && (
+        <Notice tone="warning" className={w.notice}>
+          Not on the gear list, so not kept: {dropped.join(', ')}.
+        </Notice>
+      )}
     </section>
   );
 }

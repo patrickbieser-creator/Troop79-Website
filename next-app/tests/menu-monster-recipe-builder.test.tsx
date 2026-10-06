@@ -242,7 +242,8 @@ describe('Recipe builder', () => {
 
 describe('Recipe builder — a single food opens in the short form (2026-10-04)', () => {
   const bacon = () => within(screen.getByRole('region', { name: 'Edit Bacon' }));
-  const open = (catalog: Catalog = CATALOG) => render(<RecipeBuilder catalog={catalog} initialRecipeId="bacon" />);
+  const GEAR_LIST = ['Griddle', 'Ladle', 'Tongs'].map((name, i) => ({ id: i + 1, name, home: 'trailer' as const, perPerson: false, retiredAt: null }));
+  const open = (catalog: Catalog = CATALOG) => render(<RecipeBuilder catalog={catalog} initialRecipeId="bacon" gearList={GEAR_LIST} />);
   const save = async (user: ReturnType<typeof userEvent.setup>) => {
     await user.click(bacon().getByRole('button', { name: 'Save changes' }));
     await waitFor(() => expect(saveRecipe).toHaveBeenCalledTimes(1));
@@ -373,16 +374,27 @@ describe('Recipe builder — a single food opens in the short form (2026-10-04)'
 
   it('AFoodWithNoStepsOrGear_ShowsNeitherField', () => {
     open();
-    expect([bacon().queryByLabelText('How to make it'), bacon().queryByLabelText(/Gear you.ll need/)]).toEqual([null, null]);
+    expect([bacon().queryByLabelText('How to make it'), bacon().queryByRole('combobox', { name: 'Search gear' })]).toEqual([null, null]);
   });
 
   it('AFoodThatIsCooked_KeepsItsStepsAndGear_InTheShortForm', async () => {
     const user = userEvent.setup();
     open({ ...CATALOG, recipes: CATALOG.recipes.map((r) => (r.id === 'bacon' ? { ...r, stepsMd: 'Fry until crisp.', equipment: ['Griddle'] } : r)) });
     expect((bacon().getByLabelText('How to make it') as HTMLTextAreaElement).value).toBe('Fry until crisp.');
-    await user.type(bacon().getByLabelText(/Gear you.ll need/), ', Tongs');
+    // Gear is picked from the master list now (2026-10-05), no longer typed as a comma list.
+    await user.type(bacon().getByRole('combobox', { name: 'Search gear' }), 'ton{Enter}');
     await save(user);
-    expect(vi.mocked(saveRecipe).mock.calls[0][0]).toMatchObject({ stepsMd: 'Fry until crisp.', gear: 'Griddle, Tongs' });
+    expect(vi.mocked(saveRecipe).mock.calls[0][0]).toMatchObject({ stepsMd: 'Fry until crisp.', gear: ['Griddle', 'Tongs'] });
+  });
+
+  it('AGearNameTheServerDropped_IsSaid_AndTakenOffTheForm', async () => {
+    const user = userEvent.setup();
+    vi.mocked(saveRecipe).mockResolvedValueOnce({ ok: true, id: 'bacon', dropped: ['Spork'] });
+    open({ ...CATALOG, recipes: CATALOG.recipes.map((r) => (r.id === 'bacon' ? { ...r, stepsMd: 'Fry until crisp.', equipment: ['Griddle', 'Spork'] } : r)) });
+    await user.type(bacon().getByLabelText('How to make it'), '!');
+    await save(user);
+    expect((await screen.findByText(/Not on the gear list, so not kept: Spork/)).textContent).toContain('Spork');
+    expect(bacon().queryByRole('button', { name: 'Remove Spork' })).toBeNull();
   });
 
   it('ItsBrands_AreRightThere', () => {

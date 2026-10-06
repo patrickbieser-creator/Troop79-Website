@@ -4,7 +4,7 @@
  * Menu Monster leader tools — the troop's gear list (Plans/Menu-Monster-Brands-Gear.md, release 2).
  *
  * Recipes name gear from this list, so a menu's Gear tab can add the same item up across foods and meals.
- * Scouts add to it just by naming something new on a recipe or a menu; leaders tidy here: fix a spelling
+ * Gear is picked from this list, never typed in (Patrick, 2026-10-05); "+ New gear" here is the only way onto it. Leaders tidy: fix a spelling
  * (the rename rewrites every recipe that uses it), say where it lives (the Gear tab groups by that), mark the
  * one-per-person items (the troop's mess kits), and merge duplicates by renaming one onto the other. There are
  * no owned counts (Patrick, 2026-10-03). An item a recipe names can be retired, not deleted.
@@ -105,7 +105,7 @@ export function GearAdmin({ items }: { items: GearAdminRow[] }) {
         </Button>
       </div>
       <p className={styles.hint}>
-        Scouts add to this list by naming gear on a recipe or a menu. Renaming an item onto another item’s name merges the two.
+        Recipes and menus pick their gear from this list, and “+ New gear” is the only way onto it. Renaming an item onto another item’s name merges the two.
       </p>
       {line && (line.kind === 'error' ? <Notice>{line.text}</Notice> : <Notice variant="success">{line.text}</Notice>)}
       {editing === 'new' && form(() => run(() => createGear(draft), `Added “${draft.name.trim()}”.`), 'Add gear', null)}

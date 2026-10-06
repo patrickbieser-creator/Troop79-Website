@@ -287,8 +287,8 @@ export interface RecipeAuthoring {
   stepsMd: string;
   base: DraftBaseLine[];
   variations: DraftVariation[];
-  /** Gear you'll need (4C), as the leader types it: comma-separated. Absent = keep what is stored. */
-  gear?: string;
+  /** Gear you'll need: entries from the master gear list ("Skillet × 2"), picked, A to Z. Absent = keep what is stored. */
+  gear?: string[];
   /** The food this menu item is, served by itself (types.ts Recipe.foodIngredientId). Absent = keep what is
    *  stored; null = not tied to a food. The database drops it if the item stops being one line of that food. */
   foodIngredientId?: string | null;
@@ -389,7 +389,7 @@ export function authoringOf(r: Recipe): RecipeAuthoring {
     trail: r.trail,
     method: r.method,
     stepsMd: r.stepsMd ?? '',
-    gear: (r.equipment ?? []).join(', '),
+    gear: [...(r.equipment ?? [])],
     ...(r.foodIngredientId ? { foodIngredientId: r.foodIngredientId } : {}),
     base: derived.base.map((b) => ({ ingredientId: b.ingredientId, amount: String(b.qtyPerPerson), unitKey: b.unitKey })),
     variations: source.map((v) => ({

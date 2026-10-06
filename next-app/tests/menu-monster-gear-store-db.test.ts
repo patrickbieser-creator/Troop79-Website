@@ -3,10 +3,10 @@ import { adminClient } from './helpers/admin-client';
 import {
   createGearWith,
   deleteGearWith,
-  ensureGearWith,
   listGearAdminWith,
   listGearWith,
   loadMenuGearWith,
+  resolveGearWith,
   retireGearWith,
   setGearExtrasWith,
   setGearPackedWith,
@@ -51,11 +51,25 @@ describe('the troop’s gear list', () => {
     expect(await item('Troop mess kit')).toMatchObject({ perPerson: true, home: 'trailer' });
   });
 
-  it('NamingSomethingNew_AddsItToTheList_Once_WithoutItsCount', async () => {
-    const added = await ensureGearWith(admin, ['ZZ Vitest wash bin × 3', 'zz vitest wash bin', 'Skillet × 2'], OWNER);
-    expect(added).toEqual(['ZZ Vitest wash bin']);
-    expect(await ensureGearWith(admin, ['ZZ VITEST WASH BIN'], OTHER)).toEqual([]);
-    expect(await item('ZZ Vitest wash bin')).toMatchObject({ home: 'trailer', perPerson: false });
+  // Replaces NamingSomethingNew_AddsItToTheList (2026-10-05): gear is picked from the master list, so a name
+  // the list lacks is dropped, never added.
+  it('ResolveGear_UsesTheMasterSpelling_KeepsTheCount_AndSortsAToZ', async () => {
+    const { kept, dropped } = await resolveGearWith(admin, ['spatula', 'SKILLET × 2', 'camp  stove']);
+    expect(kept).toEqual(['Camp stove', 'Skillet × 2', 'Spatula']);
+    expect(dropped).toEqual([]);
+  });
+
+  it('ResolveGear_DropsANameTheListLacks_AndNeverAddsIt', async () => {
+    const res = await resolveGearWith(admin, ['ZZ Vitest wash bin × 3', 'Skillet']);
+    expect(res).toEqual({ kept: ['Skillet'], dropped: ['ZZ Vitest wash bin'] });
+    expect(await item('ZZ Vitest wash bin')).toBeUndefined();
+  });
+
+  it('ResolveGear_KeepsARetiredItem_OnlyWhenTheRecipeAlreadyStoresIt', async () => {
+    await createGearWith(admin, { name: 'ZZ Vitest wok', home: 'trailer', perPerson: false }, null);
+    await retireGearWith(admin, (await item('ZZ Vitest wok'))!.id, true);
+    expect(await resolveGearWith(admin, ['zz vitest wok × 2'], ['ZZ Vitest wok'])).toEqual({ kept: ['ZZ Vitest wok × 2'], dropped: [] });
+    expect(await resolveGearWith(admin, ['ZZ Vitest wok'], [])).toEqual({ kept: [], dropped: ['ZZ Vitest wok'] });
   });
 
   it('Leader_CannotAddADuplicate_IgnoringCase', async () => {
@@ -98,12 +112,16 @@ describe('the troop’s gear list', () => {
 });
 
 describe('a menu’s gear state', () => {
-  it('Extras_AreTheOwners_AndJoinTheTroopList', async () => {
+  // Was Extras_AreTheOwners_AndJoinTheTroopList: a new name no longer joins the list, it is dropped.
+  it('Extras_AreTheOwners_InTheListsSpelling_AndANameNotOnTheListIsDropped', async () => {
     const m = await makeMenu();
-    expect(await setGearExtrasWith(admin, m.id, OTHER, ['ZZ Vitest water jug'])).toBeNull();
-    expect(await setGearExtrasWith(admin, m.id, OWNER, ['ZZ Vitest water jug × 2', 'zz vitest water jug'])).toEqual(['ZZ Vitest water jug × 2']);
-    expect((await loadMenuGearWith(admin, m.id)).extras).toEqual(['ZZ Vitest water jug × 2']);
-    expect(await item('ZZ Vitest water jug')).toBeTruthy();
+    expect(await setGearExtrasWith(admin, m.id, OTHER, ['Skillet'])).toBeNull();
+    expect(await setGearExtrasWith(admin, m.id, OWNER, ['skillet × 2', 'SKILLET', 'ZZ Vitest water jug', 'Camp stove'])).toEqual({
+      extras: ['Camp stove', 'Skillet × 2'],
+      dropped: ['ZZ Vitest water jug']
+    });
+    expect((await loadMenuGearWith(admin, m.id)).extras).toEqual(['Camp stove', 'Skillet × 2']);
+    expect(await item('ZZ Vitest water jug')).toBeUndefined();
   });
 
   it('PackedTicks_MergeOneAtATime_AndNeverTouchTheMenusVersion', async () => {

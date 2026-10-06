@@ -74,44 +74,6 @@
 .sizeRow > * { min-width: 0; }
 .formError { margin: 0; font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--status-danger); }
 
-/* Gear you'll need (4C): removable gear tags, then the "Often used" chips. */
+/* Gear you'll need: the picked chips live in _components/gear-picker.module.css. */
 .gear { margin-top: var(--sp-6); }
-.gearList { list-style: none; margin: 0 0 var(--sp-3); padding: 0; display: flex; flex-wrap: wrap; gap: var(--sp-2); }
-.gearItem {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-1);
-  min-height: 32px;
-  padding: 0 var(--sp-1) 0 var(--sp-3);
-  font-family: var(--font-ui);
-  font-size: var(--fs-sm);
-  color: var(--text-head);
-  background: var(--warm-white);
-  border: 1px solid var(--border-light);
-  border-radius: var(--rad-sm);
-}
-.gearRemove {
-  min-width: 28px;
-  min-height: 28px;
-  padding: 0;
-  background: none;
-  border: none;
-  font-size: var(--fs-md);
-  color: var(--text-meta);
-  cursor: pointer;
-}
-.gearRemove:hover { color: var(--status-danger); }
-.gearRemove:focus-visible { outline: var(--focus-ring); outline-offset: 1px; }
-.gearOther { display: inline-flex; gap: var(--sp-2); align-items: center; }
-/* 16px: the iOS no-zoom floor. */
-.gearInput {
-  min-height: 32px;
-  width: 160px;
-  font-family: var(--font-ui);
-  font-size: 16px;
-  padding: 0 var(--sp-2);
-  border: 1px solid var(--border-mid);
-  border-radius: var(--rad-sm);
-  background: var(--warm-white);
-}
-.gearInput:focus-visible { outline: var(--focus-ring); outline-offset: 1px; }
+.gearFull { margin: 0; font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-meta); }

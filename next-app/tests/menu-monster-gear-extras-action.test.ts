@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 /**
  * The Gear tab's extras: who may add or remove them. The owner always could; since 2026-10-05 a leader fixing
  * the menu can too (menu-access.ts canEditPlan). The crew only ticks things as packed. The menu stays the
- * owner's: the write is made against the owner's id, and a new gear name is credited to whoever typed it.
+ * owner's: the write is made against the owner's id, and a name not on the master list is dropped and reported, never added.
  */
 const mocks = vi.hoisted(() => ({ recorder: null as unknown, setGearExtrasWith: vi.fn() }));
 
@@ -18,21 +18,27 @@ const recorder = (access: string, personId: number | null) => ({ access, personI
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.setGearExtrasWith.mockResolvedValue(['Tarp']);
+  mocks.setGearExtrasWith.mockResolvedValue({ extras: ['Tarp'], dropped: [] });
 });
 
 describe('setGearExtrasAction', () => {
   it('Owner_ChangesTheirMenusExtraGear', async () => {
     mocks.recorder = recorder('owner', 39);
-    expect(await setGearExtrasAction(ID, ['Tarp'])).toEqual({ ok: true, extras: ['Tarp'] });
-    expect(mocks.setGearExtrasWith.mock.calls[0].slice(1)).toEqual([ID, 39, ['Tarp'], 39]);
+    expect(await setGearExtrasAction(ID, ['Tarp'])).toEqual({ ok: true, extras: ['Tarp'], dropped: [] });
+    expect(mocks.setGearExtrasWith.mock.calls[0].slice(1)).toEqual([ID, 39, ['Tarp']]);
   });
 
   it('Leader_ChangesAScoutsExtraGear_AgainstTheScoutsMenu', async () => {
     mocks.recorder = recorder('admin', 82);
     expect((await setGearExtrasAction(ID, ['Tarp'])).ok).toBe(true);
-    // The menu's owner (39), and the leader (82) as whoever typed a new gear name.
-    expect(mocks.setGearExtrasWith.mock.calls[0].slice(1)).toEqual([ID, 39, ['Tarp'], 82]);
+    // The write is made against the menu's owner (39), not the leader.
+    expect(mocks.setGearExtrasWith.mock.calls[0].slice(1)).toEqual([ID, 39, ['Tarp']]);
+  });
+
+  it('ANameNotOnTheMasterList_IsReportedAsDropped', async () => {
+    mocks.recorder = recorder('owner', 39);
+    mocks.setGearExtrasWith.mockResolvedValue({ extras: ['Tarp'], dropped: ['Ladle'] });
+    expect(await setGearExtrasAction(ID, ['Tarp', 'Ladle'])).toEqual({ ok: true, extras: ['Tarp'], dropped: ['Ladle'] });
   });
 
   it('Crew_CannotChangeExtraGear', async () => {

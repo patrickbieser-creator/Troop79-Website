@@ -9,6 +9,9 @@
 import { ActionsMenu } from '../../_components/actions-menu';
 import { SortHeader, useSortable } from '../../_components/use-sortable';
 import { SearchField, useTableSearch } from '../../_components/search-field';
+import { GearPicker } from '../../library/menu-monster/gear-picker';
+import type { GearItem } from '@/lib/menu-monster/gear';
+import { useState } from 'react';
 
 const SORT_ROWS = [
   { name: 'Violet Babby', nights: 12 },
@@ -69,4 +72,18 @@ export function SearchFieldSpecimen() {
       </ul>
     </div>
   );
+}
+
+const GEAR_SAMPLE: GearItem[] = ['Camp stove', 'Cutting board', 'Dutch oven (12 in)', 'Griddle', 'Ladle', 'Long tongs', 'Skillet', 'Spatula'].map((name, id) => ({
+  id: id + 1,
+  name,
+  home: 'trailer',
+  perPerson: false,
+  retiredAt: null
+}));
+
+/** Gear Picker: starts with two items so the chips, the count dial and the remove are all on show. */
+export function GearPickerSpecimen() {
+  const [gear, setGear] = useState<string[]>(['Skillet × 2', 'Spatula']);
+  return <GearPicker gear={gear} list={GEAR_SAMPLE} onChange={setGear} />;
 }

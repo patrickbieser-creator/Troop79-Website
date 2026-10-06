@@ -242,41 +242,71 @@ describe('RecipeEditor typed-in ingredients (Phase 4B)', () => {
   });
 });
 
-describe('RecipeEditor gear (Phase 4C)', () => {
-  it('OftenUsedGear_AddsWithOneTap', async () => {
-    const user = userEvent.setup();
-    existing();
-    await user.click(screen.getByRole('button', { name: '+ Dutch oven' }));
-    expect(within(screen.getByRole('list', { name: 'Gear' })).getByText('Dutch oven')).toBeTruthy();
+// Gear is picked from the troop's list, never typed in (Patrick, 2026-10-05). This replaces the Phase 4C tests
+// for "Often used" chips and the "Something else…" free-text box, both removed.
+describe('RecipeEditor gear (picked from the master list)', () => {
+  const item = (id: number, name: string, retiredAt: string | null = null) => ({ id, name, home: 'trailer' as const, perPerson: false, retiredAt });
+  const MASTER = [item(1, 'Tongs'), item(2, 'Skillet'), item(3, 'Dutch oven (12 in)'), item(4, 'Ladle'), item(5, 'Old whisk', '2026-09-01T00:00:00Z')];
+  const withGear = (initial = READY) => render(<RecipeEditor catalog={CATALOG} id="S-0000abcd" initial={initial} status="draft" credit={null} updatedAt={STAMP} gearList={MASTER} />);
+  const options = () => screen.queryAllByRole('option').map((o) => o.textContent);
+
+  it('TheOptions_AreTheMasterItems_AToZ_NoRetiredOnes', async () => {
+    withGear();
+    await userEvent.setup().click(screen.getByRole('combobox', { name: 'Search gear' }));
+    expect(options()).toEqual(['Dutch oven (12 in)', 'Ladle', 'Skillet', 'Tongs']);
   });
 
-  it('AddedGear_LeavesTheSuggestions', async () => {
+  it('ANameTheListLacks_CannotBeAdded_AndNothingOffersTo', async () => {
+    withGear();
     const user = userEvent.setup();
-    existing();
-    await user.click(screen.getByRole('button', { name: '+ Dutch oven' }));
-    expect(screen.queryByRole('button', { name: '+ Dutch oven' })).toBeNull();
+    await user.type(screen.getByRole('combobox', { name: 'Search gear' }), 'spork{Enter}');
+    expect([options(), screen.queryByRole('list', { name: 'Gear' }), screen.queryByRole('button', { name: /Something else|Often used/ })]).toEqual([[], null, null]);
   });
 
-  it('OtherGear_IsTypedIn', async () => {
+  it('Picking_AddsAChip_AndTheItemLeavesTheOptions', async () => {
     const user = userEvent.setup();
-    existing();
-    await user.click(screen.getByRole('button', { name: 'Something else…' }));
-    await user.type(screen.getByRole('textbox', { name: 'Other gear' }), 'Ladle{Enter}');
-    expect(within(screen.getByRole('list', { name: 'Gear' })).getByText('Ladle')).toBeTruthy();
+    withGear();
+    await user.type(screen.getByRole('combobox', { name: 'Search gear' }), 'ton{Enter}');
+    expect(within(screen.getByRole('list', { name: 'Gear' })).getByText('Tongs')).toBeTruthy();
+    await user.click(screen.getByRole('combobox', { name: 'Search gear' }));
+    expect(options()).not.toContain('Tongs');
+  });
+
+  it('TheChips_AreAToZ', () => {
+    withGear({ ...READY, equipment: ['Tongs', 'Skillet'] });
+    expect(within(screen.getByRole('list', { name: 'Gear' })).getAllByRole('listitem').map((li) => li.textContent?.replace(/[^A-Za-z]/g, '').slice(0, 6))).toEqual(['Skille', 'Tongs']);
+  });
+
+  it('TheCountStepper_AddsOne_AndTheChipSaysSo', async () => {
+    const user = userEvent.setup();
+    withGear({ ...READY, equipment: ['Skillet'] });
+    await user.click(screen.getByRole('button', { name: 'More Skillet' }));
+    expect(within(screen.getByRole('list', { name: 'Gear' })).getByText('Skillet × 2')).toBeTruthy();
   });
 
   it('Gear_CanBeRemoved', async () => {
     const user = userEvent.setup();
-    existing('draft', { ...READY, equipment: ['Skillet'] });
+    withGear({ ...READY, equipment: ['Skillet'] });
     await user.click(screen.getByRole('button', { name: 'Remove Skillet' }));
     expect(screen.queryByRole('list', { name: 'Gear' })).toBeNull();
   });
 
-  it('Gear_IsSaved', async () => {
+  it('Gear_IsSaved_WithItsCount', async () => {
     const user = userEvent.setup();
-    existing();
-    await user.click(screen.getByRole('button', { name: '+ Tongs' }));
+    withGear();
+    await user.type(screen.getByRole('combobox', { name: 'Search gear' }), 'ton{Enter}');
+    await user.click(screen.getByRole('button', { name: 'More Tongs' }));
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
-    expect(save.mock.calls[0][0].equipment).toEqual(['Tongs']);
+    expect(save.mock.calls[0][0].equipment).toEqual(['Tongs × 2']);
+  });
+
+  it('AName_TheServerDropped_IsSaid_AndTakenOffTheForm', async () => {
+    const user = userEvent.setup();
+    save.mockResolvedValue({ ok: true, id: 'S-0000abcd', updatedAt: STAMP, dropped: ['Spork'] });
+    withGear({ ...READY, equipment: ['Spork', 'Tongs'] });
+    await user.type(screen.getByRole('textbox', { name: 'Recipe name' }), '!');
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    expect((await screen.findByText(/Not on the gear list, so not kept: Spork/)).textContent).toContain('Spork');
+    expect(within(screen.getByRole('list', { name: 'Gear' })).queryByText('Spork')).toBeNull();
   });
 });

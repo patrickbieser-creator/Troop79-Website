@@ -356,14 +356,16 @@ describe('menu monster leader tools — gear (Phase 4C)', () => {
   const base = { id: RECIPE, name: 'ZZ Test Pancakes', status: 'draft' as const, mealFit: ['breakfast' as const], foodGroups: [], camp: true, trail: false, method: null, stepsMd: '', base: [], variations: [] };
   const gearOf = async () => ((await admin.from('mm_recipes').select('equipment').eq('id', RECIPE).single()).data as { equipment: string[] }).equipment;
 
-  it('Leader_SavesGear_FromACommaList', async () => {
-    expect((await saveRecipe({ ...base, gear: 'Skillet, spatula, skillet' })).ok).toBe(true);
-    expect(await gearOf()).toEqual(['Skillet', 'spatula']);
+  // Was Leader_SavesGear_FromACommaList: gear is now a list picked from the master list (2026-10-05).
+  it('Leader_SavesGear_InTheMasterSpelling_AToZ_AndSaysWhatItDropped', async () => {
+    const res = await saveRecipe({ ...base, gear: ['spatula', 'Skillet × 2', 'skillet', 'ZZ Ghost pan'] });
+    expect(res).toMatchObject({ ok: true, dropped: ['ZZ Ghost pan'] });
+    expect(await gearOf()).toEqual(['Skillet × 2', 'Spatula']);
   });
 
   it('SaveWithoutGear_KeepsTheStoredGear', async () => {
-    await saveRecipe({ ...base, gear: 'Dutch oven' });
+    await saveRecipe({ ...base, gear: ['Dutch oven (12 in)'] });
     await saveRecipe(base);
-    expect(await gearOf()).toEqual(['Dutch oven']);
+    expect(await gearOf()).toEqual(['Dutch oven (12 in)']);
   });
 });

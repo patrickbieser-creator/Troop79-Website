@@ -51,7 +51,7 @@ const rowFor = (name: string) => screen.getByRole('button', { name: new RegExp(`
 beforeEach(() => {
   vi.clearAllMocks();
   setGearPackedAction.mockResolvedValue({ ok: true });
-  setGearExtrasAction.mockImplementation(async (_id: string, extras: string[]) => ({ ok: true, extras }));
+  setGearExtrasAction.mockImplementation(async (_id: string, extras: string[]) => ({ ok: true, extras, dropped: [] }));
 });
 
 describe('Gear tab', () => {
@@ -106,11 +106,31 @@ describe('Gear tab', () => {
     expect(screen.getByText('The plan changed after Maya O. packed it, so the tick was cleared.')).toBeTruthy();
   });
 
-  it('AddGear_SavesTheMenusExtras', async () => {
+  // Was AddGear_SavesTheMenusExtras (typed "Water jug x 2" and Enter): since 2026-10-05 gear is picked from the
+  // troop's list, so there is no typed name and no count here.
+  it('AddGear_PicksFromTheMasterList_AndSavesTheMenusExtras', async () => {
     render(tab());
-    await userEvent.setup().type(screen.getByRole('combobox', { name: 'Add gear' }), 'Water jug x 2{Enter}');
-    await waitFor(() => expect(setGearExtrasAction).toHaveBeenCalledWith('menu-1', ['Water jug × 2']));
-    expect(rowFor('Water jug').textContent).toContain('× 2');
+    await userEvent.setup().type(screen.getByRole('combobox', { name: 'Add gear' }), 'wat{Enter}');
+    await waitFor(() => expect(setGearExtrasAction).toHaveBeenCalledWith('menu-1', ['Water jug']));
+    expect(rowFor('Water jug')).toBeTruthy();
+  });
+
+  it('AddGear_OffersOnlyUnusedMasterItems_AToZ_AndNeverACreateRow', async () => {
+    const user = userEvent.setup();
+    render(tab({ gearList: [...LIST, { id: 7, name: 'Apron', home: 'home', perPerson: false, retiredAt: null }, { id: 8, name: 'Old tarp', home: 'home', perPerson: false, retiredAt: '2026-09-01T00:00:00Z' }] }));
+    await user.click(screen.getByRole('combobox', { name: 'Add gear' }));
+    // Everything already on the menu (recipes' gear, the mess kit) is left out; a retired item is never offered.
+    expect(within(screen.getByRole('listbox', { name: 'Gear on the list' })).getAllByRole('option').map((o) => o.textContent)).toEqual(['Apron', 'Water jug']);
+    await user.type(screen.getByRole('combobox', { name: 'Add gear' }), 'ladle');
+    expect([screen.queryAllByRole('option').length, screen.queryByText(/^Add “/)]).toEqual([0, null]);
+    expect(screen.getByText(/Nothing on the gear list matches “ladle”/)).toBeTruthy();
+  });
+
+  it('AddGear_SaysWhatTheServerDropped', async () => {
+    setGearExtrasAction.mockResolvedValue({ ok: true, extras: [], dropped: ['Water jug'] });
+    render(tab());
+    await userEvent.setup().type(screen.getByRole('combobox', { name: 'Add gear' }), 'wat{Enter}');
+    expect((await screen.findByRole('alert')).textContent).toContain('Not on the gear list, so not kept: Water jug.');
   });
 
   it('AnExtra_CanBeRemoved_ARecipesGearCannot', async () => {

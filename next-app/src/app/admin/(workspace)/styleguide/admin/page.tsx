@@ -25,7 +25,7 @@ import sg from './styleguide.module.css';
 import { DialogDemo } from './dialog-demo';
 import { BlockedSaveDemo, SaveDemo, SegmentedDemo } from './save-demo';
 import { fmtDate, fmtDateLong, fmtDateFull, fmtDay, fmtDateTime, fmtMonthYear, fmtRange } from '@/lib/format-date';
-import { ActionsMenuSpecimen, SearchFieldSpecimen, SortHeaderSpecimen } from './specimens';
+import { ActionsMenuSpecimen, GearPickerSpecimen, SearchFieldSpecimen, SortHeaderSpecimen } from './specimens';
 import {
   DangerZoneSpecimen,
   HistoryChipSpecimen,
@@ -757,6 +757,27 @@ export default function StyleguidePage() {
           <div className={`${sg.specimen} ${sg.specimenCanonical}`}>
             <div className={sg.specimenLabel}>Canonical</div>
             <SearchFieldSpecimen />
+          </div>
+        </div>
+      </section>
+
+      <section className={sg.section}>
+        <h2 className={sg.sectionHead}>Gear Picker</h2>
+        <p className={sg.sectionNote}>
+          Menu Monster gear is <strong>picked from the master list, never typed in</strong> (Patrick, 2026-10-05:
+          &ldquo;we do not need the option to add items on the fly&rdquo;). A type-to-filter box
+          (<code>aria-label=&ldquo;Search gear&rdquo;</code>) lists the unselected items A&ndash;Z; the picked items
+          sit below as A&ndash;Z chips, each with a &minus; n + count (&ldquo;Skillet &times; 2&rdquo;) and a remove.
+          There is no &ldquo;add&rdquo; row, ever: a missing item is added on the Gear tab
+          (&ldquo;+ New gear&rdquo;) and the save drops, and names, anything not on the list. Screen-local:{' '}
+          <code>library/menu-monster/gear-picker.tsx</code>, used by the recipe editor (Steps) and a single
+          food&rsquo;s short form. The public twin is <code>GearPicker</code> + <code>GearChips</code> in the
+          menu-monster <code>_components</code>.
+        </p>
+        <div className={sg.specimenGrid}>
+          <div className={`${sg.specimen} ${sg.specimenCanonical}`}>
+            <div className={sg.specimenLabel}>Canonical</div>
+            <GearPickerSpecimen />
           </div>
         </div>
       </section>

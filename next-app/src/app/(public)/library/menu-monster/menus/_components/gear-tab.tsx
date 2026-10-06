@@ -24,9 +24,10 @@ import { Button } from '@/app/_components/button';
 import { Notice } from '@/app/_components/notice';
 import type { Catalog } from '@/lib/menu-monster/types';
 import type { Menu } from '@/lib/menu-monster/menus';
-import { GEAR_HOMES, cleanGearEntry, gearKey, menuGearRows, packedSummary, parseGear, type GearItem, type GearRow, type MenuGearState } from '@/lib/menu-monster/gear';
+import { GEAR_HOMES, gearKey, menuGearRows, packedSummary, parseGear, type GearItem, type GearRow, type MenuGearState } from '@/lib/menu-monster/gear';
 import { mealTitle } from '@/lib/menu-monster/menu-view';
 import { setGearExtrasAction, setGearPackedAction } from '../../../_tools/menu-monster/gear-actions';
+import { GearPicker } from '../../_components/gear-picker';
 import s from './workspace.module.css';
 
 export interface GearTabProps {
@@ -51,7 +52,6 @@ export function GearTab({ catalog, menuId, menu, gearList, state: initial, canPa
   const router = useRouter();
   const [state, setState] = useState<MenuGearState>(initial);
   const [openKey, setOpenKeys] = useState<ReadonlySet<string>>(() => new Set());
-  const [typed, setTyped] = useState('');
   const [status, setStatus] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, start] = useTransition();
@@ -101,23 +101,14 @@ export function GearTab({ catalog, menuId, menu, gearList, state: initial, canPa
         return;
       }
       setState((cur) => ({ ...cur, extras: res.extras }));
-      // A new name joined the troop's list: the next load groups and spells it from there.
+      // Gear is picked from the troop's list; a name that is not on it is never kept (and the picker never offers one).
+      if (res.dropped.length > 0) setError(`Not on the gear list, so not kept: ${res.dropped.join(', ')}.`);
       router.refresh();
     });
   }
 
-  function addExtra() {
-    const entry = cleanGearEntry(typed);
-    if (!entry) return;
-    const name = parseGear(entry).name;
-    if (rows.some((r) => r.key === gearKey(name) && !r.extra)) {
-      setStatus(`${name} is already on the list.`);
-      setTyped('');
-      return;
-    }
-    setTyped('');
-    saveExtras([...state.extras.filter((e) => gearKey(parseGear(e).name) !== gearKey(name)), entry], `${name} added.`);
-  }
+  /** Picked from the troop's list, so it is never a new name; the picker already left out what is on the menu. */
+  const addExtra = (name: string) => saveExtras([...state.extras.filter((e) => gearKey(parseGear(e).name) !== gearKey(name)), name], `${name} added.`);
 
   const removeExtra = (row: GearRow) => saveExtras(state.extras.filter((e) => gearKey(parseGear(e).name) !== row.key), `${row.name} removed.`);
 
@@ -221,30 +212,7 @@ export function GearTab({ catalog, menuId, menu, gearList, state: initial, canPa
 
         {canEdit && (
           <div className={s.gearAdd}>
-            <input
-              type="text"
-              className={s.addInput}
-              value={typed}
-              maxLength={60}
-              autoComplete="off"
-              list={`${uid}-gear-names`}
-              aria-label="Add gear"
-              placeholder="Add gear"
-              onChange={(e) => setTyped(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  addExtra();
-                }
-              }}
-            />
-            <datalist id={`${uid}-gear-names`}>
-              {gearList
-                .filter((g) => !rows.some((r) => r.key === gearKey(g.name)))
-                .map((g) => (
-                  <option key={g.id} value={g.name} />
-                ))}
-            </datalist>
+            <GearPicker list={gearList} taken={rows.map((r) => r.name)} onPick={addExtra} label="Add gear" placeholder="More gear for the whole menu" />
           </div>
         )}
         <p className={status ? s.statusLine : s.srOnly} role="status">

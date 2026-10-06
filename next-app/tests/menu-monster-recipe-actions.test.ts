@@ -14,7 +14,8 @@ const mocks = vi.hoisted(() => ({
   epochCurrent: true,
   save: vi.fn(),
   share: vi.fn(),
-  del: vi.fn()
+  del: vi.fn(),
+  resolveGear: vi.fn()
 }));
 
 vi.mock('next/headers', () => ({ cookies: async () => ({ get: () => ({ value: 'cookie' }) }) }));
@@ -31,6 +32,8 @@ vi.mock('@/lib/menu-monster/menus-store', async (orig) => ({
   ownerCreditNamesWith: async (_sb: unknown, ids: number[]) => new Map(ids.map((id) => [id, 'Pat W.']))
 }));
 vi.mock('@/lib/menu-monster/data', () => ({ loadMenuMonsterCatalog: async () => CATALOG }));
+// Gear is resolved against the troop's master list (gear-store has its own db tests); here it is a stub.
+vi.mock('@/lib/menu-monster/gear-store', () => ({ resolveGearWith: mocks.resolveGear, storedRecipeGearWith: async () => [] }));
 vi.mock('@/lib/menu-monster/scout-recipes-store', () => ({
   saveScoutRecipeWith: mocks.save,
   shareScoutRecipeWith: mocks.share,
@@ -51,6 +54,7 @@ beforeEach(() => {
   mocks.save.mockResolvedValue({ status: 'saved', id: ID, updatedAt: STAMP });
   mocks.share.mockResolvedValue({ status: 'shared', credit: 'Charlie W.' });
   mocks.del.mockResolvedValue({ status: 'deleted' });
+  mocks.resolveGear.mockImplementation(async (_sb: unknown, entries: string[]) => ({ kept: entries, dropped: [] }));
 });
 
 describe('recipe actions: the gate', () => {
@@ -81,7 +85,14 @@ describe('recipe actions: the author is the session', () => {
 
 describe('recipe actions: save', () => {
   it('Save_ReturnsTheIdAndVersion', async () => {
-    expect(await saveScoutRecipeAction(payload(), null)).toEqual({ ok: true, id: ID, updatedAt: STAMP });
+    expect(await saveScoutRecipeAction(payload(), null)).toEqual({ ok: true, id: ID, updatedAt: STAMP, dropped: [] });
+  });
+
+  it('Save_StoresOnlyTheGearTheMasterListKept_AndSaysWhatItDropped', async () => {
+    mocks.resolveGear.mockResolvedValue({ kept: ['Skillet'], dropped: ['Ladle'] });
+    const res = await saveScoutRecipeAction(payload({ equipment: ['skillet', 'Ladle'] }), null);
+    expect(res).toMatchObject({ ok: true, dropped: ['Ladle'] });
+    expect(mocks.save.mock.calls[0][2]).toMatchObject({ equipment: ['Skillet'] });
   });
 
   it('Save_NeedsAName', async () => {

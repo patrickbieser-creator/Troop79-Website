@@ -15,7 +15,7 @@ import type { AuditActor } from '@/lib/audit';
 import { loadMenuMonsterCatalog } from '@/lib/menu-monster/data';
 import { MAX_SCOUT_RECIPES, isScoutRecipeId, sanitizeScoutRecipe } from '@/lib/menu-monster/scout-recipes';
 import { deleteScoutDraftWith, saveScoutRecipeWith, shareScoutRecipeWith } from '@/lib/menu-monster/scout-recipes-store';
-import { ensureGearWith } from '@/lib/menu-monster/gear-store';
+import { resolveGearWith, storedRecipeGearWith } from '@/lib/menu-monster/gear-store';
 import { menuViewer, recipeAuthor } from '../../menu-monster/menus/_components/scout-menus';
 
 type Fail = { ok: false; error: string };
@@ -54,19 +54,20 @@ const MESSAGES = {
 export async function saveScoutRecipeAction(
   raw: unknown,
   expectedUpdatedAt: string | null
-): Promise<{ ok: true; id: string; updatedAt: string; ids: Record<string, string> } | Fail> {
+): Promise<{ ok: true; id: string; updatedAt: string; ids: Record<string, string>; dropped: string[] } | Fail> {
   const actor = await scoutActor();
   if (isFail(actor)) return actor;
-  const draft = sanitizeScoutRecipe(raw, await loadMenuMonsterCatalog(actor.personId));
-  if (!draft.name) return { ok: false, error: 'Give your recipe a name.' };
-  if (draft.id != null && (typeof expectedUpdatedAt !== 'string' || !Number.isFinite(Date.parse(expectedUpdatedAt)))) {
+  const cleaned = sanitizeScoutRecipe(raw, await loadMenuMonsterCatalog(actor.personId));
+  if (!cleaned.name) return { ok: false, error: 'Give your recipe a name.' };
+  if (cleaned.id != null && (typeof expectedUpdatedAt !== 'string' || !Number.isFinite(Date.parse(expectedUpdatedAt)))) {
     return { ok: false, error: MESSAGES.conflict };
   }
   const sb = createAdminClient();
+  // Gear is picked from the troop's list (Patrick, 2026-10-05): anything not on it is dropped, and said so.
+  const { kept, dropped } = await resolveGearWith(sb, cleaned.equipment, cleaned.equipment.length > 0 ? await storedRecipeGearWith(sb, cleaned.id) : []);
+  const draft = { ...cleaned, equipment: kept };
   const res = await saveScoutRecipeWith(sb, actor, draft, expectedUpdatedAt);
-  // Gear the troop's list lacks joins it at once (scouts add to the gear list by naming gear).
-  if (res.status === 'saved') await ensureGearWith(sb, draft.equipment, actor.personId);
-  return res.status === 'saved' ? { ok: true, id: res.id, updatedAt: res.updatedAt, ids: res.ids } : { ok: false, error: MESSAGES[res.status] };
+  return res.status === 'saved' ? { ok: true, id: res.id, updatedAt: res.updatedAt, ids: res.ids, dropped } : { ok: false, error: MESSAGES[res.status] };
 }
 
 /** Share the scout's saved recipe with the troop ("Recipe by Sam K."). */

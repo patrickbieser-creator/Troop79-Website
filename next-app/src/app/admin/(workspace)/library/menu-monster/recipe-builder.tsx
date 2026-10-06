@@ -78,6 +78,8 @@ import { buildLines, ruleText, totalsOf, MAX_HEADCOUNT, MIN_HEADCOUNT } from '@/
 import { FOOD_GROUPS, MEALS, RESTRICTIONS, RESTRICTION_BY_KEY, SECTIONS, SECTION_ORDER, lineUnit, parseQty, perPersonText, supportedUnits } from '@/lib/menu-monster/units';
 import type { Catalog, Ingredient, MealSlot, Plan, Recipe, RecipeLine, RestrictionKey, Section, VariationState } from '@/lib/menu-monster/types';
 import { createIngredient, duplicateRecipe, saveRecipe, setRecipeStatus, updateIngredient } from './actions';
+import { GearPicker } from './gear-picker';
+import { gearKey, parseGear, type GearItem } from '@/lib/menu-monster/gear';
 import { BrandsAndPrices } from './brands-prices';
 import { NewFoodForm } from './new-food-form';
 import lib from '../library.module.css';
@@ -114,7 +116,7 @@ export const blankDraft = (): RecipeAuthoring => ({
   stepsMd: '',
   base: [],
   variations: [],
-  gear: ''
+  gear: []
 });
 
 /** Issues the TABLES cannot hold — these block Save, not only Publish. */
@@ -169,13 +171,16 @@ export function RecipeBuilder({
   initialRecipeId,
   initialFilter = NO_FILTER,
   stores = [],
-  today = null
+  today = null,
+  gearList = []
 }: {
   catalog: Catalog;
   initialRecipeId?: string;
   initialFilter?: FoodFilter;
   stores?: readonly string[];
   today?: string | null;
+  /** The master gear list (active items): what the gear picker offers. */
+  gearList?: readonly GearItem[];
 }) {
   const router = useRouter();
   const { navigate, dialog } = useGuardedNav();
@@ -316,6 +321,7 @@ export function RecipeBuilder({
                           catalog={catalog}
                           stores={stores}
                           today={today}
+                          gearList={gearList}
                           onSelect={open}
                           onOpenFull={() => navigate(recipeHref(r.id, filter))}
                           onChanged={() => router.refresh()}
@@ -393,6 +399,7 @@ export function RecipeEditor({
   catalog,
   stores,
   today,
+  gearList = [],
   onSelect,
   onChanged,
   onOpenFull,
@@ -403,6 +410,8 @@ export function RecipeEditor({
   catalog: Catalog;
   stores: readonly string[];
   today: string | null;
+  /** The master gear list (active items): what the gear picker offers. */
+  gearList?: readonly GearItem[];
   onSelect: (id: string) => void;
   onChanged: () => void;
   /** Inline: go to this food's own page for the full editor. */
@@ -418,6 +427,8 @@ export function RecipeEditor({
   const feedback = useSavePhase();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  /** Gear the save did not keep because it is not on the master gear list. */
+  const [gearDropped, setGearDropped] = useState<string[]>([]);
   const isNew = draft.id === NEW_ID;
   /** The leader tried to save or publish an incomplete form: the problems are said in words and marked in place. */
   const [attempted, setAttempted] = useState(false);
@@ -479,8 +490,9 @@ export function RecipeEditor({
     bad?.focus();
   }, [focusAsk]);
 
-  function run(fn: () => Promise<{ ok: boolean; error?: string; id?: string }>, after?: (id?: string) => void) {
+  function run(fn: () => Promise<{ ok: boolean; error?: string; id?: string; dropped?: string[] }>, after?: (id?: string, dropped?: string[]) => void) {
     setError(null);
+    setGearDropped([]);
     start(async () => {
       const res = await fn();
       if (!res.ok) {
@@ -488,7 +500,7 @@ export function RecipeEditor({
         setError(res.error ?? 'Something went wrong.');
         return;
       }
-      after?.(res.id);
+      after?.(res.id, res.dropped);
       onChanged();
     });
   }
@@ -509,9 +521,16 @@ export function RecipeEditor({
         if (!renamed.ok) setError(`Saved, but the ingredient is still called “${rename.name}”: ${renamed.error ?? 'it could not be renamed'}`);
         return res;
       },
-      (id) => {
+      (id, dropped) => {
         feedback.done();
-        snap.markSaved();
+        if (dropped && dropped.length > 0) {
+          // What the server kept is what is saved: take the dropped names off the form so it is not left dirty.
+          const gone = new Set(dropped.map((d) => gearKey(d)));
+          const kept = (draft.gear ?? []).filter((g) => !gone.has(gearKey(parseGear(g).name)));
+          setDraft((d) => ({ ...d, gear: kept }));
+          snap.markSavedAs({ ...draft, gear: kept });
+          setGearDropped(dropped);
+        } else snap.markSaved();
         setAttempted(false);
         if (isNew && id) {
           setDraft((d) => ({ ...d, id }));
@@ -552,6 +571,7 @@ export function RecipeEditor({
       </div>
       )}
       {error && <Notice>{error}</Notice>}
+      {gearDropped.length > 0 && <Notice variant="warning">Not on the gear list, so not kept: {gearDropped.join(', ')}. New gear is added on the Gear tab.</Notice>}
       {/* A single food that is being given a second ingredient: said before the save, not after. (A diet swap is
           a note on the food and changes nothing here.) */}
       {snap.saved.foodIngredientId && !isSingleFood(draft) && (
@@ -601,7 +621,7 @@ export function RecipeEditor({
 
       <FormPanel>
         {compact ? (
-          <SingleFoodFields draft={draft} setDraft={setDraft} food={food} catalog={catalog} onFull={() => onOpenFull?.()} make={snap.saved.stepsMd.trim() !== '' || (snap.saved.gear ?? '').trim() !== ''} bad={{ name: badField('name'), mealFit: badField('mealFit'), amount: lineProblems(food?.id ?? '').filter((t) => !/priced package/.test(t)) }} />
+          <SingleFoodFields draft={draft} setDraft={setDraft} food={food} catalog={catalog} onFull={() => onOpenFull?.()} make={snap.saved.stepsMd.trim() !== '' || (snap.saved.gear ?? []).length > 0} gearList={gearList} bad={{ name: badField('name'), mealFit: badField('mealFit'), amount: lineProblems(food?.id ?? '').filter((t) => !/priced package/.test(t)) }} />
         ) : (
           <>
         <FormSection num={1} title="Basics">
@@ -756,10 +776,10 @@ export function RecipeEditor({
             How to make it (optional)
           </label>
           <textarea id="mm-r-steps" className={lib.textArea} value={draft.stepsMd} maxLength={600} onChange={(e) => setDraft((d) => ({ ...d, stepsMd: e.target.value }))} />
-          <label className={`adminLabel ${lib.fieldLabel}`} htmlFor="mm-r-gear">
-            Gear you’ll need (optional, separated by commas)
-          </label>
-          <input id="mm-r-gear" className={lib.textInput} value={draft.gear ?? ''} maxLength={400} placeholder="Dutch oven, Tongs" onChange={(e) => setDraft((d) => ({ ...d, gear: e.target.value }))} />
+          <span id="mm-r-gear-label" className={`adminLabel ${lib.fieldLabel}`}>
+            Gear you’ll need (optional)
+          </span>
+          <GearPicker labelledBy="mm-r-gear-label" gear={draft.gear ?? []} list={gearList} onChange={(gear) => setDraft((d) => ({ ...d, gear }))} />
         </FormSection>
           </>
         )}
@@ -1142,8 +1162,10 @@ function SingleFoodFields({
   catalog,
   onFull,
   make,
-  bad
+  bad,
+  gearList
 }: {
+  gearList: readonly GearItem[];
   /** The food already has steps or gear: show both fields. */
   make: boolean;
   bad: { name: boolean; mealFit: boolean; amount: string[] };
@@ -1331,10 +1353,10 @@ function SingleFoodFields({
             <textarea id="mm-f-steps" className={lib.textArea} value={draft.stepsMd} maxLength={600} onChange={(e) => setDraft((d) => ({ ...d, stepsMd: e.target.value }))} />
           </div>
           <div className={lib.fieldFull}>
-            <label className={`adminLabel ${lib.fieldLabel}`} htmlFor="mm-f-gear">
-              Gear you’ll need (separated by commas)
-            </label>
-            <input id="mm-f-gear" className={lib.textInput} value={draft.gear ?? ''} maxLength={400} onChange={(e) => setDraft((d) => ({ ...d, gear: e.target.value }))} />
+            <span id="mm-f-gear-label" className={`adminLabel ${lib.fieldLabel}`}>
+              Gear you’ll need
+            </span>
+            <GearPicker labelledBy="mm-f-gear-label" gear={draft.gear ?? []} list={gearList} onChange={(gear) => setDraft((d) => ({ ...d, gear }))} />
           </div>
         </div>
       )}

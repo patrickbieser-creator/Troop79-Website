@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { cleanGearEntry, cleanGearExtras, menuGearRows, packedSummary, parseGear, unknownGearNames, type GearItem, type MenuGearState } from '../src/lib/menu-monster/gear';
+import { cleanGearEntry, cleanGearExtras, gearPickOptions, menuGearRows, packedSummary, parseGear, sortGear, unknownGearNames, type GearItem, type MenuGearState } from '../src/lib/menu-monster/gear';
 import type { Catalog, Recipe } from '../src/lib/menu-monster/types';
 import type { Menu, MenuMeal } from '../src/lib/menu-monster/menus';
 
@@ -130,8 +130,49 @@ describe('Packed ticks', () => {
   });
 });
 
-describe('the troop list grows by use', () => {
+// Since 2026-10-05 the list no longer grows by use (gear is picked from it); unknownGearNames is how a save finds what to drop.
+describe('names the troop list lacks', () => {
   it('UnknownGearNames_AreTheOnesTheListLacks_OncEach_WithoutCounts', () => {
     expect(unknownGearNames(['Skillet × 2', 'Wash bins × 3', 'wash bins', 'Water jug'], LIST)).toEqual(['Wash bins', 'Water jug']);
+  });
+});
+
+describe('picking gear from the master list', () => {
+  const MASTER: GearItem[] = [
+    ...LIST,
+    { id: 7, name: 'Dutch oven', home: 'trailer', perPerson: false, retiredAt: null },
+    { id: 8, name: 'Old griddle', home: 'trailer', perPerson: false, retiredAt: '2026-09-01T00:00:00Z' }
+  ];
+  const names = (q: string, taken: string[] = []) => gearPickOptions(MASTER, q, taken).map((g) => g.name);
+
+  it('Options_AreSortedAToZ', () => {
+    expect(names('')).toEqual(['Camp stove', 'Dutch oven', 'Griddle', 'Long tongs', 'Skillet', 'Spatula', 'Troop mess kit']);
+  });
+
+  it('Options_MatchTheQuery_AnywhereInTheName_IgnoringCase', () => {
+    expect(names('  TON')).toEqual(['Long tongs']);
+    expect(names('l')).toEqual(['Griddle', 'Long tongs', 'Skillet', 'Spatula']);
+  });
+
+  it('Options_LeaveOutWhatIsAlreadyTaken_WhateverTheCount', () => {
+    expect(names('s', ['skillet × 2', 'Spatula'])).toEqual(['Camp stove', 'Long tongs', 'Troop mess kit']);
+  });
+
+  it('Options_NeverOfferARetiredItem', () => {
+    expect(names('griddle')).toEqual(['Griddle']);
+  });
+
+  it('Options_NeverOfferToCreateOne_WhenNothingMatches', () => {
+    expect(names('ladle')).toEqual([]);
+  });
+});
+
+describe('sortGear', () => {
+  it('SortsAToZ_ByName_IgnoringCaseAndCount_WithoutChangingTheEntries', () => {
+    expect(sortGear(['spatula', 'Skillet × 2', 'Camp stove', 'Dutch oven'])).toEqual(['Camp stove', 'Dutch oven', 'Skillet × 2', 'spatula']);
+  });
+
+  it('IsStable_ForTheSameName', () => {
+    expect(sortGear(['Pot × 2', 'pot'])).toEqual(['Pot × 2', 'pot']);
   });
 });

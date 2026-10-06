@@ -132,9 +132,6 @@ export function creditFor(person: { first_name: string | null; last_name: string
 export const MAX_GEAR = 20;
 const MAX_GEAR_ITEM = 40;
 
-/** What the recipe editor offers under "Often used". */
-export const GEAR_SUGGESTIONS = ['Camp stove', 'Dutch oven', 'Skillet', 'Pot', 'Spatula', 'Tongs', 'Cutting board', 'Cooler', 'Aluminum foil'] as const;
-
 /** Gear as stored: cleaned like any scout text, one of each (ignoring case), at most 20. */
 export function cleanGear(raw: unknown): string[] {
   const out: string[] = [];

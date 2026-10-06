@@ -40,7 +40,7 @@ import { listAllMenusWith } from '@/lib/menu-monster/menus-store';
 import { MenusAdmin, type MenuAdminRow } from './menus-admin';
 import { ScoutIngredients } from './scout-ingredients';
 import { GearAdmin } from './gear-admin';
-import { listGearAdminWith } from '@/lib/menu-monster/gear-store';
+import { listGearAdminWith, listGearWith } from '@/lib/menu-monster/gear-store';
 import { loadMenuMonsterCatalog } from '@/lib/menu-monster/data';
 import { listPurchasesWith, unfinishedPurchases } from '@/lib/menu-monster/purchases';
 import { ownerCreditNamesWith } from '@/lib/menu-monster/menus-store';
@@ -90,6 +90,8 @@ export default async function MenuMonsterAdminPage({
   }
   // The gear list only matters on its own tab.
   const gear = tab === 'gear' ? await listGearAdminWith(admin) : [];
+  // The gear picker in the recipe editors offers the live master list, A to Z.
+  const gearList = tab === 'recipes' ? await listGearWith(admin) : [];
   // Scout recipes worth a look: live ones changed after sharing, and typed-in ingredients to match.
   const edited = shared.filter((r) => r.editedSinceShared && r.status !== 'retired').length + typedIns.length;
   // Every saved menu, with its owner's name and its outing's title: only for the Menus tab.
@@ -174,7 +176,7 @@ export default async function MenuMonsterAdminPage({
       ) : tab === 'gear' ? (
         <GearAdmin items={gear} />
       ) : tab === 'recipes' ? (
-        <RecipeBuilder catalog={catalog} initialRecipeId={sp.recipe} initialFilter={foodFilter} stores={stores} today={today} />
+        <RecipeBuilder catalog={catalog} initialRecipeId={sp.recipe} initialFilter={foodFilter} stores={stores} today={today} gearList={gearList} />
       ) : (
         <>
           <ScoutIngredients items={typedIns} book={book} />

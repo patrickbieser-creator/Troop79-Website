@@ -6,8 +6,8 @@
  *
  *   setGearPackedAction   a Packed tick, by anyone who may record on the menu: the owner, any signed-in scout
  *                         on an outing's menu, a leader (scout-menus.tsx menuRecorder).
- *   setGearExtrasAction   the menu's own extra gear, replaced whole — the owner only. A name the troop's gear
- *                         list lacks joins it at once (Patrick, 2026-10-03).
+ *   setGearExtrasAction   the menu's own extra gear, replaced whole — the owner only. Gear is picked from the
+ *                         troop's list: a name not on it is dropped and reported in `dropped` (Patrick, 2026-10-05).
  */
 
 import { createAdminClient } from '@/lib/supabase/server';
@@ -28,11 +28,11 @@ export async function setGearPackedAction(menuId: unknown, key: unknown, count: 
   return done ? { ok: true } : { ok: false, error: 'That menu is gone.' };
 }
 
-export async function setGearExtrasAction(menuId: unknown, extras: unknown): Promise<{ ok: true; extras: string[] } | Fail> {
+export async function setGearExtrasAction(menuId: unknown, extras: unknown): Promise<{ ok: true; extras: string[]; dropped: string[] } | Fail> {
   if (typeof menuId !== 'string' || !Array.isArray(extras) || extras.length > 60) return { ok: false, error: 'That didn’t save. Try again.' };
   const who = await menuRecorder(menuId);
   // The owner, or a leader fixing the menu (menu-access.ts canEditPlan); the crew only ticks.
   if (!who || !canEditPlan(who.access) || who.personId == null) return { ok: false, error: 'Only the person who planned this menu, or a leader, can change its gear.' };
-  const saved = await setGearExtrasWith(createAdminClient(), menuId, who.stored.ownerPersonId, extras, who.personId);
-  return saved ? { ok: true, extras: saved } : { ok: false, error: 'That menu is gone.' };
+  const saved = await setGearExtrasWith(createAdminClient(), menuId, who.stored.ownerPersonId, extras);
+  return saved ? { ok: true, extras: saved.extras, dropped: saved.dropped } : { ok: false, error: 'That menu is gone.' };
 }

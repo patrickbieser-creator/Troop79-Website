@@ -40,7 +40,7 @@ export default async function NewRecipePage({ searchParams }: { searchParams: Pr
   }
   const sp = await searchParams;
   const catalog = await loadMenuMonsterCatalog(viewer.personId);
-  const gearNames = (await listGearWith(createAdminClient())).map((g) => g.name);
+  const gearList = await listGearWith(createAdminClient());
 
   let initial: Parameters<typeof RecipeEditor>[0]['initial'] = BLANK;
   let fromNote: string | null = null;
@@ -60,7 +60,7 @@ export default async function NewRecipePage({ searchParams }: { searchParams: Pr
     <>
       <RecipeHeader />
       <PageShell>
-        <RecipeEditor gearNames={gearNames} catalog={catalog} id={null} initial={initial} status="draft" credit={null} updatedAt={null} fromNote={fromNote} />
+        <RecipeEditor gearList={gearList} catalog={catalog} id={null} initial={initial} status="draft" credit={null} updatedAt={null} fromNote={fromNote} />
       </PageShell>
     </>
   );

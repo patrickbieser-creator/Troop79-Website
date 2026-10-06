@@ -314,7 +314,7 @@ describe('asSingleFood — a recipe moved to a single food', () => {
       { ingredientId: 'eggs', amount: '1', unitKey: null }
     ],
     variations: [{ restriction: 'gf', state: 'substituted', note: 'almond', lines: [{ op: 'swap', baseIngredientId: 'pancake-mix', ingredientId: 'almond-flour', amount: '½', unitKey: null }] }],
-    gear: 'Plate'
+    gear: ['Plate']
   };
 
   it('AsSingleFood_LeavesOneLine_SoItCountsAsASingleFood', () => {
@@ -324,7 +324,7 @@ describe('asSingleFood — a recipe moved to a single food', () => {
   });
 
   it('AsSingleFood_KeepsItsNameMealsStepsAndGear', () => {
-    expect(asSingleFood(stew, 'oranges', '2')).toMatchObject({ id: 'cookies', name: 'Cookies', mealFit: ['snack'], stepsMd: 'Open the box.', gear: 'Plate' });
+    expect(asSingleFood(stew, 'oranges', '2')).toMatchObject({ id: 'cookies', name: 'Cookies', mealFit: ['snack'], stepsMd: 'Open the box.', gear: ['Plate'] });
   });
 
   it('AsSingleFood_WorksOnARecipeWithNoIngredientsYet', () => {
@@ -335,7 +335,7 @@ describe('asSingleFood — a recipe moved to a single food', () => {
 describe('isSingleFood', () => {
   const food = (over: Partial<RecipeAuthoring> = {}): RecipeAuthoring => ({
     id: 'cookies', name: 'Cookies', status: 'published', mealFit: ['snack'], foodGroups: [], camp: true, trail: true, method: null, stepsMd: '',
-    base: [{ ingredientId: 'cookies', amount: '2', unitKey: null }], variations: [], gear: '', ...over
+    base: [{ ingredientId: 'cookies', amount: '2', unitKey: null }], variations: [], gear: [], ...over
   });
 
   it('OneIngredient_NoStepsGearOrSwaps_IsASingleFood', () => {
@@ -343,7 +343,7 @@ describe('isSingleFood', () => {
   });
 
   it('StepsAndGear_DoNotMakeItARecipe', () => {
-    expect(isSingleFood(food({ stepsMd: 'Fry until crisp.', gear: 'Griddle' }))).toBe(true);
+    expect(isSingleFood(food({ stepsMd: 'Fry until crisp.', gear: ['Griddle'] }))).toBe(true);
   });
 
   it('ADietAnswerWithNoLines_IsStillASingleFood', () => {

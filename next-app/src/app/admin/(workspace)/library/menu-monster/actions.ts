@@ -22,12 +22,12 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { recordAudit, type AuditDetail } from '@/lib/audit';
 import { acknowledgePriceChangeWith, decidePriceWith, leaderSetPriceWith, type DecideOutcome } from '@/lib/menu-monster/price-history';
 import { loadAuthoringCatalogWith } from '@/lib/menu-monster/catalog';
-import { cleanGear, cleanScoutText, isScoutRecipeId } from '@/lib/menu-monster/scout-recipes';
+import { cleanScoutText, isScoutRecipeId } from '@/lib/menu-monster/scout-recipes';
 import { keepTypedInWith, matchTypedInWith, rejectTypedInWith, renameScoutRecipeWith, setScoutRecipeCreditWith } from '@/lib/menu-monster/scout-recipes-store';
 import { deleteMenuWith, duplicateMenuWith, loadMenuWith, renameMenuWith, setMenuSharedWith, MENU_LIMIT } from '@/lib/menu-monster/menus-store';
 import { isMenuId } from '@/lib/menu-monster/menus';
 import { approveHeldPackageWith, rejectHeldPackageWith } from '@/lib/menu-monster/scout-packages-store';
-import { createGearWith, deleteGearWith, ensureGearWith, retireGearWith, updateGearWith } from '@/lib/menu-monster/gear-store';
+import { createGearWith, deleteGearWith, resolveGearWith, retireGearWith, storedRecipeGearWith, updateGearWith } from '@/lib/menu-monster/gear-store';
 import { createBrandWith, mergeBrandWith, moveBrandWith, removeBrandWith, renameBrandWith, setBrandDietsWith, setPackageBrandWith, type BrandWrite, suggestRecipeBrandWith } from '@/lib/menu-monster/brands-store';
 import {
   authoringOf,
@@ -53,6 +53,8 @@ export interface Result {
   id?: string;
   /** A package save that taught the ingredient a conversion: "1 oz = 0.2 cups". */
   learned?: string;
+  /** A recipe save: gear names that are not on the master gear list, so were not kept. */
+  dropped?: string[];
 }
 
 const PATHS = ['/admin/library/menu-monster', '/library/topic/menu-monster'];
@@ -769,6 +771,10 @@ export async function saveRecipe(a: RecipeAuthoring): Promise<Result> {
     if (zero >= 0) return { ok: false, error: `Line ${zero + 1}: the amount per person must be more than zero on a published item.` };
   }
 
+  // Gear is picked from the master list (Patrick, 2026-10-05): each entry takes its spelling, anything else is
+  // dropped and said so. A retired item stays only when this recipe already holds it.
+  const gear = Array.isArray(a.gear) ? await resolveGearWith(supabase, a.gear, await storedRecipeGearWith(supabase, current ? a.id : null)) : null;
+
   const { error } = await supabase.rpc('mm_save_recipe', {
     p_recipe: {
       id,
@@ -781,8 +787,8 @@ export async function saveRecipe(a: RecipeAuthoring): Promise<Result> {
       method: a.method ? cap(a.method, MAX.method) : null,
       steps_md: cap(a.stepsMd ?? '', MAX.steps),
       sort_order: sortOrder,
-      // 4C: gear, cleaned like scout text; left out when the form didn't carry it (the RPC keeps the stored list).
-      ...(a.gear !== undefined ? { equipment: cleanGear(a.gear.split(',')) } : {}),
+      // Gear from the master list, A to Z; left out when the form didn't carry it (the RPC keeps the stored list).
+      ...(gear ? { equipment: gear.kept } : {}),
       // The food it is, served by itself; left out when the form didn't carry it (the RPC keeps the stored link).
       ...(a.foodIngredientId !== undefined ? { food_ingredient_id: a.foodIngredientId } : {})
     },
@@ -807,8 +813,6 @@ export async function saveRecipe(a: RecipeAuthoring): Promise<Result> {
     }))
   });
   if (error) return { ok: false, error: error.message };
-  // Gear the troop's list lacks joins it (leaders name gear on recipes too).
-  if (a.gear !== undefined) await ensureGearWith(supabase, cleanGear(a.gear.split(',')), null);
 
   await recordAudit({
     area: 'library',
@@ -822,7 +826,7 @@ export async function saveRecipe(a: RecipeAuthoring): Promise<Result> {
     ]
   });
   revalidate();
-  return { ok: true, id };
+  return { ok: true, id, ...(gear && gear.dropped.length > 0 ? { dropped: gear.dropped } : {}) };
 }
 
 const STATUS_LABEL: Record<RecipeStatus, string> = { draft: 'Draft', published: 'Published', retired: 'Retired' };

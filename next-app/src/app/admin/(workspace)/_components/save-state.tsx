@@ -50,13 +50,15 @@ export function useSavedSnapshot(draftKey: string): { dirty: boolean; markSaved:
  * object as of mount / the last markSaved(); a discard handler applies it to
  * the form's setters.
  */
-export function useDraftSnapshot<T>(draft: T): { dirty: boolean; markSaved: () => void; saved: T } {
+export function useDraftSnapshot<T>(draft: T): { dirty: boolean; markSaved: () => void; markSavedAs: (kept: T) => void; saved: T } {
   const [saved, setSaved] = useState(() => ({ key: JSON.stringify(draft), value: draft }));
   const draftKey = JSON.stringify(draft);
   const markSaved = useCallback(() => setSaved({ key: draftKey, value: draft }), [draftKey, draft]);
+  // The draft as the server actually kept it (e.g. gear it dropped), when that differs from what was sent.
+  const markSavedAs = useCallback((kept: T) => setSaved({ key: JSON.stringify(kept), value: kept }), []);
   const dirty = draftKey !== saved.key;
   useRegisterDirty(dirty);
-  return { dirty, markSaved, saved: saved.value };
+  return { dirty, markSaved, markSavedAs, saved: saved.value };
 }
 
 /**
