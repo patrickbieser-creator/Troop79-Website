@@ -159,6 +159,23 @@ describe('one entry for a single food', () => {
     expect(res.error).toMatch(/Still used by Vitest onefood sundae/);
   });
 
+  // Patrick, 2026-10-05: "vegetarians get veggie bacon instead" is a note on Bacon, not a different kind of thing.
+  it('Leader_AddsADietSwap_AndItStaysASingleFood', async () => {
+    const made = await createFood(food());
+    const { ings } = await rows();
+    const { data: other } = await admin.from('mm_ingredients').select('id').is('retired_at', null).is('added_by_person_id', null).neq('id', ings[0].id).limit(1).single();
+    const res = await saveRecipe({
+      id: made.recipeId as string, name: NAME, status: 'published', mealFit: ['snack'], foodGroups: [], camp: true, trail: false,
+      method: 'no-cook', stepsMd: '',
+      base: [{ ingredientId: ings[0].id, amount: '2', unitKey: null }],
+      variations: [{ restriction: 'veg', state: 'substituted', note: '', lines: [{ op: 'swap', baseIngredientId: ings[0].id, ingredientId: (other as { id: string }).id, amount: '1', unitKey: null }] }],
+      foodIngredientId: ings[0].id
+    });
+    expect(res).toMatchObject({ ok: true });
+    const after = await rows();
+    expect(after.recs[0]).toMatchObject({ food_ingredient_id: ings[0].id });
+  });
+
   it('Leader_AddsASecondIngredient_AndItBecomesARecipe_WhileTheFoodStays', async () => {
     const made = await createFood(food());
     const { ings } = await rows();

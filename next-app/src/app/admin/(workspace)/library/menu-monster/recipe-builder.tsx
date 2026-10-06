@@ -34,11 +34,13 @@
  * bad field in place, switches to the version tab that holds the first one, focuses it, and says
  * "Can't save yet: …" beside the button. Greyed means nothing to do, never not valid yet.
  *
- * A SINGLE FOOD (authoring.ts isSingleFood: one ingredient, no diet swaps — Cookies, Bacon)
+ * A SINGLE FOOD (authoring.ts isSingleFood: one ingredient line for everyone — Cookies, Bacon; a diet swap is a
+ * note on it, not a second kind of thing, since 2026-10-05)
  * opens in a short form instead (Patrick, 2026-10-04; prototype concept-f-kinds/admin-food.html): its name,
  * what each person gets, meal fit and food groups, then its brands and their packages. No ingredient line;
  * Steps and Gear show only when the food already has some (bacon), so Cookies stays three fields. "Open the
- * full editor" goes to the food's own page — the way to a diet swap or a second ingredient; saving a new
+ * full editor" goes to the food's own page — the way to a second ingredient; the diets are answered in the
+ * short form itself (Same as everyone / Instead… / Not suitable); saving a new
  * name renames the ingredient too while the two still match.
  */
 import { Fragment, useEffect, useMemo, useRef, useState, useTransition, type MouseEvent } from 'react';
@@ -60,6 +62,7 @@ import {
   METHODS,
   asSingleFood,
   authoringIssues,
+  swapsDropped,
   authoringOf,
   compileAuthoring,
   isSingleFood,
@@ -290,7 +293,7 @@ export function RecipeBuilder({
                         </Link>
                       )}
                     </td>
-                    <td>{row.food ? 'Food' : 'Recipe'}</td>
+                    <td>{row.food ? (row.swaps ? 'Food · diet swaps' : 'Food') : 'Recipe'}</td>
                     <td>{r.mealFit.length === 0 ? '—' : MEALS.filter((m) => r.mealFit.includes(m.key)).map((m) => m.label).join(', ')}</td>
                     <td>{row.eachGets || '—'}</td>
                     <td>
@@ -549,10 +552,11 @@ export function RecipeEditor({
       </div>
       )}
       {error && <Notice>{error}</Notice>}
-      {/* A single food that is being given a second ingredient or a diet swap: said before the save, not after. */}
+      {/* A single food that is being given a second ingredient: said before the save, not after. (A diet swap is
+          a note on the food and changes nothing here.) */}
       {snap.saved.foodIngredientId && !isSingleFood(draft) && (
         <p className={styles.hint} role="status">
-          Saving this makes {snap.saved.name} a recipe. {ingById.get(snap.saved.foodIngredientId)?.name ?? 'The food'} stays in the Price book as an ingredient.
+          Adding a second ingredient makes {snap.saved.name} a recipe. {ingById.get(snap.saved.foodIngredientId)?.name ?? 'The food'} stays in the Price book as an ingredient.
         </p>
       )}
       {makingFood && (
@@ -893,7 +897,7 @@ const FOOD_SECTIONS = Object.keys(SECTIONS) as Section[];
 
 /**
  * "Cookies are listed under a recipe. I need a way to move it to a single food" (Patrick, 2026-10-05).
- * Nothing stores which kind a menu item is: one ingredient and no diet swap IS a single food. So the move is
+ * Nothing stores which kind a menu item is: one ingredient line for everyone IS a single food. So the move is
  * choosing that one thing — an ingredient on file, or a new one named after the recipe — and how many each
  * person gets. It lands in the draft like any other edit; Save changes writes it. Only a brand-new ingredient
  * is written at once, because the line has to name something that exists.
@@ -928,11 +932,9 @@ function MakeSingleFood({
   const isNewIngredient = pick === NEW_INGREDIENT;
   const amountOk = parseQty(amount) > 0;
   const ready = amountOk && (!isNewIngredient || (name.trim() !== '' && one.trim() !== '' && many.trim() !== ''));
-  const swaps = recipe.variations.filter((v) => v.lines.length > 0).length;
-  const replaced = [
-    recipe.base.length > 0 ? `its ${recipe.base.length} ingredient${recipe.base.length === 1 ? '' : 's'}` : null,
-    swaps > 0 ? `${swaps} diet swap${swaps === 1 ? '' : 's'}` : null
-  ].filter(Boolean);
+  const replaced = [recipe.base.length > 0 ? `its ${recipe.base.length} ingredient${recipe.base.length === 1 ? '' : 's'}` : null].filter(Boolean);
+  // Swaps OF the chosen food stay with it; leave-outs, extra lines and swaps of other ingredients go — said here, not after.
+  const dropped = isNewIngredient ? recipe.variations.reduce((n, v) => n + v.lines.length, 0) : swapsDropped(recipe, pick);
   const title = `Make ${recipe.name.trim() || 'this'} a single food`;
   const idp = `mm-food-${recipe.id}`;
 
@@ -959,6 +961,7 @@ function MakeSingleFood({
       <p className={styles.hint}>
         A single food is one thing each person gets, like cookies or an apple.
         {replaced.length > 0 ? ` This replaces ${replaced.join(' and ')} with that one thing.` : ''} Its name, meals, steps and gear stay.
+        {dropped > 0 ? ` Drops ${dropped} diet ${dropped === 1 ? 'line' : 'lines'} that ${dropped === 1 ? 'does' : 'do'} not apply to that food; a swap of the food itself stays.` : ''}
       </p>
       <div className={lib.fieldGrid}>
         <div>
@@ -1151,8 +1154,23 @@ function SingleFoodFields({
   onFull: () => void;
 }) {
   const line = draft.base[0];
-  // Diets worth saying: a flagged ingredient with no answer yet, or an answer a leader gave.
-  const diets = RESTRICTIONS.map((r) => ({ r, view: viewFor(draft, r.key, catalog) })).filter((x) => x.view !== 'not_needed');
+  const foodName = food?.name ?? 'this food';
+  const ingredients = catalog.ingredients.filter((i) => !i.retiredAt);
+  const ingById = new Map(catalog.ingredients.map((i) => [i.id, i]));
+  // Diets worth a row: one the food is flagged for (needs an answer), or one a leader has answered.
+  const diets = RESTRICTIONS.map((r) => ({ r, v: draft.variations.find((x) => x.restriction === r.key) ?? null, view: viewFor(draft, r.key, catalog) })).filter((x) => x.v || x.view !== 'not_needed');
+  const unanswered = RESTRICTIONS.filter((r) => !diets.some((d) => d.r.key === r.key));
+  /** Set a diet's answer; "Instead…" starts one swap line of this food, with its amount. */
+  const answerDiet = (key: RestrictionKey, state: VariationState) =>
+    setDraft((d) => {
+      const cur = d.variations.find((v) => v.restriction === key);
+      const lines: DraftVariationLine[] =
+        state !== 'substituted' ? [] : cur?.lines.some((l) => l.op === 'swap') ? cur.lines : [{ op: 'swap', baseIngredientId: line?.ingredientId ?? '', ingredientId: null, amount: line?.amount ?? '', unitKey: null }];
+      const next: DraftVariation = { restriction: key, state, note: cur?.note ?? '', lines };
+      return { ...d, variations: cur ? d.variations.map((v) => (v.restriction === key ? next : v)) : [...d.variations, next] };
+    });
+  const patchSwap = (key: RestrictionKey, patch: Partial<DraftVariationLine>) =>
+    setDraft((d) => ({ ...d, variations: d.variations.map((v) => (v.restriction === key ? { ...v, lines: v.lines.map((l) => (l.op === 'swap' ? { ...l, ...patch } : l)) } : v)) }));
   return (
     <>
       <div className={lib.fieldGrid}>
@@ -1218,16 +1236,92 @@ function SingleFoodFields({
           </label>
         </fieldset>
       </div>
-      {diets.length > 0 && (
-        <ul className={styles.list} aria-label="Diets">
-          {diets.map(({ r, view }) => (
-            <li key={r.key} className={styles.listRow}>
-              <span>{r.label}</span>
-              <Badge variant={VIEW_VARIANT[view]}>{VIEW_LABEL[view]}</Badge>
-            </li>
-          ))}
-        </ul>
-      )}
+      {/* Diets, answered right here (Patrick, 2026-10-05: there was "no obvious way to add a variation for vegetarian
+          bacon", and the full editor turned it into a recipe). One row per diet the food is flagged for or a leader
+          has answered; the rest come in through "Add a diet…". A swap is one line: what those scouts get instead. */}
+      <fieldset className={styles.fieldset}>
+        <legend className={`adminLabel ${lib.fieldLabel}`}>Diets</legend>
+        {diets.length === 0 && <p className={styles.muted}>Nothing to answer — no diet is flagged for {foodName}.</p>}
+        <div className={styles.dietRows}>
+          {diets.map(({ r, v, view }) => {
+            const lower = r.label.toLowerCase();
+            const swap = v?.lines.find((l) => l.op === 'swap') ?? null;
+            const swapIng = swap?.ingredientId ? (ingById.get(swap.ingredientId) ?? null) : null;
+            const swapBad = swap != null && (!swap.ingredientId || !(parseQty(swap.amount) > 0));
+            return (
+              <div key={r.key} className={styles.dietRow}>
+                <div className={styles.detailHead}>
+                  <strong>{r.label}</strong>
+                  {view === 'needs_look' && <Badge variant="warning">Needs an answer</Badge>}
+                  <span className={styles.spacer} />
+                  {v && (
+                    <Button variant="quiet" size="sm" onClick={() => setDraft((d) => ({ ...d, variations: d.variations.filter((x) => x.restriction !== r.key) }))}>
+                      Remove
+                    </Button>
+                  )}
+                </div>
+                <SegmentedControl
+                  name={`mm-f-${r.key}`}
+                  label={`What ${lower} scouts get`}
+                  value={(v?.state ?? '') as VariationState | ''}
+                  options={[
+                    { value: 'nothing', label: 'Same as everyone' },
+                    { value: 'substituted', label: 'Instead…' },
+                    { value: 'unsuitable', label: 'Not suitable' }
+                  ]}
+                  onChange={(state) => state && answerDiet(r.key, state)}
+                />
+                {v?.state === 'nothing' && <p className={styles.hint}>{r.label} scouts get {foodName} as it is.</p>}
+                {v?.state === 'unsuitable' && (
+                  <p className={styles.hint}>
+                    No {lower} version. The planner asks the patrol to plan something else for {lower} scouts.
+                  </p>
+                )}
+                {v?.state === 'substituted' && swap && (
+                  <div className={swapBad ? `${styles.lineRow} ${styles.bad}` : styles.lineRow}>
+                    <div className={styles.grow}>
+                      <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`mm-f-${r.key}-ing`}>
+                        {r.label} scouts get
+                      </label>
+                      <IngredientSelect id={`mm-f-${r.key}-ing`} label={`What ${lower} scouts get instead of ${foodName}`} value={swap.ingredientId ?? ''} ingredients={ingredients} invalid={!swap.ingredientId} onChange={(id) => patchSwap(r.key, { ingredientId: id || null, unitKey: null })} />
+                    </div>
+                    <div className={styles.narrow}>
+                      <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`mm-f-${r.key}-amt`}>
+                        Each
+                      </label>
+                      <input id={`mm-f-${r.key}-amt`} aria-label={`Amount of ${swapIng?.name ?? 'the swap'} per ${lower} scout`} className={lib.textInput} aria-invalid={!!swap.ingredientId && !(parseQty(swap.amount) > 0) ? true : undefined} value={swap.amount} placeholder="½" onChange={(e) => patchSwap(r.key, { amount: e.target.value })} />
+                    </div>
+                    <div className={styles.narrow}>
+                      <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`mm-f-${r.key}-unit`}>
+                        Unit
+                      </label>
+                      <UnitSelect id={`mm-f-${r.key}-unit`} label={`Unit for ${swapIng?.name ?? 'the swap'}`} ingredient={swapIng} unitKey={swap.unitKey} catalog={catalog} onChange={(k) => patchSwap(r.key, { unitKey: k })} />
+                    </div>
+                    {!swap.ingredientId && <p className={styles.badNote}>Pick what {lower} scouts get instead of {foodName}.</p>}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        {unanswered.length > 0 && (
+          <select
+            className={`${lib.selectInput} ${styles.mealFilter}`}
+            aria-label="Add a diet"
+            value=""
+            onChange={(e) => {
+              if (e.target.value) answerDiet(e.target.value as RestrictionKey, 'nothing');
+            }}
+          >
+            <option value="">Add a diet…</option>
+            {unanswered.map((r) => (
+              <option key={r.key} value={r.key}>
+                {r.label}
+              </option>
+            ))}
+          </select>
+        )}
+      </fieldset>
       {make && (
         <div className={lib.fieldGrid}>
           <div className={lib.fieldFull}>
@@ -1248,7 +1342,7 @@ function SingleFoodFields({
         <Button variant="quiet" size="sm" onClick={onFull}>
           Open the full editor
         </Button>{' '}
-        for {make ? '' : 'steps, gear, '}a diet swap or a second ingredient.
+        to add a second ingredient (that makes {foodName} a recipe){make ? '' : ', or for steps and gear'}.
       </p>
     </>
   );

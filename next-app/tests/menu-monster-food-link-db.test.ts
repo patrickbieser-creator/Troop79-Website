@@ -66,10 +66,11 @@ describe('the food link holds only for one line on that food', () => {
     expect((await item())?.food_ingredient_id).toBeNull();
   });
 
-  it('FoodLink_IsDropped_WhenADietSwapChangesALine', async () => {
+  // 2026-10-05: a diet swap is a note on the food, not a second kind of thing — the tie survives it.
+  it('FoodLink_IsKept_WhenADietSwapChangesALine', async () => {
     const swap = [{ restriction: 'gf', state: 'substituted', note: null, lines: [{ op: 'swap', base_ingredient_id: FOOD, ingredient_id: OTHER, qty_per_person: 1, unit_key: null }] }];
-    await save(ITEM, 'x', [line(FOOD)], FOOD, swap);
-    expect((await item())?.food_ingredient_id).toBeNull();
+    await save(ITEM, 'x', [line(FOOD), { ...line(OTHER, 1), serves_rule: 'only', serves_restrictions: ['gf'] }], FOOD, swap);
+    expect((await item())?.food_ingredient_id).toBe(FOOD);
   });
 
   it('FoodLink_IsDropped_WhenASecondIngredientIsAddedLater_AndTheFoodStays', async () => {

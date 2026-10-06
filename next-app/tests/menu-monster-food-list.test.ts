@@ -59,6 +59,14 @@ describe('Food & recipes list — rows', () => {
     expect(row('toast').eachGets).toBe('No ingredients yet');
   });
 
+  it('AFoodWithADietSwap_IsStillAFood_AndSaysSo', () => {
+    const swapped = buildFoodRows({
+      ...CATALOG,
+      recipes: [recipe({ id: 'bacon', name: 'Bacon', lines: [line('bacon', 3)], variations: [{ restriction: 'veg', state: 'substituted', note: null, lines: [{ op: 'swap', baseIngredientId: 'bacon', ingredientId: 'eggs', qtyPerPerson: 1, unitKey: null }] }] })]
+    });
+    expect([swapped[0].food, swapped[0].swaps]).toEqual([true, true]);
+  });
+
   it('ASingleFood_IsMarkedAsOne', () => {
     expect([row('bacon').food, row('pancakes').food]).toEqual([true, false]);
   });

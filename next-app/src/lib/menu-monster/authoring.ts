@@ -307,25 +307,37 @@ const blank = (a: RecipeAuthoring) => ({
 });
 
 /**
- * A single food (Cookies, Apples, Bacon): one thing each person gets — one ingredient line and no diet swap
- * that changes a line. It may still have steps and gear (bacon is cooked on a griddle). The leader tools edit
- * it in the short form; two ingredients or a swap make it a recipe.
+ * A single food (Cookies, Apples, Bacon): one thing each person gets — one ingredient line for everyone. Its
+ * diet answers, a swap included ("vegetarians get veggie bacon instead"), are notes on that food and do not
+ * make it a recipe (Patrick, 2026-10-05; until then a swap did). It may still have steps and gear (bacon is
+ * cooked on a griddle). The leader tools edit it in the short form; a second ingredient makes it a recipe.
  */
 export function isSingleFood(a: RecipeAuthoring): boolean {
-  return a.base.length === 1 && a.base[0].ingredientId !== '' && a.variations.every((v) => v.lines.length === 0);
+  return a.base.length === 1 && a.base[0].ingredientId !== '';
+}
+
+/** The diet swaps a single food on `ingredientId` can keep: swaps OF that food. Leave-outs and extra lines belong to a recipe. */
+export function swapsKept(a: RecipeAuthoring, ingredientId: string): DraftVariation[] {
+  return a.variations.map((v) => ({ ...v, lines: v.lines.filter((l) => l.op === 'swap' && l.baseIngredientId === ingredientId) }));
+}
+
+/** How many variation lines asSingleFood() would drop — said before the move, never after. */
+export function swapsDropped(a: RecipeAuthoring, ingredientId: string): number {
+  const kept = swapsKept(a, ingredientId);
+  return a.variations.reduce((n, v, i) => n + v.lines.length - kept[i].lines.length, 0);
 }
 
 /**
  * A recipe turned into a single food (Patrick, 2026-10-05: "cookies are listed under a recipe. I need a way
- * to move it"): the one thing each person gets replaces every ingredient line, and the diet swaps lose their
- * lines (a swap that changes a line is what makes something a recipe). Whether a diet is still marked
- * unsuitable, the steps and the gear are kept — bacon is one food and is still cooked.
+ * to move it"): the one thing each person gets replaces every ingredient line. Diet swaps OF that food stay
+ * (they are notes on it); leave-outs, extra lines and swaps of other ingredients go. Whether a diet is still
+ * marked unsuitable, the steps and the gear are kept — bacon is one food and is still cooked.
  */
 export function asSingleFood(a: RecipeAuthoring, ingredientId: string, amount: string, tie = false): RecipeAuthoring {
   return {
     ...a,
     base: [{ ingredientId, amount, unitKey: null }],
-    variations: a.variations.map((v) => ({ ...v, lines: [] })),
+    variations: swapsKept(a, ingredientId),
     // `tie`: it IS that food (same name, nothing else tied to it) — one entry from here on. Otherwise it is
     // a dish made of one food, under its own name.
     foodIngredientId: tie ? ingredientId : null

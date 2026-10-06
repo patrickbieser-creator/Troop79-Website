@@ -95,6 +95,9 @@
 .itemBtnOn { border-color: var(--admin-navy); background: var(--admin-status-info-bg); }
 .editor { display: grid; gap: 14px; min-width: 0; }
 .fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+/* A single food's diets (2026-10-05): one bordered row per diet, answered in place. */
+.dietRows { display: grid; gap: 8px; margin: 4px 0 8px; }
+.dietRow { display: grid; gap: 6px; padding: 8px 10px; border: 1px solid var(--admin-gray-200); border-radius: var(--admin-radius); }
 .lineList { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .lineRow {
   display: flex;

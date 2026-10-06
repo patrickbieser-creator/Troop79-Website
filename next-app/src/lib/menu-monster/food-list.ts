@@ -31,8 +31,10 @@ export type RowCost = { kind: 'priced'; perPerson: number } | { kind: 'unpriced'
 export interface FoodRow {
   recipe: Recipe;
   pill: Pill;
-  /** One ingredient, no diet swaps: Cookies, Bacon. Opens in the list; a recipe opens its own page. */
+  /** One ingredient line for everyone: Cookies, Bacon. Opens in the list; a recipe opens its own page. */
   food: boolean;
+  /** A food with a diet swap ("vegetarians get veggie bacon instead") — still a food, said in the list. */
+  swaps: boolean;
   /** "3 slices" for a single food; "4 ingredients" for a recipe. */
   eachGets: string;
   /** The variations a leader has added, in the usual diet order. */
@@ -97,6 +99,7 @@ export function buildFoodRows(catalog: Catalog): FoodRow[] {
         recipe,
         pill: pillOf(a, catalog),
         food,
+        swaps: food && a.variations.some((v) => v.lines.length > 0),
         eachGets: eachGetsOf(recipe, food, catalog),
         diets: views.filter((v) => v.added).map(({ key, view }) => ({ key, view })),
         toLook: views.filter((v) => !v.added && v.view === 'needs_look').length,

@@ -353,9 +353,13 @@ describe('isSingleFood', () => {
   it.each([
     ['two ingredients', { base: [{ ingredientId: 'a', amount: '1', unitKey: null }, { ingredientId: 'b', amount: '1', unitKey: null }] }],
     ['no ingredient yet', { base: [{ ingredientId: '', amount: '', unitKey: null }] }],
-    ['no lines', { base: [] }],
-    ['a diet swap', { variations: [{ restriction: 'gf' as const, state: 'substituted' as const, note: '', lines: [{ op: 'swap' as const, baseIngredientId: 'cookies', ingredientId: 'gf-cookies', amount: '2', unitKey: null }] }] }]
+    ['no lines', { base: [] }]
   ])('With_%s_ItIsARecipe', (_what, over) => {
     expect(isSingleFood(food(over as Partial<RecipeAuthoring>))).toBe(false);
+  });
+
+  // Patrick, 2026-10-05: "vegetarians get veggie bacon instead" is a note on Bacon, not a different kind of thing.
+  it('WithADietSwap_ItIsStillASingleFood', () => {
+    expect(isSingleFood(food({ variations: [{ restriction: 'gf', state: 'substituted', note: '', lines: [{ op: 'swap', baseIngredientId: 'cookies', ingredientId: 'gf-cookies', amount: '2', unitKey: null }] }] }))).toBe(true);
   });
 });

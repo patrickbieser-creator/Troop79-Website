@@ -300,7 +300,53 @@ describe('Recipe builder — a single food opens in the short form (2026-10-04)'
 
   it('ADietThatNeedsALook_IsSaid', () => {
     open();
-    expect(within(bacon().getByRole('list', { name: 'Diets' })).getByRole('listitem').textContent).toMatch(/Vegetarian.*Needs a look/);
+    expect(bacon().getByText('Vegetarian').closest('div')?.textContent).toMatch(/Vegetarian.*Needs an answer/);
+  });
+
+  // Patrick, 2026-10-05: "there is no obvious way to add a variation for vegetarian bacon" — now the short form asks.
+  describe('diets are answered in the short form', () => {
+    const veg = () => within(bacon().getByRole('radiogroup', { name: 'What vegetarian scouts get' }));
+
+    it('NotSuitable_IsOneClick_AndSaves', async () => {
+      const user = userEvent.setup();
+      open();
+      await user.click(veg().getByRole('radio', { name: 'Not suitable' }));
+      expect(bacon().getByText(/No vegetarian version/)).toBeTruthy();
+      await save(user);
+      expect(vi.mocked(saveRecipe).mock.calls[0][0]).toMatchObject({ variations: [{ restriction: 'veg', state: 'unsuitable', lines: [] }] });
+    });
+
+    it('Instead_AsksWhatTheyGet_AndItStaysAFood', async () => {
+      const user = userEvent.setup();
+      open();
+      await user.click(veg().getByRole('radio', { name: 'Instead…' }));
+      const pick = bacon().getByLabelText('What vegetarian scouts get instead of Bacon');
+      // Marked until a food is picked; the amount starts as the food's own.
+      expect([pick.getAttribute('aria-invalid'), (bacon().getByLabelText('Amount of the swap per vegetarian scout') as HTMLInputElement).value]).toEqual(['true', '3']);
+      await user.selectOptions(pick, 'eggs');
+      expect(bacon().queryByText(/Adding a second ingredient makes/)).toBeNull();
+      await save(user);
+      expect(vi.mocked(saveRecipe).mock.calls[0][0]).toMatchObject({
+        base: [{ ingredientId: 'bacon' }],
+        variations: [{ restriction: 'veg', state: 'substituted', lines: [{ op: 'swap', baseIngredientId: 'bacon', ingredientId: 'eggs', amount: '3' }] }]
+      });
+    });
+
+    it('ADietNotFlagged_CanStillBeAdded', async () => {
+      const user = userEvent.setup();
+      open();
+      await user.selectOptions(bacon().getByRole('combobox', { name: 'Add a diet' }), 'gf');
+      const gf = within(bacon().getByRole('radiogroup', { name: 'What gluten-free scouts get' }));
+      expect((gf.getByRole('radio', { name: 'Same as everyone' }) as HTMLInputElement).checked).toBe(true);
+    });
+
+    it('AnAnsweredDiet_CanBeRemoved', async () => {
+      const user = userEvent.setup();
+      open();
+      await user.click(veg().getByRole('radio', { name: 'Not suitable' }));
+      await user.click(bacon().getByRole('button', { name: 'Remove' }));
+      expect((veg().getByRole('radio', { name: 'Not suitable' }) as HTMLInputElement).checked).toBe(false);
+    });
   });
 
   it('OpenTheFullEditor_GoesToTheFoodsOwnPage', async () => {
@@ -548,6 +594,17 @@ describe('Recipe builder — a wide list; foods open in it, recipes on their own
     render(<RecipeBuilder catalog={CATALOG} />);
     // 3 slices of a $7.49 / 16-slice pack.
     expect(cells('Bacon')).toEqual(['Bacon', 'Food', 'Breakfast', '3 slices', '1 needs a look', '$1.40', 'Published']);
+  });
+
+  it('AFoodWithADietSwap_IsStillAFood_AndTheListSaysSo', () => {
+    const swapped: Catalog = {
+      ...CATALOG,
+      recipes: CATALOG.recipes.map((r) =>
+        r.id === 'bacon' ? { ...r, variations: [{ restriction: 'veg', state: 'substituted', note: null, lines: [{ op: 'swap', baseIngredientId: 'bacon', ingredientId: 'eggs', qtyPerPerson: 2, unitKey: null }] }] } : r
+      )
+    };
+    render(<RecipeBuilder catalog={swapped} />);
+    expect(cells('Bacon')[1]).toBe('Food · diet swaps');
   });
 
   it('ARecipeRow_CountsItsIngredients', () => {
