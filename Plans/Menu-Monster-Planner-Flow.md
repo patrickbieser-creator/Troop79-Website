@@ -1,6 +1,6 @@
 # Menu Monster: the scout planner as a stepped flow
 
-**Status:** Active — (a) shipping as v1.183.0; (b) next, on Patrick's decisions of 2026-10-06
+**Status:** Active — (a) SHIPPED v1.183.0 (f9d3eac), (b) SHIPPED v1.184.0 (32aabdf); (c) remains
 **Opened:** 2026-10-06
 **Priority:** High
 

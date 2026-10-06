@@ -209,6 +209,20 @@ quiet Edit or a ⋯ menu. (6) Long forms stay numbered `FormSection`s under the 
 `primary` is reserved for the single commit; the outlined `danger` variant is for menu items and dialogs. Specimens:
 /admin/styleguide/admin → Buttons → Control hierarchy, Segmented control.
 
+**Multistep planning flows (Jenna, Patrick 2026-10-06; D-336)** — the scout planner, and any screen where one job
+spans several decisions: (1) name the steps, show their done-state, never lock them (scouts plan out of order;
+a locked step is a stalled patrol); (2) a job with more than ~8 decisions shows a one-line summary with Edit once
+it is set; (3) keep a one-line summary rail visible on every step — headcount, cost per person, things to fix,
+detail in a sheet — cost at the page bottom is a surprise at the end; (4) a badge is never a dead end: one that
+asks for something ("No price yet", "unfinished") is a control that opens the thing that answers it, and a tag
+that only informs is plain text; (5) defaults do the work, a question is asked only when the answer cannot be
+inferred — but NEVER prefill a headcount (Patrick: "highly fluid"); (6) per-item exceptions live inside the item
+(a meal's own headcount, a brand), not as controls on every row; (7) one primary per screen — Save while dirty,
+"Next: …" when clean; (8) reversible drafts get no separate Review step — the last step's header is the review;
+only irreversible actions (Share, Record) name their consequence beside the button. Reference:
+`(public)/library/menu-monster/menus/_components/{step-strip,summary-rail,plan-tab}.tsx`; specimens on
+/admin/styleguide/public.
+
 **Per-section Edit is a valid alternative to one whole-form dirty gate (2026-09-07):** a record page may give each section its own Edit → dirty-gated Save/Cancel using the same `save-state.tsx` pieces, rather than one Save for the whole page — provided only one section is editable at a time (opening a second section's Edit while another is dirty prompts to discard) and one-click actions (emails, roles, relationships) are visually separated as a labelled "Takes effect immediately" block, never inside a draft form. Reference: `roster/[personId]/`.
 
 Reference implementations: `src/app/(public)/events/[id]/person-first-form.tsx` (draftKey snapshot)
