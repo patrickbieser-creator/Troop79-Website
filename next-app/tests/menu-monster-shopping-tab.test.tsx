@@ -574,6 +574,17 @@ describe('ShoppingTab gear (Phase 4C)', () => {
   });
 });
 
+describe('ShoppingTab gear descriptions', () => {
+  it('PrintSheet_ShowsAGearItemsDescription_WhenItHasOne', () => {
+    const cat = { ...CATALOG, recipes: CATALOG.recipes.map((r) => (r.id === 'B003' ? { ...r, equipment: ['Skillet', 'Tongs'] } : r)) };
+    const m = menu();
+    const list = [{ id: 1, name: 'Skillet', home: 'trailer' as const, perPerson: false, retiredAt: null, description: 'Chef Kit, 4th floor shelf' }];
+    render(<ShoppingTab catalog={cat} menuId="menu-1" menu={m} updatedAt={VERSION} snapshot={buildSnapshot(m, cat)} gearList={list} />);
+    const items = within(screen.getByTestId('print-sheet')).getAllByRole('listitem', { hidden: true }).map((li) => li.textContent);
+    expect(items).toEqual(['SkilletChef Kit, 4th floor shelf', 'Tongs']);
+  });
+});
+
 describe('ShoppingTab scout prices (Phase 4B)', () => {
   it('UncheckedTypedIn_ShowsItIsAScoutsPrice', () => {
     const cat = { ...CATALOG, ingredients: CATALOG.ingredients.map((i) => (i.id === 'bacon' ? { ...i, needsMatch: true } : i)) };

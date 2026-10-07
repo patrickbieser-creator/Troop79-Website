@@ -9,7 +9,8 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '../../../_components/button';
 import { Notice } from '../../_components/notice';
-import { resyncPatrolsFromRoster } from './actions';
+import { movePatrolMenus, resyncPatrolsFromRoster } from './actions';
+import lib from '../library.module.css';
 import styles from './menu-monster.module.css';
 
 interface Tool {
@@ -19,16 +20,37 @@ interface Tool {
   run: () => Promise<{ ok: boolean; error?: string; note?: string }>;
 }
 
-export function ToolsAdmin() {
+/** Patrol names saved menus still carry that the list no longer has, with how many menus say each. */
+export interface MissingPatrol {
+  name: string;
+  count: number;
+}
+
+export function ToolsAdmin({ missing = [], patrols = [] }: { missing?: MissingPatrol[]; patrols?: readonly string[] }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [result, setResult] = useState<{ key: string; kind: 'ok' | 'error'; text: string } | null>(null);
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
   const tools: Tool[] = [
     {
       key: 'patrols',
       title: 'Resync patrol list from roster',
       what: 'The planner’s Patrol pull-down becomes the roster’s patrols (active scouts) plus “Whole troop”. Run it after patrols change on the roster.',
       run: resyncPatrolsFromRoster
+    },
+    {
+      key: 'move-patrol',
+      title: 'Move menus to a renamed patrol',
+      what: 'Saved menus that still name a patrol the list no longer has take the new name.',
+      run: async () => {
+        const res = await movePatrolMenus(from, to);
+        if (res.ok) {
+          setFrom('');
+          setTo('');
+        }
+        return res;
+      }
     }
   ];
 
@@ -49,9 +71,32 @@ export function ToolsAdmin() {
             <div className={styles.grow}>
               <strong>{t.title}</strong>
               <p className={styles.hint}>{t.what}</p>
+              {t.key === 'move-patrol' &&
+                (missing.length === 0 ? (
+                  <p className={styles.hint}>Nothing to move.</p>
+                ) : (
+                  <div className={styles.inlineForm}>
+                    <select className={lib.selectInput} aria-label="From patrol" value={from} onChange={(e) => setFrom(e.target.value)}>
+                      <option value="">From…</option>
+                      {missing.map((m) => (
+                        <option key={m.name} value={m.name}>
+                          {m.name} ({m.count} {m.count === 1 ? 'menu' : 'menus'})
+                        </option>
+                      ))}
+                    </select>
+                    <select className={lib.selectInput} aria-label="To patrol" value={to} onChange={(e) => setTo(e.target.value)}>
+                      <option value="">To…</option>
+                      {patrols.map((p) => (
+                        <option key={p} value={p}>
+                          {p}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
               {result?.key === t.key && (result.kind === 'ok' ? <Notice variant="success">{result.text}</Notice> : <Notice>{result.text}</Notice>)}
             </div>
-            <Button variant="secondary" size="sm" disabled={pending} onClick={() => run(t)}>
+            <Button variant="secondary" size="sm" disabled={pending || (t.key === 'move-patrol' && (!from || !to))} onClick={() => run(t)}>
               Run
             </Button>
           </li>

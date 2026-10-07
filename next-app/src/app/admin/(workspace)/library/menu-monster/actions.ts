@@ -24,9 +24,9 @@ import { acknowledgePriceChangeWith, decidePriceWith, leaderSetPriceWith, type D
 import { loadAuthoringCatalogWith } from '@/lib/menu-monster/catalog';
 import { cleanScoutText, isScoutRecipeId } from '@/lib/menu-monster/scout-recipes';
 import { keepTypedInWith, listScoutFoodsWith, matchTypedInWith, rejectTypedInWith, renameScoutRecipeWith, setScoutRecipeCreditWith } from '@/lib/menu-monster/scout-recipes-store';
-import { deleteMenuWith, duplicateMenuWith, loadMenuWith, renameMenuWith, setMenuOwnerWith, setMenuPatrolWith, setMenuSharedWith, MENU_LIMIT } from '@/lib/menu-monster/menus-store';
+import { deleteMenuWith, duplicateMenuWith, loadMenuWith, renameMenuWith, setMenuOwnerWith, setMenuPatrolListedWith, movePatrolMenusWith, listMenuOwnerCandidatesWith, setMenuSharedWith, MENU_LIMIT } from '@/lib/menu-monster/menus-store';
 import { isMenuId } from '@/lib/menu-monster/menus';
-import { resyncPatrolsWith } from '@/lib/menu-monster/menus-data';
+import { resyncPatrolsWith, loadMissingMenuPatrolsWith } from '@/lib/menu-monster/menus-data';
 import { approveHeldPackageWith, rejectHeldPackageWith } from '@/lib/menu-monster/scout-packages-store';
 import { createGearWith, deleteGearWith, mergeGearWith, resolveGearWith, retireGearWith, storedRecipeGearWith, updateGearWith } from '@/lib/menu-monster/gear-store';
 import { createBrandWith, mergeBrandWith, moveBrandWith, removeBrandWith, renameBrandWith, setBrandDietsWith, setPackageBrandWith, type BrandWrite, suggestRecipeBrandWith } from '@/lib/menu-monster/brands-store';
@@ -1150,9 +1150,30 @@ export async function resyncPatrolsFromRoster(): Promise<Result & { note?: strin
   revalidatePath('/library/menu-monster/menus', 'layout');
   const parts = [`${res.patrols.length} patrols: ${res.patrols.join(', ')}.`];
   if (res.added.length) parts.push(`Added ${res.added.join(', ')}.`);
-  if (res.removed.length) parts.push(`Removed ${res.removed.join(', ')}.`);
+  if (res.removed.length) {
+    const said = res.removed.map((n) => {
+      const c = res.removedMenus[n] ?? 0;
+      return c ? `${n} (${c} ${c === 1 ? 'menu' : 'menus'} still say it)` : n;
+    });
+    parts.push(`Removed: ${said.join(', ')}.`);
+  }
   if (!res.added.length && !res.removed.length) parts.push('Nothing had changed.');
   return { ok: true, note: parts.join(' ') };
+}
+
+/** Tool 2: menus left on a roster patrol's old name move to a name on the list. */
+export async function movePatrolMenus(from: string, to: string): Promise<Result & { note?: string }> {
+  const actor = await guardActor();
+  if ('ok' in actor) return actor;
+  const admin = createAdminClient();
+  const missing = await loadMissingMenuPatrolsWith(admin);
+  if (!missing.some((m) => m.name === from)) return { ok: false, error: 'No menu names that patrol any more.' };
+  const moved = await movePatrolMenusWith(admin, actor, from, to);
+  if (moved === 'not-listed') return { ok: false, error: `${to || 'That patrol'} is not on the patrol list.` };
+  await recordAudit({ area: 'library', action: 'update', entityType: 'mm_menus', entityId: 'patrol', summary: `Moved ${moved} Menu Monster menus from the ${from} patrol to ${to}` });
+  revalidate();
+  revalidatePath('/library/menu-monster/menus', 'layout');
+  return { ok: true, note: `Moved ${moved} ${moved === 1 ? 'menu' : 'menus'} from ${from} to ${to}.` };
 }
 
 /* ── Menus (the admin Menus tab, 2026-10-05) ─────────────────────────────── */
@@ -1202,12 +1223,14 @@ export async function setMenuShared(id: string, on: boolean): Promise<Result> {
   return { ok: true };
 }
 
-/** Hand a menu to a different owner (an active scout or a leader). */
+/** Hand a menu to a different owner (an active scout, a leader or a parent in an active household). */
 export async function setMenuOwner(id: string, personId: number): Promise<Result> {
   const who = await menuOwner(id);
   if ('ok' in who) return who;
   if (!Number.isInteger(personId) || personId < 1) return { ok: false, error: 'Pick who it belongs to.' };
-  const res = await setMenuOwnerWith(createAdminClient(), who.actor, id, personId);
+  const admin = createAdminClient();
+  if (!(await listMenuOwnerCandidatesWith(admin)).some((c) => c.personId === personId)) return { ok: false, error: 'They can’t own a menu. Pick a scout, a leader or a parent.' };
+  const res = await setMenuOwnerWith(admin, who.actor, id, personId);
   if (res === MENU_LIMIT) return { ok: false, error: 'They already have as many menus as one person may keep. Delete one they don’t need to make room.' };
   if (!res) return { ok: false, error: MENU_GONE };
   revalidate();
@@ -1218,7 +1241,8 @@ export async function setMenuOwner(id: string, personId: number): Promise<Result
 export async function setMenuPatrol(id: string, patrol: string): Promise<Result> {
   const who = await menuOwner(id);
   if ('ok' in who) return who;
-  const ok = await setMenuPatrolWith(createAdminClient(), who.actor, id, patrol);
+  const ok = await setMenuPatrolListedWith(createAdminClient(), who.actor, id, patrol);
+  if (ok === 'not-listed') return { ok: false, error: `${patrol.trim()} is not on the patrol list.` };
   if (!ok) return { ok: false, error: MENU_GONE };
   revalidate();
   return { ok: true };

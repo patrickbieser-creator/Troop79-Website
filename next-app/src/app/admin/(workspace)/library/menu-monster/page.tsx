@@ -37,7 +37,7 @@ import { RecipeBuilder } from './recipe-builder';
 import { ScoutRecipes } from './scout-recipes';
 import { listScoutFoodsWith, listScoutRecipesWith, listTypedInsWith } from '@/lib/menu-monster/scout-recipes-store';
 import { listAllMenusWith, listMenuOwnerCandidatesWith, type MenuOwnerCandidate } from '@/lib/menu-monster/menus-store';
-import { loadPatrolNamesWith } from '@/lib/menu-monster/menus-data';
+import { loadMissingMenuPatrolsWith, loadPatrolNamesWith } from '@/lib/menu-monster/menus-data';
 import { MenusAdmin, type MenuAdminRow } from './menus-admin';
 import { ScoutIngredients } from './scout-ingredients';
 import { GearAdmin } from './gear-admin';
@@ -102,6 +102,8 @@ export default async function MenuMonsterAdminPage({
   let menus: MenuAdminRow[] = [];
   let owners: MenuOwnerCandidate[] = [];
   let patrols: string[] = [];
+  let missingPatrols: Awaited<ReturnType<typeof loadMissingMenuPatrolsWith>> = [];
+  if (tab === 'tools') [patrols, missingPatrols] = await Promise.all([loadPatrolNamesWith(admin), loadMissingMenuPatrolsWith(admin)]);
   if (tab === 'menus') {
     const all = await listAllMenusWith(admin);
     [owners, patrols] = await Promise.all([listMenuOwnerCandidatesWith(admin), loadPatrolNamesWith(admin)]);
@@ -184,7 +186,7 @@ export default async function MenuMonsterAdminPage({
       ) : tab === 'gear' ? (
         <GearAdmin items={gear} />
       ) : tab === 'tools' ? (
-        <ToolsAdmin />
+        <ToolsAdmin missing={missingPatrols} patrols={patrols} />
       ) : tab === 'recipes' ? (
         <RecipeBuilder catalog={catalog} initialRecipeId={sp.recipe} initialFilter={foodFilter} stores={stores} today={today} gearList={gearList} scoutFoods={scoutFoods} />
       ) : (

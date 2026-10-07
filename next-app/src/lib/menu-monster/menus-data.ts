@@ -6,6 +6,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { fetchAllRows } from '@/lib/supabase/paginate';
 import type { Outing } from './menu-view';
 
 /** The calendar categories a menu can be tied to: the overnight kinds. */
@@ -81,7 +82,7 @@ export async function loadPatrolNamesWith(sb: SupabaseClient): Promise<string[]>
 }
 
 /** The "Resync patrol list from roster" tool: mm_patrols becomes the roster's patrols + "Whole troop". Returns what changed. */
-export async function resyncPatrolsWith(sb: SupabaseClient): Promise<{ patrols: string[]; added: string[]; removed: string[] }> {
+export async function resyncPatrolsWith(sb: SupabaseClient): Promise<{ patrols: string[]; added: string[]; removed: string[]; removedMenus: Record<string, number> }> {
   const roster = await loadRosterPatrolNamesWith(sb);
   const wanted = [...roster, 'Whole troop'];
   const { data: cur, error } = await sb.from('mm_patrols').select('name');
@@ -96,7 +97,25 @@ export async function resyncPatrolsWith(sb: SupabaseClient): Promise<{ patrols: 
   const rows = wanted.map((name, i) => ({ name, sort_order: name === 'Whole troop' ? 1000 : i + 1, synced_at: new Date().toISOString() }));
   const { error: uErr } = await sb.from('mm_patrols').upsert(rows, { onConflict: 'name' });
   if (uErr) throw new Error(`mm_patrols upsert: ${uErr.message}`);
-  return { patrols: wanted, added, removed };
+  const onMenus = await menuPatrolCountsWith(sb);
+  const removedMenus: Record<string, number> = {};
+  for (const n of removed) removedMenus[n] = onMenus.get(n) ?? 0;
+  return { patrols: wanted, added, removed, removedMenus };
+}
+
+/** How many saved menus name each patrol (blank patrols are not counted). */
+async function menuPatrolCountsWith(sb: SupabaseClient): Promise<Map<string, number>> {
+  const rows = await fetchAllRows<{ patrol: string | null }>((from, to) => sb.from('mm_menus').select('patrol').not('patrol', 'is', null).order('id').range(from, to));
+  const out = new Map<string, number>();
+  for (const r of rows) if (r.patrol) out.set(r.patrol, (out.get(r.patrol) ?? 0) + 1);
+  return out;
+}
+
+/** Patrol names that saved menus still carry but the list no longer has (a renamed roster patrol), A to Z, with menu counts. */
+export async function loadMissingMenuPatrolsWith(sb: SupabaseClient): Promise<{ name: string; count: number }[]> {
+  const [counts, listed] = await Promise.all([menuPatrolCountsWith(sb), loadPatrolNamesWith(sb)]);
+  const have = new Set(listed);
+  return [...counts.entries()].filter(([n]) => !have.has(n)).map(([name, count]) => ({ name, count })).sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /** The signed-in scout's own patrol (scouts.patrol by person_id), or null: the Plan tab's Patrol field starts there on a new menu. */

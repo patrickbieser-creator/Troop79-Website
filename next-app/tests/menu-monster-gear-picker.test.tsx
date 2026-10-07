@@ -43,6 +43,23 @@ describe('public GearPicker', () => {
   });
 });
 
+describe('public GearPicker descriptions', () => {
+  it('Result_ShowsTheDescriptionAsAMutedLine_WhenTheItemHasOne', async () => {
+    const list = [{ ...item(1, 'Chef Kit'), description: 'Skillets, spatula; 4th floor shelf' }, item(2, 'Tongs')];
+    render(<GearPicker list={list} taken={[]} onPick={() => {}} />);
+    await userEvent.setup().click(screen.getByRole('combobox', { name: 'Search gear' }));
+    const opts = screen.getAllByRole('option');
+    expect([opts[0].textContent, opts[1].textContent]).toEqual(['Chef KitSkillets, spatula; 4th floor shelf', 'Tongs']);
+  });
+
+  it('Picking_StillGivesJustTheName_WhenTheItemHasADescription', async () => {
+    const onPick = vi.fn();
+    render(<GearPicker list={[{ ...item(1, 'Chef Kit'), description: 'Skillets' }]} taken={[]} onPick={onPick} />);
+    await userEvent.setup().type(screen.getByRole('combobox', { name: 'Search gear' }), 'chef{Enter}');
+    expect(onPick).toHaveBeenCalledWith('Chef Kit');
+  });
+});
+
 describe('public GearChips', () => {
   function Harness({ start }: { start: string[] }) {
     const [gear, setGear] = useState(start);

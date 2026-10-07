@@ -178,6 +178,7 @@ export function GearTab({ catalog, menuId, menu, gearList, state: initial, canPa
                     <div className={s.cost}>{r.count > 1 ? `× ${r.count}` : ''}</div>
                     {open && (
                       <div id={panel} className={s.inset}>
+                        {r.description && <p className={s.insetMuted}>{r.description}</p>}
                         {r.perPerson ? (
                           <p className={s.insetMuted}>One per person.</p>
                         ) : r.usedBy.length > 0 ? (

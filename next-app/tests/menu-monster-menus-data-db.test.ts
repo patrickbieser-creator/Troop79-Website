@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { adminClient } from './helpers/admin-client';
-import { loadOutingsWith, loadPatrolNamesWith, loadRosterPatrolNamesWith, resyncPatrolsWith } from '../src/lib/menu-monster/menus-data';
+import { loadOutingsWith, loadPatrolNamesWith, loadRosterPatrolNamesWith, loadMissingMenuPatrolsWith, resyncPatrolsWith } from '../src/lib/menu-monster/menus-data';
 
 /**
  * Scout Workspace slice 4: the outing pulldown's loader against local
@@ -112,5 +112,33 @@ describe('mm_patrols', () => {
     await resyncPatrolsWith(sb);
     const again = await resyncPatrolsWith(sb);
     expect([again.added, again.removed]).toEqual([[], []]);
+  });
+});
+
+describe('mm_patrols: menus left on a renamed patrol (2026-10-06)', () => {
+  const sb = adminClient();
+  const OLD = 'ZZ Vitest old patrol';
+  afterEach(async () => {
+    await sb.from('mm_patrols').delete().eq('name', OLD);
+    await sb.from('mm_menus').delete().like('name', 'vitest-mm-patrol-%');
+  });
+
+  async function menuOn(patrol: string, n: number) {
+    const { data: p } = await sb.from('people').select('id').order('id').limit(1).single();
+    await sb.from('mm_menus').insert(Array.from({ length: n }, (_, i) => ({ owner_person_id: p!.id, name: `vitest-mm-patrol-${patrol}-${i}`, context: 'camp', headcount: 8, patrol })));
+  }
+
+  it('ResyncReport_CountsMenusStillOnARemovedPatrol', async () => {
+    await sb.from('mm_patrols').upsert({ name: OLD, sort_order: 5 });
+    await menuOn(OLD, 3);
+    const res = await resyncPatrolsWith(sb);
+    expect(res.removed).toContain(OLD);
+    expect(res.removedMenus[OLD]).toBe(3);
+  });
+
+  it('MissingPatrols_AreTheNamesOnMenusThatAreNotOnTheList_WithCounts', async () => {
+    await menuOn(OLD, 2);
+    const missing = await loadMissingMenuPatrolsWith(sb);
+    expect(missing.find((m) => m.name === OLD)).toEqual({ name: OLD, count: 2 });
   });
 });

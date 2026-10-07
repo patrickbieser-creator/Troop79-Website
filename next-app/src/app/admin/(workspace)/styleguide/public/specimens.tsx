@@ -72,7 +72,8 @@ const SPECIMEN_GEAR: GearItem[] = ['Dutch oven', 'Griddle', 'Lantern', 'Skillet'
   name,
   home: 'trailer',
   perPerson: false,
-  retiredAt: null
+  retiredAt: null,
+  description: name === 'Dutch oven' ? 'Cast iron, 12 inch, with lid; trailer, left bin' : null
 }));
 
 /** The blocked-save standard (D-331), live: Add stays enabled; pressed empty it marks the field and says why beside the button. */

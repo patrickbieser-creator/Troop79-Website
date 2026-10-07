@@ -125,6 +125,8 @@ export interface GearRow {
   count: number;
   home: GearHome;
   perPerson: boolean;
+  /** The master list's description of the item (where it lives, what a kit holds), when it has one. */
+  description?: string | null;
   /** A menu extra (no recipe names it): the planner can remove it. */
   extra: boolean;
   /** The meals that need it, in menu order, with the foods that ask for it. Empty for a per-person item or an extra. */
@@ -148,7 +150,7 @@ export function menuGearRows(menu: Pick<Menu, 'meals' | 'headcount'>, catalog: C
     let r = rows.get(key);
     if (!r) {
       const g = known.get(key);
-      r = { key, name: g?.name ?? name, count: 0, home: g?.home ?? 'trailer', perPerson: g?.perPerson ?? false, extra, usedBy: [], packed: null, changed: null };
+      r = { key, name: g?.name ?? name, count: 0, home: g?.home ?? 'trailer', perPerson: g?.perPerson ?? false, description: g?.description?.trim() || null, extra, usedBy: [], packed: null, changed: null };
       rows.set(key, r);
     }
     return r;

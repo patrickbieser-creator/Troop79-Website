@@ -54,6 +54,16 @@ beforeEach(() => {
   setGearExtrasAction.mockImplementation(async (_id: string, extras: string[]) => ({ ok: true, extras, dropped: [] }));
 });
 
+describe('Gear tab descriptions', () => {
+  it('OpenRow_ShowsTheItemsDescription_WhenItHasOne', async () => {
+    const list = LIST.map((g) => (g.name === 'Griddle' ? { ...g, description: 'Flat iron, 4th floor shelf' } : g));
+    render(tab({ gearList: list }));
+    expect(screen.queryByText('Flat iron, 4th floor shelf')).toBeNull();
+    await userEvent.setup().click(screen.getByRole('button', { name: /^Griddle/ }));
+    expect(within(rowFor('Griddle')).getByText('Flat iron, 4th floor shelf')).toBeTruthy();
+  });
+});
+
 describe('Gear tab', () => {
   it('Lists_GroupedByWhereItLives', () => {
     render(tab());

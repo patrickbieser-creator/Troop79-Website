@@ -18,6 +18,8 @@ import {
   saveMenuWith,
   setMenuOwnerWith,
   setMenuPatrolWith,
+  setMenuPatrolListedWith,
+  movePatrolMenusWith,
   listMenuOwnerCandidatesWith
 } from '../src/lib/menu-monster/menus-store';
 
@@ -508,5 +510,70 @@ describe('menu store patrol + outing menus (release 5)', () => {
     await createMenuWith(admin, CHARLIE, menu({ calendarEntryId: elsewhere }), CATALOG);
     await createMenuWith(admin, CHARLIE, menu(), CATALOG);
     expect((await listOutingMenusWith(admin, here)).map((m) => m.id).sort()).toEqual([a, b].sort());
+  });
+});
+
+describe('menu store: patrols are on the list, parents may own (2026-10-06)', () => {
+  const GONE = 'ZZ Vitest gone patrol';
+  const KEPT = 'ZZ Vitest kept patrol';
+  const LEADER = { personId: null, label: 'Vitest leader' };
+  let parentIds: number[] = [];
+  let householdIds: number[] = [];
+
+  afterEach(async () => {
+    await admin.from('mm_patrols').delete().in('name', [GONE, KEPT]);
+    if (parentIds.length) await admin.from('people').delete().in('id', parentIds);
+    if (householdIds.length) await admin.from('households').delete().in('id', householdIds);
+    parentIds = [];
+    householdIds = [];
+  });
+
+  it('Leader_CannotSetAPatrol_ThatIsNotOnTheList', async () => {
+    const id = await createMenuWith(admin, CHARLIE, menu(), CATALOG);
+    await admin.from('mm_patrols').upsert({ name: KEPT, sort_order: 5 });
+    expect(await setMenuPatrolListedWith(admin, LEADER, id, GONE)).toBe('not-listed');
+    expect((await loadMenuWith(admin, id))!.menu.patrol ?? null).toBeNull();
+    expect(await setMenuPatrolListedWith(admin, LEADER, id, KEPT)).toBe(true);
+    expect(await setMenuPatrolListedWith(admin, LEADER, id, '')).toBe(true);
+    expect((await loadMenuWith(admin, id))!.menu.patrol ?? null).toBeNull();
+  });
+
+  it('Leader_MovesMenus_FromARenamedPatrol', async () => {
+    await admin.from('mm_patrols').upsert({ name: KEPT, sort_order: 5 });
+    const a = await createMenuWith(admin, CHARLIE, menu({ patrol: GONE }), CATALOG);
+    const b = await createMenuWith(admin, other, menu({ patrol: GONE }), CATALOG);
+    const c = await createMenuWith(admin, CHARLIE, menu({ patrol: KEPT }), CATALOG);
+    const before = (await loadMenuWith(admin, a))!.updatedAt;
+    expect(await movePatrolMenusWith(admin, LEADER, GONE, KEPT)).toBe(2);
+    const loaded = await Promise.all([a, b, c].map((i) => loadMenuWith(admin, i)));
+    expect(loaded.map((m) => m!.menu.patrol)).toEqual([KEPT, KEPT, KEPT]);
+    expect(loaded[0]!.updatedAt >= before).toBe(true);
+    expect(await movePatrolMenusWith(admin, LEADER, GONE, 'ZZ Not listed')).toBe('not-listed');
+  });
+
+  it('OwnerCandidates_IncludeParents_InActiveHouseholds', async () => {
+    const { data: sp } = await admin.from('scouts').select('person_id').eq('active', true).not('person_id', 'is', null);
+    const { data: sc } = await admin.from('household_members').select('household_id').in('person_id', (sp ?? []).map((r) => r.person_id as number)).limit(1).single();
+    const { data: hh } = await admin.from('households').insert({ label: 'ZZ Vitest empty house' }).select('id').single();
+    householdIds = [hh!.id as number];
+    const { data: ppl } = await admin
+      .from('people')
+      .insert([
+        { first_name: 'Zed', last_name: 'Activeparent', display_name: 'Zed Activeparent' },
+        { first_name: 'Zoe', last_name: 'Idleparent', display_name: 'Zoe Idleparent' }
+      ])
+      .select('id, first_name');
+    parentIds = (ppl ?? []).map((p) => p.id as number);
+    const active = ppl!.find((p) => p.first_name === 'Zed')!.id as number;
+    const idle = ppl!.find((p) => p.first_name === 'Zoe')!.id as number;
+    await admin.from('household_members').insert([
+      { household_id: sc!.household_id, person_id: active },
+      { household_id: hh!.id, person_id: idle }
+    ]);
+    const list = await listMenuOwnerCandidatesWith(admin);
+    expect(list.find((c) => c.personId === active)).toMatchObject({ kind: 'parent' });
+    expect(list.some((c) => c.personId === idle)).toBe(false);
+    const parents = list.filter((c) => c.kind === 'parent').map((c) => c.name);
+    expect(parents).toEqual([...parents].sort((x, y) => x.localeCompare(y)));
   });
 });

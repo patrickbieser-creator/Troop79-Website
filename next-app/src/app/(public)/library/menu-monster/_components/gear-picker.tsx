@@ -37,7 +37,7 @@ export function GearPicker({
       label={label}
       placeholder={placeholder}
       listLabel="Gear on the list"
-      options={(q): readonly SearchOption[] => gearPickOptions(list, q, taken).map((g) => ({ id: String(g.id), label: g.name }))}
+      options={(q): readonly SearchOption[] => gearPickOptions(list, q, taken).map((g) => ({ id: String(g.id), label: g.name, sub: g.description?.trim() || undefined }))}
       onPick={(o) => onPick(o.label)}
       noMatch={(q) => `Nothing on the gear list matches “${q}”. A leader can add new gear.`}
     />

@@ -130,23 +130,45 @@ describe('MenusAdmin', () => {
   // Patrick, 2026-10-05: the High Cliff menu was entered under the wrong scout, by a patrol.
   it('Leader_CanHandAMenuToSomeoneElse_PickerGreyedUntilChosen', async () => {
     const user = userEvent.setup();
-    render(<MenusAdmin menus={[row()]} owners={[{ personId: 39, name: 'Charlie W.', kind: 'scout' }, { personId: 25, name: 'Jack P.', kind: 'scout' }, { personId: 82, name: 'Patrick B.', kind: 'leader' }]} />);
+    render(<MenusAdmin menus={[row()]} owners={[{ personId: 39, name: 'Charlie W.', kind: 'scout' }, { personId: 25, name: 'Jack P.', kind: 'scout' }, { personId: 82, name: 'Patrick B.', kind: 'leader' }, { personId: 90, name: 'Anna K.', kind: 'parent' }]} />);
     await pick('owner');
     const sel = screen.getByRole('combobox', { name: 'New owner for Fall campout' });
-    expect(within(sel).getAllByRole('option').map((o) => o.textContent)).toEqual(['— pick —', 'Charlie W.', 'Jack P.', 'Patrick B. (leader)']);
+    expect(within(sel).getAllByRole('option').map((o) => o.textContent)).toEqual(['— pick —', 'Charlie W.', 'Jack P.', 'Patrick B.', 'Anna K.']);
+    expect(Array.from(sel.querySelectorAll('optgroup')).map((g) => g.label)).toEqual(['Scouts', 'Leaders', 'Parents']);
     expect((screen.getByRole('button', { name: 'Save' }) as HTMLButtonElement).disabled).toBe(true);
     await user.selectOptions(sel, '25');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     expect(setMenuOwner).toHaveBeenCalledWith('M-0000abcd', 25);
   });
 
-  it('Leader_CanCreditAPatrol', async () => {
+  it('Leader_CanCreditAPatrol_FromTheList', async () => {
     const user = userEvent.setup();
     render(<MenusAdmin menus={[row()]} patrols={['Screaming Eagles', 'Whole troop']} />);
     await pick('patrol');
-    await user.type(screen.getByRole('combobox', { name: 'Patrol for Fall campout' }), 'Screaming Eagles');
+    const sel = screen.getByRole('combobox', { name: 'Patrol for Fall campout' });
+    expect(within(sel).getAllByRole('option').map((o) => o.textContent)).toEqual(['No patrol', 'Screaming Eagles', 'Whole troop']);
+    await user.selectOptions(sel, 'Screaming Eagles');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     expect(setMenuPatrol).toHaveBeenCalledWith('M-0000abcd', 'Screaming Eagles');
+  });
+
+  it('APatrolNoLongerOnTheList_StillShowsSelected_Flagged', async () => {
+    render(<MenusAdmin menus={[row({ patrol: 'Flaming Arrows' })]} patrols={['Screaming Eagles']} />);
+    await pick('patrol');
+    const sel = screen.getByRole('combobox', { name: 'Patrol for Fall campout' }) as HTMLSelectElement;
+    expect(sel.selectedOptions[0].textContent).toBe('Flaming Arrows (not on the list)');
+  });
+
+  it('ARefusedPatrol_IsMarkedOnTheSelect', async () => {
+    setMenuPatrol.mockResolvedValue({ ok: false, error: 'Flaming Arrows is not on the patrol list.' });
+    const user = userEvent.setup();
+    render(<MenusAdmin menus={[row()]} patrols={['Screaming Eagles']} />);
+    await pick('patrol');
+    const sel = screen.getByRole('combobox', { name: 'Patrol for Fall campout' });
+    await user.selectOptions(sel, 'Screaming Eagles');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText('Flaming Arrows is not on the patrol list.')).toBeTruthy();
+    expect(sel.getAttribute('aria-invalid')).toBe('true');
   });
 
   it('AMenuWithAPatrol_ShowsIt', () => {

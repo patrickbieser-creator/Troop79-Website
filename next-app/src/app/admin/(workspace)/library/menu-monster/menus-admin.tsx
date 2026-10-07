@@ -6,7 +6,7 @@
  * it, and the controls. Leaders have full rights on anyone's menu (D-327): Open goes to the menu itself
  * (the public planner, where a leader edits it as the owner would); Duplicate leaves the owner a copy;
  * Rename is inline; Share / Stop sharing moves it on or off the troop shelf; Delete is armed by a second
- * click. Change owner hands it to another scout or a leader, and Set patrol credits a patrol (Patrick,
+ * click. Change owner hands it to another scout a leader or a parent, and Set patrol credits a patrol (Patrick,
  * 2026-10-05: a camp menu "was entered under a scout named Todd. This was incorrect ... the menu was created
  * by a patrol, not an individual. Members of that patrol should get credit"). The public /library/menu-monster/menus list stays the per-person view (own menus, a parent's
  * scouts, the leader's filters by scout and outing); this is the troop-wide table.
@@ -38,9 +38,17 @@ const contextLabel = (c: MenuSummary['context']) => MENU_CONTEXTS.find((x) => x.
 /** How long a first Delete click stays armed for the second. */
 const ARM_MS = 4000;
 
+const OWNER_GROUPS: { kind: MenuOwnerCandidate['kind']; label: string }[] = [
+  { kind: 'scout', label: 'Scouts' },
+  { kind: 'leader', label: 'Leaders' },
+  { kind: 'parent', label: 'Parents' }
+];
+
 export function MenusAdmin({ menus, owners = [], patrols = [] }: { menus: MenuAdminRow[]; owners?: MenuOwnerCandidate[]; patrols?: readonly string[] }) {
   const router = useRouter();
   const [pending, start] = useTransition();
+  /** A refused patrol or owner: said on the select, not in the page line. */
+  const [editError, setEditError] = useState<string | null>(null);
   const [line, setLine] = useState<Line | null>(null);
   const [renaming, setRenaming] = useState<{ id: string; value: string } | null>(null);
   /** Save pressed with the name emptied: the input is marked until a name is typed. */
@@ -58,9 +66,14 @@ export function MenusAdmin({ menus, owners = [], patrols = [] }: { menus: MenuAd
 
   function run(action: () => Promise<{ ok: boolean; error?: string; id?: string }>, okText: string, then?: (id?: string) => void) {
     setLine(null);
+    setEditError(null);
     start(async () => {
       const res = await action();
       if (!res.ok) {
+        if (editing?.field === 'patrol') {
+          setEditError(res.error ?? 'Something went wrong.');
+          return;
+        }
         setLine({ kind: 'error', text: res.error ?? 'Something went wrong.' });
         return;
       }
@@ -142,12 +155,18 @@ export function MenusAdmin({ menus, owners = [], patrols = [] }: { menus: MenuAd
                         {/* Greyed until an owner is picked: the select's placeholder is the gate. */}
                         <select className={lib.selectInput} aria-label={`New owner for ${m.name}`} value={editing.value} autoFocus onChange={(e) => setEditing({ ...editing, value: e.target.value })}>
                           <option value="">— pick —</option>
-                          {owners.map((o) => (
-                            <option key={o.personId} value={o.personId}>
-                              {o.name}
-                              {o.kind === 'leader' ? ' (leader)' : ''}
-                            </option>
-                          ))}
+                          {OWNER_GROUPS.map((g) => {
+                            const rows = owners.filter((o) => o.kind === g.kind);
+                            return rows.length === 0 ? null : (
+                              <optgroup key={g.kind} label={g.label}>
+                                {rows.map((o) => (
+                                  <option key={o.personId} value={o.personId}>
+                                    {o.name}
+                                  </option>
+                                ))}
+                              </optgroup>
+                            );
+                          })}
                         </select>
                         <Button type="submit" size="sm" variant="primary" disabled={pending || !editing.value || editing.value === String(m.ownerPersonId)}>
                           Save
@@ -170,13 +189,17 @@ export function MenusAdmin({ menus, owners = [], patrols = [] }: { menus: MenuAd
                           run(() => setMenuPatrol(m.id, v), v ? `“${m.name}” is credited to the ${v} patrol.` : `“${m.name}” no longer names a patrol.`);
                         }}
                       >
-                        <input className={lib.textInput} list={`mm-patrols-${m.id}`} value={editing.value} maxLength={40} aria-label={`Patrol for ${m.name}`} autoFocus onChange={(e) => setEditing({ ...editing, value: e.target.value })} />
-                        <datalist id={`mm-patrols-${m.id}`}>
+                        <select className={editError ? `${lib.selectInput} ${styles.bad}` : lib.selectInput} aria-label={`Patrol for ${m.name}`} aria-invalid={editError ? true : undefined} value={editing.value} autoFocus onChange={(e) => { setEditError(null); setEditing({ ...editing, value: e.target.value }); }}>
+                          <option value="">No patrol</option>
+                          {m.patrol && !patrols.includes(m.patrol) && <option value={m.patrol}>{m.patrol} (not on the list)</option>}
                           {patrols.map((p) => (
-                            <option key={p} value={p} />
+                            <option key={p} value={p}>
+                              {p}
+                            </option>
                           ))}
-                        </datalist>
-                        <Button type="submit" size="sm" variant="primary" disabled={pending || editing.value.trim() === (m.patrol ?? '')}>
+                        </select>
+                        {editError && <p className={styles.badNote}>{editError}</p>}
+                        <Button type="submit" size="sm" variant="primary" disabled={pending || editing.value === (m.patrol ?? '')}>
                           Save
                         </Button>
                         <Button type="button" size="sm" variant="secondary" onClick={() => setEditing(null)}>
@@ -214,7 +237,7 @@ export function MenusAdmin({ menus, owners = [], patrols = [] }: { menus: MenuAd
                         onAction={(v) => {
                           if (v === 'rename') setRenaming({ id: m.id, value: m.name });
                           else if (v === 'owner') setEditing({ id: m.id, field: 'owner', value: '' });
-                          else if (v === 'patrol') setEditing({ id: m.id, field: 'patrol', value: m.patrol ?? '' });
+                          else if (v === 'patrol') { setEditError(null); setEditing({ id: m.id, field: 'patrol', value: m.patrol ?? '' }); }
                           else if (v === 'duplicate') run(() => duplicateMenu(m.id), `Duplicated “${m.name}” for ${m.owner}.`);
                           else if (v === 'share') run(() => setMenuShared(m.id, true), `Shared “${m.name}” with the troop.`);
                           else if (v === 'unshare') run(() => setMenuShared(m.id, false), `“${m.name}” is no longer shared.`);

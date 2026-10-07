@@ -23,6 +23,7 @@ import { recordAuditAs, type AuditActor } from '@/lib/audit';
 import { MAX_MENUS_PER_SCOUT, MAX_REVIEW_NOTE, coverDays, foldShopping, sanitizeActuals, sanitizeMenu, type Actuals, type Menu, type MenuContext, type MenuMeal } from './menus';
 import { SHELF_DAYS, daysBefore, isPublic } from './menu-access';
 import { typedInIdsIn, typedInPayload, type NewIngredient } from './scout-ingredients';
+import { loadPatrolNamesWith } from './menus-data';
 import { buildSnapshot, type MenuSnapshot } from './menu-snapshot';
 import type { Catalog, RestrictionKey } from './types';
 
@@ -467,13 +468,18 @@ export async function renameMenuWith(sb: SupabaseClient, actor: AuditActor, id: 
   return true;
 }
 
-/** Someone a leader may hand a menu to: an active scout or a leader, A→Z. */
+/** Someone a leader may hand a menu to: an active scout, a leader, or a parent in an active household. */
 export interface MenuOwnerCandidate {
   personId: number;
   name: string;
-  kind: 'scout' | 'leader';
+  kind: 'scout' | 'leader' | 'parent';
 }
 
+/**
+ * The candidate rule: active scouts, leaders, and parents. A parent is an active, unmerged person who belongs
+ * (household_members) to a household that an active scout belongs to, and is not already a scout or leader.
+ * Each group is A to Z by name; scouts and leaders win over parent when a person is both.
+ */
 export async function listMenuOwnerCandidatesWith(sb: SupabaseClient): Promise<MenuOwnerCandidate[]> {
   const [scouts, leaders] = await Promise.all([
     sb.from('scouts').select('person_id').eq('active', true).not('person_id', 'is', null),
@@ -481,7 +487,27 @@ export async function listMenuOwnerCandidatesWith(sb: SupabaseClient): Promise<M
   ]);
   if (scouts.error) throw new Error(`scouts: ${scouts.error.message}`);
   if (leaders.error) throw new Error(`leaders: ${leaders.error.message}`);
-  const kinds = new Map<number, 'scout' | 'leader'>();
+  const kinds = new Map<number, MenuOwnerCandidate['kind']>();
+  // An active household is one a currently active scout belongs to (household_members is the link).
+  const scoutIds = (scouts.data ?? []).map((r) => r.person_id as number);
+  const householdIds = new Set<number>();
+  for (let i = 0; i < scoutIds.length; i += 200) {
+    const rows = await fetchAllRows<{ household_id: number }>((from, to) => sb.from('household_members').select('household_id').in('person_id', scoutIds.slice(i, i + 200)).order('household_id').range(from, to));
+    for (const r of rows) householdIds.add(r.household_id);
+  }
+  const houses = [...householdIds];
+  const parentIds: number[] = [];
+  for (let i = 0; i < houses.length; i += 200) {
+    const members = await fetchAllRows<{ person_id: number }>((from, to) => sb.from('household_members').select('person_id').in('household_id', houses.slice(i, i + 200)).order('person_id').range(from, to));
+    parentIds.push(...members.map((m) => m.person_id));
+  }
+  const live = new Set<number>();
+  for (let i = 0; i < parentIds.length; i += 200) {
+    const { data, error } = await sb.from('people').select('id').in('id', parentIds.slice(i, i + 200)).eq('active', true).is('merged_into_person_id', null);
+    if (error) throw new Error(`parents: ${error.message}`);
+    for (const r of data ?? []) live.add(r.id as number);
+  }
+  for (const id of live) kinds.set(id, 'parent');
   for (const r of leaders.data ?? []) kinds.set(r.person_id as number, 'leader');
   for (const r of scouts.data ?? []) kinds.set(r.person_id as number, 'scout');
   const names = await ownerCreditNamesWith(sb, [...kinds.keys()]);
@@ -520,6 +546,23 @@ export async function setMenuPatrolWith(sb: SupabaseClient, actor: AuditActor, i
   if (!data?.length) return false;
   await audit(sb, actor, 'update', id, clean ? `set the patrol on menu "${data[0].name as string}" to ${clean}` : `cleared the patrol on menu "${data[0].name as string}"`);
   return true;
+}
+
+/** setMenuPatrolWith, but a name must be on the patrol list (the Plan tab's list) unless blank. */
+export async function setMenuPatrolListedWith(sb: SupabaseClient, actor: AuditActor, id: string, patrol: string): Promise<boolean | 'not-listed'> {
+  const clean = patrol.trim();
+  if (clean && !(await loadPatrolNamesWith(sb)).includes(clean)) return 'not-listed';
+  return setMenuPatrolWith(sb, actor, id, clean);
+}
+
+/** Move every menu naming `from` to `to` (which must be on the list), one setMenuPatrolWith each. Returns how many moved. */
+export async function movePatrolMenusWith(sb: SupabaseClient, actor: AuditActor, from: string, to: string): Promise<number | 'not-listed'> {
+  const target = to.trim();
+  if (!target || !(await loadPatrolNamesWith(sb)).includes(target)) return 'not-listed';
+  const rows = await fetchAllRows<{ id: string }>((a, b) => sb.from('mm_menus').select('id').eq('patrol', from).order('id').range(a, b));
+  let moved = 0;
+  for (const r of rows) if (await setMenuPatrolWith(sb, actor, r.id, target)) moved += 1;
+  return moved;
 }
 
 /** True when the owner's menu was deleted. */

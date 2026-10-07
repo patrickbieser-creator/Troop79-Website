@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>October 6, 2026</strong> &nbsp;&middot;&nbsp; v1.194.0</p>
+      <p>Last updated: <strong>October 6, 2026</strong> &nbsp;&middot;&nbsp; v1.195.0</p>
     </div>
   </div>
 
@@ -494,6 +494,24 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.195.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.195.0</span>
+        <span class="release-date">October 6, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Improved</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Menu Monster: gear descriptions where scouts pack and pick; patrols and owners kept honest</p>
+        <ul class="change-list">
+          <li><span><strong>A gear item&rsquo;s description</strong> (what a Chef Kit holds, where it lives) now shows to scouts in the planner&rsquo;s Gear tab (inside the item&rsquo;s expanded row), on the printed shopping sheet under the gear name, and as a second line on each result in the gear picker. Picked chips stay name-only.</span></li>
+          <li><span><strong>Set patrol is a pull-down</strong> on Admin &rsaquo; Menu Monster &rsaquo; Menus, fed by the same patrol list the planner uses; a name that is no longer on the list stays selected as &ldquo;X (not on the list)&rdquo; and the server refuses any name off the list.</span></li>
+          <li><span><strong>Change owner lists parents too</strong> &mdash; Scouts / Leaders / Parents, each A&ndash;Z; a parent is an adult in a household with an active scout. The server refuses anyone not on that list.</span></li>
+          <li><span><strong>Renamed patrols:</strong> the Resync patrol list report says &ldquo;Removed: Flaming Arrows (3 menus still say it)&rdquo;, and a second tool, <strong>Move menus to a renamed patrol</strong>, moves those menus From the old name To one on the list, through the same path Set patrol uses.</span></li>
+        </ul>
       </div>
     </div>
 

@@ -64,7 +64,7 @@ import { fixHref } from './summary-rail';
 import { FinishLine } from './finish-line';
 import s from './workspace.module.css';
 import { menuGear } from '@/lib/menu-monster/scout-recipes';
-import type { GearItem } from '@/lib/menu-monster/gear';
+import { gearKey, parseGear, type GearItem } from '@/lib/menu-monster/gear';
 
 const NOTE_MAX = 120; // matches restorePlan's note cap
 const keyOf = (sh: MenuShopping) => JSON.stringify(sh);
@@ -486,13 +486,13 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
       )}
       </div>
 
-      <PrintSheet menu={menu} list={list} panel={panel} gear={gear} />
+      <PrintSheet menu={menu} list={list} panel={panel} gear={gear} gearList={gearList} />
     </div>
   );
 }
 
 /** Print-only: the menu as a paper shopping sheet (hidden on screen; see @media print in workspace.module.css). */
-function PrintSheet({ menu, list, panel, gear }: { menu: Menu; list: ReturnType<typeof buildMenuList>; panel: ReturnType<typeof shoppingPanel>; gear: string[] }) {
+function PrintSheet({ menu, list, panel, gear, gearList }: { menu: Menu; list: ReturnType<typeof buildMenuList>; panel: ReturnType<typeof shoppingPanel>; gear: string[]; gearList: readonly GearItem[] }) {
   const dates = menu.startDate
     ? fmtRange(menu.startDate, addDays(menu.startDate, Math.max(0, menu.dayCount - 1)))
     : `${menu.dayCount} day${menu.dayCount === 1 ? '' : 's'}`;
@@ -549,9 +549,15 @@ function PrintSheet({ menu, list, panel, gear }: { menu: Menu; list: ReturnType<
         <>
           <h2 className={s.printHead}>Gear</h2>
           <ul className={s.printGear} aria-label="Gear">
-            {gear.map((g) => (
-              <li key={g}>{g}</li>
-            ))}
+            {gear.map((g) => {
+              const note = gearList.find((x) => gearKey(x.name) === gearKey(parseGear(g).name))?.description?.trim();
+              return (
+                <li key={g}>
+                  {g}
+                  {note && <span className={s.printGearNote}>{note}</span>}
+                </li>
+              );
+            })}
           </ul>
         </>
       )}
