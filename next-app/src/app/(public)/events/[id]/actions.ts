@@ -2,6 +2,7 @@
 
 import { normalizeGuestRows, guestEntriesFor, guestHostKey, staleClaims, groupStaleClaimsByEntry } from '@/lib/event-signup';
 import { placementPayloadFromForm } from '@/lib/group-sets';
+import { checkLegTimes } from '@/lib/leg-times';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
@@ -139,6 +140,25 @@ export async function submitSignupAction(formData: FormData): Promise<void> {
     const hostKey = guestHostKey(entries as Record<string, unknown>[]);
     if (hostKey) entries = [...entries, ...guestEntriesFor(guestRows, hostKey)];
   }
+
+  // Leg times (Plans/Event-Signup-Arrival-Times.md) are checked here, not in
+  // the RPC: it casts them straight to timestamptz, so a bad value would be a
+  // raw cast error and a far-off instant would stamp a car with a wave nobody
+  // meant. The rule is pure (lib/leg-times); only the window comes from the DB.
+  const { data: signupRow } = await supabase
+    .from('event_signups')
+    .select('drivers_needed, calendar_entries!inner(entry_date, end_date)')
+    .eq('id', signupId)
+    .maybeSingle();
+  const ce = (signupRow as { calendar_entries?: { entry_date: string; end_date: string | null } } | null)?.calendar_entries;
+  if (!signupRow || !ce) redirect(`${back}&err=${encodeURIComponent('Signups are closed for this event.')}`);
+  const legs = checkLegTimes(entries, {
+    entryDate: ce.entry_date,
+    endDate: ce.end_date,
+    driversNeeded: Boolean((signupRow as { drivers_needed: boolean }).drivers_needed)
+  });
+  if (!legs.ok) redirect(`${back}&err=${encodeURIComponent(legs.error)}`);
+  entries = legs.entries;
 
   // Adults added on the fly become real people, not throwaway names on one
   // entry — that's what makes the roster improve over time. Done BEFORE the

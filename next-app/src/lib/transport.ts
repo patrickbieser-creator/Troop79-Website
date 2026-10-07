@@ -302,3 +302,27 @@ export function legTimeLine(e: TransportEntry, leg: Leg, carDriverName: string |
   if (r === 'meeting_there') return `${head} (meeting there)`;
   return carDriverName ? `${head} with ${familyName(carDriverName)}` : `${head} (needs a ride)`;
 }
+
+export type CarRiderGuard = { ok: true } | { ok: false; error: string };
+
+/**
+ * placeInGroup's pre-RPC check for a car: the rider must be an entry on THIS
+ * signup (`null` = not found under it — refuse, never skip; qa-lead on
+ * v1.191.0), and their leg time must match the car's wave unless a leader
+ * overrides on the board.
+ */
+export function carRiderGuard(
+  leg: Leg,
+  rider: { out: string | null; back: string | null } | null,
+  carDepartsAt: string | null
+): CarRiderGuard {
+  if (!rider) return { ok: false, error: 'That person is not on this signup — the page will refresh.' };
+  const entry: TransportEntry = {
+    id: 0, status: 'yes', participation: 'full', drivesOut: false, drivesBack: false,
+    vehicleSeatsOut: null, vehicleSeatsBack: null, rideOut: 'needs_ride', rideBack: 'needs_ride',
+    outDepartsAt: rider.out, backDepartsAt: rider.back
+  };
+  const car: TransportCar = { id: 0, leg, driverEntryId: 0, capacity: 1, memberEntryIds: [], departsAt: carDepartsAt };
+  const check = placementCheck(leg, entry, car);
+  return check.ok ? { ok: true } : { ok: false, error: `${check.message} A leader can confirm it on the board.` };
+}

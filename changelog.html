@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>October 6, 2026</strong> &nbsp;&middot;&nbsp; v1.198.1</p>
+      <p>Last updated: <strong>October 7, 2026</strong> &nbsp;&middot;&nbsp; v1.198.2</p>
     </div>
   </div>
 
@@ -494,6 +494,23 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.198.2 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.198.2</span>
+        <span class="release-date">October 7, 2026</span>
+        <span class="release-label"><span class="badge badge-fix">Fixed</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Event signup: arrival and departure times are checked before they are saved</p>
+        <ul class="change-list">
+          <li><span><strong>A leg time has to be near the event.</strong> The family form&rsquo;s Later / Earlier times are now checked before the save: each must be a real time within two days of the event&rsquo;s days. A bad one is refused with a sentence that says so (&ldquo;An arrival or departure time must be within 2 days of the event&rdquo;) instead of the generic &ldquo;something went wrong&rdquo;, and a mistyped year can no longer stamp a car with a departure nobody meant.</span></li>
+          <li><span><strong>No transportation, no times.</strong> When a signup has no car sets (drivers not needed) any posted leg time is dropped &mdash; the form never shows the fields, so nothing is lost.</span></li>
+          <li><span><strong>Ride board:</strong> placing a rider in a car now refuses a person who is not on that signup (&ldquo;That person is not on this signup&rdquo;) instead of skipping the departure check. Closes the three qa-lead notes on v1.191.0.</span></li>
+        </ul>
       </div>
     </div>
 

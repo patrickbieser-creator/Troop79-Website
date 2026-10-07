@@ -9,6 +9,7 @@ import {
   legDepartsAt,
   legTimeLine,
   placementCheck,
+  carRiderGuard,
   waveLabel,
   wavesFor,
   rideCell,
@@ -252,5 +253,25 @@ describe('legTimeLine (sheet and roster wording)', () => {
 
   it('Line_SaysNothing_ForALegNotTravelled', () => {
     expect(legTimeLine(entry({ id: 1, outDepartsAt: SAT, rideOut: 'not_traveling' }), 'out', null)).toBeNull();
+  });
+});
+
+describe('carRiderGuard (placeInGroup, before the RPC)', () => {
+  // qa-lead on v1.191.0 (c): the cross-wave guard was skipped when the rider's
+  // entry was not found under the signup — a leader could place an entry from
+  // another signup. The decision is pure so the "not found" branch is asserted.
+  it('Guard_RefusesARider_WhoIsNotOnThisSignup', () => {
+    const r = carRiderGuard('out', null, SAT);
+    expect(r).toEqual({ ok: false, error: expect.stringMatching(/not on this signup/i) });
+  });
+
+  it('Guard_PassesARider_InTheCarsOwnWave', () => {
+    expect(carRiderGuard('out', { out: SAT, back: null }, SAT)).toEqual({ ok: true });
+    expect(carRiderGuard('back', { out: SAT, back: null }, null)).toEqual({ ok: true });
+  });
+
+  it('Guard_RefusesARider_InAnotherWave_NamingBoth', () => {
+    const r = carRiderGuard('out', { out: SAT, back: null }, null);
+    expect(r).toMatchObject({ ok: false, error: expect.stringMatching(/with the group.*Sat 9:00 am.*A leader can confirm/) });
   });
 });

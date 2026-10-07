@@ -7,7 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { eventRevalidatePaths } from '@/lib/event-signup-shared';
 import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
-import { isRideStatus, placementCheck, type Leg, type TransportEntry } from '@/lib/transport';
+import { isRideStatus, carRiderGuard } from '@/lib/transport';
 import { isValidJobCode, normalizeJobCode, JOB_CODE_MAX } from '@/lib/job-codes';
 import { normalizeGroupName, normalizeSetLabel, validateNewSet } from '@/lib/group-sets';
 import { sendEmail, renderEmail } from '@/lib/email';
@@ -1269,15 +1269,6 @@ export async function setRideStatus(
   return { ok: true };
 }
 
-/** Only the leg time matters to placementCheck; the rest is the type's required shape. */
-function ridersEntry(leg: Leg, departsAt: string | null): TransportEntry {
-  return {
-    id: 0, status: 'yes', participation: 'full', drivesOut: false, drivesBack: false,
-    vehicleSeatsOut: null, vehicleSeatsBack: null, rideOut: 'needs_ride', rideBack: 'needs_ride',
-    outDepartsAt: leg === 'out' ? departsAt : null, backDepartsAt: leg === 'back' ? departsAt : null
-  };
-}
-
 export type PlaceOutcome = 'placed' | 'moved' | 'already' | 'full' | 'gone';
 
 /**
@@ -1304,6 +1295,8 @@ export async function placeInGroup(
       .eq('id', groupId)
       .maybeSingle();
     const set = (g as { signup_group_sets?: { kind: string; leg: 'out' | 'back' | null } } | null)?.signup_group_sets;
+    // Tents and patrols have no waves, so only a car is checked. A rider not
+    // found UNDER THIS SIGNUP is refused, not skipped (qa-lead on v1.191.0).
     if (g && set?.kind === 'car' && set.leg) {
       const { data: e } = await supabase
         .from('signup_entries')
@@ -1311,12 +1304,9 @@ export async function placeInGroup(
         .eq('id', entryId)
         .eq('event_signup_id', signupId)
         .maybeSingle();
-      if (e) {
-        const rider = { out: e.out_departs_at as string | null, back: e.back_departs_at as string | null }[set.leg];
-        const car = (g as { departs_at: string | null }).departs_at;
-        const check = placementCheck(set.leg, ridersEntry(set.leg, rider), { id: groupId, leg: set.leg, driverEntryId: 0, capacity: 1, memberEntryIds: [], departsAt: car });
-        if (!check.ok) return { ok: false, error: `${check.message} A leader can confirm it on the board.` };
-      }
+      const rider = e ? { out: e.out_departs_at as string | null, back: e.back_departs_at as string | null } : null;
+      const guard = carRiderGuard(set.leg, rider, (g as { departs_at: string | null }).departs_at);
+      if (!guard.ok) return { ok: false, error: guard.error };
     }
   }
   const { data, error } = await supabase.rpc('place_in_group', {
