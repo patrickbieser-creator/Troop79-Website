@@ -51,10 +51,22 @@
   color: var(--admin-navy);
 }
 
+.searchBad {
+  border-color: var(--admin-danger);
+  outline: 1px solid var(--admin-danger);
+}
+
 .noMatch {
   margin: var(--admin-space-2) 0 0;
   font-size: var(--admin-text-base);
-  color: var(--admin-gray-500);
+  font-weight: var(--admin-weight-semibold);
+  color: var(--admin-danger-dark);
+}
+
+.noMatchLink {
+  font-weight: var(--admin-weight-regular);
+  color: inherit;
+  text-decoration: underline;
 }
 
 .chips {

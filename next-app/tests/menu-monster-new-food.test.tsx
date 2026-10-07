@@ -128,4 +128,20 @@ describe('Food & recipes — a single food', () => {
     const [id, input] = vi.mocked(finishFood).mock.calls[0];
     expect([vi.mocked(createFood).mock.calls.length, id, input.ingredient.name]).toEqual([1, 'cookies', 'Cookies and cream']);
   });
+  it('Leader_SeesThatANewIngredientSavesAtOnce', async () => {
+    const user = userEvent.setup();
+    vi.mocked(createFood).mockResolvedValueOnce({ ok: false, id: 'cookies', error: 'Cookies is in the price book, but its package was not saved: boom' });
+    render(<RecipeScreen catalog={CATALOG} recipeId="new" stores={STORES} today="2026-10-03" />);
+    const editor = screen.getByRole('region', { name: 'New recipe' });
+    await user.click(within(editor).getByRole('button', { name: 'Not in the list? New ingredient…' }));
+    const form = within(within(editor).getByRole('region', { name: 'New ingredient' }));
+    // Said up front: it does not wait for the recipe's Save.
+    expect(form.getByText('Takes effect immediately')).toBeTruthy();
+    await user.type(form.getByLabelText('Name'), 'Cookies');
+    await user.click(form.getByRole('button', { name: 'Add ingredient' }));
+    // A partial save, then Cancel: one line says the food was kept, and names it.
+    await user.click(await form.findByRole('button', { name: 'Cancel' }));
+    expect(within(editor).queryByRole('region', { name: 'New ingredient' })).toBeNull();
+    expect(within(editor).getByText(/“Cookies” was already saved to the ingredient list/)).toBeTruthy();
+  });
 });

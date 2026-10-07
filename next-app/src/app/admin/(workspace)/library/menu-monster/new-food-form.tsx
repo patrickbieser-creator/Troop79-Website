@@ -54,7 +54,8 @@ export function NewFoodForm({
   stores: readonly string[];
   today: string | null;
   onDone: (res: FoodResult) => void;
-  onCancel: () => void;
+  /** `kept`: the name of a food a failed step had already written (the form was finishing it), so the caller can say so. */
+  onCancel: (kept?: string) => void;
 }) {
   const [name, setName] = useState('');
   const [kind, setKind] = useState<UnitKind>(menuFirst ? 'count' : 'volume');
@@ -135,7 +136,13 @@ export function NewFoodForm({
   }
 
   return (
-    <FormPanel title={title} aria-label={title} actions={<SaveFeedback phase={feedback.phase} />}>
+    <FormPanel title={title} aria-label={title} actions={
+        <>
+          <span className={styles.cardMeta}>Takes effect immediately</span>
+          <SaveFeedback phase={feedback.phase} />
+        </>
+      }
+    >
       <div ref={form}>
       {error && <Notice>{error}</Notice>}
       <div className={lib.fieldGrid}>
@@ -296,7 +303,7 @@ export function NewFoodForm({
         <Button variant="primary" disabled={pending || empty} onClick={submit}>
           {pending ? (savedId ? 'Saving…' : 'Adding…') : savedId ? 'Save' : onMenu ? 'Add food' : 'Add ingredient'}
         </Button>
-        <Button variant="secondary" disabled={pending} onClick={onCancel}>
+        <Button variant="secondary" disabled={pending} onClick={() => onCancel(savedId ? name.trim() : undefined)}>
           Cancel
         </Button>
         {attempted && problems.length > 0 && <SaveProblem reason={problems[0].text} more={problems.length - 1} />}

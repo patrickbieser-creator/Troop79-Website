@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>October 6, 2026</strong> &nbsp;&middot;&nbsp; v1.197.0</p>
+      <p>Last updated: <strong>October 6, 2026</strong> &nbsp;&middot;&nbsp; v1.198.0</p>
     </div>
   </div>
 
@@ -494,6 +494,23 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.198.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.198.0</span>
+        <span class="release-date">October 6, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Improved</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Menu Monster admin: delete a recipe; a new brand from the pull-down; every add, edit and remove on the recipe form is honest</p>
+        <ul class="change-list">
+          <li><span><strong>Delete a recipe.</strong> At the foot of an open recipe, an outlined <strong>Delete recipe</strong> confirms in a dialog: &ldquo;It is removed from the troop&rsquo;s list for good.&rdquo; A recipe still on saved menus can&rsquo;t be deleted &mdash; the dialog names up to three of those menus and offers Retire instead; a tied single food points you to &ldquo;Take it off the menu&rdquo;. Deleting writes an audit row and returns you to Food &amp; recipes.</span></li>
+          <li><span><strong>New brand from the suggested-brand pull-down.</strong> The last choice is &ldquo;New brand&hellip;&rdquo;; it opens the same add-brand form the Price book uses, right there, and the new brand becomes that ingredient&rsquo;s suggestion. Scouts could already type a new brand on their own menu.</span></li>
+          <li><span><strong>The recipe form&rsquo;s adds, edits and removes are honest</strong> (a CRUD audit after &ldquo;heavy aluminum foil&rdquo; had no way to save): gear typed that is not on the master list is outlined with &ldquo;not on the gear list &mdash; pick a match, or add it on the Gear tab&rdquo; and a quiet link there, and the note stays until the text changes; removing an ingredient line takes its diet swaps with it (an orphan, if any, shows with its own Remove); removing a brand, a diet version with changes, or a &ldquo;Not suitable&rdquo; answer asks first and says what goes; switching a version to an answer with no lines says so before dropping them; the inline New ingredient says &ldquo;Takes effect immediately&rdquo; and a cancelled half-save names the food it kept; &ldquo;Use this&rdquo; on the single-food panel stays live and marks what is missing; Duplicate keeps brand suggestions and says in place why it waits for a save. A single food always shows its Gear picker.</span></li>
+        </ul>
       </div>
     </div>
 

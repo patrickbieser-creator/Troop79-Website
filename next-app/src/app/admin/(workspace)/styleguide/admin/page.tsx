@@ -27,7 +27,7 @@ import { EditorPromptsSpecimen } from './editor-prompts-specimen';
 import { FoodListRowsSpecimen } from './food-list-rows-specimen';
 import { BlockedSaveDemo, SaveDemo, SegmentedDemo } from './save-demo';
 import { fmtDate, fmtDateLong, fmtDateFull, fmtDay, fmtDateTime, fmtMonthYear, fmtRange, fmtWhen } from '@/lib/format-date';
-import { ActionsMenuSpecimen, ComboboxInvalidSpecimen, ComboboxSpecimen, GearPickerSpecimen, SearchFieldSpecimen, SortHeaderSpecimen } from './specimens';
+import { ActionsMenuSpecimen, ComboboxInvalidSpecimen, ComboboxSpecimen, GearPickerSpecimen, GearPickerNoMatchSpecimen, DangerConfirmSpecimen, SearchFieldSpecimen, SortHeaderSpecimen } from './specimens';
 import {
   DangerZoneSpecimen,
   HistoryChipSpecimen,
@@ -462,7 +462,7 @@ export default function StyleguidePage() {
           <Specimen
             label="Control hierarchy on an edit screen — one primary, one bar, a More actions… menu"
             canonical
-            note="Jenna's rule, Patrick 2026-10-05 (the recipe editor showed nine loose buttons — 'too many competing for attention'): (1) at most ONE primary per screen state — Save while the draft is dirty, Publish once it is saved and publishable; (2) record-level actions live in ONE sticky bar: Save + Discard on the left with the 'Can't save yet' note, Publish + a 'More actions…' ActionsMenu on the right — Duplicate, Retire/Restore, 'make it a …', Back-to-… go in the menu, never as loose buttons, and a destructive item opens a danger Dialog that names the consequence; (3) section actions ('+ Add …', 'New …') are quiet buttons inside their section, below the list they add to — never primary; (4) choosing one of 2–4 states is a SegmentedControl (radio group), not a row of buttons; (5) per-row actions are one quiet Edit or a ⋯ menu; (6) long forms stay numbered FormSections under the sticky bar — never tabbed to hide fields; a tab holding a bad field shows the TabStrip `alert` mark and a failed save switches to it. Reference: library/menu-monster/recipe-builder.tsx."
+            note="Jenna's rule, Patrick 2026-10-05 (the recipe editor showed nine loose buttons — 'too many competing for attention'): (1) at most ONE primary per screen state — Save while the draft is dirty, Publish once it is saved and publishable; (2) record-level actions live in ONE sticky bar: Save + Discard on the left with the 'Can't save yet' note, Publish + a 'More actions…' ActionsMenu on the right — Duplicate, Retire/Restore, 'make it a …', Back-to-… go in the menu, never as loose buttons, and a destructive item opens a danger Dialog that names the consequence; (3) section actions ('+ Add …', 'New …') are quiet buttons inside their section, below the list they add to — never primary; (4) choosing one of 2–4 states is a SegmentedControl (radio group), not a row of buttons; (5) per-row actions are one quiet Edit or a ⋯ menu; (6) long forms stay numbered FormSections under the sticky bar — never tabbed to hide fields; a tab holding a bad field shows the TabStrip `alert` mark and a failed save switches to it; (7) a record's Delete is an outlined `danger` Button at the FOOT of its page, below the last section and away from the sticky bar (never primary, never in the menu), and opens a danger Dialog that names the consequence with a dangerSolid confirm — or, when something still uses the record, says what and offers the safer Retire. Reference: library/menu-monster/recipe-builder.tsx."
           >
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', width: '100%' }}>
               <Button variant="primary">Save changes</Button>
@@ -803,6 +803,10 @@ export default function StyleguidePage() {
           <div className={`${sg.specimen} ${sg.specimenCanonical}`}>
             <div className={sg.specimenLabel}>Canonical</div>
             <GearPickerSpecimen />
+          </div>
+          <div className={sg.specimen}>
+            <div className={sg.specimenLabel}>No match &mdash; marked in place, with a quiet link to add it on the Gear tab</div>
+            <GearPickerNoMatchSpecimen />
           </div>
         </div>
       </section>
@@ -1222,6 +1226,10 @@ export default function StyleguidePage() {
             </div>
           </div>
           <DialogDemo />
+          <div className={sg.specimen}>
+            <div className={sg.specimenLabel}>DangerConfirm &mdash; a destructive control&rsquo;s confirm, naming the consequence (D-332)</div>
+            <DangerConfirmSpecimen />
+          </div>
         </div>
         <div className={`${sg.specimenLabel} ${sg.specimenLabelApproved}`}>✓ Message Editor (2026-08-25)</div>
         <p className={sg.sectionNote}>

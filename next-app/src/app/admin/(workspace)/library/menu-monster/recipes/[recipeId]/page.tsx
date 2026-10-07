@@ -9,6 +9,7 @@ import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireCapability } from '@/lib/require-capability';
 import { loadAuthoringCatalogWith } from '@/lib/menu-monster/catalog';
+import { menusUsingRecipeWith } from '@/lib/menu-monster/recipe-delete-store';
 import { listGearWith } from '@/lib/menu-monster/gear-store';
 import { listActiveStoreNamesWith } from '@/lib/menu-monster/stores';
 import { foodListHref, parseFoodFilter } from '@/lib/menu-monster/food-list';
@@ -34,6 +35,7 @@ export default async function MenuMonsterRecipePage({
   const [catalog, stores, gearList] = await Promise.all([loadAuthoringCatalogWith(admin), listActiveStoreNamesWith(admin), listGearWith(admin)]);
   const recipe = recipeId === 'new' ? null : (catalog.recipes.find((r) => r.id === recipeId) ?? null);
   if (recipeId !== 'new' && !recipe) notFound();
+  const menusUsing = recipe ? await menusUsingRecipeWith(admin, recipe.id) : undefined;
   const filter = parseFoodFilter(sp);
   const name = recipe?.name ?? 'New recipe';
 
@@ -50,7 +52,7 @@ export default async function MenuMonsterRecipePage({
         }}
         title={name}
       />
-      <RecipeScreen catalog={catalog} recipeId={recipeId} filter={filter} stores={stores} today={centralToday()} gearList={gearList} />
+      <RecipeScreen catalog={catalog} recipeId={recipeId} filter={filter} stores={stores} today={centralToday()} gearList={gearList} menusUsing={menusUsing} />
     </div>
   );
 }

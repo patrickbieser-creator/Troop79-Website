@@ -12,6 +12,7 @@
  */
 
 import { useId, useState, type KeyboardEvent } from 'react';
+import Link from 'next/link';
 import { MAX_GEAR_COUNT, gearKey, gearPickOptions, gearText, parseGear, sortGear, type GearItem } from '@/lib/menu-monster/gear';
 import s from './gear-picker.module.css';
 
@@ -19,7 +20,8 @@ export function GearPicker({
   gear,
   list,
   onChange,
-  labelledBy
+  labelledBy,
+  initialQuery = ''
 }: {
   gear: readonly string[];
   /** The master gear list (retired items are never offered). */
@@ -27,9 +29,11 @@ export function GearPicker({
   onChange: (next: string[]) => void;
   /** The id of the visible label that names this field. */
   labelledBy?: string;
+  /** Specimens only: start with text already typed. */
+  initialQuery?: string;
 }) {
   const uid = useId();
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(initialQuery);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
 
@@ -37,6 +41,8 @@ export function GearPicker({
   const act = Math.min(active, Math.max(0, options.length - 1));
   const showList = open && options.length > 0;
   const q = query.trim();
+  // Typed text that matches nothing can never become draft state, so it is said in place and stays until the text changes.
+  const unmatched = q !== '' && options.length === 0;
   const chips = sortGear(gear);
 
   const pick = (item: GearItem) => {
@@ -62,6 +68,7 @@ export function GearPicker({
       // Enter never submits the recipe form; it picks the highlighted item when the list is open.
       e.preventDefault();
       if (showList) pick(options[act]);
+      // Enter on text that matches nothing says so (the note below is already showing; it is announced as an alert).
     } else if (e.key === 'Escape') {
       e.preventDefault();
       if (query) setQuery('');
@@ -75,7 +82,8 @@ export function GearPicker({
         <input
           type="text"
           role="combobox"
-          className={s.search}
+          className={unmatched ? `${s.search} ${s.searchBad}` : s.search}
+          aria-invalid={unmatched || undefined}
           value={query}
           autoComplete="off"
           aria-label="Search gear"
@@ -111,7 +119,14 @@ export function GearPicker({
               </li>
             ))}
         </ul>
-        {open && options.length === 0 && q !== '' && <p className={s.noMatch}>Nothing on the gear list matches “{q}”. New gear is added on the Gear tab.</p>}
+        {unmatched && (
+          <p className={s.noMatch} role="alert">
+            “{q}” is not on the gear list — pick a match, or add it on the Gear tab.{' '}
+            <Link href="/admin/library/menu-monster?tab=gear" target="_blank" rel="noopener" className={s.noMatchLink}>
+              Add it to the gear list…
+            </Link>
+          </p>
+        )}
       </div>
 
       {chips.length > 0 && (

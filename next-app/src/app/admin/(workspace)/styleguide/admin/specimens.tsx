@@ -13,6 +13,8 @@ import { AdminCombobox, type ComboOption } from '../../_components/admin-combobo
 import { GearPicker } from '../../library/menu-monster/gear-picker';
 import type { GearItem } from '@/lib/menu-monster/gear';
 import { useState } from 'react';
+import { Button } from '../../../_components/button';
+import { DangerConfirm } from '../../library/menu-monster/danger-confirm';
 
 const SORT_ROWS = [
   { name: 'Violet Babby', nights: 12 },
@@ -87,6 +89,33 @@ const GEAR_SAMPLE: GearItem[] = ['Camp stove', 'Cutting board', 'Dutch oven (12 
 export function GearPickerSpecimen() {
   const [gear, setGear] = useState<string[]>(['Skillet × 2', 'Spatula']);
   return <GearPicker gear={gear} list={GEAR_SAMPLE} onChange={setGear} />;
+}
+
+/** Gear Picker, no-match state: typed text that is not on the list is marked in place and says what to do. */
+export function GearPickerNoMatchSpecimen() {
+  const [gear, setGear] = useState<string[]>([]);
+  return <GearPicker gear={gear} list={GEAR_SAMPLE} onChange={setGear} initialQuery="heavy aluminum foil" />;
+}
+
+/** DangerConfirm: a destructive control's confirm, naming the consequence. Opens from a demo button. */
+export function DangerConfirmSpecimen() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button variant="danger" size="sm" onClick={() => setOpen(true)}>
+        Remove brand…
+      </Button>
+      {open && (
+        <DangerConfirm
+          title="Remove Rice Chex?"
+          sub="Menus that chose it go back to any brand; its prices are kept in the price history."
+          confirmLabel="Remove brand"
+          onCancel={() => setOpen(false)}
+          onConfirm={() => setOpen(false)}
+        />
+      )}
+    </>
+  );
 }
 
 const COMBO_SAMPLE: ComboOption[] = [

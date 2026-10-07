@@ -3,7 +3,7 @@ import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RecipeBuilder } from '../src/app/admin/(workspace)/library/menu-monster/recipe-builder';
 import { RecipeScreen } from '../src/app/admin/(workspace)/library/menu-monster/recipe-screen';
-import { createFood, createIngredient, finishFood, keepScoutFood, putFoodOnMenu, saveRecipe, setRecipeStatus, updateIngredient } from '../src/app/admin/(workspace)/library/menu-monster/actions';
+import { createBrand, createFood, createIngredient, deleteRecipe, finishFood, keepScoutFood, putFoodOnMenu, saveRecipe, setRecipeStatus, suggestRecipeBrand, updateIngredient } from '../src/app/admin/(workspace)/library/menu-monster/actions';
 import { UNITS } from '../src/lib/menu-monster/units';
 import type { Catalog, Ingredient, Package, Recipe } from '../src/lib/menu-monster/types';
 import type { ScoutFood } from '../src/lib/menu-monster/scout-recipes-store';
@@ -23,6 +23,7 @@ vi.mock('../src/app/admin/(workspace)/library/menu-monster/actions', () => ({
   saveRecipe: vi.fn(async () => ({ ok: true, id: 'toast' })),
   setRecipeStatus: vi.fn(async () => ({ ok: true })),
   duplicateRecipe: vi.fn(async () => ({ ok: true, id: 'toast-copy' })),
+  deleteRecipe: vi.fn(async () => ({ ok: true })),
   updateIngredient: vi.fn(async () => ({ ok: true })),
   createIngredient: vi.fn(async () => ({ ok: true, id: 'toast-new' })),
   createFood: vi.fn(async () => ({ ok: true, id: 'sprinkles' })),
@@ -33,7 +34,7 @@ vi.mock('../src/app/admin/(workspace)/library/menu-monster/actions', () => ({
   retirePackage: vi.fn(async () => ({ ok: true })),
   restorePackage: vi.fn(async () => ({ ok: true })),
   setPackageBrand: vi.fn(async () => ({ ok: true })),
-  createBrand: vi.fn(async () => ({ ok: true })),
+  createBrand: vi.fn(async () => ({ ok: true, id: 'b-new' })),
   renameBrand: vi.fn(async () => ({ ok: true })),
   setBrandDiets: vi.fn(async () => ({ ok: true })),
   mergeBrand: vi.fn(async () => ({ ok: true })),
@@ -377,6 +378,8 @@ describe('Recipe builder — a single food opens in the short form (2026-10-04)'
       open();
       await user.click(veg().getByRole('radio', { name: 'Not suitable' }));
       await user.click(bacon().getByRole('button', { name: 'Remove' }));
+      // A Not suitable answer is something: the dialog names it before it goes.
+      await user.click(screen.getByRole('button', { name: 'Remove answer' }));
       expect((veg().getByRole('radio', { name: 'Not suitable' }) as HTMLInputElement).checked).toBe(false);
     });
   });
@@ -403,9 +406,9 @@ describe('Recipe builder — a single food opens in the short form (2026-10-04)'
     expect([bacon().queryByRole('heading', { name: 'Bacon' }), bacon().queryByText('Published')]).toEqual([null, null]);
   });
 
-  it('AFoodWithNoStepsOrGear_ShowsNeitherField', () => {
+  it('AFoodWithNoStepsOrGear_ShowsNoStepsField_ButAlwaysTheGearPicker', () => {
     open();
-    expect([bacon().queryByLabelText('How to make it'), bacon().queryByRole('combobox', { name: 'Search gear' })]).toEqual([null, null]);
+    expect([bacon().queryByLabelText('How to make it') == null, bacon().queryByRole('combobox', { name: 'Search gear' }) != null]).toEqual([true, true]);
   });
 
   it('AFoodThatIsCooked_KeepsItsStepsAndGear_InTheShortForm', async () => {
@@ -1034,5 +1037,156 @@ describe('Recipe builder — a new ingredient that did not save cleanly (2026-10
     await user.click(within(form).getByRole('button', { name: 'Add ingredient' }));
     const link = await within(editor).findByRole('link', { name: 'Edit ingredient on line 1' });
     expect([link.getAttribute('href'), link.getAttribute('target')]).toEqual(['/admin/library/menu-monster?tab=prices&ingredient=all-purpose-flour', '_blank']);
+  });
+});
+
+describe('Recipe page — delete at the foot, and a new brand from the pull-down (2026-10-06)', () => {
+  const editorOf = (name: string) => within(screen.getByRole('region', { name: `Edit ${name}` }));
+  const BRANDED: Catalog = {
+    ...CATALOG,
+    brands: [{ id: 'b-krus', ingredientId: 'pancake-mix', name: 'Krusteaz', avoid: null }],
+    recipes: CATALOG.recipes.map((r) => (r.id === 'pancakes' ? { ...r, brandSuggestions: { 'pancake-mix': 'b-krus' } } : r))
+  };
+
+  beforeEach(() => {
+    vi.mocked(deleteRecipe).mockClear().mockResolvedValue({ ok: true });
+    vi.mocked(createBrand).mockClear().mockResolvedValue({ ok: true, id: 'b-new' });
+    vi.mocked(suggestRecipeBrand).mockClear().mockResolvedValue({ ok: true });
+  });
+
+  it('Leader_DeletesARecipe_FromTheFootOfTheDetail_AfterConfirming', async () => {
+    const user = userEvent.setup();
+    render(<RecipeScreen catalog={CATALOG} recipeId="pancakes" filter={{ kind: 'recipes', meal: 'breakfast', q: '' }} menusUsing={{ count: 0, names: [] }} />);
+    const editor = editorOf('Pancakes');
+    // At the foot, outlined danger (never the primary), and not in the sticky bar.
+    const del = editor.getByRole('button', { name: 'Delete recipe' });
+    expect(/danger/.test(del.className) && !/primary/.test(del.className)).toBe(true);
+    expect(del.closest('[class*="saveBar"]')).toBeNull();
+    await user.click(del);
+    expect(deleteRecipe).not.toHaveBeenCalled();
+    expect(screen.getByText('Delete Pancakes?')).toBeTruthy();
+    expect(screen.getByText('It is removed from the troop’s list for good.')).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Delete' }));
+    await waitFor(() => expect(deleteRecipe).toHaveBeenCalledWith('pancakes'));
+    await waitFor(() => expect(nav.push).toHaveBeenCalledWith('/admin/library/menu-monster?tab=recipes&kind=recipes&meal=breakfast'));
+  });
+
+  it('Leader_CannotDelete_ARecipeStillOnAMenu_AndIsOfferedRetire', async () => {
+    const user = userEvent.setup();
+    render(<RecipeScreen catalog={CATALOG} recipeId="pancakes" menusUsing={{ count: 4, names: ['Spring campout', 'Summer camp', 'Winter hike'] }} />);
+    await user.click(editorOf('Pancakes').getByRole('button', { name: 'Delete recipe' }));
+    expect(screen.getByText('Pancakes is on 4 menus (Spring campout, Summer camp, Winter hike…)')).toBeTruthy();
+    expect(screen.getByText('Take it off those menus first, or Retire it so no new menu picks it.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Retire' }));
+    await waitFor(() => expect(setRecipeStatus).toHaveBeenCalledWith('pancakes', 'retired'));
+    expect(deleteRecipe).not.toHaveBeenCalled();
+  });
+
+  it('Leader_IsSentToTakeItOffTheMenu_ForATiedSingleFood', async () => {
+    const user = userEvent.setup();
+    const tied: Catalog = { ...CATALOG, recipes: CATALOG.recipes.map((r) => (r.id === 'bacon' ? { ...r, foodIngredientId: 'bacon' } : r)) };
+    render(<RecipeScreen catalog={tied} recipeId="bacon" menusUsing={{ count: 0, names: [] }} />);
+    await user.click(editorOf('Bacon').getByRole('button', { name: 'Delete recipe' }));
+    expect(screen.getByText(/Take it off the menu/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull();
+    expect(deleteRecipe).not.toHaveBeenCalled();
+  });
+
+  it('Leader_AddsANewBrand_FromTheSuggestedBrandPulldown', async () => {
+    const user = userEvent.setup();
+    render(<RecipeScreen catalog={BRANDED} recipeId="pancakes" />);
+    const select = screen.getByRole('combobox', { name: 'Pancake mix' }) as HTMLSelectElement;
+    expect([...select.options].at(-1)?.textContent).toBe('New brand…');
+    await user.selectOptions(select, 'New brand…');
+    await user.type(screen.getByRole('textbox', { name: 'New brand of pancake mix' }), 'Bisquick');
+    await user.click(screen.getByRole('button', { name: 'Add brand' }));
+    await waitFor(() => expect(createBrand).toHaveBeenCalledWith('pancake-mix', 'Bisquick'));
+    await waitFor(() => expect(suggestRecipeBrand).toHaveBeenCalledWith('pancakes', 'pancake-mix', 'b-new'));
+    await waitFor(() => expect(screen.queryByRole('textbox', { name: 'New brand of pancake mix' })).toBeNull());
+  });
+
+  it('Leader_CancelsANewBrand_AndThePreviousPickComesBack', async () => {
+    const user = userEvent.setup();
+    render(<RecipeScreen catalog={BRANDED} recipeId="pancakes" />);
+    const select = screen.getByRole('combobox', { name: 'Pancake mix' }) as HTMLSelectElement;
+    await user.selectOptions(select, 'New brand…');
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('textbox', { name: 'New brand of pancake mix' })).toBeNull();
+    expect(select.value).toBe('b-krus');
+    expect(createBrand).not.toHaveBeenCalled();
+  });
+});
+
+/** Jenna's audit of the recipe form, 2026-10-06: every item on it can be added, edited and removed, with safeguards. */
+describe('Recipe builder — edit and delete safeguards (2026-10-06)', () => {
+  const pancakes = () => within(screen.getByRole('region', { name: 'Edit Pancakes' }));
+  const addGfSwap = async (user: ReturnType<typeof userEvent.setup>) => {
+    const editor = pancakes();
+    await user.click(editor.getByRole('button', { name: /\+ Add a variation/ }));
+    await user.click(within(editor.getByRole('group', { name: 'Variations to add' })).getByRole('button', { name: /^Gluten-free/ }));
+    const panel = within(editor.getByRole('region', { name: 'Gluten-free version' }));
+    await user.selectOptions(panel.getByLabelText('Pancake mix for gluten-free scouts'), 'swap');
+    await pickIng(user, panel.getByLabelText('Swap Pancake mix for'), 'Almond flour');
+    await user.type(panel.getByLabelText('Amount of Almond flour per person'), '1');
+  };
+
+  it('Leader_RemovesABaseLine_AndItsSwapGoesWithIt', async () => {
+    const user = userEvent.setup();
+    render(<RecipeScreen catalog={CATALOG} recipeId="pancakes" />);
+    await addGfSwap(user);
+    await user.click(pancakes().getByRole('tab', { name: 'Everyone' }));
+    await user.click(pancakes().getByRole('button', { name: 'Remove line 1' }));
+    // Nothing is left behind that says "remove this change" and blocks Save.
+    await user.click(pancakes().getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(saveRecipe).toHaveBeenCalledTimes(1));
+    const sent = vi.mocked(saveRecipe).mock.calls[0][0];
+    expect([sent.base.map((b) => b.ingredientId), sent.variations.flatMap((v) => v.lines)]).toEqual([['eggs'], []]);
+  });
+
+  it('Leader_IsToldWhatAVariationRemoveTakes', async () => {
+    const user = userEvent.setup();
+    render(<RecipeScreen catalog={CATALOG} recipeId="pancakes" />);
+    await addGfSwap(user);
+    await user.click(pancakes().getByRole('button', { name: 'Remove this variation' }));
+    // Not gone yet: a danger dialog names what goes with it.
+    expect(screen.getByText(/Its 1 change goes too/)).toBeTruthy();
+    expect(pancakes().getByRole('region', { name: 'Gluten-free version' })).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Remove version' }));
+    expect(pancakes().queryByRole('region', { name: 'Gluten-free version' })).toBeNull();
+  });
+
+  it('SwitchingAVersionAway_FromItsChanges_SaysSoBeforeDroppingThem', async () => {
+    const user = userEvent.setup();
+    render(<RecipeScreen catalog={CATALOG} recipeId="pancakes" />);
+    await addGfSwap(user);
+    const panel = within(pancakes().getByRole('region', { name: 'Gluten-free version' }));
+    await user.click(panel.getByRole('radio', { name: 'Not suitable' }));
+    expect(panel.getByText(/drops its 1 change/)).toBeTruthy();
+    expect((panel.getByRole('radio', { name: 'Substitute' }) as HTMLInputElement).checked).toBe(true);
+    await user.click(panel.getByRole('button', { name: 'Switch and drop them' }));
+    expect((panel.getByRole('radio', { name: 'Not suitable' }) as HTMLInputElement).checked).toBe(true);
+  });
+
+  it('Leader_SeesWhyUseThisIsBlocked_InPlace', async () => {
+    const user = userEvent.setup();
+    render(<RecipeScreen catalog={CATALOG} recipeId="toast" />);
+    await more(within(screen.getByRole('region', { name: 'Edit Toast' })), 'food');
+    const panel = within(screen.getByRole('region', { name: 'Make Toast a single food' }));
+    await user.clear(panel.getByLabelText('How many each'));
+    const use = panel.getByRole('button', { name: 'Use this' }) as HTMLButtonElement;
+    expect(use.disabled).toBe(false);
+    await user.click(use);
+    expect(createIngredient).not.toHaveBeenCalled();
+    expect(panel.getByLabelText('How many each').getAttribute('aria-invalid')).toBe('true');
+    expect(panel.getByText('Type how many each person gets.')).toBeTruthy();
+  });
+
+  it('Duplicate_WhileDirty_SaysWhyInPlace_EvenOnAPublishedRecipe', async () => {
+    const user = userEvent.setup();
+    render(<RecipeScreen catalog={CATALOG} recipeId="pancakes" />);
+    expect(pancakes().queryByText(/Duplicate and the short form wait for a save/)).toBeNull();
+    await user.type(pancakes().getByLabelText('Name'), '!');
+    expect(pancakes().getByText(/Duplicate and the short form wait for a save/)).toBeTruthy();
   });
 });

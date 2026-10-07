@@ -5,12 +5,13 @@ import userEvent from '@testing-library/user-event';
 /** Admin › Menu Monster › a brand's rename: Save greys only when nothing changed; an emptied name is marked in place. */
 
 const renameBrand = vi.fn();
+const removeBrand = vi.fn();
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock('../src/app/admin/(workspace)/library/menu-monster/actions', () => ({
   renameBrand: (...a: unknown[]) => renameBrand(...a),
   mergeBrand: vi.fn(async () => ({ ok: true })),
   moveBrand: vi.fn(async () => ({ ok: true })),
-  removeBrand: vi.fn(async () => ({ ok: true })),
+  removeBrand: (...a: unknown[]) => removeBrand(...a),
   setBrandDiets: vi.fn(async () => ({ ok: true }))
 }));
 
@@ -23,6 +24,7 @@ const CATALOG = { ingredients: [ING], packages: [], conversions: [], recipes: []
 
 beforeEach(() => {
   renameBrand.mockReset().mockResolvedValue({ ok: true });
+  removeBrand.mockReset().mockResolvedValue({ ok: true });
 });
 
 describe('BrandHead — rename', () => {
@@ -40,5 +42,21 @@ describe('BrandHead — rename', () => {
     expect(box.getAttribute('aria-invalid')).toBe('true');
     expect(screen.getByText('It needs a name.')).toBeTruthy();
     expect(document.activeElement).toBe(box);
+  });
+});
+
+describe('BrandHead — remove', () => {
+  it('Leader_ConfirmsRemovingABrand', async () => {
+    const user = userEvent.setup();
+    render(<BrandHead brand={BRAND} ing={ING} catalog={CATALOG} priced={0} headingId="h" onChanged={vi.fn()} />);
+    await user.selectOptions(screen.getByRole('combobox', { name: 'More for Rice Chex' }), 'remove');
+    // Asked first, and the consequence is named before anything happens.
+    expect(removeBrand).not.toHaveBeenCalled();
+    expect(screen.getByText(/Menus that chose it go back to any brand; its prices are kept in the price history/)).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Keep it' }));
+    expect(removeBrand).not.toHaveBeenCalled();
+    await user.selectOptions(screen.getByRole('combobox', { name: 'More for Rice Chex' }), 'remove');
+    await user.click(screen.getByRole('button', { name: 'Remove brand' }));
+    expect(removeBrand).toHaveBeenCalledWith(7);
   });
 });

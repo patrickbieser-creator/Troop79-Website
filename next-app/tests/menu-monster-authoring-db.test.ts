@@ -368,4 +368,14 @@ describe('menu monster leader tools — gear (Phase 4C)', () => {
     await saveRecipe(base);
     expect(await gearOf()).toEqual(['Dutch oven (12 in)']);
   });
+  it('Duplicate_KeepsBrandSuggestions', async () => {
+    // Jenna's audit, 2026-10-06: a copy used to start without the suggested brand the original had.
+    const suggestions = { [FLOUR]: 4242 };
+    await admin.from('mm_recipes').update({ brand_suggestions: suggestions }).eq('id', RECIPE);
+    const copy = await duplicateRecipe(RECIPE);
+    expect(copy.ok).toBe(true);
+    const { data } = await admin.from('mm_recipes').select('brand_suggestions').eq('id', (copy as { ok: true; id: string }).id).single();
+    expect(data).toEqual({ brand_suggestions: suggestions });
+  });
+
 });

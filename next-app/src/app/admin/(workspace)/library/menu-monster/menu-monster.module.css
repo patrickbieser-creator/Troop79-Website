@@ -13,6 +13,8 @@
   margin: 12px 0;
 }
 .spacer { flex: 1; }
+/* The record's Delete: the last thing on the page, set apart from the form and the sticky bar. */
+.deleteFoot { margin-top: var(--admin-space-6); padding-top: var(--admin-space-4); border-top: 1px solid var(--admin-gray-200); }
 
 .tableWrap { composes: cardWrap from '../../_components/data-table.module.css'; }
 .table { composes: card from '../../_components/data-table.module.css'; }

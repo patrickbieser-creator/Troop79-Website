@@ -19,7 +19,7 @@ import { PublicBlockedSaveSpecimen, PublicDietRowsSpecimen, PublicFinishLineSpec
 import { StepStrip } from '../src/app/(public)/library/menu-monster/menus/_components/step-strip';
 import { BlockedSaveDemo } from '../src/app/admin/(workspace)/styleguide/admin/save-demo';
 import { FoodListRowsSpecimen } from '../src/app/admin/(workspace)/styleguide/admin/food-list-rows-specimen';
-import { ComboboxSpecimen } from '../src/app/admin/(workspace)/styleguide/admin/specimens';
+import { ComboboxSpecimen, DangerConfirmSpecimen, GearPickerNoMatchSpecimen } from '../src/app/admin/(workspace)/styleguide/admin/specimens';
 import { EditorPromptsSpecimen } from '../src/app/admin/(workspace)/styleguide/admin/editor-prompts-specimen';
 
 describe('Public styleguide specimens', () => {
@@ -101,5 +101,17 @@ describe('Admin styleguide specimens', () => {
     render(<EditorPromptsSpecimen />);
     expect(screen.getByText('Editing existing image')).toBeTruthy();
     expect(screen.getAllByRole('radio').length).toBe(3);
+  });
+
+  it('GearPickerNoMatch_ShowsTheSentenceAndTheAddLink_WhenTextIsNotOnTheList', () => {
+    render(<GearPickerNoMatchSpecimen />);
+    expect(screen.getByText(/is not on the gear list/)).toBeTruthy();
+    expect(screen.getByRole('link', { name: /Add it to the gear list/ })).toBeTruthy();
+  });
+
+  it('DangerConfirm_NamesTheConsequence_WhenOpenedFromTheDemoButton', () => {
+    render(<DangerConfirmSpecimen />);
+    fireEvent.click(screen.getByRole('button', { name: 'Remove brand…' }));
+    expect(screen.getByText(/its prices are kept in the price history/)).toBeTruthy();
   });
 });

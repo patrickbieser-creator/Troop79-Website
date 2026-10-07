@@ -29,6 +29,7 @@ import { isMenuId } from '@/lib/menu-monster/menus';
 import { resyncPatrolsWith, loadMissingMenuPatrolsWith } from '@/lib/menu-monster/menus-data';
 import { approveHeldPackageWith, rejectHeldPackageWith } from '@/lib/menu-monster/scout-packages-store';
 import { createGearWith, deleteGearWith, mergeGearWith, resolveGearWith, retireGearWith, storedRecipeGearWith, updateGearWith } from '@/lib/menu-monster/gear-store';
+import { deleteRecipeWith } from '@/lib/menu-monster/recipe-delete-store';
 import { createBrandWith, mergeBrandWith, moveBrandWith, removeBrandWith, renameBrandWith, setBrandDietsWith, setPackageBrandWith, type BrandWrite, suggestRecipeBrandWith } from '@/lib/menu-monster/brands-store';
 import {
   authoringOf,
@@ -871,6 +872,26 @@ export async function setRecipeStatus(id: string, status: RecipeStatus): Promise
   return { ok: true };
 }
 
+/**
+ * Delete a troop recipe for good (the foot of its page). The database refuses one a saved menu still uses, a
+ * single food tied to its ingredient (that is "Take it off the menu"), and a scout's own recipe (Retire).
+ */
+export async function deleteRecipe(id: string): Promise<Result> {
+  const denied = await guard();
+  if (denied) return denied;
+  const supabase = createAdminClient();
+  const { data } = await supabase.from('mm_recipes').select('name').eq('id', id).maybeSingle();
+  const name = (data as { name: string } | null)?.name;
+  const res = await deleteRecipeWith(supabase, id);
+  if (res === 'gone') return { ok: false, error: 'That menu item is gone.' };
+  if (res === 'tied') return { ok: false, error: 'It is a single food. Use “Take it off the menu” instead.' };
+  if (res === 'scout') return { ok: false, error: 'A scout’s recipe cannot be deleted here. Retire it instead.' };
+  if (res === 'on_menu') return { ok: false, error: 'It is still on a menu. Take it off those menus first, or Retire it.' };
+  await recordAudit({ area: 'library', action: 'delete', entityType: 'mm_recipe', entityId: id, summary: `Deleted Menu Monster recipe "${name ?? id}"` });
+  revalidate();
+  return { ok: true };
+}
+
 export async function duplicateRecipe(id: string): Promise<Result> {
   const denied = await guard();
   if (denied) return denied;
@@ -917,6 +938,11 @@ export async function duplicateRecipe(id: string): Promise<Result> {
     }))
   });
   if (error) return { ok: false, error: error.message };
+  // The suggested brands are a column of the recipe row, not part of the save RPC: copy them across.
+  if (recipe.brandSuggestions && Object.keys(recipe.brandSuggestions).length > 0) {
+    const copied = await supabase.from('mm_recipes').update({ brand_suggestions: recipe.brandSuggestions }).eq('id', newId);
+    if (copied.error) return { ok: false, error: `The copy was made, but its suggested brands were not: ${copied.error.message}`, id: newId };
+  }
   await recordAudit({
     area: 'library',
     action: 'create',
@@ -1437,8 +1463,15 @@ async function brandWrite(entityId: string, summary: string, write: () => Promis
   return { ok: true, note: res.note };
 }
 
-export async function createBrand(ingredientId: string, name: string): Promise<BrandResult> {
-  return brandWrite(ingredientId, `Added the Menu Monster brand "${String(name).trim()}"`, () => createBrandWith(createAdminClient(), ingredientId, name));
+/** `id` is the new brand's, so a caller can go on to use it (the recipe's suggested-brand pull-down). */
+export async function createBrand(ingredientId: string, name: string): Promise<BrandResult & { id?: string }> {
+  let id: string | undefined;
+  const res = await brandWrite(ingredientId, `Added the Menu Monster brand "${String(name).trim()}"`, async () => {
+    const made = await createBrandWith(createAdminClient(), ingredientId, name);
+    id = made.id;
+    return made;
+  });
+  return res.ok ? { ...res, id } : res;
 }
 
 export async function renameBrand(id: string, name: string): Promise<BrandResult> {

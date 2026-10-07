@@ -31,7 +31,7 @@ beforeEach(() => {
 describe('SuggestedBrands', () => {
   it('OffersTheIngredientsLiveBrands_AndNoSuggestion', () => {
     render(<SuggestedBrands recipeId="B003" catalog={CATALOG} onChanged={onChanged} />);
-    expect([...select().options].map((o) => o.textContent)).toEqual(['No suggestion (any brand)', 'Kirkland', 'Oscar Mayer']);
+    expect([...select().options].map((o) => o.textContent)).toEqual(['No suggestion (any brand)', 'Kirkland', 'Oscar Mayer', 'New brand…']);
   });
 
   it('ShowsTheSavedSuggestion', () => {

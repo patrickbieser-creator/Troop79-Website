@@ -15,6 +15,7 @@ import { authoringOf } from '@/lib/menu-monster/authoring';
 import { NO_FILTER, foodListHref, recipeHref, type FoodFilter } from '@/lib/menu-monster/food-list';
 import type { GearItem } from '@/lib/menu-monster/gear';
 import type { Catalog } from '@/lib/menu-monster/types';
+import type { MenusUsing } from '@/lib/menu-monster/recipe-delete-store';
 import { NEW_ID, RecipeEditor, blankDraft } from './recipe-builder';
 import styles from './menu-monster.module.css';
 
@@ -25,7 +26,8 @@ export function RecipeScreen({
   filter = NO_FILTER,
   stores = [],
   today = null,
-  gearList = []
+  gearList = [],
+  menusUsing
 }: {
   catalog: Catalog;
   recipeId: string;
@@ -34,6 +36,8 @@ export function RecipeScreen({
   today?: string | null;
   /** The master gear list (active items), for the gear picker. */
   gearList?: readonly GearItem[];
+  /** The saved menus that still use this recipe (the delete dialog at the foot says so). */
+  menusUsing?: MenusUsing;
 }) {
   const router = useRouter();
   const { navigate, dialog } = useGuardedNav();
@@ -63,6 +67,8 @@ export function RecipeScreen({
         onSelect={(id) => (isNew ? router.replace(recipeHref(id, filter)) : router.push(recipeHref(id, filter)))}
         onChanged={() => router.refresh()}
         onShortForm={recipe ? () => navigate(foodListHref(filter, recipe.id)) : undefined}
+        menusUsing={menusUsing}
+        onDeleted={recipe ? () => router.push(foodListHref(filter)) : undefined}
       />
       {dialog}
     </>

@@ -65,6 +65,7 @@ import {
   asSingleFood,
   authoringIssues,
   swapsDropped,
+  dropOrphanedChanges,
   authoringOf,
   compileAuthoring,
   isSingleFood,
@@ -80,13 +81,15 @@ import { NO_FILTER, buildFoodRows, buildIngredientRows, foodListHref, inKind, is
 import { buildLines, recipeSuggestions, ruleText, totalsOf, MAX_HEADCOUNT, MIN_HEADCOUNT } from '@/lib/menu-monster/engine';
 import { FOOD_GROUPS, MEALS, RESTRICTIONS, RESTRICTION_BY_KEY, SECTIONS, SECTION_ORDER, lineUnit, parseQty, perPersonText, supportedUnits } from '@/lib/menu-monster/units';
 import type { Catalog, Ingredient, MealSlot, Plan, Recipe, RecipeLine, RestrictionKey, Section, VariationState } from '@/lib/menu-monster/types';
-import { createIngredient, duplicateRecipe, saveRecipe, setRecipeStatus, updateIngredient } from './actions';
+import { createIngredient, deleteRecipe, duplicateRecipe, saveRecipe, setRecipeStatus, updateIngredient } from './actions';
 import { GearPicker } from './gear-picker';
+import { DangerConfirm } from './danger-confirm';
 import { gearKey, parseGear, type GearItem } from '@/lib/menu-monster/gear';
 import { BrandsAndPrices } from './brands-prices';
 import { NewFoodForm } from './new-food-form';
 import lib from '../library.module.css';
 import { SuggestedBrands } from './suggested-brands';
+import type { MenusUsing } from '@/lib/menu-monster/recipe-delete-store';
 import styles from './menu-monster.module.css';
 
 const PILL_VARIANT: Record<Pill, 'danger' | 'warning' | 'success' | 'muted'> = {
@@ -427,7 +430,9 @@ export function RecipeEditor({
   onSelect,
   onChanged,
   onOpenFull,
-  onShortForm
+  onShortForm,
+  menusUsing,
+  onDeleted
 }: {
   mode: 'inline' | 'page';
   initial: RecipeAuthoring;
@@ -442,11 +447,17 @@ export function RecipeEditor({
   onOpenFull?: () => void;
   /** Page: go back to this single food's short form in the list. */
   onShortForm?: () => void;
+  /** Page: the saved menus that still use this recipe (the delete dialog says so). */
+  menusUsing?: MenusUsing;
+  /** Page: where to go once the recipe is deleted. Without it there is no Delete at the foot. */
+  onDeleted?: () => void;
 }) {
   const [draft, setDraft] = useState<RecipeAuthoring>(initial);
   const [tab, setTab] = useState<Tab>('everyone');
   const [adding, setAdding] = useState(false);
   const [newIngredient, setNewIngredient] = useState(false);
+  /** A new ingredient that was written before its form was cancelled: one line says it stayed. */
+  const [keptFood, setKeptFood] = useState<string | null>(null);
   const snap = useDraftSnapshot(draft);
   const feedback = useSavePhase();
   const [pending, start] = useTransition();
@@ -464,6 +475,11 @@ export function RecipeEditor({
   useEffect(() => {
     if (retiring) retireDialog.current?.showModal();
   }, [retiring]);
+  const [deleting, setDeleting] = useState(false);
+  const deleteDialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    if (deleting) deleteDialog.current?.showModal();
+  }, [deleting]);
   /** The "Make it a single food" panel is open (a recipe only). */
   const [makingFood, setMakingFood] = useState(false);
 
@@ -575,8 +591,14 @@ export function RecipeEditor({
     run(() => setRecipeStatus(draft.id, 'published'), () => setDraft((d) => ({ ...d, status: 'published' })));
   }
 
+  // An Everyone line that goes (removed, or turned into another ingredient) takes its diet swaps with it.
   const setBase = (idx: number, patch: Partial<DraftBaseLine>) =>
-    setDraft((d) => ({ ...d, base: d.base.map((l, i) => (i === idx ? { ...l, ...patch } : l)) }));
+    setDraft((d) => dropOrphanedChanges(d, { ...d, base: d.base.map((l, i) => (i === idx ? { ...l, ...patch } : l)) }));
+  const [removingVariation, setRemovingVariation] = useState<RestrictionKey | null>(null);
+  const removeVariation = (r: RestrictionKey) => {
+    setDraft((d) => ({ ...d, variations: d.variations.filter((v) => v.restriction !== r) }));
+    setTab('everyone');
+  };
   const setVariation = (r: RestrictionKey, fn: (v: DraftVariation) => DraftVariation) =>
     setDraft((d) => ({ ...d, variations: d.variations.map((v) => (v.restriction === r ? fn(v) : v)) }));
 
@@ -756,7 +778,7 @@ export function RecipeEditor({
                     catalog={catalog}
                     problems={lineProblems(l.ingredientId)}
                     onChange={(patch) => setBase(idx, patch)}
-                    onRemove={() => setDraft((d) => ({ ...d, base: d.base.filter((_, i) => i !== idx) }))}
+                    onRemove={() => setDraft((d) => dropOrphanedChanges(d, { ...d, base: d.base.filter((_, i) => i !== idx) }))}
                   />
                 ))}
               </ul>
@@ -764,7 +786,10 @@ export function RecipeEditor({
                 <Button variant="quiet" onClick={() => setDraft((d) => ({ ...d, base: [...d.base, { ingredientId: '', amount: '', unitKey: null }] }))}>
                   + Add an ingredient
                 </Button>
-                <Button variant="quiet" aria-expanded={newIngredient} onClick={() => setNewIngredient((v) => !v)}>
+                <Button variant="quiet" aria-expanded={newIngredient} onClick={() => {
+                    setKeptFood(null);
+                    setNewIngredient((v) => !v);
+                  }}>
                   Not in the list? New ingredient…
                 </Button>
               </div>
@@ -780,9 +805,13 @@ export function RecipeEditor({
                     if (res.ok) setNewIngredient(false);
                     onChanged();
                   }}
-                  onCancel={() => setNewIngredient(false)}
+                  onCancel={(kept) => {
+                    setNewIngredient(false);
+                    setKeptFood(kept ?? null);
+                  }}
                 />
               )}
+              {keptFood && !newIngredient && <Notice variant="success">“{keptFood}” was already saved to the ingredient list; only the form was closed.</Notice>}
             </div>
           ) : (
             <VariationPanel
@@ -792,11 +821,29 @@ export function RecipeEditor({
               ingredients={ingredients}
               onChange={(fn) => setVariation(activeTab, fn)}
               onRemove={() => {
-                setDraft((d) => ({ ...d, variations: d.variations.filter((v) => v.restriction !== activeTab) }));
-                setTab('everyone');
+                const v = draft.variations.find((x) => x.restriction === activeTab);
+                // Empty: nothing is lost, so no question. Holding changes, a note or an answer: say what goes.
+                if (v && variationHolds(v).length > 0) setRemovingVariation(activeTab as RestrictionKey);
+                else removeVariation(activeTab as RestrictionKey);
               }}
             />
           )}
+          {removingVariation && (() => {
+            const v = draft.variations.find((x) => x.restriction === removingVariation);
+            const label = RESTRICTION_BY_KEY[removingVariation].label.toLowerCase();
+            return (
+              <DangerConfirm
+                title={`Remove the ${label} version?`}
+                sub={`${v ? sentenceOf(variationHolds(v)) : ''}. The Everyone list is not touched, and nothing is deleted until you save.`}
+                confirmLabel="Remove version"
+                onCancel={() => setRemovingVariation(null)}
+                onConfirm={() => {
+                  removeVariation(removingVariation);
+                  setRemovingVariation(null);
+                }}
+              />
+            );
+          })()}
         </FormSection>
 
         <FormSection num={3} title="Steps">
@@ -899,7 +946,7 @@ export function RecipeEditor({
             />
           )}
         </div>
-        {snap.dirty && publishable && <p className={styles.hint}>Duplicate and the short form wait for a save.</p>}
+        {snap.dirty && !isNew && <p className={styles.hint}>Duplicate and the short form wait for a save.</p>}
         {retiring && (
           <Dialog ref={retireDialog} danger onClose={() => setRetiring(false)}>
             <DialogHeader title={`Retire ${snap.saved.name}?`} sub="Patrols can’t pick it any more. Old plans keep their copy, and it can be restored as a draft later." />
@@ -923,6 +970,85 @@ export function RecipeEditor({
         )}
         {snap.saved.status === 'retired' && (
           <p className={styles.hint}>{snap.saved.name} is retired. Patrols can&rsquo;t pick it any more; old plans keep their copy.</p>
+        )}
+        {/* Delete is at the FOOT of the open recipe, away from the sticky bar (Patrick, 2026-10-06). Outlined danger, never primary. */}
+        {!isNew && !compact && onDeleted && (
+          <div className={styles.deleteFoot}>
+            <Button variant="danger" size="sm" disabled={pending} onClick={() => setDeleting(true)}>
+              Delete recipe
+            </Button>
+          </div>
+        )}
+        {deleting && (
+          <Dialog ref={deleteDialog} danger onClose={() => setDeleting(false)}>
+            {snap.saved.foodIngredientId ? (
+              <>
+                <DialogHeader title={`${snap.saved.name} is a single food`} sub="Use “Take it off the menu” on its food instead. A food keeps its brands and prices." />
+                <DialogBody>{null}</DialogBody>
+                <DialogActions>
+                  <Button variant="secondary" size="sm" onClick={() => setDeleting(false)}>
+                    Close
+                  </Button>
+                </DialogActions>
+              </>
+            ) : menusUsing && menusUsing.count > 0 ? (
+              <>
+                <DialogHeader
+                  title={`${snap.saved.name} is on ${menusUsing.count} ${menusUsing.count === 1 ? 'menu' : 'menus'} (${menusUsing.names.join(', ')}${menusUsing.count > menusUsing.names.length ? '…' : ''})`}
+                  sub="Take it off those menus first, or Retire it so no new menu picks it."
+                />
+                <DialogBody>{null}</DialogBody>
+                <DialogActions>
+                  <Button variant="secondary" size="sm" onClick={() => setDeleting(false)}>
+                    Keep it
+                  </Button>
+                  {snap.saved.status !== 'retired' && (
+                    <Button
+                      variant="dangerSolid"
+                      size="sm"
+                      onClick={() => {
+                        setDeleting(false);
+                        run(() => setRecipeStatus(draft.id, 'retired'));
+                      }}
+                    >
+                      Retire
+                    </Button>
+                  )}
+                </DialogActions>
+              </>
+            ) : (
+              <>
+                <DialogHeader title={`Delete ${snap.saved.name}?`} sub="It is removed from the troop’s list for good." />
+                <DialogBody>{null}</DialogBody>
+                <DialogActions>
+                  <Button variant="secondary" size="sm" onClick={() => setDeleting(false)}>
+                    Keep it
+                  </Button>
+                  <Button
+                    variant="dangerSolid"
+                    size="sm"
+                    onClick={() => {
+                      setDeleting(false);
+                      feedback.start();
+                      setError(null);
+                      // No refresh: the page it would reload is the one that was just deleted.
+                      start(async () => {
+                        const res = await deleteRecipe(draft.id);
+                        if (!res.ok) {
+                          feedback.fail();
+                          setError(res.error ?? 'Something went wrong.');
+                          return;
+                        }
+                        feedback.doneThen(() => onDeleted?.());
+                      });
+                    }}
+                  >
+                    Delete
+                  </Button>
+                </DialogActions>
+              </>
+            )}
+          </Dialog>
         )}
       </FormPanel>
 
@@ -981,6 +1107,8 @@ function MakeSingleFood({
   const [amount, setAmount] = useState('1');
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  /** Pressed with something missing: the missing fields are marked and the reason is said beside the button. */
+  const [tried, setTried] = useState(false);
 
   const isNewIngredient = pick === NEW_INGREDIENT;
   const amountOk = parseQty(amount) > 0;
@@ -991,8 +1119,17 @@ function MakeSingleFood({
   const title = `Make ${recipe.name.trim() || 'this'} a single food`;
   const idp = `mm-food-${recipe.id}`;
 
+  const nameBad = tried && isNewIngredient && name.trim() === '';
+  const amountBad = tried && !amountOk;
+  const reason = !amountOk ? 'Type how many each person gets.' : 'Name it and say what one and several are called.';
+
   function use() {
     setError(null);
+    if (!ready) {
+      // Greyed means nothing to do, never not valid yet (D-331): say what is missing, in place.
+      setTried(true);
+      return;
+    }
     if (!isNewIngredient) {
       const picked = sorted.find((i) => i.id === pick);
       onUse(pick, amount.trim(), picked?.name.trim().toLowerCase() === wanted && !tiedFoods.has(pick));
@@ -1034,7 +1171,7 @@ function MakeSingleFood({
           <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-amount`}>
             How many each
           </label>
-          <input id={`${idp}-amount`} className={lib.textInput} inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
+          <input id={`${idp}-amount`} className={amountBad ? `${lib.textInput} ${styles.bad}` : lib.textInput} aria-invalid={amountBad || undefined} inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
         </div>
         {isNewIngredient && (
           <>
@@ -1042,7 +1179,7 @@ function MakeSingleFood({
               <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-name`}>
                 Name
               </label>
-              <input id={`${idp}-name`} className={lib.textInput} value={name} maxLength={80} onChange={(e) => setName(e.target.value)} />
+              <input id={`${idp}-name`} className={nameBad ? `${lib.textInput} ${styles.bad}` : lib.textInput} aria-invalid={nameBad || undefined} value={name} maxLength={80} onChange={(e) => setName(e.target.value)} />
             </div>
             <div>
               <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-section`}>
@@ -1060,27 +1197,40 @@ function MakeSingleFood({
               <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-one`}>
                 One is called
               </label>
-              <input id={`${idp}-one`} className={lib.textInput} value={one} maxLength={40} onChange={(e) => setOne(e.target.value)} placeholder="cookie" />
+              <input id={`${idp}-one`} className={tried && one.trim() === '' && isNewIngredient ? `${lib.textInput} ${styles.bad}` : lib.textInput} aria-invalid={(tried && one.trim() === '' && isNewIngredient) || undefined} value={one} maxLength={40} onChange={(e) => setOne(e.target.value)} placeholder="cookie" />
             </div>
             <div>
               <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-many`}>
                 Several are called
               </label>
-              <input id={`${idp}-many`} className={lib.textInput} value={many} maxLength={40} onChange={(e) => setMany(e.target.value)} placeholder="cookies" />
+              <input id={`${idp}-many`} className={tried && many.trim() === '' && isNewIngredient ? `${lib.textInput} ${styles.bad}` : lib.textInput} aria-invalid={(tried && many.trim() === '' && isNewIngredient) || undefined} value={many} maxLength={40} onChange={(e) => setMany(e.target.value)} placeholder="cookies" />
             </div>
           </>
         )}
       </div>
       <div className={lib.actionsRow}>
-        <Button variant="primary" disabled={pending || !ready} title={ready ? undefined : amountOk ? 'Name it and say what one and several are called' : 'Type how many each person gets'} onClick={use}>
+        <Button variant="primary" disabled={pending} onClick={use}>
           {pending ? 'Adding…' : 'Use this'}
         </Button>
+        {tried && !ready && <span className={styles.badNote} role="alert">{reason}</span>}
         <Button variant="secondary" disabled={pending} onClick={onClose}>
           Cancel
         </Button>
       </div>
     </FormPanel>
   );
+}
+
+/** What a variation holds that would be lost with it: "its 3 changes", "its note", "its Not suitable answer". */
+function variationHolds(v: { state: VariationState; note: string; lines: readonly unknown[] }): string[] {
+  return [v.lines.length > 0 ? `${v.lines.length} ${v.lines.length === 1 ? 'change' : 'changes'}` : '', v.note.trim() !== '' ? 'note' : '', v.state === 'unsuitable' ? 'Not suitable answer' : ''].filter(Boolean);
+}
+/** "Its 3 changes and its note go too" / "Its 1 change goes too". */
+function sentenceOf(parts: string[]): string {
+  const withIts = parts.map((p) => `its ${p}`);
+  const s = withIts.length > 1 ? `${withIts.slice(0, -1).join(', ')} and ${withIts[withIts.length - 1]}` : withIts[0];
+  const plural = parts.length > 1 || /^[2-9]|^\d\d/.test(parts[0]);
+  return `${s.charAt(0).toUpperCase()}${s.slice(1)} ${plural ? 'go' : 'goes'} too`;
 }
 
 function toggle<T>(list: T[], key: T, on: boolean): T[] {
@@ -1238,6 +1388,10 @@ function SingleFoodFields({
       const next: DraftVariation = { restriction: key, state, note: cur?.note ?? '', lines };
       return { ...d, variations: cur ? d.variations.map((v) => (v.restriction === key ? next : v)) : [...d.variations, next] };
     });
+  // Dropping a diet's answer (Remove, or an answer that holds no swap) names what goes first; an empty one just goes.
+  const [removingDiet, setRemovingDiet] = useState<RestrictionKey | null>(null);
+  const [pendingDiet, setPendingDiet] = useState<{ key: RestrictionKey; state: VariationState } | null>(null);
+  const removeDiet = (key: RestrictionKey) => setDraft((d) => ({ ...d, variations: d.variations.filter((x) => x.restriction !== key) }));
   const patchSwap = (key: RestrictionKey, patch: Partial<DraftVariationLine>) =>
     setDraft((d) => ({ ...d, variations: d.variations.map((v) => (v.restriction === key ? { ...v, lines: v.lines.map((l) => (l.op === 'swap' ? { ...l, ...patch } : l)) } : v)) }));
   return (
@@ -1324,7 +1478,7 @@ function SingleFoodFields({
                   {view === 'needs_look' && <Badge variant="warning">Needs an answer</Badge>}
                   <span className={styles.spacer} />
                   {v && (
-                    <Button variant="quiet" size="sm" onClick={() => setDraft((d) => ({ ...d, variations: d.variations.filter((x) => x.restriction !== r.key) }))}>
+                    <Button variant="quiet" size="sm" onClick={() => (variationHolds(v).length > 0 ? setRemovingDiet(r.key) : removeDiet(r.key))}>
                       Remove
                     </Button>
                   )}
@@ -1338,8 +1492,30 @@ function SingleFoodFields({
                     { value: 'substituted', label: 'Instead…' },
                     { value: 'unsuitable', label: 'Not suitable' }
                   ]}
-                  onChange={(state) => state && answerDiet(r.key, state)}
+                  onChange={(state) => {
+                    if (!state) return;
+                    if (state !== 'substituted' && (v?.lines.length ?? 0) > 0) setPendingDiet({ key: r.key, state });
+                    else answerDiet(r.key, state);
+                  }}
                 />
+                {pendingDiet?.key === r.key && (
+                  <p className={styles.badNote} role="alert">
+                    Switching drops {lower} scouts’ swap.{' '}
+                    <Button
+                      variant="quiet"
+                      size="sm"
+                      onClick={() => {
+                        answerDiet(pendingDiet.key, pendingDiet.state);
+                        setPendingDiet(null);
+                      }}
+                    >
+                      Switch and drop it
+                    </Button>
+                    <Button variant="quiet" size="sm" onClick={() => setPendingDiet(null)}>
+                      Keep it
+                    </Button>
+                  </p>
+                )}
                 {v?.state === 'nothing' && <p className={styles.hint}>{r.label} scouts get {foodName} as it is.</p>}
                 {v?.state === 'unsuitable' && (
                   <p className={styles.hint}>
@@ -1373,6 +1549,18 @@ function SingleFoodFields({
             );
           })}
         </div>
+        {removingDiet && (
+          <DangerConfirm
+            title={`Remove the ${RESTRICTION_BY_KEY[removingDiet].label.toLowerCase()} answer?`}
+            sub={`${sentenceOf(variationHolds(draft.variations.find((x) => x.restriction === removingDiet) as DraftVariation))}. ${foodName} itself is not touched, and nothing is deleted until you save.`}
+            confirmLabel="Remove answer"
+            onCancel={() => setRemovingDiet(null)}
+            onConfirm={() => {
+              removeDiet(removingDiet);
+              setRemovingDiet(null);
+            }}
+          />
+        )}
         {unanswered.length > 0 && (
           <select
             className={`${lib.selectInput} ${styles.mealFilter}`}
@@ -1391,27 +1579,28 @@ function SingleFoodFields({
           </select>
         )}
       </fieldset>
-      {make && (
-        <div className={lib.fieldGrid}>
+      <div className={lib.fieldGrid}>
+        {make && (
           <div className={lib.fieldFull}>
             <label className={`adminLabel ${lib.fieldLabel}`} htmlFor="mm-f-steps">
               How to make it
             </label>
             <textarea id="mm-f-steps" className={lib.textArea} value={draft.stepsMd} maxLength={600} onChange={(e) => setDraft((d) => ({ ...d, stepsMd: e.target.value }))} />
           </div>
-          <div className={lib.fieldFull}>
-            <span id="mm-f-gear-label" className={`adminLabel ${lib.fieldLabel}`}>
-              Gear you’ll need
-            </span>
-            <GearPicker labelledBy="mm-f-gear-label" gear={draft.gear ?? []} list={gearList} onChange={(gear) => setDraft((d) => ({ ...d, gear }))} />
-          </div>
+        )}
+        {/* Gear is always here, even on a food with no steps: foil, a skillet, a cooler is a real need of a single food. */}
+        <div className={lib.fieldFull}>
+          <span id="mm-f-gear-label" className={`adminLabel ${lib.fieldLabel}`}>
+            Gear you’ll need
+          </span>
+          <GearPicker labelledBy="mm-f-gear-label" gear={draft.gear ?? []} list={gearList} onChange={(gear) => setDraft((d) => ({ ...d, gear }))} />
         </div>
-      )}
+      </div>
       <p className={styles.hint}>
         <Button variant="quiet" size="sm" onClick={onFull}>
           Open the full editor
         </Button>{' '}
-        to add a second ingredient (that makes {foodName} a recipe){make ? '' : ', or for steps and gear'}.
+        to add a second ingredient (that makes {foodName} a recipe){make ? '' : ', or for steps'}.
       </p>
     </>
   );
@@ -1440,7 +1629,16 @@ function VariationPanel({
   const view = viewFor(draft, restriction, catalog);
   const flagged = flaggedIngredients(numericBase(draft), restriction, catalog);
   const ingById = new Map(catalog.ingredients.map((i) => [i.id, i]));
-  const setState = (state: VariationState) => onChange((x) => ({ ...x, state, lines: state === 'substituted' ? x.lines : [] }));
+  // Switching to an answer that has no lines drops the ones it holds: said inline first, applied on a second click.
+  const [pendingState, setPendingState] = useState<VariationState | null>(null);
+  const applyState = (state: VariationState) => onChange((x) => ({ ...x, state, lines: state === 'substituted' ? x.lines : [] }));
+  const setState = (state: VariationState) => {
+    if (state !== 'substituted' && v.lines.length > 0) setPendingState(state);
+    else applyState(state);
+  };
+  const baseIds = new Set(draft.base.map((b) => b.ingredientId));
+  /** A swap or leave-out whose Everyone line is gone: kept visible with its own Remove, never hidden while it blocks Save. */
+  const orphans = v.lines.map((l, i) => ({ l, i })).filter(({ l }) => (l.op === 'swap' || l.op === 'leave_out') && (!l.baseIngredientId || !baseIds.has(l.baseIngredientId)));
 
   /** The change recorded against one base ingredient, if any. */
   const opFor = (baseId: string) => v.lines.find((l) => (l.op === 'swap' || l.op === 'leave_out') && l.baseIngredientId === baseId);
@@ -1485,6 +1683,24 @@ function VariationPanel({
           onChange={setState}
         />
       </div>
+      {pendingState && (
+        <p className={styles.badNote} role="alert">
+          Switching to {pendingState === 'unsuitable' ? 'Not suitable' : 'Nothing to change'} drops its {v.lines.length} {v.lines.length === 1 ? 'change' : 'changes'}.{' '}
+          <Button
+            variant="quiet"
+            size="sm"
+            onClick={() => {
+              applyState(pendingState);
+              setPendingState(null);
+            }}
+          >
+            Switch and drop them
+          </Button>
+          <Button variant="quiet" size="sm" onClick={() => setPendingState(null)}>
+            Keep them
+          </Button>
+        </p>
+      )}
 
       {v.state === 'nothing' && <p className={styles.hint}>{label} scouts get the Everyone recipe as it is. The planner counts them with everyone else.</p>}
       {v.state === 'unsuitable' && (
@@ -1499,6 +1715,21 @@ function VariationPanel({
             Changes from the Everyone recipe. A swap takes the base line away from {lower} scouts and gives them the new line instead; the planner sizes
             each by how many {lower} scouts are eating.
           </p>
+          {orphans.length > 0 && (
+            <ul className={styles.lineList} aria-label={`Changes with no Everyone line for ${lower} scouts`}>
+              {orphans.map(({ l, i }) => (
+                <li key={i} className={`${styles.lineRow} ${styles.bad}`}>
+                  <div className={styles.grow}>
+                    <span className={`adminLabel ${lib.fieldLabel}`}>{l.op === 'swap' ? 'A swap' : 'A leave-out'} of {ingById.get(l.baseIngredientId ?? '')?.name ?? 'a line that is gone'}</span>
+                  </div>
+                  <Button variant="quiet" size="sm" aria-label={`Remove the change ${i + 1}`} onClick={() => removeAt(i)}>
+                    Remove
+                  </Button>
+                  <p className={styles.badNote}>The Everyone line it changes is gone — remove this change.</p>
+                </li>
+              ))}
+            </ul>
+          )}
           {draft.base.length === 0 ? (
             <p className={styles.muted}>Add the Everyone lines first.</p>
           ) : (

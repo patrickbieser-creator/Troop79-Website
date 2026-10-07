@@ -22,6 +22,7 @@ import { Badge } from '../../_components/badge';
 import { Notice } from '../../_components/notice';
 import { RESTRICTIONS, RESTRICTION_BY_KEY } from '@/lib/menu-monster/units';
 import type { Brand, Catalog, Ingredient, RestrictionKey } from '@/lib/menu-monster/types';
+import { DangerConfirm } from './danger-confirm';
 import { mergeBrand, moveBrand, removeBrand, renameBrand, setBrandDiets } from './actions';
 import lib from '../library.module.css';
 import styles from './menu-monster.module.css';
@@ -64,6 +65,7 @@ export function BrandHead({
   const [tried, setTried] = useState(false);
   const [target, setTarget] = useState('');
   const [diets, setDiets] = useState<RestrictionKey[] | null>(null);
+  const [removing, setRemoving] = useState(false);
 
   const mergeTargets = brandsOf(catalog, ing.id).filter((x) => !x.retiredAt && x.id !== b.id);
   const others = catalog.ingredients.filter((i) => i.id !== ing.id && !i.retiredAt && !i.needsMatch).sort((x, y) => x.name.localeCompare(y.name));
@@ -133,13 +135,25 @@ export function BrandHead({
             { value: 'remove', label: 'Remove' }
           ]}
           onAction={(v) => {
-            if (v === 'remove') run(() => removeBrand(b.id), `Removed “${b.name}”. Menus that chose it go back to any brand.`);
+            if (v === 'remove') setRemoving(true);
             else if (v === 'suggest') onSuggest?.(b.id);
             else if (v === 'unsuggest') onSuggest?.(null);
             else open(v as Mode);
           }}
         />
       </div>
+      {removing && (
+        <DangerConfirm
+          title={`Remove ${b.name}?`}
+          sub="Menus that chose it go back to any brand; its prices are kept in the price history."
+          confirmLabel="Remove brand"
+          onCancel={() => setRemoving(false)}
+          onConfirm={() => {
+            setRemoving(false);
+            run(() => removeBrand(b.id), `Removed “${b.name}”. Menus that chose it go back to any brand.`);
+          }}
+        />
+      )}
       {line && (line.kind === 'error' ? <Notice>{line.text}</Notice> : <Notice variant="success">{line.text}</Notice>)}
 
       {mode === 'rename' && (

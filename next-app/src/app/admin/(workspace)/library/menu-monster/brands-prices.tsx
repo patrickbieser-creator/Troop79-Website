@@ -33,7 +33,8 @@ import { fmtDate } from '@/lib/format-date';
 import { money } from '@/lib/event-money';
 import { SOLD_UNITS, learnedConversion, learnedText, priceChange, staleText, suggestYield, unusableText } from '@/lib/menu-monster/authoring';
 import type { Brand, Catalog, Conversion, Ingredient, Package } from '@/lib/menu-monster/types';
-import { addBought, createBrand, restorePackage, retirePackage, setPackageBrand, suggestRecipeBrand, updatePackage, type PackageEdit } from './actions';
+import { AddBrandForm } from './add-brand-form';
+import { addBought, restorePackage, retirePackage, setPackageBrand, suggestRecipeBrand, updatePackage, type PackageEdit } from './actions';
 import { BrandHead, brandsOf } from './brands-block';
 import { useArmed } from './use-armed';
 import { useAttempt, type FieldProblem } from './use-attempt';
@@ -187,10 +188,6 @@ export function BrandsAndPrices({
  *  a way to add a brand on this screen"). It shows up as a heading marked "No price yet". */
 function AddBrand({ ing, onChanged }: { ing: Ingredient; onChanged: () => void }) {
   const [open, setOpen] = useState(false);
-  const [name, setName] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [pending, start] = useTransition();
-
   if (!open) {
     return (
       <Button variant="quiet" onClick={() => setOpen(true)}>
@@ -199,32 +196,14 @@ function AddBrand({ ing, onChanged }: { ing: Ingredient; onChanged: () => void }
     );
   }
   return (
-    <form
-      className={styles.inlineForm}
-      onSubmit={(e) => {
-        e.preventDefault();
-        setError(null);
-        start(async () => {
-          const res = await createBrand(ing.id, name);
-          if (!res.ok) {
-            setError(res.error ?? 'Something went wrong.');
-            return;
-          }
-          setName('');
-          setOpen(false);
-          onChanged();
-        });
+    <AddBrandForm
+      ing={ing}
+      onCancel={() => setOpen(false)}
+      onAdded={() => {
+        setOpen(false);
+        onChanged();
       }}
-    >
-      <input className={lib.textInput} aria-label={`New brand of ${ing.name.toLowerCase()}`} value={name} maxLength={60} autoFocus onChange={(e) => setName(e.target.value)} />
-      <Button type="submit" variant="primary" disabled={pending || !name.trim()}>
-        Add brand
-      </Button>
-      <Button type="button" variant="secondary" disabled={pending} onClick={() => setOpen(false)}>
-        Cancel
-      </Button>
-      {error && <Notice>{error}</Notice>}
-    </form>
+    />
   );
 }
 

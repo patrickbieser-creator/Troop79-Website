@@ -326,6 +326,27 @@ export function swapsKept(a: RecipeAuthoring, ingredientId: string): DraftVariat
   return a.variations.map((v) => ({ ...v, lines: v.lines.filter((l) => l.op === 'swap' && l.baseIngredientId === ingredientId) }));
 }
 
+/**
+ * An Everyone line that goes away (removed, or changed to another ingredient) takes the diet swaps and leave-outs
+ * that pointed at it, so the draft stays consistent instead of holding a hidden change that blocks Save
+ * (Jenna's audit, 2026-10-06: a swap on a removed line was not rendered yet still said "remove this change").
+ * Only changes aimed at an ingredient that WAS in `prev` and is no longer in `next` go; returns `next` itself
+ * when nothing changed.
+ */
+export function dropOrphanedChanges(prev: RecipeAuthoring, next: RecipeAuthoring): RecipeAuthoring {
+  const now = new Set(next.base.map((b) => b.ingredientId));
+  const gone = new Set(prev.base.map((b) => b.ingredientId).filter((id) => id && !now.has(id)));
+  if (gone.size === 0) return next;
+  let changed = false;
+  const variations = next.variations.map((v) => {
+    const lines = v.lines.filter((l) => !((l.op === 'swap' || l.op === 'leave_out') && l.baseIngredientId && gone.has(l.baseIngredientId)));
+    if (lines.length === v.lines.length) return v;
+    changed = true;
+    return { ...v, lines };
+  });
+  return changed ? { ...next, variations } : next;
+}
+
 /** How many variation lines asSingleFood() would drop — said before the move, never after. */
 export function swapsDropped(a: RecipeAuthoring, ingredientId: string): number {
   const kept = swapsKept(a, ingredientId);

@@ -43,7 +43,7 @@ describe('admin GearPicker', () => {
     render(<Harness />);
     await userEvent.setup().type(screen.getByRole('combobox', { name: 'Search gear' }), 'spork{Enter}');
     expect([options(), stored(), screen.queryByRole('button', { name: /add/i })]).toEqual([[], [], null]);
-    expect(screen.getByText(/Nothing on the gear list matches “spork”/)).toBeTruthy();
+    expect(screen.getByText(/“spork” is not on the gear list/)).toBeTruthy();
   });
 
   it('Picking_AddsAChip_AToZ_AndTheItemLeavesTheOptions', async () => {
@@ -84,5 +84,31 @@ describe('admin GearPicker', () => {
     );
     await userEvent.setup().type(screen.getByRole('combobox', { name: 'Search gear' }), 'gri{Enter}');
     expect(submitted).toBe(false);
+  });
+  it('Leader_IsToldAtOnce_WhenTypedGearIsNotOnTheList_AndSaveStaysHonest', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    const box = screen.getByRole('combobox', { name: 'Search gear' });
+    await user.type(box, 'heavy aluminum foil');
+    await user.tab(); // leaving the box must not hide the problem
+    expect(screen.getByText(/“heavy aluminum foil” is not on the gear list/)).toBeTruthy();
+    expect(screen.getByText(/pick a match, or add it on the Gear tab/)).toBeTruthy();
+    expect(box.getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByRole('link', { name: /Add it to the gear list/ }).getAttribute('href')).toBe('/admin/library/menu-monster?tab=gear');
+    expect(stored()).toEqual([]);
+    await user.clear(box);
+    expect(screen.queryByText(/is not on the gear list/)).toBeNull();
+  });
+
+  it('Enter_WithNoMatch_SaysSo', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    const box = screen.getByRole('combobox', { name: 'Search gear' });
+    await user.type(box, 'spork');
+    await user.tab();
+    await user.click(box);
+    await user.keyboard('{Enter}');
+    expect(screen.getByRole('alert').textContent).toMatch(/not on the gear list/);
+    expect(stored()).toEqual([]);
   });
 });
