@@ -148,7 +148,7 @@ const SCOREBOARD: ReadonlyArray<readonly [string, string, string]> = [
   [
     'Number fields / dialers',
     '3 hand-rolled stepper copies (planner, workspace) + 4 plain number boxes (guest count, days, seats, reimbursement amount)',
-    'Stepper SHIPPED (2026-10-02, Calm-Site-Restyle Decisions 1-2) — one shared − n + at 32px/16px; planner, Menu Monster workspace and event sign-up (guests, days, seats) converted, planner .stepper/.stepBtn/.numIn deleted. Reimbursement amount is dollars-and-cents, so it stays a number box (AmountInput, same 32px look) rather than a dial. Menu Monster People/diets now use plain NumberBox (unframed, hairline-wrapped via whos-eating.module.css); Stepper remains for event sign-up (2026-10-07).'
+    'Stepper SHIPPED (2026-10-02, Calm-Site-Restyle Decisions 1-2) — one shared − n + at 32px/16px; planner, Menu Monster workspace and event sign-up (guests, days, seats) converted, planner .stepper/.stepBtn/.numIn deleted. Reimbursement amount is dollars-and-cents, so it stays a number box (AmountInput, same 32px look) rather than a dial. Menu Monster People/diets now use plain NumberBox (unframed, hairline-wrapped via whos-eating.module.css); Stepper remains for event sign-up (2026-10-07). Menu Monster brand package qty, shopping-row qty and gear counts (public and admin pickers) are plain NumberBox since v1.200.0; Stepper remains for event sign-up (guest-rows, person-first-form).'
   ],
   [
     'Cards',
@@ -515,7 +515,7 @@ export default function PublicStyleguidePage() {
             />
             <p className={sg.specimenInlineNote}>
               <code>AddRow</code> from <code>menu-monster/_components/add-row</code> &mdash; add rows: one per container, links at rest, search on tap,
-              Cancel always visible; a single food has no + Ingredient. Cancel and Esc (nothing typed) close it and return focus to the link; the
+              Cancel always visible; a single food has no + Ingredient. Sites: meal panel (+ Food / + Gear), ingredient lists (+ Ingredient), Gear tab (+ Gear), Who&rsquo;s eating (+ Diet), Ingredients tab (+ Ingredient, whose form keeps its own Cancel). Admin twin: <code>AdminAddRow</code>. Cancel and Esc (nothing typed) close it and return focus to the link; the
               caller&rsquo;s extra controls (the ingredient list&rsquo;s &ldquo;for Everyone&rdquo; select) ride in <code>trailing</code>, before Cancel.
             </p>
           </div>

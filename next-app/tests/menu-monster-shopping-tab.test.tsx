@@ -55,6 +55,13 @@ const tab = (m: Menu = menu(), snapshot: MenuSnapshot | null = buildSnapshot(m, 
 );
 
 const rowFor = (name: string) => screen.getByRole('button', { name: new RegExp(`^${name}`) }).closest('li') as HTMLElement;
+const setQty = async (user: ReturnType<typeof userEvent.setup>, row: ReturnType<typeof within>, name: string, text: string) => {
+  const box = row.getByRole('spinbutton', { name });
+  await user.clear(box);
+  await user.type(box, text);
+  await user.tab();
+};
+
 const open = async (user: ReturnType<typeof userEvent.setup>, name: string) => {
   await user.click(screen.getByRole('button', { name: new RegExp(`^${name}`) }));
   return rowFor(name);
@@ -411,11 +418,20 @@ describe('ShoppingTab', () => {
       expect((screen.getByRole('button', { name: 'Discard changes' }) as HTMLButtonElement).disabled).toBe(true);
     });
 
+    it('ShoppingQty_IsANumberBox', async () => {
+      const user = userEvent.setup();
+      render(tab());
+      const row = await open(user, 'Bacon');
+      expect((within(row).getByRole('spinbutton', { name: 'How many' }) as HTMLInputElement).value).toBe('1');
+      expect(within(row).queryByRole('button', { name: 'One more Bacon package' })).toBeNull();
+      expect(within(row).queryByRole('button', { name: 'One fewer Bacon package' })).toBeNull();
+    });
+
     it('Quantity_CanBeTyped_AndResetToTheRecommendation', async () => {
       const user = userEvent.setup();
       render(tab());
       const row = await open(user, 'Bacon');
-      await user.click(within(row).getByRole('button', { name: 'One more Bacon package' }));
+      await setQty(user, within(row), 'How many', '2');
       expect(within(rowFor('Bacon')).getByText('2 × Kirkland Hickory Smoked Bacon, 4 x 1 lb')).toBeTruthy();
       expect(within(rowFor('Bacon')).getByText('$36.30')).toBeTruthy();
       await user.click(within(rowFor('Bacon')).getByRole('button', { name: 'Reset to 1' }));
@@ -426,8 +442,8 @@ describe('ShoppingTab', () => {
       const user = userEvent.setup();
       render(tab());
       const row = await open(user, 'Bacon');
-      await user.click(within(row).getByRole('button', { name: 'One more Bacon package' }));
-      await user.click(within(rowFor('Bacon')).getByRole('button', { name: 'One fewer Bacon package' }));
+      await setQty(user, within(row), 'How many', '2');
+      await setQty(user, within(rowFor('Bacon')), 'How many', '1');
       expect((screen.getByRole('button', { name: 'Saved' }) as HTMLButtonElement).disabled).toBe(true);
     });
 

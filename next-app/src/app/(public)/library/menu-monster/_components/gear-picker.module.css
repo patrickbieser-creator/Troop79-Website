@@ -21,6 +21,9 @@
   border-radius: var(--rad-sm);
 }
 .chipName { font-weight: 600; }
+/* The count as a plain number box: the unframed NumberBox in a hairline. */
+.qtyBox { display: inline-block; width: 3.5em; height: 32px; border: 1px solid var(--border-mid); border-radius: var(--rad-sm); overflow: hidden; }
+.qtyBox input { border-left: none; border-right: none; }
 .remove {
   min-width: 32px;
   min-height: 32px;

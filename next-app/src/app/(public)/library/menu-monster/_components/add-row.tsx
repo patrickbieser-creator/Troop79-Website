@@ -51,6 +51,7 @@ export function AddRow({
   const [own, setOwn] = useState<string | null>(defaultOpen);
   const open = controlled !== undefined ? controlled : own;
   const rowRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const linkRefs = useRef(new Map<string, HTMLButtonElement>());
   const lastOpened = useRef<string | null>(null);
   /** A tap on a link asked for focus in the content; an open the caller drives (swap, default-open) never moves it. */
@@ -67,7 +68,8 @@ export function AddRow({
   useEffect(() => {
     if (open != null && wantFocus.current) {
       wantFocus.current = false;
-      rowRef.current?.querySelector<HTMLElement>('input, select, textarea')?.focus();
+      // The content's first field or button (a diet list is only buttons); never Cancel or the other links.
+      contentRef.current?.querySelector<HTMLElement>('input, select, textarea, button')?.focus();
     }
     if (open == null && restore.current) {
       const id = restore.current;
@@ -123,7 +125,7 @@ export function AddRow({
     <div ref={rowRef} className={`${s.row} ${className ?? ''}`} data-state={current ? 'open' : 'rest'} onKeyDown={current ? onKeyDown : undefined} onBlur={current ? onBlur : undefined}>
       {current ? (
         <>
-          <div className={s.content}>{current.content}</div>
+          <div ref={contentRef} className={s.content}>{current.content}</div>
           {actions.length > 1 && <div className={s.links}>{actions.filter((a) => a.id !== current.id).map(linkFor)}</div>}
           {trailing && <div className={s.trailing}>{trailing}</div>}
           <button type="button" className={s.cancel} onClick={() => close('cancel')}>

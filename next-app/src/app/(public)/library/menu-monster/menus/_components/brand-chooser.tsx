@@ -18,7 +18,7 @@
  */
 
 import { useId, useState, useTransition, type KeyboardEvent } from 'react';
-import { Stepper } from '@/app/_components/stepper';
+import { NumberBox } from '@/app/_components/stepper';
 import type { Brand, BrandPick, Catalog, Ingredient, ShoppingLine } from '@/lib/menu-monster/types';
 import { isUsable, livePicks, packCount, MAX_BRANDS_PER_INGREDIENT } from '@/lib/menu-monster/engine';
 import { priceText as money, qtyText } from '@/lib/menu-monster/units';
@@ -159,18 +159,19 @@ export function BrandChooser({ ingredient, catalog, picks, line, onChange, onTyp
           <ul className={s.plainList} aria-label={`How many of each brand of ${ingredient.name}`}>
             {parts.map((x) => (
               <li key={x.brand.id} className={s.brandLine}>
-                <span className={s.brandLineName}>{x.brand.name}</span>
-                <Stepper
-                  id={`${uid}-q-${x.brand.id}`}
-                  value={x.qty}
-                  min={0}
-                  max={99}
-                  onChange={(n) => setQty(x.brand.id, n === x.autoQty ? null : n)}
-                  groupLabel={`Packages of ${x.brand.name}`}
-                  inputLabel={`Packages of ${x.brand.name}`}
-                  lessLabel={`One fewer ${x.brand.name}`}
-                  moreLabel={`One more ${x.brand.name}`}
-                />
+                <label className={s.brandLineName} htmlFor={`${uid}-q-${x.brand.id}`}>
+                  {x.brand.name}
+                </label>
+                <span className={s.qtyBox}>
+                  <NumberBox
+                    id={`${uid}-q-${x.brand.id}`}
+                    value={x.qty}
+                    min={0}
+                    max={99}
+                    onCommit={(n) => setQty(x.brand.id, n === x.autoQty ? null : n)}
+                    ariaLabel={`Packages of ${x.brand.name}`}
+                  />
+                </span>
                 <span className={s.meta}>{x.pkg.sizeLabel ?? x.pkg.name}</span>
               </li>
             ))}

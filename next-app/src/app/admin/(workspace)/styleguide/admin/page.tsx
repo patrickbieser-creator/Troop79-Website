@@ -27,7 +27,7 @@ import { EditorPromptsSpecimen } from './editor-prompts-specimen';
 import { FoodListRowsSpecimen } from './food-list-rows-specimen';
 import { BlockedSaveDemo, SaveDemo, SegmentedDemo } from './save-demo';
 import { fmtDate, fmtDateLong, fmtDateFull, fmtDay, fmtDateTime, fmtMonthYear, fmtRange, fmtWhen } from '@/lib/format-date';
-import { ActionsMenuSpecimen, ComboboxInvalidSpecimen, ComboboxSpecimen, GearPickerSpecimen, GearPickerNoMatchSpecimen, DangerConfirmSpecimen, SearchFieldSpecimen, SortHeaderSpecimen } from './specimens';
+import { ActionsMenuSpecimen, AdminAddRowSpecimen, AdminNumberBoxSpecimen, ComboboxInvalidSpecimen, ComboboxSpecimen, GearPickerSpecimen, GearPickerNoMatchSpecimen, DangerConfirmSpecimen, SearchFieldSpecimen, SortHeaderSpecimen } from './specimens';
 import {
   DangerZoneSpecimen,
   HistoryChipSpecimen,
@@ -782,6 +782,42 @@ export default function StyleguidePage() {
           <div className={sg.specimen}>
             <div className={sg.specimenLabel}>Marked</div>
             <ComboboxInvalidSpecimen />
+          </div>
+        </div>
+      </section>
+
+      <section className={sg.section}>
+        <h2 className={sg.sectionHead}>Number box</h2>
+        <p className={sg.sectionNote}>
+          A quantity is a plain number input, never a dial (Menu Monster Decision 10). <code>_components/admin-number-box.tsx</code> is
+          the admin twin of the shared <code>NumberBox</code>: commits on blur and Enter, clamps to min/max, snaps back when emptied,
+          and reads only <code>--admin-*</code> tokens (the shared one reads public tokens, so admin may not import it). Used by the gear
+          picker&rsquo;s counts.
+        </p>
+        <div className={sg.specimenGrid}>
+          <div className={`${sg.specimen} ${sg.specimenCanonical}`}>
+            <div className={sg.specimenLabel}>Canonical &mdash; type 40, it clamps to 9</div>
+            <AdminNumberBoxSpecimen />
+          </div>
+        </div>
+      </section>
+
+      <section className={sg.section}>
+        <h2 className={sg.sectionHead}>Add Row</h2>
+        <p className={sg.sectionNote}>
+          The admin twin of the scout planner&rsquo;s <code>AddRow</code> (Plans/Menu-Monster-Add-Pattern.md, Phase 2; Patrick
+          2026-10-07: &ldquo;UX is better&rdquo;). A list ends in one quiet link (&ldquo;+ Ingredient&rdquo; &mdash; a short verb, never the
+          container&rsquo;s name); a tap swaps it for the search with a quiet <strong>Cancel</strong> at the row&rsquo;s right end.
+          Cancel and Esc (nothing typed) close it and give focus back to the link; so does leaving the box empty. Picking a result
+          adds its line at once and moves focus to that line&rsquo;s amount. Admin never imports the public component or its tokens
+          (the firewall), so it is its own file: <code>library/menu-monster/admin-add-row.tsx</code>, used by the recipe builder&rsquo;s
+          Everyone list and each variation&rsquo;s extra lines. The &ldquo;Add a variation&rdquo; menu and the price book&rsquo;s
+          &ldquo;Add a size or store&rdquo; open a form rather than a search, so they keep their own quiet buttons.
+        </p>
+        <div className={sg.specimenGrid}>
+          <div className={`${sg.specimen} ${sg.specimenCanonical}`}>
+            <div className={sg.specimenLabel}>Canonical &mdash; tap &ldquo;+ Ingredient&rdquo;</div>
+            <AdminAddRowSpecimen />
           </div>
         </div>
       </section>

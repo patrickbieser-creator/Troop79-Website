@@ -108,12 +108,39 @@ describe('BrandChooser', () => {
     expect(screen.getByText('Need 20 cups · buying 36 cups')).toBeTruthy();
   });
 
+  const setBox = async (user: ReturnType<typeof userEvent.setup>, name: string, text: string) => {
+    const box = screen.getByRole('spinbutton', { name });
+    await user.clear(box);
+    await user.type(box, text);
+    await user.tab();
+  };
+
+  it('BrandQty_IsANumberBox_WithLabelAndNoun', () => {
+    render(<Harness initial={[{ brandId: 'b-chex', qty: null }, { brandId: 'b-cheerios', qty: null }]} />);
+    const row = within(screen.getByRole('list', { name: 'How many of each brand of Cold cereal' })).getAllByRole('listitem').find((li) => li.textContent?.includes('Rice Chex'))!;
+    expect(within(row).getByText('Rice Chex')).toBeTruthy();
+    expect(within(row).getByRole('spinbutton', { name: 'Packages of Rice Chex' })).toBeTruthy();
+    expect(within(row).getByText('18 oz')).toBeTruthy();
+    expect(within(row).queryAllByRole('button')).toEqual([]);
+  });
+
+  it('BrandQty_TypingCommitsOnBlur', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={[{ brandId: 'b-chex', qty: null }, { brandId: 'b-cheerios', qty: null }]} />);
+    const box = screen.getByRole('spinbutton', { name: 'Packages of Rice Chex' });
+    await user.clear(box);
+    await user.type(box, '120');
+    await user.tab();
+    expect(picks()[0]).toEqual({ brandId: 'b-chex', qty: 99 });
+    expect((screen.getByRole('spinbutton', { name: 'Packages of Rice Chex' }) as HTMLInputElement).value).toBe('99');
+  });
+
   it('ChangingACount_IsKept_AndGoingBackToTheSplitClearsIt', async () => {
     const user = userEvent.setup();
     render(<Harness initial={[{ brandId: 'b-chex', qty: null }, { brandId: 'b-cheerios', qty: null }]} />);
-    await user.click(screen.getByRole('button', { name: 'One more Rice Chex' }));
+    await setBox(user, 'Packages of Rice Chex', '2');
     expect(picks()[0]).toEqual({ brandId: 'b-chex', qty: 2 });
-    await user.click(screen.getByRole('button', { name: 'One fewer Rice Chex' }));
+    await setBox(user, 'Packages of Rice Chex', '1');
     expect(picks()[0]).toEqual({ brandId: 'b-chex', qty: null });
   });
 
@@ -121,7 +148,7 @@ describe('BrandChooser', () => {
     const user = userEvent.setup();
     render(<Harness initial={[{ brandId: 'b-chex', qty: 0 }, { brandId: 'b-cheerios', qty: null }]} />);
     expect(screen.getByText(/2 cups short/)).toBeTruthy();
-    await user.click(screen.getByRole('button', { name: 'One more Rice Chex' }));
+    await setBox(user, 'Packages of Rice Chex', '1');
     expect(screen.queryByText(/short/)).toBeNull();
   });
 

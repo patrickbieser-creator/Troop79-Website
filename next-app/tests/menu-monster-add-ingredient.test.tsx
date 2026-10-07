@@ -55,14 +55,14 @@ async function fillCookies(user: ReturnType<typeof userEvent.setup>) {
 describe('Ingredients tab — add an ingredient', () => {
   it('Visitor_IsAskedToSignIn_AndHasNoAddButton', () => {
     render(<IngredientBrowser catalog={CATALOG} adder={null} signInHref="/signin?next=x" />);
-    expect(screen.queryByRole('button', { name: 'Add an ingredient' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '+ Ingredient' })).toBeNull();
     expect(screen.getByRole('link', { name: 'Sign in' }).getAttribute('href')).toBe('/signin?next=x');
   });
 
   it('Scout_AsksForAnIngredient_AndIsToldALeaderWillCheckIt', { timeout: 20000 }, async () => {
     const user = userEvent.setup();
     render(<IngredientBrowser catalog={CATALOG} adder="review" />);
-    await user.click(screen.getByRole('button', { name: 'Add an ingredient' }));
+    await user.click(screen.getByRole('button', { name: '+ Ingredient' }));
     const form = await fillCookies(user);
     // The store section is asked of everyone now (Dry goods unless changed): it travels with the request, and the leader still decides when keeping it.
     expect((within(form).getByLabelText('Store section') as HTMLSelectElement).value).toBe('dry');
@@ -74,11 +74,19 @@ describe('Ingredients tab — add an ingredient', () => {
     expect(screen.queryByRole('group', { name: 'New ingredient' })).toBeNull();
   });
 
+  it('Browser_CancelNewIngredient_ReturnsFocusToTheLink', async () => {
+    const user = userEvent.setup();
+    render(<IngredientBrowser catalog={CATALOG} adder="review" />);
+    await user.click(screen.getByRole('button', { name: '+ Ingredient' }));
+    await user.click(within(screen.getByRole('group', { name: 'New ingredient' })).getByRole('button', { name: 'Cancel' }));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: '+ Ingredient' }));
+  });
+
   it('Leader_AddsStraightToThePriceBook_WithItsStoreSection', { timeout: 20000 }, async () => {
     const user = userEvent.setup();
     submitIngredientAction.mockResolvedValue({ ok: true, status: 'live', name: 'Cookies' });
     render(<IngredientBrowser catalog={CATALOG} adder="live" />);
-    await user.click(screen.getByRole('button', { name: 'Add an ingredient' }));
+    await user.click(screen.getByRole('button', { name: '+ Ingredient' }));
     const form = await fillCookies(user);
     await user.selectOptions(within(form).getByLabelText('Store section'), 'bakery');
     await user.click(within(form).getByRole('button', { name: 'Add ingredient' }));
@@ -91,7 +99,7 @@ describe('Ingredients tab — add an ingredient', () => {
     const user = userEvent.setup();
     submitIngredientAction.mockResolvedValue({ ok: false, error: 'The troop’s price book already has that.' });
     render(<IngredientBrowser catalog={CATALOG} adder="review" />);
-    await user.click(screen.getByRole('button', { name: 'Add an ingredient' }));
+    await user.click(screen.getByRole('button', { name: '+ Ingredient' }));
     const form = await fillCookies(user);
     await user.click(within(form).getByRole('button', { name: 'Add ingredient' }));
     expect((await within(form).findByRole('alert')).textContent).toMatch(/already has that/);

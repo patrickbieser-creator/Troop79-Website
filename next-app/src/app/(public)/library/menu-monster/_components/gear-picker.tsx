@@ -11,7 +11,7 @@
  * The recipe editor uses both; the menu's Gear tab uses the picker alone (its rows already list what is picked).
  */
 
-import { Stepper } from '@/app/_components/stepper';
+import { NumberBox } from '@/app/_components/stepper';
 import { MAX_GEAR_COUNT, gearKey, gearPickOptions, gearText, parseGear, sortGear, type GearItem } from '@/lib/menu-monster/gear';
 import { SearchCombobox, type SearchOption } from './search-combobox';
 import s from './gear-picker.module.css';
@@ -55,17 +55,16 @@ export function GearChips({ gear, onChange, onAnnounce, idPrefix = '' }: { gear:
         return (
           <li key={gearKey(name)} className={s.chip}>
             <span className={s.chipName}>{gearText(name, count)}</span>
-            <Stepper
-              id={id}
-              value={count}
-              min={1}
-              max={MAX_GEAR_COUNT}
-              groupLabel={`How many ${name}`}
-              lessLabel={`Fewer ${name}`}
-              moreLabel={`More ${name}`}
-              inputLabel={`${name} count`}
-              onChange={(n) => onChange(sortGear(gear.map((g) => (same(g, entry) ? gearText(name, n) : g))))}
-            />
+            <span className={s.qtyBox}>
+              <NumberBox
+                id={id}
+                value={count}
+                min={1}
+                max={MAX_GEAR_COUNT}
+                ariaLabel={`${name} count`}
+                onCommit={(n) => onChange(sortGear(gear.map((g) => (same(g, entry) ? gearText(name, n) : g))))}
+              />
+            </span>
             <button
               type="button"
               className={s.remove}

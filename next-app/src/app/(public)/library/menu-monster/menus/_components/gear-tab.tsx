@@ -27,6 +27,7 @@ import type { Menu } from '@/lib/menu-monster/menus';
 import { GEAR_HOMES, gearKey, menuGearRows, packedSummary, parseGear, type GearItem, type GearRow, type MenuGearState } from '@/lib/menu-monster/gear';
 import { mealTitle } from '@/lib/menu-monster/menu-view';
 import { setGearExtrasAction, setGearPackedAction } from '../../../_tools/menu-monster/gear-actions';
+import { AddRow } from '../../_components/add-row';
 import { GearPicker } from '../../_components/gear-picker';
 import s from './workspace.module.css';
 
@@ -55,6 +56,7 @@ export function GearTab({ catalog, menuId, menu, gearList, state: initial, canPa
   const [status, setStatus] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, start] = useTransition();
+  const [addOpen, setAddOpen] = useState<string | null>(null);
 
   const rows = menuGearRows(menu, catalog, gearList, state);
   const sum = packedSummary(rows);
@@ -108,7 +110,10 @@ export function GearTab({ catalog, menuId, menu, gearList, state: initial, canPa
   }
 
   /** Picked from the troop's list, so it is never a new name; the picker already left out what is on the menu. */
-  const addExtra = (name: string) => saveExtras([...state.extras.filter((e) => gearKey(parseGear(e).name) !== gearKey(name)), name], `${name} added.`);
+  const addExtra = (name: string) => {
+    setAddOpen(null);
+    saveExtras([...state.extras.filter((e) => gearKey(parseGear(e).name) !== gearKey(name)), name], `${name} added.`);
+  };
 
   const removeExtra = (row: GearRow) => saveExtras(state.extras.filter((e) => gearKey(parseGear(e).name) !== row.key), `${row.name} removed.`);
 
@@ -213,7 +218,11 @@ export function GearTab({ catalog, menuId, menu, gearList, state: initial, canPa
 
         {canEdit && (
           <div className={s.gearAdd}>
-            <GearPicker list={gearList} taken={rows.map((r) => r.name)} onPick={addExtra} label="Add gear" placeholder="More gear for the whole menu" />
+            <AddRow
+              open={addOpen}
+              onOpenChange={(id) => setAddOpen(id)}
+              actions={[{ id: 'gear', label: 'Gear', content: <GearPicker list={gearList} taken={rows.map((r) => r.name)} onPick={addExtra} label="Add gear" placeholder="Find gear" /> }]}
+            />
           </div>
         )}
         <p className={status ? s.statusLine : s.srOnly} role="status">

@@ -386,10 +386,13 @@ describe('RecipeEditor gear (picked from the master list)', () => {
     expect(within(screen.getByRole('list', { name: 'Gear' })).getAllByRole('listitem').map((li) => li.textContent?.replace(/[^A-Za-z]/g, '').slice(0, 6))).toEqual(['Skille', 'Tongs']);
   });
 
-  it('TheCountStepper_AddsOne_AndTheChipSaysSo', async () => {
+  it('TheCountBox_TypedTwo_AndTheChipSaysSo', async () => {
     const user = userEvent.setup();
     withGear({ ...READY, equipment: ['Skillet'] });
-    await user.click(screen.getByRole('button', { name: 'More Skillet' }));
+    const box = screen.getByRole('spinbutton', { name: 'Skillet count' });
+    await user.clear(box);
+    await user.type(box, '2');
+    await user.tab();
     expect(within(screen.getByRole('list', { name: 'Gear' })).getByText('Skillet × 2')).toBeTruthy();
   });
 
@@ -404,7 +407,10 @@ describe('RecipeEditor gear (picked from the master list)', () => {
     const user = userEvent.setup();
     withGear();
     await user.type(screen.getByRole('combobox', { name: 'Search gear' }), 'ton{Enter}');
-    await user.click(screen.getByRole('button', { name: 'More Tongs' }));
+    const box = screen.getByRole('spinbutton', { name: 'Tongs count' });
+    await user.clear(box);
+    await user.type(box, '2');
+    await user.tab();
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
     expect(save.mock.calls[0][0].equipment).toEqual(['Tongs × 2']);
   });

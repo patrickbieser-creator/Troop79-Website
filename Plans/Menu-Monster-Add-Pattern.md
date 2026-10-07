@@ -96,6 +96,10 @@ TBD after Patrick's decisions. (c) is a wrapper + class in `meal-panel.tsx` / `w
 
 9. **"Choose a brand" → "Choose brand(s)".** Patrick 2026-10-07: a scout may name several brands for one ingredient (cookies: three or four) and that must never be precluded. Label only — the model already allows it: `BrandPicks = Record<ingredientId, BrandPick[]>` (types.ts: "A menu may ask for an ingredient with any brand, or name one or several"). Production site: `meal-panel.tsx` ~364, the `verb` string. Existing fact worth keeping in mind: brand picks are per MENU per ingredient, not per line — choosing brands on Chips in Snack applies to Chips anywhere on that menu.
 
+10. **Every quantity dialer in Menu Monster becomes a plain input** (Patrick 2026-10-07, after seeing Phase 1 live: "UX is better… Where these dialers appear through the menu for qty, change them all to simple inputs"): brand package quantities (brand-chooser), shopping-row quantity overrides (shopping-tab), gear counts (gear-picker). The shared Stepper stays for event sign-up only.
+
+11. **Exception: the troop ingredient browser keeps its + Ingredient ABOVE the list** (it is long and searchable; the old button sat there) — a deliberate departure from D-332(3), qa-lead 2026-10-07.
+
 ## Open Questions
 
-None. Ready to activate when Patrick says build.
+None. Phase 2 in progress (2026-10-07): AddRow on gear-tab, add-diet-menu, ingredient-browser, the admin recipe-builder (admin twin on admin tokens), plus Decision 10.

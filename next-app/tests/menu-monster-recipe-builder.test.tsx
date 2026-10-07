@@ -96,6 +96,11 @@ const pickIng = async (user: ReturnType<typeof userEvent.setup>, field: HTMLElem
   await user.click(field);
   await user.click(screen.getByRole('option', { name }));
 };
+/** The admin add row: '+ Ingredient' opens a search; picking an ingredient adds its line (amount still to type). */
+const addIng = async (user: ReturnType<typeof userEvent.setup>, scope: ReturnType<typeof within>, name: string) => {
+  await user.click(scope.getByRole('button', { name: '+ Ingredient' }));
+  await pickIng(user, scope.getByRole('combobox', { name: 'Add an ingredient' }), name);
+};
 const list = () => screen.getByRole('table', { name: 'Food and recipes' });
 /** Record-level commands live in the one "More actions…" menu (2026-10-05). */
 const more = async (scope: ReturnType<typeof within>, value: string) => userEvent.setup().selectOptions(scope.getByRole('combobox', { name: 'More actions' }), value);
@@ -121,8 +126,7 @@ describe('Recipe builder', () => {
     expect(within(editor).getByText(/^Can’t save yet/).textContent).toBe('Can’t save yet: Add at least one ingredient line.');
     expect(within(editor).getByRole('list', { name: 'Needs fixing' }).textContent).toMatch(/Add at least one ingredient line/);
 
-    await user.click(within(editor).getByRole('button', { name: '+ Add an ingredient' }));
-    await pickIng(user, within(editor).getByLabelText('Line 1 ingredient'), 'Bread');
+    await addIng(user, within(editor), 'Bread');
     await user.type(within(editor).getByLabelText('Line 1 amount'), '2');
     expect(within(editor).queryByRole('list', { name: 'Needs fixing' })).toBeNull();
     // Bread has gluten and everyone gets it — a warning, never a block.
@@ -166,8 +170,7 @@ describe('Recipe builder', () => {
     render(<RecipeScreen catalog={CATALOG} recipeId="pancakes" />);
     const editor = screen.getByRole('region', { name: 'Edit Pancakes' });
 
-    await user.click(within(editor).getByRole('button', { name: '+ Add an ingredient' }));
-    await pickIng(user, within(editor).getByLabelText('Line 3 ingredient'), 'Eggs');
+    await addIng(user, within(editor), 'Eggs');
     await user.type(within(editor).getByLabelText('Line 3 amount'), '1');
     expect(within(editor).getByRole('list', { name: 'Needs fixing' }).textContent).toMatch(
       /Line 3: Eggs already has a line for everyone — combine them\./
@@ -183,8 +186,7 @@ describe('Recipe builder', () => {
     render(<RecipeScreen catalog={CATALOG} recipeId="pancakes" />);
     const editor = screen.getByRole('region', { name: 'Edit Pancakes' });
 
-    await user.click(within(editor).getByRole('button', { name: '+ Add an ingredient' }));
-    await pickIng(user, within(editor).getByLabelText('Line 3 ingredient'), 'Almond flour');
+    await addIng(user, within(editor), 'Almond flour');
     await user.type(within(editor).getByLabelText('Line 3 amount'), '4');
     const group = within(editor).getByRole('radiogroup', { name: 'Line 3 amount is for' });
     expect((within(group).getByRole('radio', { name: 'per person' }) as HTMLInputElement).checked).toBe(true);
@@ -761,8 +763,7 @@ describe('Recipe page — Close (2026-10-05)', () => {
     const user = userEvent.setup();
     render(<RecipeScreen catalog={CATALOG} recipeId="toast" />);
     const editor = within(screen.getByRole('region', { name: 'Edit Toast' }));
-    await user.click(editor.getByRole('button', { name: '+ Add an ingredient' }));
-    await pickIng(user, editor.getByLabelText('Line 1 ingredient'), 'Bread');
+    await addIng(user, editor, 'Bread');
     // Nothing said while they are still typing…
     expect(editor.queryByText(/^Can’t save yet/)).toBeNull();
     const save = editor.getByRole('button', { name: 'Save changes' }) as HTMLButtonElement;
@@ -974,7 +975,8 @@ describe('Recipe builder — a searchable ingredient picker (2026-10-06)', () =>
   const editorOf = () => screen.getByRole('region', { name: 'Edit Toast' });
   const openLine = async (user: ReturnType<typeof userEvent.setup>) => {
     render(<RecipeScreen catalog={CATALOG} recipeId="toast" />);
-    await user.click(within(editorOf()).getByRole('button', { name: '+ Add an ingredient' }));
+    await addIng(user, within(editorOf()), 'Bread');
+    await user.click(within(editorOf()).getByRole('button', { name: 'Clear Line 1 ingredient' }));
     return within(editorOf()).getByLabelText('Line 1 ingredient') as HTMLInputElement;
   };
   const optionNames = () => within(screen.getByRole('listbox', { name: 'Line 1 ingredient options' })).getAllByRole('option').map((o) => o.firstChild?.textContent);
@@ -1243,5 +1245,38 @@ describe('Recipe builder — the unit of a line (2026-10-06)', () => {
     expect(within(lineItem(2)).getByText(/^cups is not a unit the Price book can convert for Eggs/)).toBeTruthy();
     expect(within(lineItem(2)).getAllByRole('link', { name: 'Price book' }).length).toBeGreaterThan(0);
     expect(lineItem(2).textContent).not.toMatch(/isn.t a number/);
+  });
+});
+
+describe('Recipe builder — admin add rows (Menu-Monster-Add-Pattern Phase 2)', () => {
+  it('Leader_CancelsTheIngredientSearch_AndFocusGoesBackToTheLink', async () => {
+    const user = userEvent.setup();
+    render(<RecipeScreen catalog={CATALOG} recipeId="toast" />);
+    const editor = within(screen.getByRole('region', { name: 'Edit Toast' }));
+    await user.click(editor.getByRole('button', { name: '+ Ingredient' }));
+    const open = editor.getByRole('combobox', { name: 'Add an ingredient' }) != null;
+    await user.click(editor.getByRole('button', { name: 'Cancel' }));
+    expect([open, editor.queryByRole('combobox', { name: 'Add an ingredient' }), editor.queryByLabelText('Line 1 ingredient'), document.activeElement === editor.getByRole('button', { name: '+ Ingredient' })]).toEqual([true, null, null, true]);
+  });
+
+  it('Leader_PickingFromTheSearch_AddsItsLine_AndFocusesTheAmount', async () => {
+    const user = userEvent.setup();
+    render(<RecipeScreen catalog={CATALOG} recipeId="toast" />);
+    const editor = within(screen.getByRole('region', { name: 'Edit Toast' }));
+    await addIng(user, editor, 'Bread');
+    await waitFor(() => expect(document.activeElement).toBe(editor.getByLabelText('Line 1 amount')));
+    expect([(editor.getByLabelText('Line 1 ingredient') as HTMLInputElement).value, editor.queryByRole('combobox', { name: 'Add an ingredient' })]).toEqual(['Bread', null]);
+  });
+
+  it('Leader_AddsAnExtraLineForADiet_FromTheSameKindOfRow', async () => {
+    const user = userEvent.setup();
+    render(<RecipeScreen catalog={CATALOG} recipeId="pancakes" />);
+    const editor = within(screen.getByRole('region', { name: 'Edit Pancakes' }));
+    await user.click(editor.getByRole('button', { name: /\+ Add a variation/ }));
+    await user.click(within(editor.getByRole('group', { name: 'Variations to add' })).getByRole('button', { name: /^Gluten-free/ }));
+    const panel = within(editor.getByRole('region', { name: 'Gluten-free version' }));
+    await user.click(panel.getByRole('button', { name: '+ Ingredient' }));
+    await pickIng(user, panel.getByRole('combobox', { name: 'Add an ingredient for gluten-free scouts' }), 'Almond flour');
+    expect((panel.getByLabelText('Extra line 1 ingredient') as HTMLInputElement).value).toBe('Almond flour');
   });
 });

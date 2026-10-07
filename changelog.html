@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>October 7, 2026</strong> &nbsp;&middot;&nbsp; v1.199.0</p>
+      <p>Last updated: <strong>October 7, 2026</strong> &nbsp;&middot;&nbsp; v1.200.0</p>
     </div>
   </div>
 
@@ -494,6 +494,23 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.200.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.200.0</span>
+        <span class="release-date">October 7, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Improved</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Menu Monster: the one add row everywhere; every quantity is a plain box</p>
+        <ul class="change-list">
+          <li><span><strong>The add row reaches the rest of the menu.</strong> The Gear step ends in <strong>+ Gear</strong>; Who&rsquo;s eating ends its diet counts in <strong>+ Diet</strong> (the diets to pick from open in place); the troop&rsquo;s ingredient list offers <strong>+ Ingredient</strong>, which opens the ask-for-an-ingredient form. Every list a scout sees now ends the same way: one quiet link at its own indent, the thing it adds opening on tap, Cancel in sight.</span></li>
+          <li><span><strong>The leaders&rsquo; recipe builder gets the same row, on admin colours.</strong> <strong>+ Ingredient</strong> opens a search; picking adds the line and puts the cursor in its amount (it used to append an empty line to fill in). &ldquo;Add a line just for &lt;diet&gt; scouts&rdquo; in a variation works the same way. The admin side has its own twin of the row, and its own number box, rather than borrowing the public ones, so the two colour systems stay apart.</span></li>
+          <li><span><strong>Quantities are plain boxes.</strong> The &minus;&nbsp;n&nbsp;+ dialers for a brand&rsquo;s packages (&ldquo;Sour Cream &amp; Onion&nbsp;4&nbsp;Chips&rdquo;), for a shopping row&rsquo;s &ldquo;How many&rdquo;, and for a gear item&rsquo;s count &mdash; scouts&rsquo; and leaders&rsquo; pickers both &mdash; are now the same small number box People and diets got in v1.199.0. Type the number; it takes on blur or Enter, and a count below one comes back to one. Event sign-up keeps its dialers.</span></li>
+        </ul>
       </div>
     </div>
 

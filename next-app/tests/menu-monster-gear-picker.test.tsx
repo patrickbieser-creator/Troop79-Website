@@ -75,15 +75,32 @@ describe('public GearChips', () => {
   it('CountStepper_MovesTheCount_AndTheChipSaysNameTimesN', async () => {
     const user = userEvent.setup();
     render(<Harness start={['Skillet']} />);
-    await user.click(screen.getByRole('button', { name: 'More Skillet' }));
+    const box = screen.getByRole('spinbutton', { name: 'Skillet count' });
+    await user.clear(box);
+    await user.type(box, '2');
+    await user.tab();
     expect(chipNames()).toEqual(['Skillet × 2']);
-    await user.click(screen.getByRole('button', { name: 'Fewer Skillet' }));
+    await user.clear(box);
+    await user.type(box, '1');
+    await user.tab();
     expect(chipNames()).toEqual(['Skillet']);
   });
 
-  it('Fewer_IsGreyedAtOne', () => {
-    render(<Harness start={['Skillet']} />);
-    expect((screen.getByRole('button', { name: 'Fewer Skillet' }) as HTMLButtonElement).disabled).toBe(true);
+  it('GearCount_IsANumberBox', () => {
+    render(<Harness start={['Skillet × 3']} />);
+    expect((screen.getByRole('spinbutton', { name: 'Skillet count' }) as HTMLInputElement).value).toBe('3');
+    expect(screen.queryByRole('button', { name: 'More Skillet' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Fewer Skillet' })).toBeNull();
+  });
+
+  it('GearCount_BelowOne_ComesBackToOneOnBlur', async () => {
+    const user = userEvent.setup();
+    render(<Harness start={['Skillet × 3']} />);
+    const box = screen.getByRole('spinbutton', { name: 'Skillet count' });
+    await user.clear(box);
+    await user.type(box, '0');
+    await user.tab();
+    expect(chipNames()).toEqual(['Skillet']);
   });
 
   it('Remove_TakesTheChipOff', async () => {

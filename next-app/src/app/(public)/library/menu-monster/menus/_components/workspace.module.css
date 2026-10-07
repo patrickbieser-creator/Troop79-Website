@@ -154,6 +154,10 @@
 .brandType { max-width: 280px; }
 .brandLine { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); font-family: var(--font-ui); font-size: var(--fs-md); color: var(--text-body); margin: 0 0 var(--sp-1); }
 .brandLineName { min-width: 140px; }
+/* A package count as a plain number box (Menu-Monster-Add-Pattern decision 8): the unframed NumberBox in a hairline, the
+   same weight as People and diets (whos-eating.module.css .box). */
+.qtyBox { display: inline-block; width: 4.5em; height: 32px; border: 1px solid var(--border-mid); border-radius: var(--rad-sm); overflow: hidden; }
+.qtyBox input { border-left: none; border-right: none; }
 .fieldError { margin: 0; font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--status-danger); }
 /* The quiet brand text beside an ingredient's name, and the one text action after it. */
 .brandText { font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-meta); }
@@ -236,6 +240,9 @@
 }
 .menuItem:hover { background: var(--cream); }
 .menuItem:focus-visible { outline: var(--focus-ring); outline-offset: -2px; }
+/* The diets an AddRow offers (add-diet-menu.tsx): quiet buttons side by side, wrapping on a phone. */
+.dietPicks { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-3); }
+.dietPicks .menuItem { width: auto; padding: var(--sp-3) var(--sp-2); font-weight: 600; color: var(--navy); }
 .menuDanger { color: var(--status-danger); }
 
 /* ---- Inline confirm under a row (Delete) ------------------------------------- */

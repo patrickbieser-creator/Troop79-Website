@@ -1169,7 +1169,10 @@ describe('MealPanel — More gear for this meal (gear-from-the-list release 2)',
     saveMenuAction.mockResolvedValue(LANDED);
     const user = userEvent.setup();
     render(plan(withGear(['Wash basin'])));
-    await user.click(screen.getByRole('button', { name: 'More Wash basin' }));
+    const box = screen.getByRole('spinbutton', { name: 'Wash basin count' });
+    await user.clear(box);
+    await user.type(box, '2');
+    await user.tab();
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
     expect(saved().meals[0].gear).toEqual(['Wash basin × 2']);
   });

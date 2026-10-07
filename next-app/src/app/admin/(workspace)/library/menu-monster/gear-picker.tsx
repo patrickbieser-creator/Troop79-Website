@@ -13,6 +13,7 @@
 
 import { useId, useState, type KeyboardEvent } from 'react';
 import Link from 'next/link';
+import { AdminNumberBox } from '../../../_components/admin-number-box';
 import { MAX_GEAR_COUNT, gearKey, gearPickOptions, gearText, parseGear, sortGear, type GearItem } from '@/lib/menu-monster/gear';
 import s from './gear-picker.module.css';
 
@@ -136,13 +137,8 @@ export function GearPicker({
             return (
               <li key={gearKey(name)} className={s.chip}>
                 <span className={s.chipName}>{gearText(name, count)}</span>
-                <span className={s.stepper}>
-                  <button type="button" className={s.step} aria-label={`Fewer ${name}`} disabled={count <= 1} onClick={() => setCount(entry, count - 1)}>
-                    −
-                  </button>
-                  <button type="button" className={s.step} aria-label={`More ${name}`} disabled={count >= MAX_GEAR_COUNT} onClick={() => setCount(entry, count + 1)}>
-                    +
-                  </button>
+                <span className={s.qtyBox}>
+                  <AdminNumberBox id={`${uid}-n-${gearKey(name)}`} value={count} min={1} max={MAX_GEAR_COUNT} ariaLabel={`${name} count`} onCommit={(n) => setCount(entry, n)} />
                 </span>
                 <button type="button" className={s.remove} aria-label={`Remove ${name}`} onClick={() => remove(entry)}>
                   ×

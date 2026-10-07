@@ -13,13 +13,13 @@
  * A visitor (null) gets a sign-in link.
  */
 
-import { useId, useState, useTransition } from 'react';
+import { useEffect, useId, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/app/_components/button';
 import type { Catalog, Section } from '@/lib/menu-monster/types';
 import { RESTRICTION_BY_KEY, SECTIONS, SECTION_ORDER, priceText } from '@/lib/menu-monster/units';
 import { browseIngredients } from '@/lib/menu-monster/ingredient-browse';
+import { AddRow } from './add-row';
 import { FilterChips, SearchBox } from './browse-controls';
 import { NewIngredientForm } from '../recipes/_components/new-ingredient-form';
 import { submitIngredientAction } from '../../_tools/menu-monster/ingredient-actions';
@@ -31,12 +31,21 @@ export function IngredientBrowser({ catalog, adder = null, signInHref }: { catal
   const uid = useId();
   const router = useRouter();
   const [adding, setAdding] = useState(false);
+  const rowWrap = useRef<HTMLDivElement>(null);
+  /** Set when the form is cancelled, so the fresh "+ Ingredient" link takes focus back. */
+  const refocus = useRef(false);
   const [busy, start] = useTransition();
   const [failure, setFailure] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [section, setSection] = useState<Section | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!adding && refocus.current) {
+      refocus.current = false;
+      rowWrap.current?.querySelector<HTMLElement>('button')?.focus();
+    }
+  }, [adding]);
   const entries = browseIngredients(catalog, query, section);
   const q = query.trim();
 
@@ -46,18 +55,17 @@ export function IngredientBrowser({ catalog, adder = null, signInHref }: { catal
       <FilterChips options={SECTION_CHIPS} value={section} onChange={setSection} />
       {adder ? (
         !adding && (
-          <div>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => {
-                setDone(null);
-                setFailure(null);
-                setAdding(true);
-              }}
-            >
-              Add an ingredient
-            </Button>
+          // The form below has its own Cancel, so the row is only the trigger: it never shows an open state of its own.
+          <div ref={rowWrap}>
+          <AddRow
+            open={null}
+            onOpenChange={() => {
+              setDone(null);
+              setFailure(null);
+              setAdding(true);
+            }}
+            actions={[{ id: 'ingredient', label: 'Ingredient', content: null }]}
+          />
           </div>
         )
       ) : (
@@ -76,7 +84,10 @@ export function IngredientBrowser({ catalog, adder = null, signInHref }: { catal
           catalog={catalog}
           busy={busy}
           failure={failure}
-          onCancel={() => setAdding(false)}
+          onCancel={() => {
+            refocus.current = true;
+            setAdding(false);
+          }}
           onAdd={(n, aisle) => {
             setFailure(null);
             start(async () => {

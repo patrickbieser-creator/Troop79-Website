@@ -87,6 +87,7 @@ import { DangerConfirm } from './danger-confirm';
 import { gearKey, parseGear, type GearItem } from '@/lib/menu-monster/gear';
 import { BrandsAndPrices } from './brands-prices';
 import { NewFoodForm } from './new-food-form';
+import { AdminAddRow } from './admin-add-row';
 import lib from '../library.module.css';
 import { SuggestedBrands } from './suggested-brands';
 import type { MenusUsing } from '@/lib/menu-monster/recipe-delete-store';
@@ -493,6 +494,7 @@ export function RecipeEditor({
   const pill = pillOf(snap.saved, catalog);
   const ingredients = catalog.ingredients.filter((i) => !i.retiredAt);
   const ingById = new Map(catalog.ingredients.map((i) => [i.id, i]));
+  const [addIngOpen, setAddIngOpen] = useState<string | null>(null);
   const compiled = compileAuthoring(draft).lines;
   // Where each blocking problem is, so the spot is marked as well as listed at the top.
   const badField = (f: 'name' | 'lines' | 'mealFit') => errors.some((i) => i.field === f);
@@ -783,9 +785,32 @@ export function RecipeEditor({
                 ))}
               </ul>
               <div className={lib.actionsRow}>
-                <Button variant="quiet" onClick={() => setDraft((d) => ({ ...d, base: [...d.base, { ingredientId: '', amount: '', unitKey: null }] }))}>
-                  + Add an ingredient
-                </Button>
+                <AdminAddRow
+                  open={addIngOpen}
+                  onOpenChange={(id) => setAddIngOpen(id)}
+                  actions={[
+                    {
+                      id: 'ingredient',
+                      label: 'Ingredient',
+                      content: (
+                        <IngredientSelect
+                          id="mm-add-ing"
+                          label="Add an ingredient"
+                          value=""
+                          ingredients={ingredients}
+                          onChange={(id) => {
+                            if (!id) return;
+                            // The pick becomes its line at once; the amount is what is left to type.
+                            const at = draft.base.length;
+                            setDraft((d) => ({ ...d, base: [...d.base, { ingredientId: id, amount: '', unitKey: null }] }));
+                            setAddIngOpen(null);
+                            requestAnimationFrame(() => document.getElementById(`mm-l-${at}-amt`)?.focus());
+                          }}
+                        />
+                      )
+                    }
+                  ]}
+                />
                 <Button variant="quiet" aria-expanded={newIngredient} onClick={() => {
                     setKeptFood(null);
                     setNewIngredient((v) => !v);
@@ -1668,6 +1693,7 @@ function VariationPanel({
   const ingById = new Map(catalog.ingredients.map((i) => [i.id, i]));
   // Switching to an answer that has no lines drops the ones it holds: said inline first, applied on a second click.
   const [pendingState, setPendingState] = useState<VariationState | null>(null);
+  const [addLineOpen, setAddLineOpen] = useState<string | null>(null);
   const applyState = (state: VariationState) => onChange((x) => ({ ...x, state, lines: state === 'substituted' ? x.lines : [] }));
   const setState = (state: VariationState) => {
     if (state !== 'substituted' && v.lines.length > 0) setPendingState(state);
@@ -1874,9 +1900,31 @@ function VariationPanel({
             </ul>
           )}
           <div className={lib.actionsRow}>
-            <Button variant="quiet" size="sm" onClick={() => onChange((x) => ({ ...x, lines: [...x.lines, { op: 'add', baseIngredientId: null, ingredientId: null, amount: '', unitKey: null }] }))}>
-              + Add a line just for {lower} scouts
-            </Button>
+            <AdminAddRow
+              open={addLineOpen}
+              onOpenChange={(id) => setAddLineOpen(id)}
+              actions={[
+                {
+                  id: 'ingredient',
+                  label: 'Ingredient',
+                  content: (
+                    <IngredientSelect
+                      id={`mm-va-${restriction}-add`}
+                      label={`Add an ingredient for ${lower} scouts`}
+                      value=""
+                      ingredients={ingredients}
+                      onChange={(id) => {
+                        if (!id) return;
+                        const at = v.lines.length;
+                        onChange((x) => ({ ...x, lines: [...x.lines, { op: 'add', baseIngredientId: null, ingredientId: id, amount: '', unitKey: null }] }));
+                        setAddLineOpen(null);
+                        requestAnimationFrame(() => document.getElementById(`mm-va-${restriction}-${at}-amt`)?.focus());
+                      }}
+                    />
+                  )
+                }
+              ]}
+            />
           </div>
         </>
       )}

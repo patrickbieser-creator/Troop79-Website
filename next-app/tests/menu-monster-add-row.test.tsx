@@ -109,4 +109,13 @@ describe('AddRow', () => {
     render(<AddRow actions={actions} defaultOpen="food" />);
     expect(document.activeElement).toBe(document.body);
   });
+
+  it('AddRow_Open_FocusesFirstButton_WhenContentHasNoInput', async () => {
+    const user = userEvent.setup();
+    render(<AddRow actions={[{ id: 'diet', label: 'Diet', content: <div><button type="button">Nut-free</button></div> }]} />);
+    await user.click(screen.getByRole('button', { name: '+ Diet' }));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Nut-free' }));
+    await user.keyboard('{Escape}');
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: '+ Diet' }));
+  });
 });

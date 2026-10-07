@@ -11,6 +11,8 @@ import { SortHeader, useSortable } from '../../_components/use-sortable';
 import { SearchField, useTableSearch } from '../../_components/search-field';
 import { AdminCombobox, type ComboOption } from '../../_components/admin-combobox';
 import { GearPicker } from '../../library/menu-monster/gear-picker';
+import { AdminNumberBox } from '../../../_components/admin-number-box';
+import { AdminAddRow } from '../../library/menu-monster/admin-add-row';
 import type { GearItem } from '@/lib/menu-monster/gear';
 import { useState } from 'react';
 import { Button } from '../../../_components/button';
@@ -135,4 +137,46 @@ export function ComboboxSpecimen() {
 export function ComboboxInvalidSpecimen() {
   const [value, setValue] = useState('');
   return <AdminCombobox id="sg-combobox-bad" label="Ingredient (marked)" options={COMBO_SAMPLE} value={value} invalid onChange={setValue} />;
+}
+
+/** Add row: a quiet link at rest; tap opens the combobox search with a Cancel at the right end; picking closes it. */
+export function AdminAddRowSpecimen() {
+  const [open, setOpen] = useState<string | null>(null);
+  const [picked, setPicked] = useState<string[]>([]);
+  return (
+    <div>
+      {picked.length > 0 && <p>Added (specimen): {picked.join(', ')}</p>}
+      <AdminAddRow
+        open={open}
+        onOpenChange={(id) => setOpen(id)}
+        actions={[
+          {
+            id: 'ingredient',
+            label: 'Ingredient',
+            content: (
+              <AdminCombobox
+                id="sg-add-row"
+                label="Add an ingredient (specimen)"
+                options={COMBO_SAMPLE}
+                value=""
+                onChange={(v) => {
+                  if (!v) return;
+                  setPicked((p) => [...p, COMBO_SAMPLE.find((o) => o.value === v)?.label ?? v]);
+                  setOpen(null);
+                }}
+              />
+            )
+          }
+        ]}
+      />
+    </div>
+  );
+}
+
+/** Number box: a plain input that commits on blur/Enter and clamps (here 1 to 9). */
+export function AdminNumberBoxSpecimen() {
+  const [n, setN] = useState(2);
+  return (
+    <AdminNumberBox id="sg-number-box" value={n} min={1} max={9} ariaLabel="Count (specimen)" onCommit={setN} />
+  );
 }

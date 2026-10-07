@@ -19,7 +19,7 @@ import { PublicBlockedSaveSpecimen, PublicDietRowsSpecimen, PublicFinishLineSpec
 import { StepStrip } from '../src/app/(public)/library/menu-monster/menus/_components/step-strip';
 import { BlockedSaveDemo } from '../src/app/admin/(workspace)/styleguide/admin/save-demo';
 import { FoodListRowsSpecimen } from '../src/app/admin/(workspace)/styleguide/admin/food-list-rows-specimen';
-import { ComboboxSpecimen, DangerConfirmSpecimen, GearPickerNoMatchSpecimen } from '../src/app/admin/(workspace)/styleguide/admin/specimens';
+import { AdminAddRowSpecimen, ComboboxSpecimen, DangerConfirmSpecimen, GearPickerNoMatchSpecimen } from '../src/app/admin/(workspace)/styleguide/admin/specimens';
 import { EditorPromptsSpecimen } from '../src/app/admin/(workspace)/styleguide/admin/editor-prompts-specimen';
 
 describe('Public styleguide specimens', () => {
@@ -54,6 +54,12 @@ describe('Public styleguide specimens', () => {
     render(<PublicGearSpecimen />);
     expect(screen.getByLabelText('Search gear')).toBeTruthy();
     expect(screen.getByText('Skillet × 2')).toBeTruthy();
+  });
+
+  it('AdminAddRow_ShowsALinkAtRest_AndTheSearchWithCancel_WhenTapped', () => {
+    render(<AdminAddRowSpecimen />);
+    fireEvent.click(screen.getByRole('button', { name: '+ Ingredient' }));
+    expect([screen.getByRole('combobox', { name: 'Add an ingredient (specimen)' }) != null, screen.getByRole('button', { name: 'Cancel' }) != null]).toEqual([true, true]);
   });
 
   it('Combobox_FiltersByContains_WhenTyped', () => {

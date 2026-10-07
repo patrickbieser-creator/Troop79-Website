@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CATALOG } from './helpers/menu-monster-fixture';
 import type { Menu } from '../src/lib/menu-monster/menus';
@@ -88,7 +88,7 @@ describe('PeopleTab — Who’s eating on its own screen', () => {
       screen.getByRole('combobox', { name: 'Patrol' }) != null,
       num(/^People/).value,
       num(/^Gluten-free/).value,
-      screen.getByRole('button', { name: 'Add a diet' }) != null,
+      screen.getByRole('button', { name: '+ Diet' }) != null,
       num(/^Budget/).value
     ]).toEqual([true, true, true, true, '8', '5', true, '4.00']);
   });
@@ -163,15 +163,28 @@ describe('PeopleTab — Who’s eating on its own screen', () => {
     const user = userEvent.setup();
     render(existing());
     expect(screen.queryByRole('spinbutton', { name: /^Nut-free/ })).toBeNull();
-    await user.click(screen.getByRole('button', { name: 'Add a diet' }));
+    await user.click(screen.getByRole('button', { name: '+ Diet' }));
     expect(within(screen.getByRole('group', { name: 'Diets the menu does not count yet' })).getAllByRole('button').map((b) => b.textContent)).toEqual(['Vegetarian', 'Nut-free', 'Dairy-free']);
     await user.click(screen.getByRole('button', { name: 'Nut-free' }));
     expect(num(/^Nut-free/).value).toBe('0');
   });
 
+  it('Diets_KeyboardOnly_OpenPickAndEscape', async () => {
+    const user = userEvent.setup();
+    render(existing());
+    screen.getByRole('button', { name: '+ Diet' }).focus();
+    await user.keyboard('{Enter}');
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Vegetarian' }));
+    await user.keyboard('{Tab}{Enter}');
+    await waitFor(() => expect(document.activeElement).toBe(num(/^Nut-free/)));
+    screen.getByRole('button', { name: '+ Diet' }).focus();
+    await user.keyboard('{Enter}{Escape}');
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: '+ Diet' }));
+  });
+
   it('Diets_AddADietIsGone_WhenEveryDietShows', () => {
     render(existing(base({ restrictions: { gf: 1, nut: 1, dairy: 1, veg: 1 } })));
-    expect(screen.queryByRole('button', { name: 'Add a diet' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '+ Diet' })).toBeNull();
   });
 
   it('Save_FocusesTheNameField_WhenTheNameIsEmpty', async () => {

@@ -44,7 +44,7 @@ import { priceText as money } from '@/lib/menu-monster/units';
 import { useLeaveGuard } from '@/lib/use-leave-guard';
 import { Notice } from '@/app/_components/notice';
 import { Button } from '@/app/_components/button';
-import { Stepper } from '@/app/_components/stepper';
+import { NumberBox } from '@/app/_components/stepper';
 import { TextInput } from '@/app/_components/form';
 import type { Brand, BrandPick, Catalog, Conversion, LineSource, Package } from '@/lib/menu-monster/types';
 import { RESTRICTION_BY_KEY, SECTIONS, SECTION_ORDER, qtyText } from '@/lib/menu-monster/units';
@@ -793,17 +793,12 @@ function ShoppingRow({
 
               {buying && pkg && parts.length < 2 && (
                 <div className={s.choice}>
-                  <Stepper
-                    id={`${panelId}-qty`}
-                    label="How many"
-                    value={l.qty}
-                    min={0}
-                    max={MAX_QTY}
-                    onChange={onQty}
-                    groupLabel={`How many ${l.ing.name} packages`}
-                    lessLabel={`One fewer ${l.ing.name} package`}
-                    moreLabel={`One more ${l.ing.name} package`}
-                  />
+                  <label className={s.choiceLabel} htmlFor={`${panelId}-qty`}>
+                    How many
+                  </label>
+                  <span className={s.qtyBox}>
+                    <NumberBox id={`${panelId}-qty`} value={l.qty} min={0} max={MAX_QTY} onCommit={onQty} />
+                  </span>
                   {l.overridden && (
                     <Button variant="ghost" onClick={() => onQty(l.autoQty)}>
                       Reset to {l.autoQty}

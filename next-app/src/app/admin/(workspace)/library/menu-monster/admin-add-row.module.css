@@ -1,0 +1,17 @@
+/* AdminAddRow: a quiet link at rest, the caller's search when opened, a quiet Cancel at the right end. Admin tokens only. */
+.row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--admin-space-6);
+  margin-top: var(--admin-space-5);
+}
+.content {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.cancel {
+  flex: none;
+  margin-left: auto;
+  color: var(--admin-gray-500);
+}

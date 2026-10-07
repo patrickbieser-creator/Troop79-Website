@@ -45,6 +45,13 @@ const menu = (over: Partial<Menu> = {}): Menu => ({
 });
 const tab = (m: Menu = menu()) => <ShoppingTab catalog={CATALOG} menuId="menu-1" menu={m} updatedAt={VERSION} snapshot={buildSnapshot(m, CATALOG)} />;
 const rowFor = (name: string) => screen.getByRole('button', { name: new RegExp(`^${name}`) }).closest('li') as HTMLElement;
+const setQty = async (user: ReturnType<typeof userEvent.setup>, row: ReturnType<typeof within>, name: string, text: string) => {
+  const box = row.getByRole('spinbutton', { name });
+  await user.clear(box);
+  await user.type(box, text);
+  await user.tab();
+};
+
 const withBrands = (brands: NonNullable<Menu['shopping']['brands']>) => menu({ shopping: { packageChoice: {}, qtyOverride: {}, lineSource: {}, brands } });
 const sent = () => saveMenuAction.mock.calls[0][1] as Menu;
 
@@ -118,7 +125,7 @@ describe('Shopping tab — brands', () => {
     const user = userEvent.setup();
     render(tab(withBrands({ bacon: [{ brandId: 'b-om', qty: null }] })));
     await user.click(screen.getByRole('button', { name: /^Bacon/ }));
-    await user.click(within(rowFor('Bacon')).getByRole('button', { name: 'One more Bacon package' }));
+    await setQty(user, within(rowFor('Bacon')), 'How many', '3');
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
     await waitFor(() => expect(saveMenuAction).toHaveBeenCalledTimes(1));
     expect(sent().shopping.brands).toEqual({ bacon: [{ brandId: 'b-om', qty: 3 }] });
@@ -135,7 +142,7 @@ describe('Shopping tab — Updated', () => {
     const user = userEvent.setup();
     render(tab());
     await user.click(screen.getByRole('button', { name: /^Bread/ }));
-    await user.click(within(rowFor('Bread')).getByRole('button', { name: 'One more Bread package' }));
+    await setQty(user, within(rowFor('Bread')), 'How many', String(Number((within(rowFor('Bread')).getByRole('spinbutton', { name: 'How many' }) as HTMLInputElement).value) + 1));
     expect(within(rowFor('Bread')).getByLabelText('Bread, updated')).toBeTruthy();
     await user.click(within(rowFor('Bread')).getByRole('button', { name: /^Reset to/ }));
     expect(within(rowFor('Bread')).queryByText('Updated')).toBeNull();

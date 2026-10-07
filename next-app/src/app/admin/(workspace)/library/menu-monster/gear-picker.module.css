@@ -94,12 +94,13 @@
   font-weight: var(--admin-weight-semibold);
 }
 
-.stepper {
-  display: inline-flex;
-  gap: var(--admin-space-1);
+/* The count as a plain number box (AdminNumberBox, which draws its own hairline). */
+.qtyBox {
+  display: inline-block;
+  width: 3.5em;
+  height: 1.75rem;
 }
 
-.step,
 .remove {
   min-width: 1.5rem;
   height: 1.5rem;
@@ -116,19 +117,13 @@
   color: var(--admin-navy);
   cursor: pointer;
 }
-.step:hover:not(:disabled),
 .remove:hover {
   background: var(--admin-gray-100);
-}
-.step:disabled {
-  color: var(--admin-gray-400);
-  cursor: not-allowed;
 }
 .remove {
   color: var(--admin-danger);
 }
 .search:focus-visible,
-.step:focus-visible,
 .remove:focus-visible {
   outline: 2px solid var(--admin-navy);
   outline-offset: 1px;

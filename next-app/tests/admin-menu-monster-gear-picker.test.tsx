@@ -55,13 +55,14 @@ describe('admin GearPicker', () => {
     expect(options()).toEqual(['Skillet']);
   });
 
-  it('CountStepper_SaysNameTimesN_AndFewerIsGreyedAtOne', async () => {
+  it('AdminGearCount_IsANumberBox', async () => {
     const user = userEvent.setup();
     render(<Harness start={['Skillet']} />);
-    expect((screen.getByRole('button', { name: 'Fewer Skillet' }) as HTMLButtonElement).disabled).toBe(true);
-    await user.click(screen.getByRole('button', { name: 'More Skillet' }));
-    expect(stored()).toEqual(['Skillet × 2']);
-    expect(chipText()).toEqual(['Skillet × 2']);
+    const box = screen.getByRole('spinbutton', { name: 'Skillet count' }) as HTMLInputElement;
+    await user.clear(box);
+    await user.type(box, '3');
+    await user.tab();
+    expect([stored(), chipText(), screen.queryByRole('button', { name: 'More Skillet' })]).toEqual([['Skillet × 3'], ['Skillet × 3'], null]);
   });
 
   it('Remove_TakesTheChipOff', async () => {

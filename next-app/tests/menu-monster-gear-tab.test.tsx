@@ -120,7 +120,9 @@ describe('Gear tab', () => {
   // troop's list, so there is no typed name and no count here.
   it('AddGear_PicksFromTheMasterList_AndSavesTheMenusExtras', async () => {
     render(tab());
-    await userEvent.setup().type(screen.getByRole('combobox', { name: 'Add gear' }), 'wat{Enter}');
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: '+ Gear' }));
+    await user.keyboard('wat{Enter}');
     await waitFor(() => expect(setGearExtrasAction).toHaveBeenCalledWith('menu-1', ['Water jug']));
     expect(rowFor('Water jug')).toBeTruthy();
   });
@@ -128,7 +130,7 @@ describe('Gear tab', () => {
   it('AddGear_OffersOnlyUnusedMasterItems_AToZ_AndNeverACreateRow', async () => {
     const user = userEvent.setup();
     render(tab({ gearList: [...LIST, { id: 7, name: 'Apron', home: 'home', perPerson: false, retiredAt: null }, { id: 8, name: 'Old tarp', home: 'home', perPerson: false, retiredAt: '2026-09-01T00:00:00Z' }] }));
-    await user.click(screen.getByRole('combobox', { name: 'Add gear' }));
+    await user.click(screen.getByRole('button', { name: '+ Gear' }));
     // Everything already on the menu (recipes' gear, the mess kit) is left out; a retired item is never offered.
     expect(within(screen.getByRole('listbox', { name: 'Gear on the list' })).getAllByRole('option').map((o) => o.textContent)).toEqual(['Apron', 'Water jug']);
     await user.type(screen.getByRole('combobox', { name: 'Add gear' }), 'ladle');
@@ -139,7 +141,9 @@ describe('Gear tab', () => {
   it('AddGear_SaysWhatTheServerDropped', async () => {
     setGearExtrasAction.mockResolvedValue({ ok: true, extras: [], dropped: ['Water jug'] });
     render(tab());
-    await userEvent.setup().type(screen.getByRole('combobox', { name: 'Add gear' }), 'wat{Enter}');
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: '+ Gear' }));
+    await user.keyboard('wat{Enter}');
     expect((await screen.findByRole('alert')).textContent).toContain('Not on the gear list, so not kept: Water jug.');
   });
 
@@ -155,7 +159,7 @@ describe('Gear tab', () => {
 
   it('Crew_TicksButCannotAddGear', () => {
     render(tab({ canEdit: false }));
-    expect([screen.getAllByRole('checkbox').length > 0, screen.queryByRole('combobox', { name: 'Add gear' })]).toEqual([true, null]);
+    expect([screen.getAllByRole('checkbox').length > 0, screen.queryByRole('button', { name: '+ Gear' })]).toEqual([true, null]);
   });
 
   it('AReader_SeesWhoPacked_WithNoTickBoxes', () => {
@@ -193,7 +197,7 @@ describe('Gear tab: gear for a meal (release 2)', () => {
   it('TheMealGearItem_IsLeftOutOfTheMenuLevelPicker', async () => {
     const user = userEvent.setup();
     render(tab({ menu: WITH_MEAL_GEAR }));
-    await user.click(screen.getByRole('combobox', { name: 'Add gear' }));
+    await user.click(screen.getByRole('button', { name: '+ Gear' }));
     expect(screen.queryByRole('option', { name: 'Water jug' })).toBeNull();
   });
 });
