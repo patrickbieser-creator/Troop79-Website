@@ -1,6 +1,6 @@
 # Menu Monster — One Add Pattern Per Container
 
-**Status:** Active — **Phase 1 SHIPPED v1.199.0 (2026-10-07):** the meal panel (AddRow "+ Food / + Gear", food sub-card, "+ Ingredient" with the scope select inside, single-food rule, hints removed, ⋯ menus normalised, "Choose brand(s)"), the recipe editor's ingredient list, and the number boxes on Who's eating / meal People / recipe-editor People; qa-lead PASS-WITH-WARNINGS, all behaviour warnings fixed before the commit. **Phase 2 (not started):** roll `AddRow` to the rest of the inventory — gear-tab.tsx (menu gear), add-diet-menu.tsx, ingredient-browser.tsx (the one secondary-button outlier), the admin recipe-builder "+ Add an ingredient" — then the acceptance criteria below are met. Patrick's eyes-on of Phase 1 in production is pending (Decision 2's "obviousness test" for the removed hint).
+**Status:** COMPLETE — Phase 1 shipped v1.199.0 (0a2d74b), Phase 2 shipped v1.200.0 (5101b8e), both 2026-10-07. Every Menu Monster list, public and admin, ends in one quiet add row (links at rest, search on tap, Cancel in sight); every quantity is a plain number box; the admin side has its own AddRow and NumberBox twins. qa-lead reviewed both phases (PASS-WITH-WARNINGS then FAIL→fixed); all behaviour findings closed before commit. Still owed: Patrick's production eyes-on, incl. Decision 2's obviousness test for the removed hint. Follow-on, separate plan: brand detail at entry time (size / unit / price / store when a scout types a brand) — Brad's prototype 2026-10-07 in prototypes/menu-monster-add-pattern.
 **Parked:** 2026-10-07 (activated the same day)
 **Priority:** Medium
 **Author of the exploration:** Jenna (UX), briefed from Patrick's screenshot of the Snack meal with Chips expanded
@@ -102,4 +102,4 @@ TBD after Patrick's decisions. (c) is a wrapper + class in `meal-panel.tsx` / `w
 
 ## Open Questions
 
-None. Phase 2 in progress (2026-10-07): AddRow on gear-tab, add-diet-menu, ingredient-browser, the admin recipe-builder (admin twin on admin tokens), plus Decision 10.
+None.
