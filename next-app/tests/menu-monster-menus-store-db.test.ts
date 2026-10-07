@@ -122,7 +122,7 @@ describe('menu store', () => {
     const id = await createMenuWith(admin, CHARLIE, menu(), CATALOG);
     const loaded = await loadMenuWith(admin, id);
     expect(loaded?.ownerPersonId).toBe(CHARLIE.personId);
-    expect(loaded?.menu).toEqual(menu());
+    expect(loaded?.menu).toEqual({ ...menu(), plannedBy: [] });
   });
 
   it('Scout_CannotSaveMenu_OwnedByAnotherScout', async () => {
@@ -260,7 +260,7 @@ describe('menu store', () => {
     const id = await createMenuWith(admin, CHARLIE, menu(), CATALOG);
     const copyId = await duplicateMenuWith(admin, CHARLIE, id);
     const copy = await loadMenuWith(admin, copyId!);
-    expect(copy?.menu).toEqual(menu({ name: `Copy of ${MARKER}` }));
+    expect(copy?.menu).toEqual({ ...menu({ name: `Copy of ${MARKER}` }), plannedBy: [] });
     expect(copy?.ownerPersonId).toBe(CHARLIE.personId);
   });
 

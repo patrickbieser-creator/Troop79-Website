@@ -35,3 +35,20 @@
   border-left: none;
   border-right: none;
 }
+
+/* Unbold the numbers (Patrick, 2026-10-07): the stepper's input is 700; override for this block only. */
+.plain input { font-weight: 400; }
+
+/* The diets are a subset of People: one step in, under a quiet "of whom". */
+.nested {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  padding-left: var(--sp-4);
+}
+.leadIn {
+  font-size: var(--fs-sm);
+  color: var(--text-meta);
+}
+.nestedText { padding-left: var(--sp-4); }

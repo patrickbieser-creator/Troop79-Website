@@ -1,10 +1,20 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { BrandChooser, brandSummary, brandsFor } from '../src/app/(public)/library/menu-monster/menus/_components/brand-chooser';
 import { buildLines } from '../src/lib/menu-monster/engine';
+import { BrandDetailDialog } from '../src/app/(public)/library/menu-monster/menus/_components/brand-detail-dialog';
+import { StoreNamesScope } from '../src/app/(public)/library/menu-monster/menus/_components/store-names';
+import type { AddedPackage } from '../src/app/(public)/library/menu-monster/menus/_components/add-package-form';
+import { settleNewBrands } from '../src/lib/menu-monster/brand-detail';
 import type { Brand, BrandPick, Catalog, Package, Plan } from '../src/lib/menu-monster/types';
+
+const addScoutPackageAction = vi.fn();
+vi.mock('../src/app/(public)/library/_tools/menu-monster/menu-actions', () => ({
+  addScoutPackageAction: (...a: unknown[]) => addScoutPackageAction(...a)
+}));
+beforeEach(() => vi.clearAllMocks());
 
 /**
  * The brand chooser (Plans/Menu-Monster-Brands-Gear.md, release 3): any brand, one, or several per ingredient;
@@ -30,7 +40,20 @@ const CATALOG: Catalog = {
   brands: [brand('b-cheerios', 'Cheerios'), brand('b-chex', 'Rice Chex'), brand('xb-new', 'Froot Loops', { isNew: true })]
 };
 
-function Harness({ initial = [], onType }: { initial?: BrandPick[]; onType?: (name: string) => Promise<{ ok: true; brand: Brand } | { ok: false; error: string }> }) {
+function Harness({
+  initial = [],
+  onType,
+  detail = true,
+  stores = [],
+  onAnnounce
+}: {
+  initial?: BrandPick[];
+  onType?: (name: string) => Promise<{ ok: true; brand: Brand } | { ok: false; error: string }>;
+  /** Brand detail needs a signed-in scout: false = the chooser gets no onPackageAdded. */
+  detail?: boolean;
+  stores?: string[];
+  onAnnounce?: (text: string) => void;
+}) {
   const [picks, setPicks] = useState<BrandPick[]>(initial);
   const [catalog, setCatalog] = useState(CATALOG);
   const plan: Plan = {
@@ -39,7 +62,7 @@ function Harness({ initial = [], onType }: { initial?: BrandPick[]; onType?: (na
   };
   const line = buildLines(plan, catalog)[0];
   return (
-    <>
+    <StoreNamesScope names={stores}>
       <output data-testid="picks">{JSON.stringify(picks)}</output>
       <BrandChooser
         ingredient={CEREAL}
@@ -47,6 +70,8 @@ function Harness({ initial = [], onType }: { initial?: BrandPick[]; onType?: (na
         picks={picks}
         line={line}
         onChange={setPicks}
+        onAnnounce={onAnnounce}
+        onPackageAdded={detail ? (a: AddedPackage) => setCatalog((c) => settleNewBrands({ ...c, packages: [...c.packages, a.pkg] })) : undefined}
         onType={
           onType &&
           (async (name) => {
@@ -56,7 +81,7 @@ function Harness({ initial = [], onType }: { initial?: BrandPick[]; onType?: (na
           })
         }
       />
-    </>
+    </StoreNamesScope>
   );
 }
 const picks = () => JSON.parse(screen.getByTestId('picks').textContent ?? '[]') as BrandPick[];
@@ -121,7 +146,8 @@ describe('BrandChooser', () => {
     expect(within(row).getByText('Rice Chex')).toBeTruthy();
     expect(within(row).getByRole('spinbutton', { name: 'Packages of Rice Chex' })).toBeTruthy();
     expect(within(row).getByText('18 oz')).toBeTruthy();
-    expect(within(row).queryAllByRole('button')).toEqual([]);
+    // The size text is the one control in the row (it opens the size and price entry), never a second count control.
+    expect(within(row).getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual(['Change size or price for Rice Chex']);
   });
 
   it('BrandQty_TypingCommitsOnBlur', async () => {
@@ -204,5 +230,179 @@ describe('brand text', () => {
   it('BrandsFor_LeavesOutRetiredBrands', () => {
     const c = { ...CATALOG, brands: [...(CATALOG.brands ?? []), brand('b-old', 'Old Flakes', { retiredAt: '2026-01-01T00:00:00Z' })] };
     expect(brandsFor('cereal', c).map((x) => x.brand.name)).not.toContain('Old Flakes');
+  });
+});
+
+describe('Brand detail dialog (Plans/Menu-Monster-Brand-Detail.md)', () => {
+  const TWO_NEW: BrandPick[] = [{ brandId: 'b-chex', qty: null }, { brandId: 'xb-new', qty: null }];
+  const rowOf = (name: string) => within(screen.getByRole('list', { name: 'How many of each brand of Cold cereal' })).getAllByRole('listitem').find((li) => li.textContent?.includes(name))!;
+  const dialog = () => screen.getByRole('dialog', { name: 'Froot Loops — Cold cereal' });
+  const openFromNoun = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(within(rowOf('Froot Loops')).getByRole('button', { name: 'Add size and price for Froot Loops' }));
+    return within(dialog());
+  };
+  const typedBrand = () => async (name: string) => ({ ok: true as const, brand: brand('xb-typed', name, { isNew: true }) });
+
+  it('Scout_SeesSizeControl_NotIngredientName_OnANewBrandsQuantityRow', () => {
+    render(<Harness initial={TWO_NEW} />);
+    const row = rowOf('Froot Loops');
+    expect(within(row).getByRole('button', { name: 'Add size and price for Froot Loops' }).textContent).toBe('size?');
+    expect(row.textContent).not.toContain('Cold cereal');
+  });
+
+  it('Scout_SeesNoIngredientName_AndNoControl_WhenBrandsCannotBeSized', () => {
+    render(<Harness initial={TWO_NEW} detail={false} />);
+    expect(rowOf('Froot Loops').textContent).not.toContain('Cold cereal');
+    expect(within(rowOf('Froot Loops')).queryByRole('button')).toBeNull();
+  });
+
+  it('Scout_TapsBrandChip_StillPicksInOneTap_AndOpensNothing', async () => {
+    render(<Harness />);
+    await userEvent.setup().click(chip(/^Froot Loops/));
+    expect([picks(), screen.queryByRole('dialog')]).toEqual([[{ brandId: 'xb-new', qty: null }], null]);
+  });
+
+  it('Scout_OpensDetailEntry_FromTheSizeControl_FocusInFirstField', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={TWO_NEW} />);
+    const d = await openFromNoun(user);
+    expect(document.activeElement).toBe(d.getByRole('textbox', { name: 'Size' }));
+  });
+
+  it('Scout_OpensDetailEntry_FromTheSizeText_OfABrandThatHasAPackage', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={TWO_NEW} />);
+    await user.click(within(rowOf('Rice Chex')).getByRole('button', { name: 'Change size or price for Rice Chex' }));
+    expect(screen.getByRole('dialog', { name: 'Rice Chex — Cold cereal' })).toBeTruthy();
+  });
+
+  it('Scout_TypesANewBrand_TheDialogOpensForIt', async () => {
+    render(<Harness onType={typedBrand()} />);
+    await userEvent.setup().type(screen.getByRole('textbox', { name: 'Type a brand of Cold cereal' }), 'Lucky Charms{Enter}');
+    const d = await screen.findByRole('dialog', { name: 'Lucky Charms — Cold cereal' });
+    expect(picks()).toEqual([{ brandId: 'xb-typed', qty: null }]);
+    expect(within(d).getByRole('textbox', { name: 'Size' })).toBeTruthy();
+  });
+
+  it('Dialog_IsNotOpened_ByATypedBrand_WhenNothingCanBeSaved', async () => {
+    render(<Harness onType={typedBrand()} detail={false} />);
+    await userEvent.setup().type(screen.getByRole('textbox', { name: 'Type a brand of Cold cereal' }), 'Lucky Charms{Enter}');
+    await waitFor(() => expect(picks()).toHaveLength(1));
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('Save_IsGreyed_UntilSomethingIsTyped', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={TWO_NEW} />);
+    const d = await openFromNoun(user);
+    expect((d.getByRole('button', { name: 'Save' }) as HTMLButtonElement).disabled).toBe(true);
+    await user.type(d.getByRole('textbox', { name: 'Price' }), '4');
+    expect((d.getByRole('button', { name: 'Save' }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('Save_WithAPriceButNoSize_MarksSizeRedInPlace_AndSavesNothing', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={TWO_NEW} />);
+    const d = await openFromNoun(user);
+    await user.type(d.getByRole('textbox', { name: 'Price' }), '4.29');
+    await user.click(d.getByRole('button', { name: 'Save' }));
+    expect(d.getByRole('textbox', { name: 'Size' }).getAttribute('aria-invalid')).toBe('true');
+    expect(d.getByText('Enter how much one package holds — check the label.')).toBeTruthy();
+    expect([addScoutPackageAction.mock.calls.length, document.activeElement]).toEqual([0, d.getByRole('textbox', { name: 'Size' })]);
+  });
+
+  it('Scout_SavesSizeAndPrice_QuantityRowShowsTheSize_AndNewIsGone', async () => {
+    addScoutPackageAction.mockResolvedValue({ ok: true, status: 'live', id: 'sp-1' });
+    const onAnnounce = vi.fn();
+    const user = userEvent.setup();
+    render(<Harness initial={TWO_NEW} onAnnounce={onAnnounce} stores={['Aldi']} />);
+    const d = await openFromNoun(user);
+    await user.type(d.getByRole('textbox', { name: 'Size' }), '12');
+    await user.selectOptions(d.getByRole('combobox', { name: 'Unit' }), 'oz');
+    await user.type(d.getByRole('textbox', { name: 'Price' }), '4.29');
+    await user.selectOptions(d.getByRole('combobox', { name: 'Store (optional)' }), 'Aldi');
+    await user.click(d.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(addScoutPackageAction).toHaveBeenCalledWith({ ingredientId: 'cereal', name: 'Froot Loops', store: 'Aldi', size: 12, sizeUnit: 'oz', price: 4.29, brandId: 'xb-new' });
+    expect(within(rowOf('Froot Loops')).getByRole('button', { name: 'Change size or price for Froot Loops' }).textContent).toBe('12 fl oz');
+    expect(chip(/^Froot Loops/).textContent).toBe('Froot Loops $4.29');
+    expect(onAnnounce).toHaveBeenCalledWith('Froot Loops saved: 12 fl oz at $4.29.');
+  });
+
+  it('Scout_Cancels_FocusReturnsToTheSizeControl', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={TWO_NEW} />);
+    const d = await openFromNoun(user);
+    await user.click(d.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(within(rowOf('Froot Loops')).getByRole('button', { name: 'Add size and price for Froot Loops' })));
+    expect(addScoutPackageAction).not.toHaveBeenCalled();
+  });
+
+  it('Scout_Cancels_FocusReturnsToTheChip_OfATypedBrand', async () => {
+    render(<Harness onType={typedBrand()} />);
+    const user = userEvent.setup();
+    await user.type(screen.getByRole('textbox', { name: 'Type a brand of Cold cereal' }), 'Lucky Charms{Enter}');
+    const d = within(await screen.findByRole('dialog', { name: 'Lucky Charms — Cold cereal' }));
+    await user.click(d.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(document.activeElement).toBe(chip(/^Lucky Charms/)));
+  });
+
+  it('Scout_PressesEscape_TheDialogClosesAndSavesNothing', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={TWO_NEW} />);
+    await openFromNoun(user);
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(addScoutPackageAction).not.toHaveBeenCalled();
+  });
+
+  it('Scout_PressesEscape_TheDialogAsksToCloseOnce', async () => {
+    const onClose = vi.fn();
+    render(<BrandDetailDialog ingredient={CEREAL} brand={brand('xb-new', 'Froot Loops')} conversions={[]} stores={[]} onAdded={vi.fn()} onClose={onClose} />);
+    await userEvent.setup().keyboard('{Escape}');
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('Store_IsAPullDownOfApprovedStores_NoFreeText', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={TWO_NEW} stores={['Pick n Save', 'Aldi']} />);
+    const d = await openFromNoun(user);
+    const store = d.getByRole('combobox', { name: 'Store (optional)' });
+    expect(within(store).getAllByRole('option').map((o) => o.textContent)).toEqual(['—', 'Pick n Save', 'Aldi']);
+    expect(d.queryByRole('textbox', { name: /Store/ })).toBeNull();
+  });
+
+  it('Store_FieldHidden_WhenNoStores', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={TWO_NEW} stores={[]} />);
+    const d = await openFromNoun(user);
+    expect(d.queryByLabelText(/Store/)).toBeNull();
+  });
+
+  it('SingleNewBrand_HasASizeControl_ThatReopensTheDialog', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={[{ brandId: 'xb-new', qty: null }]} />);
+    await user.click(screen.getByRole('button', { name: 'Add size and price for Froot Loops' }));
+    await user.click(within(dialog()).getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Add size and price for Froot Loops' })));
+    await user.click(screen.getByRole('button', { name: 'Add size and price for Froot Loops' }));
+    expect(dialog()).toBeTruthy();
+  });
+
+  it('SingleBrandWithAPackage_ShowsItsSizeAsTheControl', async () => {
+    render(<Harness initial={[{ brandId: 'b-chex', qty: null }]} />);
+    const b = screen.getByRole('button', { name: 'Change size or price for Rice Chex' });
+    expect(b.textContent).toBe('18 oz');
+    await userEvent.setup().click(b);
+    expect(screen.getByRole('dialog', { name: 'Rice Chex — Cold cereal' })).toBeTruthy();
+  });
+
+  it('Dialog_HasNoNameField_TheBrandIsTheName', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={TWO_NEW} />);
+    const d = await openFromNoun(user);
+    expect(d.queryByRole('textbox', { name: /Name on the label/ })).toBeNull();
+    expect(d.getByText('A best guess is fine.')).toBeTruthy();
   });
 });

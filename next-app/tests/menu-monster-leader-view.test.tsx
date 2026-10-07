@@ -84,7 +84,7 @@ describe('Plan tab, read-only', () => {
 
   it('Leader_SeesPeopleAndDietsAsText_OnTheWhosEatingStep', () => {
     render(people());
-    expect(screen.getByText(/People: 8 · Gluten-free: 1/)).toBeTruthy();
+    expect([screen.getByText('People: 8'), screen.getByText('of whom Gluten-free: 1')]).toBeTruthy();
   });
 
   it('Leader_SeesContextAndOutingAsText_OnTheWhosEatingStep', () => {

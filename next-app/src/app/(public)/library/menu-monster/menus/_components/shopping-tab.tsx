@@ -59,6 +59,7 @@ import { buildSnapshot, snapshotDrift, type MenuSnapshot } from '@/lib/menu-mons
 import { serverMenuStore } from './server-menu-store';
 import { ReadOnlyLine } from './read-only-line';
 import { AddPackageForm, type AddedPackage } from './add-package-form';
+import { settleNewBrands } from '@/lib/menu-monster/brand-detail';
 import { SaveBar } from './save-bar';
 import { fixHref } from './summary-rail';
 import { FinishLine } from './finish-line';
@@ -174,6 +175,10 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
     const res = await addBrandAction(ingredientId, name, menuId);
     if (res.ok) setCatalog((c) => ((c.brands ?? []).some((b) => b.id === res.brand.id) ? c : { ...c, brands: [...(c.brands ?? []), res.brand] }));
     return res;
+  };
+  /** A size and price saved for a brand from the chooser's dialog: the package joins this page's catalog (the brand stops being New). */
+  const brandPackageAdded = ({ pkg, status: st }: AddedPackage) => {
+    if (st !== 'same') setCatalog((c) => settleNewBrands({ ...c, packages: [...c.packages, pkg] }));
   };
   const setQty = (l: MenuLine, n: number) =>
     edit((d) => {
@@ -436,6 +441,7 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
                     picks={draft.brands?.[l.ing.id] ?? []}
                     onBrands={(picks) => setBrands(l.ing.id, picks)}
                     onTypeBrand={!storeProp && !readOnly ? (name) => typeBrand(l.ing.id, name) : undefined}
+                    onBrandPackage={!storeProp && !readOnly ? brandPackageAdded : undefined}
                     labelCheck={needsLabelCheck(l, menu.restrictions, catalog)}
                   />
                 ))}
@@ -601,6 +607,7 @@ function ShoppingRow({
   picks,
   onBrands,
   onTypeBrand,
+  onBrandPackage,
   labelCheck
 }: {
   /** Release 3: the brand chooser's catalog, the menu's picks for this ingredient and their writers. */
@@ -608,6 +615,8 @@ function ShoppingRow({
   picks: readonly BrandPick[];
   onBrands: (picks: BrandPick[]) => void;
   onTypeBrand?: (name: string) => Promise<{ ok: true; brand: Brand } | { ok: false; error: string }>;
+  /** Brand detail dialog: a size and price saved for a brand. Absent = brands cannot be sized here. */
+  onBrandPackage?: (a: AddedPackage) => void;
   labelCheck: boolean;
   line: MenuLine;
   menu: Menu;
@@ -754,7 +763,7 @@ function ShoppingRow({
             <>
               {/* Brands (release 3): chosen here or on the Plan tab — one set per ingredient for the menu. */}
               {l.source === 'buy' && (hasBrands || onTypeBrand) && (
-                <BrandChooser ingredient={l.ing} catalog={catalog} picks={picks} line={l} onChange={onBrands} onType={onTypeBrand} />
+                <BrandChooser ingredient={l.ing} catalog={catalog} picks={picks} line={l} onChange={onBrands} onType={onTypeBrand} onPackageAdded={onBrandPackage} />
               )}
               {l.usable.length > 1 && l.source === 'buy' && !hasBrands && (
                 <div className={s.choice}>

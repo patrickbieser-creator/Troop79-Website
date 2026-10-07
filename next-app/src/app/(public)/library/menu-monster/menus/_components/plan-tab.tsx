@@ -30,7 +30,7 @@
  * guard. Meals still open inline, read-only; the shopping list is one link away.
  */
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { priceText as money } from '@/lib/menu-monster/units';
@@ -48,6 +48,7 @@ import type { CreateResult, MenuStore, SaveResult } from '@/lib/menu-monster/men
 import { serverMenuStore } from './server-menu-store';
 import { MealPanel } from './meal-panel';
 import type { AddedPackage } from './add-package-form';
+import { settleNewBrands } from '@/lib/menu-monster/brand-detail';
 import { withoutMealGear, type GearItem } from '@/lib/menu-monster/gear';
 import { overlayNewIngredients, type NewIngredient } from '@/lib/menu-monster/scout-ingredients';
 import { overlayNewRecipes } from '@/lib/menu-monster/single-food';
@@ -55,6 +56,7 @@ import type { AmountView } from '@/lib/menu-monster/ingredient-rows';
 import { RowMenu } from './row-menu';
 import { AddMealMenu } from './add-meal-menu';
 import { WhosEatingForm, WhosEatingReadOnly } from './whos-eating';
+import { ScoutOptions, type ScoutOption } from './scout-options';
 import { mealsToAdd } from '@/lib/menu-monster/menu-search';
 import { ReadOnlyLine } from './read-only-line';
 import { SaveBar } from './save-bar';
@@ -109,9 +111,11 @@ export interface PlanTabProps {
   draftItems?: readonly DraftItem[];
   /** The viewer has admin access (a leader): a draft's name links to its admin recipe page. */
   adminLinks?: boolean;
+  /** The scouts on the menu's Planned by, by name (the loader attaches names; the draft carries ids in menu.plannedBy). */
+  planners?: readonly ScoutOption[];
 }
 
-export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt, outings, page = 'meals', tabs, readOnly = false, helper = false, plannedBy = null, aside, store: storeProp, titleAs: Title = 'h1', openMeal = null, steps, mealOnly = null, patrols = [], gearList, myPatrol = null, draftItems, adminLinks = false }: PlanTabProps) {
+export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt, outings, page = 'meals', tabs, readOnly = false, helper = false, plannedBy = null, aside, store: storeProp, titleAs: Title = 'h1', openMeal = null, steps, mealOnly = null, patrols = [], gearList, myPatrol = null, draftItems, adminLinks = false, planners = [] }: PlanTabProps) {
   const router = useRouter();
   const store = useMemo(() => storeProp ?? serverMenuStore(menuId), [storeProp, menuId]);
   const { canSave } = store.caps;
@@ -158,7 +162,7 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
     const withBrands = fresh.length > 0 ? { ...withTyped, brands: [...(withTyped.brands ?? []), ...fresh] } : withTyped;
     const haveP = new Set(withBrands.packages.map((p) => p.id));
     const freshP = addedPackages.filter((p) => !haveP.has(p.id));
-    return freshP.length > 0 ? { ...withBrands, packages: [...withBrands.packages, ...freshP] } : withBrands;
+    return settleNewBrands(freshP.length > 0 ? { ...withBrands, packages: [...withBrands.packages, ...freshP] } : withBrands);
   }, [catalogProp, typed, madeRecipes, typedBrands, addedPackages]);
   /** The meal "Add a meal" just created: its panel takes focus into its search, once. */
   const [focusMeal, setFocusMeal] = useState<string | null>(null);
@@ -207,6 +211,9 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
       void _old;
       return value.trim() ? { ...rest, patrol: value } : rest;
     });
+  // A menu kept on this computer has no roster: no Planned by field.
+  const scoutOptions = useContext(ScoutOptions);
+  const setPlannedBy = (ids: number[]) => edit((m) => ({ ...m, plannedBy: ids }));
   const setContext = (context: MenuContext) => {
     contextTouched.current = true;
     edit((m) => ({ ...m, context }));
@@ -263,6 +270,10 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
       delete qtyOverride[ingredientId];
       return { ...m, shopping: { ...m.shopping, packageChoice: { ...m.shopping.packageChoice, [ingredientId]: pkg.id }, qtyOverride } };
     });
+  };
+  /** A size and price saved for a brand from the chooser's dialog: the package joins the catalog (the brand stops being New). It is not picked as the food's package. */
+  const brandPackageAdded = (_ingredientId: string, { pkg, status: st }: AddedPackage) => {
+    if (st !== 'same') setAddedPackages((cur) => [...cur, pkg]);
   };
   const typeBrand = async (ingredientId: string, name: string) => {
     const res = await addBrandAction(ingredientId, name, menuId ?? undefined);
@@ -389,6 +400,7 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
       onBrands={readOnly ? undefined : setBrands}
       lineFor={(id) => lineByIng.get(id)}
       onTypeBrand={canTypeBrand ? typeBrand : undefined}
+      onBrandPackage={canTypeBrand ? brandPackageAdded : undefined}
       // A recipe's suggested brand is its author's to set: not offered to a leader on the scout's menu (qa-lead).
       onSuggestBrand={canTypeBrand && !helper ? suggestRecipeBrandAction : undefined}
     />
@@ -491,7 +503,7 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
 
       {onPeople &&
         (readOnly ? (
-          <WhosEatingReadOnly menu={menu} outings={outings} />
+          <WhosEatingReadOnly menu={menu} outings={outings} planners={planners} />
         ) : (
           <WhosEatingForm
             menu={menu}
@@ -506,6 +518,9 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
             onHeadcount={setHeadcount}
             onDiet={setDiet}
             onBudget={(n) => edit((m) => ({ ...m, budgetPerPersonMeal: n }))}
+            scoutOptions={storeProp ? [] : scoutOptions}
+            planners={planners}
+            onPlannedBy={storeProp ? undefined : setPlannedBy}
           />
         ))}
 

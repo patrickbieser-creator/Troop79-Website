@@ -15,7 +15,9 @@ import { AmountEditor } from '@/app/(public)/library/menu-monster/_components/in
 import { GearChips, GearPicker } from '@/app/(public)/library/menu-monster/_components/gear-picker';
 import { sortGear, type GearItem } from '@/lib/menu-monster/gear';
 import { FinishLine } from '@/app/(public)/library/menu-monster/menus/_components/finish-line';
-import type { RestrictionKey } from '@/lib/menu-monster/types';
+import type { Ingredient, RestrictionKey } from '@/lib/menu-monster/types';
+import { AddPackageForm } from '@/app/(public)/library/menu-monster/menus/_components/add-package-form';
+import menuMonsterS from '@/app/(public)/library/menu-monster/menus/_components/workspace.module.css';
 
 export function PublicTabStripSpecimen() {
   const [active, setActive] = useState('week');
@@ -192,4 +194,23 @@ export function PublicFinishLineSpecimen() {
 /** The amount box of a recipe being written: a number, its unit, and what it is for (each person, or the whole meal). Display-only. */
 export function PublicAmountScaleSpecimen() {
   return <AmountEditor name="Cooking oil" unitLabel="cups" value={4} scale="meal" canScale onCommit={() => {}} onCancel={() => {}} />;
+}
+
+const SPECIMEN_CHIPS: Ingredient = { id: 'specimen-chips', name: 'Chips', unit: { key: 'ozw', one: 'oz', many: 'oz', kind: 'weight' }, section: 'dry', staple: false, avoid: [] };
+
+/** The brand detail dialog's surface and body, drawn in place (the real one is a native modal). Nothing here saves. */
+export function PublicBrandDetailSpecimen() {
+  return (
+    <div className={menuMonsterS.detailDialog}>
+      <h2 className={menuMonsterS.detailTitle}>Sour Cream &amp; Onion &mdash; Chips</h2>
+      <AddPackageForm
+        ingredient={SPECIMEN_CHIPS}
+        conversions={[]}
+        brand={{ id: 'specimen-brand', name: 'Sour Cream & Onion' }}
+        stores={['Aldi', 'Pick n Save', 'Costco']}
+        onAdded={() => {}}
+        onCancel={() => {}}
+      />
+    </div>
+  );
 }

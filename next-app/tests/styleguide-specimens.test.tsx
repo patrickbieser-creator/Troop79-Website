@@ -13,6 +13,7 @@ vi.mock('../src/app/admin/(workspace)/library/menu-monster/actions', () => ({
   keepScoutFood: vi.fn(),
   putFoodOnMenu: vi.fn()
 }));
+vi.mock('../src/app/(public)/library/_tools/menu-monster/menu-actions', () => ({ addScoutPackageAction: vi.fn() }));
 vi.mock('../src/app/admin/(workspace)/news/_components/media-picker', () => ({ MediaPicker: () => null }));
 
 import { PublicBlockedSaveSpecimen, PublicDietRowsSpecimen, PublicFinishLineSpecimen, PublicGearSpecimen } from '../src/app/admin/(workspace)/styleguide/public/specimens';

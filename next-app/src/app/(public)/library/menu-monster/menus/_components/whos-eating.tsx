@@ -21,6 +21,8 @@ import { MAX_HEADCOUNT, MIN_HEADCOUNT } from '@/lib/menu-monster/engine';
 import { MENU_CONTEXTS, MAX_MENU_NAME, type Menu, type MenuContext } from '@/lib/menu-monster/menus';
 import { DIET_ORDER, type Outing } from '@/lib/menu-monster/menu-view';
 import { AddDietMenu } from './add-diet-menu';
+import type { ScoutOption } from './scout-options';
+import g from '../../_components/gear-picker.module.css';
 import s from './workspace.module.css';
 import c from './whos-eating.module.css';
 
@@ -42,9 +44,14 @@ export interface WhosEatingFormProps {
   onHeadcount: (n: number) => void;
   onDiet: (key: RestrictionKey, n: number) => void;
   onBudget: (n: number) => void;
+  /** The active scouts the Planned by pull-down offers. Empty (with nobody picked) = no field; a menu kept on this computer passes none. */
+  scoutOptions?: readonly ScoutOption[];
+  /** Names of scouts already on the menu who are not in `scoutOptions` (no longer active). */
+  planners?: readonly ScoutOption[];
+  onPlannedBy?: (ids: number[]) => void;
 }
 
-export function WhosEatingForm({ menu, outings, patrols, nameError, nameRef, onName, onContext, onOuting, onPatrol, onHeadcount, onDiet, onBudget }: WhosEatingFormProps) {
+export function WhosEatingForm({ menu, outings, patrols, nameError, nameRef, onName, onContext, onOuting, onPatrol, onHeadcount, onDiet, onBudget, scoutOptions = [], planners = [], onPlannedBy }: WhosEatingFormProps) {
   /** Diets that show a dialer: those above zero on load, plus any added with "Add a diet…" (so a dialer stepped back to 0 stays put). */
   const [shownDiets, setShownDiets] = useState<ReadonlySet<RestrictionKey>>(() => new Set(DIET_ORDER.filter((k) => (menu.restrictions[k] || 0) > 0)));
   const linked = outings.find((o) => o.id === menu.calendarEntryId) ?? null;
@@ -52,6 +59,10 @@ export function WhosEatingForm({ menu, outings, patrols, nameError, nameRef, onN
   const patrolOptions = menu.patrol && !patrols.includes(menu.patrol) ? [...patrols, menu.patrol] : patrols;
   const visibleDiets = DIET_ORDER.filter((k) => shownDiets.has(k) || (menu.restrictions[k] || 0) > 0);
   const hiddenDiets = DIET_ORDER.filter((k) => !visibleDiets.includes(k));
+  const picked = menu.plannedBy ?? [];
+  const nameOf = (id: number) => scoutOptions.find((o) => o.personId === id)?.name ?? planners.find((o) => o.personId === id)?.name ?? '';
+  const toPick = scoutOptions.filter((o) => !picked.includes(o.personId));
+  const showPlanners = !!onPlannedBy && (scoutOptions.length > 0 || picked.length > 0);
   const addDiet = (k: RestrictionKey) => {
     setShownDiets((cur) => new Set(cur).add(k));
     requestAnimationFrame(() => document.getElementById(`mm-diet-${k}`)?.focus());
@@ -103,25 +114,61 @@ export function WhosEatingForm({ menu, outings, patrols, nameError, nameRef, onN
               ))}
             </SelectInput>
           </Field>
+          {showPlanners && (
+            <Field label="Planned by">
+              <SelectInput
+                value=""
+                onChange={(e) => {
+                  const id = Number(e.target.value);
+                  if (id) onPlannedBy?.([...picked, id]);
+                }}
+              >
+                <option value="">— pick —</option>
+                {toPick.map((o) => (
+                  <option key={o.personId} value={o.personId}>
+                    {o.name}
+                  </option>
+                ))}
+              </SelectInput>
+              {picked.length > 0 && (
+                <ul className={g.chips} aria-label="Planned by">
+                  {picked.map((id) => (
+                    <li key={id} className={g.chip}>
+                      <span className={g.chipName}>{nameOf(id)}</span>
+                      <button type="button" className={g.remove} aria-label={`Remove ${nameOf(id)}`} onClick={() => onPlannedBy?.(picked.filter((x) => x !== id))}>
+                        ×
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Field>
+          )}
         </div>
       </div>
 
       <div className={c.rows}>
         <div className={c.row}>
           <label htmlFor="mm-people">People</label>
-          <span className={c.box}>
+          <span className={`${c.box} ${c.plain}`}>
             <NumberBox id="mm-people" value={menu.headcount} min={MIN_HEADCOUNT} max={MAX_HEADCOUNT} onCommit={onHeadcount} />
           </span>
         </div>
-        {visibleDiets.map((k) => (
-          <div key={k} className={c.row}>
-            <label htmlFor={`mm-diet-${k}`}>{dietLabel(k)}</label>
-            <span className={c.box}>
-              <NumberBox id={`mm-diet-${k}`} value={menu.restrictions[k] || 0} min={0} max={menu.headcount} onCommit={(n) => onDiet(k, n)} />
-            </span>
+        {/* The diets are part of the People count, so they sit one step in under a quiet "of whom". */}
+        {(visibleDiets.length > 0 || hiddenDiets.length > 0) && (
+          <div className={c.nested}>
+            {visibleDiets.length > 0 && <span className={c.leadIn}>of whom</span>}
+            {visibleDiets.map((k) => (
+              <div key={k} className={c.row}>
+                <label htmlFor={`mm-diet-${k}`}>{dietLabel(k)}</label>
+                <span className={`${c.box} ${c.plain}`}>
+                  <NumberBox id={`mm-diet-${k}`} value={menu.restrictions[k] || 0} min={0} max={menu.headcount} onCommit={(n) => onDiet(k, n)} />
+                </span>
+              </div>
+            ))}
+            {hiddenDiets.length > 0 && <AddDietMenu id="mm-add-diet" diets={hiddenDiets} onPick={addDiet} />}
           </div>
-        ))}
-        {hiddenDiets.length > 0 && <AddDietMenu id="mm-add-diet" diets={hiddenDiets} onPick={addDiet} />}
+        )}
       </div>
       <div className={s.line}>
         <span className={s.moneyIn}>
@@ -135,13 +182,20 @@ export function WhosEatingForm({ menu, outings, patrols, nameError, nameRef, onN
 }
 
 /** A leader's, parent's or shared viewer's Who's eating: the values as text, nothing to edit. */
-export function WhosEatingReadOnly({ menu, outings }: { menu: Menu; outings: readonly Outing[] }) {
+export function WhosEatingReadOnly({ menu, outings, planners = [] }: { menu: Menu; outings: readonly Outing[]; planners?: readonly ScoutOption[] }) {
   const linked = outings.find((o) => o.id === menu.calendarEntryId) ?? null;
+  const diets = DIET_ORDER.filter((k) => (menu.restrictions[k] || 0) > 0);
   return (
     <section className={s.basics} aria-label="Who’s eating">
       <h2 className={s.heading}>Who’s eating</h2>
       <p className={s.foot}>{[MENU_CONTEXTS.find((c) => c.key === menu.context)?.label ?? menu.context, linked?.title, menu.patrol].filter(Boolean).join(' · ')}</p>
-      <p className={s.foot}>{[`People: ${menu.headcount}`, ...DIET_ORDER.filter((k) => (menu.restrictions[k] || 0) > 0).map((k) => `${dietLabel(k)}: ${menu.restrictions[k]}`)].join(' · ')}</p>
+      {planners.length > 0 && <p className={s.foot}>Planned by {planners.map((p) => p.name).join(', ')}</p>}
+      <p className={s.foot}>People: {menu.headcount}</p>
+      {diets.length > 0 && (
+        <p className={`${s.foot} ${c.nestedText}`}>
+          of whom {diets.map((k) => `${dietLabel(k)}: ${menu.restrictions[k]}`).join(' · ')}
+        </p>
+      )}
       <p className={s.foot}>{money(menu.budgetPerPersonMeal)} budget a person, per meal</p>
     </section>
   );

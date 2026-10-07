@@ -297,6 +297,59 @@ describe('scout package store (release C)', () => {
   });
 });
 
+describe('scout package under a brand (Menu-Monster-Brand-Detail)', () => {
+  const BRAND = 'b-vitest-branddetail';
+  const PKG = { ingredientId: BOOK, name: `${MARKER} Brand`, store: null, size: 10, price: 5, brandId: BRAND, sizeLabel: '10 oz' };
+  const ensureBrand = async (over: Record<string, unknown> = {}) => {
+    const { error } = await admin.from('mm_brands').upsert({ id: BRAND, ingredient_id: BOOK, name: 'Vitest Branddetail', ...over });
+    if (error) throw new Error(error.message);
+  };
+  afterEach(async () => {
+    await admin.from('mm_packages').delete().eq('brand_id', BRAND);
+    await admin.from('mm_brands').delete().eq('id', BRAND);
+  });
+
+  it('NewBrandPackage_WaitsForALeader_LikeTheNoPricePath', async () => {
+    await ensureBrand();
+    const res = await addScoutPackageWith(admin, ACTOR, { ...PKG, price: 9 });
+    expect(res).toMatchObject({ status: 'held' });
+    const { data } = await admin.from('mm_packages').select('brand_id, size_label, held_at').eq('id', (res as { id: string }).id).single();
+    expect([data?.brand_id, data?.size_label, data?.held_at != null]).toEqual([BRAND, '10 oz', true]);
+  });
+
+  it('NewBrandPackage_IsFiledUnderTheBrand_WhenInsideTheBand', async () => {
+    await ensureBrand();
+    const res = await addScoutPackageWith(admin, ACTOR, PKG);
+    expect(res).toMatchObject({ status: 'live' });
+    const { data } = await admin.from('mm_packages').select('brand_id, size_label, held_at').eq('id', (res as { id: string }).id).single();
+    expect([data?.brand_id, data?.size_label, data?.held_at]).toEqual([BRAND, '10 oz', null]);
+  });
+
+  it('NewBrandPackage_IsRefused_ForABrandOfAnotherIngredient', async () => {
+    await ensureBrand({ ingredient_id: NO_SIBLINGS });
+    expect(await addScoutPackageWith(admin, ACTOR, PKG)).toEqual({ status: 'invalid' });
+  });
+
+  it('SameResult_LinksTheBrand_WhenTheScoutsOwnPackageHasNone', async () => {
+    await ensureBrand();
+    const first = await addScoutPackageWith(admin, ACTOR, { ...PKG, brandId: undefined, sizeLabel: undefined });
+    const again = await addScoutPackageWith(admin, ACTOR, PKG); // a retry after a failed link: the RPC says same
+    expect(again).toMatchObject({ status: 'live', id: (first as { id: string }).id });
+    const { data } = await admin.from('mm_packages').select('brand_id, size_label').eq('id', (first as { id: string }).id).single();
+    expect([data?.brand_id, data?.size_label]).toEqual([BRAND, '10 oz']);
+  });
+
+  it('Store_MustBeAnApprovedName', async () => {
+    await ensureBrand();
+    expect(await addScoutPackageWith(admin, ACTOR, { ...PKG, store: 'Totally Made Up Mart' })).toEqual({ status: 'invalid' });
+  });
+
+  it('NewBrandPackage_IsRefused_ForARetiredBrand', async () => {
+    await ensureBrand({ retired_at: new Date().toISOString() });
+    expect(await addScoutPackageWith(admin, ACTOR, PKG)).toEqual({ status: 'invalid' });
+  });
+});
+
 describe('leader: packages waiting (release C)', () => {
   const held = async () => {
     const { data } = await addPackage({ size: 10, price: 9 });

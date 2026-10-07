@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>October 7, 2026</strong> &nbsp;&middot;&nbsp; v1.200.0</p>
+      <p>Last updated: <strong>October 7, 2026</strong> &nbsp;&middot;&nbsp; v1.202.0</p>
     </div>
   </div>
 
@@ -494,6 +494,40 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.202.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.202.0</span>
+        <span class="release-date">October 7, 2026</span>
+        <span class="release-label"><span class="badge badge-new">New</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Menu Monster: who planned this menu; Who&rsquo;s eating reads as one count</p>
+        <ul class="change-list">
+          <li><span><strong>Who&rsquo;s eating reads as one count.</strong> The diet counts now sit indented under People with a single &ldquo;of whom&rdquo; lead-in, so 18 people, of whom 2 vegetarian and 1 gluten-free, no longer looks like three separate headcounts. The numbers are no longer bold.</span></li>
+          <li><span><strong>Planned by.</strong> On Who&rsquo;s eating, beside Patrol, pick the scouts who planned the menu from a pull-down of the active roster; each pick becomes a chip, &times; removes it, and it saves with the menu&rsquo;s own Save. Leaders and visitors reading the menu see &ldquo;Planned by Anjali, Charlie&rdquo; as plain text. It changes nothing else &mdash; no rights, no totals &mdash; but it is the record a leader will want when reviewing the menu and signing off cooking requirements.</span></li>
+          <li><span><strong>Behind it:</strong> a small menu-to-scout table on production, so a later review can ask &ldquo;which menus did this scout plan&rdquo;; merging two people carries their menus across, and removing a person or a menu drops the rows.</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.201.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.201.0</span>
+        <span class="release-date">October 7, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Improved</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Menu Monster: a brand&rsquo;s size, price and store, entered the moment you know them</p>
+        <ul class="change-list">
+          <li><span><strong>A brand gets its facts in a dialog.</strong> Type a new brand on a menu (&ldquo;Sour Cream &amp; Onion&rdquo;) and a small dialog titled with the brand and the food opens at once: how much one package holds and in what unit, the price (&ldquo;a best guess is fine&rdquo;), and the store. Save puts the package on the price book the same way &ldquo;No price yet&rdquo; did, waiting for a leader; Cancel or Esc backs out and nothing is kept. Tapping a brand chip still picks it in one tap.</span></li>
+          <li><span><strong>The quantity row never says &ldquo;Chips&rdquo; again.</strong> A brand with no package shows a quiet <strong>size?</strong> after its number, and that opens the dialog; a brand with a package shows its size (&ldquo;12 oz bags&rdquo;), and tapping that opens the same dialog to change it. Need and buying now add up in real units.</span></li>
+          <li><span><strong>Store is a pull-down of the troop&rsquo;s approved stores</strong> (the list leaders keep under Tools &rsaquo; Stores), never free text, so the shopping list groups by store cleanly. Size and price are both needed to save; a missing one is marked in place and nothing is saved.</span></li>
+        </ul>
       </div>
     </div>
 

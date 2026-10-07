@@ -1,6 +1,6 @@
 # Menu Monster — Brand Detail at Entry Time
 
-**Status:** Parked — prototype in progress (Brad, 2026-10-07); waiting on Patrick's pick of surface (inline vs dialog) and required fields
+**Status:** COMPLETE — shipped v1.201.0 (2026-10-07): the brand detail dialog (size / unit / price / store from the approved list) opens after a brand is typed and from the quantity row's size control; chip tap still picks; the brand is linked on the new package; store enforced server-side. qa-lead PASS-WITH-WARNINGS, the real ones fixed. Patrick's production eyes-on pending.
 **Parked:** 2026-10-07
 **Priority:** Medium
 
@@ -50,8 +50,13 @@ Reuse `AddPackageForm` (compact mode) as the panel body; the chooser owns open/c
 
 1. TBD after Patrick's decisions.
 
-## Open Questions (Patrick)
+## Decisions (Patrick, 2026-10-07)
 
-1. **Inline or dialog?** (prototype toggle)
-2. **Required fields:** none at entry (a brand may be named with nothing known) — or size required once the brand is used for shopping?
-3. **Chip tap semantics:** keep tap = pick, with detail from the size control / a chip's "…"; or tap opens detail?
+1. **Dialog.** ("dialog. build it.")
+2. **Store is a pull-down from the approved stores** (the troop's `mm_stores` lookup, the one the admin Stores editor maintains) — never free text.
+3. **Required fields (prototype behaviour, taken as spec):** Save is greyed until something is typed; a save with a price but no size marks size red in place (size is what makes the shopping math true). A brand may still exist with nothing known — the dialog can be dismissed.
+4. **Chip tap semantics (orchestrator's call, say so to Patrick):** a chip tap still PICKS the brand in one tap, as today. The dialog opens (a) the moment a scout types a new brand — the facts are at hand right then — and (b) from the quantity row's noun slot: "size?" on a brand with no package, or the size text itself on one that has it. So "click a brand → dialog" holds for every brand that still needs its facts.
+
+## Open Questions
+
+None. Building 2026-10-07.

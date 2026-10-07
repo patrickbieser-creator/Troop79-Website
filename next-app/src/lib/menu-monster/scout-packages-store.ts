@@ -14,12 +14,20 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { recordAuditAs, type AuditActor } from '@/lib/audit';
 import { publicScoutName } from '@/lib/scout-name';
 import { PRICE_BAND } from './price-band';
+import { listActiveStoreNamesWith } from './stores';
 import type { ScoutPackage } from './scout-packages';
 
 export type AddPackageResult = { status: 'live' | 'held' | 'same'; id: string } | { status: 'cap' | 'invalid' };
 
 export async function addScoutPackageWith(sb: SupabaseClient, actor: AuditActor, pkg: ScoutPackage): Promise<AddPackageResult> {
   if (actor.personId == null) return { status: 'invalid' };
+  // The store is one of the troop's approved names, never free text (Patrick: "from our approved stores").
+  if (pkg.store && !(await listActiveStoreNamesWith(sb)).includes(pkg.store)) return { status: 'invalid' };
+  // A package under a brand (the brand detail dialog): the brand must be a live brand of this very ingredient.
+  if (pkg.brandId) {
+    const { data: b } = await sb.from('mm_brands').select('ingredient_id, retired_at, merged_into_id').eq('id', pkg.brandId).maybeSingle();
+    if (!b || b.ingredient_id !== pkg.ingredientId || b.retired_at != null || b.merged_into_id != null) return { status: 'invalid' };
+  }
   const { data, error } = await sb.rpc('mm_add_scout_package', {
     p_person: actor.personId,
     p_ingredient_id: pkg.ingredientId,
@@ -32,6 +40,22 @@ export async function addScoutPackageWith(sb: SupabaseClient, actor: AuditActor,
     throw new Error(`add scout package: ${error.message}`);
   }
   const res = data as { status: 'live' | 'held' | 'same'; id: string };
+  // The RPC knows nothing of brands: file the new row under it. A 'same' row is somebody's existing package; leave it be.
+  if (pkg.brandId) {
+    if (res.status === 'same') {
+      // A retry after a failed link: the RPC finds the scout's own package and says same. Link it now if it has no
+      // brand yet (a package that already has one, or is somebody else's, stays as it is).
+      const { data: own } = await sb.from('mm_packages').select('added_by_person_id, brand_id, held_at').eq('id', res.id).maybeSingle();
+      if (own && own.added_by_person_id === actor.personId && own.brand_id == null) {
+        const { error: linkErr } = await sb.from('mm_packages').update({ brand_id: pkg.brandId, size_label: pkg.sizeLabel ?? null }).eq('id', res.id);
+        if (linkErr) throw new Error(`file package under brand: ${linkErr.message}`);
+        return { status: own.held_at != null ? 'held' : 'live', id: res.id };
+      }
+    } else {
+      const { error: linkErr } = await sb.from('mm_packages').update({ brand_id: pkg.brandId, size_label: pkg.sizeLabel ?? null }).eq('id', res.id);
+      if (linkErr) throw new Error(`file package under brand: ${linkErr.message}`);
+    }
+  }
   if (res.status !== 'same') {
     const { data: ing } = await sb.from('mm_ingredients').select('name').eq('id', pkg.ingredientId).maybeSingle();
     await recordAuditAs(sb, actor, {

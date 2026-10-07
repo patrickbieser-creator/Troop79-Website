@@ -623,6 +623,37 @@
 }
 .libClose:hover { background: var(--warm-white); color: var(--forest); }
 .libClose:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+
+/* ---- Brand detail dialog (a brand's size, price and store; Plans/Menu-Monster-Brand-Detail.md) ---------------- */
+.detailDialog {
+  width: min(360px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  margin: auto;
+  padding: var(--sp-4);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-lg);
+  background: var(--warm-white);
+  color: var(--text-body);
+  box-shadow: var(--shadow-hover);
+}
+.detailDialog::backdrop { background: color-mix(in srgb, var(--navy) 35%, transparent); }
+.detailTitle { font-family: var(--font-display); font-size: var(--fs-lg); font-weight: 700; color: var(--text-head); margin: 0 0 var(--sp-3); }
+.detailForm { display: flex; flex-direction: column; gap: var(--sp-3); }
+.detailForm .noteRow { max-width: none; flex-wrap: nowrap; align-items: flex-start; }
+.detailForm .noteRow input { min-width: 0; }
+/* The size in a brand's quantity row is the control that opens its detail ("12 oz bags", "size?"). */
+.nounBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--text-meta);
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.nounBtn:hover { color: var(--forest); }
+.nounBtn:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
 .libSearchWrap { position: relative; }
 .libSearchIcon {
   position: absolute;

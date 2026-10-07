@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { CATALOG } from './helpers/menu-monster-fixture';
-import { packageSizeUnits, packageYield, sanitizeScoutPackage, scoutPackageProblem } from '../src/lib/menu-monster/scout-packages';
+import { packageSizeLabel, packageSizeUnits, packageYield, sanitizeScoutPackage, scoutPackageProblem } from '../src/lib/menu-monster/scout-packages';
 
 /**
  * Release C: a scout adds a package to a price-book ingredient. The size is
@@ -63,5 +63,28 @@ describe('sanitizeScoutPackage', () => {
 
   it('Problem_IsNull_ForAGoodPackage', () => {
     expect(scoutPackageProblem({ name: 'Eggs', size: 12, price: 3, yield: 12 })).toBeNull();
+  });
+});
+
+describe('brand packages (Menu-Monster-Brand-Detail)', () => {
+  const raw = { ingredientId: 'eggs', name: 'Eggland', store: '', size: 18, sizeUnit: 'egg', price: 4, brandId: 'b-eggland' };
+
+  it('SizeLabel_ReadsLikeTheBag', () => {
+    expect([packageSizeLabel(12, 'ozw', ing('eggs')), packageSizeLabel(1.5, 'lb', ing('eggs')), packageSizeLabel(12, 'oz', ing('eggs'))]).toEqual(['12 oz', '1.5 lb', '12 fl oz']);
+  });
+
+  it('SizeLabel_UsesTheIngredientsOwnUnitWords', () => {
+    const own = ing('eggs').unit;
+    expect([packageSizeLabel(1, own.key, ing('eggs')), packageSizeLabel(18, own.key, ing('eggs'))]).toEqual([`1 ${own.one}`, `18 ${own.many}`]);
+  });
+
+  it('Package_CarriesItsBrandAndTheSizeAsTyped', () => {
+    expect(sanitizeScoutPackage(raw, CATALOG)).toMatchObject({ brandId: 'b-eggland', sizeLabel: `18 ${ing('eggs').unit.many}`, size: 18 });
+  });
+
+  it('Package_HasNoBrandFields_WhenNoneIsGiven', () => {
+    const { brandId: _b, ...rest } = raw;
+    void _b;
+    expect(sanitizeScoutPackage(rest, CATALOG)).not.toHaveProperty('brandId');
   });
 });

@@ -69,6 +69,24 @@ describe('PeopleTab — Who’s eating on its own screen', () => {
     vi.clearAllMocks();
   });
 
+  it('Diets_AreNestedUnderPeople_WithOneOfWhomLeadIn', () => {
+    render(existing(base({ restrictions: { gf: 2, nut: 0, dairy: 0, veg: 1 } })));
+    const lead = screen.getAllByText('of whom');
+    const nest = lead[0].closest('[class*="nested"]') as HTMLElement;
+    expect([lead.length, nest.contains(num('Gluten-free')), nest.contains(num('Vegetarian')), nest.contains(num('People')), nest.contains(document.getElementById('mm-add-diet'))]).toEqual([1, true, true, false, true]);
+    expect(lead[0].compareDocumentPosition(num('Gluten-free')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('Diets_HaveNoOfWhomLeadIn_WhenNoDietIsVisible', () => {
+    render(existing(blank()));
+    expect(screen.queryByText('of whom')).toBeNull();
+  });
+
+  it('People_AndDietNumbers_AreNotBold', () => {
+    render(existing(base()));
+    expect([num('People'), num('Gluten-free')].map((i) => i.closest('[class*="plain"]') !== null)).toEqual([true, true]);
+  });
+
   it('WhosEating_IsAlwaysExpanded_OnASavedMenu_WithNoSummaryLineAndNoEditButton', () => {
     render(existing());
     expect([
@@ -148,7 +166,7 @@ describe('PeopleTab — Who’s eating on its own screen', () => {
 
   it('ReadOnlyViewer_SeesTheValuesAsText_NoFormNoSave', () => {
     render(<PeopleTab catalog={CATALOG} menuId="menu-1" menu={base({ patrol: 'FireQuacker' })} updatedAt={VERSION} outings={OUTINGS} readOnly />);
-    expect(screen.getByText('People: 8 · Gluten-free: 5')).toBeTruthy();
+    expect([screen.getByText('People: 8'), screen.getByText('of whom Gluten-free: 5')]).toBeTruthy();
     expect(screen.getByText('Camp · FireQuacker')).toBeTruthy();
     expect(screen.getByText('$4.00 budget a person, per meal')).toBeTruthy();
     expect([screen.queryByRole('textbox'), screen.queryByRole('spinbutton'), screen.queryByRole('button', { name: /^Save/ })]).toEqual([null, null, null]);
@@ -290,10 +308,12 @@ describe('PeopleTab — Who’s eating on its own screen', () => {
     render(existing(base({ restrictions: { gf: 1, nut: 1, dairy: 0, veg: 0 } })));
     const list = num(/^People/).closest('div[class*="rows"]') as HTMLElement;
     expect(list).toBeTruthy();
-    // People, Gluten-free, Nut-free rows and "Add a diet" are direct children; each row holds its label and its one box.
+    // The People row, then one nested group: "of whom", the Gluten-free and Nut-free rows, and "Add a diet".
     expect(list.textContent).not.toContain('·');
-    expect(list.children.length).toBe(4);
-    expect(Array.from(list.children).slice(0, 3).every((r) => r.querySelectorAll('input').length === 1 && r.querySelectorAll('label').length === 1)).toBe(true);
+    expect(list.children.length).toBe(2);
+    const nested = list.children[1];
+    expect(nested.children.length).toBe(4);
+    expect([list.children[0], nested.children[1], nested.children[2]].every((r) => r.querySelectorAll('input').length === 1 && r.querySelectorAll('label').length === 1)).toBe(true);
   });
 
   it('Context_IsASelect', () => {

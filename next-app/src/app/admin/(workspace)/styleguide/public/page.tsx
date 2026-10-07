@@ -30,7 +30,7 @@ import { Notice } from '@/app/_components/notice';
 import { EmptyState } from '@/app/_components/empty-state';
 import { SectionDivider } from '@/app/_components/section-divider';
 import cardS from '@/app/_components/card.module.css';
-import { PublicBlockedSaveSpecimen, PublicDietRowsSpecimen, PublicFinishLineSpecimen, PublicAmountScaleSpecimen, PublicGearSpecimen, PublicMenuEditListSpecimen, PublicStepperSpecimen, PublicTabStripSpecimen } from './specimens';
+import { PublicBlockedSaveSpecimen, PublicBrandDetailSpecimen, PublicDietRowsSpecimen, PublicFinishLineSpecimen, PublicAmountScaleSpecimen, PublicGearSpecimen, PublicMenuEditListSpecimen, PublicStepperSpecimen, PublicTabStripSpecimen } from './specimens';
 import { IngredientList } from '@/app/(public)/library/menu-monster/_components/ingredient-list';
 import { StepStrip } from '@/app/(public)/library/menu-monster/menus/_components/step-strip';
 import { SummaryRail } from '@/app/(public)/library/menu-monster/menus/_components/summary-rail';
@@ -580,6 +580,19 @@ export default function PublicStyleguidePage() {
             <p className={sg.specimenInlineNote}>
               <code>StepStrip</code> with <code>config.review</code> &mdash; a leader&rsquo;s fifth step, Review, after Shopping; ticks on the four
               planning steps, none on Review. Absent for everyone else.
+            </p>
+          </div>
+
+          {/* Brand detail dialog (Plans/Menu-Monster-Brand-Detail.md) */}
+          <div className={sg.specimenBlock}>
+            <PublicBrandDetailSpecimen />
+            <p className={sg.specimenInlineNote}>
+              <strong>Brand detail dialog</strong> from <code>menu-monster/menus/_components/brand-detail-dialog</code> &mdash; a brand&rsquo;s size, price and
+              store, asked while it is in the scout&rsquo;s hand: it opens when a brand is typed and from the size control in the brand&rsquo;s quantity row
+              (&ldquo;size?&rdquo; until it has one, then the size itself), never from a chip tap, which only picks. Title is &ldquo;Brand &mdash; Ingredient&rdquo;; the
+              body is <code>AddPackageForm</code> with <code>brand</code> set (no Name field; Store is a pull-down of the approved stores, hidden when there are none).
+              Save is greyed only while nothing is typed; pressed with no size it marks Size in place and saves nothing. Cancel and Esc close it and focus returns to
+              what opened it.
             </p>
           </div>
 

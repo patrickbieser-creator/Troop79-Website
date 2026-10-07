@@ -34,6 +34,7 @@ export const MAX_MENU_MEALS = 30;
 export const MAX_MENU_DAYS = 14;
 export const MAX_MENU_NAME = 120;
 export const MAX_PATROL_NAME = 40;
+export const MAX_PLANNERS = 40;
 /**
  * Who a menu is credited to (Patrick, 2026-10-05: "the menu was created by a patrol, not an individual.
  * Members of that patrol should get credit"): the patrol when the menu names one, with the person who
@@ -145,6 +146,8 @@ export interface Menu {
   dayCount: number;
   /** The patrol it is for ("Screaming Eagles", "Whole troop") — release 5. Absent = not said. */
   patrol?: string;
+  /** The scouts who planned it (people ids; Plans/Menu-Monster-Planned-By.md). Informational only; the table mm_menu_planners is the truth. Absent on a visitor's local menu. */
+  plannedBy?: number[];
   /** Package / quantity / bring-from-home choices for the merged shopping list. */
   shopping: MenuShopping;
   /** What was bought, per ingredient; {} until release B. Read-only through a menu save. */
@@ -495,6 +498,7 @@ export function sanitizeMenu(raw: unknown, catalog: Catalog): Menu {
     budgetPerPersonMeal,
     dayCount: coverDays(r.dayCount, meals),
     ...(cleanScoutText(r.patrol, MAX_PATROL_NAME) ? { patrol: cleanScoutText(r.patrol, MAX_PATROL_NAME) } : {}),
+    ...(Array.isArray(r.plannedBy) ? { plannedBy: [...new Set(r.plannedBy.filter((n): n is number => Number.isInteger(n) && n > 0))].slice(0, MAX_PLANNERS) } : {}),
     shopping: sanitizeShopping(foldShopping(r.shopping, r.meals), catalog),
     actuals: sanitizeActuals(r.actuals, catalog),
     meals

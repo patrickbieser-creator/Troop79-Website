@@ -36,6 +36,16 @@ export function packageSizeUnits(ingredient: Ingredient, conversions: readonly C
   return [own, ...LABEL_UNITS.filter((u) => u.key !== own.key && conv(u.key, ingredient, conversions) != null)];
 }
 
+/** The short words a size is read in on a label ("12 oz", "1 lb"); the ingredient's own unit uses its own words. */
+const SHORT_UNITS: Record<string, string> = { ozw: 'oz', oz: 'fl oz', lb: 'lb', gram: 'g', cup: 'cups', quart: 'qt', gallon: 'gal', dozen: 'dozen' };
+
+/** "12 oz", "1.5 lb", "18 eggs": the size as the scout typed it, for the quantity row ("4 × 12 oz"). */
+export function packageSizeLabel(size: number, unitKey: string, ingredient: Ingredient): string {
+  const n = String(Math.round(size * 1000) / 1000);
+  if (unitKey === ingredient.unit.key) return `${n} ${size === 1 ? ingredient.unit.one : ingredient.unit.many}`;
+  return `${n} ${SHORT_UNITS[unitKey] ?? unitKey}`;
+}
+
 /** The package size in the ingredient's recipe unit; null when the unit has no path or the size isn't positive. */
 export function packageYield(ingredient: Ingredient, conversions: readonly Conversion[], size: number, unitKey: string): number | null {
   if (!Number.isFinite(size) || size <= 0) return null;
@@ -59,6 +69,9 @@ export interface ScoutPackage {
   /** In the ingredient's recipe unit. */
   size: number;
   price: number;
+  /** A size of this brand ("12 oz" on the bag): the package is filed under the brand (brand detail dialog). */
+  brandId?: string;
+  sizeLabel?: string;
 }
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -82,5 +95,13 @@ export function sanitizeScoutPackage(raw: unknown, catalog: Catalog, ownTypedIn 
     yield: yld
   };
   if (scoutPackageProblem(p) != null || yld == null) return null;
-  return { ingredientId: ingredient.id, name: p.name, store: cleanScoutText(raw.store, 40) || null, size: yld, price: p.price };
+  const brandId = typeof raw.brandId === 'string' && raw.brandId.length > 0 && raw.brandId.length <= 100 ? raw.brandId : null;
+  return {
+    ingredientId: ingredient.id,
+    name: p.name,
+    store: cleanScoutText(raw.store, 40) || null,
+    size: yld,
+    price: p.price,
+    ...(brandId ? { brandId, sizeLabel: packageSizeLabel(size, unitKey, ingredient) } : {})
+  };
 }

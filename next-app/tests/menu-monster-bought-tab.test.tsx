@@ -8,6 +8,7 @@ import userEvent from '@testing-library/user-event';
  * the row's choices sit inline in its accordion. The mock boundary is the bought actions.
  */
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+vi.mock('../src/app/(public)/library/_tools/menu-monster/menu-actions', () => ({ addScoutPackageAction: vi.fn() }));
 const saveBoughtAction = vi.fn();
 const setShoppingDoneAction = vi.fn();
 vi.mock('../src/app/(public)/library/_tools/menu-monster/bought-actions', () => ({

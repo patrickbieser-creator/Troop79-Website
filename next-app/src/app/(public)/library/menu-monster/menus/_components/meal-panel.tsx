@@ -114,6 +114,8 @@ export interface MealPanelProps {
   onBrands?: (ingredientId: string, picks: BrandPick[]) => void;
   lineFor?: (ingredientId: string) => ShoppingLine | undefined;
   onTypeBrand?: (ingredientId: string, name: string) => Promise<{ ok: true; brand: Brand } | { ok: false; error: string }>;
+  /** Brand detail: a size and price saved for a brand from the chooser's dialog (the Plan tab's catalog takes the package). Absent = brands cannot be sized here. */
+  onBrandPackage?: (ingredientId: string, a: AddedPackage) => void;
   /** Release 6 — the recipe's author sets (or with null clears) the brand their recipe suggests. Absent = not offered. */
   onSuggestBrand?: (recipeId: string, ingredientId: string, brandId: string | null) => Promise<{ ok: true } | { ok: false; error: string }>;
   /** The troop's DRAFT items (names only): a search that finds nothing says when a draft has the name — the list is published items only. */
@@ -122,7 +124,7 @@ export interface MealPanelProps {
   adminLinks?: boolean;
 }
 
-export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearList, onPackageAdded, onChange, canTypeIn = false, onTyped, onNewRecipe, shareVersionMenuId = null, autoFocusAdd = false, onBrands, lineFor, onTypeBrand, onSuggestBrand, draftItems = [], adminLinks = false }: MealPanelProps) {
+export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearList, onPackageAdded, onChange, canTypeIn = false, onTyped, onNewRecipe, shareVersionMenuId = null, autoFocusAdd = false, onBrands, lineFor, onTypeBrand, onBrandPackage, onSuggestBrand, draftItems = [], adminLinks = false }: MealPanelProps) {
   /** Suggestions changed this visit ("recipe:ingredient" → brand id, or null for cleared): the catalog prop is as loaded. */
   const [suggested, setSuggested] = useState<Readonly<Record<string, string | null>>>({});
   const uid = useId();
@@ -402,6 +404,7 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
             onChange={(next) => onBrands(ingredientId, next)}
             onType={onTypeBrand ? (typed) => onTypeBrand(ingredientId, typed) : undefined}
             onAnnounce={(text) => setStatus({ text, undoTo: null })}
+            onPackageAdded={onBrandPackage ? (a) => onBrandPackage(ingredientId, a) : undefined}
           />
           {suggestLine(rid, ingredientId)}
           {/* Patrick, 2026-10-04: a way to close the chooser once the brand is picked; the row above then shows it. */}

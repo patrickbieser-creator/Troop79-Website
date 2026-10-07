@@ -61,6 +61,8 @@ export interface StoredMenu {
   review: MenuReview | null;
   /** Set while the latest save of the plan was a leader's, not the owner's (2026-10-05); the owner's next save clears it. */
   leaderEdit: { at: string; byPersonId: number | null } | null;
+  /** The scouts who planned it, by name (Planned by) — informational; the draft carries ids in menu.plannedBy. */
+  planners: { personId: number; name: string }[];
 }
 
 export interface MenuReview {
@@ -102,7 +104,7 @@ export type SaveResult =
   | { status: 'conflict' }
   | { status: 'not_found' };
 
-const COLUMNS = 'id, owner_person_id, name, context, calendar_entry_id, start_date, headcount, restrictions, budget_per_person_meal, day_count, patrol, shopping, actuals, meals, snapshot, created_at, updated_at, shared_at, review_note, reviewed_by_person_id, reviewed_at, leader_edited_at, leader_edited_by_person_id, calendar_entries(status)';
+const COLUMNS = 'id, owner_person_id, name, context, calendar_entry_id, start_date, headcount, restrictions, budget_per_person_meal, day_count, patrol, shopping, actuals, meals, snapshot, created_at, updated_at, shared_at, review_note, reviewed_by_person_id, reviewed_at, leader_edited_at, leader_edited_by_person_id, calendar_entries(status), mm_menu_planners(person_id, people!person_id(display_name))';
 
 interface MenuRow {
   id: string;
@@ -131,6 +133,8 @@ interface MenuRow {
   leader_edited_by_person_id?: number | null;
   /** The linked entry, embedded through the FK; null when none is linked. */
   calendar_entries: { status: string } | null;
+  /** The planners, embedded through the FK (Planned by). */
+  mm_menu_planners?: { person_id: number; people: { display_name: string | null } | { display_name: string | null }[] | null }[] | null;
 }
 
 // actuals are deliberately NOT written here. What the scout paid feeds the
@@ -153,6 +157,12 @@ const toRow = (m: Menu, snapshot: MenuSnapshot | null) => ({
   snapshot
 });
 
+/** Planners ordered by name; a person with no name sorts last. */
+const plannersOf = (r: MenuRow): { personId: number; name: string }[] =>
+  (r.mm_menu_planners ?? [])
+    .map((p) => ({ personId: p.person_id, name: (Array.isArray(p.people) ? p.people[0]?.display_name : p.people?.display_name) ?? '' }))
+    .sort((a, b) => a.name.localeCompare(b.name) || a.personId - b.personId);
+
 const fromRow = (r: MenuRow): Menu => ({
   name: r.name,
   context: r.context,
@@ -165,6 +175,7 @@ const fromRow = (r: MenuRow): Menu => ({
   // The column's default of 2 must never hide a meal saved on a later day.
   dayCount: coverDays(r.day_count, r.meals),
   ...(r.patrol ? { patrol: r.patrol } : {}),
+  plannedBy: plannersOf(r).map((p) => p.personId),
   // Menus saved before slice 5 kept package / quantity / bring-from-home on each meal.
   shopping: foldShopping(r.shopping, r.meals),
   // Same validation as a write: a hand-edited row can't smuggle a bad shape in.
@@ -188,7 +199,8 @@ const toStored = (r: MenuRow): StoredMenu => ({
   sharedAt: r.shared_at,
   entryPublished: r.calendar_entry_id == null ? null : r.calendar_entries?.status === 'published',
   review: r.review_note != null && r.reviewed_at != null ? { note: r.review_note, at: r.reviewed_at, byPersonId: r.reviewed_by_person_id } : null,
-  leaderEdit: r.leader_edited_at ? { at: r.leader_edited_at, byPersonId: r.leader_edited_by_person_id ?? null } : null
+  leaderEdit: r.leader_edited_at ? { at: r.leader_edited_at, byPersonId: r.leader_edited_by_person_id ?? null } : null,
+  planners: plannersOf(r)
 });
 
 async function audit(sb: SupabaseClient, actor: AuditActor, action: string, id: string, summary: string) {
@@ -354,6 +366,7 @@ export async function createMenuWith(sb: SupabaseClient, actor: AuditActor, menu
     .single();
   if (error) throw new Error(`create menu: ${error.message}`);
   const id = data.id as string;
+  if (menu.plannedBy?.length) await setPlannersWith(sb, id, menu.plannedBy, actor.personId, []);
   await audit(sb, actor, 'create', id, `created menu "${menu.name}"`);
   return id;
 }
@@ -395,10 +408,33 @@ export async function saveMenuWith(
     .select('updated_at');
   if (error) throw new Error(`save menu: ${error.message}`);
   if (!data?.length) return { status: 'conflict' };
+  if (menu.plannedBy) await setPlannersWith(sb, id, menu.plannedBy, actor.personId, current.menu.plannedBy ?? []);
   if (current.menu.name !== menu.name) await audit(sb, actor, 'rename', id, `renamed menu "${current.menu.name}" to "${menu.name}"`);
   if (own) await dropOrphanTypedIns(sb, actor);
   else await audit(sb, actor, 'update', id, `edited menu "${menu.name}" as a leader (it belongs to person ${current.ownerPersonId})`);
   return { status: 'saved', updatedAt: data[0].updated_at as string };
+}
+
+/** Replaces a menu's planner set (Planned by): only the difference is written, nothing when unchanged. */
+async function setPlannersWith(sb: SupabaseClient, menuId: string, next: readonly number[], by: number | null, was: readonly number[]): Promise<void> {
+  const want = new Set(next);
+  const had = new Set(was);
+  const drop = [...had].filter((n) => !want.has(n));
+  let add = [...want].filter((n) => !had.has(n));
+  if (add.length > 0) {
+    const { data: ok, error } = await sb.from('scouts').select('person_id').in('person_id', add);
+    if (error) throw new Error(`save planners: ${error.message}`);
+    const real = new Set((ok ?? []).map((r) => r.person_id as number));
+    add = add.filter((n) => real.has(n));
+  }
+  if (drop.length > 0) {
+    const { error } = await sb.from('mm_menu_planners').delete().eq('menu_id', menuId).in('person_id', drop);
+    if (error) throw new Error(`save planners: ${error.message}`);
+  }
+  if (add.length > 0) {
+    const { error } = await sb.from('mm_menu_planners').upsert(add.map((person_id) => ({ menu_id: menuId, person_id, added_by_person_id: by })), { onConflict: 'menu_id,person_id', ignoreDuplicates: true });
+    if (error) throw new Error(`save planners: ${error.message}`);
+  }
 }
 
 /**
