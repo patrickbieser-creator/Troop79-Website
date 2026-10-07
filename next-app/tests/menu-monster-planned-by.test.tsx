@@ -94,13 +94,14 @@ describe('Planned by', () => {
 });
 
 describe('Who’s eating layout', () => {
-  it('WhosEating_PeopleBlock_IsASiblingColumn_NotBelowThePickers', () => {
+  it('WhosEating_PlannedBy_IsLast_BelowBudget_AndPeopleStayAbove', () => {
     render(tab(base({ plannedBy: [41, 39] })));
     const people = document.getElementById('mm-people') as HTMLElement;
-    const basics = screen.getByRole('combobox', { name: 'Planned by' }).closest('[class*="basicsTop"]') as HTMLElement;
-    const peopleColumn = people.closest('[class*="peopleCol"]') as HTMLElement;
-    expect(basics.contains(people)).toBe(false);
-    expect(peopleColumn.parentElement).toBe(basics.parentElement);
-    expect(basics.parentElement?.className).toMatch(/twoCol/);
+    const budget = document.getElementById('mm-budget') as HTMLElement;
+    const planned = screen.getByRole('combobox', { name: 'Planned by' });
+    const follows = (a: HTMLElement, b: HTMLElement) => !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(follows(people, budget)).toBe(true);
+    expect(follows(budget, planned)).toBe(true);
+    expect(planned.closest('[class*="pickRow"]')).toBeNull();
   });
 });

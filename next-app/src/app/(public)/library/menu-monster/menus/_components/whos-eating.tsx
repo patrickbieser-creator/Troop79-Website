@@ -105,151 +105,110 @@ export function WhosEatingForm({
   return (
     <section className={s.basics} aria-label="Who’s eating">
       <h2 className={s.heading}>Who’s eating</h2>
-      <div className={c.twoCol}>
-        <div className={s.basicsTop}>
-          <Field label="Menu name" error={nameError}>
-            <TextInput
-              ref={nameRef}
-              value={menu.name}
-              maxLength={MAX_MENU_NAME}
-              autoComplete="off"
-              placeholder="Fall Camporee"
-              aria-invalid={nameError ? true : undefined}
-              onChange={(e) => onName(e.target.value)}
-            />
-          </Field>
-          <div className={s.pickRow}>
-            <Field label="Where you’re cooking">
-              <SelectInput
-                value={menu.context}
-                onChange={(e) => onContext(e.target.value as MenuContext)}
-              >
-                {MENU_CONTEXTS.map((c) => (
-                  <option key={c.key} value={c.key}>
-                    {c.label}
-                  </option>
-                ))}
-              </SelectInput>
-            </Field>
-            {/* A consequence to know before choosing (qa-lead, 2026-10-04): an outing's menu is open to its crew, whoever saved it. */}
-            <Field
-              label="Outing"
-              hint={
-                linked
-                  ? "Signed-in scouts and leaders can open this menu from the outing, and record what was bought."
-                  : undefined
-              }
+      <div className={s.basicsTop}>
+        <Field label="Menu name" error={nameError}>
+          <TextInput
+            ref={nameRef}
+            value={menu.name}
+            maxLength={MAX_MENU_NAME}
+            autoComplete="off"
+            placeholder="Fall Camporee"
+            aria-invalid={nameError ? true : undefined}
+            onChange={(e) => onName(e.target.value)}
+          />
+        </Field>
+        <div className={s.pickRow}>
+          <Field label="Where you’re cooking">
+            <SelectInput
+              value={menu.context}
+              onChange={(e) => onContext(e.target.value as MenuContext)}
             >
-              <SelectInput
-                value={linked ? String(linked.id) : "none"}
-                onChange={(e) => onOuting(e.target.value)}
-              >
-                {outings.map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.title} · {fmtRange(o.startDate, o.endDate)}
-                  </option>
-                ))}
-                <option value="none">No outing</option>
-              </SelectInput>
-            </Field>
-            <Field label="Patrol">
-              <SelectInput
-                value={menu.patrol ?? ""}
-                onChange={(e) => onPatrol(e.target.value)}
-              >
-                <option value="">— pick —</option>
-                {patrolOptions.map((name) => (
-                  <option key={name} value={name}>
-                    {name}
-                  </option>
-                ))}
-              </SelectInput>
-            </Field>
-            {showPlanners && (
-              <Field label="Planned by">
-                <SelectInput
-                  value=""
-                  onChange={(e) => {
-                    const id = Number(e.target.value);
-                    if (id) onPlannedBy?.([...picked, id]);
-                  }}
-                >
-                  <option value="">— pick —</option>
-                  {toPick.map((o) => (
-                    <option key={o.personId} value={o.personId}>
-                      {o.name}
-                    </option>
-                  ))}
-                </SelectInput>
-                {picked.length > 0 && (
-                  <ul className={g.chips} aria-label="Planned by">
-                    {picked.map((id) => (
-                      <li key={id} className={g.chip}>
-                        <span className={g.chipName}>{nameOf(id)}</span>
-                        <button
-                          type="button"
-                          className={g.remove}
-                          aria-label={`Remove ${nameOf(id)}`}
-                          onClick={() =>
-                            onPlannedBy?.(picked.filter((x) => x !== id))
-                          }
-                        >
-                          ×
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </Field>
-            )}
-          </div>
+              {MENU_CONTEXTS.map((c) => (
+                <option key={c.key} value={c.key}>
+                  {c.label}
+                </option>
+              ))}
+            </SelectInput>
+          </Field>
+          {/* A consequence to know before choosing (qa-lead, 2026-10-04): an outing's menu is open to its crew, whoever saved it. */}
+          <Field
+            label="Outing"
+            hint={
+              linked
+                ? "Signed-in scouts and leaders can open this menu from the outing, and record what was bought."
+                : undefined
+            }
+          >
+            <SelectInput
+              value={linked ? String(linked.id) : "none"}
+              onChange={(e) => onOuting(e.target.value)}
+            >
+              {outings.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.title} · {fmtRange(o.startDate, o.endDate)}
+                </option>
+              ))}
+              <option value="none">No outing</option>
+            </SelectInput>
+          </Field>
+          <Field label="Patrol">
+            <SelectInput
+              value={menu.patrol ?? ""}
+              onChange={(e) => onPatrol(e.target.value)}
+            >
+              <option value="">— pick —</option>
+              {patrolOptions.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </SelectInput>
+          </Field>
         </div>
+      </div>
 
-        <div className={c.peopleCol}>
-          <div className={c.rows}>
-            <div className={c.row}>
-              <label htmlFor="mm-people">People</label>
-              <span className={`${c.box} ${c.plain}`}>
-                <NumberBox
-                  id="mm-people"
-                  value={menu.headcount}
-                  min={MIN_HEADCOUNT}
-                  max={MAX_HEADCOUNT}
-                  onCommit={onHeadcount}
-                />
-              </span>
-            </div>
-            {/* The diets are part of the People count, so they sit one step in under a quiet "of whom". */}
-            {(visibleDiets.length > 0 || hiddenDiets.length > 0) && (
-              <div className={c.nested}>
-                {visibleDiets.length > 0 && (
-                  <span className={c.leadIn}>of whom</span>
-                )}
-                {visibleDiets.map((k) => (
-                  <div key={k} className={c.row}>
-                    <label htmlFor={`mm-diet-${k}`}>{dietLabel(k)}</label>
-                    <span className={`${c.box} ${c.plain}`}>
-                      <NumberBox
-                        id={`mm-diet-${k}`}
-                        value={menu.restrictions[k] || 0}
-                        min={0}
-                        max={menu.headcount}
-                        onCommit={(n) => onDiet(k, n)}
-                      />
-                    </span>
-                  </div>
-                ))}
-                {hiddenDiets.length > 0 && (
-                  <AddDietMenu
-                    id="mm-add-diet"
-                    diets={hiddenDiets}
-                    onPick={addDiet}
+      <div className={c.rows}>
+        <div className={c.row}>
+          <label htmlFor="mm-people">People</label>
+          <span className={`${c.box} ${c.plain}`}>
+            <NumberBox
+              id="mm-people"
+              value={menu.headcount}
+              min={MIN_HEADCOUNT}
+              max={MAX_HEADCOUNT}
+              onCommit={onHeadcount}
+            />
+          </span>
+        </div>
+        {/* The diets are part of the People count, so they sit one step in under a quiet "of whom". */}
+        {(visibleDiets.length > 0 || hiddenDiets.length > 0) && (
+          <div className={c.nested}>
+            {visibleDiets.length > 0 && (
+              <span className={c.leadIn}>of whom</span>
+            )}
+            {visibleDiets.map((k) => (
+              <div key={k} className={c.row}>
+                <label htmlFor={`mm-diet-${k}`}>{dietLabel(k)}</label>
+                <span className={`${c.box} ${c.plain}`}>
+                  <NumberBox
+                    id={`mm-diet-${k}`}
+                    value={menu.restrictions[k] || 0}
+                    min={0}
+                    max={menu.headcount}
+                    onCommit={(n) => onDiet(k, n)}
                   />
-                )}
+                </span>
               </div>
+            ))}
+            {hiddenDiets.length > 0 && (
+              <AddDietMenu
+                id="mm-add-diet"
+                diets={hiddenDiets}
+                onPick={addDiet}
+              />
             )}
           </div>
-        </div>
+        )}
       </div>
       <div className={s.line}>
         <span className={s.moneyIn}>
@@ -267,6 +226,45 @@ export function WhosEatingForm({
         </span>
         <span>budget a person, per meal</span>
       </div>
+      {showPlanners && (
+        <div className={s.basicsTop}>
+          <Field label="Planned by">
+            <SelectInput
+              value=""
+              onChange={(e) => {
+                const id = Number(e.target.value);
+                if (id) onPlannedBy?.([...picked, id]);
+              }}
+            >
+              <option value="">— pick —</option>
+              {toPick.map((o) => (
+                <option key={o.personId} value={o.personId}>
+                  {o.name}
+                </option>
+              ))}
+            </SelectInput>
+            {picked.length > 0 && (
+              <ul className={g.chips} aria-label="Planned by">
+                {picked.map((id) => (
+                  <li key={id} className={g.chip}>
+                    <span className={g.chipName}>{nameOf(id)}</span>
+                    <button
+                      type="button"
+                      className={g.remove}
+                      aria-label={`Remove ${nameOf(id)}`}
+                      onClick={() =>
+                        onPlannedBy?.(picked.filter((x) => x !== id))
+                      }
+                    >
+                      ×
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Field>
+        </div>
+      )}
     </section>
   );
 }
