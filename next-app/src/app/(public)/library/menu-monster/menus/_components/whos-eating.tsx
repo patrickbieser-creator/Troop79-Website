@@ -14,7 +14,7 @@ import { useState, type RefObject } from 'react';
 import { priceText as money } from '@/lib/menu-monster/units';
 import { fmtRange } from '@/lib/format-date';
 import { Field, SelectInput, TextInput } from '@/app/_components/form';
-import { NumberBox, Stepper } from '@/app/_components/stepper';
+import { NumberBox } from '@/app/_components/stepper';
 import type { RestrictionKey } from '@/lib/menu-monster/types';
 import { RESTRICTION_BY_KEY } from '@/lib/menu-monster/units';
 import { MAX_HEADCOUNT, MIN_HEADCOUNT } from '@/lib/menu-monster/engine';
@@ -22,6 +22,7 @@ import { MENU_CONTEXTS, MAX_MENU_NAME, type Menu, type MenuContext } from '@/lib
 import { DIET_ORDER, type Outing } from '@/lib/menu-monster/menu-view';
 import { AddDietMenu } from './add-diet-menu';
 import s from './workspace.module.css';
+import c from './whos-eating.module.css';
 
 const dietLabel = (k: RestrictionKey) => RESTRICTION_BY_KEY[k].label;
 
@@ -105,31 +106,20 @@ export function WhosEatingForm({ menu, outings, patrols, nameError, nameRef, onN
         </div>
       </div>
 
-      <div className={s.dialers}>
-        <Stepper
-          id="mm-people"
-          label="People"
-          value={menu.headcount}
-          min={MIN_HEADCOUNT}
-          max={MAX_HEADCOUNT}
-          onChange={onHeadcount}
-          groupLabel="People"
-          lessLabel="One fewer person"
-          moreLabel="One more person"
-        />
+      <div className={c.rows}>
+        <div className={c.row}>
+          <label htmlFor="mm-people">People</label>
+          <span className={c.box}>
+            <NumberBox id="mm-people" value={menu.headcount} min={MIN_HEADCOUNT} max={MAX_HEADCOUNT} onCommit={onHeadcount} />
+          </span>
+        </div>
         {visibleDiets.map((k) => (
-          <Stepper
-            key={k}
-            id={`mm-diet-${k}`}
-            label={dietLabel(k)}
-            value={menu.restrictions[k] || 0}
-            min={0}
-            max={menu.headcount}
-            onChange={(n) => onDiet(k, n)}
-            groupLabel={`${dietLabel(k)} people`}
-            lessLabel={`One fewer ${dietLabel(k).toLowerCase()} person`}
-            moreLabel={`One more ${dietLabel(k).toLowerCase()} person`}
-          />
+          <div key={k} className={c.row}>
+            <label htmlFor={`mm-diet-${k}`}>{dietLabel(k)}</label>
+            <span className={c.box}>
+              <NumberBox id={`mm-diet-${k}`} value={menu.restrictions[k] || 0} min={0} max={menu.headcount} onCommit={(n) => onDiet(k, n)} />
+            </span>
+          </div>
         ))}
         {hiddenDiets.length > 0 && <AddDietMenu id="mm-add-diet" diets={hiddenDiets} onPick={addDiet} />}
       </div>

@@ -55,13 +55,13 @@ beforeEach(() => {
 });
 
 describe('Plan tab — brands', () => {
-  it('AnIngredientWithBrands_ReadsAnyBrand_WithChooseABrand', async () => {
+  it('AnIngredientWithBrands_ReadsAnyBrand_WithChooseBrands', async () => {
     const user = userEvent.setup();
     render(plan());
     await openBacon(user);
     const list = within(panel().getByRole('list', { name: 'Bacon ingredients' }));
     expect(list.getByText('any brand')).toBeTruthy();
-    expect(list.getByRole('button', { name: 'Choose a brand for Bacon' }).textContent).toBe('Choose a brand');
+    expect(list.getByRole('button', { name: 'Choose brand(s) for Bacon' }).textContent).toBe('Choose brand(s)');
   });
 
   it('AChosenBrand_IsNamed_AndTheActionBecomesChange', async () => {
@@ -77,7 +77,7 @@ describe('Plan tab — brands', () => {
     const user = userEvent.setup();
     render(plan());
     await openBacon(user);
-    await user.click(panel().getByRole('button', { name: 'Choose a brand for Bacon' }));
+    await user.click(panel().getByRole('button', { name: 'Choose brand(s) for Bacon' }));
     const chips = within(panel().getByRole('group', { name: 'Brand for Bacon' }));
     await user.click(chips.getByRole('button', { name: /^Oscar Mayer/ }));
     await user.click(chips.getByRole('button', { name: /^Kirkland/ }));
@@ -93,7 +93,7 @@ describe('Plan tab — brands', () => {
     const row = () => (document.getElementById('mm-meal-m1') as HTMLElement).closest('li') as HTMLElement;
     expect(row().textContent).toContain('$14.98');
     await openBacon(user);
-    await user.click(panel().getByRole('button', { name: 'Choose a brand for Bacon' }));
+    await user.click(panel().getByRole('button', { name: 'Choose brand(s) for Bacon' }));
     await user.click(within(panel().getByRole('group', { name: 'Brand for Bacon' })).getByRole('button', { name: /^Kirkland/ }));
     expect(row().textContent).toContain('$18.15');
   });
@@ -103,7 +103,7 @@ describe('Plan tab — brands', () => {
     const user = userEvent.setup();
     render(plan());
     await openBacon(user);
-    await user.click(panel().getByRole('button', { name: 'Choose a brand for Bacon' }));
+    await user.click(panel().getByRole('button', { name: 'Choose brand(s) for Bacon' }));
     await user.type(panel().getByRole('textbox', { name: 'Type a brand of Bacon' }), 'Farm stand{Enter}');
     await waitFor(() => expect(addBrandAction).toHaveBeenCalledWith('bacon', 'Farm stand', 'menu-1'));
     await waitFor(() => expect(within(panel().getByRole('list', { name: 'Bacon ingredients' })).getAllByText(/^Farm stand/).length).toBeGreaterThan(0));
@@ -123,7 +123,7 @@ describe('Plan tab — brands', () => {
     render(plan(menu(), { store: store as never }));
     await user.click(panel().getByRole('button', { name: /^Pancakes/ }));
     // Pancake mix has no brands in this catalog, and a local menu cannot type one.
-    expect(within(panel().getByRole('list', { name: 'Pancakes ingredients' })).queryByRole('button', { name: /Choose a brand/ })).toBeNull();
+    expect(within(panel().getByRole('list', { name: 'Pancakes ingredients' })).queryByRole('button', { name: /Choose brand/ })).toBeNull();
   });
 });
 
@@ -174,7 +174,7 @@ describe('Plan tab — a recipe’s suggested brand (release 6)', () => {
 
   const chooseKirkland = async (user: ReturnType<typeof userEvent.setup>) => {
     await openBacon(user);
-    await user.click(panel().getByRole('button', { name: 'Choose a brand for Bacon' }));
+    await user.click(panel().getByRole('button', { name: 'Choose brand(s) for Bacon' }));
     await user.click(within(panel().getByRole('group', { name: 'Brand for Bacon' })).getByRole('button', { name: /^Kirkland/ }));
   };
 
@@ -193,7 +193,7 @@ describe('Plan tab — a recipe’s suggested brand (release 6)', () => {
     const user = userEvent.setup();
     render(plan(menu(), { catalog: withRecipe({ mine: true, brandSuggestions: { bacon: 'b-kirk' } }) }));
     await openBacon(user);
-    await user.click(panel().getByRole('button', { name: 'Choose a brand for Bacon' }));
+    await user.click(panel().getByRole('button', { name: 'Choose brand(s) for Bacon' }));
     await user.click(panel().getByRole('button', { name: 'Stop suggesting' }));
     expect(suggestRecipeBrandAction).toHaveBeenCalledWith('B003', 'bacon', null);
   });
@@ -218,7 +218,7 @@ describe('Plan tab — a recipe’s suggested brand (release 6)', () => {
 describe('Plan tab — closing the brand chooser (2026-10-04)', () => {
   const pickKirkland = async (user: ReturnType<typeof userEvent.setup>) => {
     await openBacon(user);
-    await user.click(panel().getByRole('button', { name: 'Choose a brand for Bacon' }));
+    await user.click(panel().getByRole('button', { name: 'Choose brand(s) for Bacon' }));
     await user.click(within(panel().getByRole('group', { name: 'Brand for Bacon' })).getByRole('button', { name: /^Kirkland/ }));
   };
 
@@ -255,5 +255,15 @@ describe('Plan tab — closing the brand chooser (2026-10-04)', () => {
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
     await waitFor(() => expect(saveMenuAction).toHaveBeenCalledTimes(1));
     expect(sent().shopping.brands).toEqual({ bacon: [{ brandId: 'b-kirk', qty: null }] });
+  });
+});
+
+describe('Plan tab — brand link wording', () => {
+  it('BrandLink_SaysChooseBrands', async () => {
+    const user = userEvent.setup();
+    render(plan());
+    await openBacon(user);
+    const link = within(panel().getByRole('list', { name: 'Bacon ingredients' })).getByRole('button', { name: 'Choose brand(s) for Bacon' });
+    expect(link.textContent).toBe('Choose brand(s)');
   });
 });

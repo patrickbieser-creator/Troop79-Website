@@ -207,6 +207,7 @@ describe('RecipeEditor steps and ingredients', () => {
   it('AddingAnIngredient_MakesTheRecipeDirty', async () => {
     const user = userEvent.setup();
     existing();
+    await user.click(screen.getByRole('button', { name: '+ Ingredient' }));
     await user.type(screen.getByRole('combobox', { name: 'Add an ingredient' }), 'egg');
     await user.click(screen.getByRole('option', { name: 'Eggs' }));
     expect(screen.getByRole('button', { name: 'Save changes' })).toBeTruthy();
@@ -216,6 +217,25 @@ describe('RecipeEditor steps and ingredients', () => {
     existing();
     const row = within(screen.getByRole('list', { name: 'Ingredients' })).getByRole('button', { name: 'Bacon' }).closest('li') as HTMLElement;
     expect(row.textContent).toContain('24 slices');
+  });
+});
+
+describe('RecipeEditor People', () => {
+  it('RecipeEditor_People_IsANumberBox', () => {
+    existing();
+    const box = screen.getByRole('spinbutton', { name: /^People/ }) as HTMLInputElement;
+    expect([box.type, screen.queryByRole('button', { name: /One (more|fewer) person/ })]).toEqual(['number', null]);
+  });
+
+  it('RecipeEditor_TypingPeople_ScalesTheTotalOnBlur', async () => {
+    const user = userEvent.setup();
+    existing();
+    const box = screen.getByRole('spinbutton', { name: /^People/ });
+    await user.clear(box);
+    await user.type(box, '16');
+    await user.tab();
+    const row = within(screen.getByRole('list', { name: 'Ingredients' })).getByRole('button', { name: 'Bacon' }).closest('li') as HTMLElement;
+    expect(row.textContent).toContain('48 slices');
   });
 });
 
@@ -241,6 +261,7 @@ describe('RecipeEditor step focus', () => {
 
 describe('RecipeEditor typed-in ingredients (Phase 4B)', () => {
   async function addNew(user: ReturnType<typeof userEvent.setup>, name = 'Gochujang') {
+    await user.click(screen.getByRole('button', { name: '+ Ingredient' }));
     await user.type(screen.getByRole('combobox', { name: 'Add an ingredient' }), name);
     await user.click(screen.getByRole('option', { name: `Add “${name}” as a new ingredient` }));
     const form = screen.getByRole('group', { name: 'New ingredient' });
@@ -255,6 +276,7 @@ describe('RecipeEditor typed-in ingredients (Phase 4B)', () => {
   it('Search_OffersTypedTextAsANewIngredient', async () => {
     const user = userEvent.setup();
     existing();
+    await user.click(screen.getByRole('button', { name: '+ Ingredient' }));
     await user.type(screen.getByRole('combobox', { name: 'Add an ingredient' }), 'Gochujang');
     expect(screen.getByRole('option', { name: 'Add “Gochujang” as a new ingredient' })).toBeTruthy();
   });
@@ -278,6 +300,7 @@ describe('RecipeEditor typed-in ingredients (Phase 4B)', () => {
   it('NewIngredientForm_RefusesAMissingPrice', async () => {
     const user = userEvent.setup();
     existing();
+    await user.click(screen.getByRole('button', { name: '+ Ingredient' }));
     await user.type(screen.getByRole('combobox', { name: 'Add an ingredient' }), 'Gochujang');
     await user.click(screen.getByRole('option', { name: 'Add “Gochujang” as a new ingredient' }));
     const form = screen.getByRole('group', { name: 'New ingredient' });
@@ -291,6 +314,7 @@ describe('RecipeEditor typed-in ingredients (Phase 4B)', () => {
   it('Scout_SeesWhichFieldIsBad_WhenAddingAnIncompleteIngredient', async () => {
     const user = userEvent.setup();
     existing();
+    await user.click(screen.getByRole('button', { name: '+ Ingredient' }));
     await user.type(screen.getByRole('combobox', { name: 'Add an ingredient' }), 'Gochujang');
     await user.click(screen.getByRole('option', { name: 'Add “Gochujang” as a new ingredient' }));
     const form = screen.getByRole('group', { name: 'New ingredient' });

@@ -1,0 +1,37 @@
+/* People and diet counts as plain number boxes (Menu-Monster-Add-Pattern decision 8, Patrick 2026-10-07:
+   "the dialers for people and diets seem a bit too much"). One row per count, label left, box right,
+   the boxes lined up in one column. The NumberBox is the unframed one; the hairline around it comes from
+   here, the same weight as the screen's other inputs. Public tokens only. */
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  font-family: var(--font-ui);
+  font-size: var(--fs-md);
+  color: var(--text-body);
+  margin: 0 0 var(--sp-3);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 9em auto;
+  align-items: center;
+  gap: var(--sp-3);
+}
+.row label { font-weight: 700; color: var(--text-head); }
+
+.box {
+  display: inline-block;
+  width: 4.5em;
+  height: 32px;
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-sm);
+  overflow: hidden;
+}
+/* The unframed NumberBox fills it, minus its stepper-side dividers. */
+.box input {
+  border-left: none;
+  border-right: none;
+}

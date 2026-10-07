@@ -62,14 +62,14 @@ afterEach(async () => {
 
 describe('the troop’s gear list', () => {
   it('Seed_HasTheMessKit_OnePerPerson', async () => {
-    expect(await item('Troop mess kit')).toMatchObject({ perPerson: true, home: 'trailer' });
+    expect(await item('Troop Mess Kit')).toMatchObject({ perPerson: true, home: 'trailer' });
   });
 
   // Replaces NamingSomethingNew_AddsItToTheList (2026-10-05): gear is picked from the master list, so a name
   // the list lacks is dropped, never added.
   it('ResolveGear_UsesTheMasterSpelling_KeepsTheCount_AndSortsAToZ', async () => {
-    const { kept, dropped } = await resolveGearWith(admin, ['spatula', 'SKILLET × 2', 'camp  stove']);
-    expect(kept).toEqual(['Camp stove', 'Skillet × 2', 'Spatula']);
+    const { kept, dropped } = await resolveGearWith(admin, ['spatula', 'SKILLET × 2', 'STOVE']);
+    expect(kept).toEqual(['Skillet × 2', 'Spatula', 'Stove']);
     expect(dropped).toEqual([]);
   });
 
@@ -147,20 +147,20 @@ describe('a menu’s gear state', () => {
   it('Extras_AreTheOwners_InTheListsSpelling_AndANameNotOnTheListIsDropped', async () => {
     const m = await makeMenu();
     expect(await setGearExtrasWith(admin, m.id, OTHER, ['Skillet'])).toBeNull();
-    expect(await setGearExtrasWith(admin, m.id, OWNER, ['skillet × 2', 'SKILLET', 'ZZ Vitest water jug', 'Camp stove'])).toEqual({
-      extras: ['Camp stove', 'Skillet × 2'],
+    expect(await setGearExtrasWith(admin, m.id, OWNER, ['skillet × 2', 'SKILLET', 'ZZ Vitest water jug', 'Stove'])).toEqual({
+      extras: ['Skillet × 2', 'Stove'],
       dropped: ['ZZ Vitest water jug']
     });
-    expect((await loadMenuGearWith(admin, m.id)).extras).toEqual(['Camp stove', 'Skillet × 2']);
+    expect((await loadMenuGearWith(admin, m.id)).extras).toEqual(['Skillet × 2', 'Stove']);
     expect(await item('ZZ Vitest water jug')).toBeUndefined();
   });
 
   it('PackedTicks_MergeOneAtATime_AndNeverTouchTheMenusVersion', async () => {
     const m = await makeMenu();
     await setGearPackedWith(admin, m.id, { key: 'Skillet', count: 2, packed: true }, { personId: OTHER, label: 'Leo B.' });
-    await setGearPackedWith(admin, m.id, { key: 'Camp stove', count: 1, packed: true }, { personId: OWNER, label: 'Charlie W.' });
+    await setGearPackedWith(admin, m.id, { key: 'Stove', count: 1, packed: true }, { personId: OWNER, label: 'Charlie W.' });
     const state = await loadMenuGearWith(admin, m.id);
-    expect(Object.keys(state.packed).sort()).toEqual(['camp stove', 'skillet']);
+    expect(Object.keys(state.packed).sort()).toEqual(['skillet', 'stove']);
     expect(state.packed.skillet).toMatchObject({ count: 2, by: 'Leo B.', personId: OTHER });
     const { data } = await admin.from('mm_menus').select('updated_at').eq('id', m.id).single();
     expect(data!.updated_at).toBe(m.updatedAt);
@@ -169,9 +169,9 @@ describe('a menu’s gear state', () => {
   it('Unticking_RemovesOnlyThatTick', async () => {
     const m = await makeMenu();
     await setGearPackedWith(admin, m.id, { key: 'skillet', count: 1, packed: true }, { personId: OTHER, label: 'Leo B.' });
-    await setGearPackedWith(admin, m.id, { key: 'camp stove', count: 1, packed: true }, { personId: OTHER, label: 'Leo B.' });
+    await setGearPackedWith(admin, m.id, { key: 'stove', count: 1, packed: true }, { personId: OTHER, label: 'Leo B.' });
     await setGearPackedWith(admin, m.id, { key: 'skillet', count: 1, packed: false }, { personId: OWNER, label: 'Charlie W.' });
-    expect(Object.keys((await loadMenuGearWith(admin, m.id)).packed)).toEqual(['camp stove']);
+    expect(Object.keys((await loadMenuGearWith(admin, m.id)).packed)).toEqual(['stove']);
   });
 
   it('ATick_OnAMenuThatIsGone_IsRefused', async () => {

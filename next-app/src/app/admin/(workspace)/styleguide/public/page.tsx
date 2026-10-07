@@ -34,6 +34,8 @@ import { PublicBlockedSaveSpecimen, PublicDietRowsSpecimen, PublicFinishLineSpec
 import { IngredientList } from '@/app/(public)/library/menu-monster/_components/ingredient-list';
 import { StepStrip } from '@/app/(public)/library/menu-monster/menus/_components/step-strip';
 import { SummaryRail } from '@/app/(public)/library/menu-monster/menus/_components/summary-rail';
+import { AddRow } from '@/app/(public)/library/menu-monster/_components/add-row';
+import menuMonsterS from '@/app/(public)/library/menu-monster/menus/_components/workspace.module.css';
 import type { PlanProgress } from '@/lib/menu-monster/menu-view';
 import { FormCard, Field, TextInput } from '@/app/_components/form';
 import { DateField } from '@/app/_components/date-field';
@@ -146,7 +148,7 @@ const SCOREBOARD: ReadonlyArray<readonly [string, string, string]> = [
   [
     'Number fields / dialers',
     '3 hand-rolled stepper copies (planner, workspace) + 4 plain number boxes (guest count, days, seats, reimbursement amount)',
-    'Stepper SHIPPED (2026-10-02, Calm-Site-Restyle Decisions 1-2) — one shared − n + at 32px/16px; planner, Menu Monster workspace and event sign-up (guests, days, seats) converted, planner .stepper/.stepBtn/.numIn deleted. Reimbursement amount is dollars-and-cents, so it stays a number box (AmountInput, same 32px look) rather than a dial'
+    'Stepper SHIPPED (2026-10-02, Calm-Site-Restyle Decisions 1-2) — one shared − n + at 32px/16px; planner, Menu Monster workspace and event sign-up (guests, days, seats) converted, planner .stepper/.stepBtn/.numIn deleted. Reimbursement amount is dollars-and-cents, so it stays a number box (AmountInput, same 32px look) rather than a dial. Menu Monster People/diets now use plain NumberBox (unframed, hairline-wrapped via whos-eating.module.css); Stepper remains for event sign-up (2026-10-07).'
   ],
   [
     'Cards',
@@ -502,6 +504,19 @@ export default function PublicStyleguidePage() {
               (headcount, cost per person per meal, things to fix); tap the text for the bottom sheet. Its right end is the screen&rsquo;s one primary:
               Save while dirty, &ldquo;Next: &hellip;&rdquo; when clean. &ldquo;unsaved&rdquo; shows only when the Plan tab&rsquo;s draft differs from
               what is saved.
+            </p>
+          </div>
+          <div className={sg.specimenBlock}>
+            <AddRow
+              actions={[
+                { id: 'food', label: 'Food', content: <input type="text" className={menuMonsterS.addInput} aria-label="Find a food (specimen)" placeholder="Add to lunch" /> },
+                { id: 'gear', label: 'Gear', content: <input type="text" className={menuMonsterS.addInput} aria-label="Find gear (specimen)" placeholder="More gear for this meal" /> }
+              ]}
+            />
+            <p className={sg.specimenInlineNote}>
+              <code>AddRow</code> from <code>menu-monster/_components/add-row</code> &mdash; add rows: one per container, links at rest, search on tap,
+              Cancel always visible; a single food has no + Ingredient. Cancel and Esc (nothing typed) close it and return focus to the link; the
+              caller&rsquo;s extra controls (the ingredient list&rsquo;s &ldquo;for Everyone&rdquo; select) ride in <code>trailing</code>, before Cancel.
             </p>
           </div>
 

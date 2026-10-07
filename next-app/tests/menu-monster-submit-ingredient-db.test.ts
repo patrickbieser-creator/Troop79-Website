@@ -1,5 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { adminClient } from './helpers/admin-client';
+import { cleanupTypedIns } from './helpers/typed-in-cleanup';
 import { keepTypedInWith, listTypedInsWith, rejectTypedInWith, submitIngredientWith } from '../src/lib/menu-monster/scout-recipes-store';
 import { loadAuthoringCatalogWith, loadCatalogWith } from '../src/lib/menu-monster/catalog';
 import type { NewIngredient } from '../src/lib/menu-monster/scout-ingredients';
@@ -17,8 +18,7 @@ const OTHER = 25;
 const admin = adminClient();
 
 afterEach(async () => {
-  await admin.from('mm_packages').delete().like('id', 'xp-%');
-  await admin.from('mm_ingredients').delete().like('id', 'x-%');
+  await cleanupTypedIns(admin);
 });
 
 const cookies = (over: Partial<NewIngredient> = {}): NewIngredient => ({

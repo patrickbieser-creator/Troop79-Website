@@ -190,6 +190,7 @@ describe('IngredientList (menu-edit)', () => {
   it('Scout_CanAddAnIngredient_TaggedAddedAndAskedHowMuch', async () => {
     const u = user();
     render(<Harness />);
+    await u.click(screen.getByRole('button', { name: '+ Ingredient' }));
     await u.type(screen.getByRole('combobox', { name: 'Add an ingredient to your version' }), 'eggs');
     await u.click(screen.getByRole('option', { name: 'Eggs' }));
     expect({ tag: li('Eggs').textContent?.includes('Added'), asked: document.activeElement === screen.getByRole('textbox', { name: 'Amount per person of Eggs, in eggs' }) }).toEqual({ tag: true, asked: true });
@@ -201,13 +202,14 @@ describe('IngredientList (menu-edit)', () => {
     await pickItem(u, 'Eggs', 'Remove');
     expect({ gone: screen.queryByText('Eggs', { selector: 'span' }), focused: document.activeElement }).toEqual({
       gone: null,
-      focused: screen.getByRole('combobox', { name: 'Add an ingredient to your version' })
+      focused: screen.getByRole('button', { name: '+ Ingredient' })
     });
   });
 
   it('Add_DoesNotOfferAnIngredientTheRecipeAlreadyHas', async () => {
     const u = user();
     render(<Harness />);
+    await u.click(screen.getByRole('button', { name: '+ Ingredient' }));
     await u.type(screen.getByRole('combobox', { name: 'Add an ingredient to your version' }), 'bacon');
     expect(screen.queryByRole('option', { name: 'Bacon' })).toBeNull();
   });

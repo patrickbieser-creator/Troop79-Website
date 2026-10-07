@@ -40,16 +40,18 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import Link from 'next/link';
 import { MEALS, RESTRICTION_BY_KEY, priceText as money } from '@/lib/menu-monster/units';
 import { Button } from '@/app/_components/button';
-import { Stepper } from '@/app/_components/stepper';
+import { NumberBox } from '@/app/_components/stepper';
 import { Notice } from '@/app/_components/notice';
 import type { Brand, BrandPick, Catalog, Plan, Recipe, ShoppingLine } from '@/lib/menu-monster/types';
 import { BrandChooser, brandSummary } from './brand-chooser';
 import { MAX_HEADCOUNT, MIN_HEADCOUNT, effectiveRestrictions, livePicks, recipeSuggestions, recipesForMeal, restrictionWarnings } from '@/lib/menu-monster/engine';
 import type { RestrictionKey } from '@/lib/menu-monster/types';
 import { isPickable, stepsFromText } from '@/lib/menu-monster/scout-recipes';
+import { authoringOf, isSingleFood } from '@/lib/menu-monster/authoring';
 import { draftsMatching, type DraftItem } from '@/lib/menu-monster/draft-items';
 import { gearKey, gearText, mealRecipeGear, parseGear, recipeGear, sortGear, type GearItem } from '@/lib/menu-monster/gear';
 import { GearChips, GearPicker } from '../../_components/gear-picker';
+import { AddRow } from '../../_components/add-row';
 import { RECIPES_HREF } from '../../recipes/_components/paths';
 import { composePlan, mealCatalog, type EditOp, type Menu, type MenuMeal, type RecipeEdits } from '@/lib/menu-monster/menus';
 import { mealTitle, mealUnpricedItems, recipeShares } from '@/lib/menu-monster/menu-view';
@@ -134,6 +136,8 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
   /** The highlighted option; null = the default (the first match, or none when nothing matches). */
   const [active, setActive] = useState<number | null>(null);
   const [browsing, setBrowsing] = useState(false);
+  /** The meal's one add row: 'food' | 'gear' open, null resting, undefined = the default (open on a meal with no foods yet). */
+  const [rowOpen, setRowOpen] = useState<string | null | undefined>(undefined);
   /** The food typed in the search that the book doesn't have, while its "Add as a new food" panel is open. */
   const [newFood, setNewFood] = useState<string | null>(null);
   /** Brand choosers open in this meal, by `recipe:ingredient` (several stay open together — Patrick, 2026-10-03). */
@@ -187,6 +191,7 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
   const browseAt = matches.length + (addAt >= 0 ? 1 : 0);
   const act = Math.min(active ?? (matches.length > 0 ? 0 : -1), browseAt);
   const showList = listOpen;
+  const addOpen = rowOpen !== undefined ? rowOpen : meal.recipeIds.length === 0 ? 'food' : null;
   const swapping = swapId ? recipeName(swapId) : null;
   // No noun (Patrick, 2026-10-03): the list holds single foods and recipes alike; the results name themselves.
   const addLabel = swapping ? `Swap ${swapping} for` : `Add to ${mealTitle(menu.startDate, meal.day, meal.slot)}`;
@@ -252,6 +257,7 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
     const before = undoPoint();
     // A removed recipe takes this meal's edits to it along (sanitizeMenu would drop them anyway).
     change({ recipeIds: before.recipeIds.filter((x) => x !== id), recipeEdits: without(edits, id) });
+    if (before.recipeIds.length === 1) setRowOpen(undefined);
     setStatus({ text: `${recipeName(id)} removed.`, undoTo: before, focusUndo: true });
   }
 
@@ -286,6 +292,7 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
       });
     }
     setNewFood(null);
+    setRowOpen('food');
     requestAnimationFrame(() => inputRef.current?.focus());
   }
 
@@ -302,7 +309,8 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
       setStatus({ text: `${r.name} added.${brandNote(applySuggestions(r))}`, undoTo: null });
     }
     clearSearch();
-    inputRef.current?.focus();
+    setRowOpen('food');
+    requestAnimationFrame(() => inputRef.current?.focus());
   }
 
   function undo() {
@@ -361,7 +369,7 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
     const key = `${rid}:${ingredientId}`;
     const open = brandOpen.has(key);
     const chosen = brandSummary(picksOf(ingredientId), ingredientId, catalog);
-    const verb = chosen && chosen !== 'any brand' ? 'Change' : 'Choose a brand';
+    const verb = chosen && chosen !== 'any brand' ? 'Change' : 'Choose brand(s)';
     return {
       text: (
         <>
@@ -543,17 +551,9 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
           <span className={s.choiceLabel} aria-hidden="true">
             People for this meal
           </span>
-          <Stepper
-            id={`mm-people-${meal.id}`}
-            value={plan.headcount}
-            min={MIN_HEADCOUNT}
-            max={MAX_HEADCOUNT}
-            onChange={setPeople}
-            groupLabel={`${title} people`}
-            inputLabel={`${title} people`}
-            lessLabel="One fewer person"
-            moreLabel="One more person"
-          />
+          <span className={s.peopleBox}>
+            <NumberBox id={`mm-people-${meal.id}`} value={plan.headcount} min={MIN_HEADCOUNT} max={MAX_HEADCOUNT} onCommit={setPeople} ariaLabel={`${title} people`} />
+          </span>
           {plan.headcount !== menu.headcount && (
             <Button variant="ghost" onClick={() => setPeople(menu.headcount)}>
               Reset to {menu.headcount}
@@ -619,9 +619,23 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
                       {!readOnly && (
                         <span className={s.warnActions}>
                           {w.kind === 'unsuitable' ? (
-                            <button type="button" className={s.linkBtn} onClick={() => askAdd(id, w.restriction.key)}>
-                              Add something for {diet} scouts…
-                            </button>
+                            // A single food has no ingredient row to add to: the answer is another food on the meal.
+                            isSingleFood(authoringOf(w.recipe)) ? (
+                              <button
+                                type="button"
+                                className={s.linkBtn}
+                                onClick={() => {
+                                  setRowOpen('food');
+                                  requestAnimationFrame(() => inputRef.current?.focus());
+                                }}
+                              >
+                                Add a food for {diet} scouts…
+                              </button>
+                            ) : (
+                              <button type="button" className={s.linkBtn} onClick={() => askAdd(id, w.restriction.key)}>
+                                Add something for {diet} scouts…
+                              </button>
+                            )
                           ) : (
                             w.ingredientIds.map((ingId, k) => {
                               const ing = (w.ingredients[k] ?? ingId).toLowerCase();
@@ -647,16 +661,17 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
                   label={`More for ${name}`}
                   items={[
                     {
-                      label: 'Swap…',
+                      label: 'Swap for…',
                       onSelect: () => {
                         setSwapId(id);
-                        inputRef.current?.focus();
+                        setRowOpen('food');
+                        requestAnimationFrame(() => inputRef.current?.focus());
                       }
                     },
                     ...(edited > 0 ? [{ label: 'Back to the troop’s version', onSelect: () => backToTroop(id) }] : []),
                     // Phase 4C: a scout's saved version of a recipe can become a recipe of its own.
                     ...(edited > 0 && shareVersionMenuId
-                      ? [{ label: 'Share this version as a new recipe', href: `${RECIPES_HREF}/new?menu=${encodeURIComponent(shareVersionMenuId)}&meal=${encodeURIComponent(meal.id)}&recipe=${encodeURIComponent(id)}` }]
+                      ? [{ label: 'Share this version as a new recipe…', href: `${RECIPES_HREF}/new?menu=${encodeURIComponent(shareVersionMenuId)}&meal=${encodeURIComponent(meal.id)}&recipe=${encodeURIComponent(id)}` }]
                       : []),
                     { label: 'Remove', danger: true, onSelect: () => remove(id) }
                   ]}
@@ -670,12 +685,13 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
                       <StepsGear recipe={byId.get(id)} descriptions={gearNotes} />
                     </>
                   ) : (
-                    <>
+                    <div className={s.foodCard}>
                       <IngredientList
                         key={intent?.rid === id ? intent.n : 0}
                         mode="menu-edit"
                         restrictions={mealDiets}
                         initialIntent={intent?.rid === id ? intent : undefined}
+                        canAdd={!(byId.get(id) && isSingleFood(authoringOf(byId.get(id) as Recipe)))}
                         dense
                         ariaLabel={`${name} ingredients`}
                         rows={rowsFor(id)}
@@ -703,17 +719,53 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
                             : undefined
                         }
                       />
-                      <p className={s.foot}>Only this menu changes. The troop’s {name} recipe stays the same.</p>
                       <StepsGear recipe={byId.get(id)} descriptions={gearNotes} />
-                    </>
+                    </div>
                   )}
                 </div>
               )}
             </li>
           );
         })}
-        {!readOnly && (
-          <li className={s.addRow}>
+      </ul>
+      {browsing && (
+        <RecipeLibraryDialog catalog={catalog} menu={menu} meal={meal} swapping={swapping} onPick={pick} onClose={closeBrowse} />
+      )}
+
+      {(readOnly ? ownGear.length > 0 || foodGear.length > 0 : foodGear.length > 0 || (gearList != null && ownGear.length > 0)) ? (
+        <section className={s.mealGear} aria-label="More gear for this meal">
+          {foodGear.length > 0 && <GearList label="Gear for the foods" entries={foodGear} descriptions={gearNotes} />}
+          {readOnly ? (
+            ownGear.length > 0 && <GearList label="More gear for this meal" entries={ownGear} descriptions={gearNotes} />
+          ) : (
+            gearList != null && (
+              <>
+                <GearChips idPrefix={`${uid}-`} gear={ownGear} onChange={(next) => change({ gear: next.length > 0 ? next : undefined })} onAnnounce={(text) => setStatus({ text, undoTo: null })} />
+              </>
+            )
+          )}
+        </section>
+      ) : null}
+      {!readOnly && (
+        <AddRow
+          open={addOpen}
+          onOpenChange={(id, reason) => {
+            // The Browse popup and the new-food panel take focus from the search; a blur leaves the row up for them.
+            // Cancel / Esc is a discard: it closes the new-food panel with the row.
+            if (id === null && (browsing || (newFood !== null && reason === 'blur'))) return;
+            if (id === null) setNewFood(null);
+            setRowOpen(id);
+            if (id === null) {
+              clearSearch();
+              setSwapId(null);
+            }
+          }}
+          actions={[
+            {
+              id: 'food',
+              label: 'Food',
+              content: (
+                <>
             <div className={s.addWrap}>
               <input
                 ref={inputRef}
@@ -811,37 +863,32 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
                 onCancel={closeNewFood}
               />
             )}
-          </li>
-        )}
-      </ul>
-      {browsing && (
-        <RecipeLibraryDialog catalog={catalog} menu={menu} meal={meal} swapping={swapping} onPick={pick} onClose={closeBrowse} />
+                </>
+              )
+            },
+            ...(gearList != null
+              ? [
+                  {
+                    id: 'gear',
+                    label: 'Gear',
+                    content: (
+                      <GearPicker
+                        list={gearList}
+                        taken={ownGear}
+                        onPick={(name) => {
+                          change({ gear: sortGear([...ownGear, name]) });
+                          setStatus({ text: `${name} added to ${title}.`, undoTo: null });
+                        }}
+                        label={`More gear for ${title}`}
+                        placeholder="More gear for this meal"
+                      />
+                    )
+                  }
+                ]
+              : [])
+          ]}
+        />
       )}
-
-      {(readOnly ? ownGear.length > 0 : gearList != null) || foodGear.length > 0 ? (
-        <section className={s.mealGear} aria-label="More gear for this meal">
-          {foodGear.length > 0 && <GearList label="Gear for the foods" entries={foodGear} descriptions={gearNotes} />}
-          {readOnly ? (
-            ownGear.length > 0 && <GearList label="More gear for this meal" entries={ownGear} descriptions={gearNotes} />
-          ) : (
-            gearList != null && (
-              <>
-                <GearChips idPrefix={`${uid}-`} gear={ownGear}onChange={(next) => change({ gear: next.length > 0 ? next : undefined })} onAnnounce={(text) => setStatus({ text, undoTo: null })} />
-                <GearPicker
-                  list={gearList}
-                  taken={ownGear}
-                  onPick={(name) => {
-                    change({ gear: sortGear([...ownGear, name]) });
-                    setStatus({ text: `${name} added to ${title}.`, undoTo: null });
-                  }}
-                  label={`More gear for ${title}`}
-                  placeholder="More gear for this meal"
-                />
-              </>
-            )
-          )}
-        </section>
-      ) : null}
 
       <p className={status.text ? s.statusLine : s.srOnly} role="status">
         {status.text}

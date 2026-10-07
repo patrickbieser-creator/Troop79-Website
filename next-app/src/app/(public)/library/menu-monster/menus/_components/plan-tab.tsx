@@ -542,7 +542,7 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
                   <div className={s.dayHeadRow}>
                     <h3 className={s.dayHead}>{dayLabel(menu.startDate, d)}</h3>
                     {removable && !readOnly && (
-                      <RowMenu label={`More for Day ${d + 1}`} items={[{ label: 'Remove day', danger: true, onSelect: removeLastDay }]} />
+                      <RowMenu label={`More for Day ${d + 1}`} items={[{ label: 'Remove', danger: true, onSelect: removeLastDay }]} />
                     )}
                   </div>
                   <ul className={s.card}>
@@ -595,7 +595,7 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
                             ))}
                           <div className={s.cost}>{meal.recipeIds.length ? money(view === 'total' ? mealCost : mealCost / (meal.headcount ?? menu.headcount)) : ''}</div>
                           {!readOnly && (
-                            <RowMenu label={`More for Day ${d + 1} ${label.toLowerCase()}`} items={[{ label: 'Remove meal', danger: true, onSelect: () => removeMeal(meal.id, d) }]} />
+                            <RowMenu label={`More for Day ${d + 1} ${label.toLowerCase()}`} items={[{ label: 'Remove', danger: true, onSelect: () => removeMeal(meal.id, d) }]} />
                           )}
                           {open && (
                             <div id={panel} className={s.inset}>

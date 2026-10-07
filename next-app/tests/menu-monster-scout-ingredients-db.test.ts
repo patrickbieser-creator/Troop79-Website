@@ -1,5 +1,6 @@
 import { describe, it, expect, afterEach, beforeAll } from 'vitest';
 import { adminClient } from './helpers/admin-client';
+import { cleanupTypedIns } from './helpers/typed-in-cleanup';
 import { keepTypedInWith, listTypedInsWith, matchTypedInWith } from '../src/lib/menu-monster/scout-recipes-store';
 import { loadCatalogWith } from '../src/lib/menu-monster/catalog';
 
@@ -27,9 +28,29 @@ beforeAll(async () => {
 afterEach(async () => {
   await admin.from('mm_recipe_lines').delete().like('recipe_id', 'S-0000af%');
   await admin.from('mm_recipes').delete().like('id', 'S-0000af%');
-  await admin.from('mm_ingredients').update({ merged_into_id: null }).like('id', 'x-%');
-  await admin.from('mm_packages').delete().like('id', 'xp-%');
-  await admin.from('mm_ingredients').delete().like('id', 'x-%');
+  await cleanupTypedIns(admin);
+});
+
+describe('fixture hygiene', () => {
+  it('Cleanup_NeverTouchesAnotherScoutsTypedIn', async () => {
+    const ing = 'x-7e57ab1e';
+    const pkg = 'sp-7e57ab1e';
+    expect((await admin.from('mm_ingredients').insert({
+      id: ing, name: 'Real scout flour', unit_kind: 'weight', unit_key: 'ozw', unit_one: 'oz', unit_many: 'oz', section: 'dry',
+      added_by_person_id: OTHER, needs_match_at: new Date().toISOString()
+    })).error).toBeNull();
+    try {
+      const { error } = await admin.from('mm_packages').insert({ id: pkg, ingredient_id: ing, name: 'Real flour 5 lb', store: 'Pick n Save', yield: 1, price: 2, anchor_price: 2, added_by_person_id: OTHER });
+      expect(error).toBeNull();
+      await cleanupTypedIns(admin);
+      const { data: i } = await admin.from('mm_ingredients').select('id').eq('id', ing);
+      const { data: p } = await admin.from('mm_packages').select('id').eq('id', pkg);
+      expect({ ingredient: i!.length, package: p!.length }).toEqual({ ingredient: 1, package: 1 });
+    } finally {
+      await admin.from('mm_packages').delete().eq('id', pkg);
+      await admin.from('mm_ingredients').delete().eq('id', ing);
+    }
+  });
 });
 
 const typed = (over: Record<string, unknown> = {}) => ({

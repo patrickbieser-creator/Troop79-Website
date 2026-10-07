@@ -117,28 +117,49 @@ describe('IngredientList (menu-edit) — diets', () => {
     expect(screen.queryByText('except gluten-free')).toBeNull();
   });
 
+  it('IngredientAddRow_AtRest_IsALink_NoSearch', () => {
+    render(<Harness restrictions={GF2} />);
+    expect({ link: screen.queryByRole('button', { name: '+ Ingredient' }) != null, search: screen.queryByRole('combobox', { name: 'Add an ingredient to your version' }), scope: screen.queryByRole('combobox', { name: 'Add for' }) }).toEqual({ link: true, search: null, scope: null });
+  });
+
+  it('IngredientAddRow_Open_ShowsSearch_ScopeSelect_AndCancel', async () => {
+    const u = user();
+    render(<Harness restrictions={GF2} />);
+    await u.click(screen.getByRole('button', { name: '+ Ingredient' }));
+    expect({
+      search: screen.queryByRole('combobox', { name: 'Add an ingredient to your version' }) != null,
+      scope: screen.queryByRole('combobox', { name: 'Add for' }) != null,
+      cancel: screen.queryByRole('button', { name: 'Cancel' }) != null
+    }).toEqual({ search: true, scope: true, cancel: true });
+  });
+
   it('AddFor_DefaultsToEveryone_AndOffersOnlyDietsWithPeople', async () => {
+    const u = user();
     render(<Harness restrictions={{ gf: 2, nut: 0, dairy: 0, veg: 1 }} />);
+    await u.click(screen.getByRole('button', { name: '+ Ingredient' }));
     const select = screen.getByRole('combobox', { name: 'Add for' }) as HTMLSelectElement;
     expect(select.value).toBe('');
     expect(within(select).getAllByRole('option').map((o) => o.textContent)).toEqual(['Everyone', 'Gluten-free scouts', 'Vegetarian scouts']);
   });
 
-  it('AddFor_IsAbsent_WhenNobodyHasADiet', () => {
+  it('ScopeSelect_IsAbsent_WhenNobodyHasADiet', async () => {
     render(<Harness restrictions={NONE} />);
+    await user().click(screen.getByRole('button', { name: '+ Ingredient' }));
     expect(screen.queryByRole('combobox', { name: 'Add for' })).toBeNull();
   });
 
   it('AddedForGfScouts_IsARowJustForThem_AndRemoveTakesItAway', async () => {
     const u = user();
     render(<Harness restrictions={GF2} />);
+    await u.click(screen.getByRole('button', { name: '+ Ingredient' }));
     await u.selectOptions(screen.getByRole('combobox', { name: 'Add for' }), 'gf');
     await u.type(screen.getByRole('combobox', { name: 'Add an ingredient to your version' }), 'Gluten');
     await u.click(screen.getByRole('option', { name: 'Gluten-free bread' }));
     expect(screen.getByText('Gluten-free scouts only')).toBeTruthy();
-    // The choice goes back to Everyone for the next add.
+    // The row rests again, and the choice goes back to Everyone for the next add.
+    await u.click(screen.getByRole('button', { name: '+ Ingredient' }));
     expect((screen.getByRole('combobox', { name: 'Add for' }) as HTMLSelectElement).value).toBe('');
-    await u.keyboard('{Escape}');
+    await u.click(screen.getByRole('button', { name: 'Cancel' }));
     await u.click(more('Gluten-free bread'));
     await u.click(screen.getByRole('button', { name: 'Remove' }));
     expect(screen.queryByText('Gluten-free scouts only')).toBeNull();
@@ -170,6 +191,7 @@ describe('IngredientList (menu-edit) — diets', () => {
         )}
       />
     );
+    await u.click(screen.getByRole('button', { name: '+ Ingredient' }));
     await u.selectOptions(screen.getByRole('combobox', { name: 'Add for' }), 'gf');
     await u.type(screen.getByRole('combobox', { name: 'Add an ingredient to your version' }), 'Kool-Aid');
     await u.click(screen.getByRole('option', { name: 'Add “Kool-Aid” as a new ingredient' }));
@@ -180,6 +202,7 @@ describe('IngredientList (menu-edit) — diets', () => {
   it('AnAddForEveryone_HasNoScopeMarker', async () => {
     const u = user();
     render(<Harness restrictions={GF2} />);
+    await u.click(screen.getByRole('button', { name: '+ Ingredient' }));
     await u.type(screen.getByRole('combobox', { name: 'Add an ingredient to your version' }), 'Gluten');
     await u.click(screen.getByRole('option', { name: 'Gluten-free bread' }));
     expect(screen.queryByText('Gluten-free scouts only')).toBeNull();
@@ -192,6 +215,13 @@ describe('IngredientList (menu-edit) — diets', () => {
     expect(screen.getByText('no gluten-free scouts on this meal')).toBeTruthy();
     const li = screen.getByText('Gluten-free bread').closest('li') as HTMLElement;
     expect(li.className).toMatch(/rowOut/);
+  });
+
+  it('IngredientMenu_Order_IsChangeSwapDietsLeaveOutBack', async () => {
+    const u = user();
+    render(<Harness restrictions={GF2} initial={[{ op: 'amount', ingredientId: 'bread', qtyPerPerson: 3 }]} />);
+    await u.click(more('Bread'));
+    expect(itemNames().filter((n) => n !== '⋯' && n !== '+ Ingredient')).toEqual(['Change amount', 'Swap for…', 'Swap for gluten-free scouts…', 'Leave out for gluten-free scouts', 'Leave out', 'Back to the troop amount']);
   });
 
   it('BackToTheTroopsIngredient_OnAScopedSwapRow_DropsBothRows', async () => {
@@ -274,18 +304,20 @@ describe('MealPanel — the diet warning has an answer', () => {
     expect(saved.meals[0].recipeEdits).toEqual({ L001: [{ op: 'leave_out', ingredientId: 'bread', for: 'gf' }] });
   });
 
-  it('NotSuitableWarning_OffersToAddSomethingForThoseScouts_WithTheAddChoiceSet', async () => {
+  it('AddSomethingForGfScouts_OpensTheRow_WithGfPreselected', async () => {
     const u = user();
     const unsuitable = mapCatalog({
       ...ROWS,
       ingredients: [...ROWS.ingredients, gfBreadRow],
       packages: [...ROWS.packages, gfBreadPkg],
+      // A second line makes the sandwich a recipe (a single food has no add row).
+      lines: [...ROWS.lines, { ...ROWS.lines[7], id: 9002, position: 2, ingredient_id: 'eggs' }],
       variations: [{ recipe_id: 'L001', restriction: 'gf', state: 'unsuitable', note: null, updated_at: '2026-09-08T00:00:00Z' }],
       variationLines: []
     });
     render(<PlanTab catalog={unsuitable} menuId="menu-1" menu={menu()} updatedAt={VERSION} outings={[]} openMeal="m1" />);
     await u.click(panel().getByRole('button', { name: 'Add something for gluten-free scouts…' }));
-    expect((panel().getByRole('combobox', { name: 'Add for' }) as HTMLSelectElement).value).toBe('gf');
+    expect({ scope: (panel().getByRole('combobox', { name: 'Add for' }) as HTMLSelectElement).value, searchOpen: panel().queryByRole('combobox', { name: 'Add an ingredient to your version' }) != null }).toEqual({ scope: 'gf', searchOpen: true });
   });
 
   it('Warning_HasNoAnswers_OnAReadOnlyMeal', () => {

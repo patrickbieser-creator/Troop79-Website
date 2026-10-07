@@ -20,7 +20,7 @@ import { useLeaveGuard } from '@/lib/use-leave-guard';
 import { Button } from '@/app/_components/button';
 import { Field, FieldProblem, SaveProblem, TextInput } from '@/app/_components/form';
 import { Notice } from '@/app/_components/notice';
-import { Stepper } from '@/app/_components/stepper';
+import { NumberBox } from '@/app/_components/stepper';
 import type { Catalog, FoodGroup, MealSlot } from '@/lib/menu-monster/types';
 import { FOOD_GROUPS, MEALS } from '@/lib/menu-monster/units';
 import { MAX_HEADCOUNT, MIN_HEADCOUNT } from '@/lib/menu-monster/engine';
@@ -37,6 +37,7 @@ import { GearChips, GearPicker } from '../../_components/gear-picker';
 import { RowMenu } from '../../menus/_components/row-menu';
 import { SaveBar } from '../../menus/_components/save-bar';
 import w from '../../menus/_components/workspace.module.css';
+import c from '../../menus/_components/whos-eating.module.css';
 import s from './recipe-editor.module.css';
 import { NewIngredientForm } from './new-ingredient-form';
 import { overlayNewIngredients, type NewIngredient } from '@/lib/menu-monster/scout-ingredients';
@@ -360,7 +361,10 @@ export function RecipeEditor({ catalog, id: initialId, initial, status: initialS
                 </div>
               </div>
               <div className={w.line}>
-                <Stepper id="re-people" label="People" value={people} min={MIN_HEADCOUNT} max={MAX_HEADCOUNT} onChange={setPeople} groupLabel="People" lessLabel="One fewer person" moreLabel="One more person" />
+                <label htmlFor="re-people">People</label>
+                <span className={c.box}>
+                  <NumberBox id="re-people" value={people} min={MIN_HEADCOUNT} max={MAX_HEADCOUNT} onCommit={setPeople} />
+                </span>
               </div>
               <div className={noteFor('lines') ? `${s.listCard} ${s.listBad}` : s.listCard} data-field="lines">
                 <IngredientList

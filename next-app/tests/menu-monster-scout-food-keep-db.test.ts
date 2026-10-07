@@ -1,5 +1,6 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { adminClient } from './helpers/admin-client';
+import { cleanupTypedIns } from './helpers/typed-in-cleanup';
 
 /**
  * A scout's single food ("Hot chocolate", typed in on the public meal planner) is private to its author, so the
@@ -34,8 +35,7 @@ afterEach(async () => {
   }
   await admin.from('mm_recipe_lines').delete().like('recipe_id', 'S-0000b0%');
   await admin.from('mm_recipes').delete().like('id', 'S-0000b0%');
-  await admin.from('mm_packages').delete().like('id', 'xp-%');
-  await admin.from('mm_ingredients').update({ merged_into_id: null }).like('id', 'x-%');
+  await cleanupTypedIns(admin);
   const { data: made } = await admin.from('mm_ingredients').select('id').ilike('name', 'Vitest scoutfood%');
   const madeIds = ((made ?? []) as { id: string }[]).map((i) => i.id);
   if (madeIds.length) {

@@ -339,6 +339,12 @@
 .mealPanel { padding: var(--sp-2) 0 var(--sp-1) var(--sp-3); border-left: 2px solid var(--rule); margin-left: var(--sp-1); }
 .mealPanel .card { background: transparent; border: 0; box-shadow: none; }
 .mealPanel .inset { padding-right: 0; }
+/* An open food closes visibly (Plans/Menu-Monster-Add-Pattern.md, Decision 1): its ingredients sit in a card edge,
+   so the meal-level add row that follows reads as the meal's, not the food's. */
+.foodCard { margin: var(--sp-1) 0 var(--sp-2); padding: var(--sp-2) var(--sp-4); border: 1px solid var(--rule); border-radius: var(--rad-md); }
+/* The meal's People: a plain number box (Decision 8). The unframed NumberBox fills it, minus its stepper-side dividers. */
+.peopleBox { display: inline-block; width: 4.5em; height: 32px; border: 1px solid var(--border-mid); border-radius: var(--rad-sm); overflow: hidden; }
+.peopleBox input { border-left: none; border-right: none; }
 .mealPanel .mealPeople { margin-bottom: var(--sp-2); flex-wrap: wrap; }
 /* A diet warning under a recipe row, full width (ported from the retired planner). */
 .mealWarn { flex-basis: 100%; margin: 0 0 var(--sp-2); }

@@ -218,7 +218,7 @@ describe('PlanTab', () => {
     const user = userEvent.setup();
     render(existing());
     await user.click(screen.getByRole('button', { name: 'More for Day 1 breakfast' }));
-    await user.click(screen.getByRole('button', { name: 'Remove meal' }));
+    await user.click(screen.getByRole('button', { name: 'Remove' }));
     expect(screen.queryByText('Bacon')).toBeNull();
   });
 
@@ -226,7 +226,7 @@ describe('PlanTab', () => {
     const user = userEvent.setup();
     render(existing());
     await user.click(screen.getByRole('button', { name: 'More for Day 1 breakfast' }));
-    await user.click(screen.getByRole('button', { name: 'Remove meal' }));
+    await user.click(screen.getByRole('button', { name: 'Remove' }));
     await new Promise((r) => requestAnimationFrame(() => r(null)));
     expect(document.activeElement?.id).toBe('mm-add-0');
   });
@@ -264,9 +264,9 @@ describe('PlanTab', () => {
   it('Day_EmptyLastDay_CanBeRemoved', async () => {
     const user = userEvent.setup();
     render(existing());
-    expect(screen.queryByRole('button', { name: 'Remove day' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Remove' })).toBeNull();
     await user.click(screen.getByRole('button', { name: 'More for Day 2' }));
-    await user.click(screen.getByRole('button', { name: 'Remove day' }));
+    await user.click(screen.getByRole('button', { name: 'Remove' }));
     expect(screen.getAllByRole('heading', { level: 3 }).length).toBe(1);
   });
 
@@ -602,7 +602,9 @@ describe('PlanTab planner flow, this week (2026-10-06)', () => {
     it('MealPage_Edited_OffersSaveAndCancel_AndSaveIsDirtyGated', async () => {
       render(page());
       expect(screen.queryByRole('button', { name: 'Save changes' })).toBeNull();
-      await userEvent.setup().click(screen.getByRole('button', { name: 'One more person' }));
+      const u = userEvent.setup();
+      await u.clear(screen.getByRole('spinbutton', { name: / people$/ }));
+      await u.type(screen.getByRole('spinbutton', { name: / people$/ }), '9');
       expect((screen.getByRole('button', { name: 'Save changes' }) as HTMLButtonElement).disabled).toBe(false);
       expect(screen.getByRole('button', { name: 'Cancel' })).toBeTruthy();
     });
@@ -611,7 +613,8 @@ describe('PlanTab planner flow, this week (2026-10-06)', () => {
       saveMenuAction.mockResolvedValue({ ok: true, updatedAt: '2026-10-02T13:00:00.000Z' });
       const user = userEvent.setup();
       render(page());
-      await user.click(screen.getByRole('button', { name: /^One more/ }));
+      await user.clear(screen.getByRole('spinbutton', { name: / people$/ }));
+      await user.type(screen.getByRole('spinbutton', { name: / people$/ }), '9');
       await user.click(screen.getByRole('button', { name: 'Save changes' }));
       expect(saveMenuAction).toHaveBeenCalledWith('menu-1', expect.objectContaining({ name: 'Camporee food' }), VERSION);
       expect(await screen.findByRole('link', { name: 'Done' })).toBeTruthy();
@@ -621,7 +624,8 @@ describe('PlanTab planner flow, this week (2026-10-06)', () => {
     it('MealPage_Cancel_DiscardsTheEdit_AndGoesBack', async () => {
       const user = userEvent.setup();
       render(page());
-      await user.click(screen.getByRole('button', { name: /^One more/ }));
+      await user.clear(screen.getByRole('spinbutton', { name: / people$/ }));
+      await user.type(screen.getByRole('spinbutton', { name: / people$/ }), '9');
       await user.click(screen.getByRole('button', { name: 'Cancel' }));
       expect(router.push).toHaveBeenCalledWith(BACK);
       expect(saveMenuAction).not.toHaveBeenCalled();

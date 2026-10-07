@@ -231,6 +231,7 @@ describe('LocalPlan, the troop lists a visitor can read (2026-10-06)', () => {
     put();
     const gearList = [{ id: 1, name: 'Dish soap', home: 'trailer' as const, perPerson: false, retiredAt: null }];
     render(<LocalPlan catalog={CATALOG} outings={[]} openMeal={MEAL_ID} gearList={gearList} />);
+    await userEvent.setup().click(await screen.findByRole('button', { name: '+ Gear' }));
     expect(await screen.findByRole('combobox', { name: /^More gear for/ })).toBeTruthy();
   });
 
@@ -246,7 +247,9 @@ describe('LocalPlan, the troop lists a visitor can read (2026-10-06)', () => {
     const draftItems = [{ id: 'cookies', name: 'Cookies', mealFit: ['breakfast' as const] }];
     render(<LocalPlan catalog={CATALOG} outings={[]} openMeal={MEAL_ID} draftItems={draftItems} />);
     const user = userEvent.setup();
-    const box = within(document.getElementById(`mm-meal-${MEAL_ID}`) as HTMLElement).getByRole('combobox');
+    const inMeal = within(document.getElementById(`mm-meal-${MEAL_ID}`) as HTMLElement);
+    await user.click(inMeal.getByRole('button', { name: '+ Food' }));
+    const box = inMeal.getByRole('combobox');
     await user.click(box);
     await user.type(box, 'cookies');
     expect(await screen.findByText(/^Cookies is a draft in the troop’s list — a leader can publish it\.$/)).toBeTruthy();

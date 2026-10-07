@@ -11,7 +11,7 @@
  *   Back to the troop amount / Back to <troop ingredient>
  *   Remove           (rows the scout added)
  *
- * and a dashed "Add an ingredient" search at the end. The list holds only its
+ * and a "+ Ingredient" AddRow at the end (its search, with the diet scope beside it, opens in place). The list holds only its
  * own UI state (which row is being edited, focus); every change is reported as
  * a RowAction and the parent turns it into ops (ingredient-rows.ts op builders)
  * and hands back new rows — the shared recipe never changes. Changed rows show
@@ -39,6 +39,7 @@ import { idleLabel, scopeLabel, type IngredientRow } from '@/lib/menu-monster/in
 import { SelectInput } from '@/app/_components/form';
 import { RowMenu, type RowMenuItem } from '../menus/_components/row-menu';
 import { IngredientSearch, type IngredientChoice } from './ingredient-search';
+import { AddRow } from './add-row';
 import s from './ingredient-list.module.css';
 
 /** What a row's ⋯, amount box or search asked for. The parent builds the ops. */
@@ -77,6 +78,8 @@ export interface MenuEditProps {
   restrictions?: Record<RestrictionKey, number>;
   /** Open on a diet's swap search (or the add search set to that diet) — the answer a warning offers. */
   initialIntent?: ListIntent;
+  /** False = no "+ Ingredient" row at all: a single food holds only its one line (Add-Pattern Decision 7). Default true. */
+  canAdd?: boolean;
 }
 
 const MAX_QTY = 1000;
@@ -229,9 +232,12 @@ export function AmountEditor({
 
 const dietLower = (k: RestrictionKey) => RESTRICTION_BY_KEY[k].label.toLowerCase();
 
-export function MenuEditList({ rows, ariaLabel, emptyText = 'No ingredients.', choices, onAction, onAnnounce, renderNew, dense = false, brandSlot, restrictions, initialIntent }: MenuEditProps) {
+export function MenuEditList({ rows, ariaLabel, emptyText = 'No ingredients.', choices, onAction, onAnnounce, renderNew, dense = false, brandSlot, restrictions, initialIntent, canAdd = true }: MenuEditProps) {
   const listRef = useRef<HTMLUListElement>(null);
   const addRef = useRef<HTMLInputElement>(null);
+  const addWrapRef = useRef<HTMLDivElement>(null);
+  /** The add row: 'ingredient' while its search is open, null at rest. A warning's "Add something for <diet> scouts…" mounts it open. */
+  const [addOpen, setAddOpen] = useState<string | null>(initialIntent?.kind === 'add' && canAdd ? 'ingredient' : null);
   const [editing, setEditing] = useState<string | null>(null);
   const [newName, setNewName] = useState<string | null>(null);
   const [swapping, setSwapping] = useState<{ key: string; scope?: RestrictionKey } | null>(() => {
@@ -258,9 +264,16 @@ export function MenuEditList({ rows, ariaLabel, emptyText = 'No ingredients.', c
         return;
       }
     }
-    addRef.current?.focus();
+    // 'add': the open search's input, or at rest the "+ Ingredient" link (the row is not opened for the scout).
+    addWrapRef.current?.querySelector<HTMLElement>('input, button')?.focus();
     setFocusReq(null);
   }, [focusReq]);
+
+  // A warning's "Add something for <diet> scouts…" remounts the list with the row already open: put the cursor in it.
+  useEffect(() => {
+    if (initialIntent?.kind === 'add' && canAdd) addRef.current?.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount only
+  }, []);
 
   // Ingredients already in this recipe (as shown now) are not offered again.
   const inUse = new Set(rows.map((r) => r.edit?.currentIngredientId).filter(Boolean));
@@ -313,26 +326,8 @@ export function MenuEditList({ rows, ariaLabel, emptyText = 'No ingredients.', c
     }
     const items: RowMenuItem[] = [
       change,
-      { label: e.op === 'swap' ? 'Swap for something else…' : 'Swap for…', onSelect: () => { setEditing(null); setSwapping({ key: r.key }); } },
-      {
-        label: 'Leave out',
-        onSelect: () => {
-          onAction({ type: 'leave_out', key: r.key });
-          onAnnounce(`${r.name} left out of your version.`);
-          setFocusReq(r.key);
-        }
-      }
+      { label: e.op === 'swap' ? 'Swap for something else…' : 'Swap for…', onSelect: () => { setEditing(null); setSwapping({ key: r.key }); } }
     ];
-    if (e.op === 'amount' || e.op === 'swap') {
-      items.push({
-        label: e.op === 'swap' ? `Back to ${e.baseName ?? 'the troop ingredient'}` : 'Back to the troop amount',
-        onSelect: () => {
-          onAction({ type: 'reset', key: r.key });
-          onAnnounce(e.op === 'swap' ? `Back to ${e.baseName} from the troop recipe.` : `${r.name} is back to the troop amount.`);
-          setFocusReq(r.key);
-        }
-      });
-    }
     if (e.scopable) {
       for (const d of diets) {
         if (e.recipeOut?.includes(d.key)) continue; // the troop's recipe already leaves it out for them
@@ -358,6 +353,24 @@ export function MenuEditList({ rows, ariaLabel, emptyText = 'No ingredients.', c
           });
         }
       }
+    }
+    items.push({
+      label: 'Leave out',
+      onSelect: () => {
+        onAction({ type: 'leave_out', key: r.key });
+        onAnnounce(`${r.name} left out of your version.`);
+        setFocusReq(r.key);
+      }
+    });
+    if (e.op === 'amount' || e.op === 'swap') {
+      items.push({
+        label: e.op === 'swap' ? `Back to ${e.baseName ?? 'the troop ingredient'}` : 'Back to the troop amount',
+        onSelect: () => {
+          onAction({ type: 'reset', key: r.key });
+          onAnnounce(e.op === 'swap' ? `Back to ${e.baseName} from the troop recipe.` : `${r.name} is back to the troop amount.`);
+          setFocusReq(r.key);
+        }
+      });
     }
     return items;
   }
@@ -449,48 +462,74 @@ export function MenuEditList({ rows, ariaLabel, emptyText = 'No ingredients.', c
           );
         })}
       </ul>
-      <div className={s.addRow}>
-        {diets.length > 0 && (
-          <div className={s.forRow}>
-            <label htmlFor={addForId} className={s.forLabel}>
-              Add for
-            </label>
-            <SelectInput id={addForId} className={s.forSelect} value={addFor} onChange={(ev) => setAddFor(ev.target.value as RestrictionKey | '')}>
-              <option value="">Everyone</option>
-              {diets.map((d) => (
-                <option key={d.key} value={d.key}>
-                  {d.label} scouts
-                </option>
-              ))}
-            </SelectInput>
-          </div>
-        )}
-        <IngredientSearch
-          inputRef={addRef}
-          label="Add an ingredient to your version"
-          placeholder="Add an ingredient — search the troop’s ingredients"
-          choices={free}
-          onPick={(c) => {
-            setNewName(null);
-            const scope = addFor || undefined;
-            onAction({ type: 'add', ingredientId: c.id, ...(scope ? { scope } : {}) });
-            onAnnounce(`${c.name} added to your version${scope ? ` for ${dietLower(scope)} scouts` : ''}. Set how much each person needs.`);
-            setEditing(scope ? `add:${scope}:${c.id}` : `add:${c.id}`);
-            setAddFor('');
-          }}
-          onNew={renderNew ? (name) => setNewName(name) : undefined}
-        />
-        {newName != null &&
-          renderNew?.(
-            newName,
-            (id) => {
-              setNewName(null);
-              if (id) setEditing(`add:${id}`);
-              else setFocusReq('add');
-            },
-            addFor || undefined
-          )}
-      </div>
+      {canAdd && (
+        <div ref={addWrapRef}>
+          <AddRow
+            open={addOpen}
+            onOpenChange={(id, reason) => {
+              // A typed-in new food's form stays up below the row on a blur; Cancel / Esc discards it with the row.
+              if (id === null && newName != null) {
+                if (reason === 'blur') return;
+                setNewName(null);
+              }
+              setAddOpen(id);
+              if (id === null) setAddFor('');
+            }}
+            trailing={
+              diets.length > 0 ? (
+                <span className={s.addFor}>
+                  <span aria-hidden="true">for</span>
+                  <SelectInput id={addForId} className={s.forSelect} aria-label="Add for" value={addFor} onChange={(ev) => setAddFor(ev.target.value as RestrictionKey | '')}>
+                    <option value="">Everyone</option>
+                    {diets.map((d) => (
+                      <option key={d.key} value={d.key}>
+                        {d.label} scouts
+                      </option>
+                    ))}
+                  </SelectInput>
+                </span>
+              ) : undefined
+            }
+            actions={[
+              {
+                id: 'ingredient',
+                label: 'Ingredient',
+                content: (
+                  <IngredientSearch
+                    inputRef={addRef}
+                    label="Add an ingredient to your version"
+                    placeholder="Add an ingredient — search the troop’s ingredients"
+                    choices={free}
+                    onPick={(c) => {
+                      setNewName(null);
+                      const scope = addFor || undefined;
+                      onAction({ type: 'add', ingredientId: c.id, ...(scope ? { scope } : {}) });
+                      onAnnounce(`${c.name} added to your version${scope ? ` for ${dietLower(scope)} scouts` : ''}. Set how much each person needs.`);
+                      setEditing(scope ? `add:${scope}:${c.id}` : `add:${c.id}`);
+                      setAddFor('');
+                      setAddOpen(null);
+                    }}
+                    onNew={renderNew ? (name) => setNewName(name) : undefined}
+                  />
+                )
+              }
+            ]}
+          />
+          {newName != null &&
+            renderNew?.(
+              newName,
+              (id) => {
+                setNewName(null);
+                if (id) {
+                  setEditing(`add:${id}`);
+                  setAddOpen(null);
+                  setAddFor('');
+                } else setFocusReq('add');
+              },
+              addFor || undefined
+            )}
+        </div>
+      )}
     </div>
   );
 }

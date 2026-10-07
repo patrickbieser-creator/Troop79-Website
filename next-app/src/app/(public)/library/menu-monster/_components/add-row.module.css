@@ -1,0 +1,44 @@
+/* AddRow: quiet links at rest, the caller's search when opened, a quiet Cancel at the right end. Public tokens only. */
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: 44px;
+  padding: var(--sp-1) 0;
+  border-top: 1px solid var(--rule);
+}
+.links { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-4); }
+.link {
+  font-family: var(--font-ui);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--navy);
+  background: none;
+  border: none;
+  padding: 0 var(--sp-1);
+  min-height: 44px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.link:hover { color: var(--forest); text-decoration: underline; text-underline-offset: 2px; }
+.link:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+/* The opened search takes the row; extra controls and Cancel keep their own width at the right. */
+.content { flex: 1 1 120px; min-width: 0; }
+.trailing { flex: none; }
+.cancel {
+  flex: none;
+  margin-left: auto;
+  font-family: var(--font-ui);
+  font-size: var(--fs-md);
+  color: var(--text-meta);
+  background: none;
+  border: none;
+  padding: 0 var(--sp-1);
+  min-height: 44px;
+  cursor: pointer;
+}
+.cancel:hover { color: var(--status-danger); }
+.cancel:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+@media (max-width: 480px) {
+  .row { gap: var(--sp-2); }
+}

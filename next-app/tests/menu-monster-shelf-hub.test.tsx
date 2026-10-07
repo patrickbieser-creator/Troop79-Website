@@ -245,7 +245,7 @@ describe('MenuMonsterShelfTool hub, visitor', () => {
     await shelf();
     expect(await screen.findByLabelText('Menu name')).toBeTruthy();
     expect(screen.getByText('Where you’re cooking')).toBeTruthy();
-    expect(screen.getByRole('group', { name: 'People' })).toBeTruthy();
+    expect(screen.getByRole('spinbutton', { name: 'People' })).toBeTruthy();
   });
 
   it('Visitor_SeesSaveOnThisComputer_OnALocalMenu', async () => {

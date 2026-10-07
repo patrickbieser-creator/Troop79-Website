@@ -255,22 +255,32 @@ describe('PeopleTab — Who’s eating on its own screen', () => {
     expect(num(/^People/).value).toBe('2');
   });
 
-  it('Dialers_ReadPeopleThenDietsInTheApprovedOrder', () => {
-    // Every diet above zero, so every dialer shows (a diet at zero is behind "Add a diet…").
-    render(existing(base({ restrictions: { gf: 1, nut: 1, dairy: 1, veg: 1 } })));
-    const names = screen.getAllByRole('spinbutton').map((e) => e.getAttribute('id'));
-    const labels = names.map((id) => document.querySelector(`label[for="${id}"]`)?.textContent);
-    expect(labels.slice(0, 5)).toEqual(['People:', 'Gluten-free:', 'Vegetarian:', 'Nut-free:', 'Dairy-free:']);
+  it('WhosEating_People_IsANumberBox_NotAStepper', () => {
+    render(existing());
+    expect([num(/^People/).type, screen.queryByRole('button', { name: /One (more|fewer) person/ }), screen.queryByRole('group', { name: 'People' })]).toEqual(['number', null, null]);
   });
 
-  it('Dialers_ShareOneRow_WithNoSeparatorDotsOrNestedLines', () => {
+  it('WhosEating_EachDiet_IsANumberBox_WithItsLabel', () => {
+    render(existing(base({ restrictions: { gf: 1, nut: 1, dairy: 1, veg: 1 } })));
+    // Every diet above zero, so every box shows (a diet at zero is behind "Add a diet…"); People first, then the approved order.
+    const labels = screen.getAllByRole('spinbutton').map((e) => document.querySelector(`label[for="${e.getAttribute('id')}"]`)?.textContent);
+    expect([labels.slice(0, 5), screen.queryByRole('button', { name: /One (more|fewer)/ })]).toEqual([['People', 'Gluten-free', 'Vegetarian', 'Nut-free', 'Dairy-free'], null]);
+  });
+
+  it('WhosEating_TypingAHeadcount_CommitsOnBlur', async () => {
+    render(existing());
+    await typeInto(num(/^People/), '12');
+    expect(summary().textContent).toMatch(/^12 people/);
+  });
+
+  it('Dialers_ShareOneColumn_OneRowPerCount_WithNoSeparatorDots', () => {
     render(existing(base({ restrictions: { gf: 1, nut: 1, dairy: 0, veg: 0 } })));
-    const row = num(/^People/).closest('div[class*="dialers"]') as HTMLElement;
-    expect(row).toBeTruthy();
-    // People, Gluten-free, Nut-free steppers and "Add a diet" are direct children: one flex row, nothing wrapping a pair.
-    expect(row.textContent).not.toContain('·');
-    expect(Array.from(row.children).every((c) => c.querySelector('[class*="line"]') == null)).toBe(true);
-    expect(row.children.length).toBe(4);
+    const list = num(/^People/).closest('div[class*="rows"]') as HTMLElement;
+    expect(list).toBeTruthy();
+    // People, Gluten-free, Nut-free rows and "Add a diet" are direct children; each row holds its label and its one box.
+    expect(list.textContent).not.toContain('·');
+    expect(list.children.length).toBe(4);
+    expect(Array.from(list.children).slice(0, 3).every((r) => r.querySelectorAll('input').length === 1 && r.querySelectorAll('label').length === 1)).toBe(true);
   });
 
   it('Context_IsASelect', () => {
@@ -461,7 +471,7 @@ describe('PeopleTab — Who’s eating on its own screen', () => {
     it('Rail_FollowsTheUnsavedDraft_AndSaysUnsaved', async () => {
       render(existing());
       expect(screen.queryByText('unsaved')).toBeNull();
-        await userEvent.setup().click(screen.getByRole('button', { name: 'One more person' }));
+      await typeInto(num(/^People/), '9');
       expect(summary().textContent).toMatch(/^9 people/);
       expect(screen.getByText('unsaved')).toBeTruthy();
     });
@@ -469,7 +479,7 @@ describe('PeopleTab — Who’s eating on its own screen', () => {
     it('Rail_GoesBackToSaved_AndUnsavedGoes_AfterDiscard', async () => {
       const user = userEvent.setup();
       render(existing());
-        await user.click(screen.getByRole('button', { name: 'One more person' }));
+      await typeInto(num(/^People/), '9');
       await user.click(screen.getByRole('button', { name: 'Discard changes' }));
       expect(summary().textContent).toMatch(/^8 people/);
       expect(screen.queryByText('unsaved')).toBeNull();

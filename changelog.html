@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>October 7, 2026</strong> &nbsp;&middot;&nbsp; v1.198.2</p>
+      <p>Last updated: <strong>October 7, 2026</strong> &nbsp;&middot;&nbsp; v1.199.0</p>
     </div>
   </div>
 
@@ -494,6 +494,28 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.199.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.199.0</span>
+        <span class="release-date">October 7, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Improved</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Menu Monster: one way to add, at every level</p>
+        <ul class="change-list">
+          <li><span><strong>One quiet add row per list.</strong> A meal ends in <strong>+ Food&nbsp; + Gear</strong>; a recipe open on the menu ends in <strong>+ Ingredient</strong>; the recipe editor&rsquo;s ingredient list ends the same way. Tapping a link opens the search in its place, with a visible <strong>Cancel</strong> at the row&rsquo;s end that puts the links back (Esc and leaving an empty box do the same). The four look-alike dashed boxes that used to stack under an open food are gone. A brand-new empty meal opens its food search straight away.</span></li>
+          <li><span><strong>An open food is a card.</strong> Its ingredient lines, their menus and its add row sit inside a visible edge, so the meal&rsquo;s own rows plainly start again below it. The grey &ldquo;Only this menu changes&hellip;&rdquo; line under it is gone &mdash; the card says it.</span></li>
+          <li><span><strong>&ldquo;For whom&rdquo; sits where you add.</strong> The diet-scope choice (<em>for Everyone / for gluten-free scouts&hellip;</em>) now lives inside the + Ingredient row, at its right end, because a restriction usually surfaces only after a food is already on the list. It still appears only when the meal has diets.</span></li>
+          <li><span><strong>A single food has no + Ingredient.</strong> Chips is one line; a second ingredient would make it a recipe. Its diet swaps and leave-outs live in the line&rsquo;s &hellip; menu, and another food goes on the meal through + Food.</span></li>
+          <li><span><strong>Plain number boxes</strong> replace the &minus;&nbsp;n&nbsp;+ dialers for People and each diet on Who&rsquo;s eating, for a meal&rsquo;s own People, and for the recipe editor&rsquo;s People. Event sign-up keeps its dialers.</span></li>
+          <li><span><strong>The &hellip; menus read the same at every level:</strong> edit first, swaps and diet changes next, &ldquo;Back to the troop&rsquo;s &hellip;&rdquo; after, <strong>Remove</strong> last. &ldquo;Swap&hellip;&rdquo; is now &ldquo;Swap for&hellip;&rdquo;; &ldquo;Remove meal&rdquo; and &ldquo;Remove day&rdquo; are &ldquo;Remove&rdquo; (the menu already names what it is for); &ldquo;Leave out for &lt;diet&gt; scouts&rdquo; keeps its own verb.</span></li>
+          <li><span><strong>&ldquo;Choose brand(s)&rdquo;</strong> replaces &ldquo;Choose a brand&rdquo; &mdash; a menu may name several brands for one ingredient, and the label no longer suggests otherwise.</span></li>
+          <li><span><strong>Tests:</strong> the Menu Monster database tests&rsquo; clean-up now removes only the rows a test created. It used to sweep every <code>x-</code> ingredient, which is also the id shape of a scout&rsquo;s real typed-in; the first real one mirrored into the local database blocked the sweep and 41 tests fell over. A guard test now proves another scout&rsquo;s typed-in survives a run. Four more tests had quietly leaned on production seed data that has since moved (a priced ingredient, renamed gear) and now make their own fixtures or accept the drift.</span></li>
+        </ul>
       </div>
     </div>
 

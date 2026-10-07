@@ -109,14 +109,23 @@ describe('IngredientList author mode', () => {
     expect(onAction).toHaveBeenCalledWith({ type: 'amount', ingredientId: 'b', qtyPerPerson: 0.25, scale: 'meal' });
   });
 
+  it('Author_AddRow_OpensTheSearch', async () => {
+    const { user } = setup();
+    const before = screen.queryByRole('combobox', { name: 'Add an ingredient' });
+    await user.click(screen.getByRole('button', { name: '+ Ingredient' }));
+    expect({ before, after: screen.queryByRole('combobox', { name: 'Add an ingredient' }) != null, cancel: screen.queryByRole('button', { name: 'Cancel' }) != null }).toEqual({ before: null, after: true, cancel: true });
+  });
+
   it('Search_OffersOnlyIngredientsNotAlreadyInTheRecipe', async () => {
     const { user } = setup();
+    await user.click(screen.getByRole('button', { name: '+ Ingredient' }));
     await user.type(screen.getByRole('combobox', { name: 'Add an ingredient' }), 'e');
     expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Cheddar']);
   });
 
   it('Search_ReportsTheAddedIngredient', async () => {
     const { user, onAction } = setup();
+    await user.click(screen.getByRole('button', { name: '+ Ingredient' }));
     await user.type(screen.getByRole('combobox', { name: 'Add an ingredient' }), 'ched');
     await user.click(screen.getByRole('option', { name: 'Cheddar' }));
     expect(onAction).toHaveBeenCalledWith({ type: 'add', ingredientId: 'd' });

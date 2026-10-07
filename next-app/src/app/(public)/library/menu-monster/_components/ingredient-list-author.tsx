@@ -8,7 +8,7 @@
  *   a grip            drag, or the up / down arrow keys, to reorder
  *   the name          toggles "What you'd buy" under the row (one open at a time)
  *   ⋯                 Change amount / Move up / Move down / Remove
- *   a dashed search   adds an ingredient from the price book
+ *   + Ingredient      an AddRow: opens a search that adds an ingredient from the price book
  *
  * The list owns only its UI state; every change is an AuthorAction the editor
  * applies to its draft, and every change is announced through onAnnounce.
@@ -19,6 +19,7 @@ import { fracText } from '@/lib/menu-monster/units';
 import { RowMenu } from '../menus/_components/row-menu';
 import { AmountEditor, type AmountUnits } from './ingredient-list-edit';
 import { IngredientSearch, type IngredientChoice } from './ingredient-search';
+import { AddRow } from './add-row';
 import { Grip, useDragReorder } from './reorder';
 import s from './ingredient-list.module.css';
 
@@ -67,6 +68,8 @@ export function AuthorList({ rows, ariaLabel, emptyText = 'No ingredients yet.',
   const [newName, setNewName] = useState<string | null>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const addRef = useRef<HTMLInputElement>(null);
+  const addWrapRef = useRef<HTMLDivElement>(null);
+  const [addOpen, setAddOpen] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [openKey, setOpenKey] = useState<string | null>(null);
   const [focusReq, setFocusReq] = useState<{ key: string; part: 'grip' | 'more' } | 'add' | null>(null);
@@ -82,7 +85,8 @@ export function AuthorList({ rows, ariaLabel, emptyText = 'No ingredients yet.',
         return;
       }
     }
-    addRef.current?.focus();
+    // The open search's input, or at rest the "+ Ingredient" link.
+    addWrapRef.current?.querySelector<HTMLElement>('input, button')?.focus();
     setFocusReq(null);
   }, [focusReq]);
 
@@ -179,25 +183,47 @@ export function AuthorList({ rows, ariaLabel, emptyText = 'No ingredients yet.',
           );
         })}
       </ul>
-      <div className={s.addRow}>
-        <IngredientSearch
-          inputRef={addRef}
-          label="Add an ingredient"
-          placeholder="Add an ingredient — search the price book"
-          choices={free}
-          onPick={(c) => {
-            setNewName(null);
-            onAction({ type: 'add', ingredientId: c.id });
-            onAnnounce(`${c.name} added. Set how much each person needs.`);
-            setEditing(`ing:${c.id}`);
+      <div ref={addWrapRef}>
+        <AddRow
+          open={addOpen}
+          onOpenChange={(id, reason) => {
+            // A typed-in new ingredient's form stays up below the row on a blur; Cancel / Esc discards it with the row.
+            if (id === null && newName != null) {
+              if (reason === 'blur') return;
+              setNewName(null);
+            }
+            setAddOpen(id);
           }}
-          onNew={renderNew ? (name) => setNewName(name) : undefined}
+          actions={[
+            {
+              id: 'ingredient',
+              label: 'Ingredient',
+              content: (
+                <IngredientSearch
+                  inputRef={addRef}
+                  label="Add an ingredient"
+                  placeholder="Add an ingredient — search the price book"
+                  choices={free}
+                  onPick={(c) => {
+                    setNewName(null);
+                    onAction({ type: 'add', ingredientId: c.id });
+                    onAnnounce(`${c.name} added. Set how much each person needs.`);
+                    setEditing(`ing:${c.id}`);
+                    setAddOpen(null);
+                  }}
+                  onNew={renderNew ? (name) => setNewName(name) : undefined}
+                />
+              )
+            }
+          ]}
         />
         {newName != null &&
           renderNew?.(newName, (id) => {
             setNewName(null);
-            if (id) setEditing(`ing:${id}`);
-            else setFocusReq('add');
+            if (id) {
+              setEditing(`ing:${id}`);
+              setAddOpen(null);
+            } else setFocusReq('add');
           })}
       </div>
     </div>

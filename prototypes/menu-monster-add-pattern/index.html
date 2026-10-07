@@ -1,0 +1,588 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Menu Monster — one add row per container</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;700&family=Open+Sans:wght@400;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+<style>
+/* ── Tokens: copied from next-app/src/app/globals.css :root (public palette) ── */
+:root {
+  --navy: #1e3a4a; --navy-mid: #2a4f63; --navy-light: #3a6478; --navy-hover: #163040;
+  --forest: #3d5a3e; --forest-light: #527554;
+  --khaki: #c4a882; --khaki-light: #ddd0bb;
+  --bark: #8b6914; --bark-light: #a98020;
+  --cream: #faf6ef; --newsprint: #f4efe6; --warm-white: #ffffff;
+  --text-head: #1a1a1a; --text-body: #363636; --text-meta: #787060;
+  --border-light: #e2d9cc; --border-mid: #c8bfaf;
+  --shadow-card: 0 1px 4px rgba(30,58,74,.08), 0 2px 12px rgba(30,58,74,.06);
+  --shadow-hover: 0 4px 20px rgba(30,58,74,.14);
+  --transition: .18s ease;
+  --fs-2xs: 11px; --fs-xs: 12px; --fs-sm: 13px; --fs-md: 15px; --fs-lg: 17px; --fs-xl: 20px; --fs-2xl: 26px;
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px; --sp-6: 24px; --sp-8: 32px;
+  --rad-sm: 2px; --rad-md: 4px; --rad-lg: 8px;
+  --status-danger: #8c3b3b; --status-danger-bg: #fbf0ee;
+  --rule: #e4d9c4;
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body: 'Lora', Georgia, serif;
+  --font-ui: 'Open Sans', Arial, sans-serif;
+  --focus-ring: 2px solid var(--navy-light);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--cream);
+  color: var(--text-body);
+  font-family: var(--font-body);
+  font-size: var(--fs-md);
+  line-height: 1.5;
+  padding: var(--sp-6) var(--sp-4) var(--sp-8);
+}
+.page { max-width: 1180px; margin: 0 auto; }
+h1 { font-family: var(--font-display); font-size: var(--fs-2xl); color: var(--text-head); margin: 0 0 var(--sp-4); line-height: 1.2; }
+h2 { font-family: var(--font-ui); font-size: var(--fs-md); font-weight: 700; color: var(--text-head); margin: var(--sp-8) 0 var(--sp-2); }
+.top { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-4) var(--sp-6); margin-bottom: var(--sp-4); }
+.changed { margin: 0 0 var(--sp-6); padding-left: var(--sp-5); font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-body); }
+.changed li { margin: 0 0 var(--sp-1); }
+
+/* Segmented A/B toggle (SegmentedControl look) */
+.seg { display: inline-flex; border: 1px solid var(--border-mid); border-radius: var(--rad-md); overflow: hidden; background: var(--warm-white); }
+.segBtn {
+  font-family: var(--font-ui); font-size: var(--fs-sm); font-weight: 600; color: var(--navy);
+  background: none; border: none; padding: 0 var(--sp-4); min-height: 36px; cursor: pointer;
+}
+.segBtn + .segBtn { border-left: 1px solid var(--border-mid); }
+.segBtn[aria-pressed="true"] { background: var(--navy); color: var(--warm-white); }
+.segBtn:focus-visible { outline: var(--focus-ring); outline-offset: -3px; }
+.segBtn b { font-weight: 700; margin-right: var(--sp-2); }
+
+/* ── Device frames ── */
+.frames { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--sp-6); }
+.frame { background: var(--newsprint); border: 1px solid var(--border-mid); border-radius: var(--rad-lg); padding: var(--sp-4); max-width: 100%; }
+.frame-390 { width: 390px; }
+.frame-720 { width: 720px; }
+.frameLabel { font-family: var(--font-ui); font-size: var(--fs-xs); color: var(--text-meta); margin: 0 0 var(--sp-2); }
+
+/* ── Plan tab card (mirrors workspace.module.css) ── */
+.card { list-style: none; margin: 0; padding: 0; background: var(--warm-white); border-radius: var(--rad-md); box-shadow: var(--shadow-card); }
+.row {
+  display: flex; align-items: center; gap: var(--sp-3); min-height: 44px; flex-wrap: wrap;
+  padding: 0 var(--sp-3) 0 var(--sp-4); border-top: 1px solid var(--rule); position: relative;
+}
+.row:first-child { border-top: none; }
+.rowMain { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: var(--sp-3); flex-wrap: wrap; padding: 3px 0; }
+.rowName {
+  font-family: var(--font-ui); font-size: var(--fs-md); font-weight: 700; color: var(--navy);
+  background: none; border: none; padding: 0; min-height: 44px; cursor: pointer; text-align: left;
+}
+.rowName:hover { color: var(--forest); text-decoration: underline; text-underline-offset: 2px; }
+.rowName:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+.chev { display: inline-block; margin-left: var(--sp-2); color: var(--text-meta); transition: transform var(--transition); }
+.rowName[aria-expanded="true"] .chev { transform: rotate(90deg); }
+.cost { width: 72px; flex: none; text-align: right; font-family: var(--font-ui); font-size: var(--fs-md); color: var(--text-head); font-variant-numeric: tabular-nums; }
+.inset { flex-basis: 100%; padding: 0 var(--sp-4) var(--sp-2) 0; }
+.mealPanel { padding: var(--sp-2) 0 var(--sp-1) var(--sp-3); border-left: 2px solid var(--rule); margin-left: var(--sp-1); }
+.mealPanel .inset { padding-right: 0; }
+.foods { list-style: none; margin: 0; padding: 0; }
+.mealPeople { display: inline-flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; margin: 0 0 var(--sp-2); }
+.choiceLabel { font-family: var(--font-ui); font-size: var(--fs-sm); font-weight: 700; color: var(--text-head); }
+@media (max-width: 480px) { .mealPanel { padding-left: var(--sp-2); margin-left: 0; } }
+.frame-390 .mealPanel { padding-left: var(--sp-2); margin-left: 0; }
+
+/* People: a plain number box (Patrick, 2026-10-07: the dialers were too much). 3 digits, right-aligned, browser's own spinner. */
+.numIn { width: 64px; height: 32px; padding: 0 var(--sp-2); font-family: var(--font-ui); font-size: 16px; color: var(--text-head); text-align: right; background: var(--warm-white); border: 1px solid var(--border-mid); border-radius: var(--rad-sm); font-variant-numeric: tabular-nums; }
+.numIn:focus-visible { outline: var(--focus-ring); outline-offset: 1px; }
+
+/* ── Decision 1: the open food is a bordered sub-card ── */
+.subcard { margin: var(--sp-1) 0 var(--sp-2); border: 1px solid var(--border-light); border-radius: var(--rad-md); background: var(--cream); }
+.ings { list-style: none; margin: 0; padding: 0; }
+.ingRow { display: flex; align-items: center; gap: var(--sp-3); min-height: 44px; padding: 0 var(--sp-2) 0 var(--sp-4); }
+.ingRow + .ingRow { border-top: 1px solid var(--rule); }
+/* Name + "Choose brand(s)" travel together; on 390 the brand drops under the name rather than breaking mid-phrase. */
+.ingMain { flex: 1 1 auto; min-width: 0; display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 var(--sp-3); padding: var(--sp-1) 0; }
+.ingBrand { white-space: nowrap; }
+.ingName { flex: none; min-width: 0; font-family: var(--font-ui); font-size: var(--fs-md); font-weight: 600; color: var(--text-head); }
+.ingBrand { font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--navy); background: none; border: none; padding: 0; min-height: 32px; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; text-decoration-color: var(--border-mid); }
+.ingBrand:hover { color: var(--forest); text-decoration-color: currentColor; }
+.ingBrand:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+.amt { min-width: 56px; flex: none; margin-left: auto; white-space: nowrap; text-align: right; font-family: var(--font-ui); font-size: var(--fs-md); color: var(--text-head); font-variant-numeric: tabular-nums; }
+
+/* ── Decision 3: one quiet add row per container ── */
+.addrow { display: flex; align-items: center; gap: var(--sp-3); min-height: 44px; padding: var(--sp-1) var(--sp-3) var(--sp-1) var(--sp-4); border-top: 1px solid var(--rule); }
+.addrow.mealAdd { padding-left: var(--sp-4); margin-top: var(--sp-1); }
+.subcard .addrow { padding-right: var(--sp-2); }
+.frame-390 .subcard .addrow, .frame-390 .ingRow { padding-left: var(--sp-3); }
+.addrow .grow { flex: 1 1 120px; min-width: 0; }
+.addInput {
+  display: block; width: 100%; min-height: 36px; font-family: var(--font-ui); font-size: 16px; color: var(--text-head);
+  background: none; border: 1px dashed var(--border-mid); border-radius: var(--rad-sm); padding: 0 var(--sp-3);
+}
+.addInput::placeholder { color: var(--text-meta); }
+.addInput:hover { background: var(--warm-white); }
+.addInput:focus-visible { outline: var(--focus-ring); outline-offset: 1px; background: var(--warm-white); }
+.addLink {
+  font-family: var(--font-ui); font-size: var(--fs-md); font-weight: 600; color: var(--navy);
+  background: none; border: none; padding: 0 var(--sp-1); min-height: 44px; cursor: pointer; white-space: nowrap;
+}
+.addLink .plus { color: var(--text-meta); font-weight: 400; margin-right: var(--sp-1); }
+.addLink:hover { color: var(--forest); text-decoration: underline; text-underline-offset: 2px; }
+.addLink:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+.addrow .links { display: flex; align-items: center; gap: var(--sp-4); flex: 1 1 auto; }
+.addrow .tail { flex: none; margin-left: auto; }
+/* B at rest: the two verbs sit together; the gear link only goes to the right end when it tails an open search (A, or B mid-add). */
+body[data-variant="B"] .addrow:not([data-state="search"]) .gearLink { margin-left: var(--sp-3); }
+/* B, an opened search: a visible way out on a phone (no Esc key). Closing is discarding, so the Save/Discard standard's word: Cancel. */
+.cancel { display: none; font-weight: 400; color: var(--text-meta); }
+.cancel:hover { color: var(--status-danger); }
+body[data-variant="B"] .addrow[data-state="search"] .cancel { display: inline-block; }
+body[data-variant="B"] .addrow[data-state="search"] .tail { margin-left: 0; }
+body[data-variant="B"] .addrow[data-state="search"] .cancel { margin-left: auto; }
+/* 390px: search + "for Everyone" + Cancel do not fit one line, so the select drops under the search; Cancel stays on the first line. */
+.frame-390 .subcard .addrow[data-state="search"], .subcard .addrow[data-state="search"].wrap { flex-wrap: wrap; row-gap: 0; }
+.frame-390 .subcard .addrow[data-state="search"] .scope { order: 3; flex-basis: 100%; margin-top: calc(-1 * var(--sp-1)); }
+@media (max-width: 480px) {
+  .subcard .addrow[data-state="search"] { flex-wrap: wrap; row-gap: 0; }
+  .subcard .addrow[data-state="search"] .scope { order: 3; flex-basis: 100%; margin-top: calc(-1 * var(--sp-1)); }
+}
+
+/* Scope select, Decision 1: inside the add row, right end, "for Everyone ▾" */
+.scope { display: inline-flex; align-items: center; gap: var(--sp-1); font-family: var(--font-ui); font-size: var(--fs-md); color: var(--text-body); white-space: nowrap; }
+.scopeSel {
+  appearance: none; -webkit-appearance: none; font-family: var(--font-ui); font-size: 16px; font-weight: 600; color: var(--navy);
+  background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23787060' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 4px center;
+  border: none; padding: 0 18px 0 2px; min-height: 44px; cursor: pointer; border-radius: var(--rad-sm);
+}
+.scopeSel:hover { color: var(--forest); }
+.scopeSel:focus-visible { outline: var(--focus-ring); outline-offset: -2px; }
+
+/* Variant switching: A = search visible at rest; B = links at rest, tap opens search */
+body[data-variant="A"] .addrow .opener { display: none; }
+body[data-variant="B"] .addrow:not([data-state="search"]) .grow { display: none; }
+body[data-variant="B"] .addrow[data-state="search"] .opener { display: none; }
+.addrow[data-mode="gear"] .gearLink { display: none; }
+body[data-variant="A"] .addrow[data-mode="gear"] .opener { display: none; }
+
+/* Day tier: + Add a meal, outside the card */
+.addMealBtn {
+  display: flex; align-items: center; gap: var(--sp-2); width: 100%; min-height: 44px; margin-top: var(--sp-4);
+  font-family: var(--font-ui); font-size: var(--fs-md); color: var(--text-meta); text-align: left;
+  background: none; border: 1px dashed var(--border-mid); border-radius: var(--rad-sm); padding: 0 var(--sp-3); cursor: pointer;
+}
+.addMealBtn:hover { background: var(--cream); color: var(--navy); }
+.addMealBtn:focus-visible { outline: var(--focus-ring); outline-offset: 1px; }
+
+/* ── ⋯ row menu, Decision 4: same popover at every level ── */
+.menuWrap { position: relative; flex: none; margin-left: auto; }
+.ingRow .menuWrap, .row .menuWrap { margin-left: 0; }
+.menuBtn { min-width: 36px; min-height: 44px; background: none; border: none; border-radius: var(--rad-sm); color: var(--text-meta); font-size: var(--fs-xl); line-height: 1; cursor: pointer; }
+.menuBtn:hover { background: var(--cream); color: var(--navy); }
+.menuBtn:focus-visible { outline: var(--focus-ring); outline-offset: -2px; }
+.menuPop {
+  position: absolute; right: 0; top: 100%; z-index: 5; min-width: 200px; max-width: 280px;
+  background: var(--warm-white); border: 1px solid var(--border-mid); border-radius: var(--rad-md); box-shadow: var(--shadow-hover);
+  padding: var(--sp-1) 0; display: flex; flex-direction: column;
+}
+.menuPop[hidden] { display: none; }
+.menuItem {
+  display: block; width: 100%; text-align: left; font-family: var(--font-ui); font-size: var(--fs-md); color: var(--text-head);
+  background: none; border: none; padding: var(--sp-3) var(--sp-4); min-height: 44px; cursor: pointer; white-space: nowrap;
+}
+.menuItem:hover { background: var(--cream); }
+.menuItem:focus-visible { outline: var(--focus-ring); outline-offset: -2px; }
+.menuDanger { color: var(--status-danger); }
+.menuDanger:hover { background: var(--status-danger-bg); }
+.menuSep { height: 0; border: 0; border-top: 1px solid var(--rule); margin: var(--sp-1) 0; }
+
+/* ── Notes under the frames ── */
+.foot { font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-meta); margin: var(--sp-3) 0 0; }
+table { border-collapse: collapse; width: 100%; max-width: 900px; font-family: var(--font-ui); font-size: var(--fs-sm); background: var(--warm-white); box-shadow: var(--shadow-card); border-radius: var(--rad-md); }
+th, td { text-align: left; vertical-align: top; padding: var(--sp-2) var(--sp-3); border-top: 1px solid var(--rule); }
+th { font-weight: 700; color: var(--text-head); border-top: none; }
+td:first-child { font-weight: 600; color: var(--text-head); white-space: nowrap; }
+td .danger { color: var(--status-danger); }
+td .was { color: var(--text-meta); }
+.open { font-family: var(--font-ui); font-size: var(--fs-sm); margin: 0; padding-left: var(--sp-5); }
+.srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+@media (max-width: 480px) {
+  body { padding: var(--sp-4) var(--sp-4) var(--sp-8); }
+  .frame { padding: var(--sp-3); }
+  .frame-390, .frame-720 { width: 100%; }
+  td:first-child { white-space: normal; }
+}
+</style>
+</head>
+<body data-variant="B">
+<div class="page">
+  <div class="top">
+    <h1 style="margin:0">Menu Monster — one add row per container</h1>
+    <div class="seg" role="group" aria-label="Variant">
+      <button type="button" class="segBtn" data-variant="A" aria-pressed="false"><b>A</b>Search visible at rest</button>
+      <button type="button" class="segBtn" data-variant="B" aria-pressed="true"><b>B</b>Link opens search</button>
+    </div>
+  </div>
+  <ul class="changed">
+    <li>The open food is a bordered card: its ingredient lines and one <b>+ Ingredient</b> row, with <b>for Everyone ▾</b> at the row's right end, always.</li>
+    <li>No hint text anywhere. The card edge says the edit is local.</li>
+    <li>One add row per container at its own indent — <b>+ Food · + Gear</b> after the foods, <b>+ Add a meal</b> in the day tier below the card — and every ⋯ lists edit → swap → Share → <span style="color:var(--status-danger)">Remove</span> in that order.</li>
+  </ul>
+  <p class="foot" style="margin:calc(-1 * var(--sp-4)) 0 var(--sp-6)">A single food has no + Ingredient — a second ingredient would make it a recipe; add another food to the meal instead.</p>
+
+  <div class="frames">
+    <div class="frame frame-390" data-frame="390"><p class="frameLabel">390px</p></div>
+    <div class="frame frame-720" data-frame="720"><p class="frameLabel">720px</p></div>
+  </div>
+
+  <h2>⋯ menus, before → after</h2>
+  <table>
+    <thead><tr><th>Level</th><th>Today</th><th>Normalised</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Meal</td>
+        <td><span class="danger">Remove meal</span></td>
+        <td>People for this meal…<br>Rename<br><span class="danger">Remove</span></td>
+      </tr>
+      <tr>
+        <td>Food</td>
+        <td>Swap…<br>Back to the troop's version <span class="was">(only when edited)</span><br>Share this version as a new recipe <span class="was">(edited + saved)</span><br><span class="danger">Remove</span></td>
+        <td>Swap for…<br>Back to the troop's version<br>Share this version as a new recipe…<br><span class="danger">Remove</span></td>
+      </tr>
+      <tr>
+        <td>Ingredient</td>
+        <td>Change amount<br>Swap for… <span class="was">/ Swap for something else… / Back to {ingredient}</span><br>Swap for {diet} scouts…<br>Leave out for {diet} scouts <span class="was">/ Put back for {diet} scouts</span><br>Back to the troop amount<br>Leave out <span class="was">/ Put back — takes a troop line off your version</span><br><span class="danger">Remove</span> <span class="was">— only on a line you added</span></td>
+        <td>Change amount<br>Swap for…<br>Swap for {diet} scouts…<br>Leave out for {diet} scouts <span class="was">(unchanged — a diet-scoped omission)</span><br>Back to the troop amount<br><span class="danger">Remove</span> <span class="was">— takes the line off, troop or added</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Decisions still open</h2>
+  <ol class="open">
+    <li>A or B — Patrick picked B (2026-10-07); B is now the default here, A stays in the toggle for comparison.</li>
+  </ol>
+</div>
+
+<!-- The panel, rendered once per frame -->
+<template id="panel-tpl">
+  <ul class="card">
+    <li class="row">
+      <div class="rowMain">
+        <button type="button" class="rowName" data-toggle aria-expanded="true">Snack<span class="chev" aria-hidden="true">›</span></button>
+      </div>
+      <span class="cost">$16.69</span>
+      <div class="menuWrap">
+        <button type="button" class="menuBtn" aria-label="More for Snack" aria-haspopup="menu" aria-expanded="false"><span aria-hidden="true">⋯</span></button>
+        <div class="menuPop" role="menu" aria-label="More for Snack" hidden>
+          <button type="button" role="menuitem" class="menuItem" data-act="people">People for this meal…</button>
+          <button type="button" role="menuitem" class="menuItem">Rename</button>
+          <div class="menuSep" role="separator"></div>
+          <button type="button" role="menuitem" class="menuItem menuDanger">Remove</button>
+        </div>
+      </div>
+
+      <div class="inset mealPanel" data-inset>
+        <span class="mealPeople" role="group" aria-label="Snack people">
+          <span class="choiceLabel" aria-hidden="true">People for this meal</span>
+          <input class="numIn" type="number" inputmode="numeric" min="1" max="60" value="18" aria-label="Snack people" data-num>
+        </span>
+
+        <ul class="foods">
+          <li class="row">
+            <div class="rowMain">
+              <button type="button" class="rowName" data-toggle aria-expanded="true">Hot Chocolate<span class="chev" aria-hidden="true">›</span></button>
+            </div>
+            <span class="cost">$8.69</span>
+            <div class="menuWrap">
+              <button type="button" class="menuBtn" aria-label="More for Hot Chocolate" aria-haspopup="menu" aria-expanded="false"><span aria-hidden="true">⋯</span></button>
+              <div class="menuPop" role="menu" aria-label="More for Hot Chocolate" hidden>
+                <button type="button" role="menuitem" class="menuItem">Swap for…</button>
+                <button type="button" role="menuitem" class="menuItem">Back to the troop's version</button>
+                <div class="menuSep" role="separator"></div>
+                <button type="button" role="menuitem" class="menuItem">Share this version as a new recipe…</button>
+                <div class="menuSep" role="separator"></div>
+                <button type="button" role="menuitem" class="menuItem menuDanger">Remove</button>
+              </div>
+            </div>
+            <div class="inset" data-inset>
+              <div class="subcard">
+                <ul class="ings" aria-label="Hot Chocolate ingredients">
+                  <li class="ingRow">
+                    <span class="ingMain"><span class="ingName">Hot cocoa mix</span>
+                    <button type="button" class="ingBrand" aria-label="Choose brand(s) for hot cocoa mix">Choose brand(s)</button></span>
+                    <span class="amt">18 packets</span>
+                    <div class="menuWrap">
+                      <button type="button" class="menuBtn" aria-label="More for hot cocoa mix, 18 packets" aria-haspopup="menu" aria-expanded="false"><span aria-hidden="true">⋯</span></button>
+                      <div class="menuPop" role="menu" aria-label="More for hot cocoa mix, 18 packets" hidden>
+                        <button type="button" role="menuitem" class="menuItem">Change amount</button>
+                        <div class="menuSep" role="separator"></div>
+                        <button type="button" role="menuitem" class="menuItem">Swap for…</button>
+                        <button type="button" role="menuitem" class="menuItem">Swap for vegetarian scouts…</button>
+                        <button type="button" role="menuitem" class="menuItem">Swap for gluten-free scouts…</button>
+                        <button type="button" role="menuitem" class="menuItem">Swap for nut-free scouts…</button>
+                        <button type="button" role="menuitem" class="menuItem">Leave out for vegetarian scouts</button>
+                        <button type="button" role="menuitem" class="menuItem">Leave out for gluten-free scouts</button>
+                        <button type="button" role="menuitem" class="menuItem">Leave out for nut-free scouts</button>
+                        <button type="button" role="menuitem" class="menuItem">Back to the troop amount</button>
+                        <div class="menuSep" role="separator"></div>
+                        <button type="button" role="menuitem" class="menuItem menuDanger">Remove</button>
+                      </div>
+                    </div>
+                  </li>
+                  <li class="ingRow">
+                    <span class="ingName">Marshmallows</span>
+                    <span class="amt">1 bag</span>
+                    <div class="menuWrap">
+                      <button type="button" class="menuBtn" aria-label="More for marshmallows, 1 bag" aria-haspopup="menu" aria-expanded="false"><span aria-hidden="true">⋯</span></button>
+                      <div class="menuPop" role="menu" aria-label="More for marshmallows, 1 bag" hidden>
+                        <button type="button" role="menuitem" class="menuItem">Change amount</button>
+                        <div class="menuSep" role="separator"></div>
+                        <button type="button" role="menuitem" class="menuItem">Swap for…</button>
+                        <button type="button" role="menuitem" class="menuItem">Swap for vegetarian scouts…</button>
+                        <button type="button" role="menuitem" class="menuItem">Swap for gluten-free scouts…</button>
+                        <button type="button" role="menuitem" class="menuItem">Swap for nut-free scouts…</button>
+                        <button type="button" role="menuitem" class="menuItem">Leave out for vegetarian scouts</button>
+                        <button type="button" role="menuitem" class="menuItem">Leave out for gluten-free scouts</button>
+                        <button type="button" role="menuitem" class="menuItem">Leave out for nut-free scouts</button>
+                        <button type="button" role="menuitem" class="menuItem">Back to the troop amount</button>
+                        <div class="menuSep" role="separator"></div>
+                        <button type="button" role="menuitem" class="menuItem menuDanger">Remove</button>
+                      </div>
+                    </div>
+                  </li>
+                </ul>
+                <div class="addrow" data-addrow data-state="rest">
+                  <button type="button" class="addLink opener" data-open-search><span class="plus">+</span>Ingredient</button>
+                  <div class="grow"><input class="addInput" type="search" placeholder="Add ingredient" data-placeholder="Add ingredient" aria-label="Add an ingredient to your version of Hot Chocolate" autocomplete="off"></div>
+                  <span class="scope tail">for <select class="scopeSel" aria-label="Add for"><option>Everyone</option><option>Vegetarian scouts</option><option>Gluten-free scouts</option><option>Nut-free scouts</option></select></span>
+                  <button type="button" class="addLink cancel" data-cancel>Cancel</button>
+                </div>
+              </div>
+            </div>
+          </li>
+
+          <li class="row">
+            <div class="rowMain">
+              <button type="button" class="rowName" data-toggle aria-expanded="true">Chips<span class="chev" aria-hidden="true">›</span></button>
+            </div>
+            <span class="cost">$8.00</span>
+            <div class="menuWrap">
+              <button type="button" class="menuBtn" aria-label="More for Chips" aria-haspopup="menu" aria-expanded="false"><span aria-hidden="true">⋯</span></button>
+              <div class="menuPop" role="menu" aria-label="More for Chips" hidden>
+                <button type="button" role="menuitem" class="menuItem">Swap for…</button>
+                <button type="button" role="menuitem" class="menuItem">Back to the troop's version</button>
+                <div class="menuSep" role="separator"></div>
+                <button type="button" role="menuitem" class="menuItem">Share this version as a new recipe…</button>
+                <div class="menuSep" role="separator"></div>
+                <button type="button" role="menuitem" class="menuItem menuDanger">Remove</button>
+              </div>
+            </div>
+            <div class="inset" data-inset>
+              <div class="subcard">
+                <ul class="ings" aria-label="Chips ingredients">
+                  <li class="ingRow">
+                    <span class="ingMain"><span class="ingName">Chips</span>
+                    <button type="button" class="ingBrand" aria-label="Choose brand(s) for Chips">Choose brand(s)</button></span>
+                    <span class="amt">36 oz</span>
+                    <div class="menuWrap">
+                      <button type="button" class="menuBtn" aria-label="More for Chips, 36 oz" aria-haspopup="menu" aria-expanded="false"><span aria-hidden="true">⋯</span></button>
+                      <div class="menuPop" role="menu" aria-label="More for Chips, 36 oz" hidden>
+                        <button type="button" role="menuitem" class="menuItem">Change amount</button>
+                        <div class="menuSep" role="separator"></div>
+                        <button type="button" role="menuitem" class="menuItem">Swap for…</button>
+                        <button type="button" role="menuitem" class="menuItem">Swap for vegetarian scouts…</button>
+                        <button type="button" role="menuitem" class="menuItem">Swap for gluten-free scouts…</button>
+                        <button type="button" role="menuitem" class="menuItem">Swap for nut-free scouts…</button>
+                        <button type="button" role="menuitem" class="menuItem">Leave out for vegetarian scouts</button>
+                        <button type="button" role="menuitem" class="menuItem">Leave out for gluten-free scouts</button>
+                        <button type="button" role="menuitem" class="menuItem">Leave out for nut-free scouts</button>
+                        <button type="button" role="menuitem" class="menuItem">Back to the troop amount</button>
+                        <div class="menuSep" role="separator"></div>
+                        <button type="button" role="menuitem" class="menuItem menuDanger">Remove</button>
+                      </div>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </li>
+        </ul>
+
+        <!-- Decision 3: the meal's one add row -->
+        <div class="addrow mealAdd" data-addrow data-state="rest">
+          <button type="button" class="addLink opener" data-open-search><span class="plus">+</span>Food</button>
+          <div class="grow"><input class="addInput" type="search" placeholder="Add a food" data-placeholder="Add a food" aria-label="Add a food to Snack" autocomplete="off"></div>
+          <button type="button" class="addLink gearLink tail" data-open-search="gear" data-gear-placeholder="Add gear"><span class="plus">+</span>Gear</button>
+          <button type="button" class="addLink cancel" data-cancel>Cancel</button>
+        </div>
+      </div>
+    </li>
+  </ul>
+  <button type="button" class="addMealBtn"><span aria-hidden="true">+</span> Add a meal</button>
+</template>
+
+<script>
+(function () {
+  'use strict';
+
+  // Render the same panel into both frames.
+  var tpl = document.getElementById('panel-tpl');
+  document.querySelectorAll('[data-frame]').forEach(function (f) {
+    f.appendChild(tpl.content.cloneNode(true));
+  });
+
+  // ── A/B toggle ──
+  document.querySelectorAll('.segBtn').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.body.dataset.variant = b.dataset.variant;
+      document.querySelectorAll('.segBtn').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+      document.querySelectorAll('[data-addrow]').forEach(resetAddRow);
+    });
+  });
+
+  // ── Expand / collapse (meal row, food rows) ──
+  document.addEventListener('click', function (ev) {
+    var t = ev.target.closest('[data-toggle]');
+    if (!t) return;
+    var open = t.getAttribute('aria-expanded') === 'true';
+    t.setAttribute('aria-expanded', String(!open));
+    var row = t.closest('.row');
+    var inset = row && row.querySelector(':scope > [data-inset]');
+    if (inset) inset.hidden = open;
+  });
+
+  // ── People box: clamp 1–60 on blur (an empty or junk value goes back to the last good one) ──
+  var MIN = 1, MAX = 60;
+  document.addEventListener('focusin', function (ev) {
+    if (ev.target.matches('[data-num]')) ev.target.dataset.last = ev.target.value;
+  });
+  document.addEventListener('focusout', function (ev) {
+    var num = ev.target.closest('[data-num]');
+    if (!num) return;
+    var n = parseInt(num.value, 10);
+    num.value = isNaN(n) ? (num.dataset.last || 18) : Math.min(MAX, Math.max(MIN, n));
+  });
+
+  // ── Add rows (Variant B: a link opens the search; both: + Gear swaps in a gear search) ──
+  function resetAddRow(row) {
+    var input = row.querySelector('.addInput');
+    input.value = '';
+    input.placeholder = input.dataset.placeholder;
+    row.dataset.state = 'rest';
+    delete row.dataset.mode;
+  }
+  document.addEventListener('click', function (ev) {
+    var link = ev.target.closest('[data-open-search]');
+    if (!link) return;
+    var row = link.closest('[data-addrow]');
+    var input = row.querySelector('.addInput');
+    if (link.dataset.openSearch === 'gear') {
+      row.dataset.mode = 'gear';
+      input.placeholder = link.dataset.gearPlaceholder;
+    }
+    row.dataset.state = 'search';
+    input.focus();
+  });
+  // Cancel (the visible way out), Esc (keyboard): both fold the row and return focus to the link that stood where the search was.
+  function cancelRow(row) {
+    var wasGear = row.dataset.mode === 'gear';
+    var input = row.querySelector('.addInput');
+    resetAddRow(row);
+    var back = wasGear ? row.querySelector('.gearLink') : (document.body.dataset.variant === 'B' ? row.querySelector('.opener') : input);
+    (back || input).focus();
+  }
+  document.addEventListener('click', function (ev) {
+    var c = ev.target.closest('[data-cancel]');
+    if (c) cancelRow(c.closest('[data-addrow]'));
+  });
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key !== 'Escape') return;
+    var input = ev.target.closest('.addInput');
+    if (!input) return;
+    cancelRow(input.closest('[data-addrow]'));
+  });
+  // Blur-when-empty: once focus leaves the whole row with nothing typed, the links come back (B) or the gear search folds (A).
+  document.addEventListener('focusout', function (ev) {
+    var row = ev.target.closest('[data-addrow]');
+    if (!row || !ev.target.classList.contains('addInput')) return;
+    if (row.contains(ev.relatedTarget)) return;
+    if (ev.target.value.trim() !== '') return;
+    var isB = document.body.dataset.variant === 'B';
+    if (isB || row.dataset.mode === 'gear') resetAddRow(row);
+  });
+
+  // ── Scope select sized to its chosen option (a native select sizes to its longest option, which crushed the search on 390px) ──
+  var ruler = document.createElement('span');
+  ruler.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap;font:600 16px ' + getComputedStyle(document.body).getPropertyValue('--font-ui');
+  document.body.appendChild(ruler);
+  function fitScope(sel) {
+    ruler.textContent = sel.options[sel.selectedIndex].text;
+    sel.style.width = (ruler.offsetWidth + 18) + 'px';
+  }
+  document.querySelectorAll('.scopeSel').forEach(fitScope);
+  document.addEventListener('change', function (ev) {
+    if (ev.target.classList.contains('scopeSel')) fitScope(ev.target);
+  });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { document.querySelectorAll('.scopeSel').forEach(fitScope); });
+
+  // ── ⋯ menus: role="menu" popovers with arrow keys, Esc, click-away ──
+  var openMenu = null;
+  function items(pop) { return Array.prototype.slice.call(pop.querySelectorAll('[role="menuitem"]')); }
+  function closeMenu(refocus) {
+    if (!openMenu) return;
+    var btn = openMenu.btn, pop = openMenu.pop;
+    pop.hidden = true;
+    btn.setAttribute('aria-expanded', 'false');
+    openMenu = null;
+    if (refocus) btn.focus();
+  }
+  function showMenu(btn, focusIndex) {
+    closeMenu(false);
+    var pop = btn.nextElementSibling;
+    pop.hidden = false;
+    btn.setAttribute('aria-expanded', 'true');
+    openMenu = { btn: btn, pop: pop };
+    var list = items(pop);
+    list[focusIndex < 0 ? list.length - 1 : focusIndex].focus();
+  }
+  document.addEventListener('click', function (ev) {
+    var btn = ev.target.closest('.menuBtn');
+    if (btn) {
+      if (openMenu && openMenu.btn === btn) closeMenu(true); else showMenu(btn, 0);
+      return;
+    }
+    var item = ev.target.closest('[role="menuitem"]');
+    if (item && openMenu) {
+      var act = item.dataset.act;
+      closeMenu(!act);
+      if (act === 'people') item.closest('.row').querySelector('[data-num]').focus();
+      return;
+    }
+    if (openMenu && !openMenu.pop.contains(ev.target)) closeMenu(false);
+  });
+  document.addEventListener('keydown', function (ev) {
+    var btn = ev.target.closest('.menuBtn');
+    if (btn && (ev.key === 'ArrowDown' || ev.key === 'ArrowUp')) {
+      ev.preventDefault();
+      showMenu(btn, ev.key === 'ArrowDown' ? 0 : -1);
+      return;
+    }
+    if (!openMenu) return;
+    var inPop = openMenu.pop.contains(ev.target);
+    if (ev.key === 'Escape') { ev.preventDefault(); closeMenu(true); return; }
+    if (!inPop) return;
+    var list = items(openMenu.pop), i = list.indexOf(document.activeElement);
+    if (ev.key === 'ArrowDown') { ev.preventDefault(); list[(i + 1) % list.length].focus(); }
+    else if (ev.key === 'ArrowUp') { ev.preventDefault(); list[(i - 1 + list.length) % list.length].focus(); }
+    else if (ev.key === 'Home') { ev.preventDefault(); list[0].focus(); }
+    else if (ev.key === 'End') { ev.preventDefault(); list[list.length - 1].focus(); }
+    else if (ev.key === 'Tab') { closeMenu(false); }
+  });
+  document.addEventListener('focusin', function (ev) {
+    if (openMenu && !openMenu.pop.contains(ev.target) && ev.target !== openMenu.btn) closeMenu(false);
+  });
+})();
+</script>
+</body>
+</html>

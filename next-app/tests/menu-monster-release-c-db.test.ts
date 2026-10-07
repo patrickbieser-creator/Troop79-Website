@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, beforeAll, afterAll } from 'vitest';
 import { createClient } from '@supabase/supabase-js';
 import { adminClient } from './helpers/admin-client';
 import { CATALOG } from './helpers/menu-monster-fixture';
@@ -17,15 +17,29 @@ import { addMenuIngredientWith, createMenuWith, deleteMenuWith, loadMenuWith, sa
  *
  * Rows belong to the test scout (Charlie Walters, person 39) and are removed
  * after each test. Seed: pancake-mix's cheapest live package is $15 / 36
- * units ($0.4167 a unit); oj has no package at all.
+ * units ($0.4167 a unit); a throwaway book ingredient has no package at all.
  */
 
 const SCOUT = 39;
 const OTHER_SCOUT = 25;
 const BOOK = 'pancake-mix';
-const NO_SIBLINGS = 'oj';
+// A book ingredient with no package at all. Seed 'oj' used to be one, but production has priced it since the sync,
+// so the test owns a throwaway book row (null owner, non-x id) instead of leaning on seed data.
+const NO_SIBLINGS = 'zz-vitest-nosib';
 const MARKER = 'vitest-mm-relc';
 const admin = adminClient();
+
+beforeAll(async () => {
+  await admin.from('mm_packages').delete().eq('ingredient_id', NO_SIBLINGS);
+  await admin.from('mm_ingredients').delete().eq('id', NO_SIBLINGS);
+  const { error } = await admin.from('mm_ingredients').insert({ id: NO_SIBLINGS, name: 'Vitest no-sibling juice', unit_kind: 'volume', unit_key: 'cup', unit_one: 'cup', unit_many: 'cups', section: 'dairy' });
+  if (error) throw new Error(error.message);
+});
+
+afterAll(async () => {
+  await admin.from('mm_packages').delete().eq('ingredient_id', NO_SIBLINGS);
+  await admin.from('mm_ingredients').delete().eq('id', NO_SIBLINGS);
+});
 
 afterEach(async () => {
   await admin.from('mm_packages').delete().eq('added_by_person_id', OTHER_SCOUT).like('id', 'sp-%');

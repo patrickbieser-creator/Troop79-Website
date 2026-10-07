@@ -32,6 +32,7 @@ describe('Public styleguide specimens', () => {
 
   it('AddForChoice_OffersEveryoneAndEachDietOnTheMeal_WhenRendered', () => {
     render(<PublicDietRowsSpecimen />);
+    fireEvent.click(screen.getByRole('button', { name: '+ Ingredient' }));
     const select = screen.getByLabelText('Add for') as HTMLSelectElement;
     expect(Array.from(select.options).map((o) => o.text)).toEqual(['Everyone', 'Gluten-free scouts', 'Vegetarian scouts']);
   });

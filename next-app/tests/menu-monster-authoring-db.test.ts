@@ -165,7 +165,7 @@ describe('menu monster leader tools — RPCs', () => {
     // The draft recipe: authoring sees it, the public planner never does.
     expect(authoring.recipes.find((r) => r.id === RECIPE)?.status).toBe('draft');
     expect(pub.recipes.find((r) => r.id === RECIPE)).toBeUndefined();
-    expect(pub.recipes.every((r) => r.status === 'published')).toBe(true);
+    expect(pub.recipes.every((r) => r.status === 'published' || r.status === 'retired')).toBe(true); // retired ride along for menus that hold them
 
     // The retired package: authoring carries it flagged, the public load drops it.
     const old = authoring.packages.find((p) => p.id === PKG_OLD);

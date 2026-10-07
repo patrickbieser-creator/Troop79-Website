@@ -61,7 +61,11 @@ const panel = () => within(document.getElementById(`mm-meal-${openId}`) as HTMLE
 /** The meal's row (its name, cost and badges) with its open panel, which holds the People dialer (it moved into the panel 2026-10-06). */
 const mealRow = () => within((document.getElementById(`mm-meal-${openId}`) as HTMLElement).closest('li') as HTMLElement);
 const people = () => mealRow().getByRole('spinbutton', { name: / people$/ }) as HTMLInputElement;
-const search = () => panel().getByRole('combobox');
+/** The meal's food search: at rest the row shows "+ Food", so tapping it is part of reaching the search (an empty meal has it open). */
+const search = () => {
+  if (!panel().queryByRole('combobox')) fireEvent.click(panel().getByRole('button', { name: '+ Food' }));
+  return panel().getByRole('combobox');
+};
 const rowFor = (name: string) => panel().getByRole('button', { name: new RegExp(`^${name}`) }).closest('li') as HTMLElement;
 const addRecipe = async (user: ReturnType<typeof userEvent.setup>, text: string, option: string) => {
   await user.click(search());
@@ -272,7 +276,7 @@ describe('MealEditor', () => {
       const user = userEvent.setup();
       render(editor());
       await user.click(screen.getByRole('button', { name: 'More for Bacon' }));
-      await user.click(screen.getByRole('button', { name: 'Swap…' }));
+      await user.click(screen.getByRole('button', { name: 'Swap for…' }));
       expect(screen.getByRole('combobox', { name: 'Swap Bacon for' })).toBeTruthy();
     });
 
@@ -280,7 +284,7 @@ describe('MealEditor', () => {
       const user = userEvent.setup();
       render(editor());
       await user.click(screen.getByRole('button', { name: 'More for Bacon' }));
-      await user.click(screen.getByRole('button', { name: 'Swap…' }));
+      await user.click(screen.getByRole('button', { name: 'Swap for…' }));
       await user.type(screen.getByRole('combobox', { name: 'Swap Bacon for' }), 'Oat{Enter}');
       expect([screen.queryByRole('button', { name: 'Bacon' }), screen.getByRole('button', { name: 'Oatmeal' })].map(Boolean)).toEqual([false, true]);
     });
@@ -289,8 +293,11 @@ describe('MealEditor', () => {
       const user = userEvent.setup();
       render(editor());
       await user.click(screen.getByRole('button', { name: 'More for Bacon' }));
-      await user.click(screen.getByRole('button', { name: 'Swap…' }));
+      await user.click(screen.getByRole('button', { name: 'Swap for…' }));
       await user.keyboard('{Escape}');
+      // Esc with nothing typed leaves the row (the add row's Cancel): the links come back, and the next search adds again.
+      expect([screen.queryByRole('combobox'), panel().getByRole('button', { name: '+ Food' }) != null]).toEqual([null, true]);
+      await user.click(panel().getByRole('button', { name: '+ Food' }));
       expect(screen.getByRole('combobox', { name: 'Add to Day 1 breakfast' })).toBeTruthy();
     });
 
@@ -430,7 +437,7 @@ describe('MealEditor', () => {
       const user = userEvent.setup();
       render(editor());
       await user.click(screen.getByRole('button', { name: 'More for Bacon' }));
-      await user.click(screen.getByRole('button', { name: 'Swap…' }));
+      await user.click(screen.getByRole('button', { name: 'Swap for…' }));
       await browse();
       await user.click(within(library()).getByRole('button', { name: 'Swap Bacon for Oatmeal' }));
       expect([panel().queryByRole('button', { name: 'Bacon' }), panel().getByRole('button', { name: 'Oatmeal' })].map(Boolean)).toEqual([false, true]);
@@ -540,7 +547,8 @@ describe('MealEditor', () => {
     it('People_DialerDoesNotOpenOrCloseTheMeal', async () => {
       const user = userEvent.setup();
       render(editor());
-      await user.click(mealRow().getByRole('button', { name: 'One more person' }));
+      await user.clear(people());
+      await user.type(people(), '9');
       expect([people().value, document.getElementById('mm-meal-m1') != null]).toEqual(['9', true]);
     });
 
@@ -913,22 +921,26 @@ describe('MealEditor — Share this version (Phase 4C)', () => {
   it('EditedRecipe_OffersShareThisVersion_ToTheEditor', async () => {
     render(editor('m1', edited()));
     await userEvent.setup().click(screen.getByRole('button', { name: 'More for Bacon' }));
-    expect(screen.getByRole('link', { name: 'Share this version as a new recipe' }).getAttribute('href')).toBe('/library/menu-monster/recipes/new?menu=menu-1&meal=m1&recipe=B003');
+    expect(screen.getByRole('link', { name: 'Share this version as a new recipe…' }).getAttribute('href')).toBe('/library/menu-monster/recipes/new?menu=menu-1&meal=m1&recipe=B003');
   });
 
   it('UneditedRecipe_DoesNotOfferIt', async () => {
     render(editor());
     await userEvent.setup().click(screen.getByRole('button', { name: 'More for Bacon' }));
-    expect(screen.queryByRole('link', { name: 'Share this version as a new recipe' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Share this version as a new recipe…' })).toBeNull();
   });
 });
 
 describe('MealEditor typed-in ingredients (release C)', () => {
+  // Bacon is a single food in the fixture (no add row); a second line makes it a recipe, which has one.
+  const BACON_RECIPE = mapCatalog({ ...ROWS, lines: [...ROWS.lines, { ...ROWS.lines[3], id: 9001, position: 2, ingredient_id: 'eggs' }] });
+  const recipeEditor = () => <PlanTab catalog={BACON_RECIPE} menuId="menu-1" menu={menu()} updatedAt={VERSION} outings={[]} openMeal="m1" />;
   const openBacon = async (user: ReturnType<typeof userEvent.setup>) => {
     await user.click(screen.getByRole('button', { name: 'Bacon' }));
   };
   async function typeNew(user: ReturnType<typeof userEvent.setup>, name = 'Gochujang') {
     await openBacon(user);
+    await user.click(screen.getByRole('button', { name: '+ Ingredient' }));
     await user.type(screen.getByRole('combobox', { name: 'Add an ingredient to your version' }), name);
     await user.click(screen.getByRole('option', { name: `Add “${name}” as a new ingredient` }));
     const form = screen.getByRole('group', { name: 'New ingredient' });
@@ -945,16 +957,28 @@ describe('MealEditor typed-in ingredients (release C)', () => {
     saveMenuAction.mockResolvedValue(LANDED);
   });
 
+  it('Cancel_WhileNewIngredientFormIsUp_ClosesBoth', async () => {
+    const user = userEvent.setup();
+    render(recipeEditor());
+    await openBacon(user);
+    await user.click(screen.getByRole('button', { name: '+ Ingredient' }));
+    await user.type(screen.getByRole('combobox', { name: 'Add an ingredient to your version' }), 'Gochujang');
+    await user.click(screen.getByRole('option', { name: 'Add “Gochujang” as a new ingredient' }));
+    const rowCancel = screen.getAllByRole('button', { name: 'Cancel' }).find((b) => b.parentElement?.hasAttribute('data-state'));
+    await user.click(rowCancel as HTMLElement);
+    expect([screen.queryByRole('group', { name: 'New ingredient' }), screen.getByRole('button', { name: '+ Ingredient' }) != null]).toEqual([null, true]);
+  });
+
   it('SavedMenu_SendsTheNewIngredientToTheServer_InTheRecipeUnit', async () => {
     const user = userEvent.setup();
-    render(editor());
+    render(recipeEditor());
     await typeNew(user);
     expect(addMenuIngredientAction.mock.calls[0][0]).toMatchObject({ name: 'Gochujang', kind: 'weight', size: 16, price: 6.99 });
   });
 
   it('SavedTypedIn_IsAddedToTheMeal_ByItsRealId', async () => {
     const user = userEvent.setup();
-    render(editor());
+    render(recipeEditor());
     await typeNew(user);
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
     expect(saved().meals[0].recipeEdits.B003).toContainEqual(expect.objectContaining({ op: 'add', ingredientId: 'x-0000beef' }));
@@ -963,7 +987,7 @@ describe('MealEditor typed-in ingredients (release C)', () => {
   it('Refusal_ShowsUnderTheForm_AndKeepsItOpen', async () => {
     addMenuIngredientAction.mockResolvedValue({ ok: false, error: 'You have 10 new ingredients waiting.' });
     const user = userEvent.setup();
-    render(editor());
+    render(recipeEditor());
     await typeNew(user);
     expect(screen.getByText('You have 10 new ingredients waiting.')).toBeTruthy();
     expect(screen.getByRole('group', { name: 'New ingredient' })).toBeTruthy();
@@ -973,11 +997,33 @@ describe('MealEditor typed-in ingredients (release C)', () => {
     const user = userEvent.setup();
     const store = { caps: { canSave: false, canPay: false, canReport: false }, hrefs: { plan: '/p', shopping: '/s', meal: () => '/m' }, load: () => null, save: vi.fn(), create: vi.fn(), afterCreate: () => '/' };
     openId = 'm1';
-    render(<PlanTab catalog={CATALOG} menuId={null} menu={menu()} updatedAt={null} outings={[]} store={store as never} openMeal="m1" />);
+    render(<PlanTab catalog={BACON_RECIPE} menuId={null} menu={menu()} updatedAt={null} outings={[]} store={store as never} openMeal="m1" />);
     await openBacon(user);
+    await user.click(screen.getByRole('button', { name: '+ Ingredient' }));
     await user.type(screen.getByRole('combobox', { name: 'Add an ingredient to your version' }), 'Gochujang');
     expect(screen.queryByRole('option', { name: 'Add “Gochujang” as a new ingredient' })).toBeNull();
   });
+  it('IngredientAddRow_AtRest_IsALink_NoSearch', async () => {
+    const user = userEvent.setup();
+    render(recipeEditor());
+    await openBacon(user);
+    expect({ link: screen.queryByRole('button', { name: '+ Ingredient' }) != null, search: screen.queryByRole('combobox', { name: 'Add an ingredient to your version' }) }).toEqual({ link: true, search: null });
+  });
+
+  it('SingleFood_HasNoAddRow', async () => {
+    const user = userEvent.setup();
+    render(editor());
+    await openBacon(user);
+    expect(screen.queryByRole('button', { name: '+ Ingredient' })).toBeNull();
+  });
+
+  it('Recipe_HasAnAddRow', async () => {
+    const user = userEvent.setup();
+    render(recipeEditor());
+    await openBacon(user);
+    expect(screen.getByRole('button', { name: '+ Ingredient' })).toBeTruthy();
+  });
+
 });
 
 /**
@@ -996,6 +1042,13 @@ describe('MealPanel diet warnings (ported from the planner)', () => {
     openId = 'm1';
     render(<PlanTab catalog={unsuitableBacon} menuId="menu-1" menu={withVeg(2)} updatedAt={VERSION} outings={[]} openMeal="m1" />);
     expect(panel().getByText(/2 people are vegetarian and this isn’t for them/)).toBeTruthy();
+  });
+
+  it('SingleFood_UnsuitableWarning_OpensTheMealsFoodSearch', async () => {
+    openId = 'm1';
+    render(<PlanTab catalog={unsuitableBacon} menuId="menu-1" menu={withVeg(2)} updatedAt={VERSION} outings={[]} openMeal="m1" />);
+    await userEvent.setup().click(panel().getByRole('button', { name: 'Add a food for vegetarian scouts…' }));
+    await waitFor(() => expect(document.activeElement).toBe(panel().getByRole('combobox')));
   });
 
   it('Warning_IsAbsent_WhenTheMenuCountsNobodyOnThatDiet', () => {
@@ -1036,7 +1089,10 @@ describe('MealPanel — More gear for this meal (gear-from-the-list release 2)',
     <PlanTab catalog={GEARED} menuId="menu-1" menu={m} updatedAt={VERSION} outings={[]} openMeal="m1" gearList={GEAR_LIST} {...over} />
   );
   const foodItems = () => within(screen.getByRole('list', { name: 'Gear for the foods' })).getAllByRole('listitem').map((li) => li.firstChild?.textContent);
-  const gearBox = () => screen.getByRole('combobox', { name: 'More gear for Day 1 breakfast' });
+  const gearBox = () => {
+    if (!screen.queryByRole('combobox', { name: 'More gear for Day 1 breakfast' })) fireEvent.click(screen.getByRole('button', { name: '+ Gear' }));
+    return screen.getByRole('combobox', { name: 'More gear for Day 1 breakfast' });
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -1075,6 +1131,8 @@ describe('MealPanel — More gear for this meal (gear-from-the-list release 2)',
   it('AFoodlessMeal_StillOffersTheMealGearPicker', () => {
     openId = 'm2';
     render(plan(withGear(), { openMeal: 'm2' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(screen.getByRole('button', { name: '+ Gear' }));
     expect(screen.getByRole('combobox', { name: 'More gear for Day 1 lunch' })).toBeTruthy();
     expect(screen.queryByText(/Gear for the foods/)).toBeNull();
   });
@@ -1291,5 +1349,89 @@ describe('MealPanel: pricing a food from its badge', () => {
     await user.keyboard('{Escape}');
     await waitFor(() => expect(document.activeElement).toBe(badge('Hot chocolate')));
     expect(screen.queryByRole('group', { name: 'Price for Hot chocolate' })).toBeNull();
+  });
+});
+
+/** One add pattern per container (Plans/Menu-Monster-Add-Pattern.md, Phase 1): links at rest, search on tap, a bordered open food. */
+describe('MealPanel — the add row and the open-food card', () => {
+  const user = () => userEvent.setup();
+
+  it('AddRow_AtRest_ShowsFoodAndGearLinks_AndNoSearch', () => {
+    render(<PlanTab catalog={CATALOG} menuId="menu-1" menu={menu()} updatedAt={VERSION} outings={[]} openMeal="m1" gearList={[{ id: 1, name: 'Skillet', home: 'trailer', perPerson: false, retiredAt: null }]} />);
+    expect([panel().getByRole('button', { name: '+ Food' }) != null, panel().getByRole('button', { name: '+ Gear' }) != null, panel().queryByRole('combobox')]).toEqual([true, true, null]);
+  });
+
+  it('EmptyMeal_ShowsTheFoodSearchOpen', async () => {
+    render(editor('m2'));
+    expect(search()).toBeTruthy();
+    await user().click(panel().getByRole('button', { name: 'Cancel' }));
+    expect([panel().queryByRole('combobox'), panel().getByRole('button', { name: '+ Food' }) != null]).toEqual([null, true]);
+  });
+
+  it('Swap_OpensTheSearchRow_InSwapMode', async () => {
+    const u = user();
+    render(editor());
+    expect(panel().queryByRole('combobox')).toBeNull();
+    await u.click(screen.getByRole('button', { name: 'More for Bacon' }));
+    await u.click(screen.getByRole('button', { name: 'Swap for…' }));
+    expect(screen.getByRole('combobox', { name: 'Swap Bacon for' })).toBeTruthy();
+  });
+
+  it('OpenFood_IsABorderedCard', async () => {
+    render(editor());
+    await user().click(panel().getByRole('button', { name: /^Bacon/ }));
+    const open = document.getElementById(panel().getByRole('button', { name: /^Bacon/ }).getAttribute('aria-controls') as string) as HTMLElement;
+    expect(open.firstElementChild?.className).toMatch(/foodCard/);
+  });
+
+  it('NoHint_UnderAnOpenFood', async () => {
+    render(editor());
+    await user().click(panel().getByRole('button', { name: /^Bacon/ }));
+    expect(screen.queryByText(/Only this menu changes/)).toBeNull();
+  });
+
+  it('FoodMenu_ListsSwapBackShareRemove_InThatOrder', async () => {
+    const m = menu();
+    m.meals[0].recipeEdits = { B003: [{ op: 'amount', ingredientId: 'bacon', qtyPerPerson: 4 }] };
+    render(editor('m1', m));
+    await user().click(screen.getByRole('button', { name: 'More for Bacon' }));
+    const pop = screen.getByRole('button', { name: 'More for Bacon' }).parentElement?.lastElementChild as HTMLElement;
+    const items = Array.from(pop.children).map((i) => i.textContent);
+    expect(items).toEqual(['Swap for…', 'Back to the troop’s version', 'Share this version as a new recipe…', 'Remove']);
+  });
+
+  it('PeopleForThisMeal_IsANumberBox_NotADialer', () => {
+    render(editor());
+    expect([people().value, mealRow().queryByRole('button', { name: 'One more person' })]).toEqual(['8', null]);
+  });
+});
+
+describe('MealPanel — add row follow-ups (qa-lead)', () => {
+  const u = () => userEvent.setup();
+
+  it('Cancel_WhileNewFoodFormIsUp_ClosesBoth', async () => {
+    const user = u();
+    render(<PlanTab catalog={CATALOG} menuId="menu-1" menu={menu()} updatedAt={VERSION} outings={[]} openMeal="m1" />);
+    await user.type(search(), 'Zzzfood');
+    await user.click(screen.getByRole('option', { name: /^Add “Zzzfood” as a new food/ }));
+    const rowCancel = panel().getAllByRole('button', { name: 'Cancel' }).find((b) => b.parentElement?.hasAttribute('data-state'));
+    await user.click(rowCancel as HTMLElement);
+    expect([panel().queryByRole('combobox'), panel().getByRole('button', { name: '+ Food' }) != null, panel().queryByText(/Zzzfood/)]).toEqual([null, true, null]);
+  });
+
+  it('RemoveLastFood_LeavesFocusOnUndo', async () => {
+    const user = u();
+    const m = menu();
+    m.meals[0].recipeIds = ['B003'];
+    render(editor('m1', m));
+    await user.click(screen.getByRole('button', { name: 'More for Bacon' }));
+    await user.click(screen.getByRole('button', { name: 'Remove' }));
+    expect(document.activeElement).toBe(panel().getByRole('button', { name: 'Undo' }));
+  });
+
+  it('EmptyMeal_StillOffersGear', () => {
+    render(<PlanTab catalog={CATALOG} menuId="menu-1" menu={menu()} updatedAt={VERSION} outings={[]} openMeal="m2" gearList={[{ id: 1, name: 'Skillet', home: 'trailer', perPerson: false, retiredAt: null }]} />);
+    openId = 'm2';
+    expect([panel().getByRole('combobox') != null, panel().getByRole('button', { name: '+ Gear' }) != null]).toEqual([true, true]);
   });
 });
