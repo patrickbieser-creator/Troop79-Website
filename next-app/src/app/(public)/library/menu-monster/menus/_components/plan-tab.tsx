@@ -37,7 +37,7 @@ import { priceText as money } from '@/lib/menu-monster/units';
 import { useLeaveGuard } from '@/lib/use-leave-guard';
 import { Button } from '@/app/_components/button';
 import { Notice } from '@/app/_components/notice';
-import type { Brand, BrandPick, Catalog, Plan, Recipe, RestrictionKey } from '@/lib/menu-monster/types';
+import type { Brand, BrandPick, Catalog, Package, Plan, Recipe, RestrictionKey } from '@/lib/menu-monster/types';
 import { MEALS } from '@/lib/menu-monster/units';
 import { MAX_HEADCOUNT, MIN_HEADCOUNT } from '@/lib/menu-monster/engine';
 import { MAX_MENU_DAYS, MAX_MENU_MEALS, MAX_MENU_NAME, menuNameError, type Menu, type MenuContext, type MenuMeal } from '@/lib/menu-monster/menus';
@@ -47,6 +47,7 @@ import { addBrandAction, suggestRecipeBrandAction } from '../../../_tools/menu-m
 import type { CreateResult, MenuStore, SaveResult } from '@/lib/menu-monster/menu-store';
 import { serverMenuStore } from './server-menu-store';
 import { MealPanel } from './meal-panel';
+import type { AddedPackage } from './add-package-form';
 import { withoutMealGear, type GearItem } from '@/lib/menu-monster/gear';
 import { overlayNewIngredients, type NewIngredient } from '@/lib/menu-monster/scout-ingredients';
 import { overlayNewRecipes } from '@/lib/menu-monster/single-food';
@@ -148,12 +149,17 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
   const [typedBrands, setTypedBrands] = useState<Brand[]>([]);
   // Foods added on the fly from a meal: their menu items ride here too.
   const [madeRecipes, setMadeRecipes] = useState<Recipe[]>([]);
+  // Packages priced from a meal's "No price yet" badge ride here the same way.
+  const [addedPackages, setAddedPackages] = useState<Package[]>([]);
   const catalog = useMemo(() => {
     const withTyped = overlayNewRecipes(overlayNewIngredients(catalogProp, typed), madeRecipes);
     const have = new Set((withTyped.brands ?? []).map((b) => b.id));
     const fresh = typedBrands.filter((b) => !have.has(b.id));
-    return fresh.length > 0 ? { ...withTyped, brands: [...(withTyped.brands ?? []), ...fresh] } : withTyped;
-  }, [catalogProp, typed, madeRecipes, typedBrands]);
+    const withBrands = fresh.length > 0 ? { ...withTyped, brands: [...(withTyped.brands ?? []), ...fresh] } : withTyped;
+    const haveP = new Set(withBrands.packages.map((p) => p.id));
+    const freshP = addedPackages.filter((p) => !haveP.has(p.id));
+    return freshP.length > 0 ? { ...withBrands, packages: [...withBrands.packages, ...freshP] } : withBrands;
+  }, [catalogProp, typed, madeRecipes, typedBrands, addedPackages]);
   /** The meal "Add a meal" just created: its panel takes focus into its search, once. */
   const [focusMeal, setFocusMeal] = useState<string | null>(null);
   const nameRef = useRef<HTMLInputElement | null>(null);
@@ -247,8 +253,19 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
       const next = { ...rest, qtyOverride };
       return { ...m, shopping: Object.keys(brands).length > 0 ? { ...next, brands } : next };
     });
+  /** A package priced from a meal joins the catalog at once; when the food already had a price it is also picked, as on Shopping. */
+  const packageAdded = (ingredientId: string, { pkg, status: st }: AddedPackage) => {
+    if (st !== 'same') setAddedPackages((cur) => [...cur, pkg]);
+    const rec = lineByIng.get(ingredientId)?.rec;
+    if (!rec || rec.id === pkg.id) return;
+    edit((m) => {
+      const qtyOverride = { ...m.shopping.qtyOverride };
+      delete qtyOverride[ingredientId];
+      return { ...m, shopping: { ...m.shopping, packageChoice: { ...m.shopping.packageChoice, [ingredientId]: pkg.id }, qtyOverride } };
+    });
+  };
   const typeBrand = async (ingredientId: string, name: string) => {
-    const res = await addBrandAction(ingredientId, name);
+    const res = await addBrandAction(ingredientId, name, menuId ?? undefined);
     if (res.ok) setTypedBrands((cur) => [...cur.filter((b) => b.id !== res.brand.id), res.brand]);
     return res;
   };
@@ -362,7 +379,7 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
       gearList={gearList}
       draftItems={draftItems}
       adminLinks={adminLinks}
-      shoppingHref={fixHref ?? undefined}
+      onPackageAdded={fixHref ? packageAdded : undefined}
       onChange={setMeal}
       canTypeIn={canTypeIn}
       onTyped={(n) => setTyped((t) => [...t, n])}

@@ -105,7 +105,7 @@ describe('Plan tab — brands', () => {
     await openBacon(user);
     await user.click(panel().getByRole('button', { name: 'Choose a brand for Bacon' }));
     await user.type(panel().getByRole('textbox', { name: 'Type a brand of Bacon' }), 'Farm stand{Enter}');
-    await waitFor(() => expect(addBrandAction).toHaveBeenCalledWith('bacon', 'Farm stand'));
+    await waitFor(() => expect(addBrandAction).toHaveBeenCalledWith('bacon', 'Farm stand', 'menu-1'));
     await waitFor(() => expect(within(panel().getByRole('list', { name: 'Bacon ingredients' })).getAllByText(/^Farm stand/).length).toBeGreaterThan(0));
   });
 

@@ -13,12 +13,10 @@
  */
 
 import { createAdminClient } from '@/lib/supabase/server';
-import { requireVerifiedScoutIdentity } from '@/lib/family-access';
 import { loadMenuMonsterCatalog } from '@/lib/menu-monster/data';
 import { MAX_ACTUALS_BYTES, MAX_MENU_BYTES, MAX_MENUS_PER_SCOUT, isMenuId, menuNameError, sanitizeActuals, sanitizeMenu, type Menu, type PaidStatus } from '@/lib/menu-monster/menus';
 import { MAX_REVIEW_NOTE, MENU_LIMIT, addMenuIngredientWith, copyMenuWith, createMenuWith, deleteMenuWith, duplicateMenuWith, hideMenuWith, loadMenuWith, saveActualsWith, saveMenuWith, setMenuSharedWith, setReviewNoteWith } from '@/lib/menu-monster/menus-store';
 import { resolveMealGearWith } from '@/lib/menu-monster/gear-store';
-import { resolveAdminActor } from '@/lib/admin-actor';
 import { sanitizeNewIngredients } from '@/lib/menu-monster/scout-ingredients';
 import { MAX_SCOUT_RECIPES } from '@/lib/menu-monster/scout-recipes';
 import { listMyRecipesWith, saveScoutRecipeWith } from '@/lib/menu-monster/scout-recipes-store';
@@ -28,31 +26,10 @@ import { addScoutPackageWith } from '@/lib/menu-monster/scout-packages-store';
 import { reportPriceWith } from '@/lib/menu-monster/price-history';
 import { loadOutingsWith } from '@/lib/menu-monster/menus-data';
 import { centralToday } from '@/lib/dates';
-import { recordAuditAs, type AuditActor } from '@/lib/audit';
-import { menuViewer, recipeAuthor } from '../../menu-monster/menus/_components/scout-menus';
+import { recordAuditAs } from '@/lib/audit';
 
-type Fail = { ok: false; error: string };
+import { NOT_YOURS, isFail, isRefused, leaderActor, menuWriter, scoutActor, typedInOwner, type Fail } from './typed-in-owner';
 
-/** The menu's owner-to-be: a verified scout (the epoch check every scout write makes), else any other signed-in
- *  person (a leader, a parent — menuViewer re-checks a parent's sign-in). Never taken from the payload. */
-async function scoutActor(): Promise<AuditActor | Fail> {
-  try {
-    const s = await requireVerifiedScoutIdentity();
-    return { personId: s.personId, label: s.displayName };
-  } catch (e) {
-    const viewer = await menuViewer();
-    if (viewer && viewer.kind !== 'scout' && viewer.personId != null) {
-      const who = await recipeAuthor();
-      if (who) return { personId: who.personId, label: who.displayName };
-    }
-    // A scout hears why their sign-in ended; everyone else is simply asked to sign in.
-    return { ok: false, error: e instanceof Error && viewer?.kind === 'scout' ? e.message : 'Sign in to save your menu.' };
-  }
-}
-
-const isFail = (v: AuditActor | Fail): v is Fail => 'ok' in v;
-
-const NOT_YOURS = 'That menu isn’t one of yours.';
 const LIMIT_MESSAGE = `You have ${MAX_MENUS_PER_SCOUT} menus — delete one you don’t need to make room.`;
 const NOT_SHARED = 'That menu isn’t shared any more.';
 const TOO_BIG = 'This menu is too big to save. Remove some meals or edits and try again.';
@@ -81,29 +58,6 @@ async function allowedOuting(menu: Menu, linkedId: number | null): Promise<Menu>
   const outings = await loadOutingsWith(createAdminClient(), centralToday(), linkedId == null ? [] : [linkedId]);
   return outings.some((o) => o.id === menu.calendarEntryId) ? menu : { ...menu, calendarEntryId: null };
 }
-
-/**
- * Who is writing to this menu, and whose it is. The owner writes their own. A LEADER — an adult holding an
- * admin capability, signed in as one person, re-checked on every call — writes anyone's (Patrick,
- * 2026-10-05: "Leaders need full rights to scout menus. They often will work side by side with scouts on
- * their menus at troop meetings"). The owner always comes from the row, never the payload; everyone else
- * gets the answer a missing menu gets.
- */
-async function menuWriter(id: unknown): Promise<{ actor: AuditActor; ownerId: number; own: boolean; current: NonNullable<Awaited<ReturnType<typeof loadMenuWith>>> } | Fail> {
-  const actor = await scoutActor();
-  if (isFail(actor)) return actor;
-  if (!isMenuId(id)) return { ok: false, error: NOT_YOURS };
-  const current = await loadMenuWith(createAdminClient(), id);
-  if (!current) return { ok: false, error: NOT_YOURS };
-  const own = current.ownerPersonId === actor.personId;
-  if (!own) {
-    // The leader check and the person the write is credited to must be the same sign-in (qa-lead).
-    const leader = await leaderActor();
-    if (isFail(leader) || leader.personId == null || leader.personId !== actor.personId) return { ok: false, error: NOT_YOURS };
-  }
-  return { actor, ownerId: current.ownerPersonId, own, current };
-}
-const isRefused = (v: object): v is Fail => 'ok' in v;
 
 export async function createMenuAction(raw: unknown): Promise<{ ok: true; id: string; dropped?: string[] } | Fail> {
   const actor = await scoutActor();
@@ -232,15 +186,6 @@ export async function copyMenuAction(id: string): Promise<{ ok: true; id: string
   return { ok: true, id: res.id, droppedRecipes: res.droppedRecipes };
 }
 
-/** Any adult with admin access (Decision 2) — never a scout identity, even one holding a capability. */
-async function leaderActor(): Promise<AuditActor | Fail> {
-  const actor = await resolveAdminActor();
-  if (!actor || actor.subjectKind === 'scout' || actor.capabilities.size === 0) {
-    return { ok: false, error: 'Only leaders can do that.' };
-  }
-  return { personId: actor.personId, label: actor.label };
-}
-
 /** A leader's one review note on a menu, replacing the last; blank clears it (Phase 3). */
 export async function setReviewNoteAction(id: string, note: string): Promise<{ ok: true } | Fail> {
   const actor = await leaderActor();
@@ -256,19 +201,6 @@ export async function hideMenuAction(id: string): Promise<{ ok: true } | Fail> {
   if (isFail(actor)) return actor;
   if (!isMenuId(id)) return { ok: false, error: 'That menu is gone.' };
   return (await hideMenuWith(createAdminClient(), actor, id)) ? { ok: true } : { ok: false, error: 'That menu is not shared any more.' };
-}
-
-/**
- * Who a typed-in ingredient or package belongs to. Normally the person typing. When a leader types one while
- * working on a scout's menu (`onMenuId`, checked by menuWriter), it is filed under the MENU'S OWNER: a
- * typed-in is private to its owner until a leader keeps it, so one filed under the leader could not be used
- * on the scout's menu at all. The label stays the leader's, so the audit trail says who typed it.
- */
-async function typedInOwner(onMenuId: string | undefined): Promise<AuditActor | Fail> {
-  if (onMenuId === undefined) return scoutActor();
-  const who = await menuWriter(onMenuId);
-  if (isRefused(who)) return who;
-  return who.own ? who.actor : { personId: who.ownerId, label: `${who.actor.label} (a leader, on their menu)` };
 }
 
 const TYPED_IN_ERRORS = {
@@ -351,9 +283,18 @@ export async function addScoutPackageAction(raw: unknown, onMenuId?: string): Pr
   const actor = await typedInOwner(onMenuId);
   if (isFail(actor)) return actor;
   if (tooBig(raw, 2 * 1024)) return { ok: false, error: PACKAGE_ERRORS.invalid };
-  const pkg = sanitizeScoutPackage(raw, await loadMenuMonsterCatalog(actor.personId));
+  const sb = createAdminClient();
+  // A typed-in food may be priced by the person who typed it (the owner; a helping leader acts as the owner).
+  // The ingredient's author comes from the row, never the payload; anyone else's typed-in stays refused.
+  const ingId = typeof (raw as { ingredientId?: unknown } | null)?.ingredientId === 'string' ? (raw as { ingredientId: string }).ingredientId : '';
+  let ownTypedIn = false;
+  if (ingId.startsWith('x-')) {
+    const { data } = await sb.from('mm_ingredients').select('added_by_person_id').eq('id', ingId).maybeSingle();
+    ownTypedIn = data?.added_by_person_id != null && data.added_by_person_id === actor.personId;
+  }
+  const pkg = sanitizeScoutPackage(raw, await loadMenuMonsterCatalog(actor.personId), ownTypedIn);
   if (!pkg) return { ok: false, error: PACKAGE_ERRORS.invalid };
-  const res = await addScoutPackageWith(createAdminClient(), actor, pkg);
+  const res = await addScoutPackageWith(sb, actor, pkg);
   if (!('id' in res)) return { ok: false, error: PACKAGE_ERRORS[res.status] };
   return { ok: true, status: res.status, id: res.id };
 }

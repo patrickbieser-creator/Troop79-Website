@@ -168,10 +168,17 @@ describe('mm_add_scout_package', () => {
     expect((await addPackage({ size: 20, price: 9 })).error?.message).toContain('MM_PACKAGE_CAP: ingredient');
   });
 
-  it('addScoutPackage_refusesATypedInIngredient', async () => {
+  // v1.196.0 (migration 20261025100000): the person who typed a food in may price it; anyone else is still refused.
+  it('addScoutPackage_refusesAnotherPersonsTypedInIngredient', async () => {
+    const { data: id } = await addMenuIngredient('Vitest jam');
+    const { error } = await admin.rpc('mm_add_scout_package', { p_person: OTHER_SCOUT, p_ingredient_id: id as string, p_pkg: { name: `${MARKER} pack`, store: 'Aldi', size: 2, price: 7 }, p_band: 0.5 });
+    expect(error?.message).toContain('MM_BAD_INGREDIENT');
+  });
+
+  it('addScoutPackage_acceptsTheOwnersOwnTypedInIngredient', async () => {
     const { data: id } = await addMenuIngredient('Vitest jam');
     const { error } = await addPackage({ size: 2, price: 7 }, id as string);
-    expect(error?.message).toContain('MM_BAD_INGREDIENT');
+    expect(error).toBeNull();
   });
 
   it('addScoutPackage_refusesLinkTextInTheName', async () => {

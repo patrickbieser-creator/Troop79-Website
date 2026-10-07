@@ -63,11 +63,15 @@ export interface ScoutPackage {
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
-/** The client's package, cleaned; null when it isn't one a scout may add (unknown or typed-in ingredient, bad size or price). */
-export function sanitizeScoutPackage(raw: unknown, catalog: Catalog): ScoutPackage | null {
+/**
+ * The client's package, cleaned; null when it isn't one a scout may add (unknown or typed-in ingredient, bad size
+ * or price). A typed-in is refused unless `ownTypedIn` — the caller has checked on the server that the acting
+ * person typed that food in (the action reads added_by_person_id; mm_add_scout_package re-checks it).
+ */
+export function sanitizeScoutPackage(raw: unknown, catalog: Catalog, ownTypedIn = false): ScoutPackage | null {
   if (!isRecord(raw) || typeof raw.ingredientId !== 'string') return null;
   const ingredient = catalog.ingredients.find((i) => i.id === raw.ingredientId);
-  if (!ingredient || ingredient.needsMatch) return null;
+  if (!ingredient || (ingredient.needsMatch && !ownTypedIn)) return null;
   const size = Number(raw.size);
   const unitKey = typeof raw.sizeUnit === 'string' ? raw.sizeUnit : ingredient.unit.key;
   const yld = packageYield(ingredient, catalog.conversions, size, unitKey);

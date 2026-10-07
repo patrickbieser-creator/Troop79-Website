@@ -26,18 +26,24 @@ export function AddPackageForm({
   ingredient,
   conversions,
   onAdded,
-  onCancel
+  onCancel,
+  compact = false,
+  defaultName
 }: {
   ingredient: Ingredient;
   conversions: readonly Conversion[];
   onAdded: (a: AddedPackage) => void;
   onCancel: () => void;
+  /** Mounted inside a meal (the "No price yet" badge): no Store, a hint that a guess will do. */
+  compact?: boolean;
+  /** The name the form starts with: the chosen brand, else the ingredient. */
+  defaultName?: string;
 }) {
   const uid = useId();
   // A leader on a scout's menu: the package is filed under the scout (helper-menu.ts).
   const onMenu = useContext(HelperMenu);
   const units = packageSizeUnits(ingredient, conversions);
-  const [name, setName] = useState('');
+  const [name, setName] = useState(defaultName ?? '');
   const [store, setStore] = useState('');
   const [size, setSize] = useState('');
   const [unit, setUnit] = useState(units[0].key);
@@ -103,13 +109,15 @@ export function AddPackageForm({
   };
 
   return (
-    <div ref={rootRef} className={s.choice} role="group" aria-label={`New package of ${ingredient.name}`} onKeyDown={onKey}>
+    <div ref={rootRef} className={s.choice} role="group" aria-label={compact ? `Price for ${ingredient.name}` : `New package of ${ingredient.name}`} onKeyDown={onKey}>
       <Field label="Name on the label" problem={noteFor('name')}>
         <TextInput data-field="name" value={name} maxLength={60} autoComplete="off" onChange={(e) => setName(e.target.value)} />
       </Field>
-      <Field label="Store (optional)">
-        <TextInput value={store} maxLength={40} autoComplete="off" onChange={(e) => setStore(e.target.value)} />
-      </Field>
+      {!compact && (
+        <Field label="Store (optional)">
+          <TextInput value={store} maxLength={40} autoComplete="off" onChange={(e) => setStore(e.target.value)} />
+        </Field>
+      )}
       <div className={s.noteRow}>
         <Field label="One package holds" problem={noteFor('size')}>
           <TextInput data-field="size" value={size} inputMode="decimal" autoComplete="off" onChange={(e) => setSize(e.target.value)} />
@@ -124,7 +132,7 @@ export function AddPackageForm({
           </SelectInput>
         </Field>
       </div>
-      <Field label="Price" problem={noteFor('price')}>
+      <Field label="Price" hint={compact ? 'A best guess is fine.' : undefined} problem={noteFor('price')}>
         <TextInput data-field="price" value={price} inputMode="decimal" autoComplete="off" onChange={(e) => setPrice(e.target.value)} />
       </Field>
       {error && (

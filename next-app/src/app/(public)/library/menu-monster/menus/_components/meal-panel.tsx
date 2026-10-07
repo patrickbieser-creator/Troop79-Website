@@ -70,6 +70,7 @@ import { MealNewFood, type FoodAdded } from './meal-new-food';
 import { IngredientList, type RowAction } from '../../_components/ingredient-list';
 import type { ListIntent } from '../../_components/ingredient-list-edit';
 import { RowMenu } from './row-menu';
+import { AddPackageForm, type AddedPackage } from './add-package-form';
 import { RecipeLibraryDialog } from './recipe-library-dialog';
 import s from './workspace.module.css';
 
@@ -94,8 +95,9 @@ export interface MealPanelProps {
   /** The troop's gear list (not retired): "More gear for this meal" picks from it. Absent = no picker. */
   gearList?: readonly GearItem[];
   onChange: (next: MenuMeal) => void;
-  /** Where a "No price yet" food is answered: the Shopping tab's row for that ingredient. Absent = the badge stays plain text (read-only, a new or local menu). */
-  shoppingHref?: (ingredientId: string) => string;
+  /** A "No price yet" food is answered in place: the badge opens the add-a-package form under the ingredient, and the
+   *  package that lands comes up here (the Plan tab's catalog). Absent = the badge stays plain text (read-only, a new or local menu). */
+  onPackageAdded?: (ingredientId: string, a: AddedPackage) => void;
   /** A signed-in scout's saved menu: "Add “x” as a new ingredient" (release C). */
   canTypeIn?: boolean;
   onTyped?: (n: NewIngredient) => void;
@@ -118,7 +120,7 @@ export interface MealPanelProps {
   adminLinks?: boolean;
 }
 
-export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearList, shoppingHref, onChange, canTypeIn = false, onTyped, onNewRecipe, shareVersionMenuId = null, autoFocusAdd = false, onBrands, lineFor, onTypeBrand, onSuggestBrand, draftItems = [], adminLinks = false }: MealPanelProps) {
+export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearList, onPackageAdded, onChange, canTypeIn = false, onTyped, onNewRecipe, shareVersionMenuId = null, autoFocusAdd = false, onBrands, lineFor, onTypeBrand, onSuggestBrand, draftItems = [], adminLinks = false }: MealPanelProps) {
   /** Suggestions changed this visit ("recipe:ingredient" → brand id, or null for cleared): the catalog prop is as loaded. */
   const [suggested, setSuggested] = useState<Readonly<Record<string, string | null>>>({});
   const uid = useId();
@@ -136,8 +138,17 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
   const [newFood, setNewFood] = useState<string | null>(null);
   /** Brand choosers open in this meal, by `recipe:ingredient` (several stay open together — Patrick, 2026-10-03). */
   const [brandOpen, setBrandOpen] = useState<ReadonlySet<string>>(() => new Set());
+  /** The one price form open in this meal: the food it prices, under the recipe whose badge opened it. */
+  const [priceOpen, setPriceOpen] = useState<{ rid: string; ingredientId: string } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const undoRef = useRef<HTMLButtonElement>(null);
+  const priceRef = useRef<HTMLDivElement>(null);
+
+  // The price form just opened: focus goes to its first field.
+  const priceKey = priceOpen ? `${priceOpen.rid}:${priceOpen.ingredientId}` : null;
+  useEffect(() => {
+    if (priceKey) priceRef.current?.querySelector('input')?.focus();
+  }, [priceKey]);
 
   useEffect(() => {
     if (status.focusUndo) undoRef.current?.focus();
@@ -411,6 +422,47 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
     };
   };
 
+  /** Closing the price form puts focus back on the badge that opened it. */
+  const closePrice = () => {
+    const rid = priceOpen?.rid;
+    setPriceOpen(null);
+    if (rid) requestAnimationFrame(() => document.getElementById(`${uid}-price-${rid}`)?.focus());
+  };
+  const priceAdded = (rid: string, ing: { id: string; name: string }, a: AddedPackage) => {
+    onPackageAdded?.(ing.id, a);
+    setPriceOpen(null);
+    setStatus({
+      text: a.status === 'held' ? `${ing.name} priced at ${money(a.pkg.price)}. A leader checks it first.` : `${ing.name} priced at ${money(a.pkg.price)}.`,
+      undoTo: null
+    });
+    // The badge may be gone with the price; focus stays in the meal.
+    requestAnimationFrame(() => (document.getElementById(`${uid}-price-${rid}`) ?? document.getElementById(`${uid}-recipe-${rid}`))?.focus());
+  };
+  /** The brand control plus, under the food being priced, the price form (the inset the brand chooser uses). */
+  const itemSlot = (rid: string) => {
+    const brand = brandSlot(rid);
+    return (ingredientId: string, name: string) => {
+      const b = brand(ingredientId, name);
+      if (priceOpen?.rid !== rid || priceOpen.ingredientId !== ingredientId) return b;
+      const ing = ingById.get(ingredientId);
+      if (!ing) return b;
+      const picked = livePicks(picksOf(ingredientId), ingredientId, catalog)[0]?.brand.name;
+      const form = (
+        <div id={`${uid}-price-form-${rid}`} ref={priceRef}>
+          <AddPackageForm
+            ingredient={ing}
+            conversions={catalog.conversions}
+            compact
+            defaultName={picked ?? ing.name}
+            onAdded={(a) => priceAdded(rid, ing, a)}
+            onCancel={closePrice}
+          />
+        </div>
+      );
+      return { text: b?.text ?? null, inset: (<>{b?.inset}{form}</>) };
+    };
+  };
+
   /* ---- This menu's version of a recipe ---- */
   /** The diets with people on this meal, clamped like the engine does. */
   const mealDiets = effectiveRestrictions(plan);
@@ -519,7 +571,7 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
           return (
             <li key={id} className={s.row}>
               <div className={s.rowMain}>
-                <button type="button" className={s.rowName} aria-expanded={open} aria-controls={open ? panel : undefined} onClick={() => toggle(id)}>
+                <button type="button" id={`${uid}-recipe-${id}`} className={s.rowName} aria-expanded={open} aria-controls={open ? panel : undefined} onClick={() => toggle(id)}>
                   {name}
                   <span className={s.chev} aria-hidden="true">
                     ›
@@ -527,16 +579,26 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
                 </button>
                 {edited > 0 && <span className={s.meta}>Your version · {edited}</span>}
                 {noPrice[id] &&
-                  (shoppingHref ? (
-                    <Link
+                  (onPackageAdded && !readOnly ? (
+                    <button
+                      type="button"
+                      id={`${uid}-price-${id}`}
                       className={`${s.tag} ${s.tagBtn}`}
-                      href={shoppingHref(noPrice[id][0].id)}
+                      aria-expanded={priceOpen?.rid === id}
+                      aria-controls={priceOpen?.rid === id ? `${uid}-price-form-${id}` : undefined}
+                      aria-pressed={priceOpen?.rid === id}
                       title={noPrice[id].map((i) => i.name).join(', ')}
                       aria-label={`No price yet — add one: ${noPrice[id].map((i) => i.name).join(', ')}`}
+                      onClick={() => {
+                        if (priceOpen?.rid === id) return closePrice();
+                        openList(id);
+                        setPriceOpen({ rid: id, ingredientId: noPrice[id][0].id });
+                        setStatus({ text: `Price for ${noPrice[id][0].name}.`, undoTo: null });
+                      }}
                     >
                       No price yet
                       <span className={s.srOnly}>: {noPrice[id].map((i) => i.name).join(', ')}</span>
-                    </Link>
+                    </button>
                   ) : (
                     <span className={s.tag} title={noPrice[id].map((i) => i.name).join(', ')}>
                       No price yet
@@ -621,7 +683,7 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
                         emptyText="No ingredients on this recipe yet."
                         onAction={(a) => onIngredientAction(id, a)}
                         onAnnounce={(text) => setStatus({ text, undoTo: null })}
-                        brandSlot={brandSlot(id)}
+                        brandSlot={itemSlot(id)}
                         renderNew={
                           canTypeIn
                             ? (typedName, done, scope) => (

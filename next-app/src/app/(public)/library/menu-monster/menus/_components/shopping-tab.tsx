@@ -171,7 +171,7 @@ export function ShoppingTab({ catalog: catalogProp, menuId, menu: initial, updat
       return Object.keys(brands).length > 0 ? { ...next, brands } : next;
     });
   const typeBrand = async (ingredientId: string, name: string) => {
-    const res = await addBrandAction(ingredientId, name);
+    const res = await addBrandAction(ingredientId, name, menuId);
     if (res.ok) setCatalog((c) => ((c.brands ?? []).some((b) => b.id === res.brand.id) ? c : { ...c, brands: [...(c.brands ?? []), res.brand] }));
     return res;
   };
@@ -661,7 +661,7 @@ function ShoppingRow({
 
   const noteId = `${panelId}-note`;
   // The form is offered only where a scout may add a package to this line.
-  const canAddPackage = !readOnly && !!onPackageAdded && l.source === 'buy' && !l.ing.needsMatch;
+  const canAddPackage = !readOnly && !!onPackageAdded && l.source === 'buy';
   return (
     <li className={s.row}>
       {/* The whole row opens the inset; the name button is the keyboard and screen-reader target. */}

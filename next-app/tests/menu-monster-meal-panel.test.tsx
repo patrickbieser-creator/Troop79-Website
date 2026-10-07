@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import Link from 'next/link';
 import userEvent from '@testing-library/user-event';
 import { CATALOG, ROWS } from './helpers/menu-monster-fixture';
@@ -22,9 +22,11 @@ vi.mock('next/navigation', () => ({ useRouter: () => router }));
 
 const saveMenuAction = vi.fn();
 const addMenuIngredientAction = vi.fn();
+const addScoutPackageAction = vi.fn();
 vi.mock('../src/app/(public)/library/_tools/menu-monster/menu-actions', () => ({
   saveMenuAction: (...a: unknown[]) => saveMenuAction(...a),
-  addMenuIngredientAction: (...a: unknown[]) => addMenuIngredientAction(...a)
+  addMenuIngredientAction: (...a: unknown[]) => addMenuIngredientAction(...a),
+  addScoutPackageAction: (...a: unknown[]) => addScoutPackageAction(...a)
 }));
 
 import { PlanTab } from '../src/app/(public)/library/menu-monster/menus/_components/plan-tab';
@@ -1210,5 +1212,84 @@ describe('a draft the search cannot list says so', () => {
     render(withDrafts());
     await type('bacon');
     expect(panel().queryByText(/is a draft/)).toBeNull();
+  });
+});
+
+/**
+ * "No price yet" is answered in place (Patrick, 2026-10-06: Hot Chocolate added on the fly had no price): the badge opens
+ * the existing add-a-package form under the food, one form per meal, and the price clears the badge without a reload.
+ */
+describe('MealPanel: pricing a food from its badge', () => {
+  const two = mapCatalog({
+    ...ROWS,
+    ingredients: [...ROWS.ingredients, { ...ROWS.ingredients[6], id: 'cocoa', name: 'Hot chocolate' }],
+    recipes: [...ROWS.recipes, { ...ROWS.recipes[3], id: 'B024', name: 'Hot chocolate', sort_order: 9 }],
+    lines: [...ROWS.lines, { ...ROWS.lines[6], id: 900, recipe_id: 'B024', ingredient_id: 'cocoa' }]
+  });
+  const unpriced = (): Menu => ({ ...menu(), meals: [{ id: 'm1', day: 0, slot: 'breakfast', headcount: null, recipeIds: ['B023', 'B024'], recipeEdits: {} }, menu().meals[1]] });
+  const renderMeal = () => (openId = 'm1', render(<PlanTab catalog={two} menuId="menu-1" menu={unpriced()} updatedAt={VERSION} outings={[]} openMeal="m1" />));
+  const badge = (food: string) => screen.getByRole('button', { name: new RegExp(`^No price yet — add one: ${food}`) });
+  const fill = async (user: ReturnType<typeof userEvent.setup>, food: string) => {
+    const form = within(screen.getByRole('group', { name: `Price for ${food}` }));
+    await user.type(form.getByLabelText('One package holds'), '16');
+    await user.type(form.getByLabelText('Price'), '4.50');
+    await user.click(form.getByRole('button', { name: 'Add package' }));
+  };
+  beforeEach(() => {
+    vi.clearAllMocks();
+    addScoutPackageAction.mockResolvedValue({ ok: true, status: 'live', id: 'sp-1' });
+  });
+
+  it('Scout_OpensThePriceForm_FromTheNoPriceBadge_InsideTheMeal', async () => {
+    renderMeal();
+    const user = userEvent.setup();
+    await user.click(badge('Hot chocolate'));
+    const form = screen.getByRole('group', { name: 'Price for Hot chocolate' });
+    expect([
+      badge('Hot chocolate').getAttribute('aria-expanded'),
+      panel().getByRole('group', { name: 'Price for Hot chocolate' }) === form,
+      within(form).queryByLabelText('Store (optional)'),
+      (within(form).getByLabelText('Name on the label') as HTMLInputElement).value,
+      document.activeElement === within(form).getByLabelText('Name on the label')
+    ]).toEqual(['true', true, null, 'Hot chocolate', true]);
+  });
+
+  it('Scout_SeesTheBadgeGo_AndTheCost_AfterAPriceLands', async () => {
+    renderMeal();
+    const user = userEvent.setup();
+    await user.click(badge('Hot chocolate'));
+    await fill(user, 'Hot chocolate');
+    await waitFor(() => expect(screen.queryByRole('button', { name: /No price yet — add one: Hot chocolate/ })).toBeNull());
+    expect([
+      panel().getByRole('status').textContent,
+      screen.queryByRole('group', { name: 'Price for Hot chocolate' }),
+      addScoutPackageAction.mock.calls[0][0]
+    ]).toEqual(['Hot chocolate priced at $4.50.', null, expect.objectContaining({ ingredientId: 'cocoa', price: 4.5, size: 16 })]);
+  });
+
+  it('Scout_HearsALeaderChecksItFirst_WhenThePriceIsHeld', async () => {
+    addScoutPackageAction.mockResolvedValue({ ok: true, status: 'held', id: 'sp-2' });
+    renderMeal();
+    const user = userEvent.setup();
+    await user.click(badge('Hot chocolate'));
+    await fill(user, 'Hot chocolate');
+    await waitFor(() => expect(panel().getByRole('status').textContent).toBe('Hot chocolate priced at $4.50. A leader checks it first.'));
+  });
+
+  it('Scout_HasOneOpenPriceForm_PerMeal', async () => {
+    renderMeal();
+    const user = userEvent.setup();
+    await user.click(badge('Orange juice'));
+    await user.click(badge('Hot chocolate'));
+    expect([screen.getAllByRole('group', { name: /^Price for / }).map((g) => g.getAttribute('aria-label')), badge('Orange juice').getAttribute('aria-expanded')]).toEqual([['Price for Hot chocolate'], 'false']);
+  });
+
+  it('Badge_ReturnsFocus_OnEscape', async () => {
+    renderMeal();
+    const user = userEvent.setup();
+    await user.click(badge('Hot chocolate'));
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(document.activeElement).toBe(badge('Hot chocolate')));
+    expect(screen.queryByRole('group', { name: 'Price for Hot chocolate' })).toBeNull();
   });
 });

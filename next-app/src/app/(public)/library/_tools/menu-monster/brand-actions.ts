@@ -14,6 +14,7 @@ import { recordAuditAs } from '@/lib/audit';
 import { cleanScoutText } from '@/lib/menu-monster/scout-text';
 import type { Brand } from '@/lib/menu-monster/types';
 import { addBrandWith, suggestRecipeBrandWith } from '@/lib/menu-monster/brands-store';
+import { typedInOwner } from './typed-in-owner';
 import { menuViewer, recipeAuthor } from '../../menu-monster/menus/_components/scout-menus';
 
 type Fail = { ok: false; error: string };
@@ -25,14 +26,22 @@ const ERRORS = {
   ingredient: 'That ingredient is gone. Reload the page and try again.'
 } as const;
 
-export async function addBrandAction(ingredientId: unknown, name: unknown): Promise<{ ok: true; brand: Brand } | Fail> {
+export async function addBrandAction(ingredientId: unknown, name: unknown, onMenuId?: string): Promise<{ ok: true; brand: Brand } | Fail> {
   if (typeof ingredientId !== 'string' || ingredientId.length > 80) return { ok: false, error: ERRORS.ingredient };
   const clean = cleanScoutText(name, 60);
   if (!clean) return { ok: false, error: ERRORS.invalid };
   const viewer = await menuViewer();
   if (!viewer || viewer.personId == null) return { ok: false, error: ERRORS.signin };
+  let personId: number = viewer.personId;
   let label = viewer.kind === 'leader' ? viewer.label : 'A parent';
-  if (viewer.kind === 'scout') {
+  if (onMenuId !== undefined) {
+    // Working on a menu: a typed-in ingredient is private to the menu's owner, so a leader helping on a
+    // scout's menu adds the brand AS the owner (the rule typed-in packages follow); the label stays the leader's.
+    const actor = await typedInOwner(onMenuId);
+    if ('ok' in actor) return actor;
+    personId = actor.personId as number;
+    label = actor.label;
+  } else if (viewer.kind === 'scout') {
     // The epoch check every scout write makes: a revoked sign-in ends here.
     try {
       label = (await requireVerifiedScoutIdentity()).displayName;
@@ -41,7 +50,7 @@ export async function addBrandAction(ingredientId: unknown, name: unknown): Prom
     }
   }
   const sb = createAdminClient();
-  const res = await addBrandWith(sb, viewer.personId, ingredientId, clean);
+  const res = await addBrandWith(sb, personId, ingredientId, clean);
   if (res.status !== 'ok') return { ok: false, error: ERRORS[res.status] };
   if (res.created) {
     await recordAuditAs(sb, { personId: viewer.personId, label }, { area: 'library', action: 'create', entityType: 'mm_brand', entityId: res.brand.id, summary: `${label} added the Menu Monster brand "${res.brand.name}"` });

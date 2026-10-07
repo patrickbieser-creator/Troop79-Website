@@ -16,9 +16,11 @@ vi.mock('next/navigation', () => ({ useRouter: () => router }));
 
 const createMenuAction = vi.fn();
 const saveMenuAction = vi.fn();
+const addScoutPackageAction = vi.fn();
 vi.mock('../src/app/(public)/library/_tools/menu-monster/menu-actions', () => ({
   createMenuAction: (...a: unknown[]) => createMenuAction(...a),
-  saveMenuAction: (...a: unknown[]) => saveMenuAction(...a)
+  saveMenuAction: (...a: unknown[]) => saveMenuAction(...a),
+  addScoutPackageAction: (...a: unknown[]) => addScoutPackageAction(...a)
 }));
 
 import { PlanTab, type PlanTabProps } from '../src/app/(public)/library/menu-monster/menus/_components/plan-tab';
@@ -412,11 +414,27 @@ describe('PlanTab planner flow, this week (2026-10-06)', () => {
       expect([screen.getByText('1 not priced').tagName, screen.queryByRole('link', { name: /not priced/ })]).toEqual(['SPAN', null]);
     });
 
-    it('NotPriced_InTheMealPanel_LinksToTheShoppingItem', async () => {
+    it('NotPriced_InTheMealPanel_IsAButtonThatOpensThePriceForm', async () => {
       render(withJuice());
-      await userEvent.setup().click(screen.getByRole('button', { name: /^Breakfast/ }));
-      const link = screen.getByRole('link', { name: /No price yet — add one/ });
-      expect(link.getAttribute('href')).toBe('/library/menu-monster/menus/menu-1/shopping?item=oj');
+      const user = userEvent.setup();
+      await user.click(screen.getByRole('button', { name: /^Breakfast/ }));
+      expect(screen.queryByRole('link', { name: /No price yet/ })).toBeNull();
+      await user.click(screen.getByRole('button', { name: /No price yet — add one/ }));
+      expect(screen.getByRole('group', { name: 'Price for Orange juice' })).toBeTruthy();
+    });
+
+    it('PricingAFood_ClearsTheToFixCount_WithoutAReload', async () => {
+      addScoutPackageAction.mockResolvedValue({ ok: true, status: 'live', id: 'sp-new' });
+      render(withJuice());
+      const user = userEvent.setup();
+      expect(within(screen.getByRole('region', { name: 'Menu summary' })).getByRole('button', { name: /people?/ }).textContent).toContain('1 to fix');
+      await user.click(screen.getByRole('button', { name: /^Breakfast/ }));
+      await user.click(screen.getByRole('button', { name: /No price yet — add one/ }));
+      const form = within(screen.getByRole('group', { name: 'Price for Orange juice' }));
+      await user.type(form.getByLabelText('One package holds'), '16');
+      await user.type(form.getByLabelText('Price'), '4.50');
+      await user.click(form.getByRole('button', { name: 'Add package' }));
+      await waitFor(() => expect(within(screen.getByRole('region', { name: 'Menu summary' })).getByRole('button', { name: /people?/ }).textContent).toContain('nothing to fix'));
     });
   });
 
