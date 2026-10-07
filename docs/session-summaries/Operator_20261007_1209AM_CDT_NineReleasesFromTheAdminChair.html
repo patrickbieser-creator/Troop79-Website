@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session 49 — Nine releases from the admin chair — Troop79-Website</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #3d5a3e;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #f0eecd;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); vertical-align: top; }
+        tr:hover { background: var(--nw-sage); }
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+        code { font-family: 'Courier New', monospace; font-size: 0.85em; background: var(--nw-light-gray); padding: 0 0.3em; border-radius: 3px; }
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+        @media print { body { background: white; } header { padding: 1.5rem; } .container { padding: 1rem; } .stat { break-inside: avoid; } }
+        @media (max-width: 600px) { header h1 { font-size: 1.5rem; } .stats { flex-direction: column; } }
+    </style>
+<body>
+    <header>
+        <h1>Nine releases from the admin chair: arrival times, the standards everywhere, the planner finished, and whatever got in the way</h1>
+        <p class="subtitle">Session 49. Patrick asked for the three carried bullets &mdash; the planner follow-ups, the two edit-screen standards on every form, and both parked plans &mdash; then used the planner and the admin live and asked for each thing as it bit: a price right in the meal, four cups of oil for the whole meal, a searchable picker, delete a recipe, a brand from the pull-down, &ldquo;heavy aluminum foil&rdquo; with no way to save, a 404 on a scout&rsquo;s draft. Every build went to a builder from a brief and was gated here; four migrations went to production first.</p>
+        <div class="meta">
+            <span>&#128197; October 6&ndash;7, 2026</span>
+            <span>&#129302; Operator (Fable 5.1)</span>
+            <span>&#128204; Troop79-Website</span>
+            <span>&#128640; v1.190.0 &rarr; v1.198.1</span>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">9</div><div class="label">Releases (v1.191&ndash;v1.198.1)</div></div>
+            <div class="stat"><div class="number">4</div><div class="label">Production migrations</div></div>
+            <div class="stat"><div class="number">9</div><div class="label">Decisions (D-343&ndash;351)</div></div>
+            <div class="stat"><div class="number">189</div><div class="label">Tests net (4492 &rarr; 4681)</div></div>
+            <div class="stat"><div class="number">1</div><div class="label">Plan completed</div></div>
+        </div>
+
+        <h2>What Was Accomplished</h2>
+
+        <div class="callout callout-teal">
+            <strong>The outcome:</strong> a family can say they arrive Saturday morning and still drive scouts home, and the ride board, roster and sheet all say so; every Menu Monster form keeps Save live and marks what is missing; the planner lays out a weekend&rsquo;s meals from the outing and ends in &ldquo;Ready to shop&rdquo;; a scout prices a food they just typed in without leaving the meal; a recipe line can be 4 cups for the whole meal; and a leader can search the ingredient picker, finish a half-saved ingredient, delete a recipe with a guarded confirm, and open a scout&rsquo;s private draft.
+        </div>
+
+        <h3>Releases</h3>
+        <ul>
+            <li><strong>v1.191.0:</strong> each signup leg carries With the group / Later / Earlier with a day and time; cars group by departure on the board, a cross-wave placement needs a leader&rsquo;s confirm; the roster, CSV and printed sheet say &ldquo;Arrives Sat 9:00 am (own car)&rdquo;.</li>
+            <li><strong>v1.192.0:</strong> rail &ldquo;to fix&rdquo; links open the meal in place; Discard greyed beside Next; gear one per line on the print sheet; What we bought joins on &ldquo;done shopping&rdquo;; local menus get the gear picker and draft names.</li>
+            <li><strong>v1.193.0:</strong> the blocked-save and control-hierarchy standards on all eleven admin sites and four public forms; seven styleguide specimens backfilled.</li>
+            <li><strong>v1.194.0:</strong> standard meals from an outing (never a headcount); &ldquo;Ready to shop&rdquo; with Print and Share; a saved recipe&rsquo;s basics as one line; the hub leads with Continue. Planner-flow plan complete.</li>
+            <li><strong>v1.195.0:</strong> gear descriptions on the Gear tab, print sheet and picker; Set patrol is a listed pull-down; owners include parents; Move menus to a renamed patrol.</li>
+            <li><strong>v1.196.0:</strong> &ldquo;No price yet&rdquo; opens the package form inside the meal; a typed-in can be priced by its owner or a helping leader; the Swiss Miss brand error fixed.</li>
+            <li><strong>v1.197.0:</strong> a line is per person or for the whole meal; the admin ingredient picker searches; a half-saved ingredient can be finished and any line has Edit ingredient.</li>
+            <li><strong>v1.198.0:</strong> Delete recipe at the foot with a guarded confirm; New brand from the suggested-brand pull-down; Jenna&rsquo;s CRUD audit fixes (typed gear not on the list, orphaned swaps, confirms on removes, &ldquo;Use this&rdquo; marks fields).</li>
+            <li><strong>v1.198.1:</strong> a line in any unit the Price book can convert, &ldquo;4 cups&rdquo; typed; the admin unit dead end said in place; a scout&rsquo;s private draft opens, saves, retires and duplicates in admin.</li>
+        </ul>
+
+        <div class="callout callout-gold">
+            <strong>Verification honesty:</strong> every release passed lint, typecheck, the full suite and the build; one independent qa-lead review ran (v1.191&ndash;v1.194: pass with warnings, none critical). Nothing was browser-checked &mdash; the eyes-on list in BACKLOG is the longest yet. Two production facts were confirmed by read-only queries (Hot Chocolate belongs to the menu owner; cooking oil is a volume ingredient).
+        </div>
+
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Decision</th></tr></thead>
+            <tbody>
+                <tr><td>D-343</td><td>A signup leg carries an arrival or departure time; the ride board groups cars by departure</td></tr>
+                <tr><td>D-344</td><td>Planner follow-ups: Discard greyed, same-page fix links set the hash, What we bought on &ldquo;done shopping&rdquo;, local menus get gear and draft names</td></tr>
+                <tr><td>D-345</td><td>The blocked-save and control-hierarchy standards apply to every Menu Monster form; shared problem markers and a public form kit</td></tr>
+                <tr><td>D-346</td><td>Planner flow (c): standard meals from an outing, &ldquo;Ready to shop&rdquo;, basics as one line, hub leads with Continue</td></tr>
+                <tr><td>D-347</td><td>Gear descriptions where scouts pack and pick; Set patrol listed; owners include parents; Move menus to a renamed patrol</td></tr>
+                <tr><td>D-348</td><td>&ldquo;No price yet&rdquo; opens the package form inside the meal; a typed-in priced by its owner; a helper&rsquo;s brand filed under the menu owner</td></tr>
+                <tr><td>D-349</td><td>A recipe line is per person or whole meal; the admin ingredient picker is a combobox; a half-saved ingredient can be finished</td></tr>
+                <tr><td>D-350</td><td>Delete at the foot (rule 7); New brand from the pull-down; the recipe form&rsquo;s CRUD rule (&ldquo;obvious but not noisy&rdquo;)</td></tr>
+                <tr><td>D-351</td><td>No per-line unit override: any bridgeable unit, &ldquo;4 cups&rdquo; parses; a private draft opens in admin through forRecipe</td></tr>
+            </tbody>
+        </table>
+
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Patrick: eyes-on v1.191&ndash;v1.198.1 (BACKLOG), and the confirmations: draft food names to visitors, private single-food drafts in the admin search, the caps, arrival-times step 4.</li>
+            <li>The Menu Monster deferred list (D-344&ndash;D-351): the <code>addedBy</code> gate for shared typed-ins and the Duplicate-of-a-private-draft rule first.</li>
+            <li>qa-lead&rsquo;s leg-time bounds check; the publish-test flake; older correctness debt (atomic actuals, the two caps).</li>
+        </ul>
+
+        <h2>Files Changed</h2>
+        <table>
+            <thead><tr><th>Area</th><th>Change</th></tr></thead>
+            <tbody>
+                <tr><td>Events</td><td>transport.ts, event-signup.ts, event-snapshot.ts, format-date.ts (fmtWhen), dates.ts, person-first-form.tsx, assignments-board/view.tsx, roster-table/view.tsx, snapshot-document.tsx, admin events/actions.ts</td></tr>
+                <tr><td>Public planner</td><td>plan-tab.tsx, meal-panel.tsx, summary-rail.tsx, save-bar.tsx, step-strip.tsx, shopping-tab.tsx, finish-line.tsx (new), add-package-form.tsx, bought-tab.tsx, whos-eating.tsx, gear-tab.tsx, gear-picker.tsx, local-menu-shells.tsx, shelf-tool.tsx, recipe-editor.tsx, ingredient-list-edit.tsx, ingredient-list-author.tsx, new-ingredient-form.tsx, public form.tsx kit</td></tr>
+                <tr><td>Library</td><td>menu-prefill.ts (new), menu-view.ts, engine.ts (lineFeeds), units.ts (parseAmountWithUnit, quart/gallon), variations.ts, authoring.ts (dropOrphanedChanges), catalog.ts (forRecipe), scout-recipes(-store).ts, scout-packages.ts, bought-store.ts, menus-data.ts, menus-store.ts, recipe-delete-store.ts (new), brand-actions.ts, typed-in-owner.ts (new), menu-actions.ts</td></tr>
+                <tr><td>Admin Menu Monster</td><td>recipe-builder.tsx, admin-combobox.tsx (new), add-brand-form.tsx (new), danger-confirm.tsx (new), use-attempt.ts (new), new-food-form.tsx, food-on-menu.tsx, gear-admin.tsx, gear-picker.tsx, price-book.tsx, brands-prices.tsx, brands-block.tsx, menus-admin.tsx, scout-recipes.tsx, suggested-brands.tsx, tools-admin.tsx, actions.ts, recipes/[recipeId]/page.tsx; save-state.tsx + .module.css</td></tr>
+                <tr><td>Styleguide</td><td>admin + public pages and specimens: diet rows, Add for, five-step strip, GearPicker/GearChips, blocked save, problems marked in place, Food &amp; recipes rows, editor inline prompts, Combobox, DangerConfirm, gear no-match, finish line, fmtWhen</td></tr>
+                <tr><td>Database</td><td>20261024 signup leg times; 20261025 own typed-in priced; 20261026 mm_recipe_lines.scale; 20261027 mm_delete_recipe</td></tr>
+                <tr><td>Docs</td><td>changelog.html (nine entries), Plans/Event-Signup-Arrival-Times.md (Active), Plans/Completed/Menu-Monster-Planner-Flow.md, Agents/ memory</td></tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
