@@ -1190,3 +1190,58 @@ describe('Recipe builder — edit and delete safeguards (2026-10-06)', () => {
     expect(pancakes().getByText(/Duplicate and the short form wait for a save/)).toBeTruthy();
   });
 });
+
+/**
+ * Patrick, 2026-10-06: the oil is measured in tablespoons but the recipe needs 3 or 4 cups. The line's unit is
+ * any the engine can bridge; the builder says in place when a unit cannot change, and takes a unit typed after
+ * the number ("4 cups").
+ */
+describe('Recipe builder — the unit of a line (2026-10-06)', () => {
+  const OIL: Ingredient = { id: 'oil', name: 'Cooking oil', unit: UNITS.tbsp, section: 'dry', staple: false, avoid: [], retiredAt: null };
+  const WITH_OIL: Catalog = {
+    ...CATALOG,
+    ingredients: [...ING, OIL],
+    recipes: [
+      recipe({
+        id: 'cakes', name: 'Potato pancakes',
+        lines: [
+          { ingredientId: 'oil', qtyPerPerson: 2, unitKey: null, servesRule: 'everyone', servesRestrictions: [] },
+          { ingredientId: 'eggs', qtyPerPerson: 1, unitKey: null, servesRule: 'everyone', servesRestrictions: [] }
+        ]
+      })
+    ]
+  };
+  const lineItem = (n: number) => within(screen.getByRole('list', { name: 'Ingredient lines' })).getAllByRole('listitem')[n - 1];
+
+  it('Leader_IsToldInPlace_WhyTheUnitCannotChange_WithAPriceBookLink', () => {
+    render(<RecipeScreen catalog={WITH_OIL} recipeId="cakes" />);
+    const line = within(lineItem(2));
+    expect(line.getByText(/^Only eggs so far/)).toBeTruthy();
+    expect(line.getByRole('link', { name: 'Price book' }).getAttribute('href')).toBe('/admin/library/menu-monster?tab=prices&ingredient=eggs');
+    expect((line.getByLabelText('Line 2 unit') as HTMLSelectElement).disabled).toBe(true);
+  });
+
+  it('Leader_TypesFourCups_AndTheUnitFollows', async () => {
+    const user = userEvent.setup();
+    render(<RecipeScreen catalog={WITH_OIL} recipeId="cakes" />);
+    const amount = within(lineItem(1)).getByLabelText('Line 1 amount');
+    await user.clear(amount);
+    await user.type(amount, '4 cups');
+    await user.tab();
+    expect((amount as HTMLInputElement).value).toBe('4');
+    expect((within(lineItem(1)).getByLabelText('Line 1 unit') as HTMLSelectElement).value).toBe('cup');
+  });
+
+  it('Leader_IsToldInPlace_WhenTheTypedUnitCannotBeConverted', async () => {
+    const user = userEvent.setup();
+    render(<RecipeScreen catalog={WITH_OIL} recipeId="cakes" />);
+    const amount = within(lineItem(2)).getByLabelText('Line 2 amount');
+    await user.clear(amount);
+    await user.type(amount, '4 cups');
+    await user.tab();
+    expect(amount.getAttribute('aria-invalid')).toBe('true');
+    expect(within(lineItem(2)).getByText(/^cups is not a unit the Price book can convert for Eggs/)).toBeTruthy();
+    expect(within(lineItem(2)).getAllByRole('link', { name: 'Price book' }).length).toBeGreaterThan(0);
+    expect(lineItem(2).textContent).not.toMatch(/isn.t a number/);
+  });
+});

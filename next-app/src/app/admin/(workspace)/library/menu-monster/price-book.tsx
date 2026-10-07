@@ -378,7 +378,7 @@ function IngredientEditForm({ ing, onClose, onChanged }: { ing: Ingredient; onCl
 
 /* ── Conversions ─────────────────────────────────────────────────────────── */
 
-const CONV_UNITS = [...Object.keys(UNITS), 'gallon', 'quart', 'each', 'dozen'];
+const CONV_UNITS = [...new Set([...Object.keys(UNITS), 'each', 'dozen'])];
 
 function ConversionsBlock({ ing, conversions, onChanged }: { ing: Ingredient; conversions: Conversion[]; onChanged: () => void }) {
   const [from, setFrom] = useState('lb');

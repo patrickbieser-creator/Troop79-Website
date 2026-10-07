@@ -17,7 +17,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { fracText } from '@/lib/menu-monster/units';
 import { RowMenu } from '../menus/_components/row-menu';
-import { AmountEditor } from './ingredient-list-edit';
+import { AmountEditor, type AmountUnits } from './ingredient-list-edit';
 import { IngredientSearch, type IngredientChoice } from './ingredient-search';
 import { Grip, useDragReorder } from './reorder';
 import s from './ingredient-list.module.css';
@@ -33,6 +33,10 @@ export interface AuthorRow {
   qtyPerPerson: number;
   /** The unit the per-person amount is in ('cups'). */
   unitLabel: string;
+  /** The line's own unit key (null/absent = the ingredient's), every unit it may use (the ingredient's own first), and the typed-unit rule. Absent = no unit choice. */
+  unitKey?: string | null;
+  units?: readonly { key: string; label: string }[];
+  parseAmount?: AmountUnits['parse'];
   /** 'meal' = the amount is for the whole meal, once; absent = per person. */
   scale?: 'meal';
   /** "What you'd buy": the price book's cheapest package, or null when it has none. */
@@ -42,7 +46,7 @@ export interface AuthorRow {
 }
 
 export type AuthorAction =
-  | { type: 'amount'; ingredientId: string; qtyPerPerson: number; scale: 'person' | 'meal' }
+  | { type: 'amount'; ingredientId: string; qtyPerPerson: number; scale: 'person' | 'meal'; unitKey?: string | null }
   | { type: 'move'; from: number; to: number }
   | { type: 'remove'; ingredientId: string }
   | { type: 'add'; ingredientId: string };
@@ -119,11 +123,21 @@ export function AuthorList({ rows, ariaLabel, emptyText = 'No ingredients yet.',
                     value={r.qtyPerPerson}
                     scale={r.scale ?? 'person'}
                     canScale
-                    onCommit={(qty, refocus, scale) => {
+                    units={r.units && r.parseAmount ? { key: r.unitKey ?? r.units[0].key, options: r.units, parse: r.parseAmount } : undefined}
+                    onCommit={(qty, refocus, scale, unit) => {
                       setEditing(null);
-                      if (Math.abs(qty - r.qtyPerPerson) > 1e-9 || scale !== (r.scale ?? 'person')) {
-                        onAction({ type: 'amount', ingredientId: r.ingredientId, qtyPerPerson: qty, scale });
-                        onAnnounce(`${r.name} changed to ${fracText(qty)} ${r.unitLabel} ${scale === 'meal' ? 'for the whole meal' : 'each person'}.`);
+                      const was = r.unitKey ?? r.units?.[0].key;
+                      const unitChanged = unit != null && unit !== was;
+                      if (Math.abs(qty - r.qtyPerPerson) > 1e-9 || scale !== (r.scale ?? 'person') || unitChanged) {
+                        const unitLabel = unit != null ? (r.units?.find((o) => o.key === unit)?.label ?? r.unitLabel) : r.unitLabel;
+                        onAction({
+                          type: 'amount',
+                          ingredientId: r.ingredientId,
+                          qtyPerPerson: qty,
+                          scale,
+                          ...(unit != null ? { unitKey: unit === r.units?.[0].key ? null : unit } : {})
+                        });
+                        onAnnounce(`${r.name} changed to ${fracText(qty)} ${unitLabel} ${scale === 'meal' ? 'for the whole meal' : 'each person'}.`);
                       }
                       if (refocus) setFocusReq({ key: r.key, part: 'more' });
                     }}

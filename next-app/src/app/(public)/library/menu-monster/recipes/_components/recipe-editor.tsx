@@ -182,7 +182,7 @@ export function RecipeEditor({ catalog, id: initialId, initial, status: initialS
           if (l.ingredientId !== a.ingredientId) return l;
           const { scale: _was, ...rest } = l;
           void _was;
-          return { ...rest, qtyPerPerson: a.qtyPerPerson, ...(a.scale === 'meal' ? { scale: 'meal' as const } : {}) };
+          return { ...rest, qtyPerPerson: a.qtyPerPerson, ...(a.unitKey !== undefined ? { unitKey: a.unitKey } : {}), ...(a.scale === 'meal' ? { scale: 'meal' as const } : {}) };
         })
       };
     });

@@ -34,7 +34,7 @@
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import type { RestrictionKey } from '@/lib/menu-monster/types';
-import { RESTRICTIONS, RESTRICTION_BY_KEY, fracText, parseQty } from '@/lib/menu-monster/units';
+import { RESTRICTIONS, RESTRICTION_BY_KEY, fracText, parseQty, type parseAmountWithUnit } from '@/lib/menu-monster/units';
 import { idleLabel, scopeLabel, type IngredientRow } from '@/lib/menu-monster/ingredient-rows';
 import { SelectInput } from '@/app/_components/form';
 import { RowMenu, type RowMenuItem } from '../menus/_components/row-menu';
@@ -81,6 +81,16 @@ export interface MenuEditProps {
 
 const MAX_QTY = 1000;
 
+/** The unit a recipe line may be written in, on the amount box (a recipe being written; a menu's own amount keeps the troop line's unit). */
+export interface AmountUnits {
+  /** The unit key the box opens in. */
+  key: string;
+  /** Every unit the line may use, the ingredient's own first. */
+  options: readonly { key: string; label: string }[];
+  /** The rule for a unit word typed after the number ("4 cups"). */
+  parse: (text: string) => ReturnType<typeof parseAmountWithUnit>;
+}
+
 /** The amount box: one number per person, Enter or leaving the box commits, Escape cancels. Shared with author mode. */
 export function AmountEditor({
   name,
@@ -88,6 +98,7 @@ export function AmountEditor({
   value,
   scale = 'person',
   canScale = false,
+  units,
   onCommit,
   onCancel
 }: {
@@ -98,26 +109,41 @@ export function AmountEditor({
   scale?: 'person' | 'meal';
   /** Offer the choice (a recipe being written). A menu's edit keeps the troop line's own scale, so it only says it. */
   canScale?: boolean;
-  /** refocus: hand focus back to the row's ⋯ (Enter) — not on a blur, which already moved focus. */
-  onCommit: (qty: number, refocus: boolean, scale: 'person' | 'meal') => void;
+  /** Offer the unit choice (a recipe being written): a select when there is more than one, and a typed word in the box sets it. */
+  units?: AmountUnits;
+  /** refocus: hand focus back to the row's ⋯ (Enter) — not on a blur, which already moved focus. `unit` is the unit key chosen (only when `units` was given). */
+  onCommit: (qty: number, refocus: boolean, scale: 'person' | 'meal', unit?: string) => void;
   onCancel: (refocus: boolean) => void;
 }) {
   const [text, setText] = useState(() => String(Math.round(value * 10000) / 10000));
   const [bad, setBad] = useState(false);
   const [chosen, setChosen] = useState<'person' | 'meal'>(scale);
+  const [unit, setUnit] = useState(units?.key ?? '');
+  /** A typed unit word the price book cannot convert for this ingredient. */
+  const [badWord, setBadWord] = useState<string | null>(null);
+  const shownUnit = units ? (units.options.find((o) => o.key === unit)?.label ?? unitLabel) : unitLabel;
   const finished = useRef(false);
   const box = useRef<HTMLSpanElement>(null);
   const errId = useId();
   const groupName = useId();
 
-  const parsed = parseQty(text);
-  const valid = Number.isFinite(parsed) && parsed > 0 && parsed <= MAX_QTY;
+  const typed = units?.parse(text) ?? null;
+  const word = typed && 'bad' in typed ? typed.word : null;
+  const numberText = typed && !('bad' in typed) ? typed.amount : text;
+  const parsed = parseQty(numberText);
+  const valid = word == null && Number.isFinite(parsed) && parsed > 0 && parsed <= MAX_QTY;
 
   function finish(refocus: boolean, fromBlur: boolean) {
     if (finished.current) return;
+    if (word != null) {
+      // Stay open and say so in place; a conversion in the Price book is how a unit becomes usable.
+      setBadWord(word);
+      return;
+    }
     if (valid) {
       finished.current = true;
-      onCommit(parsed, refocus, chosen);
+      const chosenUnit = typed && !('bad' in typed) && typed.unitKey ? typed.unitKey : unit;
+      onCommit(parsed, refocus, chosen, units ? chosenUnit : undefined);
     } else if (fromBlur) {
       finished.current = true;
       onCancel(false);
@@ -154,18 +180,29 @@ export function AmountEditor({
         className={s.amountInput}
         value={text}
         autoFocus
-        aria-label={chosen === 'meal' ? `Amount of ${name} for the whole meal, in ${unitLabel}` : `Amount per person of ${name}, in ${unitLabel}`}
-        aria-invalid={bad || undefined}
-        aria-describedby={bad ? errId : undefined}
+        aria-label={chosen === 'meal' ? `Amount of ${name} for the whole meal, in ${shownUnit}` : `Amount per person of ${name}, in ${shownUnit}`}
+        aria-invalid={bad || badWord != null || undefined}
+        aria-describedby={bad || badWord != null ? errId : undefined}
         onChange={(e) => {
           setText(e.target.value);
           setBad(false);
+          setBadWord(null);
         }}
         onFocus={(e) => e.currentTarget.select()}
       />
       {canScale ? (
         <span className={s.scaleGroup} role="radiogroup" aria-label={`What the ${name} amount is for`}>
-          <span className={s.unit}>{unitLabel}</span>
+          {units && units.options.length > 1 ? (
+            <SelectInput className={s.unitSelect} aria-label={`Unit for ${name}`} value={unit} onChange={(e) => setUnit(e.target.value)}>
+              {units.options.map((o) => (
+                <option key={o.key} value={o.key}>
+                  {o.label}
+                </option>
+              ))}
+            </SelectInput>
+          ) : (
+            <span className={s.unit}>{shownUnit}</span>
+          )}
           {(
             [
               ['person', 'per person'],
@@ -181,9 +218,9 @@ export function AmountEditor({
       ) : (
         <span className={s.unit}>{chosen === 'meal' ? `${unitLabel} for the whole meal` : `${unitLabel} each person`}</span>
       )}
-      {bad && (
+      {(bad || badWord != null) && (
         <span id={errId} className={s.fieldError} role="alert">
-          Enter an amount above 0.
+          {badWord != null ? `${badWord} is not a unit the Price book can convert for ${name}. Ask a leader to add a conversion.` : 'Enter an amount above 0.'}
         </span>
       )}
     </span>

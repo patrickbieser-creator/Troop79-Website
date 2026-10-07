@@ -365,8 +365,8 @@ function toIngredient(row: MmIngredientRow): Ingredient {
  * still shows under its ingredient and a retired recipe can be restored.
  * Same mapper as the public load — one row → domain rule (D-049).
  */
-export async function loadAuthoringCatalogWith(supabase: SupabaseClient): Promise<Catalog> {
-  const [ingredients, conversions, packages, recipes, lines] = await Promise.all([
+export async function loadAuthoringCatalogWith(supabase: SupabaseClient, opts: { forRecipe?: string } = {}): Promise<Catalog> {
+  const [baseIngredients, conversions, packages, baseRecipes, lines] = await Promise.all([
     fetchAllRows<MmIngredientRow>((from, to) =>
       supabase
         .from('mm_ingredients')
@@ -412,5 +412,30 @@ export async function loadAuthoringCatalogWith(supabase: SupabaseClient): Promis
     )
   ]);
   const [v, brands] = await Promise.all([loadVariationRows(supabase), loadBrandRows(supabase, { includeRetired: true })]);
+  // One scout draft opened by id (a leader's Edit on a private recipe): add that recipe and the private typed-ins
+  // its lines use, and nothing else, so no other recipe's picker offers a scout's private ingredient.
+  let recipes = baseRecipes;
+  let ingredients = baseIngredients;
+  const wanted = opts.forRecipe;
+  if (wanted && wanted !== 'new' && !recipes.some((r) => r.id === wanted)) {
+    const { data: row } = await supabase.from('mm_recipes').select(`${RECIPE_COLUMNS}, author_person_id, shared_at`).eq('id', wanted).maybeSingle();
+    if (row) {
+      recipes = [...recipes, row as unknown as MmRecipeRow];
+      const have = new Set(ingredients.map((i) => i.id));
+      const need = new Set<string>();
+      for (const l of lines) if (l.recipe_id === wanted && !have.has(l.ingredient_id)) need.add(l.ingredient_id);
+      for (const l of v.variationLines) {
+        if (l.recipe_id !== wanted) continue;
+        for (const id of [l.ingredient_id, l.base_ingredient_id]) if (id && !have.has(id)) need.add(id);
+      }
+      if (need.size > 0) {
+        const { data: extra } = await supabase
+          .from('mm_ingredients')
+          .select('id, name, unit_kind, unit_key, unit_one, unit_many, section, staple, avoid, created_at, retired_at, needs_match_at, added_by_person_id, shared_at')
+          .in('id', [...need]);
+        ingredients = [...ingredients, ...((extra ?? []) as unknown as MmIngredientRow[])];
+      }
+    }
+  }
   return mapCatalog({ ingredients, conversions, packages, recipes, lines, brands, ...v });
 }

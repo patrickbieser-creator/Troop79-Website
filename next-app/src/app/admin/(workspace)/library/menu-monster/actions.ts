@@ -840,7 +840,7 @@ export async function setRecipeStatus(id: string, status: RecipeStatus): Promise
   if (denied) return denied;
   if (!(status in STATUS_LABEL)) return { ok: false, error: 'Unknown status.' };
   const supabase = createAdminClient();
-  const catalog = await loadAuthoringCatalogWith(supabase);
+  const catalog = await loadAuthoringCatalogWith(supabase, { forRecipe: id });
   const recipe = catalog.recipes.find((r) => r.id === id);
   if (!recipe) return { ok: false, error: 'That menu item is gone.' };
   // A SHARED scout recipe never goes back to draft (other scouts' menus hold it): retire it instead. An
@@ -896,7 +896,7 @@ export async function duplicateRecipe(id: string): Promise<Result> {
   const denied = await guard();
   if (denied) return denied;
   const supabase = createAdminClient();
-  const catalog = await loadAuthoringCatalogWith(supabase);
+  const catalog = await loadAuthoringCatalogWith(supabase, { forRecipe: id });
   const recipe = catalog.recipes.find((r) => r.id === id);
   if (!recipe) return { ok: false, error: 'That menu item is gone.' };
   const taken = new Set(catalog.recipes.map((r) => r.id));

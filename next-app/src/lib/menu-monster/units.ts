@@ -17,6 +17,8 @@ export const UNITS: Record<string, Unit> = {
   cup: { key: 'cup', one: 'cup', many: 'cups', kind: 'volume' },
   tbsp: { key: 'tbsp', one: 'Tbsp', many: 'Tbsp', kind: 'volume' },
   tsp: { key: 'tsp', one: 'tsp', many: 'tsp', kind: 'volume' },
+  quart: { key: 'quart', one: 'quart', many: 'quarts', kind: 'volume' },
+  gallon: { key: 'gallon', one: 'gallon', many: 'gallons', kind: 'volume' },
   oz: { key: 'oz', one: 'fl oz', many: 'fl oz', kind: 'volume' },
   egg: { key: 'egg', one: 'egg', many: 'eggs', kind: 'count' },
   link: { key: 'link', one: 'link', many: 'links', kind: 'count' },
@@ -244,4 +246,35 @@ export function parseQty(s: string | null | undefined): number {
  *  them on whole dollars (event-money.ts money()). */
 export function priceText(n: number): string {
   return `${n < 0 ? '−' : ''}$${Math.abs(n).toFixed(2)}`;
+}
+
+/** The unit a typed word names among `keys` (label wins over key, so "oz" is the weight ounce, "fl oz" the volume one). */
+function unitByWord(word: string, keys: readonly string[]): string | null {
+  const w = word.toLowerCase();
+  const byLabel = keys.find((k) => UNITS[k] && (UNITS[k].one.toLowerCase() === w || UNITS[k].many.toLowerCase() === w));
+  return byLabel ?? keys.find((k) => k === w) ?? null;
+}
+
+/**
+ * An amount box that may carry a unit word ("4 cups", "½ cup", "3 Tbsp", "1 quart"). The number part
+ * keeps parseQty's grammar. Result:
+ *   { amount, unitKey }  the number text, and the unit the word names (null = no word: unit unchanged)
+ *   { bad: 'unit', word } the word names a unit this ingredient cannot be converted to
+ *   null                  not an amount-with-unit (left as typed: "4 cupz", "cups", "x")
+ */
+export function parseAmountWithUnit(
+  text: string,
+  ingredient: Ingredient,
+  conversions: readonly Conversion[]
+): { amount: string; unitKey: string | null } | { bad: 'unit'; word: string } | null {
+  const t = String(text ?? '').trim();
+  const at = t.search(/[A-Za-z]/);
+  if (at < 0) return Number.isFinite(parseQty(t)) ? { amount: t, unitKey: null } : null;
+  const amount = t.slice(0, at).trim();
+  const word = t.slice(at).trim().replace(/\s+/g, ' ');
+  if (!Number.isFinite(parseQty(amount))) return null;
+  const own = unitByWord(word, supportedUnits(ingredient, conversions));
+  if (own) return { amount, unitKey: own };
+  if (unitByWord(word, Object.keys(UNITS))) return { bad: 'unit', word };
+  return null;
 }

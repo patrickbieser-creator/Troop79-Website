@@ -100,6 +100,8 @@
 .amountInput:focus-visible { outline: var(--focus-ring); outline-offset: 1px; }
 .amountInput[aria-invalid='true'] { border-color: var(--status-danger); }
 .unit { font-size: var(--fs-sm); color: var(--text-meta); }
+/* The unit choice beside the amount box: small, but 16px text (the iOS no-zoom floor). */
+.unitSelect { width: auto; min-width: 0; min-height: 36px; font-size: 16px; }
 /* The amount's scale: two radios beside the box — each person (default) or the whole meal. */
 .scaleGroup { display: inline-flex; align-items: baseline; flex-wrap: wrap; gap: var(--sp-1) var(--sp-3); }
 .scaleOpt { display: inline-flex; align-items: center; gap: var(--sp-1); font-size: var(--fs-sm); color: var(--text-head); cursor: pointer; }

@@ -2,6 +2,8 @@ import { describe, it, expect, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { IngredientList } from '../src/app/(public)/library/menu-monster/_components/ingredient-list';
+import { UNITS, lineUnit, parseAmountWithUnit, supportedUnits } from '../src/lib/menu-monster/units';
+import type { Ingredient } from '../src/lib/menu-monster/types';
 import type { AuthorRow } from '../src/app/(public)/library/menu-monster/_components/ingredient-list-author';
 
 /**
@@ -136,5 +138,75 @@ describe('IngredientList author mode', () => {
     const { user } = setup();
     await user.click(screen.getByRole('button', { name: 'Beans' }));
     expect(screen.getByRole('button', { name: 'Beans' }).getAttribute('aria-expanded')).toBe('true');
+  });
+});
+
+/* A row that can be written in more than one unit (cooking oil is measured in Tbsp, the recipe needs cups). */
+const unitRow = (ing: Ingredient, conversions: { ingredientId: string; from: string; to: string; factor: number; label: string | null }[] = []): AuthorRow => ({
+  key: `ing:${ing.id}`,
+  ingredientId: ing.id,
+  name: ing.name,
+  amount: `2 ${ing.unit.many}`,
+  note: null,
+  qtyPerPerson: 2,
+  unitLabel: ing.unit.many,
+  buy: null,
+  unitKey: null,
+  units: supportedUnits(ing, conversions).map((k) => ({ key: k, label: lineUnit(k, ing).many })),
+  parseAmount: (t) => parseAmountWithUnit(t, ing, conversions)
+});
+const mk = (id: string, name: string, unit: Ingredient['unit']): Ingredient => ({ id, name, unit, section: 'dry', staple: false, avoid: [], retiredAt: null });
+const OIL = mk('oil', 'Cooking oil', UNITS.tbsp);
+const EGGS = mk('eggs', 'Eggs', UNITS.egg);
+
+function setupUnits(r: AuthorRow) {
+  const onAction = vi.fn();
+  render(<IngredientList mode="author" ariaLabel="Ingredients" rows={[r]} choices={[]} onAction={onAction} onAnnounce={vi.fn()} />);
+  return { onAction, user: userEvent.setup() };
+}
+async function openAmount(user: ReturnType<typeof userEvent.setup>, name: string) {
+  await user.click(screen.getByRole('button', { name: `Change ${name}` }));
+  await user.click(screen.getByRole('button', { name: 'Change amount' }));
+}
+
+describe('IngredientList author mode: the unit of a line', () => {
+  it('Scout_WritesALine_InCups_ForATablespoonIngredient', async () => {
+    const { user, onAction } = setupUnits(unitRow(OIL));
+    await openAmount(user, 'Cooking oil');
+    const select = screen.getByRole('combobox', { name: 'Unit for Cooking oil' }) as HTMLSelectElement;
+    expect(Array.from(select.options).map((o) => o.textContent)).toEqual(['Tbsp', 'cups', 'tsp', 'quarts', 'gallons', 'fl oz']);
+    await user.selectOptions(select, 'cup');
+    const box = screen.getByRole('textbox', { name: 'Amount per person of Cooking oil, in cups' });
+    await user.clear(box);
+    await user.click(screen.getByRole('radio', { name: 'whole meal' }));
+    await user.type(box, '4{Enter}');
+    expect(onAction).toHaveBeenCalledWith({ type: 'amount', ingredientId: 'oil', qtyPerPerson: 4, scale: 'meal', unitKey: 'cup' });
+  });
+
+  it('Scout_SeesNoUnitChoice_WhenOnlyOneUnitExists', async () => {
+    const { user } = setupUnits(unitRow(EGGS));
+    await openAmount(user, 'Eggs');
+    expect(screen.queryByRole('combobox', { name: 'Unit for Eggs' })).toBeNull();
+    expect(screen.getByText('eggs')).toBeTruthy();
+  });
+
+  it('Scout_TypesFourCups_AndTheLineIsInCups', async () => {
+    const { user, onAction } = setupUnits(unitRow(OIL));
+    await openAmount(user, 'Cooking oil');
+    const box = screen.getByRole('textbox', { name: /Amount per person of Cooking oil/ });
+    await user.clear(box);
+    await user.type(box, '4 cups{Enter}');
+    expect(onAction).toHaveBeenCalledWith({ type: 'amount', ingredientId: 'oil', qtyPerPerson: 4, scale: 'person', unitKey: 'cup' });
+  });
+
+  it('Scout_IsToldInPlace_WhenTheTypedUnitCannotBeConverted', async () => {
+    const { user, onAction } = setupUnits(unitRow(EGGS));
+    await openAmount(user, 'Eggs');
+    const box = screen.getByRole('textbox', { name: /Amount per person of Eggs/ });
+    await user.clear(box);
+    await user.type(box, '4 cups{Enter}');
+    expect(box.getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByRole('alert').textContent).toBe('cups is not a unit the Price book can convert for Eggs. Ask a leader to add a conversion.');
+    expect(onAction).not.toHaveBeenCalled();
   });
 });

@@ -396,3 +396,17 @@ describe('RecipeEditor gear (picked from the master list)', () => {
     expect(within(screen.getByRole('list', { name: 'Gear' })).queryByText('Spork')).toBeNull();
   });
 });
+
+describe('RecipeEditor line units', () => {
+  it('Save_CarriesTheLinesUnit', async () => {
+    const user = userEvent.setup();
+    existing('draft', { ...READY, lines: [{ ingredientId: 'pancake-mix', qtyPerPerson: 1, unitKey: null }] });
+    await user.click(screen.getByRole('button', { name: 'Change Pancake mix' }));
+    await user.click(screen.getByRole('button', { name: 'Change amount' }));
+    const box = screen.getByRole('textbox', { name: /Amount per person of Pancake mix/ });
+    await user.clear(box);
+    await user.type(box, '4 tbsp{Enter}');
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    expect(save.mock.calls[0][0].lines).toEqual([{ ingredientId: 'pancake-mix', qtyPerPerson: 4, unitKey: 'tbsp' }]);
+  });
+});

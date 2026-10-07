@@ -79,7 +79,7 @@ import type { ScoutFood } from '@/lib/menu-monster/scout-recipes-store';
 import { VIEW_LABEL, flaggedIngredients, type VariationView } from '@/lib/menu-monster/variations';
 import { NO_FILTER, buildFoodRows, buildIngredientRows, foodListHref, inKind, isIngredientRow, listRows, numericBase, pillOf, recipeHref, viaIngredient, viewFor, type FoodFilter, type FoodRow, type ListKind, type Pill } from '@/lib/menu-monster/food-list';
 import { buildLines, recipeSuggestions, ruleText, totalsOf, MAX_HEADCOUNT, MIN_HEADCOUNT } from '@/lib/menu-monster/engine';
-import { FOOD_GROUPS, MEALS, RESTRICTIONS, RESTRICTION_BY_KEY, SECTIONS, SECTION_ORDER, lineUnit, parseQty, perPersonText, supportedUnits } from '@/lib/menu-monster/units';
+import { FOOD_GROUPS, MEALS, RESTRICTIONS, RESTRICTION_BY_KEY, SECTIONS, SECTION_ORDER, lineUnit, parseAmountWithUnit, parseQty, perPersonText, supportedUnits } from '@/lib/menu-monster/units';
 import type { Catalog, Ingredient, MealSlot, Plan, Recipe, RecipeLine, RestrictionKey, Section, VariationState } from '@/lib/menu-monster/types';
 import { createIngredient, deleteRecipe, duplicateRecipe, saveRecipe, setRecipeStatus, updateIngredient } from './actions';
 import { GearPicker } from './gear-picker';
@@ -1256,23 +1256,38 @@ function IngredientSelect({ id, label, value, ingredients, invalid = false, onCh
 function UnitSelect({ id, label, ingredient, unitKey, catalog, onChange }: { id: string; label: string; ingredient: Ingredient | null; unitKey: string | null; catalog: Catalog; onChange: (k: string | null) => void }) {
   const units = ingredient ? supportedUnits(ingredient, catalog.conversions) : [];
   return (
-    <select
-      id={id}
-      aria-label={label}
-      className={lib.selectInput}
-      value={unitKey ?? ingredient?.unit.key ?? ''}
-      disabled={!ingredient || units.length <= 1}
-      title={ingredient && units.length <= 1 ? `${ingredient.name} is only measured in ${ingredient.unit.many} — add a conversion in the Price book for more` : undefined}
-      onChange={(e) => onChange(ingredient && e.target.value === ingredient.unit.key ? null : e.target.value)}
-    >
-      {!ingredient && <option value="">—</option>}
-      {ingredient &&
-        units.map((k) => (
-          <option key={k} value={k}>
-            {lineUnit(k, ingredient).many}
-          </option>
-        ))}
-    </select>
+    <>
+      <select
+        id={id}
+        aria-label={label}
+        className={lib.selectInput}
+        value={unitKey ?? ingredient?.unit.key ?? ''}
+        disabled={!ingredient || units.length <= 1}
+        onChange={(e) => onChange(ingredient && e.target.value === ingredient.unit.key ? null : e.target.value)}
+      >
+        {!ingredient && <option value="">—</option>}
+        {ingredient &&
+          units.map((k) => (
+            <option key={k} value={k}>
+              {lineUnit(k, ingredient).many}
+            </option>
+          ))}
+      </select>
+      {ingredient && units.length <= 1 && (
+        <p className={styles.hint}>
+          Only {ingredient.unit.many} so far — add a conversion in the <PriceBookLink ingredientId={ingredient.id} />
+        </p>
+      )}
+    </>
+  );
+}
+
+/** The Price book opened on one ingredient, in a new tab so the recipe being edited stays as it is. */
+function PriceBookLink({ ingredientId }: { ingredientId: string }) {
+  return (
+    <Link href={`/admin/library/menu-monster?tab=prices&ingredient=${encodeURIComponent(ingredientId)}`} target="_blank" rel="noopener">
+      Price book
+    </Link>
   );
 }
 
@@ -1299,8 +1314,25 @@ function BaseLineRow({
   onRemove: () => void;
 }) {
   const n = idx + 1;
+  /** A unit typed after the amount that the Price book cannot convert for this ingredient. */
+  const [badWord, setBadWord] = useState<string | null>(null);
+  /** Leaving the amount box (or Enter): a unit word typed after the number moves to the unit, and the number stays. Returns true when it acted. */
+  function takeUnitWord(): boolean {
+    if (!ingredient) return false;
+    const r = parseAmountWithUnit(line.amount, ingredient, catalog.conversions);
+    if (!r) return false;
+    if ('bad' in r) {
+      setBadWord(r.word);
+      return true;
+    }
+    if (r.unitKey == null) return false;
+    onChange({ amount: r.amount, unitKey: r.unitKey === ingredient.unit.key ? null : r.unitKey });
+    return true;
+  }
+  // One mistake, one sentence: a typed unit the Price book cannot convert is said once, not also as "isn't a number".
+  const shown = badWord != null ? problems.filter((t) => !/isn't a number/.test(t)) : problems;
   return (
-    <li className={problems.length > 0 ? `${styles.lineRow} ${styles.bad}` : styles.lineRow}>
+    <li className={shown.length > 0 || badWord != null ? `${styles.lineRow} ${styles.bad}` : styles.lineRow}>
       <div className={styles.grow}>
         <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`mm-l-${idx}-ing`}>
           Ingredient
@@ -1311,7 +1343,7 @@ function BaseLineRow({
         <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`mm-l-${idx}-amt`}>
           {line.scale === 'meal' ? 'Amount for the whole meal' : 'Amount per person'}
         </label>
-        <input id={`mm-l-${idx}-amt`} aria-label={`Line ${n} amount`} className={lib.textInput} aria-invalid={problems.some((t) => /amount/.test(t)) || undefined} value={line.amount} placeholder="½" onChange={(e) => onChange({ amount: e.target.value })} />
+        <input id={`mm-l-${idx}-amt`} aria-label={`Line ${n} amount`} className={lib.textInput} aria-invalid={shown.some((t) => /amount/.test(t)) || badWord != null || undefined} value={line.amount} placeholder="½" onChange={(e) => { setBadWord(null); onChange({ amount: e.target.value }); }} onBlur={() => void takeUnitWord()} onKeyDown={(e) => { if (e.key === 'Enter' && takeUnitWord()) e.preventDefault(); }} />
       </div>
       <div>
         <span className={`adminLabel ${lib.fieldLabel}`}>For</span>
@@ -1341,7 +1373,12 @@ function BaseLineRow({
       <Button variant="quiet" size="sm" aria-label={`Remove line ${n}`} onClick={onRemove}>
         Remove
       </Button>
-      {problems.map((text) => (
+      {badWord != null && ingredient && (
+        <p className={styles.badNote}>
+          {badWord} is not a unit the Price book can convert for {ingredient.name} — add a conversion in the <PriceBookLink ingredientId={ingredient.id} />
+        </p>
+      )}
+      {shown.map((text) => (
         <p key={text} className={styles.badNote}>
           {text}
         </p>

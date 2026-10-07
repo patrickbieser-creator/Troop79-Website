@@ -13,6 +13,7 @@ import { menusUsingRecipeWith } from '@/lib/menu-monster/recipe-delete-store';
 import { listGearWith } from '@/lib/menu-monster/gear-store';
 import { listActiveStoreNamesWith } from '@/lib/menu-monster/stores';
 import { foodListHref, parseFoodFilter } from '@/lib/menu-monster/food-list';
+import { ownerCreditNamesWith } from '@/lib/menu-monster/menus-store';
 import { centralToday } from '@/lib/dates';
 import { PageTitle } from '../../../../_components/page-title';
 import { RecipeScreen } from '../../recipe-screen';
@@ -32,10 +33,12 @@ export default async function MenuMonsterRecipePage({
   await requireCapability('library.moderate');
   const [{ recipeId }, sp] = await Promise.all([params, searchParams]);
   const admin = createAdminClient();
-  const [catalog, stores, gearList] = await Promise.all([loadAuthoringCatalogWith(admin), listActiveStoreNamesWith(admin), listGearWith(admin)]);
+  const [catalog, stores, gearList] = await Promise.all([loadAuthoringCatalogWith(admin, { forRecipe: recipeId }), listActiveStoreNamesWith(admin), listGearWith(admin)]);
   const recipe = recipeId === 'new' ? null : (catalog.recipes.find((r) => r.id === recipeId) ?? null);
   if (recipeId !== 'new' && !recipe) notFound();
   const menusUsing = recipe ? await menusUsingRecipeWith(admin, recipe.id) : undefined;
+  // A scout's unshared draft: say so quietly, so a leader knows whose it is and that it is not the troop's yet.
+  const draftOwner = recipe?.authorPersonId != null && !recipe.sharedAt ? ((await ownerCreditNamesWith(admin, [recipe.authorPersonId])).get(recipe.authorPersonId) ?? 'A scout') : null;
   const filter = parseFoodFilter(sp);
   const name = recipe?.name ?? 'New recipe';
 
@@ -52,6 +55,7 @@ export default async function MenuMonsterRecipePage({
         }}
         title={name}
       />
+      {draftOwner ? <p className={styles.hint}>{draftOwner}’s draft — not shared.</p> : null}
       <RecipeScreen catalog={catalog} recipeId={recipeId} filter={filter} stores={stores} today={centralToday()} gearList={gearList} menusUsing={menusUsing} />
     </div>
   );

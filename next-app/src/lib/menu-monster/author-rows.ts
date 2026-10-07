@@ -10,7 +10,7 @@ import type { AmountView } from './ingredient-rows';
 import { ingredientRows } from './ingredient-rows';
 import type { ScoutRecipeLine } from './scout-recipes';
 import type { Catalog, Package } from './types';
-import { lineUnit, priceText } from './units';
+import { lineUnit, parseAmountWithUnit, priceText, supportedUnits } from './units';
 
 export interface AuthorRowData {
   key: string;
@@ -20,6 +20,11 @@ export interface AuthorRowData {
   note: string | null;
   qtyPerPerson: number;
   unitLabel: string;
+  /** The line's own unit key (null = the ingredient's unit), and every unit it may use, the ingredient's own first. */
+  unitKey: string | null;
+  units: { key: string; label: string }[];
+  /** The amount box's rule for a typed unit word ("4 cups"), bound to this ingredient and the price book's conversions. */
+  parseAmount: (text: string) => ReturnType<typeof parseAmountWithUnit>;
   /** 'meal' = the amount is for the whole meal, once; absent = per person. */
   scale?: 'meal';
   buy: string | null;
@@ -58,6 +63,9 @@ export function authorRows(lines: readonly ScoutRecipeLine[], catalog: Catalog, 
       note: null,
       qtyPerPerson: l.qtyPerPerson,
       unitLabel: lineUnit(l.unitKey, ing).many,
+      unitKey: l.unitKey ?? null,
+      units: supportedUnits(ing, catalog.conversions).map((k) => ({ key: k, label: lineUnit(k, ing).many })),
+      parseAmount: (text) => parseAmountWithUnit(text, ing, catalog.conversions),
       ...(l.scale === 'meal' ? { scale: 'meal' as const } : {}),
       buy: pkg ? [pkg.name, priceText(pkg.price), pkg.store].filter(Boolean).join(' · ') : null,
       isNew: ing.needsMatch === true
