@@ -92,3 +92,15 @@ describe('Planned by', () => {
     expect(screen.queryByRole('combobox', { name: 'Planned by' })).toBeNull();
   });
 });
+
+describe('Who’s eating layout', () => {
+  it('WhosEating_PeopleBlock_IsASiblingColumn_NotBelowThePickers', () => {
+    render(tab(base({ plannedBy: [41, 39] })));
+    const people = document.getElementById('mm-people') as HTMLElement;
+    const basics = screen.getByRole('combobox', { name: 'Planned by' }).closest('[class*="basicsTop"]') as HTMLElement;
+    const peopleColumn = people.closest('[class*="peopleCol"]') as HTMLElement;
+    expect(basics.contains(people)).toBe(false);
+    expect(peopleColumn.parentElement).toBe(basics.parentElement);
+    expect(basics.parentElement?.className).toMatch(/twoCol/);
+  });
+});

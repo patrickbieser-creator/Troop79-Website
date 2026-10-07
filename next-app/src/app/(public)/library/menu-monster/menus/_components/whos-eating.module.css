@@ -52,3 +52,16 @@
   color: var(--text-meta);
 }
 .nestedText { padding-left: var(--sp-4); }
+
+/* From the 900px breakpoint, People and its diets get their own column beside the name and pickers, top-aligned,
+   so a Planned by chip row growing on the left never pushes them down. Below it, the old stacking order. */
+.twoCol { display: block; }
+.peopleCol { min-width: 0; }
+@media (min-width: 900px) {
+  .twoCol {
+    display: grid;
+    grid-template-columns: minmax(0, 640px) minmax(14em, 1fr);
+    gap: var(--sp-8);
+    align-items: start;
+  }
+}
