@@ -196,6 +196,62 @@ body[data-variant="A"] .addrow[data-mode="gear"] .opener { display: none; }
 .menuDanger:hover { background: var(--status-danger-bg); }
 .menuSep { height: 0; border: 0; border-top: 1px solid var(--rule); margin: var(--sp-1) 0; }
 
+/* ── Brand chooser (mirrors workspace.module.css .brandChooser / .chips / .chip), open under the Chips line ── */
+.brandChooser { display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-2) var(--sp-2) var(--sp-3) var(--sp-4); border-top: 1px solid var(--rule); }
+.brandChooser[hidden] { display: none; }
+.frame-390 .brandChooser { padding-left: var(--sp-3); }
+.chips { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.chip { min-height: 32px; padding: 0 var(--sp-3); font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--navy); background: var(--warm-white); border: 1px solid var(--border-mid); border-radius: var(--rad-sm); cursor: pointer; }
+.chip:hover { background: var(--cream); }
+.chip[aria-pressed="true"] { background: var(--navy); border-color: var(--navy); color: var(--warm-white); }
+.chip:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+.chipMeta { opacity: .8; font-variant-numeric: tabular-nums; margin-left: var(--sp-1); font-weight: 400; }
+.brandType { max-width: 200px; min-height: 32px; }
+.brandLines { list-style: none; margin: 0; padding: 0; }
+.brandLine { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); min-height: 40px; font-family: var(--font-ui); font-size: var(--fs-md); color: var(--text-body); }
+.brandLineName { min-width: 140px; }
+.qtyIn { width: 56px; }
+/* The noun slot: the package size when known ("12 oz bags"), else "size?" — both open the same detail (D-336 rule 4: a badge that asks for something is a control). */
+.noun { font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--navy); background: none; border: none; padding: 0; min-height: 32px; cursor: pointer; text-align: left; text-decoration: underline; text-underline-offset: 2px; text-decoration-color: var(--border-mid); }
+.noun:hover { color: var(--forest); text-decoration-color: currentColor; }
+.noun:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+.noun[data-ask] { text-decoration-style: dashed; }
+.muted { font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-meta); margin: 0; }
+.muted[hidden] { display: none; }
+
+/* ── Brand detail: the inline panel (recommended) ── */
+.detail { display: flex; flex-direction: column; gap: var(--sp-3); padding: var(--sp-3); background: var(--warm-white); border: 1px solid var(--border-light); border-radius: var(--rad-md); }
+.detail[hidden] { display: none; }
+.detailTitle { font-family: var(--font-ui); font-size: var(--fs-md); font-weight: 700; color: var(--text-head); margin: 0; }
+.fields { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--sp-3) var(--sp-4); }
+.field { display: flex; flex-direction: column; gap: var(--sp-1); }
+.field.grow { flex: 1 1 140px; }
+.fieldLabel { font-family: var(--font-ui); font-size: var(--fs-xs); font-weight: 600; color: var(--text-body); }
+.hint { font-family: var(--font-ui); font-size: var(--fs-2xs); color: var(--text-meta); }
+.pair { display: inline-flex; gap: var(--sp-2); }
+.textIn { display: block; width: 100%; height: 32px; padding: 0 var(--sp-2); font-family: var(--font-ui); font-size: 16px; color: var(--text-head); background: var(--warm-white); border: 1px solid var(--border-mid); border-radius: var(--rad-sm); }
+.textIn:focus-visible { outline: var(--focus-ring); outline-offset: 1px; }
+.sizeIn { width: 76px; text-align: right; font-variant-numeric: tabular-nums; }
+.unitSel { width: auto; padding-right: var(--sp-1); }
+.priceIn { width: 88px; text-align: right; font-variant-numeric: tabular-nums; }
+/* Problems marked in place: the field outlined red + a red box naming the problem. */
+.field.bad .textIn { border-color: var(--status-danger); box-shadow: 0 0 0 1px var(--status-danger); }
+.badNote { font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--status-danger); background: var(--status-danger-bg); border: 1px solid var(--status-danger); border-radius: var(--rad-sm); padding: var(--sp-1) var(--sp-2); margin: 0; }
+.badNote[hidden] { display: none; }
+.actions { display: flex; align-items: center; gap: var(--sp-3); }
+.btn { font-family: var(--font-ui); font-size: var(--fs-sm); font-weight: 600; min-height: 36px; padding: 0 var(--sp-4); border-radius: var(--rad-sm); cursor: pointer; border: 1px solid transparent; }
+.btn:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+.btnPrimary { background: var(--navy); color: var(--warm-white); border-color: var(--navy); }
+.btnPrimary:hover { background: var(--navy-hover); }
+.btnPrimary:disabled { background: var(--border-light); border-color: var(--border-light); color: var(--text-meta); cursor: default; }
+.btnGhost { background: none; color: var(--text-meta); padding: 0 var(--sp-2); }
+.btnGhost:hover { color: var(--status-danger); }
+
+/* ── Brand detail: the dialog (the alternative) — native <dialog>: Esc closes, focus is trapped ── */
+.detailDlg { width: min(360px, calc(100vw - 32px)); padding: 0; border: 1px solid var(--border-mid); border-radius: var(--rad-lg); box-shadow: var(--shadow-hover); background: var(--warm-white); color: var(--text-body); }
+.detailDlg::backdrop { background: rgba(30,58,74,.35); }
+.detailDlg .detail { border: none; padding: var(--sp-4); }
+
 /* ── Notes under the frames ── */
 .foot { font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-meta); margin: var(--sp-3) 0 0; }
 table { border-collapse: collapse; width: 100%; max-width: 900px; font-family: var(--font-ui); font-size: var(--fs-sm); background: var(--warm-white); box-shadow: var(--shadow-card); border-radius: var(--rad-md); }
@@ -223,6 +279,10 @@ td .was { color: var(--text-meta); }
       <button type="button" class="segBtn" data-variant="A" aria-pressed="false"><b>A</b>Search visible at rest</button>
       <button type="button" class="segBtn" data-variant="B" aria-pressed="true"><b>B</b>Link opens search</button>
     </div>
+    <div class="seg" role="group" aria-label="Brand detail">
+      <button type="button" class="segBtn" data-detail-mode="inline" aria-pressed="true">Inline (recommended)</button>
+      <button type="button" class="segBtn" data-detail-mode="dialog" aria-pressed="false">Dialog</button>
+    </div>
   </div>
   <ul class="changed">
     <li>The open food is a bordered card: its ingredient lines and one <b>+ Ingredient</b> row, with <b>for Everyone ▾</b> at the row's right end, always.</li>
@@ -235,6 +295,15 @@ td .was { color: var(--text-meta); }
     <div class="frame frame-390" data-frame="390"><p class="frameLabel">390px</p></div>
     <div class="frame frame-720" data-frame="720"><p class="frameLabel">720px</p></div>
   </div>
+
+  <h2>Brand detail — what changed</h2>
+  <ul class="changed">
+    <li>Chips is open on its line: <b>Any brand · Doritos · Sour Cream &amp; Onion</b>, and a brand nobody has sized or priced carries a quiet <b>New</b>.</li>
+    <li>Choosing a New brand — or typing one — opens its details in place: how much one bag holds, price, store. Save is grey until something is typed; Cancel and Esc close it and put focus back on the chip.</li>
+    <li>The quantity line never says "Chips". A brand without a size shows <b>size?</b> in the noun slot; once saved it reads <b>12 oz bags</b>. Both open the same details — a badge that asks for something is a control.</li>
+    <li>Need · buying counts only brands with a known size; nothing known reads "buying —"; short is said.</li>
+    <li>Lines show from one chosen brand up (the live chooser waits for two) so the size control has a home. A second tap on a chosen chip unchooses it, as today.</li>
+  </ul>
 
   <h2>⋯ menus, before → after</h2>
   <table>
@@ -261,6 +330,9 @@ td .was { color: var(--text-meta); }
   <h2>Decisions still open</h2>
   <ol class="open">
     <li>A or B — Patrick picked B (2026-10-07); B is now the default here, A stays in the toggle for comparison.</li>
+    <li>Brand detail inline or dialog — inline recommended: it stays inside the card edge like every other edit here, and a phone keyboard never covers a modal. The dialog wins only if the open panel pushes the quantity lines too far down at 390.</li>
+    <li>Required fields — none, or size once the brand is used to shop? Here Save needs a size (the noun and the buying figure depend on it); price and store may wait. The live form requires size and price.</li>
+    <li>Where "bag" comes from — the ingredient's noun (Package.noun defaults to pack) or a word the scout picks in this panel?</li>
   </ol>
 </div>
 
@@ -383,7 +455,7 @@ td .was { color: var(--text-meta); }
                 <ul class="ings" aria-label="Chips ingredients">
                   <li class="ingRow">
                     <span class="ingMain"><span class="ingName">Chips</span>
-                    <button type="button" class="ingBrand" aria-label="Choose brand(s) for Chips">Choose brand(s)</button></span>
+                    <button type="button" class="ingBrand" aria-label="Choose brand(s) for Chips" data-chooser-toggle aria-expanded="true">Choose brand(s)</button></span>
                     <span class="amt">36 oz</span>
                     <div class="menuWrap">
                       <button type="button" class="menuBtn" aria-label="More for Chips, 36 oz" aria-haspopup="menu" aria-expanded="false"><span aria-hidden="true">⋯</span></button>
@@ -404,6 +476,15 @@ td .was { color: var(--text-meta); }
                     </div>
                   </li>
                 </ul>
+                <!-- Brand chooser, open: chips → (detail panel) → Type a brand → a line per chosen brand → need · buying -->
+                <div class="brandChooser" data-chooser data-ingredient="Chips" data-need="36" data-unit="oz" data-noun="bag">
+                  <div class="chips" role="group" aria-label="Brand for Chips" data-chips></div>
+                  <div class="detail" data-detail role="group" hidden></div>
+                  <input class="addInput brandType" type="text" placeholder="Type a brand" aria-label="Type a brand of Chips" autocomplete="off" maxlength="40" data-type-brand>
+                  <ul class="brandLines" aria-label="How many of each brand of Chips" data-lines></ul>
+                  <p class="muted" data-needline></p>
+                  <p class="muted">For this whole menu.</p>
+                </div>
               </div>
             </div>
           </li>
@@ -422,6 +503,39 @@ td .was { color: var(--text-meta); }
   <button type="button" class="addMealBtn"><span aria-hidden="true">+</span> Add a meal</button>
 </template>
 
+<!-- The brand detail fields, cloned into each frame's inline panel and once into the dialog. ids are set per instance in JS. -->
+<template id="detail-tpl">
+  <p class="detailTitle" data-title data-id="title"></p>
+  <div class="fields">
+    <div class="field" data-field="size">
+      <label class="fieldLabel" data-for="size">One bag holds</label>
+      <span class="pair">
+        <input class="textIn sizeIn" type="number" inputmode="decimal" min="0" step="any" autocomplete="off" data-id="size" data-size>
+        <select class="textIn unitSel" aria-label="Unit" data-unit><option>oz</option><option>lb</option><option>count</option><option>pack</option></select>
+      </span>
+    </div>
+    <div class="field" data-field="price">
+      <label class="fieldLabel" data-for="price">Price</label>
+      <input class="textIn priceIn" type="text" inputmode="decimal" autocomplete="off" data-id="price" data-price>
+      <span class="hint">A best guess is fine.</span>
+    </div>
+    <div class="field grow" data-field="store">
+      <label class="fieldLabel" data-for="store">Store (optional)</label>
+      <input class="textIn" type="text" autocomplete="off" maxlength="40" data-id="store" data-store>
+    </div>
+  </div>
+  <p class="badNote" role="alert" hidden data-bad></p>
+  <div class="actions">
+    <button type="button" class="btn btnPrimary" data-save disabled>Save</button>
+    <button type="button" class="btn btnGhost" data-cancel-detail>Cancel</button>
+  </div>
+</template>
+
+<!-- The dialog alternative: one per page, the same fields -->
+<dialog class="detailDlg" data-dialog>
+  <div class="detail" data-detail-form></div>
+</dialog>
+
 <script>
 (function () {
   'use strict';
@@ -433,10 +547,10 @@ td .was { color: var(--text-meta); }
   });
 
   // ── A/B toggle ──
-  document.querySelectorAll('.segBtn').forEach(function (b) {
+  document.querySelectorAll('.segBtn[data-variant]').forEach(function (b) {
     b.addEventListener('click', function () {
       document.body.dataset.variant = b.dataset.variant;
-      document.querySelectorAll('.segBtn').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+      document.querySelectorAll('.segBtn[data-variant]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
       document.querySelectorAll('[data-addrow]').forEach(resetAddRow);
     });
   });
@@ -582,6 +696,245 @@ td .was { color: var(--text-meta); }
   document.addEventListener('focusin', function (ev) {
     if (openMenu && !openMenu.pop.contains(ev.target) && ev.target !== openMenu.btn) closeMenu(false);
   });
+
+  // ══ Brand chooser + brand detail ══
+  // State per chooser (one per frame). A brand's pkg is null until a scout saves its details (Brand.isNew in the app);
+  // pkg = { size, unit, price|null, store|null } stands in for Package.sizeLabel / soldUnit / price / store.
+  var detailTpl = document.getElementById('detail-tpl');
+  var dialog = document.querySelector('[data-dialog]');
+  var uidN = 0;
+  function mountForm(host) {
+    host.appendChild(detailTpl.content.cloneNode(true));
+    var uid = 'd' + (++uidN);
+    host.querySelectorAll('[data-id]').forEach(function (el) { el.id = uid + '-' + el.dataset.id; });
+    host.querySelectorAll('[data-for]').forEach(function (l) { l.htmlFor = uid + '-' + l.dataset.for; });
+    host.setAttribute('aria-labelledby', uid + '-title');
+  }
+  mountForm(dialog.querySelector('[data-detail-form]'));
+  dialog.setAttribute('aria-labelledby', dialog.querySelector('[data-detail-form]').getAttribute('aria-labelledby'));
+
+  var choosers = [];
+  document.querySelectorAll('[data-chooser]').forEach(function (root) {
+    var st = {
+      root: root, ingredient: root.dataset.ingredient, need: Number(root.dataset.need), unit: root.dataset.unit, noun: root.dataset.noun,
+      brands: [
+        { id: 'doritos', name: 'Doritos', pkg: null, chosen: true, qty: 2 },
+        { id: 'sco', name: 'Sour Cream & Onion', pkg: null, chosen: true, qty: 2 }
+      ],
+      editing: null, opener: null
+    };
+    root._st = st;
+    root.dataset.frameId = root.closest('[data-frame]').dataset.frame;
+    mountForm(root.querySelector('[data-detail]'));
+    choosers.push(st);
+  });
+
+  function money(n) { return '$' + n.toFixed(2); }
+  function sizeLabel(pkg) { return pkg.unit === 'count' || pkg.unit === 'pack' ? pkg.size + '-' + pkg.unit : pkg.size + ' ' + pkg.unit; }
+  function nounFor(st, b) { return sizeLabel(b.pkg) + ' ' + st.noun + (b.qty === 1 ? '' : 's'); }
+  function inOz(pkg) { return pkg.unit === 'oz' ? pkg.size : pkg.unit === 'lb' ? pkg.size * 16 : null; }
+  function fmt(n) { return String(Math.round(n * 100) / 100); }
+
+  function render(st) {
+    var root = st.root;
+    // chips
+    var chips = root.querySelector('[data-chips]');
+    var anyChosen = st.brands.some(function (b) { return b.chosen; });
+    var html = '<button type="button" class="chip" data-any aria-pressed="' + !anyChosen + '">Any brand</button>';
+    st.brands.forEach(function (b) {
+      var meta = !b.pkg ? '<span class="chipMeta">New</span>' : b.pkg.price != null ? '<span class="chipMeta">' + money(b.pkg.price) + '</span>' : '';
+      html += '<button type="button" class="chip" data-brand="' + b.id + '" aria-pressed="' + b.chosen + '">' + esc(b.name) + meta + '</button>';
+    });
+    chips.innerHTML = html;
+    // one line per chosen brand
+    var lines = root.querySelector('[data-lines]');
+    var chosen = st.brands.filter(function (b) { return b.chosen; });
+    lines.innerHTML = chosen.map(function (b) {
+      var qid = 'q-' + root.dataset.frameId + '-' + b.id;
+      var noun = b.pkg
+        ? '<button type="button" class="noun" data-detail-for="' + b.id + '" aria-label="' + esc(b.name) + ': ' + esc(nounFor(st, b)) + ', change">' + esc(nounFor(st, b)) + '</button>'
+        : '<button type="button" class="noun" data-detail-for="' + b.id + '" data-ask aria-label="Add size and price for ' + esc(b.name) + '">size?</button>';
+      return '<li class="brandLine"><label class="brandLineName" for="' + qid + '">' + esc(b.name) + '</label>' +
+        '<input class="numIn qtyIn" id="' + qid + '" type="number" inputmode="numeric" min="0" max="99" value="' + b.qty + '" aria-label="Packages of ' + esc(b.name) + '" data-qty="' + b.id + '">' + noun + '</li>';
+    }).join('');
+    // need · buying
+    var needLine = root.querySelector('[data-needline]');
+    needLine.hidden = chosen.length === 0;
+    lines.hidden = chosen.length === 0;
+    var known = false, buying = 0;
+    chosen.forEach(function (b) { var oz = b.pkg && inOz(b.pkg); if (oz != null) { known = true; buying += b.qty * oz; } });
+    var text = 'Need ' + st.need + ' ' + st.unit + ' · buying ' + (known ? fmt(buying) + ' ' + st.unit : '—');
+    if (known && buying < st.need) text += ' · ' + fmt(st.need - buying) + ' ' + st.unit + ' short';
+    needLine.textContent = text;
+  }
+  function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); }
+  choosers.forEach(render);
+
+  // "Choose brand(s)" on the ingredient line folds / unfolds the chooser
+  document.addEventListener('click', function (ev) {
+    var t = ev.target.closest('[data-chooser-toggle]');
+    if (!t) return;
+    var open = t.getAttribute('aria-expanded') === 'true';
+    t.setAttribute('aria-expanded', String(!open));
+    var chooser = t.closest('.subcard').querySelector('[data-chooser]');
+    if (open) closeDetail(chooser._st, false);
+    chooser.hidden = open;
+  });
+
+  // Chips: Any brand clears; a brand toggles. Choosing a brand that has no package opens its details right then.
+  document.addEventListener('click', function (ev) {
+    var chip = ev.target.closest('.chip');
+    if (!chip) return;
+    var st = chip.closest('[data-chooser]')._st;
+    if (chip.hasAttribute('data-any')) {
+      st.brands.forEach(function (b) { b.chosen = false; });
+      closeDetail(st, false);
+      render(st);
+      st.root.querySelector('[data-any]').focus();
+      return;
+    }
+    var b = brandOf(st, chip.dataset.brand);
+    b.chosen = !b.chosen;
+    if (!b.chosen && st.editing === b) closeDetail(st, false);
+    render(st);
+    var again = st.root.querySelector('[data-brand="' + b.id + '"]');
+    again.focus();
+    if (b.chosen && !b.pkg) openDetail(st, b, { kind: 'chip', id: b.id });
+  });
+  function brandOf(st, id) { return st.brands.filter(function (b) { return b.id === id; })[0]; }
+
+  // Type a brand + Enter: a new chip, chosen, and its details open — the moment the scout knows the facts.
+  document.addEventListener('keydown', function (ev) {
+    var input = ev.target.closest('[data-type-brand]');
+    if (!input || ev.key !== 'Enter') return;
+    ev.preventDefault();
+    var name = input.value.trim();
+    if (!name) return;
+    var st = input.closest('[data-chooser]')._st;
+    var b = st.brands.filter(function (x) { return x.name.toLowerCase() === name.toLowerCase(); })[0];
+    if (!b) { b = { id: 'b' + Date.now(), name: name, pkg: null, chosen: true, qty: 1 }; st.brands.push(b); }
+    else b.chosen = true;
+    input.value = '';
+    render(st);
+    openDetail(st, b, { kind: 'chip', id: b.id });
+  });
+
+  // Quantity boxes
+  document.addEventListener('change', function (ev) {
+    var q = ev.target.closest('[data-qty]');
+    if (!q) return;
+    var st = q.closest('[data-chooser]')._st, b = brandOf(st, q.dataset.qty);
+    var n = parseInt(q.value, 10);
+    b.qty = isNaN(n) ? b.qty : Math.min(99, Math.max(0, n));
+    render(st);
+    st.root.querySelector('[data-qty="' + b.id + '"]').focus();
+  });
+
+  // The noun slot ("size?" or "12 oz bags") opens the same details
+  document.addEventListener('click', function (ev) {
+    var n = ev.target.closest('[data-detail-for]');
+    if (!n) return;
+    var st = n.closest('[data-chooser]')._st;
+    openDetail(st, brandOf(st, n.dataset.detailFor), { kind: 'noun', id: n.dataset.detailFor });
+  });
+
+  // ── The detail form (inline or dialog) ──
+  function formFor(st) { return document.body.dataset.detail === 'dialog' ? dialog.querySelector('[data-detail-form]') : st.root.querySelector('[data-detail]'); }
+  function openDetail(st, b, opener) {
+    closeAllDetails(false);
+    st.editing = b; st.opener = opener;
+    var form = formFor(st), isDlg = form.closest('dialog') != null;
+    form._st = st;
+    form.querySelector('[data-title]').textContent = isDlg ? b.name + ' — ' + st.ingredient : b.name;
+    form.querySelector('[data-size]').value = b.pkg ? b.pkg.size : '';
+    form.querySelector('[data-unit]').value = b.pkg ? b.pkg.unit : 'oz';
+    form.querySelector('[data-price]').value = b.pkg && b.pkg.price != null ? b.pkg.price.toFixed(2) : '';
+    form.querySelector('[data-store]').value = b.pkg && b.pkg.store ? b.pkg.store : '';
+    form._initial = snapshot(form);
+    clearBad(form);
+    form.querySelector('[data-save]').disabled = true;
+    if (isDlg) { if (!dialog.open) dialog.showModal(); } else { form.hidden = false; }
+    form.querySelector('[data-size]').focus();
+  }
+  function snapshot(form) {
+    return ['size', 'unit', 'price', 'store'].map(function (k) { return form.querySelector('[data-' + k + ']').value.trim(); }).join('\u0000');
+  }
+  function clearBad(form) {
+    form.querySelectorAll('.field.bad').forEach(function (f) { f.classList.remove('bad'); });
+    var bad = form.querySelector('[data-bad]'); bad.hidden = true; bad.textContent = '';
+  }
+  function markBad(form, field, note) {
+    form.querySelector('[data-field="' + field + '"]').classList.add('bad');
+    var bad = form.querySelector('[data-bad]'); bad.textContent = note; bad.hidden = false;
+    form.querySelector('[data-field="' + field + '"] input').focus();
+  }
+  function refocusOpener(st) {
+    var o = st.opener; st.opener = null;
+    if (!o) return;
+    var el = st.root.querySelector(o.kind === 'chip' ? '[data-brand="' + o.id + '"]' : '[data-detail-for="' + o.id + '"]') || st.root.querySelector('[data-brand="' + o.id + '"]');
+    if (el) el.focus();
+  }
+  // Cancel / Esc / Save all end here. refocus=false when something else already owns focus (a chip tap, a variant switch).
+  function closeDetail(st, refocus) {
+    if (!st.editing) return;
+    var form = formFor(st);
+    if (form.closest('dialog')) { st._closing = true; if (dialog.open) dialog.close(); st._closing = false; }
+    else form.hidden = true;
+    st.editing = null;
+    if (refocus) refocusOpener(st); else st.opener = null;
+  }
+  function closeAllDetails(refocus) { choosers.forEach(function (st) { closeDetail(st, refocus); }); }
+
+  // Dirty: Save greys until something differs from what was opened; a corrected field drops its red mark.
+  document.addEventListener('input', onFormChange);
+  document.addEventListener('change', onFormChange);
+  function onFormChange(ev) {
+    var form = ev.target.closest('[data-detail], [data-detail-form]');
+    if (!form || !form._st) return;
+    form.querySelector('[data-save]').disabled = snapshot(form) === form._initial;
+    var field = ev.target.closest('.field');
+    if (field && field.classList.contains('bad')) { field.classList.remove('bad'); if (!form.querySelector('.field.bad')) { var bad = form.querySelector('[data-bad]'); bad.hidden = true; } }
+  }
+  document.addEventListener('click', function (ev) {
+    var save = ev.target.closest('[data-save]'), cancel = ev.target.closest('[data-cancel-detail]');
+    if (!save && !cancel) return;
+    var form = ev.target.closest('[data-detail], [data-detail-form]'), st = form._st;
+    if (cancel) { closeDetail(st, true); return; }
+    // Save: a size is what the noun and the buying figure need; price and store may wait.
+    var size = parseFloat(form.querySelector('[data-size]').value);
+    if (!(size > 0)) return markBad(form, 'size', 'Say how much one ' + st.noun + ' holds — check the label.');
+    var priceRaw = form.querySelector('[data-price]').value.trim().replace(/^\$/, '');
+    var price = priceRaw === '' ? null : Number(priceRaw);
+    if (priceRaw !== '' && !(price >= 0)) return markBad(form, 'price', 'Enter the price as a number, like 3.49.');
+    var b = st.editing, opener = st.opener;
+    b.pkg = { size: size, unit: form.querySelector('[data-unit]').value, price: price, store: form.querySelector('[data-store]').value.trim() || null };
+    closeDetail(st, false);
+    render(st);
+    st.opener = opener;
+    refocusOpener(st);
+  });
+  // Esc inside the inline panel = Cancel (the dialog does this natively and fires 'close')
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key !== 'Escape') return;
+    var form = ev.target.closest('[data-detail]');
+    if (!form || !form._st) return;
+    ev.preventDefault();
+    closeDetail(form._st, true);
+  });
+  dialog.addEventListener('close', function () {
+    var form = dialog.querySelector('[data-detail-form]'), st = form._st;
+    if (st && st.editing && !st._closing) { st.editing = null; refocusOpener(st); }
+  });
+
+  // Inline | Dialog toggle: the rest of the page is identical between the two
+  document.querySelectorAll('[data-detail-mode]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      closeAllDetails(false);
+      document.body.dataset.detail = b.dataset.detailMode;
+      document.querySelectorAll('[data-detail-mode]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+    });
+  });
+  document.body.dataset.detail = 'inline';
 })();
 </script>
 </body>
