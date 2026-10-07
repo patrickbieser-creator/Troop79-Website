@@ -109,7 +109,7 @@ export async function loadCatalogWith(supabase: SupabaseClient, opts: CatalogLoa
     fetchAllRows<MmRecipeLineRow>((from, to) =>
       supabase
         .from('mm_recipe_lines')
-        .select('id, recipe_id, position, ingredient_id, qty_per_person, unit_key, serves_rule, serves_restrictions')
+        .select('id, recipe_id, position, ingredient_id, qty_per_person, scale, unit_key, serves_rule, serves_restrictions')
         .order('recipe_id')
         .order('position')
         .range(from, to)
@@ -217,6 +217,7 @@ export function mapCatalog(rows: CatalogRows): Catalog {
       ingredientId: l.ingredient_id,
       qtyPerPerson: Number(l.qty_per_person),
       unitKey: l.unit_key,
+      ...(l.scale === 'meal' ? { scale: 'meal' as const } : {}),
       servesRule: l.serves_rule,
       servesRestrictions: l.serves_rule === 'everyone' ? [] : ((l.serves_restrictions ?? []) as RestrictionKey[])
     });
@@ -404,7 +405,7 @@ export async function loadAuthoringCatalogWith(supabase: SupabaseClient): Promis
     fetchAllRows<MmRecipeLineRow>((from, to) =>
       supabase
         .from('mm_recipe_lines')
-        .select('id, recipe_id, position, ingredient_id, qty_per_person, unit_key, serves_rule, serves_restrictions')
+        .select('id, recipe_id, position, ingredient_id, qty_per_person, scale, unit_key, serves_rule, serves_restrictions')
         .order('recipe_id')
         .order('position')
         .range(from, to)

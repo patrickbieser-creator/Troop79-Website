@@ -3,7 +3,7 @@ import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RecipeBuilder } from '../src/app/admin/(workspace)/library/menu-monster/recipe-builder';
 import { RecipeScreen } from '../src/app/admin/(workspace)/library/menu-monster/recipe-screen';
-import { createFood, saveRecipe } from '../src/app/admin/(workspace)/library/menu-monster/actions';
+import { createFood, finishFood, saveRecipe } from '../src/app/admin/(workspace)/library/menu-monster/actions';
 import { UNITS } from '../src/lib/menu-monster/units';
 import type { Catalog } from '../src/lib/menu-monster/types';
 
@@ -18,12 +18,14 @@ vi.mock('next/navigation', () => ({
 }));
 vi.mock('../src/app/admin/(workspace)/library/menu-monster/actions', () => ({
   createFood: vi.fn(async () => ({ ok: true, id: 'cookies', recipeId: 'cookies' })),
+  finishFood: vi.fn(async () => ({ ok: true, id: 'cookies' })),
   saveRecipe: vi.fn(async () => ({ ok: true, id: 'trail-mix' })),
   setRecipeStatus: vi.fn(async () => ({ ok: true })),
   duplicateRecipe: vi.fn(async () => ({ ok: true, id: 'copy' }))
 }));
 
 beforeEach(() => {
+  vi.mocked(finishFood).mockClear().mockResolvedValue({ ok: true, id: 'cookies' });
   vi.mocked(createFood).mockClear().mockResolvedValue({ ok: true, id: 'cookies', recipeId: 'cookies' });
   vi.mocked(saveRecipe).mockClear().mockResolvedValue({ ok: true, id: 'trail-mix' });
 });
@@ -109,5 +111,21 @@ describe('Food & recipes — a single food', () => {
     await user.click(within(editor).getByRole('button', { name: 'Save draft' }));
     await waitFor(() => expect(saveRecipe).toHaveBeenCalledTimes(1));
     expect(vi.mocked(saveRecipe).mock.calls[0][0]).toMatchObject({ id: '', name: 'Trail mix' });
+  });
+
+  it('Leader_FinishesTheSavedFood_WhenALaterStepFailed_InsteadOfCreatingItAgain', async () => {
+    const user = userEvent.setup();
+    vi.mocked(createFood).mockResolvedValueOnce({ ok: false, id: 'cookies', error: 'Cookies is in the price book, but its package was not saved: boom' });
+    render(<RecipeScreen catalog={CATALOG} recipeId="new" stores={STORES} today="2026-10-03" />);
+    const editor = screen.getByRole('region', { name: 'New recipe' });
+    await user.click(within(editor).getByRole('button', { name: 'Not in the list? New ingredient…' }));
+    const form = within(editor).getByRole('region', { name: 'New ingredient' });
+    await user.type(within(form).getByLabelText('Name'), 'Cookies');
+    await user.click(within(form).getByRole('button', { name: 'Add ingredient' }));
+    await user.type(within(form).getByLabelText('Name'), ' and cream');
+    await user.click(await within(form).findByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(finishFood).toHaveBeenCalledTimes(1));
+    const [id, input] = vi.mocked(finishFood).mock.calls[0];
+    expect([vi.mocked(createFood).mock.calls.length, id, input.ingredient.name]).toEqual([1, 'cookies', 'Cookies and cream']);
   });
 });

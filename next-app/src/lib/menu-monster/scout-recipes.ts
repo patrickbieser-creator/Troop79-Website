@@ -46,6 +46,8 @@ export interface ScoutRecipeLine {
   qtyPerPerson: number;
   /** null = the ingredient's own recipe unit. */
   unitKey: string | null;
+  /** Absent = per person; 'meal' = the amount is for the whole meal, once. */
+  scale?: 'meal';
 }
 
 /** What the editor sends and the save RPC receives, cleaned. */
@@ -87,7 +89,7 @@ export function sanitizeScoutRecipe(raw: unknown, base: Catalog): ScoutRecipeDra
     if (!ing || seen.has(ing.id) || !Number.isFinite(qty) || qty <= 0) continue;
     seen.add(ing.id);
     const unitKey = typeof l.unitKey === 'string' && l.unitKey !== ing.unit.key && supportedUnits(ing, catalog.conversions).includes(l.unitKey) ? l.unitKey : null;
-    lines.push({ ingredientId: ing.id, qtyPerPerson: Math.min(MAX_QTY, Math.round(qty * 1000) / 1000), unitKey });
+    lines.push({ ingredientId: ing.id, qtyPerPerson: Math.min(MAX_QTY, Math.round(qty * 1000) / 1000), unitKey, ...(l.scale === 'meal' ? { scale: 'meal' as const } : {}) });
   }
   const steps: string[] = [];
   let used = 0;
@@ -182,7 +184,7 @@ export function versionDraft(recipe: Recipe, ops: readonly EditOp[]): Omit<Scout
   for (const l of applyRecipeEdits(recipe, [...ops])) {
     if (l.servesRule === 'only' || seen.has(l.ingredientId) || !(l.qtyPerPerson > 0)) continue;
     seen.add(l.ingredientId);
-    lines.push({ ingredientId: l.ingredientId, qtyPerPerson: l.qtyPerPerson, unitKey: l.unitKey });
+    lines.push({ ingredientId: l.ingredientId, qtyPerPerson: l.qtyPerPerson, unitKey: l.unitKey, ...(l.scale === 'meal' ? { scale: 'meal' as const } : {}) });
   }
   return {
     name: cleanScoutText(`${recipe.name} (my version)`, MAX_SCOUT_RECIPE_NAME),

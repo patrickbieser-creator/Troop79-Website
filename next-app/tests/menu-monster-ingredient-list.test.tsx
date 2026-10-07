@@ -35,6 +35,16 @@ describe('IngredientList (read)', () => {
     expect(within(row('Pancake mix')).getByText('½ cup')).toBeTruthy();
   });
 
+  it('WholeMealLine_SaysSo_InBothViews', () => {
+    const fried: Recipe = { ...pancakes, lines: [{ ingredientId: 'oil', qtyPerPerson: 4, unitKey: null, scale: 'meal', servesRule: 'everyone', servesRestrictions: [] }] };
+    const cat = { ...CATALOG, ingredients: [...CATALOG.ingredients, { id: 'oil', name: 'Cooking oil', unit: { key: 'cup', one: 'cup', many: 'cups', kind: 'volume' as const }, section: 'dry' as const, staple: false, avoid: [] }] };
+    const { unmount } = render(<IngredientList mode="read" ariaLabel="Fried" rows={ingredientRows(fried, cat, plan(0), 'total')} />);
+    expect(within(row('Cooking oil')).getByText('4 cups (whole meal)')).toBeTruthy();
+    unmount();
+    render(<IngredientList mode="read" ariaLabel="Fried" rows={ingredientRows(fried, cat, plan(0), 'person')} />);
+    expect(within(row('Cooking oil')).getByText('4 cups (whole meal)')).toBeTruthy();
+  });
+
   it('DietSwap_ShowsWhoItIsFor', () => {
     render(list('total'));
     expect(row('Almond flour').textContent).toContain('gluten-free only');

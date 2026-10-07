@@ -20,6 +20,8 @@ export interface AuthorRowData {
   note: string | null;
   qtyPerPerson: number;
   unitLabel: string;
+  /** 'meal' = the amount is for the whole meal, once; absent = per person. */
+  scale?: 'meal';
   buy: string | null;
   isNew: boolean;
 }
@@ -42,7 +44,7 @@ export function authorRows(lines: readonly ScoutRecipeLine[], catalog: Catalog, 
     const ing = ING.get(l.ingredientId);
     if (!ing) continue;
     const shown = ingredientRows(
-      { lines: [{ ingredientId: l.ingredientId, qtyPerPerson: l.qtyPerPerson, unitKey: l.unitKey, servesRule: 'everyone', servesRestrictions: [] }] },
+      { lines: [{ ingredientId: l.ingredientId, qtyPerPerson: l.qtyPerPerson, unitKey: l.unitKey, ...(l.scale === 'meal' ? { scale: 'meal' as const } : {}), servesRule: 'everyone', servesRestrictions: [] }] },
       catalog,
       { headcount: people, restrictions: NO_DIETS },
       view
@@ -56,6 +58,7 @@ export function authorRows(lines: readonly ScoutRecipeLine[], catalog: Catalog, 
       note: null,
       qtyPerPerson: l.qtyPerPerson,
       unitLabel: lineUnit(l.unitKey, ing).many,
+      ...(l.scale === 'meal' ? { scale: 'meal' as const } : {}),
       buy: pkg ? [pkg.name, priceText(pkg.price), pkg.store].filter(Boolean).join(' · ') : null,
       isNew: ing.needsMatch === true
     });

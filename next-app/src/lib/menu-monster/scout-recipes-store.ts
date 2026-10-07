@@ -78,7 +78,7 @@ export async function saveScoutRecipeWith(
       origin_recipe_id: draft.originRecipeId,
       equipment: draft.equipment
     },
-    p_lines: draft.lines.map((l) => ({ ingredient_id: l.ingredientId, qty_per_person: l.qtyPerPerson, unit_key: l.unitKey })),
+    p_lines: draft.lines.map((l) => ({ ingredient_id: l.ingredientId, qty_per_person: l.qtyPerPerson, scale: l.scale ?? 'person', unit_key: l.unitKey })),
     p_expected_updated_at: isNew ? null : expectedUpdatedAt,
     p_new_ingredients: draft.newIngredients.map(typedInPayload)
   });
@@ -153,7 +153,7 @@ export async function loadMyRecipeWith(sb: SupabaseClient, personId: number, id:
   if (!r || r.author_person_id !== personId) return null;
   const { data: lines, error: lErr } = await sb
     .from('mm_recipe_lines')
-    .select('ingredient_id, qty_per_person, unit_key')
+    .select('ingredient_id, qty_per_person, scale, unit_key')
     .eq('recipe_id', id)
     .order('position');
   if (lErr) throw new Error(`load lines: ${lErr.message}`);
@@ -164,7 +164,7 @@ export async function loadMyRecipeWith(sb: SupabaseClient, personId: number, id:
       mealFit: (r.meal_fit ?? []) as MealSlot[],
       foodGroups: (r.food_groups ?? []) as FoodGroup[],
       steps: stepsFromText(r.steps_md as string | null),
-      lines: (lines ?? []).map((l): ScoutRecipeLine => ({ ingredientId: l.ingredient_id as string, qtyPerPerson: Number(l.qty_per_person), unitKey: (l.unit_key as string | null) ?? null })),
+      lines: (lines ?? []).map((l): ScoutRecipeLine => ({ ingredientId: l.ingredient_id as string, qtyPerPerson: Number(l.qty_per_person), unitKey: (l.unit_key as string | null) ?? null, ...(l.scale === 'meal' ? { scale: 'meal' as const } : {}) })),
       originRecipeId: (r.origin_recipe_id as string | null) ?? null,
       newIngredients: [],
       equipment: (r.equipment ?? []) as string[]
@@ -416,7 +416,7 @@ export interface ScoutFood {
 export async function listScoutFoodsWith(sb: SupabaseClient, ownerName: (ids: number[]) => Promise<Map<number, string>>, onlyId?: string): Promise<ScoutFood[]> {
   let q = sb
     .from('mm_recipes')
-    .select('id, name, status, author_person_id, created_at, meal_fit, mm_recipe_lines(ingredient_id, qty_per_person)')
+    .select('id, name, status, author_person_id, created_at, meal_fit, mm_recipe_lines(ingredient_id, qty_per_person, scale)')
     .not('author_person_id', 'is', null)
     .neq('status', 'retired')
     .order('created_at', { ascending: false })
@@ -424,7 +424,7 @@ export async function listScoutFoodsWith(sb: SupabaseClient, ownerName: (ids: nu
   if (onlyId) q = q.eq('id', onlyId);
   const { data, error } = await q;
   if (error) throw new Error(`scout foods: ${error.message}`);
-  type Line = { ingredient_id: string; qty_per_person: number | string };
+  type Line = { ingredient_id: string; qty_per_person: number | string; scale?: string };
   const single = (data ?? []).filter((r) => ((r.mm_recipe_lines as unknown as Line[]) ?? []).length === 1);
   const ingIds = [...new Set(single.map((r) => (r.mm_recipe_lines as unknown as Line[])[0].ingredient_id))].filter((i) => i.startsWith('x-'));
   if (ingIds.length === 0) return [];

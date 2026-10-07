@@ -663,6 +663,7 @@ function draftOf(r: Recipe): RecipeDraft {
       ingredientId: l.ingredientId,
       amount: String(l.qtyPerPerson),
       unitKey: l.unitKey,
+      ...(l.scale === 'meal' ? { scale: 'meal' as const } : {}),
       servesRule: l.servesRule,
       servesRestrictions: l.servesRestrictions
     }))
@@ -702,7 +703,7 @@ export async function saveRecipe(a: RecipeAuthoring): Promise<Result> {
     seen.add(l.ingredientId);
     const { q, error } = amountOf(l.amount, `Line ${i + 1}`);
     if (error) return { ok: false, error };
-    base.push({ ingredientId: l.ingredientId, qtyPerPerson: q as number, unitKey: l.unitKey || null });
+    base.push({ ingredientId: l.ingredientId, qtyPerPerson: q as number, unitKey: l.unitKey || null, ...(l.scale === 'meal' ? { scale: 'meal' as const } : {}) });
   }
 
   const variations: Variation[] = [];
@@ -796,6 +797,7 @@ export async function saveRecipe(a: RecipeAuthoring): Promise<Result> {
     p_lines: compiled.map((l) => ({
       ingredient_id: l.ingredientId,
       qty_per_person: l.qtyPerPerson,
+      scale: l.scale ?? 'person',
       unit_key: l.unitKey,
       serves_rule: l.servesRule,
       serves_restrictions: l.servesRestrictions
@@ -896,6 +898,7 @@ export async function duplicateRecipe(id: string): Promise<Result> {
     p_lines: recipe.lines.map((l) => ({
       ingredient_id: l.ingredientId,
       qty_per_person: l.qtyPerPerson,
+      scale: l.scale ?? 'person',
       unit_key: l.unitKey,
       serves_rule: l.servesRule,
       serves_restrictions: l.servesRestrictions
@@ -1025,6 +1028,62 @@ export async function createFood(input: FoodInput): Promise<FoodResult> {
   const live = await setRecipeStatus(saved.id, 'published');
   if (!live.ok) return { ok: true, id, recipeId: saved.id, note: `${value.name} is saved as a draft: ${live.error}` };
   return { ok: true, id, recipeId: saved.id, ...(pkg ? {} : { note: `${value.name} is on the menu with no price yet. Add one in the Price book when you have it.` }) };
+}
+
+/**
+ * Finish a food createFood left half-written (the ingredient is saved, a later step failed): the same form,
+ * bound to the saved id. It corrects the ingredient (name, aisle, flags — its unit has its own dialog in the
+ * Price book), adds the first package only when the food has none yet, and puts it on the menu through the
+ * action that creates or updates the one tied menu item. So a retry completes the record, never duplicates it.
+ */
+export async function finishFood(id: string, input: FoodInput): Promise<FoodResult> {
+  const denied = await guard();
+  if (denied) return denied;
+  const { value, error } = cleanIngredient(input.ingredient ?? {});
+  if (error) return { ok: false, id, error };
+  const pkg = input.package;
+  if (pkg) {
+    if (!Number.isFinite(Number(pkg.price)) || Number(pkg.price) < 0) return { ok: false, id, error: 'Type what one package costs.' };
+    if (!(Number(pkg.holds) > 0)) return { ok: false, id, error: `Type how many ${input.ingredient.unit.many.trim()} one package holds.` };
+  }
+
+  const supabase = createAdminClient();
+  const { data: ing } = await supabase.from('mm_ingredients').select('id, name').eq('id', id).maybeSingle();
+  if (!ing) return { ok: false, id, error: 'That ingredient is gone.' };
+  const { data: others } = await supabase.from('mm_ingredients').select('id, name').is('retired_at', null).is('added_by_person_id', null).neq('id', id);
+  if (((others ?? []) as { name: string }[]).some((r) => r.name.trim().toLowerCase() === value.name.toLowerCase())) {
+    return { ok: false, id, error: `“${value.name}” is already in the price book.` };
+  }
+
+  const updated = await updateIngredient(id, input.ingredient);
+  if (!updated.ok) return { ok: false, id, error: updated.error };
+
+  let priced = false;
+  if (pkg) {
+    const { data: have } = await supabase.from('mm_packages').select('id').eq('ingredient_id', id).is('retired_at', null).limit(1);
+    if (((have ?? []) as unknown[]).length === 0) {
+      const p = await createPackage({
+        ingredientId: id,
+        name: pkg.name?.trim() || value.name,
+        store: pkg.store,
+        price: Number(pkg.price),
+        soldSize: null,
+        soldUnit: null,
+        yield: Number(pkg.holds),
+        yieldUnitLabel: null,
+        noun: 'pack',
+        asOf: pkg.asOf,
+        note: null
+      });
+      if (!p.ok) return { ok: false, id, error: `${value.name} is in the price book, but its package was not saved: ${p.error}` };
+    }
+    priced = true;
+  }
+  if (!input.menu) return { ok: true, id, ...(priced ? {} : { note: `${value.name} has no price yet — add a package to make it usable.` }) };
+
+  const live = await putFoodOnMenu(id, input.menu);
+  if (!live.ok) return { ok: false, id, error: `${value.name} is in the price book, but its menu item was not saved: ${live.error}` };
+  return live;
 }
 
 /**

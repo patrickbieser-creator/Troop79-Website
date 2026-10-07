@@ -19,6 +19,7 @@ import { PublicBlockedSaveSpecimen, PublicDietRowsSpecimen, PublicFinishLineSpec
 import { StepStrip } from '../src/app/(public)/library/menu-monster/menus/_components/step-strip';
 import { BlockedSaveDemo } from '../src/app/admin/(workspace)/styleguide/admin/save-demo';
 import { FoodListRowsSpecimen } from '../src/app/admin/(workspace)/styleguide/admin/food-list-rows-specimen';
+import { ComboboxSpecimen } from '../src/app/admin/(workspace)/styleguide/admin/specimens';
 import { EditorPromptsSpecimen } from '../src/app/admin/(workspace)/styleguide/admin/editor-prompts-specimen';
 
 describe('Public styleguide specimens', () => {
@@ -52,6 +53,13 @@ describe('Public styleguide specimens', () => {
     render(<PublicGearSpecimen />);
     expect(screen.getByLabelText('Search gear')).toBeTruthy();
     expect(screen.getByText('Skillet × 2')).toBeTruthy();
+  });
+
+  it('Combobox_FiltersByContains_WhenTyped', () => {
+    render(<ComboboxSpecimen />);
+    const box = screen.getByRole('combobox', { name: 'Ingredient' });
+    fireEvent.change(box, { target: { value: 'flou' } });
+    expect(screen.getAllByRole('option').map((o) => o.firstChild?.textContent)).toEqual(['All purpose flour', 'Almond flour']);
   });
 
   it('BlockedSave_MarksTheFieldAndSaysWhy_WhenAddIsPressedIncomplete', () => {

@@ -80,7 +80,31 @@ describe('IngredientList author mode', () => {
     const box = screen.getByRole('textbox', { name: 'Amount per person of Beef, in cups' });
     await user.clear(box);
     await user.type(box, '1/2{Enter}');
-    expect(onAction).toHaveBeenCalledWith({ type: 'amount', ingredientId: 'b', qtyPerPerson: 0.5 });
+    expect(onAction).toHaveBeenCalledWith({ type: 'amount', ingredientId: 'b', qtyPerPerson: 0.5, scale: 'person' });
+  });
+
+  it('ChangeAmount_CanMarkTheLine_ForTheWholeMeal', async () => {
+    const { user, onAction } = setup();
+    await user.click(screen.getByRole('button', { name: 'Change Beef' }));
+    await user.click(screen.getByRole('button', { name: 'Change amount' }));
+    const group = screen.getByRole('radiogroup', { name: 'What the Beef amount is for' });
+    expect((within(group).getByRole('radio', { name: 'per person' }) as HTMLInputElement).checked).toBe(true);
+    await user.click(within(group).getByRole('radio', { name: 'whole meal' }));
+    // Moving from the box to the choice is still editing: nothing is committed yet.
+    expect(onAction).not.toHaveBeenCalled();
+    const box = screen.getByRole('textbox', { name: 'Amount of Beef for the whole meal, in cups' });
+    await user.clear(box);
+    await user.type(box, '4{Enter}');
+    expect(onAction).toHaveBeenCalledWith({ type: 'amount', ingredientId: 'b', qtyPerPerson: 4, scale: 'meal' });
+  });
+
+  it('ChangeAmount_ReportsAScaleChange_WithTheSameNumber', async () => {
+    const { user, onAction } = setup();
+    await user.click(screen.getByRole('button', { name: 'Change Beef' }));
+    await user.click(screen.getByRole('button', { name: 'Change amount' }));
+    await user.click(screen.getByRole('radio', { name: 'whole meal' }));
+    await user.keyboard('{Enter}');
+    expect(onAction).toHaveBeenCalledWith({ type: 'amount', ingredientId: 'b', qtyPerPerson: 0.25, scale: 'meal' });
   });
 
   it('Search_OffersOnlyIngredientsNotAlreadyInTheRecipe', async () => {

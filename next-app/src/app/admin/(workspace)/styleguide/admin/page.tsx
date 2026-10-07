@@ -27,7 +27,7 @@ import { EditorPromptsSpecimen } from './editor-prompts-specimen';
 import { FoodListRowsSpecimen } from './food-list-rows-specimen';
 import { BlockedSaveDemo, SaveDemo, SegmentedDemo } from './save-demo';
 import { fmtDate, fmtDateLong, fmtDateFull, fmtDay, fmtDateTime, fmtMonthYear, fmtRange, fmtWhen } from '@/lib/format-date';
-import { ActionsMenuSpecimen, GearPickerSpecimen, SearchFieldSpecimen, SortHeaderSpecimen } from './specimens';
+import { ActionsMenuSpecimen, ComboboxInvalidSpecimen, ComboboxSpecimen, GearPickerSpecimen, SearchFieldSpecimen, SortHeaderSpecimen } from './specimens';
 import {
   DangerZoneSpecimen,
   HistoryChipSpecimen,
@@ -759,6 +759,29 @@ export default function StyleguidePage() {
           <div className={`${sg.specimen} ${sg.specimenCanonical}`}>
             <div className={sg.specimenLabel}>Canonical</div>
             <SearchFieldSpecimen />
+          </div>
+        </div>
+      </section>
+
+      <section className={sg.section}>
+        <h2 className={sg.sectionHead}>Combobox</h2>
+        <p className={sg.sectionNote}>
+          One pick from a list too long for a plain select (Patrick, 2026-10-06: &ldquo;the ingredient picker needs
+          to also allow a search&rdquo;). The box shows the current pick; typing filters the list by a
+          case-insensitive <strong>contains</strong> match on the label and its hidden keywords (unit words).
+          Arrow keys move the highlight, Enter picks, Escape closes and restores the current pick, leaving the box
+          restores it too, and &times; clears the pick. <code>invalid</code> marks it like any field a blocked Save
+          is about. <code>_components/admin-combobox.tsx</code>, used by every ingredient field in the recipe
+          builder; the gear picker keeps its own markup (multi-pick, chips) with the same keyboard contract.
+        </p>
+        <div className={sg.specimenGrid}>
+          <div className={`${sg.specimen} ${sg.specimenCanonical}`}>
+            <div className={sg.specimenLabel}>Canonical</div>
+            <ComboboxSpecimen />
+          </div>
+          <div className={sg.specimen}>
+            <div className={sg.specimenLabel}>Marked</div>
+            <ComboboxInvalidSpecimen />
           </div>
         </div>
       </section>

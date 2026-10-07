@@ -13,6 +13,10 @@
  *
  * `menuFirst` ticks "on the menu by itself" to start with; the price is
  * optional (an unpriced food is saved as a draft and says so).
+ *
+ * If a later step fails after the ingredient was written, the form stays open BOUND to that saved ingredient
+ * (finish mode): the button becomes Save, the unit is fixed, and the retry calls finishFood, which completes
+ * the record instead of creating it a second time.
  */
 import { useRef, useState, useTransition } from 'react';
 import { Button } from '../../../_components/button';
@@ -21,7 +25,7 @@ import { Notice } from '../../_components/notice';
 import { SaveFeedback, SaveProblem, useSavePhase } from '../../_components/save-state';
 import { FOOD_GROUPS, MEALS, RESTRICTIONS, SECTIONS, UNITS } from '@/lib/menu-monster/units';
 import type { FoodGroup, MealSlot, RestrictionKey, Section, Unit, UnitKind } from '@/lib/menu-monster/types';
-import { createFood, type FoodResult } from './actions';
+import { createFood, finishFood, type FoodResult } from './actions';
 import lib from '../library.module.css';
 import styles from './menu-monster.module.css';
 
@@ -69,6 +73,8 @@ export function NewFoodForm({
   const [mealFit, setMealFit] = useState<MealSlot[]>([]);
   const [foodGroups, setFoodGroups] = useState<FoodGroup[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // Set once the ingredient exists but a later step failed: the form is now finishing THAT food.
+  const [savedId, setSavedId] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const feedback = useSavePhase();
 
@@ -107,16 +113,20 @@ export function NewFoodForm({
     setError(null);
     feedback.start();
     start(async () => {
-      const res = await createFood({
+      const input = {
         ingredient: { name, unit, section, staple, avoid },
         package: priced ? { name: product, store: store || null, price: Number(price), holds: Number(holds), asOf: today } : null,
         menu: onMenu ? { amount, mealFit, foodGroups } : null
-      });
+      };
+      const res = savedId ? await finishFood(savedId, input) : await createFood(input);
       if (!res.ok) {
         feedback.fail();
         setError(res.error ?? 'Something went wrong.');
         // A later step failed after the ingredient was written: the list behind the form is stale.
-        if (res.id) onDone(res);
+        if (res.id) {
+          setSavedId(res.id);
+          onDone(res);
+        }
         return;
       }
       feedback.done();
@@ -143,6 +153,7 @@ export function NewFoodForm({
           <select
             id="mm-new-kind"
             className={lib.selectInput}
+            disabled={savedId != null}
             value={kind}
             onChange={(e) => {
               const k = e.target.value as UnitKind;
@@ -160,7 +171,7 @@ export function NewFoodForm({
             <label className={`adminLabel ${lib.fieldLabel}`} htmlFor="mm-new-unit">
               Recipe unit
             </label>
-            <select id="mm-new-unit" className={lib.selectInput} value={key} onChange={(e) => setKey(e.target.value)}>
+            <select id="mm-new-unit" className={lib.selectInput} disabled={savedId != null} value={key} onChange={(e) => setKey(e.target.value)}>
               {(kind === 'volume' ? VOLUME_UNITS : WEIGHT_UNITS).map((k) => (
                 <option key={k} value={k}>
                   {UNITS[k].many}
@@ -174,14 +185,14 @@ export function NewFoodForm({
               <label className={`adminLabel ${lib.fieldLabel}`} htmlFor="mm-new-one">
                 One is called
               </label>
-              <input id="mm-new-one" className={inputCls('one')} aria-invalid={bad('one') || undefined} value={one} maxLength={20} onChange={(e) => setOne(e.target.value)} placeholder="cookie" />
+              <input id="mm-new-one" className={inputCls('one')} aria-invalid={bad('one') || undefined} value={one} disabled={savedId != null} maxLength={20} onChange={(e) => setOne(e.target.value)} placeholder="cookie" />
               {note('one')}
             </div>
             <div>
               <label className={`adminLabel ${lib.fieldLabel}`} htmlFor="mm-new-many">
                 Several are called
               </label>
-              <input id="mm-new-many" className={inputCls('many')} aria-invalid={bad('many') || undefined} value={many} maxLength={20} onChange={(e) => setMany(e.target.value)} placeholder="cookies" />
+              <input id="mm-new-many" className={inputCls('many')} aria-invalid={bad('many') || undefined} value={many} disabled={savedId != null} maxLength={20} onChange={(e) => setMany(e.target.value)} placeholder="cookies" />
               {note('many')}
             </div>
           </>
@@ -283,7 +294,7 @@ export function NewFoodForm({
 
       <div className={lib.actionsRow}>
         <Button variant="primary" disabled={pending || empty} onClick={submit}>
-          {pending ? 'Adding…' : onMenu ? 'Add food' : 'Add ingredient'}
+          {pending ? (savedId ? 'Saving…' : 'Adding…') : savedId ? 'Save' : onMenu ? 'Add food' : 'Add ingredient'}
         </Button>
         <Button variant="secondary" disabled={pending} onClick={onCancel}>
           Cancel

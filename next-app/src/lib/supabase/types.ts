@@ -597,6 +597,8 @@ export interface MmRecipeLineRow {
   position: number;
   ingredient_id: string;
   qty_per_person: number;
+  /** 'person' = per person fed (default); 'meal' = the amount is for the whole meal (migration 20261026100000). */
+  scale?: 'person' | 'meal';
   /** null = the ingredient's recipe unit. */
   unit_key: string | null;
   serves_rule: 'everyone' | 'except' | 'only';

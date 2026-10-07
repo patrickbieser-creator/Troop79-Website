@@ -86,20 +86,29 @@ export function AmountEditor({
   name,
   unitLabel,
   value,
+  scale = 'person',
+  canScale = false,
   onCommit,
   onCancel
 }: {
   name: string;
   unitLabel: string;
   value: number;
+  /** What the amount is for now: each person (default) or the whole meal. */
+  scale?: 'person' | 'meal';
+  /** Offer the choice (a recipe being written). A menu's edit keeps the troop line's own scale, so it only says it. */
+  canScale?: boolean;
   /** refocus: hand focus back to the row's ⋯ (Enter) — not on a blur, which already moved focus. */
-  onCommit: (qty: number, refocus: boolean) => void;
+  onCommit: (qty: number, refocus: boolean, scale: 'person' | 'meal') => void;
   onCancel: (refocus: boolean) => void;
 }) {
   const [text, setText] = useState(() => String(Math.round(value * 10000) / 10000));
   const [bad, setBad] = useState(false);
+  const [chosen, setChosen] = useState<'person' | 'meal'>(scale);
   const finished = useRef(false);
+  const box = useRef<HTMLSpanElement>(null);
   const errId = useId();
+  const groupName = useId();
 
   const parsed = parseQty(text);
   const valid = Number.isFinite(parsed) && parsed > 0 && parsed <= MAX_QTY;
@@ -108,7 +117,7 @@ export function AmountEditor({
     if (finished.current) return;
     if (valid) {
       finished.current = true;
-      onCommit(parsed, refocus);
+      onCommit(parsed, refocus, chosen);
     } else if (fromBlur) {
       finished.current = true;
       onCancel(false);
@@ -117,7 +126,7 @@ export function AmountEditor({
     }
   }
 
-  function onKey(e: KeyboardEvent<HTMLInputElement>) {
+  function onKey(e: KeyboardEvent<HTMLElement>) {
     if (e.key === 'Enter') {
       e.preventDefault();
       finish(true, false);
@@ -129,25 +138,49 @@ export function AmountEditor({
   }
 
   return (
-    <span className={s.amountEdit}>
+    <span
+      className={s.amountEdit}
+      ref={box}
+      onKeyDown={onKey}
+      onBlur={(e) => {
+        // Moving between the box and the scale choice is still editing; leaving the whole editor commits.
+        if (e.relatedTarget instanceof Node && box.current?.contains(e.relatedTarget)) return;
+        finish(false, true);
+      }}
+    >
       <input
         type="text"
         inputMode="decimal"
         className={s.amountInput}
         value={text}
         autoFocus
-        aria-label={`Amount per person of ${name}, in ${unitLabel}`}
+        aria-label={chosen === 'meal' ? `Amount of ${name} for the whole meal, in ${unitLabel}` : `Amount per person of ${name}, in ${unitLabel}`}
         aria-invalid={bad || undefined}
         aria-describedby={bad ? errId : undefined}
         onChange={(e) => {
           setText(e.target.value);
           setBad(false);
         }}
-        onKeyDown={onKey}
-        onBlur={() => finish(false, true)}
         onFocus={(e) => e.currentTarget.select()}
       />
-      <span className={s.unit}>{unitLabel} each person</span>
+      {canScale ? (
+        <span className={s.scaleGroup} role="radiogroup" aria-label={`What the ${name} amount is for`}>
+          <span className={s.unit}>{unitLabel}</span>
+          {(
+            [
+              ['person', 'per person'],
+              ['meal', 'whole meal']
+            ] as const
+          ).map(([key, label]) => (
+            <label key={key} className={s.scaleOpt}>
+              <input type="radio" name={groupName} className={s.scaleRadio} checked={chosen === key} onChange={() => setChosen(key)} />
+              <span>{label}</span>
+            </label>
+          ))}
+        </span>
+      ) : (
+        <span className={s.unit}>{chosen === 'meal' ? `${unitLabel} for the whole meal` : `${unitLabel} each person`}</span>
+      )}
       {bad && (
         <span id={errId} className={s.fieldError} role="alert">
           Enter an amount above 0.
@@ -324,6 +357,7 @@ export function MenuEditList({ rows, ariaLabel, emptyText = 'No ingredients.', c
                     name={r.name}
                     unitLabel={e.unitLabel}
                     value={e.qtyPerPerson}
+                    scale={e.scale}
                     onCommit={(qty, refocus) => {
                       setEditing(null);
                       if (Math.abs(qty - e.qtyPerPerson) > 1e-9) {

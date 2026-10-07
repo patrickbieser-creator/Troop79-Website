@@ -120,11 +120,17 @@ export type BrandPicks = Record<string, BrandPick[]>;
 
 export type ServesRule = 'everyone' | 'except' | 'only';
 
+/** What a line's amount is for: 'person' (the default) = each person it feeds; 'meal' = the meal as a whole, once
+ *  (4 cups of oil however many are eating). Absent = 'person'. */
+export type LineScale = 'person' | 'meal';
+
 export interface RecipeLine {
   ingredientId: string;
   qtyPerPerson: number;
   /** null = the ingredient's recipe unit; otherwise any key conv() can bridge. */
   unitKey: string | null;
+  /** Absent = 'person'. 'meal' = qtyPerPerson is the amount for the whole meal row (see LineScale). */
+  scale?: LineScale;
   servesRule: ServesRule;
   /** The restrictions the rule names, in RESTRICTIONS order; empty for
    *  'everyone'. A list (2026-09-08, Plans/Menu-Monster-Recipe-Variations.md

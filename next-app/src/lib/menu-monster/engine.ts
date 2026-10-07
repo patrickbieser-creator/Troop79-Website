@@ -63,6 +63,18 @@ export function effectiveRestrictions(plan: Plan): Record<RestrictionKey, number
   return out;
 }
 
+/** How many times a line's amount is used on one meal row: per person = the people it feeds; for the whole
+ *  meal = once, as long as the serves rule leaves anyone to feed. The ONE rule: the shopping math and the
+ *  list's display math both read it. */
+export function lineFeeds(
+  line: Pick<RecipeLine, 'servesRule' | 'servesRestrictions' | 'scale'>,
+  headcount: number,
+  restrictions: Record<RestrictionKey, number>
+): number {
+  const fed = servingsFor(line, headcount, restrictions);
+  return line.scale === 'meal' ? (fed > 0 ? 1 : 0) : fed;
+}
+
 /** How many of H people a line feeds under its serves rule. */
 export function servingsFor(
   line: Pick<RecipeLine, 'servesRule' | 'servesRestrictions'>,
@@ -150,7 +162,7 @@ export function gatherNeeds(plan: Plan, catalog: Catalog, into: Map<string, Need
       // No conversion path = a catalog bug (fix: a conversion row), never a crash.
       const f = conv(ln.unitKey, ing, catalog.conversions);
       if (f == null || !(ln.qtyPerPerson > 0)) continue;
-      const people = servingsFor(ln, H, R);
+      const people = lineFeeds(ln, H, R);
       const amount = ln.qtyPerPerson * f * people;
       if (amount <= 0) continue;
       let e = into.get(ing.id);
@@ -458,7 +470,7 @@ export function sourcesText(l: ShoppingLine): string {
     'for ' +
     l.sources
       .map((s) =>
-        s.line.servesRule !== 'everyone' ? `${s.recipe.name} (${ruleText(s.line)}, ${s.people})` : s.recipe.name
+        s.line.servesRule !== 'everyone' ? `${s.recipe.name} (${s.line.scale === 'meal' ? ruleText(s.line) : `${ruleText(s.line)}, ${s.people}`})` : s.recipe.name
       )
       .join(' + ')
   );

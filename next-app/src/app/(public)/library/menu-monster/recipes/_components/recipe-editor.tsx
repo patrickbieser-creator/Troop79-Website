@@ -176,7 +176,15 @@ export function RecipeEditor({ catalog, id: initialId, initial, status: initialS
         return { ...d, lines: d.lines.filter((l) => l.ingredientId !== a.ingredientId), newIngredients: d.newIngredients.filter((n) => n.key !== a.ingredientId) };
       }
       if (a.type === 'move') return { ...d, lines: moveItem(d.lines, a.from, a.to) };
-      return { ...d, lines: d.lines.map((l) => (l.ingredientId === a.ingredientId ? { ...l, qtyPerPerson: a.qtyPerPerson } : l)) };
+      return {
+        ...d,
+        lines: d.lines.map((l) => {
+          if (l.ingredientId !== a.ingredientId) return l;
+          const { scale: _was, ...rest } = l;
+          void _was;
+          return { ...rest, qtyPerPerson: a.qtyPerPerson, ...(a.scale === 'meal' ? { scale: 'meal' as const } : {}) };
+        })
+      };
     });
   }
 

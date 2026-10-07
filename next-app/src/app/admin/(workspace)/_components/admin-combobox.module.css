@@ -1,0 +1,94 @@
+/* Admin combobox (admin tokens only). Specimen: /admin/styleguide/admin -> Combobox. */
+
+.wrap {
+  position: relative;
+}
+
+.input {
+  width: 100%;
+  background: var(--admin-field-bg);
+  border: 1px solid var(--admin-gray-300);
+  border-radius: var(--admin-radius-sm);
+  font-family: inherit;
+  font-size: var(--admin-text-md);
+  padding: var(--admin-space-4) var(--admin-space-12) var(--admin-space-4) var(--admin-space-5);
+  color: var(--admin-gray-700);
+}
+.input[aria-invalid='true'] {
+  border-color: var(--admin-danger);
+  outline: 1px solid var(--admin-danger);
+}
+.input:focus-visible,
+.clear:focus-visible {
+  outline: 2px solid var(--admin-navy);
+  outline-offset: 1px;
+}
+
+.clear {
+  position: absolute;
+  top: 50%;
+  right: var(--admin-space-3);
+  transform: translateY(-50%);
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: var(--admin-radius-circle);
+  font-family: inherit;
+  font-size: var(--admin-text-md);
+  line-height: 1;
+  color: var(--admin-gray-500);
+  cursor: pointer;
+}
+.clear:hover {
+  background: var(--admin-gray-100);
+  color: var(--admin-navy);
+}
+
+.options {
+  position: absolute;
+  z-index: 10;
+  left: 0;
+  right: 0;
+  margin: var(--admin-space-1) 0 0;
+  padding: var(--admin-space-2) 0;
+  list-style: none;
+  max-height: 16rem;
+  overflow-y: auto;
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-300);
+  border-radius: var(--admin-radius-sm);
+  box-shadow: var(--admin-shadow-md);
+}
+.options[hidden] {
+  display: none;
+}
+
+.option {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--admin-space-5);
+  padding: var(--admin-space-3) var(--admin-space-5);
+  font-size: var(--admin-text-md);
+  color: var(--admin-gray-700);
+  cursor: pointer;
+}
+.option[data-active='true'] {
+  background: var(--admin-gray-100);
+  color: var(--admin-navy);
+}
+.option[aria-selected='true'] {
+  font-weight: var(--admin-weight-semibold);
+}
+
+.detail {
+  color: var(--admin-gray-500);
+  font-size: var(--admin-text-base);
+}
+
+.noMatch {
+  margin: var(--admin-space-2) 0 0;
+  font-size: var(--admin-text-base);
+  color: var(--admin-gray-500);
+}

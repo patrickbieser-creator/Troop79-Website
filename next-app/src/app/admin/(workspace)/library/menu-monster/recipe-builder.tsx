@@ -58,6 +58,7 @@ import { DiscardButton, SaveButton, SaveFeedback, SaveProblem, useDraftSnapshot,
 import { ActionsMenu } from '../../_components/actions-menu';
 import { Dialog, DialogActions, DialogBody, DialogHeader } from '../../_components/dialog';
 import { SegmentedControl } from '../../_components/segmented-control';
+import { AdminCombobox, type ComboOption } from '../../_components/admin-combobox';
 import { money } from '@/lib/event-money';
 import {
   METHODS,
@@ -141,7 +142,7 @@ function previewRecipe(a: RecipeAuthoring, tab: Tab): Recipe {
   });
   const lines: RecipeLine[] = mine
     .filter((l) => l.ingredientId && Number.isFinite(parseQty(l.amount)) && parseQty(l.amount) > 0)
-    .map((l) => ({ ingredientId: l.ingredientId, qtyPerPerson: parseQty(l.amount), unitKey: l.unitKey, servesRule: l.servesRule, servesRestrictions: l.servesRestrictions }));
+    .map((l) => ({ ingredientId: l.ingredientId, qtyPerPerson: parseQty(l.amount), unitKey: l.unitKey, ...(l.scale === 'meal' ? { scale: 'meal' as const } : {}), servesRule: l.servesRule, servesRestrictions: l.servesRestrictions }));
   return {
     id: a.id || NEW_ID,
     name: a.name || 'Untitled',
@@ -774,7 +775,8 @@ export function RecipeEditor({
                   today={today}
                   onDone={(res) => {
                     // It joins the pickers on the refresh; its line is added now so the leader only types the amount.
-                    if (res.id) setDraft((d) => ({ ...d, base: [...d.base, { ingredientId: res.id as string, amount: '', unitKey: null }] }));
+                    // A retry of the same food (finish mode) reports the same id: its line is only added once.
+                    if (res.id) setDraft((d) => (d.base.some((l) => l.ingredientId === res.id) ? d : { ...d, base: [...d.base, { ingredientId: res.id as string, amount: '', unitKey: null }] }));
                     if (res.ok) setNewIngredient(false);
                     onChanged();
                   }}
@@ -1088,22 +1090,17 @@ function toggle<T>(list: T[], key: T, on: boolean): T[] {
 /* ── Ingredient picker + unit select, shared by base and variation rows ─── */
 
 function IngredientSelect({ id, label, value, ingredients, invalid = false, onChange }: { id: string; label: string; value: string; ingredients: Ingredient[]; invalid?: boolean; onChange: (id: string) => void }) {
-  return (
-    <select id={id} aria-label={label} className={lib.selectInput} aria-invalid={invalid || undefined} value={value} onChange={(e) => onChange(e.target.value)}>
-      <option value="">— pick —</option>
-      {SECTION_ORDER.map((s) => (
-        <optgroup key={s} label={SECTIONS[s]}>
-          {ingredients
-            .filter((i) => i.section === s)
-            .map((i) => (
-              <option key={i.id} value={i.id}>
-                {i.name}
-              </option>
-            ))}
-        </optgroup>
-      ))}
-    </select>
+  // Section by section, A to Z inside each; the section and unit words are searchable too ("cups", "bakery").
+  const options = useMemo<ComboOption[]>(
+    () =>
+      SECTION_ORDER.flatMap((s) =>
+        ingredients
+          .filter((i) => i.section === s)
+          .map((i) => ({ value: i.id, label: i.name, detail: SECTIONS[s], keywords: [i.unit.one, i.unit.many] }))
+      ),
+    [ingredients]
   );
+  return <AdminCombobox id={id} label={label} options={options} value={value} invalid={invalid} placeholder="Type to search…" noMatch="No ingredient matches" onChange={onChange} />;
 }
 
 function UnitSelect({ id, label, ingredient, unitKey, catalog, onChange }: { id: string; label: string; ingredient: Ingredient | null; unitKey: string | null; catalog: Catalog; onChange: (k: string | null) => void }) {
@@ -1162,9 +1159,22 @@ function BaseLineRow({
       </div>
       <div className={styles.narrow}>
         <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`mm-l-${idx}-amt`}>
-          Amount per person
+          {line.scale === 'meal' ? 'Amount for the whole meal' : 'Amount per person'}
         </label>
         <input id={`mm-l-${idx}-amt`} aria-label={`Line ${n} amount`} className={lib.textInput} aria-invalid={problems.some((t) => /amount/.test(t)) || undefined} value={line.amount} placeholder="½" onChange={(e) => onChange({ amount: e.target.value })} />
+      </div>
+      <div>
+        <span className={`adminLabel ${lib.fieldLabel}`}>For</span>
+        <SegmentedControl
+          name={`mm-l-${idx}-scale`}
+          label={`Line ${n} amount is for`}
+          value={line.scale === 'meal' ? 'meal' : 'person'}
+          options={[
+            { value: 'person', label: 'per person' },
+            { value: 'meal', label: 'whole meal' }
+          ]}
+          onChange={(v) => onChange({ scale: v === 'meal' ? 'meal' : undefined })}
+        />
       </div>
       <div className={styles.narrow}>
         <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`mm-l-${idx}-unit`}>
@@ -1172,6 +1182,12 @@ function BaseLineRow({
         </label>
         <UnitSelect id={`mm-l-${idx}-unit`} label={`Line ${n} unit`} ingredient={ingredient} unitKey={line.unitKey} catalog={catalog} onChange={(k) => onChange({ unitKey: k })} />
       </div>
+      {line.ingredientId && (
+        // The Price book opens on this ingredient in a new tab, so the recipe being edited stays as it is.
+        <Button variant="quiet" size="sm" href={`/admin/library/menu-monster?tab=prices&ingredient=${encodeURIComponent(line.ingredientId)}`} target="_blank" aria-label={`Edit ingredient ${ingredient?.name ?? `on line ${n}`}`} title="Opens the Price book in a new tab">
+          Edit ingredient
+        </Button>
+      )}
       <Button variant="quiet" size="sm" aria-label={`Remove line ${n}`} onClick={onRemove}>
         Remove
       </Button>
@@ -1645,7 +1661,7 @@ function Preview({ draft, tab, catalog }: { draft: RecipeAuthoring; tab: Tab; ca
           {recipe.lines.map((l, i) => {
             const ing = ingById.get(l.ingredientId);
             if (!ing) return null;
-            return <li key={i}>{perPersonText(l.qtyPerPerson, ing, lineUnit(l.unitKey, ing))}</li>;
+            return <li key={i}>{perPersonText(l.qtyPerPerson, ing, lineUnit(l.unitKey, ing))}{l.scale === 'meal' ? ' (whole meal)' : ''}</li>;
           })}
         </ul>
       )}

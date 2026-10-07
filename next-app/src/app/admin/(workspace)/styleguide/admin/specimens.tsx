@@ -9,6 +9,7 @@
 import { ActionsMenu } from '../../_components/actions-menu';
 import { SortHeader, useSortable } from '../../_components/use-sortable';
 import { SearchField, useTableSearch } from '../../_components/search-field';
+import { AdminCombobox, type ComboOption } from '../../_components/admin-combobox';
 import { GearPicker } from '../../library/menu-monster/gear-picker';
 import type { GearItem } from '@/lib/menu-monster/gear';
 import { useState } from 'react';
@@ -86,4 +87,23 @@ const GEAR_SAMPLE: GearItem[] = ['Camp stove', 'Cutting board', 'Dutch oven (12 
 export function GearPickerSpecimen() {
   const [gear, setGear] = useState<string[]>(['Skillet × 2', 'Spatula']);
   return <GearPicker gear={gear} list={GEAR_SAMPLE} onChange={setGear} />;
+}
+
+const COMBO_SAMPLE: ComboOption[] = [
+  { value: 'bread', label: 'Bread', detail: 'Bakery', keywords: ['slice', 'slices'] },
+  { value: 'flour', label: 'All purpose flour', detail: 'Dry goods', keywords: ['cup', 'cups'] },
+  { value: 'almond-flour', label: 'Almond flour', detail: 'Dry goods', keywords: ['cup', 'cups'] },
+  { value: 'eggs', label: 'Eggs', detail: 'Dairy', keywords: ['egg', 'eggs'] }
+];
+
+/** Combobox: starts on a pick so the clear × shows; type "flou" to filter. */
+export function ComboboxSpecimen() {
+  const [value, setValue] = useState('flour');
+  return <AdminCombobox id="sg-combobox" label="Ingredient" options={COMBO_SAMPLE} value={value} onChange={setValue} />;
+}
+
+/** Combobox, marked: the red outline + aria-invalid a blocked Save leaves on an empty pick. */
+export function ComboboxInvalidSpecimen() {
+  const [value, setValue] = useState('');
+  return <AdminCombobox id="sg-combobox-bad" label="Ingredient (marked)" options={COMBO_SAMPLE} value={value} invalid onChange={setValue} />;
 }

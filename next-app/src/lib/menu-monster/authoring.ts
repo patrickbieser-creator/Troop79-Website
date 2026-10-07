@@ -25,6 +25,7 @@ import type {
   Recipe,
   RecipeStatus,
   RestrictionKey,
+  LineScale,
   ServesRule,
   Unit,
   VariationOp,
@@ -231,6 +232,8 @@ export interface DraftLine {
   /** Raw text as typed — ½, 1/2, 0.5 all accepted (parseQty). */
   amount: string;
   unitKey: string | null;
+  /** Absent = per person; 'meal' = the amount is for the whole meal. */
+  scale?: LineScale;
   servesRule: ServesRule;
   servesRestrictions: RestrictionKey[];
 }
@@ -255,6 +258,8 @@ export interface DraftBaseLine {
   /** Raw text as typed. */
   amount: string;
   unitKey: string | null;
+  /** Absent = per person; 'meal' = the amount is for the whole meal (a swap of it inherits this). */
+  scale?: LineScale;
 }
 
 export interface DraftVariationLine {
@@ -347,7 +352,7 @@ export function asSingleFood(a: RecipeAuthoring, ingredientId: string, amount: s
 /** Diff → compiled draft lines, with the raw amounts intact so an error can quote them. */
 export function compileAuthoring(a: RecipeAuthoring): RecipeDraft {
   const compiled = compileRecipe<string>(
-    a.base.map((b) => ({ ingredientId: b.ingredientId, qtyPerPerson: b.amount, unitKey: b.unitKey })),
+    a.base.map((b) => ({ ingredientId: b.ingredientId, qtyPerPerson: b.amount, unitKey: b.unitKey, ...(b.scale === 'meal' ? { scale: 'meal' as const } : {}) })),
     a.variations.map((v) => ({
       restriction: v.restriction,
       state: v.state,
@@ -367,6 +372,7 @@ export function compileAuthoring(a: RecipeAuthoring): RecipeDraft {
       ingredientId: c.ingredientId,
       amount: c.qtyPerPerson,
       unitKey: c.unitKey,
+      ...(c.scale === 'meal' ? { scale: 'meal' as const } : {}),
       servesRule: c.servesRule,
       servesRestrictions: c.servesRestrictions
     }))
@@ -391,7 +397,7 @@ export function authoringOf(r: Recipe): RecipeAuthoring {
     stepsMd: r.stepsMd ?? '',
     gear: [...(r.equipment ?? [])],
     ...(r.foodIngredientId ? { foodIngredientId: r.foodIngredientId } : {}),
-    base: derived.base.map((b) => ({ ingredientId: b.ingredientId, amount: String(b.qtyPerPerson), unitKey: b.unitKey })),
+    base: derived.base.map((b) => ({ ingredientId: b.ingredientId, amount: String(b.qtyPerPerson), unitKey: b.unitKey, ...(b.scale === 'meal' ? { scale: 'meal' as const } : {}) })),
     variations: source.map((v) => ({
       restriction: v.restriction,
       state: v.state,

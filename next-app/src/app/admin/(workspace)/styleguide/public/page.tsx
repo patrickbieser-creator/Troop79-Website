@@ -30,7 +30,7 @@ import { Notice } from '@/app/_components/notice';
 import { EmptyState } from '@/app/_components/empty-state';
 import { SectionDivider } from '@/app/_components/section-divider';
 import cardS from '@/app/_components/card.module.css';
-import { PublicBlockedSaveSpecimen, PublicDietRowsSpecimen, PublicFinishLineSpecimen, PublicGearSpecimen, PublicMenuEditListSpecimen, PublicStepperSpecimen, PublicTabStripSpecimen } from './specimens';
+import { PublicBlockedSaveSpecimen, PublicDietRowsSpecimen, PublicFinishLineSpecimen, PublicAmountScaleSpecimen, PublicGearSpecimen, PublicMenuEditListSpecimen, PublicStepperSpecimen, PublicTabStripSpecimen } from './specimens';
 import { IngredientList } from '@/app/(public)/library/menu-monster/_components/ingredient-list';
 import { StepStrip } from '@/app/(public)/library/menu-monster/menus/_components/step-strip';
 import { SummaryRail } from '@/app/(public)/library/menu-monster/menus/_components/summary-rail';
@@ -575,6 +575,16 @@ export default function PublicStyleguidePage() {
               <code>Field problem</code> + <code>SaveProblem</code> from <code>_components/form</code> &mdash; Add/Save/Share stays enabled on an
               incomplete form; pressed, it outlines each bad field (<code>aria-invalid</code>), says why in a sentence under it, focuses the first,
               and prints &ldquo;Can&rsquo;t add yet: &hellip; (+N more)&rdquo; beside the button until the form is whole.
+            </p>
+          </div>
+
+          {/* Amount scale */}
+          <div className={sg.specimenBlock}>
+            <PublicAmountScaleSpecimen />
+            <p className={sg.specimenInlineNote}>
+              <code>AmountEditor</code> with <code>canScale</code> from <code>menu-monster/_components/ingredient-list-edit</code> &mdash; a recipe
+              line is per person unless it is marked &ldquo;whole meal&rdquo; (4 cups of oil however many are eating): two radios beside the box,
+              committed with it. A menu&rsquo;s own edit keeps the troop line&rsquo;s scale and only says it.
             </p>
           </div>
 

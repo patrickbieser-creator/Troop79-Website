@@ -33,6 +33,8 @@ export interface AuthorRow {
   qtyPerPerson: number;
   /** The unit the per-person amount is in ('cups'). */
   unitLabel: string;
+  /** 'meal' = the amount is for the whole meal, once; absent = per person. */
+  scale?: 'meal';
   /** "What you'd buy": the price book's cheapest package, or null when it has none. */
   buy: string | null;
   /** A typed-in ingredient no leader has matched yet (Phase 4B): tagged "New". */
@@ -40,7 +42,7 @@ export interface AuthorRow {
 }
 
 export type AuthorAction =
-  | { type: 'amount'; ingredientId: string; qtyPerPerson: number }
+  | { type: 'amount'; ingredientId: string; qtyPerPerson: number; scale: 'person' | 'meal' }
   | { type: 'move'; from: number; to: number }
   | { type: 'remove'; ingredientId: string }
   | { type: 'add'; ingredientId: string };
@@ -115,11 +117,13 @@ export function AuthorList({ rows, ariaLabel, emptyText = 'No ingredients yet.',
                     name={r.name}
                     unitLabel={r.unitLabel}
                     value={r.qtyPerPerson}
-                    onCommit={(qty, refocus) => {
+                    scale={r.scale ?? 'person'}
+                    canScale
+                    onCommit={(qty, refocus, scale) => {
                       setEditing(null);
-                      if (Math.abs(qty - r.qtyPerPerson) > 1e-9) {
-                        onAction({ type: 'amount', ingredientId: r.ingredientId, qtyPerPerson: qty });
-                        onAnnounce(`${r.name} changed to ${fracText(qty)} ${r.unitLabel} each person.`);
+                      if (Math.abs(qty - r.qtyPerPerson) > 1e-9 || scale !== (r.scale ?? 'person')) {
+                        onAction({ type: 'amount', ingredientId: r.ingredientId, qtyPerPerson: qty, scale });
+                        onAnnounce(`${r.name} changed to ${fracText(qty)} ${r.unitLabel} ${scale === 'meal' ? 'for the whole meal' : 'each person'}.`);
                       }
                       if (refocus) setFocusReq({ key: r.key, part: 'more' });
                     }}

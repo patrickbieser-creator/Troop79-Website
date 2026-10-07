@@ -11,6 +11,7 @@ import { Field, SaveProblem, TextInput } from '@/app/_components/form';
 import sg from './public-styleguide.module.css';
 import { AmountInput, Stepper } from '@/app/_components/stepper';
 import { IngredientList } from '@/app/(public)/library/menu-monster/_components/ingredient-list';
+import { AmountEditor } from '@/app/(public)/library/menu-monster/_components/ingredient-list-edit';
 import { GearChips, GearPicker } from '@/app/(public)/library/menu-monster/_components/gear-picker';
 import { sortGear, type GearItem } from '@/lib/menu-monster/gear';
 import { FinishLine } from '@/app/(public)/library/menu-monster/menus/_components/finish-line';
@@ -186,4 +187,9 @@ export function PublicFinishLineSpecimen() {
       <FinishLine toFix={2} fix={{ href: '#' }} onPrint={() => {}} />
     </div>
   );
+}
+
+/** The amount box of a recipe being written: a number, its unit, and what it is for (each person, or the whole meal). Display-only. */
+export function PublicAmountScaleSpecimen() {
+  return <AmountEditor name="Cooking oil" unitLabel="cups" value={4} scale="meal" canScale onCommit={() => {}} onCancel={() => {}} />;
 }

@@ -3,7 +3,7 @@ import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RecipeBuilder } from '../src/app/admin/(workspace)/library/menu-monster/recipe-builder';
 import { RecipeScreen } from '../src/app/admin/(workspace)/library/menu-monster/recipe-screen';
-import { createIngredient, keepScoutFood, putFoodOnMenu, saveRecipe, setRecipeStatus, updateIngredient } from '../src/app/admin/(workspace)/library/menu-monster/actions';
+import { createFood, createIngredient, finishFood, keepScoutFood, putFoodOnMenu, saveRecipe, setRecipeStatus, updateIngredient } from '../src/app/admin/(workspace)/library/menu-monster/actions';
 import { UNITS } from '../src/lib/menu-monster/units';
 import type { Catalog, Ingredient, Package, Recipe } from '../src/lib/menu-monster/types';
 import type { ScoutFood } from '../src/lib/menu-monster/scout-recipes-store';
@@ -25,6 +25,8 @@ vi.mock('../src/app/admin/(workspace)/library/menu-monster/actions', () => ({
   duplicateRecipe: vi.fn(async () => ({ ok: true, id: 'toast-copy' })),
   updateIngredient: vi.fn(async () => ({ ok: true })),
   createIngredient: vi.fn(async () => ({ ok: true, id: 'toast-new' })),
+  createFood: vi.fn(async () => ({ ok: true, id: 'sprinkles' })),
+  finishFood: vi.fn(async () => ({ ok: true, id: 'sprinkles' })),
   suggestRecipeBrand: vi.fn(async () => ({ ok: true })),
   addBought: vi.fn(async () => ({ ok: true })),
   updatePackage: vi.fn(async () => ({ ok: true })),
@@ -88,6 +90,11 @@ const CATALOG: Catalog = {
   ]
 };
 
+/** The ingredient field is a type-to-search combobox: open it and click the option by name. */
+const pickIng = async (user: ReturnType<typeof userEvent.setup>, field: HTMLElement, name: string) => {
+  await user.click(field);
+  await user.click(screen.getByRole('option', { name }));
+};
 const list = () => screen.getByRole('table', { name: 'Food and recipes' });
 /** Record-level commands live in the one "More actions…" menu (2026-10-05). */
 const more = async (scope: ReturnType<typeof within>, value: string) => userEvent.setup().selectOptions(scope.getByRole('combobox', { name: 'More actions' }), value);
@@ -114,7 +121,7 @@ describe('Recipe builder', () => {
     expect(within(editor).getByRole('list', { name: 'Needs fixing' }).textContent).toMatch(/Add at least one ingredient line/);
 
     await user.click(within(editor).getByRole('button', { name: '+ Add an ingredient' }));
-    await user.selectOptions(within(editor).getByLabelText('Line 1 ingredient'), 'bread');
+    await pickIng(user, within(editor).getByLabelText('Line 1 ingredient'), 'Bread');
     await user.type(within(editor).getByLabelText('Line 1 amount'), '2');
     expect(within(editor).queryByRole('list', { name: 'Needs fixing' })).toBeNull();
     // Bread has gluten and everyone gets it — a warning, never a block.
@@ -159,7 +166,7 @@ describe('Recipe builder', () => {
     const editor = screen.getByRole('region', { name: 'Edit Pancakes' });
 
     await user.click(within(editor).getByRole('button', { name: '+ Add an ingredient' }));
-    await user.selectOptions(within(editor).getByLabelText('Line 3 ingredient'), 'eggs');
+    await pickIng(user, within(editor).getByLabelText('Line 3 ingredient'), 'Eggs');
     await user.type(within(editor).getByLabelText('Line 3 amount'), '1');
     expect(within(editor).getByRole('list', { name: 'Needs fixing' }).textContent).toMatch(
       /Line 3: Eggs already has a line for everyone — combine them\./
@@ -168,6 +175,26 @@ describe('Recipe builder', () => {
     await user.click(within(editor).getByRole('button', { name: 'Save changes' }));
     expect(saveRecipe).not.toHaveBeenCalled();
     expect(within(editor).getByText(/^Can’t save yet/).textContent).toMatch(/combine them/);
+  });
+
+  it('Leader_MarksALine_ForTheWholeMeal', async () => {
+    const user = userEvent.setup();
+    render(<RecipeScreen catalog={CATALOG} recipeId="pancakes" />);
+    const editor = screen.getByRole('region', { name: 'Edit Pancakes' });
+
+    await user.click(within(editor).getByRole('button', { name: '+ Add an ingredient' }));
+    await pickIng(user, within(editor).getByLabelText('Line 3 ingredient'), 'Almond flour');
+    await user.type(within(editor).getByLabelText('Line 3 amount'), '4');
+    const group = within(editor).getByRole('radiogroup', { name: 'Line 3 amount is for' });
+    expect((within(group).getByRole('radio', { name: 'per person' }) as HTMLInputElement).checked).toBe(true);
+    await user.click(within(group).getByRole('radio', { name: 'whole meal' }));
+    expect(within(editor).getByText('Amount for the whole meal')).toBeTruthy();
+
+    await user.click(within(editor).getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(saveRecipe).toHaveBeenCalledTimes(1));
+    const saved = vi.mocked(saveRecipe).mock.calls[0][0] as { base: { ingredientId: string; scale?: string }[] };
+    expect(saved.base.find((b) => b.ingredientId === 'almond-flour')?.scale).toBe('meal');
+    expect(saved.base.find((b) => b.ingredientId === 'eggs')?.scale).toBeUndefined();
   });
 
   it('Leader_SeesWhatOnePersonGets_AndCostPerPerson', () => {
@@ -201,7 +228,7 @@ describe('Recipe builder', () => {
     expect(within(panel).getByText(/Flagged: Pancake mix/)).toBeTruthy();
 
     await user.selectOptions(within(panel).getByLabelText('Pancake mix for gluten-free scouts'), 'swap');
-    await user.selectOptions(within(panel).getByLabelText('Swap Pancake mix for'), 'almond-flour');
+    await pickIng(user, within(panel).getByLabelText('Swap Pancake mix for'), 'Almond flour');
     await user.type(within(panel).getByLabelText('Amount of Almond flour per person'), '1');
     expect(within(panel).getByText('Substituted')).toBeTruthy();
     // The preview follows the tab, and the cross-restriction warning fires (almond flour is a nut).
@@ -328,7 +355,7 @@ describe('Recipe builder — a single food opens in the short form (2026-10-04)'
       const pick = bacon().getByLabelText('What vegetarian scouts get instead of Bacon');
       // Marked until a food is picked; the amount starts as the food's own.
       expect([pick.getAttribute('aria-invalid'), (bacon().getByLabelText('Amount of the swap per vegetarian scout') as HTMLInputElement).value]).toEqual(['true', '3']);
-      await user.selectOptions(pick, 'eggs');
+      await pickIng(user, pick, 'Eggs');
       expect(bacon().queryByText(/Adding a second ingredient makes/)).toBeNull();
       await save(user);
       expect(vi.mocked(saveRecipe).mock.calls[0][0]).toMatchObject({
@@ -732,7 +759,7 @@ describe('Recipe page — Close (2026-10-05)', () => {
     render(<RecipeScreen catalog={CATALOG} recipeId="toast" />);
     const editor = within(screen.getByRole('region', { name: 'Edit Toast' }));
     await user.click(editor.getByRole('button', { name: '+ Add an ingredient' }));
-    await user.selectOptions(editor.getByLabelText('Line 1 ingredient'), 'bread');
+    await pickIng(user, editor.getByLabelText('Line 1 ingredient'), 'Bread');
     // Nothing said while they are still typing…
     expect(editor.queryByText(/^Can’t save yet/)).toBeNull();
     const save = editor.getByRole('button', { name: 'Save changes' }) as HTMLButtonElement;
@@ -756,7 +783,7 @@ describe('Recipe page — Close (2026-10-05)', () => {
     await user.click(within(editor.getByRole('group', { name: 'Variations to add' })).getByRole('button', { name: /^Gluten-free/ }));
     const panel = within(editor.getByRole('region', { name: 'Gluten-free version' }));
     await user.selectOptions(panel.getByLabelText('Pancake mix for gluten-free scouts'), 'swap');
-    await user.selectOptions(panel.getByLabelText('Swap Pancake mix for'), 'almond-flour');
+    await pickIng(user, panel.getByLabelText('Swap Pancake mix for'), 'Almond flour');
     await user.click(editor.getByRole('tab', { name: 'Everyone' }));
     await user.click(editor.getByRole('button', { name: 'Save changes' }));
     const gf = editor.getByRole('tab', { name: /Gluten-free/ });
@@ -792,7 +819,7 @@ describe('Recipe page — Close (2026-10-05)', () => {
     await user.click(within(editor.getByRole('group', { name: 'Variations to add' })).getByRole('button', { name: /^Gluten-free/ }));
     const panel = within(editor.getByRole('region', { name: 'Gluten-free version' }));
     await user.selectOptions(panel.getByLabelText('Pancake mix for gluten-free scouts'), 'swap');
-    await user.selectOptions(panel.getByLabelText('Swap Pancake mix for'), 'almond-flour');
+    await pickIng(user, panel.getByLabelText('Swap Pancake mix for'), 'Almond flour');
     expect(panel.getByRole('textbox', { name: 'Amount of Almond flour per person' }).getAttribute('aria-invalid')).toBe('true');
   });
 
@@ -937,5 +964,75 @@ describe('Recipe builder — ingredients in the list and in the search (2026-10-
     render(<RecipeBuilder catalog={WITH_COCOA} scoutFoods={[SCOUT]} initialFilter={{ kind: 'all', meal: '', q: 'choc' }} />);
     await user.click(within(rowOf('Hot chocolate')).getByRole('button', { name: 'Keep for the troop' }));
     expect((await screen.findByRole('alert')).textContent).toMatch(/isn’t waiting/);
+  });
+});
+
+describe('Recipe builder — a searchable ingredient picker (2026-10-06)', () => {
+  const editorOf = () => screen.getByRole('region', { name: 'Edit Toast' });
+  const openLine = async (user: ReturnType<typeof userEvent.setup>) => {
+    render(<RecipeScreen catalog={CATALOG} recipeId="toast" />);
+    await user.click(within(editorOf()).getByRole('button', { name: '+ Add an ingredient' }));
+    return within(editorOf()).getByLabelText('Line 1 ingredient') as HTMLInputElement;
+  };
+  const optionNames = () => within(screen.getByRole('listbox', { name: 'Line 1 ingredient options' })).getAllByRole('option').map((o) => o.firstChild?.textContent);
+
+  it('Leader_FindsAnIngredient_ByTypingPartOfItsName', async () => {
+    const user = userEvent.setup();
+    const field = await openLine(user);
+    await user.type(field, 'FLOU');
+    expect(optionNames()).toEqual(['Almond flour']);
+  });
+
+  it('Leader_PicksWithTheKeyboard_AndEscapeRestoresTheOldPick', async () => {
+    const user = userEvent.setup();
+    const field = await openLine(user);
+    await pickIng(user, field, 'Bread');
+    await user.clear(field);
+    await user.type(field, 'e');
+    const names = optionNames();
+    await user.keyboard('{ArrowDown}{Enter}');
+    expect(field.value).toBe(names[1]);
+    await user.type(field, 'zzz');
+    await user.keyboard('{Escape}');
+    expect(field.value).toBe(names[1]);
+  });
+
+  it('Leader_ClearsAPick_WithTheXBesideIt', async () => {
+    const user = userEvent.setup();
+    const field = await openLine(user);
+    await pickIng(user, field, 'Bread');
+    await user.click(within(editorOf()).getByRole('button', { name: 'Clear Line 1 ingredient' }));
+    expect(field.value).toBe('');
+  });
+});
+
+describe('Recipe builder — a new ingredient that did not save cleanly (2026-10-06)', () => {
+  const newIngredient = async (user: ReturnType<typeof userEvent.setup>) => {
+    render(<RecipeScreen catalog={CATALOG} recipeId="new" stores={['Kroger']} today="2026-10-06" />);
+    const editor = screen.getByRole('region', { name: 'New recipe' });
+    await user.click(within(editor).getByRole('button', { name: 'Not in the list? New ingredient…' }));
+    const form = within(editor).getByRole('region', { name: 'New ingredient' });
+    await user.type(within(form).getByLabelText('Name'), 'All Purpose Flour');
+    return { editor, form };
+  };
+
+  it('Leader_ContinuesANewIngredient_AfterAPartialFailure_WithoutADuplicate', async () => {
+    const user = userEvent.setup();
+    vi.mocked(createFood).mockResolvedValueOnce({ ok: false, id: 'all-purpose-flour', error: 'All Purpose Flour is in the price book, but its package was not saved: boom' });
+    vi.mocked(finishFood).mockResolvedValueOnce({ ok: true, id: 'all-purpose-flour' });
+    const { editor, form } = await newIngredient(user);
+    await user.click(within(form).getByRole('button', { name: 'Add ingredient' }));
+    await user.click(await within(editor).findByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(finishFood).toHaveBeenCalledTimes(1));
+    expect([vi.mocked(createFood).mock.calls.length, vi.mocked(finishFood).mock.calls[0][0], within(editor).queryByLabelText('Line 2 amount'), within(editor).queryByRole('region', { name: 'New ingredient' })]).toEqual([1, 'all-purpose-flour', null, null]);
+  });
+
+  it('Leader_ReopensAJustCreatedIngredient_FromItsLine', async () => {
+    const user = userEvent.setup();
+    vi.mocked(createFood).mockResolvedValueOnce({ ok: true, id: 'all-purpose-flour' });
+    const { editor, form } = await newIngredient(user);
+    await user.click(within(form).getByRole('button', { name: 'Add ingredient' }));
+    const link = await within(editor).findByRole('link', { name: 'Edit ingredient on line 1' });
+    expect([link.getAttribute('href'), link.getAttribute('target')]).toEqual(['/admin/library/menu-monster?tab=prices&ingredient=all-purpose-flour', '_blank']);
   });
 });

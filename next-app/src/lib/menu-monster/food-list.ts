@@ -55,7 +55,7 @@ export const isIngredientRow = (r: ListRow): r is IngredientRow => 'ingredient' 
 
 /** The base as numbers, for the state rules (unparseable amounts count as 0). */
 export const numericBase = (a: RecipeAuthoring): BaseLine[] =>
-  a.base.map((b) => ({ ingredientId: b.ingredientId, qtyPerPerson: parseQty(b.amount) || 0, unitKey: b.unitKey }));
+  a.base.map((b) => ({ ingredientId: b.ingredientId, qtyPerPerson: parseQty(b.amount) || 0, unitKey: b.unitKey, ...(b.scale === 'meal' ? { scale: 'meal' as const } : {}) }));
 
 export function viewFor(a: RecipeAuthoring, r: RestrictionKey, catalog: Catalog): VariationView {
   return variationView(numericBase(a), a.variations.find((v) => v.restriction === r), r, catalog);

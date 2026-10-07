@@ -17,7 +17,7 @@ vi.mock('@/lib/supabase/server', () => ({ createAdminClient: () => adminClient()
 vi.mock('next/cache', () => ({ revalidatePath: () => undefined, updateTag: () => undefined, revalidateTag: () => undefined }));
 vi.mock('next/headers', () => ({ headers: async () => new Headers() }));
 
-import { createFood, saveRecipe, type FoodInput } from '../src/app/admin/(workspace)/library/menu-monster/actions';
+import { createFood, finishFood, saveRecipe, type FoodInput } from '../src/app/admin/(workspace)/library/menu-monster/actions';
 
 const admin = adminClient();
 
@@ -96,5 +96,17 @@ describe('menu monster leader tools — a single food in one step', () => {
       camp: true, trail: false, method: null, stepsMd: '', base: [], variations: []
     });
     expect(res).toEqual({ ok: true, id: 'zz-food-placeholder' });
+  });
+
+  it('Leader_FinishesAHalfSavedFood_WithoutADuplicate', async () => {
+    // createFood left the ingredient behind (its package failed): finishing it completes that record.
+    const made = await createFood(cookies({ ingredient: { ...cookies().ingredient, name: 'ZZ Food Flour' }, package: null, menu: null }));
+    expect(made.id).toBe('zz-food-flour');
+    const input = cookies({ ingredient: { ...cookies().ingredient, name: 'ZZ Food All Purpose Flour' } });
+    const res = await finishFood('zz-food-flour', input);
+    const again = await finishFood('zz-food-flour', input);
+    const { data: ings } = await admin.from('mm_ingredients').select('id, name').like('id', 'zz-food-%flour%');
+    const { data: pkgs } = await admin.from('mm_packages').select('id').eq('ingredient_id', 'zz-food-flour');
+    expect([res.ok, again.ok, ings, pkgs?.length]).toEqual([true, true, [{ id: 'zz-food-flour', name: 'ZZ Food All Purpose Flour' }], 1]);
   });
 });

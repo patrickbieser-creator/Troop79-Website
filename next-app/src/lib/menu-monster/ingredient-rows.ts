@@ -12,7 +12,7 @@
 
 import type { Catalog, Plan, Recipe, RecipeLine, RestrictionKey } from './types';
 import { scopeOf, type EditOp } from './menus';
-import { effectiveRestrictions, ruleText, servingsFor } from './engine';
+import { effectiveRestrictions, lineFeeds, ruleText } from './engine';
 import { RESTRICTION_BY_KEY, conv, fracText, lineUnit, qtyText } from './units';
 
 /** 'total' = what to buy for the meal's headcount; 'person' = one person's share. */
@@ -55,6 +55,8 @@ export interface IngredientRow {
   amount: string;
   /** Who a diet line is for: 'gluten-free only' / 'everyone else'; null for a plain line. */
   note: string | null;
+  /** 'meal' = the amount is for the whole meal, once (the row says so); absent = per person. */
+  scale?: 'meal';
   /** Menu-edit mode: Changed / Added / Swapped / Left out, with the struck old value. The read list shows it when present (a leader reading a scout's menu). */
   marker?: RowMarker;
   /** Menu-edit mode: set when the row is for one diet's scouts only (or leaves them out). */
@@ -71,8 +73,10 @@ export interface RowEdit {
   ingredientId: string;
   /** The ingredient the row shows now: differs from ingredientId on a swapped row. */
   currentIngredientId: string;
-  /** Per-person amount now, in the unit named by unitLabel. */
+  /** Per-person amount now (for the whole meal when scale is 'meal'), in the unit named by unitLabel. */
   qtyPerPerson: number;
+  /** What the amount is for: a base line's own scale (a swap inherits it); absent = per person. A menu's amount edit never changes it. */
+  scale?: 'meal';
   /** Plural unit name for labels: 'cups', 'slices', 'eggs'. */
   unitLabel: string;
   /** The troop recipe's per-person amount (base rows). */
@@ -109,18 +113,21 @@ export function ingredientRows(
     const ing = ING.get(line.ingredientId);
     // The same lines buildLines() skips: unknown ingredient, no conversion path, no amount.
     if (!ing || !(line.qtyPerPerson > 0) || conv(line.unitKey, ing, catalog.conversions) == null) return;
-    const fed = servingsFor(line, people, R);
+    const fed = lineFeeds(line, people, R);
     if (fed <= 0) return; // a diet swap nobody needs
 
     const unit = lineUnit(line.unitKey, ing);
-    const qty = view === 'total' ? line.qtyPerPerson * fed : line.qtyPerPerson;
-    const exact = view === 'person';
+    const whole = line.scale === 'meal';
+    // A whole-meal line is the same amount in both views (the engine uses it once); times `fed` is 1.
+    const qty = view === 'total' || whole ? line.qtyPerPerson * fed : line.qtyPerPerson;
+    const exact = view === 'person' || whole;
     // "Eggs · 2", not "Eggs · 2 eggs": the unit already names the ingredient.
     const amount = ing.name.toLowerCase().includes(unit.many)
       ? unit.kind === 'count' && !exact
         ? String(Math.ceil(qty - 1e-9))
         : fracText(qty)
       : qtyText(qty, unit, exact);
+    const shown = whole ? `${amount} (whole meal)` : amount;
 
     let note: string | null = null;
     if (line.servesRule === 'only' && line.servesRestrictions.length > 0) note = `${ruleText(line).replace(/^only /, '')} only`;
@@ -128,7 +135,7 @@ export function ingredientRows(
     // A scout's typed-in no leader has checked yet: its diet ticks are unverified (Phase 4B).
     if (ing.needsMatch && dietsInPlay) note = note ? `${note} · not checked for diets` : 'Not checked for diets';
 
-    rows.push({ key: `${i}:${line.ingredientId}`, name: ing.name, amount, note });
+    rows.push({ key: `${i}:${line.ingredientId}`, name: ing.name, amount: shown, note, ...(whole ? { scale: 'meal' as const } : {}) });
   });
   return rows;
 }
@@ -198,6 +205,7 @@ export function menuEditRows(
       ingredientId: id,
       currentIngredientId: id,
       qtyPerPerson: line.qtyPerPerson,
+      ...(line.scale === 'meal' ? { scale: 'meal' as const } : {}),
       unitLabel: unitLabel(line.unitKey, id),
       baseQty: line.qtyPerPerson,
       baseUnitKey: line.unitKey,

@@ -17,7 +17,7 @@
  *   crossRestrictionWarnings  decision 3: a swap that carries another flag
  */
 
-import type { Catalog, Ingredient, RecipeLine, RestrictionKey, ServesRule, Variation, VariationLine, VariationOp, VariationState } from './types';
+import type { Catalog, Ingredient, LineScale, RecipeLine, RestrictionKey, ServesRule, Variation, VariationLine, VariationOp, VariationState } from './types';
 import { RESTRICTIONS, RESTRICTION_BY_KEY, lineUnit, perPersonText } from './units';
 
 export type { Variation, VariationLine } from './types';
@@ -47,6 +47,8 @@ export interface QtyLine<Q> {
   ingredientId: string;
   qtyPerPerson: Q;
   unitKey: string | null;
+  /** Absent = per person; 'meal' = the amount is for the whole meal (see LineScale). */
+  scale?: LineScale;
 }
 export interface QtyVariationLine<Q> {
   op: VariationOp;
@@ -78,6 +80,8 @@ export function compileRecipe<Q>(base: readonly QtyLine<Q>[], variations: readon
   const outFor = new Map<string, Set<RestrictionKey>>();
   const adds = new Map<string, { line: QtyLine<Q>; keys: Set<RestrictionKey> }>();
   const addOrder: string[] = [];
+  // A swap keeps its base line's scale (4 cups of oil swapped for 4 cups of canola); an add is per person.
+  const baseScale = new Map(base.filter((b) => b.scale === 'meal').map((b) => [b.ingredientId, 'meal' as const]));
 
   for (const v of variations) {
     for (const l of qtyChanges(v)) {
@@ -87,8 +91,9 @@ export function compileRecipe<Q>(base: readonly QtyLine<Q>[], variations: readon
         outFor.set(l.baseIngredientId, set);
       }
       if ((l.op === 'swap' || l.op === 'add') && l.ingredientId && l.qtyPerPerson != null) {
-        const key = `${l.ingredientId}|${String(l.qtyPerPerson)}|${l.unitKey ?? ''}`;
-        const entry = adds.get(key) ?? { line: { ingredientId: l.ingredientId, qtyPerPerson: l.qtyPerPerson, unitKey: l.unitKey }, keys: new Set<RestrictionKey>() };
+        const scale = l.op === 'swap' && l.baseIngredientId ? baseScale.get(l.baseIngredientId) : undefined;
+        const key = `${l.ingredientId}|${String(l.qtyPerPerson)}|${l.unitKey ?? ''}|${scale ?? ''}`;
+        const entry = adds.get(key) ?? { line: { ingredientId: l.ingredientId, qtyPerPerson: l.qtyPerPerson, unitKey: l.unitKey, ...(scale ? { scale } : {}) }, keys: new Set<RestrictionKey>() };
         if (!adds.has(key)) addOrder.push(key);
         entry.keys.add(v.restriction);
         adds.set(key, entry);
@@ -102,6 +107,7 @@ export function compileRecipe<Q>(base: readonly QtyLine<Q>[], variations: readon
       ingredientId: b.ingredientId,
       qtyPerPerson: b.qtyPerPerson,
       unitKey: b.unitKey,
+      ...(b.scale === 'meal' ? { scale: 'meal' as const } : {}),
       servesRule: keys?.size ? 'except' : 'everyone',
       servesRestrictions: keys?.size ? sortKeys(keys) : []
     });
@@ -131,7 +137,7 @@ export function variationsFromLines(lines: readonly RecipeLine[]): { base: BaseL
       }
       continue;
     }
-    base.push({ ingredientId: l.ingredientId, qtyPerPerson: l.qtyPerPerson, unitKey: l.unitKey });
+    base.push({ ingredientId: l.ingredientId, qtyPerPerson: l.qtyPerPerson, unitKey: l.unitKey, ...(l.scale === 'meal' ? { scale: 'meal' as const } : {}) });
     if (l.servesRule === 'except') {
       for (const r of l.servesRestrictions) {
         push(r, { op: 'leave_out', baseIngredientId: l.ingredientId, ingredientId: null, qtyPerPerson: null, unitKey: null });
