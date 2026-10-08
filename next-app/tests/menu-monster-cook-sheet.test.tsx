@@ -8,7 +8,8 @@ import { CookSheet } from '../src/app/(public)/library/menu-monster/menus/_compo
 /**
  * The printable cook sheet (Patrick, 2026-10-08: "Print out the meal plan for an event including the meals,
  * gear, recipe steps, etc. Reasonably compact. Fewer pages — multiple columns."): one menu, every day and meal,
- * each food's ingredients at the meal's headcount, its steps (once), the meal's gear and diet notes. No prices.
+ * each food's ingredients BY NAME (no quantities, no brands — "that is all on the shopping list; we just need the
+ * big picture"), its steps (once), the meal's gear and diet notes. No prices. A single food is just its name.
  */
 
 const STEPS = 'Lay the slices in a cold skillet.\nTurn until crisp.';
@@ -41,17 +42,15 @@ const menu = (over: Partial<Menu> = {}): Menu => ({
 const sheet = (m: Menu = menu(), catalog = withBacon(), plannedBy: string | null = 'the Eagle patrol') =>
   render(<CookSheet menu={m} catalog={catalog} plannedBy={plannedBy} />);
 const headings = (level: number) => Array.from(document.querySelectorAll(`h${level}`)).map((h) => h.textContent);
-const mealBlock = (title: RegExp) => {
-  const h = Array.from(document.querySelectorAll('h3')).find((el) => title.test(el.textContent ?? ''));
-  return within(h?.parentElement as HTMLElement);
-};
+const mealEl = (title: RegExp) => Array.from(document.querySelectorAll('h3')).find((el) => title.test(el.textContent ?? ''))?.parentElement as HTMLElement;
+const mealBlock = (title: RegExp) => within(mealEl(title));
 
 describe('CookSheet', () => {
   it('CookSheet_PrintsEveryDayAndMeal_InOrder', () => {
     sheet();
     expect(headings(1)).toEqual(['Camporee food']);
     expect(headings(2)).toEqual(['Day 1', 'Day 2']);
-    expect(headings(3)).toEqual(['Breakfast · 8 people', 'Lunch · 8 people', 'Breakfast · 8 people']);
+    expect(headings(3)).toEqual(['Breakfast', 'Lunch', 'Breakfast']);
   });
 
   it('TheHeader_PrintsPatrolPlannerDatesPeopleAndDiets', () => {
@@ -65,25 +64,34 @@ describe('CookSheet', () => {
     expect(meta).not.toContain('nut-free');
   });
 
-  it('AFood_ListsIngredients_AtTheMealsTotalAmounts', () => {
-    const at = (headcount: number | null) => {
-      const m = menu();
-      m.meals[2] = { ...m.meals[2], headcount };
-      const { unmount } = sheet(m);
-      const text = mealBlock(/^Breakfast/).getByRole('table', { name: 'Bacon ingredients' }).textContent;
-      unmount();
-      return text;
-    };
-    expect(at(8)).toContain('24 slices');
-    expect(at(16)).toContain('48 slices');
+  it('AMeal_RepeatsThePeopleCount_OnlyWhenItsOwnDiffers', () => {
+    const m = menu();
+    m.meals[1] = { ...m.meals[1], headcount: 12 };
+    sheet(m);
+    expect(headings(3)).toEqual(['Breakfast', 'Lunch · 12 people', 'Breakfast']);
+  });
+
+  it('ARecipe_ListsItsIngredientsByName_WithoutQuantities', () => {
+    sheet();
+    const list = mealBlock(/^Breakfast/).getByRole('list', { name: 'Oatmeal ingredients' });
+    const items = within(list).getAllByRole('listitem').map((li) => li.textContent ?? '');
+    expect(items.some((t) => t.startsWith('Instant oatmeal'))).toBe(true);
+    expect(items.some((t) => t.startsWith('Gluten-free oatmeal'))).toBe(true);
+    expect(items.join(' ')).not.toMatch(/\d/);
+  });
+
+  it('ASingleFood_IsJustItsName_NeverTheNameTwice', () => {
+    sheet();
+    const first = mealBlock(/^Breakfast/);
+    expect(first.queryByRole('list', { name: 'Bacon ingredients' })).toBeNull();
+    expect(mealEl(/^Breakfast/).textContent?.split('Bacon').length).toBe(2);
   });
 
   it('AFood_PrintsItsSteps_Numbered', () => {
     sheet();
-    const first = mealBlock(/^Breakfast/);
-    const items = first.getAllByRole('listitem').map((li) => li.textContent);
-    expect(items).toEqual(['Lay the slices in a cold skillet.', 'Turn until crisp.']);
-    expect(first.getAllByRole('list')[0].tagName).toBe('OL');
+    const steps = mealBlock(/^Breakfast/).getByRole('list', { name: 'How to make Bacon' });
+    expect(steps.tagName).toBe('OL');
+    expect(within(steps).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Lay the slices in a cold skillet.', 'Turn until crisp.']);
   });
 
   it('ARepeatedRecipe_PrintsStepsOnce_AndPointsBack', () => {
@@ -94,16 +102,18 @@ describe('CookSheet', () => {
 
   it('AMeal_PrintsItsGear_OnOneLine', () => {
     sheet();
-    const gear = Array.from(document.querySelectorAll('[data-cook-gear]')).map((el) => el.textContent);
-    expect(gear[0]).toBe('Gear: Camp stove · Long tongs · Skillet × 2');
+    const gear = Array.from(document.querySelectorAll('[data-cook-gear]')).map((el) => el.textContent ?? '');
     expect(gear).toHaveLength(2);
+    expect(gear[0]).toMatch(/^Gear: /);
+    for (const item of ['Camp stove', 'Long tongs', 'Skillet × 2']) expect(gear[0]).toContain(item);
+    expect(gear[0].split('\n')).toHaveLength(1);
   });
 
   it('AMeal_WithDietPeople_PrintsTheDietLine_AndALeftOutMarker', () => {
     sheet();
     const first = mealBlock(/^Breakfast/);
     expect(first.getByText('Diets: 2 gluten-free')).toBeTruthy();
-    expect(first.getByRole('table', { name: 'Oatmeal ingredients' }).textContent).toContain('left out');
+    expect(first.getByRole('list', { name: 'Oatmeal ingredients' }).textContent).toContain('left out');
   });
 
   it('AMeal_WithAnUnsafeFood_PrintsAWarningLine', () => {
@@ -111,17 +121,13 @@ describe('CookSheet', () => {
     expect(mealBlock(/^Lunch/).getByText(/^⚠ 2 gluten-free: Sandwiches has /)).toBeTruthy();
   });
 
-  it('TheSheet_ShowsNoPrices', () => {
-    sheet();
-    expect(document.body.textContent).not.toContain('$');
-  });
-
-  it('AChosenBrand_PrintsBesideItsIngredient', () => {
+  it('TheSheet_ShowsNoPrices_AndNoBrands', () => {
     const catalog = withBacon(mapCatalog({ ...ROWS, brands: [{ id: 'br-kirk', ingredient_id: 'bacon', name: 'Kirkland Hickory', avoid: null, retired_at: null }] }));
     const m = menu();
     m.shopping = { ...m.shopping, brands: { bacon: [{ brandId: 'br-kirk', qty: null }] } };
     sheet(m, catalog);
-    expect(mealBlock(/^Breakfast/).getByRole('table', { name: 'Bacon ingredients' }).textContent).toContain('Bacon · Kirkland Hickory');
+    expect(document.body.textContent).not.toContain('$');
+    expect(document.body.textContent).not.toContain('Kirkland');
   });
 
   it('AFoodTheViewerCannotSee_PrintsAPlaceholder', () => {

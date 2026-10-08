@@ -1,13 +1,14 @@
 /**
  * The cook sheet (Patrick, 2026-10-08: "Print out the meal plan for an event including the meals, gear, recipe
  * steps, etc. Reasonably compact. Fewer pages — multiple columns."): ONE menu on paper — every day and meal, each
- * food's ingredients at the meal's own headcount (plus the chosen brand), its steps, the meal's gear on one line
- * and its diet notes. No prices (the shopping list carries those). A food's steps print the first time it appears;
- * later meals point back to it. Pure and server-safe: the page wraps it, the browser's Print button prints it.
+ * food's ingredients by name, its steps, the meal's gear on one line and its diet notes. The big picture only
+ * (Patrick, later the same day): no quantities and no brands — the shopping list carries those — and no prices; a
+ * single food (Chips, Hot Chocolate) is just its name, never "Chips: Chips". A food's steps print the first time it
+ * appears; later meals point back to it. Pure and server-safe: the page wraps it, the browser's Print button prints it.
  */
 import type { ReactNode } from 'react';
 import type { Catalog, MealSlot, Recipe, RestrictionKey } from '@/lib/menu-monster/types';
-import { effectiveRestrictions, livePicks, restrictionWarnings } from '@/lib/menu-monster/engine';
+import { effectiveRestrictions, restrictionWarnings } from '@/lib/menu-monster/engine';
 import { menuEditRows, scopeLabel, type IngredientRow } from '@/lib/menu-monster/ingredient-rows';
 import { addDays, composePlan, mealCatalog, type Menu, type MenuMeal } from '@/lib/menu-monster/menus';
 import { DIET_ORDER, dayLabel } from '@/lib/menu-monster/menu-view';
@@ -18,6 +19,7 @@ import { fmtDay } from '@/lib/format-date';
 import s from './cook-sheet.module.css';
 
 const slotLabel = (slot: MealSlot) => MEALS.find((m) => m.key === slot)?.label ?? slot;
+const sameName = (a: string, b: string) => a.trim().replace(/\s+/g, ' ').toLowerCase() === b.trim().replace(/\s+/g, ' ').toLowerCase();
 const dietName = (k: RestrictionKey) => RESTRICTION_BY_KEY[k].label.toLowerCase();
 const people = (n: number) => `${n} ${n === 1 ? 'person' : 'people'}`;
 const dietCounts = (counts: Record<RestrictionKey, number>, joiner: string) =>
@@ -31,7 +33,7 @@ function datesText(menu: Menu): string {
   return menu.dayCount > 1 ? `${fmtDay(menu.startDate)} – ${fmtDay(addDays(menu.startDate, menu.dayCount - 1))}` : fmtDay(menu.startDate);
 }
 
-/** The quiet words after a row's name: its diet rule, then what this menu did to it. */
+/** The quiet words after an ingredient's name: its diet rule, then what this menu did to it. */
 function rowNotes(row: IngredientRow): string[] {
   const out: string[] = [];
   if (row.note) out.push(row.note);
@@ -64,7 +66,10 @@ export function CookSheet({ menu, catalog, plannedBy }: { menu: Menu; catalog: C
       );
     }
     const ops = meal.recipeEdits?.[rid] ?? [];
+    // A single food is its own one ingredient: the name says it all (Patrick: "Chips … repeated twice"). Judged on
+    // what would print, not on the authoring shape — a one-line food with a diet variant still lists both lines.
     const rows = menuEditRows(recipe, ops, catalog, plan, 'total');
+    const single = rows.length === 1 && sameName(rows[0].name, recipe.name);
     const steps = stepsFromText(recipe.stepsMd);
     const where = stepsAt.get(rid);
     if (steps.length > 0 && !where) stepsAt.set(rid, `${dayLabel(menu.startDate, meal.day)} · ${slotLabel(meal.slot)}`);
@@ -72,39 +77,29 @@ export function CookSheet({ menu, catalog, plannedBy }: { menu: Menu; catalog: C
       <section key={rid} className={s.food}>
         <h4 className={s.foodName}>
           {recipe.name}
-          {ops.length > 0 && <span className={s.muted}> · this menu’s version</span>}
+          {ops.length > 0 && <em className={s.note}> · this menu’s version</em>}
         </h4>
-        {rows.length === 0 ? (
-          <p className={s.none}>No ingredients listed.</p>
-        ) : (
-          <table className={s.rows} aria-label={`${recipe.name} ingredients`}>
-            <tbody>
+        {!single &&
+          (rows.length === 0 ? (
+            <p className={s.none}>No ingredients listed.</p>
+          ) : (
+            <ul className={s.ingredients} aria-label={`${recipe.name} ingredients`}>
               {rows.map((row) => {
-                const brand = row.edit
-                  ? livePicks(menu.shopping.brands?.[row.edit.currentIngredientId], row.edit.currentIngredientId, catalog)
-                      .map((p) => p.brand.name)
-                      .join(', ')
-                  : '';
                 const notes = rowNotes(row);
                 return (
-                  <tr key={row.key} className={row.marker?.kind === 'out' ? s.out : undefined}>
-                    <td className={s.amount}>{row.amount}</td>
-                    <td>
-                      {row.name}
-                      {brand && <span className={s.muted}> · {brand}</span>}
-                      {notes.length > 0 && <span className={s.muted}> · {notes.join(' · ')}</span>}
-                    </td>
-                  </tr>
+                  <li key={row.key} className={row.marker?.kind === 'out' ? s.out : undefined}>
+                    {row.name}
+                    {notes.length > 0 && <em className={s.note}> · {notes.join(' · ')}</em>}
+                  </li>
                 );
               })}
-            </tbody>
-          </table>
-        )}
+            </ul>
+          ))}
         {steps.length > 0 &&
           (where ? (
             <p className={s.stepsRef}>Steps: see {where}</p>
           ) : (
-            <ol className={s.steps}>
+            <ol className={s.steps} aria-label={`How to make ${recipe.name}`}>
               {steps.map((step, i) => (
                 <li key={i}>{step}</li>
               ))}
@@ -119,12 +114,15 @@ export function CookSheet({ menu, catalog, plannedBy }: { menu: Menu; catalog: C
     const diets = dietCounts(effectiveRestrictions(plan), ', ');
     const warnings = restrictionWarnings(plan, mealCatalog(catalog, meal));
     const gear = mealGearEntries(meal, catalog);
+    // The header already says how many people: a meal repeats it only when its own count differs.
+    const ownCount = meal.headcount != null && meal.headcount !== menu.headcount;
     return (
       <div key={meal.id} className={s.meal}>
         <h3 className={s.mealName}>
-          {slotLabel(meal.slot)} · {people(plan.headcount)}
+          {slotLabel(meal.slot)}
+          {ownCount && <span className={s.people}> · {people(plan.headcount)}</span>}
         </h3>
-        {diets && <p className={s.muted}>Diets: {diets}</p>}
+        {diets && <p className={s.diets}>Diets: {diets}</p>}
         {warnings.map((w) => (
           <p key={`${w.recipe.id}:${w.restriction.key}`} className={s.warn}>
             ⚠ {w.count} {dietName(w.restriction.key)}: {w.recipe.name} {w.ingredients.length > 0 ? `has ${w.ingredients.join(', ')}` : 'is not suitable'}

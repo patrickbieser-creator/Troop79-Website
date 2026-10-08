@@ -1,5 +1,8 @@
 /* The printable cook sheet (Patrick, 2026-10-08) — public tokens only. A page-like column on screen; on paper
-   the same markup, letter size, a half-inch margin, and each day's meals in two columns to save pages. */
+   the same markup, letter size, a half-inch margin, and each day's meals in two columns to save pages.
+   Three sizes carry the hierarchy: the meal name is the big one, a food's name is bold body, and everything
+   about diets is italic and muted so it reads as an aside (Patrick: "it all looks the same"). Ingredients and
+   steps share ONE indent. */
 
 @page {
   size: letter;
@@ -39,13 +42,14 @@
 }
 
 .day {
-  margin-top: var(--sp-4);
+  margin-top: var(--sp-5);
 }
 .dayName {
   margin: 0 0 var(--sp-2);
   padding-bottom: var(--sp-1);
   border-bottom: 1px solid var(--border-mid);
-  font-size: var(--fs-md);
+  font-size: var(--fs-xl);
+  font-weight: 400;
   color: var(--text-head);
   break-after: avoid;
 }
@@ -54,14 +58,22 @@
   columns: 2;
   column-gap: 18pt;
 }
+/* A meal stays in one column when it can: a two-food Snack split across the columns reads as two meals. */
 .meal {
-  margin: 0 0 var(--sp-3);
+  margin: 0 0 var(--sp-4);
+  break-inside: avoid-column;
 }
 .mealName {
   margin: 0 0 var(--sp-1);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-lg);
+  font-weight: 700;
   color: var(--text-head);
   break-after: avoid;
+}
+.people {
+  font-size: var(--fs-sm);
+  font-weight: 400;
+  color: var(--text-meta);
 }
 
 .food {
@@ -69,37 +81,41 @@
   break-inside: avoid;
 }
 .foodName {
-  margin: 0 0 2px;
-  font-size: var(--fs-sm);
+  margin: 0;
+  font-size: inherit;
   font-weight: 600;
   color: var(--text-head);
   break-after: avoid;
 }
 
-.rows {
-  border-collapse: collapse;
-  width: 100%;
+/* One indent for everything under a food's name. */
+.ingredients,
+.steps {
+  margin: 0;
+  padding-left: 1.4em;
 }
-.rows td {
-  padding: 0 0 1px;
-  vertical-align: baseline;
+.ingredients {
+  list-style: none;
 }
-.rows .amount {
-  width: 4.5em;
-  padding-right: var(--sp-3);
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+.steps {
+  list-style: decimal;
+  margin-top: 1px;
 }
 .out {
   color: var(--text-meta);
 }
 
-.steps {
-  margin: var(--sp-1) 0 0;
-  padding-left: 1.4em;
-  list-style: decimal;
+/* Diets read as an aside: italic and muted, wherever they appear. */
+.diets,
+.note {
+  font-style: italic;
+  color: var(--text-meta);
 }
+.diets {
+  margin: 0 0 var(--sp-1);
+  font-size: var(--fs-sm);
+}
+
 .stepsRef,
 .none,
 .gear,
@@ -107,8 +123,7 @@
   margin: var(--sp-1) 0 0;
 }
 .stepsRef,
-.none,
-.muted {
+.none {
   color: var(--text-meta);
 }
 .gear {
@@ -133,10 +148,13 @@
     font-size: 15pt;
   }
   .dayName {
-    font-size: 12pt;
+    font-size: 14pt;
   }
-  .mealName,
-  .foodName {
-    font-size: 10.5pt;
+  .mealName {
+    font-size: 12.5pt;
+  }
+  .people,
+  .diets {
+    font-size: 9pt;
   }
 }
