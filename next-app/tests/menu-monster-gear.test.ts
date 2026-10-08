@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { cleanGearEntry, cleanGearExtras, cleanMealGear, cleanMealGearOut, gearKey, gearMealSlots, gearPickOptions, mealGearEntries, mealRecipeGear, menuGearRows, packedSummary, parseGear, sortGear, unknownGearNames, withoutMealGear, type GearItem, type MenuGearState } from '../src/lib/menu-monster/gear';
+import { GEAR_HOMES, GEAR_HOME_LABEL, cleanGearEntry, cleanGearExtras, cleanMealGear, cleanMealGearOut, gearKey, gearMealSlots, gearPickOptions, mealGearEntries, mealRecipeGear, menuGearRows, packedSummary, parseGear, sortGear, unknownGearNames, withoutMealGear, type GearItem, type MenuGearState } from '../src/lib/menu-monster/gear';
 import type { Catalog, Recipe } from '../src/lib/menu-monster/types';
 import type { Menu, MenuMeal } from '../src/lib/menu-monster/menus';
 
@@ -103,6 +103,22 @@ describe('a menu’s gear', () => {
   it('Rows_AreGroupedByWhereTheyLive_ThenByName', () => {
     const rows = rowsOf(menu([meal('m1', ['pancakes'])]));
     expect(rows.map((r) => `${r.home}:${r.name}`)).toEqual(['trailer:Camp stove', 'trailer:Griddle', 'trailer:Troop mess kit', 'patrol_box:Spatula']);
+  });
+
+  // Patrick, 2026-10-08: a fourth place gear lives — the Chef kit — listed between the patrol box and home.
+  it('TheChefKit_IsAHome_BetweenThePatrolBoxAndBringFromHome', () => {
+    expect(GEAR_HOMES.map((h) => h.key)).toEqual(['trailer', 'patrol_box', 'chef_kit', 'home']);
+    expect(GEAR_HOME_LABEL.chef_kit).toBe('Chef kit');
+  });
+
+  it('ChefKitRows_SortAfterThePatrolBox_AndBeforeHome', () => {
+    const list: GearItem[] = [
+      { id: 10, name: 'Apron', home: 'home', perPerson: false, retiredAt: null },
+      { id: 11, name: 'Chef knife', home: 'chef_kit', perPerson: false, retiredAt: null },
+      { id: 12, name: 'Spatula', home: 'patrol_box', perPerson: false, retiredAt: null }
+    ];
+    const rows = menuGearRows(menu([meal('m1', ['apples'])]), CATALOG, list, { extras: ['Apron', 'Chef knife', 'Spatula'], packed: {} });
+    expect(rows.map((r) => `${r.home}:${r.name}`)).toEqual(['patrol_box:Spatula', 'chef_kit:Chef knife', 'home:Apron']);
   });
 });
 

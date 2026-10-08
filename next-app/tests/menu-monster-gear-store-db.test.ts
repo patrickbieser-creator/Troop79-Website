@@ -86,6 +86,12 @@ describe('the troop’s gear list', () => {
     expect(await resolveGearWith(admin, ['ZZ Vitest wok'], [])).toEqual({ kept: [], dropped: ['ZZ Vitest wok'] });
   });
 
+  // Patrick, 2026-10-08: the Chef kit is a fourth place gear lives (mm_gear.home check widened by 20261029100000).
+  it('Leader_CanFileGear_InTheChefKit', async () => {
+    expect(await createGearWith(admin, { name: 'ZZ Vitest chef knife', home: 'chef_kit', perPerson: false }, null)).toMatchObject({ ok: true });
+    expect(await item('ZZ Vitest chef knife')).toMatchObject({ home: 'chef_kit' });
+  });
+
   it('Leader_CannotAddADuplicate_IgnoringCase', async () => {
     expect(await createGearWith(admin, { name: 'skillet', home: 'trailer', perPerson: false }, null)).toMatchObject({ ok: false });
   });

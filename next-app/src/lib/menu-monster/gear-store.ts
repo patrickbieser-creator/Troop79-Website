@@ -10,6 +10,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 import {
+  GEAR_HOMES,
   MAX_GEAR_NAME,
   cleanGearExtras,
   gearKey,
@@ -34,7 +35,7 @@ interface GearRowDb {
 }
 const COLS = 'id, name, home, per_person, retired_at, description';
 const toItem = (r: GearRowDb): GearItem => ({ id: r.id, name: r.name, home: r.home, perPerson: r.per_person, retiredAt: r.retired_at, description: r.description ?? null });
-const HOMES: readonly GearHome[] = ['trailer', 'patrol_box', 'home'];
+const HOMES: readonly GearHome[] = GEAR_HOMES.map((h) => h.key);
 export const isGearHome = (v: unknown): v is GearHome => HOMES.includes(v as GearHome);
 
 /** The troop's gear list, A to Z. Retired items only on request (admin). */

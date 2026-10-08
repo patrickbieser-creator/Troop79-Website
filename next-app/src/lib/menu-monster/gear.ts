@@ -21,16 +21,19 @@ import { MEALS } from './units';
 import type { Menu } from './menus';
 import { cleanScoutText } from './scout-text';
 
-export type GearHome = 'patrol_box' | 'trailer' | 'home';
+export type GearHome = 'patrol_box' | 'trailer' | 'chef_kit' | 'home';
 
 /** In the order the Gear tab lists them. The troop's gear lives on the 4th floor at Northwoods (Patrick,
- *  2026-10-05, "change all references to Troop Trailer"); the stored key stays 'trailer'. */
+ *  2026-10-05, "change all references to Troop Trailer"); the stored key stays 'trailer'. The Chef kit is the
+ *  fourth place (Patrick, 2026-10-08), between the patrol box and home; the DB check on mm_gear.home mirrors
+ *  this list (20261029100000). */
 export const GEAR_HOMES: readonly { key: GearHome; label: string }[] = [
   { key: 'trailer', label: '4th Floor NWS' },
   { key: 'patrol_box', label: 'Patrol box' },
+  { key: 'chef_kit', label: 'Chef kit' },
   { key: 'home', label: 'Bring from home' }
 ];
-export const GEAR_HOME_LABEL: Record<GearHome, string> = { trailer: '4th Floor NWS', patrol_box: 'Patrol box', home: 'Bring from home' };
+export const GEAR_HOME_LABEL: Record<GearHome, string> = Object.fromEntries(GEAR_HOMES.map((h) => [h.key, h.label])) as Record<GearHome, string>;
 
 /** One item on the troop's gear list (mm_gear). */
 export interface GearItem {
