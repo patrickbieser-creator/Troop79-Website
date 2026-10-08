@@ -15,6 +15,9 @@
  * outing's menu, a leader); only the owner adds or removes the menu's own extras (`canEdit`). Ticks and extras
  * save at once — there is nothing to Save here — and never touch the menu's version.
  *
+ * Each row also carries the B L D S Ds letters of the meals that use it, between the name and the count (Patrick,
+ * 2026-10-08); per-person items and menu extras leave the slots blank.
+ *
  * Print: a one-page packing checklist (the print-only sheet at the foot; the screen list hides).
  */
 
@@ -22,10 +25,11 @@ import { useId, useState, useTransition, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/app/_components/button';
 import { Notice } from '@/app/_components/notice';
-import type { Catalog } from '@/lib/menu-monster/types';
+import type { Catalog, MealSlot } from '@/lib/menu-monster/types';
 import type { Menu } from '@/lib/menu-monster/menus';
 import { GEAR_HOMES, gearKey, menuGearRows, packedSummary, parseGear, type GearItem, type GearRow, type MenuGearState } from '@/lib/menu-monster/gear';
 import { mealTitle } from '@/lib/menu-monster/menu-view';
+import { MealLetters } from './meal-letters';
 import { setGearExtrasAction, setGearPackedAction } from '../../../_tools/menu-monster/gear-actions';
 import { AddRow } from '../../_components/add-row';
 import { GearPicker } from '../../_components/gear-picker';
@@ -63,6 +67,11 @@ export function GearTab({ catalog, menuId, menu, gearList, state: initial, canPa
   const mealName = (id: string) => {
     const m = menu.meals.find((x) => x.id === id);
     return m ? mealTitle(menu.startDate, m.day, m.slot) : '';
+  };
+  /** The meal kinds that use a row, from the meals that need it; a per-person item or a menu extra has none (blank slots). */
+  const slotsFor = (r: GearRow): MealSlot[] => {
+    const mealIds = new Set(r.usedBy.map((u) => u.mealId));
+    return menu.meals.filter((m) => mealIds.has(m.id)).map((m) => m.slot);
   };
   const toggleOpen = (key: string) =>
     setOpenKeys((cur) => {
@@ -180,6 +189,7 @@ export function GearTab({ catalog, menuId, menu, gearList, state: initial, canPa
                         </span>
                       )}
                     </div>
+                    <MealLetters slots={slotsFor(r)} />
                     <div className={s.cost}>{r.count > 1 ? `× ${r.count}` : ''}</div>
                     {open && (
                       <div id={panel} className={s.inset}>

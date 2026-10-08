@@ -16,7 +16,8 @@
  * the count it was made at, and stops counting when the plan later changes that item.
  */
 
-import type { Catalog } from './types';
+import type { Catalog, MealSlot } from './types';
+import { MEALS } from './units';
 import type { Menu } from './menus';
 import { cleanScoutText } from './scout-text';
 
@@ -281,6 +282,25 @@ export function mealGearEntries(meal: { recipeIds: readonly string[]; gear?: rea
   }
   for (const [k, o] of own) if (!seen.has(k)) out2.push({ name: o.name, count: o.count, kind: 'added' });
   return out2;
+}
+
+/**
+ * Which meals of a menu use each gear item (Patrick, 2026-10-08): gear key to the meal slots (B / L / D / S / Ds) whose
+ * own gear list holds it — foods' gear less what the meal leaves out, plus the meal's own — deduped, in MEALS order.
+ */
+export function gearMealSlots(menu: Pick<Menu, 'meals'>, catalog: Pick<Catalog, 'recipes'>): Map<string, MealSlot[]> {
+  const used = new Map<string, Set<MealSlot>>();
+  for (const meal of menu.meals) {
+    for (const e of mealGearEntries(meal, catalog)) {
+      const k = gearKey(e.name);
+      const set = used.get(k) ?? new Set<MealSlot>();
+      set.add(meal.slot);
+      used.set(k, set);
+    }
+  }
+  const out = new Map<string, MealSlot[]>();
+  for (const [k, set] of used) out.set(k, MEALS.map((m) => m.key).filter((slot) => set.has(slot)));
+  return out;
 }
 
 /** A menu with the named gear taken off every meal (what a save reported as not on the list). */

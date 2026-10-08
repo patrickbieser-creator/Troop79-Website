@@ -41,16 +41,17 @@ import Link from 'next/link';
 import { MEALS, RESTRICTION_BY_KEY, priceText as money } from '@/lib/menu-monster/units';
 import { NumberBox } from '@/app/_components/stepper';
 import { Notice } from '@/app/_components/notice';
-import type { Brand, BrandPick, Catalog, Plan, Recipe, ShoppingLine } from '@/lib/menu-monster/types';
+import type { Brand, BrandPick, Catalog, MealSlot, Plan, Recipe, ShoppingLine } from '@/lib/menu-monster/types';
 import { BrandChooser, brandSummary } from './brand-chooser';
 import { effectiveRestrictions, livePicks, recipeSuggestions, recipesForMeal, restrictionWarnings } from '@/lib/menu-monster/engine';
 import type { RestrictionKey } from '@/lib/menu-monster/types';
 import { isPickable, stepsFromText } from '@/lib/menu-monster/scout-recipes';
 import { authoringOf, isSingleFood } from '@/lib/menu-monster/authoring';
 import { draftsMatching, type DraftItem } from '@/lib/menu-monster/draft-items';
-import { MAX_GEAR_COUNT, gearKey, gearText, mealGearEntries, mealRecipeGear, parseGear, recipeGear, sortGear, type GearItem, type MealGearEntry } from '@/lib/menu-monster/gear';
+import { MAX_GEAR_COUNT, gearKey, gearText, gearMealSlots, mealGearEntries, mealRecipeGear, parseGear, sortGear, type GearItem, type MealGearEntry } from '@/lib/menu-monster/gear';
 import { GearPicker } from '../../_components/gear-picker';
 import { MealPeople } from './meal-people';
+import { MealLetters } from './meal-letters';
 import { AddRow } from '../../_components/add-row';
 import { RECIPES_HREF } from '../../recipes/_components/paths';
 import { composePlan, mealCatalog, type EditOp, type Menu, type MenuMeal, type RecipeEdits } from '@/lib/menu-monster/menus';
@@ -207,6 +208,8 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
   const ownGear = meal.gear ?? [];
   const gearOut = meal.gearOut ?? [];
   const gearRows = mealGearEntries(meal, catalog);
+  /** Which of the menu's meals use each gear item (the B L D S Ds column), Patrick 2026-10-08. */
+  const mealSlots = gearMealSlots(menu, catalog);
   const editableGear = !readOnly && gearList != null;
   const setGearCount = (row: MealGearEntry, n: number) => {
     const key = gearKey(row.name);
@@ -620,6 +623,28 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
                   ))}
               </div>
               <div className={s.cost}>{money(costOf(id))}</div>
+              {/* The ⋯ sits on the name/cost line, ahead of any diet Notice, which takes a full line of its own (Patrick, 2026-10-08). */}
+              {!readOnly && (
+                <RowMenu
+                  label={`More for ${name}`}
+                  items={[
+                    {
+                      label: 'Swap for…',
+                      onSelect: () => {
+                        setSwapId(id);
+                        setRowOpen('food');
+                        requestAnimationFrame(() => inputRef.current?.focus());
+                      }
+                    },
+                    ...(edited > 0 ? [{ label: 'Back to the troop’s version', onSelect: () => backToTroop(id) }] : []),
+                    // Phase 4C: a scout's saved version of a recipe can become a recipe of its own.
+                    ...(edited > 0 && shareVersionMenuId
+                      ? [{ label: 'Share this version as a new recipe…', href: `${RECIPES_HREF}/new?menu=${encodeURIComponent(shareVersionMenuId)}&meal=${encodeURIComponent(meal.id)}&recipe=${encodeURIComponent(id)}` }]
+                      : []),
+                    { label: 'Remove', danger: true, onSelect: () => remove(id) }
+                  ]}
+                />
+              )}
               {warnings
                 .filter((w) => w.recipe.id === id)
                 .map((w) => {
@@ -669,33 +694,12 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
                     </Notice>
                   );
                 })}
-              {!readOnly && (
-                <RowMenu
-                  label={`More for ${name}`}
-                  items={[
-                    {
-                      label: 'Swap for…',
-                      onSelect: () => {
-                        setSwapId(id);
-                        setRowOpen('food');
-                        requestAnimationFrame(() => inputRef.current?.focus());
-                      }
-                    },
-                    ...(edited > 0 ? [{ label: 'Back to the troop’s version', onSelect: () => backToTroop(id) }] : []),
-                    // Phase 4C: a scout's saved version of a recipe can become a recipe of its own.
-                    ...(edited > 0 && shareVersionMenuId
-                      ? [{ label: 'Share this version as a new recipe…', href: `${RECIPES_HREF}/new?menu=${encodeURIComponent(shareVersionMenuId)}&meal=${encodeURIComponent(meal.id)}&recipe=${encodeURIComponent(id)}` }]
-                      : []),
-                    { label: 'Remove', danger: true, onSelect: () => remove(id) }
-                  ]}
-                />
-              )}
               {open && (
                 <div id={panel} className={s.inset}>
                   {readOnly ? (
                     <>
                       <IngredientList mode="read" dense ariaLabel={`${name} ingredients`} rows={rowsFor(id)} emptyText="No ingredients on this recipe yet." brandText={brandText} />
-                      <StepsGear recipe={byId.get(id)} descriptions={gearNotes} />
+                      <Steps recipe={byId.get(id)} />
                     </>
                   ) : (
                     <div className={s.foodCard}>
@@ -732,7 +736,7 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
                             : undefined
                         }
                       />
-                      <StepsGear recipe={byId.get(id)} descriptions={gearNotes} />
+                      <Steps recipe={byId.get(id)} />
                     </div>
                   )}
                 </div>
@@ -750,6 +754,7 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
           <MealGearList
             idPrefix={`${uid}-`}
             rows={gearRows}
+            slotsFor={(row) => mealSlots.get(gearKey(row.name)) ?? []}
             descriptions={gearNotes}
             onCount={editableGear ? setGearCount : undefined}
             onRemove={editableGear ? removeGear : undefined}
@@ -924,40 +929,13 @@ function gearDescriptions(list: readonly GearItem[] | undefined): ReadonlyMap<st
 }
 
 /**
- * Gear as a labelled bulleted list, one item per entry with "× n" when more than one — never one comma-joined
- * line (Patrick, 2026-10-06). An item whose master-list entry has a description shows it as a muted line under
- * it: the first place descriptions appear, so it stays quiet.
- */
-function GearList({ label, entries, descriptions }: { label: string; entries: readonly string[]; descriptions: ReadonlyMap<string, string> }) {
-  const uid = useId();
-  return (
-    <div className={s.gearBlock}>
-      <p id={uid} className={s.blockLabel}>
-        {label}
-      </p>
-      <ul className={s.gearList} aria-labelledby={uid}>
-        {entries.map((entry, i) => {
-          const { name, count } = parseGear(entry);
-          const note = descriptions.get(gearKey(name));
-          return (
-            <li key={`${gearKey(name)}-${i}`}>
-              {gearText(name, count)}
-              {note && <span className={s.gearNote}>{note}</span>}
-            </li>
-          );
-        })}
-      </ul>
-    </div>
-  );
-}
-
-/**
  * A meal's ONE gear list (Patrick, 2026-10-07): "Gear", bulleted — what its foods ask for first, then the meal's own
  * extras at the bottom with a quiet "added" marker, and "changed" on a food's gear this meal gives another count.
  * Editable rows (a signed-in planner's own meal) carry a count box and a quiet × remove; a left-out food gear item
- * just goes. A viewer sees the same list as text.
+ * just goes. A viewer sees the same list as text. Each row carries the B L D S Ds letters of the menu's meals that use
+ * it, after the name (Patrick, 2026-10-08).
  */
-function MealGearList({ rows, descriptions, idPrefix, onCount, onRemove }: { rows: readonly MealGearEntry[]; descriptions: ReadonlyMap<string, string>; idPrefix: string; onCount?: (row: MealGearEntry, n: number) => void; onRemove?: (row: MealGearEntry) => void }) {
+function MealGearList({ rows, descriptions, idPrefix, slotsFor, onCount, onRemove }: { rows: readonly MealGearEntry[]; descriptions: ReadonlyMap<string, string>; idPrefix: string; slotsFor: (row: MealGearEntry) => readonly MealSlot[]; onCount?: (row: MealGearEntry, n: number) => void; onRemove?: (row: MealGearEntry) => void }) {
   const uid = useId();
   return (
     <div className={s.gearBlock}>
@@ -975,6 +953,7 @@ function MealGearList({ rows, descriptions, idPrefix, onCount, onRemove }: { row
                   {onCount ? row.name : gearText(row.name, row.count)}
                   {mark && <span className={s.gearMark}> {mark}</span>}
                 </span>
+                <MealLetters slots={slotsFor(row)} />
                 {onCount && (
                   <span className={s.gearQty}>
                     <NumberBox
@@ -1003,38 +982,22 @@ function MealGearList({ rows, descriptions, idPrefix, onCount, onRemove }: { row
 }
 
 /**
- * One quiet line under an open food's ingredients — "Steps · Gear (4)" — that opens how to make it and what
- * gear it needs (Patrick, 2026-10-03: available as the plan unfolds, without cluttering it), as two labelled
- * blocks: Steps, an ordered list, and Gear, a bulleted list; a block with nothing in it is left out
- * (2026-10-06). Nothing at all for a food with neither. The whole menu's gear adds up on the Gear tab.
+ * An open food's steps (Patrick, 2026-10-08): always shown under its ingredients — a "Steps" label and the ordered
+ * list, no toggle. A food with no steps shows nothing. Its gear is not listed here (it was, behind a "Steps · Gear (n)"
+ * toggle until 2026-10-08): the meal's ONE Gear list below the foods carries it. The whole menu's gear adds up on
+ * the Gear tab.
  */
-function StepsGear({ recipe, descriptions }: { recipe: Recipe | undefined; descriptions: ReadonlyMap<string, string> }) {
-  const uid = useId();
-  const [open, setOpen] = useState(false);
+function Steps({ recipe }: { recipe: Recipe | undefined }) {
   const steps = stepsFromText(recipe?.stepsMd);
-  const gear = recipeGear(recipe);
-  if (!recipe || (steps.length === 0 && gear.length === 0)) return null;
-  const label = [steps.length > 0 ? 'Steps' : null, gear.length > 0 ? `Gear (${gear.length})` : null].filter(Boolean).join(' · ');
+  if (!recipe || steps.length === 0) return null;
   return (
-    <div className={s.stepsGear}>
-      <button type="button" className={s.linkBtn} aria-expanded={open} aria-controls={open ? uid : undefined} onClick={() => setOpen((v) => !v)}>
-        {label}
-      </button>
-      {open && (
-        <div id={uid}>
-          {steps.length > 0 && (
-            <div className={s.gearBlock}>
-              <p className={s.blockLabel}>Steps</p>
-              <ol className={s.stepList} aria-label={`How to make ${recipe.name}`}>
-                {steps.map((t, i) => (
-                  <li key={i}>{t}</li>
-                ))}
-              </ol>
-            </div>
-          )}
-          {gear.length > 0 && <GearList label="Gear" entries={gear} descriptions={descriptions} />}
-        </div>
-      )}
+    <div className={s.gearBlock}>
+      <p className={s.blockLabel}>Steps</p>
+      <ol className={s.stepList} aria-label={`How to make ${recipe.name}`}>
+        {steps.map((t, i) => (
+          <li key={i}>{t}</li>
+        ))}
+      </ol>
     </div>
   );
 }

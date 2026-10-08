@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { cleanGearEntry, cleanGearExtras, cleanMealGear, cleanMealGearOut, gearPickOptions, mealGearEntries, mealRecipeGear, menuGearRows, packedSummary, parseGear, sortGear, unknownGearNames, withoutMealGear, type GearItem, type MenuGearState } from '../src/lib/menu-monster/gear';
+import { cleanGearEntry, cleanGearExtras, cleanMealGear, cleanMealGearOut, gearKey, gearMealSlots, gearPickOptions, mealGearEntries, mealRecipeGear, menuGearRows, packedSummary, parseGear, sortGear, unknownGearNames, withoutMealGear, type GearItem, type MenuGearState } from '../src/lib/menu-monster/gear';
 import type { Catalog, Recipe } from '../src/lib/menu-monster/types';
 import type { Menu, MenuMeal } from '../src/lib/menu-monster/menus';
 
@@ -286,5 +286,26 @@ describe('a meal’s one gear list (derived + added + left out)', () => {
   it('TheRollUp_KeepsAnItemAnotherMealStillNeeds', () => {
     const rows = menuGearRows(menu([m({ gearOut: ['Long tongs'] }), meal('m2', ['bacon'])]), CATALOG, LIST, NONE);
     expect(rows.find((r) => r.name === 'Long tongs')?.usedBy.map((u) => u.mealId)).toEqual(['m2']);
+  });
+});
+
+describe('which meals use each gear item (Patrick, 2026-10-08)', () => {
+  const at = (id: string, slot: MenuMeal['slot'], over: Partial<MenuMeal> = {}): MenuMeal => ({ ...meal(id, ['bacon']), slot, ...over });
+  const slotsOf = (meals: MenuMeal[]) => gearMealSlots({ meals }, CATALOG);
+
+  it('ACooler_OnTwoMeals_IsMarkedForBothInMealOrder', () => {
+    expect(slotsOf([at('m2', 'lunch'), at('m1', 'breakfast')]).get(gearKey('Skillet'))).toEqual(['breakfast', 'lunch']);
+  });
+
+  it('AFoodsGear_LeftOutOnOneMeal_IsNotMarkedForThatMeal', () => {
+    expect(slotsOf([at('m1', 'breakfast', { gearOut: ['Skillet'] }), at('m2', 'dinner')]).get(gearKey('Skillet'))).toEqual(['dinner']);
+  });
+
+  it('AMealsOwnAddedGear_CountsForThatMeal', () => {
+    expect(slotsOf([at('m1', 'snack', { recipeIds: [], gear: ['Dish soap'] })]).get(gearKey('Dish soap'))).toEqual(['snack']);
+  });
+
+  it('TwoMealsInTheSameSlot_MarkTheSlotOnce', () => {
+    expect(slotsOf([at('m1', 'lunch'), at('m2', 'lunch')]).get(gearKey('Skillet'))).toEqual(['lunch']);
   });
 });

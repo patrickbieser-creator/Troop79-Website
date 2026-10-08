@@ -163,8 +163,10 @@
 /* The quiet brand text beside an ingredient's name, and the one text action after it. */
 .brandText { font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-meta); }
 .brandSet { color: var(--text-body); }
-/* An open food's "Steps · Gear (n)" line and what it opens. */
-.stepsGear { margin: var(--sp-2) 0 var(--sp-3); }
+/* Which meals use a gear item (Patrick, 2026-10-08): fixed-width slots (B L D S Ds) so the letters line up down a list. */
+.mealLetters { flex: none; }
+.mealLetterSlots { display: inline-flex; font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-meta); }
+.mealLetter { display: inline-block; width: 1.9em; text-align: center; }
 .stepList { margin: var(--sp-2) 0 var(--sp-2); padding-left: var(--sp-6); font-family: var(--font-ui); font-size: var(--fs-md); color: var(--text-body); line-height: 1.5; }
 /* Gear tab: the Packed tick at the start of a row, and the dashed add field under the lists. */
 .gearCheck { width: 18px; height: 18px; flex: none; align-self: center; accent-color: var(--forest); }

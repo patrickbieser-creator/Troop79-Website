@@ -64,6 +64,19 @@ describe('Gear tab descriptions', () => {
   });
 });
 
+describe('Gear tab meal letters (Patrick, 2026-10-08)', () => {
+  const slotsOf = (name: string) => Array.from(rowFor(name).querySelectorAll('[data-slot]')).map((el) => `${el.getAttribute('data-slot')}:${el.textContent}`);
+
+  it('AnItem_ShowsTheLettersOfTheMealsThatUseIt_AndPerPersonGearStaysBlank', () => {
+    const menu: Menu = { ...MENU, meals: [...MENU.meals, { id: 'm2', day: 0, slot: 'dinner', headcount: null, recipeIds: ['eggs'], recipeEdits: {} }] };
+    render(tab({ menu }));
+    expect(slotsOf('Griddle')).toEqual(['breakfast:B', 'lunch:', 'dinner:', 'snack:', 'dessert:']);
+    expect(slotsOf('Spatula')).toEqual(['breakfast:B', 'lunch:', 'dinner:D', 'snack:', 'dessert:']);
+    expect(within(rowFor('Spatula')).getByText('Used at Breakfast, Dinner')).toBeTruthy();
+    expect(slotsOf('Troop mess kit').map((x) => x.split(':')[1]).join('')).toBe('');
+  });
+});
+
 describe('Gear tab', () => {
   it('Lists_GroupedByWhereItLives', () => {
     render(tab());
@@ -169,7 +182,7 @@ describe('Gear tab', () => {
 
   it('ASharedViewer_SeesPacked_WithoutTheScoutsName', () => {
     render(tab({ canPack: false, canEdit: false, state: { extras: [], packed: { skillet: { count: 2, by: '', personId: null, at: '2026-10-03T18:00:00Z' } } } }));
-    expect(rowFor('Skillet').textContent).toMatch(/Packed×/);
+    expect(rowFor('Skillet').textContent).toMatch(/Packed[^×]*×/);
   });
 
   it('AnEmptyMenu_SaysWhereGearComesFrom', () => {
