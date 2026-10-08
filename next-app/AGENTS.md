@@ -238,3 +238,22 @@ required-field gate), `useSavePhase` + `SaveFeedback` for Saving… → Done (`d
 dialogs so the Done shows before the dialog closes). Live demo: /admin/styleguide/admin → Save
 Buttons. Create-once forms and one-click actions (Approve, Grant, Accept…) are NOT dirty-gated —
 "anything filled in" and the click itself are their gates.
+
+## Lists end in one quiet add row (Patrick, 2026-10-07; D-353–D-355, D-360)
+
+Every list in Menu Monster — a meal's foods, a recipe's ingredients, a meal's gear, the diets on Who's eating, the
+troop ingredient list, the admin recipe builder — ends in exactly ONE quiet add row at its own indent, never a stack
+of look-alike dashed boxes: at rest it is one or more link-buttons ("+ Food  + Gear", "+ Ingredient", "+ Diet"); a tap
+swaps the row for the thing it adds (the search, the diet list) with a visible **Cancel** at the row's right (Esc and
+leaving an empty box also close; focus returns to the link); when one action is open the other links sit on their own
+line BELOW the open content, never beside it. Public: `(public)/library/menu-monster/_components/add-row.tsx`
+(`actions`, `open`/`defaultOpen`, `onOpenChange(id, reason)`, `trailing` for a control that sits before Cancel);
+admin: `admin/(workspace)/library/menu-monster/admin-add-row.tsx` on `--admin-*` tokens — never the public component
+across the firewall (same for `AdminNumberBox` vs the shared `NumberBox`). Rules that ride with it: an open food on a
+menu is a bordered sub-card; the diet-scope select lives INSIDE the "+ Ingredient" row ("for Everyone ▾"); a single
+food (one ingredient line) has no "+ Ingredient" (its diet swaps are in the line's ⋯); no "Only this menu changes…"
+hint prose (the card says it — back only if it fails Patrick's obviousness test); ⋯ menus read the same at every level:
+edit → swap/diet → "Back to the troop's …" → **Remove** last, and "Leave out for <diet> scouts" keeps its own verb.
+Every quantity is a plain `NumberBox` (People, diets, brand packages, shopping "How many", gear counts); the − n +
+`Stepper` is for event sign-up only. One documented exception: the troop ingredient browser keeps "+ Ingredient" above
+its long, searchable list. Plan of record: `Plans/Completed/Menu-Monster-Add-Pattern.md`; specimens on both styleguides.

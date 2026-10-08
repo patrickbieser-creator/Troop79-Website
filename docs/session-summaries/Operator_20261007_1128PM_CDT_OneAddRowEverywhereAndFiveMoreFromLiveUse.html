@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session 50 — One add row everywhere, and five more from live use — Troop79-Website</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #3d5a3e;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #f0eecd;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); vertical-align: top; }
+        tr:hover { background: var(--nw-sage); }
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+        code { font-family: 'Courier New', monospace; font-size: 0.85em; background: var(--nw-light-gray); padding: 0 0.3em; border-radius: 3px; }
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+        @media print { body { background: white; } header { padding: 1.5rem; } .container { padding: 1rem; } .stat { break-inside: avoid; } }
+        @media (max-width: 600px) { header h1 { font-size: 1.5rem; } .stats { flex-direction: column; } }
+    </style>
+<body>
+    <header>
+        <h1>One add row everywhere: the Menu Monster pattern designed, prototyped and shipped, then five more releases from live use</h1>
+        <p class="subtitle">Session 50. Patrick opened with the carried leg-time hardening, then asked the team to look at the stacked &ldquo;add&rdquo; boxes under an open food &mdash; Jenna laid out the options, Brad prototyped the pick, and Patrick said build it. Every release after that came from him using the planner and the admin live: the brand dialog, Planned by, People on the meal line, one Gear list, the summary on the title line.</p>
+        <div class="meta">
+            <span>&#128197; October 7, 2026</span>
+            <span>&#129302; Operator (Fable 5.1)</span>
+            <span>&#128204; Troop79-Website</span>
+            <span>&#128640; v1.198.1 &rarr; v1.203.0</span>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">8</div><div class="label">Releases (v1.198.2&ndash;v1.203.0)</div></div>
+            <div class="stat"><div class="number">1</div><div class="label">Production migration (planners)</div></div>
+            <div class="stat"><div class="number">10</div><div class="label">Decisions (D-352&ndash;361)</div></div>
+            <div class="stat"><div class="number">152</div><div class="label">Tests net (4681 &rarr; 4833)</div></div>
+            <div class="stat"><div class="number">3</div><div class="label">Plans completed</div></div>
+        </div>
+
+        <h2>What Was Accomplished</h2>
+
+        <div class="callout callout-teal">
+            <strong>The outcome:</strong> every list in Menu Monster now ends the same way &mdash; one quiet link, the search on tap, Cancel in sight &mdash; on the scout side and the leader side; every quantity is a plain box; a brand gets its size, price and store the moment it is typed; a menu records who planned it; the planner runs the full width of a desktop. Patrick, after seeing Phase 1 live: &ldquo;UX is better.&rdquo;
+        </div>
+
+        <h3>Leg times, hardened (v1.198.2)</h3>
+        <p>qa-lead&rsquo;s three warnings on v1.191.0 closed: a family&rsquo;s arrival or departure time is checked before the signup RPC and before any write &mdash; a real time within two days of the event, dropped when drivers aren&rsquo;t needed &mdash; and the ride board refuses a rider who isn&rsquo;t on the signup instead of skipping the wave check.</p>
+
+        <h3>The add pattern (v1.199.0, v1.200.0)</h3>
+        <p>Jenna inventoried ten places the dashed add row appeared and recommended a bordered sub-card plus one grouped add row; Brad built a prototype at 390px and 720px with an A/B toggle. Patrick picked B (links at rest, search on tap), asked for a visible Cancel, no hints, plain number boxes instead of dialers, &ldquo;Choose brand(s)&rdquo;, and no + Ingredient on a single food. Two phases shipped the standard to every site, with admin twins on admin tokens so the two colour systems stay apart. Along the way the database tests&rsquo; cleanup was found sweeping every <code>x-</code> ingredient &mdash; the id shape of a real scout typed-in that the nightly sync had just mirrored in &mdash; and was rescoped to the rows a test creates.</p>
+
+        <h3>Brand detail and Planned by (v1.201.0, v1.202.0&ndash;v1.202.2)</h3>
+        <p>&ldquo;Sour Cream &amp; Onion 4 Chips&rdquo; was a placeholder noun on a brand with no package. Brad extended the prototype; Patrick chose the dialog, with Store a pull-down from the approved stores list, now enforced server-side. Planned by &mdash; the scouts who planned a menu, picked from the active roster, informational only &mdash; got a join table on production and a place at the foot of Who&rsquo;s eating after a two-column detour Patrick rejected. The diet counts now sit under People with one &ldquo;of whom&rdquo;.</p>
+
+        <h3>The meal line and one Gear list (v1.203.0)</h3>
+        <p>A meal&rsquo;s People box sits on the meal&rsquo;s own line; the old line reads &ldquo;Food and recipes&rdquo;; gear is one list, the foods&rsquo; gear first and anything added marked, every item countable and removable through a per-meal override the Gear step honours; the shopping summary moved up beside the menu&rsquo;s name and the planner lost its right column.</p>
+
+        <h3>Verification</h3>
+        <p>Every release passed lint, typecheck, the full suite and the build; qa-lead reviewed each (one FAIL on a keyboard defect, fixed before commit; the rest PASS-WITH-WARNINGS with the real ones fixed). Nothing in the app was browser-checked this session; Brad verified his prototypes in headless Chrome. Patrick&rsquo;s eyes-on list is in the backlog.</p>
+
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Decision</th></tr></thead>
+            <tbody>
+                <tr><td>D-352</td><td>Leg times are checked before the signup RPC, before any write; a rider not on the signup is refused</td></tr>
+                <tr><td>D-353</td><td>One quiet add row per container: links at rest, search on tap, Cancel in sight; sub-card; scope select in the row; no hints; &hellip; menus normalised; admin twins</td></tr>
+                <tr><td>D-354</td><td>A single food has no + Ingredient</td></tr>
+                <tr><td>D-355</td><td>Every quantity dialer in Menu Monster is a plain number box; Stepper stays for event sign-up</td></tr>
+                <tr><td>D-356</td><td>Database test fixtures never share a production id scheme and clean up only their own rows</td></tr>
+                <tr><td>D-357</td><td>Brand detail in a dialog the moment a brand is typed; store from the approved list, enforced server-side</td></tr>
+                <tr><td>D-358</td><td>Planned by: a join table, informational only, at the foot of Who&rsquo;s eating</td></tr>
+                <tr><td>D-359</td><td>Who&rsquo;s eating reads as one count (&ldquo;of whom&rdquo;, unbolded numbers)</td></tr>
+                <tr><td>D-360</td><td>People on the meal line, &ldquo;Food and recipes&rdquo;, one Gear list with a per-meal override</td></tr>
+                <tr><td>D-361</td><td>The shopping summary lives on the menu title line; the Plan tab is one full-width column</td></tr>
+            </tbody>
+        </table>
+
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Patrick: eyes-on v1.198.2&ndash;v1.203.0 &mdash; the removed hint (obviousness test), the brand dialog, Planned by, the meal line and Gear list, the full-width planner.</li>
+            <li>qa-lead&rsquo;s open warnings by release (BACKLOG) &mdash; the Gear-step &ldquo;changed&rdquo; count display and the gearOut prune-on-remove first.</li>
+            <li>Carried: the D-344&ndash;D-351 deferred list, the draft-name and admin-search confirmations, the caps, arrival-times step 4, the suite flakes, B-004.</li>
+        </ul>
+
+        <h2>Files Changed</h2>
+        <table>
+            <thead><tr><th>Area</th><th>Change</th></tr></thead>
+            <tbody>
+                <tr><td>Events</td><td>lib/leg-times.ts (new), transport.ts (carRiderGuard), (public)/events/[id]/actions.ts, admin events/actions.ts</td></tr>
+                <tr><td>Menu Monster shared</td><td>_components/add-row.tsx + .module.css (new), ingredient-list-edit.tsx, ingredient-list-author.tsx, ingredient-browser.tsx, gear-picker.tsx</td></tr>
+                <tr><td>Planner</td><td>plan-tab.tsx, meal-panel.tsx, meal-people.tsx (new), whos-eating.tsx + .module.css (new), add-diet-menu.tsx, gear-tab.tsx, shopping-tab.tsx, brand-chooser.tsx, brand-detail-dialog.tsx (new), add-package-form.tsx, store-names.tsx + scout-options.tsx + menus/layout.tsx (new), workspace.module.css</td></tr>
+                <tr><td>Library</td><td>gear.ts (mealGearEntries, cleanMealGearOut), menus.ts (plannedBy, gearOut), menus-store.ts (planners), menu-planners.ts (new), brand-detail.ts (new), scout-packages.ts + scout-packages-store.ts (brand link, store enforcement), gear-store.ts</td></tr>
+                <tr><td>Admin</td><td>recipe-builder.tsx, admin-add-row.tsx + .module.css (new), admin/_components/admin-number-box.tsx + .module.css (new), admin gear-picker.tsx; both styleguides + specimens</td></tr>
+                <tr><td>Database</td><td>20261028100000_mm_menu_planners.sql (table, RLS, merge_people repoint) &mdash; on production</td></tr>
+                <tr><td>Tests</td><td>+152 net; helpers/typed-in-cleanup.ts (new); leg-times, add-row, admin-add-row, admin-number-box, brand-detail, planned-by, planners-db, fixture-hygiene guard; many Menu Monster suites updated to the add rows and number boxes</td></tr>
+                <tr><td>Docs</td><td>changelog.html (eight entries); Plans/Completed/Menu-Monster-Add-Pattern.md, Menu-Monster-Brand-Detail.md, Menu-Monster-Planned-By.md; prototypes/menu-monster-add-pattern/index.html; next-app/AGENTS.md (the add-row standard)</td></tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
