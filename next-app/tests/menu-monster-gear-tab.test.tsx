@@ -201,3 +201,17 @@ describe('Gear tab: gear for a meal (release 2)', () => {
     expect(screen.queryByRole('option', { name: 'Water jug' })).toBeNull();
   });
 });
+
+describe('Gear tab honours a meal’s own changes to its foods’ gear', () => {
+  const withMeal = (over: object): Menu => ({ ...MENU, meals: [{ ...MENU.meals[0], ...over }] });
+
+  it('DerivedGear_CanBeLeftOut_AndTheGearStepHonoursIt', () => {
+    render(tab({ menu: withMeal({ gearOut: ['Griddle'] }) }));
+    expect([screen.queryByRole('button', { name: /^Griddle/ }), screen.queryByRole('button', { name: /^Spatula/ }) != null]).toEqual([null, true]);
+  });
+
+  it('DerivedGear_CountOverride_ShowsInTheGearStep', () => {
+    render(tab({ menu: withMeal({ gear: ['Skillet × 4'] }) }));
+    expect(rowFor('Skillet').textContent).toContain('× 4');
+  });
+});

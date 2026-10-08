@@ -125,12 +125,15 @@ export function AddRow({
     <div ref={rowRef} className={`${s.row} ${className ?? ''}`} data-state={current ? 'open' : 'rest'} onKeyDown={current ? onKeyDown : undefined} onBlur={current ? onBlur : undefined}>
       {current ? (
         <>
-          <div ref={contentRef} className={s.content}>{current.content}</div>
+          <div className={s.openLine}>
+            <div ref={contentRef} className={s.content}>{current.content}</div>
+            {trailing && <div className={s.trailing}>{trailing}</div>}
+            <button type="button" className={s.cancel} onClick={() => close('cancel')}>
+              Cancel
+            </button>
+          </div>
+          {/* The other actions sit on their own line BELOW the open content, never beside the search (Patrick, 2026-10-07). */}
           {actions.length > 1 && <div className={s.links}>{actions.filter((a) => a.id !== current.id).map(linkFor)}</div>}
-          {trailing && <div className={s.trailing}>{trailing}</div>}
-          <button type="button" className={s.cancel} onClick={() => close('cancel')}>
-            Cancel
-          </button>
         </>
       ) : (
         <div className={s.links}>

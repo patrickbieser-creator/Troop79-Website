@@ -150,13 +150,13 @@ interface MenuGearRowDb {
   id: string;
   updated_at: string;
   gear_extras: string[] | null;
-  meals: { id?: string; gear?: string[] }[] | null;
+  meals: { id?: string; gear?: string[]; gearOut?: string[] }[] | null;
 }
 
 /** Every menu that names any gear (its extras or a meal's own), for the Gear tab's counts and rewrites. */
 async function menusWithGear(sb: SupabaseClient): Promise<MenuGearRowDb[]> {
   const all = await fetchAllRows<MenuGearRowDb>((from, to) => sb.from('mm_menus').select('id, updated_at, gear_extras, meals').order('id').range(from, to));
-  return all.filter((m) => (m.gear_extras?.length ?? 0) > 0 || (m.meals ?? []).some((x) => (x.gear?.length ?? 0) > 0));
+  return all.filter((m) => (m.gear_extras?.length ?? 0) > 0 || (m.meals ?? []).some((x) => (x.gear?.length ?? 0) > 0 || (x.gearOut?.length ?? 0) > 0));
 }
 
 interface RecipeGearRow {
@@ -231,10 +231,12 @@ async function rewriteMenusGear(sb: SupabaseClient, rewrite: (entries: readonly 
     if (extras) patch.gear_extras = extras;
     let mealsTouched = false;
     const meals = (m.meals ?? []).map((meal) => {
+      // A meal's own gear and the names it leaves out of its foods' gear both follow a rename.
       const next = rewrite(meal.gear ?? []);
-      if (!next) return meal;
+      const nextOut = rewrite(meal.gearOut ?? []);
+      if (!next && !nextOut) return meal;
       mealsTouched = true;
-      return { ...meal, gear: sortGear(next) };
+      return { ...meal, ...(next ? { gear: sortGear(next) } : {}), ...(nextOut ? { gearOut: sortGear(nextOut) } : {}) };
     });
     if (mealsTouched) patch.meals = meals;
     return extras || mealsTouched ? patch : null;

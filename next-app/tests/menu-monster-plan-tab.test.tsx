@@ -309,6 +309,25 @@ describe('PlanTab', () => {
     expect(screen.queryByRole('button', { name: 'Remove' })).toBeNull();
   });
 
+  it('PlanTab_RendersTheShoppingSummary_IntoTheTitleSlot', () => {
+    render(existing());
+    const summary = screen.getByRole('status', { name: 'Shopping summary' });
+    expect(summary.textContent).toMatch(/\$14\.98.*under budget/i);
+    expect(screen.getByRole('heading', { level: 1 }).parentElement?.contains(summary)).toBe(true);
+  });
+
+  it('PlanTab_HasNoRightColumn', () => {
+    render(existing());
+    expect(screen.queryByRole('heading', { name: 'Shopping' })).toBeNull();
+    expect(document.querySelector('[class*=\"_col_\"],[class*=\"_grid_\"]')).toBeNull();
+  });
+
+  it('UnpricedMenu_ShowsNoSummaryOnTheTitleLine', () => {
+    render(existing(base({ meals: [{ id: 'm1', day: 0, slot: 'breakfast', headcount: null, recipeIds: [], recipeEdits: {} }] })));
+    expect(screen.queryByRole('status', { name: 'Shopping summary' })).toBeNull();
+    expect(screen.getByRole('heading', { level: 1 }).parentElement?.children).toHaveLength(1);
+  });
+
   it('Shopping_ShowsTheMenuTotalAndBudgetReadout', () => {
     render(existing());
     expect(screen.getByRole('status').textContent).toMatch(/\$14\.98.*under budget/i);
@@ -685,23 +704,24 @@ describe('PlanTab planner flow, this week (2026-10-06)', () => {
   });
 
   describe('per-meal people', () => {
-    it('MealRow_ShowsPeople_OnlyWhenDifferent', () => {
+    it('MealRow_CarriesThePeopleBox_ShowingTheMealsNumber', () => {
       const row = () => screen.getByRole('button', { name: /^Breakfast/ }).closest('li') as HTMLElement;
       const { unmount } = render(existing());
-      expect(row().textContent).not.toMatch(/\d+ people/);
+      expect((within(row()).getByRole('spinbutton', { name: / people$/ }) as HTMLInputElement).value).toBe('8');
       unmount();
       render(existing(base({ meals: [{ id: 'm1', day: 0, slot: 'breakfast', headcount: 6, recipeIds: ['B003'], recipeEdits: {} }] })));
-      expect(within(row()).getByText('6 people')).toBeTruthy();
+      expect([(within(row()).getByRole('spinbutton', { name: / people$/ }) as HTMLInputElement).value, within(row()).getByRole('button', { name: 'Reset Day 1 breakfast to 8 people' }) != null]).toEqual(['6', true]);
     });
 
-    it('MealRow_HasNoStepper', () => {
-      render(existing(base({ meals: [{ id: 'm1', day: 0, slot: 'breakfast', headcount: 6, recipeIds: ['B003'], recipeEdits: {} }] })));
-      expect(screen.queryByRole('spinbutton', { name: / people$/ })).toBeNull();
+    it('MealRow_ReadOnly_KeepsThePeopleText_AndHasNoBox', () => {
+      render(<PlanTab catalog={CATALOG} menuId="menu-1" menu={base({ meals: [{ id: 'm1', day: 0, slot: 'breakfast', headcount: 6, recipeIds: ['B003'], recipeEdits: {} }] })} updatedAt={VERSION} outings={OUTINGS} readOnly />);
+      expect([screen.getByText('6 people') != null, screen.queryByRole('spinbutton', { name: / people$/ })]).toEqual([true, null]);
     });
 
-    it('Stepper_LivesInTheMealPanel', async () => {
+    it('Stepper_LivesOnTheMealRow_NotInThePanel', async () => {
       render(existing());
       await userEvent.setup().click(screen.getByRole('button', { name: /^Breakfast/ }));
+      expect(within(document.getElementById('mm-meal-m1') as HTMLElement).queryByRole('spinbutton', { name: 'Day 1 breakfast people' })).toBeNull();
       expect(screen.getByRole('spinbutton', { name: 'Day 1 breakfast people' })).toBeTruthy();
     });
   });

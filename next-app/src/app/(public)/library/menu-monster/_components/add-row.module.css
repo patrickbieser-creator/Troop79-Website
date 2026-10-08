@@ -7,6 +7,9 @@
   padding: var(--sp-1) 0;
   border-top: 1px solid var(--rule);
 }
+/* Opened: the search line on top (search, extra controls, Cancel at the right end), the other links on their own line below. */
+.row[data-state='open'] { flex-direction: column; align-items: stretch; gap: 0; }
+.openLine { display: flex; align-items: center; gap: var(--sp-3); min-height: 44px; }
 .links { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-4); }
 .link {
   font-family: var(--font-ui);
@@ -41,4 +44,5 @@
 .cancel:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
 @media (max-width: 480px) {
   .row { gap: var(--sp-2); }
+  .openLine { gap: var(--sp-2); }
 }

@@ -468,7 +468,7 @@ describe('MealEditor', () => {
       await user.click(panel().getByRole('button', { name: /^Bacon/ }));
       await user.click(panel().getByRole('button', { name: 'Steps · Gear (3)' }));
       expect(within(panel().getByRole('list', { name: 'How to make Bacon' })).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Lay the slices in a cold skillet.', 'Turn until crisp.']);
-      expect(itemsOf(panel().getByRole('list', { name: 'Gear' }))).toEqual(['Camp stove', 'Skillet', 'Long tongs']);
+      expect(itemsOf(within(rowFor('Bacon')).getByRole('list', { name: 'Gear' }))).toEqual(['Camp stove', 'Skillet', 'Long tongs']);
     });
 
     it('TheSteps_AreAnOrderedList_UnderAStepsLabel', async () => {
@@ -485,7 +485,7 @@ describe('MealEditor', () => {
       render(geared());
       await user.click(panel().getByRole('button', { name: /^Bacon/ }));
       await user.click(panel().getByRole('button', { name: 'Steps · Gear (3)' }));
-      const list = panel().getByRole('list', { name: 'Gear' });
+      const list = within(rowFor('Bacon')).getByRole('list', { name: 'Gear' });
       expect([list.tagName, within(list).getAllByRole('listitem').length]).toEqual(['UL', 3]);
       expect(panel().queryByText(/Camp stove ·/)).toBeNull();
     });
@@ -496,7 +496,7 @@ describe('MealEditor', () => {
       render(<PlanTab catalog={counted} menuId="menu-1" menu={menu()} updatedAt={VERSION} outings={[]} openMeal="m1" />);
       await user.click(panel().getByRole('button', { name: /^Bacon/ }));
       await user.click(panel().getByRole('button', { name: 'Gear (2)' }));
-      expect(itemsOf(panel().getByRole('list', { name: 'Gear' }))).toEqual(['Skillet × 2', 'Tongs']);
+      expect(itemsOf(within(rowFor('Bacon')).getByRole('list', { name: 'Gear' }))).toEqual(['Skillet × 2', 'Tongs']);
     });
 
     it('AStepsBlock_WithNoGear_AndAGearBlock_WithNoSteps_AreLeftOut', async () => {
@@ -520,7 +520,7 @@ describe('MealEditor', () => {
       render(<PlanTab catalog={GEARED} menuId="menu-1" menu={menu()} updatedAt={VERSION} outings={[]} openMeal="m1" gearList={list} />);
       await user.click(panel().getByRole('button', { name: /^Bacon/ }));
       await user.click(panel().getByRole('button', { name: 'Steps · Gear (3)' }));
-      const skillet = within(panel().getByRole('list', { name: 'Gear' })).getAllByRole('listitem')[1];
+      const skillet = within(within(rowFor('Bacon')).getByRole('list', { name: 'Gear' })).getAllByRole('listitem')[1];
       expect(within(skillet).getByText('12-inch cast iron, in the patrol box')).toBeTruthy();
     });
 
@@ -533,15 +533,38 @@ describe('MealEditor', () => {
   });
 
   describe('people', () => {
-    it('Stepper_LivesInTheMealPanel', () => {
+    it('MealHeader_CarriesThePeopleBox_OnTheSlotLine', () => {
       render(editor());
-      expect(panel().getByRole('spinbutton', { name: 'Day 1 breakfast people' })).toBe(people());
-      expect(people().value).toBe('8');
+      const head = screen.getByRole('button', { name: /^Breakfast/ }).closest('li') as HTMLElement;
+      const box = people();
+      // In the row, beside the slot name, and no longer inside the open panel.
+      expect([head.contains(box), box.closest('[id="mm-meal-m1"]'), people().value]).toEqual([true, null, '8']);
     });
 
-    it('Stepper_IsNotOnTheMealRow_WhenThePanelIsClosed', () => {
-      render(<PlanTab catalog={CATALOG} menuId="menu-1" menu={menu()} updatedAt={VERSION} outings={[]} />);
-      expect(screen.queryByRole('spinbutton', { name: / people$/ })).toBeNull();
+    it('MealHeader_PeopleBox_SitsBeforeTheCost', () => {
+      render(editor());
+      const cost = (screen.getByRole('button', { name: /^Breakfast/ }).closest('li') as HTMLElement).querySelector(':scope > [class*="cost"]') as HTMLElement;
+      expect(people().compareDocumentPosition(cost) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it('PeopleBox_IsOnTheRow_EvenWhenThePanelIsClosed', () => {
+      render(<PlanTab catalog={CATALOG} menuId="menu-1" menu={{ ...menu(), meals: [menu().meals[0]] }} updatedAt={VERSION} outings={[]} />);
+      expect(screen.getByRole('spinbutton', { name: 'Day 1 breakfast people' })).toBeTruthy();
+    });
+
+    it('PeopleBox_DoesNotToggleTheMeal', async () => {
+      const user = userEvent.setup();
+      render(<PlanTab catalog={CATALOG} menuId="menu-1" menu={{ ...menu(), meals: [menu().meals[0]] }} updatedAt={VERSION} outings={[]} />);
+      const box = screen.getByRole('spinbutton', { name: 'Day 1 breakfast people' });
+      await user.click(box);
+      await user.clear(box);
+      await user.type(box, '9');
+      expect([document.getElementById('mm-meal-m1'), (box as HTMLInputElement).value]).toEqual([null, '9']);
+    });
+
+    it('Panel_LabelsTheFoodSection_FoodAndRecipes', () => {
+      render(editor());
+      expect([panel().getByText('Food and recipes') != null, panel().queryByText('People for this meal')]).toEqual([true, null]);
     });
 
     it('People_DialerDoesNotOpenOrCloseTheMeal', async () => {
@@ -563,7 +586,7 @@ describe('MealEditor', () => {
 
     it('People_StartsAtTheMenusNumber_WithNoResetOffered', () => {
       render(editor());
-      expect([people().value, screen.queryByRole('button', { name: /^Reset to/ })]).toEqual(['8', null]);
+      expect([people().value, screen.queryByRole('button', { name: /^Reset / })]).toEqual(['8', null]);
     });
 
     it('People_CanBeOverridden_ForJustThisMeal', async () => {
@@ -580,11 +603,11 @@ describe('MealEditor', () => {
     it('People_OffersResetToTheMenusNumber_OnlyWhenOverridden', async () => {
       const user = userEvent.setup();
       render(editor());
-      expect(screen.queryByRole('button', { name: 'Reset to 8' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Reset Day 1 breakfast to 8 people' })).toBeNull();
       await user.clear(people());
       await user.type(people(), '12');
       await user.tab();
-      expect(screen.getByRole('button', { name: 'Reset to 8' })).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Reset Day 1 breakfast to 8 people' })).toBeTruthy();
     });
 
     it('People_ResetClearsTheOverride', async () => {
@@ -593,7 +616,7 @@ describe('MealEditor', () => {
       await user.clear(people());
       await user.type(people(), '12');
       await user.tab();
-      await user.click(screen.getByRole('button', { name: 'Reset to 8' }));
+      await user.click(screen.getByRole('button', { name: 'Reset Day 1 breakfast to 8 people' }));
       expect(people().value).toBe('8');
     });
 
@@ -603,7 +626,7 @@ describe('MealEditor', () => {
       await user.clear(people());
       await user.type(people(), '12');
       await user.tab();
-      await user.click(screen.getByRole('button', { name: 'Reset to 8' }));
+      await user.click(screen.getByRole('button', { name: 'Reset Day 1 breakfast to 8 people' }));
       expect(screen.getByRole('link', { name: 'Next: Gear ›' })).toBeTruthy();
     });
 
@@ -613,7 +636,7 @@ describe('MealEditor', () => {
       m.meals[0].headcount = 12;
       const user = userEvent.setup();
       render(editor('m1', m));
-      await user.click(screen.getByRole('button', { name: 'Reset to 8' }));
+      await user.click(screen.getByRole('button', { name: 'Reset Day 1 breakfast to 8 people' }));
       await user.click(screen.getByRole('button', { name: 'Save changes' }));
       expect(saved().meals[0].headcount).toBeNull();
     });
@@ -964,7 +987,7 @@ describe('MealEditor typed-in ingredients (release C)', () => {
     await user.click(screen.getByRole('button', { name: '+ Ingredient' }));
     await user.type(screen.getByRole('combobox', { name: 'Add an ingredient to your version' }), 'Gochujang');
     await user.click(screen.getByRole('option', { name: 'Add “Gochujang” as a new ingredient' }));
-    const rowCancel = screen.getAllByRole('button', { name: 'Cancel' }).find((b) => b.parentElement?.hasAttribute('data-state'));
+    const rowCancel = screen.getAllByRole('button', { name: 'Cancel' }).find((b) => b.parentElement?.parentElement?.getAttribute('data-state') === 'open');
     await user.click(rowCancel as HTMLElement);
     expect([screen.queryByRole('group', { name: 'New ingredient' }), screen.getByRole('button', { name: '+ Ingredient' }) != null]).toEqual([null, true]);
   });
@@ -1077,7 +1100,7 @@ describe('MealPanel ingredient list density (Patrick, 2026-10-03)', () => {
   });
 });
 
-describe('MealPanel — More gear for this meal (gear-from-the-list release 2)', () => {
+describe('MealPanel — Gear (one list: the foods’ gear plus the meal’s own)', () => {
   const GEAR_LIST = [
     { id: 1, name: 'Dish soap', home: 'trailer' as const, perPerson: false, retiredAt: null },
     { id: 2, name: 'Skillet', home: 'trailer' as const, perPerson: false, retiredAt: null },
@@ -1088,7 +1111,11 @@ describe('MealPanel — More gear for this meal (gear-from-the-list release 2)',
   const plan = (m: Menu, over: Partial<Parameters<typeof PlanTab>[0]> = {}) => (
     <PlanTab catalog={GEARED} menuId="menu-1" menu={m} updatedAt={VERSION} outings={[]} openMeal="m1" gearList={GEAR_LIST} {...over} />
   );
-  const foodItems = () => within(screen.getByRole('list', { name: 'Gear for the foods' })).getAllByRole('listitem').map((li) => li.firstChild?.textContent);
+  const gearList = () => screen.getByRole('list', { name: 'Gear' });
+  const gearItems = () => within(gearList()).getAllByRole('listitem');
+  /** The items by their count boxes' names ("Skillet count"), in list order. */
+  const gearNames = () => within(gearList()).getAllByRole('spinbutton').map((n) => (n.getAttribute('aria-label') ?? '').replace(/ count$/, ''));
+  const itemFor = (name: string) => gearItems().find((li) => within(li).queryByRole('spinbutton', { name: `${name} count` })) as HTMLElement;
   const gearBox = () => {
     if (!screen.queryByRole('combobox', { name: 'More gear for Day 1 breakfast' })) fireEvent.click(screen.getByRole('button', { name: '+ Gear' }));
     return screen.getByRole('combobox', { name: 'More gear for Day 1 breakfast' });
@@ -1099,33 +1126,28 @@ describe('MealPanel — More gear for this meal (gear-from-the-list release 2)',
     openId = 'm1';
   });
 
-  it('TheBlock_ShowsTheFoodsGear_ReadOnly_AToZ', () => {
-    render(plan(withGear()));
-    expect(foodItems()).toEqual(['Skillet × 2', 'Tongs']);
+  it('Gear_IsOneList_DerivedFirst_ThenAddedWithMarker', () => {
+    render(plan(withGear(['Dish soap'])));
+    expect([gearNames(), screen.queryByRole('list', { name: 'Gear for the foods' }), screen.queryByRole('list', { name: 'More gear for this meal' })]).toEqual([['Skillet', 'Tongs', 'Dish soap'], null, null]);
+    expect([within(itemFor('Dish soap')).queryByText('added') != null, within(itemFor('Skillet')).queryByText('added'), within(itemFor('Tongs')).queryByText('added')]).toEqual([true, null, null]);
   });
 
-  it('TheFoodsGear_IsABulletedList_NotOneJoinedLine', () => {
+  it('TheGearList_IsLabelledGear_AndIsABulletedList', () => {
     render(plan(withGear()));
-    expect([screen.getByRole('list', { name: 'Gear for the foods' }).tagName, screen.queryByText(/Skillet × 2 ·/)]).toEqual(['UL', null]);
+    expect([gearList().tagName, screen.getByText('Gear', { selector: 'p' }) != null]).toEqual(['UL', true]);
   });
 
   it('TheFoodsGear_ShowsTheMostAnyOneFoodAsks_OncePerItem_AToZ', () => {
     const two = { ...CATALOG, recipes: CATALOG.recipes.map((r) => (r.id === 'B003' ? { ...r, equipment: ['Skillet', 'Tongs'] } : r.id === 'B014' ? { ...r, equipment: ['skillet × 3'] } : r)) };
     const base = withGear();
     render(plan({ ...base, meals: base.meals.map((m) => (m.id === 'm1' ? { ...m, recipeIds: ['B003', 'B014'] } : m)) }, { catalog: two }));
-    expect(foodItems()).toEqual(['Skillet × 3', 'Tongs']);
+    expect([gearNames(), (within(gearList()).getByRole('spinbutton', { name: 'Skillet count' }) as HTMLInputElement).value]).toEqual([['Skillet', 'Tongs'], '3']);
   });
 
-  it('AFoodsGearItem_ShowsItsDescription_UnderIt_WhenTheMasterListHasOne', () => {
+  it('AGearItem_ShowsItsDescription_UnderIt_WhenTheMasterListHasOne', () => {
     const described = GEAR_LIST.map((g) => (g.name === 'Skillet' ? { ...g, description: 'Cast iron, 12 inch' } : g));
     render(plan(withGear(), { gearList: described }));
-    const [skillet, tongs] = within(screen.getByRole('list', { name: 'Gear for the foods' })).getAllByRole('listitem');
-    expect([within(skillet).queryByText('Cast iron, 12 inch') != null, within(tongs).queryByText('Cast iron, 12 inch')]).toEqual([true, null]);
-  });
-
-  it('AGearItem_WithNoDescription_ShowsOnlyItsName', () => {
-    render(plan(withGear()));
-    expect(within(screen.getByRole('list', { name: 'Gear for the foods' })).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Skillet × 2', 'Tongs']);
+    expect([within(itemFor('Skillet')).queryByText('Cast iron, 12 inch') != null, within(itemFor('Tongs')).queryByText('Cast iron, 12 inch')]).toEqual([true, null]);
   });
 
   it('AFoodlessMeal_StillOffersTheMealGearPicker', () => {
@@ -1134,50 +1156,118 @@ describe('MealPanel — More gear for this meal (gear-from-the-list release 2)',
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     fireEvent.click(screen.getByRole('button', { name: '+ Gear' }));
     expect(screen.getByRole('combobox', { name: 'More gear for Day 1 lunch' })).toBeTruthy();
-    expect(screen.queryByText(/Gear for the foods/)).toBeNull();
+    expect(screen.queryByRole('list', { name: 'Gear' })).toBeNull();
   });
 
   it('Picker_OffersTheMasterList_AToZ_AndNeverACreateRow', async () => {
     const user = userEvent.setup();
     render(plan(withGear(['Dish soap'])));
     await user.click(gearBox());
-    expect(within(screen.getByRole('listbox', { name: 'Gear on the list' })).getAllByRole('option').map((o) => o.textContent)).toEqual(['Skillet', 'Wash basin']);
+    expect(within(screen.getByRole('listbox', { name: 'Gear on the list' })).getAllByRole('option').map((o) => o.textContent)).toEqual(['Wash basin']);
     await user.type(gearBox(), 'ladle');
     expect(screen.getByText(/Nothing on the gear list matches “ladle”/)).toBeTruthy();
     expect(screen.queryByText(/^Add “/)).toBeNull();
   });
 
-  it('PickingGear_AddsItToTheMeal_MarksThePlanDirty_AndSavesItWithThePlan', async () => {
+  it('PickingGear_AppendsItToTheBottomOfTheList_AsAdded_AndSavesWithThePlan', async () => {
     saveMenuAction.mockResolvedValue(LANDED);
     const user = userEvent.setup();
     render(plan(withGear()));
     expect(screen.getByRole('link', { name: 'Next: Gear ›' })).toBeTruthy();
     await user.type(gearBox(), 'wash{Enter}');
-    expect(screen.getByRole('list', { name: 'Gear' }).textContent).toContain('Wash basin');
+    expect([gearNames(), within(itemFor('Wash basin')).queryByText('added') != null]).toEqual([['Skillet', 'Tongs', 'Wash basin'], true]);
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
     expect(saved().meals[0].gear).toEqual(['Wash basin']);
   });
 
-  it('GearOnTheMeal_StaysAToZ_WhateverOrderItWasPicked', async () => {
+  it('AddedGear_StaysBelowTheFoodsGear_AToZAmongItself', async () => {
     const user = userEvent.setup();
     render(plan(withGear(['Wash basin'])));
     await user.type(gearBox(), 'dish{Enter}');
-    expect(within(screen.getByRole('list', { name: 'Gear' })).getAllByRole('listitem').map((li) => li.textContent)).toEqual([expect.stringContaining('Dish soap'), expect.stringContaining('Wash basin')]);
+    expect(gearNames()).toEqual(['Skillet', 'Tongs', 'Dish soap', 'Wash basin']);
   });
 
-  it('TheCount_CanBeRaised_AndIsSaved', async () => {
+  it('AddedGear_CanBeRemoved_AndCountEdited', async () => {
     saveMenuAction.mockResolvedValue(LANDED);
     const user = userEvent.setup();
-    render(plan(withGear(['Wash basin'])));
+    render(plan(withGear(['Dish soap', 'Wash basin'])));
     const box = screen.getByRole('spinbutton', { name: 'Wash basin count' });
     await user.clear(box);
     await user.type(box, '2');
     await user.tab();
+    await user.click(screen.getByRole('button', { name: 'Remove Dish soap' }));
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
     expect(saved().meals[0].gear).toEqual(['Wash basin × 2']);
   });
 
-  it('RemovingTheOnlyGear_PutsThePlanBackToSaved_WithNoGearKey', async () => {
+  it('DerivedGear_CanBeLeftOut_FromThisMeal', async () => {
+    saveMenuAction.mockResolvedValue(LANDED);
+    const user = userEvent.setup();
+    render(plan(withGear()));
+    await user.click(screen.getByRole('button', { name: 'Remove Tongs' }));
+    expect(gearNames()).toEqual(['Skillet']);
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    expect([saved().meals[0].gearOut, saved().meals[0].gear]).toEqual([['Tongs'], undefined]);
+  });
+
+  it('DerivedGear_CountEdit_WritesAnOverride_ShownAsChanged', async () => {
+    saveMenuAction.mockResolvedValue(LANDED);
+    const user = userEvent.setup();
+    render(plan(withGear()));
+    const box = screen.getByRole('spinbutton', { name: 'Tongs count' });
+    await user.clear(box);
+    await user.type(box, '3');
+    await user.tab();
+    expect([within(itemFor('Tongs')).queryByText('changed') != null, within(itemFor('Tongs')).queryByText('added')]).toEqual([true, null]);
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    expect(saved().meals[0].gear).toEqual(['Tongs × 3']);
+  });
+
+  it('DerivedGear_CountEditedBackToTheFoods_DropsTheOverride', async () => {
+    const user = userEvent.setup();
+    render(plan(withGear()));
+    const box = screen.getByRole('spinbutton', { name: 'Tongs count' });
+    await user.clear(box);
+    await user.type(box, '3');
+    await user.tab();
+    await user.clear(box);
+    await user.type(box, '1');
+    await user.tab();
+    expect([within(itemFor('Tongs')).queryByText('changed'), screen.getByRole('link', { name: 'Next: Gear ›' }) != null]).toEqual([null, true]);
+  });
+
+  it('RemovingAChangedItem_LeavesItOut_AndDropsItsOverride', async () => {
+    saveMenuAction.mockResolvedValue(LANDED);
+    const user = userEvent.setup();
+    render(plan(withGear(['Tongs × 3'])));
+    await user.click(screen.getByRole('button', { name: 'Remove Tongs' }));
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    expect([saved().meals[0].gear, saved().meals[0].gearOut]).toEqual([undefined, ['Tongs']]);
+  });
+
+  it('PickingALeftOutItem_BringsBackTheFoodsGear_NotAnAddedCopy', async () => {
+    const user = userEvent.setup();
+    render(plan({ ...withGear(), meals: withGear().meals.map((m) => (m.id === 'm1' ? { ...m, gearOut: ['Skillet'] } : m)) }));
+    expect(gearNames()).toEqual(['Tongs']);
+    await user.type(gearBox(), 'skillet{Enter}');
+    expect([gearNames(), within(itemFor('Skillet')).queryByText('added'), (screen.getByRole('spinbutton', { name: 'Skillet count' }) as HTMLInputElement).value]).toEqual([['Skillet', 'Tongs'], null, '2']);
+  });
+
+  it('PickingALeftOutName_WhoseFoodIsGone_AddsIt', async () => {
+    const user = userEvent.setup();
+    const base = withGear();
+    render(plan({ ...base, meals: base.meals.map((m) => (m.id === 'm1' ? { ...m, recipeIds: [], gearOut: ['Skillet'] } : m)) }));
+    await user.type(gearBox(), 'skillet{Enter}');
+    expect([gearNames(), within(itemFor('Skillet')).queryByText('added') != null]).toEqual([['Skillet'], true]);
+  });
+
+  it('Reset_NamesTheMeal_ForScreenReaders', () => {
+    const base = withGear();
+    render(plan({ ...base, meals: base.meals.map((m) => (m.id === 'm1' ? { ...m, headcount: 5 } : m)) }));
+    expect(screen.getByRole('button', { name: 'Reset Day 1 breakfast to 8 people' }).textContent).toBe('Reset to 8');
+  });
+
+  it('RemovingTheOnlyAddedGear_PutsThePlanBackToSaved', async () => {
     const user = userEvent.setup();
     render(plan(withGear()));
     await user.type(gearBox(), 'wash{Enter}');
@@ -1193,25 +1283,24 @@ describe('MealPanel — More gear for this meal (gear-from-the-list release 2)',
     await user.type(gearBox(), 'wash{Enter}');
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
     expect(await screen.findByText('Not on the gear list, so not kept: Wash basin.')).toBeTruthy();
-    expect(screen.queryByRole('list', { name: 'Gear' })).toBeNull();
+    expect(gearNames()).toEqual(['Skillet', 'Tongs']);
   });
 
-  it('AReadOnlyViewer_SeesTheMealGear_WithNoPicker', () => {
+  it('AReadOnlyViewer_SeesOneGearList_WithMarkers_AndNoControls', () => {
     render(plan(withGear(['Dish soap', 'Wash basin × 2']), { readOnly: true }));
-    expect(within(screen.getByRole('list', { name: 'More gear for this meal' })).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Dish soap', 'Wash basin × 2']);
-    expect(screen.queryByRole('combobox', { name: /More gear/ })).toBeNull();
-    expect(foodItems()).toEqual(['Skillet × 2', 'Tongs']);
+    const texts = gearItems().map((li) => li.textContent);
+    expect([texts, screen.queryByRole('combobox', { name: /More gear/ }), screen.queryByRole('spinbutton', { name: /count$/ }), screen.queryByRole('button', { name: /^Remove/ })]).toEqual([['Skillet × 2', 'Tongs', 'Dish soap added', 'Wash basin × 2 added'], null, null, null]);
   });
 
   it('AReadOnlyViewer_OfAMealWithNoGear_SeesNoEmptyBlock', () => {
     openId = 'm2';
     render(plan(withGear(), { readOnly: true, openMeal: 'm2' }));
-    expect(screen.queryByRole('region', { name: 'More gear for this meal' })).toBeNull();
+    expect(screen.queryByRole('list', { name: 'Gear' })).toBeNull();
   });
 
-  it('AMenuKeptOnThisComputer_HasNoPicker_AsThereIsNoListToPickFrom', () => {
+  it('AMenuKeptOnThisComputer_HasNoPicker_AndNoGearControls', () => {
     render(plan(withGear(), { gearList: undefined }));
-    expect(screen.queryByRole('combobox', { name: /More gear/ })).toBeNull();
+    expect([screen.queryByRole('combobox', { name: /More gear/ }), screen.queryByRole('spinbutton', { name: /count$/ })]).toEqual([null, null]);
   });
 });
 
@@ -1417,7 +1506,7 @@ describe('MealPanel — add row follow-ups (qa-lead)', () => {
     render(<PlanTab catalog={CATALOG} menuId="menu-1" menu={menu()} updatedAt={VERSION} outings={[]} openMeal="m1" />);
     await user.type(search(), 'Zzzfood');
     await user.click(screen.getByRole('option', { name: /^Add “Zzzfood” as a new food/ }));
-    const rowCancel = panel().getAllByRole('button', { name: 'Cancel' }).find((b) => b.parentElement?.hasAttribute('data-state'));
+    const rowCancel = panel().getAllByRole('button', { name: 'Cancel' }).find((b) => b.parentElement?.parentElement?.getAttribute('data-state') === 'open');
     await user.click(rowCancel as HTMLElement);
     expect([panel().queryByRole('combobox'), panel().getByRole('button', { name: '+ Food' }) != null, panel().queryByText(/Zzzfood/)]).toEqual([null, true, null]);
   });

@@ -19,7 +19,7 @@ import { applyScopedOps, type ScopedOp } from './variations';
 import { MAX_BRANDS_PER_INGREDIENT, MAX_HEADCOUNT, MIN_HEADCOUNT, livePicks, restorePlan } from './engine';
 import { centralToday } from '@/lib/dates';
 import { cleanScoutText } from './scout-text';
-import { cleanMealGear } from './gear';
+import { cleanMealGear, cleanMealGearOut, mealRecipeGear } from './gear';
 
 export type MenuContext = 'home' | 'camp' | 'trail';
 
@@ -130,6 +130,8 @@ export interface MenuMeal {
   recipeEdits: RecipeEdits;
   /** Gear for the meal itself (soap, wash basins), picked from the master list: "Name × n", A to Z. Absent = none. */
   gear?: string[];
+  /** Names of gear the meal's foods ask for that this meal leaves out (Patrick, 2026-10-07: every gear item can be removed). Absent = none. An entry of `gear` with a food's gear name overrides that item's count instead. */
+  gearOut?: string[];
 }
 
 /** What the scout edits; owner, timestamps and the priced snapshot are the server's. */
@@ -477,6 +479,7 @@ export function sanitizeMenu(raw: unknown, catalog: Catalog): Menu {
     const id = typeof m.id === 'string' && MEAL_ID.test(m.id) && !usedIds.has(m.id) ? m.id : globalThis.crypto.randomUUID();
     usedIds.add(id);
     const gear = cleanMealGear(m.gear);
+    const gearOut = cleanMealGearOut(m.gearOut, gear, mealRecipeGear({ recipeIds: plan.recipeIds }, catalog));
     meals.push({
       id,
       day,
@@ -484,7 +487,8 @@ export function sanitizeMenu(raw: unknown, catalog: Catalog): Menu {
       headcount: m.headcount == null ? null : clampInt(m.headcount, MIN_HEADCOUNT, MAX_HEADCOUNT, headcount),
       recipeIds: plan.recipeIds,
       recipeEdits: sanitizeRecipeEdits(m.recipeEdits, plan.recipeIds, catalog),
-      ...(gear.length > 0 ? { gear } : {})
+      ...(gear.length > 0 ? { gear } : {}),
+      ...(gearOut.length > 0 ? { gearOut } : {})
     });
   }
 

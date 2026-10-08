@@ -78,6 +78,16 @@ describe('AddRow', () => {
     expect([screen.queryByRole('textbox', { name: 'Find a food' }), document.activeElement]).toEqual([null, screen.getByRole('textbox', { name: 'Find gear' })]);
   });
 
+  it('AddRow_OtherLinks_SitBelowTheOpenContent', async () => {
+    const user = userEvent.setup();
+    render(<AddRow actions={actions} />);
+    await user.click(screen.getByRole('button', { name: '+ Food' }));
+    const after = (a: Element, b: Element) => !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    const gear = screen.getByRole('button', { name: '+ Gear' });
+    // Below the whole open line (search, then Cancel at its right end), never beside the search.
+    expect([after(screen.getByRole('textbox'), gear), after(screen.getByRole('button', { name: 'Cancel' }), gear)]).toEqual([true, true]);
+  });
+
   it('AddRow_OpenedByTheCaller_DoesNotMoveFocus', () => {
     const { rerender } = render(<AddRow actions={actions} open={null} />);
     rerender(<AddRow actions={actions} open="food" />);

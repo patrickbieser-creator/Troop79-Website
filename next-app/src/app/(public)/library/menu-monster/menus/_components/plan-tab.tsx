@@ -54,6 +54,7 @@ import { overlayNewIngredients, type NewIngredient } from '@/lib/menu-monster/sc
 import { overlayNewRecipes } from '@/lib/menu-monster/single-food';
 import type { AmountView } from '@/lib/menu-monster/ingredient-rows';
 import { RowMenu } from './row-menu';
+import { MealPeople } from './meal-people';
 import { AddMealMenu } from './add-meal-menu';
 import { WhosEatingForm, WhosEatingReadOnly } from './whos-eating';
 import { ScoutOptions, type ScoutOption } from './scout-options';
@@ -380,7 +381,7 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
   // Only where the Shopping tab can answer it: a saved menu the viewer can edit, kept on the server.
   const fixHref = !readOnly && !isNew && store.caps.canReport ? (ingredientId: string) => `${store.hrefs.shopping}?item=${encodeURIComponent(ingredientId)}` : null;
 
-  const panelFor = (meal: MenuMeal) => (
+  const panelFor = (meal: MenuMeal, onRow = false) => (
     <MealPanel
       catalog={catalog}
       menu={menu}
@@ -388,6 +389,7 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
       view={view}
       readOnly={readOnly}
       gearList={gearList}
+      peopleInHeader={onRow}
       draftItems={draftItems}
       adminLinks={adminLinks}
       onPackageAdded={fixHref ? packageAdded : undefined}
@@ -491,6 +493,12 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
       {rail()}
       <div className={s.titleLine}>
         <Title className={s.menuTitle}>{menu.name.trim() || (isNew ? 'New menu' : 'Untitled menu')}</Title>
+        {priced && !onPeople && (
+          <p className={s.shopLine} role="status" aria-label="Shopping summary">
+            <strong>{money(cost.total)}</strong> <span className={s.muted}>· {money(cost.perPersonMeal)} a person per meal ·</span>{' '}
+            <span aria-hidden="true">{budget.icon}</span> {budget.msg}
+          </p>
+        )}
       </div>
       {aside ?? (readOnly && <ReadOnlyLine plannedBy={plannedBy} />)}
       {steps ? <StepStrip config={steps} done={{ eating: progress.steps.eating.done, meals: progress.steps.meals.done, gear: progress.steps.gear.done, shopping: progress.steps.shopping.done }} current={onPeople ? 'eating' : 'meals'} /> : tabs != null && <div className={s.tabs}>{tabs}</div>}
@@ -525,8 +533,7 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
         ))}
 
       {!onPeople && (
-      <div className={s.grid}>
-        <div className={s.col}>
+      <>
           <section id="meals" className={s.anchor} aria-labelledby="mm-meals-h">
             <div className={s.secHead}>
               <h2 id="mm-meals-h" className={s.heading}>
@@ -588,8 +595,8 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
                             </button>
                             {!open && <span className={s.meta}>{names.length ? names.join(', ') : 'Nothing yet'}</span>}
                           </div>
-                          {/* Per-meal People is a detail of the meal (guideline 6): its dialer lives in the open panel; the row says so only when it differs. */}
-                          {(readOnly || people !== menu.headcount) && <span className={s.meta}>{people} people</span>}
+                          {/* The meal's own People sits on the slot's line (Patrick, 2026-10-07); a viewer reads it as text. */}
+                          {readOnly ? <span className={s.meta}>{people} people</span> : <MealPeople menu={menu} meal={meal} onChange={setMeal} />}
                           {/* The figure beside it leaves these out, so it says so (and which, to a screen reader and on hover). */}
                           {noPrice.length > 0 &&
                             (fixHref ? (
@@ -614,7 +621,7 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
                           )}
                           {open && (
                             <div id={panel} className={s.inset}>
-                              {panelFor(meal)}
+                              {panelFor(meal, true)}
                             </div>
                           )}
                         </li>
@@ -637,29 +644,13 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
               </div>
             )}
           </section>
-        </div>
 
-        <div className={s.col}>
-          <section className={s.section} aria-labelledby="mm-shop-h">
-            <h2 id="mm-shop-h" className={s.heading}>
-              Shopping
-            </h2>
-            {priced ? (
-              <p className={s.shopLine} role="status">
-                <strong>{money(cost.total)}</strong> <span className={s.muted}>· {money(cost.perPersonMeal)} a person per meal ·</span>{' '}
-                <span aria-hidden="true">{budget.icon}</span> {budget.msg}
-              </p>
-            ) : (
-              <p className={s.foot}>Add a meal and pick what you’re cooking, and the shopping list builds itself.</p>
-            )}
-            {cost.unpriced.length > 0 && (
-              <p className={s.foot} role="status">
-                Not counting {cost.unpriced.length === 1 ? '1 food' : `${cost.unpriced.length} foods`} with no price yet: {cost.unpriced.join(', ')}.
-              </p>
-            )}
-          </section>
-        </div>
-      </div>
+          {priced && cost.unpriced.length > 0 && (
+            <p className={s.foot} role="status">
+              Not counting {cost.unpriced.length === 1 ? '1 food' : `${cost.unpriced.length} foods`} with no price yet: {cost.unpriced.join(', ')}.
+            </p>
+          )}
+      </>
       )}
     </div>
   );

@@ -38,12 +38,13 @@
 }
 .tabs { margin: 0 0 var(--sp-6); }
 
-/* ---- Two columns: plan on the left, shopping on the right ------------------ */
+/* ---- Two columns: used only by the recipe editor (its steps column); the planner is one full-width column ---- */
 .grid { display: grid; grid-template-columns: 1fr; gap: var(--sp-8); align-items: start; }
 @media (min-width: 900px) {
   .grid { grid-template-columns: minmax(0, 1fr) 300px; }
 }
 .col { min-width: 0; }
+
 
 .heading {
   font-family: var(--font-ui);
@@ -174,6 +175,15 @@
 .gearBlock { margin: var(--sp-2) 0 var(--sp-3); }
 .blockLabel { font-family: var(--font-ui); font-size: var(--fs-sm); font-weight: 700; color: var(--text-head); margin: 0 0 var(--sp-1); }
 .gearList { margin: 0; padding-left: var(--sp-6); list-style: disc; font-family: var(--font-ui); font-size: var(--fs-md); color: var(--text-body); line-height: 1.5; }
+.gearItem { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2); }
+.gearItemName { flex: 1 1 8em; min-width: 0; }
+/* The quiet "added" / "changed" word after a name, like "Your version". */
+.gearMark { font-size: var(--fs-sm); color: var(--text-meta); }
+.gearQty { display: inline-block; width: 3.5em; height: 32px; border: 1px solid var(--border-mid); border-radius: var(--rad-sm); overflow: hidden; flex: none; }
+.gearQty input { border-left: none; border-right: none; }
+.gearRemove { min-width: 32px; min-height: 32px; padding: 0; background: none; border: none; font-size: var(--fs-md); color: var(--text-meta); cursor: pointer; flex: none; }
+.gearRemove:hover { color: var(--status-danger); }
+.gearRemove:focus-visible { outline: var(--focus-ring); outline-offset: 1px; }
 .gearNote { display: block; font-size: var(--fs-sm); color: var(--text-meta); line-height: 1.4; }
 /* A meal's People dialer on the meal's own line, with its quiet Reset link. */
 .mealPeople { display: inline-flex; align-items: center; gap: var(--sp-2); flex: none; }
@@ -264,7 +274,8 @@
   font-size: var(--fs-md);
   color: var(--text-body);
   line-height: 1.5;
-  margin: 0 0 var(--sp-2);
+  margin: 0;
+  margin-left: auto;
 }
 .shopLine strong { color: var(--text-head); font-variant-numeric: tabular-nums; }
 /* The summary rail is sticky under the site nav (about 48px) and is itself about 44px: a link to #meals or

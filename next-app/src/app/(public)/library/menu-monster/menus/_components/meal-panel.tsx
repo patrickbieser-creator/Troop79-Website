@@ -39,18 +39,18 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import Link from 'next/link';
 import { MEALS, RESTRICTION_BY_KEY, priceText as money } from '@/lib/menu-monster/units';
-import { Button } from '@/app/_components/button';
 import { NumberBox } from '@/app/_components/stepper';
 import { Notice } from '@/app/_components/notice';
 import type { Brand, BrandPick, Catalog, Plan, Recipe, ShoppingLine } from '@/lib/menu-monster/types';
 import { BrandChooser, brandSummary } from './brand-chooser';
-import { MAX_HEADCOUNT, MIN_HEADCOUNT, effectiveRestrictions, livePicks, recipeSuggestions, recipesForMeal, restrictionWarnings } from '@/lib/menu-monster/engine';
+import { effectiveRestrictions, livePicks, recipeSuggestions, recipesForMeal, restrictionWarnings } from '@/lib/menu-monster/engine';
 import type { RestrictionKey } from '@/lib/menu-monster/types';
 import { isPickable, stepsFromText } from '@/lib/menu-monster/scout-recipes';
 import { authoringOf, isSingleFood } from '@/lib/menu-monster/authoring';
 import { draftsMatching, type DraftItem } from '@/lib/menu-monster/draft-items';
-import { gearKey, gearText, mealRecipeGear, parseGear, recipeGear, sortGear, type GearItem } from '@/lib/menu-monster/gear';
-import { GearChips, GearPicker } from '../../_components/gear-picker';
+import { MAX_GEAR_COUNT, gearKey, gearText, mealGearEntries, mealRecipeGear, parseGear, recipeGear, sortGear, type GearItem, type MealGearEntry } from '@/lib/menu-monster/gear';
+import { GearPicker } from '../../_components/gear-picker';
+import { MealPeople } from './meal-people';
 import { AddRow } from '../../_components/add-row';
 import { RECIPES_HREF } from '../../recipes/_components/paths';
 import { composePlan, mealCatalog, type EditOp, type Menu, type MenuMeal, type RecipeEdits } from '@/lib/menu-monster/menus';
@@ -97,6 +97,8 @@ export interface MealPanelProps {
   /** The troop's gear list (not retired): "More gear for this meal" picks from it. Absent = no picker. */
   gearList?: readonly GearItem[];
   onChange: (next: MenuMeal) => void;
+  /** The meal's People box is on its row (the Plan tab), so the panel leaves it out. Absent = the panel carries it (the meal's own page). */
+  peopleInHeader?: boolean;
   /** A "No price yet" food is answered in place: the badge opens the add-a-package form under the ingredient, and the
    *  package that lands comes up here (the Plan tab's catalog). Absent = the badge stays plain text (read-only, a new or local menu). */
   onPackageAdded?: (ingredientId: string, a: AddedPackage) => void;
@@ -124,7 +126,7 @@ export interface MealPanelProps {
   adminLinks?: boolean;
 }
 
-export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearList, onPackageAdded, onChange, canTypeIn = false, onTyped, onNewRecipe, shareVersionMenuId = null, autoFocusAdd = false, onBrands, lineFor, onTypeBrand, onBrandPackage, onSuggestBrand, draftItems = [], adminLinks = false }: MealPanelProps) {
+export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearList, peopleInHeader = false, onPackageAdded, onChange, canTypeIn = false, onTyped, onNewRecipe, shareVersionMenuId = null, autoFocusAdd = false, onBrands, lineFor, onTypeBrand, onBrandPackage, onSuggestBrand, draftItems = [], adminLinks = false }: MealPanelProps) {
   /** Suggestions changed this visit ("recipe:ingredient" → brand id, or null for cleared): the catalog prop is as loaded. */
   const [suggested, setSuggested] = useState<Readonly<Record<string, string | null>>>({});
   const uid = useId();
@@ -201,14 +203,35 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
   const slotWord = (MEALS.find((m) => m.key === meal.slot)?.label ?? meal.slot).toLowerCase();
 
   const change = (next: Partial<MenuMeal>) => onChange({ ...meal, ...next });
-  /** This meal's own People: the menu's number is stored as null, so going back to it is not a change. */
-  const setPeople = (n: number) => {
-    const v = Math.min(MAX_HEADCOUNT, Math.max(MIN_HEADCOUNT, Math.round(n) || MIN_HEADCOUNT));
-    change({ headcount: v === menu.headcount ? null : v });
-  };
-  // Gear for the meal itself (soap, wash basins), with what its foods already ask for shown beside it.
+  // ONE gear list (Patrick, 2026-10-07): what the foods ask for, then the meal's own extras, each editable here.
   const ownGear = meal.gear ?? [];
-  const foodGear = mealRecipeGear(meal, catalog);
+  const gearOut = meal.gearOut ?? [];
+  const gearRows = mealGearEntries(meal, catalog);
+  const editableGear = !readOnly && gearList != null;
+  const setGearCount = (row: MealGearEntry, n: number) => {
+    const key = gearKey(row.name);
+    const rest = ownGear.filter((g) => gearKey(parseGear(g).name) !== key);
+    // Back to the foods' own count: the meal no longer overrides it.
+    const next = row.foodCount === n ? rest : sortGear([...rest, gearText(row.name, n)]);
+    change({ gear: next.length > 0 ? next : undefined });
+  };
+  const removeGear = (row: MealGearEntry) => {
+    const key = gearKey(row.name);
+    const rest = ownGear.filter((g) => gearKey(parseGear(g).name) !== key);
+    // A food's gear is left out of THIS meal; the meal's own extra is simply taken off.
+    const out = row.kind === 'added' ? gearOut : sortGear([...gearOut, row.name]);
+    change({ gear: rest.length > 0 ? rest : undefined, gearOut: out.length > 0 ? out : undefined });
+    setStatus({ text: `${row.name} removed from gear.`, undoTo: null });
+  };
+  const pickGear = (name: string) => {
+    const key = gearKey(name);
+    // A food's gear this meal had left out comes back as the foods ask for it, but only while a food here still asks.
+    if (gearOut.some((g) => gearKey(g) === key) && mealRecipeGear(meal, catalog).some((g) => gearKey(parseGear(g).name) === key)) {
+      const out = gearOut.filter((g) => gearKey(g) !== key);
+      change({ gearOut: out.length > 0 ? out : undefined });
+    } else change({ gear: sortGear([...ownGear, name]) });
+    setStatus({ text: `${name} added to ${title}.`, undoTo: null });
+  };
   /** The master list's description for each gear item, by name key (Patrick, 2026-10-06): a muted line under the item. */
   const gearNotes = gearDescriptions(gearList);
 
@@ -549,21 +572,8 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
 
   return (
     <div className={s.mealPanel}>
-      {!readOnly && (
-        <span className={s.mealPeople}>
-          <span className={s.choiceLabel} aria-hidden="true">
-            People for this meal
-          </span>
-          <span className={s.peopleBox}>
-            <NumberBox id={`mm-people-${meal.id}`} value={plan.headcount} min={MIN_HEADCOUNT} max={MAX_HEADCOUNT} onCommit={setPeople} ariaLabel={`${title} people`} />
-          </span>
-          {plan.headcount !== menu.headcount && (
-            <Button variant="ghost" onClick={() => setPeople(menu.headcount)}>
-              Reset to {menu.headcount}
-            </Button>
-          )}
-        </span>
-      )}
+      {!readOnly && !peopleInHeader && <MealPeople menu={menu} meal={meal} onChange={onChange} />}
+      <p className={s.blockLabel}>Food and recipes</p>
       <ul className={s.card} aria-label={`Recipes in ${title}`}>
         {meal.recipeIds.length === 0 && <li className={s.empty}>Nothing yet.</li>}
         {meal.recipeIds.map((id) => {
@@ -735,20 +745,17 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
         <RecipeLibraryDialog catalog={catalog} menu={menu} meal={meal} swapping={swapping} onPick={pick} onClose={closeBrowse} />
       )}
 
-      {(readOnly ? ownGear.length > 0 || foodGear.length > 0 : foodGear.length > 0 || (gearList != null && ownGear.length > 0)) ? (
-        <section className={s.mealGear} aria-label="More gear for this meal">
-          {foodGear.length > 0 && <GearList label="Gear for the foods" entries={foodGear} descriptions={gearNotes} />}
-          {readOnly ? (
-            ownGear.length > 0 && <GearList label="More gear for this meal" entries={ownGear} descriptions={gearNotes} />
-          ) : (
-            gearList != null && (
-              <>
-                <GearChips idPrefix={`${uid}-`} gear={ownGear} onChange={(next) => change({ gear: next.length > 0 ? next : undefined })} onAnnounce={(text) => setStatus({ text, undoTo: null })} />
-              </>
-            )
-          )}
-        </section>
-      ) : null}
+      {gearRows.length > 0 && (
+        <div className={s.mealGear}>
+          <MealGearList
+            idPrefix={`${uid}-`}
+            rows={gearRows}
+            descriptions={gearNotes}
+            onCount={editableGear ? setGearCount : undefined}
+            onRemove={editableGear ? removeGear : undefined}
+          />
+        </div>
+      )}
       {!readOnly && (
         <AddRow
           open={addOpen}
@@ -877,11 +884,8 @@ export function MealPanel({ catalog, menu, meal, view, readOnly = false, gearLis
                     content: (
                       <GearPicker
                         list={gearList}
-                        taken={ownGear}
-                        onPick={(name) => {
-                          change({ gear: sortGear([...ownGear, name]) });
-                          setStatus({ text: `${name} added to ${title}.`, undoTo: null });
-                        }}
+                        taken={gearRows.map((r) => r.name)}
+                        onPick={pickGear}
                         label={`More gear for ${title}`}
                         placeholder="More gear for this meal"
                       />
@@ -938,6 +942,57 @@ function GearList({ label, entries, descriptions }: { label: string; entries: re
           return (
             <li key={`${gearKey(name)}-${i}`}>
               {gearText(name, count)}
+              {note && <span className={s.gearNote}>{note}</span>}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+/**
+ * A meal's ONE gear list (Patrick, 2026-10-07): "Gear", bulleted — what its foods ask for first, then the meal's own
+ * extras at the bottom with a quiet "added" marker, and "changed" on a food's gear this meal gives another count.
+ * Editable rows (a signed-in planner's own meal) carry a count box and a quiet × remove; a left-out food gear item
+ * just goes. A viewer sees the same list as text.
+ */
+function MealGearList({ rows, descriptions, idPrefix, onCount, onRemove }: { rows: readonly MealGearEntry[]; descriptions: ReadonlyMap<string, string>; idPrefix: string; onCount?: (row: MealGearEntry, n: number) => void; onRemove?: (row: MealGearEntry) => void }) {
+  const uid = useId();
+  return (
+    <div className={s.gearBlock}>
+      <p id={uid} className={s.blockLabel}>
+        Gear
+      </p>
+      <ul className={s.gearList} aria-labelledby={uid}>
+        {rows.map((row) => {
+          const note = descriptions.get(gearKey(row.name));
+          const mark = row.kind === 'food' ? null : row.kind;
+          return (
+            <li key={gearKey(row.name)}>
+              <span className={s.gearItem}>
+                <span className={s.gearItemName}>
+                  {onCount ? row.name : gearText(row.name, row.count)}
+                  {mark && <span className={s.gearMark}> {mark}</span>}
+                </span>
+                {onCount && (
+                  <span className={s.gearQty}>
+                    <NumberBox
+                      id={`${idPrefix}gear-n-${gearKey(row.name).replace(/[^a-z0-9]+/g, '-')}`}
+                      value={row.count}
+                      min={1}
+                      max={MAX_GEAR_COUNT}
+                      ariaLabel={`${row.name} count`}
+                      onCommit={(n) => onCount(row, n)}
+                    />
+                  </span>
+                )}
+                {onRemove && (
+                  <button type="button" className={s.gearRemove} aria-label={`Remove ${row.name}`} onClick={() => onRemove(row)}>
+                    ×
+                  </button>
+                )}
+              </span>
               {note && <span className={s.gearNote}>{note}</span>}
             </li>
           );

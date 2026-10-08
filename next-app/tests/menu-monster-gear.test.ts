@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { cleanGearEntry, cleanGearExtras, cleanMealGear, gearPickOptions, mealRecipeGear, menuGearRows, packedSummary, parseGear, sortGear, unknownGearNames, withoutMealGear, type GearItem, type MenuGearState } from '../src/lib/menu-monster/gear';
+import { cleanGearEntry, cleanGearExtras, cleanMealGear, cleanMealGearOut, gearPickOptions, mealGearEntries, mealRecipeGear, menuGearRows, packedSummary, parseGear, sortGear, unknownGearNames, withoutMealGear, type GearItem, type MenuGearState } from '../src/lib/menu-monster/gear';
 import type { Catalog, Recipe } from '../src/lib/menu-monster/types';
 import type { Menu, MenuMeal } from '../src/lib/menu-monster/menus';
 
@@ -231,5 +231,60 @@ describe('sortGear', () => {
 
   it('IsStable_ForTheSameName', () => {
     expect(sortGear(['Pot × 2', 'pot'])).toEqual(['Pot × 2', 'pot']);
+  });
+});
+
+describe('a meal’s one gear list (derived + added + left out)', () => {
+  const m = (over: Partial<MenuMeal>): MenuMeal => ({ ...meal('m1', ['bacon', 'eggs']), ...over });
+  const shown = (x: MenuMeal) => mealGearEntries(x, CATALOG).map((e) => `${e.name}|${e.count}|${e.kind}`);
+
+  it('Gear_IsOneList_DerivedFirst_ThenAddedWithMarker', () => {
+    expect(shown(m({ gear: ['Dish soap', 'Wash basin × 2'] }))).toEqual([
+      'Camp stove|1|food',
+      'Long tongs|1|food',
+      'Skillet|2|food',
+      'Spatula|1|food',
+      'Dish soap|1|added',
+      'Wash basin|2|added'
+    ]);
+  });
+
+  it('AnOwnEntry_WithADerivedName_OverridesItsCount_AsChanged', () => {
+    expect(shown(m({ gear: ['Skillet × 3'] }))).toContain('Skillet|3|changed');
+  });
+
+  it('AnOwnEntry_WithADerivedName_AppearsOnce', () => {
+    expect(shown(m({ gear: ['skillet'] })).filter((e) => e.toLowerCase().startsWith('skillet'))).toHaveLength(1);
+  });
+
+  it('GearOut_LeavesADerivedItemOffTheList', () => {
+    expect(shown(m({ gearOut: ['Long tongs'] })).some((e) => e.startsWith('Long tongs'))).toBe(false);
+  });
+
+  it('GearOut_IgnoredForAnItemTheMealOverrides', () => {
+    expect(shown(m({ gear: ['Skillet × 3'], gearOut: ['Skillet'] }))).toContain('Skillet|3|changed');
+  });
+
+  it('CleanMealGearOut_KeepsNamesOnly_OneOfEach_AToZ_NotOnTheOwnList', () => {
+    expect(cleanMealGearOut(['Spatula × 2', 'skillet', 'Skillet', 12, null, ''], ['Spatula'])).toEqual(['skillet']);
+  });
+
+  it('CleanMealGearOut_IsCappedAt30', () => {
+    expect(cleanMealGearOut(Array.from({ length: 40 }, (_, i) => `Item ${i}`))).toHaveLength(30);
+  });
+
+  it('TheRollUp_HonoursALeftOutItem_AndACountOverride', () => {
+    const rows = menuGearRows(menu([m({ gearOut: ['Long tongs'], gear: ['Skillet × 3'] })]), CATALOG, LIST, NONE);
+    expect([rows.find((r) => r.name === 'Long tongs'), rows.find((r) => r.name === 'Skillet')?.count]).toEqual([undefined, 3]);
+  });
+
+  it('TheRollUp_LetsAMealLowerADerivedCount', () => {
+    const rows = menuGearRows(menu([m({ gear: ['Skillet'] })]), CATALOG, LIST, NONE);
+    expect(rows.find((r) => r.name === 'Skillet')?.count).toBe(1);
+  });
+
+  it('TheRollUp_KeepsAnItemAnotherMealStillNeeds', () => {
+    const rows = menuGearRows(menu([m({ gearOut: ['Long tongs'] }), meal('m2', ['bacon'])]), CATALOG, LIST, NONE);
+    expect(rows.find((r) => r.name === 'Long tongs')?.usedBy.map((u) => u.mealId)).toEqual(['m2']);
   });
 });

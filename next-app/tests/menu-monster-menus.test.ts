@@ -339,6 +339,29 @@ describe('menuCredit', () => {
 describe('sanitizeMenu meal gear (gear-from-the-list release 2)', () => {
   const withGear = (gear: unknown) => raw({ meals: [{ id: 'm1', day: 0, slot: 'breakfast', headcount: null, recipeIds: ['B001'], gear }] });
 
+  const GEARED = { ...CATALOG, recipes: CATALOG.recipes.map((r) => (r.id === 'B001' ? { ...r, equipment: ['Skillet', 'Tongs'] } : r)) } as Catalog;
+
+  it('GearOut_IsKeptAsNames_OneOfEach_AToZ_AndSurvivesASecondPass', () => {
+    const m = (gearOut: unknown) => raw({ meals: [{ id: 'm1', day: 0, slot: 'breakfast', headcount: null, recipeIds: ['B001'], gearOut }] });
+    const once = sanitizeMenu(m(['Tongs × 2', 'skillet', 'Skillet', 7]), GEARED);
+    expect([once.meals[0].gearOut, sanitizeMenu(once, GEARED).meals[0].gearOut]).toEqual([['skillet', 'Tongs'], ['skillet', 'Tongs']]);
+  });
+
+  it('GearOut_DropsANameTheMealOverridesWithItsOwnGear', () => {
+    const r = sanitizeMenu(raw({ meals: [{ id: 'm1', day: 0, slot: 'breakfast', headcount: null, recipeIds: ['B001'], gear: ['Skillet × 3'], gearOut: ['Skillet', 'Tongs'] }] }), GEARED);
+    expect(r.meals[0].gearOut).toEqual(['Tongs']);
+  });
+
+  it('SanitizeMenu_DropsGearOut_NoFoodProvides', () => {
+    const r = sanitizeMenu(raw({ meals: [{ id: 'm1', day: 0, slot: 'breakfast', headcount: null, recipeIds: ['D001'], gearOut: ['Skillet'] }] }), GEARED);
+    expect(r.meals[0]).not.toHaveProperty('gearOut');
+  });
+
+  it('GearOut_IsAbsentWhenEmpty', () => {
+    const r = sanitizeMenu(raw({ meals: [{ id: 'm1', day: 0, slot: 'breakfast', headcount: null, recipeIds: ['B001'], gearOut: [] }] }), CATALOG);
+    expect(r.meals[0]).not.toHaveProperty('gearOut');
+  });
+
   it('MealGear_RoundTrips_ThroughASecondSanitize', () => {
     const once = sanitizeMenu(withGear(['Soap', 'Wash basin × 2']), CATALOG);
     expect(once.meals[0].gear).toEqual(['Soap', 'Wash basin × 2']);

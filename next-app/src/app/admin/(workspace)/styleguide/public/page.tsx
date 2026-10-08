@@ -492,7 +492,7 @@ export default function PublicStyleguidePage() {
             <p className={sg.specimenInlineNote}>
               <code>StepStrip</code> from <code>menu-monster/menus/_components/step-strip</code> &mdash; Who&rsquo;s eating &rarr; Meals &rarr; Gear &rarr;
               Shopping, each its own screen (What we bought joins after the outing). Each step is a link to its route, done ones ticked, the current one underlined, none ever
-              locked; the strip scrolls sideways on a phone. Share is a quiet action at the end, not a step.
+              locked; the strip scrolls sideways on a phone. Share is a quiet action at the end, not a step. The menu’s shopping summary (total, per person per meal, budget) sits right-aligned on the title line and wraps under the name on a phone; the planner is one full-width column.
             </p>
           </div>
           <div className={sg.specimenBlock}>

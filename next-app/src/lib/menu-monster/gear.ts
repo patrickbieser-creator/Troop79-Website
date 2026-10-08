@@ -89,6 +89,26 @@ export function cleanGearExtras(raw: unknown): string[] {
 /** A meal's own gear as stored in the plan (Patrick, 2026-10-05: soap and wash basins belong to the meal, not a food): cleaned, one of each, A to Z, at most 30. */
 export const cleanMealGear = (raw: unknown): string[] => sortGear(cleanGearExtras(raw));
 
+/**
+ * Gear a meal leaves out of what its foods ask for, as stored (Patrick, 2026-10-07): names only (a count means nothing
+ * for something left out), one of each, A to Z, at most 30. A name the meal also overrides with its own `gear` entry is
+ * not left out (the override wins), so `own` is dropped from the result. With `provided` (the gear the meal's foods
+ * ask for), a name no food provides is dropped too: it would only hide the item if such a food came back.
+ */
+export function cleanMealGearOut(raw: unknown, own: readonly string[] = [], provided?: readonly string[]): string[] {
+  const only = provided ? new Set(provided.map((e) => gearKey(parseGear(e).name))) : null;
+  const skip = new Set(own.map((e) => gearKey(parseGear(e).name)));
+  const out: string[] = [];
+  for (const g of Array.isArray(raw) ? raw : []) {
+    const name = parseGear(cleanGearEntry(g)).name;
+    const k = gearKey(name);
+    if (!k || skip.has(k) || (only && !only.has(k))) continue;
+    skip.add(k);
+    out.push(name);
+  }
+  return sortGear(out).slice(0, MAX_GEAR_EXTRAS);
+}
+
 /** One Packed tick, as stored in mm_menus.gear_packed under the item's key. */
 export interface PackedTick {
   count: number;
@@ -158,13 +178,18 @@ export function menuGearRows(menu: Pick<Menu, 'meals' | 'headcount'>, catalog: C
 
   const cooking = menu.meals.filter((m) => m.recipeIds.length > 0);
   for (const meal of cooking) {
+    // A meal can leave a food's gear out, or set its own count for it (meal.gear overrides the foods' count).
+    const own = new Set((meal.gear ?? []).map((e) => gearKey(parseGear(e).name)));
+    const out = new Set((meal.gearOut ?? []).map((e) => gearKey(parseGear(e).name)));
     for (const rid of meal.recipeIds) {
       const recipe = recipes.get(rid);
       for (const entry of recipe?.equipment ?? []) {
         const { name, count } = parseGear(entry);
         if (!name) continue;
+        const k = gearKey(name);
+        if (out.has(k) && !own.has(k)) continue;
         const r = row(name, false);
-        r.count = Math.max(r.count, count);
+        if (!own.has(k)) r.count = Math.max(r.count, count);
         const use = r.usedBy.find((u) => u.mealId === meal.id);
         if (use) {
           if (!use.recipes.includes(recipe!.name)) use.recipes.push(recipe!.name);
@@ -172,7 +197,7 @@ export function menuGearRows(menu: Pick<Menu, 'meals' | 'headcount'>, catalog: C
       }
     }
   }
-  // A meal's own gear (soap, wash basins): it counts even when the meal has no food on it.
+  // A meal's own gear (soap, wash basins, a changed count): it counts even when the meal has no food on it.
   for (const meal of menu.meals) {
     for (const entry of meal.gear ?? []) {
       const { name, count } = parseGear(entry);
@@ -224,6 +249,38 @@ export function mealRecipeGear(meal: { recipeIds: readonly string[] }, catalog: 
     }
   }
   return sortGear([...most.values()].map((g) => gearText(g.name, g.count)));
+}
+
+export type MealGearKind = 'food' | 'changed' | 'added';
+/** One line of a meal's one gear list. */
+export interface MealGearEntry {
+  name: string;
+  count: number;
+  /** food = what the foods ask for; changed = a food's gear with this meal's own count; added = the meal's own. */
+  kind: MealGearKind;
+  /** The count the foods ask for (food and changed only). */
+  foodCount?: number;
+}
+
+/**
+ * A meal's ONE gear list (Patrick, 2026-10-07): what its foods ask for (minus `gearOut`), A to Z, with the meal's own
+ * `gear` entries: one that names a food's gear overrides its count ("changed"), the rest are appended at the bottom
+ * ("added"). An entry the meal both overrides and leaves out is overridden.
+ */
+export function mealGearEntries(meal: { recipeIds: readonly string[]; gear?: readonly string[]; gearOut?: readonly string[] }, catalog: Pick<Catalog, 'recipes'>): MealGearEntry[] {
+  const own = new Map((meal.gear ?? []).map((e) => parseGear(e)).map((g) => [gearKey(g.name), g]));
+  const out = new Set((meal.gearOut ?? []).map((e) => gearKey(parseGear(e).name)));
+  const out2: MealGearEntry[] = [];
+  const seen = new Set<string>();
+  for (const f of mealRecipeGear(meal, catalog).map((e) => parseGear(e))) {
+    const k = gearKey(f.name);
+    seen.add(k);
+    const o = own.get(k);
+    if (o) out2.push({ name: o.name, count: o.count, kind: o.count === f.count ? 'food' : 'changed', foodCount: f.count });
+    else if (!out.has(k)) out2.push({ name: f.name, count: f.count, kind: 'food', foodCount: f.count });
+  }
+  for (const [k, o] of own) if (!seen.has(k)) out2.push({ name: o.name, count: o.count, kind: 'added' });
+  return out2;
 }
 
 /** A menu with the named gear taken off every meal (what a save reported as not on the list). */
