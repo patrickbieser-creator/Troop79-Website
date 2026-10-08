@@ -96,10 +96,15 @@ describe('MealEditor', () => {
       expect(screen.queryByRole('link', { name: /Back to/ })).toBeNull();
     });
 
+    it('TitleLine_LinksToTheCookSheet_ForASavedMenu', () => {
+      render(editor());
+      expect(screen.getByRole('link', { name: 'Print plan' }).getAttribute('href')).toBe('/library/menu-monster/menus/menu-1/print');
+    });
+
     it('Meal_HasNoShoppingControls', () => {
       render(editor());
       expect(screen.queryByRole('checkbox')).toBeNull();
-      expect(screen.queryByText(/package|bringing|print|budget target/i)).toBeNull();
+      expect(screen.queryByText(/package|bringing|print(?! plan)|budget target/i)).toBeNull();
     });
 
     it('Meal_NeverTouchesTheBrowserDraft', async () => {

@@ -325,7 +325,8 @@ describe('PlanTab', () => {
   it('UnpricedMenu_ShowsNoSummaryOnTheTitleLine', () => {
     render(existing(base({ meals: [{ id: 'm1', day: 0, slot: 'breakfast', headcount: null, recipeIds: [], recipeEdits: {} }] })));
     expect(screen.queryByRole('status', { name: 'Shopping summary' })).toBeNull();
-    expect(screen.getByRole('heading', { level: 1 }).parentElement?.children).toHaveLength(1);
+    // h1 plus the Print plan action (v1.206.0); no summary line.
+    expect(screen.getByRole('heading', { level: 1 }).parentElement?.children).toHaveLength(2);
   });
 
   it('Shopping_ShowsTheMenuTotalAndBudgetReadout', () => {

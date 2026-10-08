@@ -1,0 +1,142 @@
+/* The printable cook sheet (Patrick, 2026-10-08) — public tokens only. A page-like column on screen; on paper
+   the same markup, letter size, a half-inch margin, and each day's meals in two columns to save pages. */
+
+@page {
+  size: letter;
+  margin: 0.5in;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  max-width: 8.5in;
+  margin: 0 auto;
+  padding: var(--sp-3) var(--sp-4);
+  font-family: var(--font-ui);
+}
+
+.sheet {
+  max-width: 8.5in;
+  margin: 0 auto var(--sp-8);
+  padding: var(--sp-6) var(--sp-8);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.35;
+  color: var(--text-body);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--fs-xl);
+  color: var(--text-head);
+}
+.meta {
+  margin: var(--sp-1) 0 var(--sp-3);
+  color: var(--text-meta);
+}
+
+.day {
+  margin-top: var(--sp-4);
+}
+.dayName {
+  margin: 0 0 var(--sp-2);
+  padding-bottom: var(--sp-1);
+  border-bottom: 1px solid var(--border-mid);
+  font-size: var(--fs-md);
+  color: var(--text-head);
+  break-after: avoid;
+}
+
+.meals {
+  columns: 2;
+  column-gap: 18pt;
+}
+.meal {
+  margin: 0 0 var(--sp-3);
+}
+.mealName {
+  margin: 0 0 var(--sp-1);
+  font-size: var(--fs-sm);
+  color: var(--text-head);
+  break-after: avoid;
+}
+
+.food {
+  margin: 0 0 var(--sp-2);
+  break-inside: avoid;
+}
+.foodName {
+  margin: 0 0 2px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-head);
+  break-after: avoid;
+}
+
+.rows {
+  border-collapse: collapse;
+  width: 100%;
+}
+.rows td {
+  padding: 0 0 1px;
+  vertical-align: baseline;
+}
+.rows .amount {
+  width: 4.5em;
+  padding-right: var(--sp-3);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.out {
+  color: var(--text-meta);
+}
+
+.steps {
+  margin: var(--sp-1) 0 0;
+  padding-left: 1.4em;
+  list-style: decimal;
+}
+.stepsRef,
+.none,
+.gear,
+.warn {
+  margin: var(--sp-1) 0 0;
+}
+.stepsRef,
+.none,
+.muted {
+  color: var(--text-meta);
+}
+.gear {
+  color: var(--text-head);
+}
+.warn {
+  color: var(--text-head);
+  font-weight: 600;
+}
+
+@media print {
+  .toolbar {
+    display: none;
+  }
+  .sheet {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    font-size: 10pt;
+  }
+  .title {
+    font-size: 15pt;
+  }
+  .dayName {
+    font-size: 12pt;
+  }
+  .mealName,
+  .foodName {
+    font-size: 10.5pt;
+  }
+}

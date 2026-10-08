@@ -159,6 +159,12 @@ img { display: block; max-width: 100%; }
   }
 }
 
+/* The cook sheet (Patrick, 2026-10-08) is a page of its own: hide the site chrome on screen AND on paper,
+   so the sheet looks the same in both. Its toolbar hides itself in print (cook-sheet.module.css). */
+body:has(#mm-cook-sheet-page) > :not(main) {
+  display: none !important;
+}
+
 /* A scout's menu Shopping tab (library/menu-monster/menus/.../shopping) prints
    its own list: hide the site chrome like the planner's sheet does; the page's
    controls hide themselves in workspace.module.css. */

@@ -5,12 +5,13 @@
  * Share on their behalf. Anyone but a leader gets notFound().
  */
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
 import { resolveMenuAliases } from '@/lib/menu-monster/menus';
 import { ownerCreditNamesWith } from '@/lib/menu-monster/menus-store';
 import { PageShell } from '@/app/_components/page-shell';
-import { MenuHeader, MenuRail, MenuSteps, NO_INDEX, listCrumb, loadViewableMenu, menuViewer } from '../../_components/scout-menus';
+import { MENUS_HREF, MenuHeader, MenuRail, MenuSteps, NO_INDEX, listCrumb, loadViewableMenu, menuViewer } from '../../_components/scout-menus';
 import { ReadOnlyLine } from '../../_components/read-only-line';
 import { ReviewPanel } from '../../_components/review-panel';
 import { SharePanel } from '../../_components/share-panel';
@@ -43,6 +44,10 @@ export default async function MenuReviewPage({ params }: { params: Promise<{ men
         </div>
         {view.readOnly && <ReadOnlyLine plannedBy={view.plannedBy} />}
         <MenuSteps menuId={stored.id} active="review" access={view.access} menu={menu} catalog={view.catalog} shoppingDone={view.shoppingDone} />
+        {/* The cook sheet (Patrick, 2026-10-08): the whole plan on paper, two columns. */}
+        <p className={s.foot}>
+          <Link href={`${MENUS_HREF}/${stored.id}/print`}>Print plan</Link> as a cook sheet.
+        </p>
         <ReviewPanel menuId={stored.id} note={stored.review?.note ?? ''} status={status} plannedBy={view.plannedBy} />
         {/* Working on the scout's menu, a leader can share it for them too. */}
         {view.helping && <SharePanel menuId={stored.id} credit={credit} status={status} />}

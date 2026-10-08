@@ -499,6 +499,15 @@ export function PlanTab({ catalog: catalogProp, menuId, menu: initial, updatedAt
             <span aria-hidden="true">{budget.icon}</span> {budget.msg}
           </p>
         )}
+        {/* The cook sheet (Patrick, 2026-10-08): a saved menu prints from its own page — the saved version, so the link
+            steps aside while the draft is dirty (Save first, then print). */}
+        {!onPeople && canOpenPage && (
+          <div className={s.titleActions}>
+            <Button variant="secondary" href={`${store.hrefs.plan}/print`}>
+              Print plan
+            </Button>
+          </div>
+        )}
       </div>
       {aside ?? (readOnly && <ReadOnlyLine plannedBy={plannedBy} />)}
       {steps ? <StepStrip config={steps} done={{ eating: progress.steps.eating.done, meals: progress.steps.meals.done, gear: progress.steps.gear.done, shopping: progress.steps.shopping.done }} current={onPeople ? 'eating' : 'meals'} /> : tabs != null && <div className={s.tabs}>{tabs}</div>}
