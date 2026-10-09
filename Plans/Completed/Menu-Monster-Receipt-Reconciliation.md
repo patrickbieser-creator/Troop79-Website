@@ -1,6 +1,6 @@
 # Menu Monster — Receipt Reconciliation (planned vs bought)
 
-**Status:** Active
+**Status:** SHIPPED v1.207.0 + v1.208.0 (2026-10-08, 1e5e034 + 5656bfa) — all three steps in one session; the compare view shipped inside v1.208.0
 **Started:** 2026-10-08
 **Priority:** High
 

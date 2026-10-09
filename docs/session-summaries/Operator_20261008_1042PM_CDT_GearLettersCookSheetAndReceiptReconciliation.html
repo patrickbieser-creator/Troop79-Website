@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session 51 — Gear letters, the cook sheet, and the receipt becomes data — Troop79-Website</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #3d5a3e;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #f0eecd;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); vertical-align: top; }
+        tr:hover { background: var(--nw-sage); }
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+        code { font-family: 'Courier New', monospace; font-size: 0.85em; background: var(--nw-light-gray); padding: 0 0.3em; border-radius: 3px; }
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+        @media print { body { background: white; } header { padding: 1.5rem; } .container { padding: 1rem; } .stat { break-inside: avoid; } }
+        @media (max-width: 600px) { header h1 { font-size: 1.5rem; } .stats { flex-direction: column; } }
+    </style>
+<body>
+    <header>
+        <h1>Gear letters, a Chef kit, a printable cook sheet, and the receipt becomes data: planned vs bought</h1>
+        <p class="subtitle">Session 51. Patrick opened with a Lunch-panel screenshot &mdash; gear once per meal, steps always open, the &hellip; on the food&rsquo;s line, a B&nbsp;L&nbsp;D&nbsp;S column &mdash; added a Chef kit, asked for a compact printable meal plan, then brought the Aldi receipt from the High Cliff shopping trip: import it as data, and give the scouts a step where they settle it line by line and see every meal as planned beside as bought, for the Cooking merit badge.</p>
+        <div class="meta">
+            <span>&#128197; October 8, 2026</span>
+            <span>&#129302; Operator (Fable 5.1)</span>
+            <span>&#128204; Troop79-Website</span>
+            <span>&#128640; v1.203.0 &rarr; v1.208.0</span>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">6</div><div class="label">Releases (v1.204.0&ndash;v1.208.0)</div></div>
+            <div class="stat"><div class="number">2</div><div class="label">Production migrations (chef kit, receipts)</div></div>
+            <div class="stat"><div class="number">5</div><div class="label">Decisions (D-362&ndash;366)</div></div>
+            <div class="stat"><div class="number">124</div><div class="label">Tests net (4833 &rarr; 4957)</div></div>
+            <div class="stat"><div class="number">53</div><div class="label">Receipt lines in production</div></div>
+        </div>
+
+        <h2>What Was Accomplished</h2>
+
+        <div class="callout callout-teal">
+            <strong>The outcome:</strong> a store receipt is now data in the troop&rsquo;s own database, every line arrives with a proposed match to the shopping list, and the scouts have a step of their own where they confirm each line, place the add-ons on a meal, and read every meal twice &mdash; as planned and as bought &mdash; with the cost per meal and per person and the difference in words. The drudgery is gone; the judgement per line stays with the scouts.
+        </div>
+
+        <h3>Gear once per meal, steps open, the letters column (v1.204.0)</h3>
+        <p>An open food no longer lists gear of its own; the meal&rsquo;s one Gear list carries it. The &ldquo;Steps &middot; Gear&rdquo; toggle is gone and a food&rsquo;s steps are simply there. The &hellip; menu stays on the food&rsquo;s line even under a diet warning. Every gear row, on the meal panel and the Gear step, carries five fixed-width slots &mdash; B&nbsp;L&nbsp;D&nbsp;S and Ds &mdash; so the letters line up down the list. Patrick: &ldquo;excellent.&rdquo;</p>
+
+        <h3>The Chef kit (v1.205.0)</h3>
+        <p>A fourth place gear lives, between Patrol box and Bring from home, with the list declared once so a fifth is one line plus a migration. The database check was widened first.</p>
+
+        <h3>The cook sheet (v1.206.0, v1.206.1)</h3>
+        <p>&ldquo;Print plan&rdquo; on the Meals and Review steps opens a page of its own with no site chrome: every day and meal in two columns, each food&rsquo;s ingredients, its steps printed once with later meals pointing back, the meal&rsquo;s gear on one line, diet notes. Patrick&rsquo;s first printout trimmed it to the big picture &mdash; names only, no quantities or brands or prices, a single food just its name, bigger headings, one indent, diets in italics, a meal kept to one column.</p>
+
+        <h3>Receipts become data (v1.207.0)</h3>
+        <p>Two photos of the Aldi receipt (93 items, $280.26 against a $368.43 plan) were transcribed, identical lines coalesced, the sum checked against the printed subtotal and the candy tax. Two tables hold receipts and their lines as printed; a matcher expands Aldi&rsquo;s abbreviations and proposes the planned food for every line it can defend, leaving the ten add-ons unidentified; a reconcile library gives each meal as planned and as bought, splitting shared lines by each meal&rsquo;s share. An import script loads a transcribed receipt; the rows reached production through the database pooler because this machine holds no production service key.</p>
+
+        <h3>The Receipt step &mdash; Planned vs bought (v1.208.0)</h3>
+        <p>In the menu&rsquo;s tab set, readable by everyone who can open the menu. One list in receipt order with only the first pending line open: Confirm, Something else&hellip;, Not on the plan (pick the meal it joined), Set aside, and a persistent Undo; focus moves to the next line and a status line announces. A confirmed line writes onto the ingredient&rsquo;s What-we-bought line, tagged with its receipt line so Undo removes exactly that item. Below, one table per meal &mdash; Food, As planned, As bought &mdash; with the meal&rsquo;s cost and per-person cost in both shapes and the difference said in words, add-ons and not-bought lines called out, a totals row against the receipt, and four prompts for the scouts to compare and contrast. Jenna shaped the interaction; qa-lead caught the Undo collision and a page that dropped the step.</p>
+
+        <h3>Verification</h3>
+        <p>Every release passed lint, typecheck, the full suite and the build; qa-lead reviewed each. The cook sheet and the Receipt step were driven on localhost against the imported receipt &mdash; two confirms, an add-on on Saturday snack, three Undos &mdash; and local was returned to pending. Nothing has been printed on paper yet; the scouts have not touched the receipt.</p>
+
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Decision</th></tr></thead>
+            <tbody>
+                <tr><td>D-362</td><td>Gear lives once per meal; steps always open; the &hellip; stays on the food&rsquo;s line; a B&nbsp;L&nbsp;D&nbsp;S&nbsp;Ds column on every gear list</td></tr>
+                <tr><td>D-363</td><td>The Chef kit is a fourth gear home; GEAR_HOMES is the one declaration</td></tr>
+                <tr><td>D-364</td><td>The cook sheet: one menu on its own print page, the big picture only, two columns per day</td></tr>
+                <tr><td>D-365</td><td>Receipts are data: receipt tables, an abbreviation matcher that proposes the planned food, a reconcile library, an import script</td></tr>
+                <tr><td>D-366</td><td>The Receipt step: settle lines one at a time into What we bought; every meal as planned beside as bought; readable by everyone</td></tr>
+            </tbody>
+        </table>
+
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Patrick: print the High Cliff cook sheet on paper; settle the receipt with the scouts (the six &ldquo;Gluten Free Mix&rdquo; bags, the planned lines not on the receipt); file gear under Chef kit.</li>
+            <li>Receipt follow-ups: extras that name a catalog food, price-book learning from receipts, a photo import, a per-meal reflection note.</li>
+            <li>qa-lead&rsquo;s open warnings: direct tests on the receipt actions and a version check on the bought line first.</li>
+            <li>Carried: eyes-on v1.198.2&ndash;v1.203.0, the D-344&ndash;D-351 deferred list, the suite flakes, B-004.</li>
+        </ul>
+
+        <h2>Files Changed</h2>
+        <table>
+            <thead><tr><th>Area</th><th>Change</th></tr></thead>
+            <tbody>
+                <tr><td>Meal panel</td><td>meal-panel.tsx (Steps, RowMenu order, MealGearList letters), meal-letters.tsx (new), gear-tab.tsx (letters, hasReceipt), workspace.module.css</td></tr>
+                <tr><td>Cook sheet</td><td>menus/[menuId]/print/page.tsx (new), cook-sheet.tsx + .module.css (new), plan-tab.tsx (Print plan), review/page.tsx, globals.css (chrome rule)</td></tr>
+                <tr><td>Receipt step</td><td>menus/[menuId]/receipt/page.tsx (new), receipt-tab.tsx + .module.css (new), _tools/menu-monster/receipt-actions.ts (new), scout-menus.tsx + step-strip.tsx + viewer-aside.tsx (Receipt step, hasReceipt on every menu page)</td></tr>
+                <tr><td>Library</td><td>gear.ts (gearMealSlots, chef_kit), gear-store.ts, bought.ts (receiptLineId), receipt-bought.ts, receipt-match.ts, reconcile.ts, receipt-store.ts (all new)</td></tr>
+                <tr><td>Database</td><td>20261029100000_mm_gear_chef_kit.sql, 20261030100000_mm_receipts.sql &mdash; both on production; the High Cliff receipt rows loaded</td></tr>
+                <tr><td>Scripts</td><td>scripts/import-receipt.ts (new), scripts/receipts/2026-10-08-aldi-high-cliff.json (new), package.json (import-receipt)</td></tr>
+                <tr><td>Tests</td><td>+124 net: meal-panel, gear, gear-tab, gear-store-db, cook-sheet, plan-tab, receipt-match, reconcile, receipt-store-db, receipt-bought, receipt-tab, menu-steps, leader-view, menu-monster-db</td></tr>
+                <tr><td>Docs</td><td>changelog.html (six entries); Plans/Completed/Menu-Monster-Receipt-Reconciliation.md; Agents memory D-362&ndash;366</td></tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
