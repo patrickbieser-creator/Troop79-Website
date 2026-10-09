@@ -12,6 +12,7 @@
     "seed-news": "tsx --env-file=.env.local scripts/seed-news.ts",
     "import-spreadsheet": "tsx --env-file=.env.local scripts/import-spreadsheet.ts",
     "set-mb-reqs": "tsx --env-file=.env.local scripts/set-mb-requirements.ts",
+    "import-receipt": "tsx --env-file=.env.local scripts/import-receipt.ts",
     "set-official-text": "tsx --env-file=.env.local scripts/set-official-text.ts",
     "import-ledger-backfill": "tsx --env-file=.env.local scripts/import-ledger-backfill.ts",
     "import-attendance": "tsx --env-file=.env.local scripts/import-attendance.ts",

@@ -111,7 +111,7 @@ describe('menu monster catalog', () => {
       .split('\n')
       .filter(Boolean);
     // bool || text casts to 'true' (not psql's bare-column 't').
-    expect(rls).toEqual([...MM_TABLES, 'mm_brands', 'mm_gear', 'mm_menu_planners', 'mm_menus', 'mm_patrols', 'mm_price_history', 'mm_stores'].sort().map((t) => `${t}=true`));
+    expect(rls).toEqual([...MM_TABLES, 'mm_brands', 'mm_gear', 'mm_menu_planners', 'mm_menus', 'mm_patrols', 'mm_price_history', 'mm_receipt_lines', 'mm_receipts', 'mm_stores'].sort().map((t) => `${t}=true`));
 
     const policies = localSql(`select count(*) from pg_policies where schemaname = 'public' and tablename like 'mm\\_%'`);
     expect(Number(policies)).toBe(0);
