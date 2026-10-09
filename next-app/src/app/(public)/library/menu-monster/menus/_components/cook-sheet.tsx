@@ -3,8 +3,9 @@
  * steps, etc. Reasonably compact. Fewer pages — multiple columns."): ONE menu on paper — every day and meal, each
  * food's ingredients by name, its steps, the meal's gear on one line and its diet notes. The big picture only
  * (Patrick, later the same day): no quantities and no brands — the shopping list carries those — and no prices; a
- * single food (Chips, Hot Chocolate) is just its name, never "Chips: Chips". A food's steps print the first time it
- * appears; later meals point back to it. Pure and server-safe: the page wraps it, the browser's Print button prints it.
+ * single food (Chips, Hot Chocolate) is just its name, never "Chips: Chips". A meal's steps print at its end, after
+ * its foods and gear, each group naming its food (2026-10-09); a food's steps print the first time it appears and
+ * later meals point back to it. Pure and server-safe: the page wraps it, the browser's Print button prints it.
  */
 import type { ReactNode } from 'react';
 import type { Catalog, MealSlot, Recipe, RestrictionKey } from '@/lib/menu-monster/types';
@@ -36,7 +37,9 @@ function datesText(menu: Menu): string {
 /** The quiet words after an ingredient's name: its diet rule, then what this menu did to it. */
 function rowNotes(row: IngredientRow): string[] {
   const out: string[] = [];
-  if (row.note) out.push(row.note);
+  // "everyone else" is the troop's default line: on paper it says nothing (Patrick, 2026-10-09). Diet notes stay.
+  const note = row.note?.replace(/^everyone else( · )?/, '');
+  if (note) out.push(note);
   if (row.scope) out.push(scopeLabel(row.scope));
   const m = row.marker;
   if (m?.kind === 'out') out.push('left out');
@@ -70,9 +73,6 @@ export function CookSheet({ menu, catalog, plannedBy }: { menu: Menu; catalog: C
     // what would print, not on the authoring shape — a one-line food with a diet variant still lists both lines.
     const rows = menuEditRows(recipe, ops, catalog, plan, 'total');
     const single = rows.length === 1 && sameName(rows[0].name, recipe.name);
-    const steps = stepsFromText(recipe.stepsMd);
-    const where = stepsAt.get(rid);
-    if (steps.length > 0 && !where) stepsAt.set(rid, `${dayLabel(menu.startDate, meal.day)} · ${slotLabel(meal.slot)}`);
     return (
       <section key={rid} className={s.food}>
         <h4 className={s.foodName}>
@@ -95,16 +95,43 @@ export function CookSheet({ menu, catalog, plannedBy }: { menu: Menu; catalog: C
               })}
             </ul>
           ))}
-        {steps.length > 0 &&
-          (where ? (
-            <p className={s.stepsRef}>Steps: see {where}</p>
+      </section>
+    );
+  }
+
+  /** A meal's steps, after its foods and gear (Patrick, 2026-10-09: the big picture first): each group names its
+   *  food; a food whose steps already printed points back. */
+  function mealSteps(meal: MenuMeal): ReactNode {
+    const groups = meal.recipeIds.flatMap((rid) => {
+      const recipe = byId.get(rid);
+      const steps = recipe ? stepsFromText(recipe.stepsMd) : [];
+      if (!recipe || steps.length === 0) return [];
+      const where = stepsAt.get(rid);
+      if (!where) stepsAt.set(rid, `${dayLabel(menu.startDate, meal.day)} · ${slotLabel(meal.slot)}`);
+      return [{ rid, recipe, steps, where }];
+    });
+    if (groups.length === 0) return null;
+    return (
+      <section className={s.stepsBlock}>
+        <h4 className={s.stepsHead}>Steps</h4>
+        {groups.map(({ rid, recipe, steps, where }) =>
+          where ? (
+            <p key={rid} className={s.stepsRef}>
+              {recipe.name}: see {where}
+            </p>
           ) : (
-            <ol className={s.steps} aria-label={`How to make ${recipe.name}`}>
-              {steps.map((step, i) => (
-                <li key={i}>{step}</li>
-              ))}
-            </ol>
-          ))}
+            <div key={rid} className={s.stepsGroup}>
+              <p className={s.stepsFor} data-cook-steps-for>
+                {recipe.name}
+              </p>
+              <ol className={s.steps} aria-label={`How to make ${recipe.name}`}>
+                {steps.map((step, i) => (
+                  <li key={i}>{step}</li>
+                ))}
+              </ol>
+            </div>
+          )
+        )}
       </section>
     );
   }
@@ -134,6 +161,7 @@ export function CookSheet({ menu, catalog, plannedBy }: { menu: Menu; catalog: C
             Gear: {gear.map((g) => gearText(g.name, g.count)).join(' · ')}
           </p>
         )}
+        {mealSteps(meal)}
       </div>
     );
   }

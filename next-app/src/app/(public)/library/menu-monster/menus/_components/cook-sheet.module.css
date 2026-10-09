@@ -105,6 +105,28 @@
   color: var(--text-meta);
 }
 
+/* A meal's steps come last, after its foods and gear: a small label, then each food's name over its numbered list. */
+.stepsBlock {
+  margin: var(--sp-2) 0 0;
+}
+.stepsHead {
+  margin: 0;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-meta);
+  break-after: avoid;
+}
+.stepsGroup {
+  margin: var(--sp-1) 0 0;
+  break-inside: avoid;
+}
+.stepsFor {
+  margin: 0;
+  font-weight: 600;
+  color: var(--text-head);
+  break-after: avoid;
+}
+
 /* Diets read as an aside: italic and muted, wherever they appear. */
 .diets,
 .note {
@@ -154,7 +176,8 @@
     font-size: 12.5pt;
   }
   .people,
-  .diets {
+  .diets,
+  .stepsHead {
     font-size: 9pt;
   }
 }

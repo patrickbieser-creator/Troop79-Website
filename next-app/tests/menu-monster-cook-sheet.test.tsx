@@ -84,7 +84,7 @@ describe('CookSheet', () => {
     sheet();
     const first = mealBlock(/^Breakfast/);
     expect(first.queryByRole('list', { name: 'Bacon ingredients' })).toBeNull();
-    expect(mealEl(/^Breakfast/).textContent?.split('Bacon').length).toBe(2);
+    expect(Array.from(mealEl(/^Breakfast/).querySelectorAll('h4')).filter((h) => h.textContent === 'Bacon')).toHaveLength(1);
   });
 
   it('AFood_PrintsItsSteps_Numbered', () => {
@@ -94,10 +94,28 @@ describe('CookSheet', () => {
     expect(within(steps).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Lay the slices in a cold skillet.', 'Turn until crisp.']);
   });
 
+  // Patrick, 2026-10-09: "instructions for each meal are listed at the end of the meal and not after each item" —
+  // the big picture (foods, gear) first, then the steps, each group naming its food.
+  it('AMeal_PrintsItsSteps_AfterEveryFoodAndTheGear', () => {
+    sheet();
+    const block = mealEl(/^Breakfast/);
+    const steps = within(block).getByRole('list', { name: 'How to make Bacon' });
+    const lastFood = within(block).getByRole('list', { name: 'Oatmeal ingredients' });
+    const gear = block.querySelector('[data-cook-gear]') as HTMLElement;
+    expect(lastFood.compareDocumentPosition(steps) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(gear.compareDocumentPosition(steps) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('AMealsSteps_NameTheFoodTheyAreFor', () => {
+    sheet();
+    const group = mealBlock(/^Breakfast/).getByRole('list', { name: 'How to make Bacon' }).parentElement as HTMLElement;
+    expect(group.querySelector('[data-cook-steps-for]')?.textContent).toBe('Bacon');
+  });
+
   it('ARepeatedRecipe_PrintsStepsOnce_AndPointsBack', () => {
     sheet();
     expect(document.body.textContent?.split('Lay the slices').length).toBe(2);
-    expect(document.body.textContent).toContain('Steps: see Day 1 · Breakfast');
+    expect(document.body.textContent).toContain('Bacon: see Day 1 · Breakfast');
   });
 
   it('AMeal_PrintsItsGear_OnOneLine', () => {
@@ -114,6 +132,14 @@ describe('CookSheet', () => {
     const first = mealBlock(/^Breakfast/);
     expect(first.getByText('Diets: 2 gluten-free')).toBeTruthy();
     expect(first.getByRole('list', { name: 'Oatmeal ingredients' }).textContent).toContain('left out');
+  });
+
+  // Patrick, 2026-10-09: "remove the 'everyone else' … leave the 'gluten-free' etc. notes as is."
+  it('ADietLine_KeepsItsDietNote_ButTheRestOfTheTroopsLineSaysNothing', () => {
+    sheet();
+    const items = mealBlock(/^Breakfast/).getByRole('list', { name: 'Oatmeal ingredients' }).textContent ?? '';
+    expect(items).toContain('gluten-free only');
+    expect(document.body.textContent).not.toMatch(/everyone else/i);
   });
 
   it('AMeal_WithAnUnsafeFood_PrintsAWarningLine', () => {
