@@ -1,0 +1,51 @@
+/* Receipt — "Planned vs bought" (public tokens only). Rows, cards and link-buttons come from workspace.module.css;
+   this file holds the receipt's own bits: the line panel and the per-meal comparison tables, which reflow to
+   stacked blocks under 640px by CSS alone (one tree). */
+
+.anchor { scroll-margin-top: 100px; }
+.changed { color: var(--text-body); }
+.status { font-family: var(--font-ui); font-size: var(--fs-md); color: var(--text-head); margin: 0 0 var(--sp-2); }
+.status:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+.say { font-weight: 700; }
+.plainName { font-family: var(--font-ui); font-size: var(--fs-md); font-weight: 700; color: var(--text-head); }
+.settled { font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-body); min-width: 0; }
+.amount { flex: none; font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-meta); font-variant-numeric: tabular-nums; text-align: right; }
+.act { min-height: 24px; padding: var(--sp-1) var(--sp-1); font-size: var(--fs-sm); }
+.act:disabled { opacity: 0.5; cursor: default; }
+.panel { padding-top: var(--sp-1); }
+.actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2) var(--sp-4); margin: 0 0 var(--sp-2); }
+.needs { font-family: var(--font-ui); font-size: var(--fs-md); font-weight: 700; color: var(--status-danger); margin: 0 0 var(--sp-2); }
+.rowBad { outline: 2px solid var(--status-danger); outline-offset: -2px; }
+.rowNote { flex-basis: 100%; padding: 0 var(--sp-4) var(--sp-2) 0; }
+
+/* ---- Part B ---- */
+.compareSection { margin-top: var(--sp-8); }
+.tableWrap { margin: 0 0 var(--sp-6); }
+.table { width: 100%; border-collapse: collapse; font-family: var(--font-ui); font-size: var(--fs-md); color: var(--text-body); }
+.caption { text-align: left; padding: 0 0 var(--sp-2); }
+.mealName { display: block; font-size: var(--fs-lg); font-weight: 700; color: var(--text-head); }
+.mealSum { display: block; font-size: var(--fs-sm); color: var(--text-meta); font-variant-numeric: tabular-nums; }
+.table th, .table td { text-align: left; vertical-align: top; padding: var(--sp-2) var(--sp-3) var(--sp-2) 0; border-top: 1px solid var(--rule); font-weight: 400; }
+.table thead th { font-size: var(--fs-sm); font-weight: 700; color: var(--text-meta); border-top: 0; }
+.table .food { font-weight: 700; color: var(--text-head); }
+.amt { display: block; font-variant-numeric: tabular-nums; }
+.tag { font-style: italic; color: var(--text-meta); }
+.muted { color: var(--text-meta); }
+.struck { color: var(--text-meta); }
+
+.totals { font-family: var(--font-ui); font-size: var(--fs-md); color: var(--text-head); margin: var(--sp-4) 0 var(--sp-6); font-variant-numeric: tabular-nums; }
+.gap { color: var(--text-body); }
+.compareHead { font-family: var(--font-ui); font-size: var(--fs-md); font-weight: 700; color: var(--text-meta); margin: 0 0 var(--sp-2); }
+.prompts { margin: 0; padding-left: var(--sp-6); font-family: var(--font-ui); font-size: var(--fs-md); color: var(--text-body); line-height: 1.5; }
+
+/* Phone: each food stacks. An unchanged food is one muted full-width line; a changed one splits into Planned / Bought. */
+@media (max-width: 639px) {
+  .table, .table tbody, .table tr, .table th, .table td { display: block; }
+  .table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+  .table tr { padding: var(--sp-2) 0; border-top: 1px solid var(--rule); }
+  .table th, .table td { border-top: 0; padding: 0; }
+  .table td::before { content: attr(data-label) ' '; font-weight: 700; color: var(--text-meta); }
+  .same { color: var(--text-meta); }
+  .same td:first-of-type { display: none; }
+  .same td::before { content: none; }
+}

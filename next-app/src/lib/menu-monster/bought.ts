@@ -20,6 +20,9 @@ export interface BoughtItem {
   qty: number;
   /** Price paid for ONE package. */
   pricePaid: number;
+  /** Set when a confirmed receipt line put this item here (Plans/Menu-Monster-Receipt-Reconciliation.md): undoing
+   *  that line removes exactly this item, never a hand-entered one that happens to share its qty and price. */
+  receiptLineId?: number;
 }
 
 export interface Stamp {
@@ -66,7 +69,8 @@ export function sanitizeItems(raw: unknown): BoughtItem[] {
     const qty = typeof x.qty === 'number' && Number.isInteger(x.qty) && x.qty >= 0 && x.qty <= MAX_BOUGHT_QTY ? x.qty : null;
     const price = typeof x.pricePaid === 'number' && Number.isFinite(x.pricePaid) ? round2(x.pricePaid) : NaN;
     if (qty == null || !(price >= MIN_BOUGHT_PRICE && price <= MAX_BOUGHT_PRICE)) continue;
-    out.push({ brandId: idOrNull(x.brandId), packageId: idOrNull(x.packageId), qty, pricePaid: price });
+    const fromReceipt = typeof x.receiptLineId === 'number' && Number.isInteger(x.receiptLineId) && x.receiptLineId > 0 ? x.receiptLineId : null;
+    out.push({ brandId: idOrNull(x.brandId), packageId: idOrNull(x.packageId), qty, pricePaid: price, ...(fromReceipt != null ? { receiptLineId: fromReceipt } : {}) });
   }
   return out;
 }

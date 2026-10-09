@@ -58,6 +58,23 @@ describe('stepConfig', () => {
     expect(stepConfig(ID, 'shared', menu(), 'plan', '2026-10-06', true).bought).toBeUndefined();
   });
 
+  // v1.208.0: the Receipt step shows to everyone who can open the menu, once the menu has a receipt.
+  it('Receipt_JoinsOnlyWhenTheMenuHasOne_ForEveryone_AndIsNeverLostOnItsOwnPage', () => {
+    expect(stepConfig(ID, 'owner', menu(), 'plan', '2026-10-06').receipt).toBeUndefined();
+    expect(stepConfig(ID, 'owner', menu(), 'plan', '2026-10-06', false, true).receipt).toBe(`${base}/receipt`);
+    expect(stepConfig(ID, 'shared', menu(), 'plan', '2026-10-06', false, true).receipt).toBe(`${base}/receipt`);
+    expect(stepConfig(ID, 'parent', menu(), 'receipt', '2026-10-06').receipt).toBe(`${base}/receipt`);
+  });
+
+  it('Receipt_IsAStepInTheStrip_AfterWhatWeBought_WhenTheMenuHasOne', () => {
+    const { unmount } = render(<MenuSteps menuId={ID} active="receipt" menu={menu()} catalog={CATALOG} hasReceipt />);
+    expect(steps().map((a) => a.textContent?.replace(/✓|\(done\)/g, '').trim())).toEqual(['Who’s eating', 'Meals', 'Gear', 'Shopping', 'What we bought', 'Receipt', 'Share']);
+    expect(screen.getByRole('link', { name: 'Receipt' }).getAttribute('aria-current')).toBe('step');
+    unmount();
+    render(<MenuSteps menuId={ID} active="plan" menu={menu()} catalog={CATALOG} />);
+    expect(screen.queryByRole('link', { name: 'Receipt' })).toBeNull();
+  });
+
   it('WhatWeBought_IsNeverShown_ToASharedViewer', () => {
     expect(stepConfig(ID, 'shared', menu(), 'plan', '2026-10-12').bought).toBeUndefined();
   });

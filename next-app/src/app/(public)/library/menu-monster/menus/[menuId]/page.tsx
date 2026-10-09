@@ -44,7 +44,7 @@ export default async function MenuPlanPage({ params, searchParams }: { params: P
           readOnly={readOnly}
           helper={view.helping}
           plannedBy={plannedBy}
-          steps={stepConfig(stored.id, view.access, resolveMenuAliases(stored.menu, catalog.aliases), 'plan', centralToday(), view.shoppingDone)}
+          steps={stepConfig(stored.id, view.access, resolveMenuAliases(stored.menu, catalog.aliases), 'plan', centralToday(), view.shoppingDone, view.hasReceipt)}
           aside={<ViewerAside view={view} page="plan" />}
           openMeal={typeof meal === 'string' ? meal : null}
         />

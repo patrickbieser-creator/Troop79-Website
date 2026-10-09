@@ -15,7 +15,7 @@ import { ReadOnlyLine } from './read-only-line';
 import type { ViewableMenu } from './scout-menus';
 import s from './workspace.module.css';
 
-export function ViewerAside({ view, page }: { view: ViewableMenu; page: 'people' | 'plan' | 'shopping' | 'meal' | 'gear' | 'bought' | 'conversions' }) {
+export function ViewerAside({ view, page }: { view: ViewableMenu; page: 'people' | 'plan' | 'shopping' | 'meal' | 'gear' | 'bought' | 'receipt' | 'conversions' }) {
   const { readOnly, plannedBy, hiddenRecipes, canCopy, stored } = view;
   const review = page === 'plan' ? stored.review : null;
   return (
@@ -30,7 +30,7 @@ export function ViewerAside({ view, page }: { view: ViewableMenu; page: 'people'
       )}
       {readOnly && (
         <div className={s.listHead}>
-          <ReadOnlyLine plannedBy={plannedBy} writable={(page === 'gear' || page === 'bought') && canRecord(view.access)} />
+          <ReadOnlyLine plannedBy={plannedBy} writable={(page === 'gear' || page === 'bought' || page === 'receipt') && canRecord(view.access)} />
           {canCopy && <CopyMenuButton menuId={stored.id} />}
         </div>
       )}

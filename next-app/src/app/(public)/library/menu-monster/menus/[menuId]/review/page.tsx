@@ -43,7 +43,7 @@ export default async function MenuReviewPage({ params }: { params: Promise<{ men
           <h1 className={s.menuTitle}>{stored.menu.name.trim() || 'Untitled menu'}</h1>
         </div>
         {view.readOnly && <ReadOnlyLine plannedBy={view.plannedBy} />}
-        <MenuSteps menuId={stored.id} active="review" access={view.access} menu={menu} catalog={view.catalog} shoppingDone={view.shoppingDone} />
+        <MenuSteps menuId={stored.id} active="review" access={view.access} menu={menu} catalog={view.catalog} shoppingDone={view.shoppingDone} hasReceipt={view.hasReceipt} />
         {/* The cook sheet (Patrick, 2026-10-08): the whole plan on paper, two columns. */}
         <p className={s.foot}>
           <Link href={`${MENUS_HREF}/${stored.id}/print`}>Print plan</Link> as a cook sheet.

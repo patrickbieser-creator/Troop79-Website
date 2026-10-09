@@ -40,7 +40,7 @@ export default async function MenuBoughtPage({ params }: { params: Promise<{ men
           bought={bought}
           legacy={legacy}
           canRecord={canRecord(view.access)}
-          tabs={<MenuSteps menuId={stored.id} active="bought" access={view.access} menu={menu} catalog={catalog} />}
+          tabs={<MenuSteps menuId={stored.id} active="bought" access={view.access} menu={menu} catalog={catalog} shoppingDone={view.shoppingDone} hasReceipt={view.hasReceipt} />}
           aside={<ViewerAside view={view} page="bought" />}
         />
       </PageShell>
