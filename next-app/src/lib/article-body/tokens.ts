@@ -1,6 +1,7 @@
 /**
- * Parsing + construction helpers for the three custom content-block tokens:
- * {{gallery: ...}}, {{gallerylink: ...}}, {{video: ...}}. Single images and
+ * Parsing + construction helpers for the custom content-block tokens:
+ * {{gallery: ...}}, {{gallerylink: ...}}, {{video: ...}}, plus the two page blocks
+ * {{cta: ...}} and {{stats: ...}} (content-managed pages, PageBody). Single images and
  * tables deliberately do NOT get a custom token — standard markdown
  * (`![alt](url "caption")` and GFM pipe tables) already covers them, so we
  * only invented syntax for the things markdown has no native construct for.
@@ -9,6 +10,8 @@
  *   {{gallery: url1::alt1 | url2::alt2 | url3::alt3}}
  *   {{gallerylink: url | caption | coverUrl}}
  *   {{video: url | caption}}
+ *   {{cta: Headline | sub text | Label->/href | Label->/href}}
+ *   {{stats: 2022::Founded | ~30::Scouts}}
  * Caption and coverUrl are always optional. The editor's toolbar constructs
  * these strings from picked Media records — authors are not expected to
  * hand-type them.
@@ -32,11 +35,11 @@ export interface VideoData {
   embedUrl: string | null; // null if the URL isn't a recognized YouTube/Vimeo link
 }
 
-export type BlockType = 'gallery' | 'gallerylink' | 'video';
+export type BlockType = 'gallery' | 'gallerylink' | 'video' | 'cta' | 'stats';
 
 /** Matches an entire paragraph's text against `{{type: args}}`. Returns null if it isn't one. */
 export function matchBlockToken(text: string): { type: BlockType; raw: string } | null {
-  const m = /^\{\{\s*(gallery|gallerylink|video)\s*:\s*([\s\S]*)\}\}$/i.exec(text.trim());
+  const m = /^\{\{\s*(gallery|gallerylink|video|cta|stats)\s*:\s*([\s\S]*)\}\}$/i.exec(text.trim());
   if (!m) return null;
   return { type: m[1].toLowerCase() as BlockType, raw: m[2].trim() };
 }
@@ -109,6 +112,54 @@ export function parseVideoToken(raw: string): VideoData {
   const url = (urlPart ?? '').trim();
   const caption = captionPart?.trim() || null;
   return { url, caption, embedUrl: toVideoEmbedUrl(url) };
+}
+
+/**
+ * Page blocks (content-managed pages, PageBody) — authored by hand in the page
+ * editor, not built by the toolbar (phase 2 adds insert buttons):
+ *   {{cta: Headline | sub text | Label->/href | Label->/href}}
+ *   {{stats: 2022::Founded | ~30::Scouts}}
+ * The first button is the primary one; the rest render as ghost buttons. A
+ * button with no `->` is dropped rather than rendered as a dead link.
+ */
+export interface CtaData {
+  headline: string;
+  sub: string;
+  buttons: { label: string; href: string }[];
+}
+
+/** A CTA button skips react-markdown's URL sanitising: only a site path, http(s) or mailto may reach an href. */
+const SAFE_CTA_HREF = /^(\/(?!\/)|https?:\/\/|mailto:)/i;
+
+export function parseCtaToken(raw: string): CtaData {
+  const [headline = '', sub = '', ...rest] = raw.split('|').map((p) => p.trim());
+  const buttons = rest.flatMap((entry) => {
+    const at = entry.lastIndexOf('->');
+    if (at < 0) return [];
+    const label = entry.slice(0, at).trim();
+    const href = entry.slice(at + 2).trim();
+    return label && SAFE_CTA_HREF.test(href) ? [{ label, href }] : [];
+  });
+  return { headline, sub, buttons };
+}
+
+export interface StatData {
+  value: string;
+  label: string;
+}
+
+export function parseStatsToken(raw: string): StatData[] {
+  return raw
+    .split('|')
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map((entry) => {
+      const at = entry.indexOf('::');
+      return at < 0
+        ? { value: entry, label: '' }
+        : { value: entry.slice(0, at).trim(), label: entry.slice(at + 2).trim() };
+    })
+    .filter((s) => s.value);
 }
 
 export function buildVideoToken(url: string, caption?: string): string {

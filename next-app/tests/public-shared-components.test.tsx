@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -162,7 +163,7 @@ describe('Notice', () => {
 
 describe('EmptyState', () => {
   it('EmptyState_RendersAction_WhenActionProvided', () => {
-    render(<EmptyState action={<a href="/library/submit">Suggest one</a>}>No resources yet.</EmptyState>);
+    render(<EmptyState action={<Link href="/library/submit">Suggest one</Link>}>No resources yet.</EmptyState>);
     expect(screen.getByText('No resources yet.')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Suggest one' }).getAttribute('href')).toBe('/library/submit');
   });

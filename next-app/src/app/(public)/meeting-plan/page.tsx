@@ -8,6 +8,7 @@
  * why.
  */
 
+import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
 import { centralToday } from '@/lib/dates';
 import {
@@ -72,7 +73,7 @@ export default async function PublicMeetingPlanPage() {
           <EmptyState>
             No advancement plan is published for the next meeting — it may be a themed
             merit-badge night or campout prep. Check back next week, or see the{' '}
-            <a href="/advancement">Advancement Tracker</a> for overall progress.
+            <Link href="/advancement">Advancement Tracker</Link> for overall progress.
           </EmptyState>
         ) : (
           <>

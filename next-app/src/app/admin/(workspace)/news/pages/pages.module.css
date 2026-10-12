@@ -1,0 +1,67 @@
+/* /admin/news/pages — the Pages tree. One DataTable·Compact (composes), plus the genuine extras: the indent
+   per level, the address in the mono face, and the quiet add row below the table. No new table rules. */
+
+.tableWrap { overflow-x: auto; }
+.table { composes: compact from '../../_components/data-table.module.css'; }
+.actionsCell { composes: actionsCell from '../../_components/data-table.module.css'; }
+.empty { composes: empty from '../../_components/data-table.module.css'; }
+
+.nowrap { white-space: nowrap; }
+/* One indent step per level of the tree (the list is capped at three levels deep). */
+.table td.depth1 { padding-left: var(--admin-space-14); }
+.table td.depth2 { padding-left: calc(var(--admin-space-14) + var(--admin-space-11)); }
+.table td.depth3 { padding-left: calc(var(--admin-space-14) + 2 * var(--admin-space-11)); }
+.titleCell a { color: var(--admin-navy); font-weight: var(--admin-weight-semibold); }
+.titleCell a:hover { text-decoration: underline; }
+.address { font-family: var(--admin-font-mono); font-size: var(--admin-text-base); color: var(--admin-gray-600); }
+.order { display: inline-flex; gap: var(--admin-space-1); }
+.rowError { margin-top: var(--admin-space-1); }
+
+/* The quiet add row: one link-button below the list it adds to (AGENTS.md, "Lists end in one quiet add row"). */
+.addRow { margin-top: var(--admin-space-3); }
+
+/* New-page form: a short create-once form, not the full editor. */
+.newForm { max-width: 520px; }
+.field { margin-bottom: var(--admin-space-4); }
+.field label { display: block; margin-bottom: 6px; }
+.field input[type='text'], .field select {
+  width: 100%;
+  font-family: var(--admin-font-ui);
+  font-size: var(--admin-text-md);
+  color: var(--admin-gray-700);
+  border: 1px solid var(--admin-gray-300);
+  border-radius: var(--admin-radius-sm);
+  padding: 9px 11px;
+  background: var(--admin-white);
+}
+.field input:focus, .field select:focus { outline: none; border-color: var(--admin-navy); }
+.hint { font-size: var(--admin-text-sm); color: var(--admin-gray-500); margin-top: 5px; }
+.formActions { display: flex; align-items: center; gap: var(--admin-space-3); margin-top: var(--admin-space-5); }
+.formError { color: var(--admin-danger); font-size: var(--admin-text-base); margin-top: var(--admin-space-2); }
+
+/* ── Page editor extras (the shell, panes and fields come from the article editor's module) ───────────── */
+.bad { composes: bad from '../../_components/save-state.module.css'; }
+.badNote { composes: badNote from '../../_components/save-state.module.css'; }
+.addressLine code { font-family: var(--admin-font-mono); font-size: var(--admin-text-base); color: var(--admin-gray-700); }
+
+/* ONE sticky bar (D-332): Save + Discard on the left, Publish / More actions on the right. */
+.stickyBar {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--admin-space-6);
+  flex-wrap: wrap;
+  margin-top: var(--admin-space-11);
+  padding: var(--admin-space-6) 0;
+  background: var(--admin-white);
+  border-top: 1px solid var(--admin-gray-200);
+}
+.barGroup { display: flex; align-items: center; gap: var(--admin-space-4); flex-wrap: wrap; }
+
+/* The "Page blocks" disclosure under the body: what the page conventions are, one line each. */
+.conventions { margin-top: var(--admin-space-5); font-size: var(--admin-text-base); color: var(--admin-gray-600); }
+.conventions summary { cursor: pointer; color: var(--admin-navy); font-weight: var(--admin-weight-semibold); }
+.conventionsGrid { display: grid; grid-template-columns: max-content 1fr; gap: var(--admin-space-3) var(--admin-space-8); margin-top: var(--admin-space-4); }
+.conventionsGrid code { font-family: var(--admin-font-mono); color: var(--admin-gray-700); }

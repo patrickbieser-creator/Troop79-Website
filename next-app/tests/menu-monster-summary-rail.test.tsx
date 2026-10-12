@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { describe, it, expect } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { CATALOG } from './helpers/menu-monster-fixture';
@@ -54,7 +55,7 @@ describe('SummaryRail', () => {
   it('Rail_HoldsTheOnePrimaryAtItsRightEnd', () => {
     render(
       <SummaryRail progress={progress()} hrefs={HREFS}>
-        <a href="/m/1/gear">Next: Gear ›</a>
+        <Link href="/m/1/gear">Next: Gear ›</Link>
       </SummaryRail>
     );
     expect(screen.getByRole('link', { name: 'Next: Gear ›' })).toBeTruthy();

@@ -21,6 +21,7 @@
  * no writes — it renders static samples only. The nav offers it to full
  * admins (capability-less item semantics in sub-nav.tsx).
  */
+import Link from 'next/link';
 import sg from './styleguide.module.css';
 import { DialogDemo } from './dialog-demo';
 import { EditorPromptsSpecimen } from './editor-prompts-specimen';
@@ -566,7 +567,7 @@ export default function StyleguidePage() {
         <h2 className={sg.sectionHead}>Help Badge</h2>
         <p className={sg.sectionNote}>
           The <code>?</code> beside the thing it explains (Patrick, 2026-08-25; tuned on{' '}
-          <a href="/admin/styleguide/help-sample">the sample page</a>: 320px, 20px circle, click only).
+          <Link href="/admin/styleguide/help-sample">the sample page</Link>: 320px, 20px circle, click only).
           A popover, not a tooltip &mdash; opens on click / tap / Enter, closes on Esc with focus
           returning, on &times; or a click away; never on hover, never on a timer. Copy lives in{' '}
           <code>admin/help.tsx</code>, keyed by id, so instructions are reviewed in one place; a typo

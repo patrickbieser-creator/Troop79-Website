@@ -81,4 +81,15 @@ describe('revalidation scope', () => {
       expect(body(fn)).toContain("updateTag('advancement-catalog')");
     }
   });
+
+  it('SitePagesAreTagCached_AndEveryPageWriteExpiresTagAndPath', () => {
+    // Plans/Content-Managed-Pages.md: /join, /about and child pages read through one tagged cache; a save
+    // must expire the tag (data) AND the page's own path (rendered ISR page) or an edit would wait out the
+    // hourly fallback.
+    const loader = readFileSync(join(SRC, 'lib/site-pages.ts'), 'utf8');
+    expect(loader).toMatch(/unstable_cache\([\s\S]*tags: \['site-pages'\]/);
+    const actions = readFileSync(join(SRC, 'app/admin/(workspace)/news/pages/actions.ts'), 'utf8');
+    expect(actions).toContain("updateTag('site-pages')");
+    expect(actions).toContain('revalidatePath(path)');
+  });
 });

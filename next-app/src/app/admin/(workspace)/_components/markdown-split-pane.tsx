@@ -150,6 +150,12 @@ interface PreviewProps {
    */
   title?: string;
   onEditBlock?: (info: EditableBlockInfo) => void;
+  /**
+   * How the markdown becomes a preview. Omitted, it is the article look (ArticleBody) — what the news editor,
+   * the library form and the calendar story panel all use. The Pages editor passes its own so the preview is
+   * the page's look (PageBody + sidebar). The empty check and the surface are the same either way.
+   */
+  render?: (value: string) => ReactNode;
   /** Replaces the outer pane (scroll/padding) when the caller owns it; the
    *  label and paper card are always rendered. */
   className?: string;
@@ -162,7 +168,7 @@ interface PreviewProps {
  * the rendered story on a white paper card. `className` swaps only the outer
  * pane (the article editor's full-height column); the label and card stay.
  */
-export function MarkdownPreview({ value, title, onEditBlock, className, emptyNote }: PreviewProps) {
+export function MarkdownPreview({ value, title, onEditBlock, render, className, emptyNote }: PreviewProps) {
   return (
     <div className={className ?? styles.preview} aria-live="polite">
       <div className={styles.previewLabel}>
@@ -172,7 +178,7 @@ export function MarkdownPreview({ value, title, onEditBlock, className, emptyNot
       <div className={styles.previewSurface}>
         {title !== undefined && <div className={styles.previewTitle}>{title || 'Untitled'}</div>}
         {value.trim() ? (
-          <ArticleBody body={value} onEditBlock={onEditBlock} />
+          render ? render(value) : <ArticleBody body={value} onEditBlock={onEditBlock} />
         ) : (
           <p className={styles.previewEmpty}>{emptyNote ?? 'Nothing to preview yet.'}</p>
         )}

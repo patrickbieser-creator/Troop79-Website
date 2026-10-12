@@ -133,7 +133,7 @@ const SCOREBOARD: ReadonlyArray<readonly [string, string, string]> = [
   [
     'Buttons',
     '33 distinct class names / 15 files; primary green written 5× with 3 greens, 3 radii',
-    'Button SHIPPED (A; size="sm" + dangerGhost added C; calm R2 2026-10-03: sentence case, 600, 36px / sm 30px) —submitBtn, passkeyRemove, mastheadJoin converted; /signin passkey CTA is primary (full-width) only on a browser with the remembered-device hint cookie, else the shared ghost variant at the bottom (2026-08-21); sanctioned locals: signOutBtn (forest outline), scout-account proxy (compact navy), about-join khaki CTA, calendar/pager chrome'
+    'Button SHIPPED (A; size="sm" + dangerGhost added C; calm R2 2026-10-03: sentence case, 600, 36px / sm 30px) —submitBtn, passkeyRemove, mastheadJoin converted; /signin passkey CTA is primary (full-width) only on a browser with the remembered-device hint cookie, else the shared ghost variant at the bottom (2026-08-21); sanctioned locals: signOutBtn (forest outline), scout-account proxy (compact navy), page-body khaki CTA (src/lib/article-body), calendar/pager chrome'
   ],
   [
     'Pills / badges / tags',
@@ -716,7 +716,7 @@ export default function PublicStyleguidePage() {
           two-column headers (photos, events index), kind-chip/narrow headers
           (event-detail, profile), meeting-plan&rsquo;s meta-row header (wants a PageHeader
           meta slot if a second case appears); <code>.signOutBtn</code> +
-          scout-account&rsquo;s compact proxy button + about-join&rsquo;s khaki CTA +
+          scout-account&rsquo;s compact proxy button + page-bodyabout-join&rsquo;s khaki CTArsquo;s khaki CTA +
           calendar pager/month chrome; name-search + tagSelect (layout-divergent form
           controls); categorical tags (<code>.catTag</code>, <code>.tagChip</code>,{' '}
           <code>.tagEagle</code>&hellip;) by rule; photos&rsquo; rich empty block; the

@@ -11,6 +11,7 @@ import {
   imageLinkLabel,
   type BlockType
 } from './tokens';
+import { CtaBlock, StatsBlock } from './page-blocks';
 import styles from './article-body.module.css';
 
 /** Identifies the exact source span an edit-in-place click came from: a
@@ -70,7 +71,7 @@ type EditBlockHandler = (info: EditableBlockInfo) => void;
 const componentSets = new WeakMap<EditBlockHandler, Components>();
 let publicComponents: Components | undefined;
 
-function componentsFor(onEditBlock?: EditBlockHandler): Components {
+export function componentsFor(onEditBlock?: EditBlockHandler): Components {
   if (!onEditBlock) return (publicComponents ??= buildComponents(undefined));
   let set = componentSets.get(onEditBlock);
   if (!set) {
@@ -222,7 +223,7 @@ type ArticleBlockProps = ComponentPropsWithoutRef<'div'> & {
  * override dispatches on that marker and falls through to a plain `<div>`
  * for anything else markdown ever produces.
  */
-function ArticleBlockDiv({
+export function ArticleBlockDiv({
   'data-block-type': blockType,
   'data-raw': raw,
   'data-start': start,
@@ -243,6 +244,11 @@ function ArticleBlockDiv({
       return <GalleryLinkBlock raw={raw} onEdit={onEdit} />;
     case 'video':
       return <VideoBlock raw={raw} onEdit={onEdit} />;
+    // Page blocks (PageBody): authored by hand, so no in-place Edit button.
+    case 'cta':
+      return <CtaBlock raw={raw} />;
+    case 'stats':
+      return <StatsBlock raw={raw} />;
     default:
       return null;
   }

@@ -158,6 +158,13 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
         capability: 'news.write'
       },
       {
+        // The words of Join, About and any child page (Plans/Content-Managed-Pages.md): edited here, same editor as News.
+        label: 'Pages',
+        href: '/admin/news/pages',
+        matchPath: '/admin/news/pages',
+        capability: 'news.write'
+      },
+      {
         /*
          * One Calendar destination, replacing the Events / Event Signups /
          * Meetings triple that all described the same act — "something happens

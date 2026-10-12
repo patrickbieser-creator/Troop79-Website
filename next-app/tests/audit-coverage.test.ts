@@ -16,6 +16,7 @@ import { readFileSync } from 'node:fs';
 
 const AUDITED_ACTION_FILES = [
   'src/app/admin/(workspace)/news/articles/actions.ts',
+  'src/app/admin/(workspace)/news/pages/actions.ts',
   'src/app/admin/(workspace)/news/media/actions.ts',
   'src/app/admin/(workspace)/news/media-manager/actions.ts',
   'src/app/admin/(workspace)/news/photo-albums/actions.ts',
