@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session 53 — A lighter local database</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #3d5a3e;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #f0eecd;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); vertical-align: top; }
+        tr:hover { background: var(--nw-sage); }
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+        code { font-family: 'Courier New', monospace; font-size: 0.85em; background: var(--nw-light-gray); padding: 0 0.3em; border-radius: 3px; }
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+        @media print { body { background: white; } header { padding: 1.5rem; } .container { padding: 1rem; } .stat { break-inside: avoid; } }
+        @media (max-width: 600px) { header h1 { font-size: 1.5rem; } .stats { flex-direction: column; } }
+    </style>
+<body>
+    <header>
+        <h1>A lighter local database: Docker capped, unused services off</h1>
+        <p class="subtitle">Session 53. Patrick&rsquo;s laptop was running out of memory, and he asked whether to drop local Docker for hosted Supabase. Only Troop 79 turned out to use it, so it stays, trimmed and capped.</p>
+        <div class="meta">
+            <span>&#128197; October 12, 2026</span>
+            <span>&#129302; Operator (Opus 5.5)</span>
+            <span>&#128204; Troop79-Website</span>
+            <span>&#128640; v1.209.0 (no release)</span>
+        </div>
+    </header>
+    <div class="container">
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">1.9&rarr;0.8</div><div class="label">GB in Supabase containers</div></div>
+            <div class="stat"><div class="number">6</div><div class="label">GB cap on the Docker VM (was up to 16)</div></div>
+            <div class="stat"><div class="number">3</div><div class="label">Local services turned off</div></div>
+            <div class="stat"><div class="number">1</div><div class="label">Decision (D-369)</div></div>
+            <div class="stat"><div class="number">$0</div><div class="label">New cost</div></div>
+        </div>
+        <h2>What Was Accomplished</h2>
+        <div class="callout callout-teal">
+            <strong>The outcome:</strong> Docker can no longer take more than 6 GB, the local Supabase stack runs in about 0.8 GB, and an hourly job hands the Docker VM&rsquo;s file cache back to Windows.
+        </div>
+        <h3>The survey</h3>
+        <p>Of Pensieve, Pen2, Pen-Vision, OMG, SecondBrain and Troop 79, only Troop 79 uses local Docker Supabase. OMG&rsquo;s dev already uses its hosted production database; Pen2, Pen-Vision and SecondBrain use SQLite; Pensieve uses a JSON file. Moving Troop 79 dev to hosted would need a third Supabase project (Pro at about $25 a month, or a second free org), so the cheaper fix came first.</p>
+        <h3>The fix</h3>
+        <p>A <code>.wslconfig</code> caps the VM at 6 GB. Analytics, realtime and edge functions are off in the local Supabase config. The Supabase CLI moved to 2.120.0. Patrick saw VmmemWSL at about 5 GB while the containers used 0.7 GB: the rest was Linux file cache (3.4 GB). Dropping it took the VM down to 1.2 GB used, and the hourly &ldquo;Docker Drop Cache&rdquo; task now repeats that.</p>
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Decision</th></tr></thead>
+            <tbody>
+                <tr><td>D-369</td><td>Keep local Docker Supabase, trimmed (analytics, realtime and edge functions off) and capped (6 GB, with an hourly cache drop), instead of a hosted dev project</td></tr>
+            </tbody>
+        </table>
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Watch memory; if it still runs short, check the cache-drop log, then consider a hosted dev project in a second free org.</li>
+            <li>Run <code>npm audit</code> to see whether the CLI bump added warnings.</li>
+            <li>Carry on with the Pages feedback and the cook sheet and receipt checks.</li>
+        </ul>
+        <h2>Files Changed</h2>
+        <table>
+            <thead><tr><th>Area</th><th>Change</th></tr></thead>
+            <tbody>
+                <tr><td>Local Supabase</td><td>next-app/supabase/config.toml (analytics, realtime, edge_runtime off)</td></tr>
+                <tr><td>Dependencies</td><td>next-app/package.json + package-lock.json (supabase 2.120.0)</td></tr>
+                <tr><td>Machine (not in repo)</td><td>C:\Users\pat\.wslconfig; C:\Users\pat\bin\docker-drop-cache.ps1 + the &ldquo;Docker Drop Cache&rdquo; scheduled task</td></tr>
+                <tr><td>Docs</td><td>changelog.html; Agents memory D-369</td></tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
