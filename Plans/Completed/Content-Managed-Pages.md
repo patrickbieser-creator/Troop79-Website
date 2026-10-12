@@ -1,6 +1,6 @@
 # Content-Managed Pages
 
-**Status:** Active — phase 1 (incl. child pages) in build 2026-10-11
+**Status:** SHIPPED v1.209.0 (2026-10-11, b3e4cd2) — phase 3 (nav from the tree) not built
 **Parked:** 2026-10-11
 **Priority:** High
 
