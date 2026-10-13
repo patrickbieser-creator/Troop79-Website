@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orders — Wreath sale — Admin — Troop 79</title>
+<link rel="stylesheet" href="assets/wreath.css?v=4">
+<link rel="stylesheet" href="assets/entry.css?v=1">
+<style>
+  a.tab { text-decoration: none; display: inline-block; }
+  .tbl td .panelNote { margin: 2px 0 0; }
+</style>
+</head>
+<body class="admin">
+<div class="proto"><div class="protoInner"><span><strong>Prototype</strong> <code>/admin/fundraising/wreaths</code> › Orders · Previous: <a href="scout-entry.html">Oliver’s page</a> · <a href="my-orders-entry.html">My wreath orders</a></span><a href="index.html">All screens</a></div></div>
+<div class="adminTop"><div class="adminTopInner"><span class="crumb"><a href="#">Admin</a> › <a href="#">Fundraising</a> › Wreath sale 2026</span><span>Patrick Bieser · treasurer</span></div></div>
+<main class="adminPage">
+  <div class="titleLine"><h1>Wreath sale 2026</h1><span class="tag paid" style="font-size:12px">Open · round 1 closes Sat, Oct 25</span></div>
+  <nav class="tabs" aria-label="Wreath sale">
+    <a class="tab" href="admin.html#orders" aria-current="page" aria-selected="true">Orders <span class="cnt" id="cntOrders"></span></a>
+    <a class="tab" href="admin.html#sellers">Sellers</a>
+    <a class="tab" href="admin.html#rose">Rose order</a>
+    <a class="tab" href="admin.html#books">Books</a>
+    <a class="tab" href="admin.html#settings">Settings</a>
+  </nav>
+
+  <div class="panelHead"><h2>Orders</h2><button class="btn primary" type="button" data-csv>Export CSV</button></div>
+  <div class="chips" id="chips"></div>
+  <div class="filters">
+    <input type="text" id="fQ" placeholder="Name, email, phone, order #" aria-label="Search orders">
+    <select id="fSource" aria-label="Source"><option value="">Every source</option><option value="entered">Scout-entered</option><option value="link">Scout link</option><option value="store">Troop store</option></select>
+    <select id="fSeller" aria-label="Credited to"></select>
+    <select id="fMoney" aria-label="Money"><option value="">Any payment</option><option value="held">Collected by scout, not paid</option><option value="open">Not collected</option><option value="paid">Paid</option></select>
+    <select id="fRound" aria-label="Round"><option value="">All rounds</option><option value="1">Round 1</option><option value="2">Round 2</option></select>
+    <button type="button" class="btn ghost" id="fClear" hidden>Clear filters</button>
+  </div>
+  <div class="aCard scrollX"><table class="tbl" id="ordTbl"></table></div>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="assets/data.js?v=4"></script>
+<script src="assets/entry-data.js?v=1"></script>
+<script>
+const $ = id => document.getElementById(id);
+let tt; function toast(m) { $('toast').textContent = m; $('toast').classList.add('show'); clearTimeout(tt); tt = setTimeout(() => $('toast').classList.remove('show'), 2600); }
+const FUL = { scout: 'Scout delivers', pickup: 'Pickup', delivery: 'Troop delivery', none: 'Donated only' };
+const sellerName = slug => slug ? seller(slug).name : 'Troop store';
+const dateLbl = iso => new Date(iso + 'T12:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+const fulLabel = o => o.fulfill === 'scout' && o.seller ? `${seller(o.seller).name} delivers` : FUL[o.fulfill];
+const live = o => !o.cancelled;
+/* money state for filters: held = the scout has it; open = the customer still owes it */
+const moneyState = o => o.pay === 'paid' ? 'paid' : isScoutEntered(o) ? (o.collected ? 'held' : 'open') : 'open';
+let openId = null;
+
+$('fSeller').innerHTML = `<option value="">Every seller</option><option value="__troop">Troop store</option>` + SELLERS.map(s => `<option value="${s.slug}">${esc(s.name)}</option>`).join('');
+
+function renderChips() {
+  const se = ORDERS.filter(o => isScoutEntered(o) && live(o));
+  const sum = f => se.filter(f).reduce((t, o) => t + orderCalc(o).total, 0);
+  $('chips').innerHTML = `<div class="chip"><strong>${se.length}</strong>scout-entered orders</div>
+    <div class="chip"><strong>${money2(sum(o => moneyState(o) === 'held'))}</strong>collected by scouts, not yet paid to the troop</div>
+    <div class="chip"><strong>${money2(sum(o => moneyState(o) === 'open'))}</strong>not yet collected</div>`;
+}
+
+function payCell(o) {
+  const c = orderCalc(o);
+  if (o.cancelled) return `<span class="tag cancelled">Cancelled</span><br><span class="panelNote">${esc(o.cancelled.by)}, ${dateLbl(o.cancelled.on)}</span>`;
+  if (!isScoutEntered(o) && o.pay === 'paid') return `<span class="tag paid">${o.method}</span>`;
+  const sw = `<button type="button" class="paidSwitch" role="switch" aria-checked="${o.pay === 'paid'}" data-paid="${o.id}" aria-label="Paid, ${esc(o.cust.name)}"><span class="track"><span class="knob"></span></span>Paid</button>`;
+  if (!isScoutEntered(o)) return `${sw}`;
+  return `${o.collected ? '<span class="tag srcTag">Collected by scout</span>' : '<span class="tag">Not collected</span>'}<br>${sw}${o.payNote ? `<br><span class="panelNote">${esc(o.payNote)}</span>` : ''}`;
+}
+
+function renderOrders() {
+  const q = $('fQ').value.trim().toLowerCase(), src = $('fSource').value, s = $('fSeller').value, m = $('fMoney').value, r = $('fRound').value;
+  $('fClear').hidden = !(q || src || s || m || r);
+  const srcOf = o => isScoutEntered(o) ? 'entered' : o.source === 'link' ? 'link' : 'store';
+  const rows = ORDERS.filter(o => (!q || (o.id + ' ' + o.cust.name + ' ' + (o.cust.email || '') + ' ' + (o.cust.phone || '') + ' ' + (o.payNote || '')).toLowerCase().includes(q))
+      && (!src || srcOf(o) === src) && (!s || (s === '__troop' ? !o.seller : o.seller === s)) && (!m || moneyState(o) === m) && (!r || o.round == r))
+    .sort((a, b) => b.id.localeCompare(a.id));
+  let ti = 0, tt2 = 0, td = 0, n = 0;
+  const body = rows.map(o => { const c = orderCalc(o), open = openId === o.id, ch = o.changes || [], se = isScoutEntered(o);
+    if (live(o)) { n++; ti += c.items; tt2 += c.total; td += moneyState(o) === 'paid' ? 0 : c.total; }
+    const main = `<tr class="${o.cancelled ? 'cancelledRow' : ''}${open ? ' openRow' : ''}"><td><button type="button" class="linkBtn mono" data-open="${o.id}" aria-expanded="${open}" aria-controls="d-${o.id}">${o.id} <span aria-hidden="true">${open ? '▾' : '▸'}</span></button></td>
+      <td>${o.placed.slice(5).replace('-', '/')}<br><span class="panelNote">R${o.round}</span></td>
+      <td><strong>${esc(o.cust.name)}</strong><br><span class="panelNote">${esc(phoneBits(o.cust) || 'No contact given')}</span></td>
+      <td>${esc(sellerName(o.seller))}${se ? `<br><span class="tag srcTag">Entered by ${esc(o.entered.by.split(' ')[0])}${o.entered.role === 'parent' ? ' (parent)' : ''}</span>` : ''}${!se && o.source === 'paper' ? '<br><span class="tag">In person</span>' : ''}${ch.some(x => /moved from/.test(x)) ? '<br><span class="tag">Reassigned</span>' : ''}</td>
+      <td>${esc(linesSummary(o.lines))}</td>
+      <td>${esc(fulLabel(o))}${se ? '<br><span class="panelNote">No address</span>' : (o.cust.zip ? `<br><span class="panelNote">${o.cust.zip}</span>` : '')}${o.relative ? ' <span class="tag rel">relative</span>' : ''}</td>
+      <td class="r">${money2(c.total)}</td><td>${payCell(o)}</td></tr>`;
+    const detail = !open ? '' : `<tr class="detailRow" id="d-${o.id}"><td colspan="8"><div class="orderDetail">
+      <div><h4>Items</h4><ul class="plain">${o.lines.map(l => `<li>${l.q} × ${esc(itemLabel(item(l.n)))}${l.donated ? ' <span class="tag vet">Donated</span>' : ''} <span class="panelNote">${money2(item(l.n).price * l.q)}</span></li>`).join('')}</ul>
+        <p class="panelNote" style="margin:6px 0 0">Profit ${money2(c.profit)}${o.seller ? ` · ${esc(seller(o.seller).name)} earns ${money2(c.scoutShare)}` : ' · all troop'}${se ? ' · no delivery or processing fee' : ''}</p></div>
+      <div><h4>Customer</h4><p style="margin:0">${esc(o.cust.name)}${o.cust.phone ? '<br>' + esc(o.cust.phone) : ''}${o.cust.email ? '<br>' + esc(o.cust.email) : ''}${o.cust.addr ? '<br>' + esc(o.cust.addr) + ', ' + o.cust.zip : ''}</p>
+        ${o.cust.note ? `<p class="panelNote" style="margin-top:6px">Note: ${esc(o.cust.note)}</p>` : ''}
+        ${se ? `<p class="panelNote" style="margin-top:6px">Entered by ${esc(o.entered.by)} on ${dateLbl(o.placed)}. No email went to the customer.</p>` : ''}</div>
+      <div>${se && !o.cancelled ? `<h4>Payment</h4>
+        <p style="margin:0 0 6px">${o.pay === 'paid' ? '<span class="tag paid">Paid</span>' : '<span class="tag unpaid">Not paid</span>'} ${o.collected ? '<span class="tag srcTag">Collected by scout</span>' : '<span class="tag">Not collected</span>'}</p>
+        <form class="noteEdit" data-note="${o.id}"><label class="sr" for="pn-${o.id}">Payment note</label><input type="text" id="pn-${o.id}" value="${esc(o.payNote || '')}" placeholder="How the troop got it"><button type="submit" class="btn secondary">Save note</button></form>` : ''}
+        <h4 style="margin-top:${se && !o.cancelled ? 10 : 0}px">Changes</h4>${ch.length ? `<ul class="plain">${ch.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '<p class="panelNote" style="margin:0">None yet.</p>'}
+        ${se ? `<p class="panelNote" style="margin-top:6px">Cancelled and edited by the scout are logged here.</p>` : ''}</div>
+      </div></td></tr>`;
+    return main + detail; }).join('');
+  $('ordTbl').innerHTML = `<thead><tr><th>Order</th><th>Placed</th><th>Customer</th><th>Credited</th><th>Items</th><th>Fulfillment</th><th class="r">Total</th><th>Payment</th></tr></thead>
+    <tbody>${body || `<tr><td colspan="8" style="padding:20px;text-align:center;color:var(--admin-gray-500)">No orders match. <button type="button" class="linkBtn" onclick="$('fClear').click()">Clear filters</button></td></tr>`}</tbody>
+    <tfoot><tr><td colspan="4">${n} order${n === 1 ? '' : 's'}</td><td>${ti} items</td><td></td><td class="r">${money2(tt2)}</td><td>${td ? money2(td) + ' due' : ''}</td></tr></tfoot>`;
+  $('cntOrders').textContent = ORDERS.filter(live).length;
+  renderChips();
+}
+
+$('ordTbl').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.open) { openId = openId === b.dataset.open ? null : b.dataset.open; renderOrders(); const nb = document.querySelector(`[data-open="${b.dataset.open}"]`); if (nb) nb.focus(); return; }
+  if (b.dataset.paid) {
+    const o = ORDERS.find(x => x.id === b.dataset.paid), on = o.pay !== 'paid';
+    o.pay = on ? 'paid' : 'unpaid'; if (!on) o.method = '';
+    let extra = ''; if (on && isScoutEntered(o) && !o.collected) { o.collected = true; extra = ' It now counts as collected.'; }
+    (o.changes = o.changes || []).push(`${dateLbl(SALE.today)} · marked ${on ? 'paid' : 'not paid'} by Patrick`);
+    renderOrders(); const nb = document.querySelector(`[data-paid="${o.id}"]`); if (nb) nb.focus();
+    toast(`${o.id} marked ${on ? 'paid' : 'not paid'}.${extra}`);
+  }
+});
+$('ordTbl').addEventListener('submit', e => {
+  const f = e.target.closest('[data-note]'); if (!f) return; e.preventDefault();
+  const o = ORDERS.find(x => x.id === f.dataset.note), v = f.querySelector('input').value.trim();
+  if (v === (o.payNote || '')) return toast('Payment note unchanged.');
+  o.payNote = v; (o.changes = o.changes || []).push(`${dateLbl(SALE.today)} · payment note changed by Patrick`);
+  renderOrders(); toast(`${o.id} payment note saved.`);
+});
+['fQ', 'fSource', 'fSeller', 'fMoney', 'fRound'].forEach(id => $(id).addEventListener('input', renderOrders));
+$('fClear').addEventListener('click', () => { ['fQ', 'fSource', 'fSeller', 'fMoney', 'fRound'].forEach(id => $(id).value = ''); renderOrders(); });
+document.addEventListener('click', e => { if (e.target.closest('[data-csv]')) toast('Prototype: the CSV would download here, with Source, Collected by scout and Payment note columns.'); });
+
+renderOrders();
+mountNotes({
+  noToday: true,
+  states: [
+    ['Open Grandma Sue’s order', () => { openId = 'W-1031'; renderOrders(); document.getElementById('d-W-1031').scrollIntoView({ block: 'center' }); }],
+    ['Held by scouts', () => { $('fMoney').value = 'held'; renderOrders(); }],
+    ['Cancelled order', () => { $('fClear').click(); openId = 'W-1039'; renderOrders(); document.getElementById('d-W-1039').scrollIntoView({ block: 'center' }); }],
+    ['Show all', () => { $('fClear').click(); }]
+  ],
+  gaps: [
+    'Scout-entered orders sit in the one list. The “Entered by” tag is the source marker; “Collected by scout” is the money marker. Neither replaces the Paid toggle.',
+    'Turning Paid on for an order the scout marked Not collected also marks it collected (the troop has the money either way). Say if you would rather block it.',
+    'The two chips at the top are the treasurer’s question: who is holding troop money, and how much is still out with customers.',
+    'Books, Rose order and scout shares must skip Cancelled orders. Today’s orderCalc / sellerStats would count them.',
+    'Close-the-sale: should a scout’s 30% post while their money is still held by them? Recommend a warning that lists held-by-scout orders, not a hard block.',
+    'Search matches phone and payment note, since scout-entered customers often have no email.'
+  ]
+});
+</script>
+</body>
+</html>

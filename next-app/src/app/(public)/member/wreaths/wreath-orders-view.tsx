@@ -9,10 +9,14 @@
 import { Badge } from '@/app/_components/badge';
 import { EmptyState } from '@/app/_components/empty-state';
 import surface from '@/app/_components/card.module.css';
+import { GoalBar } from '@/app/_components/goal-bar';
+import Link from 'next/link';
 import { fmtDate, fmtDay } from '@/lib/format-date';
 import { fmtMoney, fmtMoney2 } from '@/lib/wreaths/rules';
 import type { MyOrder, MyWreathOrders, SellerView } from '@/lib/wreaths/my-orders';
 import { PrintDeliveryButton } from './print-button';
+import { ScoutOrderRow } from './scout-order-row';
+import { ScoutSettings } from './scout-settings';
 import styles from './wreaths.module.css';
 
 function itemsText(o: MyOrder): string {
@@ -67,13 +71,16 @@ function Totals({ seller, share }: { seller: SellerView; share: number }) {
   );
 }
 
-function Orders({ seller }: { seller: SellerView }) {
+function Orders({ seller, items, canEdit }: { seller: SellerView; items: MyWreathOrders['items']; canEdit: boolean }) {
   if (seller.orders.length === 0) {
     return <p className={styles.fine}>No orders yet. Orders placed through {seller.name.split(' ')[0]}&rsquo;s link show up here.</p>;
   }
   return (
     <ul className={styles.orderList}>
-      {seller.orders.map((o) => (
+      {seller.orders.map((o) =>
+        o.source === 'paper' ? (
+          <ScoutOrderRow key={o.id} order={o} items={items} canEdit={canEdit} scoutFirstName={seller.name.split(' ')[0]} />
+        ) : (
         <li key={o.id} className={`${surface.card} ${styles.order} ${o.status === 'cancelled' ? styles.cancelled : ''}`}>
           <div className={styles.orderHead}>
             <span className={styles.orderNo}>{o.orderNumber}</span>
@@ -86,7 +93,8 @@ function Orders({ seller }: { seller: SellerView }) {
           </p>
           <p className={styles.orderMeta}>{fulfillmentText(o, seller.name.split(' ')[0])}</p>
         </li>
-      ))}
+        )
+      )}
     </ul>
   );
 }
@@ -136,7 +144,7 @@ function DeliveryList({ seller, sale }: { seller: SellerView; sale: NonNullable<
                       <br />
                       <span className={styles.orderMeta}>{o.orderNumber}</span>
                     </td>
-                    <td>{o.paymentStatus === 'paid' ? 'Paid' : `Collect ${fmtMoney2(o.owed)}`}</td>
+                    <td>{o.paymentStatus === 'paid' ? 'Paid' : o.collectedByScout ? 'Collected' : `Collect ${fmtMoney2(o.owed)}`}</td>
                     <td className={styles.tick} aria-label="Delivered?">
                       <span aria-hidden="true">&#9744;</span>
                     </td>
@@ -151,7 +159,11 @@ function DeliveryList({ seller, sale }: { seller: SellerView; sale: NonNullable<
   );
 }
 
-export function MyWreathOrdersView({ data }: { data: MyWreathOrders }) {
+/**
+ * `canEdit` is true only for the signed-in scout or a parent viewing their own family. The superuser proxy
+ * (`?viewScout=`) passes false: the same page, with no form and no control that writes.
+ */
+export function MyWreathOrdersView({ data, canEdit = false }: { data: MyWreathOrders; canEdit?: boolean }) {
   const { sale, sellers } = data;
   if (!sale || sellers.length === 0) {
     return (
@@ -166,9 +178,20 @@ export function MyWreathOrdersView({ data }: { data: MyWreathOrders }) {
         <section key={seller.personId} className={styles.seller} aria-label={`${seller.name} wreath orders`}>
           <div className={styles.screenOnly}>
             <h2 className={styles.sellerName}>{seller.name}</h2>
+            <GoalBar progress={seller.goalProgress} />
+            {canEdit && sale.status === 'open' ? (
+              <ScoutSettings personId={seller.personId} firstName={seller.name.split(' ')[0]} goal={seller.goal} deliveryMessage={seller.deliveryMessage} />
+            ) : (
+              seller.deliveryMessage && <p className={styles.fine}>Delivery message: {seller.deliveryMessage}</p>
+            )}
             <Totals seller={seller} share={sale.scoutShare} />
             <h3 className={styles.subHead}>Orders</h3>
-            <Orders seller={seller} />
+            <Orders seller={seller} items={data.items} canEdit={canEdit && sale.status === 'open'} />
+            {canEdit && sale.status === 'open' && seller.slug && (
+              <p className={styles.addOrder}>
+                <Link href={`/wreaths/${seller.slug}?enter=1`}>+ Order for someone I know</Link>
+              </p>
+            )}
           </div>
           <DeliveryList seller={seller} sale={sale} />
         </section>

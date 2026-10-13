@@ -16,7 +16,7 @@ import { SearchField, useTableSearch } from '../../_components/search-field';
 import { fmtDateTime } from '@/lib/format-date';
 import { PAID_METHODS, fmtMoney2, type PaidMethod } from '@/lib/wreaths/rules';
 import type { AdminOrder, AuditEntry } from '@/lib/wreaths/admin-data';
-import { cancelOrder, markPaid, reassignOrder } from './actions';
+import { cancelOrder, markPaid, reassignOrder, setPaymentNote } from './actions';
 import styles from './wreaths.module.css';
 
 export interface SellerOption {
@@ -25,7 +25,7 @@ export interface SellerOption {
 }
 
 const FULFILLMENT: Record<AdminOrder['fulfillment'], string> = { scout: 'Scout delivers', pickup: 'Pickup', delivery: 'Troop delivery', none: 'Donated only' };
-const SOURCE: Record<AdminOrder['source'], string> = { scout_link: 'Scout link', store: 'Store', paper: 'Paper' };
+const SOURCE: Record<AdminOrder['source'], string> = { scout_link: 'Scout link', store: 'Store', paper: 'Scout-entered' };
 
 export function OrdersPanel({ orders, history, sellers, deliveryZipPrefix, initialPay = '' }: { orders: AdminOrder[]; history: Record<number, AuditEntry[]>; sellers: SellerOption[]; deliveryZipPrefix: string; initialPay?: string }) {
   const [round, setRound] = useState('');
@@ -130,7 +130,12 @@ export function OrdersPanel({ orders, history, sellers, deliveryZipPrefix, initi
                       </button>
                     </td>
                     <td className={styles.nowrap}>{fmtDateTime(o.placedAt)}</td>
-                    <td>{o.customerName}</td>
+                    <td>
+                      <span className={styles.badgeRow}>
+                        {o.customerName}
+                        {o.source === 'paper' && <Badge variant="info">Scout-entered</Badge>}
+                      </span>
+                    </td>
                     <td>{o.creditedName}</td>
                     <td>
                       <span className={styles.badgeRow}>
@@ -146,7 +151,10 @@ export function OrdersPanel({ orders, history, sellers, deliveryZipPrefix, initi
                       ) : o.paymentStatus === 'paid' ? (
                         <Badge variant="success">Paid{o.paidMethod ? ` · ${o.paidMethod}` : ''}</Badge>
                       ) : (
-                        <Badge variant="warning">Not paid</Badge>
+                        <span className={styles.badgeRow}>
+                          <Badge variant="warning">Not paid</Badge>
+                          {o.source === 'paper' && o.collectedByScout && <Badge variant="info">Collected by scout</Badge>}
+                        </span>
                       )}
                     </td>
                     <td>{o.round}</td>
@@ -250,7 +258,25 @@ function OrderDetail({ order: o, history, onReassign, onCancel }: { order: Admin
           <dt>Address</dt>
           <dd>{address || '—'}</dd>
           <dt>Source</dt>
-          <dd>{o.source === 'store' && o.creditedPersonId != null && o.deliveringPersonId == null ? 'Store, scout credited (not delivering)' : SOURCE[o.source]}</dd>
+          <dd>
+            {o.source === 'store' && o.creditedPersonId != null && o.deliveringPersonId == null
+              ? 'Store, scout credited (not delivering)'
+              : o.source === 'paper'
+                ? `Scout-entered${o.enteredByName ? ` by ${o.enteredByName}` : ''}`
+                : SOURCE[o.source]}
+          </dd>
+          {o.source === 'paper' && (
+            <>
+              <dt>Collected by scout</dt>
+              <dd>{o.collectedByScout ? 'Yes' : 'Not yet'}</dd>
+              {o.customerNote && (
+                <>
+                  <dt>Note</dt>
+                  <dd>{o.customerNote}</dd>
+                </>
+              )}
+            </>
+          )}
         </dl>
       </div>
       <div>
@@ -287,6 +313,7 @@ function OrderDetail({ order: o, history, onReassign, onCancel }: { order: Admin
           </div>
         )}
         {error && <p className={styles.badNote}>{error}</p>}
+        {o.source === 'paper' && <PaymentNote key={`${o.id}-${o.paymentNote}`} order={o} />}
         {live && (
           <div className={styles.actionRow}>
             <Button variant="quiet" onClick={onReassign}>
@@ -316,6 +343,39 @@ function OrderDetail({ order: o, history, onReassign, onCancel }: { order: Admin
         )}
       </div>
     </div>
+  );
+}
+
+/** The payment note on a scout-entered order: the scout types one, the treasurer may change it. Dirty-gated Save. */
+function PaymentNote({ order: o }: { order: AdminOrder }) {
+  const [note, setNote] = useState(o.paymentNote);
+  const [problem, setProblem] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  const { dirty } = useSavedSnapshot(note);
+  function save() {
+    setProblem(null);
+    start(async () => {
+      const res = await setPaymentNote(o.id, note);
+      if (!res.ok) setProblem(res.error ?? 'Couldn’t save the note.');
+    });
+  }
+  return (
+    <form
+      noValidate
+      onSubmit={(e) => {
+        e.preventDefault();
+        save();
+      }}
+    >
+      <div className={`${styles.field} ${problem ? styles.bad : ''}`}>
+        <label htmlFor={`pn-${o.id}`}>Payment note</label>
+        <input id={`pn-${o.id}`} type="text" autoComplete="off" maxLength={200} aria-invalid={problem ? true : undefined} value={note} onChange={(e) => setNote(e.target.value)} />
+        {problem && <p className={styles.badNote}>{problem}</p>}
+      </div>
+      <div className={styles.actionRow}>
+        <SaveButton dirty={dirty} pending={pending} onClick={save} />
+      </div>
+    </form>
   );
 }
 

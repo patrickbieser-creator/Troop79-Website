@@ -43,9 +43,13 @@ export interface AdminSeller {
   slug: string | null;
   active: boolean;
   orders: number;
+  /** The scout's wreath goal (items); null = none. */
+  goal: number | null;
+  deliveryMessage: string | null;
 }
 
 export interface AdminOrderLine {
+  itemId: number;
   label: string;
   catalogNumber: number;
   quantity: number;
@@ -85,6 +89,12 @@ export interface AdminOrder {
   paidAmount: number | null;
   status: 'placed' | 'cancelled';
   lines: AdminOrderLine[];
+  /** Scout-entered orders: who typed it in (the scout or a parent), whether the scout says they hold the money, and the notes. */
+  enteredByPersonId: number | null;
+  enteredByName: string | null;
+  collectedByScout: boolean;
+  paymentNote: string;
+  customerNote: string;
 }
 
 export interface AuditEntry {
@@ -148,19 +158,21 @@ export async function loadAdminItems(sb: SupabaseClient, saleId: number): Promis
 
 export async function loadAdminSellers(sb: SupabaseClient, saleId: number): Promise<AdminSeller[]> {
   const [{ data: sellers }, { data: counts }] = await Promise.all([
-    sb.from('wreath_sellers').select('id, person_id, slug, active, people:person_id(display_name)').eq('sale_id', saleId),
+    sb.from('wreath_sellers').select('id, person_id, slug, active, goal, delivery_message, people:person_id(display_name)').eq('sale_id', saleId),
     sb.from('wreath_orders').select('credited_person_id').eq('sale_id', saleId).eq('status', 'placed').not('credited_person_id', 'is', null)
   ]);
   const perPerson = new Map<number, number>();
   for (const c of (counts ?? []) as { credited_person_id: number }[]) perPerson.set(c.credited_person_id, (perPerson.get(c.credited_person_id) ?? 0) + 1);
-  return ((sellers ?? []) as unknown as { id: number; person_id: number; slug: string | null; active: boolean; people: { display_name: string } | { display_name: string }[] | null }[])
+  return ((sellers ?? []) as unknown as { id: number; person_id: number; slug: string | null; active: boolean; goal: number | null; delivery_message: string | null; people: { display_name: string } | { display_name: string }[] | null }[])
     .map((s) => ({
       id: s.id,
       personId: s.person_id,
       name: one(s.people)?.display_name ?? `Person ${s.person_id}`,
       slug: s.slug,
       active: s.active,
-      orders: perPerson.get(s.person_id) ?? 0
+      orders: perPerson.get(s.person_id) ?? 0,
+      goal: s.goal,
+      deliveryMessage: s.delivery_message
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
 }
@@ -185,7 +197,7 @@ export async function loadSellerCandidates(sb: SupabaseClient, saleId: number): 
 export async function loadAdminOrders(sb: SupabaseClient, saleId: number, opts: { involving?: number[] } = {}): Promise<AdminOrder[]> {
   let q = sb
     .from('wreath_orders')
-    .select('*, credited:credited_person_id(display_name), wreath_order_lines(quantity, donated, unit_price, unit_cost, wreath_items(catalog_number, name, size))')
+    .select('*, credited:credited_person_id(display_name), entered:entered_by_person_id(display_name), wreath_order_lines(item_id, quantity, donated, unit_price, unit_cost, wreath_items(catalog_number, name, size))')
     .eq('sale_id', saleId);
   if (opts.involving) {
     if (opts.involving.length === 0) return [];
@@ -220,9 +232,15 @@ export async function loadAdminOrders(sb: SupabaseClient, saleId: number, opts: 
     paidAt: r.paid_at,
     paidAmount: r.paid_amount == null ? null : Number(r.paid_amount),
     status: r.status,
+    enteredByPersonId: r.entered_by_person_id ?? null,
+    enteredByName: one(r.entered)?.display_name ?? null,
+    collectedByScout: r.collected_by_scout === true,
+    paymentNote: r.payment_note ?? '',
+    customerNote: r.customer_note ?? '',
     lines: (r.wreath_order_lines as Record<string, any>[]).map((l) => { // eslint-disable-line @typescript-eslint/no-explicit-any
       const it = one(l.wreath_items) as { catalog_number: number; name: string; size: string } | null;
       return {
+        itemId: l.item_id,
         label: it ? `${it.size ? it.size + ' ' : ''}${it.name}` : 'Item',
         catalogNumber: it?.catalog_number ?? 0,
         quantity: l.quantity,

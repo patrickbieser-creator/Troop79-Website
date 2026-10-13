@@ -180,3 +180,36 @@
     break-inside: avoid;
   }
 }
+
+/* ── Scout-entered orders: inline edit, the goal / delivery message form ── */
+.srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.badNote { margin: var(--sp-1) 0 0; font-size: var(--fs-sm); color: var(--status-danger); }
+.opt { font-weight: 400; color: var(--text-meta); }
+.fieldLabel { font-size: var(--fs-sm); font-weight: 600; color: var(--text-meta); margin: 0 0 var(--sp-1); }
+.rowActions { display: flex; flex-wrap: wrap; gap: var(--sp-3); align-items: baseline; margin-top: var(--sp-2); }
+.editing { background: var(--cream); }
+.editForm { display: grid; gap: var(--sp-3); }
+.editFields { display: grid; gap: 0 var(--sp-3); grid-template-columns: 1fr; }
+@media (min-width: 640px) { .editFields { grid-template-columns: 1fr 1fr; } .editWide { grid-column: 1 / -1; } }
+.itemsBox { margin: 0; padding: var(--sp-3); border: 1px solid var(--rule); border-radius: var(--rad-md); }
+.itemsBox legend { padding: 0 var(--sp-1); font-size: var(--fs-sm); font-weight: 600; color: var(--text-meta); }
+.itemsBad { border-color: var(--status-danger); box-shadow: 0 0 0 1px var(--status-danger); }
+.editLines { list-style: none; margin: 0 0 var(--sp-2); padding: 0; }
+.editLines li { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); align-items: center; padding: var(--sp-2) 0; border-top: 1px solid var(--rule); }
+.editLines li:first-child { border-top: none; }
+.editLineName { flex: 1 1 10rem; font-size: var(--fs-md); }
+.editLineAmt { min-width: 4rem; text-align: right; font-variant-numeric: tabular-nums; }
+.addItem { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); align-items: center; }
+.addSelect { flex: 1 1 14rem; font-size: 16px; min-height: 40px; padding: var(--sp-1) var(--sp-2); border: 1px solid var(--border-mid); border-radius: var(--rad-md); background: var(--warm-white); }
+.checkInline { display: inline-flex; gap: var(--sp-2); align-items: center; font-size: var(--fs-md); }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--border-mid); border-radius: var(--rad-md); overflow: hidden; background: var(--warm-white); }
+.seg button { font-size: var(--fs-md); padding: var(--sp-2) var(--sp-4); min-height: 40px; border: none; border-left: 1px solid var(--border-mid); background: var(--warm-white); color: var(--navy); cursor: pointer; }
+.seg button:first-child { border-left: none; }
+.seg button[aria-pressed="true"] { background: var(--navy); color: var(--warm-white); }
+.editFoot { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-4); align-items: center; }
+.spacer { flex: 1; }
+.confirmCancel { display: flex; flex-wrap: wrap; gap: var(--sp-3); align-items: center; font-weight: 600; color: var(--status-danger); }
+.settings { display: grid; gap: 0 var(--sp-3); grid-template-columns: 1fr; max-width: 640px; margin: 0 0 var(--sp-3); }
+@media (min-width: 640px) { .settings { grid-template-columns: 8rem 1fr; } }
+.settingsFoot { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-4); align-items: center; margin-top: var(--sp-2); }
+.addOrder { margin: var(--sp-3) 0 0; font-size: var(--fs-md); font-weight: 600; }

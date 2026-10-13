@@ -14,7 +14,7 @@ import { Dialog, DialogActions, DialogBody, DialogHeader } from '../../_componen
 import { Badge } from '../../_components/badge';
 import { SaveButton, SaveProblem, useSavedSnapshot } from '../../_components/save-state';
 import type { AdminSeller } from '@/lib/wreaths/admin-data';
-import { addSeller, setSellerActive, setSellerSlug } from './actions';
+import { addSeller, setSellerActive, setSellerDeliveryMessage, setSellerGoal, setSellerSlug } from './actions';
 import styles from './wreaths.module.css';
 
 interface Candidate {
@@ -55,6 +55,7 @@ export function SellersPanel({ saleId, sellers, candidates }: { saleId: number; 
               <th>Scout</th>
               <th>Link</th>
               <th className={styles.numCell}>Orders</th>
+              <th className={styles.numCell}>Goal</th>
               <th>Status</th>
               <th className={styles.actionsCell}>Actions</th>
             </tr>
@@ -73,18 +74,19 @@ export function SellersPanel({ saleId, sellers, candidates }: { saleId: number; 
                   )}
                 </td>
                 <td className={styles.numCell}>{s.orders}</td>
+                <td className={styles.numCell}>{s.goal ? s.goal : <span className={styles.muted}>None</span>}</td>
                 <td>{s.active ? <Badge variant="success">Selling</Badge> : <Badge variant="muted">Retired</Badge>}</td>
                 <td className={styles.actionsCell}>
                   <Button
                     variant="secondary"
                     size="sm"
-                    aria-label={`Edit link for ${s.name}`}
+                    aria-label={`Edit ${s.name}`}
                     onClick={() => {
                       setEditing(s);
                       requestAnimationFrame(() => ref.current?.showModal());
                     }}
                   >
-                    Edit link
+                    Edit
                   </Button>{' '}
                   <Button variant="quiet" size="sm" disabled={pending} aria-label={`${s.active ? 'Retire' : 'Restore'} ${s.name}`} onClick={() => toggle(s)}>
                     {s.active ? 'Retire' : 'Restore'}
@@ -100,7 +102,7 @@ export function SellersPanel({ saleId, sellers, candidates }: { saleId: number; 
       <AddSeller saleId={saleId} candidates={candidates} />
 
       <Dialog ref={ref} onClose={() => setEditing(null)}>
-        <DialogHeader title={editing ? `Edit link for ${editing.name}` : 'Edit link'} />
+        <DialogHeader title={editing ? `Edit ${editing.name}` : 'Edit seller'} />
         {editing && <SlugForm key={editing.id} seller={editing} onClose={() => ref.current?.close()} />}
       </Dialog>
     </>
@@ -198,16 +200,28 @@ function AddSeller({ saleId, candidates }: { saleId: number; candidates: Candida
 
 function SlugForm({ seller, onClose }: { seller: AdminSeller; onClose: () => void }) {
   const [slug, setSlug] = useState(seller.slug ?? '');
-  const [problem, setProblem] = useState<string | null>(null);
+  const [goal, setGoal] = useState(seller.goal == null ? '' : String(seller.goal));
+  const [message, setMessage] = useState(seller.deliveryMessage ?? '');
+  const [problem, setProblem] = useState<{ field: 'slug' | 'goal' | 'deliveryMessage'; message: string } | null>(null);
   const [pending, start] = useTransition();
-  const { dirty } = useSavedSnapshot(slug);
+  const { dirty } = useSavedSnapshot(JSON.stringify({ slug, goal, message }));
 
   function save() {
     setProblem(null);
     start(async () => {
-      const res = await setSellerSlug(seller.id, slug.trim() || null);
-      if (res.ok) onClose();
-      else setProblem(res.error ?? 'Couldn’t save the link.');
+      if (slug.trim() !== (seller.slug ?? '')) {
+        const res = await setSellerSlug(seller.id, slug.trim() || null);
+        if (!res.ok) return setProblem({ field: 'slug', message: res.error ?? 'Couldn’t save the link.' });
+      }
+      if (goal.trim() !== (seller.goal == null ? '' : String(seller.goal))) {
+        const res = await setSellerGoal(seller.id, goal);
+        if (!res.ok) return setProblem({ field: 'goal', message: res.error ?? 'Couldn’t save the goal.' });
+      }
+      if (message.trim() !== (seller.deliveryMessage ?? '')) {
+        const res = await setSellerDeliveryMessage(seller.id, message);
+        if (!res.ok) return setProblem({ field: 'deliveryMessage', message: res.error ?? 'Couldn’t save the message.' });
+      }
+      onClose();
     });
   }
 
@@ -220,11 +234,23 @@ function SlugForm({ seller, onClose }: { seller: AdminSeller; onClose: () => voi
       }}
     >
       <DialogBody>
-        <div className={`${styles.field} ${problem ? styles.bad : ''}`}>
+        <div className={`${styles.field} ${problem?.field === 'slug' ? styles.bad : ''}`}>
           <label htmlFor="ws-edit-slug">Link</label>
-          <input id="ws-edit-slug" type="text" autoComplete="off" spellCheck={false} aria-invalid={problem ? true : undefined} value={slug} onChange={(e) => setSlug(e.target.value)} />
-          {problem && <p className={styles.badNote}>{problem}</p>}
+          <input id="ws-edit-slug" type="text" autoComplete="off" spellCheck={false} aria-invalid={problem?.field === 'slug' ? true : undefined} value={slug} onChange={(e) => setSlug(e.target.value)} />
+          {problem?.field === 'slug' && <p className={styles.badNote}>{problem.message}</p>}
           <p className={styles.hint}>Leave it empty to give this seller no personal page. Changing a link breaks the one already shared.</p>
+        </div>
+        <div className={`${styles.field} ${problem?.field === 'goal' ? styles.bad : ''}`}>
+          <label htmlFor="ws-edit-goal">Goal (wreaths)</label>
+          <input id="ws-edit-goal" type="text" inputMode="numeric" autoComplete="off" aria-invalid={problem?.field === 'goal' ? true : undefined} value={goal} onChange={(e) => setGoal(e.target.value)} />
+          {problem?.field === 'goal' && <p className={styles.badNote}>{problem.message}</p>}
+          <p className={styles.hint}>A whole number from 0 to 999. Leave it empty for no goal. The scout’s family can set this too.</p>
+        </div>
+        <div className={`${styles.field} ${problem?.field === 'deliveryMessage' ? styles.bad : ''}`}>
+          <label htmlFor="ws-edit-msg">Delivery message</label>
+          <input id="ws-edit-msg" type="text" maxLength={200} autoComplete="off" aria-invalid={problem?.field === 'deliveryMessage' ? true : undefined} value={message} onChange={(e) => setMessage(e.target.value)} />
+          {problem?.field === 'deliveryMessage' && <p className={styles.badNote}>{problem.message}</p>}
+          <p className={styles.hint}>Replaces “delivers your order in person…” on the scout’s page. Live when saved. Leave it empty for the standard line.</p>
         </div>
       </DialogBody>
       <DialogActions>

@@ -8,6 +8,9 @@ import { Notice } from '@/app/_components/notice';
 import { fmtDay } from '@/lib/format-date';
 import { LINK_NOT_FOUND, distributionDay, distributionLine, moneyBlockLines } from '@/lib/wreaths/copy';
 import type { StorePageData } from '@/lib/wreaths/store-page';
+import { GoalBar } from '@/app/_components/goal-bar';
+import type { GoalProgress } from '@/lib/wreaths/scout-entry';
+import { EntrySwitch, type EntryConfig } from './entry-mode';
 import { StoreView } from './store-view';
 import styles from '../wreaths.module.css';
 
@@ -24,7 +27,7 @@ function MoneyBlock({ lines }: { lines: string[] }) {
   );
 }
 
-export function StorePage({ data }: { data: StorePageData }) {
+export function StorePage({ data, entry, goal }: { data: StorePageData; entry?: EntryConfig; goal?: GoalProgress | null }) {
   const { state, scout, linkFellBack } = data;
   const first = scout?.firstName ?? null;
 
@@ -68,12 +71,11 @@ export function StorePage({ data }: { data: StorePageData }) {
     <>
       <p className={styles.kicker}>Troop 79 Christmas wreaths</p>
       <h1 className={styles.title}>You’re ordering from {scout.name}</h1>
+      <EntrySwitch />
       <div className={styles.intro}>
         <div className={styles.greet}>
-          {scout.message && <blockquote>{scout.message}</blockquote>}
-          <p className={styles.meta}>
-            {scout.firstName} delivers your order in person{day ? `, after distribution day, ${day}` : ''}.
-          </p>
+          <GoalBar progress={goal ?? null} />
+          <p className={styles.meta}>{scout.deliveryMessage ?? `${scout.firstName} delivers your order in person${day ? `, after distribution day, ${day}` : ''}.`}</p>
         </div>
         <MoneyBlock lines={money} />
       </div>
@@ -114,6 +116,7 @@ export function StorePage({ data }: { data: StorePageData }) {
           scout={scout ? { slug: scout.slug, name: scout.name, firstName: scout.firstName } : null}
           head={head}
           linkFellBack={linkFellBack}
+          entry={entry}
         />
       </PageShell>
     </>

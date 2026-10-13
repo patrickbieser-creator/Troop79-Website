@@ -29,6 +29,8 @@ import { Badge } from '@/app/_components/badge';
 import { Notice } from '@/app/_components/notice';
 import { EmptyState } from '@/app/_components/empty-state';
 import { SectionDivider } from '@/app/_components/section-divider';
+import { GoalBar } from '@/app/_components/goal-bar';
+import { goalProgress } from '@/lib/wreaths/scout-entry';
 import cardS from '@/app/_components/card.module.css';
 import { PublicBlockedSaveSpecimen, PublicBrandDetailSpecimen, PublicDietRowsSpecimen, PublicFinishLineSpecimen, PublicAmountScaleSpecimen, PublicGearSpecimen, PublicMenuEditListSpecimen, PublicStepperSpecimen, PublicTabStripSpecimen } from './specimens';
 import { IngredientList } from '@/app/(public)/library/menu-monster/_components/ingredient-list';
@@ -693,6 +695,17 @@ export default function PublicStyleguidePage() {
             <p className={sg.specimenTagRow}>
               <span className={lib.reqTag}>1a</span> <span className={lib.reqTag}>2</span>{' '}
               requirement tags — library-specific (mono code tags, NOT the Badge pattern).
+            </p>
+          </div>
+
+          {/* GoalBar (2026-10-13): the wreath goal thermometer on a scout's page and Members › Wreath sale. A native
+              <progress> (no inline width), capped at the goal while the text keeps counting; absent without a goal. */}
+          <div className={sg.specimenBlock}>
+            <GoalBar progress={goalProgress(25, 12, 'Oliver')} />
+            <GoalBar progress={goalProgress(25, 27, 'Oliver')} />
+            <p className={sg.specimenTagRow}>
+              <code>GoalBar</code> from <code>_components/goal-bar</code> &mdash; top: 12 of 25; bottom: over the goal, the bar stays full and the number keeps counting.
+              Nothing renders when no goal is set.
             </p>
           </div>
 

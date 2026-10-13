@@ -7,6 +7,7 @@ import { recipientsForScouts } from '@/lib/email-recipients';
 import { siteUrl } from '@/lib/site-url';
 import { placeOrder, type PlaceOrderResult } from '@/lib/wreaths/place-order';
 import { loadCurrentSale } from '@/lib/wreaths/public';
+import { entererEmails, resolveScoutEntryViewer } from '@/lib/wreaths/scout-entry-viewer';
 import { searchSellers, type SellerMatch } from '@/lib/wreaths/seller-search';
 
 /**
@@ -50,4 +51,31 @@ export async function searchSellersAction(prefix: string): Promise<SellerMatch[]
   const sale = await loadCurrentSale(supabase);
   if (!sale) return [];
   return searchSellers(supabase, sale.id, typeof prefix === 'string' ? prefix : '', { ip: await callerIp() });
+}
+
+/**
+ * "Order for someone I know": a signed-in scout, or a parent in the scout's household, enters an order they will
+ * collect the money for. The viewer comes ONLY from the session (verified identity + revocation epoch, scoped by
+ * resolveFamilyScope); the request's seller slug just names the target and placeOrder refuses it unless the viewer's
+ * scope includes that scout. A signed-out caller, another family, and a leader merely proxying all get a refusal.
+ */
+export async function placeScoutOrderAction(raw: unknown): Promise<PlaceOrderResult> {
+  const supabase = createAdminClient();
+  const viewer = await resolveScoutEntryViewer(supabase);
+  if (!viewer) return { ok: false, code: 'forbidden', error: 'Sign in as the scout, or a parent, to enter an order.' };
+  return placeOrder(raw, {
+    supabase,
+    now: () => Date.now(),
+    ip: await callerIp(),
+    send: (m) => sendEmail({ ...m, confirm: true }),
+    householdEmails: async (personId) => {
+      const { data } = await supabase.from('scouts').select('id').eq('person_id', personId).limit(1);
+      const scoutId = (data as { id: string }[] | null)?.[0]?.id;
+      if (!scoutId) return [];
+      return (await recipientsForScouts([scoutId])).map((r) => r.email);
+    },
+    siteUrl: siteUrl(),
+    replyTo: troopEmail(),
+    scoutEntry: { viewer, emails: await entererEmails(supabase, viewer.personId) }
+  });
 }

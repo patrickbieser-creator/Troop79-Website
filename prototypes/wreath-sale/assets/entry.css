@@ -1,0 +1,89 @@
+/* "My customer" mode prototype — additions only. Loaded after wreath.css; never edits it. */
+
+/* ── Signed-in strip + the mode switch (quiet, not a banner) ── */
+.whoBar { background: var(--warm-white); border-bottom: 1px solid var(--border-light); font-family: var(--font-ui); font-size: var(--fs-xs); color: var(--text-meta); }
+.whoBar > div { max-width: 1180px; margin: 0 auto; padding: 5px var(--sp-4); display: flex; justify-content: flex-end; gap: var(--sp-3); }
+.switchRow { margin: 0 0 var(--sp-4); }
+.switch { display: inline-flex; align-items: center; gap: var(--sp-3); background: none; border: none; padding: var(--sp-2) 0; min-height: 44px; cursor: pointer; font-family: var(--font-ui); font-size: var(--fs-md); font-weight: 600; color: var(--navy); text-align: left; }
+.switch .track { flex: none; width: 40px; height: 22px; border-radius: 11px; background: var(--border-mid); position: relative; transition: background var(--transition); }
+.switch .knob { position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: transform var(--transition); }
+.switch[aria-checked="true"] .track { background: var(--forest); }
+.switch[aria-checked="true"] .knob { transform: translateX(18px); }
+.switch:hover { color: var(--forest); }
+
+/* On-mode: the cart column carries the customer form, at every width */
+body.entryOn .cartAside { border-left: 3px solid var(--forest); }
+@media (min-width: 900px) { body.entryOn .storeGrid { grid-template-columns: minmax(0, 1fr) 360px; } }
+@media (max-width: 899px) { body.entryOn .cartAside { display: block; position: static; } }
+.entryForm { display: grid; gap: var(--sp-3); margin-top: var(--sp-3); padding-top: var(--sp-3); border-top: 1px solid var(--rule); }
+.entryForm textarea { min-height: 60px; }
+.entryForm .meta { margin: 0; font-size: var(--fs-xs); }
+
+/* Problem box: names the problem; the field above/below it is outlined in red by .bad */
+.problem { font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--status-danger); background: var(--status-danger-bg); border: 1px solid var(--status-danger); border-radius: var(--rad-md); padding: var(--sp-2) var(--sp-3); margin-top: 4px; }
+.problem strong { color: var(--status-danger); }
+.bad input, .bad textarea { background: #fff; }
+
+/* Tags added for this feature */
+.tag.coll { background: var(--status-info-bg); color: var(--navy); }
+.tag.nocoll { background: var(--newsprint); color: var(--text-meta); }
+.tag.lock { background: #eee; color: #555; }
+.tag.src { background: #e8eef2; color: var(--navy); }
+.tag.cancelled { background: var(--status-danger-bg); color: var(--status-danger); }
+
+/* Confirmation */
+.done { max-width: 640px; }
+.doneList { list-style: none; margin: 0; padding: 0; font-family: var(--font-ui); }
+.doneList li { display: flex; justify-content: space-between; gap: var(--sp-3); padding: 6px 0; border-top: 1px solid var(--rule); }
+.doneList li:first-child { border-top: none; }
+.doneList .tot { font-weight: 700; color: var(--text-head); }
+.btnRow { display: flex; gap: var(--sp-3); flex-wrap: wrap; align-items: center; margin-top: var(--sp-4); }
+
+/* Members list: payment note line, inline edit */
+.rows .note { display: block; color: var(--text-meta); font-size: var(--fs-sm); font-family: var(--font-ui); }
+.rows > li.editing { display: block; background: var(--cream); }
+.rows > li.cancelled .who, .rows > li.cancelled .amt { color: var(--text-meta); text-decoration: line-through; }
+.rows .acts { display: flex; gap: var(--sp-3); align-items: baseline; font-family: var(--font-ui); font-size: var(--fs-sm); }
+.editForm { display: grid; gap: var(--sp-3); font-family: var(--font-ui); }
+.editForm .fields { gap: var(--sp-3); }
+.editForm .editFoot { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-4); align-items: center; }
+.editForm .spacer { flex: 1; }
+.confirmCancel { display: flex; flex-wrap: wrap; gap: var(--sp-3); align-items: center; font-size: var(--fs-sm); font-weight: 600; color: var(--status-danger); }
+.lockLine { font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-meta); }
+@media (min-width: 720px) { .stats.three { grid-template-columns: repeat(4, 1fr); } }
+
+/* Admin additions */
+.srcTag { background: #e8eef2; color: var(--admin-navy); }
+.heldTag { background: var(--admin-status-warning-bg); color: #6d520f; }
+.paidSwitch { display: inline-flex; align-items: center; gap: 6px; background: none; border: none; padding: 2px 0; min-height: 28px; cursor: pointer; font: inherit; font-size: 13px; font-weight: 600; color: var(--admin-gray-700); }
+.paidSwitch .track { width: 32px; height: 18px; border-radius: 9px; background: var(--admin-gray-300); position: relative; transition: background var(--transition); flex: none; }
+.paidSwitch .knob { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: transform var(--transition); }
+.paidSwitch[aria-checked="true"] .track { background: var(--admin-forest); }
+.paidSwitch[aria-checked="true"] .knob { transform: translateX(14px); }
+.tbl tr.cancelledRow td { color: var(--admin-gray-500); }
+.tbl tr.cancelledRow td strong { text-decoration: line-through; }
+.noteEdit { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.noteEdit input { flex: 1 1 200px; width: auto; }
+.chip { background: #fff; border: 1px solid var(--admin-gray-200); border-radius: 4px; padding: 8px 14px; font-size: 13px; color: var(--admin-gray-700); }
+.chip strong { display: block; font-size: 18px; color: var(--admin-gray-900); font-variant-numeric: tabular-nums; }
+.chips { display: flex; gap: var(--sp-3); flex-wrap: wrap; margin-bottom: var(--sp-3); }
+
+/* ── Floating prototype notes (outside the design) ── */
+.pnotes { position: fixed; left: 12px; bottom: 12px; z-index: 90; width: min(360px, calc(100vw - 24px)); background: #f0f1f3; border: 2px dashed #9ba1aa; border-radius: var(--rad-md); font-family: var(--font-ui); font-size: var(--fs-sm); color: #2a2e34; box-shadow: 0 4px 16px rgba(0,0,0,.18); }
+.pnotes > summary { cursor: pointer; padding: 8px 12px; font-weight: 700; font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .08em; list-style: none; display: flex; justify-content: space-between; }
+.pnotes > summary::-webkit-details-marker { display: none; }
+.pnotes > summary::after { content: '+'; font-size: 16px; line-height: 1; }
+.pnotes[open] > summary::after { content: '–'; }
+.pnotesBody { max-height: min(62vh, 560px); overflow: auto; padding: 0 12px 12px; }
+.pnotes h4 { margin: 12px 0 4px; font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .08em; color: #555; }
+.pnotes label { display: flex; gap: 6px; align-items: center; margin: 4px 0; font-size: var(--fs-sm); }
+.pnotes select { font-size: 13px; min-height: 30px; padding: 2px 6px; width: auto; flex: 1; }
+.pnotes .pbtns { display: flex; flex-wrap: wrap; gap: 6px; }
+.pnotes .pbtns button { font: inherit; font-size: 12px; font-weight: 600; padding: 4px 9px; border: 1px solid #9ba1aa; border-radius: 4px; background: #fff; color: #2a2e34; cursor: pointer; min-height: 28px; }
+.pnotes .pbtns button:hover { border-color: #2a2e34; }
+.pnotes ul { margin: 4px 0; padding-left: 18px; }
+.pnotes li { margin: 3px 0; }
+.pnotes p { margin: 4px 0; }
+.pnotes .rec { color: #1f4d2a; }
+@media (max-width: 899px) { .pnotes { bottom: 76px; } }
+@media print { .pnotes, .proto { display: none; } }

@@ -1,0 +1,18 @@
+/* Goal thermometer (wreath sale): a quiet text line over a thin bar. Public tokens only. */
+.goal { margin: 0 0 var(--sp-4); max-width: 420px; }
+.text { margin: 0 0 var(--sp-1); font-family: var(--font-ui); font-size: var(--fs-md); color: var(--text-body); }
+.text strong { color: var(--text-head); }
+.bar {
+  display: block;
+  width: 100%;
+  height: var(--sp-2);
+  border: 0;
+  border-radius: var(--rad-pill);
+  overflow: hidden;
+  appearance: none;
+  background: var(--rule);
+  color: var(--forest);
+}
+.bar::-webkit-progress-bar { background: var(--rule); }
+.bar::-webkit-progress-value { background: var(--forest); border-radius: var(--rad-pill); }
+.bar::-moz-progress-bar { background: var(--forest); border-radius: var(--rad-pill); }

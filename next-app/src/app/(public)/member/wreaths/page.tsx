@@ -5,7 +5,8 @@
  * Requires t79_identity, like /member/reimbursements. Scope is the family's scouts: an adult sees their children, a
  * scout sees themself, and the read-only superuser proxy (lib/member-viewer.ts) sees the chosen scout's household.
  * Only scouts who are sellers in the current sale get a section; troop-store orders never appear. Customer address
- * and phone are shown only on the rows a scout delivers (lib/wreaths/my-orders.ts). No form here writes anything.
+ * and phone are shown only on the rows a scout delivers (lib/wreaths/my-orders.ts). A scout-entered order (and the
+ * goal / delivery message form) can be edited here by the scout or a parent; the superuser proxy sees them read-only.
  */
 import Link from 'next/link';
 import { getIdentitySessionIfValid } from '@/lib/family-access';
@@ -81,7 +82,7 @@ export default async function MyWreathOrdersPage({ searchParams }: { searchParam
           Every wreath order placed through your scout&rsquo;s link: who has paid, what is still owed, and what your scout has earned.{' '}
           <Link href={proxy ? `/member?viewScout=${proxy.personId}` : '/member'}>← Back to Members</Link>
         </p>
-        <MyWreathOrdersView data={data} />
+        <MyWreathOrdersView data={data} canEdit={!proxy} />
       </PageShell>
     </>
   );

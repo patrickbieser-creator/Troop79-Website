@@ -14,7 +14,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { fmtDateFull } from '@/lib/format-date';
 import { arrivalParagraphs } from './copy';
-import { customerConfirmationEmail, scoutNoticeEmail, type OrderEmailContext } from './emails';
+import { customerConfirmationEmail, scoutEntryConfirmationEmail, scoutNoticeEmail, type OrderEmailContext } from './emails';
 import { SLUG_RE, saleFromRow, scoutDisplayName, type PublicSale } from './public';
 import {
   EMAIL_RE,
@@ -32,7 +32,7 @@ import {
 } from './rules';
 
 /** perSellerNoticeDay caps the notes mailed to one scout's household per day, so a forged link can't use us as a mailer. */
-export const RATE_LIMITS = { perIpHour: 10, perEmailDay: 5, globalHour: 200, perSellerNoticeDay: 20 };
+export const RATE_LIMITS = { perIpHour: 10, perEmailDay: 5, globalHour: 200, perSellerNoticeDay: 20, perEntererHour: 60 };
 export type RateLimits = typeof RATE_LIMITS;
 
 export interface EmailMessage {
@@ -56,13 +56,27 @@ export interface PlaceOrderDeps {
   /** Tests name their own sale; production takes the open one. */
   saleId?: number;
   limits?: Partial<RateLimits>;
+  /**
+   * Scout-entry mode ("Order for someone I know"). Set ONLY by the signed-in server action, from the session, never
+   * from the request body: `viewer` is who the session says is typing (with the people they may sell as: themself,
+   * or their children), `emails` their own deliverable addresses. Absent = the public store, unchanged.
+   */
+  scoutEntry?: { viewer: ScoutEntryViewer; emails: string[] };
 }
 
-export type OrderField = 'cart' | 'name' | 'email' | 'phone' | 'street' | 'city' | 'zip' | 'method' | 'gift' | 'relative' | 'credit';
+/** A signed-in person and the scouts they may enter orders for (lib/household-scope's resolveFamilyScope). */
+export interface ScoutEntryViewer {
+  personId: number;
+  name: string;
+  /** people.id of everyone this viewer acts for: themself plus children via parent_of / guardian_of. */
+  scope: number[];
+}
+
+export type OrderField = 'cart' | 'name' | 'email' | 'phone' | 'street' | 'city' | 'zip' | 'method' | 'gift' | 'relative' | 'credit' | 'note' | 'paymentNote';
 
 export type PlaceOrderResult =
-  | { ok: true; token: string; orderNumber: string; created: boolean }
-  | { ok: false; code: 'invalid' | 'closed' | 'unavailable' | 'link_inactive'; error: string; field?: OrderField };
+  | { ok: true; token: string; orderNumber: string; created: boolean; confirmedTo?: string[] }
+  | { ok: false; code: 'invalid' | 'closed' | 'unavailable' | 'link_inactive' | 'forbidden'; error: string; field?: OrderField };
 
 const UNAVAILABLE = (replyTo: string): PlaceOrderResult => ({
   ok: false,
@@ -101,6 +115,10 @@ interface ParsedRequest {
   startedAt: number | null;
   mountedAt: number | null;
   website: string;
+  /** Scout-entry fields; read always, used only when the server put the order in scout-entry mode. */
+  note: string;
+  collected: boolean;
+  paymentNote: string;
 }
 
 function parseRequest(raw: unknown): ParsedRequest | { error: PlaceOrderResult } {
@@ -120,6 +138,10 @@ function parseRequest(raw: unknown): ParsedRequest | { error: PlaceOrderResult }
   if (street === null) return { error: invalid('street', 'That street address is too long.') };
   if (city === null) return { error: invalid('city', 'That city name is too long.') };
   if (zip === null) return { error: invalid('zip', 'A zip is 5 digits.') };
+  const note = text(cust.note, 300);
+  const paymentNote = text(raw.paymentNote, 200);
+  if (note === null) return { error: invalid('note', 'That note is too long. 300 characters at most.') };
+  if (paymentNote === null) return { error: invalid('paymentNote', 'That payment note is too long. 200 characters at most.') };
   const lines: CartLine[] = [];
   if (Array.isArray(raw.lines)) {
     for (const l of raw.lines.slice(0, 200)) {
@@ -146,7 +168,10 @@ function parseRequest(raw: unknown): ParsedRequest | { error: PlaceOrderResult }
     creditSellerId: raw.creditSellerId == null ? null : Number.isInteger(raw.creditSellerId) && (raw.creditSellerId as number) > 0 ? (raw.creditSellerId as number) : 'bad',
     startedAt: ms(raw.startedAt),
     mountedAt: ms(raw.mountedAt),
-    website: typeof raw.website === 'string' ? raw.website : ''
+    website: typeof raw.website === 'string' ? raw.website : '',
+    note,
+    collected: raw.collected === true,
+    paymentNote
   };
 }
 
@@ -159,9 +184,15 @@ export async function placeOrder(raw: unknown, deps: PlaceOrderDeps): Promise<Pl
   if ('error' in parsed) return parsed.error;
   const req = parsed;
 
-  // Spam signals first: a filled honeypot, or a form posted before a person could have filled it.
-  if (req.website.trim() !== '') return UNAVAILABLE(deps.replyTo);
-  if (req.mountedAt == null || now - req.mountedAt < MIN_SUBMIT_MS) return UNAVAILABLE(deps.replyTo);
+  // Scout-entry mode: the caller is a signed-in family member (the action vouches for that), not an anonymous visitor.
+  const entry = deps.scoutEntry ?? null;
+
+  // Spam signals first: a filled honeypot, or a form posted before a person could have filled it. (A signed-in
+  // family member entering orders has no bot to fear and no reason to wait four seconds.)
+  if (!entry) {
+    if (req.website.trim() !== '') return UNAVAILABLE(deps.replyTo);
+    if (req.mountedAt == null || now - req.mountedAt < MIN_SUBMIT_MS) return UNAVAILABLE(deps.replyTo);
+  }
 
   // A retry of an order already placed returns that order (no second row, no second email).
   const existing = await sb.from('wreath_orders').select('order_number, public_token').eq('idempotency_key', req.idempotencyKey).maybeSingle();
@@ -181,7 +212,7 @@ export async function placeOrder(raw: unknown, deps: PlaceOrderDeps): Promise<Pl
   if (!saleRow) return CLOSED;
   const sale: PublicSale = saleFromRow(saleRow);
   if (sale.status !== 'open') return CLOSED;
-  const round = decideRound(sale, now, req.startedAt);
+  const round = decideRound(sale, now, deps.scoutEntry ? null : req.startedAt);
   if (round == null) return CLOSED;
 
   // Rate limits, counted from the orders table itself.
@@ -194,15 +225,29 @@ export async function placeOrder(raw: unknown, deps: PlaceOrderDeps): Promise<Pl
   function baseCount() {
     return sb.from('wreath_orders').select('id', { count: 'exact', head: true });
   }
-  if ((await count((q) => q.gte('placed_at', since(3600_000)))) >= limits.globalHour) return UNAVAILABLE(deps.replyTo);
-  if (deps.ip && (await count((q) => q.eq('created_ip', deps.ip as string).gte('placed_at', since(3600_000)))) >= limits.perIpHour) return UNAVAILABLE(deps.replyTo);
-  if (req.email && (await count((q) => q.eq('customer_email', req.email).gte('placed_at', since(24 * 3600_000)))) >= limits.perEmailDay) return UNAVAILABLE(deps.replyTo);
+  // The public store's global cap counts public orders only: signed-in scout entries (source 'paper') neither
+  // count toward it nor are stopped by it, so a family entering orders can't lock out public shoppers.
+  if (!entry && (await count((q) => q.neq('source', 'paper').gte('placed_at', since(3600_000)))) >= limits.globalHour) return UNAVAILABLE(deps.replyTo);
+  if (entry) {
+    // A family typing in a meeting's worth of orders shares one IP; the cap is per person instead.
+    if ((await count((q) => q.eq('entered_by_person_id', entry.viewer.personId).gte('placed_at', since(3600_000)))) >= limits.perEntererHour) return UNAVAILABLE(deps.replyTo);
+  } else {
+    if (deps.ip && (await count((q) => q.eq('created_ip', deps.ip as string).gte('placed_at', since(3600_000)))) >= limits.perIpHour) return UNAVAILABLE(deps.replyTo);
+    if (req.email && (await count((q) => q.eq('customer_email', req.email).gte('placed_at', since(24 * 3600_000)))) >= limits.perEmailDay) return UNAVAILABLE(deps.replyTo);
+  }
 
   // Customer details.
-  if (!req.name) return invalid('name', 'Enter your name.');
-  if (!req.email) return invalid('email', 'Enter your email, for the receipt.');
-  if (!EMAIL_RE.test(req.email)) return invalid('email', 'This email is missing something, like the @ or the .com.');
-  if (!phoneOk(req.phone)) return invalid('phone', req.phone ? 'A phone number is 10 digits.' : 'Enter a phone number, in case of a delivery question.');
+  if (entry) {
+    // Only a name is required; an email or phone, if given, must be well-formed.
+    if (!req.name) return invalid('name', 'Add the customer’s name, like “Grandma Sue”.');
+    if (req.email && !EMAIL_RE.test(req.email)) return invalid('email', 'This email is missing something, like the @ or the .com.');
+    if (req.phone && !phoneOk(req.phone)) return invalid('phone', 'A phone number is 10 digits.');
+  } else {
+    if (!req.name) return invalid('name', 'Enter your name.');
+    if (!req.email) return invalid('email', 'Enter your email, for the receipt.');
+    if (!EMAIL_RE.test(req.email)) return invalid('email', 'This email is missing something, like the @ or the .com.');
+    if (!phoneOk(req.phone)) return invalid('phone', req.phone ? 'A phone number is 10 digits.' : 'Enter a phone number, in case of a delivery question.');
+  }
 
   // The credited scout: only a live seller link.
   let seller: { personId: number; scout: { name: string; firstName: string } } | null = null;
@@ -225,10 +270,15 @@ export async function placeOrder(raw: unknown, deps: PlaceOrderDeps): Promise<Pl
     const p = Array.isArray(row.people) ? row.people[0] : row.people;
     seller = { personId: row.person_id, scout: scoutDisplayName(p?.first_name ?? null, p?.last_name ?? null) };
   }
+  if (entry) {
+    // The viewer's right to THIS scout is decided here, from the session's scope; the slug only names the target.
+    if (!seller) return { ok: false, code: 'link_inactive', error: 'That scout’s link isn’t active this year, so there is no order to enter.' };
+    if (!entry.viewer.scope.includes(seller.personId)) return { ok: false, code: 'forbidden', error: 'You can enter orders only for your own scout.' };
+  }
 
   // A scout picked at checkout: credit only. The scout is not expected to deliver. Ignored on a scout-link order.
   let creditOnly: { personId: number; scout: { name: string; firstName: string } } | null = null;
-  if (!seller && req.creditSellerId != null) {
+  if (!entry && !seller && req.creditSellerId != null) {
     const gone: PlaceOrderResult = { ok: false, code: 'invalid', field: 'credit', error: 'That scout isn’t available to credit. Choose again, or leave it for the troop.' };
     if (req.creditSellerId === 'bad') return gone;
     const { data: c } = await sb
@@ -250,18 +300,19 @@ export async function placeOrder(raw: unknown, deps: PlaceOrderDeps): Promise<Pl
   const catalog: PricedItem[] = items.map((i) => ({ id: i.id, catalogNumber: i.catalog_number, price: Number(i.price), unitCost: Number(i.unit_cost), active: i.active, donatable: i.donatable }));
   const allDonated = req.lines.length > 0 && req.lines.every((l) => l.donated);
 
-  // How it reaches them.
+  // How it reaches them. A scout-entered order is always the scout's own (they hand it over), whatever is in it.
   let fulfillment: Fulfillment;
-  if (allDonated) fulfillment = 'none';
+  if (entry) fulfillment = 'scout';
+  else if (allDonated) fulfillment = 'none';
   else if (seller) fulfillment = 'scout';
   else if (req.fulfillment) fulfillment = req.fulfillment;
   else return invalid('method', 'Choose pickup or delivery.');
 
-  const priced = priceCart(sale, catalog, req.lines, { fulfillment, gift: req.gift, coverFee: req.coverFee });
+  const priced = priceCart(sale, catalog, req.lines, { fulfillment, gift: req.gift, coverFee: entry ? false : req.coverFee });
   if (!priced.ok) return invalid(priced.problem.code === 'gift' ? 'gift' : 'cart', cartProblemText(priced.problem.code));
 
   let outsideArea = false;
-  const needsAddress = fulfillment === 'scout' || fulfillment === 'delivery';
+  const needsAddress = !entry && (fulfillment === 'scout' || fulfillment === 'delivery');
   if (needsAddress) {
     if (!zipFormatOk(req.zip)) return invalid('zip', 'Enter the 5-digit zip for delivery.');
     if (!inDeliveryArea(sale, req.zip)) {
@@ -285,7 +336,7 @@ export async function placeOrder(raw: unknown, deps: PlaceOrderDeps): Promise<Pl
       placed_at: new Date(now).toISOString(),
       credited_person_id: seller?.personId ?? creditOnly?.personId ?? null,
       delivering_person_id: fulfillment === 'scout' ? (seller?.personId ?? null) : null,
-      source: seller ? 'scout_link' : 'store',
+      source: entry ? 'paper' : seller ? 'scout_link' : 'store',
       fulfillment,
       round,
       customer_name: req.name,
@@ -301,6 +352,9 @@ export async function placeOrder(raw: unknown, deps: PlaceOrderDeps): Promise<Pl
       gift: order.gift,
       total: order.total,
       created_ip: deps.ip ?? '',
+      ...(entry
+        ? { entered_by_person_id: entry.viewer.personId, collected_by_scout: req.collected, payment_note: req.paymentNote, customer_note: req.note }
+        : {}),
       lines: order.lines.map((l) => ({ item_id: l.itemId, quantity: l.quantity, donated: l.donated, unit_price: l.unitPrice, unit_cost: l.unitCost }))
     }
   });
@@ -335,6 +389,15 @@ export async function placeOrder(raw: unknown, deps: PlaceOrderDeps): Promise<Pl
       orderUrl: `${deps.siteUrl}/wreaths/order/${result.public_token}`,
       changesBy: fmtDateFull(round === 1 ? sale.round1Cutoff : sale.round2Cutoff)
     };
+    if (entry) {
+      // No email to the customer, ever. The person typing gets a confirmation, and the household's parents are
+      // copied when the scout typed it themself. No payment instructions: the scout collects.
+      const to = new Set(entry.emails);
+      if (entry.viewer.personId === seller!.personId) for (const a of await deps.householdEmails(seller!.personId)) to.add(a);
+      const mail = scoutEntryConfirmationEmail({ ...ctx, collected: req.collected, paymentNote: req.paymentNote, memberUrl: `${deps.siteUrl}/member/wreaths` });
+      if (to.size) await deps.send({ to: [...to], subject: mail.subject, html: mail.html, text: mail.text, replyTo: deps.replyTo });
+      return { ok: true, token: result.public_token, orderNumber: result.order_number, created: true, confirmedTo: [...to] };
+    }
     const mail = customerConfirmationEmail(ctx);
     await deps.send({ to: [req.email], subject: mail.subject, html: mail.html, text: mail.text, replyTo: deps.replyTo });
     const notify = seller && fulfillment === 'scout' ? { ...seller, creditOnly: false } : creditOnly ? { ...creditOnly, creditOnly: true } : null;

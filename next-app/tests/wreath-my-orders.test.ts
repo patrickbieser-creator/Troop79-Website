@@ -36,7 +36,12 @@ function order(over: Partial<AdminOrder> = {}): AdminOrder {
     paidAt: null,
     paidAmount: null,
     status: 'placed',
-    lines: [{ label: '20″ Wreath', catalogNumber: 1, quantity: 2, donated: false, amount: 52, unitPrice: 26, unitCost: 16.07 }],
+    enteredByPersonId: null,
+    enteredByName: null,
+    collectedByScout: false,
+    paymentNote: '',
+    customerNote: '',
+    lines: [{ itemId: 1, label: '20″ Wreath', catalogNumber: 1, quantity: 2, donated: false, amount: 52, unitPrice: 26, unitCost: 16.07 }],
     ...over
   };
 }
@@ -73,8 +78,8 @@ describe('MyWreathOrders', () => {
   it('MyWreathOrders_CountsEveryWreath_IncludingDonated', () => {
     const o = order({
       lines: [
-        { label: '20″ Wreath', catalogNumber: 1, quantity: 2, donated: false, amount: 52, unitPrice: 26, unitCost: 16.07 },
-        { label: '20″ Wreath', catalogNumber: 1, quantity: 1, donated: true, amount: 26, unitPrice: 26, unitCost: 16.07 }
+        { itemId: 1, label: '20″ Wreath', catalogNumber: 1, quantity: 2, donated: false, amount: 52, unitPrice: 26, unitCost: 16.07 },
+        { itemId: 1, label: '20″ Wreath', catalogNumber: 1, quantity: 1, donated: true, amount: 26, unitPrice: 26, unitCost: 16.07 }
       ]
     });
     expect(buildSellerView(ME, 'Me', [o], 0.3).summary.items).toBe(3);
@@ -124,13 +129,13 @@ describe('Delivery list', () => {
   it('DeliveryList_LeavesOutDonatedToVeteransLines_AndAnOrderThatIsAllDonated', () => {
     const mixed = scoutDelivery({
       lines: [
-        { label: '20″ Wreath', catalogNumber: 1, quantity: 1, donated: false, amount: 26, unitPrice: 26, unitCost: 16.07 },
-        { label: '26″ Wreath', catalogNumber: 2, quantity: 3, donated: true, amount: 96, unitPrice: 32, unitCost: 18.24 }
+        { itemId: 1, label: '20″ Wreath', catalogNumber: 1, quantity: 1, donated: false, amount: 26, unitPrice: 26, unitCost: 16.07 },
+        { itemId: 1, label: '26″ Wreath', catalogNumber: 2, quantity: 3, donated: true, amount: 96, unitPrice: 32, unitCost: 18.24 }
       ]
     });
     const allDonated = scoutDelivery({
       fulfillment: 'none',
-      lines: [{ label: '20″ Wreath', catalogNumber: 1, quantity: 1, donated: true, amount: 26, unitPrice: 26, unitCost: 16.07 }]
+      lines: [{ itemId: 1, label: '20″ Wreath', catalogNumber: 1, quantity: 1, donated: true, amount: 26, unitPrice: 26, unitCost: 16.07 }]
     });
     const view = buildSellerView(ME, 'Me', [mixed, allDonated], 0.3);
     expect(view.deliveries).toHaveLength(1);

@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Oliver’s wreath orders — Troop 79 members</title>
+<link rel="stylesheet" href="assets/wreath.css?v=4">
+<link rel="stylesheet" href="assets/entry.css?v=1">
+<style>
+  .addRow > a { display: block; padding: var(--sp-3) var(--sp-4); font-family: var(--font-ui); font-size: var(--fs-md); font-weight: 600; color: var(--navy); text-decoration: none; min-height: 44px; }
+  .addRow > a .plus { color: var(--text-meta); font-weight: 400; margin-right: var(--sp-1); }
+  .addRow > a:hover { color: var(--forest); background: var(--cream); }
+  .wide { max-width: 880px; }
+</style>
+</head>
+<body>
+<div class="proto"><div class="protoInner"><span><strong>Prototype</strong> <code>/member/wreaths</code> · <span id="asWho"></span> · Previous: <a href="scout-entry.html">Oliver’s page</a> · <a href="admin-orders-entry.html">Admin orders</a></span><a href="index.html">All screens</a></div></div>
+<header id="chrome"></header>
+<main class="page wide" id="main">
+  <p class="kicker">Members · Wreath sale 2026</p>
+  <div class="titleLine"><h1>Oliver’s wreath orders</h1><span class="linkBox"><code id="link">troop-79.com/wreaths/oliver-p</code><button type="button" class="btn secondary sm" id="copy">Copy link</button></span></div>
+  <div id="body"></div>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="assets/data.js?v=4"></script>
+<script src="assets/entry-data.js?v=1"></script>
+<script>
+document.getElementById('chrome').innerHTML = entryChrome('my-orders.html');
+const $ = id => document.getElementById(id);
+let tt; function toast(m) { $('toast').textContent = m; $('toast').classList.add('show'); clearTimeout(tt); tt = setTimeout(() => $('toast').classList.remove('show'), 2400); }
+const ME = 'oliver-p', me = seller(ME), role = pViewer(), ph = phase();
+const who = role === 'parent' ? 'Dana Prescott' : 'Oliver';
+$('asWho').textContent = role === 'out' ? 'not signed in' : 'signed in as ' + (role === 'parent' ? 'Dana Prescott (parent)' : 'Oliver Prescott');
+const dateLbl = iso => new Date(iso + 'T12:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+/* ── rules ── */
+function lockReason(o) {
+  if (o.pay === 'paid') return 'Paid. Ask a troop leader to change it.';
+  if (!canEditRound(o)) return `Round ${o.round} closed ${cutoffLabel(o)}. Ask a troop leader to change it.`;
+  return '';
+}
+const myOrders = () => ORDERS.filter(o => o.seller === ME).sort((a, b) => !!a.cancelled - !!b.cancelled || b.placed.localeCompare(a.placed) || b.id.localeCompare(a.id));
+
+/* ── totals first (cancelled orders drop out) ── */
+function renderStats() {
+  const act = myOrders().filter(o => !o.cancelled);
+  let items = 0, earns = 0, toCollect = 0, toTurnIn = 0;
+  act.forEach(o => { const c = orderCalc(o); items += c.items; earns += c.scoutShare;
+    if (isScoutEntered(o) && o.pay !== 'paid') { if (o.collected) toTurnIn += c.total; else toCollect += c.total; } });
+  $('stats').innerHTML = `
+    <div class="stat"><strong>${items}</strong><span>wreaths sold of ${me.goal}</span></div>
+    <div class="stat"><strong>${money2(earns)}</strong><span>Oliver earns (30% of profit)</span></div>
+    <div class="stat"><strong>${money(toCollect)}</strong><span>still to collect from customers</span></div>
+    <div class="stat"><strong>${money(toTurnIn)}</strong><span>collected, to turn in to the troop</span></div>`;
+}
+
+/* ── the list ── */
+let E = null;   // the order being edited: { id, d (draft), base (JSON), tried, confirming }
+function rowHtml(o) {
+  const c = orderCalc(o), se = isScoutEntered(o);
+  if (E && E.id === o.id) return `<li class="editing" data-id="${o.id}">${editHtml(o)}</li>`;
+  if (o.cancelled) return `<li class="cancelled" data-id="${o.id}"><span class="who"><strong>${esc(o.cust.name)}</strong> <span class="tag cancelled" style="text-decoration:none">Cancelled</span><small>${esc(linesSummary(o.lines))}</small><small>Cancelled by ${esc(o.cancelled.by)} ${dateLbl(o.cancelled.on)}</small></span><span class="amt">${money2(c.total)}</span></li>`;
+  const tag = !se ? `<span class="tag paid">Paid · ${o.method}</span> <span class="tag">Online</span>`
+    : o.pay === 'paid' ? `<span class="tag paid">Paid</span>` : o.collected ? `<span class="tag coll">Collected</span>` : `<span class="tag nocoll">Not collected</span>`;
+  const lock = se ? lockReason(o) : '';
+  const acts = !se ? '' : lock ? `<span class="tag lock">Locked</span>`
+    : `<span class="acts">${o.collected ? '' : `<button type="button" class="linkBtn" data-collect="${o.id}">Mark collected</button>`}<button type="button" class="linkBtn" data-edit="${o.id}">Edit</button></span>`;
+  return `<li data-id="${o.id}"><span class="who"><strong>${esc(o.cust.name)}</strong> ${tag}
+      <small>${esc(linesSummary(o.lines))}</small>
+      ${se && o.payNote ? `<span class="note">Payment: ${esc(o.payNote)}</span>` : ''}
+      ${se && o.entered.role === 'parent' ? `<span class="note">Entered by ${esc(o.entered.by)}</span>` : ''}
+      ${lock ? `<span class="lockLine">${lock}</span>` : ''}</span>
+    <span class="amt">${money2(c.total)}</span>${acts}</li>`;
+}
+function renderOrders() {
+  const os = myOrders();
+  $('orderCount').textContent = `${os.filter(o => !o.cancelled).length} orders`;
+  $('orders').innerHTML = os.length ? os.map(rowHtml).join('') : `<li><span class="who">No orders yet. Orders from Oliver’s link, and ones you enter, show up here.</span></li>`;
+}
+function renderAll() { renderStats(); renderOrders(); }
+
+/* ── inline edit ── */
+function snap(d) { return JSON.stringify(d); }
+function startEdit(id, opts) {
+  if (E && snap(E.d) !== E.base) { toast('Save or discard the open changes first.'); return; }
+  const o = ORDERS.find(x => x.id === id);
+  const d = { name: o.cust.name, phone: o.cust.phone || '', email: o.cust.email || '', note: o.cust.note || '', lines: o.lines.map(l => ({ ...l })), collected: !!o.collected, payNote: o.payNote || '' };
+  E = { id, d, base: snap(d), tried: false, confirming: false };
+  if (opts && opts.collect) d.collected = true;
+  renderOrders();
+  const f = (opts && opts.collect) ? $('ePay') : $('eName'); if (f) f.focus();
+  syncDirty();
+}
+function closeEdit() { const id = E.id; E = null; renderOrders(); const b = document.querySelector(`[data-edit="${id}"]`); if (b) b.focus(); }
+function editHtml(o) {
+  const d = E.d;
+  return `<form class="editForm" id="eForm" novalidate aria-label="Edit order ${o.id}">
+    <div class="titleLine" style="margin:0"><h3>${o.id} · ${o.entered ? 'Entered ' + dateLbl(o.placed) : ''}</h3><span class="meta">Changes allowed until ${cutoffLabel(o)}</span></div>
+    <div class="fields two">
+      <div class="field full" id="e-name"><label for="eName">Customer name</label><input type="text" id="eName" value="${esc(d.name)}" autocomplete="off"></div>
+      <div class="field"><label for="ePhone">Phone <span class="opt">optional</span></label><input type="tel" id="ePhone" inputmode="tel" value="${esc(d.phone)}"></div>
+      <div class="field"><label for="eEmail">Email <span class="opt">optional</span></label><input type="email" id="eEmail" value="${esc(d.email)}"></div>
+      <div class="field full"><label for="eNote">Note <span class="opt">optional</span></label><input type="text" id="eNote" value="${esc(d.note)}"></div>
+    </div>
+    <div id="e-items"><div class="fieldLabel" style="margin-bottom:4px">Items</div>
+      <ul class="lines" id="eLines"></ul>
+      <div class="zipRow" style="align-items:center;margin-top:4px">
+        <select id="eItem" aria-label="Item" style="flex:1 1 200px;width:auto">${CATALOG.map(c => `<option value="${c.n}">${esc(itemLabel(c))} · ${money(c.price)}</option>`).join('')}</select>
+        <label class="check" style="padding:0"><input type="checkbox" id="eDon"><span>Donated</span></label>
+        <button type="button" class="btn secondary sm" data-addline>Add</button>
+      </div></div>
+    <div class="fields two">
+      <div class="field"><span class="fieldLabel" id="eColLbl">Money collected?</span>
+        <div class="seg" role="radiogroup" aria-labelledby="eColLbl"><label><input type="radio" name="eCol" value="no"${d.collected ? '' : ' checked'}>Not yet</label><label><input type="radio" name="eCol" value="yes"${d.collected ? ' checked' : ''}>Collected</label></div></div>
+      <div class="field"><label for="ePay">Payment note <span class="opt">optional</span></label><input type="text" id="ePay" value="${esc(d.payNote)}" placeholder="Cash at the 10/18 meeting"></div>
+    </div>
+    <div class="editFoot" id="eFoot"></div>
+  </form>`;
+}
+function renderELines() {
+  const d = E.d, tot = linesTotal(d.lines);
+  $('eLines').innerHTML = d.lines.map((l, i) => `<li class="line${l.donated ? ' donated' : ''}"><span class="lName">${esc(itemLabel(item(l.n)))}${l.donated ? ' <span class="tag vet">Donated</span>' : ''}</span>
+      <span class="qty sm"><button type="button" data-q="${i}" data-d="-1" aria-label="One fewer ${esc(itemLabel(item(l.n)))}">−</button><input type="number" min="1" max="99" value="${l.q}" data-qi="${i}" aria-label="Quantity, ${esc(itemLabel(item(l.n)))}"><button type="button" data-q="${i}" data-d="1" aria-label="One more ${esc(itemLabel(item(l.n)))}">+</button></span>
+      <span class="lAmt">${money(item(l.n).price * l.q)}</span><button type="button" class="linkBtn danger" data-rm="${i}">Remove</button></li>`).join('')
+    + (d.lines.length ? `<li class="line"><span class="lName"><strong>Total</strong></span><span class="lAmt"><strong>${money(tot)}</strong></span><span style="width:58px"></span></li>` : '');
+}
+function renderFoot() {
+  const dirty = snap(E.d) !== E.base;
+  if (E.confirming) {
+    $('eFoot').innerHTML = `<span class="confirmCancel">Cancel this order for ${esc(E.d.name || 'this customer')}? <button type="button" class="linkBtn danger" data-cancel-yes>Yes, cancel the order</button><button type="button" class="linkBtn" data-cancel-no>Keep it</button></span>`;
+    return;
+  }
+  $('eFoot').innerHTML = `<button type="submit" class="btn primary" id="eSave"${dirty ? '' : ' disabled'}>Save</button>${dirty ? '<button type="button" class="btn ghost" data-discard>Discard changes</button>' : '<button type="button" class="btn ghost" data-close>Close</button>'}<span class="spacer"></span><button type="button" class="linkBtn danger" data-cancel>Cancel order</button>`;
+}
+function syncDirty() { if (!E) return; renderELines(); renderFoot(); }
+
+function clearProbs() { ['e-name', 'e-items'].forEach(id => { const f = $(id); if (f) { f.classList.remove('bad'); f.querySelectorAll('.problem').forEach(p => p.remove()); } }); }
+function validateEdit() {
+  clearProbs(); let ok = true;
+  if (!E.d.name.trim()) { ok = false; $('e-name').classList.add('bad'); $('e-name').insertAdjacentHTML('beforeend', '<div class="problem" role="alert"><strong>Customer name is missing.</strong> Add a name, like “Grandma Sue”.</div>'); }
+  if (!E.d.lines.length) { ok = false; $('e-items').classList.add('bad'); $('e-items').insertAdjacentHTML('afterbegin', '<div class="problem" role="alert" style="margin-bottom:6px"><strong>The order is empty.</strong> Add an item, or cancel the order.</div>'); }
+  return ok;
+}
+
+function bind() {
+  const list = $('orders');
+  list.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b || !E && !(b.dataset.edit || b.dataset.collect)) return;
+    if (b.dataset.edit) return startEdit(b.dataset.edit);
+    if (b.dataset.collect) return startEdit(b.dataset.collect, { collect: true });
+    if (b.hasAttribute('data-close')) return closeEdit();
+    if (b.hasAttribute('data-discard')) { const id = E.id; E = null; startEdit(id); return toast('Changes discarded.'); }
+    if (b.hasAttribute('data-addline')) {
+      const n = +$('eItem').value, dn = $('eDon').checked, ex = E.d.lines.find(l => l.n === n && !!l.donated === dn);
+      if (ex) ex.q = Math.min(99, ex.q + 1); else E.d.lines.push(dn ? { n, q: 1, donated: true } : { n, q: 1 });
+      $('eDon').checked = false; if (E.tried) validateEdit(); return syncDirty();
+    }
+    if (b.dataset.rm) { E.d.lines.splice(+b.dataset.rm, 1); if (E.tried) validateEdit(); return syncDirty(); }
+    if (b.dataset.q) { const l = E.d.lines[+b.dataset.q]; l.q = Math.max(1, Math.min(99, l.q + +b.dataset.d)); renderELines(); renderFoot(); return; }
+    if (b.hasAttribute('data-cancel')) { E.confirming = true; renderFoot(); const y = document.querySelector('[data-cancel-yes]'); if (y) y.focus(); return; }
+    if (b.hasAttribute('data-cancel-no')) { E.confirming = false; renderFoot(); document.querySelector('[data-cancel]').focus(); return; }
+    if (b.hasAttribute('data-cancel-yes')) {
+      const o = ORDERS.find(x => x.id === E.id); o.cancelled = { by: who === 'Dana Prescott' ? 'Dana Prescott' : 'Oliver', on: pToday().date };
+      (o.changes = o.changes || []).push(`${dateLbl(pToday().date)} · cancelled by ${o.cancelled.by}`);
+      E = null; renderAll(); return toast(`${o.id} cancelled. It no longer counts toward the troop’s order or Oliver’s totals.`);
+    }
+  });
+  list.addEventListener('input', e => {
+    if (!E) return; const t = e.target, d = E.d;
+    if (t.id === 'eName') d.name = t.value; else if (t.id === 'ePhone') d.phone = t.value; else if (t.id === 'eEmail') d.email = t.value; else if (t.id === 'eNote') d.note = t.value; else if (t.id === 'ePay') d.payNote = t.value;
+    else if (t.name === 'eCol') d.collected = t.value === 'yes';
+    else if (t.dataset.qi) { d.lines[+t.dataset.qi].q = Math.max(1, Math.min(99, parseInt(t.value, 10) || 1)); }
+    else return;
+    if (E.tried) validateEdit();
+    if (t.dataset.qi) { /* keep focus: only refresh totals and the footer */ const li = t.closest('li'); li.querySelector('.lAmt').textContent = money(item(d.lines[+t.dataset.qi].n).price * d.lines[+t.dataset.qi].q); renderFoot(); return; }
+    renderFoot();
+  });
+  list.addEventListener('submit', e => {
+    e.preventDefault(); if (!E) return; E.tried = true;
+    if (!validateEdit()) { const f = !E.d.name.trim() ? $('eName') : null; if (f) f.focus(); return; }
+    const o = ORDERS.find(x => x.id === E.id), d = E.d, was = { c: o.collected, n: o.cust.name, t: linesTotal(o.lines) };
+    o.cust.name = d.name.trim(); o.cust.phone = d.phone.trim(); o.cust.email = d.email.trim(); o.cust.note = d.note.trim();
+    o.lines = d.lines.map(l => ({ ...l })); o.collected = d.collected; o.payNote = d.payNote.trim();
+    (o.changes = o.changes || []).push(`${dateLbl(pToday().date)} · edited by ${who}${was.c !== o.collected ? ` · marked ${o.collected ? 'collected' : 'not collected'}` : ''}`);
+    E = null; renderAll(); toast(`${o.id} saved.`);
+  });
+}
+
+/* ── page ── */
+function build() {
+  if (role === 'out') {
+    $('body').innerHTML = `<div class="notice" style="margin-top:12px"><p><strong>Sign in to see your family’s wreath orders.</strong></p><p>Wreath orders are shown to the scout’s household only.</p></div>`;
+    return false;
+  }
+  const foot = ph === 'r1' ? `Round 1 orders can be changed until ${SALE.round1.label}.` : ph === 'r2' ? `Round 1 is closed. Round 2 orders can be changed until ${SALE.round2.label}.` : 'The sale is closed. Ask a troop leader to change an order.';
+  $('body').innerHTML = `<div class="stats three" id="stats"></div>
+    <section aria-labelledby="hOrders">
+      <div class="titleLine"><h2 id="hOrders" style="margin:0 0 8px">Orders</h2><span class="meta" id="orderCount"></span></div>
+      <div class="card">
+        <ul class="rows" id="orders"></ul>
+        <div class="addRow">${ph === 'closed' ? '<p class="meta" style="margin:0;padding:12px 16px">Sales are closed.</p>' : '<a href="scout-entry.html#on"><span class="plus">+</span>Order for someone I know</a>'}</div>
+      </div>
+      <p class="meta" style="margin:8px 0 0">${foot}</p>
+    </section>`;
+  return true;
+}
+$('copy').addEventListener('click', () => { (navigator.clipboard ? navigator.clipboard.writeText('https://www.' + $('link').textContent) : Promise.reject()).then(() => toast('Link copied'), () => toast('Copy the link above')); });
+
+if (build()) { bind(); renderAll(); }
+const firstEditable = () => myOrders().find(o => isScoutEntered(o) && !o.cancelled && !lockReason(o));
+mountNotes({
+  pretendViewer: true,
+  states: [
+    ['Edit an order', () => { if (role === 'out') return toast('Sign-in view: nothing to edit.'); const o = firstEditable(); if (!o) return toast('Nothing editable: everything is locked. Set Today to Oct 12.'); if (E) { E = null; renderOrders(); } startEdit(o.id); }],
+    ['Edit: no name', () => { const o = firstEditable(); if (!o) return toast('Nothing editable at this date.'); if (E) { E = null; renderOrders(); } startEdit(o.id); $('eName').value = ''; E.d.name = ''; E.tried = true; syncDirty(); validateEdit(); $('eName').focus(); }],
+    ['Cancel confirm', () => { const o = firstEditable(); if (!o) return toast('Nothing editable at this date.'); if (E) { E = null; renderOrders(); } startEdit(o.id); E.confirming = true; renderFoot(); }],
+    ['Locked (after cutoff)', () => { pSet('today', 'oct27'); location.reload(); }]
+  ],
+  gaps: [
+    'Paid or past-cutoff orders show Locked with the reason on the row; no disabled Edit button to puzzle over.',
+    'Online (link) orders are listed but not editable: the customer paid already and has their own receipt.',
+    'Stats split money two ways: still to collect from customers, and collected but not yet turned in. The old “still to collect” blurred them.',
+    'No address on these orders, so Oliver’s printed delivery list would show phone only, or nothing, for Grandma Sue. See gaps in my summary.',
+    'Cancelled and edited orders must drop out of orderCalc / sellerStats, or the old “Oliver earns” would still count them.'
+  ]
+});
+</script>
+</body>
+</html>

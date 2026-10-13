@@ -32,7 +32,7 @@ let arrive;
 if (o.fulfill === 'scout') arrive = `<p><strong>${esc(s.name)} delivers</strong> to ${esc(addr)}, ${SALE.deliveryWindow}. ${esc(first)}’s family will call or text the day before.</p>${o.relative ? `<p class="meta">You told us ${esc(first)} has agreed to deliver outside the Milwaukee area.</p>` : ''}`;
 else if (o.fulfill === 'pickup') arrive = `<p><strong>Pick up ${SALE.pickup.day}, ${SALE.pickup.window}</strong><br>${SALE.pickup.place}. ${SALE.pickup.note}.</p><p class="meta">Give your name at the table. No printout needed.</p>`;
 else if (o.fulfill === 'delivery') arrive = `<p><strong>We deliver</strong> to ${esc(addr)}, ${SALE.deliveryWindow}. A leader will call or text the day before.</p>`;
-else arrive = `<p>Nothing comes to you. Your donated wreaths go to veterans in December.</p>`;
+else arrive = `<p>No wreaths will be delivered to you. Your donated wreaths go to veterans in December.</p>`;
 if (o.fulfill !== 'none' && hasDonated) arrive += `<p class="meta">Your donated wreaths go to veterans; they are not part of this delivery.</p>`;
 
 document.getElementById('main').innerHTML = `

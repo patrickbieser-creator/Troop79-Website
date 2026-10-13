@@ -46,8 +46,12 @@ export interface ScoutLink {
   /** "Ben B." */
   name: string;
   firstName: string;
-  /** Shown only once a leader has approved it. */
-  message: string | null;
+  /** people.id of the scout. Server-side only: used to decide whether the viewer may enter orders for them; never sent to the browser. */
+  personId: number;
+  /** The scout's wreath goal for the sale (wreath_sellers.goal); null = none set. */
+  goal: number | null;
+  /** Plain text that replaces the standard "delivers your order in person" line; null = use the standard line. */
+  deliveryMessage: string | null;
 }
 
 export interface Confirmation {
@@ -175,16 +179,16 @@ export async function resolveScoutLink(sb: SupabaseClient, saleId: number, rawSl
   if (!SLUG_RE.test(slug)) return null;
   const { data } = await sb
     .from('wreath_sellers')
-    .select('slug, message, message_approved_at, people:person_id(first_name, last_name)')
+    .select('slug, person_id, goal, delivery_message, people:person_id(first_name, last_name)')
     .eq('sale_id', saleId)
     .eq('slug', slug)
     .eq('active', true)
     .maybeSingle();
   if (!data) return null;
-  const row = data as unknown as { slug: string; message: string | null; message_approved_at: string | null; people: PersonJoin };
+  const row = data as unknown as { slug: string; person_id: number; goal: number | null; delivery_message: string | null; people: PersonJoin };
   const p = one(row.people);
   const { name, firstName } = scoutDisplayName(p?.first_name ?? null, p?.last_name ?? null);
-  return { slug: row.slug, name, firstName, message: row.message_approved_at && row.message?.trim() ? row.message.trim() : null };
+  return { slug: row.slug, name, firstName, personId: row.person_id, goal: row.goal, deliveryMessage: row.delivery_message?.trim() || null };
 }
 
 /** The confirmation page's data, keyed by the unguessable token. No address, phone or email; the customer's first name only. */

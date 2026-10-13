@@ -16,6 +16,7 @@ import { Stepper } from '@/app/_components/stepper';
 import { MAX_QTY, fmtMoney, itemLabel } from '@/lib/wreaths/rules';
 import { STORE_SECTIONS, type StoreItem } from '@/lib/wreaths/public';
 import { lineKey, parseLineKey, useCart, type CartState } from './cart';
+import { EntryAside, EntryDone, EntryProvider, type EntryConfig, type EntryDoneData } from './entry-mode';
 import styles from '../wreaths.module.css';
 
 export interface StoreViewScout {
@@ -69,15 +70,21 @@ export function StoreView({
   items,
   scout,
   head,
-  linkFellBack = false
+  linkFellBack = false,
+  entry
 }: {
   items: StoreItem[];
   scout: StoreViewScout | null;
   head: ReactNode;
   /** A typed link didn't resolve; its own notice says so, and naming another scout here would only confuse. */
   linkFellBack?: boolean;
+  /** Present only when the server found a signed-in scout (or their parent) on this scout's page: the "Order for someone I know" mode. */
+  entry?: EntryConfig;
 }) {
   const { cart, setQty, setSeller, emptyLines, restore } = useCart();
+  const [entryOn, setEntryOn] = useState(entry?.initialOn ?? false);
+  const [done, setDone] = useState<EntryDoneData | null>(null);
+  const inEntry = !!entry && !!scout && entryOn;
   const [announce, setAnnounce] = useState('');
   const [undo, setUndo] = useState<CartState | null>(null);
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -133,8 +140,21 @@ export function StoreView({
   const sections = STORE_SECTIONS.map((s) => ({ ...s, items: items.filter((i) => i.section === s.id) })).filter((s) => s.items.length > 0);
   const donatable = items.filter((i) => i.donatable);
 
+  if (done && scout) {
+    return (
+      <EntryDone
+        done={done}
+        scoutFirstName={scout.firstName}
+        onAnother={() => {
+          setDone(null);
+          window.scrollTo(0, 0);
+        }}
+      />
+    );
+  }
+
   return (
-    <>
+    <EntryProvider value={entry && scout ? { on: entryOn, setOn: setEntryOn } : null}>
       <div className={styles.storeGrid}>
         <div>
           {droppedFrom && (
@@ -193,9 +213,21 @@ export function StoreView({
           )}
         </div>
 
-        <aside className={`${styles.card} ${styles.pad} ${styles.cartAside}`} aria-labelledby="cartH">
-          <h2 id="cartH">Your order</h2>
-          {lines.length === 0 ? (
+        <aside className={`${styles.card} ${styles.pad} ${styles.cartAside} ${inEntry ? styles.cartAsideEntry : ''}`} aria-labelledby="cartH" id="entry-aside">
+          <h2 id="cartH">{inEntry ? 'Order for a customer' : 'Your order'}</h2>
+          {inEntry && entry && scout ? (
+            <EntryAside
+              scout={scout}
+              lines={lines}
+              itemsTotal={total}
+              action={entry.action}
+              formId="entry-form"
+              onPlaced={(d) => {
+                emptyLines(false);
+                setDone(d);
+              }}
+            />
+          ) : lines.length === 0 ? (
             <>
               <p className={styles.cartEmpty}>Nothing yet. Add a wreath to start.</p>
               {undo && (
@@ -243,12 +275,12 @@ export function StoreView({
             {scout ? ` · ${credited}` : ''}
           </span>
         </div>
-        <Button href={checkoutHref}>Checkout</Button>
+        <Button href={inEntry ? '#entry-aside' : checkoutHref}>{inEntry ? 'Customer details' : 'Checkout'}</Button>
       </div>
       {lines.length > 0 && <div className={styles.cartBarSpace} aria-hidden="true" />}
       <p className={styles.srOnly} role="status" aria-live="polite">
         {announce}
       </p>
-    </>
+    </EntryProvider>
   );
 }

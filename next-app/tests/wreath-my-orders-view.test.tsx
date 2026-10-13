@@ -45,12 +45,17 @@ function order(id: number, over: Partial<AdminOrder> = {}): AdminOrder {
     paidAt: null,
     paidAmount: null,
     status: 'placed',
-    lines: [{ label: '20″ Wreath', catalogNumber: 1, quantity: 2, donated: false, amount: 52, unitPrice: 26, unitCost: 16.07 }],
+    enteredByPersonId: null,
+    enteredByName: null,
+    collectedByScout: false,
+    paymentNote: '',
+    customerNote: '',
+    lines: [{ itemId: 1, label: '20″ Wreath', catalogNumber: 1, quantity: 2, donated: false, amount: 52, unitPrice: 26, unitCost: 16.07 }],
     ...over
   };
 }
 
-const view = (orders: AdminOrder[]) => ({ sale, sellers: [buildSellerView(ME, 'Anjali S', orders, 0.3)] });
+const view = (orders: AdminOrder[]) => ({ sale, items: [], sellers: [buildSellerView(ME, 'Anjali S', orders, 0.3)] });
 
 describe('MyWreathOrdersView', () => {
   it('MyWreathOrders_RendersReadOnly_NoFormOrFieldOnlyThePrintButton', () => {
@@ -84,7 +89,7 @@ describe('MyWreathOrdersView', () => {
   });
 
   it('MyWreathOrders_GivesAFamilyWithNoSeller_AFriendlyEmptyState', () => {
-    render(<MyWreathOrdersView data={{ sale, sellers: [] }} />);
+    render(<MyWreathOrdersView data={{ sale, items: [], sellers: [] }} />);
     expect(screen.getByText(/None of the scouts in this household are selling wreaths/)).toBeTruthy();
   });
 });

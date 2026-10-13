@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Order wreaths from Oliver P. — Scout Troop 79</title>
+<link rel="stylesheet" href="assets/wreath.css?v=4">
+<link rel="stylesheet" href="assets/entry.css?v=1">
+</head>
+<body>
+<div class="proto"><div class="protoInner"><span><strong>Prototype</strong> <code>/wreaths/oliver-p</code> · “My customer” mode · Next: <a href="my-orders-entry.html">My wreath orders</a> · <a href="admin-orders-entry.html">Admin orders</a></span><a href="index.html">All screens</a></div></div>
+<header id="chrome"></header>
+<div class="whoBar"><div id="who"></div></div>
+<div class="deadline" id="deadline"></div>
+<main class="page" id="store"></main>
+<div id="cartBarHost"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="assets/data.js?v=4"></script>
+<script src="assets/entry-data.js?v=1"></script>
+<script>
+document.getElementById('chrome').innerHTML = entryChrome('store.html');
+(function () {
+  const $ = id => document.getElementById(id);
+  const viewer = pViewer(), ph = phase();                 // viewer: scout | parent | out
+  const s = seller('oliver-p'), st = sellerStats('oliver-p'), first = 'Oliver';
+  const canOffer = viewer !== 'out' && ph !== 'closed';   // the public link never offers the switch
+  const S = { on: canOffer && location.hash === '#on', tried: false, done: null, collected: false };
+  const cart = { lines: { '2': 2, '16': 1 } };            // seeded so every state is reachable in one click
+  let tt; function toast(m) { $('toast').textContent = m; $('toast').classList.add('show'); clearTimeout(tt); tt = setTimeout(() => $('toast').classList.remove('show'), 2000); }
+
+  $('who').textContent = viewer === 'scout' ? 'Signed in as Oliver Prescott' : viewer === 'parent' ? 'Signed in as Dana Prescott' : 'Not signed in';
+
+  const days = Math.round((new Date(SALE.round1.date) - new Date(pToday().date)) / 864e5);
+  $('deadline').innerHTML = ph === 'closed'
+    ? `<div class="deadlineInner"><strong>Sales are closed for ${SALE.year}</strong><span class="soft">Thank you! Next year’s sale opens in October.</span></div>`
+    : ph === 'r2'
+      ? `<div class="deadlineInner"><strong>Last orders ${SALE.round2.label}</strong><span class="soft">Round 1 has closed; new orders go in round 2.</span></div>`
+      : `<div class="deadlineInner"><strong>Order by ${SALE.round1.label}</strong><span class="soft">${days} days left · last orders ${SALE.round2.label}</span></div>`;
+
+  /* ── page ── */
+  const pct = Math.min(100, Math.round(st.items / s.goal * 100));
+  const head = `<p class="kicker">Troop 79 Christmas wreaths</p><h1>${ph === 'closed' ? 'Oliver P.’s wreath sale is closed' : 'You’re ordering from Oliver P.'}</h1>
+    ${canOffer ? `<div class="switchRow"><button type="button" class="switch" role="switch" aria-checked="${S.on}" id="modeSw"><span class="track"><span class="knob"></span></span><span>Order for someone I know — I’ll collect the money</span></button></div>` : ''}
+    ${ph === 'closed' ? `<p class="notice" style="margin-bottom:16px">Sales are closed for ${SALE.year}. Thank you for supporting ${first} and Troop 79.</p>` : ''}
+    <div class="intro"><div class="greet"><blockquote>${esc(s.message)}</blockquote>
+      <div class="goal" aria-label="${st.items} of ${s.goal} wreaths sold"><strong>${st.items} of ${s.goal} wreaths</strong> toward ${first}’s goal<div class="goalBar"><span style="width:${pct}%"></span></div></div>
+      ${ph === 'closed' ? '' : `<p class="meta" style="margin:0">${first} delivers your order in person, ${SALE.deliveryWindow}.</p>`}</div>
+      <div class="card pad money"><h2>Where the money goes</h2><ul>
+        <li>Every wreath pays for the troop’s camping, gear and program for the year.</li>
+        <li>${first} gets credit for your order: 30% of its profit goes into ${first}’s scout account, for camp fees and high-adventure trips.</li>
+        <li>Wreaths arrive fresh the first weekend of December.</li></ul></div></div>`;
+  const groups = GROUPS.map(g => `<h2 class="groupTitle">${g.title}</h2><ul class="products">${CATALOG.filter(c => c.group === g.id).map(c => `
+      <li class="card product">${wreathArt(c)}<div class="body">
+        <div class="pHead"><span class="pName">${esc(c.name)}${c.size ? ` <span class="pSize">${c.size}</span>` : ''}</span><span class="pPrice">${money(c.price)}</span></div>
+        <p class="pDesc">${esc(c.desc)}</p>
+        ${ph === 'closed' ? '' : `<div class="addLine" data-key="${c.n}" data-label="${esc(itemLabel(c))}"></div>`}</div></li>`).join('')}</ul>`).join('');
+  const vets = ph === 'closed' ? '' : `<section class="card vets" aria-labelledby="vetsH"><h2 id="vetsH">Donate a wreath to veterans</h2>
+    <p class="meta" style="margin:0 0 8px">The troop delivers donated wreaths to veterans in December. No wreaths will be delivered to you, and ${first} still gets credit for the sale.</p>
+    ${DONATABLE.map(n => { const c = item(n); return `<div class="vetRow"><span class="grow"><strong>${esc(itemLabel(c))}</strong>, donated · ${money(c.price)}</span><span class="addLine" data-key="${n}d" data-label="${esc(itemLabel(c))}, donated"></span></div>`; }).join('')}</section>`;
+
+  const form = `<form class="entryForm" id="entryForm" hidden novalidate>
+      <div class="field" id="f-name"><label for="cName">Customer name</label><input type="text" id="cName" autocomplete="off"></div>
+      <div class="field"><label for="cPhone">Phone <span class="opt">optional</span></label><input type="tel" id="cPhone" inputmode="tel" autocomplete="off"></div>
+      <div class="field"><label for="cEmail">Email <span class="opt">optional</span></label><input type="email" id="cEmail" autocomplete="off"></div>
+      <div class="field"><label for="cNote">Note <span class="opt">optional</span></label><textarea id="cNote"></textarea></div>
+      <div class="field"><span class="fieldLabel" id="colLbl">Money collected?</span>
+        <div class="seg" role="radiogroup" aria-labelledby="colLbl"><label><input type="radio" name="col" value="no" checked>Not yet</label><label><input type="radio" name="col" value="yes">Collected</label></div></div>
+      <div class="field"><label for="cPay">Payment note <span class="opt">optional</span></label><input type="text" id="cPay" placeholder="Cash at the 10/18 meeting" autocomplete="off"></div>
+      <div><button type="submit" class="btn primary block" id="placeBtn">Place order</button>
+        <p class="meta" style="margin-top:6px">The customer gets no email.</p></div>
+    </form>`;
+
+  $('store').innerHTML = `<div id="storeView">${ph === 'closed' ? `<div>${head}${groups}</div>` : `<div class="storeGrid"><div>${head}${groups}${vets}</div>
+    <aside class="card pad cartAside" id="entryAside" aria-labelledby="cartH"><h2 id="cartH">Your order</h2><div id="cartBody"></div>${form}</aside></div>`}</div><div id="doneView" class="done" hidden></div>`;
+  if (ph === 'closed') { mountNotes({ pretendViewer: true, states: [], gaps: ['Closed: the switch disappears with everything else.'] }); return; }
+  $('cartBarHost').innerHTML = `<div class="cartBar" id="cartBar"><div class="sum"><strong id="barTotal"></strong><span id="barCount"></span></div><a class="btn primary" id="barGo" href="checkout.html">Checkout</a></div>`;
+
+  /* ── cart (same behaviour as the store page) ── */
+  function renderAdd(el) {
+    const k = el.dataset.key, q = cart.lines[k] || 0, lbl = el.dataset.label;
+    el.innerHTML = q === 0
+      ? `<button type="button" class="btn secondary sm" data-act="add" aria-label="Add ${lbl}">Add</button>`
+      : `<span class="qty sm"><button type="button" data-act="dec" aria-label="One fewer ${lbl}">−</button><input type="number" min="0" max="99" inputmode="numeric" value="${q}" aria-label="Quantity, ${lbl}"><button type="button" data-act="inc" aria-label="One more ${lbl}"${q >= 99 ? ' disabled' : ''}>+</button></span><span class="inCart">In cart</span>`;
+  }
+  function placeLabel() {
+    const t = cartTotals(cart).sale;
+    if (!t) return 'Place order';
+    return S.collected ? `Place order · ${money(t)} collected` : `Place order · you collect ${money(t)} later`;
+  }
+  function renderCart() {
+    const ls = cartLines(cart), t = cartTotals(cart);
+    $('cartH').textContent = S.on ? 'Order for a customer' : 'Your order';
+    $('cartBody').innerHTML = (ls.length === 0
+      ? `<p class="cartEmpty">Nothing yet. Add a wreath to start.</p>`
+      : `<ul class="cartList">${ls.map(l => `<li><span>${l.q} × ${esc(itemLabel(item(l.n)))}${l.donated ? ' <span class="tag vet">Donated</span>' : ''}</span><span class="num">${money(item(l.n).price * l.q)}</span></li>`).join('')}</ul>
+         <div class="cartTotal"><span>Total</span><span class="num">${money(t.sale)}</span></div>`)
+      + (S.on && S.tried && !ls.length ? `<div class="problem" role="alert"><strong>The order is empty.</strong> Add at least one item.</div>` : '')
+      + (S.on ? '' : (ls.length ? `<a class="btn primary block" href="checkout.html">Checkout</a>` : '') + `<p class="meta" style="margin:8px 0 0">Credited to Oliver P.</p>`);
+    $('placeBtn').textContent = placeLabel();
+    const bar = $('cartBar'); bar.hidden = ls.length === 0;
+    document.body.classList.toggle('hasCartBar', ls.length > 0);
+    $('barTotal').textContent = money(t.sale);
+    $('barCount').textContent = `${t.items} item${t.items === 1 ? '' : 's'}${S.on ? '' : ' · Oliver P.'}`;
+    $('barGo').textContent = S.on ? 'Customer details' : 'Checkout';
+    $('barGo').setAttribute('href', S.on ? '#entryAside' : 'checkout.html');
+  }
+  function setQty(k, q) {
+    q = Math.max(0, Math.min(99, q | 0));
+    if (q === 0) delete cart.lines[k]; else cart.lines[k] = q;
+    document.querySelectorAll(`.addLine[data-key="${k}"]`).forEach(renderAdd);
+    renderCart();
+  }
+  $('storeView').addEventListener('click', e => {
+    const b = e.target.closest('button[data-act]'); if (!b) return;
+    const al = b.closest('.addLine'), k = al.dataset.key, q = cart.lines[k] || 0;
+    if (b.dataset.act === 'add') { setQty(k, 1); toast(`Added ${al.dataset.label}`); al.querySelector('input').focus(); }
+    if (b.dataset.act === 'inc') setQty(k, q + 1);
+    if (b.dataset.act === 'dec') { setQty(k, q - 1); if (q - 1 === 0) al.querySelector('button').focus(); else al.querySelector('[data-act="dec"]').focus(); }
+  });
+  $('storeView').addEventListener('change', e => { if (e.target.matches('.addLine input')) setQty(e.target.closest('.addLine').dataset.key, parseInt(e.target.value, 10) || 0); });
+  document.querySelectorAll('.addLine').forEach(renderAdd);
+
+  /* ── the switch ── */
+  function setMode(on, quiet) {
+    if (on && !canOffer) { toast('Not offered: this viewer isn’t Oliver or his parent'); return; }
+    S.on = on; S.tried = false; clearName();
+    document.body.classList.toggle('entryOn', on);
+    $('entryForm').hidden = !on;
+    const sw = $('modeSw'); if (sw) sw.setAttribute('aria-checked', String(on));
+    renderCart();
+    if (!quiet) toast(on ? 'Ordering for a customer. Fill in who it’s for.' : 'Back to the normal checkout.');
+  }
+  if ($('modeSw')) $('modeSw').addEventListener('click', () => setMode(!S.on));
+
+  /* ── validation: problems marked in place ── */
+  function clearName() { const f = $('f-name'); if (!f) return; f.classList.remove('bad'); const p = $('nameProb'); if (p) p.remove(); $('cName').removeAttribute('aria-invalid'); $('cName').removeAttribute('aria-describedby'); }
+  function validate() {
+    clearName();
+    const nameOk = !!$('cName').value.trim(), cartOk = cartLines(cart).length > 0;
+    if (!nameOk) {
+      $('f-name').classList.add('bad'); $('cName').setAttribute('aria-invalid', 'true'); $('cName').setAttribute('aria-describedby', 'nameProb');
+      $('f-name').insertAdjacentHTML('beforeend', '<div class="problem" id="nameProb" role="alert"><strong>Customer name is missing.</strong> Add a name, like “Grandma Sue”.</div>');
+    }
+    renderCart();
+    return nameOk && cartOk;
+  }
+  $('entryForm').addEventListener('input', e => {
+    if (e.target.id === 'cName' && S.tried) validate();
+    if (e.target.name === 'col') { S.collected = e.target.value === 'yes'; $('placeBtn').textContent = placeLabel(); }
+  });
+  $('entryForm').addEventListener('submit', e => {
+    e.preventDefault(); S.tried = true;
+    if (!validate()) { (!$('cName').value.trim() ? $('cName') : $('entryAside').querySelector('.problem')).scrollIntoView({ block: 'center' }); if (!$('cName').value.trim()) $('cName').focus(); return; }
+    place();
+  });
+
+  /* ── place → confirmation (re-checks the viewer's right on the server; not simulated) ── */
+  function place() {
+    const btn = $('placeBtn'); btn.disabled = true; btn.textContent = 'Placing order…';
+    setTimeout(() => {
+      const o = { id: nextOrderId(), round: ph === 'r1' ? 1 : 2, placed: pToday().date, seller: 'oliver-p', source: 'paper', fulfill: 'scout',
+        entered: { by: viewer === 'parent' ? 'Dana Prescott' : 'Oliver', role: viewer },
+        cust: { name: $('cName').value.trim(), phone: $('cPhone').value.trim(), email: $('cEmail').value.trim(), addr: '', zip: '', note: $('cNote').value.trim() },
+        lines: cartLines(cart).map(l => l.donated ? { n: l.n, q: l.q, donated: true } : { n: l.n, q: l.q }), gift: 0, cover: false,
+        collected: S.collected, payNote: $('cPay').value.trim(), pay: 'unpaid', method: '' };
+      ORDERS.push(o);
+      try { const a = JSON.parse(localStorage.getItem(NEW_KEY) || '[]'); a.push(o); localStorage.setItem(NEW_KEY, JSON.stringify(a)); } catch (err) { /* prototype only */ }
+      showDone(o); btn.disabled = false; btn.textContent = placeLabel();
+    }, 700);
+  }
+  function showDone(o) {
+    const c = orderCalc(o);
+    const sentTo = viewer === 'scout'
+      ? `A confirmation went to Oliver’s email, ${FAMILY.scout.email}, and to his parent Dana, ${FAMILY.parent.email}.`
+      : `A confirmation went to your email, ${FAMILY.parent.email}.`;
+    $('doneView').innerHTML = `<p class="kicker">Troop 79 Christmas wreaths</p><h1 id="doneH" tabindex="-1">Order ${o.id} is in</h1>
+      <div class="notice ok" role="status" style="margin-bottom:16px"><p><strong>No email went to ${esc(o.cust.name)}.</strong></p><p>${sentTo}</p></div>
+      <section class="card pad" aria-label="Order summary">
+        <h2 style="margin:0 0 8px;font-size:var(--fs-md)">${esc(o.cust.name)}${o.round === 2 ? ' <span class="tag">Round 2</span>' : ''}</h2>
+        <ul class="doneList">${o.lines.map(l => `<li><span>${l.q} × ${esc(itemLabel(item(l.n)))}${l.donated ? ' <span class="tag vet">Donated</span>' : ''}</span><span class="num">${money(item(l.n).price * l.q)}</span></li>`).join('')}
+          <li class="tot"><span>Total</span><span class="num">${money(c.total)}</span></li></ul>
+        <p class="meta" style="margin:10px 0 0">${o.collected ? `<span class="tag coll">Collected</span>` : `<span class="tag nocoll">Not collected yet</span>`}${o.payNote ? ` ${esc(o.payNote)}` : ''}</p>
+      </section>
+      <p class="meta" style="margin:12px 0 0">${o.collected ? 'Turn the money in to the troop' : 'Mark it collected when you have the money'} in My wreath orders. You can change or cancel this order there until ${cutoffLabel(o)}.</p>
+      <div class="btnRow"><a class="btn primary" href="my-orders-entry.html">My wreath orders</a><button type="button" class="btn secondary" id="another">Enter another order</button></div>`;
+    $('storeView').hidden = true; $('doneView').hidden = false; $('cartBar').hidden = true; document.body.classList.remove('hasCartBar');
+    window.scrollTo(0, 0); $('doneH').focus();
+    $('another').addEventListener('click', () => {
+      cart.lines = {}; document.querySelectorAll('.addLine').forEach(renderAdd);
+      $('entryForm').reset(); S.collected = false; S.tried = false; clearName();
+      $('doneView').hidden = true; $('storeView').hidden = false; renderCart(); window.scrollTo(0, 0); $('cName').focus();
+    });
+  }
+
+  /* ── prototype state buttons ── */
+  const fill = () => { if (!cartLines(cart).length) { cart.lines = { '2': 2, '16': 1 }; document.querySelectorAll('.addLine').forEach(renderAdd); } };
+  mountNotes({
+    pretendViewer: true,
+    states: [
+      ['Switch off', () => { $('doneView').hidden = true; $('storeView').hidden = false; setMode(false); window.scrollTo(0, 0); }],
+      ['Switch on', () => { $('doneView').hidden = true; $('storeView').hidden = false; fill(); setMode(true); $('entryAside').scrollIntoView({ block: 'start' }); }],
+      ['Error: no name', () => { $('doneView').hidden = true; $('storeView').hidden = false; fill(); setMode(true, true); $('cName').value = ''; $('entryForm').requestSubmit(); }],
+      ['Error: empty cart', () => { $('doneView').hidden = true; $('storeView').hidden = false; setMode(true, true); cart.lines = {}; document.querySelectorAll('.addLine').forEach(renderAdd); $('cName').value = 'Grandma Sue'; $('entryForm').requestSubmit(); }],
+      ['Confirmation', () => { $('doneView').hidden = true; $('storeView').hidden = false; fill(); setMode(true, true); $('cName').value = 'Grandma Sue'; $('cPhone').value = '414-555-0119'; S.collected = true; $('entryForm').querySelector('input[value=yes]').checked = true; $('cPay').value = 'Cash at the 10/18 meeting'; $('entryForm').requestSubmit(); }]
+    ],
+    gaps: [
+      'The switch never renders for signed-out visitors or another family. Use Viewer above to see that.',
+      'No address field, so the 532-zip and “relative” rules do not apply. Oliver hands these over himself (see notes on My wreath orders).',
+      'Placing is a 0.7 s in-flight state with the button disabled. A network failure is not drawn; it would reuse the store’s “nothing was saved, your details are kept” box.'
+    ]
+  });
+  if (S.on) setMode(true, true); else renderCart();
+})();
+</script>
+</body>
+</html>

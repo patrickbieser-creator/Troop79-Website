@@ -8,6 +8,7 @@ import { centralToInstant, instantToCentral } from '@/lib/dates';
 import { uploadToBunny } from '@/lib/bunny-storage';
 import { PAID_METHODS, deliveryFeeFor, fmtMoney2, fromCents, inDeliveryArea, toCents, zipFormatOk, type PaidMethod } from '@/lib/wreaths/rules';
 import { canonicalSlug, SLUG_RE } from '@/lib/wreaths/public';
+import { parseDeliveryMessage, parseGoal } from '@/lib/wreaths/scout-entry';
 
 /**
  * Wreath sale admin (Plans/Wreath-Sale.md, Release A: Settings, Items, Sellers, Orders). Gate: `finance.manage` on
@@ -287,6 +288,56 @@ export async function setSellerSlug(sellerId: number, slugIn: string | null): Pr
   return { ok: true };
 }
 
+/** Sets or clears a seller's goal (whole number 0..999, empty = none). The scout's family can set it too, from Members. */
+export async function setSellerGoal(sellerId: number, rawGoal: unknown): Promise<WreathResult> {
+  await requireCapability('finance.manage');
+  const parsed = parseGoal(rawGoal);
+  if (!parsed.ok) return fail(parsed.error, 'goal');
+  const supabase = createAdminClient();
+  const { data: seller } = await supabase.from('wreath_sellers').select('id, person_id, goal').eq('id', sellerId).maybeSingle();
+  if (!seller) return fail('That seller no longer exists.');
+  if (seller.goal === parsed.goal) return { ok: true };
+  const { error } = await supabase.from('wreath_sellers').update({ goal: parsed.goal }).eq('id', sellerId);
+  if (error) return fail('Couldn’t save the goal. Please try again.', 'goal');
+  const name = await personName(supabase, seller.person_id);
+  await recordAudit({
+    area: 'wreaths',
+    action: 'update',
+    entityType: 'wreath_seller',
+    entityId: sellerId,
+    summary: `Changed ${name}’s wreath goal`,
+    details: [{ field: 'Goal', from: seller.goal == null ? '—' : String(seller.goal), to: parsed.goal == null ? '—' : String(parsed.goal) }],
+    subjects: [seller.person_id]
+  });
+  revalidatePath(PAGE);
+  return { ok: true };
+}
+
+/** Sets or clears a seller's delivery message (plain text, 200 characters; live when saved). Audited. */
+export async function setSellerDeliveryMessage(sellerId: number, raw: unknown): Promise<WreathResult> {
+  await requireCapability('finance.manage');
+  const parsed = parseDeliveryMessage(raw);
+  if (!parsed.ok) return fail(parsed.error, 'deliveryMessage');
+  const supabase = createAdminClient();
+  const { data: seller } = await supabase.from('wreath_sellers').select('id, person_id, delivery_message').eq('id', sellerId).maybeSingle();
+  if (!seller) return fail('That seller no longer exists.');
+  if ((seller.delivery_message ?? null) === parsed.message) return { ok: true };
+  const { error } = await supabase.from('wreath_sellers').update({ delivery_message: parsed.message }).eq('id', sellerId);
+  if (error) return fail('Couldn’t save the message. Please try again.', 'deliveryMessage');
+  const name = await personName(supabase, seller.person_id);
+  await recordAudit({
+    area: 'wreaths',
+    action: 'update',
+    entityType: 'wreath_seller',
+    entityId: sellerId,
+    summary: `Changed ${name}’s wreath delivery message`,
+    details: [{ field: 'Delivery message', from: seller.delivery_message ?? '—', to: parsed.message ?? '—' }],
+    subjects: [seller.person_id]
+  });
+  revalidatePath(PAGE);
+  return { ok: true };
+}
+
 /** Retires or restores a seller. A retired seller keeps their link, but it opens the general store. */
 export async function setSellerActive(sellerId: number, active: boolean): Promise<WreathResult> {
   await requireCapability('finance.manage');
@@ -325,7 +376,7 @@ export async function markPaid(orderId: number, method: PaidMethod): Promise<Wre
   const claimedTotal = Number(pre?.total ?? 0);
   const { data: claimed } = await supabase
     .from('wreath_orders')
-    .update({ payment_status: 'paid', paid_method: method, paid_at: new Date().toISOString(), paid_by_person_id: actor.personId, paid_amount: claimedTotal })
+    .update({ payment_status: 'paid', paid_method: method, paid_at: new Date().toISOString(), paid_by_person_id: actor.personId, paid_amount: claimedTotal, collected_by_scout: true })
     .eq('id', orderId)
     .eq('payment_status', 'unpaid')
     .eq('status', 'placed')
@@ -348,6 +399,32 @@ export async function markPaid(orderId: number, method: PaidMethod): Promise<Wre
       { field: 'Payment', from: 'Unpaid', to: `Paid (${method})` },
       { field: 'Amount', from: '—', to: money(Number(claimed.total)) }
     ]
+  });
+  revalidatePath(PAGE);
+  return { ok: true };
+}
+
+/**
+ * The treasurer's edit of an order's payment note ("Venmo'd Patrick 10/20"), on any order, paid or not. 200 characters.
+ * Audited with the old and the new text; empty clears it.
+ */
+export async function setPaymentNote(orderId: number, noteIn: string): Promise<WreathResult> {
+  await requireCapability('finance.manage');
+  const note = typeof noteIn === 'string' ? noteIn.trim() : '';
+  if (note.length > 200) return fail('A payment note is 200 characters at most.', 'paymentNote');
+  const supabase = createAdminClient();
+  const { data: before } = await supabase.from('wreath_orders').select('order_number, payment_note').eq('id', orderId).maybeSingle();
+  if (!before) return fail('That order no longer exists.');
+  if ((before.payment_note ?? '') === note) return { ok: true };
+  const { error } = await supabase.from('wreath_orders').update({ payment_note: note || null }).eq('id', orderId);
+  if (error) return fail('Couldn’t save the note. Please try again.', 'paymentNote');
+  await recordAudit({
+    area: 'wreaths',
+    action: 'update',
+    entityType: 'wreath_order',
+    entityId: orderId,
+    summary: `Edited the payment note on order ${before.order_number}`,
+    details: [{ field: 'Payment note', from: before.payment_note || '—', to: note || '—' }]
   });
   revalidatePath(PAGE);
   return { ok: true };

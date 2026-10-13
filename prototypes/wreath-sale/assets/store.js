@@ -72,7 +72,7 @@
   }).join('');
 
   const vets = closed ? '' : `<section class="card vets" aria-labelledby="vetsH"><h2 id="vetsH">Donate a wreath to veterans</h2>
-    <p class="meta" style="margin:0 0 8px">The troop delivers donated wreaths to veterans in December. Nothing comes to you${mode === 'scout' ? `, and ${first} still gets credit for the sale` : ''}.</p>
+    <p class="meta" style="margin:0 0 8px">The troop delivers donated wreaths to veterans in December. No wreaths will be delivered to you${mode === 'scout' ? `, and ${first} still gets credit for the sale` : ''}.</p>
     ${DONATABLE.map(n => { const c = item(n); return `<div class="vetRow"><span class="grow"><strong>${esc(itemLabel(c))}</strong>, donated · ${money(c.price)}</span><span class="addLine" data-key="${n}d" data-label="${esc(itemLabel(c))}, donated"></span></div>`; }).join('')}
   </section>`;
 

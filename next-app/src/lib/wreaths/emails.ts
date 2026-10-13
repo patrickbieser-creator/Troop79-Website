@@ -31,6 +31,11 @@ export interface OrderEmailContext {
   changesBy: string;
 }
 
+/** Header-safe text for an email subject: control characters (CR, LF, NUL, bidi marks, line separators) become a space. */
+export function subjectText(s: string): string {
+  return s.replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029\u202a-\u202e\u2066-\u2069]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
 /** The money lines every order summary shares. */
 export function summaryBullets(c: Pick<OrderEmailContext, 'items' | 'deliveryFee' | 'feeCovered' | 'gift' | 'total'>): string[] {
   return [
@@ -60,7 +65,7 @@ export function customerConfirmationEmail(c: OrderEmailContext): { subject: stri
     actionLabel: 'View your order',
     outro: `Questions or changes: reply to this email. Changes are possible until ${c.changesBy}, when the troop places its order with the grower.`
   });
-  return { subject: `Your Troop 79 wreath order ${c.orderNumber}`, html, text };
+  return { subject: subjectText(`Your Troop 79 wreath order ${c.orderNumber}`), html, text };
 }
 
 /** A note to the credited scout's household: a new order to deliver. Goes only to addresses on file. */
@@ -80,5 +85,28 @@ export function scoutNoticeEmail(
         bullets: [...summaryBullets(c), `Phone: ${c.customerPhone}`, `Deliver to: ${c.customerAddress}`, 'The customer pays the troop treasurer directly; you do not collect money.'],
         outro: 'This note goes only to the family addresses on file.'
       });
-  return { subject: c.creditOnly ? `Credited to ${c.scoutFirstName}: wreath order ${c.orderNumber}` : `New wreath order for ${c.scoutFirstName}: ${c.orderNumber}`, html, text };
+  return { subject: subjectText(c.creditOnly ? `Credited to ${c.scoutFirstName}: wreath order ${c.orderNumber}` : `New wreath order for ${c.scoutFirstName}: ${c.orderNumber}`), html, text };
+}
+
+/**
+ * The confirmation for whoever typed in a scout-entered order (the scout, or a parent; the scout's parents are copied
+ * when the scout typed it). The customer gets nothing, and there are no payment instructions: the scout collects.
+ */
+export function scoutEntryConfirmationEmail(
+  c: OrderEmailContext & { collected: boolean; paymentNote: string; memberUrl: string }
+): { subject: string; html: string; text: string } {
+  const { html, text } = renderEmail({
+    heading: `Order ${c.orderNumber} for ${c.customerName} is in`,
+    intro: `A wreath order for ${c.customerName} was entered on the Troop 79 site (${fmtMoney2(c.total)}). The customer was not emailed.`,
+    bullets: [
+      ...summaryBullets(c),
+      c.collected ? 'Money collected from the customer: yes' : 'Money collected from the customer: not yet',
+      ...(c.paymentNote ? [`Payment note: ${c.paymentNote}`] : []),
+      ...(c.creditedTo ? [`Credited to ${c.creditedTo}`] : [])
+    ],
+    actionUrl: c.memberUrl,
+    actionLabel: 'My wreath orders',
+    outro: `Change or cancel it there until ${c.changesBy}, unless the troop has already marked it paid.`
+  });
+  return { subject: subjectText(`Wreath order ${c.orderNumber} for ${c.customerName}`), html, text };
 }

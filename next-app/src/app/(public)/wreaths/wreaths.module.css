@@ -198,3 +198,23 @@
 .prose p:last-child { margin-bottom: 0; }
 .donated { color: var(--navy); }
 .srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ── "Order for someone I know" (scout-entered orders): the switch, the cart-column form, the confirmation ── */
+.switchRow { margin: 0 0 var(--sp-4); }
+.switchBtn { display: inline-flex; align-items: center; gap: var(--sp-3); background: none; border: none; padding: var(--sp-2) 0; min-height: 44px; cursor: pointer; font-family: var(--font-ui); font-size: var(--fs-md); font-weight: 600; color: var(--navy); text-align: left; }
+.switchBtn:hover { color: var(--forest); }
+.switchTrack { flex: none; width: 40px; height: 22px; border-radius: 11px; background: var(--border-mid); position: relative; transition: background var(--transition); }
+.switchKnob { position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: var(--warm-white); box-shadow: var(--shadow-card); transition: transform var(--transition); }
+.switchBtn[aria-checked="true"] .switchTrack { background: var(--forest); }
+.switchBtn[aria-checked="true"] .switchKnob { transform: translateX(18px); }
+.cartAsideEntry { border-left: 3px solid var(--forest); }
+@media (max-width: 899px) { .cartAside.cartAsideEntry { display: block; position: static; } }
+.entryForm { display: grid; gap: var(--sp-3); margin-top: var(--sp-3); padding-top: var(--sp-3); border-top: 1px solid var(--rule); }
+.opt { font-weight: 400; color: var(--text-meta); }
+.doneView { max-width: 640px; display: grid; gap: var(--sp-4); }
+.doneHead { margin: 0 0 var(--sp-2); font-family: var(--font-ui); font-size: var(--fs-lg); color: var(--text-head); }
+.doneList { list-style: none; margin: 0; padding: 0; font-family: var(--font-ui); }
+.doneList li { display: flex; justify-content: space-between; gap: var(--sp-3); padding: 6px 0; border-top: 1px solid var(--rule); }
+.doneList li:first-child { border-top: none; }
+.doneTotal { font-weight: 700; color: var(--text-head); }
+.btnRow { display: flex; gap: var(--sp-3); flex-wrap: wrap; align-items: center; }
