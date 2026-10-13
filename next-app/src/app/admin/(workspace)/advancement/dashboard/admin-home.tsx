@@ -21,6 +21,9 @@ import styles from './dashboard.module.css';
 import { PageTitle } from '../../_components/page-title';
 import { Button } from '../../../_components/button';
 import { AttentionInbox } from '../../_components/attention-inbox';
+import { AdminHub } from '../../_components/admin-hub';
+import { SECTIONS, visibleNavSections, hubGroups, isFullAdmin } from '../../_components/nav-data';
+import { loadWreathSaleOpen } from '@/lib/wreaths/admin-data';
 import { SuggestionButton } from './suggestion-button';
 import { loadSuggestionActor, sendSuggestionAction } from './suggestion-actions';
 
@@ -282,10 +285,18 @@ export async function AdminHome({ overview = false }: { overview?: boolean } = {
   const actor = await resolveAdminActor();
   if (!actor) throw new Error('Not authenticated');
   const canSeeOverview = actor.capabilities.has('advancement.write');
-  const [rows, suggestionActor] = await Promise.all([
+  const visible = visibleNavSections(SECTIONS, {
+    fullAdmin: isFullAdmin(actor),
+    capabilities: actor.capabilities
+  });
+  // The Wreath Sale card orders by season; only a treasurer sees the card, so only they pay for the (one small) select.
+  const wreathCardVisible = visible.some((s) => s.items.some((i) => i.seasonal));
+  const [rows, suggestionActor, wreathOpen] = await Promise.all([
     loadAttentionCategories(actor.capabilities),
-    loadSuggestionActor()
+    loadSuggestionActor(),
+    wreathCardVisible ? loadWreathSaleOpen(createAdminClient()) : Promise.resolve(false)
   ]);
+  const groups = hubGroups(visible, { wreathOpen });
 
   return (
     <>
@@ -302,12 +313,17 @@ export async function AdminHome({ overview = false }: { overview?: boolean } = {
 
       <AttentionInbox rows={rows} />
 
-      {canSeeOverview && overview && <AdvancementOverview />}
       {canSeeOverview && !overview && (
-        <Button href="/admin/advancement/dashboard" variant="secondary" size="sm">
-          Advancement overview
-        </Button>
+        <p>
+          <Button href="/admin/advancement/dashboard" variant="secondary" size="sm">
+            Advancement overview
+          </Button>
+        </p>
       )}
+
+      <AdminHub groups={groups} />
+
+      {canSeeOverview && overview && <AdvancementOverview />}
     </>
   );
 }

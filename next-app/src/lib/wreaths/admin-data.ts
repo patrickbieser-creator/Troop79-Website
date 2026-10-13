@@ -121,6 +121,15 @@ export async function loadAdminSale(sb: SupabaseClient): Promise<AdminSale | nul
   };
 }
 
+/**
+ * Is the current sale open? One narrow select (status only) for Home's card grid, which orders the Wreath Sale card
+ * by season. Same "current sale" rule as loadAdminSale (latest year); no sale at all reads as not open.
+ */
+export async function loadWreathSaleOpen(sb: SupabaseClient): Promise<boolean> {
+  const { data } = await sb.from('wreath_sales').select('status').order('year', { ascending: false }).limit(1);
+  return ((data ?? []) as { status: string }[])[0]?.status === 'open';
+}
+
 export async function loadAdminItems(sb: SupabaseClient, saleId: number): Promise<AdminItem[]> {
   const { data } = await sb.from('wreath_items').select('*').eq('sale_id', saleId).order('sort_order').order('catalog_number');
   return ((data ?? []) as Record<string, unknown>[]).map((r) => ({

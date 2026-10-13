@@ -48,6 +48,7 @@ import { PublicPageLink } from '../../../_components/public-page-link';
 import { HelpBadge } from '../../../_components/help-badge';
 import { RecentItemsList } from '../../_components/recent-items-list';
 import { AttentionInbox } from '../../_components/attention-inbox';
+import { AdminHub } from '../../_components/admin-hub';
 import { PageTitle } from '../../_components/page-title';
 import { Notice } from '../../_components/notice';
 import dlg from '../../_components/dialog.module.css';
@@ -1075,6 +1076,86 @@ export default function StyleguidePage() {
           </Specimen>
           <Specimen label="Inbox — empty" note="The empty state is a statement, not a blank panel.">
             <AttentionInbox rows={[]} />
+          </Specimen>
+        </div>
+      </section>
+
+      <section className={sg.section}>
+        <h2 className={sg.sectionHead}>Hub cards</h2>
+        <p className={sg.sectionNote}>
+          Home&rsquo;s card grid under the inbox (<code>_components/admin-hub</code>, 2026-10-13): a title that links, one
+          line, and nothing else &mdash; no count badges, the inbox already carries counts. Groups and cards are built by{' '}
+          <code>hubGroups()</code> from the same <code>SECTIONS</code> data the rail renders, so a destination is added
+          once. A folder card (Reports) shows its items as quiet links inside the card. A seasonal card (Wreath Sale) is
+          first in its group while in season and last and greyed &mdash; still clickable &mdash; when not.
+          &ldquo;Troop admin tools&rdquo; is a quiet card of plain links, always last.
+        </p>
+        <div className={sg.specimenGrid}>
+          <Specimen
+            label="Hub cards — a plain card, a folder card with quiet links, a seasonal card in season"
+            canonical
+            note="The title link stretches over the whole card; the quiet links inside a folder card stay separately clickable."
+          >
+            <AdminHub
+              groups={[
+                {
+                  title: 'Advancement',
+                  quiet: false,
+                  cards: [
+                    { key: 'fe', title: 'Fast Entry', description: 'Sign off requirements for many scouts at once', href: '#' },
+                    {
+                      key: 'rep',
+                      title: 'Reports',
+                      description: 'Audits, weekly report, Court of Honor, exports',
+                      href: '#',
+                      links: [
+                        { label: 'Audits', href: '#' },
+                        { label: 'Advancement Report', href: '#' },
+                        { label: 'Court of Honor', href: '#' }
+                      ]
+                    },
+                    { key: 'wr', title: 'Wreath Sale', description: 'Orders, sellers and the Rose order', href: '#', season: 'open' }
+                  ]
+                }
+              ]}
+            />
+          </Specimen>
+          <Specimen label="Hub card — off season" note="Greyed (no shadow, grey title), last in its group, still a link.">
+            <AdminHub
+              groups={[
+                {
+                  title: 'Money',
+                  quiet: false,
+                  cards: [
+                    { key: 'wr', title: 'Wreath Sale', description: 'Orders, sellers and the Rose order', href: '#', season: 'off' }
+                  ]
+                }
+              ]}
+            />
+          </Specimen>
+          <Specimen label="Hub tools — the quiet card" note="One heading over a row of plain links; no descriptions, no borders per link.">
+            <AdminHub
+              groups={[
+                {
+                  title: 'Troop admin tools',
+                  quiet: true,
+                  cards: [
+                    {
+                      key: 't',
+                      title: 'Troop admin tools',
+                      href: '#',
+                      links: [
+                        { label: 'Lookups & Admin', href: '#' },
+                        { label: 'Roster Import', href: '#' },
+                        { label: 'Audit Trail', href: '#' },
+                        { label: 'Utilities', href: '#' },
+                        { label: 'Styleguides', href: '#' }
+                      ]
+                    }
+                  ]
+                }
+              ]}
+            />
           </Specimen>
         </div>
       </section>

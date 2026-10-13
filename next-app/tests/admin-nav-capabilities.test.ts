@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { visibleNavSections, activeMatchPathFor, SECTIONS as RAIL } from '../src/app/admin/(workspace)/_components/sub-nav';
+import {
+  visibleNavSections,
+  activeMatchPathFor,
+  activeSectionTitleFor,
+  railSections,
+  SECTIONS as RAIL
+} from '../src/app/admin/(workspace)/_components/nav-data';
 import type { Capability } from '../src/lib/capabilities';
 
 /**
@@ -154,20 +160,21 @@ describe('activeMatchPathFor', () => {
 
 /**
  * Rail cleanup (Plans/Admin-Home-And-Nav.md, Wave 1): Home replaces the
- * Dashboard link, Styleguides leaves the rail (the route stays reachable by
- * URL), and Ledger Audit is offered once, under Finance.
+ * Dashboard link, Styleguides leaves the rail (railHidden: a tools-card link
+ * only), and Ledger Audit is offered once, under Money (Wave 2 regroup).
  */
 describe('admin rail contents', () => {
-  const all = RAIL.flatMap((s) => s.items);
+  const rail = railSections(visibleNavSections(RAIL, { fullAdmin: true, capabilities: new Set<Capability>(['finance.manage', 'finance.view']) }));
+  const all = rail.flatMap((s) => s.items);
 
   it('Rail_DoesNotListStyleguides', () => {
     expect(all.map((i) => i.label)).not.toContain('Styleguides');
     expect(all.some((i) => i.href?.startsWith('/admin/styleguide'))).toBe(false);
   });
 
-  it('Rail_ListsLedgerAuditExactlyOnce_UnderFinance', () => {
+  it('Rail_ListsLedgerAuditExactlyOnce_UnderMoney', () => {
     const hits = RAIL.flatMap((s) => s.items.map((i) => ({ section: s.title, i }))).filter((x) => x.i.href === '/admin/utilities/ledger-audit');
-    expect(hits.map((h) => h.section)).toEqual(['Finance']);
+    expect(hits.map((h) => h.section)).toEqual(['Money']);
   });
 
   it('Rail_CallsTheFirstItemHome_AndPointsItAtAdmin', () => {
@@ -186,5 +193,23 @@ describe('admin rail contents', () => {
   it('Home_IsOfferedToEveryLeader_EvenWithOnlyFinanceManage', () => {
     const out = visibleNavSections(RAIL, { fullAdmin: false, capabilities: new Set<Capability>(['finance.manage']) });
     expect(out[0].items[0].label).toBe('Home');
+  });
+
+  it('Rail_GroupsByJob_InThePlansOrder', () => {
+    expect(RAIL.map((s) => s.title)).toEqual([
+      'Overview',
+      'Advancement',
+      'Calendar & Content',
+      'Money',
+      'People & Setup',
+      'Troop admin tools'
+    ]);
+  });
+
+  it('AdminNav_LedgerAuditHighlightsMoney', () => {
+    const visible = visibleNavSections(RAIL, { fullAdmin: true, capabilities: new Set<Capability>(['finance.manage', 'finance.view']) });
+    expect(activeMatchPathFor(visible, '/admin/utilities/ledger-audit')).toBe('/admin/utilities/ledger-audit');
+    expect(activeSectionTitleFor(visible, '/admin/utilities/ledger-audit')).toBe('Money');
+    expect(activeSectionTitleFor(visible, '/admin/utilities')).toBe('Troop admin tools');
   });
 });

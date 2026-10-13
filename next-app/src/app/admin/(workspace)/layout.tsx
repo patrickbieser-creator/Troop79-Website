@@ -23,7 +23,7 @@ import { ArticleStyleTokens } from '@/lib/article-body/ArticleStyleTokens';
 import { TopBar } from './_components/top-bar';
 import { IS_DEV_DB } from '@/lib/dev-db';
 import { resolveAdminActor } from '@/lib/admin-actor';
-import { CAPABILITIES } from '@/lib/capabilities';
+import { isFullAdmin } from './_components/nav-data';
 import styles from './admin.module.css';
 // Global --admin-* design tokens on :root (Plans/Admin-Design-System.md).
 // Must load with the workspace so every admin module and portal resolves them.
@@ -75,7 +75,7 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
   // pages guard with requireRole(), whose identity mapping deliberately admits
   // only a full troop admin (see lib/require-role.ts). It stops being a
   // meaningful distinction when the last call site is converted.
-  const fullAdmin = actor.legacyRole !== null || CAPABILITIES.every((c) => actor.capabilities.has(c));
+  const fullAdmin = isFullAdmin(actor);
 
   return (
     <div className={styles.adminRoot}>

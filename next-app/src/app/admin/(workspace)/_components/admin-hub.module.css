@@ -1,0 +1,134 @@
+/* Home's card grid. Admin tokens only; specimens on /admin/styleguide/admin → Hub cards. */
+.group {
+  margin: 0 0 28px;
+}
+.head {
+  font-size: var(--admin-text-xl);
+  color: var(--admin-navy);
+  margin: 0 0 10px;
+  font-weight: var(--admin-weight-bold);
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+.card {
+  position: relative;
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius-lg);
+  padding: 14px 16px;
+  box-shadow: var(--admin-shadow-sm);
+  transition: border-color var(--admin-transition), box-shadow var(--admin-transition);
+  min-height: 78px;
+}
+.card:hover {
+  border-color: var(--admin-navy-light);
+  box-shadow: var(--admin-shadow-md);
+}
+.title {
+  font-weight: var(--admin-weight-bold);
+  color: var(--admin-navy);
+  font-size: var(--admin-text-lg);
+  text-decoration: none;
+}
+/* The title's link covers the whole card, so a card is one big target. */
+.title::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--admin-radius-lg);
+}
+.card:hover .title {
+  text-decoration: underline;
+}
+.line {
+  font-size: var(--admin-text-base);
+  color: var(--admin-gray-500);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+/* Quiet links inside a card (Reports): above the stretched title link so each stays clickable. */
+.kids {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 12px;
+  position: relative;
+}
+.kids a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  font-size: var(--admin-text-sm);
+  color: var(--admin-gray-600);
+}
+.kids a:hover {
+  color: var(--admin-navy);
+}
+.season {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: var(--admin-text-sm);
+  font-weight: var(--admin-weight-bold);
+  border-radius: var(--admin-radius-pill);
+  padding: 2px 8px;
+}
+.seasonOpen {
+  background: var(--admin-status-success-bg);
+  color: var(--admin-forest-dark);
+}
+.seasonOff {
+  background: var(--admin-gray-100);
+  color: var(--admin-gray-700);
+}
+/* Off-season: greyed, still clickable. */
+.off {
+  background: var(--admin-gray-50);
+  box-shadow: none;
+}
+.off .title {
+  color: var(--admin-gray-600);
+}
+.tools {
+  border-top: 1px solid var(--admin-gray-200);
+  padding-top: 16px;
+  margin-top: 8px;
+}
+.toolsHead {
+  font-size: var(--admin-text-md);
+  color: var(--admin-gray-700);
+  margin: 0 0 6px;
+  font-weight: var(--admin-weight-semibold);
+}
+.toolsLinks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 18px;
+}
+.toolsLinks a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  color: var(--admin-gray-700);
+  font-size: var(--admin-text-md);
+}
+.toolsLinks a:hover {
+  color: var(--admin-navy);
+}
+@media (max-width: 560px) {
+  .grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .card {
+    min-height: 0;
+    padding: 12px 14px;
+  }
+}
