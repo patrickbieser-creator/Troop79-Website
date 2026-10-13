@@ -49,7 +49,7 @@ export interface NavItem {
    */
   folderLanding?: string;
   /**
-   * Left off the rail: a folder member the landing page collects (Reports) or a tool reachable from the Troop admin
+   * Left off the rail: a folder member only its landing page collects, or a tool reachable from the Troop admin
    * tools card only (Styleguides).
    */
   railHidden?: boolean;
@@ -140,14 +140,14 @@ export const SECTIONS: NavSection[] = [
         description: 'Who still needs a requirement',
         capability: 'advancement.write'
       },
-      // Reports: ONE "Reports" entry in the rail and ONE card on Home, both landing on /admin/reports, which lists every
-      // member of the folder below (reportEntries). A new report is one item here with folder: 'Reports' + railHidden.
+      // Reports: a "Reports" rail entry and ONE card on Home, both landing on /admin/reports, which lists every member of
+      // the folder below. The reports ALSO stay on the rail (Patrick, 2026-10-13: allowed duplication). A new report is
+      // one item here with folder: 'Reports'.
       {
         label: 'Reports',
         href: '/admin/reports',
         matchPath: '/admin/reports',
         folderLanding: 'Reports'
-        // Lit on any member's page: railActiveMatchPathFor() maps a folder member to its landing.
       },
       {
         label: 'Audits',
@@ -155,7 +155,6 @@ export const SECTIONS: NavSection[] = [
         matchPath: '/admin/advancement/audits',
         description: 'Data-quality checks that flag ledger records that look wrong',
         folder: 'Reports',
-        railHidden: true,
         capability: 'advancement.write'
       },
       {
@@ -164,7 +163,6 @@ export const SECTIONS: NavSection[] = [
         matchPath: '/admin/advancement/report',
         description: 'What got signed off in a date range, for the Bugle and the public site',
         folder: 'Reports',
-        railHidden: true,
         capability: 'advancement.write'
       },
       {
@@ -173,7 +171,6 @@ export const SECTIONS: NavSection[] = [
         matchPath: '/admin/advancement/court-of-honor',
         description: 'Ranks, merit badges and awards earned in a date range',
         folder: 'Reports',
-        railHidden: true,
         capability: 'advancement.write'
       },
       {
@@ -182,7 +179,6 @@ export const SECTIONS: NavSection[] = [
         matchPath: '/admin/advancement/scoutbook-export',
         description: "Awards in a date range, formatted for Scoutbook's bulk upload",
         folder: 'Reports',
-        railHidden: true,
         capability: 'advancement.write'
       },
       {
@@ -193,7 +189,6 @@ export const SECTIONS: NavSection[] = [
         matchPath: '/admin/advancement/meetings/report',
         description: 'Meeting attendance per scout and per adult',
         folder: 'Reports',
-        railHidden: true,
         capability: 'advancement.write'
       }
     ]
@@ -519,7 +514,7 @@ export function activeSectionTitleFor(
 }
 
 /**
- * The rail's active item. Folder members (the reports) are off the rail, so a member's page lights its folder's landing
+ * The rail's active item. A folder member on the rail lights itself; a railHidden member lights its folder's landing
  * entry (Reports) — by explicit membership in the folder, never by URL prefix. Pass the VISIBLE sections before
  * railSections() drops the hidden members.
  */
@@ -530,8 +525,10 @@ export function railActiveMatchPathFor(
   const active = activeMatchPathFor(sections, pathname);
   if (active == null) return null;
   const items = sections.flatMap((s) => s.items);
-  const folder = items.find((i) => i.matchPath === active)?.folder;
-  if (!folder) return active;
+  const item = items.find((i) => i.matchPath === active);
+  // A member that is on the rail lights itself; only a railHidden member falls back to its folder's landing entry.
+  if (!item?.folder || !item.railHidden) return active;
+  const folder = item.folder;
   return items.find((i) => i.folderLanding === folder)?.matchPath ?? active;
 }
 

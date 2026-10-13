@@ -152,11 +152,12 @@ describe('Reports landing', () => {
     expect(rail(['calendar.write'])).not.toContain('/admin/reports');
   });
 
-  it('ReportsLanding_TakesTheFiveReportsOffTheRail', () => {
+  // Patrick, 2026-10-13: the reports sit in BOTH places, the rail and the landing (allowed duplication).
+  it('ReportsLanding_KeepsTheFiveReportsOnTheRail_BesideTheLandingEntry', () => {
     const rail = railSections(visible(['advancement.write'])).flatMap((s) => s.items).map((i) => i.label);
     expect(rail).toContain('Reports');
     for (const l of ['Audits', 'Advancement Report', 'Court of Honor', 'Scoutbook Export', 'Attendance Report']) {
-      expect(rail).not.toContain(l);
+      expect(rail).toContain(l);
     }
   });
 
@@ -174,7 +175,6 @@ describe('Reports landing', () => {
                 matchPath: '/admin/advancement/camping-nights',
                 description: 'Nights camped per scout',
                 folder: 'Reports',
-                railHidden: true,
                 capability: 'advancement.write' as Capability
               }
             ]
@@ -183,18 +183,22 @@ describe('Reports landing', () => {
     const vis = visibleNavSections(extended, { fullAdmin: false, capabilities: new Set<Capability>(['advancement.write']) });
     expect(folderEntries(vis, 'Reports').map((e) => e.label)).toContain('Camping Nights Report');
     expect(hubHrefs(hubGroups(vis, { wreathOpen: false }))).toContain('/admin/advancement/camping-nights');
-    expect(railActiveMatchPathFor(vis, '/admin/advancement/camping-nights')).toBe('/admin/reports');
+    expect(railSections(vis).flatMap((s) => s.items).map((i) => i.label)).toContain('Camping Nights Report');
+    expect(railActiveMatchPathFor(vis, '/admin/advancement/camping-nights')).toBe('/admin/advancement/camping-nights');
+  });
+
+  it('ReportsLanding_LightsTheReportsRailEntry_OnTheLanding', () => {
+    expect(railActiveMatchPathFor(visible(['advancement.write']), '/admin/reports')).toBe('/admin/reports');
   });
 
   it.each([
-    '/admin/reports',
     '/admin/advancement/audits',
     '/admin/advancement/report',
     '/admin/advancement/court-of-honor',
     '/admin/advancement/scoutbook-export',
     '/admin/advancement/meetings/report'
-  ])('ReportsLanding_LightsTheReportsRailEntry_On %s', (path) => {
-    expect(railActiveMatchPathFor(visible(['advancement.write']), path)).toBe('/admin/reports');
+  ])('ReportsLanding_LightsTheReportsOwnRailEntry_On %s', (path) => {
+    expect(railActiveMatchPathFor(visible(['advancement.write']), path)).toBe(path);
   });
 
   it('ReportsLanding_LeavesOtherRailEntriesAlone_OnTheirOwnPages', () => {
