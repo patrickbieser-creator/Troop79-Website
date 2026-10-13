@@ -10,3 +10,7 @@ backups/
 
 # Office lock/owner files
 ~$*
+
+# JPG photos (Patrick, 2026-10-13) - product/source photos live outside git (Bunny CDN). Files already tracked stay tracked.
+*.jpg
+*.jpeg
