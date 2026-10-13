@@ -122,6 +122,12 @@
 .toolsLinks a:hover {
   color: var(--admin-navy);
 }
+/* Landing page with nothing to list (Reports, when a leader can open none). */
+.empty {
+  color: var(--admin-gray-500);
+  font-size: var(--admin-text-base);
+  margin: 0;
+}
 @media (max-width: 560px) {
   .grid {
     grid-template-columns: 1fr;

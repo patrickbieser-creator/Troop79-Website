@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import { AdminHub } from '../src/app/admin/(workspace)/_components/admin-hub';
+import { ReportsLanding } from '../src/app/admin/(workspace)/_components/reports-landing';
 import type { HubGroup } from '../src/app/admin/(workspace)/_components/nav-data';
 
 const GROUPS: HubGroup[] = [
@@ -79,5 +80,24 @@ describe('AdminHub view', () => {
   it('AdminHub_RendersNothing_WhenThereAreNoGroups', () => {
     const { container } = render(<AdminHub groups={[]} />);
     expect(container.innerHTML).toBe('');
+  });
+});
+
+describe('ReportsLanding view', () => {
+  const entries = [
+    { label: 'Audits', href: '/admin/advancement/audits', description: 'Data-quality checks' },
+    { label: 'Court of Honor', href: '/admin/advancement/court-of-honor', description: 'Awards earned in a range' }
+  ];
+
+  it('ReportsLanding_RendersATitleLinkAndOneLine_PerReport', () => {
+    render(<ReportsLanding entries={entries} />);
+    expect(screen.getByRole('link', { name: 'Court of Honor' }).getAttribute('href')).toBe('/admin/advancement/court-of-honor');
+    expect(screen.getByText('Data-quality checks')).toBeTruthy();
+  });
+
+  it('ReportsLanding_SaysSoPlainly_WhenTheLeaderCanOpenNone', () => {
+    render(<ReportsLanding entries={[]} />);
+    expect(screen.getByText(/No reports are open to you/)).toBeTruthy();
+    expect(screen.queryAllByRole('link')).toHaveLength(0);
   });
 });

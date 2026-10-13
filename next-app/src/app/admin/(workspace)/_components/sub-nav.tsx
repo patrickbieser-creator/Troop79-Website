@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { IS_DEV_DB } from '@/lib/dev-db';
 import type { Capability } from '@/lib/capabilities';
-import { SECTIONS, visibleNavSections, activeMatchPathFor, railSections } from './nav-data';
+import { SECTIONS, visibleNavSections, railActiveMatchPathFor, railSections } from './nav-data';
 import styles from '../admin.module.css';
 
 // The nav data and its pure helpers live in ./nav-data (a plain module, so server components can read them).
@@ -18,14 +18,14 @@ export function SubNav({
   capabilities: Capability[];
 }) {
   const pathname = usePathname();
-  const visibleSections = railSections(
-    visibleNavSections(SECTIONS, {
-      fullAdmin,
-      capabilities: new Set(capabilities)
-    })
-  );
+  const visible = visibleNavSections(SECTIONS, {
+    fullAdmin,
+    capabilities: new Set(capabilities)
+  });
+  const visibleSections = railSections(visible);
 
-  const activeMatchPath = activeMatchPathFor(visibleSections, pathname);
+  // Against ALL visible items: a report's page lights the rail's single "Reports" entry.
+  const activeMatchPath = railActiveMatchPathFor(visible, pathname);
 
   return (
     <nav

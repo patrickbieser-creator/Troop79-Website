@@ -49,6 +49,7 @@ import { HelpBadge } from '../../../_components/help-badge';
 import { RecentItemsList } from '../../_components/recent-items-list';
 import { AttentionInbox } from '../../_components/attention-inbox';
 import { AdminHub } from '../../_components/admin-hub';
+import { ReportsLanding } from '../../_components/reports-landing';
 import { PageTitle } from '../../_components/page-title';
 import { Notice } from '../../_components/notice';
 import dlg from '../../_components/dialog.module.css';
@@ -1088,7 +1089,9 @@ export default function StyleguidePage() {
           <code>hubGroups()</code> from the same <code>SECTIONS</code> data the rail renders, so a destination is added
           once. A folder card (Reports) shows its items as quiet links inside the card. A seasonal card (Wreath Sale) is
           first in its group while in season and last and greyed &mdash; still clickable &mdash; when not.
-          &ldquo;Troop admin tools&rdquo; is a quiet card of plain links, always last.
+          &ldquo;Troop admin tools&rdquo; is a quiet card of plain links, always last. A folder&rsquo;s title links to its
+          landing page (<code>/admin/reports</code>), which lists every member through <code>folderEntries()</code> as
+          the same cards without a group heading (<code>AdminHubGrid</code>, <code>ReportsLanding</code>).
         </p>
         <div className={sg.specimenGrid}>
           <Specimen
@@ -1119,6 +1122,18 @@ export default function StyleguidePage() {
                 }
               ]}
             />
+          </Specimen>
+          <Specimen
+            label="Landing page — one card per report"
+            note="The Reports page (/admin/reports): the hub card reused under the page's own h1, with the empty state when a leader can open none."
+          >
+            <ReportsLanding
+              entries={[
+                { label: 'Audits', href: '#', description: 'Data-quality checks that flag ledger records that look wrong' },
+                { label: 'Court of Honor', href: '#', description: 'Ranks, merit badges and awards earned in a date range' }
+              ]}
+            />
+            <ReportsLanding entries={[]} />
           </Specimen>
           <Specimen label="Hub card — off season" note="Greyed (no shadow, grey title), last in its group, still a link.">
             <AdminHub

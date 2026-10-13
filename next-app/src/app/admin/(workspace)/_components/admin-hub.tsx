@@ -39,6 +39,17 @@ function Card({ card }: { card: HubCard }) {
   );
 }
 
+/** Just the cards, no group heading — for a landing page whose h1 already names the group (Reports). */
+export function AdminHubGrid({ cards }: { cards: HubCard[] }) {
+  return (
+    <div className={styles.grid}>
+      {cards.map((c) => (
+        <Card key={c.key} card={c} />
+      ))}
+    </div>
+  );
+}
+
 export function AdminHub({ groups }: { groups: HubGroup[] }) {
   return (
     <>

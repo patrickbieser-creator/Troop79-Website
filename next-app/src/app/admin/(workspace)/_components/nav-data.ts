@@ -38,11 +38,20 @@ export interface NavItem {
   /** Extra path prefixes that light this item up (the dashboard URL is Home too). */
   alsoMatches?: string[];
   /**
-   * Folds this item into ONE Home card named by `folder` (Reports). The rail still lists it as its own item, so every
-   * report stays reachable there; the card shows them as quiet links inside the card.
+   * Folds this item into ONE Home card named by `folder` (Reports). The card shows the members as quiet links, and
+   * the folder's landing page (folderLanding) lists them with a description each.
    */
   folder?: string;
-  /** Left off the rail (Styleguides): reachable from the Troop admin tools card only. */
+  /**
+   * This item IS the landing page of the folder of that name (Reports -> /admin/reports). It carries no capability of
+   * its own: it is visible exactly when at least one member of the folder is. The Home card's title links to it, and
+   * it is not listed among the folder's own links. Its rail entry lights up on any member's page (railActiveMatchPathFor).
+   */
+  folderLanding?: string;
+  /**
+   * Left off the rail: a folder member the landing page collects (Reports) or a tool reachable from the Troop admin
+   * tools card only (Styleguides).
+   */
   railHidden?: boolean;
   /** Seasonal (Wreath Sale): first in its group while its season is open, last and greyed otherwise. */
   seasonal?: boolean;
@@ -131,33 +140,49 @@ export const SECTIONS: NavSection[] = [
         description: 'Who still needs a requirement',
         capability: 'advancement.write'
       },
-      // The five reports: separate items in the rail, ONE "Reports" card on Home (folder).
+      // Reports: ONE "Reports" entry in the rail and ONE card on Home, both landing on /admin/reports, which lists every
+      // member of the folder below (reportEntries). A new report is one item here with folder: 'Reports' + railHidden.
+      {
+        label: 'Reports',
+        href: '/admin/reports',
+        matchPath: '/admin/reports',
+        folderLanding: 'Reports'
+        // Lit on any member's page: railActiveMatchPathFor() maps a folder member to its landing.
+      },
       {
         label: 'Audits',
         href: '/admin/advancement/audits',
         matchPath: '/admin/advancement/audits',
+        description: 'Data-quality checks that flag ledger records that look wrong',
         folder: 'Reports',
+        railHidden: true,
         capability: 'advancement.write'
       },
       {
         label: 'Advancement Report',
         href: '/admin/advancement/report',
         matchPath: '/admin/advancement/report',
+        description: 'What got signed off in a date range, for the Bugle and the public site',
         folder: 'Reports',
+        railHidden: true,
         capability: 'advancement.write'
       },
       {
         label: 'Court of Honor',
         href: '/admin/advancement/court-of-honor',
         matchPath: '/admin/advancement/court-of-honor',
+        description: 'Ranks, merit badges and awards earned in a date range',
         folder: 'Reports',
+        railHidden: true,
         capability: 'advancement.write'
       },
       {
         label: 'Scoutbook Export',
         href: '/admin/advancement/scoutbook-export',
         matchPath: '/admin/advancement/scoutbook-export',
+        description: "Awards in a date range, formatted for Scoutbook's bulk upload",
         folder: 'Reports',
+        railHidden: true,
         capability: 'advancement.write'
       },
       {
@@ -166,7 +191,9 @@ export const SECTIONS: NavSection[] = [
         label: 'Attendance Report',
         href: '/admin/advancement/meetings/report',
         matchPath: '/admin/advancement/meetings/report',
+        description: 'Meeting attendance per scout and per adult',
         folder: 'Reports',
+        railHidden: true,
         capability: 'advancement.write'
       }
     ]
@@ -390,6 +417,21 @@ export function visibleNavSections(
   sections: NavSection[],
   opts: { fullAdmin: boolean; capabilities: ReadonlySet<Capability> }
 ) {
+  return pruneEmptyLandings(filterByCapability(sections, opts));
+}
+
+/** A folder's landing page is offered only while at least one member of that folder is. */
+function pruneEmptyLandings<S extends { items: NavItem[] }>(sections: S[]): S[] {
+  const live = new Set(sections.flatMap((s) => s.items).flatMap((i) => (i.folder ? [i.folder] : [])));
+  return sections
+    .map((s) => ({ ...s, items: s.items.filter((i) => !i.folderLanding || live.has(i.folderLanding)) }))
+    .filter((s) => s.items.length > 0);
+}
+
+function filterByCapability(
+  sections: NavSection[],
+  opts: { fullAdmin: boolean; capabilities: ReadonlySet<Capability> }
+) {
   if (opts.fullAdmin) {
     return sections
       .map((s) => ({
@@ -397,6 +439,7 @@ export function visibleNavSections(
         items: s.items.filter(
           (i) =>
             i.everyone ||
+            i.folderLanding != null ||
             i.capability == null ||
             !NEVER_IMPLIED_BY_FULL_ADMIN.has(i.capability) ||
             opts.capabilities.has(i.capability)
@@ -407,7 +450,7 @@ export function visibleNavSections(
   return sections
     .map((s) => ({
       ...s,
-      items: s.items.filter((i) => i.everyone || (i.capability != null && opts.capabilities.has(i.capability)))
+      items: s.items.filter((i) => i.everyone || i.folderLanding != null || (i.capability != null && opts.capabilities.has(i.capability)))
     }))
     .filter((s) => s.items.length > 0);
 }
@@ -475,11 +518,42 @@ export function activeSectionTitleFor(
   return sections.find((s) => s.items.some((i) => i.matchPath === active))?.title ?? null;
 }
 
+/**
+ * The rail's active item. Folder members (the reports) are off the rail, so a member's page lights its folder's landing
+ * entry (Reports) — by explicit membership in the folder, never by URL prefix. Pass the VISIBLE sections before
+ * railSections() drops the hidden members.
+ */
+export function railActiveMatchPathFor(
+  sections: { items: NavItem[] }[],
+  pathname: string
+): string | null {
+  const active = activeMatchPathFor(sections, pathname);
+  if (active == null) return null;
+  const items = sections.flatMap((s) => s.items);
+  const folder = items.find((i) => i.matchPath === active)?.folder;
+  if (!folder) return active;
+  return items.find((i) => i.folderLanding === folder)?.matchPath ?? active;
+}
+
+export interface FolderEntry {
+  label: string;
+  href: string;
+  description?: string;
+}
+
+/** Every visible member of a folder, in nav order — the landing page's list (Reports). Built, never hand-kept. */
+export function folderEntries(visible: { items: NavItem[] }[], folder: string): FolderEntry[] {
+  return visible
+    .flatMap((s) => s.items)
+    .filter((i) => i.folder === folder && i.href && !i.disabled)
+    .map((i) => ({ label: i.label, href: i.href!, description: i.description }));
+}
+
 export interface HubCard {
   key: string;
   title: string;
   description?: string;
-  /** Where the title goes. For a folder / tools card, the first link. */
+  /** Where the title goes. A folder card: its landing page (Reports); the tools card: the first link. */
   href: string;
   /** Quiet links inside the card (Reports' five reports; the tools). */
   links?: { label: string; href: string }[];
@@ -526,6 +600,20 @@ export function hubGroups(
 
     let cards: HubCard[] = [];
     for (const item of items) {
+      if (item.folderLanding) {
+        // The landing is the folder card's title link; it is not one of the card's own links.
+        const existing = cards.find((c) => c.key === `folder:${item.folderLanding}`);
+        if (existing) existing.href = item.href!;
+        else
+          cards.push({
+            key: `folder:${item.folderLanding}`,
+            title: item.folderLanding,
+            description: FOLDER_DESCRIPTIONS[item.folderLanding],
+            href: item.href!,
+            links: []
+          });
+        continue;
+      }
       if (item.folder) {
         const existing = cards.find((c) => c.key === `folder:${item.folder}`);
         const link = { label: item.label, href: item.href! };

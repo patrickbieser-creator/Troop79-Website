@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { SECTIONS, visibleNavSections, railSections, hubGroups, type HubGroup } from '../src/app/admin/(workspace)/_components/nav-data';
+import { SECTIONS, visibleNavSections, railSections, hubGroups, folderEntries, railActiveMatchPathFor, type HubGroup } from '../src/app/admin/(workspace)/_components/nav-data';
 import { BUNDLES, CAPABILITIES, type Capability } from '../src/lib/capabilities';
 
 /**
@@ -25,7 +25,8 @@ function visible(caps: Iterable<Capability>, fullAdmin = false) {
   return visibleNavSections(SECTIONS, { fullAdmin, capabilities: new Set(caps) });
 }
 function hubHrefs(groups: HubGroup[]) {
-  return groups.flatMap((g) => g.cards.flatMap((c) => (c.links ? c.links.map((l) => l.href) : [c.href])));
+  // A folder card (Reports) answers for its landing (the title link) AND its members; a plain card for its own href.
+  return [...new Set(groups.flatMap((g) => g.cards.flatMap((c) => [c.href, ...(c.links ?? []).map((l) => l.href)])))];
 }
 function cardTitles(groups: HubGroup[]) {
   return groups.flatMap((g) => g.cards.map((c) => c.title));
@@ -54,6 +55,13 @@ describe('AdminHome card grid', () => {
       'Audits', 'Advancement Report', 'Court of Honor', 'Scoutbook Export', 'Attendance Report'
     ]);
     expect(cardTitles(groups)).not.toContain('Audits');
+  });
+
+  it('AdminHome_LinksTheReportsCardTitleToTheReportsLanding_NotToAudits', () => {
+    const groups = hubGroups(visible(['advancement.write']), { wreathOpen: false });
+    const card = groups.flatMap((g) => g.cards).find((c) => c.title === 'Reports')!;
+    expect(card.href).toBe('/admin/reports');
+    expect(card.links?.map((l) => l.href)).not.toContain('/admin/reports');
   });
 
   it('AdminHome_CarriesADescriptionOnEveryNonToolsCard', () => {
@@ -115,10 +123,81 @@ describe('AdminNav hub and rail agree', () => {
   it('AdminNav_EveryFormerRailLinkIsReachable', () => {
     const vis = visible(ALL, true);
     const railHrefs = railSections(vis).flatMap((s) => s.items).map((i) => i.href);
+    const reports = folderEntries(vis, 'Reports').map((e) => e.href);
     const hub = hubHrefs(hubGroups(vis, { wreathOpen: true }));
     for (const href of FORMER_RAIL_HREFS) {
-      expect(railHrefs, `rail: ${href}`).toContain(href);
+      // Still on the rail, or collected on the Reports landing (the five reports left the rail for it).
+      expect([...railHrefs, ...reports], `rail or Reports landing: ${href}`).toContain(href);
       if (href !== '/admin') expect(hub, `hub: ${href}`).toContain(href);
     }
+  });
+});
+
+describe('Reports landing', () => {
+  it('ReportsLanding_ListsEveryReportTheLeaderCanOpen_WithADescriptionEach', () => {
+    const entries = folderEntries(visible(['advancement.write']), 'Reports');
+    expect(entries.map((e) => e.label)).toEqual([
+      'Audits', 'Advancement Report', 'Court of Honor', 'Scoutbook Export', 'Attendance Report'
+    ]);
+    for (const e of entries) expect(e.description, e.label).toBeTruthy();
+  });
+
+  it('ReportsLanding_ListsNothing_WhenTheLeaderHoldsNoReportCapability', () => {
+    expect(folderEntries(visible(['calendar.write', 'finance.manage']), 'Reports')).toEqual([]);
+  });
+
+  it('ReportsLanding_IsOnTheRailOnlyWhileAReportIsOpenToTheLeader', () => {
+    const rail = (caps: Capability[]) => railSections(visible(caps)).flatMap((s) => s.items).map((i) => i.href);
+    expect(rail(['advancement.write'])).toContain('/admin/reports');
+    expect(rail(['calendar.write'])).not.toContain('/admin/reports');
+  });
+
+  it('ReportsLanding_TakesTheFiveReportsOffTheRail', () => {
+    const rail = railSections(visible(['advancement.write'])).flatMap((s) => s.items).map((i) => i.label);
+    expect(rail).toContain('Reports');
+    for (const l of ['Audits', 'Advancement Report', 'Court of Honor', 'Scoutbook Export', 'Attendance Report']) {
+      expect(rail).not.toContain(l);
+    }
+  });
+
+  it('ReportsLanding_ShowsANewNavDataReportAutomatically', () => {
+    const extended = SECTIONS.map((s) =>
+      s.title !== 'Advancement'
+        ? s
+        : {
+            ...s,
+            items: [
+              ...s.items,
+              {
+                label: 'Camping Nights Report',
+                href: '/admin/advancement/camping-nights',
+                matchPath: '/admin/advancement/camping-nights',
+                description: 'Nights camped per scout',
+                folder: 'Reports',
+                railHidden: true,
+                capability: 'advancement.write' as Capability
+              }
+            ]
+          }
+    );
+    const vis = visibleNavSections(extended, { fullAdmin: false, capabilities: new Set<Capability>(['advancement.write']) });
+    expect(folderEntries(vis, 'Reports').map((e) => e.label)).toContain('Camping Nights Report');
+    expect(hubHrefs(hubGroups(vis, { wreathOpen: false }))).toContain('/admin/advancement/camping-nights');
+    expect(railActiveMatchPathFor(vis, '/admin/advancement/camping-nights')).toBe('/admin/reports');
+  });
+
+  it.each([
+    '/admin/reports',
+    '/admin/advancement/audits',
+    '/admin/advancement/report',
+    '/admin/advancement/court-of-honor',
+    '/admin/advancement/scoutbook-export',
+    '/admin/advancement/meetings/report'
+  ])('ReportsLanding_LightsTheReportsRailEntry_On %s', (path) => {
+    expect(railActiveMatchPathFor(visible(['advancement.write']), path)).toBe('/admin/reports');
+  });
+
+  it('ReportsLanding_LeavesOtherRailEntriesAlone_OnTheirOwnPages', () => {
+    expect(railActiveMatchPathFor(visible(['advancement.write']), '/admin/advancement/ledger')).toBe('/admin/advancement/ledger');
   });
 });
