@@ -49,11 +49,16 @@ describe('pages tree', () => {
   });
 
   it('ReservedSlugs_AreTheCodeRoutes_ThatACatchAllMustNeverShadow', () => {
-    for (const s of ['events', 'news', 'admin', 'api', 'library', 'signin']) expect(isReservedTopLevelSlug(s)).toBe(true);
+    for (const s of ['events', 'news', 'admin', 'api', 'library', 'signin', 'wreaths']) expect(isReservedTopLevelSlug(s)).toBe(true);
     expect(isReservedTopLevelSlug('history')).toBe(false);
   });
 
   // qa-lead W2: the list is hand-kept, so a new top-level code route that isn't on it fails here.
+  // Wreath sale (Plans/Wreath-Sale.md): the store lives at /wreaths, so a page can never take that address.
+  it('CatchAll_ReservesWreathsSlug', () => {
+    expect(isReservedTopLevelSlug('wreaths')).toBe(true);
+  });
+
   it('ReservedSlugs_CoverEveryTopLevelCodeRoute_OnDisk', () => {
     const app = join(__dirname, '../src/app');
     const routes = [...readdirSync(join(app, '(public)')), ...readdirSync(app)]

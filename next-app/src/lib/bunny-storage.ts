@@ -47,21 +47,21 @@ export function sanitizeFilename(name: string): string {
  * overwrites an existing file. Root-level + slugged (rather than a
  * uuid-prefixed subfolder) keeps the CDN text-searchable.
  */
-export async function findAvailablePath(cfg: BunnyConfig, filename: string): Promise<string> {
+export async function findAvailablePath(cfg: BunnyConfig, filename: string, prefix = ''): Promise<string> {
   const sanitized = sanitizeFilename(filename);
   const dot = sanitized.lastIndexOf('.');
   const stem = dot > 0 ? sanitized.slice(0, dot) : sanitized;
   const ext = dot > 0 ? sanitized.slice(dot) : '';
 
   for (let n = 0; n < 50; n++) {
-    const candidate = n === 0 ? sanitized : `${stem}-${n + 1}${ext}`;
+    const candidate = prefix + (n === 0 ? sanitized : `${stem}-${n + 1}${ext}`);
     const res = await fetch(`https://${cfg.storageHost}/${cfg.zone}/${candidate}`, {
       method: 'HEAD',
       headers: { AccessKey: cfg.apiKey }
     });
     if (res.status === 404) return candidate;
   }
-  return `${stem}-${crypto.randomUUID().slice(0, 8)}${ext}`;
+  return `${prefix}${stem}-${crypto.randomUUID().slice(0, 8)}${ext}`;
 }
 
 export interface BunnyUpload {
@@ -71,12 +71,12 @@ export interface BunnyUpload {
   cdnUrl?: string;
 }
 
-/** PUTs the file at an unused path and returns its CDN URL. */
-export async function uploadToBunny(file: File): Promise<BunnyUpload> {
+/** PUTs the file at an unused path and returns its CDN URL. `prefix` ('wreaths/2026/') files it in a folder. */
+export async function uploadToBunny(file: File, prefix = ''): Promise<BunnyUpload> {
   const cfg = bunnyConfig();
   if (!cfg) return { ok: false, error: BUNNY_NOT_CONFIGURED };
 
-  const path = await findAvailablePath(cfg, file.name);
+  const path = await findAvailablePath(cfg, file.name, prefix);
   const bytes = new Uint8Array(await file.arrayBuffer());
   const res = await fetch(`https://${cfg.storageHost}/${cfg.zone}/${path}`, {
     method: 'PUT',

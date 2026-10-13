@@ -84,7 +84,8 @@ const RESERVED_TOP_LEVEL = new Set([
   'scouts',
   'session-status',
   'signin',
-  'sitemap'
+  'sitemap',
+  'wreaths'
 ]);
 
 export function isReservedTopLevelSlug(slug: string): boolean {
