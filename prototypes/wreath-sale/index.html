@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wreath sale prototypes — Troop 79</title>
+<link rel="stylesheet" href="assets/wreath.css?v=4">
+</head>
+<body>
+<div class="proto"><div class="protoInner"><span><strong>Prototype</strong> Wreath sale 2026 (Plans/Wreath-Sale.md). Sample data; prototype “today” is Monday, October 12, 2026.</span><button type="button" class="btn sm secondary" id="reset">Reset cart and switches</button></div></div>
+<header id="chrome"></header>
+<main class="page">
+  <p class="kicker">Prototypes</p>
+  <h1>Wreath sale</h1>
+  <p class="lede">The customer path runs store → checkout → confirmation. Every total is computed from one set of sample orders, so the scout’s earnings, the Rose order and the books agree.</p>
+  <ul class="screens">
+    <li class="card"><a href="store.html"><strong>1. General store</strong><span>/wreaths, credited to Troop 79. Deadline band, where the money goes, 19 items in five groups, donate to veterans, sticky cart (bottom bar on phones). Strip toggle: after the final cutoff.</span></a></li>
+    <li class="card"><a href="scout.html"><strong>2. Scout link</strong><span>/wreaths/ben-b. Greeting, Ben’s message and goal bar. Try <code>?s=jonah-m</code> (retired) or <code>?s=nobody</code>: both fall back to the general store. The last scout link opened gets the credit.</span></a></li>
+    <li class="card"><a href="checkout.html"><strong>3. Checkout</strong><span>Editable lines, gift, pickup or delivery with the 532 zip check, the relative box on scout orders, cover-the-fee, PayPal mock. Dashed prototype controls switch store/scout and PayPal/Release A, can force a declined payment, and show “Cutoff passed while open”.</span></a></li>
+    <li class="card"><a href="confirmation.html"><strong>4. Confirmation</strong><span>Order number, what was ordered, how it arrives, payment status, who to contact.</span></a></li>
+    <li class="card"><a href="my-orders.html"><strong>5. My wreath orders</strong><span>/member/wreaths for Ben’s family. Totals first, orders with paid/unpaid and relative flags, “+ Order taken in person”, printable delivery list, goal and message, members-only leaderboard.</span></a></li>
+    <li class="card"><a href="admin.html"><strong>6. Admin</strong><span>Orders (filters; open an order for its Changes list and Reassign…), Sellers (add from roster, link, retire), Rose order by round, Books (per-scout rollup, 70/30, check row, close sale), Settings.</span></a></li>
+  </ul>
+  <h2>Things to try</h2>
+  <ul class="money" style="font-size:var(--fs-md)">
+    <li>Checkout, general store, Delivery, zip <strong>60601</strong>: refused with a switch-to-pickup offer. <strong>53211</strong> passes.</li>
+    <li>Checkout, scout link, zip <strong>60614</strong>: the relative box appears and is required.</li>
+    <li>Press a pay button with empty fields: every problem is marked in place, and a “Can’t place the order yet” line names them.</li>
+    <li>Make the cart donated wreaths only: no delivery, no address asked.</li>
+    <li>Admin › Orders: open W-1002 (a troop pickup order), Reassign… it to Fiona K. delivering, then check Books.</li>
+    <li>My orders: add an in-person order, then watch the totals and the leaderboard update.</li>
+  </ul>
+</main>
+<script src="assets/data.js?v=4"></script>
+<script>
+document.getElementById('chrome').innerHTML = siteChrome('index.html');
+document.getElementById('reset').addEventListener('click', () => { localStorage.removeItem(CART_KEY); localStorage.removeItem(PROTO_KEY); sessionStorage.clear(); document.getElementById('reset').textContent = 'Reset done'; });
+</script>
+</body>
+</html>

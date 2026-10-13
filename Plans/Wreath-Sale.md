@@ -1,0 +1,185 @@
+# Wreath Sale — online store, scout pages, and the sale's books
+
+**Status:** ACTIVE — Release A building (2026-10-12)
+**Parked:** 2026-10-12
+**Priority:** High (the sale is seasonal: round 1 must open by early November to be worth building)
+
+## Overview
+
+An online store for the troop's annual Christmas wreath sale, plus the admin to run it. The
+general store is at `/wreaths`. Every scout gets a personal link, `/wreaths/<first-name-last-initial>`,
+which opens the same store with the sale credited to that scout. Customers see a photo, size and
+price for each of the 19 Rose items, add them to a cart, choose how the wreaths reach them, and
+pay online through PayPal Checkout (cards, PayPal and Venmo in one button). Scouts and parents
+can also enter orders taken in person. The site **replaces the Google Sheet** as the books:
+per-scout counts, Amt Paid/Due, the order to Rose (two rounds), the cost and profit, and the
+70/30 split. When the sale closes, each scout's 30% goes into their scout account.
+
+Source of the current process:
+[2026 wreath sheet](https://docs.google.com/spreadsheets/d/1IpJ1VTsCc-WKqs3sofeibLk5nlIU5DOxq9AKZfhb9qM/edit?gid=866415686).
+
+## Problem / Opportunity
+
+Today every order is on paper, rolled up into a sheet by hand. Customers can't see what they're
+buying, nobody can pay ahead, and scouts can't share a link with relatives out of town (who can
+still order a wreath to donate, or to be delivered to family here). The sheet's own columns
+(Amt Paid, Amt Due, Payment Methods, Check = OK) show the hard part is reconciling money,
+which online prepayment mostly removes. `/member` already advertises "Wreath sale: your orders, totals,
+and what's owed" as coming soon.
+
+## Decisions taken (Patrick, 2026-10-12)
+
+| Topic | Decision |
+|---|---|
+| Payment | Pay online at checkout, through **PayPal Checkout** (cards + PayPal + Venmo). Orders scouts enter themselves may be marked cash/check instead. |
+| Fulfillment | Three ways. **Scout-link orders: the scout delivers, always.** General-store orders choose **pickup** (set place/time) or **troop delivery** (named zip codes only). |
+| Scout link | Personal link per scout: first name + last initial, no photo, no surname (youth protection). |
+| The sheet | **The site replaces it.** Admin carries orders, payment status, the Rose order, cost/profit, and the split. |
+| Donations | **Both:** "Donate a wreath" (the troop gives it away) and "Add a gift to Troop 79" (cash). |
+| Donation credit | A donated wreath is a sale: the scout gets their 30% of its profit. A cash gift goes 100% to the troop. |
+| Deadline | **Two rounds**, matching the sheet's "Initial order to Rose" and "Changes" rows: round 1 cutoff → main Rose order; round 2 cutoff → top-up order; then the store closes. |
+| Paper orders | A signed-in scout or parent enters orders they took in person, credited to that scout. |
+| Photos | Rose's catalog images, one per item. |
+| Scout extras | Personal goal + progress bar, a members-only leaderboard, a personal message on their page, and a live "My wreath orders" view. |
+| Cutoffs (2026-10-12) | **Round 1: Saturday, October 25, 2026. Round 2: Saturday, November 15, 2026.** Both end of day, Central time. |
+| Delivery area (2026-10-12) | **Any zip starting with 532.** Applies to troop delivery and to scout delivery. A scout-link order outside 532 is allowed only when the customer ticks "I am a relative, and [scout first name] has agreed to deliver to me". General-store delivery outside 532 is not offered; pickup is. |
+| Processing fee (2026-10-12) | Checkout offers "Cover the processing fee", shown with its dollar amount and **unticked** by default. The troop absorbs the fee otherwise. The PayPal account doesn't exist yet; the troop is setting it up. |
+| Sales tax (2026-10-12) | Exempt; checkout adds no tax. |
+| The 30% (2026-10-12) | Confirmed: 30% of **profit** (sell price − unit cost), per scout-credited line. |
+| Sellers (2026-10-12) | Drop "Maya ST". More names will come, so admin gets a **Sellers** screen: add a seller from the roster (or add a new person to the roster first), set or clear their slug, and retire a seller. "UnAccounted For" becomes the troop bucket (credited scout = none). "Anjali" stays a normal seller. |
+| Donated wreaths (2026-10-12) | They go to **veterans**; "Donated to veterans" is enough wording for now, with the recipient to be named later in the page copy. |
+| Rose (2026-10-12) | Permission to use Rose's catalog photos and descriptions online: granted. |
+| Who holds the money (2026-10-12) | Every payment taken through the website goes to the **troop's** account. A scout-link order is *credited* to the scout (for their 30% share) but never paid to the scout. **General-store orders are credited to the troop only**, so the store has no "Buying from a scout?" picker (this supersedes the picker described below). |
+| After the cutoff (2026-10-12) | A customer who had checkout open when a cutoff passed can still finish paying. The cutoff stops new carts, not a checkout already in progress. |
+| Credit and reassignment (2026-10-12) | If two scout links are opened in one browser, the last link opened gets the credit. Admin › Orders can **reassign an order's credit and delivery** between scouts, or between a scout and the troop. A scout who volunteers to deliver a troop order can be given its credit (their 30% then applies). Every reassignment is audited. |
+| Books (2026-10-12) | Patrick is the treasurer; the Paid/Due columns including gifts and fees while Sale doesn't is fine as labeled. |
+| Prototype (2026-10-12) | **Approved** as the design: `prototypes/wreath-sale/`. |
+| Release A payment (2026-10-12) | The store opens **before** PayPal Checkout exists. Online orders pay **Patrick (treasurer) directly**, the same way as the rummage sale: Venmo **@Patrick-Bieser-1** (`https://venmo.com/u/Patrick-Bieser-1`) or PayPal to **patrickbieser@gmail.com** ("Friends and family"; the payment shows as Patrick Bieser, an assistant scoutmaster). The confirmation page and email show the amount and ask for the order number in the payment note. The order stays **unpaid** until the treasurer marks it paid in admin; the existing Bank Match helps. Paper orders: cash or check to the scout. Don't show the Venmo QR image publicly (it carries a family photo); links and handles only. |
+| Distribution (2026-10-12) | **Saturday, November 21, 2026, 2:30–4:30 PM, Northwoods parking lot, 1572 East Capitol.** Rose delivers the same day (the troop picks up at noon; ready by about 2:30). Scouts collect their delivery orders there; pickup customers come in that window; troop deliveries go out from there. |
+| Delivery fee (2026-10-12) | **$5 on a troop-delivery order under $50; free at $50 and over** (items subtotal, before gifts and fees). Scout-delivered orders carry no fee. |
+| Donated wreaths (2026-10-12) | Only the smaller wreaths can be donated: **20″ and 26″** (items 1 and 2), as in the prototype. |
+| Defaults (2026-10-12, all confirmed) | Cancellations and refunds until the round's cutoff, none after; Easel and Door Hanger sold alone; all 19 items orderable in round 2; a leader approves each scout's message; slugs are first name + last initial (`oliver-k`, `oliver-v`); confirmation reply-to bsatroop79bg@gmail.com; item descriptions are drafts, editable in admin. |
+
+## What customers see (best practices from other troops' sales)
+
+- **Clear deadline at the top:** "Order by Saturday, Oct 25" (round 1), then the round-2 date. After the
+  final cutoff the store says when next year's sale opens, and the scout pages say "Sales are closed".
+- **Who you're supporting:** a scout link greets with "You're ordering from Ben B." and the
+  scout's message and goal bar. The general store shows "Buying from a scout? Choose them" (a
+  picker defaulting to "Troop 79"), so a customer who lost the link still credits the right scout.
+- **Where the money goes:** a short plain-English block on every page. Every wreath funds the
+  troop's camping, gear and program, and 30% of the profit goes into the selling scout's own
+  account for camp fees and high-adventure trips. Copy is edited at Admin › Pages (site_pages),
+  not in JSX.
+- **Product cards:** photo, name, size, price, and one honest line about what's included (bows
+  come unattached on large wreaths; the stand is not included; and so on). Rose's catalog
+  numbers stay in admin only.
+- **Cart and checkout:** a plain list with quantities and totals, the fulfillment choice (pickup:
+  date, place and window; delivery: a zip check up front, with a clear "we can't deliver to that
+  zip, choose pickup" message), contact details (name, email, phone; an address only for
+  delivery), the optional donations, then the PayPal button. A confirmation page and a
+  confirmation email that the customer keeps.
+- **No shipping, no accounts for customers.** Guest checkout only.
+
+## Acceptance Criteria
+
+- [ ] `/wreaths` lists the active sale's items with photo, size, price and description; a sold-out or retired item can't be added.
+- [ ] `/wreaths/<scout-slug>` credits every order to that scout and offers only scout delivery; an unknown or inactive slug falls back to the general store, never a 404 that loses the customer.
+- [ ] A customer can pay with card, PayPal or Venmo; the order is **paid** only when the server has captured the payment with PayPal. A client "success" alone never marks it paid.
+- [ ] General-store orders choose pickup or delivery; delivery is refused, with a reason, for a zip that doesn't start with 532.
+- [ ] A scout-link order outside 532 goes through only with the "I am a relative, and [scout] has agreed to deliver to me" box ticked; the scout's order list flags it.
+- [ ] "Cover the processing fee" adds the stated amount to the PayPal total; leaving it unticked charges the cart total only.
+- [ ] Admin › Orders reassigns an order's credit and delivery (scout ↔ scout, scout ↔ troop); the books and both scouts' "My wreath orders" follow at once, and the change is audited.
+- [ ] A checkout started before a cutoff can still be paid after it; a new cart after the cutoff can't be started.
+- [ ] Admin › Sellers adds a seller from the roster, gives them a slug, and retires them; a retired seller's link falls back to the general store.
+- [ ] Donated wreaths and cash gifts can both be added; a donated wreath counts toward the scout's sales and 30% share, and a cash gift does not.
+- [ ] A signed-in scout or parent can enter an in-person order for that scout only, marked cash, check or unpaid, and edit it until the round's cutoff.
+- [ ] After a round's cutoff the store and the paper-order entry refuse new orders for that round; admin shows the round's Rose order (count per catalog number).
+- [ ] Admin shows, per scout: items, total sale, paid, due, and payment methods; plus the troop totals, cost (from per-item cost), gross profit, the 70% troop share, the 30% scout shares, and a check row (the sheet's "OK").
+- [ ] Closing the sale posts one ledger entry per scout (the 30% of profit) to their scout account, once. Re-running it posts nothing new.
+- [ ] A scout's "My wreath orders" shows their orders, who has paid, a printable delivery list for distribution day, and their earnings so far.
+- [ ] The leaderboard is visible only to signed-in members.
+- [ ] The confirmation email goes to the customer, and the scout (or their parent) gets a "new order" note.
+
+## Test Plan
+
+- [ ] `Customer_CanOrderFromScoutLink_CreditsThatScout()`
+- [ ] `Customer_SeesGeneralStore_WhenScoutSlugUnknown()`
+- [ ] `Customer_CannotChooseDelivery_WhenZipNotInList()`. 53211 passes; 53012 and 60601 fail.
+- [ ] `Relative_CanOrderOutsideArea_FromScoutLink_WhenBoxTicked()` / `Customer_CannotOrderOutsideArea_FromGeneralStore()`
+- [ ] `CoverFee_AddsFeeToTotal_OnlyWhenTicked()`
+- [ ] `Leader_CanAddAndRetireSeller()` / `RetiredSellerLink_FallsBackToStore()`
+- [ ] `Order_IsPaid_OnlyAfterServerCapture()`. A forged client success or a replayed capture id leaves it unpaid.
+- [ ] `Order_PriceComesFromServer_NotClient()`. A tampered cart price is ignored.
+- [ ] `Store_RefusesOrders_AfterFinalCutoff()` / `PaperEntry_RefusesOrders_AfterRoundCutoff()`
+- [ ] `Parent_CanEnterPaperOrder_OnlyForOwnScout()`
+- [ ] `DonatedWreath_CountsTowardScoutShare()` / `CashGift_IsAllTroop()`
+- [ ] `SaleBooks_MatchSheetMath()`. Fixture from the 2026 sheet: cost each, sell price, 70/30 on profit; troop-store profit is 100% troop.
+- [ ] `RoseOrder_SumsRoundOne_ThenRoundTwoAsChanges()`
+- [ ] `CloseSale_PostsScoutShares_Once()`. Running it twice is idempotent.
+- [ ] `Leaderboard_IsHidden_FromAnonymous()`
+- [ ] `CatchAll_ReservesWreathsSlug()`. Extends the existing reserved-slug guard test for `(public)/[...slug]`.
+
+## Technical Approach
+
+- **Data (new tables; RLS on, service-role only, per the security posture):**
+  - `wreath_sales`: year, status (draft / open / round2 / closed), round-1 and round-2 cutoffs, pickup details, the delivery zip prefix (`532`), delivery fee (if any), the processing-fee formula, and the split percentage (30).
+  - `wreath_sellers`: sale_id, scout (a people/scouts row), slug, active. This is the Sellers admin; it is seeded from the 2026 sheet, minus "Maya ST" and "UnAccounted For".
+  - `wreath_items`: sale_id, catalog number, name, size, description, price, unit cost, image (Bunny), sort order, active.
+  - `wreath_orders`: sale_id, credited scout (null = troop), source (scout link / store / paper), fulfillment (scout / pickup / delivery), customer name, email, phone and address, round, payment status and method, PayPal order and capture ids, the amounts, and a status (placed / delivered / cancelled / refunded).
+  - `wreath_order_lines`: order_id, item_id, quantity, donated flag; price and cost snapshotted at order time.
+  - Cash gifts are an amount on the order, not a line.
+  - Scout goal and message: goal, message and approved_at on `wreath_sellers`. Whether a leader approves the message is still open.
+  - Orders also store `outside_area_relative` (the ticked box) and `fee_covered` (amount).
+- **Prices live on the server.** The cart sends item ids and quantities; the server prices it,
+  creates the PayPal order, and captures it in a server action. A PayPal webhook
+  (`PAYMENT.CAPTURE.COMPLETED`, signature-verified) is the backstop for a closed tab.
+- **Money into the existing books:** online payments land in the PayPal account and get matched
+  through the existing Ledger Audit + Bank Match. At close, scout shares post as `ledger_entries`
+  (method `scout_account`), the same way the Scout Account page already reads fundraising.
+- **Reuse:** public design system (PageShell, card, form kit, NumberBox, Button, Notice); the
+  Save-button and edit-screen standards on admin; `lib/format-date` for every date; Resend for
+  email (the signup-confirmation pattern); Bunny for images; the content-managed Pages for the
+  "where the money goes" copy; Verified Signup / family sign-in for paper-order entry.
+- **Routes:** `(public)/wreaths/page.tsx`, `(public)/wreaths/[seller]/page.tsx`, the cart and checkout as a
+  client island; `/member/wreaths` (my orders, delivery list, goal and message);
+  `admin/(workspace)/fundraising/wreaths/` (sale settings, items, orders, Rose order, books, close).
+  Add `wreaths` to the catch-all's reserved slugs.
+- **Privacy:** a scout page shows only the first name and last initial. The customer's address
+  and phone are seen only by the delivering scout's family and leaders. The leaderboard is members only.
+
+## Implementation Steps
+
+1. Governance pass: tech-lead (data model and routes), troop79-specialist (ledger and scout-account fit), qa-lead (PayPal capture and webhook threat model). Jenna on the store flow; Brad prototypes the store and scout page against Rose's photos.
+2. Schema plus admin: sale settings, item catalog (seeded from the 2026 sheet: 19 items with price and cost), image upload.
+3. Public store and scout pages, with cart and checkout (unpaid orders only, behind a feature flag).
+4. PayPal Checkout: sandbox first, server capture, webhook, refunds from admin.
+5. Paper-order entry plus "My wreath orders" (including the delivery list print), goal, message and leaderboard.
+6. Admin books: per-scout rollup, Rose order by round, cost/profit, the 70/30 split, cutoffs; close-sale posting to scout accounts.
+7. Emails, the "where the money goes" page copy, the /member card going live; a dry run with two test scouts (Charlie Walters is the test scout); then open round 1.
+
+### Timeline (round 1 closes October 25: 13 days from planning)
+
+- **Release A, by about October 16:** steps 2, 3, the Sellers admin, and a minimal Orders admin (list, mark paid, reassign, the Rose order count). The store and scout links go live and take orders paid to the treasurer by Venmo or PayPal (see Decisions), marked paid by hand. The Rose order for round 1 comes out of admin on the 25th.
+- **Release B, when the PayPal account is live:** step 4. New orders pay online; earlier unpaid orders get a "Pay now" link in a reminder email.
+- **Release C, before November 15:** steps 5 and 6. Paper-order entry, "My wreath orders", goals and the leaderboard, the books, round 2, and close-sale.
+
+Steps 2–4 are the minimum to sell online. Steps 5–6 replace the sheet. If time runs short, the
+sheet can carry this year's books with a CSV export from step 3.
+
+## Open Questions
+
+Answered 2026-10-12: cutoffs, delivery area, the fee option, sales tax, the 30%, sellers, donated wreaths, Rose's permission (see Decisions taken).
+
+- [ ] **Rose's website or catalog file:** the URL or PDF for the photos and descriptions; it couldn't be found by search. Item 15 "Easel" and 16 "Door Hanger": sold alone, or only as add-ons?
+- [ ] **PayPal account:** being set up by the troop. It should be in the troop's or chartered organization's name (with an EIN), with the nonprofit rate requested. Until it's live, the store can take orders marked "pay your scout" (see Timeline).
+- [ ] **Distribution:** the date Rose delivers to the troop, distribution day, pickup place and time window; who delivers troop-store orders (a leader, or assigned scouts); any delivery fee?
+- [ ] **Refunds and cancellations:** allowed until the round's cutoff? After that, no refunds (the wreaths are ordered)?
+- [ ] **Scout messages:** does a leader approve each message before it goes public?
+- [ ] **Round 2:** are all 19 items still orderable, or only what Rose can top up?
+
+## Notes
+
+- Sheet facts (2026): items 1–16 and 20–22; prices $5–$76; 2026 unit costs; profit per item from $0.95 (Door Hanger) to $19.95 (27" Tree); a Rose invoice of $6,533.99 is recorded; costs up 1–7% on 2025.
+- Patterns from other troops' online sales: [Troop 469 product sheet and turn-in dates](https://docs.google.com/document/d/1bOTNvAQD7PL4SWY_lxThx6J5WbgPooo-/export?format=pdf), [St. Margaret of Scotland delivery zips and pickup](https://www.stmargaretstl.org/?p=94903), [Verona Pack 32 card-only, cover-the-fee option](https://myveronanj.com/2020/10/10/cub-scouts-to-hold-online-wreath-sale/), [Ozaukee troop's virtual sale](https://www.ozaukeepress.com/node/95375).
+- Related: `Plans/Troop-Finances.md`, Ledger Audit + Bank Match (v1.132.0), Scout Account page, `/member` "Wreath sale" card, the Content-Managed Pages catch-all's reserved slugs.

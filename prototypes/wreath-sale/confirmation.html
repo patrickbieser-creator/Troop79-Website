@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Order placed — Troop 79 wreaths</title>
+<link rel="stylesheet" href="assets/wreath.css?v=4">
+</head>
+<body>
+<div class="proto"><div class="protoInner"><span><strong>Prototype</strong> Confirmation. Shows the order you just placed in checkout, or a sample.</span><a href="index.html">All screens</a></div></div>
+<header id="chrome"></header>
+<main class="page narrow" id="main"></main>
+<script src="assets/data.js?v=4"></script>
+<script>
+document.getElementById('chrome').innerHTML = siteChrome('store.html');
+let o = null;
+try { o = JSON.parse(sessionStorage.getItem('wreath-proto-last')); } catch (e) {}
+if (!o) o = { id: 'W-1034', seller: 'ben-b', lines: [{ n: 21, q: 1 }, { n: 1, q: 1, donated: true }], gift: 10, fee: 1.89, fulfill: 'scout', relative: true,
+  cust: { name: 'Carol Bieber', email: 'carolb@comcast.net', phone: '773-555-0139', street: '2240 N Lincoln Ave', city: 'Chicago', zip: '60614' }, pay: 'paid', method: 'PayPal' };
+const sale = o.lines.reduce((s, l) => s + item(l.n).price * l.q, 0);
+const total = sale + (o.gift || 0) + (o.fee || 0);
+const s = o.seller && seller(o.seller), first = s ? s.name.split(' ')[0] : '';
+const custFirst = o.cust.name.split(' ')[0];
+const addr = [o.cust.street, o.cust.city, o.cust.zip].filter(Boolean).join(', ');
+const hasDonated = o.lines.some(l => l.donated);
+
+const payBlock = o.pay === 'paid'
+  ? `<div class="notice ok"><p><strong>Paid ${money2(total)}</strong> by ${o.method === 'Card' ? 'card' : o.method} through PayPal to Troop 79. Your receipt is in your email.</p></div>`
+  : `<div class="notice warn"><p><strong>${money2(total)} due.</strong> ${s ? `Pay ${esc(first)} when your wreaths arrive: cash, a check made out to Troop 79, or Venmo to ${esc(first)}’s family.` : 'Pay a troop leader at pickup or delivery: cash or a check made out to Troop 79.'}</p></div>`;
+
+let arrive;
+if (o.fulfill === 'scout') arrive = `<p><strong>${esc(s.name)} delivers</strong> to ${esc(addr)}, ${SALE.deliveryWindow}. ${esc(first)}’s family will call or text the day before.</p>${o.relative ? `<p class="meta">You told us ${esc(first)} has agreed to deliver outside the Milwaukee area.</p>` : ''}`;
+else if (o.fulfill === 'pickup') arrive = `<p><strong>Pick up ${SALE.pickup.day}, ${SALE.pickup.window}</strong><br>${SALE.pickup.place}. ${SALE.pickup.note}.</p><p class="meta">Give your name at the table. No printout needed.</p>`;
+else if (o.fulfill === 'delivery') arrive = `<p><strong>We deliver</strong> to ${esc(addr)}, ${SALE.deliveryWindow}. A leader will call or text the day before.</p>`;
+else arrive = `<p>Nothing comes to you. Your donated wreaths go to veterans in December.</p>`;
+if (o.fulfill !== 'none' && hasDonated) arrive += `<p class="meta">Your donated wreaths go to veterans; they are not part of this delivery.</p>`;
+
+document.getElementById('main').innerHTML = `
+  <p class="kicker">Order ${o.id}</p>
+  <h1>Thank you, ${esc(custFirst)}. Your order is placed.</h1>
+  <p class="lede">We emailed a copy to ${esc(o.cust.email)}.${s ? ` ${esc(s.name)} gets credit for it.` : ''}</p>
+  ${payBlock}
+  <section class="card pad step" style="margin-top:16px" aria-labelledby="hW"><h2 id="hW" style="margin:0 0 8px">What you ordered</h2>
+    <ul class="lines">${o.lines.map(l => `<li class="line${l.donated ? ' donated' : ''}"><span class="lName">${l.q} × ${esc(itemLabel(item(l.n)))}${l.donated ? ' <span class="tag vet">Donated to veterans</span>' : ''}</span><span class="lAmt">${money2(item(l.n).price * l.q)}</span></li>`).join('')}</ul>
+    <dl class="sumRows" style="margin-top:8px">${o.gift ? `<div><dt>Gift to Troop 79</dt><dd>${money2(o.gift)}</dd></div>` : ''}${o.fee ? `<div><dt>Processing fee</dt><dd>${money2(o.fee)}</dd></div>` : ''}<div class="total"><dt>Total</dt><dd>${money2(total)}</dd></div></dl>
+  </section>
+  <section class="card pad step" aria-labelledby="hA" style="font-family:var(--font-ui)"><h2 id="hA" style="margin:0 0 8px">How it reaches you</h2>${arrive}</section>
+  <section class="card pad step" aria-labelledby="hQ" style="font-family:var(--font-ui)"><h2 id="hQ" style="margin:0 0 8px">Questions or changes</h2>
+    <p style="margin:0">Reply to your confirmation email, or write <a href="mailto:${SALE.contactEmail}">${SALE.contactEmail}</a>. Changes are possible until ${SALE.round1.label}, when the troop places its order with the grower.</p></section>
+  <p><a class="btn secondary" href="${s ? 'scout.html?s=' + o.seller : 'store.html'}">Order more</a></p>`;
+</script>
+</body>
+</html>

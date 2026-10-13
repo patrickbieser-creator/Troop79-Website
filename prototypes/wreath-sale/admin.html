@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wreath sale — Admin — Troop 79</title>
+<link rel="stylesheet" href="assets/wreath.css?v=4">
+</head>
+<body class="admin">
+<div class="proto"><div class="protoInner"><span><strong>Prototype</strong> <code>/admin/fundraising/wreaths</code>. Sample data includes two round-2 orders to show the “Changes” column.</span><a href="index.html">All screens</a></div></div>
+<div class="adminTop"><div class="adminTopInner"><span class="crumb"><a href="#">Admin</a> › <a href="#">Fundraising</a> › Wreath sale 2026</span><span>Patrick Bieser</span></div></div>
+<main class="adminPage">
+  <div class="titleLine"><h1>Wreath sale 2026</h1><span class="tag paid" style="font-size:12px">Open · round 1 closes Sat, Oct 25</span></div>
+  <div class="tabs" role="tablist" aria-label="Wreath sale">
+    <button class="tab" role="tab" id="t-orders" aria-controls="orders">Orders <span class="cnt" id="cntOrders"></span></button>
+    <button class="tab" role="tab" id="t-sellers" aria-controls="sellers">Sellers <span class="cnt" id="cntSellers"></span></button>
+    <button class="tab" role="tab" id="t-rose" aria-controls="rose">Rose order</button>
+    <button class="tab" role="tab" id="t-books" aria-controls="books">Books</button>
+    <button class="tab" role="tab" id="t-settings" aria-controls="settings">Settings</button>
+  </div>
+
+  <!-- Orders -->
+  <section role="tabpanel" id="orders" aria-labelledby="t-orders" hidden>
+    <div class="panelHead"><h2>Orders</h2><button class="btn primary" type="button" data-csv="orders">Export CSV</button></div>
+    <div class="filters">
+      <input type="text" id="fQ" placeholder="Name, email, order #" aria-label="Search orders">
+      <select id="fRound" aria-label="Round"><option value="">All rounds</option><option value="1">Round 1</option><option value="2">Round 2</option></select>
+      <select id="fSeller" aria-label="Credited to"></select>
+      <select id="fPay" aria-label="Payment"><option value="">Paid and unpaid</option><option value="paid">Paid</option><option value="unpaid">Not paid</option></select>
+      <select id="fFul" aria-label="Fulfillment"><option value="">Every fulfillment</option><option value="scout">Scout delivers</option><option value="pickup">Pickup</option><option value="delivery">Troop delivery</option><option value="none">Donated only</option></select>
+      <button type="button" class="btn ghost" id="fClear" hidden>Clear filters</button>
+    </div>
+    <div class="aCard scrollX"><table class="tbl" id="ordTbl"></table></div>
+  </section>
+
+  <!-- Sellers -->
+  <section role="tabpanel" id="sellers" aria-labelledby="t-sellers" hidden>
+    <div class="panelHead"><h2>Sellers</h2></div>
+    <p class="panelNote">A seller’s link is troop-79.com/wreaths/&lt;link&gt;. Customers see first name and last initial only. A retired seller’s link, or a cleared one, opens the general store.</p>
+    <div class="aGrid2">
+      <div class="aCard scrollX"><table class="tbl" id="selTbl"></table></div>
+      <form class="formPanel" id="addSeller" novalidate>
+        <div class="sec" data-n="1"><h3>Scout</h3>
+          <div class="field" id="a-scout"><label for="aScout" class="sr">Scout</label><select id="aScout"></select></div>
+          <p class="panelNote" style="margin:6px 0 0">Not listed? <a href="#">Add them to the roster</a> first.</p></div>
+        <div class="sec" data-n="2"><h3>Link</h3>
+          <div class="field" id="a-slug"><label for="aSlug" class="sr">Link</label><input type="text" id="aSlug" autocomplete="off" spellcheck="false"></div>
+          <p class="panelNote" style="margin:6px 0 0" id="aSlugHint"></p></div>
+        <div class="submitRow"><button class="btn primary" type="submit">Add seller</button><p class="cantLine" id="aCant" hidden></p></div>
+      </form>
+    </div>
+  </section>
+
+  <!-- Rose order -->
+  <section role="tabpanel" id="rose" aria-labelledby="t-rose" hidden>
+    <div class="panelHead"><h2>Rose order</h2><button class="btn primary" type="button" data-csv="rose">Download round 1 order (CSV)</button></div>
+    <p class="panelNote">Count per catalog number, donated wreaths included. Round 1 is the initial order, sent after Saturday, October 25. Round 2 is the changes, sent after Saturday, November 15.</p>
+    <div class="aCard scrollX"><table class="tbl" id="roseTbl"></table></div>
+  </section>
+
+  <!-- Books -->
+  <section role="tabpanel" id="books" aria-labelledby="t-books" hidden>
+    <div class="panelHead"><h2>Books</h2><button class="btn primary" type="button" data-csv="books">Export CSV</button></div>
+    <div class="kpis" id="kpis"></div>
+    <div class="aCard scrollX"><table class="tbl" id="bookTbl"></table></div>
+    <div class="aGrid2" style="margin-top:16px">
+      <div class="aCard scrollX"><table class="tbl" id="splitTbl"></table></div>
+      <div class="aCard" style="padding:14px">
+        <h3 style="margin:0 0 6px;font-size:14px">Close the sale</h3>
+        <p class="panelNote" style="margin:0 0 10px">Posts each scout’s 30% of profit to their scout account as one ledger entry. Running it again posts nothing new.</p>
+        <button type="button" class="btn secondary" id="closeSale">Close sale and post shares</button>
+        <p class="cantLine" id="closeCant" hidden style="margin-top:8px"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Settings -->
+  <section role="tabpanel" id="settings" aria-labelledby="t-settings" hidden>
+    <div class="panelHead"><h2>Settings</h2></div>
+    <form class="formPanel" id="setForm" novalidate>
+      <div class="sec" data-n="1"><h3>Status</h3>
+        <div class="seg" role="radiogroup" aria-label="Sale status"><label><input type="radio" name="status" value="draft">Draft</label><label><input type="radio" name="status" value="open" checked>Open</label><label><input type="radio" name="status" value="round2">Round 2</label><label><input type="radio" name="status" value="closed">Closed</label></div></div>
+      <div class="sec" data-n="2"><h3>Cutoffs <span class="opt">end of day, Central</span></h3>
+        <div class="fields two" style="max-width:420px"><div class="field" id="s-r1"><label for="r1">Round 1</label><input type="date" id="r1" value="2026-10-25"></div><div class="field" id="s-r2"><label for="r2">Round 2</label><input type="date" id="r2" value="2026-11-15"></div></div></div>
+      <div class="sec" data-n="3"><h3>Delivery</h3>
+        <div class="fields two" style="max-width:560px"><div class="field" id="s-zip"><label for="zipP">Zip codes starting with</label><input type="text" id="zipP" value="532" inputmode="numeric" maxlength="5"></div><div class="field"><label for="dWin">Delivery days</label><input type="text" id="dWin" value="Saturday, December 6 or Sunday, December 7"></div></div></div>
+      <div class="sec" data-n="4"><h3>Pickup</h3>
+        <div class="fields two" style="max-width:560px"><div class="field"><label for="pDate">Date</label><input type="date" id="pDate" value="2026-12-06"></div><div class="field" style="flex-direction:row;gap:8px"><span class="field" style="flex:1"><label for="pFrom">From</label><input type="time" id="pFrom" value="09:00"></span><span class="field" style="flex:1"><label for="pTo">To</label><input type="time" id="pTo" value="12:00"></span></div>
+        <div class="field full"><label for="pPlace">Place</label><input type="text" id="pPlace" value="Immanuel Lutheran Church, 1100 N Astor St"></div><div class="field full"><label for="pNote">Note</label><input type="text" id="pNote" value="Fellowship hall, Astor Street door"></div></div></div>
+      <div class="sec" data-n="5"><h3>Money</h3>
+        <div class="fields two" style="max-width:560px"><div class="field" id="s-share"><label for="share">Scout share of profit (%)</label><input type="number" id="share" value="30" min="0" max="100"></div><div class="field"><label for="feeF">Processing fee</label><input type="text" id="feeF" value="1.99% + $0.49"></div>
+        <div class="field full"><span class="fieldLabel" id="ppLbl">Payment</span><div class="seg" role="radiogroup" aria-labelledby="ppLbl"><label><input type="radio" name="pp" value="scout" checked>Pay your scout</label><label><input type="radio" name="pp" value="sandbox">PayPal sandbox</label><label><input type="radio" name="pp" value="live">PayPal live</label></div></div></div></div>
+      <div class="stickyBar"><button type="submit" class="btn primary" id="setSave">Save settings</button><button type="button" class="btn ghost" id="setDiscard" hidden>Discard changes</button><span class="state" id="setState">All changes saved</span><p class="cantLine" id="setCant" hidden></p></div>
+    </form>
+  </section>
+</main>
+<dialog class="aDialog" id="raDlg" aria-labelledby="raTitle">
+  <form id="raForm" novalidate>
+    <h2 id="raTitle" class="dlgTitle"></h2>
+    <div class="sec" data-n="1"><h3>Credit to</h3>
+      <div class="field" id="ra-credit"><label for="raCredit" class="sr">Credit to</label><select id="raCredit"></select></div></div>
+    <div class="sec" data-n="2"><h3>Delivered by</h3>
+      <div id="raDelivWrap" class="choice" role="radiogroup" aria-label="Delivered by">
+        <label class="check"><input type="radio" name="raDeliv" value="scout"><span id="raScoutLbl">A scout delivers</span></label>
+        <label class="check"><input type="radio" name="raDeliv" value="pickup"><span>Pickup at the church</span></label>
+        <label class="check"><input type="radio" name="raDeliv" value="delivery"><span>Troop delivery (532 zips)</span></label>
+      </div>
+      <p class="panelNote" id="raDonated" hidden style="margin:0">Donated wreaths only: nothing to deliver.</p>
+      <div class="fields two" id="raAddr" style="margin-top:8px"><div class="field" id="ra-street"><label for="raStreet">Street address</label><input type="text" id="raStreet"></div><div class="field" id="ra-zip"><label for="raZip">Zip</label><input type="text" id="raZip" inputmode="numeric" maxlength="5"></div></div>
+      <p class="panelNote" style="margin:8px 0 0">A scout who volunteers to deliver a troop order gets its credit, and 30% of its profit. Money already collected stays with the troop.</p></div>
+    <div class="submitRow"><button type="submit" class="btn primary" id="raSave">Save</button><button type="button" class="btn ghost" id="raCancel">Cancel</button><p class="cantLine" id="raCant" hidden></p></div>
+  </form>
+</dialog>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="assets/data.js?v=4"></script>
+<script>
+const $ = id => document.getElementById(id);
+let tt; function toast(m) { $('toast').textContent = m; $('toast').classList.add('show'); clearTimeout(tt); tt = setTimeout(() => $('toast').classList.remove('show'), 2000); }
+const FUL = { scout: 'Scout delivers', pickup: 'Pickup', delivery: 'Troop delivery', none: 'Donated only' };
+const sellerName = slug => slug ? seller(slug).name : 'Troop store';
+
+/* ── tabs (hash-addressable) ── */
+const TABS = ['orders', 'sellers', 'rose', 'books', 'settings'];
+function showTab(id) {
+  if (!TABS.includes(id)) id = 'orders';
+  TABS.forEach(t => { $(t).hidden = t !== id; $('t-' + t).setAttribute('aria-selected', String(t === id)); $('t-' + t).tabIndex = t === id ? 0 : -1; });
+  history.replaceState(null, '', '#' + id);
+}
+document.querySelector('.tabs').addEventListener('click', e => { const b = e.target.closest('.tab'); if (b) showTab(b.id.slice(2)); });
+document.querySelector('.tabs').addEventListener('keydown', e => {
+  if (!['ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+  const i = TABS.findIndex(t => !$(t).hidden), j = (i + (e.key === 'ArrowRight' ? 1 : TABS.length - 1)) % TABS.length;
+  showTab(TABS[j]); $('t-' + TABS[j]).focus();
+});
+
+/* ── Orders ── */
+$('fSeller').innerHTML = `<option value="">Every seller</option><option value="__troop">Troop store</option>` + SELLERS.map(s => `<option value="${s.slug}">${esc(s.name)}</option>`).join('');
+/* Orders list. The order number opens a detail row: items, contact, the Changes audit list and a quiet Reassign…. */
+const ADMIN_USER = 'Patrick';
+const todayLabel = () => new Date(SALE.today + 'T12:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+const fulLabel = o => o.fulfill === 'scout' && o.seller ? `${seller(o.seller).name} delivers` : FUL[o.fulfill];
+let openId = null;
+function renderOrders() {
+  const q = $('fQ').value.trim().toLowerCase(), r = $('fRound').value, s = $('fSeller').value, p = $('fPay').value, f = $('fFul').value;
+  $('fClear').hidden = !(q || r || s || p || f);
+  const rows = ORDERS.filter(o => (!q || (o.id + ' ' + o.cust.name + ' ' + o.cust.email).toLowerCase().includes(q)) && (!r || o.round == r) && (!s || (s === '__troop' ? !o.seller : o.seller === s)) && (!p || o.pay === p) && (!f || o.fulfill === f))
+    .sort((a, b) => b.id.localeCompare(a.id));
+  let ti = 0, tt2 = 0, td = 0;
+  const body = rows.map(o => { const c = orderCalc(o); ti += c.items; tt2 += c.total; td += c.due;
+    const open = openId === o.id, ch = o.changes || [];
+    const main = `<tr${open ? ' class="openRow"' : ''}><td><button type="button" class="linkBtn mono" data-open="${o.id}" aria-expanded="${open}" aria-controls="d-${o.id}">${o.id} <span aria-hidden="true">${open ? '▾' : '▸'}</span></button></td><td>${o.placed.slice(5).replace('-', '/')}<br><span class="panelNote">R${o.round}</span></td><td><strong>${esc(o.cust.name)}</strong><br><span class="panelNote">${esc(o.cust.email || o.cust.phone)}</span></td><td>${esc(sellerName(o.seller))}${o.source === 'paper' ? '<br><span class="tag">In person</span>' : ''}${ch.length ? '<br><span class="tag">Reassigned</span>' : ''}</td>
+      <td>${esc(linesSummary(o.lines))}${o.gift ? `<br><span class="panelNote">+ ${money(o.gift)} gift</span>` : ''}</td><td>${esc(fulLabel(o))}${o.cust.zip ? `<br><span class="panelNote">${o.cust.zip}</span>` : ''}${o.relative ? ' <span class="tag rel">relative</span>' : ''}</td>
+      <td class="r">${money2(c.total)}</td><td>${o.pay === 'paid' ? `<span class="tag paid">${o.method}</span>` : '<span class="tag unpaid">Not paid</span>'}</td></tr>`;
+    const detail = !open ? '' : `<tr class="detailRow" id="d-${o.id}"><td colspan="8"><div class="orderDetail">
+      <div><h4>Items</h4><ul class="plain">${o.lines.map(l => `<li>${l.q} × ${esc(itemLabel(item(l.n)))}${l.donated ? ' <span class="tag vet">Donated</span>' : ''} <span class="panelNote">${money2(item(l.n).price * l.q)}</span></li>`).join('')}</ul>
+        <p class="panelNote" style="margin:6px 0 0">Profit ${money2(c.profit)}${o.seller ? ` · ${esc(seller(o.seller).name)} earns ${money2(c.scoutShare)}` : ' · all troop'}</p></div>
+      <div><h4>Customer</h4><p style="margin:0">${esc(o.cust.name)}<br>${esc(o.cust.phone)}${o.cust.email ? '<br>' + esc(o.cust.email) : ''}${o.cust.addr ? '<br>' + esc(o.cust.addr) + ', ' + o.cust.zip : ''}</p></div>
+      <div><h4>Changes</h4>${ch.length ? `<ul class="plain">${ch.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '<p class="panelNote" style="margin:0">None yet.</p>'}
+        <p style="margin:8px 0 0"><button type="button" class="btn secondary sm" data-reassign="${o.id}">Reassign…</button></p></div>
+      </div></td></tr>`;
+    return main + detail; }).join('');
+  $('ordTbl').innerHTML = `<thead><tr><th>Order</th><th>Placed</th><th>Customer</th><th>Credited</th><th>Items</th><th>Fulfillment</th><th class="r">Total</th><th>Payment</th></tr></thead>
+    <tbody>${body || `<tr><td colspan="8" style="padding:20px;text-align:center;color:var(--admin-gray-500)">No orders match. <button type="button" class="linkBtn" onclick="$('fClear').click()">Clear filters</button></td></tr>`}</tbody>
+    <tfoot><tr><td colspan="4">${rows.length} order${rows.length === 1 ? '' : 's'}</td><td>${ti} items</td><td></td><td class="r">${money2(tt2)}</td><td>${td ? money2(td) + ' due' : ''}</td></tr></tfoot>`;
+  $('cntOrders').textContent = ORDERS.length;
+}
+$('ordTbl').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.open) { openId = openId === b.dataset.open ? null : b.dataset.open; renderOrders(); const nb = document.querySelector(`[data-open="${b.dataset.open}"]`); if (nb) nb.focus(); }
+  if (b.dataset.reassign) openReassign(b.dataset.reassign);
+});
+
+/* ── Reassign dialog: credit to [scout | Troop 79], delivered by [that scout | pickup | troop delivery] ── */
+let RA = null;
+function openReassign(id) {
+  const o = ORDERS.find(x => x.id === id); RA = o;
+  $('raTitle').textContent = `Reassign ${o.id} · ${o.cust.name}`;
+  $('raCredit').innerHTML = `<option value="">Troop 79</option>` + SELLERS.filter(s => s.active || s.slug === o.seller).map(s => `<option value="${s.slug}">${esc(s.name)}</option>`).join('');
+  $('raCredit').value = o.seller || '';
+  const donatedOnly = o.fulfill === 'none';
+  $('raDelivWrap').hidden = donatedOnly; $('raDonated').hidden = !donatedOnly;
+  if (!donatedOnly) document.querySelector(`input[name=raDeliv][value=${o.fulfill}]`).checked = true;
+  $('raStreet').value = o.cust.addr || ''; $('raZip').value = o.cust.zip || '';
+  raClear(); raSync();
+  $('raDlg').showModal();
+}
+function raDeliv() { const r = document.querySelector('input[name=raDeliv]:checked'); return r ? r.value : RA.fulfill; }
+function raChanged() { return ($('raCredit').value || null) !== (RA.seller || null) || raDeliv() !== RA.fulfill || $('raStreet').value.trim() !== (RA.cust.addr || '') || $('raZip').value.trim() !== (RA.cust.zip || ''); }
+function raSync() {
+  const slug = $('raCredit').value, d = raDeliv();
+  $('raScoutLbl').textContent = slug ? `${seller(slug).name} delivers` : 'A scout delivers';
+  $('raAddr').hidden = !(d === 'scout' || d === 'delivery');
+  $('raSave').disabled = !raChanged();
+}
+function raClear() { $('raDlg').querySelectorAll('.bad').forEach(e => e.classList.remove('bad')); $('raDlg').querySelectorAll('.badNote, .badCheck').forEach(e => e.classList.contains('badCheck') ? e.classList.remove('badCheck') : e.remove()); $('raCant').hidden = true; }
+function raValidate() {
+  raClear(); const probs = [], d = raDeliv(), slug = $('raCredit').value;
+  if (d === 'scout' && !slug) { $('ra-credit').classList.add('bad'); $('ra-credit').insertAdjacentHTML('beforeend', '<p class="badNote">Choose the scout who delivers. They get the credit.</p>'); probs.push('who gets credit'); }
+  if (d === 'scout' || d === 'delivery') {
+    if (!$('raStreet').value.trim()) { $('ra-street').classList.add('bad'); $('ra-street').insertAdjacentHTML('beforeend', '<p class="badNote">Delivery needs a street address.</p>'); probs.push('address'); }
+    const z = $('raZip').value.trim();
+    if (!/^\d{5}$/.test(z)) { $('ra-zip').classList.add('bad'); $('ra-zip').insertAdjacentHTML('beforeend', '<p class="badNote">Enter the 5-digit zip.</p>'); probs.push('zip'); }
+    else if (d === 'delivery' && !zipOk(z)) { $('ra-zip').classList.add('bad'); $('ra-zip').insertAdjacentHTML('beforeend', `<p class="badNote">Troop delivery covers ${SALE.zipPrefix} zips only. Choose pickup, or a scout who has agreed to deliver.</p>`); probs.push('zip'); }
+  }
+  $('raCant').hidden = !probs.length; $('raCant').textContent = probs.length ? `Can’t save yet: check ${probs.join(' and ')}.` : '';
+  return !probs.length;
+}
+$('raForm').addEventListener('input', () => { raSync(); if (!$('raCant').hidden) raValidate(); });
+$('raForm').addEventListener('change', () => { raSync(); if (!$('raCant').hidden) raValidate(); });
+$('raCancel').addEventListener('click', () => $('raDlg').close());
+$('raForm').addEventListener('submit', e => {
+  e.preventDefault(); if (!raChanged() || !raValidate()) return;
+  const o = RA, when = todayLabel(), oldName = sellerName(o.seller).replace('Troop store', 'Troop 79'), oldFul = fulLabel(o);
+  const newSeller = $('raCredit').value || null, newFul = raDeliv();
+  o.changes = o.changes || [];
+  if (newSeller !== (o.seller || null)) o.changes.push(`${when} · moved from ${oldName} to ${newSeller ? seller(newSeller).name : 'Troop 79'} by ${ADMIN_USER}`);
+  o.seller = newSeller;
+  if (newFul !== o.fulfill) { o.fulfill = newFul; o.changes.push(`${when} · delivery changed from ${oldFul} to ${fulLabel(o)} by ${ADMIN_USER}`); }
+  const st = $('raStreet').value.trim(), z = $('raZip').value.trim();
+  if ((newFul === 'scout' || newFul === 'delivery') && (st !== (o.cust.addr || '') || z !== (o.cust.zip || ''))) { o.cust.addr = st; o.cust.zip = z; o.changes.push(`${when} · address set to ${st}, ${z} by ${ADMIN_USER}`); }
+  o.relative = o.fulfill === 'scout' && !zipOk(o.cust.zip || '') ? o.relative : false;
+  $('raDlg').close(); openId = o.id;
+  renderSellers(); renderAll();
+  toast(`${o.id} saved. The books and ${o.seller ? seller(o.seller).name + '’s earnings' : 'the troop totals'} are updated.`);
+});
+['fQ', 'fRound', 'fSeller', 'fPay', 'fFul'].forEach(id => $(id).addEventListener('input', renderOrders));
+$('fClear').addEventListener('click', () => { ['fQ', 'fRound', 'fSeller', 'fPay', 'fFul'].forEach(id => $(id).value = ''); renderOrders(); });
+
+/* ── Sellers ── */
+let roster = ROSTER_NOT_SELLING.map(s => { const [name, full] = s.split('|'); return { name, full }; });
+const slugFor = name => name.toLowerCase().replace(/\./g, '').trim().replace(/\s+/g, '-');
+function renderSellers() {
+  const list = SELLERS.slice().sort((a, b) => (b.active - a.active) || a.name.localeCompare(b.name));
+  $('selTbl').innerHTML = `<thead><tr><th>Seller</th><th>Link</th><th class="r">Items</th><th>Status</th><th><span class="sr">Actions</span></th></tr></thead><tbody>${list.map(s => { const st = sellerStats(s.slug || '__none');
+    return `<tr class="${s.active ? '' : 'retired'}" data-slug="${s.slug || ''}" data-full="${esc(s.full)}"><td><strong>${esc(s.name)}</strong><br><span class="panelNote">${esc(s.full)}</span></td>
+      <td>${s.slug ? `<span class="mono">/wreaths/${s.slug}</span>` : '<span class="panelNote">No link</span>'}${s.active && s.msgStatus === 'pending' ? '<br><span class="tag unpaid">Message to approve</span>' : ''}</td>
+      <td class="r">${st.items}</td><td>${s.active ? '<span class="tag paid">Active</span>' : '<span class="tag retired">Retired</span>'}</td>
+      <td style="white-space:nowrap">${s.active ? `${s.slug ? `<button type="button" class="linkBtn" data-act="clear">Clear link</button> · ` : `<button type="button" class="linkBtn" data-act="relink">Set link</button> · `}<button type="button" class="linkBtn danger" data-act="retire">Retire</button>` : `<button type="button" class="linkBtn" data-act="reactivate">Reactivate</button>`}</td></tr>`; }).join('')}</tbody>`;
+  $('aScout').innerHTML = roster.length ? roster.map((r, i) => `<option value="${i}">${esc(r.full)}</option>`).join('') : '<option value="">Everyone on the roster is selling</option>';
+  $('cntSellers').textContent = SELLERS.filter(s => s.active).length;
+  suggestSlug();
+}
+function suggestSlug() { const r = roster[$('aScout').value]; $('aSlug').value = r ? slugFor(r.name) : ''; slugHint(); }
+function slugHint() { $('aSlugHint').textContent = $('aSlug').value ? `troop-79.com/wreaths/${$('aSlug').value}` : ''; }
+$('aScout').addEventListener('change', suggestSlug);
+$('aSlug').addEventListener('input', () => { slugHint(); if (!$('aCant').hidden) addValidate(); });
+function addValidate() {
+  const f = $('addSeller'); f.querySelectorAll('.bad').forEach(e => e.classList.remove('bad')); f.querySelectorAll('.badNote').forEach(e => e.remove());
+  const probs = [], v = $('aSlug').value.trim();
+  if (!roster.length) probs.push('scout');
+  if (!/^[a-z]+(-[a-z]+)*$/.test(v)) { $('a-slug').classList.add('bad'); $('a-slug').insertAdjacentHTML('beforeend', '<p class="badNote">Lowercase letters and hyphens only, like ben-b.</p>'); probs.push('link'); }
+  else if (SELLERS.some(s => s.slug === v)) { $('a-slug').classList.add('bad'); $('a-slug').insertAdjacentHTML('beforeend', `<p class="badNote">${esc(SELLERS.find(s => s.slug === v).name)} already has this link. Add a letter, like ${v}a.</p>`); probs.push('link'); }
+  $('aCant').hidden = !probs.length; $('aCant').textContent = probs.length ? `Can’t add yet: check the ${probs.join(' and ')}.` : '';
+  return !probs.length;
+}
+$('addSeller').addEventListener('submit', e => {
+  e.preventDefault(); if (!addValidate()) return;
+  const i = +$('aScout').value, r = roster[i];
+  SELLERS.push({ slug: $('aSlug').value.trim(), name: r.name, full: r.full, goal: 0, active: true, message: '', msgStatus: 'none' });
+  roster.splice(i, 1); renderSellers(); renderAll(); toast(`${r.name} added. Their link works now.`);
+});
+$('selTbl').addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const tr = b.closest('tr'), s = SELLERS.find(x => x.full === tr.dataset.full);
+  if (b.dataset.act === 'retire') { s.active = false; toast(`${s.name} retired. Their link opens the general store; orders stay credited.`); }
+  if (b.dataset.act === 'reactivate') { s.active = true; toast(`${s.name} is selling again.`); }
+  if (b.dataset.act === 'clear') { s._slug = s.slug; s.slug = ''; toast(`${s.name}’s link cleared. It now opens the general store.`); }
+  if (b.dataset.act === 'relink') { s.slug = s._slug || slugFor(s.name); toast(`${s.name}’s link is /wreaths/${s.slug}`); }
+  renderSellers();
+});
+
+/* ── Rose order ── */
+function renderRose() {
+  const rows = CATALOG.slice().sort((a, b) => a.n - b.n).map(c => {
+    let r1 = 0, r2 = 0;
+    ORDERS.forEach(o => o.lines.forEach(l => { if (l.n === c.n) { if (o.round === 1) r1 += l.q; else r2 += l.q; } }));
+    return { c, r1, r2 };
+  });
+  let t1 = 0, t2 = 0, tc = 0;
+  $('roseTbl').innerHTML = `<thead><tr><th>#</th><th>Item</th><th class="r">Round 1</th><th class="r">Round 2 changes</th><th class="r">Total</th><th class="r">Cost each</th><th class="r">Cost</th></tr></thead><tbody>${rows.map(({ c, r1, r2 }) => { t1 += r1; t2 += r2; tc += c.cost * (r1 + r2);
+    return `<tr${r1 + r2 ? '' : ' style="color:var(--admin-gray-500)"'}><td class="mono">${c.n}</td><td>${esc(itemLabel(c))}</td><td class="r">${r1 || '–'}</td><td class="r">${r2 ? `<span class="chg">+${r2}</span>` : '–'}</td><td class="r"><strong>${r1 + r2 || '–'}</strong></td><td class="r">${money2(c.cost)}</td><td class="r">${r1 + r2 ? money2(c.cost * (r1 + r2)) : '–'}</td></tr>`; }).join('')}</tbody>
+    <tfoot><tr><td></td><td>Total</td><td class="r">${t1}</td><td class="r">+${t2}</td><td class="r">${t1 + t2}</td><td></td><td class="r">${money2(tc)}</td></tr></tfoot>`;
+}
+
+/* ── Books ── */
+function renderBooks() {
+  const groups = SELLERS.filter(s => ORDERS.some(o => o.seller === s.slug) || s.active).map(s => ({ label: s.name, slug: s.slug }));
+  groups.push({ label: 'Troop store', slug: null });
+  let T = { items: 0, sale: 0, paid: 0, due: 0, cost: 0, profit: 0, share: 0, gifts: 0, fees: 0 };
+  const rows = groups.map(g => {
+    const os = ORDERS.filter(o => o.seller === g.slug);
+    const r = { items: 0, sale: 0, paid: 0, due: 0, cost: 0, profit: 0, share: 0, methods: new Set() };
+    os.forEach(o => { const c = orderCalc(o); r.items += c.items; r.sale += c.sale; r.paid += c.paid; r.due += c.due; r.cost += c.cost; r.profit += c.profit; r.share += c.scoutShare; T.gifts += o.gift || 0; T.fees += c.fee; if (o.method) r.methods.add(o.method); });
+    Object.keys(T).forEach(k => { if (k in r && k !== 'methods') T[k] += r[k]; });
+    return `<tr${g.slug ? '' : ' style="background:#fafbfc"'}><td><strong>${esc(g.label)}</strong></td><td class="r">${r.items}</td><td class="r">${money2(r.sale)}</td><td class="r">${money2(r.paid)}</td><td class="r">${r.due ? `<strong style="color:var(--admin-danger-dark)">${money2(r.due)}</strong>` : money2(0)}</td><td>${[...r.methods].join(', ') || '–'}</td><td class="r">${money2(r.profit)}</td><td class="r">${g.slug ? money2(r.share) : '<span class="panelNote">all troop</span>'}</td></tr>`;
+  }).join('');
+  $('bookTbl').innerHTML = `<thead><tr><th>Seller</th><th class="r">Items</th><th class="r">Sale</th><th class="r">Paid</th><th class="r">Due</th><th>Methods</th><th class="r">Profit</th><th class="r">Scout 30%</th></tr></thead><tbody>${rows}</tbody>
+    <tfoot><tr><td>Troop total</td><td class="r">${T.items}</td><td class="r">${money2(T.sale)}</td><td class="r">${money2(T.paid)}</td><td class="r">${money2(T.due)}</td><td></td><td class="r">${money2(T.profit)}</td><td class="r">${money2(T.share)}</td></tr></tfoot>`;
+  const troopShare = T.profit - T.share;
+  /* The sheet's "OK" row, made independent: money in vs. money owed, and Rose's cost from the Rose order counts. */
+  const roseCost = CATALOG.reduce((s, c) => s + c.cost * ORDERS.reduce((q, o) => q + o.lines.filter(l => l.n === c.n).reduce((a, l) => a + l.q, 0), 0), 0);
+  const c1 = Math.round((T.paid + T.due) * 100) === Math.round((T.sale + T.gifts + T.fees) * 100);
+  const c2 = Math.round(roseCost * 100) === Math.round(T.cost * 100);
+  const c3 = Math.round((troopShare + T.share) * 100) === Math.round((T.sale - T.cost) * 100);
+  const ok = c1 && c2 && c3;
+  $('splitTbl').innerHTML = `<tbody>
+    <tr><td>Sales</td><td class="r">${money2(T.sale)}</td></tr>
+    <tr><td>Cost (Rose, at 2026 unit cost)</td><td class="r">− ${money2(T.cost)}</td></tr>
+    <tr><td><strong>Gross profit</strong></td><td class="r"><strong>${money2(T.sale - T.cost)}</strong></td></tr>
+    <tr><td>Scout shares (30% of scout-credited profit)</td><td class="r">${money2(T.share)}</td></tr>
+    <tr><td>Troop share (70% of scout-credited, 100% of troop store)</td><td class="r">${money2(troopShare)}</td></tr>
+    <tr class="check${ok ? '' : ' off'}"><td>Check: paid + due = sales + gifts + fees; cost = Rose order; shares = gross profit</td><td class="r">${ok ? 'OK' : 'Off: ' + [c1 ? '' : 'money', c2 ? '' : 'cost', c3 ? '' : 'split'].filter(Boolean).join(', ')}</td></tr>
+    <tr><td>Cash gifts (all troop, outside the split)</td><td class="r">${money2(T.gifts)}</td></tr>
+    <tr><td>Processing fees paid by customers</td><td class="r">${money2(T.fees)}</td></tr></tbody>`;
+  $('kpis').innerHTML = [[T.items, 'items sold'], [money2(T.sale), 'sales'], [money2(T.sale - T.cost), 'gross profit'], [money2(T.paid), 'collected'], [money2(T.due), 'still due']].map(([v, l]) => `<div class="kpi"><strong>${v}</strong><span>${l}</span></div>`).join('');
+}
+$('closeSale').addEventListener('click', () => { $('closeCant').hidden = false; $('closeCant').textContent = `Can’t close yet: round 2 is open until ${SALE.round2.label}, and ${money2(ORDERS.reduce((s, o) => s + orderCalc(o).due, 0))} is still due.`; });
+
+document.addEventListener('click', e => { const b = e.target.closest('[data-csv]'); if (b) toast('Prototype: the CSV would download here.'); });
+
+/* ── Settings: dirty-gated Save + Discard changes ── */
+const sf = $('setForm');
+const snap = () => JSON.stringify([...sf.querySelectorAll('input')].map(i => i.type === 'radio' ? i.checked : i.value));
+let savedSnap = snap(), savedVals = [...sf.querySelectorAll('input')].map(i => i.type === 'radio' ? i.checked : i.value);
+function setDirty() { const d = snap() !== savedSnap; $('setSave').disabled = !d; $('setDiscard').hidden = !d; $('setState').textContent = d ? 'Unsaved changes' : 'All changes saved'; }
+function setValidate() {
+  sf.querySelectorAll('.bad').forEach(e => e.classList.remove('bad')); sf.querySelectorAll('.badNote').forEach(e => e.remove());
+  const probs = [];
+  if ($('r2').value <= $('r1').value) { $('s-r2').classList.add('bad'); $('s-r2').insertAdjacentHTML('beforeend', '<p class="badNote">Round 2 must come after round 1.</p>'); probs.push('round 2 cutoff'); }
+  if (!/^\d{3,5}$/.test($('zipP').value)) { $('s-zip').classList.add('bad'); $('s-zip').insertAdjacentHTML('beforeend', '<p class="badNote">3 to 5 digits, like 532.</p>'); probs.push('zip prefix'); }
+  const sh = +$('share').value; if (!(sh >= 0 && sh <= 100)) { $('s-share').classList.add('bad'); $('s-share').insertAdjacentHTML('beforeend', '<p class="badNote">A percentage from 0 to 100.</p>'); probs.push('scout share'); }
+  $('setCant').hidden = !probs.length; $('setCant').textContent = probs.length ? `Can’t save yet: check ${probs.join(' and ')}.` : '';
+  return !probs.length;
+}
+sf.addEventListener('input', () => { setDirty(); if (!$('setCant').hidden) setValidate(); });
+sf.addEventListener('submit', e => { e.preventDefault(); if (!setValidate()) return; savedSnap = snap(); savedVals = [...sf.querySelectorAll('input')].map(i => i.type === 'radio' ? i.checked : i.value); setDirty(); toast('Settings saved.'); });
+$('setDiscard').addEventListener('click', () => { [...sf.querySelectorAll('input')].forEach((i, k) => { if (i.type === 'radio') i.checked = savedVals[k]; else i.value = savedVals[k]; }); setValidate(); $('setCant').hidden = true; sf.querySelectorAll('.bad').forEach(e => e.classList.remove('bad')); sf.querySelectorAll('.badNote').forEach(e => e.remove()); setDirty(); });
+
+function renderAll() { renderOrders(); renderRose(); renderBooks(); }
+renderSellers(); renderAll(); setDirty();
+showTab(location.hash.slice(1));
+</script>
+</body>
+</html>

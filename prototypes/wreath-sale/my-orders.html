@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ben’s wreath orders — Troop 79 members</title>
+<link rel="stylesheet" href="assets/wreath.css?v=4">
+</head>
+<body>
+<div class="proto"><div class="protoInner"><span><strong>Prototype</strong> <code>/member/wreaths</code>, signed in as Anna Brandt (Ben B.’s parent). Changes here live only until you reload.</span><a href="index.html">All screens</a></div></div>
+<header id="chrome"></header>
+<main class="page" id="main">
+  <p class="kicker">Members · Wreath sale 2026</p>
+  <div class="titleLine"><h1>Ben’s wreath orders</h1><span class="linkBox"><code id="link">troop-79.com/wreaths/ben-b</code><button type="button" class="btn secondary sm" id="copy">Copy link</button></span></div>
+  <div class="stats" id="stats"></div>
+
+  <div class="twoCol">
+    <div>
+      <section aria-labelledby="hOrders">
+        <div class="titleLine"><h2 id="hOrders" style="margin:0 0 8px">Orders</h2><span class="meta" id="orderCount"></span></div>
+        <div class="card">
+          <ul class="rows" id="orders"></ul>
+          <div class="addRow">
+            <button type="button" id="addBtn" aria-expanded="false" aria-controls="paper"><span class="plus">+</span>Order taken in person</button>
+            <form class="paperForm" id="paper" hidden novalidate>
+              <div class="fields two">
+                <div class="field full" id="p-name"><label for="pName">Customer</label><input type="text" id="pName" autocomplete="off"></div>
+                <div class="field" id="p-phone"><label for="pPhone">Phone</label><input type="tel" id="pPhone" inputmode="tel"></div>
+                <div class="field" id="p-email"><label for="pEmail">Email <span class="opt">for a receipt</span></label><input type="email" id="pEmail"></div>
+                <div class="field" id="p-street"><label for="pStreet">Street address</label><input type="text" id="pStreet"></div>
+                <div class="field" id="p-zip"><label for="pZip">Zip</label><input type="text" id="pZip" inputmode="numeric" maxlength="5"></div>
+              </div>
+              <div id="pRelWrap" hidden><label class="check" id="p-rel"><input type="checkbox" id="pRel"><span>A relative, and Ben has agreed to deliver outside the 532 area</span></label></div>
+              <div>
+                <div class="fieldLabel" style="margin-bottom:4px">Items</div>
+                <ul class="lines" id="pLines"></ul>
+                <div class="zipRow" id="p-items" style="align-items:center">
+                  <select id="pItem" aria-label="Item" style="flex:1 1 200px;width:auto"></select>
+                  <span class="qty sm"><button type="button" id="pDec" aria-label="One fewer">−</button><input type="number" id="pQty" value="1" min="1" max="99" aria-label="Quantity"><button type="button" id="pInc" aria-label="One more">+</button></span>
+                  <label class="check" style="padding:0"><input type="checkbox" id="pDon"><span>Donated</span></label>
+                  <button type="button" class="btn secondary sm" id="pAddLine">Add</button>
+                </div>
+              </div>
+              <div>
+                <div class="fieldLabel" id="pPayLbl" style="margin-bottom:4px">Payment</div>
+                <div class="seg" role="radiogroup" aria-labelledby="pPayLbl"><label><input type="radio" name="pPay" value="Cash">Cash</label><label><input type="radio" name="pPay" value="Check">Check</label><label><input type="radio" name="pPay" value="" checked>Not paid yet</label></div>
+              </div>
+              <div class="submitRow" style="margin:0"><button type="submit" class="btn primary">Save order</button><button type="button" class="btn ghost" id="pCancel">Cancel</button><p class="cantLine" id="pCant" hidden></p></div>
+              <p class="meta" style="margin:0">Round 1 orders can be changed until Saturday, October 25.</p>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <section class="card pad" id="deliverySec" style="margin-top:24px" aria-labelledby="hDl">
+        <div class="titleLine noPrint"><h2 id="hDl" style="margin:0 0 4px">Delivery list</h2><button type="button" class="btn secondary sm" id="printDl">Print</button></div>
+        <div class="printOnly"><h2 style="margin:0">Ben B. · wreath deliveries</h2><p class="meta">Saturday, December 6 or Sunday, December 7. Collect the amount shown; tick when delivered.</p></div>
+        <p class="meta noPrint" style="margin:0 0 8px">For distribution day, sorted by zip. Donated wreaths stay with the troop.</p>
+        <div class="scrollX"><table class="dl" id="dl"></table></div>
+      </section>
+    </div>
+
+    <div>
+      <section class="card pad" aria-labelledby="hPage">
+        <h2 id="hPage" style="margin:0 0 12px">Ben’s page</h2>
+        <form id="pageForm" novalidate>
+          <div class="field" id="g-goal" style="max-width:160px"><label for="goal">Goal</label><input type="number" id="goal" min="1" max="500" inputmode="numeric"></div>
+          <div class="field" id="g-msg" style="margin-top:12px"><label for="msg">Message <span class="opt" id="msgCount"></span></label><textarea id="msg" maxlength="200"></textarea></div>
+          <p class="meta" id="msgStatus" style="margin:6px 0 0"></p>
+          <div class="saveBar"><button type="submit" class="btn primary" id="pgSave">Save</button><button type="button" class="btn ghost" id="pgDiscard" hidden>Discard changes</button><p class="cantLine" id="pgCant" hidden></p></div>
+        </form>
+      </section>
+
+      <section class="card" style="margin-top:24px" aria-labelledby="hBoard">
+        <div class="pad" style="padding-bottom:8px"><h2 id="hBoard" style="margin:0">Leaderboard</h2><p class="meta" style="margin:0">Members only. Wreaths sold, all rounds.</p></div>
+        <ol class="board" id="board"></ol>
+      </section>
+    </div>
+  </div>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="assets/data.js?v=4"></script>
+<script>
+document.getElementById('chrome').innerHTML = siteChrome('my-orders.html');
+const ME = 'ben-b', me = seller(ME);
+const $ = id => document.getElementById(id);
+let tt; function toast(m) { $('toast').textContent = m; $('toast').classList.add('show'); clearTimeout(tt); tt = setTimeout(() => $('toast').classList.remove('show'), 1800); }
+
+/* ── totals first ── */
+function renderStats() {
+  const st = sellerStats(ME);
+  $('stats').innerHTML = `
+    <div class="stat"><strong>${st.items}</strong><span>wreaths sold${me.goal ? ` of ${me.goal}` : ''}</span></div>
+    <div class="stat"><strong>${money(st.sale)}</strong><span>in sales</span></div>
+    <div class="stat"><strong>${money2(st.share)}</strong><span>Ben earns (30% of profit)</span></div>
+    <div class="stat"><strong>${money(st.due)}</strong><span>still to collect</span></div>`;
+}
+function myOrders() { return ORDERS.filter(o => o.seller === ME).sort((a, b) => b.placed.localeCompare(a.placed) || b.id.localeCompare(a.id)); }
+function renderOrders() {
+  const os = myOrders();
+  $('orderCount').textContent = `${os.length} orders`;
+  $('orders').innerHTML = os.map(o => { const c = orderCalc(o);
+    const payTag = o.pay === 'paid' ? `<span class="tag paid">Paid · ${o.method}</span>` : `<span class="tag unpaid">Not paid</span>`;
+    return `<li data-id="${o.id}"><span class="who"><strong>${esc(o.cust.name)}</strong> ${payTag}${o.relative ? ' <span class="tag rel">Outside area · relative</span>' : ''}${o.source === 'paper' ? ' <span class="tag">In person</span>' : ''}
+      <small>${esc(linesSummary(o.lines))}${o.gift ? ` · ${money(o.gift)} gift` : ''}</small></span>
+      <span class="amt">${money2(c.total)}</span>
+      ${o.pay === 'paid' ? '' : `<span class="markPaid"><button type="button" class="linkBtn" data-mark="${o.id}">Mark paid</button></span>`}</li>`; }).join('');
+}
+function renderDl() {
+  const os = myOrders().filter(o => o.fulfill === 'scout' && o.lines.some(l => !l.donated)).sort((a, b) => a.cust.zip.localeCompare(b.cust.zip) || a.cust.addr.localeCompare(b.cust.addr));
+  $('dl').innerHTML = `<thead><tr><th class="tick"><span class="sr">Delivered</span></th><th>Customer</th><th>Address</th><th>Items</th><th>Collect</th></tr></thead><tbody>${os.map(o => { const c = orderCalc(o);
+    return `<tr><td class="tick"><span></span></td><td><strong>${esc(o.cust.name)}</strong><br>${esc(o.cust.phone)}</td><td>${esc(o.cust.addr)}<br>${o.cust.zip}${o.relative ? ' <span class="tag rel">relative</span>' : ''}</td><td>${esc(linesSummary(o.lines.filter(l => !l.donated)))}</td><td class="num">${o.pay === 'paid' ? 'Paid' : '<strong>' + money2(c.total) + '</strong>'}</td></tr>`; }).join('')}</tbody>`;
+}
+function renderBoard() {
+  const rows = SELLERS.filter(s => s.active).map(s => ({ s, n: sellerStats(s.slug).items })).sort((a, b) => b.n - a.n);
+  const max = Math.max(1, ...rows.map(r => r.n));
+  $('board').innerHTML = rows.map((r, i) => `<li class="${r.s.slug === ME ? 'me' : ''}"><span class="rank">${i + 1}</span><span>${esc(r.s.name)}</span><span class="bar" aria-hidden="true"><span style="width:${Math.round(r.n / max * 100)}%"></span></span><span class="num" style="text-align:right;font-weight:700">${r.n}</span></li>`).join('');
+}
+function renderAll() { renderStats(); renderOrders(); renderDl(); renderBoard(); }
+
+/* Mark paid: inline choice, no dialog */
+$('orders').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.mark) { b.parentElement.innerHTML = `<span class="seg" role="group" aria-label="Paid how">${['Cash', 'Check', 'Venmo'].map(m => `<button type="button" class="btn sm" data-paid="${b.dataset.mark}" data-m="${m}">${m}</button>`).join('')}</span>`; return; }
+  if (b.dataset.paid) { const o = ORDERS.find(x => x.id === b.dataset.paid); o.pay = 'paid'; o.method = b.dataset.m; renderAll(); toast(`${o.cust.name}: marked paid by ${b.dataset.m.toLowerCase()}`); }
+});
+
+/* ── paper order ── */
+const P = { lines: [], tried: false };
+$('pItem').innerHTML = CATALOG.map(c => `<option value="${c.n}">${esc(itemLabel(c))} · ${money(c.price)}</option>`).join('');
+function openPaper(open) { $('paper').hidden = !open; $('addBtn').setAttribute('aria-expanded', String(open)); $('addBtn').hidden = open; if (open) $('pName').focus(); }
+$('addBtn').addEventListener('click', () => openPaper(true));
+$('pCancel').addEventListener('click', () => { $('paper').reset(); P.lines = []; P.tried = false; pClear(); renderPLines(); openPaper(false); $('addBtn').focus(); });
+$('pInc').addEventListener('click', () => $('pQty').value = Math.min(99, (+$('pQty').value || 0) + 1));
+$('pDec').addEventListener('click', () => $('pQty').value = Math.max(1, (+$('pQty').value || 1) - 1));
+$('pAddLine').addEventListener('click', () => {
+  const n = +$('pItem').value, q = Math.max(1, +$('pQty').value || 1), d = $('pDon').checked;
+  const ex = P.lines.find(l => l.n === n && !!l.donated === d); if (ex) ex.q += q; else P.lines.push({ n, q, donated: d });
+  $('pQty').value = 1; $('pDon').checked = false; renderPLines(); if (P.tried) pValidate();
+});
+function renderPLines() {
+  const tot = P.lines.reduce((s, l) => s + item(l.n).price * l.q, 0);
+  $('pLines').innerHTML = P.lines.map((l, i) => `<li class="line${l.donated ? ' donated' : ''}"><span class="lName">${l.q} × ${esc(itemLabel(item(l.n)))}${l.donated ? ' <span class="tag vet">Donated</span>' : ''}</span><span class="lAmt">${money(item(l.n).price * l.q)}</span><button type="button" class="linkBtn danger" data-rm="${i}">Remove</button></li>`).join('')
+    + (P.lines.length ? `<li class="line"><span class="lName"><strong>Total</strong></span><span class="lAmt">${money(tot)}</span><span style="width:58px"></span></li>` : '');
+}
+$('pLines').addEventListener('click', e => { const b = e.target.closest('[data-rm]'); if (b) { P.lines.splice(+b.dataset.rm, 1); renderPLines(); } });
+$('pZip').addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 5); const v = e.target.value; $('pRelWrap').hidden = !(v.length === 5 && !zipOk(v)); if (P.tried) pValidate(); });
+$('paper').addEventListener('input', () => { if (P.tried) pValidate(); });
+function pClear() { $('paper').querySelectorAll('.bad').forEach(e => e.classList.remove('bad')); $('paper').querySelectorAll('.badNote, .badCheck').forEach(e => e.classList.contains('badCheck') ? e.classList.remove('badCheck') : e.remove()); }
+function pMark(id, note) { $(id).classList.add('bad'); $(id).insertAdjacentHTML('beforeend', `<p class="badNote">${note}</p>`); }
+function pValidate() {
+  pClear(); const probs = [];
+  if (!$('pName').value.trim()) { pMark('p-name', 'Enter the customer’s name.'); probs.push('customer'); }
+  if ($('pPhone').value.replace(/\D/g, '').length < 10) { pMark('p-phone', 'A phone number is 10 digits.'); probs.push('phone'); }
+  if (!$('pStreet').value.trim()) { pMark('p-street', 'Ben needs an address to deliver.'); probs.push('address'); }
+  const z = $('pZip').value;
+  if (!/^\d{5}$/.test(z)) { pMark('p-zip', 'Enter the 5-digit zip.'); probs.push('zip'); }
+  else if (!zipOk(z) && !$('pRel').checked) { $('p-rel').classList.add('badCheck'); $('p-rel').insertAdjacentHTML('afterend', '<p class="badNote">Outside 532: only for a relative Ben has agreed to deliver to.</p>'); probs.push('the relative box'); }
+  if (!P.lines.length) { $('p-items').classList.add('bad'); $('p-items').insertAdjacentHTML('afterend', '<p class="badNote">Add at least one item. Choose it, then press Add.</p>'); probs.push('items'); }
+  $('pCant').hidden = !probs.length;
+  $('pCant').textContent = probs.length ? `Can’t save yet: check ${probs.length === 1 ? probs[0] : probs.slice(0, -1).join(', ') + ' and ' + probs[probs.length - 1]}.` : '';
+  return !probs.length;
+}
+$('paper').addEventListener('submit', e => {
+  e.preventDefault(); P.tried = true; if (!pValidate()) return;
+  const pay = document.querySelector('input[name=pPay]:checked').value;
+  const id = 'W-' + (1050 + ORDERS.length);
+  ORDERS.push({ id, round: 1, placed: SALE.today, seller: ME, source: 'paper', fulfill: P.lines.every(l => l.donated) ? 'none' : 'scout',
+    cust: { name: $('pName').value.trim(), email: $('pEmail').value.trim(), phone: $('pPhone').value.trim(), addr: $('pStreet').value.trim(), zip: $('pZip').value }, relative: !zipOk($('pZip').value),
+    lines: P.lines.slice(), gift: 0, cover: false, pay: pay ? 'paid' : 'unpaid', method: pay });
+  toast(`Saved ${id} for ${$('pName').value.trim()}`);
+  $('paper').reset(); P.lines = []; P.tried = false; pClear(); renderPLines(); $('pRelWrap').hidden = true; openPaper(false); renderAll();
+});
+
+/* ── Ben's page: dirty-gated Save + Discard changes ── */
+let saved = { goal: me.goal, msg: me.message, status: me.msgStatus };
+function loadPage() { $('goal').value = saved.goal; $('msg').value = saved.msg; dirty(); }
+function statusText() { return saved.status === 'approved' ? 'Shown on Ben’s page.' : saved.status === 'pending' ? 'Waiting for a leader to approve it.' : 'No message yet. A leader approves it before it shows.'; }
+function dirty() {
+  const d = +$('goal').value !== saved.goal || $('msg').value !== saved.msg;
+  $('pgSave').disabled = !d; $('pgDiscard').hidden = !d;
+  $('msgCount').textContent = `${$('msg').value.length} of 200`;
+  $('msgStatus').textContent = $('msg').value !== saved.msg ? 'A leader approves a new message before it shows on Ben’s page.' : statusText();
+}
+$('pageForm').addEventListener('input', () => { dirty(); if ($('pgCant').hidden === false) pageValidate(); });
+$('pgDiscard').addEventListener('click', () => { $('pageForm').querySelectorAll('.bad').forEach(e => e.classList.remove('bad')); $('pageForm').querySelectorAll('.badNote').forEach(e => e.remove()); $('pgCant').hidden = true; loadPage(); });
+function pageValidate() {
+  $('pageForm').querySelectorAll('.bad').forEach(e => e.classList.remove('bad')); $('pageForm').querySelectorAll('.badNote').forEach(e => e.remove());
+  const g = +$('goal').value;
+  const ok = Number.isInteger(g) && g >= 1 && g <= 500;
+  if (!ok) { $('g-goal').classList.add('bad'); $('g-goal').insertAdjacentHTML('beforeend', '<p class="badNote">A goal is a whole number from 1 to 500.</p>'); }
+  $('pgCant').hidden = ok; $('pgCant').textContent = ok ? '' : 'Can’t save yet: check the goal.';
+  return ok;
+}
+$('pageForm').addEventListener('submit', e => {
+  e.preventDefault(); if (!pageValidate()) return;
+  const msgChanged = $('msg').value !== saved.msg;
+  saved = { goal: +$('goal').value, msg: $('msg').value, status: msgChanged ? ($('msg').value ? 'pending' : 'none') : saved.status };
+  me.goal = saved.goal; loadPage(); renderStats(); toast(msgChanged ? 'Saved. The message shows once a leader approves it.' : 'Saved.');
+});
+
+$('copy').addEventListener('click', () => { (navigator.clipboard ? navigator.clipboard.writeText('https://www.' + $('link').textContent) : Promise.reject()).then(() => toast('Link copied'), () => toast('Copy the link above')); });
+$('printDl').addEventListener('click', () => { document.body.classList.add('printing-dl'); window.print(); });
+window.addEventListener('afterprint', () => document.body.classList.remove('printing-dl'));
+
+renderAll(); renderPLines(); loadPage();
+</script>
+</body>
+</html>

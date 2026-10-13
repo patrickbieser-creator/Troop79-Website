@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Checkout — Troop 79 wreaths</title>
+<link rel="stylesheet" href="assets/wreath.css?v=4">
+</head>
+<body>
+<div class="proto"><div class="protoInner"><span><strong>Prototype</strong> Checkout <code>/wreaths/checkout</code>. Use the dashed controls to switch paths.</span><a href="index.html">All screens</a></div></div>
+<header id="chrome"></header>
+
+<main class="page narrow" id="main">
+  <!-- Prototype-only controls: not part of the design -->
+  <section class="protoPanel" aria-label="Prototype controls">
+    <b>Prototype controls</b>
+    <span>Path <span class="seg" id="pPath"><button type="button" data-v="store">General store</button><button type="button" data-v="scout">Scout link (Ben B.)</button></span></span>
+    <span>Payment <span class="seg" id="pPay"><button type="button" data-v="paypal">PayPal live</button><button type="button" data-v="releaseA">Release A: pay your scout</button></span></span>
+    <span id="pResultWrap">PayPal result <span class="seg" id="pResult"><button type="button" data-v="ok">Approved</button><button type="button" data-v="declined">Declined</button></span></span>
+    <label style="display:inline-flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="pCutoff"> Cutoff passed while open</label>
+    <button type="button" class="btn secondary sm" id="pFill">Fill a sample cart</button>
+  </section>
+
+  <div class="titleLine"><h1>Checkout</h1><a class="btn ghost" id="backLink" href="store.html">Keep shopping</a></div>
+  <p class="lede" id="creditLine"></p>
+  <p class="notice warn" id="cutoffNote" role="status" hidden style="margin-bottom:16px">Round 1 closed while you were ordering; your order still counts.</p>
+
+  <form id="co" novalidate>
+    <!-- 1 · Order -->
+    <section class="card pad step" aria-labelledby="h1o">
+      <h2 id="h1o">Your order</h2>
+      <ul class="lines" id="lines"></ul>
+      <div id="giftWrap" style="border-top:1px solid var(--rule);margin-top:8px;padding-top:12px">
+        <div class="fieldLabel" id="giftLbl" style="margin-bottom:6px">Add a gift to Troop 79 <span class="opt">optional</span></div>
+        <div class="seg" role="group" aria-labelledby="giftLbl" id="gift">
+          <button type="button" data-v="0" aria-pressed="true">None</button><button type="button" data-v="5">$5</button><button type="button" data-v="10">$10</button><button type="button" data-v="25">$25</button><button type="button" data-v="other">Other</button>
+        </div>
+        <div class="field" id="giftOtherF" hidden style="max-width:160px;margin-top:8px"><label for="giftOther">Gift amount</label><input type="number" id="giftOther" min="1" step="1" inputmode="decimal"></div>
+        <p class="meta" style="margin:6px 0 0">A gift goes entirely to the troop.</p>
+      </div>
+    </section>
+
+    <!-- 2 · Fulfillment -->
+    <section class="card pad step" aria-labelledby="h2f" id="fulfillSec">
+      <h2 id="h2f">Getting your wreaths</h2>
+      <div id="fulfill"></div>
+    </section>
+
+    <!-- 3 · Contact -->
+    <section class="card pad step" aria-labelledby="h3c">
+      <h2 id="h3c">Your details</h2>
+      <div class="fields two">
+        <div class="field full" id="f-name"><label for="name">Name</label><input type="text" id="name" autocomplete="name"></div>
+        <div class="field" id="f-email"><label for="email">Email</label><input type="email" id="email" autocomplete="email" inputmode="email"></div>
+        <div class="field" id="f-phone"><label for="phone">Phone</label><input type="tel" id="phone" autocomplete="tel" inputmode="tel"></div>
+        <div class="field full" id="f-street" hidden><label for="street">Street address</label><input type="text" id="street" autocomplete="street-address"></div>
+        <div class="field" id="f-city" hidden><label for="city">City</label><input type="text" id="city" autocomplete="address-level2" value="Milwaukee"></div>
+      </div>
+      <p class="meta" style="margin:8px 0 0">We email your receipt. Your phone and address go only to the troop leaders<span id="scoutPriv"> and the family delivering your order</span>.</p>
+    </section>
+
+    <!-- 4 · Pay -->
+    <section class="card pad step" aria-labelledby="h4p">
+      <h2 id="h4p">Total</h2>
+      <dl class="sumRows" id="sum"></dl>
+      <label class="check" id="feeRow"><input type="checkbox" id="fee"><span id="feeTxt"></span></label>
+      <div id="payArea"></div>
+    </section>
+  </form>
+</main>
+<div class="overlay" id="overlay" hidden role="status" aria-live="assertive"><div class="spinner" aria-hidden="true"></div><span id="overlayTxt"></span></div>
+
+<script src="assets/data.js?v=4"></script>
+<script>
+document.getElementById('chrome').innerHTML = siteChrome('store.html');
+const cart = cartGet();
+const proto = protoGet();
+const S = { gift: 0, giftOther: false, method: '', tried: false };   // method: pickup | delivery (general store)
+const $ = id => document.getElementById(id);
+
+/* ── prototype controls ── */
+function syncSeg(id, v) { $(id).querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === v))); }
+function isScout() { return !!cart.seller; }
+function scoutName() { return seller(cart.seller).name; }
+function scoutFirst() { return scoutName().split(' ')[0]; }
+$('pPath').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.v === 'scout') { cart.seller = 'ben-b'; cart.source = 'link'; } else { cart.seller = null; cart.source = 'store'; }
+  cartSet(cart); S.tried = false; render(); });
+$('pPay').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; proto.pay = b.dataset.v; protoSet(proto); render(); });
+$('pResult').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; proto.result = b.dataset.v; protoSet(proto); syncSeg('pResult', proto.result); });
+$('pCutoff').addEventListener('change', e => { proto.cutoffOpen = e.target.checked; protoSet(proto); render(); });
+$('pFill').addEventListener('click', () => { cart.lines = { '2': 2, '11': 1, '1d': 1 }; cartSet(cart); render(); });
+
+/* ── computed state ── */
+function lines() { return cartLines(cart); }
+function allDonated() { const ls = lines(); return ls.length > 0 && ls.every(l => l.donated); }
+function needsAddress() { if (allDonated()) return false; return isScout() || S.method === 'delivery'; }
+function giftAmt() { if (!S.giftOther) return S.gift; const v = parseFloat($('giftOther').value); return v > 0 ? Math.round(v * 100) / 100 : 0; }
+function amounts() {
+  const t = cartTotals(cart), gift = giftAmt(), sub = t.sale + gift;
+  const fee = proto.pay === 'paypal' ? feeFor(sub) : 0;
+  const cover = proto.pay === 'paypal' && $('fee').checked;
+  return { items: t.items, sale: t.sale, gift, fee, cover, total: sub + (cover ? fee : 0) };
+}
+
+/* ── render ── */
+function renderLines() {
+  const ls = lines();
+  if (!ls.length) { $('lines').innerHTML = `<li class="line"><span class="lName">Your cart is empty. <a href="${isScout() ? 'scout.html?s=' + cart.seller : 'store.html'}">Back to the wreaths</a></span></li>`; return; }
+  $('lines').innerHTML = ls.map(l => { const c = item(l.n), lbl = itemLabel(c) + (l.donated ? ', donated' : '');
+    return `<li class="line${l.donated ? ' donated' : ''}" data-key="${l.key}">
+      <span class="lineThumb" aria-hidden="true">${wreathArt(c)}</span>
+      <span class="lName">${esc(itemLabel(c))}${l.donated ? ' <span class="tag vet">Donated to veterans</span>' : ''}<small>${money(c.price)} each${l.donated ? ' · not delivered to you' : ''}</small></span>
+      <span class="qty sm"><button type="button" data-act="dec" aria-label="One fewer ${esc(lbl)}">−</button><input type="number" min="0" max="99" value="${l.q}" aria-label="Quantity, ${esc(lbl)}"><button type="button" data-act="inc" aria-label="One more ${esc(lbl)}">+</button></span>
+      <span class="lAmt">${money(c.price * l.q)}</span>
+      <button type="button" class="linkBtn danger" data-act="rm" aria-label="Remove ${esc(lbl)}">Remove</button></li>`; }).join('');
+}
+function renderFulfill() {
+  const f = $('fulfill');
+  const zipVal = ($('zip') && $('zip').value) || '';
+  const relChecked = $('rel') && $('rel').checked;
+  if (!lines().length) { f.innerHTML = '<p class="meta" style="margin:0">Add something to your cart first.</p>'; return; }
+  if (allDonated()) { f.innerHTML = '<p style="margin:0;font-family:var(--font-ui)">Nothing to deliver. Donated wreaths go straight to veterans.</p>'; return; }
+  if (isScout()) {
+    f.innerHTML = `<p style="margin:0 0 12px;font-family:var(--font-ui)"><strong>${esc(scoutName())} delivers your order</strong>, ${SALE.deliveryWindow}.</p>
+      <div class="zipRow"><div class="field" id="f-zip"><label for="zip">Delivery zip</label><input type="text" id="zip" inputmode="numeric" maxlength="5" autocomplete="postal-code" value="${esc(zipVal)}"></div></div>
+      <div id="zipMsg" aria-live="polite"></div>`;
+  } else {
+    f.innerHTML = `<div class="choice" role="radiogroup" aria-label="Pickup or delivery" id="f-method">
+      <label class="choiceCard"><input type="radio" name="method" value="pickup"${S.method === 'pickup' ? ' checked' : ''}><span><strong>Pick up</strong><span>${SALE.pickup.day}, ${SALE.pickup.window} · ${SALE.pickup.place}</span></span></label>
+      <label class="choiceCard"><input type="radio" name="method" value="delivery"${S.method === 'delivery' ? ' checked' : ''}><span><strong>Delivery</strong><span>Milwaukee-area zips starting with ${SALE.zipPrefix} · ${SALE.deliveryWindow}</span></span></label></div>
+      <div id="delivZip" ${S.method === 'delivery' ? '' : 'hidden'} style="margin-top:12px"><div class="zipRow"><div class="field" id="f-zip"><label for="zip">Delivery zip</label><input type="text" id="zip" inputmode="numeric" maxlength="5" autocomplete="postal-code" value="${esc(zipVal)}"></div></div><div id="zipMsg" aria-live="polite"></div></div>`;
+  }
+  zipCheck(relChecked);
+}
+/* Zip is checked as soon as 5 digits are in, so the refusal comes before the customer types an address. */
+function zipCheck(relChecked) {
+  const z = $('zip'); if (!z) return;
+  const v = z.value.trim(), m = $('zipMsg');
+  if (v.length < 5) { m.innerHTML = ''; return; }
+  if (!/^\d{5}$/.test(v)) { m.innerHTML = '<p class="badNote">A zip is 5 digits.</p>'; return; }
+  if (zipOk(v)) { m.innerHTML = `<p class="meta" style="margin:6px 0 0;color:var(--forest);font-weight:600">${isScout() ? scoutFirst() + ' delivers' : 'We deliver'} to ${v}.</p>`; return; }
+  if (isScout()) {
+    m.innerHTML = `<div class="notice warn" style="margin-top:10px"><p>${v} is outside our delivery area (zips starting with ${SALE.zipPrefix}). ${scoutFirst()} can deliver farther only to family who have arranged it.</p>
+      <label class="check" id="f-rel"><input type="checkbox" id="rel"${relChecked ? ' checked' : ''}><span>I am a relative, and ${esc(scoutFirst())} has agreed to deliver to me</span></label>
+      <p>Not family? <a href="#vetsNote" id="donateInstead">Donate a wreath to veterans</a> instead, and ${esc(scoutFirst())} still gets credit.</p></div>`;
+  } else {
+    m.innerHTML = `<div class="notice bad" style="margin-top:10px" role="alert"><p><strong>We can’t deliver to ${v}.</strong> Troop delivery covers Milwaukee-area zips starting with ${SALE.zipPrefix}.</p>
+      <p>You can pick up at the church instead: ${SALE.pickup.day}, ${SALE.pickup.window}. <button type="button" class="linkBtn" id="toPickup">Switch to pickup</button></p></div>`;
+  }
+}
+function renderContact() {
+  const na = needsAddress();
+  $('f-street').hidden = !na; $('f-city').hidden = !na;
+  $('scoutPriv').hidden = !isScout();
+}
+function renderSum() {
+  const a = amounts();
+  $('sum').innerHTML = `<div><dt>${a.items} item${a.items === 1 ? '' : 's'}</dt><dd>${money2(a.sale)}</dd></div>`
+    + (a.gift ? `<div><dt>Gift to Troop 79</dt><dd>${money2(a.gift)}</dd></div>` : '')
+    + (a.cover ? `<div><dt>Processing fee</dt><dd>${money2(a.fee)}</dd></div>` : '')
+    + `<div class="total"><dt>Total</dt><dd>${money2(a.total)}</dd></div>`;
+  $('feeRow').hidden = proto.pay !== 'paypal' || !a.sale;
+  $('feeTxt').innerHTML = `Cover the processing fee (+${money2(a.fee)})<br><span class="meta">Otherwise the troop pays it.</span>`;
+}
+function renderPay() {
+  const p = $('payArea');
+  const who = isScout() ? scoutFirst() : null;
+  if (proto.pay === 'paypal') {
+    p.innerHTML = `<div id="payErr" aria-live="assertive"></div><p class="cantLine" id="cant" hidden></p>
+      <div class="payBtns"><button type="submit" class="pp paypal" data-m="PayPal"><b>Pay</b><i>Pal</i></button><button type="submit" class="pp venmo" data-m="Venmo">venmo</button><button type="submit" class="pp card" data-m="Card">Debit or credit card</button></div>
+      <p class="ppNote">Paid securely through PayPal to Troop 79${who ? ` (credited to ${esc(scoutName())})` : ''}. You don’t need a PayPal account to pay by card.</p>`;
+  } else {
+    p.innerHTML = `<div class="notice" style="margin-top:8px"><p>${who ? `<strong>Pay ${esc(who)} when your wreaths arrive.</strong> Cash, a check made out to Troop 79, or Venmo to ${esc(who)}’s family. ${esc(who)} turns it in to the troop.` : `<strong>Pay a troop leader when you pick up, or when we deliver.</strong> Cash or a check made out to Troop 79.`}</p><p>Nothing is charged online.</p></div>
+      <div class="submitRow"><button type="submit" class="btn primary" data-m="">Place order</button><p class="cantLine" id="cant" hidden></p></div>`;
+  }
+}
+function render() {
+  syncSeg('pPath', isScout() ? 'scout' : 'store'); syncSeg('pPay', proto.pay); syncSeg('pResult', proto.result);
+  $('pResultWrap').hidden = proto.pay !== 'paypal';
+  $('pFill').hidden = lines().length > 0;
+  $('pCutoff').checked = !!proto.cutoffOpen; $('cutoffNote').hidden = !proto.cutoffOpen;
+  $('backLink').href = isScout() ? 'scout.html?s=' + cart.seller : 'store.html';
+  $('creditLine').textContent = isScout() ? `Ordering from ${scoutName()}` : 'Ordering from Troop 79.';
+  $('giftWrap').hidden = !lines().length;
+  renderLines(); renderFulfill(); renderContact(); renderSum(); renderPay();
+  if (S.tried) validate();
+}
+
+/* ── validation: button stays enabled; problems are marked in place ── */
+function clearBad() { document.querySelectorAll('.bad').forEach(e => e.classList.remove('bad')); document.querySelectorAll('.badNote.v, .badCheck').forEach(e => e.classList.contains('badCheck') ? e.classList.remove('badCheck') : e.remove()); }
+function mark(fieldId, note) { const f = $(fieldId); if (!f) return; f.classList.add('bad'); f.insertAdjacentHTML('beforeend', `<p class="badNote v">${note}</p>`); }
+function validate() {
+  clearBad();
+  const probs = [];
+  if (!lines().length) probs.push('your cart is empty');
+  if (S.giftOther && !giftAmt()) { mark('giftOtherF', 'Enter a gift amount, or choose None.'); probs.push('gift amount'); }
+  if (lines().length && !allDonated()) {
+    if (!isScout() && !S.method) { $('f-method').classList.add('badCheck'); $('f-method').insertAdjacentHTML('afterend', '<p class="badNote v">Choose pickup or delivery.</p>'); probs.push('pickup or delivery'); }
+    if (isScout() || S.method === 'delivery') {
+      const z = $('zip').value.trim();
+      if (!/^\d{5}$/.test(z)) { mark('f-zip', 'Enter the 5-digit zip for delivery.'); probs.push('zip'); }
+      else if (!zipOk(z)) {
+        if (!isScout()) { mark('f-zip', 'Outside our delivery area. Switch to pickup.'); probs.push('delivery zip'); }
+        else if (!$('rel').checked) { $('f-rel').classList.add('badCheck'); $('f-rel').insertAdjacentHTML('afterend', `<p class="badNote v">Tick this box if ${esc(scoutFirst())} has agreed to deliver to you.</p>`); probs.push('the relative box'); }
+      }
+    }
+  }
+  if (!$('name').value.trim()) { mark('f-name', 'Enter your name.'); probs.push('name'); }
+  const em = $('email').value.trim();
+  if (!em) { mark('f-email', 'Enter your email, for the receipt.'); probs.push('email'); }
+  else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { mark('f-email', 'This email is missing something, like the @ or the .com.'); probs.push('email'); }
+  const ph = $('phone').value.replace(/\D/g, '');
+  if (ph.length !== 10 && !(ph.length === 11 && ph[0] === '1')) { mark('f-phone', ph ? 'A phone number is 10 digits.' : 'Enter a phone number, in case of a delivery question.'); probs.push('phone'); }
+  if (needsAddress() && !$('street').value.trim()) { mark('f-street', 'Enter the street address for delivery.'); probs.push('street address'); }
+  if (needsAddress() && !$('city').value.trim()) { mark('f-city', 'Enter the city.'); probs.push('city'); }
+  const cant = $('cant');
+  if (probs.length) {
+    const rest = probs.filter(p => p !== 'your cart is empty');
+    const list = rest.length <= 1 ? (rest[0] || '') : rest.slice(0, -1).join(', ') + ' and ' + rest[rest.length - 1];
+    cant.textContent = !lines().length ? 'Can’t place the order yet: your cart is empty.' : `Can’t place the order yet: check ${list}.`;
+    cant.hidden = false;
+  } else cant.hidden = true;
+  return probs.length === 0;
+}
+
+/* ── events ── */
+document.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.closest('#lines')) {
+    const k = b.closest('.line').dataset.key, q = cart.lines[k] || 0;
+    if (b.dataset.act === 'inc') cart.lines[k] = Math.min(99, q + 1);
+    if (b.dataset.act === 'dec') { if (q <= 1) delete cart.lines[k]; else cart.lines[k] = q - 1; }
+    if (b.dataset.act === 'rm') delete cart.lines[k];
+    cartSet(cart); render(); return;
+  }
+  if (b.closest('#gift')) { const v = b.dataset.v; S.giftOther = v === 'other'; S.gift = S.giftOther ? 0 : +v; syncSeg('gift', v); $('giftOtherF').hidden = !S.giftOther; if (S.giftOther) $('giftOther').focus(); renderSum(); if (S.tried) validate(); return; }
+  if (b.id === 'toPickup') { S.method = 'pickup'; renderFulfill(); renderContact(); if (S.tried) validate(); document.querySelector('input[name=method][value=pickup]').focus(); }
+});
+document.addEventListener('click', e => { if (e.target.id === 'donateInstead') { e.preventDefault(); location.href = 'scout.html?s=' + cart.seller + '#vetsH'; } });
+document.addEventListener('change', e => {
+  const t = e.target;
+  if (t.matches('#lines input')) { const k = t.closest('.line').dataset.key, v = Math.max(0, Math.min(99, parseInt(t.value, 10) || 0)); if (v) cart.lines[k] = v; else delete cart.lines[k]; cartSet(cart); render(); }
+  if (t.name === 'method') { S.method = t.value; $('delivZip').hidden = S.method !== 'delivery'; renderContact(); if (S.method === 'delivery') $('zip').focus(); if (S.tried) validate(); }
+  if (t.id === 'fee') renderSum();
+  if (S.tried && t.id === 'rel') validate();
+});
+document.addEventListener('input', e => {
+  if (e.target.id === 'zip') { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 5); zipCheck(false); if (S.tried) validate(); }
+  else if (e.target.id === 'giftOther') renderSum();
+  else if (S.tried && e.target.closest('#co')) validate();
+});
+
+let lastMethod = '';
+$('co').addEventListener('click', e => { const b = e.target.closest('button[type=submit]'); if (b) lastMethod = b.dataset.m; });
+$('co').addEventListener('submit', e => {
+  e.preventDefault();
+  S.tried = true;
+  if (!validate()) { const first = document.querySelector('.bad input, .badCheck input, .bad'); if (first) { first.scrollIntoView({ block: 'center', behavior: 'smooth' }); const i = first.matches('input') ? first : first.querySelector('input'); if (i) i.focus({ preventScroll: true }); } return; }
+  const a = amounts();
+  const order = {
+    id: 'W-' + (1031 + Math.floor(Math.random() * 60)),
+    seller: cart.seller, lines: lines().map(l => ({ n: l.n, q: l.q, donated: l.donated })),
+    gift: a.gift, fee: a.cover ? a.fee : 0, total: a.total,
+    fulfill: allDonated() ? 'none' : (isScout() ? 'scout' : S.method),
+    relative: isScout() && $('rel') && $('rel').checked,
+    cust: { name: $('name').value.trim(), email: $('email').value.trim(), phone: $('phone').value.trim(), street: $('street').value.trim(), city: $('city').value.trim(), zip: $('zip') ? $('zip').value : '' },
+    pay: proto.pay === 'paypal' ? 'paid' : 'unpaid', method: proto.pay === 'paypal' ? lastMethod : ''
+  };
+  const finish = () => { sessionStorage.setItem('wreath-proto-last', JSON.stringify(order)); cart.lines = {}; cartSet(cart); location.href = 'confirmation.html'; };
+  if (proto.pay !== 'paypal') { finish(); return; }
+  /* PayPal: popup approval, then the server captures. Only a server capture marks the order paid. */
+  const ov = $('overlay'), ot = $('overlayTxt');
+  ot.textContent = `Waiting for ${lastMethod === 'Card' ? 'your card details' : lastMethod}…`; ov.hidden = false;
+  setTimeout(() => {
+    ot.textContent = 'Confirming your payment…';
+    setTimeout(() => {
+      if (proto.result === 'declined') {
+        ov.hidden = true;
+        $('payErr').innerHTML = `<div class="notice bad" role="alert" style="margin:8px 0"><p><strong>The payment didn’t go through.</strong> ${lastMethod === 'Card' ? 'Your card was declined.' : lastMethod + ' declined the payment.'} Nothing was charged, and your order isn’t placed yet.</p><p>Try another card, or PayPal or Venmo. Your cart and details are saved.</p></div>`;
+        $('payErr').scrollIntoView({ block: 'center' });
+        return;
+      }
+      finish();
+    }, 1100);
+  }, 900);
+});
+
+render();
+</script>
+</body>
+</html>
