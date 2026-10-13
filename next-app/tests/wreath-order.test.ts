@@ -136,6 +136,18 @@ describe('pricing is the server’s', () => {
     if (under.ok) expect(Number((await orderRow(under.token)).total)).toBe(31);
   });
 
+  it('DeliveryFee_IgnoresDonatedLines_BecauseTheyAreNeverDelivered', async () => {
+    // Two donated 20" wreaths ($52) plus one $10 easel by troop delivery: only the easel is delivered, so the fee applies.
+    const res = await placeOrder(
+      delivery('53211', { lines: [{ itemId: fx.item.w20, quantity: 2, donated: true }, { itemId: fx.item.easel, quantity: 1, donated: false }] }),
+      deps()
+    );
+    if (!res.ok) throw new Error(res.error);
+    const row = await orderRow(res.token);
+    expect(Number(row.delivery_fee)).toBe(5);
+    expect(Number(row.total)).toBe(67);
+  });
+
   it('CoverFee_AddsFee_OnlyWhenTicked', async () => {
     const off = await placeOrder(input({ coverFee: false, gift: 10 }), deps());
     const on = await placeOrder(input({ coverFee: true, gift: 10 }), deps());
@@ -176,6 +188,24 @@ describe('who the order is credited to', () => {
     const recipients = send.mock.calls.map((c) => (c as unknown as [{ to: string[] }])[0].to).flat();
     expect(recipients).toContain('family@example.test');
     expect(recipients).toContain('link@example.test');
+  });
+
+  it('ScoutHouseholdNotice_IsCappedPerSellerPerDay_ButTheOrderStillSaves', async () => {
+    householdEmails.mockClear();
+    const limits = { perSellerNoticeDay: 2 };
+    const results: boolean[] = [];
+    for (let i = 0; i < 4; i++) {
+      const r = await placeOrder(
+        delivery('53211', { sellerSlug: fx.sellerB.slug }),
+        deps({ limits })
+      );
+      results.push(r.ok);
+    }
+    expect(results).toEqual([true, true, true, true]);
+    const { count } = await admin.from('wreath_orders').select('id', { count: 'exact', head: true }).eq('sale_id', fx.saleId).eq('credited_person_id', fx.sellerB.personId);
+    expect(count).toBeGreaterThanOrEqual(4);
+    // Only the first two notices reached the household.
+    expect(householdEmails).toHaveBeenCalledTimes(2);
   });
 
   it('GeneralStoreOrder_IsCreditedToTheTroop_WhateverTheClientSends', async () => {

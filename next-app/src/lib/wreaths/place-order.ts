@@ -31,7 +31,8 @@ import {
   type PricedItem
 } from './rules';
 
-export const RATE_LIMITS = { perIpHour: 10, perEmailDay: 5, globalHour: 200 };
+/** perSellerNoticeDay caps the notes mailed to one scout's household per day, so a forged link can't use us as a mailer. */
+export const RATE_LIMITS = { perIpHour: 10, perEmailDay: 5, globalHour: 200, perSellerNoticeDay: 20 };
 export type RateLimits = typeof RATE_LIMITS;
 
 export interface EmailMessage {
@@ -315,7 +316,14 @@ export async function placeOrder(raw: unknown, deps: PlaceOrderDeps): Promise<Pl
     const mail = customerConfirmationEmail(ctx);
     await deps.send({ to: [req.email], subject: mail.subject, html: mail.html, text: mail.text, replyTo: deps.replyTo });
     if (seller && fulfillment === 'scout') {
-      const to = await deps.householdEmails(seller.personId);
+      // The order is saved either way; past the daily cap this seller's household simply isn't mailed again.
+      const { count: noticed } = await sb
+        .from('wreath_orders')
+        .select('id', { count: 'exact', head: true })
+        .eq('credited_person_id', seller.personId)
+        .eq('source', 'scout_link')
+        .gte('placed_at', since(24 * 3600_000));
+      const to = (noticed ?? 0) > limits.perSellerNoticeDay ? [] : await deps.householdEmails(seller.personId);
       if (to.length) {
         const note = scoutNoticeEmail({
           ...ctx,

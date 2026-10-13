@@ -110,6 +110,8 @@ create table if not exists public.wreath_orders (
   paid_at timestamptz,
   paid_method text check (paid_method is null or paid_method in ('venmo', 'paypal', 'cash', 'check', 'other')),
   paid_by_person_id bigint references public.people(id),
+  -- the amount at the moment it was marked paid; a later reassign may reprice the order, and the difference shows
+  paid_amount numeric(10,2),
   status text not null default 'placed' check (status in ('placed', 'cancelled')),
   placed_at timestamptz not null default now(),
   cancelled_at timestamptz,

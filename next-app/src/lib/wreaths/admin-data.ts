@@ -78,6 +78,8 @@ export interface AdminOrder {
   paymentStatus: 'unpaid' | 'paid' | 'refunded';
   paidMethod: string | null;
   paidAt: string | null;
+  /** What the order totalled when it was marked paid (a later reassign can change the total). */
+  paidAmount: number | null;
   status: 'placed' | 'cancelled';
   lines: AdminOrderLine[];
 }
@@ -196,6 +198,7 @@ export async function loadAdminOrders(sb: SupabaseClient, saleId: number): Promi
     paymentStatus: r.payment_status,
     paidMethod: r.paid_method,
     paidAt: r.paid_at,
+    paidAmount: r.paid_amount == null ? null : Number(r.paid_amount),
     status: r.status,
     lines: (r.wreath_order_lines as Record<string, any>[]).map((l) => { // eslint-disable-line @typescript-eslint/no-explicit-any
       const it = one(l.wreath_items) as { catalog_number: number; name: string; size: string } | null;

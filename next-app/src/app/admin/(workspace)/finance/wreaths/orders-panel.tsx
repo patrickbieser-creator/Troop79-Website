@@ -259,9 +259,18 @@ function OrderDetail({ order: o, history, onReassign, onCancel }: { order: Admin
           <p className={styles.muted}>This order is cancelled.</p>
         ) : o.paymentStatus === 'paid' ? (
           <p>
-            Paid {fmtMoney2(o.total)}
+            Paid {fmtMoney2(o.paidAmount ?? o.total)}
             {o.paidMethod ? ` by ${o.paidMethod}` : ''}
             {o.paidAt ? `, ${fmtDateTime(o.paidAt)}` : ''}.
+            {o.paidAmount != null && o.paidAmount !== o.total && (
+              <>
+                {' '}
+                <strong>
+                  Paid {fmtMoney2(o.paidAmount)}, total now {fmtMoney2(o.total)}
+                </strong>
+                {o.total > o.paidAmount ? `: ${fmtMoney2(o.total - o.paidAmount)} more is due.` : `: ${fmtMoney2(o.paidAmount - o.total)} is owed back.`}
+              </>
+            )}
           </p>
         ) : (
           <div className={styles.actionRow}>

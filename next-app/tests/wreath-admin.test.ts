@@ -160,6 +160,34 @@ describe('orders', () => {
     expect(audit[0].summary).not.toContain(fx.sellerA.first);
   });
 
+  it('Reassign_RepricesTheDeliveryFee_KeepsAPaidOrderPaid_AndAuditsOldAndNewTotal_WithoutTheAddress', async () => {
+    // $26 of wreaths on a store pickup order, then paid.
+    const order = await makeOrder({ lines: [{ itemId: fx.item.w20, quantity: 1, donated: false }] });
+    const { reassignOrder, markPaid } = await actions();
+    await markPaid(order.id, 'venmo');
+    // Pickup -> troop delivery: under $50 of delivered items, so the $5 fee applies.
+    expect(await reassignOrder(order.id, { creditedPersonId: null, fulfillment: 'delivery', street: '9 Secret Lane', city: 'Milwaukee', zip: '53211' })).toMatchObject({ ok: true });
+    let row: Record<string, unknown> = (await admin.from('wreath_orders').select('delivery_fee, total, payment_status, paid_amount').eq('id', order.id).single()).data!;
+    expect([Number(row.delivery_fee), Number(row.total), row.payment_status, Number(row.paid_amount)]).toEqual([5, 31, 'paid', 26]);
+    // Delivery -> a scout delivers: no fee again.
+    expect(await reassignOrder(order.id, { creditedPersonId: fx.sellerA.personId, fulfillment: 'scout' })).toMatchObject({ ok: true });
+    row = (await admin.from('wreath_orders').select('delivery_fee, total, paid_amount').eq('id', order.id).single()).data!;
+    expect([Number(row.delivery_fee), Number(row.total), Number(row.paid_amount)]).toEqual([0, 26, 26]);
+
+    const audit = (await auditFor('wreath_order', order.id)).filter((a) => a.action === 'reassign');
+    const first = JSON.stringify(audit[0].details);
+    expect(first).toContain('Total');
+    expect(first).toContain('$26.00');
+    expect(first).toContain('$31.00');
+    // The customer's address and phone never go into the audit trail.
+    for (const a of audit) {
+      const blob = JSON.stringify(a);
+      expect(blob).not.toContain('Secret Lane');
+      expect(blob).not.toContain('53211');
+      expect(blob).not.toContain('414-555');
+    }
+  });
+
   it('Reassign_RefusesANonSeller_ARetiredSeller_AndAnOutOfAreaTroopDelivery', async () => {
     const order = await makeOrder();
     const { reassignOrder } = await actions();
@@ -175,6 +203,27 @@ describe('orders', () => {
     // The row is unchanged by every refusal above.
     const row = (await admin.from('wreath_orders').select('credited_person_id').eq('id', order.id).single()).data!;
     expect(row.credited_person_id).toBeNull();
+  });
+});
+
+describe('every write needs finance.manage', () => {
+  it('CancelOrder_SetSellerSlug_SetSellerActive_UploadItemImage_RequireFinanceManage', async () => {
+    const order = await makeOrder();
+    const { cancelOrder, setSellerSlug, setSellerActive, uploadItemImage } = await actions();
+    const { data: s } = await admin.from('wreath_sellers').select('id, slug, active').eq('sale_id', fx.saleId).eq('slug', fx.sellerB.slug).single();
+    const sellerId = (s as { id: number }).id;
+    state.caps = new Set(['news.write']);
+    await expect(cancelOrder(order.id)).rejects.toThrow(/requires/i);
+    await expect(setSellerSlug(sellerId, 'hacked')).rejects.toThrow(/requires/i);
+    await expect(setSellerActive(sellerId, false)).rejects.toThrow(/requires/i);
+    await expect(uploadItemImage(new FormData())).rejects.toThrow(/requires/i);
+    // Nothing changed.
+    expect((await admin.from('wreath_orders').select('status').eq('id', order.id).single()).data?.status).toBe('placed');
+    const after = (await admin.from('wreath_sellers').select('slug, active').eq('id', sellerId).single()).data!;
+    expect(after).toMatchObject({ slug: fx.sellerB.slug, active: true });
+    // With the capability, an empty upload is refused politely rather than thrown.
+    state.caps = new Set(['finance.manage']);
+    expect((await uploadItemImage(new FormData())).ok).toBe(false);
   });
 });
 

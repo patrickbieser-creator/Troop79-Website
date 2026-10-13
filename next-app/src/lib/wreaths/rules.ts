@@ -145,6 +145,7 @@ export function priceCart(
   const lines = mergeLines(rawLines);
   const priced: PricedLine[] = [];
   let subtotal = 0;
+  let deliveredCents = 0;
   for (const l of lines) {
     const item = byId.get(l.itemId);
     if (!item) return { ok: false, problem: { code: 'unknown_item', itemId: l.itemId } };
@@ -154,12 +155,14 @@ export function priceCart(
       return { ok: false, problem: { code: 'quantity', itemId: l.itemId } };
     }
     subtotal += toCents(item.price) * l.quantity;
+    if (!l.donated) deliveredCents += toCents(item.price) * l.quantity;
     priced.push({ ...l, unitPrice: item.price, unitCost: item.unitCost });
   }
   const giftCents = toCents(opts.gift);
   if (!Number.isFinite(opts.gift) || giftCents < 0 || giftCents > MAX_GIFT * 100) return { ok: false, problem: { code: 'gift' } };
   const itemsSubtotal = fromCents(subtotal);
-  const deliveryFee = deliveryFeeFor(rules, opts.fulfillment, itemsSubtotal);
+  // Donated wreaths are never delivered, so only the delivered items count toward the free-delivery threshold.
+  const deliveryFee = deliveryFeeFor(rules, opts.fulfillment, fromCents(deliveredCents));
   const feeCovered = opts.coverFee ? coverFeeFor(rules, fromCents(subtotal + giftCents + toCents(deliveryFee))) : 0;
   const total = fromCents(subtotal + giftCents + toCents(deliveryFee) + toCents(feeCovered));
   return { ok: true, order: { lines: priced, itemsSubtotal, deliveryFee, feeCovered, gift: fromCents(giftCents), total } };

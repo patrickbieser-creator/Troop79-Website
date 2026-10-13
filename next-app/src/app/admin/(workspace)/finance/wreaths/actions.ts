@@ -6,7 +6,7 @@ import { recordAudit, type AuditDetail } from '@/lib/audit';
 import { createAdminClient } from '@/lib/supabase/server';
 import { centralToInstant, instantToCentral } from '@/lib/dates';
 import { uploadToBunny } from '@/lib/bunny-storage';
-import { PAID_METHODS, fmtMoney2, inDeliveryArea, zipFormatOk, type PaidMethod } from '@/lib/wreaths/rules';
+import { PAID_METHODS, deliveryFeeFor, fmtMoney2, fromCents, inDeliveryArea, toCents, zipFormatOk, type PaidMethod } from '@/lib/wreaths/rules';
 import { SLUG_RE } from '@/lib/wreaths/public';
 
 /**
@@ -321,9 +321,11 @@ export async function markPaid(orderId: number, method: PaidMethod): Promise<Wre
   const actor = await requireCapability('finance.manage');
   if (!PAID_METHODS.includes(method)) return fail('Choose how it was paid.', 'method');
   const supabase = createAdminClient();
+  const { data: pre } = await supabase.from('wreath_orders').select('total').eq('id', orderId).maybeSingle();
+  const claimedTotal = Number(pre?.total ?? 0);
   const { data: claimed } = await supabase
     .from('wreath_orders')
-    .update({ payment_status: 'paid', paid_method: method, paid_at: new Date().toISOString(), paid_by_person_id: actor.personId })
+    .update({ payment_status: 'paid', paid_method: method, paid_at: new Date().toISOString(), paid_by_person_id: actor.personId, paid_amount: claimedTotal })
     .eq('id', orderId)
     .eq('payment_status', 'unpaid')
     .eq('status', 'placed')
@@ -433,9 +435,18 @@ export async function reassignOrder(orderId: number, v: ReassignInput): Promise<
     if (!(await liveSeller(delivering))) return fail('Only an active seller can deliver.', 'deliveringPersonId');
   }
 
+  // A change of delivery reprices the delivery fee from the order's own lines (donated lines are never delivered).
+  const { data: lineRows } = await supabase.from('wreath_order_lines').select('quantity, donated, unit_price').eq('order_id', orderId);
+  const deliveredCents = ((lineRows ?? []) as { quantity: number; donated: boolean; unit_price: number }[])
+    .filter((l) => !l.donated)
+    .reduce((n, l) => n + toCents(Number(l.unit_price)) * l.quantity, 0);
+  const { data: fees } = await supabase.from('wreath_sales').select('delivery_fee, delivery_free_at').eq('id', order.sale_id).single();
+  const newFee = deliveryFeeFor({ deliveryFee: Number(fees?.delivery_fee ?? 0), deliveryFreeAt: Number(fees?.delivery_free_at ?? 0) }, fulfillment, fromCents(deliveredCents));
+  const newTotal = fromCents(toCents(Number(order.items_subtotal)) + toCents(newFee) + toCents(Number(order.fee_covered)) + toCents(Number(order.gift)));
+
   const { error } = await supabase
     .from('wreath_orders')
-    .update({ credited_person_id: v.creditedPersonId, delivering_person_id: delivering, fulfillment, ...address })
+    .update({ credited_person_id: v.creditedPersonId, delivering_person_id: delivering, fulfillment, ...address, delivery_fee: newFee, total: newTotal })
     .eq('id', orderId);
   if (error) return fail('Couldn’t reassign the order. Please try again.');
 
@@ -451,7 +462,9 @@ export async function reassignOrder(orderId: number, v: ReassignInput): Promise<
   };
   diff('Credited to', who(order.credited_person_id), who(v.creditedPersonId));
   diff('Delivery', how(order.fulfillment, order.delivering_person_id), how(fulfillment, delivering));
-  diff('Address', [order.customer_address, order.customer_city, order.customer_zip].filter(Boolean).join(', '), [address.customer_address, address.customer_city, address.customer_zip].filter(Boolean).join(', '));
+  // Deliberately no address or phone here: the audit trail is read by more people than the order screen is.
+  diff('Delivery fee', money(Number(order.delivery_fee)), money(newFee));
+  diff('Total', money(Number(order.total)), money(newTotal));
   await recordAudit({
     area: 'wreaths',
     action: 'reassign',
