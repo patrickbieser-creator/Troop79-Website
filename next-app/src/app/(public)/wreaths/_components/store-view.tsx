@@ -173,7 +173,7 @@ export function StoreView({
             <section className={`${styles.card} ${styles.vets}`} aria-labelledby="vetsH" id="vets">
               <h2 id="vetsH">Donate a wreath to veterans</h2>
               <p className={styles.meta}>
-                The troop delivers donated wreaths to veterans in December. Nothing comes to you
+                The troop delivers donated wreaths to veterans in December. No wreaths will be delivered to you
                 {scout ? `, and ${scout.firstName} still gets credit for the sale` : ''}.
               </p>
               {donatable.map((item) => (

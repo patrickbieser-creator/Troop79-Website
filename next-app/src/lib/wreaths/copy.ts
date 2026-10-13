@@ -47,7 +47,7 @@ export function arrivalParagraphs(opts: {
       `The troop delivers to the address you gave us${day ? ` after the distribution on ${day}` : ''}. A leader will call or text the day before.`
     );
   } else {
-    out.push('Nothing comes to you. Your donated wreaths go to veterans.');
+    out.push('No wreaths will be delivered to you. Your donated wreaths go to veterans.');
   }
   if (fulfillment !== 'none' && opts.hasDonated) out.push('Your donated wreaths go to veterans; they are not part of this delivery.');
   return out;
