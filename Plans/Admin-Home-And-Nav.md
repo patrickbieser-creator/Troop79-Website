@@ -102,6 +102,14 @@ to a "Sections ▾" menu (prototype decides).
 - [ ] Wreath Sale outside the sale season: stays in Money, or moves to the tools card until next fall?
 - [ ] Reports: one "Reports" card with its five reports as tabs, or five cards?
 
+## Shipped so far
+
+- Wave 1 v1.214.0 (62c5ce6): /admin Home + "Needs you today" inbox.
+- Wave 2 v1.215.0 (9a42628): card grid; rail regrouped from nav-data.ts. v1.216.0 (f3f9d10): /admin/reports landing.
+  v1.216.1 (cdad5a6): reports also on the rail (Patrick: allowed duplication while the rail exists).
+- **Wave 3 decision (Patrick, 2026-10-13):** once the rail is gone, the five reports live ONLY on the Reports landing
+  page — not as tabs in the Advancement section. Advancement's tab strip carries a single "Reports" tab.
+
 ## Prototype (Brad, 2026-10-13) — `prototypes/admin-home/index.html`, awaiting Patrick's review
 
 Brad's calls on the open questions: phone bar scrolls horizontally (kept on the current section); no counts on
