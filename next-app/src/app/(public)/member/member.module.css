@@ -177,3 +177,38 @@
 /* ── Phase B inline-style conversions ── */
 .gapTopLg { margin-top: var(--sp-6); } /* was inline 1.5rem */
 .finePrint { font-size: var(--fs-md); } /* folded from 0.9rem (Phase C) */
+
+/* Superuser proxy banner (Members proxy, 2026-10-13) — same look as the
+   Scout account banner. A GET form: picking a scout re-requests the current
+   page with ?viewScout=<personId>. */
+.proxyBanner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+.proxyForm {
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.proxyForm select {
+  border: 1px solid var(--rule);
+  border-radius: var(--rad-md);
+  padding: 0.4rem 0.6rem;
+  font-family: inherit;
+  font-size: 16px; /* iOS no-zoom floor */
+}
+.proxyForm button {
+  background: var(--navy);
+  color: var(--warm-white);
+  border: none;
+  border-radius: var(--rad-md);
+  padding: 0.45rem 0.9rem;
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  cursor: pointer;
+}

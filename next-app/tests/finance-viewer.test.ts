@@ -34,10 +34,19 @@ describe('actorCanProxyFinance (pure)', () => {
   });
 
   it('ActorCanProxyFinance_IsFalse_WhenActorHoldsOnlyAnUnrelatedCapability', () => {
-    // The exact scenario the "don't reuse a capability across domains"
-    // design note warns about: library.proxy_view must not imply finance
-    // proxy access just because both are "proxy" concepts.
-    expect(actorCanProxyFinance(actor({ capabilities: new Set<Capability>(['library.proxy_view']) }))).toBe(false);
+    expect(actorCanProxyFinance(actor({ capabilities: new Set<Capability>(['library.moderate']) }))).toBe(false);
+  });
+
+  it('ActorCanProxyFinance_IsTrue_ForAnAdultHoldingLibraryProxyView', () => {
+    // Patrick, 2026-10-13: the Members proxy reuses library.proxy_view and
+    // reaches Scout account read-only.
+    expect(actorCanProxyFinance(actor({ capabilities: new Set<Capability>(['library.proxy_view']) }))).toBe(true);
+  });
+
+  it('ActorCanProxyFinance_IsFalse_ForAScoutHoldingLibraryProxyView', () => {
+    expect(
+      actorCanProxyFinance(actor({ subjectKind: 'scout', capabilities: new Set<Capability>(['library.proxy_view']) }))
+    ).toBe(false);
   });
 
   it('ActorCanProxyFinance_IsTrue_ForAnAdultHoldingFinanceManage', () => {

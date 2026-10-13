@@ -286,3 +286,13 @@
 .emailMeta { font-size: var(--fs-xs); color: var(--text-meta); }
 .emailAddRow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 4px; }
 .emailAddRow .editInput { width: auto; flex: 1 1 200px; }
+
+/* ── Read-only household (superuser proxy, 2026-10-13) ───────────────────── */
+.readOnlyMember { padding: 14px 0; border-bottom: 1px solid var(--border-light); }
+.readOnlyName { font-family: var(--font-display); font-size: var(--fs-lg); color: var(--text-head); margin-bottom: 8px; }
+.readOnlyRole { font-family: var(--font-ui); font-size: 13px; font-weight: 400; color: var(--text-meta); margin-left: 6px; }
+.readOnlyList { margin: 0; }
+.readOnlyRow { display: grid; grid-template-columns: 11rem 1fr; gap: 12px; padding: 3px 0; font-family: var(--font-ui); font-size: 14px; }
+.readOnlyRow dt { color: var(--text-meta); }
+.readOnlyRow dd { margin: 0; color: var(--text-body); overflow-wrap: anywhere; }
+@media (max-width: 480px) { .readOnlyRow { grid-template-columns: 1fr; gap: 0; } }

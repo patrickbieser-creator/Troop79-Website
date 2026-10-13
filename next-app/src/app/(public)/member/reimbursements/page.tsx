@@ -15,6 +15,8 @@ import { getIdentitySessionIfValid } from '@/lib/family-access';
 import { isEpochCurrent } from '@/lib/identity-session';
 import { createAdminClient } from '@/lib/supabase/server';
 import { resolveFamilyScope } from '@/lib/household-scope';
+import { MemberProxyBanner } from '../member-proxy-banner';
+import { resolveMemberViewer, loadProxyFamily } from '@/lib/member-viewer';
 import { submitReimbursementAction, withdrawReimbursementAction } from './actions';
 import { PageHeader } from '@/app/_components/page-header';
 import { PageShell } from '@/app/_components/page-shell';
@@ -82,17 +84,34 @@ function SignInPrompt() {
 export default async function ReimbursementsPage({
   searchParams
 }: {
-  searchParams: Promise<{ ok?: string; err?: string }>;
+  searchParams: Promise<{ ok?: string; err?: string; viewScout?: string }>;
 }) {
-  const { ok, err } = await searchParams;
+  const { ok, err, viewScout } = await searchParams;
   const supabase = createAdminClient();
+  // Read-only superuser proxy (library.proxy_view): the chosen scout's whole
+  // household's requests, no submit form, no withdraw buttons.
+  const viewer = await resolveMemberViewer(supabase, viewScout);
+  const proxy = viewer.kind === 'proxy' ? viewer : null;
   const session = await getIdentitySessionIfValid();
 
-  if (!session || !(await isEpochCurrent(supabase, session))) {
+  if (viewer.kind === 'proxy-available') {
+    return (
+      <>
+        <PageHeader kicker="Members" title="Reimbursements" />
+        <PageShell>
+          <MemberProxyBanner viewer={viewer} />
+        </PageShell>
+      </>
+    );
+  }
+
+  if (!proxy && (!session || !(await isEpochCurrent(supabase, session)))) {
     return <SignInPrompt />;
   }
 
-  const scope = await resolveFamilyScope(supabase, session.personId, session.subjectKind);
+  const scope = proxy
+    ? (await loadProxyFamily(proxy.personId)).personIds
+    : await resolveFamilyScope(supabase, session!.personId, session!.subjectKind);
   const { data: rows } = await supabase
     .from('reimbursement_requests')
     .select('id, requester_person_id, amount, description, status, denial_reason, decided_at, paid_at, created_at')
@@ -105,27 +124,29 @@ export default async function ReimbursementsPage({
     <>
       <PageHeader kicker="Members" title="Reimbursements" />
       <PageShell>
+        <MemberProxyBanner viewer={viewer} />
         <p className={memberStyles.intro}>
           Paid for something out of pocket for the troop? Submit it here with a receipt, and the
           treasurer will review it. <Link href="/member">← Back to Members</Link>
         </p>
 
-        {ok === '1' && (
+        {!proxy && ok === '1' && (
           <Notice tone="success" className={styles.noticeGap}>
             Request submitted — the treasurer will review it.
           </Notice>
         )}
-        {ok === 'withdrawn' && (
+        {!proxy && ok === 'withdrawn' && (
           <Notice tone="success" className={styles.noticeGap}>
             Request withdrawn.
           </Notice>
         )}
-        {err && (
+        {!proxy && err && (
           <Notice tone="error" className={styles.noticeGap}>
             {ERROR_MESSAGES[err] ?? 'Something went wrong — try again.'}
           </Notice>
         )}
 
+        {!proxy && (
         <form action={submitReimbursementAction} className={`${surface.card} ${styles.form}`}>
           <label>
             Amount
@@ -143,6 +164,7 @@ export default async function ReimbursementsPage({
             Submit request
           </Button>
         </form>
+        )}
 
         <h2 className={styles.historyHeading}>Your household&rsquo;s requests</h2>
         {requests.length === 0 ? (
@@ -159,7 +181,7 @@ export default async function ReimbursementsPage({
                 {r.status === 'denied' && r.denial_reason && (
                   <p className={styles.denialReason}>Reason: {r.denial_reason}</p>
                 )}
-                {r.status === 'submitted' && r.requester_person_id === session.personId && (
+                {!proxy && r.status === 'submitted' && r.requester_person_id === session!.personId && (
                   <form action={withdrawReimbursementAction} className={styles.withdrawRow}>
                     <input type="hidden" name="id" value={r.id} />
                     <Button variant="danger" type="submit">

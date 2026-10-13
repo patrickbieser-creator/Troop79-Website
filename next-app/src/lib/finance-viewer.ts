@@ -4,13 +4,14 @@
  * a new domain (Plans/Troop-Finances.md, "extend the superuser proxy
  * logic... to scout accounts on the public site").
  *
- * Deliberately gated on `finance.manage`, NOT `library.proxy_view` — reusing
- * an unrelated capability across domains is exactly what this project's flat,
- * non-nesting capability model rejects (a Librarian would gain financial
- * proxy-view for free). finance.manage already means "sees all financial
- * data" (the treasurer's own admin ledger); this just extends where that
- * grant reaches, rather than inventing a speculative finance.proxy_view
- * nobody asked for yet.
+ * Gated on `finance.manage` OR `library.proxy_view` (Patrick, 2026-10-13:
+ * Members proxy reuses library.proxy_view and reaches Scout account
+ * read-only — see lib/member-viewer.ts). Originally finance.manage only: a
+ * Librarian gaining financial proxy-view for free was exactly the kind of
+ * cross-domain reuse this project's flat capability model avoids. The
+ * tradeoff was made knowingly — the Members proxy shows a family's whole
+ * Members area, and a Scout account page that 403s inside it would be a
+ * hole in that view. Both grants keep the subjectKind !== 'scout' guard.
  *
  * DEFAULT-TO-OWN-FAMILY, NOT DEFAULT-TO-PROXY (Patrick, 2026-08-18): unlike
  * the Library resolver — where a leader has no "own scout" to fall back to
@@ -56,10 +57,14 @@ import { isEpochCurrent } from '@/lib/identity-session';
 import { resolveFamilyScope } from '@/lib/household-scope';
 
 /** Same subjectKind guard as actorCanProxyLibrary() and for the same reason:
- *  a scout holding finance.manage by grant-table mistake must never proxy as
+ *  a scout holding finance.manage / library.proxy_view by grant-table mistake must never proxy as
  *  another scout — checked here regardless of what the grants table says. */
 export function actorCanProxyFinance(actor: AdminActor | null): boolean {
-  return !!actor && actor.subjectKind !== 'scout' && actorHas(actor, 'finance.manage');
+  return (
+    !!actor &&
+    actor.subjectKind !== 'scout' &&
+    (actorHas(actor, 'finance.manage') || actorHas(actor, 'library.proxy_view'))
+  );
 }
 
 export interface FinanceSwitchOption {

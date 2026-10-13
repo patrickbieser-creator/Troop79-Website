@@ -22,6 +22,9 @@ import { type AdultProfileFields } from './adult-editor';
 import HouseholdMembers, { type HouseholdMemberView } from './household-members';
 import { loadScoutRows } from '@/lib/scout-row';
 import { listPersonEmails, type PersonEmailRow } from '@/lib/person-emails';
+import { HouseholdReadOnly, scoutRows, adultRows, type ReadOnlyMember } from './household-readonly';
+import { MemberProxyBanner } from '../member/member-proxy-banner';
+import { resolveMemberViewer, loadProxyFamily } from '@/lib/member-viewer';
 import styles from './profile.module.css';
 
 /*
@@ -34,6 +37,8 @@ import styles from './profile.module.css';
  * (Tier 2-S) sees a clear explanation, not a redirect loop — it grants proof
  * submission only, never demographics.
  */
+
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = { title: 'Profile — Troop 79' };
 
@@ -65,12 +70,105 @@ export default async function ProfilePage({
     emailSaved?: string;
     /** `scout:<id>` or `person:<personId>` — which member to open. */
     member?: string;
+    /** Superuser proxy (library.proxy_view): a scout's person id. Ignored without the grant. */
+    viewScout?: string;
   }>;
 }) {
   const sp = await searchParams;
   const session = await getIdentitySessionIfValid();
 
   const supabase = createAdminClient();
+  const viewer = await resolveMemberViewer(supabase, sp.viewScout);
+
+  // Read-only superuser proxy: the chosen scout's family, no forms at all.
+  if (viewer.kind === 'proxy') {
+    const { household, personIds } = await loadProxyFamily(viewer.personId);
+    const scoutIds = household?.scouts.map((s) => s.id) ?? [];
+    const adultIds = household?.adults.map((a) => a.personId) ?? [];
+    const [scoutRowsLoaded, { data: personRows }] = await Promise.all([
+      loadScoutRows(supabase, { ids: scoutIds }),
+      adultIds.length > 0
+        ? supabase
+            .from('people')
+            .select(`id, display_name, ${EDITABLE_PERSON_FIELDS.join(', ')}`)
+            .in('id', adultIds)
+        : Promise.resolve({ data: [] })
+    ]);
+    const relationshipByPerson = new Map((household?.adults ?? []).map((a) => [a.personId, a.relationship]));
+    const readOnly: ReadOnlyMember[] = [
+      ...scoutRowsLoaded.map((r) => ({
+        key: `scout:${r.id}`,
+        name: r.display_name,
+        role: 'Scout',
+        rows: scoutRows({
+          id: r.id,
+          displayName: r.display_name,
+          address_line1: r.address_line1,
+          address_line2: r.address_line2,
+          city: r.city,
+          state: r.state,
+          zip: r.zip,
+          phone: r.phone,
+          email: r.email,
+          school: r.school,
+          graduation_year: r.graduation_year,
+          swim_class: r.swim_class,
+          birthdate: r.birthdate,
+          things_we_should_know: r.things_we_should_know
+        })
+      })),
+      ...((personRows ?? []) as unknown as PersonFieldRow[]).map((r) => ({
+        key: `person:${r.id}`,
+        name: r.display_name,
+        role: relationshipByPerson.get(r.id) || 'Adult',
+        rows: adultRows({
+          personId: r.id,
+          displayName: r.display_name,
+          relationship: relationshipByPerson.get(r.id) ?? null,
+          first_name: r.first_name,
+          last_name: r.last_name,
+          birthdate: r.birthdate,
+          primary_email: r.primary_email,
+          primary_phone: r.primary_phone,
+          address_line1: r.address_line1,
+          address_line2: r.address_line2,
+          city: r.city,
+          state: r.state,
+          zip: r.zip
+        })
+      }))
+    ];
+    return (
+      <main className={styles.page}>
+        <MemberProxyBanner viewer={viewer} />
+        <header className={styles.head}>
+          <h1 className={styles.title}>Profile</h1>
+          <p className={styles.dek}>
+            {household?.label ?? viewer.name} household, as the family sees it. Read-only while you are
+            viewing.
+          </p>
+        </header>
+        {readOnly.length === 0 || personIds.length === 0 ? (
+          <p className={styles.dek}>Nobody is linked to this household yet.</p>
+        ) : (
+          <HouseholdReadOnly members={readOnly} />
+        )}
+      </main>
+    );
+  }
+
+  if (viewer.kind === 'proxy-available') {
+    return (
+      <main className={styles.page}>
+        <MemberProxyBanner viewer={viewer} />
+        <header className={styles.head}>
+          <h1 className={styles.title}>Profile</h1>
+          <p className={styles.dek}>Pick a scout to see their household as the family sees it.</p>
+        </header>
+      </main>
+    );
+  }
+
   const epochOk = session ? await isEpochCurrent(supabase, session) : false;
 
   const state: 'anon' | 'scout-blocked' | 'revoked' | 'ready' = !session
@@ -195,6 +293,7 @@ export default async function ProfilePage({
 
   return (
     <main className={styles.page}>
+      <MemberProxyBanner viewer={viewer} />
       <header className={styles.head}>
         <h1 className={styles.title}>Profile</h1>
         <p className={styles.dek}>

@@ -26,6 +26,8 @@ import { logOutEverywhereAction } from '@/app/_components/site-nav-actions';
 import { createAdminClient } from '@/lib/supabase/server';
 import { listPasskeys, passkeysConfigured } from '@/lib/passkeys';
 import { PasskeyManager } from './passkey-manager';
+import { MemberProxyBanner } from './member-proxy-banner';
+import { resolveMemberViewer } from '@/lib/member-viewer';
 import {
   passkeyRegisterOptionsAction,
   passkeyRegisterVerifyAction,
@@ -87,10 +89,36 @@ const CARDS: Card[] = [
   }
 ];
 
-export default async function MemberPage() {
+export default async function MemberPage({
+  searchParams
+}: {
+  searchParams: Promise<{ viewScout?: string }>;
+}) {
+  const { viewScout } = await searchParams;
   const session = await getIdentitySessionIfValid();
+  // Read-only superuser proxy (library.proxy_view; lib/member-viewer.ts).
+  const viewer = await resolveMemberViewer(createAdminClient(), viewScout);
 
-  if (!session) {
+  // A leader with proxy rights but no family of their own has no session
+  // worth a sign-in gate: they get the picker (or, once chosen, the family).
+  if (viewer.kind === 'proxy-available') {
+    return (
+      <>
+        <PageHeader kicker="Members" title="Members" />
+        <PageShell>
+          <MemberProxyBanner viewer={viewer} />
+          <p className={styles.intro}>
+            Pick a scout to see the Members area exactly as their family sees it. Nothing here can be
+            changed while you are viewing.
+          </p>
+        </PageShell>
+      </>
+    );
+  }
+
+  const proxy = viewer.kind === 'proxy' ? viewer : null;
+
+  if (!session && !proxy) {
     return (
       <>
         <PageHeader kicker="Members" title="Member Sign In" />
@@ -127,17 +155,28 @@ export default async function MemberPage() {
     );
   }
 
-  const isAdult = session.subjectKind === 'adult';
+  // Proxying: the household card is live (adult-only gating is about the
+  // VIEWER being a scout, irrelevant here) and every link carries the choice.
+  const isAdult = proxy ? true : session!.subjectKind === 'adult';
   // Adults only — see PasskeyManager's header for why scouts stay on codes.
-  const passkeys = isAdult ? await listPasskeys(createAdminClient(), session.personId) : [];
+  // Never the proxy viewer's own passkeys while viewing a family.
+  const passkeys = !proxy && isAdult ? await listPasskeys(createAdminClient(), session!.personId) : [];
+  const withProxy = (href: string) => (proxy ? `${href}?viewScout=${proxy.personId}` : href);
 
   return (
     <>
       <PageHeader kicker="Members" title="Members" />
       <PageShell>
+        <MemberProxyBanner viewer={viewer} />
+        {proxy ? (
+          <p className={styles.intro}>
+            This is what <strong>{proxy.name}</strong>&rsquo;s family sees. It is read-only while you are
+            viewing.
+          </p>
+        ) : (
         <div className={styles.identityRow}>
           <p className={styles.intro}>
-            Signed in as <strong>{session.displayName}</strong>. Everything here is yours &mdash;
+            Signed in as <strong>{session!.displayName}</strong>. Everything here is yours &mdash;
             your household&rsquo;s details, and, as we build them out, the rest of the things
             families ask us for.
           </p>
@@ -151,6 +190,7 @@ export default async function MemberPage() {
             </button>
           </form>
         </div>
+        )}
 
       <div className={styles.grid}>
         {CARDS.map((card) => {
@@ -163,7 +203,7 @@ export default async function MemberPage() {
             return (
               <Link
                 key={card.title}
-                href={card.href!}
+                href={withProxy(card.href!)}
                 className={`${surface.card} ${styles.card} ${styles.cardLive}`}
               >
                 <p className={styles.cardTitle}>{card.title}</p>
@@ -189,7 +229,7 @@ export default async function MemberPage() {
         })}
       </div>
 
-      {isAdult && (
+      {isAdult && !proxy && (
         <PasskeyManager
           passkeys={passkeys}
           configured={passkeysConfigured()}
