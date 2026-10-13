@@ -51,6 +51,9 @@ export interface AdminOrderLine {
   quantity: number;
   donated: boolean;
   amount: number;
+  /** Snapshots at order time; with quantity they give the order's profit (lib/wreaths/my-orders). */
+  unitPrice: number;
+  unitCost: number;
 }
 
 export interface AdminOrder {
@@ -166,13 +169,21 @@ export async function loadSellerCandidates(sb: SupabaseClient, saleId: number): 
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export async function loadAdminOrders(sb: SupabaseClient, saleId: number): Promise<AdminOrder[]> {
-  const { data } = await sb
+/**
+ * Every order in a sale, or — with `involving` — only those credited to or delivered by one of those people (the
+ * Members "My wreath orders" page, which then strips the customer details it may not show).
+ */
+export async function loadAdminOrders(sb: SupabaseClient, saleId: number, opts: { involving?: number[] } = {}): Promise<AdminOrder[]> {
+  let q = sb
     .from('wreath_orders')
-    .select('*, credited:credited_person_id(display_name), wreath_order_lines(quantity, donated, unit_price, wreath_items(catalog_number, name, size))')
-    .eq('sale_id', saleId)
-    .order('placed_at', { ascending: false })
-    .order('id', { ascending: false });
+    .select('*, credited:credited_person_id(display_name), wreath_order_lines(quantity, donated, unit_price, unit_cost, wreath_items(catalog_number, name, size))')
+    .eq('sale_id', saleId);
+  if (opts.involving) {
+    if (opts.involving.length === 0) return [];
+    const ids = opts.involving.join(',');
+    q = q.or(`credited_person_id.in.(${ids}),delivering_person_id.in.(${ids})`);
+  }
+  const { data } = await q.order('placed_at', { ascending: false }).order('id', { ascending: false });
   return ((data ?? []) as Record<string, any>[]).map((r) => ({ // eslint-disable-line @typescript-eslint/no-explicit-any
     id: r.id,
     orderNumber: r.order_number,
@@ -207,7 +218,9 @@ export async function loadAdminOrders(sb: SupabaseClient, saleId: number): Promi
         catalogNumber: it?.catalog_number ?? 0,
         quantity: l.quantity,
         donated: l.donated,
-        amount: Math.round(Number(l.unit_price) * l.quantity * 100) / 100
+        amount: Math.round(Number(l.unit_price) * l.quantity * 100) / 100,
+        unitPrice: Number(l.unit_price),
+        unitCost: Number(l.unit_cost)
       };
     })
   }));

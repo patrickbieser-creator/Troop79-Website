@@ -215,6 +215,18 @@ export function roseOrder(rows: { catalogNumber: number; round: number; quantity
   return [...by.values()].sort((a, b) => a.catalogNumber - b.catalogNumber);
 }
 
+/** What an order earns the troop: sell price minus unit cost, per line, donated wreaths included (they are sales). Gifts, delivery and fees are not profit. */
+export function orderProfit(lines: { quantity: number; unitPrice: number; unitCost: number }[]): number {
+  let cents = 0;
+  for (const l of lines) cents += (toCents(l.unitPrice) - toCents(l.unitCost)) * l.quantity;
+  return fromCents(cents);
+}
+
+/** A scout's share (sale.scoutShare, 0.30) of a profit, rounded to the cent. */
+export function scoutEarnings(profit: number, share: number): number {
+  return fromCents(Math.round(toCents(profit) * share));
+}
+
 /** "$26" for whole dollars, "$26.50" otherwise — the store's price style. */
 export function fmtMoney(n: number): string {
   const whole = Math.round(n * 100) % 100 === 0;

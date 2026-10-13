@@ -159,6 +159,14 @@ img { display: block; max-width: 100%; }
   }
 }
 
+/* My wreath orders (/member/wreaths): printing it prints the delivery list(s) only - the page hides its own
+   screen-only parts (wreaths.module.css); the site chrome is dropped here, as for the other print sheets. */
+@media print {
+  body:has([data-wreath-orders]) > :not(main) {
+    display: none !important;
+  }
+}
+
 /* The cook sheet (Patrick, 2026-10-08) is a page of its own: hide the site chrome on screen AND on paper,
    so the sheet looks the same in both. Its toolbar hides itself in print (cook-sheet.module.css). */
 body:has(#mm-cook-sheet-page) > :not(main) {

@@ -6,7 +6,7 @@
  * Scout account balances now live at /member/scout-account
  * (Plans/Troop-Finances.md Phase 3) — the rest of what belongs here still
  * does not exist: paying for a campout, national registration status,
- * health form dates, wreath sale. Those stay listed as "coming soon" ON
+ * health form dates. Those stay listed as "coming soon" ON
  * PURPOSE — a member who can see what is planned stops asking whether the
  * site does it, and it costs nothing to say.
  *
@@ -85,7 +85,8 @@ const CARDS: Card[] = [
   },
   {
     title: 'Wreath sale',
-    body: 'Your orders, totals, and what’s owed during the wreath fundraiser.'
+    body: 'Your orders, totals, and what’s owed during the wreath fundraiser.',
+    href: '/member/wreaths'
   }
 ];
 

@@ -1,0 +1,182 @@
+/* /member/wreaths — a family's wreath orders. Public tokens only (AGENTS.md). Surfaces come from the shared card. */
+.seller {
+  margin: 0 0 var(--sp-10);
+}
+
+.sellerName {
+  font-size: var(--fs-xl);
+  color: var(--navy);
+  margin: 0 0 var(--sp-3);
+}
+
+.subHead {
+  font-size: var(--fs-lg);
+  color: var(--navy);
+  margin: var(--sp-6) 0 var(--sp-3);
+}
+
+.totals {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: var(--sp-3);
+  margin: 0 0 var(--sp-2);
+}
+
+.stat {
+  margin: 0;
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--rule);
+  border-radius: var(--rad-md);
+}
+
+.stat dt {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--text-meta);
+}
+
+.stat dd {
+  margin: var(--sp-1) 0 0;
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  color: var(--text-head);
+}
+
+.fine {
+  max-width: 62ch;
+  margin: 0 0 var(--sp-3);
+  font-size: var(--fs-sm);
+  color: var(--text-meta);
+  line-height: 1.55;
+}
+
+.orderList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.order {
+  padding: var(--sp-3) var(--sp-4);
+}
+
+/* A cancelled order stays listed (so a family sees why it is not counted) but is muted. */
+.order.cancelled {
+  opacity: 0.6;
+}
+
+.orderHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.orderNo {
+  font-weight: 700;
+  color: var(--text-head);
+}
+
+.orderDate {
+  font-size: var(--fs-sm);
+  color: var(--text-meta);
+}
+
+.orderTotal {
+  margin-left: auto;
+  font-weight: 700;
+  color: var(--text-head);
+}
+
+.orderBody {
+  margin: var(--sp-2) 0 0;
+  font-size: var(--fs-md);
+}
+
+.orderMeta {
+  margin: var(--sp-1) 0 0;
+  font-size: var(--fs-sm);
+  color: var(--text-meta);
+}
+
+.sheet {
+  margin-top: var(--sp-8);
+}
+
+.sheetTitle {
+  font-size: var(--fs-lg);
+  color: var(--navy);
+  margin: 0 0 var(--sp-2);
+}
+
+.sheetWhen {
+  margin: 0 0 var(--sp-3);
+  font-size: var(--fs-md);
+  color: var(--text-meta);
+}
+
+.sheetActions {
+  margin: 0 0 var(--sp-3);
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-md);
+}
+
+.table th,
+.table td {
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid var(--rule);
+  text-align: left;
+  vertical-align: top;
+}
+
+.table thead th {
+  font-size: var(--fs-sm);
+  color: var(--text-meta);
+}
+
+.table tbody th {
+  font-weight: 700;
+}
+
+.tick {
+  font-size: var(--fs-xl);
+  text-align: center;
+}
+
+@media print {
+  .screenOnly {
+    display: none !important;
+  }
+
+  .seller {
+    break-after: page;
+    margin: 0;
+  }
+
+  .sheet {
+    margin: 0;
+  }
+
+  .tableWrap {
+    overflow: visible;
+  }
+
+  .table {
+    font-size: 10pt;
+  }
+
+  .table tr {
+    break-inside: avoid;
+  }
+}

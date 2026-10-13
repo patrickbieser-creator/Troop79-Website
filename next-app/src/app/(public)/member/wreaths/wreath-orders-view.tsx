@@ -1,0 +1,178 @@
+/**
+ * The body of /member/wreaths: one section per wreath-selling scout in the family — a totals strip, the orders
+ * credited to the scout, and the delivery list for distribution day. Pure presentation of lib/wreaths/my-orders'
+ * SellerViews: it renders no form and no write control, so the superuser proxy sees exactly what the family sees.
+ *
+ * Print: everything except the delivery list(s) is `.screenOnly`; globals.css drops the site chrome when this
+ * page is on screen and printing ([data-wreath-orders]).
+ */
+import { Badge } from '@/app/_components/badge';
+import { EmptyState } from '@/app/_components/empty-state';
+import surface from '@/app/_components/card.module.css';
+import { fmtDate, fmtDay } from '@/lib/format-date';
+import { fmtMoney, fmtMoney2 } from '@/lib/wreaths/rules';
+import type { MyOrder, MyWreathOrders, SellerView } from '@/lib/wreaths/my-orders';
+import { PrintDeliveryButton } from './print-button';
+import styles from './wreaths.module.css';
+
+function itemsText(o: MyOrder): string {
+  return o.lines.map((l) => `${l.quantity} × ${l.label}${l.donated ? ' (donated to veterans)' : ''}`).join(', ');
+}
+
+function fulfillmentText(o: MyOrder, scoutName: string): string {
+  switch (o.fulfillment) {
+    case 'scout':
+      return o.deliveringPersonId != null && o.deliveringPersonId === o.creditedPersonId ? `${scoutName} delivers` : 'A scout delivers';
+    case 'delivery':
+      return 'Troop delivers';
+    case 'pickup':
+      return 'Picks up';
+    default:
+      return 'Donated to veterans';
+  }
+}
+
+function PaidBadge({ o }: { o: MyOrder }) {
+  if (o.status === 'cancelled') return <Badge tone="neutral">Cancelled</Badge>;
+  if (o.paymentStatus === 'paid') return <Badge tone="success">Paid</Badge>;
+  if (o.paymentStatus === 'refunded') return <Badge tone="neutral">Refunded</Badge>;
+  return <Badge tone="warning">Owes {fmtMoney2(o.total)}</Badge>;
+}
+
+function Totals({ seller, share }: { seller: SellerView; share: number }) {
+  const s = seller.summary;
+  const stats: [string, string][] = [
+    ['Orders', String(s.orders)],
+    ['Wreaths & items', String(s.items)],
+    ['Sold', fmtMoney(s.sold)],
+    ['Paid', fmtMoney2(s.paid)],
+    ['Still owed', fmtMoney2(s.owed)],
+    ['Earned so far', fmtMoney2(s.earnings)]
+  ];
+  return (
+    <>
+      <dl className={styles.totals}>
+        {stats.map(([label, value]) => (
+          <div key={label} className={styles.stat}>
+            <dt>{label}</dt>
+            <dd>{value}</dd>
+          </div>
+        ))}
+      </dl>
+      <p className={styles.fine}>
+        {seller.name.split(' ')[0]} earns {Math.round(share * 1000) / 10}% of the profit on every wreath sold. {fmtMoney2(s.earningsOnPaid)} of the{' '}
+        {fmtMoney2(s.earnings)} is on orders that are already paid. It goes into the scout account when the sale closes.
+      </p>
+    </>
+  );
+}
+
+function Orders({ seller }: { seller: SellerView }) {
+  if (seller.orders.length === 0) {
+    return <p className={styles.fine}>No orders yet. Orders placed through {seller.name.split(' ')[0]}&rsquo;s link show up here.</p>;
+  }
+  return (
+    <ul className={styles.orderList}>
+      {seller.orders.map((o) => (
+        <li key={o.id} className={`${surface.card} ${styles.order} ${o.status === 'cancelled' ? styles.cancelled : ''}`}>
+          <div className={styles.orderHead}>
+            <span className={styles.orderNo}>{o.orderNumber}</span>
+            <span className={styles.orderDate}>{fmtDate(o.placedAt)}</span>
+            <PaidBadge o={o} />
+            <span className={styles.orderTotal}>{fmtMoney2(o.total)}</span>
+          </div>
+          <p className={styles.orderBody}>
+            <strong>{o.customerName}</strong> &middot; {itemsText(o)}
+          </p>
+          <p className={styles.orderMeta}>{fulfillmentText(o, seller.name.split(' ')[0])}</p>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function DeliveryList({ seller, sale }: { seller: SellerView; sale: NonNullable<MyWreathOrders['sale']> }) {
+  const when = [sale.distributionDate ? fmtDay(sale.distributionDate) : null, sale.distributionWindow, sale.distributionPlace]
+    .filter(Boolean)
+    .join(' · ');
+  return (
+    <section className={styles.sheet} aria-label={`${seller.name} delivery list`}>
+      <h3 className={styles.sheetTitle}>
+        Delivery list &mdash; {seller.name}
+        {sale.year ? ` (${sale.year} wreath sale)` : ''}
+      </h3>
+      {when && <p className={styles.sheetWhen}>Distribution day: {when}</p>}
+      {seller.deliveries.length === 0 ? (
+        <p className={styles.fine}>Nothing for {seller.name.split(' ')[0]} to deliver. Orders marked &ldquo;scout delivers&rdquo; will be listed here.</p>
+      ) : (
+        <>
+          <div className={`${styles.screenOnly} ${styles.sheetActions}`}>
+            <PrintDeliveryButton />
+          </div>
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th scope="col">Customer</th>
+                  <th scope="col">Address</th>
+                  <th scope="col">Phone</th>
+                  <th scope="col">Order</th>
+                  <th scope="col">Payment</th>
+                  <th scope="col">Delivered</th>
+                </tr>
+              </thead>
+              <tbody>
+                {seller.deliveries.map((o) => (
+                  <tr key={o.id}>
+                    <th scope="row">{o.customerName}</th>
+                    <td>
+                      {o.contact!.address}
+                      <br />
+                      {[o.contact!.city, o.contact!.zip].filter(Boolean).join(' ')}
+                    </td>
+                    <td>{o.contact!.phone}</td>
+                    <td>
+                      {o.deliverLines.map((l) => `${l.quantity} × ${l.label}`).join(', ')}
+                      <br />
+                      <span className={styles.orderMeta}>{o.orderNumber}</span>
+                    </td>
+                    <td>{o.paymentStatus === 'paid' ? 'Paid' : `Collect ${fmtMoney2(o.owed)}`}</td>
+                    <td className={styles.tick} aria-label="Delivered?">
+                      <span aria-hidden="true">&#9744;</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
+export function MyWreathOrdersView({ data }: { data: MyWreathOrders }) {
+  const { sale, sellers } = data;
+  if (!sale || sellers.length === 0) {
+    return (
+      <EmptyState>
+        None of the scouts in this household are selling wreaths this year. If that looks wrong, ask a leader.
+      </EmptyState>
+    );
+  }
+  return (
+    <div data-wreath-orders>
+      {sellers.map((seller) => (
+        <section key={seller.personId} className={styles.seller} aria-label={`${seller.name} wreath orders`}>
+          <div className={styles.screenOnly}>
+            <h2 className={styles.sellerName}>{seller.name}</h2>
+            <Totals seller={seller} share={sale.scoutShare} />
+            <h3 className={styles.subHead}>Orders</h3>
+            <Orders seller={seller} />
+          </div>
+          <DeliveryList seller={seller} sale={sale} />
+        </section>
+      ))}
+    </div>
+  );
+}

@@ -6,8 +6,10 @@ import {
   deliveryFeeFor,
   inDeliveryArea,
   mergeLines,
+  orderProfit,
   priceCart,
   roseOrder,
+  scoutEarnings,
   zipFormatOk,
   type Fulfillment,
   type PricedItem,
@@ -123,5 +125,25 @@ describe('Rose order', () => {
       { catalogNumber: 1, round1: 7, round2: 1, total: 8 },
       { catalogNumber: 3, round1: 2, round2: 0, total: 2 }
     ]);
+  });
+});
+
+describe('scout earnings', () => {
+  it('OrderProfit_IsSellMinusCost_PerLine_DonatedIncluded', () => {
+    expect(
+      orderProfit([
+        { quantity: 2, unitPrice: 26, unitCost: 16.07 },
+        { quantity: 1, unitPrice: 10, unitCost: 5.85 }
+      ])
+    ).toBe(24.01);
+  });
+
+  it('OrderProfit_IsZero_ForNoLines', () => {
+    expect(orderProfit([])).toBe(0);
+  });
+
+  it('ScoutEarnings_IsThirtyPercentOfProfit_RoundedToTheCent', () => {
+    expect(scoutEarnings(24.01, 0.3)).toBe(7.2);
+    expect(scoutEarnings(0, 0.3)).toBe(0);
   });
 });
