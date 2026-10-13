@@ -59,7 +59,8 @@ export async function searchSellers(
     .eq('sale_id', saleId)
     .eq('active', true)
     .ilike('people.first_name', `${prefix}%`)
-    .limit(MAX_MATCHES * 3);
+    // A sale has a few dozen sellers: take every match, so the sort below (not row order) decides which 8 show.
+    .limit(200);
   type P = { first_name: string | null; last_name: string | null };
   const rows = (data ?? []) as unknown as { id: number; people: P | P[] | null }[];
   return rows

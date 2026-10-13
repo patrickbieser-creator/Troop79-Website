@@ -119,16 +119,26 @@ describe('picking a scout to credit', () => {
   });
 
   it('CheckoutCredit_HouseholdNotice_SharesTheDailyCapWithScoutLinkOrders', async () => {
-    const limits = { perSellerNoticeDay: 1 };
     const before = (await admin.from('wreath_orders').select('id', { count: 'exact', head: true }).eq('sale_id', fx.saleId).eq('credited_person_id', fx.sellerB.personId)).count ?? 0;
+    // Room for exactly one more notice, whatever earlier tests left credited to this scout.
+    const limits = { perSellerNoticeDay: before + 1 };
     for (let i = 0; i < 3; i++) await placeOrder(input({ creditSellerId: sellerBId }), deps({ limits }));
     // Already-credited orders count toward the cap, however they were credited.
-    expect(householdEmails.mock.calls.length).toBe(before >= 1 ? 0 : 1);
+    expect(householdEmails.mock.calls.length).toBe(1);
   });
 });
 
 describe('the type-ahead', () => {
   const first = () => fx.sellerA.first.slice(0, 3);
+
+  it('CheckoutCredit_TypeAheadReturnsNothing_WhenTheSaleIsNotOpen', async () => {
+    const limiter = createSellerSearchLimiter();
+    const { data: sale } = await admin.from('wreath_sales').select('status').eq('id', fx.saleId).single();
+    await admin.from('wreath_sales').update({ status: 'draft' }).eq('id', fx.saleId);
+    const hits = await searchSellers(admin, fx.saleId, first(), { ip: '1.1.1.9', limiter });
+    await admin.from('wreath_sales').update({ status: (sale as { status: string }).status }).eq('id', fx.saleId);
+    expect(hits).toEqual([]);
+  });
 
   it('CheckoutCredit_TypeAheadNeedsTwoLetters_ReturnsFirstNameAndInitialOnly', async () => {
     const limiter = createSellerSearchLimiter();
