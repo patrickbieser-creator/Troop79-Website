@@ -165,7 +165,13 @@ const one = <T>(v: T | T[] | null): T | null => (Array.isArray(v) ? (v[0] ?? nul
  * The seller behind a link, or null. An unknown slug, a malformed one and a RETIRED seller all return null — the
  * caller shows the general store and never says which, so a retired link cannot be told from one that never existed.
  */
-export async function resolveScoutLink(sb: SupabaseClient, saleId: number, slug: string): Promise<ScoutLink | null> {
+/** A typed or pasted link in its stored form: case and surrounding space don't matter ("Anjali-S" is "anjali-s"). */
+export function canonicalSlug(raw: string): string {
+  return raw.trim().toLowerCase();
+}
+
+export async function resolveScoutLink(sb: SupabaseClient, saleId: number, rawSlug: string): Promise<ScoutLink | null> {
+  const slug = canonicalSlug(rawSlug);
   if (!SLUG_RE.test(slug)) return null;
   const { data } = await sb
     .from('wreath_sellers')

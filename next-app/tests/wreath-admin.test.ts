@@ -245,6 +245,14 @@ describe('sellers', () => {
     expect(await setSellerSlug(id, fx.sellerB.slug)).toMatchObject({ ok: true });
   });
 
+  it('SellerSlug_StoredLowercase_WhenTypedWithCapitals', async () => {
+    const { setSellerSlug } = await actions();
+    const { data: b } = await admin.from('wreath_sellers').select('id').eq('sale_id', fx.saleId).eq('slug', fx.sellerB.slug).single();
+    const id = (b as { id: number }).id;
+    expect(await setSellerSlug(id, ` ${fx.sellerB.slug.toUpperCase()} `)).toMatchObject({ ok: true });
+    expect((await admin.from('wreath_sellers').select('slug').eq('id', id).single()).data?.slug).toBe(fx.sellerB.slug);
+  });
+
   it('Leader_CanAddAndRetireSeller', async () => {
     const { addSeller, setSellerActive } = await actions();
     state.caps = new Set(['news.write']);

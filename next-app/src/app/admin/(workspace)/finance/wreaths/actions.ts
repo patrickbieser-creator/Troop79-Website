@@ -7,7 +7,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { centralToInstant, instantToCentral } from '@/lib/dates';
 import { uploadToBunny } from '@/lib/bunny-storage';
 import { PAID_METHODS, deliveryFeeFor, fmtMoney2, fromCents, inDeliveryArea, toCents, zipFormatOk, type PaidMethod } from '@/lib/wreaths/rules';
-import { SLUG_RE } from '@/lib/wreaths/public';
+import { canonicalSlug, SLUG_RE } from '@/lib/wreaths/public';
 
 /**
  * Wreath sale admin (Plans/Wreath-Sale.md, Release A: Settings, Items, Sellers, Orders). Gate: `finance.manage` on
@@ -232,7 +232,7 @@ async function slugTaken(supabase: ReturnType<typeof createAdminClient>, saleId:
 /** Adds a roster scout as a seller. Only an ACTIVE scout; a colliding link is refused (no auto-suffix). */
 export async function addSeller(saleId: number, v: { personId: number; slug: string }): Promise<WreathResult> {
   await requireCapability('finance.manage');
-  const slug = v.slug.trim();
+  const slug = canonicalSlug(v.slug);
   const problem = slug ? slugProblem(slug) : 'Give the seller a link, like oliver-k.';
   if (problem) return fail(problem, 'slug');
   const supabase = createAdminClient();
@@ -261,7 +261,7 @@ export async function addSeller(saleId: number, v: { personId: number; slug: str
 /** Sets or clears (null) a seller's link. A cleared link means the seller has no page; their credit still works from Orders. */
 export async function setSellerSlug(sellerId: number, slugIn: string | null): Promise<WreathResult> {
   await requireCapability('finance.manage');
-  const slug = slugIn?.trim() || null;
+  const slug = (slugIn && canonicalSlug(slugIn)) || null;
   if (slug) {
     const problem = slugProblem(slug);
     if (problem) return fail(problem, 'slug');

@@ -65,7 +65,18 @@ function AddLine({ itemKey, label, qty, onQty }: { itemKey: string; label: strin
   );
 }
 
-export function StoreView({ items, scout, head }: { items: StoreItem[]; scout: StoreViewScout | null; head: ReactNode }) {
+export function StoreView({
+  items,
+  scout,
+  head,
+  linkFellBack = false
+}: {
+  items: StoreItem[];
+  scout: StoreViewScout | null;
+  head: ReactNode;
+  /** A typed link didn't resolve; its own notice says so, and naming another scout here would only confuse. */
+  linkFellBack?: boolean;
+}) {
   const { cart, setQty, setSeller } = useCart();
   const [announce, setAnnounce] = useState('');
 
@@ -86,7 +97,7 @@ export function StoreView({ items, scout, head }: { items: StoreItem[]; scout: S
   const checkoutHref = scout ? `/wreaths/checkout?s=${encodeURIComponent(scout.slug)}` : '/wreaths/checkout';
   const credited = scout ? scout.name : 'Troop 79';
   // A cart credited to a scout whose page was opened earlier; the general store orders for the troop.
-  const droppedFrom = !scout && count > 0 && cart.seller ? cart.seller : null;
+  const droppedFrom = !scout && !linkFellBack && count > 0 && cart.seller ? cart.seller : null;
 
   function onQty(key: string, q: number) {
     setQty(key, q);

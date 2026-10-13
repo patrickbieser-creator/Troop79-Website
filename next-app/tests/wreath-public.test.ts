@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { adminClient } from './helpers/admin-client';
 import { makeWreathFixture, NOW_R1, type WreathFixture } from './helpers/wreath-fixture';
 import { placeOrder } from '../src/lib/wreaths/place-order';
-import { loadConfirmation, loadCurrentSale, loadStoreItems, resolveScoutLink } from '../src/lib/wreaths/public';
+import { canonicalSlug, loadConfirmation, loadCurrentSale, loadStoreItems, resolveScoutLink } from '../src/lib/wreaths/public';
 import { customerConfirmationEmail, scoutNoticeEmail } from '../src/lib/wreaths/emails';
 
 /**
@@ -101,6 +101,19 @@ describe('public loaders', () => {
     expect(unknown).toBeNull();
     expect(malformed).toBeNull();
     expect(retired).toEqual(unknown);
+  });
+
+  it('ScoutLink_ResolvesRegardlessOfCase_AndSurroundingSpace', async () => {
+    const upper = await resolveScoutLink(admin, fx.saleId, fx.sellerA.slug.toUpperCase());
+    const mixed = await resolveScoutLink(admin, fx.saleId, ` ${fx.sellerA.slug.charAt(0).toUpperCase()}${fx.sellerA.slug.slice(1)} `);
+    expect(upper?.slug).toBe(fx.sellerA.slug);
+    expect(mixed?.slug).toBe(fx.sellerA.slug);
+  });
+
+  it('CanonicalSlug_LowercasesAndTrims', () => {
+    expect(canonicalSlug('Anjali-S')).toBe('anjali-s');
+    expect(canonicalSlug('  OLIVER-K ')).toBe('oliver-k');
+    expect(canonicalSlug('ben-b')).toBe('ben-b');
   });
 
   it('Customer_SeesGeneralStore_WhenScoutSlugUnknown', async () => {

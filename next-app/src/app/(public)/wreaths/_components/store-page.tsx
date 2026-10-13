@@ -108,7 +108,12 @@ export function StorePage({ data }: { data: StorePageData }) {
         </div>
       </div>
       <PageShell>
-        <StoreView items={state.items} scout={scout ? { slug: scout.slug, name: scout.name, firstName: scout.firstName } : null} head={head} />
+        <StoreView
+          items={state.items}
+          scout={scout ? { slug: scout.slug, name: scout.name, firstName: scout.firstName } : null}
+          head={head}
+          linkFellBack={linkFellBack}
+        />
       </PageShell>
     </>
   );
