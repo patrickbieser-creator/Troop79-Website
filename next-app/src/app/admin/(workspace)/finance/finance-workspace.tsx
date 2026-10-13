@@ -259,7 +259,7 @@ export function FinanceWorkspace({
               left here is a write action, so the whole bar is canManage-only
               now (a finance.view-only actor has nothing left to pick here;
               Activity Report is still reachable — see Backlog re: the
-              sub-nav's finance.view visibility gap). Prefixed values
+              the nav's finance.view visibility gap). Prefixed values
               navigate (router.push); bare values open the modal below. */}
           <ActionsMenu
             ariaLabel="Finance actions"

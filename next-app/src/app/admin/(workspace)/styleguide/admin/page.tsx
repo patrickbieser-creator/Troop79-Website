@@ -19,7 +19,7 @@
  * No page-level capability guard, deliberately: the workspace layout already
  * requires a resolved admin actor, and this page reads no data and performs
  * no writes — it renders static samples only. The nav offers it to full
- * admins (capability-less item semantics in sub-nav.tsx).
+ * admins (capability-less item semantics in nav-data.ts).
  */
 import Link from 'next/link';
 import sg from './styleguide.module.css';
@@ -49,6 +49,7 @@ import { HelpBadge } from '../../../_components/help-badge';
 import { RecentItemsList } from '../../_components/recent-items-list';
 import { AttentionInbox } from '../../_components/attention-inbox';
 import { AdminHub } from '../../_components/admin-hub';
+import { SectionBar, SectionTabs } from '../../_components/section-nav';
 import { ReportsLanding } from '../../_components/reports-landing';
 import { PageTitle } from '../../_components/page-title';
 import { Notice } from '../../_components/notice';
@@ -155,6 +156,13 @@ const SCOREBOARD: {
   phase: string;
   notes: string;
 }[] = [
+  {
+    pattern: 'Admin navigation (left rail → section bar + tabs)',
+    copies: '✓ SHIPPED 2026-10-13 (v1.217.0) — the rail is retired; 0 copies',
+    canonical: 'admin/(workspace)/_components/section-nav: SectionBar + SectionTabs (the shared TabStrip), built by sectionNav() from nav-data SECTIONS',
+    phase: 'Admin Home & Nav W3',
+    notes: 'a destination is added ONCE in nav-data (hub card, bar and tab all follow); never a per-screen section nav. Page-level tab strips stay in the content, below'
+  },
   {
     pattern: 'Add buttons (green "+ Add X")',
     copies: '✓ DONE — 0 copies left',
@@ -1086,7 +1094,7 @@ export default function StyleguidePage() {
         <p className={sg.sectionNote}>
           Home&rsquo;s card grid under the inbox (<code>_components/admin-hub</code>, 2026-10-13): a title that links, one
           line, and nothing else &mdash; no count badges, the inbox already carries counts. Groups and cards are built by{' '}
-          <code>hubGroups()</code> from the same <code>SECTIONS</code> data the rail renders, so a destination is added
+          <code>hubGroups()</code> from the same <code>SECTIONS</code> data the section bar and tabs render, so a destination is added
           once. A folder card (Reports) shows its items as quiet links inside the card. A seasonal card (Wreath Sale) is
           first in its group while in season and last and greyed &mdash; still clickable &mdash; when not.
           &ldquo;Troop admin tools&rdquo; is a quiet card of plain links, always last. A folder&rsquo;s title links to its
@@ -1169,6 +1177,65 @@ export default function StyleguidePage() {
                     }
                   ]
                 }
+              ]}
+            />
+          </Specimen>
+        </div>
+      </section>
+
+      <section className={sg.section}>
+        <h2 className={sg.sectionHead}>Section bar &amp; section tabs</h2>
+        <p className={sg.sectionNote}>
+          The admin navigation since 2026-10-13 (<code>_components/section-nav</code>), replacing the left rail. Two
+          rows under the header, both built by <code>sectionNav()</code> from the same <code>SECTIONS</code> data as the
+          Home cards: the <strong>section bar</strong> (white band, gold underline on the active section, so it never
+          reads as a TabStrip) and the active section&rsquo;s <strong>tabs</strong> (the shared <code>TabStrip</code> in
+          link mode on a quieter grey band). A section with no visible item is absent; a section with exactly one shows
+          no tab strip; Home never has one. The five reports are not tabs &mdash; one &ldquo;Reports&rdquo; tab is active
+          on the landing and on every report page. Styleguides stays out of both (Home tools row only). Every link goes
+          through the dirty-form guard (<code>useGuardedNav</code>, as BackNav does). A page&rsquo;s own TabStrip sits in
+          the content below, on the page background, with the larger type &mdash; it must read as the page&rsquo;s, not
+          the section&rsquo;s. Phones (&le; 800px): each row scrolls sideways with the active entry scrolled into view; the
+          page never scrolls sideways.
+        </p>
+        <div className={sg.specimenGrid}>
+          <Specimen
+            label="Section bar + tabs — Advancement active, the Reports tab on"
+            canonical
+            note="Bar labels are short (Home, People, Tools); the tab strip is the section's items. A report page lights the Reports tab."
+          >
+            <SectionBar
+              entries={[
+                { key: 'o', label: 'Home', href: '#', active: false },
+                { key: 'a', label: 'Advancement', href: '#', active: true },
+                { key: 'c', label: 'Calendar & Content', href: '#', active: false },
+                { key: 'm', label: 'Money', href: '#', active: false },
+                { key: 'p', label: 'People', href: '#', active: false },
+                { key: 't', label: 'Tools', href: '#', active: false }
+              ]}
+            />
+            <SectionTabs
+              label="Advancement"
+              activeKey="reports"
+              tabs={[
+                { key: 'fe', label: 'Fast Entry', href: '#' },
+                { key: 'l', label: 'Ledger', href: '#' },
+                { key: 'sp', label: 'Submit & Present', href: '#' },
+                { key: 'mb', label: 'MB Progress', href: '#' },
+                { key: 'mp', label: 'Meeting Plan', href: '#' },
+                { key: 'hn', label: 'Has/Needs', href: '#' },
+                { key: 'reports', label: 'Reports', href: '#' }
+              ]}
+            />
+          </Specimen>
+          <Specimen
+            label="Section with one visible item — the bar alone"
+            note="A leader who can open only the Calendar sees no tab strip: the page is the section."
+          >
+            <SectionBar
+              entries={[
+                { key: 'o', label: 'Home', href: '#', active: false },
+                { key: 'c', label: 'Calendar & Content', href: '#', active: true }
               ]}
             />
           </Specimen>

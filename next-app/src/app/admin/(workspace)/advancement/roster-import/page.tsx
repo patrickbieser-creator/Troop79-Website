@@ -12,7 +12,7 @@
  * the full story). LEADER_PASSWORD is fully retired, so this page was
  * unreachable via any Access & Permissions grant despite every mutation
  * behind it already working correctly. Converted to
- * requireCapability('roster.manage'), matching the nav item (sub-nav.tsx)
+ * requireCapability('roster.manage'), matching the nav item (nav-data.ts)
  * and every action in ./actions.ts.
  */
 

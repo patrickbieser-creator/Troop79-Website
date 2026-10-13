@@ -1,11 +1,11 @@
 /**
- * The admin navigation DATA — one source for the rail (sub-nav.tsx) and the Home card grid (admin-home).
- * A plain module on purpose: sub-nav.tsx is 'use client', and a const exported from a client file reaches
+ * The admin navigation DATA — one source for the section bar + tabs (section-nav.tsx) and the Home card grid (admin-hub).
+ * A plain module on purpose: section-nav.tsx is 'use client', and a const exported from a client file reaches
  * server components as a client reference (see next-app AGENTS / memory "Client-module constants").
  *
  * Plans/Admin-Home-And-Nav.md Wave 2: regrouped by job (Advancement · Calendar & Content · Money · People & Setup ·
- * Troop admin tools). The rail renders these sections as they are; the Home grid renders the same visible sections
- * through hubGroups().
+ * Troop admin tools). Wave 3: the section bar names these sections and each section's items are its tabs
+ * (sectionNav()); the Home grid renders the same visible sections through hubGroups().
  */
 import { CAPABILITIES, type Capability } from '@/lib/capabilities';
 
@@ -45,20 +45,23 @@ export interface NavItem {
   /**
    * This item IS the landing page of the folder of that name (Reports -> /admin/reports). It carries no capability of
    * its own: it is visible exactly when at least one member of the folder is. The Home card's title links to it, and
-   * it is not listed among the folder's own links. Its rail entry lights up on any member's page (railActiveMatchPathFor).
+   * it is not listed among the folder's own links. Its tab lights up on any member's page (navActiveMatchPathFor).
    */
   folderLanding?: string;
   /**
-   * Left off the rail: a folder member only its landing page collects, or a tool reachable from the Troop admin
-   * tools card only (Styleguides).
+   * Left off the section bar and tabs: a folder member only its landing page collects (the five reports sit behind
+   * the single Reports tab), or a tool reachable from the Troop admin tools row only (Styleguides). A hidden folder
+   * member lights its folder's landing tab. Every folder member must carry it (tested).
    */
-  railHidden?: boolean;
+  navHidden?: boolean;
   /** Seasonal (Wreath Sale): first in its group while its season is open, last and greyed otherwise. */
   seasonal?: boolean;
 }
 
 export interface NavSection {
   title: string;
+  /** The (shorter) name on the section bar when it differs from the title: "Home", "People", "Tools". */
+  barLabel?: string;
   /** Rendered quietly and last on Home: one card listing the items as links, no descriptions. */
   quiet?: boolean;
   items: NavItem[];
@@ -72,6 +75,7 @@ export const FOLDER_DESCRIPTIONS: Record<string, string> = {
 export const SECTIONS: NavSection[] = [
   {
     title: 'Overview',
+    barLabel: 'Home',
     items: [
       {
         // Home = the old Dashboard, extended (Plans/Admin-Home-And-Nav.md Wave 1):
@@ -140,9 +144,9 @@ export const SECTIONS: NavSection[] = [
         description: 'Who still needs a requirement',
         capability: 'advancement.write'
       },
-      // Reports: a "Reports" rail entry and ONE card on Home, both landing on /admin/reports, which lists every member of
-      // the folder below. The reports ALSO stay on the rail (Patrick, 2026-10-13: allowed duplication). A new report is
-      // one item here with folder: 'Reports'.
+      // Reports: ONE "Reports" tab and ONE card on Home, both landing on /admin/reports, which lists every member of
+      // the folder below (Patrick, 2026-10-13: the five reports are not tabs). A new report is one item here with
+      // folder: 'Reports' and navHidden: true.
       {
         label: 'Reports',
         href: '/admin/reports',
@@ -155,6 +159,7 @@ export const SECTIONS: NavSection[] = [
         matchPath: '/admin/advancement/audits',
         description: 'Data-quality checks that flag ledger records that look wrong',
         folder: 'Reports',
+        navHidden: true,
         capability: 'advancement.write'
       },
       {
@@ -163,6 +168,7 @@ export const SECTIONS: NavSection[] = [
         matchPath: '/admin/advancement/report',
         description: 'What got signed off in a date range, for the Bugle and the public site',
         folder: 'Reports',
+        navHidden: true,
         capability: 'advancement.write'
       },
       {
@@ -171,6 +177,7 @@ export const SECTIONS: NavSection[] = [
         matchPath: '/admin/advancement/court-of-honor',
         description: 'Ranks, merit badges and awards earned in a date range',
         folder: 'Reports',
+        navHidden: true,
         capability: 'advancement.write'
       },
       {
@@ -179,6 +186,7 @@ export const SECTIONS: NavSection[] = [
         matchPath: '/admin/advancement/scoutbook-export',
         description: "Awards in a date range, formatted for Scoutbook's bulk upload",
         folder: 'Reports',
+        navHidden: true,
         capability: 'advancement.write'
       },
       {
@@ -189,6 +197,7 @@ export const SECTIONS: NavSection[] = [
         matchPath: '/admin/advancement/meetings/report',
         description: 'Meeting attendance per scout and per adult',
         folder: 'Reports',
+        navHidden: true,
         capability: 'advancement.write'
       }
     ]
@@ -323,6 +332,7 @@ export const SECTIONS: NavSection[] = [
   },
   {
     title: 'People & Setup',
+    barLabel: 'People',
     items: [
       {
         label: 'Roster',
@@ -342,6 +352,7 @@ export const SECTIONS: NavSection[] = [
   },
   {
     title: 'Troop admin tools',
+    barLabel: 'Tools',
     quiet: true,
     items: [
       {
@@ -372,12 +383,12 @@ export const SECTIONS: NavSection[] = [
         capability: 'news.write'
       },
       {
-        // Returns here ONLY (Wave 2): a link in the tools card, not a rail item. No capability, so it is
-        // offered to full admins alone (capability-less item semantics, below).
+        // A link in the Home tools row ONLY, not a tab. No capability, so it is offered to full admins alone
+        // (capability-less item semantics, below).
         label: 'Styleguides',
         href: '/admin/styleguide',
         matchPath: '/admin/styleguide',
-        railHidden: true
+        navHidden: true
       }
     ]
   }
@@ -493,10 +504,10 @@ export function isFullAdmin(actor: { legacyRole: unknown; capabilities: Readonly
   return actor.legacyRole !== null || CAPABILITIES.every((c) => actor.capabilities.has(c));
 }
 
-/** The rail's view of the (already visible) sections: everything except items marked railHidden (Styleguides). */
-export function railSections<S extends { items: NavItem[] }>(sections: S[]): S[] {
+/** The bar's and tabs' view of the (already visible) sections: everything except items marked navHidden. */
+export function navSections<S extends { items: NavItem[] }>(sections: S[]): S[] {
   return sections
-    .map((s) => ({ ...s, items: s.items.filter((i) => !i.railHidden) }))
+    .map((s) => ({ ...s, items: s.items.filter((i) => !i.navHidden && !i.disabled && i.href) }))
     .filter((s) => s.items.length > 0);
 }
 
@@ -514,11 +525,11 @@ export function activeSectionTitleFor(
 }
 
 /**
- * The rail's active item. A folder member on the rail lights itself; a railHidden member lights its folder's landing
- * entry (Reports) — by explicit membership in the folder, never by URL prefix. Pass the VISIBLE sections before
- * railSections() drops the hidden members.
+ * The active tab. A tab lights itself; a navHidden folder member (a report) lights its folder's landing tab (Reports)
+ * - by explicit membership in the folder, never by URL prefix. Pass the VISIBLE sections before navSections() drops the
+ * hidden members.
  */
-export function railActiveMatchPathFor(
+export function navActiveMatchPathFor(
   sections: { items: NavItem[] }[],
   pathname: string
 ): string | null {
@@ -526,10 +537,54 @@ export function railActiveMatchPathFor(
   if (active == null) return null;
   const items = sections.flatMap((s) => s.items);
   const item = items.find((i) => i.matchPath === active);
-  // A member that is on the rail lights itself; only a railHidden member falls back to its folder's landing entry.
-  if (!item?.folder || !item.railHidden) return active;
+  if (!item?.folder || !item.navHidden) return active;
   const folder = item.folder;
   return items.find((i) => i.folderLanding === folder)?.matchPath ?? active;
+}
+
+export interface BarEntry {
+  /** The section title (stable key; the bar's label may be shorter). */
+  key: string;
+  label: string;
+  /** Its first tab: where the bar entry goes. */
+  href: string;
+  active: boolean;
+}
+
+export interface TabEntry {
+  /** The item's matchPath - compared with SectionNavModel.activeKey. */
+  key: string;
+  label: string;
+  href: string;
+}
+
+export interface SectionNavModel {
+  bar: BarEntry[];
+  /** The active section's tabs; null when it has fewer than two (a lone item needs no strip) or no section is active. */
+  tabs: TabEntry[] | null;
+  activeKey: string | null;
+}
+
+/**
+ * Everything the section bar and tab strip render, from the VISIBLE sections and the pathname. A section with no
+ * visible tab is absent; the active section is the one an item sits in (explicit membership), so Ledger Audit
+ * lights Money though its URL is under /admin/utilities.
+ */
+export function sectionNav(visible: NavSection[], pathname: string): SectionNavModel {
+  const secs = navSections(visible);
+  const activeTitle = activeSectionTitleFor(visible, pathname);
+  const bar = secs.map((s) => ({
+    key: s.title,
+    label: s.barLabel ?? s.title,
+    href: s.items[0].href!,
+    active: s.title === activeTitle
+  }));
+  const current = secs.find((s) => s.title === activeTitle);
+  const tabs =
+    current && current.items.length > 1
+      ? current.items.map((i) => ({ key: i.matchPath ?? i.href!, label: i.label, href: i.href! }))
+      : null;
+  return { bar, tabs, activeKey: navActiveMatchPathFor(visible, pathname) };
 }
 
 export interface FolderEntry {
@@ -565,7 +620,7 @@ export interface HubGroup {
 }
 
 /**
- * The Home card grid, built from the SAME visible sections the rail renders — never a second hand-kept list.
+ * The Home card grid, built from the SAME visible sections the bar renders — never a second hand-kept list.
  * Home itself is skipped (it is the page). A folder (Reports) collapses its items into one card at the position of
  * its first item. The quiet group is one card listing its tools as links. A seasonal card goes first in its group
  * while `wreathOpen`, otherwise last and greyed. A group with no cards is absent.

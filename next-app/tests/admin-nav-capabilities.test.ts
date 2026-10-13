@@ -3,7 +3,7 @@ import {
   visibleNavSections,
   activeMatchPathFor,
   activeSectionTitleFor,
-  railSections,
+  navSections,
   SECTIONS as RAIL
 } from '../src/app/admin/(workspace)/_components/nav-data';
 import type { Capability } from '../src/lib/capabilities';
@@ -160,24 +160,24 @@ describe('activeMatchPathFor', () => {
 
 /**
  * Rail cleanup (Plans/Admin-Home-And-Nav.md, Wave 1): Home replaces the
- * Dashboard link, Styleguides leaves the rail (railHidden: a tools-card link
+ * Dashboard link, Styleguides leaves the rail (navHidden: a tools-card link
  * only), and Ledger Audit is offered once, under Money (Wave 2 regroup).
  */
-describe('admin rail contents', () => {
-  const rail = railSections(visibleNavSections(RAIL, { fullAdmin: true, capabilities: new Set<Capability>(['finance.manage', 'finance.view']) }));
+describe('admin nav contents', () => {
+  const rail = navSections(visibleNavSections(RAIL, { fullAdmin: true, capabilities: new Set<Capability>(['finance.manage', 'finance.view']) }));
   const all = rail.flatMap((s) => s.items);
 
-  it('Rail_DoesNotListStyleguides', () => {
+  it('Nav_DoesNotListStyleguides', () => {
     expect(all.map((i) => i.label)).not.toContain('Styleguides');
     expect(all.some((i) => i.href?.startsWith('/admin/styleguide'))).toBe(false);
   });
 
-  it('Rail_ListsLedgerAuditExactlyOnce_UnderMoney', () => {
+  it('Nav_ListsLedgerAuditExactlyOnce_UnderMoney', () => {
     const hits = RAIL.flatMap((s) => s.items.map((i) => ({ section: s.title, i }))).filter((x) => x.i.href === '/admin/utilities/ledger-audit');
     expect(hits.map((h) => h.section)).toEqual(['Money']);
   });
 
-  it('Rail_CallsTheFirstItemHome_AndPointsItAtAdmin', () => {
+  it('Nav_CallsTheFirstItemHome_AndPointsItAtAdmin', () => {
     const home = RAIL[0].items[0];
     expect(home.label).toBe('Home');
     expect(home.href).toBe('/admin');
@@ -195,7 +195,7 @@ describe('admin rail contents', () => {
     expect(out[0].items[0].label).toBe('Home');
   });
 
-  it('Rail_GroupsByJob_InThePlansOrder', () => {
+  it('Nav_GroupsByJob_InThePlansOrder', () => {
     expect(RAIL.map((s) => s.title)).toEqual([
       'Overview',
       'Advancement',

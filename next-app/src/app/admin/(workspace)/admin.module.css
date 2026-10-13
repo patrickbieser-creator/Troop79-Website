@@ -1,4 +1,4 @@
-/* Admin workspace chrome — the left-sidebar layout shell.
+/* Admin workspace chrome — the layout shell (header, section bar + tabs, main).
 
    The --admin-* design tokens USED to be defined here on .adminRoot; they
    moved to :root in ./admin.css (2026-08-21, Plans/Admin-Design-System.md)
@@ -58,7 +58,7 @@
   gap: 10px;
 }
 
-/* Applied only when pointed at the local dev database — matches .subNavDevDb. */
+/* Applied only when pointed at the local dev database — matches the section bar's dev tint. */
 .topBarDevDb {
   background: var(--admin-danger);
   border-bottom-color: var(--admin-danger-hover);
@@ -98,96 +98,18 @@
   background: rgba(255,255,255,.12);
 }
 
-/* Workspace shell: sidebar + main */
+/* Workspace shell: the section bar + tabs (section-nav) stacked above main */
 .workspace {
-  display: grid;
-  grid-template-columns: 220px 1fr;
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-height: 0;
 }
 
-/* Sub-nav sidebar */
-.subNav {
-  background: var(--admin-white);
-  border-right: 1px solid var(--admin-gray-200);
-  padding: 18px 0;
-  overflow-y: auto;
-}
-
-/* Applied only when pointed at the local dev database (see sub-nav.tsx) —
-   a visual tripwire against mistaking dev for production. */
-.subNavDevDb {
-  background: var(--admin-status-error-bg);
-  border-right-color: color-mix(in srgb, var(--admin-danger) 30%, white);
-}
-.subNavGroup {
-  display: block;
-}
-/* Section headers outrank the items they label. They used to be SMALLER
-   (10px) and LIGHTER (gray-500) than the 13px/gray-700 links beneath them,
-   so the eight sections read as one undifferentiated list (Patrick,
-   2026-08-22: "too small and too similar in color to see the sections").
-   Now: larger than the links, and navy rather than a gray one step off
-   theirs — the same brand navy the active item uses, so the sidebar has
-   exactly one accent color. */
-.subNavSection {
-  font-size: var(--admin-text-lg);
-  font-weight: 700;
-  color: var(--admin-navy);
-  padding: 16px 18px 6px;
-  margin-top: 12px;
-}
-.subNavSection:first-child { margin-top: 0; }
-.subNavBtn {
-  display: block;
-  width: 100%;
-  text-align: left;
-  background: none;
-  border: none;
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--admin-gray-700);
-  padding: 9px 18px;
-  cursor: pointer;
-  border-left: 3px solid transparent;
-  transition: background .15s ease, color .15s ease;
-}
-.subNavBtn:hover {
-  background: var(--admin-gray-100);
-  color: var(--admin-navy);
-}
-.subNavBtnActive {
-  background: var(--admin-navy);
-  color: var(--admin-white);
-  border-left-color: var(--admin-warning);
-}
-.subNavBtnActive:hover {
-  background: var(--admin-navy);
-  color: var(--admin-white);
-}
-.subNavBtnDisabled {
-  color: var(--admin-gray-400);
-  cursor: not-allowed;
-  font-weight: 500;
-}
-.subNavBtnDisabled:hover {
-  background: transparent;
-  color: var(--admin-gray-400);
-}
-.soonTag {
-  display: inline-block;
-  font-size: var(--admin-text-base);
-  font-weight: 700;
-  background: var(--admin-gray-200);
-  color: var(--admin-gray-500);
-  padding: 1px 6px;
-  border-radius: 8px;
-  margin-left: 6px;
-}
-
 /* Main content area */
 .main {
+  flex: 1;
+  min-width: 0;
   padding: 28px 32px;
   overflow-y: auto;
 }
@@ -207,48 +129,3 @@
 .errorHint { color: var(--admin-gray-500); font-size: var(--admin-text-lg); }
 .errorActions { display: flex; gap: var(--admin-space-6); margin-top: var(--admin-space-10); }
 /* .errorRetry retired 2026-08-25 → shared Button (secondary) */
-
-@media (max-width: 800px) {
-  .workspace { grid-template-columns: 1fr; }
-  .subNav {
-    border-right: none;
-    border-bottom: 1px solid var(--admin-gray-200);
-    padding: 8px;
-  }
-  /* Each section's wrapper (title + its items) becomes its own wrapped chip
-     row instead of one undifferentiated mass of buttons — a compact label
-     replaces the desktop block header rather than disappearing (was
-     `display: none`, which dropped all grouping on phones/tablets, exactly
-     where several leaders actually use this nav — see Plans/Admin-Nav-And-
-     Consistency.md). */
-  .subNavGroup {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 4px;
-    padding: 5px 0;
-    border-bottom: 1px solid var(--admin-gray-100);
-  }
-  .subNavGroup:last-child { border-bottom: none; }
-  /* Same correction as the desktop header, scaled for the inline chip row:
-     readable against the chips instead of receding behind them. Stays
-     smaller than desktop — here it shares a line with the items rather
-     than heading a block. */
-  .subNavSection {
-    display: block;
-    flex: 0 0 auto;
-    font-size: var(--admin-text-base);
-    font-weight: 700;
-    color: var(--admin-navy);
-    padding: 0 8px 0 2px;
-    margin: 0 2px 0 0;
-    border-right: 1px solid var(--admin-gray-200);
-  }
-  .subNavBtn {
-    width: auto;
-    padding: 7px 12px;
-    border-left: none;
-    border-radius: 3px;
-  }
-  .subNavBtnActive { border-left: none; }
-}

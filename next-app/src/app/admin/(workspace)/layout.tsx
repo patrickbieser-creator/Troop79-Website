@@ -17,7 +17,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { SubNav } from './_components/sub-nav';
+import { AdminNav } from './_components/section-nav';
 import { DirtyGuardProvider } from './_components/dirty-guard';
 import { ArticleStyleTokens } from '@/lib/article-body/ArticleStyleTokens';
 import { TopBar } from './_components/top-bar';
@@ -42,11 +42,8 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
   if (!actor) redirect('/admin/login');
 
   if (actor.capabilities.size === 0) {
-    // NOT wrapped in styles.workspace: that is a two-column grid whose first
-    // track is the sub-nav, so a <main> placed in it with no SubNav sibling
-    // collapses into a ~120px column. Found in browser verification
-    // 2026-08-16. This branch has no nav by design, so it gets its own plain
-    // container instead.
+    // NOT wrapped in styles.workspace: this branch has no nav by design, so it
+    // gets its own plain container instead.
     return (
       <div className={styles.adminRoot}>
         <ArticleStyleTokens />
@@ -85,10 +82,11 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
       <ArticleStyleTokens />
       <TopBar actorLabel={actor.label} actorKind={actor.kind} />
       <div className={styles.workspace}>
-        <SubNav fullAdmin={fullAdmin} capabilities={[...actor.capabilities]} />
-        <main className={styles.main}>
-          <DirtyGuardProvider>{children}</DirtyGuardProvider>
-        </main>
+        {/* The provider wraps the bar and tabs as well as the page, so leaving a dirty form through them asks first. */}
+        <DirtyGuardProvider>
+          <AdminNav fullAdmin={fullAdmin} capabilities={[...actor.capabilities]} />
+          <main className={styles.main}>{children}</main>
+        </DirtyGuardProvider>
       </div>
       {/* Portal target for admin components (e.g. DatePickerField) that need
           top-level positioning outside their own stacking context. Since the

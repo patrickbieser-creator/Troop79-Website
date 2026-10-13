@@ -8,7 +8,7 @@
  * No page-level capability guard, deliberately: the workspace layout already
  * requires a resolved admin actor, and this page (like both guides) reads no
  * data and performs no writes — it renders static links/samples only. The nav
- * offers it to full admins (capability-less item semantics in sub-nav.tsx).
+ * offers it to full admins (capability-less item semantics in nav-data.ts).
  */
 import Link from 'next/link';
 import { PageTitle } from '../_components/page-title';

@@ -1,0 +1,84 @@
+/* Admin section bar + section tabs (Plans/Admin-Home-And-Nav.md Wave 3; Brad's prototype, prototypes/admin-home).
+   Replaces the left rail. Hierarchy, top to bottom: the header (navy), the SECTION BAR (white band, gold underline
+   on the active section), the SECTION TABS (quiet grey band, the shared TabStrip), then the page, whose own
+   TabStrips sit in the content on the page background. Admin tokens only. */
+
+.bar {
+  background: var(--admin-white);
+  border-bottom: 1px solid var(--admin-gray-200);
+}
+/* Local dev database: the same tripwire tint the rail wore, so dev is never mistaken for production. */
+.barDevDb {
+  background: var(--admin-status-error-bg);
+}
+.barScroll {
+  display: flex;
+  gap: var(--admin-space-2);
+  padding: 0 var(--admin-space-13);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.barScroll::-webkit-scrollbar {
+  display: none;
+}
+.barLink {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--admin-space-6);
+  font-size: var(--admin-text-lg);
+  font-weight: var(--admin-weight-semibold);
+  color: var(--admin-gray-700);
+  text-decoration: none;
+  white-space: nowrap;
+  border-bottom: 3px solid transparent;
+}
+.barLink:hover {
+  color: var(--admin-navy);
+  background: var(--admin-gray-50);
+}
+.barLink:focus-visible {
+  outline: 2px solid var(--admin-navy);
+  outline-offset: -2px;
+}
+.barLink[aria-current='page'] {
+  color: var(--admin-navy);
+  border-bottom-color: var(--admin-warning);
+}
+
+/* Section tabs: the shared TabStrip, nowrap and sideways-scrolling, on a quieter band. */
+.tabBand {
+  background: var(--admin-gray-50);
+  border-bottom: 1px solid var(--admin-gray-200);
+}
+.tabScroll {
+  overflow-x: auto;
+  padding: 0 var(--admin-space-13);
+  scrollbar-width: none;
+}
+.tabScroll::-webkit-scrollbar {
+  display: none;
+}
+/* Doubled selectors win over tab-strip.module.css whatever the bundle order (AGENTS.md). The band owns the hairline,
+   so the strip drops its own and the tabs stop overlapping it. */
+.tabs.tabs {
+  display: flex;
+  flex-wrap: nowrap;
+  width: max-content;
+  min-width: 100%;
+  border-bottom: none;
+}
+.tabs.tabs > * {
+  flex: none;
+  white-space: nowrap;
+  margin-bottom: 0;
+  font-size: var(--admin-text-md);
+}
+
+@media (max-width: 800px) {
+  .barScroll,
+  .tabScroll {
+    padding: 0 var(--admin-space-6);
+  }
+}

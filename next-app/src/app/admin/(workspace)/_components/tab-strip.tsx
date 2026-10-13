@@ -13,6 +13,7 @@
  * carries aria-selected and the active style; the legacy .tabOn/.tabActive
  * naming split is normalized away inside.
  */
+import type { MouseEvent } from 'react';
 import Link from 'next/link';
 import styles from './tab-strip.module.css';
 
@@ -33,13 +34,19 @@ export function TabStrip({
   items,
   activeKey,
   ariaLabel,
-  className
+  className,
+  onNavigate
 }: {
   items: TabStripItem[];
   activeKey: string;
   ariaLabel: string;
   /** Parent-supplied layout class (e.g. calendar's margin-right:auto). */
   className?: string;
+  /**
+   * Link mode only: a plain left click calls this instead of following the link (modifier clicks still open a new tab).
+   * The section tabs use it to route through the dirty-form guard (useGuardedNav); the href stays a real link.
+   */
+  onNavigate?: (href: string) => void;
 }) {
   return (
     <div className={`${styles.tabs}${className ? ` ${className}` : ''}`} role="tablist" aria-label={ariaLabel}>
@@ -58,7 +65,22 @@ export function TabStrip({
           </>
         );
         return item.href ? (
-          <Link key={item.key} href={item.href} role="tab" aria-selected={active} className={cls}>
+          <Link
+            key={item.key}
+            href={item.href}
+            role="tab"
+            aria-selected={active}
+            className={cls}
+            onClick={
+              onNavigate
+                ? (e: MouseEvent<HTMLAnchorElement>) => {
+                    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+                    e.preventDefault();
+                    onNavigate(item.href!);
+                  }
+                : undefined
+            }
+          >
             {inner}
           </Link>
         ) : (
