@@ -37,14 +37,20 @@ export function MemberProxyBanner({ viewer }: { viewer: MemberViewer }) {
     );
   }
 
+  // 'own' with options: a leader who is also a parent sees their own family by
+  // default — say so, or their own scout's data reads as a stuck proxy
+  // (Patrick, 2026-10-13, viewing Anjali's orders as her parent).
+  const own = viewer.kind === 'own';
   const options = viewer.kind === 'proxy-available' ? viewer.options : viewer.switchOptions;
   return (
     <Notice tone="warning" className={styles.proxyBanner}>
-      <span>Superuser: view Members as any active scout &mdash;</span>
+      <span>
+        {own ? 'Viewing your own family. Superuser: view another scout —' : <>Superuser: view Members as any active scout &mdash;</>}
+      </span>
       <form method="get" className={styles.proxyForm}>
         <select name="viewScout" aria-label="View as scout" defaultValue="" required>
           <option value="" disabled>
-            Choose a scout&hellip;
+            {own ? 'View another scout…' : 'Choose a scout…'}
           </option>
           {options.map((o) => (
             <option key={o.personId} value={o.personId}>

@@ -25,6 +25,12 @@ describe('MemberProxyBanner', () => {
     expect(screen.getByRole('combobox', { name: 'View as scout' })).toBeTruthy();
   });
 
+  it('MembersProxy_SaysYouAreViewingYourOwnFamily_WhenALeaderIsNotProxying', () => {
+    render(<MemberProxyBanner viewer={{ kind: 'own', switchOptions: OPTIONS }} />);
+    expect(screen.getByText(/Viewing your own family/)).toBeTruthy();
+    expect(screen.getByRole('combobox', { name: 'View as scout' })).toBeTruthy();
+  });
+
   it('MembersProxy_NamesTheFamilyAndOffersExit_WhenProxying', () => {
     render(<MemberProxyBanner viewer={{ kind: 'proxy', personId: 11, name: 'Anjali S', switchOptions: OPTIONS }} />);
     expect(screen.getByText('Anjali S', { selector: 'strong' })).toBeTruthy();
