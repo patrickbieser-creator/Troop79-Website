@@ -63,7 +63,7 @@ export function StorePage({ data }: { data: StorePageData }) {
   }
 
   const day = distributionDay(dist);
-  const money = moneyBlockLines(first, day);
+  const money = moneyBlockLines(first);
   const head = scout ? (
     <>
       <p className={styles.kicker}>Troop 79 Christmas wreaths</p>
@@ -88,7 +88,8 @@ export function StorePage({ data }: { data: StorePageData }) {
       <p className={styles.kicker}>Troop 79 wreath sale {state.sale.year}</p>
       <h1 className={styles.title}>Christmas wreaths</h1>
       <p className={styles.lede}>
-        Fresh wreaths, roping and trees, sold by the scouts of Troop 79. Pick up{dist.place ? ` at ${dist.place}` : ''} or have them delivered in Milwaukee.
+        Fresh wreaths, roping and garland, to benefit the scouts of Troop 79. Delivered to your home in Milwaukee, or pick up at
+        Northwoods parking lot, 1572 East Capitol on Saturday November 21st.
       </p>
       <div className={styles.intro}>
         <MoneyBlock lines={money} />

@@ -54,13 +54,14 @@ export function arrivalParagraphs(opts: {
 }
 
 /** The "Where the money goes" block, in plain sentences. `scoutFirstName` is set on a scout's own page. */
-export function moneyBlockLines(scoutFirstName: string | null, distribution: string): string[] {
+export function moneyBlockLines(scoutFirstName: string | null): string[] {
+  // Patrick's copy, 2026-10-13. The date is written out for the 2026 sale; update it with next year's sale.
   return [
-    'Every wreath pays for the troop’s camping, gear and program for the year.',
+    'Wreath proceeds pay for camping gear and programming for the year.',
     scoutFirstName
       ? `${scoutFirstName} gets credit for your order: 30% of its profit goes into ${scoutFirstName}’s scout account, for camp fees and high-adventure trips.`
-      : 'Orders here support the whole troop. Scouts earn 30% of the profit on orders placed through their own link, for camp fees and high-adventure trips.',
-    distribution ? `Wreaths arrive fresh on distribution day, ${distribution}.` : 'Wreaths arrive fresh, just before Thanksgiving.'
+      : 'Orders here support the whole troop, add to our scholarship fund, and reduce outing fees for every scout.',
+    'Wreaths arrive fresh on distribution day, Saturday, November 21, 2026.'
   ];
 }
 
