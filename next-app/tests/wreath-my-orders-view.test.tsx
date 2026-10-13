@@ -1,9 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import { MyWreathOrdersView } from '../src/app/(public)/member/wreaths/wreath-orders-view';
 import { buildSellerView } from '../src/lib/wreaths/my-orders';
 import type { AdminOrder } from '../src/lib/wreaths/admin-data';
 import type { PublicSale } from '../src/lib/wreaths/public';
+
+// Scout-entered rows render the edit row, which uses the router.
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }), usePathname: () => '/member/wreaths' }));
 
 /** /member/wreaths renders read-only: no form, no field, one Print button; contact only on the delivery list. */
 const ME = 100;
@@ -69,6 +72,21 @@ describe('MyWreathOrdersView', () => {
     expect(screen.getByText('Paid', { selector: 'span' })).toBeTruthy();
     expect(screen.getByText('Owes $52.00')).toBeTruthy();
     expect(screen.getByText('Earned so far').nextSibling?.textContent).toBe('$11.92');
+  });
+
+  it('MyWreathOrders_ShowsStillToCollect_WhenTheScoutHasEnteredOrders', () => {
+    render(<MyWreathOrdersView data={view([order(1, { source: 'paper', fulfillment: 'scout', total: 26 })])} />);
+    expect(screen.getByText('Still to collect').nextSibling?.textContent).toBe('$26.00');
+  });
+
+  it('MyWreathOrders_ShowsCollectedToTurnIn_WhenTheScoutHasEnteredOrders', () => {
+    render(<MyWreathOrdersView data={view([order(1, { source: 'paper', fulfillment: 'scout', total: 52, collectedByScout: true })])} />);
+    expect(screen.getByText('Collected, to turn in').nextSibling?.textContent).toBe('$52.00');
+  });
+
+  it('MyWreathOrders_HidesTheCollectTotals_WithOnlyOnlineOrders', () => {
+    render(<MyWreathOrdersView data={view([order(1)])} />);
+    expect(screen.queryByText('Still to collect')).toBeNull();
   });
 
   it('MyWreathOrders_MarksCancelledOrders_AndLeavesThemOutOfTheCount', () => {

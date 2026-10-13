@@ -168,3 +168,37 @@ describe('Delivery list', () => {
     expect(isScoutDelivery(o, SIBLING)).toBe(false);
   });
 });
+
+// "Still to collect" / "to turn in" (Patrick, 2026-10-13): only scout-entered orders the troop hasn't marked paid.
+describe('MyWreathOrders money the scout handles', () => {
+  const paper = (over: Partial<AdminOrder>) => order({ source: 'paper', fulfillment: 'scout', ...over });
+
+  it('MyWreathOrders_ToCollect_SumsUnpaidScoutEnteredOrdersNotYetCollected', () => {
+    const view = buildSellerView(ME, 'Me', [paper({ total: 26 }), paper({ total: 52, collectedByScout: true })], 0.3);
+    expect(view.summary.toCollect).toBe(26);
+  });
+
+  it('MyWreathOrders_ToTurnIn_SumsUnpaidScoutEnteredOrdersAlreadyCollected', () => {
+    const view = buildSellerView(ME, 'Me', [paper({ total: 26 }), paper({ total: 52, collectedByScout: true })], 0.3);
+    expect(view.summary.toTurnIn).toBe(52);
+  });
+
+  it('MyWreathOrders_ToTurnIn_DropsAnOrderOnceTheTroopMarksItPaid', () => {
+    const view = buildSellerView(ME, 'Me', [paper({ total: 52, collectedByScout: true, paymentStatus: 'paid' })], 0.3);
+    expect(view.summary.toTurnIn).toBe(0);
+  });
+
+  it('MyWreathOrders_ToCollect_IgnoresCancelledOrders', () => {
+    const view = buildSellerView(ME, 'Me', [paper({ total: 26, status: 'cancelled' })], 0.3);
+    expect(view.summary.toCollect).toBe(0);
+  });
+
+  it('MyWreathOrders_ToCollect_IgnoresOnlineOrders', () => {
+    const view = buildSellerView(ME, 'Me', [order({ total: 26 })], 0.3);
+    expect(view.summary.toCollect).toBe(0);
+  });
+
+  it('MyWreathOrders_HasScoutEnteredOrders_IsFalse_WithOnlyOnlineOrders', () => {
+    expect(buildSellerView(ME, 'Me', [order()], 0.3).summary.hasScoutEntered).toBe(false);
+  });
+});

@@ -51,7 +51,14 @@ function Totals({ seller, share }: { seller: SellerView; share: number }) {
     ['Sold', fmtMoney(s.sold)],
     ['Paid', fmtMoney2(s.paid)],
     ['Still owed', fmtMoney2(s.owed)],
-    ['Earned so far', fmtMoney2(s.earnings)]
+    ['Earned so far', fmtMoney2(s.earnings)],
+    // Money the scout handles on orders they entered (Patrick, 2026-10-13); online orders pay the troop directly.
+    ...(s.hasScoutEntered
+      ? ([
+          ['Still to collect', fmtMoney2(s.toCollect)],
+          ['Collected, to turn in', fmtMoney2(s.toTurnIn)]
+        ] as [string, string][])
+      : [])
   ];
   return (
     <>

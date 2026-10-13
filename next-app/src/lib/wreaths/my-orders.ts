@@ -62,6 +62,10 @@ export interface SellerSummary {
   owed: number;
   earnings: number;
   earningsOnPaid: number;
+  /** Scout-entered orders (source paper) the troop hasn't marked paid: not yet collected / collected, to turn in. */
+  toCollect: number;
+  toTurnIn: number;
+  hasScoutEntered: boolean;
 }
 
 export interface SellerView {
@@ -149,6 +153,7 @@ export function buildSellerView(
   const paidOrders = counted.filter((o) => o.paymentStatus === 'paid');
   const unpaidOrders = counted.filter((o) => o.paymentStatus !== 'paid');
   const profitOf = (xs: AdminOrder[]) => orderProfit(xs.flatMap((o) => o.lines));
+  const scoutHeld = unpaidOrders.filter((o) => o.source === 'paper');
 
   const deliveries = orders
     .map((o) => toMyOrder(o, personId, extra.lock))
@@ -162,7 +167,10 @@ export function buildSellerView(
       paid: sumDollars(paidOrders.map((o) => o.total)),
       owed: sumDollars(unpaidOrders.map((o) => o.total)),
       earnings: scoutEarnings(profitOf(counted), scoutShare),
-      earningsOnPaid: scoutEarnings(profitOf(paidOrders), scoutShare)
+      earningsOnPaid: scoutEarnings(profitOf(paidOrders), scoutShare),
+      toCollect: sumDollars(scoutHeld.filter((o) => !o.collectedByScout).map((o) => o.total)),
+      toTurnIn: sumDollars(scoutHeld.filter((o) => o.collectedByScout).map((o) => o.total)),
+      hasScoutEntered: counted.some((o) => o.source === 'paper')
   };
   const goal = extra.goal ?? null;
   return {
