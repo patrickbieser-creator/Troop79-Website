@@ -11,9 +11,14 @@
  * panel needs to change.
  */
 
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/supabase/server';
 import { fieldLabel, type ChangeEntityType, type ChangeRequestRow } from '@/lib/change-requests';
-import { fmtDate } from '@/lib/format-date';
+import { fmtDate, fmtDay } from '@/lib/format-date';
+import type { Capability } from '@/lib/capabilities';
+import { centralToday } from '@/lib/dates';
+import { loadAdminSale } from '@/lib/wreaths/admin-data';
+import { fmtMoney2 } from '@/lib/wreaths/rules';
 
 export interface AttentionItem {
   label: string;
@@ -21,10 +26,52 @@ export interface AttentionItem {
   href: string;
 }
 
+/**
+ * One inbox row on Home ("Needs you today"): a count, what it counts, and ONE
+ * link to the queue that clears it. `items` is the detail behind the count —
+ * the row names the first few in `meta`; the queue page lists them all.
+ */
 export interface AttentionCategory {
   key: string;
   label: string;
   items: AttentionItem[];
+  count: number;
+  /** "waiting", "to approve", "unpaid"… — the small word under the number. */
+  unit: string;
+  /** One line under the title: who/what, newest or oldest. */
+  meta: string;
+  href: string;
+  /** Money rows take the forest accent. */
+  tone?: 'money';
+  /** Shown even at count 0 — an FYI row rather than a queue (the next open sign-up). */
+  informational?: boolean;
+}
+
+/** Names of the first few items, "A, B and 2 more" — the row's meta line. */
+function nameList(items: AttentionItem[], max = 3, total = items.length): string {
+  const names = items.slice(0, max).map((i) => i.label);
+  const rest = total - names.length;
+  if (rest > 0) return `${names.join(', ')} and ${rest} more`;
+  if (names.length > 1) return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+  return names[0] ?? '';
+}
+
+/**
+ * How many names a row shows. Every queue fetches only this many rows plus an
+ * exact head COUNT, so the badge is right past PostgREST's 1000-row cap and a
+ * busy queue costs two small queries, not a full table read.
+ */
+const SHOWN = 3;
+
+function queue(
+  key: string,
+  label: string,
+  items: AttentionItem[],
+  href: string,
+  unit = 'waiting',
+  count = items.length
+): AttentionCategory {
+  return { key, label, items, count, unit, meta: nameList(items, SHOWN, count), href };
 }
 
 /**
@@ -38,12 +85,20 @@ export interface AttentionCategory {
  */
 async function loadPendingProfileUpdates(): Promise<AttentionCategory> {
   const supabase = createAdminClient();
-  const { data: requests } = await supabase
-    .from('change_requests')
-    .select('id, entity_type, entity_id, submitted_at, proposed_changes')
-    .in('entity_type', ['scout', 'adult'])
-    .eq('status', 'pending')
-    .order('submitted_at', { ascending: true });
+  const [{ data: requests }, { count }] = await Promise.all([
+    supabase
+      .from('change_requests')
+      .select('id, entity_type, entity_id, submitted_at, proposed_changes')
+      .in('entity_type', ['scout', 'adult'])
+      .eq('status', 'pending')
+      .order('submitted_at', { ascending: true })
+      .limit(SHOWN),
+    supabase
+      .from('change_requests')
+      .select('id', { count: 'exact', head: true })
+      .in('entity_type', ['scout', 'adult'])
+      .eq('status', 'pending')
+  ]);
 
   const rows = (requests ?? []) as Pick<
     ChangeRequestRow,
@@ -104,18 +159,22 @@ async function loadPendingProfileUpdates(): Promise<AttentionCategory> {
     };
   });
 
-  return { key: 'profile-updates', label: 'Profile updates awaiting review', items };
+  return queue('profile-updates', 'Profile updates awaiting review', items, '/admin/advancement/roster', 'waiting', count ?? items.length);
 }
 
 /** Resource Library submissions waiting for webmaster review
  *  (Plans/Resource-Library.md — everything queues, including leaders'). */
 async function loadPendingLibrarySubmissions(): Promise<AttentionCategory> {
   const supabase = createAdminClient();
-  const { data } = await supabase
-    .from('library_resources')
-    .select('id, title, submitted_by_label, created_at')
-    .eq('status', 'pending')
-    .order('created_at', { ascending: true });
+  const [{ data }, { count }] = await Promise.all([
+    supabase
+      .from('library_resources')
+      .select('id, title, submitted_by_label, created_at')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: true })
+      .limit(SHOWN),
+    supabase.from('library_resources').select('id', { count: 'exact', head: true }).eq('status', 'pending')
+  ]);
 
   const items: AttentionItem[] = (
     (data ?? []) as { id: number; title: string; submitted_by_label: string | null; created_at: string }[]
@@ -125,18 +184,22 @@ async function loadPendingLibrarySubmissions(): Promise<AttentionCategory> {
     href: '/admin/library?tab=queue'
   }));
 
-  return { key: 'library-submissions', label: 'Library submissions awaiting review', items };
+  return queue('library-submissions', 'Library submissions awaiting review', items, '/admin/library?tab=queue', 'waiting', count ?? items.length);
 }
 
 /** Proof-of-completion submissions awaiting review
  *  (Plans/Resource-Library.md Phase 2). */
 async function loadPendingProofSubmissions(): Promise<AttentionCategory> {
   const supabase = createAdminClient();
-  const { data } = await supabase
-    .from('requirement_submissions')
-    .select('id, scout_id, target_key, created_at')
-    .eq('status', 'pending')
-    .order('created_at', { ascending: true });
+  const [{ data }, { count }] = await Promise.all([
+    supabase
+      .from('requirement_submissions')
+      .select('id, scout_id, target_key, created_at')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: true })
+      .limit(SHOWN),
+    supabase.from('requirement_submissions').select('id', { count: 'exact', head: true }).eq('status', 'pending')
+  ]);
 
   const rows = (data ?? []) as { id: number; scout_id: string; target_key: string; created_at: string }[];
   const scoutIds = [...new Set(rows.map((r) => r.scout_id))];
@@ -152,7 +215,7 @@ async function loadPendingProofSubmissions(): Promise<AttentionCategory> {
     href: '/admin/library?tab=proof'
   }));
 
-  return { key: 'proof-submissions', label: 'Proof submissions awaiting review', items };
+  return queue('proof-submissions', 'Proof submissions awaiting review', items, '/admin/library?tab=proof', 'waiting', count ?? items.length);
 }
 
 /**
@@ -167,18 +230,26 @@ async function loadPendingProofSubmissions(): Promise<AttentionCategory> {
  */
 async function loadNewHouseholdMembers(): Promise<AttentionCategory> {
   const supabase = createAdminClient();
-  const { data } = await supabase
-    .from('change_requests')
-    .select('id, entity_id, submitted_at, proposed_changes, submitted_by_person_id')
-    .eq('entity_type', 'adult_added')
-    .eq('status', 'pending')
-    .order('submitted_at', { ascending: true });
+  const [{ data }, { count }] = await Promise.all([
+    supabase
+      .from('change_requests')
+      .select('id, entity_id, submitted_at, proposed_changes, submitted_by_person_id')
+      .eq('entity_type', 'adult_added')
+      .eq('status', 'pending')
+      .order('submitted_at', { ascending: true })
+      .limit(SHOWN),
+    supabase
+      .from('change_requests')
+      .select('id', { count: 'exact', head: true })
+      .eq('entity_type', 'adult_added')
+      .eq('status', 'pending')
+  ]);
 
   const rows = (data ?? []) as Pick<
     ChangeRequestRow,
     'id' | 'entity_id' | 'submitted_at' | 'proposed_changes' | 'submitted_by_person_id'
   >[];
-  if (rows.length === 0) return { key: 'new-members', label: 'New household members', items: [] };
+  if (rows.length === 0) return queue('new-members', 'New household members', [], '/admin/advancement/roster', 'new');
 
   // One lookup for both the added person (which roster tab holds them) and
   // whoever added them (shown so a leader knows who to ask).
@@ -217,17 +288,217 @@ async function loadNewHouseholdMembers(): Promise<AttentionCategory> {
     };
   });
 
-  return { key: 'new-members', label: 'New household members', items };
+  return queue('new-members', 'New household members', items, '/admin/advancement/roster', 'new', count ?? items.length);
 }
 
-export async function loadAttentionCategories(): Promise<AttentionCategory[]> {
-  const categories = await Promise.all([
-    loadPendingProfileUpdates(),
-    loadNewHouseholdMembers(),
-    loadPendingLibrarySubmissions(),
-    loadPendingProofSubmissions()
+/**
+ * Reimbursements a treasurer has to decide on (status 'submitted'). finance.manage
+ * only: the queue page and every action are finance.manage, so offering this row
+ * to finance.view would hand a read-only viewer a link that throws.
+ */
+async function loadReimbursementsToApprove(sb: SupabaseClient): Promise<AttentionCategory> {
+  const [{ data }, { data: amounts }, { count }] = await Promise.all([
+    sb
+      .from('reimbursement_requests')
+      .select('id, requester_person_id, amount, description, created_at')
+      .eq('status', 'submitted')
+      .order('created_at', { ascending: true })
+      .limit(SHOWN),
+    // One narrow column, so the "$ total" covers the whole queue and not just the names shown.
+    sb.from('reimbursement_requests').select('amount').eq('status', 'submitted').limit(5000),
+    sb.from('reimbursement_requests').select('id', { count: 'exact', head: true }).eq('status', 'submitted')
   ]);
-  // A category with nothing in it is noise, not signal — drop it rather than
-  // showing an empty "0 items" heading.
-  return categories.filter((c) => c.items.length > 0);
+  const rows = (data ?? []) as {
+    id: number;
+    requester_person_id: number;
+    amount: number | string;
+    description: string;
+    created_at: string;
+  }[];
+
+  const ids = [...new Set(rows.map((r) => r.requester_person_id))];
+  const { data: people } =
+    ids.length > 0
+      ? await sb.from('people').select('id, display_name').in('id', ids)
+      : { data: [] as { id: number; display_name: string }[] };
+  const nameById = new Map(((people ?? []) as { id: number; display_name: string }[]).map((p) => [p.id, p.display_name]));
+
+  const items: AttentionItem[] = rows.map((r) => ({
+    label: nameById.get(r.requester_person_id) ?? `Person ${r.requester_person_id}`,
+    meta: `${fmtMoney2(Number(r.amount))} · ${r.description}`,
+    href: '/admin/finance/reimbursements'
+  }));
+  const total = ((amounts ?? []) as { amount: number | string }[]).reduce((n, r) => n + Number(r.amount), 0);
+  const all = count ?? items.length;
+  return {
+    key: 'reimbursements',
+    label: 'Reimbursements to approve',
+    items,
+    count: all,
+    unit: 'to approve',
+    meta:
+      all === 0
+        ? ''
+        : `${fmtMoney2(total)} total · oldest ${fmtDate(rows[0].created_at, { year: false })} (${items[0].label})`,
+    href: '/admin/finance/reimbursements',
+    tone: 'money'
+  };
+}
+
+/**
+ * Wreath orders still unpaid — only while the current sale is OPEN. A draft sale
+ * has no orders worth chasing and a closed one is the books' job (Release C), so
+ * outside the season the row stays out of the way.
+ */
+async function loadUnpaidWreathOrders(sb: SupabaseClient): Promise<AttentionCategory> {
+  const href = '/admin/finance/wreaths?pay=unpaid';
+  const empty: AttentionCategory = {
+    key: 'wreath-orders',
+    label: 'Wreath orders not paid yet',
+    items: [],
+    count: 0,
+    unit: 'unpaid',
+    meta: '',
+    href,
+    tone: 'money'
+  };
+  const sale = await loadAdminSale(sb);
+  if (!sale || sale.status !== 'open') return empty;
+  const [{ data }, { count }] = await Promise.all([
+    sb
+      .from('wreath_orders')
+      .select('id, order_number, customer_name, placed_at')
+      .eq('sale_id', sale.id)
+      .eq('status', 'placed')
+      .eq('payment_status', 'unpaid')
+      .order('placed_at', { ascending: true })
+      .limit(SHOWN),
+    sb
+      .from('wreath_orders')
+      .select('id', { count: 'exact', head: true })
+      .eq('sale_id', sale.id)
+      .eq('status', 'placed')
+      .eq('payment_status', 'unpaid')
+  ]);
+  const rows = (data ?? []) as { id: number; order_number: string; customer_name: string; placed_at: string }[];
+  const items: AttentionItem[] = rows.map((r) => ({
+    label: r.customer_name,
+    meta: `${r.order_number} · placed ${fmtDate(r.placed_at, { year: false })}`,
+    href
+  }));
+  return {
+    ...empty,
+    items,
+    count: count ?? items.length,
+    meta:
+      items.length === 0
+        ? ''
+        : `Check Venmo and PayPal for the order number · oldest ${fmtDate(rows[0].placed_at, { year: false })}`
+  };
+}
+
+/**
+ * News submitted from the public side, waiting for an editor. Only ARTICLES have
+ * a pending state (articles.status 'pending'); site_pages is draft | published,
+ * so a page edit never waits for review and there is nothing to count there.
+ */
+async function loadPendingNews(sb: SupabaseClient): Promise<AttentionCategory> {
+  const [{ data }, { count }] = await Promise.all([
+    sb
+      .from('articles')
+      .select('id, title, author_name, created_at')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: true })
+      .limit(SHOWN),
+    sb.from('articles').select('id', { count: 'exact', head: true }).eq('status', 'pending')
+  ]);
+  const items: AttentionItem[] = (
+    (data ?? []) as { id: number; title: string; author_name: string; created_at: string }[]
+  ).map((a) => ({
+    label: a.title,
+    meta: `from ${a.author_name} · submitted ${fmtDate(a.created_at, { year: false })}`,
+    href: `/admin/news/articles/${a.id}`
+  }));
+  return queue('news-pending', 'News waiting to publish', items, '/admin/news/articles?status=pending', 'pending', count ?? items.length);
+}
+
+/**
+ * The next upcoming event whose sign-up is still taking replies — one FYI row,
+ * not a queue. "Open" = sign-up status open AND its deadline has not passed AND
+ * the calendar entry is published and not in the past.
+ */
+async function loadNextOpenSignup(sb: SupabaseClient): Promise<AttentionCategory | null> {
+  const { data } = await sb
+    .from('event_signups')
+    .select('id, deadline, calendar_entries!inner(id, title, entry_date, end_date, status)')
+    .eq('status', 'open')
+    .gt('deadline', new Date().toISOString())
+    .eq('calendar_entries.status', 'published')
+    .gte('calendar_entries.entry_date', centralToday());
+
+  type Entry = { id: number; title: string; entry_date: string; end_date: string | null };
+  const rows = ((data ?? []) as unknown as { id: number; deadline: string; calendar_entries: Entry | Entry[] }[])
+    .map((r) => ({
+      id: r.id,
+      deadline: r.deadline,
+      entry: Array.isArray(r.calendar_entries) ? r.calendar_entries[0] : r.calendar_entries
+    }))
+    .filter((r) => r.entry)
+    .sort((a, b) => a.entry.entry_date.localeCompare(b.entry.entry_date) || a.entry.id - b.entry.id);
+  const next = rows[0];
+  if (!next) return null;
+
+  const { count } = await sb
+    .from('signup_entries')
+    .select('id', { count: 'exact', head: true })
+    .eq('event_signup_id', next.id)
+    .eq('status', 'yes');
+  const href = `/admin/calendar/${next.entry.id}`;
+  const when =
+    next.entry.end_date && next.entry.end_date !== next.entry.entry_date
+      ? `${fmtDay(next.entry.entry_date, { year: false })} to ${fmtDay(next.entry.end_date, { year: false })}`
+      : fmtDay(next.entry.entry_date, { year: false });
+  return {
+    key: 'next-signup',
+    label: `${next.entry.title}: sign-up is open`,
+    items: [{ label: next.entry.title, meta: when, href }],
+    count: count ?? 0,
+    unit: 'going',
+    meta: `${when} · sign-up closes ${fmtDay(next.deadline, { year: false })}`,
+    href,
+    informational: true
+  };
+}
+
+/**
+ * Home's "Needs you today" rows for this actor. Each category is gated by the
+ * capability that opens the queue it links to — the same one the target page
+ * and its actions enforce (this list is for the reader, not the boundary).
+ *
+ *  - profile updates / new members .... advancement.write (the dashboard's old gate)
+ *  - library + proof submissions ...... advancement.write or library.moderate
+ *  - reimbursements to approve ........ finance.manage (finance.view cannot open the queue)
+ *  - unpaid wreath orders ............. finance.manage, only while the sale is open
+ *  - pending news ..................... news.write
+ *  - next open sign-up ................ calendar.write
+ */
+export async function loadAttentionCategories(
+  capabilities: ReadonlySet<Capability>,
+  sb: SupabaseClient = createAdminClient()
+): Promise<AttentionCategory[]> {
+  const has = (c: Capability) => capabilities.has(c);
+  const advancement = has('advancement.write');
+  const jobs: Promise<AttentionCategory | null>[] = [];
+  if (advancement) jobs.push(loadPendingProfileUpdates(), loadNewHouseholdMembers());
+  if (advancement || has('library.moderate')) {
+    jobs.push(loadPendingLibrarySubmissions(), loadPendingProofSubmissions());
+  }
+  if (has('finance.manage')) jobs.push(loadReimbursementsToApprove(sb), loadUnpaidWreathOrders(sb));
+  if (has('news.write')) jobs.push(loadPendingNews(sb));
+  if (has('calendar.write')) jobs.push(loadNextOpenSignup(sb));
+
+  const categories = (await Promise.all(jobs)).filter((c): c is AttentionCategory => c !== null);
+  // A queue with nothing in it is noise, not signal — drop it rather than
+  // showing a "0 waiting" row. Informational rows (the next sign-up) stay.
+  return categories.filter((c) => c.count > 0 || c.informational);
 }

@@ -67,7 +67,7 @@ export default function WorkspaceError({
         </p>
       ) : null}
       <p className={styles.errorActions}>
-        <Link href="/admin/advancement/dashboard">← Back to the dashboard</Link>
+        <Link href="/admin">← Back to Home</Link>
         {!refused ? (
           <Button variant="secondary" onClick={reset}>
             Try again

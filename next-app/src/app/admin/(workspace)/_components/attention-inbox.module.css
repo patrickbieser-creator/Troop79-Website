@@ -1,0 +1,102 @@
+/* Home's "Needs you today" inbox. Admin tokens only; the specimen is on /admin/styleguide/admin → Inbox row. */
+.heading {
+  font-size: var(--admin-text-xl);
+  color: var(--admin-navy);
+  margin: 0 0 10px;
+  font-weight: var(--admin-weight-bold);
+}
+.inbox {
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius-lg);
+  box-shadow: var(--admin-shadow-sm);
+  margin: 0 0 32px;
+  padding: 0;
+  list-style: none;
+  overflow: hidden;
+}
+.inbox li + li {
+  border-top: 1px solid var(--admin-gray-100);
+}
+.row {
+  display: grid;
+  grid-template-columns: 64px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 16px;
+  text-decoration: none;
+  color: inherit;
+  min-height: 56px;
+}
+.row:hover {
+  background: var(--admin-gray-50);
+}
+.row:hover .title {
+  color: var(--admin-navy);
+  text-decoration: underline;
+}
+.count {
+  text-align: center;
+}
+.count b {
+  display: block;
+  font-size: var(--admin-text-2xl);
+  line-height: 1;
+  color: var(--admin-navy);
+}
+.count small {
+  display: block;
+  font-size: var(--admin-text-xs);
+  color: var(--admin-gray-500);
+  margin-top: 2px;
+}
+.money .count b {
+  color: var(--admin-forest-dark);
+}
+.title {
+  display: block;
+  font-weight: var(--admin-weight-semibold);
+  font-size: var(--admin-text-lg);
+}
+.meta {
+  display: block;
+  font-size: var(--admin-text-base);
+  color: var(--admin-gray-500);
+  margin-top: 2px;
+  line-height: 1.4;
+}
+.go {
+  color: var(--admin-gray-400);
+  font-size: var(--admin-text-xl);
+}
+.empty {
+  padding: 22px 16px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.ok {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--admin-status-success-bg);
+  color: var(--admin-forest-dark);
+  display: grid;
+  place-items: center;
+  font-weight: var(--admin-weight-bold);
+  flex: none;
+}
+.empty b {
+  display: block;
+}
+.empty span:not(.ok) {
+  font-size: var(--admin-text-base);
+  color: var(--admin-gray-500);
+}
+@media (max-width: 560px) {
+  .row {
+    grid-template-columns: 48px 1fr auto;
+    gap: 10px;
+    padding: 10px 12px;
+  }
+}

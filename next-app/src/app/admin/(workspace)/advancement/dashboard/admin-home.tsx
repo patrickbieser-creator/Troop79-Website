@@ -1,0 +1,534 @@
+/**
+ * Home — the old Leader Dashboard, extended (Plans/Admin-Home-And-Nav.md).
+ * /admin renders the inbox only (light: the overview's ledger reads are heavy and
+ * live, so they are not cached); /admin/advancement/dashboard renders the inbox
+ * plus the overview (`overview`).
+ *
+ * Operational overview for the advancement chair. Numbers update from the
+ * universal ledger. Server Components; everything loads in parallel.
+ */
+
+import Link from 'next/link';
+import { createAdminClient } from '@/lib/supabase/server';
+import { fetchAllRows } from '@/lib/supabase/paginate';
+import { resolveAdminActor } from '@/lib/admin-actor';
+import { loadAdvancementCatalog } from '@/lib/advancement-catalog';
+import type { LedgerEntry, LedgerKind } from '@/lib/supabase/types';
+import { loadAttentionCategories } from './attention-items';
+import { loadRecentLogins, loadHouseholdsSignedInStats, type LoginMethod } from '@/lib/login-events';
+import { fmtDate, fmtDateTime } from '@/lib/format-date';
+import styles from './dashboard.module.css';
+import { PageTitle } from '../../_components/page-title';
+import { Button } from '../../../_components/button';
+import { AttentionInbox } from '../../_components/attention-inbox';
+import { SuggestionButton } from './suggestion-button';
+import { loadSuggestionActor, sendSuggestionAction } from './suggestion-actions';
+
+const RECENT_LIMIT = 10;
+const LIKELY_READY_THRESHOLD = 0.6; // 60% of next-rank reqs done → surface
+
+interface ScoutLite {
+  id: string;
+  display_name: string;
+  current_rank: string | null;
+  active: boolean;
+  /** bsa_member_id moved to people, read via this link (Plans/Retire-Roster-
+   *  Contact-Columns.md). */
+  person_id: number | null;
+}
+
+interface RankLite {
+  id: string;
+  display_name: string;
+  sort_order: number;
+}
+
+interface RecentRow {
+  id: number;
+  date: string | null;
+  scoutId: string;
+  scoutName: string;
+  kind: LedgerKind;
+  kindLabel: string;
+  shortLabel: string;
+  by: string | null;
+}
+
+interface ReadyRow {
+  scoutId: string;
+  scoutName: string;
+  currentRankLabel: string;
+  nextRankLabel: string;
+  completed: number;
+  total: number;
+  pct: number;
+  remaining: string[];
+}
+
+const KIND_PRETTY: Record<LedgerKind, string> = {
+  rank_requirement: 'Rank req',
+  rank_award: 'Rank',
+  merit_badge_requirement: 'MB req',
+  merit_badge_award: 'MB',
+  service_hours: 'Service',
+  camping_nights: 'Campout',
+  hiking_miles: 'Hike',
+  day_outing: 'Day Outing',
+  fundraiser: 'Fundraiser',
+  leadership: 'Leader',
+  award: 'Award',
+  meeting_attendance: 'Meeting'
+};
+
+async function loadDashboard() {
+  const supabase = createAdminClient();
+  // Ranks and top-level rank requirements only change when a leader saves
+  // Lookups — read from the shared `advancement-catalog` cache instead of
+  // this page's own query every navigation (Plans/Performance-Review-2026-08-27.md #16).
+  const [
+    scoutsRes,
+    catalog,
+    rankReqLedger,
+    recentRes,
+    activeLedgerCountRes,
+    cohRes
+  ] = await Promise.all([
+    supabase.from('scouts').select('id, display_name, current_rank, active, person_id'),
+    loadAdvancementCatalog(),
+    // Unbounded past the ~1000-row PostgREST cap once the ledger grows —
+    // paginate rather than silently see a partial slice (see lib/supabase/paginate.ts).
+    fetchAllRows<{ scout_id: string; code: string }>((from, to) =>
+      supabase
+        .from('ledger_active')
+        .select('scout_id, code')
+        .eq('kind', 'rank_requirement')
+        .range(from, to)
+    ),
+    supabase
+      .from('ledger_active')
+      .select('*')
+      .order('entered_at', { ascending: false, nullsFirst: false })
+      .order('date', { ascending: false })
+      .limit(RECENT_LIMIT),
+    // `totalLedger` is displayed to the leader as a literal stat-card figure
+    // (not just a pager total), so this stays `count: 'exact'` rather than
+    // 'estimated' (Plans/Performance-Review-2026-08-27.md #16).
+    supabase.from('ledger_active').select('id', { count: 'exact', head: true }),
+    supabase.from('coh_history').select('date').order('date', { ascending: false }).limit(1)
+  ]);
+
+  const scouts = (scoutsRes.data ?? []) as ScoutLite[];
+  const activeScouts = scouts.filter((s) => s.active);
+  const ranks = catalog.ranks as RankLite[];
+  const rankReqs = catalog.rankRequirements.filter((r) => r.parent_id === null);
+  const mbMap = new Map<string, string>();
+  for (const m of catalog.meritBadges) {
+    mbMap.set(m.id, m.name);
+  }
+  const recent = (recentRes.data ?? []) as LedgerEntry[];
+  const totalLedger = activeLedgerCountRes.count ?? 0;
+  const lastCohDate = (cohRes.data?.[0]?.date as string | undefined) ?? null;
+
+  // ── Stats ──────────────────────────────────────────────────────────
+  // bsa_member_id lives on people now — one extra lookup by the active
+  // scouts' person_ids (Plans/Retire-Roster-Contact-Columns.md). Independent
+  // of the COH-candidates count below, so both run together instead of one
+  // waiting on the other (Plans/Performance-Review-2026-08-27.md #16).
+  const activeScoutPersonIds = activeScouts.map((s) => s.person_id).filter((id): id is number => id != null);
+  const [bsaRes, cohCandidatesRes] = await Promise.all([
+    activeScoutPersonIds.length
+      ? supabase.from('people').select('id, bsa_member_id').in('id', activeScoutPersonIds)
+      : Promise.resolve({ data: [] as { id: number; bsa_member_id: string | null }[] }),
+    // COH Candidates: rank_award + merit_badge_award entries since the last
+    // COH (or all of them, if there's no COH history yet). Also a displayed
+    // stat-card figure — stays `count: 'exact'`.
+    lastCohDate
+      ? supabase
+          .from('ledger_active')
+          .select('id', { count: 'exact', head: true })
+          .gt('date', lastCohDate)
+          .in('kind', ['rank_award', 'merit_badge_award'])
+      : supabase
+          .from('ledger_active')
+          .select('id', { count: 'exact', head: true })
+          .in('kind', ['rank_award', 'merit_badge_award'])
+  ]);
+  const bsaByPerson = new Map(((bsaRes.data ?? []) as { id: number; bsa_member_id: string | null }[]).map((p) => [p.id, p.bsa_member_id]));
+  const missingBsa = activeScouts.filter((s) => s.person_id == null || !bsaByPerson.get(s.person_id)).length;
+  const cohCandidates = cohCandidatesRes.count ?? 0;
+
+  // ── Recent activity ────────────────────────────────────────────────
+  const scoutMap = new Map<string, string>();
+  for (const s of scouts) scoutMap.set(s.id, s.display_name);
+  const rankReqShortByKey = new Map<string, string>();
+  for (const r of rankReqs) rankReqShortByKey.set(`${r.rank_id}-${r.code}`, r.label);
+  const rankNameById = new Map<string, string>();
+  for (const r of ranks) rankNameById.set(r.id, r.display_name);
+
+  const recentRows: RecentRow[] = recent.map((e) => ({
+    id: e.id,
+    date: e.date,
+    scoutId: e.scout_id,
+    scoutName: scoutMap.get(e.scout_id) ?? e.scout_id,
+    kind: e.kind,
+    kindLabel: KIND_PRETTY[e.kind] ?? e.kind,
+    shortLabel: shortLabelFor(e, rankReqShortByKey, rankNameById, mbMap),
+    by: e.by
+  }));
+
+  // ── Likely Ready for Review ────────────────────────────────────────
+  // For each active scout, find their next rank (sort_order = current+1, or
+  // 'scout' if no current_rank). Compute completion of that rank's top-level
+  // requirements based on rank_requirement ledger codes (`<rank>-<code>`).
+
+  // Index ledger reqs by scout → set of req-codes (already prefixed with rank).
+  const ledgerByScout = new Map<string, Set<string>>();
+  for (const l of rankReqLedger) {
+    if (!ledgerByScout.has(l.scout_id)) ledgerByScout.set(l.scout_id, new Set());
+    ledgerByScout.get(l.scout_id)!.add(l.code);
+  }
+  // Group rank_requirements catalog by rank_id.
+  const catalogByRank = new Map<string, Array<{ code: string; label: string }>>();
+  for (const r of rankReqs) {
+    if (!catalogByRank.has(r.rank_id)) catalogByRank.set(r.rank_id, []);
+    catalogByRank.get(r.rank_id)!.push({ code: r.code, label: r.label });
+  }
+
+  const readyRows: ReadyRow[] = [];
+  for (const s of activeScouts) {
+    const currentSort =
+      ranks.find((r) => r.id === s.current_rank)?.sort_order ?? -1;
+    const nextRank = ranks.find((r) => r.sort_order === currentSort + 1);
+    if (!nextRank) continue; // already at Eagle (or unknown — skip)
+    const reqs = catalogByRank.get(nextRank.id) ?? [];
+    if (reqs.length === 0) continue;
+    const scoutCodes = ledgerByScout.get(s.id) ?? new Set<string>();
+    const completed = reqs.filter((r) => scoutCodes.has(`${nextRank.id}-${r.code}`));
+    const pct = completed.length / reqs.length;
+    if (pct < LIKELY_READY_THRESHOLD) continue;
+    const remaining = reqs
+      .filter((r) => !scoutCodes.has(`${nextRank.id}-${r.code}`))
+      .map((r) => `${r.code} ${r.label}`);
+    readyRows.push({
+      scoutId: s.id,
+      scoutName: s.display_name,
+      currentRankLabel:
+        rankNameById.get(s.current_rank ?? '') ?? '— (no rank)',
+      nextRankLabel: nextRank.display_name,
+      completed: completed.length,
+      total: reqs.length,
+      pct,
+      remaining
+    });
+  }
+  // Sort by completion descending, then name.
+  readyRows.sort((a, b) => b.pct - a.pct || a.scoutName.localeCompare(b.scoutName));
+
+  return {
+    stats: {
+      activeScouts: activeScouts.length,
+      totalLedger,
+      cohCandidates,
+      missingBsa,
+      lastCohDate
+    },
+    recentRows,
+    readyRows
+  };
+}
+
+function shortLabelFor(
+  row: LedgerEntry,
+  rankReqMap: Map<string, string>,
+  rankNameMap: Map<string, string>,
+  mbNameMap: Map<string, string>
+): string {
+  switch (row.kind) {
+    case 'rank_requirement': {
+      const s = rankReqMap.get(row.code);
+      if (s) return s;
+      return row.label ?? row.code;
+    }
+    case 'rank_award': {
+      const s = rankReqMap.get(`${row.code}-BoR`);
+      if (s) return s;
+      const rn = rankNameMap.get(row.code) ?? row.code;
+      return `Board of Review - ${rn}`;
+    }
+    case 'merit_badge_award': {
+      const colon = row.code.indexOf(':');
+      const id = colon >= 0 ? row.code.slice(colon + 1) : row.code;
+      return mbNameMap.get(id) ?? row.label ?? row.code;
+    }
+    default:
+      return row.label ?? row.code;
+  }
+}
+
+const METHOD_LABEL: Record<LoginMethod, string> = {
+  link: 'Email link',
+  code: 'Code',
+  passkey: 'Passkey',
+  // Never a successful login — a Bugle-link resolve that found nobody
+  // (lib/signin-hint.ts); appears only in the failed list.
+  hint: 'Bugle link'
+};
+
+/**
+ * Home (/admin) and the old dashboard URL render this one page: "Needs you today" for every leader, filtered to
+ * what they can open, then the advancement overview for anyone holding advancement.write.
+ */
+export async function AdminHome({ overview = false }: { overview?: boolean } = {}) {
+  const actor = await resolveAdminActor();
+  if (!actor) throw new Error('Not authenticated');
+  const canSeeOverview = actor.capabilities.has('advancement.write');
+  const [rows, suggestionActor] = await Promise.all([
+    loadAttentionCategories(actor.capabilities),
+    loadSuggestionActor()
+  ]);
+
+  return (
+    <>
+      <PageTitle back={null}
+        title="Home"
+        sub="What needs you today, then the troop at a glance."
+      >
+        <SuggestionButton
+          actorName={suggestionActor.name}
+          actorEmail={suggestionActor.email}
+          action={sendSuggestionAction}
+        />
+      </PageTitle>
+
+      <AttentionInbox rows={rows} />
+
+      {canSeeOverview && overview && <AdvancementOverview />}
+      {canSeeOverview && !overview && (
+        <Button href="/admin/advancement/dashboard" variant="secondary" size="sm">
+          Advancement overview
+        </Button>
+      )}
+    </>
+  );
+}
+
+async function AdvancementOverview() {
+  const [data, recentLogins, householdsSignedIn] = await Promise.all([
+    loadDashboard(),
+    loadRecentLogins(createAdminClient(), 15),
+    loadHouseholdsSignedInStats(createAdminClient())
+  ]);
+
+  return (
+    <>
+      <div className={styles.stats}>
+        <Stat
+          label="Active Scouts"
+          value={data.stats.activeScouts}
+          sub="across all patrols"
+        />
+        <Stat
+          label="Ledger Entries"
+          value={data.stats.totalLedger}
+          sub="live entries on the ledger"
+        />
+        <Stat
+          label="COH Candidates"
+          value={data.stats.cohCandidates}
+          sub={
+            data.stats.lastCohDate
+              ? `since ${fmtDate(data.stats.lastCohDate)}`
+              : 'no prior COH on file'
+          }
+        />
+        <Stat
+          label="Missing BSA IDs"
+          value={data.stats.missingBsa}
+          sub="blocks Scoutbook export"
+          warn={data.stats.missingBsa > 0}
+        />
+      </div>
+
+      <div className={styles.grid}>
+        <div className={styles.card}>
+          <div className={styles.cardHeader}>
+            <h3>Recent Ledger Activity</h3>
+            <Link href="/admin/advancement/ledger" className={styles.cardHeaderLink}>
+              View all →
+            </Link>
+          </div>
+          {data.recentRows.length === 0 ? (
+            <div className={styles.empty}>No ledger entries yet.</div>
+          ) : (
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Scout</th>
+                  <th>Entry</th>
+                  <th>By</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.recentRows.map((r) => (
+                  <tr key={r.id}>
+                    <td className={styles.dateCell}>{fmtDate(r.date)}</td>
+                    <td className={styles.scoutCell}>
+                      <Link href={`/scouts/${r.scoutId}`}>{r.scoutName}</Link>
+                    </td>
+                    <td>
+                      <span className={styles.kindPill}>{r.kindLabel}</span>
+                      <span className={styles.entryDesc}>{r.shortLabel}</span>
+                    </td>
+                    <td>{r.by ?? ''}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        <div className={styles.card}>
+          <div className={styles.cardHeader}>
+            <h3>Likely Ready for Review</h3>
+          </div>
+          <div className={styles.note}>
+            <strong>Note:</strong> Ranks are never auto-awarded. These are
+            scouts who&rsquo;ve checked most boxes for the next rank &mdash;
+            verify with the official requirement list before scheduling a BoR.
+          </div>
+          {data.readyRows.length === 0 ? (
+            <div className={styles.empty}>
+              No scouts above the {Math.round(LIKELY_READY_THRESHOLD * 100)}%
+              completion threshold for their next rank.
+            </div>
+          ) : (
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Scout</th>
+                  <th>Next Rank</th>
+                  <th>Progress</th>
+                  <th>Suggested Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.readyRows.map((r) => {
+                  const pctLabel = `${r.completed}/${r.total}`;
+                  const remainingCount = r.total - r.completed;
+                  const borOnly =
+                    remainingCount === 1 &&
+                    r.remaining.some((s) => /\bBoR\b/.test(s));
+                  return (
+                    <tr key={r.scoutId}>
+                      <td className={styles.scoutCell}>
+                        <Link href={`/scouts/${r.scoutId}`}>{r.scoutName}</Link>
+                      </td>
+                      <td>{r.nextRankLabel}</td>
+                      <td>
+                        <span className={styles.progress}>
+                          <span
+                            className={styles.progressFill}
+                            // inline: dynamic — bar width is the computed percentage
+                            style={{ width: `${Math.round(r.pct * 100)}%` }}
+                          />
+                        </span>
+                        {pctLabel}
+                      </td>
+                      <td className={styles.suggestedAction}>
+                        {borOnly ? (
+                          <span className={styles.suggestBor}>Schedule BoR</span>
+                        ) : (
+                          `${remainingCount} requirement${remainingCount === 1 ? '' : 's'} left`
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        <div className={`${styles.card} ${styles.cardWide}`}>
+          <div className={styles.cardHeader}>
+            <h3>Recent Logins</h3>
+            <Link href="/admin/advancement/dashboard/logins" className={styles.cardHeaderLink}>
+              View all →
+            </Link>
+          </div>
+          <p className={styles.cardSubLine}>
+            {householdsSignedIn.signedIn} of {householdsSignedIn.total} households have signed in at
+            least once
+          </p>
+          {recentLogins.length === 0 ? (
+            <div className={styles.empty}>No logins recorded yet.</div>
+          ) : (
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>When</th>
+                  <th>Person</th>
+                  <th>Role</th>
+                  <th>Method</th>
+                  <th>Device</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentLogins.map((e) => (
+                  <tr key={e.id}>
+                    <td className={styles.dateCell}>{fmtDateTime(e.createdAt)}</td>
+                    <td className={styles.scoutCell}>
+                      {e.personName ?? 'Unknown'}
+                      {e.isFirstLogin && <span className={styles.kindPill}>First login</span>}
+                      {e.sentByLeader && (
+                        <span className={styles.cardSubLine}> via link sent by {e.sentByLeader}</span>
+                      )}
+                    </td>
+                    <td>{e.roleSnapshot === 'leader' ? 'Leader' : 'Family'}</td>
+                    <td>
+                      <span className={styles.kindPill}>{METHOD_LABEL[e.method]}</span>
+                    </td>
+                    <td>{e.deviceLabel}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        <div className={styles.card}>
+          <div className={styles.cardHeader}>
+            <h3>Site Analytics</h3>
+            <Link href="/admin/advancement/dashboard/analytics" className={styles.cardHeaderLink}>
+              View analytics →
+            </Link>
+          </div>
+          <div className={styles.empty}>Traffic and engagement, via Google Analytics 4.</div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  sub,
+  warn
+}: {
+  label: string;
+  value: number | string;
+  sub: string;
+  warn?: boolean;
+}) {
+  return (
+    <div className={styles.stat}>
+      <div className={styles.statLabel}>{label}</div>
+      <div className={`${styles.statValue} ${warn ? styles.statValueWarn : ''}`}>
+        {value}
+      </div>
+      <div className={styles.statSub}>{sub}</div>
+    </div>
+  );
+}

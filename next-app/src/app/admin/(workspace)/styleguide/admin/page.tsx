@@ -47,6 +47,7 @@ import { BackNav } from '../../_components/back-nav';
 import { PublicPageLink } from '../../../_components/public-page-link';
 import { HelpBadge } from '../../../_components/help-badge';
 import { RecentItemsList } from '../../_components/recent-items-list';
+import { AttentionInbox } from '../../_components/attention-inbox';
 import { PageTitle } from '../../_components/page-title';
 import { Notice } from '../../_components/notice';
 import dlg from '../../_components/dialog.module.css';
@@ -1046,6 +1047,35 @@ export default function StyleguidePage() {
               ]}
             />
           </div>
+        </div>
+      </section>
+
+      <section className={sg.section}>
+        <h2 className={sg.sectionHead}>Inbox row</h2>
+        <p className={sg.sectionNote}>
+          Home&rsquo;s &ldquo;Needs you today&rdquo; (<code>_components/attention-inbox</code>, 2026-10-13): one
+          row per queue &mdash; a count, its unit, one line of who/what, and the whole row is the link to the
+          queue that clears it. Money rows (<code>tone=&quot;money&quot;</code>) take the forest accent on the count.
+          Rows come from <code>loadAttentionCategories()</code>, each gated by the capability that opens its queue.
+          With nothing waiting it says &ldquo;Nothing needs you today.&rdquo; &mdash; never an empty list.
+        </p>
+        <div className={sg.specimenGrid}>
+          <Specimen
+            label="Inbox rows — a queue, a money queue, and an FYI row"
+            canonical
+            note="Count + unit on the left, title and a single meta line, chevron on the right; the row is one Link. An FYI row (the next open sign-up) shows going-count instead of a backlog."
+          >
+            <AttentionInbox
+              rows={[
+                { key: 'profile', label: 'Profile updates awaiting review', count: 3, unit: 'waiting', meta: 'Ava Nowak, Ben Schultz and the Garcia household', href: '#' },
+                { key: 'reimb', label: 'Reimbursements to approve', count: 2, unit: 'to approve', meta: '$412.68 total · oldest Sep 29 (Mike Kowalski)', href: '#', tone: 'money' },
+                { key: 'signup', label: 'Fall Camporee: sign-up is open', count: 18, unit: 'going', meta: 'Fri, Oct 23 to Sun, Oct 25 · sign-up closes Mon, Oct 19', href: '#' }
+              ]}
+            />
+          </Specimen>
+          <Specimen label="Inbox — empty" note="The empty state is a statement, not a blank panel.">
+            <AttentionInbox rows={[]} />
+          </Specimen>
         </div>
       </section>
 

@@ -27,10 +27,10 @@ export interface SellerOption {
 const FULFILLMENT: Record<AdminOrder['fulfillment'], string> = { scout: 'Scout delivers', pickup: 'Pickup', delivery: 'Troop delivery', none: 'Donated only' };
 const SOURCE: Record<AdminOrder['source'], string> = { scout_link: 'Scout link', store: 'Store', paper: 'Paper' };
 
-export function OrdersPanel({ orders, history, sellers, deliveryZipPrefix }: { orders: AdminOrder[]; history: Record<number, AuditEntry[]>; sellers: SellerOption[]; deliveryZipPrefix: string }) {
+export function OrdersPanel({ orders, history, sellers, deliveryZipPrefix, initialPay = '' }: { orders: AdminOrder[]; history: Record<number, AuditEntry[]>; sellers: SellerOption[]; deliveryZipPrefix: string; initialPay?: string }) {
   const [round, setRound] = useState('');
   const [credit, setCredit] = useState('');
-  const [pay, setPay] = useState('');
+  const [pay, setPay] = useState(initialPay);
   const [ful, setFul] = useState('');
   const [open, setOpen] = useState<number | null>(null);
   const [reassigning, setReassigning] = useState<AdminOrder | null>(null);

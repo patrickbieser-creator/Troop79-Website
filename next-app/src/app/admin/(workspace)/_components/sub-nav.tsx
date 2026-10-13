@@ -22,17 +22,33 @@ interface NavItem {
    * one that throws.
    */
   capability?: Capability;
+  /**
+   * Offered to every leader regardless of capability (Home only — it is the
+   * inbox, which each person sees filtered to what they hold). The layout has
+   * already turned away anyone with no capability at all.
+   */
+  everyone?: boolean;
+  /** matchPath must equal the pathname rather than prefix it (Home at /admin). */
+  exact?: boolean;
+  /** Extra path prefixes that light this item up (the dashboard URL is Home too). */
+  alsoMatches?: string[];
 }
 
-const SECTIONS: { title: string; items: NavItem[] }[] = [
+export const SECTIONS: { title: string; items: NavItem[] }[] = [
   {
     title: 'Overview',
     items: [
       {
-        label: 'Dashboard',
-        href: '/admin/advancement/dashboard',
-        matchPath: '/admin/advancement/dashboard',
-        capability: 'advancement.write'
+        // Home = the old Dashboard, extended (Plans/Admin-Home-And-Nav.md Wave 1):
+        // "Needs you today" first, then the advancement overview for those who
+        // hold advancement.write. /admin/advancement/dashboard still renders the
+        // same page, so old links and bookmarks keep working.
+        label: 'Home',
+        href: '/admin',
+        matchPath: '/admin',
+        exact: true,
+        alsoMatches: ['/admin/advancement/dashboard'],
+        everyone: true
       }
     ]
   },
@@ -296,16 +312,6 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
         href: '/admin/utilities',
         matchPath: '/admin/utilities',
         capability: 'news.write'
-      },
-      {
-        // Deliberately NO capability: the styleguides render static pattern
-        // samples — no data, no writes — so no page-level grant applies, and
-        // per visibleNavSections' rules a capability-less item is offered to
-        // full admins only. That's the right audience for a design reference.
-        // Lands on the chooser page, which offers the admin and public guides.
-        label: 'Styleguides',
-        href: '/admin/styleguide',
-        matchPath: '/admin/styleguide'
       }
     ]
   }
@@ -346,6 +352,7 @@ export function visibleNavSections(
         ...s,
         items: s.items.filter(
           (i) =>
+            i.everyone ||
             i.capability == null ||
             !NEVER_IMPLIED_BY_FULL_ADMIN.has(i.capability) ||
             opts.capabilities.has(i.capability)
@@ -356,7 +363,7 @@ export function visibleNavSections(
   return sections
     .map((s) => ({
       ...s,
-      items: s.items.filter((i) => i.capability != null && opts.capabilities.has(i.capability))
+      items: s.items.filter((i) => i.everyone || (i.capability != null && opts.capabilities.has(i.capability)))
     }))
     .filter((s) => s.items.length > 0);
 }
@@ -373,15 +380,26 @@ export function visibleNavSections(
  * (screenshot, 2026-08-20). Longest-match-wins picks the more specific one.
  */
 export function activeMatchPathFor(
-  sections: { items: { disabled?: boolean; matchPath?: string }[] }[],
+  sections: {
+    items: { disabled?: boolean; matchPath?: string; exact?: boolean; alsoMatches?: string[] }[];
+  }[],
   pathname: string
 ): string | null {
   let active: string | null = null;
+  let activeLen = -1;
   for (const section of sections) {
     for (const item of section.items) {
       if (item.disabled || !item.matchPath) continue;
-      if (!pathname.startsWith(item.matchPath)) continue;
-      if (active === null || item.matchPath.length > active.length) active = item.matchPath;
+      const candidates = [
+        ...(item.exact ? (pathname === item.matchPath ? [item.matchPath] : []) : pathname.startsWith(item.matchPath) ? [item.matchPath] : []),
+        ...(item.alsoMatches ?? []).filter((p) => pathname.startsWith(p))
+      ];
+      for (const c of candidates) {
+        if (c.length > activeLen) {
+          active = item.matchPath;
+          activeLen = c.length;
+        }
+      }
     }
   }
   return active;

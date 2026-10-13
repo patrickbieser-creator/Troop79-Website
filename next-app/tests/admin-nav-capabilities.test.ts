@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { visibleNavSections, activeMatchPathFor } from '../src/app/admin/(workspace)/_components/sub-nav';
+import { visibleNavSections, activeMatchPathFor, SECTIONS as RAIL } from '../src/app/admin/(workspace)/_components/sub-nav';
 import type { Capability } from '../src/lib/capabilities';
 
 /**
@@ -149,5 +149,42 @@ describe('activeMatchPathFor', () => {
       { items: [{ label: 'Soon', matchPath: '/admin/finance', disabled: true }] }
     ];
     expect(activeMatchPathFor(withDisabled, '/admin/finance')).toBeNull();
+  });
+});
+
+/**
+ * Rail cleanup (Plans/Admin-Home-And-Nav.md, Wave 1): Home replaces the
+ * Dashboard link, Styleguides leaves the rail (the route stays reachable by
+ * URL), and Ledger Audit is offered once, under Finance.
+ */
+describe('admin rail contents', () => {
+  const all = RAIL.flatMap((s) => s.items);
+
+  it('Rail_DoesNotListStyleguides', () => {
+    expect(all.map((i) => i.label)).not.toContain('Styleguides');
+    expect(all.some((i) => i.href?.startsWith('/admin/styleguide'))).toBe(false);
+  });
+
+  it('Rail_ListsLedgerAuditExactlyOnce_UnderFinance', () => {
+    const hits = RAIL.flatMap((s) => s.items.map((i) => ({ section: s.title, i }))).filter((x) => x.i.href === '/admin/utilities/ledger-audit');
+    expect(hits.map((h) => h.section)).toEqual(['Finance']);
+  });
+
+  it('Rail_CallsTheFirstItemHome_AndPointsItAtAdmin', () => {
+    const home = RAIL[0].items[0];
+    expect(home.label).toBe('Home');
+    expect(home.href).toBe('/admin');
+  });
+
+  it('Home_LightsUpOnlyOnTheHomePages_NotOnEveryAdminPage', () => {
+    const visible = visibleNavSections(RAIL, { fullAdmin: true, capabilities: new Set<Capability>(['finance.manage', 'finance.view']) });
+    expect(activeMatchPathFor(visible, '/admin')).toBe('/admin');
+    expect(activeMatchPathFor(visible, '/admin/advancement/dashboard')).toBe('/admin');
+    expect(activeMatchPathFor(visible, '/admin/news/articles')).toBe('/admin/news/articles');
+  });
+
+  it('Home_IsOfferedToEveryLeader_EvenWithOnlyFinanceManage', () => {
+    const out = visibleNavSections(RAIL, { fullAdmin: false, capabilities: new Set<Capability>(['finance.manage']) });
+    expect(out[0].items[0].label).toBe('Home');
   });
 });

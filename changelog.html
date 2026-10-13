@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>October 13, 2026</strong> &nbsp;&middot;&nbsp; v1.213.2</p>
+      <p>Last updated: <strong>October 13, 2026</strong> &nbsp;&middot;&nbsp; v1.214.0</p>
     </div>
   </div>
 
@@ -494,6 +494,29 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.214.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.214.0</span>
+        <span class="release-date">October 13, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">New</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Admin: a Home page that tells you what needs you</p>
+        <ul class="change-list">
+          <li><span><strong>Home replaces the Dashboard.</strong> The first link in the admin menu is now Home, and /admin opens it. Every leader gets it, not just people with advancement access. The old dashboard address still works.</span></li>
+          <li><span><strong>&ldquo;Needs you today&rdquo; at the top.</strong> One row per thing waiting, with a count and a link straight to the page that clears it. New rows: reimbursements to approve, wreath orders not paid yet (only while the sale is open), news submitted for review, and the next event whose sign-up is open. Each row only shows to leaders who can open that page. When nothing is waiting it says &ldquo;Nothing needs you today.&rdquo;</span></li>
+          <li><span><strong>Wreath orders open pre-filtered.</strong> The wreath row opens the Orders tab already showing only unpaid orders.</span></li>
+        </ul>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Admin menu cleanup</p>
+        <ul class="change-list">
+          <li><span><strong>Styleguides link removed from the menu.</strong> The pages are still there at /admin/styleguide for anyone who needs them. Ledger Audit is listed once, under Finance.</span></li>
+        </ul>
       </div>
     </div>
 

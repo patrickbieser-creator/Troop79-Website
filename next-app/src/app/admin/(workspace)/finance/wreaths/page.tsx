@@ -7,6 +7,7 @@ import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import { fmtDay } from '@/lib/format-date';
 import { loadAdminItems, loadAdminOrders, loadAdminSale, loadAdminSellers, loadOrderHistory, loadRoseOrder, loadSellerCandidates } from '@/lib/wreaths/admin-data';
+import { parsePayFilter } from './pay-filter';
 import { PageTitle } from '../../_components/page-title';
 import { PublicPageLink } from '../../../_components/public-page-link';
 import { TabStrip } from '../../_components/tab-strip';
@@ -24,9 +25,11 @@ export const dynamic = 'force-dynamic';
 const TABS = ['orders', 'rose', 'sellers', 'items', 'settings'] as const;
 type Tab = (typeof TABS)[number];
 
-export default async function WreathSalePage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+export default async function WreathSalePage({ searchParams }: { searchParams: Promise<{ tab?: string; pay?: string }> }) {
   await requireCapability('finance.manage');
-  const { tab: raw } = await searchParams;
+  const { tab: raw, pay: rawPay } = await searchParams;
+  // ?pay=unpaid arrives from Home's inbox row; anything else starts unfiltered.
+  const initialPay = parsePayFilter(rawPay);
   const tab: Tab = (TABS as readonly string[]).includes(raw ?? '') ? (raw as Tab) : 'orders';
   const sb = createAdminClient();
   const sale = await loadAdminSale(sb);
@@ -81,6 +84,7 @@ export default async function WreathSalePage({ searchParams }: { searchParams: P
           )}
           <OrdersPanel
             orders={orders}
+            initialPay={initialPay}
             history={Object.fromEntries(await loadOrderHistory(sb, orders.map((o) => o.id)))}
             sellers={sellers.filter((s) => s.active).map((s) => ({ personId: s.personId, name: s.name }))}
             deliveryZipPrefix={sale.deliveryZipPrefix}
