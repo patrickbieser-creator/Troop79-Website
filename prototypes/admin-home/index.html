@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Admin Home + Section Nav — Prototype — Scout Troop 79</title>
+<style>
+  /* ── Admin tokens (copied from next-app/src/app/admin/(workspace)/admin.css) ── */
+  :root {
+    --admin-navy: #1e3a4a; --admin-navy-light: #2a5068; --admin-navy-hover: #163040;
+    --admin-forest: #3d7a4a; --admin-forest-dark: #2e6038;
+    --admin-danger: #c0392b; --admin-danger-dark: #8c2f2f;
+    --admin-warning: #d4a017; --admin-accent-gold: #8b6914;
+    --admin-bg: #f5f6f8; --admin-white: #ffffff; --admin-form-bg: #eef1f5;
+    --admin-gray-50: #fafbfc; --admin-gray-100: #f0f1f3; --admin-gray-200: #e2e4e8;
+    --admin-gray-300: #cdd1d6; --admin-gray-400: #9ba1aa; --admin-gray-500: #6d7580;
+    --admin-gray-600: #666666; --admin-gray-700: #3a3f47; --admin-gray-900: #1a1d21;
+    --admin-status-warning-bg: #fdf3d6; --admin-status-success-bg: #f0f6f1; --admin-status-info-bg: #eef3f8;
+    --admin-radius: 4px; --admin-radius-sm: 3px; --admin-radius-lg: 8px; --admin-radius-pill: 999px;
+    --admin-shadow-sm: 0 1px 3px rgba(0,0,0,.08); --admin-shadow-md: 0 2px 8px rgba(0,0,0,.1);
+    --admin-shadow-lg: 0 8px 24px rgba(0,0,0,.18);
+    --admin-transition: .15s ease;
+    --admin-space-1: 2px; --admin-space-2: 4px; --admin-space-3: 6px; --admin-space-4: 8px;
+    --admin-space-5: 10px; --admin-space-6: 12px; --admin-space-7: 14px; --admin-space-8: 16px;
+    --admin-space-10: 20px; --admin-space-11: 24px; --admin-space-13: 32px; --admin-space-14: 40px;
+    --admin-text-xs: 10px; --admin-text-sm: 11px; --admin-text-base: 12px; --admin-text-md: 13px;
+    --admin-text-lg: 14px; --admin-text-xl: 16px; --admin-text-2xl: 20px; --admin-text-3xl: 24px;
+    --admin-weight-regular: 400; --admin-weight-semibold: 600; --admin-weight-bold: 700;
+    --admin-font-ui: 'Open Sans', Arial, sans-serif;
+    --admin-font-display: 'Playfair Display', Georgia, serif;
+    /* prototype-only chrome tokens (not proposed for admin.css) */
+    --proto-ink: #2b2f36; --proto-panel: #ffffff;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #e9ebef; color: var(--admin-gray-900); font-family: var(--admin-font-ui); font-size: var(--admin-text-lg); }
+  button, input, textarea { font-family: inherit; }
+  :focus-visible { outline: 2px solid var(--admin-navy); outline-offset: 2px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  /* ════════ PROTOTYPE CHROME (not part of the design) ════════ */
+  .proto { max-width: 1320px; margin: 0 auto; padding: 16px 20px 8px; }
+  .protoBanner { font-size: var(--admin-text-md); color: var(--proto-ink); line-height: 1.5; margin-bottom: 10px; }
+  .protoBanner strong { color: var(--admin-navy); }
+  .controls { background: var(--proto-panel); border: 1px solid var(--admin-gray-300); border-radius: var(--admin-radius-lg); padding: 10px 14px; display: grid; gap: 8px; box-shadow: var(--admin-shadow-sm); }
+  .ctlRow { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; }
+  .ctl { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .ctlLbl { font-size: var(--admin-text-sm); font-weight: var(--admin-weight-bold); color: var(--admin-gray-700); text-transform: uppercase; letter-spacing: .05em; }
+  .seg { display: inline-flex; border: 1px solid var(--admin-gray-300); border-radius: var(--admin-radius); overflow: hidden; }
+  .seg button { border: 0; border-right: 1px solid var(--admin-gray-300); background: var(--admin-white); color: var(--admin-gray-700); font-size: var(--admin-text-base); font-weight: var(--admin-weight-semibold); padding: 5px 10px; cursor: pointer; min-height: 28px; }
+  .seg button:last-child { border-right: 0; }
+  .seg button:hover { background: var(--admin-gray-100); }
+  .seg button[aria-pressed="true"] { background: var(--admin-navy); color: var(--admin-white); }
+  .capLine { font-size: var(--admin-text-sm); color: var(--admin-gray-700); }
+  .capLine code { background: var(--admin-gray-100); padding: 1px 5px; border-radius: 3px; font-size: var(--admin-text-sm); }
+  .annoBtn { margin-left: auto; border: 1px solid var(--admin-accent-gold); background: var(--admin-status-warning-bg); color: var(--admin-accent-gold); font-weight: var(--admin-weight-bold); font-size: var(--admin-text-base); border-radius: var(--admin-radius); padding: 5px 10px; cursor: pointer; min-height: 28px; }
+  .anno { background: var(--proto-panel); border: 1px solid var(--admin-gray-300); border-left: 4px solid var(--admin-accent-gold); border-radius: var(--admin-radius-lg); margin-top: 10px; padding: 12px 16px; font-size: var(--admin-text-md); line-height: 1.5; }
+  .anno[hidden] { display: none; }
+  .anno h2 { font-size: var(--admin-text-lg); color: var(--admin-navy); margin: 0 0 6px; }
+  .anno h3 { font-size: var(--admin-text-md); color: var(--admin-navy); margin: 14px 0 4px; }
+  .anno ul { margin: 4px 0; padding-left: 18px; }
+  .annoGrid { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 20px; }
+  @media (max-width: 900px) { .annoGrid { grid-template-columns: 1fr; } }
+  .moveTable { width: 100%; border-collapse: collapse; font-size: var(--admin-text-base); }
+  .moveTable th, .moveTable td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--admin-gray-100); vertical-align: top; }
+  .moveTable th { font-size: var(--admin-text-sm); text-transform: uppercase; letter-spacing: .05em; color: var(--admin-gray-700); background: var(--admin-gray-50); }
+  .moveTable .chg { color: var(--admin-accent-gold); font-weight: var(--admin-weight-bold); }
+  .flag { color: var(--admin-danger-dark); font-weight: var(--admin-weight-bold); }
+
+  /* ════════ DEVICE FRAME ════════ */
+  .stage { padding: 12px 20px 60px; display: flex; justify-content: center; }
+  .frame { width: 100%; max-width: 1280px; background: var(--admin-bg); border: 1px solid var(--admin-gray-300); border-radius: 6px; box-shadow: var(--admin-shadow-md); overflow: hidden; }
+  .frame.isPhone { max-width: 391px; /* 375 viewport + 2×8 bezel */ border-radius: 22px; border: 8px solid #1f2328; }
+  .app { container-type: inline-size; container-name: app; min-height: 720px; position: relative; }
+
+  /* ════════ ADMIN HEADER ════════ */
+  .topBar { background: var(--admin-navy); color: var(--admin-white); display: flex; align-items: center; gap: 12px; padding: 0 20px; min-height: 48px; }
+  .topBar .brand { font-family: var(--admin-font-display); font-weight: var(--admin-weight-bold); font-size: var(--admin-text-xl); white-space: nowrap; color: var(--admin-white); text-decoration: none; }
+  .topBar .brand span { font-family: var(--admin-font-ui); font-weight: var(--admin-weight-regular); font-size: var(--admin-text-md); opacity: .85; margin-left: 6px; }
+  .topBar .who { margin-left: auto; font-size: var(--admin-text-md); display: flex; gap: 14px; align-items: center; white-space: nowrap; }
+  .topBar .who a { color: var(--admin-white); opacity: .9; }
+
+  /* ════════ SECTION BAR (replaces the left rail) ════════ */
+  .sectionBar { background: var(--admin-white); border-bottom: 1px solid var(--admin-gray-200); position: relative; }
+  .sbScroll { display: flex; gap: 4px; padding: 0 16px; overflow-x: auto; scrollbar-width: none; }
+  .sbScroll::-webkit-scrollbar { display: none; }
+  .sbLink { flex: none; display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; font-size: var(--admin-text-lg); font-weight: var(--admin-weight-semibold); color: var(--admin-gray-700); text-decoration: none; border-bottom: 3px solid transparent; white-space: nowrap; }
+  .sbLink:hover { color: var(--admin-navy); background: var(--admin-gray-50); }
+  .sbLink[aria-current="page"] { color: var(--admin-navy); border-bottom-color: var(--admin-warning); }
+  .sbFade { display: none; position: absolute; right: 0; top: 0; bottom: 1px; width: 36px; pointer-events: none; background: linear-gradient(to right, rgba(255,255,255,0), var(--admin-white) 80%); }
+  .sbMenuWrap { display: none; padding: 6px 12px; }
+  .sbMenuBtn { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 12px; border: 1px solid var(--admin-gray-300); border-radius: var(--admin-radius); background: var(--admin-white); font-size: var(--admin-text-lg); color: var(--admin-gray-700); cursor: pointer; }
+  .sbMenuBtn strong { color: var(--admin-navy); }
+  .sbMenu { position: absolute; left: 12px; top: 50px; z-index: 20; min-width: 220px; background: var(--admin-white); border: 1px solid var(--admin-gray-200); border-radius: var(--admin-radius-lg); box-shadow: var(--admin-shadow-lg); padding: 4px 0; list-style: none; margin: 0; }
+  .sbMenu[hidden] { display: none; }
+  .sbMenu a { display: flex; align-items: center; min-height: 44px; padding: 0 16px; color: var(--admin-gray-900); text-decoration: none; font-weight: var(--admin-weight-semibold); }
+  .sbMenu a:hover { background: var(--admin-gray-100); }
+  .sbMenu a[aria-current="page"] { color: var(--admin-navy); box-shadow: inset 3px 0 0 var(--admin-warning); }
+  .sbMenu .cnt { margin-left: auto; font-weight: var(--admin-weight-regular); color: var(--admin-gray-500); font-size: var(--admin-text-base); }
+  /* Phone: pick treatment */
+  @container app (max-width: 560px) {
+    .topBar { padding: 0 14px; }
+    .topBar .brand span, .topBar .who .vs { display: none; }
+    .barScroll .sbFade { display: block; }
+    .barMenu .sbScroll { display: none; }
+    .barMenu .sbMenuWrap { display: block; }
+  }
+
+  /* ════════ PAGE ════════ */
+  .page { max-width: 1200px; margin: 0 auto; padding: 24px 24px 48px; }
+  @container app (max-width: 560px) { .page { padding: 16px 14px 40px; } }
+  .notice { background: var(--admin-status-info-bg); border: 1px solid #c8d6e5; border-radius: var(--admin-radius); padding: 8px 12px; font-size: var(--admin-text-md); margin-bottom: 16px; color: var(--admin-gray-900); }
+  /* PageTitle */
+  .pageTitle { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 20px; }
+  .pageTitle h1 { font-size: 22px; font-weight: var(--admin-weight-bold); color: var(--admin-navy); margin: 0 0 4px; }
+  .pageTitle p { font-size: var(--admin-text-md); color: var(--admin-gray-500); margin: 0; max-width: 720px; line-height: 1.5; }
+  .backNav { margin-bottom: 4px; font-size: var(--admin-text-sm); }
+  .backNav a { display: inline-flex; align-items: center; min-height: 24px; color: var(--admin-gray-600); text-decoration: none; }
+  .backNav a:hover { color: var(--admin-navy); text-decoration: underline; }
+  /* TabStrip (matches tab-strip.module.css, calm restyle R5) */
+  .tabs { display: flex; gap: 0 24px; border-bottom: 1px solid var(--admin-gray-200); margin-bottom: 20px; overflow-x: auto; scrollbar-width: thin; }
+  .tab { flex: none; border-bottom: 2px solid transparent; margin-bottom: -1px; padding: 8px 0; font-size: var(--admin-text-lg); font-weight: var(--admin-weight-semibold); color: var(--admin-gray-500); text-decoration: none; white-space: nowrap; display: inline-flex; gap: 4px; }
+  .tab:hover { color: var(--admin-gray-900); }
+  .tab[aria-current="page"] { color: var(--admin-gray-900); border-bottom-color: var(--admin-navy); }
+  .tab .tabCount { font-weight: var(--admin-weight-regular); color: var(--admin-gray-500); }
+  /* Second-level (Reports) — segmented, so it never reads as a second TabStrip */
+  .subTabs { display: inline-flex; flex-wrap: wrap; gap: 6px; margin: -6px 0 18px; }
+  .subTab { font-size: var(--admin-text-md); font-weight: var(--admin-weight-semibold); color: var(--admin-gray-700); text-decoration: none; padding: 5px 10px; border: 1px solid var(--admin-gray-300); border-radius: var(--admin-radius-pill); background: var(--admin-white); }
+  .subTab[aria-current="page"] { background: var(--admin-navy); color: var(--admin-white); border-color: var(--admin-navy); }
+
+  /* ════════ HOME: Needs you today ════════ */
+  .h2 { font-size: var(--admin-text-xl); color: var(--admin-navy); margin: 0 0 10px; font-weight: var(--admin-weight-bold); }
+  .inbox { background: var(--admin-white); border: 1px solid var(--admin-gray-200); border-radius: var(--admin-radius-lg); box-shadow: var(--admin-shadow-sm); margin: 0 0 32px; padding: 0; list-style: none; overflow: hidden; }
+  .inbox li + li { border-top: 1px solid var(--admin-gray-100); }
+  .inRow { display: grid; grid-template-columns: 64px 1fr auto; gap: 12px; align-items: center; padding: 12px 16px; text-decoration: none; color: inherit; min-height: 56px; }
+  .inRow:hover { background: var(--admin-gray-50); }
+  .inRow:hover .inTitle { color: var(--admin-navy); text-decoration: underline; }
+  .inCount { text-align: center; }
+  .inCount b { display: block; font-size: var(--admin-text-2xl); line-height: 1; color: var(--admin-navy); }
+  .inCount small { display: block; font-size: var(--admin-text-xs); color: var(--admin-gray-500); text-transform: uppercase; letter-spacing: .05em; margin-top: 2px; }
+  .inRow.money .inCount b { color: var(--admin-forest-dark); }
+  .inTitle { font-weight: var(--admin-weight-semibold); font-size: var(--admin-text-lg); }
+  .inMeta { font-size: var(--admin-text-base); color: var(--admin-gray-500); margin-top: 2px; line-height: 1.4; }
+  .inGo { color: var(--admin-gray-400); font-size: var(--admin-text-xl); }
+  .inEmpty { padding: 22px 16px; display: flex; gap: 12px; align-items: center; }
+  .inEmpty .ok { width: 32px; height: 32px; border-radius: 50%; background: var(--admin-status-success-bg); color: var(--admin-forest-dark); display: grid; place-items: center; font-weight: var(--admin-weight-bold); flex: none; }
+  .inEmpty b { display: block; }
+  .inEmpty span { font-size: var(--admin-text-base); color: var(--admin-gray-500); }
+  @container app (max-width: 560px) {
+    .inRow { grid-template-columns: 48px 1fr auto; gap: 10px; padding: 10px 12px; }
+  }
+
+  /* ════════ HOME: card grid ════════ */
+  .group { margin-bottom: 28px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+  .card { position: relative; display: block; background: var(--admin-white); border: 1px solid var(--admin-gray-200); border-radius: var(--admin-radius-lg); padding: 14px 16px; text-decoration: none; color: inherit; box-shadow: var(--admin-shadow-sm); transition: border-color var(--admin-transition), box-shadow var(--admin-transition); min-height: 78px; }
+  .card:hover { border-color: var(--admin-navy-light); box-shadow: var(--admin-shadow-md); }
+  .card:hover .cTitle { text-decoration: underline; }
+  .cTitle { font-weight: var(--admin-weight-bold); color: var(--admin-navy); font-size: var(--admin-text-lg); padding-right: 64px; }
+  .cLine { font-size: var(--admin-text-base); color: var(--admin-gray-500); margin-top: 4px; line-height: 1.4; }
+  .cBadge { position: absolute; top: 12px; right: 12px; background: var(--admin-navy); color: var(--admin-white); font-size: var(--admin-text-sm); font-weight: var(--admin-weight-bold); border-radius: var(--admin-radius-pill); padding: 2px 8px; }
+  .cSeason { display: inline-block; margin-top: 8px; font-size: var(--admin-text-sm); font-weight: var(--admin-weight-bold); border-radius: var(--admin-radius-pill); padding: 2px 8px; }
+  .cSeason.open { background: var(--admin-status-success-bg); color: var(--admin-forest-dark); }
+  .cSeason.closed { background: var(--admin-gray-100); color: var(--admin-gray-700); }
+  .card.isClosed { background: var(--admin-gray-50); box-shadow: none; }
+  .cKids { font-size: var(--admin-text-sm); color: var(--admin-gray-600); margin-top: 6px; line-height: 1.5; }
+  @container app (max-width: 560px) {
+    .grid { grid-template-columns: 1fr; gap: 8px; }
+    .card { min-height: 0; padding: 12px 14px; }
+  }
+  /* Quiet tools group */
+  .tools { border-top: 1px solid var(--admin-gray-200); padding-top: 16px; margin-top: 8px; }
+  .tools h2 { font-size: var(--admin-text-md); color: var(--admin-gray-700); margin: 0 0 6px; font-weight: var(--admin-weight-semibold); }
+  .tools ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 2px 18px; }
+  .tools a { display: inline-flex; align-items: center; min-height: 32px; color: var(--admin-gray-700); font-size: var(--admin-text-md); }
+  .tools a:hover { color: var(--admin-navy); }
+
+  /* ════════ Section page placeholder content ════════ */
+  .panel { background: var(--admin-white); border: 1px solid var(--admin-gray-200); border-radius: var(--admin-radius-lg); box-shadow: var(--admin-shadow-sm); }
+  .ph { padding: 28px; text-align: center; color: var(--admin-gray-500); font-size: var(--admin-text-md); line-height: 1.6; }
+  .ph b { color: var(--admin-gray-700); }
+  .tblWrap { overflow-x: auto; }
+  table.t { width: 100%; border-collapse: collapse; font-size: var(--admin-text-md); }
+  table.t th { text-align: left; font-size: var(--admin-text-base); color: var(--admin-gray-500); font-weight: var(--admin-weight-semibold); padding: 10px 14px; border-bottom: 1px solid var(--admin-gray-200); background: var(--admin-gray-50); white-space: nowrap; }
+  table.t td { padding: 10px 14px; border-bottom: 1px solid var(--admin-gray-100); vertical-align: top; }
+  table.t tr:last-child td { border-bottom: 0; }
+  table.t .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.t .neg { color: var(--admin-danger-dark); }
+  table.t a { color: var(--admin-navy); font-weight: var(--admin-weight-semibold); }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .stat { background: var(--admin-white); border: 1px solid var(--admin-gray-200); border-radius: var(--admin-radius-lg); padding: 12px 14px; }
+  .stat b { display: block; font-size: var(--admin-text-2xl); color: var(--admin-navy); }
+  .stat span { font-size: var(--admin-text-base); color: var(--admin-gray-500); }
+  /* depth-2 form */
+  .form { background: var(--admin-form-bg); border: 1px solid var(--admin-gray-200); border-radius: var(--admin-radius-lg); padding: 16px; display: grid; gap: 12px; }
+  .form dl { display: grid; grid-template-columns: 140px 1fr; gap: 6px 12px; margin: 0; font-size: var(--admin-text-md); }
+  .form dt { color: var(--admin-gray-500); }
+  .form dd { margin: 0; }
+  .form label { font-size: var(--admin-text-base); font-weight: var(--admin-weight-semibold); color: var(--admin-gray-700); display: block; margin-bottom: 4px; }
+  .form textarea { width: 100%; min-height: 80px; font-size: 16px; padding: 8px; border: 1px solid var(--admin-gray-300); border-radius: var(--admin-radius); background: var(--admin-white); }
+  @container app (max-width: 560px) { table.t .hideSm { display: none; } table.t th, table.t td { padding: 8px 10px; } }
+  @container app (max-width: 560px) { .form dl { grid-template-columns: 1fr; } .form dt { margin-top: 6px; } }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .btn { display: inline-flex; align-items: center; min-height: 36px; padding: 0 14px; border-radius: var(--admin-radius); font-size: var(--admin-text-md); font-weight: var(--admin-weight-semibold); cursor: pointer; border: 1px solid var(--admin-gray-300); background: var(--admin-white); color: var(--admin-gray-900); }
+  .btn.primary { background: var(--admin-navy); border-color: var(--admin-navy); color: var(--admin-white); }
+  .btn.primary:hover { background: var(--admin-navy-hover); }
+  .btn:disabled { opacity: .55; cursor: default; }
+  .btn.quiet { border-color: transparent; background: none; color: var(--admin-navy); }
+  .dirtyNote { font-size: var(--admin-text-base); color: var(--admin-gray-500); }
+
+  /* ════════ Discard dialog ════════ */
+  .scrim { position: absolute; inset: 0; background: rgba(26,29,33,.45); display: grid; place-items: center; z-index: 50; padding: 16px; }
+  .scrim[hidden] { display: none; }
+  .dialog { background: var(--admin-white); border-radius: var(--admin-radius-lg); box-shadow: var(--admin-shadow-lg); max-width: 400px; width: 100%; padding: 18px 20px; }
+  .dialog h2 { margin: 0 0 6px; font-size: var(--admin-text-xl); color: var(--admin-navy); }
+  .dialog p { margin: 0 0 16px; font-size: var(--admin-text-md); color: var(--admin-gray-700); line-height: 1.5; }
+  .dialog .bar { justify-content: flex-end; }
+  .btn.danger { border-color: var(--admin-danger); color: var(--admin-danger-dark); }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="proto">
+  <div class="protoBanner"><strong>Prototype — Admin Home + Section Nav.</strong> Plan of record: <code>Plans/Admin-Home-And-Nav.md</code>. Everything inside the frame below is the proposed design; the controls above it are prototype-only. Cards, section bar, tabs and inbox all render from <em>one</em> data list filtered by the selected role — the same rule <code>visibleNavSections()</code> would apply.</div>
+
+  <div class="controls" role="group" aria-label="Prototype controls">
+    <div class="ctlRow">
+      <div class="ctl"><span class="ctlLbl" id="lblRole">View as</span><div class="seg" id="segRole" role="group" aria-labelledby="lblRole"></div></div>
+      <button type="button" class="annoBtn" id="annoBtn" aria-expanded="false" aria-controls="anno">Show notes: what moved where</button>
+    </div>
+    <div class="ctlRow"><span class="capLine" id="capLine"></span></div>
+    <div class="ctlRow">
+      <div class="ctl"><span class="ctlLbl" id="lblWidth">Width</span><div class="seg" id="segWidth" role="group" aria-labelledby="lblWidth"></div></div>
+      <div class="ctl"><span class="ctlLbl" id="lblBar">Phone section bar</span><div class="seg" id="segBar" role="group" aria-labelledby="lblBar"></div></div>
+      <div class="ctl"><span class="ctlLbl" id="lblBadges">Counts on cards</span><div class="seg" id="segBadges" role="group" aria-labelledby="lblBadges"></div></div>
+      <div class="ctl"><span class="ctlLbl" id="lblReports">Reports</span><div class="seg" id="segReports" role="group" aria-labelledby="lblReports"></div></div>
+      <div class="ctl"><span class="ctlLbl" id="lblSale">Wreath sale</span><div class="seg" id="segSale" role="group" aria-labelledby="lblSale"></div></div>
+      <div class="ctl"><span class="ctlLbl" id="lblInbox">Inbox</span><div class="seg" id="segInbox" role="group" aria-labelledby="lblInbox"></div></div>
+    </div>
+  </div>
+
+  <section class="anno" id="anno" hidden aria-labelledby="annoH"></section>
+</div>
+
+<div class="stage">
+  <div class="frame" id="frame">
+    <div class="app" id="app">
+      <header class="topBar">
+        <a class="brand" href="#/">Troop 79 <span>Leader Workspace</span></a>
+        <div class="who"><span id="whoName">Patrick Bieser</span><a class="vs" href="#/" onclick="return false;">View site</a></div>
+      </header>
+      <nav class="sectionBar" id="sectionBar" aria-label="Admin sections"></nav>
+      <main class="page" id="page" tabindex="-1"></main>
+
+      <div class="scrim" id="scrim" hidden>
+        <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dlgH" aria-describedby="dlgP">
+          <h2 id="dlgH">Discard your changes?</h2>
+          <p id="dlgP">Your note on this reimbursement hasn't been saved. Leaving now throws it away.</p>
+          <div class="bar">
+            <button type="button" class="btn" id="dlgKeep">Keep editing</button>
+            <button type="button" class="btn danger" id="dlgDiscard">Discard and leave</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ──────────────────────────────────────────────────────────────────
+   * ONE SOURCE OF TRUTH. Hub groups, section bar and tab strips all
+   * render from SECTIONS. `was` records today's rail placement so the
+   * annotation table is generated, not hand-kept.
+   * ────────────────────────────────────────────────────────────────── */
+  var REPORTS = [
+    { key: 'audits', label: 'Audits', line: 'Records that disagree with Scoutbook or each other', was: 'Reports & Exports › Audits' },
+    { key: 'adv-report', label: 'Advancement Report', line: 'This week’s completions for the Bugle', was: 'Reports & Exports › Advancement Report' },
+    { key: 'coh', label: 'Court of Honor', line: 'Awards to present, by scout', was: 'Reports & Exports › Court of Honor' },
+    { key: 'scoutbook', label: 'Scoutbook Export', line: 'CSV for the council upload', was: 'Reports & Exports › Scoutbook Export' },
+    { key: 'attendance', label: 'Attendance Report', line: 'Meetings and outings attended', was: 'Reports & Exports › Attendance Report' }
+  ];
+
+  var SECTIONS = [
+    { key: 'advancement', bar: 'Advancement', group: 'Advancement', lede: 'Record, plan and report scout advancement.', items: [
+      { key: 'fast-entry', label: 'Fast Entry', line: 'Sign off requirements for many scouts at once', cap: 'advancement.write', was: 'Entry › Fast Entry' },
+      { key: 'ledger', label: 'Ledger', line: 'Every requirement, rank and badge on record', cap: 'advancement.write', was: 'Records › Advancement Ledger', renamed: true },
+      { key: 'submit', label: 'Submit & Present', line: 'Council submissions and awards to hand out', cap: 'advancement.write', was: 'Records › Submit & Present', notInPlan: true },
+      { key: 'mb-progress', label: 'MB Progress', line: 'Partial merit badges and their counselors', cap: 'advancement.write', was: 'Records › MB Progress' },
+      { key: 'meeting-plan', label: 'Meeting Plan', line: 'Sunday meeting plan from who needs what', cap: 'meeting_plan.use', was: 'Planning › Meeting Plan' },
+      { key: 'has-needs', label: 'Has/Needs', line: 'Who still needs a requirement', cap: 'advancement.write', was: 'Planning › Has/Needs Tool' },
+      { key: 'reports', label: 'Reports', line: 'Audits, weekly report, Court of Honor, exports', cap: 'advancement.write', children: REPORTS }
+    ]},
+    { key: 'content', bar: 'Calendar & Content', group: 'Calendar & Content', lede: 'What happens on a date, and what the troop publishes.', items: [
+      { key: 'calendar', label: 'Calendar', line: 'Meetings, campouts, sign-ups and roll call', cap: 'calendar.write', was: 'News & Events › Calendar' },
+      { key: 'news', label: 'News', line: 'Articles and the weekly Bugle', cap: 'news.write', was: 'News & Events › News' },
+      { key: 'pages', label: 'Pages', line: 'Join, About and other site pages', cap: 'news.write', was: 'News & Events › Pages' },
+      { key: 'media', label: 'Media Manager', line: 'Images and video on the CDN', cap: 'news.write', was: 'News & Events › Media Manager' },
+      { key: 'albums', label: 'Photo Albums', line: 'Gallery links for events', cap: 'news.write', was: 'News & Events › Photo Albums' },
+      { key: 'library', label: 'Resource Library', line: 'Study guides, proof submissions, the queue', cap: 'library.moderate', was: 'News & Events › Resource Library' },
+      { key: 'menu-monster', label: 'Menu Monster', line: 'Recipes, ingredients and prices for patrol cooking', cap: 'library.moderate', was: 'News & Events › Menu Monster' }
+    ]},
+    { key: 'money', bar: 'Money', group: 'Money', lede: 'Troop accounts, paying people back, and the wreath sale.', items: [
+      { key: 'wreath', label: 'Wreath Sale', line: 'Orders, sellers and the Rose order', cap: 'finance.manage', seasonal: true, was: 'Finance › Wreath Sale' },
+      { key: 'fin-ledger', label: 'Financial Ledger', line: 'Every dollar in and out of the troop account', cap: 'finance.manage', was: 'Finance › Financial Ledger' },
+      { key: 'reimbursements', label: 'Reimbursements', line: 'Approve, deny and pay back receipts', cap: 'finance.manage', was: 'Finance › Reimbursements' },
+      { key: 'activity', label: 'Activity Report', line: 'Income and spending by event and kind', cap: 'finance.manage', was: 'Finance › Activity Report' },
+      { key: 'ledger-audit', label: 'Ledger Audit', line: 'Match the ledger to the bank statement', cap: 'finance.manage', was: 'Finance › Ledger Audit  +  Utilities card (twice)', dedup: true }
+    ]},
+    { key: 'people', bar: 'People', group: 'People & Setup', lede: 'Scouts, families and leaders, and who can do what here.', items: [
+      { key: 'roster', label: 'Roster', line: 'Scouts, adults and households', cap: 'roster.manage', was: 'Records › Roster' },
+      { key: 'access', label: 'Access', line: 'Who can use which admin tools', cap: 'roster.manage', was: 'Setup › Access & Permissions', renamed: true }
+    ]},
+    { key: 'tools', bar: 'Tools', group: 'Troop admin tools', quiet: true, lede: 'Used a few times a year.', items: [
+      { key: 'lookups', label: 'Lookups & Admin', line: '', cap: 'roster.manage', was: 'Setup › Lookups & Admin' },
+      { key: 'roster-import', label: 'Roster Import', line: '', cap: 'roster.manage', was: 'Setup › Roster Import' },
+      { key: 'audit-trail', label: 'Audit Trail', line: '', cap: 'roster.manage', was: 'Setup › Audit Trail' },
+      { key: 'utilities', label: 'Utilities', line: '', cap: 'news.write', was: 'Setup › Utilities' },
+      { key: 'styleguides', label: 'Styleguides', line: '', cap: null, was: 'Setup › Styleguides' }
+    ]}
+  ];
+
+  var ALL_CAPS = ['advancement.write','roster.manage','calendar.write','news.write','meeting_plan.use','library.moderate','library.proxy_view','finance.manage','finance.view'];
+  var NEVER_IMPLIED = ['finance.manage', 'finance.view'];
+
+  var ROLES = [
+    { key: 'patrick', label: 'Full admin + treasurer', who: 'Patrick Bieser', fullAdmin: true, caps: ALL_CAPS },
+    { key: 'adv', label: 'Advancement chair', who: 'Karen Nowak', fullAdmin: false, caps: ['advancement.write','roster.manage','meeting_plan.use','library.moderate'] },
+    { key: 'cal', label: 'Calendar-only volunteer', who: 'Dana Okafor', fullAdmin: false, caps: ['calendar.write'] },
+    { key: 'lib', label: 'Librarian', who: 'Tom Brandt', fullAdmin: false, caps: ['library.moderate','library.proxy_view'] },
+    { key: 'tre', label: 'Treasurer-only', who: 'Jen Lindqvist', fullAdmin: false, caps: ['finance.manage'] }
+  ];
+
+  /* Inbox rows. `badge` = which card shows the same count when card badges are on. */
+  var INBOX = [
+    { key: 'profile', cap: 'roster.manage', count: 3, unit: 'waiting', title: 'Profile updates awaiting review', meta: 'Ava Nowak, Ben Schultz and the Garcia household', to: 'people/roster', badge: 'roster' },
+    { key: 'library', cap: 'library.moderate', count: 4, unit: 'waiting', title: 'Library submissions awaiting review', meta: 'Newest: “Knots for Second Class” from Owen Pietrzak · Oct 12', to: 'content/library', badge: 'library' },
+    { key: 'proof', cap: 'library.moderate', count: 2, unit: 'waiting', title: 'Proof submissions awaiting review', meta: 'Leo Brandt (Camping 9b) · Isaac Ruiz (First Aid 5)', to: 'content/library', badge: 'library' },
+    { key: 'members', cap: 'roster.manage', count: 2, unit: 'new', title: 'New household members', meta: 'Added by the Lindqvist and Okafor families', to: 'people/roster', badge: 'roster' },
+    { key: 'reimb', cap: 'finance.manage', count: 3, unit: 'to approve', title: 'Reimbursements to approve', meta: '$412.68 total · oldest Sep 29 (Mike Kowalski, Camporee groceries)', to: 'money/reimbursements', badge: 'reimbursements', money: true },
+    { key: 'wreath', cap: 'finance.manage', saleOnly: true, count: 9, unit: 'orders', title: 'Wreath orders need you', meta: '7 unpaid · 2 not credited to a scout · sale closes Sun, Nov 8', to: 'money/wreath', badge: 'wreath', money: true },
+    { key: 'news', cap: 'news.write', count: 2, unit: 'pending', title: 'News and pages waiting to publish', meta: '“Summer Camp Recap” article · an edit to the Join page', to: 'content/news', badge: 'news' },
+    { key: 'event', cap: 'calendar.write', count: 6, unit: 'no reply', title: 'Fall Camporee sign-up is open', meta: 'Fri, Oct 23 – Sun, Oct 25 · 18 going · sign-up closes Mon, Oct 19', to: 'content/calendar' }
+  ];
+
+  var state = { role: 'patrick', width: 'desktop', bar: 'scroll', badges: 'off', reports: 'one', sale: 'open', inbox: 'live', dirty: false, menuOpen: false, notice: '' };
+
+  /* ── capability filter: mirrors visibleNavSections() ── */
+  function role() { return ROLES.filter(function (r) { return r.key === state.role; })[0]; }
+  function canSee(cap) {
+    var r = role();
+    if (r.fullAdmin) return cap == null || NEVER_IMPLIED.indexOf(cap) === -1 || r.caps.indexOf(cap) !== -1;
+    return cap != null && r.caps.indexOf(cap) !== -1;
+  }
+  function itemsFor(section) {
+    var items = [];
+    section.items.forEach(function (it) {
+      if (!canSee(it.cap)) return;
+      if (it.children && state.reports === 'five') {
+        it.children.forEach(function (c) { items.push({ key: c.key, label: c.label, line: c.line, cap: it.cap, was: c.was }); });
+      } else items.push(it);
+    });
+    // Seasonal: Wreath Sale first while the sale is open, last when closed.
+    if (section.key === 'money' && state.sale === 'closed') {
+      var w = items.filter(function (i) { return i.seasonal; });
+      items = items.filter(function (i) { return !i.seasonal; }).concat(w);
+    }
+    return items;
+  }
+  function visibleSections() {
+    return SECTIONS.map(function (s) { return { s: s, items: itemsFor(s) }; }).filter(function (v) { return v.items.length > 0; });
+  }
+  function inboxRows() {
+    if (state.inbox === 'empty') return [];
+    return INBOX.filter(function (r) { return canSee(r.cap) && !(r.saleOnly && state.sale === 'closed'); });
+  }
+  function badgeFor(itemKey) {
+    return inboxRows().filter(function (r) { return r.badge === itemKey; }).reduce(function (n, r) { return n + r.count; }, 0);
+  }
+
+  /* ── routing: #/ , #/section , #/section/tab , #/section/tab/extra ── */
+  function parse() {
+    var p = location.hash.replace(/^#\/?/, '').split('/').filter(Boolean);
+    return { section: p[0] || '', tab: p[1] || '', extra: p[2] || '' };
+  }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  /* ── section bar ── */
+  function renderBar(route) {
+    var vis = visibleSections();
+    var cur = route.section || 'home';
+    var links = [{ key: 'home', bar: 'Home', href: '#/' }].concat(vis.map(function (v) { return { key: v.s.key, bar: v.s.bar, href: '#/' + v.s.key, n: v.items.length }; }));
+    var curLabel = (links.filter(function (l) { return l.key === cur; })[0] || links[0]).bar;
+    var html = '<div class="sbScroll" id="sbScroll">' + links.map(function (l) {
+      return '<a class="sbLink" href="' + l.href + '"' + (l.key === cur ? ' aria-current="page"' : '') + '>' + esc(l.bar) + '</a>';
+    }).join('') + '</div><span class="sbFade" aria-hidden="true"></span>';
+    html += '<div class="sbMenuWrap"><button type="button" class="sbMenuBtn" id="sbMenuBtn" aria-expanded="' + state.menuOpen + '" aria-controls="sbMenu">Sections: <strong>' + esc(curLabel) + '</strong> <span aria-hidden="true">▾</span></button>' +
+      '<ul class="sbMenu" id="sbMenu"' + (state.menuOpen ? '' : ' hidden') + '>' + links.map(function (l) {
+        return '<li><a href="' + l.href + '"' + (l.key === cur ? ' aria-current="page"' : '') + '>' + esc(l.bar) + (l.n > 1 ? '<span class="cnt">' + l.n + ' pages</span>' : '') + '</a></li>';
+      }).join('') + '</ul></div>';
+    var bar = document.getElementById('sectionBar');
+    bar.innerHTML = html;
+    bar.parentNode.classList.toggle('barMenu', state.bar === 'menu');
+    bar.parentNode.classList.toggle('barScroll', state.bar === 'scroll');
+    // Keep the active section in view in the scroll treatment (no page jump).
+    var sc = document.getElementById('sbScroll');
+    var act = sc.querySelector('[aria-current]');
+    if (act) sc.scrollLeft = Math.max(0, act.offsetLeft - 24);
+    document.getElementById('sbMenuBtn').addEventListener('click', function () {
+      state.menuOpen = !state.menuOpen; renderBar(parse());
+      if (state.menuOpen) { var a = document.querySelector('#sbMenu a[aria-current]') || document.querySelector('#sbMenu a'); if (a) a.focus(); }
+    });
+  }
+
+  /* ── PageTitle: back = null on roots, {label, href} at depth 2 ── */
+  function pageTitle(title, lede, back) {
+    return '<div class="pageTitle"><div>' +
+      (back ? '<nav class="backNav" aria-label="Back"><a href="' + back.href + '">← Back to ' + esc(back.label) + '</a></nav>' : '') +
+      '<h1>' + esc(title) + '</h1>' + (lede ? '<p>' + esc(lede) + '</p>' : '') + '</div></div>';
+  }
+
+  /* ── HOME ── */
+  function renderHome() {
+    var rows = inboxRows();
+    var html = state.notice ? '<div class="notice" role="status">' + esc(state.notice) + '</div>' : '';
+    html += pageTitle('Home', '', null);
+    html += '<section aria-labelledby="hNeeds"><h2 class="h2" id="hNeeds">Needs you today</h2>';
+    if (!rows.length) {
+      html += '<div class="inbox"><div class="inEmpty"><span class="ok" aria-hidden="true">✓</span><div><b>Nothing needs you today.</b><span>Submissions, reimbursements and sign-ups that need a decision will show up here.</span></div></div></div>';
+    } else {
+      html += '<ul class="inbox">' + rows.map(function (r) {
+        return '<li><a class="inRow' + (r.money ? ' money' : '') + '" href="#/' + r.to + '">' +
+          '<span class="inCount"><b>' + r.count + '</b><small>' + esc(r.unit) + '</small></span>' +
+          '<span><span class="inTitle">' + esc(r.title) + '</span><span class="inMeta" style="display:block">' + esc(r.meta) + '</span></span>' +
+          '<span class="inGo" aria-hidden="true">›</span></a></li>';
+      }).join('') + '</ul>';
+    }
+    html += '</section>';
+
+    visibleSections().forEach(function (v) {
+      var s = v.s;
+      if (s.quiet) {
+        html += '<section class="tools" aria-labelledby="g-' + s.key + '"><h2 id="g-' + s.key + '">' + esc(s.group) + '</h2><ul>' +
+          v.items.map(function (it) { return '<li><a href="#/' + s.key + '/' + it.key + '">' + esc(it.label) + '</a></li>'; }).join('') + '</ul></section>';
+        return;
+      }
+      html += '<section class="group" aria-labelledby="g-' + s.key + '"><h2 class="h2" id="g-' + s.key + '">' + esc(s.group) + '</h2><div class="grid">';
+      v.items.forEach(function (it) {
+        var n = state.badges === 'on' ? badgeFor(it.key) : 0;
+        var closed = it.seasonal && state.sale === 'closed';
+        html += '<a class="card' + (closed ? ' isClosed' : '') + '" href="#/' + s.key + '/' + it.key + '">' +
+          '<div class="cTitle">' + esc(it.label) + '</div>' + (it.children ? '' : '<div class="cLine">' + esc(it.line) + '</div>') +
+          (it.children ? '<div class="cKids">' + it.children.map(function (c) { return esc(c.label); }).join(' · ') + '</div>' : '') +
+          (it.seasonal ? (closed ? '<span class="cSeason closed">Closed — reopens next fall</span>' : '<span class="cSeason open">Sale open · closes Nov 8</span>') : '') +
+          (n ? '<span class="cBadge">' + n + '<span class="sr-only"> waiting</span></span>' : '') + '</a>';
+      });
+      html += '</div></section>';
+    });
+    return html;
+  }
+
+  /* ── SECTION PAGE ── */
+  function renderSection(route) {
+    var v = visibleSections().filter(function (x) { return x.s.key === route.section; })[0];
+    if (!v) return null;
+    var items = v.items;
+    var active = items.filter(function (i) { return i.key === route.tab; })[0] || items[0];
+    var single = items.length === 1;
+
+    // Depth 2: a reimbursement opened from the queue.
+    if (active.key === 'reimbursements' && route.extra) return renderReimbDetail(route.extra);
+
+    var html = '';
+    if (single) {
+      // One visible item: no tab strip; the page IS the section.
+      html += pageTitle(active.label, v.s.lede, null);
+    } else {
+      html += pageTitle(v.s.bar === 'People' ? 'People & Setup' : v.s.bar, v.s.lede, null);
+      html += '<nav class="tabs" aria-label="' + esc(v.s.bar) + ' pages">' + items.map(function (it) {
+        var n = state.badges === 'on' ? badgeFor(it.key) : 0;
+        return '<a class="tab" href="#/' + v.s.key + '/' + it.key + '"' + (it === active ? ' aria-current="page"' : '') + '>' + esc(it.label) + (n ? ' <span class="tabCount">(' + n + ')</span>' : '') + '</a>';
+      }).join('') + '</nav>';
+    }
+    html += tabBody(v.s, active, route);
+    return html;
+  }
+
+  function tabBody(section, it, route) {
+    if (it.children) {
+      var sub = it.children.filter(function (c) { return c.key === route.extra; })[0] || it.children[0];
+      return '<nav class="subTabs" aria-label="Reports">' + it.children.map(function (c) {
+        return '<a class="subTab" href="#/' + section.key + '/' + it.key + '/' + c.key + '"' + (c === sub ? ' aria-current="page"' : '') + '>' + esc(c.label) + '</a>';
+      }).join('') + '</nav>' + placeholder(sub);
+    }
+    if (it.key === 'fin-ledger') return finLedger();
+    if (it.key === 'reimbursements') return reimbQueue();
+    if (it.key === 'wreath') return wreath();
+    return placeholder(it);
+  }
+
+  function placeholder(it) {
+    return '<div class="panel ph"><b>' + esc(it.label) + '</b> renders here unchanged' + (it.line ? ' — ' + esc(it.line.charAt(0).toLowerCase() + it.line.slice(1)) : '') + '.<br>Today’s rail: <b>' + esc(it.was || '—') + '</b>. Only the frame around the page moves.</div>';
+  }
+
+  function finLedger() {
+    var rows = [
+      ['Oct 11', 'Rose Holiday — wreath order deposit', 'Wreath sale', -1250.00],
+      ['Oct 7', 'Dues — Okafor family', 'Dues', 120.00],
+      ['Oct 4', 'Camp Indian Mound — Camporee site fee', 'Camping', -240.00],
+      ['Sep 30', 'Popcorn commission', 'Fundraiser', 842.15],
+      ['Sep 29', 'Reimbursement — Jen Lindqvist (patrol boxes)', 'Gear', -86.40]
+    ];
+    return '<div class="stats"><div class="stat"><b>$6,418.22</b><span>Balance, Oct 11</span></div><div class="stat"><b>$962.15</b><span>In this month</span></div><div class="stat"><b>$1,576.40</b><span>Out this month</span></div></div>' +
+      '<div class="panel tblWrap"><table class="t"><thead><tr><th>Date</th><th>What</th><th class="hideSm">Kind</th><th class="num">Amount</th></tr></thead><tbody>' +
+      rows.map(function (r) { return '<tr><td>' + r[0] + '</td><td>' + esc(r[1]) + '</td><td class="hideSm">' + r[2] + '</td><td class="num' + (r[3] < 0 ? ' neg' : '') + '">' + (r[3] < 0 ? '−' : '') + '$' + Math.abs(r[3]).toFixed(2) + '</td></tr>'; }).join('') +
+      '</tbody></table></div>';
+  }
+
+  var REIMB = [
+    { id: 'r1', who: 'Mike Kowalski', what: 'Camporee groceries — Pick ’n Save', amt: '187.42', on: 'Sep 29, 2026', event: 'Fall Camporee' },
+    { id: 'r2', who: 'Dana Okafor', what: 'Propane, 4 tanks', amt: '96.00', on: 'Oct 3, 2026', event: 'Fall Camporee' },
+    { id: 'r3', who: 'Jen Lindqvist', what: 'First-aid kit restock', amt: '129.26', on: 'Oct 9, 2026', event: '—' }
+  ];
+  function reimbQueue() {
+    return '<div class="panel tblWrap"><table class="t"><thead><tr><th>Submitted</th><th>From</th><th>For</th><th class="num">Amount</th><th><span class="sr-only">Open</span></th></tr></thead><tbody>' +
+      REIMB.map(function (r) { return '<tr><td>' + r.on + '</td><td>' + esc(r.who) + '</td><td>' + esc(r.what) + '</td><td class="num">$' + r.amt + '</td><td><a href="#/money/reimbursements/' + r.id + '">Review<span class="sr-only"> ' + esc(r.who) + '</span></a></td></tr>'; }).join('') +
+      '</tbody></table></div><p class="dirtyNote" style="margin-top:10px">Open one to see the depth-2 PageTitle back slot and the unsaved-changes guard.</p>';
+  }
+
+  function renderReimbDetail(id) {
+    var r = REIMB.filter(function (x) { return x.id === id; })[0] || REIMB[0];
+    return pageTitle('Reimbursement from ' + r.who, '', { label: 'Reimbursements', href: '#/money/reimbursements' }) +
+      '<form class="form" id="reimbForm" onsubmit="return false;"><dl><dt>For</dt><dd>' + esc(r.what) + '</dd><dt>Amount</dt><dd>$' + r.amt + '</dd><dt>Event</dt><dd>' + esc(r.event) + '</dd><dt>Submitted</dt><dd>' + r.on + '</dd></dl>' +
+      '<div><label for="note">Note to ' + esc(r.who.split(' ')[0]) + ' (optional)</label><textarea id="note" placeholder=""></textarea></div>' +
+      '<div class="bar"><button type="button" class="btn primary" id="saveBtn" disabled title="No changes to save yet">Saved</button><button type="button" class="btn" id="discardBtn" disabled>Discard changes</button>' +
+      '<span class="dirtyNote" id="dirtyNote">Type a note, then click any section or the back link to see the guard.</span></div></form>';
+  }
+
+  function wreath() {
+    if (state.sale === 'closed') return '<div class="panel ph"><b>The 2026 sale is closed.</b> 42 orders, $2,310 sold, all paid and delivered.<br>Next fall: open a new sale here to set prices and sellers.</div>';
+    return '<div class="stats"><div class="stat"><b>42</b><span>Orders</span></div><div class="stat"><b>$2,310</b><span>Sold</span></div><div class="stat"><b>7</b><span>Unpaid</span></div><div class="stat"><b>2</b><span>Not credited to a scout</span></div></div>' + placeholder({ label: 'Wreath Sale', line: 'Orders, sellers and the Rose order', was: 'Finance › Wreath Sale' });
+  }
+
+  /* ── main render ── */
+  function render() {
+    var route = parse();
+    var r = role();
+    document.getElementById('whoName').textContent = r.who;
+    renderBar(route);
+    var page = document.getElementById('page');
+    var html;
+    if (!route.section) html = renderHome();
+    else {
+      html = renderSection(route);
+      if (html == null) {
+        // The section vanished for this role (e.g. switched to Calendar-only while on Money).
+        state.notice = '“' + route.section.charAt(0).toUpperCase() + route.section.slice(1) + '” isn’t open to ' + r.label + ', so you’re back on Home.';
+        history.replaceState(null, '', '#/');
+        return render();
+      }
+    }
+    page.innerHTML = html;
+    state.notice = '';
+    wireForm();
+    renderControls();
+  }
+
+  /* ── unsaved-changes guard on the depth-2 form ── */
+  function wireForm() {
+    state.dirty = false;
+    var note = document.getElementById('note');
+    if (!note) return;
+    var save = document.getElementById('saveBtn'), discard = document.getElementById('discardBtn');
+    var saved = '';
+    function sync() {
+      state.dirty = note.value !== saved;
+      save.disabled = !state.dirty; discard.disabled = !state.dirty;
+      save.textContent = state.dirty ? 'Save changes' : 'Saved';
+      save.title = state.dirty ? '' : 'No changes to save yet';
+    }
+    note.addEventListener('input', sync);
+    discard.addEventListener('click', function () { note.value = saved; sync(); note.focus(); });
+    save.addEventListener('click', function () { saved = note.value; sync(); document.getElementById('dirtyNote').textContent = 'Saved.'; });
+  }
+
+  var pendingHref = null, lastFocus = null;
+  document.getElementById('app').addEventListener('click', function (e) {
+    var a = e.target.closest('a[href^="#"]');
+    if (!a) {
+      if (state.menuOpen && !e.target.closest('.sbMenuWrap')) { state.menuOpen = false; renderBar(parse()); }
+      return;
+    }
+    if (state.menuOpen) { state.menuOpen = false; if (a.getAttribute('href') === location.hash || (a.getAttribute('href') === '#/' && !location.hash)) renderBar(parse()); }
+    if (state.dirty && a.getAttribute('href') !== location.hash) {
+      e.preventDefault();
+      pendingHref = a.getAttribute('href'); lastFocus = a;
+      document.getElementById('scrim').hidden = false;
+      document.getElementById('dlgKeep').focus();
+    }
+  });
+  function closeDlg(go) {
+    document.getElementById('scrim').hidden = true;
+    if (go && pendingHref) { state.dirty = false; location.hash = pendingHref; }
+    else { var n = document.getElementById('note'); if (n) n.focus(); }
+    pendingHref = null;
+  }
+  document.getElementById('dlgKeep').addEventListener('click', function () { closeDlg(false); });
+  document.getElementById('dlgDiscard').addEventListener('click', function () { closeDlg(true); });
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    if (!document.getElementById('scrim').hidden) closeDlg(false);
+    else if (state.menuOpen) { state.menuOpen = false; renderBar(parse()); document.getElementById('sbMenuBtn').focus(); }
+  });
+  window.addEventListener('hashchange', function () { render(); document.getElementById('page').focus({ preventScroll: true }); });
+
+  /* ── prototype controls ── */
+  function seg(id, key, opts, after) {
+    var el = document.getElementById(id);
+    el.innerHTML = opts.map(function (o) { return '<button type="button" data-v="' + o[0] + '" aria-pressed="' + (state[key] === o[0]) + '">' + esc(o[1]) + '</button>'; }).join('');
+    el.onclick = function (e) { var b = e.target.closest('button'); if (!b) return; state[key] = b.dataset.v; if (after) after(); render(); };
+  }
+  function renderControls() {
+    seg('segRole', 'role', ROLES.map(function (r) { return [r.key, r.label]; }));
+    seg('segWidth', 'width', [['desktop', 'Desktop'], ['phone', 'Phone 375']], function () { document.getElementById('frame').classList.toggle('isPhone', state.width === 'phone'); });
+    seg('segBar', 'bar', [['scroll', 'Horizontal scroll'], ['menu', 'Sections ▾ menu']], function () { if (state.width !== 'phone') { state.width = 'phone'; document.getElementById('frame').classList.add('isPhone'); } });
+    seg('segBadges', 'badges', [['off', 'Off'], ['on', 'On']]);
+    seg('segReports', 'reports', [['one', 'One card + tabs'], ['five', 'Five cards']]);
+    seg('segSale', 'sale', [['open', 'Open'], ['closed', 'Off-season']]);
+    seg('segInbox', 'inbox', [['live', 'Live'], ['empty', 'Empty']]);
+    var r = role();
+    var vis = visibleSections();
+    document.getElementById('capLine').innerHTML = esc(r.who) + ' holds ' + (r.fullAdmin ? '<code>every capability</code>' : r.caps.map(function (c) { return '<code>' + c + '</code>'; }).join(' ')) +
+      ' → sections: <b>' + ['Home'].concat(vis.map(function (v) { return v.s.bar + (v.items.length === 1 ? ' (1 item, no tabs)' : ''); })).join(' · ') + '</b>' +
+      ' · hidden: ' + (SECTIONS.filter(function (s) { return !vis.some(function (v) { return v.s === s; }); }).map(function (s) { return s.bar; }).join(', ') || 'none');
+  }
+
+  /* ── annotations (JS toggle, not <details> — D-070) ── */
+  function renderAnno() {
+    var rows = [];
+    rows.push('<tr><td>Dashboard</td><td>Overview</td><td class="chg">Home (/admin) — the inbox</td></tr>');
+    SECTIONS.forEach(function (s) {
+      s.items.forEach(function (it) {
+        var list = it.children || [it];
+        list.forEach(function (x) {
+          var was = x.was.split(' › ');
+          var now = s.group + ' › ' + (it.children ? 'Reports › ' : '') + x.label;
+          var changed = was[0] !== s.group;
+          rows.push('<tr><td>' + esc(was[1] || x.label) + (it.notInPlan ? ' <span class="flag">*</span>' : '') + '</td><td>' + esc(was[0]) + '</td><td' + (changed || it.renamed || it.dedup ? ' class="chg"' : '') + '>' + esc(now) + (it.dedup ? ' (once)' : '') + (x.cap === null ? ' (full admins only)' : '') + '</td></tr>');
+        });
+      });
+    });
+    document.getElementById('anno').innerHTML =
+      '<h2 id="annoH">What moved where, and what this prototype surfaced</h2><div class="annoGrid"><div>' +
+      '<table class="moveTable"><thead><tr><th>Today’s rail link</th><th>Rail heading</th><th>Now</th></tr></thead><tbody>' + rows.join('') + '</tbody></table>' +
+      '<p style="font-size:12px;color:#3a3f47">Gold = changed group, name or count. 31 rail links today (the plan says 32) → 30 destinations: Dashboard folds into Home, Ledger Audit’s duplicate goes.</p></div><div>' +
+      '<h3>Decisions the prototype makes</h3><ul>' +
+      '<li>Section bar: Home · Advancement · Calendar &amp; Content · Money · People · Tools. Active = gold underline (the rail’s accent), so it never reads as the navy-underlined TabStrip below it.</li>' +
+      '<li>Section root: <code>PageTitle back={null}</code>, h1 = section name, TabStrip under it. One visible item: h1 = that page, no strip.</li>' +
+      '<li>Depth 2 (open a reimbursement): <code>back={label, href}</code> → “← Back to Reimbursements”; no tab strip; the section bar stays lit.</li>' +
+      '<li>Leaving a dirty form through the section bar, Home, a card or the back link opens the Discard dialog.</li>' +
+      '<li>Reports (one card): a pill sub-row, not a second TabStrip.</li>' +
+      '<li>Troop admin tools: a quiet link row at the bottom, not cards.</li>' +
+      '<li>Wreath Sale: first in Money and “Sale open” while open; last and greyed off-season. It never leaves Money.</li>' +
+      '<li>Switching to a role that can’t see the current section sends you Home with a notice.</li></ul>' +
+      '<h3>Gaps for Patrick</h3><ul>' +
+      '<li><span class="flag">*</span> <b>Submit &amp; Present is missing from the plan’s table.</b> Placed in Advancement here; confirm, or should it join Reports?</li>' +
+      '<li><b>Advancement-only leaders get no inbox rows.</b> Today’s dashboard needs <code>advancement.write</code>, but every row keys off roster/library. Candidate rows: Board of Review ready, partial MBs going stale.</li>' +
+      '<li><b>Librarian sees “Calendar &amp; Content” with no calendar in it.</b> Keep the label for consistency, or name the section from what’s visible?</li>' +
+      '<li><b>Ledger Audit’s route is /admin/utilities/ledger-audit.</b> Matching the active section by URL would light Tools. Move the route under /admin/finance, or give the item an explicit section.</li>' +
+      '<li><b>Tools mixes capabilities:</b> a news-only leader gets a Tools section holding just Utilities.</li>' +
+      '<li><b>Browser Back</b> past a dirty form isn’t covered by an in-app dialog; production needs <code>beforeunload</code> or the existing guarded-nav.</li>' +
+      '<li>The sign-up row counts families with <b>no reply</b> (6), not people going: a count in the inbox should be something to act on.</li></ul>' +
+      '</div></div>';
+  }
+  var annoBtn = document.getElementById('annoBtn');
+  annoBtn.addEventListener('click', function () {
+    var a = document.getElementById('anno');
+    var open = a.hidden;
+    a.hidden = !open;
+    annoBtn.setAttribute('aria-expanded', String(open));
+    annoBtn.textContent = open ? 'Hide notes' : 'Show notes: what moved where';
+  });
+
+  renderAnno();
+  render();
+})();
+</script>
+</body>
+</html>
