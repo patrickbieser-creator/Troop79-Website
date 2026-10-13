@@ -65,8 +65,8 @@ and what's owed" as coming soon.
 - **Clear deadline at the top:** "Order by Saturday, Oct 25" (round 1), then the round-2 date. After the
   final cutoff the store says when next year's sale opens, and the scout pages say "Sales are closed".
 - **Who you're supporting:** a scout link greets with "You're ordering from Ben B." and the
-  scout's message and goal bar. The general store shows "Buying from a scout? Choose them" (a
-  picker defaulting to "Troop 79"), so a customer who lost the link still credits the right scout.
+  scout's message and goal bar. The general store has no scout picker: its orders are the troop's
+  (Decisions). A customer who lost a scout's link is fixed in admin by Reassign.
 - **Where the money goes:** a short plain-English block on every page. Every wreath funds the
   troop's camping, gear and program, and 30% of the profit goes into the selling scout's own
   account for camp fees and high-adventure trips. Copy is edited at Admin › Pages (site_pages),
@@ -135,16 +135,21 @@ and what's owed" as coming soon.
   creates the PayPal order, and captures it in a server action. A PayPal webhook
   (`PAYMENT.CAPTURE.COMPLETED`, signature-verified) is the backstop for a closed tab.
 - **Money into the existing books:** online payments land in the PayPal account and get matched
-  through the existing Ledger Audit + Bank Match. At close, scout shares post as `ledger_entries`
-  (method `scout_account`), the same way the Scout Account page already reads fundraising.
+  through the existing Ledger Audit + Bank Match. At close (Release C), scout shares post to
+  **`financial_transactions`** (account `scout_account`, kind `fundraiser`, `person_id` required;
+  `finance_core.sql:22-59`), which is what the Scout Account page reads; a unique key on the
+  sale makes the posting once-only. Not `ledger_entries` (tech-lead, 2026-10-12). Release B also
+  needs `paypal` added to that table's method CHECK.
 - **Reuse:** public design system (PageShell, card, form kit, NumberBox, Button, Notice); the
   Save-button and edit-screen standards on admin; `lib/format-date` for every date; Resend for
   email (the signup-confirmation pattern); Bunny for images; the content-managed Pages for the
   "where the money goes" copy; Verified Signup / family sign-in for paper-order entry.
 - **Routes:** `(public)/wreaths/page.tsx`, `(public)/wreaths/[seller]/page.tsx`, the cart and checkout as a
   client island; `/member/wreaths` (my orders, delivery list, goal and message);
-  `admin/(workspace)/fundraising/wreaths/` (sale settings, items, orders, Rose order, books, close).
-  Add `wreaths` to the catch-all's reserved slugs.
+  `/admin/finance/wreaths` under the existing Finance nav section (`finance.manage`), with
+  sub-tabs Settings, Items, Sellers, Orders and Rose order (Books and Close in Release C).
+  The confirmation page is `/wreaths/order/[token]`. Add `wreaths` to `RESERVED_TOP_LEVEL`
+  (`lib/site-pages-tree.ts:69`).
 - **Privacy:** a scout page shows only the first name and last initial. The customer's address
   and phone are seen only by the delivering scout's family and leaders. The leaderboard is members only.
 
@@ -183,3 +188,43 @@ Answered 2026-10-12: cutoffs, delivery area, the fee option, sales tax, the 30%,
 - Sheet facts (2026): items 1–16 and 20–22; prices $5–$76; 2026 unit costs; profit per item from $0.95 (Door Hanger) to $19.95 (27" Tree); a Rose invoice of $6,533.99 is recorded; costs up 1–7% on 2025.
 - Patterns from other troops' online sales: [Troop 469 product sheet and turn-in dates](https://docs.google.com/document/d/1bOTNvAQD7PL4SWY_lxThx6J5WbgPooo-/export?format=pdf), [St. Margaret of Scotland delivery zips and pickup](https://www.stmargaretstl.org/?p=94903), [Verona Pack 32 card-only, cover-the-fee option](https://myveronanj.com/2020/10/10/cub-scouts-to-hold-online-wreath-sale/), [Ozaukee troop's virtual sale](https://www.ozaukeepress.com/node/95375).
 - Related: `Plans/Troop-Finances.md`, Ledger Audit + Bank Match (v1.132.0), Scout Account page, `/member` "Wreath sale" card, the Content-Managed Pages catch-all's reserved slugs.
+
+## Release A build spec (reviews 2026-10-12: tech-lead GO-WITH-CHANGES, qa-lead CONDITIONAL, troop79-specialist)
+
+This section is authoritative for Release A. Where it differs from Technical Approach above, it wins.
+
+### Schema (one additive migration; RLS on, zero policies, service role only)
+- `wreath_sales`: year (unique), status check (draft/open/closed), `round1_cutoff`, `round2_cutoff` (timestamptz, end of day Central), distribution date/window/place text, `delivery_zip_prefix` ('532'), `delivery_fee` (5.00), `delivery_free_at` (50.00), `fee_percent` (1.99), `fee_fixed` (0.49), `scout_share` (0.30), `closed_at` (Release C).
+- `wreath_items`: sale_id, `catalog_number`, name, size, description, price, unit_cost (numeric(10,2)), `image_url`, `donatable` boolean (true for catalog 1 and 2 only), sort_order, active; unique(sale_id, catalog_number).
+- `wreath_sellers`: sale_id, `person_id bigint references people(id)`, slug (`check slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'`), active, goal, message, message_approved_at; `unique(sale_id, person_id)`, `unique(sale_id, slug)`. A colliding new slug is refused in admin (no auto-suffix). Retired sellers keep their slug; their link falls back to the store without saying they existed.
+- `wreath_orders`: sale_id, `order_number` (short, unique, typable, for the Venmo/PayPal note), `public_token uuid` (unguessable, the confirmation-page key), `idempotency_key` (unique), `credited_person_id` (null = troop), `delivering_person_id`, source check (scout_link/store/paper), fulfillment check (scout/pickup/delivery), round (1/2), customer name/email/phone/address/zip, `outside_area_relative` bool, money as numeric(10,2) (`items_subtotal`, `delivery_fee`, `fee_covered`, `gift`, `total`), payment status check (unpaid/paid/refunded), `paid_at`, `paid_method`, `paid_by_person_id`, status check (placed/cancelled), `placed_at`, `created_ip`.
+- `wreath_order_lines`: order_id, item_id, quantity (`check quantity between 1 and 50`), donated bool, `unit_price` and `unit_cost` snapshots; unique(order_id, item_id, donated).
+- Seed: the 2026 sale (cutoffs Sat Oct 25 and Sat Nov 15, 2026, 11:59 PM Central; distribution Sat Nov 21, 2026, 2:30–4:30 PM, Northwoods parking lot, 1572 East Capitol), the 19 items from the sheet (price + 2026 unit cost), and 28 sellers by **people.id**: Anjali Sankpal-Tatera 23, Aubrey Reinelt 48 ("Aubry" on the sheet), Ben Bieser 43, Damian Nikolaus 36, Eleanor Hooper 45, Eloise Lowery 175, Finn Paltzer 32, Fiona Kimble 14, Hazel Stollenwerk 29, Henry Ellerman 20, Isaac Hall 46, Jack Porter 25, Jameson Kimble 15, Kevin Pieper 34, Lee Pasek 41, Lily Porter 2 ("Lilly" on the sheet), Lucy Lyden 8, Oliver Kosmoski 31, Oliver Vest 27, Oscar Belle 21, Owen Radtke 44, Piper Kingston 17, Quinn Barry 16, Robbie Haessley 1, Solomon Rader 30, Veronica Kleinfeldt 28, Violet Babby 9, Winnie Black 22. The seed must fail loudly if a person id is missing or not linked to an active scout. **Charlie Walters (person 39, the test scout) is never in the production seed**; dev adds him through the Sellers screen.
+
+### Public (no customer accounts)
+- `(public)/wreaths/page.tsx` (troop store), `(public)/wreaths/[seller]/page.tsx` (scout link), `(public)/wreaths/order/[token]/page.tsx` (confirmation; `noindex`, `Referrer-Policy: no-referrer`, `Cache-Control: no-store`; shows order number, items, total, how to pay and when it arrives; **no** address or phone).
+- Add `wreaths` to `RESERVED_TOP_LEVEL` (`lib/site-pages-tree.ts:69`); extend `tests/site-pages-tree.test.ts:52`.
+- Public loaders select only display fields; a scout shows as first name + last initial; customer PII columns are never selected by a public loader.
+- **Pay (Release A):** the confirmation page and email show the total, the order number to put in the note, and two options: Venmo @Patrick-Bieser-1 (`https://venmo.com/u/Patrick-Bieser-1`) and PayPal to patrickbieser@gmail.com (Friends and family). "Payment shows as Patrick Bieser, an assistant scoutmaster and the troop treasurer." No QR images.
+
+### The order action (server action only; precedent `(public)/events/[id]/actions.ts`)
+- Recomputes everything from item ids and quantities: price and cost snapshots, `delivery_fee` ($5 when fulfillment = delivery and items subtotal < $50, else 0; never on scout delivery), the fee-cover amount (`fee_percent`/`fee_fixed` on items + gift + delivery fee), and the total. Client totals are ignored.
+- Bounds: items active and in this sale; donated lines only on `donatable` items; quantity 1–50; ≤ 25 lines; gift 0–500; length caps on every text field; email format; zip `^\d{5}$` and, for delivery, the `532` prefix — except a scout-link order with `outside_area_relative` ticked.
+- Cutoff: a new order needs `placed_at` ≤ the round's cutoff, **except** a checkout started before it (the client posts the checkout-start time; the server accepts up to 2 hours of grace past the cutoff only when that start time is before the cutoff).
+- Idempotent on a client-generated `idempotency_key`: a retry returns the same order.
+- Bot and spam controls: a honeypot field plus a minimum time-to-submit; DB-counted limits like `identity-challenge.ts` (orders per IP per hour, confirmation emails per customer email per day, and a global hourly cap). Take the IP from the Vercel-set header. Over the limit, no order and no email, and the response is generic.
+- Emails go through `sendEmail` (`lib/email.ts:100`, `confirm: true`) behind an injectable `deps`, like `dispatchConfirmations` (`lib/signup-confirmation-send.ts:365`). One customer confirmation per order, fixed copy, all customer input escaped; reply-to `troopEmail()`. A scout-link order also notifies the scout's household (the addresses on file, never a customer-supplied one).
+
+### Admin: `/admin/finance/wreaths` (Finance section, `finance.manage`)
+- Sub-tabs: **Settings** (dates, distribution, fees), **Items** (edit name, size, description, price, cost, image, donatable, active), **Sellers** (add from the roster, slug, retire, refuse a colliding slug), **Orders** (list and filter; detail; **Mark paid** with method, idempotent; **Reassign** credit and delivery; cancel), **Rose order** (count per catalog number for round 1, round 2 changes, total).
+- Mark paid and Reassign each write `recordAudit` (`lib/audit.ts:118`) with actor, old and new values, amount and method; add a `wreaths` audit area.
+- Follow the edit-screen, Save-button, table and date standards in `next-app/AGENTS.md`; styleguide specimens for anything new.
+
+### Images
+- Upload `Images/*.jpg` to Bunny with a one-shot seed script (`lib/bunny-storage.ts:75 uploadToBunny`) and write `wreath_items.image_url`. If Bunny isn't configured for this (check the env), fall back to optimized copies in `next-app/public/wreaths/`. The split tree photos are already in `Images/`.
+
+### Tests to write first (qa-lead plus the plan's own)
+Order_PriceComesFromServer_NotClient; Order_RejectsQuantityOutOfBounds_AndInactiveItem; DonatedLine_RejectedOnNonDonatableItem; DeliveryFee_FiveUnderFifty_FreeAtFifty_NeverOnScoutDelivery; CoverFee_AddsFee_OnlyWhenTicked; Submit_IsIdempotent_OnDuplicateKey; ConfirmationEmail_RateLimited_PerIpAndPerEmail; Honeypot_FilledOrTooFast_CreatesNoOrderAndSendsNoEmail; ConfirmationPage_RequiresUnguessableToken_AndOmitsAddressPhone; PublicLoaders_NeverReturnCustomerPii_OrScoutSurname; UnknownOrRetiredSlug_FallsBackWithoutLeakingExistence; Zip_RejectsNonFiveDigit_AndNon532_ServerSide; Relative_CanOrderOutsideArea_FromScoutLink_WhenTicked; StoreRefuses_NewCartAfterCutoff_ButAllowsOpenCheckout; MarkPaid_RequiresFinanceManage_IsIdempotent_AndAudits; Reassign_RequiresFinanceManage_AndAuditsOldAndNew; SellerSlug_CollisionRefused; WreathTables_HaveRlsAndNoAnonGrants; OrderEmailHtml_EscapesCustomerInput; CatchAll_ReservesWreathsSlug; RoseOrder_CountsByCatalogNumber_PerRound.
+
+### Deploy order
+DB-first: the migration and seed go to production after a dry run, then the code, then the "where the money goes" copy as a site_pages row (or a code constant until it exists). Production migration gets an Opus risk check first.
