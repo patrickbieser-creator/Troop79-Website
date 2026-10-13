@@ -105,7 +105,7 @@ async function loadDashboard() {
         .from('ledger_active')
         .select('scout_id, code')
         .eq('kind', 'rank_requirement')
-        .range(from, to)
+        .order('id').range(from, to)
     ),
     supabase
       .from('ledger_active')

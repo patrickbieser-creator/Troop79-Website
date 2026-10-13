@@ -38,7 +38,7 @@ export async function savePatrolAssignments(draft: PatrolDraft): Promise<Result>
   let scouts: PatrolScout[];
   try {
     scouts = await fetchAllRows<PatrolScout>((f, t) =>
-      supabase.from('scouts').select(SCOUT_COLS).range(f, t)
+      supabase.from('scouts').select(SCOUT_COLS).order('id').range(f, t)
     );
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Could not read the roster' };

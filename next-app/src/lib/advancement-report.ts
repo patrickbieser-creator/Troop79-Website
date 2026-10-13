@@ -998,7 +998,7 @@ export async function loadAdvancementEntries(
   const rankReqLabels = new Map<string, string>(); // composite code -> label
   if (rankReqKeys.size > 0) {
     const rows = await fetchAllRows<{ rank_id: string; code: string; label: string }>((from, to) =>
-      supabase.from('rank_requirements').select('rank_id, code, label').range(from, to)
+      supabase.from('rank_requirements').select('rank_id, code, label').order('id').range(from, to)
     );
     for (const row of rows) rankReqLabels.set(`${row.rank_id}-${row.code}`, row.label);
   }
@@ -1012,7 +1012,7 @@ export async function loadAdvancementEntries(
   const mbReqLabels = new Map<string, string>(); // composite code -> label
   if (mbReqKeys.size > 0) {
     const rows = await fetchAllRows<{ mb_id: string; code: string; label: string }>((from, to) =>
-      supabase.from('merit_badge_requirements').select('mb_id, code, label').range(from, to)
+      supabase.from('merit_badge_requirements').select('mb_id, code, label').order('id').range(from, to)
     );
     for (const row of rows) mbReqLabels.set(`${row.mb_id}-${row.code}`, row.label);
   }
@@ -1119,7 +1119,7 @@ export async function loadScoutStanding(supabase: SupabaseClient, scoutIds: stri
         .in('scout_id', scoutIds)
         .is('archived_at', null)
         .is('deleted_at', null)
-        .range(from, to)
+        .order('id').range(from, to)
     ),
     supabase.from('merit_badges').select('id, name')
   ]);

@@ -32,9 +32,9 @@ export default async function PatrolsPage() {
 
   const supabase = createAdminClient();
   const [scouts, ranks] = await Promise.all([
-    fetchAllRows<PatrolScout>((f, t) => supabase.from('scouts').select(SCOUT_COLS).range(f, t)),
+    fetchAllRows<PatrolScout>((f, t) => supabase.from('scouts').select(SCOUT_COLS).order('id').range(f, t)),
     fetchAllRows<RosterPrintRank>((f, t) =>
-      supabase.from('ranks').select('id, display_name').range(f, t)
+      supabase.from('ranks').select('id, display_name').order('id').range(f, t)
     )
   ]);
 

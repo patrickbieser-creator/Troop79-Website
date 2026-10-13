@@ -32,7 +32,7 @@ async function loadCatalog() {
     // Unbounded past the ~1000-row PostgREST cap as more scouts start more
     // badges — paginate (lib/supabase/paginate.ts).
     fetchAllRows<MbProgressRow>((from, to) =>
-      supabase.from('mb_progress').select('*').range(from, to)
+      supabase.from('mb_progress').select('*').order('mb_id').order('scout_id').range(from, to)
     ),
     supabase.from('scouts').select('id', { count: 'exact', head: true }).eq('active', true)
   ]);

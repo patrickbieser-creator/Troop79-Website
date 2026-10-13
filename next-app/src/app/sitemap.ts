@@ -33,20 +33,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [settings, articles, events, categories, meritBadges, ranks, scouts] = await Promise.all([
     loadSeoSettings(supabase),
     fetchAllRows<{ slug: string; updated_at: string | null }>((from, to) =>
-      supabase.from('articles_public').select('slug, updated_at').range(from, to)
+      supabase.from('articles_public').select('slug, updated_at').order('slug').range(from, to)
     ),
     // Every PUBLISHED entry, including on_calendar=false ones: those are the
     // news-shaped external opportunities, and they still have an /events page.
     fetchAllRows<{ id: number; updated_at: string | null }>((from, to) =>
-      supabase.from('calendar_entries').select('id, updated_at').eq('status', 'published').range(from, to)
+      supabase.from('calendar_entries').select('id, updated_at').eq('status', 'published').order('id').range(from, to)
     ),
     fetchAllRows<{ slug: string }>((from, to) =>
-      supabase.from('calendar_categories').select('slug').range(from, to)
+      supabase.from('calendar_categories').select('slug').order('slug').range(from, to)
     ),
-    fetchAllRows<{ id: string }>((from, to) => supabase.from('merit_badges').select('id').range(from, to)),
-    fetchAllRows<{ id: string }>((from, to) => supabase.from('ranks').select('id').range(from, to)),
+    fetchAllRows<{ id: string }>((from, to) => supabase.from('merit_badges').select('id').order('id').range(from, to)),
+    fetchAllRows<{ id: string }>((from, to) => supabase.from('ranks').select('id').order('id').range(from, to)),
     fetchAllRows<{ id: string }>((from, to) =>
-      supabase.from('scouts').select('id').eq('active', true).range(from, to)
+      supabase.from('scouts').select('id').eq('active', true).order('id').range(from, to)
     )
   ]);
 

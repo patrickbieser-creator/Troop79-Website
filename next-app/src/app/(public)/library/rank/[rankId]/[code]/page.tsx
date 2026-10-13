@@ -98,7 +98,7 @@ export default async function LibraryRequirementPage({
           .select('scout_id')
           .eq('kind', 'rank_requirement')
           .eq('code', targetKey)
-          .range(from, to)
+          .order('id').range(from, to)
       ),
       supabase.from('scouts').select('id').eq('active', true),
       viewScoutId != null

@@ -49,10 +49,10 @@ async function loadData() {
         .from('ledger_active')
         .select('scout_id, code, kind')
         .in('kind', ['rank_requirement', 'merit_badge_requirement'])
-        .range(from, to)
+        .order('id').range(from, to)
     ),
     fetchAllRows<{ scout_id: string; mb_id: string }>((from, to) =>
-      supabase.from('mb_progress').select('scout_id, mb_id').eq('awarded', true).range(from, to)
+      supabase.from('mb_progress').select('scout_id, mb_id').eq('awarded', true).order('mb_id').order('scout_id').range(from, to)
     )
   ]);
 

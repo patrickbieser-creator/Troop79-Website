@@ -98,7 +98,7 @@ export async function fetchAdvancementCatalog(
       supabase
         .from('merit_badge_requirements')
         .select('id, mb_id, parent_id, code, label, complete_rule, complete_n, sort_order, venue')
-        .range(from, to)
+        .order('id').range(from, to)
     ),
     supabase.from('skills').select('id, name, youth_teachable, sort_order').order('sort_order')
   ]);

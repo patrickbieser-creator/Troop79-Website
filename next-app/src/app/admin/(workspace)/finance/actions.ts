@@ -27,8 +27,6 @@ import { centralToday } from '@/lib/dates';
 import {
   FINANCE_PAGE_SIZE,
   computeBalance,
-  computeScoutAccountBalances,
-  reconciliationDrift,
   ledgerToCsv,
   editTransactionGuard,
   validateActivityRename,
@@ -197,19 +195,40 @@ export interface AccountBalances {
 export async function getAccountBalancesAction(): Promise<AccountBalances> {
   await requireAnyOf(['finance.manage', 'finance.view']);
   const supabase = createAdminClient();
-  const rows = await fetchAllRows<FinancialTransactionRow>((from, to) =>
-    supabase
-      .from('financial_transactions')
-      .select('account, amount, person_id, voided_at')
-      .in('account', ['checking', 'savings', 'scholarship', 'sofi'])
-      .range(from, to)
-  );
+  const groups = await loadBalanceGroups(supabase);
   return {
-    checking: computeBalance(rows, { account: 'checking' }),
-    savings: computeBalance(rows, { account: 'savings' }),
-    scholarship: computeBalance(rows, { account: 'scholarship' }),
-    sofi: computeBalance(rows, { account: 'sofi' })
+    checking: accountBalance(groups, 'checking'),
+    savings: accountBalance(groups, 'savings'),
+    scholarship: accountBalance(groups, 'scholarship'),
+    sofi: accountBalance(groups, 'sofi')
   };
+}
+
+/** One (account, person) balance group from finance_balances() — Postgres sums the table
+ *  (voided rows excluded, integer cents), so no action has to read every transaction. A few dozen
+ *  groups (accounts + scouts), far under the PostgREST 1000-row cap. */
+interface BalanceGroup {
+  account: Account;
+  person_id: number | null;
+  balance_cents: number;
+}
+
+async function loadBalanceGroups(
+  supabase: ReturnType<typeof createAdminClient>,
+  asOf?: string
+): Promise<BalanceGroup[]> {
+  const { data, error } = await supabase.rpc('finance_balances', asOf ? { p_as_of: asOf } : {});
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as { account: Account; person_id: number | null; balance_cents: number | string }[]).map((g) => ({
+    account: g.account,
+    person_id: g.person_id,
+    balance_cents: Number(g.balance_cents)
+  }));
+}
+
+/** An account's balance in dollars — the sum of its groups, like computeBalance without a person filter. */
+function accountBalance(groups: readonly BalanceGroup[], account: Account): number {
+  return groups.filter((g) => g.account === account).reduce((sum, g) => sum + g.balance_cents, 0) / 100;
 }
 
 export interface ScoutBalanceRow {
@@ -221,14 +240,11 @@ export interface ScoutBalanceRow {
 export async function getScoutAccountBalancesAction(): Promise<ScoutBalanceRow[]> {
   await requireAnyOf(['finance.manage', 'finance.view']);
   const supabase = createAdminClient();
-  const rows = await fetchAllRows<FinancialTransactionRow>((from, to) =>
-    supabase
-      .from('financial_transactions')
-      .select('account, amount, person_id, voided_at')
-      .eq('account', 'scout_account')
-      .range(from, to)
-  );
-  const balances = computeScoutAccountBalances(rows);
+  const groups = await loadBalanceGroups(supabase);
+  const balances = new Map<number, number>();
+  for (const g of groups) {
+    if (g.account === 'scout_account' && g.person_id !== null) balances.set(g.person_id, g.balance_cents / 100);
+  }
   const personIds = [...balances.keys()];
   if (personIds.length === 0) return [];
 
@@ -1032,36 +1048,44 @@ export async function getReconciliationSummaryAction(): Promise<ReconciliationSu
   await requireAnyOf(['finance.manage', 'finance.view']);
   const supabase = createAdminClient();
 
-  const rows = await fetchAllRows<FinancialTransactionRow & { occurred_on: string }>((from, to) =>
-    supabase
-      .from('financial_transactions')
-      .select('id, occurred_on, account, amount, person_id, voided_at')
-      .in('account', ['checking', 'savings'])
-      .order('id')
-      .range(from, to)
+  const accounts = ['checking', 'savings'] as const;
+  // Both accounts' latest reconciliation and the all-time balances, in parallel — then one
+  // as-of-date aggregate per reconciled account (Postgres does the summing; no row reads).
+  const [groups, lasts] = await Promise.all([
+    loadBalanceGroups(supabase),
+    Promise.all(
+      accounts.map(async (account) => {
+        const { data } = await supabase
+          .from('account_reconciliations')
+          .select('as_of, statement_balance')
+          .eq('account', account)
+          .order('as_of', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        return data;
+      })
+    )
+  ]);
+  const throughStatement = await Promise.all(
+    lasts.map((last) => (last ? loadBalanceGroups(supabase, last.as_of) : Promise.resolve(null)))
   );
 
-  const out: ReconciliationSummaryRow[] = [];
-  for (const account of ['checking', 'savings'] as const) {
-    const computedBalance = computeBalance(rows, { account });
-    const { data: last } = await supabase
-      .from('account_reconciliations')
-      .select('as_of, statement_balance')
-      .eq('account', account)
-      .order('as_of', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+  return accounts.map((account, i) => {
+    const last = lasts[i];
     const lastStatementBalance = last ? Number(last.statement_balance) : null;
-    out.push({
+    const through = throughStatement[i];
+    return {
       account,
-      computedBalance,
+      computedBalance: accountBalance(groups, account),
       lastReconciledAt: last?.as_of ?? null,
       lastStatementBalance,
       // As of the statement's own date — rows entered since aren't drift.
-      drift: last && lastStatementBalance != null ? reconciliationDrift(rows, account, last.as_of, lastStatementBalance) : null
-    });
-  }
-  return out;
+      drift:
+        last && lastStatementBalance != null && through
+          ? (Math.round(accountBalance(through, account) * 100) - Math.round(lastStatementBalance * 100)) / 100
+          : null
+    };
+  });
 }
 
 export interface AddReconciliationInput {
@@ -1297,10 +1321,10 @@ export async function markReimbursementPaidAction(id: number, method: Transactio
 export async function listDistinctActivityLabelsAction(): Promise<string[]> {
   await requireAnyOf(['finance.manage', 'finance.view']);
   const supabase = createAdminClient();
-  const rows = await fetchAllRows<{ activity_label: string | null }>((from, to) =>
-    supabase.from('financial_transactions').select('activity_label').not('activity_label', 'is', null).range(from, to)
-  );
-  return [...new Set(rows.map((r) => r.activity_label).filter((v): v is string => !!v))].sort();
+  const { data, error } = await supabase.rpc('finance_activity_labels');
+  if (error) throw new Error(error.message);
+  // Sorted here (code-unit order), not in SQL, so the order is exactly what the full read produced.
+  return [...new Set(((data ?? []) as { activity_label: string | null }[]).map((r) => r.activity_label).filter((v): v is string => !!v))].sort();
 }
 
 /** The governed Kind vocabulary (transaction_kinds, 2026-08-20) — powers

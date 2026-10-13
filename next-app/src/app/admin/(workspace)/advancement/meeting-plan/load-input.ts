@@ -50,21 +50,21 @@ export async function loadEngineInput(meetingDate: string, title: string): Promi
         supabase
           .from('mb_progress')
           .select('mb_id, scout_id, awarded, has_any_req')
-          .range(from, to)
+          .order('mb_id').order('scout_id').range(from, to)
     ),
     fetchAllRows<{ scout_id: string; code: string }>((from, to) =>
       supabase
         .from('ledger_active')
         .select('scout_id, code')
         .eq('kind', 'rank_requirement')
-        .range(from, to)
+        .order('id').range(from, to)
     ),
     fetchAllRows<{ scout_id: string; code: string }>((from, to) =>
       supabase
         .from('ledger_active')
         .select('scout_id, code')
         .eq('kind', 'merit_badge_requirement')
-        .range(from, to)
+        .order('id').range(from, to)
     ),
     supabase.from('leaders').select('code, name, role, is_person, person_id'),
     supabase.from('leader_skills').select('leader_code, skill_id'),

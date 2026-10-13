@@ -204,7 +204,7 @@ async function loadLookups() {
         supabase
           .from('requirement_official_text')
           .select('source, parent_id, code, official_text')
-          .range(from, to)
+          .order('id').range(from, to)
     )
   ]);
 

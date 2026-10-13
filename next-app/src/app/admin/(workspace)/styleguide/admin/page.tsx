@@ -53,6 +53,7 @@ import { SectionBar, SectionTabs } from '../../_components/section-nav';
 import { ReportsLanding } from '../../_components/reports-landing';
 import { PageTitle } from '../../_components/page-title';
 import { Notice } from '../../_components/notice';
+import { PageSkeleton } from '../../_components/page-skeleton';
 import dlg from '../../_components/dialog.module.css';
 import me from '../../_components/message-editor-dialog.module.css';
 import dt from '../../_components/data-table.module.css';
@@ -1388,6 +1389,27 @@ export default function StyleguidePage() {
               <Notice variant="warning">This entry has no category yet.</Notice>
               <Notice variant="info">Signups close Friday at 6:00 PM.</Notice>
             </div>
+          </Specimen>
+        </div>
+      </section>
+
+      {/* ════ LOADING SKELETON ════ */}
+      <section className={sg.section}>
+        <h2 className={sg.sectionHead}>Loading Skeleton</h2>
+        <p className={sg.sectionNote}>
+          Route-transition fallback (2026-10-13): <code>loading.tsx</code> at{' '}
+          <code>(workspace)/</code>, <code>advancement/</code> and <code>finance/</code> render this
+          inside the workspace layout, so the section bar stays visible while the page streams in.
+          Pale grey blocks on the gray tokens, a slow fade, and no motion under{' '}
+          <code>prefers-reduced-motion</code>.
+        </p>
+        <div className={sg.specimenGrid}>
+          <Specimen
+            label="PageSkeleton — title, lede, toolbar, rows"
+            canonical
+            note="Import from _components/page-skeleton; drop it in a loading.tsx. Content area only - never wrap it in the section bar."
+          >
+            <PageSkeleton rows={3} />
           </Specimen>
         </div>
       </section>

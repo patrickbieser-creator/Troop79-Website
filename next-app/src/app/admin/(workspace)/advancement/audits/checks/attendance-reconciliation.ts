@@ -86,7 +86,7 @@ export async function run(input: AuditInput): Promise<ReconciliationFinding[]> {
   );
   const [attendanceRows, entriesRes, categoriesRes, people] = await Promise.all([
     fetchAllRows<AttendanceRow>((from, to) =>
-      supabase.from('event_attendance').select('calendar_entry_id, person_id, qty').range(from, to)
+      supabase.from('event_attendance').select('calendar_entry_id, person_id, qty').order('id').range(from, to)
     ),
     supabase.from('calendar_entries').select('id, title, entry_date, category'),
     supabase.from('calendar_categories').select('label, credit_kind'),
@@ -98,7 +98,7 @@ export async function run(input: AuditInput): Promise<ReconciliationFinding[]> {
      * integrity problem of its own.
      */
     fetchAllRows<{ id: number; display_name: string }>((from, to) =>
-      supabase.from('people').select('id, display_name').range(from, to)
+      supabase.from('people').select('id, display_name').order('id').range(from, to)
     )
   ]);
 

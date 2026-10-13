@@ -1,0 +1,48 @@
+/**
+ * Loading skeleton for admin route transitions (Plans/Performance-Review-2026-10-13.md).
+ * Content-area only: the section bar lives in the workspace layout and stays put.
+ * Calm by design - pale grey blocks with a slow fade; no motion at all under
+ * prefers-reduced-motion.
+ */
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--admin-space-8);
+}
+.block {
+  background: var(--admin-gray-100);
+  border-radius: var(--admin-radius);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+.title {
+  height: var(--admin-space-13);
+  width: 40%;
+  max-width: 320px;
+}
+.lede {
+  height: var(--admin-text-xl);
+  width: 65%;
+  max-width: 520px;
+}
+.bar {
+  height: var(--admin-space-13);
+  width: 100%;
+}
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--admin-space-4);
+}
+.row {
+  height: var(--admin-space-14);
+  width: 100%;
+  border: 1px solid var(--admin-gray-200);
+  background: var(--admin-gray-50);
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .55; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .block { animation: none; }
+}

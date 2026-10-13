@@ -13,9 +13,15 @@
  */
 
 import { createAdminClient } from '@/lib/supabase/server';
-import { fetchAllRows } from '@/lib/supabase/paginate';
+import { loadAdvancementCatalog } from '@/lib/advancement-catalog';
 import { requireCapability } from '@/lib/require-capability';
 import type { LedgerEntry } from '@/lib/supabase/types';
+
+/** The ledger columns the tape actually reads (not select('*')). */
+type TapeSourceRow = Pick<
+  LedgerEntry,
+  'id' | 'date' | 'entered_at' | 'scout_id' | 'kind' | 'code' | 'label' | 'by' | 'qty' | 'unit'
+>;
 import { ScoutFirstCard } from './scout-first-card';
 import { ReqFirstCard } from './req-first-card';
 import { AuditTape, type TapeRow } from './audit-tape';
@@ -54,10 +60,7 @@ async function loadFastEntry(): Promise<{
   const [
     scoutsRes,
     leadersRes,
-    ranksRes,
-    rankReqsRes,
-    mbsRes,
-    mbReqsRes,
+    catalogData,
     eventsRes,
     serviceProjectsRes,
     leadershipPositionsRes,
@@ -69,31 +72,15 @@ async function loadFastEntry(): Promise<{
       .eq('active', true)
       .order('display_name'),
     supabase.from('leaders').select('code, name').order('code'),
-    supabase.from('ranks').select('id, display_name, sort_order').order('sort_order'),
-    supabase
-      .from('rank_requirements')
-      .select('id, rank_id, parent_id, code, label, complete_rule, complete_n, sort_order')
-      .order('rank_id')
-      .order('sort_order'),
-    supabase.from('merit_badges').select('id, name, eagle').order('name'),
-    // The full MB requirement catalog is well past the 1000-row PostgREST cap
-    // (1,700+ rows across all badges) — an unbounded select silently drops
-    // everything after row 1000, hiding whole badges' requirement trees.
-    // Paginate (lib/supabase/paginate.ts) so every badge loads.
-    fetchAllRows<MbReqRow>((from, to) =>
-      supabase
-        .from('merit_badge_requirements')
-        .select('id, mb_id, parent_id, code, label, complete_rule, complete_n, sort_order')
-        .order('mb_id')
-        .order('sort_order')
-        .range(from, to)
-    ),
+    // Ranks, rank/MB requirement trees and merit badges come from the cached catalog (they only change when a
+    // leader saves Lookups) instead of 4 fresh reads - one of them a paginated ~1.7k-row table - per page load.
+    loadAdvancementCatalog(),
     supabase.from('events').select('id, name, default_kind, start_date').order('name'),
     supabase.from('service_projects').select('id, name').order('name'),
     supabase.from('leadership_positions').select('id, name').order('name'),
     supabase
       .from('ledger_active')
-      .select('*')
+      .select('id, date, entered_at, scout_id, kind, code, label, by, qty, unit')
       .gte('entered_at', startOfDay)
       .lt('entered_at', endISO)
       .order('entered_at', { ascending: false })
@@ -105,35 +92,12 @@ async function loadFastEntry(): Promise<{
     current_rank: string | null;
   }[];
   const leaders = (leadersRes.data ?? []) as { code: string; name: string }[];
-  const ranks = (ranksRes.data ?? []) as {
-    id: string;
-    display_name: string;
-    sort_order: number;
-  }[];
-  type RankReqRow = {
-    id: number;
-    rank_id: string;
-    parent_id: number | null;
-    code: string;
-    label: string;
-    complete_rule: 'all' | 'any' | 'n-of';
-    complete_n: number | null;
-    sort_order: number;
-  };
-  type MbReqRow = {
-    id: number;
-    mb_id: string;
-    parent_id: number | null;
-    code: string;
-    label: string;
-    complete_rule: 'all' | 'any' | 'n-of';
-    complete_n: number | null;
-    sort_order: number;
-  };
-  const rankReqs = (rankReqsRes.data ?? []) as RankReqRow[];
-  const mbs = (mbsRes.data ?? []) as { id: string; name: string; eagle: boolean }[];
-  // mbReqsRes is already a fully-paginated MbReqRow[] (see fetchAllRows above).
-  const mbReqs = mbReqsRes;
+  // Same orders the direct reads used: ranks by sort_order (already), requirements by parent then sort_order
+  // (buildTree sorts siblings), badges by name.
+  const ranks = catalogData.ranks;
+  const rankReqs = catalogData.rankRequirements;
+  const mbs = [...catalogData.meritBadges].sort((x, y) => x.name.localeCompare(y.name));
+  const mbReqs = catalogData.meritBadgeRequirements;
   const events = (eventsRes.data ?? []) as {
     id: number;
     name: string;
@@ -142,7 +106,7 @@ async function loadFastEntry(): Promise<{
   }[];
   const serviceProjects = (serviceProjectsRes.data ?? []) as { id: number; name: string }[];
   const leadershipPositions = (leadershipPositionsRes.data ?? []) as { id: number; name: string }[];
-  const tapeRows = (tapeRes.data ?? []) as LedgerEntry[];
+  const tapeRows = (tapeRes.data ?? []) as TapeSourceRow[];
 
   // Build trees per rank + per MB.
   function buildTree<T extends { id: number; parent_id: number | null; sort_order: number; code: string; label: string; complete_rule: 'all' | 'any' | 'n-of'; complete_n: number | null }>(rows: T[]): import('./picker-types').ReqTreeNode[] {
@@ -227,7 +191,7 @@ async function loadFastEntry(): Promise<{
 }
 
 function shortLabelFor(
-  row: LedgerEntry,
+  row: TapeSourceRow,
   rankReqMap: Map<string, string>,
   rankNameMap: Map<string, string>,
   mbNameMap: Map<string, string>

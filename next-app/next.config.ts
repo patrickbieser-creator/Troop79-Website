@@ -45,6 +45,15 @@ const nextConfig: NextConfig = {
     ];
   },
   experimental: {
+    // Client router cache for dynamic pages. Next 15+ defaults this to 0, so
+    // every admin click and every back/forward refetched the whole page.
+    // 30 s makes revisits instant. Safe for writes: any Server Action that
+    // calls revalidatePath / revalidateTag / updateTag (or cookies.set/delete)
+    // clears the client cache, so the actor always sees their own edits.
+    // Trade-off: ANOTHER leader's edit can show up to 30 s late on a page
+    // you already visited. Back/forward navigation is unaffected by this
+    // setting (the browser-history cache is separate).
+    staleTimes: { dynamic: 30 },
     serverActions: {
       // Default is too small for photo uploads through the media picker.
       bodySizeLimit: '15mb'

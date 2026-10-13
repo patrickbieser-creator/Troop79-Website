@@ -124,3 +124,48 @@ export function buildGuestTabRows(input: {
     };
   });
 }
+
+/** One guest with its signup history embedded, as the roster page's single PostgREST select returns it
+ *  (people → signup_entries → event_signups → calendar_entries). */
+export interface GuestEmbedRow extends GuestPersonRow {
+  signup_entries: {
+    id: number;
+    participant_class: string;
+    event_signup_id: number;
+    event_signups: {
+      id: number;
+      calendar_entry_id: number;
+      calendar_entries: GuestEventRow | null;
+    } | null;
+  }[];
+}
+
+/** Unpacks the embedded tree into the four flat arrays buildGuestTabRows takes. Signups and events are
+ *  deduplicated (two guests can share an event). */
+export function flattenGuestEmbed(rows: readonly GuestEmbedRow[]): {
+  people: GuestPersonRow[];
+  entries: GuestEntryRow[];
+  signups: GuestSignupRow[];
+  events: GuestEventRow[];
+} {
+  const people: GuestPersonRow[] = [];
+  const entries: GuestEntryRow[] = [];
+  const signups = new Map<number, GuestSignupRow>();
+  const events = new Map<number, GuestEventRow>();
+  for (const { signup_entries, ...person } of rows) {
+    people.push(person);
+    for (const e of signup_entries ?? []) {
+      entries.push({
+        id: e.id,
+        person_id: person.id,
+        participant_class: e.participant_class,
+        event_signup_id: e.event_signup_id
+      });
+      const s = e.event_signups;
+      if (!s) continue;
+      signups.set(s.id, { id: s.id, calendar_entry_id: s.calendar_entry_id });
+      if (s.calendar_entries) events.set(s.calendar_entries.id, s.calendar_entries);
+    }
+  }
+  return { people, entries, signups: [...signups.values()], events: [...events.values()] };
+}

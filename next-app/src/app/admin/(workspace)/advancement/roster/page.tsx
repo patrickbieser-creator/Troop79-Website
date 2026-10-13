@@ -37,10 +37,8 @@ import { RosterSearch } from "./roster-search";
 import { buildRosterSearchRows } from "./roster-search-rows";
 import {
   buildGuestTabRows,
-  type GuestPersonRow,
-  type GuestEntryRow,
-  type GuestSignupRow,
-  type GuestEventRow,
+  flattenGuestEmbed,
+  type GuestEmbedRow,
 } from "@/lib/guest-people";
 import styles from "./roster.module.css";
 
@@ -135,7 +133,9 @@ export default async function RosterPage({
     supabase
       .from("people")
       .select(
-        "id, display_name, primary_phone, guest_host_household_id, created_at",
+        "id, display_name, primary_phone, guest_host_household_id, created_at, " +
+          "signup_entries!signup_entries_person_id_fkey(id, participant_class, event_signup_id, " +
+          "event_signups(id, calendar_entry_id, calendar_entries(id, title, entry_date)))",
       )
       .not("guest_host_household_id", "is", null)
       .is("merged_into_person_id", null)
@@ -143,40 +143,14 @@ export default async function RosterPage({
       .order("display_name"),
   ]);
 
-  // Guests tab rows: their latest entry's class + the most recent event they
-  // came to, joined here (three small reads) and shaped by the pure helper.
-  const guestPeople = (guestPeopleRes.data ??
-    []) as unknown as GuestPersonRow[];
-  let guestEntries: GuestEntryRow[] = [];
-  let guestSignups: GuestSignupRow[] = [];
-  let guestEvents: GuestEventRow[] = [];
-  if (guestPeople.length > 0) {
-    const { data: ge } = await supabase
-      .from("signup_entries")
-      .select("id, person_id, participant_class, event_signup_id")
-      .in(
-        "person_id",
-        guestPeople.map((g) => g.id),
-      )
-      .order("id", { ascending: false });
-    guestEntries = (ge ?? []) as unknown as GuestEntryRow[];
-    const signupIds = [...new Set(guestEntries.map((e) => e.event_signup_id))];
-    if (signupIds.length > 0) {
-      const { data: gs } = await supabase
-        .from("event_signups")
-        .select("id, calendar_entry_id")
-        .in("id", signupIds);
-      guestSignups = (gs ?? []) as unknown as GuestSignupRow[];
-      const ceIds = [...new Set(guestSignups.map((x) => x.calendar_entry_id))];
-      if (ceIds.length > 0) {
-        const { data: gev } = await supabase
-          .from("calendar_entries")
-          .select("id, title, entry_date")
-          .in("id", ceIds);
-        guestEvents = (gev ?? []) as unknown as GuestEventRow[];
-      }
-    }
-  }
+  // Guests tab rows: their latest entry's class + the most recent event they came to. The history rides in the
+  // same select as an embed (was a 3-read serial chain on every tab); flattened and shaped by the pure helpers.
+  const {
+    people: guestPeople,
+    entries: guestEntries,
+    signups: guestSignups,
+    events: guestEvents,
+  } = flattenGuestEmbed((guestPeopleRes.data ?? []) as unknown as GuestEmbedRow[]);
 
   const today = centralToday();
   const ranks = ((ranksRes.data ?? []) as Rank[]).map((r) => ({

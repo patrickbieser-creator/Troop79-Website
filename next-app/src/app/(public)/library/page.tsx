@@ -85,7 +85,7 @@ async function loadHome(viewer: LibraryViewer): Promise<HomeData> {
        badges — it is already at 528 rows. This is the SAME read the retired
        /merit-badges catalog ran, moved rather than added. */
     fetchAllRows<{ mb_id: string; scout_id: string }>((from, to) =>
-      supabase.from('mb_progress').select('mb_id, scout_id').eq('awarded', true).range(from, to)
+      supabase.from('mb_progress').select('mb_id, scout_id').eq('awarded', true).order('mb_id').order('scout_id').range(from, to)
     ),
     /* Active scout ids — the grid counts ACTIVE scouts only, so its numbers
        agree with the badge page one click away. Without this the grid said

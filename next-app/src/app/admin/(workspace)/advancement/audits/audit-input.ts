@@ -85,7 +85,7 @@ export async function loadAuditInput(
         .select(
           'id, scout_id, kind, code, label, date, by, qty, unit, notes, entered_by, entered_at, calendar_entry_id'
         )
-        .range(from, to)
+        .order('id').range(from, to)
     )
   ]);
 

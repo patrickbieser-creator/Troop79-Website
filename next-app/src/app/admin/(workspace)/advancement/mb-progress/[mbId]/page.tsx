@@ -79,7 +79,7 @@ async function loadDetail(mbId: string) {
           .or(`code.like.${mbId}-%,code.eq.MB:${mbId}`)
           .is('archived_at', null)
           .is('deleted_at', null)
-          .range(from, to)
+          .order('id').range(from, to)
       ),
       supabase.from('scouts').select(SCOUT_CORE_COLS).eq('active', true).order('display_name'),
       supabase.from('scouts').select('id', { count: 'exact', head: true }).eq('active', true),

@@ -68,10 +68,10 @@ export async function loadRosterPrintData(): Promise<RosterPrintInput> {
 
   const [households, members, people, scoutCoreRows, relations, leaders, ranks] = await Promise.all([
     fetchAllRows<{ id: number; label: string }>((f, t) =>
-      supabase.from('households').select('id, label').range(f, t)
+      supabase.from('households').select('id, label').order('id').range(f, t)
     ),
     fetchAllRows<MemberRow>((f, t) =>
-      supabase.from('household_members').select('household_id, person_id').range(f, t)
+      supabase.from('household_members').select('household_id, person_id').order('household_id').order('person_id').range(f, t)
     ),
     fetchAllRows<PersonRow>((f, t) =>
       supabase
@@ -80,21 +80,21 @@ export async function loadRosterPrintData(): Promise<RosterPrintInput> {
         .is('merged_into_person_id', null)
         .is('guest_host_household_id', null)
         .eq('active', true)
-        .range(f, t)
+        .order('id').range(f, t)
     ),
-    fetchAllRows<ScoutCoreRow>((f, t) => supabase.from('scouts').select(SCOUT_COLS).range(f, t)),
+    fetchAllRows<ScoutCoreRow>((f, t) => supabase.from('scouts').select(SCOUT_COLS).order('id').range(f, t)),
     fetchAllRows<RelationRow>((f, t) =>
       supabase
         .from('relationships')
         .select('id, person_id, role_label')
         .in('type', ['parent_of', 'guardian_of'])
-        .range(f, t)
+        .order('id').range(f, t)
     ),
     fetchAllRows<LeaderRow>((f, t) =>
-      supabase.from('leaders').select('code, name, role, is_person, person_id').range(f, t)
+      supabase.from('leaders').select('code, name, role, is_person, person_id').order('code').range(f, t)
     ),
     fetchAllRows<{ id: string; display_name: string }>((f, t) =>
-      supabase.from('ranks').select('id, display_name').range(f, t)
+      supabase.from('ranks').select('id, display_name').order('id').range(f, t)
     )
   ]);
 
