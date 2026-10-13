@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session 54 — The wreath sale goes online</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #3d5a3e;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #f0eecd;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); vertical-align: top; }
+        tr:hover { background: var(--nw-sage); }
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+        code { font-family: 'Courier New', monospace; font-size: 0.85em; background: var(--nw-light-gray); padding: 0 0.3em; border-radius: 3px; }
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+        @media print { body { background: white; } header { padding: 1.5rem; } .container { padding: 1rem; } .stat { break-inside: avoid; } }
+        @media (max-width: 600px) { header h1 { font-size: 1.5rem; } .stats { flex-direction: column; } }
+    </style>
+<body>
+    <header>
+        <h1>The wreath sale goes online: a troop store, a page for every scout, and the admin to run it</h1>
+        <p class="subtitle">Session 54. Patrick asked for an online order page for the annual Christmas wreath sale, one per scout plus one for the troop, to replace the Google Sheet. In one evening it went from questions to a live store the committee is testing.</p>
+        <div class="meta">
+            <span>&#128197; October 12, 2026</span>
+            <span>&#129302; Operator (Opus 5.5)</span>
+            <span>&#128204; Troop79-Website</span>
+            <span>&#128640; v1.209.0 &rarr; v1.211.0</span>
+        </div>
+    </header>
+    <div class="container">
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">4</div><div class="label">Releases (v1.210.0&ndash;v1.211.0)</div></div>
+            <div class="stat"><div class="number">1</div><div class="label">Production migration (wreath_sale)</div></div>
+            <div class="stat"><div class="number">28</div><div class="label">Scout sellers, each with a link</div></div>
+            <div class="stat"><div class="number">19</div><div class="label">Items with real photos</div></div>
+            <div class="stat"><div class="number">93</div><div class="label">Tests net (4995 &rarr; 5088)</div></div>
+        </div>
+        <h2>What Was Accomplished</h2>
+        <div class="callout callout-teal">
+            <strong>The outcome:</strong> troop-79.com/wreaths sells the 19 Rose items with photos. Each scout's link (e.g. /wreaths/ben-b) credits that scout, and the troop store can credit a scout optionally at checkout. Customers pay the treasurer by Venmo or PayPal, and leaders run it all at Admin &rsaquo; Finance &rsaquo; Wreath Sale.
+        </div>
+        <h3>Planning and design</h3>
+        <p>Claude read the sale's Google Sheet: 19 items, prices, unit costs, and a 30% scout share of profit. It studied how other troops sell online and asked Patrick three rounds of questions. Brad's clickable prototype was approved. Claude split Rose's combined tree photo into two product images.</p>
+        <h3>Reviews, then the build</h3>
+        <p>Tech-lead, qa-lead and the troop specialist reviewed the plan before any code was written. Their work moved admin under Finance, keyed sellers on people, sent the scout share to the scout-account books, and added anti-spam and privacy controls. A builder agent wrote it test-first, and qa-lead reviewed the code twice. An Opus risk check cleared the production migration, which went in ahead of the code.</p>
+        <h3>Live fixes</h3>
+        <p>Patrick found that a capitalized link (Anjali-S) fell back to the store and showed another scout's name. Links now ignore case. He then asked for an optional "credit a scout" at checkout, a kinder message for a mistyped link, and an Empty the cart button. All of these shipped the same evening.</p>
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Decision</th></tr></thead>
+            <tbody>
+                <tr><td>D-370</td><td>Wreath sale: a two-round pre-order store; scout links credit and deliver; an optional credit-only pick at checkout; 532 delivery with a relative override; Venmo/PayPal to the treasurer in Release A; the 30% of profit posts to scout accounts at close</td></tr>
+                <tr><td>D-371</td><td>Scout links are case-insensitive and redirect to their lowercase form</td></tr>
+            </tbody>
+        </table>
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Committee testing runs about 24 hours; then delete every test order and open the store to the public (round 1 closes Sunday, October 25).</li>
+            <li>Patrick: confirm the W-1002 confirmation email arrived.</li>
+            <li>Release C before November 15: in-person orders, My wreath orders, goals and the leaderboard, the books, close-sale.</li>
+            <li>Release B when the troop's PayPal account exists.</li>
+        </ul>
+        <h2>Files Changed</h2>
+        <table>
+            <thead><tr><th>Area</th><th>Change</th></tr></thead>
+            <tbody>
+                <tr><td>Public</td><td>(public)/wreaths: store, [seller], checkout, order/[token]; _components (store-view, store-page, checkout-form, cart)</td></tr>
+                <tr><td>Library</td><td>lib/wreaths: rules, place-order, public, store-page, emails, seller-search, checkout-validate, admin-data, copy</td></tr>
+                <tr><td>Admin</td><td>admin/(workspace)/finance/wreaths (Settings, Items, Sellers, Orders, Rose order); sub-nav; audit area 'wreaths'</td></tr>
+                <tr><td>Database</td><td>20261101100000_wreath_sale.sql &mdash; on production; 2026 sale, 19 items, 28 sellers</td></tr>
+                <tr><td>Images</td><td>19 product photos on Bunny (wreaths/2026/); scripts/upload-wreath-images.ts</td></tr>
+                <tr><td>Tests</td><td>+93 net across the wreath-* test files</td></tr>
+                <tr><td>Docs</td><td>Plans/Wreath-Sale.md (ACTIVE); prototypes/wreath-sale/; changelog.html; Agents memory D-370&ndash;371</td></tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
