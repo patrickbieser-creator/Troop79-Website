@@ -72,6 +72,21 @@ describe('credit a scout at checkout', () => {
     expect(screen.getByText('Credit: Troop 79')).toBeTruthy();
   });
 
+  // Chrome ignores autocomplete="off" on anything it takes for a name field and offers the visitor's own saved
+  // contacts over our scout list (Patrick, 2026-10-13). An unrecognised token turns its address autofill off.
+  it('CheckoutCredit_SearchBox_UsesAnAutocompleteTokenChromeDoesNotAutofill', async () => {
+    setup();
+    await userEvent.setup().click(screen.getByRole('button', { name: /Know a scout in Troop 79/ }));
+    expect(screen.getByRole('searchbox').getAttribute('autocomplete')).toBe('troop79-scout-search');
+  });
+
+  // Chrome's name heuristics match "first … name" in the label and hint, so neither may say it.
+  it('CheckoutCredit_SearchBox_LabelAndHintAvoidChromesFirstNamePattern', async () => {
+    setup();
+    await userEvent.setup().click(screen.getByRole('button', { name: /Know a scout in Troop 79/ }));
+    expect(screen.getByRole('searchbox').closest('div')?.parentElement?.textContent ?? '').not.toMatch(/first.*name/i);
+  });
+
   it('CheckoutCredit_NotOfferedOnScoutLinkCheckout', () => {
     setup({ scout: { slug: 'ben-b', name: 'Ben B.', firstName: 'Ben' } });
     expect(screen.queryByRole('button', { name: /Know a scout in Troop 79/ })).toBeNull();

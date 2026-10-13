@@ -47,7 +47,8 @@
 .pad { padding: var(--sp-4) var(--sp-5); }
 .money { font-family: var(--font-ui); font-size: var(--fs-sm); }
 .money h2 { margin: 0 0 var(--sp-2); font-size: var(--fs-md); font-family: var(--font-ui); color: var(--text-head); }
-.money ul { margin: 0; padding-left: var(--sp-5); }
+/* Tailwind's preflight strips list markers site-wide; this list is meant to read as bullets (Patrick, 2026-10-13). */
+.money ul { margin: 0; padding-left: var(--sp-5); list-style: disc outside; }
 .money li + li { margin-top: var(--sp-1); }
 
 .greet { display: grid; gap: var(--sp-3); margin-bottom: var(--sp-4); align-content: start; }

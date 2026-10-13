@@ -505,8 +505,11 @@ function CreditPicker({ search, picked, onPick, problem }: { search: CheckoutPro
             </p>
           ) : (
             <>
-              <Field label="Scout’s first name" hint="Type at least 2 letters. 30% of the profit on your order goes into their scout account." problem={problem}>
-                <TextInput type="search" autoComplete="off" value={q} onChange={(e) => type(e.target.value)} />
+              {/* Chrome ignores autocomplete="off" on a field it takes for a name and lays the visitor's own saved
+                  contacts over this list; an unrecognised token turns that off, and the label and hint stay clear of
+                  its "first … name" pattern (2026-10-13). */}
+              <Field label="Which scout?" hint="Type at least 2 letters. 30% of the profit on your order goes into their scout account." problem={problem}>
+                <TextInput type="search" name="scout_lookup" autoComplete="troop79-scout-search" value={q} onChange={(e) => type(e.target.value)} />
               </Field>
               {matches && matches.length === 0 && <p className={styles.meta}>No scout found with that name. The order will go to Troop 79.</p>}
               {matches && matches.length > 0 && (
