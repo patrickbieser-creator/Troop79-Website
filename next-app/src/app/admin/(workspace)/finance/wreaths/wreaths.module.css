@@ -1,0 +1,99 @@
+/* /admin/finance/wreaths — the wreath sale's admin. Admin tokens only. Tables adopt the shared patterns by `composes`
+   (AGENTS.md "Tables are seven named patterns"); this file keeps only genuine extras: column widths, the thumbnail,
+   the order-detail row, the form fields, the sticky bar. */
+
+.tabs { margin-bottom: var(--admin-space-8); }
+.toolbar { display: flex; align-items: center; gap: var(--admin-space-6); flex-wrap: wrap; margin-bottom: var(--admin-space-6); }
+.spacer { flex: 1; }
+.note { font-size: var(--admin-text-base); color: var(--admin-gray-500); margin: 0 0 var(--admin-space-6); max-width: 70ch; }
+.muted { color: var(--admin-gray-500); }
+.nowrap { white-space: nowrap; }
+
+/* DataTable · Card: money and per-row buttons */
+.tableWrap { composes: cardWrap from '../../_components/data-table.module.css'; }
+.table { composes: card from '../../_components/data-table.module.css'; }
+.numCell { composes: numCell from '../../_components/data-table.module.css'; }
+.actionsCell { composes: actionsCell from '../../_components/data-table.module.css'; }
+.empty { composes: empty from '../../_components/data-table.module.css'; }
+
+.thumb { width: 44px; height: 40px; object-fit: contain; background: var(--admin-white); border-radius: var(--admin-radius-sm); display: block; }
+.mono { font-family: var(--admin-font-mono); font-size: var(--admin-text-base); }
+.link { color: var(--admin-navy); font-weight: var(--admin-weight-semibold); background: none; border: none; padding: 0; cursor: pointer; font: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.link:hover { color: var(--admin-navy-hover); }
+.badgeRow { display: inline-flex; gap: var(--admin-space-2); flex-wrap: wrap; }
+
+/* An opened order: one tinted row under it, in two columns. */
+.detailRow td { background: var(--admin-form-bg); }
+.detail { display: grid; gap: var(--admin-space-8); grid-template-columns: 1fr; padding: var(--admin-space-4) 0; }
+@media (min-width: 900px) { .detail { grid-template-columns: 1fr 1fr; } }
+.detail h4 { margin: 0 0 var(--admin-space-3); font-size: var(--admin-text-base); font-weight: var(--admin-weight-semibold); color: var(--admin-gray-500); }
+.detail dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: var(--admin-space-2) var(--admin-space-6); font-size: var(--admin-text-md); }
+.detail dt { color: var(--admin-gray-500); }
+.detail dd { margin: 0; color: var(--admin-gray-800); }
+.lineList { list-style: none; margin: 0; padding: 0; font-size: var(--admin-text-md); }
+.lineList li { display: flex; justify-content: space-between; gap: var(--admin-space-6); padding: var(--admin-space-2) 0; }
+.history { list-style: none; margin: 0; padding: 0; font-size: var(--admin-text-base); color: var(--admin-gray-600); }
+.history li { padding: var(--admin-space-2) 0; border-top: 1px solid var(--admin-gray-200); }
+.history li:first-child { border-top: none; }
+.actionRow { display: flex; align-items: center; gap: var(--admin-space-4); flex-wrap: wrap; margin-top: var(--admin-space-6); }
+
+/* Fields */
+.field { margin-bottom: var(--admin-space-8); min-width: 0; }
+.field > label, .fieldLabel { display: block; margin-bottom: 6px; font-size: var(--admin-text-base); font-weight: var(--admin-weight-semibold); color: var(--admin-gray-500); }
+.field input[type='text'], .field input[type='number'], .field select, .field textarea {
+  width: 100%;
+  font-family: var(--admin-font-ui);
+  font-size: var(--admin-text-md);
+  color: var(--admin-gray-700);
+  border: 1px solid var(--admin-gray-300);
+  border-radius: var(--admin-radius-sm);
+  padding: 9px 11px;
+  background: var(--admin-white);
+}
+.field textarea { min-height: 80px; resize: vertical; }
+.field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--admin-navy); }
+.hint { font-size: var(--admin-text-sm); color: var(--admin-gray-500); margin: 5px 0 0; }
+.grid2 { display: grid; gap: 0 var(--admin-space-8); grid-template-columns: 1fr; max-width: 640px; }
+@media (min-width: 640px) { .grid2 { grid-template-columns: 1fr 1fr; } .span2 { grid-column: 1 / -1; } }
+.bad { composes: bad from '../../_components/save-state.module.css'; }
+.badNote { composes: badNote from '../../_components/save-state.module.css'; }
+.check { display: flex; align-items: center; gap: var(--admin-space-4); font-size: var(--admin-text-md); color: var(--admin-gray-700); margin-bottom: var(--admin-space-4); }
+
+/* ONE sticky bar (D-332): Save + Discard on the left. */
+.stickyBar {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--admin-space-6);
+  flex-wrap: wrap;
+  margin-top: var(--admin-space-11);
+  padding: var(--admin-space-6) 0;
+  background: var(--admin-white);
+  border-top: 1px solid var(--admin-gray-200);
+}
+.formStack { display: grid; gap: var(--admin-space-8); max-width: 760px; }
+.dialogBody { display: grid; gap: var(--admin-space-2); min-width: min(520px, 90vw); }
+.dialogActions { display: flex; gap: var(--admin-space-4); align-items: center; flex-wrap: wrap; margin-top: var(--admin-space-6); }
+.addPanel { max-width: 520px; margin-top: var(--admin-space-8); }
+.sectionGap { margin-top: var(--admin-space-11); }
+
+.toolbar select {
+  font-family: var(--admin-font-ui);
+  font-size: var(--admin-text-md);
+  color: var(--admin-gray-700);
+  border: 1px solid var(--admin-gray-300);
+  border-radius: var(--admin-radius-sm);
+  padding: 7px 9px;
+  background: var(--admin-white);
+}
+.actionRow select {
+  font-family: var(--admin-font-ui);
+  font-size: var(--admin-text-md);
+  color: var(--admin-gray-700);
+  border: 1px solid var(--admin-gray-300);
+  border-radius: var(--admin-radius-sm);
+  padding: 7px 9px;
+  background: var(--admin-white);
+}
+.totalRow td { font-weight: var(--admin-weight-bold); }

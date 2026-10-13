@@ -15,6 +15,12 @@ export const CUTOFF_GRACE_MS = 2 * 60 * 60 * 1000;
 /** A form posted sooner than this after its page rendered is a script, not a person. */
 export const MIN_SUBMIT_MS = 4000;
 
+/**
+ * Release A takes no payment on the site: the customer pays the treasurer by Venmo / PayPal and the treasurer marks the
+ * order paid. Release B (PayPal Checkout) flips this on, which brings back the "cover the processing fee" box.
+ */
+export const PAYPAL_CHECKOUT_LIVE = false;
+
 export const PAID_METHODS = ['venmo', 'paypal', 'cash', 'check', 'other'] as const;
 export type PaidMethod = (typeof PAID_METHODS)[number];
 
@@ -55,6 +61,14 @@ export const toCents = (dollars: number): number => Math.round(dollars * 100);
 export const fromCents = (c: number): number => c / 100;
 
 export type Fulfillment = 'scout' | 'pickup' | 'delivery' | 'none';
+
+export const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+/** Ten digits, or eleven with a leading 1. */
+export function phoneOk(p: string): boolean {
+  const d = p.replace(/\D/g, '');
+  return d.length === 10 || (d.length === 11 && d.startsWith('1'));
+}
 
 /** A five-digit zip, nothing else. */
 export function zipFormatOk(zip: string): boolean {

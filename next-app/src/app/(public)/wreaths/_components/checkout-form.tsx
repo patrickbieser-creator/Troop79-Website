@@ -1,0 +1,456 @@
+'use client';
+
+/**
+ * Wreath checkout (Plans/Wreath-Sale.md; prototype checkout.html): your order -> getting your wreaths -> your
+ * details -> total -> Place order. Customers have no accounts. The button stays enabled until the order is in flight;
+ * pressing it with a problem marks every bad field in place and says why beside the button (the blocked-save
+ * standard), rather than greying it out. Release A takes no payment here: the confirmation page and email say how to
+ * pay the treasurer. The server action re-prices everything; the totals on this screen are only a courtesy.
+ */
+
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/app/_components/button';
+import { Notice } from '@/app/_components/notice';
+import { Field, FieldProblem, SaveProblem, TextInput } from '@/app/_components/form';
+import { Stepper } from '@/app/_components/stepper';
+import { PAYPAL_CHECKOUT_LIVE, PAY_TREASURER, coverFeeFor, deliveryFeeFor, fmtMoney, fmtMoney2, itemLabel, toCents, fromCents, type Fulfillment } from '@/lib/wreaths/rules';
+import type { StoreItem } from '@/lib/wreaths/public';
+import type { OrderField, PlaceOrderResult } from '@/lib/wreaths/place-order';
+import { fulfillmentFor, joinLabels, validateCheckout, type CheckoutProblem } from '@/lib/wreaths/checkout-validate';
+import { lineKey, parseLineKey, useCart } from './cart';
+import { ProductPhoto } from './store-view';
+import styles from '../wreaths.module.css';
+
+export interface CheckoutProps {
+  items: StoreItem[];
+  scout: { slug: string; name: string; firstName: string } | null;
+  rules: { deliveryZipPrefix: string; deliveryFee: number; deliveryFreeAt: number; feePercent: number; feeFixed: number };
+  /** "Saturday, November 21, 2026, 2:30 to 4:30 PM, Northwoods parking lot, 1572 East Capitol" */
+  pickupText: string;
+  /** "Saturday, November 21, 2026" or '' */
+  distributionDay: string;
+  /** Set in the two hours after the final cutoff: only a checkout begun before it may finish. */
+  graceCutoff: string | null;
+  action: (raw: unknown) => Promise<PlaceOrderResult>;
+}
+
+/* When this checkout began — kept for the tab, so a shopper whose Round closes mid-checkout can still finish. */
+const STARTED_KEY = 'wreath-checkout-started';
+const STARTED_EVENT = 'wreath-checkout-started-changed';
+function startedSnapshot(): number | null {
+  try {
+    const v = window.sessionStorage.getItem(STARTED_KEY);
+    return v ? Number(v) : null;
+  } catch {
+    return null;
+  }
+}
+function startedSubscribe(cb: () => void) {
+  window.addEventListener(STARTED_EVENT, cb);
+  return () => window.removeEventListener(STARTED_EVENT, cb);
+}
+function markStarted() {
+  try {
+    if (!window.sessionStorage.getItem(STARTED_KEY)) {
+      window.sessionStorage.setItem(STARTED_KEY, String(Date.now()));
+      window.dispatchEvent(new Event(STARTED_EVENT));
+    }
+  } catch {
+    // no sessionStorage: the order action falls back to the clock alone
+  }
+}
+
+const GIFTS = [0, 5, 10, 25];
+
+export function CheckoutForm({ items, scout, rules, pickupText, distributionDay, graceCutoff, action }: CheckoutProps) {
+  const router = useRouter();
+  const { cart, setQty, clear } = useCart();
+  const formRef = useRef<HTMLFormElement>(null);
+  const startedAt = useSyncExternalStore(startedSubscribe, startedSnapshot, () => null);
+  const [mountedAt] = useState(() => Date.now());
+  // The checkout has begun: remember when, for this tab (see STARTED_KEY).
+  useEffect(() => {
+    markStarted();
+  }, []);
+  const [idempotencyKey] = useState(() => crypto.randomUUID());
+
+  const [method, setMethod] = useState<'pickup' | 'delivery' | ''>('');
+  const [gift, setGift] = useState(0);
+  const [giftOther, setGiftOther] = useState(false);
+  const [giftText, setGiftText] = useState('');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [street, setStreet] = useState('');
+  const [city, setCity] = useState('Milwaukee');
+  const [zip, setZip] = useState('');
+  const [relative, setRelative] = useState(false);
+  const [website, setWebsite] = useState('');
+  const [tried, setTried] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [serverProblem, setServerProblem] = useState<{ field?: OrderField; message: string } | null>(null);
+
+  const byId = new Map(items.map((i) => [i.id, i]));
+  const lines = Object.entries(cart.lines)
+    .map(([key, qty]) => ({ key, qty, ...parseLineKey(key) }))
+    .filter((l) => byId.has(l.itemId))
+    .map((l) => ({ ...l, item: byId.get(l.itemId)! }));
+  const allDonated = lines.length > 0 && lines.every((l) => l.donated);
+  const giftAmount = giftOther ? Math.round((parseFloat(giftText) || 0) * 100) / 100 : gift;
+  const firstName = scout?.firstName ?? null;
+
+  const draft = {
+    hasLines: lines.length > 0,
+    allDonated,
+    scoutFirstName: firstName,
+    method,
+    deliveryZipPrefix: rules.deliveryZipPrefix,
+    zip,
+    relative,
+    name,
+    email,
+    phone,
+    street,
+    city,
+    giftOther,
+    giftAmount
+  };
+  const fulfillment: Fulfillment | null = fulfillmentFor(draft);
+  const needsAddress = fulfillment === 'scout' || fulfillment === 'delivery';
+  const problems: CheckoutProblem[] = tried ? validateCheckout(draft) : [];
+  const problemFor = (f: OrderField) => problems.find((p) => p.field === f)?.message ?? (serverProblem?.field === f ? serverProblem.message : undefined);
+
+  // Totals: a courtesy copy of what the server computes.
+  const itemsCents = lines.reduce((n, l) => n + toCents(l.item.price) * l.qty, 0);
+  const delivery = deliveryFeeFor(rules, fulfillment ?? 'pickup', fromCents(itemsCents));
+  const baseDollars = fromCents(itemsCents + toCents(giftAmount) + toCents(delivery));
+  const fee = coverFeeFor(rules, baseDollars);
+  const total = baseDollars; // the processing-fee box is off until PayPal Checkout (Release B)
+
+  // Grace: after the final cutoff only a checkout begun before it may finish.
+  if (graceCutoff && !(startedAt != null && startedAt < Date.parse(graceCutoff))) {
+    return (
+      <Notice tone="info">
+        Sales have closed. Thank you for supporting Troop 79. <Link href="/wreaths">Back to the store</Link>
+      </Notice>
+    );
+  }
+
+  const zipTrim = zip.trim();
+  const zipFive = /^\d{5}$/.test(zipTrim);
+  const zipIn = zipFive && zipTrim.startsWith(rules.deliveryZipPrefix);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    markStarted();
+    setTried(true);
+    setServerProblem(null);
+    const bad = validateCheckout(draft);
+    if (bad.length) {
+      requestAnimationFrame(() => {
+        const first = formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]');
+        const target = first?.matches('input, select, textarea, button') ? first : first?.querySelector<HTMLElement>('input');
+        first?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        target?.focus({ preventScroll: true });
+      });
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await action({
+        idempotencyKey,
+        sellerSlug: scout?.slug ?? null,
+        lines: lines.map((l) => ({ itemId: l.itemId, quantity: l.qty, donated: l.donated })),
+        gift: giftAmount,
+        coverFee: false,
+        fulfillment: scout ? null : method || null,
+        customer: { name, email, phone, street, city, zip: needsAddress ? zip : '' },
+        outsideAreaRelative: relative,
+        startedAt: startedAt ?? mountedAt,
+        mountedAt,
+        website
+      });
+      if (res.ok) {
+        clear();
+        try {
+          window.sessionStorage.removeItem(STARTED_KEY);
+        } catch {
+          // ignore
+        }
+        router.push(`/wreaths/order/${res.token}`);
+        return;
+      }
+      setServerProblem({ field: res.field, message: res.error });
+    } catch {
+      setServerProblem({ message: 'Something went wrong sending your order. Nothing was charged. Please try again.' });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const backHref = scout ? `/wreaths/${scout.slug}` : '/wreaths';
+  const labels = problems.filter((p) => p.field !== 'cart').map((p) => p.label);
+  const blockedReason = problems.length ? (problems.some((p) => p.field === 'cart') && !labels.length ? 'your cart is empty' : `check ${joinLabels(labels)}`) : null;
+
+  return (
+    <div className={styles.narrow}>
+      <div className={styles.titleLine}>
+        <h1 className={styles.title}>Checkout</h1>
+        <Button href={backHref} variant="ghost">
+          Keep shopping
+        </Button>
+      </div>
+      <p className={styles.lede}>{scout ? `Ordering from ${scout.name}` : 'Ordering from Troop 79.'}</p>
+
+      <form ref={formRef} onSubmit={submit} noValidate>
+        {/* 1 · Order */}
+        <section className={`${styles.card} ${styles.pad} ${styles.step}`} aria-labelledby="h1o">
+          <h2 id="h1o">Your order</h2>
+          {lines.length === 0 ? (
+            <p className={styles.meta}>
+              Your cart is empty. <Link href={backHref}>Back to the wreaths</Link>
+            </p>
+          ) : (
+            <ul className={styles.lines}>
+              {lines.map((l) => {
+                const label = itemLabel(l.item) + (l.donated ? ', donated' : '');
+                return (
+                  <li key={l.key} className={styles.line}>
+                    {l.item.imageUrl ? <ProductPhoto item={l.item} className={styles.lineThumb} /> : <span className={styles.lineThumb} />}
+                    <span className={styles.lName}>
+                      {itemLabel(l.item)} {l.donated && <span className={styles.tag}>Donated to veterans</span>}
+                      <small>
+                        {fmtMoney(l.item.price)} each{l.donated ? ' · not delivered to you' : ''}
+                      </small>
+                    </span>
+                    <Stepper
+                      id={`co-qty-${l.key}`}
+                      value={l.qty}
+                      min={1}
+                      max={50}
+                      groupLabel={`Quantity, ${label}`}
+                      lessLabel={`One fewer ${label}`}
+                      moreLabel={`One more ${label}`}
+                      inputLabel={`Quantity, ${label}`}
+                      onChange={(n) => setQty(lineKey(l.itemId, l.donated), n)}
+                    />
+                    <span className={styles.lAmt}>{fmtMoney(l.item.price * l.qty)}</span>
+                    <button type="button" className={`${styles.linkBtn} ${styles.linkBtnDanger}`} aria-label={`Remove ${label}`} onClick={() => setQty(l.key, 0)}>
+                      Remove
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {lines.length > 0 && (
+            <div className={styles.giftWrap}>
+              <div className={styles.fieldLabel} id="giftLbl">
+                Add a gift to Troop 79 <span className={styles.meta}>optional</span>
+              </div>
+              <div className={styles.seg} role="group" aria-labelledby="giftLbl">
+                {GIFTS.map((g) => (
+                  <button
+                    key={g}
+                    type="button"
+                    aria-pressed={!giftOther && gift === g}
+                    onClick={() => {
+                      setGiftOther(false);
+                      setGift(g);
+                    }}
+                  >
+                    {g === 0 ? 'None' : `$${g}`}
+                  </button>
+                ))}
+                <button type="button" aria-pressed={giftOther} onClick={() => setGiftOther(true)}>
+                  Other
+                </button>
+              </div>
+              {giftOther && (
+                <div className={styles.giftOther}>
+                  <Field label="Gift amount" problem={problemFor('gift')}>
+                    <TextInput type="number" min={1} step={1} inputMode="decimal" value={giftText} onChange={(e) => setGiftText(e.target.value)} />
+                  </Field>
+                </div>
+              )}
+              <p className={styles.meta}>A gift goes entirely to the troop.</p>
+            </div>
+          )}
+        </section>
+
+        {/* 2 · Getting your wreaths */}
+        <section className={`${styles.card} ${styles.pad} ${styles.step}`} aria-labelledby="h2f">
+          <h2 id="h2f">Getting your wreaths</h2>
+          {lines.length === 0 ? (
+            <p className={styles.meta}>Add something to your cart first.</p>
+          ) : allDonated ? (
+            <p className={styles.prose}>Nothing to deliver. Donated wreaths go straight to veterans.</p>
+          ) : scout ? (
+            <>
+              <p className={styles.prose}>
+                <strong>{scout.name} delivers your order</strong>
+                {distributionDay ? `, after distribution day, ${distributionDay}` : ''}.
+              </p>
+              <ZipField zip={zip} setZip={setZip} problem={problemFor('zip')} />
+              {zipFive && !zipIn && (
+                <Notice tone="warning" className={styles.inset}>
+                  <p>
+                    {zipTrim} is outside our delivery area (zips starting with {rules.deliveryZipPrefix}). {scout.firstName} can deliver farther only to family who have arranged it.
+                  </p>
+                  <label className={`${styles.check} ${problemFor('relative') ? styles.checkBad : ''}`}>
+                    <input type="checkbox" checked={relative} aria-invalid={problemFor('relative') ? true : undefined} onChange={(e) => setRelative(e.target.checked)} />
+                    <span>I am a relative, and {scout.firstName} has agreed to deliver to me</span>
+                  </label>
+                  <FieldProblem>{problemFor('relative')}</FieldProblem>
+                  <p>
+                    Not family? <Link href={`/wreaths/${scout.slug}#vets`}>Donate a wreath to veterans</Link> instead, and {scout.firstName} still gets credit.
+                  </p>
+                </Notice>
+              )}
+              {zipIn && <p className={styles.zipOk}>{scout.firstName} delivers to {zipTrim}.</p>}
+            </>
+          ) : (
+            <>
+              <div className={`${styles.choice} ${problemFor('method') ? styles.choiceBad : ''}`} role="radiogroup" aria-label="Pickup or delivery" aria-invalid={problemFor('method') ? true : undefined}>
+                <label className={styles.choiceCard}>
+                  <input type="radio" name="method" value="pickup" checked={method === 'pickup'} onChange={() => setMethod('pickup')} />
+                  <span>
+                    <strong>Pick up</strong>
+                    <span>{pickupText}</span>
+                  </span>
+                </label>
+                <label className={styles.choiceCard}>
+                  <input type="radio" name="method" value="delivery" checked={method === 'delivery'} onChange={() => setMethod('delivery')} />
+                  <span>
+                    <strong>Delivery</strong>
+                    <span>
+                      Milwaukee-area zips starting with {rules.deliveryZipPrefix} · {fmtMoney(rules.deliveryFee)}, free at {fmtMoney(rules.deliveryFreeAt)}
+                    </span>
+                  </span>
+                </label>
+              </div>
+              <FieldProblem>{problemFor('method')}</FieldProblem>
+              {method === 'delivery' && (
+                <div className={styles.inset}>
+                  <ZipField zip={zip} setZip={setZip} problem={problemFor('zip')} />
+                  {zipFive && !zipIn && (
+                    <Notice tone="error" className={styles.inset}>
+                      <p>
+                        <strong>We can’t deliver to {zipTrim}.</strong> Troop delivery covers Milwaukee-area zips starting with {rules.deliveryZipPrefix}.
+                      </p>
+                      <p>
+                        You can pick up instead: {pickupText}.{' '}
+                        <button type="button" className={styles.linkBtn} onClick={() => setMethod('pickup')}>
+                          Switch to pickup
+                        </button>
+                      </p>
+                    </Notice>
+                  )}
+                  {zipIn && <p className={styles.zipOk}>We deliver to {zipTrim}.</p>}
+                </div>
+              )}
+            </>
+          )}
+        </section>
+
+        {/* 3 · Your details */}
+        <section className={`${styles.card} ${styles.pad} ${styles.step}`} aria-labelledby="h3c">
+          <h2 id="h3c">Your details</h2>
+          <div className={styles.fields}>
+            <Field label="Name" problem={problemFor('name')} className={styles.fieldFull}>
+              <TextInput type="text" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} />
+            </Field>
+            <Field label="Email" problem={problemFor('email')}>
+              <TextInput type="email" autoComplete="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            </Field>
+            <Field label="Phone" problem={problemFor('phone')}>
+              <TextInput type="tel" autoComplete="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            </Field>
+            {needsAddress && (
+              <>
+                <Field label="Street address" problem={problemFor('street')} className={styles.fieldFull}>
+                  <TextInput type="text" autoComplete="street-address" value={street} onChange={(e) => setStreet(e.target.value)} />
+                </Field>
+                <Field label="City" problem={problemFor('city')}>
+                  <TextInput type="text" autoComplete="address-level2" value={city} onChange={(e) => setCity(e.target.value)} />
+                </Field>
+              </>
+            )}
+          </div>
+          <p className={styles.meta}>
+            We email your receipt. Your phone and address go only to the troop leaders{scout ? ' and the family delivering your order' : ''}.
+          </p>
+          {/* Honeypot: people never see or fill this; scripts do. */}
+          <div className={styles.hp} aria-hidden="true">
+            <label>
+              Website
+              <input type="text" name="website" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} />
+            </label>
+          </div>
+        </section>
+
+        {/* 4 · Total */}
+        <section className={`${styles.card} ${styles.pad} ${styles.step}`} aria-labelledby="h4p">
+          <h2 id="h4p">Total</h2>
+          <dl className={styles.sumRows}>
+            <div>
+              <dt>
+                {lines.reduce((n, l) => n + l.qty, 0)} item{lines.reduce((n, l) => n + l.qty, 0) === 1 ? '' : 's'}
+              </dt>
+              <dd>{fmtMoney2(fromCents(itemsCents))}</dd>
+            </div>
+            {delivery > 0 && (
+              <div>
+                <dt>Delivery</dt>
+                <dd>{fmtMoney2(delivery)}</dd>
+              </div>
+            )}
+            {giftAmount > 0 && (
+              <div>
+                <dt>Gift to Troop 79</dt>
+                <dd>{fmtMoney2(giftAmount)}</dd>
+              </div>
+            )}
+            <div className={styles.sumTotal}>
+              <dt>Total</dt>
+              <dd>{fmtMoney2(total)}</dd>
+            </div>
+          </dl>
+          {PAYPAL_CHECKOUT_LIVE && fee > 0 && <p className={styles.meta}>Processing fee option: {fmtMoney2(fee)}</p>}
+          <Notice tone="info">
+            <div className={styles.payHow}>
+              <p>
+                <strong>You pay after you place the order.</strong> Venmo {PAY_TREASURER.venmoHandle} or PayPal to {PAY_TREASURER.paypalEmail} (Friends and family), with your order number in the note.
+              </p>
+              <p>The next page and your email show the amount and the links. Nothing is charged online.</p>
+            </div>
+          </Notice>
+          {serverProblem && !serverProblem.field && (
+            <Notice tone="error" className={styles.inset}>
+              {serverProblem.message}
+            </Notice>
+          )}
+          <div className={styles.submitRow}>
+            <Button type="submit" disabled={busy}>
+              {busy ? 'Placing your order…' : 'Place order'}
+            </Button>
+            {blockedReason && <SaveProblem action="place the order" reason={blockedReason} />}
+            {!blockedReason && serverProblem?.field && <SaveProblem action="place the order" reason={serverProblem.message} />}
+          </div>
+        </section>
+      </form>
+    </div>
+  );
+}
+
+function ZipField({ zip, setZip, problem }: { zip: string; setZip: (z: string) => void; problem?: string }) {
+  return (
+    <div className={styles.zipRow}>
+      <Field label="Delivery zip" problem={problem}>
+        <TextInput type="text" inputMode="numeric" maxLength={5} autoComplete="postal-code" value={zip} onChange={(e) => setZip(e.target.value.replace(/\D/g, '').slice(0, 5))} />
+      </Field>
+    </div>
+  );
+}

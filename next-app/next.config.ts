@@ -21,6 +21,17 @@ const nextConfig: NextConfig = {
         // cross-origin Referer (Plans/Bugle-Register-Now-Links.md, B2).
         source: '/:path*',
         headers: [{ key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' }]
+      },
+      {
+        // A wreath order's confirmation page is keyed by a secret in its URL (Plans/Wreath-Sale.md): it must not
+        // leave in a Referer, be cached by a shared cache, or be indexed. Listed AFTER the global rule above so
+        // its Referrer-Policy wins for these paths.
+        source: '/wreaths/order/:path*',
+        headers: [
+          { key: 'Referrer-Policy', value: 'no-referrer' },
+          { key: 'Cache-Control', value: 'no-store' },
+          { key: 'X-Robots-Tag', value: 'noindex, nofollow' }
+        ]
       }
     ];
   },

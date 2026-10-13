@@ -196,3 +196,18 @@ describe('emails', () => {
     expect(subject).toContain('Ben');
   });
 });
+
+describe('confirmation page headers', () => {
+  it('ConfirmationPage_IsNoStoreNoReferrerNoIndex_InNextConfig', async () => {
+    const cfg = (await import('../next.config')).default;
+    const rules = await cfg.headers!();
+    // Next merges matching rules in order, so the specific rule must come after the global Referrer-Policy one.
+    const idx = rules.findIndex((r) => r.source === '/wreaths/order/:path*');
+    const global = rules.findIndex((r) => r.source === '/:path*');
+    expect(idx).toBeGreaterThan(global);
+    const h = Object.fromEntries(rules[idx].headers.map((x) => [x.key, x.value]));
+    expect(h['Referrer-Policy']).toBe('no-referrer');
+    expect(h['Cache-Control']).toBe('no-store');
+    expect(h['X-Robots-Tag']).toContain('noindex');
+  });
+});

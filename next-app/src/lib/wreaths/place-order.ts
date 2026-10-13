@@ -17,11 +17,13 @@ import { arrivalParagraphs } from './copy';
 import { customerConfirmationEmail, scoutNoticeEmail, type OrderEmailContext } from './emails';
 import { SLUG_RE, saleFromRow, scoutDisplayName, type PublicSale } from './public';
 import {
+  EMAIL_RE,
   MAX_GIFT,
   MIN_SUBMIT_MS,
   decideRound,
   inDeliveryArea,
   itemLabel,
+  phoneOk,
   priceCart,
   zipFormatOk,
   type CartLine,
@@ -143,12 +145,6 @@ function parseRequest(raw: unknown): ParsedRequest | { error: PlaceOrderResult }
     website: typeof raw.website === 'string' ? raw.website : ''
   };
 }
-
-const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
-const phoneOk = (p: string) => {
-  const d = p.replace(/\D/g, '');
-  return d.length === 10 || (d.length === 11 && d.startsWith('1'));
-};
 
 /* ── the action ────────────────────────────────────────────────────────────── */
 

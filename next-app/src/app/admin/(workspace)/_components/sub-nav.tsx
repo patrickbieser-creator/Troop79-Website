@@ -250,6 +250,14 @@ const SECTIONS: { title: string; items: NavItem[] }[] = [
         href: '/admin/utilities/ledger-audit',
         matchPath: '/admin/utilities/ledger-audit',
         capability: 'finance.manage'
+      },
+      {
+        // Plans/Wreath-Sale.md Release A — settings, items, sellers, orders and the Rose order for the
+        // annual wreath sale. finance.manage on the page and on every action.
+        label: 'Wreath Sale',
+        href: '/admin/finance/wreaths',
+        matchPath: '/admin/finance/wreaths',
+        capability: 'finance.manage'
       }
     ]
   },
