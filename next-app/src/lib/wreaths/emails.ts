@@ -24,6 +24,8 @@ export interface OrderEmailContext {
   total: number;
   /** Plain text: how the wreaths reach the customer. */
   arrival: string;
+  /** "Ben B." when a scout gets credit for the order. */
+  creditedTo?: string | null;
   orderUrl: string;
   /** "Saturday, October 25" — the last day a change is possible. */
   changesBy: string;
@@ -51,6 +53,7 @@ export function customerConfirmationEmail(c: OrderEmailContext): { subject: stri
       `Pay by Venmo to ${PAY_TREASURER.venmoHandle} (${PAY_TREASURER.venmoUrl})`,
       `Or by PayPal to ${PAY_TREASURER.paypalEmail}, choosing Friends and family`,
       PAY_TREASURER.note,
+      ...(c.creditedTo ? [`Credited to ${c.creditedTo}`] : []),
       c.arrival
     ],
     actionUrl: c.orderUrl,
@@ -62,13 +65,20 @@ export function customerConfirmationEmail(c: OrderEmailContext): { subject: stri
 
 /** A note to the credited scout's household: a new order to deliver. Goes only to addresses on file. */
 export function scoutNoticeEmail(
-  c: OrderEmailContext & { scoutFirstName: string; customerPhone: string; customerAddress: string }
+  c: OrderEmailContext & { scoutFirstName: string; customerPhone: string; customerAddress: string; creditOnly?: boolean }
 ): { subject: string; html: string; text: string } {
-  const { html, text } = renderEmail({
-    heading: `New wreath order for ${c.scoutFirstName}`,
-    intro: `${c.customerName} ordered through ${c.scoutFirstName}’s link (order ${c.orderNumber}, ${fmtMoney2(c.total)}). ${c.scoutFirstName} delivers it after distribution day.`,
-    bullets: [...summaryBullets(c), `Phone: ${c.customerPhone}`, `Deliver to: ${c.customerAddress}`, 'The customer pays the troop treasurer directly; you do not collect money.'],
-    outro: 'This note goes only to the family addresses on file.'
-  });
-  return { subject: `New wreath order for ${c.scoutFirstName}: ${c.orderNumber}`, html, text };
+  const { html, text } = c.creditOnly
+    ? renderEmail({
+        heading: `A wreath order was credited to ${c.scoutFirstName}`,
+        intro: `${c.customerName} chose to credit ${c.scoutFirstName} for order ${c.orderNumber} (${fmtMoney2(c.total)}). It is credited to you; the troop handles delivery, so there is nothing for ${c.scoutFirstName} to deliver.`,
+        bullets: [...summaryBullets(c), 'The customer pays the troop treasurer directly; you do not collect money.'],
+        outro: 'This note goes only to the family addresses on file.'
+      })
+    : renderEmail({
+        heading: `New wreath order for ${c.scoutFirstName}`,
+        intro: `${c.customerName} ordered through ${c.scoutFirstName}’s link (order ${c.orderNumber}, ${fmtMoney2(c.total)}). ${c.scoutFirstName} delivers it after distribution day.`,
+        bullets: [...summaryBullets(c), `Phone: ${c.customerPhone}`, `Deliver to: ${c.customerAddress}`, 'The customer pays the troop treasurer directly; you do not collect money.'],
+        outro: 'This note goes only to the family addresses on file.'
+      });
+  return { subject: c.creditOnly ? `Credited to ${c.scoutFirstName}: wreath order ${c.orderNumber}` : `New wreath order for ${c.scoutFirstName}: ${c.orderNumber}`, html, text };
 }

@@ -96,5 +96,13 @@ export function useCart() {
     write({ ...cur, seller });
   }, []);
   const clear = useCallback(() => write(EMPTY), []);
-  return { cart, setQty, setSeller, clear };
+  /** Puts the cart back exactly as given (Undo after "Empty the cart"). */
+  const restore = useCallback((state: CartState) => write(state), []);
+  /** Empties the lines; the scout credit stays unless `dropSeller`. Returns what was there, for Undo. */
+  const emptyLines = useCallback((dropSeller: boolean): CartState => {
+    const cur = snapshot();
+    write({ lines: {}, seller: dropSeller ? null : cur.seller });
+    return cur;
+  }, []);
+  return { cart, setQty, setSeller, clear, restore, emptyLines };
 }

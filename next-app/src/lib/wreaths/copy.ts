@@ -63,3 +63,10 @@ export function moneyBlockLines(scoutFirstName: string | null, distribution: str
     distribution ? `Wreaths arrive fresh on distribution day, ${distribution}.` : 'Wreaths arrive fresh, just before Thanksgiving.'
   ];
 }
+
+/**
+ * Shown when a scout link matches no active seller. One message for an unknown link and a retired one alike, so
+ * nobody can tell which it was; it points at the optional "give a scout credit" box at checkout.
+ */
+export const LINK_NOT_FOUND =
+  'We couldn’t find a scout with that link. Check the spelling, or order here. At checkout you can still give a scout credit.';

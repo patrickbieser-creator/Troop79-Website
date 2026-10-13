@@ -6,7 +6,7 @@
 import { PageShell } from '@/app/_components/page-shell';
 import { Notice } from '@/app/_components/notice';
 import { fmtDay } from '@/lib/format-date';
-import { distributionDay, distributionLine, moneyBlockLines } from '@/lib/wreaths/copy';
+import { LINK_NOT_FOUND, distributionDay, distributionLine, moneyBlockLines } from '@/lib/wreaths/copy';
 import type { StorePageData } from '@/lib/wreaths/store-page';
 import { StoreView } from './store-view';
 import styles from '../wreaths.module.css';
@@ -82,7 +82,7 @@ export function StorePage({ data }: { data: StorePageData }) {
     <>
       {linkFellBack && (
         <Notice tone="warning" className={styles.stack}>
-          That scout link isn’t active this year. You can still order here; orders here go to Troop 79.
+          {LINK_NOT_FOUND}
         </Notice>
       )}
       <p className={styles.kicker}>Troop 79 wreath sale {state.sale.year}</p>

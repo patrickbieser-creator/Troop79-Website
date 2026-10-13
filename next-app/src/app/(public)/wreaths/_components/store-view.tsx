@@ -7,7 +7,7 @@
  * everything from the catalog.
  */
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/app/_components/button';
@@ -15,7 +15,7 @@ import { Notice } from '@/app/_components/notice';
 import { Stepper } from '@/app/_components/stepper';
 import { MAX_QTY, fmtMoney, itemLabel } from '@/lib/wreaths/rules';
 import { STORE_SECTIONS, type StoreItem } from '@/lib/wreaths/public';
-import { lineKey, parseLineKey, useCart } from './cart';
+import { lineKey, parseLineKey, useCart, type CartState } from './cart';
 import styles from '../wreaths.module.css';
 
 export interface StoreViewScout {
@@ -77,8 +77,30 @@ export function StoreView({
   /** A typed link didn't resolve; its own notice says so, and naming another scout here would only confuse. */
   linkFellBack?: boolean;
 }) {
-  const { cart, setQty, setSeller } = useCart();
+  const { cart, setQty, setSeller, emptyLines, restore } = useCart();
   const [announce, setAnnounce] = useState('');
+  const [undo, setUndo] = useState<CartState | null>(null);
+  const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // "Empty the cart": one click, no confirm (a cart is cheap to rebuild), with a ten-second Undo.
+  function emptyCart() {
+    if (undoTimer.current) clearTimeout(undoTimer.current);
+    // The scout credit stays on a scout page; on the general store an empty cart drops it too, so no stale
+    // "opened from X's page" notice is left behind.
+    setUndo(emptyLines(!scout));
+    setAnnounce('Cart emptied');
+    undoTimer.current = setTimeout(() => {
+      setUndo(null);
+      setAnnounce('');
+    }, 10_000);
+  }
+  function undoEmpty() {
+    if (!undo) return;
+    if (undoTimer.current) clearTimeout(undoTimer.current);
+    restore(undo);
+    setUndo(null);
+    setAnnounce('Cart restored');
+  }
 
   // Last scout link opened wins the credit for the next checkout.
   const scoutSlug = scout?.slug;
@@ -174,7 +196,17 @@ export function StoreView({
         <aside className={`${styles.card} ${styles.pad} ${styles.cartAside}`} aria-labelledby="cartH">
           <h2 id="cartH">Your order</h2>
           {lines.length === 0 ? (
-            <p className={styles.cartEmpty}>Nothing yet. Add a wreath to start.</p>
+            <>
+              <p className={styles.cartEmpty}>Nothing yet. Add a wreath to start.</p>
+              {undo && (
+                <p className={styles.meta}>
+                  Cart emptied.{' '}
+                  <Button variant="ghost" onClick={undoEmpty}>
+                    Undo
+                  </Button>
+                </p>
+              )}
+            </>
           ) : (
             <>
               <ul className={styles.cartList}>
@@ -195,6 +227,9 @@ export function StoreView({
                 Checkout
               </Button>
               <p className={styles.meta}>Credited to {credited}</p>
+              <Button variant="ghost" onClick={emptyCart}>
+                Empty the cart
+              </Button>
             </>
           )}
         </aside>

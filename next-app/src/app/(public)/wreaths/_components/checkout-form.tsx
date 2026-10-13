@@ -18,6 +18,7 @@ import { Stepper } from '@/app/_components/stepper';
 import { PAYPAL_CHECKOUT_LIVE, PAY_TREASURER, coverFeeFor, deliveryFeeFor, fmtMoney, fmtMoney2, itemLabel, toCents, fromCents, type Fulfillment } from '@/lib/wreaths/rules';
 import type { StoreItem } from '@/lib/wreaths/public';
 import type { OrderField, PlaceOrderResult } from '@/lib/wreaths/place-order';
+import type { SellerMatch } from '@/lib/wreaths/seller-search';
 import { fulfillmentFor, joinLabels, validateCheckout, type CheckoutProblem } from '@/lib/wreaths/checkout-validate';
 import { lineKey, parseLineKey, useCart } from './cart';
 import { ProductPhoto } from './store-view';
@@ -34,6 +35,8 @@ export interface CheckoutProps {
   /** Set in the two hours after the final cutoff: only a checkout begun before it may finish. */
   graceCutoff: string | null;
   action: (raw: unknown) => Promise<PlaceOrderResult>;
+  /** The type-ahead for the optional scout credit (general-store checkout only). */
+  searchSellers: (prefix: string) => Promise<SellerMatch[]>;
 }
 
 /* When this checkout began — kept for the tab, so a shopper whose Round closes mid-checkout can still finish. */
@@ -64,7 +67,7 @@ function markStarted() {
 
 const GIFTS = [0, 5, 10, 25];
 
-export function CheckoutForm({ items, scout, rules, pickupText, distributionDay, graceCutoff, action }: CheckoutProps) {
+export function CheckoutForm({ items, scout, rules, pickupText, distributionDay, graceCutoff, action, searchSellers }: CheckoutProps) {
   const router = useRouter();
   const { cart, setQty, clear } = useCart();
   const formRef = useRef<HTMLFormElement>(null);
@@ -88,6 +91,7 @@ export function CheckoutForm({ items, scout, rules, pickupText, distributionDay,
   const [zip, setZip] = useState('');
   const [relative, setRelative] = useState(false);
   const [website, setWebsite] = useState('');
+  const [credit, setCredit] = useState<SellerMatch | null>(null);
   const [tried, setTried] = useState(false);
   const [busy, setBusy] = useState(false);
   const [serverProblem, setServerProblem] = useState<{ field?: OrderField; message: string } | null>(null);
@@ -168,6 +172,7 @@ export function CheckoutForm({ items, scout, rules, pickupText, distributionDay,
         fulfillment: scout ? null : method || null,
         customer: { name, email, phone, street, city, zip: needsAddress ? zip : '' },
         outsideAreaRelative: relative,
+        creditSellerId: scout ? null : (credit?.id ?? null),
         startedAt: startedAt ?? mountedAt,
         mountedAt,
         website
@@ -355,6 +360,12 @@ export function CheckoutForm({ items, scout, rules, pickupText, distributionDay,
           )}
         </section>
 
+        {!scout && lines.length > 0 && (
+          <section className={`${styles.card} ${styles.pad} ${styles.step}`} aria-label="Scout credit">
+            <CreditPicker search={searchSellers} picked={credit} onPick={setCredit} problem={problemFor('credit')} />
+          </section>
+        )}
+
         {/* 3 · Your details */}
         <section className={`${styles.card} ${styles.pad} ${styles.step}`} aria-labelledby="h3c">
           <h2 id="h3c">Your details</h2>
@@ -451,6 +462,79 @@ function ZipField({ zip, setZip, problem }: { zip: string; setZip: (z: string) =
       <Field label="Delivery zip" problem={problem}>
         <TextInput type="text" inputMode="numeric" maxLength={5} autoComplete="postal-code" value={zip} onChange={(e) => setZip(e.target.value.replace(/\D/g, '').slice(0, 5))} />
       </Field>
+    </div>
+  );
+}
+
+/**
+ * "Know a scout in Troop 79? Give them credit (optional)": collapsed, the order goes to the troop. Opened, a few letters
+ * of a first name ask the SERVER for matches ("First L." only; the roster never reaches the browser). Credit only: the
+ * scout does not deliver, and the pickup / delivery choice above is unchanged.
+ */
+function CreditPicker({ search, picked, onPick, problem }: { search: CheckoutProps['searchSellers']; picked: SellerMatch | null; onPick: (m: SellerMatch | null) => void; problem?: string }) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const [matches, setMatches] = useState<SellerMatch[] | null>(null);
+  const seq = useRef(0);
+
+  async function type(v: string) {
+    setQ(v);
+    const n = ++seq.current;
+    if (v.trim().length < 2) {
+      setMatches(null);
+      return;
+    }
+    const found = await search(v);
+    if (n === seq.current) setMatches(found);
+  }
+
+  return (
+    <div>
+      <button type="button" className={styles.linkBtn} aria-expanded={open} aria-controls="credit-box" onClick={() => setOpen((o) => !o)}>
+        Know a scout in Troop 79? Give them credit (optional)
+      </button>
+      <p className={styles.meta}>Credit: {picked ? picked.name : 'Troop 79'}</p>
+      {open && (
+        <div id="credit-box" className={styles.inset}>
+          {picked ? (
+            <p className={styles.prose}>
+              <strong>{picked.name}</strong> gets the credit. The troop still handles your pickup or delivery.{' '}
+              <button type="button" className={styles.linkBtn} onClick={() => onPick(null)}>
+                No, the troop
+              </button>
+            </p>
+          ) : (
+            <>
+              <Field label="Scout’s first name" hint="Type at least 2 letters. 30% of the profit on your order goes into their scout account." problem={problem}>
+                <TextInput type="search" autoComplete="off" value={q} onChange={(e) => type(e.target.value)} />
+              </Field>
+              {matches && matches.length === 0 && <p className={styles.meta}>No scout found with that name. The order will go to Troop 79.</p>}
+              {matches && matches.length > 0 && (
+                <ul className={styles.lines} aria-label="Matching scouts">
+                  {matches.map((m) => (
+                    <li key={m.id} className={styles.line}>
+                      <span className={styles.lName}>{m.name}</span>
+                      <button
+                        type="button"
+                        className={styles.linkBtn}
+                        aria-label={`Give ${m.name} credit`}
+                        onClick={() => {
+                          onPick(m);
+                          setQ('');
+                          setMatches(null);
+                        }}
+                      >
+                        Give credit
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
+          )}
+        </div>
+      )}
+      {!open && problem && <p className={styles.badNote}>{problem}</p>}
     </div>
   );
 }

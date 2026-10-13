@@ -58,7 +58,7 @@ export interface PlaceOrderDeps {
   limits?: Partial<RateLimits>;
 }
 
-export type OrderField = 'cart' | 'name' | 'email' | 'phone' | 'street' | 'city' | 'zip' | 'method' | 'gift' | 'relative';
+export type OrderField = 'cart' | 'name' | 'email' | 'phone' | 'street' | 'city' | 'zip' | 'method' | 'gift' | 'relative' | 'credit';
 
 export type PlaceOrderResult =
   | { ok: true; token: string; orderNumber: string; created: boolean }
@@ -96,6 +96,8 @@ interface ParsedRequest {
   city: string;
   zip: string;
   outsideAreaRelative: boolean;
+  /** wreath_sellers.id of a scout the customer chose to credit (general store only); undefined = not sent, null = troop. */
+  creditSellerId: number | null | 'bad';
   startedAt: number | null;
   mountedAt: number | null;
   website: string;
@@ -141,6 +143,7 @@ function parseRequest(raw: unknown): ParsedRequest | { error: PlaceOrderResult }
     city,
     zip,
     outsideAreaRelative: raw.outsideAreaRelative === true,
+    creditSellerId: raw.creditSellerId == null ? null : Number.isInteger(raw.creditSellerId) && (raw.creditSellerId as number) > 0 ? (raw.creditSellerId as number) : 'bad',
     startedAt: ms(raw.startedAt),
     mountedAt: ms(raw.mountedAt),
     website: typeof raw.website === 'string' ? raw.website : ''
@@ -223,6 +226,24 @@ export async function placeOrder(raw: unknown, deps: PlaceOrderDeps): Promise<Pl
     seller = { personId: row.person_id, scout: scoutDisplayName(p?.first_name ?? null, p?.last_name ?? null) };
   }
 
+  // A scout picked at checkout: credit only. The scout is not expected to deliver. Ignored on a scout-link order.
+  let creditOnly: { personId: number; scout: { name: string; firstName: string } } | null = null;
+  if (!seller && req.creditSellerId != null) {
+    const gone: PlaceOrderResult = { ok: false, code: 'invalid', field: 'credit', error: 'That scout isn’t available to credit. Choose again, or leave it for the troop.' };
+    if (req.creditSellerId === 'bad') return gone;
+    const { data: c } = await sb
+      .from('wreath_sellers')
+      .select('person_id, people:person_id(first_name, last_name)')
+      .eq('id', req.creditSellerId)
+      .eq('sale_id', sale.id)
+      .eq('active', true)
+      .maybeSingle();
+    if (!c) return gone;
+    const crow = c as unknown as { person_id: number; people: { first_name: string | null; last_name: string | null } | { first_name: string | null; last_name: string | null }[] | null };
+    const cp = Array.isArray(crow.people) ? crow.people[0] : crow.people;
+    creditOnly = { personId: crow.person_id, scout: scoutDisplayName(cp?.first_name ?? null, cp?.last_name ?? null) };
+  }
+
   // The catalog prices the cart.
   const { data: itemRows } = await sb.from('wreath_items').select('id, catalog_number, name, size, price, unit_cost, active, donatable').eq('sale_id', sale.id);
   const items = (itemRows ?? []) as { id: number; catalog_number: number; name: string; size: string; price: number; unit_cost: number; active: boolean; donatable: boolean }[];
@@ -262,7 +283,7 @@ export async function placeOrder(raw: unknown, deps: PlaceOrderDeps): Promise<Pl
       sale_id: sale.id,
       idempotency_key: req.idempotencyKey,
       placed_at: new Date(now).toISOString(),
-      credited_person_id: seller?.personId ?? null,
+      credited_person_id: seller?.personId ?? creditOnly?.personId ?? null,
       delivering_person_id: fulfillment === 'scout' ? (seller?.personId ?? null) : null,
       source: seller ? 'scout_link' : 'store',
       fulfillment,
@@ -310,26 +331,29 @@ export async function placeOrder(raw: unknown, deps: PlaceOrderDeps): Promise<Pl
         hasDonated: order.lines.some((l) => l.donated),
         distribution: { date: sale.distributionDate, window: sale.distributionWindow, place: sale.distributionPlace }
       }).join(' '),
+      creditedTo: (seller ?? creditOnly)?.scout.name ?? null,
       orderUrl: `${deps.siteUrl}/wreaths/order/${result.public_token}`,
       changesBy: fmtDateFull(round === 1 ? sale.round1Cutoff : sale.round2Cutoff)
     };
     const mail = customerConfirmationEmail(ctx);
     await deps.send({ to: [req.email], subject: mail.subject, html: mail.html, text: mail.text, replyTo: deps.replyTo });
-    if (seller && fulfillment === 'scout') {
+    const notify = seller && fulfillment === 'scout' ? { ...seller, creditOnly: false } : creditOnly ? { ...creditOnly, creditOnly: true } : null;
+    if (notify) {
       // The order is saved either way; past the daily cap this seller's household simply isn't mailed again.
       const { count: noticed } = await sb
         .from('wreath_orders')
         .select('id', { count: 'exact', head: true })
-        .eq('credited_person_id', seller.personId)
-        .eq('source', 'scout_link')
+        .eq('credited_person_id', notify.personId)
         .gte('placed_at', since(24 * 3600_000));
-      const to = (noticed ?? 0) > limits.perSellerNoticeDay ? [] : await deps.householdEmails(seller.personId);
+      const to = (noticed ?? 0) > limits.perSellerNoticeDay ? [] : await deps.householdEmails(notify.personId);
       if (to.length) {
         const note = scoutNoticeEmail({
           ...ctx,
-          scoutFirstName: seller.scout.firstName,
-          customerPhone: req.phone,
-          customerAddress: [req.street, req.city, req.zip].filter(Boolean).join(', ')
+          scoutFirstName: notify.scout.firstName,
+          creditOnly: notify.creditOnly,
+          // A credit-only note carries no phone or address: the troop delivers, the scout only gets the credit.
+          customerPhone: notify.creditOnly ? '' : req.phone,
+          customerAddress: notify.creditOnly ? '' : [req.street, req.city, req.zip].filter(Boolean).join(', ')
         });
         await deps.send({ to, subject: note.subject, html: note.html, text: note.text, replyTo: deps.replyTo });
       }

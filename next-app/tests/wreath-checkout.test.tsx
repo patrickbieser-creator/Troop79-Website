@@ -22,7 +22,7 @@ function seedCart(lines: Record<string, number>) {
 }
 
 function setup(over: Partial<CheckoutProps> = {}, action = vi.fn(async () => ({ ok: true as const, token: 'tok', orderNumber: 'W-1', created: true }))) {
-  render(<CheckoutForm items={items} scout={null} rules={rules} pickupText="Sat, Nov 21, 2:30 to 4:30 PM, Northwoods lot" distributionDay="Saturday, November 21, 2026" graceCutoff={null} action={action} {...over} />);
+  render(<CheckoutForm items={items} scout={null} rules={rules} searchSellers={async () => []} pickupText="Sat, Nov 21, 2:30 to 4:30 PM, Northwoods lot" distributionDay="Saturday, November 21, 2026" graceCutoff={null} action={action} {...over} />);
   return action;
 }
 

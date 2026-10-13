@@ -5,7 +5,7 @@ import { Notice } from '@/app/_components/notice';
 import { createAdminClient } from '@/lib/supabase/server';
 import { distributionDay, distributionLine } from '@/lib/wreaths/copy';
 import { loadStorePage } from '@/lib/wreaths/store-page';
-import { placeOrderAction } from '../actions';
+import { placeOrderAction, searchSellersAction } from '../actions';
 import { CheckoutForm } from '../_components/checkout-form';
 
 /**
@@ -53,6 +53,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
         distributionDay={distributionDay(dist)}
         graceCutoff={state.graceCutoff}
         action={placeOrderAction}
+        searchSellers={searchSellersAction}
       />
     </PageShell>
   );

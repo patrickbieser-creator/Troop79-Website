@@ -250,7 +250,7 @@ function OrderDetail({ order: o, history, onReassign, onCancel }: { order: Admin
           <dt>Address</dt>
           <dd>{address || '—'}</dd>
           <dt>Source</dt>
-          <dd>{SOURCE[o.source]}</dd>
+          <dd>{o.source === 'store' && o.creditedPersonId != null && o.deliveringPersonId == null ? 'Store, scout credited (not delivering)' : SOURCE[o.source]}</dd>
         </dl>
       </div>
       <div>
