@@ -490,7 +490,7 @@ function CreditPicker({ search, picked, onPick, problem }: { search: CheckoutPro
 
   return (
     <div>
-      <button type="button" className={styles.linkBtn} aria-expanded={open} aria-controls="credit-box" onClick={() => setOpen((o) => !o)}>
+      <button type="button" className={`${styles.linkBtn} ${styles.creditToggle}`} aria-expanded={open} aria-controls="credit-box" onClick={() => setOpen((o) => !o)}>
         Know a scout in Troop 79? Give them credit (optional)
       </button>
       <p className={styles.meta}>Credit: {picked ? picked.name : 'Troop 79'}</p>
