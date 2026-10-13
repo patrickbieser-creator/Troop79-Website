@@ -18,6 +18,12 @@
  * the agenda editor's sessions and candidates, the roll-call sheet, the
  * signup builder, a roster / money / snapshot / assignments view — loads only
  * for the tab (and `?view=`) that is actually open.
+ *
+ * The ONE exception is the bar's own data (2026-10-13, the flat bar): with a
+ * signup, every tab needs its assignment sets and money flag so Roster / sets /
+ * Money / Snapshot can show (or grey). On the Signup tab it comes free from the
+ * view's own load; on every other tab loadEventNav (5 cheap parallel counts) is
+ * started alongside that tab's own load and awaited with it — no serial hop.
  */
 
 import { notFound } from 'next/navigation';
@@ -106,17 +112,22 @@ export default async function CalendarEntryPage({
   const rule = creditRuleFor(categories as Parameters<typeof creditRuleFor>[0], row.category);
   const signupId = signup ? (signup.id as number) : null;
 
-  // ── the active tab's own data ──
-  const agenda =
-    tab === 'agenda' && meeting
-      ? await loadAgendaEditorData(meeting.id as number, row.entry_date, meeting.title as string)
-      : null;
+  // ── the bar's data, on every non-Signup tab (the Signup tab's own load returns it) ──
+  const navPromise: Promise<EventNavData | null> =
+    tab !== 'signup' && signupId ? loadEventNav(supabase, signupId, entryId) : Promise.resolve(null);
 
-  const [attendance, candidates] =
-    tab === 'roll-call' ? await Promise.all([loadAttendance(entryId), loadCandidates(entryId)]) : [null, null];
+  // ── the active tab's own data ──
+  const agendaPromise =
+    tab === 'agenda' && meeting
+      ? loadAgendaEditorData(meeting.id as number, row.entry_date, meeting.title as string)
+      : Promise.resolve(null);
+  const rollCallPromise =
+    tab === 'roll-call' ? Promise.all([loadAttendance(entryId), loadCandidates(entryId)]) : Promise.resolve(null);
+  const [agenda, rollCallData, otherTabNav] = await Promise.all([agendaPromise, rollCallPromise, navPromise]);
+  const [attendance, candidates] = rollCallData ?? [null, null];
 
   let builder: Awaited<ReturnType<typeof loadBuilderData>> = null;
-  let signupNav: EventNavData | null = null;
+  let signupNav: EventNavData | null = otherTabNav;
   let signupView: { key: EventNavKey; node: React.ReactNode } | null = null;
   if (tab === 'signup' && signupId) {
     if (!view) {

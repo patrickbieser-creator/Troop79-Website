@@ -26,7 +26,7 @@ function visible(caps: Iterable<Capability>, fullAdmin = false) {
   return visibleNavSections(SECTIONS, { fullAdmin, capabilities: new Set(caps) });
 }
 function hubHrefs(groups: HubGroup[]) {
-  // A folder card (Reports) answers for its landing (the title link) AND its members; a plain card for its own href.
+  // A plain card answers for its own href; the quiet tools card also for each of its links.
   return [...new Set(groups.flatMap((g) => g.cards.flatMap((c) => [c.href, ...(c.links ?? []).map((l) => l.href)])))];
 }
 function cardTitles(groups: HubGroup[]) {
@@ -48,21 +48,72 @@ describe('AdminHome card grid', () => {
     expect(hubGroups(visible(['library.proxy_view']), { wreathOpen: false })).toEqual([]);
   });
 
-  it('AdminHome_FoldsTheFiveReportsIntoOneCard_WithQuietLinks', () => {
+  it('AdminHome_ShowsOneCardPerReport_InItsOwnReportsGroup_NoFolderCard', () => {
     const groups = hubGroups(visible(['advancement.write']), { wreathOpen: false });
-    const reports = groups.flatMap((g) => g.cards).filter((c) => c.title === 'Reports');
-    expect(reports).toHaveLength(1);
-    expect(reports[0].links?.map((l) => l.label)).toEqual([
+    const reports = groups.find((g) => g.title === 'Reports')!;
+    expect(reports.cards.map((c) => c.title)).toEqual([
       'Audits', 'Advancement Report', 'Court of Honor', 'Scoutbook Export', 'Attendance Report'
     ]);
-    expect(cardTitles(groups)).not.toContain('Audits');
+    for (const c of reports.cards) {
+      expect(c.links, c.title).toBeUndefined();
+      expect(c.description, c.title).toBeTruthy();
+    }
+    expect(groups.find((g) => g.title === 'Advancement')!.cards.map((c) => c.title)).not.toContain('Reports');
   });
 
-  it('AdminHome_LinksTheReportsCardTitleToTheReportsLanding_NotToAudits', () => {
+  it('AdminHome_HasNoCardForTheReportsLanding_ItsTheSectionBarEntry', () => {
+    const groups = hubGroups(visible(ALL, true), { wreathOpen: false });
+    expect(hubHrefs(groups)).not.toContain('/admin/reports');
+  });
+
+  it('AdminHome_PutsDashboardFirstInAdvancement_ForAnAdvancementWriter', () => {
+    const adv = hubGroups(visible(['advancement.write']), { wreathOpen: false }).find((g) => g.title === 'Advancement')!;
+    expect(adv.cards[0].title).toBe('Dashboard');
+    expect(adv.cards[0].href).toBe('/admin/advancement/dashboard');
+    expect(adv.cards[1].title).toBe('Fast Entry');
+  });
+
+  it('AdminHome_OffersNoDashboard_ToALeaderWithoutAdvancementWrite', () => {
+    expect(cardTitles(hubGroups(visible(['calendar.write']), { wreathOpen: false }))).not.toContain('Dashboard');
+  });
+
+  it('AdminHome_MovesActivityReportAndLedgerAuditOutOfMoney_IntoReports', () => {
+    const groups = hubGroups(visible(ALL, true), { wreathOpen: false });
+    const money = groups.find((g) => g.title === 'Money')!.cards.map((c) => c.title);
+    expect(money).not.toContain('Activity Report');
+    expect(money).not.toContain('Ledger Audit');
+    const reports = groups.find((g) => g.title === 'Reports')!.cards.map((c) => c.title);
+    expect(reports).toEqual([
+      'Audits', 'Advancement Report', 'Court of Honor', 'Scoutbook Export', 'Attendance Report', 'Activity Report', 'Ledger Audit'
+    ]);
+  });
+
+  it('AdminHome_ShowsAFinanceOnlyLeaderExactlyTheTwoFinanceReports', () => {
+    const groups = hubGroups(visible(['finance.manage']), { wreathOpen: false });
+    expect(groups.find((g) => g.title === 'Reports')!.cards.map((c) => c.title)).toEqual(['Activity Report', 'Ledger Audit']);
+  });
+
+  it('AdminHome_ShowsAnAdvancementOnlyLeaderTheFiveAdvancementReports', () => {
     const groups = hubGroups(visible(['advancement.write']), { wreathOpen: false });
-    const card = groups.flatMap((g) => g.cards).find((c) => c.title === 'Reports')!;
-    expect(card.href).toBe('/admin/reports');
-    expect(card.links?.map((l) => l.href)).not.toContain('/admin/reports');
+    expect(groups.find((g) => g.title === 'Reports')!.cards).toHaveLength(5);
+  });
+
+  it('AdminHome_PlacesReportsAfterMoneyAndBeforePeople', () => {
+    const titles = hubGroups(visible(ALL, true), { wreathOpen: false }).map((g) => g.title);
+    expect(titles).toEqual(['Advancement', 'Calendar & Content', 'Money', 'Reports', 'People & Setup', 'Troop admin tools']);
+  });
+
+  it('AdminHome_TintsEveryGroupItsOwnEarthTone_AndLeavesTheToolsRowUntinted', () => {
+    const groups = hubGroups(visible(ALL, true), { wreathOpen: false });
+    const tints = Object.fromEntries(groups.map((g) => [g.title, g.tint]));
+    expect(tints).toEqual({
+      Advancement: 'moss',
+      'Calendar & Content': 'sky',
+      Money: 'wheat',
+      Reports: 'clay',
+      'People & Setup': 'stone',
+      'Troop admin tools': undefined
+    });
   });
 
   it('AdminHome_CarriesADescriptionOnEveryNonToolsCard', () => {
@@ -110,9 +161,10 @@ describe('AdminNav hub and section bar agree', () => {
       it(`AdminNav_HubAndSectionBarAgree_ForEveryCapabilitySet [${name}${fullAdmin ? ', fullAdmin' : ''}]`, () => {
         const vis = visible(caps, fullAdmin);
         const expected = vis.flatMap((s) => s.items).filter((i) => !i.everyone).map((i) => i.href!);
+        const landings = vis.flatMap((s) => s.items).filter((i) => i.folderLanding).map((i) => i.href!);
         const hub = hubHrefs(hubGroups(vis, { wreathOpen: true }));
-        // Every destination appears on the hub exactly once...
-        expect([...hub].sort()).toEqual([...expected].sort());
+        // Every destination appears on the hub exactly once (a folder landing is the bar entry, not a card)...
+        expect([...hub].sort()).toEqual(expected.filter((h) => !landings.includes(h)).sort());
         // ...the bar + tabs offer the same set, bar the navHidden ones (reports behind the Reports tab, Styleguides)...
         const nav = navSections(vis).flatMap((s) => s.items).filter((i) => !i.everyone).map((i) => i.href!);
         const hidden = vis.flatMap((s) => s.items).filter((i) => i.navHidden).map((i) => i.href!);
@@ -169,24 +221,25 @@ describe('Section bar and tabs', () => {
   });
 
   it('AdminNav_OffersHomeToEveryone_EvenWithOnlyOneUnrelatedCapability', () => {
-    expect(labels(nav(['finance.manage'], '/admin').bar)).toEqual(['Home', 'Money']);
+    expect(labels(nav(['finance.manage'], '/admin').bar)).toEqual(['Home', 'Money', 'Reports']);
   });
 
   it('AdminNav_LabelsTheBar_LikeThePrototype', () => {
     expect(labels(nav(ALL_CAPS, '/admin', true).bar)).toEqual([
-      'Home', 'Advancement', 'Calendar & Content', 'Money', 'People', 'Tools'
+      'Home', 'Advancement', 'Calendar & Content', 'Money', 'Reports', 'People', 'Tools'
     ]);
   });
 
   it('AdminNav_LinksEachBarEntry_ToItsFirstTab', () => {
     const n = nav(ALL_CAPS, '/admin', true);
-    expect(n.bar.find((b) => b.label === 'Advancement')!.href).toBe('/admin/advancement/fast-entry');
+    expect(n.bar.find((b) => b.label === 'Advancement')!.href).toBe('/admin/advancement/dashboard');
+    expect(n.bar.find((b) => b.label === 'Reports')!.href).toBe('/admin/reports');
     expect(n.bar.find((b) => b.label === 'Home')!.href).toBe('/admin');
   });
 
-  it('AdminNav_AdvancementTabs_CarryASingleReportsTab_NotTheFiveReports', () => {
+  it('AdminNav_AdvancementTabs_StartWithDashboard_AndCarryNoReports', () => {
     const n = nav(['advancement.write', 'meeting_plan.use'], '/admin/advancement/ledger');
-    expect(labels(n.tabs)).toEqual(['Fast Entry', 'Ledger', 'Submit & Present', 'MB Progress', 'Meeting Plan', 'Has/Needs', 'Reports']);
+    expect(labels(n.tabs)).toEqual(['Dashboard', 'Fast Entry', 'Ledger', 'Submit & Present', 'MB Progress', 'Meeting Plan', 'Has/Needs']);
   });
 
   it.each([
@@ -196,20 +249,34 @@ describe('Section bar and tabs', () => {
     '/admin/advancement/court-of-honor',
     '/admin/advancement/scoutbook-export',
     '/admin/advancement/meetings/report'
-  ])('AdminNav_ReportsTabIsActive_OnEveryReportPage %s', (path) => {
+  ])('AdminNav_ReportsBarEntryIsActive_OnEveryReportPage %s', (path) => {
     const n = nav(['advancement.write'], path);
     expect(n.activeKey).toBe('/admin/reports');
-    expect(n.bar.find((b) => b.active)!.label).toBe('Advancement');
+    expect(n.bar.find((b) => b.active)!.label).toBe('Reports');
+    expect(n.tabs).toBeNull();
   });
 
-  it('AdminNav_LedgerAuditLightsMoney', () => {
-    const n = nav(['finance.manage'], '/admin/utilities/ledger-audit');
+  it.each(['/admin/utilities/ledger-audit', '/admin/finance/report'])('AdminNav_LightsReportsWithNoTabStrip_On %s', (path) => {
+    const n = nav(['finance.manage'], path);
+    expect(n.bar.find((b) => b.active)!.label).toBe('Reports');
+    expect(n.tabs).toBeNull();
+    expect(n.activeKey).toBe('/admin/reports');
+  });
+
+  it('AdminNav_KeepsMoneyLit_OnTheFinancialLedger_NotReports', () => {
+    const n = nav(['finance.manage'], '/admin/finance');
     expect(n.bar.find((b) => b.active)!.label).toBe('Money');
-    expect(n.activeKey).toBe('/admin/utilities/ledger-audit');
+    expect(labels(n.tabs)).toEqual(['Financial Ledger', 'Reimbursements', 'Wreath Sale']);
   });
 
-  it('AdminNav_LightsHome_OnTheOldDashboardUrl', () => {
-    expect(nav(['advancement.write'], '/admin/advancement/dashboard').bar.find((b) => b.active)!.label).toBe('Home');
+  it('AdminNav_LightsAdvancementAndItsDashboardTab_OnTheDashboardUrl', () => {
+    const n = nav(['advancement.write'], '/admin/advancement/dashboard');
+    expect(n.bar.find((b) => b.active)!.label).toBe('Advancement');
+    expect(n.activeKey).toBe('/admin/advancement/dashboard');
+  });
+
+  it('AdminNav_LightsHome_OnlyOnSlashAdmin', () => {
+    expect(nav(['advancement.write'], '/admin').bar.find((b) => b.active)!.label).toBe('Home');
   });
 
   it('AdminNav_KeepsStyleguidesOutOfTheBarAndTabs', () => {
@@ -234,8 +301,12 @@ describe('Reports landing', () => {
     for (const e of entries) expect(e.description, e.label).toBeTruthy();
   });
 
+  it('ReportsLanding_ListsTheTwoFinanceReports_ForAFinanceOnlyLeader', () => {
+    expect(folderEntries(visible(['finance.manage']), 'Reports').map((e) => e.label)).toEqual(['Activity Report', 'Ledger Audit']);
+  });
+
   it('ReportsLanding_ListsNothing_WhenTheLeaderHoldsNoReportCapability', () => {
-    expect(folderEntries(visible(['calendar.write', 'finance.manage']), 'Reports')).toEqual([]);
+    expect(folderEntries(visible(['calendar.write']), 'Reports')).toEqual([]);
   });
 
   it('ReportsLanding_IsATabOnlyWhileAReportIsOpenToTheLeader', () => {

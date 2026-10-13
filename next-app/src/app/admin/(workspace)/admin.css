@@ -182,6 +182,17 @@
   --admin-cat-7-bg: #dde8f7; --admin-cat-7-fg: #2b4f8a;  /* blue   */
   --admin-cat-8-bg: #e6e6ea; --admin-cat-8-fg: #4a4a5a;  /* slate  */
 
+  /* ── Section tints (2026-10-13, Patrick) — Home's card groups ────── */
+  /* One earth tone per section: a pale card background, a stronger left
+     edge, a darker heading/title ink. Light and subtle on purpose. -ink on
+     -bg is 6.9–8.7:1; gray-700 description text on -bg is >= 9:1. The edge
+     is decoration (not text), so it carries no contrast requirement. */
+  --admin-tint-moss-bg:  #eef5eb; --admin-tint-moss-edge:  #6f9a60; --admin-tint-moss-ink:  #2c5a27;  /* Advancement */
+  --admin-tint-sky-bg:   #eaf1f6; --admin-tint-sky-edge:   #6f95b3; --admin-tint-sky-ink:   #274d69;  /* Calendar & Content */
+  --admin-tint-wheat-bg: #f8f0dc; --admin-tint-wheat-edge: #c19a3f; --admin-tint-wheat-ink: #6b4b0b;  /* Money */
+  --admin-tint-clay-bg:  #f8ebe4; --admin-tint-clay-edge:  #c4825f; --admin-tint-clay-ink:  #86391a;  /* Reports */
+  --admin-tint-stone-bg: #f0eeea; --admin-tint-stone-edge: #9c9588; --admin-tint-stone-ink: #46413a;  /* People & Setup */
+
   /* ── Public-parity aliases — PREVIEW SURFACES ONLY (Phase C) ─────── */
   /* The ONE sanctioned coupling to the public palette. Only for WYSIWYG
      surfaces whose job is to mirror public rendering (markdown preview

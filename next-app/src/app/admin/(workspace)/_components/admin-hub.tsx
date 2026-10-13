@@ -1,9 +1,10 @@
 /**
  * Home's card grid (Plans/Admin-Home-And-Nav.md Wave 2, Brad's prototype). Presentational only — the groups come from
  * hubGroups() in nav-data, which builds them from the same visible sections the rail renders, so there is no second
- * list to keep. Cards carry a title, one line and a link; no count badges (the inbox above already shows counts).
- * A card whose title is a link also stretches it over the whole card, except where quiet links sit inside (Reports),
- * which stay clickable above it. The quiet "Troop admin tools" group is one card of plain links, last.
+ * list to keep. Cards carry a title, a description clamped to two lines and a link; no count badges (the inbox above
+ * already shows counts). A card's title link stretches over the whole card. Each group wears its section's earth tone
+ * (pale card, stronger left edge, darker heading - data-tint + the tint_* classes). The quiet "Troop admin tools"
+ * group is one untinted row of plain links, last.
  */
 import Link from 'next/link';
 import type { HubGroup, HubCard } from './nav-data';
@@ -21,15 +22,6 @@ function Card({ card }: { card: HubCard }) {
         {card.title}
       </Link>
       {card.description && <div className={styles.line}>{card.description}</div>}
-      {card.links && (
-        <ul className={styles.kids}>
-          {card.links.map((l) => (
-            <li key={l.href}>
-              <Link href={l.href}>{l.label}</Link>
-            </li>
-          ))}
-        </ul>
-      )}
       {card.season && (
         <span className={`${styles.season} ${card.season === 'open' ? styles.seasonOpen : styles.seasonOff}`}>
           {card.season === 'open' ? 'Sale open' : 'Sale not open'}
@@ -39,7 +31,7 @@ function Card({ card }: { card: HubCard }) {
   );
 }
 
-/** Just the cards, no group heading — for a landing page whose h1 already names the group (Reports). */
+/** Just the cards, no group heading and no tint - for a landing page whose h1 already names the group (Reports). */
 export function AdminHubGrid({ cards }: { cards: HubCard[] }) {
   return (
     <div className={styles.grid}>
@@ -73,7 +65,12 @@ export function AdminHub({ groups }: { groups: HubGroup[] }) {
           );
         }
         return (
-          <section key={g.title} className={styles.group} aria-labelledby={id}>
+          <section
+            key={g.title}
+            className={`${styles.group} ${g.tint ? styles[`tint_${g.tint}`] : ''}`}
+            data-tint={g.tint}
+            aria-labelledby={id}
+          >
             <h2 id={id} className={styles.head}>
               {g.title}
             </h2>

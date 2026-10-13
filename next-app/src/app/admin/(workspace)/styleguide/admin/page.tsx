@@ -557,7 +557,7 @@ export default function StyleguidePage() {
           <Specimen
             label="Tabbed workbench — long multipart editors"
             canonical
-            note="Patrick 2026-08-24 (calendar entry workbench): a record with several independently-saved parts gets ONE pill tab per part, above the panel, so the options are evident at the top instead of stacked down the page. Rules: the same TabStrip in onSelect mode; every panel stays MOUNTED and is hidden with the `hidden` attribute (role=tabpanel, aria-label = tab name) so an unsaved draft on one tab survives a look at another; a tab whose part has content shows it as a plain “(n)” count (Roll Call: people present); a tab with an unsaved draft gets a trailing • in its label; tabs a record can't have (Agenda on a non-meeting) are omitted, not disabled. Optional ?tab= deep link for back links from the part's own screen. A part with its own groups may nest a second TabStrip as a SUB-tab bar inside its panel (Roll Call's Scouts / Leaders / Adults) — the layer tabs stay put. Reference: calendar/[id]/workbench.tsx."
+            note="Patrick 2026-08-24 (calendar entry workbench): a record with several independently-saved parts gets ONE pill tab per part, above the panel, so the options are evident at the top instead of stacked down the page. Rules: the same TabStrip in onSelect mode; every panel stays MOUNTED and is hidden with the `hidden` attribute (role=tabpanel, aria-label = tab name) so an unsaved draft on one tab survives a look at another; a tab whose part has content shows it as a plain “(n)” count (Roll Call: people present); a tab with an unsaved draft gets a trailing • in its label; a feature the record doesn't use is GREYED, not hidden (see the inactive-tab specimen). Optional ?tab= deep link for back links from the part's own screen. A part with its own groups may nest a second TabStrip as a SUB-tab bar inside its panel (Roll Call's Scouts / Leaders / Adults) — the layer tabs stay put. Reference: calendar/[id]/workbench.tsx."
           >
             <TabStrip
               ariaLabel="Specimen workbench"
@@ -568,6 +568,24 @@ export default function StyleguidePage() {
                 { key: 'agenda', label: 'Agenda' },
                 { key: 'roll-call', label: 'Roll Call', count: 14 },
                 { key: 'signup', label: 'Signup' }
+              ]}
+            />
+          </Specimen>
+          <Specimen
+            label="Inactive tab — greyed, with a reason on click"
+            canonical
+            note="Patrick 2026-10-13 (calendar workbench, one flat bar): a tab whose feature the record doesn't use stays in the bar, muted, so the leader learns it exists — greyed, not hidden. TabStrip item `inactive: true` (+ optional `inactiveReason`, default “Not active for this event”): aria-disabled (never `disabled` — keyboard and screen-reader users can still land on it), a hover title, and a click or Enter shows a small note under the tab instead of navigating; Esc, an outside click, blur, scroll or ~4 s dismiss it. The tab you are ON is never greyed. `scroll` keeps a long bar (the workbench has nine tabs) on one line and scrolls it sideways on phones. Reference: calendar/[id]/workbench.tsx."
+          >
+            <TabStrip
+              ariaLabel="Specimen inactive tabs"
+              activeKey="signup"
+              scroll
+              items={[
+                { key: 'entry', label: 'Entry' },
+                { key: 'signup', label: 'Signup' },
+                { key: 'roster', label: 'Roster', inactive: true },
+                { key: 'money', label: 'Money', inactive: true },
+                { key: 'roll-call', label: 'Roll Call', count: 14 }
               ]}
             />
           </Specimen>
@@ -1093,38 +1111,39 @@ export default function StyleguidePage() {
       <section className={sg.section}>
         <h2 className={sg.sectionHead}>Hub cards</h2>
         <p className={sg.sectionNote}>
-          Home&rsquo;s card grid under the inbox (<code>_components/admin-hub</code>, 2026-10-13): a title that links, one
-          line, and nothing else &mdash; no count badges, the inbox already carries counts. Groups and cards are built by{' '}
-          <code>hubGroups()</code> from the same <code>SECTIONS</code> data the section bar and tabs render, so a destination is added
-          once. A folder card (Reports) shows its items as quiet links inside the card. A seasonal card (Wreath Sale) is
-          first in its group while in season and last and greyed &mdash; still clickable &mdash; when not.
-          &ldquo;Troop admin tools&rdquo; is a quiet card of plain links, always last. A folder&rsquo;s title links to its
-          landing page (<code>/admin/reports</code>), which lists every member through <code>folderEntries()</code> as
-          the same cards without a group heading (<code>AdminHubGrid</code>, <code>ReportsLanding</code>).
+          Home&rsquo;s card grid under the inbox (<code>_components/admin-hub</code>, 2026-10-13): a title that links and a
+          description clamped to two lines (a card is never more than three lines) &mdash; no count badges, the inbox already
+          carries counts. Groups and cards are built by <code>hubGroups()</code> from the same <code>SECTIONS</code> data
+          the section bar and tabs render, so a destination is added once. Every report is its own card in the Reports group
+          (the Reports landing is the section bar&rsquo;s entry and makes no card). Each group wears one earth tone from
+          the <code>--admin-tint-*</code> tokens in <code>admin.css</code>: a pale card background, a stronger 3px left
+          edge, and a darker heading and title &mdash; Advancement moss, Calendar &amp; Content sky, Money wheat, Reports
+          clay, People &amp; Setup stone. A seasonal card (Wreath Sale) is first in its group while in season and last and
+          greyed &mdash; still clickable, whatever the tint &mdash; when not. &ldquo;Troop admin tools&rdquo; is a quiet,
+          untinted row of plain links, always last. <code>/admin/reports</code> lists every report through{' '}
+          <code>folderEntries()</code> as the same cards without a group heading (<code>AdminHubGrid</code>,{' '}
+          <code>ReportsLanding</code>).
         </p>
         <div className={sg.specimenGrid}>
           <Specimen
-            label="Hub cards — a plain card, a folder card with quiet links, a seasonal card in season"
+            label="Hub cards — a tinted group (Advancement, moss) with a seasonal card in season"
             canonical
-            note="The title link stretches over the whole card; the quiet links inside a folder card stay separately clickable."
+            note="The title link stretches over the whole card. The description clamps at two lines: this card's long description is cut with an ellipsis."
           >
             <AdminHub
               groups={[
                 {
                   title: 'Advancement',
                   quiet: false,
+                  tint: 'moss',
                   cards: [
+                    { key: 'db', title: 'Dashboard', description: 'Active scouts, ledger, Court of Honor candidates and recent sign-ins', href: '#' },
                     { key: 'fe', title: 'Fast Entry', description: 'Sign off requirements for many scouts at once', href: '#' },
                     {
-                      key: 'rep',
-                      title: 'Reports',
-                      description: 'Audits, weekly report, Court of Honor, exports',
-                      href: '#',
-                      links: [
-                        { label: 'Audits', href: '#' },
-                        { label: 'Advancement Report', href: '#' },
-                        { label: 'Court of Honor', href: '#' }
-                      ]
+                      key: 'long',
+                      title: 'A long description',
+                      description: 'This description runs well past two lines on purpose, to show the clamp: the third line never appears and the card stays the same height as its neighbours.',
+                      href: '#'
                     },
                     { key: 'wr', title: 'Wreath Sale', description: 'Orders, sellers and the Rose order', href: '#', season: 'open' }
                   ]
@@ -1133,8 +1152,30 @@ export default function StyleguidePage() {
             />
           </Specimen>
           <Specimen
+            label="Hub tints — one earth tone per section"
+            note="Moss, sky, wheat, clay, stone. Title ink on the pale background is 6.9–8.7:1; description text is 9:1 or better."
+          >
+            <AdminHub
+              groups={[
+                { title: 'Advancement', quiet: false, tint: 'moss', cards: [{ key: 'm', title: 'Ledger', description: 'Every requirement, rank and badge on record', href: '#' }] },
+                { title: 'Calendar & Content', quiet: false, tint: 'sky', cards: [{ key: 's', title: 'Calendar', description: 'Meetings, campouts, sign-ups and roll call', href: '#' }] },
+                { title: 'Money', quiet: false, tint: 'wheat', cards: [{ key: 'w', title: 'Financial Ledger', description: 'Every dollar in and out of the troop account', href: '#' }] },
+                {
+                  title: 'Reports',
+                  quiet: false,
+                  tint: 'clay',
+                  cards: [
+                    { key: 'c1', title: 'Audits', description: 'Data-quality checks that flag ledger records that look wrong', href: '#' },
+                    { key: 'c2', title: 'Activity Report', description: 'Income and spending by event and kind', href: '#' }
+                  ]
+                },
+                { title: 'People & Setup', quiet: false, tint: 'stone', cards: [{ key: 'p', title: 'Roster', description: 'Scouts, adults and households', href: '#' }] }
+              ]}
+            />
+          </Specimen>
+          <Specimen
             label="Landing page — one card per report"
-            note="The Reports page (/admin/reports): the hub card reused under the page's own h1, with the empty state when a leader can open none."
+            note="The Reports page (/admin/reports): the hub card reused under the page's own h1 with no tint, and the empty state when a leader can open none."
           >
             <ReportsLanding
               entries={[
@@ -1144,12 +1185,13 @@ export default function StyleguidePage() {
             />
             <ReportsLanding entries={[]} />
           </Specimen>
-          <Specimen label="Hub card — off season" note="Greyed (no shadow, grey title), last in its group, still a link.">
+          <Specimen label="Hub card — off season" note="Greyed (no shadow, grey title and edge, whatever the group's tint), last in its group, still a link.">
             <AdminHub
               groups={[
                 {
                   title: 'Money',
                   quiet: false,
+                  tint: 'wheat',
                   cards: [
                     { key: 'wr', title: 'Wreath Sale', description: 'Orders, sellers and the Rose order', href: '#', season: 'off' }
                   ]
@@ -1192,8 +1234,9 @@ export default function StyleguidePage() {
           Home cards: the <strong>section bar</strong> (white band, gold underline on the active section, so it never
           reads as a TabStrip) and the active section&rsquo;s <strong>tabs</strong> (the shared <code>TabStrip</code> in
           link mode on a quieter grey band). A section with no visible item is absent; a section with exactly one shows
-          no tab strip; Home never has one. The five reports are not tabs &mdash; one &ldquo;Reports&rdquo; tab is active
-          on the landing and on every report page. Styleguides stays out of both (Home tools row only). Every link goes
+          no tab strip; Home never has one. Reports is its own section holding every report (advancement and finance); the reports are
+          not tabs &mdash; the single &ldquo;Reports&rdquo; bar entry is active on the landing and on every report page, and
+          shows no tab strip. Styleguides stays out of both (Home tools row only). Every link goes
           through the dirty-form guard (<code>useGuardedNav</code>, as BackNav does). A page&rsquo;s own TabStrip sits in
           the content below, on the page background, with the larger type &mdash; it must read as the page&rsquo;s, not
           the section&rsquo;s. Phones (&le; 800px): each row scrolls sideways with the active entry scrolled into view; the
@@ -1201,9 +1244,9 @@ export default function StyleguidePage() {
         </p>
         <div className={sg.specimenGrid}>
           <Specimen
-            label="Section bar + tabs — Advancement active, the Reports tab on"
+            label="Section bar + tabs — Advancement active, Dashboard tab first"
             canonical
-            note="Bar labels are short (Home, People, Tools); the tab strip is the section's items. A report page lights the Reports tab."
+            note="Bar labels are short (Home, People, Tools); the tab strip is the section's items, Dashboard first. A report page lights the Reports bar entry instead."
           >
             <SectionBar
               entries={[
@@ -1211,21 +1254,22 @@ export default function StyleguidePage() {
                 { key: 'a', label: 'Advancement', href: '#', active: true },
                 { key: 'c', label: 'Calendar & Content', href: '#', active: false },
                 { key: 'm', label: 'Money', href: '#', active: false },
+                { key: 'r', label: 'Reports', href: '#', active: false },
                 { key: 'p', label: 'People', href: '#', active: false },
                 { key: 't', label: 'Tools', href: '#', active: false }
               ]}
             />
             <SectionTabs
               label="Advancement"
-              activeKey="reports"
+              activeKey="db"
               tabs={[
+                { key: 'db', label: 'Dashboard', href: '#' },
                 { key: 'fe', label: 'Fast Entry', href: '#' },
                 { key: 'l', label: 'Ledger', href: '#' },
                 { key: 'sp', label: 'Submit & Present', href: '#' },
                 { key: 'mb', label: 'MB Progress', href: '#' },
                 { key: 'mp', label: 'Meeting Plan', href: '#' },
-                { key: 'hn', label: 'Has/Needs', href: '#' },
-                { key: 'reports', label: 'Reports', href: '#' }
+                { key: 'hn', label: 'Has/Needs', href: '#' }
               ]}
             />
           </Specimen>

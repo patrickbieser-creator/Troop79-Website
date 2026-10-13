@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   visibleNavSections,
+  folderEntries,
   activeMatchPathFor,
   activeSectionTitleFor,
   navSections,
@@ -172,9 +173,9 @@ describe('admin nav contents', () => {
     expect(all.some((i) => i.href?.startsWith('/admin/styleguide'))).toBe(false);
   });
 
-  it('Nav_ListsLedgerAuditExactlyOnce_UnderMoney', () => {
+  it('Nav_ListsLedgerAuditExactlyOnce_UnderReports', () => {
     const hits = RAIL.flatMap((s) => s.items.map((i) => ({ section: s.title, i }))).filter((x) => x.i.href === '/admin/utilities/ledger-audit');
-    expect(hits.map((h) => h.section)).toEqual(['Money']);
+    expect(hits.map((h) => h.section)).toEqual(['Reports']);
   });
 
   it('Nav_CallsTheFirstItemHome_AndPointsItAtAdmin', () => {
@@ -186,7 +187,7 @@ describe('admin nav contents', () => {
   it('Home_LightsUpOnlyOnTheHomePages_NotOnEveryAdminPage', () => {
     const visible = visibleNavSections(RAIL, { fullAdmin: true, capabilities: new Set<Capability>(['finance.manage', 'finance.view']) });
     expect(activeMatchPathFor(visible, '/admin')).toBe('/admin');
-    expect(activeMatchPathFor(visible, '/admin/advancement/dashboard')).toBe('/admin');
+    expect(activeMatchPathFor(visible, '/admin/advancement/dashboard')).toBe('/admin/advancement/dashboard');
     expect(activeMatchPathFor(visible, '/admin/news/articles')).toBe('/admin/news/articles');
   });
 
@@ -201,15 +202,31 @@ describe('admin nav contents', () => {
       'Advancement',
       'Calendar & Content',
       'Money',
+      'Reports',
       'People & Setup',
       'Troop admin tools'
     ]);
   });
 
-  it('AdminNav_LedgerAuditHighlightsMoney', () => {
+  it('AdminNav_LedgerAuditHighlightsReports', () => {
     const visible = visibleNavSections(RAIL, { fullAdmin: true, capabilities: new Set<Capability>(['finance.manage', 'finance.view']) });
     expect(activeMatchPathFor(visible, '/admin/utilities/ledger-audit')).toBe('/admin/utilities/ledger-audit');
-    expect(activeSectionTitleFor(visible, '/admin/utilities/ledger-audit')).toBe('Money');
+    expect(activeSectionTitleFor(visible, '/admin/utilities/ledger-audit')).toBe('Reports');
     expect(activeSectionTitleFor(visible, '/admin/utilities')).toBe('Troop admin tools');
+  });
+});
+
+describe('Reports landing entries by capability', () => {
+  const reportLabels = (caps: Capability[]) =>
+    folderEntries(visibleNavSections(RAIL, { fullAdmin: false, capabilities: new Set(caps) }), 'Reports').map((e) => e.label);
+
+  it('ReportsLanding_ListsExactlyActivityReportAndLedgerAudit_ForFinanceOnly', () => {
+    expect(reportLabels(['finance.manage']).sort()).toEqual(['Activity Report', 'Ledger Audit']);
+  });
+
+  it('ReportsLanding_ListsExactlyTheFiveAdvancementReports_ForAdvancementOnly', () => {
+    expect(reportLabels(['advancement.write']).sort()).toEqual(
+      ['Advancement Report', 'Attendance Report', 'Audits', 'Court of Honor', 'Scoutbook Export']
+    );
   });
 });

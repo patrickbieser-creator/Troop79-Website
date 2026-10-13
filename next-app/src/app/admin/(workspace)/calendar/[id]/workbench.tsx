@@ -19,10 +19,18 @@
  * and only that panel renders, instead of every layer's editor mounting
  * hidden on every visit (D-227's trade-off, retired). A tab click is a guarded
  * navigation — an unsaved Entry form gets the Discard-changes prompt rather
- * than vanishing. The Signup tab hosts the whole event workspace: the builder,
- * and via `?view=` the Roster / assignment sets / Money / Snapshot, so the
- * event tab strip never leaves the entry's head (Patrick: clicking Roster or
- * Snapshot "change[s] the screen, losing the top table").
+ * than vanishing.
+ *
+ * ONE flat bar (Patrick, 2026-10-13: "the current calendar has a two-level
+ * navigation … condense all these into one top-level nav"): Entry · Agenda ·
+ * Signup · Roster · [one tab per assignment set, or a greyed "Assignments"] ·
+ * Money · Snapshot · Roll Call. A feature the entry doesn't use is greyed, not
+ * hidden — a click explains "Not active for this event". Signup is the
+ * builder (or "Enable a signup"); Roster / sets / Money / Snapshot are still
+ * `?tab=signup&view=…` URLs (so every old link lands on the same view) and
+ * render directly under the bar, so the entry's head and bar never leave
+ * (Patrick: clicking Roster or Snapshot "change[s] the screen, losing the top
+ * table"). Roll Call stays last — it is the day-of step.
  */
 
 import { useState, useTransition, type ReactNode } from 'react';
@@ -38,7 +46,7 @@ import { CalendarEntryForm, type CalendarEntryRow } from '../entry-form';
 import { RollCall, type RollCallProps } from './roll-call/roll-call';
 import { MeetingEditor, type MeetingEditorProps } from '../../advancement/meetings/[id]/meeting-editor';
 import { BuilderPanels } from '../../events/[id]/builder-panels';
-import { EventNav, type EventNavKey } from '../../rosters/[id]/event-nav';
+import type { EventNavKey } from '../../rosters/[id]/event-nav';
 import type { EventNavData } from '../../rosters/[id]/event-nav-data';
 import type { BuilderData } from '../../events/[id]/load-builder';
 import styles from './workbench.module.css';
@@ -82,7 +90,7 @@ interface Props {
   signupId: number | null;
   /** The builder's data — loaded only for the Signup tab's Builder view. */
   builder: BuilderData | null;
-  /** The event tab strip's data, for any Signup view. */
+  /** The sets and money flag the bar needs — loaded on every tab whenever the entry has a signup. */
   signupNav: EventNavData | null;
   /** A Signup view other than the builder (roster / assignments / money /
    *  snapshot), rendered on the server by the page and hosted here. */
@@ -126,6 +134,7 @@ export function Workbench({
   const router = useRouter();
   const { navigate, dialog } = useGuardedNav();
   const hasAgendaTab = template === 'meeting';
+  const hasSignup = signupId !== null;
   const [err, setErr] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -161,22 +170,45 @@ export function Workbench({
   }
 
   const dateLabel = entry.end_date ? fmtRange(entry.entry_date, entry.end_date) : fmtDate(entry.entry_date);
-  const tabHref = (key: WorkbenchTab) => `/admin/calendar/${entry.id}?tab=${key}`;
-  const go = (key: WorkbenchTab) => () => {
-    if (key !== tab) navigate(tabHref(key));
+  const base = `/admin/calendar/${entry.id}`;
+  const go = (href: string, isActive: boolean) => () => {
+    if (!isActive) navigate(href);
   };
 
+  // Which bar item is lit: a Signup view (?view=) lights its own tab, the
+  // builder lights Signup, every other tab is itself.
+  // `view=assignments` with no `&set=` arrives as 'assignments' only when there are
+  // no sets; the page already resolves it to the first set (activeSetFor), and this
+  // maps it too so the bar can never light nothing.
+  const viewKey = signupView?.key === 'assignments' && (signupNav?.sets.length ?? 0) > 0 ? `set:${signupNav!.sets[0].id}` : signupView?.key;
+  const activeKey = tab === 'signup' ? (viewKey && viewKey !== 'builder' ? viewKey : 'signup') : tab;
+  const item = (key: string, label: string, href: string, inactive = false): TabStripItem => ({
+    key,
+    label,
+    // Whatever tab you are ON is never greyed: Money opened from a link stays reachable.
+    inactive: inactive && key !== activeKey,
+    onSelect: go(href, key === activeKey)
+  });
+  const sets = hasSignup ? (signupNav?.sets ?? []) : [];
+  const signupBase = `${base}?tab=signup`;
   const tabs: TabStripItem[] = [
-    { key: 'entry', label: 'Entry', onSelect: go('entry') },
-    ...(hasAgendaTab ? [{ key: 'agenda', label: 'Agenda', onSelect: go('agenda') }] : []),
+    item('entry', 'Entry', `${base}?tab=entry`),
+    item('agenda', 'Agenda', `${base}?tab=agenda`, !hasAgendaTab),
     // Signup before Roll Call (Patrick, 2026-08-25): you build the signup
-    // weeks ahead; roll call is the day-of step.
-    { key: 'signup', label: 'Signup', onSelect: go('signup') },
+    // weeks ahead; roll call is the day-of step. Always on — with no signup it
+    // is where "Enable a signup" lives.
+    item('signup', 'Signup', signupBase),
+    item('roster', 'Roster', `${signupBase}&view=roster`, !hasSignup),
+    ...(sets.length > 0
+      ? sets.map((s) => item(`set:${s.id}`, s.label, `${signupBase}&view=assignments&set=${s.id}`))
+      : [item('assignments', 'Assignments', `${signupBase}&view=assignments`, true)]),
+    item('money', 'Money', `${signupBase}&view=money`, !hasSignup || !(signupNav?.hasMoney ?? false)),
+    item('snapshot', 'Snapshot', `${signupBase}&view=snapshot`, !hasSignup),
     {
       key: 'roll-call',
       label: 'Roll Call',
       count: attendanceCount > 0 ? attendanceCount : undefined,
-      onSelect: go('roll-call')
+      onSelect: go(`${base}?tab=roll-call`, activeKey === 'roll-call')
     }
   ];
 
@@ -205,7 +237,7 @@ export function Workbench({
 
       {err && <div className={styles.error}>{err}</div>}
 
-      <TabStrip ariaLabel="Entry layers" activeKey={tab} items={tabs} className={styles.tabs} />
+      <TabStrip ariaLabel="Entry layers" activeKey={activeKey} items={tabs} className={styles.tabs} scroll />
       {dialog}
 
       {/* ── the entry: its own fields AND the story, one form ──
@@ -266,11 +298,10 @@ export function Workbench({
       )}
 
       {/* ── signup layer ──
-          The whole event workspace lives in this tab: the builder, and via
-          the event tab strip the Roster, each assignment set, Money and the
-          Snapshot — every one of them rendered HERE (2026-08-25), so the
-          entry's head and layer tabs stay put. Before a signup exists the tab
-          offers to enable one. */}
+          The Signup tab is the builder; Roster, each assignment set, Money and
+          Snapshot are their own tabs in the one bar above and render here,
+          under it (2026-10-13). Before a signup exists the tab offers to
+          enable one. */}
       {tab === 'signup' && (
         <FormPanel
           title={signupId && signupNav ? undefined : 'Signup'}
@@ -286,34 +317,24 @@ export function Workbench({
           aria-label="Signup"
         >
           {signupId && signupNav && (
-            <>
-              <EventNav
+            signupView ? (
+              signupView.node
+            ) : builder && builder.entry ? (
+              <BuilderPanels
                 signupId={signupId}
-                entryId={entry.id}
-                active={signupView?.key ?? 'builder'}
-                sets={signupNav.sets}
-                hasMoney={signupNav.hasMoney}
-                inWorkbench
+                calendarEntryId={entry.id}
+                entryDate={entry.entry_date}
+                endDate={entry.end_date}
+                signup={builder.signup}
+                prices={builder.prices}
+                slots={builder.slots}
+                questions={builder.questions}
+                sets={builder.sets}
+                category={entry.category}
+                templates={builder.templates}
+                previewCtx={builder.previewCtx}
               />
-              {signupView ? (
-                signupView.node
-              ) : builder && builder.entry ? (
-                <BuilderPanels
-                  signupId={signupId}
-                  calendarEntryId={entry.id}
-                  entryDate={entry.entry_date}
-                  endDate={entry.end_date}
-                  signup={builder.signup}
-                  prices={builder.prices}
-                  slots={builder.slots}
-                  questions={builder.questions}
-                  sets={builder.sets}
-                  category={entry.category}
-                  templates={builder.templates}
-                  previewCtx={builder.previewCtx}
-                />
-              ) : null}
-            </>
+            ) : null
           )}
         </FormPanel>
       )}

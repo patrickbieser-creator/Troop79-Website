@@ -8,23 +8,24 @@ const GROUPS: HubGroup[] = [
   {
     title: 'Advancement',
     quiet: false,
+    tint: 'moss',
     cards: [
-      { key: 'a', title: 'Fast Entry', description: 'Sign off requirements for many scouts at once', href: '/admin/advancement/fast-entry' },
-      {
-        key: 'r',
-        title: 'Reports',
-        description: 'Audits, weekly report, Court of Honor, exports',
-        href: '/admin/advancement/audits',
-        links: [
-          { label: 'Audits', href: '/admin/advancement/audits' },
-          { label: 'Court of Honor', href: '/admin/advancement/court-of-honor' }
-        ]
-      }
+      { key: 'a', title: 'Fast Entry', description: 'Sign off requirements for many scouts at once', href: '/admin/advancement/fast-entry' }
+    ]
+  },
+  {
+    title: 'Reports',
+    quiet: false,
+    tint: 'clay',
+    cards: [
+      { key: 'r1', title: 'Audits', description: 'Data-quality checks', href: '/admin/advancement/audits' },
+      { key: 'r2', title: 'Court of Honor', description: 'Awards earned in a range', href: '/admin/advancement/court-of-honor' }
     ]
   },
   {
     title: 'Money',
     quiet: false,
+    tint: 'wheat',
     cards: [{ key: 'w', title: 'Wreath Sale', description: 'Orders, sellers and the Rose order', href: '/admin/finance/wreaths', season: 'off' }]
   },
   {
@@ -52,11 +53,20 @@ describe('AdminHub view', () => {
     expect(screen.getByText('Sign off requirements for many scouts at once')).toBeTruthy();
   });
 
-  it('AdminHub_ShowsOneReportsCard_WithItsReportsAsLinksInside', () => {
+  it('AdminHub_ShowsAReportsSection_WithOneCardPerReport', () => {
     render(<AdminHub groups={GROUPS} />);
-    expect(screen.getAllByRole('link', { name: 'Reports' })).toHaveLength(1);
-    const card = screen.getByRole('link', { name: 'Reports' }).parentElement!;
-    expect(within(card).getByRole('link', { name: 'Court of Honor' }).getAttribute('href')).toBe('/admin/advancement/court-of-honor');
+    const section = screen.getByRole('heading', { level: 2, name: 'Reports' }).closest('section')!;
+    expect(within(section).getAllByRole('link')).toHaveLength(2);
+    expect(within(section).getByRole('link', { name: 'Court of Honor' }).getAttribute('href')).toBe('/admin/advancement/court-of-honor');
+  });
+
+  it('AdminHub_MarksEachGroupWithItsTint_AndLeavesTheToolsRowUntinted', () => {
+    render(<AdminHub groups={GROUPS} />);
+    const tintOf = (name: string) => screen.getByRole('heading', { level: 2, name }).closest('section')!.getAttribute('data-tint');
+    expect(tintOf('Advancement')).toBe('moss');
+    expect(tintOf('Reports')).toBe('clay');
+    expect(tintOf('Money')).toBe('wheat');
+    expect(tintOf('Troop admin tools')).toBeNull();
   });
 
   it('AdminHub_KeepsAnOffSeasonCardClickable_AndSaysTheSaleIsNotOpen', () => {

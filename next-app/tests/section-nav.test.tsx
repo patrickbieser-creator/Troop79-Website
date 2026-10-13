@@ -43,7 +43,7 @@ describe('AdminNav (section bar + tabs)', () => {
   it('SectionBar_ListsOnlySectionsWithVisibleItems_AndMarksTheActiveOne', () => {
     render(<Shell caps={['advancement.write']} />);
     const bar = within(screen.getByRole('navigation', { name: 'Admin sections' }));
-    expect(bar.getAllByRole('link').map((a) => a.textContent)).toEqual(['Home', 'Advancement']);
+    expect(bar.getAllByRole('link').map((a) => a.textContent)).toEqual(['Home', 'Advancement', 'Reports']);
     expect(bar.getByRole('link', { name: 'Advancement' }).getAttribute('aria-current')).toBe('page');
     expect(bar.getByRole('link', { name: 'Home' }).getAttribute('aria-current')).toBeNull();
   });
@@ -52,16 +52,17 @@ describe('AdminNav (section bar + tabs)', () => {
     render(<Shell caps={['advancement.write']} />);
     const tabs = within(screen.getByRole('navigation', { name: 'Advancement section' }));
     expect(tabs.getAllByRole('tab').map((t) => t.textContent)).toEqual([
-      'Fast Entry', 'Ledger', 'Submit & Present', 'MB Progress', 'Has/Needs', 'Reports'
+      'Dashboard', 'Fast Entry', 'Ledger', 'Submit & Present', 'MB Progress', 'Has/Needs'
     ]);
     expect(tabs.getByRole('tab', { name: 'Ledger' }).getAttribute('aria-selected')).toBe('true');
-    expect(tabs.getByRole('tab', { name: 'Reports' }).getAttribute('aria-selected')).toBe('false');
+    expect(tabs.getByRole('tab', { name: 'Dashboard' }).getAttribute('aria-selected')).toBe('false');
   });
 
-  it('SectionTabs_SelectTheReportsTab_OnAReportPage', () => {
+  it('SectionBar_LightsReportsWithNoTabStrip_OnAReportPage', () => {
     pathname = '/admin/advancement/court-of-honor';
     render(<Shell caps={['advancement.write']} />);
-    expect(screen.getByRole('tab', { name: 'Reports' }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByRole('link', { name: 'Reports' }).getAttribute('aria-current')).toBe('page');
+    expect(screen.queryByRole('tablist')).toBeNull();
   });
 
   it('SectionTabs_AreAbsent_WhenTheSectionHasOneVisibleItem', () => {
@@ -94,7 +95,7 @@ describe('AdminNav (section bar + tabs)', () => {
 
   it('SectionTabs_AskToDiscard_WhenAFormIsDirty', async () => {
     render(<Shell caps={['advancement.write']} dirty />);
-    await userEvent.click(screen.getByRole('tab', { name: 'Reports' }));
+    await userEvent.click(screen.getByRole('tab', { name: 'Dashboard' }));
     expect(push).not.toHaveBeenCalled();
     expect(screen.getByText('Discard changes?')).toBeTruthy();
     await userEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
@@ -103,7 +104,7 @@ describe('AdminNav (section bar + tabs)', () => {
 
   it('SectionTabs_NavigateStraightAway_WhenNothingIsDirty', async () => {
     render(<Shell caps={['advancement.write']} />);
-    await userEvent.click(screen.getByRole('tab', { name: 'Reports' }));
-    expect(push).toHaveBeenCalledWith('/admin/reports');
+    await userEvent.click(screen.getByRole('tab', { name: 'Dashboard' }));
+    expect(push).toHaveBeenCalledWith('/admin/advancement/dashboard');
   });
 });

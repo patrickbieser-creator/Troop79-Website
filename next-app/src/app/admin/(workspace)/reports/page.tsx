@@ -1,6 +1,6 @@
 /**
  * /admin/reports — every report the leader can open, built from the Reports folder in nav-data (never a second list).
- * Adding a report to nav-data (folder: 'Reports') puts it here, on Home's Reports card and nowhere else to maintain.
+ * Adding a report to nav-data (folder: 'Reports') puts it here and on Home's Reports group; nothing else to maintain.
  * Each report still guards itself with requireCapability(); this page only stops offering links that would refuse.
  */
 import { resolveAdminActor } from '@/lib/admin-actor';
@@ -20,7 +20,7 @@ export default async function ReportsPage() {
 
   return (
     <>
-      <PageTitle back={null} title="Reports" sub="Audits, the weekly report, Court of Honor and exports." />
+      <PageTitle back={null} title="Reports" sub="Advancement and finance reports." />
       <ReportsLanding entries={folderEntries(visible, 'Reports')} />
     </>
   );

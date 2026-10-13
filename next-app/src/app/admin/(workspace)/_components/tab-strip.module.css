@@ -54,3 +54,41 @@
   font-weight: var(--admin-weight-bold);
   line-height: 1;
 }
+
+/* Inactive tab (2026-10-13): the record doesn't use this feature. Muted, still
+   focusable (aria-disabled, never `disabled`); a click shows .note. */
+.tabInactive,
+.tabInactive:hover {
+  color: var(--admin-gray-400);
+  cursor: not-allowed;
+}
+.note {
+  position: fixed;
+  z-index: 50;
+  max-width: 240px;
+  padding: var(--admin-space-3) var(--admin-space-5);
+  background: var(--admin-gray-900);
+  color: var(--admin-white);
+  border-radius: var(--admin-radius);
+  box-shadow: var(--admin-shadow-md);
+  font-size: var(--admin-text-sm);
+  line-height: 1.3;
+  pointer-events: none;
+}
+
+/* Long bars (the calendar workbench's nine tabs) scroll sideways rather than
+   wrap. The hairline moves onto an inset shadow so the scroll box can't clip
+   the active tab's 2px underline. */
+.tabsScroll {
+  display: flex;
+  flex-wrap: nowrap;
+  max-width: 100%;
+  overflow-x: auto;
+  border-bottom: none;
+  box-shadow: inset 0 -1px 0 var(--admin-gray-200);
+}
+.tabsScroll .tab {
+  flex: none;
+  margin-bottom: 0;
+  white-space: nowrap;
+}

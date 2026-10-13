@@ -1,17 +1,22 @@
 /**
- * /admin/advancement/dashboard — the old Leader Dashboard URL. Home moved to /admin
- * (Plans/Admin-Home-And-Nav.md, Wave 1) and this route renders the same page so
- * bookmarks, links and revalidatePath() calls keep working. Still advancement.write,
- * as it always was; /admin itself admits every leader.
+ * /admin/advancement/dashboard - the advancement overview on its own page (Patrick, 2026-10-13): the first card in Home's
+ * Advancement group and the first Advancement tab. It used to render below a full copy of Home; bookmarks and
+ * revalidatePath() calls to this URL keep working. advancement.write, as it always was; /admin itself admits every leader.
  */
 import { requireCapability } from '@/lib/require-capability';
-import { AdminHome } from './admin-home';
+import { PageTitle } from '../../_components/page-title';
+import { AdvancementOverview } from './advancement-overview';
 
 export const metadata = {
-  title: 'Home — Troop 79'
+  title: 'Dashboard — Troop 79'
 };
 
 export default async function DashboardPage() {
   await requireCapability('advancement.write');
-  return <AdminHome overview />;
+  return (
+    <>
+      <PageTitle back={null} title="Dashboard" sub="Active scouts, the ledger, Court of Honor candidates and who has signed in." />
+      <AdvancementOverview />
+    </>
+  );
 }

@@ -2,9 +2,35 @@
 .group {
   margin: 0 0 28px;
 }
+/* One earth tone per section (admin.css --admin-tint-*): pale card, stronger left edge, darker heading. */
+.tint_moss {
+  --hub-bg: var(--admin-tint-moss-bg);
+  --hub-edge: var(--admin-tint-moss-edge);
+  --hub-ink: var(--admin-tint-moss-ink);
+}
+.tint_sky {
+  --hub-bg: var(--admin-tint-sky-bg);
+  --hub-edge: var(--admin-tint-sky-edge);
+  --hub-ink: var(--admin-tint-sky-ink);
+}
+.tint_wheat {
+  --hub-bg: var(--admin-tint-wheat-bg);
+  --hub-edge: var(--admin-tint-wheat-edge);
+  --hub-ink: var(--admin-tint-wheat-ink);
+}
+.tint_clay {
+  --hub-bg: var(--admin-tint-clay-bg);
+  --hub-edge: var(--admin-tint-clay-edge);
+  --hub-ink: var(--admin-tint-clay-ink);
+}
+.tint_stone {
+  --hub-bg: var(--admin-tint-stone-bg);
+  --hub-edge: var(--admin-tint-stone-edge);
+  --hub-ink: var(--admin-tint-stone-ink);
+}
 .head {
   font-size: var(--admin-text-xl);
-  color: var(--admin-navy);
+  color: var(--hub-ink, var(--admin-navy));
   margin: 0 0 10px;
   font-weight: var(--admin-weight-bold);
 }
@@ -15,8 +41,10 @@
 }
 .card {
   position: relative;
-  background: var(--admin-white);
+  /* Outside a tinted section (a landing page's bare grid) the --hub-* fallbacks give the plain white card. */
+  background: var(--hub-bg, var(--admin-white));
   border: 1px solid var(--admin-gray-200);
+  border-left: 3px solid var(--hub-edge, var(--admin-gray-200));
   border-radius: var(--admin-radius-lg);
   padding: 14px 16px;
   box-shadow: var(--admin-shadow-sm);
@@ -24,12 +52,12 @@
   min-height: 78px;
 }
 .card:hover {
-  border-color: var(--admin-navy-light);
+  border-color: var(--hub-edge, var(--admin-navy-light));
   box-shadow: var(--admin-shadow-md);
 }
 .title {
   font-weight: var(--admin-weight-bold);
-  color: var(--admin-navy);
+  color: var(--hub-ink, var(--admin-navy));
   font-size: var(--admin-text-lg);
   text-decoration: none;
 }
@@ -43,31 +71,17 @@
 .card:hover .title {
   text-decoration: underline;
 }
+/* Description: at most two lines, so a card is never more than three lines with its title. */
 .line {
   font-size: var(--admin-text-base);
-  color: var(--admin-gray-500);
+  color: var(--admin-gray-700);
   margin-top: 4px;
   line-height: 1.4;
-}
-/* Quiet links inside a card (Reports): above the stretched title link so each stays clickable. */
-.kids {
-  list-style: none;
-  margin: 6px 0 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 12px;
-  position: relative;
-}
-.kids a {
-  display: inline-flex;
-  align-items: center;
-  min-height: 28px;
-  font-size: var(--admin-text-sm);
-  color: var(--admin-gray-600);
-}
-.kids a:hover {
-  color: var(--admin-navy);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
 }
 .season {
   display: inline-block;
@@ -85,10 +99,14 @@
   background: var(--admin-gray-100);
   color: var(--admin-gray-700);
 }
-/* Off-season: greyed, still clickable. */
+/* Off-season: greyed (whatever the section's tone), still clickable. */
 .off {
   background: var(--admin-gray-50);
+  border-left-color: var(--admin-gray-300);
   box-shadow: none;
+}
+.off:hover {
+  border-color: var(--admin-gray-300);
 }
 .off .title {
   color: var(--admin-gray-600);

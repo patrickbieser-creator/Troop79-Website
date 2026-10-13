@@ -6,6 +6,8 @@
  * Plans/Admin-Home-And-Nav.md Wave 2: regrouped by job (Advancement · Calendar & Content · Money · People & Setup ·
  * Troop admin tools). Wave 3: the section bar names these sections and each section's items are its tabs
  * (sectionNav()); the Home grid renders the same visible sections through hubGroups().
+ * 2026-10-13 (Patrick): Reports is its own section holding every report, whatever it reports on; the old dashboard is
+ * the first Advancement card; each section carries an earth-tone tint for its Home group.
  */
 import { CAPABILITIES, type Capability } from '@/lib/capabilities';
 
@@ -35,31 +37,37 @@ export interface NavItem {
   everyone?: boolean;
   /** matchPath must equal the pathname rather than prefix it (Home at /admin). */
   exact?: boolean;
-  /** Extra path prefixes that light this item up (the dashboard URL is Home too). */
+  /** Extra path prefixes that light this item up. */
   alsoMatches?: string[];
   /**
-   * Folds this item into ONE Home card named by `folder` (Reports). The card shows the members as quiet links, and
-   * the folder's landing page (folderLanding) lists them with a description each.
+   * Marks this item as a member of the folder named `folder` (Reports): the folder's landing page lists it with its
+   * description, and on Home it is an ordinary card in its section.
    */
   folder?: string;
   /**
    * This item IS the landing page of the folder of that name (Reports -> /admin/reports). It carries no capability of
-   * its own: it is visible exactly when at least one member of the folder is. The Home card's title links to it, and
-   * it is not listed among the folder's own links. Its tab lights up on any member's page (navActiveMatchPathFor).
+   * its own: it is visible exactly when at least one member of the folder is. It is the section bar's entry for the
+   * folder and has no Home card of its own (the members are the cards). It lights up on any member's page
+   * (navActiveMatchPathFor).
    */
   folderLanding?: string;
   /**
-   * Left off the section bar and tabs: a folder member only its landing page collects (the five reports sit behind
-   * the single Reports tab), or a tool reachable from the Troop admin tools row only (Styleguides). A hidden folder
-   * member lights its folder's landing tab. Every folder member must carry it (tested).
+   * Left off the section bar and tabs: a folder member only its landing page collects (the reports sit behind the
+   * single Reports bar entry), or a tool reachable from the Troop admin tools row only (Styleguides). A hidden folder
+   * member lights its folder's landing entry. Every folder member must carry it (tested).
    */
   navHidden?: boolean;
   /** Seasonal (Wreath Sale): first in its group while its season is open, last and greyed otherwise. */
   seasonal?: boolean;
 }
 
+/** The earth tone a section's Home group wears (admin.css --admin-tint-*). The quiet tools group has none. */
+export type NavTint = 'moss' | 'sky' | 'wheat' | 'clay' | 'stone';
+
 export interface NavSection {
   title: string;
+  /** Pale card background + stronger left edge + darker heading, per section (Patrick, 2026-10-13). */
+  tint?: NavTint;
   /** The (shorter) name on the section bar when it differs from the title: "Home", "People", "Tools". */
   barLabel?: string;
   /** Rendered quietly and last on Home: one card listing the items as links, no descriptions. */
@@ -67,33 +75,35 @@ export interface NavSection {
   items: NavItem[];
 }
 
-/** The one-line description of a folder card (the items it folds carry their own). */
-export const FOLDER_DESCRIPTIONS: Record<string, string> = {
-  Reports: 'Audits, weekly report, Court of Honor, exports'
-};
-
 export const SECTIONS: NavSection[] = [
   {
     title: 'Overview',
     barLabel: 'Home',
     items: [
       {
-        // Home = the old Dashboard, extended (Plans/Admin-Home-And-Nav.md Wave 1):
-        // "Needs you today" first, then the advancement overview for those who
-        // hold advancement.write. /admin/advancement/dashboard still renders the
-        // same page, so old links and bookmarks keep working.
+        // Home = "Needs you today" plus the card grid. The old Dashboard (the advancement overview) is its own page,
+        // the first Advancement card, at /admin/advancement/dashboard.
         label: 'Home',
         href: '/admin',
         matchPath: '/admin',
         exact: true,
-        alsoMatches: ['/admin/advancement/dashboard'],
         everyone: true
       }
     ]
   },
   {
     title: 'Advancement',
+    tint: 'moss',
     items: [
+      {
+        // The old Home overview (stats, recent ledger activity, likely-ready scouts, logins) on its own page.
+        // First, so the Advancement bar entry opens it.
+        label: 'Dashboard',
+        href: '/admin/advancement/dashboard',
+        matchPath: '/admin/advancement/dashboard',
+        description: 'Active scouts, ledger, Court of Honor candidates and recent sign-ins',
+        capability: 'advancement.write'
+      },
       {
         label: 'Fast Entry',
         href: '/admin/advancement/fast-entry',
@@ -143,67 +153,12 @@ export const SECTIONS: NavSection[] = [
         matchPath: '/admin/advancement/has-needs',
         description: 'Who still needs a requirement',
         capability: 'advancement.write'
-      },
-      // Reports: ONE "Reports" tab and ONE card on Home, both landing on /admin/reports, which lists every member of
-      // the folder below (Patrick, 2026-10-13: the five reports are not tabs). A new report is one item here with
-      // folder: 'Reports' and navHidden: true.
-      {
-        label: 'Reports',
-        href: '/admin/reports',
-        matchPath: '/admin/reports',
-        folderLanding: 'Reports'
-      },
-      {
-        label: 'Audits',
-        href: '/admin/advancement/audits',
-        matchPath: '/admin/advancement/audits',
-        description: 'Data-quality checks that flag ledger records that look wrong',
-        folder: 'Reports',
-        navHidden: true,
-        capability: 'advancement.write'
-      },
-      {
-        label: 'Advancement Report',
-        href: '/admin/advancement/report',
-        matchPath: '/admin/advancement/report',
-        description: 'What got signed off in a date range, for the Bugle and the public site',
-        folder: 'Reports',
-        navHidden: true,
-        capability: 'advancement.write'
-      },
-      {
-        label: 'Court of Honor',
-        href: '/admin/advancement/court-of-honor',
-        matchPath: '/admin/advancement/court-of-honor',
-        description: 'Ranks, merit badges and awards earned in a date range',
-        folder: 'Reports',
-        navHidden: true,
-        capability: 'advancement.write'
-      },
-      {
-        label: 'Scoutbook Export',
-        href: '/admin/advancement/scoutbook-export',
-        matchPath: '/admin/advancement/scoutbook-export',
-        description: "Awards in a date range, formatted for Scoutbook's bulk upload",
-        folder: 'Reports',
-        navHidden: true,
-        capability: 'advancement.write'
-      },
-      {
-        // Was an Actions ▾ option on the retired Roll Call list (2026-08-24);
-        // it is a report, so it lives with the reports — last, stand-alone.
-        label: 'Attendance Report',
-        href: '/admin/advancement/meetings/report',
-        matchPath: '/admin/advancement/meetings/report',
-        description: 'Meeting attendance per scout and per adult',
-        folder: 'Reports',
-        navHidden: true,
-        capability: 'advancement.write'
       }
     ]
   },
   {
     title: 'Calendar & Content',
+    tint: 'sky',
     items: [
       /*
        * One Calendar destination, replacing the Events / Event Signups /
@@ -271,6 +226,7 @@ export const SECTIONS: NavSection[] = [
   },
   {
     title: 'Money',
+    tint: 'wheat',
     items: [
       {
         // Ships dark in Phase 1 (Plans/Troop-Finances.md) — read-only ledger
@@ -295,29 +251,6 @@ export const SECTIONS: NavSection[] = [
         capability: 'finance.manage'
       },
       {
-        // Phase 6 — read-only, so also reachable by finance.view; nav
-        // visibility still keys off finance.manage like the rest of this
-        // section (nobody holds finance.view at launch — see Ledger's note).
-        label: 'Activity Report',
-        href: '/admin/finance/report',
-        matchPath: '/admin/finance/report',
-        description: 'Income and spending by event and kind',
-        capability: 'finance.manage'
-      },
-      {
-        // Plans/Ledger-Audit.md (2026-09-29). The page's route stays under
-        // /admin/utilities (Patrick asked for it there), but it BELONGS to Money:
-        // treasurers work from this section. Membership is explicit — activeSectionTitleFor()
-        // answers from the section an item sits in, never from the URL prefix, so
-        // Utilities does not light up on this page. Read-only; finance.view reaches
-        // it as well, nav keys off finance.manage like the rest of this section.
-        label: 'Ledger Audit',
-        href: '/admin/utilities/ledger-audit',
-        matchPath: '/admin/utilities/ledger-audit',
-        description: 'Match the ledger to the bank statement',
-        capability: 'finance.manage'
-      },
-      {
         // Plans/Wreath-Sale.md Release A — settings, items, sellers, orders and the Rose order for the
         // annual wreath sale. finance.manage on the page and on every action. Seasonal: first in
         // Money while the sale is open, last and greyed otherwise (hubGroups).
@@ -331,8 +264,95 @@ export const SECTIONS: NavSection[] = [
     ]
   },
   {
+    title: 'Reports',
+    tint: 'clay',
+    items: [
+      // ONE Reports entry on the section bar (the landing) and one Home card per report (Patrick, 2026-10-13): every
+      // report sits here whatever it reports on. A new report is one item with folder: 'Reports' and navHidden: true.
+      {
+        label: 'Reports',
+        href: '/admin/reports',
+        matchPath: '/admin/reports',
+        folderLanding: 'Reports'
+      },
+      {
+        label: 'Audits',
+        href: '/admin/advancement/audits',
+        matchPath: '/admin/advancement/audits',
+        description: 'Data-quality checks that flag ledger records that look wrong',
+        folder: 'Reports',
+        navHidden: true,
+        capability: 'advancement.write'
+      },
+      {
+        label: 'Advancement Report',
+        href: '/admin/advancement/report',
+        matchPath: '/admin/advancement/report',
+        description: 'What got signed off in a date range, for the Bugle and the public site',
+        folder: 'Reports',
+        navHidden: true,
+        capability: 'advancement.write'
+      },
+      {
+        label: 'Court of Honor',
+        href: '/admin/advancement/court-of-honor',
+        matchPath: '/admin/advancement/court-of-honor',
+        description: 'Ranks, merit badges and awards earned in a date range',
+        folder: 'Reports',
+        navHidden: true,
+        capability: 'advancement.write'
+      },
+      {
+        label: 'Scoutbook Export',
+        href: '/admin/advancement/scoutbook-export',
+        matchPath: '/admin/advancement/scoutbook-export',
+        description: "Awards in a date range, formatted for Scoutbook's bulk upload",
+        folder: 'Reports',
+        navHidden: true,
+        capability: 'advancement.write'
+      },
+      {
+        // Was an Actions ▾ option on the retired Roll Call list (2026-08-24);
+        // it is a report, so it lives with the reports.
+        label: 'Attendance Report',
+        href: '/admin/advancement/meetings/report',
+        matchPath: '/admin/advancement/meetings/report',
+        description: 'Meeting attendance per scout and per adult',
+        folder: 'Reports',
+        navHidden: true,
+        capability: 'advancement.write'
+      },
+      {
+        // Phase 6 — read-only, so also reachable by finance.view; nav
+        // visibility still keys off finance.manage (nobody holds finance.view at launch).
+        label: 'Activity Report',
+        href: '/admin/finance/report',
+        matchPath: '/admin/finance/report',
+        description: 'Income and spending by event and kind',
+        folder: 'Reports',
+        navHidden: true,
+        capability: 'finance.manage'
+      },
+      {
+        // Plans/Ledger-Audit.md (2026-09-29). The page's route stays under
+        // /admin/utilities (Patrick asked for it there), but it BELONGS to Reports:
+        // membership is explicit — activeSectionTitleFor() answers from the section an
+        // item sits in, never from the URL prefix, so Utilities does not light up on this
+        // page. Read-only; finance.view reaches it as well, nav keys off finance.manage.
+        label: 'Ledger Audit',
+        href: '/admin/utilities/ledger-audit',
+        matchPath: '/admin/utilities/ledger-audit',
+        description: 'Match the ledger to the bank statement',
+        folder: 'Reports',
+        navHidden: true,
+        capability: 'finance.manage'
+      }
+    ]
+  },
+  {
     title: 'People & Setup',
     barLabel: 'People',
+    tint: 'stone',
     items: [
       {
         label: 'Roster',
@@ -513,7 +533,7 @@ export function navSections<S extends { items: NavItem[] }>(sections: S[]): S[] 
 
 /**
  * The title of the section the current page belongs to — by the section an item SITS IN (explicit membership),
- * never by URL prefix. Ledger Audit's route is under /admin/utilities, but it sits in Money, so Money is the answer.
+ * never by URL prefix. Ledger Audit's route is under /admin/utilities, but it sits in Reports, so Reports is the answer.
  */
 export function activeSectionTitleFor(
   sections: { title: string; items: { disabled?: boolean; matchPath?: string; exact?: boolean; alsoMatches?: string[] }[] }[],
@@ -525,7 +545,7 @@ export function activeSectionTitleFor(
 }
 
 /**
- * The active tab. A tab lights itself; a navHidden folder member (a report) lights its folder's landing tab (Reports)
+ * The active tab. A tab lights itself; a navHidden folder member (a report) lights its folder's landing entry (Reports)
  * - by explicit membership in the folder, never by URL prefix. Pass the VISIBLE sections before navSections() drops the
  * hidden members.
  */
@@ -568,7 +588,7 @@ export interface SectionNavModel {
 /**
  * Everything the section bar and tab strip render, from the VISIBLE sections and the pathname. A section with no
  * visible tab is absent; the active section is the one an item sits in (explicit membership), so Ledger Audit
- * lights Money though its URL is under /admin/utilities.
+ * lights Reports though its URL is under /admin/utilities.
  */
 export function sectionNav(visible: NavSection[], pathname: string): SectionNavModel {
   const secs = navSections(visible);
@@ -605,9 +625,9 @@ export interface HubCard {
   key: string;
   title: string;
   description?: string;
-  /** Where the title goes. A folder card: its landing page (Reports); the tools card: the first link. */
+  /** Where the title goes. The tools card: the first link. */
   href: string;
-  /** Quiet links inside the card (Reports' five reports; the tools). */
+  /** The quiet tools card only: its tools as plain links. */
   links?: { label: string; href: string }[];
   /** Seasonal card: 'open' = in season, 'off' = greyed and last. */
   season?: 'open' | 'off';
@@ -616,22 +636,24 @@ export interface HubCard {
 export interface HubGroup {
   title: string;
   quiet: boolean;
+  /** The group's earth tone; absent on the quiet tools group. */
+  tint?: NavTint;
   cards: HubCard[];
 }
 
 /**
  * The Home card grid, built from the SAME visible sections the bar renders — never a second hand-kept list.
- * Home itself is skipped (it is the page). A folder (Reports) collapses its items into one card at the position of
- * its first item. The quiet group is one card listing its tools as links. A seasonal card goes first in its group
- * while `wreathOpen`, otherwise last and greyed. A group with no cards is absent.
+ * Home itself is skipped (it is the page). A folder landing (Reports) is the section bar's entry and makes no card;
+ * its members are ordinary cards. The quiet group is one card listing its tools as links. A seasonal card goes first
+ * in its group while `wreathOpen`, otherwise last and greyed. A group with no cards is absent.
  */
 export function hubGroups(
-  visible: { title: string; quiet?: boolean; items: NavItem[] }[],
+  visible: { title: string; tint?: NavTint; quiet?: boolean; items: NavItem[] }[],
   opts: { wreathOpen: boolean }
 ): HubGroup[] {
   const groups: HubGroup[] = [];
   for (const section of visible) {
-    const items = section.items.filter((i) => !i.everyone && i.href && !i.disabled);
+    const items = section.items.filter((i) => !i.everyone && !i.folderLanding && i.href && !i.disabled);
     if (items.length === 0) continue;
 
     if (section.quiet) {
@@ -650,44 +672,15 @@ export function hubGroups(
       continue;
     }
 
-    let cards: HubCard[] = [];
-    for (const item of items) {
-      if (item.folderLanding) {
-        // The landing is the folder card's title link; it is not one of the card's own links.
-        const existing = cards.find((c) => c.key === `folder:${item.folderLanding}`);
-        if (existing) existing.href = item.href!;
-        else
-          cards.push({
-            key: `folder:${item.folderLanding}`,
-            title: item.folderLanding,
-            description: FOLDER_DESCRIPTIONS[item.folderLanding],
-            href: item.href!,
-            links: []
-          });
-        continue;
-      }
-      if (item.folder) {
-        const existing = cards.find((c) => c.key === `folder:${item.folder}`);
-        const link = { label: item.label, href: item.href! };
-        if (existing) existing.links!.push(link);
-        else
-          cards.push({
-            key: `folder:${item.folder}`,
-            title: item.folder,
-            description: FOLDER_DESCRIPTIONS[item.folder],
-            href: item.href!,
-            links: [link]
-          });
-        continue;
-      }
+    let cards: HubCard[] = items.map((item) => {
       const card: HubCard = { key: item.href!, title: item.label, description: item.description, href: item.href! };
       if (item.seasonal) card.season = opts.wreathOpen ? 'open' : 'off';
-      cards.push(card);
-    }
+      return card;
+    });
     const seasonal = cards.filter((c) => c.season);
     const rest = cards.filter((c) => !c.season);
     cards = opts.wreathOpen ? [...seasonal, ...rest] : [...rest, ...seasonal];
-    groups.push({ title: section.title, quiet: false, cards });
+    groups.push({ title: section.title, quiet: false, tint: section.tint, cards });
   }
   return groups;
 }

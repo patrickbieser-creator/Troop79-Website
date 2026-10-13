@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TabStrip } from '../src/app/admin/(workspace)/_components/tab-strip';
 import { AddButton } from '../src/app/admin/(workspace)/_components/add-button';
@@ -86,6 +86,108 @@ describe('TabStrip', () => {
     expect(screen.getByRole('tab', { name: 'Current' }).getAttribute('href')).toBe(
       '/admin/news/articles'
     );
+  });
+
+  // Inactive tabs (Patrick, 2026-10-13): greyed, still focusable, explain themselves on click.
+  describe('inactive items', () => {
+    function renderInactive(onSelect = vi.fn()) {
+      render(
+        <TabStrip
+          items={[
+            { key: 'a', label: 'A' },
+            { key: 'roster', label: 'Roster', inactive: true, onSelect, href: '/nowhere' }
+          ]}
+          activeKey="a"
+          ariaLabel="Sample"
+        />
+      );
+      return onSelect;
+    }
+
+    it('TabStrip_MarksAnInactiveTab_AriaDisabledAndTitled_ButStillFocusable', () => {
+      renderInactive();
+      const tab = screen.getByRole('tab', { name: 'Roster' });
+      expect(tab.getAttribute('aria-disabled')).toBe('true');
+      expect(tab.getAttribute('title')).toBe('Not active for this event');
+      expect(tab.hasAttribute('disabled')).toBe(false);
+      expect(tab.getAttribute('aria-selected')).toBe('false');
+    });
+
+    it('TabStrip_ClickingAnInactiveTab_ShowsTheReason_AndDoesNotSelectOrNavigate', async () => {
+      const onSelect = renderInactive();
+      expect(screen.getByRole('status').textContent).toBe('');
+      await userEvent.click(screen.getByRole('tab', { name: 'Roster' }));
+      expect(screen.getByRole('status').textContent).toBe('Not active for this event');
+      expect(onSelect).not.toHaveBeenCalled();
+    });
+
+    it('TabStrip_InactiveTab_RendersNoLink_EvenWhenGivenAnHref', () => {
+      renderInactive();
+      expect(screen.getByRole('tab', { name: 'Roster' }).getAttribute('href')).toBeNull();
+    });
+
+    it('TabStrip_InactiveTab_AnnouncesTheReason_ThroughAPoliteLiveRegion', () => {
+      renderInactive();
+      expect(screen.getByRole('status').getAttribute('aria-live')).toBe('polite');
+    });
+
+    it('TabStrip_InactiveTab_LinksItsReason_ByAriaDescribedBy_WhileShown', async () => {
+      renderInactive();
+      const tab = screen.getByRole('tab', { name: 'Roster' });
+      await userEvent.click(tab);
+      expect(tab.getAttribute('aria-describedby')).toBe(screen.getByRole('status').id);
+    });
+
+    it('TabStrip_InactiveTab_DismissesTheReason_AfterAFewSeconds_WithoutAnyBlur', async () => {
+      vi.useFakeTimers();
+      try {
+        renderInactive();
+        // fireEvent.click: no focus, no blur - the Safari case
+        act(() => {
+          fireEvent.click(screen.getByRole('tab', { name: 'Roster' }));
+        });
+        expect(screen.getByRole('status').textContent).toBe('Not active for this event');
+        act(() => {
+          vi.advanceTimersByTime(5000);
+        });
+        expect(screen.getByRole('status').textContent).toBe('');
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('TabStrip_InactiveTab_ShowsACustomReason_WhenGiven', async () => {
+      render(
+        <TabStrip
+          items={[{ key: 'x', label: 'X', inactive: true, inactiveReason: 'Needs a signup first' }]}
+          activeKey="none"
+          ariaLabel="Sample"
+        />
+      );
+      await userEvent.click(screen.getByRole('tab', { name: 'X' }));
+      expect(screen.getByRole('status').textContent).toBe('Needs a signup first');
+    });
+
+    it('TabStrip_InactiveTab_ShowsTheReason_OnEnter', async () => {
+      renderInactive();
+      screen.getByRole('tab', { name: 'Roster' }).focus();
+      await userEvent.keyboard('{Enter}');
+      expect(screen.getByRole('status').textContent).toBe('Not active for this event');
+    });
+
+    it('TabStrip_InactiveTab_DismissesTheReason_OnEscape', async () => {
+      renderInactive();
+      await userEvent.click(screen.getByRole('tab', { name: 'Roster' }));
+      await userEvent.keyboard('{Escape}');
+      expect(screen.getByRole('status').textContent).toBe('');
+    });
+
+    it('TabStrip_InactiveTab_DismissesTheReason_OnAnOutsideClick', async () => {
+      renderInactive();
+      await userEvent.click(screen.getByRole('tab', { name: 'Roster' }));
+      await userEvent.click(document.body);
+      expect(screen.getByRole('status').textContent).toBe('');
+    });
   });
 });
 
