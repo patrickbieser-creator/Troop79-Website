@@ -314,12 +314,6 @@
   outline: 2px solid var(--forest);
   outline-offset: 1px;
 }
-/* The event page's door to the signup form, which lives at
-   /events/[id]/signup since step 4. inline-block because .gateBtn was written
-   for a <button> and this is a link. */
-.signupCta { margin-top: 12px; }
-.signupCta .gateBtn { display: inline-block; text-decoration: none; }
-.helpNote { font-family: var(--font-ui); font-size: 12.5px; color: var(--text-meta); margin-top: 8px; }
 
 .gateBtn {
   background: var(--navy);
@@ -552,3 +546,16 @@
 .whenAt { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .whenTime { width: 7.5rem; }
 .whenProblem { flex-basis: 100%; margin: 0; font-size: var(--fs-sm); color: var(--status-danger-text, var(--text-body)); }
+
+/* The "Signup deadline" card as the signup button (signup-fact.tsx, Patrick 2026-10-13): navy like .gateBtn, the
+   whole card one target via the stretched link, a chevron to say "this goes somewhere". */
+.factAction { position: relative; background: var(--navy); transition: background var(--transition); }
+.factAction:hover { background: var(--forest); }
+.factAction dt { color: var(--on-navy-soft); }
+.factAction dd { color: var(--warm-white); padding-right: 18px; }
+.factAction .factSub { color: var(--on-navy-strong); }
+.factLink { color: inherit; text-decoration: none; }
+.factLink::after { content: ''; position: absolute; inset: 0; }
+.factLink:focus-visible { outline: none; }
+.factAction:has(.factLink:focus-visible) { outline: var(--focus-ring); outline-offset: 2px; }
+.factArrow { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 22px; line-height: 1; color: var(--warm-white); }

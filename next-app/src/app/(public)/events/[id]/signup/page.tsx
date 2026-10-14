@@ -288,6 +288,21 @@ export default async function EventSignupPage({
             </Notice>
           )}
           {sp.err && <Notice tone="error" className={styles.noticeGapBottom}>{sp.err}</Notice>}
+          {/* The family's own car/tent/patrol placements — moved here from the event page when its "Signing up"
+              section folded into the deadline card (Patrick, 2026-10-13: "it's just a click away"). Own household
+              only; a car is the driver's family name, never a phone or the manifest (Plans/Event-Logistics.md §A). */}
+          {ctx.placements.length > 0 && (
+            <Notice tone="info" className={styles.noticeGapBottom}>
+              <strong>Your placements</strong>
+              <ul className={styles.placementList}>
+                {ctx.placements.map((p) => (
+                  <li key={p.entryId}>
+                    <strong>{p.personName}</strong> — {p.parts.join(' · ')}
+                  </li>
+                ))}
+              </ul>
+            </Notice>
+          )}
 
           {/* Verified Signup (2026-08-26): the troop password is first base.
               Writing a signup needs a verified adult (or a leader) — the

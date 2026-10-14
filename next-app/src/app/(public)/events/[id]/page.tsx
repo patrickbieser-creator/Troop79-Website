@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { loadEventDetail } from '@/lib/event-signup';
 import { loadSignupContext, signedUpNames } from './signup-context';
+import { SignupFact } from './signup-fact';
 import { formatCalendarDateParts, formatTimeOfDay } from '@/lib/calendar-shared';
 import { loadCalendarCategories } from '@/lib/calendar';
 import { plainSummary } from '@/lib/feed-logic';
@@ -13,7 +14,6 @@ import { ArticleBody } from '@/lib/article-body/ArticleBody';
 import { centralToday } from '@/lib/dates';
 import { fmtDate, fmtDay } from '@/lib/format-date';
 import { MeetingAgenda } from './meeting-agenda';
-import { Notice } from '@/app/_components/notice';
 import { JsonLd } from '@/app/_components/json-ld';
 import { siteUrl } from '@/lib/site-url';
 import { eventJsonLd, breadcrumbJsonLd } from '@/lib/seo';
@@ -138,7 +138,7 @@ export default async function EventDetailPage({
   const ctx = await loadSignupContext(numeric, sp.household);
   if (!ctx) notFound();
 
-  const { detail, gatedIn, household, slotFirst, locked } = ctx;
+  const { detail, household, slotFirst, locked } = ctx;
   const { entry, signup, prices, slots, resources, headcount } = detail;
   /* Who in this party already has a live entry — the question the form used to
      answer just by being on this page. See signup-context.ts. */
@@ -239,13 +239,13 @@ export default async function EventDetailPage({
           </div>
         )}
         {signup && (
-          <div className={styles.fact}>
-            <dt>Signup deadline</dt>
-            <dd>
-              {fmtDay(signup.deadline)}
-              <span className={styles.factSub}>{locked ? 'Closed' : 'Open now'}</span>
-            </dd>
-          </div>
+          <SignupFact
+            entryId={entry.id}
+            deadline={fmtDay(signup.deadline)}
+            locked={locked}
+            signedUp={signedUp}
+            capacity={signup.capacity != null ? { taken: headcount, of: signup.capacity, waitlist: !!signup.waitlist_enabled } : null}
+          />
         )}
         {signup && prices.length > 0 && (
           <div className={styles.fact}>
@@ -416,69 +416,6 @@ export default async function EventDetailPage({
             </section>
           )}
 
-          {/*
-            THE SIGNUP SUMMARY — status and a door, never the form itself.
-            The form moved to /events/[id]/signup (step 4 of
-            Plans/Calendar-Detail-And-Signup-Split.md).
-
-            The status line is not decoration. The form used to answer "are we
-            already signed up?" simply by being here with the family's entries
-            in it. Take the form away and a family scanning the calendar has no
-            way to tell they already responded — and the predictable result of
-            that is a second submission.
-          */}
-          <section className={styles.block} id="signup">
-            <h2 className={styles.blockHead}>Signing up</h2>
-
-            {signup.capacity != null && (
-              <p className={styles.capacity}>
-                {headcount} of {signup.capacity} spots taken
-                {signup.waitlist_enabled && headcount >= signup.capacity && ' — waitlist is open'}
-              </p>
-            )}
-
-            {locked ? (
-              <p className={styles.locked}>
-                <strong>Signups are closed for this event.</strong> Contact the Scoutmaster if you
-                need to make a change.
-              </p>
-            ) : (
-              <>
-                {signedUp.length > 0 && (
-                  <Notice tone="success" className={styles.noticeGapBottom}>
-                    ✓ You&rsquo;re signed up: <strong>{signedUp.join(', ')}</strong>
-                    {/* Own household's placements only — car = the driver's
-                        family name, never a phone, email or the full manifest
-                        (Plans/Event-Logistics.md §A; Patrick accepted the
-                        family gate for this, 2026-08-22). Scouts negotiate
-                        rides the day before; this is what stops the havoc. */}
-                    {ctx.placements.length > 0 && (
-                      <ul className={styles.placementList}>
-                        {ctx.placements.map((p) => (
-                          <li key={p.entryId}>
-                            <strong>{p.personName}</strong> — {p.parts.join(' · ')}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </Notice>
-                )}
-                <p className={styles.signupCta}>
-                  <Link href={`/events/${entry.id}/signup`} className={styles.gateBtn}>
-                    {signedUp.length > 0 ? 'Change your signup' : 'Sign up'}
-                  </Link>
-                </p>
-                {!gatedIn && (
-                  /* Said plainly rather than hiding the button (Patrick): the
-                     gate is one shared password, and a family that can't see
-                     the control assumes the feature is missing. */
-                  <p className={styles.helpNote}>
-                    Families sign in with the troop password on the next page.
-                  </p>
-                )}
-              </>
-            )}
-          </section>
         </>
       )}
     </main>
