@@ -40,7 +40,6 @@ describe('credit a scout at checkout', () => {
   it('CheckoutCredit_DefaultsToTroop_AndIsOptional', async () => {
     const action = setup();
     const user = userEvent.setup();
-    expect(screen.getByText('Credit: Troop 79')).toBeTruthy();
     expect(screen.queryByRole('searchbox')).toBeNull();
     await fillAndPlace(user);
     await waitFor(() => expect(action).toHaveBeenCalled());
@@ -56,20 +55,69 @@ describe('credit a scout at checkout', () => {
     expect(search).not.toHaveBeenCalled();
     await user.type(box, 'e');
     await user.click(await screen.findByRole('button', { name: 'Give Ben B. credit' }));
-    expect(screen.getByText('Credit: Ben B.')).toBeTruthy();
     await fillAndPlace(user);
     await waitFor(() => expect(action).toHaveBeenCalled());
     expect((action.mock.calls[0] as unknown[])[0]).toMatchObject({ creditSellerId: 7, fulfillment: 'pickup' });
   });
 
-  it('CheckoutCredit_NoTheTroop_RemovesThePick', async () => {
+  // Credit box cleanup (Patrick, 2026-10-13): no "Credit: …" line; once picked, one line naming the scout with
+  // Change and Remove.
+  async function pickBen() {
     setup();
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: /Know a scout in Troop 79/ }));
     await user.type(screen.getByRole('searchbox'), 'be');
     await user.click(await screen.findByRole('button', { name: 'Give Ben B. credit' }));
-    await user.click(screen.getByRole('button', { name: 'No, the troop' }));
-    expect(screen.getByText('Credit: Troop 79')).toBeTruthy();
+    return user;
+  }
+
+  it('CheckoutCredit_ShowsNoCreditLine_BeforeAPick', () => {
+    setup();
+    expect(screen.queryByText(/^Credit:/)).toBeNull();
+  });
+
+  it('CheckoutCredit_ShowsNoCreditLine_AfterAPick', async () => {
+    await pickBen();
+    expect(screen.queryByText(/^Credit:/)).toBeNull();
+  });
+
+  it('CheckoutCredit_NamesThePickedScout_InOneLine', async () => {
+    await pickBen();
+    expect(screen.getByText(/gets credit for this order/).textContent).toBe(
+      'Ben B. gets credit for this order. The troop still handles your pickup or delivery.'
+    );
+  });
+
+  it('CheckoutCredit_HidesTheOpener_AfterAPick', async () => {
+    await pickBen();
+    expect(screen.queryByRole('button', { name: /Know a scout in Troop 79/ })).toBeNull();
+  });
+
+  it('CheckoutCredit_Remove_GivesTheCreditBackToTheTroop', async () => {
+    const user = await pickBen();
+    await user.click(screen.getByRole('button', { name: 'Remove' }));
+    expect(screen.queryByText(/gets credit for this order/)).toBeNull();
+  });
+
+  it('CheckoutCredit_Remove_SendsNoSellerWithTheOrder', async () => {
+    const action = vi.fn(async () => ({ ok: true as const, token: 'tok', orderNumber: 'W-1', created: true }));
+    render(
+      <CheckoutForm items={items} scout={null} rules={rules} pickupText="Sat" distributionDay="Saturday" graceCutoff={null} action={action} searchSellers={search} />
+    );
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /Know a scout in Troop 79/ }));
+    await user.type(screen.getByRole('searchbox'), 'be');
+    await user.click(await screen.findByRole('button', { name: 'Give Ben B. credit' }));
+    await user.click(screen.getByRole('button', { name: 'Remove' }));
+    await fillAndPlace(user);
+    await waitFor(() => expect(action).toHaveBeenCalled());
+    expect((action.mock.calls[0] as unknown[])[0]).toMatchObject({ creditSellerId: null });
+  });
+
+  it('CheckoutCredit_Change_ReopensTheScoutSearch', async () => {
+    const user = await pickBen();
+    await user.click(screen.getByRole('button', { name: 'Change' }));
+    expect(screen.getByRole('searchbox')).toBeTruthy();
   });
 
   // Chrome ignores autocomplete="off" on anything it takes for a name field and offers the visitor's own saved

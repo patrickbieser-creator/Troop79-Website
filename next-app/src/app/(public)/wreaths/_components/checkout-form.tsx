@@ -488,29 +488,53 @@ function CreditPicker({ search, picked, onPick, problem }: { search: CheckoutPro
     if (n === seq.current) setMatches(found);
   }
 
+  // Picked: one line naming the scout, with Change (search again) and Remove (back to the troop). No separate
+  // "Credit: …" line in any state — the opener or this line already says it (Patrick, 2026-10-13).
+  if (picked) {
+    return (
+      <div>
+        <p className={styles.prose}>
+          <strong>{picked.name}</strong> gets credit for this order. The troop still handles your pickup or delivery.
+        </p>
+        <p className={styles.creditActions}>
+          <button
+            type="button"
+            className={styles.linkBtn}
+            onClick={() => {
+              onPick(null);
+              setOpen(true);
+            }}
+          >
+            Change
+          </button>
+          <button
+            type="button"
+            className={styles.linkBtn}
+            onClick={() => {
+              onPick(null);
+              setOpen(false);
+            }}
+          >
+            Remove
+          </button>
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div>
       <button type="button" className={`${styles.linkBtn} ${styles.creditToggle}`} aria-expanded={open} aria-controls="credit-box" onClick={() => setOpen((o) => !o)}>
         Know a scout in Troop 79? Give them credit (optional)
       </button>
-      <p className={styles.meta}>Credit: {picked ? picked.name : 'Troop 79'}</p>
       {open && (
         <div id="credit-box" className={styles.inset}>
-          {picked ? (
-            <p className={styles.prose}>
-              <strong>{picked.name}</strong> gets the credit. The troop still handles your pickup or delivery.{' '}
-              <button type="button" className={styles.linkBtn} onClick={() => onPick(null)}>
-                No, the troop
-              </button>
-            </p>
-          ) : (
-            <>
-              {/* Chrome ignores autocomplete="off" on a field it takes for a name and lays the visitor's own saved
-                  contacts over this list; an unrecognised token turns that off, and the label and hint stay clear of
-                  its "first … name" pattern (2026-10-13). */}
-              <Field label="Which scout?" hint="Type at least 2 letters. 30% of the profit on your order goes into their scout account." problem={problem}>
-                <TextInput type="search" name="scout_lookup" autoComplete="troop79-scout-search" value={q} onChange={(e) => type(e.target.value)} />
-              </Field>
+          {/* Chrome ignores autocomplete="off" on a field it takes for a name and lays the visitor's own saved
+              contacts over this list; an unrecognised token turns that off, and the label and hint stay clear of
+              its "first … name" pattern (2026-10-13). */}
+          <Field label="Which scout?" hint="Type at least 2 letters. 30% of the profit on your order goes into their scout account." problem={problem}>
+            <TextInput type="search" name="scout_lookup" autoComplete="troop79-scout-search" value={q} onChange={(e) => type(e.target.value)} />
+          </Field>
               {matches && matches.length === 0 && <p className={styles.meta}>No scout found with that name. The order will go to Troop 79.</p>}
               {matches && matches.length > 0 && (
                 <ul className={styles.lines} aria-label="Matching scouts">
@@ -533,8 +557,6 @@ function CreditPicker({ search, picked, onPick, problem }: { search: CheckoutPro
                   ))}
                 </ul>
               )}
-            </>
-          )}
         </div>
       )}
       {!open && problem && <p className={styles.badNote}>{problem}</p>}
