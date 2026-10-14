@@ -6,7 +6,7 @@ import { adminClient } from './helpers/admin-client';
 import { makeWreathFixture, NOW_R1, type WreathFixture } from './helpers/wreath-fixture';
 import { placeOrder } from '../src/lib/wreaths/place-order';
 import { canonicalSlug, loadConfirmation, loadCurrentSale, loadStoreItems, resolveScoutLink } from '../src/lib/wreaths/public';
-import { customerConfirmationEmail, scoutNoticeEmail } from '../src/lib/wreaths/emails';
+import { customerConfirmationEmail, greetingName, scoutNoticeEmail } from '../src/lib/wreaths/emails';
 
 /**
  * Wreath sale, Release A — what the public may see (Plans/Wreath-Sale.md, Privacy): no customer address, phone
@@ -169,6 +169,8 @@ describe('schema posture', () => {
   });
 });
 
+let baseEmailCtx: Parameters<typeof customerConfirmationEmail>[0];
+
 describe('emails', () => {
   const ctx = {
     orderNumber: 'W-1099',
@@ -183,12 +185,13 @@ describe('emails', () => {
     orderUrl: 'https://wreaths.test/wreaths/order/abc',
     changesBy: 'Saturday, October 25'
   };
+  baseEmailCtx = ctx;
 
   it('OrderEmailHtml_EscapesCustomerInput', () => {
     const { html, subject } = customerConfirmationEmail(ctx);
     expect(html).not.toContain('<script>');
     expect(html).not.toContain('<b>Saturday</b>');
-    expect(html).toContain('&lt;script&gt;');
+    expect(html).toContain('&lt;b&gt;Saturday&lt;/b&gt;');
     expect(subject).toContain('W-1099');
     expect(subject).not.toContain('<');
   });
@@ -222,5 +225,30 @@ describe('confirmation page headers', () => {
     expect(h['Referrer-Policy']).toBe('no-referrer');
     expect(h['Cache-Control']).toBe('no-store');
     expect(h['X-Robots-Tag']).toContain('noindex');
+  });
+});
+
+// The receipt goes to an address a stranger can type, so the one customer word it echoes must not carry a link or
+// spam text (Patrick, 2026-10-13, "open relay" question). Letters, apostrophes and hyphens only, else no name.
+describe('greetingName', () => {
+  it.each([
+    ['Pat Buyer', 'Pat'],
+    ['  María  José', 'María'],
+    ["O'Brien", "O'Brien"],
+    ['Anne-Marie Smith', 'Anne-Marie']
+  ])('GreetingName_KeepsAPlainFirstName_%s', (name, want) => {
+    expect(greetingName(name)).toBe(want);
+  });
+
+  it.each([['www.spam-site.com'], ['http://x.test'], ['Buy@cheap'], ['WIN$$$'], ['12345'], [''], ['A'.repeat(41)]])(
+    'GreetingName_DropsANameThatIsNotJustLetters_%s',
+    (name) => {
+      expect(greetingName(name)).toBeNull();
+    }
+  );
+
+  it('CustomerConfirmation_SaysThankYouWithoutAName_WhenTheNameIsALink', () => {
+    const { text } = customerConfirmationEmail({ ...baseEmailCtx, customerName: 'www.spam-site.com' });
+    expect(text).toContain('Thank you. Your order is placed.');
   });
 });

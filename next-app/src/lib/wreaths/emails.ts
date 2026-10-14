@@ -47,11 +47,20 @@ export function summaryBullets(c: Pick<OrderEmailContext, 'items' | 'deliveryFee
   ];
 }
 
+/**
+ * The first name the receipt greets, or null. The receipt goes to an address a stranger can type, so the one word of
+ * theirs it echoes must not carry a link or spam text: letters (any alphabet), apostrophes and hyphens, up to 40.
+ */
+export function greetingName(customerName: string): string | null {
+  const first = customerName.trim().split(/\s+/)[0] ?? '';
+  return /^[\p{L}][\p{L}\p{M}'’-]{0,39}$/u.test(first) ? first : null;
+}
+
 /** The customer's receipt: what they ordered, and how to pay the treasurer with the order number in the note. */
 export function customerConfirmationEmail(c: OrderEmailContext): { subject: string; html: string; text: string } {
-  const first = c.customerName.trim().split(/\s+/)[0] || 'there';
+  const first = greetingName(c.customerName);
   const { html, text } = renderEmail({
-    heading: `Thank you, ${first}. Your order is placed.`,
+    heading: first ? `Thank you, ${first}. Your order is placed.` : 'Thank you. Your order is placed.',
     intro: `Your Troop 79 wreath order ${c.orderNumber} is placed. It is not paid yet: please pay ${fmtMoney2(c.total)} and put ${c.orderNumber} in the payment note so we can match it.`,
     bullets: [
       ...summaryBullets(c),
