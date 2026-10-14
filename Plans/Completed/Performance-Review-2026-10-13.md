@@ -1,6 +1,6 @@
 # Admin Performance Review — 2026-10-13
 
-**Status:** Parked — awaiting Patrick's go on the quick wins
+**Status:** SHIPPED v1.218.0 (2026-10-13, ef4d515) — the four quick fixes and the three larger jobs.
 **Priority:** Medium
 **Follows:** `Plans/Performance-Review-2026-08-27.md`
 

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session 54 — The wreath sale goes online</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #3d5a3e;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #f0eecd;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); vertical-align: top; }
+        tr:hover { background: var(--nw-sage); }
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+        code { font-family: 'Courier New', monospace; font-size: 0.85em; background: var(--nw-light-gray); padding: 0 0.3em; border-radius: 3px; }
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+        @media print { body { background: white; } header { padding: 1.5rem; } .container { padding: 1rem; } .stat { break-inside: avoid; } }
+        @media (max-width: 600px) { header h1 { font-size: 1.5rem; } .stats { flex-direction: column; } }
+    </style>
+<body>
+    <header>
+        <h1>Scouts enter their own wreath orders, the admin gets a Home, and the store is cleared for real orders</h1>
+        <p class="subtitle">Session 55. The first full day of the wreath sale. Patrick's feedback from committee testing drove a run of fixes alongside two larger builds: a reorganized admin area and orders entered by scouts. It closed with the test orders deleted and numbering restarted at W-1001.</p>
+        <div class="meta">
+            <span>&#128197; October 13, 2026</span>
+            <span>&#129302; Operator (Opus 5.5)</span>
+            <span>&#128204; Troop79-Website</span>
+            <span>&#128640; v1.211.0 &rarr; v1.221.3</span>
+        </div>
+    </header>
+    <div class="container">
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">25</div><div class="label">Releases (v1.212.0&ndash;v1.221.3)</div></div>
+            <div class="stat"><div class="number">1</div><div class="label">Production migration (scout-entered orders)</div></div>
+            <div class="stat"><div class="number">6</div><div class="label">Decisions (D-372&ndash;D-377)</div></div>
+            <div class="stat"><div class="number">8</div><div class="label">Test orders deleted; next is W-1001</div></div>
+            <div class="stat"><div class="number">5553</div><div class="label">Tests (was 5088)</div></div>
+        </div>
+        <h2>What Was Accomplished</h2>
+        <div class="callout callout-teal">
+            <strong>The outcome:</strong> scouts and parents can enter in-person wreath orders on the scout's own page, then track them on Members with totals still to collect and to turn in, a goal thermometer and a printable delivery list. Leaders get an admin Home with a "Needs you today" inbox, tinted sections, a top section bar and a Reports section. The store is empty and ready for the public.
+        </div>
+        <h3>Wreath sale</h3>
+        <p>My wreath orders on Members. Scout-entered orders: customer name only, binary paid/unpaid with a payment note, a "collected" mark, cash gifts, and a confirmation sent only to the family. Goal thermometers and delivery messages, set either from Sellers or from Members. Checkout polish: no browser contacts in the scout search, a one-line credit box with Change and Remove, a larger "Know a scout" link, guarded receipt greetings, bulleted "Where the money goes", and new donation copy. The delivery list now says it shows only the scout's own deliveries.</p>
+        <h3>Admin</h3>
+        <p>A read-only superuser proxy on Members. Navigation Waves 1&ndash;3: Home with an inbox, a card grid by job, a Reports landing, and a top section bar in place of the left rail. Performance: loading skeletons, a 30-second client cache, a ledger index, and finance aggregates. Home rework: Dashboard as the first Advancement card, one card per report, and five earth-tone section tints. The calendar event workbench collapsed into one bar, with tabs that don't apply greyed out.</p>
+        <h3>Events</h3>
+        <p>On the public event page, the Signup deadline card is now the sign-up button and carries the status lines; the bottom section is gone.</p>
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Decision</th></tr></thead>
+            <tbody>
+                <tr><td>D-372</td><td>Members-area superuser proxy is read-only and reuses library.proxy_view</td></tr>
+                <tr><td>D-373</td><td>Admin navigation: top section bar, Home cards by job, Reports as their own section, earth-tone tints</td></tr>
+                <tr><td>D-374</td><td>Calendar event workbench: one flat tab bar, inactive tabs greyed</td></tr>
+                <tr><td>D-375</td><td>Scouts enter their own wreath orders (binary paid + note, collected, family-only email, goal + delivery message)</td></tr>
+                <tr><td>D-376</td><td>The event page's Signup deadline card is the sign-up button</td></tr>
+                <tr><td>D-377</td><td>Wreath checkout: one-line credit box, guarded greeting, validation unchanged, Turnstile on hold</td></tr>
+            </tbody>
+        </table>
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Patrick checks by eye: Safari scout search, the tinted Home and calendar bar on a phone, the scout-entry flow, goal and delivery message, and the navy Signup card.</li>
+            <li>Decide whether Advancement in the bar should open Fast Entry instead of the Dashboard.</li>
+            <li>Remaining Release C items: leaderboard, books, round 2, and close-sale to scout accounts. Release B when the troop's PayPal account exists.</li>
+        </ul>
+        <h2>Files Changed</h2>
+        <table>
+            <thead><tr><th>Area</th><th>Change</th></tr></thead>
+            <tbody>
+                <tr><td>Public</td><td>(public)/wreaths (entry mode, checkout credit box), (public)/member/wreaths (orders view, scout order row, settings), (public)/events/[id]/signup-fact.tsx; _components/goal-bar</td></tr>
+                <tr><td>Admin</td><td>_components/nav-data.ts, admin-hub, tab-strip; advancement/dashboard; reports; calendar/[id]/workbench; finance/wreaths (orders, sellers)</td></tr>
+                <tr><td>Library</td><td>lib/wreaths: scout-entry, scout-entry-viewer, place-order, my-orders, emails</td></tr>
+                <tr><td>Database</td><td>20261103100000_wreath_scout_entered.sql (production); perf index; test orders deleted and wreath_order_number_seq reset to 1001</td></tr>
+                <tr><td>Docs</td><td>Plans archived: Admin-Home-And-Nav, Performance-Review-2026-10-13, Wreath-Scout-Entered-Orders; changelog.html; Agents memory D-372&ndash;377</td></tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

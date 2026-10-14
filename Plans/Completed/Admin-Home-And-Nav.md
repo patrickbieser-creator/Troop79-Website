@@ -1,6 +1,6 @@
 # Admin Home and Navigation — a "needs you today" home, a card hub, and a slim section menu
 
-**Status:** Active — planning; prototype next (Brad, `prototypes/admin-home/`)
+**Status:** SHIPPED v1.214.0–v1.217.0 + v1.219.0 (2026-10-13, 62c5ce6…9a484ec). Wave 3 + Home rework done; leftovers in BACKLOG (phone bar check, Advancement landing, Advancement-only inbox).
 **Parked:** 2026-10-13
 **Priority:** Medium
 **Owner (consulting):** Jenna (macro IA, 2026-10-13); Brad (prototype)

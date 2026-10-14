@@ -1,6 +1,6 @@
 # Wreath Sale — scout-entered orders ("My customer" mode)
 
-**Status:** Active — prototype next (Brad, `prototypes/wreath-sale/`)
+**Status:** SHIPPED v1.220.0–v1.220.1 (2026-10-13, d5d4703, 0465801).
 **Created:** 2026-10-13
 **Priority:** High (round 1 cutoff Sun Oct 25, 2026)
 **Part of:** `Plans/Wreath-Sale.md` Release C ("paper-order entry"), pulled forward on its own.
