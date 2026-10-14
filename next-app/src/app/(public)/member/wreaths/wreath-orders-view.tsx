@@ -121,6 +121,11 @@ function DeliveryList({ seller, sale }: { seller: SellerView; sale: NonNullable<
         <p className={styles.fine}>Nothing for {seller.name.split(' ')[0]} to deliver. Orders marked &ldquo;scout delivers&rdquo; will be listed here.</p>
       ) : (
         <>
+          {/* A troop-delivered order credited to the scout looked "missing" here (Patrick, 2026-10-13). Screen only. */}
+          <p className={`${styles.fine} ${styles.screenOnly}`}>
+            Only orders {seller.name.split(' ')[0]} delivers. Orders the troop delivers, or that customers pick up, aren&rsquo;t on
+            this list.
+          </p>
           <div className={`${styles.screenOnly} ${styles.sheetActions}`}>
             <PrintDeliveryButton />
           </div>

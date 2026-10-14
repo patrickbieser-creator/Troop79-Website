@@ -106,6 +106,13 @@ describe('MyWreathOrdersView', () => {
     expect(within(sheet).getByText(/Distribution day: Sat, Nov 21/)).toBeTruthy();
   });
 
+  // Patrick, 2026-10-13: a troop-delivered order credited to the scout looked "missing" from the list.
+  it('MyWreathOrders_DeliveryList_SaysWhichOrdersItLeavesOut', () => {
+    render(<MyWreathOrdersView data={view([order(1, { fulfillment: 'scout', deliveringPersonId: ME })])} />);
+    const sheet = screen.getByRole('region', { name: 'Anjali S delivery list' });
+    expect(within(sheet).getByText('Only orders Anjali delivers. Orders the troop delivers, or that customers pick up, aren’t on this list.')).toBeTruthy();
+  });
+
   it('MyWreathOrders_GivesAFamilyWithNoSeller_AFriendlyEmptyState', () => {
     render(<MyWreathOrdersView data={{ sale, items: [], sellers: [] }} />);
     expect(screen.getByText(/None of the scouts in this household are selling wreaths/)).toBeTruthy();
