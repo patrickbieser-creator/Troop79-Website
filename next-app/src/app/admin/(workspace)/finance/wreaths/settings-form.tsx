@@ -15,6 +15,7 @@ import { SegmentedControl } from '../../_components/segmented-control';
 import { Notice } from '../../_components/notice';
 import { instantToCentral } from '@/lib/dates';
 import type { AdminSale } from '@/lib/wreaths/admin-data';
+import { zipPrefixListOk } from '@/lib/wreaths/rules';
 import { saveSettings, type SettingsInput } from './actions';
 import styles from './wreaths.module.css';
 
@@ -57,7 +58,7 @@ function problemsOf(d: Draft): Record<string, string> {
   if (!d.round1Date) p.round1Date = 'Enter the Round 1 cutoff date.';
   if (!d.round2Date) p.round2Date = 'Enter the Round 2 cutoff date.';
   else if (d.round1Date && d.round2Date <= d.round1Date) p.round2Date = 'Round 2 must close after Round 1.';
-  if (!/^\d{1,5}$/.test(d.deliveryZipPrefix)) p.deliveryZipPrefix = 'Zip codes start with 1 to 5 digits, like 532.';
+  if (!zipPrefixListOk(d.deliveryZipPrefix)) p.deliveryZipPrefix = 'Zip prefixes are 1 to 5 digits, separated by commas, like 532, 531.';
   const range = (k: keyof Draft, lo: number, hi: number, msg: string) => {
     const n = num(d[k] as string);
     if (!(n >= lo && n <= hi)) p[k] = msg;
@@ -181,7 +182,7 @@ export function SettingsForm({ sale }: { sale: AdminSale }) {
           <div className={styles.grid2}>
             <div className={`${styles.field} ${bad('deliveryZipPrefix') ?? ''}`}>
               <label htmlFor="w-zip">Zip codes starting with</label>
-              <input id="w-zip" type="text" inputMode="numeric" maxLength={5} aria-invalid={problemFor('deliveryZipPrefix') ? true : undefined} value={draft.deliveryZipPrefix} onChange={(e) => set('deliveryZipPrefix', e.target.value)} />
+              <input id="w-zip" type="text" maxLength={40} aria-invalid={problemFor('deliveryZipPrefix') ? true : undefined} value={draft.deliveryZipPrefix} onChange={(e) => set('deliveryZipPrefix', e.target.value)} />
               {note('deliveryZipPrefix')}
             </div>
             <div className={`${styles.field} ${bad('deliveryFee') ?? ''}`}>

@@ -26,6 +26,7 @@ import {
   phoneOk,
   priceCart,
   zipFormatOk,
+  zipPrefixText,
   type CartLine,
   type Fulfillment,
   type PricedItem
@@ -317,10 +318,10 @@ export async function placeOrder(raw: unknown, deps: PlaceOrderDeps): Promise<Pl
     if (!zipFormatOk(req.zip)) return invalid('zip', 'Enter the 5-digit zip for delivery.');
     if (!inDeliveryArea(sale, req.zip)) {
       if (fulfillment === 'delivery') {
-        return invalid('zip', `We can’t deliver to ${req.zip}. Troop delivery covers zips starting with ${sale.deliveryZipPrefix}. Choose pickup instead.`);
+        return invalid('zip', `We can’t deliver to ${req.zip}. Troop delivery covers zips starting with ${zipPrefixText(sale.deliveryZipPrefix)}. Choose pickup instead.`);
       }
       if (!req.outsideAreaRelative) {
-        return invalid('relative', `${req.zip} is outside our delivery area (zips starting with ${sale.deliveryZipPrefix}). Tick the box if ${seller?.scout.firstName ?? 'the scout'} has agreed to deliver to you.`);
+        return invalid('relative', `${req.zip} is outside our delivery area (zips starting with ${zipPrefixText(sale.deliveryZipPrefix)}). Tick the box if ${seller?.scout.firstName ?? 'the scout'} has agreed to deliver to you.`);
       }
       outsideArea = true;
     }

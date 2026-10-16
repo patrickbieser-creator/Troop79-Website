@@ -6,7 +6,7 @@ import { recordAudit, type AuditDetail } from '@/lib/audit';
 import { createAdminClient } from '@/lib/supabase/server';
 import { centralToInstant, centralToday, instantToCentral } from '@/lib/dates';
 import { uploadToBunny } from '@/lib/bunny-storage';
-import { PAID_METHODS, paidLedgerRow, deliveryFeeFor, fmtMoney2, fromCents, inDeliveryArea, toCents, zipFormatOk, type PaidMethod } from '@/lib/wreaths/rules';
+import { PAID_METHODS, paidLedgerRow, deliveryFeeFor, fmtMoney2, fromCents, inDeliveryArea, toCents, zipFormatOk, zipPrefixListOk, zipPrefixes, zipPrefixText, type PaidMethod } from '@/lib/wreaths/rules';
 import { canonicalSlug, SLUG_RE } from '@/lib/wreaths/public';
 import { parseDeliveryMessage, parseGoal } from '@/lib/wreaths/scout-entry';
 import { cardCheckoutLive, cardDeps, expireOrderCheckout } from '@/lib/wreaths/stripe-client';
@@ -76,7 +76,7 @@ export async function saveSettings(saleId: number, v: SettingsInput): Promise<Wr
   if (v.distributionDate && !DATE_RE.test(v.distributionDate)) return fail('Enter the distribution date.', 'distributionDate');
   if (v.distributionWindow.length > 60) return fail('Keep the time window under 60 characters.', 'distributionWindow');
   if (v.distributionPlace.length > 160) return fail('Keep the place under 160 characters.', 'distributionPlace');
-  if (!/^\d{1,5}$/.test(v.deliveryZipPrefix)) return fail('Zip codes start with 1 to 5 digits, like 532.', 'deliveryZipPrefix');
+  if (!zipPrefixListOk(v.deliveryZipPrefix)) return fail('Zip prefixes are 1 to 5 digits, separated by commas, like 532, 531.', 'deliveryZipPrefix');
   const inRange = (n: number, lo: number, hi: number) => Number.isFinite(n) && n >= lo && n <= hi;
   if (!inRange(v.deliveryFee, 0, 100)) return fail('The delivery fee is $0 to $100.', 'deliveryFee');
   if (!inRange(v.deliveryFreeAt, 0, 10000)) return fail('Free delivery starts at $0 to $10,000.', 'deliveryFreeAt');
@@ -94,7 +94,7 @@ export async function saveSettings(saleId: number, v: SettingsInput): Promise<Wr
     distribution_date: v.distributionDate || null,
     distribution_window: v.distributionWindow.trim(),
     distribution_place: v.distributionPlace.trim(),
-    delivery_zip_prefix: v.deliveryZipPrefix,
+    delivery_zip_prefix: zipPrefixes(v.deliveryZipPrefix).join(', '),
     delivery_fee: v.deliveryFee,
     delivery_free_at: v.deliveryFreeAt,
     fee_percent: v.feePercent,
@@ -579,7 +579,7 @@ export async function reassignOrder(orderId: number, v: ReassignInput): Promise<
     if (!address.customer_city) return fail('Enter the city.', 'city');
     if (!zipFormatOk(address.customer_zip ?? '')) return fail('Enter the 5-digit zip for delivery.', 'zip');
     const inside = inDeliveryArea({ deliveryZipPrefix: sale?.delivery_zip_prefix ?? '532' }, address.customer_zip as string);
-    if (fulfillment === 'delivery' && !inside) return fail(`Troop delivery covers zips starting with ${sale?.delivery_zip_prefix}. Choose pickup or a scout who has agreed to deliver.`, 'zip');
+    if (fulfillment === 'delivery' && !inside) return fail(`Troop delivery covers zips starting with ${zipPrefixText(sale?.delivery_zip_prefix ?? '532')}. Choose pickup or a scout who has agreed to deliver.`, 'zip');
     if (fulfillment === 'scout' && !inside && !order.outside_area_relative) return fail('That address is outside the delivery area, and the customer didn’t say a relative arranged it.', 'zip');
   }
   if (fulfillment === 'scout') {

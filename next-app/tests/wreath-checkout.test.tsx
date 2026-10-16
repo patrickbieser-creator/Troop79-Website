@@ -60,6 +60,16 @@ describe('checkout form', () => {
     expect((screen.getByRole('radio', { name: /Pick up/ }) as HTMLInputElement).checked).toBe(true);
   });
 
+  it('Checkout_AcceptsDelivery_ForAZipUnderAnyListedPrefix', async () => {
+    seedCart({ '11': 1 });
+    setup({ rules: { ...rules, deliveryZipPrefix: '532, 531' } });
+    const user = userEvent.setup();
+    expect(screen.getByText(/zips starting with 532 or 531/)).toBeTruthy();
+    await user.click(screen.getByRole('radio', { name: /Delivery/ }));
+    await user.type(screen.getByRole('textbox', { name: 'Delivery zip' }), '53146');
+    expect(screen.queryByText(/We can’t deliver to/)).toBeNull();
+  });
+
   it('Checkout_OffersTheRelativeBox_OnAScoutLink_ForAZipOutsideTheArea', async () => {
     seedCart({ '11': 1 });
     setup({ scout: { slug: 'ben-b', name: 'Ben B.', firstName: 'Ben' } });

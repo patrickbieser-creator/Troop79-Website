@@ -17,7 +17,7 @@ import { Button } from '@/app/_components/button';
 import { Notice } from '@/app/_components/notice';
 import { Field, FieldProblem, SaveProblem, TextInput } from '@/app/_components/form';
 import { Stepper } from '@/app/_components/stepper';
-import { PAY_TREASURER, coverFeeFor, deliveryFeeFor, fmtMoney, fmtMoney2, itemLabel, toCents, fromCents, type Fulfillment } from '@/lib/wreaths/rules';
+import { PAY_TREASURER, coverFeeFor, deliveryFeeFor, fmtMoney, fmtMoney2, inDeliveryArea, itemLabel, toCents, fromCents, zipPrefixText, type Fulfillment } from '@/lib/wreaths/rules';
 import type { StoreItem } from '@/lib/wreaths/public';
 import type { OrderField, PlaceOrderResult } from '@/lib/wreaths/place-order';
 import type { SellerMatch } from '@/lib/wreaths/seller-search';
@@ -159,7 +159,7 @@ export function CheckoutForm({ items, scout, rules, pickupText, distributionDay,
 
   const zipTrim = zip.trim();
   const zipFive = /^\d{5}$/.test(zipTrim);
-  const zipIn = zipFive && zipTrim.startsWith(rules.deliveryZipPrefix);
+  const zipIn = inDeliveryArea(rules, zipTrim);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -325,7 +325,7 @@ export function CheckoutForm({ items, scout, rules, pickupText, distributionDay,
               {zipFive && !zipIn && (
                 <Notice tone="warning" className={styles.inset}>
                   <p>
-                    {zipTrim} is outside our delivery area (zips starting with {rules.deliveryZipPrefix}). {scout.firstName} can deliver farther only to family who have arranged it.
+                    {zipTrim} is outside our delivery area (zips starting with {zipPrefixText(rules.deliveryZipPrefix)}). {scout.firstName} can deliver farther only to family who have arranged it.
                   </p>
                   <label className={`${styles.check} ${problemFor('relative') ? styles.checkBad : ''}`}>
                     <input type="checkbox" checked={relative} aria-invalid={problemFor('relative') ? true : undefined} onChange={(e) => setRelative(e.target.checked)} />
@@ -354,7 +354,7 @@ export function CheckoutForm({ items, scout, rules, pickupText, distributionDay,
                   <span>
                     <strong>Delivery</strong>
                     <span>
-                      Milwaukee-area zips starting with {rules.deliveryZipPrefix} · {fmtMoney(rules.deliveryFee)}, free at {fmtMoney(rules.deliveryFreeAt)}
+                      Milwaukee-area zips starting with {zipPrefixText(rules.deliveryZipPrefix)} · {fmtMoney(rules.deliveryFee)}, free at {fmtMoney(rules.deliveryFreeAt)}
                     </span>
                   </span>
                 </label>
@@ -366,7 +366,7 @@ export function CheckoutForm({ items, scout, rules, pickupText, distributionDay,
                   {zipFive && !zipIn && (
                     <Notice tone="error" className={styles.inset}>
                       <p>
-                        <strong>We can’t deliver to {zipTrim}.</strong> Troop delivery covers Milwaukee-area zips starting with {rules.deliveryZipPrefix}.
+                        <strong>We can’t deliver to {zipTrim}.</strong> Troop delivery covers Milwaukee-area zips starting with {zipPrefixText(rules.deliveryZipPrefix)}.
                       </p>
                       <p>
                         You can pick up instead: {pickupText}.{' '}

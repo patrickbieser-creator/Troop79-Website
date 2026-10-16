@@ -111,9 +111,25 @@ export function zipFormatOk(zip: string): boolean {
   return /^\d{5}$/.test(zip);
 }
 
-/** Inside the troop's delivery area: five digits that start with the sale's prefix (532). */
+/** The sale's delivery zip prefixes: the setting is one prefix or a comma list ("532, 531"). */
+export function zipPrefixes(setting: string): string[] {
+  return setting.split(',').map((p) => p.trim()).filter(Boolean);
+}
+
+/** A valid prefix setting: one or more 1–5 digit prefixes, separated by commas. */
+export function zipPrefixListOk(setting: string): boolean {
+  return /^\s*\d{1,5}(\s*,\s*\d{1,5})*\s*$/.test(setting);
+}
+
+/** The prefixes for a sentence: "532", "532 or 531", "532, 531 or 530". */
+export function zipPrefixText(setting: string): string {
+  const p = zipPrefixes(setting);
+  return p.length < 2 ? (p[0] ?? '') : `${p.slice(0, -1).join(', ')} or ${p[p.length - 1]}`;
+}
+
+/** Inside the troop's delivery area: five digits that start with one of the sale's prefixes (532, 531). */
 export function inDeliveryArea(rules: Pick<SaleRules, 'deliveryZipPrefix'>, zip: string): boolean {
-  return zipFormatOk(zip) && zip.startsWith(rules.deliveryZipPrefix);
+  return zipFormatOk(zip) && zipPrefixes(rules.deliveryZipPrefix).some((p) => zip.startsWith(p));
 }
 
 /** Troop delivery costs the fee under the free-at threshold of ITEMS (before gifts and fees); a scout delivers free. */

@@ -14,7 +14,7 @@ import { Badge } from '../../_components/badge';
 import { SaveButton, SaveProblem, useSavedSnapshot } from '../../_components/save-state';
 import { SearchField, useTableSearch } from '../../_components/search-field';
 import { fmtDateTime } from '@/lib/format-date';
-import { PAID_METHODS, fmtMoney2, type PaidMethod } from '@/lib/wreaths/rules';
+import { PAID_METHODS, fmtMoney2, inDeliveryArea, zipPrefixText, type PaidMethod } from '@/lib/wreaths/rules';
 import type { AdminOrder, AuditEntry } from '@/lib/wreaths/admin-data';
 import { cancelOrder, markPaid, reassignOrder, refundCardOrder, setPaymentNote } from './actions';
 import styles from './wreaths.module.css';
@@ -431,7 +431,7 @@ function ReassignForm({ order: o, sellers, deliveryZipPrefix, onClose }: { order
     if (!street.trim()) p.street = 'Enter the street address for delivery.';
     if (!city.trim()) p.city = 'Enter the city.';
     if (!/^\d{5}$/.test(zip.trim())) p.zip = 'Enter the 5-digit zip.';
-    else if (effective === 'delivery' && !zip.trim().startsWith(deliveryZipPrefix)) p.zip = `Troop delivery covers zips starting with ${deliveryZipPrefix}.`;
+    else if (effective === 'delivery' && !inDeliveryArea({ deliveryZipPrefix }, zip.trim())) p.zip = `Troop delivery covers zips starting with ${zipPrefixText(deliveryZipPrefix)}.`;
   }
   const keys = Object.keys(p);
   const problemFor = (k: string) => p[k] ?? (problem?.field === k ? problem.message : undefined);
@@ -441,7 +441,7 @@ function ReassignForm({ order: o, sellers, deliveryZipPrefix, onClose }: { order
     setTried(true);
     setProblem(null);
     if (needsAddress && (!street.trim() || !city.trim() || !/^\d{5}$/.test(zip.trim()))) return;
-    if (effective === 'delivery' && needsAddress && !zip.trim().startsWith(deliveryZipPrefix)) return;
+    if (effective === 'delivery' && needsAddress && !inDeliveryArea({ deliveryZipPrefix }, zip.trim())) return;
     start(async () => {
       const res = await reassignOrder(o.id, {
         creditedPersonId: credit ? Number(credit) : null,

@@ -11,6 +11,9 @@ import {
   roseOrder,
   scoutEarnings,
   zipFormatOk,
+  zipPrefixes,
+  zipPrefixListOk,
+  zipPrefixText,
   type Fulfillment,
   type PricedItem,
   type SaleRules
@@ -40,6 +43,32 @@ describe('delivery area', () => {
     expect(inDeliveryArea(rules, '5321')).toBe(false);
     expect(zipFormatOk('53211')).toBe(true);
     expect(zipFormatOk('53211-1234')).toBe(false);
+  });
+
+  it('PrefixList_AnyListedPrefixPasses', () => {
+    const two = { deliveryZipPrefix: '532, 531' };
+    expect(inDeliveryArea(two, '53146')).toBe(true);
+    expect(inDeliveryArea(two, '53211')).toBe(true);
+    expect(inDeliveryArea(two, '53012')).toBe(false);
+  });
+
+  it('PrefixList_ParsesCommasAndSpaces', () => {
+    expect(zipPrefixes(' 532 ,531,, ')).toEqual(['532', '531']);
+  });
+
+  it('PrefixListOk_AcceptsCommaSeparatedDigits_RejectsAnythingElse', () => {
+    expect(zipPrefixListOk('532')).toBe(true);
+    expect(zipPrefixListOk('532, 531')).toBe(true);
+    expect(zipPrefixListOk('532 531')).toBe(false);
+    expect(zipPrefixListOk('abc')).toBe(false);
+    expect(zipPrefixListOk('')).toBe(false);
+    expect(zipPrefixListOk('532, 123456')).toBe(false);
+  });
+
+  it('PrefixText_ReadsAsAList', () => {
+    expect(zipPrefixText('532')).toBe('532');
+    expect(zipPrefixText('532, 531')).toBe('532 or 531');
+    expect(zipPrefixText('532,531,530')).toBe('532, 531 or 530');
   });
 });
 

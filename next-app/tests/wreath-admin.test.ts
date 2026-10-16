@@ -368,6 +368,9 @@ describe('settings and items', () => {
     expect(new Date(row.round2_cutoff).toISOString()).toBe('2026-11-16T05:59:00.000Z');
     const audit = await auditFor('wreath_sale', fx.saleId);
     expect(JSON.stringify(audit[0].details)).toContain('Delivery fee');
+    // A list of prefixes is stored normalized.
+    expect(await saveSettings(fx.saleId, { ...ok, deliveryZipPrefix: '532,531 ' })).toMatchObject({ ok: true });
+    expect((await admin.from('wreath_sales').select('delivery_zip_prefix').eq('id', fx.saleId).single()).data!.delivery_zip_prefix).toBe('532, 531');
     await saveSettings(fx.saleId, ok);
   });
 
