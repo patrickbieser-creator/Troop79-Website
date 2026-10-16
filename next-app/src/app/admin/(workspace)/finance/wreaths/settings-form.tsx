@@ -2,7 +2,7 @@
 
 /**
  * Wreath sale › Settings: status, the two cutoffs, distribution day, the delivery area and fee, the processing-fee
- * formula and the scouts' share. One form, numbered sections under ONE sticky bar (Save changes / Saved + Discard
+ * formula, the scouts' share and who gets a copy of each order. One form, numbered sections under ONE sticky bar (Save changes / Saved + Discard
  * changes). Save is dirty-gated; a dirty but incomplete form keeps Save enabled and marks every bad field in place with
  * its reason (the blocked-save standard). Cutoffs are dates; each is the END of that day, Central.
  */
@@ -16,6 +16,7 @@ import { Notice } from '../../_components/notice';
 import { instantToCentral } from '@/lib/dates';
 import type { AdminSale } from '@/lib/wreaths/admin-data';
 import { zipPrefixListOk } from '@/lib/wreaths/rules';
+import { MAX_LEADER_RECIPIENTS, recipientErrors } from '@/lib/signup-confirmation';
 import { saveSettings, type SettingsInput } from './actions';
 import styles from './wreaths.module.css';
 
@@ -32,6 +33,8 @@ interface Draft {
   feePercent: string;
   feeFixed: string;
   scoutSharePercent: string;
+  /** Always five slots; blanks are dropped on save. */
+  orderCc: string[];
 }
 
 function toDraft(s: AdminSale): Draft {
@@ -47,7 +50,8 @@ function toDraft(s: AdminSale): Draft {
     deliveryFreeAt: String(s.deliveryFreeAt),
     feePercent: String(s.feePercent),
     feeFixed: String(s.feeFixed),
-    scoutSharePercent: String(Math.round(s.scoutShare * 1000) / 10)
+    scoutSharePercent: String(Math.round(s.scoutShare * 1000) / 10),
+    orderCc: Array.from({ length: MAX_LEADER_RECIPIENTS }, (_, i) => s.orderCc[i] ?? '')
   };
 }
 
@@ -68,6 +72,9 @@ function problemsOf(d: Draft): Record<string, string> {
   range('feePercent', 0, 10, 'The processing fee percent is 0 to 10.');
   range('feeFixed', 0, 5, 'The fixed processing fee is $0 to $5.');
   range('scoutSharePercent', 0, 100, 'The scout share is 0 to 100 percent.');
+  recipientErrors(d.orderCc).forEach((e, i) => {
+    if (e) p[`orderCc${i}`] = `Order copy ${i + 1}: ${e}`;
+  });
   return p;
 }
 
@@ -107,7 +114,8 @@ export function SettingsForm({ sale }: { sale: AdminSale }) {
         deliveryFreeAt: num(draft.deliveryFreeAt),
         feePercent: num(draft.feePercent),
         feeFixed: num(draft.feeFixed),
-        scoutSharePercent: num(draft.scoutSharePercent)
+        scoutSharePercent: num(draft.scoutSharePercent),
+        orderCc: draft.orderCc.filter((a) => a.trim())
       });
       if (res.ok) {
         markSaved();
@@ -221,6 +229,30 @@ export function SettingsForm({ sale }: { sale: AdminSale }) {
             </div>
           </div>
           <p className={styles.hint}>The processing fee is only used when PayPal Checkout is live. Until then orders are paid to the treasurer by Venmo or PayPal.</p>
+        </FormSection>
+
+        <FormSection num={6} title="Order copies">
+          <div className={styles.grid2}>
+            {draft.orderCc.map((addr, i) => (
+              <div key={i} className={`${styles.field} ${bad(`orderCc${i}`) ?? ''}`}>
+                <label htmlFor={`w-cc-${i}`}>Address {i + 1}</label>
+                <input
+                  id={`w-cc-${i}`}
+                  type="email"
+                  aria-invalid={problemFor(`orderCc${i}`) ? true : undefined}
+                  value={addr}
+                  onChange={(e) => {
+                    const next = [...draft.orderCc];
+                    next[i] = e.target.value;
+                    set('orderCc', next);
+                  }}
+                />
+                {note(`orderCc${i}`)}
+              </div>
+            ))}
+          </div>
+          {serverProblem?.field === 'orderCc' && <p className={styles.badNote}>{serverProblem.message}</p>}
+          <p className={styles.hint}>Up to {MAX_LEADER_RECIPIENTS} addresses get a copy of every new order&rsquo;s confirmation, each as their own email. Leave a box empty to send none there.</p>
         </FormSection>
       </div>
 

@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { validateLeaderRecipients } from '@/lib/signup-confirmation';
 import { requireCapability } from '@/lib/require-capability';
 import { recordAudit, type AuditDetail } from '@/lib/audit';
 import { createAdminClient } from '@/lib/supabase/server';
@@ -59,6 +60,8 @@ export interface SettingsInput {
   feePercent: number;
   feeFixed: number;
   scoutSharePercent: number;
+  /** Order copies: up to five addresses (blanks dropped), the signup builder's leader-list rule. */
+  orderCc: string[];
 }
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -83,6 +86,8 @@ export async function saveSettings(saleId: number, v: SettingsInput): Promise<Wr
   if (!inRange(v.feePercent, 0, 10)) return fail('The processing fee percent is 0 to 10.', 'feePercent');
   if (!inRange(v.feeFixed, 0, 5)) return fail('The fixed processing fee is $0 to $5.', 'feeFixed');
   if (!inRange(v.scoutSharePercent, 0, 100)) return fail('The scout share is 0 to 100 percent.', 'scoutSharePercent');
+  const cc = validateLeaderRecipients(Array.isArray(v.orderCc) ? v.orderCc.map(String) : []);
+  if (!cc.ok) return fail(cc.errors[0], 'orderCc');
 
   const supabase = createAdminClient();
   const { data: before } = await supabase.from('wreath_sales').select('*').eq('id', saleId).maybeSingle();
@@ -99,7 +104,8 @@ export async function saveSettings(saleId: number, v: SettingsInput): Promise<Wr
     delivery_free_at: v.deliveryFreeAt,
     fee_percent: v.feePercent,
     fee_fixed: v.feeFixed,
-    scout_share: Math.round(v.scoutSharePercent * 10) / 1000
+    scout_share: Math.round(v.scoutSharePercent * 10) / 1000,
+    order_cc: cc.recipients
   };
   const { error } = await supabase
     .from('wreath_sales')
@@ -123,6 +129,7 @@ export async function saveSettings(saleId: number, v: SettingsInput): Promise<Wr
   diff('Free delivery at', money(Number(before.delivery_free_at)), money(next.delivery_free_at));
   diff('Processing fee percent', String(Number(before.fee_percent)), String(next.fee_percent));
   diff('Processing fee fixed', money(Number(before.fee_fixed)), money(next.fee_fixed));
+  diff('Order copies', ((before.order_cc as string[] | null) ?? []).join(', '), next.order_cc.join(', '));
   diff('Scout share', `${Math.round(Number(before.scout_share) * 1000) / 10}%`, `${Math.round(next.scout_share * 1000) / 10}%`);
   if (changes.length) {
     await recordAudit({

@@ -12,8 +12,7 @@ import { useRouter } from 'next/navigation';
 import {
   DEFAULT_TEMPLATES,
   MAX_LEADER_RECIPIENTS,
-  isEmail,
-  normaliseEmail,
+  recipientErrors,
   renderMessage,
   resolveMessage,
   type Audience,
@@ -64,19 +63,6 @@ function fromRow(signup: Rec): Draft {
     leaderUseFamily: b(signup.confirm_leader_use_family),
     recipients: Array.from({ length: MAX_LEADER_RECIPIENTS }, (_, i) => list[i] ?? '')
   };
-}
-
-/** Per-field problems for the five address inputs — mirrors validateLeaderRecipients. */
-export function recipientErrors(list: string[]): (string | null)[] {
-  const seen = new Set<string>();
-  return list.map((raw) => {
-    const e = normaliseEmail(raw);
-    if (!e) return null;
-    if (!isEmail(e)) return 'Not an email address.';
-    if (seen.has(e)) return 'Listed twice.';
-    seen.add(e);
-    return null;
-  });
 }
 
 export function ConfirmationPanel({

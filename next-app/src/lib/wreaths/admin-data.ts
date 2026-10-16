@@ -21,6 +21,8 @@ export interface AdminSale {
   feePercent: number;
   feeFixed: number;
   scoutShare: number;
+  /** Up to five addresses copied on every new order's confirmation (Settings › Order copies). */
+  orderCc: string[];
 }
 
 export interface AdminItem {
@@ -135,7 +137,8 @@ export async function loadAdminSale(sb: SupabaseClient): Promise<AdminSale | nul
     deliveryFreeAt: Number(r.delivery_free_at),
     feePercent: Number(r.fee_percent),
     feeFixed: Number(r.fee_fixed),
-    scoutShare: Number(r.scout_share)
+    scoutShare: Number(r.scout_share),
+    orderCc: Array.isArray(r.order_cc) ? (r.order_cc as string[]) : []
   };
 }
 

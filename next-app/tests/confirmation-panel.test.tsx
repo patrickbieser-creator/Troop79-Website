@@ -1,7 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ConfirmationPanel, recipientErrors } from '../src/app/admin/(workspace)/events/[id]/confirmation-panel';
+import { ConfirmationPanel } from '../src/app/admin/(workspace)/events/[id]/confirmation-panel';
+import { recipientErrors } from '../src/lib/signup-confirmation';
 import { samplePreviewContext } from '../src/lib/signup-confirmation-preview';
 
 const updateConfirmation = vi.fn(async () => ({ ok: true }));

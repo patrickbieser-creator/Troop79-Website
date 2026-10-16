@@ -399,3 +399,24 @@ describe('cutoffs', () => {
     expect((await orderRow(res.token)).round).toBe(2);
   });
 });
+
+describe('order copies (Settings › Order copies)', () => {
+  const sentTo = () => send.mock.calls.map((c) => (c as unknown as [{ to: string[] }])[0].to);
+  beforeAll(async () => {
+    await admin.from('wreath_sales').update({ order_cc: ['treasurer@example.test', 'cubmaster@example.test'] }).eq('id', fx.saleId);
+  });
+  afterAll(async () => {
+    await admin.from('wreath_sales').update({ order_cc: [] }).eq('id', fx.saleId);
+  });
+
+  it('OrderCopies_GetTheCustomersConfirmation', async () => {
+    const res = await placeOrder(input(), deps());
+    expect(res.ok).toBe(true);
+    expect(sentTo()[0]).toEqual(expect.arrayContaining(['treasurer@example.test', 'cubmaster@example.test']));
+  });
+
+  it('OrderCopies_AreNotAddedToTheScoutsHouseholdNotice', async () => {
+    await placeOrder(input({ sellerSlug: fx.sellerA.slug, customer: { name: 'Vitest Buyer', email: 'copy@example.test', phone: '414-555-0100', street: '5 Link Ave', city: 'Milwaukee', zip: '53211' } }), deps());
+    expect(sentTo().slice(1).flat()).not.toContain('treasurer@example.test');
+  });
+});

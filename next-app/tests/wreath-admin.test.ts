@@ -350,7 +350,8 @@ describe('settings and items', () => {
       deliveryFreeAt: 50,
       feePercent: 1.99,
       feeFixed: 0.49,
-      scoutSharePercent: 30
+      scoutSharePercent: 30,
+      orderCc: [] as string[]
     };
     state.caps = new Set(['news.write']);
     await expect(saveSettings(fx.saleId, ok)).rejects.toThrow(/requires/i);
@@ -372,6 +373,24 @@ describe('settings and items', () => {
     expect(await saveSettings(fx.saleId, { ...ok, deliveryZipPrefix: '532,531 ' })).toMatchObject({ ok: true });
     expect((await admin.from('wreath_sales').select('delivery_zip_prefix').eq('id', fx.saleId).single()).data!.delivery_zip_prefix).toBe('532, 531');
     await saveSettings(fx.saleId, ok);
+  });
+
+  it('SaveSettings_StoresUpToFiveOrderCopyAddresses_Normalized', async () => {
+    const { saveSettings } = await actions();
+    const ok = { status: 'open' as const, round1Date: '2026-10-25', round2Date: '2026-11-15', distributionDate: '2026-11-21', distributionWindow: '2:30 to 4:30 PM', distributionPlace: 'Test lot', deliveryZipPrefix: '532', deliveryFee: 5, deliveryFreeAt: 50, feePercent: 1.99, feeFixed: 0.49, scoutSharePercent: 30, orderCc: [] as string[] };
+    state.caps = new Set(['finance.manage']);
+    expect(await saveSettings(fx.saleId, { ...ok, orderCc: [' Treasurer@Example.test ', '', 'cm@example.test'] })).toMatchObject({ ok: true });
+    expect((await admin.from('wreath_sales').select('order_cc').eq('id', fx.saleId).single()).data!.order_cc).toEqual(['treasurer@example.test', 'cm@example.test']);
+    expect(JSON.stringify((await auditFor('wreath_sale', fx.saleId)).map((a) => a.details))).toContain('Order copies');
+    await saveSettings(fx.saleId, ok);
+  });
+
+  it('SaveSettings_RefusesABadOrSixthOrderCopyAddress', async () => {
+    const { saveSettings } = await actions();
+    const ok = { status: 'open' as const, round1Date: '2026-10-25', round2Date: '2026-11-15', distributionDate: '2026-11-21', distributionWindow: '2:30 to 4:30 PM', distributionPlace: 'Test lot', deliveryZipPrefix: '532', deliveryFee: 5, deliveryFreeAt: 50, feePercent: 1.99, feeFixed: 0.49, scoutSharePercent: 30, orderCc: [] as string[] };
+    state.caps = new Set(['finance.manage']);
+    const six = ['a', 'b', 'c', 'd', 'e', 'f'].map((x) => `${x}@example.test`);
+    expect([(await saveSettings(fx.saleId, { ...ok, orderCc: ['nope'] })).ok, (await saveSettings(fx.saleId, { ...ok, orderCc: six })).ok]).toEqual([false, false]);
   });
 
   it('SaveItem_RequiresFinanceManage_ValidatesAndAudits', async () => {

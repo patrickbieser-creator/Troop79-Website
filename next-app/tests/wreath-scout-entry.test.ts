@@ -597,3 +597,17 @@ describe('subjectText', () => {
     expect(subjectText('A\u0000B\r\nC\u202eD')).toBe('A B C D');
   });
 });
+
+describe('order copies on a scout-entered order', () => {
+  beforeAll(async () => {
+    await admin.from('wreath_sales').update({ order_cc: ['treasurer@example.test'] }).eq('id', fx.saleId);
+  });
+  afterAll(async () => {
+    await admin.from('wreath_sales').update({ order_cc: [] }).eq('id', fx.saleId);
+  });
+  it('OrderCopies_GetTheEnterersConfirmation', async () => {
+    send.mockClear();
+    await placeOrder(entry(), deps(asScoutEntry(viewerA)));
+    expect(send.mock.calls[0][0].to).toContain('treasurer@example.test');
+  });
+});

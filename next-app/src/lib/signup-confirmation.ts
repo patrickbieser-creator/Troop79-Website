@@ -435,6 +435,20 @@ export function validateLeaderRecipients(list: string[]): { ok: boolean; recipie
   return { ok: errors.length === 0, recipients: out.slice(0, MAX_LEADER_RECIPIENTS), errors };
 }
 
+/** Per-field problems for the five address inputs, for marking each in place: mirrors validateLeaderRecipients.
+ *  Shared by the signup builder's leader list and the wreath sale's order copies. */
+export function recipientErrors(list: string[]): (string | null)[] {
+  const seen = new Set<string>();
+  return list.map((raw) => {
+    const e = normaliseEmail(raw);
+    if (!e) return null;
+    if (!isEmail(e)) return 'Not an email address.';
+    if (seen.has(e)) return 'Listed twice.';
+    seen.add(e);
+    return null;
+  });
+}
+
 /* ── the update diff ─────────────────────────────────────────────────────── */
 
 export interface SignupSnapshotRow {
