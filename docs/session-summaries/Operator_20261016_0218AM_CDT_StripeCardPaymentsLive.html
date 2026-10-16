@@ -70,7 +70,7 @@
             <span>&#128197; October 15&ndash;16, 2026</span>
             <span>&#129302; Operator (Opus 5.5)</span>
             <span>&#128204; Troop79-Website</span>
-            <span>&#128640; v1.221.3 &rarr; v1.224.2</span>
+            <span>&#128640; v1.221.3 &rarr; v1.225.0</span>
         </div>
     </header>
     <div class="container">
@@ -109,6 +109,12 @@
         <p>Story excerpts accept markdown. A link works on the home page's lead story; on cards, which already open the story, only its words show. Search previews get plain text.</p>
         <h3>Behind the scenes</h3>
         <p>The local database's migration history was repaired after checking it against production. The nightly backup and local copy were run by hand after Docker had been down.</p>
+        <h3>Morning follow-up (Oct 16)</h3>
+        <ul>
+            <li><strong>Refund path proven live.</strong> The admin refund failed twice with &ldquo;connection to Stripe&rdquo;, and Stripe&rsquo;s log showed the request never arrived. v1.224.3 now logs Stripe&rsquo;s underlying cause; after that deploy the refund worked, twice. The original failure is unexplained.</li>
+            <li><strong>Test orders cleaned up.</strong> Every test order is deleted, W-1001 is the only order, and numbering is reset. The $0.67 Stripe kept on the two refunded test charges stays in the books as one fee row.</li>
+            <li><strong>Delivery covers 531 zips</strong> (v1.225.0). The sale&rsquo;s zip setting takes a list, like &ldquo;532, 531&rdquo;.</li>
+        </ul>
         <h2>Decisions</h2>
         <table>
             <thead><tr><th>ID</th><th>Decision</th></tr></thead>
@@ -119,12 +125,13 @@
                 <tr><td>D-381</td><td>The card-fee cover is grossed up; the sale's fee setting is Stripe's rate</td></tr>
                 <tr><td>D-382</td><td>Stripe keys: a restricted live key, read and trimmed in one module</td></tr>
                 <tr><td>D-383</td><td>Webhook effects land in one SQL function with their dedupe row; an early fee event is retried</td></tr>
+                <tr><td>D-384</td><td>The wreath delivery area is a list of zip prefixes</td></tr>
+                <tr><td>D-385</td><td>Test card charges: delete the order, keep Stripe&rsquo;s fee in the books</td></tr>
             </tbody>
         </table>
         <h2>Next Steps</h2>
         <ul>
-            <li>Refund W-1005 from admin (the live refund test), then delete test orders W-1002&ndash;W-1005. Reset numbering only if no real order has come in since.</li>
-            <li>Find out why W-1005 booked no Stripe fee row. The key may need Charges or Balance read permission.</li>
+            <li>Watch for the refund connection failure recurring; the log now names its cause. Check a 531 zip at checkout.</li>
             <li>Stripe Dashboard: turn off Bank, Klarna, Cash App and Amazon Pay, and turn on receipt emails.</li>
             <li>Round 1 closes Tue Oct 20. The rest of Release C is due before Nov 15.</li>
             <li>Fix the unsigned-webhook security hole in OMG-Website.</li>
@@ -138,7 +145,7 @@
                 <tr><td>Admin</td><td>finance/wreaths: Mark paid ledger + session expiry, refundCardOrder, orders panel (card, fee, refund flag, refund-and-cancel); news article editor hint</td></tr>
                 <tr><td>Library</td><td>lib/wreaths: card-checkout, card-payments, stripe-client (new), rules (grossed-up fee, paidLedgerRow), public, admin-data; lib/article-body: ArticleExcerpt, excerpt-text; lib/finance (card method); seo</td></tr>
                 <tr><td>Database</td><td>20261104100000_wreath_paid_ledger, 20261105100000_wreath_stripe_checkout (production); sale fee setting; test-order cleanup; local migration history repaired</td></tr>
-                <tr><td>Docs</td><td>Plans/Completed/Wreath-Stripe-Checkout.md; changelog.html; Agents memory D-378&ndash;D-383</td></tr>
+                <tr><td>Docs</td><td>Plans/Completed/Wreath-Stripe-Checkout.md; changelog.html; Agents memory D-378&ndash;D-385; migration 20261106100000_wreath_zip_prefix_list</td></tr>
             </tbody>
         </table>
     </div>
