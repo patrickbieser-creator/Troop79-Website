@@ -22,7 +22,11 @@ export type PaidMethod = (typeof PAID_METHODS)[number];
  *  records (Release B) — deliberately not in PAID_METHODS, so nobody can "mark paid by card" by hand. */
 export type PaymentMethod = PaidMethod | 'card';
 
-const METHOD_LABEL: Record<PaymentMethod, string> = { venmo: 'Venmo', paypal: 'PayPal', cash: 'Cash', check: 'Check', other: 'Other', card: 'Card' };
+export const METHOD_LABEL: Record<PaymentMethod, string> = { venmo: 'Venmo', paypal: 'PayPal', cash: 'Cash', check: 'Check', other: 'Other', card: 'Card' };
+
+/** How an order came in, and how it reaches the customer: the admin's words (Orders, Dashboard). */
+export const SOURCE_LABEL: Record<'scout_link' | 'store' | 'paper', string> = { scout_link: 'Scout link', store: 'Store', paper: 'Scout-entered' };
+export const FULFILLMENT_LABEL: Record<Fulfillment, string> = { scout: 'Scout delivers', pickup: 'Pickup', delivery: 'Troop delivery', none: 'Donated only' };
 
 export interface PaidLedgerRow {
   occurred_on: string;

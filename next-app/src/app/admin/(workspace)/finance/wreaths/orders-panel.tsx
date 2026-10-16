@@ -14,7 +14,7 @@ import { Badge } from '../../_components/badge';
 import { SaveButton, SaveProblem, useSavedSnapshot } from '../../_components/save-state';
 import { SearchField, useTableSearch } from '../../_components/search-field';
 import { fmtDateTime } from '@/lib/format-date';
-import { PAID_METHODS, fmtMoney2, inDeliveryArea, zipPrefixText, type PaidMethod } from '@/lib/wreaths/rules';
+import { FULFILLMENT_LABEL, PAID_METHODS, SOURCE_LABEL, fmtMoney2, inDeliveryArea, zipPrefixText, type PaidMethod } from '@/lib/wreaths/rules';
 import type { AdminOrder, AuditEntry } from '@/lib/wreaths/admin-data';
 import { cancelOrder, markPaid, reassignOrder, refundCardOrder, setPaymentNote } from './actions';
 import styles from './wreaths.module.css';
@@ -24,8 +24,8 @@ export interface SellerOption {
   name: string;
 }
 
-const FULFILLMENT: Record<AdminOrder['fulfillment'], string> = { scout: 'Scout delivers', pickup: 'Pickup', delivery: 'Troop delivery', none: 'Donated only' };
-const SOURCE: Record<AdminOrder['source'], string> = { scout_link: 'Scout link', store: 'Store', paper: 'Scout-entered' };
+const FULFILLMENT = FULFILLMENT_LABEL;
+const SOURCE = SOURCE_LABEL;
 
 export function OrdersPanel({ orders, history, sellers, deliveryZipPrefix, initialPay = '' }: { orders: AdminOrder[]; history: Record<number, AuditEntry[]>; sellers: SellerOption[]; deliveryZipPrefix: string; initialPay?: string }) {
   const [round, setRound] = useState('');

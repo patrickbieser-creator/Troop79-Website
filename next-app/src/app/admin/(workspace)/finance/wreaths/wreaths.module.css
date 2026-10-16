@@ -97,3 +97,29 @@
   background: var(--admin-white);
 }
 .totalRow td { font-weight: var(--admin-weight-bold); }
+
+/* Dashboard tab (2026-10-16): stat tiles, cards, labelled bars. Same look as the advancement dashboard's tiles. */
+.stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--admin-space-6); margin-bottom: var(--admin-space-11); }
+@media (min-width: 1000px) { .stats { grid-template-columns: repeat(4, 1fr); } }
+.stat, .dashCard { background: var(--admin-white); border: 1px solid var(--admin-gray-200); border-radius: var(--admin-radius); box-shadow: var(--admin-shadow-sm); padding: var(--admin-space-8); min-width: 0; }
+.statLabel { font-size: var(--admin-text-base); font-weight: var(--admin-weight-bold); color: var(--admin-gray-500); margin-bottom: var(--admin-space-3); }
+.statValue { font-family: var(--admin-font-display); font-size: var(--admin-text-3xl); font-weight: var(--admin-weight-bold); color: var(--admin-navy); line-height: 1.1; }
+.statSub { font-size: var(--admin-text-sm); color: var(--admin-gray-500); margin-top: var(--admin-space-3); }
+.dashGrid, .dashGrid3 { display: grid; gap: var(--admin-space-7); grid-template-columns: 1fr; }
+@media (min-width: 900px) { .dashGrid { grid-template-columns: 1fr 1fr; } .dashGrid3 { grid-template-columns: repeat(3, 1fr); } }
+.dashGap { margin-top: var(--admin-space-11); }
+.dashCardTitle, .dashHeading { margin: 0 0 var(--admin-space-5); font-size: var(--admin-text-lg); font-weight: var(--admin-weight-bold); color: var(--admin-navy); }
+.attnList { list-style: none; margin: 0; padding: 0; font-size: var(--admin-text-md); }
+.attnList li { display: flex; flex-direction: column; gap: var(--admin-space-1); padding: var(--admin-space-3) 0; border-top: 1px solid var(--admin-gray-200); }
+.attnList li:first-child { border-top: none; }
+.attnList a { color: var(--admin-navy); font-weight: var(--admin-weight-semibold); }
+.mixList { list-style: none; margin: 0; padding: 0; font-size: var(--admin-text-md); }
+.mixList li { display: grid; grid-template-columns: minmax(7em, max-content) 1fr 3em 6.5em; align-items: center; gap: var(--admin-space-4); padding: var(--admin-space-2) 0; }
+.mixLabel { white-space: nowrap; color: var(--admin-gray-700); }
+.mixNum { text-align: right; font-variant-numeric: tabular-nums; color: var(--admin-gray-700); }
+.bar { display: inline-block; vertical-align: middle; width: 100%; min-width: 60px; height: 8px; background: var(--admin-gray-100); border-radius: var(--admin-radius-sm); overflow: hidden; }
+.nowrap .bar { width: 90px; }
+.barFill { display: block; height: 100%; background: var(--admin-forest); }
+.moneyList { display: grid; grid-template-columns: max-content max-content; gap: var(--admin-space-2) var(--admin-space-11); margin: 0 0 var(--admin-space-6); font-size: var(--admin-text-md); }
+.moneyList dt { color: var(--admin-gray-500); }
+.moneyList dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }

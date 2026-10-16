@@ -1,12 +1,13 @@
 /**
- * /admin/finance/wreaths — the wreath sale's admin (Plans/Wreath-Sale.md, Release A): Orders, Rose order, Sellers,
- * Items and Settings. finance.manage only, here and on every action. The books (per-scout totals, cost and profit,
+ * /admin/finance/wreaths — the wreath sale's admin (Plans/Wreath-Sale.md, Release A): Orders, Dashboard, Rose order,
+ * Sellers, Items and Settings. finance.manage only, here and on every action. The books (per-scout totals, cost and profit,
  * the 70/30 split) and Close sale come in Release C.
  */
 import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import { fmtDay } from '@/lib/format-date';
 import { loadAdminItems, loadAdminOrders, loadAdminSale, loadAdminSellers, loadOrderHistory, loadRoseOrder, loadSellerCandidates } from '@/lib/wreaths/admin-data';
+import { buildSalesDashboard } from '@/lib/wreaths/dashboard';
 import { parsePayFilter } from './pay-filter';
 import { PageTitle } from '../../_components/page-title';
 import { PublicPageLink } from '../../../_components/public-page-link';
@@ -17,12 +18,13 @@ import { ItemsTable } from './items-table';
 import { OrdersPanel } from './orders-panel';
 import { SellersPanel } from './sellers-panel';
 import { SettingsForm } from './settings-form';
+import { SalesDashboardView } from './sales-dashboard';
 import styles from './wreaths.module.css';
 
 export const metadata = { title: 'Wreath Sale — Troop 79' };
 export const dynamic = 'force-dynamic';
 
-const TABS = ['orders', 'rose', 'sellers', 'items', 'settings'] as const;
+const TABS = ['orders', 'dashboard', 'rose', 'sellers', 'items', 'settings'] as const;
 type Tab = (typeof TABS)[number];
 
 export default async function WreathSalePage({ searchParams }: { searchParams: Promise<{ tab?: string; pay?: string }> }) {
@@ -67,6 +69,7 @@ export default async function WreathSalePage({ searchParams }: { searchParams: P
           activeKey={tab}
           items={[
             { key: 'orders', label: 'Orders', count: placed.length, href: '/admin/finance/wreaths' },
+            { key: 'dashboard', label: 'Dashboard', href: '/admin/finance/wreaths?tab=dashboard' },
             { key: 'rose', label: 'Rose order', href: '/admin/finance/wreaths?tab=rose' },
             { key: 'sellers', label: 'Sellers', count: sellers.filter((s) => s.active).length, href: '/admin/finance/wreaths?tab=sellers' },
             { key: 'items', label: 'Items', href: '/admin/finance/wreaths?tab=items' },
@@ -91,6 +94,7 @@ export default async function WreathSalePage({ searchParams }: { searchParams: P
           />
         </>
       )}
+      {tab === 'dashboard' && <SalesDashboardView d={buildSalesDashboard({ orders, sellers, sale })} />}
       {tab === 'rose' && <RoseTable rows={await loadRoseOrder(sb, sale.id)} />}
       {tab === 'sellers' && <SellersPanel saleId={sale.id} sellers={sellers} candidates={await loadSellerCandidates(sb, sale.id)} />}
       {tab === 'items' && <ItemsTable items={await loadAdminItems(sb, sale.id)} />}
