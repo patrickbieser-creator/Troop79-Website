@@ -122,7 +122,7 @@ describe('orders', () => {
     await markPaid(order.id, 'paypal');
     await markPaid(order.id, 'paypal');
     const rows = ((await admin.from('financial_transactions').select('account, amount, kind, method, activity_label, voided_at').eq('wreath_order_id', order.id)).data ?? []);
-    expect(rows).toEqual([{ account: 'checking', amount: 52, kind: 'fundraiser', method: 'other', activity_label: `Wreaths '${String(fx.year).slice(-2)}`, voided_at: null }]);
+    expect(rows).toEqual([{ account: 'checking', amount: 52, kind: 'fundraiser', method: 'paypal', activity_label: `Wreaths '${String(fx.year).slice(-2)}`, voided_at: null }]);
   });
 
   it('MarkPaid_BooksNothing_WhenTheOrderIsCancelled', async () => {

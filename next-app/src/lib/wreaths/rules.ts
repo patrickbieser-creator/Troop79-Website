@@ -31,15 +31,16 @@ export interface PaidLedgerRow {
   account: 'checking';
   amount: number;
   kind: 'fundraiser';
-  method: 'venmo' | 'cash' | 'check' | 'other';
+  method: PaidMethod;
   memo: string;
   activity_label: string;
 }
 
 /**
  * The finance-ledger row Mark paid books for an order (Patrick, 2026-10-15). It follows the treasurer's fundraiser
- * convention: checking income, kind fundraiser, activity "Wreaths 'YY" (last year's rows read "Wreaths '25"). The
- * ledger has no PayPal method, so PayPal is `other` with PayPal named in the memo, as the rummage-sale rows do.
+ * convention: checking income, kind fundraiser, activity "Wreaths 'YY" (last year's rows read "Wreaths '25"). Every
+ * PaidMethod is also a ledger method (lib/finance.ts TRANSACTION_METHODS; PayPal joined it 2026-10-05), so it carries
+ * straight over.
  */
 export function paidLedgerRow(o: {
   orderNumber: string;
@@ -55,7 +56,7 @@ export function paidLedgerRow(o: {
     account: 'checking',
     amount: o.total,
     kind: 'fundraiser',
-    method: o.method === 'paypal' ? 'other' : o.method,
+    method: o.method,
     memo: `Wreath order ${o.orderNumber} · ${o.customerName} · ${METHOD_LABEL[o.method]}`,
     activity_label: `Wreaths '${String(o.saleYear).slice(-2)}`
   };
