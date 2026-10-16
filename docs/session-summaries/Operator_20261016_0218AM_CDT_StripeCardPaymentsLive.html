@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session 56 — Stripe card payments live</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #3d5a3e;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #f0eecd;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); vertical-align: top; }
+        tr:hover { background: var(--nw-sage); }
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+        code { font-family: 'Courier New', monospace; font-size: 0.85em; background: var(--nw-light-gray); padding: 0 0.3em; border-radius: 3px; }
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+        @media print { body { background: white; } header { padding: 1.5rem; } .container { padding: 1rem; } .stat { break-inside: avoid; } }
+        @media (max-width: 600px) { header h1 { font-size: 1.5rem; } .stats { flex-direction: column; } }
+    </style>
+<body>
+    <header>
+        <h1>The wreath store takes cards: Stripe Checkout goes live, and wreath payments reach the books</h1>
+        <p class="subtitle">Session 56. It began with a small news fix: links inside story excerpts. Marking a wreath order paid now books it in the finance ledger. The session then built card payments through Stripe Checkout, from Stripe's own planner through two reviews to a live payment. Venmo and PayPal stay first, as the no-fee choice.</p>
+        <div class="meta">
+            <span>&#128197; October 15&ndash;16, 2026</span>
+            <span>&#129302; Operator (Opus 5.5)</span>
+            <span>&#128204; Troop79-Website</span>
+            <span>&#128640; v1.221.3 &rarr; v1.224.2</span>
+        </div>
+    </header>
+    <div class="container">
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">9</div><div class="label">Releases (v1.222.0&ndash;v1.224.2)</div></div>
+            <div class="stat"><div class="number">2</div><div class="label">Production migrations (ledger link, card payments)</div></div>
+            <div class="stat"><div class="number">6</div><div class="label">Decisions (D-378&ndash;D-383)</div></div>
+            <div class="stat"><div class="number">1</div><div class="label">Live card payment (W-1005, $1.34)</div></div>
+            <div class="stat"><div class="number">5653</div><div class="label">Tests (was 5553)</div></div>
+        </div>
+        <h2>What Was Accomplished</h2>
+        <div class="callout callout-teal">
+            <strong>The outcome:</strong> customers can pay for wreaths by card, Apple Pay or Google Pay on Stripe's secure page. Venmo and PayPal stay first and are the default. Every payment books itself in the finance ledger: the full amount as fundraiser income, plus Stripe's fee as a separate expense. A full end-to-end run (pay, fee, refund) passed against the sandbox, and Patrick's first live card payment went through.
+        </div>
+        <h3>Wreath sale: card payments (Release B)</h3>
+        <p>Stripe's implementation planner chose hosted Checkout with a webhook. tech-lead and qa-lead reviewed the plan and then the code, and every required change was made:</p>
+        <ul>
+            <li>Webhook effects and their record of having seen the event are written in one database step.</li>
+            <li>The amount paid is re-checked against the order.</li>
+            <li>A card payment that lands on a cancelled or already-paid order is queued so exactly that payment can be refunded.</li>
+            <li>Any open payment page is expired when an order changes.</li>
+            <li>Starting a card payment is rate-limited.</li>
+        </ul>
+        <p>The optional card-fee cover is now calculated so the troop keeps the whole amount. The sale's fee setting moved to Stripe's 2.9% + $0.30.</p>
+        <p>Going live needed three key fixes in Vercel:</p>
+        <ul>
+            <li>A trailing line break in the key. The site now trims both keys when it reads them.</li>
+            <li>The publishable key pasted in place of the secret key.</li>
+            <li>Mixed sandbox and live settings.</li>
+        </ul>
+        <p>Production now runs a live restricted key and a live webhook.</p>
+        <h3>Wreath sale: books and orders</h3>
+        <p>Mark paid books a checking / fundraiser "Wreaths '26" row in the finance ledger. The 3 cancelled test orders were deleted, and Sara Zirbel's order became W-1001.</p>
+        <h3>News</h3>
+        <p>Story excerpts accept markdown. A link works on the home page's lead story; on cards, which already open the story, only its words show. Search previews get plain text.</p>
+        <h3>Behind the scenes</h3>
+        <p>The local database's migration history was repaired after checking it against production. The nightly backup and local copy were run by hand after Docker had been down.</p>
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Decision</th></tr></thead>
+            <tbody>
+                <tr><td>D-378</td><td>Story excerpts take inline markdown; links are live only outside card links</td></tr>
+                <tr><td>D-379</td><td>Wreath Mark paid books the finance ledger (linked by wreath_order_id)</td></tr>
+                <tr><td>D-380</td><td>Wreath Release B is Stripe Checkout; Venmo / PayPal stay first and the default</td></tr>
+                <tr><td>D-381</td><td>The card-fee cover is grossed up; the sale's fee setting is Stripe's rate</td></tr>
+                <tr><td>D-382</td><td>Stripe keys: a restricted live key, read and trimmed in one module</td></tr>
+                <tr><td>D-383</td><td>Webhook effects land in one SQL function with their dedupe row; an early fee event is retried</td></tr>
+            </tbody>
+        </table>
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Refund W-1005 from admin (the live refund test), then delete test orders W-1002&ndash;W-1005. Reset numbering only if no real order has come in since.</li>
+            <li>Find out why W-1005 booked no Stripe fee row. The key may need Charges or Balance read permission.</li>
+            <li>Stripe Dashboard: turn off Bank, Klarna, Cash App and Amazon Pay, and turn on receipt emails.</li>
+            <li>Round 1 closes Tue Oct 20. The rest of Release C is due before Nov 15.</li>
+            <li>Fix the unsigned-webhook security hole in OMG-Website.</li>
+        </ul>
+        <h2>Files Changed</h2>
+        <table>
+            <thead><tr><th>Area</th><th>Change</th></tr></thead>
+            <tbody>
+                <tr><td>Public</td><td>(public)/wreaths: checkout form (payment choice, cover fee), order/[token] (Pay by card, confirming state), actions (start card payment); news cards, home lead story, category page</td></tr>
+                <tr><td>API</td><td>api/stripe/webhook/route.ts (new)</td></tr>
+                <tr><td>Admin</td><td>finance/wreaths: Mark paid ledger + session expiry, refundCardOrder, orders panel (card, fee, refund flag, refund-and-cancel); news article editor hint</td></tr>
+                <tr><td>Library</td><td>lib/wreaths: card-checkout, card-payments, stripe-client (new), rules (grossed-up fee, paidLedgerRow), public, admin-data; lib/article-body: ArticleExcerpt, excerpt-text; lib/finance (card method); seo</td></tr>
+                <tr><td>Database</td><td>20261104100000_wreath_paid_ledger, 20261105100000_wreath_stripe_checkout (production); sale fee setting; test-order cleanup; local migration history repaired</td></tr>
+                <tr><td>Docs</td><td>Plans/Completed/Wreath-Stripe-Checkout.md; changelog.html; Agents memory D-378&ndash;D-383</td></tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
