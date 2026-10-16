@@ -77,8 +77,8 @@ describe('checkoutIdempotencyKey', () => {
 
 describe('withCardFeeCover', () => {
   it('Customer_CoveringTheFee_AddsItOnItemsGiftAndDelivery', () => {
-    // 2.9% of $67.00 = $1.943 → $1.94, + $0.30 = $2.24.
-    expect(withCardFeeCover(order, rules, true)).toEqual({ feeCovered: 2.24, total: 69.24 });
+    // Grossed up: ceil(($67.00 + $0.30) / 0.971) = $69.31, and 2.9% of $69.31 ($2.01) + $0.30 leaves exactly $67.00.
+    expect(withCardFeeCover(order, rules, true)).toEqual({ feeCovered: 2.31, total: 69.31 });
   });
 
   it('Customer_NotCoveringTheFee_DropsIt', () => {

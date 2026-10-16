@@ -157,8 +157,9 @@ describe('pricing is the server’s', () => {
     expect(Number(a.fee_covered)).toBe(0);
     expect(Number(a.total)).toBe(36);
     // 1.99% of $36.00 = 0.72 (rounded), plus $0.49
-    expect(Number(b.fee_covered)).toBe(1.21);
-    expect(Number(b.total)).toBe(37.21);
+    // Grossed up so the troop nets the whole $36 (2026-10-16): 1.99% of $37.24 ($0.74) + $0.49 = $1.23 → $36.01.
+    expect(Number(b.fee_covered)).toBe(1.24);
+    expect(Number(b.total)).toBe(37.24);
     expect(Number(b.gift)).toBe(10);
   });
 

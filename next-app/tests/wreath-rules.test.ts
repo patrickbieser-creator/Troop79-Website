@@ -51,9 +51,28 @@ describe('fees', () => {
     expect(deliveryFeeFor(rules, 'pickup', 10)).toBe(0);
   });
 
-  it('CoverFee_IsPercentOfBasePlusFixed_AndNothingForAnEmptyBase', () => {
-    expect(coverFeeFor(rules, 36)).toBe(1.21);
-    expect(coverFeeFor(rules, 0)).toBe(0);
+  // Patrick, 2026-10-16: the troop must keep the whole amount. The card fee is charged on the TOTAL (fee included), so
+  // covering it means grossing up: total = ceil((base + fixed) / (1 − percent)). E2E: $26 at Stripe's 2.9% + $0.30
+  // used to add $1.01 under the old 1.99%/$0.49 rate while Stripe took $1.08.
+  const stripe = { feePercent: 2.9, feeFixed: 0.3 };
+  const stripeFeeCents = (totalCents: number) => Math.round((totalCents * stripe.feePercent) / 100) + 30;
+
+  it('CoverFee_GrossesUp_SoTheTroopKeepsTheWholeBase', () => {
+    expect(coverFeeFor(stripe, 26)).toBe(1.09);
+  });
+
+  it('CoverFee_LeavesTheTroopAtLeastTheBase_AndAtMostACentOver_ForEveryBase', () => {
+    const off: number[] = [];
+    for (let cents = 100; cents <= 50000; cents += 7) {
+      const total = cents + Math.round(coverFeeFor(stripe, cents / 100) * 100);
+      const net = total - stripeFeeCents(total);
+      if (net < cents || net > cents + 1) off.push(cents);
+    }
+    expect(off).toEqual([]);
+  });
+
+  it('CoverFee_IsNothingForAnEmptyBase', () => {
+    expect(coverFeeFor(stripe, 0)).toBe(0);
   });
 });
 
@@ -84,10 +103,11 @@ describe('priceCart', () => {
 
   it('Cart_TotalsDollarsExactly_WithoutFloatDrift', () => {
     const r = ok([{ itemId: 1, quantity: 3, donated: false }], { fulfillment: 'delivery', gift: 0.1, coverFee: true });
-    // 78 (free delivery over $50) + 0.10 gift = 78.10; fee = 1.99% of 78.10 = 1.55 + 0.49 = 2.04
+    // 78 (free delivery over $50) + 0.10 gift = 78.10; grossed-up total = ceil((78.10 + 0.49) / 0.9801) = 80.19, so the
+    // fee is 2.09 — and 1.99% of 80.19 (1.60) + 0.49 = 2.09 leaves the troop exactly 78.10.
     expect(r.ok && r.order.deliveryFee).toBe(0);
-    expect(r.ok && r.order.feeCovered).toBe(2.04);
-    expect(r.ok && r.order.total).toBe(80.14);
+    expect(r.ok && r.order.feeCovered).toBe(2.09);
+    expect(r.ok && r.order.total).toBe(80.19);
   });
 });
 

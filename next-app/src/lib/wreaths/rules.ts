@@ -126,11 +126,20 @@ export function deliveryFeeFor(
   return toCents(itemsSubtotal) < toCents(rules.deliveryFreeAt) ? rules.deliveryFee : 0;
 }
 
-/** What "cover the processing fee" adds: fee_percent of the base plus fee_fixed (0 for an empty base). */
+/**
+ * What "cover the card fee" adds so the troop keeps the whole base (0 for an empty base). The processor takes
+ * fee_percent of the TOTAL plus fee_fixed, so the total is grossed up — ceil((base + fixed) / (1 − percent)) — rather
+ * than adding the percent of the base, which left the troop a few cents short per order (E2E, 2026-10-16).
+ */
 export function coverFeeFor(rules: Pick<SaleRules, 'feePercent' | 'feeFixed'>, base: number): number {
   const b = toCents(base);
   if (b <= 0) return 0;
-  return fromCents(Math.round((b * rules.feePercent) / 100) + toCents(rules.feeFixed));
+  // Integer math in basis points (1/100 of a percent) so 2.9% doesn't pick up float error.
+  const keepBps = 10000 - Math.round(rules.feePercent * 100);
+  let total = Math.ceil(((b + toCents(rules.feeFixed)) * 10000) / keepBps);
+  // Round-half processor rounding can still leave a cent short at a boundary: step up until the troop nets the base.
+  while (total - (Math.round((total * rules.feePercent) / 100) + toCents(rules.feeFixed)) < b) total += 1;
+  return fromCents(total - b);
 }
 
 /** Collapses repeated (item, donated) pairs into one line each, quantities summed. */

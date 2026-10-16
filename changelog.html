@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>October 15, 2026</strong> &nbsp;&middot;&nbsp; v1.223.1</p>
+      <p>Last updated: <strong>October 16, 2026</strong> &nbsp;&middot;&nbsp; v1.224.0</p>
     </div>
   </div>
 
@@ -494,6 +494,25 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.224.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.224.0</span>
+        <span class="release-date">October 16, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Wreath sale: paying by card (ready, switched off)</p>
+        <ul class="change-list">
+          <li><span><strong>Card payments through Stripe.</strong> Customers can pay by card, Apple Pay or Google Pay on Stripe&rsquo;s secure page, at checkout or later from their order&rsquo;s receipt page. Venmo and PayPal stay the first and default choice, the no-fee way to pay. Card payment stays off until the Stripe webhook secret is set in Vercel.</span></li>
+          <li><span><strong>Optional card fee.</strong> A customer paying by card can add the card fee. It is now calculated so the troop keeps the whole order amount after Stripe&rsquo;s cut, and the sale&rsquo;s fee setting is Stripe&rsquo;s 2.9% + $0.30. If the customer ends up paying by Venmo or PayPal instead, the fee comes off the order.</span></li>
+          <li><span><strong>Books.</strong> A card payment books the full amount as fundraiser income, method Card, and Stripe&rsquo;s fee as a separate expense. A full refund books the reversal; Stripe keeps its fee.</span></li>
+          <li><span><strong>Refunds from admin.</strong> Cancelling a card-paid order refunds the card. If a card payment lands where it shouldn&rsquo;t (a cancelled order, an order already paid, or the wrong amount), the order is flagged and a button returns exactly that payment.</span></li>
+          <li><span><strong>Safety.</strong> Stripe&rsquo;s messages are signature-checked, the amount is re-checked against the order, a repeated message changes nothing, and only the customer&rsquo;s email is sent to Stripe.</span></li>
+        </ul>
       </div>
     </div>
 

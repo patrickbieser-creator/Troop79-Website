@@ -196,9 +196,9 @@ describe('startCardCheckout', () => {
   it('StartCardCheckout_CoveringTheFee_UpdatesTheOrderTotal', async () => {
     const o = await makeOrder();
     await startCardCheckout({ token: o.public_token, coverFee: true }, deps(fakeStripe()));
-    // Fixture sale: 1.99% + $0.49 on $52 → $1.03 + $0.49 = $1.52.
+    // Fixture sale 1.99% + $0.49, grossed up: ceil(($52 + $0.49) / 0.9801) = $53.56, which nets the troop exactly $52.
     const row = await orderRow(o.id);
-    expect([Number(row.fee_covered), Number(row.total)]).toEqual([1.52, 53.52]);
+    expect([Number(row.fee_covered), Number(row.total)]).toEqual([1.56, 53.56]);
   });
 
   it('StartCardCheckout_SameChoiceTwice_ReusesTheOpenSession', async () => {

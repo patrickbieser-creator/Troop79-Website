@@ -1,6 +1,6 @@
 # Wreath Sale — Release B: card payments through Stripe Checkout
 
-**Status:** Active
+**Status:** Deployed switched off (v1.224.0, 2026-10-16) — awaiting live Stripe account + webhook secret
 **Activated:** 2026-10-15
 **Priority:** High (round 1 closes Tue Oct 20, 11:59 PM — moved from Oct 25 in admin on 10/14)
 **Supersedes:** Release B "PayPal Checkout" in `Plans/Wreath-Sale.md` (step 4). Venmo / PayPal stay as the
