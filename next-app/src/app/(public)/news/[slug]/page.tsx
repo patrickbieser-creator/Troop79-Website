@@ -10,6 +10,7 @@ import { JsonLd } from '@/app/_components/json-ld';
 import { siteUrl } from '@/lib/site-url';
 import { articleJsonLd, breadcrumbJsonLd } from '@/lib/seo';
 import { loadSiteSettings } from '@/lib/site-settings';
+import { excerptPlainText } from '@/lib/article-body/excerpt-text';
 
 /**
  * Public lookup first; if it misses and the visitor can write news (identity
@@ -40,10 +41,10 @@ export async function generateMetadata({
   return {
     title: `${article.title} — Troop 79`,
     ...(preview ? { robots: { index: false, follow: false } } : {}),
-    description: article.excerpt ?? undefined,
+    description: excerptPlainText(article.excerpt) ?? undefined,
     openGraph: {
       title: article.title,
-      description: article.excerpt ?? undefined,
+      description: excerptPlainText(article.excerpt) ?? undefined,
       images: article.heroMedia ? [{ url: article.heroMedia.cdn_url }] : undefined
     }
   };

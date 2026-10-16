@@ -224,6 +224,22 @@ describe('seo — JSON-LD shapes (pure)', () => {
     expect(ld.image).toBe('https://cdn.example/hero.jpg');
   });
 
+  it('ArticleJsonLd_DescriptionIsPlainText_WhenExcerptHasMarkdownLink', () => {
+    const ld = articleJsonLd(
+      {
+        slug: 'wreaths',
+        title: 'Wreaths',
+        excerpt: 'Order on the [wreath page](https://www.troop-79.com/wreaths).',
+        published_at: null,
+        author_name: null,
+        image_url: null
+      },
+      stored,
+      ORIGIN
+    ) as Record<string, unknown>;
+    expect(ld.description).toBe('Order on the wreath page.');
+  });
+
   it('BreadcrumbJsonLd_NumbersEveryCrumb_FromOne', () => {
     const ld = breadcrumbJsonLd(
       [

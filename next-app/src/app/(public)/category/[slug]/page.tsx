@@ -7,6 +7,7 @@ import styles from '../../../_components/news-cards.module.css';
 import local from '../tags.module.css';
 import { EmptyState } from '@/app/_components/empty-state';
 import { SectionDivider } from '@/app/_components/section-divider';
+import { ArticleExcerpt } from '@/lib/article-body/ArticleExcerpt';
 
 /**
  * /category/[slug] — ONE category across the whole site (Patrick, 2026-08-21:
@@ -82,7 +83,7 @@ export default async function CategoryPage({
                   <div className={styles.storyCardBody}>
                     <span className={`${styles.catTag} ${styles.catEvents}`}>{articleCategoryLabel(a.categories)}</span>
                     <h3 className={styles.cardHeadline}>{a.title}</h3>
-                    {a.excerpt && <p className={styles.cardSummary}>{a.excerpt}</p>}
+                    {a.excerpt && <ArticleExcerpt text={a.excerpt} className={styles.cardSummary} links={false} />}
                     <p className={styles.cardMeta}>{formatDateLong(a.published_at ?? a.created_at)}</p>
                   </div>
                 </Link>

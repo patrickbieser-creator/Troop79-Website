@@ -23,6 +23,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { excerptPlainText } from '@/lib/article-body/excerpt-text';
 
 // ── Editable settings ───────────────────────────────────────────────────────
 
@@ -312,7 +313,7 @@ export function articleJsonLd(
     '@context': 'https://schema.org',
     '@type': 'Article',
     headline: article.title,
-    description: article.excerpt ?? undefined,
+    description: excerptPlainText(article.excerpt) ?? undefined,
     datePublished: article.published_at ?? undefined,
     mainEntityOfPage: absoluteUrl(origin, `/news/${article.slug}`),
     image: article.image_url ?? (fallbackImage || undefined),

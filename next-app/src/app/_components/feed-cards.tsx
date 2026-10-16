@@ -5,6 +5,7 @@ import type { FeedItem, PromotedEntry } from '@/lib/home-feed';
 import { articleCategoryLabel, eventCardExcerpt } from '@/lib/feed-logic';
 import type { Media } from '@/lib/supabase/types';
 import styles from './news-cards.module.css';
+import { ArticleExcerpt } from '@/lib/article-body/ArticleExcerpt';
 
 /**
  * The one grid-card renderer for merged-feed items (articles + promoted
@@ -44,7 +45,7 @@ export function FeedCard({ item }: { item: FeedItem }) {
         <div className={styles.storyCardBody}>
           <span className={`${styles.catTag} ${catClass(a.type)}`}>{articleCategoryLabel(a.categories)}</span>
           <h3 className={styles.cardHeadline}>{a.title}</h3>
-          {a.excerpt && <p className={styles.cardSummary}>{a.excerpt}</p>}
+          {a.excerpt && <ArticleExcerpt text={a.excerpt} className={styles.cardSummary} links={false} />}
           <p className={styles.cardMeta}>{formatDateLong(a.published_at ?? a.created_at)}</p>
         </div>
       </Link>

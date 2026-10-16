@@ -252,7 +252,11 @@ export function ArticleEditor({ article, selectedCategories, heroMedia, allCateg
               onChange={(e) => setExcerpt(e.target.value)}
               placeholder="A short summary that appears on the home page — 1-2 sentences."
             />
-            <div className={styles.hint}>Shown on the home page and article cards. Keep it to 1-2 sentences.</div>
+            <div className={styles.hint}>
+              Shown on the home page and article cards. Keep it to 1-2 sentences. Markdown works here
+              for a link — <code>[link text](https://…)</code> — clickable on the home page lead story;
+              cards show just the words.
+            </div>
           </div>
           </FormSection>
 

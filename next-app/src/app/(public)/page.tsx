@@ -7,6 +7,7 @@ import { FeedCard, catClass, entryHeroMedia, entryDateLine } from '../_component
 import { SectionDivider } from '../_components/section-divider';
 import { EmptyState } from '../_components/empty-state';
 import styles from '../_components/news-cards.module.css';
+import { ArticleExcerpt } from '@/lib/article-body/ArticleExcerpt';
 
 /*
  * The homepage feed merges ARTICLES and PROMOTED CALENDAR ENTRIES
@@ -65,7 +66,7 @@ export default async function Home({
                         By <strong>{a.author_name}</strong> &nbsp;&middot;&nbsp;{' '}
                         {formatDateLong(a.published_at ?? a.created_at)}
                       </p>
-                      {a.excerpt && <p className={styles.heroSummary}>{a.excerpt}</p>}
+                      {a.excerpt && <ArticleExcerpt text={a.excerpt} className={styles.heroSummary} />}
                       <Link href={`/news/${a.slug}`} className={styles.readMore}>
                         Read Full Story →
                       </Link>
