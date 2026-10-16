@@ -181,7 +181,7 @@ export async function startCardCheckout(input: { token: string; coverFee: boolea
   } catch (e) {
     // Put the money back the way it was; the attempt stays counted.
     await sb.from('wreath_orders').update({ fee_covered: Number(o.fee_covered), total: Number(o.total) }).eq('id', o.id).eq('payment_status', 'unpaid');
-    console.error('[wreaths] Stripe session create failed', o.id, e instanceof Error ? e.message : e);
+    console.error('[wreaths] Stripe session create failed', o.id, stripeErrorText(e));
     return { ok: false, error: 'Card payment isn’t working right now. Please try again, or pay by Venmo or PayPal.' };
   }
   await sb.from('wreath_checkout_starts').insert({ order_id: o.id, ip: deps.ip ?? '' });
@@ -228,7 +228,7 @@ async function settledFee(stripe: StripeLike, paymentIntent: string): Promise<nu
     return null;
   } catch (e) {
     // Income is booked now; the fee follows on charge.updated. Say why, so a missing key permission is visible.
-    console.warn(`[stripe] fee lookup for ${paymentIntent} failed: ${e instanceof Error ? e.message : String(e)}`);
+    console.warn(`[stripe] fee lookup for ${paymentIntent} failed: ${stripeErrorText(e)}`);
     return null;
   }
 }
@@ -333,6 +333,17 @@ export async function handleStripeEvent(event: StripeEventLike, deps: CardDeps):
   }
 }
 
+/** A Stripe error for the log: type, code, request id and message, plus the network cause a StripeConnectionError
+ *  keeps in `detail` ("connection to Stripe" alone said nothing, production 2026-10-16). Never includes the key. */
+export function stripeErrorText(e: unknown): string {
+  if (!(e instanceof Error)) return String(e);
+  const s = e as Error & { type?: string; code?: string; requestId?: string; detail?: unknown };
+  const parts = [s.type, s.code, s.requestId, e.message].filter(Boolean);
+  const d = s.detail as { name?: string; code?: string; message?: string; cause?: { code?: string; message?: string } } | undefined;
+  if (d) parts.push(`cause: ${[d.name, d.code, d.message, d.cause?.code, d.cause?.message].filter(Boolean).join(' ')}`);
+  return parts.join(' | ');
+}
+
 export type RefundResult = { ok: true; refundId: string; stray: boolean } | { ok: false; error: string };
 
 /**
@@ -359,7 +370,7 @@ export async function refundCardOrderCore(orderId: number, deps: Pick<CardDeps, 
     }
     return { ok: true, refundId: ids.join(', '), stray: stray.length > 0 };
   } catch (e) {
-    console.error('[wreaths] Stripe refund failed', o.id, e instanceof Error ? e.message : e);
+    console.error('[wreaths] Stripe refund failed', o.id, stripeErrorText(e));
     return { ok: false, error: 'Stripe couldn’t make the refund. Try again, or refund it in the Stripe Dashboard.' };
   }
 }
