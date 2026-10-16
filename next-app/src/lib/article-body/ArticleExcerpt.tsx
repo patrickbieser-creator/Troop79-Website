@@ -1,6 +1,7 @@
 import Markdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { ComponentPropsWithoutRef } from 'react';
+import styles from './article-excerpt.module.css';
 
 /**
  * Renders a story's excerpt — the same markdown dialect as the body, cut
@@ -32,7 +33,7 @@ export function ArticleExcerpt({
   links?: boolean;
 }) {
   return (
-    <p className={className}>
+    <p className={`${className} ${styles.excerpt}`}>
       <Markdown
         remarkPlugins={[remarkGfm]}
         allowedElements={ALLOWED}

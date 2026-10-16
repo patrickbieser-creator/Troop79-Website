@@ -1,0 +1,17 @@
+/* Inline markdown inside a story's excerpt (ArticleExcerpt). The global reset
+   in globals.css (`a { color: inherit; text-decoration: none }`) made a live
+   excerpt link look like the prose around it, so each mark the excerpt allows
+   is declared here, matching the article body (.articleBody a: forest,
+   underlined). Explicit rather than left to browser defaults so a card's or
+   hero's own type rules can't flatten them. */
+.excerpt a {
+  color: var(--forest);
+  border-bottom: 1px solid var(--forest);
+  transition: color var(--transition), border-color var(--transition);
+}
+.excerpt a:hover { color: var(--navy); border-color: var(--navy); }
+.excerpt a:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+.excerpt strong { font-weight: 700; }
+.excerpt em { font-style: italic; }
+.excerpt del { text-decoration: line-through; }
+.excerpt code { font-family: var(--font-mono); font-size: .92em; }

@@ -28,7 +28,16 @@ describe('ArticleExcerpt — links on', () => {
   it('Reader_SeesOneParagraph_WithTheGivenClass', () => {
     const { container } = render(<ArticleExcerpt text={MD} className="summary" />);
     const ps = container.querySelectorAll('p');
-    expect(ps.length === 1 && ps[0].className === 'summary').toBe(true);
+    expect(ps.length === 1 && ps[0].classList.contains('summary')).toBe(true);
+  });
+
+  // The global reset (`a { color: inherit; text-decoration: none }`) left the
+  // live link indistinguishable from the prose around it (Patrick, 2026-10-15).
+  // The excerpt carries its own prose class that restores the body's link look.
+  it('Reader_SeesStyledLink_BecauseExcerptCarriesItsProseClass', () => {
+    const { container } = render(<ArticleExcerpt text={MD} className="summary" />);
+    const p = container.querySelector('p')!;
+    expect([...p.classList].filter((c) => c && c !== 'summary' && c !== 'undefined').length).toBe(1);
   });
 
   it('Reader_SeesNoImage_WhenExcerptHasImageMarkdown', () => {
