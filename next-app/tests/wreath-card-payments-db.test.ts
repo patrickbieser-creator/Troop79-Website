@@ -29,6 +29,8 @@ function fakeStripe(opts: { fee?: number | null } = {}) {
   const sessions = new Map<string, FakeSession>();
   const byKey = new Map<string, FakeSession>();
   const refundsByKey = new Map<string, { id: string; payment_intent: string }>();
+  // The PaymentIntent of a session is `pi_test_<session id>` (see completed()); it carries the session's metadata.
+  const piMeta = new Map<string, Record<string, string>>();
   let n = 0;
   const stripe: StripeLike & { sessions: typeof sessions; creates: number; refundCalls: number; refundIntents: string[] } = {
     sessions,
@@ -56,6 +58,7 @@ function fakeStripe(opts: { fee?: number | null } = {}) {
           };
           sessions.set(s.id, s);
           byKey.set(o.idempotencyKey, s);
+          piMeta.set(`pi_test_${s.id}`, ((params.payment_intent_data as { metadata?: Record<string, string> } | undefined)?.metadata ?? {}));
           return s;
         },
         retrieve: async (id) => {
@@ -74,6 +77,7 @@ function fakeStripe(opts: { fee?: number | null } = {}) {
     paymentIntents: {
       retrieve: async (id) => ({
         id,
+        metadata: piMeta.get(id) ?? {},
         latest_charge: opts.fee === null ? { id: 'ch_x', balance_transaction: null } : { id: 'ch_x', balance_transaction: { fee: opts.fee ?? 231 } }
       })
     },
@@ -337,6 +341,20 @@ describe('handleStripeEvent — payments', () => {
     const ev = completed(session);
     (ev.data.object as Record<string, unknown>).metadata = { order_id: String(o.id), order_number: 'W-0000' };
     expect([await handleStripeEvent(ev, deps(s)), (await orderRow(o.id)).payment_status]).toEqual(['ignored', 'unpaid']);
+  });
+
+  // Production, 2026-10-16: Stripe sent charge.updated BEFORE checkout.session.completed, so the fee event found no
+  // paid order and was ignored for good. Now it asks Stripe to retry until the order is paid, then books the fee.
+  it('Webhook_FeeEventBeforeThePayment_Retries_ThenBooksTheFee', async () => {
+    const o = await makeOrder();
+    const s = fakeStripe({ fee: null });
+    await startCardCheckout({ token: o.public_token, coverFee: false }, deps(s));
+    const session = s.sessions.get((await orderRow(o.id)).stripe_session_id!)!;
+    const pi = `pi_test_${session.id}`;
+    const early: StripeEventLike = { id: EVT(), type: 'charge.updated', data: { object: { id: 'ch_x', payment_intent: pi, balance_transaction: { fee: 231 } } } };
+    await expect(handleStripeEvent(early, deps(s))).rejects.toThrow(/not paid yet/);
+    await handleStripeEvent(completed(session), deps(s));
+    expect([await handleStripeEvent(early, deps(s)), (await ledger(o.id)).map((l) => l.ledger_role)]).toEqual(['booked', ['payment', 'fee']]);
   });
 
   it('Webhook_SessionExpired_ClearsTheStoredSession', async () => {

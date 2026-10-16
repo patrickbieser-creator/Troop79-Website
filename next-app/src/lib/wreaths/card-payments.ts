@@ -24,7 +24,7 @@ export interface StripeLike {
     };
   };
   paymentIntents: {
-    retrieve(id: string, opts?: Record<string, unknown>): Promise<{ id: string; latest_charge: unknown }>;
+    retrieve(id: string, opts?: Record<string, unknown>): Promise<{ id: string; latest_charge: unknown; metadata?: Record<string, string> }>;
   };
   balanceTransactions: { retrieve(id: string): Promise<{ fee: number }> };
   refunds: { create(params: { payment_intent: string; reason?: string }, opts: { idempotencyKey: string }): Promise<{ id: string }> };
@@ -224,9 +224,12 @@ async function settledFee(stripe: StripeLike, paymentIntent: string): Promise<nu
     const bt = charge?.balance_transaction;
     if (bt && typeof bt === 'object' && typeof bt.fee === 'number') return fromCents(bt.fee);
     if (typeof bt === 'string') return fromCents((await stripe.balanceTransactions.retrieve(bt)).fee);
+    console.info(`[stripe] fee for ${paymentIntent} not settled yet; it follows on charge.updated`);
     return null;
-  } catch {
-    return null; // income is booked now; the fee follows on charge.updated
+  } catch (e) {
+    // Income is booked now; the fee follows on charge.updated. Say why, so a missing key permission is visible.
+    console.warn(`[stripe] fee lookup for ${paymentIntent} failed: ${e instanceof Error ? e.message : String(e)}`);
+    return null;
   }
 }
 
@@ -291,7 +294,20 @@ export async function handleStripeEvent(event: StripeEventLike, deps: CardDeps):
       const bt = obj.balance_transaction;
       if (!pi || !bt) return 'ignored';
       const o = await loadOrder(sb, 'stripe_payment_intent_id', pi);
-      if (!o || o.paid_method !== 'card') return 'ignored';
+      if (!o || o.paid_method !== 'card') {
+        // Stripe often sends this BEFORE checkout.session.completed (production, 2026-10-16). If the charge belongs to
+        // one of our orders that is still waiting for its payment, throw so the route answers 500 and Stripe retries
+        // after the payment lands; any other charge is not ours to book.
+        const intent = await deps.stripe.paymentIntents.retrieve(pi);
+        const orderId = Number(intent.metadata?.order_id);
+        if (Number.isInteger(orderId) && orderId > 0) {
+          const pending = await loadOrder(sb, 'id', orderId);
+          if (pending && pending.status === 'placed' && pending.payment_status === 'unpaid') {
+            throw new Error(`order ${pending.order_number} is not paid yet; Stripe will retry the fee`);
+          }
+        }
+        return 'ignored';
+      }
       const feeCents = typeof bt === 'string' ? (await deps.stripe.balanceTransactions.retrieve(bt)).fee : Number((bt as { fee?: number }).fee ?? 0);
       const fee = fromCents(feeCents);
       const { feeRow } = cardLedgerRows({ orderNumber: o.order_number, customerName: o.customer_name, total: Number(o.paid_amount ?? o.total), fee, saleYear: o.wreath_sales?.year ?? Number(deps.today().slice(0, 4)), today: deps.today() });

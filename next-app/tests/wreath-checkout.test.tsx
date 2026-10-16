@@ -188,6 +188,23 @@ describe('checkout form — card payment', () => {
     expect(((action.mock.calls[0] as unknown[])[0] as Record<string, unknown>).coverFee).toBe(true);
   });
 
+  // Production, 2026-10-16: the cart was emptied before Stripe opened, so "Can't place the order yet: your cart is
+  // empty" flashed while the page was leaving for Stripe.
+  it('CheckoutForm_PayingByCard_ShowsNoCartProblem_WhileOpeningStripe', async () => {
+    seedCart({ '11': 2 });
+    let release: (v: { ok: false; error: string }) => void = () => {};
+    const startCard = vi.fn(() => new Promise<{ ok: false; error: string }>((r) => (release = r)));
+    setup({ cardLive: true, startCard });
+    const user = userEvent.setup();
+    await fillPickup(user);
+    await user.click(screen.getByRole('radio', { name: /Card/ }));
+    await user.click(screen.getByRole('button', { name: 'Place order and pay by card' }));
+    await waitFor(() => expect(startCard).toHaveBeenCalled());
+    const flashed = screen.queryByText(/Can’t place the order yet/);
+    release({ ok: false, error: 'x' });
+    expect(flashed).toBeNull();
+  });
+
   it('CheckoutForm_CardStartFails_StillGoesToTheReceipt_WhereTheOrderCanBePaid', async () => {
     seedCart({ '11': 2 });
     setup({ cardLive: true, startCard: vi.fn(async () => ({ ok: false as const, error: 'down' })) });

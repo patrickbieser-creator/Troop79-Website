@@ -104,6 +104,9 @@ export function CheckoutForm({ items, scout, rules, pickupText, distributionDay,
   const [credit, setCredit] = useState<SellerMatch | null>(null);
   const [tried, setTried] = useState(false);
   const [busy, setBusy] = useState(false);
+  // The order is in and the page is on its way to Stripe or the receipt: the cart is already emptied, so don't
+  // re-validate it (that flashed "your cart is empty" — production, 2026-10-16) and keep the busy state.
+  const [leaving, setLeaving] = useState(false);
   const [serverProblem, setServerProblem] = useState<{ field?: OrderField; message: string } | null>(null);
 
   const byId = new Map(items.map((i) => [i.id, i]));
@@ -133,7 +136,7 @@ export function CheckoutForm({ items, scout, rules, pickupText, distributionDay,
   };
   const fulfillment: Fulfillment | null = fulfillmentFor(draft);
   const needsAddress = fulfillment === 'scout' || fulfillment === 'delivery';
-  const problems: CheckoutProblem[] = tried ? validateCheckout(draft) : [];
+  const problems: CheckoutProblem[] = tried && !leaving ? validateCheckout(draft) : [];
   const problemFor = (f: OrderField) => problems.find((p) => p.field === f)?.message ?? (serverProblem?.field === f ? serverProblem.message : undefined);
 
   // Totals: a courtesy copy of what the server computes.
@@ -190,6 +193,7 @@ export function CheckoutForm({ items, scout, rules, pickupText, distributionDay,
         website
       });
       if (res.ok) {
+        setLeaving(true);
         clear();
         try {
           window.sessionStorage.removeItem(STARTED_KEY);
@@ -497,8 +501,8 @@ export function CheckoutForm({ items, scout, rules, pickupText, distributionDay,
             </Notice>
           )}
           <div className={styles.submitRow}>
-            <Button type="submit" disabled={busy}>
-              {busy ? 'Placing your order…' : payByCard ? 'Place order and pay by card' : 'Place order'}
+            <Button type="submit" disabled={busy || leaving}>
+              {busy || leaving ? 'Placing your order…' : payByCard ? 'Place order and pay by card' : 'Place order'}
             </Button>
             {blockedReason && <SaveProblem action="place the order" reason={blockedReason} />}
             {!blockedReason && serverProblem?.field && <SaveProblem action="place the order" reason={serverProblem.message} />}
