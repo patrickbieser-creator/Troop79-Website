@@ -115,6 +115,24 @@ describe('orders', () => {
     expect(JSON.stringify(audit[0].details)).toContain('52');
   });
 
+  // Patrick, 2026-10-15: marking paid books the money into the finance ledger — once, however many clicks.
+  it('MarkPaid_BooksOneCheckingFundraiserRow_LinkedToTheOrder', async () => {
+    const order = await makeOrder();
+    const { markPaid } = await actions();
+    await markPaid(order.id, 'paypal');
+    await markPaid(order.id, 'paypal');
+    const rows = ((await admin.from('financial_transactions').select('account, amount, kind, method, activity_label, voided_at').eq('wreath_order_id', order.id)).data ?? []);
+    expect(rows).toEqual([{ account: 'checking', amount: 52, kind: 'fundraiser', method: 'other', activity_label: `Wreaths '${String(fx.year).slice(-2)}`, voided_at: null }]);
+  });
+
+  it('MarkPaid_BooksNothing_WhenTheOrderIsCancelled', async () => {
+    const order = await makeOrder();
+    const { markPaid, cancelOrder } = await actions();
+    await cancelOrder(order.id);
+    await markPaid(order.id, 'cash');
+    expect((await admin.from('financial_transactions').select('id').eq('wreath_order_id', order.id)).data).toEqual([]);
+  });
+
   it('MarkPaid_RefusesAnUnknownMethodAndACancelledOrder', async () => {
     const order = await makeOrder();
     const { markPaid, cancelOrder } = await actions();

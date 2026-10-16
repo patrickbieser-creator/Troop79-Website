@@ -506,7 +506,7 @@ function CancelForm({ order: o, onClose }: { order: AdminOrder; onClose: () => v
       <DialogBody>
         <p>
           {o.orderNumber} for {o.customerName} ({fmtMoney2(o.total)}) will no longer count in the books or the Rose order.
-          {o.paymentStatus === 'paid' ? ' It is marked paid: return the money by hand (Venmo or PayPal), the site does not refund.' : ''}
+          {o.paymentStatus === 'paid' ? ' It is marked paid, so its payment stays in the finance ledger: return the money by hand (Venmo or PayPal) and record the refund in Finance.' : ''}
         </p>
         {error && <p className={styles.badNote}>{error}</p>}
       </DialogBody>

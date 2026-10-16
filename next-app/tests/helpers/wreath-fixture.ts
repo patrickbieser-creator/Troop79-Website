@@ -71,8 +71,9 @@ export async function makeWreathFixture(status: 'draft' | 'open' | 'closed' = 'o
       // Audit rows the admin actions wrote about THIS sale's rows (test-owned ids only), then the rows themselves.
       const ids = async (table: string) =>
         ((await admin.from(table).select('id').eq('sale_id', saleId)).data ?? []).map((r) => String((r as { id: number }).id));
+      const orderIdStrings = await ids('wreath_orders');
       const audited: [string, string[]][] = [
-        ['wreath_order', await ids('wreath_orders')],
+        ['wreath_order', orderIdStrings],
         ['wreath_seller', await ids('wreath_sellers')],
         ['wreath_item', await ids('wreath_items')],
         ['wreath_sale', [String(saleId)]]
@@ -80,6 +81,9 @@ export async function makeWreathFixture(status: 'draft' | 'open' | 'closed' = 'o
       for (const [type, entityIds] of audited) {
         if (entityIds.length) await admin.from('audit_log').delete().eq('area', 'wreaths').eq('entity_type', type).in('entity_id', entityIds);
       }
+      // Ledger rows Mark paid booked for THIS sale's orders (the FK is ON DELETE RESTRICT — a paid order's money is real).
+      const orderIds = orderIdStrings.map(Number);
+      if (orderIds.length) await admin.from('financial_transactions').delete().in('wreath_order_id', orderIds);
       await admin.from('wreath_orders').delete().eq('sale_id', saleId);
       await admin.from('wreath_sales').delete().eq('id', saleId);
     }

@@ -4,9 +4,9 @@ import { revalidatePath } from 'next/cache';
 import { requireCapability } from '@/lib/require-capability';
 import { recordAudit, type AuditDetail } from '@/lib/audit';
 import { createAdminClient } from '@/lib/supabase/server';
-import { centralToInstant, instantToCentral } from '@/lib/dates';
+import { centralToInstant, centralToday, instantToCentral } from '@/lib/dates';
 import { uploadToBunny } from '@/lib/bunny-storage';
-import { PAID_METHODS, deliveryFeeFor, fmtMoney2, fromCents, inDeliveryArea, toCents, zipFormatOk, type PaidMethod } from '@/lib/wreaths/rules';
+import { PAID_METHODS, paidLedgerRow, deliveryFeeFor, fmtMoney2, fromCents, inDeliveryArea, toCents, zipFormatOk, type PaidMethod } from '@/lib/wreaths/rules';
 import { canonicalSlug, SLUG_RE } from '@/lib/wreaths/public';
 import { parseDeliveryMessage, parseGoal } from '@/lib/wreaths/scout-entry';
 
@@ -372,7 +372,7 @@ export async function markPaid(orderId: number, method: PaidMethod): Promise<Wre
   const actor = await requireCapability('finance.manage');
   if (!PAID_METHODS.includes(method)) return fail('Choose how it was paid.', 'method');
   const supabase = createAdminClient();
-  const { data: pre } = await supabase.from('wreath_orders').select('total').eq('id', orderId).maybeSingle();
+  const { data: pre } = await supabase.from('wreath_orders').select('total, collected_by_scout').eq('id', orderId).maybeSingle();
   const claimedTotal = Number(pre?.total ?? 0);
   const { data: claimed } = await supabase
     .from('wreath_orders')
@@ -380,7 +380,7 @@ export async function markPaid(orderId: number, method: PaidMethod): Promise<Wre
     .eq('id', orderId)
     .eq('payment_status', 'unpaid')
     .eq('status', 'placed')
-    .select('order_number, total')
+    .select('order_number, total, customer_name, wreath_sales(year)')
     .maybeSingle();
   if (!claimed) {
     const { data: row } = await supabase.from('wreath_orders').select('payment_status, status').eq('id', orderId).maybeSingle();
@@ -388,6 +388,39 @@ export async function markPaid(orderId: number, method: PaidMethod): Promise<Wre
     if (row.status === 'cancelled') return fail('That order is cancelled, so it can’t be marked paid.');
     if (row.payment_status === 'paid') return { ok: true, already: true };
     return fail('That order can’t be marked paid.');
+  }
+  // Book the money into the finance ledger (Patrick, 2026-10-15). Only the claiming call gets here, and the live-row
+  // unique index on wreath_order_id backs that up. If the ledger refuses the row, the payment is put back so an order
+  // is never paid without its ledger line.
+  // The amount the claim recorded as paid_amount — the ledger books the same figure.
+  const total = claimedTotal;
+  let ledger: AuditDetail | null = null;
+  if (total > 0) {
+    const sale = claimed.wreath_sales as unknown as { year: number } | null;
+    const row = paidLedgerRow({
+      orderNumber: claimed.order_number,
+      customerName: claimed.customer_name,
+      total,
+      method,
+      saleYear: sale?.year ?? Number(centralToday().slice(0, 4)),
+      today: centralToday()
+    });
+    const { error: ledgerError } = await supabase
+      .from('financial_transactions')
+      .insert({ ...row, wreath_order_id: orderId, source: 'app', entered_by_person_id: actor.personId });
+    if (ledgerError) {
+      const { error: revertError } = await supabase
+        .from('wreath_orders')
+        .update({ payment_status: 'unpaid', paid_method: null, paid_at: null, paid_by_person_id: null, paid_amount: null, collected_by_scout: pre?.collected_by_scout ?? false })
+        .eq('id', orderId)
+        .eq('payment_status', 'paid');
+      if (revertError) {
+        console.error('[wreaths] markPaid: ledger insert and revert both failed', orderId, ledgerError.message, revertError.message);
+        return fail(`${claimed.order_number} is marked paid but its finance ledger line was not recorded. Add it in Finance by hand.`);
+      }
+      return fail('The finance ledger couldn’t record this payment, so the order is still unpaid. Try again.');
+    }
+    ledger = { field: 'Finance ledger', from: '—', to: `${money(total)} to checking (${row.activity_label})` };
   }
   await recordAudit({
     area: 'wreaths',
@@ -397,9 +430,11 @@ export async function markPaid(orderId: number, method: PaidMethod): Promise<Wre
     summary: `Marked order ${claimed.order_number} paid`,
     details: [
       { field: 'Payment', from: 'Unpaid', to: `Paid (${method})` },
-      { field: 'Amount', from: '—', to: money(Number(claimed.total)) }
+      { field: 'Amount', from: '—', to: money(total) },
+      ...(ledger ? [ledger] : [])
     ]
   });
+  revalidatePath('/admin/finance');
   revalidatePath(PAGE);
   return { ok: true };
 }
