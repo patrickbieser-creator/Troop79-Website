@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { cardDeps, stripeClient } from '@/lib/wreaths/stripe-client';
+import { cardDeps, stripeClient, stripeSecretKey, stripeWebhookSecret } from '@/lib/wreaths/stripe-client';
 import { handleStripeEvent, type StripeEventLike } from '@/lib/wreaths/card-payments';
 
 /**
@@ -17,8 +17,8 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
-  const secret = process.env.STRIPE_WEBHOOK_SECRET;
-  if (!secret || !process.env.STRIPE_SECRET_KEY) {
+  const secret = stripeWebhookSecret();
+  if (!secret || !stripeSecretKey()) {
     return NextResponse.json({ error: 'Card payments are not configured.' }, { status: 503 });
   }
   const signature = request.headers.get('stripe-signature');

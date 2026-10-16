@@ -10,16 +10,25 @@ import { expireOpenCheckout, type CardDeps, type StripeLike } from './card-payme
  * The SDK pins its own API version (stripe 22.0.1 → 2026-03-25.dahlia), the same as OMG-Website.
  */
 
+/** The secrets, trimmed: a key pasted into Vercel with a trailing newline made every Stripe call fail with "An error
+ *  occurred with our connection to Stripe" (production, 2026-10-16). */
+export function stripeSecretKey(): string {
+  return (process.env.STRIPE_SECRET_KEY ?? '').trim();
+}
+export function stripeWebhookSecret(): string {
+  return (process.env.STRIPE_WEBHOOK_SECRET ?? '').trim();
+}
+
 /** Card payment is on only when BOTH secrets are configured — with no keys the site behaves exactly as Release A. */
 export function cardCheckoutLive(): boolean {
-  return Boolean(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_WEBHOOK_SECRET);
+  return Boolean(stripeSecretKey() && stripeWebhookSecret());
 }
 
 let client: Stripe | null = null;
 let clientKey = '';
 
 export function stripeClient(): Stripe {
-  const key = process.env.STRIPE_SECRET_KEY ?? '';
+  const key = stripeSecretKey();
   if (!client || clientKey !== key) {
     client = new Stripe(key);
     clientKey = key;
