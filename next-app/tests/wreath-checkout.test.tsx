@@ -10,6 +10,9 @@ import { validateCheckout } from '../src/lib/wreaths/checkout-validate';
  */
 const push = vi.fn();
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
+// Leaving for Stripe rewrites history and navigates away: the spy stands in (tests/wreath-leave-for-stripe.test.ts).
+const leaveForStripe = vi.fn();
+vi.mock('../src/lib/wreaths/leave-for-stripe', async (orig) => ({ ...(await orig<typeof import('../src/lib/wreaths/leave-for-stripe')>()), leaveForStripe: (...a: unknown[]) => leaveForStripe(...a) }));
 
 const items: CheckoutProps['items'] = [
   { id: 11, catalogNumber: 1, name: 'Wreath', size: '20″', description: '', price: 26, imageUrl: null, section: 'wreaths', donatable: true },
@@ -32,6 +35,7 @@ beforeEach(() => {
   window.localStorage.clear();
   window.sessionStorage.clear();
   push.mockClear();
+  leaveForStripe.mockClear();
 });
 
 describe('checkout form', () => {
@@ -223,5 +227,38 @@ describe('checkout form — card payment', () => {
     await user.click(screen.getByRole('radio', { name: /Card/ }));
     await user.click(screen.getByRole('button', { name: 'Place order and pay by card' }));
     await waitFor(() => expect(push).toHaveBeenCalledWith('/wreaths/order/tok'));
+  });
+  // Patrick, 2026-10-16: Back from Stripe landed on an empty checkout and the order looked gone.
+  it('CheckoutForm_PayingByCard_LeavesForStripeThroughTheReceipt', async () => {
+    seedCart({ '11': 2 });
+    setup({ cardLive: true, startCard: vi.fn(async () => ({ ok: true as const, url: 'https://checkout.stripe.test/1' })) });
+    const user = userEvent.setup();
+    await fillPickup(user);
+    await user.click(screen.getByRole('radio', { name: /Card/ }));
+    await user.click(screen.getByRole('button', { name: 'Place order and pay by card' }));
+    await waitFor(() => expect(leaveForStripe).toHaveBeenCalledWith('https://checkout.stripe.test/1', 'tok'));
+  });
+
+  it('CheckoutForm_RemembersTheOrderItPlaced_ForThisTab', async () => {
+    seedCart({ '11': 1 });
+    setup();
+    const user = userEvent.setup();
+    await fillPickup(user);
+    await user.click(screen.getByRole('button', { name: 'Place order' }));
+    await waitFor(() => expect(push).toHaveBeenCalled());
+    expect(JSON.parse(window.sessionStorage.getItem('wreath-last-order') ?? '{}')).toMatchObject({ token: 'tok', orderNumber: 'W-1' });
+  });
+
+  it('CheckoutForm_WithAnEmptyCart_PointsAtTheOrderJustPlaced', () => {
+    window.sessionStorage.setItem('wreath-last-order', JSON.stringify({ token: 'tok9', orderNumber: 'W-1009', at: Date.now() }));
+    setup();
+    expect(screen.getByRole('link', { name: 'See order W-1009' }).getAttribute('href')).toBe('/wreaths/order/tok9');
+  });
+
+  it('CheckoutForm_WithItemsInTheCart_DoesNotMentionAnEarlierOrder', () => {
+    window.sessionStorage.setItem('wreath-last-order', JSON.stringify({ token: 'tok9', orderNumber: 'W-1009', at: Date.now() }));
+    seedCart({ '11': 1 });
+    setup();
+    expect(screen.queryByRole('link', { name: 'See order W-1009' })).toBeNull();
   });
 });

@@ -6,6 +6,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { coverFeeFor, fromCents, itemLabel, toCents, type SaleRules } from './rules';
+import type { CancelOrderState, CancelSale } from './customer-cancel';
 
 export const SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -76,6 +77,8 @@ export interface Confirmation {
   distribution: { date: string | null; window: string; place: string };
   /** The cutoff of the order's round (an instant): changes are possible until the end of that day. */
   changesBy: string;
+  /** What lib/wreaths/customer-cancel decides "Cancel this order" from. */
+  cancel: { order: CancelOrderState; sale: CancelSale | null };
 }
 
 const SALE_COLS =
@@ -200,7 +203,7 @@ export async function loadConfirmation(sb: SupabaseClient, token: string): Promi
   const { data } = await sb
     .from('wreath_orders')
     .select(
-      'order_number, customer_name, status, payment_status, paid_method, fulfillment, outside_area_relative, round, sale_id, items_subtotal, delivery_fee, fee_covered, gift, total, ' +
+      'order_number, customer_name, status, payment_status, paid_method, needs_refund, source, fulfillment, outside_area_relative, round, sale_id, items_subtotal, delivery_fee, fee_covered, gift, total, ' +
         'scout:credited_person_id(first_name, last_name), wreath_order_lines(quantity, donated, unit_price, wreath_items(name, size))'
     )
     .eq('public_token', token)
@@ -213,6 +216,8 @@ export async function loadConfirmation(sb: SupabaseClient, token: string): Promi
     status: 'placed' | 'cancelled';
     payment_status: 'unpaid' | 'paid' | 'refunded';
     paid_method: string | null;
+    needs_refund: string | null;
+    source: CancelOrderState['source'];
     fulfillment: Confirmation['fulfillment'];
     outside_area_relative: boolean;
     round: 1 | 2;
@@ -262,6 +267,10 @@ export async function loadConfirmation(sb: SupabaseClient, token: string): Promi
       ? coverFeeFor({ feePercent: sale.feePercent, feeFixed: sale.feeFixed }, fromCents(toCents(Number(o.items_subtotal)) + toCents(Number(o.gift)) + toCents(Number(o.delivery_fee))))
       : 0,
     distribution: { date: sale?.distributionDate ?? null, window: sale?.distributionWindow ?? '', place: sale?.distributionPlace ?? '' },
-    changesBy: (o.round === 1 ? sale?.round1Cutoff : sale?.round2Cutoff) ?? ''
+    changesBy: (o.round === 1 ? sale?.round1Cutoff : sale?.round2Cutoff) ?? '',
+    cancel: {
+      order: { status: o.status, paymentStatus: o.payment_status, needsRefund: o.needs_refund != null, source: o.source, round: o.round },
+      sale: sale ? { status: sale.status, round1Cutoff: sale.round1Cutoff, round2Cutoff: sale.round2Cutoff } : null
+    }
   };
 }

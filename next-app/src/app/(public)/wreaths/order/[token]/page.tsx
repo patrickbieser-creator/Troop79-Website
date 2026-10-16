@@ -10,7 +10,9 @@ import { arrivalParagraphs } from '@/lib/wreaths/copy';
 import { loadConfirmation } from '@/lib/wreaths/public';
 import { PAY_TREASURER, fmtMoney2, fromCents, toCents } from '@/lib/wreaths/rules';
 import { cardCheckoutLive } from '@/lib/wreaths/stripe-client';
-import { startCardPaymentAction } from '../../actions';
+import { customerCancelBlock } from '@/lib/wreaths/customer-cancel';
+import { cancelOrderAction, startCardPaymentAction } from '../../actions';
+import { CancelOrder } from './cancel-order';
 import { CardReturnRefresh, PayByCard } from './pay-by-card';
 import styles from '../../wreaths.module.css';
 
@@ -19,7 +21,9 @@ import styles from '../../wreaths.module.css';
  * and no way to find one by number. Shows the order number, items, total, how to pay and when it arrives — never the
  * address, phone or email. Never indexed, never cached, never sent as a Referer (also set in next.config.ts). Since
  * Release B an unpaid order can also be paid by card here (below the Venmo / PayPal way), and `?card=return` is where
- * Stripe sends the customer back while the webhook confirms the payment.
+ * Stripe sends the customer back while the webhook confirms the payment. `?card=cancelled` is where they land when they
+ * leave Stripe without paying (Stripe's back arrow, or the browser's Back, which the checkout points here before it
+ * opens Stripe): the order is saved and unpaid, so the page says so, and offers paying another way or cancelling.
  */
 export const dynamic = 'force-dynamic';
 
@@ -31,12 +35,15 @@ export const metadata: Metadata = {
 
 export default async function Page({ params, searchParams }: { params: Promise<{ token: string }>; searchParams: Promise<{ card?: string }> }) {
   const { token } = await params;
-  const backFromCard = (await searchParams).card === 'return';
+  const card = (await searchParams).card;
+  const backFromCard = card === 'return';
+  const cardUnfinished = card === 'cancelled';
   const o = await loadConfirmation(createAdminClient(), token);
   if (!o) notFound();
   // Release B: the card option sits under the Venmo / PayPal instructions on any unpaid, placed order.
   const cardOffered = cardCheckoutLive() && o.status === 'placed' && o.paymentStatus === 'unpaid';
   const baseTotal = fromCents(toCents(o.total) - toCents(o.feeCovered));
+  const mayCancel = customerCancelBlock(o.cancel.order, o.cancel.sale) === null;
 
   const arrival = arrivalParagraphs({
     fulfillment: o.fulfillment,
@@ -69,6 +76,16 @@ export default async function Page({ params, searchParams }: { params: Promise<{
         </Notice>
       ) : (
         <Notice tone="warning">
+          {cardUnfinished && (
+            <p className={styles.payLead}>
+              <strong>Your card payment wasn’t finished, so nothing was charged.</strong> Order {o.orderNumber} is saved. Pay below{mayCancel ? ', or ' : '.'}
+              {mayCancel && (
+                <>
+                  <a href="#cancel">cancel the order</a> if you changed your mind.
+                </>
+              )}
+            </p>
+          )}
           <div className={styles.payHow}>
             <p>
               <strong>{fmtMoney2(baseTotal)} due.</strong> Please pay by Venmo or PayPal and put <strong>{o.orderNumber}</strong> in the payment note, so we can match it to your order.
@@ -138,6 +155,11 @@ export default async function Page({ params, searchParams }: { params: Promise<{
           Reply to your confirmation email, or write <a href="mailto:bsatroop79bg@gmail.com">bsatroop79bg@gmail.com</a>. Changes are possible until{' '}
           {o.changesBy ? fmtDateFull(o.changesBy) : 'the cutoff'}, when the troop places its order with the grower.
         </p>
+        {mayCancel && (
+          <div id="cancel" className={styles.inset}>
+            <CancelOrder token={token} orderNumber={o.orderNumber} scoutFirstName={o.scoutFirstName} cancel={cancelOrderAction} />
+          </div>
+        )}
       </section>
       <p>
         <Button variant="secondary" href="/wreaths">

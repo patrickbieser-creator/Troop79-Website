@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>October 16, 2026</strong> &nbsp;&middot;&nbsp; v1.225.0</p>
+      <p>Last updated: <strong>October 16, 2026</strong> &nbsp;&middot;&nbsp; v1.226.0</p>
     </div>
   </div>
 
@@ -494,6 +494,24 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.226.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.226.0</span>
+        <span class="release-date">October 16, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">New</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Wreath sale: leaving Stripe without paying</p>
+        <ul class="change-list">
+          <li><span><strong>Back from Stripe shows the order.</strong> The order is saved before Stripe opens, so a customer who presses Back, uses Stripe&rsquo;s back arrow or comes back later lands on their order page, not an empty checkout. The page says the card payment wasn&rsquo;t finished and nothing was charged, then offers card, Venmo or PayPal.</span></li>
+          <li><span><strong>An empty checkout points at the order just placed.</strong> For an hour after placing an order, the checkout in that tab links to it if the cart is empty.</span></li>
+          <li><span><strong>Customers can cancel their own order.</strong> &ldquo;Cancel this order&rdquo; on the order page asks first, then cancels it. It works only on an unpaid online order before its round&rsquo;s cutoff, never on a paid or scout-entered one. Any open card payment page is closed first, a payment already going through stops the cancel, and the cancel shows in the order&rsquo;s history as &ldquo;Customer&rdquo;.</span></li>
+          <li><span><strong>&ldquo;Card not finished&rdquo; in admin and on the scout&rsquo;s page.</strong> An unpaid order whose customer opened card payment and left is marked, so it reads differently from an order waiting on Venmo.</span></li>
+        </ul>
       </div>
     </div>
 

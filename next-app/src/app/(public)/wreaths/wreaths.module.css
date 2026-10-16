@@ -193,6 +193,8 @@
 .payHow { font-family: var(--font-ui); font-size: var(--fs-sm); }
 .payHow p { margin: 0; }
 .payHow p + p { margin-top: var(--sp-1); }
+.cancelActions { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.payLead { font-family: var(--font-ui); font-size: var(--fs-sm); margin: 0 0 var(--sp-3); }
 .hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 .prose { font-family: var(--font-ui); }
 .prose p { margin: 0 0 var(--sp-2); }

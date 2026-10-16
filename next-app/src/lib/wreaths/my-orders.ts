@@ -40,6 +40,8 @@ export interface MyOrder {
   contact: MyOrderContact | null;
   /** What the customer still owes: 0 once paid. */
   owed: number;
+  /** The customer opened card payment and left without paying (online orders; see AdminOrder.cardStarted). */
+  cardUnfinished: boolean;
   source: AdminOrder['source'];
   /** Scout-entered ("paper") orders only: who typed it in, whether the scout holds the money, and the notes. */
   enteredByName: string | null;
@@ -117,6 +119,7 @@ export function toMyOrder(o: AdminOrder, personId: number, lockCtx?: LockContext
     deliverLines: o.lines.filter((l) => !l.donated).map((l) => ({ label: l.label, quantity: l.quantity })),
     contact: delivers ? { phone: o.customerPhone, address: o.customerAddress, city: o.customerCity, zip: o.customerZip } : null,
     owed: o.paymentStatus === 'paid' ? 0 : o.total,
+    cardUnfinished: o.cardStarted && o.status === 'placed' && o.paymentStatus === 'unpaid',
     source: o.source,
     enteredByName: o.source === 'paper' ? o.enteredByName : null,
     collectedByScout: o.source === 'paper' && o.collectedByScout,

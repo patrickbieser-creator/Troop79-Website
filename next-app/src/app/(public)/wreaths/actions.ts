@@ -10,7 +10,8 @@ import { loadCurrentSale } from '@/lib/wreaths/public';
 import { entererEmails, resolveScoutEntryViewer } from '@/lib/wreaths/scout-entry-viewer';
 import { searchSellers, type SellerMatch } from '@/lib/wreaths/seller-search';
 import { startCardCheckout, type StartResult } from '@/lib/wreaths/card-payments';
-import { cardDeps } from '@/lib/wreaths/stripe-client';
+import { cardDeps, closeOrderCheckoutForCancel } from '@/lib/wreaths/stripe-client';
+import { cancelOrderByToken, type CancelResult } from '@/lib/wreaths/customer-cancel';
 
 /**
  * The customer's "Place order" (Plans/Wreath-Sale.md, "The order action"). A thin shell: it supplies the live clock,
@@ -91,4 +92,13 @@ export async function placeScoutOrderAction(raw: unknown): Promise<PlaceOrderRes
 export async function startCardPaymentAction(token: string, coverFee: boolean): Promise<StartResult> {
   if (typeof token !== 'string') return { ok: false, error: 'We couldn’t find that order.' };
   return startCardCheckout({ token, coverFee: coverFee === true }, { ...cardDeps(), ip: await callerIp() });
+}
+
+/**
+ * "Cancel this order" from the receipt page (Patrick, 2026-10-16). Keyed by the order's public token, like paying;
+ * lib/wreaths/customer-cancel.ts decides whether the customer may (unpaid, online, before the round's cutoff) and
+ * expires any open card session before the order is cancelled.
+ */
+export async function cancelOrderAction(token: string): Promise<CancelResult> {
+  return cancelOrderByToken(token, { supabase: createAdminClient(), now: Date.now, closeCheckout: closeOrderCheckoutForCancel });
 }

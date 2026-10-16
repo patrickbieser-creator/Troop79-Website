@@ -39,6 +39,7 @@ function order(over: Partial<AdminOrder> = {}): AdminOrder {
     stripeFee: null,
     refundedAt: null,
     needsRefund: null,
+    cardStarted: false,
     enteredByPersonId: null,
     enteredByName: null,
     collectedByScout: false,

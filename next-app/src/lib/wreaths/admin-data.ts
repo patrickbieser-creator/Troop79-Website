@@ -93,6 +93,9 @@ export interface AdminOrder {
   stripeFee: number | null;
   refundedAt: string | null;
   needsRefund: string | null;
+  /** A card payment was started on this order (Stripe Checkout opened at least once). With an unpaid order it reads
+   *  "Card not finished": the customer left Stripe without paying (2026-10-16). */
+  cardStarted: boolean;
   lines: AdminOrderLine[];
   /** Scout-entered orders: who typed it in (the scout or a parent), whether the scout says they hold the money, and the notes. */
   enteredByPersonId: number | null;
@@ -240,6 +243,7 @@ export async function loadAdminOrders(sb: SupabaseClient, saleId: number, opts: 
     stripeFee: r.stripe_fee == null ? null : Number(r.stripe_fee),
     refundedAt: r.refunded_at ?? null,
     needsRefund: r.needs_refund ?? null,
+    cardStarted: Number(r.stripe_checkout_count ?? 0) > 0,
     enteredByPersonId: r.entered_by_person_id ?? null,
     enteredByName: one(r.entered)?.display_name ?? null,
     collectedByScout: r.collected_by_scout === true,

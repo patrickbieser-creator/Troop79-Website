@@ -193,7 +193,7 @@ function order(id: number, over: Partial<AdminOrder> = {}): AdminOrder {
   return {
     id, orderNumber: `W-${2000 + id}`, placedAt: '2026-10-12T15:00:00.000Z', round: 1, source: 'paper', fulfillment: 'scout', creditedPersonId: ME, creditedName: 'Oliver P',
     deliveringPersonId: ME, customerName: `Customer ${id}`, customerEmail: '', customerPhone: '', customerAddress: '', customerCity: '', customerZip: '', outsideAreaRelative: false,
-    itemsSubtotal: 52, deliveryFee: 0, feeCovered: 0, gift: 0, total: 52, paymentStatus: 'unpaid', paidMethod: null, paidAt: null, paidAmount: null, status: 'placed', stripeFee: null, refundedAt: null, needsRefund: null,
+    itemsSubtotal: 52, deliveryFee: 0, feeCovered: 0, gift: 0, total: 52, paymentStatus: 'unpaid', paidMethod: null, paidAt: null, paidAmount: null, status: 'placed', stripeFee: null, refundedAt: null, needsRefund: null, cardStarted: false,
     enteredByPersonId: ME, enteredByName: 'Oliver Prescott', collectedByScout: false, paymentNote: '', customerNote: '',
     lines: [{ itemId: 11, label: '20″ Wreath', catalogNumber: 1, quantity: 2, donated: false, amount: 52, unitPrice: 26, unitCost: 16.07 }],
     ...over
@@ -364,6 +364,17 @@ describe('Admin orders — card payments', () => {
     await user.click(screen.getByRole('button', { name: o.orderNumber }));
     return user;
   };
+
+  // Patrick, 2026-10-16: an order whose customer walked away from Stripe read like any other unpaid order.
+  it('AdminOrders_MarksAnUnpaidOrder_WhoseCardPaymentWasNotFinished', () => {
+    render(<OrdersPanel orders={[order(1, { source: 'store', cardStarted: true })]} history={{}} sellers={[]} deliveryZipPrefix="532" />);
+    expect(screen.getByText('Card not finished')).toBeTruthy();
+  });
+
+  it('AdminOrders_DoesNotMarkAPaidCardOrder_AsNotFinished', () => {
+    render(<OrdersPanel orders={[order(1, { source: 'store', cardStarted: true, paymentStatus: 'paid', paidMethod: 'card' })]} history={{}} sellers={[]} deliveryZipPrefix="532" />);
+    expect(screen.queryByText('Card not finished')).toBeNull();
+  });
 
   it('AdminOrders_ShowsTheStripeFee_OnACardPaidOrder', async () => {
     await open(order(1, { paymentStatus: 'paid', paidMethod: 'card', paidAmount: 52, stripeFee: 1.81 }));

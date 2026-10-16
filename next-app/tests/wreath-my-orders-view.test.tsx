@@ -51,6 +51,7 @@ function order(id: number, over: Partial<AdminOrder> = {}): AdminOrder {
     stripeFee: null,
     refundedAt: null,
     needsRefund: null,
+    cardStarted: false,
     enteredByPersonId: null,
     enteredByName: null,
     collectedByScout: false,
@@ -68,6 +69,11 @@ describe('MyWreathOrdersView', () => {
     const { container } = render(<MyWreathOrdersView data={view([order(1, { fulfillment: 'scout', deliveringPersonId: ME })])} />);
     expect(container.querySelector('form, input, textarea, select')).toBeNull();
     expect(screen.getAllByRole('button').map((b) => b.textContent)).toEqual(['Print delivery list']);
+  });
+
+  it('MyWreathOrders_MarksAnOrderWhoseCardPaymentWasNotFinished', () => {
+    render(<MyWreathOrdersView data={view([order(1, { source: 'store', cardStarted: true })])} />);
+    expect(screen.getByText('Card not finished')).toBeTruthy();
   });
 
   it('MyWreathOrders_ShowsPaidAndOwedPerOrder_AndTheEarningsSoFar', () => {

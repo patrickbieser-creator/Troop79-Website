@@ -2,9 +2,12 @@ import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { adminClient } from './helpers/admin-client';
 import { makeWreathFixture, NOW_R1, type WreathFixture } from './helpers/wreath-fixture';
 import { placeOrder, type PlaceOrderDeps } from '../src/lib/wreaths/place-order';
+import { loadAdminOrders } from '../src/lib/wreaths/admin-data';
+import { cancelOrderByToken } from '../src/lib/wreaths/customer-cancel';
 import {
   startCardCheckout,
   expireOpenCheckout,
+  closeCheckoutForCancel,
   handleStripeEvent,
   refundCardOrderCore,
   MAX_CHECKOUTS_PER_ORDER,
@@ -197,6 +200,26 @@ describe('startCardCheckout', () => {
     expect('payment_method_types' in session.params).toBe(false);
   });
 
+  // Leaving Stripe without paying lands on the receipt, which then says the card payment wasn't finished (2026-10-16).
+  it('StartCardCheckout_SendsALeftWithoutPaying_ReturnToTheReceipt', async () => {
+    const o = await makeOrder();
+    const s = fakeStripe();
+    await startCardCheckout({ token: o.public_token, coverFee: false }, deps(s));
+    const session = s.sessions.get((await orderRow(o.id)).stripe_session_id ?? '')!;
+    expect([session.params.cancel_url, session.params.success_url]).toEqual([
+      `https://wreaths.test/wreaths/order/${o.public_token}?card=cancelled`,
+      `https://wreaths.test/wreaths/order/${o.public_token}?card=return`
+    ]);
+  });
+
+  it('AdminOrders_KnowACardPaymentWasStarted_OnTheOrder', async () => {
+    const started = await makeOrder();
+    const untouched = await makeOrder();
+    await startCardCheckout({ token: started.public_token, coverFee: false }, deps(fakeStripe()));
+    const byId = new Map((await loadAdminOrders(admin, fx.saleId)).map((o) => [o.id, o.cardStarted]));
+    expect([byId.get(started.id), byId.get(untouched.id)]).toEqual([true, false]);
+  });
+
   it('StartCardCheckout_CoveringTheFee_UpdatesTheOrderTotal', async () => {
     const o = await makeOrder();
     await startCardCheckout({ token: o.public_token, coverFee: true }, deps(fakeStripe()));
@@ -252,6 +275,51 @@ describe('expireOpenCheckout', () => {
   it('ExpireOpenCheckout_IsANoOp_WithoutASession', async () => {
     const o = await makeOrder();
     await expect(expireOpenCheckout(o.id, deps(fakeStripe()))).resolves.toBeUndefined();
+  });
+});
+
+describe('closeCheckoutForCancel', () => {
+  // A customer's own cancel (lib/wreaths/customer-cancel.ts) must not go ahead while a payment is going through
+  // (qa-lead, 2026-10-16: paid in one tab, cancelled in another before the webhook landed).
+  const start = async () => {
+    const o = await makeOrder();
+    const s = fakeStripe();
+    await startCardCheckout({ token: o.public_token, coverFee: false }, deps(s));
+    return { o, s, id: (await orderRow(o.id)).stripe_session_id! };
+  };
+
+  it('CloseForCancel_ExpiresAnOpenSession_AndForgetsIt', async () => {
+    const { o, s, id } = await start();
+    const r = await closeCheckoutForCancel(o.id, deps(s));
+    expect([r, s.sessions.get(id)!.status, (await orderRow(o.id)).stripe_session_id]).toEqual(['clear', 'expired', null]);
+  });
+
+  it('CloseForCancel_SaysPaying_WhenTheSessionAlreadyCompleted', async () => {
+    const { o, s, id } = await start();
+    s.sessions.get(id)!.status = 'complete';
+    const r = await closeCheckoutForCancel(o.id, deps(s));
+    expect([r, (await orderRow(o.id)).stripe_session_id]).toEqual(['paying', id]);
+  });
+
+  it('CloseForCancel_SaysPaying_WhenStripeCannotBeReached', async () => {
+    const { o, s } = await start();
+    s.checkout.sessions.retrieve = async () => {
+      throw new Error('connection');
+    };
+    expect(await closeCheckoutForCancel(o.id, deps(s))).toBe('paying');
+  });
+
+  it('CloseForCancel_IsClear_WhenNoCardPaymentWasStarted', async () => {
+    const o = await makeOrder();
+    expect(await closeCheckoutForCancel(o.id, deps(fakeStripe()))).toBe('clear');
+  });
+
+  it('CustomerCancel_ThenAPaymentThatSlippedIn_IsFlaggedForARefund', async () => {
+    const { o, s, id } = await start();
+    await cancelOrderByToken(o.public_token, { supabase: admin, now: () => NOW_R1, closeCheckout: async () => 'clear' });
+    const r = await handleStripeEvent(completed(s.sessions.get(id)!), deps(s));
+    const row = await orderRow(o.id);
+    expect([r, row.status, row.needs_refund !== null]).toEqual(['flagged_cancelled', 'cancelled', true]);
   });
 });
 

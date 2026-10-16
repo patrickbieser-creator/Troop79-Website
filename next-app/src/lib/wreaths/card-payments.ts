@@ -174,7 +174,7 @@ export async function startCardCheckout(input: { token: string; coverFee: boolea
         ...(o.customer_email ? { customer_email: o.customer_email } : {}),
         adaptive_pricing: { enabled: false },
         success_url: `${deps.siteUrl}/wreaths/order/${o.public_token}?card=return`,
-        cancel_url: `${deps.siteUrl}/wreaths/order/${o.public_token}`
+        cancel_url: `${deps.siteUrl}/wreaths/order/${o.public_token}?card=cancelled`
       },
       { idempotencyKey: checkoutIdempotencyKey(cardOrder, attempt) }
     );
@@ -215,6 +215,31 @@ export async function expireOpenCheckout(orderId: number, deps: Pick<CardDeps, '
   if (!sessionId) return;
   await deps.stripe.checkout.sessions.expire(sessionId).catch(() => undefined);
   await deps.supabase.from('wreath_orders').update({ stripe_session_id: null }).eq('id', orderId).eq('stripe_session_id', sessionId);
+}
+
+/**
+ * Before a customer cancels their own order (lib/wreaths/customer-cancel.ts): expires the open Checkout Session and
+ * says whether the order is clear to cancel. Unlike expireOpenCheckout it never assumes: a session that completed, or
+ * one Stripe can't confirm is closed, means a payment may be going through, so the cancel waits (qa-lead, 2026-10-16:
+ * paid in one tab and cancelled in another before the webhook landed would charge a cancelled order).
+ */
+export async function closeCheckoutForCancel(orderId: number, deps: Pick<CardDeps, 'supabase' | 'stripe'>): Promise<'clear' | 'paying'> {
+  const { data } = await deps.supabase.from('wreath_orders').select('stripe_session_id').eq('id', orderId).maybeSingle();
+  const sessionId = (data as { stripe_session_id: string | null } | null)?.stripe_session_id;
+  if (!sessionId) return 'clear';
+  try {
+    let session = await deps.stripe.checkout.sessions.retrieve(sessionId);
+    if (session.status === 'open') {
+      await deps.stripe.checkout.sessions.expire(sessionId).catch(() => undefined);
+      session = await deps.stripe.checkout.sessions.retrieve(sessionId);
+    }
+    if (session.status !== 'expired') return 'paying';
+  } catch (e) {
+    console.warn(`[wreaths] couldn't close checkout ${sessionId} before a customer cancel: ${stripeErrorText(e)}`);
+    return 'paying';
+  }
+  await deps.supabase.from('wreath_orders').update({ stripe_session_id: null }).eq('id', orderId).eq('stripe_session_id', sessionId);
+  return 'clear';
 }
 
 async function settledFee(stripe: StripeLike, paymentIntent: string): Promise<number | null> {

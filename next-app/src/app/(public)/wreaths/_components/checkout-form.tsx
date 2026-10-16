@@ -7,7 +7,9 @@
  * standard), rather than greying it out. Paying: Venmo / PayPal to the treasurer is first and the default (no fee; the
  * confirmation page and email say how). When card payment is configured (Release B), "Card, Apple Pay or Google Pay"
  * is the second choice, with an optional cover-the-fee box: the order is placed, then Stripe Checkout opens. The
- * server action re-prices everything; the totals on this screen are only a courtesy.
+ * server action re-prices everything; the totals on this screen are only a courtesy. Before Stripe opens, this page's
+ * history entry becomes the order's receipt, so Back from Stripe shows the saved order rather than an empty checkout,
+ * and the tab remembers the order for an hour (lib/wreaths/leave-for-stripe.ts; Patrick, 2026-10-16).
  */
 
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
@@ -23,6 +25,7 @@ import type { OrderField, PlaceOrderResult } from '@/lib/wreaths/place-order';
 import type { SellerMatch } from '@/lib/wreaths/seller-search';
 import type { StartResult } from '@/lib/wreaths/card-payments';
 import { fulfillmentFor, joinLabels, validateCheckout, type CheckoutProblem } from '@/lib/wreaths/checkout-validate';
+import { leaveForStripe, recentPlacedOrder, receiptPath, rememberPlacedOrder, reloadIfRestoredAway } from '@/lib/wreaths/leave-for-stripe';
 import { lineKey, parseLineKey, useCart } from './cart';
 import { ProductPhoto } from './store-view';
 import styles from '../wreaths.module.css';
@@ -72,6 +75,13 @@ function markStarted() {
   }
 }
 
+/* The order this tab placed in the last hour, as "token|W-1006" (a string, so the snapshot is stable). */
+function lastOrderSnapshot(): string | null {
+  const o = recentPlacedOrder(Date.now());
+  return o ? `${o.token}|${o.orderNumber}` : null;
+}
+const noSubscribe = () => () => {};
+
 const GIFTS = [0, 5, 10, 25];
 
 export function CheckoutForm({ items, scout, rules, pickupText, distributionDay, graceCutoff, action, searchSellers, cardLive = false, startCard }: CheckoutProps) {
@@ -87,6 +97,14 @@ export function CheckoutForm({ items, scout, rules, pickupText, distributionDay,
   useEffect(() => {
     markStarted();
   }, []);
+  // Restored from the back-forward cache after leaving for Stripe: show the receipt this entry now names.
+  useEffect(() => {
+    const onShow = (e: PageTransitionEvent) => reloadIfRestoredAway(e);
+    window.addEventListener('pageshow', onShow);
+    return () => window.removeEventListener('pageshow', onShow);
+  }, []);
+  const lastOrderRaw = useSyncExternalStore(noSubscribe, lastOrderSnapshot, () => null);
+  const lastOrder = lastOrderRaw ? { token: lastOrderRaw.split('|')[0], orderNumber: lastOrderRaw.split('|')[1] } : null;
   const [idempotencyKey] = useState(() => crypto.randomUUID());
 
   const [method, setMethod] = useState<'pickup' | 'delivery' | ''>('');
@@ -194,6 +212,7 @@ export function CheckoutForm({ items, scout, rules, pickupText, distributionDay,
       });
       if (res.ok) {
         setLeaving(true);
+        rememberPlacedOrder({ token: res.token, orderNumber: res.orderNumber });
         clear();
         try {
           window.sessionStorage.removeItem(STARTED_KEY);
@@ -203,11 +222,11 @@ export function CheckoutForm({ items, scout, rules, pickupText, distributionDay,
         if (payByCard && startCard) {
           const card = await startCard(res.token, coverCardFee).catch(() => null);
           if (card?.ok) {
-            window.location.assign(card.url);
+            leaveForStripe(card.url, res.token);
             return;
           }
         }
-        router.push(`/wreaths/order/${res.token}`);
+        router.push(receiptPath(res.token));
         return;
       }
       setServerProblem({ field: res.field, message: res.error });
@@ -236,7 +255,12 @@ export function CheckoutForm({ items, scout, rules, pickupText, distributionDay,
         {/* 1 · Order */}
         <section className={`${styles.card} ${styles.pad} ${styles.step}`} aria-labelledby="h1o">
           <h2 id="h1o">Your order</h2>
-          {lines.length === 0 ? (
+          {lines.length === 0 && lastOrder && !leaving ? (
+            <p className={styles.meta}>
+              You just placed order {lastOrder.orderNumber}. Its page shows how to pay, or lets you cancel it.{' '}
+              <Link href={receiptPath(lastOrder.token)}>See order {lastOrder.orderNumber}</Link>
+            </p>
+          ) : lines.length === 0 ? (
             <p className={styles.meta}>
               Your cart is empty. <Link href={backHref}>Back to the wreaths</Link>
             </p>

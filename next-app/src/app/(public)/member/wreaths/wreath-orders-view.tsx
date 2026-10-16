@@ -40,7 +40,12 @@ function PaidBadge({ o }: { o: MyOrder }) {
   if (o.status === 'cancelled') return <Badge tone="neutral">Cancelled</Badge>;
   if (o.paymentStatus === 'paid') return <Badge tone="success">Paid</Badge>;
   if (o.paymentStatus === 'refunded') return <Badge tone="neutral">Refunded</Badge>;
-  return <Badge tone="warning">Owes {fmtMoney2(o.total)}</Badge>;
+  return (
+    <>
+      <Badge tone="warning">Owes {fmtMoney2(o.total)}</Badge>
+      {o.cardUnfinished && <Badge tone="info">Card not finished</Badge>}
+    </>
+  );
 }
 
 function Totals({ seller, share }: { seller: SellerView; share: number }) {

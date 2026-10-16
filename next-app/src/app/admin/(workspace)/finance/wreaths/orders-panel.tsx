@@ -153,6 +153,7 @@ export function OrdersPanel({ orders, history, sellers, deliveryZipPrefix, initi
                       ) : (
                         <span className={styles.badgeRow}>
                           <Badge variant="warning">Not paid</Badge>
+                          {o.cardStarted && <Badge variant="info">Card not finished</Badge>}
                           {o.source === 'paper' && o.collectedByScout && <Badge variant="info">Collected by scout</Badge>}
                         </span>
                       )}

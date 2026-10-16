@@ -2,7 +2,7 @@ import Stripe from 'stripe';
 import { createAdminClient } from '@/lib/supabase/server';
 import { siteUrl } from '@/lib/site-url';
 import { centralToday } from '@/lib/dates';
-import { expireOpenCheckout, type CardDeps, type StripeLike } from './card-payments';
+import { closeCheckoutForCancel, expireOpenCheckout, type CardDeps, type StripeLike } from './card-payments';
 
 /**
  * The one place the Stripe secrets are read (Plans/Wreath-Stripe-Checkout.md). Server code only: never import this
@@ -51,4 +51,10 @@ export function cardDeps(): CardDeps {
 export async function expireOrderCheckout(orderId: number): Promise<void> {
   if (!cardCheckoutLive()) return;
   await expireOpenCheckout(orderId, cardDeps());
+}
+
+/** Before a customer's own cancel: 'paying' when a card payment may be going through (see closeCheckoutForCancel). */
+export async function closeOrderCheckoutForCancel(orderId: number): Promise<'clear' | 'paying'> {
+  if (!cardCheckoutLive()) return 'clear';
+  return closeCheckoutForCancel(orderId, cardDeps());
 }

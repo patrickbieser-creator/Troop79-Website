@@ -91,6 +91,15 @@ describe('public loaders', () => {
     expect(Object.keys(c ?? {})).not.toEqual(expect.arrayContaining(['phone']));
   });
 
+  // The receipt page decides whether to offer "Cancel this order" (customer-cancel.ts) from these, never from PII.
+  it('ConfirmationPage_CarriesWhatTheCustomerCancelRuleNeeds', async () => {
+    const c = await loadConfirmation(admin, orderToken);
+    expect(c?.cancel).toEqual({
+      order: { status: 'placed', paymentStatus: 'unpaid', needsRefund: false, source: 'scout_link', round: 1 },
+      sale: { status: 'open', round1Cutoff: expect.any(String), round2Cutoff: expect.any(String) }
+    });
+  });
+
   it('UnknownOrRetiredSlug_FallsBackWithoutLeakingExistence', async () => {
     await admin.from('wreath_sellers').update({ active: false }).eq('sale_id', fx.saleId).eq('slug', fx.sellerB.slug);
     const retired = await resolveScoutLink(admin, fx.saleId, fx.sellerB.slug);
