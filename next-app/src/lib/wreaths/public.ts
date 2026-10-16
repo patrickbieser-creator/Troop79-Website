@@ -5,7 +5,7 @@
  * first name + last initial. tests/wreath-public.test.ts holds both the returned shapes and this file's column list.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { itemLabel, type SaleRules } from './rules';
+import { coverFeeFor, fromCents, itemLabel, toCents, type SaleRules } from './rules';
 
 export const SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -70,6 +70,9 @@ export interface Confirmation {
   feeCovered: number;
   gift: number;
   total: number;
+  /** Release B: how it was paid ('card', 'venmo', …) and the optional cover-the-card-fee amount on items + gift + delivery. */
+  paidMethod: string | null;
+  cardFeeOption: number;
   distribution: { date: string | null; window: string; place: string };
   /** The cutoff of the order's round (an instant): changes are possible until the end of that day. */
   changesBy: string;
@@ -197,7 +200,7 @@ export async function loadConfirmation(sb: SupabaseClient, token: string): Promi
   const { data } = await sb
     .from('wreath_orders')
     .select(
-      'order_number, customer_name, status, payment_status, fulfillment, outside_area_relative, round, sale_id, items_subtotal, delivery_fee, fee_covered, gift, total, ' +
+      'order_number, customer_name, status, payment_status, paid_method, fulfillment, outside_area_relative, round, sale_id, items_subtotal, delivery_fee, fee_covered, gift, total, ' +
         'scout:credited_person_id(first_name, last_name), wreath_order_lines(quantity, donated, unit_price, wreath_items(name, size))'
     )
     .eq('public_token', token)
@@ -209,6 +212,7 @@ export async function loadConfirmation(sb: SupabaseClient, token: string): Promi
     customer_name: string;
     status: 'placed' | 'cancelled';
     payment_status: 'unpaid' | 'paid' | 'refunded';
+    paid_method: string | null;
     fulfillment: Confirmation['fulfillment'];
     outside_area_relative: boolean;
     round: 1 | 2;
@@ -253,6 +257,10 @@ export async function loadConfirmation(sb: SupabaseClient, token: string): Promi
     feeCovered: Number(o.fee_covered),
     gift: Number(o.gift),
     total: Number(o.total),
+    paidMethod: o.paid_method ?? null,
+    cardFeeOption: sale
+      ? coverFeeFor({ feePercent: sale.feePercent, feeFixed: sale.feeFixed }, fromCents(toCents(Number(o.items_subtotal)) + toCents(Number(o.gift)) + toCents(Number(o.delivery_fee))))
+      : 0,
     distribution: { date: sale?.distributionDate ?? null, window: sale?.distributionWindow ?? '', place: sale?.distributionPlace ?? '' },
     changesBy: (o.round === 1 ? sale?.round1Cutoff : sale?.round2Cutoff) ?? ''
   };

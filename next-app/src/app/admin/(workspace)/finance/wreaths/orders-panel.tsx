@@ -16,7 +16,7 @@ import { SearchField, useTableSearch } from '../../_components/search-field';
 import { fmtDateTime } from '@/lib/format-date';
 import { PAID_METHODS, fmtMoney2, type PaidMethod } from '@/lib/wreaths/rules';
 import type { AdminOrder, AuditEntry } from '@/lib/wreaths/admin-data';
-import { cancelOrder, markPaid, reassignOrder, setPaymentNote } from './actions';
+import { cancelOrder, markPaid, reassignOrder, refundCardOrder, setPaymentNote } from './actions';
 import styles from './wreaths.module.css';
 
 export interface SellerOption {
@@ -281,13 +281,19 @@ function OrderDetail({ order: o, history, onReassign, onCancel }: { order: Admin
       </div>
       <div>
         <h4>Payment</h4>
-        {o.status === 'cancelled' ? (
+        {o.needsRefund && <RefundFlag order={o} />}
+        {o.paymentStatus === 'refunded' ? (
+          <p className={styles.muted}>
+            Refunded {fmtMoney2(o.paidAmount ?? o.total)} to the card{o.refundedAt ? `, ${fmtDateTime(o.refundedAt)}` : ''}. This order is cancelled.
+          </p>
+        ) : o.status === 'cancelled' ? (
           <p className={styles.muted}>This order is cancelled.</p>
         ) : o.paymentStatus === 'paid' ? (
           <p>
             Paid {fmtMoney2(o.paidAmount ?? o.total)}
             {o.paidMethod ? ` by ${o.paidMethod}` : ''}
             {o.paidAt ? `, ${fmtDateTime(o.paidAt)}` : ''}.
+            {o.paidMethod === 'card' && o.stripeFee != null && ` Stripe fee ${fmtMoney2(o.stripeFee)}.`}
             {o.paidAmount != null && o.paidAmount !== o.total && (
               <>
                 {' '}
@@ -342,6 +348,32 @@ function OrderDetail({ order: o, history, onReassign, onCancel }: { order: Admin
           </ul>
         )}
       </div>
+    </div>
+  );
+}
+
+/** A card payment that landed where it shouldn't (cancelled order, paid another way, wrong amount): the reason and
+ *  the one action that fixes it. The order's own payment is untouched by this refund. */
+function RefundFlag({ order: o }: { order: AdminOrder }) {
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <div className={styles.badNote}>
+      <p>{o.needsRefund}</p>
+      <Button
+        variant="secondary"
+        size="sm"
+        disabled={pending}
+        onClick={() =>
+          start(async () => {
+            const res = await refundCardOrder(o.id);
+            if (!res.ok) setError(res.error ?? 'Couldn’t refund it.');
+          })
+        }
+      >
+        {pending ? 'Refunding…' : 'Refund the card payment'}
+      </Button>
+      {error && <p>{error}</p>}
     </div>
   );
 }
@@ -501,6 +533,39 @@ function ReassignForm({ order: o, sellers, deliveryZipPrefix, onClose }: { order
 function CancelForm({ order: o, onClose }: { order: AdminOrder; onClose: () => void }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const byCard = o.paymentStatus === 'paid' && o.paidMethod === 'card';
+  if (byCard) {
+    const amount = fmtMoney2(o.paidAmount ?? o.total);
+    return (
+      <>
+        <DialogBody>
+          <p>
+            {o.orderNumber} for {o.customerName} was paid by card. Cancelling refunds {amount} to the card through Stripe, and the
+            order will no longer count in the books or the Rose order. Stripe keeps its fee.
+          </p>
+          {error && <p className={styles.badNote}>{error}</p>}
+        </DialogBody>
+        <DialogActions>
+          <Button
+            variant="dangerSolid"
+            disabled={pending}
+            onClick={() =>
+              start(async () => {
+                const res = await refundCardOrder(o.id);
+                if (res.ok) onClose();
+                else setError(res.error ?? 'Couldn’t refund the order.');
+              })
+            }
+          >
+            {pending ? 'Refunding…' : `Refund ${amount} and cancel`}
+          </Button>
+          <Button variant="secondary" onClick={onClose}>
+            Keep it
+          </Button>
+        </DialogActions>
+      </>
+    );
+  }
   return (
     <>
       <DialogBody>

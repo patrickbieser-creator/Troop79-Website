@@ -88,6 +88,11 @@ export interface AdminOrder {
   /** What the order totalled when it was marked paid (a later reassign can change the total). */
   paidAmount: number | null;
   status: 'placed' | 'cancelled';
+  /** Card payments (Release B): Stripe's fee once settled, when a full refund landed, and why a card payment needs
+   *  returning (it hit a cancelled order, an order paid another way, or the wrong amount) — null when nothing to do. */
+  stripeFee: number | null;
+  refundedAt: string | null;
+  needsRefund: string | null;
   lines: AdminOrderLine[];
   /** Scout-entered orders: who typed it in (the scout or a parent), whether the scout says they hold the money, and the notes. */
   enteredByPersonId: number | null;
@@ -232,6 +237,9 @@ export async function loadAdminOrders(sb: SupabaseClient, saleId: number, opts: 
     paidAt: r.paid_at,
     paidAmount: r.paid_amount == null ? null : Number(r.paid_amount),
     status: r.status,
+    stripeFee: r.stripe_fee == null ? null : Number(r.stripe_fee),
+    refundedAt: r.refunded_at ?? null,
+    needsRefund: r.needs_refund ?? null,
     enteredByPersonId: r.entered_by_person_id ?? null,
     enteredByName: one(r.entered)?.display_name ?? null,
     collectedByScout: r.collected_by_scout === true,

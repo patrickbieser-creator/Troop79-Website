@@ -132,13 +132,18 @@ describe('public loaders', () => {
 
 describe('schema posture', () => {
   it('WreathTables_HaveRlsAndNoAnonGrants', async () => {
-    const tables = ['wreath_sales', 'wreath_items', 'wreath_sellers', 'wreath_orders', 'wreath_order_lines'];
+    // Release B added wreath_card_refunds_due and wreath_checkout_starts (Plans/Wreath-Stripe-Checkout.md).
+    const tables = ['wreath_sales', 'wreath_items', 'wreath_sellers', 'wreath_orders', 'wreath_order_lines', 'wreath_card_refunds_due', 'wreath_checkout_starts'];
     const rls = localSql(`select tablename || '=' || rowsecurity from pg_tables where schemaname = 'public' and tablename like 'wreath\\_%' order by 1`).split('\n').filter(Boolean);
     expect(rls).toEqual([...tables].sort().map((t) => `${t}=true`));
     expect(Number(localSql(`select count(*) from pg_policies where schemaname = 'public' and tablename like 'wreath\\_%'`))).toBe(0);
     expect(Number(localSql(`select count(*) from information_schema.role_table_grants where table_schema = 'public' and table_name like 'wreath\\_%' and grantee in ('anon', 'authenticated')`))).toBe(0);
     // The order function is not callable from the API roles.
     expect(Number(localSql(`select count(*) from information_schema.routine_privileges where routine_schema = 'public' and routine_name = 'wreath_place_order' and grantee in ('anon', 'authenticated', 'PUBLIC')`))).toBe(0);
+    // Nor are the card-payment functions, and the webhook's dedupe table is service-role only (Release B).
+    expect(Number(localSql(`select count(*) from information_schema.routine_privileges where routine_schema = 'public' and routine_name like 'wreath\_record\_card\_%' and grantee in ('anon', 'authenticated', 'PUBLIC')`))).toBe(0);
+    expect(localSql(`select rowsecurity from pg_tables where schemaname = 'public' and tablename = 'stripe_events'`).trim()).toBe('t');
+    expect(Number(localSql(`select count(*) from information_schema.role_table_grants where table_schema = 'public' and table_name = 'stripe_events' and grantee in ('anon', 'authenticated')`))).toBe(0);
 
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -153,17 +158,16 @@ describe('schema posture', () => {
     expect(rpc.error).not.toBeNull();
   });
 
-  it('SeededSale_IsADraftWith19ItemsAnd28Sellers_AndNoTestScout', async () => {
-    const { data: sale } = await admin.from('wreath_sales').select('id, status, round1_cutoff, round2_cutoff').eq('year', 2026).single();
-    expect(sale?.status).toBe('draft');
-    expect(new Date(sale!.round1_cutoff).toISOString()).toBe('2026-10-26T04:59:00.000Z');
-    expect(new Date(sale!.round2_cutoff).toISOString()).toBe('2026-11-16T05:59:00.000Z');
+  it('SeededSale_Has19ItemsAndAtLeast28Sellers_AndNoTestScout', async () => {
+    // Status and cutoffs are the treasurer's settings (the sale opened 2026-10-12; round 1 moved to Oct 20 on 10/14) and
+    // the local DB mirrors production, so only the seed's structure is checked here.
+    const { data: sale } = await admin.from('wreath_sales').select('id').eq('year', 2026).single();
     const items = await admin.from('wreath_items').select('catalog_number, donatable, image_url').eq('sale_id', sale!.id);
     expect(items.data).toHaveLength(19);
     expect(items.data!.filter((i) => i.donatable).map((i) => i.catalog_number).sort((a, b) => a - b)).toEqual([1, 2]);
     expect(items.data!.every((i) => String(i.image_url).startsWith('https://'))).toBe(true);
     const sellers = await admin.from('wreath_sellers').select('person_id, slug').eq('sale_id', sale!.id);
-    expect(sellers.data).toHaveLength(28);
+    expect(sellers.data!.length).toBeGreaterThanOrEqual(28); // 28 seeded; leaders add more in admin
     // Charlie Walters (people.id 39) is the test scout: never in the seed.
     expect(sellers.data!.map((s) => s.person_id)).not.toContain(39);
   });

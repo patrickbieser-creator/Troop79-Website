@@ -84,6 +84,8 @@ export async function makeWreathFixture(status: 'draft' | 'open' | 'closed' = 'o
       // Ledger rows Mark paid booked for THIS sale's orders (the FK is ON DELETE RESTRICT — a paid order's money is real).
       const orderIds = orderIdStrings.map(Number);
       if (orderIds.length) await admin.from('financial_transactions').delete().in('wreath_order_id', orderIds);
+      // Stray card payments queued for return (Release B; FK ON DELETE RESTRICT).
+      if (orderIds.length) await admin.from('wreath_card_refunds_due').delete().in('order_id', orderIds);
       await admin.from('wreath_orders').delete().eq('sale_id', saleId);
       await admin.from('wreath_sales').delete().eq('id', saleId);
     }

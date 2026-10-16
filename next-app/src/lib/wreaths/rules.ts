@@ -15,23 +15,21 @@ export const CUTOFF_GRACE_MS = 2 * 60 * 60 * 1000;
 /** A form posted sooner than this after its page rendered is a script, not a person. */
 export const MIN_SUBMIT_MS = 4000;
 
-/**
- * Release A takes no payment on the site: the customer pays the treasurer by Venmo / PayPal and the treasurer marks the
- * order paid. Release B (PayPal Checkout) flips this on, which brings back the "cover the processing fee" box.
- */
-export const PAYPAL_CHECKOUT_LIVE = false;
-
 export const PAID_METHODS = ['venmo', 'paypal', 'cash', 'check', 'other'] as const;
 export type PaidMethod = (typeof PAID_METHODS)[number];
 
-const METHOD_LABEL: Record<PaidMethod, string> = { venmo: 'Venmo', paypal: 'PayPal', cash: 'Cash', check: 'Check', other: 'Other' };
+/** Every way an order can end up paid: the treasurer's Mark paid methods, plus `card`, which only the Stripe webhook
+ *  records (Release B) — deliberately not in PAID_METHODS, so nobody can "mark paid by card" by hand. */
+export type PaymentMethod = PaidMethod | 'card';
+
+const METHOD_LABEL: Record<PaymentMethod, string> = { venmo: 'Venmo', paypal: 'PayPal', cash: 'Cash', check: 'Check', other: 'Other', card: 'Card' };
 
 export interface PaidLedgerRow {
   occurred_on: string;
   account: 'checking';
   amount: number;
   kind: 'fundraiser';
-  method: PaidMethod;
+  method: PaymentMethod;
   memo: string;
   activity_label: string;
 }
@@ -39,14 +37,14 @@ export interface PaidLedgerRow {
 /**
  * The finance-ledger row Mark paid books for an order (Patrick, 2026-10-15). It follows the treasurer's fundraiser
  * convention: checking income, kind fundraiser, activity "Wreaths 'YY" (last year's rows read "Wreaths '25"). Every
- * PaidMethod is also a ledger method (lib/finance.ts TRANSACTION_METHODS; PayPal joined it 2026-10-05), so it carries
+ * PaymentMethod is also a ledger method (lib/finance.ts TRANSACTION_METHODS; PayPal joined it 2026-10-05), so it carries
  * straight over.
  */
 export function paidLedgerRow(o: {
   orderNumber: string;
   customerName: string;
   total: number;
-  method: PaidMethod;
+  method: PaymentMethod;
   saleYear: number;
   today: string;
 }): PaidLedgerRow {

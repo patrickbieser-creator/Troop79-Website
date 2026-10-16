@@ -56,9 +56,9 @@ export interface TransactionKindRow {
   sort_order: number;
 }
 
-/** Must stay in lockstep with financial_transactions' `method` check constraint.
- *  No 'online' value — no payment processing in this build (deferred, not rejected). */
-export const TRANSACTION_METHODS = ['venmo', 'paypal', 'check', 'cash', 'scout_account', 'bank', 'other'] as const;
+/** Must stay in lockstep with financial_transactions' `method` check constraint. `card` = a Stripe Checkout payment (wreath sale Release B, 2026-10-15).
+ */
+export const TRANSACTION_METHODS = ['venmo', 'paypal', 'check', 'cash', 'scout_account', 'bank', 'other', 'card'] as const;
 export type TransactionMethod = (typeof TRANSACTION_METHODS)[number];
 
 export function isAccount(value: string): value is Account {

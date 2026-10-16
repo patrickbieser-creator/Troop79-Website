@@ -4,8 +4,10 @@
  * Wreath checkout (Plans/Wreath-Sale.md; prototype checkout.html): your order -> getting your wreaths -> your
  * details -> total -> Place order. Customers have no accounts. The button stays enabled until the order is in flight;
  * pressing it with a problem marks every bad field in place and says why beside the button (the blocked-save
- * standard), rather than greying it out. Release A takes no payment here: the confirmation page and email say how to
- * pay the treasurer. The server action re-prices everything; the totals on this screen are only a courtesy.
+ * standard), rather than greying it out. Paying: Venmo / PayPal to the treasurer is first and the default (no fee; the
+ * confirmation page and email say how). When card payment is configured (Release B), "Card, Apple Pay or Google Pay"
+ * is the second choice, with an optional cover-the-fee box: the order is placed, then Stripe Checkout opens. The
+ * server action re-prices everything; the totals on this screen are only a courtesy.
  */
 
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
@@ -15,10 +17,11 @@ import { Button } from '@/app/_components/button';
 import { Notice } from '@/app/_components/notice';
 import { Field, FieldProblem, SaveProblem, TextInput } from '@/app/_components/form';
 import { Stepper } from '@/app/_components/stepper';
-import { PAYPAL_CHECKOUT_LIVE, PAY_TREASURER, coverFeeFor, deliveryFeeFor, fmtMoney, fmtMoney2, itemLabel, toCents, fromCents, type Fulfillment } from '@/lib/wreaths/rules';
+import { PAY_TREASURER, coverFeeFor, deliveryFeeFor, fmtMoney, fmtMoney2, itemLabel, toCents, fromCents, type Fulfillment } from '@/lib/wreaths/rules';
 import type { StoreItem } from '@/lib/wreaths/public';
 import type { OrderField, PlaceOrderResult } from '@/lib/wreaths/place-order';
 import type { SellerMatch } from '@/lib/wreaths/seller-search';
+import type { StartResult } from '@/lib/wreaths/card-payments';
 import { fulfillmentFor, joinLabels, validateCheckout, type CheckoutProblem } from '@/lib/wreaths/checkout-validate';
 import { lineKey, parseLineKey, useCart } from './cart';
 import { ProductPhoto } from './store-view';
@@ -37,6 +40,10 @@ export interface CheckoutProps {
   action: (raw: unknown) => Promise<PlaceOrderResult>;
   /** The type-ahead for the optional scout credit (general-store checkout only). */
   searchSellers: (prefix: string) => Promise<SellerMatch[]>;
+  /** Release B: card payment is configured (decided on the server — never read from env in this client module). */
+  cardLive?: boolean;
+  /** Starts Stripe Checkout for a just-placed order; on failure the customer lands on the receipt, which can retry. */
+  startCard?: (token: string, coverFee: boolean) => Promise<StartResult>;
 }
 
 /* When this checkout began — kept for the tab, so a shopper whose Round closes mid-checkout can still finish. */
@@ -67,7 +74,10 @@ function markStarted() {
 
 const GIFTS = [0, 5, 10, 25];
 
-export function CheckoutForm({ items, scout, rules, pickupText, distributionDay, graceCutoff, action, searchSellers }: CheckoutProps) {
+export function CheckoutForm({ items, scout, rules, pickupText, distributionDay, graceCutoff, action, searchSellers, cardLive = false, startCard }: CheckoutProps) {
+  // Venmo / PayPal to the treasurer stays first and the default: the no-fee way to pay (Patrick, 2026-10-15).
+  const [payBy, setPayBy] = useState<'treasurer' | 'card'>('treasurer');
+  const [coverCardFee, setCoverCardFee] = useState(false);
   const router = useRouter();
   const { cart, setQty, clear } = useCart();
   const formRef = useRef<HTMLFormElement>(null);
@@ -131,7 +141,9 @@ export function CheckoutForm({ items, scout, rules, pickupText, distributionDay,
   const delivery = deliveryFeeFor(rules, fulfillment ?? 'pickup', fromCents(itemsCents));
   const baseDollars = fromCents(itemsCents + toCents(giftAmount) + toCents(delivery));
   const fee = coverFeeFor(rules, baseDollars);
-  const total = baseDollars; // the processing-fee box is off until PayPal Checkout (Release B)
+  const payByCard = cardLive && payBy === 'card' && !!startCard;
+  const cardFee = payByCard && coverCardFee ? fee : 0;
+  const total = fromCents(toCents(baseDollars) + toCents(cardFee));
 
   // Grace: after the final cutoff only a checkout begun before it may finish.
   if (graceCutoff && !(startedAt != null && startedAt < Date.parse(graceCutoff))) {
@@ -168,7 +180,7 @@ export function CheckoutForm({ items, scout, rules, pickupText, distributionDay,
         sellerSlug: scout?.slug ?? null,
         lines: lines.map((l) => ({ itemId: l.itemId, quantity: l.qty, donated: l.donated })),
         gift: giftAmount,
-        coverFee: false,
+        coverFee: payByCard && coverCardFee,
         fulfillment: scout ? null : method || null,
         customer: { name, email, phone, street, city, zip: needsAddress ? zip : '' },
         outsideAreaRelative: relative,
@@ -183,6 +195,13 @@ export function CheckoutForm({ items, scout, rules, pickupText, distributionDay,
           window.sessionStorage.removeItem(STARTED_KEY);
         } catch {
           // ignore
+        }
+        if (payByCard && startCard) {
+          const card = await startCard(res.token, coverCardFee).catch(() => null);
+          if (card?.ok) {
+            window.location.assign(card.url);
+            return;
+          }
         }
         router.push(`/wreaths/order/${res.token}`);
         return;
@@ -424,20 +443,54 @@ export function CheckoutForm({ items, scout, rules, pickupText, distributionDay,
                 <dd>{fmtMoney2(giftAmount)}</dd>
               </div>
             )}
+            {cardFee > 0 && (
+              <div>
+                <dt>Card fee</dt>
+                <dd>{fmtMoney2(cardFee)}</dd>
+              </div>
+            )}
             <div className={styles.sumTotal}>
               <dt>Total</dt>
               <dd>{fmtMoney2(total)}</dd>
             </div>
           </dl>
-          {PAYPAL_CHECKOUT_LIVE && fee > 0 && <p className={styles.meta}>Processing fee option: {fmtMoney2(fee)}</p>}
-          <Notice tone="info">
-            <div className={styles.payHow}>
-              <p>
-                <strong>You pay after you place the order.</strong> Venmo {PAY_TREASURER.venmoHandle} or PayPal to {PAY_TREASURER.paypalEmail} (Friends and family), with your order number in the note.
-              </p>
-              <p>The next page and your email show the amount and the links. Nothing is charged online.</p>
-            </div>
-          </Notice>
+          {cardLive && startCard ? (
+            <>
+              <div className={styles.choice} role="radiogroup" aria-label="How you’ll pay">
+                <label className={styles.choiceCard}>
+                  <input type="radio" name="pay" value="treasurer" checked={payBy === 'treasurer'} onChange={() => setPayBy('treasurer')} />
+                  <span>
+                    <strong>Venmo or PayPal · no fee</strong>
+                    <span>
+                      Pay after you place the order: Venmo {PAY_TREASURER.venmoHandle} or PayPal to {PAY_TREASURER.paypalEmail} (Friends and family), with your order number in the note.
+                    </span>
+                  </span>
+                </label>
+                <label className={styles.choiceCard}>
+                  <input type="radio" name="pay" value="card" checked={payBy === 'card'} onChange={() => setPayBy('card')} />
+                  <span>
+                    <strong>Card, Apple Pay or Google Pay</strong>
+                    <span>Pay now on Stripe’s secure page.</span>
+                  </span>
+                </label>
+              </div>
+              {payBy === 'card' && fee > 0 && (
+                <label className={styles.check}>
+                  <input type="checkbox" checked={coverCardFee} onChange={(e) => setCoverCardFee(e.target.checked)} />
+                  <span>Add {fmtMoney2(fee)} to cover the card fee, so the troop keeps the whole amount</span>
+                </label>
+              )}
+            </>
+          ) : (
+            <Notice tone="info">
+              <div className={styles.payHow}>
+                <p>
+                  <strong>You pay after you place the order.</strong> Venmo {PAY_TREASURER.venmoHandle} or PayPal to {PAY_TREASURER.paypalEmail} (Friends and family), with your order number in the note.
+                </p>
+                <p>The next page and your email show the amount and the links. Nothing is charged online.</p>
+              </div>
+            </Notice>
+          )}
           {serverProblem && !serverProblem.field && (
             <Notice tone="error" className={styles.inset}>
               {serverProblem.message}
@@ -445,7 +498,7 @@ export function CheckoutForm({ items, scout, rules, pickupText, distributionDay,
           )}
           <div className={styles.submitRow}>
             <Button type="submit" disabled={busy}>
-              {busy ? 'Placing your order…' : 'Place order'}
+              {busy ? 'Placing your order…' : payByCard ? 'Place order and pay by card' : 'Place order'}
             </Button>
             {blockedReason && <SaveProblem action="place the order" reason={blockedReason} />}
             {!blockedReason && serverProblem?.field && <SaveProblem action="place the order" reason={serverProblem.message} />}

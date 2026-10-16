@@ -9,6 +9,8 @@ import { uploadToBunny } from '@/lib/bunny-storage';
 import { PAID_METHODS, paidLedgerRow, deliveryFeeFor, fmtMoney2, fromCents, inDeliveryArea, toCents, zipFormatOk, type PaidMethod } from '@/lib/wreaths/rules';
 import { canonicalSlug, SLUG_RE } from '@/lib/wreaths/public';
 import { parseDeliveryMessage, parseGoal } from '@/lib/wreaths/scout-entry';
+import { cardCheckoutLive, cardDeps, expireOrderCheckout } from '@/lib/wreaths/stripe-client';
+import { refundCardOrderCore } from '@/lib/wreaths/card-payments';
 
 /**
  * Wreath sale admin (Plans/Wreath-Sale.md, Release A: Settings, Items, Sellers, Orders). Gate: `finance.manage` on
@@ -371,12 +373,15 @@ export async function setSellerActive(sellerId: number, active: boolean): Promis
 export async function markPaid(orderId: number, method: PaidMethod): Promise<WreathResult> {
   const actor = await requireCapability('finance.manage');
   if (!PAID_METHODS.includes(method)) return fail('Choose how it was paid.', 'method');
+  // Paid another way: its card session must not stay payable (Release B).
+  await expireOrderCheckout(orderId);
   const supabase = createAdminClient();
-  const { data: pre } = await supabase.from('wreath_orders').select('total, collected_by_scout').eq('id', orderId).maybeSingle();
-  const claimedTotal = Number(pre?.total ?? 0);
+  const { data: pre } = await supabase.from('wreath_orders').select('total, fee_covered, collected_by_scout').eq('id', orderId).maybeSingle();
+  // The cover-the-card-fee amount belongs to card payment only (Release B): paid another way, the order owes without it.
+  const claimedTotal = fromCents(toCents(Number(pre?.total ?? 0)) - toCents(Number(pre?.fee_covered ?? 0)));
   const { data: claimed } = await supabase
     .from('wreath_orders')
-    .update({ payment_status: 'paid', paid_method: method, paid_at: new Date().toISOString(), paid_by_person_id: actor.personId, paid_amount: claimedTotal, collected_by_scout: true })
+    .update({ payment_status: 'paid', paid_method: method, paid_at: new Date().toISOString(), paid_by_person_id: actor.personId, paid_amount: claimedTotal, fee_covered: 0, total: claimedTotal, collected_by_scout: true })
     .eq('id', orderId)
     .eq('payment_status', 'unpaid')
     .eq('status', 'placed')
@@ -465,9 +470,43 @@ export async function setPaymentNote(orderId: number, noteIn: string): Promise<W
   return { ok: true };
 }
 
+/**
+ * Refunds a card-paid order in full through Stripe, then cancels it (Release B; tech-lead: Stripe first, then cancel).
+ * Also returns a flagged card payment — one that landed on a cancelled order, an order paid another way, or with the
+ * wrong amount — without touching the order's own payment. The amount and PaymentIntent come from the database; the
+ * charge.refunded webhook marks the order refunded and books the ledger reversal.
+ */
+export async function refundCardOrder(orderId: number): Promise<WreathResult> {
+  await requireCapability('finance.manage');
+  if (!cardCheckoutLive()) return fail('Card payments aren’t configured, so there is nothing to refund here.');
+  const supabase = createAdminClient();
+  const { data: before } = await supabase.from('wreath_orders').select('order_number, paid_method, payment_status, needs_refund, total, paid_amount').eq('id', orderId).maybeSingle();
+  if (!before) return fail('That order no longer exists.');
+  const res = await refundCardOrderCore(orderId, cardDeps());
+  if (!res.ok) return fail(res.error);
+  const fullRefund = !res.stray && before.paid_method === 'card' && before.payment_status === 'paid';
+  if (fullRefund) {
+    await supabase.from('wreath_orders').update({ status: 'cancelled', cancelled_at: new Date().toISOString() }).eq('id', orderId).eq('status', 'placed');
+  }
+  await recordAudit({
+    area: 'wreaths',
+    action: 'refund_card',
+    entityType: 'wreath_order',
+    entityId: orderId,
+    summary: `Refunded the card payment for order ${before.order_number}`,
+    details: [
+      { field: 'Refund', from: '—', to: fullRefund ? `${money(Number(before.paid_amount ?? before.total))} to the card; order cancelled` : `Stray card payment returned (${before.needs_refund ?? 'duplicate'}); the order's own payment stands` },
+      { field: 'Stripe refund', from: '—', to: res.refundId }
+    ]
+  });
+  revalidatePath(PAGE);
+  return { ok: true };
+}
+
 /** Cancels an order (Release A has no refunds: if it was paid, the treasurer returns the money by hand). */
 export async function cancelOrder(orderId: number): Promise<WreathResult> {
   await requireCapability('finance.manage');
+  await expireOrderCheckout(orderId);
   const supabase = createAdminClient();
   const { data: row } = await supabase
     .from('wreath_orders')
@@ -513,6 +552,8 @@ const FULFILLMENT_WORDS: Record<string, string> = { scout: 'Scout delivers', pic
 export async function reassignOrder(orderId: number, v: ReassignInput): Promise<WreathResult> {
   await requireCapability('finance.manage');
   if (!['scout', 'pickup', 'delivery'].includes(v.fulfillment)) return fail('Choose how the order is delivered.', 'fulfillment');
+  // A reassign can change the delivery fee and so the total: the open card session would charge the old amount.
+  await expireOrderCheckout(orderId);
   const supabase = createAdminClient();
   const { data: order } = await supabase.from('wreath_orders').select('*').eq('id', orderId).maybeSingle();
   if (!order) return fail('That order no longer exists.');

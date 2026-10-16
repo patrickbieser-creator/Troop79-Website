@@ -9,6 +9,8 @@ import { placeOrder, type PlaceOrderResult } from '@/lib/wreaths/place-order';
 import { loadCurrentSale } from '@/lib/wreaths/public';
 import { entererEmails, resolveScoutEntryViewer } from '@/lib/wreaths/scout-entry-viewer';
 import { searchSellers, type SellerMatch } from '@/lib/wreaths/seller-search';
+import { startCardCheckout, type StartResult } from '@/lib/wreaths/card-payments';
+import { cardDeps } from '@/lib/wreaths/stripe-client';
 
 /**
  * The customer's "Place order" (Plans/Wreath-Sale.md, "The order action"). A thin shell: it supplies the live clock,
@@ -78,4 +80,15 @@ export async function placeScoutOrderAction(raw: unknown): Promise<PlaceOrderRes
     replyTo: troopEmail(),
     scoutEntry: { viewer, emails: await entererEmails(supabase, viewer.personId) }
   });
+}
+
+/**
+ * "Pay by card" (Release B, Plans/Wreath-Stripe-Checkout.md): from the checkout right after placing an order, and from
+ * an unpaid order's receipt page. Keyed by the order's public token (the receipt link's bearer credential); the
+ * fee-cover choice is the only other input, and the total is recomputed on the server. lib/wreaths/card-payments.ts
+ * caps the sessions per order and never lets an order have two payable sessions.
+ */
+export async function startCardPaymentAction(token: string, coverFee: boolean): Promise<StartResult> {
+  if (typeof token !== 'string') return { ok: false, error: 'We couldn’t find that order.' };
+  return startCardCheckout({ token, coverFee: coverFee === true }, { ...cardDeps(), ip: await callerIp() });
 }

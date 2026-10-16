@@ -5,7 +5,8 @@ import { Notice } from '@/app/_components/notice';
 import { createAdminClient } from '@/lib/supabase/server';
 import { distributionDay, distributionLine } from '@/lib/wreaths/copy';
 import { loadStorePage } from '@/lib/wreaths/store-page';
-import { placeOrderAction, searchSellersAction } from '../actions';
+import { cardCheckoutLive } from '@/lib/wreaths/stripe-client';
+import { placeOrderAction, searchSellersAction, startCardPaymentAction } from '../actions';
 import { CheckoutForm } from '../_components/checkout-form';
 
 /**
@@ -54,6 +55,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
         graceCutoff={state.graceCutoff}
         action={placeOrderAction}
         searchSellers={searchSellersAction}
+        cardLive={cardCheckoutLive()}
+        startCard={startCardPaymentAction}
       />
     </PageShell>
   );

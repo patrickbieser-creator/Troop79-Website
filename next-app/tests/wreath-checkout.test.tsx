@@ -141,3 +141,60 @@ describe('validateCheckout', () => {
     expect(validateCheckout({ ...scout, zip: '60601', relative: true })).toEqual([]);
   });
 });
+
+/* ── Release B: paying by card (Plans/Wreath-Stripe-Checkout.md) ─────────── */
+
+describe('checkout form — card payment', () => {
+  async function fillPickup(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByRole('radio', { name: /Pick up/ }));
+    await user.type(screen.getByRole('textbox', { name: 'Name' }), 'Pat Buyer');
+    await user.type(screen.getByRole('textbox', { name: 'Email' }), 'pat@example.test');
+    await user.type(screen.getByRole('textbox', { name: 'Phone' }), '414-555-0100');
+  }
+
+  it('CheckoutForm_OffersNoCardChoice_WhenCardPaymentIsOff', () => {
+    seedCart({ '11': 1 });
+    setup();
+    expect(screen.queryByRole('radio', { name: /Card/ })).toBeNull();
+  });
+
+  // Patrick, 2026-10-15: keep the existing methods as the first option — the no-fee way to pay.
+  it('CheckoutForm_ListsVenmoPayPalFirst_AndSelectedByDefault', () => {
+    seedCart({ '11': 1 });
+    setup({ cardLive: true, startCard: vi.fn() });
+    const pay = screen.getAllByRole('radio').filter((r) => (r as HTMLInputElement).name === 'pay') as HTMLInputElement[];
+    expect([pay[0].value, pay[0].checked, pay[1].value]).toEqual(['treasurer', true, 'card']);
+  });
+
+  it('CheckoutForm_ShowsCoverFeeOnlyWithCard', async () => {
+    seedCart({ '11': 1 });
+    setup({ cardLive: true, startCard: vi.fn() });
+    const user = userEvent.setup();
+    const before = screen.queryByRole('checkbox', { name: /cover the card fee/ });
+    await user.click(screen.getByRole('radio', { name: /Card/ }));
+    expect([before, screen.getByRole('checkbox', { name: /cover the card fee/ }) !== null]).toEqual([null, true]);
+  });
+
+  it('CheckoutForm_PayingByCard_PlacesTheOrderWithTheFeeChoice_ThenStartsCardCheckout', async () => {
+    seedCart({ '11': 2 });
+    const startCard = vi.fn(async () => ({ ok: false as const, error: 'test stop' }));
+    const action = setup({ cardLive: true, startCard });
+    const user = userEvent.setup();
+    await fillPickup(user);
+    await user.click(screen.getByRole('radio', { name: /Card/ }));
+    await user.click(screen.getByRole('checkbox', { name: /cover the card fee/ }));
+    await user.click(screen.getByRole('button', { name: 'Place order and pay by card' }));
+    await waitFor(() => expect(startCard).toHaveBeenCalledWith('tok', true));
+    expect(((action.mock.calls[0] as unknown[])[0] as Record<string, unknown>).coverFee).toBe(true);
+  });
+
+  it('CheckoutForm_CardStartFails_StillGoesToTheReceipt_WhereTheOrderCanBePaid', async () => {
+    seedCart({ '11': 2 });
+    setup({ cardLive: true, startCard: vi.fn(async () => ({ ok: false as const, error: 'down' })) });
+    const user = userEvent.setup();
+    await fillPickup(user);
+    await user.click(screen.getByRole('radio', { name: /Card/ }));
+    await user.click(screen.getByRole('button', { name: 'Place order and pay by card' }));
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/wreaths/order/tok'));
+  });
+});

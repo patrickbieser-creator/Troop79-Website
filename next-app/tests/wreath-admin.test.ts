@@ -30,6 +30,9 @@ vi.mock('@/lib/admin-actor', () => ({
   actorHas: () => true
 }));
 vi.mock('next/cache', () => ({ revalidatePath: cache.revalidatePath, updateTag: cache.updateTag, unstable_cache: (fn: unknown) => fn }));
+// Release B: every change to what an order owes, or whether it is payable, first expires its open card session.
+const card = vi.hoisted(() => ({ expire: vi.fn(async () => undefined) }));
+vi.mock('@/lib/wreaths/stripe-client', () => ({ expireOrderCheckout: card.expire, cardCheckoutLive: () => false, cardDeps: () => ({}) }));
 
 let fx: WreathFixture;
 let seq = 0;
@@ -131,6 +134,32 @@ describe('orders', () => {
     await cancelOrder(order.id);
     await markPaid(order.id, 'cash');
     expect((await admin.from('financial_transactions').select('id').eq('wreath_order_id', order.id)).data).toEqual([]);
+  });
+
+  it('MarkPaid_RefusesCardMethod_OnlyTheStripeWebhookRecordsCard', async () => {
+    const order = await makeOrder();
+    const { markPaid } = await actions();
+    expect([(await markPaid(order.id, 'card' as never)).ok, (await admin.from('wreath_orders').select('payment_status').eq('id', order.id).single()).data?.payment_status]).toEqual([false, 'unpaid']);
+  });
+
+  // qa-lead HIGH: the cover-the-card-fee amount belongs to card payment only — paid another way, it drops.
+  it('MarkPaid_ByVenmo_DropsAnUnpaidCardFeeCover', async () => {
+    const order = await makeOrder();
+    await admin.from('wreath_orders').update({ fee_covered: 1.52, total: 53.52 }).eq('id', order.id);
+    const { markPaid } = await actions();
+    await markPaid(order.id, 'venmo');
+    const row = (await admin.from('wreath_orders').select('fee_covered, total, paid_amount').eq('id', order.id).single()).data!;
+    expect([Number(row.fee_covered), Number(row.total), Number(row.paid_amount)]).toEqual([0, 52, 52]);
+  });
+
+  it('MarkPaid_Cancel_Reassign_ExpireTheOpenCardSession', async () => {
+    const order = await makeOrder();
+    const { markPaid, cancelOrder, reassignOrder } = await actions();
+    card.expire.mockClear();
+    await reassignOrder(order.id, { creditedPersonId: null, fulfillment: 'pickup' });
+    await markPaid(order.id, 'venmo');
+    await cancelOrder(order.id);
+    expect(card.expire.mock.calls.map((c) => (c as unknown[])[0])).toEqual([order.id, order.id, order.id]);
   });
 
   it('MarkPaid_RefusesAnUnknownMethodAndACancelledOrder', async () => {

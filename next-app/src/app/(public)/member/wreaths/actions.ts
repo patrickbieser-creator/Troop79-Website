@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { createAdminClient } from '@/lib/supabase/server';
 import { cancelScoutOrder, editScoutOrder, setScoutSettings, type EntryResult } from '@/lib/wreaths/scout-entry';
 import { resolveScoutEntryViewer } from '@/lib/wreaths/scout-entry-viewer';
+import { expireOrderCheckout } from '@/lib/wreaths/stripe-client';
 
 /**
  * Members › Wreath sale: edit or cancel a scout-entered order, set a scout's goal. Each action re-derives the viewer
@@ -24,6 +25,9 @@ export async function saveScoutOrderAction(raw: unknown): Promise<EntryResult> {
   const deps = await ctx();
   if (!deps.viewer) return SIGN_IN;
   const res = await editScoutOrder(raw, deps);
+  // After the edit is authorized and saved: an open card session would still charge the old total (Release B).
+  const orderId = Number((raw as { orderId?: unknown } | null)?.orderId);
+  if (res.ok && Number.isInteger(orderId)) await expireOrderCheckout(orderId);
   if (res.ok) revalidatePath(PATH);
   return res;
 }
@@ -32,6 +36,7 @@ export async function cancelScoutOrderAction(orderId: number): Promise<EntryResu
   const deps = await ctx();
   if (!deps.viewer) return SIGN_IN;
   const res = await cancelScoutOrder(orderId, deps);
+  if (res.ok) await expireOrderCheckout(orderId);
   if (res.ok) revalidatePath(PATH);
   return res;
 }

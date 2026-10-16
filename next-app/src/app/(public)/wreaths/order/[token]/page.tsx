@@ -8,13 +8,18 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { fmtDateFull } from '@/lib/format-date';
 import { arrivalParagraphs } from '@/lib/wreaths/copy';
 import { loadConfirmation } from '@/lib/wreaths/public';
-import { PAY_TREASURER, fmtMoney2 } from '@/lib/wreaths/rules';
+import { PAY_TREASURER, fmtMoney2, fromCents, toCents } from '@/lib/wreaths/rules';
+import { cardCheckoutLive } from '@/lib/wreaths/stripe-client';
+import { startCardPaymentAction } from '../../actions';
+import { CardReturnRefresh, PayByCard } from './pay-by-card';
 import styles from '../../wreaths.module.css';
 
 /**
  * /wreaths/order/<token> — the customer's confirmation. The token is an unguessable uuid; there is no list of orders
  * and no way to find one by number. Shows the order number, items, total, how to pay and when it arrives — never the
- * address, phone or email. Never indexed, never cached, never sent as a Referer (also set in next.config.ts).
+ * address, phone or email. Never indexed, never cached, never sent as a Referer (also set in next.config.ts). Since
+ * Release B an unpaid order can also be paid by card here (below the Venmo / PayPal way), and `?card=return` is where
+ * Stripe sends the customer back while the webhook confirms the payment.
  */
 export const dynamic = 'force-dynamic';
 
@@ -24,10 +29,14 @@ export const metadata: Metadata = {
   referrer: 'no-referrer'
 };
 
-export default async function Page({ params }: { params: Promise<{ token: string }> }) {
+export default async function Page({ params, searchParams }: { params: Promise<{ token: string }>; searchParams: Promise<{ card?: string }> }) {
   const { token } = await params;
+  const backFromCard = (await searchParams).card === 'return';
   const o = await loadConfirmation(createAdminClient(), token);
   if (!o) notFound();
+  // Release B: the card option sits under the Venmo / PayPal instructions on any unpaid, placed order.
+  const cardOffered = cardCheckoutLive() && o.status === 'placed' && o.paymentStatus === 'unpaid';
+  const baseTotal = fromCents(toCents(o.total) - toCents(o.feeCovered));
 
   const arrival = arrivalParagraphs({
     fulfillment: o.fulfillment,
@@ -49,13 +58,20 @@ export default async function Page({ params }: { params: Promise<{ token: string
         <Notice tone="info">This order was cancelled. Write bsatroop79bg@gmail.com if that is a surprise.</Notice>
       ) : o.paymentStatus === 'paid' ? (
         <Notice tone="success">
-          <strong>Paid {fmtMoney2(o.total)}.</strong> Thank you!
+          <strong>Paid {fmtMoney2(o.total)}{o.paidMethod === 'card' ? ' by card' : ''}.</strong> Thank you!
+        </Notice>
+      ) : backFromCard ? (
+        <Notice tone="info">
+          <p>
+            <strong>Confirming your card payment…</strong> This page updates on its own in a few seconds.
+          </p>
+          <CardReturnRefresh />
         </Notice>
       ) : (
         <Notice tone="warning">
           <div className={styles.payHow}>
             <p>
-              <strong>{fmtMoney2(o.total)} due.</strong> Please pay by Venmo or PayPal and put <strong>{o.orderNumber}</strong> in the payment note, so we can match it to your order.
+              <strong>{fmtMoney2(baseTotal)} due.</strong> Please pay by Venmo or PayPal and put <strong>{o.orderNumber}</strong> in the payment note, so we can match it to your order.
             </p>
             <p>
               Venmo: <a href={PAY_TREASURER.venmoUrl}>{PAY_TREASURER.venmoHandle}</a>
@@ -65,6 +81,7 @@ export default async function Page({ params }: { params: Promise<{ token: string
             </p>
             <p>{PAY_TREASURER.note}</p>
           </div>
+          {cardOffered && <PayByCard token={token} baseTotal={baseTotal} fee={o.cardFeeOption} initiallyCovered={o.feeCovered > 0} startCard={startCardPaymentAction} />}
         </Notice>
       )}
 
@@ -95,7 +112,7 @@ export default async function Page({ params }: { params: Promise<{ token: string
           )}
           {o.feeCovered > 0 && (
             <div>
-              <dt>Processing fee</dt>
+              <dt>Card fee</dt>
               <dd>{fmtMoney2(o.feeCovered)}</dd>
             </div>
           )}

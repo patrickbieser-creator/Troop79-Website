@@ -32,6 +32,7 @@ vi.mock('../src/app/admin/(workspace)/finance/wreaths/actions', () => ({
   cancelOrder: vi.fn(),
   markPaid: vi.fn(),
   reassignOrder: vi.fn(),
+  refundCardOrder: vi.fn(async () => ({ ok: true })),
   setPaymentNote: vi.fn(async () => ({ ok: true }))
 }));
 
@@ -192,7 +193,7 @@ function order(id: number, over: Partial<AdminOrder> = {}): AdminOrder {
   return {
     id, orderNumber: `W-${2000 + id}`, placedAt: '2026-10-12T15:00:00.000Z', round: 1, source: 'paper', fulfillment: 'scout', creditedPersonId: ME, creditedName: 'Oliver P',
     deliveringPersonId: ME, customerName: `Customer ${id}`, customerEmail: '', customerPhone: '', customerAddress: '', customerCity: '', customerZip: '', outsideAreaRelative: false,
-    itemsSubtotal: 52, deliveryFee: 0, feeCovered: 0, gift: 0, total: 52, paymentStatus: 'unpaid', paidMethod: null, paidAt: null, paidAmount: null, status: 'placed',
+    itemsSubtotal: 52, deliveryFee: 0, feeCovered: 0, gift: 0, total: 52, paymentStatus: 'unpaid', paidMethod: null, paidAt: null, paidAmount: null, status: 'placed', stripeFee: null, refundedAt: null, needsRefund: null,
     enteredByPersonId: ME, enteredByName: 'Oliver Prescott', collectedByScout: false, paymentNote: '', customerNote: '',
     lines: [{ itemId: 11, label: '20″ Wreath', catalogNumber: 1, quantity: 2, donated: false, amount: 52, unitPrice: 26, unitCost: 16.07 }],
     ...over
@@ -351,5 +352,37 @@ describe('Admin orders', () => {
     render(<OrdersPanel orders={orders} history={{}} sellers={[]} deliveryZipPrefix="532" />);
     await user.click(screen.getByRole('button', { name: 'W-2001' }));
     expect((screen.getByLabelText('Payment note') as HTMLInputElement).value).toBe('Cash at the 10/18 meeting');
+  });
+});
+
+/* ── Admin › Orders: card payments (Release B, Plans/Wreath-Stripe-Checkout.md) ── */
+
+describe('Admin orders — card payments', () => {
+  const open = async (o: AdminOrder) => {
+    const user = userEvent.setup();
+    render(<OrdersPanel orders={[o]} history={{}} sellers={[]} deliveryZipPrefix="532" />);
+    await user.click(screen.getByRole('button', { name: o.orderNumber }));
+    return user;
+  };
+
+  it('AdminOrders_ShowsTheStripeFee_OnACardPaidOrder', async () => {
+    await open(order(1, { paymentStatus: 'paid', paidMethod: 'card', paidAmount: 52, stripeFee: 1.81 }));
+    expect(screen.getByText(/Stripe fee \$1\.81/)).toBeTruthy();
+  });
+
+  it('AdminOrders_FlaggedCardPayment_OffersTheRefundButton', async () => {
+    await open(order(1, { needsRefund: 'Card payment arrived for an order already marked paid.' }));
+    expect(screen.getByRole('button', { name: 'Refund the card payment' })).toBeTruthy();
+  });
+
+  it('AdminOrders_CancellingACardPaidOrder_SaysItRefundsTheCard', async () => {
+    const user = await open(order(1, { paymentStatus: 'paid', paidMethod: 'card', paidAmount: 52 }));
+    await user.click(screen.getByRole('button', { name: 'Cancel order…' }));
+    expect(await screen.findByRole('button', { name: 'Refund $52.00 and cancel' })).toBeTruthy();
+  });
+
+  it('AdminOrders_RefundedOrder_SaysSo', async () => {
+    await open(order(1, { paymentStatus: 'refunded', paidMethod: 'card', paidAmount: 52, status: 'cancelled', refundedAt: '2026-10-20T15:00:00Z' }));
+    expect(screen.getByText(/Refunded \$52\.00 to the card/)).toBeTruthy();
   });
 });
