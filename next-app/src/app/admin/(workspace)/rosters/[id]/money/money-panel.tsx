@@ -17,7 +17,7 @@ import { addMilestone, deleteMilestone, emailPaymentReminders } from '../../../e
 import { TRANSACTION_METHODS, type TransactionMethod } from '@/lib/finance';
 import { PayFrom, PayGuard, factsFrom, needsAccountPick, wouldGoNegative, type AccountFacts } from '../../../events/pay-guard';
 import { PAY_METHOD_LABEL, refundAccountDefault, type PayMethod } from '@/lib/event-money';
-import { milestoneStanding, money, summarizeEventMoney, uncreditedOverpayment, type Milestone } from '@/lib/event-money';
+import { canRecordPayment, milestoneStanding, money, summarizeEventMoney, uncreditedOverpayment, type Milestone } from '@/lib/event-money';
 import { Badge } from '../../../_components/badge';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../../_components/dialog';
 import { Button } from '../../../../_components/button';
@@ -357,9 +357,11 @@ export function MoneyPanel({
                   </td>
                   <td>{standingBadge(p.entryId, p)}</td>
                   <td className={styles.nowrap}>
-                    <button type="button" className={styles.rowEdit} disabled={pending} onClick={() => openDlg('pay', p)}>
-                      Record payment
-                    </button>{' '}
+                    {canRecordPayment(p) && (
+                      <button type="button" className={styles.rowEdit} disabled={pending} onClick={() => openDlg('pay', p)}>
+                        Record payment
+                      </button>
+                    )}{' '}
                     {p.paid > 0 && (
                       <button type="button" className={styles.rowEdit} disabled={pending} onClick={() => openDlg('refund', p)}>
                         Refund

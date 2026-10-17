@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { feeAmount, refundAccountDefault, milestoneStanding, money, sortMilestones, summarizeEventMoney, uncreditedOverpayment, type Milestone } from '../src/lib/event-money';
+import { canRecordPayment, feeAmount, refundAccountDefault, milestoneStanding, money, sortMilestones, summarizeEventMoney, uncreditedOverpayment, type Milestone } from '../src/lib/event-money';
 
 describe('feeAmount (notional accounts)', () => {
   it('FeeAmount_FlipsScoutAccountAndScholarshipFeeRows_ToTheEventsSign', () => {
@@ -32,6 +32,22 @@ describe('refundAccountDefault', () => {
   });
   it('RefundAccountDefault_IgnoresVoidedPaymentsAndEarlierRefunds', () => {
     expect(refundAccountDefault([row({ accountPersonId: 22, voidedAt: '2026-10-01' }), row({ accountPersonId: 31, amount: -30 })])).toBeNull();
+  });
+});
+
+describe('canRecordPayment', () => {
+  it('CanRecordPayment_IsFalse_WhenPaidInFull', () => {
+    expect(canRecordPayment({ owed: 840, paid: 840 })).toBe(false);
+  });
+  it('CanRecordPayment_IsFalse_WhenOverpaid', () => {
+    expect(canRecordPayment({ owed: 30, paid: 60 })).toBe(false);
+  });
+  it('CanRecordPayment_IsTrue_WhenABalanceRemains', () => {
+    expect(canRecordPayment({ owed: 840, paid: 300 })).toBe(true);
+  });
+  it('CanRecordPayment_IsFalse_WhenNothingIsOwed', () => {
+    // Same rule as the Roster tab: no fee, no Record button.
+    expect(canRecordPayment({ owed: 0, paid: 0 })).toBe(false);
   });
 });
 

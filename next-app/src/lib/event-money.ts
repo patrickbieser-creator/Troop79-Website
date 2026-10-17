@@ -139,6 +139,13 @@ export interface Milestone {
   appliesTo: 'scouts' | 'adults' | 'both';
 }
 
+/** The Money tab offers "Record payment" until the person is paid in full
+ *  (Patrick, 2026-10-17), and never when nothing is owed — the same rule as the
+ *  Roster tab's Record. An overpayment is fixed with Refund, not another payment. */
+export function canRecordPayment(person: { owed: number; paid: number }): boolean {
+  return person.owed > 0 && cents(person.paid) < cents(person.owed);
+}
+
 export type MilestoneStanding = 'behind' | 'on_track' | 'settled' | 'n/a';
 
 /**
