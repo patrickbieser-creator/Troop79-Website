@@ -179,11 +179,14 @@ export function renderEmail(opts: {
   outro?: string;
   actionUrl?: string;
   actionLabel?: string;
+  /** A muted line above the heading, e.g. "Copy for the troop: …". */
+  notice?: string;
 }): { html: string; text: string } {
-  const { heading, intro, bullets = [], outro, actionUrl, actionLabel } = opts;
+  const { heading, intro, bullets = [], outro, actionUrl, actionLabel, notice } = opts;
   const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
   const html = `<div style="font-family:-apple-system,Segoe UI,Arial,sans-serif;font-size:15px;line-height:1.55;color:#363636;max-width:560px">
+  ${notice ? `<p style="margin:0 0 14px;padding:8px 12px;background:#f3f1ec;border-radius:3px;font-size:13px;color:#5a5548">${esc(notice)}</p>` : ''}
   <h1 style="font-size:19px;color:#1e3a4a;margin:0 0 12px">${esc(heading)}</h1>
   <p style="margin:0 0 12px">${esc(intro)}</p>
   ${bullets.length ? `<ul style="margin:0 0 12px;padding-left:20px">${bullets.map((b) => `<li>${esc(b)}</li>`).join('')}</ul>` : ''}
@@ -193,6 +196,7 @@ export function renderEmail(opts: {
 </div>`;
 
   const text = [
+    ...(notice ? [notice, ''] : []),
     heading,
     '',
     intro,

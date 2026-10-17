@@ -401,7 +401,6 @@ describe('cutoffs', () => {
 });
 
 describe('order copies (Settings › Order copies)', () => {
-  const sentTo = () => send.mock.calls.map((c) => (c as unknown as [{ to: string[] }])[0].to);
   beforeAll(async () => {
     await admin.from('wreath_sales').update({ order_cc: ['treasurer@example.test', 'cubmaster@example.test'] }).eq('id', fx.saleId);
   });
@@ -409,14 +408,36 @@ describe('order copies (Settings › Order copies)', () => {
     await admin.from('wreath_sales').update({ order_cc: [] }).eq('id', fx.saleId);
   });
 
+  const sent = () => send.mock.calls.map((c) => (c as unknown as [{ to: string[]; subject: string; text: string }])[0]);
+  const copy = () => sent().find((m) => m.to.includes('treasurer@example.test'));
+
   it('OrderCopies_GetTheCustomersConfirmation', async () => {
+    send.mockClear();
     const res = await placeOrder(input(), deps());
-    expect(res.ok).toBe(true);
-    expect(sentTo()[0]).toEqual(expect.arrayContaining(['treasurer@example.test', 'cubmaster@example.test']));
+    expect([res.ok, copy()?.to]).toEqual([true, ['treasurer@example.test', 'cubmaster@example.test']]);
+  });
+
+  it('OrderCopies_GoInTheirOwnMessage_NotTheCustomers', async () => {
+    send.mockClear();
+    const buyer = input();
+    await placeOrder(buyer, deps());
+    expect(sent()[0].to).toEqual([(buyer.customer as { email: string }).email]);
+  });
+
+  it('OrderCopies_SayTheyAreACopy_InTheSubject', async () => {
+    send.mockClear();
+    await placeOrder(input(), deps());
+    expect(copy()?.subject).toMatch(/^Copy: /);
+  });
+
+  it('OrderCopies_SayWhoTheOriginalWentTo_AtTheTop', async () => {
+    send.mockClear();
+    await placeOrder(input(), deps());
+    expect(copy()?.text.split('\n')[0]).toMatch(/^Copy for the troop/);
   });
 
   it('OrderCopies_AreNotAddedToTheScoutsHouseholdNotice', async () => {
     await placeOrder(input({ sellerSlug: fx.sellerA.slug, customer: { name: 'Vitest Buyer', email: 'copy@example.test', phone: '414-555-0100', street: '5 Link Ave', city: 'Milwaukee', zip: '53211' } }), deps());
-    expect(sentTo().slice(1).flat()).not.toContain('treasurer@example.test');
+    expect(sent().filter((m) => !/^Copy: /.test(m.subject)).flatMap((m) => m.to)).not.toContain('treasurer@example.test');
   });
 });

@@ -232,7 +232,7 @@ export function SettingsForm({ sale }: { sale: AdminSale }) {
         </FormSection>
 
         <FormSection num={6} title="Order copies">
-          <div className={styles.grid2}>
+          <div className={styles.ccList}>
             {draft.orderCc.map((addr, i) => (
               <div key={i} className={`${styles.field} ${bad(`orderCc${i}`) ?? ''}`}>
                 <label htmlFor={`w-cc-${i}`}>Address {i + 1}</label>
@@ -252,7 +252,7 @@ export function SettingsForm({ sale }: { sale: AdminSale }) {
             ))}
           </div>
           {serverProblem?.field === 'orderCc' && <p className={styles.badNote}>{serverProblem.message}</p>}
-          <p className={styles.hint}>Up to {MAX_LEADER_RECIPIENTS} addresses get a copy of every new order&rsquo;s confirmation, each as their own email. Leave a box empty to send none there.</p>
+          <p className={styles.hint}>Up to {MAX_LEADER_RECIPIENTS} addresses get a copy of every new order&rsquo;s confirmation, marked &ldquo;Copy&rdquo; and sent as their own email. Leave a box empty to send none there.</p>
         </FormSection>
       </div>
 

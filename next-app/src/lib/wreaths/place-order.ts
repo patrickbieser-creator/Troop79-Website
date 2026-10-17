@@ -212,8 +212,8 @@ export async function placeOrder(raw: unknown, deps: PlaceOrderDeps): Promise<Pl
   const saleRow = ((saleRows ?? []) as Parameters<typeof saleFromRow>[0][])[0];
   if (!saleRow) return CLOSED;
   const sale: PublicSale = saleFromRow(saleRow);
-  // Settings › Order copies: copied on the order's confirmation. Never on the scout's household notice. (sendEmail
-  // sends each address its own message, so no one sees another's address.)
+  // Settings › Order copies: a marked copy of the order's confirmation ("Copy:" subject, a line on top), sent apart
+  // from the original. Never on the scout's household notice. (sendEmail sends each address its own message.)
   const orderCc = ((saleRow as { order_cc?: string[] | null }).order_cc ?? []).filter(Boolean);
   if (sale.status !== 'open') return CLOSED;
   const round = decideRound(sale, now, deps.scoutEntry ? null : req.startedAt);
@@ -400,12 +400,21 @@ export async function placeOrder(raw: unknown, deps: PlaceOrderDeps): Promise<Pl
       if (entry.viewer.personId === seller!.personId) for (const a of await deps.householdEmails(seller!.personId)) to.add(a);
       const mail = scoutEntryConfirmationEmail({ ...ctx, collected: req.collected, paymentNote: req.paymentNote, memberUrl: `${deps.siteUrl}/member/wreaths` });
       const confirmed = [...to];
-      for (const a of orderCc) to.add(a);
-      if (to.size) await deps.send({ to: [...to], subject: mail.subject, html: mail.html, text: mail.text, replyTo: deps.replyTo });
+      if (to.size) await deps.send({ to: confirmed, subject: mail.subject, html: mail.html, text: mail.text, replyTo: deps.replyTo });
+      const copyTo = orderCc.filter((a) => !to.has(a));
+      if (copyTo.length) {
+        const cc = scoutEntryConfirmationEmail({ ...ctx, collected: req.collected, paymentNote: req.paymentNote, memberUrl: `${deps.siteUrl}/member/wreaths` }, { sentTo: 'whoever entered it' });
+        await deps.send({ to: copyTo, subject: cc.subject, html: cc.html, text: cc.text, replyTo: deps.replyTo });
+      }
       return { ok: true, token: result.public_token, orderNumber: result.order_number, created: true, confirmedTo: confirmed };
     }
     const mail = customerConfirmationEmail(ctx);
-    await deps.send({ to: [...new Set([req.email, ...orderCc])], subject: mail.subject, html: mail.html, text: mail.text, replyTo: deps.replyTo });
+    await deps.send({ to: [req.email], subject: mail.subject, html: mail.html, text: mail.text, replyTo: deps.replyTo });
+    const copyTo = orderCc.filter((a) => a !== req.email.toLowerCase());
+    if (copyTo.length) {
+      const cc = customerConfirmationEmail(ctx, { sentTo: req.name });
+      await deps.send({ to: copyTo, subject: cc.subject, html: cc.html, text: cc.text, replyTo: deps.replyTo });
+    }
     const notify = seller && fulfillment === 'scout' ? { ...seller, creditOnly: false } : creditOnly ? { ...creditOnly, creditOnly: true } : null;
     if (notify) {
       // The order is saved either way; past the daily cap this seller's household simply isn't mailed again.

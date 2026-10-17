@@ -40,7 +40,7 @@
 /* Fields */
 .field { margin-bottom: var(--admin-space-8); min-width: 0; }
 .field > label, .fieldLabel { display: block; margin-bottom: 6px; font-size: var(--admin-text-base); font-weight: var(--admin-weight-semibold); color: var(--admin-gray-500); }
-.field input[type='text'], .field input[type='number'], .field select, .field textarea {
+.field input[type='text'], .field input[type='number'], .field input[type='email'], .field select, .field textarea {
   width: 100%;
   font-family: var(--admin-font-ui);
   font-size: var(--admin-text-md);
@@ -55,6 +55,8 @@
 .hint { font-size: var(--admin-text-sm); color: var(--admin-gray-500); margin: 5px 0 0; }
 .grid2 { display: grid; gap: 0 var(--admin-space-8); grid-template-columns: 1fr; max-width: 640px; }
 @media (min-width: 640px) { .grid2 { grid-template-columns: 1fr 1fr; } .span2 { grid-column: 1 / -1; } }
+/* Settings › Order copies: one column, wide enough for a full address. */
+.ccList { max-width: 440px; }
 .bad { composes: bad from '../../_components/save-state.module.css'; }
 .badNote { composes: badNote from '../../_components/save-state.module.css'; }
 .check { display: flex; align-items: center; gap: var(--admin-space-4); font-size: var(--admin-text-md); color: var(--admin-gray-700); margin-bottom: var(--admin-space-4); }

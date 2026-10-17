@@ -56,8 +56,15 @@ export function greetingName(customerName: string): string | null {
   return /^[\p{L}][\p{L}\p{M}'’-]{0,39}$/u.test(first) ? first : null;
 }
 
+/** Settings › Order copies: a copy says so at the top and in its subject, so a leader never mistakes it for their own. */
+export interface OrderCopy {
+  /** Who the original went to, in words: "Jane Doe", "whoever entered it". */
+  sentTo: string;
+}
+const copyNotice = (copy: OrderCopy) => `Copy for the troop: this is the confirmation sent to ${copy.sentTo}.`;
+
 /** The customer's receipt: what they ordered, and how to pay the treasurer with the order number in the note. */
-export function customerConfirmationEmail(c: OrderEmailContext): { subject: string; html: string; text: string } {
+export function customerConfirmationEmail(c: OrderEmailContext, copy?: OrderCopy): { subject: string; html: string; text: string } {
   const first = greetingName(c.customerName);
   const { html, text } = renderEmail({
     heading: first ? `Thank you, ${first}. Your order is placed.` : 'Thank you. Your order is placed.',
@@ -72,9 +79,10 @@ export function customerConfirmationEmail(c: OrderEmailContext): { subject: stri
     ],
     actionUrl: c.orderUrl,
     actionLabel: 'View your order',
-    outro: `Questions or changes: reply to this email. Changes are possible until ${c.changesBy}, when the troop places its order with the grower.`
+    outro: `Questions or changes: reply to this email. Changes are possible until ${c.changesBy}, when the troop places its order with the grower.`,
+    notice: copy && copyNotice(copy)
   });
-  return { subject: subjectText(`Your Troop 79 wreath order ${c.orderNumber}`), html, text };
+  return { subject: subjectText(copy ? `Copy: wreath order ${c.orderNumber} for ${c.customerName}` : `Your Troop 79 wreath order ${c.orderNumber}`), html, text };
 }
 
 /** A note to the credited scout's household: a new order to deliver. Goes only to addresses on file. */
@@ -102,7 +110,8 @@ export function scoutNoticeEmail(
  * when the scout typed it). The customer gets nothing, and there are no payment instructions: the scout collects.
  */
 export function scoutEntryConfirmationEmail(
-  c: OrderEmailContext & { collected: boolean; paymentNote: string; memberUrl: string }
+  c: OrderEmailContext & { collected: boolean; paymentNote: string; memberUrl: string },
+  copy?: OrderCopy
 ): { subject: string; html: string; text: string } {
   const { html, text } = renderEmail({
     heading: `Order ${c.orderNumber} for ${c.customerName} is in`,
@@ -115,7 +124,8 @@ export function scoutEntryConfirmationEmail(
     ],
     actionUrl: c.memberUrl,
     actionLabel: 'My wreath orders',
-    outro: `Change or cancel it there until ${c.changesBy}, unless the troop has already marked it paid.`
+    outro: `Change or cancel it there until ${c.changesBy}, unless the troop has already marked it paid.`,
+    notice: copy && copyNotice(copy)
   });
-  return { subject: subjectText(`Wreath order ${c.orderNumber} for ${c.customerName}`), html, text };
+  return { subject: subjectText(`${copy ? 'Copy: w' : 'W'}reath order ${c.orderNumber} for ${c.customerName}`), html, text };
 }

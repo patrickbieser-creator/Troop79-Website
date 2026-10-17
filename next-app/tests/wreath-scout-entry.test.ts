@@ -608,6 +608,13 @@ describe('order copies on a scout-entered order', () => {
   it('OrderCopies_GetTheEnterersConfirmation', async () => {
     send.mockClear();
     await placeOrder(entry(), deps(asScoutEntry(viewerA)));
-    expect(send.mock.calls[0][0].to).toContain('treasurer@example.test');
+    const copy = send.mock.calls.map((c) => c[0]).find((m) => m.to.includes('treasurer@example.test'));
+    expect(copy?.subject).toMatch(/^Copy: /);
+  });
+
+  it('OrderCopies_StayOffTheEnterersOwnMessage', async () => {
+    send.mockClear();
+    await placeOrder(entry(), deps(asScoutEntry(viewerA)));
+    expect(send.mock.calls[0][0].to).not.toContain('treasurer@example.test');
   });
 });
