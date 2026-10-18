@@ -4,7 +4,9 @@
       "Read(~/.claude/agents/disciplines/**)"
     ],
     "deny": [
-      "Agent(northwoods:nws-brand-manager)"
+      "Agent(northwoods:nws-brand-manager)",
+      "mcp__titan-v75-dev",
+      "mcp__nws-v75-api-dev"
     ]
   },
   "ignorePatterns": [
@@ -12,5 +14,12 @@
     "**/.env.*",
     ".env",
     ".env.*"
+  ],
+  "enabledPlugins": {
+    "northwoods@northwoods": false,
+    "stripe@claude-plugins-official": true
+  },
+  "claudeMdExcludes": [
+    "**/.claude/agents/core-rules.md"
   ]
 }
