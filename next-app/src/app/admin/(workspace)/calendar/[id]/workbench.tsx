@@ -40,6 +40,8 @@ import { FormPanel } from '../../../_components/form-panel';
 import { useRouter } from 'next/navigation';
 import type { CalendarCategoryRow, CategoryTemplate } from '@/lib/calendar-categories';
 import { TabStrip, type TabStripItem } from '../../_components/tab-strip';
+import { EventBucketControl } from '../../finance/event-bucket-control';
+import type { Bucket } from '@/lib/buckets';
 import { BackNav } from '../../_components/back-nav';
 import { useGuardedNav } from '../../_components/guarded-nav';
 import { CalendarEntryForm, type CalendarEntryRow } from '../entry-form';
@@ -104,6 +106,8 @@ interface Props {
   /** Enables a signup on this entry, in place (2026-08-25: the Calendar is
    *  the hub — no detour through the signups list to flip it on). */
   onEnableSignup?: (calendarEntryId: number) => Promise<{ ok: boolean; error?: string }>;
+  /** The entry's bucket and the picker list — loaded only for the Entry tab (Plans/Buckets-Lookup.md). */
+  bucket?: { bucketId: number | null; buckets: Bucket[] } | null;
 }
 
 const TEMPLATE_NOTE: Record<CategoryTemplate, string> = {
@@ -129,7 +133,8 @@ export function Workbench({
   attendanceCount,
   rollCall,
   onAddAgenda,
-  onEnableSignup
+  onEnableSignup,
+  bucket
 }: Props) {
   const router = useRouter();
   const { navigate, dialog } = useGuardedNav();
@@ -255,6 +260,13 @@ export function Workbench({
             onUpdate={onSaveDetails}
             onClose={() => {}}
           />
+        </FormPanel>
+      )}
+      {/* The entry's money bucket — one click, saves at once, so it sits outside the entry form and its Save.
+          Here so an event with no sign-up (no Money tab) can have one too (Patrick, 2026-10-18). */}
+      {tab === 'entry' && bucket && (
+        <FormPanel aria-label="Bucket">
+          <EventBucketControl calendarEntryId={entry.id} bucketId={bucket.bucketId} buckets={bucket.buckets} />
         </FormPanel>
       )}
 

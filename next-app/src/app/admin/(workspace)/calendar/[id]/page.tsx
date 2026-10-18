@@ -55,6 +55,7 @@ import { SnapshotView } from '../../rosters/[id]/snapshot/snapshot-view';
 import { activeSetFor, AssignmentsView, loadAssignments } from '../../rosters/[id]/assignments/assignments-view';
 import type { Meeting } from '@/lib/supabase/types';
 import { updateCalendarEntry, createCalendarEntry } from '../actions';
+import { listBucketsAction } from '../../finance/bucket-actions';
 import { markAttended, markAbsent, setAttendanceQty, seedFromSignup } from './roll-call/actions';
 import type { CalendarEntryRow } from '../entry-form';
 import { Workbench, type WorkbenchEntry, type WorkbenchTab } from './workbench';
@@ -174,6 +175,12 @@ export default async function CalendarEntryPage({
     }
   }
 
+  // The Entry tab's bucket control (Plans/Buckets-Lookup.md) — the list only when that tab is open.
+  const bucket =
+    tab === 'entry'
+      ? { bucketId: ((row as { bucket_id?: number | null }).bucket_id ?? null) as number | null, buckets: await listBucketsAction() }
+      : null;
+
   const workbenchEntry: WorkbenchEntry = {
     id: row.id,
     title: row.title,
@@ -241,6 +248,7 @@ export default async function CalendarEntryPage({
       onCreateEntry={createCalendarEntry}
       onAddAgenda={createMeeting}
       onEnableSignup={enableSignup}
+      bucket={bucket}
     />
   );
 }

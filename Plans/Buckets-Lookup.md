@@ -210,7 +210,8 @@ All decided 2026-10-17. Patrick accepted tech-lead's answers on 1 and 3–6 and 
   `renameActivityAction` are deleted.
 - **An event's bucket is set on its Money tab, not in the calendar details form.** It's a one-click control
   that takes effect immediately, and the event's own linked rows move into the bucket with it.
-  (`setEventBucketAction`.)
+  (`setEventBucketAction`.) Since v1.234.0 (2026-10-18) the same `EventBucketControl` also sits on the calendar
+  workbench's Entry tab, below the entry form, so an event with no sign-up can have a bucket too.
 - **Reimbursements stay entry-scoped on purpose.** A payout writes a ledger row linked to the event, and the
   trigger buckets it, so no `reimbursement_requests.bucket_id`.
 - **The Bucket Report still groups by label in Release 1.** The trigger keeps each label equal to its bucket's

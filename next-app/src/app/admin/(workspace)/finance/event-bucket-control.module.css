@@ -1,0 +1,33 @@
+/* An event's bucket — Money tab and calendar workbench (admin tokens only). */
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--admin-space-3) var(--admin-space-5);
+  margin-bottom: var(--admin-space-5);
+}
+.label {
+  font-weight: 600;
+  padding-top: var(--admin-space-4);
+}
+.picker {
+  min-width: 18rem;
+}
+.hint {
+  padding-top: var(--admin-space-4);
+  color: var(--admin-gray-600);
+  font-size: var(--admin-text-sm);
+}
+.note,
+.error {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: var(--admin-text-sm);
+}
+.note {
+  color: var(--admin-gray-700);
+}
+.error {
+  color: var(--admin-danger);
+}
