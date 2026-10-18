@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>October 17, 2026</strong> &nbsp;&middot;&nbsp; v1.228.2</p>
+      <p>Last updated: <strong>October 17, 2026</strong> &nbsp;&middot;&nbsp; v1.229.0</p>
     </div>
   </div>
 
@@ -494,6 +494,23 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.229.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.229.0</span>
+        <span class="release-date">October 17, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Event Money tab</p>
+        <ul class="change-list">
+          <li><span><strong>Dashboard reordered.</strong> Income, Expenses, Still due, Net, then Total expected payments (formerly &ldquo;Owed&rdquo;).</span></li>
+          <li><span><strong>How and when each person paid.</strong> Who owes what gains Method and Paid on columns: every way the person paid, once each, and the date of their latest payment.</span></li>
+          <li><span><strong>Ledger expenses now show up.</strong> A ledger row recorded under the event&rsquo;s label but never linked to the event (the Record form sets only the label) now counts on that event&rsquo;s Money tab, unless another event uses the same label. An event-fee row tied to no one&rsquo;s sign-up counts by its sign, so a reservation paid out reads as an expense, not as less income.</span></li>
+        </ul>
       </div>
     </div>
 

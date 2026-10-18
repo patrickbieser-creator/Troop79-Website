@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { canRecordPayment, feeAmount, refundAccountDefault, milestoneStanding, money, sortMilestones, summarizeEventMoney, uncreditedOverpayment, type Milestone } from '../src/lib/event-money';
+import { adoptableLabels, canRecordPayment, paymentSummary, feeAmount, refundAccountDefault, milestoneStanding, money, sortMilestones, summarizeEventMoney, uncreditedOverpayment, type Milestone } from '../src/lib/event-money';
 
 describe('feeAmount (notional accounts)', () => {
   it('FeeAmount_FlipsScoutAccountAndScholarshipFeeRows_ToTheEventsSign', () => {
@@ -153,9 +153,49 @@ describe('summarizeEventMoney', () => {
     expect(t.net).toBe(-636.71);
   });
 
+  it('SummarizeEventMoney_CountsAnUnlinkedNegativeEventFee_AsAnExpense', () => {
+    // An imported "Paid to Jason; Reservation" row: event_fee, −218.60, no signup entry.
+    // It is money the troop paid out, not a refund off income.
+    const t = summarizeEventMoney(
+      [],
+      [{ id: 1, occurredOn: '2026-08-14', amount: -218.6, kind: 'event_fee', method: 'venmo', memo: null, voidedAt: null, signupEntryId: null, personId: null }],
+      []
+    );
+    expect(t.income).toBe(0);
+    expect(t.expenses).toBe(218.6);
+  });
+
   it('Money_FormatsWholeAndFractionalDollars_WithAMinusSign', () => {
     expect(money(30)).toBe('$30');
     expect(money(22.5)).toBe('$22.50');
     expect(money(-278.71)).toBe('−$278.71');
+  });
+});
+
+describe('adoptableLabels', () => {
+  it('AdoptableLabels_TakesTheEventsOwnLabelsAndTitle_Deduped', () => {
+    expect(adoptableLabels(["High Cliff Fall '26", "High Cliff Fall '26", null], 'High Cliff Fall Campout', new Set())).toEqual([
+      "High Cliff Fall '26",
+      'High Cliff Fall Campout'
+    ]);
+  });
+  it('AdoptableLabels_DropsALabelAnotherEventAlsoUses', () => {
+    expect(adoptableLabels(['Campout'], 'Campout', new Set(['Campout']))).toEqual([]);
+  });
+});
+
+describe('paymentSummary', () => {
+  const tx = (o: Partial<{ amount: number; kind: string; method: string | null; occurredOn: string; voidedAt: string | null }>) => ({
+    amount: 30, kind: 'event_fee', method: 'venmo', occurredOn: '2026-09-01', voidedAt: null, ...o
+  });
+  it('PaymentSummary_ListsEachMethodOnce_AndTheLatestPaymentDate', () => {
+    expect(
+      paymentSummary([tx({}), tx({ method: 'cash', occurredOn: '2026-09-20' }), tx({ occurredOn: '2026-09-10' })])
+    ).toEqual({ methods: ['venmo', 'cash'], lastOn: '2026-09-20' });
+  });
+  it('PaymentSummary_IgnoresRefundsVoidsAndCredits', () => {
+    expect(
+      paymentSummary([tx({ amount: -30 }), tx({ voidedAt: '2026-09-02' }), tx({ kind: 'adjustment' })])
+    ).toEqual({ methods: [], lastOn: null });
   });
 });

@@ -1,6 +1,6 @@
 'use server';
 
-import { feeAmount, isNotionalAccount, money, uncreditedOverpayment, type PayMethod } from '@/lib/event-money';
+import { adoptableLabels, feeAmount, isNotionalAccount, money, uncreditedOverpayment, type PayMethod } from '@/lib/event-money';
 import { GUEST_CLASSES } from '@/lib/participant-class';
 import {
   loadFamilyScoutAccounts,
@@ -909,6 +909,46 @@ export interface EventMoneyData {
   }[];
 }
 
+/** Ledger rows entered against this event's label but never linked to it
+ *  (the Record form sets only activity_label). See adoptableLabels. */
+async function unlinkedEventRows<T extends { activity_label: string | null }>(
+  supabase: ReturnType<typeof createAdminClient>,
+  calendarEntryId: number,
+  linked: readonly T[]
+): Promise<T[]> {
+  const { data: cal } = await supabase.from('calendar_entries').select('title').eq('id', calendarEntryId).maybeSingle();
+  const title = (cal as { title: string } | null)?.title ?? null;
+  const candidates = adoptableLabels(
+    linked.map((t) => t.activity_label),
+    title,
+    new Set()
+  );
+  if (candidates.length === 0) return [];
+  const [{ data: otherRows }, { data: otherEvents }] = await Promise.all([
+    supabase
+      .from('financial_transactions')
+      .select('activity_label')
+      .in('activity_label', candidates)
+      .not('calendar_entry_id', 'is', null)
+      .neq('calendar_entry_id', calendarEntryId),
+    supabase.from('calendar_entries').select('title').in('title', candidates).neq('id', calendarEntryId)
+  ]);
+  const claimed = new Set<string>([
+    ...((otherRows ?? []) as { activity_label: string }[]).map((r) => r.activity_label),
+    ...((otherEvents ?? []) as { title: string }[]).map((r) => r.title)
+  ]);
+  const labels = adoptableLabels(candidates, null, claimed);
+  if (labels.length === 0) return [];
+  const { data } = await supabase
+    .from('financial_transactions')
+    .select('id, occurred_on, amount, kind, method, memo, person_id, signup_entry_id, voided_at, account, activity_label')
+    .is('calendar_entry_id', null)
+    .in('activity_label', labels)
+    .order('occurred_on')
+    .order('id');
+  return (data ?? []) as unknown as T[];
+}
+
 /** Everything the event's Money tab shows — the sheet's money block for one
  *  event. Pure math over it lives in lib/event-money.ts. */
 export async function getEventMoneyAction(signupId: number): Promise<EventMoneyData | null> {
@@ -930,7 +970,7 @@ export async function getEventMoneyAction(signupId: number): Promise<EventMoneyD
       supabase.from('people').select('id, display_name'),
       supabase
         .from('financial_transactions')
-        .select('id, occurred_on, amount, kind, method, memo, person_id, signup_entry_id, voided_at, account')
+        .select('id, occurred_on, amount, kind, method, memo, person_id, signup_entry_id, voided_at, account, activity_label')
         .eq('calendar_entry_id', calendarEntryId)
         .order('occurred_on')
         .order('id'),
@@ -947,8 +987,10 @@ export async function getEventMoneyAction(signupId: number): Promise<EventMoneyD
   const balById = new Map(
     ((balances ?? []) as { entry_id: number; owed: number; paid: number; balance: number; settled: boolean }[]).map((b) => [b.entry_id, b])
   );
-  type Tx = { id: number; occurred_on: string; amount: number; kind: string; method: string | null; memo: string | null; person_id: number | null; signup_entry_id: number | null; voided_at: string | null; account: string };
-  const txRows = (tx ?? []) as Tx[];
+  type Tx = { id: number; occurred_on: string; amount: number; kind: string; method: string | null; memo: string | null; person_id: number | null; signup_entry_id: number | null; voided_at: string | null; account: string; activity_label: string | null };
+  const txRows = [...((tx ?? []) as Tx[]), ...(await unlinkedEventRows(supabase, calendarEntryId, (tx ?? []) as Tx[]))].sort(
+    (a, b) => a.occurred_on.localeCompare(b.occurred_on) || a.id - b.id
+  );
   const txByEntry = new Map<number, Tx[]>();
   for (const t of txRows) if (t.signup_entry_id != null) txByEntry.set(t.signup_entry_id, [...(txByEntry.get(t.signup_entry_id) ?? []), t]);
 

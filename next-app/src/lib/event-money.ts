@@ -103,7 +103,9 @@ export function summarizeEventMoney(
   for (const t of transactions) {
     if (t.voidedAt) continue;
     const c = cents(t.amount);
-    if (t.kind === 'event_fee') {
+    // A fee row with no signup entry is not anyone's fee (an imported
+    // "Paid to Jason; Reservation" row) — it falls through to sign-based.
+    if (t.kind === 'event_fee' && t.signupEntryId != null) {
       income += c;
       const m = t.method ?? 'other';
       byMethod.set(m, (byMethod.get(m) ?? 0) + c);
@@ -144,6 +146,40 @@ export interface Milestone {
  *  Roster tab's Record. An overpayment is fixed with Refund, not another payment. */
 export function canRecordPayment(person: { owed: number; paid: number }): boolean {
   return person.owed > 0 && cents(person.paid) < cents(person.owed);
+}
+
+/** The ledger's Record form sets only activity_label, never calendar_entry_id
+ *  (Patrick, 2026-10-17: Aldi shopping for High Cliff missing from its Money tab).
+ *  The Money tab adopts unlinked rows under a label that belongs to this event —
+ *  one its linked rows carry, or its title — unless another event claims it too. */
+export function adoptableLabels(
+  ownLabels: Iterable<string | null>,
+  title: string | null,
+  claimedElsewhere: ReadonlySet<string>
+): string[] {
+  const out = new Set<string>();
+  for (const l of [...ownLabels, title]) {
+    const s = l?.trim();
+    if (s && !claimedElsewhere.has(s)) out.add(s);
+  }
+  return [...out];
+}
+
+/** How a person paid, for the Money tab's listing: each method once (first
+ *  use order) and the date of the latest payment. Refunds, voids and credits
+ *  are not payments. */
+export function paymentSummary(
+  transactions: readonly { amount: number; kind: string; method: string | null; occurredOn: string; voidedAt: string | null }[]
+): { methods: string[]; lastOn: string | null } {
+  const methods: string[] = [];
+  let lastOn: string | null = null;
+  for (const t of transactions) {
+    if (t.voidedAt || t.kind !== 'event_fee' || !(t.amount > 0)) continue;
+    const m = t.method ?? 'other';
+    if (!methods.includes(m)) methods.push(m);
+    if (lastOn == null || t.occurredOn > lastOn) lastOn = t.occurredOn;
+  }
+  return { methods, lastOn };
 }
 
 export type MilestoneStanding = 'behind' | 'on_track' | 'settled' | 'n/a';

@@ -17,7 +17,7 @@ import { addMilestone, deleteMilestone, emailPaymentReminders } from '../../../e
 import { TRANSACTION_METHODS, type TransactionMethod } from '@/lib/finance';
 import { PayFrom, PayGuard, factsFrom, needsAccountPick, wouldGoNegative, type AccountFacts } from '../../../events/pay-guard';
 import { PAY_METHOD_LABEL, refundAccountDefault, type PayMethod } from '@/lib/event-money';
-import { canRecordPayment, milestoneStanding, money, summarizeEventMoney, uncreditedOverpayment, type Milestone } from '@/lib/event-money';
+import { canRecordPayment, milestoneStanding, money, paymentSummary, summarizeEventMoney, uncreditedOverpayment, type Milestone } from '@/lib/event-money';
 import { Badge } from '../../../_components/badge';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../../_components/dialog';
 import { Button } from '../../../../_components/button';
@@ -122,6 +122,7 @@ export function MoneyPanel({
       ),
     [data.people, milestones, today]
   );
+  const paidHow = useMemo(() => new Map(data.people.map((p) => [p.entryId, paymentSummary(p.transactions)])), [data.people]);
   const behind = data.people
     .map((p) => ({ p, s: standings.get(p.entryId)! }))
     .filter(({ p, s }) => s.standing === 'behind' && p.status === 'yes');
@@ -227,19 +228,8 @@ export function MoneyPanel({
 
   return (
     <>
+      {/* Order: Income, Expenses, Still due, Net, Total expected payments (Patrick, 2026-10-17). */}
       <div className={styles.tiles}>
-        <div className={styles.tile}>
-          <div className={styles.tileLabel}>Owed</div>
-          <div className={styles.tileValue}>{money(totals.owed)}</div>
-          <div className={styles.tileSub}>{data.people.filter((p) => p.owed > 0).length} people owe something</div>
-        </div>
-        <div className={styles.tile + ' ' + (totals.due > 0 ? styles.tileWarn : styles.tileOk)}>
-          <div className={styles.tileLabel}>Still due</div>
-          <div className={styles.tileValue}>{money(totals.due)}</div>
-          <div className={styles.tileSub}>
-            {money(totals.paid)} paid{totals.overpaid > 0 ? ` · ${money(totals.overpaid)} overpaid` : ''}
-          </div>
-        </div>
         <div className={styles.tile}>
           <div className={styles.tileLabel}>Income</div>
           <div className={styles.tileValue}>{money(totals.income)}</div>
@@ -256,10 +246,22 @@ export function MoneyPanel({
             {totals.reimbursementsPending > 0 ? `+ ${money(totals.reimbursementsPending)} reimbursements pending` : 'incl. reimbursements paid'}
           </div>
         </div>
+        <div className={styles.tile + ' ' + (totals.due > 0 ? styles.tileWarn : styles.tileOk)}>
+          <div className={styles.tileLabel}>Still due</div>
+          <div className={styles.tileValue}>{money(totals.due)}</div>
+          <div className={styles.tileSub}>
+            {money(totals.paid)} paid{totals.overpaid > 0 ? ` · ${money(totals.overpaid)} overpaid` : ''}
+          </div>
+        </div>
         <div className={styles.tile + ' ' + (totals.net < 0 ? styles.tileWarn : styles.tileOk)}>
           <div className={styles.tileLabel}>{totals.net < 0 ? 'Cost to the troop' : 'Net'}</div>
           <div className={styles.tileValue}>{money(Math.abs(totals.net))}</div>
           <div className={styles.tileSub}>income − expenses − pending reimbursements</div>
+        </div>
+        <div className={styles.tile}>
+          <div className={styles.tileLabel}>Total expected payments</div>
+          <div className={styles.tileValue}>{money(totals.owed)}</div>
+          <div className={styles.tileSub}>{data.people.filter((p) => p.owed > 0).length} people owe something</div>
         </div>
       </div>
 
@@ -280,6 +282,8 @@ export function MoneyPanel({
               <th scope="col">Name</th>
               <th scope="col">Owed</th>
               <th scope="col">Paid</th>
+              <th scope="col">Method</th>
+              <th scope="col">Paid on</th>
               <th scope="col">Balance</th>
               <th scope="col">Status</th>
               <th scope="col" />
@@ -349,6 +353,8 @@ export function MoneyPanel({
                     {money(p.paid)}
                     {p.credited > 0 && <span className={styles.evCat}>{money(p.credited)} credited to account</span>}
                   </td>
+                  <td>{paidHow.get(p.entryId)!.methods.map((m) => METHOD_LABEL[m] ?? m).join(', ')}</td>
+                  <td className={styles.nowrap}>{paidHow.get(p.entryId)!.lastOn ? fmtDate(paidHow.get(p.entryId)!.lastOn!) : ''}</td>
                   {/* Blank when nothing is owed either way (Patrick, 2026-08-22) — a $0 reads as a figure to check. */}
                   {/* Negative = overpaid: red, parentheses, minus — all three (Patrick). */}
                   <td className={styles.nowrap}>
@@ -393,7 +399,7 @@ export function MoneyPanel({
                 </tr>
                 {openHistory.has(p.entryId) && (
                   <tr className={styles.editRow}>
-                    <td colSpan={6}>
+                    <td colSpan={8}>
                       <table className={styles.miniTable}>
                         <tbody>
                           {p.transactions.map((t) => (
