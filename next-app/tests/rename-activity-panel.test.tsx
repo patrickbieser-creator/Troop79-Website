@@ -30,7 +30,7 @@ describe('RenameActivityPanel', () => {
       />
     );
 
-    await user.selectOptions(screen.getByLabelText('Rename this activity'), 'Can Drive');
+    await user.selectOptions(screen.getByLabelText('Rename this bucket'), 'Can Drive');
     await user.type(screen.getByLabelText('To'), 'Fall Fundraiser');
     await user.click(screen.getByRole('button', { name: /preview/i }));
 
@@ -64,7 +64,7 @@ describe('RenameActivityPanel', () => {
       />
     );
 
-    await user.selectOptions(screen.getByLabelText('Rename this activity'), 'Can Drive');
+    await user.selectOptions(screen.getByLabelText('Rename this bucket'), 'Can Drive');
     await user.type(screen.getByLabelText('To'), 'Wreath Sale');
     await user.click(screen.getByRole('button', { name: /preview/i }));
     await waitFor(() => screen.getByRole('button', { name: /^apply$/i }));
@@ -85,7 +85,7 @@ describe('RenameActivityPanel', () => {
       />
     );
 
-    await user.selectOptions(screen.getByLabelText('Rename this activity'), 'Can Drive');
+    await user.selectOptions(screen.getByLabelText('Rename this bucket'), 'Can Drive');
     await user.type(screen.getByLabelText('To'), 'Wreath Sale');
     await user.click(screen.getByRole('button', { name: /preview/i }));
     await waitFor(() => screen.getByRole('button', { name: /^apply$/i }));
@@ -109,7 +109,7 @@ describe('RenameActivityPanel', () => {
       />
     );
 
-    await user.selectOptions(screen.getByLabelText('Rename this activity'), 'Can Drive');
+    await user.selectOptions(screen.getByLabelText('Rename this bucket'), 'Can Drive');
     await user.type(screen.getByLabelText('To'), 'Wreath Sale');
     await user.click(screen.getByRole('button', { name: /preview/i }));
     await waitFor(() => screen.getByRole('button', { name: /^apply$/i }));

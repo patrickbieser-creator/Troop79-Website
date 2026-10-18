@@ -220,7 +220,7 @@ describe('finance — ledgerToCsv (pure)', () => {
 
   it('LedgerToCsv_IncludesHeaderRow_BeforeAnyData', () => {
     const csv = ledgerToCsv([]);
-    expect(csv).toBe('Date,Account,Kind,Method,Who,Memo,Activity,Amount,Voided,Entered By,Entered At');
+    expect(csv).toBe('Date,Account,Kind,Method,Who,Memo,Bucket,Amount,Voided,Entered By,Entered At');
   });
 
   it('LedgerToCsv_IncludesEnteredByAndAt_WhenPresent', () => {

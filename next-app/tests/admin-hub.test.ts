@@ -80,17 +80,17 @@ describe('AdminHome card grid', () => {
   it('AdminHome_MovesActivityReportAndLedgerAuditOutOfMoney_IntoReports', () => {
     const groups = hubGroups(visible(ALL, true), { wreathOpen: false });
     const money = groups.find((g) => g.title === 'Money')!.cards.map((c) => c.title);
-    expect(money).not.toContain('Activity Report');
+    expect(money).not.toContain('Bucket Report');
     expect(money).not.toContain('Ledger Audit');
     const reports = groups.find((g) => g.title === 'Reports')!.cards.map((c) => c.title);
     expect(reports).toEqual([
-      'Audits', 'Advancement Report', 'Court of Honor', 'Scoutbook Export', 'Attendance Report', 'Activity Report', 'Ledger Audit'
+      'Audits', 'Advancement Report', 'Court of Honor', 'Scoutbook Export', 'Attendance Report', 'Bucket Report', 'Ledger Audit'
     ]);
   });
 
   it('AdminHome_ShowsAFinanceOnlyLeaderExactlyTheTwoFinanceReports', () => {
     const groups = hubGroups(visible(['finance.manage']), { wreathOpen: false });
-    expect(groups.find((g) => g.title === 'Reports')!.cards.map((c) => c.title)).toEqual(['Activity Report', 'Ledger Audit']);
+    expect(groups.find((g) => g.title === 'Reports')!.cards.map((c) => c.title)).toEqual(['Bucket Report', 'Ledger Audit']);
   });
 
   it('AdminHome_ShowsAnAdvancementOnlyLeaderTheFiveAdvancementReports', () => {
@@ -302,7 +302,7 @@ describe('Reports landing', () => {
   });
 
   it('ReportsLanding_ListsTheTwoFinanceReports_ForAFinanceOnlyLeader', () => {
-    expect(folderEntries(visible(['finance.manage']), 'Reports').map((e) => e.label)).toEqual(['Activity Report', 'Ledger Audit']);
+    expect(folderEntries(visible(['finance.manage']), 'Reports').map((e) => e.label)).toEqual(['Bucket Report', 'Ledger Audit']);
   });
 
   it('ReportsLanding_ListsNothing_WhenTheLeaderHoldsNoReportCapability', () => {

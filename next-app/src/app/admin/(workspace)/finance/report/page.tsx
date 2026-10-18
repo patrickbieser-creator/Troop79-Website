@@ -23,7 +23,7 @@ import { ReportActions } from './report-actions';
 import { PageTitle } from '../../_components/page-title';
 
 export const metadata = {
-  title: 'Activity Report — Troop 79'
+  title: 'Bucket Report — Troop 79'
 };
 
 export default async function FinanceReportPage() {
@@ -38,10 +38,10 @@ export default async function FinanceReportPage() {
   return (
     <>
       <PageTitle back={null}
-        title="Activity Report"
+        title="Bucket Report"
         sub="Every transaction grouped by event or fundraiser — income, expenses, and whether it nets
             out to what you expected. Totals blend every account (checking, savings, scout accounts,
-            scholarship); the breakdown under each activity shows the split."
+            scholarship); the breakdown under each bucket shows the split."
       />
       {canManage && (
         <ReportActions

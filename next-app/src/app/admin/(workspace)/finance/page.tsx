@@ -191,14 +191,14 @@ export default async function FinancePage({
           ))}
         </select>
         <label className={styles.toolbarField}>
-          Activity
+          Bucket
           <input
             type="text"
             name="activity"
             list="activity-labels-filter"
             placeholder="contains…"
             defaultValue={activity ?? ''}
-            aria-label="Filter: activity contains"
+            aria-label="Filter: bucket contains"
           />
           <datalist id="activity-labels-filter">
             {activityLabels.map((label) => (

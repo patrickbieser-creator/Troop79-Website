@@ -46,8 +46,8 @@ export function ReportActions({
             copy the Phase A sweep missed (it lived under finance/report, not
             the screens the audit listed). */}
         <ActionsMenu
-          ariaLabel="Activity Report actions"
-          options={[{ value: 'rename', label: 'Rename or merge an activity' }]}
+          ariaLabel="Bucket Report actions"
+          options={[{ value: 'rename', label: 'Rename or merge a bucket' }]}
           onAction={(v) => {
             if (v === 'rename') setActiveModal('rename');
           }}
@@ -59,7 +59,7 @@ export function ReportActions({
         className={parentStyles.actionModal}
         onClose={() => setActiveModal(null)}
       >
-        <DialogHeader title="Rename or merge an activity" />
+        <DialogHeader title="Rename or merge a bucket" />
         <DialogBody>
           {activeModal === 'rename' && (
             <RenameActivityPanel

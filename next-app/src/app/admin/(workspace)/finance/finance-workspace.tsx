@@ -221,7 +221,7 @@ export function FinanceWorkspace({
       }
       const parts: string[] = [];
       if (bulkKind) parts.push(`Kind → ${kindLabel(bulkKind)}`);
-      if (trimmedActivity) parts.push(`Activity → "${trimmedActivity}"`);
+      if (trimmedActivity) parts.push(`Bucket → "${trimmedActivity}"`);
       setSelectedIds(new Set());
       setBulkKind('');
       setBulkActivity('');
@@ -402,7 +402,7 @@ export function FinanceWorkspace({
               <input
                 type="text"
                 list="activity-labels"
-                placeholder="Reassign Activity to…"
+                placeholder="Reassign Bucket to…"
                 value={bulkActivity}
                 onChange={(e) => setBulkActivity(e.target.value)}
               />
@@ -444,7 +444,7 @@ export function FinanceWorkspace({
               <SortHeader label="Account" sortKey="account" currentSort={sort} currentDir={dir} sortUrl={sortUrl} />
               <SortHeader label="Kind" sortKey="kind" currentSort={sort} currentDir={dir} sortUrl={sortUrl} />
               <th>Scout/Adult</th>
-              <th>Activity</th>
+              <th>Bucket</th>
               <th>Memo</th>
               <th>Method</th>
               <SortHeader
@@ -722,7 +722,7 @@ export function RecordTransactionForm({
           />
         </label>
         <label className="adminLabel">
-          Activity <span className={styles.optionalHint}>(for the report)</span>
+          Bucket <span className={styles.optionalHint}>(for the report)</span>
           <input
             type="text"
             list="activity-labels"

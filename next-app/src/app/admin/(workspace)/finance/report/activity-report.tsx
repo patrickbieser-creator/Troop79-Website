@@ -35,13 +35,13 @@ export function ActivityReport({
   getActivityTransactions: (activityLabel: string) => Promise<ActivityDrilldownRow[]>;
 }) {
   if (summary.length === 0) {
-    return <p className={parentStyles.empty}>No transactions carry an activity label yet.</p>;
+    return <p className={parentStyles.empty}>No transactions are in a bucket yet.</p>;
   }
 
   return (
     <div className={styles.wrap}>
       <div className={`${styles.reportGrid} ${styles.headerRow}`}>
-        <span>Activity</span>
+        <span>Bucket</span>
         <span>Date</span>
         <span className={styles.numCell}>Income</span>
         <span className={styles.numCell}>Expense</span>

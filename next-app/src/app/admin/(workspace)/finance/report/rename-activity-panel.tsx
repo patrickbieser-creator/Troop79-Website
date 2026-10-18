@@ -65,7 +65,7 @@ export function RenameActivityPanel({
       setError(null);
       const res = await renameActivity(source, target);
       if (!res.ok) {
-        setError(res.error ?? 'Could not rename/merge this activity.');
+        setError(res.error ?? 'Could not rename/merge this bucket.');
         return;
       }
       setDone(`Updated ${res.affectedCount ?? 0} transaction${res.affectedCount === 1 ? '' : 's'}.`);
@@ -79,7 +79,7 @@ export function RenameActivityPanel({
   return (
     <div className={styles.renamePanel}>
       <label className="adminLabel">
-        Rename this activity
+        Rename this bucket
         <select
           value={source}
           onChange={(e) => {
@@ -87,7 +87,7 @@ export function RenameActivityPanel({
             resetAfterChange();
           }}
         >
-          <option value="">— pick an activity —</option>
+          <option value="">— pick a bucket —</option>
           {activityLabels.map((label) => (
             <option key={label} value={label}>
               {label}

@@ -306,7 +306,7 @@ export function checkTransfers(rows: readonly AuditTxn[]): AuditFinding[] {
       check: 'transfer_mislabeled',
       severity: 'info',
       title: `${mislabeled.length} transfer${mislabeled.length === 1 ? '' : 's'} tagged as another Kind`,
-      detail: 'Paired as a transfer by amount and memo, but carries a different Kind — it will count as income or expense in the Activity Report.',
+      detail: 'Paired as a transfer by amount and memo, but carries a different Kind — it will count as income or expense in the Bucket Report.',
       txnIds: mislabeled.sort((a, b) => a - b)
     });
   }

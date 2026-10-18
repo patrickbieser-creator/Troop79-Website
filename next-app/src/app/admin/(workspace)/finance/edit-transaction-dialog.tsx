@@ -228,7 +228,7 @@ function EditTransactionForm({
         />
       </label>
       <label className="adminLabel">
-        Activity
+        Bucket
         <input
           type="text"
           list="activity-labels-edit"

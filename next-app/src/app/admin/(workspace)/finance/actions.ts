@@ -445,14 +445,14 @@ export async function bulkReassignAction(ids: number[], updates: BulkReassignUpd
   }
   if (!Array.isArray(ids) || ids.length === 0) return { ok: false, error: 'Nothing selected.', updated: 0 };
   if (updates.kind == null && updates.activityLabel == null) {
-    return { ok: false, error: 'Pick a Kind and/or an Activity to apply.', updated: 0 };
+    return { ok: false, error: 'Pick a Kind and/or a Bucket to apply.', updated: 0 };
   }
 
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (updates.kind != null) patch.kind = updates.kind;
   if (updates.activityLabel != null) {
     const trimmed = updates.activityLabel.trim();
-    if (!trimmed) return { ok: false, error: 'Activity cannot be blank.', updated: 0 };
+    if (!trimmed) return { ok: false, error: 'Bucket cannot be blank.', updated: 0 };
     patch.activity_label = trimmed;
   }
 

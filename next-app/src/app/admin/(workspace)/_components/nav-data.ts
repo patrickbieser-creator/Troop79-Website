@@ -325,10 +325,10 @@ export const SECTIONS: NavSection[] = [
       {
         // Phase 6 — read-only, so also reachable by finance.view; nav
         // visibility still keys off finance.manage (nobody holds finance.view at launch).
-        label: 'Activity Report',
+        label: 'Bucket Report',
         href: '/admin/finance/report',
         matchPath: '/admin/finance/report',
-        description: 'Income and spending by event and kind',
+        description: 'Income and spending by bucket',
         folder: 'Reports',
         navHidden: true,
         capability: 'finance.manage'

@@ -45,7 +45,7 @@ export function ActivityDrilldownButton({
     setRows(null);
     getActivityTransactions(activityLabel)
       .then(setRows)
-      .catch(() => setError('Could not load transactions for this activity.'));
+      .catch(() => setError('Could not load transactions for this bucket.'));
   }
 
   return (

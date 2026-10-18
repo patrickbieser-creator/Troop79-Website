@@ -289,7 +289,7 @@ export function ledgerToCsv(rows: readonly LedgerCsvRow[]): string {
     'Method',
     'Who',
     'Memo',
-    'Activity',
+    'Bucket',
     'Amount',
     'Voided',
     'Entered By',
@@ -362,7 +362,7 @@ export function editTransactionGuard(existing: EditableRowState | null): string 
  *  Returns an error string, or null when the rename/merge may proceed. */
 export function validateActivityRename(sourceLabel: string, targetLabel: string): string | null {
   const target = targetLabel.trim();
-  if (!sourceLabel.trim() || !target) return 'Both a source and a target activity are required.';
+  if (!sourceLabel.trim() || !target) return 'Both a source and a target bucket are required.';
   // Compared the same way the rename itself matches (renameActivityAction:
   // untrimmed source, trimmed target) — NOT trim(source) === trim(target).
   // sourceLabel is a real stored activity_label value that may itself carry

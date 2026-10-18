@@ -982,7 +982,7 @@ export default function StyleguidePage() {
             <div className={dt.cardWrap}>
               <table className={dt.card}>
                 <thead>
-                  <tr><th>Activity</th><th className={dt.numCell}>Amount</th><th className={dt.actionsCell}>Actions</th></tr>
+                  <tr><th>Bucket</th><th className={dt.numCell}>Amount</th><th className={dt.actionsCell}>Actions</th></tr>
                 </thead>
                 <tbody>
                   <tr>
@@ -1166,7 +1166,7 @@ export default function StyleguidePage() {
                   tint: 'clay',
                   cards: [
                     { key: 'c1', title: 'Audits', description: 'Data-quality checks that flag ledger records that look wrong', href: '#' },
-                    { key: 'c2', title: 'Activity Report', description: 'Income and spending by event and kind', href: '#' }
+                    { key: 'c2', title: 'Bucket Report', description: 'Income and spending by bucket', href: '#' }
                   ]
                 },
                 { title: 'People & Setup', quiet: false, tint: 'stone', cards: [{ key: 'p', title: 'Roster', description: 'Scouts, adults and households', href: '#' }] }

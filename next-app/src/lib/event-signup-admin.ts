@@ -194,7 +194,7 @@ export function permanentDeleteGuard(facts: PermanentDeleteFacts): { ok: boolean
   const fixes: string[] = [];
   if (facts.ledgerRows > 0) {
     reasons.push(`${facts.ledgerRows} ${facts.ledgerRows === 1 ? 'ledger row (a payment, refund or credit) references' : 'ledger rows (payments, refunds or credits) reference'} it on the Money tab`);
-    fixes.push('on the Money tab, void the payment(s) (or reassign them to the right person with Activity Report → Reassign)');
+    fixes.push('on the Money tab, void the payment(s) (or reassign them to the right person with Bucket Report → Reassign)');
   }
   if (facts.hostedGuests > 0) {
     reasons.push(`${facts.hostedGuests} guest ${facts.hostedGuests === 1 ? 'row is' : 'rows are'} attached to it as their host`);

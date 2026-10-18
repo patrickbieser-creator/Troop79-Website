@@ -128,3 +128,12 @@ describe('FinanceWorkspace — Method column', () => {
     expect(cells[headers.indexOf('Method')].textContent?.trim()).toBe('—');
   });
 });
+
+describe('FinanceWorkspace — Bucket naming (Patrick, 2026-10-17)', () => {
+  it('LedgerGrid_CallsTheThemeColumn_Bucket', () => {
+    renderTable([row({ id: 1, activity_label: "Wreaths '26" })]);
+    const headers = screen.getAllByRole('columnheader').map((th) => th.textContent?.trim());
+    expect(headers).toContain('Bucket');
+    expect(headers).not.toContain('Activity');
+  });
+});

@@ -130,7 +130,7 @@ describe('activeMatchPathFor', () => {
       items: [
         { label: 'Ledger', matchPath: '/admin/finance' },
         { label: 'Reimbursements', matchPath: '/admin/finance/reimbursements' },
-        { label: 'Activity Report', matchPath: '/admin/finance/report' }
+        { label: 'Bucket Report', matchPath: '/admin/finance/report' }
       ]
     }
   ];
@@ -221,7 +221,7 @@ describe('Reports landing entries by capability', () => {
     folderEntries(visibleNavSections(RAIL, { fullAdmin: false, capabilities: new Set(caps) }), 'Reports').map((e) => e.label);
 
   it('ReportsLanding_ListsExactlyActivityReportAndLedgerAudit_ForFinanceOnly', () => {
-    expect(reportLabels(['finance.manage']).sort()).toEqual(['Activity Report', 'Ledger Audit']);
+    expect(reportLabels(['finance.manage']).sort()).toEqual(['Bucket Report', 'Ledger Audit']);
   });
 
   it('ReportsLanding_ListsExactlyTheFiveAdvancementReports_ForAdvancementOnly', () => {

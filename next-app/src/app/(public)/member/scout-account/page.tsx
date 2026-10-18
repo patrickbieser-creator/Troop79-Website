@@ -214,7 +214,7 @@ export default async function ScoutAccountPage({
               <tr>
                 <th>Date</th>
                 {multipleScouts && <th>Scout</th>}
-                <th>Activity</th>
+                <th>Bucket</th>
                 <th className={styles.numCell}>Amount</th>
               </tr>
             </thead>
