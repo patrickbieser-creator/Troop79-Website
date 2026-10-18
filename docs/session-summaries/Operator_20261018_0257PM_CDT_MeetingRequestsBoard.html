@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session 59 — Meeting Requests Board</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #3d5a3e;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #f0eecd;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); vertical-align: top; }
+        tr:hover { background: var(--nw-sage); }
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+        code { font-family: 'Courier New', monospace; font-size: 0.85em; background: var(--nw-light-gray); padding: 0 0.3em; border-radius: 3px; }
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+        @media print { body { background: white; } header { padding: 1.5rem; } .container { padding: 1rem; } .stat { break-inside: avoid; } }
+        @media (max-width: 600px) { header h1 { font-size: 1.5rem; } .stats { flex-direction: column; } }
+    </style>
+<body>
+    <header>
+        <h1>Meeting Requests &amp; Teaching Offers: designed, reviewed, prototyped</h1>
+        <p class="subtitle">Session 59, a planning session. Scouts say what they want to work on, adults and parents say what they'll teach, and a live board matches the two into a candidate agenda for each meeting. Merit badge nights run as station rotations. No code yet: Patrick starts building it himself.</p>
+        <div class="meta">
+            <span>&#128197; October 18, 2026</span>
+            <span>&#129302; Operator (Opus 5.5)</span>
+            <span>&#128204; Troop79-Website</span>
+            <span>&#128640; plan + prototypes (no release)</span>
+        </div>
+    </header>
+    <div class="container">
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">20</div><div class="label">Plan decisions, all approved</div></div>
+            <div class="stat"><div class="number">3</div><div class="label">Reviews (tech-lead, specialist, jenna)</div></div>
+            <div class="stat"><div class="number">12</div><div class="label">Prototype pages, 2 walkthroughs</div></div>
+            <div class="stat"><div class="number">3</div><div class="label">Decisions (D-395&ndash;D-397)</div></div>
+        </div>
+        <h2>What Was Accomplished</h2>
+        <div class="callout callout-teal">
+            <strong>The outcome:</strong> Patrick no longer has to guess who is coming and who can teach. The design is a single board per meeting where a scout's pick and an adult's offer meet. Matching runs live up to Sunday 5:30 pm, and the result drops into the meeting editor for him to approve.
+        </div>
+        <h3>The board</h3>
+        <ul>
+            <li>Scouts, often with a parent, pick up to five things in earning order, with optional ranking. Picks carry forward until taught.</li>
+            <li>Everyone says Coming, Not sure yet, or Can't make it. A scout who can't come can still pick for a later meeting.</li>
+            <li>Adults, parents and Junior Leaders commit to one or two topics, or post an offer across several dates.</li>
+            <li>Each scout gets at most two topics. Merit badge nights use adult-assigned station rotations, and campout prep and parties have no board.</li>
+            <li>A public TV board shows sessions and names live during the meeting.</li>
+        </ul>
+        <h3>Who can teach</h3>
+        <ul>
+            <li>Teaching skills move to people records, so parents count. A "What I can teach" page lets each person keep their own skills current. Admin can undo a change but never has to approve one.</li>
+            <li>Any First Class or higher scout, or any high schooler, can offer to teach.</li>
+        </ul>
+        <h3>Reviews and prototypes</h3>
+        <ul>
+            <li>tech-lead said go, with changes to the data model. troop79-specialist found six domain fixes, including that the real requirement unit is the lettered row (Tenderfoot 4a), which was checked in the database. jenna shaped the screens.</li>
+            <li>Brad built the whole flow as static prototypes. Patrick's feedback is in: picks for a later meeting, outing rows fully disabled, and no period after the last initial.</li>
+        </ul>
+        <h2>Since the last summary</h2>
+        <ul>
+            <li>A parallel session shipped v1.236.0 (wreath orders paid short, reimbursements closed against the ledger, Buckets Release 2). It records its own summary.</li>
+        </ul>
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Decision</th></tr></thead>
+            <tbody>
+                <tr><td>D-395</td><td>Meeting Requests &amp; Teaching Offers: one board per meeting, independent of event signup</td></tr>
+                <tr><td>D-396</td><td>Teaching skills keyed to people; self-service with admin undo, never approval</td></tr>
+                <tr><td>D-397</td><td>Junior Leader for teaching: First Class or higher always, or grade 9&ndash;12</td></tr>
+            </tbody>
+        </table>
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Phase 0a (Patrick, tonight): move teaching skills and counselors to people records, and switch the Meeting Plan engine over.</li>
+            <li>Phase 0b: the "What I can teach" page with admin undo and the admin-home alert.</li>
+            <li>A phone-width look at the prototype member and teaching pages.</li>
+            <li>Wreath Round 1 closes Tue Oct 20.</li>
+        </ul>
+        <h2>Files Changed</h2>
+        <table>
+            <thead><tr><th>Area</th><th>Files</th></tr></thead>
+            <tbody>
+                <tr><td>Plans</td><td>Plans/Meeting-Requests-And-Teaching-Offers.md (new)</td></tr>
+                <tr><td>Prototypes</td><td>prototypes/meeting-board/: index, member, meeting, teaching, admin-plan, admin-setup, admin-rotations, admin-editor, admin-lookups, admin-home, agenda, board .html; assets/board.css, assets/data.js (all new)</td></tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
