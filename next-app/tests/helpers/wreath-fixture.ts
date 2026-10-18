@@ -1,3 +1,4 @@
+import { bucketIdsNow, deleteNewEmptyBuckets } from './bucket-cleanup';
 import { adminClient } from './admin-client';
 
 /**
@@ -26,6 +27,7 @@ export interface WreathFixture {
 
 export async function makeWreathFixture(status: 'draft' | 'open' | 'closed' = 'open'): Promise<WreathFixture> {
   const admin = adminClient();
+  const bucketsBefore = await bucketIdsNow(admin);
   const year = 3000 + Math.floor(Math.random() * 6000);
   const { data: sale, error } = await admin
     .from('wreath_sales')
@@ -88,6 +90,8 @@ export async function makeWreathFixture(status: 'draft' | 'open' | 'closed' = 'o
       if (orderIds.length) await admin.from('wreath_card_refunds_due').delete().in('order_id', orderIds);
       await admin.from('wreath_orders').delete().eq('sale_id', saleId);
       await admin.from('wreath_sales').delete().eq('id', saleId);
+      // Its ledger rows made a "Wreaths 'YY" bucket when none existed (the buckets sync trigger).
+      await deleteNewEmptyBuckets(admin, bucketsBefore);
     }
   };
 }

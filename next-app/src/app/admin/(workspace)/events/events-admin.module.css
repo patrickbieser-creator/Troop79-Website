@@ -249,3 +249,19 @@
    URL and its Copy button on one line; the input yields, the button doesn't. */
 .bugleLinkRow { display: flex; gap: var(--admin-space-4); align-items: center; }
 .bugleLinkRow > input { flex: 1 1 auto; min-width: 0; }
+
+/* Money tab: the event's bucket (Plans/Buckets-Lookup.md) — label, picker, and the "takes effect" note. */
+.bucketRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--admin-space-3) var(--admin-space-5);
+  margin-bottom: var(--admin-space-5);
+}
+.bucketLabel {
+  font-weight: 600;
+  padding-top: var(--admin-space-4);
+}
+.bucketPicker {
+  min-width: 18rem;
+}

@@ -1,6 +1,7 @@
 import { requireAnyOf } from '@/lib/require-capability';
 import { getEventMoneyAction } from '../../../finance/actions';
 import { MoneyPanel } from './money-panel';
+import { listBucketsAction } from '../../../finance/bucket-actions';
 import { centralToday } from '@/lib/dates';
 import { loadPersonDirectory } from '@/lib/person-directory';
 
@@ -10,12 +11,13 @@ export async function MoneyView({ signupId, calendarEntryId }: { signupId: numbe
   // Finance-only leaders can open Money by URL (finance.manage) even though
   // the parent roster is calendar.write.
   await requireAnyOf(['calendar.write', 'finance.manage']);
-  const [data, directory] = await Promise.all([
+  const [data, directory, buckets] = await Promise.all([
     getEventMoneyAction(signupId),
     // Adults on this signup are the likely "paid by" candidates for an
     // expense. Shared cache()d loader (Plans/Performance-Review-2026-08-27.md
     // #17) — the troop roster and signup roster read the same view.
-    loadPersonDirectory()
+    loadPersonDirectory(),
+    listBucketsAction()
   ]);
   if (!data) return null;
 
@@ -26,6 +28,7 @@ export async function MoneyView({ signupId, calendarEntryId }: { signupId: numbe
       signupId={signupId}
       calendarEntryId={calendarEntryId}
       data={data}
+      buckets={buckets}
       adults={adults.map((a) => ({
         personId: a.person_id,
         name: a.display_name

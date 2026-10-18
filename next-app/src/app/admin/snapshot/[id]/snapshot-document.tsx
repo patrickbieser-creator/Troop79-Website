@@ -11,6 +11,7 @@
  * Access is decided here (loadSnapshot → requireCapability), so both routes
  * are gated the same way.
  */
+import { moneyScope } from '@/lib/event-money-scope';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
@@ -64,6 +65,8 @@ export async function loadSnapshot(signupId: number): Promise<{ input: SnapshotI
     .maybeSingle();
   if (!sig) return null;
   const s = sig as { id: number; calendar_entry_id: number; needs_permission_slip: boolean };
+  // Same rows as the Money tab: the entry's bucket, or its own rows (lib/buckets moneyScopeFor).
+  const scope = await moneyScope(supabase, s.calendar_entry_id);
 
   const [{ data: entry }, { data: entries }, { data: balances }, { data: sets }, { data: questions }, { data: answers }, { data: people }, { data: scouts }, { data: households }, { data: householdMembers }, { data: relations }, tx, { data: reqs }, { data: ms }, { data: slotRows }] =
     await Promise.all([
@@ -86,7 +89,7 @@ export async function loadSnapshot(signupId: number): Promise<{ input: SnapshotI
         supabase
           .from('financial_transactions')
           .select('id, occurred_on, amount, kind, method, memo, signup_entry_id, voided_at')
-          .eq('calendar_entry_id', s.calendar_entry_id)
+          .or(scope.filter)
           .order('occurred_on')
           .range(from, to)
       ),

@@ -9,14 +9,9 @@
  * form's Activity field). Read-only, same finance.manage-OR-finance.view
  * gate as the ledger — this is a report, not a write surface.
  */
+import { listBucketsAction, previewRenameBucketAction, renameBucketAction } from '../bucket-actions';
 import { requireAnyOf } from '@/lib/require-capability';
-import {
-  getActivityReportAction,
-  getActivityTransactionsAction,
-  listDistinctActivityLabelsAction,
-  previewRenameActivityAction,
-  renameActivityAction
-} from '../actions';
+import { getActivityReportAction, getActivityTransactionsAction } from '../actions';
 import { summarizeByActivity } from '@/lib/finance';
 import { ActivityReport } from './activity-report';
 import { ReportActions } from './report-actions';
@@ -29,10 +24,7 @@ export const metadata = {
 export default async function FinanceReportPage() {
   const actor = await requireAnyOf(['finance.manage', 'finance.view']);
   const canManage = actor.capabilities.has('finance.manage');
-  const [rows, activityLabels] = await Promise.all([
-    getActivityReportAction(),
-    canManage ? listDistinctActivityLabelsAction() : Promise.resolve([])
-  ]);
+  const [rows, buckets] = await Promise.all([getActivityReportAction(), canManage ? listBucketsAction() : Promise.resolve([])]);
   const summary = summarizeByActivity(rows);
 
   return (
@@ -44,11 +36,7 @@ export default async function FinanceReportPage() {
             scholarship); the breakdown under each bucket shows the split."
       />
       {canManage && (
-        <ReportActions
-          activityLabels={activityLabels}
-          previewRenameActivity={previewRenameActivityAction}
-          renameActivity={renameActivityAction}
-        />
+        <ReportActions buckets={buckets} previewRename={previewRenameBucketAction} rename={renameBucketAction} />
       )}
       <ActivityReport summary={summary} getActivityTransactions={getActivityTransactionsAction} />
     </>

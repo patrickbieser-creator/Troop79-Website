@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeAll, afterAll } from 'vitest';
 import { createClient } from '@supabase/supabase-js';
 import { adminClient } from './helpers/admin-client';
+import { bucketIdsNow, deleteNewEmptyBuckets } from './helpers/bucket-cleanup';
 import { fetchAllRows } from '../src/lib/supabase/paginate';
 import {
   computeBalance,
@@ -175,4 +176,13 @@ describe('finance aggregate functions are service-role only', () => {
     const { error } = await anon.rpc(fn);
     expect(error).not.toBeNull();
   });
+});
+
+// Labels written here create buckets (the buckets sync trigger); remove the ones this file made.
+let bucketsBefore = new Set<number>();
+beforeAll(async () => {
+  bucketsBefore = await bucketIdsNow(adminClient());
+});
+afterAll(async () => {
+  await deleteNewEmptyBuckets(adminClient(), bucketsBefore);
 });

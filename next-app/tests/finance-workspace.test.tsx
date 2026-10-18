@@ -31,6 +31,7 @@ function row(over: Partial<LedgerRow> & { id: number }): LedgerRow {
     person_id: null,
     memo: null,
     activity_label: null,
+    bucket_id: null,
     voided_at: null,
     entered_by_person_id: null,
     created_at: '2026-06-09T12:00:00Z',
@@ -51,7 +52,7 @@ function renderTable(rows: LedgerRow[]) {
       sort="date"
       dir="desc"
       filters={{}}
-      activityLabels={[]}
+      buckets={[]}
       kinds={KINDS}
     />
   );

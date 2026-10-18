@@ -1,6 +1,6 @@
 'use server';
 
-import { adoptableLabels, feeAmount, isNotionalAccount, money, uncreditedOverpayment, type PayMethod } from '@/lib/event-money';
+import { feeAmount, isNotionalAccount, money, uncreditedOverpayment, type PayMethod } from '@/lib/event-money';
 import { GUEST_CLASSES } from '@/lib/participant-class';
 import {
   loadFamilyScoutAccounts,
@@ -22,6 +22,7 @@ import { requireAnyOf } from '@/lib/require-capability';
 import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import { fetchAllRows } from '@/lib/supabase/paginate';
+import { moneyScope } from '@/lib/event-money-scope';
 import { signedReceiptMediaUrl } from '@/lib/receipt-media';
 import { centralToday } from '@/lib/dates';
 import {
@@ -29,8 +30,6 @@ import {
   computeBalance,
   ledgerToCsv,
   editTransactionGuard,
-  eventForLabel,
-  validateActivityRename,
   amountRangeOrFilter,
   buildRunningFunds,
   runningFundsAsOf,
@@ -97,6 +96,8 @@ export interface LedgerRow {
   personName: string | null;
   memo: string | null;
   activity_label: string | null;
+  /** The row's bucket (Plans/Buckets-Lookup.md); activity_label is its name until Release 2. */
+  bucket_id: number | null;
   voided_at: string | null;
   /** Who entered this row and when (surfaced 2026-08-19). Both null for
    *  every historical import row — the import script never stamped an
@@ -124,7 +125,7 @@ export async function listFinancialTransactionsAction(
   let q = supabase
     .from('financial_transactions')
     .select(
-      'id, occurred_on, account, amount, kind, method, person_id, memo, activity_label, voided_at, entered_by_person_id, created_at',
+      'id, occurred_on, account, amount, kind, method, person_id, memo, activity_label, bucket_id, voided_at, entered_by_person_id, created_at',
       { count: 'exact' }
     );
   if (filters.account) q = q.eq('account', filters.account);
@@ -286,22 +287,8 @@ export interface AddTransactionInput {
   method: TransactionMethod | null;
   personId: number | null; // required when account === 'scout_account'
   memo: string | null;
-  activityLabel: string | null;
-}
-
-/** The calendar event a label belongs to, or null (see eventForLabel). The
- *  link is what the event's Money tab reads; the label stays display text. */
-async function calendarEntryForLabel(supabase: ReturnType<typeof createAdminClient>, label: string | null): Promise<number | null> {
-  const l = label?.trim();
-  if (!l) return null;
-  const [{ data: linked }, { data: titled }] = await Promise.all([
-    supabase.from('financial_transactions').select('calendar_entry_id').eq('activity_label', l).not('calendar_entry_id', 'is', null),
-    supabase.from('calendar_entries').select('id').eq('title', l)
-  ]);
-  return eventForLabel(
-    ((linked ?? []) as { calendar_entry_id: number }[]).map((r) => r.calendar_entry_id),
-    ((titled ?? []) as { id: number }[]).map((r) => r.id)
-  );
+  /** The bucket (Plans/Buckets-Lookup.md); null = in no bucket. */
+  bucketId: number | null;
 }
 
 /** General single-leg transaction entry — the workhorse of the treasurer
@@ -325,8 +312,8 @@ export async function addTransactionAction(input: AddTransactionInput): Promise<
     method: input.method,
     person_id: input.account === 'scout_account' ? input.personId : (input.personId ?? null),
     memo: input.memo,
-    activity_label: input.activityLabel,
-    calendar_entry_id: await calendarEntryForLabel(supabase, input.activityLabel),
+    // The sync trigger writes activity_label from the bucket until Release 2 drops it.
+    bucket_id: input.bucketId,
     source: 'app',
     entered_by_person_id: actor.personId
   });
@@ -361,7 +348,7 @@ export interface EditTransactionInput {
   method: TransactionMethod | null;
   personId: number | null;
   memo: string | null;
-  activityLabel: string | null;
+  bucketId: number | null;
 }
 
 /** In-place correction — typos happen (Patrick, 2026-08-18). Deliberately
@@ -394,9 +381,7 @@ export async function editTransactionAction(input: EditTransactionInput): Promis
       method: input.method,
       person_id: input.account === 'scout_account' ? input.personId : (input.personId ?? null),
       memo: input.memo,
-      activity_label: input.activityLabel,
-      // The guard above rules out fee and reimbursement rows, so the label decides.
-      calendar_entry_id: await calendarEntryForLabel(supabase, input.activityLabel),
+      bucket_id: input.bucketId,
       updated_at: new Date().toISOString()
     })
     .eq('id', input.id);
@@ -412,15 +397,14 @@ export interface BulkReassignResult extends Result {
 
 export interface BulkReassignUpdates {
   kind?: TransactionKind;
-  /** Undefined = leave activity_label alone. A real string = set it —
-   *  there is no bulk "clear" here; that's the one case still left to a
-   *  single-row edit, since blanking a batch of activities at once has no
-   *  legitimate everyday use the way reassigning one does. */
-  activityLabel?: string;
+  /** Undefined = leave the bucket alone. An id = move every selected row
+   *  into that bucket — there is no bulk "clear" here; that's the one case
+   *  still left to a single-row edit. */
+  bucketId?: number;
 }
 
 /**
- * Reassign Kind and/or Activity on a batch of transactions at once — a pure
+ * Reassign Kind and/or Bucket on a batch of transactions at once — a pure
  * label change, unlike editTransactionAction (which also touches
  * amount/account and so carries the signup/reimbursement guard). Neither
  * field can affect the balance (Kind carries no direction, 2026-08-20;
@@ -444,17 +428,13 @@ export async function bulkReassignAction(ids: number[], updates: BulkReassignUpd
     return { ok: false, error: 'Not authenticated', updated: 0 };
   }
   if (!Array.isArray(ids) || ids.length === 0) return { ok: false, error: 'Nothing selected.', updated: 0 };
-  if (updates.kind == null && updates.activityLabel == null) {
+  if (updates.kind == null && updates.bucketId == null) {
     return { ok: false, error: 'Pick a Kind and/or a Bucket to apply.', updated: 0 };
   }
 
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (updates.kind != null) patch.kind = updates.kind;
-  if (updates.activityLabel != null) {
-    const trimmed = updates.activityLabel.trim();
-    if (!trimmed) return { ok: false, error: 'Bucket cannot be blank.', updated: 0 };
-    patch.activity_label = trimmed;
-  }
+  if (updates.bucketId != null) patch.bucket_id = updates.bucketId;
 
   const supabase = createAdminClient();
   const { error, count } = await supabase
@@ -466,22 +446,10 @@ export async function bulkReassignAction(ids: number[], updates: BulkReassignUpd
     // typed in, which happens if it was deleted from another tab mid-edit.
     return {
       ok: false,
-      error: error.code === '23503' ? 'Not a real Kind — it may have just been removed.' : error.message,
+      error: error.code === '23503' ? 'Not a real Kind or Bucket — it may have just been removed.' : error.message,
       updated: 0
     };
   }
-  if (patch.activity_label != null) {
-    // Re-link to the label's event. Fee and reimbursement rows keep theirs —
-    // they are tied to a sign-up or a request, not to the label.
-    const { error: linkError } = await supabase
-      .from('financial_transactions')
-      .update({ calendar_entry_id: await calendarEntryForLabel(supabase, patch.activity_label as string) })
-      .in('id', ids)
-      .is('signup_entry_id', null)
-      .is('reimbursement_id', null);
-    if (linkError) return { ok: false, error: linkError.message, updated: count ?? 0 };
-  }
-
   revalidateFinance();
   return { ok: true, updated: count ?? ids.length };
 }
@@ -910,6 +878,8 @@ export interface EventMoneyPerson {
 }
 
 export interface EventMoneyData {
+  /** The event's bucket (Plans/Buckets-Lookup.md); null = none yet, the tab reads only the event's own rows. */
+  bucketId: number | null;
   people: EventMoneyPerson[];
   expenses: {
     id: number;
@@ -939,56 +909,20 @@ export interface EventMoneyData {
   }[];
 }
 
-/** Ledger rows entered against this event's label but never linked to it
- *  (the Record form sets only activity_label). See adoptableLabels. */
-async function unlinkedEventRows<T extends { activity_label: string | null }>(
-  supabase: ReturnType<typeof createAdminClient>,
-  calendarEntryId: number,
-  linked: readonly T[]
-): Promise<T[]> {
-  const { data: cal } = await supabase.from('calendar_entries').select('title').eq('id', calendarEntryId).maybeSingle();
-  const title = (cal as { title: string } | null)?.title ?? null;
-  const candidates = adoptableLabels(
-    linked.map((t) => t.activity_label),
-    title,
-    new Set()
-  );
-  if (candidates.length === 0) return [];
-  const [{ data: otherRows }, { data: otherEvents }] = await Promise.all([
-    supabase
-      .from('financial_transactions')
-      .select('activity_label')
-      .in('activity_label', candidates)
-      .not('calendar_entry_id', 'is', null)
-      .neq('calendar_entry_id', calendarEntryId),
-    supabase.from('calendar_entries').select('title').in('title', candidates).neq('id', calendarEntryId)
-  ]);
-  const claimed = new Set<string>([
-    ...((otherRows ?? []) as { activity_label: string }[]).map((r) => r.activity_label),
-    ...((otherEvents ?? []) as { title: string }[]).map((r) => r.title)
-  ]);
-  const labels = adoptableLabels(candidates, null, claimed);
-  if (labels.length === 0) return [];
-  const { data } = await supabase
-    .from('financial_transactions')
-    .select('id, occurred_on, amount, kind, method, memo, person_id, signup_entry_id, voided_at, account, activity_label')
-    .is('calendar_entry_id', null)
-    .in('activity_label', labels)
-    .order('occurred_on')
-    .order('id');
-  return (data ?? []) as unknown as T[];
-}
-
 /** Everything the event's Money tab shows — the sheet's money block for one
  *  event. Pure math over it lives in lib/event-money.ts. */
+type Tx = { id: number; occurred_on: string; amount: number; kind: string; method: string | null; memo: string | null; person_id: number | null; signup_entry_id: number | null; voided_at: string | null; account: string };
+
 export async function getEventMoneyAction(signupId: number): Promise<EventMoneyData | null> {
   await requireAnyOf(['calendar.write', 'finance.manage']);
   const supabase = createAdminClient();
   const { data: sig } = await supabase.from('event_signups').select('id, calendar_entry_id').eq('id', signupId).maybeSingle();
   if (!sig) return null;
   const calendarEntryId = (sig as { calendar_entry_id: number }).calendar_entry_id;
+  // The entry's bucket (every row in it), or the entry's own rows when it has none (lib/buckets moneyScopeFor).
+  const scope = await moneyScope(supabase, calendarEntryId);
 
-  const [{ data: entries }, { data: balances }, { data: prices }, { data: people }, { data: tx }, { data: reqs }, { data: ms }] =
+  const [{ data: entries }, { data: balances }, { data: prices }, { data: people }, tx, { data: reqs }, { data: ms }] =
     await Promise.all([
       supabase
         .from('signup_entries')
@@ -998,12 +932,15 @@ export async function getEventMoneyAction(signupId: number): Promise<EventMoneyD
       supabase.from('signup_entry_balances').select('entry_id, owed, paid, balance, settled').eq('event_signup_id', signupId),
       supabase.from('event_prices').select('id, label, amount, per').eq('event_signup_id', signupId),
       supabase.from('people').select('id, display_name'),
-      supabase
-        .from('financial_transactions')
-        .select('id, occurred_on, amount, kind, method, memo, person_id, signup_entry_id, voided_at, account, activity_label')
-        .eq('calendar_entry_id', calendarEntryId)
-        .order('occurred_on')
-        .order('id'),
+      fetchAllRows<Tx>((from, to) =>
+        supabase
+          .from('financial_transactions')
+          .select('id, occurred_on, amount, kind, method, memo, person_id, signup_entry_id, voided_at, account')
+          .or(scope.filter)
+          .order('occurred_on')
+          .order('id')
+          .range(from, to)
+      ),
       supabase
         .from('reimbursement_requests')
         .select('id, requester_person_id, amount, description, status, created_at')
@@ -1017,10 +954,7 @@ export async function getEventMoneyAction(signupId: number): Promise<EventMoneyD
   const balById = new Map(
     ((balances ?? []) as { entry_id: number; owed: number; paid: number; balance: number; settled: boolean }[]).map((b) => [b.entry_id, b])
   );
-  type Tx = { id: number; occurred_on: string; amount: number; kind: string; method: string | null; memo: string | null; person_id: number | null; signup_entry_id: number | null; voided_at: string | null; account: string; activity_label: string | null };
-  const txRows = [...((tx ?? []) as Tx[]), ...(await unlinkedEventRows(supabase, calendarEntryId, (tx ?? []) as Tx[]))].sort(
-    (a, b) => a.occurred_on.localeCompare(b.occurred_on) || a.id - b.id
-  );
+  const txRows = tx;
   const txByEntry = new Map<number, Tx[]>();
   for (const t of txRows) if (t.signup_entry_id != null) txByEntry.set(t.signup_entry_id, [...(txByEntry.get(t.signup_entry_id) ?? []), t]);
 
@@ -1066,11 +1000,15 @@ export async function getEventMoneyAction(signupId: number): Promise<EventMoneyD
     };
   });
   peopleRows.sort((a, b) => a.name.localeCompare(b.name));
+  const ownEntryIds = new Set(peopleRows.map((p) => p.entryId));
 
   return {
+    bucketId: scope.bucketId,
     people: peopleRows,
+    // Everything in the bucket that isn't one of this sign-up's own fee rows — expenses, other income,
+    // and a fee from another sign-up that shares the bucket (counted once, by its sign).
     expenses: txRows
-      .filter((t) => t.signup_entry_id == null)
+      .filter((t) => t.signup_entry_id == null || !ownEntryIds.has(t.signup_entry_id))
       .map((t) => ({
         id: t.id,
         occurredOn: t.occurred_on,
@@ -1507,75 +1445,6 @@ export async function deleteTransactionKindAction(formData: FormData): Promise<R
 
   revalidateFinance();
   return { ok: true };
-}
-
-export interface RenameActivityPreview {
-  affectedCount: number;
-}
-
-/** Preview-only: how many rows a rename/merge from `sourceLabel` to
- *  `targetLabel` would touch, before committing. Counts EVERY matching row,
- *  including voided ones (Patrick, 2026-08-19: no split label sets between
- *  active and voided history). */
-export async function previewRenameActivityAction(sourceLabel: string): Promise<RenameActivityPreview> {
-  await requireCapability('finance.manage');
-  const supabase = createAdminClient();
-  // Untrimmed, deliberately — must match renameActivityAction's WHERE clause
-  // exactly (Opus pre-deploy review, 2026-08-19: these two drifting apart
-  // would preview a nonzero count and then silently match zero rows on
-  // apply). sourceLabel always comes from RenameActivityPanel's <select>
-  // of real, already-stored activity_label values — never free-typed — so
-  // an exact untrimmed match is correct: it's comparing against data that
-  // may itself carry stray whitespace, and trimming here would make a
-  // padded stored label permanently unmatchable by either the preview or
-  // the apply.
-  const { count, error } = await supabase
-    .from('financial_transactions')
-    .select('id', { count: 'exact', head: true })
-    .eq('activity_label', sourceLabel);
-  if (error) throw new Error(`previewRenameActivityAction failed: ${error.message}`);
-  return { affectedCount: count ?? 0 };
-}
-
-/** Bulk rename (or merge, when targetLabel already names another activity)
- *  — a rename is `UPDATE ... SET activity_label = target WHERE activity_label
- *  = source`; a merge is the identical statement when target happens to
- *  already be in use. Deliberately a plain bulk edit on the free-text
- *  activity_label column, NOT a lookup table — Plans/Troop-Finances.md's
- *  2026-08-18 decision against a normalized activities table still holds;
- *  this doesn't reopen it, it operates on the column as it already exists.
- *  Applies to every matching row regardless of voided status (2026-08-19). */
-export async function renameActivityAction(sourceLabel: string, targetLabel: string): Promise<Result & { affectedCount?: number }> {
-  await requireCapability('finance.manage');
-  const guardError = validateActivityRename(sourceLabel, targetLabel);
-  if (guardError) return { ok: false, error: guardError };
-
-  const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from('financial_transactions')
-    // WHERE clause on the untrimmed sourceLabel (see previewRenameActivityAction's
-    // comment) — source is a controlled <select> value, matched exactly.
-    // Only the free-typed target gets trimmed before being written, so a
-    // stray-whitespace typo doesn't mint a new near-duplicate label.
-    .update({ activity_label: targetLabel.trim() })
-    .eq('activity_label', sourceLabel)
-    .select('id');
-  if (error) return { ok: false, error: error.message };
-  // Merged into an event's label: the rows that had no event now get it.
-  // Rows already linked keep their event.
-  const eventId = await calendarEntryForLabel(supabase, targetLabel);
-  if (eventId != null) {
-    const { error: linkError } = await supabase
-      .from('financial_transactions')
-      .update({ calendar_entry_id: eventId })
-      .eq('activity_label', targetLabel.trim())
-      .is('calendar_entry_id', null);
-    if (linkError) return { ok: false, error: linkError.message };
-  }
-
-  revalidateFinance();
-  revalidatePath('/admin/finance/report');
-  return { ok: true, affectedCount: data?.length ?? 0 };
 }
 
 export interface ActivityDrilldownRow {

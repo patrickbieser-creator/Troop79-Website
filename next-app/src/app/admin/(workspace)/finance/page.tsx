@@ -7,6 +7,7 @@
  * again server-side in actions.ts (the UI hiding a button is not the
  * security boundary, requireCapability() in each action is).
  */
+import { listBucketsAction } from './bucket-actions';
 import Link from 'next/link';
 import { requireAnyOf } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
@@ -16,7 +17,6 @@ import {
   getAccountBalancesAction,
   getScoutAccountBalancesAction,
   getReconciliationSummaryAction,
-  listDistinctActivityLabelsAction,
   listTransactionKindsAction,
   type LedgerSortKey
 } from './actions';
@@ -87,7 +87,7 @@ export default async function FinancePage({
   const page = Math.max(1, parseInt(raw.page ?? '1', 10) || 1);
 
   const supabase = createAdminClient();
-  const [{ rows, total }, accountBalances, scoutBalances, reconciliation, peopleRes, activityLabels, kinds] =
+  const [{ rows, total }, accountBalances, scoutBalances, reconciliation, peopleRes, buckets, kinds] =
     await Promise.all([
       listFinancialTransactionsAction({
         account,
@@ -106,7 +106,7 @@ export default async function FinancePage({
       getScoutAccountBalancesAction(),
       getReconciliationSummaryAction(),
       supabase.from('people_active').select('id, display_name').order('display_name'),
-      listDistinctActivityLabelsAction(),
+      listBucketsAction(),
       listTransactionKindsAction()
     ]);
 
@@ -201,7 +201,7 @@ export default async function FinancePage({
             aria-label="Filter: bucket contains"
           />
           <datalist id="activity-labels-filter">
-            {activityLabels.map((label) => (
+            {buckets.map(({ name: label }) => (
               <option key={label} value={label} />
             ))}
           </datalist>
@@ -274,7 +274,7 @@ export default async function FinancePage({
           amountMin: amountMin != null ? String(amountMin) : undefined,
           amountMax: amountMax != null ? String(amountMax) : undefined
         }}
-        activityLabels={activityLabels}
+        buckets={buckets}
         kinds={kinds}
       />
 

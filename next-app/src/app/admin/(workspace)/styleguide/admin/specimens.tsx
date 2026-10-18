@@ -10,6 +10,8 @@ import { ActionsMenu } from '../../_components/actions-menu';
 import { SortHeader, useSortable } from '../../_components/use-sortable';
 import { SearchField, useTableSearch } from '../../_components/search-field';
 import { AdminCombobox, type ComboOption } from '../../_components/admin-combobox';
+import { BucketPicker } from '../../_components/bucket-picker';
+import type { Bucket } from '@/lib/buckets';
 import { GearPicker } from '../../library/menu-monster/gear-picker';
 import { AdminNumberBox } from '../../../_components/admin-number-box';
 import { AdminAddRow } from '../../library/menu-monster/admin-add-row';
@@ -178,5 +180,28 @@ export function AdminNumberBoxSpecimen() {
   const [n, setN] = useState(2);
   return (
     <AdminNumberBox id="sg-number-box" value={n} min={1} max={9} ariaLabel="Count (specimen)" onCommit={setN} />
+  );
+}
+
+const BUCKET_SAMPLE: Bucket[] = [
+  { id: 1, name: "Summer Camp '26", isEvent: true, lastUsed: '2026-09-15' },
+  { id: 2, name: "Summer Camp '27", isEvent: true, lastUsed: '2026-08-11' },
+  { id: 3, name: 'Dividends', isEvent: false, lastUsed: '2026-07-31' },
+  { id: 4, name: "Wreaths '26", isEvent: false, lastUsed: '2026-10-16' }
+];
+
+/** Bucket picker: pick, or walk the two-step "+ New bucket…" (its create only pretends here). */
+export function BucketPickerSpecimen() {
+  const [value, setValue] = useState<number | null>(4);
+  return (
+    <BucketPicker
+      id="sg-bucket"
+      label="Bucket"
+      buckets={BUCKET_SAMPLE}
+      value={value}
+      onChange={setValue}
+      canCreate
+      createBucket={async (name) => ({ ok: true, bucket: { id: 100 + name.length, name, isEvent: false, lastUsed: null } })}
+    />
   );
 }

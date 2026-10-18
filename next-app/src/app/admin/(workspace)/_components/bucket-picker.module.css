@@ -1,0 +1,70 @@
+/* Bucket picker (admin tokens only). Specimen: /admin/styleguide/admin -> Bucket Picker. */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--admin-space-2);
+}
+.wrap > :first-child {
+  align-self: stretch;
+}
+
+.panel {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: var(--admin-space-3);
+  padding: var(--admin-space-4) var(--admin-space-5);
+  border: 1px solid var(--admin-gray-300);
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-gray-50);
+}
+.confirm {
+  border-color: var(--admin-warning);
+  background: var(--admin-status-warning-bg);
+}
+.confirmTitle {
+  margin: 0;
+  font-weight: 600;
+  color: var(--admin-gray-800);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--admin-space-2);
+  font-size: var(--admin-text-sm);
+  color: var(--admin-gray-700);
+}
+.field input {
+  background: var(--admin-field-bg);
+  border: 1px solid var(--admin-gray-300);
+  border-radius: var(--admin-radius-sm);
+  font: inherit;
+  font-size: var(--admin-text-md);
+  padding: var(--admin-space-4) var(--admin-space-5);
+}
+
+.note {
+  margin: 0;
+  font-size: var(--admin-text-sm);
+  color: var(--admin-gray-600);
+}
+.near {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--admin-space-2);
+}
+.error {
+  margin: 0;
+  color: var(--admin-danger);
+  font-size: var(--admin-text-sm);
+}
+.actions {
+  display: flex;
+  gap: var(--admin-space-3);
+}

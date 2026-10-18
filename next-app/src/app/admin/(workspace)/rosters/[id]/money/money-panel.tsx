@@ -19,6 +19,9 @@ import { PayFrom, PayGuard, factsFrom, needsAccountPick, wouldGoNegative, type A
 import { PAY_METHOD_LABEL, refundAccountDefault, type PayMethod } from '@/lib/event-money';
 import { canRecordPayment, milestoneStanding, money, paymentSummary, summarizeEventMoney, uncreditedOverpayment, type Milestone } from '@/lib/event-money';
 import { Badge } from '../../../_components/badge';
+import { BucketPicker } from '../../../_components/bucket-picker';
+import { createBucketAction, setEventBucketAction } from '../../../finance/bucket-actions';
+import type { Bucket } from '@/lib/buckets';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../../_components/dialog';
 import { Button } from '../../../../_components/button';
 import styles from '../../../events/events-admin.module.css';
@@ -50,12 +53,14 @@ export function MoneyPanel({
   signupId,
   calendarEntryId,
   data,
+  buckets,
   adults,
   today
 }: {
   signupId: number;
   calendarEntryId: number;
   data: EventMoneyData;
+  buckets: Bucket[];
   adults: { personId: number; name: string }[];
   today: string;
 }) {
@@ -228,6 +233,29 @@ export function MoneyPanel({
 
   return (
     <>
+      {/* The event's bucket (Plans/Buckets-Lookup.md): the tab shows every row in it, plus the event's own.
+          One-click, takes effect at once — so it sits apart from any draft form. */}
+      <div className={styles.bucketRow}>
+        <span className={styles.bucketLabel}>Bucket</span>
+        <div className={styles.bucketPicker}>
+          <BucketPicker
+            id="event-bucket"
+            label="Bucket"
+            buckets={buckets}
+            value={data.bucketId}
+            onChange={(id) =>
+              run(
+                () => setEventBucketAction(calendarEntryId, id),
+                () => setNote(id == null ? 'Bucket cleared.' : `Bucket set — ${buckets.find((b) => b.id === id)?.name ?? 'saved'}.`)
+              )
+            }
+            canCreate
+            createBucket={createBucketAction}
+          />
+        </div>
+        <span className={styles.cellMuted}>Takes effect immediately. This event&rsquo;s own payments and expenses move into it.</span>
+      </div>
+
       {/* Order: Income, Expenses, Still due, Net, Total expected payments (Patrick, 2026-10-17). */}
       <div className={styles.tiles}>
         <div className={styles.tile}>

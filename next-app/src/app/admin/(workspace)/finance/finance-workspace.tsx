@@ -18,6 +18,9 @@
  */
 
 import { useEffect, useRef, useState, useTransition } from 'react';
+import { BucketPicker } from '../_components/bucket-picker';
+import { createBucketAction } from './bucket-actions';
+import type { Bucket } from '@/lib/buckets';
 import { SaveFeedback, useSavePhase } from '../_components/save-state';
 import { Button } from '../../_components/button';
 import { useRouter } from 'next/navigation';
@@ -100,7 +103,7 @@ export function FinanceWorkspace({
   sort,
   dir,
   filters,
-  activityLabels,
+  buckets,
   kinds
 }: {
   canManage: boolean;
@@ -119,7 +122,7 @@ export function FinanceWorkspace({
     amountMin?: string;
     amountMax?: string;
   };
-  activityLabels: string[];
+  buckets: Bucket[];
   kinds: TransactionKindRow[];
 }) {
   const [pending, start] = useTransition();
@@ -165,7 +168,7 @@ export function FinanceWorkspace({
    */
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkKind, setBulkKind] = useState<TransactionKind | ''>('');
-  const [bulkActivity, setBulkActivity] = useState('');
+  const [bulkBucket, setBulkBucket] = useState<number | null>(null);
   const [bulkStatus, setBulkStatus] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null);
   const allSelected = rows.length > 0 && rows.every((r) => selectedIds.has(r.id));
 
@@ -206,14 +209,13 @@ export function FinanceWorkspace({
     });
   }
   function applyBulkReassign() {
-    const trimmedActivity = bulkActivity.trim();
-    if ((!bulkKind && !trimmedActivity) || selectedIds.size === 0) return;
+    if ((!bulkKind && bulkBucket == null) || selectedIds.size === 0) return;
     const ids = [...selectedIds];
     setBulkStatus(null);
     start(async () => {
       const res = await bulkReassignAction(ids, {
         ...(bulkKind ? { kind: bulkKind } : {}),
-        ...(trimmedActivity ? { activityLabel: trimmedActivity } : {})
+        ...(bulkBucket != null ? { bucketId: bulkBucket } : {})
       });
       if (!res.ok) {
         setBulkStatus({ kind: 'err', msg: res.error ?? 'Could not reassign.' });
@@ -221,10 +223,10 @@ export function FinanceWorkspace({
       }
       const parts: string[] = [];
       if (bulkKind) parts.push(`Kind → ${kindLabel(bulkKind)}`);
-      if (trimmedActivity) parts.push(`Bucket → "${trimmedActivity}"`);
+      if (bulkBucket != null) parts.push(`Bucket → "${buckets.find((b) => b.id === bulkBucket)?.name ?? bulkBucket}"`);
       setSelectedIds(new Set());
       setBulkKind('');
-      setBulkActivity('');
+      setBulkBucket(null);
       setBulkStatus({ kind: 'ok', msg: `Updated ${res.updated}: ${parts.join(', ')}.` });
       router.refresh();
     });
@@ -293,7 +295,7 @@ export function FinanceWorkspace({
             {activeModal === 'record' && (
               <RecordTransactionForm
                 people={people}
-                activityLabels={activityLabels}
+                buckets={buckets}
                 kinds={kinds}
                 pending={pending}
                 onSubmit={(input) =>
@@ -399,17 +401,21 @@ export function FinanceWorkspace({
               <Button variant="secondary" onClick={() => setAddingKind(true)} disabled={pending}>
                 + New Kind
               </Button>
-              <input
-                type="text"
-                list="activity-labels"
-                placeholder="Reassign Bucket to…"
-                value={bulkActivity}
-                onChange={(e) => setBulkActivity(e.target.value)}
-              />
+              <div className={styles.bulkBucket}>
+                <BucketPicker
+                  id="bulk-bucket"
+                  label="Reassign Bucket to"
+                  buckets={buckets}
+                  value={bulkBucket}
+                  onChange={setBulkBucket}
+                  canCreate
+                  createBucket={createBucketAction}
+                />
+              </div>
               <Button
                 variant="primary"
                 onClick={applyBulkReassign}
-                disabled={(!bulkKind && !bulkActivity.trim()) || pending}
+                disabled={(!bulkKind && bulkBucket == null) || pending}
               >
                 {pending ? '…' : 'Apply'}
               </Button>
@@ -548,7 +554,7 @@ export function FinanceWorkspace({
           row={editingRow}
           people={people}
           reconciliation={reconciliation}
-          activityLabels={activityLabels}
+          buckets={buckets}
           kinds={kinds}
           pending={pending}
           onClose={() => setEditingRow(null)}
@@ -583,18 +589,18 @@ interface TransactionFormState {
   sign: 'in' | 'out';
   personId: string;
   memo: string;
-  activity: string;
+  bucketId: number | null;
 }
 
 export function RecordTransactionForm({
   people,
-  activityLabels,
+  buckets,
   kinds,
   pending,
   onSubmit
 }: {
   people: { id: number; display_name: string }[];
-  activityLabels: string[];
+  buckets: Bucket[];
   kinds: TransactionKindRow[];
   pending: boolean;
   onSubmit: (input: {
@@ -605,7 +611,7 @@ export function RecordTransactionForm({
     method: TransactionMethod | null;
     personId: number | null;
     memo: string | null;
-    activityLabel: string | null;
+    bucketId: number | null;
   }) => void;
 }) {
   const [f, setF] = useState<TransactionFormState>({
@@ -617,7 +623,7 @@ export function RecordTransactionForm({
     sign: 'out',
     personId: '',
     memo: '',
-    activity: ''
+    bucketId: null
   });
 
   const submit = (e: React.FormEvent) => {
@@ -634,9 +640,9 @@ export function RecordTransactionForm({
       // matching comment (2026-08-19).
       personId: f.personId ? Number(f.personId) : null,
       memo: f.memo.trim() || null,
-      activityLabel: f.activity.trim() || null
+      bucketId: f.bucketId
     });
-    setF((s) => ({ ...s, amountText: '', memo: '', activity: '' }));
+    setF((s) => ({ ...s, amountText: '', memo: '', bucketId: null }));
   };
 
   return (
@@ -721,24 +727,20 @@ export function RecordTransactionForm({
             onChange={(e) => setF((s) => ({ ...s, amountText: e.target.value }))}
           />
         </label>
-        <label className="adminLabel">
-          Bucket <span className={styles.optionalHint}>(for the report)</span>
-          <input
-            type="text"
-            list="activity-labels"
-            placeholder="e.g. Fall Campout '26"
-            value={f.activity}
-            onChange={(e) => setF((s) => ({ ...s, activity: e.target.value }))}
+        <div className="adminLabel">
+          <span>
+            Bucket <span className={styles.optionalHint}>(for the report)</span>
+          </span>
+          <BucketPicker
+            id="record-bucket"
+            label="Bucket"
+            buckets={buckets}
+            value={f.bucketId}
+            onChange={(id) => setF((s) => ({ ...s, bucketId: id }))}
+            canCreate
+            createBucket={createBucketAction}
           />
-          {/* Existing labels as a suggestion, not an enforced FK — typing a
-              new one is always fine (Patrick, 2026-08-18: typo-resistance,
-              not a normalized activities table). */}
-          <datalist id="activity-labels">
-            {activityLabels.map((label) => (
-              <option key={label} value={label} />
-            ))}
-          </datalist>
-        </label>
+        </div>
         <label className={`adminLabel ${styles.formGridWide}`}>
           Memo
           <textarea

@@ -338,38 +338,11 @@ export interface EditableRowState {
  *  one-writer actions (recordEventFeePaymentAction, markReimbursementPaidAction)
  *  and must stay in sync with THAT source, not be hand-edited out from
  *  under it. */
-/** The calendar event a ledger label names: the events that rows under the
- *  label are already linked to, plus events titled exactly that. One event =
- *  link to it; none or several = leave unlinked (Patrick, 2026-10-17). */
-export function eventForLabel(linkedEventIds: readonly number[], titleEventIds: readonly number[]): number | null {
-  const ids = new Set([...linkedEventIds, ...titleEventIds]);
-  return ids.size === 1 ? [...ids][0] : null;
-}
-
 export function editTransactionGuard(existing: EditableRowState | null): string | null {
   if (!existing) return 'Transaction not found.';
   if (existing.voided_at) return "A voided row can't be edited — record a new transaction instead.";
   if (existing.signup_entry_id) return 'This is an event-fee payment — edit it from the event roster, not here.';
   if (existing.reimbursement_id) return "This is a reimbursement payout — it's tied to the request, not editable here.";
-  return null;
-}
-
-/** Pure validation for renameActivityAction (finance/actions.ts) — same
- *  D-049 split as editTransactionGuard, and the same reason: every export
- *  from a 'use server' file must itself be a Server Action, so the part
- *  that decides whether a rename/merge is even sensible lives here where it
- *  can be tested directly, not only indirectly through a DB call.
- *  Returns an error string, or null when the rename/merge may proceed. */
-export function validateActivityRename(sourceLabel: string, targetLabel: string): string | null {
-  const target = targetLabel.trim();
-  if (!sourceLabel.trim() || !target) return 'Both a source and a target bucket are required.';
-  // Compared the same way the rename itself matches (renameActivityAction:
-  // untrimmed source, trimmed target) — NOT trim(source) === trim(target).
-  // sourceLabel is a real stored activity_label value that may itself carry
-  // stray whitespace; trimming it here before comparing would wrongly
-  // refuse a legitimate whitespace-cleanup rename ("Can Drive " -> "Can Drive")
-  // as a no-op, when it's exactly the rename being asked for.
-  if (sourceLabel === target) return 'Source and target are already the same.';
   return null;
 }
 

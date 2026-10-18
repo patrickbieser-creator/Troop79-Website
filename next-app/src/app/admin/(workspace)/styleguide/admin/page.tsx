@@ -28,7 +28,7 @@ import { EditorPromptsSpecimen } from './editor-prompts-specimen';
 import { FoodListRowsSpecimen } from './food-list-rows-specimen';
 import { BlockedSaveDemo, SaveDemo, SegmentedDemo } from './save-demo';
 import { fmtDate, fmtDateLong, fmtDateFull, fmtDay, fmtDateTime, fmtMonthYear, fmtRange, fmtWhen } from '@/lib/format-date';
-import { ActionsMenuSpecimen, AdminAddRowSpecimen, AdminNumberBoxSpecimen, ComboboxInvalidSpecimen, ComboboxSpecimen, GearPickerSpecimen, GearPickerNoMatchSpecimen, DangerConfirmSpecimen, SearchFieldSpecimen, SortHeaderSpecimen } from './specimens';
+import { ActionsMenuSpecimen, AdminAddRowSpecimen, BucketPickerSpecimen, AdminNumberBoxSpecimen, ComboboxInvalidSpecimen, ComboboxSpecimen, GearPickerSpecimen, GearPickerNoMatchSpecimen, DangerConfirmSpecimen, SearchFieldSpecimen, SortHeaderSpecimen } from './specimens';
 import {
   DangerZoneSpecimen,
   HistoryChipSpecimen,
@@ -813,6 +813,26 @@ export default function StyleguidePage() {
           <div className={sg.specimen}>
             <div className={sg.specimenLabel}>Marked</div>
             <ComboboxInvalidSpecimen />
+          </div>
+        </div>
+      </section>
+
+      <section className={sg.section}>
+        <h2 className={sg.sectionHead}>Bucket Picker</h2>
+        <p className={sg.sectionNote}>
+          Picks the money bucket a row or an event belongs to (Plans/Buckets-Lookup.md, 2026-10-17): the Combobox
+          over every bucket, recently used first, with &ldquo;event&rdquo; beside the ones a calendar entry points at.
+          Making a bucket on the fly takes two confirmations (Patrick: &ldquo;require multiple confirmations&rdquo;):
+          &ldquo;+ New bucket&hellip;&rdquo; opens a name box that lists the closest existing buckets first, each with
+          a &ldquo;Use &hellip;&rdquo; button; then &ldquo;Create a new bucket&hellip;&rdquo; opens a confirm panel
+          that names it and lists the near matches again. Only its &ldquo;Create &ldquo;&hellip;&rdquo;&rdquo; button
+          creates. <code>_components/bucket-picker.tsx</code> — ledger Record / Edit / bulk bar, the event Money tab.
+          This specimen&rsquo;s Create only pretends.
+        </p>
+        <div className={sg.specimenGrid}>
+          <div className={`${sg.specimen} ${sg.specimenCanonical}`}>
+            <div className={sg.specimenLabel}>Canonical — try &ldquo;+ New bucket&hellip;&rdquo; and type &ldquo;summer&rdquo;</div>
+            <BucketPickerSpecimen />
           </div>
         </div>
       </section>

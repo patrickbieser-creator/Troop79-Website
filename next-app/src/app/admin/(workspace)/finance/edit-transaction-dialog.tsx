@@ -30,6 +30,9 @@ import {
 } from '@/lib/finance';
 import type { LedgerRow, ReconciliationSummaryRow } from './actions';
 import { Dialog, DialogHeader, DialogBody } from '../_components/dialog';
+import { BucketPicker } from '../_components/bucket-picker';
+import { createBucketAction } from './bucket-actions';
+import type { Bucket } from '@/lib/buckets';
 import styles from './finance.module.css';
 
 interface EditTransactionSaveInput {
@@ -41,14 +44,14 @@ interface EditTransactionSaveInput {
   method: TransactionMethod | null;
   personId: number | null;
   memo: string | null;
-  activityLabel: string | null;
+  bucketId: number | null;
 }
 
 export function EditTransactionDialog({
   row,
   people,
   reconciliation,
-  activityLabels,
+  buckets,
   kinds,
   pending,
   onClose,
@@ -57,7 +60,7 @@ export function EditTransactionDialog({
   row: LedgerRow | null;
   people: { id: number; display_name: string }[];
   reconciliation: ReconciliationSummaryRow[];
-  activityLabels: string[];
+  buckets: Bucket[];
   kinds: TransactionKindRow[];
   pending: boolean;
   onClose: () => void;
@@ -84,7 +87,7 @@ export function EditTransactionDialog({
           row={row}
           people={people}
           reconciliation={reconciliation}
-          activityLabels={activityLabels}
+          buckets={buckets}
           kinds={kinds}
           pending={pending}
           onClose={onClose}
@@ -99,7 +102,7 @@ function EditTransactionForm({
   row,
   people,
   reconciliation,
-  activityLabels,
+  buckets,
   kinds,
   pending,
   onClose,
@@ -108,7 +111,7 @@ function EditTransactionForm({
   row: LedgerRow;
   people: { id: number; display_name: string }[];
   reconciliation: ReconciliationSummaryRow[];
-  activityLabels: string[];
+  buckets: Bucket[];
   kinds: TransactionKindRow[];
   pending: boolean;
   onClose: () => void;
@@ -122,10 +125,10 @@ function EditTransactionForm({
   const [method, setMethod] = useState<TransactionMethod | ''>((row.method as TransactionMethod) ?? '');
   const [personId, setPersonId] = useState(row.person_id ? String(row.person_id) : '');
   const [memo, setMemo] = useState(row.memo ?? '');
-  const [activity, setActivity] = useState(row.activity_label ?? '');
+  const [bucketId, setBucketId] = useState<number | null>(row.bucket_id ?? null);
   // Save standard (2026-08-24): the whole draft against the row it opened with.
   const { dirty } = useSavedSnapshot(
-    JSON.stringify({ occurredOn, account, amountText, sign, kind, method, personId, memo, activity })
+    JSON.stringify({ occurredOn, account, amountText, sign, kind, method, personId, memo, bucketId })
   );
 
   const lastReconciled = reconciliation.find((r) => r.account === account)?.lastReconciledAt ?? null;
@@ -151,7 +154,7 @@ function EditTransactionForm({
       // just populated.
       personId: personId ? Number(personId) : null,
       memo: memo.trim() || null,
-      activityLabel: activity.trim() || null
+      bucketId
     });
   }
 
@@ -227,20 +230,18 @@ function EditTransactionForm({
           onChange={(e) => setAmountText(e.target.value)}
         />
       </label>
-      <label className="adminLabel">
-        Bucket
-        <input
-          type="text"
-          list="activity-labels-edit"
-          value={activity}
-          onChange={(e) => setActivity(e.target.value)}
+      <div className="adminLabel">
+        <span>Bucket</span>
+        <BucketPicker
+          id="edit-bucket"
+          label="Bucket"
+          buckets={buckets}
+          value={bucketId}
+          onChange={setBucketId}
+          canCreate
+          createBucket={createBucketAction}
         />
-        <datalist id="activity-labels-edit">
-          {activityLabels.map((label) => (
-            <option key={label} value={label} />
-          ))}
-        </datalist>
-      </label>
+      </div>
       <label className={`adminLabel ${styles.formGridWide}`}>
         Memo
         <textarea rows={2} value={memo} onChange={(e) => setMemo(e.target.value)} />

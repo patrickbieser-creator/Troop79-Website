@@ -191,6 +191,39 @@ All decided 2026-10-17. Patrick accepted tech-lead's answers on 1 and 3–6 and 
 - [x] **6. Does the public scout-account page show the bucket name?**
   - **Tech-lead:** yes, through the join.
 
+## Release 1 as built (2026-10-17) — where it differs from the approach above
+
+- **Sync trigger does more.** For a writer that still sends text, it resolves in this order:
+  1. the event's bucket, if the row is linked to an event that has one;
+  2. else the bucket the label names, created when new;
+  3. and when the event had no bucket, it links the event to that one.
+
+  The label is always rewritten to the bucket's own name. So the wreath RPCs, the event-fee/refund/credit
+  actions and the import scripts needed no change in Release 1, and switching the wreath RPCs to bucket ids
+  moves to Release 2 with the drop.
+- **Rename relabels rows; merge is an RPC.** A bucket rename relabels its rows (`buckets_relabel_rows`), and
+  merge is `merge_buckets()`. The picker list comes from `bucket_list()`, which returns last-used and is-event
+  without reading rows through PostgREST (no 1000-row cap).
+- **Money scope = the bucket OR the event's own rows** (`lib/buckets` `moneyScopeFor`, a PostgREST `or`
+  filter). A sign-up's fee rows always show, even when they sit in another bucket. The Money tab, the snapshot
+  and the event nav all read through it. `adoptableLabels`, `eventForLabel`, `calendarEntryForLabel` and the old
+  `renameActivityAction` are deleted.
+- **An event's bucket is set on its Money tab, not in the calendar details form.** It's a one-click control
+  that takes effect immediately, and the event's own linked rows move into the bucket with it.
+  (`setEventBucketAction`.)
+- **Reimbursements stay entry-scoped on purpose.** A payout writes a ledger row linked to the event, and the
+  trigger buckets it, so no `reimbursement_requests.bucket_id`.
+- **The Bucket Report still groups by label in Release 1.** The trigger keeps each label equal to its bucket's
+  name, so this is identical to grouping by bucket. The read switches to the bucket join in Release 2, when
+  the label column goes.
+- **Test hygiene.** A test that writes a label creates a bucket, so `tests/helpers/bucket-cleanup.ts` deletes
+  only the buckets the test made that are now empty. It is used in the wreath fixture, finance.test.ts and
+  finance-aggregates.
+- **Rehearsal (2026-10-17).** The migration ran on production inside BEGIN … ROLLBACK:
+  - 39 labels → 39 buckets, 0 labelled rows left without one, 459 rows bucketed;
+  - 5 calendar entries linked themselves: 17, 22, 23, 35, 120;
+  - production was confirmed unchanged afterward.
+
 ## Deferred (tech-lead cuts)
 
 - **Archive:** an archived flag so old buckets drop out of pickers. It can come later, once the picker is long

@@ -8,6 +8,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { EventNavSet } from './event-nav';
+import { moneyScope } from '@/lib/event-money-scope';
 
 export interface EventNavData {
   /** The calendar entry the signup is a layer of — the Builder tab opens the
@@ -18,10 +19,11 @@ export interface EventNavData {
 }
 
 export async function loadEventNav(supabase: SupabaseClient, signupId: number, calendarEntryId: number): Promise<EventNavData> {
+  const scope = await moneyScope(supabase, calendarEntryId);
   const [{ data: sets }, prices, tx, reqs, ms] = await Promise.all([
     supabase.from('signup_group_sets').select('id, label').eq('event_signup_id', signupId).order('sort').order('id'),
     supabase.from('event_prices').select('id', { count: 'exact', head: true }).eq('event_signup_id', signupId),
-    supabase.from('financial_transactions').select('id', { count: 'exact', head: true }).eq('calendar_entry_id', calendarEntryId),
+    supabase.from('financial_transactions').select('id', { count: 'exact', head: true }).or(scope.filter),
     supabase.from('reimbursement_requests').select('id', { count: 'exact', head: true }).eq('calendar_entry_id', calendarEntryId),
     supabase.from('event_milestones').select('id', { count: 'exact', head: true }).eq('event_signup_id', signupId)
   ]);

@@ -152,6 +152,11 @@
   border-radius: var(--admin-radius-sm);
   font-size: 13px;
 }
+/* The bucket picker in the bulk bar: wide enough for a bucket name, and its
+   "+ New bucket…" panel opens below it inside the bar. */
+.bulkBucket {
+  min-width: 16rem;
+}
 .bulkBar select,
 .bulkBar input {
   font-family: inherit;

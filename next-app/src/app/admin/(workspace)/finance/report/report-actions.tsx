@@ -1,16 +1,17 @@
 'use client';
 
 /**
- * Actions ▾ (2026-08-20, D-156 shape) — replaces the "Rename or merge an
- * activity" <details> disclosure with the same select+modal pattern as the
+ * Actions ▾ (2026-08-20, D-156 shape) — replaces the "Rename or merge a
+ * bucket" <details> disclosure with the same select+modal pattern as the
  * Financial Ledger. Only one option today; built as a real dropdown (not a
  * single button) so a second report-level action has somewhere to go later
  * without another one-off control.
  */
 
 import { useEffect, useRef, useState } from 'react';
-import type { RenameActivityPreview } from '../actions';
-import { RenameActivityPanel } from './rename-activity-panel';
+import type { RenameBucketPreview } from '../bucket-actions';
+import type { Bucket } from '@/lib/buckets';
+import { RenameBucketPanel } from './rename-bucket-panel';
 import parentStyles from '../finance.module.css';
 import { ActionsMenu } from '../../_components/actions-menu';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../_components/dialog';
@@ -19,16 +20,13 @@ import { Button } from '../../../_components/button';
 type ReportModal = 'rename';
 
 export function ReportActions({
-  activityLabels,
-  previewRenameActivity,
-  renameActivity
+  buckets,
+  previewRename,
+  rename
 }: {
-  activityLabels: string[];
-  previewRenameActivity: (sourceLabel: string) => Promise<RenameActivityPreview>;
-  renameActivity: (
-    sourceLabel: string,
-    targetLabel: string
-  ) => Promise<{ ok: boolean; error?: string; affectedCount?: number }>;
+  buckets: Bucket[];
+  previewRename: (bucketId: number, newName: string) => Promise<RenameBucketPreview>;
+  rename: (bucketId: number, newName: string) => Promise<{ ok: boolean; error?: string; affectedCount?: number; merged?: boolean }>;
 }) {
   const [activeModal, setActiveModal] = useState<ReportModal | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -62,11 +60,7 @@ export function ReportActions({
         <DialogHeader title="Rename or merge a bucket" />
         <DialogBody>
           {activeModal === 'rename' && (
-            <RenameActivityPanel
-              activityLabels={activityLabels}
-              previewRenameActivity={previewRenameActivity}
-              renameActivity={renameActivity}
-            />
+            <RenameBucketPanel buckets={buckets} previewRename={previewRename} rename={rename} />
           )}
         </DialogBody>
         <DialogActions>

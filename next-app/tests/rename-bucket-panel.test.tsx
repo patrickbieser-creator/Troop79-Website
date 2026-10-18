@@ -1,32 +1,33 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { RenameActivityPanel } from '../src/app/admin/(workspace)/finance/report/rename-activity-panel';
+import { RenameBucketPanel } from '../src/app/admin/(workspace)/finance/report/rename-bucket-panel';
+import type { Bucket } from '../src/lib/buckets';
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: vi.fn() })
 }));
 
 /**
- * The rename/merge Activity feature (Patrick, 2026-08-19) — one feature
- * covers both asks, since a merge is just a rename whose target already
- * names another activity. Mock boundary is the two server actions (Tests/CLAUDE.md):
- * assert on what gets called and rendered, not on what the actions do —
- * that's finance.test.ts's job (validateActivityRename + the schema-level
- * RenameActivity_* tests).
+ * Rename or merge a bucket (Patrick, 2026-08-19, on buckets since 2026-10-17) — one feature covers both
+ * asks, since a merge is a rename whose new name already belongs to another bucket. Mock boundary is the
+ * two server actions (Tests/CLAUDE.md); what they do is buckets-db.test.ts's job (merge_buckets, rename).
  */
-const LABELS = ['Can Drive', 'Wreath Sale'];
+const BUCKETS: Bucket[] = [
+  { id: 1, name: 'Can Drive', isEvent: false, lastUsed: null },
+  { id: 2, name: 'Wreath Sale', isEvent: false, lastUsed: null }
+];
 
-describe('RenameActivityPanel', () => {
+describe('RenameBucketPanel', () => {
   it('Panel_ShowsPreviewCount_BeforeApplying', async () => {
     const user = userEvent.setup();
-    const previewRenameActivity = vi.fn().mockResolvedValue({ affectedCount: 5 });
-    const renameActivity = vi.fn();
+    const previewRename = vi.fn().mockResolvedValue({ affectedCount: 5, mergesInto: null });
+    const rename = vi.fn();
     render(
-      <RenameActivityPanel
-        activityLabels={LABELS}
-        previewRenameActivity={previewRenameActivity}
-        renameActivity={renameActivity}
+      <RenameBucketPanel
+        buckets={BUCKETS}
+        previewRename={previewRename}
+        rename={rename}
       />
     );
 
@@ -35,32 +36,32 @@ describe('RenameActivityPanel', () => {
     await user.click(screen.getByRole('button', { name: /preview/i }));
 
     await waitFor(() => expect(screen.getByText(/5/)).toBeTruthy());
-    expect(previewRenameActivity).toHaveBeenCalledWith('Can Drive');
-    expect(renameActivity).not.toHaveBeenCalled();
+    expect(previewRename).toHaveBeenCalledWith(1, 'Fall Fundraiser');
+    expect(rename).not.toHaveBeenCalled();
   });
 
   it('Panel_AppliesOnlyAfterPreview_NotOnFirstClick', () => {
     // No "Apply" button exists until a preview has run — can't skip straight
     // to a bulk edit on money records sight-unseen.
     render(
-      <RenameActivityPanel
-        activityLabels={LABELS}
-        previewRenameActivity={vi.fn()}
-        renameActivity={vi.fn()}
+      <RenameBucketPanel
+        buckets={BUCKETS}
+        previewRename={vi.fn()}
+        rename={vi.fn()}
       />
     );
     expect(screen.queryByRole('button', { name: /^apply$/i })).toBeNull();
   });
 
-  it('Panel_CallsRenameActivity_WithSourceAndTarget_WhenApplied', async () => {
+  it('Panel_CallsRename_WithTheBucketAndNewName_WhenApplied', async () => {
     const user = userEvent.setup();
-    const previewRenameActivity = vi.fn().mockResolvedValue({ affectedCount: 3 });
-    const renameActivity = vi.fn().mockResolvedValue({ ok: true, affectedCount: 3 });
+    const previewRename = vi.fn().mockResolvedValue({ affectedCount: 3, mergesInto: { id: 2, name: 'Wreath Sale' } });
+    const rename = vi.fn().mockResolvedValue({ ok: true, affectedCount: 3 });
     render(
-      <RenameActivityPanel
-        activityLabels={LABELS}
-        previewRenameActivity={previewRenameActivity}
-        renameActivity={renameActivity}
+      <RenameBucketPanel
+        buckets={BUCKETS}
+        previewRename={previewRename}
+        rename={rename}
       />
     );
 
@@ -70,18 +71,18 @@ describe('RenameActivityPanel', () => {
     await waitFor(() => screen.getByRole('button', { name: /^apply$/i }));
     await user.click(screen.getByRole('button', { name: /^apply$/i }));
 
-    await waitFor(() => expect(renameActivity).toHaveBeenCalledWith('Can Drive', 'Wreath Sale'));
+    await waitFor(() => expect(rename).toHaveBeenCalledWith(1, 'Wreath Sale'));
   });
 
   it('Panel_ShowsServerError_WhenRenameFails', async () => {
     const user = userEvent.setup();
-    const previewRenameActivity = vi.fn().mockResolvedValue({ affectedCount: 1 });
-    const renameActivity = vi.fn().mockResolvedValue({ ok: false, error: 'Something went wrong.' });
+    const previewRename = vi.fn().mockResolvedValue({ affectedCount: 1, mergesInto: null });
+    const rename = vi.fn().mockResolvedValue({ ok: false, error: 'Something went wrong.' });
     render(
-      <RenameActivityPanel
-        activityLabels={LABELS}
-        previewRenameActivity={previewRenameActivity}
-        renameActivity={renameActivity}
+      <RenameBucketPanel
+        buckets={BUCKETS}
+        previewRename={previewRename}
+        rename={rename}
       />
     );
 
@@ -100,12 +101,12 @@ describe('RenameActivityPanel', () => {
     // the target to "C" without a fresh preview, must NOT let Apply fire
     // against the old count/label pair.
     const user = userEvent.setup();
-    const previewRenameActivity = vi.fn().mockResolvedValue({ affectedCount: 5 });
+    const previewRename = vi.fn().mockResolvedValue({ affectedCount: 5, mergesInto: null });
     render(
-      <RenameActivityPanel
-        activityLabels={LABELS}
-        previewRenameActivity={previewRenameActivity}
-        renameActivity={vi.fn()}
+      <RenameBucketPanel
+        buckets={BUCKETS}
+        previewRename={previewRename}
+        rename={vi.fn()}
       />
     );
 
@@ -116,5 +117,17 @@ describe('RenameActivityPanel', () => {
 
     await user.type(screen.getByLabelText('To'), ' Extra');
     expect(screen.queryByRole('button', { name: /^apply$/i })).toBeNull();
+  });
+
+  it('Panel_SaysItWillMerge_WhenTheNewNameAlreadyBelongsToABucket', async () => {
+    const user = userEvent.setup();
+    const previewRename = vi.fn().mockResolvedValue({ affectedCount: 3, mergesInto: { id: 2, name: 'Wreath Sale' } });
+    render(<RenameBucketPanel buckets={BUCKETS} previewRename={previewRename} rename={vi.fn()} />);
+
+    await user.selectOptions(screen.getByLabelText('Rename this bucket'), 'Can Drive');
+    await user.type(screen.getByLabelText('To'), 'wreath sale');
+    await user.click(screen.getByRole('button', { name: /preview/i }));
+
+    await waitFor(() => expect(screen.getByText(/merge/i).textContent).toMatch(/into the existing bucket/));
   });
 });
