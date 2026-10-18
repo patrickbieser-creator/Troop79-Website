@@ -1,7 +1,6 @@
 # Buckets Lookup — one managed link for every money theme
 
-**Status:** Parked — tech-lead reviewed 2026-10-17 (approve-with-changes, folded in); open questions decided;
-waiting only on Patrick's label cleanup and the freeze
+**Status:** SHIPPED v1.236.0 (2026-10-18, e3e8db2) — Release 1 v1.233.0–v1.235.0; Release 2 retired activity_label (D-400)
 **Parked:** 2026-10-17
 **Priority:** High
 
