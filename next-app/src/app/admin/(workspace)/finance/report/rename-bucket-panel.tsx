@@ -21,14 +21,17 @@ import { Button } from '../../../_components/button';
 export function RenameBucketPanel({
   buckets,
   previewRename,
-  rename
+  rename,
+  initialSourceId
 }: {
   buckets: readonly Bucket[];
+  /** Opened from a row of the Buckets manager: that bucket is already picked. */
+  initialSourceId?: number;
   previewRename: (bucketId: number, newName: string) => Promise<RenameBucketPreview>;
   rename: (bucketId: number, newName: string) => Promise<{ ok: boolean; error?: string; affectedCount?: number; merged?: boolean }>;
 }) {
   const [pending, start] = useTransition();
-  const [source, setSource] = useState('');
+  const [source, setSource] = useState(initialSourceId != null ? String(initialSourceId) : '');
   const [target, setTarget] = useState('');
   const [preview, setPreview] = useState<RenameBucketPreview | null>(null);
   const [error, setError] = useState<string | null>(null);

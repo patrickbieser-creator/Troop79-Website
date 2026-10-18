@@ -9,7 +9,9 @@
  * form's Activity field). Read-only, same finance.manage-OR-finance.view
  * gate as the ledger — this is a report, not a write surface.
  */
-import { listBucketsAction, previewRenameBucketAction, renameBucketAction } from '../bucket-actions';
+import { deleteBucketAction, listBucketsAction, previewRenameBucketAction, renameBucketAction } from '../bucket-actions';
+import { BucketManager } from './bucket-manager';
+import { TabStrip } from '../../_components/tab-strip';
 import { requireAnyOf } from '@/lib/require-capability';
 import { getActivityReportAction, getActivityTransactionsAction } from '../actions';
 import { summarizeByActivity } from '@/lib/finance';
@@ -21,9 +23,11 @@ export const metadata = {
   title: 'Bucket Report — Troop 79'
 };
 
-export default async function FinanceReportPage() {
+export default async function FinanceReportPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const actor = await requireAnyOf(['finance.manage', 'finance.view']);
   const canManage = actor.capabilities.has('finance.manage');
+  // Buckets tab (Patrick, 2026-10-18): the manager — every bucket, rename / merge / delete. Managers only.
+  const tab = canManage && (await searchParams).tab === 'buckets' ? 'buckets' : 'report';
   const [rows, buckets] = await Promise.all([getActivityReportAction(), canManage ? listBucketsAction() : Promise.resolve([])]);
   const summary = summarizeByActivity(rows);
 
@@ -36,9 +40,23 @@ export default async function FinanceReportPage() {
             scholarship); the breakdown under each bucket shows the split."
       />
       {canManage && (
-        <ReportActions buckets={buckets} previewRename={previewRenameBucketAction} rename={renameBucketAction} />
+        <TabStrip
+          ariaLabel="Bucket Report views"
+          activeKey={tab}
+          items={[
+            { key: 'report', label: 'Report', href: '/admin/finance/report' },
+            { key: 'buckets', label: 'Buckets', count: buckets.length, href: '/admin/finance/report?tab=buckets' }
+          ]}
+        />
       )}
-      <ActivityReport summary={summary} getActivityTransactions={getActivityTransactionsAction} />
+      {tab === 'buckets' ? (
+        <BucketManager buckets={buckets} previewRename={previewRenameBucketAction} rename={renameBucketAction} deleteBucket={deleteBucketAction} />
+      ) : (
+        <>
+          {canManage && <ReportActions buckets={buckets} previewRename={previewRenameBucketAction} rename={renameBucketAction} />}
+          <ActivityReport summary={summary} getActivityTransactions={getActivityTransactionsAction} />
+        </>
+      )}
     </>
   );
 }

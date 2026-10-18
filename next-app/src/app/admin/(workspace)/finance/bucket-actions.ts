@@ -9,7 +9,7 @@
 import { revalidatePath } from 'next/cache';
 import { requireAnyOf, requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
-import { bucketKey, type Bucket } from '@/lib/buckets';
+import { bucketKey, type Bucket, type BucketUsage } from '@/lib/buckets';
 
 type Result = { ok: boolean; error?: string };
 
@@ -21,17 +21,42 @@ function revalidateBuckets() {
   revalidatePath('/admin/finance/report');
 }
 
-/** Every bucket for a picker, with whether an event points at it and when it was last used. */
-export async function listBucketsAction(): Promise<Bucket[]> {
+/** Every bucket — for a picker, and for the Buckets manager: whether an event points at it, when it was last
+ *  used, how many transactions it holds, and which events. */
+export async function listBucketsAction(): Promise<BucketUsage[]> {
   await requireAnyOf(['finance.manage', 'finance.view', 'calendar.write']);
   const { data, error } = await createAdminClient().rpc('bucket_list');
   if (error) throw new Error(`listBucketsAction failed: ${error.message}`);
-  return ((data ?? []) as { id: number; name: string; is_event: boolean; last_used: string | null }[]).map((r) => ({
+  type Row = { id: number; name: string; is_event: boolean; last_used: string | null; row_count?: number; events?: { id: number; title: string; date: string }[] };
+  return ((data ?? []) as Row[]).map((r) => ({
     id: Number(r.id),
     name: r.name,
     isEvent: r.is_event,
-    lastUsed: r.last_used
+    lastUsed: r.last_used,
+    rowCount: Number(r.row_count ?? 0),
+    events: (r.events ?? []).map((e) => ({ id: Number(e.id), title: e.title, date: e.date }))
   }));
+}
+
+/** Delete a bucket nothing uses (Buckets manager). One with transactions or an event is merged instead. */
+export async function deleteBucketAction(bucketId: number): Promise<Result> {
+  await requireCapability('finance.manage');
+  if (!isId(bucketId)) return { ok: false, error: 'Bad bucket.' };
+  const supabase = createAdminClient();
+  const [{ count: rows }, { count: events }] = await Promise.all([
+    supabase.from('financial_transactions').select('id', { count: 'exact', head: true }).eq('bucket_id', bucketId),
+    supabase.from('calendar_entries').select('id', { count: 'exact', head: true }).eq('bucket_id', bucketId)
+  ]);
+  if ((rows ?? 0) > 0 || (events ?? 0) > 0) {
+    return {
+      ok: false,
+      error: (rows ?? 0) > 0 ? 'This bucket holds transactions — merge it into another bucket instead.' : 'An event points at this bucket — change the event’s bucket first.'
+    };
+  }
+  const { error } = await supabase.from('buckets').delete().eq('id', bucketId);
+  if (error) return { ok: false, error: error.code === '23503' ? 'This bucket is in use — merge it instead.' : error.message };
+  revalidateBuckets();
+  return { ok: true };
 }
 
 /** The second confirmation of "+ New bucket…" lands here. Same gate as recording event money. */

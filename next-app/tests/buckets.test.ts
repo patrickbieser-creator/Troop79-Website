@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { bucketKey, moneyScopeFor, nearBuckets, sortBucketsForPicker, type Bucket } from '../src/lib/buckets';
+import { bucketKey, canDeleteBucket, moneyScopeFor, nearBuckets, sortBucketsForPicker, type Bucket } from '../src/lib/buckets';
 
 const b = (id: number, name: string, extra: Partial<Bucket> = {}): Bucket => ({ id, name, isEvent: false, lastUsed: null, ...extra });
 
@@ -48,5 +48,15 @@ describe('moneyScopeFor (pure)', () => {
   });
   it('MoneyScope_IsTheEntrysOwnRows_WhenItHasNoBucket', () => {
     expect(moneyScopeFor(35, null)).toBe('calendar_entry_id.eq.35');
+  });
+});
+
+describe('canDeleteBucket (pure)', () => {
+  it('CanDelete_OnlyABucketWithNoTransactionsAndNoEvents', () => {
+    expect([
+      canDeleteBucket({ rowCount: 0, events: [] }),
+      canDeleteBucket({ rowCount: 3, events: [] }),
+      canDeleteBucket({ rowCount: 0, events: [{ id: 1, title: 'x', date: '2026-10-09' }] })
+    ]).toEqual([true, false, false]);
   });
 });

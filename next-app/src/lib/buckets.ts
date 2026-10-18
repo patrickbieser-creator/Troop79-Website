@@ -13,6 +13,17 @@ export interface Bucket {
   lastUsed: string | null;
 }
 
+/** A bucket as the Buckets manager lists it: how many transactions it holds and which events point at it. */
+export interface BucketUsage extends Bucket {
+  rowCount: number;
+  events: { id: number; title: string; date: string }[];
+}
+
+/** Delete is only for a bucket nothing uses — the database's on-delete-restrict says the same. */
+export function canDeleteBucket(b: Pick<BucketUsage, 'rowCount' | 'events'>): boolean {
+  return b.rowCount === 0 && b.events.length === 0;
+}
+
 /** Same normalisation as public.bucket_key(): case and runs of spaces don't make a new bucket. */
 export function bucketKey(name: string): string {
   return name.trim().replace(/\s+/g, ' ').toLowerCase();

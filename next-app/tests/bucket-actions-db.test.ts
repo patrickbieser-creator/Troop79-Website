@@ -12,7 +12,7 @@ vi.mock('@/lib/supabase/server', async () => {
   return { createAdminClient: () => make() };
 });
 
-import { createBucketAction, renameBucketAction, setEventBucketAction, listBucketsAction } from '../src/app/admin/(workspace)/finance/bucket-actions';
+import { createBucketAction, deleteBucketAction, renameBucketAction, setEventBucketAction, listBucketsAction } from '../src/app/admin/(workspace)/finance/bucket-actions';
 
 /** Bucket server actions (Plans/Buckets-Lookup.md) against the local DB. Test-owned names only. */
 const admin = adminClient();
@@ -73,5 +73,36 @@ describe('bucket actions', () => {
       admin.from('financial_transactions').select('bucket_id').eq('id', id).single()
     ]);
     expect([res.moved, c?.bucket_id, t?.bucket_id]).toEqual([1, want, want]);
+  });
+});
+
+describe('buckets manager', () => {
+  it('BucketList_CarriesEachBucketsTransactionCount_AndItsEvents', async () => {
+    const id = (await createBucketAction(`${P} Usage`)).bucket!.id;
+    await row({ bucket_id: id });
+    await setEventBucketAction(event.calendarEntryId, id);
+    const b = (await listBucketsAction()).find((x) => x.id === id)!;
+    expect([b.rowCount, b.events.map((e) => e.id)]).toEqual([1, [event.calendarEntryId]]);
+  });
+
+  it('Treasurer_CanDeleteAnEmptyBucket', async () => {
+    const id = (await createBucketAction(`${P} Empty`)).bucket!.id;
+    const res = await deleteBucketAction(id);
+    const { data } = await admin.from('buckets').select('id').eq('id', id);
+    expect([res.ok, data?.length]).toEqual([true, 0]);
+  });
+
+  it('DeleteBucket_RefusesABucketThatHoldsTransactions', async () => {
+    const id = (await createBucketAction(`${P} Busy`)).bucket!.id;
+    await row({ bucket_id: id });
+    const res = await deleteBucketAction(id);
+    expect(res.error).toMatch(/transaction/);
+  });
+
+  it('DeleteBucket_RefusesABucketAnEventPointsAt', async () => {
+    const id = (await createBucketAction(`${P} Linked`)).bucket!.id;
+    await admin.from('calendar_entries').update({ bucket_id: id }).eq('id', event.calendarEntryId);
+    const res = await deleteBucketAction(id);
+    expect(res.error).toMatch(/event/);
   });
 });

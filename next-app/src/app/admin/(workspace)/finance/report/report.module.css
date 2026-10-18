@@ -160,3 +160,21 @@
 .drilldownEventLink:hover {
   text-decoration: underline;
 }
+
+/* Buckets tab (bucket-manager.tsx) — DataTable · Compact, plus its column extras. */
+.bucketTable {
+  composes: compact from '../../_components/data-table.module.css';
+}
+.bucketTable.bucketTable th[scope='row'] {
+  font-weight: 600;
+  text-align: left;
+}
+.bucketNum {
+  composes: numCell from '../../_components/data-table.module.css';
+}
+.bucketActions {
+  composes: actionsCell from '../../_components/data-table.module.css';
+}
+.bucketError {
+  color: var(--admin-danger);
+}
