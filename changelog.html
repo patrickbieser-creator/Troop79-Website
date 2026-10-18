@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>October 18, 2026</strong> &nbsp;&middot;&nbsp; v1.235.0</p>
+      <p>Last updated: <strong>October 18, 2026</strong> &nbsp;&middot;&nbsp; v1.236.0</p>
     </div>
   </div>
 
@@ -494,6 +494,31 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.236.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.236.0</span>
+        <span class="release-date">October 18, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Wreath Sale: orders paid a little short</p>
+        <ul class="change-list">
+          <li><span><strong>Amount received.</strong> Mark paid now has an Amount received box, filled in with the order total. Type what actually came in. The order still counts as paid, and the finance ledger books the real amount.</span></li>
+          <li><span><strong>The shortfall is named.</strong> The order shows &ldquo;Accepted $2.00 short of the $52.00 total&rdquo;. The Dashboard&rsquo;s Collected tile counts what came in and lists the amount accepted short. The troop absorbs it, so the scout&rsquo;s credit doesn&rsquo;t change.</span></li>
+          <li><span><strong>Scouts see the same figure.</strong> The Paid total on a scout&rsquo;s My wreath orders counts what came in, matching the Dashboard.</span></li>
+        </ul>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Reimbursements: paid means done</p>
+        <ul class="change-list">
+          <li><span><strong>Already paid in the ledger?</strong> Mark paid opens a dialog. When the Financial Ledger already holds a payout of exactly that amount (Venmo&rsquo;d and booked by hand), it is offered first and picked. Marking paid links that row, so the money is never booked twice. Or record a new payout and choose how it was paid.</span></li>
+          <li><span><strong>A paid row shows how it ended.</strong> Where the button was, a paid reimbursement shows the date and method it was paid.</span></li>
+          <li><span><strong>Fixed:</strong> a reimbursement entered from an event&rsquo;s Money tab, which has no receipt, would have broken the Reimbursements page.</span></li>
+        </ul>
       </div>
     </div>
 

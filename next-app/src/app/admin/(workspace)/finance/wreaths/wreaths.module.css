@@ -89,7 +89,8 @@
   padding: 7px 9px;
   background: var(--admin-white);
 }
-.actionRow select {
+.actionRow select,
+.amountBox {
   font-family: var(--admin-font-ui);
   font-size: var(--admin-text-md);
   color: var(--admin-gray-700);
@@ -125,3 +126,7 @@
 .moneyList { display: grid; grid-template-columns: max-content max-content; gap: var(--admin-space-2) var(--admin-space-11); margin: 0 0 var(--admin-space-6); font-size: var(--admin-text-md); }
 .moneyList dt { color: var(--admin-gray-500); }
 .moneyList dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Mark paid: "Amount received", in dollars beside the method select. */
+.amountLabel { display: inline-flex; align-items: center; gap: var(--admin-space-2); font-size: var(--admin-text-md); color: var(--admin-gray-700); }
+.amountBox { width: 7.5em; }

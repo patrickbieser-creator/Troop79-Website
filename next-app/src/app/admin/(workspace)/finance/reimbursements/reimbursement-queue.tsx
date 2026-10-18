@@ -1,21 +1,27 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   approveReimbursementAction,
   denyReimbursementAction,
+  linkReimbursementPaymentAction,
   markReimbursementPaidAction,
   type ReimbursementQueueRow
 } from '../actions';
-import { TRANSACTION_METHODS, type TransactionMethod } from '@/lib/finance';
+import { TRANSACTION_METHODS, TRANSACTION_METHOD_LABEL, type TransactionMethod } from '@/lib/finance';
 import styles from '../finance.module.css';
 import { fmtDate } from '@/lib/format-date';
 import { Button } from '../../../_components/button';
+import { Dialog, DialogActions, DialogBody, DialogHeader } from '../../_components/dialog';
+
+const methodLabel = (m: string | null) => (m ? (TRANSACTION_METHOD_LABEL[m as TransactionMethod] ?? m) : 'Method not recorded');
 
 export function ReimbursementQueue({ requests }: { requests: ReimbursementQueueRow[] }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [paying, setPaying] = useState<ReimbursementQueueRow | null>(null);
+  const payRef = useRef<HTMLDialogElement>(null);
   const router = useRouter();
 
   function approve(id: number) {
@@ -38,19 +44,9 @@ export function ReimbursementQueue({ requests }: { requests: ReimbursementQueueR
     });
   }
 
-  function markPaid(id: number) {
-    const method = window.prompt(`How was this paid? (${TRANSACTION_METHODS.join(', ')})`, 'venmo');
-    if (method === null) return;
-    if (!(TRANSACTION_METHODS as readonly string[]).includes(method)) {
-      setError(`"${method}" isn't a recognized method — try one of: ${TRANSACTION_METHODS.join(', ')}.`);
-      return;
-    }
-    start(async () => {
-      setError(null);
-      const res = await markReimbursementPaidAction(id, method as TransactionMethod);
-      if (!res.ok) setError(res.error ?? 'Could not mark paid.');
-      else router.refresh();
-    });
+  function openPay(r: ReimbursementQueueRow) {
+    setPaying(r);
+    requestAnimationFrame(() => payRef.current?.showModal());
   }
 
   if (requests.length === 0) {
@@ -109,9 +105,13 @@ export function ReimbursementQueue({ requests }: { requests: ReimbursementQueueR
                     </>
                   )}
                   {r.status === 'approved' && (
-                    <Button variant="secondary" size="sm" disabled={pending} onClick={() => markPaid(r.id)}>
+                    <Button variant="secondary" size="sm" disabled={pending} onClick={() => openPay(r)}>
                       Mark paid
                     </Button>
+                  )}
+                  {/* Settled: how it ended, not a button (Patrick, 2026-10-17 — same rule as the event Money tab). */}
+                  {r.status === 'paid' && (
+                    <span className={styles.muted}>{r.payment ? `${fmtDate(r.payment.occurredOn)} · ${methodLabel(r.payment.method)}` : r.paid_at ? fmtDate(r.paid_at) : ''}</span>
                   )}
                 </td>
               </tr>
@@ -119,6 +119,91 @@ export function ReimbursementQueue({ requests }: { requests: ReimbursementQueueR
           </tbody>
         </table>
       </div>
+      <Dialog ref={payRef} onClose={() => setPaying(null)}>
+        <DialogHeader title={paying ? `Mark $${paying.amount.toFixed(2)} paid` : 'Mark paid'} sub={paying ? `${paying.requesterName} · ${paying.description}` : undefined} />
+        {paying && (
+          <PayForm
+            key={paying.id}
+            request={paying}
+            onDone={() => {
+              payRef.current?.close();
+              router.refresh();
+            }}
+            onCancel={() => payRef.current?.close()}
+          />
+        )}
+      </Dialog>
+    </>
+  );
+}
+
+/**
+ * Mark paid (Patrick, 2026-10-18): when the ledger already holds a live, unlinked payout of exactly this amount — the
+ * money was Venmo'd and booked by hand — it is offered first and preselected, so closing the request links that row
+ * instead of booking the payout twice. "Record a new payout" books one today, as before.
+ */
+function PayForm({ request: r, onDone, onCancel }: { request: ReimbursementQueueRow; onDone: () => void; onCancel: () => void }) {
+  const [choice, setChoice] = useState<number | 'new'>(r.paymentCandidates[0]?.id ?? 'new');
+  const [method, setMethod] = useState<TransactionMethod>('venmo');
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  function save() {
+    setError(null);
+    start(async () => {
+      const res = choice === 'new' ? await markReimbursementPaidAction(r.id, method) : await linkReimbursementPaymentAction(r.id, choice);
+      if (!res.ok) setError(res.error ?? 'Could not mark paid.');
+      else onDone();
+    });
+  }
+
+  const methodSelect = (
+    <select aria-label="How it was paid" className={styles.select} value={method} onChange={(e) => setMethod(e.target.value as TransactionMethod)}>
+      {TRANSACTION_METHODS.filter((m) => m !== 'card').map((m) => (
+        <option key={m} value={m}>
+          {TRANSACTION_METHOD_LABEL[m]}
+        </option>
+      ))}
+    </select>
+  );
+
+  return (
+    <>
+      <DialogBody>
+        {r.paymentCandidates.length > 0 ? (
+          <fieldset className={styles.payChoices}>
+            <legend>Already in the Financial Ledger?</legend>
+            {r.paymentCandidates.map((c) => (
+              <label key={c.id} className={styles.payChoice}>
+                <input type="radio" name="pay" checked={choice === c.id} onChange={() => setChoice(c.id)} />
+                <span>
+                  {fmtDate(c.occurredOn)} · {methodLabel(c.method)}
+                  {c.memo && <span className={styles.muted}> · {c.memo}</span>}
+                </span>
+              </label>
+            ))}
+            <label className={styles.payChoice}>
+              <input type="radio" name="pay" checked={choice === 'new'} onChange={() => setChoice('new')} />
+              <span>Record a new payout today</span>
+            </label>
+            {choice === 'new' && <div className={styles.payMethod}>{methodSelect}</div>}
+          </fieldset>
+        ) : (
+          <label className={styles.payChoice}>
+            <span>How it was paid</span>
+            {methodSelect}
+          </label>
+        )}
+        {error && <p className={styles.empty}>{error}</p>}
+      </DialogBody>
+      <DialogActions>
+        <Button variant="primary" disabled={pending} onClick={save}>
+          {pending ? 'Marking…' : 'Mark paid'}
+        </Button>
+        <Button variant="secondary" onClick={onCancel}>
+          Cancel
+        </Button>
+      </DialogActions>
     </>
   );
 }

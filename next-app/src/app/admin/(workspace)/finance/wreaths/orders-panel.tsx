@@ -14,7 +14,7 @@ import { Badge } from '../../_components/badge';
 import { SaveButton, SaveProblem, useSavedSnapshot } from '../../_components/save-state';
 import { SearchField, useTableSearch } from '../../_components/search-field';
 import { fmtDateTime } from '@/lib/format-date';
-import { FULFILLMENT_LABEL, PAID_METHODS, SOURCE_LABEL, fmtMoney2, inDeliveryArea, zipPrefixText, type PaidMethod } from '@/lib/wreaths/rules';
+import { FULFILLMENT_LABEL, PAID_METHODS, SOURCE_LABEL, acceptedShort, fmtMoney2, fromCents, toCents, inDeliveryArea, zipPrefixText, type PaidMethod } from '@/lib/wreaths/rules';
 import type { AdminOrder, AuditEntry } from '@/lib/wreaths/admin-data';
 import { cancelOrder, markPaid, reassignOrder, refundCardOrder, setPaymentNote } from './actions';
 import styles from './wreaths.module.css';
@@ -199,16 +199,21 @@ export function OrdersPanel({ orders, history, sellers, deliveryZipPrefix, initi
 
 function OrderDetail({ order: o, history, onReassign, onCancel }: { order: AdminOrder; history: AuditEntry[]; onReassign: () => void; onCancel: () => void }) {
   const [method, setMethod] = useState<PaidMethod>('venmo');
+  // Paid another way, an unpaid card-fee cover drops (markPaid), so the amount due is the total without it.
+  const due = fromCents(toCents(o.total) - toCents(o.feeCovered));
+  const [amount, setAmount] = useState(due.toFixed(2));
+  const received = amount.trim() === '' ? Number.NaN : fromCents(toCents(Number(amount)));
+  const short = Number.isFinite(received) && received > 0 && received < due ? fromCents(toCents(due) - toCents(received)) : 0;
   const [pending, start] = useTransition();
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ text: string; field?: string } | null>(null);
   const live = o.status === 'placed';
   const address = [o.customerAddress, o.customerCity, o.customerZip].filter(Boolean).join(', ');
 
   function pay() {
     setError(null);
     start(async () => {
-      const res = await markPaid(o.id, method);
-      if (!res.ok) setError(res.error ?? 'Couldn’t mark it paid.');
+      const res = await markPaid(o.id, method, due > 0 ? received : undefined);
+      if (!res.ok) setError({ text: res.error ?? 'Couldn’t mark it paid.', field: res.field });
     });
   }
 
@@ -295,7 +300,9 @@ function OrderDetail({ order: o, history, onReassign, onCancel }: { order: Admin
             {o.paidMethod ? ` by ${o.paidMethod}` : ''}
             {o.paidAt ? `, ${fmtDateTime(o.paidAt)}` : ''}.
             {o.paidMethod === 'card' && o.stripeFee != null && ` Stripe fee ${fmtMoney2(o.stripeFee)}.`}
-            {o.paidAmount != null && o.paidAmount !== o.total && (
+            {acceptedShort(o) > 0 ? (
+              <> Accepted {fmtMoney2(acceptedShort(o))} short of the {fmtMoney2(o.total)} total.</>
+            ) : o.paidAmount != null && o.paidAmount !== o.total && (
               <>
                 {' '}
                 <strong>
@@ -314,12 +321,28 @@ function OrderDetail({ order: o, history, onReassign, onCancel }: { order: Admin
                 </option>
               ))}
             </select>
+            {due > 0 && (
+              <label className={styles.amountLabel}>
+                Amount received
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min="0.01"
+                  step="0.01"
+                  className={`${styles.amountBox}${error?.field === 'amount' ? ` ${styles.bad}` : ''}`}
+                  aria-invalid={error?.field === 'amount' || undefined}
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                />
+              </label>
+            )}
             <Button variant="secondary" disabled={pending} onClick={pay}>
-              {pending ? 'Marking…' : `Mark ${fmtMoney2(o.total)} paid`}
+              {pending ? 'Marking…' : `Mark ${fmtMoney2(Number.isFinite(received) ? received : due)} paid`}
             </Button>
+            {short > 0 && <span className={styles.muted}>{fmtMoney2(short)} short. The order still counts as paid.</span>}
           </div>
         )}
-        {error && <p className={styles.badNote}>{error}</p>}
+        {error && <p className={styles.badNote}>{error.text}</p>}
         {o.source === 'paper' && <PaymentNote key={`${o.id}-${o.paymentNote}`} order={o} />}
         {live && (
           <div className={styles.actionRow}>

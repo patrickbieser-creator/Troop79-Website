@@ -376,8 +376,12 @@ export async function setSellerActive(sellerId: number, active: boolean): Promis
  * Marks an order paid by hand (Release A: the treasurer checks Venmo / PayPal). Idempotent — a second call on a paid
  * order changes nothing and writes no second audit row. A conditional update does the claiming, so two clicks racing
  * each other still pay it once.
+ *
+ * `received` is what actually came in, when it isn't the whole total (Patrick, 2026-10-18: W-1022 came in a little
+ * short and was let through). The order keeps its total; paid_amount and the ledger row hold what arrived, and the
+ * shortfall is the troop's to absorb (see acceptedShort). More than the total is refused.
  */
-export async function markPaid(orderId: number, method: PaidMethod): Promise<WreathResult> {
+export async function markPaid(orderId: number, method: PaidMethod, received?: number): Promise<WreathResult> {
   const actor = await requireCapability('finance.manage');
   if (!PAID_METHODS.includes(method)) return fail('Choose how it was paid.', 'method');
   // Paid another way: its card session must not stay payable (Release B).
@@ -386,12 +390,18 @@ export async function markPaid(orderId: number, method: PaidMethod): Promise<Wre
   const { data: pre } = await supabase.from('wreath_orders').select('total, fee_covered, collected_by_scout').eq('id', orderId).maybeSingle();
   // The cover-the-card-fee amount belongs to card payment only (Release B): paid another way, the order owes without it.
   const claimedTotal = fromCents(toCents(Number(pre?.total ?? 0)) - toCents(Number(pre?.fee_covered ?? 0)));
+  const paidAmount = received === undefined ? claimedTotal : fromCents(toCents(received));
+  if (received !== undefined && !(Number.isFinite(received) && paidAmount > 0)) return fail('Enter the amount that came in.', 'amount');
+  if (paidAmount > claimedTotal) return fail(`That’s more than the ${money(claimedTotal)} total.`, 'amount');
   const { data: claimed } = await supabase
     .from('wreath_orders')
-    .update({ payment_status: 'paid', paid_method: method, paid_at: new Date().toISOString(), paid_by_person_id: actor.personId, paid_amount: claimedTotal, fee_covered: 0, total: claimedTotal, collected_by_scout: true })
+    .update({ payment_status: 'paid', paid_method: method, paid_at: new Date().toISOString(), paid_by_person_id: actor.personId, paid_amount: paidAmount, fee_covered: 0, total: claimedTotal, collected_by_scout: true })
     .eq('id', orderId)
     .eq('payment_status', 'unpaid')
     .eq('status', 'placed')
+    // qa-lead: a Reassign landing between the read and the claim changes the total — don't pay against the stale one.
+    .eq('total', Number(pre?.total ?? 0))
+    .eq('fee_covered', Number(pre?.fee_covered ?? 0))
     .select('order_number, total, customer_name, wreath_sales(year)')
     .maybeSingle();
   if (!claimed) {
@@ -399,13 +409,14 @@ export async function markPaid(orderId: number, method: PaidMethod): Promise<Wre
     if (!row) return fail('That order no longer exists.');
     if (row.status === 'cancelled') return fail('That order is cancelled, so it can’t be marked paid.');
     if (row.payment_status === 'paid') return { ok: true, already: true };
-    return fail('That order can’t be marked paid.');
+    return fail('That order changed while you were marking it paid. Check its total and try again.');
   }
   // Book the money into the finance ledger (Patrick, 2026-10-15). Only the claiming call gets here, and the live-row
   // unique index on wreath_order_id backs that up. If the ledger refuses the row, the payment is put back so an order
   // is never paid without its ledger line.
   // The amount the claim recorded as paid_amount — the ledger books the same figure.
-  const total = claimedTotal;
+  const total = paidAmount;
+  const short = fromCents(toCents(claimedTotal) - toCents(paidAmount));
   let ledger: AuditDetail | null = null;
   if (total > 0) {
     const sale = claimed.wreath_sales as unknown as { year: number } | null;
@@ -442,7 +453,7 @@ export async function markPaid(orderId: number, method: PaidMethod): Promise<Wre
     summary: `Marked order ${claimed.order_number} paid`,
     details: [
       { field: 'Payment', from: 'Unpaid', to: `Paid (${method})` },
-      { field: 'Amount', from: '—', to: money(total) },
+      { field: 'Amount', from: '—', to: short > 0 ? `${money(total)} of ${money(claimedTotal)} (${money(short)} short, accepted)` : money(total) },
       ...(ledger ? [ledger] : [])
     ]
   });

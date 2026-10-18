@@ -167,7 +167,8 @@ export function buildSellerView(
       orders: counted.length,
       items: counted.reduce((n, o) => n + o.lines.reduce((m, l) => m + l.quantity, 0), 0),
       sold: sumDollars(counted.map((o) => o.itemsSubtotal)),
-      paid: sumDollars(paidOrders.map((o) => o.total)),
+      // What actually came in: an order accepted a little short counts what arrived (as the admin dashboard does).
+      paid: sumDollars(paidOrders.map((o) => o.paidAmount ?? o.total)),
       owed: sumDollars(unpaidOrders.map((o) => o.total)),
       earnings: scoutEarnings(profitOf(counted), scoutShare),
       earningsOnPaid: scoutEarnings(profitOf(paidOrders), scoutShare),

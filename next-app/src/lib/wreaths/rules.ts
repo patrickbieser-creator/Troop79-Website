@@ -64,6 +64,16 @@ export function paidLedgerRow(o: {
   };
 }
 
+/**
+ * What the treasurer let go on an order paid a little short by hand (Patrick, 2026-10-18, W-1022): the order keeps its
+ * total, paid_amount and the ledger hold what actually came in. A card order's mismatch is not this — it means the
+ * total changed after Stripe took the money, and the order panel says what is still due or owed back.
+ */
+export function acceptedShort(o: { paymentStatus: string; paidMethod: string | null; paidAmount: number | null; total: number }): number {
+  if (o.paymentStatus !== 'paid' || o.paidMethod === 'card' || o.paidAmount == null) return 0;
+  return Math.max(0, fromCents(toCents(o.total) - toCents(o.paidAmount)));
+}
+
 /** How the customer pays in Release A: the treasurer directly (Decisions, "Release A payment"). Links and handles only. */
 export const PAY_TREASURER = {
   venmoHandle: '@Patrick-Bieser-1',

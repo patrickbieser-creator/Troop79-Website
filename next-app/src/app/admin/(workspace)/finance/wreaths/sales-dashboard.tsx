@@ -81,7 +81,11 @@ export function SalesDashboardView({ d }: { d: SalesDashboard }) {
     <>
       <div className={styles.stats}>
         <Stat label="Wreath sales" value={fmtMoney2(t.sales)} sub={`${plural(t.orders, 'order')} · ${plural(t.items, 'item')}${t.donated ? ` (${t.donated} donated)` : ''}`} />
-        <Stat label="Collected" value={fmtMoney2(t.collected)} sub={t.owed > 0 ? `${fmtMoney2(t.owed)} still owed` : 'nothing owed'} />
+        <Stat
+          label="Collected"
+          value={fmtMoney2(t.collected)}
+          sub={[t.owed > 0 ? `${fmtMoney2(t.owed)} still owed` : 'nothing owed', t.shortAccepted > 0 && `${fmtMoney2(t.shortAccepted)} accepted short`].filter(Boolean).join(' · ')}
+        />
         <Stat label="Profit (est.)" value={fmtMoney2(t.profit)} sub={`scouts ${fmtMoney2(t.scoutShare)} · troop ${fmtMoney2(t.troopShare)}`} />
         <Stat label="Scouts selling" value={`${t.sellersSelling} of ${t.sellersActive}`} sub={t.sellersActive - t.sellersSelling > 0 ? `${t.sellersActive - t.sellersSelling} with no orders yet` : 'every seller has an order'} />
       </div>

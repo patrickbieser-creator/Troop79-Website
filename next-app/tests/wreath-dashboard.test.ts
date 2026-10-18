@@ -82,6 +82,21 @@ describe('buildSalesDashboard totals', () => {
     expect([d.totals.collected, d.totals.owed]).toEqual([52, 30]);
   });
 
+  // Patrick, 2026-10-18: an order accepted a little short counts what actually came in.
+  it('Dashboard_ShortPaidOrder_CollectedIsWhatCameIn', () => {
+    const d = build([paid('venmo', { paidAmount: 50 })]);
+    expect([d.totals.collected, d.totals.shortAccepted]).toEqual([50, 2]);
+  });
+
+  it('Dashboard_ShortPaidOrder_TheTroopAbsorbsTheShortfall', () => {
+    const d = build([paid('venmo', { paidAmount: 50 })]);
+    expect([d.totals.profit, d.totals.scoutShare, d.totals.troopShare]).toEqual([18, 6, 12]);
+  });
+
+  it('Dashboard_ByMethod_CountsWhatCameIn', () => {
+    expect(build([paid('venmo', { paidAmount: 50 })]).byMethod).toEqual([{ method: 'venmo', orders: 1, amount: 50 }]);
+  });
+
   it('Dashboard_Profit_IsPriceLessCostOnEveryWreath', () => {
     expect(build([order(), order()]).totals.profit).toBe(40);
   });

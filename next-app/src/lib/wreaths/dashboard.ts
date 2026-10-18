@@ -7,7 +7,7 @@
 import { instantToCentral } from '@/lib/dates';
 import type { AdminOrder, AdminSeller } from './admin-data';
 import { isCounted } from './my-orders';
-import { fromCents, orderProfit, scoutEarnings, toCents } from './rules';
+import { acceptedShort, fromCents, orderProfit, scoutEarnings, toCents } from './rules';
 
 export interface DashTotals {
   orders: number;
@@ -21,8 +21,11 @@ export interface DashTotals {
   deliveryFees: number;
   /** Everything customers owe or paid (order totals). */
   grandTotal: number;
+  /** What actually came in on paid orders (paid_amount), so an order accepted short counts what arrived. */
   collected: number;
   owed: number;
+  /** What the treasurer let go on orders paid a little short — the troop absorbs it, so profit and troopShare drop. */
+  shortAccepted: number;
   profit: number;
   scoutShare: number;
   troopShare: number;
@@ -144,7 +147,9 @@ export function buildSalesDashboard(input: {
   const paidOrders = counted.filter((o) => o.paymentStatus === 'paid');
   const unpaidOrders = counted.filter((o) => o.paymentStatus !== 'paid');
   const lines = counted.flatMap((o) => o.lines);
-  const profit = orderProfit(lines);
+  const shortAccepted = sum(paidOrders.map(acceptedShort));
+  const profit = fromCents(toCents(orderProfit(lines)) - toCents(shortAccepted));
+  const received = (o: AdminOrder) => o.paidAmount ?? o.total;
 
   // Sellers: every active scout (zero rows show who hasn't started), anyone credited who has since gone inactive, and the troop store.
   const byPerson = new Map<number | null, AdminOrder[]>();
@@ -182,7 +187,7 @@ export function buildSalesDashboard(input: {
     itemsBy.set(l.catalogNumber, row);
   }
 
-  const methods = slices(paidOrders, (o) => o.paidMethod ?? 'other', (o) => o.total).map((s) => ({ method: s.key as string, orders: s.orders, amount: s.amount }));
+  const methods = slices(paidOrders, (o) => o.paidMethod ?? 'other', received).map((s) => ({ method: s.key as string, orders: s.orders, amount: s.amount }));
   if (unpaidOrders.length) methods.push({ method: 'unpaid', orders: unpaidOrders.length, amount: sum(unpaidOrders.map((o) => o.total)) });
 
   const oldest = unpaidOrders.reduce<number | null>((min, o) => {
@@ -201,8 +206,9 @@ export function buildSalesDashboard(input: {
       gifts: sum(counted.map((o) => o.gift)),
       deliveryFees: sum(counted.map((o) => o.deliveryFee)),
       grandTotal: sum(counted.map((o) => o.total)),
-      collected: sum(paidOrders.map((o) => o.total)),
+      collected: sum(paidOrders.map(received)),
       owed: sum(unpaidOrders.map((o) => o.total)),
+      shortAccepted,
       profit,
       scoutShare: scoutShareTotal,
       troopShare: fromCents(toCents(profit) - toCents(scoutShareTotal)),

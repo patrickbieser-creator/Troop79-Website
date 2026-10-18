@@ -1211,12 +1211,25 @@ export interface ReimbursementQueueRow {
   amount: number;
   description: string;
   status: string;
-  receipt_path: string;
+  /** Null on a request entered from an event's Money tab (no receipt uploaded). */
+  receipt_path: string | null;
   receiptUrl: string | null;
   denial_reason: string | null;
   created_at: string;
   decided_at: string | null;
   paid_at: string | null;
+  /** How a paid request was paid: its linked ledger row's date and method. */
+  payment: { occurredOn: string; method: string | null } | null;
+  /** Approved only: live, unlinked ledger payouts of exactly this amount — the money may already have gone out
+   *  (Patrick, 2026-10-18: Jason Porter's $140.43 was Venmo'd and booked by hand, so Mark paid would book it twice). */
+  paymentCandidates: ReimbursementPaymentCandidate[];
+}
+
+export interface ReimbursementPaymentCandidate {
+  id: number;
+  occurredOn: string;
+  method: string | null;
+  memo: string | null;
 }
 
 /** Every reimbursement request, newest first — the treasurer's queue is
@@ -1232,15 +1245,50 @@ export async function listReimbursementsAction(): Promise<ReimbursementQueueRow[
     .order('created_at', { ascending: false });
   if (error) throw new Error(`listReimbursementsAction failed: ${error.message}`);
 
-  const rows = (data ?? []) as Omit<ReimbursementQueueRow, 'requesterName' | 'receiptUrl'>[];
+  const rows = (data ?? []) as Omit<ReimbursementQueueRow, 'requesterName' | 'receiptUrl' | 'payment' | 'paymentCandidates'>[];
   const personIds = [...new Set(rows.map((r) => r.requester_person_id))];
   const nameMap = await loadNames(supabase, personIds);
+
+  const paidIds = rows.filter((r) => r.status === 'paid').map((r) => r.id);
+  const approvedOutflows = [...new Set(rows.filter((r) => r.status === 'approved').map((r) => -Math.abs(Number(r.amount))))];
+  const [linked, loose] = await Promise.all([
+    paidIds.length
+      ? supabase.from('financial_transactions').select('reimbursement_id, occurred_on, method').in('reimbursement_id', paidIds).is('voided_at', null)
+      : Promise.resolve({ data: [], error: null }),
+    approvedOutflows.length
+      ? supabase
+          .from('financial_transactions')
+          .select('id, occurred_on, method, memo, amount')
+          .in('amount', approvedOutflows)
+          .in('kind', PAYOUT_KINDS)
+          .is('reimbursement_id', null)
+          .is('voided_at', null)
+          .is('wreath_order_id', null)
+          .is('signup_entry_id', null)
+          .is('transfer_group', null)
+          .order('occurred_on', { ascending: false })
+          .limit(200)
+      : Promise.resolve({ data: [], error: null })
+  ]);
+  if (linked.error) throw new Error(`listReimbursementsAction failed: ${linked.error.message}`);
+  if (loose.error) throw new Error(`listReimbursementsAction failed: ${loose.error.message}`);
+  const paymentOf = new Map(
+    ((linked.data ?? []) as { reimbursement_id: number; occurred_on: string; method: string | null }[]).map((t) => [t.reimbursement_id, { occurredOn: t.occurred_on, method: t.method }])
+  );
+  const looseRows = (loose.data ?? []) as { id: number; occurred_on: string; method: string | null; memo: string | null; amount: number }[];
 
   return Promise.all(
     rows.map(async (r) => ({
       ...r,
       requesterName: nameMap.get(r.requester_person_id) ?? `#${r.requester_person_id}`,
-      receiptUrl: await signedReceiptMediaUrl(supabase, r.receipt_path)
+      receiptUrl: r.receipt_path ? await signedReceiptMediaUrl(supabase, r.receipt_path) : null,
+      payment: paymentOf.get(r.id) ?? null,
+      paymentCandidates:
+        r.status === 'approved'
+          ? looseRows
+              .filter((t) => toCentsInt(Number(t.amount)) === -toCentsInt(Number(r.amount)))
+              .map((t) => ({ id: t.id, occurredOn: t.occurred_on, method: t.method, memo: t.memo }))
+          : []
     }))
   );
 }
@@ -1274,6 +1322,67 @@ export async function denyReimbursementAction(id: number, reason: string): Promi
     .eq('status', 'submitted');
   if (error) return { ok: false, error: error.message };
   revalidatePath('/admin/finance/reimbursements');
+  return { ok: true };
+}
+
+const toCentsInt = (dollars: number) => Math.round(dollars * 100);
+/** A row that can be a reimbursement's payout: an expense or reimbursement, not tied to a wreath order, a sign-up
+ *  fee or a transfer (qa-lead 2026-10-18 — same amount alone could pick up someone else's money). */
+const PAYOUT_KINDS = ['expense', 'reimbursement'];
+
+/**
+ * approved -> paid against a payout already in the ledger (Patrick, 2026-10-18): the money went out by hand — Venmo'd
+ * and booked on the Financial Ledger — so Mark paid would book it a second time. Links that row to the request
+ * instead. The row must be live, unlinked, and exactly the request's amount going out; the unique index on
+ * reimbursement_id and the conditional updates keep a race from linking one row to two requests.
+ */
+export async function linkReimbursementPaymentAction(id: number, transactionId: number): Promise<Result> {
+  await requireCapability('finance.manage');
+  const supabase = createAdminClient();
+  const [{ data: req }, { data: txn }] = await Promise.all([
+    supabase.from('reimbursement_requests').select('id, amount, status').eq('id', id).maybeSingle(),
+    supabase
+      .from('financial_transactions')
+      .select('id, amount, kind, occurred_on, voided_at, reimbursement_id, wreath_order_id, signup_entry_id, transfer_group')
+      .eq('id', transactionId)
+      .maybeSingle()
+  ]);
+  if (!req) return { ok: false, error: 'Request not found.' };
+  if (req.status !== 'approved') return { ok: false, error: 'Only an approved request can be marked paid.' };
+  if (!txn || txn.voided_at) return { ok: false, error: 'That ledger row is gone or voided.' };
+  if (txn.reimbursement_id != null) return { ok: false, error: 'That ledger row already pays another reimbursement.' };
+  if (!PAYOUT_KINDS.includes(txn.kind) || txn.wreath_order_id != null || txn.signup_entry_id != null || txn.transfer_group != null) {
+    return { ok: false, error: 'That ledger row is a wreath, sign-up or transfer row, not a payout.' };
+  }
+  if (toCentsInt(Number(txn.amount)) !== -toCentsInt(Number(req.amount))) {
+    return { ok: false, error: `That ledger row isn’t a $${Number(req.amount).toFixed(2)} payout.` };
+  }
+
+  const { data: claimed, error: linkError } = await supabase
+    .from('financial_transactions')
+    .update({ reimbursement_id: id })
+    .eq('id', transactionId)
+    .is('reimbursement_id', null)
+    .is('voided_at', null)
+    .select('id')
+    .maybeSingle();
+  if (linkError || !claimed) return { ok: false, error: linkError?.code === '23505' ? 'This request is already linked to a ledger row.' : 'That ledger row changed. Reload and try again.' };
+
+  const { data: paid } = await supabase
+    .from('reimbursement_requests')
+    .update({ status: 'paid', paid_at: new Date().toISOString() })
+    .eq('id', id)
+    .eq('status', 'approved')
+    .select('id')
+    .maybeSingle();
+  if (!paid) {
+    const { error: revertError } = await supabase.from('financial_transactions').update({ reimbursement_id: null }).eq('id', transactionId).eq('reimbursement_id', id);
+    if (revertError) console.error('[finance] linkReimbursementPayment: request update missed and the link revert failed', id, transactionId, revertError.message);
+    return { ok: false, error: 'The request changed while you were linking it. Reload and try again.' };
+  }
+
+  revalidatePath('/admin/finance/reimbursements');
+  revalidateFinance();
   return { ok: true };
 }
 

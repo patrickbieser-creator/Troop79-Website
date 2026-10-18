@@ -128,6 +128,31 @@ describe('orders', () => {
     expect(rows).toEqual([{ account: 'checking', amount: 52, kind: 'fundraiser', method: 'paypal', activity_label: `Wreaths '${String(fx.year).slice(-2)}`, voided_at: null }]);
   });
 
+  // Patrick, 2026-10-18: W-1022 came in a little short; the order stands, the books record what actually arrived.
+  it('MarkPaid_WithAShortAmount_BooksWhatCameIn_AndKeepsTheOrderTotal', async () => {
+    const order = await makeOrder();
+    const { markPaid } = await actions();
+    expect(await markPaid(order.id, 'venmo', 50)).toMatchObject({ ok: true });
+    const row = (await admin.from('wreath_orders').select('total, paid_amount').eq('id', order.id).single()).data!;
+    const ledger = (await admin.from('financial_transactions').select('amount').eq('wreath_order_id', order.id)).data ?? [];
+    expect([Number(row.total), Number(row.paid_amount), ledger.map((l) => Number(l.amount))]).toEqual([52, 50, [50]]);
+  });
+
+  it('MarkPaid_WithAShortAmount_AuditsTheShortfall', async () => {
+    const order = await makeOrder();
+    const { markPaid } = await actions();
+    await markPaid(order.id, 'cash', 50);
+    const audit = await auditFor('wreath_order', order.id);
+    expect(JSON.stringify(audit[0].details)).toContain('$2.00 short');
+  });
+
+  it('MarkPaid_RefusesAnAmountAboveTheTotalOrNotAboveZero', async () => {
+    const order = await makeOrder();
+    const { markPaid } = await actions();
+    const results = [await markPaid(order.id, 'venmo', 52.01), await markPaid(order.id, 'venmo', 0), await markPaid(order.id, 'venmo', Number.NaN)];
+    expect([results.map((r) => r.ok), (await admin.from('wreath_orders').select('payment_status').eq('id', order.id).single()).data?.payment_status]).toEqual([[false, false, false], 'unpaid']);
+  });
+
   it('MarkPaid_BooksNothing_WhenTheOrderIsCancelled', async () => {
     const order = await makeOrder();
     const { markPaid, cancelOrder } = await actions();

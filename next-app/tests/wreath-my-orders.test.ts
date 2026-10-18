@@ -79,6 +79,12 @@ describe('MyWreathOrders', () => {
     expect([summary.paid, summary.owed]).toEqual([52, 31]);
   });
 
+  // qa-lead 2026-10-18: an order accepted a little short reads the same here as on the admin dashboard.
+  it('MyWreathOrders_Paid_CountsWhatCameIn_OnAShortPaidOrder', () => {
+    const { summary } = buildSellerView(ME, 'Me', [order({ paymentStatus: 'paid', total: 52, paidAmount: 50 })], 0.3);
+    expect(summary.paid).toBe(50);
+  });
+
   it('MyWreathOrders_CountsEveryWreath_IncludingDonated', () => {
     const o = order({
       lines: [

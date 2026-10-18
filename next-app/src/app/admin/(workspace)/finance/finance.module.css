@@ -374,3 +374,9 @@
   pointer-events: none;
   opacity: 0.5;
 }
+
+/* Reimbursements › Mark paid dialog: a ledger payout that already went out, or a new one (2026-10-18). */
+.payChoices { border: 0; margin: 0; padding: 0; display: grid; gap: var(--admin-space-3); }
+.payChoices legend { font-weight: 600; margin-bottom: var(--admin-space-3); }
+.payChoice { display: flex; align-items: center; gap: var(--admin-space-3); }
+.payMethod { padding-left: var(--admin-space-6); }

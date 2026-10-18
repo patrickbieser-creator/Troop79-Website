@@ -28,9 +28,10 @@ vi.mock('../src/app/(public)/member/wreaths/actions', () => ({
   cancelScoutOrderAction: actions.cancel,
   setScoutSettingsAction: actions.settings
 }));
+const adminActions = vi.hoisted(() => ({ markPaid: vi.fn<(...args: unknown[]) => Promise<{ ok: true }>>(async () => ({ ok: true as const })) }));
 vi.mock('../src/app/admin/(workspace)/finance/wreaths/actions', () => ({
   cancelOrder: vi.fn(),
-  markPaid: vi.fn(),
+  markPaid: adminActions.markPaid,
   reassignOrder: vi.fn(),
   refundCardOrder: vi.fn(async () => ({ ok: true })),
   setPaymentNote: vi.fn(async () => ({ ok: true }))
@@ -352,6 +353,43 @@ describe('Admin orders', () => {
     render(<OrdersPanel orders={orders} history={{}} sellers={[]} deliveryZipPrefix="532" />);
     await user.click(screen.getByRole('button', { name: 'W-2001' }));
     expect((screen.getByLabelText('Payment note') as HTMLInputElement).value).toBe('Cash at the 10/18 meeting');
+  });
+});
+
+/* ── Admin › Orders: an order accepted a little short (Patrick, 2026-10-18, W-1022) ── */
+
+describe('Admin orders — amount received', () => {
+  const open = async (o: AdminOrder) => {
+    const user = userEvent.setup();
+    render(<OrdersPanel orders={[o]} history={{}} sellers={[]} deliveryZipPrefix="532" />);
+    await user.click(screen.getByRole('button', { name: o.orderNumber }));
+    return user;
+  };
+
+  it('AdminOrders_MarkPaid_StartsAtTheOrderTotal', async () => {
+    await open(order(1, { source: 'store', total: 52 }));
+    expect((screen.getByLabelText('Amount received') as HTMLInputElement).value).toBe('52.00');
+  });
+
+  it('AdminOrders_MarkPaid_SendsTheAmountReceived', async () => {
+    adminActions.markPaid.mockClear();
+    const user = await open(order(1, { source: 'store', total: 52 }));
+    await user.clear(screen.getByLabelText('Amount received'));
+    await user.type(screen.getByLabelText('Amount received'), '50');
+    await user.click(screen.getByRole('button', { name: 'Mark $50.00 paid' }));
+    expect(adminActions.markPaid.mock.calls[0]).toEqual([1, 'venmo', 50]);
+  });
+
+  it('AdminOrders_MarkPaid_NamesTheShortfallBeforeSaving', async () => {
+    const user = await open(order(1, { source: 'store', total: 52 }));
+    await user.clear(screen.getByLabelText('Amount received'));
+    await user.type(screen.getByLabelText('Amount received'), '50');
+    expect(screen.getByText(/\$2\.00 short/)).toBeTruthy();
+  });
+
+  it('AdminOrders_ShortPaidOrder_ReadsAsAcceptedNotStillDue', async () => {
+    await open(order(1, { source: 'store', total: 52, paymentStatus: 'paid', paidMethod: 'venmo', paidAmount: 50 }));
+    expect([screen.queryByText(/more is due/), screen.getByText(/Accepted \$2\.00 short/)].map(Boolean)).toEqual([false, true]);
   });
 });
 
