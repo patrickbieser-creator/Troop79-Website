@@ -29,6 +29,7 @@ import {
   computeBalance,
   ledgerToCsv,
   editTransactionGuard,
+  eventForLabel,
   validateActivityRename,
   amountRangeOrFilter,
   buildRunningFunds,
@@ -288,6 +289,21 @@ export interface AddTransactionInput {
   activityLabel: string | null;
 }
 
+/** The calendar event a label belongs to, or null (see eventForLabel). The
+ *  link is what the event's Money tab reads; the label stays display text. */
+async function calendarEntryForLabel(supabase: ReturnType<typeof createAdminClient>, label: string | null): Promise<number | null> {
+  const l = label?.trim();
+  if (!l) return null;
+  const [{ data: linked }, { data: titled }] = await Promise.all([
+    supabase.from('financial_transactions').select('calendar_entry_id').eq('activity_label', l).not('calendar_entry_id', 'is', null),
+    supabase.from('calendar_entries').select('id').eq('title', l)
+  ]);
+  return eventForLabel(
+    ((linked ?? []) as { calendar_entry_id: number }[]).map((r) => r.calendar_entry_id),
+    ((titled ?? []) as { id: number }[]).map((r) => r.id)
+  );
+}
+
 /** General single-leg transaction entry — the workhorse of the treasurer
  *  workspace. For a checking<->savings transfer or a scout-account deposit
  *  that also touches the real bank balance, use addTransferAction instead
@@ -310,6 +326,7 @@ export async function addTransactionAction(input: AddTransactionInput): Promise<
     person_id: input.account === 'scout_account' ? input.personId : (input.personId ?? null),
     memo: input.memo,
     activity_label: input.activityLabel,
+    calendar_entry_id: await calendarEntryForLabel(supabase, input.activityLabel),
     source: 'app',
     entered_by_person_id: actor.personId
   });
@@ -378,6 +395,8 @@ export async function editTransactionAction(input: EditTransactionInput): Promis
       person_id: input.account === 'scout_account' ? input.personId : (input.personId ?? null),
       memo: input.memo,
       activity_label: input.activityLabel,
+      // The guard above rules out fee and reimbursement rows, so the label decides.
+      calendar_entry_id: await calendarEntryForLabel(supabase, input.activityLabel),
       updated_at: new Date().toISOString()
     })
     .eq('id', input.id);
@@ -450,6 +469,17 @@ export async function bulkReassignAction(ids: number[], updates: BulkReassignUpd
       error: error.code === '23503' ? 'Not a real Kind — it may have just been removed.' : error.message,
       updated: 0
     };
+  }
+  if (patch.activity_label != null) {
+    // Re-link to the label's event. Fee and reimbursement rows keep theirs —
+    // they are tied to a sign-up or a request, not to the label.
+    const { error: linkError } = await supabase
+      .from('financial_transactions')
+      .update({ calendar_entry_id: await calendarEntryForLabel(supabase, patch.activity_label as string) })
+      .in('id', ids)
+      .is('signup_entry_id', null)
+      .is('reimbursement_id', null);
+    if (linkError) return { ok: false, error: linkError.message, updated: count ?? 0 };
   }
 
   revalidateFinance();
@@ -1531,6 +1561,17 @@ export async function renameActivityAction(sourceLabel: string, targetLabel: str
     .eq('activity_label', sourceLabel)
     .select('id');
   if (error) return { ok: false, error: error.message };
+  // Merged into an event's label: the rows that had no event now get it.
+  // Rows already linked keep their event.
+  const eventId = await calendarEntryForLabel(supabase, targetLabel);
+  if (eventId != null) {
+    const { error: linkError } = await supabase
+      .from('financial_transactions')
+      .update({ calendar_entry_id: eventId })
+      .eq('activity_label', targetLabel.trim())
+      .is('calendar_entry_id', null);
+    if (linkError) return { ok: false, error: linkError.message };
+  }
 
   revalidateFinance();
   revalidatePath('/admin/finance/report');

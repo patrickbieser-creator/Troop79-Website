@@ -338,6 +338,14 @@ export interface EditableRowState {
  *  one-writer actions (recordEventFeePaymentAction, markReimbursementPaidAction)
  *  and must stay in sync with THAT source, not be hand-edited out from
  *  under it. */
+/** The calendar event a ledger label names: the events that rows under the
+ *  label are already linked to, plus events titled exactly that. One event =
+ *  link to it; none or several = leave unlinked (Patrick, 2026-10-17). */
+export function eventForLabel(linkedEventIds: readonly number[], titleEventIds: readonly number[]): number | null {
+  const ids = new Set([...linkedEventIds, ...titleEventIds]);
+  return ids.size === 1 ? [...ids][0] : null;
+}
+
 export function editTransactionGuard(existing: EditableRowState | null): string | null {
   if (!existing) return 'Transaction not found.';
   if (existing.voided_at) return "A voided row can't be edited — record a new transaction instead.";
