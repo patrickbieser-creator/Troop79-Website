@@ -61,6 +61,19 @@ export interface TransactionKindRow {
 export const TRANSACTION_METHODS = ['venmo', 'paypal', 'check', 'cash', 'scout_account', 'bank', 'other', 'card'] as const;
 export type TransactionMethod = (typeof TRANSACTION_METHODS)[number];
 
+/** How the money moved, in plain words — the ledger's Method column and the
+ *  event Money tab (Patrick, 2026-10-17: "How did this money arrive?"). */
+export const TRANSACTION_METHOD_LABEL: Record<TransactionMethod, string> = {
+  venmo: 'Venmo',
+  paypal: 'PayPal',
+  check: 'Check',
+  cash: 'Cash',
+  scout_account: 'Scout account',
+  bank: 'Bank / card',
+  other: 'Other',
+  card: 'Card (Stripe)'
+};
+
 export function isAccount(value: string): value is Account {
   return (ACCOUNTS as readonly string[]).includes(value);
 }

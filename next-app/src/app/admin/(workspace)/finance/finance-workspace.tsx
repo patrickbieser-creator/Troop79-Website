@@ -25,6 +25,7 @@ import Link from 'next/link';
 import {
   ACCOUNTS,
   TRANSACTION_METHODS,
+  TRANSACTION_METHOD_LABEL,
   kindTintIndex,
   type Account,
   type TransactionKind,
@@ -445,6 +446,7 @@ export function FinanceWorkspace({
               <th>Scout/Adult</th>
               <th>Activity</th>
               <th>Memo</th>
+              <th>Method</th>
               <SortHeader
                 label="Amount"
                 sortKey="amount"
@@ -464,7 +466,7 @@ export function FinanceWorkspace({
           <tbody>
             {rows.length === 0 && (
               <tr>
-                <td colSpan={canManage ? 10 : 8} className={styles.empty}>
+                <td colSpan={canManage ? 11 : 9} className={styles.empty}>
                   No transactions match this filter.
                 </td>
               </tr>
@@ -492,6 +494,9 @@ export function FinanceWorkspace({
                 <td>{r.activity_label || '—'}</td>
                 <td>
                   <MemoCell memo={r.memo} />
+                </td>
+                <td className={styles.nowrap}>
+                  {r.method ? (TRANSACTION_METHOD_LABEL[r.method as TransactionMethod] ?? r.method) : '—'}
                 </td>
                 <td className={r.amount < 0 ? `${styles.numCell} ${styles.amountOut}` : styles.numCell}>
                   {r.amount < 0 ? `($${Math.abs(r.amount).toFixed(2)})` : `$${r.amount.toFixed(2)}`}

@@ -106,3 +106,25 @@ describe('FinanceWorkspace — Kind pill tints', () => {
     expect([...pill.classList].some((c) => /kindTint\d+/.test(c))).toBe(false);
   });
 });
+
+describe('FinanceWorkspace — Method column', () => {
+  it('MethodHeader_RendersJustLeftOfAmount', () => {
+    renderTable([row({ id: 1 })]);
+    const headers = screen.getAllByRole('columnheader').map((th) => th.textContent?.trim());
+    expect(headers[headers.indexOf('Amount') - 1]).toBe('Method');
+  });
+
+  it('MethodCell_ShowsHowTheMoneyMoved_InPlainWords', () => {
+    renderTable([row({ id: 1, method: 'venmo' }), row({ id: 2, method: 'card' })]);
+    expect(screen.getByText('Venmo')).toBeTruthy();
+    expect(screen.getByText('Card (Stripe)')).toBeTruthy();
+  });
+
+  it('MethodCell_ShowsADash_WhenNoMethodWasRecorded', () => {
+    renderTable([row({ id: 1, method: null })]);
+    const body = screen.getAllByRole('rowgroup')[1];
+    const headers = screen.getAllByRole('columnheader').map((th) => th.textContent?.trim());
+    const cells = within(within(body).getAllByRole('row')[0]).getAllByRole('cell');
+    expect(cells[headers.indexOf('Method')].textContent?.trim()).toBe('—');
+  });
+});
