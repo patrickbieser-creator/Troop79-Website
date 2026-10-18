@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What I can teach — Scout Troop 79 (prototype)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Lora:ital,wght@0,400;0,600;1,400&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/board.css?v=2">
+</head>
+<body>
+<div id="bar"></div>
+<header id="chrome"></header>
+<main class="page narrow">
+  <div class="protoPanel" id="panel"></div>
+  <p class="kicker"><a href="#" id="back">Members</a></p>
+  <h1>What I can teach</h1>
+  <form id="form" novalidate></form>
+  <div id="live" class="sr" aria-live="polite"></div>
+</main>
+<script src="assets/data.js?v=2"></script>
+<script>
+/* /member/teaching: a standing profile, so it keeps the house edit-form rules
+   (dirty-gated Save + Discard changes). Writes the same rows Admin › Lookups shows;
+   every add/remove lands in the change log, nothing waits for approval. */
+let persona = q('as', 'rachel');
+let draft = null, savedMsg = '';
+const pid = () => PERSONAS[persona].id;
+function reqCounts(sid, skill) {
+  const s = PEOPLE[sid];
+  const rows = ['scout', 'tenderfoot', 'second-class', 'first-class'].flatMap((r) => REQS[r]).filter((r) => r.skill === skill);
+  return { done: rows.filter((r) => hasFinished(s, r)).length, total: rows.length };
+}
+function render() {
+  const p = PEOPLE[pid()];
+  document.getElementById('panel').innerHTML = `<b>Prototype controls</b><label>Signed in as <select id="pSel">${personaOptions(persona)}</select></label>`;
+  document.getElementById('back').href = `member.html?as=${persona}`;
+  const f = document.getElementById('form');
+  if (!canTeachCard(p.id)) {
+    f.innerHTML = `<div class="notice"><p>This page is for adults and Junior Leaders (First Class and up, or 9th grade and up). Keep going: you’ll get here.</p></div>`;
+    return;
+  }
+  const saved = state.skills[p.id] || [];
+  if (!draft) draft = [...saved];
+  const dirty = draft.length !== saved.length || draft.some((x) => !saved.includes(x));
+  const isScout = p.kind === 'scout';
+  const list = isScout ? SKILLS.filter((s) => s.youth) : SKILLS;
+  const rows = list.map((s) => {
+    const on = draft.includes(s.id);
+    let note = '';
+    if (!isScout && !s.youth) note = `<span class="note">${adultOnlyNote(s.id)}</span>`;
+    if (isScout) {
+      const c = reqCounts(p.id, s.id);
+      note = c.total ? `<small>${c.done} of ${c.total} requirements finished${c.done < c.total && on ? '. You can teach the ones you’ve finished.' : ''}${c.done === 0 ? '. Finish one first to teach it in a meeting.' : ''}</small>` : `<small>Not tied to a rank requirement</small>`;
+    }
+    return `<li><label class="check"><input type="checkbox" data-skill="${s.id}"${on ? ' checked' : ''}><span><b>${esc(s.name)}</b>${note ? ' ' + note : ''}</span></label></li>`;
+  }).join('');
+  const counselor = p.kind === 'adult'
+    ? (p.counselor.length ? `<p class="meta" style="font-size:var(--fs-md);color:var(--text-body)">You’re a registered counselor for ${esc(p.counselor.map((id) => MB[id].name).join(', '))}.</p>` : `<p class="meta">You’re not registered as a merit badge counselor. That comes from council registration, not from here.</p>`)
+    : '';
+  f.innerHTML = `<p class="lede">Check what you can teach at a troop meeting. ${isScout ? 'As a Junior Leader you can teach younger scouts the skills you’ve finished yourself.' : 'Leaders use this to match you with what scouts ask for.'}</p>
+    ${isScout ? `<p class="meta">Woods Tools, Fire Safety and Aquatics are taught by adults (Guide to Safe Scouting), and so is First Aid (troop rule).</p>` : ''}
+    <ul class="skillList" aria-label="Skills">${rows}</ul>
+    ${p.kind === 'adult' ? `<h2>Merit badge counselor</h2>${counselor}` : ''}
+    <div class="saveBar">
+      <button type="submit" class="btn primary${dirty ? '' : ' idle'}">${dirty ? 'Save changes' : 'Save'}</button>
+      ${dirty ? `<button type="button" class="linkBtn" id="discard">Discard changes</button>` : ''}
+      <span class="state${savedMsg && !dirty ? ' ok' : ''}">${dirty ? 'Unsaved changes' : savedMsg || 'Changes count right away. Leaders see a list of them.'}</span>
+    </div>`;
+}
+document.addEventListener('change', (e) => {
+  if (e.target.id === 'pSel') { persona = e.target.value; draft = null; savedMsg = ''; setParam('as', persona); render(); return; }
+  if (e.target.dataset.skill) {
+    const id = e.target.dataset.skill;
+    draft = e.target.checked ? [...draft, id] : draft.filter((x) => x !== id);
+    savedMsg = ''; const fid = id; render(); document.querySelector(`[data-skill="${fid}"]`).focus();
+  }
+});
+document.addEventListener('click', (e) => {
+  if (e.target.id === 'discard') { draft = null; savedMsg = ''; render(); announce('Changes discarded.'); }
+});
+document.getElementById('form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const saved = state.skills[pid()] || [];
+  const dirty = draft.length !== saved.length || draft.some((x) => !saved.includes(x));
+  if (!dirty) { announce('Nothing to save.'); return; }
+  const { added, removed } = setSkills(pid(), draft, 'member', pid());
+  draft = null; savedMsg = `Saved. ${[added.length ? 'Added ' + added.map((x) => SKILL[x].name).join(', ') : '', removed.length ? 'removed ' + removed.map((x) => SKILL[x].name).join(', ') : ''].filter(Boolean).join('; ')}.`;
+  render(); announce(savedMsg);
+});
+document.getElementById('bar').innerHTML = protoBar('/member/teaching. Saving writes the change log that Admin › Lookups shows.');
+document.getElementById('chrome').innerHTML = siteChrome('Members');
+wireReset(() => { draft = null; render(); });
+render();
+</script>
+</body>
+</html>

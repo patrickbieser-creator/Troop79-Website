@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Meeting board prototypes — Troop 79</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Lora:ital,wght@0,400;0,600;1,400&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/board.css?v=2">
+</head>
+<body>
+<div id="bar"></div>
+<header id="chrome"></header>
+<main class="page">
+  <p class="kicker">Prototypes</p>
+  <h1>Meeting Requests &amp; Teaching Offers</h1>
+  <p class="lede" style="max-width:75ch">Plans/Meeting-Requests-And-Teaching-Offers.md, as clickable screens. One set of sample data (20 scouts, 8 adults) runs every screen, and it is shared: a pick made on a member page shows up on the admin board, the editor tray and the TV. Prototype “today” is Thursday, October 29, 2026. The first link in each walkthrough resets the data.</p>
+
+  <h2>Walkthrough 1 · A regular week (Sunday, November 1)</h2>
+  <ol class="steps">
+    <li><h3>The board opens after last Sunday</h3><p>Picks nobody taught on Oct 25 are already in each scout’s tray, keeping the date they were first asked (“from Oct 25”).</p>
+      <div class="links"><a href="meeting.html?as=finn&m=nov1&fresh=1">Finn’s page, fresh data</a></div></li>
+    <li><h3>The Bugle links families to the member page</h3><p>The “Sunday’s meeting” card shows live state on its face (“Coming · 3 picks”). Adults and Junior Leaders also get “What I can teach”.</p>
+      <div class="links"><a href="member.html?as=finn">As Finn</a><a href="member.html?as=rachel">As Rachel P (3 scouts)</a><a href="member.html?as=vest">As Mr. Vest</a></div></li>
+    <li><h3>Scouts and parents pick</h3><p>Coming / Not sure yet / Can’t make it saves on tap. Up to 5 picks, optional order with ↑↓, friends’ names, teacher tags, outing-only rows greyed. Try a 6th pick.</p>
+      <div class="links"><a href="meeting.html?as=finn&m=nov1">Finn (scout)</a><a href="meeting.html?as=rachel&m=nov1">Rachel P picks for Finn, Owen, Theo</a><a href="meeting.html?as=theo&m=nov1">Theo (Star: nothing left at a meeting)</a><a href="meeting.html?as=leo&m=nov1">Leo (new scout)</a></div></li>
+    <li><h3>Adults and Junior Leaders commit or post offers</h3><p>“Scouts are asking for these” first, “I’ll teach this” (2 at most, try a 3rd), “Offer something” as a skill, a requirement or anything else, across several dates.</p>
+      <div class="links"><a href="meeting.html?as=rachel&m=nov1#teach">Rachel P (parent, no leader role)</a><a href="meeting.html?as=vest&m=nov1">Mr. Vest</a><a href="meeting.html?as=grace&m=nov1">Grace H (Junior Leader)</a><a href="meeting.html?as=ruiz&m=nov1">Jorge R (no skills yet)</a><a href="teaching.html?as=rachel">What I can teach: adult</a><a href="teaching.html?as=grace">Junior Leader</a></div></li>
+    <li><h3>A leader watches This Sunday and recruits</h3><p>Live counts, the match by block, wanted-no-teacher with weeks asked and who could teach it, offered-no-takers, not sure yet, coming with nothing, no answer. Names open edit-on-behalf. Self-service skill edits raise an admin-home row.</p>
+      <div class="links"><a href="admin-plan.html?m=nov1">This Sunday</a><a href="meeting.html?as=leader&for=s-isaac&m=nov1">Enter picks for Isaac T</a><a href="meeting.html?as=leader&for=s-ben&m=nov1">Commit Ben A to teach lashings</a><a href="admin-home.html">Admin home alert</a><a href="admin-lookups.html">Lookups › Recent changes</a></div></li>
+    <li><h3>Sunday afternoon: live matching</h3><p>Every change rematches. Open the TV in another window and simulate sign-ups.</p>
+      <div class="links"><a href="admin-plan.html?m=nov1&when=sun">This Sunday at 4:10</a><a href="board.html?m=nov1&when=sun">Meeting display</a></div></li>
+    <li><h3>5:30 soft close</h3><p>Nothing tells anyone they’re late. Scouts see “This week’s plan is set. You can still tell us you’re coming.”</p>
+      <div class="links"><a href="meeting.html?as=finn&m=nov1&when=set">Finn at 5:45</a></div></li>
+    <li><h3>The leader promotes matched sessions</h3><p>The existing meeting editor; the tray now holds the live match. “Add all”, then Publish. If the board changes after you add, the card says so.</p>
+      <div class="links"><a href="admin-editor.html?m=nov1&when=set&unpublish=nov1">Meeting editor</a></div></li>
+    <li><h3>The published agenda</h3><p>Families see sessions, teachers and names on the public meeting page; each scout sees which pick they got.</p>
+      <div class="links"><a href="agenda.html?m=nov1&publish=nov1">Public meeting page</a><a href="meeting.html?as=finn&m=nov1&publish=nov1">Finn: “You’re in First aid, your #2…”</a><a href="meeting.html?as=rachel&m=nov1&publish=nov1">Rachel’s view</a></div></li>
+    <li><h3>The TV at the meeting</h3><p>A column per block, teacher then names, a quiet strip for what’s unmatched. Try “Lose connection”.</p>
+      <div class="links"><a href="board.html?m=nov1&when=live">Meeting display, 6:42</a></div></li>
+    <li><h3>After the meeting</h3><p>Taught picks drop off; the rest wait. Nov 8 is a merit badge night and Nov 15 is closed, so they come back on Nov 29. Nov 29 also shows the “no teachers yet” state.</p>
+      <div class="links"><a href="meeting.html?as=finn&m=nov29&publish=nov1">Finn on Nov 29</a><a href="meeting.html?as=finn&m=nov15">Nov 15: closed</a></div></li>
+  </ol>
+
+  <h2>Walkthrough 2 · A merit badge night (Sunday, November 8: Cooking)</h2>
+  <ol class="steps mb">
+    <li><h3>The leader sets the board</h3><p>Rank / Merit badge / Closed, the badge, stations with optional locations; rotations = stations. Badges with no requirements are listed but can’t be chosen, with the reason. Non-meeting entries default to closed.</p>
+      <div class="links"><a href="admin-setup.html?m=nov8&fresh=1">Board setup, Nov 8 (fresh data)</a><a href="admin-setup.html?m=nov14">An event: closed by default</a></div></li>
+    <li><h3>Teachers commit per station</h3><p>A teacher who isn’t a Cooking counselor can teach; the sign-off note says so.</p>
+      <div class="links"><a href="meeting.html?as=vest&m=nov8">Mr. Vest</a><a href="meeting.html?as=rachel&m=nov8#teach">Rachel P</a></div></li>
+    <li><h3>Scouts see no pick list</h3><p>“Merit badge night: Cooking. You’ll be assigned a rotation.” Picks are held for next time. Scouts who have the badge are told they’ll help.</p>
+      <div class="links"><a href="meeting.html?as=finn&m=nov8">Finn</a><a href="meeting.html?as=maya&m=nov8">Maya (has Cooking)</a></div></li>
+    <li><h3>The matcher drafts groups; an adult rearranges</h3><p>Patrols together, sizes balanced, finished stations skipped. Drag, or “Move to” on any device. Place badge holders as helpers or on other work.</p>
+      <div class="links"><a href="admin-plan.html?m=nov8">This Sunday, MB mode</a><a href="admin-rotations.html?m=nov8">Rotation editor</a></div></li>
+    <li><h3>Published: each scout gets a group and a schedule</h3><p>Lucas G finished two stations already, so those rounds say “Free: help out”.</p>
+      <div class="links"><a href="meeting.html?as=finn&m=nov8&publish=nov8">Finn’s group</a><a href="agenda.html?m=nov8&publish=nov8">Public page</a></div></li>
+    <li><h3>The TV: station grid with Now / Next</h3>
+      <div class="links"><a href="board.html?m=nov8&when=live">Meeting display, rotation 2</a><a href="board.html?m=nov15">A closed meeting</a></div></li>
+  </ol>
+
+  <h2>Every screen</h2>
+  <ul class="screens">
+    <li class="card"><a href="member.html"><strong>/member</strong><span>Grid with the two new cards.</span></a></li>
+    <li class="card"><a href="meeting.html"><strong>/member/meeting</strong><span>Scout, parent, adult, Junior Leader; rank, MB, closed; before, after 5:30, published. Controls at the top.</span></a></li>
+    <li class="card"><a href="teaching.html"><strong>/member/teaching</strong><span>What I can teach: adult and Junior Leader, dirty-gated Save.</span></a></li>
+    <li class="card"><a href="meeting.html?as=leader&for=s-finn"><strong>Edit on behalf</strong><span>The member page, entered by a leader, with attribution.</span></a></li>
+    <li class="card"><a href="admin-plan.html"><strong>Admin › Meeting Plan</strong><span>This Sunday (new first tab), Group Sessions, By Scout, Teaching Roster.</span></a></li>
+    <li class="card"><a href="admin-setup.html"><strong>Board setup</strong><span>Per calendar entry: mode, blocks, badge, stations.</span></a></li>
+    <li class="card"><a href="admin-rotations.html"><strong>Rotation editor</strong><span>Merit badge night groups and badge holders.</span></a></li>
+    <li class="card"><a href="admin-editor.html"><strong>Meeting editor</strong><span>Candidate tray from the live match, promote, publish.</span></a></li>
+    <li class="card"><a href="admin-lookups.html"><strong>Admin › Lookups</strong><span>Teaching skills keyed to people; Recent changes with Undo / Mark reviewed.</span></a></li>
+    <li class="card"><a href="admin-home.html"><strong>Admin home</strong><span>“2 teaching-skill changes to look at”.</span></a></li>
+    <li class="card"><a href="agenda.html"><strong>Public meeting page</strong><span>The agenda after publish.</span></a></li>
+    <li class="card"><a href="board.html"><strong>/meetings/&lt;date&gt;/board</strong><span>The TV display: rank, MB rotations, stale, closed.</span></a></li>
+  </ul>
+</main>
+<script src="assets/data.js?v=2"></script>
+<script>
+document.getElementById('bar').innerHTML = protoBar('Meeting Requests &amp; Teaching Offers. Static HTML; sample data in your browser only.');
+document.getElementById('chrome').innerHTML = siteChrome('');
+wireReset(() => { document.querySelector('[data-reset]').textContent = 'Reset done'; });
+</script>
+</body>
+</html>

@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Board setup — Admin (prototype)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/board.css?v=2">
+</head>
+<body class="admin">
+<div id="bar"></div>
+<header id="chrome"></header>
+<main class="adminPage">
+  <div class="headRow"><div><p class="crumbs"><a href="#">Calendar</a> › <span id="crumbEntry"></span></p><h1>Board setup</h1></div>
+    <div class="headActions"><a href="#" id="toBoard">This Sunday board</a></div></div>
+  <div class="aGrid2">
+    <div><div class="panelHead"><h2>Upcoming calendar entries</h2><span class="meta">no row = default</span></div><div class="aCard scrollX" id="list"></div>
+      <p class="panelNote" style="margin-top:10px">Troop meetings default to a rank board. Everything else (events, outings, parties) defaults to closed. On the real site this form is the Board tab of a calendar entry.</p></div>
+    <form id="form" novalidate></form>
+  </div>
+  <div id="live" class="sr" aria-live="polite"></div>
+</main>
+<script src="assets/data.js?v=2"></script>
+<script>
+let m = q('m', 'nov8');
+let draft = null, errs = {}, savedMsg = '';
+const clone = (o) => JSON.parse(JSON.stringify(o));
+function current() { const b = boardFor(m); return { mode: b.mode, blocks: b.blocks, mbId: b.mbId || '', stations: clone(b.stations || []) }; }
+function isDirty() { return JSON.stringify(draft) !== JSON.stringify(current()); }
+function boardLabel(id) { const b = boardFor(id); return b.mode === 'closed' ? `Closed${b.isDefault ? ' (default)' : ''}` : b.mode === 'rank' ? `Rank · ${plural(b.blocks, 'block')}${b.isDefault ? ' (default)' : ''}` : `Merit badge · ${MB[b.mbId].name}`; }
+function renderList() {
+  document.getElementById('list').innerHTML = `<table class="tbl"><thead><tr><th>Date</th><th>Entry</th><th>Board</th></tr></thead><tbody>${MEETINGS.filter((x) => !x.past).map((x) => `<tr class="${x.id === m ? 'sel' : ''}"><td class="mono" style="white-space:nowrap">${x.short}</td><td><a href="?m=${x.id}" data-pick="${x.id}">${esc(x.title)}</a><br><span class="meta">${x.kind === 'meeting' ? 'Troop meeting' : 'Event'}</span></td><td>${boardLabel(x.id)}</td></tr>`).join('')}</tbody></table>`;
+}
+function picksCount() { return Object.values(state.picks[m] || {}).reduce((n, l) => n + l.length, 0); }
+function renderForm() {
+  if (!draft) draft = current();
+  const d = draft; const meet = MEETING[m]; const dirty = isDirty();
+  document.getElementById('crumbEntry').textContent = `${meet.short} · ${meet.title}`;
+  document.getElementById('toBoard').href = `admin-plan.html?m=${m}`;
+  const badgeOpts = MBS.map((b) => `<option value="${b.id}"${d.mbId === b.id ? ' selected' : ''}${b.hasReqs ? '' : ' disabled'}>${esc(b.name)}${b.hasReqs ? '' : ' (no requirements entered)'}</option>`).join('');
+  const reqs = d.mbId ? mbReqs(d.mbId) : [];
+  const stations = d.stations.map((st, i) => `<div class="aCard pad" style="margin-bottom:8px${errs['st' + i] ? ';outline:2px solid var(--status-danger)' : ''}">
+      <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+        <div class="field" style="flex:2 1 180px"><label for="stt${i}">Station ${i + 1}</label><input type="text" id="stt${i}" data-st="${i}" data-k="title" value="${esc(st.title)}"></div>
+        <div class="field" style="flex:1 1 130px"><label for="stl${i}">Where <span class="opt">(optional)</span></label><input type="text" id="stl${i}" data-st="${i}" data-k="loc" value="${esc(st.loc || '')}"></div>
+        <button type="button" class="linkBtn danger" data-rmst="${i}">Remove</button>
+      </div>
+      <div class="fieldLabel" style="margin:8px 0 2px">Requirements</div>
+      <div class="chips">${reqs.map((r) => `<label class="chip"><input type="checkbox" data-streq="${i}" data-fid="req-${i}-${r.code}" value="${r.code}"${st.reqs.includes(r.code) ? ' checked' : ''}> ${r.code}. ${esc(r.label)}</label>`).join('')}</div>
+      ${errs['st' + i] ? `<p class="badNote">${errs['st' + i]}</p>` : ''}</div>`).join('');
+  const n = d.stations.length;
+  const warnClose = d.mode !== 'rank' && boardFor(m).mode === 'rank' && picksCount() ? `<p class="notice warn" style="margin-top:8px">${plural(picksCount(), 'pick')} on this board now. They aren’t lost: they carry to the next rank board with their first-asked dates.</p>` : '';
+  document.getElementById('form').innerHTML = `<div class="formPanel">
+    <div class="fpHead"><h3>${esc(meet.label)} · ${esc(meet.title)}</h3><span class="meta">${meet.kind === 'meeting' ? 'Troop meeting' : 'Event'}</span></div>
+    <div class="fieldLabel" style="margin-bottom:4px">Board</div>
+    <div class="seg" role="group" aria-label="Board mode">${[['rank', 'Rank'], ['merit_badge', 'Merit badge'], ['closed', 'Closed']].map(([k, l]) => `<button type="button" data-mode="${k}" data-fid="mode-${k}" aria-pressed="${d.mode === k}">${l}</button>`).join('')}</div>
+    <p class="meta" style="margin:6px 0 0">${d.mode === 'rank' ? 'Scouts pick up to 5 rank or merit badge items; the matcher builds sessions.' : d.mode === 'merit_badge' ? 'One badge, run as stations. Every scout who comes is put in a rotation; no picks.' : 'No board, no matching. For campout prep, parties, outside clinics.'}</p>
+    ${warnClose}
+    ${d.mode === 'rank' ? `<div class="field" style="margin-top:12px;max-width:220px"><label for="blocks">Teaching blocks</label><select id="blocks" data-fid="blocks">${[1, 2, 3].map((x) => `<option value="${x}"${d.blocks === x ? ' selected' : ''}>${x}${x === 3 ? ' (rare, on purpose)' : ''}</option>`).join('')}</select></div>
+      <p class="meta">A scout is matched to at most 2 topics, even with 3 blocks.</p>` : ''}
+    ${d.mode === 'merit_badge' ? `<div class="field${errs.mb ? ' badBox' : ''}" style="margin-top:12px;max-width:360px"><label for="mb">Badge</label><select id="mb" data-fid="mb"><option value="">Choose a badge…</option>${badgeOpts}</select></div>
+      ${errs.mb ? `<p class="badNote">${errs.mb}</p>` : ''}
+      <p class="meta">Badges with no requirements entered can’t be a merit badge night: there is nothing to build stations from. Enter them in Lookups › Merit badges first.</p>
+      ${d.mbId ? `<div class="panelHead"><h2>Stations</h2><span class="meta">${n ? `${plural(n, 'rotation')}${n ? ', about ' + (n >= 4 ? 18 : 24) + ' minutes each' : ''}` : ''}</span></div>
+      ${stations || '<p class="meta">No stations yet. Most nights use 3 or 4.</p>'}
+      ${errs.stations ? `<p class="badNote">${errs.stations}</p>` : ''}
+      <button type="button" class="btn add" id="addSt"${n >= 6 ? '' : ''}>+ Add station</button>` : ''}` : ''}
+    </div>
+    <div class="stickyBar">
+      <button type="submit" class="btn primary${dirty ? '' : ' idle'}">${dirty ? 'Save board' : 'Save'}</button>
+      ${dirty ? '<button type="button" class="linkBtn" id="discard">Discard changes</button>' : ''}
+      <span class="state${savedMsg && !dirty ? ' ok' : ''}">${dirty ? 'Unsaved changes' : savedMsg || 'No changes'}</span>
+    </div>`;
+}
+function render() { keepFocus(() => { renderList(); renderForm(); }); }
+function readInputs() {
+  document.querySelectorAll('[data-st]').forEach((el) => { draft.stations[+el.dataset.st][el.dataset.k] = el.value; });
+}
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('[data-pick]');
+  if (a) { e.preventDefault(); if (draft && isDirty() && !confirm('Discard unsaved changes to this board?')) return; m = a.dataset.pick; draft = null; errs = {}; savedMsg = ''; setParam('m', m); render(); return; }
+  const t = e.target.closest('button'); if (!t) return;
+  if (t.dataset.mode) { readInputs(); draft.mode = t.dataset.mode; errs = {}; render(); return; }
+  if (t.dataset.rmst) { readInputs(); draft.stations.splice(+t.dataset.rmst, 1); errs = {}; render(); return; }
+  if (t.id === 'addSt') { readInputs(); if (draft.stations.length >= 6) { errs.stations = 'Six stations is the most a meeting can rotate through.'; render(); return; } draft.stations.push({ title: '', reqs: [], loc: '' }); render(); const el = document.getElementById('stt' + (draft.stations.length - 1)); if (el) el.focus(); return; }
+  if (t.id === 'discard') { draft = null; errs = {}; render(); announce('Changes discarded.'); }
+});
+document.addEventListener('change', (e) => {
+  const el = e.target;
+  if (el.id === 'blocks') { draft.blocks = +el.value; render(); }
+  if (el.id === 'mb') { readInputs(); draft.mbId = el.value; draft.stations = []; errs = {}; render(); }
+  if (el.dataset.streq !== undefined) { readInputs(); const st = draft.stations[+el.dataset.streq]; st.reqs = el.checked ? [...st.reqs, el.value].sort() : st.reqs.filter((x) => x !== el.value); render(); }
+});
+document.addEventListener('input', (e) => { if (e.target.dataset.st !== undefined) { readInputs(); const bar = document.querySelector('.stickyBar'); if (bar) { const fid = e.target.id; const pos = e.target.selectionStart; renderForm(); const x = document.getElementById(fid); x.focus(); x.setSelectionRange(pos, pos); } } });
+document.getElementById('form').addEventListener('submit', (e) => {
+  e.preventDefault(); readInputs(); errs = {};
+  if (!isDirty()) { announce('Nothing to save.'); return; }
+  const d = draft;
+  if (d.mode === 'merit_badge') {
+    if (!d.mbId) errs.mb = 'Choose the badge for this night.';
+    else if (d.stations.length < 2) errs.stations = 'Add at least 2 stations so groups have somewhere to rotate.';
+    d.stations.forEach((st, i) => { const miss = []; if (!st.title.trim()) miss.push('a name'); if (!st.reqs.length) miss.push('at least one requirement'); if (miss.length) errs['st' + i] = `Station ${i + 1} needs ${miss.join(' and ')}.`; });
+  }
+  if (Object.keys(errs).length) { render(); announce('Can’t save yet: ' + Object.values(errs).join(' ')); return; }
+  state.boards[m] = clone(d); if (state.rotations[m] && d.mode === 'merit_badge') delete state.rotations[m];
+  save(); draft = null; savedMsg = 'Saved.'; render(); announce('Saved.');
+});
+document.getElementById('bar').innerHTML = protoBar('Board setup for one calendar entry: mode, blocks, merit badge stations.');
+document.getElementById('chrome').innerHTML = adminChrome('Calendar');
+wireReset(() => { draft = null; render(); });
+render();
+</script>
+</body>
+</html>

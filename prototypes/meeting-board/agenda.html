@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Troop Meeting — Scout Troop 79 (prototype)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Lora:ital,wght@0,400;0,600;1,400&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/board.css?v=2">
+</head>
+<body>
+<div id="bar"></div>
+<header id="chrome"></header>
+<main class="page narrow">
+  <p class="kicker"><a href="#">Calendar</a> · Troop Meeting</p>
+  <h1 id="h1"></h1>
+  <div id="content"></div>
+</main>
+<script src="assets/data.js?v=2"></script>
+<script>
+/* The public meeting page (/events/<id>, the meeting template). Unchanged layout; the
+   agenda's skill sessions now arrive from the board via the editor tray. */
+const m = q('m', 'nov1');
+function render() {
+  const meet = MEETING[m]; const b = boardFor(m); const list = state.promoted[m] || [];
+  document.getElementById('h1').textContent = meet.title;
+  const glance = `<div class="glance"><div><div class="day">${meet.day}</div><div class="date">${meet.label.split(', ')[1]}</div><div class="meta">${MEETING_TIME}</div></div>
+    <dl><dt>Where</dt><dd>${MEETING_PLACE}</dd><dt>Uniform</dt><dd>Class A</dd><dt>Snack</dt><dd>Owls patrol</dd><dt>Cleanup</dt><dd>Foxes patrol</dd></dl></div>`;
+  if (!state.published[m]) {
+    document.getElementById('content').innerHTML = glance + `<div class="notice"><p>The agenda for this meeting isn’t posted yet. ${b.mode !== 'closed' ? `Scouts can still <a href="meeting.html?as=finn&m=${m}">pick what to work on</a>.` : ''}</p></div>`;
+    return;
+  }
+  const byBlock = {};
+  list.forEach((p) => { (byBlock[p.rot ? 'rot' : p.block] = byBlock[p.rot ? 'rot' : p.block] || []).push(p); });
+  let rows = `<li><span class="tm">6:00</span><div><h3>Opening</h3><p class="sub">Flag ceremony: Hawks patrol</p></div></li><li><span class="tm">6:10</span><div><h3>Announcements</h3><p class="sub">Campout sign-up closes Nov 8. Wreath orders due Nov 10.</p></div></li>`;
+  if (byBlock.rot) {
+    const p = byBlock.rot[0]; const r = rotationsFor(m);
+    rows += `<li><span class="tm">${r.times[0].split('–')[0]}</span><div><h3>${esc(p.title)}</h3><p class="sub">${plural(p.stations.length, 'station')}; groups rotate every ${p.stations.length >= 4 ? 20 : 26} minutes. Your group is on the screen and on your member page.</p>
+      <div class="parallel">${p.stations.map((s, i) => `<div><b>${esc(s.title)}</b><p class="sub" style="margin:2px 0 0">${esc(s.loc)} · ${(p.teachers[i] || []).map((id) => display(id, 'scout')).join(', ') || 'Teacher to be confirmed'}</p></div>`).join('')}</div></div></li>`;
+  }
+  Object.keys(byBlock).filter((k) => k !== 'rot').sort().forEach((k) => {
+    rows += `<li><span class="tm">${BLOCK_TIMES[b.blocks][+k].split('–')[0]}</span><div><h3>Skill sessions</h3><p class="sub">Block ${+k + 1} · ${BLOCK_TIMES[b.blocks][+k]}</p><div class="parallel">${byBlock[k].map((p) => { const st = sessionTitle(p.keys); return `<div><b>${esc(st.title)}</b><p class="sub" style="margin:2px 0 0">${esc(st.code)} · ${esc(display(p.teacher, 'scout'))}</p><p class="sub" style="margin:4px 0 0;color:var(--text-body)">${esc(p.scouts.map((id) => PEOPLE[id].name).join(', '))}</p></div>`; }).join('')}</div></div></li>`;
+  });
+  rows += `<li><span class="tm">7:25</span><div><h3>Closing</h3><p class="sub">Scoutmaster’s minute. Cleanup: Foxes patrol.</p></div></li>`;
+  document.getElementById('content').innerHTML = glance + `<h2>Agenda</h2><ul class="timeline">${rows}</ul>
+    <p class="meta" style="margin-top:var(--sp-6)">Not on a list? Come anyway: a leader will point you to something. The meeting-room screen is at <a href="board.html?m=${m}">troop-79.com/meetings/${meet.date}/board</a>.</p>`;
+}
+document.getElementById('bar').innerHTML = protoBar('Public meeting page after the leader publishes.');
+document.getElementById('chrome').innerHTML = siteChrome('Calendar');
+wireReset(render);
+render();
+window.addEventListener('storage', () => { reloadState(); render(); });
+</script>
+</body>
+</html>

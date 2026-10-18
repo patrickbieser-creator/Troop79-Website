@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agenda editor — Admin (prototype)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/board.css?v=2">
+</head>
+<body class="admin">
+<div id="bar"></div>
+<header id="chrome"></header>
+<main class="adminPage">
+  <div class="protoPanel" id="panel"></div>
+  <div class="headRow">
+    <div><p class="crumbs"><a href="#">Calendar</a> › <a href="#" id="crumbEntry"></a> › Agenda</p><h1 id="title" style="font-family:var(--font-ui);font-size:20px;color:var(--admin-navy)"></h1></div>
+    <div class="headActions" id="headActions"></div>
+  </div>
+  <div class="editorGrid">
+    <div id="left"></div>
+    <aside class="trayAside" id="tray"></aside>
+  </div>
+  <div id="live" class="sr" aria-live="polite"></div>
+</main>
+<script src="assets/data.js?v=2"></script>
+<script>
+/* The existing meeting editor (advancement/meetings/[id]) with the tray fed by the
+   live match. Promoting copies a matched session into the agenda as an editable item;
+   the board is never changed by it, and nothing publishes on its own. */
+let m = q('m', 'nov1');
+const nm = (id) => PEOPLE[id].name;
+function promoted() { return state.promoted[m] = state.promoted[m] || []; }
+function liveCands() {
+  const b = boardFor(m);
+  if (b.mode === 'rank') return matchFor(m).sessions.slice().sort((a, z) => a.block - z.block).map((s) => ({ id: s.id, block: s.block, keys: s.keys, teacher: s.teacher, scouts: s.scouts.map((x) => x.sid), flag: s.counselorFlag }));
+  if (b.mode === 'merit_badge') { const r = rotationsFor(m); return [{ id: 'rotations', block: 0, rot: true, title: `${MB[r.mbId].name} rotations`, scouts: r.groups.flat(), stations: r.stations, teachers: r.stations.map((_, i) => r.teachersAt(i)) }]; }
+  return [];
+}
+function head() {
+  const meet = MEETING[m]; const pub = !!state.published[m];
+  document.getElementById('crumbEntry').textContent = meet.title;
+  document.getElementById('title').textContent = `${meet.title} — ${meet.label}, 2026`;
+  document.getElementById('headActions').innerHTML = `<span class="tag ${pub ? 'ok' : ''}">${pub ? 'published' : 'draft'}</span>
+    <a href="agenda.html?m=${m}" target="_blank" rel="noopener">${pub ? 'Public page ↗' : 'Preview public page ↗'}</a>
+    <button type="button" class="btn ${pub ? 'secondary' : 'primary'}" id="pub">${pub ? 'Unpublish' : 'Publish'}</button>
+    <button type="button" class="btn secondary" style="color:var(--admin-danger-dark)">Delete agenda</button>`;
+}
+function left() {
+  const b = boardFor(m); const list = promoted();
+  const rows = [['6:00', 'Opening', 'Flag ceremony: Hawks patrol'], ['6:10', 'Announcements', 'Campout sign-up closes Nov 8. Wreath orders due Nov 10.']];
+  const agenda = rows.map(([t, ttl, d]) => `<div class="sessRow"><span class="time">${t}</span><span class="body"><span class="ttl">${ttl}</span><div class="m">${esc(d)}</div></span></div>`).join('')
+    + list.map((p, i) => {
+      const time = p.rot ? rotationTimes(p.stations.length)[0].split('–')[0] : BLOCK_TIMES[b.blocks] ? BLOCK_TIMES[b.blocks][p.block].split('–')[0] : '';
+      const st = p.rot ? { title: p.title, code: 'Merit badge' } : sessionTitle(p.keys);
+      return `<div class="sessRow"><span class="time">${time}</span><span class="body"><span class="ttl">${esc(st.title)}<span class="trackBadge">${p.rot ? 'Merit Badge' : 'Open Advancement'}</span></span>
+        <div class="m">${esc(st.code)}${p.rot ? '' : ` · Block ${p.block + 1} · ${esc(nm(p.teacher))}`}</div><div class="m">${p.rot ? p.stations.map((s, si) => `${esc(s.title)} (${esc(s.loc)}): ${(p.teachers[si] || []).map(nm).join(', ') || 'no teacher'}`).join('<br>') : `${plural(p.scouts.length, 'scout')}: ${esc(p.scouts.map(nm).join(', '))}`}</div></span>
+        <span class="headActions"><button type="button" class="btn secondary sm" style="min-height:26px">Edit</button><button type="button" class="btn secondary sm" style="min-height:26px" data-unpromote="${i}">Delete</button></span></div>`;
+    }).join('')
+    + `<div class="sessRow"><span class="time">7:25</span><span class="body"><span class="ttl">Closing</span><div class="m">Scoutmaster’s minute, cleanup: Foxes patrol</div></span></div>`;
+  document.getElementById('left').innerHTML = `
+    <div class="fp"><div class="fpHead"><h3>Logistics</h3><span><button type="button" class="btn primary idle sm">Save</button></span></div>
+      <dl class="logi"><div><dt>Date</dt><dd>${MEETING[m].label} <a href="#">Change on the calendar entry</a></dd></div><div><dt>Time</dt><dd>${MEETING_TIME}</dd></div><div><dt>Uniform</dt><dd>Class A</dd></div>
+      <div><dt>Location</dt><dd>${MEETING_PLACE}</dd></div><div><dt>Snack</dt><dd>Owls patrol</dd></div><div><dt>Cleanup</dt><dd>Foxes patrol</dd></div></dl></div>
+    <div class="fp"><div class="fpHead"><h3>Before the Meeting</h3><button type="button" class="btn add sm">+ Add</button></div><div class="sessRow"><span class="time">5:45</span><span class="body"><span class="ttl">Patrol leaders’ council</span><div class="m">Back room</div></span></div></div>
+    <div class="fp"><div class="fpHead"><h3>Agenda</h3><button type="button" class="btn add sm">+ Add</button></div>${agenda}</div>`;
+}
+function tray() {
+  const cands = liveCands(); const list = promoted();
+  const added = (c) => list.find((p) => p.id === c.id);
+  const notAdded = cands.filter((c) => !added(c));
+  const cards = cands.map((c) => {
+    const p = added(c);
+    const st = c.rot ? { title: c.title, code: 'Merit badge night' } : sessionTitle(c.keys);
+    const changed = p && JSON.stringify(p.scouts) !== JSON.stringify(c.scouts);
+    return `<div class="sess${changed ? ' warn' : ''}"><div class="code">${c.rot ? 'Merit badge' : `Block ${c.block + 1} · ${esc(st.code)}`}</div><div class="ttl">${esc(st.title)}</div>
+      <div class="m">${c.rot ? `${plural(c.stations.length, 'station')} · ${plural(c.scouts.length, 'scout')} in groups` : `Teacher: ${esc(nm(c.teacher))}${c.flag ? ' · <span class="flag">sign-off needs a counselor</span>' : ''}<br>${plural(c.scouts.length, 'scout')}: ${esc(c.scouts.map(nm).join(', '))}`}
+      ${changed ? `<br><span class="flag">The board changed since you added this (${p.scouts.length} → ${c.scouts.length} scouts).</span>` : ''}</div>
+      <div class="foot">${p ? '<span class="added">Added ✓</span>' : '<span></span>'}<button type="button" class="btn ${changed ? 'primary' : 'secondary'} sm" data-promote="${c.id}">${changed ? 'Update agenda item' : p ? 'Add again' : 'Add to agenda'}</button></div></div>`;
+  }).join('');
+  const b = boardFor(m); const mt = b.mode === 'rank' ? matchFor(m) : null;
+  document.getElementById('tray').innerHTML = `<div class="fp"><div class="fpHead"><h3>Plan Suggestions</h3>${notAdded.length > 1 ? `<button type="button" class="btn secondary sm" id="addAll">Add all ${notAdded.length}</button>` : ''}</div>
+    <p class="meta" style="font-size:11.5px">From this week’s board, matched live. Adding copies a session into the agenda as an editable item; the board itself is never changed.</p>
+    <p><span class="liveDot">${state.when === 'set' || state.when === 'live' ? 'Past the 5:30 soft close' : 'Live: still taking sign-ups'}</span></p>
+    ${b.mode === 'closed' ? '<p class="meta">This meeting has no board. Build the agenda by hand.</p>' : cards || '<p class="meta">Nothing matched yet.</p>'}
+    ${mt && mt.wanted.length ? `<p class="meta" style="margin-top:10px">Not here: ${plural(mt.wanted.length, 'request')} with no teacher. <a href="admin-plan.html?m=${m}">See This Sunday</a></p>` : ''}
+    <details style="margin-top:10px"><summary class="meta" style="cursor:pointer">Engine suggestions (ledger only)</summary>
+      <div class="sess empty" style="margin-top:8px"><div class="code">Open advancement</div><div class="ttl">Tenderfoot 6a: Fitness test</div><div class="m">3 scouts need it · no teacher on file</div><div class="foot"><span></span><button type="button" class="btn secondary sm">Add to agenda</button></div></div>
+    </details></div>`;
+}
+function render() { head(); left(); tray(); document.getElementById('panel').innerHTML = `<b>Prototype controls</b><label>Meeting <select id="mSel">${meetingOptions(m, (x) => x.kind === 'meeting')}</select></label><label>When <select id="wSel">${whenOptions()}</select></label>`; }
+function snap(c) { return c.rot ? { ...c } : { id: c.id, block: c.block, keys: c.keys, teacher: c.teacher, scouts: [...c.scouts] }; }
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('button'); if (!t) return;
+  if (t.dataset.promote) {
+    const c = liveCands().find((x) => x.id === t.dataset.promote); const list = promoted();
+    const i = list.findIndex((p) => p.id === c.id);
+    if (i >= 0 && JSON.stringify(list[i].scouts) !== JSON.stringify(c.scouts)) list[i] = snap(c); else list.push(snap(c));
+    save(); announce('Added to the agenda.'); render(); return;
+  }
+  if (t.id === 'addAll') { liveCands().filter((c) => !promoted().some((p) => p.id === c.id)).forEach((c) => promoted().push(snap(c))); save(); announce('All added.'); render(); return; }
+  if (t.dataset.unpromote) { promoted().splice(+t.dataset.unpromote, 1); save(); render(); return; }
+  if (t.id === 'pub') { state.published[m] = !state.published[m]; save(); announce(state.published[m] ? 'Published.' : 'Unpublished.'); render(); }
+});
+document.addEventListener('change', (e) => {
+  if (e.target.id === 'mSel') { m = e.target.value; setParam('m', m); render(); }
+  if (e.target.id === 'wSel') { state.when = e.target.value; save(); render(); }
+});
+document.getElementById('bar').innerHTML = protoBar('The existing meeting editor; the tray now comes from the live match.');
+document.getElementById('chrome').innerHTML = adminChrome('Calendar');
+wireReset(render);
+render();
+window.addEventListener('storage', () => { reloadState(); render(); });
+</script>
+</body>
+</html>

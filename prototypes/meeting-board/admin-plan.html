@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Meeting Plan — Admin (prototype)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/board.css?v=2">
+</head>
+<body class="admin">
+<div id="bar"></div>
+<header id="chrome"></header>
+<main class="adminPage">
+  <div class="protoPanel" id="panel"></div>
+  <div class="headRow">
+    <div><p class="crumbs"><a href="#">Advancement</a> › Meeting Plan</p><h1>Meeting Plan</h1></div>
+    <div class="headActions"><label class="meta" for="mSel">Meeting</label><select id="mSel" style="width:auto"></select></div>
+  </div>
+  <div class="tabs" role="tablist" id="tabs"></div>
+  <div id="content"></div>
+  <div id="live" class="sr" aria-live="polite"></div>
+</main>
+<script src="assets/data.js?v=2"></script>
+<script>
+/* Admin › Advancement › Meeting Plan. "This Sunday" is the new first tab (jenna:
+   consolidate, don't add a 4th tab). Group Sessions becomes read-only matcher output;
+   the meeting editor's tray is the one place a leader promotes. */
+let m = q('m', 'nov1');
+let tab = q('tab', 'board');
+let modeErr = '', savedMode = 0;
+const nm = (id) => PEOPLE[id].name;
+const ob = (id) => `meeting.html?as=leader&for=${id}&m=${m}`;
+const obLink = (id) => `<a href="${ob(id)}" title="Enter for ${esc(nm(id))}">${esc(nm(id))}</a>`;
+const intentMark = (id) => { const v = intentOf(m, id).value; return v ? INTENT_LABEL[v].toLowerCase() : 'no answer'; };
+
+function modeBar() {
+  const b = boardFor(m);
+  const live = state.when === 'set' || state.when === 'live' ? `<span class="liveDot">Live · past the 5:30 soft close, still updating</span>` : `<span class="liveDot">Live · rematches on every sign-up</span>`;
+  return `<div class="modeBar">
+    <label>Board <span class="seg" role="group" aria-label="Board mode">${[['rank', 'Rank'], ['merit_badge', 'Merit badge'], ['closed', 'Closed']].map(([k, l]) => `<button type="button" data-mode="${k}" aria-pressed="${b.mode === k}">${l}</button>`).join('')}</span></label>
+    ${b.mode === 'rank' ? `<label for="blk">Blocks <select id="blk">${[1, 2, 3].map((n) => `<option value="${n}"${b.blocks === n ? ' selected' : ''}>${n}${n === 3 ? ' (on purpose)' : ''}</option>`).join('')}</select></label>` : ''}
+    ${b.mode === 'merit_badge' ? `<span>${esc(MB[b.mbId] ? MB[b.mbId].name : 'No badge chosen')} · ${plural(b.stations.length, 'station')}</span>` : ''}
+    <span class="savedNote${Date.now() - savedMode < 1800 ? ' show' : ''}">Saved</span>
+    <span style="flex:1"></span>
+    ${b.mode !== 'closed' ? live : ''}
+    <a href="admin-setup.html?m=${m}">Board setup</a>
+    <a href="board.html?m=${m}" target="_blank" rel="noopener">Meeting display ↗</a>
+    ${b.mode === 'merit_badge' ? `<a href="admin-rotations.html?m=${m}">Edit rotations</a>` : `<a href="admin-editor.html?m=${m}">Open in meeting editor</a>`}
+  </div>${modeErr ? `<p class="badNote">${modeErr}</p>` : ''}`;
+}
+function kpis(mt) {
+  const c = mt.counts;
+  const cell = (n, l) => `<div class="kpi"><strong>${n}</strong><span>${l}</span></div>`;
+  return `<div class="kpis">${cell(c.coming, 'scouts coming')}${cell(c.undecided, 'not sure yet')}${cell(c.notComing, 'can’t make it')}${cell(c.noAnswer, 'no answer')}${cell(c.adultsComing, 'adults coming')}${cell(c.live, 'sessions matched')}</div>`;
+}
+function sessCard(s, b) {
+  const st = sessionTitle(s.keys); const info = topicInfo(s.keys[0]);
+  const flag = s.counselorFlag ? `<br><span class="flag">Sign-off needs a counselor</span>` : '';
+  return `<div class="sess"><div class="code">${esc(st.code)}${s.offer ? ' · from an offer' : ''}</div><div class="ttl">${esc(st.title)}</div>
+    <div class="m">Teacher: ${obLink(s.teacher)}${s.assist.length ? ' + ' + s.assist.map(obLink).join(', ') : ''}${flag}<br>${plural(s.scouts.length, 'scout')}: ${s.scouts.map((x) => `${esc(nm(x.sid))}${x.placed ? ' (placed)' : x.pickNo ? ` #${x.pickNo}` : ''}`).join(', ')}</div></div>`;
+}
+function rankBoard() {
+  const b = boardFor(m); const mt = matchFor(m);
+  let html = kpis(mt);
+  html += `<div class="aGrid2"><div>
+    <div class="panelHead"><h2>Live match</h2><span class="meta">${mt.counts.picks} picks · at most 2 topics a scout · 8 a session</span></div>
+    <div class="blocks n${b.blocks}">${mt.blocks.map((list, i) => `<div class="blockCol"><h3>Block ${i + 1} · ${BLOCK_TIMES[b.blocks][i]}</h3>${list.map((s) => sessCard(s, b)).join('') || '<div class="sess empty"><div class="m">Nothing matched for this block.</div></div>'}</div>`).join('')}</div>
+    <div class="panelHead"><h2>All topics</h2><span class="meta">${Object.keys(mt.demand).length + mt.offeredNoTakers.length} on the board</span></div>
+    <div class="aCard scrollX"><table class="tbl"><thead><tr><th>Topic</th><th class="r">Wanted</th><th>Teacher</th><th>Status</th><th>Who picked</th></tr></thead><tbody>
+    ${[...Object.keys(mt.demand).map((k) => ({ k, n: mt.demand[k].length })), ...mt.offeredNoTakers.filter((o) => o.keys.length).map((o) => ({ k: o.keys[0], n: 0 }))].sort((a, z) => z.n - a.n).map(({ k, n }) => {
+      const info = topicInfo(k); const s = mt.sessions.find((x) => x.keys.includes(k)); const w = mt.wanted.find((x) => x.key === k);
+      const status = s ? '<span class="tag ok">Matched</span>' : w ? '<span class="tag warn">Wanted, no teacher</span>' : '<span class="tag">Offered, no takers</span>';
+      return `<tr><td><b>${esc(info.label)}</b><br><span class="meta">${esc(info.codeLabel)}</span></td><td class="r">${n}</td><td>${s ? esc(nm(s.teacher)) : (mt.offeredNoTakers.find((o) => o.keys.includes(k)) ? esc(nm(mt.offeredNoTakers.find((o) => o.keys.includes(k)).teacher)) : '—')}</td><td>${status}</td><td class="meta">${(mt.demand[k] || []).map((d) => esc(nm(d.sid))).join(', ')}</td></tr>`;
+    }).join('')}</tbody></table></div>
+  </div><div>
+    <div class="panelHead"><h2>Wanted, no teacher</h2><span class="meta">the recruiting list</span></div>
+    <div class="aCard"><ul class="listRows">${mt.wanted.map((w) => `<li><span class="n">${w.scouts.length}</span><span class="grow"><b>${esc(w.info.label)}</b> <span class="meta">${esc(w.info.codeLabel)} · asked ${plural(w.weeks, 'week')}</span>
+      <small>${esc(w.scouts.map(nm).join(', '))}</small>
+      <small>Can teach it: ${w.qualified.length ? w.qualified.map((x) => `${obLink(x.id)} (${intentMark(x.id)}${x.commits ? `, teaching ${x.commits}` : ''})`).join(', ') : '<b>nobody on file</b>'}</small></span></li>`).join('') || '<li class="meta">Every request has a teacher.</li>'}</ul></div>
+    <div class="panelHead"><h2>Offered, no takers</h2></div>
+    <div class="aCard"><ul class="listRows">${mt.offeredNoTakers.map((o) => `<li><span class="grow"><b>${esc(o.label)}</b> <span class="meta">${esc(o.code)}</span><small>${obLink(o.teacher)} · 0 scouts so far</small></span></li>`).join('') || '<li class="meta">None.</li>'}</ul></div>
+    <div class="panelHead"><h2>Not sure yet</h2></div>
+    <div class="aCard"><ul class="listRows">${mt.undecided.scouts.map((u) => `<li><span class="grow">${obLink(u.id)}<small>${u.placed ? `Placed in ${esc(sessionTitle(u.placed.keys).title)} (engine suggestion)` : 'Nothing live fits yet'}</small></span></li>`).join('')}
+      ${mt.undecided.adults.map((u) => `<li><span class="grow">${obLink(u.id)} <span class="meta">adult</span><small>${u.fits.length ? 'Could take: ' + u.fits.map((k) => esc(topicInfo(k).codeLabel)).join(', ') : 'Nothing wanted is in their skills'}</small></span></li>`).join('') || '<li class="meta">Nobody.</li>'}</ul></div>
+    <div class="panelHead"><h2>Coming with nothing assigned</h2></div>
+    <div class="aCard"><ul class="listRows">${mt.comingNothing.map((c) => `<li><span class="grow">${obLink(c.sid)}<small>${esc(c.fallback)}</small></span></li>`).join('') || '<li class="meta">Everyone coming has something.</li>'}</ul></div>
+    <div class="panelHead"><h2>No answer yet</h2><span class="meta">unknown, not absent</span></div>
+    <div class="aCard pad"><div class="chips">${[...mt.noAnswer.scouts, ...mt.noAnswer.adults].map((id) => `<a class="chip" href="${ob(id)}">${esc(nm(id))}${PEOPLE[id].kind === 'adult' ? ' <span class="p">adult</span>' : ''}</a>`).join('') || '<span class="meta">Everyone has answered.</span>'}</div></div>
+    ${onBehalfPicker()}
+  </div></div>`;
+  return html;
+}
+function onBehalfPicker() {
+  return `<div class="panelHead"><h2>Enter for someone</h2></div><div class="aCard pad"><p class="panelNote">Took a pick or a commitment by phone or text? Open their page; it saves as entered by you.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><select id="obSel" style="width:auto;flex:1" aria-label="Person">${[...SCOUTS, ...ADULTS].map((p) => `<option value="${p.id}">${esc(p.name)}${p.kind === 'adult' ? ' (adult)' : ''}</option>`).join('')}</select><button type="button" class="btn primary" id="obGo">Open</button></div></div>`;
+}
+function mbBoard() {
+  const b = boardFor(m); const rot = rotationsFor(m);
+  const placed = rot.groups.reduce((n, g) => n + g.length, 0);
+  let html = `<div class="kpis">${[[placed, 'in rotations'], [rot.hasBadge.length, 'have the badge'], [rot.notComing.length, 'can’t make it'], [rot.noAnswer.length, 'no answer'], [b.stations.length, 'stations'], [b.stations.filter((_, i) => rot.teachersAt(i).length).length + ' of ' + b.stations.length, 'stations with a teacher']].map(([n, l]) => `<div class="kpi"><strong>${n}</strong><span>${l}</span></div>`).join('')}</div>`;
+  html += `<div class="aGrid2"><div><div class="panelHead"><h2>Stations</h2><a href="admin-setup.html?m=${m}">Change stations</a></div>
+    <div class="aCard scrollX"><table class="tbl"><thead><tr><th>#</th><th>Station</th><th>Where</th><th>Teacher</th></tr></thead><tbody>${b.stations.map((st, i) => {
+      const ts = rot.teachersAt(i);
+      return `<tr><td>${i + 1}</td><td><b>${esc(st.title)}</b><br><span class="meta">${esc(MB[b.mbId].name)} req ${st.reqs.join(', ')}</span></td><td>${esc(st.loc)}</td><td>${ts.length ? ts.map((t) => `${obLink(t)}${needsCounselor(t, { kind: 'mb', mbId: b.mbId }) ? ' <span class="tag warn">sign-off needs a counselor</span>' : ' <span class="tag ok">counselor</span>'}`).join('<br>') : '<span class="tag bad">No teacher yet</span>'}</td></tr>`;
+    }).join('')}</tbody></table></div>
+    <div class="panelHead"><h2>Rotation draft</h2><a href="admin-rotations.html?m=${m}">Edit rotations</a></div>
+    <div class="blocks n4">${rot.groups.map((g, gi) => `<div class="sess"><div class="code">Group ${gi + 1} · starts at ${esc(rot.stations[rot.stationAt(gi, 0)].title)}</div><div class="m">${g.map((id) => esc(nm(id))).join(', ')}</div></div>`).join('')}</div>
+  </div><div>
+    <div class="panelHead"><h2>Has the badge</h2><span class="meta">help teach or other work</span></div>
+    <div class="aCard"><ul class="listRows">${rot.hasBadge.map((id) => { const h = rot.helpers[id]; return `<li><span class="grow">${esc(nm(id))}<small>${h === undefined ? 'Not placed yet' : h === 'other' ? 'Other work' : 'Helper at ' + esc(rot.stations[h].title)}</small></span></li>`; }).join('') || '<li class="meta">Nobody coming has it.</li>'}</ul></div>
+    <div class="panelHead"><h2>No answer yet</h2></div>
+    <div class="aCard pad"><div class="chips">${rot.noAnswer.map((id) => `<a class="chip" href="${ob(id)}">${esc(nm(id))}</a>`).join('') || '<span class="meta">Everyone has answered.</span>'}</div></div>
+    <p class="panelNote" style="margin-top:12px">Rank picks are held tonight and come back at the next regular meeting.</p>
+    ${onBehalfPicker()}
+  </div></div>`;
+  return html;
+}
+function groupSessions() {
+  const b = boardFor(m);
+  if (b.mode !== 'rank') return `<p class="panelNote">Group Sessions shows the rank-mode match. This meeting is ${b.mode === 'closed' ? 'closed' : 'a merit badge night'}.</p>`;
+  const mt = matchFor(m);
+  return `<p class="panelNote">Read-only: what the matcher would run. Promote sessions from the <a href="admin-editor.html?m=${m}">meeting editor’s tray</a>; that is the one place the agenda changes.</p><div class="blocks n${b.blocks}">${mt.blocks.map((l, i) => `<div class="blockCol"><h3>Block ${i + 1} · ${BLOCK_TIMES[b.blocks][i]}</h3>${l.map((s) => sessCard(s, b)).join('')}</div>`).join('')}</div>`;
+}
+function byScout() {
+  const b = boardFor(m); const mt = b.mode === 'rank' ? matchFor(m) : null;
+  return `<div class="aCard scrollX"><table class="tbl"><thead><tr><th>Scout</th><th>Rank</th><th>Coming?</th><th>Picks</th><th>Matched</th><th></th></tr></thead><tbody>${SCOUTS.map((s) => {
+    const it = intentOf(m, s.id); const picks = orderedPicks(picksFor(m, s.id));
+    const got = mt ? (mt.assignment[s.id] || []) : [];
+    return `<tr${it.value === 'not_coming' ? ' class="muted"' : ''}><td><b>${esc(s.name)}</b><br><span class="meta">${s.patrol}</span></td><td>${s.rank ? RANK_NAME[s.rank] : '—'}</td><td>${it.value ? INTENT_LABEL[it.value] + (it.implied ? ' <span class="meta">(picked)</span>' : '') : '<span class="meta">no answer</span>'}</td>
+      <td class="meta">${picks.map((p, i) => `${p.pri ? p.pri + '. ' : ''}${esc(topicInfo(p.key).codeLabel)}${p.by && p.by !== s.id ? ` <i>by ${esc(nm(p.by))}</i>` : ''}`).join('<br>') || '—'}</td>
+      <td>${got.map((g) => esc(sessionTitle(sessionById(m, g.sessionId).keys).title)).join('<br>') || '—'}</td><td><a href="${ob(s.id)}">Enter for</a></td></tr>`;
+  }).join('')}</tbody></table></div>`;
+}
+function roster() {
+  const people = [...ADULTS, ...SCOUTS.filter(isJuniorLeader)];
+  return `<p class="panelNote">Read-only here. <a href="admin-lookups.html">Edit in Lookups</a>.</p><div class="aCard scrollX"><table class="tbl"><thead><tr><th>Person</th><th>Role</th><th>Can teach</th><th>Counselor for</th></tr></thead><tbody>${people.map((p) => `<tr><td><b>${esc(p.name)}</b></td><td>${p.kind === 'adult' ? esc(p.role) : 'Junior Leader'}</td><td>${(state.skills[p.id] || []).map((x) => SKILL[x].name).join(', ') || '<span class="meta">nothing yet</span>'}</td><td>${p.kind === 'adult' ? (p.counselor.map((x) => MB[x].name).join(', ') || '—') : '—'}</td></tr>`).join('')}</tbody></table></div>`;
+}
+function render() {
+  document.getElementById('panel').innerHTML = `<b>Prototype controls</b><label>When <select id="wSel">${whenOptions()}</select></label><button type="button" id="sim">Simulate a scout signing up</button><span id="simMsg"></span>`;
+  document.getElementById('mSel').innerHTML = meetingOptions(m);
+  const tabs = [['board', 'This Sunday'], ['sessions', 'Group Sessions'], ['scouts', 'By Scout'], ['roster', 'Teaching Roster']];
+  document.getElementById('tabs').innerHTML = tabs.map(([k, l]) => `<button type="button" role="tab" class="tab" data-tab="${k}" aria-selected="${tab === k}">${l}</button>`).join('');
+  const b = boardFor(m);
+  let html = '';
+  if (tab === 'board') {
+    html = modeBar();
+    if (b.mode === 'closed') html += `<div class="notice"><p><strong>Closed: no board this week.</strong> ${b.isDefault ? 'Not a troop meeting, so it’s closed by default.' : 'Set by a leader.'} Scouts and adults see “No sign-ups this week.”</p></div>`;
+    else if (b.mode === 'merit_badge') html += mbBoard();
+    else html += rankBoard();
+  } else if (tab === 'sessions') html = groupSessions();
+  else if (tab === 'scouts') html = byScout();
+  else html = roster();
+  document.getElementById('content').innerHTML = html;
+}
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('button'); if (!t) return;
+  if (t.dataset.tab) { tab = t.dataset.tab; setParam('tab', tab); render(); return; }
+  if (t.dataset.mode) {
+    const mode = t.dataset.mode; const cur = boardFor(m); modeErr = '';
+    if (mode === 'merit_badge' && !(cur.mbId && cur.stations && cur.stations.length)) { modeErr = 'A merit badge night needs a badge and stations first. Set them in Board setup.'; render(); return; }
+    state.boards[m] = { ...cur, mode }; delete state.boards[m].isDefault; save(); savedMode = Date.now(); announce('Saved: board mode ' + t.textContent); render(); return;
+  }
+  if (t.id === 'obGo') { location.href = ob(document.getElementById('obSel').value); return; }
+  if (t.id === 'sim') {
+    const pool = SCOUTS.filter((s) => intentOf(m, s.id).value !== 'not_coming' && picksFor(m, s.id).length < 5 && nextRank(s) && (REQS[nextRank(s)] || []).length);
+    if (boardFor(m).mode !== 'rank' || !pool.length) return;
+    const s = pool[Math.floor(Math.random() * pool.length)];
+    const live = matchFor(m).sessions.flatMap((x) => x.keys);
+    const opts = (REQS[nextRank(s)] || []).filter((r) => !hasFinished(s, r) && r.venue !== 'outing' && !picksFor(m, s.id).some((p) => p.key === r.key));
+    const pickR = opts.find((r) => live.includes(r.key)) || opts[0];
+    if (!pickR) return;
+    ensureOwnPicks(m, s.id).push({ key: pickR.key, pri: null, asked: TODAY, by: s.id, note: '' }); save();
+    document.getElementById('simMsg').textContent = `${s.name} picked ${RANK_NAME[pickR.rank]} ${pickR.code}`;
+    render();
+  }
+});
+document.addEventListener('change', (e) => {
+  if (e.target.id === 'mSel') { m = e.target.value; modeErr = ''; setParam('m', m); render(); }
+  if (e.target.id === 'wSel') { state.when = e.target.value; save(); render(); }
+  if (e.target.id === 'blk') { state.boards[m] = { ...boardFor(m), blocks: +e.target.value }; delete state.boards[m].isDefault; save(); savedMode = Date.now(); announce('Saved: ' + e.target.value + ' blocks'); render(); }
+});
+document.getElementById('bar').innerHTML = protoBar('Admin › Advancement › Meeting Plan. Open a member page in another tab and this board updates.');
+document.getElementById('chrome').innerHTML = adminChrome('Meeting Plan');
+wireReset(render);
+render();
+window.addEventListener('storage', () => { reloadState(); render(); });
+</script>
+</body>
+</html>

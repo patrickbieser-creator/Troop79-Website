@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Members — Scout Troop 79 (prototype)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Lora:ital,wght@0,400;0,600;1,400&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/board.css?v=2">
+</head>
+<body>
+<div id="bar"></div>
+<header id="chrome"></header>
+<main class="page">
+  <div class="protoPanel" id="panel"></div>
+  <p class="kicker">Members</p>
+  <h1>Members</h1>
+  <div class="identityRow">
+    <p id="who"></p>
+    <button type="button" class="btn secondary sm signOut">Sign Out</button>
+  </div>
+  <div class="mGrid" id="grid"></div>
+  <p class="meta" style="max-width:62ch">The greyed-out cards aren’t built yet. They’re listed so you can see what’s coming.</p>
+</main>
+<script src="assets/data.js?v=2"></script>
+<script>
+/* /member: the existing link-card grid plus two new cards (jenna: never a stacked page).
+   "Sunday's meeting" carries live state on the card itself so a family can see where
+   they stand without opening it. */
+let persona = q('as', 'finn');
+let m = q('m', 'nov1');
+const CARDS = [
+  { title: 'Your household', body: 'Addresses, phone numbers, birthdates, schools, and the things we should know about your scouts.', live: true, adultOnly: true },
+  { title: 'Scout account', body: 'What’s in your scout’s account from fundraising, and what it has been spent on.', live: true },
+  { title: 'Reimbursements', body: 'Paid for something out of pocket for the troop? Submit it with a receipt and track it here.', live: true },
+  { title: 'Pay for a campout', body: 'Settle up for an event online instead of remembering a cheque on the night.' },
+  { title: 'Registration', body: 'Your current registration with the national Scouting America office, and when it renews.' },
+  { title: 'Health forms', body: 'Which parts of the annual health form we have on file, and when they expire.' },
+  { title: 'Wreath sale', body: 'Your orders, totals, and what’s owed during the wreath fundraiser.', live: true }
+];
+function meetingCard(viewer) {
+  const v = PEOPLE[viewer];
+  const meet = MEETING[m];
+  let live;
+  if (v.kind === 'scout') live = esc(scoutLine(m, viewer));
+  else {
+    const kids = householdScouts(viewer);
+    const lines = kids.map((s) => `${esc(firstName(s.id))}: ${esc(scoutLine(m, s.id))}`);
+    if (boardFor(m).mode !== 'closed') lines.push(`You: ${esc(adultLine(m, viewer))}`);
+    live = lines.join('<br>');
+  }
+  const body = boardFor(m).mode === 'closed'
+    ? `${esc(meet.title)}, ${esc(meet.short)}.`
+    : v.kind === 'adult' && !householdScouts(viewer).length
+      ? `${esc(meet.label)}. Say if you’re coming and what you’ll teach.`
+      : `${esc(meet.label)}. Say if you’re coming and pick what to work on.`;
+  return `<a class="mCard isNew" href="meeting.html?as=${persona}&m=${m}"><p class="mCardTitle">Sunday’s meeting</p><p class="mCardLive">${live}</p><p class="mCardBody">${body}</p></a>`;
+}
+function teachCard(viewer) {
+  const sk = state.skills[viewer] || [];
+  const live = sk.length ? sk.map((id) => SKILL[id].name).join(', ') : 'Nothing yet';
+  return `<a class="mCard isNew" href="teaching.html?as=${persona}"><p class="mCardTitle">What I can teach</p><p class="mCardLive" style="color:var(--text-body);font-weight:600">${esc(live)}</p><p class="mCardBody">The skills you can teach at a meeting. Leaders use this to match you with scouts.</p></a>`;
+}
+function render() {
+  const viewer = PERSONAS[persona].id; const v = PEOPLE[viewer];
+  document.getElementById('panel').innerHTML = `<b>Prototype controls</b>
+    <label>Signed in as <select id="pSel">${personaOptions(persona)}</select></label>
+    <label>Next meeting <select id="mSel">${meetingOptions(m, (x) => x.kind === 'meeting')}</select></label>
+    <label>When <select id="wSel">${whenOptions()}</select></label>`;
+  document.getElementById('who').innerHTML = `Signed in as <strong>${esc(v.name)}</strong>. Everything here is yours: your household’s details and, as we build them out, the rest of the things families ask us for.`;
+  let html = meetingCard(viewer);
+  if (canTeachCard(viewer)) html += teachCard(viewer);
+  html += CARDS.map((c) => {
+    if (c.live && !(c.adultOnly && v.kind === 'scout')) return `<a class="mCard" href="#"><p class="mCardTitle">${c.title}</p><p class="mCardBody">${c.body}</p></a>`;
+    const blocked = c.live && c.adultOnly;
+    return `<div class="mCard soon"><p class="mCardTitle">${c.title}<span class="tag">${blocked ? 'Parents' : 'Soon'}</span></p><p class="mCardBody">${blocked ? 'A parent or guardian in your household can update these.' : c.body}</p></div>`;
+  }).join('');
+  document.getElementById('grid').innerHTML = html;
+  document.getElementById('pSel').onchange = (e) => { persona = e.target.value; setParam('as', persona); render(); };
+  document.getElementById('mSel').onchange = (e) => { m = e.target.value; setParam('m', m); render(); };
+  document.getElementById('wSel').onchange = (e) => { state.when = e.target.value; save(); render(); };
+}
+document.getElementById('bar').innerHTML = protoBar('Member page with the two new cards. Prototype “today” is Thursday, October 29, 2026.');
+document.getElementById('chrome').innerHTML = siteChrome('Members');
+wireReset(render);
+render();
+window.addEventListener('storage', () => { reloadState(); render(); });
+</script>
+</body>
+</html>

@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sunday’s meeting — Scout Troop 79 (prototype)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Lora:ital,wght@0,400;0,600;1,400&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/board.css?v=2">
+</head>
+<body>
+<div id="bar"></div>
+<header id="chrome"></header>
+<main class="page narrow">
+  <div class="protoPanel" id="panel"></div>
+  <p class="kicker"><a href="#" id="back">Members</a></p>
+  <h1>Sunday’s meeting</h1>
+  <p class="meetLine" id="meetLine"></p>
+  <div id="content"></div>
+  <div id="live" class="sr" aria-live="polite"></div>
+</main>
+<script src="assets/data.js?v=2"></script>
+<script>
+/* /member/meeting: one page, two halves. Scouts (or a parent, one scout at a time)
+   say if they're coming and pick up to 5 things; adults and Junior Leaders say if
+   they're coming and what they'll teach. Everything saves on tap (no Save button). */
+const onBehalf = q('as') === 'leader';
+let persona = onBehalf ? 'leader' : q('as', 'finn');
+let forId = q('for', 's-finn');
+let m = q('m', 'nov1');
+let subject = null;           // the scout whose picks are showing
+let errKey = null;            // 6th pick tapped: message sits on that row
+let askWhen = null;           // pick tapped while "Can't make it": ask this meeting or later
+let teachErr = null;          // 3rd commitment tapped
+let offerOpen = false, offerDraft = null, offerErr = {};
+let mbSearch = '';
+let noteFor = null;
+const savedFlash = {};
+
+function actorId() { return onBehalf ? LEADER_ID : PERSONAS[persona].id; }
+function scoutsShown() {
+  if (onBehalf) return PEOPLE[forId].kind === 'scout' ? [forId] : [];
+  const v = PEOPLE[PERSONAS[persona].id];
+  return v.kind === 'scout' ? [v.id] : householdScouts(v.id).map((s) => s.id);
+}
+function teacherShown() {
+  const id = onBehalf ? forId : PERSONAS[persona].id; const p = PEOPLE[id];
+  if (p.kind === 'adult') return id;
+  return isJuniorLeader(p) ? id : null;
+}
+const isSelf = (sid) => !onBehalf && PERSONAS[persona].id === sid;
+const pName = (id) => display(id, 'scout');
+
+function flash(id) { savedFlash[id] = Date.now(); setTimeout(() => { const el = document.querySelector(`[data-saved="${id}"]`); if (el) el.classList.remove('show'); }, 1800); }
+function savedSpan(id) { const on = savedFlash[id] && Date.now() - savedFlash[id] < 1800; return `<span class="savedNote${on ? ' show' : ''}" data-saved="${id}" aria-hidden="true">${on ? 'Saved' : ''}</span>`; }
+
+/* ── who is teaching a topic (direct commitment, merged session, or broad offer) ── */
+function teacherFor(key) {
+  const sess = matchFor(m).sessions.find((s) => s.keys.includes(key));
+  if (sess) return sess.teacher;
+  for (const [pid, list] of Object.entries(state.teach[m] || {})) if (list.some((c) => c.key === key)) return pid;
+  const info = topicInfo(key);
+  const off = state.offers.find((o) => o.dates.includes(m) && ((o.key && o.key === key) || (o.skill && info.skill === o.skill && qualifies(o.person, info))));
+  return off ? off.person : null;
+}
+function othersWho(key, sid) {
+  const names = SCOUTS.filter((s) => s.id !== sid && intentOf(m, s.id).value !== 'not_coming' && picksFor(m, s.id).some((p) => p.key === key)).map((s) => s.name);
+  if (!names.length) return '';
+  return names.length <= 2 ? names.join(', ') : `${names.slice(0, 2).join(', ')} +${names.length - 2}`;
+}
+
+/* ── intent ── */
+function intentControl(pid, three) {
+  const it = intentOf(m, pid);
+  const label = isSelf(pid) ? 'Are you coming?' : `Is ${firstName(pid)} coming?`;
+  const opts = three ? ['coming', 'undecided', 'not_coming'] : ['coming', 'not_coming'];
+  const helper = it.value === 'undecided' ? 'We’ll find something that fits.' : it.value === 'not_coming' ? (boardFor(m).mode === 'rank' && PEOPLE[pid].kind === 'scout' ? 'Got it. Your picks are saved for next week.' : 'Got it. Thanks for letting us know.') : '';
+  return `<div class="block"><div class="fieldLabel" id="lbl-${pid}" style="margin-bottom:6px">${label}</div>
+    <div class="intentRow"><div class="seg" role="group" aria-labelledby="lbl-${pid}">${opts.map((o) => `<button type="button" data-intent="${o}" data-pid="${pid}" data-fid="int-${pid}-${o}" aria-pressed="${it.value === o}">${INTENT_LABEL[o]}</button>`).join('')}</div>${savedSpan('int-' + pid)}</div>
+    ${helper ? `<p class="helper">${helper}</p>` : ''}</div>`;
+}
+
+/* ── household summary + switcher (parent with several scouts) ── */
+function householdBlock(ids) {
+  const by = { coming: [], undecided: [], not_coming: [], none: [] };
+  ids.forEach((id) => by[intentOf(m, id).value || 'none'].push(firstName(id)));
+  const join = (a) => (a.length <= 1 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]);
+  const parts = [];
+  if (by.coming.length) parts.push(`${join(by.coming)} ${by.coming.length > 1 ? 'are' : 'is'} coming.`);
+  if (by.undecided.length) parts.push(`${join(by.undecided)} ${by.undecided.length > 1 ? 'aren’t' : 'isn’t'} sure yet.`);
+  if (by.not_coming.length) parts.push(`${join(by.not_coming)} can’t make it.`);
+  if (by.none.length) parts.push(`${join(by.none)} ${by.none.length > 1 ? 'haven’t' : 'hasn’t'} said.`);
+  const tabs = ids.map((id) => {
+    const n = picksFor(m, id).length; const it = intentOf(m, id).value;
+    const sub = boardFor(m).mode === 'merit_badge' ? (it ? INTENT_LABEL[it] : 'no answer') : it === 'not_coming' ? 'can’t make it' : n ? plural(n, 'pick') : 'nothing yet';
+    return `<button type="button" role="tab" data-subject="${id}" data-fid="sub-${id}" aria-selected="${id === subject}">${esc(firstName(id))} <span>· ${sub}</span></button>`;
+  }).join('');
+  return `<p class="household">${parts.join(' ')}</p><div class="switcher" role="tablist" aria-label="Your scouts">${tabs}</div>`;
+}
+
+/* ── pick list ── */
+function pickRow(sid, key, codeText) {
+  const info = topicInfo(key);
+  const mine = picksFor(m, sid).some((p) => p.key === key);
+  const t = teacherFor(key);
+  const who = othersWho(key, sid);
+  const outing = info.venue === 'outing';
+  const sub = outing ? 'Needs an outing' : who;
+  return `<li class="pickWrap"><button type="button" class="pick${outing ? ' outing' : ''}" data-pick="${key}" data-fid="pick-${key}" aria-pressed="${mine}"${outing && !mine ? ' disabled' : ''}>
+      <span class="box" aria-hidden="true">${mine ? '✓' : ''}</span>
+      <span><span class="ttl"><span>${codeText ? `<span class="code">${esc(codeText)}</span>` : ''}<b>${esc(info.label)}</b></span>${t ? `<span class="teacherTag">Teacher: ${esc(pName(t))}</span>` : ''}</span>
+      ${sub ? `<span class="who">${esc(sub)}${outing && who ? ` · ${esc(who)}` : ''}</span>` : ''}</span></button>
+    ${errKey === key ? `<p class="badNote" role="alert">You have 5. Take one off to add this.</p>` : ''}
+    ${askWhen === key ? `<div class="whenAsk" role="group" aria-label="When"><span>Work on this at Sunday’s meeting, or later?</span><button type="button" class="btn primary sm" data-when="later" data-fid="when-later">Later</button><button type="button" class="btn secondary sm" data-when="now" data-fid="when-now">At Sunday’s meeting</button></div>` : ''}</li>`;
+}
+function pickList(sid) {
+  const s = PEOPLE[sid]; const nr = nextRank(s);
+  const picked = new Set(picksFor(m, sid).map((p) => p.key));
+  let html = '';
+  // Topics a teacher has put on the board that aren't in this scout's open rank list.
+  const offered = [...new Set([...Object.values(state.teach[m] || {}).flat().map((c) => c.key), ...state.offers.filter((o) => o.dates.includes(m) && o.key).map((o) => o.key)])]
+    .filter((k) => k && (k.startsWith('ff:') || (REQ_BY_KEY[k] && REQ_BY_KEY[k].rank !== nr && !hasFinished(s, REQ_BY_KEY[k]) && RANK_ORDER[REQ_BY_KEY[k].rank] > RANK_ORDER[nr || 'eagle'])));
+  if (offered.some((k) => k.startsWith('ff:'))) {
+    html += `<div class="group"><h3 class="groupHead">Also offered this week</h3><ul class="picks">${offered.filter((k) => k.startsWith('ff:')).map((k) => pickRow(sid, k, '')).join('')}</ul></div>`;
+  }
+  const ranks = RANKS.slice(nr ? RANK_ORDER[nr] : 7, 4);
+  const open = nr ? (REQS[nr] || []).filter((r) => !hasFinished(s, r)) : [];
+  html += `<div class="group"><h3 class="groupHead">${nr ? RANK_NAME[nr] : 'Ranks'} <span class="meta">${open.length ? `next rank · ${open.length} left` : ''}</span></h3>`;
+  if (open.length) html += `<ul class="picks">${open.map((r) => pickRow(sid, r.key, r.code)).join('')}</ul>`;
+  else html += `<p class="emptyLine">Nothing left for ${nr ? RANK_NAME[nr] : 'your rank'} that you can do at a meeting. Pick a merit badge${teacherShown() === sid ? ', or <a href="#teach">help teach</a>' : ''}.</p>`;
+  html += `</div>`;
+  ranks.slice(1).forEach((r) => {
+    const rows = REQS[r.id].filter((x) => !hasFinished(s, x));
+    const hasPick = rows.some((x) => picked.has(x.key));
+    html += `<details class="group"${hasPick ? ' open' : ''}><summary>${r.name}<span class="meta">${rows.length}</span></summary><ul class="picks">${rows.map((x) => pickRow(sid, x.key, x.code)).join('')}</ul></details>`;
+  });
+  // Merit badges: working-on first, the rest behind a search.
+  const working = s.mbs.filter((id) => !s.awarded.includes(id));
+  const pickedMb = [...picked].filter((k) => k.startsWith('mb:')).map((k) => k.slice(3)).filter((id) => !working.includes(id));
+  const term = mbSearch.trim().toLowerCase();
+  const found = term ? MBS.filter((b) => b.name.toLowerCase().includes(term) && !working.includes(b.id) && !pickedMb.includes(b.id) && !s.awarded.includes(b.id)) : [];
+  html += `<div class="group"><h3 class="groupHead">Merit badges <span class="meta">make-up work</span></h3>
+    ${working.length + pickedMb.length ? `<p class="meta" style="margin:6px 0 0">Badges you’re working on</p><ul class="picks">${[...working, ...pickedMb].map((id) => pickRow(sid, 'mb:' + id, '')).join('')}</ul>` : ''}
+    <div class="field search"><label for="mbq">Find a badge</label><input type="search" id="mbq" data-fid="mbq" value="${esc(mbSearch)}" autocomplete="off"></div>
+    ${term ? (found.length ? `<ul class="picks">${found.slice(0, 8).map((b) => pickRow(sid, 'mb:' + b.id, '')).join('')}</ul>` : `<p class="emptyLine">No badge matches “${esc(mbSearch)}”.</p>`) : ''}</div>`;
+  return html;
+}
+
+/* ── sticky tray ── */
+function tray(sid) {
+  const list = orderedPicks(picksFor(m, sid));
+  const ranked = list.some((p) => p.pri != null);
+  const rm = state.rankMode[sid];
+  const whose = isSelf(sid) ? 'Your picks' : `${firstName(sid)}’s picks`;
+  const items = list.map((p, i) => {
+    const info = topicInfo(p.key);
+    const bits = [info.kind === 'mb' ? 'Merit badge' : info.codeLabel];
+    if (p.later) bits.push('For a later meeting');
+    if (p.note) bits.push(p.note);
+    if (p.by && p.by !== actorId() && p.by !== sid) bits.push(`added by ${pName(p.by)}`);
+    if (p.carried) bits.push(`from ${p.carried}`);
+    const noteUi = info.kind === 'mb' ? (noteFor === p.key
+      ? `<span style="display:flex;gap:6px;margin-top:4px"><input type="text" aria-label="Note for the teacher" data-notein="${p.key}" data-fid="note-${p.key}" value="${esc(p.note || '')}"><button type="button" class="btn secondary sm" data-notesave="${p.key}">Done</button></span>`
+      : `<button type="button" class="linkBtn quiet" data-noteopen="${p.key}" style="font-size:12px;min-height:24px">${p.note ? 'Change note' : 'Add a note'}</button>`) : '';
+    return `<li>${ranked || rm ? `<span class="n" aria-label="Number ${i + 1}">${i + 1}</span>` : ''}
+      <span class="t">${esc(info.label)}<small>${esc(bits.join(' · '))}</small>${noteUi}</span>
+      ${rm ? `<button type="button" class="iconBtn" data-up="${p.key}" data-fid="up-${p.key}" aria-label="Move ${esc(info.label)} up"${i === 0 ? ' disabled' : ''}>↑</button><button type="button" class="iconBtn" data-down="${p.key}" data-fid="down-${p.key}" aria-label="Move ${esc(info.label)} down"${i === list.length - 1 ? ' disabled' : ''}>↓</button>` : ''}
+      <button type="button" class="iconBtn" data-pick="${p.key}" data-fid="rm-${p.key}" aria-label="Take off ${esc(info.label)}">✕</button></li>`;
+  }).join('');
+  const orderBtn = list.length > 1 ? `<button type="button" class="linkBtn" data-rankmode data-fid="rankmode">${rm ? 'Done' : ranked ? 'Change order' : 'Put them in order'}</button>` : '';
+  return `<section class="tray${errKey ? ' badBox' : ''}" aria-label="${whose}">
+    <div class="trayHead"><span><strong>${whose} (${list.length} of 5)</strong>${savedSpan('picks-' + sid)}</span><span>${rm && ranked ? `<button type="button" class="linkBtn quiet" data-clearorder>Clear order</button> · ` : ''}${orderBtn}</span></div>
+    ${list.length ? `<ul class="trayList">${items}</ul>` : `<p class="trayEmpty">Nothing picked yet.</p>`}</section>`;
+}
+
+/* ── after the agenda is published ── */
+function assignmentCard(sid) {
+  const b = boardFor(m); const got = (matchFor(m).assignment[sid] || []).slice().sort((a, z) => a.block - z.block);
+  const self = isSelf(sid); const nm = firstName(sid);
+  if (!got.length) return `<div class="card pad block assignCard"><h2>${self ? 'Nothing matched this week' : `Nothing matched for ${nm}`}</h2><p class="meta" style="margin:0">A leader will point ${self ? 'you' : nm} to something when ${self ? 'you get' : 'they get'} there.</p></div>`;
+  const parts = got.map((g) => { const t = sessionTitle(sessionById(m, g.sessionId).keys).title; return g.placed ? t : `${t}, ${self ? 'your' : 'pick'} #${g.pickNo}`; });
+  const head = `${self ? 'You’re' : nm + ' is'} in ${parts.join(', then ')}`;
+  return `<div class="card pad block assignCard"><h2>${esc(head)}</h2><ul class="assignList">${got.map((g) => {
+    const s = sessionById(m, g.sessionId); const st = sessionTitle(s.keys);
+    return `<li><span class="when">${BLOCK_TIMES[b.blocks][g.block]}</span> <b>${esc(st.title)}</b> <span class="meta">${esc(st.code)} · ${esc(pName(s.teacher))}</span></li>`;
+  }).join('')}</ul>${got.some((g) => g.placed) ? `<p class="helper">Picked from what ${self ? 'you need' : nm + ' needs'} next.</p>` : ''}</div>`;
+}
+
+/* ── merit badge night ── */
+function mbScoutCard(sid) {
+  const b = boardFor(m); const mb = MB[b.mbId]; const s = PEOPLE[sid]; const self = isSelf(sid); const nm = firstName(sid);
+  const has = s.awarded.includes(b.mbId);
+  let html = '';
+  if (isPublished(m) && intentOf(m, sid).value === 'coming') {
+    const rot = rotationsFor(m);
+    if (has) {
+      const h = rot.helpers[sid];
+      const where = h === undefined ? `An adult will place ${self ? 'you' : nm} when ${self ? 'you get' : 'they get'} there.` : h === 'other' ? `A leader has other work for ${self ? 'you' : nm} tonight.` : `${self ? 'You’re' : nm + ' is'} helping at ${rot.stations[h].title} (${rot.stations[h].loc.toLowerCase()}).`;
+      html += `<div class="card pad block assignCard"><h2>${esc(where)}</h2></div>`;
+    } else {
+      const g = rot.groups.findIndex((x) => x.includes(sid));
+      if (g >= 0) {
+        const first = rot.stations[rot.stationAt(g, 0)];
+        html += `<div class="card pad block assignCard"><h2>${self ? 'You’re' : nm + ' is'} in Group ${g + 1}. ${self ? 'You start' : 'Starts'} at ${esc(first.title)}, ${esc(first.loc.toLowerCase())}.</h2><ul class="assignList">${rot.times.map((tm, r) => {
+          const si = rot.stationAt(g, r); const st = rot.stations[si];
+          return `<li><span class="when">${tm}</span> ${rot.finished(sid, st) ? `<b>Free: help out</b> <span class="meta">already done ${esc(st.title.toLowerCase())}</span>` : `<b>${esc(st.title)}</b> <span class="meta">${esc(st.loc)}${rot.teachersAt(si).length ? ' · ' + rot.teachersAt(si).map(pName).join(', ') : ''}</span>`}</li>`;
+        }).join('')}</ul></div>`;
+      }
+    }
+  }
+  html += has
+    ? `<div class="notice block"><p><strong class="big">Merit badge night: ${esc(mb.name)}.</strong></p><p>${self ? 'You already have' : nm + ' already has'} ${esc(mb.name)}. Come help teach a station; an adult will place ${self ? 'you' : nm}.</p></div>`
+    : `<div class="notice block"><p><strong class="big">Merit badge night: ${esc(mb.name)}.</strong></p><p>${self ? 'You’ll' : nm + ' will'} be assigned a rotation.</p></div>`;
+  html += intentControl(sid, false);
+  const held = heldPicks(m, sid).length;
+  if (held) html += `<p class="meta">${self ? 'Your' : nm + '’s'} picks are saved for next time (${held}).</p>`;
+  return html;
+}
+
+/* ── teach section ── */
+function teachSection(tid) {
+  const b = boardFor(m); const p = PEOPLE[tid]; const self = !onBehalf;
+  const isScoutTeacher = p.kind === 'scout';
+  let html = `<section id="teach" class="block"><h2>${isScoutTeacher ? 'Help teach' : 'Teaching'}${isScoutTeacher ? ' <span class="tag info">Junior Leader</span>' : ''}</h2>`;
+  if (!isScoutTeacher) html += intentControl(tid, true);
+  if (isScoutTeacher && b.mode === 'merit_badge') return '';
+  if (intentOf(m, tid).value === 'not_coming') return html + '</section>';
+  if (b.mode === 'merit_badge') return html + mbStations(tid) + '</section>';
+  const commits = commitsFor(m, tid); const offers = offersFor(m, tid);
+  const total = commits.length + offers.length;
+  const mt = matchFor(m);
+  const sessFor = (key) => mt.sessions.find((s) => s.keys.includes(key) && s.teacher === tid);
+  const rows = [
+    ...commits.map((c) => { const info = topicInfo(c.key); const s = sessFor(c.key); const n = s ? s.scouts.length : (mt.demand[c.key] || []).length; const names = s ? s.scouts.map((x) => PEOPLE[x.sid].name) : (mt.demand[c.key] || []).map((d) => PEOPLE[d.sid].name);
+      const when = isPublished(m) && s ? `${BLOCK_TIMES[b.blocks][s.block]} · ` : '';
+      return `<div class="teachRow"><span class="grow"><b>${esc(s ? sessionTitle(s.keys).title : info.label)}</b><small>${when}${esc(s ? sessionTitle(s.keys).code : info.codeLabel)} · ${n ? `${plural(n, 'scout')} so far: ${esc(names.join(', '))}` : '0 scouts so far'}${needsCounselor(tid, info) ? ' · sign-off needs a counselor' : ''}</small></span><button type="button" class="linkBtn" data-uncommit="${c.key}" data-fid="unc-${c.key}">Remove</button></div>`; }),
+    ...offers.map((o) => { const what = o.skill ? `${SKILL[o.skill].name} (any requirement)` : topicInfo(o.key).label;
+      const got = mt.sessions.filter((s) => s.teacher === tid && s.offer);
+      const n = got.reduce((a, s) => a + s.scouts.length, 0);
+      return `<div class="teachRow"><span class="grow"><b>${esc(what)}</b><small>Your offer · ${o.dates.map((d) => MEETING[d].short).join(', ')} · ${n ? `${plural(n, 'scout')} so far` : '0 scouts so far'}${o.note ? ' · ' + esc(o.note) : ''}</small></span><button type="button" class="linkBtn" data-withdraw="${o.id}">Withdraw</button></div>`; })
+  ];
+  html += `<div class="${teachErr ? 'badBox' : ''}" style="margin-top:var(--sp-4)"><h3 class="groupHead">${self ? 'You’re' : firstName(tid) + ' is'} teaching <span class="meta">${total} of 2</span></h3>${rows.join('') || `<p class="emptyLine">Nothing yet. You’ll teach one or two things.</p>`}</div>`;
+  const sk = state.skills[tid] || [];
+  const wanted = mt.wanted.filter((w) => w.info.kind !== 'ff');
+  const mine = wanted.filter((w) => qualifies(tid, w.info) && (w.info.kind !== 'mb' || p.kind === 'adult'));
+  const others = wanted.filter((w) => !mine.includes(w));
+  const wantRow = (w, can) => `<div class="teachWrap"><div class="teachRow"><span class="grow"><b>${esc(w.info.label)}</b><small>${esc(w.info.codeLabel)} · ${plural(w.scouts.length, 'scout')} · asked ${plural(w.weeks, 'week')}${w.info.kind === 'mb' && needsCounselor(tid, w.info) ? ' · sign-off needs a counselor' : ''}<br>${esc(w.scouts.map((id) => PEOPLE[id].name).join(', '))}</small></span>${can ? `<button type="button" class="btn secondary sm" data-commit="${w.key}" data-fid="com-${w.key}">I’ll teach this</button>` : ''}</div>${teachErr === w.key ? `<p class="badNote" role="alert">You’re teaching 2. Remove one to add another.</p>` : ''}</div>`;
+  if (!sk.length && p.kind === 'adult') {
+    html += `<div class="notice warn" style="margin-top:var(--sp-4)"><p>Tell us what you can teach first: <a href="teaching.html?as=${persona}">What I can teach</a>. Or choose Not sure yet and a leader will find you a spot.</p></div>`;
+  } else {
+    html += `<h3 class="groupHead" style="margin-top:var(--sp-5)">Scouts are asking for these</h3>${mine.length ? mine.map((w) => wantRow(w, true)).join('') : `<p class="emptyLine">Nothing you can teach is waiting for a teacher.</p>`}`;
+  }
+  if (others.length) html += `<details class="group"><summary>Other things scouts asked for<span class="meta">${others.length}</span></summary><p class="helper">Not in what you’ve said you can teach. <a href="teaching.html?as=${persona}">What I can teach</a></p>${others.map((w) => wantRow(w, false)).join('')}</details>`;
+  html += offerOpen ? offerForm(tid) : `<p style="margin-top:var(--sp-4)"><button type="button" class="btn secondary" data-offeropen data-fid="offeropen">Offer something</button></p>`;
+  return html + '</section>';
+}
+function mbStations(tid) {
+  const b = boardFor(m); const rot = rotationsFor(m); const mine = commitsFor(m, tid);
+  return `<h3 class="groupHead" style="margin-top:var(--sp-4)">${esc(MB[b.mbId].name)} stations <span class="meta">${mine.length} of 2</span></h3>` + b.stations.map((st, i) => {
+    const ts = rot.teachersAt(i); const meIn = ts.includes(tid);
+    return `<div class="teachWrap"><div class="teachRow"><span class="grow"><b>${i + 1}. ${esc(st.title)}</b><small>${esc(st.loc)} · req ${st.reqs.join(', ')} · ${ts.length ? esc(ts.map(pName).join(', ')) : 'No teacher yet'}${meIn && needsCounselor(tid, { kind: 'mb', mbId: b.mbId }) ? `<br>Sign-off needs a counselor; you’re not one for ${esc(MB[b.mbId].name)}. You can still teach it.` : ''}</small></span>
+      ${meIn ? `<button type="button" class="linkBtn" data-unstation="${i}">Remove</button>` : `<button type="button" class="btn secondary sm" data-station="${i}" data-fid="st-${i}">I’ll take this station</button>`}</div>
+      ${teachErr === 'st' + i ? `<p class="badNote" role="alert">You’re teaching 2. Remove one to add another.</p>` : ''}</div>`;
+  }).join('');
+}
+function offerForm(tid) {
+  const d = offerDraft; const p = PEOPLE[tid];
+  const skills = SKILLS.filter((s) => (state.skills[tid] || []).includes(s.id) && (p.kind === 'adult' || s.youth));
+  const reqOpts = ['scout', 'tenderfoot', 'second-class', 'first-class'].map((r) => {
+    const rows = REQS[r].filter((x) => x.venue !== 'outing' && qualifies(tid, topicInfo(x.key)));
+    return rows.length ? `<optgroup label="${RANK_NAME[r]}">${rows.map((x) => `<option value="${x.key}"${d.key === x.key ? ' selected' : ''}>${x.code} ${esc(x.label)}</option>`).join('')}</optgroup>` : '';
+  }).join('');
+  const dates = MEETINGS.filter((x) => !x.past && boardFor(x.id).mode === 'rank');
+  const what = d.type === 'skill'
+    ? `<div class="field${offerErr.what ? ' badBox' : ''}"><label for="ofSkill">Skill</label><select id="ofSkill" data-of="skill"><option value="">Choose…</option>${skills.map((s) => `<option value="${s.id}"${d.skill === s.id ? ' selected' : ''}>${esc(s.name)}</option>`).join('')}</select><p class="helper" style="margin:0">Scouts who picked any requirement in this skill get matched to you.</p></div>`
+    : d.type === 'req'
+      ? `<div class="field${offerErr.what ? ' badBox' : ''}"><label for="ofReq">Requirement</label><select id="ofReq" data-of="key"><option value="">Choose…</option>${reqOpts}</select></div>`
+      : `<div class="field${offerErr.what ? ' badBox' : ''}"><label for="ofTitle">What you’ll teach</label><input type="text" id="ofTitle" data-of="title" value="${esc(d.title)}"></div>`;
+  return `<form class="offerForm" id="offerForm" novalidate>
+    <div><div class="fieldLabel" style="margin-bottom:6px">What</div><div class="seg" role="group" aria-label="What">${[['skill', 'A skill'], ['req', 'A requirement'], ['ff', 'Something else']].map(([k, l]) => `<button type="button" data-oftype="${k}" data-fid="oft-${k}" aria-pressed="${d.type === k}">${l}</button>`).join('')}</div></div>
+    ${what}${offerErr.what ? `<p class="badNote">${offerErr.what}</p>` : ''}
+    <fieldset style="border:0;padding:0;margin:0" class="${offerErr.dates ? 'badBox' : ''}"><legend class="fieldLabel">Dates</legend><div class="dates">${dates.map((x) => `<label class="check"><input type="checkbox" data-ofdate="${x.id}"${d.dates.includes(x.id) ? ' checked' : ''}> ${x.short}</label>`).join('')}</div>
+    <p class="helper" style="margin:0">Merit badge nights aren’t listed. Take a station on that night instead.</p></fieldset>
+    ${offerErr.dates ? `<p class="badNote">${offerErr.dates}</p>` : ''}
+    <div class="field"><label for="ofNote">Note <span class="opt">(optional)</span></label><textarea id="ofNote" data-of="note">${esc(d.note)}</textarea></div>
+    <div style="display:flex;gap:var(--sp-4);align-items:center;flex-wrap:wrap"><button type="submit" class="btn primary">Post offer</button><button type="button" class="linkBtn" data-offercancel>Cancel</button></div>
+  </form>`;
+}
+
+/* ── page ── */
+function render() {
+  keepFocus(renderInner);
+}
+function renderInner() {
+  const meet = MEETING[m]; const b = boardFor(m);
+  const panel = document.getElementById('panel');
+  panel.innerHTML = `<b>Prototype controls</b>
+    ${onBehalf ? `<label>Entering for <select id="fSel">${[...SCOUTS, ...ADULTS].map((p) => `<option value="${p.id}"${p.id === forId ? ' selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>` : `<label>Signed in as <select id="pSel">${personaOptions(persona)}</select></label>`}
+    <label>Meeting <select id="mSel">${meetingOptions(m, (x) => x.kind === 'meeting')}</select></label>
+    <label>When <select id="wSel">${whenOptions()}</select></label>`;
+  document.getElementById('back').href = onBehalf ? 'admin-plan.html' : `member.html?as=${persona}&m=${m}`;
+  document.getElementById('back').textContent = onBehalf ? 'Admin › Meeting Plan' : 'Members';
+  document.getElementById('meetLine').textContent = `${meet.label} · ${MEETING_TIME} · ${MEETING_PLACE}`;
+  const out = [];
+  if (b.mode === 'closed') {
+    const nx = nextOpenBoard(m);
+    out.push(`<div class="notice"><p><strong class="big">No sign-ups this week.</strong></p><p>${esc(meet.title)}.${nx ? ` The next board is for <a href="meeting.html?as=${persona}${onBehalf ? '&for=' + forId : ''}&m=${nx.id}">${esc(nx.label)}</a>.` : ''}</p></div>`);
+    document.getElementById('content').innerHTML = out.join('');
+    return;
+  }
+  if (state.when === 'set' && !isPublished(m)) out.push(`<div class="notice"><p>This week’s plan is set. You can still tell us you’re coming.</p></div>`);
+  const scouts = scoutsShown();
+  if (!subject || !scouts.includes(subject)) subject = scouts[0] || null;
+  if (subject) {
+    if (scouts.length > 1) out.push(householdBlock(scouts));
+    const sid = subject;
+    if (b.mode === 'merit_badge') out.push(mbScoutCard(sid));
+    else {
+      if (isPublished(m) && intentOf(m, sid).value && intentOf(m, sid).value !== 'not_coming') out.push(assignmentCard(sid));
+      out.push(intentControl(sid, true));
+      if (intentOf(m, sid).value !== 'not_coming') {
+        out.push(`<p class="lede">Pick up to 5 things to work on. ${b.blocks === 1 ? 'You’ll do one of them.' : 'You’ll do one or two of them.'}</p>`);
+        const anyTeacher = Object.values(state.teach[m] || {}).some((l) => l.length) || state.offers.some((o) => o.dates.includes(m));
+        if (!anyTeacher) out.push(`<div class="notice warn"><p>No one has signed up to teach yet. Pick anyway: leaders see what scouts ask for.</p></div>`);
+        out.push(tray(sid));
+        out.push(pickList(sid));
+      } else {
+        /* Can't make it: still a place to say what they want next. A pick here asks "Sunday or later?" (later is the usual answer). */
+        out.push(`<p class="lede">Want to work on something at a later meeting? Pick it here.</p>`);
+        out.push(tray(sid));
+        out.push(pickList(sid));
+      }
+    }
+  }
+  const tid = teacherShown();
+  if (tid && !(PEOPLE[tid].kind === 'scout' && b.mode === 'merit_badge')) {
+    if (subject && PEOPLE[tid].kind === 'adult') out.push(`<h2 style="font-family:var(--font-display);font-size:var(--fs-2xl);margin-top:var(--sp-10)">You</h2>`);
+    out.push(teachSection(tid));
+  }
+  document.getElementById('content').innerHTML = out.join('');
+}
+
+/* ── events (delegated; every write saves immediately) ── */
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('button'); if (!t) return;
+  const d = t.dataset;
+  if (d.intent) {
+    setIntent(m, d.pid, d.intent); flash('int-' + d.pid); errKey = null;  askWhen = null;
+    announce(`Saved: ${INTENT_LABEL[d.intent]}`); render(); return;
+  }
+  if (d.subject) { subject = d.subject; errKey = null; askWhen = null; render(); return; }
+  if (d.when && askWhen) {
+    /* Can't make it + a pick: ask, don't assume. "Later" keeps them off this Sunday; it is a wish for a future meeting. */
+    const sid = subject; const list = ensureOwnPicks(m, sid); const ranked = list.some((p) => p.pri != null);
+    list.push({ key: askWhen, pri: ranked ? list.length + 1 : null, asked: TODAY, by: actorId(), note: '', later: d.when === 'later' });
+    if (d.when === 'now') setIntent(m, sid, 'coming');
+    askWhen = null; save(); flash('picks-' + sid); announce(d.when === 'now' ? 'Saved. Marked coming.' : 'Saved for a later meeting.'); render(); return;
+  }
+  if (d.pick) {
+    const sid = subject; const list = ensureOwnPicks(m, sid);
+    const i = list.findIndex((p) => p.key === d.pick);
+    if (i >= 0) {
+      list.splice(i, 1);
+      if (list.some((p) => p.pri != null)) orderedPicks(list).forEach((p, n) => { p.pri = n + 1; });
+      errKey = null; save(); flash('picks-' + sid); announce(`Saved. ${list.length} of 5 picked.`);
+    } else if (list.length >= 5) {
+      errKey = d.pick; announce('You have 5. Take one off to add this.');
+    } else {
+      if ((state.intents[m] || {})[sid] === 'not_coming') { askWhen = d.pick; errKey = null; render(); return; }
+      const ranked = list.some((p) => p.pri != null);
+      list.push({ key: d.pick, pri: ranked ? list.length + 1 : null, asked: TODAY, by: actorId(), note: '' });
+      errKey = null; save(); flash('picks-' + sid); announce(`Saved. ${list.length} of 5 picked.`);
+    }
+    render(); return;
+  }
+  if ('rankmode' in d) {
+    const sid = subject; const on = !state.rankMode[sid];
+    state.rankMode[sid] = on;
+    if (on) { const list = ensureOwnPicks(m, sid); orderedPicks(list).forEach((p, n) => { p.pri = n + 1; }); flash('picks-' + sid); }
+    save(); render(); return;
+  }
+  if ('clearorder' in d) { ensureOwnPicks(m, subject).forEach((p) => { p.pri = null; }); state.rankMode[subject] = false; save(); flash('picks-' + subject); announce('Saved. Order cleared.'); render(); return; }
+  if (d.up || d.down) {
+    const list = ensureOwnPicks(m, subject); const ord = orderedPicks(list); const key = d.up || d.down;
+    const i = ord.findIndex((p) => p.key === key); const j = d.up ? i - 1 : i + 1;
+    if (j >= 0 && j < ord.length) { [ord[i], ord[j]] = [ord[j], ord[i]]; ord.forEach((p, n) => { p.pri = n + 1; }); }
+    save(); flash('picks-' + subject); announce(`Saved. ${topicInfo(key).label} is now number ${j + 1}.`); render(); return;
+  }
+  if (d.noteopen) { noteFor = d.noteopen; render(); const el = document.querySelector(`[data-notein="${CSS.escape(noteFor)}"]`); if (el) el.focus(); return; }
+  if (d.notesave) {
+    const el = document.querySelector(`[data-notein="${CSS.escape(d.notesave)}"]`);
+    const p = ensureOwnPicks(m, subject).find((x) => x.key === d.notesave); if (p && el) p.note = el.value.trim();
+    noteFor = null; save(); flash('picks-' + subject); render(); return;
+  }
+  const tid = teacherShown();
+  const commitCount = () => commitsFor(m, tid).length + offersFor(m, tid).length;
+  if (d.commit) {
+    if (commitCount() >= 2) { teachErr = d.commit; announce('You’re teaching 2. Remove one to add another.'); render(); return; }
+    state.teach[m] = state.teach[m] || {}; (state.teach[m][tid] = state.teach[m][tid] || []).push({ key: d.commit, by: actorId() });
+    if (!intentOf(m, tid).value || intentOf(m, tid).value === 'undecided') setIntent(m, tid, 'coming');
+    teachErr = null; save(); announce('Saved. You’re teaching ' + topicInfo(d.commit).label + '.'); render(); return;
+  }
+  if (d.uncommit) { state.teach[m][tid] = commitsFor(m, tid).filter((c) => c.key !== d.uncommit); teachErr = null; save(); announce('Saved. Removed.'); render(); return; }
+  if (d.withdraw) { state.offers = state.offers.filter((o) => String(o.id) !== d.withdraw); teachErr = null; save(); announce('Offer withdrawn.'); render(); return; }
+  if (d.station) {
+    if (commitCount() >= 2) { teachErr = 'st' + d.station; render(); return; }
+    state.teach[m] = state.teach[m] || {}; (state.teach[m][tid] = state.teach[m][tid] || []).push({ station: +d.station, by: actorId() });
+    if (intentOf(m, tid).value !== 'coming') setIntent(m, tid, 'coming');
+    teachErr = null; save(); announce('Saved.'); render(); return;
+  }
+  if (d.unstation) { state.teach[m][tid] = commitsFor(m, tid).filter((c) => c.station !== +d.unstation); teachErr = null; save(); render(); return; }
+  if ('offeropen' in d) { offerOpen = true; offerErr = {}; offerDraft = { type: 'skill', skill: '', key: '', title: '', dates: [m], note: '' }; render(); const f = document.querySelector('[data-fid="oft-skill"]'); if (f) f.focus(); return; }
+  if ('offercancel' in d) { offerOpen = false; render(); return; }
+  if (d.oftype) { readOffer(); offerDraft.type = d.oftype; offerErr = {}; render(); return; }
+});
+function readOffer() {
+  const f = document.getElementById('offerForm'); if (!f) return;
+  f.querySelectorAll('[data-of]').forEach((el) => { offerDraft[el.dataset.of] = el.value; });
+  offerDraft.dates = [...f.querySelectorAll('[data-ofdate]')].filter((x) => x.checked).map((x) => x.dataset.ofdate);
+}
+document.addEventListener('submit', (e) => {
+  if (e.target.id !== 'offerForm') return;
+  e.preventDefault(); readOffer();
+  const tid = teacherShown(); const d = offerDraft; offerErr = {};
+  if (d.type === 'skill' && !d.skill) offerErr.what = 'Choose a skill.';
+  if (d.type === 'req' && !d.key) offerErr.what = 'Choose a requirement.';
+  if (d.type === 'ff' && !d.title.trim()) offerErr.what = 'Say what you’ll teach.';
+  if (!d.dates.length) offerErr.dates = 'Pick at least one date.';
+  const full = d.dates.filter((x) => commitsFor(x, tid).length + offersFor(x, tid).length >= 2);
+  if (!offerErr.dates && full.length) offerErr.dates = `You’re teaching 2 on ${full.map((x) => MEETING[x].short).join(', ')}. Remove one there, or pick other dates.`;
+  if (Object.keys(offerErr).length) { render(); announce('Can’t post yet: ' + Object.values(offerErr).join(' ')); return; }
+  const key = d.type === 'req' ? d.key : d.type === 'ff' ? 'ff:' + d.title.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-') : null;
+  state.offers.push({ id: ++state.uid, person: tid, skill: d.type === 'skill' ? d.skill : null, key, title: d.type === 'ff' ? d.title.trim() : null, dates: d.dates, note: d.note.trim(), by: actorId() });
+  if (!intentOf(m, tid).value) setIntent(m, tid, 'coming');
+  offerOpen = false; save(); announce('Offer posted.'); render();
+});
+document.addEventListener('input', (e) => {
+  if (e.target.id === 'mbq') { mbSearch = e.target.value; const pos = e.target.selectionStart; render(); const el = document.getElementById('mbq'); el.focus(); el.setSelectionRange(pos, pos); }
+});
+document.addEventListener('change', (e) => {
+  const id = e.target.id;
+  if (id === 'pSel') { persona = e.target.value; subject = null; errKey = null; teachErr = null; offerOpen = false; setParam('as', persona); render(); }
+  if (id === 'fSel') { forId = e.target.value; subject = null; setParam('for', forId); render(); }
+  if (id === 'mSel') { m = e.target.value; errKey = null; teachErr = null; offerOpen = false; setParam('m', m); render(); }
+  if (id === 'wSel') { state.when = e.target.value; save(); render(); }
+});
+
+document.getElementById('bar').innerHTML = protoBar('/member/meeting. Saves on tap. Prototype “today” is Thursday, October 29.') +
+  (onBehalf ? `<div class="onBehalf"><div class="protoInner"><span><strong style="color:#4b3a0b">Entering for <span id="obName"></span></strong> (phone or text). Changes save as entered by ${esc(PEOPLE[LEADER_ID].name)}.</span><a href="admin-plan.html" style="color:#4b3a0b">Back to This Sunday</a></div></div>` : '');
+document.getElementById('chrome').innerHTML = onBehalf ? '' : siteChrome('Members');
+wireReset(() => { subject = null; render(); });
+const _r = render; render = function () { _r(); const ob = document.getElementById('obName'); if (ob) ob.textContent = PEOPLE[forId].name; };
+render();
+window.addEventListener('storage', () => { reloadState(); render(); });
+</script>
+</body>
+</html>

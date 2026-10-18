@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin home (prototype)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/board.css?v=2">
+<style>
+  /* "Needs you today" inbox, copied from prototypes/admin-home */
+  .inbox { background: #fff; border: 1px solid var(--admin-gray-200); border-radius: 6px; margin: 0 0 32px; padding: 0; list-style: none; overflow: hidden; }
+  .inbox li + li { border-top: 1px solid var(--admin-gray-100); }
+  .inRow { display: grid; grid-template-columns: 64px 1fr auto; gap: 12px; align-items: center; padding: 12px 16px; text-decoration: none; color: inherit; min-height: 56px; }
+  .inRow:hover { background: var(--admin-gray-50); }
+  .inRow:hover .inTitle { color: var(--admin-navy); text-decoration: underline; }
+  .inCount { text-align: center; }
+  .inCount b { display: block; font-size: 24px; line-height: 1; color: var(--admin-navy); }
+  .inCount small { display: block; font-size: 11px; color: var(--admin-gray-500); text-transform: uppercase; letter-spacing: .05em; margin-top: 2px; }
+  .inTitle { font-weight: 600; font-size: 15px; }
+  .inMeta { font-size: 13px; color: var(--admin-gray-500); margin-top: 2px; line-height: 1.4; display: block; }
+  .inGo { color: var(--admin-gray-300); font-size: 20px; }
+  .inRow.isNew { box-shadow: inset 3px 0 0 var(--admin-gold); }
+  .h2 { font-size: 18px; color: var(--admin-navy); margin: 0 0 10px; }
+</style>
+</head>
+<body class="admin">
+<div id="bar"></div>
+<header id="chrome"></header>
+<main class="adminPage" style="max-width:900px">
+  <h1 style="margin-bottom:16px">Home</h1>
+  <section aria-labelledby="hNeeds"><h2 class="h2" id="hNeeds">Needs you today</h2><ul class="inbox" id="inbox"></ul></section>
+  <p class="protoNote">New rows are marked with a gold edge. The teaching-skill row clears on Undo or Mark reviewed. No email is sent (Decision 12).</p>
+</main>
+<script src="assets/data.js?v=2"></script>
+<script>
+function render() {
+  const n = unreviewedCount();
+  const pending = state.changes.filter((c) => !c.reviewed && !c.reverted);
+  const mt = matchFor('nov1');
+  const rows = [];
+  if (n) rows.push({ isNew: true, count: n, unit: n === 1 ? 'change' : 'changes', title: `${n} teaching-skill ${n === 1 ? 'change' : 'changes'} to look at`, meta: pending.slice(0, 3).map((c) => `${PEOPLE[c.whose].name} ${c.action} ${SKILL[c.skill].name}`).join(' · '), to: 'admin-lookups.html' });
+  if (boardFor('nov1').mode === 'rank' && mt.wanted.length) rows.push({ isNew: true, count: mt.wanted.length, unit: 'requests', title: `Sunday: ${plural(mt.wanted.length, 'request')} with no teacher`, meta: mt.wanted.slice(0, 3).map((w) => `${w.info.codeLabel} (${w.scouts.length})`).join(' · '), to: 'admin-plan.html?m=nov1' });
+  rows.push({ count: 3, unit: 'to pay', title: '3 reimbursements to approve', meta: 'Oldest: Lisa B, campout groceries, Oct 24', to: '#' });
+  rows.push({ count: 2, unit: 'orders', title: '2 wreath orders not paid', meta: 'Round 2 cutoff Nov 10', to: '#' });
+  document.getElementById('inbox').innerHTML = rows.map((r) => `<li><a class="inRow${r.isNew ? ' isNew' : ''}" href="${r.to}"><span class="inCount"><b>${r.count}</b><small>${esc(r.unit)}</small></span><span><span class="inTitle">${esc(r.title)}</span><span class="inMeta">${esc(r.meta)}</span></span><span class="inGo" aria-hidden="true">›</span></a></li>`).join('');
+  document.getElementById('chrome').innerHTML = adminChrome('Home');
+}
+document.getElementById('bar').innerHTML = protoBar('Admin home. The first row is new (Decision 12).');
+wireReset(render);
+render();
+window.addEventListener('storage', () => { reloadState(); render(); });
+</script>
+</body>
+</html>

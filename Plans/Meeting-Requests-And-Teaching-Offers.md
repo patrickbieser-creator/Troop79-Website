@@ -1,6 +1,6 @@
 # Meeting Requests & Teaching Offers — Scouts Ask, Adults Offer, the Board Matches
 
-**Status:** Parked — design complete; reviewed 2026-10-18 (tech-lead, troop79-specialist, jenna); every question answered. Ready to activate
+**Status:** Parked — design complete; reviewed 2026-10-18 (tech-lead, troop79-specialist, jenna); every question answered; prototyped and reviewed by Patrick 2026-10-18. Ready to activate
 **Parked:** 2026-10-18
 **Priority:** High — replaces weekly hand-guessing of who shows up and who teaches
 **Extends:** `Plans/Meeting-Plan-Advancement-Suggestions.md` Phase 3 ("scout requests + instructor signup"), which was sketched and never designed.
@@ -186,7 +186,7 @@ pieces.
 list and sort order.
 
 - **Adults:** every skill, as checkboxes. Adult-only skills (first aid, woods tools,
-  fire safety, aquatics) carry the note "Adults only (troop rule)." The Guide to
+  fire safety, aquatics) carry "Adults only (Guide to Safe Scouting)", except first aid, which says "Adults only (troop rule)". The Guide to
   Safe Scouting requires qualified supervision for aquatics, woods tools, and fire,
   but it does not make first aid adult-only. That one is our rule, so the label
   says so (specialist review).
@@ -277,7 +277,7 @@ Recomputed on every board change until Sunday 5:30 pm:
 | Families | Bugle / public `/meetings` | The published agenda is still the one public answer. Bugle links to the pick card. |
 
 Privacy (Decisions 9 and 13): everyone sees names, as first name + last initial,
-everywhere: the scout pick card ("Finn P. and Anjali S. picked this"), the teacher
+everywhere: the scout pick card ("Finn P and Anjali S picked this"), the teacher
 board, and the meeting display. The display is a **public link**, e.g.
 `/meetings/2026-11-01/board`, with no sign-in. It carries `noindex`. Its loader returns only display
 names, topics or stations, teachers, and counts, never contact details or ledger
@@ -536,8 +536,8 @@ above wherever they conflict. Items needing Patrick are under **Review questions
 - **Pick list:** a sticky "Your picks (3 of 5)" tray on top, with optional ranking
   through Up/Down buttons (no drag-and-drop; touch targets of 44 px or more). The
   next rank is open, later ranks are collapsed with counts, and MBs sit behind a
-  search with "Badges you're working on" shown first. Friends show as "Finn P.,
-  Anjali S. +4"; a teacher shows as one quiet "Teacher: Mr. Vest" tag. A 6th pick
+  search with "Badges you're working on" shown first. Friends show as "Finn P,
+  Anjali S +4"; a teacher shows as one quiet "Teacher: Mr. Vest" tag. A 6th pick
   stays tappable and says in place "You have 5. Take one off to add this."
 - **Admin consolidation, not a 4th tab:** the live board becomes the Meeting Plan's
   first tab, "This Sunday". Group Sessions becomes read-only matcher output linking
@@ -572,6 +572,39 @@ tested with a canary person whose email and phone must not appear in the JSON.
       internal helper may still be named `canOfferToTeach`.
 - [x] **R4. Wording:** "Not sure yet," with the helper line "We'll find something
       that fits," for scouts and adults.
+
+## Prototype feedback (2026-10-18) — applied
+
+Prototype: `prototypes/meeting-board/` (Brad). It has two walkthroughs, one regular
+week and one MB night, plus every support screen. Patrick's feedback:
+
+- **"Can't make it" + a pick asks "Sunday's meeting, or later?"** A scout who can't
+  come can still pick, and that records a wish for a *future* meeting, not a sign
+  they're coming. The row asks inline: **Later** (primary, the likely answer) or
+  **At Sunday's meeting**, which switches them to Coming. Later picks show "For a
+  later meeting" in the tray. They don't count toward this meeting's demand or
+  imply Coming, and they carry forward as normal picks to the next board. Schema:
+  a `later boolean` on `meeting_topic_picks`, cleared on carry-forward. Test:
+  `Scout_PickWhileNotComing_AsksWhen_DefaultsLater()`,
+  `Matcher_IgnoresLaterPicks_ForThisMeeting()`.
+- **Ranking ("Put them in order") as designed.** Approved.
+- **Outing-only rows are fully disabled.** The dashed checkbox stays as designed
+  and can't be tapped, with no warning message. This is an exception to the "never
+  silently disable" pattern, because the "Needs an outing" line already says why.
+- **Names: first name + last initial, no period.** "Finn P, Anjali S +4". The
+  period is noise. Formal adult names ("Mr. Vest") keep their honorific period.
+  This applies to every board surface, including the agenda and TV.
+- **Brad's questions, all answered yes:**
+  1. Scout-facing screens and the TV show adults formally ("Mr. Vest"). Admin shows
+     first name + last initial ("Dan V").
+  2. Woods tools, fire safety, and aquatics say "Adults only (Guide to Safe
+     Scouting)". First aid says "Adults only (troop rule)".
+  3. A broad skill offer counts as **one** of an adult's two commitments, even when
+     it fills both blocks.
+  4. Admin home keeps the "Sunday: N requests with no teacher" row next to the
+     teaching-skill-changes alert.
+  5. The published public agenda lists every scout per session (first name + last
+     initial).
 
 ## Phasing (each phase ships value alone)
 

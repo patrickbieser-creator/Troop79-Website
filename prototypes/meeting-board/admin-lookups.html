@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lookups — Admin (prototype)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/board.css?v=2">
+</head>
+<body class="admin">
+<div id="bar"></div>
+<header id="chrome"></header>
+<main class="adminPage">
+  <div class="headRow"><div><p class="crumbs"><a href="#">Advancement</a> › Lookups</p><h1>Lookups</h1></div></div>
+  <div class="tabs" role="tablist"><a class="tab" href="#">Skills</a><a class="tab" href="#" aria-selected="true">Teaching skills</a><a class="tab" href="#">Merit badges</a><a class="tab" href="#">Activity types</a></div>
+  <div id="content"></div>
+  <div id="live" class="sr" aria-live="polite"></div>
+</main>
+<script src="assets/data.js?v=2"></script>
+<script>
+/* Admin › Lookups › Teaching skills, re-keyed to people: every adult (leaders AND
+   parents with no leader code) and every Junior Leader. One table, one editor,
+   the same rows the member page writes. Recent changes: Undo is the only lever. */
+let filter = q('f', 'review');
+let editing = null, draft = null, savedFor = '';
+const nm = (id) => PEOPLE[id].name;
+function jlWhy(s) { return s.rank && RANK_ORDER[s.rank] >= RANK_ORDER['first-class'] ? RANK_NAME[s.rank] : s.override === 'yes' ? 'roster override' : `grade ${s.grade}`; }
+function changesTable() {
+  const rows = state.changes.filter((c) => filter === 'all' || (!c.reviewed && !c.reverted));
+  const n = unreviewedCount();
+  return `<div class="panelHead"><h2>Recent teaching-skill changes</h2>
+    <span class="seg" role="group" aria-label="Show"><button type="button" data-f="review" aria-pressed="${filter === 'review'}">To look at (${n})</button><button type="button" data-f="all" aria-pressed="${filter === 'all'}">All</button></span></div>
+    <p class="panelNote">Changes count right away; nothing waits for approval. Undo reverses one (and is logged). Mark reviewed clears it from the admin-home count.</p>
+    <div class="aCard scrollX"><table class="tbl"><thead><tr><th>When</th><th>Whose skills</th><th>Change</th><th>From</th><th></th></tr></thead><tbody>
+    ${rows.map((c) => `<tr class="${c.reviewed || c.reverted ? 'muted' : ''}"><td style="white-space:nowrap">${esc(c.at)}</td><td><b>${esc(nm(c.whose))}</b><br><span class="meta">${PEOPLE[c.whose].kind === 'adult' ? esc(PEOPLE[c.whose].role) : 'Junior Leader'}</span></td>
+      <td>${c.action === 'added' ? 'Added' : 'Removed'} <b>${esc(SKILL[c.skill].name)}</b>${c.source === 'undo' ? ' <span class="tag">undo</span>' : ''}</td>
+      <td>${c.source === 'member' ? 'Member page' : c.source === 'undo' ? 'Undo' : 'Admin'}${c.by !== c.whose ? `, by ${esc(nm(c.by))}` : ''}</td>
+      <td style="white-space:nowrap">${c.reverted ? '<span class="tag">Undone</span>' : c.source === 'undo' ? '' : `<button type="button" class="btn secondary sm" data-undo="${c.id}">Undo</button> ${c.reviewed ? '<span class="tag ok">Reviewed</span>' : `<button type="button" class="btn secondary sm" data-reviewed="${c.id}">Mark reviewed</button>`}`}</td></tr>`).join('') || `<tr><td colspan="5" class="meta">Nothing to look at. <button type="button" class="linkBtn" data-f="all">Show all changes</button></td></tr>`}
+    </tbody></table></div>`;
+}
+function peopleTable() {
+  const people = [...ADULTS, ...SCOUTS.filter(isJuniorLeader)];
+  return `<div class="panelHead"><h2>Who can teach what</h2><span class="meta">${ADULTS.length} adults · ${SCOUTS.filter(isJuniorLeader).length} Junior Leaders</span></div>
+    <p class="panelNote">Any adult can hold teaching skills, parents included; no leader code needed. Junior Leaders (First Class and up, or 9th grade and up unless the roster says no) only get skills youth may teach.</p>
+    <div class="aCard scrollX"><table class="tbl"><thead><tr><th>Person</th><th>Role</th><th>Can teach</th><th>Counselor for</th><th></th></tr></thead><tbody>
+    ${people.map((p) => {
+      const sk = state.skills[p.id] || [];
+      const row = `<tr class="${editing === p.id ? 'sel' : ''}"><td><b>${esc(p.name)}</b></td><td>${p.kind === 'adult' ? esc(p.role) : `Junior Leader <span class="meta">(${jlWhy(p)})</span>`}</td>
+        <td>${sk.map((x) => `<span class="tag info">${esc(SKILL[x].name)}</span>`).join(' ') || '<span class="meta">nothing yet</span>'}${savedFor === p.id ? ' <span class="added">Saved</span>' : ''}</td>
+        <td class="meta">${p.kind === 'adult' ? (p.counselor.map((x) => MB[x].name).join(', ') || '—') : '—'}</td>
+        <td><button type="button" class="btn secondary sm" data-edit="${p.id}" data-fid="ed-${p.id}">${editing === p.id ? 'Close' : 'Edit'}</button></td></tr>`;
+      return row + (editing === p.id ? editorRow(p) : '');
+    }).join('')}</tbody></table></div>`;
+}
+function editorRow(p) {
+  const saved = state.skills[p.id] || [];
+  const dirty = draft.length !== saved.length || draft.some((x) => !saved.includes(x));
+  const list = p.kind === 'adult' ? SKILLS : SKILLS.filter((s) => s.youth);
+  return `<tr><td colspan="5" style="background:var(--admin-form-bg)"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:0 16px">
+    ${list.map((s) => `<label class="check" style="font-size:13px;min-height:32px;padding:4px 0"><input type="checkbox" data-sk="${s.id}" data-fid="sk-${s.id}"${draft.includes(s.id) ? ' checked' : ''}><span>${esc(s.name)}${p.kind === 'adult' && !s.youth ? ` <small>${adultOnlyNote(s.id)}</small>` : ''}</span></label>`).join('')}</div>
+    ${p.kind === 'scout' ? '<p class="meta">First Aid, Woods Tools, Fire Safety and Aquatics can’t be given to a Junior Leader.</p>' : ''}
+    <div style="display:flex;gap:12px;align-items:center;margin-top:8px"><button type="button" class="btn primary${dirty ? '' : ' idle'}" data-save="${p.id}">${dirty ? 'Save skills' : 'Save'}</button>${dirty ? `<button type="button" class="linkBtn" data-discard>Discard changes</button>` : ''}<span class="meta">${dirty ? 'Unsaved changes' : 'No changes'}</span></div></td></tr>`;
+}
+function render() { keepFocus(() => { document.getElementById('content').innerHTML = changesTable() + peopleTable(); document.getElementById('chrome').innerHTML = adminChrome('Lookups'); }); }
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('button'); if (!t) return; const d = t.dataset;
+  if (d.f) { filter = d.f; render(); return; }
+  if (d.undo) {
+    const c = state.changes.find((x) => String(x.id) === d.undo);
+    const cur = state.skills[c.whose] || [];
+    state.skills[c.whose] = c.action === 'added' ? cur.filter((x) => x !== c.skill) : [...cur, c.skill];
+    c.reverted = true; c.reviewed = true;
+    state.changes.unshift({ id: ++state.uid, whose: c.whose, by: LEADER_ID, skill: c.skill, action: c.action === 'added' ? 'removed' : 'added', source: 'undo', at: 'Just now', reviewed: true, reverted: false });
+    save(); announce(`Undone: ${SKILL[c.skill].name} ${c.action === 'added' ? 'removed from' : 'restored to'} ${nm(c.whose)}.`); render(); return;
+  }
+  if (d.reviewed) { state.changes.find((x) => String(x.id) === d.reviewed).reviewed = true; save(); announce('Marked reviewed.'); render(); return; }
+  if (d.edit) { editing = editing === d.edit ? null : d.edit; draft = editing ? [...(state.skills[editing] || [])] : null; savedFor = ''; render(); return; }
+  if ('discard' in d) { draft = [...(state.skills[editing] || [])]; render(); return; }
+  if (d.save) {
+    const saved = state.skills[d.save] || [];
+    if (draft.length === saved.length && draft.every((x) => saved.includes(x))) return;
+    setSkills(d.save, draft, 'admin', LEADER_ID); savedFor = d.save; editing = null; draft = null; announce('Saved.'); render();
+  }
+});
+document.addEventListener('change', (e) => { if (e.target.dataset.sk) { const id = e.target.dataset.sk; draft = e.target.checked ? [...draft, id] : draft.filter((x) => x !== id); render(); } });
+document.getElementById('bar').innerHTML = protoBar('Admin › Lookups › Teaching skills, keyed to people.');
+document.getElementById('chrome').innerHTML = adminChrome('Lookups');
+wireReset(render);
+render();
+window.addEventListener('storage', () => { reloadState(); render(); document.getElementById('chrome').innerHTML = adminChrome('Lookups'); });
+</script>
+</body>
+</html>

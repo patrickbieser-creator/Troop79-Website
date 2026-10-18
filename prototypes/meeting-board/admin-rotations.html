@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rotations — Admin (prototype)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/board.css?v=2">
+</head>
+<body class="admin">
+<div id="bar"></div>
+<header id="chrome"></header>
+<main class="adminPage">
+  <div class="headRow"><div><p class="crumbs"><a href="admin-plan.html?m=nov8">Meeting Plan</a> › <span id="crumb"></span></p><h1>Rotations</h1></div>
+    <div class="headActions"><button type="button" class="btn secondary" id="redraft">Start over from the draft</button><a class="btn secondary" href="board.html?m=nov8" target="_blank" rel="noopener">Meeting display ↗</a></div></div>
+  <p class="panelNote" id="intro"></p>
+  <form id="form" novalidate></form>
+  <div id="live" class="sr" aria-live="polite"></div>
+</main>
+<script src="assets/data.js?v=2"></script>
+<script>
+/* Merit badge night rotation editor. The matcher drafts groups (patrols kept
+   together, sizes balanced, finished stations skipped); adults move anyone. Moves are
+   a draft until Save, like any edit form. Drag works with a mouse; "Move to" works
+   everywhere, including keyboard and phone. */
+let m = q('m', 'nov8');
+let draft = null, savedMsg = '', dragId = null;
+const clone = (o) => JSON.parse(JSON.stringify(o));
+function base() { const r = rotationsFor(m); return { groups: clone(r.groups), helpers: clone(r.helpers) }; }
+function dirty() { return JSON.stringify(draft) !== JSON.stringify(base()); }
+function render() { keepFocus(renderInner); }
+function renderInner() {
+  const b = boardFor(m);
+  const f = document.getElementById('form');
+  if (b.mode !== 'merit_badge') { f.innerHTML = `<div class="notice"><p>${esc(MEETING[m].label)} isn’t a merit badge night. <a href="admin-setup.html?m=${m}">Board setup</a></p></div>`; return; }
+  const rot = rotationsFor(m);
+  if (!draft) draft = base();
+  document.getElementById('crumb').textContent = `${MEETING[m].short} · ${MB[b.mbId].name}`;
+  document.getElementById('intro').textContent = `${MB[b.mbId].name} night, ${MEETING[m].label}. ${plural(rot.n, 'station')}, so ${plural(rot.n, 'rotation')}. Groups are a starting point: move anyone.`;
+  const cols = draft.groups.map((g, gi) => {
+    const over = g.length > 8;
+    const sched = rot.times.map((t, r) => `${t} ${esc(rot.stations[rot.stationAt(gi, r)].title)}`).join('<br>');
+    const members = g.map((id) => {
+      const p = PEOPLE[id];
+      const skips = rot.stations.filter((st) => rot.finished(id, st)).map((st) => st.title.toLowerCase());
+      return `<div class="member" draggable="true" data-drag="${id}"><span class="grip" aria-hidden="true">⠿</span><span class="nm">${esc(p.name)}<small>${p.patrol} · ${p.rank ? RANK_NAME[p.rank] : 'new'}${skips.length ? ` · skips ${esc(skips.join(', '))} (done)` : ''}</small></span>
+        <select aria-label="Move ${esc(p.name)} to" data-move="${id}" data-fid="mv-${id}">${draft.groups.map((_, x) => `<option value="${x}"${x === gi ? ' selected' : ''}>Group ${x + 1}</option>`).join('')}</select></div>`;
+    }).join('');
+    return `<div class="rotCol" data-drop="${gi}"${over ? ' style="outline:2px solid var(--status-danger)"' : ''}><h3>Group ${gi + 1} <span class="meta">${g.length} scouts</span></h3>
+      ${over ? `<p class="capWarn">${g.length} is over the 8 cap. Move someone.</p>` : ''}<p class="sched">${sched}</p>${members || '<p class="meta">Empty. Drag someone here.</p>'}</div>`;
+  }).join('');
+  const helpers = rot.hasBadge.map((id) => {
+    const h = draft.helpers[id];
+    return `<li><span class="grow"><b>${esc(PEOPLE[id].name)}</b><small>Has ${esc(MB[b.mbId].name)} · ${PEOPLE[id].patrol}</small></span>
+      <select aria-label="Place ${esc(PEOPLE[id].name)}" data-helper="${id}" data-fid="hp-${id}" style="width:auto"><option value="">Not placed</option>${rot.stations.map((st, i) => `<option value="${i}"${h === i ? ' selected' : ''}>Helper at ${esc(st.title)}</option>`).join('')}<option value="other"${h === 'other' ? ' selected' : ''}>Other work</option></select></li>`;
+  }).join('');
+  const anyOver = draft.groups.some((g) => g.length > 8);
+  const d = dirty();
+  f.innerHTML = `<div class="rotGrid">${cols}</div>
+    <div class="aGrid2" style="margin-top:16px"><div><div class="panelHead"><h2>Has the badge</h2><span class="meta">help teach or other work</span></div><div class="aCard"><ul class="listRows">${helpers || '<li class="meta">Nobody coming has it.</li>'}</ul></div></div>
+    <div><div class="panelHead"><h2>Didn’t answer</h2><span class="meta">came anyway?</span></div><div class="aCard"><ul class="listRows">${rot.noAnswer.map((id) => `<li><span class="grow">${esc(PEOPLE[id].name)}<small>${PEOPLE[id].awarded.includes(b.mbId) ? 'Has the badge' : PEOPLE[id].patrol}</small></span><select aria-label="Add ${esc(PEOPLE[id].name)}" data-add="${id}" style="width:auto"><option value="">Add to…</option>${PEOPLE[id].awarded.includes(b.mbId) ? '<option value="badge">Has the badge list</option>' : draft.groups.map((_, x) => `<option value="${x}">Group ${x + 1}</option>`).join('')}</select></li>`).join('') || '<li class="meta">Everyone answered.</li>'}</ul></div></div></div>
+    <div class="stickyBar">
+      <button type="submit" class="btn primary${d ? '' : ' idle'}">${d ? 'Save rotations' : 'Save'}</button>
+      ${d ? '<button type="button" class="linkBtn" id="discard">Discard changes</button>' : ''}
+      <span class="state${savedMsg && !d ? ' ok' : ''}">${anyOver ? '<span class="capWarn">A group is over 8. You can still save; it’s your call on the night.</span>' : d ? 'Unsaved changes' : savedMsg || 'This is the matcher’s draft until you save.'}</span>
+    </div>`;
+}
+function moveTo(id, g) { draft.groups.forEach((x) => { const i = x.indexOf(id); if (i >= 0) x.splice(i, 1); }); draft.groups[g].push(id); savedMsg = ''; }
+document.addEventListener('change', (e) => {
+  const el = e.target;
+  if (el.dataset.move) { moveTo(el.dataset.move, +el.value); announce(`${PEOPLE[el.dataset.move].name} moved to Group ${+el.value + 1}. Not saved yet.`); render(); }
+  if (el.dataset.helper) { if (el.value === '') delete draft.helpers[el.dataset.helper]; else draft.helpers[el.dataset.helper] = el.value === 'other' ? 'other' : +el.value; savedMsg = ''; render(); }
+  if (el.dataset.add && el.value !== '') {
+    const id = el.dataset.add; setIntent(m, id, 'coming');
+    const keep = clone(draft); draft = keep; if (el.value !== 'badge') moveTo(id, +el.value);
+    announce(`${PEOPLE[id].name} marked coming.`); render();
+  }
+});
+document.addEventListener('click', (e) => {
+  if (e.target.id === 'discard') { draft = null; render(); announce('Changes discarded.'); }
+  if (e.target.id === 'redraft') { delete state.rotations[m]; save(); draft = null; savedMsg = 'Back to the matcher’s draft.'; render(); }
+});
+document.addEventListener('dragstart', (e) => { const el = e.target.closest('[data-drag]'); if (!el) return; dragId = el.dataset.drag; el.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', dragId); });
+document.addEventListener('dragend', () => { dragId = null; document.querySelectorAll('.over,.dragging').forEach((x) => x.classList.remove('over', 'dragging')); });
+document.addEventListener('dragover', (e) => { const col = e.target.closest('[data-drop]'); if (!col || !dragId) return; e.preventDefault(); document.querySelectorAll('.rotCol.over').forEach((x) => x !== col && x.classList.remove('over')); col.classList.add('over'); });
+document.addEventListener('drop', (e) => { const col = e.target.closest('[data-drop]'); if (!col || !dragId) return; e.preventDefault(); moveTo(dragId, +col.dataset.drop); announce(`${PEOPLE[dragId].name} moved to Group ${+col.dataset.drop + 1}. Not saved yet.`); dragId = null; render(); });
+document.getElementById('form').addEventListener('submit', (e) => { e.preventDefault(); if (!dirty()) return; saveRotations(m, draft.groups, draft.helpers); draft = null; savedMsg = 'Saved. The display and scouts’ pages use these groups now.'; render(); announce(savedMsg); });
+document.getElementById('bar').innerHTML = protoBar('Admin › Meeting Plan › Rotations (merit badge night).');
+document.getElementById('chrome').innerHTML = adminChrome('Meeting Plan');
+wireReset(() => { draft = null; render(); });
+render();
+</script>
+</body>
+</html>

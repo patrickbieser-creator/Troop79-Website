@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Meeting board — Troop 79</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/board.css?v=2">
+</head>
+<body class="tv">
+<header class="tvHead"><h1 id="h1"></h1><div class="right"><span class="tvLive" id="liveTag" aria-live="polite">Live</span><span class="tvClock" id="clock"></span></div></header>
+<main id="main"></main>
+<div class="protoPanel tvProto" id="panel"></div>
+<script src="assets/data.js?v=2"></script>
+<script>
+/* /meetings/<date>/board: public, no sign-in, no site chrome, noindex. Only display
+   names, topics or stations, and teachers. Polls a version stamp (prototype: every
+   2 s from localStorage; production ~10 s with jitter, paused when hidden). New names
+   fade in; with reduced motion they appear underlined instead. */
+let m = q('m', 'nov1');
+let offline = false, lastOk = Date.now(), lastStamp = '', lastClock = '';
+let rotNow = state.when === 'live' ? 1 : 0;
+let seen = null;           // names already on screen per container, for the fade-in
+function nameList(cid, ids) {
+  const prev = seen && seen[cid];
+  const html = ids.map((id) => `<li class="${prev && !prev.includes(id) ? 'pop' : ''}">${esc(PEOPLE[id].name)}</li>`).join('');
+  next[cid] = ids;
+  return `<ul class="tvNames">${html || '<li style="color:#777">No one yet</li>'}</ul>`;
+}
+let next = {};
+function rankView() {
+  const b = boardFor(m); const mt = matchFor(m);
+  const cols = mt.blocks.map((list, bi) => `<section class="tvCol"><h2>${b.blocks > 1 ? `Block ${bi + 1} · ` : ''}${BLOCK_TIMES[b.blocks][bi]}</h2>${list.map((s) => {
+    const st = sessionTitle(s.keys);
+    return `<article class="tvSess"><div class="code">${esc(st.code)}</div><div class="topic">${esc(st.title)}</div><div class="teacher">${esc(display(s.teacher, 'scout'))}</div>${nameList(s.id, s.scouts.map((x) => x.sid))}</article>`;
+  }).join('') || '<p style="font-size:26px;color:#666">Nothing matched yet.</p>'}</section>`).join('');
+  const wanted = mt.wanted.filter((w) => w.info.kind !== 'ff').slice(0, 4).map((w) => `${esc(w.info.label)} (${w.scouts.length})`).join(' · ');
+  const nothing = mt.comingNothing.map((c) => PEOPLE[c.sid].name).join(', ');
+  return `<div class="tvCols n${b.blocks}">${cols}</div><footer class="tvStrip">${wanted ? `<div><b>Looking for a teacher:</b> ${wanted}</div>` : ''}${nothing ? `<div><b>Not on a list yet:</b> ${esc(nothing)}. Find a leader.</div>` : ''}</footer>`;
+}
+function mbView() {
+  const r = rotationsFor(m);
+  const ri = Math.min(rotNow, r.n - 1);
+  const head = `<div style="padding:16px 32px 0" class="tvRot">${esc(MB[r.mbId].name)} · Rotation ${ri + 1} of ${r.n} · ${r.times[ri]}</div>`;
+  const grid = r.stations.map((st, si) => {
+    const gNow = r.groups.findIndex((_, g) => r.stationAt(g, ri) === si);
+    const gNext = ri + 1 < r.n ? r.groups.findIndex((_, g) => r.stationAt(g, ri + 1) === si) : -1;
+    const nowIds = gNow >= 0 ? r.groups[gNow].filter((id) => !r.finished(id, st)) : [];
+    const free = gNow >= 0 ? r.groups[gNow].filter((id) => r.finished(id, st)) : [];
+    const helpers = r.hasBadge.filter((id) => r.helpers[id] === si);
+    const ts = r.teachersAt(si);
+    return `<article class="tvSess tvStation"><div class="code">Station ${si + 1} · ${esc(st.loc)}</div><div class="topic">${esc(st.title)}</div>
+      <div class="teacher">${ts.length ? esc(ts.map((t) => display(t, 'scout')).join(', ')) : 'Teacher: ask a leader'}${helpers.length ? ` <span style="font-weight:400;color:#444">with ${esc(helpers.map((h) => PEOPLE[h].name).join(', '))}</span>` : ''}</div>
+      <div class="now"><b>Now</b> Group ${gNow + 1}</div>${nameList('st' + si, nowIds)}
+      ${free.length ? `<div class="next">Free this round, help out: ${esc(free.map((id) => PEOPLE[id].name).join(', '))}</div>` : ''}
+      <div class="next"><b>Next</b> ${gNext >= 0 ? `Group ${gNext + 1}` : 'Closing'}</div></article>`;
+  }).join('');
+  const other = r.hasBadge.filter((id) => r.helpers[id] === 'other' || r.helpers[id] === undefined);
+  return head + `<div class="tvGrid">${grid}</div>${other.length ? `<footer class="tvStrip"><div><b>Have the badge:</b> ${esc(other.map((id) => PEOPLE[id].name).join(', '))}. See a leader for a job.</div></footer>` : ''}`;
+}
+function render(force) {
+  if (!offline) { reloadState(); lastOk = Date.now(); }
+  const meet = MEETING[m]; const b = boardFor(m);
+  document.getElementById('h1').textContent = `Troop 79 · ${meet.label}`;
+  document.getElementById('clock').textContent = WHEN[state.when].clock;
+  const stale = offline && Date.now() - lastOk > 3000;
+  const lt = document.getElementById('liveTag');
+  lt.className = 'tvLive' + (stale ? ' stale' : '');
+  lt.textContent = stale ? `Updating… last updated ${lastClock}` : 'Live';
+  if (!stale) lastClock = WHEN[state.when].clock;
+  const stamp = JSON.stringify([state.picks[m], state.intents[m], state.teach[m], state.boards[m], state.rotations[m], state.offers, rotNow, m]);
+  if (stamp === lastStamp && !force) return;   // only redraw when the version stamp changes
+  lastStamp = stamp; next = {};
+  let html;
+  if (b.mode === 'closed') html = `<div class="tvClosed"><p>No sign-ups this week.</p><span>${esc(meet.title)}</span></div>`;
+  else html = b.mode === 'merit_badge' ? mbView() : rankView();
+  document.getElementById('main').innerHTML = html;
+  seen = next;
+}
+function panel() {
+  const b = boardFor(m);
+  document.getElementById('panel').innerHTML = `<b>Prototype controls (not on the TV)</b>
+    <label>Meeting <select id="mSel">${meetingOptions(m, (x) => x.kind === 'meeting' || boardFor(x.id).mode !== 'closed')}</select></label>
+    ${b.mode === 'rank' ? '<button type="button" id="sim">Simulate a sign-up</button>' : ''}
+    ${b.mode === 'merit_badge' ? `<label>Rotation <select id="rSel">${rotationsFor(m).times.map((t, i) => `<option value="${i}"${i === rotNow ? ' selected' : ''}>${i + 1} · ${t}</option>`).join('')}</select></label>` : ''}
+    <label><input type="checkbox" id="off"${offline ? ' checked' : ''}> Lose connection</label>
+    <a href="index.html">Walkthrough</a>`;
+}
+document.addEventListener('change', (e) => {
+  if (e.target.id === 'mSel') { m = e.target.value; setParam('m', m); seen = null; panel(); render(true); }
+  if (e.target.id === 'rSel') { rotNow = +e.target.value; seen = null; render(true); }
+  if (e.target.id === 'off') { offline = e.target.checked; if (!offline) render(true); }
+});
+document.addEventListener('click', (e) => {
+  if (e.target.id !== 'sim') return;
+  reloadState();
+  const mt = matchFor(m);
+  // a scout who isn't placed yet picks something that is live, so the TV shows a pop-in
+  const live = mt.sessions;
+  const cands = SCOUTS.filter((s) => intentOf(m, s.id).value !== 'not_coming' && !(mt.assignment[s.id] || []).length && picksFor(m, s.id).length < 5);
+  for (const s of cands.sort(() => Math.random() - 0.5)) {
+    const sess = live.find((x) => x.scouts.length < 8 && x.keys.some((k) => REQ_BY_KEY[k] && !hasFinished(s, REQ_BY_KEY[k])) && x.teacher !== s.id);
+    if (sess) { const k = sess.keys.find((kk) => REQ_BY_KEY[kk] && !hasFinished(s, REQ_BY_KEY[kk])); ensureOwnPicks(m, s.id).push({ key: k, pri: null, asked: TODAY, by: s.id, note: '' }); if ((state.intents[m] || {})[s.id] === 'undecided') delete state.intents[m][s.id]; save(); break; }
+  }
+  render();
+});
+panel(); render(true);
+setInterval(() => render(false), 2000);
+</script>
+</body>
+</html>
