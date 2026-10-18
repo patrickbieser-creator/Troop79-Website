@@ -91,7 +91,7 @@ describe('cardLedgerRows', () => {
 
   it('Treasurer_SeesGrossIncomeAsAFundraiserCardRow', () => {
     const { income } = cardLedgerRows(base);
-    expect([income.account, income.amount, income.kind, income.method, income.activity_label]).toEqual([
+    expect([income.account, income.amount, income.kind, income.method, income.bucket]).toEqual([
       'checking', 69.44, 'fundraiser', 'card', "Wreaths '26"
     ]);
   });

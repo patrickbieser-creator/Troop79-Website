@@ -210,7 +210,7 @@ describe('finance — ledgerToCsv (pure)', () => {
       method: null,
       personName: null,
       memo: null,
-      activity_label: null,
+      bucketName: null,
       voided_at: null,
       enteredByName: null,
       enteredAt: null,
@@ -256,7 +256,7 @@ describe('finance — ledgerToCsv (pure)', () => {
 describe('finance — summarizeByActivity (pure)', () => {
   function row(partial: Partial<ActivityTransactionRow>): ActivityTransactionRow {
     return {
-      activity_label: 'Can Drive',
+      bucketName: 'Can Drive',
       amount: 10,
       account: 'checking',
       voided_at: null,
@@ -266,7 +266,7 @@ describe('finance — summarizeByActivity (pure)', () => {
   }
 
   it('SummarizeByActivity_ExcludesRowsWithNoActivityLabel', () => {
-    const summary = summarizeByActivity([row({ activity_label: null }), row({ activity_label: '' })]);
+    const summary = summarizeByActivity([row({ bucketName: null }), row({ bucketName: '' })]);
     expect(summary).toEqual([]);
   });
 
@@ -292,7 +292,7 @@ describe('finance — summarizeByActivity (pure)', () => {
     const summary = summarizeByActivity([
       row({ amount: 50, account: 'checking' }),
       row({ amount: 30, account: 'scout_account' }),
-      row({ activity_label: 'Wreaths', amount: 999, account: 'checking' })
+      row({ bucketName: 'Wreaths', amount: 999, account: 'checking' })
     ]);
     const canDrive = summary.find((s) => s.activityLabel === 'Can Drive')!;
     expect(canDrive.byAccount.checking).toBe(50);
@@ -304,8 +304,8 @@ describe('finance — summarizeByActivity (pure)', () => {
 
   it('SummarizeByActivity_SortsByMostRecentActivityFirst', () => {
     const summary = summarizeByActivity([
-      row({ activity_label: 'Older Event', occurred_on: '2025-01-01' }),
-      row({ activity_label: 'Newer Event', occurred_on: '2026-06-01' })
+      row({ bucketName: 'Older Event', occurred_on: '2025-01-01' }),
+      row({ bucketName: 'Newer Event', occurred_on: '2026-06-01' })
     ]);
     expect(summary[0].activityLabel).toBe('Newer Event');
     expect(summary[1].activityLabel).toBe('Older Event');

@@ -35,12 +35,13 @@ export interface PaidLedgerRow {
   kind: 'fundraiser';
   method: PaymentMethod;
   memo: string;
-  activity_label: string;
+  /** The bucket's name. The card RPCs resolve it (`bucket_id_for_name`); Mark paid resolves it before its insert. */
+  bucket: string;
 }
 
 /**
  * The finance-ledger row Mark paid books for an order (Patrick, 2026-10-15). It follows the treasurer's fundraiser
- * convention: checking income, kind fundraiser, activity "Wreaths 'YY" (last year's rows read "Wreaths '25"). Every
+ * convention: checking income, kind fundraiser, bucket "Wreaths 'YY" (last year's rows read "Wreaths '25"). Every
  * PaymentMethod is also a ledger method (lib/finance.ts TRANSACTION_METHODS; PayPal joined it 2026-10-05), so it carries
  * straight over.
  */
@@ -60,7 +61,7 @@ export function paidLedgerRow(o: {
     kind: 'fundraiser',
     method: o.method,
     memo: `Wreath order ${o.orderNumber} · ${o.customerName} · ${METHOD_LABEL[o.method]}`,
-    activity_label: `Wreaths '${String(o.saleYear).slice(-2)}`
+    bucket: `Wreaths '${String(o.saleYear).slice(-2)}`
   };
 }
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { bucketKey, canDeleteBucket, moneyScopeFor, nearBuckets, sortBucketsForPicker, type Bucket } from '../src/lib/buckets';
+import { bucketKey, bucketNameOf, canDeleteBucket, moneyScopeFor, nearBuckets, sortBucketsForPicker, type Bucket } from '../src/lib/buckets';
 
 const b = (id: number, name: string, extra: Partial<Bucket> = {}): Bucket => ({ id, name, isEvent: false, lastUsed: null, ...extra });
 
@@ -58,5 +58,19 @@ describe('canDeleteBucket (pure)', () => {
       canDeleteBucket({ rowCount: 3, events: [] }),
       canDeleteBucket({ rowCount: 0, events: [{ id: 1, title: 'x', date: '2026-10-09' }] })
     ]).toEqual([true, false, false]);
+  });
+});
+
+// Buckets Release 2: readers take the name through the `bucket:buckets(name)` embed, an object at runtime that the
+// untyped client calls an array.
+describe('bucketNameOf', () => {
+  it('BucketNameOf_ReadsTheEmbeddedObject', () => {
+    expect(bucketNameOf({ name: "Wreaths '26" })).toBe("Wreaths '26");
+  });
+  it('BucketNameOf_ReadsAOneElementArray', () => {
+    expect(bucketNameOf([{ name: 'Campout' }])).toBe('Campout');
+  });
+  it('BucketNameOf_IsNull_ForARowWithNoBucket', () => {
+    expect([bucketNameOf(null), bucketNameOf([])]).toEqual([null, null]);
   });
 });

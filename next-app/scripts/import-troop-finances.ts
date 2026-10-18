@@ -595,7 +595,7 @@ function buildSql(rows: ResolvedRow[]): string {
     'method',
     'person_id',
     'memo',
-    'activity_label',
+    'bucket_id',
     'source',
     'import_row',
     'import_batch'
@@ -610,7 +610,8 @@ function buildSql(rows: ResolvedRow[]): string {
       sqlString(r.method),
       sqlNumber(r.personId),
       sqlString(r.memo),
-      sqlString(r.activityLabel),
+      // Buckets Release 2: the label names a bucket, found or created in the same transaction.
+      r.activityLabel ? `bucket_id_for_name(${sqlString(r.activityLabel)})` : 'NULL',
       sqlString('import'),
       sqlNumber(r.rowNumber),
       sqlString(IMPORT_BATCH)

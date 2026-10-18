@@ -12,8 +12,8 @@ import {
 
 /**
  * The finance page used to pull the WHOLE financial_transactions table through fetchAllRows once per
- * widget (balances, scout balances, reconciliation, activity labels). Those actions now read Postgres
- * aggregates (finance_balances / finance_activity_labels). Each test recomputes the answer the OLD way
+ * widget (balances, scout balances, reconciliation). Those actions now read the Postgres aggregate
+ * finance_balances (the activity-label list went with the label column, Buckets Release 2). Each test recomputes the answer the OLD way
  * (full read + lib/finance) and requires the action to agree, with test-owned fixture rows (memo
  * 'finance-aggregates-db') thickening the data: voided rows, fractional cents, a scout_account row.
  */
@@ -31,8 +31,7 @@ vi.mock('@/lib/supabase/server', async () => {
 import {
   getAccountBalancesAction,
   getScoutAccountBalancesAction,
-  getReconciliationSummaryAction,
-  listDistinctActivityLabelsAction
+  getReconciliationSummaryAction
 } from '../src/app/admin/(workspace)/finance/actions';
 
 const admin = adminClient();
@@ -50,7 +49,6 @@ async function insertTx(row: {
   amount: number;
   person_id?: number | null;
   voided?: boolean;
-  activity_label?: string | null;
   occurred_on?: string;
 }) {
   const { data, error } = await admin
@@ -61,7 +59,6 @@ async function insertTx(row: {
       amount: row.amount,
       kind: 'transfer',
       person_id: row.person_id ?? null,
-      activity_label: row.activity_label ?? null,
       memo: MEMO,
       voided_at: row.voided ? new Date().toISOString() : null
     })
@@ -84,15 +81,15 @@ async function fixtures() {
   await insertTx({ account: 'scout_account', amount: 20.15, person_id: personId });
   await insertTx({ account: 'scout_account', amount: -0.05, person_id: personId });
   await insertTx({ account: 'scout_account', amount: 500, person_id: personId, voided: true });
-  await insertTx({ account: 'checking', amount: 1, activity_label: 'zz Finance Aggregates Camp', voided: true });
+  await insertTx({ account: 'checking', amount: 1, voided: true });
   return personId;
 }
 
 async function allRows() {
-  return fetchAllRows<FinancialTransactionRow & { occurred_on: string; activity_label: string | null }>((from, to) =>
+  return fetchAllRows<FinancialTransactionRow & { occurred_on: string }>((from, to) =>
     admin
       .from('financial_transactions')
-      .select('id, occurred_on, account, amount, person_id, voided_at, activity_label')
+      .select('id, occurred_on, account, amount, person_id, voided_at')
       .order('id')
       .range(from, to)
   );
@@ -152,28 +149,25 @@ describe('finance aggregates equal the full-read algorithm', () => {
     expect(await getReconciliationSummaryAction()).toEqual(expected);
   });
 
-  it('ActivityLabels_EqualTheSortedDistinctNonEmptyLabels_VoidedRowsIncluded', async () => {
-    await fixtures();
-    const rows = await allRows();
-    const expected = [...new Set(rows.map((r) => r.activity_label).filter((v): v is string => !!v))].sort();
-    const got = await listDistinctActivityLabelsAction();
-    expect(got).toEqual(expected);
-    expect(got).toContain('zz Finance Aggregates Camp');
-  });
 });
 
 describe('finance aggregate functions are service-role only', () => {
-  it.each(['finance_balances', 'finance_activity_labels'])('%s_IsExecutableByTheServiceRole', async (fn) => {
+  it.each(['finance_balances'])('%s_IsExecutableByTheServiceRole', async (fn) => {
     const { error } = await admin.rpc(fn);
     expect(error).toBeNull();
   });
 
-  it.each(['finance_balances', 'finance_activity_labels'])('%s_CannotBeExecutedWithTheAnonKey', async (fn) => {
+  // Buckets Release 2: the bucket resolvers write (they can create a bucket), so anon must not reach them either.
+  it.each([
+    ['finance_balances', {}],
+    ['bucket_id_for_name', { p_name: 'anon bucket' }],
+    ['event_bucket', { p_calendar_entry_id: 1 }]
+  ] as const)('%s_CannotBeExecutedWithTheAnonKey', async (fn, args) => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     if (!url || !anonKey) throw new Error('anon key env missing — is .env.local present?');
     const anon = createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
-    const { error } = await anon.rpc(fn);
+    const { error } = await anon.rpc(fn, args);
     expect(error).not.toBeNull();
   });
 });

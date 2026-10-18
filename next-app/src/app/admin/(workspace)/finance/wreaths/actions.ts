@@ -428,9 +428,13 @@ export async function markPaid(orderId: number, method: PaidMethod, received?: n
       saleYear: sale?.year ?? Number(centralToday().slice(0, 4)),
       today: centralToday()
     });
-    const { error: ledgerError } = await supabase
-      .from('financial_transactions')
-      .insert({ ...row, wreath_order_id: orderId, source: 'app', entered_by_person_id: actor.personId });
+    const { bucket, ...fields } = row;
+    const { data: bucketId, error: bucketError } = await supabase.rpc('bucket_id_for_name', { p_name: bucket });
+    const { error: ledgerError } = bucketError
+      ? { error: bucketError }
+      : await supabase
+          .from('financial_transactions')
+          .insert({ ...fields, bucket_id: bucketId as number, wreath_order_id: orderId, source: 'app', entered_by_person_id: actor.personId });
     if (ledgerError) {
       const { error: revertError } = await supabase
         .from('wreath_orders')
@@ -443,7 +447,7 @@ export async function markPaid(orderId: number, method: PaidMethod, received?: n
       }
       return fail('The finance ledger couldn’t record this payment, so the order is still unpaid. Try again.');
     }
-    ledger = { field: 'Finance ledger', from: '—', to: `${money(total)} to checking (${row.activity_label})` };
+    ledger = { field: 'Finance ledger', from: '—', to: `${money(total)} to checking (${row.bucket})` };
   }
   await recordAudit({
     area: 'wreaths',

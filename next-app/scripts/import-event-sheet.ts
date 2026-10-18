@@ -430,6 +430,8 @@ async function apply(parsed: ParsedEventSheet, resolved: ResolvedPerson[], plan:
   console.log(`✓ ${placed} placements${outcomes.length ? `\n  ${outcomes.join('\n  ')}` : ''}`);
 
   // 6. money — the same rows the Money tab's actions write, batch-tagged.
+  // The event's bucket (Buckets Release 2), made from its title when it has none — as the Money tab's actions do.
+  const bucketId = must(await supabase.rpc('event_bucket', { p_calendar_entry_id: cal.id }), 'event_bucket') as number | null;
   for (const p of plan.payments) {
     const entryId = entryIdByRow.get(p.row) as number;
     must(
@@ -444,7 +446,7 @@ async function apply(parsed: ParsedEventSheet, resolved: ResolvedPerson[], plan:
           person_id: p.personId,
           signup_entry_id: entryId,
           calendar_entry_id: cal.id,
-          activity_label: title,
+          bucket_id: bucketId,
           memo: p.memo,
           source: 'import',
           import_batch: BATCH
@@ -467,7 +469,7 @@ async function apply(parsed: ParsedEventSheet, resolved: ResolvedPerson[], plan:
           method: 'bank',
           memo: e.memo,
           calendar_entry_id: cal.id,
-          activity_label: title,
+          bucket_id: bucketId,
           source: 'import',
           import_batch: BATCH
         })

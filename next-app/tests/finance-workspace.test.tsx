@@ -30,8 +30,8 @@ function row(over: Partial<LedgerRow> & { id: number }): LedgerRow {
     method: 'venmo',
     person_id: null,
     memo: null,
-    activity_label: null,
     bucket_id: null,
+    bucketName: null,
     voided_at: null,
     entered_by_person_id: null,
     created_at: '2026-06-09T12:00:00Z',
@@ -132,7 +132,7 @@ describe('FinanceWorkspace — Method column', () => {
 
 describe('FinanceWorkspace — Bucket naming (Patrick, 2026-10-17)', () => {
   it('LedgerGrid_CallsTheThemeColumn_Bucket', () => {
-    renderTable([row({ id: 1, activity_label: "Wreaths '26" })]);
+    renderTable([row({ id: 1, bucketName: "Wreaths '26" })]);
     const headers = screen.getAllByRole('columnheader').map((th) => th.textContent?.trim());
     expect(headers).toContain('Bucket');
     expect(headers).not.toContain('Activity');

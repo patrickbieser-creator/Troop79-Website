@@ -23,6 +23,7 @@ import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 import { moneyScope } from '@/lib/event-money-scope';
+import { bucketNameOf } from '@/lib/buckets';
 import { signedReceiptMediaUrl } from '@/lib/receipt-media';
 import { centralToday } from '@/lib/dates';
 import {
@@ -35,6 +36,7 @@ import {
   runningFundsAsOf,
   TOTAL_FUNDS_ACCOUNTS,
   type Account,
+  type ActivityTransactionRow,
   type TransactionKind,
   type TransactionKindRow,
   type TransactionMethod,
@@ -70,9 +72,9 @@ export interface LedgerFilters {
   account?: Account;
   kind?: string;
   personId?: number;
-  /** Case-insensitive substring match against activity_label — "contains",
-   *  not "equals", so "camp" finds every camping-related activity without
-   *  needing the exact full label (which drift makes hard to type anyway). */
+  /** Case-insensitive substring match against the row's bucket name — "contains",
+   *  not "equals", so "camp" finds every camping-related bucket without
+   *  needing the exact full name. */
   activityLabel?: string;
   /** occurred_on range, both inclusive, both optional, YYYY-MM-DD. */
   dateFrom?: string;
@@ -100,9 +102,9 @@ export interface LedgerRow {
   person_id: number | null;
   personName: string | null;
   memo: string | null;
-  activity_label: string | null;
-  /** The row's bucket (Plans/Buckets-Lookup.md); activity_label is its name until Release 2. */
+  /** The row's bucket (Plans/Buckets-Lookup.md) and its name, through the join. */
   bucket_id: number | null;
+  bucketName: string | null;
   voided_at: string | null;
   /** Who entered this row and when (surfaced 2026-08-19). Both null for
    *  every historical import row — the import script never stamped an
@@ -130,13 +132,20 @@ export async function listFinancialTransactionsAction(
   let q = supabase
     .from('financial_transactions')
     .select(
-      'id, occurred_on, account, amount, kind, method, person_id, memo, activity_label, bucket_id, voided_at, entered_by_person_id, created_at',
+      'id, occurred_on, account, amount, kind, method, person_id, memo, bucket_id, bucket:buckets(name), voided_at, entered_by_person_id, created_at',
       { count: 'exact' }
     );
   if (filters.account) q = q.eq('account', filters.account);
   if (filters.kind) q = q.eq('kind', filters.kind);
   if (filters.personId) q = q.eq('person_id', filters.personId);
-  if (filters.activityLabel) q = q.ilike('activity_label', `%${filters.activityLabel}%`);
+  if (filters.activityLabel) {
+    // The bucket filter is a name search: match the buckets first, then their rows (no label column since Release 2).
+    const { data: hits, error: bucketError } = await supabase.from('buckets').select('id').ilike('name', `%${filters.activityLabel}%`);
+    if (bucketError) throw new Error(`listFinancialTransactionsAction failed: ${bucketError.message}`);
+    // No bucket matches: no rows (qa-lead — don't lean on PostgREST's reading of an empty in.()).
+    if (!hits?.length) return { rows: [], total: 0 };
+    q = q.in('bucket_id', hits.map((b) => b.id as number));
+  }
   if (filters.dateFrom) q = q.gte('occurred_on', filters.dateFrom);
   if (filters.dateTo) q = q.lte('occurred_on', filters.dateTo);
   if (filters.amountMin != null || filters.amountMax != null) {
@@ -155,7 +164,9 @@ export async function listFinancialTransactionsAction(
   const { data, count, error } = await q.range(from, from + FINANCE_PAGE_SIZE - 1);
   if (error) throw new Error(`listFinancialTransactionsAction failed: ${error.message}`);
 
-  const rawRows = (data ?? []) as Omit<LedgerRow, 'personName' | 'enteredByName' | 'runningFunds'>[];
+  const rawRows = ((data ?? []) as unknown as (Omit<LedgerRow, 'personName' | 'enteredByName' | 'runningFunds' | 'bucketName'> & { bucket: unknown })[]).map(
+    ({ bucket, ...r }) => ({ ...r, bucketName: bucketNameOf(bucket) })
+  );
   const personIds = [
     ...new Set(
       rawRows.flatMap((r) => [r.person_id, r.entered_by_person_id]).filter((id): id is number => id != null)
@@ -318,7 +329,6 @@ export async function addTransactionAction(input: AddTransactionInput): Promise<
     method: input.method,
     person_id: input.account === 'scout_account' ? input.personId : (input.personId ?? null),
     memo: input.memo,
-    // The sync trigger writes activity_label from the bucket until Release 2 drops it.
     bucket_id: input.bucketId,
     source: 'app',
     entered_by_person_id: actor.personId
@@ -519,10 +529,25 @@ export interface RecordEventFeePaymentInput {
   scoutAccountPersonId?: number | null;
 }
 
+/** The event's bucket for a money row linked to it (Buckets Release 2): the event's own, or — when it has none —
+ *  the bucket named for its title, found or created and linked to the event (`event_bucket()`, the explicit form of
+ *  what the label sync trigger did for a fee row labelled with the event title). */
+async function eventBucketId(supabase: ReturnType<typeof createAdminClient>, calendarEntryId: number | null): Promise<number | null> {
+  if (calendarEntryId == null) return null;
+  const { data, error } = await supabase.rpc('event_bucket', { p_calendar_entry_id: calendarEntryId });
+  if (error) throw new Error(`event_bucket failed: ${error.message}`);
+  return (data as number | null) ?? null;
+}
+
+/** The bucket a name means, created when new (`bucket_id_for_name()`). */
+async function bucketIdForName(supabase: ReturnType<typeof createAdminClient>, name: string): Promise<number | null> {
+  const { data, error } = await supabase.rpc('bucket_id_for_name', { p_name: name });
+  if (error) throw new Error(`bucket_id_for_name failed: ${error.message}`);
+  return (data as number | null) ?? null;
+}
+
 /** Resolve the event (calendar entry id + title) behind a signup entry, so a
- *  money row can carry calendar_entry_id AND the activity label the Activity
- *  Report groups by. Plans/Event-Logistics.md §C: activity_label stays free
- *  text — for linked rows it is simply the event title. */
+ *  money row can carry calendar_entry_id and the event's bucket. */
 async function eventForSignupEntry(
   supabase: ReturnType<typeof createAdminClient>,
   signupEntryId: number
@@ -607,7 +632,7 @@ export async function recordEventFeePaymentAction(input: RecordEventFeePaymentIn
     person_id: payer.personId,
     signup_entry_id: ctx.entry.id,
     calendar_entry_id: ctx.calendarEntryId,
-    activity_label: ctx.title,
+    bucket_id: await eventBucketId(supabase, ctx.calendarEntryId),
     // Paid from a family member's account: the memo says who the fee was for,
     // so that family's scout-account history and the ledger both read right.
     memo:
@@ -694,7 +719,7 @@ export async function refundEventFeeAction(input: {
     person_id: payer.personId,
     signup_entry_id: ctx.entry.id,
     calendar_entry_id: ctx.calendarEntryId,
-    activity_label: ctx.title,
+    bucket_id: await eventBucketId(supabase, ctx.calendarEntryId),
     memo: [input.memo?.trim() || 'Refund', payer.onBehalfOf ? `for ${payer.onBehalfOf}` : null].filter(Boolean).join(' — '),
     source: 'app',
     entered_by_person_id: actor.personId,
@@ -752,7 +777,7 @@ export async function creditOverpaymentAction(input: {
     person_id: ctx.entry.person_id,
     signup_entry_id: ctx.entry.id,
     calendar_entry_id: ctx.calendarEntryId,
-    activity_label: ctx.title,
+    bucket_id: await eventBucketId(supabase, ctx.calendarEntryId),
     memo: `Overpayment credit${ctx.title ? ` — ${ctx.title}` : ''}`,
     source: 'app',
     entered_by_person_id: actor.personId,
@@ -816,7 +841,7 @@ export async function addEventExpenseAction(input: AddEventExpenseInput): Promis
   if (!memo) return { ok: false, error: 'Say what the expense was for.' };
   if (!Number.isInteger(input.payerPersonId) || input.payerPersonId <= 0) return { ok: false, error: 'Say who paid.' };
   const supabase = createAdminClient();
-  const { data: cal } = await supabase.from('calendar_entries').select('id, title').eq('id', input.calendarEntryId).maybeSingle();
+  const { data: cal } = await supabase.from('calendar_entries').select('id, title, bucket_id').eq('id', input.calendarEntryId).maybeSingle();
   if (!cal) return { ok: false, error: 'Event not found.' };
   const title = (cal as { title: string }).title;
 
@@ -830,7 +855,9 @@ export async function addEventExpenseAction(input: AddEventExpenseInput): Promis
       person_id: input.payerPersonId,
       memo,
       calendar_entry_id: input.calendarEntryId,
-      activity_label: title,
+      // The event's bucket, else the bucket named for its title — but only a fee row claims a bucket for the event
+      // (the Release 1 sync-trigger rule, kept by qa-lead 2026-10-18), so an expense never links the event.
+      bucket_id: (cal as { bucket_id: number | null }).bucket_id ?? (await bucketIdForName(supabase, title)),
       source: 'app',
       entered_by_person_id: actor.personId,
       idempotency_key: input.idempotencyKey ?? null
@@ -1162,7 +1189,7 @@ export async function exportLedgerAction(): Promise<LedgerCsvRow[]> {
     method: TransactionMethod | null;
     person_id: number | null;
     memo: string | null;
-    activity_label: string | null;
+    bucket: unknown;
     voided_at: string | null;
     entered_by_person_id: number | null;
     created_at: string | null;
@@ -1170,7 +1197,7 @@ export async function exportLedgerAction(): Promise<LedgerCsvRow[]> {
     supabase
       .from('financial_transactions')
       .select(
-        'occurred_on, account, amount, kind, method, person_id, memo, activity_label, voided_at, entered_by_person_id, created_at'
+        'occurred_on, account, amount, kind, method, person_id, memo, bucket:buckets(name), voided_at, entered_by_person_id, created_at'
       )
       .order('occurred_on', { ascending: true })
       .range(from, to)
@@ -1181,8 +1208,9 @@ export async function exportLedgerAction(): Promise<LedgerCsvRow[]> {
   ];
   const nameMap = await loadNames(supabase, personIds);
 
-  return rows.map((r) => ({
+  return rows.map(({ bucket, ...r }) => ({
     ...r,
+    bucketName: bucketNameOf(bucket),
     personName: r.person_id != null ? (nameMap.get(r.person_id) ?? `#${r.person_id}`) : null,
     enteredByName:
       r.entered_by_person_id != null ? (nameMap.get(r.entered_by_person_id) ?? `#${r.entered_by_person_id}`) : null,
@@ -1440,24 +1468,6 @@ export async function markReimbursementPaidAction(id: number, method: Transactio
 // finance.view, same gate as the ledger itself.
 // ═══════════════════════════════════════════════════════════════════════
 
-/** Every non-voided transaction that carries an activity_label, unpaginated
- *  (fetchAllRows — same 1000-row-cap discipline as every other finance
- *  loader) — the report groups these client-side via summarizeByActivity(),
- *  a pure function so the grouping logic is unit-tested without a DB. */
-/** Distinct activity_label values already in use — powers the Record a
- *  transaction form's autocomplete (Patrick, 2026-08-18: a typo-resistance
- *  safeguard instead of a full normalized activities table, see
- *  Plans/Troop-Finances.md). Deliberately not a separate lookup table:
- *  reusing an existing label is a suggestion here, not an enforced FK. */
-export async function listDistinctActivityLabelsAction(): Promise<string[]> {
-  await requireAnyOf(['finance.manage', 'finance.view']);
-  const supabase = createAdminClient();
-  const { data, error } = await supabase.rpc('finance_activity_labels');
-  if (error) throw new Error(error.message);
-  // Sorted here (code-unit order), not in SQL, so the order is exactly what the full read produced.
-  return [...new Set(((data ?? []) as { activity_label: string | null }[]).map((r) => r.activity_label).filter((v): v is string => !!v))].sort();
-}
-
 /** The governed Kind vocabulary (transaction_kinds, 2026-08-20) — powers
  *  every Kind picker (Record, Edit, bulk reassign). Unlike Activity, this
  *  IS an enforced FK (financial_transactions_kind_fkey), so a value not in
@@ -1579,14 +1589,13 @@ export interface ActivityDrilldownRow {
   voided_at: string | null;
   /** Link to the specific calendar event this row came from, when it
    *  carries a real signup_entry_id — precise per-event drill-down (via
-   *  signup_entries -> event_signups -> calendar_entries), not just a
-   *  same-activity_label text match. Null for every row without one
-   *  (checking-account expenses, fundraiser income, etc.) — those only
-   *  ever had the label match to begin with. */
+   *  signup_entries -> event_signups -> calendar_entries), not just the
+   *  bucket. Null for every row without one (checking-account expenses,
+   *  fundraiser income, etc.). */
   eventHref: string | null;
 }
 
-/** Every transaction carrying a given activity_label — the Activity
+/** Every transaction in the bucket of that name — the Bucket
  *  Report's drill-down (Patrick, 2026-08-19: "I need to drill in to see the
  *  details of any activities in the report"). Read-only, same
  *  finance.manage-OR-finance.view gate as the report itself. */
@@ -1594,10 +1603,13 @@ export async function getActivityTransactionsAction(activityLabel: string): Prom
   await requireAnyOf(['finance.manage', 'finance.view']);
   const supabase = createAdminClient();
 
+  // The report groups by bucket name (unique, see buckets_name_key), so the name finds its one bucket.
+  const { data: bucket } = await supabase.from('buckets').select('id').eq('name', activityLabel).maybeSingle();
+  if (!bucket) return [];
   const { data, error } = await supabase
     .from('financial_transactions')
     .select('id, occurred_on, account, amount, kind, memo, person_id, voided_at, signup_entry_id')
-    .eq('activity_label', activityLabel)
+    .eq('bucket_id', bucket.id)
     .order('occurred_on', { ascending: true });
   if (error) throw new Error(`getActivityTransactionsAction failed: ${error.message}`);
 
@@ -1661,18 +1673,20 @@ export async function getActivityTransactionsAction(activityLabel: string): Prom
   }));
 }
 
-export async function getActivityReportAction(): Promise<
-  { account: Account; amount: number; activity_label: string | null; voided_at: string | null; occurred_on: string }[]
-> {
+/** Every bucketed transaction, unpaginated (fetchAllRows — the 1000-row cap) — the report groups these
+ *  client-side via summarizeByActivity(), a pure function so the grouping is unit-tested without a DB. */
+export async function getActivityReportAction(): Promise<ActivityTransactionRow[]> {
   await requireAnyOf(['finance.manage', 'finance.view']);
   const supabase = createAdminClient();
-  return fetchAllRows((from, to) =>
+  const rows = await fetchAllRows<{ account: Account; amount: number; voided_at: string | null; occurred_on: string; bucket: unknown }>((from, to) =>
     supabase
       .from('financial_transactions')
-      .select('account, amount, activity_label, voided_at, occurred_on')
-      .not('activity_label', 'is', null)
+      .select('account, amount, voided_at, occurred_on, bucket:buckets(name)')
+      .not('bucket_id', 'is', null)
+      .order('id', { ascending: true })
       .range(from, to)
   );
+  return rows.map(({ bucket, ...r }) => ({ ...r, bucketName: bucketNameOf(bucket) }));
 }
 
 /** The scout-account balance behind a signup entry — shown in the Record

@@ -148,23 +148,6 @@ export function canRecordPayment(person: { owed: number; paid: number }): boolea
   return person.owed > 0 && cents(person.paid) < cents(person.owed);
 }
 
-/** The ledger's Record form sets only activity_label, never calendar_entry_id
- *  (Patrick, 2026-10-17: Aldi shopping for High Cliff missing from its Money tab).
- *  The Money tab adopts unlinked rows under a label that belongs to this event —
- *  one its linked rows carry, or its title — unless another event claims it too. */
-export function adoptableLabels(
-  ownLabels: Iterable<string | null>,
-  title: string | null,
-  claimedElsewhere: ReadonlySet<string>
-): string[] {
-  const out = new Set<string>();
-  for (const l of [...ownLabels, title]) {
-    const s = l?.trim();
-    if (s && !claimedElsewhere.has(s)) out.add(s);
-  }
-  return [...out];
-}
-
 /** How a person paid, for the Money tab's listing: each method once (first
  *  use order) and the date of the latest payment. Refunds, voids and credits
  *  are not payments. */

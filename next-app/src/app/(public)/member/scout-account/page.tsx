@@ -23,6 +23,7 @@
  * (see Plans/Troop-Finances.md's access-design notes for why that's the
  * right call here specifically).
  */
+import { bucketNameOf } from '@/lib/buckets';
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
 import { resolveFinanceViewer } from '@/lib/finance-viewer';
@@ -48,7 +49,8 @@ interface HistoryRow {
   occurred_on: string;
   amount: number;
   kind: string;
-  activity_label: string | null;
+  /** The row's bucket, through the join (the scout sees which event or theme it was for). */
+  bucket: unknown;
   memo: string | null;
   person_id: number | null;
   voided_at: string | null;
@@ -124,7 +126,7 @@ export default async function ScoutAccountPage({
     fetchAllRows<HistoryRow>((from, to) =>
       supabase
         .from('financial_transactions')
-        .select('id, occurred_on, amount, kind, activity_label, memo, person_id, voided_at')
+        .select('id, occurred_on, amount, kind, bucket:buckets(name), memo, person_id, voided_at')
         .eq('account', 'scout_account')
         .in('person_id', scope)
         .order('occurred_on', { ascending: false })
@@ -232,7 +234,7 @@ export default async function ScoutAccountPage({
                   <tr key={r.id}>
                     <td className={styles.nowrap}>{fmtDate(r.occurred_on)}</td>
                     {multipleScouts && <td>{r.person_id != null ? (nameById.get(r.person_id) ?? '—') : '—'}</td>}
-                    <td>{[r.activity_label, r.memo].filter(Boolean).join(' — ') || r.kind}</td>
+                    <td>{[bucketNameOf(r.bucket), r.memo].filter(Boolean).join(' — ') || r.kind}</td>
                     <td className={styles.numCell}>
                       {r.amount < 0 ? `-$${Math.abs(r.amount).toFixed(2)}` : `$${r.amount.toFixed(2)}`}
                     </td>

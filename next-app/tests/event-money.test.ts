@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { adoptableLabels, canRecordPayment, paymentSummary, feeAmount, refundAccountDefault, milestoneStanding, money, sortMilestones, summarizeEventMoney, uncreditedOverpayment, type Milestone } from '../src/lib/event-money';
+import { canRecordPayment, paymentSummary, feeAmount, refundAccountDefault, milestoneStanding, money, sortMilestones, summarizeEventMoney, uncreditedOverpayment, type Milestone } from '../src/lib/event-money';
 
 describe('feeAmount (notional accounts)', () => {
   it('FeeAmount_FlipsScoutAccountAndScholarshipFeeRows_ToTheEventsSign', () => {
@@ -169,18 +169,6 @@ describe('summarizeEventMoney', () => {
     expect(money(30)).toBe('$30');
     expect(money(22.5)).toBe('$22.50');
     expect(money(-278.71)).toBe('−$278.71');
-  });
-});
-
-describe('adoptableLabels', () => {
-  it('AdoptableLabels_TakesTheEventsOwnLabelsAndTitle_Deduped', () => {
-    expect(adoptableLabels(["High Cliff Fall '26", "High Cliff Fall '26", null], 'High Cliff Fall Campout', new Set())).toEqual([
-      "High Cliff Fall '26",
-      'High Cliff Fall Campout'
-    ]);
-  });
-  it('AdoptableLabels_DropsALabelAnotherEventAlsoUses', () => {
-    expect(adoptableLabels(['Campout'], 'Campout', new Set(['Campout']))).toEqual([]);
   });
 });
 

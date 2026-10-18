@@ -79,3 +79,10 @@ export function sortBucketsForPicker(buckets: readonly Bucket[]): Bucket[] {
 export function moneyScopeFor(calendarEntryId: number, entryBucketId: number | null): string {
   return entryBucketId != null ? `bucket_id.eq.${entryBucketId},calendar_entry_id.eq.${calendarEntryId}` : `calendar_entry_id.eq.${calendarEntryId}`;
 }
+
+/** A row's bucket name from the `bucket:buckets(name)` embed (Buckets Release 2: no label column). Many-to-one, so
+ *  PostgREST returns one object or null; the untyped client calls it an array, so both shapes read. */
+export function bucketNameOf(embed: unknown): string | null {
+  const b = Array.isArray(embed) ? embed[0] : embed;
+  return b && typeof b === 'object' && typeof (b as { name?: unknown }).name === 'string' ? (b as { name: string }).name : null;
+}

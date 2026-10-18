@@ -176,7 +176,8 @@ export interface LedgerCsvRow {
   method: TransactionMethod | null;
   personName: string | null;
   memo: string | null;
-  activity_label: string | null;
+  /** The row's bucket name, through the buckets join. */
+  bucketName: string | null;
   voided_at: string | null;
   /** Who entered this row and when — surfaced 2026-08-19. Both null for
    *  every historical import row (the import script never stamped an
@@ -193,7 +194,8 @@ function csvField(value: string): string {
 }
 
 export interface ActivityTransactionRow {
-  activity_label: string | null;
+  /** The row's bucket name, through the buckets join (Buckets Release 2: no label column). */
+  bucketName: string | null;
   amount: number;
   account: Account;
   voided_at: string | null;
@@ -224,9 +226,7 @@ export interface ActivitySummary {
  * Per-event/activity income-vs-expense report (Plans/Troop-Finances.md
  * Phase 6, Patrick 2026-08-18: "tie out between income and expenses...
  * on demand based on each event"). Groups every non-voided transaction that
- * carries an `activity_label` — populated on all 646 imported historical
- * rows already; app-entered rows need the same field set going forward for
- * this to stay useful (the Record a transaction form collects it).
+ * sits in a bucket, by the bucket's name.
  */
 export function summarizeByActivity(transactions: readonly ActivityTransactionRow[]): ActivitySummary[] {
   interface Acc {
@@ -241,7 +241,7 @@ export function summarizeByActivity(transactions: readonly ActivityTransactionRo
 
   for (const t of transactions) {
     if (t.voided_at !== null) continue;
-    const label = t.activity_label?.trim();
+    const label = t.bucketName?.trim();
     if (!label) continue;
 
     const entry = map.get(label) ?? {
@@ -305,7 +305,7 @@ export function ledgerToCsv(rows: readonly LedgerCsvRow[]): string {
         r.method ?? '',
         r.personName ?? '',
         r.memo ?? '',
-        r.activity_label ?? '',
+        r.bucketName ?? '',
         r.amount.toFixed(2),
         r.voided_at ? 'yes' : '',
         r.enteredByName ?? '',

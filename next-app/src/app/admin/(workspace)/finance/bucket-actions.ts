@@ -1,9 +1,9 @@
 'use server';
 
 /**
- * Buckets — the managed money themes (Plans/Buckets-Lookup.md, Release 1). Rows and calendar entries point
- * at a bucket by id; until Release 2 the database keeps activity_label in step (sync trigger), so every
- * label reader keeps working. Pure picker helpers: lib/buckets.ts.
+ * Buckets — the managed money themes (Plans/Buckets-Lookup.md). Rows and calendar entries point at a bucket
+ * by id; readers get its name through the buckets join (Release 2 dropped the activity_label copy). Pure
+ * picker helpers: lib/buckets.ts.
  */
 
 import { revalidatePath } from 'next/cache';

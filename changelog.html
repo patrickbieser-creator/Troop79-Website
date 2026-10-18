@@ -520,6 +520,13 @@ py -m http.server 8000</pre>
           <li><span><strong>Fixed:</strong> a reimbursement entered from an event&rsquo;s Money tab, which has no receipt, would have broken the Reimbursements page.</span></li>
         </ul>
       </div>
+      <div class="change-group">
+        <p class="change-group-title">Buckets: the last of the old labels</p>
+        <ul class="change-list">
+          <li><span><strong>One source for every bucket name.</strong> Ledger rows no longer keep their own copy of a bucket&rsquo;s name. Every screen reads it from the bucket itself: the ledger, its Bucket filter, the Bucket Report and its drill-down, the CSV export and the scout account page. Renaming a bucket shows everywhere at once. Nothing looks different.</span></li>
+          <li><span><strong>Event expenses.</strong> An expense recorded on an event lands in the event&rsquo;s bucket, as before. A sign-up fee still sets up the event&rsquo;s bucket when it has none.</span></li>
+        </ul>
+      </div>
     </div>
 
     <!-- RELEASE v1.235.0 -->

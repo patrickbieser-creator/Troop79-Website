@@ -497,7 +497,7 @@ export function FinanceWorkspace({
                   <span className={kindPillClass(r.kind)}>{kindLabel(r.kind)}</span>
                 </td>
                 <td>{r.personName ?? '—'}</td>
-                <td>{r.activity_label || '—'}</td>
+                <td>{r.bucketName || '—'}</td>
                 <td>
                   <MemoCell memo={r.memo} />
                 </td>

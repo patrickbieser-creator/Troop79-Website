@@ -4,9 +4,7 @@
  * income and expenses from an event like the can drive or a campout... a
  * report on demand based on each event").
  *
- * Groups every transaction by activity_label (populated on all imported
- * history; app-entered rows carry it too now via the Record a transaction
- * form's Activity field). Read-only, same finance.manage-OR-finance.view
+ * Groups every transaction by its bucket (Plans/Buckets-Lookup.md). Read-only, same finance.manage-OR-finance.view
  * gate as the ledger — this is a report, not a write surface.
  */
 import { deleteBucketAction, listBucketsAction, previewRenameBucketAction, renameBucketAction } from '../bucket-actions';

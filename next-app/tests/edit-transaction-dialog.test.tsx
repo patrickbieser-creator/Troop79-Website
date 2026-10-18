@@ -47,7 +47,7 @@ function checkingRow(over: Partial<LedgerRow> = {}): LedgerRow {
     person_id: 1,
     personName: 'Kevin Pieper',
     memo: 'Kevin Pieper',
-    activity_label: "High Adventure Trip '26",
+    bucketName: "High Adventure Trip '26",
     bucket_id: 17,
     voided_at: null,
     entered_by_person_id: null,

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeAll, afterAll, afterEach } from 'vitest';
 import { adminClient } from './helpers/admin-client';
-import { createTestEvent, deleteTestEvent, createTestScout, deleteTestScout, type TestEvent, type TestScout } from './helpers/signup-fixtures';
+import { createTestEvent, deleteTestEvent, createTestScout, deleteTestScout, TEST_PREFIX, type TestEvent, type TestScout } from './helpers/signup-fixtures';
 
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 vi.mock('@/lib/require-capability', () => ({
@@ -12,7 +12,7 @@ vi.mock('@/lib/supabase/server', async () => {
   return { createAdminClient: () => make() };
 });
 
-import { getEventMoneyAction } from '../src/app/admin/(workspace)/finance/actions';
+import { addEventExpenseAction, getEventMoneyAction } from '../src/app/admin/(workspace)/finance/actions';
 
 /** The Money tab's rows through the shared money scope (Plans/Buckets-Lookup.md) — qa-lead W1, 2026-10-17. */
 const admin = adminClient();
@@ -26,6 +26,8 @@ beforeAll(async () => {
 afterEach(async () => {
   await admin.from('financial_transactions').delete().eq('person_id', scout.personId);
   await admin.from('signup_entries').delete().eq('event_signup_id', event.eventSignupId);
+  await admin.from('calendar_entries').update({ bucket_id: null }).eq('id', event.calendarEntryId);
+  await admin.from('buckets').delete().like('name', `${TEST_PREFIX}%`);
 });
 afterAll(async () => {
   await deleteTestEvent(admin, event);
@@ -44,5 +46,26 @@ describe('getEventMoneyAction scope', () => {
     });
     const data = await getEventMoneyAction(event.eventSignupId);
     expect(data!.expenses).toHaveLength(0);
+  });
+});
+
+/** Buckets Release 2 (qa-lead 2026-10-18): only a sign-up's fee row claims a bucket for its event — an expense keeps
+ *  the old sync-trigger rule and never links the event. */
+describe('an event expense and its bucket', () => {
+  const expense = () =>
+    addEventExpenseAction({ signupId: event.eventSignupId, calendarEntryId: event.calendarEntryId, occurredOn: '2026-09-01', amount: 12, memo: 'Gas', paidBy: 'troop', payerPersonId: scout.personId, method: 'bank' });
+
+  it('EventExpense_GoesInTheEventsBucket_WhenItHasOne', async () => {
+    const { data: b } = await admin.from('buckets').insert({ name: `${TEST_PREFIX} expense bucket` }).select('id').single();
+    await admin.from('calendar_entries').update({ bucket_id: b!.id }).eq('id', event.calendarEntryId);
+    await expense();
+    const { data } = await admin.from('financial_transactions').select('bucket_id').eq('person_id', scout.personId).single();
+    expect(data?.bucket_id).toBe(b!.id);
+  });
+
+  it('EventExpense_OnAnEventWithNoBucket_DoesNotClaimABucketForTheEvent', async () => {
+    await expense();
+    const { data } = await admin.from('calendar_entries').select('bucket_id').eq('id', event.calendarEntryId).single();
+    expect(data?.bucket_id).toBeNull();
   });
 });

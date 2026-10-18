@@ -15,7 +15,7 @@ describe('paidLedgerRow', () => {
   });
 
   it('Treasurer_SeesTheSaleYearActivityLabel', () => {
-    expect(paidLedgerRow(base).activity_label).toBe("Wreaths '26");
+    expect(paidLedgerRow(base).bucket).toBe("Wreaths '26");
   });
 
   it('Treasurer_SeesTheDayItWasMarkedPaid', () => {
