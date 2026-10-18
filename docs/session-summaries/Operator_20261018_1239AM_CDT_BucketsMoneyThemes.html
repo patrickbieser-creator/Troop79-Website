@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session 58 — Buckets</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #3d5a3e;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #f0eecd;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); vertical-align: top; }
+        tr:hover { background: var(--nw-sage); }
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+        code { font-family: 'Courier New', monospace; font-size: 0.85em; background: var(--nw-light-gray); padding: 0 0.3em; border-radius: 3px; }
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+        @media print { body { background: white; } header { padding: 1.5rem; } .container { padding: 1rem; } .stat { break-inside: avoid; } }
+        @media (max-width: 600px) { header h1 { font-size: 1.5rem; } .stats { flex-direction: column; } }
+    </style>
+<body>
+    <header>
+        <h1>Buckets: one managed link for every troop money theme</h1>
+        <p class="subtitle">Session 58. Event Money tabs now show every payment and expense for the event, the ledger shows how money arrived, and free-text activity labels became a managed list of Buckets. Each event, payment and report now ties to its theme through that list.</p>
+        <div class="meta">
+            <span>&#128197; October 17&ndash;18, 2026</span>
+            <span>&#129302; Operator (Opus 5.5)</span>
+            <span>&#128204; Troop79-Website</span>
+            <span>&#128640; v1.228.1 &rarr; v1.235.0</span>
+        </div>
+    </header>
+    <div class="container">
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">8</div><div class="label">Releases (v1.228.2&ndash;v1.235.0)</div></div>
+            <div class="stat"><div class="number">2</div><div class="label">Production migrations (buckets, bucket list)</div></div>
+            <div class="stat"><div class="number">6</div><div class="label">Decisions (D-389&ndash;D-394)</div></div>
+            <div class="stat"><div class="number">5798</div><div class="label">Tests (was 5747)</div></div>
+        </div>
+        <h2>What Was Accomplished</h2>
+        <div class="callout callout-teal">
+            <strong>The outcome:</strong> High Cliff's Money tab and snapshot now show its $516.93 of expenses, which were invisible before. All 39 cleaned-up labels are now Buckets, and the five 2026 events with money are each tied to theirs.
+        </div>
+        <h3>Event Money tab (v1.228.2, v1.229.0)</h3>
+        <ul>
+            <li>Record payment goes away once a person is paid in full or owes nothing, matching the Roster tab.</li>
+            <li>The tiles now read Income, Expenses, Still due, Net, Total expected payments (formerly &ldquo;Owed&rdquo;).</li>
+            <li>Who owes what shows how each person paid and when.</li>
+        </ul>
+        <h3>Financial Ledger (v1.230.0&ndash;v1.232.0)</h3>
+        <ul>
+            <li>A Method column answers &ldquo;how did this money arrive?&rdquo;.</li>
+            <li>A one-time update linked 93 production rows to their events: Summer Camp &rsquo;26 and &rsquo;27, High Adventure, Rummage Sale.</li>
+            <li>&ldquo;Activity&rdquo; became &ldquo;Bucket&rdquo; on every finance screen.</li>
+        </ul>
+        <h3>Buckets (v1.233.0&ndash;v1.235.0)</h3>
+        <ul>
+            <li>Every ledger row and calendar event points at one bucket. The migration was rehearsed on production and rolled back first; the real run gave 39 buckets, 0 gaps and 459 rows.</li>
+            <li>Record, Edit and the bulk bar pick from the list. Making a new bucket takes two confirmations, with the closest existing buckets offered first.</li>
+            <li>An event's bucket can be set on its Money tab or its calendar Entry tab.</li>
+            <li>The Bucket Report gained a Buckets tab: every bucket with its events and use, plus rename, merge, and delete for unused buckets.</li>
+            <li>tech-lead reviewed the plan; qa-lead passed the build, and four of its warnings were fixed before production.</li>
+        </ul>
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Decision</th></tr></thead>
+            <tbody>
+                <tr><td>D-389</td><td>Record payment disappears once an entry is paid in full or owes nothing</td></tr>
+                <tr><td>D-390</td><td>Money tab tile order, &ldquo;Total expected payments&rdquo;, Method and Paid on columns</td></tr>
+                <tr><td>D-391</td><td>The Financial Ledger shows each row's Method</td></tr>
+                <tr><td>D-392</td><td>Buckets: a managed lookup for money themes, reversing the 2026-08-18 no-lookup decision</td></tr>
+                <tr><td>D-393</td><td>Buckets Release 1 as built: sync trigger, one money scope, event bucket control, Buckets tab</td></tr>
+                <tr><td>D-394</td><td>Tiered quality gate: copy-only changes run lint, typecheck and the related tests</td></tr>
+            </tbody>
+        </table>
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Eyes-on: the bucket picker, the Buckets tab, the Money tab columns, and the calendar Entry tab's bucket.</li>
+            <li>Buckets Release 2: the wreath sale and the report move to buckets fully, then the old label column is dropped.</li>
+            <li>Reimbursements: show the outcome once paid, not the button.</li>
+            <li>Wreath Round 1 closes Tue Oct 20.</li>
+        </ul>
+        <h2>Files Changed</h2>
+        <table>
+            <thead><tr><th>Area</th><th>Files</th></tr></thead>
+            <tbody>
+                <tr><td>Libraries</td><td>lib/buckets.ts, lib/event-money-scope.ts (new); lib/event-money.ts, lib/finance.ts</td></tr>
+                <tr><td>Admin</td><td>_components/bucket-picker.tsx; finance/bucket-actions.ts, event-bucket-control.tsx, report/bucket-manager.tsx, rename-bucket-panel.tsx (new); finance/actions.ts, finance-workspace.tsx, edit-transaction-dialog.tsx, report/page.tsx; rosters money-panel/money-view, event-nav-data; calendar workbench + page; snapshot-document; styleguide</td></tr>
+                <tr><td>Database</td><td>supabase/migrations/20261108100000_buckets.sql, 20261109100000_bucket_list_usage.sql</td></tr>
+                <tr><td>Tests</td><td>buckets(-db), bucket-actions-db, bucket-picker, bucket-manager, event-bucket-control, event-money-scope-db, rename-bucket-panel (new); helpers/bucket-cleanup.ts; finance, finance-workspace, event-money</td></tr>
+                <tr><td>Docs</td><td>Plans/Buckets-Lookup.md, CLAUDE.md (tiered gate), changelog.html</td></tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

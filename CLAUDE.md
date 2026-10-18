@@ -28,7 +28,7 @@
 ```bash
 cd next-app && npm run build        # Build the production app (Next's typecheck is scoped to the app, NOT tests/)
 npm run typecheck                   # Full-project tsc --noEmit, incl. tests/ — build alone misses test-file type errors
-npm run test                        # Vitest — 650 tests across the db + dom projects
+npm run test                        # Vitest — ~5800 tests across the db + dom projects
 npm run lint                        # ESLint
 npm run dev                         # Run locally
 ```
@@ -61,7 +61,11 @@ Troop79-Website/
   <!-- Inherit global constraints (security, TDD, quality gates) from ~/.claude/CLAUDE.md -->
   <!-- Add only project-specific rules below -->
   <constraint>Personal/family project, not a client engagement — local-only, never synced to Northwoods.</constraint>
-  <constraint>next-app/ has a Vitest suite (650 tests, `db` + `dom` projects — see Tests/CLAUDE.md). Quality gate is `npm run lint` + `npm run typecheck` + `npm run test` + `npm run build` — `next build`'s typecheck is scoped to the app and does NOT catch type errors in tests/, so `npm run typecheck` (full-project `tsc --noEmit`) is required separately, not implied by a clean build (found the hard way 2026-08-17: a clean build shipped 2 real test failures + 4 test-file type errors).</constraint>
+  <constraint>next-app/ has a Vitest suite (~5800 tests, `db` + `dom` projects — see Tests/CLAUDE.md). The quality gate is TIERED (Patrick, 2026-10-17, D-394):
+    - Copy-only change (on-screen text, messages, comments — no logic): `npm run lint` + `npm run typecheck` + `npx vitest related --run <changed files>`. Skip the local build (Vercel builds every push; a failed build leaves the live version up). Tests that query by on-screen text are exactly what `vitest related` catches — a label rename broke 4 such tests the day this rule was made.
+    - Anything with logic, data, auth, money, schema, or a migration: the full gate — `npm run lint` + `npm run typecheck` + `npm run test` + `npm run build`.
+    - Once per session, the whole suite runs at least once (catches a stale-text test in a file that doesn't import the changed code).
+    `next build`'s typecheck is scoped to the app and does NOT catch type errors in tests/, so `npm run typecheck` (full-project `tsc --noEmit`) is required separately, not implied by a clean build (found the hard way 2026-08-17: a clean build shipped 2 real test failures + 4 test-file type errors).</constraint>
   <constraint>next-app/CLAUDE.md and next-app/AGENTS.md carry additional Next.js-16-specific API/convention warnings — read them before touching next-app/ code.</constraint>
 </constraints>
 
