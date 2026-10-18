@@ -48,6 +48,11 @@ interface Result {
   error?: string;
 }
 
+/** null = in no bucket; otherwise a real row id (qa-lead W5, 2026-10-17). */
+function validBucketId(id: number | null | undefined): boolean {
+  return id == null || (Number.isSafeInteger(id) && id > 0);
+}
+
 function revalidateFinance() {
   revalidatePath('/admin/finance');
 }
@@ -302,6 +307,7 @@ export async function addTransactionAction(input: AddTransactionInput): Promise<
   if (input.account === 'scout_account' && input.personId == null) {
     return { ok: false, error: 'A scout account transaction needs a person.' };
   }
+  if (!validBucketId(input.bucketId)) return { ok: false, error: 'Not a real bucket.' };
 
   const supabase = createAdminClient();
   const { error } = await supabase.from('financial_transactions').insert({
@@ -361,6 +367,7 @@ export async function editTransactionAction(input: EditTransactionInput): Promis
     return { ok: false, error: 'A scout account transaction needs a person.' };
   }
 
+  if (!validBucketId(input.bucketId)) return { ok: false, error: 'Not a real bucket.' };
   const supabase = createAdminClient();
   const { data: existing, error: findError } = await supabase
     .from('financial_transactions')
@@ -434,7 +441,10 @@ export async function bulkReassignAction(ids: number[], updates: BulkReassignUpd
 
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (updates.kind != null) patch.kind = updates.kind;
-  if (updates.bucketId != null) patch.bucket_id = updates.bucketId;
+  if (updates.bucketId != null) {
+    if (!validBucketId(updates.bucketId)) return { ok: false, error: 'Not a real bucket.', updated: 0 };
+    patch.bucket_id = updates.bucketId;
+  }
 
   const supabase = createAdminClient();
   const { error, count } = await supabase
@@ -922,7 +932,7 @@ export async function getEventMoneyAction(signupId: number): Promise<EventMoneyD
   // The entry's bucket (every row in it), or the entry's own rows when it has none (lib/buckets moneyScopeFor).
   const scope = await moneyScope(supabase, calendarEntryId);
 
-  const [{ data: entries }, { data: balances }, { data: prices }, { data: people }, tx, { data: reqs }, { data: ms }] =
+  const [{ data: entries }, { data: balances }, { data: prices }, { data: people }, tx, { data: reqs }, { data: ms }, { data: allEntries }] =
     await Promise.all([
       supabase
         .from('signup_entries')
@@ -946,7 +956,9 @@ export async function getEventMoneyAction(signupId: number): Promise<EventMoneyD
         .select('id, requester_person_id, amount, description, status, created_at')
         .eq('calendar_entry_id', calendarEntryId)
         .order('created_at'),
-      supabase.from('event_milestones').select('id, kind, label, due_on, amount, applies_to, sort').eq('event_signup_id', signupId)
+      supabase.from('event_milestones').select('id, kind, label, due_on, amount, applies_to, sort').eq('event_signup_id', signupId),
+      // Every entry of this sign-up, cancelled ones too: their fee rows are this sign-up's, never "other" money.
+      supabase.from('signup_entries').select('id').eq('event_signup_id', signupId)
     ]);
 
   const nameOf = new Map(((people ?? []) as { id: number; display_name: string }[]).map((p) => [p.id, p.display_name]));
@@ -1000,7 +1012,7 @@ export async function getEventMoneyAction(signupId: number): Promise<EventMoneyD
     };
   });
   peopleRows.sort((a, b) => a.name.localeCompare(b.name));
-  const ownEntryIds = new Set(peopleRows.map((p) => p.entryId));
+  const ownEntryIds = new Set(((allEntries ?? []) as { id: number }[]).map((e) => Number(e.id)));
 
   return {
     bucketId: scope.bucketId,

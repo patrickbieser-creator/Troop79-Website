@@ -13,6 +13,9 @@ import { bucketKey, type Bucket } from '@/lib/buckets';
 
 type Result = { ok: boolean; error?: string };
 
+/** A real row id — guards every id that reaches a filter string (qa-lead W5, 2026-10-17). */
+const isId = (n: unknown): n is number => typeof n === 'number' && Number.isSafeInteger(n) && n > 0;
+
 function revalidateBuckets() {
   revalidatePath('/admin/finance');
   revalidatePath('/admin/finance/report');
@@ -62,6 +65,7 @@ async function bucketNamed(supabase: ReturnType<typeof createAdminClient>, name:
 
 export async function previewRenameBucketAction(bucketId: number, newName: string): Promise<RenameBucketPreview> {
   await requireCapability('finance.manage');
+  if (!isId(bucketId)) throw new Error('previewRenameBucketAction: bad bucket id');
   const supabase = createAdminClient();
   const { count, error } = await supabase
     .from('financial_transactions')
@@ -76,7 +80,7 @@ export async function previewRenameBucketAction(bucketId: number, newName: strin
 export async function renameBucketAction(bucketId: number, newName: string): Promise<Result & { affectedCount?: number; merged?: boolean }> {
   await requireCapability('finance.manage');
   const clean = newName.trim().replace(/\s+/g, ' ');
-  if (!clean) return { ok: false, error: 'Both a bucket and a new name are required.' };
+  if (!isId(bucketId) || !clean) return { ok: false, error: 'Both a bucket and a new name are required.' };
   const supabase = createAdminClient();
   const { data: current } = await supabase.from('buckets').select('name').eq('id', bucketId).maybeSingle();
   if (!current) return { ok: false, error: 'Bucket not found.' };
@@ -101,6 +105,7 @@ export async function renameBucketAction(bucketId: number, newName: string): Pro
  *  the bucket leaves every row where it is. */
 export async function setEventBucketAction(calendarEntryId: number, bucketId: number | null): Promise<Result & { moved?: number }> {
   await requireAnyOf(['calendar.write', 'finance.manage']);
+  if (!isId(calendarEntryId) || (bucketId != null && !isId(bucketId))) return { ok: false, error: 'Bad event or bucket.' };
   const supabase = createAdminClient();
   const { error } = await supabase.from('calendar_entries').update({ bucket_id: bucketId }).eq('id', calendarEntryId);
   if (error) return { ok: false, error: error.message };

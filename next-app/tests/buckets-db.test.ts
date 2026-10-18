@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import { adminClient } from './helpers/admin-client';
-import { createTestEvent, deleteTestEvent, TEST_PREFIX, type TestEvent } from './helpers/signup-fixtures';
+import { createTestEvent, deleteTestEvent, createTestScout, deleteTestScout, TEST_PREFIX, type TestEvent, type TestScout } from './helpers/signup-fixtures';
 
 /**
  * Buckets (Plans/Buckets-Lookup.md, Release 1): the managed lookup every money
@@ -12,9 +12,19 @@ import { createTestEvent, deleteTestEvent, TEST_PREFIX, type TestEvent } from '.
 const admin = adminClient();
 const P = `${TEST_PREFIX} bucket`;
 let event: TestEvent;
+let scout: TestScout;
 
 async function bucket(name: string): Promise<number> {
   const { data, error } = await admin.from('buckets').insert({ name }).select('id').single();
+  if (error || !data) throw new Error(error?.message);
+  return data.id as number;
+}
+async function entry(): Promise<number> {
+  const { data, error } = await admin
+    .from('signup_entries')
+    .insert({ event_signup_id: event.eventSignupId, status: 'yes', person_kind: 'scout', person_id: scout.personId })
+    .select('id')
+    .single();
   if (error || !data) throw new Error(error?.message);
   return data.id as number;
 }
@@ -30,14 +40,17 @@ async function row(extra: Record<string, unknown>) {
 
 beforeAll(async () => {
   event = await createTestEvent(admin);
+  scout = await createTestScout(admin, 'Bucket');
 });
 afterEach(async () => {
   await admin.from('financial_transactions').delete().eq('memo', P);
+  await admin.from('signup_entries').delete().eq('event_signup_id', event.eventSignupId);
   await admin.from('calendar_entries').update({ bucket_id: null }).eq('id', event.calendarEntryId);
   await admin.from('buckets').delete().like('name', `${TEST_PREFIX}%`);
 });
 afterAll(async () => {
   await deleteTestEvent(admin, event);
+  await deleteTestScout(admin, scout);
 });
 
 describe('buckets table', () => {
@@ -85,10 +98,24 @@ describe('sync trigger', () => {
     expect([r.bucket_id, r.activity_label]).toEqual([id, `${P} High Cliff`]);
   });
 
-  it('EventRow_ForAnEventWithNoBucket_LinksTheEvent_ToTheBucketItsLabelNames', async () => {
-    const r = await row({ calendar_entry_id: event.calendarEntryId, activity_label: `${P} New Campout` });
+  it('FeeRow_ForAnEventWithNoBucket_LinksTheEvent_ToTheBucketItsLabelNames', async () => {
+    const r = await row({ kind: 'event_fee', calendar_entry_id: event.calendarEntryId, activity_label: `${P} New Campout`, signup_entry_id: await entry() });
     const { data } = await admin.from('calendar_entries').select('bucket_id').eq('id', event.calendarEntryId).single();
     expect(data?.bucket_id).toBe(r.bucket_id);
+  });
+
+  it('ClearingTheBucket_OnAnEventLinkedRow_StaysCleared', async () => {
+    const id = await bucket(`${P} Event`);
+    await admin.from('calendar_entries').update({ bucket_id: id }).eq('id', event.calendarEntryId);
+    const r = await row({ calendar_entry_id: event.calendarEntryId });
+    const { data } = await admin.from('financial_transactions').update({ bucket_id: null }).eq('id', r.id).select('bucket_id, activity_label').single();
+    expect([r.bucket_id, data?.bucket_id, data?.activity_label]).toEqual([id, null, null]);
+  });
+
+  it('NonFeeRow_OnAnEventWithNoBucket_DoesNotClaimTheBucketForTheEvent', async () => {
+    await row({ calendar_entry_id: event.calendarEntryId, activity_label: `${P} Gas` });
+    const { data } = await admin.from('calendar_entries').select('bucket_id').eq('id', event.calendarEntryId).single();
+    expect(data?.bucket_id).toBeNull();
   });
 
   it('RelabellingARow_MovesItToTheNamedBucket', async () => {

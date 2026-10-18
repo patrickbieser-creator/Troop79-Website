@@ -96,6 +96,7 @@ declare
   v_label text := nullif(btrim(new.activity_label), '');
   v_entry_bucket bigint;
   v_bucket bigint;
+  v_cleared boolean := false;
 begin
   if tg_op = 'UPDATE' then
     if new.bucket_id is distinct from old.bucket_id then
@@ -103,6 +104,7 @@ begin
       if new.bucket_id is null then
         new.activity_label := null;
         v_label := null;
+        v_cleared := true;
       end if;
     elsif v_label is distinct from nullif(btrim(old.activity_label), '') then
       -- A legacy writer changed the label: re-resolve, unless it still names the same bucket
@@ -115,7 +117,8 @@ begin
     end if;
   end if;
 
-  if new.bucket_id is null and new.calendar_entry_id is not null then
+  -- A deliberate clear stays cleared — the event's bucket is not filled back in.
+  if new.bucket_id is null and new.calendar_entry_id is not null and not v_cleared then
     select c.bucket_id into v_entry_bucket from calendar_entries c where c.id = new.calendar_entry_id;
     new.bucket_id := v_entry_bucket;
   end if;
@@ -126,7 +129,9 @@ begin
       insert into buckets (name) values (regexp_replace(v_label, '\s+', ' ', 'g')) returning id into v_bucket;
     end if;
     new.bucket_id := v_bucket;
-    if new.calendar_entry_id is not null then
+    -- Only a sign-up's fee row claims the bucket for its event (labelled with the event's title by the fee
+    -- actions); an expense tagged "Gas" on the same event must not pull the whole Gas bucket onto its tab.
+    if new.calendar_entry_id is not null and new.signup_entry_id is not null then
       update calendar_entries set bucket_id = v_bucket where id = new.calendar_entry_id and bucket_id is null;
     end if;
   end if;
