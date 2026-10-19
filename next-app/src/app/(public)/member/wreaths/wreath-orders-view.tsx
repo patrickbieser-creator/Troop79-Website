@@ -181,7 +181,8 @@ function DeliveryList({ seller, sale }: { seller: SellerView; sale: NonNullable<
  * `canEdit` is true only for the signed-in scout or a parent viewing their own family. The superuser proxy
  * (`?viewScout=`) passes false: the same page, with no form and no control that writes.
  */
-export function MyWreathOrdersView({ data, canEdit = false }: { data: MyWreathOrders; canEdit?: boolean }) {
+/** `viewScout` carries the read-only Members proxy onto the Statement link. */
+export function MyWreathOrdersView({ data, canEdit = false, viewScout = null }: { data: MyWreathOrders; canEdit?: boolean; viewScout?: number | null }) {
   const { sale, sellers } = data;
   if (!sale || sellers.length === 0) {
     return (
@@ -203,6 +204,11 @@ export function MyWreathOrdersView({ data, canEdit = false }: { data: MyWreathOr
               seller.deliveryMessage && <p className={styles.fine}>Delivery message: {seller.deliveryMessage}</p>
             )}
             <Totals seller={seller} share={sale.scoutShare} donationShare={sale.donationShare} />
+            <p className={styles.fine}>
+              <Link href={`/member/wreaths/statement?scout=${seller.personId}${viewScout != null ? `&viewScout=${viewScout}` : ''}`}>
+                Statement: every order, line by line
+              </Link>
+            </p>
             <h3 className={styles.subHead}>Orders</h3>
             <Orders seller={seller} items={data.items} canEdit={canEdit && sale.status === 'open'} />
             {canEdit && sale.status === 'open' && seller.slug && (

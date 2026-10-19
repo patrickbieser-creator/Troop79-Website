@@ -67,7 +67,7 @@ export function StorePage({ data, entry, goal, donations = 0 }: { data: StorePag
   }
 
   const day = distributionDay(dist);
-  const money = moneyBlockLines(first, state.sale.donationShare);
+  const money = moneyBlockLines(first, state.sale);
   const head = scout ? (
     <>
       <p className={styles.kicker}>Troop 79 Christmas wreaths</p>

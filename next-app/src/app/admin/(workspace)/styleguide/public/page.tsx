@@ -783,7 +783,7 @@ export default function PublicStyleguidePage() {
           not private public state.
         </div>
         <div className={sg.contractCard}>
-          <strong>ScoutAccordion — </strong>the third and last sanctioned crossing.{' '}
+          <strong>ScoutAccordion — </strong>the third sanctioned crossing.{' '}
           <code>_components/scout-accordion.module.css</code> is styled on the PUBLIC tokens
           but consumed by both the public advancement report and{' '}
           <code>/admin/advancement/report</code> &mdash; deliberately, so the report renders
@@ -793,6 +793,13 @@ export default function PublicStyleguidePage() {
           may read them. Everything else is firewalled: zero admin imports in public, zero{' '}
           <code>--admin-*</code> reads in public, zero public-token reads in admin chrome
           (verified Phase D, 2026-08-21).
+        </div>
+        <div className={sg.contractCard}>
+          <strong>WreathStatementSection — </strong>the fourth sanctioned crossing (2026-10-19), same spirit as
+          ScoutAccordion. <code>_components/wreath-statement.module.css</code> is styled on the PUBLIC tokens and
+          consumed by both the family Statement (<code>/member/wreaths/statement</code>) and Admin &rsaquo; Wreath
+          Sale &rsaquo; Reconciliation, so a scout&rsquo;s account reads the same to the committee and the family.
+          Its print rule drops everything outside the one marked section (<code>data-statement-print</code>).
         </div>
       </section>
     </>

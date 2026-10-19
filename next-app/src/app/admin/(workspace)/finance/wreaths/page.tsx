@@ -1,6 +1,6 @@
 /**
  * /admin/finance/wreaths — the wreath sale's admin (Plans/Wreath-Sale.md, Release A): Orders, Dashboard, Rose order,
- * Sellers, Items and Settings. finance.manage only, here and on every action. The books (per-scout totals, cost and profit,
+ * Reconciliation (each scout's account, line by line), Sellers, Items and Settings. finance.manage only, here and on every action. The books (per-scout totals, cost and profit,
  * the 70/30 split) and Close sale come in Release C.
  */
 import { requireCapability } from '@/lib/require-capability';
@@ -8,6 +8,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { fmtDay } from '@/lib/format-date';
 import { loadAdminItems, loadAdminOrders, loadAdminSale, loadAdminSellers, loadOrderHistory, loadRoseOrder, loadSellerCandidates } from '@/lib/wreaths/admin-data';
 import { buildSalesDashboard } from '@/lib/wreaths/dashboard';
+import { buildReconciliation } from '@/lib/wreaths/reconciliation';
 import { parsePayFilter } from './pay-filter';
 import { PageTitle } from '../../_components/page-title';
 import { PublicPageLink } from '../../../_components/public-page-link';
@@ -19,17 +20,18 @@ import { OrdersPanel } from './orders-panel';
 import { SellersPanel } from './sellers-panel';
 import { SettingsForm } from './settings-form';
 import { SalesDashboardView } from './sales-dashboard';
+import { ReconciliationPanel } from './reconciliation-panel';
 import styles from './wreaths.module.css';
 
 export const metadata = { title: 'Wreath Sale — Troop 79' };
 export const dynamic = 'force-dynamic';
 
-const TABS = ['orders', 'dashboard', 'rose', 'sellers', 'items', 'settings'] as const;
+const TABS = ['orders', 'dashboard', 'reconciliation', 'rose', 'sellers', 'items', 'settings'] as const;
 type Tab = (typeof TABS)[number];
 
-export default async function WreathSalePage({ searchParams }: { searchParams: Promise<{ tab?: string; pay?: string }> }) {
+export default async function WreathSalePage({ searchParams }: { searchParams: Promise<{ tab?: string; pay?: string; scout?: string }> }) {
   await requireCapability('finance.manage');
-  const { tab: raw, pay: rawPay } = await searchParams;
+  const { tab: raw, pay: rawPay, scout: rawScout } = await searchParams;
   // ?pay=unpaid arrives from Home's inbox row; anything else starts unfiltered.
   const initialPay = parsePayFilter(rawPay);
   const tab: Tab = (TABS as readonly string[]).includes(raw ?? '') ? (raw as Tab) : 'orders';
@@ -70,6 +72,7 @@ export default async function WreathSalePage({ searchParams }: { searchParams: P
           items={[
             { key: 'orders', label: 'Orders', count: placed.length, href: '/admin/finance/wreaths' },
             { key: 'dashboard', label: 'Dashboard', href: '/admin/finance/wreaths?tab=dashboard' },
+            { key: 'reconciliation', label: 'Reconciliation', href: '/admin/finance/wreaths?tab=reconciliation' },
             { key: 'rose', label: 'Rose order', href: '/admin/finance/wreaths?tab=rose' },
             { key: 'sellers', label: 'Sellers', count: sellers.filter((s) => s.active).length, href: '/admin/finance/wreaths?tab=sellers' },
             { key: 'items', label: 'Items', href: '/admin/finance/wreaths?tab=items' },
@@ -96,6 +99,9 @@ export default async function WreathSalePage({ searchParams }: { searchParams: P
         </>
       )}
       {tab === 'dashboard' && <SalesDashboardView d={buildSalesDashboard({ orders, sellers, sale })} />}
+      {tab === 'reconciliation' && (
+        <ReconciliationPanel r={buildReconciliation({ orders, sellers, items: await loadAdminItems(sb, sale.id), sale })} scout={rawScout ?? ''} asOf={new Date().toISOString()} />
+      )}
       {tab === 'rose' && <RoseTable rows={await loadRoseOrder(sb, sale.id)} />}
       {tab === 'sellers' && <SellersPanel saleId={sale.id} sellers={sellers} candidates={await loadSellerCandidates(sb, sale.id)} />}
       {tab === 'items' && <ItemsTable items={await loadAdminItems(sb, sale.id)} />}

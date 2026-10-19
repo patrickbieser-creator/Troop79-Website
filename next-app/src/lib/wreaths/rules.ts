@@ -174,6 +174,15 @@ export function acceptedShort(o: { paymentStatus: string; paidMethod: string | n
 }
 
 /**
+ * The part of an accepted shortfall that comes off the wreaths' profit (W-3): the donation absorbs a short payment
+ * first (donationPart), so only what is left of it reaches the wreaths. The troop absorbs it; the scout's share of the
+ * profit is figured before it (sellerEarnings), as the dashboard has always done.
+ */
+export function shortOnWreaths(o: { paymentStatus: string; paidMethod: string | null; paidAmount: number | null; total: number; gift: number }): number {
+  return fromCents(Math.max(0, toCents(acceptedShort(o)) - toCents(o.gift)));
+}
+
+/**
  * The short or over on an order paid by hand, for the payment pill (Plans/Wreath-Sale.md W-2, Patrick 2026-10-19):
  * "$5 short" when less than the total came in (accepted short, D-398), "$10 over" when more did (owed back, D-401), else
  * null. Derived from paid_amount against total; nothing is stored. A card order is locked to its total, and an unpaid,

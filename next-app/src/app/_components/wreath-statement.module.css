@@ -1,0 +1,36 @@
+/* A scout's wreath-sale account (wreath-statement.tsx). PUBLIC tokens, and imported by admin on purpose: the
+   Reconciliation tab and the family Statement render it identically (the ScoutAccordion precedent; Shared contracts
+   on /admin/styleguide/public). */
+
+.section { margin: 0 0 var(--sp-10); }
+.head { margin-bottom: var(--sp-3); }
+.name { font-family: var(--font-display); font-size: var(--fs-xl); color: var(--navy); margin: 0 0 var(--sp-1); }
+.meta { color: var(--text-meta); font-size: var(--fs-sm); }
+.settings { color: var(--text-body); font-size: var(--fs-sm); margin: var(--sp-1) 0 0; }
+.mono { font-family: var(--font-mono); }
+.unpaid { color: var(--status-warning); font-weight: 600; }
+
+.wrap { overflow-x: auto; border: 1px solid var(--border-light); border-radius: var(--rad-md); background: var(--warm-white); }
+.table { width: 100%; border-collapse: collapse; font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--text-body); }
+.table th, .table td { padding: var(--sp-1) var(--sp-2); text-align: left; vertical-align: top; }
+.table thead th { font-size: var(--fs-xs); color: var(--text-meta); border-bottom: 1px solid var(--border-mid); white-space: nowrap; }
+.num { text-align: right !important; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.orderHead th { padding-top: var(--sp-3); font-weight: 600; color: var(--text-head); border-top: 1px solid var(--rule); }
+.orderFoot td { font-weight: 600; border-bottom: 1px solid var(--rule); }
+.struck { text-decoration: line-through; color: var(--text-meta); }
+
+.bottom { display: grid; grid-template-columns: max-content max-content; gap: var(--sp-1) var(--sp-8); margin: var(--sp-4) 0 var(--sp-2); font-family: var(--font-ui); font-size: var(--fs-md); }
+.bottom dt { color: var(--text-meta); }
+.bottom dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; color: var(--text-head); }
+.closing { font-family: var(--font-ui); font-size: var(--fs-sm); color: var(--forest); margin: 0; }
+
+/* Print: only the marked section, on any page (admin or members) — every element that neither holds it nor sits in
+   it is dropped, so the admin chrome and the site chrome go alike. */
+@media print {
+  :global(body:has([data-statement-print]) *:not(:has([data-statement-print])):not([data-statement-print]):not([data-statement-print] *)) {
+    display: none !important;
+  }
+  .wrap { border: none; overflow: visible; }
+  .table { font-size: var(--fs-2xs); }
+  .orderHead, .orderFoot { break-inside: avoid; }
+}

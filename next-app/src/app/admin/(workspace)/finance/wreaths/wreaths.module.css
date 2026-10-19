@@ -140,3 +140,8 @@
 .editLines select, .qtyBox { min-width: 0; padding: 7px 8px; border: 1px solid var(--admin-gray-300); border-radius: var(--admin-radius-sm); font: inherit; font-size: var(--admin-text-md); background: var(--admin-white); }
 .checkInline { display: inline-flex; align-items: center; gap: var(--admin-space-2); font-size: var(--admin-text-md); color: var(--admin-gray-700); }
 .sectionGapSm { margin-top: var(--admin-space-6); }
+
+/* Reconciliation tab (2026-10-19): the one-line balance check against the Dashboard. */
+.balanced { margin: 0 0 var(--admin-space-6); font-size: var(--admin-text-md); font-weight: var(--admin-weight-semibold); color: var(--admin-forest); }
+.mismatch { margin: 0 0 var(--admin-space-6); font-size: var(--admin-text-md); font-weight: var(--admin-weight-semibold); color: var(--admin-danger); }
+@media print { .toolbar, .balanced, .mismatch { display: none; } }

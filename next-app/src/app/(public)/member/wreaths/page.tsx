@@ -87,7 +87,7 @@ export default async function MyWreathOrdersPage({ searchParams }: { searchParam
           Every wreath order placed through your scout&rsquo;s link: who has paid, what is still owed, and what your scout has earned.{' '}
           <Link href={proxy ? `/member?viewScout=${proxy.personId}` : '/member'}>← Back to Members</Link>
         </p>
-        <MyWreathOrdersView data={data} canEdit={!proxy} />
+        <MyWreathOrdersView data={data} canEdit={!proxy} viewScout={proxy?.personId ?? null} />
       </PageShell>
     </>
   );

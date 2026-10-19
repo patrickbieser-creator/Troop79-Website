@@ -47,7 +47,7 @@ describe('the scout’s personal page', () => {
   });
 
   it('GeneralStore_MoneyBox_HasNoScoutDonationLine', () => {
-    expect(moneyBlockLines(null, 0.15).some((l) => l.startsWith('Donations to Troop 79'))).toBe(false);
+    expect(moneyBlockLines(null, { scoutShare: 0.3, donationShare: 0.15 }).some((l) => l.startsWith('Donations to Troop 79'))).toBe(false);
   });
 });
 

@@ -7,7 +7,7 @@
 import { instantToCentral } from '@/lib/dates';
 import type { AdminOrder, AdminSeller } from './admin-data';
 import { isCounted } from './my-orders';
-import { acceptedShort, donationNet, fromCents, orderProfit, sellerEarnings, toCents } from './rules';
+import { acceptedShort, donationNet, fromCents, orderProfit, sellerEarnings, shortOnWreaths, toCents } from './rules';
 
 export interface DashTotals {
   orders: number;
@@ -156,8 +156,8 @@ export function buildSalesDashboard(input: {
   const lines = counted.flatMap((o) => o.lines);
   const shortAccepted = sum(paidOrders.map(acceptedShort));
   // The donation absorbs a shortfall first (W-3, lib/wreaths/rules donationPart); what's left of it comes off the profit.
-  const shortOnWreaths = sum(paidOrders.map((o) => fromCents(Math.max(0, toCents(acceptedShort(o)) - toCents(o.gift)))));
-  const profit = fromCents(toCents(orderProfit(lines)) - toCents(shortOnWreaths));
+  const shortWreaths = sum(paidOrders.map(shortOnWreaths));
+  const profit = fromCents(toCents(orderProfit(lines)) - toCents(shortWreaths));
   const donationsNet = sum(counted.map(donationNet));
   const received = (o: AdminOrder) => o.paidAmount ?? o.total;
 

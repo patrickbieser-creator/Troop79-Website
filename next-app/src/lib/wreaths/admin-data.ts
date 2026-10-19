@@ -6,6 +6,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { roseOrder, type RoseRow } from './rules';
 import { noteAuthorName } from './order-note';
+import { fetchAllRows } from '@/lib/supabase/paginate';
 
 export interface AdminSale {
   id: number;
@@ -125,9 +126,10 @@ export interface AuditEntry {
 
 const one = <T>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? (v[0] ?? null) : (v ?? null));
 
-/** The sale the admin works on: the most recent year. */
-export async function loadAdminSale(sb: SupabaseClient): Promise<AdminSale | null> {
-  const { data } = await sb.from('wreath_sales').select('*').order('year', { ascending: false }).limit(1);
+/** The sale the admin works on: the most recent year (`saleId` pins one, for the tests). */
+export async function loadAdminSale(sb: SupabaseClient, saleId?: number): Promise<AdminSale | null> {
+  const base = sb.from('wreath_sales').select('*');
+  const { data } = await (saleId == null ? base.order('year', { ascending: false }).limit(1) : base.eq('id', saleId));
   const r = ((data ?? []) as Record<string, unknown>[])[0];
   if (!r) return null;
   return {
@@ -214,17 +216,19 @@ export async function loadSellerCandidates(sb: SupabaseClient, saleId: number): 
  * Members "My wreath orders" page, which then strips the customer details it may not show).
  */
 export async function loadAdminOrders(sb: SupabaseClient, saleId: number, opts: { involving?: number[] } = {}): Promise<AdminOrder[]> {
-  let q = sb
-    .from('wreath_orders')
-    .select('*, credited:credited_person_id(display_name), entered:entered_by_person_id(display_name), note_by:order_note_updated_by_person_id(first_name, last_name), wreath_order_lines(item_id, quantity, donated, unit_price, unit_cost, wreath_items(catalog_number, name, size))')
-    .eq('sale_id', saleId);
-  if (opts.involving) {
-    if (opts.involving.length === 0) return [];
-    const ids = opts.involving.join(',');
-    q = q.or(`credited_person_id.in.(${ids}),delivering_person_id.in.(${ids})`);
-  }
-  const { data } = await q.order('placed_at', { ascending: false }).order('id', { ascending: false });
-  return ((data ?? []) as Record<string, any>[]).map((r) => ({ // eslint-disable-line @typescript-eslint/no-explicit-any
+  if (opts.involving && opts.involving.length === 0) return [];
+  const ids = opts.involving?.join(',');
+  // Paged past PostgREST's 1000-row cap (fetchAllRows): the Dashboard and the Reconciliation total every order.
+  const page = (from: number, to: number) => {
+    let q = sb
+      .from('wreath_orders')
+      .select('*, credited:credited_person_id(display_name), entered:entered_by_person_id(display_name), note_by:order_note_updated_by_person_id(first_name, last_name), wreath_order_lines(item_id, quantity, donated, unit_price, unit_cost, wreath_items(catalog_number, name, size))')
+      .eq('sale_id', saleId);
+    if (ids) q = q.or(`credited_person_id.in.(${ids}),delivering_person_id.in.(${ids})`);
+    return q.order('placed_at', { ascending: false }).order('id', { ascending: false }).range(from, to);
+  };
+  const data = await fetchAllRows<Record<string, any>>(page); // eslint-disable-line @typescript-eslint/no-explicit-any
+  return data.map((r) => ({
     id: r.id,
     orderNumber: r.order_number,
     placedAt: r.placed_at,
