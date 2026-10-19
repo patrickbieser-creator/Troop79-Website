@@ -8,6 +8,8 @@ import { retargetPlan } from '@/lib/meeting-plan-publish';
 import { buildMeetingPlan } from './engine';
 import { loadEngineInput } from './load-input';
 import { loadBoardStamp } from '@/lib/meeting-board';
+import { saveRotations, setStations } from '@/lib/meeting-board-stations';
+import type { Placement, StationDraft } from '@/lib/meeting-board-rotations';
 
 interface GenerateResult {
   ok: boolean;
@@ -147,6 +149,66 @@ export async function setMeetingBoardAction(input: { entryId: number; mode: stri
   revalidatePath('/member/meeting');
   revalidatePath('/member');
   return { ok: true };
+}
+
+/** Who may set up a merit badge night or arrange its rotations: an adult holding meeting_plan.use (the board line). */
+async function adultLeader(): Promise<{ ok: true; personId: number | null } | { ok: false; error: string }> {
+  let actor;
+  try {
+    actor = await requireCapability('meeting_plan.use');
+  } catch {
+    return { ok: false, error: 'Not authenticated' };
+  }
+  if (actor.subjectKind === 'scout') return { ok: false, error: 'Only an adult leader can change the board.' };
+  return { ok: true, personId: actor.personId ?? null };
+}
+
+const refreshBoard = () => {
+  revalidatePath('/admin/advancement/meeting-plan');
+  revalidatePath('/member/meeting');
+  revalidatePath('/member');
+};
+
+/**
+ * A merit badge night's board and stations in one save (Phase 3b): the badge, then 2-6 stations, each a name, an
+ * optional place and the badge's top-level requirements it covers. One RPC (meeting_set_stations) validates the lot
+ * and writes it in one transaction; a saved station keeps its teachers through a rename or a requirement change.
+ */
+export async function setMeetingStationsAction(input: { entryId: number; mbId: string; stations: StationDraft[] }): Promise<BoardSettingsResult> {
+  const who = await adultLeader();
+  if (!who.ok) return who;
+  if (!input || !Number.isInteger(input.entryId) || typeof input.mbId !== 'string' || !Array.isArray(input.stations)) return { ok: false, error: 'Malformed request' };
+  const stations: StationDraft[] = [];
+  for (const s of input.stations) {
+    if (!s || typeof s.title !== 'string' || !Array.isArray(s.codes) || s.codes.some((c) => typeof c !== 'string')) return { ok: false, error: 'Malformed request' };
+    if (s.topicId != null && !Number.isInteger(s.topicId)) return { ok: false, error: 'Malformed request' };
+    stations.push({ topicId: s.topicId ?? null, title: s.title.trim(), location: typeof s.location === 'string' ? s.location.trim() : '', codes: s.codes });
+  }
+  const res = await setStations(createAdminClient(), input.entryId, input.mbId, stations);
+  if (res.ok) refreshBoard();
+  return res;
+}
+
+/**
+ * The leader's rotation arrangement (Phase 3b): everyone shown, pinned where they are, plus badge holders placed as
+ * helpers or on other work. An empty list is "Start over from the draft". Saved by meeting_save_rotations, which
+ * records a scout the leader placed with no answer as Coming.
+ */
+export async function saveRotationsAction(input: { entryId: number; placements: { personId: number; placement: Placement }[] }): Promise<BoardSettingsResult> {
+  const who = await adultLeader();
+  if (!who.ok) return who;
+  if (!input || !Number.isInteger(input.entryId) || !Array.isArray(input.placements)) return { ok: false, error: 'Malformed request' };
+  for (const p of input.placements) {
+    const pl = p?.placement;
+    const fine =
+      Number.isInteger(p?.personId) &&
+      !!pl &&
+      ((pl.kind === 'group' && Number.isInteger(pl.group)) || (pl.kind === 'helper' && Number.isInteger(pl.topicId)) || pl.kind === 'other');
+    if (!fine) return { ok: false, error: 'Malformed request' };
+  }
+  const res = await saveRotations(createAdminClient(), input.entryId, who.personId, input.placements);
+  if (res.ok) refreshBoard();
+  return res;
 }
 
 /**

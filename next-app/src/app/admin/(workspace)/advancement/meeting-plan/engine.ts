@@ -18,9 +18,9 @@
  *   - Campout-only outstanding items are reported separately (needsOuting).
  */
 
-import { buildReqTree, isGroupSatisfied, type ReqNode } from '@/lib/mb-helpers';
+import { buildReqTree, type ReqNode } from '@/lib/mb-helpers';
 import { canOfferToTeach } from '@/lib/can-offer-to-teach';
-import { openRankTops } from '@/lib/rank-calculus';
+import { mbNodeSatisfied, openRankTops } from '@/lib/rank-calculus';
 import type { ReqVenue, Skill } from '@/lib/supabase/types';
 import {
   type MeetingPlanPayload,
@@ -122,12 +122,6 @@ const RANK_ABBR: Record<string, string> = {
 
 type RankNode = ReqNode<EngineRankReqRow>;
 type MbNode = ReqNode<EngineMbReqRow>;
-
-function mbNodeSatisfied(node: MbNode, mbId: string, codes: Set<string>): boolean {
-  if (node.children.length === 0) return codes.has(`${mbId}-${node.code}`);
-  const sat = node.children.filter((c) => mbNodeSatisfied(c, mbId, codes)).length;
-  return isGroupSatisfied(node.complete_rule, node.complete_n, sat, node.children.length);
-}
 
 function collectMissingMbLeaves(node: MbNode, mbId: string, codes: Set<string>, out: EngineMbReqRow[]) {
   if (node.children.length === 0) {

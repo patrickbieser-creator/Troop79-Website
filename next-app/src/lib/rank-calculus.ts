@@ -41,6 +41,16 @@ export function rankNodeSatisfied<T extends CalcRow>(node: ReqNode<T>, rankId: s
   return isGroupSatisfied(node.complete_rule, node.complete_n, sat, node.children.length);
 }
 
+/** A merit badge requirement node is satisfied when its leaves are on the ledger (code "first-aid-1a"), rolled up by its
+ *  all / any / n-of rule. Moved here verbatim from meeting-plan/engine.ts (Phase 3b of
+ *  Plans/Meeting-Requests-And-Teaching-Offers.md: a merit badge night skips the stations a scout has finished), so the
+ *  engine and the rotation draft read one calculus. */
+export function mbNodeSatisfied<T extends CalcRow>(node: ReqNode<T>, mbId: string, codes: ReadonlySet<string>): boolean {
+  if (node.children.length === 0) return codes.has(`${mbId}-${node.code}`);
+  const sat = node.children.filter((c) => mbNodeSatisfied(c, mbId, codes)).length;
+  return isGroupSatisfied(node.complete_rule, node.complete_n, sat, node.children.length);
+}
+
 /** Fraction of a rank's requirement leaves on the ledger, excluding one top-level code (the SM conference being gated). */
 export function rankLeafCompletion<T extends CalcRow>(
   tree: ReqNode<T>[],

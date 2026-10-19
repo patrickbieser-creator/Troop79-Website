@@ -3,10 +3,13 @@
 /**
  * Keeps the This Sunday tab live (tech-lead review: polling, not Realtime, fits the service-role-only posture). Every
  * ~10 s, with jitter so open tabs don't poll in step, it asks for the board's version stamp and refreshes the page
- * only when the stamp changed. Paused while the browser tab is hidden; checks once on coming back.
+ * only when the stamp changed. Paused while the browser tab is hidden; checks once on coming back. While a form on the
+ * page has unsaved changes (the board settings, the rotations editor: Phase 3b) it doesn't refresh, so a leader's moves
+ * aren't reshuffled under them; the first check after they save or discard catches up.
  */
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useDirtyGuard } from '../../_components/dirty-guard';
 import { boardStampAction } from './actions';
 import styles from './meeting-plan.module.css';
 
@@ -15,6 +18,7 @@ export const JITTER_MS = 2_000;
 
 export function BoardPoller({ entryId, stamp }: { entryId: number; stamp: string }) {
   const router = useRouter();
+  const guard = useDirtyGuard();
   const last = useRef(stamp);
   const [stale, setStale] = useState(false);
 
@@ -37,7 +41,7 @@ export function BoardPoller({ entryId, stamp }: { entryId: number; stamp: string
       }
       failures = 0;
       setStale(false);
-      if (res.stamp !== last.current) {
+      if (res.stamp !== last.current && !guard?.isDirty()) {
         last.current = res.stamp;
         router.refresh();
       }
@@ -59,7 +63,7 @@ export function BoardPoller({ entryId, stamp }: { entryId: number; stamp: string
       if (timer) clearTimeout(timer);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [entryId, router]);
+  }, [entryId, router, guard]);
 
   return (
     <span className={styles.liveDot} role="status">

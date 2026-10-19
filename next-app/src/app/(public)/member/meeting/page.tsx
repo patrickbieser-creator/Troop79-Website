@@ -20,6 +20,12 @@
  * Phase 3a: once the live match has a session for the scout, the page says so ("So far, you're in First aid, your #2"),
  * and a teacher sees the sessions they're teaching. Once the agenda is published the page links to it instead
  * ("This week's plan is set: see the agenda"). Never "too late".
+ *
+ * Phase 3b, a merit badge night: a scout sees the badge, "You'll be assigned a rotation" and, once the draft has them,
+ * "So far, you're in Group B" with their night rotation by rotation ("Free: help out" where they've finished a
+ * station); a scout with the badge is told they'll help teach or work on something else (and where, once a leader
+ * places them). An adult's teach section lists the stations; on their own, which group comes when. Same rule as 3a:
+ * once the agenda is published the page links to it and says nothing from the draft.
  */
 import type { ReactNode } from 'react';
 import Link from 'next/link';
@@ -43,7 +49,10 @@ import {
 } from '@/lib/meeting-board';
 import { isAgendaPublished, loadLiveMatch, loadTeachBoard, loadTeachView, offerChoices, OFFER_DATES, teacherTags } from '@/lib/meeting-board-supply';
 import { seatLines, teachingLines } from '@/lib/meeting-board-match';
-import { boardName, effectiveIntent, firstNameOf, isPastSoftClose, onBehalfAccess, scoutLine } from '@/lib/meeting-board-shared';
+import { loadRotationBoard } from '@/lib/meeting-board-stations';
+import { boardIntent, mbScoutLines, stationTeachLines } from '@/lib/meeting-board-rotations';
+import { assessTeacher, flagText, teacherName } from '@/lib/meeting-board-teach';
+import { boardName, firstNameOf, isPastSoftClose, onBehalfAccess, scoutLine, type Intent } from '@/lib/meeting-board-shared';
 import { PageHeader } from '@/app/_components/page-header';
 import { PageShell } from '@/app/_components/page-shell';
 import { Button } from '@/app/_components/button';
@@ -67,7 +76,7 @@ function joinNames(names: string[]): string {
 }
 
 /** "Finn is coming. Maya hasn't said." */
-function householdSummary(rows: { name: string; intent: ReturnType<typeof effectiveIntent> }[]): string {
+function householdSummary(rows: { name: string; intent: Intent | null }[]): string {
   const by = { coming: [] as string[], undecided: [] as string[], not_coming: [] as string[], none: [] as string[] };
   for (const r of rows) by[r.intent ?? 'none'].push(r.name);
   const parts: string[] = [];
@@ -226,11 +235,23 @@ export default async function MeetingBoardPage({ searchParams }: { searchParams:
   // Phase 3a: the live match (rank boards), the same computation as This Sunday and the editor's tray, said as "so far".
   // Once the meeting's agenda is published the agenda is the answer: the page links to it and says nothing personal
   // from the match (the agenda's scout names are free text a leader may have edited, so they aren't mapped back).
-  const planSet = meeting.mode === 'rank' ? await isAgendaPublished(sb, meeting.entryId) : false;
+  const planSet = await isAgendaPublished(sb, meeting.entryId);
   const match = meeting.mode === 'rank' && !planSet ? await loadLiveMatch(sb, meeting, everyone, teach) : null;
   const lineSrc = { catalog, people: teach.people, freeformTitles: teach.freeformTitles, scoutNames: new Map(everyone.map((r) => [r.personId, boardName(r.name)])) };
   const assigned = match && chosen ? seatLines(match, chosen.personId, lineSrc) : [];
   const teaching = match && teacher ? teachingLines(match, teacher.personId, lineSrc) : [];
+
+  // Phase 3b: a merit badge night's rotation draft, the same one This Sunday and the tray show.
+  const rot = meeting.mode === 'merit_badge' ? await loadRotationBoard(sb, meeting, catalog, everyone, teach) : null;
+  const scoutFacing = (id: number) => {
+    const p = teach.people.get(id);
+    return p ? teacherName(p, 'scout') : '';
+  };
+  const night = rot && chosen ? mbScoutLines(rot, chosen.personId, scoutFacing) : null;
+  // Once the agenda is published it is the answer: nothing from the draft.
+  const mbNight = night && planSet ? { ...night, helping: null, otherWork: false, group: null, stops: [] } : night;
+  const stations = rot && teacher ? stationTeachLines(planSet ? { ...rot, result: { ...rot.result, groups: [] } } : rot, teacher.personId, rot.mbName, scoutFacing) : undefined;
+  const stationFlags = rot && teacher ? flagText(assessTeacher(teacher, `mb:${rot.mbId}`, teach.ctx).flags, 'self') : undefined;
 
   const upcoming = showTeach ? await loadUpcomingMeetings(sb, OFFER_DATES, meeting.date) : [];
   const teachView = showTeach ? await loadTeachView(sb, meeting, catalog, teacher!.personId, { board: everyone, upcoming, teach }) : null;
@@ -255,7 +276,7 @@ export default async function MeetingBoardPage({ searchParams }: { searchParams:
             {householdSummary(
               subjects.map((s) => {
                 const r = rowOf.get(s.personId);
-                return { name: firstNameOf(s.name), intent: r ? effectiveIntent(r.intent, r.picks) : null };
+                return { name: firstNameOf(s.name), intent: r ? boardIntent(meeting.mode, r.intent, r.picks) : null };
               })
             )}
           </p>
@@ -286,6 +307,7 @@ export default async function MeetingBoardPage({ searchParams }: { searchParams:
           onBehalf={onBehalf}
           readOnly={proxy != null || onBehalfReadOnly}
           assigned={assigned}
+          mbNight={mbNight}
         />
       )}
       {teachView && teacher && (
@@ -299,6 +321,9 @@ export default async function MeetingBoardPage({ searchParams }: { searchParams:
           onBehalf={onBehalf}
           readOnly={onBehalfReadOnly}
           teaching={teaching}
+          stations={stations}
+          mbName={mbName}
+          stationFlags={stationFlags}
         />
       )}
     </>

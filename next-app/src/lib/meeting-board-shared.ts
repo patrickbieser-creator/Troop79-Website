@@ -165,8 +165,9 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 /** One line of live state for a scout on the next meeting: "Coming · 3 picks" (the /member card, the switcher). */
 export function scoutLine(mode: BoardMode, explicit: Intent | null, picks: readonly Pick<BoardPick, 'later'>[]): string {
   if (mode === 'closed') return 'No sign-ups this week';
+  // A merit badge night holds rank picks (Phase 3b): only an explicit answer says Coming.
+  if (mode === 'merit_badge') return explicit ? INTENT_LABEL[explicit] : 'No answer yet';
   const it = effectiveIntent(explicit, picks);
-  if (mode === 'merit_badge') return it ? INTENT_LABEL[it] : 'No answer yet';
   if (it === 'not_coming') return INTENT_LABEL.not_coming;
   if (!it) return picks.length ? plural(picks.length, 'pick') : 'No answer yet';
   return `${INTENT_LABEL[it]}${picks.length ? ` · ${plural(picks.length, 'pick')}` : ''}`;

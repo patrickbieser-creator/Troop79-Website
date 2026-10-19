@@ -9,11 +9,11 @@ import type { MatchedCandidate } from '../src/app/admin/(workspace)/advancement/
  * else), and the member page's "You're in First aid, your #2". Server actions are the mock boundary.
  */
 const nav = vi.hoisted(() => ({ refresh: vi.fn() }));
-const plan = vi.hoisted(() => ({ setBoard: vi.fn(), stamp: vi.fn() }));
+const plan = vi.hoisted(() => ({ setBoard: vi.fn(), setStations: vi.fn(), saveRotations: vi.fn(), stamp: vi.fn() }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: nav.refresh, push: vi.fn() }) }));
 vi.mock('@/lib/supabase/server', () => ({ createAdminClient: () => ({}) }));
 vi.mock('@/lib/advancement-catalog', () => ({ loadAdvancementCatalog: async () => ({}) }));
-vi.mock('../src/app/admin/(workspace)/advancement/meeting-plan/actions', () => ({ boardStampAction: plan.stamp, setMeetingBoardAction: plan.setBoard }));
+vi.mock('../src/app/admin/(workspace)/advancement/meeting-plan/actions', () => ({ boardStampAction: plan.stamp, setMeetingBoardAction: plan.setBoard, setMeetingStationsAction: plan.setStations, saveRotationsAction: plan.saveRotations }));
 vi.mock('../src/app/(public)/member/meeting/actions', () => ({
   meetingAddPickAction: vi.fn(),
   meetingRemovePickAction: vi.fn(),
@@ -30,6 +30,8 @@ const { PlanNotice } = await import('../src/app/(public)/member/meeting/plan-not
 
 beforeEach(() => {
   plan.setBoard.mockReset();
+  plan.setStations.mockReset();
+  plan.saveRotations.mockReset();
   nav.refresh.mockReset();
 });
 
@@ -37,8 +39,20 @@ const BADGES = [
   { id: 'camping', name: 'Camping' },
   { id: 'cooking', name: 'Cooking' }
 ];
+const creq = (id: number, code: string, label: string) => ({
+  id,
+  mb_id: 'cooking',
+  parent_id: null,
+  code,
+  label,
+  complete_rule: 'all' as const,
+  complete_n: null,
+  sort_order: id,
+  venue: 'either' as const
+});
+const COOKING = [creq(1, '1', 'Health and safety'), creq(2, '2', 'Nutrition'), creq(3, '3', 'Plan a menu')];
 const settings = (o: Partial<Parameters<typeof BoardSettings>[0]> = {}) =>
-  render(<BoardSettings entryId={5} initial={{ mode: 'rank', mbId: '', blockCount: 2 }} badges={BADGES} picks={0} {...o} />);
+  render(<BoardSettings entryId={5} initial={{ mode: 'rank', mbId: '', blockCount: 2, stations: [] }} badges={BADGES} badgeReqs={[]} picks={0} {...o} />);
 
 describe('board settings', () => {
   it('BoardSettings_SaveIsGreyed_UntilSomethingChanges', () => {
@@ -65,13 +79,62 @@ describe('board settings', () => {
     ]);
   });
 
-  it('BoardSettings_SavesTheBadge_ForAMeritBadgeNight', async () => {
-    plan.setBoard.mockResolvedValue({ ok: true });
-    settings();
+  it('BoardSettings_SavesTheBadgeAndItsSuggestedStations_ForAMeritBadgeNight', async () => {
+    plan.setStations.mockResolvedValue({ ok: true });
+    settings({ badgeReqs: COOKING });
     await userEvent.click(screen.getByRole('radio', { name: 'Merit badge' }));
     await userEvent.selectOptions(screen.getByRole('combobox'), 'cooking');
     await userEvent.click(screen.getByRole('button', { name: 'Save board' }));
-    expect(plan.setBoard).toHaveBeenCalledWith({ entryId: 5, mode: 'merit_badge', mbId: 'cooking', blockCount: 2 });
+    expect(plan.setStations.mock.calls[0]?.[0]).toEqual({
+      entryId: 5,
+      mbId: 'cooking',
+      stations: [
+        { topicId: null, title: '1. Health and safety', location: '', codes: ['1'] },
+        { topicId: null, title: '2. Nutrition', location: '', codes: ['2'] },
+        { topicId: null, title: '3. Plan a menu', location: '', codes: ['3'] }
+      ]
+    });
+  });
+
+  it('Leader_EditsAStation_NameAndPlace_BeforeSaving', async () => {
+    plan.setStations.mockResolvedValue({ ok: true });
+    settings({ badgeReqs: COOKING });
+    await userEvent.click(screen.getByRole('radio', { name: 'Merit badge' }));
+    await userEvent.selectOptions(screen.getByRole('combobox'), 'cooking');
+    const name = screen.getByRole('textbox', { name: 'Station 1' });
+    await userEvent.clear(name);
+    await userEvent.type(name, 'Fire safety');
+    await userEvent.type(screen.getAllByRole('textbox', { name: 'Where (optional)' })[0], 'Parking lot');
+    await userEvent.click(screen.getByRole('button', { name: 'Save board' }));
+    expect(plan.setStations.mock.calls[0]?.[0].stations[0]).toEqual({ topicId: null, title: 'Fire safety', location: 'Parking lot', codes: ['1'] });
+  });
+
+  it('BoardSettings_MarksAStationWithNoName_InPlace_AndDoesNotSave', async () => {
+    settings({ badgeReqs: COOKING });
+    await userEvent.click(screen.getByRole('radio', { name: 'Merit badge' }));
+    await userEvent.selectOptions(screen.getByRole('combobox'), 'cooking');
+    await userEvent.clear(screen.getByRole('textbox', { name: 'Station 2' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Save board' }));
+    expect([plan.setStations.mock.calls.length, screen.getByRole('textbox', { name: 'Station 2' }).getAttribute('aria-invalid'), screen.getByText('Station 2 needs a name.') != null]).toEqual([0, 'true', true]);
+  });
+
+  const mbInitial = { mode: 'merit_badge' as const, mbId: 'cooking', blockCount: 2, stations: [{ topicId: 7, title: 'A', location: '', codes: ['1'] }, { topicId: 8, title: 'B', location: '', codes: ['2'] }, { topicId: 9, title: 'C', location: '', codes: ['3'] }] };
+
+  it('BoardSettings_WarnsThatLeavingAMeritBadgeNight_RemovesItsStations_WithCounts_Announced', async () => {
+    settings({ badgeReqs: COOKING, initial: mbInitial, stationTeachers: 2, arranged: true });
+    await userEvent.click(screen.getByRole('radio', { name: 'Rank' }));
+    expect(screen.getByRole('status').textContent).toBe('Saving removes 3 stations, 2 teacher sign-ups and the saved rotation groups.');
+  });
+
+  it('BoardSettings_DropWarning_CountsOneOfEach_InTheSingular', async () => {
+    settings({ badgeReqs: COOKING, initial: { ...mbInitial, stations: mbInitial.stations.slice(0, 1) }, stationTeachers: 1 });
+    await userEvent.selectOptions(screen.getByRole('combobox'), '');
+    expect(screen.getByRole('status').textContent).toBe('Saving removes 1 station and 1 teacher sign-up.');
+  });
+
+  it('BoardSettings_StationRemoveButtons_SayWhichStation', () => {
+    settings({ badgeReqs: COOKING, initial: mbInitial });
+    expect(screen.getAllByRole('button', { name: /^Remove station \d$/ }).map((b) => b.getAttribute('aria-label'))).toEqual(['Remove station 1', 'Remove station 2', 'Remove station 3']);
   });
 
   it('BoardSettings_SaysPicksAreKept_WhenLeavingRank', async () => {
@@ -98,7 +161,7 @@ describe('board settings', () => {
 
 const sundayData = {
   meeting: { entryId: 5, title: 'Troop Meeting', mode: 'rank' as const, dateLabel: 'Sunday, November 1, 2026' },
-  board: { mode: 'rank' as const, mbId: '', blockCount: 2, badges: BADGES },
+  board: { mode: 'rank' as const, mbId: '', blockCount: 2, badges: BADGES, stations: [], stationTeachers: 0, arranged: false, badgeReqs: [] },
   match: {
     sessions: 2,
     agendaHref: '/admin/calendar/5?tab=agenda',

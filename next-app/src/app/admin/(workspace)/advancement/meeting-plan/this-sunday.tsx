@@ -14,7 +14,11 @@
  *   - Phase 3a: the board settings (rank / merit badge / closed, 1-3 teaching blocks, the badge), and the live match
  *     (lib/meeting-board-match), a column per block, recomputed on every load and poll. The matcher owns the
  *     unmatched lists on a rank board. Read-only: sessions become agenda items in the meeting editor's tray.
+ *   - Phase 3b, merit badge night: the board's stations (set in Board settings), who teaches each (with the counselor
+ *     flag), and the rotations editor (groups × rotations × stations from lib/meeting-board-rotations, the leader moves
+ *     anyone and places badge holders). Coming means an explicit answer: carried rank picks are held this week.
  */
+import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
 import { loadAdvancementCatalog } from '@/lib/advancement-catalog';
@@ -25,6 +29,10 @@ import { boardName, effectiveIntent, summarizeBoard, type BoardCounts, type Boar
 import { seatsFor, sessionWords } from '@/lib/meeting-board-match';
 import { assessTeacher, commitmentCounts, flagText, teacherIntent, teacherName, topicSkill, weeksAsked } from '@/lib/meeting-board-teach';
 import { loadLiveMatch, loadTeachBoard } from '@/lib/meeting-board-supply';
+import { loadRotationBoard } from '@/lib/meeting-board-stations';
+import type { StationDraft } from '@/lib/meeting-board-rotations';
+import type { CatalogMeritBadgeRequirement } from '@/lib/advancement-catalog';
+import { RotationsEditor, type RotationEditorData } from './rotations-editor';
 import { Notice } from '../../_components/notice';
 import { Button } from '../../../_components/button';
 import { BoardPoller } from './board-poller';
@@ -61,10 +69,34 @@ export interface ThisSundayMatch {
   agendaHref: string;
 }
 
+/** A merit badge night on This Sunday (Phase 3b). */
+export interface MbNight {
+  mbName: string;
+  kpis: { inRotations: number; haveBadge: number; notComing: number; noAnswer: number; stations: number; withTeacher: number };
+  stations: { index: number; title: string; location: string | null; codes: string; teachers: SupplyTeacher[] }[];
+  editor: RotationEditorData;
+  notComing: BoardPerson[];
+  /** Rank picks held this week (they come back at the next rank board). */
+  held: number;
+}
+
 export interface ThisSundayData {
   meeting: Pick<BoardMeeting, 'entryId' | 'title' | 'mode'> & { dateLabel: string };
-  /** Board settings (Phase 3a): the saved mode, badge and block count, the badges an MB night can use. */
-  board?: { mode: BoardMode; mbId: string; blockCount: number; badges: { id: string; name: string }[] };
+  /** Board settings (Phase 3a): the saved mode, badge and block count, the badges an MB night can use; Phase 3b: the
+   *  night's stations and those badges' top-level requirements (what a station is built from). */
+  board?: {
+    mode: BoardMode;
+    mbId: string;
+    blockCount: number;
+    badges: { id: string; name: string }[];
+    stations: StationDraft[];
+    /** Teacher sign-ups on those stations (Can't-make-it teachers too: removing the stations removes theirs). */
+    stationTeachers: number;
+    arranged: boolean;
+    badgeReqs: Pick<CatalogMeritBadgeRequirement, 'id' | 'mb_id' | 'parent_id' | 'code' | 'label' | 'complete_rule' | 'complete_n' | 'sort_order' | 'venue'>[];
+  };
+  /** A merit badge night's stations and rotations (Phase 3b). */
+  mb?: MbNight | null;
   /** The live match (Phase 3a, rank boards only). */
   match?: ThisSundayMatch | null;
   stamp: string;
@@ -220,6 +252,51 @@ export async function loadThisSunday(): Promise<ThisSundayData | null> {
 
   const byName = (a: BoardPerson, b: BoardPerson) => a.name.localeCompare(b.name);
   const badgesWithReqs = new Set(catalog.meritBadgeRequirements.map((r) => r.mb_id));
+
+  // Phase 3b: a merit badge night's stations and rotations.
+  const rot = meeting.mode === 'merit_badge' ? await loadRotationBoard(sb, meeting, catalog, rows, teach) : null;
+  let mb: MbNight | null = null;
+  if (rot) {
+    const nameFor = (id: number) => nameOf.get(id) ?? `Scout ${id}`;
+    const who = (id: number) => ({ personId: id, name: nameFor(id), patrol: rot.patrolOf.get(id) ?? null });
+    const topicOf = new Map(rot.stations.map((s) => [s.index, s.topicId!]));
+    const stationTeachers = (index: number): SupplyTeacher[] =>
+      (rot.teachersAt.get(index) ?? []).map((id) => {
+        const p = teach.people.get(id);
+        const flags = p ? assessTeacher(p, `mb:${rot.mbId}`, teach.ctx).flags : [];
+        return { ...teacherPerson(id), notes: flags.length ? flagText(flags, 'admin') : ['counselor'] };
+      });
+    const byPersonName = <T extends { name: string }>(list: T[]) => [...list].sort((a, b) => a.name.localeCompare(b.name));
+    mb = {
+      mbName: rot.mbName,
+      kpis: {
+        inRotations: rot.result.groups.reduce((n, g) => n + g.members.length, 0),
+        haveBadge: rot.result.badgeHolders.length,
+        notComing: rot.notComing.length,
+        noAnswer: rot.noAnswer.length,
+        stations: rot.stations.length,
+        withTeacher: rot.stations.filter((s) => (rot.teachersAt.get(s.index) ?? []).length > 0).length
+      },
+      stations: rot.stations.map((s) => ({ index: s.index, title: s.title, location: s.location, codes: `${rot.mbName} ${s.codes.join(', ')}`, teachers: stationTeachers(s.index) })),
+      editor: {
+        entryId: meeting.entryId,
+        stations: rot.stations.map((s) => ({ index: s.index, topicId: s.topicId!, title: s.title, location: s.location })),
+        schedules: rot.result.groups.map((g) => g.schedule),
+        groups: rot.result.groups.map((g) => byPersonName(g.members.map((m) => ({ ...who(m.personId), skips: m.skips, isNew: m.isNew, undecided: m.undecided })))),
+        holders: byPersonName(
+          rot.result.badgeHolders.map((h) => ({
+            ...who(h.personId),
+            undecided: h.undecided,
+            placement: h.placement?.kind === 'helper' ? { kind: 'helper' as const, topicId: topicOf.get(h.placement.station)! } : h.placement
+          }))
+        ),
+        noAnswer: byPersonName(rot.noAnswer.map((n) => ({ ...who(n.personId), awarded: n.awarded, skips: [] }))),
+        arranged: rot.result.arranged
+      },
+      notComing: rot.notComing.map((id) => person({ personId: id })).sort(byName),
+      held: rows.reduce((n, r) => n + r.picks.length, 0)
+    };
+  }
   return {
     meeting: { entryId: meeting.entryId, title: meeting.title, mode: meeting.mode, dateLabel: fmtDateFull(meeting.date) },
     board: {
@@ -229,8 +306,13 @@ export async function loadThisSunday(): Promise<ThisSundayData | null> {
       badges: catalog.meritBadges
         .filter((m) => badgesWithReqs.has(m.id))
         .map((m) => ({ id: m.id, name: m.name }))
-        .sort((a, b) => a.name.localeCompare(b.name))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+      stations: (rot?.stations ?? []).map((s) => ({ topicId: s.topicId, title: s.title, location: s.location ?? '', codes: s.codes })),
+      stationTeachers: teach.supply.topicTeachers.filter((t) => (rot?.stations ?? []).some((s) => s.key === t.key)).length,
+      arranged: rot?.result.arranged ?? false,
+      badgeReqs: catalog.meritBadgeRequirements.filter((r) => r.parent_id == null)
     },
+    mb,
     match: matchView,
     stamp,
     counts,
@@ -344,11 +426,14 @@ export function ThisSundayView({ data }: { data: ThisSundayData | null }) {
       </div>
       {data.board && (
         <BoardSettings
-          key={`${data.board.mode}:${data.board.mbId}:${data.board.blockCount}`}
+          key={JSON.stringify([data.board.mode, data.board.mbId, data.board.blockCount, data.board.stations])}
           entryId={meeting.entryId}
-          initial={{ mode: data.board.mode, mbId: data.board.mbId, blockCount: data.board.blockCount }}
+          initial={{ mode: data.board.mode, mbId: data.board.mbId, blockCount: data.board.blockCount, stations: data.board.stations }}
           badges={data.board.badges}
+          badgeReqs={data.board.badgeReqs}
           picks={counts.picks}
+          stationTeachers={data.board.stationTeachers}
+          arranged={data.board.arranged}
         />
       )}
     </>
@@ -367,10 +452,17 @@ export function ThisSundayView({ data }: { data: ThisSundayData | null }) {
       <div className={styles.statLabel}>{label}</div>
     </div>
   );
+  if (meeting.mode === 'merit_badge') {
+    return (
+      <>
+        {head}
+        <MbNightView data={data} stat={stat} />
+      </>
+    );
+  }
   return (
     <>
       {head}
-      {meeting.mode === 'merit_badge' && <Notice variant="info">Merit badge night: scouts say whether they&rsquo;re coming, and pick nothing.</Notice>}
       <div className={styles.statsStrip}>
         {stat(counts.coming, 'Scouts coming')}
         {stat(counts.undecided, 'Not sure yet')}
@@ -591,6 +683,16 @@ export function ThisSundayView({ data }: { data: ThisSundayData | null }) {
           <h2 className={styles.sectionTitle}>Adults who can&rsquo;t make it</h2>
           <People list={data.notComingAdults} empty="Nobody." />
 
+          <EnterForSomeone data={data} />
+        </div>
+      </div>
+    </>
+  );
+}
+
+function EnterForSomeone({ data }: { data: ThisSundayData }) {
+  return (
+    <>
           <h2 className={styles.sectionTitle}>Enter for someone</h2>
           <form method="get" action="/member/meeting" className={styles.obForm}>
             <select name="for" aria-label="Person" className={styles.obSelect} defaultValue="" required>
@@ -617,6 +719,73 @@ export function ThisSundayView({ data }: { data: ThisSundayData | null }) {
             </Button>
           </form>
           <p className={styles.boardEmpty}>Took a pick or a teaching sign-up by phone or text? Open their page; it saves as entered by you.</p>
+    </>
+  );
+}
+
+/** A merit badge night (Phase 3b): stations and who teaches them, then the rotations editor. */
+function MbNightView({ data, stat }: { data: ThisSundayData; stat: (n: number, label: string) => ReactNode }) {
+  const mb = data.mb;
+  if (!mb) return <Notice variant="info">Merit badge night: choose the badge above, then set its stations.</Notice>;
+  const k = mb.kpis;
+  return (
+    <>
+      <div className={styles.statsStrip}>
+        {stat(k.inRotations, 'In rotations')}
+        {stat(k.haveBadge, 'Have the badge')}
+        {stat(k.notComing, 'Can’t make it')}
+        {stat(k.noAnswer, 'No answer')}
+        {stat(k.withTeacher, `of ${k.stations} stations have a teacher`)}
+      </div>
+      <h2 className={styles.sectionTitle}>{mb.mbName} stations</h2>
+      {mb.stations.length ? (
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Station</th>
+              <th>Where</th>
+              <th>Teacher</th>
+            </tr>
+          </thead>
+          <tbody>
+            {mb.stations.map((s) => (
+              <tr key={s.index}>
+                <td>{s.index + 1}</td>
+                <td>
+                  <span className={styles.scoutName}>{s.title}</span>
+                  <div className={styles.patrol}>{s.codes}</div>
+                </td>
+                <td>{s.location ?? ''}</td>
+                <td>{s.teachers.length ? <TeacherLinks list={s.teachers} /> : <span className={styles.noTeacher}>No teacher yet</span>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <p className={styles.boardEmpty}>No stations yet. Set them in Board above.</p>
+      )}
+      <RotationsEditor
+        key={JSON.stringify([mb.editor.groups, mb.editor.holders, mb.editor.noAnswer, mb.editor.stations, mb.editor.arranged])}
+        data={mb.editor}
+        readOnly={!data.board}
+      />
+      <div className={styles.boardCols}>
+        <div>
+          <h2 className={styles.sectionTitle}>Can&rsquo;t make it</h2>
+          <People list={mb.notComing} empty="Nobody." />
+          {mb.held > 0 && (
+            <p className={styles.boardEmpty}>
+              {mb.held} rank {mb.held === 1 ? 'pick is' : 'picks are'} held tonight and {mb.held === 1 ? 'comes' : 'come'} back at the next regular meeting.
+            </p>
+          )}
+        </div>
+        <div>
+          <h2 className={styles.sectionTitle}>Adults not sure yet</h2>
+          <People list={data.undecidedAdults} empty="Nobody." />
+          <h2 className={styles.sectionTitle}>Adults who can&rsquo;t make it</h2>
+          <People list={data.notComingAdults} empty="Nobody." />
+          <EnterForSomeone data={data} />
         </div>
       </div>
     </>

@@ -47,11 +47,11 @@ export interface MatchedCandidate {
   promote: Omit<PromotePayload, 'meetingId'>;
 }
 
-/** The tray's board half: the meeting's mode and, on a rank board, its matched sessions. */
+/** The tray's board half: the meeting's mode and its matched sessions (rank) or stations (merit badge, Phase 3b). */
 export interface BoardTray {
   mode: 'rank' | 'merit_badge' | 'closed';
   sessions: MatchedCandidate[];
-  /** Requests with no teacher (shown as a pointer to This Sunday). */
+  /** Requests with no teacher (shown as a pointer to This Sunday); on a merit badge night, stations with no teacher. */
   wanted: number;
 }
 
@@ -401,17 +401,23 @@ export function MeetingEditor({
                 <p className={styles.trayNote}>The board&rsquo;s match didn&rsquo;t load right now. The engine&rsquo;s suggestions below still work.</p>
               ) : board.mode === 'closed' ? (
                 <p className={styles.trayNote}>This meeting has no board. Build the agenda by hand.</p>
-              ) : board.mode === 'merit_badge' ? (
-                <p className={styles.trayNote}>Merit badge night: stations and rotations aren&rsquo;t matched here yet.</p>
               ) : (
                 <>
-                  <p className={styles.trayNote}>
-                    Matched live from what scouts picked and who signed up to teach. Adding copies a session into the
-                    agenda as an editable item; the board itself is never changed, and nothing is published until you
-                    publish the agenda.
-                  </p>
+                  {board.mode === 'merit_badge' ? (
+                    <p className={styles.trayNote}>
+                      Merit badge night: one card per station, with its teacher, place and rotation order. Adding copies a
+                      station into the agenda as an editable item; the board itself is never changed, and nothing is
+                      published until you publish the agenda.
+                    </p>
+                  ) : (
+                    <p className={styles.trayNote}>
+                      Matched live from what scouts picked and who signed up to teach. Adding copies a session into the
+                      agenda as an editable item; the board itself is never changed, and nothing is published until you
+                      publish the agenda.
+                    </p>
+                  )}
                   {board.sessions.length === 0 ? (
-                    <p className={styles.trayNote}>Nothing matched yet.</p>
+                    <p className={styles.trayNote}>{board.mode === 'merit_badge' ? 'No stations yet. Set them on This Sunday.' : 'Nothing matched yet.'}</p>
                   ) : (
                     board.sessions.map((c) => (
                       <div key={c.id} className={styles.candidateCard}>
@@ -421,7 +427,7 @@ export function MeetingEditor({
                         </div>
                         <div className={styles.candidateTitle}>{c.title}</div>
                         <div className={styles.candidateMeta}>
-                          Teacher: {c.teacher}
+                          {c.teacher ? `Teacher: ${c.teacher}` : 'No teacher yet'}
                           {c.flags.length > 0 && <> · {c.flags.join(' · ')}</>}
                           <br />
                           {c.scouts.length} scout{c.scouts.length === 1 ? '' : 's'}
@@ -438,7 +444,9 @@ export function MeetingEditor({
                   )}
                   {board.wanted > 0 && (
                     <p className={styles.trayNote}>
-                      Not here: {board.wanted} {board.wanted === 1 ? 'request' : 'requests'} with no teacher.{' '}
+                      {board.mode === 'merit_badge'
+                        ? `${board.wanted} ${board.wanted === 1 ? 'station has' : 'stations have'} no teacher yet.`
+                        : `Not here: ${board.wanted} ${board.wanted === 1 ? 'request' : 'requests'} with no teacher.`}{' '}
                       <Link href="/admin/advancement/meeting-plan">See This Sunday</Link>
                     </p>
                   )}

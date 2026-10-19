@@ -466,3 +466,97 @@ a.chip:hover {
   border-color: var(--admin-danger);
   box-shadow: 0 0 0 1px var(--admin-danger);
 }
+
+/* ── This Sunday, merit badge night: stations + rotations (Phase 3b) ── */
+.rotGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--admin-space-4);
+  margin: var(--admin-space-3) 0 var(--admin-space-4);
+}
+.rotCol {
+  background: var(--admin-white);
+  border-top: 3px solid var(--admin-forest);
+  border-radius: var(--admin-radius);
+  box-shadow: var(--admin-shadow-sm);
+  padding: var(--admin-space-3);
+}
+.rotColOver {
+  outline: 2px solid var(--admin-danger);
+}
+.rotSched {
+  margin: 0 0 var(--admin-space-2);
+  padding-left: var(--admin-space-5);
+  font-size: var(--admin-text-sm);
+  color: var(--admin-gray-600);
+}
+.rotMembers {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.rotMembers li,
+.rotHolder {
+  display: flex;
+  gap: var(--admin-space-2);
+  align-items: center;
+  padding: var(--admin-space-1) 0;
+  border-bottom: 1px solid var(--admin-gray-200);
+}
+.rotMembers .patrol,
+.rotHolder .patrol {
+  display: block;
+}
+.grow {
+  flex: 1;
+  min-width: 0;
+}
+.rotMove {
+  max-width: 12rem;
+}
+.rotFoot {
+  margin-top: var(--admin-space-3);
+}
+.rotConfirm {
+  font-size: var(--admin-text-sm);
+}
+.stationEdit {
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius);
+  background: var(--admin-white);
+  padding: var(--admin-space-3);
+  margin-bottom: var(--admin-space-2);
+}
+.stationEditBad {
+  border-color: var(--admin-danger);
+  box-shadow: 0 0 0 1px var(--admin-danger);
+}
+.stationRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--admin-space-3);
+  align-items: flex-end;
+}
+.stationReqs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--admin-space-1) var(--admin-space-3);
+  margin-top: var(--admin-space-2);
+  font-size: var(--admin-text-sm);
+}
+.stationReqs label {
+  display: inline-flex;
+  gap: var(--admin-space-1);
+  align-items: center;
+}
+.stationsHead {
+  margin-top: var(--admin-space-4);
+}
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

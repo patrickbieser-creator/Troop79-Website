@@ -9,6 +9,7 @@ import {
   orderPicks,
   othersLabel,
   resolveBoardMode,
+  scoutLine,
   summarizeBoard,
   type BoardPick
 } from '../src/lib/meeting-board-shared';
@@ -220,5 +221,12 @@ describe('on behalf', () => {
       onBehalfAccess({ holdsMeetingPlan: true, actorIsScout: true, hasVerifiedSignIn: true }),
       onBehalfAccess({ holdsMeetingPlan: false, actorIsScout: false, hasVerifiedSignIn: true })
     ]).toEqual(['edit', 'read-only', 'none', 'none']);
+  });
+});
+
+describe('scoutLine on a merit badge night (Phase 3b)', () => {
+  it('Scout_CarriedRankPicks_DoNotSayComing_OnAMeritBadgeNight', () => {
+    const held = [{ later: false }];
+    expect([scoutLine('merit_badge', null, held), scoutLine('merit_badge', 'coming', held), scoutLine('rank', null, held)]).toEqual(['No answer yet', 'Coming', 'Coming · 1 pick']);
   });
 });
