@@ -135,6 +135,17 @@ export const resolveAdminActor = cache(async function resolveAdminActor(): Promi
   };
 });
 
+/**
+ * May this actor enter /admin at all? The workspace layout's admission rule,
+ * named so the public nav's account menu (api/session-status) asks the same
+ * question instead of keeping a second copy of it: a resolved actor holding
+ * at least one capability. Null (no credential, or a revoked session) and an
+ * empty grant set are both "no".
+ */
+export function actorCanEnterAdmin(actor: AdminActor | null): boolean {
+  return actor != null && actor.capabilities.size > 0;
+}
+
 export function actorHas(actor: AdminActor | null, capability: Capability): boolean {
   return actor?.capabilities.has(capability) ?? false;
 }

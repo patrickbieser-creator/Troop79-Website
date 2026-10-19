@@ -183,6 +183,16 @@
   height: var(--admin-space-4);
 }
 
+/* Account control states side by side; the open menu is absolutely
+   positioned, so the row reserves room for it. */
+.specimenAccountRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--admin-space-8);
+  min-height: 200px;
+}
+
 .specimenTagRow {
   margin-top: var(--admin-space-4);
 }

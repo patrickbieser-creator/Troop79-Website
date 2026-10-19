@@ -18,6 +18,8 @@ import { FinishLine } from '@/app/(public)/library/menu-monster/menus/_component
 import type { Ingredient, RestrictionKey } from '@/lib/menu-monster/types';
 import { AddPackageForm } from '@/app/(public)/library/menu-monster/menus/_components/add-package-form';
 import menuMonsterS from '@/app/(public)/library/menu-monster/menus/_components/workspace.module.css';
+import { AccountControlView } from '@/app/_components/account-control';
+import type { SessionStatus } from '@/app/api/session-status/route';
 
 export function PublicTabStripSpecimen() {
   const [active, setActive] = useState('week');
@@ -211,6 +213,26 @@ export function PublicBrandDetailSpecimen() {
         onAdded={() => {}}
         onCancel={() => {}}
       />
+    </div>
+  );
+}
+
+const SPECIMEN_SIGNED_IN: SessionStatus = {
+  loggedIn: true,
+  level: 'Family',
+  label: 'Patrick Bieser',
+  canViewProfile: true,
+  isVerifiedMember: true,
+  canAdmin: true
+};
+
+/** The nav's account control in its states. Sign out here is inert. */
+export function PublicAccountControlSpecimen() {
+  return (
+    <div className={sg.specimenAccountRow}>
+      <AccountControlView status={null} pathname="/news" search="" />
+      <AccountControlView status={SPECIMEN_SIGNED_IN} pathname="/news" search="" signOutAction={() => {}} />
+      <AccountControlView status={SPECIMEN_SIGNED_IN} pathname="/news" search="" signOutAction={() => {}} defaultOpen />
     </div>
   );
 }

@@ -22,7 +22,7 @@ import { DirtyGuardProvider } from './_components/dirty-guard';
 import { ArticleStyleTokens } from '@/lib/article-body/ArticleStyleTokens';
 import { TopBar } from './_components/top-bar';
 import { IS_DEV_DB } from '@/lib/dev-db';
-import { resolveAdminActor } from '@/lib/admin-actor';
+import { actorCanEnterAdmin, resolveAdminActor } from '@/lib/admin-actor';
 import { isFullAdmin } from './_components/nav-data';
 import styles from './admin.module.css';
 // Global --admin-* design tokens on :root (Plans/Admin-Design-System.md).
@@ -41,7 +41,8 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
   // through; this is the first place the revocation is actually noticed.
   if (!actor) redirect('/admin/login');
 
-  if (actor.capabilities.size === 0) {
+  // Same predicate the public account menu uses to offer "Admin".
+  if (!actorCanEnterAdmin(actor)) {
     // NOT wrapped in styles.workspace: this branch has no nav by design, so it
     // gets its own plain container instead.
     return (

@@ -101,40 +101,6 @@
   min-width: 0;
 }
 
-.signOutForm {
-  flex-shrink: 0;
-}
-
-.signOutBtn {
-  background: var(--warm-white);
-  border: 1px solid var(--forest);
-  border-radius: var(--rad-md);
-  padding: 0.5rem 1.1rem;
-  font-family: var(--font-ui), inherit;
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: var(--forest);
-  cursor: pointer;
-  white-space: nowrap;
-}
-.signOutBtn:hover,
-.signOutBtn:focus-visible {
-  background: var(--forest);
-  color: var(--warm-white);
-}
-
-@media (max-width: 640px) { /* folded from 34rem onto the canon (stacks slightly sooner — safe direction) */
-  /* Stacks on a phone — a nowrap button beside wrapping prose squeezes the
-     text into a column two words wide. */
-  .identityRow {
-    flex-direction: column;
-    gap: 0.9rem;
-  }
-  .signOutBtn {
-    width: 100%;
-  }
-}
-
 /* Surface comes from the shared card primitive; layout only here. */
 .passkeySection {
   padding: 1.1rem 1.2rem;

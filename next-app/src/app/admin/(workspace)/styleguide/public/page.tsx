@@ -32,7 +32,7 @@ import { SectionDivider } from '@/app/_components/section-divider';
 import { GoalBar } from '@/app/_components/goal-bar';
 import { goalProgress } from '@/lib/wreaths/scout-entry';
 import cardS from '@/app/_components/card.module.css';
-import { PublicBlockedSaveSpecimen, PublicBrandDetailSpecimen, PublicDietRowsSpecimen, PublicFinishLineSpecimen, PublicAmountScaleSpecimen, PublicGearSpecimen, PublicMenuEditListSpecimen, PublicStepperSpecimen, PublicTabStripSpecimen } from './specimens';
+import { PublicAccountControlSpecimen, PublicBlockedSaveSpecimen, PublicBrandDetailSpecimen, PublicDietRowsSpecimen, PublicFinishLineSpecimen, PublicAmountScaleSpecimen, PublicGearSpecimen, PublicMenuEditListSpecimen, PublicStepperSpecimen, PublicTabStripSpecimen } from './specimens';
 import { IngredientList } from '@/app/(public)/library/menu-monster/_components/ingredient-list';
 import { StepStrip } from '@/app/(public)/library/menu-monster/menus/_components/step-strip';
 import { SummaryRail } from '@/app/(public)/library/menu-monster/menus/_components/summary-rail';
@@ -411,6 +411,19 @@ export default function PublicStyleguidePage() {
             <span className={sg.specimenInlineNote}>
               size=&quot;sm&quot; — section-header CTAs and chrome rows (Phase C)
             </span>
+          </div>
+
+          {/* Account control — the right end of the sticky nav (2026-10-19) */}
+          <div className={sg.specimenBlock}>
+            <PublicAccountControlSpecimen />
+            <p className={sg.specimenInlineNote}>
+              <code>AccountControl</code> from <code>_components/account-control</code> &mdash; signed out, signed in, and open.
+              &ldquo;Sign in&rdquo; is quiet (never the navy primary) and carries <code>?next=</code> the current page (none on
+              Home); signed in it is a disclosure button, &ldquo;Patrick B&rdquo; on desktop and initials in a 44px circle at
+              640px and under, the full name as its accessible name. Menu: My page, Admin (only with <code>canAdmin</code>),
+              Sign out (a form POST). Esc and a click outside close it. Hidden on <code>/signin</code> routes. Replaced the
+              Members tab, the utility bar&rsquo;s &ldquo;Signed in as&rdquo; and /member&rsquo;s Sign Out.
+            </p>
           </div>
 
           {/* TabStrip */}

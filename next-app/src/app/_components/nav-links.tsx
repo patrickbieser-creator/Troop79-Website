@@ -13,12 +13,10 @@ const LINKS: { href: string; label: string }[] = [
   { href: '/photos', label: 'Photos' },
   { href: '/advancement', label: 'Advancement' },
   { href: '/library', label: 'Library' },
-  { href: '/about', label: 'About' },
-  // ALWAYS shown, signed in or not (Patrick, 2026-08-16). /member is the
-  // site's front door for signing in — it dead-ends in a sign-in prompt for a
-  // visitor, which is exactly what makes it discoverable. A link that only
-  // appears once you are already signed in cannot be how you sign in.
-  { href: '/member', label: 'Members' }
+  { href: '/about', label: 'About' }
+  // No Members tab since 2026-10-19: the account control at the end of the
+  // nav bar (account-control.tsx) is the front door now — "Sign in" for a
+  // visitor, and My page / Admin / Sign out once you are someone.
 ];
 
 export function NavLinks() {

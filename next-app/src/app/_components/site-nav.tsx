@@ -6,7 +6,7 @@
 import Link from 'next/link';
 import { NavLinks } from './nav-links';
 import { UtilityDate } from './utility-date';
-import { SignedInAs } from './signed-in-as';
+import { AccountControl } from './account-control';
 import { Button } from './button';
 import styles from './site-nav.module.css';
 
@@ -14,11 +14,10 @@ import styles from './site-nav.module.css';
 // wraps every public page, and doing either here would bail every one of
 // them out of static/ISR generation (caught in build output, 2026-08-06).
 //
-// Sign in / sign out used to live in the utility bar; both moved to /member,
-// the single front door for authentication (Patrick, 2026-08-16). What stays
-// is SignedInAs — display only — because "whose information am I looking at"
-// is still worth answering at the top of every page. It checks session state
-// itself, client-side, via /api/session-status.
+// Sign in, who you are, and sign out live in ONE place: the account control
+// at the right end of the sticky nav (2026-10-19 — it replaced the utility
+// bar's "Signed in as" and the nav's Members tab). It checks session state
+// itself, client-side, via /api/session-status, so this stays static.
 export function SiteNav() {
   return (
     <div id="site-nav-root">
@@ -26,9 +25,6 @@ export function SiteNav() {
       <div className={styles.utilityBar}>
         <div className={styles.utilityInner}>
           <UtilityDate />
-          <div className={styles.utilityRight}>
-            <SignedInAs />
-          </div>
         </div>
       </div>
 
@@ -70,6 +66,8 @@ export function SiteNav() {
       <nav aria-label="Main navigation" className={styles.mainNav}>
         <div className={styles.navInner}>
           <NavLinks />
+          {/* Outside the scrolling link strip so it stays put on a phone. */}
+          <AccountControl />
         </div>
       </nav>
     </div>

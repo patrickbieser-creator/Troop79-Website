@@ -14,7 +14,7 @@
  * nothing but a shortcut to "Email me a code". The guard test
  * (tests/signin-hint-guards.test.ts) pins that.
  *
- * A signed-in adult or a leader is simply sent on (B5: proceed as the
+ * A signed-in adult (leaders included) is simply sent on (B5: proceed as the
  * session holder — dad's session, mom's newsletter on the shared iPad). A
  * scout session does NOT short-circuit: the newsletter went to the parent,
  * and the event page will offer the parent's sign-in over the scout's.
@@ -24,7 +24,6 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { safeInternalPath } from '@/lib/safe-redirect';
 import { IDENTITY_COOKIE, verifyIdentitySession } from '@/lib/identity-session';
-import { LEADER_COOKIE, verifySession } from '@/lib/leader-session';
 import { recordLoginEvent } from '@/lib/login-events';
 import {
   HINT_COOKIE,
@@ -42,11 +41,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const next = safeInternalPath(params.get('next'), '/signin');
   const res = NextResponse.redirect(new URL(next, req.nextUrl.origin), 303);
 
-  const [leader, identity] = await Promise.all([
-    verifySession(req.cookies.get(LEADER_COOKIE.name)?.value),
-    verifyIdentitySession(req.cookies.get(IDENTITY_COOKIE.name)?.value)
-  ]);
-  if (leader || identity?.subjectKind === 'adult') return res;
+  // A leader is a verified adult like anyone else since the shared leader
+  // password retired, so the identity session is the only one to check.
+  const identity = await verifyIdentitySession(req.cookies.get(IDENTITY_COOKIE.name)?.value);
+  if (identity?.subjectKind === 'adult') return res;
 
   const address = normaliseHintAddress(params.get('for'));
   if (!address) return res;

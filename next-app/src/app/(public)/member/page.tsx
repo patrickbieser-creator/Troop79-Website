@@ -13,16 +13,14 @@
  * Access is a VERIFIED identity, adult or scout. The troop password is not
  * enough: everything reachable from here is that person's own record.
  *
- * THIS PAGE IS THE SITE'S FRONT DOOR FOR SIGNING IN (Patrick, 2026-08-16).
- * Sign in and sign out were removed from the utility bar; the Member tab is
- * always in the nav and dead-ends here with a prompt. A sign-in link that
- * only appears once you are signed in cannot be how anyone signs in, and the
- * old utility-bar link was easy to miss on a phone.
+ * Signing in and out happen from the nav's account control on every page
+ * (2026-10-19; it replaced the Members tab and this page's Sign Out button).
+ * "My page" in that menu lands here; a visitor who arrives signed out still
+ * gets a sign-in prompt.
  */
 
 import Link from 'next/link';
 import { getIdentitySessionIfValid } from '@/lib/family-access';
-import { logOutEverywhereAction } from '@/app/_components/site-nav-actions';
 import { createAdminClient } from '@/lib/supabase/server';
 import { listPasskeys, passkeysConfigured } from '@/lib/passkeys';
 import { PasskeyManager } from './passkey-manager';
@@ -205,15 +203,7 @@ export default async function MemberPage({
             your household&rsquo;s details, and, as we build them out, the rest of the things
             families ask us for.
           </p>
-          {/* Paired with the identity it acts on, rather than stranded at the
-              bottom of the page — "this is who you are" and "stop being them"
-              belong on the same line. */}
-          <form action={logOutEverywhereAction} className={styles.signOutForm}>
-            <input type="hidden" name="next" value="/" />
-            <button type="submit" className={styles.signOutBtn}>
-              Sign Out
-            </button>
-          </form>
+          {/* Sign out lives in the nav's account menu (2026-10-19), on every page. */}
         </div>
         )}
 

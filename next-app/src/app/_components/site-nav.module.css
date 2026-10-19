@@ -18,25 +18,11 @@
   justify-content: space-between;
   align-items: center;
 }
-.utilityRight {
-  display: flex;
-  gap: var(--sp-4);
-  align-items: center;
-}
 .utilityDate {
   font-family: var(--font-ui);
   font-size: var(--fs-2xs);
   color: var(--text-meta);
   font-weight: 600;
-}
-.signedInAs {
-  font-family: var(--font-ui);
-  font-size: var(--fs-2xs);
-  color: var(--text-meta);
-  text-decoration: none;
-}
-.signedInAsName {
-  color: var(--navy);
 }
 
 /* ── Masthead shell ── */
@@ -100,6 +86,104 @@
   border-bottom-color: var(--navy);
 }
 
+/* ── Account control (account-control.tsx) ──
+   Sits after the scrolling link strip, so it never scrolls away on a phone.
+   min-width holds its place while the session status loads (the signed-out
+   link renders first), so the strip does not jump. Quiet by design — the
+   masthead's "Join Troop 79" is the loud button. */
+.account {
+  position: relative;
+  flex-shrink: 0;
+  min-width: 96px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.accountSignIn,
+.accountButton {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 var(--sp-3);
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--navy);
+  background: transparent;
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-md);
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color var(--transition);
+}
+/* Invisible extension: 34px drawn, 44px to tap. */
+.accountSignIn::after,
+.accountButton::after {
+  content: '';
+  position: absolute;
+  inset: -5px 0;
+}
+.accountSignIn:hover,
+.accountButton:hover,
+.accountButton[aria-expanded='true'] {
+  border-color: var(--navy);
+}
+.accountSignIn:focus-visible,
+.accountButton:focus-visible,
+.accountItem:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.accountInitials {
+  display: none;
+}
+
+.accountPanel {
+  position: absolute;
+  top: calc(100% + var(--sp-1));
+  right: 0;
+  min-width: 180px;
+  padding: var(--sp-1) 0;
+  background: var(--warm-white);
+  border: 1px solid var(--border-light);
+  border-radius: var(--rad-lg);
+  box-shadow: var(--shadow-card);
+  z-index: 101;
+}
+.accountList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.accountSignOutRow {
+  border-top: 1px solid var(--border-light);
+  margin-top: var(--sp-1);
+  padding-top: var(--sp-1);
+}
+.accountItem {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 var(--sp-4);
+  font-family: var(--font-ui);
+  font-size: var(--fs-md);
+  color: var(--text-head);
+  text-align: left;
+  text-decoration: none;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.accountItem:hover {
+  background: var(--newsprint);
+  color: var(--navy);
+}
+
 @media (max-width: 640px) {
   .navInner {
     padding: 0 12px;
@@ -108,6 +192,29 @@
   .link {
     font-size: 12.5px;
     padding: 13px 11px;
+  }
+  .account {
+    min-width: 72px;
+  }
+  /* Initials in a 44px circle; the full name stays the accessible name. */
+  .accountButton {
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border-radius: var(--rad-circle);
+    background: var(--newsprint);
+    font-size: var(--fs-xs);
+    font-weight: 700;
+  }
+  .accountButton::after {
+    content: none;
+  }
+  .accountName {
+    display: none;
+  }
+  .accountInitials {
+    display: inline;
   }
 }
 
