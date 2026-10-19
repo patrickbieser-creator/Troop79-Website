@@ -7,10 +7,13 @@
  *
  * `lines` is keyed by item id, with a trailing "d" for a donated wreath ("12d"). `seller` is the last scout page the
  * shopper opened (last link wins); it only decides which scout a CHECKOUT is credited to when the shopper follows that
- * scout's own checkout link — the general store never carries it.
+ * scout's own checkout link — the general store never carries it. `donation` is the "Donate to Troop 79" amount in
+ * dollars (W-3; 0 = none): the same money as the checkout's donation (the order's `gift`), held once, so a cart can
+ * check out with only a donation and a donation is never counted twice.
  */
 
 import { useCallback, useSyncExternalStore } from 'react';
+import { MAX_GIFT, fromCents, toCents } from '@/lib/wreaths/rules';
 
 export interface CartSeller {
   slug: string;
@@ -20,11 +23,18 @@ export interface CartSeller {
 export interface CartState {
   lines: Record<string, number>;
   seller: CartSeller | null;
+  /** Dollars; 0 = no donation. */
+  donation: number;
 }
 
 const KEY = 'wreath-cart-v1';
 const EVENT = 'wreath-cart-changed';
-const EMPTY: CartState = { lines: {}, seller: null };
+const EMPTY: CartState = { lines: {}, seller: null, donation: 0 };
+
+/** A stored donation: a number of dollars over $0 and at most MAX_GIFT, whole cents; anything else is none. */
+function cleanDonation(v: unknown): number {
+  return typeof v === 'number' && Number.isFinite(v) && v > 0 && v <= MAX_GIFT ? fromCents(toCents(v)) : 0;
+}
 
 let cachedRaw: string | null | undefined;
 let cachedValue: CartState = EMPTY;
@@ -39,7 +49,7 @@ function parse(raw: string | null): CartState {
     }
     const s = v.seller;
     const seller = s && typeof s.slug === 'string' && typeof s.name === 'string' ? { slug: s.slug, name: s.name } : null;
-    return { lines, seller };
+    return { lines, seller, donation: cleanDonation(v.donation) };
   } catch {
     return EMPTY;
   }
@@ -95,14 +105,21 @@ export function useCart() {
     if (cur.seller?.slug === seller?.slug) return;
     write({ ...cur, seller });
   }, []);
+  /** Sets the donation (W-3); 0 removes it. */
+  const setDonation = useCallback((dollars: number) => {
+    const cur = snapshot();
+    const donation = cleanDonation(dollars);
+    if (cur.donation === donation) return;
+    write({ ...cur, donation });
+  }, []);
   const clear = useCallback(() => write(EMPTY), []);
   /** Puts the cart back exactly as given (Undo after "Empty the cart"). */
   const restore = useCallback((state: CartState) => write(state), []);
-  /** Empties the lines; the scout credit stays unless `dropSeller`. Returns what was there, for Undo. */
+  /** Empties the lines and the donation; the scout credit stays unless `dropSeller`. Returns what was there, for Undo. */
   const emptyLines = useCallback((dropSeller: boolean): CartState => {
     const cur = snapshot();
-    write({ lines: {}, seller: dropSeller ? null : cur.seller });
+    write({ lines: {}, seller: dropSeller ? null : cur.seller, donation: 0 });
     return cur;
   }, []);
-  return { cart, setQty, setSeller, clear, restore, emptyLines };
+  return { cart, setQty, setSeller, setDonation, clear, restore, emptyLines };
 }

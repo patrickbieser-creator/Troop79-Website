@@ -4,7 +4,8 @@
  * and get {subject, html, text}.
  */
 import { renderEmail } from '@/lib/email';
-import { PAY_TREASURER, fmtMoney2 } from './rules';
+import { DONATION_LABEL, PAY_TREASURER, fmtMoney2 } from './rules';
+import { donationReceiptLines } from './copy';
 
 export interface OrderEmailItem {
   label: string;
@@ -29,7 +30,12 @@ export interface OrderEmailContext {
   orderUrl: string;
   /** "Saturday, October 25" — the last day a change is possible. */
   changesBy: string;
+  /** When the order was placed (an instant): the donation receipt's date (W-3). Absent = no receipt lines. */
+  placedAt?: string;
 }
+
+/** A donation with no wreath (W-3). */
+const isDonationOnly = (c: Pick<OrderEmailContext, 'items' | 'gift'>) => c.items.length === 0 && c.gift > 0;
 
 /** Header-safe text for an email subject: control characters (CR, LF, NUL, bidi marks, line separators) become a space. */
 export function subjectText(s: string): string {
@@ -41,7 +47,7 @@ export function summaryBullets(c: Pick<OrderEmailContext, 'items' | 'deliveryFee
   return [
     ...c.items.map((i) => `${i.quantity} × ${i.label}${i.donated ? ' (donated to veterans)' : ''} — ${fmtMoney2(i.amount)}`),
     ...(c.deliveryFee ? [`Delivery fee — ${fmtMoney2(c.deliveryFee)}`] : []),
-    ...(c.gift ? [`Gift to Troop 79 — ${fmtMoney2(c.gift)}`] : []),
+    ...(c.gift ? [`${DONATION_LABEL} — ${fmtMoney2(c.gift)}`] : []),
     ...(c.feeCovered ? [`Processing fee — ${fmtMoney2(c.feeCovered)}`] : []),
     `Total — ${fmtMoney2(c.total)}`
   ];
@@ -66,11 +72,17 @@ const copyNotice = (copy: OrderCopy) => `Copy for the troop: this is the confirm
 /** The customer's receipt: what they ordered, and how to pay the treasurer with the order number in the note. */
 export function customerConfirmationEmail(c: OrderEmailContext, copy?: OrderCopy): { subject: string; html: string; text: string } {
   const first = greetingName(c.customerName);
+  const donationOnly = isDonationOnly(c);
   const { html, text } = renderEmail({
-    heading: first ? `Thank you, ${first}. Your order is placed.` : 'Thank you. Your order is placed.',
-    intro: `Your Troop 79 wreath order ${c.orderNumber} is placed. It is not paid yet: please pay ${fmtMoney2(c.total)} and put ${c.orderNumber} in the payment note so we can match it.`,
+    heading: donationOnly
+      ? first ? `Thank you, ${first}, for your donation to Troop 79.` : 'Thank you for your donation to Troop 79.'
+      : first ? `Thank you, ${first}. Your order is placed.` : 'Thank you. Your order is placed.',
+    intro: donationOnly
+      ? `Your donation ${c.orderNumber} is recorded. It is not paid yet: please pay ${fmtMoney2(c.total)} and put ${c.orderNumber} in the payment note so we can match it.`
+      : `Your Troop 79 wreath order ${c.orderNumber} is placed. It is not paid yet: please pay ${fmtMoney2(c.total)} and put ${c.orderNumber} in the payment note so we can match it.`,
     bullets: [
       ...summaryBullets(c),
+      ...(c.placedAt ? donationReceiptLines({ gift: c.gift, donationOnly, placedAt: c.placedAt }) : []),
       `Pay by Venmo to ${PAY_TREASURER.venmoHandle} (${PAY_TREASURER.venmoUrl})`,
       `Or by PayPal to ${PAY_TREASURER.paypalEmail}, choosing Friends and family`,
       PAY_TREASURER.note,
@@ -78,11 +90,18 @@ export function customerConfirmationEmail(c: OrderEmailContext, copy?: OrderCopy
       c.arrival
     ],
     actionUrl: c.orderUrl,
-    actionLabel: 'View your order',
-    outro: `Questions or changes: reply to this email. Changes are possible until ${c.changesBy}, when the troop places its order with the grower.`,
+    actionLabel: donationOnly ? 'View your donation' : 'View your order',
+    outro: donationOnly
+      ? 'Questions: reply to this email.'
+      : `Questions or changes: reply to this email. Changes are possible until ${c.changesBy}, when the troop places its order with the grower.`,
     notice: copy && copyNotice(copy)
   });
-  return { subject: subjectText(copy ? `Copy: wreath order ${c.orderNumber} for ${c.customerName}` : `Your Troop 79 wreath order ${c.orderNumber}`), html, text };
+  const subject = copy
+    ? `Copy: ${donationOnly ? 'donation' : 'wreath order'} ${c.orderNumber} for ${c.customerName}`
+    : donationOnly
+      ? `Your donation to Troop 79, ${c.orderNumber}`
+      : `Your Troop 79 wreath order ${c.orderNumber}`;
+  return { subject: subjectText(subject), html, text };
 }
 
 /**

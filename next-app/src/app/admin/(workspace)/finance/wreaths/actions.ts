@@ -7,7 +7,7 @@ import { recordAudit, type AuditDetail } from '@/lib/audit';
 import { createAdminClient } from '@/lib/supabase/server';
 import { centralToInstant, centralToday, instantToCentral } from '@/lib/dates';
 import { uploadToBunny } from '@/lib/bunny-storage';
-import { EMAIL_RE, PAID_METHODS, paidLedgerRow, fmtMoney2, fromCents, inDeliveryArea, itemLabel, phoneOk, repriceEdit, toCents, zipFormatOk, zipPrefixListOk, zipPrefixes, zipPrefixText, type CartLine, type Fulfillment, type PaidMethod } from '@/lib/wreaths/rules';
+import { EMAIL_RE, PAID_METHODS, paidLedgerRows, fmtMoney2, fromCents, inDeliveryArea, itemLabel, phoneOk, repriceEdit, toCents, zipFormatOk, zipPrefixListOk, zipPrefixes, zipPrefixText, type CartLine, type Fulfillment, type PaidMethod } from '@/lib/wreaths/rules';
 import { canonicalSlug, scoutDisplayName, SLUG_RE } from '@/lib/wreaths/public';
 import { arrivalParagraphs } from '@/lib/wreaths/copy';
 import { orderUpdatedEmail } from '@/lib/wreaths/emails';
@@ -66,6 +66,8 @@ export interface SettingsInput {
   feePercent: number;
   feeFixed: number;
   scoutSharePercent: number;
+  /** Scouts' share of cash donations (W-3), 0 to 100. Absent (a form from before W-3) = keep what is saved. */
+  donationSharePercent?: number;
   /** Order copies: up to five addresses (blanks dropped), the signup builder's leader-list rule. */
   orderCc: string[];
 }
@@ -92,6 +94,7 @@ export async function saveSettings(saleId: number, v: SettingsInput): Promise<Wr
   if (!inRange(v.feePercent, 0, 10)) return fail('The processing fee percent is 0 to 10.', 'feePercent');
   if (!inRange(v.feeFixed, 0, 5)) return fail('The fixed processing fee is $0 to $5.', 'feeFixed');
   if (!inRange(v.scoutSharePercent, 0, 100)) return fail('The scout share is 0 to 100 percent.', 'scoutSharePercent');
+  if (v.donationSharePercent !== undefined && !inRange(v.donationSharePercent, 0, 100)) return fail('The scouts’ share of donations is 0 to 100 percent.', 'donationSharePercent');
   const cc = validateLeaderRecipients(Array.isArray(v.orderCc) ? v.orderCc.map(String) : []);
   if (!cc.ok) return fail(cc.errors[0], 'orderCc');
 
@@ -111,6 +114,7 @@ export async function saveSettings(saleId: number, v: SettingsInput): Promise<Wr
     fee_percent: v.feePercent,
     fee_fixed: v.feeFixed,
     scout_share: Math.round(v.scoutSharePercent * 10) / 1000,
+    donation_scout_share: v.donationSharePercent === undefined ? Number(before.donation_scout_share) : Math.round(v.donationSharePercent * 10) / 1000,
     order_cc: cc.recipients
   };
   const { error } = await supabase
@@ -137,6 +141,7 @@ export async function saveSettings(saleId: number, v: SettingsInput): Promise<Wr
   diff('Processing fee fixed', money(Number(before.fee_fixed)), money(next.fee_fixed));
   diff('Order copies', ((before.order_cc as string[] | null) ?? []).join(', '), next.order_cc.join(', '));
   diff('Scout share', `${Math.round(Number(before.scout_share) * 1000) / 10}%`, `${Math.round(next.scout_share * 1000) / 10}%`);
+  diff('Scouts’ share of donations', `${Math.round(Number(before.donation_scout_share) * 1000) / 10}%`, `${Math.round(next.donation_scout_share * 1000) / 10}%`);
   if (changes.length) {
     await recordAudit({
       area: 'wreaths',
@@ -386,6 +391,9 @@ export async function setSellerActive(sellerId: number, active: boolean): Promis
  * `received` is what actually came in, when it isn't the whole total (Patrick, 2026-10-18: W-1022 came in a little
  * short and was let through). The order keeps its total; paid_amount and the ledger row hold what arrived, and the
  * shortfall is the troop's to absorb (see acceptedShort). More than the total is refused.
+ *
+ * The donation (W-3) is booked as its own ledger row (kind 'donation'), apart from the wreaths; on a short payment the
+ * donation absorbs the shortfall first (lib/wreaths/rules donationPart). Both rows go in one insert.
  */
 export async function markPaid(orderId: number, method: PaidMethod, received?: number): Promise<WreathResult> {
   const actor = await requireCapability('finance.manage');
@@ -408,7 +416,7 @@ export async function markPaid(orderId: number, method: PaidMethod, received?: n
     // qa-lead: a Reassign landing between the read and the claim changes the total — don't pay against the stale one.
     .eq('total', Number(pre?.total ?? 0))
     .eq('fee_covered', Number(pre?.fee_covered ?? 0))
-    .select('order_number, total, customer_name, wreath_sales(year)')
+    .select('order_number, total, gift, customer_name, wreath_sales(year)')
     .maybeSingle();
   if (!claimed) {
     const { data: row } = await supabase.from('wreath_orders').select('payment_status, status').eq('id', orderId).maybeSingle();
@@ -426,21 +434,27 @@ export async function markPaid(orderId: number, method: PaidMethod, received?: n
   let ledger: AuditDetail | null = null;
   if (total > 0) {
     const sale = claimed.wreath_sales as unknown as { year: number } | null;
-    const row = paidLedgerRow({
+    const rows = paidLedgerRows({
       orderNumber: claimed.order_number,
       customerName: claimed.customer_name,
-      total,
+      received: total,
+      total: claimedTotal,
+      gift: Number(claimed.gift ?? 0),
       method,
       saleYear: sale?.year ?? Number(centralToday().slice(0, 4)),
       today: centralToday()
     });
-    const { bucket, ...fields } = row;
+    const bucket = (rows.payment ?? rows.donation)!.bucket;
     const { data: bucketId, error: bucketError } = await supabase.rpc('bucket_id_for_name', { p_name: bucket });
-    const { error: ledgerError } = bucketError
-      ? { error: bucketError }
-      : await supabase
-          .from('financial_transactions')
-          .insert({ ...fields, bucket_id: bucketId as number, wreath_order_id: orderId, source: 'app', entered_by_person_id: actor.personId });
+    const insert = [
+      ...(rows.payment ? [{ ...rows.payment, ledger_role: 'payment' }] : []),
+      ...(rows.donation ? [{ ...rows.donation, ledger_role: 'donation' }] : [])
+    ].map((r) => {
+      const fields: Record<string, unknown> = { ...r };
+      delete fields.bucket; // resolved to bucket_id above
+      return { ...fields, bucket_id: bucketId as number, wreath_order_id: orderId, source: 'app', entered_by_person_id: actor.personId };
+    });
+    const { error: ledgerError } = bucketError ? { error: bucketError } : await supabase.from('financial_transactions').insert(insert);
     if (ledgerError) {
       const { error: revertError } = await supabase
         .from('wreath_orders')
@@ -453,7 +467,11 @@ export async function markPaid(orderId: number, method: PaidMethod, received?: n
       }
       return fail('The finance ledger couldn’t record this payment, so the order is still unpaid. Try again.');
     }
-    ledger = { field: 'Finance ledger', from: '—', to: `${money(total)} to checking (${row.bucket})` };
+    ledger = {
+      field: 'Finance ledger',
+      from: '—',
+      to: rows.donation && rows.payment ? `${money(total)} to checking (${bucket}): ${money(rows.payment.amount)} wreaths + ${money(rows.donation.amount)} donation` : `${money(total)} to checking (${bucket})${rows.donation ? ', donation' : ''}`
+    };
   }
   await recordAudit({
     area: 'wreaths',
@@ -592,12 +610,12 @@ export interface EditOrderInput {
 const FULFILLMENT_WORDS: Record<string, string> = { scout: 'Scout delivers', pickup: 'Pickup', delivery: 'Troop delivery', none: 'Donated only' };
 
 const PRICE_PROBLEM: Record<string, string> = {
-  empty: 'An order needs at least one item. To drop them all, cancel the order instead.',
+  empty: 'An order needs at least one item or a donation. To drop them all, cancel the order instead.',
   too_many_lines: 'That is too many different items for one order.',
   unknown_item: 'One of the items isn’t in this sale.',
   not_donatable: 'One of the items can’t be donated.',
   quantity: 'Each quantity is 1 to 50.',
-  gift: 'A gift is $0 to $500.',
+  gift: 'A donation is $0 to $500.',
   inactive_item: 'One of the items isn’t on sale.'
 };
 
@@ -637,7 +655,8 @@ export async function editOrder(orderId: number, v: EditOrderInput): Promise<Wre
   const items = (itemRows ?? []) as { id: number; catalog_number: number; name: string; size: string; price: number; unit_cost: number; active: boolean; donatable: boolean }[];
   const oldLines = (order.wreath_order_lines ?? []) as { item_id: number; quantity: number; donated: boolean; unit_price: number; unit_cost: number }[];
   const allDonated = v.lines.length > 0 && v.lines.every((l) => l.donated);
-  const fulfillment: Fulfillment = allDonated ? 'none' : v.fulfillment;
+  // Nothing to deliver: every wreath donated, or a donation with no wreath (W-3).
+  const fulfillment: Fulfillment = allDonated || v.lines.length === 0 ? 'none' : v.fulfillment;
   const rules = {
     deliveryZipPrefix: sale?.delivery_zip_prefix ?? '532',
     deliveryFee: Number(sale?.delivery_fee ?? 0),
@@ -653,13 +672,15 @@ export async function editOrder(orderId: number, v: EditOrderInput): Promise<Wre
     oldLines.map((l) => ({ itemId: l.item_id, donated: l.donated, unitPrice: Number(l.unit_price), unitCost: Number(l.unit_cost) })),
     v.lines,
     // An unpaid order whose customer chose to cover the card fee keeps covering it, on the new amount.
-    { fulfillment, gift: v.gift, coverFee: order.payment_status === 'unpaid' && Number(order.fee_covered) > 0 }
+    { fulfillment, gift: v.gift, coverFee: order.payment_status === 'unpaid' && Number(order.fee_covered) > 0, allowDonationOnly: true }
   );
   if (!priced.ok) return fail(PRICE_PROBLEM[priced.problem.code] ?? 'Check the items.', priced.problem.code === 'gift' ? 'gift' : 'lines');
   // A card payment already covered its fee: that amount is part of what Stripe took, so it stays as it is (qa-lead).
   const coveredByCard = byCard ? Number(order.fee_covered) : 0;
   const next = coveredByCard > 0 ? { ...priced.order, feeCovered: coveredByCard, total: fromCents(toCents(priced.order.total) + toCents(coveredByCard)) } : priced.order;
   if (byCard && toCents(next.total) !== toCents(Number(order.total))) return fail('This order was paid by card, so its total can’t change here. Refund it first, or keep the total the same.', 'lines');
+  // The card payment booked its donation row from this gift (W-3): it stays as Stripe took it.
+  if (byCard && toCents(next.gift) !== toCents(Number(order.gift))) return fail('This order was paid by card, so its donation can’t change here.', 'gift');
 
   // Credit and delivery: Reassign's rules.
   const liveSeller = async (personId: number) => {
@@ -697,18 +718,26 @@ export async function editOrder(orderId: number, v: EditOrderInput): Promise<Wre
     paid = { method: v.payment.method, amount };
   }
   const rebook = paid != null && (toCents(paid.amount) !== toCents(oldPaid ?? 0) || paid.method !== order.paid_method);
-  const { data: liveLedger } = await supabase
+  const { data: liveRows } = await supabase
     .from('financial_transactions')
-    .select('id, amount')
+    .select('id, amount, ledger_role')
     .eq('wreath_order_id', orderId)
-    .eq('ledger_role', 'payment')
-    .is('voided_at', null)
-    .maybeSingle();
+    .in('ledger_role', ['payment', 'donation'])
+    .is('voided_at', null);
+  const live = (liveRows ?? []) as { id: number; amount: number; ledger_role: string }[];
+  const liveLedger = live.find((r) => r.ledger_role === 'payment') ?? null;
+  const liveDonation = live.find((r) => r.ledger_role === 'donation') ?? null;
   const saleYear = Number(sale?.year ?? centralToday().slice(0, 4));
-  const ledgerRow =
-    rebook && liveLedger && paid
-      ? paidLedgerRow({ orderNumber: order.order_number, customerName: name, total: paid.amount, method: paid.method, saleYear, today: centralToday() })
-      : null;
+  // The ledger follows the payment and its split (W-3): the wreath part and the donation part are rebooked whenever
+  // either differs from the live rows, or the method changed. An order with no live row is corrected by hand, as before.
+  const target = paid ? paidLedgerRows({ orderNumber: order.order_number, customerName: name, received: paid.amount, total: next.total, gift: next.gift, method: paid.method, saleYear, today: centralToday() }) : null;
+  const ledgerChange =
+    paid != null &&
+    target != null &&
+    (liveLedger != null || liveDonation != null) &&
+    (rebook ||
+      toCents(target.payment?.amount ?? 0) !== toCents(Number(liveLedger?.amount ?? 0)) ||
+      toCents(target.donation?.amount ?? 0) !== toCents(Number(liveDonation?.amount ?? 0)));
 
   // A change to what the order owes or how it was paid: the open card session would charge the old amount. Only then,
   // and only once the edit is valid, so a refused or contact-only edit leaves the customer's checkout alone (qa-lead).
@@ -722,7 +751,8 @@ export async function editOrder(orderId: number, v: EditOrderInput): Promise<Wre
         paid_amount: order.paid_amount == null ? '' : Number(order.paid_amount),
         paid_method: order.paid_method ?? '',
         ledger_id: liveLedger?.id ?? '',
-        ledger_amount: liveLedger ? Number(liveLedger.amount) : 0
+        ledger_amount: liveLedger ? Number(liveLedger.amount) : 0,
+        donation_ledger_id: liveDonation?.id ?? ''
       },
       order: {
         customer_name: name,
@@ -740,7 +770,14 @@ export async function editOrder(orderId: number, v: EditOrderInput): Promise<Wre
         ...(paid ? { paid_method: paid.method, paid_amount: paid.amount } : {})
       },
       lines: next.lines.map((l) => ({ item_id: l.itemId, quantity: l.quantity, donated: l.donated, unit_price: l.unitPrice, unit_cost: l.unitCost })),
-      ledger: ledgerRow ? { amount: ledgerRow.amount, method: ledgerRow.method, memo: ledgerRow.memo, actor_person_id: actor.personId ?? '' } : null
+      ledger:
+        ledgerChange && target && paid
+          ? { amount: target.payment?.amount ?? 0, method: paid.method, memo: target.payment?.memo ?? '', actor_person_id: actor.personId ?? '' }
+          : null,
+      donation_ledger:
+        ledgerChange && target && paid
+          ? { amount: target.donation?.amount ?? 0, method: paid.method, memo: target.donation?.memo ?? '', actor_person_id: actor.personId ?? '' }
+          : null
     }
   });
   if (error) {
@@ -773,7 +810,7 @@ export async function editOrder(orderId: number, v: EditOrderInput): Promise<Wre
     if ((from ?? '') !== to) changes.push({ field, from: from ? 'On file' : '—', to: to ? 'Changed' : 'Removed' });
   };
   diff('Items', lineText(oldLines.map((l) => ({ itemId: l.item_id, quantity: l.quantity, donated: l.donated }))), lineText(next.lines));
-  diff('Gift', money(Number(order.gift)), money(next.gift));
+  diff('Donation', money(Number(order.gift)), money(next.gift));
   diff('Delivery fee', money(Number(order.delivery_fee)), money(next.deliveryFee));
   diff('Processing fee', money(Number(order.fee_covered)), money(next.feeCovered));
   diff('Total', money(Number(order.total)), money(next.total));
@@ -788,7 +825,11 @@ export async function editOrder(orderId: number, v: EditOrderInput): Promise<Wre
   if (paid) {
     const shortBy = fromCents(toCents(next.total) - toCents(paid.amount));
     diff('Payment', `${money(oldPaid ?? 0)} (${order.paid_method})`, `${money(paid.amount)} (${paid.method})${shortBy > 0 ? `, ${money(shortBy)} short, accepted` : shortBy < 0 ? `, ${money(-shortBy)} owed back` : ''}`);
-    if (rebook) diff('Finance ledger', liveLedger ? `${money(Number(liveLedger.amount))} (voided)` : '—', ledgerRow ? `${money(ledgerRow.amount)} to checking` : 'No linked ledger line: correct it in Finance by hand');
+    if (rebook || ledgerChange) {
+      const was = [liveLedger && `${money(Number(liveLedger.amount))}`, liveDonation && `${money(Number(liveDonation.amount))} donation`].filter(Boolean).join(' + ');
+      const now = [target?.payment && money(target.payment.amount), target?.donation && `${money(target.donation.amount)} donation`].filter(Boolean).join(' + ');
+      diff('Finance ledger', was ? `${was} (voided)` : '—', ledgerChange ? `${now} to checking` : 'No linked ledger line: correct it in Finance by hand');
+    }
   }
   if (changes.length) {
     await recordAudit({

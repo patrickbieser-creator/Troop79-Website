@@ -55,27 +55,30 @@ export function EditOrderForm({ order: o, items, sellers, rules, onClose }: { or
   const parsed = lines.map((l) => ({ itemId: Number(l.itemId), quantity: Number(l.quantity), donated: l.donated }));
   const allDonated = parsed.length > 0 && parsed.every((l) => l.donated);
   const giftN = gift.trim() === '' ? 0 : Number(gift);
+  // A donation with no wreath (W-3): nothing to deliver.
+  const nothingToDeliver = allDonated || parsed.length === 0;
   const preview = repriceEdit(
     rules,
     items.map((i) => ({ id: i.id, catalogNumber: i.catalogNumber, price: i.price, unitCost: i.unitCost, active: i.active, donatable: i.donatable })),
     o.lines.map((l) => ({ itemId: l.itemId, donated: l.donated, unitPrice: l.unitPrice, unitCost: l.unitCost })),
     parsed,
-    { fulfillment: allDonated ? 'none' : effective, gift: giftN, coverFee: o.paymentStatus === 'unpaid' && o.feeCovered > 0 }
+    { fulfillment: nothingToDeliver ? 'none' : effective, gift: giftN, coverFee: o.paymentStatus === 'unpaid' && o.feeCovered > 0, allowDonationOnly: true }
   );
   const total = preview.ok ? preview.order.total : null;
   const receivedN = received.trim() === '' ? Number.NaN : fromCents(toCents(Number(received)));
   const diffCents = total != null && Number.isFinite(receivedN) ? toCents(receivedN) - toCents(total) : 0;
-  const needsAddress = !allDonated && (effective === 'scout' || effective === 'delivery');
+  const needsAddress = !nothingToDeliver && (effective === 'scout' || effective === 'delivery');
 
   const draftKey = JSON.stringify({ lines: lines.map(({ itemId, quantity, donated }) => [itemId, quantity, donated]), gift, name, email, phone, street, city, zip, credit, effective, method, received, acceptShort });
   const { dirty } = useSavedSnapshot(draftKey);
 
   // Every problem with the draft; shown once a save has been tried (blocked Save stays enabled and says why).
   const all: Record<string, string> = {};
-  if (lines.length === 0) all.lines = 'An order needs at least one item. To drop them all, cancel the order instead.';
+  if (lines.length === 0 && !(giftN > 0)) all.lines = 'An order needs at least one item or a donation. To drop them all, cancel the order instead.';
   else if (parsed.some((l) => !Number.isInteger(l.quantity) || l.quantity < 1 || l.quantity > 50)) all.lines = 'Each quantity is 1 to 50.';
   else if (byCard && total != null && toCents(total) !== toCents(o.total)) all.lines = 'Paid by card: the total has to stay the same.';
-  if (!Number.isFinite(giftN) || giftN < 0 || giftN > 500) all.gift = 'A gift is $0 to $500.';
+  if (!Number.isFinite(giftN) || giftN < 0 || giftN > 500) all.gift = 'A donation is $0 to $500.';
+  else if (byCard && toCents(giftN) !== toCents(o.gift)) all.gift = 'Paid by card: the donation has to stay the same.';
   if (!name.trim()) all.name = 'Enter the customer’s name.';
   if (email.trim() && !EMAIL_RE.test(email.trim())) all.email = 'That email address doesn’t look right.';
   if (phone.trim() && !phoneOk(phone)) all.phone = 'Enter a 10-digit phone number.';
@@ -180,7 +183,7 @@ export function EditOrderForm({ order: o, items, sellers, rules, onClose }: { or
               + Item
             </Button>
             <div className={`${cls('gift')} ${styles.sectionGapSm}`}>
-              <label htmlFor="we-gift">Gift to Troop 79</label>
+              <label htmlFor="we-gift">Donation to Troop 79</label>
               <input id="we-gift" type="number" inputMode="decimal" min="0" step="0.01" className={styles.amountBox} aria-invalid={problemFor('gift') ? true : undefined} value={gift} onChange={(e) => setGift(e.target.value)} />
               {note('gift')}
             </div>

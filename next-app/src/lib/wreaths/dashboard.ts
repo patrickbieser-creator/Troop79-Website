@@ -7,7 +7,7 @@
 import { instantToCentral } from '@/lib/dates';
 import type { AdminOrder, AdminSeller } from './admin-data';
 import { isCounted } from './my-orders';
-import { acceptedShort, fromCents, orderProfit, scoutEarnings, toCents } from './rules';
+import { acceptedShort, donationNet, fromCents, orderProfit, sellerEarnings, toCents } from './rules';
 
 export interface DashTotals {
   orders: number;
@@ -17,17 +17,23 @@ export interface DashTotals {
   donated: number;
   /** Items subtotal: the wreaths' price, before delivery, gifts and fees. */
   sales: number;
+  /** Cash donations (the orders' gift, W-3), as pledged. */
   gifts: number;
+  /** What the troop keeps of them: less any shortfall they absorbed and their share of the card fees. */
+  donationsNet: number;
   deliveryFees: number;
   /** Everything customers owe or paid (order totals). */
   grandTotal: number;
   /** What actually came in on paid orders (paid_amount), so an order accepted short counts what arrived. */
   collected: number;
   owed: number;
-  /** What the treasurer let go on orders paid a little short — the troop absorbs it, so profit and troopShare drop. */
+  /** What the treasurer let go on orders paid a little short — the troop absorbs it, so profit and troopShare drop.
+   *  A donation on the order absorbs it first (W-3), so only the rest comes off the profit. */
   shortAccepted: number;
   profit: number;
+  /** The scouts' earnings: their share of the profit plus their share of the net donations (W-3). */
   scoutShare: number;
+  /** Profit plus net donations, less the scouts' earnings. */
   troopShare: number;
   /** Stripe's fees on card payments, and what customers chose to cover. */
   cardFees: number;
@@ -138,17 +144,21 @@ function days(counted: AdminOrder[], nowMs: number): DashDay[] {
 export function buildSalesDashboard(input: {
   orders: AdminOrder[];
   sellers: AdminSeller[];
-  sale: { scoutShare: number; round1Cutoff: string; round2Cutoff: string };
+  /** donationShare: the scouts' share of cash donations (W-3); absent = none. */
+  sale: { scoutShare: number; donationShare?: number; round1Cutoff: string; round2Cutoff: string };
   nowMs?: number;
 }): SalesDashboard {
   const { orders, sellers, sale, nowMs = Date.now() } = input;
-  const scoutShare = sale.scoutShare;
+  const shares = { profit: sale.scoutShare, donation: sale.donationShare ?? 0 };
   const counted = orders.filter(isCounted);
   const paidOrders = counted.filter((o) => o.paymentStatus === 'paid');
   const unpaidOrders = counted.filter((o) => o.paymentStatus !== 'paid');
   const lines = counted.flatMap((o) => o.lines);
   const shortAccepted = sum(paidOrders.map(acceptedShort));
-  const profit = fromCents(toCents(orderProfit(lines)) - toCents(shortAccepted));
+  // The donation absorbs a shortfall first (W-3, lib/wreaths/rules donationPart); what's left of it comes off the profit.
+  const shortOnWreaths = sum(paidOrders.map((o) => fromCents(Math.max(0, toCents(acceptedShort(o)) - toCents(o.gift)))));
+  const profit = fromCents(toCents(orderProfit(lines)) - toCents(shortOnWreaths));
+  const donationsNet = sum(counted.map(donationNet));
   const received = (o: AdminOrder) => o.paidAmount ?? o.total;
 
   // Sellers: every active scout (zero rows show who hasn't started), anyone credited who has since gone inactive, and the troop store.
@@ -168,7 +178,7 @@ export function buildSalesDashboard(input: {
       items,
       sales: sum(xs.map((o) => o.itemsSubtotal)),
       owed: sum(xs.filter((o) => o.paymentStatus !== 'paid').map((o) => o.total)),
-      earnings: pid == null ? 0 : scoutEarnings(orderProfit(xs.flatMap((o) => o.lines)), scoutShare),
+      earnings: pid == null ? 0 : sellerEarnings(xs, shares),
       goal,
       goalPct: goal && goal > 0 ? items / goal : null
     };
@@ -204,6 +214,7 @@ export function buildSalesDashboard(input: {
       donated: lines.filter((l) => l.donated).reduce((n, l) => n + l.quantity, 0),
       sales: sum(counted.map((o) => o.itemsSubtotal)),
       gifts: sum(counted.map((o) => o.gift)),
+      donationsNet,
       deliveryFees: sum(counted.map((o) => o.deliveryFee)),
       grandTotal: sum(counted.map((o) => o.total)),
       collected: sum(paidOrders.map(received)),
@@ -211,7 +222,7 @@ export function buildSalesDashboard(input: {
       shortAccepted,
       profit,
       scoutShare: scoutShareTotal,
-      troopShare: fromCents(toCents(profit) - toCents(scoutShareTotal)),
+      troopShare: fromCents(toCents(profit) + toCents(donationsNet) - toCents(scoutShareTotal)),
       cardFees: sum(counted.map((o) => o.stripeFee ?? 0)),
       feesCovered: sum(counted.map((o) => o.feeCovered)),
       sellersSelling: sellerRows.filter((s) => s.personId != null && s.orders > 0).length,

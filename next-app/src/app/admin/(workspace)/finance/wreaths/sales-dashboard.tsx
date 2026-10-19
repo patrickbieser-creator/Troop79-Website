@@ -5,7 +5,7 @@
  */
 import Link from 'next/link';
 import { fmtDay } from '@/lib/format-date';
-import { FULFILLMENT_LABEL, METHOD_LABEL, SOURCE_LABEL, fmtMoney2, type PaymentMethod } from '@/lib/wreaths/rules';
+import { FULFILLMENT_LABEL, METHOD_LABEL, SOURCE_LABEL, fmtMoney2, fromCents, toCents, type PaymentMethod } from '@/lib/wreaths/rules';
 import type { SalesDashboard } from '@/lib/wreaths/dashboard';
 import styles from './wreaths.module.css';
 
@@ -86,7 +86,16 @@ export function SalesDashboardView({ d }: { d: SalesDashboard }) {
           value={fmtMoney2(t.collected)}
           sub={[t.owed > 0 ? `${fmtMoney2(t.owed)} still owed` : 'nothing owed', t.shortAccepted > 0 && `${fmtMoney2(t.shortAccepted)} accepted short`].filter(Boolean).join(' · ')}
         />
-        <Stat label="Profit (est.)" value={fmtMoney2(t.profit)} sub={`scouts ${fmtMoney2(t.scoutShare)} · troop ${fmtMoney2(t.troopShare)}`} />
+        <Stat
+          label="Donations"
+          value={fmtMoney2(t.gifts)}
+          sub={t.gifts > 0 ? `${fmtMoney2(t.donationsNet)} after card fees and short payments` : 'none yet'}
+        />
+        <Stat
+          label={t.gifts > 0 ? 'Profit + donations (est.)' : 'Profit (est.)'}
+          value={fmtMoney2(fromCents(toCents(t.profit) + toCents(t.donationsNet)))}
+          sub={`scouts ${fmtMoney2(t.scoutShare)} · troop ${fmtMoney2(t.troopShare)}`}
+        />
         <Stat label="Scouts selling" value={`${t.sellersSelling} of ${t.sellersActive}`} sub={t.sellersActive - t.sellersSelling > 0 ? `${t.sellersActive - t.sellersSelling} with no orders yet` : 'every seller has an order'} />
       </div>
 

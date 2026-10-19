@@ -53,7 +53,7 @@ describe('Edit order', () => {
     show(paid(42));
     await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Item' }), '11');
     await userEvent.click(screen.getByRole('button', { name: 'Count the extra as a gift' }));
-    expect((screen.getByLabelText('Gift to Troop 79') as HTMLInputElement).value).toBe('16.00');
+    expect((screen.getByLabelText('Donation to Troop 79') as HTMLInputElement).value).toBe('16.00');
   });
 
   it('EditOrderForm_TotalAboveWhatCameIn_SavesNothingUntilTheShortfallIsAccepted', async () => {

@@ -39,6 +39,101 @@ export interface PaidLedgerRow {
   bucket: string;
 }
 
+/** An order's cash donation as its own ledger row (W-3): kind 'donation', same day, account and bucket as the payment. */
+export type DonationLedgerRow = Omit<PaidLedgerRow, 'kind'> & { kind: 'donation' };
+
+/** "Donate to Troop 79" (W-3, Patrick 2026-10-19): the store's preset amounts; "Other amount" takes up to MAX_GIFT. */
+export const DONATION_PRESETS = [10, 25, 50] as const;
+
+/** The least a donation can be (qa-lead, 2026-10-19; Stripe's own floor is $0.50). */
+export const MIN_DONATION = 1;
+
+/** A typed donation in dollars: MIN_DONATION to MAX_GIFT, whole cents. Null for anything else. */
+export function parseDonation(text: string): number | null {
+  const t = text.trim().replace(/^\$/, '');
+  if (!/^\d+(\.\d{1,2})?$/.test(t)) return null;
+  const n = Number(t);
+  return n >= MIN_DONATION && n <= MAX_GIFT ? fromCents(toCents(n)) : null;
+}
+
+/** "Donation to Troop 79" — the one name the cart, checkout, receipts, emails and admin give an order's cash gift. */
+export const DONATION_LABEL = 'Donation to Troop 79';
+
+/**
+ * How much of what came in is the donation (W-3). The rule for a short payment: the DONATION absorbs the shortfall
+ * first, then the wreaths — the wreath part of an order is paid in full before any of it counts as a gift. An
+ * over-payment leaves the donation as it is (the extra is owed back, or the Edit order dialog makes it the gift).
+ */
+export function donationPart(received: number, total: number, gift: number): number {
+  const rest = toCents(total) - toCents(gift);
+  return fromCents(Math.min(toCents(gift), Math.max(0, toCents(received) - rest)));
+}
+
+/**
+ * The finance-ledger rows for a payment that came in by hand (Mark paid, Edit order): the wreath part and the donation
+ * part, each null when it is $0. `received` is what came in; `total` and `gift` are the order's.
+ */
+export function paidLedgerRows(o: {
+  orderNumber: string;
+  customerName: string;
+  received: number;
+  total: number;
+  gift: number;
+  method: PaymentMethod;
+  saleYear: number;
+  today: string;
+}): { payment: PaidLedgerRow | null; donation: DonationLedgerRow | null } {
+  const donation = donationPart(o.received, o.total, o.gift);
+  const payment = fromCents(toCents(o.received) - toCents(donation));
+  return {
+    payment: payment > 0 ? paidLedgerRow({ ...o, total: payment }) : null,
+    donation: donation > 0 ? donationLedgerRow({ ...o, amount: donation }) : null
+  };
+}
+
+export function donationLedgerRow(o: { orderNumber: string; customerName: string; amount: number; method: PaymentMethod; saleYear: number; today: string }): DonationLedgerRow {
+  const base = paidLedgerRow({ ...o, total: o.amount });
+  return { ...base, kind: 'donation', memo: `Donation · Wreath order ${o.orderNumber} · ${o.customerName} · ${METHOD_LABEL[o.method]}` };
+}
+
+/**
+ * Stripe's fee on a card payment, split between the donation and the rest of the order in proportion to their share
+ * of what was charged (W-3: the troop records the donation net of its share of the fee). A donation-only order's whole
+ * fee is the donation's.
+ */
+export function splitCardFee(fee: number, gift: number, charged: number): { donation: number; rest: number } {
+  const f = toCents(fee);
+  const g = toCents(gift);
+  const c = toCents(charged);
+  if (f <= 0 || g <= 0 || c <= 0) return { donation: 0, rest: fromCents(Math.max(0, f)) };
+  const d = Math.min(g, f, Math.round((f * g) / c));
+  return { donation: fromCents(d), rest: fromCents(f - d) };
+}
+
+export interface DonationOrder {
+  gift: number;
+  total: number;
+  paymentStatus: string;
+  paidMethod: string | null;
+  paidAmount: number | null;
+  stripeFee: number | null;
+}
+
+/**
+ * The donation the troop keeps from an order (W-3): the gift, less any shortfall it absorbed on a short payment, less
+ * its share of Stripe's fee on a card payment (once the fee has settled). Unpaid orders count the gift as pledged, as
+ * their wreaths' profit counts.
+ */
+export function donationNet(o: DonationOrder): number {
+  if (!(o.gift > 0)) return 0;
+  if (o.paymentStatus === 'paid' && o.paidMethod === 'card') {
+    const charged = o.paidAmount ?? o.total;
+    return fromCents(toCents(o.gift) - toCents(splitCardFee(o.stripeFee ?? 0, o.gift, charged).donation));
+  }
+  if (o.paymentStatus === 'paid' && o.paidAmount != null) return donationPart(o.paidAmount, o.total, o.gift);
+  return o.gift;
+}
+
 /**
  * The finance-ledger row Mark paid books for an order (Patrick, 2026-10-15). It follows the treasurer's fundraiser
  * convention: checking income, kind fundraiser, bucket "Wreaths 'YY" (last year's rows read "Wreaths '25"). Every
@@ -235,10 +330,12 @@ export function priceCart(
   rules: SaleRules,
   catalog: PricedItem[],
   rawLines: CartLine[],
-  opts: { fulfillment: Fulfillment; gift: number; coverFee: boolean }
+  opts: { fulfillment: Fulfillment; gift: number; coverFee: boolean; allowDonationOnly?: boolean }
 ): { ok: true; order: PricedOrder } | { ok: false; problem: PriceProblem } {
   const byId = new Map(catalog.map((i) => [i.id, i]));
-  if (rawLines.length === 0) return { ok: false, problem: { code: 'empty' } };
+  // A donation with no wreath is an order of its own (W-3), where the caller allows it (the store and the admin edit).
+  const donationOnly = rawLines.length === 0 && opts.allowDonationOnly === true && Number.isFinite(opts.gift) && toCents(opts.gift) > 0;
+  if (rawLines.length === 0 && !donationOnly) return { ok: false, problem: { code: 'empty' } };
   if (rawLines.length > MAX_LINES) return { ok: false, problem: { code: 'too_many_lines' } };
   const lines = mergeLines(rawLines);
   const priced: PricedLine[] = [];
@@ -261,7 +358,8 @@ export function priceCart(
   const itemsSubtotal = fromCents(subtotal);
   // Donated wreaths are never delivered, so only the delivered items count toward the free-delivery threshold.
   const deliveryFee = deliveryFeeFor(rules, opts.fulfillment, fromCents(deliveredCents));
-  const feeCovered = opts.coverFee ? coverFeeFor(rules, fromCents(subtotal + giftCents + toCents(deliveryFee))) : 0;
+  // No fee is charged on the donation (W-3): "cover the card fee" covers the items and delivery only.
+  const feeCovered = opts.coverFee ? coverFeeFor(rules, fromCents(subtotal + toCents(deliveryFee))) : 0;
   const total = fromCents(subtotal + giftCents + toCents(deliveryFee) + toCents(feeCovered));
   return { ok: true, order: { lines: priced, itemsSubtotal, deliveryFee, feeCovered, gift: fromCents(giftCents), total } };
 }
@@ -285,7 +383,7 @@ export function repriceEdit(
   catalog: PricedItem[],
   existing: SnapshotLine[],
   rawLines: CartLine[],
-  opts: { fulfillment: Fulfillment; gift: number; coverFee: boolean }
+  opts: { fulfillment: Fulfillment; gift: number; coverFee: boolean; allowDonationOnly?: boolean }
 ): { ok: true; order: PricedOrder } | { ok: false; problem: PriceProblem } {
   const kept = new Map(existing.map((l) => [`${l.itemId}:${l.donated ? 'd' : 'p'}`, l]));
   const snapshot = catalog.map((i) => ({ ...i, active: true }));
@@ -300,7 +398,7 @@ export function repriceEdit(
   const subtotal = cents(() => true);
   const deliveryFee = deliveryFeeFor(rules, opts.fulfillment, fromCents(cents((l) => !l.donated)));
   const giftCents = toCents(res.order.gift);
-  const feeCovered = opts.coverFee ? coverFeeFor(rules, fromCents(subtotal + giftCents + toCents(deliveryFee))) : 0;
+  const feeCovered = opts.coverFee ? coverFeeFor(rules, fromCents(subtotal + toCents(deliveryFee))) : 0;
   const total = fromCents(subtotal + giftCents + toCents(deliveryFee) + toCents(feeCovered));
   return { ok: true, order: { lines, itemsSubtotal: fromCents(subtotal), deliveryFee, feeCovered, gift: res.order.gift, total } };
 }
@@ -362,6 +460,23 @@ export function orderProfit(lines: { quantity: number; unitPrice: number; unitCo
 /** A scout's share (sale.scoutShare, 0.30) of a profit, rounded to the cent. */
 export function scoutEarnings(profit: number, share: number): number {
   return fromCents(Math.round(toCents(profit) * share));
+}
+
+/** The two shares a credited scout earns: of the wreaths' profit (scout_share) and of the cash donations (W-3). */
+export interface ScoutShares {
+  profit: number;
+  donation: number;
+}
+
+/**
+ * What a scout earns on the orders credited to them: their share of the wreaths' profit plus their share of the
+ * donations, each donation net of any shortfall it absorbed and of its part of the card fee (W-3). One figure, so the
+ * dashboard, the seller view and the scout's own page agree; no separate ledger row.
+ */
+export function sellerEarnings(orders: (DonationOrder & { lines: { quantity: number; unitPrice: number; unitCost: number }[] })[], shares: ScoutShares): number {
+  const profit = scoutEarnings(orderProfit(orders.flatMap((o) => o.lines)), shares.profit);
+  const donations = scoutEarnings(fromCents(orders.reduce((n, o) => n + toCents(donationNet(o)), 0)), shares.donation);
+  return fromCents(toCents(profit) + toCents(donations));
 }
 
 /** "$26" for whole dollars, "$26.50" otherwise — the store's price style. */

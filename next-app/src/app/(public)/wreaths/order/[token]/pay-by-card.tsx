@@ -10,12 +10,15 @@ import styles from '../../wreaths.module.css';
 /**
  * The receipt page's card option (Release B, Plans/Wreath-Stripe-Checkout.md). It sits below the Venmo / PayPal
  * instructions — the no-fee way stays first. The total shown is a courtesy: the server recomputes the fee cover.
+ * A customer who chose Venmo / PayPal sees only "Rather pay by card?" until they open it; then the fee box and the Pay
+ * button appear (Patrick, 2026-10-19, W-1040). A card order shows the whole block at once.
  */
 export function PayByCard({
   token,
   baseTotal,
   fee,
   initiallyCovered,
+  cardChosen = true,
   startCard
 }: {
   token: string;
@@ -23,12 +26,27 @@ export function PayByCard({
   baseTotal: number;
   fee: number;
   initiallyCovered: boolean;
+  /** The customer chose card at checkout (lib/wreaths/public cardWasChosen); false = Venmo / PayPal, card behind a link. */
+  cardChosen?: boolean;
   startCard: (token: string, coverFee: boolean) => Promise<StartResult>;
 }) {
+  const [open, setOpen] = useState(cardChosen);
   const [cover, setCover] = useState(initiallyCovered);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const total = fromCents(toCents(baseTotal) + (cover ? toCents(fee) : 0));
+
+  if (!open) {
+    return (
+      <div className={styles.payHow}>
+        <p>
+          <button type="button" className={styles.linkBtn} onClick={() => setOpen(true)}>
+            Rather pay by card? Pay by card, Apple Pay or Google Pay
+          </button>
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.payHow}>

@@ -6,9 +6,9 @@ import { Notice } from '@/app/_components/notice';
 import { Button } from '@/app/_components/button';
 import { createAdminClient } from '@/lib/supabase/server';
 import { fmtDateFull } from '@/lib/format-date';
-import { arrivalParagraphs } from '@/lib/wreaths/copy';
-import { loadConfirmation } from '@/lib/wreaths/public';
-import { PAY_TREASURER, fmtMoney2, fromCents, toCents } from '@/lib/wreaths/rules';
+import { arrivalParagraphs, donationReceiptLines } from '@/lib/wreaths/copy';
+import { cardWasChosen, loadConfirmation } from '@/lib/wreaths/public';
+import { DONATION_LABEL, PAY_TREASURER, fmtMoney2, fromCents, toCents } from '@/lib/wreaths/rules';
 import { cardCheckoutLive } from '@/lib/wreaths/stripe-client';
 import { customerCancelBlock } from '@/lib/wreaths/customer-cancel';
 import { cancelOrderAction, startCardPaymentAction } from '../../actions';
@@ -44,6 +44,9 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   const cardOffered = cardCheckoutLive() && o.status === 'placed' && o.paymentStatus === 'unpaid';
   const baseTotal = fromCents(toCents(o.total) - toCents(o.feeCovered));
   const mayCancel = customerCancelBlock(o.cancel.order, o.cancel.sale) === null;
+  // "Donate to Troop 79" with no wreath (W-3): nothing to deliver, and the page reads as a donation.
+  const donationOnly = o.items.length === 0 && o.gift > 0;
+  const receipt = donationReceiptLines({ gift: o.gift, donationOnly, placedAt: o.placedAt });
 
   const arrival = arrivalParagraphs({
     fulfillment: o.fulfillment,
@@ -58,7 +61,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
     <PageShell width="narrow">
       <PageHeader
         kicker={`Order ${o.orderNumber}`}
-        title={`Thank you, ${o.firstName}. Your order is placed.`}
+        title={donationOnly ? `Thank you, ${o.firstName}, for your donation.` : `Thank you, ${o.firstName}. Your order is placed.`}
         lede={`We emailed a copy to the address you gave us.${o.scoutName ? ` ${o.scoutName} gets credit for it.` : ''}`}
       />
       {o.status === 'cancelled' ? (
@@ -98,12 +101,21 @@ export default async function Page({ params, searchParams }: { params: Promise<{
             </p>
             <p>{PAY_TREASURER.note}</p>
           </div>
-          {cardOffered && <PayByCard token={token} baseTotal={baseTotal} fee={o.cardFeeOption} initiallyCovered={o.feeCovered > 0} startCard={startCardPaymentAction} />}
+          {cardOffered && (
+            <PayByCard
+              token={token}
+              baseTotal={baseTotal}
+              fee={o.cardFeeOption}
+              initiallyCovered={o.feeCovered > 0}
+              cardChosen={cardWasChosen(o, cardUnfinished)}
+              startCard={startCardPaymentAction}
+            />
+          )}
         </Notice>
       )}
 
       <section className={`${styles.card} ${styles.pad} ${styles.step} ${styles.inset}`} aria-labelledby="hW">
-        <h2 id="hW">What you ordered</h2>
+        <h2 id="hW">{donationOnly ? 'Your donation' : 'What you ordered'}</h2>
         <ul className={styles.lines}>
           {o.items.map((i) => (
             <li key={`${i.label}-${i.donated}`} className={styles.line}>
@@ -123,7 +135,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
           )}
           {o.gift > 0 && (
             <div>
-              <dt>Gift to Troop 79</dt>
+              <dt>{DONATION_LABEL}</dt>
               <dd>{fmtMoney2(o.gift)}</dd>
             </div>
           )}
@@ -138,23 +150,38 @@ export default async function Page({ params, searchParams }: { params: Promise<{
             <dd>{fmtMoney2(o.total)}</dd>
           </div>
         </dl>
+        {receipt.length > 0 && (
+          <div className={`${styles.prose} ${styles.inset}`}>
+            {receipt.map((p) => (
+              <p key={p}>{p}</p>
+            ))}
+          </div>
+        )}
       </section>
 
-      <section className={`${styles.card} ${styles.pad} ${styles.step}`} aria-labelledby="hA">
-        <h2 id="hA">How it reaches you</h2>
-        <div className={styles.prose}>
-          {arrival.map((p) => (
-            <p key={p}>{p}</p>
-          ))}
-        </div>
-      </section>
+      {!donationOnly && (
+        <section className={`${styles.card} ${styles.pad} ${styles.step}`} aria-labelledby="hA">
+          <h2 id="hA">How it reaches you</h2>
+          <div className={styles.prose}>
+            {arrival.map((p) => (
+              <p key={p}>{p}</p>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className={`${styles.card} ${styles.pad} ${styles.step}`} aria-labelledby="hQ">
-        <h2 id="hQ">Questions or changes</h2>
-        <p className={styles.prose}>
-          Reply to your confirmation email, or write <a href="mailto:bsatroop79bg@gmail.com">bsatroop79bg@gmail.com</a>. Changes are possible until{' '}
-          {o.changesBy ? fmtDateFull(o.changesBy) : 'the cutoff'}, when the troop places its order with the grower.
-        </p>
+        <h2 id="hQ">{donationOnly ? 'Questions' : 'Questions or changes'}</h2>
+        {donationOnly ? (
+          <p className={styles.prose}>
+            Reply to your confirmation email, or write <a href="mailto:bsatroop79bg@gmail.com">bsatroop79bg@gmail.com</a>.
+          </p>
+        ) : (
+          <p className={styles.prose}>
+            Reply to your confirmation email, or write <a href="mailto:bsatroop79bg@gmail.com">bsatroop79bg@gmail.com</a>. Changes are possible until{' '}
+            {o.changesBy ? fmtDateFull(o.changesBy) : 'the cutoff'}, when the troop places its order with the grower.
+          </p>
+        )}
         {mayCancel && (
           <div id="cancel" className={styles.inset}>
             <CancelOrder token={token} orderNumber={o.orderNumber} scoutFirstName={o.scoutFirstName} cancel={cancelOrderAction} />

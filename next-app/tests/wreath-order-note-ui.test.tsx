@@ -33,7 +33,7 @@ vi.mock('../src/app/admin/(workspace)/finance/wreaths/actions', () => ({
 
 const ME = 100;
 const sale = {
-  id: 1, year: 2026, status: 'open', distributionDate: '2026-11-21', distributionWindow: '2:30 to 4:30 PM', distributionPlace: 'Northwoods lot', scoutShare: 0.3,
+  id: 1, year: 2026, status: 'open', distributionDate: '2026-11-21', distributionWindow: '2:30 to 4:30 PM', distributionPlace: 'Northwoods lot', scoutShare: 0.3, donationShare: 0.15,
   round1Cutoff: '2026-10-26T04:59:00.000Z', round2Cutoff: '2026-11-16T05:59:00.000Z', deliveryZipPrefix: '532', deliveryFee: 5, deliveryFreeAt: 50, feePercent: 1.99, feeFixed: 0.49
 } as PublicSale;
 

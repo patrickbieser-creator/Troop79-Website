@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { checkoutIdempotencyKey, checkoutLineItems, withCardFeeCover, cardLedgerRows, cardRefundRow, type CardOrder } from './card-checkout';
+import { checkoutIdempotencyKey, checkoutLineItems, withCardFeeCover, cardLedger, cardRefundRows, type CardOrder } from './card-checkout';
 import { fromCents, toCents } from './rules';
 
 /**
@@ -258,6 +258,13 @@ async function settledFee(stripe: StripeLike, paymentIntent: string): Promise<nu
   }
 }
 
+/** The order's live donation ledger row (W-3), if its payment booked one. */
+async function liveDonationRow(sb: SupabaseClient, orderId: number): Promise<{ id: number } | null> {
+  const { data, error } = await sb.from('financial_transactions').select('id').eq('wreath_order_id', orderId).eq('ledger_role', 'donation').is('voided_at', null).maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data as { id: number } | null) ?? null;
+}
+
 async function rpc(sb: SupabaseClient, fn: string, p: Record<string, unknown>): Promise<string> {
   const { data, error } = await sb.rpc(fn, { p });
   if (error) throw new Error(`${fn}: ${error.message}`);
@@ -288,7 +295,8 @@ export async function handleStripeEvent(event: StripeEventLike, deps: CardDeps):
       }
       const paid = fromCents(Number(obj.amount_total ?? 0));
       const fee = await settledFee(deps.stripe, pi);
-      const rows = cardLedgerRows({ orderNumber: o.order_number, customerName: o.customer_name, total: paid, fee, saleYear: o.wreath_sales?.year ?? Number(deps.today().slice(0, 4)), today: deps.today() });
+      // W-3: the donation is its own ledger row, net of its share of the fee.
+      const rows = cardLedger({ orderNumber: o.order_number, customerName: o.customer_name, total: paid, gift: Number(o.gift), fee, saleYear: o.wreath_sales?.year ?? Number(deps.today().slice(0, 4)), today: deps.today() });
       return rpc(sb, 'wreath_record_card_payment', {
         event_id: event.id,
         event_type: event.type,
@@ -298,6 +306,7 @@ export async function handleStripeEvent(event: StripeEventLike, deps: CardDeps):
         currency: String(obj.currency ?? ''),
         fee,
         income: rows.income,
+        donation_row: rows.donation,
         fee_row: rows.feeRow
       });
     }
@@ -335,9 +344,16 @@ export async function handleStripeEvent(event: StripeEventLike, deps: CardDeps):
       }
       const feeCents = typeof bt === 'string' ? (await deps.stripe.balanceTransactions.retrieve(bt)).fee : Number((bt as { fee?: number }).fee ?? 0);
       const fee = fromCents(feeCents);
-      const { feeRow } = cardLedgerRows({ orderNumber: o.order_number, customerName: o.customer_name, total: Number(o.paid_amount ?? o.total), fee, saleYear: o.wreath_sales?.year ?? Number(deps.today().slice(0, 4)), today: deps.today() });
-      if (!feeRow) return 'ignored';
-      return rpc(sb, 'wreath_record_card_fee', { event_id: event.id, event_type: event.type, payment_intent: pi, fee, fee_row: feeRow });
+      // The donation's share of the fee nets its ledger row — only when the payment booked one (an order paid by card
+      // before W-3 carries its gift inside the payment row, so the whole fee stays one expense row).
+      const donationRow = await liveDonationRow(sb, o.id);
+      const gift = donationRow ? Number(o.gift) : 0;
+      const rows = cardLedger({ orderNumber: o.order_number, customerName: o.customer_name, total: Number(o.paid_amount ?? o.total), gift, fee, saleYear: o.wreath_sales?.year ?? Number(deps.today().slice(0, 4)), today: deps.today() });
+      if (!donationRow) {
+        if (!rows.feeRow) return 'ignored';
+        return rpc(sb, 'wreath_record_card_fee', { event_id: event.id, event_type: event.type, payment_intent: pi, fee, fee_row: rows.feeRow });
+      }
+      return rpc(sb, 'wreath_record_card_fee', { event_id: event.id, event_type: event.type, payment_intent: pi, fee, fee_row: rows.feeRow, donation_amount: rows.donation?.amount ?? 0 });
     }
     case 'charge.refunded': {
       const pi = String(obj.payment_intent ?? '');
@@ -350,8 +366,10 @@ export async function handleStripeEvent(event: StripeEventLike, deps: CardDeps):
       const o = await loadOrder(sb, 'stripe_payment_intent_id', pi);
       if (!o) return 'unknown_intent';
       const amount = Number(o.paid_amount ?? o.total);
-      const refundRow = cardRefundRow({ orderNumber: o.order_number, customerName: o.customer_name, amount, saleYear: o.wreath_sales?.year ?? Number(deps.today().slice(0, 4)), today: deps.today() });
-      return rpc(sb, 'wreath_record_card_refund', { event_id: event.id, event_type: event.type, payment_intent: pi, amount_refunded_cents: Number(obj.amount_refunded ?? 0), refund_row: refundRow });
+      // The donation row (W-3) is reversed on its own; an order booked before W-3 reverses as one row.
+      const gift = (await liveDonationRow(sb, o.id)) ? Number(o.gift) : 0;
+      const rows = cardRefundRows({ orderNumber: o.order_number, customerName: o.customer_name, amount, gift, saleYear: o.wreath_sales?.year ?? Number(deps.today().slice(0, 4)), today: deps.today() });
+      return rpc(sb, 'wreath_record_card_refund', { event_id: event.id, event_type: event.type, payment_intent: pi, amount_refunded_cents: Number(obj.amount_refunded ?? 0), refund_row: rows.refund, donation_refund_row: rows.donationRefund });
     }
     default:
       return 'ignored';

@@ -64,7 +64,7 @@ describe('repriceEdit', () => {
 
   it('RepriceEdit_AddsTheGift_AndRecomputesACoveredFee', () => {
     const res = repriceEdit(rules, catalog, [], [{ itemId: 1, quantity: 1, donated: false }], { fulfillment: 'pickup', gift: 4, coverFee: true });
-    // $30 base grossed up for 1.99% + $0.49: the troop keeps the whole $30.
-    expect(res.ok && [res.order.gift, res.order.feeCovered, res.order.total]).toEqual([4, 1.11, 31.11]);
+    // W-3: the $26 wreath grossed up for 1.99% + $0.49 (no fee on the $4 donation): the troop keeps the whole $26.
+    expect(res.ok && [res.order.gift, res.order.feeCovered, res.order.total]).toEqual([4, 1.03, 31.03]);
   });
 });

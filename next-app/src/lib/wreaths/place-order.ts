@@ -19,12 +19,14 @@ import { SLUG_RE, saleFromRow, scoutDisplayName, type PublicSale } from './publi
 import {
   EMAIL_RE,
   MAX_GIFT,
+  MIN_DONATION,
   MIN_SUBMIT_MS,
   decideRound,
   inDeliveryArea,
   itemLabel,
   phoneOk,
   priceCart,
+  toCents,
   zipFormatOk,
   zipPrefixText,
   type CartLine,
@@ -206,7 +208,7 @@ export async function placeOrder(raw: unknown, deps: PlaceOrderDeps): Promise<Pl
   const saleQ = sb
     .from('wreath_sales')
     .select(
-      'id, year, status, round1_cutoff, round2_cutoff, distribution_date, distribution_window, distribution_place, delivery_zip_prefix, delivery_fee, delivery_free_at, fee_percent, fee_fixed, scout_share, order_cc'
+      'id, year, status, round1_cutoff, round2_cutoff, distribution_date, distribution_window, distribution_place, delivery_zip_prefix, delivery_fee, delivery_free_at, fee_percent, fee_fixed, scout_share, donation_scout_share, order_cc'
     );
   const { data: saleRows } = await (deps.saleId != null ? saleQ.eq('id', deps.saleId) : saleQ.eq('status', 'open').order('year', { ascending: false }).limit(1));
   const saleRow = ((saleRows ?? []) as Parameters<typeof saleFromRow>[0][])[0];
@@ -240,6 +242,9 @@ export async function placeOrder(raw: unknown, deps: PlaceOrderDeps): Promise<Pl
     if (req.email && (await count((q) => q.eq('customer_email', req.email).gte('placed_at', since(24 * 3600_000)))) >= limits.perEmailDay) return UNAVAILABLE(deps.replyTo);
   }
 
+  // A donation is $1 at least on the public store (qa-lead, 2026-10-19). Scout entry keeps its own bounds.
+  if (!entry && req.gift > 0 && toCents(req.gift) < MIN_DONATION * 100) return invalid('gift', `A donation is at least $${MIN_DONATION}.`);
+
   // Customer details.
   if (entry) {
     // Only a name is required; an email or phone, if given, must be well-formed.
@@ -250,7 +255,11 @@ export async function placeOrder(raw: unknown, deps: PlaceOrderDeps): Promise<Pl
     if (!req.name) return invalid('name', 'Enter your name.');
     if (!req.email) return invalid('email', 'Enter your email, for the receipt.');
     if (!EMAIL_RE.test(req.email)) return invalid('email', 'This email is missing something, like the @ or the .com.');
-    if (!phoneOk(req.phone)) return invalid('phone', req.phone ? 'A phone number is 10 digits.' : 'Enter a phone number, in case of a delivery question.');
+    // A donation with no wreath has nothing to deliver, so no delivery question to call about (W-3): phone optional.
+    const donationOnly = req.lines.length === 0;
+    if (donationOnly ? req.phone !== '' && !phoneOk(req.phone) : !phoneOk(req.phone)) {
+      return invalid('phone', req.phone ? 'A phone number is 10 digits.' : 'Enter a phone number, in case of a delivery question.');
+    }
   }
 
   // The credited scout: only a live seller link.
@@ -303,16 +312,18 @@ export async function placeOrder(raw: unknown, deps: PlaceOrderDeps): Promise<Pl
   const items = (itemRows ?? []) as { id: number; catalog_number: number; name: string; size: string; price: number; unit_cost: number; active: boolean; donatable: boolean }[];
   const catalog: PricedItem[] = items.map((i) => ({ id: i.id, catalogNumber: i.catalog_number, price: Number(i.price), unitCost: Number(i.unit_cost), active: i.active, donatable: i.donatable }));
   const allDonated = req.lines.length > 0 && req.lines.every((l) => l.donated);
+  // "Donate to Troop 79" with no wreath (W-3): nothing to deliver or pick up, no delivery fee, no address.
+  const donationOnly = !entry && req.lines.length === 0;
 
   // How it reaches them. A scout-entered order is always the scout's own (they hand it over), whatever is in it.
   let fulfillment: Fulfillment;
   if (entry) fulfillment = 'scout';
-  else if (allDonated) fulfillment = 'none';
+  else if (allDonated || donationOnly) fulfillment = 'none';
   else if (seller) fulfillment = 'scout';
   else if (req.fulfillment) fulfillment = req.fulfillment;
   else return invalid('method', 'Choose pickup or delivery.');
 
-  const priced = priceCart(sale, catalog, req.lines, { fulfillment, gift: req.gift, coverFee: entry ? false : req.coverFee });
+  const priced = priceCart(sale, catalog, req.lines, { fulfillment, gift: req.gift, coverFee: entry ? false : req.coverFee, allowDonationOnly: !entry });
   if (!priced.ok) return invalid(priced.problem.code === 'gift' ? 'gift' : 'cart', cartProblemText(priced.problem.code));
 
   let outsideArea = false;
@@ -391,7 +402,8 @@ export async function placeOrder(raw: unknown, deps: PlaceOrderDeps): Promise<Pl
       }).join(' '),
       creditedTo: (seller ?? creditOnly)?.scout.name ?? null,
       orderUrl: `${deps.siteUrl}/wreaths/order/${result.public_token}`,
-      changesBy: fmtDateFull(round === 1 ? sale.round1Cutoff : sale.round2Cutoff)
+      changesBy: fmtDateFull(round === 1 ? sale.round1Cutoff : sale.round2Cutoff),
+      placedAt: new Date(now).toISOString()
     };
     if (entry) {
       // No email to the customer, ever. The person typing gets a confirmation, and the household's parents are
@@ -447,7 +459,7 @@ function cartProblemText(code: string): string {
     case 'empty':
       return 'Your cart is empty.';
     case 'gift':
-      return `A gift can be from $0 to $${MAX_GIFT}.`;
+      return `A donation can be from $0 to $${MAX_GIFT}.`;
     case 'quantity':
       return 'Each item can be ordered 1 to 50 at a time.';
     case 'too_many_lines':

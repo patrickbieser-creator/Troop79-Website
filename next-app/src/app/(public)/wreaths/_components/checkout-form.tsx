@@ -10,6 +10,10 @@
  * server action re-prices everything; the totals on this screen are only a courtesy. Before Stripe opens, this page's
  * history entry becomes the order's receipt, so Back from Stripe shows the saved order rather than an empty checkout,
  * and the tab remembers the order for an hour (lib/wreaths/leave-for-stripe.ts; Patrick, 2026-10-16).
+ *
+ * The donation (W-3) is the cart's one donation: "Donate to Troop 79" on the store puts it there, and the amount picked
+ * here IS that amount (the order's `gift`), so it is never counted twice. A cart with only a donation checks out with
+ * no delivery step, no fee on the donation and an optional phone.
  */
 
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
@@ -19,12 +23,12 @@ import { Button } from '@/app/_components/button';
 import { Notice } from '@/app/_components/notice';
 import { Field, FieldProblem, SaveProblem, TextInput } from '@/app/_components/form';
 import { Stepper } from '@/app/_components/stepper';
-import { PAY_TREASURER, coverFeeFor, deliveryFeeFor, fmtMoney, fmtMoney2, inDeliveryArea, itemLabel, toCents, fromCents, zipPrefixText, type Fulfillment } from '@/lib/wreaths/rules';
+import { DONATION_LABEL, DONATION_PRESETS, PAY_TREASURER, coverFeeFor, deliveryFeeFor, fmtMoney, fmtMoney2, inDeliveryArea, itemLabel, parseDonation, toCents, fromCents, zipPrefixText, type Fulfillment } from '@/lib/wreaths/rules';
 import type { StoreItem } from '@/lib/wreaths/public';
 import type { OrderField, PlaceOrderResult } from '@/lib/wreaths/place-order';
 import type { SellerMatch } from '@/lib/wreaths/seller-search';
 import type { StartResult } from '@/lib/wreaths/card-payments';
-import { fulfillmentFor, joinLabels, validateCheckout, type CheckoutProblem } from '@/lib/wreaths/checkout-validate';
+import { fulfillmentFor, isDonationOnly, joinLabels, validateCheckout, type CheckoutProblem } from '@/lib/wreaths/checkout-validate';
 import { leaveForStripe, recentPlacedOrder, receiptPath, rememberPlacedOrder, reloadIfRestoredAway } from '@/lib/wreaths/leave-for-stripe';
 import { lineKey, parseLineKey, useCart } from './cart';
 import { ProductPhoto } from './store-view';
@@ -82,14 +86,15 @@ function lastOrderSnapshot(): string | null {
 }
 const noSubscribe = () => () => {};
 
-const GIFTS = [0, 5, 10, 25];
+/** The same amounts as the store's "Donate to Troop 79", plus None when there is a wreath in the cart. */
+const GIFTS = [0, ...DONATION_PRESETS];
 
 export function CheckoutForm({ items, scout, rules, pickupText, distributionDay, graceCutoff, action, searchSellers, cardLive = false, startCard }: CheckoutProps) {
   // Venmo / PayPal to the treasurer stays first and the default: the no-fee way to pay (Patrick, 2026-10-15).
   const [payBy, setPayBy] = useState<'treasurer' | 'card'>('treasurer');
   const [coverCardFee, setCoverCardFee] = useState(false);
   const router = useRouter();
-  const { cart, setQty, clear } = useCart();
+  const { cart, setQty, setDonation, clear } = useCart();
   const formRef = useRef<HTMLFormElement>(null);
   const startedAt = useSyncExternalStore(startedSubscribe, startedSnapshot, () => null);
   const [mountedAt] = useState(() => Date.now());
@@ -108,7 +113,6 @@ export function CheckoutForm({ items, scout, rules, pickupText, distributionDay,
   const [idempotencyKey] = useState(() => crypto.randomUUID());
 
   const [method, setMethod] = useState<'pickup' | 'delivery' | ''>('');
-  const [gift, setGift] = useState(0);
   const [giftOther, setGiftOther] = useState(false);
   const [giftText, setGiftText] = useState('');
   const [name, setName] = useState('');
@@ -133,7 +137,7 @@ export function CheckoutForm({ items, scout, rules, pickupText, distributionDay,
     .filter((l) => byId.has(l.itemId))
     .map((l) => ({ ...l, item: byId.get(l.itemId)! }));
   const allDonated = lines.length > 0 && lines.every((l) => l.donated);
-  const giftAmount = giftOther ? Math.round((parseFloat(giftText) || 0) * 100) / 100 : gift;
+  const giftAmount = giftOther ? Math.round((parseFloat(giftText) || 0) * 100) / 100 : cart.donation;
   const firstName = scout?.firstName ?? null;
 
   const draft = {
@@ -154,17 +158,19 @@ export function CheckoutForm({ items, scout, rules, pickupText, distributionDay,
   };
   const fulfillment: Fulfillment | null = fulfillmentFor(draft);
   const needsAddress = fulfillment === 'scout' || fulfillment === 'delivery';
+  const donationOnly = isDonationOnly(draft);
+  const hasOrder = lines.length > 0 || cart.donation > 0 || giftOther;
   const problems: CheckoutProblem[] = tried && !leaving ? validateCheckout(draft) : [];
   const problemFor = (f: OrderField) => problems.find((p) => p.field === f)?.message ?? (serverProblem?.field === f ? serverProblem.message : undefined);
 
   // Totals: a courtesy copy of what the server computes.
   const itemsCents = lines.reduce((n, l) => n + toCents(l.item.price) * l.qty, 0);
   const delivery = deliveryFeeFor(rules, fulfillment ?? 'pickup', fromCents(itemsCents));
-  const baseDollars = fromCents(itemsCents + toCents(giftAmount) + toCents(delivery));
-  const fee = coverFeeFor(rules, baseDollars);
+  // No fee on the donation (W-3): covering the card fee covers the items and delivery only.
+  const fee = coverFeeFor(rules, fromCents(itemsCents + toCents(delivery)));
   const payByCard = cardLive && payBy === 'card' && !!startCard;
   const cardFee = payByCard && coverCardFee ? fee : 0;
-  const total = fromCents(toCents(baseDollars) + toCents(cardFee));
+  const total = fromCents(itemsCents + toCents(delivery) + toCents(giftAmount) + toCents(cardFee));
 
   // Grace: after the final cutoff only a checkout begun before it may finish.
   if (graceCutoff && !(startedAt != null && startedAt < Date.parse(graceCutoff))) {
@@ -202,7 +208,7 @@ export function CheckoutForm({ items, scout, rules, pickupText, distributionDay,
         lines: lines.map((l) => ({ itemId: l.itemId, quantity: l.qty, donated: l.donated })),
         gift: giftAmount,
         coverFee: payByCard && coverCardFee,
-        fulfillment: scout ? null : method || null,
+        fulfillment: scout || donationOnly ? null : method || null,
         customer: { name, email, phone, street, city, zip: needsAddress ? zip : '' },
         outsideAreaRelative: relative,
         creditSellerId: scout ? null : (credit?.id ?? null),
@@ -255,16 +261,16 @@ export function CheckoutForm({ items, scout, rules, pickupText, distributionDay,
         {/* 1 · Order */}
         <section className={`${styles.card} ${styles.pad} ${styles.step}`} aria-labelledby="h1o">
           <h2 id="h1o">Your order</h2>
-          {lines.length === 0 && lastOrder && !leaving ? (
+          {!hasOrder && lastOrder && !leaving ? (
             <p className={styles.meta}>
               You just placed order {lastOrder.orderNumber}. Its page shows how to pay, or lets you cancel it.{' '}
               <Link href={receiptPath(lastOrder.token)}>See order {lastOrder.orderNumber}</Link>
             </p>
-          ) : lines.length === 0 ? (
+          ) : !hasOrder ? (
             <p className={styles.meta}>
               Your cart is empty. <Link href={backHref}>Back to the wreaths</Link>
             </p>
-          ) : (
+          ) : lines.length === 0 ? null : (
             <ul className={styles.lines}>
               {lines.map((l) => {
                 const label = itemLabel(l.item) + (l.donated ? ', donated' : '');
@@ -297,42 +303,68 @@ export function CheckoutForm({ items, scout, rules, pickupText, distributionDay,
               })}
             </ul>
           )}
-          {lines.length > 0 && (
+          {hasOrder && (
             <div className={styles.giftWrap}>
               <div className={styles.fieldLabel} id="giftLbl">
-                Add a gift to Troop 79 <span className={styles.meta}>optional</span>
+                {lines.length > 0 ? (
+                  <>
+                    Add a donation to Troop 79 <span className={styles.meta}>optional</span>
+                  </>
+                ) : (
+                  DONATION_LABEL
+                )}
               </div>
               <div className={styles.seg} role="group" aria-labelledby="giftLbl">
-                {GIFTS.map((g) => (
+                {GIFTS.filter((g) => g > 0 || lines.length > 0).map((g) => (
                   <button
                     key={g}
                     type="button"
-                    aria-pressed={!giftOther && gift === g}
+                    aria-pressed={!giftOther && cart.donation === g}
                     onClick={() => {
                       setGiftOther(false);
-                      setGift(g);
+                      setDonation(g);
                     }}
                   >
                     {g === 0 ? 'None' : `$${g}`}
                   </button>
                 ))}
-                <button type="button" aria-pressed={giftOther} onClick={() => setGiftOther(true)}>
+                <button
+                  type="button"
+                  aria-pressed={giftOther || (cart.donation > 0 && !GIFTS.includes(cart.donation))}
+                  onClick={() => {
+                    setGiftOther(true);
+                    setGiftText(cart.donation > 0 && !GIFTS.includes(cart.donation) ? String(cart.donation) : '');
+                  }}
+                >
                   Other
                 </button>
               </div>
               {giftOther && (
                 <div className={styles.giftOther}>
-                  <Field label="Gift amount" problem={problemFor('gift')}>
-                    <TextInput type="number" min={1} step={1} inputMode="decimal" value={giftText} onChange={(e) => setGiftText(e.target.value)} />
+                  <Field label="Donation amount" problem={problemFor('gift')}>
+                    <TextInput
+                      type="number"
+                      min={1}
+                      step={1}
+                      inputMode="decimal"
+                      value={giftText}
+                      onChange={(e) => {
+                        setGiftText(e.target.value);
+                        // The cart keeps the amount, so Keep shopping and back shows the same donation.
+                        const n = parseDonation(e.target.value);
+                        if (n != null) setDonation(n);
+                      }}
+                    />
                   </Field>
                 </div>
               )}
-              <p className={styles.meta}>A gift goes entirely to the troop.</p>
+              <p className={styles.meta}>{scout ? `A donation goes to the troop, and part of it to ${scout.firstName}’s scout account.` : 'A donation goes to the troop.'}</p>
             </div>
           )}
         </section>
 
-        {/* 2 · Getting your wreaths */}
+        {/* 2 · Getting your wreaths — a donation with no wreath has nothing to deliver (W-3). */}
+        {!donationOnly && (
         <section className={`${styles.card} ${styles.pad} ${styles.step}`} aria-labelledby="h2f">
           <h2 id="h2f">Getting your wreaths</h2>
           {lines.length === 0 ? (
@@ -406,10 +438,17 @@ export function CheckoutForm({ items, scout, rules, pickupText, distributionDay,
             </>
           )}
         </section>
+        )}
 
-        {!scout && lines.length > 0 && (
+        {!scout && hasOrder && (
           <section className={`${styles.card} ${styles.pad} ${styles.step}`} aria-label="Scout credit">
-            <CreditPicker search={searchSellers} picked={credit} onPick={setCredit} problem={problemFor('credit')} />
+            <CreditPicker
+              search={searchSellers}
+              picked={credit}
+              onPick={setCredit}
+              problem={problemFor('credit')}
+              hint={lines.length > 0 ? 'Type at least 2 letters. 30% of the profit on your order goes into their scout account.' : 'Type at least 2 letters. Part of your donation goes into their scout account.'}
+            />
           </section>
         )}
 
@@ -423,7 +462,7 @@ export function CheckoutForm({ items, scout, rules, pickupText, distributionDay,
             <Field label="Email" problem={problemFor('email')}>
               <TextInput type="email" autoComplete="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} />
             </Field>
-            <Field label="Phone" problem={problemFor('phone')}>
+            <Field label={donationOnly ? <>Phone <span className={styles.meta}>optional</span></> : 'Phone'} problem={problemFor('phone')}>
               <TextInput type="tel" autoComplete="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
             </Field>
             {needsAddress && (
@@ -453,12 +492,14 @@ export function CheckoutForm({ items, scout, rules, pickupText, distributionDay,
         <section className={`${styles.card} ${styles.pad} ${styles.step}`} aria-labelledby="h4p">
           <h2 id="h4p">Total</h2>
           <dl className={styles.sumRows}>
-            <div>
-              <dt>
-                {lines.reduce((n, l) => n + l.qty, 0)} item{lines.reduce((n, l) => n + l.qty, 0) === 1 ? '' : 's'}
-              </dt>
-              <dd>{fmtMoney2(fromCents(itemsCents))}</dd>
-            </div>
+            {lines.length > 0 && (
+              <div>
+                <dt>
+                  {lines.reduce((n, l) => n + l.qty, 0)} item{lines.reduce((n, l) => n + l.qty, 0) === 1 ? '' : 's'}
+                </dt>
+                <dd>{fmtMoney2(fromCents(itemsCents))}</dd>
+              </div>
+            )}
             {delivery > 0 && (
               <div>
                 <dt>Delivery</dt>
@@ -467,7 +508,7 @@ export function CheckoutForm({ items, scout, rules, pickupText, distributionDay,
             )}
             {giftAmount > 0 && (
               <div>
-                <dt>Gift to Troop 79</dt>
+                <dt>{DONATION_LABEL}</dt>
                 <dd>{fmtMoney2(giftAmount)}</dd>
               </div>
             )}
@@ -526,7 +567,7 @@ export function CheckoutForm({ items, scout, rules, pickupText, distributionDay,
           )}
           <div className={styles.submitRow}>
             <Button type="submit" disabled={busy || leaving}>
-              {busy || leaving ? 'Placing your order…' : payByCard ? 'Place order and pay by card' : 'Place order'}
+              {busy || leaving ? 'Placing your order…' : donationOnly ? (payByCard ? 'Donate and pay by card' : 'Donate') : payByCard ? 'Place order and pay by card' : 'Place order'}
             </Button>
             {blockedReason && <SaveProblem action="place the order" reason={blockedReason} />}
             {!blockedReason && serverProblem?.field && <SaveProblem action="place the order" reason={serverProblem.message} />}
@@ -552,7 +593,7 @@ function ZipField({ zip, setZip, problem }: { zip: string; setZip: (z: string) =
  * of a first name ask the SERVER for matches ("First L." only; the roster never reaches the browser). Credit only: the
  * scout does not deliver, and the pickup / delivery choice above is unchanged.
  */
-function CreditPicker({ search, picked, onPick, problem }: { search: CheckoutProps['searchSellers']; picked: SellerMatch | null; onPick: (m: SellerMatch | null) => void; problem?: string }) {
+function CreditPicker({ search, picked, onPick, problem, hint }: { search: CheckoutProps['searchSellers']; picked: SellerMatch | null; onPick: (m: SellerMatch | null) => void; problem?: string; hint: string }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
   const [matches, setMatches] = useState<SellerMatch[] | null>(null);
@@ -613,7 +654,7 @@ function CreditPicker({ search, picked, onPick, problem }: { search: CheckoutPro
           {/* Chrome ignores autocomplete="off" on a field it takes for a name and lays the visitor's own saved
               contacts over this list; an unrecognised token turns that off, and the label and hint stay clear of
               its "first … name" pattern (2026-10-13). */}
-          <Field label="Which scout?" hint="Type at least 2 letters. 30% of the profit on your order goes into their scout account." problem={problem}>
+          <Field label="Which scout?" hint={hint} problem={problem}>
             <TextInput type="search" name="scout_lookup" autoComplete="troop79-scout-search" value={q} onChange={(e) => type(e.target.value)} />
           </Field>
               {matches && matches.length === 0 && <p className={styles.meta}>No scout found with that name. The order will go to Troop 79.</p>}

@@ -46,6 +46,6 @@ describe('empty the cart', () => {
     expect(read().seller).toBeNull();
     // Undo brings the credit back with the lines.
     await user.click(screen.getByRole('button', { name: 'Undo' }));
-    expect(read()).toEqual({ lines: { '11': 1 }, seller });
+    expect(read()).toEqual({ lines: { '11': 1 }, seller, donation: 0 });
   });
 });

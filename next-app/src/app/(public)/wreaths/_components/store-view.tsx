@@ -1,7 +1,8 @@
 'use client';
 
 /**
- * The store and a scout's page share this: the product grid, "Donate a wreath to veterans", and the cart (a sticky
+ * The store and a scout's page share this: the product grid, "Donate a wreath to veterans", "Donate to Troop 79" (W-3:
+ * a money donation that goes in the cart on its own, so checkout works with no wreath), and the cart (a sticky
  * aside on wide screens, a bar on phones). The server renders the heading (`head`) and passes the active items; the
  * cart itself lives in this browser (cart.ts). Prices shown here are a convenience — the order action reprices
  * everything from the catalog.
@@ -13,7 +14,8 @@ import Link from 'next/link';
 import { Button } from '@/app/_components/button';
 import { Notice } from '@/app/_components/notice';
 import { Stepper } from '@/app/_components/stepper';
-import { MAX_QTY, fmtMoney, itemLabel } from '@/lib/wreaths/rules';
+import { Field, TextInput } from '@/app/_components/form';
+import { DONATION_LABEL, DONATION_PRESETS, MAX_GIFT, MAX_QTY, fmtMoney, itemLabel, parseDonation } from '@/lib/wreaths/rules';
 import { STORE_SECTIONS, type StoreItem } from '@/lib/wreaths/public';
 import { lineKey, parseLineKey, useCart, type CartState } from './cart';
 import { EntryAside, EntryDone, EntryProvider, type EntryConfig, type EntryDoneData } from './entry-mode';
@@ -66,22 +68,120 @@ function AddLine({ itemKey, label, qty, onQty }: { itemKey: string; label: strin
   );
 }
 
+/**
+ * "Donate to Troop 79" (W-3, Patrick 2026-10-19): $10 / $25 / $50 or another amount, put in the cart as its own line.
+ * The amount is the cart's one donation, the same one checkout shows, so it is never counted twice.
+ */
+function DonateBlock({ amount, onSet, scout, donationShare }: { amount: number; onSet: (dollars: number) => void; scout: StoreViewScout | null; donationShare: number }) {
+  const presetChosen = (DONATION_PRESETS as readonly number[]).includes(amount);
+  const [other, setOther] = useState(false);
+  const [text, setText] = useState('');
+  const [problem, setProblem] = useState<string | null>(null);
+  const pct = Math.round(donationShare * 1000) / 10;
+  function addOther() {
+    const n = parseDonation(text);
+    if (n == null) {
+      setProblem(`Enter an amount from $1 to $${MAX_GIFT}.`);
+      return;
+    }
+    setProblem(null);
+    onSet(n);
+  }
+  return (
+    <section className={`${styles.card} ${styles.vets}`} aria-labelledby="donateH" id="donate">
+      <h2 id="donateH">Donate to Troop 79</h2>
+      <p className={styles.meta}>
+        No wreath needed. Your donation pays for the troop’s camping and program
+        {scout && pct > 0 ? `, and ${pct}% of it goes into ${scout.firstName}’s scout account` : ''}. Nothing is delivered.
+      </p>
+      <div className={styles.seg} role="group" aria-label="Donation amount">
+        {DONATION_PRESETS.map((p) => (
+          <button
+            key={p}
+            type="button"
+            aria-pressed={!other && amount === p}
+            onClick={() => {
+              setOther(false);
+              setProblem(null);
+              onSet(p);
+            }}
+          >
+            ${p}
+          </button>
+        ))}
+        <button
+          type="button"
+          aria-pressed={other || (amount > 0 && !presetChosen)}
+          onClick={() => {
+            setOther(true);
+            setText(amount > 0 && !presetChosen ? String(amount) : '');
+          }}
+        >
+          Other amount
+        </button>
+      </div>
+      {other && (
+        <div className={styles.giftOther}>
+          <Field label="Donation amount ($)" problem={problem ?? undefined}>
+            <TextInput
+              type="text"
+              inputMode="decimal"
+              autoComplete="off"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  addOther();
+                }
+              }}
+            />
+          </Field>
+          <Button variant="secondary" size="sm" onClick={addOther}>
+            Add to cart
+          </Button>
+        </div>
+      )}
+      {amount > 0 && (
+        <p className={styles.meta}>
+          {fmtMoney(amount)} donation in your cart.{' '}
+          <button
+            type="button"
+            className={styles.linkBtn}
+            aria-label="Remove the donation"
+            onClick={() => {
+              onSet(0);
+              setOther(false);
+              setText('');
+            }}
+          >
+            Remove
+          </button>
+        </p>
+      )}
+    </section>
+  );
+}
+
 export function StoreView({
   items,
   scout,
   head,
   linkFellBack = false,
-  entry
+  entry,
+  donationShare = 0
 }: {
   items: StoreItem[];
   scout: StoreViewScout | null;
   head: ReactNode;
+  /** The scouts' share of a cash donation (W-3), for the scout page's "goes into their account" line. */
+  donationShare?: number;
   /** A typed link didn't resolve; its own notice says so, and naming another scout here would only confuse. */
   linkFellBack?: boolean;
   /** Present only when the server found a signed-in scout (or their parent) on this scout's page: the "Order for someone I know" mode. */
   entry?: EntryConfig;
 }) {
-  const { cart, setQty, setSeller, emptyLines, restore } = useCart();
+  const { cart, setQty, setSeller, setDonation, emptyLines, restore } = useCart();
   const [entryOn, setEntryOn] = useState(entry?.initialOn ?? false);
   const [done, setDone] = useState<EntryDoneData | null>(null);
   const inEntry = !!entry && !!scout && entryOn;
@@ -122,11 +222,14 @@ export function StoreView({
     .filter((l) => byId.has(l.itemId))
     .map((l) => ({ ...l, item: byId.get(l.itemId)! }));
   const count = lines.reduce((n, l) => n + l.qty, 0);
-  const total = lines.reduce((n, l) => n + l.item.price * l.qty, 0);
+  const itemsTotal = lines.reduce((n, l) => n + l.item.price * l.qty, 0);
+  const donation = cart.donation;
+  const total = itemsTotal + donation;
+  const hasOrder = lines.length > 0 || donation > 0;
   const checkoutHref = scout ? `/wreaths/checkout?s=${encodeURIComponent(scout.slug)}` : '/wreaths/checkout';
   const credited = scout ? scout.name : 'Troop 79';
   // A cart credited to a scout whose page was opened earlier; the general store orders for the troop.
-  const droppedFrom = !scout && !linkFellBack && count > 0 && cart.seller ? cart.seller : null;
+  const droppedFrom = !scout && !linkFellBack && hasOrder && cart.seller ? cart.seller : null;
 
   function onQty(key: string, q: number) {
     setQty(key, q);
@@ -211,6 +314,8 @@ export function StoreView({
               ))}
             </section>
           )}
+          {/* A scout entering an order has the gift field in the aside; the donation block is for shoppers. */}
+          {!inEntry && <DonateBlock amount={donation} onSet={setDonation} scout={scout} donationShare={donationShare} />}
         </div>
 
         <aside className={`${styles.card} ${styles.pad} ${styles.cartAside} ${inEntry ? styles.cartAsideEntry : ''}`} aria-labelledby="cartH" id="entry-aside">
@@ -219,7 +324,7 @@ export function StoreView({
             <EntryAside
               scout={scout}
               lines={lines}
-              itemsTotal={total}
+              itemsTotal={itemsTotal}
               action={entry.action}
               formId="entry-form"
               onPlaced={(d) => {
@@ -227,9 +332,9 @@ export function StoreView({
                 setDone(d);
               }}
             />
-          ) : lines.length === 0 ? (
+          ) : !hasOrder ? (
             <>
-              <p className={styles.cartEmpty}>Nothing yet. Add a wreath to start.</p>
+              <p className={styles.cartEmpty}>Nothing yet. Add a wreath or a donation to start.</p>
               {undo && (
                 <p className={styles.meta}>
                   Cart emptied.{' '}
@@ -250,6 +355,12 @@ export function StoreView({
                     <span className={styles.num}>{fmtMoney(l.item.price * l.qty)}</span>
                   </li>
                 ))}
+                {donation > 0 && (
+                  <li>
+                    <span>{DONATION_LABEL}</span>
+                    <span className={styles.num}>{fmtMoney(donation)}</span>
+                  </li>
+                )}
               </ul>
               <div className={styles.cartTotal}>
                 <span>Total</span>
@@ -267,17 +378,18 @@ export function StoreView({
         </aside>
       </div>
 
-      <div className={styles.cartBar} hidden={lines.length === 0}>
+      <div className={styles.cartBar} hidden={inEntry ? lines.length === 0 : !hasOrder}>
         <div className={styles.cartBarSum}>
-          <strong>{fmtMoney(total)}</strong>
+          <strong>{fmtMoney(inEntry ? itemsTotal : total)}</strong>
           <span>
-            {count} item{count === 1 ? '' : 's'}
+            {count > 0 || inEntry ? `${count} item${count === 1 ? '' : 's'}` : 'Donation'}
+            {count > 0 && !inEntry && donation > 0 ? ' + donation' : ''}
             {scout ? ` · ${credited}` : ''}
           </span>
         </div>
         <Button href={inEntry ? '#entry-aside' : checkoutHref}>{inEntry ? 'Customer details' : 'Checkout'}</Button>
       </div>
-      {lines.length > 0 && <div className={styles.cartBarSpace} aria-hidden="true" />}
+      {(inEntry ? lines.length > 0 : hasOrder) && <div className={styles.cartBarSpace} aria-hidden="true" />}
       <p className={styles.srOnly} role="status" aria-live="polite">
         {announce}
       </p>

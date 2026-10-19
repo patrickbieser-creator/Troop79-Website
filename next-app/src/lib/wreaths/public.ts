@@ -28,6 +28,8 @@ export interface PublicSale extends SaleRules {
   distributionWindow: string;
   distributionPlace: string;
   scoutShare: number;
+  /** The credited scout's share of an order's cash donation, after its part of the card fee (W-3); 0.15 to start. */
+  donationShare: number;
 }
 
 export interface StoreItem {
@@ -65,15 +67,19 @@ export interface Confirmation {
   scoutFirstName: string | null;
   outsideAreaRelative: boolean;
   round: 1 | 2;
+  /** When it was placed (an instant): the donation receipt's date (W-3). */
+  placedAt: string;
   items: { label: string; quantity: number; donated: boolean; amount: number }[];
   itemsSubtotal: number;
   deliveryFee: number;
   feeCovered: number;
   gift: number;
   total: number;
-  /** Release B: how it was paid ('card', 'venmo', …) and the optional cover-the-card-fee amount on items + gift + delivery. */
+  /** Release B: how it was paid ('card', 'venmo', …) and the optional cover-the-card-fee amount on items + delivery (no fee on the donation, W-3). */
   paidMethod: string | null;
   cardFeeOption: number;
+  /** A card checkout was opened on this order (the customer chose card at checkout, or tried it since). */
+  cardStarted: boolean;
   distribution: { date: string | null; window: string; place: string };
   /** The cutoff of the order's round (an instant): changes are possible until the end of that day. */
   changesBy: string;
@@ -82,7 +88,7 @@ export interface Confirmation {
 }
 
 const SALE_COLS =
-  'id, year, status, round1_cutoff, round2_cutoff, distribution_date, distribution_window, distribution_place, delivery_zip_prefix, delivery_fee, delivery_free_at, fee_percent, fee_fixed, scout_share';
+  'id, year, status, round1_cutoff, round2_cutoff, distribution_date, distribution_window, distribution_place, delivery_zip_prefix, delivery_fee, delivery_free_at, fee_percent, fee_fixed, scout_share, donation_scout_share';
 
 type SaleRow = {
   id: number;
@@ -99,6 +105,8 @@ type SaleRow = {
   fee_percent: number;
   fee_fixed: number;
   scout_share: number;
+  /** Absent on a row read before the W-3 migration: the default share. */
+  donation_scout_share?: number | null;
 };
 
 export function saleFromRow(r: SaleRow): PublicSale {
@@ -116,7 +124,8 @@ export function saleFromRow(r: SaleRow): PublicSale {
     deliveryFreeAt: Number(r.delivery_free_at),
     feePercent: Number(r.fee_percent),
     feeFixed: Number(r.fee_fixed),
-    scoutShare: Number(r.scout_share)
+    scoutShare: Number(r.scout_share),
+    donationShare: r.donation_scout_share == null ? 0.15 : Number(r.donation_scout_share)
   };
 }
 
@@ -197,13 +206,22 @@ export async function resolveScoutLink(sb: SupabaseClient, saleId: number, rawSl
   return { slug: row.slug, name, firstName, personId: row.person_id, goal: row.goal, deliveryMessage: row.delivery_message?.trim() || null };
 }
 
+/**
+ * Did the customer choose card? Checkout opens Stripe right after placing a card order, so a started card checkout (or
+ * coming back from Stripe) means card; otherwise they chose Venmo / PayPal, and the receipt page offers card only as a
+ * link (Patrick, 2026-10-19, W-1040). Checkout stores no separate choice.
+ */
+export function cardWasChosen(o: { cardStarted: boolean }, backFromStripe: boolean): boolean {
+  return o.cardStarted || backFromStripe;
+}
+
 /** The confirmation page's data, keyed by the unguessable token. No address, phone or email; the customer's first name only. */
 export async function loadConfirmation(sb: SupabaseClient, token: string): Promise<Confirmation | null> {
   if (!UUID_RE.test(token)) return null;
   const { data } = await sb
     .from('wreath_orders')
     .select(
-      'order_number, customer_name, status, payment_status, paid_method, needs_refund, source, fulfillment, outside_area_relative, round, sale_id, items_subtotal, delivery_fee, fee_covered, gift, total, ' +
+      'order_number, customer_name, status, payment_status, paid_method, needs_refund, stripe_checkout_count, source, fulfillment, outside_area_relative, round, placed_at, sale_id, items_subtotal, delivery_fee, fee_covered, gift, total, ' +
         'scout:credited_person_id(first_name, last_name), wreath_order_lines(quantity, donated, unit_price, wreath_items(name, size))'
     )
     .eq('public_token', token)
@@ -217,10 +235,12 @@ export async function loadConfirmation(sb: SupabaseClient, token: string): Promi
     payment_status: 'unpaid' | 'paid' | 'refunded';
     paid_method: string | null;
     needs_refund: string | null;
+    stripe_checkout_count: number | null;
     source: CancelOrderState['source'];
     fulfillment: Confirmation['fulfillment'];
     outside_area_relative: boolean;
     round: 1 | 2;
+    placed_at: string;
     sale_id: number;
     items_subtotal: number;
     delivery_fee: number;
@@ -248,6 +268,7 @@ export async function loadConfirmation(sb: SupabaseClient, token: string): Promi
     scoutFirstName: named?.firstName ?? null,
     outsideAreaRelative: o.outside_area_relative,
     round: o.round,
+    placedAt: o.placed_at,
     items: o.wreath_order_lines.map((l) => {
       const item = one(l.wreath_items);
       return {
@@ -263,8 +284,9 @@ export async function loadConfirmation(sb: SupabaseClient, token: string): Promi
     gift: Number(o.gift),
     total: Number(o.total),
     paidMethod: o.paid_method ?? null,
+    cardStarted: Number(o.stripe_checkout_count ?? 0) > 0,
     cardFeeOption: sale
-      ? coverFeeFor({ feePercent: sale.feePercent, feeFixed: sale.feeFixed }, fromCents(toCents(Number(o.items_subtotal)) + toCents(Number(o.gift)) + toCents(Number(o.delivery_fee))))
+      ? coverFeeFor({ feePercent: sale.feePercent, feeFixed: sale.feeFixed }, fromCents(toCents(Number(o.items_subtotal)) + toCents(Number(o.delivery_fee))))
       : 0,
     distribution: { date: sale?.distributionDate ?? null, window: sale?.distributionWindow ?? '', place: sale?.distributionPlace ?? '' },
     changesBy: (o.round === 1 ? sale?.round1Cutoff : sale?.round2Cutoff) ?? '',

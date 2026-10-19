@@ -117,6 +117,7 @@ export function StorePage({ data, entry, goal }: { data: StorePageData; entry?: 
           head={head}
           linkFellBack={linkFellBack}
           entry={entry}
+          donationShare={state.sale.donationShare}
         />
       </PageShell>
     </>

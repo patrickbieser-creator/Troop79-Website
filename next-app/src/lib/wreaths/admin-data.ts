@@ -22,6 +22,8 @@ export interface AdminSale {
   feePercent: number;
   feeFixed: number;
   scoutShare: number;
+  /** The credited scout's share of an order's cash donation, after its part of the card fee (W-3). */
+  donationShare: number;
   /** Up to five addresses copied on every new order's confirmation (Settings › Order copies). */
   orderCc: string[];
 }
@@ -143,6 +145,7 @@ export async function loadAdminSale(sb: SupabaseClient): Promise<AdminSale | nul
     feePercent: Number(r.fee_percent),
     feeFixed: Number(r.fee_fixed),
     scoutShare: Number(r.scout_share),
+    donationShare: r.donation_scout_share == null ? 0.15 : Number(r.donation_scout_share),
     orderCc: Array.isArray(r.order_cc) ? (r.order_cc as string[]) : []
   };
 }

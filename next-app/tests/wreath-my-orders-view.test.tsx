@@ -17,7 +17,8 @@ const sale = {
   distributionDate: '2026-11-21',
   distributionWindow: '2:30 to 4:30 PM',
   distributionPlace: 'Northwoods lot',
-  scoutShare: 0.3
+  scoutShare: 0.3,
+  donationShare: 0.15
 } as PublicSale;
 
 function order(id: number, over: Partial<AdminOrder> = {}): AdminOrder {

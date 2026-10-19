@@ -23,7 +23,7 @@ const sale: AdminSale = {
   deliveryFreeAt: 50,
   feePercent: 1.99,
   feeFixed: 0.49,
-  scoutShare: 0.3,
+  scoutShare: 0.3, donationShare: 0.15,
   orderCc: ['treasurer@example.test']
 };
 

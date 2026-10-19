@@ -11,7 +11,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { loadAdminOrders, type AdminOrder } from './admin-data';
 import { loadCurrentSale, loadStoreItems, type PublicSale, type StoreItem } from './public';
-import { orderProfit, paymentDifferenceText, scoutEarnings, toCents, fromCents } from './rules';
+import { paymentDifferenceText, sellerEarnings, toCents, fromCents, type ScoutShares } from './rules';
 import { goalProgress, lockReason, type GoalProgress, type LockSale } from './scout-entry';
 
 export interface MyOrderContact {
@@ -32,6 +32,8 @@ export interface MyOrder {
   deliveringPersonId: number | null;
   customerName: string;
   itemsSubtotal: number;
+  /** The order's cash donation (W-3); 0 = none. */
+  gift: number;
   total: number;
   lines: { label: string; quantity: number; donated: boolean; amount: number }[];
   /** The wreaths the customer actually receives: donated lines are not delivered. */
@@ -120,6 +122,7 @@ export function toMyOrder(o: AdminOrder, personId: number, lockCtx?: LockContext
     deliveringPersonId: o.deliveringPersonId,
     customerName: o.customerName,
     itemsSubtotal: o.itemsSubtotal,
+    gift: o.gift,
     total: o.total,
     lines: o.lines.map((l) => ({ label: l.label, quantity: l.quantity, donated: l.donated, amount: l.amount })),
     deliverLines: o.lines.filter((l) => !l.donated).map((l) => ({ label: l.label, quantity: l.quantity })),
@@ -158,14 +161,15 @@ export function buildSellerView(
   personId: number,
   name: string,
   orders: AdminOrder[],
-  scoutShare: number,
+  /** The profit share, or both shares (W-3: plus the share of cash donations). A bare number counts no donation share. */
+  scoutShare: number | ScoutShares,
   extra: { slug?: string | null; goal?: number | null; deliveryMessage?: string | null; lock?: LockContext } = {}
 ): SellerView {
   const credited = orders.filter((o) => o.creditedPersonId === personId);
   const counted = credited.filter(isCounted);
   const paidOrders = counted.filter((o) => o.paymentStatus === 'paid');
   const unpaidOrders = counted.filter((o) => o.paymentStatus !== 'paid');
-  const profitOf = (xs: AdminOrder[]) => orderProfit(xs.flatMap((o) => o.lines));
+  const shares: ScoutShares = typeof scoutShare === 'number' ? { profit: scoutShare, donation: 0 } : scoutShare;
   const scoutHeld = unpaidOrders.filter((o) => o.source === 'paper');
 
   const deliveries = orders
@@ -180,8 +184,8 @@ export function buildSellerView(
       // What actually came in: an order accepted a little short counts what arrived (as the admin dashboard does).
       paid: sumDollars(paidOrders.map((o) => o.paidAmount ?? o.total)),
       owed: sumDollars(unpaidOrders.map((o) => o.total)),
-      earnings: scoutEarnings(profitOf(counted), scoutShare),
-      earningsOnPaid: scoutEarnings(profitOf(paidOrders), scoutShare),
+      earnings: sellerEarnings(counted, shares),
+      earningsOnPaid: sellerEarnings(paidOrders, shares),
       toCollect: sumDollars(scoutHeld.filter((o) => !o.collectedByScout).map((o) => o.total)),
       toTurnIn: sumDollars(scoutHeld.filter((o) => o.collectedByScout).map((o) => o.total)),
       hasScoutEntered: counted.some((o) => o.source === 'paper')
@@ -232,7 +236,7 @@ export async function loadMyWreathOrders(sb: SupabaseClient, personIds: number[]
     sale,
     items: await loadStoreItems(sb, sale.id),
     sellers: rows
-      .map((r) => buildSellerView(r.person_id, nameOf(r), orders, sale.scoutShare, { slug: r.active ? r.slug : null, goal: r.goal, deliveryMessage: r.delivery_message, lock }))
+      .map((r) => buildSellerView(r.person_id, nameOf(r), orders, { profit: sale.scoutShare, donation: sale.donationShare }, { slug: r.active ? r.slug : null, goal: r.goal, deliveryMessage: r.delivery_message, lock }))
       .sort((a, b) => a.name.localeCompare(b.name))
   };
 }

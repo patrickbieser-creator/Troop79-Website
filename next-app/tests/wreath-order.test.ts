@@ -156,10 +156,10 @@ describe('pricing is the server’s', () => {
     const b = await orderRow(on.token);
     expect(Number(a.fee_covered)).toBe(0);
     expect(Number(a.total)).toBe(36);
-    // 1.99% of $36.00 = 0.72 (rounded), plus $0.49
-    // Grossed up so the troop nets the whole $36 (2026-10-16): 1.99% of $37.24 ($0.74) + $0.49 = $1.23 → $36.01.
-    expect(Number(b.fee_covered)).toBe(1.24);
-    expect(Number(b.total)).toBe(37.24);
+    // W-3 (2026-10-19): no fee on the donation, so the cover is on the $26 wreath only — grossed up so the troop nets
+    // it: ceil(($26.00 + $0.49) / 0.9801) = $27.03, a $1.03 cover; the $10 donation is added after.
+    expect(Number(b.fee_covered)).toBe(1.03);
+    expect(Number(b.total)).toBe(37.03);
     expect(Number(b.gift)).toBe(10);
   });
 

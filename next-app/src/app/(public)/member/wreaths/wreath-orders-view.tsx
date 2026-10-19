@@ -21,7 +21,10 @@ import { ScoutSettings } from './scout-settings';
 import styles from './wreaths.module.css';
 
 function itemsText(o: MyOrder): string {
-  return o.lines.map((l) => `${l.quantity} × ${l.label}${l.donated ? ' (donated to veterans)' : ''}`).join(', ');
+  const parts = o.lines.map((l) => `${l.quantity} × ${l.label}${l.donated ? ' (donated to veterans)' : ''}`);
+  // A cash donation on the order (W-3) is its own line.
+  if (o.gift > 0) parts.push(`${fmtMoney2(o.gift)} donation`);
+  return parts.join(', ');
 }
 
 function fulfillmentText(o: MyOrder, scoutName: string): string {
@@ -33,7 +36,7 @@ function fulfillmentText(o: MyOrder, scoutName: string): string {
     case 'pickup':
       return 'Picks up';
     default:
-      return 'Donated to veterans';
+      return o.lines.length === 0 ? 'Donation, nothing to deliver' : 'Donated to veterans';
   }
 }
 
@@ -49,7 +52,7 @@ function PaidBadge({ o }: { o: MyOrder }) {
   );
 }
 
-function Totals({ seller, share }: { seller: SellerView; share: number }) {
+function Totals({ seller, share, donationShare }: { seller: SellerView; share: number; donationShare: number }) {
   const s = seller.summary;
   const stats: [string, string][] = [
     ['Orders', String(s.orders)],
@@ -77,7 +80,8 @@ function Totals({ seller, share }: { seller: SellerView; share: number }) {
         ))}
       </dl>
       <p className={styles.fine}>
-        {seller.name.split(' ')[0]} earns {Math.round(share * 1000) / 10}% of the profit on every wreath sold. {fmtMoney2(s.earningsOnPaid)} of the{' '}
+        {seller.name.split(' ')[0]} earns {Math.round(share * 1000) / 10}% of the profit on every wreath sold
+        {donationShare > 0 ? `, and ${Math.round(donationShare * 1000) / 10}% of every donation after card fees` : ''}. {fmtMoney2(s.earningsOnPaid)} of the{' '}
         {fmtMoney2(s.earnings)} is on orders that are already paid. It goes into the scout account when the sale closes.
       </p>
     </>
@@ -202,7 +206,7 @@ export function MyWreathOrdersView({ data, canEdit = false }: { data: MyWreathOr
             ) : (
               seller.deliveryMessage && <p className={styles.fine}>Delivery message: {seller.deliveryMessage}</p>
             )}
-            <Totals seller={seller} share={sale.scoutShare} />
+            <Totals seller={seller} share={sale.scoutShare} donationShare={sale.donationShare} />
             <h3 className={styles.subHead}>Orders</h3>
             <Orders seller={seller} items={data.items} canEdit={canEdit && sale.status === 'open'} />
             {canEdit && sale.status === 'open' && seller.slug && (

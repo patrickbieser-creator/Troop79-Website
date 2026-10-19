@@ -45,7 +45,7 @@ describe('checkoutLineItems', () => {
   it('Customer_SeesDeliveryGiftAndCardFeeAsTheirOwnLines', () => {
     expect(checkoutLineItems(order).slice(2).map((i) => [i.name, i.unitAmount])).toEqual([
       ['Delivery', 500],
-      ['Gift to Troop 79', 1000],
+      ['Donation to Troop 79', 1000],
       ['Card processing fee', 244]
     ]);
   });
@@ -76,9 +76,10 @@ describe('checkoutIdempotencyKey', () => {
 });
 
 describe('withCardFeeCover', () => {
-  it('Customer_CoveringTheFee_AddsItOnItemsGiftAndDelivery', () => {
-    // Grossed up: ceil(($67.00 + $0.30) / 0.971) = $69.31, and 2.9% of $69.31 ($2.01) + $0.30 leaves exactly $67.00.
-    expect(withCardFeeCover(order, rules, true)).toEqual({ feeCovered: 2.31, total: 69.31 });
+  // W-3 (2026-10-19): the customer is not charged a fee on the donation; the cover is on items + delivery only.
+  it('Customer_CoveringTheFee_AddsItOnItemsAndDelivery_NotTheDonation', () => {
+    // Grossed up: ceil(($57.00 + $0.30) / 0.971) = $59.02, and 2.9% of $59.02 ($1.71) + $0.30 leaves exactly $57.00.
+    expect(withCardFeeCover(order, rules, true)).toEqual({ feeCovered: 2.02, total: 69.02 });
   });
 
   it('Customer_NotCoveringTheFee_DropsIt', () => {

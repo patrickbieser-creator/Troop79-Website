@@ -2,7 +2,7 @@
 
 /**
  * Wreath sale › Settings: status, the two cutoffs, distribution day, the delivery area and fee, the processing-fee
- * formula, the scouts' share and who gets a copy of each order. One form, numbered sections under ONE sticky bar (Save changes / Saved + Discard
+ * formula, the scouts' shares (of profit, and of cash donations: W-3) and who gets a copy of each order. One form, numbered sections under ONE sticky bar (Save changes / Saved + Discard
  * changes). Save is dirty-gated; a dirty but incomplete form keeps Save enabled and marks every bad field in place with
  * its reason (the blocked-save standard). Cutoffs are dates; each is the END of that day, Central.
  */
@@ -33,6 +33,7 @@ interface Draft {
   feePercent: string;
   feeFixed: string;
   scoutSharePercent: string;
+  donationSharePercent: string;
   /** Always five slots; blanks are dropped on save. */
   orderCc: string[];
 }
@@ -51,6 +52,7 @@ function toDraft(s: AdminSale): Draft {
     feePercent: String(s.feePercent),
     feeFixed: String(s.feeFixed),
     scoutSharePercent: String(Math.round(s.scoutShare * 1000) / 10),
+    donationSharePercent: String(Math.round(s.donationShare * 1000) / 10),
     orderCc: Array.from({ length: MAX_LEADER_RECIPIENTS }, (_, i) => s.orderCc[i] ?? '')
   };
 }
@@ -72,6 +74,7 @@ function problemsOf(d: Draft): Record<string, string> {
   range('feePercent', 0, 10, 'The processing fee percent is 0 to 10.');
   range('feeFixed', 0, 5, 'The fixed processing fee is $0 to $5.');
   range('scoutSharePercent', 0, 100, 'The scout share is 0 to 100 percent.');
+  range('donationSharePercent', 0, 100, 'The scouts’ share of donations is 0 to 100 percent.');
   recipientErrors(d.orderCc).forEach((e, i) => {
     if (e) p[`orderCc${i}`] = `Order copy ${i + 1}: ${e}`;
   });
@@ -115,6 +118,7 @@ export function SettingsForm({ sale }: { sale: AdminSale }) {
         feePercent: num(draft.feePercent),
         feeFixed: num(draft.feeFixed),
         scoutSharePercent: num(draft.scoutSharePercent),
+        donationSharePercent: num(draft.donationSharePercent),
         orderCc: draft.orderCc.filter((a) => a.trim())
       });
       if (res.ok) {
@@ -216,7 +220,11 @@ export function SettingsForm({ sale }: { sale: AdminSale }) {
               <input id="w-ss" type="number" step="0.1" min={0} max={100} aria-invalid={problemFor('scoutSharePercent') ? true : undefined} value={draft.scoutSharePercent} onChange={(e) => set('scoutSharePercent', e.target.value)} />
               {note('scoutSharePercent')}
             </div>
-            <div className={styles.field} />
+            <div className={`${styles.field} ${bad('donationSharePercent') ?? ''}`}>
+              <label htmlFor="w-ds">Scouts’ share of cash donations (%)</label>
+              <input id="w-ds" type="number" step="0.1" min={0} max={100} aria-describedby="w-ds-hint" aria-invalid={problemFor('donationSharePercent') ? true : undefined} value={draft.donationSharePercent} onChange={(e) => set('donationSharePercent', e.target.value)} />
+              {note('donationSharePercent')}
+            </div>
             <div className={`${styles.field} ${bad('feePercent') ?? ''}`}>
               <label htmlFor="w-fp">Processing fee (%)</label>
               <input id="w-fp" type="number" step="0.01" min={0} max={10} aria-invalid={problemFor('feePercent') ? true : undefined} value={draft.feePercent} onChange={(e) => set('feePercent', e.target.value)} />
@@ -228,7 +236,10 @@ export function SettingsForm({ sale }: { sale: AdminSale }) {
               {note('feeFixed')}
             </div>
           </div>
-          <p className={styles.hint}>The processing fee is only used when PayPal Checkout is live. Until then orders are paid to the treasurer by Venmo or PayPal.</p>
+          <p className={styles.hint} id="w-ds-hint">
+            On an order credited to a scout, the scout earns this share of its donation, after the donation’s part of the card fee, on top of the share of profit. No scout credit: it all goes to the troop.
+          </p>
+          <p className={styles.hint}>The processing fee is what “cover the card fee” adds at checkout, on the wreaths and delivery only; no fee is added to a donation.</p>
         </FormSection>
 
         <FormSection num={6} title="Order copies">

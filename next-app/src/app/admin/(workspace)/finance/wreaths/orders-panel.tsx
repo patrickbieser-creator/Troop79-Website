@@ -14,7 +14,7 @@ import { Badge } from '../../_components/badge';
 import { DiscardButton, SaveButton, useDraftSnapshot, useSavedSnapshot } from '../../_components/save-state';
 import { SearchField, useTableSearch } from '../../_components/search-field';
 import { fmtDateTime } from '@/lib/format-date';
-import { FULFILLMENT_LABEL, PAID_METHODS, SOURCE_LABEL, acceptedShort, fmtMoney2, fromCents, paidPillText, toCents, type PaidMethod, type SaleRules } from '@/lib/wreaths/rules';
+import { DONATION_LABEL, FULFILLMENT_LABEL, PAID_METHODS, SOURCE_LABEL, acceptedShort, fmtMoney2, fromCents, paidPillText, toCents, type PaidMethod, type SaleRules } from '@/lib/wreaths/rules';
 import { ORDER_NOTE_MAX, noteStamp } from '@/lib/wreaths/order-note';
 import type { AdminItem, AdminOrder, AuditEntry } from '@/lib/wreaths/admin-data';
 import { cancelOrder, markPaid, refundCardOrder, setOrderNote, setPaymentNote } from './actions';
@@ -149,6 +149,7 @@ export function OrdersPanel({ orders, history, sellers, items, rules, initialPay
                         {FULFILLMENT[o.fulfillment]}
                         {o.outsideAreaRelative && <Badge variant="info">Relative</Badge>}
                         {o.lines.some((l) => l.donated) && <Badge variant="info">Donated</Badge>}
+                        {o.gift > 0 && <Badge variant="info">Donation</Badge>}
                       </span>
                     </td>
                     <td className={styles.numCell}>{fmtMoney2(o.total)}</td>
@@ -246,7 +247,7 @@ function OrderDetail({ order: o, history, sellers, onEdit, onCancel }: { order: 
           )}
           {o.gift > 0 && (
             <li>
-              <span>Gift to Troop 79</span>
+              <span>{DONATION_LABEL}</span>
               <span>{fmtMoney2(o.gift)}</span>
             </li>
           )}
