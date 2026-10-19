@@ -361,3 +361,63 @@
 .colScout { width: 18%; }
 .colRank { width: 12%; }
 .colCampout { width: 28%; }
+
+/* ── This Sunday (Phase 1, Plans/Meeting-Requests-And-Teaching-Offers.md) ── */
+.boardHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--admin-space-4);
+  margin-bottom: var(--admin-space-4);
+}
+.boardWhen {
+  font-size: var(--admin-text-lg);
+  font-weight: 700;
+  color: var(--admin-navy);
+}
+.liveDot {
+  font-size: var(--admin-text-sm);
+  color: var(--admin-forest);
+  font-weight: 600;
+}
+.boardCols {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: var(--admin-space-6);
+}
+@media (max-width: 900px) {
+  .boardCols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.boardCols .sectionTitle {
+  margin-top: var(--admin-space-4);
+}
+.boardCols .sectionTitle:first-child {
+  margin-top: 0;
+}
+.boardEmpty {
+  font-size: var(--admin-text-sm);
+  color: var(--admin-gray-500);
+  margin: var(--admin-space-2) 0;
+}
+a.chip {
+  text-decoration: none;
+}
+a.chip:hover {
+  border-color: var(--admin-navy);
+}
+.obForm {
+  display: flex;
+  gap: var(--admin-space-2);
+  align-items: center;
+}
+.obSelect {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--admin-gray-300);
+  border-radius: var(--admin-radius-sm);
+  font-size: var(--admin-text-base);
+  background: var(--admin-field-bg);
+}

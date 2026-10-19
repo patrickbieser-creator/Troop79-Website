@@ -7,6 +7,7 @@ import type { MeetingPlanPayload } from '@/lib/meeting-plan-types';
 import { retargetPlan } from '@/lib/meeting-plan-publish';
 import { buildMeetingPlan } from './engine';
 import { loadEngineInput } from './load-input';
+import { loadBoardStamp } from '@/lib/meeting-board';
 
 interface GenerateResult {
   ok: boolean;
@@ -113,4 +114,22 @@ export async function unpublishPlan(formData: FormData): Promise<PublishResult> 
   revalidatePath('/meeting-plan');
   revalidatePath('/admin/advancement/meeting-plan');
   return { ok: true };
+}
+
+/**
+ * This Sunday tab (Phase 1 of Plans/Meeting-Requests-And-Teaching-Offers.md): the board's version stamp, polled every
+ * ~10 s; the tab refreshes only when it changes.
+ */
+export async function boardStampAction(entryId: number): Promise<{ ok: true; stamp: string } | { ok: false; error: string }> {
+  try {
+    await requireCapability('meeting_plan.use');
+  } catch {
+    return { ok: false, error: 'Not authenticated' };
+  }
+  if (!Number.isInteger(entryId)) return { ok: false, error: 'Malformed request' };
+  try {
+    return { ok: true, stamp: await loadBoardStamp(createAdminClient(), entryId) };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Stamp failed' };
+  }
 }

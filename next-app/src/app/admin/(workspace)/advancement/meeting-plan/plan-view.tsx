@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, type ReactNode } from 'react';
 import {
   TIER_LABEL,
   TIER_NOTE,
@@ -28,14 +28,19 @@ interface Props {
   published: PublishedPlanRow[];
   /** Next Sunday — the troop's meeting day. */
   defaultDate: string;
+  /** The live "This Sunday" board (server-rendered), the first tab. */
+  thisSunday: ReactNode;
 }
+
+type PlanTab = 'board' | 'sessions' | 'scouts' | 'roster';
 
 const TIERS: TierId[] = ['new', 'experienced', 'older'];
 
-export function PlanView({ published, defaultDate }: Props) {
+export function PlanView({ published, defaultDate, thisSunday }: Props) {
   const [meetingDate, setMeetingDate] = useState(defaultDate);
   const [payload, setPayload] = useState<MeetingPlanPayload | null>(null);
-  const [tab, setTab] = useState<'sessions' | 'scouts' | 'roster'>('sessions');
+  // This Sunday (the live board) is the first tab; the three plan tabs below it are the generator, as before.
+  const [tab, setTab] = useState<PlanTab>('board');
   const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -102,6 +107,26 @@ export function PlanView({ published, defaultDate }: Props) {
 
   return (
     <>
+      {/* Shared pill TabStrip — Patrick's Phase B call (2026-08-21): the underline/navy tab one-off folds into the one
+          tab pattern. This Sunday leads (Phase 1 of Plans/Meeting-Requests-And-Teaching-Offers.md: consolidate, not a
+          4th screen). */}
+      <div className={styles.tabsRow}>
+        <TabStrip
+          ariaLabel="Plan view"
+          activeKey={tab}
+          items={[
+            { key: 'board', label: 'This Sunday', onSelect: () => setTab('board') },
+            { key: 'sessions', label: 'Group Sessions', onSelect: () => setTab('sessions') },
+            { key: 'scouts', label: 'By Scout', onSelect: () => setTab('scouts') },
+            { key: 'roster', label: 'Teaching Roster', onSelect: () => setTab('roster') }
+          ]}
+        />
+      </div>
+
+      {tab === 'board' ? (
+        thisSunday
+      ) : (
+      <>
       <div className={styles.generateBar}>
         <label className={styles.field}>
           Meeting date
@@ -147,20 +172,6 @@ export function PlanView({ published, defaultDate }: Props) {
             <Stat n={payload.stats.adultsMatched} label="Adult teachers matched" />
             <Stat n={payload.stats.scoutInstructors} label="Scout instructors" />
             <Stat n={payload.stats.outingItems} label="Items waiting on a campout" />
-          </div>
-
-          {/* Shared pill TabStrip — Patrick's Phase B call (2026-08-21): the
-              underline/navy tab one-off folds into the one tab pattern. */}
-          <div className={styles.tabsRow}>
-            <TabStrip
-              ariaLabel="Plan view"
-              activeKey={tab}
-              items={[
-                { key: 'sessions', label: 'Group Sessions', onSelect: () => setTab('sessions') },
-                { key: 'scouts', label: 'By Scout', onSelect: () => setTab('scouts') },
-                { key: 'roster', label: 'Teaching Roster', onSelect: () => setTab('roster') }
-              ]}
-            />
           </div>
 
           {tab === 'sessions' && <SessionsTab payload={payload} />}
@@ -210,6 +221,8 @@ export function PlanView({ published, defaultDate }: Props) {
           </table>
         )}
       </div>
+      </>
+      )}
     </>
   );
 }

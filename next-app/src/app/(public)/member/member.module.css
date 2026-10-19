@@ -52,6 +52,13 @@
   color: var(--text-meta);
 }
 
+.cardLiveLine {
+  margin: 0 0 0.35rem;
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: var(--forest);
+}
+
 .cardBody {
   margin: 0;
   font-size: var(--fs-md);

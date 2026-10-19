@@ -20,6 +20,7 @@
 
 import { buildReqTree, isGroupSatisfied, type ReqNode } from '@/lib/mb-helpers';
 import { canOfferToTeach } from '@/lib/can-offer-to-teach';
+import { NOT_PLANNABLE, SM_CONFERENCE_CODES, SM_CONFERENCE_THRESHOLD, rankLeafCompletion, rankNodeSatisfied } from '@/lib/rank-calculus';
 import type { ReqVenue, Skill } from '@/lib/supabase/types';
 import {
   type MeetingPlanPayload,
@@ -98,28 +99,6 @@ export interface EngineInput {
   counselorSources?: { code: string; name: string }[];
 }
 
-// ── non-plannable leaves ───────────────────────────────────────────────────
-// Tenure, Scout Spirit, POR, MB-count rollups, and the Eagle project can't be
-// "worked on" in a planned meeting block. Scoutmaster conferences stay — they
-// genuinely happen at meetings. Keyed `${rankId}-${code}`.
-
-const NOT_PLANNABLE = new Set([
-  'scout-1b',
-  'tenderfoot-9',
-  'second-class-10',
-  'first-class-11',
-  'star-1', 'star-2', 'star-3', 'star-5',
-  'life-1', 'life-2', 'life-3', 'life-5', 'life-6',
-  'eagle-1', 'eagle-2', 'eagle-3', 'eagle-4', 'eagle-5'
-]);
-
-// Scoutmaster conferences cap a rank — suggest them only when the scout has
-// completed ≥95% of that rank's requirement leaves (user rule, 2026-07-11).
-// Suggesting one earlier wastes a suggestion slot on something that can't
-// happen yet.
-const SM_CONFERENCE_CODES = new Set(['tenderfoot-10', 'second-class-11', 'first-class-12']);
-const SM_CONFERENCE_THRESHOLD = 0.95;
-
 function tierForRank(rankId: string | null): TierId {
   if (rankId === 'scout' || rankId === 'tenderfoot') return 'new';
   if (rankId === 'second-class' || rankId === 'first-class') return 'experienced';
@@ -138,40 +117,11 @@ const RANK_ABBR: Record<string, string> = {
 };
 
 // ── satisfaction walk (bor-requirements pattern) ───────────────────────────
+// The rank half (rankNodeSatisfied, NOT_PLANNABLE, the 95% SM-conference gate) lives in lib/rank-calculus, shared
+// with the meeting board's pick list (one completion calculus).
 
 type RankNode = ReqNode<EngineRankReqRow>;
 type MbNode = ReqNode<EngineMbReqRow>;
-
-function rankNodeSatisfied(node: RankNode, rankId: string, codes: Set<string>): boolean {
-  if (node.children.length === 0) return codes.has(`${rankId}-${node.code}`);
-  const sat = node.children.filter((c) => rankNodeSatisfied(c, rankId, codes)).length;
-  return isGroupSatisfied(node.complete_rule, node.complete_n, sat, node.children.length);
-}
-
-/** Fraction of a rank's requirement leaves on the ledger, excluding one
- *  top-level code (the SM conference being gated). */
-function rankLeafCompletion(
-  tree: RankNode[],
-  rankId: string,
-  codes: Set<string>,
-  excludeTopCode: string
-): number {
-  let total = 0;
-  let done = 0;
-  const walk = (n: RankNode) => {
-    if (n.children.length === 0) {
-      total++;
-      if (codes.has(`${rankId}-${n.code}`)) done++;
-      return;
-    }
-    n.children.forEach(walk);
-  };
-  for (const top of tree) {
-    if (top.code === excludeTopCode) continue;
-    walk(top);
-  }
-  return total === 0 ? 0 : done / total;
-}
 
 function mbNodeSatisfied(node: MbNode, mbId: string, codes: Set<string>): boolean {
   if (node.children.length === 0) return codes.has(`${mbId}-${node.code}`);

@@ -30,6 +30,10 @@ import { MemberProxyBanner } from './member-proxy-banner';
 import { resolveMemberViewer } from '@/lib/member-viewer';
 import { loadTeachingKind } from '@/lib/teaching-skills';
 import { centralToday } from '@/lib/dates';
+import { loadAdvancementCatalog } from '@/lib/advancement-catalog';
+import { fmtDateFull } from '@/lib/format-date';
+import { loadBoardScouts, loadEffectivePicks, loadHouseholdScoutPersonIds, loadIntents, loadNextMeeting } from '@/lib/meeting-board';
+import { firstNameOf, scoutLine } from '@/lib/meeting-board-shared';
 import {
   passkeyRegisterOptionsAction,
   passkeyRegisterVerifyAction,
@@ -52,6 +56,8 @@ interface Card {
   title: string;
   body: string;
   href?: string;
+  /** Live state shown above the body ("Coming · 3 picks"), one line each. */
+  live?: string[];
   /** Adults only — /profile is Tier 2 and refuses a scout session. */
   adultOnly?: boolean;
 }
@@ -176,7 +182,9 @@ export default async function MemberPage({
   // A scout sign-in never counts as an adult here, even if their scout row is no longer active.
   const teachingKind = !proxy && loadedKind === 'adult' && !isAdult ? 'none' : loadedKind;
   const after = CARDS.findIndex((c) => c.href === '/member/reimbursements') + 1;
-  const cards = teachingKind === 'none' ? CARDS : [...CARDS.slice(0, after), TEACHING_CARD, ...CARDS.slice(after)];
+  const meetingCard = await loadMeetingCard(proxy ? proxy.personId : session!.personId, !proxy && !isAdult, proxy != null);
+  const withTeaching = teachingKind === 'none' ? CARDS : [...CARDS.slice(0, after), TEACHING_CARD, ...CARDS.slice(after)];
+  const cards = meetingCard ? [meetingCard, ...withTeaching] : withTeaching;
 
   return (
     <>
@@ -222,6 +230,11 @@ export default async function MemberPage({
                 className={`${surface.card} ${styles.card} ${styles.cardLive}`}
               >
                 <p className={styles.cardTitle}>{card.title}</p>
+                {card.live?.map((line) => (
+                  <p key={line} className={styles.cardLiveLine}>
+                    {line}
+                  </p>
+                ))}
                 <p className={styles.cardBody}>{card.body}</p>
               </Link>
             );
@@ -262,4 +275,34 @@ export default async function MemberPage({
       </PageShell>
     </>
   );
+}
+
+/**
+ * The "Sunday's meeting" card (Phase 1 of Plans/Meeting-Requests-And-Teaching-Offers.md): live state per scout
+ * ("Coming · 3 picks"), linking to /member/meeting. A scout sees their own line; an adult one line per scout in the
+ * household. An adult with no scouts gets no card until the Teaching half ships (Phase 2). Null = no card.
+ */
+async function loadMeetingCard(personId: number, viewerIsScout: boolean, proxying: boolean): Promise<Card | null> {
+  const sb = createAdminClient();
+  const meeting = await loadNextMeeting(sb);
+  if (!meeting) return null;
+  const ids = viewerIsScout ? [personId] : proxying ? [personId, ...(await loadHouseholdScoutPersonIds(sb, personId))] : await loadHouseholdScoutPersonIds(sb, personId);
+  const scouts = await loadBoardScouts(sb, ids);
+  if (!scouts.length) return null;
+  const day = fmtDateFull(meeting.date);
+  const title = `${day.split(',')[0]}’s meeting`;
+  if (meeting.mode === 'closed') {
+    return { title, body: `${meeting.title}, ${day}.`, href: '/member/meeting', live: ['No sign-ups this week'] };
+  }
+  const [picks, intents] = await Promise.all([
+    loadEffectivePicks(sb, meeting, scouts, await loadAdvancementCatalog()),
+    loadIntents(sb, meeting.entryId, scouts.map((s) => s.personId))
+  ]);
+  const line = (s: (typeof scouts)[number]) => scoutLine(meeting.mode, intents.get(s.personId) ?? null, picks.get(s.personId)?.picks ?? []);
+  return {
+    title,
+    body: `${day}. Say if you’re coming and pick what to work on.`,
+    href: '/member/meeting',
+    live: viewerIsScout ? [line(scouts[0])] : scouts.map((s) => `${firstNameOf(s.name)}: ${line(s)}`)
+  };
 }

@@ -8,6 +8,9 @@
  * Nothing is generated automatically — themed MB nights and campout-prep
  * meetings simply don't get a plan. Publishing stores a snapshot in
  * `meeting_plans` that the public /meeting-plan page renders.
+ *
+ * The first tab, This Sunday, is the live meeting board (Phase 1 of Plans/Meeting-Requests-And-Teaching-Offers.md):
+ * who's coming and what scouts asked for, by name.
  */
 
 import { createAdminClient } from '@/lib/supabase/server';
@@ -15,6 +18,7 @@ import { requireCapability } from '@/lib/require-capability';
 import { nextSunday } from '@/lib/dates';
 import { PlanView, type PublishedPlanRow } from './plan-view';
 import { PageTitle } from '../../_components/page-title';
+import { ThisSundayTab } from './this-sunday';
 
 export const metadata = {
   title: 'Meeting Plan — Troop 79'
@@ -43,14 +47,12 @@ export default async function MeetingPlanPage() {
     <>
       <PageTitle back={null}
         title="Meeting Plan"
-        sub="Suggested advancement for a troop meeting, generated on demand from the ledger:
-          up to three meeting-doable requirements per scout, grouped into sessions of eight
-          or fewer with a qualified teacher — adult leader or authorized scout instructor.
-          Campout-only requirements stay visible in their own column. Review the result,
-          then publish it to the public site."
+        sub="This Sunday shows who's coming to the next meeting and what scouts asked for, live. The other tabs
+          generate suggested advancement from the ledger: up to three meeting-doable requirements per scout, in
+          sessions of eight or fewer with a qualified teacher, to review and publish to the public site."
       />
 
-      <PlanView published={published} defaultDate={nextSunday()} />
+      <PlanView published={published} defaultDate={nextSunday()} thisSunday={<ThisSundayTab />} />
     </>
   );
 }
