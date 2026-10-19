@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
 import { canonicalSlug, SLUG_RE } from '@/lib/wreaths/public';
 import { loadStorePage } from '@/lib/wreaths/store-page';
-import { entryOffered, goalProgress, itemsSoldBy } from '@/lib/wreaths/scout-entry';
+import { enteringForName, entryOffered, goalProgress, itemsSoldBy } from '@/lib/wreaths/scout-entry';
 import { resolveScoutEntryViewer } from '@/lib/wreaths/scout-entry-viewer';
 import { placeScoutOrderAction } from '../actions';
 import { StorePage } from '../_components/store-page';
@@ -39,9 +39,11 @@ export default async function Page({ params, searchParams }: { params: Params; s
   const { scout, state } = data;
   // The scout's goal thermometer: only when a goal is set, counting live (non-cancelled) orders credited to the scout.
   const goal = scout && state.kind === 'open' ? goalProgress(scout.goal, await itemsSoldBy(supabase, state.sale.id, scout.personId), scout.firstName) : null;
-  // "Order for someone I know" is offered only to a signed-in scout or a parent in the scout's household; a signed-out
-  // visitor never reaches the viewer lookup past the cookie check, and the page renders exactly as before.
+  // "Order for someone I know" is offered only to a signed-in scout or a parent in the scout's household, or to a super
+  // user (finance.manage, W-4) typing in a scout's paper orders; the viewer's scope decides, in lib/wreaths. A signed-out
+  // visitor never reaches the viewer lookup past the cookie check, and the page renders exactly as before; `?enter=1`
+  // only opens a mode the viewer was already offered.
   const viewer = scout && state.kind === 'open' && !state.graceCutoff ? await resolveScoutEntryViewer(supabase) : null;
-  const entry = scout && entryOffered(viewer, scout.personId, state.kind === 'open' && !state.graceCutoff) ? { action: placeScoutOrderAction, initialOn: enter === '1' } : undefined;
+  const entry = scout && entryOffered(viewer, scout.personId, state.kind === 'open' && !state.graceCutoff) ? { action: placeScoutOrderAction, initialOn: enter === '1', enteringFor: enteringForName(viewer, scout) } : undefined;
   return <StorePage data={data} entry={entry} goal={goal} />;
 }

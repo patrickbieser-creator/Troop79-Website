@@ -257,7 +257,7 @@ export function StoreView({
   }
 
   return (
-    <EntryProvider value={entry && scout ? { on: entryOn, setOn: setEntryOn } : null}>
+    <EntryProvider value={entry && scout ? { on: entryOn, setOn: setEntryOn, enteringFor: entry.enteringFor ?? null } : null}>
       <div className={styles.storeGrid}>
         <div>
           {droppedFrom && (

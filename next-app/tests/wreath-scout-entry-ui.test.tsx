@@ -446,3 +446,37 @@ describe('Admin orders — card payments', () => {
     expect(screen.getByText(/Refunded \$52\.00 to the card/)).toBeTruthy();
   });
 });
+
+/* ── W-4: a super user on another family's scout's page ───────────────────── */
+
+describe('a super user entering for a scout', () => {
+  const open = async (enteringFor: string | null) => {
+    window.localStorage.setItem('wreath-cart-v1', JSON.stringify({ lines: { '11': 1 }, seller: null }));
+    const user = userEvent.setup();
+    render(<StorePage data={pageData(scoutLink({ name: 'Damian N.', firstName: 'Damian' }))} entry={{ action: placeAction, initialOn: false, enteringFor }} />);
+    return user;
+  };
+  it('ScoutPage_SaysEnteringForTheScout_WhenASuperUserTurnsTheSwitchOn', async () => {
+    const user = await open('Damian N.');
+    await user.click(screen.getByRole('switch'));
+    expect(screen.getByText('Entering for Damian N.')).toBeTruthy();
+  });
+  it('ScoutPage_HidesEnteringFor_WhileTheSwitchIsOff', async () => {
+    await open('Damian N.');
+    expect(screen.queryByText(/Entering for/)).toBeNull();
+  });
+  it('ScoutPage_HasNoEnteringForLine_ForTheScoutsOwnFamily', async () => {
+    const user = await open(null);
+    await user.click(screen.getByRole('switch'));
+    expect(screen.queryByText(/Entering for/)).toBeNull();
+  });
+  it('ScoutPage_SendsTheOrderForThePagesScout_WhenASuperUserEntersIt', async () => {
+    placeAction.mockClear();
+    const user = await open('Damian N.');
+    await user.click(screen.getByRole('switch'));
+    await user.type(screen.getByLabelText('Customer name'), 'Grandma Sue');
+    await user.click(screen.getByRole('button', { name: /Place order/ }));
+    await waitFor(() => expect(placeAction).toHaveBeenCalled());
+    expect(placeAction.mock.calls[0][0]).toMatchObject({ sellerSlug: 'oliver-p' });
+  });
+});

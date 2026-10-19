@@ -33,6 +33,15 @@ export function entryOffered(viewer: ScoutEntryViewer | null, sellerPersonId: nu
   return saleOpen && sellerPersonId != null && mayEnterFor(viewer, sellerPersonId);
 }
 
+/**
+ * The quiet "Entering for Damian N." label (W-4): the scout's name when a super user is on a scout's page outside their
+ * own family, else null. Never authority; the scope check above is.
+ */
+export function enteringForName(viewer: ScoutEntryViewer | null, scout: { personId: number; name: string } | null): string | null {
+  if (!viewer?.household || !scout || viewer.household.includes(scout.personId)) return null;
+  return mayEnterFor(viewer, scout.personId) ? scout.name : null;
+}
+
 /* ── when an order locks ──────────────────────────────────────────────────── */
 
 export interface LockOrder {
@@ -175,6 +184,17 @@ const linesText = (r: OrderRow['wreath_order_lines']) =>
 
 const actorOf = (v: ScoutEntryViewer) => ({ personId: v.personId, label: v.name });
 
+/** The viewer's own family: a super user's `household`, else the scope (W-4). Settings and notes stay family-only. */
+export const familyOf = (v: ScoutEntryViewer): number[] => v.household ?? v.scope;
+
+/** " for Damian N" when a super user acts on another family's scout's order (W-4), else "". */
+async function forScout(sb: SupabaseClient, v: ScoutEntryViewer, creditedPersonId: number | null): Promise<string> {
+  if (!v.household || creditedPersonId == null || v.household.includes(creditedPersonId)) return '';
+  const { data } = await sb.from('people').select('display_name').eq('id', creditedPersonId).maybeSingle();
+  const name = (data as { display_name: string } | null)?.display_name;
+  return name ? ` for ${name}` : '';
+}
+
 /**
  * Saves an edit to a scout-entered order: customer, note, items, gift, collected and the payment note. The whole order
  * is re-validated and re-priced here (item ids, quantities and amounts from the catalog, as the store does; a line
@@ -267,7 +287,7 @@ export async function editScoutOrder(raw: unknown, deps: EntryDeps): Promise<Ent
     action: 'update',
     entityType: 'wreath_order',
     entityId: order.id,
-    summary: `Edited scout-entered order ${order.order_number}`,
+    summary: `Edited scout-entered order ${order.order_number}${await forScout(sb, viewer, order.credited_person_id)}`,
     details: changes
   });
   return { ok: true };
@@ -299,7 +319,7 @@ export async function cancelScoutOrder(orderId: unknown, deps: EntryDeps): Promi
     action: 'cancel',
     entityType: 'wreath_order',
     entityId: order.id,
-    summary: `Cancelled scout-entered order ${order.order_number}`,
+    summary: `Cancelled scout-entered order ${order.order_number}${await forScout(sb, viewer, order.credited_person_id)}`,
     details: [{ field: 'Status', from: 'Placed', to: 'Cancelled' }]
   });
   return { ok: true };
@@ -312,7 +332,8 @@ export async function cancelScoutOrder(orderId: unknown, deps: EntryDeps): Promi
 export async function setScoutSettings(sellerPersonId: unknown, raw: { goal?: unknown; deliveryMessage?: unknown }, deps: EntryDeps): Promise<EntryResult> {
   const { supabase: sb, viewer } = deps;
   const pid = num(sellerPersonId);
-  if (!viewer || !Number.isInteger(pid) || !mayEnterFor(viewer, pid)) return FORBIDDEN;
+  // The family only, never a super user's widened scope (W-4): an admin changes goals in admin, not here.
+  if (!viewer || !Number.isInteger(pid) || !familyOf(viewer).includes(pid)) return FORBIDDEN;
   const goal = 'goal' in raw ? parseGoal(raw.goal) : null;
   if (goal && !goal.ok) return bad('goal', goal.error);
   const msg = 'deliveryMessage' in raw ? parseDeliveryMessage(raw.deliveryMessage) : null;

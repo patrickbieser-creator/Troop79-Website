@@ -7,6 +7,7 @@
  * Only scouts who are sellers in the current sale get a section; troop-store orders never appear. Customer address
  * and phone are shown only on the rows a scout delivers (lib/wreaths/my-orders.ts). A scout-entered order (and the
  * goal / delivery message form) can be edited here by the scout or a parent; the superuser proxy sees them read-only.
+ * A super user who typed in paper orders for another family's scout (finance.manage, W-4) also gets that scout here.
  */
 import Link from 'next/link';
 import { getIdentitySessionIfValid } from '@/lib/family-access';
@@ -14,7 +15,8 @@ import { isEpochCurrent } from '@/lib/identity-session';
 import { createAdminClient } from '@/lib/supabase/server';
 import { resolveFamilyScope } from '@/lib/household-scope';
 import { resolveMemberViewer, loadProxyFamily } from '@/lib/member-viewer';
-import { loadMyWreathOrders } from '@/lib/wreaths/my-orders';
+import { loadMyWreathOrders, scoutsEnteredBy } from '@/lib/wreaths/my-orders';
+import { resolveScoutEntryViewer } from '@/lib/wreaths/scout-entry-viewer';
 import { MemberProxyBanner } from '../member-proxy-banner';
 import { PageHeader } from '@/app/_components/page-header';
 import { PageShell } from '@/app/_components/page-shell';
@@ -68,9 +70,12 @@ export default async function MyWreathOrdersPage({ searchParams }: { searchParam
     return <SignInPrompt />;
   }
 
-  const scope = proxy
+  const family = proxy
     ? (await loadProxyFamily(proxy.personId)).personIds
     : await resolveFamilyScope(supabase, session!.personId, session!.subjectKind);
+  // The same session-derived super-user test the order actions use; never a flag from the request.
+  const superUser = !proxy && !!(await resolveScoutEntryViewer(supabase))?.household;
+  const scope = superUser ? [...new Set([...family, ...(await scoutsEnteredBy(supabase, session!.personId))])] : family;
   const data = await loadMyWreathOrders(supabase, scope);
 
   return (

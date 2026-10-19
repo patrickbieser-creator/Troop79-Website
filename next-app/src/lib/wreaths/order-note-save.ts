@@ -6,6 +6,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { recordAuditAs, type AuditActor } from '@/lib/audit';
+import { familyOf } from './scout-entry';
 import { parseOrderNote, type OrderNoteActor, type OrderNoteResult } from './order-note';
 
 const FORBIDDEN: OrderNoteResult = { ok: false, code: 'forbidden', error: 'You can change notes only on your own scout’s orders.' };
@@ -31,7 +32,7 @@ export async function setOrderNote(orderId: unknown, raw: unknown, deps: OrderNo
   const b = before as { order_number: string; status: string; credited_person_id: number | null; order_note: string | null } | null;
   if (actor.kind === 'family') {
     // Same answer whether the order is missing, someone else's or cancelled: nothing to learn by probing ids.
-    if (!b || b.status !== 'placed' || b.credited_person_id == null || !actor.viewer.scope.includes(b.credited_person_id)) return FORBIDDEN;
+    if (!b || b.status !== 'placed' || b.credited_person_id == null || !familyOf(actor.viewer).includes(b.credited_person_id)) return FORBIDDEN;
   } else if (!b) return { ok: false, code: 'invalid', error: 'That order no longer exists.' };
   if ((b.order_note ?? null) === parsed.note) return { ok: true };
 
@@ -42,7 +43,7 @@ export async function setOrderNote(orderId: unknown, raw: unknown, deps: OrderNo
     order_note_updated_at: parsed.note ? new Date(deps.now()).toISOString() : null
   };
   let q = sb.from('wreath_orders').update(patch).eq('id', id);
-  if (actor.kind === 'family') q = q.eq('status', 'placed').in('credited_person_id', actor.viewer.scope);
+  if (actor.kind === 'family') q = q.eq('status', 'placed').in('credited_person_id', familyOf(actor.viewer));
   const { data: written, error } = await q.select('id').maybeSingle();
   if (error) return { ok: false, code: 'invalid', error: 'Couldn’t save the note. Please try again.' };
   if (!written) return actor.kind === 'family' ? FORBIDDEN : { ok: false, code: 'invalid', error: 'That order no longer exists.' };

@@ -73,6 +73,12 @@ export interface ScoutEntryViewer {
   name: string;
   /** people.id of everyone this viewer acts for: themself plus children via parent_of / guardian_of. */
   scope: number[];
+  /**
+   * Set only for a super user (the session holds finance.manage; W-4, paper orders typed in for a scout): their own
+   * family scope. Their `scope` is then widened to every active wreath seller, so this is how a page tells "my
+   * scout" from "entering for someone else's scout". Absent = an ordinary family viewer, whose scope is the family.
+   */
+  household?: number[];
 }
 
 export type OrderField = 'cart' | 'name' | 'email' | 'phone' | 'street' | 'city' | 'zip' | 'method' | 'gift' | 'relative' | 'credit' | 'note' | 'paymentNote';

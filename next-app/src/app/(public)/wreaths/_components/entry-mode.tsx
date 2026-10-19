@@ -22,11 +22,14 @@ export interface EntryConfig {
   action: (raw: unknown) => Promise<PlaceOrderResult>;
   /** Open with the mode on (the Members page's "+ Order for someone I know" link). */
   initialOn: boolean;
+  /** A super user on another family's scout's page (W-4): that scout's name, for the quiet "Entering for …" line. */
+  enteringFor?: string | null;
 }
 
 interface EntryState {
   on: boolean;
   setOn: (v: boolean) => void;
+  enteringFor?: string | null;
 }
 const EntryContext = createContext<EntryState | null>(null);
 export const EntryProvider = EntryContext.Provider;
@@ -45,6 +48,7 @@ export function EntrySwitch() {
         </span>
         <span>Order for someone I know — I’ll collect the money</span>
       </button>
+      {entry.on && entry.enteringFor && <p className={styles.meta}>Entering for {entry.enteringFor}</p>}
     </div>
   );
 }

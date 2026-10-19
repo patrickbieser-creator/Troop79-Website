@@ -212,6 +212,17 @@ export interface MyWreathOrders {
 }
 
 /**
+ * The scouts a super user (W-4) typed paper orders in for, in the current sale (`saleId` pins one): added to their own
+ * family on My wreath orders so they can change or cancel those orders as a family would. Credited ids only.
+ */
+export async function scoutsEnteredBy(sb: SupabaseClient, personId: number, saleId?: number): Promise<number[]> {
+  const sale = await loadCurrentSale(sb, saleId);
+  if (!sale) return [];
+  const { data } = await sb.from('wreath_orders').select('credited_person_id').eq('sale_id', sale.id).eq('source', 'paper').eq('entered_by_person_id', personId);
+  return [...new Set(((data ?? []) as { credited_person_id: number | null }[]).map((r) => r.credited_person_id).filter((id): id is number => id != null))];
+}
+
+/**
  * The wreath orders of the scouts among `personIds` (a family's scope) in the current sale: one SellerView per
  * wreath seller in that scope (`saleId` pins a sale; the default is the most recent year). A family with no seller gets an empty list. Service-role client; the caller has
  * already resolved who the viewer's family is.

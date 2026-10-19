@@ -3,9 +3,10 @@ import { adminClient } from './helpers/admin-client';
 import { makeWreathFixture, NOW_R1, NOW_R2, NOW_AFTER, type WreathFixture } from './helpers/wreath-fixture';
 import { placeOrder, type PlaceOrderDeps, type ScoutEntryViewer } from '../src/lib/wreaths/place-order';
 import { subjectText } from '../src/lib/wreaths/emails';
-import { cancelScoutOrder, editScoutOrder, entryOffered, goalProgress, itemsSoldBy, lockReason, mayEnterFor, parseGoal, setScoutSettings } from '../src/lib/wreaths/scout-entry';
+import { cancelScoutOrder, editScoutOrder, enteringForName, entryOffered, goalProgress, itemsSoldBy, lockReason, mayEnterFor, parseGoal, setScoutSettings } from '../src/lib/wreaths/scout-entry';
 import { resolveFamilyScope } from '../src/lib/household-scope';
 import { buildSellerView } from '../src/lib/wreaths/my-orders';
+import { setOrderNote } from '../src/lib/wreaths/order-note-save';
 import { loadAdminOrders, loadAdminSellers, loadRoseOrder } from '../src/lib/wreaths/admin-data';
 
 /**
@@ -616,5 +617,81 @@ describe('order copies on a scout-entered order', () => {
     send.mockClear();
     await placeOrder(entry(), deps(asScoutEntry(viewerA)));
     expect(send.mock.calls[0][0].to).not.toContain('treasurer@example.test');
+  });
+});
+
+/**
+ * W-4: a super user (the session holds finance.manage) types in a scout's paper orders from that scout's page. The
+ * viewer is built here as resolveScoutEntryViewer builds it for a super user (tests/wreath-scout-entry-viewer.test.ts
+ * proves the derivation): their scope widened to the sellers, their own family kept as `household`.
+ */
+describe('a super user entering paper orders for a scout', () => {
+  let superViewer: ScoutEntryViewer;
+  let o: Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+  beforeAll(async () => {
+    const { data } = await admin.from('person_capabilities').select('person_id').eq('capability', 'finance.manage').limit(1);
+    const id = ((data ?? [])[0] as { person_id: number }).person_id;
+    const household = await resolveFamilyScope(admin, id, 'adult');
+    superViewer = { personId: id, name: 'Super User', scope: [...new Set([...household, fx.sellerA.personId, fx.sellerB.personId, kid!.personId])], household };
+    o = await place({ collected: false }, superViewer, {}, fx.sellerB.slug);
+  });
+  it('SuperUser_IsOfferedTheMode_OnAnotherFamilysScout', () => {
+    expect(entryOffered(superViewer, fx.sellerB.personId, true)).toBe(true);
+  });
+  it('SuperUser_IsNotOfferedTheMode_WhenTheSaleIsNotOpen', () => {
+    expect(entryOffered(superViewer, fx.sellerB.personId, false)).toBe(false);
+  });
+  it('SuperUser_EnteringForName_NamesTheScout', () => {
+    expect(enteringForName(superViewer, { personId: fx.sellerB.personId, name: 'Damian N.' })).toBe('Damian N.');
+  });
+  it('EnteringForName_IsNull_ForAFamilyViewer', () => {
+    expect(enteringForName(parentViewer, { personId: kid!.personId, name: 'Kid K.' })).toBeNull();
+  });
+  it('EnteringForName_IsNull_ForTheSuperUsersOwnScout', () => {
+    expect(enteringForName(superViewer, { personId: superViewer.household![0], name: 'Own S.' })).toBeNull();
+  });
+  it('SuperUserOrder_IsCreditedToThePagesScout', () => expect(o.credited_person_id).toBe(fx.sellerB.personId));
+  it('SuperUserOrder_RecordsTheSuperUserAsEnteredBy', () => expect(o.entered_by_person_id).toBe(superViewer.personId));
+  it('SuperUserOrder_IsAPaperOrder', () => expect(o.source).toBe('paper'));
+  it('SuperUserOrder_IsDeliveredByTheScout', () => expect(o.fulfillment).toBe('scout'));
+  it('SuperUser_CanEditThatOrder', async () => {
+    expect((await editScoutOrder(edit(o, { collected: true }), eDeps(superViewer))).ok).toBe(true);
+  });
+  it('SuperUser_IsRefusedAnEdit_AfterTheRoundCutoff', async () => {
+    expect(await editScoutOrder(edit(o), eDeps(superViewer, NOW_R2))).toMatchObject({ ok: false, code: 'locked' });
+  });
+  it('SuperUser_CanCancelThatOrder', async () => {
+    const other = await place({}, superViewer, {}, fx.sellerA.slug);
+    expect((await cancelScoutOrder(other.id, eDeps(superViewer))).ok).toBe(true);
+  });
+  it('SuperUser_IsRefused_AnotherFamilysScoutSettings', async () => {
+    expect(await setScoutSettings(fx.sellerB.personId, { goal: '7' }, eDeps(superViewer))).toMatchObject({ ok: false, code: 'forbidden' });
+  });
+  it('SuperUser_IsRefused_AFamilyNoteOnAnotherFamilysScoutsOrder', async () => {
+    const res = await setOrderNote(o.id, 'admin note', { supabase: admin, now: () => NOW_R1, actor: { kind: 'family', viewer: superViewer } });
+    expect(res).toMatchObject({ ok: false, code: 'forbidden' });
+  });
+  it('SuperUserEdit_AuditSummary_NamesTheScout', async () => {
+    const { data: p } = await admin.from('people').select('display_name').eq('id', fx.sellerB.personId).single();
+    const { data } = await admin.from('audit_log').select('summary').eq('area', 'wreaths').eq('entity_type', 'wreath_order').eq('entity_id', String(o.id)).eq('action', 'update');
+    expect((data ?? []).map((r) => (r as { summary: string }).summary)).toContain(`Edited scout-entered order ${o.order_number} for ${p!.display_name}`);
+  });
+  it('SuperUserCancel_AuditSummary_NamesTheScout', async () => {
+    const other = await place({}, superViewer, {}, fx.sellerB.slug);
+    await cancelScoutOrder(other.id, eDeps(superViewer));
+    const { data } = await admin.from('audit_log').select('summary').eq('entity_type', 'wreath_order').eq('entity_id', String(other.id)).eq('action', 'cancel');
+    expect((data ?? [])[0]).toMatchObject({ summary: expect.stringMatching(/^Cancelled scout-entered order .+ for .+/) });
+  });
+  it('FamilyEdit_AuditSummary_HasNoForName', async () => {
+    const mine = await place();
+    await editScoutOrder(edit(mine, { collected: true }), eDeps(viewerA));
+    const { data } = await admin.from('audit_log').select('summary').eq('entity_type', 'wreath_order').eq('entity_id', String(mine.id));
+    expect((data ?? [])[0]).toMatchObject({ summary: `Edited scout-entered order ${mine.order_number}` });
+  });
+  it('NonSuperParent_IsStillRefused_OnAnotherFamilysScout', async () => {
+    // Whichever fixture seller is outside the parent's family (the real parent may have a sibling among them).
+    const target = [fx.sellerA, fx.sellerB].find((sl) => !parentViewer.scope.includes(sl.personId))!;
+    const res = await placeOrder(entry({}, target.slug), deps(asScoutEntry(parentViewer)));
+    expect(res).toMatchObject({ ok: false, code: 'forbidden' });
   });
 });
