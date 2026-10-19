@@ -47,15 +47,16 @@ const LIST: PickListView = {
       title: 'Tenderfoot',
       next: true,
       rows: [
-        { key: 'tenderfoot-1a', kind: 'rank', code: '1a', label: 'Pack for a campout', codeLabel: 'Tenderfoot 1a', outing: true, others: '' },
-        { key: 'tenderfoot-3a', kind: 'rank', code: '3a', label: 'Knots', codeLabel: 'Tenderfoot 3a', outing: false, others: 'Finn P, Anjali S +4' },
-        { key: 'tenderfoot-4a', kind: 'rank', code: '4a', label: 'First aid', codeLabel: 'Tenderfoot 4a', outing: false, others: '' },
-        { key: 'tenderfoot-5a', kind: 'rank', code: '5a', label: 'Buddy system', codeLabel: 'Tenderfoot 5a', outing: false, others: '' }
+        { key: 'tenderfoot-1a', kind: 'rank', code: '1a', label: 'Pack for a campout', codeLabel: 'Tenderfoot 1a', outing: true, others: '', teacher: null },
+        { key: 'tenderfoot-3a', kind: 'rank', code: '3a', label: 'Knots', codeLabel: 'Tenderfoot 3a', outing: false, others: 'Finn P, Anjali S +4', teacher: 'Mr. Vest' },
+        { key: 'tenderfoot-4a', kind: 'rank', code: '4a', label: 'First aid', codeLabel: 'Tenderfoot 4a', outing: false, others: '', teacher: null },
+        { key: 'tenderfoot-5a', kind: 'rank', code: '5a', label: 'Buddy system', codeLabel: 'Tenderfoot 5a', outing: false, others: '', teacher: null }
       ]
     }
   ],
   working: [],
-  badges: [{ key: 'mb:art', kind: 'mb', code: null, label: 'Art', codeLabel: 'Merit badge', outing: false, others: '' }]
+  badges: [{ key: 'mb:art', kind: 'mb', code: null, label: 'Art', codeLabel: 'Merit badge', outing: false, others: '', teacher: null }],
+  offered: []
 };
 
 function board(view: Partial<ScoutBoardView> = {}, over: Partial<Parameters<typeof ScoutBoard>[0]> = {}) {
@@ -129,6 +130,19 @@ describe('ScoutBoard', () => {
   it('Scout_SeesWhoElsePicked_ByFirstNameLastInitial', () => {
     board();
     expect(screen.getByRole('button', { name: /Knots/ }).textContent).toContain('Finn P, Anjali S +4');
+  });
+
+  it('Scout_SeesTeacherComingTag_OnceOnATopicWithATeacher', () => {
+    board();
+    expect([screen.getAllByText('Teacher: Mr. Vest').length, screen.getByRole('button', { name: /First aid/ }).textContent?.includes('Teacher:')]).toEqual([1, false]);
+  });
+
+  it('Scout_CanPickAFreeformOffer_InAlsoOfferedThisWeek', async () => {
+    calls.add.mockResolvedValue(ok({}));
+    board({}, { pickList: { ...LIST, offered: [{ key: 'ff:knife sharpening', kind: 'ff', code: null, label: 'Knife sharpening', codeLabel: 'Offered this week', outing: false, others: '', teacher: 'Mr. Vest' }] } });
+    const group = screen.getByRole('heading', { name: 'Also offered this week' }).parentElement!;
+    await userEvent.click(within(group).getByRole('button', { name: /Knife sharpening/ }));
+    expect(calls.add.mock.calls[0][0]).toMatchObject({ key: 'ff:knife sharpening' });
   });
 
   it('OutingOnlyRow_IsDisabled_AndSaysNeedsAnOuting', () => {

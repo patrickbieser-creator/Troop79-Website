@@ -31,6 +31,7 @@ import {
   type BoardWriteResult,
   type BoardWriter
 } from '@/lib/meeting-board';
+import { loadSupplyRows } from '@/lib/meeting-board-supply';
 
 export type MeetingActionResult = { ok: true; view: ScoutBoardView } | { ok: false; error: string };
 
@@ -73,7 +74,9 @@ async function resolve(t: Target) {
   const scout = (await loadBoardScouts(sb, [t.personId]))[0];
   if (!scout) return fail('Picks are for scouts.');
   const catalog = await loadAdvancementCatalog();
-  const board = await loadScoutBoard(sb, meeting, scout, catalog, { viewerPersonId: actorPersonId });
+  // Freeform topics a teacher offered on this board are pickable too (Phase 2).
+  const freeform = (await loadSupplyRows(sb, [meeting.entryId])).freeform.map((f) => ({ key: f.key, title: f.title }));
+  const board = await loadScoutBoard(sb, meeting, scout, catalog, { viewerPersonId: actorPersonId, freeform });
   const writer: BoardWriter = {
     entryId: meeting.entryId,
     personId: scout.personId,
@@ -86,7 +89,7 @@ async function resolve(t: Target) {
     revalidatePath('/member');
     revalidatePath('/member/meeting');
     revalidatePath('/admin/advancement/meeting-plan');
-    const fresh = await loadScoutBoard(sb, meeting, scout, catalog, { viewerPersonId: actorPersonId });
+    const fresh = await loadScoutBoard(sb, meeting, scout, catalog, { viewerPersonId: actorPersonId, freeform });
     return { ok: true, view: fresh.view };
   };
   return { ok: true as const, sb, board, writer, refresh };

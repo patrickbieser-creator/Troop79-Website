@@ -11,8 +11,11 @@
  * it (rotations are Phase 3b). After 5:30 pm Sunday the page says the plan is set, and still takes answers.
  *
  * Access is a VERIFIED identity, as on the rest of /member. A leader proxy-viewing a family sees it read-only.
- * The adult "Teaching" half of this page is Phase 2: it renders below the scout section (see the seam marked
- * PHASE 2 below).
+ *
+ * Phase 2: "Teach at a meeting" renders below the scout section for an adult (leader or parent, with or without
+ * scouts) and for a Junior Leader, and a leader's ?for= opens it for an adult too. A parent who teaches sees both.
+ * Scouts see one quiet "Teacher: Mr. Vest" tag on a topic someone is teaching, and freeform offers under "Also offered
+ * this week".
  */
 import type { ReactNode } from 'react';
 import Link from 'next/link';
@@ -30,9 +33,11 @@ import {
   loadHouseholdScoutPersonIds,
   loadNextMeeting,
   loadScoutBoard,
+  loadUpcomingMeetings,
   othersByKeyFor,
   type BoardScout
 } from '@/lib/meeting-board';
+import { loadTeachBoard, loadTeachView, offerChoices, OFFER_DATES, teacherTags } from '@/lib/meeting-board-supply';
 import { effectiveIntent, firstNameOf, isPastSoftClose, onBehalfAccess, scoutLine } from '@/lib/meeting-board-shared';
 import { PageHeader } from '@/app/_components/page-header';
 import { PageShell } from '@/app/_components/page-shell';
@@ -40,6 +45,7 @@ import { Button } from '@/app/_components/button';
 import { MemberProxyBanner } from '../member-proxy-banner';
 import memberStyles from '../member.module.css';
 import { ScoutBoard } from './scout-board';
+import { TeachBoard } from './teach-board';
 import styles from './meeting.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -130,6 +136,9 @@ export default async function MeetingBoardPage({ searchParams }: { searchParams:
   else if (proxy) subjects = await loadBoardScouts(sb, (await loadProxyFamily(proxy.personId)).personIds);
   else if (session!.subjectKind === 'scout') subjects = await loadBoardScouts(sb, [session!.personId]);
   else subjects = await loadBoardScouts(sb, await loadHouseholdScoutPersonIds(sb, session!.personId));
+  // Who might teach (Phase 2): the signed-in person themself (an adult, or a scout who is a Junior Leader), or the
+  // person a leader opened on behalf. A proxy view is a family's scouts only.
+  const teacherId = onBehalf ? forId! : proxy ? null : session!.personId;
 
   const back = onBehalf
     ? { href: '/admin/advancement/meeting-plan', label: '← Back to Meeting Plan' }
@@ -171,27 +180,35 @@ export default async function MeetingBoardPage({ searchParams }: { searchParams:
     );
   }
 
-  if (!subjects.length) {
+  const catalog = await loadAdvancementCatalog();
+  const everyone = await loadBoardState(sb, meeting, catalog);
+  const teach = await loadTeachBoard(sb, meeting, catalog, everyone, teacherId != null ? [teacherId] : []);
+  const teacher = teacherId != null ? (teach.people.get(teacherId) ?? null) : null;
+  // A Junior Leader on a merit badge night just comes to their rotation (prototype): no teach section.
+  const showTeach = teacher != null && !(teacher.kind === 'junior' && meeting.mode === 'merit_badge');
+
+  if (!subjects.length && !showTeach) {
     return shell(
       <>
         {meetLine}
         <p className={memberStyles.intro}>
-          {onBehalf ? 'That person isn’t an active scout.' : 'There are no scouts in your household to pick for. If that’s wrong, ask a leader.'}
+          {onBehalf ? 'That person isn’t an active scout or a teacher.' : 'There are no scouts in your household to pick for. If that’s wrong, ask a leader.'}
         </p>
-        {/* PHASE 2: an adult with no scouts still gets the Teaching section here. */}
       </>
     );
   }
 
-  const chosen = subjects.find((s) => String(s.personId) === params.scout) ?? subjects[0];
-  const catalog = await loadAdvancementCatalog();
-  const everyone = await loadBoardState(sb, meeting, catalog);
+  const chosen = subjects.find((s) => String(s.personId) === params.scout) ?? subjects[0] ?? null;
   const rowOf = new Map(everyone.map((r) => [r.personId, r]));
-  const mine = await loadScoutBoard(sb, meeting, chosen, catalog, {
-    viewerPersonId: actorPersonId,
-    othersByKey: othersByKeyFor(everyone, chosen.personId)
-  });
-  const isSelf = !onBehalf && !proxy && session?.personId === chosen.personId;
+  const mine = chosen
+    ? await loadScoutBoard(sb, meeting, chosen, catalog, {
+        viewerPersonId: actorPersonId,
+        othersByKey: othersByKeyFor(everyone, chosen.personId),
+        teacherByKey: teacherTags(teach),
+        freeform: teach.freeform
+      })
+    : null;
+  const isSelf = !onBehalf && !proxy && session?.personId === chosen?.personId;
   const linkFor = (personId: number) => {
     const q = new URLSearchParams();
     if (proxy) q.set('viewScout', String(proxy.personId));
@@ -200,15 +217,20 @@ export default async function MeetingBoardPage({ searchParams }: { searchParams:
   };
   const mbName = meeting.mbId ? (catalog.meritBadges.find((m) => m.id === meeting.mbId)?.name ?? null) : null;
 
+  const upcoming = showTeach ? await loadUpcomingMeetings(sb, OFFER_DATES, meeting.date) : [];
+  const teachView = showTeach ? await loadTeachView(sb, meeting, catalog, teacher!.personId, { board: everyone, upcoming, teach }) : null;
+  const teacherIsSelf = !onBehalf && session?.personId === teacherId;
+  const enteringFor = onBehalf ? (chosen?.name ?? teacher?.displayName ?? '') : '';
+
   return shell(
     <>
       {meetLine}
       {onBehalf &&
         (onBehalfReadOnly ? (
-          <p className={styles.banner}>Sign in with your own account to edit for a scout.</p>
+          <p className={styles.banner}>Sign in with your own account to edit for someone.</p>
         ) : (
           <p className={styles.banner}>
-            <strong>Entering for {chosen.name}</strong> (phone or text). Changes save as entered by you.
+            <strong>Entering for {enteringFor}</strong> (phone or text). Changes save as entered by you.
           </p>
         ))}
       {isPastSoftClose(meeting.date) && (
@@ -216,7 +238,7 @@ export default async function MeetingBoardPage({ searchParams }: { searchParams:
           <p>This week&rsquo;s plan is set. You can still tell us you&rsquo;re coming.</p>
         </div>
       )}
-      {subjects.length > 1 && (
+      {chosen && subjects.length > 1 && (
         <>
           <p className={styles.household}>
             {householdSummary(
@@ -239,20 +261,33 @@ export default async function MeetingBoardPage({ searchParams }: { searchParams:
           </nav>
         </>
       )}
-      <ScoutBoard
-        key={chosen.personId}
-        entryId={meeting.entryId}
-        mode={meeting.mode}
-        mbName={mbName}
-        blockCount={meeting.blockCount}
-        dayName={dayName}
-        subject={{ personId: chosen.personId, firstName: firstNameOf(chosen.name), isSelf }}
-        initial={mine.view}
-        pickList={mine.pickList}
-        onBehalf={onBehalf}
-        readOnly={proxy != null || onBehalfReadOnly}
-      />
-      {/* PHASE 2: the adult / Junior Leader "Teaching" section (intent, "I'll teach this", offers) renders here. */}
+      {chosen && mine && (
+        <ScoutBoard
+          key={chosen.personId}
+          entryId={meeting.entryId}
+          mode={meeting.mode}
+          mbName={mbName}
+          blockCount={meeting.blockCount}
+          dayName={dayName}
+          subject={{ personId: chosen.personId, firstName: firstNameOf(chosen.name), isSelf }}
+          initial={mine.view}
+          pickList={mine.pickList}
+          onBehalf={onBehalf}
+          readOnly={proxy != null || onBehalfReadOnly}
+        />
+      )}
+      {teachView && teacher && (
+        <TeachBoard
+          key={`${teacher.personId}:${teachView.intent ?? ''}`}
+          entryId={meeting.entryId}
+          mode={meeting.mode}
+          subject={{ personId: teacher.personId, firstName: firstNameOf(teacher.displayName), isSelf: teacherIsSelf }}
+          initial={teachView}
+          choices={offerChoices(teacher, catalog, upcoming)}
+          onBehalf={onBehalf}
+          readOnly={onBehalfReadOnly}
+        />
+      )}
     </>
   );
 }

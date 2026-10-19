@@ -6,6 +6,10 @@
  *   2. Later ranks, collapsed, each with its count.
  *   3. Merit badges the scout is working on.
  *   4. Every other badge, behind a search.
+ *   5. (Phase 2) "Also offered this week": freeform topics a teacher put on this board.
+ *
+ * A row a teacher has signed up for (or that a matching skill offer covers) carries one quiet "Teacher: Mr. Vest" tag
+ * (Phase 2); the caller works out who from lib/meeting-board-teach.
  *
  * Finished requirements are absent. The engine's rules decide what can be worked on at a meeting at all (its
  * NOT_PLANNABLE set and the 95% Scoutmaster-conference gate, via lib/rank-calculus); an outing-only requirement is
@@ -18,7 +22,7 @@ import { boardName, orderPicks, othersLabel, type BoardPick, type Intent } from 
 
 export interface PickRow {
   key: string;
-  kind: 'rank' | 'mb';
+  kind: 'rank' | 'mb' | 'ff';
   /** The requirement code ('4a') under its rank heading; null for a badge. */
   code: string | null;
   label: string;
@@ -27,6 +31,8 @@ export interface PickRow {
   outing: boolean;
   /** Who else picked it for this meeting: "Finn P, Anjali S +4" (empty when nobody). */
   others: string;
+  /** The teacher coming for it, as scouts see them ("Mr. Vest", "Maya S"); null when nobody yet. */
+  teacher: string | null;
 }
 
 export interface PickGroup {
@@ -45,6 +51,8 @@ export interface PickListView {
   working: PickRow[];
   /** Every other badge the scout doesn't have, for the search. */
   badges: PickRow[];
+  /** Freeform topics a teacher offered on this board ("Knife sharpening"). */
+  offered: PickRow[];
 }
 
 export interface PickListInput {
@@ -58,6 +66,10 @@ export interface PickListInput {
   rankCodes: ReadonlySet<string>;
   /** Board names of the OTHER scouts who picked each key for this meeting. */
   othersByKey?: ReadonlyMap<string, readonly string[]>;
+  /** The scout-facing name of a teacher coming for each key (Phase 2). */
+  teacherByKey?: ReadonlyMap<string, string>;
+  /** Freeform topics on this board (Phase 2). */
+  freeform?: readonly { key: string; title: string }[];
 }
 
 type RankNode = ReqNode<CatalogRankRequirement>;
@@ -78,12 +90,16 @@ export function nextRankOf(currentRank: string | null, ranks: readonly CatalogRa
   return i >= 0 && i + 1 < sorted.length ? sorted[i + 1].id : null;
 }
 
+/** The tray's second line for a freeform topic. */
+export const OFFERED_LABEL = 'Offered this week';
+
 export function buildPickList(input: PickListInput): PickListView {
   const sorted = [...input.ranks].sort((a, b) => a.sort_order - b.sort_order);
   const nextRankId = nextRankOf(input.currentRank, sorted);
   const trees = rankTrees(input.rankReqs);
   const codes = input.rankCodes as Set<string>;
   const others = (key: string) => othersLabel(input.othersByKey?.get(key) ?? []);
+  const teacher = (key: string) => input.teacherByKey?.get(key) ?? null;
 
   const groups: PickGroup[] = [];
   const startAt = nextRankId ? sorted.findIndex((r) => r.id === nextRankId) : sorted.length;
@@ -101,7 +117,8 @@ export function buildPickList(input: PickListInput): PickListView {
         label: top.label,
         codeLabel: `${rank.display_name} ${top.code}`,
         outing: top.venue === 'outing',
-        others: others(key)
+        others: others(key),
+        teacher: teacher(key)
       });
     }
     if (rows.length || rank.id === nextRankId) groups.push({ rankId: rank.id, title: rank.display_name, next: rank.id === nextRankId, rows });
@@ -116,20 +133,24 @@ export function buildPickList(input: PickListInput): PickListView {
     label: mb.name,
     codeLabel: 'Merit badge',
     outing: false,
-    others: others(`mb:${mb.id}`)
+    others: others(`mb:${mb.id}`),
+    teacher: teacher(`mb:${mb.id}`)
   });
   const byName = [...input.mbs].sort((a, b) => a.name.localeCompare(b.name));
   return {
     nextRankId,
     groups,
     working: byName.filter((m) => started.has(m.id)).map(badgeRow),
-    badges: byName.filter((m) => !started.has(m.id) && !awarded.has(m.id)).map(badgeRow)
+    badges: byName.filter((m) => !started.has(m.id) && !awarded.has(m.id)).map(badgeRow),
+    offered: [...(input.freeform ?? [])]
+      .sort((a, b) => a.title.localeCompare(b.title))
+      .map((f) => ({ key: f.key, kind: 'ff' as const, code: null, label: f.title, codeLabel: OFFERED_LABEL, outing: false, others: others(f.key), teacher: teacher(f.key) }))
   };
 }
 
 /** Every row in the view, in list order (the catalog order unranked picks sort by). */
 export function allRows(view: PickListView): PickRow[] {
-  return [...view.groups.flatMap((g) => g.rows), ...view.working, ...view.badges];
+  return [...view.offered, ...view.groups.flatMap((g) => g.rows), ...view.working, ...view.badges];
 }
 
 /** What a scout may add on this board: every listed row except the outing-only ones. The server action checks it. */
@@ -163,13 +184,19 @@ export function isPickFinished(
   return top ? rankNodeSatisfied(top, rank.id, ctx.rankCodes as Set<string>) : false;
 }
 
-/** The tray's words for a key: 'First aid' / 'Tenderfoot 4a'. Null for a key the catalog no longer has. */
+/** The tray's words for a key: 'First aid' / 'Tenderfoot 4a'. Null for a key the catalog no longer has (or a freeform
+ *  topic whose title wasn't passed). */
 export function topicWords(
   key: string,
   ranks: readonly CatalogRank[],
   rankReqs: readonly CatalogRankRequirement[],
-  mbs: readonly CatalogMeritBadge[]
-): { label: string; codeLabel: string; kind: 'rank' | 'mb' } | null {
+  mbs: readonly CatalogMeritBadge[],
+  freeformTitles?: ReadonlyMap<string, string>
+): { label: string; codeLabel: string; kind: 'rank' | 'mb' | 'ff' } | null {
+  if (key.startsWith('ff:')) {
+    const title = freeformTitles?.get(key);
+    return title ? { label: title, codeLabel: OFFERED_LABEL, kind: 'ff' } : null;
+  }
   if (key.startsWith('mb:')) {
     const mb = mbs.find((m) => m.id === key.slice(3));
     return mb ? { label: mb.name, codeLabel: 'Merit badge', kind: 'mb' } : null;
@@ -184,7 +211,7 @@ export function topicWords(
 export interface TrayPick extends BoardPick {
   label: string;
   codeLabel: string;
-  kind: 'rank' | 'mb';
+  kind: 'rank' | 'mb' | 'ff';
   /** Board name of whoever added it, when that was neither the scout nor the person looking. */
   addedBy: string | null;
 }
@@ -211,7 +238,7 @@ export function trayPicks(
 ): TrayPick[] {
   const order = new Map(allRows(ctx.view).map((r, i) => [r.key, i]));
   return orderPicks(picks, (k) => order.get(k) ?? Number.MAX_SAFE_INTEGER).map((p) => {
-    const words = topicWords(p.key, ctx.ranks, ctx.rankReqs, ctx.mbs) ?? { label: p.key, codeLabel: '', kind: 'rank' as const };
+    const words = topicWords(p.key, ctx.ranks, ctx.rankReqs, ctx.mbs, new Map(ctx.view.offered.map((r) => [r.key, r.label]))) ?? { label: p.key, codeLabel: '', kind: 'rank' as const };
     const by = p.enteredByPersonId;
     const addedBy = by != null && by !== ctx.scoutPersonId && by !== ctx.viewerPersonId ? boardName(ctx.names.get(by) ?? '') || null : null;
     return { ...p, ...words, addedBy };

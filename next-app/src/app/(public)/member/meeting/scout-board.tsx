@@ -212,6 +212,7 @@ export function ScoutBoard(props: ScoutBoardProps) {
             {showCode && r.code && <span className={styles.code}>{r.code}</span>}
             <b>{r.label}</b>
           </span>
+          {r.teacher && <span className={styles.teacherTag}>Teacher: {r.teacher}</span>}
           {(r.outing || r.others) && (
             <span className={styles.who}>{r.outing ? `Needs an outing${r.others ? ` · ${r.others}` : ''}` : r.others}</span>
           )}
@@ -319,6 +320,13 @@ export function ScoutBoard(props: ScoutBoardProps) {
         )}
       </section>
 
+      {pickList.offered.length > 0 && (
+        <div className={styles.group}>
+          <h3 className={styles.groupHead}>Also offered this week</h3>
+          <ul className={styles.picks}>{pickList.offered.map((r) => row(r, false))}</ul>
+        </div>
+      )}
+
       {pickList.groups.map((g) =>
         g.next ? (
           <div key={g.rankId} className={styles.group}>
@@ -381,7 +389,7 @@ export function ScoutBoard(props: ScoutBoardProps) {
   );
 }
 
-function Saved({ on }: { on: boolean }) {
+export function Saved({ on }: { on: boolean }) {
   return (
     <span className={on ? `${styles.saved} ${styles.savedOn}` : styles.saved} aria-hidden="true">
       {on ? 'Saved' : ''}
@@ -390,7 +398,7 @@ function Saved({ on }: { on: boolean }) {
 }
 
 /** Coming / Not sure yet / Can't make it: a real radio group (arrow keys move), saved the moment it changes. */
-function IntentControl({
+export function IntentControl({
   groupName,
   label,
   value,

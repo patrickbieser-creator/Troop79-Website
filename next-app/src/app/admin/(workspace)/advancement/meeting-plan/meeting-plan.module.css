@@ -421,3 +421,14 @@ a.chip:hover {
   font-size: var(--admin-text-base);
   background: var(--admin-field-bg);
 }
+
+/* ── This Sunday, supply side (Phase 2) ── */
+.supplyList {
+  list-style: none;
+  margin: 0 0 var(--admin-space-2);
+  padding: 0;
+}
+.supplyList li {
+  padding: var(--admin-space-2) 0;
+  border-bottom: 1px solid var(--admin-gray-200);
+}

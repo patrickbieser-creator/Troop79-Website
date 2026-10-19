@@ -19,12 +19,22 @@ const data = {
   meeting: { entryId: 5, title: 'Troop Meeting', mode: 'rank' as const, dateLabel: 'Sunday, October 25, 2026' },
   stamp: '1:0:1:100',
   counts: { coming: 3, undecided: 1, notComing: 1, noAnswer: 20, picks: 4, held: 2 },
-  topics: [{ key: 'tenderfoot-4a', label: 'First aid', codeLabel: 'Tenderfoot 4a', names: ['Anjali S', 'Finn P'] }],
+  adults: { coming: 2, undecided: 1, notComing: 1, teaching: 2 },
+  topics: [
+    { key: 'tenderfoot-4a', label: 'First aid', codeLabel: 'Tenderfoot 4a', names: ['Anjali S', 'Finn P'], teachers: [{ personId: 40, name: 'Dan V', notes: ['from a First Aid offer'] }] },
+    { key: 'tenderfoot-3a', label: 'Knots', codeLabel: 'Tenderfoot 3a', names: ['Leo M'], teachers: [] }
+  ],
+  wanted: [{ key: 'tenderfoot-3a', label: 'Knots', codeLabel: 'Tenderfoot 3a', names: ['Leo M'], weeks: 3, canTeach: [{ personId: 41, name: 'Karen O', note: 'not sure yet' }] }],
+  offered: [{ key: 'ff:knife sharpening', label: 'Knife sharpening', codeLabel: 'Offered this week', teachers: [{ personId: 42, name: 'Mike H', notes: [] }] }],
+  skillOffers: [{ personId: 40, name: 'Dan V', skill: 'First Aid', note: null, scouts: 2 }],
+  undecidedAdults: [{ personId: 41, name: 'Karen O', fits: ['Tenderfoot 3a'] }],
+  notComingAdults: [{ personId: 43, name: 'Sue D' }],
   undecided: [{ personId: 1, name: 'Leo M' }],
   notComing: [{ personId: 2, name: 'Zoe W', held: 2 }],
   comingNothing: [],
   noAnswer: [{ personId: 3, name: 'Theo P' }],
-  scouts: [{ personId: 1, name: 'Leo M' }]
+  scouts: [{ personId: 1, name: 'Leo M' }],
+  adultPeople: [{ personId: 40, name: 'Dan V' }]
 };
 
 beforeEach(() => {
@@ -50,6 +60,34 @@ describe('ThisSundayView', () => {
   it('Leader_EntersForAScout_ThroughTheirMemberPage', () => {
     render(<ThisSundayView data={data} />);
     expect(screen.getByRole('link', { name: 'Theo P' }).getAttribute('href')).toBe('/member/meeting?for=3');
+  });
+
+  it('Leader_SeesTeachersPerTopic_AndWantedNoTeacher', () => {
+    render(<ThisSundayView data={data} />);
+    const taught = screen.getByText('First aid').closest('tr')!;
+    const untaught = screen.getAllByText('Knots')[0].closest('tr')!;
+    expect([taught.textContent?.includes('Dan V (from a First Aid offer)'), untaught.textContent?.includes('No teacher yet')]).toEqual([true, true]);
+  });
+
+  it('Leader_SeesWhoCanTeachAWantedTopic', () => {
+    render(<ThisSundayView data={data} />);
+    const row = screen.getByText(/asked 3 weeks/).closest('tr')!;
+    expect(row.textContent).toContain('Karen O (not sure yet)');
+  });
+
+  it('Leader_SeesOfferedNoTakers_AndSkillOffers', () => {
+    render(<ThisSundayView data={data} />);
+    expect([screen.getByText('Knife sharpening').closest('tr')!.textContent?.includes('Mike H'), screen.getByText('First Aid').closest('tr')!.textContent?.includes('2 scouts')]).toEqual([true, true]);
+  });
+
+  it('Leader_SeesAdultIntentCounts', () => {
+    render(<ThisSundayView data={data} />);
+    expect(['Adults coming', 'Adults not sure yet', 'Adults can’t make it', 'Teaching', 'Wanted, no teacher'].map((l) => screen.getAllByText(l)[0].previousSibling?.textContent)).toEqual(['2', '1', '1', '2', '1']);
+  });
+
+  it('Leader_EntersForAnAdult_ThroughTheirMemberPage', () => {
+    render(<ThisSundayView data={data} />);
+    expect([screen.getByRole('link', { name: 'Sue D' }).getAttribute('href'), screen.getByRole('option', { name: 'Dan V' })]).toEqual(['/member/meeting?for=43', expect.anything()]);
   });
 
   it('ClosedBoard_SaysSo', () => {

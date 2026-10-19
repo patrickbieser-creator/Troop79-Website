@@ -514,3 +514,157 @@ details.group > summary .meta {
   font-size: var(--fs-sm);
   margin: 0 0 var(--sp-3);
 }
+
+/* ── Phase 2: the teacher side (prototypes/meeting-board/meeting.html, teach section) ── */
+.teacherTag {
+  display: block;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--forest);
+  margin-top: 2px;
+}
+
+.teach {
+  margin-top: var(--sp-8);
+}
+.teachHead {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  font-family: var(--font-display);
+  font-size: var(--fs-2xl);
+  color: var(--text-head);
+  margin: 0 0 var(--sp-4);
+}
+.teachRow {
+  display: flex;
+  gap: var(--sp-3);
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 10px var(--sp-2);
+  border-bottom: 1px solid var(--rule);
+  font-family: var(--font-ui);
+}
+.grow {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.grow b {
+  color: var(--text-head);
+  font-weight: 600;
+}
+.grow small {
+  display: block;
+  color: var(--text-meta);
+  font-size: var(--fs-sm);
+}
+.flag {
+  color: var(--bark);
+  font-weight: 600;
+}
+.teachWrap .badNote {
+  margin: 0 0 var(--sp-2);
+}
+.badBox {
+  outline: 2px solid var(--status-danger);
+  outline-offset: 2px;
+  border-radius: var(--rad-md);
+}
+
+.offerForm {
+  background: var(--cream);
+  border: 1px solid var(--border-light);
+  border-radius: var(--rad-md);
+  padding: var(--sp-4);
+  display: grid;
+  gap: var(--sp-3);
+  margin-top: var(--sp-3);
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+.field > label,
+.field > legend {
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--text-head);
+  padding: 0;
+}
+.field select,
+.field input[type='text'],
+.field textarea {
+  min-height: 44px;
+  font-size: 16px; /* the iOS no-zoom floor */
+  font-family: var(--font-ui);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-md);
+  background: var(--warm-white);
+}
+.field textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+.opt {
+  font-weight: 400;
+  color: var(--text-meta);
+}
+.dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--sp-5);
+}
+.check {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+  font-family: var(--font-ui);
+  font-size: var(--fs-md);
+  min-height: 44px;
+  cursor: pointer;
+}
+.check input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--forest);
+}
+.formActions {
+  display: flex;
+  gap: var(--sp-4);
+  align-items: center;
+  flex-wrap: wrap;
+}
+.segButton {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--sp-4);
+  font-family: var(--font-ui);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--navy);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.segButton + .segButton {
+  border-left: 1px solid var(--border-mid);
+}
+.segButton[aria-checked='true'] {
+  background: var(--navy);
+  color: var(--warm-white);
+}
+.segButton:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: -3px;
+}

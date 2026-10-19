@@ -66,10 +66,16 @@ function toMeeting(r: EntryRow): BoardMeeting {
 }
 
 export async function loadNextMeeting(sb: SupabaseClient, today: string = centralToday()): Promise<BoardMeeting | null> {
+  return (await loadUpcomingMeetings(sb, 1, today))[0] ?? null;
+}
+
+/** The next `limit` published Troop Meeting entries on or after today (Central), soonest first: the dates a standing
+ *  teaching offer can list (Phase 2). Closed and merit badge boards are included; the caller filters by mode. */
+export async function loadUpcomingMeetings(sb: SupabaseClient, limit: number, today: string = centralToday()): Promise<BoardMeeting[]> {
   const { data: cats, error: catErr } = await sb.from('calendar_categories').select('label').eq('behavior', 'meeting');
   if (catErr) throw new Error(catErr.message);
   const labels = ((cats ?? []) as { label: string }[]).map((c) => c.label);
-  if (!labels.length) return null;
+  if (!labels.length) return [];
   const { data, error } = await sb
     .from('calendar_entries')
     .select(ENTRY_COLS)
@@ -79,10 +85,9 @@ export async function loadNextMeeting(sb: SupabaseClient, today: string = centra
     .order('entry_date')
     .order('start_time', { nullsFirst: false })
     .order('id')
-    .limit(1);
+    .limit(limit);
   if (error) throw new Error(error.message);
-  const row = ((data ?? []) as unknown as EntryRow[])[0];
-  return row ? toMeeting(row) : null;
+  return ((data ?? []) as unknown as EntryRow[]).map(toMeeting);
 }
 
 export async function loadMeetingById(sb: SupabaseClient, entryId: number): Promise<BoardMeeting | null> {
@@ -239,6 +244,14 @@ export async function loadEffectivePicks(
     }
   }
 
+  // A freeform pick carries only to a board where a teacher offered it again (the topic has to exist there).
+  if ([...priorByPerson.values()].some((list) => list.some((p) => p.key.startsWith('ff:')))) {
+    const { data, error } = await sb.from('meeting_topics').select('topic_key').eq('calendar_entry_id', meeting.entryId).eq('kind', 'freeform');
+    if (error) throw new Error(error.message);
+    const here = new Set(((data ?? []) as { topic_key: string }[]).map((t) => t.topic_key));
+    for (const [pid, list] of priorByPerson) priorByPerson.set(pid, list.filter((p) => !p.key.startsWith('ff:') || here.has(p.key)));
+  }
+
   const needProgress = scouts.filter((s) => priorByPerson.has(s.personId));
   const prog = progress ?? (needProgress.length ? await loadScoutProgress(sb, needProgress.map((s) => s.scoutId)) : new Map<string, ScoutProgress>());
   const trees = rankTrees(catalog.rankRequirements);
@@ -382,7 +395,14 @@ export async function loadScoutBoard(
   meeting: Pick<BoardMeeting, 'entryId' | 'date'>,
   scout: BoardScout,
   catalog: Pick<AdvancementCatalog, 'ranks' | 'rankRequirements' | 'meritBadges'>,
-  opts: { viewerPersonId: number | null; othersByKey?: ReadonlyMap<string, readonly string[]> }
+  opts: {
+    viewerPersonId: number | null;
+    othersByKey?: ReadonlyMap<string, readonly string[]>;
+    /** Phase 2: the teacher coming for each key, as scouts see them. */
+    teacherByKey?: ReadonlyMap<string, string>;
+    /** Phase 2: freeform topics a teacher put on this board. */
+    freeform?: readonly { key: string; title: string }[];
+  }
 ): Promise<ScoutBoard> {
   const progress = await loadScoutProgress(sb, [scout.scoutId]);
   const [eff, intents] = await Promise.all([
@@ -398,7 +418,9 @@ export async function loadScoutBoard(
     mbs: catalog.meritBadges,
     mbProgress: p.mbProgress,
     rankCodes: p.rankCodes,
-    othersByKey: opts.othersByKey
+    othersByKey: opts.othersByKey,
+    teacherByKey: opts.teacherByKey,
+    freeform: opts.freeform
   });
   const names = await loadPeopleNames(sb, mine.picks.map((x) => x.enteredByPersonId).filter((id): id is number => id != null));
   return {
