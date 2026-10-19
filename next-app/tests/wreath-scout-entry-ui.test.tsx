@@ -32,7 +32,7 @@ const adminActions = vi.hoisted(() => ({ markPaid: vi.fn<(...args: unknown[]) =>
 vi.mock('../src/app/admin/(workspace)/finance/wreaths/actions', () => ({
   cancelOrder: vi.fn(),
   markPaid: adminActions.markPaid,
-  reassignOrder: vi.fn(),
+  editOrder: vi.fn(),
   refundCardOrder: vi.fn(async () => ({ ok: true })),
   setPaymentNote: vi.fn(async () => ({ ok: true }))
 }));
@@ -339,18 +339,26 @@ describe('Members › Wreath sale', () => {
 describe('Admin orders', () => {
   const orders = [order(1, { collectedByScout: true, paymentNote: 'Cash at the 10/18 meeting' })];
   it('AdminOrders_ShowsACollectedByScoutBadge', () => {
-    render(<OrdersPanel orders={orders} history={{}} sellers={[]} deliveryZipPrefix="532" />);
+    render(<OrdersPanel orders={orders} history={{}} sellers={[]} items={[]} rules={sale} />);
     expect(screen.getAllByText('Collected by scout')[0].textContent).toBe('Collected by scout');
   });
   it('AdminOrders_NamesWhoEnteredTheOrder_InTheDetail', async () => {
     const user = userEvent.setup();
-    render(<OrdersPanel orders={orders} history={{}} sellers={[]} deliveryZipPrefix="532" />);
+    render(<OrdersPanel orders={orders} history={{}} sellers={[]} items={[]} rules={sale} />);
     await user.click(screen.getByRole('button', { name: 'W-2001' }));
     expect(screen.getByText('Scout-entered by Oliver Prescott').tagName).toBe('DD');
   });
+  // Patrick, 2026-10-18: the open order says who gets the credit and how it is delivered.
+  it('AdminOrders_DetailShowsTheCreditedScoutAndTheDelivery', async () => {
+    const user = userEvent.setup();
+    render(<OrdersPanel orders={[order(1, { source: 'store', fulfillment: 'delivery', deliveringPersonId: null })]} history={{}} sellers={[]} items={[]} rules={sale} />);
+    await user.click(screen.getByRole('button', { name: 'W-2001' }));
+    const dd = (label: string) => screen.getByText(label, { selector: 'dt' }).nextElementSibling?.textContent;
+    expect([dd('Credited to'), dd('Delivery')]).toEqual(['Oliver P', 'Troop delivery']);
+  });
   it('AdminOrders_ShowsThePaymentNote_InAnEditableField', async () => {
     const user = userEvent.setup();
-    render(<OrdersPanel orders={orders} history={{}} sellers={[]} deliveryZipPrefix="532" />);
+    render(<OrdersPanel orders={orders} history={{}} sellers={[]} items={[]} rules={sale} />);
     await user.click(screen.getByRole('button', { name: 'W-2001' }));
     expect((screen.getByLabelText('Payment note') as HTMLInputElement).value).toBe('Cash at the 10/18 meeting');
   });
@@ -361,7 +369,7 @@ describe('Admin orders', () => {
 describe('Admin orders — amount received', () => {
   const open = async (o: AdminOrder) => {
     const user = userEvent.setup();
-    render(<OrdersPanel orders={[o]} history={{}} sellers={[]} deliveryZipPrefix="532" />);
+    render(<OrdersPanel orders={[o]} history={{}} sellers={[]} items={[]} rules={sale} />);
     await user.click(screen.getByRole('button', { name: o.orderNumber }));
     return user;
   };
@@ -398,19 +406,19 @@ describe('Admin orders — amount received', () => {
 describe('Admin orders — card payments', () => {
   const open = async (o: AdminOrder) => {
     const user = userEvent.setup();
-    render(<OrdersPanel orders={[o]} history={{}} sellers={[]} deliveryZipPrefix="532" />);
+    render(<OrdersPanel orders={[o]} history={{}} sellers={[]} items={[]} rules={sale} />);
     await user.click(screen.getByRole('button', { name: o.orderNumber }));
     return user;
   };
 
   // Patrick, 2026-10-16: an order whose customer walked away from Stripe read like any other unpaid order.
   it('AdminOrders_MarksAnUnpaidOrder_WhoseCardPaymentWasNotFinished', () => {
-    render(<OrdersPanel orders={[order(1, { source: 'store', cardStarted: true })]} history={{}} sellers={[]} deliveryZipPrefix="532" />);
+    render(<OrdersPanel orders={[order(1, { source: 'store', cardStarted: true })]} history={{}} sellers={[]} items={[]} rules={sale} />);
     expect(screen.getByText('Card not finished')).toBeTruthy();
   });
 
   it('AdminOrders_DoesNotMarkAPaidCardOrder_AsNotFinished', () => {
-    render(<OrdersPanel orders={[order(1, { source: 'store', cardStarted: true, paymentStatus: 'paid', paidMethod: 'card' })]} history={{}} sellers={[]} deliveryZipPrefix="532" />);
+    render(<OrdersPanel orders={[order(1, { source: 'store', cardStarted: true, paymentStatus: 'paid', paidMethod: 'card' })]} history={{}} sellers={[]} items={[]} rules={sale} />);
     expect(screen.queryByText('Card not finished')).toBeNull();
   });
 

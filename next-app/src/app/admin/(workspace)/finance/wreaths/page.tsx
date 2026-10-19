@@ -90,7 +90,8 @@ export default async function WreathSalePage({ searchParams }: { searchParams: P
             initialPay={initialPay}
             history={Object.fromEntries(await loadOrderHistory(sb, orders.map((o) => o.id)))}
             sellers={sellers.filter((s) => s.active).map((s) => ({ personId: s.personId, name: s.name }))}
-            deliveryZipPrefix={sale.deliveryZipPrefix}
+            items={await loadAdminItems(sb, sale.id)}
+            rules={{ deliveryZipPrefix: sale.deliveryZipPrefix, deliveryFee: sale.deliveryFee, deliveryFreeAt: sale.deliveryFreeAt, feePercent: sale.feePercent, feeFixed: sale.feeFixed, round1Cutoff: sale.round1Cutoff, round2Cutoff: sale.round2Cutoff }}
           />
         </>
       )}

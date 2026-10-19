@@ -7,8 +7,13 @@ import { recordAudit, type AuditDetail } from '@/lib/audit';
 import { createAdminClient } from '@/lib/supabase/server';
 import { centralToInstant, centralToday, instantToCentral } from '@/lib/dates';
 import { uploadToBunny } from '@/lib/bunny-storage';
-import { PAID_METHODS, paidLedgerRow, deliveryFeeFor, fmtMoney2, fromCents, inDeliveryArea, toCents, zipFormatOk, zipPrefixListOk, zipPrefixes, zipPrefixText, type PaidMethod } from '@/lib/wreaths/rules';
-import { canonicalSlug, SLUG_RE } from '@/lib/wreaths/public';
+import { EMAIL_RE, PAID_METHODS, paidLedgerRow, fmtMoney2, fromCents, inDeliveryArea, itemLabel, phoneOk, repriceEdit, toCents, zipFormatOk, zipPrefixListOk, zipPrefixes, zipPrefixText, type CartLine, type Fulfillment, type PaidMethod } from '@/lib/wreaths/rules';
+import { canonicalSlug, scoutDisplayName, SLUG_RE } from '@/lib/wreaths/public';
+import { arrivalParagraphs } from '@/lib/wreaths/copy';
+import { orderUpdatedEmail } from '@/lib/wreaths/emails';
+import { sendEmail, troopEmail } from '@/lib/email';
+import { siteUrl } from '@/lib/site-url';
+import { fmtDateFull } from '@/lib/format-date';
 import { parseDeliveryMessage, parseGoal } from '@/lib/wreaths/scout-entry';
 import { cardCheckoutLive, cardDeps, expireOrderCheckout } from '@/lib/wreaths/stripe-client';
 import { refundCardOrderCore } from '@/lib/wreaths/card-payments';
@@ -16,7 +21,7 @@ import { refundCardOrderCore } from '@/lib/wreaths/card-payments';
 /**
  * Wreath sale admin (Plans/Wreath-Sale.md, Release A: Settings, Items, Sellers, Orders). Gate: `finance.manage` on
  * EVERY action, checked before anything is read or written — the page hiding a control is not enforcement. Writes
- * are service-role (the tables have RLS on and no policies). Mark paid, Reassign, cancel and every settings, item
+ * are service-role (the tables have RLS on and no policies). Mark paid, Edit order, cancel and every settings, item
  * and seller edit write an audit row (area 'wreaths') with the actor, and the old and new values as readable text;
  * the one-line summary names the thing changed, never the values (D-257).
  */
@@ -553,78 +558,194 @@ export async function cancelOrder(orderId: number): Promise<WreathResult> {
   return { ok: true };
 }
 
-export interface ReassignInput {
+export interface EditOrderInput {
+  /** What the dialog was opened on: an order that has changed since (paid, repriced) is refused, not overwritten. */
+  seen: { total: number; paymentStatus: string };
+  lines: CartLine[];
+  gift: number;
+  customer: { name: string; email: string; phone: string; street: string; city: string; zip: string };
   /** people.id of the scout who gets the credit (and their share); null = the troop store. */
   creditedPersonId: number | null;
+  /** Ignored when every line is donated: the order then has nothing to deliver. */
   fulfillment: 'scout' | 'pickup' | 'delivery';
   /** Who delivers when fulfillment is 'scout'; defaults to the credited scout. */
   deliveringPersonId?: number | null;
-  street?: string;
-  city?: string;
-  zip?: string;
+  /** Paid by hand only (never card, never unpaid): what came in and how. A change rebooks the ledger. */
+  payment?: { method: PaidMethod; received: number; acceptShort: boolean };
+  /** Email the customer the updated order (never on a scout-entered order). */
+  notifyCustomer?: boolean;
 }
 
 const FULFILLMENT_WORDS: Record<string, string> = { scout: 'Scout delivers', pickup: 'Pickup', delivery: 'Troop delivery', none: 'Donated only' };
 
-/**
- * Moves an order's credit and delivery between scouts, or between a scout and the troop (Decisions, "Credit and
- * reassignment"). Money already collected stays with the troop. Only a live seller can take credit or deliver; troop
- * delivery needs an address inside the delivery area; every change is audited with the old and the new.
- */
-export async function reassignOrder(orderId: number, v: ReassignInput): Promise<WreathResult> {
-  await requireCapability('finance.manage');
-  if (!['scout', 'pickup', 'delivery'].includes(v.fulfillment)) return fail('Choose how the order is delivered.', 'fulfillment');
-  // A reassign can change the delivery fee and so the total: the open card session would charge the old amount.
-  await expireOrderCheckout(orderId);
-  const supabase = createAdminClient();
-  const { data: order } = await supabase.from('wreath_orders').select('*').eq('id', orderId).maybeSingle();
-  if (!order) return fail('That order no longer exists.');
-  if (order.status !== 'placed') return fail('A cancelled order can’t be reassigned.');
-  const { data: sale } = await supabase.from('wreath_sales').select('delivery_zip_prefix').eq('id', order.sale_id).single();
+const PRICE_PROBLEM: Record<string, string> = {
+  empty: 'An order needs at least one item. To drop them all, cancel the order instead.',
+  too_many_lines: 'That is too many different items for one order.',
+  unknown_item: 'One of the items isn’t in this sale.',
+  not_donatable: 'One of the items can’t be donated.',
+  quantity: 'Each quantity is 1 to 50.',
+  gift: 'A gift is $0 to $500.',
+  inactive_item: 'One of the items isn’t on sale.'
+};
 
+/**
+ * The treasurer's full edit of an order (Patrick, 2026-10-18: a customer ordered the wrong item, then paid by Venmo for
+ * a different one): items, gift, contact, credit and delivery (Reassign's rules, which this replaced), and on an order
+ * paid by hand the payment itself. Prices come from repriceEdit — a kept line keeps what it sold at. One RPC applies it
+ * all atomically, guarded by what the dialog saw (tech-lead, 2026-10-18).
+ *
+ * Payment rules: an unpaid order takes no payment fields (Mark paid does that). A card-paid order's total can't change
+ * (Stripe holds the money: refund first). On an order paid by hand, a total above what came in needs the shortfall
+ * accepted (it then reads as accepted short, as on Mark paid); a total below it is owed back unless the dialog turned
+ * the extra into a gift. A changed amount or method voids the ledger row and books the corrected one on the same day.
+ */
+export async function editOrder(orderId: number, v: EditOrderInput): Promise<WreathResult> {
+  const actor = await requireCapability('finance.manage');
+  if (!['scout', 'pickup', 'delivery'].includes(v.fulfillment)) return fail('Choose how the order is delivered.', 'fulfillment');
+  const name = v.customer.name.trim();
+  const email = v.customer.email.trim().toLowerCase();
+  const phone = v.customer.phone.trim();
+  if (!name) return fail('Enter the customer’s name.', 'name');
+  if (name.length > 120) return fail('Keep the name under 120 characters.', 'name');
+  if (email && (!EMAIL_RE.test(email) || email.length > 200)) return fail('That email address doesn’t look right.', 'email');
+  if (phone && !phoneOk(phone)) return fail('Enter a 10-digit phone number.', 'phone');
+  const supabase = createAdminClient();
+  const { data: order } = await supabase.from('wreath_orders').select('*, wreath_order_lines(item_id, quantity, donated, unit_price, unit_cost)').eq('id', orderId).maybeSingle();
+  if (!order) return fail('That order no longer exists.');
+  if (order.status !== 'placed') return fail('A cancelled order can’t be edited.');
+  if (toCents(Number(order.total)) !== toCents(v.seen.total) || order.payment_status !== v.seen.paymentStatus) return fail('That order changed while you were editing it. Close this and open it again.');
+  const byCard = order.paid_method === 'card';
+  const byHand = order.payment_status === 'paid' && !byCard;
+  if (v.payment && !byHand) return fail(byCard ? 'A card payment can’t be changed here.' : 'Mark the order paid first; then its payment can be corrected here.');
+  if (byHand && !v.payment) return fail('Enter the amount that came in.', 'received');
+
+  const { data: sale } = await supabase.from('wreath_sales').select('*').eq('id', order.sale_id).single();
+  const { data: itemRows } = await supabase.from('wreath_items').select('id, catalog_number, name, size, price, unit_cost, active, donatable').eq('sale_id', order.sale_id);
+  const items = (itemRows ?? []) as { id: number; catalog_number: number; name: string; size: string; price: number; unit_cost: number; active: boolean; donatable: boolean }[];
+  const oldLines = (order.wreath_order_lines ?? []) as { item_id: number; quantity: number; donated: boolean; unit_price: number; unit_cost: number }[];
+  const allDonated = v.lines.length > 0 && v.lines.every((l) => l.donated);
+  const fulfillment: Fulfillment = allDonated ? 'none' : v.fulfillment;
+  const rules = {
+    deliveryZipPrefix: sale?.delivery_zip_prefix ?? '532',
+    deliveryFee: Number(sale?.delivery_fee ?? 0),
+    deliveryFreeAt: Number(sale?.delivery_free_at ?? 0),
+    feePercent: Number(sale?.fee_percent ?? 0),
+    feeFixed: Number(sale?.fee_fixed ?? 0),
+    round1Cutoff: sale?.round1_cutoff ?? '',
+    round2Cutoff: sale?.round2_cutoff ?? ''
+  };
+  const priced = repriceEdit(
+    rules,
+    items.map((i) => ({ id: i.id, catalogNumber: i.catalog_number, price: Number(i.price), unitCost: Number(i.unit_cost), active: i.active, donatable: i.donatable })),
+    oldLines.map((l) => ({ itemId: l.item_id, donated: l.donated, unitPrice: Number(l.unit_price), unitCost: Number(l.unit_cost) })),
+    v.lines,
+    // An unpaid order whose customer chose to cover the card fee keeps covering it, on the new amount.
+    { fulfillment, gift: v.gift, coverFee: order.payment_status === 'unpaid' && Number(order.fee_covered) > 0 }
+  );
+  if (!priced.ok) return fail(PRICE_PROBLEM[priced.problem.code] ?? 'Check the items.', priced.problem.code === 'gift' ? 'gift' : 'lines');
+  // A card payment already covered its fee: that amount is part of what Stripe took, so it stays as it is (qa-lead).
+  const coveredByCard = byCard ? Number(order.fee_covered) : 0;
+  const next = coveredByCard > 0 ? { ...priced.order, feeCovered: coveredByCard, total: fromCents(toCents(priced.order.total) + toCents(coveredByCard)) } : priced.order;
+  if (byCard && toCents(next.total) !== toCents(Number(order.total))) return fail('This order was paid by card, so its total can’t change here. Refund it first, or keep the total the same.', 'lines');
+
+  // Credit and delivery: Reassign's rules.
   const liveSeller = async (personId: number) => {
     const { data } = await supabase.from('wreath_sellers').select('id').eq('sale_id', order.sale_id).eq('person_id', personId).eq('active', true).limit(1);
     return (data ?? []).length > 0;
   };
-  if (v.creditedPersonId != null && !(await liveSeller(v.creditedPersonId))) return fail('Only an active seller can take the credit.', 'creditedPersonId');
-
-  // An order of only donated wreaths has nothing to deliver; only its credit can move.
-  const fulfillment = order.fulfillment === 'none' ? 'none' : v.fulfillment;
-  let delivering: number | null = null;
-  const address = {
-    customer_address: v.street?.trim() ? v.street.trim() : order.customer_address,
-    customer_city: v.city?.trim() ? v.city.trim() : order.customer_city,
-    customer_zip: v.zip?.trim() ? v.zip.trim() : order.customer_zip
-  };
+  if (v.creditedPersonId != null && v.creditedPersonId !== order.credited_person_id && !(await liveSeller(v.creditedPersonId))) return fail('Only an active seller can take the credit.', 'creditedPersonId');
+  const address = { customer_address: v.customer.street.trim(), customer_city: v.customer.city.trim(), customer_zip: v.customer.zip.trim() };
   if (fulfillment === 'scout' || fulfillment === 'delivery') {
     if (!address.customer_address) return fail('Enter the street address for delivery.', 'street');
     if (!address.customer_city) return fail('Enter the city.', 'city');
-    if (!zipFormatOk(address.customer_zip ?? '')) return fail('Enter the 5-digit zip for delivery.', 'zip');
-    const inside = inDeliveryArea({ deliveryZipPrefix: sale?.delivery_zip_prefix ?? '532' }, address.customer_zip as string);
-    if (fulfillment === 'delivery' && !inside) return fail(`Troop delivery covers zips starting with ${zipPrefixText(sale?.delivery_zip_prefix ?? '532')}. Choose pickup or a scout who has agreed to deliver.`, 'zip');
+    if (!zipFormatOk(address.customer_zip)) return fail('Enter the 5-digit zip for delivery.', 'zip');
+    const inside = inDeliveryArea(rules, address.customer_zip);
+    if (fulfillment === 'delivery' && !inside) return fail(`Troop delivery covers zips starting with ${zipPrefixText(rules.deliveryZipPrefix)}. Choose pickup or a scout who has agreed to deliver.`, 'zip');
     if (fulfillment === 'scout' && !inside && !order.outside_area_relative) return fail('That address is outside the delivery area, and the customer didn’t say a relative arranged it.', 'zip');
-  }
+  } else if (address.customer_zip && !zipFormatOk(address.customer_zip)) return fail('Enter a 5-digit zip, or leave it empty.', 'zip');
+  let delivering: number | null = null;
   if (fulfillment === 'scout') {
     delivering = v.deliveringPersonId ?? v.creditedPersonId;
     if (delivering == null) return fail('Choose which scout delivers.', 'deliveringPersonId');
-    if (!(await liveSeller(delivering))) return fail('Only an active seller can deliver.', 'deliveringPersonId');
+    if (delivering !== order.delivering_person_id && !(await liveSeller(delivering))) return fail('Only an active seller can deliver.', 'deliveringPersonId');
   }
 
-  // A change of delivery reprices the delivery fee from the order's own lines (donated lines are never delivered).
-  const { data: lineRows } = await supabase.from('wreath_order_lines').select('quantity, donated, unit_price').eq('order_id', orderId);
-  const deliveredCents = ((lineRows ?? []) as { quantity: number; donated: boolean; unit_price: number }[])
-    .filter((l) => !l.donated)
-    .reduce((n, l) => n + toCents(Number(l.unit_price)) * l.quantity, 0);
-  const { data: fees } = await supabase.from('wreath_sales').select('delivery_fee, delivery_free_at').eq('id', order.sale_id).single();
-  const newFee = deliveryFeeFor({ deliveryFee: Number(fees?.delivery_fee ?? 0), deliveryFreeAt: Number(fees?.delivery_free_at ?? 0) }, fulfillment, fromCents(deliveredCents));
-  const newTotal = fromCents(toCents(Number(order.items_subtotal)) + toCents(newFee) + toCents(Number(order.fee_covered)) + toCents(Number(order.gift)));
+  // The payment, on an order paid by hand.
+  const oldPaid = order.paid_amount == null ? null : Number(order.paid_amount);
+  let paid: { method: PaidMethod; amount: number } | null = null;
+  if (byHand && v.payment) {
+    if (!PAID_METHODS.includes(v.payment.method)) return fail('Choose how it was paid.', 'method');
+    const amount = fromCents(toCents(v.payment.received));
+    if (!(Number.isFinite(v.payment.received) && amount > 0)) return fail('Enter the amount that came in.', 'received');
+    if (amount > 10000) return fail('That amount is too large.', 'received');
+    if (toCents(amount) < toCents(next.total) && !v.payment.acceptShort) {
+      return fail(`${money(amount)} came in, ${money(fromCents(toCents(next.total) - toCents(amount)))} short of the ${money(next.total)} total. Accept the shortfall, or change the items.`, 'received');
+    }
+    paid = { method: v.payment.method, amount };
+  }
+  const rebook = paid != null && (toCents(paid.amount) !== toCents(oldPaid ?? 0) || paid.method !== order.paid_method);
+  const { data: liveLedger } = await supabase
+    .from('financial_transactions')
+    .select('id, amount')
+    .eq('wreath_order_id', orderId)
+    .eq('ledger_role', 'payment')
+    .is('voided_at', null)
+    .maybeSingle();
+  const saleYear = Number(sale?.year ?? centralToday().slice(0, 4));
+  const ledgerRow =
+    rebook && liveLedger && paid
+      ? paidLedgerRow({ orderNumber: order.order_number, customerName: name, total: paid.amount, method: paid.method, saleYear, today: centralToday() })
+      : null;
 
-  const { error } = await supabase
-    .from('wreath_orders')
-    .update({ credited_person_id: v.creditedPersonId, delivering_person_id: delivering, fulfillment, ...address, delivery_fee: newFee, total: newTotal })
-    .eq('id', orderId);
-  if (error) return fail('Couldn’t reassign the order. Please try again.');
+  // A change to what the order owes or how it was paid: the open card session would charge the old amount. Only then,
+  // and only once the edit is valid, so a refused or contact-only edit leaves the customer's checkout alone (qa-lead).
+  if (toCents(next.total) !== toCents(Number(order.total)) || rebook) await expireOrderCheckout(orderId);
+  const { data: outcome, error } = await supabase.rpc('wreath_edit_order', {
+    p: {
+      order_id: orderId,
+      expect: {
+        payment_status: order.payment_status,
+        total: Number(order.total),
+        paid_amount: order.paid_amount == null ? '' : Number(order.paid_amount),
+        paid_method: order.paid_method ?? '',
+        ledger_id: liveLedger?.id ?? '',
+        ledger_amount: liveLedger ? Number(liveLedger.amount) : 0
+      },
+      order: {
+        customer_name: name,
+        customer_email: email,
+        customer_phone: phone,
+        ...address,
+        credited_person_id: v.creditedPersonId ?? '',
+        delivering_person_id: delivering ?? '',
+        fulfillment,
+        items_subtotal: next.itemsSubtotal,
+        delivery_fee: next.deliveryFee,
+        fee_covered: next.feeCovered,
+        gift: next.gift,
+        total: next.total,
+        ...(paid ? { paid_method: paid.method, paid_amount: paid.amount } : {})
+      },
+      lines: next.lines.map((l) => ({ item_id: l.itemId, quantity: l.quantity, donated: l.donated, unit_price: l.unitPrice, unit_cost: l.unitCost })),
+      ledger: ledgerRow ? { amount: ledgerRow.amount, method: ledgerRow.method, memo: ledgerRow.memo, actor_person_id: actor.personId ?? '' } : null
+    }
+  });
+  if (error) {
+    console.error('[wreaths] editOrder', orderId, error.message);
+    return fail('Couldn’t save the order. Please try again.');
+  }
+  if (outcome !== 'ok') return fail(outcome === 'cancelled' ? 'That order was cancelled, so it can’t be edited.' : outcome === 'missing' ? 'That order no longer exists.' : 'That order changed while you were editing it. Close this and open it again.');
 
+  // The audit: old and new as readable text. Never the address, phone or email values (read by more people than Orders).
+  const itemById = new Map(items.map((i) => [i.id, i]));
+  const lineText = (ls: { itemId: number; quantity: number; donated: boolean }[]) =>
+    ls
+      .map((l) => {
+        const it = itemById.get(l.itemId);
+        return `${l.quantity} × ${it ? itemLabel(it) : 'Item'}${l.donated ? ' (donated)' : ''}`;
+      })
+      .sort()
+      .join(', ');
   const names = new Map<number, string>();
   for (const id of [order.credited_person_id, order.delivering_person_id, v.creditedPersonId, delivering]) {
     if (id != null && !names.has(id)) names.set(id, await personName(supabase, id));
@@ -635,20 +756,87 @@ export async function reassignOrder(orderId: number, v: ReassignInput): Promise<
   const diff = (field: string, from: string, to: string) => {
     if (from !== to) changes.push({ field, from: from || '—', to: to || '—' });
   };
+  const changed = (field: string, from: string | null, to: string) => {
+    if ((from ?? '') !== to) changes.push({ field, from: from ? 'On file' : '—', to: to ? 'Changed' : 'Removed' });
+  };
+  diff('Items', lineText(oldLines.map((l) => ({ itemId: l.item_id, quantity: l.quantity, donated: l.donated }))), lineText(next.lines));
+  diff('Gift', money(Number(order.gift)), money(next.gift));
+  diff('Delivery fee', money(Number(order.delivery_fee)), money(next.deliveryFee));
+  diff('Processing fee', money(Number(order.fee_covered)), money(next.feeCovered));
+  diff('Total', money(Number(order.total)), money(next.total));
+  diff('Customer name', order.customer_name, name);
+  changed('Email', order.customer_email, email);
+  changed('Phone', order.customer_phone, phone);
+  if ((order.customer_address ?? '') !== address.customer_address || (order.customer_city ?? '') !== address.customer_city || (order.customer_zip ?? '') !== address.customer_zip) {
+    changes.push({ field: 'Address', from: order.customer_address ? 'On file' : '—', to: address.customer_address ? 'Changed' : 'Removed' });
+  }
   diff('Credited to', who(order.credited_person_id), who(v.creditedPersonId));
   diff('Delivery', how(order.fulfillment, order.delivering_person_id), how(fulfillment, delivering));
-  // Deliberately no address or phone here: the audit trail is read by more people than the order screen is.
-  diff('Delivery fee', money(Number(order.delivery_fee)), money(newFee));
-  diff('Total', money(Number(order.total)), money(newTotal));
-  await recordAudit({
-    area: 'wreaths',
-    action: 'reassign',
-    entityType: 'wreath_order',
-    entityId: orderId,
-    summary: `Reassigned order ${order.order_number}: ${changes.length ? changes.map((c) => c.field).join(', ') : 'no change'}`,
-    details: changes,
-    subjects: [order.credited_person_id, v.creditedPersonId].filter((x): x is number => x != null)
-  });
+  if (paid) {
+    const shortBy = fromCents(toCents(next.total) - toCents(paid.amount));
+    diff('Payment', `${money(oldPaid ?? 0)} (${order.paid_method})`, `${money(paid.amount)} (${paid.method})${shortBy > 0 ? `, ${money(shortBy)} short, accepted` : shortBy < 0 ? `, ${money(-shortBy)} owed back` : ''}`);
+    if (rebook) diff('Finance ledger', liveLedger ? `${money(Number(liveLedger.amount))} (voided)` : '—', ledgerRow ? `${money(ledgerRow.amount)} to checking` : 'No linked ledger line: correct it in Finance by hand');
+  }
+  if (changes.length) {
+    await recordAudit({
+      area: 'wreaths',
+      action: 'edit',
+      entityType: 'wreath_order',
+      entityId: orderId,
+      summary: `Edited order ${order.order_number}: ${changes.map((c) => c.field).join(', ')}`,
+      details: changes,
+      subjects: [order.credited_person_id, v.creditedPersonId].filter((x): x is number => x != null)
+    });
+  }
+
+  // Best effort, after the edit is safely written; never on a scout-entered order (its customer is never emailed).
+  if (v.notifyCustomer && email && order.source !== 'paper') {
+    try {
+      const credited = v.creditedPersonId == null ? null : await scoutLabel(supabase, v.creditedPersonId);
+      const deliverer = delivering == null ? null : delivering === v.creditedPersonId ? credited : await scoutLabel(supabase, delivering);
+      const ctx = {
+        orderNumber: order.order_number,
+        customerName: name,
+        items: next.lines.map((l) => {
+          const it = itemById.get(l.itemId);
+          return { label: it ? itemLabel(it) : 'Item', quantity: l.quantity, donated: l.donated, amount: fromCents(toCents(l.unitPrice) * l.quantity) };
+        }),
+        itemsSubtotal: next.itemsSubtotal,
+        deliveryFee: next.deliveryFee,
+        feeCovered: next.feeCovered,
+        gift: next.gift,
+        total: next.total,
+        arrival: arrivalParagraphs({
+          fulfillment,
+          scoutName: deliverer?.name ?? null,
+          scoutFirstName: deliverer?.firstName ?? null,
+          outsideAreaRelative: order.outside_area_relative,
+          hasDonated: next.lines.some((l) => l.donated),
+          distribution: { date: sale?.distribution_date ?? null, window: sale?.distribution_window ?? '', place: sale?.distribution_place ?? '' }
+        }).join(' '),
+        creditedTo: credited?.name ?? null,
+        orderUrl: `${siteUrl()}/wreaths/order/${order.public_token}`,
+        changesBy: fmtDateFull(order.round === 1 ? rules.round1Cutoff : rules.round2Cutoff),
+        paid: order.payment_status === 'paid' ? (paid?.amount ?? oldPaid ?? next.total) : null
+      };
+      const mail = orderUpdatedEmail(ctx);
+      await sendEmail({ to: [email], subject: mail.subject, html: mail.html, text: mail.text, replyTo: troopEmail(), confirm: true });
+      const copyTo = (((sale?.order_cc as string[] | null) ?? []) as string[]).filter((a) => a && a !== email);
+      if (copyTo.length) {
+        const cc = orderUpdatedEmail(ctx, { sentTo: name });
+        await sendEmail({ to: copyTo, subject: cc.subject, html: cc.html, text: cc.text, replyTo: troopEmail(), confirm: true });
+      }
+    } catch (e) {
+      console.error('[wreaths] editOrder email', orderId, e instanceof Error ? e.message : e);
+    }
+  }
+  revalidatePath('/admin/finance');
   revalidatePath(PAGE);
   return { ok: true };
+}
+
+/** "Ben B." and "Ben": how the customer's email names a scout. */
+async function scoutLabel(supabase: ReturnType<typeof createAdminClient>, personId: number): Promise<{ name: string; firstName: string }> {
+  const { data } = await supabase.from('people').select('first_name, last_name').eq('id', personId).maybeSingle();
+  return scoutDisplayName(data?.first_name ?? null, data?.last_name ?? null);
 }

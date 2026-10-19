@@ -2,7 +2,7 @@
 
 /**
  * Wreath sale › Orders: every order, filterable, with the treasurer's two jobs — Mark paid (Release A: customers pay
- * the treasurer by Venmo or PayPal) and Reassign (credit and delivery, scout ↔ scout or scout ↔ troop). An order opens
+ * the treasurer by Venmo or PayPal) and Edit order (items, contact, credit and delivery, and a hand payment). An order opens
  * in place: items, the customer's contact, the audited changes. Customer contact is shown here and nowhere public.
  * A small, already-fetched list, so the search and filters run on the client (useTableSearch).
  */
@@ -11,12 +11,13 @@ import { Fragment, useMemo, useRef, useState, useTransition } from 'react';
 import { Button } from '../../../_components/button';
 import { Dialog, DialogActions, DialogBody, DialogHeader } from '../../_components/dialog';
 import { Badge } from '../../_components/badge';
-import { SaveButton, SaveProblem, useSavedSnapshot } from '../../_components/save-state';
+import { SaveButton, useSavedSnapshot } from '../../_components/save-state';
 import { SearchField, useTableSearch } from '../../_components/search-field';
 import { fmtDateTime } from '@/lib/format-date';
-import { FULFILLMENT_LABEL, PAID_METHODS, SOURCE_LABEL, acceptedShort, fmtMoney2, fromCents, toCents, inDeliveryArea, zipPrefixText, type PaidMethod } from '@/lib/wreaths/rules';
-import type { AdminOrder, AuditEntry } from '@/lib/wreaths/admin-data';
-import { cancelOrder, markPaid, reassignOrder, refundCardOrder, setPaymentNote } from './actions';
+import { FULFILLMENT_LABEL, PAID_METHODS, SOURCE_LABEL, acceptedShort, fmtMoney2, fromCents, toCents, type PaidMethod, type SaleRules } from '@/lib/wreaths/rules';
+import type { AdminItem, AdminOrder, AuditEntry } from '@/lib/wreaths/admin-data';
+import { cancelOrder, markPaid, refundCardOrder, setPaymentNote } from './actions';
+import { EditOrderForm } from './edit-order-form';
 import styles from './wreaths.module.css';
 
 export interface SellerOption {
@@ -27,15 +28,15 @@ export interface SellerOption {
 const FULFILLMENT = FULFILLMENT_LABEL;
 const SOURCE = SOURCE_LABEL;
 
-export function OrdersPanel({ orders, history, sellers, deliveryZipPrefix, initialPay = '' }: { orders: AdminOrder[]; history: Record<number, AuditEntry[]>; sellers: SellerOption[]; deliveryZipPrefix: string; initialPay?: string }) {
+export function OrdersPanel({ orders, history, sellers, items, rules, initialPay = '' }: { orders: AdminOrder[]; history: Record<number, AuditEntry[]>; sellers: SellerOption[]; items: AdminItem[]; rules: SaleRules; initialPay?: string }) {
   const [round, setRound] = useState('');
   const [credit, setCredit] = useState('');
   const [pay, setPay] = useState(initialPay);
   const [ful, setFul] = useState('');
   const [open, setOpen] = useState<number | null>(null);
-  const [reassigning, setReassigning] = useState<AdminOrder | null>(null);
+  const [editing, setEditing] = useState<AdminOrder | null>(null);
   const [cancelling, setCancelling] = useState<AdminOrder | null>(null);
-  const reassignRef = useRef<HTMLDialogElement>(null);
+  const editRef = useRef<HTMLDialogElement>(null);
   const cancelRef = useRef<HTMLDialogElement>(null);
 
   const fields = useMemo(() => (o: AdminOrder) => [o.customerName, o.customerEmail, o.orderNumber], []);
@@ -166,9 +167,10 @@ export function OrdersPanel({ orders, history, sellers, deliveryZipPrefix, initi
                         <OrderDetail
                           order={o}
                           history={history[o.id] ?? []}
-                          onReassign={() => {
-                            setReassigning(o);
-                            requestAnimationFrame(() => reassignRef.current?.showModal());
+                          sellers={sellers}
+                          onEdit={() => {
+                            setEditing(o);
+                            requestAnimationFrame(() => editRef.current?.showModal());
                           }}
                           onCancel={() => {
                             setCancelling(o);
@@ -185,9 +187,9 @@ export function OrdersPanel({ orders, history, sellers, deliveryZipPrefix, initi
         </table>
       </div>
 
-      <Dialog ref={reassignRef} onClose={() => setReassigning(null)}>
-        <DialogHeader title={reassigning ? `Reassign ${reassigning.orderNumber}` : 'Reassign'} sub="Credit and delivery" />
-        {reassigning && <ReassignForm key={reassigning.id} order={reassigning} sellers={sellers} deliveryZipPrefix={deliveryZipPrefix} onClose={() => reassignRef.current?.close()} />}
+      <Dialog ref={editRef} className={styles.editDialog} onClose={() => setEditing(null)}>
+        <DialogHeader title={editing ? `Edit ${editing.orderNumber}` : 'Edit order'} sub={editing?.customerName} />
+        {editing && <EditOrderForm key={editing.id} order={editing} items={items} sellers={sellers} rules={rules} onClose={() => editRef.current?.close()} />}
       </Dialog>
       <Dialog ref={cancelRef} danger onClose={() => setCancelling(null)}>
         <DialogHeader title={cancelling ? `Cancel ${cancelling.orderNumber}?` : 'Cancel order'} />
@@ -197,7 +199,7 @@ export function OrdersPanel({ orders, history, sellers, deliveryZipPrefix, initi
   );
 }
 
-function OrderDetail({ order: o, history, onReassign, onCancel }: { order: AdminOrder; history: AuditEntry[]; onReassign: () => void; onCancel: () => void }) {
+function OrderDetail({ order: o, history, sellers, onEdit, onCancel }: { order: AdminOrder; history: AuditEntry[]; sellers: SellerOption[]; onEdit: () => void; onCancel: () => void }) {
   const [method, setMethod] = useState<PaidMethod>('venmo');
   // Paid another way, an unpaid card-fee cover drops (markPaid), so the amount due is the total without it.
   const due = fromCents(toCents(o.total) - toCents(o.feeCovered));
@@ -263,6 +265,15 @@ function OrderDetail({ order: o, history, onReassign, onCancel }: { order: Admin
           <dd>{o.customerPhone || '—'}</dd>
           <dt>Address</dt>
           <dd>{address || '—'}</dd>
+          <dt>Credited to</dt>
+          <dd>{o.creditedName}</dd>
+          <dt>Delivery</dt>
+          <dd>
+            {o.fulfillment === 'scout'
+              ? `${FULFILLMENT.scout}: ${o.deliveringPersonId === o.creditedPersonId ? o.creditedName : (sellers.find((s) => s.personId === o.deliveringPersonId)?.name ?? 'another scout')}`
+              : FULFILLMENT[o.fulfillment]}
+            {o.outsideAreaRelative && ' (outside the area, a relative arranged it)'}
+          </dd>
           <dt>Source</dt>
           <dd>
             {o.source === 'store' && o.creditedPersonId != null && o.deliveringPersonId == null
@@ -346,8 +357,8 @@ function OrderDetail({ order: o, history, onReassign, onCancel }: { order: Admin
         {o.source === 'paper' && <PaymentNote key={`${o.id}-${o.paymentNote}`} order={o} />}
         {live && (
           <div className={styles.actionRow}>
-            <Button variant="quiet" onClick={onReassign}>
-              Reassign…
+            <Button variant="quiet" onClick={onEdit}>
+              Edit order…
             </Button>
             <Button variant="quiet" onClick={onCancel}>
               Cancel order…
@@ -431,125 +442,6 @@ function PaymentNote({ order: o }: { order: AdminOrder }) {
       <div className={styles.actionRow}>
         <SaveButton dirty={dirty} pending={pending} onClick={save} />
       </div>
-    </form>
-  );
-}
-
-function ReassignForm({ order: o, sellers, deliveryZipPrefix, onClose }: { order: AdminOrder; sellers: SellerOption[]; deliveryZipPrefix: string; onClose: () => void }) {
-  const [credit, setCredit] = useState(o.creditedPersonId == null ? '' : String(o.creditedPersonId));
-  const [fulfillment, setFulfillment] = useState<'scout' | 'pickup' | 'delivery'>(o.fulfillment === 'none' ? 'pickup' : o.fulfillment);
-  const [street, setStreet] = useState(o.customerAddress);
-  const [city, setCity] = useState(o.customerCity);
-  const [zip, setZip] = useState(o.customerZip);
-  const [tried, setTried] = useState(false);
-  const [problem, setProblem] = useState<{ field?: string; message: string } | null>(null);
-  const [pending, start] = useTransition();
-  const donatedOnly = o.fulfillment === 'none';
-  // A scout can deliver only the order credited to them; a troop order handed to a scout takes their credit too.
-  const effective = !credit && fulfillment === 'scout' ? 'pickup' : fulfillment;
-  const { dirty } = useSavedSnapshot(JSON.stringify({ credit, effective, street, city, zip }));
-  const needsAddress = !donatedOnly && (effective === 'scout' || effective === 'delivery');
-
-  const p: Record<string, string> = {};
-  if (tried && needsAddress) {
-    if (!street.trim()) p.street = 'Enter the street address for delivery.';
-    if (!city.trim()) p.city = 'Enter the city.';
-    if (!/^\d{5}$/.test(zip.trim())) p.zip = 'Enter the 5-digit zip.';
-    else if (effective === 'delivery' && !inDeliveryArea({ deliveryZipPrefix }, zip.trim())) p.zip = `Troop delivery covers zips starting with ${zipPrefixText(deliveryZipPrefix)}.`;
-  }
-  const keys = Object.keys(p);
-  const problemFor = (k: string) => p[k] ?? (problem?.field === k ? problem.message : undefined);
-  const cls = (k: string) => `${styles.field} ${problemFor(k) ? styles.bad : ''}`;
-
-  function save() {
-    setTried(true);
-    setProblem(null);
-    if (needsAddress && (!street.trim() || !city.trim() || !/^\d{5}$/.test(zip.trim()))) return;
-    if (effective === 'delivery' && needsAddress && !inDeliveryArea({ deliveryZipPrefix }, zip.trim())) return;
-    start(async () => {
-      const res = await reassignOrder(o.id, {
-        creditedPersonId: credit ? Number(credit) : null,
-        fulfillment: effective,
-        street: needsAddress ? street : undefined,
-        city: needsAddress ? city : undefined,
-        zip: needsAddress ? zip : undefined
-      });
-      if (res.ok) onClose();
-      else setProblem({ field: res.field, message: res.error ?? 'Couldn’t reassign the order.' });
-    });
-  }
-
-  const scoutName = sellers.find((s) => String(s.personId) === credit)?.name;
-  return (
-    <form
-      noValidate
-      onSubmit={(e) => {
-        e.preventDefault();
-        save();
-      }}
-    >
-      <DialogBody>
-        <div className={styles.dialogBody}>
-          <div className={cls('creditedPersonId')}>
-            <label htmlFor="wr-credit">Credit to</label>
-            <select id="wr-credit" value={credit} onChange={(e) => setCredit(e.target.value)}>
-              <option value="">Troop store</option>
-              {sellers.map((s) => (
-                <option key={s.personId} value={s.personId}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-            <p className={styles.hint}>A scout who volunteers to deliver a troop order can be given its credit, and 30% of its profit. Money already collected stays with the troop.</p>
-          </div>
-          {donatedOnly ? (
-            <p className={styles.hint}>Donated wreaths only: nothing to deliver, so only the credit changes.</p>
-          ) : (
-            <div className={styles.field}>
-              <span className={styles.fieldLabel}>Delivered by</span>
-              <label className={styles.check}>
-                <input type="radio" name="wr-ful" checked={effective === 'scout'} disabled={!credit} onChange={() => setFulfillment('scout')} />
-                {scoutName ? `${scoutName} delivers` : 'A scout delivers (credit a scout first)'}
-              </label>
-              <label className={styles.check}>
-                <input type="radio" name="wr-ful" checked={effective === 'pickup'} onChange={() => setFulfillment('pickup')} />
-                Pickup at distribution
-              </label>
-              <label className={styles.check}>
-                <input type="radio" name="wr-ful" checked={effective === 'delivery'} onChange={() => setFulfillment('delivery')} />
-                Troop delivery ({deliveryZipPrefix} zips)
-              </label>
-            </div>
-          )}
-          {needsAddress && (
-            <div className={styles.grid2}>
-              <div className={`${cls('street')} ${styles.span2}`}>
-                <label htmlFor="wr-street">Street address</label>
-                <input id="wr-street" type="text" aria-invalid={problemFor('street') ? true : undefined} value={street} onChange={(e) => setStreet(e.target.value)} />
-                {problemFor('street') && <p className={styles.badNote}>{problemFor('street')}</p>}
-              </div>
-              <div className={cls('city')}>
-                <label htmlFor="wr-city">City</label>
-                <input id="wr-city" type="text" aria-invalid={problemFor('city') ? true : undefined} value={city} onChange={(e) => setCity(e.target.value)} />
-                {problemFor('city') && <p className={styles.badNote}>{problemFor('city')}</p>}
-              </div>
-              <div className={cls('zip')}>
-                <label htmlFor="wr-zip">Zip</label>
-                <input id="wr-zip" type="text" inputMode="numeric" maxLength={5} aria-invalid={problemFor('zip') ? true : undefined} value={zip} onChange={(e) => setZip(e.target.value)} />
-                {problemFor('zip') && <p className={styles.badNote}>{problemFor('zip')}</p>}
-              </div>
-            </div>
-          )}
-        </div>
-      </DialogBody>
-      <DialogActions>
-        <SaveButton dirty={dirty} pending={pending} blocked={keys.length > 0} onBlocked={save} onClick={save} />
-        <Button variant="secondary" onClick={onClose}>
-          Cancel
-        </Button>
-        {keys.length > 0 && <SaveProblem reason={p[keys[0]]} more={keys.length - 1} />}
-        {keys.length === 0 && problem && <SaveProblem reason={problem.message} />}
-      </DialogActions>
     </form>
   );
 }

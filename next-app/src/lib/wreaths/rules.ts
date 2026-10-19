@@ -244,6 +244,45 @@ export function priceCart(
   return { ok: true, order: { lines: priced, itemsSubtotal, deliveryFee, feeCovered, gift: fromCents(giftCents), total } };
 }
 
+/** A line already on an order, with the price and cost it was sold at. */
+export interface SnapshotLine {
+  itemId: number;
+  donated: boolean;
+  unitPrice: number;
+  unitCost: number;
+}
+
+/**
+ * Prices the treasurer's edit of an order (Patrick, 2026-10-18: a customer ordered the wrong item and paid for another).
+ * Unlike priceCart, a line the order already had — same item, same donated — keeps the price and cost it was sold at,
+ * a new line takes today's catalog price, and an item no longer on sale may still be used: the treasurer is correcting
+ * a real order, not shopping. Every other bound is priceCart's.
+ */
+export function repriceEdit(
+  rules: SaleRules,
+  catalog: PricedItem[],
+  existing: SnapshotLine[],
+  rawLines: CartLine[],
+  opts: { fulfillment: Fulfillment; gift: number; coverFee: boolean }
+): { ok: true; order: PricedOrder } | { ok: false; problem: PriceProblem } {
+  const kept = new Map(existing.map((l) => [`${l.itemId}:${l.donated ? 'd' : 'p'}`, l]));
+  const snapshot = catalog.map((i) => ({ ...i, active: true }));
+  const res = priceCart(rules, snapshot, rawLines, opts);
+  if (!res.ok) return res;
+  const lines = res.order.lines.map((l) => {
+    const was = kept.get(`${l.itemId}:${l.donated ? 'd' : 'p'}`);
+    return was ? { ...l, unitPrice: was.unitPrice, unitCost: was.unitCost } : l;
+  });
+  // Totals again, from the snapshots.
+  const cents = (pred: (l: PricedLine) => boolean) => lines.filter(pred).reduce((n, l) => n + toCents(l.unitPrice) * l.quantity, 0);
+  const subtotal = cents(() => true);
+  const deliveryFee = deliveryFeeFor(rules, opts.fulfillment, fromCents(cents((l) => !l.donated)));
+  const giftCents = toCents(res.order.gift);
+  const feeCovered = opts.coverFee ? coverFeeFor(rules, fromCents(subtotal + giftCents + toCents(deliveryFee))) : 0;
+  const total = fromCents(subtotal + giftCents + toCents(deliveryFee) + toCents(feeCovered));
+  return { ok: true, order: { lines, itemsSubtotal: fromCents(subtotal), deliveryFee, feeCovered, gift: res.order.gift, total } };
+}
+
 /** Which round an instant falls in: 1 up to the first cutoff, 2 up to the second, null after the sale ends. */
 export function roundAt(rules: Pick<SaleRules, 'round1Cutoff' | 'round2Cutoff'>, ms: number): 1 | 2 | null {
   if (ms <= Date.parse(rules.round1Cutoff)) return 1;

@@ -130,3 +130,11 @@
 /* Mark paid: "Amount received", in dollars beside the method select. */
 .amountLabel { display: inline-flex; align-items: center; gap: var(--admin-space-2); font-size: var(--admin-text-md); color: var(--admin-gray-700); }
 .amountBox { width: 7.5em; }
+
+/* Orders › Edit order: a wider dialog, and one row per line (item, quantity, donated, remove). */
+.editDialog { max-width: 720px; }
+.editLines { list-style: none; margin: 0 0 var(--admin-space-3); padding: 0; display: grid; gap: var(--admin-space-3); }
+.editLines li { display: grid; grid-template-columns: minmax(0, 1fr) 4.5em max-content max-content; align-items: center; gap: var(--admin-space-4); }
+.editLines select, .qtyBox { min-width: 0; padding: 7px 8px; border: 1px solid var(--admin-gray-300); border-radius: var(--admin-radius-sm); font: inherit; font-size: var(--admin-text-md); background: var(--admin-white); }
+.checkInline { display: inline-flex; align-items: center; gap: var(--admin-space-2); font-size: var(--admin-text-md); color: var(--admin-gray-700); }
+.sectionGapSm { margin-top: var(--admin-space-6); }

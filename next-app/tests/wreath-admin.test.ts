@@ -177,14 +177,14 @@ describe('orders', () => {
     expect([Number(row.fee_covered), Number(row.total), Number(row.paid_amount)]).toEqual([0, 52, 52]);
   });
 
-  it('MarkPaid_Cancel_Reassign_ExpireTheOpenCardSession', async () => {
+  // editOrder's own expiry is in wreath-edit-order.test.ts.
+  it('MarkPaid_Cancel_ExpireTheOpenCardSession', async () => {
     const order = await makeOrder();
-    const { markPaid, cancelOrder, reassignOrder } = await actions();
+    const { markPaid, cancelOrder } = await actions();
     card.expire.mockClear();
-    await reassignOrder(order.id, { creditedPersonId: null, fulfillment: 'pickup' });
     await markPaid(order.id, 'venmo');
     await cancelOrder(order.id);
-    expect(card.expire.mock.calls.map((c) => (c as unknown[])[0])).toEqual([order.id, order.id, order.id]);
+    expect(card.expire.mock.calls.map((c) => (c as unknown[])[0])).toEqual([order.id, order.id]);
   });
 
   it('MarkPaid_RefusesAnUnknownMethodAndACancelledOrder', async () => {
@@ -195,86 +195,6 @@ describe('orders', () => {
     expect((await markPaid(order.id, 'cash')).ok).toBe(false);
     expect((await admin.from('wreath_orders').select('status').eq('id', order.id).single()).data?.status).toBe('cancelled');
     expect((await auditFor('wreath_order', order.id)).map((a) => a.action)).toContain('cancel');
-  });
-
-  it('Reassign_RequiresFinanceManage_AndAuditsOldAndNew', async () => {
-    const order = await makeOrder();
-    const { reassignOrder } = await actions();
-    state.caps = new Set(['news.write']);
-    await expect(reassignOrder(order.id, { creditedPersonId: fx.sellerA.personId, fulfillment: 'scout', street: '1 A St', city: 'Milwaukee', zip: '53211' })).rejects.toThrow(/requires/i);
-
-    state.caps = new Set(['finance.manage']);
-    // Troop store pickup -> credited to and delivered by a scout.
-    const toScout = await reassignOrder(order.id, { creditedPersonId: fx.sellerA.personId, fulfillment: 'scout', street: '1 A St', city: 'Milwaukee', zip: '53211' });
-    expect(toScout).toMatchObject({ ok: true });
-    let row: Record<string, unknown> = (await admin.from('wreath_orders').select('credited_person_id, delivering_person_id, fulfillment, customer_zip').eq('id', order.id).single()).data!;
-    expect(row).toMatchObject({ credited_person_id: fx.sellerA.personId, delivering_person_id: fx.sellerA.personId, fulfillment: 'scout', customer_zip: '53211' });
-
-    // Scout -> scout.
-    expect(await reassignOrder(order.id, { creditedPersonId: fx.sellerB.personId, fulfillment: 'scout' })).toMatchObject({ ok: true });
-    row = (await admin.from('wreath_orders').select('credited_person_id, delivering_person_id, fulfillment, customer_zip').eq('id', order.id).single()).data!;
-    expect(row.credited_person_id).toBe(fx.sellerB.personId);
-    expect(row.delivering_person_id).toBe(fx.sellerB.personId);
-
-    // Scout -> troop, back to pickup.
-    expect(await reassignOrder(order.id, { creditedPersonId: null, fulfillment: 'pickup' })).toMatchObject({ ok: true });
-    row = (await admin.from('wreath_orders').select('credited_person_id, delivering_person_id, fulfillment').eq('id', order.id).single()).data!;
-    expect(row).toMatchObject({ credited_person_id: null, delivering_person_id: null, fulfillment: 'pickup' });
-
-    const audit = (await auditFor('wreath_order', order.id)).filter((a) => a.action === 'reassign');
-    expect(audit).toHaveLength(3);
-    const first = JSON.stringify(audit[0].details);
-    // Old and new, as readable values (the summary names fields, never values — D-257).
-    expect(first).toContain('Credited to');
-    expect(first).toContain('Troop store');
-    expect(first).toContain(fx.sellerA.first);
-    expect(first).toContain('Pickup');
-    expect(audit[0].summary).not.toContain(fx.sellerA.first);
-  });
-
-  it('Reassign_RepricesTheDeliveryFee_KeepsAPaidOrderPaid_AndAuditsOldAndNewTotal_WithoutTheAddress', async () => {
-    // $26 of wreaths on a store pickup order, then paid.
-    const order = await makeOrder({ lines: [{ itemId: fx.item.w20, quantity: 1, donated: false }] });
-    const { reassignOrder, markPaid } = await actions();
-    await markPaid(order.id, 'venmo');
-    // Pickup -> troop delivery: under $50 of delivered items, so the $5 fee applies.
-    expect(await reassignOrder(order.id, { creditedPersonId: null, fulfillment: 'delivery', street: '9 Secret Lane', city: 'Milwaukee', zip: '53211' })).toMatchObject({ ok: true });
-    let row: Record<string, unknown> = (await admin.from('wreath_orders').select('delivery_fee, total, payment_status, paid_amount').eq('id', order.id).single()).data!;
-    expect([Number(row.delivery_fee), Number(row.total), row.payment_status, Number(row.paid_amount)]).toEqual([5, 31, 'paid', 26]);
-    // Delivery -> a scout delivers: no fee again.
-    expect(await reassignOrder(order.id, { creditedPersonId: fx.sellerA.personId, fulfillment: 'scout' })).toMatchObject({ ok: true });
-    row = (await admin.from('wreath_orders').select('delivery_fee, total, paid_amount').eq('id', order.id).single()).data!;
-    expect([Number(row.delivery_fee), Number(row.total), Number(row.paid_amount)]).toEqual([0, 26, 26]);
-
-    const audit = (await auditFor('wreath_order', order.id)).filter((a) => a.action === 'reassign');
-    const first = JSON.stringify(audit[0].details);
-    expect(first).toContain('Total');
-    expect(first).toContain('$26.00');
-    expect(first).toContain('$31.00');
-    // The customer's address and phone never go into the audit trail.
-    for (const a of audit) {
-      const blob = JSON.stringify(a);
-      expect(blob).not.toContain('Secret Lane');
-      expect(blob).not.toContain('53211');
-      expect(blob).not.toContain('414-555');
-    }
-  });
-
-  it('Reassign_RefusesANonSeller_ARetiredSeller_AndAnOutOfAreaTroopDelivery', async () => {
-    const order = await makeOrder();
-    const { reassignOrder } = await actions();
-    const { data: other } = await admin.from('scouts').select('person_id').eq('active', true).not('person_id', 'is', null).neq('person_id', fx.sellerA.personId).neq('person_id', fx.sellerB.personId).limit(1).single();
-    expect((await reassignOrder(order.id, { creditedPersonId: (other as { person_id: number }).person_id, fulfillment: 'scout', street: '1 St', city: 'Milwaukee', zip: '53211' })).ok).toBe(false);
-
-    await admin.from('wreath_sellers').update({ active: false }).eq('sale_id', fx.saleId).eq('slug', fx.sellerB.slug);
-    expect((await reassignOrder(order.id, { creditedPersonId: fx.sellerB.personId, fulfillment: 'scout', street: '1 St', city: 'Milwaukee', zip: '53211' })).ok).toBe(false);
-    await admin.from('wreath_sellers').update({ active: true }).eq('sale_id', fx.saleId).eq('slug', fx.sellerB.slug);
-
-    expect((await reassignOrder(order.id, { creditedPersonId: null, fulfillment: 'delivery', street: '1 St', city: 'Chicago', zip: '60601' })).ok).toBe(false);
-    expect((await reassignOrder(order.id, { creditedPersonId: null, fulfillment: 'delivery', street: '1 St', city: 'Milwaukee', zip: '53211' })).ok).toBe(true);
-    // The row is unchanged by every refusal above.
-    const row = (await admin.from('wreath_orders').select('credited_person_id').eq('id', order.id).single()).data!;
-    expect(row.credited_person_id).toBeNull();
   });
 });
 

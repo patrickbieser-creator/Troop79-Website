@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>October 18, 2026</strong> &nbsp;&middot;&nbsp; v1.236.0</p>
+      <p>Last updated: <strong>October 18, 2026</strong> &nbsp;&middot;&nbsp; v1.237.0</p>
     </div>
   </div>
 
@@ -494,6 +494,28 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.237.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.237.0</span>
+        <span class="release-date">October 18, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Wreath Sale: edit any order</p>
+        <ul class="change-list">
+          <li><span><strong>Edit order.</strong> An open order has an Edit order button, which replaces Reassign. One dialog changes the items (swap, add, remove, quantity, donated), the gift, the customer&rsquo;s name, email and phone, who gets credit, and how it is delivered. The delivery fee and total update as you go.</span></li>
+          <li><span><strong>Prices stay as sold.</strong> An item the order already had keeps the price it sold at. A new item takes today&rsquo;s price. An item no longer on sale can still be used for a correction.</span></li>
+          <li><span><strong>Fix the payment too.</strong> On an order paid by Venmo, PayPal, cash or check, you can correct the amount received and how it was paid. The order&rsquo;s finance ledger line is voided and the corrected one is booked on the same day.</span></li>
+          <li><span><strong>When it doesn&rsquo;t match.</strong> If the new total is more than what came in, the order saves only when you accept the shortfall. If more came in than the total, the extra shows as owed back, or one click counts it as a gift to Troop 79.</span></li>
+          <li><span><strong>Card orders.</strong> A card-paid order&rsquo;s contact, credit and delivery can change, but its total can&rsquo;t without a refund first.</span></li>
+          <li><span><strong>Tell the customer, if you like.</strong> An &ldquo;Email the customer the updated order&rdquo; box (off unless ticked) sends the new order and what is paid or still due. Scout-entered orders never email the customer.</span></li>
+          <li><span><strong>An open order shows its credit and delivery.</strong> The order detail now lists who gets credit and how it is delivered (and by which scout), beside the customer&rsquo;s details.</span></li>
+          <li><span><strong>Every change is in the order&rsquo;s history</strong>, old and new, except for the address, phone and email values. A note warns when the round&rsquo;s order to Rose has already closed.</span></li>
+        </ul>
       </div>
     </div>
 

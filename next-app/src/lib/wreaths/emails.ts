@@ -85,6 +85,31 @@ export function customerConfirmationEmail(c: OrderEmailContext, copy?: OrderCopy
   return { subject: subjectText(copy ? `Copy: wreath order ${c.orderNumber} for ${c.customerName}` : `Your Troop 79 wreath order ${c.orderNumber}`), html, text };
 }
 
+/**
+ * The customer's order after the treasurer changed it (Patrick, 2026-10-18), sent only when the treasurer ticks the
+ * box. Paid: what came in, and nothing more to do. Unpaid: the same pay-the-treasurer lines as the confirmation.
+ */
+export function orderUpdatedEmail(c: OrderEmailContext & { paid: number | null }, copy?: OrderCopy): { subject: string; html: string; text: string } {
+  const first = greetingName(c.customerName);
+  const pay =
+    c.paid != null
+      ? [`Paid — ${fmtMoney2(c.paid)}`]
+      : [`Pay by Venmo to ${PAY_TREASURER.venmoHandle} (${PAY_TREASURER.venmoUrl})`, `Or by PayPal to ${PAY_TREASURER.paypalEmail}, choosing Friends and family`, PAY_TREASURER.note];
+  const { html, text } = renderEmail({
+    heading: first ? `${first}, your order is updated.` : 'Your order is updated.',
+    intro:
+      c.paid != null
+        ? `We updated your Troop 79 wreath order ${c.orderNumber}. Here is the order as it stands now.`
+        : `We updated your Troop 79 wreath order ${c.orderNumber}. It is not paid yet: please pay ${fmtMoney2(c.total)} and put ${c.orderNumber} in the payment note so we can match it.`,
+    bullets: [...summaryBullets(c), ...pay, ...(c.creditedTo ? [`Credited to ${c.creditedTo}`] : []), c.arrival],
+    actionUrl: c.orderUrl,
+    actionLabel: 'View your order',
+    outro: 'Questions: reply to this email.',
+    notice: copy && copyNotice(copy)
+  });
+  return { subject: subjectText(copy ? `Copy: updated wreath order ${c.orderNumber} for ${c.customerName}` : `Your Troop 79 wreath order ${c.orderNumber} is updated`), html, text };
+}
+
 /** A note to the credited scout's household: a new order to deliver. Goes only to addresses on file. */
 export function scoutNoticeEmail(
   c: OrderEmailContext & { scoutFirstName: string; customerPhone: string; customerAddress: string; creditOnly?: boolean }
