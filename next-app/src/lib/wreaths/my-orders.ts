@@ -12,6 +12,9 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { loadAdminOrders, type AdminOrder } from './admin-data';
 import { loadCurrentSale, loadStoreItems, type PublicSale, type StoreItem } from './public';
 import { paymentDifferenceText, sellerEarnings, toCents, fromCents, type ScoutShares } from './rules';
+
+/** Lives in rules.ts so client components can use it (this module reaches server-only code). */
+export { orderItemsText } from './rules';
 import { goalProgress, lockReason, type GoalProgress, type LockSale } from './scout-entry';
 
 export interface MyOrderContact {
@@ -68,6 +71,8 @@ export interface SellerSummary {
   orders: number;
   items: number;
   sold: number;
+  /** Cash donations on the scout's counted orders (W-3). */
+  donations: number;
   paid: number;
   owed: number;
   earnings: number;
@@ -181,6 +186,7 @@ export function buildSellerView(
       orders: counted.length,
       items: counted.reduce((n, o) => n + o.lines.reduce((m, l) => m + l.quantity, 0), 0),
       sold: sumDollars(counted.map((o) => o.itemsSubtotal)),
+      donations: sumDollars(counted.map((o) => o.gift)),
       // What actually came in: an order accepted a little short counts what arrived (as the admin dashboard does).
       paid: sumDollars(paidOrders.map((o) => o.paidAmount ?? o.total)),
       owed: sumDollars(unpaidOrders.map((o) => o.total)),

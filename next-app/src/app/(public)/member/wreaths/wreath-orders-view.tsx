@@ -12,7 +12,7 @@ import surface from '@/app/_components/card.module.css';
 import { GoalBar } from '@/app/_components/goal-bar';
 import Link from 'next/link';
 import { fmtDate, fmtDay } from '@/lib/format-date';
-import { fmtMoney, fmtMoney2 } from '@/lib/wreaths/rules';
+import { fmtMoney, fmtMoney2, orderItemsText } from '@/lib/wreaths/rules';
 import type { MyOrder, MyWreathOrders, SellerView } from '@/lib/wreaths/my-orders';
 import { PrintDeliveryButton } from './print-button';
 import { OrderNote } from './order-note';
@@ -20,12 +20,7 @@ import { ScoutOrderRow } from './scout-order-row';
 import { ScoutSettings } from './scout-settings';
 import styles from './wreaths.module.css';
 
-function itemsText(o: MyOrder): string {
-  const parts = o.lines.map((l) => `${l.quantity} × ${l.label}${l.donated ? ' (donated to veterans)' : ''}`);
-  // A cash donation on the order (W-3) is its own line.
-  if (o.gift > 0) parts.push(`${fmtMoney2(o.gift)} donation`);
-  return parts.join(', ');
-}
+const itemsText = (o: MyOrder) => orderItemsText(o);
 
 function fulfillmentText(o: MyOrder, scoutName: string): string {
   switch (o.fulfillment) {
@@ -58,6 +53,7 @@ function Totals({ seller, share, donationShare }: { seller: SellerView; share: n
     ['Orders', String(s.orders)],
     ['Wreaths & items', String(s.items)],
     ['Sold', fmtMoney(s.sold)],
+    ['Donations', fmtMoney2(s.donations)],
     ['Paid', fmtMoney2(s.paid)],
     ['Still owed', fmtMoney2(s.owed)],
     ['Earned so far', fmtMoney2(s.earnings)],

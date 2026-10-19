@@ -7,6 +7,7 @@ import { PageShell } from '@/app/_components/page-shell';
 import { Notice } from '@/app/_components/notice';
 import { fmtDay } from '@/lib/format-date';
 import { LINK_NOT_FOUND, distributionDay, distributionLine, moneyBlockLines } from '@/lib/wreaths/copy';
+import { fmtMoney } from '@/lib/wreaths/rules';
 import type { StorePageData } from '@/lib/wreaths/store-page';
 import { GoalBar } from '@/app/_components/goal-bar';
 import type { GoalProgress } from '@/lib/wreaths/scout-entry';
@@ -27,7 +28,7 @@ function MoneyBlock({ lines }: { lines: string[] }) {
   );
 }
 
-export function StorePage({ data, entry, goal }: { data: StorePageData; entry?: EntryConfig; goal?: GoalProgress | null }) {
+export function StorePage({ data, entry, goal, donations = 0 }: { data: StorePageData; entry?: EntryConfig; goal?: GoalProgress | null; /** Cash donations raised on the scout's live orders. */ donations?: number }) {
   const { state, scout, linkFellBack } = data;
   const first = scout?.firstName ?? null;
 
@@ -66,7 +67,7 @@ export function StorePage({ data, entry, goal }: { data: StorePageData; entry?: 
   }
 
   const day = distributionDay(dist);
-  const money = moneyBlockLines(first);
+  const money = moneyBlockLines(first, state.sale.donationShare);
   const head = scout ? (
     <>
       <p className={styles.kicker}>Troop 79 Christmas wreaths</p>
@@ -75,6 +76,7 @@ export function StorePage({ data, entry, goal }: { data: StorePageData; entry?: 
       <div className={styles.intro}>
         <div className={styles.greet}>
           <GoalBar progress={goal ?? null} />
+          {donations > 0 && <p className={styles.meta}>{goal ? `Plus ${fmtMoney(donations)} in donations` : `${fmtMoney(donations)} in donations so far`}</p>}
           <p className={styles.meta}>{scout.deliveryMessage ?? `${scout.firstName} delivers your order in person${day ? `, after distribution day, ${day}` : ''}.`}</p>
         </div>
         <MoneyBlock lines={money} />

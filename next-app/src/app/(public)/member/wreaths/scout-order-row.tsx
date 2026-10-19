@@ -17,7 +17,7 @@ import { Field, SaveProblem, TextArea, TextInput } from '@/app/_components/form'
 import { Stepper } from '@/app/_components/stepper';
 import surface from '@/app/_components/card.module.css';
 import { fmtDate } from '@/lib/format-date';
-import { MAX_GIFT, fmtMoney, fmtMoney2, itemLabel } from '@/lib/wreaths/rules';
+import { EMPTY_ENTRY, MAX_GIFT, orderItemsText, MIN_DONATION, fmtMoney, fmtMoney2, itemLabel } from '@/lib/wreaths/rules';
 import type { StoreItem } from '@/lib/wreaths/public';
 import type { MyOrder } from '@/lib/wreaths/my-orders';
 import { cancelScoutOrderAction, saveScoutOrderAction } from './actions';
@@ -46,9 +46,7 @@ const draftOf = (o: MyOrder): Draft => ({
   lines: (o.entry?.lines ?? []).map((l) => ({ ...l }))
 });
 
-function itemsText(o: MyOrder): string {
-  return o.lines.map((l) => `${l.quantity} × ${l.label}${l.donated ? ' (donated to veterans)' : ''}`).join(', ');
-}
+const itemsText = (o: MyOrder) => orderItemsText(o);
 
 function StateBadge({ o }: { o: MyOrder }) {
   if (o.status === 'cancelled') return <Badge tone="neutral">Cancelled</Badge>;
@@ -80,8 +78,10 @@ export function ScoutOrderRow({ order: o, items, canEdit, scoutFirstName }: { or
 
   const problems: Record<string, string> = {};
   if (!draft.name.trim()) problems.name = 'Add the customer’s name, like “Grandma Sue”.';
-  if (draft.lines.length === 0) problems.cart = 'The order is empty. Add an item, or cancel the order.';
-  if (draft.gift.trim() && !(gift >= 0 && gift <= MAX_GIFT)) problems.gift = `A gift can be from $0 to $${MAX_GIFT}.`;
+  // A donation with no wreath is an order too (Patrick, 2026-10-19), $1 at least.
+  if (draft.lines.length === 0 && !(gift > 0)) problems.cart = EMPTY_ENTRY;
+  if (draft.gift.trim() && !(gift >= 0 && gift <= MAX_GIFT)) problems.gift = `A donation can be from $0 to $${MAX_GIFT}.`;
+  else if (draft.lines.length === 0 && gift > 0 && gift < MIN_DONATION) problems.gift = `A donation is at least $${MIN_DONATION}.`;
   const shown = (f: string) => (tried ? problems[f] : undefined) ?? (server?.field === f ? server.message : undefined);
   const firstProblem = tried ? Object.values(problems)[0] : undefined;
 
@@ -251,7 +251,7 @@ export function ScoutOrderRow({ order: o, items, canEdit, scoutFirstName }: { or
         </fieldset>
 
         <div className={styles.editFields}>
-          <Field label={<>Gift to Troop 79 <span className={styles.opt}>optional</span></>} problem={shown('gift')}>
+          <Field label={<>Donation to Troop 79 <span className={styles.opt}>optional</span></>} problem={shown('gift')}>
             <TextInput type="text" inputMode="decimal" autoComplete="off" value={draft.gift} onChange={(e) => set('gift', e.target.value)} />
           </Field>
           <div>

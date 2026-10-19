@@ -132,3 +132,15 @@ describe('editing a scout-entered order between donation-only and wreaths', () =
     expect(res.ok ? 'saved' : res.error).toBe('The order is empty. Add a wreath or a donation.');
   });
 });
+
+describe('the donations a scout has raised (their public page)', () => {
+  it('SellerTotals_CountLiveDonations_AndLeaveCancelledOnesOut', async () => {
+    const { sellerTotals } = await import('../src/lib/wreaths/scout-entry');
+    const before = await sellerTotals(admin, fx.saleId, fx.sellerA.personId);
+    const kept = await place(family, { gift: 30 });
+    const dropped = await place(family, { gift: 70 });
+    await admin.from('wreath_orders').update({ status: 'cancelled' }).eq('id', dropped.id);
+    const after = await sellerTotals(admin, fx.saleId, fx.sellerA.personId);
+    expect([kept.id > 0, Math.round((after.donations - before.donations) * 100) / 100, after.items - before.items]).toEqual([true, 30, 0]);
+  });
+});

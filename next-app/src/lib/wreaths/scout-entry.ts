@@ -104,16 +104,28 @@ export function parseDeliveryMessage(raw: unknown): { ok: true; message: string 
  * or not, donated wreaths included. The same rule as my-orders' isCounted, so the Members totals and the goal agree.
  */
 export async function itemsSoldBy(sb: SupabaseClient, saleId: number, personId: number): Promise<number> {
+  return (await sellerTotals(sb, saleId, personId)).items;
+}
+
+/**
+ * What a scout has raised on live orders credited to them (placed, not refunded): items for the goal thermometer, and
+ * the cash donations shown under it (Patrick, 2026-10-19). Amounts only; the scout's public page names no donor.
+ */
+export async function sellerTotals(sb: SupabaseClient, saleId: number, personId: number): Promise<{ items: number; donations: number }> {
   const { data } = await sb
     .from('wreath_orders')
-    .select('wreath_order_lines(quantity)')
+    .select('gift, wreath_order_lines(quantity)')
     .eq('sale_id', saleId)
     .eq('credited_person_id', personId)
     .eq('status', 'placed')
     .neq('payment_status', 'refunded');
-  let n = 0;
-  for (const o of (data ?? []) as unknown as { wreath_order_lines: { quantity: number }[] }[]) for (const l of o.wreath_order_lines) n += l.quantity;
-  return n;
+  let items = 0;
+  let cents = 0;
+  for (const o of (data ?? []) as unknown as { gift: number; wreath_order_lines: { quantity: number }[] }[]) {
+    cents += Math.round(Number(o.gift ?? 0) * 100);
+    for (const l of o.wreath_order_lines) items += l.quantity;
+  }
+  return { items, donations: cents / 100 };
 }
 
 /* ── actions on an existing order ─────────────────────────────────────────── */

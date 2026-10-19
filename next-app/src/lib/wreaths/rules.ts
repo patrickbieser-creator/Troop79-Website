@@ -498,3 +498,10 @@ export function itemLabel(i: { name: string; size: string }): string {
   const name = i.name.charAt(0).toUpperCase() + i.name.slice(1).toLowerCase();
   return (i.size ? i.size + ' ' : '') + name;
 }
+
+/** An order's contents in one line: its wreaths, then its cash donation ("$100 donation" alone on a donation-only order). */
+export function orderItemsText(o: { lines: { label: string; quantity: number; donated: boolean }[]; gift: number }): string {
+  const parts = o.lines.map((l) => `${l.quantity} × ${l.label}${l.donated ? ' (donated to veterans)' : ''}`);
+  if (o.gift > 0) parts.push(`${fmtMoney(o.gift)} donation`);
+  return parts.join(', ');
+}
