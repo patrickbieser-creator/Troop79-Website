@@ -16,7 +16,8 @@ import { loadIntents, loadScoutProgress, type BoardMeeting, type BoardScoutRow, 
 import { fmtDate } from '@/lib/format-date';
 import { NOT_PLANNABLE, SM_CONFERENCE_CODES } from '@/lib/rank-calculus';
 import { rankTrees, topicWords } from '@/lib/meeting-board-picklist';
-import { boardName, summarizeBoard, type Intent } from '@/lib/meeting-board-shared';
+import { boardName, effectiveIntent, summarizeBoard, type Intent } from '@/lib/meeting-board-shared';
+import { matchBoard, type MatchResult } from '@/lib/meeting-board-match';
 import {
   assessTeacher,
   flagText,
@@ -213,6 +214,49 @@ export async function loadTeachBoard(
   const { demand } = summarizeBoard(board);
   const freeform = rows.freeform.map((f) => ({ key: f.key, title: f.title }));
   return { ctx, people, supply, intents, demand, freeform, freeformTitles: new Map(freeform.map((f) => [f.key, f.title])), match: matchSupply(demand, supply) };
+}
+
+/**
+ * The live match for one meeting (Phase 3a): the board and its teacher side through the pure matcher. Scouts' ledger
+ * codes are read fresh (closest-to-completion tie-break, the engine's placement of "Not sure yet" scouts). Recomputed
+ * on every load and poll; nothing is stored.
+ */
+export async function loadLiveMatch(
+  sb: SupabaseClient,
+  meeting: Pick<BoardMeeting, 'date' | 'blockCount'>,
+  board: readonly BoardScoutRow[],
+  teach: Pick<TeachBoard, 'supply' | 'intents'>
+): Promise<MatchResult> {
+  const inPlay = board.filter((s) => {
+    const it = effectiveIntent(s.intent, s.picks);
+    return it === 'coming' || it === 'undecided';
+  });
+  const progress = await loadScoutProgress(sb, inPlay.map((s) => s.scoutId));
+  return matchBoard({
+    meetingDate: meeting.date,
+    blockCount: meeting.blockCount,
+    scouts: inPlay.map((s) => ({
+      personId: s.personId,
+      currentRank: s.currentRank,
+      rankCodes: progress.get(s.scoutId)?.rankCodes ?? new Set<string>(),
+      intent: s.intent,
+      picks: s.picks
+    })),
+    supply: teach.supply,
+    teacherIntents: teach.intents
+  });
+}
+
+/** The meeting has a published agenda (the member page then says the match as the plan, not "so far"). */
+export async function isAgendaPublished(sb: SupabaseClient, entryId: number): Promise<boolean> {
+  const { count, error } = await sb
+    .from('meetings')
+    .select('id', { count: 'exact', head: true })
+    .eq('calendar_entry_id', entryId)
+    .eq('status', 'published')
+    .is('archived_at', null);
+  if (error) throw new Error(error.message);
+  return (count ?? 0) > 0;
 }
 
 /**

@@ -20,7 +20,7 @@
 
 import { buildReqTree, isGroupSatisfied, type ReqNode } from '@/lib/mb-helpers';
 import { canOfferToTeach } from '@/lib/can-offer-to-teach';
-import { NOT_PLANNABLE, SM_CONFERENCE_CODES, SM_CONFERENCE_THRESHOLD, rankLeafCompletion, rankNodeSatisfied } from '@/lib/rank-calculus';
+import { openRankTops } from '@/lib/rank-calculus';
 import type { ReqVenue, Skill } from '@/lib/supabase/types';
 import {
   type MeetingPlanPayload,
@@ -261,20 +261,11 @@ export function buildMeetingPlan(input: EngineInput): MeetingPlanPayload {
       // becomes a single suggestion/session — never one per sub-leaf.
       const tree = rankTree.get(next) ?? [];
       const abbr = RANK_ABBR[next] ?? next;
-      const outing: EngineRankReqRow[] = [];
-      for (const top of tree) {
-        if (rankNodeSatisfied(top, next, codes)) continue;
-        if (NOT_PLANNABLE.has(`${next}-${top.code}`)) continue;
-        if (
-          SM_CONFERENCE_CODES.has(`${next}-${top.code}`) &&
-          rankLeafCompletion(tree, next, codes, top.code) < SM_CONFERENCE_THRESHOLD
-        ) {
-          continue;
-        }
-        if (top.venue === 'outing') {
-          outing.push(top);
-          continue;
-        }
+      // Unfinished, plannable (NOT_PLANNABLE and the 95% SM-conference gate), split by venue: lib/rank-calculus, shared
+      // with the meeting board's matcher.
+      const open = openRankTops(tree, next, codes);
+      const outing: EngineRankReqRow[] = open.outing;
+      for (const top of open.meeting) {
         candidates.push({
           key: `rank:${next}-${top.code}`,
           kind: 'rank',

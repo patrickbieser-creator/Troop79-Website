@@ -19,6 +19,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/app/_components/button';
 import { INTENT_LABEL, MAX_PICKS, effectiveIntent, type Intent } from '@/lib/meeting-board-shared';
 import type { PickListView, PickRow, ScoutBoardView, TrayPick } from '@/lib/meeting-board-picklist';
+import type { MatchLine } from '@/lib/meeting-board-match';
 import {
   meetingAddPickAction,
   meetingRemovePickAction,
@@ -44,6 +45,36 @@ export interface ScoutBoardProps {
   pickList: PickListView;
   onBehalf: boolean;
   readOnly: boolean;
+  /** Phase 3a: what the live match gives this scout so far ("So far, you're in First aid, your #2"), by block. Empty
+   *  once the agenda is published: the page links to the agenda instead. */
+  assigned?: MatchLine[];
+}
+
+/** "So far, you're in First aid, your #2, then Knots": the live match before the agenda is published. */
+export function AssignedCard({ lines, isSelf, name }: { lines: MatchLine[]; isSelf: boolean; name: string }) {
+  const parts = lines.map((l) => (l.pickNo ? `${l.title}, ${isSelf ? 'your' : 'pick'} #${l.pickNo}` : l.title));
+  const who = isSelf ? 'you’re' : `${name} is`;
+  const head = `So far, ${who} in ${parts.join(', then ')}`;
+  return (
+    <div className={styles.assignCard}>
+      <p className={styles.assignHead}>{head}</p>
+      <ul className={styles.assignList}>
+        {lines.map((l, i) => (
+          <li key={i}>
+            {l.block && <>{l.block} · </>}
+            <b>{l.title}</b>
+            <span className={styles.meta}>
+              {' '}
+              · {l.codeLabel}
+              {l.teacher ? ` · ${l.teacher}` : ''}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {lines.some((l) => l.placed) && <p className={styles.helper}>Picked from what {isSelf ? 'you need' : `${name} needs`} next.</p>}
+      <p className={styles.helper}>Leaders set the plan before the meeting, so this can still change.</p>
+    </div>
+  );
 }
 
 export function ScoutBoard(props: ScoutBoardProps) {
@@ -239,6 +270,9 @@ export function ScoutBoard(props: ScoutBoardProps) {
 
   return (
     <>
+      {props.assigned && props.assigned.length > 0 && !notComing && (
+        <AssignedCard lines={props.assigned} isSelf={subject.isSelf} name={name} />
+      )}
       <IntentControl
         groupName={`${ids}-intent`}
         label={subject.isSelf ? 'Are you coming?' : `Is ${name} coming?`}

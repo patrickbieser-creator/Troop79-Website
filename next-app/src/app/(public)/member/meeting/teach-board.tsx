@@ -23,6 +23,7 @@ import { Badge } from '@/app/_components/badge';
 import { INTENT_LABEL, type Intent } from '@/lib/meeting-board-shared';
 import { MAX_COMMITMENTS, TEACH_FULL } from '@/lib/meeting-board-teach';
 import type { OfferChoices, TeachItem, TeachView, WantedItem } from '@/lib/meeting-board-supply';
+import type { MatchLine } from '@/lib/meeting-board-match';
 import { IntentControl, Saved } from './scout-board';
 import {
   meetingPostOfferAction,
@@ -45,6 +46,9 @@ export interface TeachBoardProps {
   choices: OfferChoices;
   onBehalf: boolean;
   readOnly: boolean;
+  /** Phase 3a: the sessions the live match has this person teaching so far, by block. Empty once the agenda is
+   *  published (the page links to it). */
+  teaching?: MatchLine[];
 }
 
 type OfferType = OfferWhat['type'];
@@ -269,6 +273,26 @@ export function TeachBoard(props: TeachBoardProps) {
     <section className={styles.teach} aria-labelledby={`${ids}-teach`}>
       {head}
       {intentBlock}
+
+      {props.teaching && props.teaching.length > 0 && view.intent !== 'not_coming' && (
+        <div className={styles.assignCard}>
+          <p className={styles.assignHead}>
+            So far, {you.replace(/^You/, 'you')} teaching {props.teaching.map((l) => l.title).join(', then ')}
+          </p>
+          <ul className={styles.assignList}>
+            {props.teaching.map((l, i) => (
+              <li key={i}>
+                {l.block && <>{l.block} · </>}
+                <b>{l.title}</b>
+                <span className={styles.meta}>
+                  {' '}
+                  · {l.codeLabel} · {l.scouts.length ? `${plural(l.scouts.length, 'scout')}: ${l.scouts.join(', ')}` : 'no scouts placed yet'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className={errKey && view.count >= MAX_COMMITMENTS ? styles.badBox : undefined}>
         <h3 className={styles.groupHead}>

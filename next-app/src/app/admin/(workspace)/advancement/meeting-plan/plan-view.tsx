@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition, type ReactNode } from 'react';
+import Link from 'next/link';
 import {
   TIER_LABEL,
   TIER_NOTE,
@@ -30,13 +31,16 @@ interface Props {
   defaultDate: string;
   /** The live "This Sunday" board (server-rendered), the first tab. */
   thisSunday: ReactNode;
+  /** Group Sessions (Phase 3a): the live match, read-only (server-rendered). The engine's ledger-only sessions follow
+   *  it once a plan is generated. */
+  groupSessions?: ReactNode;
 }
 
 type PlanTab = 'board' | 'sessions' | 'scouts' | 'roster';
 
 const TIERS: TierId[] = ['new', 'experienced', 'older'];
 
-export function PlanView({ published, defaultDate, thisSunday }: Props) {
+export function PlanView({ published, defaultDate, thisSunday, groupSessions }: Props) {
   const [meetingDate, setMeetingDate] = useState(defaultDate);
   const [payload, setPayload] = useState<MeetingPlanPayload | null>(null);
   // This Sunday (the live board) is the first tab; the three plan tabs below it are the generator, as before.
@@ -127,6 +131,13 @@ export function PlanView({ published, defaultDate, thisSunday }: Props) {
         thisSunday
       ) : (
       <>
+      {tab === 'sessions' && groupSessions && (
+        <div className={styles.section}>
+          <h2 className={styles.sectionTitle}>This Sunday&rsquo;s match</h2>
+          {groupSessions}
+          <h2 className={`${styles.sectionTitle} ${styles.section}`}>Ledger suggestions</h2>
+        </div>
+      )}
       <div className={styles.generateBar}>
         <label className={styles.field}>
           Meeting date
@@ -395,7 +406,8 @@ function RosterTab({ payload }: { payload: MeetingPlanPayload }) {
         <h2>Adult Leaders</h2>
         <p className={styles.rosterSub}>
           Matched from leader skills (Lookups &amp; Admin). Adult-instruction skills — First Aid,
-          Woods Tools, Fire Safety, Aquatics — are never offered to scout instructors.
+          Woods Tools, Fire Safety, Aquatics — are never offered to scout instructors. Read-only here:{' '}
+          <Link href="/admin/advancement/lookups">Edit in Lookups</Link>.
         </p>
         {payload.rosterAdults.length === 0 ? (
           <div className={styles.emptyHint}>

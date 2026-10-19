@@ -11,7 +11,9 @@
  *
  * A leader enters for someone who phoned or texted through the member page itself (?for=), scout or adult, so the
  * edit is the same component the family uses and saves as entered by the leader. Polls a version stamp (BoardPoller).
- * Phase 3a adds the live match, the block count and the board-mode switch here.
+ *   - Phase 3a: the board settings (rank / merit badge / closed, 1-3 teaching blocks, the badge), and the live match
+ *     (lib/meeting-board-match), a column per block, recomputed on every load and poll. The matcher owns the
+ *     unmatched lists on a rank board. Read-only: sessions become agenda items in the meeting editor's tray.
  */
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
@@ -19,12 +21,14 @@ import { loadAdvancementCatalog } from '@/lib/advancement-catalog';
 import { fmtDateFull } from '@/lib/format-date';
 import { loadBoardStamp, loadBoardState, loadNextMeeting, type BoardMeeting } from '@/lib/meeting-board';
 import { topicWords } from '@/lib/meeting-board-picklist';
-import { boardName, effectiveIntent, summarizeBoard, type BoardCounts, type Intent } from '@/lib/meeting-board-shared';
+import { boardName, effectiveIntent, summarizeBoard, type BoardCounts, type BoardMode, type Intent } from '@/lib/meeting-board-shared';
+import { seatsFor, sessionWords } from '@/lib/meeting-board-match';
 import { assessTeacher, commitmentCounts, flagText, teacherIntent, teacherName, topicSkill, weeksAsked } from '@/lib/meeting-board-teach';
-import { loadTeachBoard } from '@/lib/meeting-board-supply';
+import { loadLiveMatch, loadTeachBoard } from '@/lib/meeting-board-supply';
 import { Notice } from '../../_components/notice';
 import { Button } from '../../../_components/button';
 import { BoardPoller } from './board-poller';
+import { BoardSettings } from './board-settings';
 import styles from './meeting-plan.module.css';
 
 export interface BoardPerson {
@@ -37,23 +41,49 @@ export interface SupplyTeacher extends BoardPerson {
   notes: string[];
 }
 
+/** One live matched session, as the leader sees it (Phase 3a). */
+export interface MatchCard {
+  id: string;
+  title: string;
+  codeLabel: string;
+  /** 'A' / 'B' when an oversubscribed topic split. */
+  group: string | null;
+  teacher: SupplyTeacher;
+  coTeachers: BoardPerson[];
+  /** "#2" (their own ranking), "placed" (a Not sure yet scout), or ''. */
+  scouts: (BoardPerson & { why: string })[];
+}
+
+export interface ThisSundayMatch {
+  blocks: { label: string; sessions: MatchCard[] }[];
+  sessions: number;
+  /** The meeting editor's Agenda tab, whose tray promotes these. */
+  agendaHref: string;
+}
+
 export interface ThisSundayData {
   meeting: Pick<BoardMeeting, 'entryId' | 'title' | 'mode'> & { dateLabel: string };
+  /** Board settings (Phase 3a): the saved mode, badge and block count, the badges an MB night can use. */
+  board?: { mode: BoardMode; mbId: string; blockCount: number; badges: { id: string; name: string }[] };
+  /** The live match (Phase 3a, rank boards only). */
+  match?: ThisSundayMatch | null;
   stamp: string;
   counts: BoardCounts;
   /** Adults and Junior Leaders who answered or signed up to teach (a commitment counts as Coming). */
   adults: { coming: number; undecided: number; notComing: number; teaching: number };
   topics: { key: string; label: string; codeLabel: string; names: string[]; teachers: SupplyTeacher[] }[];
-  /** The recruiting list: asked for, nobody teaching. */
-  wanted: { key: string; label: string; codeLabel: string; names: string[]; weeks: number; canTeach: (BoardPerson & { note: string })[] }[];
+  /** The recruiting list: asked for, nobody teaching. `blocked`: committed teachers with no free block for it. */
+  wanted: { key: string; label: string; codeLabel: string; names: string[]; weeks: number; canTeach: (BoardPerson & { note: string })[]; blocked?: string[] }[];
   /** Put on the board by a teacher, asked for by nobody. */
   offered: { key: string; label: string; codeLabel: string; teachers: SupplyTeacher[] }[];
   skillOffers: (BoardPerson & { skill: string; note: string | null; scouts: number })[];
   undecidedAdults: (BoardPerson & { fits: string[] })[];
   notComingAdults: BoardPerson[];
-  undecided: BoardPerson[];
+  /** `placed`: where the matcher put them (Phase 3a). */
+  undecided: (BoardPerson & { placed?: string | null })[];
   notComing: (BoardPerson & { held: number })[];
-  comingNothing: BoardPerson[];
+  /** Coming with nothing assigned; `suggestion`: the engine's next thing for them (Phase 3a). */
+  comingNothing: (BoardPerson & { suggestion?: string | null })[];
   noAnswer: BoardPerson[];
   scouts: BoardPerson[];
   /** Adults (leaders and parents), for "Enter for someone"; Junior Leaders are under the scouts. */
@@ -97,20 +127,72 @@ export async function loadThisSunday(): Promise<ThisSundayData | null> {
   const adultIntent = (id: number) => teacherIntent(teach.intents.get(id) ?? null, commits.get(id) ?? 0);
   // People who no longer qualify are in teach.people only so their rows show; they are never offered as teachers.
   const pool = [...teach.people.values()].filter((p) => p.eligible !== false);
-  const wanted = teach.match.wanted
-    .map((key) => {
-      const t = topics.find((x) => x.key === key)!;
-      const canTeach = pool
-        .filter((p) => assessTeacher(p, key, teach.ctx).qualified && adultIntent(p.personId) !== 'not_coming')
-        .map((p) => {
-          const it = adultIntent(p.personId);
-          const n = commits.get(p.personId) ?? 0;
-          return { ...teacherPerson(p.personId), note: `${it ? INTENT_WORD[it] : 'no answer'}${n ? `, teaching ${n}` : ''}` };
+  const canTeachNote = (id: number) => {
+    const it = adultIntent(id);
+    const n = commits.get(id) ?? 0;
+    return { ...teacherPerson(id), note: `${it ? INTENT_WORD[it] : 'no answer'}${n ? `, teaching ${n}` : ''}` };
+  };
+
+  // Phase 3a: the live match (rank boards). It owns the unmatched lists; a merit badge night keeps Phase 2's.
+  const match = meeting.mode === 'rank' ? await loadLiveMatch(sb, meeting, rows, teach) : null;
+  const skillNames = new Map(catalog.skills.map((s) => [s.id, s.name]));
+  const keyLabel = (key: string) => words(key).codeLabel || words(key).label;
+  const wanted = match
+    ? match.wanted.map((w) => {
+        const t = topics.find((x) => x.key === w.key);
+        return {
+          key: w.key,
+          label: t?.label ?? words(w.key).label,
+          codeLabel: t?.codeLabel ?? words(w.key).codeLabel,
+          names: w.scoutIds.map((id) => nameOf.get(id) ?? '').filter(Boolean).sort(),
+          weeks: w.weeks,
+          canTeach: w.canTeach.filter((id) => adultIntent(id) !== 'not_coming').map(canTeachNote).sort((a, b) => a.name.localeCompare(b.name)),
+          blocked: w.blockedTeacherIds.map((id) => teacherPerson(id).name)
+        };
+      })
+    : teach.match.wanted
+        .map((key) => {
+          const t = topics.find((x) => x.key === key)!;
+          const canTeach = pool
+            .filter((p) => assessTeacher(p, key, teach.ctx).qualified && adultIntent(p.personId) !== 'not_coming')
+            .map((p) => canTeachNote(p.personId))
+            .sort((a, b) => a.name.localeCompare(b.name));
+          return { key, label: t.label, codeLabel: t.codeLabel, names: t.names, weeks: weeksAsked(firstAsked.get(key) ?? [], meeting.date), canTeach };
         })
-        .sort((a, b) => a.name.localeCompare(b.name));
-      return { key, label: t.label, codeLabel: t.codeLabel, names: t.names, weeks: weeksAsked(firstAsked.get(key) ?? [], meeting.date), canTeach };
-    })
-    .sort((a, b) => b.names.length - a.names.length || b.weeks - a.weeks);
+        .sort((a, b) => b.names.length - a.names.length || b.weeks - a.weeks);
+  const matchView: ThisSundayMatch | null = match
+    ? {
+        sessions: match.sessions.length,
+        agendaHref: `/admin/calendar/${meeting.entryId}?tab=agenda`,
+        blocks: Array.from({ length: match.blockCount }, (_, b) => ({
+          label: `Block ${b + 1}`,
+          sessions: match.sessions
+            .filter((s) => s.block === b)
+            .map((s) => {
+              const w = sessionWords(s.keys, catalog, skillNames, teach.freeformTitles);
+              const notes = flagText(s.flags, 'admin');
+              if (s.via === 'offer') notes.unshift(`from a ${skillNames.get(w.skillId ?? '') ?? ''} offer`);
+              return {
+                id: s.id,
+                title: w.title,
+                codeLabel: w.codeLabel,
+                group: s.group,
+                teacher: { ...teacherPerson(s.teacherId), notes },
+                coTeachers: s.coTeacherIds.map(teacherPerson),
+                scouts: s.scouts
+                  .map((x) => ({ personId: x.personId, name: nameOf.get(x.personId) ?? '', why: x.via === 'placed' ? 'placed' : x.pickNo ? `#${x.pickNo}` : '' }))
+                  .sort((a, b) => a.name.localeCompare(b.name))
+              };
+            })
+        }))
+      }
+    : null;
+  const placedIn = (personId: number) => {
+    if (!match) return undefined;
+    const seat = seatsFor(match, personId)[0];
+    const s = seat ? match.sessions.find((x) => x.id === seat.sessionId) : undefined;
+    return s ? sessionWords(s.keys, catalog, skillNames, teach.freeformTitles).title : null;
+  };
   const offered = teach.match.offered.map((key) => ({ key, ...words(key), teachers: supplyTeachers(key) }));
   const skillOffers = teach.supply.skillOffers
     .filter((o) => !teach.supply.notComing.has(o.personId))
@@ -128,13 +210,28 @@ export async function loadThisSunday(): Promise<ThisSundayData | null> {
     notComing: adultIds.filter((id) => adultIntent(id) === 'not_coming').length,
     teaching: [...commits.keys()].filter((id) => !teach.supply.notComing.has(id)).length
   };
+  const fitsFromMatch = new Map((match?.undecidedAdults ?? []).map((a) => [a.personId, a.fits]));
   const undecidedAdults = adultIds
     .filter((id) => adultIntent(id) === 'undecided')
-    .map((id) => ({ ...teacherPerson(id), fits: teach.match.wanted.filter((k) => assessTeacher(teach.people.get(id)!, k, teach.ctx).qualified).map((k) => words(k).codeLabel || words(k).label) }));
+    .map((id) => ({
+      ...teacherPerson(id),
+      fits: (match ? (fitsFromMatch.get(id) ?? []) : teach.match.wanted.filter((k) => assessTeacher(teach.people.get(id)!, k, teach.ctx).qualified)).map(keyLabel)
+    }));
 
   const byName = (a: BoardPerson, b: BoardPerson) => a.name.localeCompare(b.name);
+  const badgesWithReqs = new Set(catalog.meritBadgeRequirements.map((r) => r.mb_id));
   return {
     meeting: { entryId: meeting.entryId, title: meeting.title, mode: meeting.mode, dateLabel: fmtDateFull(meeting.date) },
+    board: {
+      mode: meeting.mode,
+      mbId: meeting.mbId ?? '',
+      blockCount: meeting.blockCount,
+      badges: catalog.meritBadges
+        .filter((m) => badgesWithReqs.has(m.id))
+        .map((m) => ({ id: m.id, name: m.name }))
+        .sort((a, b) => a.name.localeCompare(b.name))
+    },
+    match: matchView,
     stamp,
     counts,
     adults,
@@ -144,17 +241,15 @@ export async function loadThisSunday(): Promise<ThisSundayData | null> {
     skillOffers,
     undecidedAdults: undecidedAdults.sort(byName),
     notComingAdults: adultIds.filter((id) => adultIntent(id) === 'not_coming').map(teacherPerson).sort(byName),
-    undecided: rows.filter((r) => intentOf.get(r.personId) === 'undecided').map(person),
+    undecided: rows.filter((r) => intentOf.get(r.personId) === 'undecided').map((r) => ({ ...person(r), placed: placedIn(r.personId) })),
     notComing: rows.filter((r) => intentOf.get(r.personId) === 'not_coming').map((r) => ({ ...person(r), held: r.picks.length })),
-    comingNothing: rows.filter((r) => intentOf.get(r.personId) === 'coming' && !r.picks.some((p) => !p.later)).map(person),
+    comingNothing: match
+      ? match.comingNothing.map((c) => ({ ...person(c), suggestion: c.suggestion ? `${words(c.suggestion).codeLabel}, ${words(c.suggestion).label}` : null })).sort(byName)
+      : rows.filter((r) => intentOf.get(r.personId) === 'coming' && !r.picks.some((p) => !p.later)).map(person),
     noAnswer: rows.filter((r) => intentOf.get(r.personId) == null).map(person),
     scouts: rows.map(person).sort(byName),
     adultPeople: pool.filter((p) => p.kind === 'adult').map((p) => teacherPerson(p.personId)).sort(byName)
   };
-}
-
-export async function ThisSundayTab() {
-  return <ThisSundayView data={await loadThisSunday()} />;
 }
 
 const entryFor = (personId: number) => `/member/meeting?for=${personId}`;
@@ -189,16 +284,74 @@ function TeacherLinks({ list }: { list: SupplyTeacher[] }) {
   );
 }
 
+/**
+ * The live match, a column per block (Phase 3a). Read-only: the meeting editor's tray is the one place a session
+ * becomes an agenda item. Shared by This Sunday and the Group Sessions tab.
+ */
+export function MatchBlocks({ match, linkPeople = true }: { match: ThisSundayMatch; linkPeople?: boolean }) {
+  const who = (p: BoardPerson, extra?: string) =>
+    linkPeople ? (
+      <Link key={p.personId} className={styles.chip} href={entryFor(p.personId)} title={`Enter for ${p.name}`}>
+        {p.name}
+        {extra ? <span className={styles.chipRank}> {extra}</span> : null}
+      </Link>
+    ) : (
+      <span key={p.personId} className={styles.chip}>
+        {p.name}
+        {extra ? <span className={styles.chipRank}> {extra}</span> : null}
+      </span>
+    );
+  return (
+    <div className={styles.blockCols}>
+      {match.blocks.map((b) => (
+        <section key={b.label} aria-label={b.label}>
+          <h3 className={styles.blockHead}>{b.label}</h3>
+          {b.sessions.length ? (
+            b.sessions.map((s) => (
+              <article key={s.id} className={styles.sessionCard}>
+                <span className={styles.reqCode}>
+                  {s.codeLabel}
+                  {s.group ? ` · Group ${s.group}` : ''}
+                </span>
+                <h3>{s.title}</h3>
+                <div className={styles.chips}>{s.scouts.map((x) => who(x, x.why))}</div>
+                <div className={styles.teachSlot}>
+                  <span className={styles.teachLabel}>Teacher</span>
+                  <TeacherLinks list={[s.teacher]} />
+                  {s.coTeachers.length > 0 && <span className={styles.teachMeta}> with {s.coTeachers.map((c) => c.name).join(', ')}</span>}
+                </div>
+              </article>
+            ))
+          ) : (
+            <p className={styles.boardEmpty}>Nothing matched for this block yet.</p>
+          )}
+        </section>
+      ))}
+    </div>
+  );
+}
+
 export function ThisSundayView({ data }: { data: ThisSundayData | null }) {
   if (!data) return <div className={styles.empty}>There&rsquo;s no troop meeting on the calendar yet.</div>;
   const { meeting, counts } = data;
   const head = (
-    <div className={styles.boardHead}>
-      <span className={styles.boardWhen}>
-        {meeting.dateLabel} · {meeting.title}
-      </span>
-      {meeting.mode !== 'closed' && <BoardPoller entryId={meeting.entryId} stamp={data.stamp} />}
-    </div>
+    <>
+      <div className={styles.boardHead}>
+        <span className={styles.boardWhen}>
+          {meeting.dateLabel} · {meeting.title}
+        </span>
+        {meeting.mode !== 'closed' && <BoardPoller entryId={meeting.entryId} stamp={data.stamp} />}
+      </div>
+      {data.board && (
+        <BoardSettings
+          key={`${data.board.mode}:${data.board.mbId}:${data.board.blockCount}`}
+          entryId={meeting.entryId}
+          initial={{ mode: data.board.mode, mbId: data.board.mbId, blockCount: data.board.blockCount }}
+          badges={data.board.badges}
+          picks={counts.picks}
+        />
+      )}
+    </>
   );
   if (meeting.mode === 'closed') {
     return (
@@ -232,6 +385,17 @@ export function ThisSundayView({ data }: { data: ThisSundayData | null }) {
         {stat(data.adults.teaching, 'Teaching')}
         {stat(data.wanted.length, 'Wanted, no teacher')}
       </div>
+
+      {data.match && (
+        <section aria-label="Live match" className={styles.matchSection}>
+          <div className={styles.boardHead}>
+            <h2 className={styles.sectionTitle}>Live match</h2>
+            <span className={styles.teachMeta}>at most 2 topics a scout · 8 a session · rematches on every sign-up</span>
+            <Link href={data.match.agendaHref}>Add sessions in the meeting editor</Link>
+          </div>
+          <MatchBlocks match={data.match} />
+        </section>
+      )}
 
       <div className={styles.boardCols}>
         <div>
@@ -288,6 +452,11 @@ export function ThisSundayView({ data }: { data: ThisSundayData | null }) {
                         {w.codeLabel} · asked {w.weeks} {w.weeks === 1 ? 'week' : 'weeks'}
                       </div>
                       <div className={styles.patrol}>{w.names.join(', ')}</div>
+                      {w.blocked && w.blocked.length > 0 && (
+                        <div className={styles.teachMeta}>
+                          {w.blocked.join(', ')} signed up, with no free block for it
+                        </div>
+                      )}
                     </td>
                     <td className={styles.alignRight}>{w.names.length}</td>
                     <td>
@@ -360,7 +529,14 @@ export function ThisSundayView({ data }: { data: ThisSundayData | null }) {
         </div>
         <div>
           <h2 className={styles.sectionTitle}>Not sure yet</h2>
-          <People list={data.undecided} empty="Nobody." />
+          <People
+            list={data.undecided}
+            empty="Nobody."
+            extra={(p) => {
+              const placed = data.undecided.find((x) => x.personId === p.personId)?.placed;
+              return placed === undefined ? '' : placed ? `· placed in ${placed}` : '· nothing live fits yet';
+            }}
+          />
           <h2 className={styles.sectionTitle}>Can&rsquo;t make it</h2>
           <People
             list={data.notComing}
@@ -370,8 +546,30 @@ export function ThisSundayView({ data }: { data: ThisSundayData | null }) {
               return held ? `· ${held} saved` : '';
             }}
           />
-          <h2 className={styles.sectionTitle}>Coming with nothing picked</h2>
-          <People list={data.comingNothing} empty="Everyone coming has picked something." />
+          {data.match ? (
+            <>
+              <h2 className={styles.sectionTitle}>Coming with nothing assigned</h2>
+              {data.comingNothing.length ? (
+                <ul className={styles.supplyList}>
+                  {data.comingNothing.map((c) => (
+                    <li key={c.personId}>
+                      <Link href={entryFor(c.personId)} title={`Enter for ${c.name}`}>
+                        {c.name}
+                      </Link>
+                      <div className={styles.patrol}>{c.suggestion ? `Engine: ${c.suggestion}` : 'Engine: merit badge work, or help teach'}</div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className={styles.boardEmpty}>Everyone coming has something.</p>
+              )}
+            </>
+          ) : (
+            <>
+              <h2 className={styles.sectionTitle}>Coming with nothing picked</h2>
+              <People list={data.comingNothing} empty="Everyone coming has picked something." />
+            </>
+          )}
           <h2 className={styles.sectionTitle}>No answer yet</h2>
           <People list={data.noAnswer} empty="Everyone has answered." />
 

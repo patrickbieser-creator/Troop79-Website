@@ -432,3 +432,37 @@ a.chip:hover {
   padding: var(--admin-space-2) 0;
   border-bottom: 1px solid var(--admin-gray-200);
 }
+
+/* ── This Sunday, live match + board settings (Phase 3a) ── */
+.matchSection {
+  margin: var(--admin-space-4) 0 var(--admin-space-6);
+}
+.blockCols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--admin-space-4);
+}
+.blockCols .sessionCard {
+  margin-bottom: var(--admin-space-3);
+}
+.blockHead {
+  font-size: var(--admin-text-base);
+  font-weight: 700;
+  color: var(--admin-gray-500);
+  margin-bottom: var(--admin-space-2);
+}
+.boardSettings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--admin-space-6);
+  align-items: flex-end;
+}
+.boardSetting {
+  display: flex;
+  flex-direction: column;
+  gap: var(--admin-space-1);
+}
+.fieldBad {
+  border-color: var(--admin-danger);
+  box-shadow: 0 0 0 1px var(--admin-danger);
+}

@@ -668,3 +668,28 @@ details.group > summary .meta {
   outline: var(--focus-ring);
   outline-offset: -3px;
 }
+
+/* ── the live match on the member page (Phase 3a): "You're in First aid, your #2", and what a teacher is teaching ── */
+.assignCard {
+  font-family: var(--font-ui);
+  border-radius: var(--rad-md);
+  padding: var(--sp-3) var(--sp-4);
+  border-left: 3px solid var(--status-success);
+  background: var(--status-success-bg);
+  color: var(--text-head);
+  margin: 0 0 var(--sp-4);
+}
+.assignHead {
+  font-size: var(--fs-md);
+  font-weight: 700;
+  margin: 0;
+}
+.assignList {
+  list-style: none;
+  margin: var(--sp-2) 0 0;
+  padding: 0;
+  font-size: var(--fs-sm);
+}
+.assignList li + li {
+  margin-top: var(--sp-1);
+}

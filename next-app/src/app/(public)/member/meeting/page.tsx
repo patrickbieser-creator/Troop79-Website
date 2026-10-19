@@ -16,6 +16,10 @@
  * scouts) and for a Junior Leader, and a leader's ?for= opens it for an adult too. A parent who teaches sees both.
  * Scouts see one quiet "Teacher: Mr. Vest" tag on a topic someone is teaching, and freeform offers under "Also offered
  * this week".
+ *
+ * Phase 3a: once the live match has a session for the scout, the page says so ("So far, you're in First aid, your #2"),
+ * and a teacher sees the sessions they're teaching. Once the agenda is published the page links to it instead
+ * ("This week's plan is set: see the agenda"). Never "too late".
  */
 import type { ReactNode } from 'react';
 import Link from 'next/link';
@@ -37,8 +41,9 @@ import {
   othersByKeyFor,
   type BoardScout
 } from '@/lib/meeting-board';
-import { loadTeachBoard, loadTeachView, offerChoices, OFFER_DATES, teacherTags } from '@/lib/meeting-board-supply';
-import { effectiveIntent, firstNameOf, isPastSoftClose, onBehalfAccess, scoutLine } from '@/lib/meeting-board-shared';
+import { isAgendaPublished, loadLiveMatch, loadTeachBoard, loadTeachView, offerChoices, OFFER_DATES, teacherTags } from '@/lib/meeting-board-supply';
+import { seatLines, teachingLines } from '@/lib/meeting-board-match';
+import { boardName, effectiveIntent, firstNameOf, isPastSoftClose, onBehalfAccess, scoutLine } from '@/lib/meeting-board-shared';
 import { PageHeader } from '@/app/_components/page-header';
 import { PageShell } from '@/app/_components/page-shell';
 import { Button } from '@/app/_components/button';
@@ -46,6 +51,7 @@ import { MemberProxyBanner } from '../member-proxy-banner';
 import memberStyles from '../member.module.css';
 import { ScoutBoard } from './scout-board';
 import { TeachBoard } from './teach-board';
+import { PlanNotice } from './plan-notice';
 import styles from './meeting.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -217,6 +223,15 @@ export default async function MeetingBoardPage({ searchParams }: { searchParams:
   };
   const mbName = meeting.mbId ? (catalog.meritBadges.find((m) => m.id === meeting.mbId)?.name ?? null) : null;
 
+  // Phase 3a: the live match (rank boards), the same computation as This Sunday and the editor's tray, said as "so far".
+  // Once the meeting's agenda is published the agenda is the answer: the page links to it and says nothing personal
+  // from the match (the agenda's scout names are free text a leader may have edited, so they aren't mapped back).
+  const planSet = meeting.mode === 'rank' ? await isAgendaPublished(sb, meeting.entryId) : false;
+  const match = meeting.mode === 'rank' && !planSet ? await loadLiveMatch(sb, meeting, everyone, teach) : null;
+  const lineSrc = { catalog, people: teach.people, freeformTitles: teach.freeformTitles, scoutNames: new Map(everyone.map((r) => [r.personId, boardName(r.name)])) };
+  const assigned = match && chosen ? seatLines(match, chosen.personId, lineSrc) : [];
+  const teaching = match && teacher ? teachingLines(match, teacher.personId, lineSrc) : [];
+
   const upcoming = showTeach ? await loadUpcomingMeetings(sb, OFFER_DATES, meeting.date) : [];
   const teachView = showTeach ? await loadTeachView(sb, meeting, catalog, teacher!.personId, { board: everyone, upcoming, teach }) : null;
   const teacherIsSelf = !onBehalf && session?.personId === teacherId;
@@ -233,11 +248,7 @@ export default async function MeetingBoardPage({ searchParams }: { searchParams:
             <strong>Entering for {enteringFor}</strong> (phone or text). Changes save as entered by you.
           </p>
         ))}
-      {isPastSoftClose(meeting.date) && (
-        <div className={styles.notice}>
-          <p>This week&rsquo;s plan is set. You can still tell us you&rsquo;re coming.</p>
-        </div>
-      )}
+      <PlanNotice planSet={planSet} pastClose={isPastSoftClose(meeting.date)} entryId={meeting.entryId} />
       {chosen && subjects.length > 1 && (
         <>
           <p className={styles.household}>
@@ -274,6 +285,7 @@ export default async function MeetingBoardPage({ searchParams }: { searchParams:
           pickList={mine.pickList}
           onBehalf={onBehalf}
           readOnly={proxy != null || onBehalfReadOnly}
+          assigned={assigned}
         />
       )}
       {teachView && teacher && (
@@ -286,6 +298,7 @@ export default async function MeetingBoardPage({ searchParams }: { searchParams:
           choices={offerChoices(teacher, catalog, upcoming)}
           onBehalf={onBehalf}
           readOnly={onBehalfReadOnly}
+          teaching={teaching}
         />
       )}
     </>

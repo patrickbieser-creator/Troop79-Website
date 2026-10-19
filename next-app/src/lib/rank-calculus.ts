@@ -73,3 +73,24 @@ export function rankTopPlannable<T extends CalcRow>(tree: ReqNode<T>[], rankId: 
   if (SM_CONFERENCE_CODES.has(key) && rankLeafCompletion(tree, rankId, codes, top.code) < SM_CONFERENCE_THRESHOLD) return false;
   return true;
 }
+
+/**
+ * The Meeting Plan engine's pass 1, rank half: a rank's top-level requirements a scout still has to do and could work
+ * on, in catalog order, split into meeting-doable ones and outing-only ones (venue 'outing'). The engine suggests from
+ * `meeting`; the meeting board's matcher places a "Not sure yet" scout from the same list (Phase 3a), so both read one
+ * rule.
+ */
+export function openRankTops<T extends CalcRow & { venue: string }>(
+  tree: ReqNode<T>[],
+  rankId: string,
+  codes: Set<string>
+): { meeting: ReqNode<T>[]; outing: ReqNode<T>[] } {
+  const meeting: ReqNode<T>[] = [];
+  const outing: ReqNode<T>[] = [];
+  for (const top of tree) {
+    if (rankNodeSatisfied(top, rankId, codes)) continue;
+    if (!rankTopPlannable(tree, rankId, top, codes)) continue;
+    (top.venue === 'outing' ? outing : meeting).push(top);
+  }
+  return { meeting, outing };
+}

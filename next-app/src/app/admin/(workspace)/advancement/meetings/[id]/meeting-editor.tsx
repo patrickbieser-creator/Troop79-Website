@@ -32,8 +32,33 @@ export interface Candidate {
   groupPart: string | null;
 }
 
+/** One live-matched session from the meeting board (Phase 3a), pre-filled for the agenda. */
+export interface MatchedCandidate {
+  id: string;
+  blockLabel: string;
+  title: string;
+  codeLabel: string;
+  group: string | null;
+  /** As families see it: "Mr. Vest", a Junior Leader "Maya S". */
+  teacher: string;
+  /** "sign-off needs a counselor", "not in their skills". */
+  flags: string[];
+  scouts: string[];
+  promote: Omit<PromotePayload, 'meetingId'>;
+}
+
+/** The tray's board half: the meeting's mode and, on a rank board, its matched sessions. */
+export interface BoardTray {
+  mode: 'rank' | 'merit_badge' | 'closed';
+  sessions: MatchedCandidate[];
+  /** Requests with no teacher (shown as a pointer to This Sunday). */
+  wanted: number;
+}
+
 interface Props {
   meeting: Meeting;
+  /** The meeting board's live match (Phase 3a). null = failed to load; undefined = not loaded (older callers). */
+  board?: BoardTray | null;
   /** The calendar entry this meeting is the agenda layer of. The entry owns the
    *  date and the public URL — the agenda no longer carries either. */
   entry: { id: number; entry_date: string };
@@ -61,6 +86,7 @@ export type MeetingEditorProps = Props;
 
 export function MeetingEditor({
   meeting,
+  board,
   entry,
   sessions,
   candidates,
@@ -80,6 +106,7 @@ export function MeetingEditor({
   const [openFor, setOpenFor] = useState<MeetingSession | { newIn: MeetingSection } | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [addedKeys, setAddedKeys] = useState<Set<number>>(new Set());
+  const [addedMatched, setAddedMatched] = useState<Set<string>>(new Set());
   const dialogRef = useRef<HTMLDialogElement>(null);
   /** The logistics form, so Publish can commit it before flipping status. */
   const formRef = useRef<HTMLFormElement>(null);
@@ -202,6 +229,17 @@ export function MeetingEditor({
     };
     run(`promote-${c.key}`, () => onPromote(payload), () => {
       setAddedKeys((prev) => new Set(prev).add(c.key));
+    });
+  }
+
+  /** Already on the agenda (added earlier, this visit or before): same title and description as its promote payload. */
+  const onAgenda = (c: MatchedCandidate) =>
+    addedMatched.has(c.id) || agenda.some((s) => s.title === c.promote.title && (s.description ?? null) === c.promote.description);
+
+  /** A board session into the agenda: the same one-way copy as an engine suggestion; the board is never changed. */
+  function promoteMatched(c: MatchedCandidate) {
+    run(`promote-m-${c.id}`, () => onPromote({ meetingId: meeting.id, ...c.promote }), () => {
+      setAddedMatched((prev) => new Set(prev).add(c.id));
     });
   }
 
@@ -357,7 +395,58 @@ export function MeetingEditor({
 
         {/* ── candidate tray ── */}
         <aside className={styles.tray}>
-          <FormPanel title="Plan Suggestions">
+          {board !== undefined && (
+            <FormPanel title="From this week's board">
+              {board === null ? (
+                <p className={styles.trayNote}>The board&rsquo;s match didn&rsquo;t load right now. The engine&rsquo;s suggestions below still work.</p>
+              ) : board.mode === 'closed' ? (
+                <p className={styles.trayNote}>This meeting has no board. Build the agenda by hand.</p>
+              ) : board.mode === 'merit_badge' ? (
+                <p className={styles.trayNote}>Merit badge night: stations and rotations aren&rsquo;t matched here yet.</p>
+              ) : (
+                <>
+                  <p className={styles.trayNote}>
+                    Matched live from what scouts picked and who signed up to teach. Adding copies a session into the
+                    agenda as an editable item; the board itself is never changed, and nothing is published until you
+                    publish the agenda.
+                  </p>
+                  {board.sessions.length === 0 ? (
+                    <p className={styles.trayNote}>Nothing matched yet.</p>
+                  ) : (
+                    board.sessions.map((c) => (
+                      <div key={c.id} className={styles.candidateCard}>
+                        <div className={styles.candidateCode}>
+                          {c.blockLabel} · {c.codeLabel}
+                          {c.group && <> · Group {c.group}</>}
+                        </div>
+                        <div className={styles.candidateTitle}>{c.title}</div>
+                        <div className={styles.candidateMeta}>
+                          Teacher: {c.teacher}
+                          {c.flags.length > 0 && <> · {c.flags.join(' · ')}</>}
+                          <br />
+                          {c.scouts.length} scout{c.scouts.length === 1 ? '' : 's'}
+                          {c.scouts.length > 0 && <>: {c.scouts.join(', ')}</>}
+                        </div>
+                        <div className={styles.candidateFoot}>
+                          {onAgenda(c) ? <span className={styles.candidateAdded}>Added ✓</span> : <span />}
+                          <Button size="sm" onClick={() => promoteMatched(c)} disabled={busyKey === `promote-m-${c.id}`}>
+                            {busyKey === `promote-m-${c.id}` ? 'Adding…' : onAgenda(c) ? 'Add again' : 'Add to agenda'}
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                  {board.wanted > 0 && (
+                    <p className={styles.trayNote}>
+                      Not here: {board.wanted} {board.wanted === 1 ? 'request' : 'requests'} with no teacher.{' '}
+                      <Link href="/admin/advancement/meeting-plan">See This Sunday</Link>
+                    </p>
+                  )}
+                </>
+              )}
+            </FormPanel>
+          )}
+          <FormPanel title={board !== undefined ? 'Engine suggestions (ledger only)' : 'Plan Suggestions'}>
             <p className={styles.trayNote}>
               The Meeting Plan engine&rsquo;s suggestions for {fmtDateFull(entry.entry_date)}.
               Promoting copies one into the agenda as an editable item &mdash; the plan itself is

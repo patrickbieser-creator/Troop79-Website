@@ -10,7 +10,8 @@
  * `meeting_plans` that the public /meeting-plan page renders.
  *
  * The first tab, This Sunday, is the live meeting board (Phase 1 of Plans/Meeting-Requests-And-Teaching-Offers.md):
- * who's coming and what scouts asked for, by name.
+ * who's coming and what scouts asked for, by name. Phase 3a adds the live match there, and Group Sessions shows that
+ * match read-only (the ledger-only suggestions stay below it, for Generate Plan / Publish to Site).
  */
 
 import { createAdminClient } from '@/lib/supabase/server';
@@ -18,7 +19,9 @@ import { requireCapability } from '@/lib/require-capability';
 import { nextSunday } from '@/lib/dates';
 import { PlanView, type PublishedPlanRow } from './plan-view';
 import { PageTitle } from '../../_components/page-title';
-import { ThisSundayTab } from './this-sunday';
+import Link from 'next/link';
+import { loadThisSunday, MatchBlocks, ThisSundayView } from './this-sunday';
+import styles from './meeting-plan.module.css';
 
 export const metadata = {
   title: 'Meeting Plan — Troop 79'
@@ -40,8 +43,26 @@ async function loadData(): Promise<{ published: PublishedPlanRow[] }> {
 }
 
 export default async function MeetingPlanPage() {
-  await requireCapability('meeting_plan.use');
-  const { published } = await loadData();
+  const actor = await requireCapability('meeting_plan.use');
+  const [{ published }, board] = await Promise.all([loadData(), loadThisSunday()]);
+  // A youth leader (SPL / PL) sees the board but doesn't set it (the action refuses a scout too).
+  if (board && actor.subjectKind === 'scout') board.board = undefined;
+  // Group Sessions (Phase 3a, jenna's review): the live match, read-only, linking to the editor tray.
+  const groupSessions = !board ? (
+    <div className={styles.empty}>There&rsquo;s no troop meeting on the calendar yet.</div>
+  ) : board.match ? (
+    <>
+      <p className={styles.barNote}>
+        Read-only: what the matcher would run for {board.meeting.dateLabel}. Add sessions from the{' '}
+        <Link href={board.match.agendaHref}>meeting editor&rsquo;s tray</Link>; that is the one place the agenda changes.
+      </p>
+      <MatchBlocks match={board.match} linkPeople={false} />
+    </>
+  ) : (
+    <p className={styles.barNote}>
+      Group Sessions shows the rank-board match. {board.meeting.dateLabel} is {board.meeting.mode === 'closed' ? 'closed' : 'a merit badge night'}.
+    </p>
+  );
 
   return (
     <>
@@ -52,7 +73,7 @@ export default async function MeetingPlanPage() {
           sessions of eight or fewer with a qualified teacher, to review and publish to the public site."
       />
 
-      <PlanView published={published} defaultDate={nextSunday()} thisSunday={<ThisSundayTab />} />
+      <PlanView published={published} defaultDate={nextSunday()} thisSunday={<ThisSundayView data={board} />} groupSessions={groupSessions} />
     </>
   );
 }

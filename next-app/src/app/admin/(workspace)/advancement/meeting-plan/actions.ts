@@ -116,6 +116,39 @@ export async function unpublishPlan(formData: FormData): Promise<PublishResult> 
   return { ok: true };
 }
 
+export type BoardSettingsResult = { ok: true } | { ok: false; error: string };
+
+/** The RPC's own messages are written for leaders; anything else (a constraint, a dropped connection) is not shown raw. */
+const BOARD_KNOWN = /^(That meeting isn’t|That meeting has passed|Only troop meetings|Choose rank|Teaching blocks are|Choose the badge|That badge)/;
+
+/**
+ * This Sunday's board settings (Phase 3a): rank with 1-3 teaching blocks, merit badge with its badge (stations are
+ * Phase 3b), or closed. One RPC (meeting_set_board) validates and upserts; picks are never touched.
+ */
+export async function setMeetingBoardAction(input: { entryId: number; mode: string; mbId: string | null; blockCount: number }): Promise<BoardSettingsResult> {
+  let actor;
+  try {
+    actor = await requireCapability('meeting_plan.use');
+  } catch {
+    return { ok: false, error: 'Not authenticated' };
+  }
+  // meeting_plan.use is also in the youth_leader bundle (SPL / PL): the board's mode is an adult leader's call, the
+  // same line on-behalf entry draws.
+  if (actor.subjectKind === 'scout') return { ok: false, error: 'Only an adult leader can change the board.' };
+  if (!input || !Number.isInteger(input.entryId) || typeof input.mode !== 'string') return { ok: false, error: 'Malformed request' };
+  const { error } = await createAdminClient().rpc('meeting_set_board', {
+    p_entry: input.entryId,
+    p_mode: input.mode,
+    p_mb_id: input.mode === 'merit_badge' ? (input.mbId ?? null) : null,
+    p_block_count: Number.isInteger(input.blockCount) ? input.blockCount : null
+  });
+  if (error) return { ok: false, error: BOARD_KNOWN.test(error.message) ? error.message : 'Couldn’t save the board. Try again.' };
+  revalidatePath('/admin/advancement/meeting-plan');
+  revalidatePath('/member/meeting');
+  revalidatePath('/member');
+  return { ok: true };
+}
+
 /**
  * This Sunday tab (Phase 1 of Plans/Meeting-Requests-And-Teaching-Offers.md): the board's version stamp, polled every
  * ~10 s; the tab refreshes only when it changes.
