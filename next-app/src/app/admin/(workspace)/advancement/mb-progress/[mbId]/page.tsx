@@ -85,10 +85,10 @@ async function loadDetail(mbId: string) {
       supabase.from('scouts').select('id', { count: 'exact', head: true }).eq('active', true),
       supabase
         .from('merit_badge_counselors')
-        .select('leader_code, sort_order')
+        .select('person_id, sort_order, people(display_name)')
         .eq('mb_id', mbId)
         .order('sort_order'),
-      supabase.from('leaders').select('code, name')
+      supabase.from('leaders').select('code, person_id').eq('is_person', true)
     ]);
 
   if (!mbRes.data) return null;
@@ -105,16 +105,16 @@ async function loadDetail(mbId: string) {
   const allScouts = (scoutsRes.data ?? []) as unknown as Scout[];
   const startedScouts = startedScoutsOf(allScouts, byScout);
 
-  const leaderNameByCode = new Map<string, string>();
-  for (const l of (leadersRes.data ?? []) as { code: string; name: string }[]) {
-    leaderNameByCode.set(l.code, l.name);
+  // Counselors are people since Phase 0a (a parent may have no sign-off initials).
+  const codeByPerson = new Map<number, string>();
+  for (const l of (leadersRes.data ?? []) as { code: string; person_id: number | null }[]) {
+    if (l.person_id != null && !codeByPerson.has(l.person_id)) codeByPerson.set(l.person_id, l.code);
   }
-  const counselors = ((counselorsRes.data ?? []) as { leader_code: string; sort_order: number }[]).map(
-    (c) => ({
-      code: c.leader_code,
-      name: leaderNameByCode.get(c.leader_code) ?? c.leader_code
-    })
-  );
+  type CounselorJoin = { person_id: number; sort_order: number; people: { display_name: string } | { display_name: string }[] | null };
+  const counselors = ((counselorsRes.data ?? []) as unknown as CounselorJoin[]).map((c) => {
+    const person = Array.isArray(c.people) ? c.people[0] : c.people;
+    return { code: codeByPerson.get(c.person_id) ?? null, name: person?.display_name ?? `Person ${c.person_id}` };
+  });
 
   return {
     mb,
@@ -199,7 +199,7 @@ export default async function MbProgressDetailPage({
           </span>
         ) : (
           <span className={styles.counselorList}>
-            {counselors.map((c) => `${c.code} — ${c.name}`).join(' · ')}
+            {counselors.map((c) => (c.code ? `${c.code} — ${c.name}` : c.name)).join(' · ')}
           </span>
         )}
       </div>

@@ -41,8 +41,12 @@ interface LookupScoutRow {
   current_rank: string | null;
   active: boolean;
   person_id: number | null;
+  graduation_year: number | null;
+  junior_leader_override: 'yes' | 'no' | null;
 }
-import { MbEditor, type MbRow, type CounselorRow, type EditReqNode } from './mb-editor';
+import { MbEditor, type MbRow, type CounselorRow, type CounselorCandidate, type EditReqNode } from './mb-editor';
+import { canOfferToTeach } from '@/lib/can-offer-to-teach';
+import { centralToday } from '@/lib/dates';
 import { NameLookupEditor, type NameRow } from './name-lookup-editor';
 import { EventEditor, type EventRow } from './event-editor';
 import { ReqCodesTable, type ReqRow } from './req-codes-table';
@@ -82,8 +86,7 @@ import {
   createSkill,
   updateSkill,
   deleteSkill,
-  setLeaderSkills,
-  setScoutInstructorSkills,
+  setTeachingSkills,
   createCalendarCategory,
   updateCalendarCategory,
   deleteCalendarCategory,
@@ -156,7 +159,7 @@ async function loadLookups() {
     supabase.from('leaders').select('code, name, role, is_person, person_id').order('code'),
     supabase
       .from('scouts')
-      .select('id, display_name, current_rank, active, person_id')
+      .select('id, display_name, current_rank, active, person_id, graduation_year, junior_leader_override')
       .order('display_name'),
     supabase
       .from('merit_badges')
@@ -164,7 +167,7 @@ async function loadLookups() {
       .order('name'),
     supabase
       .from('merit_badge_counselors')
-      .select('mb_id, leader_code, sort_order')
+      .select('mb_id, person_id, sort_order')
       .order('mb_id')
       .order('sort_order'),
     supabase.from('ranks').select('id, display_name, sort_order').order('sort_order'),
@@ -210,14 +213,12 @@ async function loadLookups() {
 
   const [
     skillsRes,
-    leaderSkillsRes,
-    scoutInstructorsRes,
+    teachingSkillsRes,
     householdsRes,
     hhMembersRes
   ] = await Promise.all([
     supabase.from('skills').select('id, name, youth_teachable, sort_order').order('sort_order'),
-    supabase.from('leader_skills').select('leader_code, skill_id'),
-    supabase.from('scout_instructors').select('scout_id, skill_id'),
+    supabase.from('teaching_skills').select('person_id, skill_id'),
     supabase.from('households').select('id, label').order('label'),
     // Members carried through so each household can be told apart by WHO is
     // in it. Two families sharing a surname is normal — the troop has two
@@ -322,18 +323,18 @@ async function loadLookups() {
 
   // Skills + assignments (Meeting Plan)
   const skills = (skillsRes.data ?? []) as SkillRow[];
-  const skillIdsByLeader = new Map<string, string[]>();
-  for (const ls of (leaderSkillsRes.data ?? []) as { leader_code: string; skill_id: string }[]) {
-    const list = skillIdsByLeader.get(ls.leader_code) ?? [];
-    list.push(ls.skill_id);
-    skillIdsByLeader.set(ls.leader_code, list);
+  // Teaching skills are keyed to people (Phase 0a): adults, parents with no leader code, and scouts alike.
+  const skillIdsByPerson = new Map<number, string[]>();
+  for (const ts of (teachingSkillsRes.data ?? []) as { person_id: number; skill_id: string }[]) {
+    skillIdsByPerson.set(ts.person_id, [...(skillIdsByPerson.get(ts.person_id) ?? []), ts.skill_id]);
   }
-  const skillIdsByScout = new Map<string, string[]>();
-  for (const si of (scoutInstructorsRes.data ?? []) as { scout_id: string; skill_id: string }[]) {
-    const list = skillIdsByScout.get(si.scout_id) ?? [];
-    list.push(si.skill_id);
-    skillIdsByScout.set(si.scout_id, list);
-  }
+  // Names for people who teach or counsel without a leader row (parents).
+  const leaderPersonIds = new Set(((leadersRes.data ?? []) as LeaderRow[]).map((l) => l.person_id).filter((id): id is number => id != null));
+  const scoutPersonIds = new Set(((scoutsRes.data ?? []) as LookupScoutRow[]).map((sc) => sc.person_id).filter((id): id is number => id != null));
+  const extraIds = [...new Set([...skillIdsByPerson.keys(), ...((counselorsRes.data ?? []) as CounselorRow[]).map((c) => c.person_id)])].filter(
+    (id) => !leaderPersonIds.has(id) && !scoutPersonIds.has(id)
+  );
+  const { data: extraPeople } = extraIds.length ? await supabase.from('people').select('id, display_name').in('id', extraIds) : { data: [] };
 
   return {
     leaders: (leadersRes.data ?? []) as LeaderRow[],
@@ -348,8 +349,8 @@ async function loadLookups() {
     serviceProjects: (serviceProjectsRes.data ?? []) as NameRow[],
     leadershipPositions: (leadershipPositionsRes.data ?? []) as NameRow[],
     skills,
-    skillIdsByLeader,
-    skillIdsByScout,
+    skillIdsByPerson,
+    otherTeachers: ((extraPeople ?? []) as { id: number; display_name: string }[]).map((p) => ({ personId: p.id, name: p.display_name })),
     householdRows
   };
 }
@@ -368,8 +369,8 @@ export default async function LookupsPage() {
     serviceProjects,
     leadershipPositions,
     skills,
-    skillIdsByLeader,
-    skillIdsByScout,
+    skillIdsByPerson,
+    otherTeachers,
     householdRows
   } = await loadLookups();
   // The store list is Menu Monster content: its card (and read) is for people
@@ -394,7 +395,6 @@ export default async function LookupsPage() {
     const v = siteTextMap.get(def.key);
     if (v) seoValues[def.key] = v;
   }
-  const leadersLite = leaders.map((l) => ({ code: l.code, name: l.name }));
 
   // Classify sign-off initials: youth = linked to an ACTIVE scout; aging out
   // (scout inactive) automatically flips those initials to adult.
@@ -409,28 +409,41 @@ export default async function LookupsPage() {
   // exact same pool the login system uses (current adults only — an active
   // youth leader isn't in this set yet, even if Type=Youth here).
 
-  // Skill-assignment rows (Meeting Plan): ADULTS only — the engine schedules
-  // anyone here as an adult teacher, including adults-only skills.
-  const leaderPeople: AssignPerson[] = leaders
-    .filter((l) => leaderType(l) === 'adult')
-    .map((l) => ({
-      key: l.code,
-      name: l.name,
-      sub: l.role ?? null,
-      skillIds: skillIdsByLeader.get(l.code) ?? []
-    }));
+  // Skill-assignment rows (Meeting Plan), keyed to people. ADULTS: adult leaders plus anyone else who already teaches or
+  // counsels (a parent with no leader code) — the engine schedules them as adult teachers, adults-only skills included.
+  const adultLeaders = leaders.filter((l) => leaderType(l) === 'adult' && l.person_id != null);
+  const leaderPeople: AssignPerson[] = [
+    ...adultLeaders.map((l) => ({ key: String(l.person_id), name: l.name, sub: l.role ?? null, skillIds: skillIdsByPerson.get(l.person_id as number) ?? [] })),
+    ...otherTeachers.map((p) => ({ key: String(p.personId), name: p.name, sub: 'Parent', skillIds: skillIdsByPerson.get(p.personId) ?? [] }))
+  ].sort((a, b) => a.name.localeCompare(b.name));
+  const counselorCandidates: CounselorCandidate[] = [
+    ...adultLeaders.map((l) => ({ personId: l.person_id as number, name: l.name, code: l.code })),
+    ...otherTeachers.map((p) => ({ personId: p.personId, name: p.name, code: null }))
+  ];
+  // SCOUTS: whoever can offer to teach today (First Class+ or Junior Leader), plus anyone already holding a skill.
   const rankSort = new Map(ranksFull.map((r) => [r.id, r.sort_order]));
   const rankName = new Map(ranksFull.map((r) => [r.id, r.display_name]));
-  const starSort = rankSort.get('star') ?? Number.MAX_SAFE_INTEGER;
+  const firstClassSort = rankSort.get('first-class') ?? Number.MAX_SAFE_INTEGER;
+  const today = centralToday();
   const instructorPeople: AssignPerson[] = scouts
     .filter(
-      (s) => s.active && s.current_rank && (rankSort.get(s.current_rank) ?? -1) >= starSort
+      (s) =>
+        s.active &&
+        s.person_id != null &&
+        (skillIdsByPerson.has(s.person_id) ||
+          canOfferToTeach({
+            rankSortOrder: s.current_rank ? (rankSort.get(s.current_rank) ?? null) : null,
+            firstClassSortOrder: firstClassSort,
+            graduationYear: s.graduation_year,
+            override: s.junior_leader_override,
+            onDate: today
+          }))
     )
     .map((s) => ({
-      key: s.id,
+      key: String(s.person_id),
       name: s.display_name,
       sub: s.current_rank ? (rankName.get(s.current_rank) ?? s.current_rank) : null,
-      skillIds: skillIdsByScout.get(s.id) ?? []
+      skillIds: skillIdsByPerson.get(s.person_id as number) ?? []
     }));
   const youthSkills = skills.filter((s) => s.youth_teachable);
 
@@ -457,7 +470,7 @@ export default async function LookupsPage() {
         <Card title="Merit Badge Catalog" sub={`${mbs.length} merit badges · BSA Scoutbook IDs for export · assigned counselors`}>
           <MbEditor
             rows={mbs}
-            leaders={leadersLite}
+            leaders={counselorCandidates}
             counselorsByMb={counselorsByMb}
             reqTreesByMb={mbReqTrees}
           />
@@ -527,28 +540,28 @@ export default async function LookupsPage() {
 
       <div className={styles.grid}>
         <Card
-          title="Leader Skills"
-          sub="What each ADULT can teach — the Meeting Plan matches these to requirement skills when it fills the Teaching slot. Youth-leader initials and record sources are excluded; scouts teach via Scout Instructors instead."
+          title="Adult Skills"
+          sub="What each ADULT can teach, leaders and parents alike — the Meeting Plan matches these to requirement skills when it fills the Teaching slot. Youth-leader initials and record sources are excluded; scouts teach via Scout Instructors instead."
         >
           <SkillAssignEditor
             people={leaderPeople}
             skills={skills.map((s) => ({ id: s.id, name: s.name }))}
-            keyField="leader_code"
-            noun="Leader"
-            onSave={setLeaderSkills}
+            keyField="person_id"
+            noun="Adult"
+            onSave={setTeachingSkills}
           />
         </Card>
 
         <Card
           title="Scout Instructors"
-          sub={`${instructorPeople.length} scouts at Star or above · blanket per-skill authorization — only youth-teachable skills can be assigned`}
+          sub={`${instructorPeople.length} scouts who can offer to teach (First Class or above, or a Junior Leader) · blanket per-skill authorization — only youth-teachable skills can be assigned`}
         >
           <SkillAssignEditor
             people={instructorPeople}
             skills={youthSkills.map((s) => ({ id: s.id, name: s.name }))}
-            keyField="scout_id"
+            keyField="person_id"
             noun="Scout"
-            onSave={setScoutInstructorSkills}
+            onSave={setTeachingSkills}
           />
         </Card>
       </div>

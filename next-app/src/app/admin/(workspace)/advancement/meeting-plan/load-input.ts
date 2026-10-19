@@ -32,14 +32,13 @@ export async function loadEngineInput(meetingDate: string, title: string): Promi
     rankReqLedgerRows,
     mbReqLedgerRows,
     leadersRes,
-    leaderSkillsRes,
-    counselorsRes,
-    scoutInstructorsRes
+    teachingSkillsRes,
+    counselorsRes
   ] = await Promise.all([
     loadAdvancementCatalog(),
     supabase
       .from('scouts')
-      .select('id, display_name, patrol, current_rank, person_id')
+      .select('id, display_name, patrol, current_rank, person_id, graduation_year, junior_leader_override')
       .eq('active', true)
       .order('display_name'),
     // mb_progress is roughly (badges-in-progress × scouts) and can climb past
@@ -67,35 +66,45 @@ export async function loadEngineInput(meetingDate: string, title: string): Promi
         .order('id').range(from, to)
     ),
     supabase.from('leaders').select('code, name, role, is_person, person_id'),
-    supabase.from('leader_skills').select('leader_code, skill_id'),
-    supabase.from('merit_badge_counselors').select('mb_id, leader_code'),
-    supabase.from('scout_instructors').select('scout_id, skill_id')
+    supabase.from('teaching_skills').select('person_id, skill_id'),
+    supabase.from('merit_badge_counselors').select('mb_id, person_id').order('sort_order')
   ]);
 
   const firstError =
     scoutsRes.error ??
     leadersRes.error ??
-    leaderSkillsRes.error ??
-    counselorsRes.error ??
-    scoutInstructorsRes.error;
+    teachingSkillsRes.error ??
+    counselorsRes.error;
   if (firstError) {
     return { ok: false, error: firstError.message };
   }
 
-  // The engine's leader pool is ADULTS: exclude non-person sign-off sources
-  // (Camp, Clinic, ...) and youth leaders — initials linked to an ACTIVE
-  // scout's person_id. Once that scout ages out, the same initials rejoin
-  // this pool (Plans/Retire-Roster-Contact-Columns.md).
+  // The engine's adult pool (Phase 0a, keyed to people): every person with a teaching skill or a counselor badge who is
+  // not an ACTIVE scout — leaders and parents alike. A youth leader's initials belong to their scout person, so they
+  // stay a scout until they age out (Plans/Retire-Roster-Contact-Columns.md). Non-person sign-off sources (Camp) have no
+  // person and never appear.
   const activeScoutPersonIds = new Set(
     ((scoutsRes.data ?? []) as { person_id: number | null }[])
       .map((s) => s.person_id)
       .filter((id): id is number => id != null)
   );
-  const adultLeaders = (
-    (leadersRes.data ?? []) as { code: string; name: string; role: string | null; is_person: boolean; person_id: number | null }[]
-  )
-    .filter((l) => l.is_person && !(l.person_id != null && activeScoutPersonIds.has(l.person_id)))
-    .map(({ code, name, role }) => ({ code, name, role }));
+  const teachingSkills = (teachingSkillsRes.data ?? []) as EngineInput['teachingSkills'];
+  const counselors = (counselorsRes.data ?? []) as EngineInput['counselors'];
+  const adultIds = [...new Set([...teachingSkills.map((t) => t.person_id), ...counselors.map((c) => c.person_id)])].filter((id) => !activeScoutPersonIds.has(id));
+  const { data: peopleRows, error: peopleError } = adultIds.length
+    ? await supabase.from('people').select('id, display_name').in('id', adultIds)
+    : { data: [], error: null };
+  if (peopleError) return { ok: false, error: peopleError.message };
+  const roleByPerson = new Map(
+    ((leadersRes.data ?? []) as { role: string | null; is_person: boolean; person_id: number | null }[])
+      .filter((l) => l.is_person && l.person_id != null)
+      .map((l) => [l.person_id as number, l.role])
+  );
+  const adults: EngineInput['adults'] = ((peopleRows ?? []) as { id: number; display_name: string }[]).map((p) => ({
+    personId: p.id,
+    name: p.display_name,
+    role: roleByPerson.get(p.id) ?? null
+  }));
 
   const input: EngineInput = {
     meetingDate,
@@ -110,10 +119,9 @@ export async function loadEngineInput(meetingDate: string, title: string): Promi
     rankReqLedger: rankReqLedgerRows,
     mbReqLedger: mbReqLedgerRows,
     skills: catalog.skills,
-    leaders: adultLeaders as EngineInput['leaders'],
-    leaderSkills: (leaderSkillsRes.data ?? []) as EngineInput['leaderSkills'],
-    counselors: (counselorsRes.data ?? []) as EngineInput['counselors'],
-    scoutInstructors: (scoutInstructorsRes.data ?? []) as EngineInput['scoutInstructors']
+    adults,
+    teachingSkills,
+    counselors
   };
 
   return { ok: true, input };

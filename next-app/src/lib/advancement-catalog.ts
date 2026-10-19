@@ -19,8 +19,8 @@
  * plain objects only — Next serialises the cache entry as JSON, so no
  * Map/Set/Date can survive the round trip.
  *
- * Per-scout/live tables (scouts, ledger_active, leaders, leader_skills,
- * merit_badge_counselors, scout_instructors, mb_progress) are NOT here —
+ * Per-scout/live tables (scouts, ledger_active, leaders, teaching_skills,
+ * merit_badge_counselors, mb_progress) are NOT here —
  * they change far more often and each caller still reads them fresh.
  */
 

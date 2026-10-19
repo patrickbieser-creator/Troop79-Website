@@ -11,12 +11,15 @@
  *   - Older scouts (next rank Star+) also get merit badge suggestions,
  *     Eagle-required first, drawn from badges in progress or with a counselor.
  *   - Group sessions need ≥2 scouts; cohorts over 8 split by patrol.
- *   - Teacher matching: requirement skill → leader_skills for adults; if the
- *     skill is youth-teachable, authorized Star+ scout instructors too.
+ *   - Teacher matching: requirement skill → teaching_skills, keyed to people
+ *     (Phase 0a of Plans/Meeting-Requests-And-Teaching-Offers.md): adults —
+ *     leaders and parents alike — and, when the skill is youth-teachable,
+ *     scouts who canOfferToTeach (First Class+ or Junior Leader).
  *   - Campout-only outstanding items are reported separately (needsOuting).
  */
 
 import { buildReqTree, isGroupSatisfied, type ReqNode } from '@/lib/mb-helpers';
+import { canOfferToTeach } from '@/lib/can-offer-to-teach';
 import type { ReqVenue, Skill } from '@/lib/supabase/types';
 import {
   type MeetingPlanPayload,
@@ -65,7 +68,15 @@ export interface EngineInput {
   meetingDate: string;
   title: string;
   generatedAt: string;
-  scouts: { id: string; display_name: string; patrol: string | null; current_rank: string | null }[];
+  scouts: {
+    id: string;
+    display_name: string;
+    patrol: string | null;
+    current_rank: string | null;
+    person_id: number | null;
+    graduation_year: number | null;
+    junior_leader_override: 'yes' | 'no' | null;
+  }[];
   ranks: { id: string; display_name: string; sort_order: number }[];
   rankReqs: EngineRankReqRow[];
   mbs: { id: string; name: string; eagle: boolean }[];
@@ -76,10 +87,11 @@ export interface EngineInput {
   /** ledger_active rows, kind = merit_badge_requirement (code "first-aid-1a"). */
   mbReqLedger: { scout_id: string; code: string }[];
   skills: Skill[];
-  leaders: { code: string; name: string; role: string | null }[];
-  leaderSkills: { leader_code: string; skill_id: string }[];
-  counselors: { mb_id: string; leader_code: string }[];
-  scoutInstructors: { scout_id: string; skill_id: string }[];
+  /** Adults who may teach: leaders and parents, never an active scout. */
+  adults: { personId: number; name: string; role: string | null }[];
+  /** teaching_skills: adults' and scouts' skills, one table keyed to people. */
+  teachingSkills: { person_id: number; skill_id: string }[];
+  counselors: { mb_id: string; person_id: number }[];
 }
 
 // ── non-plannable leaves ───────────────────────────────────────────────────
@@ -192,11 +204,12 @@ export function buildMeetingPlan(input: EngineInput): MeetingPlanPayload {
   const ranksSorted = [...input.ranks].sort((a, b) => a.sort_order - b.sort_order);
   const rankLabel = new Map(ranksSorted.map((r) => [r.id, r.display_name]));
   const rankSort = new Map(ranksSorted.map((r) => [r.id, r.sort_order]));
-  const starSort = rankSort.get('star') ?? Number.MAX_SAFE_INTEGER;
+  const firstClassSort = rankSort.get('first-class') ?? Number.MAX_SAFE_INTEGER;
 
   const skillById = new Map(input.skills.map((s) => [s.id, s]));
   const mbById = new Map(input.mbs.map((m) => [m.id, m]));
-  const leaderByCode = new Map(input.leaders.map((l) => [l.code, l]));
+  const adultByPerson = new Map(input.adults.map((a) => [a.personId, a]));
+  const scoutByPerson = new Map(input.scouts.filter((s) => s.person_id != null).map((s) => [s.person_id as number, s]));
 
   // Requirement trees (exclude the synthetic BoR rows, as bor-requirements does).
   const rankRowsByRank = new Map<string, EngineRankReqRow[]>();
@@ -247,10 +260,11 @@ export function buildMeetingPlan(input: EngineInput): MeetingPlanPayload {
     }
   }
   const counseledMbs = new Set(input.counselors.map((c) => c.mb_id));
-  const counselorsByMb = new Map<string, string[]>();
+  const counselorsByMb = new Map<string, number[]>();
   for (const c of input.counselors) {
+    if (!adultByPerson.has(c.person_id)) continue;
     const list = counselorsByMb.get(c.mb_id) ?? [];
-    list.push(c.leader_code);
+    list.push(c.person_id);
     counselorsByMb.set(c.mb_id, list);
   }
 
@@ -446,23 +460,36 @@ export function buildMeetingPlan(input: EngineInput): MeetingPlanPayload {
   );
 
   // Teacher matching.
-  const adultsBySkill = new Map<string, string[]>();
-  for (const ls of input.leaderSkills) {
-    const list = adultsBySkill.get(ls.skill_id) ?? [];
-    list.push(ls.leader_code);
-    adultsBySkill.set(ls.skill_id, list);
-  }
+  // One skills table: a person is an adult teacher or a scout instructor by who they are, never by which row.
+  const adultsBySkill = new Map<string, number[]>();
   const instructorsBySkill = new Map<string, string[]>();
-  for (const si of input.scoutInstructors) {
-    const list = instructorsBySkill.get(si.skill_id) ?? [];
-    list.push(si.scout_id);
-    instructorsBySkill.set(si.skill_id, list);
+  for (const ts of input.teachingSkills) {
+    if (adultByPerson.has(ts.person_id)) {
+      const list = adultsBySkill.get(ts.skill_id) ?? [];
+      list.push(ts.person_id);
+      adultsBySkill.set(ts.skill_id, list);
+    }
+    const s = scoutByPerson.get(ts.person_id);
+    // Read-time guard: a scout teaches only a youth-teachable skill, whatever the table says.
+    if (s && skillById.get(ts.skill_id)?.youth_teachable) {
+      const list = instructorsBySkill.get(ts.skill_id) ?? [];
+      list.push(s.id);
+      instructorsBySkill.set(ts.skill_id, list);
+    }
   }
-  const isStarPlus = (scoutId: string) => {
-    const ref = scoutRefs.get(scoutId);
-    if (!ref?.rankId) return false;
-    return (rankSort.get(ref.rankId) ?? -1) >= starSort;
+  const scoutById = new Map(input.scouts.map((s) => [s.id, s]));
+  const mayTeach = (scoutId: string) => {
+    const s = scoutById.get(scoutId);
+    if (!s) return false;
+    return canOfferToTeach({
+      rankSortOrder: s.current_rank ? (rankSort.get(s.current_rank) ?? null) : null,
+      firstClassSortOrder: firstClassSort,
+      graduationYear: s.graduation_year,
+      override: s.junior_leader_override,
+      onDate: input.meetingDate
+    });
   };
+  const teacher = (personId: number) => ({ code: String(personId), name: adultByPerson.get(personId)?.name ?? `Person ${personId}` });
 
   const sessions: PlanSession[] = [];
   const sessionIdByKeyScout = new Map<string, number>();
@@ -472,21 +499,19 @@ export function buildMeetingPlan(input: EngineInput): MeetingPlanPayload {
     const skill = c.skillId ? skillById.get(c.skillId) : undefined;
     const memberSet = new Set(proto.scoutIds);
 
-    const adultTeachers = (c.skillId ? (adultsBySkill.get(c.skillId) ?? []) : [])
-      .slice(0, MAX_ADULT_TEACHERS)
-      .map((code) => ({ code, name: leaderByCode.get(code)?.name ?? code }));
+    const adultTeachers = (c.skillId ? (adultsBySkill.get(c.skillId) ?? []) : []).slice(0, MAX_ADULT_TEACHERS).map(teacher);
 
     const counselors =
       c.kind === 'mb'
         ? (counselorsByMb.get(c.key.slice('mb:'.length)) ?? [])
             .slice(0, MAX_ADULT_TEACHERS)
-            .map((code) => ({ code, name: leaderByCode.get(code)?.name ?? code }))
+            .map(teacher)
         : [];
 
     const scoutTeachers =
       skill?.youth_teachable
         ? (instructorsBySkill.get(skill.id) ?? [])
-            .filter((sid) => isStarPlus(sid) && !memberSet.has(sid) && scoutRefs.has(sid))
+            .filter((sid) => mayTeach(sid) && !memberSet.has(sid) && scoutRefs.has(sid))
             .slice(0, MAX_SCOUT_TEACHERS)
             .map((sid) => {
               const ref = scoutRefs.get(sid)!;
@@ -566,35 +591,31 @@ export function buildMeetingPlan(input: EngineInput): MeetingPlanPayload {
     }
   }
 
-  const skillNamesByLeader = new Map<string, string[]>();
-  for (const ls of input.leaderSkills) {
-    const name = skillById.get(ls.skill_id)?.name;
-    if (!name) continue;
-    const list = skillNamesByLeader.get(ls.leader_code) ?? [];
-    list.push(name);
-    skillNamesByLeader.set(ls.leader_code, list);
+  // Skills in the skills table's order, so a person's list reads the same everywhere.
+  const sortedTeaching = [...input.teachingSkills].sort(
+    (x, y) => (skillById.get(x.skill_id)?.sort_order ?? 0) - (skillById.get(y.skill_id)?.sort_order ?? 0)
+  );
+  const skillNamesByAdult = new Map<number, string[]>();
+  const skillNamesByInstructor = new Map<string, string[]>();
+  for (const ts of sortedTeaching) {
+    const skill = skillById.get(ts.skill_id);
+    if (!skill) continue;
+    if (adultByPerson.has(ts.person_id)) skillNamesByAdult.set(ts.person_id, [...(skillNamesByAdult.get(ts.person_id) ?? []), skill.name]);
+    const sc = scoutByPerson.get(ts.person_id);
+    if (sc && skill.youth_teachable && scoutRefs.has(sc.id)) skillNamesByInstructor.set(sc.id, [...(skillNamesByInstructor.get(sc.id) ?? []), skill.name]);
   }
-  const rosterAdults = [...skillNamesByLeader.entries()]
-    .map(([code, skills]) => ({
-      code,
-      name: leaderByCode.get(code)?.name ?? code,
-      role: leaderByCode.get(code)?.role ?? null,
+  const rosterAdults = [...skillNamesByAdult.entries()]
+    .map(([personId, skills]) => ({
+      code: String(personId),
+      name: adultByPerson.get(personId)?.name ?? `Person ${personId}`,
+      role: adultByPerson.get(personId)?.role ?? null,
       skills,
-      sessionIds: sessionIdsByLeader.get(code) ?? []
+      sessionIds: sessionIdsByLeader.get(String(personId)) ?? []
     }))
     .sort((a, b) => b.sessionIds.length - a.sessionIds.length || a.name.localeCompare(b.name));
 
-  const skillNamesByInstructor = new Map<string, string[]>();
-  for (const si of input.scoutInstructors) {
-    if (!scoutRefs.has(si.scout_id)) continue;
-    const name = skillById.get(si.skill_id)?.name;
-    if (!name) continue;
-    const list = skillNamesByInstructor.get(si.scout_id) ?? [];
-    list.push(name);
-    skillNamesByInstructor.set(si.scout_id, list);
-  }
   const rosterScoutInstructors = [...skillNamesByInstructor.entries()]
-    .filter(([id]) => isStarPlus(id))
+    .filter(([id]) => mayTeach(id))
     .map(([id, skills]) => {
       const ref = scoutRefs.get(id)!;
       return {

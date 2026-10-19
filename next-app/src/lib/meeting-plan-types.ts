@@ -32,6 +32,7 @@ export interface PlanScoutRef {
 }
 
 export interface PlanTeacher {
+  /** An opaque key: the teacher's people.id since Phase 0a (2026-10); older published plans hold a leader code. */
   code: string;
   name: string;
 }

@@ -120,7 +120,10 @@ export interface Leader {
 
 export interface MeritBadgeCounselor {
   mb_id: string;
-  leader_code: string;
+  /** Keyed to the person since 2026-10 (Phase 0a). */
+  person_id: number;
+  /** Bridge until the old column is dropped; null for counselors with no sign-off initials. */
+  leader_code: string | null;
   sort_order: number;
 }
 

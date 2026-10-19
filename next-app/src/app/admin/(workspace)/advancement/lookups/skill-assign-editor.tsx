@@ -26,7 +26,7 @@ export interface AssignSkill {
 interface Props {
   people: AssignPerson[];
   skills: AssignSkill[];
-  /** 'leader_code' or 'scout_id' — the FormData field the action expects. */
+  /** The FormData field the action expects: 'person_id' since teaching skills are keyed to people. */
   keyField: string;
   noun: string;
   onSave: (formData: FormData) => Promise<ActionResult>;

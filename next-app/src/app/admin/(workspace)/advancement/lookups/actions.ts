@@ -56,7 +56,7 @@ interface ScoutDemoFields {
 }
 
 interface CounselorInput {
-  leader_code: string;
+  person_id: number;
 }
 
 function readDemoFields(formData: FormData): ScoutDemoFields {
@@ -132,7 +132,9 @@ function readCounselors(formData: FormData): CounselorInput[] {
   try {
     const arr = JSON.parse(raw) as CounselorInput[];
     if (!Array.isArray(arr)) return [];
-    return arr.filter((c) => c && typeof c.leader_code === 'string' && c.leader_code.trim() !== '');
+    // One row per person: a repeat would fail the (mb_id, person_id) key and, after the wipe, lose them all.
+    const seen = new Set<number>();
+    return arr.filter((c) => c && Number.isInteger(c.person_id) && c.person_id > 0 && !seen.has(c.person_id) && seen.add(c.person_id));
   } catch {
     return [];
   }
@@ -611,10 +613,11 @@ export async function updateMeritBadge(formData: FormData): Promise<Result> {
   if (counselors.length > 0) {
     const rows = counselors.map((c, i) => ({
       mb_id: id,
-      leader_code: c.leader_code,
+      person_id: c.person_id,
       sort_order: i
     }));
-    await supabase.from('merit_badge_counselors').insert(rows);
+    const { error: counselorError } = await supabase.from('merit_badge_counselors').insert(rows);
+    if (counselorError) return { ok: false, error: `Counselors not saved: ${counselorError.message}` };
   }
 
   // Replace-on-save for the requirement tree. Walk depth-first inserting
@@ -939,7 +942,7 @@ export async function deleteSkill(formData: FormData): Promise<Result> {
 
   const supabase = createAdminClient();
   // rank_requirements.skill_id has no ON DELETE rule, so clear references
-  // first (leader_skills / scout_instructors cascade on their own).
+  // first (teaching_skills cascades on its own).
   const { error: reqErr } = await supabase
     .from('rank_requirements')
     .update({ skill_id: null })
@@ -963,36 +966,13 @@ function readSkillIds(formData: FormData): string[] | null {
   }
 }
 
-/** Replace a leader's full skill set (delete + insert). */
-export async function setLeaderSkills(formData: FormData): Promise<Result> {
-  try {
-    await requireCapability('roster.manage');
-  } catch {
-    return { ok: false, error: 'Not authenticated' };
-  }
-  const leaderCode = String(formData.get('leader_code') ?? '').trim();
-  const skillIds = readSkillIds(formData);
-  if (!leaderCode || skillIds === null) return { ok: false, error: 'Malformed payload' };
-
-  const supabase = createAdminClient();
-  const { error: delErr } = await supabase
-    .from('leader_skills')
-    .delete()
-    .eq('leader_code', leaderCode);
-  if (delErr) return { ok: false, error: delErr.message };
-  if (skillIds.length > 0) {
-    const { error } = await supabase
-      .from('leader_skills')
-      .insert(skillIds.map((skill_id) => ({ leader_code: leaderCode, skill_id })));
-    if (error) return { ok: false, error: error.message };
-  }
-  revalidatePath('/admin/advancement/lookups');
-  revalidatePath('/admin/advancement/meeting-plan');
-  return { ok: true };
-}
-
-/** Replace a scout instructor's authorized skill set (delete + insert). */
-export async function setScoutInstructorSkills(formData: FormData): Promise<Result> {
+/**
+ * Sets what one person can teach (Phase 0a of Plans/Meeting-Requests-And-Teaching-Offers.md): teaching_skills is keyed
+ * to people, so one action serves adults, parents with no leader code, and scouts. It diffs instead of deleting and
+ * re-inserting, so a failure part-way can never wipe someone's skills, and an unchanged row keeps who authorized it
+ * and when. A scout only ever teaches a youth-teachable skill: checked here, and again by the engine at read time.
+ */
+export async function setTeachingSkills(formData: FormData): Promise<Result> {
   const session = await (async () => {
     try {
       return await requireCapability('roster.manage');
@@ -1002,40 +982,41 @@ export async function setScoutInstructorSkills(formData: FormData): Promise<Resu
   })();
   if (!session) return { ok: false, error: 'Not authenticated' };
 
-  const scoutId = String(formData.get('scout_id') ?? '').trim();
+  const personId = Number(formData.get('person_id'));
   const skillIds = readSkillIds(formData);
-  if (!scoutId || skillIds === null) return { ok: false, error: 'Malformed payload' };
+  if (!Number.isInteger(personId) || personId <= 0 || skillIds === null) return { ok: false, error: 'Malformed payload' };
+  const wanted = [...new Set(skillIds)];
 
   const supabase = createAdminClient();
-
-  // Guard: only youth-teachable skills can be authorized.
-  if (skillIds.length > 0) {
-    const { data: skillRows, error: skillErr } = await supabase
-      .from('skills')
-      .select('id, youth_teachable')
-      .in('id', skillIds);
-    if (skillErr) return { ok: false, error: skillErr.message };
-    const bad = skillIds.filter(
-      (id) => !(skillRows ?? []).some((s) => s.id === id && s.youth_teachable)
-    );
-    if (bad.length > 0) {
-      return { ok: false, error: `Not youth-teachable: ${bad.join(', ')}` };
-    }
+  const { data: person } = await supabase.from('people').select('merged_into_person_id').eq('id', personId).maybeSingle();
+  if (!person) return { ok: false, error: 'That person no longer exists.' };
+  if (person.merged_into_person_id != null) return { ok: false, error: 'That person was merged into another record. Edit the one they were merged into.' };
+  const [{ data: skillRows, error: skillErr }, { data: scoutRows, error: scoutErr }, { data: current, error: curErr }] = await Promise.all([
+    supabase.from('skills').select('id, youth_teachable').in('id', wanted.length ? wanted : ['']),
+    supabase.from('scouts').select('id').eq('person_id', personId).eq('active', true).limit(1),
+    supabase.from('teaching_skills').select('skill_id').eq('person_id', personId)
+  ]);
+  const readErr = skillErr ?? scoutErr ?? curErr;
+  if (readErr) return { ok: false, error: readErr.message };
+  const known = new Map(((skillRows ?? []) as { id: string; youth_teachable: boolean }[]).map((s) => [s.id, s.youth_teachable]));
+  const unknown = wanted.filter((id) => !known.has(id));
+  if (unknown.length) return { ok: false, error: `Unknown skill: ${unknown.join(', ')}` };
+  if ((scoutRows ?? []).length > 0) {
+    const adultOnly = wanted.filter((id) => !known.get(id));
+    if (adultOnly.length) return { ok: false, error: `Adults only, so a scout can't teach it: ${adultOnly.join(', ')}` };
   }
 
-  const { error: delErr } = await supabase
-    .from('scout_instructors')
-    .delete()
-    .eq('scout_id', scoutId);
-  if (delErr) return { ok: false, error: delErr.message };
-  if (skillIds.length > 0) {
-    const { error } = await supabase.from('scout_instructors').insert(
-      skillIds.map((skill_id) => ({
-        scout_id: scoutId,
-        skill_id,
-        authorized_by: session.label ?? null
-      }))
-    );
+  const have = new Set(((current ?? []) as { skill_id: string }[]).map((r) => r.skill_id));
+  const removed = [...have].filter((id) => !wanted.includes(id));
+  const added = wanted.filter((id) => !have.has(id));
+  if (removed.length) {
+    const { error } = await supabase.from('teaching_skills').delete().eq('person_id', personId).in('skill_id', removed);
+    if (error) return { ok: false, error: error.message };
+  }
+  if (added.length) {
+    const { error } = await supabase
+      .from('teaching_skills')
+      .upsert(added.map((skill_id) => ({ person_id: personId, skill_id, authorized_by: session.label ?? null })), { onConflict: 'person_id,skill_id', ignoreDuplicates: true });
     if (error) return { ok: false, error: error.message };
   }
   revalidatePath('/admin/advancement/lookups');

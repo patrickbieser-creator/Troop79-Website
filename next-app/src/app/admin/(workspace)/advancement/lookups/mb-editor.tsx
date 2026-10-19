@@ -22,7 +22,8 @@ export interface MbRow {
 
 export interface CounselorRow {
   mb_id: string;
-  leader_code: string;
+  /** Keyed to the person since 2026-10 (Phase 0a): a parent with no leader code can counsel. */
+  person_id: number;
   sort_order: number;
 }
 
@@ -38,14 +39,16 @@ export interface EditReqNode {
   children: EditReqNode[];
 }
 
-interface LeaderLite {
-  code: string;
+/** Someone who can be picked as a counselor: an adult, with their sign-off initials when they have them. */
+export interface CounselorCandidate {
+  personId: number;
   name: string;
+  code: string | null;
 }
 
 interface Props {
   rows: MbRow[];
-  leaders: LeaderLite[];
+  leaders: CounselorCandidate[];
   counselorsByMb: Map<string, CounselorRow[]>;
   reqTreesByMb: Map<string, EditReqNode[]>;
 }
@@ -54,9 +57,9 @@ export function MbEditor({ rows, leaders, counselorsByMb, reqTreesByMb }: Props)
   const [openFor, setOpenFor] = useState<MbRow | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const t = useLookupTable(rows, (m) => `${m.name} ${m.id}`);
-  const leaderNameByCode = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const l of leaders) m.set(l.code, l.name);
+  const leaderNameByPerson = useMemo(() => {
+    const m = new Map<number, string>();
+    for (const l of leaders) m.set(l.personId, l.name);
     return m;
   }, [leaders]);
 
@@ -103,7 +106,7 @@ export function MbEditor({ rows, leaders, counselorsByMb, reqTreesByMb }: Props)
                       {cs
                         .map(
                           (c) =>
-                            leaderNameByCode.get(c.leader_code) ?? c.leader_code
+                            leaderNameByPerson.get(c.person_id) ?? `Person ${c.person_id}`
                         )
                         .join(', ')}
                     </span>
@@ -142,7 +145,7 @@ export function MbEditor({ rows, leaders, counselorsByMb, reqTreesByMb }: Props)
 }
 
 interface CounselorItem {
-  key: string; // leader_code
+  key: string; // String(person_id)
   label: string;
 }
 
@@ -156,7 +159,7 @@ function MbForm({
   row: MbRow;
   initialCounselors: CounselorRow[];
   initialReqs: EditReqNode[];
-  leaders: LeaderLite[];
+  leaders: CounselorCandidate[];
   onClose: () => void;
 }) {
   const [name, setName] = useState(row.name);
@@ -166,25 +169,18 @@ function MbForm({
   const [workbookUrl, setWorkbookUrl] = useState(row.workbook_url ?? '');
   const [reqTree, setReqTree] = useState<EditReqNode[]>(initialReqs);
 
-  const leaderItemByCode = useMemo(() => {
-    const m = new Map<string, CounselorItem>();
-    for (const l of leaders) {
-      m.set(l.code, { key: l.code, label: `${l.code} — ${l.name}` });
-    }
-    return m;
-  }, [leaders]);
-
   const allLeaderItems: CounselorItem[] = useMemo(
-    () => leaders.map((l) => ({ key: l.code, label: `${l.code} — ${l.name}` })),
+    () => leaders.map((l) => ({ key: String(l.personId), label: l.code ? `${l.code} — ${l.name}` : l.name })),
     [leaders]
   );
+  const leaderItemByPerson = useMemo(() => new Map(allLeaderItems.map((i) => [i.key, i])), [allLeaderItems]);
 
   const initialItems: CounselorItem[] = useMemo(() => {
     const sorted = initialCounselors.slice().sort((a, b) => a.sort_order - b.sort_order);
     return sorted
-      .map((c) => leaderItemByCode.get(c.leader_code))
+      .map((c) => leaderItemByPerson.get(String(c.person_id)))
       .filter((x): x is CounselorItem => !!x);
-  }, [initialCounselors, leaderItemByCode]);
+  }, [initialCounselors, leaderItemByPerson]);
 
   const [counselors, setCounselors] = useState<CounselorItem[]>(initialItems);
   const [err, setErr] = useState<string | null>(null);
@@ -207,7 +203,7 @@ function MbForm({
     fd.set('workbook_url', workbookUrl);
     fd.set(
       'counselors',
-      JSON.stringify(counselors.map((c) => ({ leader_code: c.key })))
+      JSON.stringify(counselors.map((c) => ({ person_id: Number(c.key) })))
     );
     fd.set('reqTree', JSON.stringify(reqTree));
     feedback.start();
