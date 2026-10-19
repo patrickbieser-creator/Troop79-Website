@@ -21,6 +21,7 @@ import { MAX_GIFT, fmtMoney, fmtMoney2, itemLabel } from '@/lib/wreaths/rules';
 import type { StoreItem } from '@/lib/wreaths/public';
 import type { MyOrder } from '@/lib/wreaths/my-orders';
 import { cancelScoutOrderAction, saveScoutOrderAction } from './actions';
+import { OrderNote } from './order-note';
 import styles from './wreaths.module.css';
 
 interface Draft {
@@ -51,7 +52,7 @@ function itemsText(o: MyOrder): string {
 
 function StateBadge({ o }: { o: MyOrder }) {
   if (o.status === 'cancelled') return <Badge tone="neutral">Cancelled</Badge>;
-  if (o.paymentStatus === 'paid') return <Badge tone="success">Paid</Badge>;
+  if (o.paymentStatus === 'paid') return <Badge tone="success">{o.paidDifference ? `Paid · ${o.paidDifference}` : 'Paid'}</Badge>;
   if (o.paymentStatus === 'refunded') return <Badge tone="neutral">Refunded</Badge>;
   return o.collectedByScout ? <Badge tone="info">Collected</Badge> : <Badge tone="warning">Not collected</Badge>;
 }
@@ -171,6 +172,8 @@ export function ScoutOrderRow({ order: o, items, canEdit, scoutFirstName }: { or
         </p>
         {o.paymentNote && <p className={styles.orderMeta}>Payment: {o.paymentNote}</p>}
         {o.enteredByName && o.enteredByName.split(' ')[0] !== scoutFirstName && <p className={styles.orderMeta}>Entered by {o.enteredByName}</p>}
+        {/* The troop note has its own editor: a paid or past-cutoff order still takes one (W-1). */}
+        <OrderNote order={o} canEdit={canEdit && o.status === 'placed'} />
         {canEdit && o.status === 'placed' && (
           <div className={styles.rowActions}>
             {lock ? (

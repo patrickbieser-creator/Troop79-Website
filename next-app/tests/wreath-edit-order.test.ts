@@ -332,6 +332,23 @@ describe('editOrder', () => {
     expect(sent.find((m) => m.to.includes(base.customer.email))?.text).toContain('$26.00');
   });
 
+  // W-1: the troop-only order note never reaches the customer's updated-order email.
+  it('EditOrder_CustomerEmail_NeverCarriesTheOrderNote', async () => {
+    const id = await makeOrder();
+    const { editOrder, setOrderNote } = await actions();
+    expect(await setOrderNote(id, 'SECRET-TROOP-NOTE-4410')).toEqual({ ok: true });
+    await editOrder(id, { ...(await asIs(id)), lines: [{ itemId: fx.item.w20, quantity: 1, donated: false }], notifyCustomer: true });
+    const sent = (mail.send.mock.calls as unknown as [{ subject: string; html: string; text: string }][]).map((c) => c[0]);
+    expect([sent.length > 0, sent.some((m) => `${m.subject}${m.html}${m.text}`.includes('SECRET-TROOP-NOTE-4410'))]).toEqual([true, false]);
+  });
+
+  it('SetOrderNote_RequiresFinanceManage', async () => {
+    const id = await makeOrder();
+    const { setOrderNote } = await actions();
+    state.caps = new Set(['news.write']);
+    await expect(setOrderNote(id, 'Not allowed')).rejects.toThrow(/requires/i);
+  });
+
   it('EditOrder_NeverEmailsTheCustomerOfAScoutEnteredOrder', async () => {
     const id = await makeOrder();
     await admin.from('wreath_orders').update({ source: 'paper' }).eq('id', id);

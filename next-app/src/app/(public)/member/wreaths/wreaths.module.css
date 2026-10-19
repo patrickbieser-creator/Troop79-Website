@@ -213,3 +213,9 @@
 @media (min-width: 640px) { .settings { grid-template-columns: 8rem 1fr; } }
 .settingsFoot { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-4); align-items: center; margin-top: var(--sp-2); }
 .addOrder { margin: var(--sp-3) 0 0; font-size: var(--fs-md); font-weight: 600; }
+
+/* ── The troop-only order note (W-1): the note, its stamp, one quiet control ── */
+.note { margin-top: var(--sp-2); }
+.noteText { margin: 0; font-size: var(--fs-md); white-space: pre-line; }
+.noteLabel { font-weight: 600; color: var(--text-meta); }
+@media print { .note { display: none; } }

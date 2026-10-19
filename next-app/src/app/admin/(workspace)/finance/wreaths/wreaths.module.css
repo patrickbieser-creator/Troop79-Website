@@ -21,6 +21,8 @@
 .link { color: var(--admin-navy); font-weight: var(--admin-weight-semibold); background: none; border: none; padding: 0; cursor: pointer; font: inherit; text-decoration: underline; text-underline-offset: 2px; }
 .link:hover { color: var(--admin-navy-hover); }
 .badgeRow { display: inline-flex; gap: var(--admin-space-2); flex-wrap: wrap; }
+/* An order's troop-only note (W-1), as one quiet line under the customer. */
+.noteExcerpt { display: block; max-width: 32ch; margin-top: var(--admin-space-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--admin-text-sm); color: var(--admin-gray-500); }
 
 /* An opened order: one tinted row under it, in two columns. */
 .detailRow td { background: var(--admin-form-bg); }

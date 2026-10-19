@@ -75,6 +75,28 @@ export function acceptedShort(o: { paymentStatus: string; paidMethod: string | n
   return Math.max(0, fromCents(toCents(o.total) - toCents(o.paidAmount)));
 }
 
+/**
+ * The short or over on an order paid by hand, for the payment pill (Plans/Wreath-Sale.md W-2, Patrick 2026-10-19):
+ * "$5 short" when less than the total came in (accepted short, D-398), "$10 over" when more did (owed back, D-401), else
+ * null. Derived from paid_amount against total; nothing is stored. A card order is locked to its total, and an unpaid,
+ * refunded or cancelled order shows no amount.
+ *
+ * An over-payment the Edit order dialog counted as a gift leaves nothing to show: "Count the extra as a gift" raises
+ * the order's gift until the total equals what came in, so the stored order no longer differs from its payment.
+ */
+export function paymentDifferenceText(o: { status?: string; paymentStatus: string; paidMethod: string | null; paidAmount: number | null; total: number }): string | null {
+  if ((o.status ?? 'placed') !== 'placed' || o.paymentStatus !== 'paid' || o.paidMethod === 'card' || o.paidAmount == null) return null;
+  const diff = toCents(o.paidAmount) - toCents(o.total);
+  if (diff === 0) return null;
+  return `${fmtMoney(fromCents(Math.abs(diff)))} ${diff < 0 ? 'short' : 'over'}`;
+}
+
+/** The admin's paid pill after "Paid": "Venmo", "Venmo · $5 short", "Cash · $10 over". */
+export function paidPillText(o: { status?: string; paymentStatus: string; paidMethod: string | null; paidAmount: number | null; total: number }): string {
+  const method = o.paidMethod ? (METHOD_LABEL[o.paidMethod as PaymentMethod] ?? o.paidMethod) : null;
+  return [method, paymentDifferenceText(o)].filter(Boolean).join(' · ');
+}
+
 /** How the customer pays in Release A: the treasurer directly (Decisions, "Release A payment"). Links and handles only. */
 export const PAY_TREASURER = {
   venmoHandle: '@Patrick-Bieser-1',

@@ -196,6 +196,9 @@ function order(id: number, over: Partial<AdminOrder> = {}): AdminOrder {
     deliveringPersonId: ME, customerName: `Customer ${id}`, customerEmail: '', customerPhone: '', customerAddress: '', customerCity: '', customerZip: '', outsideAreaRelative: false,
     itemsSubtotal: 52, deliveryFee: 0, feeCovered: 0, gift: 0, total: 52, paymentStatus: 'unpaid', paidMethod: null, paidAt: null, paidAmount: null, status: 'placed', stripeFee: null, refundedAt: null, needsRefund: null, cardStarted: false,
     enteredByPersonId: ME, enteredByName: 'Oliver Prescott', collectedByScout: false, paymentNote: '', customerNote: '',
+ orderNote: '',
+ orderNoteBy: null,
+ orderNoteAt: null,
     lines: [{ itemId: 11, label: '20″ Wreath', catalogNumber: 1, quantity: 2, donated: false, amount: 52, unitPrice: 26, unitCost: 16.07 }],
     ...over
   };

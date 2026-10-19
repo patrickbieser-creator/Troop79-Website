@@ -15,6 +15,7 @@ import { fmtDate, fmtDay } from '@/lib/format-date';
 import { fmtMoney, fmtMoney2 } from '@/lib/wreaths/rules';
 import type { MyOrder, MyWreathOrders, SellerView } from '@/lib/wreaths/my-orders';
 import { PrintDeliveryButton } from './print-button';
+import { OrderNote } from './order-note';
 import { ScoutOrderRow } from './scout-order-row';
 import { ScoutSettings } from './scout-settings';
 import styles from './wreaths.module.css';
@@ -38,7 +39,7 @@ function fulfillmentText(o: MyOrder, scoutName: string): string {
 
 function PaidBadge({ o }: { o: MyOrder }) {
   if (o.status === 'cancelled') return <Badge tone="neutral">Cancelled</Badge>;
-  if (o.paymentStatus === 'paid') return <Badge tone="success">Paid</Badge>;
+  if (o.paymentStatus === 'paid') return <Badge tone="success">{o.paidDifference ? `Paid · ${o.paidDifference}` : 'Paid'}</Badge>;
   if (o.paymentStatus === 'refunded') return <Badge tone="neutral">Refunded</Badge>;
   return (
     <>
@@ -104,6 +105,7 @@ function Orders({ seller, items, canEdit }: { seller: SellerView; items: MyWreat
             <strong>{o.customerName}</strong> &middot; {itemsText(o)}
           </p>
           <p className={styles.orderMeta}>{fulfillmentText(o, seller.name.split(' ')[0])}</p>
+          <OrderNote order={o} canEdit={canEdit && o.status === 'placed'} />
         </li>
         )
       )}

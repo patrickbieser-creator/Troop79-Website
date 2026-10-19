@@ -11,12 +11,13 @@ import { Fragment, useMemo, useRef, useState, useTransition } from 'react';
 import { Button } from '../../../_components/button';
 import { Dialog, DialogActions, DialogBody, DialogHeader } from '../../_components/dialog';
 import { Badge } from '../../_components/badge';
-import { SaveButton, useSavedSnapshot } from '../../_components/save-state';
+import { DiscardButton, SaveButton, useDraftSnapshot, useSavedSnapshot } from '../../_components/save-state';
 import { SearchField, useTableSearch } from '../../_components/search-field';
 import { fmtDateTime } from '@/lib/format-date';
-import { FULFILLMENT_LABEL, PAID_METHODS, SOURCE_LABEL, acceptedShort, fmtMoney2, fromCents, toCents, type PaidMethod, type SaleRules } from '@/lib/wreaths/rules';
+import { FULFILLMENT_LABEL, PAID_METHODS, SOURCE_LABEL, acceptedShort, fmtMoney2, fromCents, paidPillText, toCents, type PaidMethod, type SaleRules } from '@/lib/wreaths/rules';
+import { ORDER_NOTE_MAX, noteStamp } from '@/lib/wreaths/order-note';
 import type { AdminItem, AdminOrder, AuditEntry } from '@/lib/wreaths/admin-data';
-import { cancelOrder, markPaid, refundCardOrder, setPaymentNote } from './actions';
+import { cancelOrder, markPaid, refundCardOrder, setOrderNote, setPaymentNote } from './actions';
 import { EditOrderForm } from './edit-order-form';
 import styles from './wreaths.module.css';
 
@@ -136,6 +137,11 @@ export function OrdersPanel({ orders, history, sellers, items, rules, initialPay
                         {o.customerName}
                         {o.source === 'paper' && <Badge variant="info">Scout-entered</Badge>}
                       </span>
+                      {o.orderNote && (
+                        <span className={styles.noteExcerpt} title={o.orderNote}>
+                          Note: {o.orderNote}
+                        </span>
+                      )}
                     </td>
                     <td>{o.creditedName}</td>
                     <td>
@@ -150,7 +156,7 @@ export function OrdersPanel({ orders, history, sellers, items, rules, initialPay
                       {o.status === 'cancelled' ? (
                         <Badge variant="muted">Cancelled</Badge>
                       ) : o.paymentStatus === 'paid' ? (
-                        <Badge variant="success">Paid{o.paidMethod ? ` · ${o.paidMethod}` : ''}</Badge>
+                        <Badge variant="success">{['Paid', paidPillText(o)].filter(Boolean).join(' · ')}</Badge>
                       ) : (
                         <span className={styles.badgeRow}>
                           <Badge variant="warning">Not paid</Badge>
@@ -355,6 +361,7 @@ function OrderDetail({ order: o, history, sellers, onEdit, onCancel }: { order: 
         )}
         {error && <p className={styles.badNote}>{error.text}</p>}
         {o.source === 'paper' && <PaymentNote key={`${o.id}-${o.paymentNote}`} order={o} />}
+        <OrderNote key={`${o.id}-${o.orderNote}`} order={o} />
         {live && (
           <div className={styles.actionRow}>
             <Button variant="quiet" onClick={onEdit}>
@@ -441,6 +448,60 @@ function PaymentNote({ order: o }: { order: AdminOrder }) {
       </div>
       <div className={styles.actionRow}>
         <SaveButton dirty={dirty} pending={pending} onClick={save} />
+      </div>
+    </form>
+  );
+}
+
+/**
+ * The troop-only order note (W-1): the treasurer and the credited scout's family share one note, last edit wins. Any
+ * order, paid or not, card included (it never touches the money). Dirty-gated Save + Discard changes.
+ */
+function OrderNote({ order: o }: { order: AdminOrder }) {
+  const [note, setNote] = useState(o.orderNote);
+  const [problem, setProblem] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  const { dirty, saved } = useDraftSnapshot(note);
+  const tooLong = note.trim().length > ORDER_NOTE_MAX;
+  function save() {
+    setProblem(null);
+    if (tooLong) {
+      setProblem(`A note is ${ORDER_NOTE_MAX} characters at most.`);
+      return;
+    }
+    start(async () => {
+      const res = await setOrderNote(o.id, note);
+      if (!res.ok) setProblem(res.error ?? 'Couldn’t save the note.');
+    });
+  }
+  const stamp = o.orderNote ? noteStamp(o.orderNoteBy, o.orderNoteAt) : '';
+  return (
+    <form
+      noValidate
+      className={styles.sectionGapSm}
+      onSubmit={(e) => {
+        e.preventDefault();
+        save();
+      }}
+    >
+      <div className={`${styles.field} ${problem ? styles.bad : ''}`}>
+        <label htmlFor={`on-${o.id}`}>Order note</label>
+        <textarea id={`on-${o.id}`} autoComplete="off" maxLength={ORDER_NOTE_MAX} aria-invalid={problem ? true : undefined} aria-describedby={`on-${o.id}-hint`} value={note} onChange={(e) => setNote(e.target.value)} />
+        <p id={`on-${o.id}-hint`} className={styles.hint}>
+          {stamp ? `${stamp}. ` : ''}The scout’s family sees it too; the customer never does.
+        </p>
+        {problem && <p className={styles.badNote}>{problem}</p>}
+      </div>
+      <div className={styles.actionRow}>
+        <SaveButton dirty={dirty} pending={pending} onClick={save} />
+        <DiscardButton
+          dirty={dirty}
+          pending={pending}
+          onClick={() => {
+            setNote(saved);
+            setProblem(null);
+          }}
+        />
       </div>
     </form>
   );

@@ -17,6 +17,7 @@ import { fmtDateFull } from '@/lib/format-date';
 import { parseDeliveryMessage, parseGoal } from '@/lib/wreaths/scout-entry';
 import { cardCheckoutLive, cardDeps, expireOrderCheckout } from '@/lib/wreaths/stripe-client';
 import { refundCardOrderCore } from '@/lib/wreaths/card-payments';
+import { setOrderNote as setOrderNoteCore } from '@/lib/wreaths/order-note-save';
 
 /**
  * Wreath sale admin (Plans/Wreath-Sale.md, Release A: Settings, Items, Sellers, Orders). Gate: `finance.manage` on
@@ -493,6 +494,18 @@ export async function setPaymentNote(orderId: number, noteIn: string): Promise<W
     summary: `Edited the payment note on order ${before.order_number}`,
     details: [{ field: 'Payment note', from: before.payment_note || '—', to: note || '—' }]
   });
+  revalidatePath(PAGE);
+  return { ok: true };
+}
+
+/**
+ * The treasurer's edit of an order's troop-only note (W-1), on any order: paid, card or cancelled. 500 characters;
+ * empty clears it. The scout's family edits the same note from Members (lib/wreaths/order-note-save.ts). Audited.
+ */
+export async function setOrderNote(orderId: number, note: string): Promise<WreathResult> {
+  const actor = await requireCapability('finance.manage');
+  const res = await setOrderNoteCore(orderId, note, { supabase: createAdminClient(), now: () => Date.now(), actor: { kind: 'admin', personId: actor.personId ?? null, label: actor.label } });
+  if (!res.ok) return fail(res.error, 'orderNote');
   revalidatePath(PAGE);
   return { ok: true };
 }

@@ -5,6 +5,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { roseOrder, type RoseRow } from './rules';
+import { noteAuthorName } from './order-note';
 
 export interface AdminSale {
   id: number;
@@ -105,6 +106,10 @@ export interface AdminOrder {
   collectedByScout: boolean;
   paymentNote: string;
   customerNote: string;
+  /** The troop-only order note (W-1): never on a customer page or email. '' = none; by/at describe the last edit. */
+  orderNote: string;
+  orderNoteBy: string | null;
+  orderNoteAt: string | null;
 }
 
 export interface AuditEntry {
@@ -208,7 +213,7 @@ export async function loadSellerCandidates(sb: SupabaseClient, saleId: number): 
 export async function loadAdminOrders(sb: SupabaseClient, saleId: number, opts: { involving?: number[] } = {}): Promise<AdminOrder[]> {
   let q = sb
     .from('wreath_orders')
-    .select('*, credited:credited_person_id(display_name), entered:entered_by_person_id(display_name), wreath_order_lines(item_id, quantity, donated, unit_price, unit_cost, wreath_items(catalog_number, name, size))')
+    .select('*, credited:credited_person_id(display_name), entered:entered_by_person_id(display_name), note_by:order_note_updated_by_person_id(first_name, last_name), wreath_order_lines(item_id, quantity, donated, unit_price, unit_cost, wreath_items(catalog_number, name, size))')
     .eq('sale_id', saleId);
   if (opts.involving) {
     if (opts.involving.length === 0) return [];
@@ -252,6 +257,9 @@ export async function loadAdminOrders(sb: SupabaseClient, saleId: number, opts: 
     collectedByScout: r.collected_by_scout === true,
     paymentNote: r.payment_note ?? '',
     customerNote: r.customer_note ?? '',
+    orderNote: r.order_note ?? '',
+    orderNoteBy: one(r.note_by) ? noteAuthorName(one(r.note_by).first_name, one(r.note_by).last_name) : null,
+    orderNoteAt: r.order_note_updated_at ?? null,
     lines: (r.wreath_order_lines as Record<string, any>[]).map((l) => { // eslint-disable-line @typescript-eslint/no-explicit-any
       const it = one(l.wreath_items) as { catalog_number: number; name: string; size: string } | null;
       return {

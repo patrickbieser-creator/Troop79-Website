@@ -46,6 +46,9 @@ const order = (over: Partial<AdminOrder> = {}): AdminOrder => ({
   collectedByScout: false,
   paymentNote: '',
   customerNote: '',
+  orderNote: '',
+  orderNoteBy: null,
+  orderNoteAt: null,
   lines: [{ itemId: 1, label: '20″ Wreath', catalogNumber: 1, quantity: 2, donated: false, amount: 52, unitPrice: 26, unitCost: 16 }],
   ...over
 });

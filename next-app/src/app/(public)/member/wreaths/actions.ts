@@ -5,6 +5,8 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { cancelScoutOrder, editScoutOrder, setScoutSettings, type EntryResult } from '@/lib/wreaths/scout-entry';
 import { resolveScoutEntryViewer } from '@/lib/wreaths/scout-entry-viewer';
 import { expireOrderCheckout } from '@/lib/wreaths/stripe-client';
+import { setOrderNote } from '@/lib/wreaths/order-note-save';
+import type { OrderNoteResult } from '@/lib/wreaths/order-note';
 
 /**
  * Members › Wreath sale: edit or cancel a scout-entered order, set a scout's goal. Each action re-derives the viewer
@@ -45,6 +47,15 @@ export async function setScoutSettingsAction(sellerPersonId: number, v: { goal: 
   const deps = await ctx();
   if (!deps.viewer) return SIGN_IN;
   const res = await setScoutSettings(sellerPersonId, { goal: v.goal, deliveryMessage: v.deliveryMessage }, deps);
+  if (res.ok) revalidatePath(PATH);
+  return res;
+}
+
+/** The troop-only order note (W-1) on an order credited to the family's scout: any source, paid or not, while placed. */
+export async function setOrderNoteAction(orderId: number, note: string): Promise<OrderNoteResult> {
+  const deps = await ctx();
+  if (!deps.viewer) return { ok: false, code: 'forbidden', error: 'Sign in as the scout, or a parent, to change this.' };
+  const res = await setOrderNote(orderId, note, { supabase: deps.supabase, now: deps.now, actor: { kind: 'family', viewer: deps.viewer } });
   if (res.ok) revalidatePath(PATH);
   return res;
 }

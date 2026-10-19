@@ -11,7 +11,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { loadAdminOrders, type AdminOrder } from './admin-data';
 import { loadCurrentSale, loadStoreItems, type PublicSale, type StoreItem } from './public';
-import { orderProfit, scoutEarnings, toCents, fromCents } from './rules';
+import { orderProfit, paymentDifferenceText, scoutEarnings, toCents, fromCents } from './rules';
 import { goalProgress, lockReason, type GoalProgress, type LockSale } from './scout-entry';
 
 export interface MyOrderContact {
@@ -54,6 +54,12 @@ export interface MyOrder {
   entry: { email: string; phone: string; note: string; gift: number; lines: { itemId: number; quantity: number; donated: boolean }[] } | null;
   /** Why the family can no longer change this scout-entered order (Paid, past ITS round's cutoff, Cancelled); null = editable. */
   lock: string | null;
+  /** The troop-only order note (W-1), on every order: the family and the treasurer share it. '' = none. */
+  orderNote: string;
+  orderNoteBy: string | null;
+  orderNoteAt: string | null;
+  /** Paid by hand for more or less than the total: "$5 short" / "$10 over" (W-2); null otherwise. */
+  paidDifference: string | null;
 }
 
 export interface SellerSummary {
@@ -129,7 +135,11 @@ export function toMyOrder(o: AdminOrder, personId: number, lockCtx?: LockContext
         ? { email: o.customerEmail, phone: o.customerPhone, note: o.customerNote, gift: o.gift, lines: o.lines.map((l) => ({ itemId: l.itemId, quantity: l.quantity, donated: l.donated })) }
         : null,
     // Without a sale and a clock to judge by, nothing is editable.
-    lock: o.source !== 'paper' ? null : lockCtx ? lockReason({ status: o.status, paymentStatus: o.paymentStatus, round: o.round }, lockCtx.sale, lockCtx.nowMs) : 'Locked.'
+    lock: o.source !== 'paper' ? null : lockCtx ? lockReason({ status: o.status, paymentStatus: o.paymentStatus, round: o.round }, lockCtx.sale, lockCtx.nowMs) : 'Locked.',
+    orderNote: o.orderNote,
+    orderNoteBy: o.orderNote ? o.orderNoteBy : null,
+    orderNoteAt: o.orderNote ? o.orderNoteAt : null,
+    paidDifference: paymentDifferenceText(o)
   };
 }
 
