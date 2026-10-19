@@ -28,6 +28,8 @@ import { listPasskeys, passkeysConfigured } from '@/lib/passkeys';
 import { PasskeyManager } from './passkey-manager';
 import { MemberProxyBanner } from './member-proxy-banner';
 import { resolveMemberViewer } from '@/lib/member-viewer';
+import { loadTeachingKind } from '@/lib/teaching-skills';
+import { centralToday } from '@/lib/dates';
 import {
   passkeyRegisterOptionsAction,
   passkeyRegisterVerifyAction,
@@ -53,6 +55,13 @@ interface Card {
   /** Adults only — /profile is Tier 2 and refuses a scout session. */
   adultOnly?: boolean;
 }
+
+/** Only for adults and Junior Leaders, so it is added per viewer rather than listed for everyone. */
+const TEACHING_CARD: Card = {
+  title: 'What I can teach',
+  body: 'Check the skills you can teach at a troop meeting. Leaders use it to match teachers with what scouts ask for.',
+  href: '/member/teaching'
+};
 
 const CARDS: Card[] = [
   {
@@ -163,6 +172,11 @@ export default async function MemberPage({
   // Never the proxy viewer's own passkeys while viewing a family.
   const passkeys = !proxy && isAdult ? await listPasskeys(createAdminClient(), session!.personId) : [];
   const withProxy = (href: string) => (proxy ? `${href}?viewScout=${proxy.personId}` : href);
+  const loadedKind = await loadTeachingKind(createAdminClient(), proxy ? proxy.personId : session!.personId, centralToday());
+  // A scout sign-in never counts as an adult here, even if their scout row is no longer active.
+  const teachingKind = !proxy && loadedKind === 'adult' && !isAdult ? 'none' : loadedKind;
+  const after = CARDS.findIndex((c) => c.href === '/member/reimbursements') + 1;
+  const cards = teachingKind === 'none' ? CARDS : [...CARDS.slice(0, after), TEACHING_CARD, ...CARDS.slice(after)];
 
   return (
     <>
@@ -194,7 +208,7 @@ export default async function MemberPage({
         )}
 
       <div className={styles.grid}>
-        {CARDS.map((card) => {
+        {cards.map((card) => {
           // A scout's session is deliberately narrower than an adult's: it
           // never reaches household demographics. Rather than hiding the card
           // and leaving them wondering, say why.

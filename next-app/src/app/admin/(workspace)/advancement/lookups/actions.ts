@@ -17,6 +17,7 @@ import {
 import { ARTICLE_TOKENS, isValidTokenValue } from '@/lib/article-tokens';
 import { SITE_TEXT_KEYS } from '@/lib/site-text';
 import { SEO_KEYS } from '@/lib/seo';
+import { saveTeachingSkills, undoTeachingSkillChange, markTeachingSkillChangeReviewed } from '@/lib/teaching-skills';
 
 /** The event-tab kinds an event can be classified as — Day Outing/Fundraiser
  *  have no natural quantity of their own, Camping/Hiking are implied by
@@ -978,10 +979,10 @@ function readSkillIds(formData: FormData): string[] | null {
 }
 
 /**
- * Sets what one person can teach (Phase 0a of Plans/Meeting-Requests-And-Teaching-Offers.md): teaching_skills is keyed
- * to people, so one action serves adults, parents with no leader code, and scouts. It diffs instead of deleting and
- * re-inserting, so a failure part-way can never wipe someone's skills, and an unchanged row keeps who authorized it
- * and when. A scout only ever teaches a youth-teachable skill: checked here, and again by the engine at read time.
+ * Sets what one person can teach (Plans/Meeting-Requests-And-Teaching-Offers.md): teaching_skills is keyed to people,
+ * so one action serves adults, parents with no leader code, and scouts. The set_teaching_skills RPC diffs instead of
+ * deleting and re-inserting, so a failure part-way can never wipe someone's skills, and an unchanged row keeps who
+ * authorized it and when. A scout only ever teaches a youth-teachable skill: checked there, and again by the engine.
  */
 export async function setTeachingSkills(formData: FormData): Promise<Result> {
   const session = await (async () => {
@@ -998,38 +999,10 @@ export async function setTeachingSkills(formData: FormData): Promise<Result> {
   if (!Number.isInteger(personId) || personId <= 0 || skillIds === null) return { ok: false, error: 'Malformed payload' };
   const wanted = [...new Set(skillIds)];
 
-  const supabase = createAdminClient();
-  const { data: person } = await supabase.from('people').select('merged_into_person_id').eq('id', personId).maybeSingle();
-  if (!person) return { ok: false, error: 'That person no longer exists.' };
-  if (person.merged_into_person_id != null) return { ok: false, error: 'That person was merged into another record. Edit the one they were merged into.' };
-  const [{ data: skillRows, error: skillErr }, { data: scoutRows, error: scoutErr }, { data: current, error: curErr }] = await Promise.all([
-    supabase.from('skills').select('id, youth_teachable').in('id', wanted.length ? wanted : ['']),
-    supabase.from('scouts').select('id').eq('person_id', personId).eq('active', true).limit(1),
-    supabase.from('teaching_skills').select('skill_id').eq('person_id', personId)
-  ]);
-  const readErr = skillErr ?? scoutErr ?? curErr;
-  if (readErr) return { ok: false, error: readErr.message };
-  const known = new Map(((skillRows ?? []) as { id: string; youth_teachable: boolean }[]).map((s) => [s.id, s.youth_teachable]));
-  const unknown = wanted.filter((id) => !known.has(id));
-  if (unknown.length) return { ok: false, error: `Unknown skill: ${unknown.join(', ')}` };
-  if ((scoutRows ?? []).length > 0) {
-    const adultOnly = wanted.filter((id) => !known.get(id));
-    if (adultOnly.length) return { ok: false, error: `Adults only, so a scout can't teach it: ${adultOnly.join(', ')}` };
-  }
-
-  const have = new Set(((current ?? []) as { skill_id: string }[]).map((r) => r.skill_id));
-  const removed = [...have].filter((id) => !wanted.includes(id));
-  const added = wanted.filter((id) => !have.has(id));
-  if (removed.length) {
-    const { error } = await supabase.from('teaching_skills').delete().eq('person_id', personId).in('skill_id', removed);
-    if (error) return { ok: false, error: error.message };
-  }
-  if (added.length) {
-    const { error } = await supabase
-      .from('teaching_skills')
-      .upsert(added.map((skill_id) => ({ person_id: personId, skill_id, authorized_by: session.label ?? null })), { onConflict: 'person_id,skill_id', ignoreDuplicates: true });
-    if (error) return { ok: false, error: error.message };
-  }
+  // One diffing writer for admin and the member page (Phase 0b): it guards merged people, unknown skills and the youth
+  // rule, and logs each add/remove (admin rows start reviewed) in the same transaction.
+  const res = await saveTeachingSkills(createAdminClient(), personId, wanted, 'admin', { personId: session.personId, label: session.label ?? null });
+  if (!res.ok) return { ok: false, error: res.error };
   revalidatePath('/admin/advancement/lookups');
   revalidatePath('/admin/advancement/meeting-plan');
   return { ok: true };
@@ -1508,5 +1481,41 @@ export async function saveSeoSettings(formData: FormData): Promise<Result> {
   revalidatePath('/robots.txt');
   revalidatePath('/sitemap.xml');
   revalidatePath('/', 'layout');
+  return { ok: true };
+}
+
+/**
+ * Recent teaching-skill changes (Phase 0b): Undo reverses one change and is logged; Mark reviewed clears it from the
+ * admin-home count without changing anything. Both need the same right as editing skills here.
+ */
+export async function undoTeachingSkillChangeAction(changeId: number): Promise<Result & { message?: string }> {
+  let actor;
+  try {
+    actor = await requireCapability('roster.manage');
+  } catch {
+    return { ok: false, error: 'Not authenticated' };
+  }
+  if (!Number.isInteger(changeId) || changeId <= 0) return { ok: false, error: 'Malformed payload' };
+  const res = await undoTeachingSkillChange(createAdminClient(), changeId, { personId: actor.personId, label: actor.label ?? null });
+  if (!res.ok) return { ok: false, error: res.error };
+  revalidatePath('/admin/advancement/lookups');
+  revalidatePath('/admin');
+  if (res.outcome === 'missing') return { ok: false, error: 'That change is gone. Reload to see the current list.' };
+  if (res.outcome === 'already') return { ok: true, message: 'Already undone.' };
+  if (res.outcome === 'superseded') return { ok: true, message: 'Nothing to undo: it was already changed back. Marked reviewed.' };
+  return { ok: true, message: 'Undone.' };
+}
+
+export async function markTeachingSkillChangeReviewedAction(changeId: number): Promise<Result> {
+  try {
+    await requireCapability('roster.manage');
+  } catch {
+    return { ok: false, error: 'Not authenticated' };
+  }
+  if (!Number.isInteger(changeId) || changeId <= 0) return { ok: false, error: 'Malformed payload' };
+  const res = await markTeachingSkillChangeReviewed(createAdminClient(), changeId);
+  if (!res.ok) return { ok: false, error: res.error ?? 'Not saved' };
+  revalidatePath('/admin/advancement/lookups');
+  revalidatePath('/admin');
   return { ok: true };
 }

@@ -54,6 +54,8 @@ import { LookupCard } from './lookup-card';
 import { HouseholdsManager, type HouseholdMemberRow, type HouseholdRow } from './households-manager';
 import { SkillsEditor, type SkillRow } from './skills-editor';
 import { SkillAssignEditor, type AssignPerson } from './skill-assign-editor';
+import { TeachingChanges } from './teaching-changes';
+import { loadTeachingSkillChanges } from '@/lib/teaching-skills';
 import { CategoriesEditor } from './categories-editor';
 import { StoresEditor } from './stores-editor';
 import { ArticleTokensEditor } from './article-tokens-editor';
@@ -87,6 +89,8 @@ import {
   updateSkill,
   deleteSkill,
   setTeachingSkills,
+  undoTeachingSkillChangeAction,
+  markTeachingSkillChangeReviewedAction,
   createCalendarCategory,
   updateCalendarCategory,
   deleteCalendarCategory,
@@ -448,6 +452,11 @@ export default async function LookupsPage() {
       skillIds: skillIdsByPerson.get(s.person_id as number) ?? []
     }));
   const youthSkills = skills.filter((s) => s.youth_teachable);
+  const adminSb = createAdminClient();
+  const [changesToReview, changesAll] = await Promise.all([
+    loadTeachingSkillChanges(adminSb, { filter: 'review' }),
+    loadTeachingSkillChanges(adminSb, { filter: 'all' })
+  ]);
 
   return (
     <>
@@ -538,6 +547,22 @@ export default async function LookupsPage() {
             onDelete={deleteSkill}
           />
         </Card>
+      </div>
+
+      <div id="teaching-changes" className={styles.grid}>
+        <div className={styles.cardExpanded}>
+          <Card
+            title="Recent teaching-skill changes"
+            sub="Adults and Junior Leaders set what they can teach on the member page; it counts right away and nothing waits for approval. Undo reverses a change (and is logged). Mark reviewed clears it from the admin-home count."
+          >
+            <TeachingChanges
+              toReview={changesToReview}
+              all={changesAll}
+              onUndo={undoTeachingSkillChangeAction}
+              onMarkReviewed={markTeachingSkillChangeReviewedAction}
+            />
+          </Card>
+        </div>
       </div>
 
       <div className={styles.grid}>

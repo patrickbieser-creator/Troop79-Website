@@ -1,0 +1,84 @@
+/* /member/teaching — What I can teach. Public tokens only (AGENTS.md). Surfaces come from the shared card. */
+.panel {
+  max-width: 40rem;
+  padding: var(--sp-5) var(--sp-6);
+  margin: 0 0 var(--sp-6);
+}
+
+.lede {
+  max-width: 62ch;
+  margin: 0 0 var(--sp-4);
+  line-height: 1.55;
+}
+
+.fine {
+  max-width: 62ch;
+  margin: 0 0 var(--sp-4);
+  font-size: var(--fs-sm);
+  color: var(--text-meta);
+  line-height: 1.55;
+}
+
+.list {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.legend {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--text-meta);
+  margin: 0 0 var(--sp-2);
+}
+
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-3) 0;
+  border-top: 1px solid var(--rule);
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.row input {
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.name {
+  display: block;
+  font-size: var(--fs-md);
+  color: var(--text-head);
+}
+
+.note {
+  display: block;
+  font-size: var(--fs-sm);
+  color: var(--text-meta);
+  margin-top: 2px;
+}
+
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-top: var(--sp-5);
+}
+
+.status {
+  font-size: var(--fs-sm);
+  color: var(--text-meta);
+}
+
+.subHead {
+  font-size: var(--fs-lg);
+  color: var(--navy);
+  margin: 0 0 var(--sp-2);
+}

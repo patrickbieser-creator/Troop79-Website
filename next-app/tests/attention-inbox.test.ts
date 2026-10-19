@@ -237,3 +237,27 @@ describe('AttentionInbox capability scoping', () => {
     expect(row.items.length).toBeLessThanOrEqual(3);
   });
 });
+
+describe('AttentionInbox teaching-skill changes', () => {
+  // Phase 0b (Decision 12): self-service skill changes raise a count; no email. roster.manage opens Lookups.
+  let personId: number | null = null;
+  afterEach(async () => {
+    if (personId != null) {
+      await admin.from('teaching_skill_changes').delete().eq('person_id', personId);
+      await admin.from('teaching_skills').delete().eq('person_id', personId);
+      await admin.from('people').delete().eq('id', personId);
+    }
+    personId = null;
+  });
+
+  it('Leader_SeesAdminHomeAlert_WhenSkillChangeUnreviewed', async () => {
+    const before = find(await load(caps('roster.manage')), 'teaching-skill-changes')?.count ?? 0;
+    const { data } = await admin.from('people').insert({ display_name: 'ZZVITEST Inbox Teacher' }).select('id').single();
+    personId = data!.id as number;
+    const { saveTeachingSkills } = await import('../src/lib/teaching-skills');
+    await saveTeachingSkills(admin, personId!, ['knots'], 'member', { personId, label: 'ZZVITEST Inbox Teacher' });
+    const row = find(await load(caps('roster.manage')), 'teaching-skill-changes');
+    expect([row?.count, row?.href]).toEqual([before + 1, '/admin/advancement/lookups#teaching-changes']);
+    expect(find(await load(caps('finance.manage', 'news.write')), 'teaching-skill-changes')).toBeUndefined();
+  });
+});

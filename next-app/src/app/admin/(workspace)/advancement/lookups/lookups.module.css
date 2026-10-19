@@ -526,3 +526,8 @@
 
 /* Email templates card — one group per registered kind */
 .groupTitle { font-size: var(--admin-text-base); font-weight: 700; color: var(--admin-gray-700); }
+
+/* Recent teaching-skill changes (Phase 0b, teaching-changes.tsx). */
+.emptyCell { composes: empty from '../../_components/data-table.module.css'; }
+.rowActions { display: inline-flex; gap: 6px; align-items: center; }
+.personSub { font-size: 12px; color: var(--admin-gray-500); }

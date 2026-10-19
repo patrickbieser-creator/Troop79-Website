@@ -19,6 +19,7 @@ import type { Capability } from '@/lib/capabilities';
 import { centralToday } from '@/lib/dates';
 import { loadAdminSale } from '@/lib/wreaths/admin-data';
 import { fmtMoney2 } from '@/lib/wreaths/rules';
+import { countUnreviewedTeachingSkillChanges, loadTeachingSkillChanges } from '@/lib/teaching-skills';
 
 export interface AttentionItem {
   label: string;
@@ -471,6 +472,32 @@ async function loadNextOpenSignup(sb: SupabaseClient): Promise<AttentionCategory
 }
 
 /**
+ * Teaching skills people set for themselves on the member page (Plans/Meeting-Requests-And-Teaching-Offers.md,
+ * Phase 0b, Decision 12): they count right away, so this is a look-at list, not an approval queue. Undo or Mark
+ * reviewed on Lookups clears a row. No email is sent.
+ */
+async function loadTeachingSkillChangesToReview(sb: SupabaseClient): Promise<AttentionCategory> {
+  const [rows, count] = await Promise.all([
+    loadTeachingSkillChanges(sb, { filter: 'review', limit: SHOWN }),
+    countUnreviewedTeachingSkillChanges(sb)
+  ]);
+  const href = '/admin/advancement/lookups#teaching-changes';
+  const items: AttentionItem[] = rows.map((r) => ({
+    label: `${r.personName} ${r.action} ${r.skillName}`,
+    meta: fmtDate(r.changedAt, { year: false }),
+    href
+  }));
+  return queue(
+    'teaching-skill-changes',
+    `${count} teaching-skill ${count === 1 ? 'change' : 'changes'} to look at`,
+    items,
+    href,
+    count === 1 ? 'change' : 'changes',
+    count
+  );
+}
+
+/**
  * Home's "Needs you today" rows for this actor. Each category is gated by the
  * capability that opens the queue it links to — the same one the target page
  * and its actions enforce (this list is for the reader, not the boundary).
@@ -481,6 +508,7 @@ async function loadNextOpenSignup(sb: SupabaseClient): Promise<AttentionCategory
  *  - unpaid wreath orders ............. finance.manage, only while the sale is open
  *  - pending news ..................... news.write
  *  - next open sign-up ................ calendar.write
+ *  - teaching-skill changes ........... roster.manage (Lookups, where Undo and Mark reviewed live)
  */
 export async function loadAttentionCategories(
   capabilities: ReadonlySet<Capability>,
@@ -496,6 +524,7 @@ export async function loadAttentionCategories(
   if (has('finance.manage')) jobs.push(loadReimbursementsToApprove(sb), loadUnpaidWreathOrders(sb));
   if (has('news.write')) jobs.push(loadPendingNews(sb));
   if (has('calendar.write')) jobs.push(loadNextOpenSignup(sb));
+  if (has('roster.manage')) jobs.push(loadTeachingSkillChangesToReview(sb));
 
   const categories = (await Promise.all(jobs)).filter((c): c is AttentionCategory => c !== null);
   // A queue with nothing in it is noise, not signal — drop it rather than
