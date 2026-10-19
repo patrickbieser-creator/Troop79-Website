@@ -67,7 +67,7 @@ export async function loadEngineInput(meetingDate: string, title: string): Promi
     ),
     supabase.from('leaders').select('code, name, role, is_person, person_id'),
     supabase.from('teaching_skills').select('person_id, skill_id'),
-    supabase.from('merit_badge_counselors').select('mb_id, person_id').order('sort_order')
+    supabase.from('merit_badge_counselors').select('mb_id, person_id, leader_code').order('sort_order')
   ]);
 
   const firstError =
@@ -81,8 +81,8 @@ export async function loadEngineInput(meetingDate: string, title: string): Promi
 
   // The engine's adult pool (Phase 0a, keyed to people): every person with a teaching skill or a counselor badge who is
   // not an ACTIVE scout — leaders and parents alike. A youth leader's initials belong to their scout person, so they
-  // stay a scout until they age out (Plans/Retire-Roster-Contact-Columns.md). Non-person sign-off sources (Camp) have no
-  // person and never appear.
+  // stay a scout until they age out (Plans/Retire-Roster-Contact-Columns.md). Non-person sources (Summer Camp) never
+  // teach, but may counsel a badge: they ride in as counselorSources.
   const activeScoutPersonIds = new Set(
     ((scoutsRes.data ?? []) as { person_id: number | null }[])
       .map((s) => s.person_id)
@@ -90,7 +90,9 @@ export async function loadEngineInput(meetingDate: string, title: string): Promi
   );
   const teachingSkills = (teachingSkillsRes.data ?? []) as EngineInput['teachingSkills'];
   const counselors = (counselorsRes.data ?? []) as EngineInput['counselors'];
-  const adultIds = [...new Set([...teachingSkills.map((t) => t.person_id), ...counselors.map((c) => c.person_id)])].filter((id) => !activeScoutPersonIds.has(id));
+  const adultIds = [...new Set([...teachingSkills.map((t) => t.person_id), ...counselors.map((c) => c.person_id)])].filter(
+    (id): id is number => id != null && !activeScoutPersonIds.has(id)
+  );
   const { data: peopleRows, error: peopleError } = adultIds.length
     ? await supabase.from('people').select('id, display_name').in('id', adultIds)
     : { data: [], error: null };
@@ -100,6 +102,9 @@ export async function loadEngineInput(meetingDate: string, title: string): Promi
       .filter((l) => l.is_person && l.person_id != null)
       .map((l) => [l.person_id as number, l.role])
   );
+  const counselorSources = ((leadersRes.data ?? []) as { code: string; name: string; is_person: boolean }[])
+    .filter((l) => !l.is_person)
+    .map((l) => ({ code: l.code, name: l.name }));
   const adults: EngineInput['adults'] = ((peopleRows ?? []) as { id: number; display_name: string }[]).map((p) => ({
     personId: p.id,
     name: p.display_name,
@@ -121,7 +126,8 @@ export async function loadEngineInput(meetingDate: string, title: string): Promi
     skills: catalog.skills,
     adults,
     teachingSkills,
-    counselors
+    counselors,
+    counselorSources
   };
 
   return { ok: true, input };

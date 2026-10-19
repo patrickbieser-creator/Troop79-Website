@@ -92,3 +92,31 @@ describe('setTeachingSkills', () => {
     expect(await skillsOf(parent)).toEqual([]);
   });
 });
+
+describe('merit badge counselors save', () => {
+  // Summer Camp stands in for the council camp staff (Patrick, 2026-10-18): pickable next to people.
+  it('SaveCounselors_SummerCampAndAParent_BothKeptInOrder', async () => {
+    const parent = await makePerson('Counselor');
+    const { updateMeritBadge } = await import('../src/app/admin/(workspace)/advancement/lookups/actions');
+    const { data: mb } = await admin.from('merit_badges').select('id, name, eagle, scoutbook_id, bsa_page_url, workbook_url').eq('id', 'art').single();
+    const { data: before } = await admin.from('merit_badge_counselors').select('person_id, leader_code').eq('mb_id', 'art').order('sort_order');
+    const form = (counselors: unknown[]) => {
+      const fd = new FormData();
+      fd.set('id', mb!.id);
+      fd.set('name', mb!.name);
+      fd.set('eagle', String(mb!.eagle));
+      fd.set('scoutbook_id', mb!.scoutbook_id ?? '');
+      fd.set('bsa_page_url', mb!.bsa_page_url ?? '');
+      fd.set('workbook_url', mb!.workbook_url ?? '');
+      fd.set('counselors', JSON.stringify(counselors));
+      return fd;
+    };
+    try {
+      await updateMeritBadge(form([{ leader_code: 'Camp' }, { person_id: parent }, { leader_code: 'Camp' }]));
+      const { data } = await admin.from('merit_badge_counselors').select('person_id, leader_code').eq('mb_id', 'art').order('sort_order');
+      expect(data).toEqual([{ person_id: null, leader_code: 'Camp' }, { person_id: parent, leader_code: null }]);
+    } finally {
+      await updateMeritBadge(form((before ?? []).map((c) => (c.person_id != null ? { person_id: c.person_id } : { leader_code: c.leader_code }))));
+    }
+  });
+});

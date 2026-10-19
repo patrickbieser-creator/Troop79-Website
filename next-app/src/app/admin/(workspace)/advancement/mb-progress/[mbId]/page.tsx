@@ -85,10 +85,10 @@ async function loadDetail(mbId: string) {
       supabase.from('scouts').select('id', { count: 'exact', head: true }).eq('active', true),
       supabase
         .from('merit_badge_counselors')
-        .select('person_id, sort_order, people(display_name)')
+        .select('person_id, leader_code, sort_order, people(display_name)')
         .eq('mb_id', mbId)
         .order('sort_order'),
-      supabase.from('leaders').select('code, person_id').eq('is_person', true)
+      supabase.from('leaders').select('code, name, person_id, is_person')
     ]);
 
   if (!mbRes.data) return null;
@@ -107,11 +107,20 @@ async function loadDetail(mbId: string) {
 
   // Counselors are people since Phase 0a (a parent may have no sign-off initials).
   const codeByPerson = new Map<number, string>();
-  for (const l of (leadersRes.data ?? []) as { code: string; person_id: number | null }[]) {
-    if (l.person_id != null && !codeByPerson.has(l.person_id)) codeByPerson.set(l.person_id, l.code);
+  const sourceName = new Map<string, string>();
+  for (const l of (leadersRes.data ?? []) as { code: string; name: string; person_id: number | null; is_person: boolean }[]) {
+    if (!l.is_person) sourceName.set(l.code, l.name);
+    else if (l.person_id != null && !codeByPerson.has(l.person_id)) codeByPerson.set(l.person_id, l.code);
   }
-  type CounselorJoin = { person_id: number; sort_order: number; people: { display_name: string } | { display_name: string }[] | null };
+  // A non-person source (Summer Camp, the council camp staff) has a code and no person.
+  type CounselorJoin = {
+    person_id: number | null;
+    leader_code: string | null;
+    sort_order: number;
+    people: { display_name: string } | { display_name: string }[] | null;
+  };
   const counselors = ((counselorsRes.data ?? []) as unknown as CounselorJoin[]).map((c) => {
+    if (c.person_id == null) return { code: c.leader_code, name: sourceName.get(c.leader_code ?? '') ?? c.leader_code ?? '' };
     const person = Array.isArray(c.people) ? c.people[0] : c.people;
     return { code: codeByPerson.get(c.person_id) ?? null, name: person?.display_name ?? `Person ${c.person_id}` };
   });

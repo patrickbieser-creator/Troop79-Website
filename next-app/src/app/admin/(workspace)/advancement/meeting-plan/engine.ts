@@ -26,6 +26,7 @@ import {
   type PlanByScout,
   type PlanScoutRef,
   type PlanSession,
+  type PlanTeacher,
   type ScoutSuggestion,
   type TierId
 } from '@/lib/meeting-plan-types';
@@ -91,7 +92,10 @@ export interface EngineInput {
   adults: { personId: number; name: string; role: string | null }[];
   /** teaching_skills: adults' and scouts' skills, one table keyed to people. */
   teachingSkills: { person_id: number; skill_id: string }[];
-  counselors: { mb_id: string; person_id: number }[];
+  /** A counselor is a person, or a non-person source such as Summer Camp (council camp staff): leader_code, no person. */
+  counselors: { mb_id: string; person_id: number | null; leader_code?: string | null }[];
+  /** Names for the non-person counselor sources, by leader code. */
+  counselorSources?: { code: string; name: string }[];
 }
 
 // ── non-plannable leaves ───────────────────────────────────────────────────
@@ -260,12 +264,16 @@ export function buildMeetingPlan(input: EngineInput): MeetingPlanPayload {
     }
   }
   const counseledMbs = new Set(input.counselors.map((c) => c.mb_id));
-  const counselorsByMb = new Map<string, number[]>();
+  const sourceName = new Map((input.counselorSources ?? []).map((src) => [src.code, src.name]));
+  const counselorsByMb = new Map<string, PlanTeacher[]>();
   for (const c of input.counselors) {
-    if (!adultByPerson.has(c.person_id)) continue;
-    const list = counselorsByMb.get(c.mb_id) ?? [];
-    list.push(c.person_id);
-    counselorsByMb.set(c.mb_id, list);
+    let t: PlanTeacher | null = null;
+    if (c.person_id != null) {
+      if (adultByPerson.has(c.person_id)) t = { code: String(c.person_id), name: adultByPerson.get(c.person_id)!.name };
+    } else if (c.leader_code && sourceName.has(c.leader_code)) {
+      t = { code: c.leader_code, name: sourceName.get(c.leader_code)! };
+    }
+    if (t) counselorsByMb.set(c.mb_id, [...(counselorsByMb.get(c.mb_id) ?? []), t]);
   }
 
   // ── pass 1: candidate pool per scout ────────────────────────────────────
@@ -505,7 +513,6 @@ export function buildMeetingPlan(input: EngineInput): MeetingPlanPayload {
       c.kind === 'mb'
         ? (counselorsByMb.get(c.key.slice('mb:'.length)) ?? [])
             .slice(0, MAX_ADULT_TEACHERS)
-            .map(teacher)
         : [];
 
     const scoutTeachers =

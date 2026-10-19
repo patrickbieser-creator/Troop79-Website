@@ -119,10 +119,11 @@ export interface Leader {
 }
 
 export interface MeritBadgeCounselor {
+  id: number;
   mb_id: string;
-  /** Keyed to the person since 2026-10 (Phase 0a). */
-  person_id: number;
-  /** Bridge until the old column is dropped; null for counselors with no sign-off initials. */
+  /** Keyed to the person since 2026-10 (Phase 0a); null for a non-person source such as Summer Camp. */
+  person_id: number | null;
+  /** Names a non-person source (Summer Camp = council camp staff); otherwise a bridge, null for parents. */
   leader_code: string | null;
   sort_order: number;
 }

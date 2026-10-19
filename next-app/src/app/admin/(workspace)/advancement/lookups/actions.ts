@@ -55,9 +55,8 @@ interface ScoutDemoFields {
   things_we_should_know: string | null;
 }
 
-interface CounselorInput {
-  person_id: number;
-}
+/** A person, or a non-person source such as Summer Camp by its leader code (the DB trigger checks it is one). */
+type CounselorInput = { person_id: number } | { leader_code: string };
 
 function readDemoFields(formData: FormData): ScoutDemoFields {
   const str = (k: string) => {
@@ -130,11 +129,23 @@ function jlValue(v: string | null): string {
 function readCounselors(formData: FormData): CounselorInput[] {
   const raw = String(formData.get('counselors') ?? '[]');
   try {
-    const arr = JSON.parse(raw) as CounselorInput[];
+    const arr = JSON.parse(raw) as { person_id?: unknown; leader_code?: unknown }[];
     if (!Array.isArray(arr)) return [];
-    // One row per person: a repeat would fail the (mb_id, person_id) key and, after the wipe, lose them all.
-    const seen = new Set<number>();
-    return arr.filter((c) => c && Number.isInteger(c.person_id) && c.person_id > 0 && !seen.has(c.person_id) && seen.add(c.person_id));
+    // One row per person or source: a repeat would fail the unique key and, after the wipe, lose them all.
+    const seen = new Set<string>();
+    const out: CounselorInput[] = [];
+    for (const c of arr) {
+      if (!c) continue;
+      const pid = c.person_id;
+      const code = typeof c.leader_code === 'string' ? c.leader_code.trim() : '';
+      const item: CounselorInput | null = typeof pid === 'number' && Number.isInteger(pid) && pid > 0 ? { person_id: pid } : code ? { leader_code: code } : null;
+      if (!item) continue;
+      const key = 'person_id' in item ? `p:${item.person_id}` : `c:${item.leader_code}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(item);
+    }
+    return out;
   } catch {
     return [];
   }
@@ -613,7 +624,7 @@ export async function updateMeritBadge(formData: FormData): Promise<Result> {
   if (counselors.length > 0) {
     const rows = counselors.map((c, i) => ({
       mb_id: id,
-      person_id: c.person_id,
+      ...('person_id' in c ? { person_id: c.person_id } : { leader_code: c.leader_code }),
       sort_order: i
     }));
     const { error: counselorError } = await supabase.from('merit_badge_counselors').insert(rows);

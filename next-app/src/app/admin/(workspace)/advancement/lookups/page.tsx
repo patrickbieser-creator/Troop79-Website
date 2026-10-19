@@ -167,7 +167,7 @@ async function loadLookups() {
       .order('name'),
     supabase
       .from('merit_badge_counselors')
-      .select('mb_id, person_id, sort_order')
+      .select('mb_id, person_id, leader_code, sort_order')
       .order('mb_id')
       .order('sort_order'),
     supabase.from('ranks').select('id, display_name, sort_order').order('sort_order'),
@@ -332,7 +332,7 @@ async function loadLookups() {
   const leaderPersonIds = new Set(((leadersRes.data ?? []) as LeaderRow[]).map((l) => l.person_id).filter((id): id is number => id != null));
   const scoutPersonIds = new Set(((scoutsRes.data ?? []) as LookupScoutRow[]).map((sc) => sc.person_id).filter((id): id is number => id != null));
   const extraIds = [...new Set([...skillIdsByPerson.keys(), ...((counselorsRes.data ?? []) as CounselorRow[]).map((c) => c.person_id)])].filter(
-    (id) => !leaderPersonIds.has(id) && !scoutPersonIds.has(id)
+    (id): id is number => id != null && !leaderPersonIds.has(id) && !scoutPersonIds.has(id)
   );
   const { data: extraPeople } = extraIds.length ? await supabase.from('people').select('id, display_name').in('id', extraIds) : { data: [] };
 
@@ -418,7 +418,9 @@ export default async function LookupsPage() {
   ].sort((a, b) => a.name.localeCompare(b.name));
   const counselorCandidates: CounselorCandidate[] = [
     ...adultLeaders.map((l) => ({ personId: l.person_id as number, name: l.name, code: l.code })),
-    ...otherTeachers.map((p) => ({ personId: p.personId, name: p.name, code: null }))
+    ...otherTeachers.map((p) => ({ personId: p.personId, name: p.name, code: null })),
+    // Non-person sources: Summer Camp stands in for the council camp staff who counsel at camp.
+    ...leaders.filter((l) => !l.is_person).map((l) => ({ personId: null, name: l.name, code: l.code }))
   ];
   // SCOUTS: whoever can offer to teach today (First Class+ or Junior Leader), plus anyone already holding a skill.
   const rankSort = new Map(ranksFull.map((r) => [r.id, r.sort_order]));

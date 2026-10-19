@@ -78,6 +78,35 @@ describe('merit_badge_counselors by person', () => {
   });
 });
 
+describe('merit_badge_counselors: non-person sources', () => {
+  // Summer Camp stands in for the council camp staff who counsel at camp (Patrick, 2026-10-18).
+  it('Counselor_SummerCampSource_CanCounsel', async () => {
+    const { data: mb } = await admin.from('merit_badges').select('id').not('id', 'in', '(animal-science,art)').limit(1).single();
+    const { error } = await admin.from('merit_badge_counselors').insert({ mb_id: mb!.id, leader_code: 'Camp', sort_order: 9 });
+    await admin.from('merit_badge_counselors').delete().eq('mb_id', mb!.id).eq('leader_code', 'Camp');
+    expect(error).toBeNull();
+  });
+
+  it('Rekey_KeepsTheExistingSummerCampCounselorRows', async () => {
+    const { data } = await admin.from('merit_badge_counselors').select('mb_id').eq('leader_code', 'Camp').is('person_id', null).order('mb_id');
+    expect((data ?? []).map((r) => r.mb_id)).toEqual(expect.arrayContaining(['animal-science', 'art']));
+  });
+
+  it('Counselor_NeitherPersonNorSource_IsRefused', async () => {
+    const { data: mb } = await admin.from('merit_badges').select('id').limit(1).single();
+    const { error } = await admin.from('merit_badge_counselors').insert({ mb_id: mb!.id, sort_order: 0 });
+    expect(error).not.toBeNull();
+  });
+
+  it('Counselor_SameSourceTwiceOnOneBadge_IsRefused', async () => {
+    const { data: mb } = await admin.from('merit_badges').select('id').not('id', 'in', '(animal-science,art)').limit(1).single();
+    await admin.from('merit_badge_counselors').insert({ mb_id: mb!.id, leader_code: 'Camp', sort_order: 0 });
+    const { error } = await admin.from('merit_badge_counselors').insert({ mb_id: mb!.id, leader_code: 'Camp', sort_order: 1 });
+    await admin.from('merit_badge_counselors').delete().eq('mb_id', mb!.id).eq('leader_code', 'Camp');
+    expect(error).not.toBeNull();
+  });
+});
+
 describe('merge_people', () => {
   it('Merge_MovesTeachingSkillsAndCounselorBadges_ToTheSurvivor', async () => {
     const survivor = await makePerson('Survivor');

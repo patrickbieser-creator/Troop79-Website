@@ -77,6 +77,23 @@ describe('meeting engine teachers', () => {
     expect(plan.rosterAdults.map((a) => [a.code, a.name, a.skills])).toEqual([['500', 'Dana Parent', ['Knots & Lashings']]]);
   });
 
+  it('Engine_SummerCampSource_FillsTheCounselorSlot', () => {
+    // Two Star scouts with Art in progress get an MB session; Summer Camp (council camp staff) is its counselor.
+    const plan = buildMeetingPlan(
+      input({
+        scouts: [scout('e', 5, 'star'), scout('f', 6, 'star')],
+        ranks: [...ranks, { id: 'life', display_name: 'Life', sort_order: 6 }],
+        rankReqs: [],
+        mbs: [{ id: 'art', name: 'Art', eagle: false }],
+        mbReqs: [{ id: 9, mb_id: 'art', parent_id: null, code: '1', label: 'Art 1', complete_rule: 'all', complete_n: null, sort_order: 1, venue: 'meeting' } as EngineInput['mbReqs'][number]],
+        mbProgress: ['e', 'f'].map((id) => ({ mb_id: 'art', scout_id: id, awarded: false, has_any_req: true })),
+        counselors: [{ mb_id: 'art', person_id: null, leader_code: 'Camp' }],
+        counselorSources: [{ code: 'Camp', name: 'Summer Camp' }]
+      })
+    );
+    expect(plan.sessions.find((s) => s.kind === 'mb')?.counselors).toEqual([{ code: 'Camp', name: 'Summer Camp' }]);
+  });
+
   it('Engine_RosterScoutInstructors_UsesCanOfferToTeach', () => {
     const plan = buildMeetingPlan(input({ scouts: [scout('a', 1, 'scout'), scout('b', 2, 'scout'), scout('c', 3, 'first-class'), scout('d', 4, 'tenderfoot')], teachingSkills: [{ person_id: 3, skill_id: 'knots' }, { person_id: 4, skill_id: 'knots' }] }));
     expect(plan.rosterScoutInstructors.map((s) => s.id)).toEqual(['c']);

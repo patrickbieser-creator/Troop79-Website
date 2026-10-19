@@ -22,8 +22,10 @@ export interface MbRow {
 
 export interface CounselorRow {
   mb_id: string;
-  /** Keyed to the person since 2026-10 (Phase 0a): a parent with no leader code can counsel. */
-  person_id: number;
+  /** Keyed to the person since 2026-10 (Phase 0a): a parent with no leader code can counsel. Null for a non-person
+   *  source such as Summer Camp (council camp staff), which leader_code names instead. */
+  person_id: number | null;
+  leader_code: string | null;
   sort_order: number;
 }
 
@@ -39,11 +41,17 @@ export interface EditReqNode {
   children: EditReqNode[];
 }
 
-/** Someone who can be picked as a counselor: an adult, with their sign-off initials when they have them. */
+/** Who can be picked as a counselor: an adult, with their sign-off initials when they have them, or a non-person
+ *  source such as Summer Camp (personId null, code set). */
 export interface CounselorCandidate {
-  personId: number;
+  personId: number | null;
   name: string;
   code: string | null;
+}
+
+/** One key for a person or a source, so the picker and the saved rows line up. */
+function counselorKey(personId: number | null, code: string | null): string {
+  return personId != null ? `p:${personId}` : `c:${code}`;
 }
 
 interface Props {
@@ -57,9 +65,9 @@ export function MbEditor({ rows, leaders, counselorsByMb, reqTreesByMb }: Props)
   const [openFor, setOpenFor] = useState<MbRow | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const t = useLookupTable(rows, (m) => `${m.name} ${m.id}`);
-  const leaderNameByPerson = useMemo(() => {
-    const m = new Map<number, string>();
-    for (const l of leaders) m.set(l.personId, l.name);
+  const leaderNameByKey = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const l of leaders) m.set(counselorKey(l.personId, l.code), l.name);
     return m;
   }, [leaders]);
 
@@ -106,7 +114,8 @@ export function MbEditor({ rows, leaders, counselorsByMb, reqTreesByMb }: Props)
                       {cs
                         .map(
                           (c) =>
-                            leaderNameByPerson.get(c.person_id) ?? `Person ${c.person_id}`
+                            leaderNameByKey.get(counselorKey(c.person_id, c.leader_code)) ??
+                            (c.leader_code ?? `Person ${c.person_id}`)
                         )
                         .join(', ')}
                     </span>
@@ -145,7 +154,7 @@ export function MbEditor({ rows, leaders, counselorsByMb, reqTreesByMb }: Props)
 }
 
 interface CounselorItem {
-  key: string; // String(person_id)
+  key: string; // counselorKey(person_id, leader_code)
   label: string;
 }
 
@@ -170,7 +179,7 @@ function MbForm({
   const [reqTree, setReqTree] = useState<EditReqNode[]>(initialReqs);
 
   const allLeaderItems: CounselorItem[] = useMemo(
-    () => leaders.map((l) => ({ key: String(l.personId), label: l.code ? `${l.code} — ${l.name}` : l.name })),
+    () => leaders.map((l) => ({ key: counselorKey(l.personId, l.code), label: l.code ? `${l.code} — ${l.name}` : l.name })),
     [leaders]
   );
   const leaderItemByPerson = useMemo(() => new Map(allLeaderItems.map((i) => [i.key, i])), [allLeaderItems]);
@@ -178,7 +187,7 @@ function MbForm({
   const initialItems: CounselorItem[] = useMemo(() => {
     const sorted = initialCounselors.slice().sort((a, b) => a.sort_order - b.sort_order);
     return sorted
-      .map((c) => leaderItemByPerson.get(String(c.person_id)))
+      .map((c) => leaderItemByPerson.get(counselorKey(c.person_id, c.leader_code)))
       .filter((x): x is CounselorItem => !!x);
   }, [initialCounselors, leaderItemByPerson]);
 
@@ -203,7 +212,9 @@ function MbForm({
     fd.set('workbook_url', workbookUrl);
     fd.set(
       'counselors',
-      JSON.stringify(counselors.map((c) => ({ person_id: Number(c.key) })))
+      JSON.stringify(
+        counselors.map((c) => (c.key.startsWith('p:') ? { person_id: Number(c.key.slice(2)) } : { leader_code: c.key.slice(2) }))
+      )
     );
     fd.set('reqTree', JSON.stringify(reqTree));
     feedback.start();

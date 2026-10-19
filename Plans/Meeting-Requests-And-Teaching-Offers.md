@@ -474,7 +474,11 @@ above wherever they conflict. Items needing Patrick are under **Review questions
   then drop the old tables. Add `teaching_skills` to `merge_people` (`on conflict
   do nothing`).
 - **`merit_badge_counselors` re-keys to `person_id` too.** Parents who are
-  counselors must count, which extends Decision 6.
+  counselors must count, which extends Decision 6. **Built (0a, 2026-10-18):** a
+  counselor is a person *or* a non-person source by `leader_code`: Summer Camp
+  (`Camp`) stands in for the council camp staff and stays a counselor (Patrick).
+  So the later cleanup drops `leader_skills` / `scout_instructors` but **keeps**
+  `merit_badge_counselors.leader_code`; only the person-filling bridge trigger goes.
 - **Skill writes become one diffing RPC** that writes the change-log rows in the
   same transaction. Today's delete-then-insert can wipe a person's skills on a
   mid-way failure.
