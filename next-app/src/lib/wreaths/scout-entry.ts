@@ -17,7 +17,7 @@ import { fmtDay } from '@/lib/format-date';
 import { recordAuditAs, type AuditDetail } from '@/lib/audit';
 import { loadCurrentSale } from './public';
 import type { ScoutEntryViewer } from './place-order';
-import { EMAIL_RE, MAX_QTY, fmtMoney2, itemLabel, phoneOk, priceCart, type CartLine, type PricedItem } from './rules';
+import { EMAIL_RE, EMPTY_ENTRY, MAX_QTY, MIN_DONATION, fmtMoney2, itemLabel, phoneOk, priceCart, type CartLine, type PricedItem } from './rules';
 
 export type { ScoutEntryViewer } from './place-order';
 
@@ -236,12 +236,15 @@ export async function editScoutOrder(raw: unknown, deps: EntryDeps): Promise<Ent
     return { id: i.id, catalogNumber: i.catalog_number, price: had ? Number(had.unit_price) : Number(i.price), unitCost: had ? Number(had.unit_cost) : Number(i.unit_cost), active: i.active || !!had, donatable: i.donatable };
   });
   const gift = raw.gift == null || raw.gift === '' ? 0 : num(raw.gift);
-  const priced = priceCart({ deliveryZipPrefix: '', deliveryFee: 0, deliveryFreeAt: 0, feePercent: 0, feeFixed: 0, round1Cutoff: sale.round1Cutoff, round2Cutoff: sale.round2Cutoff }, catalog, lines, { fulfillment: 'scout', gift, coverFee: false });
+  // A donation with no wreath is an order of its own (Patrick, 2026-10-19), $1 at least.
+  const donationOnly = lines.length === 0;
+  if (donationOnly && gift > 0 && Math.round(gift * 100) < MIN_DONATION * 100) return bad('gift', `A donation is at least $${MIN_DONATION}.`);
+  const priced = priceCart({ deliveryZipPrefix: '', deliveryFee: 0, deliveryFreeAt: 0, feePercent: 0, feeFixed: 0, round1Cutoff: sale.round1Cutoff, round2Cutoff: sale.round2Cutoff }, catalog, lines, { fulfillment: donationOnly ? 'none' : 'scout', gift, coverFee: false, allowDonationOnly: true });
   if (!priced.ok) {
     const code = priced.problem.code;
     return bad(
       code === 'gift' ? 'gift' : 'cart',
-      code === 'empty' ? 'The order is empty. Add an item, or cancel the order.' : code === 'gift' ? 'A gift can be from $0 to $500.' : code === 'quantity' ? `Each item can be ordered 1 to ${MAX_QTY} at a time.` : 'Something in this order is no longer available. Please remove it and try again.'
+      code === 'empty' ? EMPTY_ENTRY : code === 'gift' ? 'A donation can be from $0 to $500.' : code === 'quantity' ? `Each item can be ordered 1 to ${MAX_QTY} at a time.` : 'Something in this order is no longer available. Please remove it and try again.'
     );
   }
   const o = priced.order;
@@ -259,6 +262,9 @@ export async function editScoutOrder(raw: unknown, deps: EntryDeps): Promise<Ent
       items_subtotal: o.itemsSubtotal,
       gift: o.gift,
       total: o.total,
+      // Nothing to deliver without a wreath; with one, the credited scout delivers (as when it was entered).
+      fulfillment: donationOnly ? 'none' : 'scout',
+      delivering_person_id: donationOnly ? '' : order.credited_person_id,
       lines: o.lines.map((l) => ({ item_id: l.itemId, quantity: l.quantity, donated: l.donated, unit_price: l.unitPrice, unit_cost: l.unitCost }))
     }
   });

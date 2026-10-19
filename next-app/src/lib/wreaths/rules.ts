@@ -45,6 +45,9 @@ export type DonationLedgerRow = Omit<PaidLedgerRow, 'kind'> & { kind: 'donation'
 /** "Donate to Troop 79" (W-3, Patrick 2026-10-19): the store's preset amounts; "Other amount" takes up to MAX_GIFT. */
 export const DONATION_PRESETS = [10, 25, 50] as const;
 
+/** A scout-entered order with neither a wreath nor a donation (Patrick, 2026-10-19). */
+export const EMPTY_ENTRY = 'The order is empty. Add a wreath or a donation.';
+
 /** The least a donation can be (qa-lead, 2026-10-19; Stripe's own floor is $0.50). */
 export const MIN_DONATION = 1;
 

@@ -19,6 +19,7 @@ import { SLUG_RE, saleFromRow, scoutDisplayName, type PublicSale } from './publi
 import {
   EMAIL_RE,
   MAX_GIFT,
+  EMPTY_ENTRY,
   MIN_DONATION,
   MIN_SUBMIT_MS,
   decideRound,
@@ -248,8 +249,9 @@ export async function placeOrder(raw: unknown, deps: PlaceOrderDeps): Promise<Pl
     if (req.email && (await count((q) => q.eq('customer_email', req.email).gte('placed_at', since(24 * 3600_000)))) >= limits.perEmailDay) return UNAVAILABLE(deps.replyTo);
   }
 
-  // A donation is $1 at least on the public store (qa-lead, 2026-10-19). Scout entry keeps its own bounds.
-  if (!entry && req.gift > 0 && toCents(req.gift) < MIN_DONATION * 100) return invalid('gift', `A donation is at least $${MIN_DONATION}.`);
+  // A donation is $1 at least (qa-lead, 2026-10-19): always on the store, and on a scout-entered order with no wreath.
+  // A scout-entered gift beside wreaths keeps its own bounds.
+  if ((!entry || req.lines.length === 0) && req.gift > 0 && toCents(req.gift) < MIN_DONATION * 100) return invalid('gift', `A donation is at least $${MIN_DONATION}.`);
 
   // Customer details.
   if (entry) {
@@ -318,19 +320,24 @@ export async function placeOrder(raw: unknown, deps: PlaceOrderDeps): Promise<Pl
   const items = (itemRows ?? []) as { id: number; catalog_number: number; name: string; size: string; price: number; unit_cost: number; active: boolean; donatable: boolean }[];
   const catalog: PricedItem[] = items.map((i) => ({ id: i.id, catalogNumber: i.catalog_number, price: Number(i.price), unitCost: Number(i.unit_cost), active: i.active, donatable: i.donatable }));
   const allDonated = req.lines.length > 0 && req.lines.every((l) => l.donated);
-  // "Donate to Troop 79" with no wreath (W-3): nothing to deliver or pick up, no delivery fee, no address.
-  const donationOnly = !entry && req.lines.length === 0;
+  // "Donate to Troop 79" with no wreath (W-3): nothing to deliver or pick up, no delivery fee, no address. A scout's
+  // family or a super user may enter one too (Patrick, 2026-10-19): credited to the scout, nothing to deliver.
+  const donationOnly = req.lines.length === 0;
 
-  // How it reaches them. A scout-entered order is always the scout's own (they hand it over), whatever is in it.
+  // How it reaches them. A scout-entered order with a wreath is the scout's own (they hand it over).
   let fulfillment: Fulfillment;
-  if (entry) fulfillment = 'scout';
-  else if (allDonated || donationOnly) fulfillment = 'none';
+  if (donationOnly) fulfillment = 'none';
+  else if (entry) fulfillment = 'scout';
+  else if (allDonated) fulfillment = 'none';
   else if (seller) fulfillment = 'scout';
   else if (req.fulfillment) fulfillment = req.fulfillment;
   else return invalid('method', 'Choose pickup or delivery.');
 
-  const priced = priceCart(sale, catalog, req.lines, { fulfillment, gift: req.gift, coverFee: entry ? false : req.coverFee, allowDonationOnly: !entry });
-  if (!priced.ok) return invalid(priced.problem.code === 'gift' ? 'gift' : 'cart', cartProblemText(priced.problem.code));
+  const priced = priceCart(sale, catalog, req.lines, { fulfillment, gift: req.gift, coverFee: entry ? false : req.coverFee, allowDonationOnly: true });
+  if (!priced.ok) {
+    if (entry && priced.problem.code === 'empty') return invalid('cart', EMPTY_ENTRY);
+    return invalid(priced.problem.code === 'gift' ? 'gift' : 'cart', cartProblemText(priced.problem.code));
+  }
 
   let outsideArea = false;
   const needsAddress = !entry && (fulfillment === 'scout' || fulfillment === 'delivery');

@@ -12,7 +12,7 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 import { Button } from '@/app/_components/button';
 import { Notice } from '@/app/_components/notice';
 import { Field, SaveProblem, TextArea, TextInput } from '@/app/_components/form';
-import { MAX_GIFT, fmtMoney, fmtMoney2, itemLabel } from '@/lib/wreaths/rules';
+import { EMPTY_ENTRY, MAX_GIFT, MIN_DONATION, fmtMoney, fmtMoney2, itemLabel } from '@/lib/wreaths/rules';
 import type { StoreItem } from '@/lib/wreaths/public';
 import type { OrderField, PlaceOrderResult } from '@/lib/wreaths/place-order';
 import styles from '../wreaths.module.css';
@@ -105,18 +105,21 @@ export function EntryAside({
   const total = Math.round((itemsTotal + gift) * 100) / 100;
   const local: Partial<Record<OrderField, string>> = {};
   if (tried && !name.trim()) local.name = 'Add the customer’s name, like “Grandma Sue”.';
-  if (tried && lines.length === 0) local.cart = 'The order is empty. Add at least one item.';
-  if (giftText.trim() && !(gift >= 0 && gift <= MAX_GIFT)) local.gift = `A gift can be from $0 to $${MAX_GIFT}.`;
+  // A donation with no wreath is an order too (Patrick, 2026-10-19), $1 at least.
+  const empty = lines.length === 0 && !(gift > 0);
+  if (tried && empty) local.cart = EMPTY_ENTRY;
+  if (giftText.trim() && !(gift >= 0 && gift <= MAX_GIFT)) local.gift = `A donation can be from $0 to $${MAX_GIFT}.`;
+  else if (lines.length === 0 && gift > 0 && gift < MIN_DONATION) local.gift = `A donation is at least $${MIN_DONATION}.`;
   const problemFor = (f: OrderField) => local[f] ?? (server?.field === f ? server.message : undefined);
   const first = Object.values(local)[0];
 
-  const label = lines.length === 0 ? 'Place order' : collected ? `Place order · ${fmtMoney(total)} collected` : `Place order · you collect ${fmtMoney(total)} later`;
+  const label = empty ? 'Place order' : collected ? `Place order · ${fmtMoney(total)} collected` : `Place order · you collect ${fmtMoney(total)} later`;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setTried(true);
     setServer(null);
-    if (!name.trim() || lines.length === 0 || local.gift) {
+    if (!name.trim() || empty || local.gift) {
       requestAnimationFrame(() => document.getElementById(formId)?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus());
       return;
     }
@@ -164,7 +167,7 @@ export function EntryAside({
   return (
     <>
       {lines.length === 0 ? (
-        <p className={styles.cartEmpty}>Nothing yet. Add a wreath to start.</p>
+        <p className={styles.cartEmpty}>Nothing yet. Add a wreath, or enter a donation below.</p>
       ) : (
         <>
           <ul className={styles.cartList}>
@@ -197,7 +200,7 @@ export function EntryAside({
         <Field label={<>Note <span className={styles.opt}>optional</span></>} problem={problemFor('note')}>
           <TextArea autoComplete="off" maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} />
         </Field>
-        <Field label={<>Gift to Troop 79 <span className={styles.opt}>optional</span></>} problem={problemFor('gift')}>
+        <Field label={<>Donation to Troop 79 <span className={styles.opt}>optional</span></>} problem={problemFor('gift')}>
           <TextInput type="text" inputMode="decimal" autoComplete="off" value={giftText} onChange={(e) => setGiftText(e.target.value)} />
         </Field>
         <div>
@@ -266,7 +269,7 @@ export function EntryDone({ done, scoutFirstName, onAnother }: { done: Done; sco
           ))}
           {done.gift > 0 && (
             <li>
-              <span>Gift to Troop 79</span>
+              <span>Donation to Troop 79</span>
               <span className={styles.num}>{fmtMoney2(done.gift)}</span>
             </li>
           )}
