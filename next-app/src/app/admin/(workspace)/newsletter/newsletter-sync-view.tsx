@@ -3,6 +3,8 @@
 /**
  * EmailOctopus sync screen: what a sync would change, then one Sync now. Sync
  * is a one-click action (not a form), greyed only when there is nothing to do.
+ * Nobody is added to the list unless their box is ticked (Patrick, 2026-10-20);
+ * name updates and recorded unsubscribes always go.
  */
 import { useState, useTransition, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
@@ -19,11 +21,12 @@ export function NewsletterSyncView({
   syncAction
 }: {
   preview: NewsletterPreview;
-  syncAction: () => Promise<NewsletterSyncResult>;
+  syncAction: (addEmails: string[]) => Promise<NewsletterSyncResult>;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [result, setResult] = useState<NewsletterSyncResult | null>(null);
+  const [picked, setPicked] = useState<Set<string>>(() => new Set());
 
   if (!preview.ok) {
     return (
@@ -33,11 +36,24 @@ export function NewsletterSyncView({
     );
   }
   const { plan, listSize } = preview;
-  const changes = plan.add.length + plan.rename.length + plan.markUnsubscribed.length;
+  const toAdd = plan.add.filter((a) => picked.has(a.email));
+  const changes = toAdd.length + plan.rename.length + plan.markUnsubscribed.length;
+  const nothingPending = plan.add.length + plan.rename.length + plan.markUnsubscribed.length === 0;
+  const allPicked = plan.add.length > 0 && toAdd.length === plan.add.length;
+
+  function toggle(email: string) {
+    setPicked((was) => {
+      const next = new Set(was);
+      if (next.has(email)) next.delete(email);
+      else next.add(email);
+      return next;
+    });
+  }
 
   function sync() {
     startTransition(async () => {
-      setResult(await syncAction());
+      setResult(await syncAction(toAdd.map((a) => a.email)));
+      setPicked(new Set());
       router.refresh();
     });
   }
@@ -50,8 +66,13 @@ export function NewsletterSyncView({
           {plan.onListOnly ? `; ${plan.onListOnly} on the list aren’t in People and are left alone` : ''}.
         </p>
         <div className={styles.syncRow}>
-          <Button variant="primary" onClick={sync} disabled={isPending || changes === 0} title={changes === 0 ? 'Nothing to sync' : undefined}>
-            {isPending ? 'Syncing…' : changes === 0 ? 'In sync' : `Sync now (${changes})`}
+          <Button
+            variant="primary"
+            onClick={sync}
+            disabled={isPending || changes === 0}
+            title={changes === 0 ? (nothingPending ? 'Nothing to sync' : 'Tick the people to add first') : undefined}
+          >
+            {isPending ? 'Syncing…' : nothingPending ? 'In sync' : `Sync now (${changes})`}
           </Button>
           {result?.ok && (
             <span className={styles.done}>
@@ -68,10 +89,19 @@ export function NewsletterSyncView({
         )}
       </FormPanel>
 
-      <Section title="To add" count={plan.add.length}>
+      <Section title="To add" count={plan.add.length} sub="Tick everyone you want added. Nobody is added without a tick.">
         <table className={styles.table}>
           <thead>
             <tr>
+              <th className={styles.pickCell}>
+                <input
+                  type="checkbox"
+                  aria-label="Add everyone"
+                  checked={allPicked}
+                  disabled={isPending}
+                  onChange={() => setPicked(allPicked ? new Set() : new Set(plan.add.map((a) => a.email)))}
+                />
+              </th>
               <th>Email</th>
               <th>Name</th>
             </tr>
@@ -79,6 +109,15 @@ export function NewsletterSyncView({
           <tbody>
             {plan.add.map((a) => (
               <tr key={a.email}>
+                <td className={styles.pickCell}>
+                  <input
+                    type="checkbox"
+                    aria-label={`Add ${a.email}`}
+                    checked={picked.has(a.email)}
+                    disabled={isPending}
+                    onChange={() => toggle(a.email)}
+                  />
+                </td>
                 <td>{a.email}</td>
                 <td>
                   {a.firstName} {a.lastName}

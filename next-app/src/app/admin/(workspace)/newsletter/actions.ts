@@ -2,8 +2,9 @@
 
 /**
  * EmailOctopus sync (lib/newsletter-sync.ts). Loading the preview only reads
- * both sides; Sync re-plans server-side and applies: adds, name updates, and
- * unsubscribes recorded in person_emails. It never changes a contact's status,
+ * both sides; Sync re-plans server-side and applies: the adds the leader ticked
+ * (nobody is added without a tick), name updates, and unsubscribes recorded in
+ * person_emails. It never changes a contact's status,
  * so it can't resubscribe anyone. roster.manage, the same as the Roster.
  */
 import { revalidatePath } from 'next/cache';
@@ -40,17 +41,20 @@ export async function previewNewsletterSync(): Promise<NewsletterPreview> {
   return p.ok ? { ok: true, plan: p.plan, listSize: p.listSize } : p;
 }
 
-export async function runNewsletterSyncAction(): Promise<NewsletterSyncResult> {
+export async function runNewsletterSyncAction(addEmails: string[]): Promise<NewsletterSyncResult> {
   await requireCapability('roster.manage');
   const p = await planNow();
   if (!p.ok) return p;
   const { plan, client } = p;
+  // Only addresses that are still to-add AND were ticked; the list itself comes from this re-plan, never the client.
+  const ticked = new Set((Array.isArray(addEmails) ? addEmails : []).map((e) => String(e).trim().toLowerCase()));
+  const toAdd = plan.add.filter((a) => ticked.has(a.email));
   const failures: string[] = [];
   let added = 0;
   let renamed = 0;
 
   // One at a time: well inside the API's 10-a-second rate, and one bad address doesn't stop the rest.
-  for (const a of plan.add) {
+  for (const a of toAdd) {
     try {
       await client.createContact(a.email, a.firstName, a.lastName);
       added++;

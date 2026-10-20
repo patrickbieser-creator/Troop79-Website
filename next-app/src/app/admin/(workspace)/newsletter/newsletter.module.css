@@ -37,3 +37,11 @@
   font-size: var(--admin-text-md);
   line-height: 1.6;
 }
+
+.pickCell {
+  width: 2.5rem;
+}
+.pickCell input {
+  width: 18px;
+  height: 18px;
+}

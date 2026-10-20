@@ -20,16 +20,25 @@ const preview: NewsletterPreview = {
 };
 
 describe('NewsletterSyncView', () => {
-  it('Leader_SeesHowManyChangesASyncMakes', () => {
+  it('Leader_AddsNoOne_UntilTheyTickThem', () => {
     render(<NewsletterSyncView preview={preview} syncAction={vi.fn()} />);
-    expect(screen.getByRole('button', { name: 'Sync now (2)' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Sync now (1)' })).toBeTruthy();
+  });
+
+  it('Leader_TickingAPerson_AddsThemToTheSync', async () => {
+    const syncAction = vi.fn(async () => ({ ok: true as const, added: 1, renamed: 0, unsubscribed: 1, failures: [] }));
+    render(<NewsletterSyncView preview={preview} syncAction={syncAction} />);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('checkbox', { name: 'Add new@x.org' }));
+    await user.click(screen.getByRole('button', { name: 'Sync now (2)' }));
+    expect(syncAction).toHaveBeenCalledWith(['new@x.org']);
   });
 
   it('Leader_SeesWhatTheSyncDid', async () => {
-    const syncAction = vi.fn(async () => ({ ok: true as const, added: 1, renamed: 0, unsubscribed: 1, failures: [] }));
+    const syncAction = vi.fn(async () => ({ ok: true as const, added: 0, renamed: 0, unsubscribed: 1, failures: [] }));
     render(<NewsletterSyncView preview={preview} syncAction={syncAction} />);
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Sync now (2)' }));
-    expect(await screen.findByText('Added 1, updated 0 names, recorded 1 unsubscribe.')).toBeTruthy();
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Sync now (1)' }));
+    expect(await screen.findByText('Added 0, updated 0 names, recorded 1 unsubscribe.')).toBeTruthy();
   });
 
   it('Leader_SeesInSync_WhenNothingIsDifferent', () => {
