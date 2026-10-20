@@ -421,23 +421,24 @@ function CanTeachCell({ list }: { list: CanTeach[] }) {
 export function MatchBlocks({ match, linkPeople = true }: { match: ThisSundayMatch; linkPeople?: boolean }) {
   const who = (p: BoardPerson, extra?: string) =>
     linkPeople ? (
-      <Link key={p.personId} className={styles.chip} href={entryFor(p.personId)} title={`Enter for ${p.name}`}>
+      <Link key={p.personId} className={`${styles.chip} ${styles.scoutTint}`} href={entryFor(p.personId)} title={`Enter for ${p.name}`}>
         {p.name}
         {extra ? <span className={styles.chipRank}> {extra}</span> : null}
       </Link>
     ) : (
-      <span key={p.personId} className={styles.chip}>
+      <span key={p.personId} className={`${styles.chip} ${styles.scoutTint}`}>
         {p.name}
         {extra ? <span className={styles.chipRank}> {extra}</span> : null}
       </span>
     );
+  // An empty block stays listed but folds to its label and "Not filled".
   return (
     <div className={styles.blockCols}>
-      {match.blocks.map((b) => (
-        <section key={b.label} aria-label={b.label}>
-          <h3 className={styles.blockHead}>{b.label}</h3>
-          {b.sessions.length ? (
-            b.sessions.map((s) => (
+      {match.blocks.map((b) =>
+        b.sessions.length ? (
+          <section key={b.label} aria-label={b.label} className={styles.blockFilled}>
+            <h3 className={styles.blockHead}>{b.label}</h3>
+            {b.sessions.map((s) => (
               <article key={s.id} className={styles.sessionCard}>
                 <span className={styles.reqCode}>
                   {s.codeLabel}
@@ -445,18 +446,21 @@ export function MatchBlocks({ match, linkPeople = true }: { match: ThisSundayMat
                 </span>
                 <h3>{s.title}</h3>
                 <div className={styles.chips}>{s.scouts.map((x) => who(x, x.why))}</div>
-                <div className={styles.teachSlot}>
+                <div className={`${styles.teachSlot} ${styles.adultTint}`}>
                   <span className={styles.teachLabel}>Teacher</span>
                   <TeacherLinks list={[s.teacher]} />
                   {s.coTeachers.length > 0 && <span className={styles.teachMeta}> with {s.coTeachers.map((c) => c.name).join(', ')}</span>}
                 </div>
               </article>
-            ))
-          ) : (
-            <p className={styles.boardEmpty}>Nothing matched for this block yet.</p>
-          )}
-        </section>
-      ))}
+            ))}
+          </section>
+        ) : (
+          <section key={b.label} aria-label={b.label} className={styles.blockEmpty}>
+            <h3 className={styles.blockHead}>{b.label}</h3>
+            <span className={styles.teachMeta}>Not filled</span>
+          </section>
+        )
+      )}
     </div>
   );
 }
@@ -494,8 +498,8 @@ export function ThisSundayView({ data }: { data: ThisSundayData | null }) {
       </>
     );
   }
-  const stat = (n: number, label: string) => (
-    <div className={styles.stat}>
+  const stat = (n: number, label: string, who?: 'scout' | 'adult') => (
+    <div className={who ? `${styles.stat} ${who === 'scout' ? styles.scoutTint : styles.adultTint}` : styles.stat}>
       <div className={styles.statNum}>{n}</div>
       <div className={styles.statLabel}>{label}</div>
     </div>
@@ -511,31 +515,18 @@ export function ThisSundayView({ data }: { data: ThisSundayData | null }) {
   return (
     <>
       {head}
-      <div className={styles.statsStrip}>
-        {stat(counts.coming, 'Scouts coming')}
-        {stat(counts.undecided, 'Not sure yet')}
-        {stat(counts.notComing, 'Can’t make it')}
-        {stat(counts.noAnswer, 'No answer')}
-        {stat(counts.picks, 'Picks')}
-      </div>
-      <div className={styles.statsStrip}>
-        {stat(data.adults.coming, 'Adults coming')}
-        {stat(data.adults.undecided, 'Adults not sure yet')}
-        {stat(data.adults.notComing, 'Adults can’t make it')}
-        {stat(data.adults.teaching, 'Teaching')}
+      <div className={`${styles.statsStrip} ${styles.statsLine}`}>
+        {stat(counts.coming, 'Scouts coming', 'scout')}
+        {stat(counts.undecided, 'Not sure yet', 'scout')}
+        {stat(counts.notComing, 'Can’t make it', 'scout')}
+        {stat(counts.noAnswer, 'No answer', 'scout')}
+        {stat(counts.picks, 'Picks', 'scout')}
+        {stat(data.adults.coming, 'Adults coming', 'adult')}
+        {stat(data.adults.undecided, 'Adults not sure yet', 'adult')}
+        {stat(data.adults.notComing, 'Adults can’t make it', 'adult')}
+        {stat(data.adults.teaching, 'Teaching', 'adult')}
         {stat(data.wanted.length, 'Wanted, no teacher')}
       </div>
-
-      {data.match && (
-        <section aria-label="Live match" className={styles.matchSection}>
-          <div className={styles.boardHead}>
-            <h2 className={styles.sectionTitle}>Live match</h2>
-            <span className={styles.teachMeta}>at most 2 topics a scout · 8 a session · rematches on every sign-up</span>
-            <Link href={data.match.agendaHref}>Add sessions in the meeting editor</Link>
-          </div>
-          <MatchBlocks match={data.match} />
-        </section>
-      )}
 
       <div className={styles.boardCols}>
         <div>

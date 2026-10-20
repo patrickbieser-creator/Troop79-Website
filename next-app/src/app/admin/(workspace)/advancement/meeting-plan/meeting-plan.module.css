@@ -437,14 +437,46 @@ a.chip:hover {
   border-bottom: 1px solid var(--admin-gray-200);
 }
 
-/* ── This Sunday, live match + board settings (Phase 3a) ── */
-.matchSection {
-  margin: var(--admin-space-4) 0 var(--admin-space-6);
+/* ── Scouts vs adults (2026-10-20, Patrick): one tint each, on stats, scout chips and teacher slots. Doubled
+   selectors so the tint wins over .stat / .chip / .teachSlot regardless of order. ── */
+.scoutTint.scoutTint {
+  background: var(--admin-tint-moss-bg);
+  border-color: var(--admin-tint-moss-edge);
 }
+.adultTint.adultTint {
+  background: var(--admin-tint-sky-bg);
+  border-color: var(--admin-tint-sky-edge);
+}
+/* This Sunday's ten stats on one line; a narrow window scrolls the strip, not the page. */
+.statsLine {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+.statsLine .stat {
+  flex: 1 1 0;
+  min-width: 96px;
+  padding: 8px 12px;
+}
+
+/* ── Group Sessions, the match by block + board settings (Phase 3a) ── */
 .blockCols {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
   gap: var(--admin-space-4);
+}
+.blockFilled {
+  flex: 1 1 260px;
+}
+/* An empty block folds to its label and "Not filled". */
+.blockEmpty {
+  flex: 0 0 auto;
+  padding: var(--admin-space-2) var(--admin-space-3);
+  border: 1px dashed var(--admin-gray-200);
+  border-radius: var(--admin-radius);
+}
+.blockEmpty .blockHead {
+  margin-bottom: 0;
 }
 .blockCols .sessionCard {
   margin-bottom: var(--admin-space-3);

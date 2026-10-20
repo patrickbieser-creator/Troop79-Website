@@ -23,7 +23,7 @@ vi.mock('../src/app/(public)/member/meeting/actions', () => ({
 }));
 
 const { BoardSettings } = await import('../src/app/admin/(workspace)/advancement/meeting-plan/board-settings');
-const { ThisSundayView } = await import('../src/app/admin/(workspace)/advancement/meeting-plan/this-sunday');
+const { ThisSundayView, MatchBlocks } = await import('../src/app/admin/(workspace)/advancement/meeting-plan/this-sunday');
 const { MeetingEditor } = await import('../src/app/admin/(workspace)/advancement/meetings/[id]/meeting-editor');
 const { ScoutBoard } = await import('../src/app/(public)/member/meeting/scout-board');
 const { PlanNotice } = await import('../src/app/(public)/member/meeting/plan-notice');
@@ -203,22 +203,43 @@ const sundayData = {
   adultPeople: []
 };
 
-describe('This Sunday: the live match', () => {
+describe('Group Sessions: the match by block', () => {
   it('Leader_SeesMatchedSessionsPerBlock_WithTeacherScoutsAndWhy', () => {
-    render(<ThisSundayView data={sundayData} />);
+    render(<MatchBlocks match={sundayData.match} />);
     const block1 = screen.getByRole('region', { name: 'Block 1' });
     expect([
       within(block1).getByText('First Aid') != null,
       within(block1).getByRole('link', { name: /Anjali S/ }).textContent,
       within(block1).getByRole('link', { name: /Leo M/ }).textContent,
-      within(block1).getByText(/from a First Aid offer/) != null,
-      within(screen.getByRole('region', { name: 'Block 2' })).getByText('Nothing matched for this block yet.') != null
-    ]).toEqual([true, 'Anjali S #2', 'Leo M placed', true, true]);
+      within(block1).getByText(/from a First Aid offer/) != null
+    ]).toEqual([true, 'Anjali S #2', 'Leo M placed', true]);
   });
 
-  it('Leader_IsSentToTheEditorTray_ToAddSessions', () => {
+  it('EmptyBlock_IsCompressed_AndSaysNotFilled', () => {
+    render(<MatchBlocks match={sundayData.match} />);
+    const block2 = screen.getByRole('region', { name: 'Block 2' });
+    expect([block2.textContent, block2.className.includes('blockEmpty')]).toEqual(['Block 2Not filled', true]);
+  });
+
+  it('Scouts_AndTeachers_CarryTheirOwnTints', () => {
+    render(<MatchBlocks match={sundayData.match} />);
+    const block1 = screen.getByRole('region', { name: 'Block 1' });
+    const teacher = within(block1).getByText('Teacher').parentElement!;
+    expect([within(block1).getByRole('link', { name: /Anjali S/ }).className.includes('scoutTint'), teacher.className.includes('adultTint')]).toEqual([true, true]);
+  });
+});
+
+describe('This Sunday', () => {
+  it('ThisSunday_HasNoLiveMatch_ItLivesOnGroupSessions', () => {
     render(<ThisSundayView data={sundayData} />);
-    expect(screen.getByRole('link', { name: 'Add sessions in the meeting editor' }).getAttribute('href')).toBe('/admin/calendar/5?tab=agenda');
+    expect([screen.queryByRole('region', { name: 'Live match' }), screen.queryByRole('region', { name: 'Block 1' })]).toEqual([null, null]);
+  });
+
+  it('Stats_SitOnOneLine_ScoutsAndAdultsTinted', () => {
+    render(<ThisSundayView data={sundayData} />);
+    const scouts = screen.getByText('Scouts coming').parentElement!;
+    const adults = screen.getByText('Adults coming').parentElement!;
+    expect([scouts.parentElement === adults.parentElement, scouts.className.includes('scoutTint'), adults.className.includes('adultTint')]).toEqual([true, true, true]);
   });
 
   it('Leader_SeesComingWithNothingAssigned_WithTheEngineFallback', () => {
