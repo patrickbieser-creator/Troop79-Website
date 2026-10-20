@@ -70,6 +70,16 @@ describe('display name from nickname', () => {
     expect(data?.display_name).toBe(`${TEST_PREFIX} Guest Chase's Mom`);
   });
 
+  it('Leader_Name_FollowsANicknameOnlyUpdate', async () => {
+    const p = await person('Michael');
+    const code = `ZZ${p.id}`;
+    await admin.from('leaders').insert({ code, name: 'x', role: 'Test', is_person: true, person_id: p.id });
+    await admin.from('people').update({ nickname: 'Mike' }).eq('id', p.id);
+    const { data } = await admin.from('leaders').select('name').eq('code', code).single();
+    await admin.from('leaders').delete().eq('code', code);
+    expect(data?.name).toBe(`Mike ${LAST}`);
+  });
+
   it('Scout_NameMirror_FollowsTheNickname', async () => {
     const p = await person('Aditya');
     const scoutId = `ZZ${p.id}`.slice(0, 8);
