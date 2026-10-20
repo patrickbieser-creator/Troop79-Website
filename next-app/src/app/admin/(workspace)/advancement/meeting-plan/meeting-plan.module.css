@@ -205,6 +205,10 @@
 .teachMeta {
   color: var(--admin-gray-500);
 }
+.moreQualified summary {
+  color: var(--admin-gray-500);
+  cursor: pointer;
+}
 .noTeacher {
   color: var(--admin-danger);
   font-weight: 600;

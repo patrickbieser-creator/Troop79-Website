@@ -24,7 +24,21 @@ const data = {
     { key: 'tenderfoot-4a', label: 'First aid', codeLabel: 'Tenderfoot 4a', names: ['Anjali S', 'Finn P'], teachers: [{ personId: 40, name: 'Dan V', notes: ['from a First Aid offer'] }] },
     { key: 'tenderfoot-3a', label: 'Knots', codeLabel: 'Tenderfoot 3a', names: ['Leo M'], teachers: [] }
   ],
-  wanted: [{ key: 'tenderfoot-3a', label: 'Knots', codeLabel: 'Tenderfoot 3a', names: ['Leo M'], weeks: 3, canTeach: [{ personId: 41, name: 'Karen O', note: 'not sure yet' }] }],
+  wanted: [
+    {
+      key: 'tenderfoot-3a',
+      label: 'Knots',
+      codeLabel: 'Tenderfoot 3a',
+      names: ['Leo M'],
+      weeks: 3,
+      canTeach: [
+        { personId: 41, name: 'Karen O', note: 'not sure yet', tier: 'ask' as const },
+        { personId: 44, name: 'Becky V', note: 'no answer', tier: 'listed' as const },
+        { personId: 45, name: 'Chad L', note: 'no answer', tier: 'other' as const },
+        { personId: 46, name: 'Gene B', note: 'no answer', tier: 'other' as const }
+      ]
+    }
+  ],
   offered: [{ key: 'ff:knife sharpening', label: 'Knife sharpening', codeLabel: 'Offered this week', teachers: [{ personId: 42, name: 'Mike H', notes: [] }] }],
   skillOffers: [{ personId: 40, name: 'Dan V', skill: 'First Aid', note: null, scouts: 2 }],
   undecidedAdults: [{ personId: 41, name: 'Karen O', fits: ['Tenderfoot 3a'] }],
@@ -72,7 +86,19 @@ describe('ThisSundayView', () => {
   it('Leader_SeesWhoCanTeachAWantedTopic', () => {
     render(<ThisSundayView data={data} />);
     const row = screen.getByText(/asked 3 weeks/).closest('tr')!;
-    expect(row.textContent).toContain('Karen O (not sure yet)');
+    expect(row.textContent).toContain('Ask: Karen O (not sure yet)');
+  });
+
+  it('Leader_SeesWhoListedTheSkill_AfterWhoToAsk', () => {
+    render(<ThisSundayView data={data} />);
+    const row = screen.getByText(/asked 3 weeks/).closest('tr')!;
+    expect(row.textContent).toContain('Listed the skill: Becky V');
+  });
+
+  it('Leader_SeesOtherQualifiedAdults_AsACollapsedCount', () => {
+    render(<ThisSundayView data={data} />);
+    const more = screen.getByText('+ 2 other adults').closest('details')!;
+    expect([more.open, more.textContent?.includes('Chad L, Gene B')]).toEqual([false, true]);
   });
 
   it('Leader_SeesOfferedNoTakers_AndSkillOffers', () => {

@@ -105,7 +105,7 @@ export interface ThisSundayData {
   adults: { coming: number; undecided: number; notComing: number; teaching: number };
   topics: { key: string; label: string; codeLabel: string; names: string[]; teachers: SupplyTeacher[] }[];
   /** The recruiting list: asked for, nobody teaching. `blocked`: committed teachers with no free block for it. */
-  wanted: { key: string; label: string; codeLabel: string; names: string[]; weeks: number; canTeach: (BoardPerson & { note: string })[]; blocked?: string[] }[];
+  wanted: { key: string; label: string; codeLabel: string; names: string[]; weeks: number; canTeach: CanTeach[]; blocked?: string[] }[];
   /** Put on the board by a teacher, asked for by nobody. */
   offered: { key: string; label: string; codeLabel: string; teachers: SupplyTeacher[] }[];
   skillOffers: (BoardPerson & { skill: string; note: string | null; scouts: number })[];
@@ -121,6 +121,10 @@ export interface ThisSundayData {
   /** Adults (leaders and parents), for "Enter for someone"; Junior Leaders are under the scouts. */
   adultPeople: BoardPerson[];
 }
+
+/** Who to ask first: `ask` answered coming or not sure; `listed` has the topic's skill (or badge) on file but no answer;
+ *  `other` merely qualifies (a topic anyone may teach), shown only as a count. */
+export type CanTeach = BoardPerson & { note: string; tier: 'ask' | 'listed' | 'other' };
 
 const INTENT_WORD: Record<Intent, string> = { coming: 'coming', undecided: 'not sure yet', not_coming: 'can’t make it' };
 
@@ -159,11 +163,16 @@ export async function loadThisSunday(): Promise<ThisSundayData | null> {
   const adultIntent = (id: number) => teacherIntent(teach.intents.get(id) ?? null, commits.get(id) ?? 0);
   // People who no longer qualify are in teach.people only so their rows show; they are never offered as teachers.
   const pool = [...teach.people.values()].filter((p) => p.eligible !== false);
-  const canTeachNote = (id: number) => {
+  const canTeachNote = (id: number, key: string): CanTeach => {
     const it = adultIntent(id);
     const n = commits.get(id) ?? 0;
-    return { ...teacherPerson(id), note: `${it ? INTENT_WORD[it] : 'no answer'}${n ? `, teaching ${n}` : ''}` };
+    const p = teach.people.get(id);
+    const listed = key.startsWith('mb:') ? !!p?.counselorFor.has(key.slice(3)) : topicSkill(key, catalog.ranks, catalog.rankRequirements) != null;
+    return { ...teacherPerson(id), note: `${it ? INTENT_WORD[it] : 'no answer'}${n ? `, teaching ${n}` : ''}`, tier: it ? 'ask' : listed ? 'listed' : 'other' };
   };
+  // Coming before not sure, then by name.
+  const askOrder = (a: CanTeach, b: CanTeach) =>
+    Number(adultIntent(a.personId) !== 'coming') - Number(adultIntent(b.personId) !== 'coming') || a.name.localeCompare(b.name);
 
   // Phase 3a: the live match (rank boards). It owns the unmatched lists; a merit badge night keeps Phase 2's.
   const match = meeting.mode === 'rank' ? await loadLiveMatch(sb, meeting, rows, teach) : null;
@@ -178,7 +187,10 @@ export async function loadThisSunday(): Promise<ThisSundayData | null> {
           codeLabel: t?.codeLabel ?? words(w.key).codeLabel,
           names: w.scoutIds.map((id) => nameOf.get(id) ?? '').filter(Boolean).sort(),
           weeks: w.weeks,
-          canTeach: w.canTeach.filter((id) => adultIntent(id) !== 'not_coming').map(canTeachNote).sort((a, b) => a.name.localeCompare(b.name)),
+          canTeach: w.canTeach
+            .filter((id) => adultIntent(id) !== 'not_coming')
+            .map((id) => canTeachNote(id, w.key))
+            .sort(askOrder),
           blocked: w.blockedTeacherIds.map((id) => teacherPerson(id).name)
         };
       })
@@ -187,8 +199,8 @@ export async function loadThisSunday(): Promise<ThisSundayData | null> {
           const t = topics.find((x) => x.key === key)!;
           const canTeach = pool
             .filter((p) => assessTeacher(p, key, teach.ctx).qualified && adultIntent(p.personId) !== 'not_coming')
-            .map((p) => canTeachNote(p.personId))
-            .sort((a, b) => a.name.localeCompare(b.name));
+            .map((p) => canTeachNote(p.personId, key))
+            .sort(askOrder);
           return { key, label: t.label, codeLabel: t.codeLabel, names: t.names, weeks: weeksAsked(firstAsked.get(key) ?? [], meeting.date), canTeach };
         })
         .sort((a, b) => b.names.length - a.names.length || b.weeks - a.weeks);
@@ -362,6 +374,42 @@ function TeacherLinks({ list }: { list: SupplyTeacher[] }) {
           {t.notes.length > 0 && <span className={styles.teachMeta}> ({t.notes.join('; ')})</span>}
         </span>
       ))}
+    </>
+  );
+}
+
+/** Who to ask about a wanted topic: answered first, then who listed the skill; everyone else who merely qualifies
+ *  (for a topic any adult may teach, the whole roster) folds into a count. */
+function CanTeachCell({ list }: { list: CanTeach[] }) {
+  const link = (c: CanTeach) => (
+    <Link href={entryFor(c.personId)} title={`Enter for ${c.name}`}>
+      {c.name}
+    </Link>
+  );
+  const names = (tier: CanTeach['tier'], note: boolean) =>
+    list
+      .filter((c) => c.tier === tier)
+      .map((c, i) => (
+        <span key={c.personId}>
+          {i > 0 ? ', ' : ''}
+          {link(c)}
+          {note && <span className={styles.teachMeta}> ({c.note})</span>}
+        </span>
+      ));
+  const count = (tier: CanTeach['tier']) => list.filter((c) => c.tier === tier).length;
+  const others = count('other');
+  return (
+    <>
+      {count('ask') > 0 && <div>Ask: {names('ask', true)}</div>}
+      {count('listed') > 0 && <div>Listed the skill: {names('listed', false)}</div>}
+      {others > 0 && (
+        <details className={styles.moreQualified}>
+          <summary>
+            + {others} other {others === 1 ? 'adult' : 'adults'}
+          </summary>
+          {names('other', false)}
+        </details>
+      )}
     </>
   );
 }
@@ -552,19 +600,7 @@ export function ThisSundayView({ data }: { data: ThisSundayData | null }) {
                     </td>
                     <td className={styles.alignRight}>{w.names.length}</td>
                     <td>
-                      {w.canTeach.length ? (
-                        w.canTeach.map((c, i) => (
-                          <span key={c.personId}>
-                            {i > 0 ? ', ' : ''}
-                            <Link href={entryFor(c.personId)} title={`Enter for ${c.name}`}>
-                              {c.name}
-                            </Link>
-                            <span className={styles.teachMeta}> ({c.note})</span>
-                          </span>
-                        ))
-                      ) : (
-                        <span className={styles.noTeacher}>Nobody on file</span>
-                      )}
+                      {w.canTeach.length ? <CanTeachCell list={w.canTeach} /> : <span className={styles.noTeacher}>Nobody on file</span>}
                     </td>
                   </tr>
                 ))}
