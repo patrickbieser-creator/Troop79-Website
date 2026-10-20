@@ -55,6 +55,8 @@ export function ReconciliationPanel({ r, scout, asOf }: { r: Reconciliation; sco
             <dd>
               {fmtMoney2(t.donationsNet)} of {fmtMoney2(t.gifts)}
             </dd>
+            <dt>Card fees off the troop’s share</dt>
+            <dd>{t.troopCardCost < 0 ? `+${fmtMoney2(-t.troopCardCost)}` : `−${fmtMoney2(t.troopCardCost)}`}</dd>
             <dt>Scouts’ total</dt>
             <dd>{fmtMoney2(t.scout)}</dd>
             <dt>Troop total</dt>

@@ -4,20 +4,22 @@
  * card fee, donation, delivery fee and what came in against its total.
  *
  * Pure, and NOT a second money calculus: every figure comes from lib/wreaths/rules (orderProfit, scoutEarnings,
- * donationNet, splitCardFee, acceptedShort, shortOnWreaths), and the counting rule is the dashboard's (isCounted: placed
+ * donationNet, splitCardFee, troopCardCost, acceptedShort, shortOnWreaths), and the counting rule is the dashboard's (isCounted: placed
  * and not refunded; unpaid orders count as pledged). Cancelled and refunded orders are listed and count in nothing.
  * The grand totals are checked against buildSalesDashboard on the same input; `check` names any difference.
  *
  * Per-line shares: the scout's share is rounded once on the section's whole profit (scoutEarnings, as sellerEarnings
  * does), so each line takes the running total's increment — the lines add up to the scout's figure to the cent.
- * Donations the same, on the running net. Delivery fees are troop income outside the split; the card fee's wreath part
- * is shown but not taken from the split (the dashboard's profit is price less cost), and its donation part comes off
- * the donation (donationNet).
+ * Donations the same, on the running net. Delivery fees are troop income outside the split. The card fee's donation
+ * part comes off the donation (donationNet); its wreath part, less what the customer covered, comes off the troop's
+ * share after the split (troopCardCost, Patrick 2026-10-19) — the scout's share is figured before it. So an order's
+ * troop figure is its lines' troop + the donation's troop − the short on the wreaths − troopCardCost, and the CSV's
+ * Troop $ column adds up to it.
  */
 import type { AdminOrder, AdminSeller } from './admin-data';
 import { buildSalesDashboard } from './dashboard';
 import { isCounted } from './my-orders';
-import { acceptedShort, donationNet, donationPart, fromCents, orderProfit, paymentDifferenceText, scoutEarnings, shortOnWreaths, splitCardFee, toCents } from './rules';
+import { acceptedShort, donationNet, donationPart, fromCents, orderProfit, paymentDifferenceText, scoutEarnings, shortOnWreaths, splitCardFee, toCents, coveredFee, troopCardCost } from './rules';
 
 export interface ReconSale {
   year: number;
@@ -74,12 +76,15 @@ export interface ReconOrder {
   lines: ReconLine[];
   itemsSubtotal: number;
   deliveryFee: number;
+  /** What the customer covered toward the card fee, on a paid card order only (rules coveredFee). */
   feeCovered: number;
   /** Stripe's fee and its split (W-3); null when there is none. */
   cardFee: { total: number; wreaths: number; donation: number } | null;
   donation: ReconDonation | null;
   /** The accepted shortfall that came off the wreaths' profit (the troop absorbs it). */
   shortOnWreaths: number;
+  /** The card fee's wreath part less what the customer covered, off the troop's share (negative = troop income); 0 when not counted. */
+  troopCardCost: number;
   total: number;
   /** What came in on a paid order; null on an unpaid (pledged) one. */
   received: number | null;
@@ -115,7 +120,9 @@ export interface ReconTotals {
   owed: number;
   shortAccepted: number;
   scout: number;
-  /** Profit plus net donations, less the scout's share. Delivery fees are not in it. */
+  /** The card fees' wreath part less what customers covered (rules troopCardCost). */
+  troopCardCost: number;
+  /** Profit plus net donations, less the scout's share and troopCardCost. Delivery fees are not in it. */
   troop: number;
 }
 
@@ -152,7 +159,8 @@ const sub = (a: number, b: number) => fromCents(toCents(a) - toCents(b));
 
 const ZERO: ReconTotals = {
   orders: 0, paidOrders: 0, unpaidOrders: 0, notCounted: 0, items: 0, listSales: 0, sales: 0, cost: 0, grossProfit: 0, shortOnWreaths: 0, profit: 0,
-  gifts: 0, donationsNet: 0, cardFees: 0, feesCovered: 0, deliveryFees: 0, grandTotal: 0, collected: 0, owed: 0, shortAccepted: 0, scout: 0, troop: 0
+  gifts: 0, donationsNet: 0, cardFees: 0, feesCovered: 0, deliveryFees: 0, grandTotal: 0, collected: 0, owed: 0, shortAccepted: 0, scout: 0,
+  troopCardCost: 0, troop: 0
 };
 
 function totalsOf(orders: ReconOrder[], source: Map<number, AdminOrder>): ReconTotals {
@@ -184,6 +192,7 @@ function totalsOf(orders: ReconOrder[], source: Map<number, AdminOrder>): ReconT
     else t.owed = add(t.owed, r.total);
     t.shortAccepted = add(t.shortAccepted, acceptedShort(o));
     t.scout = add(t.scout, r.scout);
+    t.troopCardCost = add(t.troopCardCost, r.troopCardCost);
     t.troop = add(t.troop, r.troop);
   }
   t.profit = sub(t.grossProfit, t.shortOnWreaths);
@@ -252,8 +261,9 @@ function buildSection(personId: number | null, name: string, orders: AdminOrder[
     }
 
     const short = counted && paid ? shortOnWreaths(o) : 0;
+    const cardCost = counted ? troopCardCost(o) : 0;
     const scout = counted ? lines.reduce((n, l) => add(n, l.scout), donation?.scout ?? 0) : 0;
-    const troop = counted ? sub(lines.reduce((n, l) => add(n, l.troop), donation?.troop ?? 0), short) : 0;
+    const troop = counted ? sub(sub(lines.reduce((n, l) => add(n, l.troop), donation?.troop ?? 0), short), cardCost) : 0;
     return {
       id: o.id,
       orderNumber: o.orderNumber,
@@ -268,10 +278,11 @@ function buildSection(personId: number | null, name: string, orders: AdminOrder[
       lines,
       itemsSubtotal: o.itemsSubtotal,
       deliveryFee: o.deliveryFee,
-      feeCovered: o.feeCovered,
+      feeCovered: coveredFee(o),
       cardFee: split ? { total: o.stripeFee!, wreaths: split.rest, donation: split.donation } : null,
       donation,
       shortOnWreaths: short,
+      troopCardCost: cardCost,
       total: o.total,
       received: paid ? (o.paidAmount ?? o.total) : null,
       difference: paymentDifferenceText(o),
@@ -339,6 +350,7 @@ export function buildReconciliation(input: {
     ['Pledged', totals.owed, d.totals.owed],
     ['Accepted short', totals.shortAccepted, d.totals.shortAccepted],
     ['Scouts’ share', totals.scout, d.totals.scoutShare],
+    ['Card fees off the troop’s share', totals.troopCardCost, d.totals.troopCardCost],
     ['Troop’s share', totals.troop, d.totals.troopShare]
   ];
   for (const s of sections) {
@@ -363,7 +375,12 @@ const csvCell = (v: string | number) => {
 };
 const money = (n: number) => n.toFixed(2);
 
-/** The visible rows as CSV: one row per line, donation, card fee and delivery fee. */
+/**
+ * The visible rows as CSV: one row per line, donation, card fee, delivery fee and short payment. The Troop $ column adds
+ * up to the order's troop figure: the card fee row (cover under Price paid, the wreath part under Cost) carries
+ * troopCardCost (negative), the short row the shortfall, and
+ * the delivery fee (troop income outside the split) sits under Price paid only.
+ */
 export function reconciliationCsv(sections: ReconSection[]): string {
   const head = ['Scout', 'Order', 'Customer', 'Status', 'Row', 'Qty', 'List price', 'Price paid', 'Cost', 'Gross profit', 'Scout %', 'Scout $', 'Troop %', 'Troop $'];
   const out: (string | number)[][] = [head];
@@ -378,8 +395,11 @@ export function reconciliationCsv(sections: ReconSection[]): string {
         const g = o.donation;
         out.push([...base, 'Donation (net)', '', '', money(g.gift), money(sub(g.gift, g.net)), money(g.net), g.scoutPct, money(g.scout), g.troopPct, money(g.troop)]);
       }
-      if (o.cardFee) out.push([...base, 'Card fee', '', '', '', money(o.cardFee.total), '', '', '', '', '']);
-      if (o.deliveryFee > 0) out.push([...base, 'Delivery fee (troop)', '', '', money(o.deliveryFee), '', '', '', '', '', money(o.deliveryFee)]);
+      if (o.cardFee || o.feeCovered > 0) {
+        out.push([...base, 'Card fee', '', '', o.feeCovered > 0 ? money(o.feeCovered) : '', money(o.cardFee?.wreaths ?? 0), '', '', '', '', money(-o.troopCardCost)]);
+      }
+      if (o.deliveryFee > 0) out.push([...base, 'Delivery fee (troop)', '', '', money(o.deliveryFee), '', '', '', '', '', '']);
+      if (o.shortOnWreaths > 0) out.push([...base, 'Paid short (troop)', '', '', '', '', '', '', '', '', money(-o.shortOnWreaths)]);
     }
   }
   return out.map((r) => r.map(csvCell).join(',')).join('\n') + '\n';

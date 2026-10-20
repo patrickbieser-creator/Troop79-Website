@@ -10,13 +10,15 @@ import {
   priceCart,
   roseOrder,
   scoutEarnings,
+  troopCardCost,
   zipFormatOk,
   zipPrefixes,
   zipPrefixListOk,
   zipPrefixText,
   type Fulfillment,
   type PricedItem,
-  type SaleRules
+  type SaleRules,
+  type TroopCardCostOrder
 } from '../src/lib/wreaths/rules';
 
 /** The pure arithmetic of the wreath sale: no database, so these run anywhere. */
@@ -194,5 +196,39 @@ describe('scout earnings', () => {
   it('ScoutEarnings_IsThirtyPercentOfProfit_RoundedToTheCent', () => {
     expect(scoutEarnings(24.01, 0.3)).toBe(7.2);
     expect(scoutEarnings(0, 0.3)).toBe(0);
+  });
+});
+
+describe('troop card cost', () => {
+  // Patrick, 2026-10-19: the troop's share is after the wreath part of the card fee, less what the customer covered.
+  const cardOrder = (over: Partial<TroopCardCostOrder> = {}): TroopCardCostOrder => ({ gift: 0, total: 52, paymentStatus: 'paid', paidMethod: 'card', paidAmount: 52, stripeFee: 1.81, feeCovered: 0, ...over });
+
+  it('TroopCardCost_CardOrderNoGift_IsTheWholeFee', () => {
+    expect(troopCardCost(cardOrder())).toBe(1.81);
+  });
+
+  it('TroopCardCost_CardOrderWithGift_IsOnlyTheWreathPart', () => {
+    // $52 + $48 gift, fee $3.20: the gift's $1.54 comes off the donation, the troop takes $1.66.
+    expect(troopCardCost(cardOrder({ gift: 48, total: 100, paidAmount: 100, stripeFee: 3.2 }))).toBe(1.66);
+  });
+
+  it('TroopCardCost_LessWhatTheCustomerCovered_SurplusIsIncome', () => {
+    expect(troopCardCost(cardOrder({ feeCovered: 1.92, total: 53.92, paidAmount: 53.92, stripeFee: 1.86 }))).toBe(-0.06);
+  });
+
+  it('TroopCardCost_HandPaidOrder_IsZero', () => {
+    expect(troopCardCost(cardOrder({ paidMethod: 'venmo', stripeFee: null }))).toBe(0);
+  });
+
+  it('TroopCardCost_UnpaidOrder_IsZero_EvenWithACoverFromAnUnfinishedCheckout', () => {
+    expect(troopCardCost(cardOrder({ paymentStatus: 'unpaid', paidMethod: null, paidAmount: null, stripeFee: null, feeCovered: 1.92 }))).toBe(0);
+  });
+
+  it('TroopCardCost_CardFeeNotRecordedYet_IsZero_TheCoverWaitsForTheFee', () => {
+    expect(troopCardCost(cardOrder({ feeCovered: 1.92, total: 53.92, paidAmount: 53.92, stripeFee: null }))).toBe(0);
+  });
+
+  it('TroopCardCost_RefundedOrder_IsZero', () => {
+    expect(troopCardCost(cardOrder({ paymentStatus: 'refunded' }))).toBe(0);
   });
 });

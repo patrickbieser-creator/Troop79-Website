@@ -2,12 +2,12 @@
  * Admin › Wreath Sale › Dashboard (Patrick, 2026-10-16): the sale at a glance — what's sold, what's collected, what
  * needs a hand, how it's trending, who's selling. Pure: the page passes the orders and sellers it already loads.
  * "Counted" is the same rule as the scout's page (lib/wreaths/my-orders isCounted): placed and not refunded. Profit and
- * the scouts' share follow lib/wreaths/rules; the books at close (Release C) are the binding numbers, this is a view.
+ * the scouts' share follow lib/wreaths/rules; the troop's share is after the card fees' wreath part (troopCardCost); the books at close (Release C) are the binding numbers, this is a view.
  */
 import { instantToCentral } from '@/lib/dates';
 import type { AdminOrder, AdminSeller } from './admin-data';
 import { isCounted } from './my-orders';
-import { acceptedShort, donationNet, fromCents, orderProfit, sellerEarnings, shortOnWreaths, toCents } from './rules';
+import { acceptedShort, donationNet, fromCents, orderProfit, sellerEarnings, shortOnWreaths, toCents, coveredFee, troopCardCost } from './rules';
 
 export interface DashTotals {
   orders: number;
@@ -33,9 +33,11 @@ export interface DashTotals {
   profit: number;
   /** The scouts' earnings: their share of the profit plus their share of the net donations (W-3). */
   scoutShare: number;
-  /** Profit plus net donations, less the scouts' earnings. */
+  /** The card fees' wreath part less what customers covered (rules troopCardCost); negative when covers exceed it. */
+  troopCardCost: number;
+  /** Profit plus net donations, less the scouts' earnings and troopCardCost. */
   troopShare: number;
-  /** Stripe's fees on card payments, and what customers chose to cover. */
+  /** Stripe's fees on card payments, and what customers covered on paid card orders (rules coveredFee). */
   cardFees: number;
   feesCovered: number;
   sellersSelling: number;
@@ -159,6 +161,7 @@ export function buildSalesDashboard(input: {
   const shortWreaths = sum(paidOrders.map(shortOnWreaths));
   const profit = fromCents(toCents(orderProfit(lines)) - toCents(shortWreaths));
   const donationsNet = sum(counted.map(donationNet));
+  const cardCost = sum(counted.map(troopCardCost));
   const received = (o: AdminOrder) => o.paidAmount ?? o.total;
 
   // Sellers: every active scout (zero rows show who hasn't started), anyone credited who has since gone inactive, and the troop store.
@@ -222,9 +225,10 @@ export function buildSalesDashboard(input: {
       shortAccepted,
       profit,
       scoutShare: scoutShareTotal,
-      troopShare: fromCents(toCents(profit) + toCents(donationsNet) - toCents(scoutShareTotal)),
+      troopCardCost: cardCost,
+      troopShare: fromCents(toCents(profit) + toCents(donationsNet) - toCents(scoutShareTotal) - toCents(cardCost)),
       cardFees: sum(counted.map((o) => o.stripeFee ?? 0)),
-      feesCovered: sum(counted.map((o) => o.feeCovered)),
+      feesCovered: sum(counted.map(coveredFee)),
       sellersSelling: sellerRows.filter((s) => s.personId != null && s.orders > 0).length,
       sellersActive: sellers.filter((s) => s.active).length
     },

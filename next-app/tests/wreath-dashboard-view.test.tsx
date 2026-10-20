@@ -81,6 +81,16 @@ describe('SalesDashboardView', () => {
     expect(screen.getByText(/4 days left/)).toBeTruthy();
   });
 
+  // Patrick, 2026-10-19: the troop's share is after the card fee's wreath part.
+  it('Treasurer_SeesTheTroopsShareAfterCardFees', () => {
+    view([order({ paymentStatus: 'paid', paidMethod: 'card', paidAmount: 52, stripeFee: 1.8 })]);
+    expect([screen.getByText('Shares after card fees (est.)').nextElementSibling?.textContent, screen.getByText('$18.20').nextElementSibling?.textContent, screen.getByText('Card fees off the troop’s share').nextElementSibling?.textContent]).toEqual([
+      '$18.20',
+      'scouts $6.00 · troop $12.20',
+      '$1.80'
+    ]);
+  });
+
   it('Treasurer_SeesEmptyStates_BeforeTheFirstOrder', () => {
     view([]);
     expect(screen.getByText('Nothing sold yet.')).toBeTruthy();

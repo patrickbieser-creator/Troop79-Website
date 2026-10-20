@@ -75,7 +75,6 @@ export function SalesDashboardView({ d }: { d: SalesDashboard }) {
   const dayMax = Math.max(0, ...d.byDay.map((x) => x.sales));
   const scouts = d.sellers.filter((s) => s.personId != null);
   const store = d.sellers.find((s) => s.personId == null);
-  const netFees = t.cardFees - t.feesCovered;
 
   return (
     <>
@@ -92,8 +91,8 @@ export function SalesDashboardView({ d }: { d: SalesDashboard }) {
           sub={t.gifts > 0 ? `${fmtMoney2(t.donationsNet)} after card fees and short payments` : 'none yet'}
         />
         <Stat
-          label={t.gifts > 0 ? 'Profit + donations (est.)' : 'Profit (est.)'}
-          value={fmtMoney2(fromCents(toCents(t.profit) + toCents(t.donationsNet)))}
+          label="Shares after card fees (est.)"
+          value={fmtMoney2(fromCents(toCents(t.scoutShare) + toCents(t.troopShare)))}
           sub={`scouts ${fmtMoney2(t.scoutShare)} · troop ${fmtMoney2(t.troopShare)}`}
         />
         <Stat label="Scouts selling" value={`${t.sellersSelling} of ${t.sellersActive}`} sub={t.sellersActive - t.sellersSelling > 0 ? `${t.sellersActive - t.sellersSelling} with no orders yet` : 'every seller has an order'} />
@@ -260,10 +259,10 @@ export function SalesDashboardView({ d }: { d: SalesDashboard }) {
           <dd>{fmtMoney2(t.cardFees)}</dd>
           <dt>Fees customers covered</dt>
           <dd>{fmtMoney2(t.feesCovered)}</dd>
-          <dt>Card fees the troop pays</dt>
-          <dd>{fmtMoney2(Math.max(0, netFees))}</dd>
+          <dt>Card fees off the troop’s share</dt>
+          <dd>{fmtMoney2(t.troopCardCost)}</dd>
         </dl>
-        <p className={styles.muted}>Profit is each item&rsquo;s price less its cost from Rose, donated wreaths included. Gifts, delivery and fees are not in it. The books at the sale&rsquo;s close are final.</p>
+        <p className={styles.muted}>Profit is each item&rsquo;s price less its cost from Rose, donated wreaths included. Card fees come off the shares, not the profit. The books at the sale&rsquo;s close are final.</p>
       </div>
     </>
   );

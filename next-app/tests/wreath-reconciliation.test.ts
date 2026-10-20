@@ -105,6 +105,44 @@ describe('buildReconciliation donations and fees', () => {
     expect([o.scout, o.troop]).toEqual([5.96, 11.9]);
   });
 
+  // Patrick, 2026-10-19: the troop's share is after the wreath part of each order's card fee, less what the customer covered.
+  it('CardOrderNoGift_TroopIsAfterTheWholeFee_ScoutUnchanged', () => {
+    const o = lily([paid('card', { stripeFee: 1.81 })]).orders[0];
+    expect([o.scout, o.troopCardCost, o.troop]).toEqual([5.96, 1.81, 12.09]);
+  });
+
+  it('CardOrderWithGift_TroopTakesOnlyTheWreathPart_DonationPartStaysOnTheDonation', () => {
+    // Lines' troop $13.90 + donation's troop $39.49 − the wreath part $1.66.
+    const o = lily([paid('card', { gift: 48, total: 100, paidAmount: 100, stripeFee: 3.2 })]).orders[0];
+    expect([o.scout, o.troopCardCost, o.donation!.troop, o.troop]).toEqual([12.93, 1.66, 39.49, 51.73]);
+  });
+
+  it('CardOrderWithFeeCovered_CoverOverTheFeeIsTroopIncome', () => {
+    const o = lily([paid('card', { feeCovered: 1.92, total: 53.92, paidAmount: 53.92, stripeFee: 1.86 })]).orders[0];
+    expect([o.troopCardCost, o.troop]).toEqual([-0.06, 13.96]);
+  });
+
+  it('UnpaidOrder_StaleCoverFromAnUnfinishedCheckout_IsNotShownOrCounted', () => {
+    const r = build([order({ feeCovered: 1.92, total: 53.92 })]);
+    const csvRows = reconciliationCsv(r.sections).trim().split('\n').map((l) => l.split(',')[4]);
+    expect([r.sections[0].orders[0].feeCovered, r.sections[0].orders[0].troopCardCost, r.totals.feesCovered, csvRows.includes('Card fee')]).toEqual([0, 0, 0, false]);
+  });
+
+  it('HandPaidOrder_HasNoCardCost', () => {
+    const o = lily([paid('venmo')]).orders[0];
+    expect([o.troopCardCost, o.troop]).toEqual([0, 13.9]);
+  });
+
+  it('UnassignedCardOrder_TakesTheSameFee', () => {
+    const s = build([paid('card', { creditedPersonId: null, creditedName: 'Troop store', stripeFee: 1.81 })]).sections[0];
+    expect([s.name, s.orders[0].troop, s.totals.troopCardCost, s.totals.troop]).toEqual(['Unassigned', 18.05, 1.81, 18.05]);
+  });
+
+  it('RefundedCardOrder_CountsNoFee', () => {
+    const s = lily([paid('card', { paymentStatus: 'refunded', stripeFee: 1.81 })]);
+    expect([s.orders[0].troopCardCost, s.orders[0].troop, s.totals.troopCardCost, s.totals.troop]).toEqual([0, 0, 0, 0]);
+  });
+
   it('DeliveryFee_IsShownOnTheOrder_AndKeptOutOfTheSplit', () => {
     const s = lily([order({ fulfillment: 'delivery', deliveryFee: 10, total: 62 })]);
     expect([s.orders[0].deliveryFee, Math.round((s.orders[0].scout + s.orders[0].troop) * 100) / 100, s.totals.deliveryFees, s.totals.grandTotal]).toEqual([10, 19.86, 10, 62]);
@@ -138,16 +176,24 @@ describe('buildReconciliation balances with the sales dashboard', () => {
     order({ creditedPersonId: null, creditedName: 'Troop store', gift: 25, total: 77 }),
     paid('card', { creditedPersonId: BEN, creditedName: 'Ben B', feeCovered: 1.92, total: 53.92, paidAmount: 53.92, stripeFee: 1.86 }),
     order({ status: 'cancelled' }),
-    paid('cash', { total: 52, paidAmount: 60 })
+    paid('cash', { total: 52, paidAmount: 60 }),
+    paid('card', { stripeFee: 1.81 }),
+    paid('card', { creditedPersonId: null, creditedName: 'Troop store', stripeFee: 1.81 }),
+    paid('card', { paymentStatus: 'refunded', stripeFee: 1.81 })
   ];
 
   it('Totals_EqualTheDashboards_ForTheSameOrders', () => {
     const r = build(FIXTURE);
     const d = buildSalesDashboard({ orders: FIXTURE, sellers: SELLERS, sale: SALE, nowMs: NOW }).totals;
     const t = r.totals;
-    expect([t.orders, t.sales, t.profit, t.gifts, t.donationsNet, t.deliveryFees, t.cardFees, t.grandTotal, t.collected, t.owed, t.scout, t.troop]).toEqual([
-      d.orders, d.sales, d.profit, d.gifts, d.donationsNet, d.deliveryFees, d.cardFees, d.grandTotal, d.collected, d.owed, d.scoutShare, d.troopShare
+    expect([t.orders, t.sales, t.profit, t.gifts, t.donationsNet, t.deliveryFees, t.cardFees, t.grandTotal, t.collected, t.owed, t.scout, t.troopCardCost, t.troop]).toEqual([
+      d.orders, d.sales, d.profit, d.gifts, d.donationsNet, d.deliveryFees, d.cardFees, d.grandTotal, d.collected, d.owed, d.scoutShare, d.troopCardCost, d.troopShare
     ]);
+  });
+
+  it('TroopTotal_IsAfterTheWreathPartOfEveryCountedCardFee', () => {
+    // Card fees' wreath parts: $1.66 (gift order) + $1.86 − $1.92 covered + $1.81 + $1.81 (store); the refunded one counts nothing.
+    expect(build(FIXTURE).totals.troopCardCost).toBe(5.22);
   });
 
   it('Check_ReportsBalanced_WhenEveryFigureAgrees', () => {
@@ -174,5 +220,21 @@ describe('buildReconciliation payload scope', () => {
   it('Csv_HasOneRowPerLineDonationFeeAndDelivery', () => {
     const csv = reconciliationCsv(build([paid('card', { gift: 48, total: 110, paidAmount: 110, stripeFee: 3.5, fulfillment: 'delivery', deliveryFee: 10 })]).sections);
     expect(csv.trim().split('\n').map((l) => l.split(',')[4])).toEqual(['Row', '20″ Wreath', 'Donation (net)', 'Card fee', 'Delivery fee (troop)']);
+  });
+
+  const troopColumn = (csv: string) => csv.trim().split('\n').slice(1).map((l) => l.split(',').at(-1)!);
+  const sumOf = (col: string[]) => col.reduce((c, v) => c + Math.round(Number(v || 0) * 100), 0) / 100;
+
+  it('Csv_CardFeeRow_ShowsTheTroopsDeduction_AndTheTroopColumnSumsToTheOrder', () => {
+    const r = build([paid('card', { gift: 48, total: 110, paidAmount: 110, stripeFee: 3.5, fulfillment: 'delivery', deliveryFee: 10 })]);
+    const o = r.sections[0].orders[0];
+    const col = troopColumn(reconciliationCsv(r.sections));
+    expect([col[2], sumOf(col)]).toEqual([`-${o.troopCardCost.toFixed(2)}`, o.troop]);
+  });
+
+  it('Csv_ShortPayment_HasARow_SoTheTroopColumnSumsToTheOrder', () => {
+    const r = build([paid('venmo', { total: 52, paidAmount: 50 })]);
+    const col = troopColumn(reconciliationCsv(r.sections));
+    expect([col.length, sumOf(col)]).toEqual([2, r.sections[0].orders[0].troop]);
   });
 });

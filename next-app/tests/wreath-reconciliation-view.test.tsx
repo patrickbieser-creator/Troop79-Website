@@ -86,6 +86,35 @@ describe('Reconciliation panel', () => {
     expect(screen.getByText('Balances with the sales dashboard ✓')).toBeTruthy();
   });
 
+  // Patrick, 2026-10-19: the card fee's wreath part comes off the troop's share, on the order and in the totals.
+  const cardRecon = () =>
+    buildReconciliation({
+      orders: [order({ paymentStatus: 'paid', paidMethod: 'card', paidAmount: 52, stripeFee: 1.81 })],
+      sellers: [seller(LILY, 'Lily L')],
+      items: [],
+      sale: SALE
+    });
+
+  it('Statement_CardFeeRow_ComesOffTheTroopsShare', async () => {
+    const { ReconciliationPanel } = await import('../src/app/admin/(workspace)/finance/wreaths/reconciliation-panel');
+    render(<ReconciliationPanel r={cardRecon()} scout={String(LILY)} asOf={AS_OF} />);
+    const row = screen.getByText('Card fee $1.81').closest('tr')!;
+    expect(row.lastElementChild!.textContent).toBe('−$1.81');
+  });
+
+  it('Statement_UnpaidOrderWithAStaleCover_ShowsNoCardFeeRow', async () => {
+    const { ReconciliationPanel } = await import('../src/app/admin/(workspace)/finance/wreaths/reconciliation-panel');
+    const r = buildReconciliation({ orders: [order({ feeCovered: 1.92, total: 53.92 })], sellers: [seller(LILY, 'Lily L')], items: [], sale: SALE });
+    render(<ReconciliationPanel r={r} scout={String(LILY)} asOf={AS_OF} />);
+    expect(screen.queryByText(/^Card fee|customer covered/)).toBeNull();
+  });
+
+  it('AllScouts_ShowsTheCardFeesOffTheTroopsShare', async () => {
+    const { ReconciliationPanel } = await import('../src/app/admin/(workspace)/finance/wreaths/reconciliation-panel');
+    render(<ReconciliationPanel r={cardRecon()} scout="" asOf={AS_OF} />);
+    expect(screen.getByText('Card fees off the troop’s share').nextElementSibling!.textContent).toBe('−$1.81');
+  });
+
   it('Mismatch_NamesTheDifference', async () => {
     const { ReconciliationPanel } = await import('../src/app/admin/(workspace)/finance/wreaths/reconciliation-panel');
     const r = { ...recon(), check: { ok: false, mismatches: [{ label: 'Profit', reconciliation: 10, dashboard: 12 }] } };

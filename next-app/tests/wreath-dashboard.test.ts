@@ -113,6 +113,32 @@ describe('buildSalesDashboard totals', () => {
     const d = build([paid('card', { gift: 10, stripeFee: 1.99, feeCovered: 1.99 }), paid('card', { stripeFee: 1.8 })]);
     expect([d.totals.gifts, d.totals.cardFees, d.totals.feesCovered]).toEqual([10, 3.79, 1.99]);
   });
+
+  // Patrick, 2026-10-19: the troop's share is after the wreath part of the card fee; the scouts' share is unchanged.
+  it('Dashboard_TroopShare_IsAfterTheCardFee_ScoutShareUnchanged', () => {
+    const d = build([paid('card', { stripeFee: 1.8 })]);
+    expect([d.totals.profit, d.totals.scoutShare, d.totals.troopCardCost, d.totals.troopShare]).toEqual([20, 6, 1.8, 12.2]);
+  });
+
+  it('Dashboard_TroopShare_GainsWhatTheCustomerCoveredOverTheFee', () => {
+    const d = build([paid('card', { feeCovered: 1.92, total: 53.92, paidAmount: 53.92, stripeFee: 1.86 })]);
+    expect([d.totals.troopCardCost, d.totals.troopShare]).toEqual([-0.06, 14.06]);
+  });
+
+  it('Dashboard_TroopStoreCardOrder_TakesTheSameFee', () => {
+    const d = build([paid('card', { creditedPersonId: null, creditedName: 'Troop store', source: 'store', stripeFee: 1.8 })]);
+    expect([d.totals.scoutShare, d.totals.troopShare]).toEqual([0, 18.2]);
+  });
+
+  it('Dashboard_FeesCovered_CountsPaidCardOrdersOnly_NotAStaleCoverOnAnUnpaidOne', () => {
+    const d = build([order({ feeCovered: 1.92, total: 53.92 }), paid('card', { feeCovered: 1.5, total: 53.5, paidAmount: 53.5, stripeFee: 1.85 })]);
+    expect(d.totals.feesCovered).toBe(1.5);
+  });
+
+  it('Dashboard_RefundedCardOrder_TakesNoFeeFromTheTroop', () => {
+    const d = build([order(), paid('card', { paymentStatus: 'refunded', stripeFee: 1.8 })]);
+    expect([d.totals.troopCardCost, d.totals.troopShare]).toEqual([0, 14]);
+  });
 });
 
 describe('buildSalesDashboard attention', () => {

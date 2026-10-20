@@ -137,6 +137,32 @@ export function donationNet(o: DonationOrder): number {
   return o.gift;
 }
 
+export interface TroopCardCostOrder extends DonationOrder {
+  feeCovered: number;
+}
+
+/**
+ * What a card payment costs the troop's share (Patrick, 2026-10-19): the wreath part of Stripe's fee (splitCardFee
+ * `rest`; the donation part already comes off the donation, donationNet) less what the customer chose to cover. Not
+ * clamped: a cover larger than the fee is troop income, so the result can be negative. Only a paid card order whose
+ * Stripe fee is recorded has one: the cover waits for the fee, and a cover left on an unpaid order (a checkout not
+ * finished) counts nothing (coveredFee). The scouts' share is figured before it. The dashboard and the reconciliation
+ * both take it from here.
+ */
+export function troopCardCost(o: TroopCardCostOrder): number {
+  if (o.paymentStatus !== 'paid' || o.paidMethod !== 'card' || o.stripeFee == null) return 0;
+  const charged = o.paidAmount ?? o.total;
+  return fromCents(toCents(splitCardFee(o.stripeFee, o.gift, charged).rest) - toCents(coveredFee(o)));
+}
+
+/**
+ * What the customer covered toward the card fee, counted only on a paid card order. An unpaid order can still carry
+ * fee_covered from a card checkout that was never finished; that is not money in.
+ */
+export function coveredFee(o: Pick<TroopCardCostOrder, 'paymentStatus' | 'paidMethod' | 'feeCovered'>): number {
+  return o.paymentStatus === 'paid' && o.paidMethod === 'card' ? o.feeCovered : 0;
+}
+
 /**
  * The finance-ledger row Mark paid books for an order (Patrick, 2026-10-15). It follows the treasurer's fundraiser
  * convention: checking income, kind fundraiser, bucket "Wreaths 'YY" (last year's rows read "Wreaths '25"). Every

@@ -13,6 +13,8 @@ import styles from './wreath-statement.module.css';
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 const share = (p: number, amount: number) => `${p}% · ${fmtMoney2(amount)}`;
+/** "−$1.66" / "+$0.06" / "$0.00" — a line that adds to or comes off the troop's share. */
+const signed = (n: number) => (n < 0 ? `−${fmtMoney2(-n)}` : n > 0 ? `+${fmtMoney2(n)}` : fmtMoney2(0));
 
 /** "Profit: scout 30%, troop 70% · Donations: scout 15%, troop 85% · Card fee: 2.9% + $0.30". */
 export function StatementSettings({ settings }: { settings: Reconciliation['settings'] }) {
@@ -83,14 +85,18 @@ function OrderRows({ o }: { o: ReconOrder }) {
       )}
       {(o.cardFee || o.feeCovered > 0) && (
         <tr>
-          <td colSpan={7} className={styles.meta}>
-            {o.cardFee && (
+          <td colSpan={6}>
+            {/* The donation's part of the fee is on the donation row; this row is the part that comes off the troop. */}
+            {o.cardFee ? (
               <>
-                Card fee {fmtMoney2(o.cardFee.total)}: wreaths {fmtMoney2(o.cardFee.wreaths)}, donation {fmtMoney2(o.cardFee.donation)}.{' '}
+                Card fee {fmtMoney2(o.cardFee.wreaths)}
+                {o.feeCovered > 0 && <> − {fmtMoney2(o.feeCovered)} the customer covered</>}
               </>
+            ) : (
+              <>Card fee not in yet (the customer covered {fmtMoney2(o.feeCovered)})</>
             )}
-            {o.feeCovered > 0 && <>The customer covered {fmtMoney2(o.feeCovered)} of card fees.</>}
           </td>
+          <td className={styles.num}>{signed(-o.troopCardCost)}</td>
         </tr>
       )}
       {o.shortOnWreaths > 0 && (
