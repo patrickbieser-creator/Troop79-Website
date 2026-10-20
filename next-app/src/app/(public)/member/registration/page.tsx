@@ -4,7 +4,9 @@
  * /member, a "Soon" placeholder until 2026-10-20.
  *
  * Read-only. The dates come from the troop's last saved BSA roster
- * (/admin/advancement/bsa-roster); renewing happens at my.scouting.org.
+ * (/admin/advancement/bsa-roster); renewing happens at my.scouting.org. The
+ * how-to-renew guide below the list is the content-managed page at
+ * /join/renewing (Admin › News & Events › Pages) — left out if unpublished.
  * Scope: an adult sees themselves and their children, a scout themselves, a
  * leader proxy-viewing sees the chosen scout.
  */
@@ -18,6 +20,8 @@ import { dueState } from '@/lib/bsa-roster';
 import { registrationLine, RENEW_URL, visibleRegistrations } from '@/lib/member-registration';
 import { centralToday } from '@/lib/dates';
 import { fmtDate } from '@/lib/format-date';
+import { loadSitePage } from '@/lib/site-pages';
+import { PageContent } from '@/lib/article-body/PageContent';
 import { PageHeader } from '@/app/_components/page-header';
 import { PageShell } from '@/app/_components/page-shell';
 import { Button } from '@/app/_components/button';
@@ -28,6 +32,9 @@ import memberStyles from '../member.module.css';
 import styles from './registration.module.css';
 
 export const dynamic = 'force-dynamic';
+
+/** The how-to-renew page, edited in the Pages admin. */
+const RENEWING_PATH = '/join/renewing';
 
 export const metadata = {
   title: 'Registration — Scout Troop 79'
@@ -70,6 +77,7 @@ export default async function RegistrationPage({ searchParams }: { searchParams:
   }
 
   const scope = proxy ? [proxy.personId] : await resolveFamilyScope(supabase, session!.personId, session!.subjectKind ?? 'scout');
+  const guide = await loadSitePage(RENEWING_PATH);
   const registrations = visibleRegistrations(await loadRegistrationsFor(supabase, scope), proxy ? proxy.personId : session!.personId);
   const today = centralToday();
   const asOf = registrations.map((r) => r.asOf).filter(Boolean).sort().at(-1);
@@ -79,9 +87,7 @@ export default async function RegistrationPage({ searchParams }: { searchParams:
       <PageHeader kicker="Members" title="Registration" />
       <PageShell>
         <MemberProxyBanner viewer={viewer} />
-        <p className={memberStyles.intro}>
-          Everyone in Scouting registers with the national office once a year. Renewing happens at my.scouting.org.
-        </p>
+        <p className={memberStyles.intro}>Everyone in Scouting registers with the national office once a year.</p>
         <div className={styles.list}>
           {registrations.map((r) => {
             const state = dueState(r.expires, today);
@@ -110,6 +116,11 @@ export default async function RegistrationPage({ searchParams }: { searchParams:
           {asOf ? `From the troop’s BSA roster of ${fmtDate(asOf)}. ` : ''}
           New scouts show up once the troop&rsquo;s registration goes through. Something look wrong? Tell a leader.
         </p>
+        {guide && (
+          <section className={styles.guide} aria-label={guide.title}>
+            <PageContent headline={guide.headline} lede={guide.lede} bodyMd={guide.body_md} sidebarMd={guide.sidebar_md} />
+          </section>
+        )}
       </PageShell>
     </>
   );
