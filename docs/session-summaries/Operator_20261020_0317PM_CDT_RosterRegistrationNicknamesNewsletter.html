@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session 62 — Roster, Registration, Nicknames, Newsletter</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #3d5a3e;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #f0eecd;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); vertical-align: top; }
+        tr:hover { background: var(--nw-sage); }
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+        code { font-family: 'Courier New', monospace; font-size: 0.85em; background: var(--nw-light-gray); padding: 0 0.3em; border-radius: 3px; }
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+        @media print { body { background: white; } header { padding: 1.5rem; } .container { padding: 1rem; } .stat { break-inside: avoid; } }
+        @media (max-width: 600px) { header h1 { font-size: 1.5rem; } .stats { flex-direction: column; } }
+    </style>
+<body>
+    <header>
+        <h1>The official roster, registration dates, nicknames and the newsletter list</h1>
+        <p class="subtitle">Session 62. The BSA roster was compared with People and the real differences fixed, including Maya's Eagle. Registration dates now live on each person and show on the Members page with a how-to-renew guide. People got nicknames that the site and newsletters use, and a tool keeps the EmailOctopus list in step with People.</p>
+        <div class="meta">
+            <span>&#128197; October 20, 2026</span>
+            <span>&#129302; Operator (Opus 5.5)</span>
+            <span>&#128204; Troop79-Website</span>
+            <span>&#128640; v1.238.0 &rarr; v1.239.0</span>
+        </div>
+    </header>
+    <div class="container">
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">9</div><div class="label">Commits (v1.239.0)</div></div>
+            <div class="stat"><div class="number">5</div><div class="label">Production migrations</div></div>
+            <div class="stat"><div class="number">6</div><div class="label">Decisions (D-405&ndash;D-410)</div></div>
+            <div class="stat"><div class="number">6670</div><div class="label">Tests (was 6632)</div></div>
+        </div>
+        <h2>What Was Accomplished</h2>
+        <div class="callout callout-teal">
+            <strong>The outcome:</strong> families see when each of their registrations runs out and how to renew; leaders can re-check the official roster any time; the newsletter list can be synced from People, greeting people by the names they go by.
+        </div>
+        <h3>The BSA roster</h3>
+        <ul>
+            <li>All 50 roster members matched People. Fixed in production: 16 YPT dates, two BSA IDs, a phone and a gender, Simon Pinix's name, and Maya's Eagle (board of review 9/10/2026).</li>
+            <li>New BSA Roster tool: upload the Roster Report to see every difference, then save each member's registration expiry, status, positions and auto-renew choice. It never rewrites names, addresses or ranks, and refuses an older roster.</li>
+            <li>The Members page Registration card is live, with a page listing the family's dates and a how-to-renew guide leaders edit in Pages.</li>
+        </ul>
+        <h3>Nicknames and test people</h3>
+        <ul>
+            <li>Everyone can have a nickname; the name shown everywhere is the nickname (or first name) plus last name, kept consistent by the database. Scoutbook keeps the formal first name.</li>
+            <li>Eleven nicknames set (Robbie, Becky, Adi, Ben &times;2, Winnie, Nate, Dan, Chad, Mike &times;2). Charlie Walters, Todd Manke and Alex Schaapveld are marked as test people.</li>
+            <li>A leader-name bug found while setting nicknames was fixed with a test the same hour.</li>
+        </ul>
+        <h3>EmailOctopus and clean-up</h3>
+        <ul>
+            <li>EmailOctopus Sync previews, then adds only the people you tick, updates names to match People, and records unsubscribes so nobody is ever re-added. Connected in Vercel; the first sync is Patrick's.</li>
+            <li>Wreath round 2 opened at noon Oct 20, when Summer called the round-1 order to Rose.</li>
+            <li>The old Google Sheets Roster Import and all of its tables are gone.</li>
+        </ul>
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Decision</th></tr></thead>
+            <tbody>
+                <tr><td>D-405</td><td>BSA is the source of truth for registration only; the roster check reports, Save writes five columns</td></tr>
+                <tr><td>D-406</td><td>The renewal how-to is a content-managed page embedded in the Registration page</td></tr>
+                <tr><td>D-407</td><td>Wreath rounds are for scout motivation, not accounting</td></tr>
+                <tr><td>D-408</td><td>EmailOctopus sync: opt-in adds, names follow People, unsubscribes come back and are never undone</td></tr>
+                <tr><td>D-409</td><td>display_name is derived in the database (nickname-or-first + last); is_test marks test people</td></tr>
+                <tr><td>D-410</td><td>The Google Sheets roster import is retired, schema and all</td></tr>
+            </tbody>
+        </table>
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Patrick: run the first EmailOctopus Sync; look over the Registration page and the nickname fields in production.</li>
+            <li>Find out why ranks aren't reaching BSA from the Scoutbook export.</li>
+            <li>A "Test record" checkbox on the person record; the BSA Roster review leftovers.</li>
+            <li>Wreath round 2 closes Sun Nov 15.</li>
+        </ul>
+        <h2>Files Changed</h2>
+        <table>
+            <thead><tr><th>Area</th><th>Files</th></tr></thead>
+            <tbody>
+                <tr><td>Libraries</td><td>lib/bsa-roster.ts, bsa-roster-db.ts, member-registration.ts, csv-line.ts, emailoctopus.ts, newsletter-sync.ts, newsletter-sync-db.ts, scout-name.ts, scout-row.ts, change-requests.ts, write-person-demographics.ts, menu-monster/*</td></tr>
+                <tr><td>Admin</td><td>advancement/bsa-roster/*, newsletter/*, roster/[personId]/{identity,details}-section.tsx, person-record.tsx, pending-map.ts, person-actions.ts, lookups/actions.ts, nav-data.ts; roster-import/* removed</td></tr>
+                <tr><td>Public</td><td>member/page.tsx, member/registration/*, profile/{page,adult-editor,profile-editor}.tsx</td></tr>
+                <tr><td>Database</td><td>20261123100000_bsa_registration, 20261124100000_drop_import_staging, 20261125100000_drop_person_merge_candidate_detail, 20261126100000_people_nickname_and_test_flag, 20261127100000_leader_name_follows_nickname</td></tr>
+                <tr><td>Tests</td><td>bsa-roster*, member-registration, emailoctopus, newsletter-sync*, people-nickname-db, scout-name, plus fixtures for the nickname field</td></tr>
+                <tr><td>Docs</td><td>changelog.html</td></tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
