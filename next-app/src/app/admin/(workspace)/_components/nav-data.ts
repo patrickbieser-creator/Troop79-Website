@@ -389,6 +389,13 @@ export const SECTIONS: NavSection[] = [
         capability: 'roster.manage'
       },
       {
+        // People → the troop's EmailOctopus list (2026-10-20).
+        label: 'EmailOctopus Sync',
+        href: '/admin/newsletter',
+        matchPath: '/admin/newsletter',
+        capability: 'roster.manage'
+      },
+      {
         // Content changes only (news/calendar/roster/library) — advancement
         // and finance have their own ledgers. roster.manage because the
         // trail names people (Patrick, 2026-08-30).

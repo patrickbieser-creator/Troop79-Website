@@ -1,0 +1,39 @@
+/* EmailOctopus sync. Tables compose the shared DataTable·Compact pattern; the rest is layout. */
+
+.table { composes: compact from '../_components/data-table.module.css'; }
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--admin-space-8);
+}
+
+.summary {
+  font-size: var(--admin-text-md);
+  margin-bottom: var(--admin-space-4);
+}
+
+.syncRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--admin-space-6);
+  margin-bottom: var(--admin-space-4);
+}
+
+.done {
+  font-size: var(--admin-text-base);
+  color: var(--admin-gray-600);
+}
+
+.none {
+  font-size: var(--admin-text-base);
+  color: var(--admin-gray-500);
+}
+
+.list {
+  margin: 0;
+  padding-left: var(--admin-space-8);
+  font-size: var(--admin-text-md);
+  line-height: 1.6;
+}
