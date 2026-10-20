@@ -127,7 +127,7 @@ describe('AdminHome card grid', () => {
     expect(last.title).toBe('Troop admin tools');
     expect(last.quiet).toBe(true);
     expect(last.cards).toHaveLength(1);
-    expect(last.cards[0].links?.map((l) => l.label)).toEqual(['Lookups & Admin', 'Roster Import', 'Audit Trail', 'Utilities', 'Styleguides']);
+    expect(last.cards[0].links?.map((l) => l.label)).toEqual(['Lookups & Admin', 'Roster Import', 'BSA Roster', 'Audit Trail', 'Utilities', 'Styleguides']);
   });
 
   it('AdminHome_OffersStyleguidesToFullAdminsOnly', () => {

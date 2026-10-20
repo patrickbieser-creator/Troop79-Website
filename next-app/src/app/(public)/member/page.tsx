@@ -4,9 +4,9 @@
  * One place a family lands after signing in, rather than having to know that
  * their household details live at /profile and nothing else has a home yet.
  * Scout account balances now live at /member/scout-account
- * (Plans/Troop-Finances.md Phase 3) — the rest of what belongs here still
- * does not exist: paying for a campout, national registration status,
- * health form dates. Those stay listed as "coming soon" ON
+ * (Plans/Troop-Finances.md Phase 3), national registration at
+ * /member/registration (2026-10-20) — the rest of what belongs here still
+ * does not exist: paying for a campout, health form dates. Those stay listed as "coming soon" ON
  * PURPOSE — a member who can see what is planned stops asking whether the
  * site does it, and it costs nothing to say.
  *
@@ -34,6 +34,10 @@ import { loadBoardScouts, loadEffectivePicks, loadHouseholdScoutPersonIds, loadI
 import { firstNameOf, scoutLine } from '@/lib/meeting-board-shared';
 import { teacherLine } from '@/lib/meeting-board-teach';
 import { loadTeacherState } from '@/lib/meeting-board-supply';
+import { resolveFamilyScope } from '@/lib/household-scope';
+import { loadRegistrationsFor } from '@/lib/bsa-roster-db';
+import { registrationLine, visibleRegistrations } from '@/lib/member-registration';
+import { isEpochCurrent } from '@/lib/identity-session';
 import {
   passkeyRegisterOptionsAction,
   passkeyRegisterVerifyAction,
@@ -92,7 +96,8 @@ const CARDS: Card[] = [
   },
   {
     title: 'Registration',
-    body: 'Your current registration with the national Scouting America office, and when it renews.'
+    body: 'Your current registration with the national Scouting America office, and when it renews.',
+    href: '/member/registration'
   },
   {
     title: 'Health forms',
@@ -184,7 +189,13 @@ export default async function MemberPage({
   const after = CARDS.findIndex((c) => c.href === '/member/reimbursements') + 1;
   const meetingCard = await loadMeetingCard(proxy ? proxy.personId : session!.personId, !proxy && !isAdult, proxy != null, !proxy && teachingKind !== 'none');
   const withTeaching = teachingKind === 'none' ? CARDS : [...CARDS.slice(0, after), TEACHING_CARD, ...CARDS.slice(after)];
-  const cards = meetingCard ? [meetingCard, ...withTeaching] : withTeaching;
+  // Family registration names children, so a revoked session (stale epoch) gets no lines, the same gate as /member/registration.
+  const registrationLines =
+    proxy || (await isEpochCurrent(createAdminClient(), session!))
+      ? await loadRegistrationLines(proxy ? proxy.personId : session!.personId, proxy != null || !isAdult)
+      : undefined;
+  const withRegistration = withTeaching.map((c) => (c.href === '/member/registration' ? { ...c, live: registrationLines } : c));
+  const cards = meetingCard ? [meetingCard, ...withRegistration] : withRegistration;
 
   return (
     <>
@@ -300,4 +311,16 @@ async function loadMeetingCard(personId: number, viewerIsScout: boolean, proxyin
     ? `${day}. Say if you’re coming and pick what to work on${teaches ? ', or what you’ll teach' : ''}.`
     : `${day}. Say if you’re coming and what you’ll teach.`;
   return { title, body, href: '/member/meeting', live: [...scoutLines, ...teachLines] };
+}
+
+/** The Registration card's live lines: one per person shown ("Ben: Registered through Mar 31, 2027"), or the bare
+ *  line when only one person is shown. Who is shown is visibleRegistrations, the same as /member/registration. */
+async function loadRegistrationLines(personId: number, selfOnly: boolean): Promise<string[]> {
+  const sb = createAdminClient();
+  const scope = selfOnly ? [personId] : await resolveFamilyScope(sb, personId, 'adult');
+  const regs = await loadRegistrationsFor(sb, scope);
+  const today = centralToday();
+  const shown = visibleRegistrations(regs, personId);
+  if (shown.length === 1) return [registrationLine(shown[0], today)];
+  return shown.map((r) => `${r.personId === personId ? 'You' : firstNameOf(r.name)}: ${registrationLine(r, today)}`);
 }

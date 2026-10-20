@@ -388,6 +388,13 @@ export const SECTIONS: NavSection[] = [
         capability: 'roster.manage'
       },
       {
+        // The my.scouting.org Roster Report: differences + registration dates (2026-10-20).
+        label: 'BSA Roster',
+        href: '/admin/advancement/bsa-roster',
+        matchPath: '/admin/advancement/bsa-roster',
+        capability: 'roster.manage'
+      },
+      {
         // Content changes only (news/calendar/roster/library) — advancement
         // and finance have their own ledgers. roster.manage because the
         // trail names people (Patrick, 2026-08-30).

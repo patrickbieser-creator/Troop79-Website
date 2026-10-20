@@ -1,0 +1,52 @@
+/* BSA Roster check. Tables compose the shared DataTable·Compact pattern;
+   everything else is layout only (same shape as Ledger Audit's upload). */
+
+.table { composes: compact from '../../_components/data-table.module.css'; }
+
+.section + .section { margin-top: var(--admin-space-8); }
+
+.lede {
+  font-size: var(--admin-text-md);
+  color: var(--admin-gray-600);
+  line-height: 1.5;
+  margin-bottom: var(--admin-space-6);
+  max-width: 760px;
+}
+
+.uploadRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--admin-space-6);
+}
+.fileInput { font-size: var(--admin-text-md); }
+
+.summaryLine {
+  font-size: var(--admin-text-md);
+  margin-bottom: var(--admin-space-4);
+}
+.saveRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--admin-space-6);
+  margin-bottom: var(--admin-space-4);
+}
+.savedNote {
+  font-size: var(--admin-text-base);
+  color: var(--admin-gray-600);
+}
+
+.block { margin-top: var(--admin-space-8); }
+.block h3 {
+  font-size: var(--admin-text-lg);
+  font-weight: 700;
+  color: var(--admin-navy);
+  margin-bottom: var(--admin-space-2);
+}
+.blockSub {
+  font-size: var(--admin-text-base);
+  color: var(--admin-gray-500);
+  margin-bottom: var(--admin-space-4);
+  line-height: 1.5;
+}
