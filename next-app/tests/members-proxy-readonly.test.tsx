@@ -47,6 +47,7 @@ describe('HouseholdReadOnly', () => {
       rows: scoutRows({
         id: 'anjali',
         displayName: 'Anjali S',
+        nickname: null,
         address_line1: '1 Main St',
         address_line2: null,
         city: 'Milwaukee',
@@ -68,6 +69,7 @@ describe('HouseholdReadOnly', () => {
       rows: adultRows({
         personId: 7,
         displayName: 'Pat S',
+        nickname: null,
         relationship: 'Dad',
         first_name: 'Pat',
         last_name: 'S',

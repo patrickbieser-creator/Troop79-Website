@@ -126,8 +126,8 @@ export function shareProblems(d: Pick<ScoutRecipeDraft, 'name' | 'mealFit' | 'li
 }
 
 /** The frozen "Sam K." credit, from `people` (never scouts/leaders), as stored. */
-export function creditFor(person: { first_name: string | null; last_name: string | null }): string {
-  return cleanScoutText(publicScoutName({ first_name: person.first_name ?? '', last_name: person.last_name ?? '' }), MAX_CREDIT);
+export function creditFor(person: { first_name: string | null; last_name: string | null; nickname?: string | null }): string {
+  return cleanScoutText(publicScoutName({ first_name: person.first_name ?? '', last_name: person.last_name ?? '', nickname: person.nickname }), MAX_CREDIT);
 }
 
 /* ---- Gear and "Share this version" (Phase 4C) ------------------------------ */

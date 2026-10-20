@@ -92,10 +92,10 @@ export async function saveScoutRecipeWith(
 /** Share the scout's own recipe with the troop, freezing the "Sam K." credit from `people`. */
 export async function shareScoutRecipeWith(sb: SupabaseClient, actor: AuditActor, id: string): Promise<ScoutShareResult> {
   if (actor.personId == null || !isScoutRecipeId(id)) return { status: 'not_found' };
-  const { data: person, error: pErr } = await sb.from('people').select('first_name, last_name').eq('id', actor.personId).maybeSingle();
+  const { data: person, error: pErr } = await sb.from('people').select('first_name, last_name, nickname').eq('id', actor.personId).maybeSingle();
   if (pErr) throw new Error(`credit: ${pErr.message}`);
   if (!person) return { status: 'not_found' };
-  const credit = creditFor(person as { first_name: string | null; last_name: string | null });
+  const credit = creditFor(person as { first_name: string | null; last_name: string | null; nickname: string | null });
   const { error } = await sb.rpc('mm_share_scout_recipe', { p_person: actor.personId, p_id: id, p_label: credit });
   if (error) {
     if (error.message.includes('MM_NOT_READY')) return { status: 'not_ready' };
@@ -309,10 +309,10 @@ export async function listTypedInsWith(sb: SupabaseClient): Promise<TypedInIngre
   const [pkgs, lines, names] = await Promise.all([
     sb.from('mm_packages').select('ingredient_id, price, yield, store').in('ingredient_id', ids).is('retired_at', null),
     sb.from('mm_recipe_lines').select('ingredient_id, recipe_id, mm_recipes(name, shared_at)').in('ingredient_id', ids),
-    sb.from('people').select('id, first_name, last_name').in('id', people)
+    sb.from('people').select('id, first_name, last_name, nickname').in('id', people)
   ]);
   for (const r of [pkgs, lines, names]) if (r.error) throw new Error(`typed-in details: ${r.error.message}`);
-  const credit = new Map((names.data ?? []).map((p) => [p.id as number, creditFor(p as { first_name: string | null; last_name: string | null })]));
+  const credit = new Map((names.data ?? []).map((p) => [p.id as number, creditFor(p as { first_name: string | null; last_name: string | null; nickname: string | null })]));
   return rows.map((r) => {
     const p = (pkgs.data ?? []).find((x) => x.ingredient_id === r.id);
     return {

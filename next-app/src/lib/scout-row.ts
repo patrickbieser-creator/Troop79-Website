@@ -38,11 +38,12 @@ export interface ScoutCoreRow {
 /** Contact/demographic columns on `people` a scout's own row carries — the
  *  scout's own facts, joined by person_id, never a parent's. */
 export const SCOUT_PERSON_CONTACT_COLS =
-  'id, address_line1, address_line2, city, state, zip, primary_phone, primary_email, ' +
+  'id, nickname, address_line1, address_line2, city, state, zip, primary_phone, primary_email, ' +
   'birthdate, gender, bsa_member_id, health_form_date, things_we_should_know';
 
 export interface ScoutPersonContactRow {
   id: number;
+  nickname: string | null;
   address_line1: string | null;
   address_line2: string | null;
   city: string | null;
@@ -67,6 +68,7 @@ export function mergeScoutRow(s: ScoutCoreRow, person: ScoutPersonContactRow | u
     id: s.id,
     first_name: s.first_name,
     last_name: s.last_name,
+    nickname: person?.nickname ?? null,
     display_name: s.display_name,
     patrol: s.patrol,
     current_rank: s.current_rank,

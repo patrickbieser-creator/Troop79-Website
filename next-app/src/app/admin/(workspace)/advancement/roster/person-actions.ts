@@ -612,6 +612,7 @@ export async function getPersonDetail(personId: number): Promise<PersonDetail> {
  * FIELD NAMES only (D-257).
  */
 const PERSON_TEXT_KEYS = [
+  'nickname',
   'birthdate',
   'primary_phone',
   'address_line1',
@@ -667,6 +668,7 @@ export async function updatePersonDemographics(personId: number, formData: FormD
     }
     patch.first_name = firstName;
     patch.last_name = lastName;
+    // display_name is derived by the people_derive_display_name trigger (nickname-or-first + last).
     patch.display_name = `${firstName} ${lastName}`;
   }
   if (formData.has('gender')) {

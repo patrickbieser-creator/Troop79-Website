@@ -15,6 +15,7 @@
  */
 
 export const EDITABLE_SCOUT_FIELDS = [
+  'nickname',
   'address_line1',
   'address_line2',
   'city',
@@ -38,6 +39,7 @@ export type EditableScoutField = (typeof EDITABLE_SCOUT_FIELDS)[number];
  * `scouts` — they are facts about being a scout, not about the person.
  */
 export const SCOUT_FIELD_TABLE: Record<EditableScoutField, 'scouts' | 'people'> = {
+  nickname: 'people',
   address_line1: 'people',
   address_line2: 'people',
   city: 'people',
@@ -61,6 +63,7 @@ export const SCOUT_FIELD_PEOPLE_COLUMN: Partial<Record<EditableScoutField, strin
 };
 
 export const FIELD_LABEL: Record<EditableScoutField, string> = {
+  nickname: 'Nickname',
   address_line1: 'Address Line 1',
   address_line2: 'Address Line 2',
   city: 'City',
@@ -92,6 +95,7 @@ export const FIELD_LABEL: Record<EditableScoutField, string> = {
 export const EDITABLE_PERSON_FIELDS = [
   'first_name',
   'last_name',
+  'nickname',
   'birthdate',
   'primary_email',
   'primary_phone',
@@ -139,6 +143,7 @@ export const LEADER_PERSON_FIELDS = [
 export const PERSON_FIELD_LABEL: Record<EditablePersonField, string> = {
   first_name: 'First Name',
   last_name: 'Last Name',
+  nickname: 'Nickname',
   birthdate: 'Birthdate',
   primary_email: 'Email',
   primary_phone: 'Phone',

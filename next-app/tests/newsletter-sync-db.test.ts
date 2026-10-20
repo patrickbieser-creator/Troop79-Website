@@ -54,6 +54,20 @@ describe('loadSyncAddresses', () => {
   });
 });
 
+describe('test people and nicknames', () => {
+  it('Sync_LeavesOutATestPerson', async () => {
+    const p = await personWithEmail('Tester', { is_test: true });
+    const { addresses } = await loadSyncAddresses(admin);
+    expect(addresses.map((a) => a.email)).not.toContain(p.email);
+  });
+
+  it('Sync_GreetsByNickname', async () => {
+    const p = await personWithEmail('Nicked', { nickname: 'Nicky' });
+    const { addresses } = await loadSyncAddresses(admin);
+    expect(addresses.find((a) => a.email === p.email)?.firstName).toBe('Nicky');
+  });
+});
+
 describe('markAddressesUnsubscribed', () => {
   it('Sync_RecordsAnUnsubscribe_IgnoringCase', async () => {
     const p = await personWithEmail('Marked');

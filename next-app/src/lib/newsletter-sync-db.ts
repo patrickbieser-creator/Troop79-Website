@@ -1,8 +1,9 @@
 /**
  * The People side of the EmailOctopus sync (lib/newsletter-sync.ts).
  *
- * Eligible: every address of an active person (not merged, not a guest) that
- * hasn't unsubscribed or bounced here. An address unsubscribed here is never
+ * Eligible: every address of an active person (not merged, not a guest, not a
+ * test record) that hasn't unsubscribed or bounced here. The greeting name is
+ * the nickname when there is one. An address unsubscribed here is never
  * added, whoever has it.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -19,11 +20,12 @@ interface EmailRow {
 
 export async function loadSyncAddresses(sb: SupabaseClient): Promise<{ addresses: SyncAddress[]; unsubscribedHere: string[] }> {
   const [people, emails, scouts] = await Promise.all([
-    fetchAllRows<{ id: number; first_name: string | null; last_name: string | null }>((from, to) =>
+    fetchAllRows<{ id: number; first_name: string | null; last_name: string | null; nickname: string | null }>((from, to) =>
       sb
         .from('people')
-        .select('id, first_name, last_name')
+        .select('id, first_name, last_name, nickname')
         .eq('active', true)
+        .eq('is_test', false)
         .is('merged_into_person_id', null)
         .is('guest_host_household_id', null)
         .order('id')
@@ -41,7 +43,7 @@ export async function loadSyncAddresses(sb: SupabaseClient): Promise<{ addresses
   for (const e of emails) {
     const p = personOf.get(e.person_id);
     if (!p || e.unsubscribed_at || e.bounced_at) continue;
-    addresses.push({ personId: p.id, email: e.email, firstName: p.first_name ?? '', lastName: p.last_name ?? '', isScout: scoutIds.has(p.id) });
+    addresses.push({ personId: p.id, email: e.email, firstName: p.nickname ?? p.first_name ?? '', lastName: p.last_name ?? '', isScout: scoutIds.has(p.id) });
   }
   const unsubscribedHere = emails.filter((e) => e.unsubscribed_at).map((e) => e.email);
   return { addresses, unsubscribedHere };

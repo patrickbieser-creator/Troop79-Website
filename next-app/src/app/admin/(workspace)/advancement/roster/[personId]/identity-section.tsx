@@ -24,6 +24,7 @@ import styles from './person-record.module.css';
 export interface IdentityDraft extends Record<string, string> {
   first_name: string;
   last_name: string;
+  nickname: string;
   bsa_member_id: string;
   patrol: string;
 }
@@ -72,6 +73,7 @@ export function IdentitySection({
           </ReadRow>
           <ReadRow label="First name">{v.first_name}</ReadRow>
           <ReadRow label="Last name">{v.last_name}</ReadRow>
+          <ReadRow label="Nickname">{v.nickname}</ReadRow>
           <ReadRow label="BSA member ID">{v.bsa_member_id ? <span className={styles.mono}>{v.bsa_member_id}</span> : null}</ReadRow>
           <ReadRow label="Patrol">{v.patrol}</ReadRow>
           <ReadRow label="Current rank" derived>
@@ -101,6 +103,15 @@ export function IdentitySection({
                 disabled={form.busy}
                 aria-invalid={d.last_name.trim() ? undefined : true}
                 onChange={(e) => form.setField('last_name', e.target.value)}
+              />
+            </Field>
+            <Field label="Nickname">
+              <input
+                type="text"
+                value={d.nickname}
+                disabled={form.busy}
+                placeholder="If they go by another name"
+                onChange={(e) => form.setField('nickname', e.target.value)}
               />
             </Field>
             <Field label="BSA member ID">

@@ -31,11 +31,12 @@ const money = (n: number) => `$${Number(n).toFixed(2)}`;
 interface PersonRow {
   first_name: string;
   last_name: string;
+  nickname?: string | null;
 }
 
 /** "Sam K." — the one short-name format scout names take (lib/scout-name). */
 export async function shortNameWith(supabase: SupabaseClient, personId: number): Promise<string> {
-  const { data } = await supabase.from('people').select('first_name, last_name').eq('id', personId).maybeSingle();
+  const { data } = await supabase.from('people').select('first_name, last_name, nickname').eq('id', personId).maybeSingle();
   return data ? publicScoutName(data as PersonRow) : 'Someone';
 }
 
@@ -181,7 +182,7 @@ interface JoinedRow {
 
 const JOIN =
   'id, package_id, old_price, new_price, status, created_at, decided_at, ' +
-  'mm_packages(name, price, yield, ingredient_id), people!reported_by_person_id(first_name, last_name), mm_menus(name)';
+  'mm_packages(name, price, yield, ingredient_id), people!reported_by_person_id(first_name, last_name, nickname), mm_menus(name)';
 
 export interface HeldPrice {
   id: string;

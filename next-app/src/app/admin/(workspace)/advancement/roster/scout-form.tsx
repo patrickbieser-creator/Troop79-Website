@@ -30,6 +30,8 @@ export interface ScoutRow {
   id: string;
   first_name: string;
   last_name: string;
+  /** people.nickname — what the scout goes by; display_name is built from it. */
+  nickname: string | null;
   display_name: string;
   patrol: string | null;
   current_rank: string | null;

@@ -48,6 +48,7 @@ describe('scout change-request submit — current values come from the scouts+pe
     const person: ScoutPersonContactRow = {
       id: 42,
       address_line1: '1 Main St',
+      nickname: null,
       address_line2: null,
       city: 'Milwaukee',
       state: 'WI',

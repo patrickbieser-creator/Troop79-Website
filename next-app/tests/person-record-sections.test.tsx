@@ -119,6 +119,7 @@ describe('Person record sections — read → Edit → Save/Cancel, one at a tim
       'first_name',
       'health_form_date',
       'last_name',
+      'nickname',
       'things_we_should_know',
       'ypt_completed'
     ]);

@@ -49,7 +49,7 @@ async function entry(date: string): Promise<number> {
   return data!.id as number;
 }
 async function person(label: string, o: Record<string, unknown> = {}): Promise<number> {
-  const { data, error } = await sb.from('people').insert({ display_name: `${TEST_PREFIX} MTA ${label}`, first_name: TEST_PREFIX, last_name: label, ...o }).select('id').single();
+  const { data, error } = await sb.from('people').insert({ display_name: `${TEST_PREFIX} MTA ${label}`, first_name: `${TEST_PREFIX} MTA`, last_name: label, ...o }).select('id').single();
   if (error) throw new Error(error.message);
   people.push(data!.id);
   return data!.id as number;
@@ -57,7 +57,7 @@ async function person(label: string, o: Record<string, unknown> = {}): Promise<n
 async function scout(label: string, rank: string): Promise<number> {
   const pid = await person(label);
   const id = `vitest-mta-${pid}`;
-  const { error } = await sb.from('scouts').insert({ id, first_name: TEST_PREFIX, last_name: label, display_name: `${TEST_PREFIX} MTA ${label}`, person_id: pid, active: true, current_rank: rank });
+  const { error } = await sb.from('scouts').insert({ id, first_name: `${TEST_PREFIX} MTA`, last_name: label, display_name: `${TEST_PREFIX} MTA ${label}`, person_id: pid, active: true, current_rank: rank });
   if (error) throw new Error(error.message);
   scoutIds.push(id);
   return pid;

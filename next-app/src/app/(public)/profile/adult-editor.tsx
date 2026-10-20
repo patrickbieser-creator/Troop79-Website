@@ -18,6 +18,7 @@ export interface AdultProfileFields {
   relationship: string | null;
   first_name: string | null;
   last_name: string | null;
+  nickname: string | null;
   birthdate: string | null;
   primary_email: string | null;
   primary_phone: string | null;
@@ -123,6 +124,22 @@ export default function AdultEditor({
               className={styles.editInput}
               value={values.last_name ?? ''}
               onChange={(e) => onChange('last_name', e.target.value)}
+            />
+          )}
+        </EditField>
+        <EditField
+          label="Nickname"
+          name="nickname"
+          queued={queued}
+          previous={displayValue(adult.nickname)}
+        >
+          {(a) => (
+            <input
+              {...a}
+              className={styles.editInput}
+              placeholder="What they go by, if not their first name"
+              value={values.nickname ?? ''}
+              onChange={(e) => onChange('nickname', e.target.value)}
             />
           )}
         </EditField>

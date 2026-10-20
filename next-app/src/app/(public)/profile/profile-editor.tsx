@@ -19,6 +19,7 @@ import styles from './profile.module.css';
 export interface ScoutProfileFields {
   id: string;
   displayName: string;
+  nickname: string | null;
   address_line1: string | null;
   address_line2: string | null;
   city: string | null;
@@ -104,6 +105,22 @@ export default function ProfileEditor({
       )}
 
       <div className={styles.editGrid}>
+        <EditField
+          label="Nickname"
+          name="nickname"
+          queued={queued}
+          previous={displayValue(scout.nickname)}
+        >
+          {(a) => (
+            <input
+              {...a}
+              className={styles.editInput}
+              placeholder="What they go by, if not their first name"
+              value={values.nickname ?? ''}
+              onChange={(e) => onChange('nickname', e.target.value)}
+            />
+          )}
+        </EditField>
         <EditField
           label="Address Line 1"
           full

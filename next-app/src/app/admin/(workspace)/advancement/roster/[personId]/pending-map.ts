@@ -32,12 +32,12 @@ const CONTACT_SCOUT = ['email', 'phone', 'address_line1', 'address_line2', 'city
 const SECTION_FIELDS: Record<PendingChangeRequest['entityType'], Record<SectionKey, readonly string[]>> = {
   adult: {
     identity: [],
-    details: ['first_name', 'last_name', 'birthdate'],
+    details: ['first_name', 'last_name', 'nickname', 'birthdate'],
     contact: CONTACT_ADULT,
     family: []
   },
   scout: {
-    identity: [],
+    identity: ['nickname'],
     details: ['birthdate', 'school', 'graduation_year', 'swim_class', 'things_we_should_know'],
     contact: CONTACT_SCOUT,
     family: []

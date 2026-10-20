@@ -65,6 +65,13 @@ describe('loadRosterPeople', () => {
   });
 });
 
+describe('loadRosterPeople test records', () => {
+  it('Report_LeavesOutTestPeople', async () => {
+    const t = await person('Tester', { is_test: true });
+    expect((await loadRosterPeople(admin)).map((p) => p.id)).not.toContain(t);
+  });
+});
+
 describe('latestRosterAsOf', () => {
   it('Leader_CannotUndoANewerRoster_BecauseTheNewestDateIsKnown', async () => {
     const id = await person('Newest');

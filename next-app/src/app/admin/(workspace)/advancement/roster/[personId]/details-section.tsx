@@ -36,6 +36,7 @@ import styles from './person-record.module.css';
 export interface AdultDetailsDraft extends Record<string, string> {
   first_name: string;
   last_name: string;
+  nickname: string;
   birthdate: string;
   bsa_member_id: string;
   ypt_completed: string;
@@ -132,6 +133,7 @@ export function AdultDetailsSection({
         <ReadRows>
           <ReadRow label="First name">{v.first_name}</ReadRow>
           <ReadRow label="Last name">{v.last_name}</ReadRow>
+          <ReadRow label="Nickname">{v.nickname}</ReadRow>
           <ReadRow label="Birthdate">
             <Birthdate value={v.birthdate} today={today} />
           </ReadRow>
@@ -168,6 +170,15 @@ export function AdultDetailsSection({
                 disabled={form.busy}
                 aria-invalid={d.last_name.trim() ? undefined : true}
                 onChange={(e) => form.setField('last_name', e.target.value)}
+              />
+            </Field>
+            <Field label="Nickname">
+              <input
+                type="text"
+                value={d.nickname}
+                disabled={form.busy}
+                placeholder="If they go by another name"
+                onChange={(e) => form.setField('nickname', e.target.value)}
               />
             </Field>
             <Field label="Birthdate">

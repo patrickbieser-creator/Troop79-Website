@@ -133,9 +133,9 @@ export async function listHeldPackagesWith(sb: SupabaseClient): Promise<HeldPack
 async function ownerCredits(sb: SupabaseClient, ids: number[]): Promise<Map<number, string>> {
   const out = new Map<number, string>();
   if (ids.length === 0) return out;
-  const { data, error } = await sb.from('people').select('id, first_name, last_name').in('id', ids);
+  const { data, error } = await sb.from('people').select('id, first_name, last_name, nickname').in('id', ids);
   if (error) throw new Error(`package credits: ${error.message}`);
-  for (const p of data ?? []) out.set(p.id as number, publicScoutName({ first_name: (p.first_name as string) ?? '', last_name: (p.last_name as string) ?? '' }));
+  for (const p of data ?? []) out.set(p.id as number, publicScoutName({ first_name: (p.first_name as string) ?? '', last_name: (p.last_name as string) ?? '', nickname: p.nickname as string | null }));
   return out;
 }
 

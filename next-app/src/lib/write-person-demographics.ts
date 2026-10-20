@@ -19,6 +19,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 export interface PersonDemographicsFields {
   first_name?: string | null;
   last_name?: string | null;
+  nickname?: string | null;
   display_name?: string | null;
   primary_email?: string | null;
   primary_phone?: string | null;

@@ -28,6 +28,7 @@ describe('mergeScoutRow', () => {
     const person: ScoutPersonContactRow = {
       id: 42,
       address_line1: '1 Trail Rd',
+      nickname: null,
       address_line2: null,
       city: 'Milwaukee',
       state: 'WI',

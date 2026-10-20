@@ -27,6 +27,7 @@ import type { AdultProfileFields } from '../src/app/(public)/profile/adult-edito
 const MAYA: ScoutProfileFields = {
   id: 'mtest',
   displayName: 'Maya Tester',
+  nickname: null,
   address_line1: '100 Oak St',
   address_line2: null,
   city: 'Milwaukee',
@@ -44,6 +45,7 @@ const MAYA: ScoutProfileFields = {
 const PATRICK: AdultProfileFields = {
   personId: 501,
   displayName: 'Patrick Tester',
+  nickname: null,
   relationship: 'Dad',
   first_name: 'Patrick',
   last_name: 'Tester',
@@ -60,6 +62,7 @@ const PATRICK: AdultProfileFields = {
 const JAMIE: AdultProfileFields = {
   personId: 502,
   displayName: 'Jamie Tester',
+  nickname: null,
   relationship: 'Mom',
   first_name: 'Jamie',
   last_name: 'Tester',

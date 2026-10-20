@@ -22,7 +22,7 @@ interface PersonRow {
   inactive_reason: string | null;
 }
 
-/** Everyone the roster could be about: merged and guest people left out. */
+/** Everyone the roster could be about: merged, guest and test people left out. */
 export async function loadRosterPeople(sb: SupabaseClient): Promise<RosterPerson[]> {
   const [people, emails, scouts, leaders] = await Promise.all([
     fetchAllRows<PersonRow>((from, to) =>
@@ -31,6 +31,7 @@ export async function loadRosterPeople(sb: SupabaseClient): Promise<RosterPerson
         .select('id, first_name, last_name, display_name, gender, primary_phone, bsa_member_id, ypt_completed, active, inactive_reason')
         .is('merged_into_person_id', null)
         .is('guest_host_household_id', null)
+        .eq('is_test', false)
         .order('id')
         .range(from, to)
     ),

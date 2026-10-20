@@ -18,6 +18,7 @@ const scout = (over: Partial<ScoutRow>): ScoutRow => ({
   person_id: 501,
   id: 'A01',
   first_name: 'Avery',
+  nickname: null,
   last_name: 'Scout',
   display_name: 'Avery Scout',
   patrol: null,

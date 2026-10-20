@@ -48,6 +48,7 @@ interface PersonFieldRow {
   display_name: string;
   first_name: string | null;
   last_name: string | null;
+  nickname: string | null;
   birthdate: string | null;
   primary_email: string | null;
   primary_phone: string | null;
@@ -103,6 +104,7 @@ export default async function ProfilePage({
         rows: scoutRows({
           id: r.id,
           displayName: r.display_name,
+          nickname: r.nickname,
           address_line1: r.address_line1,
           address_line2: r.address_line2,
           city: r.city,
@@ -127,6 +129,7 @@ export default async function ProfilePage({
           relationship: relationshipByPerson.get(r.id) ?? null,
           first_name: r.first_name,
           last_name: r.last_name,
+          nickname: r.nickname,
           birthdate: r.birthdate,
           primary_email: r.primary_email,
           primary_phone: r.primary_phone,
@@ -239,6 +242,7 @@ export default async function ProfilePage({
       scoutsByKey[key] = {
         id: r.id,
         displayName: r.display_name,
+        nickname: r.nickname,
         address_line1: r.address_line1,
         address_line2: r.address_line2,
         city: r.city,
@@ -272,6 +276,7 @@ export default async function ProfilePage({
         relationship: relationshipByPerson.get(r.id) ?? null,
         first_name: r.first_name,
         last_name: r.last_name,
+        nickname: r.nickname,
         birthdate: r.birthdate,
         primary_email: r.primary_email,
         primary_phone: r.primary_phone,
