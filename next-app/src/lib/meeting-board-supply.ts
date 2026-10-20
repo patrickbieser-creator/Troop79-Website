@@ -223,7 +223,7 @@ export async function loadTeachBoard(
  */
 export async function loadLiveMatch(
   sb: SupabaseClient,
-  meeting: Pick<BoardMeeting, 'date' | 'blockCount'>,
+  meeting: Pick<BoardMeeting, 'date'>,
   board: readonly BoardScoutRow[],
   teach: Pick<TeachBoard, 'supply' | 'intents'>
 ): Promise<MatchResult> {
@@ -234,7 +234,6 @@ export async function loadLiveMatch(
   const progress = await loadScoutProgress(sb, inPlay.map((s) => s.scoutId));
   return matchBoard({
     meetingDate: meeting.date,
-    blockCount: meeting.blockCount,
     scouts: inPlay.map((s) => ({
       personId: s.personId,
       currentRank: s.currentRank,

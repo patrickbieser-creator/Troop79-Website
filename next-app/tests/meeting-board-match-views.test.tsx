@@ -60,12 +60,14 @@ describe('board settings', () => {
     expect([screen.getByRole('button', { name: 'Saved' }).hasAttribute('disabled'), screen.getByRole('button', { name: 'Discard changes' }).hasAttribute('disabled')]).toEqual([true, true]);
   });
 
-  it('Leader_SetsThreeBlocks_AndSaves', async () => {
+  it('BoardSettings_HasNoBlockCountToChoose_AndKeepsTheSavedOne', async () => {
+    // Blocks are sessions the matcher fills (up to 12), so there is no count to pick; the stored one rides along.
     plan.setBoard.mockResolvedValue({ ok: true });
-    settings();
-    await userEvent.click(screen.getByRole('radio', { name: '3 (on purpose)' }));
+    settings({ initial: { mode: 'closed', mbId: '', blockCount: 2, stations: [] } });
+    await userEvent.click(screen.getByRole('radio', { name: 'Rank' }));
+    const noCount = screen.queryByRole('radiogroup', { name: 'Teaching blocks' });
     await userEvent.click(screen.getByRole('button', { name: 'Save board' }));
-    expect(plan.setBoard).toHaveBeenCalledWith({ entryId: 5, mode: 'rank', mbId: null, blockCount: 3 });
+    expect([noCount, plan.setBoard.mock.calls[0][0]]).toEqual([null, { entryId: 5, mode: 'rank', mbId: null, blockCount: 2 }]);
   });
 
   it('BoardSettings_MeritBadgeNight_SaysWhy_WhenNoBadgeChosen', async () => {
@@ -151,11 +153,11 @@ describe('board settings', () => {
   });
 
   it('BoardSettings_ShowsTheRpcReason_WhenRefused', async () => {
-    plan.setBoard.mockResolvedValue({ ok: false, error: 'Teaching blocks are 1, 2 or 3.' });
+    plan.setBoard.mockResolvedValue({ ok: false, error: 'That meeting has passed.' });
     settings();
-    await userEvent.click(screen.getByRole('radio', { name: '1' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Closed' }));
     await userEvent.click(screen.getByRole('button', { name: 'Save board' }));
-    expect(screen.getByRole('alert').textContent).toBe('Teaching blocks are 1, 2 or 3.');
+    expect(screen.getByRole('alert').textContent).toBe('That meeting has passed.');
   });
 });
 
@@ -168,6 +170,7 @@ const sundayData = {
     blocks: [
       {
         label: 'Block 1',
+        half: 0 as const,
         sessions: [
           {
             id: '40:tenderfoot-4a',
@@ -183,7 +186,7 @@ const sundayData = {
           }
         ]
       },
-      { label: 'Block 2', sessions: [] }
+      { label: 'Block 2', half: null, sessions: [] }
     ]
   },
   stamp: 's',
@@ -221,6 +224,12 @@ describe('Group Sessions: the match by block', () => {
     expect([block2.textContent, block2.className.includes('blockEmpty')]).toEqual(['Block 2Not filled', true]);
   });
 
+  it('Leader_SeesFilledBlocks_UnderTheirRoughHalf', () => {
+    render(<MatchBlocks match={sundayData.match} />);
+    const first = screen.getByRole('region', { name: 'First half, about 4:15' });
+    expect([within(first).queryByRole('region', { name: 'Block 1' }) != null, within(first).queryByRole('region', { name: 'Block 2' })]).toEqual([true, null]);
+  });
+
   it('Scouts_AndTeachers_CarryTheirOwnTints', () => {
     render(<MatchBlocks match={sundayData.match} />);
     const block1 = screen.getByRole('region', { name: 'Block 1' });
@@ -249,7 +258,7 @@ describe('This Sunday', () => {
 
   it('Leader_SeesATeacherWithNoFreeBlock_OnTheWantedList', () => {
     render(<ThisSundayView data={sundayData} />);
-    expect(screen.getByText('Karen O signed up, with no free block for it')).toBeTruthy();
+    expect(screen.getByText('Karen O signed up, with no room for another session')).toBeTruthy();
   });
 
   it('Leader_SeesWhereANotSureYetScoutWasPlaced', () => {
@@ -348,7 +357,6 @@ describe('the member page', () => {
         entryId={1}
         mode="rank"
         mbName={null}
-        blockCount={2}
         dayName="Sunday"
         subject={{ personId: 7, firstName: 'Finn', isSelf: true }}
         initial={{ personId: 7, intent: 'coming', picks: [] }}

@@ -38,7 +38,6 @@ export interface ScoutBoardProps {
   entryId: number;
   mode: 'rank' | 'merit_badge';
   mbName: string | null;
-  blockCount: number;
   /** 'Sunday', from the meeting date. */
   dayName: string;
   subject: { personId: number; firstName: string; isSelf: boolean };
@@ -351,7 +350,7 @@ export function ScoutBoard(props: ScoutBoardProps) {
       <p className={styles.lede}>
         {notComing
           ? 'Want to work on something at a later meeting? Pick it here.'
-          : `Pick up to ${MAX_PICKS} things to work on. ${props.blockCount === 1 ? 'You’ll do one of them.' : 'You’ll do one or two of them.'}`}
+          : `Pick up to ${MAX_PICKS} things to work on. You’ll do one or two of them.`}
       </p>
 
       <section className={errKey ? `${styles.tray} ${styles.trayBad}` : styles.tray} aria-label={whose}>

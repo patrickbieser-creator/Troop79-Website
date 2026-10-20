@@ -64,7 +64,6 @@ function scoutBoard(o: Partial<Parameters<typeof ScoutBoard>[0]> = {}) {
       entryId={1}
       mode="merit_badge"
       mbName="Cooking"
-      blockCount={2}
       dayName="Sunday"
       subject={{ personId: 7, firstName: 'Finn', isSelf: true }}
       initial={{ personId: 7, intent: 'coming', picks: [] }}

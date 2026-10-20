@@ -1,20 +1,22 @@
 /**
  * The meeting board's live matcher (Phase 3a of Plans/Meeting-Requests-And-Teaching-Offers.md, "Matching rules", rank
- * mode). A PURE, deterministic function over the board: picks, answers, teachers, skill offers and the block count in,
- * sessions per block and the unmatched lists out. No I/O and client-safe, so This Sunday, the meeting editor's tray,
+ * mode). A PURE, deterministic function over the board: picks, answers, teachers and skill offers in, teaching blocks
+ * and the unmatched lists out. No I/O and client-safe, so This Sunday, the meeting editor's tray,
  * /member/meeting and the tests all read one definition. Same input (in any order) = same output.
  *
  *   1. Teachers: a person committed to a topic teaches it (an unqualified one is allowed, with the Phase 2 flags); a
  *      skill offer teaches every requirement in that skill the offerer qualifies for (rank_requirements.skill_id).
  *      Can't-make-it teachers and people who no longer qualify are left out.
  *   2. Sessions: one per (teacher, topic). Sibling picks in the same rank sharing the teacher's skill merge into the
- *      same session (Tenderfoot 4a-4d, all first aid). A skill offer makes one session per rank it reaches, as many as
- *      the teacher has blocks. A session is live once a scout asked for it for THIS meeting: one scout is enough
+ *      same session (Tenderfoot 4a-4d, all first aid). A skill offer makes one session per rank it reaches, up to the
+ *      teacher's SESSIONS_PER_TEACHER. A session is live once a scout asked for it for THIS meeting: one scout is enough
  *      (Patrick, R1: one-scout sessions are allowed), so the plan's "2 picks, 1 for a merit badge make-up" is not a gate.
- *   3. Blocks: a teacher is in one place per block. Sessions go to the block that overlaps least with the scouts
- *      already asked for there. A session over 8 splits into a Group B in a free block of the same teacher.
- *   4. Scouts: at most one session per block and at most TWO in any case, even with three blocks (Decision 1); 8 a
- *      session. Everyone gets one before anyone gets a second. A contested seat goes by the scout's own ranking of it
+ *   3. Teaching blocks (Patrick, 2026-10-20): a block IS a session, one adult teaching one group, with no clock; how
+ *      long one takes can't be predicted, so nothing is bound to a time period. Up to MAX_BLOCKS a meeting; a teacher
+ *      leads up to SESSIONS_PER_TEACHER. A session over 8 splits into a Group B led again by the same teacher. Blocks
+ *      are numbered first half, then second (HALF_LABEL: a rough guide, never a constraint), biggest first.
+ *   4. Scouts: at most TWO sessions (Decision 1); 8 a session. Everyone gets one before anyone gets a second. A
+ *      contested seat goes by the scout's own ranking of it
  *      (an unranked pick after any ranked one), then closest to finishing their next rank, then longest asked
  *      (first_asked_on), then the person id (only so the result never depends on input order).
  *   5. "Not sure yet" scouts are placed after everyone who said Coming: by their own picks if they have any, otherwise
@@ -32,8 +34,14 @@ import { openRankTops, rankLeafCompletion } from '@/lib/rank-calculus';
 
 /** Scouts per session: the engine's group cap. */
 export const SESSION_CAP = 8;
-/** Topics a scout is matched to, whatever the block count (Decision 1). */
+/** Topics a scout is matched to (Decision 1). */
 export const MAX_TOPICS_PER_SCOUT = 2;
+/** Teaching blocks (sessions) a meeting can hold; unused ones show as "Not filled" (Patrick, 2026-10-20). */
+export const MAX_BLOCKS = 12;
+/** Sessions one teacher leads, one after the other: the commitment cap. */
+export const SESSIONS_PER_TEACHER = 2;
+/** The rough halves a session is suggested for (MatchSession.half): a guide, never a constraint. */
+export const HALF_LABEL = ['First half, about 4:15', 'Second half, about 4:45'] as const;
 
 export interface MatchScout {
   personId: number;
@@ -47,8 +55,6 @@ export interface MatchScout {
 
 export interface MatchInput {
   meetingDate: string;
-  /** Teaching blocks this meeting (1-3). */
-  blockCount: number;
   scouts: readonly MatchScout[];
   supply: SupplyInput;
   /** Explicit answers of the people in supply.people (for "Not sure yet" adults). */
@@ -72,12 +78,14 @@ export interface MatchSession {
   unitId: string;
   /** Topic keys taught here, catalog order (several when sibling picks merged). */
   keys: string[];
-  /** 0-based. */
+  /** 0-based teaching block: the session's number, first half then second, biggest first. */
   block: number;
+  /** The rough half it's suggested for (0 ≈ 4:15, 1 ≈ 4:45): a guide for the order, never a constraint. */
+  half: 0 | 1;
   /** 'A', 'B' when an oversubscribed topic split; null otherwise. */
   group: string | null;
   teacherId: number;
-  /** Others committed to the same topic, free in this block. */
+  /** Others committed to the same topic. */
   coTeacherIds: number[];
   /** 'topic' = a commitment; 'offer' = a broad skill offer. */
   via: 'topic' | 'offer';
@@ -87,12 +95,14 @@ export interface MatchSession {
 }
 
 export interface MatchResult {
+  /** Teaching blocks available (MAX_BLOCKS); `sessions` fill the first of them. */
   blockCount: number;
-  /** Live sessions: by block, then most scouts, then id. */
+  /** Live sessions in block order. */
   sessions: MatchSession[];
   /** Each scout's seats, by block. Only scouts with at least one. */
   assignments: { personId: number; seats: (MatchSeat & { sessionId: string; block: number })[] }[];
-  /** Asked for, nobody to teach it (a teacher with no free block counts: they're named in blockedTeacherIds). */
+  /** Asked for, nobody to teach it (a teacher already leading their limit, or every block taken, counts: they're named
+   *  in blockedTeacherIds). */
   wanted: { key: string; scoutIds: number[]; weeks: number; canTeach: number[]; blockedTeacherIds: number[] }[];
   /** Put on the board by a teacher, asked for by nobody: a topic (key) or a skill offer (skillId). */
   offeredNoTakers: { personId: number; key: string | null; skillId: string | null }[];
@@ -148,7 +158,6 @@ interface Unit {
 
 interface Section {
   unit: Unit;
-  block: number;
   group: string | null;
   coTeacherIds: number[];
   seats: MatchSeat[];
@@ -159,8 +168,7 @@ const byNum = (a: number, b: number) => a - b;
 export function matchBoard(input: MatchInput): MatchResult {
   const { supply } = input;
   const ctx = supply.ctx;
-  const blocks = Math.max(1, Math.min(3, Math.trunc(input.blockCount) || 1));
-  const cap = Math.min(MAX_TOPICS_PER_SCOUT, blocks);
+  const cap = MAX_TOPICS_PER_SCOUT;
   const order = topicOrder(ctx.ranks, ctx.rankReqs);
   const keyCmp = (a: string, b: string) => order(a) - order(b) || a.localeCompare(b);
 
@@ -230,63 +238,41 @@ export function matchBoard(input: MatchInput): MatchResult {
       offeredNoTakers.push({ personId: o.personId, key: null, skillId: o.skillId });
       continue;
     }
-    // One broad offer is one commitment, and fills as many blocks as the teacher has free.
-    for (const keys of groups.slice(0, Math.max(0, blocks - ledBy(o.personId)))) {
+    // One broad offer is one commitment, and makes as many sessions as the teacher can still lead.
+    for (const keys of groups.slice(0, Math.max(0, SESSIONS_PER_TEACHER - ledBy(o.personId)))) {
       const unit: Unit = { id: `${o.personId}:${keys[0]}`, keys, teacherId: o.personId, coTeacherIds: [], via: 'offer' };
       for (const k of keys) unitOfKey.set(k, unit);
       units.push(unit);
     }
   }
 
-  // ── blocks: a teacher is in one place a block; least overlap with the scouts already asked for there ──────────
-  const busy = new Map<number, Set<number>>(); // person → blocks they teach in
-  const isBusy = (personId: number, block: number) => busy.get(personId)?.has(block) ?? false;
-  const markBusy = (personId: number, block: number) => busy.set(personId, (busy.get(personId) ?? new Set()).add(block));
+  // ── teaching blocks: a session each, no clock; MAX_BLOCKS a meeting, SESSIONS_PER_TEACHER a teacher ────────────
   const sections: Section[] = [];
-  const bestBlock = (unit: Unit): number | null => {
-    const mine = demanders(unit.keys);
-    let best: number | null = null;
-    let bestScore = Infinity;
-    for (let b = 0; b < blocks; b++) {
-      if (isBusy(unit.teacherId, b)) continue;
-      const there = sections.filter((s) => s.block === b);
-      const overlap = there.reduce((n, s) => n + [...demanders(s.unit.keys)].filter((id) => mine.has(id)).length, 0);
-      const score = overlap * 100 + there.length * 10 + unit.coTeacherIds.filter((c) => isBusy(c, b)).length;
-      if (score < bestScore) {
-        bestScore = score;
-        best = b;
-      }
-    }
-    return best;
+  const led = new Map<number, number>(); // teacher → sessions they lead
+  const room = (unit: Unit) => sections.length < MAX_BLOCKS && (led.get(unit.teacherId) ?? 0) < SESSIONS_PER_TEACHER;
+  const place = (unit: Unit) => {
+    led.set(unit.teacherId, (led.get(unit.teacherId) ?? 0) + 1);
+    sections.push({ unit, group: null, coTeacherIds: unit.coTeacherIds, seats: [] });
   };
-  const place = (unit: Unit, block: number, group: string | null) => {
-    const co = unit.coTeacherIds.filter((c) => !isBusy(c, block));
-    markBusy(unit.teacherId, block);
-    for (const c of co) markBusy(c, block);
-    sections.push({ unit, block, group, coTeacherIds: co, seats: [] });
-  };
-  const blocked = new Map<string, number[]>(); // key → teachers who had no free block for it
+  const blocked = new Map<string, number[]>(); // key → teachers with no room left for it
   const bySize = (a: Unit, b: Unit) => demanders(b.keys).size - demanders(a.keys).size || a.id.localeCompare(b.id);
   for (const unit of [...units].sort(bySize)) {
-    const b = bestBlock(unit);
-    if (b == null) {
+    if (!room(unit)) {
       for (const k of unit.keys) blocked.set(k, [...(blocked.get(k) ?? []), unit.teacherId]);
       for (const k of unit.keys) unitOfKey.delete(k);
       continue;
     }
-    place(unit, b, null);
+    place(unit);
   }
-  // An oversubscribed topic splits into a Group B (C…) in another free block of the same teacher.
+  // An oversubscribed topic splits into a Group B (C…), led again by the same teacher while they and the meeting have room.
   for (const unit of [...units].sort(bySize)) {
     const mine = sections.filter((s) => s.unit === unit);
     if (!mine.length) continue;
-    while (mine.length * SESSION_CAP < demanders(unit.keys).size) {
-      const b = bestBlock(unit);
-      if (b == null) break;
-      place(unit, b, null);
+    while (mine.length * SESSION_CAP < demanders(unit.keys).size && room(unit)) {
+      place(unit);
       mine.push(sections[sections.length - 1]);
     }
-    if (mine.length > 1) mine.sort((x, y) => x.block - y.block).forEach((s, i) => (s.group = String.fromCharCode(65 + i)));
+    if (mine.length > 1) mine.forEach((s, i) => (s.group = String.fromCharCode(65 + i)));
   }
 
   // ── assignment ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -294,7 +280,8 @@ export function matchBoard(input: MatchInput): MatchResult {
   const completion = new Map(scouts.map((s) => [s.personId, nextRankCompletion(s, ctx)]));
   const seatsOf = new Map<number, (MatchSeat & { section: Section })[]>();
   const has = (personId: number, unit: Unit) => (seatsOf.get(personId) ?? []).some((x) => x.section.unit === unit);
-  const freeIn = (personId: number, block: number) => !(seatsOf.get(personId) ?? []).some((x) => x.section.block === block) && !isBusy(personId, block);
+  // No clock, so the only clash is a Junior Leader's own session.
+  const freeIn = (personId: number, s: Section) => s.unit.teacherId !== personId && !s.coTeacherIds.includes(personId);
   const sectionsOf = new Map<Unit, Section[]>();
   for (const s of sections) sectionsOf.set(s.unit, [...(sectionsOf.get(s.unit) ?? []), s]);
   const contest = (a: Demand, b: Demand) =>
@@ -320,11 +307,11 @@ export function matchBoard(input: MatchInput): MatchResult {
         }
         for (const unit of [...claims.keys()].sort((a, b) => a.id.localeCompare(b.id))) {
           for (const d of claims.get(unit)!.sort(contest)) {
-            // Split groups fill evenly: the open group with the fewest scouts, then the earlier block.
+            // Split groups fill evenly: the open group with the fewest scouts, then Group A before B.
             const section = sectionsOf
               .get(unit)!
-              .filter((s) => s.seats.length < SESSION_CAP && freeIn(d.personId, s.block))
-              .sort((x, y) => x.seats.length - y.seats.length || x.block - y.block)[0];
+              .filter((s) => s.seats.length < SESSION_CAP && freeIn(d.personId, s))
+              .sort((x, y) => x.seats.length - y.seats.length || (x.group ?? '').localeCompare(y.group ?? ''))[0];
             if (!section) continue;
             const seat: MatchSeat = { personId: d.personId, key: d.key, pickNo: via === 'pick' ? d.priority : null, via };
             section.seats.push(seat);
@@ -356,28 +343,45 @@ export function matchBoard(input: MatchInput): MatchResult {
       offeredNoTakers.push({ personId: unit.teacherId, key: unit.keys[0], skillId: null });
     }
   }
-  const out: MatchSession[] = sections
-    .filter((s) => s.seats.length > 0)
-    .map((s) => ({
-      id: sessionId(s),
-      unitId: s.unit.id,
-      keys: s.unit.keys,
-      block: s.block,
-      group: s.group,
-      teacherId: s.unit.teacherId,
-      coTeacherIds: s.coTeacherIds,
-      via: s.unit.via,
-      flags: flagsOf(s.unit),
-      scouts: [...s.seats].sort((a, b) => a.personId - b.personId)
-    }))
-    .sort((a, b) => a.block - b.block || b.scouts.length - a.scouts.length || a.id.localeCompare(b.id));
+  // Rough halves (Patrick: about 4:15-4:45 and 4:45-5:15, "by no means locked"): a guide for the order, never a
+  // constraint. Biggest first, each session goes to the half where fewer of its people (teachers and scouts) already
+  // are, then to the emptier half. Blocks are then numbered first half, then second, biggest first within each.
+  const unitSize = (u: Unit) => sections.filter((s) => s.unit === u).reduce((n, s) => n + s.seats.length, 0);
+  const bigFirst = (a: Section, b: Section) =>
+    unitSize(b.unit) - unitSize(a.unit) || a.unit.id.localeCompare(b.unit.id) || (a.group ?? '').localeCompare(b.group ?? '');
+  const halfOf = new Map<Section, 0 | 1>();
+  const inHalf = [new Set<number>(), new Set<number>()];
+  const perHalf = [0, 0];
+  for (const s of sections.filter((x) => x.seats.length > 0).sort(bigFirst)) {
+    const people = [s.unit.teacherId, ...s.coTeacherIds, ...s.seats.map((x) => x.personId)];
+    const clash = (h: 0 | 1) => people.filter((id) => inHalf[h].has(id)).length;
+    const h: 0 | 1 = clash(0) !== clash(1) ? (clash(0) < clash(1) ? 0 : 1) : perHalf[0] <= perHalf[1] ? 0 : 1;
+    halfOf.set(s, h);
+    perHalf[h]++;
+    for (const id of people) inHalf[h].add(id);
+  }
+  const live = [...halfOf.keys()].sort((a, b) => halfOf.get(a)! - halfOf.get(b)! || bigFirst(a, b));
+  const blockOf = new Map(live.map((s, i) => [s, i]));
+  const out: MatchSession[] = live.map((s, i) => ({
+    id: sessionId(s),
+    unitId: s.unit.id,
+    keys: s.unit.keys,
+    block: i,
+    half: halfOf.get(s)!,
+    group: s.group,
+    teacherId: s.unit.teacherId,
+    coTeacherIds: s.coTeacherIds,
+    via: s.unit.via,
+    flags: flagsOf(s.unit),
+    scouts: [...s.seats].sort((a, b) => a.personId - b.personId)
+  }));
 
   const assignments = [...seatsOf]
     .sort(([a], [b]) => a - b)
     .map(([personId, seats]) => ({
       personId,
       seats: seats
-        .map(({ section, ...seat }) => ({ ...seat, sessionId: sessionId(section), block: section.block }))
+        .map(({ section, ...seat }) => ({ ...seat, sessionId: sessionId(section), block: blockOf.get(section)! }))
         .sort((a, b) => a.block - b.block)
     }));
 
@@ -404,7 +408,7 @@ export function matchBoard(input: MatchInput): MatchResult {
     .map((p) => ({ personId: p.personId, fits: wanted.filter((w) => { const a = assessTeacher(p, w.key, ctx); return a.qualified && !a.refused; }).map((w) => w.key) }));
 
   return {
-    blockCount: blocks,
+    blockCount: MAX_BLOCKS,
     sessions: out,
     assignments,
     wanted,
@@ -439,7 +443,7 @@ export function sessionWords(
 
 /** A line on /member/meeting: a scout's matched session, or a session a teacher is teaching. */
 export interface MatchLine {
-  /** 'Block 1', or null on a one-block meeting. */
+  /** 'Block 3 · Second half, about 4:45': the session's teaching block and rough half. */
   block: string | null;
   title: string;
   codeLabel: string;
@@ -464,7 +468,7 @@ function lineFor(match: MatchResult, s: MatchSession, src: LineSources, seat?: M
   const w = sessionWords(s.keys, src.catalog, new Map(src.catalog.skills.map((k) => [k.id, k.name])), src.freeformTitles);
   const t = src.people.get(s.teacherId);
   return {
-    block: match.blockCount > 1 ? `Block ${s.block + 1}` : null,
+    block: `Block ${s.block + 1} · ${HALF_LABEL[s.half]}`,
     title: w.title,
     codeLabel: s.group ? `${w.codeLabel} · Group ${s.group}` : w.codeLabel,
     pickNo: seat?.pickNo ?? null,

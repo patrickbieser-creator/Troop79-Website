@@ -299,7 +299,6 @@ export default async function MeetingBoardPage({ searchParams }: { searchParams:
           entryId={meeting.entryId}
           mode={meeting.mode}
           mbName={mbName}
-          blockCount={meeting.blockCount}
           dayName={dayName}
           subject={{ personId: chosen.personId, firstName: firstNameOf(chosen.name), isSelf }}
           initial={mine.view}

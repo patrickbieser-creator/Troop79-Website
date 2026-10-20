@@ -2,8 +2,9 @@
 
 /**
  * This Sunday › Board (Phase 3a of Plans/Meeting-Requests-And-Teaching-Offers.md; prototype
- * prototypes/meeting-board/admin-setup.html): the leader sets the meeting's board. Rank with 1, 2 or 3 teaching blocks
- * (3 only on purpose), merit badge with its badge and stations (Phase 3b), or closed. A dirty-gated Save + Discard
+ * prototypes/meeting-board/admin-setup.html): the leader sets the meeting's board. Rank (up to 12 teaching blocks,
+ * filled by the matcher: no count to choose since 2026-10-20; the saved block_count rides along unchanged), merit
+ * badge with its badge and stations (Phase 3b), or closed. A dirty-gated Save + Discard
  * changes (the house edit-form standard): a mode change is a decision, not a tap, because it changes what every family
  * sees. Picks are never lost: on a merit badge or closed week they carry to the next rank board.
  *
@@ -38,13 +39,8 @@ const MODES = [
   { value: 'merit_badge', label: 'Merit badge' },
   { value: 'closed', label: 'Closed' }
 ] as const;
-const BLOCKS = [
-  { value: '1', label: '1' },
-  { value: '2', label: '2' },
-  { value: '3', label: '3 (on purpose)' }
-] as const;
 const MODE_NOTE: Record<BoardMode, string> = {
-  rank: 'Scouts pick up to 5 things; the matcher builds sessions. A scout gets at most 2 topics, even with 3 blocks.',
+  rank: 'Scouts pick up to 5 things; the matcher fills up to 12 teaching blocks. A scout gets at most 2 topics.',
   merit_badge: 'One badge, run as stations. Every scout who comes is put in a rotation; no picks.',
   closed: 'No board, no matching. For campout prep, parties and outside clinics.'
 };
@@ -172,19 +168,6 @@ export function BoardSettings({
             }
           />
         </div>
-        {draft.mode === 'rank' && (
-          <div className={styles.boardSetting}>
-            <span className={styles.teachLabel}>Teaching blocks</span>
-            <SegmentedControl
-              name={`board-blocks-${entryId}`}
-              label="Teaching blocks"
-              value={String(draft.blockCount) as '1' | '2' | '3'}
-              options={BLOCKS}
-              disabled={pending}
-              onChange={(v) => setDraft((d) => ({ ...d, blockCount: Number(v) }))}
-            />
-          </div>
-        )}
         {mb && (
           <label className={styles.boardSetting}>
             <span className={styles.teachLabel}>Badge</span>

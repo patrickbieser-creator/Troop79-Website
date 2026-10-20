@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { engineSuggestions, matchBoard, nextRankCompletion, seatLines, seatsFor, teachingFor, teachingLines, type MatchInput, type MatchScout } from '../src/lib/meeting-board-match';
+import { MAX_BLOCKS, engineSuggestions, matchBoard, nextRankCompletion, seatLines, seatsFor, teachingFor, teachingLines, type MatchInput, type MatchScout } from '../src/lib/meeting-board-match';
 import { rankTrees } from '../src/lib/meeting-board-picklist';
 import type { BoardPick, Intent } from '../src/lib/meeting-board-shared';
 import type { SupplyInput, TeachContext, TeacherPerson } from '../src/lib/meeting-board-teach';
@@ -90,8 +90,11 @@ const scout = (personId: number, picks: BoardPick[], o: Partial<MatchScout> = {}
 });
 const range = (from: number, n: number) => Array.from({ length: n }, (_, i) => from + i);
 
+/** A teacher with their second session already spoken for (one scout, scout id 900+, in First aid): their topic can't
+ *  split into a Group B, so it is genuinely full at 8. */
+const busy = (personId: number, key = FA) => ({ teach: { personId, key }, scout: scout(900 + personId, [pick(key)]) });
+
 function input(o: {
-  blocks?: number;
   scouts: MatchScout[];
   people?: TeacherPerson[];
   teach?: { personId: number; key: string }[];
@@ -106,7 +109,7 @@ function input(o: {
     notComing: new Set(o.notComing ?? []),
     ctx: CTX
   };
-  return { meetingDate: '2026-11-01', blockCount: o.blocks ?? 2, scouts: o.scouts, supply, teacherIntents: new Map(o.teacherIntents ?? []) };
+  return { meetingDate: '2026-11-01', scouts: o.scouts, supply, teacherIntents: new Map(o.teacherIntents ?? []) };
 }
 const seated = (r: ReturnType<typeof matchBoard>, key: string) =>
   r.sessions
@@ -115,10 +118,9 @@ const seated = (r: ReturnType<typeof matchBoard>, key: string) =>
     .sort((a, b) => a - b);
 
 describe('matcher: assignment', () => {
-  it('Matcher_AssignsAtMostTwoTopics_WhenMeetingHasThreeBlocks', () => {
+  it('Matcher_AssignsAtMostTwoTopics_EvenWithMoreSessionsOpen', () => {
     const r = matchBoard(
       input({
-        blocks: 3,
         scouts: [scout(1, ranked(FA, KNOTS, FLAG))],
         people: [adult(40, ['first-aid']), adult(41, ['knots']), adult(42)],
         teach: [
@@ -134,50 +136,92 @@ describe('matcher: assignment', () => {
 
   it('Matcher_DropsASessionNobodyEndedUpIn_FromSessions', () => {
     const r = matchBoard(
-      input({ blocks: 1, scouts: [scout(1, ranked(FA, KNOTS))], people: [adult(40, ['first-aid']), adult(41, ['knots'])], teach: [{ personId: 40, key: FA }, { personId: 41, key: KNOTS }] })
+      input({
+        scouts: [scout(1, ranked(FA, KNOTS, FLAG))],
+        people: [adult(40, ['first-aid']), adult(41, ['knots']), adult(42)],
+        teach: [{ personId: 40, key: FA }, { personId: 41, key: KNOTS }, { personId: 42, key: FLAG }]
+      })
     );
-    expect([r.sessions.map((s) => s.keys[0]), r.sessions.every((s) => s.scouts.length > 0), r.offeredNoTakers.map((o) => o.key)]).toEqual([[FA], true, [KNOTS]]);
+    expect([r.sessions.map((s) => s.keys[0]), r.sessions.every((s) => s.scouts.length > 0), r.offeredNoTakers.map((o) => o.key)]).toEqual([[FA, KNOTS], true, [FLAG]]);
   });
 
-  it('Matcher_GivesOneTopic_WhenMeetingHasOneBlock', () => {
-    const r = matchBoard(input({ blocks: 1, scouts: [scout(1, ranked(FA, KNOTS))], people: [adult(40, ['first-aid']), adult(41, ['knots'])], teach: [{ personId: 40, key: FA }, { personId: 41, key: KNOTS }] }));
-    expect(seatsFor(r, 1).map((s) => s.key)).toEqual([FA]);
-  });
-
-  it('Matcher_NeverPutsAScoutInTwoSessionsInOneBlock', () => {
+  it('Matcher_SuggestsDifferentHalves_ForAScoutsTwoSessions', () => {
     const r = matchBoard(
       input({
-        blocks: 2,
         scouts: [scout(1, ranked(FA, KNOTS)), scout(2, ranked(FA, KNOTS))],
         people: [adult(40, ['first-aid']), adult(41, ['knots'])],
         teach: [{ personId: 40, key: FA }, { personId: 41, key: KNOTS }]
       })
     );
-    expect(seatsFor(r, 1).map((s) => s.block).sort()).toEqual([0, 1]);
+    expect(r.sessions.map((s) => s.half).sort()).toEqual([0, 1]);
+  });
+
+  it('Matcher_StillMatches_WhenTheHalvesCantBeKeptApart', () => {
+    // Scouts 1-3 each want two of three topics in a ring: no split of three sessions into two halves keeps everyone
+    // apart. The halves are a guide, so every scout still gets both.
+    const r = matchBoard(
+      input({
+        scouts: [scout(1, ranked(FA, KNOTS)), scout(2, ranked(KNOTS, FLAG)), scout(3, ranked(FLAG, FA))],
+        people: [adult(40, ['first-aid']), adult(41, ['knots']), adult(42)],
+        teach: [{ personId: 40, key: FA }, { personId: 41, key: KNOTS }, { personId: 42, key: FLAG }]
+      })
+    );
+    expect([1, 2, 3].map((id) => seatsFor(r, id).length)).toEqual([2, 2, 2]);
+  });
+
+  it('Matcher_NumbersBlocks_FirstHalfThenSecond', () => {
+    const r = matchBoard(
+      input({
+        scouts: [scout(1, ranked(FA, KNOTS)), scout(2, ranked(FA, KNOTS)), scout(3, [pick(FLAG)])],
+        people: [adult(40, ['first-aid']), adult(41, ['knots']), adult(42)],
+        teach: [{ personId: 40, key: FA }, { personId: 41, key: KNOTS }, { personId: 42, key: FLAG }]
+      })
+    );
+    expect(r.sessions.map((s) => [s.block, s.half])).toEqual([
+      [0, 0],
+      [1, 0],
+      [2, 1]
+    ]);
+  });
+
+  it('Matcher_HoldsAtMostTwelveBlocks_AndListsTheRestAsNoRoom', () => {
+    // Thirteen teachers, thirteen freeform topics, one scout each.
+    const ids = range(1, 13);
+    const r = matchBoard(
+      input({
+        scouts: ids.map((id) => scout(id, [pick(`ff:topic ${id}`)])),
+        people: ids.map((id) => adult(100 + id)),
+        teach: ids.map((id) => ({ personId: 100 + id, key: `ff:topic ${id}` }))
+      })
+    );
+    expect([r.sessions.length, r.blockCount, r.wanted.map((w) => w.blockedTeacherIds.length)]).toEqual([MAX_BLOCKS, MAX_BLOCKS, [1]]);
   });
 
   it('Matcher_CapsSessionAtEight_WhenTopicOversubscribed', () => {
-    const r = matchBoard(input({ blocks: 1, scouts: range(1, 10).map((id) => scout(id, [pick(KNOTS)])), people: [adult(41, ['knots'])], teach: [{ personId: 41, key: KNOTS }] }));
-    expect([r.sessions.map((s) => s.scouts.length), r.comingNothing.length]).toEqual([[8], 2]);
+    const b = busy(41);
+    const r = matchBoard(input({ scouts: [...range(1, 10).map((id) => scout(id, [pick(KNOTS)])), b.scout], people: [adult(41, ['knots'])], teach: [{ personId: 41, key: KNOTS }, b.teach] }));
+    expect([seated(r, KNOTS).length, r.comingNothing.length]).toEqual([8, 2]);
   });
 
-  it('Matcher_SplitsOversubscribedTopic_WhenTeacherHasASecondBlock', () => {
-    const r = matchBoard(input({ blocks: 2, scouts: range(1, 10).map((id) => scout(id, [pick(KNOTS)])), people: [adult(41, ['knots'])], teach: [{ personId: 41, key: KNOTS }] }));
-    expect(r.sessions.map((s) => [s.group, s.block, s.scouts.length])).toEqual([
-      ['A', 0, 5],
-      ['B', 1, 5]
+  it('Matcher_SplitsOversubscribedTopic_WhenTeacherCanLeadASecondSession', () => {
+    const r = matchBoard(input({ scouts: range(1, 10).map((id) => scout(id, [pick(KNOTS)])), people: [adult(41, ['knots'])], teach: [{ personId: 41, key: KNOTS }] }));
+    expect(r.sessions.map((s) => [s.group, s.block, s.half, s.scouts.length])).toEqual([
+      ['A', 0, 0, 5],
+      ['B', 1, 1, 5]
     ]);
   });
 
   it('Matcher_PrefersLongestAsked_WhenTopicFull', () => {
-    const scouts = [...range(1, 8).map((id) => scout(id, [pick(KNOTS)])), scout(9, [pick(KNOTS, { firstAskedOn: '2026-09-06' })])];
-    const r = matchBoard(input({ blocks: 1, scouts, people: [adult(41, ['knots'])], teach: [{ personId: 41, key: KNOTS }] }));
+    const b = busy(41);
+    const scouts = [...range(1, 8).map((id) => scout(id, [pick(KNOTS)])), scout(9, [pick(KNOTS, { firstAskedOn: '2026-09-06' })]), b.scout];
+    const r = matchBoard(input({ scouts, people: [adult(41, ['knots'])], teach: [{ personId: 41, key: KNOTS }, b.teach] }));
     expect([seated(r, KNOTS).includes(9), seated(r, KNOTS).includes(8)]).toEqual([true, false]);
   });
 
   it('Matcher_PrefersClosestToRankCompletion_WhenTopicFull', () => {
-    const scouts = [...range(1, 8).map((id) => scout(id, [pick(KNOTS)])), scout(9, [pick(KNOTS)], { rankCodes: new Set(['tenderfoot-4a', 'tenderfoot-4b', 'tenderfoot-4c']) })];
-    const r = matchBoard(input({ blocks: 1, scouts, people: [adult(41, ['knots'])], teach: [{ personId: 41, key: KNOTS }] }));
+    const b = busy(41);
+    const scouts = [...range(1, 8).map((id) => scout(id, [pick(KNOTS)])), scout(9, [pick(KNOTS)], { rankCodes: new Set(['tenderfoot-4a', 'tenderfoot-4b', 'tenderfoot-4c']) }), b.scout];
+    const r = matchBoard(input({ scouts, people: [adult(41, ['knots'])], teach: [{ personId: 41, key: KNOTS }, b.teach] }));
     expect([seated(r, KNOTS).includes(9), seated(r, KNOTS).includes(8)]).toEqual([true, false]);
   });
 
@@ -189,13 +233,13 @@ describe('matcher: assignment', () => {
       scout(8, ranked(FA, BITES, KNOTS).map((p) => ({ ...p, firstAskedOn: '2026-08-01' })), { rankCodes: new Set(['tenderfoot-3b', 'tenderfoot-7a']) }),
       scout(9, ranked(KNOTS))
     ];
-    const r = matchBoard(input({ blocks: 1, scouts, people: [adult(41, ['knots'])], teach: [{ personId: 41, key: KNOTS }] }));
+    const r = matchBoard(input({ scouts: [...scouts, busy(41).scout], people: [adult(41, ['knots'])], teach: [{ personId: 41, key: KNOTS }, busy(41).teach] }));
     expect([seated(r, KNOTS).includes(9), seated(r, KNOTS).includes(8)]).toEqual([true, false]);
   });
 
   it('Matcher_RankedPickBeatsUnranked_WhenTopicFull', () => {
     const scouts = [...range(1, 8).map((id) => scout(id, [pick(KNOTS, { firstAskedOn: '2026-09-01' })])), scout(9, ranked(KNOTS))];
-    const r = matchBoard(input({ blocks: 1, scouts, people: [adult(41, ['knots'])], teach: [{ personId: 41, key: KNOTS }] }));
+    const r = matchBoard(input({ scouts: [...scouts, busy(41).scout], people: [adult(41, ['knots'])], teach: [{ personId: 41, key: KNOTS }, busy(41).teach] }));
     expect([seated(r, KNOTS).includes(9), seated(r, KNOTS).length]).toEqual([true, 8]);
   });
 
@@ -204,7 +248,7 @@ describe('matcher: assignment', () => {
     // ceremony, and loses every tie-break (asked last, highest id). Flag ceremony is everyone's second thing and has 8
     // seats for 9: scout 9 still gets in, because nobody gets a second topic before everyone has a first.
     const scouts = [...range(1, 8).map((id) => scout(id, [pick(KNOTS), pick(FLAG)])), scout(9, [pick(FA, { firstAskedOn: '2026-10-30' }), pick(FLAG, { firstAskedOn: '2026-10-30' })])];
-    const r = matchBoard(input({ blocks: 2, scouts, people: [adult(41, ['knots']), adult(42)], teach: [{ personId: 41, key: KNOTS }, { personId: 42, key: FLAG }] }));
+    const r = matchBoard(input({ scouts: [...scouts, busy(42, BITES).scout], people: [adult(41, ['knots']), adult(42)], teach: [{ personId: 41, key: KNOTS }, { personId: 42, key: FLAG }, busy(42, BITES).teach] }));
     expect([seated(r, FLAG).includes(9), seated(r, FLAG).length]).toEqual([true, 8]);
   });
 
@@ -216,13 +260,13 @@ describe('matcher: assignment', () => {
       scout(8, [pick(KNOTS, { firstAskedOn: '2026-08-01' })]),
       scout(9, [pick(KNOTS, { firstAskedOn: '2026-10-30' })], { rankCodes: new Set([...mid, 'tenderfoot-4c', FLAG]) })
     ];
-    const r = matchBoard(input({ blocks: 1, scouts, people: [adult(41, ['knots'])], teach: [{ personId: 41, key: KNOTS }] }));
+    const r = matchBoard(input({ scouts: [...scouts, busy(41).scout], people: [adult(41, ['knots'])], teach: [{ personId: 41, key: KNOTS }, busy(41).teach] }));
     expect([seated(r, KNOTS).includes(9), seated(r, KNOTS).includes(8)]).toEqual([true, false]);
   });
 
   it('Matcher_BreaksAFullTie_ByPersonId_NotInputOrder', () => {
     const scouts = range(1, 9).map((id) => scout(id, [pick(KNOTS)])).reverse();
-    const r = matchBoard(input({ blocks: 1, scouts, people: [adult(41, ['knots'])], teach: [{ personId: 41, key: KNOTS }] }));
+    const r = matchBoard(input({ scouts: [...scouts, busy(41).scout], people: [adult(41, ['knots'])], teach: [{ personId: 41, key: KNOTS }, busy(41).teach] }));
     expect(seated(r, KNOTS)).toEqual(range(1, 8));
   });
 
@@ -281,11 +325,15 @@ describe('matcher: teachers', () => {
     expect(Object.fromEntries(r.sessions.map((s) => [s.keys[0], s.flags]))).toEqual({ 'mb:cooking': ['needs_counselor'], 'mb:camping': [] });
   });
 
-  it('Matcher_KeepsATeacherInOneBlock_AndListsTheTopicWithNoFreeBlock', () => {
+  it('Matcher_LetsATeacherLeadTwoSessions_AndListsTheThirdAsNoRoom', () => {
     const r = matchBoard(
-      input({ blocks: 1, scouts: [scout(1, [pick(KNOTS)]), scout(2, [pick(FLAG)])], people: [adult(41, ['knots'])], teach: [{ personId: 41, key: KNOTS }, { personId: 41, key: FLAG }] })
+      input({
+        scouts: [scout(1, [pick(KNOTS)]), scout(2, [pick(KNOTS)]), scout(3, [pick(FLAG)]), scout(4, [pick(FLAG)]), scout(5, [pick(FA)])],
+        people: [adult(41, ['knots'])],
+        teach: [{ personId: 41, key: KNOTS }, { personId: 41, key: FLAG }, { personId: 41, key: FA }]
+      })
     );
-    expect([r.sessions.length, r.wanted.map((w) => [w.key, w.blockedTeacherIds])]).toEqual([1, [[FLAG, [41]]]]);
+    expect([r.sessions.length, r.wanted.map((w) => [w.key, w.blockedTeacherIds])]).toEqual([2, [[FA, [41]]]]);
   });
 
   it('Matcher_LeavesOutCantMakeItTeachers', () => {
@@ -297,7 +345,6 @@ describe('matcher: teachers', () => {
     const jl = adult(5, ['knots'], { kind: 'junior', currentRank: 'first-class' });
     const r = matchBoard(
       input({
-        blocks: 2,
         scouts: [scout(1, [pick(KNOTS)]), scout(5, ranked(FLAG), { currentRank: 'first-class' })],
         people: [jl, adult(42)],
         teach: [{ personId: 5, key: KNOTS }, { personId: 42, key: FLAG }]
@@ -324,7 +371,7 @@ describe('matcher: undecided and unmatched', () => {
 
   it('Matcher_PlacesUndecidedScoutsLast_WhenTopicFull', () => {
     const scouts = [...range(1, 8).map((id) => scout(id, [pick(KNOTS)])), scout(9, [pick(KNOTS, { firstAskedOn: '2026-08-01' })], { intent: 'undecided' })];
-    const r = matchBoard(input({ blocks: 1, scouts, people: [adult(41, ['knots'])], teach: [{ personId: 41, key: KNOTS }] }));
+    const r = matchBoard(input({ scouts: [...scouts, busy(41).scout], people: [adult(41, ['knots'])], teach: [{ personId: 41, key: KNOTS }, busy(41).teach] }));
     expect(seated(r, KNOTS).includes(9)).toBe(false);
   });
 
@@ -367,7 +414,6 @@ describe('matcher: undecided and unmatched', () => {
 describe('matcher: determinism', () => {
   const rich = () =>
     input({
-      blocks: 2,
       scouts: [
         ...range(1, 11).map((id) => scout(id, id % 2 ? ranked(KNOTS, FA, FLAG) : [pick(FA), pick(BITES), pick('mb:cooking')], { rankCodes: new Set(id % 3 ? [] : ['tenderfoot-3b']) })),
         scout(20, [], { intent: 'undecided' }),

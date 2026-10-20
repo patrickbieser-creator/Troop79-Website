@@ -468,6 +468,12 @@ a.chip:hover {
 .blockFilled {
   flex: 1 1 260px;
 }
+.blockHalf {
+  font-size: var(--admin-text-base);
+  font-weight: 700;
+  color: var(--admin-gray-700);
+  margin: var(--admin-space-3) 0 var(--admin-space-2);
+}
 /* An empty block folds to its label and "Not filled". */
 .blockEmpty {
   flex: 0 0 auto;

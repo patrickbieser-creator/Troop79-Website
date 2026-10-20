@@ -65,7 +65,6 @@ function board(view: Partial<ScoutBoardView> = {}, over: Partial<Parameters<type
       entryId={1}
       mode="rank"
       mbName={null}
-      blockCount={2}
       dayName="Sunday"
       subject={{ personId: 7, firstName: 'Finn', isSelf: true }}
       initial={{ personId: 7, intent: null, picks: [], ...view }}

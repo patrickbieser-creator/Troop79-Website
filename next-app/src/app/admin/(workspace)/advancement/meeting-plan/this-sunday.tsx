@@ -26,7 +26,7 @@ import { fmtDateFull } from '@/lib/format-date';
 import { loadBoardStamp, loadBoardState, loadNextMeeting, type BoardMeeting } from '@/lib/meeting-board';
 import { topicWords } from '@/lib/meeting-board-picklist';
 import { boardName, effectiveIntent, summarizeBoard, type BoardCounts, type BoardMode, type Intent } from '@/lib/meeting-board-shared';
-import { seatsFor, sessionWords } from '@/lib/meeting-board-match';
+import { HALF_LABEL, seatsFor, sessionWords } from '@/lib/meeting-board-match';
 import { assessTeacher, commitmentCounts, flagText, teacherIntent, teacherName, topicSkill, weeksAsked } from '@/lib/meeting-board-teach';
 import { loadLiveMatch, loadTeachBoard } from '@/lib/meeting-board-supply';
 import { loadRotationBoard } from '@/lib/meeting-board-stations';
@@ -63,7 +63,8 @@ export interface MatchCard {
 }
 
 export interface ThisSundayMatch {
-  blocks: { label: string; sessions: MatchCard[] }[];
+  /** All MAX_BLOCKS teaching blocks; `half` is a filled one's rough half (null = not filled). */
+  blocks: { label: string; half: 0 | 1 | null; sessions: MatchCard[] }[];
   sessions: number;
   /** The meeting editor's Agenda tab, whose tray promotes these. */
   agendaHref: string;
@@ -104,7 +105,7 @@ export interface ThisSundayData {
   /** Adults and Junior Leaders who answered or signed up to teach (a commitment counts as Coming). */
   adults: { coming: number; undecided: number; notComing: number; teaching: number };
   topics: { key: string; label: string; codeLabel: string; names: string[]; teachers: SupplyTeacher[] }[];
-  /** The recruiting list: asked for, nobody teaching. `blocked`: committed teachers with no free block for it. */
+  /** The recruiting list: asked for, nobody teaching. `blocked`: committed teachers with no room for another session. */
   wanted: { key: string; label: string; codeLabel: string; names: string[]; weeks: number; canTeach: CanTeach[]; blocked?: string[] }[];
   /** Put on the board by a teacher, asked for by nobody. */
   offered: { key: string; label: string; codeLabel: string; teachers: SupplyTeacher[] }[];
@@ -210,6 +211,7 @@ export async function loadThisSunday(): Promise<ThisSundayData | null> {
         agendaHref: `/admin/calendar/${meeting.entryId}?tab=agenda`,
         blocks: Array.from({ length: match.blockCount }, (_, b) => ({
           label: `Block ${b + 1}`,
+          half: match.sessions.find((s) => s.block === b)?.half ?? null,
           sessions: match.sessions
             .filter((s) => s.block === b)
             .map((s) => {
@@ -415,7 +417,7 @@ function CanTeachCell({ list }: { list: CanTeach[] }) {
 }
 
 /**
- * The live match, a column per block (Phase 3a). Read-only: the meeting editor's tray is the one place a session
+ * The live match, one card per teaching block, grouped by rough half (Phase 3a; blocks are sessions since 2026-10-20). Read-only: the meeting editor's tray is the one place a session
  * becomes an agenda item. Shared by This Sunday and the Group Sessions tab.
  */
 export function MatchBlocks({ match, linkPeople = true }: { match: ThisSundayMatch; linkPeople?: boolean }) {
@@ -431,37 +433,46 @@ export function MatchBlocks({ match, linkPeople = true }: { match: ThisSundayMat
         {extra ? <span className={styles.chipRank}> {extra}</span> : null}
       </span>
     );
-  // An empty block stays listed but folds to its label and "Not filled".
+  // Filled blocks under their rough half (a guide, not a clock); then every unused block, folded to "Not filled".
+  const block = (b: ThisSundayMatch['blocks'][number]) =>
+    b.sessions.length ? (
+      <section key={b.label} aria-label={b.label} className={styles.blockFilled}>
+        <h3 className={styles.blockHead}>{b.label}</h3>
+        {b.sessions.map((s) => (
+          <article key={s.id} className={styles.sessionCard}>
+            <span className={styles.reqCode}>
+              {s.codeLabel}
+              {s.group ? ` · Group ${s.group}` : ''}
+            </span>
+            <h3>{s.title}</h3>
+            <div className={styles.chips}>{s.scouts.map((x) => who(x, x.why))}</div>
+            <div className={`${styles.teachSlot} ${styles.adultTint}`}>
+              <span className={styles.teachLabel}>Teacher</span>
+              <TeacherLinks list={[s.teacher]} />
+              {s.coTeachers.length > 0 && <span className={styles.teachMeta}> with {s.coTeachers.map((c) => c.name).join(', ')}</span>}
+            </div>
+          </article>
+        ))}
+      </section>
+    ) : (
+      <section key={b.label} aria-label={b.label} className={styles.blockEmpty}>
+        <h3 className={styles.blockHead}>{b.label}</h3>
+        <span className={styles.teachMeta}>Not filled</span>
+      </section>
+    );
+  const filled = (half: 0 | 1) => match.blocks.filter((b) => b.sessions.length > 0 && b.half === half);
   return (
-    <div className={styles.blockCols}>
-      {match.blocks.map((b) =>
-        b.sessions.length ? (
-          <section key={b.label} aria-label={b.label} className={styles.blockFilled}>
-            <h3 className={styles.blockHead}>{b.label}</h3>
-            {b.sessions.map((s) => (
-              <article key={s.id} className={styles.sessionCard}>
-                <span className={styles.reqCode}>
-                  {s.codeLabel}
-                  {s.group ? ` · Group ${s.group}` : ''}
-                </span>
-                <h3>{s.title}</h3>
-                <div className={styles.chips}>{s.scouts.map((x) => who(x, x.why))}</div>
-                <div className={`${styles.teachSlot} ${styles.adultTint}`}>
-                  <span className={styles.teachLabel}>Teacher</span>
-                  <TeacherLinks list={[s.teacher]} />
-                  {s.coTeachers.length > 0 && <span className={styles.teachMeta}> with {s.coTeachers.map((c) => c.name).join(', ')}</span>}
-                </div>
-              </article>
-            ))}
+    <>
+      {([0, 1] as const)
+        .filter((h) => filled(h).length > 0)
+        .map((h) => (
+          <section key={h} aria-label={HALF_LABEL[h]}>
+            <h3 className={styles.blockHalf}>{HALF_LABEL[h]}</h3>
+            <div className={styles.blockCols}>{filled(h).map(block)}</div>
           </section>
-        ) : (
-          <section key={b.label} aria-label={b.label} className={styles.blockEmpty}>
-            <h3 className={styles.blockHead}>{b.label}</h3>
-            <span className={styles.teachMeta}>Not filled</span>
-          </section>
-        )
-      )}
-    </div>
+        ))}
+      <div className={styles.blockCols}>{match.blocks.filter((b) => !b.sessions.length).map(block)}</div>
+    </>
   );
 }
 
@@ -585,7 +596,7 @@ export function ThisSundayView({ data }: { data: ThisSundayData | null }) {
                       <div className={styles.patrol}>{w.names.join(', ')}</div>
                       {w.blocked && w.blocked.length > 0 && (
                         <div className={styles.teachMeta}>
-                          {w.blocked.join(', ')} signed up, with no free block for it
+                          {w.blocked.join(', ')} signed up, with no room for another session
                         </div>
                       )}
                     </td>

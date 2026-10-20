@@ -15,7 +15,7 @@ import { publicName } from '@/lib/meeting-plan-types';
 import { loadAdvancementCatalog, type AdvancementCatalog } from '@/lib/advancement-catalog';
 import { loadBoardState, loadMeetingById, type BoardScoutRow } from '@/lib/meeting-board';
 import { loadLiveMatch, loadTeachBoard, type TeachBoard } from '@/lib/meeting-board-supply';
-import { sessionWords, type MatchResult } from '@/lib/meeting-board-match';
+import { HALF_LABEL, sessionWords, type MatchResult } from '@/lib/meeting-board-match';
 import { topicWords } from '@/lib/meeting-board-picklist';
 import { boardName } from '@/lib/meeting-board-shared';
 import { assessTeacher, flagText, teacherName } from '@/lib/meeting-board-teach';
@@ -99,7 +99,7 @@ export function matchedCandidates(
   };
   return match.sessions.map((s) => {
     const w = sessionWords(s.keys, src.catalog, skillNames, src.teach.freeformTitles);
-    const block = `Block ${s.block + 1}`;
+    const block = `Block ${s.block + 1} · ${HALF_LABEL[s.half]}`;
     const scouts = s.scouts.map((x) => scoutName.get(x.personId) ?? '').filter(Boolean).sort();
     const leaders = [s.teacherId, ...s.coTeacherIds].map(teacher).filter(Boolean);
     return {
