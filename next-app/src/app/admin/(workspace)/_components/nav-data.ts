@@ -382,12 +382,6 @@ export const SECTIONS: NavSection[] = [
         capability: 'roster.manage'
       },
       {
-        label: 'Roster Import',
-        href: '/admin/advancement/roster-import',
-        matchPath: '/admin/advancement/roster-import',
-        capability: 'roster.manage'
-      },
-      {
         // The my.scouting.org Roster Report: differences + registration dates (2026-10-20).
         label: 'BSA Roster',
         href: '/admin/advancement/bsa-roster',

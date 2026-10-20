@@ -1232,7 +1232,7 @@ export default function StyleguidePage() {
                       href: '#',
                       links: [
                         { label: 'Lookups & Admin', href: '#' },
-                        { label: 'Roster Import', href: '#' },
+                        { label: 'BSA Roster', href: '#' },
                         { label: 'Audit Trail', href: '#' },
                         { label: 'Utilities', href: '#' },
                         { label: 'Styleguides', href: '#' }

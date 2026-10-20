@@ -219,8 +219,7 @@ const SITE_KEEP: Record<string, string[]> = {
   '(public)/photos/photos.module.css': ['.printSticker', '.printDate', '.spineMon'],
   // Codes are data shown in caps.
   '(public)/meeting-plan/meeting-plan.module.css': ['.reqCode'],
-  'admin/(workspace)/advancement/meetings/meetings.module.css': ['.candidateCode'],
-  'admin/(workspace)/advancement/roster-import/roster-import.module.css': ['.roleCode']
+  'admin/(workspace)/advancement/meetings/meetings.module.css': ['.candidateCode']
 };
 const allCss = (dir: string): string[] =>
   fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {

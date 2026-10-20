@@ -7,7 +7,8 @@ import { BUNDLES, CAPABILITIES, type Capability } from '../src/lib/capabilities'
  * (Plans/Admin-Home-And-Nav.md Waves 2 and 3).
  */
 
-// The 30 hrefs the rail offered at v1.214.0 (before Wave 2), for the regression test.
+// The hrefs the rail offered at v1.214.0 (before Wave 2), for the regression test — minus Roster
+// Import, retired on purpose 2026-10-20 (a one-time Google Sheets import).
 const FORMER_RAIL_HREFS = [
   '/admin', '/admin/advancement/fast-entry', '/admin/advancement/meeting-plan', '/admin/advancement/has-needs',
   '/admin/advancement/ledger', '/admin/advancement/roster', '/admin/advancement/records', '/admin/advancement/mb-progress',
@@ -16,7 +17,7 @@ const FORMER_RAIL_HREFS = [
   '/admin/calendar', '/admin/library', '/admin/library/menu-monster', '/admin/news/media-manager',
   '/admin/news/photo-albums', '/admin/finance', '/admin/finance/reimbursements', '/admin/finance/report',
   '/admin/utilities/ledger-audit', '/admin/finance/wreaths', '/admin/advancement/lookups',
-  '/admin/advancement/roster-import', '/admin/access', '/admin/audit', '/admin/utilities'
+  '/admin/access', '/admin/audit', '/admin/utilities'
 ];
 
 const ALL = new Set<Capability>(CAPABILITIES);
@@ -127,7 +128,7 @@ describe('AdminHome card grid', () => {
     expect(last.title).toBe('Troop admin tools');
     expect(last.quiet).toBe(true);
     expect(last.cards).toHaveLength(1);
-    expect(last.cards[0].links?.map((l) => l.label)).toEqual(['Lookups & Admin', 'Roster Import', 'BSA Roster', 'Audit Trail', 'Utilities', 'Styleguides']);
+    expect(last.cards[0].links?.map((l) => l.label)).toEqual(['Lookups & Admin', 'BSA Roster', 'Audit Trail', 'Utilities', 'Styleguides']);
   });
 
   it('AdminHome_OffersStyleguidesToFullAdminsOnly', () => {

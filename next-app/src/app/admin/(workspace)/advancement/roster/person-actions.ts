@@ -37,7 +37,7 @@ import { ROLE_LABEL } from './[personId]/record-types';
  */
 
 // Lookups lists each household's members, and removes them since 2026-09-08.
-const PATHS = ['/admin/advancement/roster', '/admin/advancement/roster-import', '/admin/advancement/lookups'];
+const PATHS = ['/admin/advancement/roster', '/admin/advancement/lookups'];
 
 interface Result {
   ok: boolean;
