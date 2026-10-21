@@ -180,12 +180,12 @@ async function loadLookups() {
     // editor for ranks, so this flat table is the only place to reach them.
     supabase
       .from('rank_requirements')
-      .select('id, rank_id, parent_id, code, label')
+      .select('id, rank_id, parent_id, code, label, teach_minutes')
       .order('rank_id')
       .order('code'),
     supabase
       .from('merit_badge_requirements')
-      .select('id, mb_id, code, label')
+      .select('id, mb_id, code, label, teach_minutes')
       .is('parent_id', null)
       .order('mb_id'),
     // Full MB requirement tree for the per-badge editor. Past the 1000-row
@@ -296,9 +296,12 @@ async function loadLookups() {
     officialTextByKey.set(`${t.source}:${t.parent_id}:${t.code}`, t.official_text);
   }
 
-  type RankReqFull = { id: number; rank_id: string; parent_id: number | null; code: string; label: string };
+  type RankReqFull = { id: number; rank_id: string; parent_id: number | null; code: string; label: string; teach_minutes: number };
   const rankReqRows = (rankReqsRes.data ?? []) as RankReqFull[];
   const rankCodeById = new Map(rankReqRows.map((r) => [r.id, r.code]));
+  // T-3: a requirement with sub-requirements takes the sum of theirs.
+  const partsMinutes = new Map<number, number>();
+  for (const r of rankReqRows) if (r.parent_id !== null) partsMinutes.set(r.parent_id, (partsMinutes.get(r.parent_id) ?? 0) + r.teach_minutes);
 
   const reqs: ReqRow[] = [
     ...rankReqRows.map((r) => ({
@@ -309,9 +312,11 @@ async function loadLookups() {
       code: r.code,
       label: r.label,
       nestedUnder: r.parent_id !== null ? (rankCodeById.get(r.parent_id) ?? null) : null,
-      officialText: officialTextByKey.get(`rank:${r.rank_id}:${r.code}`) ?? ''
+      officialText: officialTextByKey.get(`rank:${r.rank_id}:${r.code}`) ?? '',
+      minutes: r.teach_minutes,
+      partsMinutes: partsMinutes.get(r.id) ?? null
     })),
-    ...((mbReqsRes.data ?? []) as { id: number; mb_id: string; code: string; label: string }[]).map(
+    ...((mbReqsRes.data ?? []) as { id: number; mb_id: string; code: string; label: string; teach_minutes: number }[]).map(
       (r) => ({
         id: r.id,
         source: 'mb' as const,
@@ -320,7 +325,9 @@ async function loadLookups() {
         code: r.code,
         label: r.label,
         nestedUnder: null,
-        officialText: officialTextByKey.get(`mb:${r.mb_id}:${r.code}`) ?? ''
+        officialText: officialTextByKey.get(`mb:${r.mb_id}:${r.code}`) ?? '',
+        minutes: r.teach_minutes,
+        partsMinutes: null
       })
     )
   ];

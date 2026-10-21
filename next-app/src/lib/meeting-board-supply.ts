@@ -15,7 +15,7 @@ import type { JuniorLeaderOverride } from '@/lib/participant-class';
 import { loadIntents, loadScoutProgress, type BoardMeeting, type BoardScoutRow, type BoardWriteResult } from '@/lib/meeting-board';
 import { fmtDate } from '@/lib/format-date';
 import { NOT_PLANNABLE, SM_CONFERENCE_CODES } from '@/lib/rank-calculus';
-import { rankTrees, topicWords } from '@/lib/meeting-board-picklist';
+import { rankTrees, topicWords, type TopicPart, type TopicWords } from '@/lib/meeting-board-picklist';
 import { boardName, effectiveIntent, summarizeBoard, type Intent } from '@/lib/meeting-board-shared';
 import { matchBoard, type MatchResult } from '@/lib/meeting-board-match';
 import {
@@ -341,6 +341,9 @@ export interface TeachItem {
   note: string | null;
   /** Other upcoming dates this person has the same commitment on ('Nov 8'). */
   alsoOn: string[];
+  /** A topic's sub-requirements (T-4) and expected minutes (T-3); absent for a skill offer. */
+  parts?: TopicPart[];
+  minutes?: number | null;
 }
 
 /** A topic scouts asked for this meeting, as one teacher sees it. */
@@ -357,6 +360,9 @@ export interface WantedItem {
   flags: string[];
   /** A Junior Leader and an adults-only skill: no button. */
   refused: boolean;
+  /** Sub-requirements (T-4) and expected minutes to teach it (T-3). */
+  parts?: TopicPart[];
+  minutes?: number | null;
 }
 
 export interface TeachView {
@@ -406,8 +412,8 @@ export async function loadTeachView(
   const nameOfScout = new Map(opts.board.map((s) => [s.personId, boardName(s.name)]));
   const firstAsked = new Map<string, string[]>();
   for (const s of opts.board) for (const p of s.picks) firstAsked.set(p.key, [...(firstAsked.get(p.key) ?? []), p.firstAskedOn]);
-  const words = (key: string) =>
-    topicWords(key, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, t.freeformTitles) ?? { label: key, codeLabel: '', kind: 'rank' as const };
+  const words = (key: string): TopicWords =>
+    topicWords(key, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, t.freeformTitles) ?? { label: key, codeLabel: '', kind: 'rank', parts: [], minutes: null };
   const scoutsFor = (key: string) => (t.demand.get(key) ?? []).map((id) => nameOfScout.get(id) ?? '').filter(Boolean).sort();
   const skillName = new Map(catalog.skills.map((s) => [s.id, s.name]));
 
@@ -435,7 +441,9 @@ export async function loadTeachView(
       names,
       flags: flagText(assessTeacher(me, r.key, t.ctx).flags, 'self'),
       note: r.note,
-      alsoOn: alsoTopic(r.key)
+      alsoOn: alsoTopic(r.key),
+      parts: w.parts,
+      minutes: w.minutes
     });
   }
   for (const o of t.supply.skillOffers.filter((x) => x.personId === personId)) {
@@ -451,7 +459,7 @@ export async function loadTeachView(
       const a = assessTeacher(me, key, t.ctx);
       const teachers = (t.match.teachers.get(key) ?? []).map((x) => t.people.get(x.personId)).filter((p): p is TeacherPerson => !!p).map((p) => teacherName(p, audience));
       const names = scoutsFor(key);
-      return { key, label: w.label, codeLabel: w.codeLabel, scouts: names.length, names, weeks: weeksAsked(firstAsked.get(key) ?? [], meeting.date), teachers, qualified: a.qualified, flags: flagText(a.flags, 'self'), refused: a.refused };
+      return { key, label: w.label, codeLabel: w.codeLabel, scouts: names.length, names, weeks: weeksAsked(firstAsked.get(key) ?? [], meeting.date), teachers, qualified: a.qualified, flags: flagText(a.flags, 'self'), refused: a.refused, parts: w.parts, minutes: w.minutes };
     })
     .sort((a, b) => Number(a.teachers.length > 0) - Number(b.teachers.length > 0) || b.scouts - a.scouts || a.codeLabel.localeCompare(b.codeLabel));
 

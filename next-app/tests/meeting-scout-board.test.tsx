@@ -49,7 +49,20 @@ const LIST: PickListView = {
       rows: [
         { key: 'tenderfoot-1a', kind: 'rank', code: '1a', label: 'Pack for a campout', codeLabel: 'Tenderfoot 1a', outing: true, others: '', teacher: null },
         { key: 'tenderfoot-3a', kind: 'rank', code: '3a', label: 'Knots', codeLabel: 'Tenderfoot 3a', outing: false, others: 'Finn P, Anjali S +4', teacher: 'Mr. Vest' },
-        { key: 'tenderfoot-4a', kind: 'rank', code: '4a', label: 'First aid', codeLabel: 'Tenderfoot 4a', outing: false, others: '', teacher: null },
+        {
+          key: 'tenderfoot-4a',
+          kind: 'rank',
+          code: '4a',
+          label: 'First aid',
+          codeLabel: 'Tenderfoot 4a',
+          outing: false,
+          others: '',
+          teacher: null,
+          parts: [
+            { code: '4a.1', label: 'Simple cuts', minutes: 5, done: true },
+            { code: '4a.2', label: 'Blisters', minutes: 5, done: false }
+          ]
+        },
         { key: 'tenderfoot-5a', kind: 'rank', code: '5a', label: 'Buddy system', codeLabel: 'Tenderfoot 5a', outing: false, others: '', teacher: null }
       ]
     }
@@ -82,6 +95,12 @@ beforeEach(() => {
 });
 
 describe('ScoutBoard', () => {
+  it('Scout_SeesSubRequirements_UnderThePick_LikeTheClipboard_DoneOnesMarked', () => {
+    board();
+    const parts = screen.getByRole('list', { name: 'First aid, its parts' });
+    expect([...parts.querySelectorAll('li')].map((li) => li.textContent)).toEqual(['4a.1 Simple cuts · done', '4a.2 Blisters']);
+  });
+
   it('Scout_PickWhileNotComing_AsksWhen_DefaultsLater', async () => {
     calls.add.mockResolvedValue(ok({ intent: 'not_coming', picks: [tray('tenderfoot-4a', 'First aid', { later: true })] }));
     board({ intent: 'not_coming' });

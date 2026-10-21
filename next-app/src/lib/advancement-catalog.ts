@@ -47,6 +47,8 @@ export interface CatalogRankRequirement {
   sort_order: number;
   venue: ReqVenue;
   skill_id: string | null;
+  /** Expected minutes to teach it (T-3); a parent with sub-requirements uses their sum. Absent = the 15 default. */
+  teach_minutes?: number;
 }
 
 export interface CatalogMeritBadge {
@@ -65,6 +67,8 @@ export interface CatalogMeritBadgeRequirement {
   complete_n: number | null;
   sort_order: number;
   venue: ReqVenue;
+  /** Expected minutes to teach it (T-3). Absent = the 15 default. */
+  teach_minutes?: number;
 }
 
 export interface AdvancementCatalog {
@@ -89,7 +93,7 @@ export async function fetchAdvancementCatalog(
     supabase.from('ranks').select('id, display_name, sort_order').order('sort_order'),
     supabase
       .from('rank_requirements')
-      .select('id, rank_id, parent_id, code, label, complete_rule, complete_n, sort_order, venue, skill_id'),
+      .select('id, rank_id, parent_id, code, label, complete_rule, complete_n, sort_order, venue, skill_id, teach_minutes'),
     supabase.from('merit_badges').select('id, name, eagle'),
     // ~1.7k rows — past the 1000-row PostgREST cap, so this one still
     // paginates even though it now runs once per cache fill instead of
@@ -97,7 +101,7 @@ export async function fetchAdvancementCatalog(
     fetchAllRows<CatalogMeritBadgeRequirement>((from, to) =>
       supabase
         .from('merit_badge_requirements')
-        .select('id, mb_id, parent_id, code, label, complete_rule, complete_n, sort_order, venue')
+        .select('id, mb_id, parent_id, code, label, complete_rule, complete_n, sort_order, venue, teach_minutes')
         .order('id').range(from, to)
     ),
     supabase.from('skills').select('id, name, youth_teachable, sort_order').order('sort_order')

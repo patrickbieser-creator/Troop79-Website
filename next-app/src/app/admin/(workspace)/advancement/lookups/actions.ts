@@ -18,6 +18,7 @@ import { ARTICLE_TOKENS, isValidTokenValue } from '@/lib/article-tokens';
 import { SITE_TEXT_KEYS } from '@/lib/site-text';
 import { SEO_KEYS } from '@/lib/seo';
 import { saveTeachingSkills, undoTeachingSkillChange, markTeachingSkillChangeReviewed } from '@/lib/teaching-skills';
+import { parseTeachMinutes } from '@/lib/meeting-board-picklist';
 
 /** The event-tab kinds an event can be classified as — Day Outing/Fundraiser
  *  have no natural quantity of their own, Camping/Hiking are implied by
@@ -1132,6 +1133,10 @@ export async function updateReqCode(formData: FormData): Promise<Result> {
   const code = String(formData.get('code') ?? '').trim();
   const label = String(formData.get('label') ?? '').trim();
   const officialText = String(formData.get('official_text') ?? '').trim();
+  // Absent for a requirement with sub-requirements: its time is theirs (T-3).
+  const rawMinutes = formData.get('teach_minutes');
+  const teachMinutes = rawMinutes == null ? null : parseTeachMinutes(String(rawMinutes));
+  if (rawMinutes != null && teachMinutes == null) return { ok: false, error: 'Minutes to teach is a whole number from 1 to 240' };
   if (!Number.isFinite(id) || id <= 0) return { ok: false, error: 'Invalid row id' };
   if (source !== 'rank' && source !== 'mb') return { ok: false, error: 'Invalid source' };
   if (!code) return { ok: false, error: 'Code is required' };
@@ -1156,7 +1161,10 @@ export async function updateReqCode(formData: FormData): Promise<Result> {
     }
   }
 
-  const { error } = await supabase.from(table).update({ code, label }).eq('id', id);
+  const { error } = await supabase
+    .from(table)
+    .update({ code, label, ...(teachMinutes != null ? { teach_minutes: teachMinutes } : {}) })
+    .eq('id', id);
   if (error) return { ok: false, error: error.message };
 
   if (code !== originalCode) {

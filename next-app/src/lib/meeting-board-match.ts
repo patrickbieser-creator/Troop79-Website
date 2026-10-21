@@ -27,7 +27,7 @@
  *   7. "Later" picks and Can't-make-it scouts are ignored here; their picks are kept for the next board.
  */
 import type { AdvancementCatalog, CatalogRank, CatalogRankRequirement } from '@/lib/advancement-catalog';
-import { nextRankOf, topicWords } from '@/lib/meeting-board-picklist';
+import { nextRankOf, topicWords, type TopicPart, type TopicWords } from '@/lib/meeting-board-picklist';
 import { effectiveIntent, orderPicks, type BoardPick, type Intent } from '@/lib/meeting-board-shared';
 import { assessTeacher, teacherName, topicSkill, weeksAsked, type SupplyInput, type TeachFlag, type TeacherPerson } from '@/lib/meeting-board-teach';
 import { openRankTops, rankLeafCompletion } from '@/lib/rank-calculus';
@@ -430,15 +430,21 @@ export function sessionWords(
   catalog: Pick<AdvancementCatalog, 'ranks' | 'rankRequirements' | 'meritBadges'>,
   skillNames: ReadonlyMap<string, string>,
   freeformTitles?: ReadonlyMap<string, string>
-): { title: string; codeLabel: string; kind: 'rank' | 'mb' | 'ff'; skillId: string | null } {
-  const words = (k: string) => topicWords(k, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, freeformTitles) ?? { label: k, codeLabel: '', kind: 'rank' as const };
-  const first = words(keys[0]);
+): { title: string; codeLabel: string; kind: 'rank' | 'mb' | 'ff'; skillId: string | null; parts: TopicPart[]; minutes: number | null } {
+  const words = (k: string): TopicWords =>
+    topicWords(k, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, freeformTitles) ?? { label: k, codeLabel: '', kind: 'rank', parts: [], minutes: null };
+  const all = keys.map(words);
+  const first = all[0] ?? words('');
   const skillId = keys.length ? topicSkill(keys[0], catalog.ranks, catalog.rankRequirements) : null;
-  if (keys.length < 2) return { title: first.label, codeLabel: first.codeLabel, kind: first.kind, skillId };
+  // T-3/T-4: a session's sub-requirements and time are its topics' together.
+  const parts = all.flatMap((w) => w.parts);
+  const timed = all.filter((w) => w.minutes != null);
+  const minutes = timed.length ? timed.reduce((n, w) => n + w.minutes!, 0) : null;
+  if (keys.length < 2) return { title: first.label, codeLabel: first.codeLabel, kind: first.kind, skillId, parts, minutes };
   const rank = rankOfKey(keys[0], catalog.ranks);
   const rankName = catalog.ranks.find((r) => r.id === rank)?.display_name ?? '';
   const codes = keys.map((k) => (rank ? k.slice(rank.length + 1) : k));
-  return { title: (skillId && skillNames.get(skillId)) || first.label, codeLabel: `${rankName} ${codes.join(', ')}`.trim(), kind: first.kind, skillId };
+  return { title: (skillId && skillNames.get(skillId)) || first.label, codeLabel: `${rankName} ${codes.join(', ')}`.trim(), kind: first.kind, skillId, parts, minutes };
 }
 
 /** A line on /member/meeting: a scout's matched session, or a session a teacher is teaching. */
@@ -455,6 +461,10 @@ export interface MatchLine {
   teacher: string;
   /** Teachers' lines: who is in it, first name + last initial. Always empty on a scout's own line. */
   scouts: string[];
+  /** Its sub-requirements, as the Clipboard lists them (T-4). */
+  parts?: TopicPart[];
+  /** Expected minutes to teach it (T-3); null for a whole badge or freeform topic. */
+  minutes?: number | null;
 }
 
 interface LineSources {
@@ -475,7 +485,9 @@ function lineFor(match: MatchResult, s: MatchSession, src: LineSources, seat?: M
     placed: seat?.via === 'placed',
     teacher: t ? teacherName(t, 'scout') : '',
     // Classmates are a teacher's view only; a scout's own line carries none.
-    scouts: seat ? [] : s.scouts.map((x) => src.scoutNames.get(x.personId) ?? '').filter(Boolean).sort()
+    scouts: seat ? [] : s.scouts.map((x) => src.scoutNames.get(x.personId) ?? '').filter(Boolean).sort(),
+    parts: w.parts,
+    minutes: w.minutes
   };
 }
 

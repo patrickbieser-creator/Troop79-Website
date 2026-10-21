@@ -29,6 +29,7 @@ import {
   meetingSetOrderAction,
   type MeetingActionResult
 } from './actions';
+import { TopicParts } from './topic-parts';
 import styles from './meeting.module.css';
 
 const FULL = `You have ${MAX_PICKS}. Take one off to add this.`;
@@ -118,6 +119,7 @@ export function AssignedCard({ lines, isSelf, name }: { lines: MatchLine[]; isSe
               · {l.codeLabel}
               {l.teacher ? ` · ${l.teacher}` : ''}
             </span>
+            <TopicParts parts={l.parts} title={l.title} />
           </li>
         ))}
       </ul>
@@ -305,6 +307,7 @@ export function ScoutBoard(props: ScoutBoardProps) {
           )}
         </span>
       </button>
+      <TopicParts parts={r.parts} title={r.label} />
       {errKey === r.key && (
         <p className={styles.badNote} role="alert">
           {problem ?? FULL}

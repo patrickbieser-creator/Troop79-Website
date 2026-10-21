@@ -602,3 +602,16 @@ a.chip:hover {
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+/* A topic's sub-requirements, as the Clipboard lists them (T-4). */
+.partList {
+  list-style: none;
+  margin: var(--admin-space-1) 0;
+  padding: 0;
+  font-size: var(--admin-text-sm);
+  color: var(--admin-gray-600);
+}
+.partCode {
+  font-weight: 700;
+  color: var(--admin-gray-700);
+}

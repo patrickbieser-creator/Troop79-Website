@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 
 /**
  * Meeting Plan › This Sunday (Phase 1): the live demand board, and the poller that keeps it live (every ~10 s, only
@@ -21,7 +21,18 @@ const data = {
   counts: { coming: 3, undecided: 1, notComing: 1, noAnswer: 20, picks: 4, held: 2 },
   adults: { coming: 2, undecided: 1, notComing: 1, teaching: 2 },
   topics: [
-    { key: 'tenderfoot-4a', label: 'First aid', codeLabel: 'Tenderfoot 4a', names: ['Anjali S', 'Finn P'], teachers: [{ personId: 40, name: 'Dan V', notes: ['from a First Aid offer'] }] },
+    {
+      key: 'tenderfoot-4a',
+      label: 'First aid',
+      codeLabel: 'Tenderfoot 4a',
+      names: ['Anjali S', 'Finn P'],
+      teachers: [{ personId: 40, name: 'Dan V', notes: ['from a First Aid offer'] }],
+      minutes: 25,
+      parts: [
+        { code: '4a.1', label: 'Simple cuts', minutes: 5 },
+        { code: '4a.2', label: 'Blisters', minutes: 20 }
+      ]
+    },
     { key: 'tenderfoot-3a', label: 'Knots', codeLabel: 'Tenderfoot 3a', names: ['Leo M'], teachers: [] }
   ],
   wanted: [
@@ -64,6 +75,13 @@ describe('ThisSundayView', () => {
     render(<ThisSundayView data={data} />);
     const row = screen.getByText('First aid').closest('tr')!;
     expect([row.textContent?.includes('Anjali S, Finn P'), row.textContent?.includes('2')]).toEqual([true, true]);
+  });
+
+  it('Leader_SeesATopicsParts_AndHowLongItTakes', () => {
+    render(<ThisSundayView data={data} />);
+    const row = screen.getByText('First aid').closest('tr')!;
+    const parts = within(row).getByRole('list', { name: 'First aid, its parts' });
+    expect([row.textContent?.includes('about 25 min'), parts.querySelectorAll('li').length]).toEqual([true, 2]);
   });
 
   it('Leader_SeesIntentCounts_IncludingNoAnswer', () => {

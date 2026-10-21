@@ -14,6 +14,7 @@
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { SaveButton, SaveFeedback, useSavedSnapshot, useSavePhase } from '../../_components/save-state';
 import { updateReqCode } from './actions';
+import { parseTeachMinutes } from '@/lib/meeting-board-picklist';
 import { useLookupTable } from './use-lookup-table';
 import styles from './lookups.module.css';
 import { Notice } from '../../_components/notice';
@@ -32,6 +33,10 @@ export interface ReqRow {
   nestedUnder: string | null;
   /** Verbatim official BSA text, leader-pasted. Empty string = not yet set. */
   officialText: string;
+  /** Expected minutes to teach it (T-3). */
+  minutes: number;
+  /** A rank requirement with sub-requirements: the sum of theirs, which is its time (set on the parts, not here). */
+  partsMinutes: number | null;
 }
 
 export function ReqCodesTable({ rows }: { rows: ReqRow[] }) {
@@ -56,6 +61,7 @@ export function ReqCodesTable({ rows }: { rows: ReqRow[] }) {
               <th>Code</th>
               <th>Label</th>
               <th>Source</th>
+              <th className={styles.cellRight}>Minutes</th>
               <th className={styles.cellRight}>Actions</th>
             </tr>
           </thead>
@@ -77,6 +83,9 @@ export function ReqCodesTable({ rows }: { rows: ReqRow[] }) {
                     </span>
                   )}
                 </td>
+                <td className={styles.cellRight} data-col="minutes">
+                  {r.partsMinutes != null ? `${r.partsMinutes} (its parts)` : r.minutes}
+                </td>
                 <td className={styles.cellRight}>
                   <Button variant="secondary" size="sm" onClick={() => setOpenFor(r)}>
                     Edit
@@ -96,19 +105,23 @@ export function ReqCodesTable({ rows }: { rows: ReqRow[] }) {
   );
 }
 
-function ReqCodeForm({ row, onClose }: { row: ReqRow; onClose: () => void }) {
+export function ReqCodeForm({ row, onClose }: { row: ReqRow; onClose: () => void }) {
   const [code, setCode] = useState(row.code);
   const [label, setLabel] = useState(row.label);
   const [officialText, setOfficialText] = useState(row.officialText);
+  const [minutes, setMinutes] = useState(String(row.minutes));
   const [err, setErr] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const { dirty } = useSavedSnapshot(JSON.stringify({ code, label, officialText }));
+  const { dirty } = useSavedSnapshot(JSON.stringify({ code, label, officialText, minutes }));
+  const ownTime = row.partsMinutes == null;
+  const badMinutes = ownTime && parseTeachMinutes(minutes) == null;
   const feedback = useSavePhase();
 
   function submit() {
     setErr(null);
     if (!code.trim()) return setErr('Code is required.');
     if (!label.trim()) return setErr('Label is required.');
+    if (badMinutes) return setErr('Minutes to teach is a whole number from 1 to 240.');
     const fd = new FormData();
     fd.set('id', String(row.id));
     fd.set('source', row.source);
@@ -117,6 +130,7 @@ function ReqCodeForm({ row, onClose }: { row: ReqRow; onClose: () => void }) {
     fd.set('code', code.trim());
     fd.set('label', label.trim());
     fd.set('official_text', officialText.trim());
+    if (ownTime) fd.set('teach_minutes', minutes.trim());
     feedback.start();
     startTransition(async () => {
       const res = await updateReqCode(fd);
@@ -157,6 +171,25 @@ function ReqCodeForm({ row, onClose }: { row: ReqRow; onClose: () => void }) {
             className={styles.editInput}
           />
         </label>
+        {ownTime ? (
+          <label className={styles.editField}>
+            <span className={styles.editLabel}>Minutes to teach</span>
+            <input
+              type="number"
+              min={1}
+              max={240}
+              step={1}
+              value={minutes}
+              aria-invalid={badMinutes || undefined}
+              onChange={(e) => setMinutes(e.target.value)}
+              className={styles.editInput}
+            />
+          </label>
+        ) : (
+          <p className={styles.editFieldFull}>
+            Minutes to teach: {row.partsMinutes}, set on its parts (the sub-requirements below it add up to this).
+          </p>
+        )}
         <label className={styles.editFieldFull}>
           <span className={styles.editLabel}>Official text (reference)</span>
           <textarea
@@ -179,8 +212,8 @@ function ReqCodeForm({ row, onClose }: { row: ReqRow; onClose: () => void }) {
         <SaveButton
           dirty={dirty}
           pending={isPending}
-          blocked={!code.trim() || !label.trim()}
-          blockedReason="Code and label are required"
+          blocked={!code.trim() || !label.trim() || badMinutes}
+          blockedReason={badMinutes ? 'Minutes to teach is a whole number from 1 to 240' : 'Code and label are required'}
           onClick={submit}
         />
         <SaveFeedback phase={feedback.phase} />

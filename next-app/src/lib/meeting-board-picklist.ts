@@ -33,6 +33,8 @@ export interface PickRow {
   others: string;
   /** The teacher coming for it, as scouts see them ("Mr. Vest", "Maya S"); null when nobody yet. */
   teacher: string | null;
+  /** Its sub-requirements as the Clipboard lists them, the scout's done ones marked (T-4); rank rows only. */
+  parts?: TopicPart[];
 }
 
 export interface PickGroup {
@@ -118,7 +120,8 @@ export function buildPickList(input: PickListInput): PickListView {
         codeLabel: `${rank.display_name} ${top.code}`,
         outing: top.venue === 'outing',
         others: others(key),
-        teacher: teacher(key)
+        teacher: teacher(key),
+        parts: topicParts(top, input.rankReqs, codes)
       });
     }
     if (rows.length || rank.id === nextRankId) groups.push({ rankId: rank.id, title: rank.display_name, next: rank.id === nextRankId, rows });
@@ -192,20 +195,77 @@ export function topicWords(
   rankReqs: readonly CatalogRankRequirement[],
   mbs: readonly CatalogMeritBadge[],
   freeformTitles?: ReadonlyMap<string, string>
-): { label: string; codeLabel: string; kind: 'rank' | 'mb' | 'ff' } | null {
+): TopicWords | null {
   if (key.startsWith('ff:')) {
     const title = freeformTitles?.get(key);
-    return title ? { label: title, codeLabel: OFFERED_LABEL, kind: 'ff' } : null;
+    return title ? { label: title, codeLabel: OFFERED_LABEL, kind: 'ff', parts: [], minutes: null } : null;
   }
   if (key.startsWith('mb:')) {
     const mb = mbs.find((m) => m.id === key.slice(3));
-    return mb ? { label: mb.name, codeLabel: 'Merit badge', kind: 'mb' } : null;
+    return mb ? { label: mb.name, codeLabel: 'Merit badge', kind: 'mb', parts: [], minutes: null } : null;
   }
   const rank = [...ranks].sort((a, b) => b.id.length - a.id.length).find((r) => key.startsWith(`${r.id}-`));
   if (!rank) return null;
   const code = key.slice(rank.id.length + 1);
   const row = rankReqs.find((r) => r.rank_id === rank.id && r.code === code && r.parent_id == null);
-  return row ? { label: row.label, codeLabel: `${rank.display_name} ${code}`, kind: 'rank' } : null;
+  if (!row) return null;
+  const parts = topicParts(row, rankReqs);
+  return { label: row.label, codeLabel: `${rank.display_name} ${code}`, kind: 'rank', parts, minutes: teachMinutes(row, parts) };
+}
+
+/** The 15-minute head start every requirement gets until a leader sets its time (T-3). */
+export const DEFAULT_TEACH_MINUTES = 15;
+
+/** A sub-requirement of a topic, as the Clipboard lists it (T-4). `done` only on a scout's own pick list. */
+export interface TopicPart {
+  code: string;
+  label: string;
+  minutes: number;
+  done?: boolean;
+}
+
+export interface TopicWords {
+  label: string;
+  codeLabel: string;
+  kind: 'rank' | 'mb' | 'ff';
+  /** Sub-requirements (Tenderfoot 4a.1-4a.8); empty when it has none. */
+  parts: TopicPart[];
+  /** Expected minutes to teach it (T-3); null for a whole badge or a freeform topic. */
+  minutes: number | null;
+}
+
+/** A top-level rank requirement's sub-requirements in catalog order; `codes` marks the ones a scout has done. */
+export function topicParts(row: CatalogRankRequirement, rankReqs: readonly CatalogRankRequirement[], codes?: ReadonlySet<string>): TopicPart[] {
+  return rankReqs
+    .filter((r) => r.parent_id === row.id)
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map((r) => ({
+      code: r.code,
+      label: r.label,
+      minutes: r.teach_minutes ?? DEFAULT_TEACH_MINUTES,
+      ...(codes ? { done: codes.has(`${row.rank_id}-${r.code}`) } : {})
+    }));
+}
+
+/** A leader's typed teaching time: whole minutes 1-240 (the column's check), else null. */
+export function parseTeachMinutes(raw: string): number | null {
+  const t = raw.trim();
+  if (!/^\d+$/.test(t)) return null;
+  const n = Number(t);
+  return n >= 1 && n <= 240 ? n : null;
+}
+
+/** "about 25 min", "about 1 hr 15 min"; '' when there is no time (a whole badge, a freeform topic). */
+export function minutesText(minutes: number | null | undefined): string {
+  if (minutes == null) return '';
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `about ${[h ? `${h} hr` : '', m ? `${m} min` : ''].filter(Boolean).join(' ')}`;
+}
+
+/** One source of truth: a requirement with sub-requirements takes the sum of theirs, otherwise its own. */
+export function teachMinutes(row: Pick<CatalogRankRequirement, 'teach_minutes'>, parts: readonly TopicPart[]): number {
+  return parts.length ? parts.reduce((n, p) => n + p.minutes, 0) : (row.teach_minutes ?? DEFAULT_TEACH_MINUTES);
 }
 
 export interface TrayPick extends BoardPick {

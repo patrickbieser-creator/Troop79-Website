@@ -179,6 +179,8 @@ const sundayData = {
             group: null,
             teacher: { personId: 40, name: 'Dan V', notes: ['from a First Aid offer'] },
             coTeachers: [],
+            minutes: 40,
+            parts: [{ code: '4a.1', label: 'Simple cuts', minutes: 5 }],
             scouts: [
               { personId: 1, name: 'Anjali S', why: '#2' },
               { personId: 2, name: 'Leo M', why: 'placed' }
@@ -228,6 +230,12 @@ describe('Group Sessions: the match by block', () => {
     render(<MatchBlocks match={sundayData.match} />);
     const first = screen.getByRole('region', { name: 'First half, about 4:15' });
     expect([within(first).queryByRole('region', { name: 'Block 1' }) != null, within(first).queryByRole('region', { name: 'Block 2' })]).toEqual([true, null]);
+  });
+
+  it('SessionCard_ShowsItsParts_AndHowLongItTakes', () => {
+    render(<MatchBlocks match={sundayData.match} />);
+    const block1 = screen.getByRole('region', { name: 'Block 1' });
+    expect([block1.textContent?.includes('about 40 min'), within(block1).getByRole('list', { name: 'First Aid, its parts' }).textContent]).toEqual([true, '4a.1 Simple cuts']);
   });
 
   it('Scouts_AndTeachers_CarryTheirOwnTints', () => {

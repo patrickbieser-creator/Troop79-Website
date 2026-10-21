@@ -25,6 +25,7 @@ import { Button } from '@/app/_components/button';
 import { Badge } from '@/app/_components/badge';
 import { INTENT_LABEL, type Intent } from '@/lib/meeting-board-shared';
 import { MAX_COMMITMENTS, TEACH_FULL } from '@/lib/meeting-board-teach';
+import { minutesText } from '@/lib/meeting-board-picklist';
 import type { OfferChoices, TeachItem, TeachView, WantedItem } from '@/lib/meeting-board-supply';
 import type { MatchLine } from '@/lib/meeting-board-match';
 import type { StationTeachLine } from '@/lib/meeting-board-rotations';
@@ -38,6 +39,7 @@ import {
   type OfferWhat,
   type TeachActionResult
 } from './teach-actions';
+import { TopicParts } from './topic-parts';
 import styles from './meeting.module.css';
 
 const FLASH_MS = 1800;
@@ -346,7 +348,7 @@ export function TeachBoard(props: TeachBoardProps) {
   const otherWanted = view.wanted.filter((w) => !w.qualified);
 
   const wantRow = (w: WantedItem) => {
-    const bits = [w.codeLabel, plural(w.scouts, 'scout'), `asked ${plural(w.weeks, 'week')}`];
+    const bits = [w.codeLabel, minutesText(w.minutes), plural(w.scouts, 'scout'), `asked ${plural(w.weeks, 'week')}`];
     if (w.teachers.length) bits.push(`Teacher: ${w.teachers.join(', ')}`);
     return (
       <div key={w.key} className={styles.teachWrap}>
@@ -359,6 +361,7 @@ export function TeachBoard(props: TeachBoardProps) {
             </small>
             {w.names.length > 0 && <small>{w.names.join(', ')}</small>}
             {w.refused && <small className={styles.flag}>Adults only</small>}
+            <TopicParts parts={w.parts} title={w.label} />
           </span>
           {!readOnly && !w.refused && (
             <Button size="sm" variant="secondary" onClick={() => commit(w)}>
@@ -392,8 +395,10 @@ export function TeachBoard(props: TeachBoardProps) {
                 <b>{l.title}</b>
                 <span className={styles.meta}>
                   {' '}
-                  · {l.codeLabel} · {l.scouts.length ? `${plural(l.scouts.length, 'scout')}: ${l.scouts.join(', ')}` : 'no scouts placed yet'}
+                  · {l.codeLabel}
+                  {l.minutes != null ? ` · ${minutesText(l.minutes)}` : ''} · {l.scouts.length ? `${plural(l.scouts.length, 'scout')}: ${l.scouts.join(', ')}` : 'no scouts placed yet'}
                 </span>
+                <TopicParts parts={l.parts} title={l.title} />
               </li>
             ))}
           </ul>
@@ -412,7 +417,7 @@ export function TeachBoard(props: TeachBoardProps) {
         </h3>
         {view.items.length ? (
           view.items.map((item) => {
-            const bits = [item.sub, item.scouts ? `${plural(item.scouts, 'scout')} so far: ${item.names.join(', ')}` : '0 scouts so far'];
+            const bits = [item.sub, minutesText(item.minutes), item.scouts ? `${plural(item.scouts, 'scout')} so far: ${item.names.join(', ')}` : '0 scouts so far'];
             if (item.note) bits.push(item.note);
             if (item.alsoOn.length) bits.push(`also ${item.alsoOn.join(', ')}`);
             return (
@@ -424,6 +429,7 @@ export function TeachBoard(props: TeachBoardProps) {
                     {bits.filter(Boolean).join(' · ')}
                     {item.flags.length > 0 && <span className={styles.flag}> · {item.flags.join(' · ')}</span>}
                   </small>
+                  <TopicParts parts={item.parts} title={item.label} />
                 </span>
                 {!readOnly && (
                   <button type="button" className={styles.linkBtn} onClick={() => remove(item)} aria-label={`${item.kind === 'offer' ? 'Withdraw' : 'Remove'} ${item.label}`}>

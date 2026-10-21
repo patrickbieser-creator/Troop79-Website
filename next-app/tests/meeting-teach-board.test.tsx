@@ -47,7 +47,7 @@ const VIEW: TeachView = {
   intent: null,
   count: 0,
   items: [],
-  wanted: [wanted('tenderfoot-3a', 'Knots'), wanted('tenderfoot-4a', 'First aid', { qualified: false, flags: ['not in what you’ve said you can teach'] })],
+  wanted: [wanted('tenderfoot-3a', 'Knots'), wanted('tenderfoot-4a', 'First aid', { qualified: false, flags: ['not in what you’ve said you can teach'], minutes: 25, parts: [{ code: '4a.1', label: 'Simple cuts', minutes: 5 }, { code: '4a.2', label: 'Blisters', minutes: 20 }] })],
   hasSkills: true,
   canAdd: true
 };
@@ -94,6 +94,13 @@ describe('TeachBoard', () => {
     const row = screen.getByText('Knots').closest('div')!.parentElement!;
     await userEvent.click(within(row).getByRole('button', { name: 'I’ll teach this' }));
     expect([screen.getByRole('alert').textContent, calls.teach.mock.calls.length]).toEqual(['You’re teaching 2. Remove one to add another.', 0]);
+  });
+
+  it('Adult_SeesHowLongATopicTakes_AndItsParts', () => {
+    board();
+    const row = screen.getByText('First aid').closest('div')!;
+    const parts = within(row).getByRole('list', { name: 'First aid, its parts' });
+    expect([row.textContent?.includes('about 25 min'), parts.querySelectorAll('li').length]).toEqual([true, 2]);
   });
 
   it('Adult_SeesWantedTopics_WithCountsAndNames', () => {

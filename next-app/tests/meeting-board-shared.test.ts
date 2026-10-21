@@ -13,7 +13,7 @@ import {
   summarizeBoard,
   type BoardPick
 } from '../src/lib/meeting-board-shared';
-import { buildPickList, isPickFinished, pickableKeys, rankTrees } from '../src/lib/meeting-board-picklist';
+import { buildPickList, isPickFinished, minutesText, pickableKeys, rankTrees, topicWords } from '../src/lib/meeting-board-picklist';
 import type { CatalogMeritBadge, CatalogRank, CatalogRankRequirement } from '../src/lib/advancement-catalog';
 
 /** Meeting board, Phase 1: the pure rules (board mode, names, intent, carry-forward, the pick list's order). */
@@ -53,8 +53,8 @@ const TF4 = req('tenderfoot', '4a', 'First aid');
 const REQS: CatalogRankRequirement[] = [
   req('tenderfoot', '1a', 'Pack for a campout', { venue: 'outing' }),
   TF4,
-  req('tenderfoot', '4a.1', 'Cuts', { parent_id: TF4.id }),
-  req('tenderfoot', '4a.2', 'Blisters', { parent_id: TF4.id }),
+  req('tenderfoot', '4a.1', 'Cuts', { parent_id: TF4.id, teach_minutes: 5 }),
+  req('tenderfoot', '4a.2', 'Blisters', { parent_id: TF4.id, teach_minutes: 20 }),
   req('tenderfoot', '3a', 'Knots'),
   req('tenderfoot', '9', 'Scout spirit'),
   req('tenderfoot', '10', 'Scoutmaster conference'),
@@ -194,6 +194,34 @@ describe('pick list', () => {
 
   it('PickList_ShowsWhoElsePicked', () => {
     expect(view().groups[0].rows.find((r) => r.code === '4a')!.others).toBe('Finn P, Anjali S +1');
+  });
+
+  it('PickList_ListsSubRequirements_LikeTheClipboard_MarkingTheOnesDone', () => {
+    const v = buildPickList({ currentRank: 'scout', ranks: RANKS, rankReqs: REQS, mbs: MBS, mbProgress: [], rankCodes: new Set(['tenderfoot-4a.1']) });
+    expect(v.groups[0].rows.find((r) => r.code === '4a')!.parts).toEqual([
+      { code: '4a.1', label: 'Cuts', minutes: 5, done: true },
+      { code: '4a.2', label: 'Blisters', minutes: 20, done: false }
+    ]);
+  });
+});
+
+describe('teaching time and sub-requirements (T-3, T-4)', () => {
+  it('Topic_WithSubRequirements_ListsThem_AndTakesTheirSummedMinutes', () => {
+    const w = topicWords('tenderfoot-4a', RANKS, REQS, MBS)!;
+    expect([w.parts.map((p) => p.code), w.minutes]).toEqual([['4a.1', '4a.2'], 25]);
+  });
+
+  it('Topic_WithoutSubRequirements_TakesItsOwnMinutes_DefaultFifteen', () => {
+    const w = topicWords('tenderfoot-3a', RANKS, REQS, MBS)!;
+    expect([w.parts, w.minutes]).toEqual([[], 15]);
+  });
+
+  it('TeachingTime_ReadsInMinutesThenHours', () => {
+    expect([minutesText(25), minutesText(60), minutesText(75), minutesText(null)]).toEqual(['about 25 min', 'about 1 hr', 'about 1 hr 15 min', '']);
+  });
+
+  it('WholeBadgeTopic_HasNoTeachingTime', () => {
+    expect(topicWords('mb:cooking', RANKS, REQS, MBS)!.minutes).toBeNull();
   });
 });
 

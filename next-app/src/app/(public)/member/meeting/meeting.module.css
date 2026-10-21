@@ -693,3 +693,18 @@ details.group > summary .meta {
 .assignList li + li {
   margin-top: var(--sp-1);
 }
+
+/* A topic's sub-requirements, as the Clipboard lists them (T-4). Indented under the pick's title. */
+.parts {
+  list-style: none;
+  margin: 0 0 var(--sp-2) 40px;
+  padding: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-meta);
+}
+.parts li {
+  padding: 1px 0;
+}
+.partDone {
+  text-decoration: line-through;
+}

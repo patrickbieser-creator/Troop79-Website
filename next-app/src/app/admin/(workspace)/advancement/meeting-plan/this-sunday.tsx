@@ -24,7 +24,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { loadAdvancementCatalog } from '@/lib/advancement-catalog';
 import { fmtDateFull } from '@/lib/format-date';
 import { loadBoardStamp, loadBoardState, loadNextMeeting, type BoardMeeting } from '@/lib/meeting-board';
-import { topicWords } from '@/lib/meeting-board-picklist';
+import { minutesText, topicWords, type TopicPart, type TopicWords } from '@/lib/meeting-board-picklist';
 import { boardName, effectiveIntent, summarizeBoard, type BoardCounts, type BoardMode, type Intent } from '@/lib/meeting-board-shared';
 import { HALF_LABEL, seatsFor, sessionWords } from '@/lib/meeting-board-match';
 import { assessTeacher, commitmentCounts, flagText, teacherIntent, teacherName, topicSkill, weeksAsked } from '@/lib/meeting-board-teach';
@@ -60,6 +60,9 @@ export interface MatchCard {
   coTeachers: BoardPerson[];
   /** "#2" (their own ranking), "placed" (a Not sure yet scout), or ''. */
   scouts: (BoardPerson & { why: string })[];
+  /** Sub-requirements, as the Clipboard lists them (T-4), and expected minutes (T-3). */
+  parts?: TopicPart[];
+  minutes?: number | null;
 }
 
 export interface ThisSundayMatch {
@@ -104,7 +107,7 @@ export interface ThisSundayData {
   counts: BoardCounts;
   /** Adults and Junior Leaders who answered or signed up to teach (a commitment counts as Coming). */
   adults: { coming: number; undecided: number; notComing: number; teaching: number };
-  topics: { key: string; label: string; codeLabel: string; names: string[]; teachers: SupplyTeacher[] }[];
+  topics: { key: string; label: string; codeLabel: string; names: string[]; teachers: SupplyTeacher[]; parts?: TopicPart[]; minutes?: number | null }[];
   /** The recruiting list: asked for, nobody teaching. `blocked`: committed teachers with no room for another session. */
   wanted: { key: string; label: string; codeLabel: string; names: string[]; weeks: number; canTeach: CanTeach[]; blocked?: string[] }[];
   /** Put on the board by a teacher, asked for by nobody. */
@@ -140,7 +143,8 @@ export async function loadThisSunday(): Promise<ThisSundayData | null> {
   const nameOf = new Map(rows.map((r) => [r.personId, boardName(r.name)]));
   const person = (r: { personId: number }) => ({ personId: r.personId, name: nameOf.get(r.personId) ?? '' });
   const intentOf = new Map(rows.map((r) => [r.personId, effectiveIntent(r.intent, r.picks)]));
-  const words = (key: string) => topicWords(key, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, teach.freeformTitles) ?? { label: key, codeLabel: '' };
+  const words = (key: string): TopicWords =>
+    topicWords(key, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, teach.freeformTitles) ?? { label: key, codeLabel: '', kind: 'rank', parts: [], minutes: null };
   const teacherPerson = (id: number) => {
     const p = teach.people.get(id);
     return { personId: id, name: p ? teacherName(p, 'admin') : `Person ${id}` };
@@ -223,6 +227,8 @@ export async function loadThisSunday(): Promise<ThisSundayData | null> {
                 title: w.title,
                 codeLabel: w.codeLabel,
                 group: s.group,
+                parts: w.parts,
+                minutes: w.minutes,
                 teacher: { ...teacherPerson(s.teacherId), notes },
                 coTeachers: s.coTeacherIds.map(teacherPerson),
                 scouts: s.scouts
@@ -380,6 +386,20 @@ function TeacherLinks({ list }: { list: SupplyTeacher[] }) {
   );
 }
 
+/** A topic's sub-requirements as the Clipboard lists them (T-4); the admin twin of the member page's TopicParts. */
+function TopicPartList({ parts, title }: { parts?: readonly TopicPart[]; title: string }) {
+  if (!parts?.length) return null;
+  return (
+    <ul className={styles.partList} aria-label={`${title}, its parts`}>
+      {parts.map((p) => (
+        <li key={p.code}>
+          <span className={styles.partCode}>{p.code}</span> {p.label}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /** Who to ask about a wanted topic: answered first, then who listed the skill; everyone else who merely qualifies
  *  (for a topic any adult may teach, the whole roster) folds into a count. */
 function CanTeachCell({ list }: { list: CanTeach[] }) {
@@ -445,6 +465,8 @@ export function MatchBlocks({ match, linkPeople = true }: { match: ThisSundayMat
               {s.group ? ` · Group ${s.group}` : ''}
             </span>
             <h3>{s.title}</h3>
+            {s.minutes != null && <span className={styles.teachMeta}>{minutesText(s.minutes)}</span>}
+            <TopicPartList parts={s.parts} title={s.title} />
             <div className={styles.chips}>{s.scouts.map((x) => who(x, x.why))}</div>
             <div className={`${styles.teachSlot} ${styles.adultTint}`}>
               <span className={styles.teachLabel}>Teacher</span>
@@ -557,7 +579,8 @@ export function ThisSundayView({ data }: { data: ThisSundayData | null }) {
                   <tr key={t.key}>
                     <td>
                       <span className={styles.scoutName}>{t.label}</span>
-                      <div className={styles.patrol}>{t.codeLabel}</div>
+                      <div className={styles.patrol}>{[t.codeLabel, minutesText(t.minutes)].filter(Boolean).join(' · ')}</div>
+                      <TopicPartList parts={t.parts} title={t.label} />
                     </td>
                     <td className={styles.alignRight}>{t.names.length}</td>
                     <td>{t.teachers.length ? <TeacherLinks list={t.teachers} /> : <span className={styles.noTeacher}>No teacher yet</span>}</td>
