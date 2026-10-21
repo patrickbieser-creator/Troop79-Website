@@ -47,7 +47,8 @@ import {
   othersByKeyFor,
   type BoardScout
 } from '@/lib/meeting-board';
-import { isAgendaPublished, loadLiveMatch, loadTeachBoard, loadTeachView, offerChoices, OFFER_DATES, teacherTags } from '@/lib/meeting-board-supply';
+import { isAgendaPublished, loadTeachBoard, loadTeachView, offerChoices, OFFER_DATES, teacherTags } from '@/lib/meeting-board-supply';
+import { loadMatchOrPlacement } from '@/lib/meeting-live';
 import { seatLines, teachingLines } from '@/lib/meeting-board-match';
 import { loadRotationBoard } from '@/lib/meeting-board-stations';
 import { boardIntent, mbScoutLines, stationTeachLines } from '@/lib/meeting-board-rotations';
@@ -236,7 +237,7 @@ export default async function MeetingBoardPage({ searchParams }: { searchParams:
   // Once the meeting's agenda is published the agenda is the answer: the page links to it and says nothing personal
   // from the match (the agenda's scout names are free text a leader may have edited, so they aren't mapped back).
   const planSet = await isAgendaPublished(sb, meeting.entryId);
-  const match = meeting.mode === 'rank' && !planSet ? await loadLiveMatch(sb, meeting, everyone, teach) : null;
+  const match = meeting.mode === 'rank' && !planSet ? await loadMatchOrPlacement(sb, meeting, everyone, teach) : null;
   const lineSrc = { catalog, people: teach.people, freeformTitles: teach.freeformTitles, members: teach.members, scoutNames: new Map(everyone.map((r) => [r.personId, boardName(r.name)])) };
   const assigned = match && chosen ? seatLines(match, chosen.personId, lineSrc) : [];
   const teaching = match && teacher ? teachingLines(match, teacher.personId, lineSrc) : [];

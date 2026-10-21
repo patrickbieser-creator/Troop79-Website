@@ -82,9 +82,15 @@ export interface MatchSession {
   block: number;
   /** The rough half it's suggested for (0 ≈ 4:15, 1 ≈ 4:45): a guide for the order, never a constraint. */
   half: 0 | 1;
+  /** The Rotation it is in, said to people (P4: the matcher's half + 1; a saved Live placement's own rotation, null
+   *  when the class is Not scheduled). */
+  rotation: number | null;
+  /** A saved class's own title (a snapshot for merged sibling picks), over the topic's words. */
+  title?: string | null;
   /** 'A', 'B' when an oversubscribed topic split; null otherwise. */
   group: string | null;
-  teacherId: number;
+  /** Null only for a saved Live class nobody teaches yet. */
+  teacherId: number | null;
   /** Others committed to the same topic. */
   coTeacherIds: number[];
   /** 'topic' = a commitment; 'offer' = a broad skill offer. */
@@ -368,6 +374,7 @@ export function matchBoard(input: MatchInput): MatchResult {
     keys: s.unit.keys,
     block: i,
     half: halfOf.get(s)!,
+    rotation: halfOf.get(s)! + 1,
     group: s.group,
     teacherId: s.unit.teacherId,
     coTeacherIds: s.coTeacherIds,
@@ -451,7 +458,7 @@ export function sessionWords(
 
 /** A line on /member/meeting: a scout's matched session, or a session a teacher is teaching. */
 export interface MatchLine {
-  /** 'Block 3 · Second half, about 4:45': the session's teaching block and rough half. */
+  /** 'Rotation 2': the rotation it is in (P4: the troop's word); null when not scheduled yet. */
   block: string | null;
   title: string;
   codeLabel: string;
@@ -480,10 +487,10 @@ interface LineSources {
 
 function lineFor(match: MatchResult, s: MatchSession, src: LineSources, seat?: MatchSeat): MatchLine {
   const w = sessionWords(s.keys, src.catalog, new Map(src.catalog.skills.map((k) => [k.id, k.name])), src.freeformTitles, { mbReqs: src.catalog.meritBadgeRequirements, members: src.members });
-  const t = src.people.get(s.teacherId);
+  const t = s.teacherId != null ? src.people.get(s.teacherId) : undefined;
   return {
-    block: `Block ${s.block + 1} · ${HALF_LABEL[s.half]}`,
-    title: w.title,
+    block: s.rotation != null ? `Rotation ${s.rotation}` : null,
+    title: s.title ?? w.title,
     codeLabel: s.group ? `${w.codeLabel} · Group ${s.group}` : w.codeLabel,
     pickNo: seat?.pickNo ?? null,
     placed: seat?.via === 'placed',

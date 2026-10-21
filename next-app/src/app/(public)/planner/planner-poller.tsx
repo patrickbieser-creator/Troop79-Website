@@ -6,6 +6,8 @@
  *
  * P2a: inside the planner's provider it shares the page's stamp, skips a tick while a save is in flight, and takes the
  * stamp a save returned, so it never refreshes over a result the drawer already shows.
+ *
+ * P4: Meeting Live polls faster (pollMs 3 s, jitter 1 s): several leaders run it at once on their phones.
  */
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -16,7 +18,7 @@ import styles from './planner.module.css';
 const POLL_MS = 10_000;
 const JITTER_MS = 2_000;
 
-export function PlannerPoller({ entryId, stamp }: { entryId: number; stamp: string }) {
+export function PlannerPoller({ entryId, stamp, pollMs = POLL_MS, jitterMs = JITTER_MS }: { entryId: number; stamp: string; pollMs?: number; jitterMs?: number }) {
   const router = useRouter();
   const sync = usePlanner()?.sync;
   const own = useRef(stamp);
@@ -52,7 +54,7 @@ export function PlannerPoller({ entryId, stamp }: { entryId: number; stamp: stri
       timer = setTimeout(async () => {
         if (!document.hidden) await check().catch(() => undefined);
         schedule();
-      }, POLL_MS + Math.round((Math.random() * 2 - 1) * JITTER_MS));
+      }, pollMs + Math.round((Math.random() * 2 - 1) * jitterMs));
     };
     const onVisible = () => {
       if (!document.hidden) void check().catch(() => undefined);
@@ -64,7 +66,7 @@ export function PlannerPoller({ entryId, stamp }: { entryId: number; stamp: stri
       if (timer) clearTimeout(timer);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [entryId, router, last, sync]);
+  }, [entryId, router, last, sync, pollMs, jitterMs]);
 
   return (
     <span className={stale ? styles.liveStale : styles.live} role="status">

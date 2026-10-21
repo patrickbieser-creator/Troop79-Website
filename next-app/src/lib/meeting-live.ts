@@ -1,0 +1,196 @@
+/**
+ * Meeting Live's server side (Plans/Meeting-Planner-II.md, Decision 8; the tech-lead's P4 spec section 6). Server-only:
+ * every function takes the service-role client, so the caller gates.
+ *
+ *   - loadSavedPlacement: the saved placement, or null while Meeting Live hasn't started.
+ *   - loadMatchOrPlacement: THE seam every reader of the match goes through (the member page, the agenda tray, v1's
+ *     This Sunday until P5). Before Live starts it is the matcher (loadLiveMatch); once live_started_at is set, the
+ *     saved placement as a MatchResult (placementAsMatch). The planner board keeps its own loaders: it stays on screen.
+ *   - startMeetingLive: copy on FIRST WRITE (Decision 8): run the matcher and save its output with meeting_live_start,
+ *     which is idempotent under the meeting's Live lock.
+ *   - loadLiveView: what /planner/live draws: the matcher's preview before start, the saved placement after.
+ */
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { loadAdvancementCatalog, type AdvancementCatalog } from '@/lib/advancement-catalog';
+import { loadBoardState, loadPeopleNames, loadScoutProgress, type BoardMeeting, type BoardScoutRow } from '@/lib/meeting-board';
+import { boardName, effectiveIntent } from '@/lib/meeting-board-shared';
+import { isPickFinished, rankTrees } from '@/lib/meeting-board-picklist';
+import { sessionWords, type MatchResult } from '@/lib/meeting-board-match';
+import { loadLiveMatch, loadTeachBoard, sanitizeRpcError, type TeachBoard } from '@/lib/meeting-board-supply';
+import { teacherName } from '@/lib/meeting-board-teach';
+import {
+  buildLiveView,
+  placementAsMatch,
+  previewId,
+  savedId,
+  snapshotFromMatch,
+  type LiveClassIn,
+  type LiveSnapshot,
+  type LiveView,
+  type SavedPlacement
+} from '@/lib/meeting-live-shared';
+
+const one = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? (v[0] ?? null) : (v ?? null));
+
+/** When Meeting Live started on this meeting, or null. */
+export async function liveStartedAt(sb: SupabaseClient, entryId: number): Promise<string | null> {
+  const { data, error } = await sb.from('meeting_boards').select('live_started_at').eq('calendar_entry_id', entryId).maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data as { live_started_at: string | null } | null)?.live_started_at ?? null;
+}
+
+export async function loadSavedPlacement(sb: SupabaseClient, entryId: number): Promise<SavedPlacement | null> {
+  const startedAt = await liveStartedAt(sb, entryId);
+  if (!startedAt) return null;
+  const [rot, cls] = await Promise.all([
+    sb.from('meeting_rotations').select('number, location').eq('calendar_entry_id', entryId).order('number'),
+    sb
+      .from('meeting_classes')
+      .select('id, rotation, teacher_person_id, title, position, version, meeting_topics(topic_key), meeting_class_members(person_id)')
+      .eq('calendar_entry_id', entryId)
+      .order('id')
+  ]);
+  const err = rot.error ?? cls.error;
+  if (err) throw new Error(err.message);
+  type Row = {
+    id: number;
+    rotation: number | null;
+    teacher_person_id: number | null;
+    title: string | null;
+    position: number;
+    version: number;
+    meeting_topics: { topic_key: string } | { topic_key: string }[] | null;
+    meeting_class_members: { person_id: number }[] | null;
+  };
+  return {
+    startedAt,
+    rotations: ((rot.data ?? []) as { number: number; location: string | null }[]).map((r) => ({ number: r.number, location: r.location })),
+    classes: ((cls.data ?? []) as unknown as Row[])
+      .filter((r) => one(r.meeting_topics)?.topic_key)
+      .map((r) => ({
+        id: r.id,
+        topicKey: one(r.meeting_topics)!.topic_key,
+        title: r.title,
+        rotation: r.rotation,
+        teacherId: r.teacher_person_id,
+        position: r.position,
+        version: r.version,
+        memberIds: (r.meeting_class_members ?? []).map((m) => m.person_id).sort((a, b) => a - b)
+      }))
+  };
+}
+
+/** The match for a meeting, or once Meeting Live has started, its saved placement in the match's shape. */
+export async function loadMatchOrPlacement(
+  sb: SupabaseClient,
+  meeting: Pick<BoardMeeting, 'entryId' | 'date'>,
+  board: readonly BoardScoutRow[],
+  teach: Pick<TeachBoard, 'supply' | 'intents'>
+): Promise<MatchResult> {
+  const saved = await loadSavedPlacement(sb, meeting.entryId);
+  return saved ? placementAsMatch(saved) : loadLiveMatch(sb, meeting, board, teach);
+}
+
+type Catalog = AdvancementCatalog;
+
+function wordsFor(catalog: Catalog, teach: Pick<TeachBoard, 'freeformTitles' | 'members'>) {
+  const skillNames = new Map(catalog.skills.map((s) => [s.id, s.name]));
+  return (keys: readonly string[]) => sessionWords(keys, catalog, skillNames, teach.freeformTitles, { mbReqs: catalog.meritBadgeRequirements, members: teach.members });
+}
+
+/** The matcher's output for a meeting, as the snapshot the first Live write saves. */
+async function matchSnapshot(sb: SupabaseClient, meeting: BoardMeeting, catalog: Catalog, rows: readonly BoardScoutRow[], teach: TeachBoard) {
+  const match = await loadLiveMatch(sb, meeting, rows, teach);
+  const words = wordsFor(catalog, teach);
+  return { match, snapshot: snapshotFromMatch(match, (keys) => words(keys).title) };
+}
+
+const snapshotJson = (s: LiveSnapshot) => ({
+  rotations: s.rotations.map((r) => ({ number: r.number, location: r.location })),
+  classes: s.classes.map((c) => ({
+    source_key: c.sourceKey,
+    topic_key: c.topicKey,
+    title: c.title,
+    rotation: c.rotation,
+    teacher_person_id: c.teacherId,
+    position: c.position,
+    members: c.memberIds
+  }))
+});
+
+/**
+ * Start Meeting Live: save the matcher's current output as the meeting's placement. Already started = nothing changes
+ * (started: false). The caller has checked the editor's right and the meeting.
+ */
+export async function startMeetingLive(sb: SupabaseClient, meeting: BoardMeeting, actorPersonId: number): Promise<{ ok: true; started: boolean } | { ok: false; error: string }> {
+  if (await liveStartedAt(sb, meeting.entryId)) return { ok: true, started: false };
+  const catalog = await loadAdvancementCatalog();
+  const rows = await loadBoardState(sb, meeting, catalog);
+  const teach = await loadTeachBoard(sb, meeting, catalog, rows);
+  const { snapshot } = await matchSnapshot(sb, meeting, catalog, rows, teach);
+  const { data, error } = await sb.rpc('meeting_live_start', { p_entry: meeting.entryId, p_actor: actorPersonId, p_snapshot: snapshotJson(snapshot) });
+  if (error) return { ok: false, error: sanitizeRpcError(error.message) };
+  return { ok: true, started: data === true };
+}
+
+/** What the Live screen draws for one meeting. */
+export async function loadLiveView(sb: SupabaseClient, meeting: BoardMeeting): Promise<LiveView> {
+  const catalog = await loadAdvancementCatalog();
+  const rows = await loadBoardState(sb, meeting, catalog);
+  const [teach, saved] = await Promise.all([loadTeachBoard(sb, meeting, catalog, rows), loadSavedPlacement(sb, meeting.entryId)]);
+  const words = wordsFor(catalog, teach);
+
+  let classes: LiveClassIn[];
+  let rotations: LiveView['rotations'];
+  let pool: number[];
+  if (saved) {
+    classes = saved.classes.map((c) => {
+      const w = words([c.topicKey]);
+      return { id: savedId(c.id), topicKey: c.topicKey, rotation: c.rotation, title: c.title ?? w.title, codeLabel: w.codeLabel, kind: w.kind, teacherId: c.teacherId, memberIds: c.memberIds, position: c.position };
+    });
+    rotations = saved.rotations;
+    // Coming, nothing assigned: scouts who said Coming (or picked), or were marked here, and aren't in a class.
+    const { data, error } = await sb.from('event_attendance').select('person_id').eq('calendar_entry_id', meeting.entryId);
+    if (error) throw new Error(error.message);
+    const scouts = new Set(rows.map((r) => r.personId));
+    pool = [
+      ...rows.filter((r) => effectiveIntent(r.intent, r.picks) === 'coming').map((r) => r.personId),
+      ...((data ?? []) as { person_id: number }[]).map((a) => a.person_id).filter((id) => scouts.has(id))
+    ];
+  } else {
+    const { match, snapshot } = await matchSnapshot(sb, meeting, catalog, rows, teach);
+    const keysOf = new Map(match.sessions.map((s) => [s.id, s.keys]));
+    classes = snapshot.classes.map((c) => {
+      const w = words(keysOf.get(c.sourceKey) ?? [c.topicKey]);
+      return { id: previewId(c.sourceKey), topicKey: c.topicKey, rotation: c.rotation, title: c.title ?? w.title, codeLabel: w.codeLabel, kind: w.kind, teacherId: c.teacherId, memberIds: c.memberIds, position: c.position };
+    });
+    rotations = snapshot.rotations;
+    pool = match.comingNothing.map((x) => x.personId);
+  }
+
+  // Names: scouts as the board says them, teachers as the planner does, anyone else by their record.
+  const rowOf = new Map(rows.map((r) => [r.personId, r]));
+  const names = new Map<number, string>(rows.map((r) => [r.personId, boardName(r.name)]));
+  for (const [id, p] of teach.people) if (!names.has(id)) names.set(id, teacherName(p, 'admin'));
+  const missing = [...new Set(classes.flatMap((c) => [...c.memberIds, ...(c.teacherId != null ? [c.teacherId] : [])]))].filter((id) => !names.has(id));
+  for (const [id, n] of await loadPeopleNames(sb, missing)) names.set(id, boardName(n));
+
+  // Retake (8c): a placed scout who has already completed the class's topic gets a star.
+  const placed = [...new Set(classes.flatMap((c) => c.memberIds))].map((id) => rowOf.get(id)).filter((r): r is BoardScoutRow => !!r);
+  const progress = await loadScoutProgress(sb, placed.map((r) => r.scoutId));
+  const trees = rankTrees(catalog.rankRequirements);
+  const retake = (personId: number, key: string) => {
+    const r = rowOf.get(personId);
+    if (!r) return false;
+    const p = progress.get(r.scoutId);
+    return isPickFinished(key, {
+      currentRank: r.currentRank,
+      ranks: catalog.ranks,
+      trees,
+      rankCodes: p?.rankCodes ?? new Set<string>(),
+      awardedMbs: new Set((p?.mbProgress ?? []).filter((m) => m.awarded).map((m) => m.mb_id))
+    });
+  };
+
+  return buildLiveView({ started: !!saved, rotations, classes, nameOf: (id) => names.get(id) ?? '', retake, pool });
+}

@@ -35,7 +35,8 @@ import { OfferToScouts, type OfferChoiceGroup } from './offer-to-scouts';
 /** Offers to scouts are for rank requirements (a whole badge or a freeform topic has no pick-list entry to offer). */
 const isRankKey = (key: string) => !key.startsWith('mb:') && !key.startsWith('ff:');
 import { assessTeacher, commitmentCounts, flagText, teacherIntent, teacherName, topicSkill, weeksAsked } from '@/lib/meeting-board-teach';
-import { loadLiveMatch, loadTeachBoard } from '@/lib/meeting-board-supply';
+import { loadTeachBoard } from '@/lib/meeting-board-supply';
+import { loadMatchOrPlacement } from '@/lib/meeting-live';
 import { loadRotationBoard } from '@/lib/meeting-board-stations';
 import type { StationDraft } from '@/lib/meeting-board-rotations';
 import type { CatalogMeritBadgeRequirement } from '@/lib/advancement-catalog';
@@ -189,7 +190,7 @@ export async function loadThisSunday(): Promise<ThisSundayData | null> {
     Number(adultIntent(a.personId) !== 'coming') - Number(adultIntent(b.personId) !== 'coming') || a.name.localeCompare(b.name);
 
   // Phase 3a: the live match (rank boards). It owns the unmatched lists; a merit badge night keeps Phase 2's.
-  const match = meeting.mode === 'rank' ? await loadLiveMatch(sb, meeting, rows, teach) : null;
+  const match = meeting.mode === 'rank' ? await loadMatchOrPlacement(sb, meeting, rows, teach) : null;
   const skillNames = new Map(catalog.skills.map((s) => [s.id, s.name]));
   const keyLabel = (key: string) => words(key).codeLabel || words(key).label;
   const wanted = match
@@ -250,12 +251,12 @@ export async function loadThisSunday(): Promise<ThisSundayData | null> {
               if (s.via === 'offer') notes.unshift(`from a ${skillNames.get(w.skillId ?? '') ?? ''} offer`);
               return {
                 id: s.id,
-                title: w.title,
+                title: s.title ?? w.title,
                 codeLabel: w.codeLabel,
                 group: s.group,
                 parts: w.parts,
                 minutes: w.minutes,
-                teacher: { ...teacherPerson(s.teacherId), notes },
+                teacher: { ...(s.teacherId != null ? teacherPerson(s.teacherId) : { personId: 0, name: 'No teacher yet' }), notes },
                 coTeachers: s.coTeacherIds.map(teacherPerson),
                 scouts: s.scouts
                   .map((x) => ({ personId: x.personId, name: nameOf.get(x.personId) ?? '', why: x.via === 'placed' ? 'placed' : x.pickNo ? `#${x.pickNo}` : '' }))
