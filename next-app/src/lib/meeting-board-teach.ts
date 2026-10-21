@@ -18,6 +18,7 @@
  */
 import type { CatalogRank, CatalogRankRequirement } from '@/lib/advancement-catalog';
 import { isPickFinished, rankOfKey, type rankTrees } from '@/lib/meeting-board-picklist';
+import { isBorKey } from '@/lib/rank-calculus';
 import { boardName, type Intent } from '@/lib/meeting-board-shared';
 
 export type TeacherKind = 'adult' | 'junior';
@@ -103,7 +104,8 @@ export function assessTeacher(p: TeacherPerson, key: string, ctx: TeachContext):
     return { qualified: p.kind === 'adult', flags: counselor ? [] : ['needs_counselor'], refused: false };
   }
   // A freeform topic, a focus group or a merit badge requirement (P3; counselor-first ordering is deferred): anyone.
-  if (!rankOfKey(key, ctx.ranks)) return { qualified: true, flags: [], refused: false };
+  // A board of review too: anyone may run one, never blocked or flagged (Patrick, 2026-10-21).
+  if (!rankOfKey(key, ctx.ranks) || isBorKey(key)) return { qualified: true, flags: [], refused: false };
   const skill = topicSkill(key, ctx.ranks, ctx.rankReqs);
   if (p.kind === 'junior' && skill && ctx.youthTeachable.get(skill) === false) return { qualified: false, flags: [], refused: true };
   const flags: TeachFlag[] = [];

@@ -42,6 +42,34 @@ export const SM_CONFERENCE_CODES: ReadonlySet<string> = new Set([
 ]);
 export const SM_CONFERENCE_THRESHOLD = 0.95;
 
+/** A board of review's code: the ledger records one as '<rankId>-BoR'. There is no catalog row (removed 2026-08-19). */
+export const BOR_CODE = 'BoR';
+const isBorCode = (code: string) => code.toLowerCase() === 'bor';
+
+/** '<rankId>-BoR', the pick key of a rank's board of review. */
+export function borKey(rankId: string): string {
+  return `${rankId}-${BOR_CODE}`;
+}
+
+/** Does this key name a board of review ('tenderfoot-BoR')? */
+export function isBorKey(key: string): boolean {
+  return /-bor$/i.test(key);
+}
+
+/**
+ * May a scout pick this rank's board of review (Patrick, 2026-10-21: "The board of review can't be offered unless all
+ * other requirements are completed for a rank")? Every top-level requirement of the rank is satisfied on the ledger,
+ * the never-planned ones (tenure, Scout spirit, position of responsibility) included, and the board of review itself
+ * isn't on the ledger yet. The Scoutmaster conference is the one exception: it may still be open, because the
+ * conference and the board are often the same evening (Patrick, 2026-10-21). Scout rank has none. One rule for the pick list,
+ * pickableKeys, likely fits and the nudge list.
+ */
+export function rankBorPickable<T extends CalcRow>(tree: ReqNode<T>[], rankId: string, codes: ReadonlySet<string>): boolean {
+  if (rankId === 'scout' || codes.has(borKey(rankId))) return false;
+  const tops = tree.filter((t) => !isBorCode(t.code) && !SM_CONFERENCE_CODES.has(`${rankId}-${t.code}`));
+  return tops.length > 0 && tops.every((t) => rankNodeSatisfied(t, rankId, codes as Set<string>));
+}
+
 /** A rank requirement node is satisfied when its leaves are on the ledger (code "tenderfoot-3a"), rolled up by its
  *  all / any / n-of rule. */
 export function rankNodeSatisfied<T extends CalcRow>(node: ReqNode<T>, rankId: string, codes: Set<string>): boolean {
@@ -78,7 +106,8 @@ export function rankLeafCompletion<T extends CalcRow>(
     n.children.forEach(walk);
   };
   for (const top of tree) {
-    if (top.code === excludeTopCode) continue;
+    // The conference itself, and a board of review, are never part of the 95%.
+    if (top.code === excludeTopCode || isBorCode(top.code)) continue;
     walk(top);
   }
   return total === 0 ? 0 : done / total;

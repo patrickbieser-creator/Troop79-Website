@@ -20,7 +20,7 @@
  * listed but disabled with "Needs an outing". The pick unit is the top-level requirement (Decision 15).
  */
 import { buildReqTree, type ReqNode } from '@/lib/mb-helpers';
-import { rankNodeSatisfied, rankTopPlannable } from '@/lib/rank-calculus';
+import { BOR_CODE, borKey, isBorKey, rankBorPickable, rankNodeSatisfied, rankTopPlannable } from '@/lib/rank-calculus';
 import type { CatalogMeritBadge, CatalogMeritBadgeRequirement, CatalogRank, CatalogRankRequirement } from '@/lib/advancement-catalog';
 import { boardName, orderPicks, othersLabel, type BoardPick, type Intent } from '@/lib/meeting-board-shared';
 
@@ -113,6 +113,10 @@ export function nextRankOf(currentRank: string | null, ranks: readonly CatalogRa
 
 /** The tray's second line for a freeform topic. */
 export const OFFERED_LABEL = 'Offered this week';
+/** A board of review's words: 'Board of review' / 'Tenderfoot board of review'. */
+export const BOR_LABEL = 'Board of review';
+export const borCodeLabel = (rankName: string) => `${rankName} board of review`;
+
 /** The tray's second line for a focus group, and the pick list's heading for what was seeded (P3). */
 export const FOCUS_LABEL = 'Meeting focus';
 
@@ -153,6 +157,11 @@ export function buildPickList(input: PickListInput): PickListView {
         parts: topicParts(top, input.rankReqs, codes),
         ...(seeded.has(key) ? { focus: true } : {})
       });
+    }
+    // The board of review, last, once everything else in the rank is done.
+    if (rankBorPickable(tree, rank.id, codes)) {
+      const key = borKey(rank.id);
+      rows.push({ key, kind: 'rank', code: BOR_CODE, label: BOR_LABEL, codeLabel: borCodeLabel(rank.display_name), outing: false, others: others(key), teacher: teacher(key), ...(seeded.has(key) ? { focus: true } : {}) });
     }
     if (rows.length || rank.id === nextRankId) groups.push({ rankId: rank.id, title: rank.display_name, next: rank.id === nextRankId, rows });
   }
@@ -217,6 +226,7 @@ export function isPickFinished(
   const sortOf = new Map(ctx.ranks.map((r) => [r.id, r.sort_order]));
   const mine = ctx.currentRank ? sortOf.get(ctx.currentRank) : undefined;
   if (mine != null && mine >= rank.sort_order) return true;
+  if (isBorKey(key)) return ctx.rankCodes.has(borKey(rank.id));
   const code = key.slice(rank.id.length + 1);
   const top = (ctx.trees.get(rank.id) ?? []).find((n) => n.code === code);
   return top ? rankNodeSatisfied(top, rank.id, ctx.rankCodes as Set<string>) : false;
@@ -229,6 +239,7 @@ export function isPickOutOfReach(key: string, ctx: Parameters<typeof isPickFinis
   const rank = rankOfKey(key, ctx.ranks);
   if (!rank) return false;
   const tree = ctx.trees.get(rank.id) ?? [];
+  if (isBorKey(key)) return !rankBorPickable(tree, rank.id, ctx.rankCodes);
   const top = tree.find((n) => n.code === key.slice(rank.id.length + 1));
   return top ? !rankTopPlannable(tree, rank.id, top, ctx.rankCodes as Set<string>) : false;
 }
@@ -274,6 +285,7 @@ export function topicWords(
     const parts = topicParts(row, more?.mbReqs ?? []);
     return { label: row.label, codeLabel: `${mb.name} ${row.code}`, kind: 'mb', parts, minutes: teachMinutes(row, parts) };
   }
+  if (isBorKey(key)) return rank.id === 'scout' ? null : { label: BOR_LABEL, codeLabel: borCodeLabel(rank.display_name), kind: 'rank', parts: [], minutes: null };
   const code = key.slice(rank.id.length + 1);
   const row = rankReqs.find((r) => r.rank_id === rank.id && r.code === code && r.parent_id == null);
   if (!row) return null;

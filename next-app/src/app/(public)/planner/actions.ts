@@ -30,7 +30,8 @@ import {
 } from '@/lib/meeting-board';
 import { assignForPicks, loadSupplyRows, loadTeacherPeople, teachContext, teachTopic, unteachTopic } from '@/lib/meeting-board-supply';
 import { INTENTS, type Intent } from '@/lib/meeting-board-shared';
-import { nextRankOf, pickableKeys } from '@/lib/meeting-board-picklist';
+import { BOR_LABEL, borCodeLabel, nextRankOf, pickableKeys } from '@/lib/meeting-board-picklist';
+import { borKey } from '@/lib/rank-calculus';
 import { scoutCandidates, sendPickInvites, sendTeachInvites } from '@/lib/meeting-invites-send';
 import { assessTeacher, FREEFORM_MAX, freeformTitle } from '@/lib/meeting-board-teach';
 import { plannerAccess } from '@/lib/meeting-planner-access';
@@ -176,7 +177,8 @@ export interface OfferChoice {
   label: string;
 }
 
-/** What an offer can be: every top-level rank requirement that can be done at a meeting, and every merit badge. */
+/** What an offer can be: every top-level rank requirement that can be done at a meeting, each rank's board of review
+ *  (not Scout's), and every merit badge. */
 export async function plannerOfferChoicesAction(): Promise<{ ok: true; choices: OfferChoice[] } | { ok: false; error: string }> {
   if (!plannerAccess(await resolveAdminActor()).canEdit) return fail('Only someone who can edit the Meeting Planner can do that.');
   const catalog = await loadAdvancementCatalog();
@@ -186,6 +188,7 @@ export async function plannerOfferChoicesAction(): Promise<{ ok: true; choices: 
       .filter((q) => q.rank_id === r.id && q.parent_id == null && q.venue !== 'outing' && q.code.toLowerCase() !== 'bor')
       .sort((a, b) => a.sort_order - b.sort_order)
       .map((q) => ({ key: `${r.id}-${q.code}`, codeLabel: `${r.display_name} ${q.code}`, label: q.label }))
+      .concat(r.id === 'scout' ? [] : [{ key: borKey(r.id), codeLabel: borCodeLabel(r.display_name), label: BOR_LABEL }])
   );
   const badges = [...catalog.meritBadges].sort((a, b) => a.name.localeCompare(b.name)).map((m) => ({ key: `mb:${m.id}`, codeLabel: 'Merit badge', label: m.name }));
   return { ok: true, choices: [...reqs, ...badges] };
