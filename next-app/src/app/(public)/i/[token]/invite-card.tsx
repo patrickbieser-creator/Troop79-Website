@@ -37,7 +37,6 @@ export function InviteCard(props: {
   const sunday = <Link href="/member/meeting">your Sunday page</Link>;
   const errText: Record<string, string> = {
     busy: 'Too many tries from here. Please try again in an hour.',
-    full: 'You’re already teaching 2 things that day. Drop one on your Sunday page, then come back to this invite.',
     picks: `${props.recipientIsInvitee ? 'You already have' : `${scout} already has`} 5 picks. Use “Pick something else” to swap one out.`,
     gone: `That isn’t on ${props.recipientIsInvitee ? 'your' : `${scout}’s`} list any more; it may already be signed off.`,
     save: 'That didn’t save. Please try again.'

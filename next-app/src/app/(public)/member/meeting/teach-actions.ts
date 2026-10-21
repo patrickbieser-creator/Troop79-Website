@@ -120,7 +120,7 @@ export type OfferWhat = { type: 'skill'; skillId: string } | { type: 'req'; key:
 
 /**
  * "Offer something": a skill, a requirement, or something else, on one or more upcoming dates, with a note. Each date
- * becomes its own row; if any date is already full nothing is posted and the dates field says which.
+ * becomes its own row.
  */
 export async function meetingPostOfferAction(t: TeachTarget & { what: OfferWhat; entryIds: number[]; note?: string }): Promise<TeachActionResult> {
   const r = await resolve(t);
@@ -144,6 +144,6 @@ export async function meetingPostOfferAction(t: TeachTarget & { what: OfferWhat;
     what.type === 'skill'
       ? await offerSkill(r.sb, r.writer, entryIds, what.skillId, note)
       : await teachTopic(r.sb, r.writer, entryIds, what.type === 'req' ? { key: what.key } : { title: freeformTitle(what.title) }, note);
-  if (!res.ok) return fail(res.error, res.error.startsWith('You’re teaching 2') ? 'dates' : undefined);
+  if (!res.ok) return fail(res.error);
   return r.refresh(res);
 }

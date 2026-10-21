@@ -289,7 +289,7 @@ export interface TeachWriter {
 
 const base = (w: TeachWriter) => ({ p_person: w.personId, p_actor: w.actorPersonId, p_leader: w.leader });
 /** The RPCs' own messages are written for people; anything else (a constraint, a dropped connection) is not shown raw. */
-const KNOWN = /^(You’re teaching 2|You can only sign up|Teaching is for|There’s no teaching|That meeting|That isn’t something|Junior Leaders can’t|Pick at least one date)/;
+const KNOWN = /^(You can only sign up|Teaching is for|There’s no teaching|That meeting|That isn’t something|Junior Leaders can’t|Pick at least one date)/;
 export const SAVE_FAILED = 'Couldn’t save that. Try again.';
 export function sanitizeRpcError(message: string): string {
   return KNOWN.test(message) ? message : SAVE_FAILED;

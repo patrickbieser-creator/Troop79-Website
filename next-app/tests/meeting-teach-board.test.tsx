@@ -89,11 +89,12 @@ describe('TeachBoard', () => {
     expect(calls.teach).toHaveBeenCalledWith({ entryId: 1, personId: 9, onBehalf: false, key: 'tenderfoot-3a' });
   });
 
-  it('Adult_IsRefusedThirdCommitment_SaysWhyInPlace', async () => {
+  it('Adult_TeachingTwo_CanStillTakeAThird', async () => {
+    calls.teach.mockResolvedValue(ok({ count: 3 }));
     board({ count: 2 });
     const row = screen.getByText('Knots').closest('div')!.parentElement!;
     await userEvent.click(within(row).getByRole('button', { name: 'I’ll teach this' }));
-    expect([screen.getByRole('alert').textContent, calls.teach.mock.calls.length]).toEqual(['You’re teaching 2. Remove one to add another.', 0]);
+    expect(calls.teach.mock.calls.length).toBe(1);
   });
 
   it('Adult_SeesHowLongATopicTakes_AndItsParts', () => {
@@ -126,10 +127,10 @@ describe('TeachBoard', () => {
     expect([calls.intent.mock.calls[0][0].intent, await screen.findByText('We’ll find something that fits.')]).toEqual(['undecided', expect.anything()]);
   });
 
-  it('Adult_SkillOffer_ShowsAsOneOfTwo_AndCanBeWithdrawn', async () => {
+  it('Adult_SkillOffer_CountsAsOne_AndCanBeWithdrawn', async () => {
     calls.withdraw.mockResolvedValue(ok({}));
     board({ count: 1, items: [{ kind: 'offer', key: 'knots', label: 'Knots & Lashings', sub: 'Any requirement', scouts: 0, names: [], flags: [], note: null, alsoOn: ['Nov 8'] }] });
-    expect(screen.getByText('1 of 2')).toBeTruthy();
+    expect(screen.queryByText('1 of 2')).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: 'Withdraw Knots & Lashings' }));
     expect(calls.withdraw.mock.calls[0][0]).toMatchObject({ skillId: 'knots' });
   });

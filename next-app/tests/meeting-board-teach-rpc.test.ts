@@ -126,8 +126,6 @@ const teachingOf = async (personId: number, entryId = meeting1) =>
 const offersOf = async (personId: number) =>
   ((await sb.from('meeting_teaching_offers').select('calendar_entry_id, skill_id').eq('person_id', personId).in('calendar_entry_id', [meeting1, meeting2, meeting3])).data ?? []) as { calendar_entry_id: number; skill_id: string }[];
 
-const TWO = 'You’re teaching 2. Remove one to add another.';
-
 describe('commitments', () => {
   it('Parent_CanCommitToTeachTopic', async () => {
     const { error } = await teach({ person: parent, actor: parent, note: 'bring rope' });
@@ -140,49 +138,27 @@ describe('commitments', () => {
     expect([error, (await teachingOf(parent)).length]).toEqual([null, 1]);
   });
 
-  it('Adult_IsRefusedThirdCommitment_WhenTwoHeldForMeeting', async () => {
+  // No teaching cap for adults (Plans/Meeting-Planner-II.md, Decision 7): adults decide for themselves.
+  it('Adult_CanTakeAThirdCommitment', async () => {
+    for (const k of keys.slice(0, 3)) await teach({ person: parent, actor: parent, key: k });
+    expect((await teachingOf(parent)).length).toBe(3);
+  });
+
+  it('Adult_CanAddASkillOffer_OnTopOfTwoCommitments', async () => {
     await teach({ person: parent, actor: parent, key: keys[0] });
     await teach({ person: parent, actor: parent, key: keys[1] });
-    const { error } = await teach({ person: parent, actor: parent, key: keys[2] });
-    expect([error?.message, (await teachingOf(parent)).length]).toEqual([TWO, 2]);
+    expect((await offer({ person: parent, actor: parent })).error).toBeNull();
   });
 
-  it('Adult_SkillOffer_CountsAsOneOfTwo', async () => {
-    await offer({ person: parent, actor: parent });
-    const second = await teach({ person: parent, actor: parent, key: keys[0] });
-    const third = await teach({ person: parent, actor: parent, key: keys[1] });
-    expect([second.error, third.error?.message]).toEqual([null, TWO]);
-  });
-
-  it('Adult_IsRefusedThirdCommitment_AsASkillOffer', async () => {
-    await teach({ person: parent, actor: parent, key: keys[0] });
-    await teach({ person: parent, actor: parent, key: keys[1] });
-    expect((await offer({ person: parent, actor: parent })).error?.message).toBe(TWO);
-  });
-
-  it('Adult_ParallelCommits_LeaveAtMostTwo', async () => {
+  it('Adult_ParallelCommits_AllLand', async () => {
     await Promise.all(keys.slice(0, 6).map((k) => teach({ person: other, actor: other, key: k })));
-    expect((await teachingOf(other)).length).toBe(2);
+    expect((await teachingOf(other)).length).toBe(6);
   });
 
   it('Adult_CanCommitToAMeritBadge', async () => {
     const { data: mb } = await sb.from('merit_badges').select('id').order('id').limit(1).single();
     const { error } = await teach({ person: parent, actor: parent, key: `mb:${mb!.id}` });
     expect([error, (await teachingOf(parent)).map((t) => t.meeting_topics.kind)]).toEqual([null, ['merit_badge']]);
-  });
-
-  it('Adult_RemovingACommitment_FreesASlot', async () => {
-    await teach({ person: parent, actor: parent, key: keys[0] });
-    await teach({ person: parent, actor: parent, key: keys[1] });
-    await sb.rpc('meeting_unteach_topic', { p_entry: meeting1, p_person: parent, p_actor: parent, p_leader: false, p_topic_key: keys[0] });
-    expect((await teach({ person: parent, actor: parent, key: keys[2] })).error).toBeNull();
-  });
-
-  it('Adult_WithdrawingASkillOffer_FreesASlot', async () => {
-    await offer({ person: parent, actor: parent });
-    await teach({ person: parent, actor: parent, key: keys[0] });
-    await sb.rpc('meeting_withdraw_skill_offer', { p_entry: meeting1, p_person: parent, p_actor: parent, p_leader: false, p_skill_id: youthSkill });
-    expect([(await teach({ person: parent, actor: parent, key: keys[1] })).error, (await offersOf(parent)).length]).toEqual([null, 0]);
   });
 });
 
@@ -207,11 +183,11 @@ describe('standing offers across dates', () => {
     ]);
   });
 
-  it('Adult_MultiDateOffer_WritesNothing_WhenOneDateIsFull', async () => {
+  it('Adult_MultiDateOffer_LandsEverywhere_WhenOneDateAlreadyHasTwo', async () => {
     await teach({ entries: [meeting2], person: parent, actor: parent, key: keys[0] });
     await teach({ entries: [meeting2], person: parent, actor: parent, key: keys[1] });
     const { error } = await offer({ entries: [meeting1, meeting2], person: parent, actor: parent });
-    expect([error?.message, (await offersOf(parent)).length]).toEqual(['You’re teaching 2 on Feb 11. Remove one there, or pick other dates.', 0]);
+    expect([error, (await offersOf(parent)).length]).toEqual([null, 2]);
   });
 
   it('Adult_UntaughtFreeformTopic_GoesAway_WhenTheLastTeacherLeaves', async () => {

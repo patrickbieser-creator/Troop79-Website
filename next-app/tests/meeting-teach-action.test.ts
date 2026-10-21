@@ -158,14 +158,15 @@ describe('who may teach', () => {
 });
 
 describe('the 2-cap through the actions', () => {
-  it('Adult_IsRefusedThirdCommitment_WithTheInPlaceMessage', async () => {
+  it('Adult_CanTakeAThirdCommitment', async () => {
     asAdult(parent);
     const { data: reqs } = await sb.from('rank_requirements').select('rank_id, code').is('parent_id', null).eq('rank_id', 'second-class').order('sort_order').limit(2);
     const [a, b] = ((reqs ?? []) as { rank_id: string; code: string }[]).map((x) => `${x.rank_id}-${x.code}`);
     const act = await actions();
     await act.meetingTeachAction({ entryId: meeting1, personId: parent, key: a });
     await act.meetingTeachAction({ entryId: meeting1, personId: parent, key: b });
-    expect(await act.meetingTeachAction({ entryId: meeting1, personId: parent, key: knotKey })).toEqual({ ok: false, error: 'You’re teaching 2. Remove one to add another.' });
+    const third = await act.meetingTeachAction({ entryId: meeting1, personId: parent, key: knotKey });
+    expect(third.ok && third.view.count).toBe(3);
   });
 });
 
@@ -210,7 +211,7 @@ describe('Offer something', () => {
     expect((data ?? []).length).toBe(2);
   });
 
-  it('Offer_WhenADateIsFull_MarksTheDatesField_AndPostsNothing', async () => {
+  it('Offer_PostsOnEveryDate_EvenWhereTheyAlreadyTeachTwo', async () => {
     asAdult(parent);
     const { data: reqs } = await sb.from('rank_requirements').select('rank_id, code').is('parent_id', null).eq('rank_id', 'second-class').order('sort_order').limit(2);
     const [a, b] = ((reqs ?? []) as { rank_id: string; code: string }[]).map((x) => `${x.rank_id}-${x.code}`);
@@ -218,7 +219,7 @@ describe('Offer something', () => {
     await sb.rpc('meeting_teach_topic', { p_entries: [meeting2], p_person: parent, p_actor: parent, p_leader: false, p_topic_key: b, p_title: null, p_note: null });
     const r = await (await actions()).meetingPostOfferAction({ entryId: meeting1, personId: parent, what: { type: 'req', key: knotKey }, entryIds: [meeting1, meeting2] });
     const { count } = await sb.from('meeting_topic_teachers').select('person_id', { count: 'exact', head: true }).eq('calendar_entry_id', meeting1).eq('person_id', parent);
-    expect([r, count]).toEqual([{ ok: false, error: 'You’re teaching 2 on Mar 8. Remove one there, or pick other dates.', field: 'dates' }, 0]);
+    expect([r.ok, count]).toEqual([true, 1]);
   });
 });
 
@@ -226,9 +227,9 @@ describe('qa-lead follow-ups (round 2)', () => {
   it('RpcError_OutsideTheKnownMessages_IsNeverShownRaw', async () => {
     const s = await supply();
     const res = await s.offerSkill(sb, { personId: parent, actorPersonId: parent, leader: false }, [meeting1], 'no-such-skill', null);
-    expect([res, s.sanitizeRpcError('You’re teaching 2. Remove one to add another.')]).toEqual([
+    expect([res, s.sanitizeRpcError('Junior Leaders can’t teach that: it’s adults only.')]).toEqual([
       { ok: false, error: 'Couldn’t save that. Try again.' },
-      'You’re teaching 2. Remove one to add another.'
+      'Junior Leaders can’t teach that: it’s adults only.'
     ]);
   });
 

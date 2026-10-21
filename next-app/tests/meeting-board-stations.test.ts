@@ -259,12 +259,12 @@ describe('teaching a station', () => {
     expect((await teach(a.meeting_topics.topic_key, junior)).error?.message).toBe('On a merit badge night, a leader places Junior Leaders.');
   });
 
-  it('Teacher_ThirdStation_IsRefused_TheTwoCap', async () => {
+  it('Teacher_CanTakeAThirdStation_NoCap', async () => {
     await setStations(FOUR());
     const [a, b, c] = await stationRows();
     await teach(a.meeting_topics.topic_key);
     await teach(b.meeting_topics.topic_key);
-    expect((await teach(c.meeting_topics.topic_key)).error?.message).toBe('You’re teaching 2. Remove one to add another.');
+    expect((await teach(c.meeting_topics.topic_key)).error).toBeNull();
   });
 
   it('Teacher_RemovesTheirStation', async () => {

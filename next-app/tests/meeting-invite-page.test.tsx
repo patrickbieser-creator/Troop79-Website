@@ -167,9 +167,9 @@ describe('answering', () => {
   });
 
   it('AFullTeacher_IsToldWhy_AndTheInviteStaysOpen', async () => {
-    m.respond.mockResolvedValue({ ok: false, state: 'open', error: 'You’re teaching 2. Remove one to add another.', code: 'full' });
+    m.respond.mockResolvedValue({ ok: false, state: 'open', error: 'That didn’t save.', code: 'save' });
     const url = await run(form('accept'));
-    expect([url.endsWith('?err=full'), m.fail.mock.calls.length]).toEqual([true, 0]);
+    expect([url.endsWith('?err=save'), m.fail.mock.calls.length]).toEqual([true, 0]);
   });
 
   it('AnAnswer_IsAudited_AsTheInvitee', async () => {

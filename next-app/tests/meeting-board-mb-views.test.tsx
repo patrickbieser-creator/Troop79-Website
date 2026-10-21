@@ -161,10 +161,11 @@ describe('the teach section on a merit badge night', () => {
     expect([screen.getByText('Rotation 1: Group A, 6 scouts') != null, screen.getByText(/· sign-off needs a counselor/) != null, screen.getByRole('button', { name: 'Remove Fire safety' }) != null]).toEqual([true, true, true]);
   });
 
-  it('Teacher_AThirdStation_SaysWhyInPlace', async () => {
+  it('Teacher_TeachingTwo_CanStillTakeAStation', async () => {
+    calls.teach.mockResolvedValue({ ok: true, view: { ...VIEW, count: 3 } });
     teachBoard({ count: 2 });
     await userEvent.click(screen.getAllByRole('button', { name: 'I’ll take this station' })[0]);
-    expect([calls.teach.mock.calls.length, screen.getByRole('alert').textContent]).toEqual([0, 'You’re teaching 2. Remove one to add another.']);
+    expect(calls.teach.mock.calls.length).toBe(1);
   });
 
   it('Teacher_SeesRankCommitments_HeldForARegularMeeting', () => {

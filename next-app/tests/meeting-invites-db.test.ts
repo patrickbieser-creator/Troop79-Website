@@ -161,13 +161,15 @@ describe('answering', () => {
   });
 
   it('WhenTheTeachSignupRefuses_TheInviteStaysOpen', async () => {
-    for (const key of otherKeys) {
-      const { error } = await sb.rpc('meeting_teach_topic', { p_person: adult, p_actor: adult, p_leader: false, p_entries: [meeting], p_topic_key: key, p_title: null, p_note: null });
-      if (error) throw new Error(error.message);
-    }
+    // A board closed after the invite went out refuses the sign-up (there is no teaching cap any more).
     const sent = await firstToken();
-    const res = await respondToInvite(sb, sent.token, 'accept');
-    expect([res.ok, !res.ok && res.code, (await inspectInvite(sb, sent.token)).state]).toEqual([false, 'full', 'open']);
+    await sb.from('meeting_boards').upsert({ calendar_entry_id: meeting, board_mode: 'closed' }, { onConflict: 'calendar_entry_id' });
+    try {
+      const res = await respondToInvite(sb, sent.token, 'accept');
+      expect([res.ok, !res.ok && res.code, (await inspectInvite(sb, sent.token)).state]).toEqual([false, 'save', 'open']);
+    } finally {
+      await sb.from('meeting_boards').delete().eq('calendar_entry_id', meeting);
+    }
   });
 
   it('AnUppercasedLink_StillWorks', async () => {

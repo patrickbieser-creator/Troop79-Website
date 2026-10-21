@@ -202,7 +202,7 @@ export async function inspectInvite(sb: SupabaseClient, token: string, now: Date
 
 export type RespondResult =
   | { ok: true; kind: 'teach' | 'pick'; response: InviteResponse; inviteId: number; inviteeId: number; recipientId: number }
-  | { ok: false; state: InviteState; error?: string; code?: 'full' | 'picks' | 'gone' | 'save' };
+  | { ok: false; state: InviteState; error?: string; code?: 'picks' | 'gone' | 'save' };
 
 export interface RespondDeps {
   now?: Date;
@@ -245,10 +245,9 @@ async function answerTeachInvite(sb: SupabaseClient, token: string, hash: string
   if (answer === 'accept') {
     const res = await teachTopic(sb, { personId: row.invitee_person_id, actorPersonId: row.invitee_person_id, leader: false }, [row.calendar_entry_id], { key: row.topic_key }, null);
     if (!res.ok) {
-      // Nothing changed, so the invite stays answerable (they can drop another topic and come back).
+      // Nothing changed, so the invite stays answerable.
       const { error: reopen } = await sb.from('meeting_invites').update({ consumed_at: null }).eq('id', row.id);
-      const code = res.error?.startsWith('You’re teaching 2') ? 'full' : 'save';
-      return reopen ? { ok: false, state: 'void', error: res.error } : { ok: false, state: 'open', error: res.error, code };
+      return reopen ? { ok: false, state: 'void', error: res.error } : { ok: false, state: 'open', error: res.error, code: 'save' };
     }
   }
   const response: InviteResponse = answer === 'accept' ? 'accepted' : 'declined';

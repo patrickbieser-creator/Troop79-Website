@@ -23,8 +23,6 @@ import { boardName, type Intent } from '@/lib/meeting-board-shared';
 export type TeacherKind = 'adult' | 'junior';
 
 /** Commitments per person per meeting, topics and skill offers together. The RPC enforces it. */
-export const MAX_COMMITMENTS = 2;
-export const TEACH_FULL = `You’re teaching ${MAX_COMMITMENTS}. Remove one to add another.`;
 /** The freeform title the RPC stores (trimmed, inner whitespace collapsed, at most 80 characters). */
 export const FREEFORM_MAX = 80;
 
@@ -223,5 +221,5 @@ export function teacherLine(mode: 'rank' | 'merit_badge' | 'closed', explicit: I
   const it = teacherIntent(explicit, commitments);
   if (it === 'not_coming') return 'Can’t make it';
   const said = it === 'coming' ? 'Coming' : it === 'undecided' ? 'Not sure yet' : 'No answer yet';
-  return commitments > 0 ? `${said} · teaching ${commitments} of ${MAX_COMMITMENTS}` : said;
+  return commitments > 0 ? `${said} · teaching ${commitments}` : said;
 }

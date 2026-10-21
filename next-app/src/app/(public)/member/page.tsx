@@ -284,7 +284,7 @@ export default async function MemberPage({
  * The "Sunday's meeting" card (Plans/Meeting-Requests-And-Teaching-Offers.md): live state per scout ("Coming · 3
  * picks"), linking to /member/meeting. A scout sees their own line; an adult one line per scout in the household.
  * Phase 2: anyone who can teach (an adult, with or without scouts, or a Junior Leader) gets the card too, with their
- * own line ("You: Coming · teaching 1 of 2"). Null = no card.
+ * own line ("You: Coming · teaching 1"). Null = no card.
  */
 async function loadMeetingCard(personId: number, viewerIsScout: boolean, proxying: boolean, teaches: boolean): Promise<Card | null> {
   const sb = createAdminClient();

@@ -6,16 +6,16 @@
  *
  *   - Adults answer Coming / Not sure yet ("We'll find something that fits": a leader puts them where they're needed) /
  *     Can't make it here. A Junior Leader answers once, in their scout section above, and this section follows it.
- *   - "You're teaching (n of 2)": what they've taken on, with how many scouts asked so far. A broad skill offer is one
- *     of the two.
+ *   - "You're teaching (n)": what they've taken on, with how many scouts asked so far. A broad skill offer counts as
+ *     one. There is no cap: adults decide for themselves (Plans/Meeting-Planner-II.md, Decision 7).
  *   - "Scouts are asking for these": every topic scouts asked for, the ones with no teacher first, with how many and
- *     who. "I'll teach this" saves on tap; a third says in place "You're teaching 2. Remove one to add another."
+ *     who. "I'll teach this" saves on tap; a refusal is said in place under that row.
  *     Topics outside the person's teaching skills sit under "Other things scouts asked for" and can still be taken,
  *     flagged (matcher rule 1); an adults-only skill has no button for a Junior Leader.
  *   - "Offer something": a skill, a requirement or something else, on one or more dates, with a note. Each date is its
  *     own commitment. Problems are marked in place.
- *   - Phase 3b, a merit badge night: the badge's stations instead, each with "I'll take this station" (one of the two;
- *     the counselor flag applies), and for a station they teach, which group comes in each rotation. Anything else they
+ *   - Phase 3b, a merit badge night: the badge's stations instead, each with "I'll take this station" (the counselor
+ *     flag applies), and for a station they teach, which group comes in each rotation. Anything else they
  *     signed up for this week shows as held for a regular meeting, with Remove.
  */
 import { useId, useRef, useState, useTransition } from 'react';
@@ -24,7 +24,6 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/app/_components/button';
 import { Badge } from '@/app/_components/badge';
 import { INTENT_LABEL, type Intent } from '@/lib/meeting-board-shared';
-import { MAX_COMMITMENTS, TEACH_FULL } from '@/lib/meeting-board-teach';
 import { minutesText } from '@/lib/meeting-board-picklist';
 import type { OfferChoices, TeachItem, TeachView, WantedItem } from '@/lib/meeting-board-supply';
 import type { MatchLine } from '@/lib/meeting-board-match';
@@ -130,12 +129,6 @@ export function TeachBoard(props: TeachBoardProps) {
 
   function commit(w: WantedItem) {
     if (readOnly) return;
-    if (view.count >= MAX_COMMITMENTS) {
-      setErrKey(w.key);
-      setProblem(null);
-      setLive(TEACH_FULL);
-      return;
-    }
     run(() => meetingTeachAction({ ...target, key: w.key }), { what: 'teach', say: `Saved. ${you} teaching ${w.label}.`, errorAt: w.key });
   }
 
@@ -209,12 +202,6 @@ export function TeachBoard(props: TeachBoardProps) {
     const held = view.items.filter((i) => !(i.kind === 'topic' && stationKeys.has(i.key)));
     const take = (s: StationTeachLine) => {
       if (readOnly) return;
-      if (view.count >= MAX_COMMITMENTS) {
-        setErrKey(s.key);
-        setProblem(null);
-        setLive(TEACH_FULL);
-        return;
-      }
       run(() => meetingTeachAction({ ...target, key: s.key }), { what: 'teach', say: `Saved. ${you} teaching ${s.title}.`, errorAt: s.key });
     };
     const drop = (s: StationTeachLine) => run(() => meetingUnteachAction({ ...target, key: s.key }), { what: 'teach', say: 'Saved. Removed.' });
@@ -222,14 +209,14 @@ export function TeachBoard(props: TeachBoardProps) {
       <section className={styles.teach} aria-labelledby={`${ids}-teach`}>
         {head}
         {intentBlock}
-        <div className={errKey && view.count >= MAX_COMMITMENTS ? styles.badBox : undefined}>
+        <div>
           <h3 className={styles.groupHead}>
             <span>
               {props.mbName ? `${props.mbName} stations` : 'Stations'}
               <Saved on={flash.teach > 0} />
             </span>
             <span className={styles.meta}>
-              {view.count} of {MAX_COMMITMENTS}
+              {view.count}
             </span>
           </h3>
           {stations.length ? (
@@ -265,7 +252,7 @@ export function TeachBoard(props: TeachBoardProps) {
                 </div>
                 {errKey === s.key && (
                   <p className={styles.badNote} role="alert">
-                    {problem ?? TEACH_FULL}
+                    {problem}
                   </p>
                 )}
               </div>
@@ -371,7 +358,7 @@ export function TeachBoard(props: TeachBoardProps) {
         </div>
         {errKey === w.key && (
           <p className={styles.badNote} role="alert">
-            {problem ?? TEACH_FULL}
+            {problem}
           </p>
         )}
       </div>
@@ -405,14 +392,14 @@ export function TeachBoard(props: TeachBoardProps) {
         </div>
       )}
 
-      <div className={errKey && view.count >= MAX_COMMITMENTS ? styles.badBox : undefined}>
+      <div>
         <h3 className={styles.groupHead}>
           <span>
             {you} teaching
             <Saved on={flash.teach > 0} />
           </span>
           <span className={styles.meta}>
-            {view.count} of {MAX_COMMITMENTS}
+            {view.count}
           </span>
         </h3>
         {view.items.length ? (
