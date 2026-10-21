@@ -136,13 +136,6 @@ export const SECTIONS: NavSection[] = [
         description: 'Partial merit badges and their counselors',
         capability: 'advancement.write'
       },
-      {
-        label: 'Meeting Plan',
-        href: '/admin/advancement/meeting-plan',
-        matchPath: '/admin/advancement/meeting-plan',
-        description: 'Sunday meeting plan from who needs what',
-        capability: 'meeting_plan.use'
-      },
       // "Roll Call & Agendas" retired 2026-08-24 (Patrick): the Calendar list
       // carries every entry's agenda / signup / roll-call state as letter pills
       // that open the layer's screen. The Roll Call SHEET keeps its own route
@@ -221,6 +214,21 @@ export const SECTIONS: NavSection[] = [
         matchPath: '/admin/library/menu-monster',
         description: 'Recipes, ingredients and prices for patrol cooking',
         capability: 'library.moderate'
+      }
+    ]
+  },
+  {
+    // Its own bar entry (Patrick, 2026-10-20): the Sunday board is used every week, not a tab under Advancement.
+    title: 'Meeting Plan',
+    // Advancement work, so Advancement's tone on Home; every tone is taken.
+    tint: 'moss',
+    items: [
+      {
+        label: 'Meeting Plan',
+        href: '/admin/advancement/meeting-plan',
+        matchPath: '/admin/advancement/meeting-plan',
+        description: 'Sunday meeting plan from who needs what',
+        capability: 'meeting_plan.use'
       }
     ]
   },

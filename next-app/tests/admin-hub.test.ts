@@ -101,7 +101,7 @@ describe('AdminHome card grid', () => {
 
   it('AdminHome_PlacesReportsAfterMoneyAndBeforePeople', () => {
     const titles = hubGroups(visible(ALL, true), { wreathOpen: false }).map((g) => g.title);
-    expect(titles).toEqual(['Advancement', 'Calendar & Content', 'Money', 'Reports', 'People & Setup', 'Troop admin tools']);
+    expect(titles).toEqual(['Advancement', 'Calendar & Content', 'Meeting Plan', 'Money', 'Reports', 'People & Setup', 'Troop admin tools']);
   });
 
   it('AdminHome_TintsEveryGroupItsOwnEarthTone_AndLeavesTheToolsRowUntinted', () => {
@@ -110,6 +110,7 @@ describe('AdminHome card grid', () => {
     expect(tints).toEqual({
       Advancement: 'moss',
       'Calendar & Content': 'sky',
+      'Meeting Plan': 'moss',
       Money: 'wheat',
       Reports: 'clay',
       'People & Setup': 'stone',
@@ -227,7 +228,7 @@ describe('Section bar and tabs', () => {
 
   it('AdminNav_LabelsTheBar_LikeThePrototype', () => {
     expect(labels(nav(ALL_CAPS, '/admin', true).bar)).toEqual([
-      'Home', 'Advancement', 'Calendar & Content', 'Money', 'Reports', 'People', 'Tools'
+      'Home', 'Advancement', 'Calendar & Content', 'Meeting Plan', 'Money', 'Reports', 'People', 'Tools'
     ]);
   });
 
@@ -240,7 +241,7 @@ describe('Section bar and tabs', () => {
 
   it('AdminNav_AdvancementTabs_StartWithDashboard_AndCarryNoReports', () => {
     const n = nav(['advancement.write', 'meeting_plan.use'], '/admin/advancement/ledger');
-    expect(labels(n.tabs)).toEqual(['Dashboard', 'Fast Entry', 'Ledger', 'Submit & Present', 'MB Progress', 'Meeting Plan', 'Has/Needs']);
+    expect(labels(n.tabs)).toEqual(['Dashboard', 'Fast Entry', 'Ledger', 'Submit & Present', 'MB Progress', 'Has/Needs']);
   });
 
   it.each([
