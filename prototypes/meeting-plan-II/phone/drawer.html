@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Person drawer · phone</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="phone.css?v=4">
+<style>
+  .mockbar.fixed-frame { top: 0; z-index: 50; }
+  /* What sits behind the sheet: a peek of the board, dimmed. */
+  .peek { padding: 70px var(--gutter) 0; }
+  .peek .ph { background: #fff; border-radius: 8px; height: 120px; margin-bottom: 12px; box-shadow: var(--shadow-card); }
+
+  /* Full-screen sheet: everything fixed except the list (README: header, quick buttons and action always visible). */
+  .sheet.full { top: var(--sheet-top, 60px); max-height: none; }
+  .who-head { display: flex; align-items: flex-start; gap: 12px; padding: 6px var(--gutter) 12px; border-bottom: 1px solid var(--line); flex: none; }
+  .who-head .role { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--meta); }
+  .who-head h2 { margin: 2px 0 0; font-size: 22px; line-height: 1.2; color: var(--navy); }
+  .who-head .sub { font-size: 13px; color: var(--meta); margin-top: 2px; }
+
+  .answer { padding: 12px var(--gutter); border-bottom: 1px solid var(--line); flex: none; }
+  .answer .q { font-size: 14px; font-weight: 700; margin-bottom: 8px; }
+  .seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .seg button { min-height: var(--tap); border-radius: 6px; border: 1px solid var(--line-3); background: #fff; font-size: 14px; font-weight: 600; }
+  .seg button[aria-checked="true"][data-v="coming"]  { background: var(--forest); border-color: var(--forest); color: #fff; }
+  .seg button[aria-checked="true"][data-v="notsure"] { background: var(--bark);   border-color: var(--bark);   color: #fff; }
+  .seg button[aria-checked="true"][data-v="cant"]    { background: var(--danger); border-color: var(--danger); color: #fff; }
+  .note { margin-top: 10px; font-size: 13px; color: var(--bark-note); background: var(--bark-tint); border-radius: 6px; padding: 8px 10px; }
+
+  .list-head { padding: 12px var(--gutter) 8px; flex: none; }
+  .list-head .t { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .list-head .t b { font-size: 14.5px; }
+  .quick { display: flex; gap: 6px; margin-top: 8px; overflow-x: auto; }
+  .quick button { flex: none; min-height: 40px; padding: 0 12px; border-radius: 6px; border: 1px solid var(--line-3); background: #fff; color: var(--navy); font-size: 13px; font-weight: 600; }
+  .quick button:hover { border-color: var(--navy); }
+
+  .list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 12px 12px; display: flex; flex-direction: column; gap: 6px; }
+  .opt { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 10px; border: 1px solid var(--line-2); border-radius: 6px; background: #fff; text-align: left; flex: none; }
+  .opt:hover { border-color: var(--navy); }
+  .opt[aria-checked="true"] { background: var(--forest-tint); border-color: var(--forest-edge); }
+  .opt[aria-disabled="true"] { opacity: .55; cursor: not-allowed; }
+  .opt .box { width: 24px; height: 24px; flex: none; border-radius: 4px; border: 2px solid var(--navy); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 14px; font-weight: 700; }
+  .opt[aria-checked="true"] .box { background: var(--navy); }
+  .opt .tx { display: flex; flex-direction: column; min-width: 0; }
+  .opt .tx b { font-size: 14.5px; font-weight: 600; }
+  .opt .tx span { font-size: 12.5px; color: var(--meta); }
+  .sep { font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--meta); padding: 8px 2px 2px; flex: none; }
+
+  .foot { flex: none; border-top: 1px solid var(--line); padding: 10px var(--gutter) 12px; background: #fff; box-shadow: 0 -4px 12px rgba(20,32,40,.06); }
+  .preview { margin-bottom: 10px; }
+  .preview summary { min-height: 36px; display: flex; align-items: center; font-size: 13px; font-weight: 700; color: var(--navy); cursor: pointer; }
+  .preview .msg { font-size: 13px; color: var(--text); background: #f7f8f9; border: 1px solid var(--line-2); border-radius: 6px; padding: 10px; margin-top: 4px; }
+  .saved { font-size: 12.5px; color: var(--forest); font-weight: 600; margin-top: 8px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="frame">
+  <div class="mockbar fixed-frame" id="mockbar" role="group" aria-label="Mock controls">
+    <b>Mock</b> Mode:
+    <button data-mode="scout">Scout</button>
+    <button data-mode="nudge">Nudge families</button>
+    <button data-mode="adult">Adult</button>
+    <button data-mode="remind">Remind</button>
+    <button data-mode="seed">Seed</button>
+    <button data-mode="offer">Add an offer</button>
+    <a href="index.html">All mocks</a>
+  </div>
+  <div class="peek" aria-hidden="true"><div class="ph"></div><div class="ph"></div><div class="ph"></div><div class="ph"></div></div>
+</div>
+
+<div class="backdrop open" id="backdrop"></div>
+<div class="sheet full open" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetName">
+  <div class="grabber" aria-hidden="true"></div>
+  <div class="who-head">
+    <div style="flex:1;min-width:0"><div class="role" id="role"></div><h2 id="sheetName"></h2><div class="sub" id="sub"></div></div>
+    <button class="icon-btn" id="close" aria-label="Close">✕</button>
+  </div>
+  <div class="answer" id="answer">
+    <div class="q" id="ansQ">Coming Sunday?</div>
+    <div class="seg" role="radiogroup" aria-labelledby="ansQ">
+      <button role="radio" data-v="coming">Coming</button>
+      <button role="radio" data-v="notsure">Not sure</button>
+      <button role="radio" data-v="cant">Can't</button>
+    </div>
+    <div class="note" id="note" hidden></div>
+  </div>
+  <div class="list-head">
+    <div class="t"><b id="listTitle"></b><span class="meta" id="listSub"></span></div>
+    <div class="quick" id="quick"></div>
+  </div>
+  <div class="list" id="list" role="group" aria-labelledby="listTitle"></div>
+  <!-- Add an offer: the picker (offer.js) fills this; search stays pinned at the top of the scroll area. -->
+  <div class="list" id="offerHost" style="padding-top:0" hidden></div>
+  <div class="foot">
+    <details class="preview" id="preview" hidden><summary>Preview the message ▾</summary><div class="msg" id="msg"></div></details>
+    <button class="btn btn-block" id="action" style="min-height:48px;font-size:15px"></button>
+    <div class="saved" id="footer"></div>
+  </div>
+</div>
+
+<script src="offer.js"></script>
+<script>
+/* ===================== Sample data ===================== */
+const TOPICS = [
+  {id:'fa', title:'First aid basics', code:'Tenderfoot 4a', meta:'meeting focus · no teacher yet', skill:'first aid'},
+  {id:'knots', title:'Knots and lashings', code:'Tenderfoot 3a–3d', meta:'teacher: Jenna M', skill:'knots'},
+  // Decision: a focus group is ONE pick, taught as one class.
+  {id:'fg-fit', title:'Tenderfoot fitness (focus group)', code:'Tenderfoot 6a–6c', meta:'one class · no teacher yet', skill:'fitness'},
+  {id:'fire', title:'Build and light a fire', code:'Second Class 2f', meta:'no teacher yet', skill:'fire'},
+  {id:'cyber', title:'Cyber Chip for grade', code:'Star 6', meta:'teacher: Patrick B', skill:'cyber'},
+  {id:'elec', title:'Electricity make-up', code:'Electricity · req 5', meta:'no teacher yet', skill:'elec'},
+  {id:'compass', title:'Compass and orienting a map', code:'Second Class 3a', meta:'no teacher yet', skill:'nav'},
+  {id:'oath', title:'Oath, Law, motto, slogan', code:'Scout 1a', meta:'teacher: Alex S', skill:'ideals'},
+  {id:'fcb', title:'First Class badge meaning', code:'Scout 1d', meta:'teacher: Alex S', skill:'ideals'},
+  {id:'flag', title:'Flag ceremony and folding', code:'Tenderfoot 7a', meta:'meeting focus · no teacher yet', skill:'flag'}
+];
+const FITS = ['Adi A','Ben B','Oscar B','Violet B','Winnie B'];
+const POOL_OTHERS = [['Anjali S','Star'],['Finn P','Tenderfoot'],['Hazel S','Tenderfoot'],['Jack P','Second Class'],['Lily P','Tenderfoot'],['Emory M','Second Class'],['Quinn B','Tenderfoot'],['Aubrey R','First Class'],['Damian N','Second Class'],['Fiona K','Tenderfoot']];
+const NA_SCOUTS = ['Adi A','Aubrey R','Ben B','Damian N','Eloise L','Fiona K','Hadley B','Henry E','Isaac H','Jameson K','Kevin P','Lee P','Miren G','Oliver K','Oliver P','Oliver V','Oscar B','Piper K','Solomon R','Veronica K','Violet B','Winnie B'];
+const OLDER = new Set(['Aubrey R','Eloise L','Isaac H','Jameson K','Solomon R']); // 13+ and verified: reminder also goes to them
+const NA_ADULTS = ['Karen O','Tom K','Greg H','Ben W','Laura P','Nina G','Steve R','Dana K','Joe M'];
+const DAN_SKILLS = ['first aid','nav','fire','knots'];
+
+const p = new URLSearchParams(location.search);
+const S = {
+  mode: p.get('mode') || 'scout',
+  name: p.get('name'),
+  topic: p.get('topic') || 'oath',
+  viewer: p.get('viewer') || 'planner',
+  answer: null, sel: new Set(), saved: false,
+  offer: null, offerFrom: null, offerTeacher: null   // offerFrom: 'board' | 'adult'
+};
+const boardUrl = extra => `board.html?viewer=${encodeURIComponent(S.viewer)}${extra || ''}`;
+let picker = null;
+/* Open the Add-an-offer flow. From Adult mode the adult is preset as teacher and we come back to them. */
+function enterOffer(teacher, from) {
+  S.mode = 'offer'; S.offerFrom = from; S.offerTeacher = teacher; S.offer = {topic:null, teacher};
+  picker = OfferPicker($('offerHost'), {teacher, onChange: st => { S.offer = st; render(); }});
+  render(); picker.focus();
+}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const $ = id => document.getElementById(id);
+
+function reset() {
+  S.sel = new Set(); S.saved = false;
+  if (S.mode === 'scout') { S.name = S.name && !NA_ADULTS.includes(S.name) ? S.name : 'Finn P'; S.answer = 'coming'; if (S.name === 'Finn P') S.sel = new Set(['fa','knots']); else S.answer = null; }
+  if (S.mode === 'adult') { S.name = S.name || 'Dan V'; S.answer = 'coming'; }
+  if (S.mode === 'seed')  S.sel = new Set(['fa','flag']);
+}
+
+function opt(key, title, meta, on, disabled) {
+  return `<button class="opt" role="checkbox" aria-checked="${on}" ${disabled?'aria-disabled="true"':''} data-k="${esc(key)}">
+    <span class="box" aria-hidden="true">${on?'✓':''}</span><span class="tx"><b>${esc(title)}</b><span>${esc(meta)}</span></span></button>`;
+}
+
+function render() {
+  document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === S.mode)));
+  document.documentElement.style.setProperty('--sheet-top', ($('mockbar').offsetHeight + 8) + 'px');
+  const m = S.mode, n = S.sel.size;
+  const isOffer = m === 'offer';
+  $('offerHost').hidden = !isOffer;
+  $('list').hidden = isOffer;
+  document.querySelector('.list-head').hidden = isOffer;
+  if (isOffer) {
+    $('answer').hidden = true; $('preview').hidden = true;
+    $('role').textContent = 'Add an offer';
+    $('sheetName').textContent = 'A class someone will teach';
+    $('sub').textContent = 'Sunday, Oct 25' + (S.offerFrom === 'adult' ? ` · teacher: ${S.offerTeacher}` : '');
+    const a = $('action'), ok = !!(S.offer && S.offer.topic);
+    a.textContent = ok ? 'Add offer' : 'Pick what will be taught';
+    a.className = 'btn btn-block btn-navy'; a.disabled = !ok;
+    $('footer').textContent = 'Recorded as entered by you';
+    return;
+  }
+  const showAnswer = m === 'scout' || m === 'adult';
+  $('answer').hidden = !showAnswer;
+  document.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-checked', String(b.dataset.v === S.answer)));
+  let note = '', quick = [], list = '', action = {label:'Done', enabled:true, cls:'btn-navy'}, footer = 'Saves as you go · recorded as entered by you', preview = '';
+
+  if (m === 'scout') {
+    $('role').textContent = 'Scout'; $('sheetName').textContent = S.name; $('sub').textContent = 'Working on Tenderfoot';
+    if (S.answer === 'cant' && n) note = 'Picks are saved for a later meeting.';
+    $('listTitle').textContent = `Picks · ${n} of 5`; $('listSub').textContent = "They'll work on one or two";
+    list = TOPICS.map(t => opt(t.id, t.title, t.code + ' · ' + t.meta, S.sel.has(t.id), n >= 5 && !S.sel.has(t.id))).join('');
+    if (n >= 5) list = `<div class="note" style="margin:0;flex:none">Five picks is the most. Uncheck one to pick another.</div>` + list;
+  }
+  if (m === 'adult') {
+    $('role').textContent = 'Adult'; $('sheetName').textContent = S.name; $('sub').textContent = 'Can teach: first aid, navigation, fire, knots';
+    $('listTitle').textContent = `Teaching · ${n}`; $('listSub').textContent = 'Their skills first';
+    // Decision 7: no teaching cap and no "most adults take 1–2" note.
+    const mine = TOPICS.filter(t => DAN_SKILLS.includes(t.skill)), rest = TOPICS.filter(t => !DAN_SKILLS.includes(t.skill));
+    const own = TOPICS.filter(t => t.own);
+    list = (own.length ? `<div class="sep">Their own offers</div>` + own.map(t => opt(t.id, t.title, t.code + ' · ' + t.meta, S.sel.has(t.id))).join('') : '') +
+           `<div class="sep">Matches their skills</div>` + mine.map(t => opt(t.id, t.title, t.code + ' · ' + t.meta, S.sel.has(t.id))).join('') +
+           `<div class="sep">Everything else</div>` + rest.filter(t => !t.own).map(t => opt(t.id, t.title, t.code + ' · ' + t.meta, S.sel.has(t.id))).join('') +
+           `<button class="btn btn-ghost btn-block" data-addoffer style="flex:none;margin-top:6px;border-style:dashed">+ Offer something else</button>`;
+    if (S.answer === 'cant' && n) note = "Can't make it: their classes go back to Requests with no teacher.";
+  }
+  if (m === 'nudge') {
+    const t = p.get('title') ? {title: p.get('title'), code: p.get('code') || ''} : (TOPICS.find(x => x.id === S.topic) || TOPICS[7]);
+    const by = p.has('by') ? p.get('by') : 'Alex S';
+    $('role').textContent = 'Nudge families'; $('sheetName').textContent = t.title; $('sub').textContent = `${t.code} · ${by ? 'offered by ' + by : 'no teacher yet'} · no takers yet`;
+    $('listTitle').textContent = 'Who to nudge'; $('listSub').textContent = `${n} selected · likely fits first`;
+    quick = [['fits', `Select likely fits (${FITS.length})`], ['clear', 'Clear']];
+    list = `<div class="sep">Likely fits · working on Scout</div>` + FITS.map(x => opt(x, x, 'Working on Scout · hasn’t picked this', S.sel.has(x))).join('') +
+           `<div class="sep">Other scouts who haven’t said can’t</div>` + POOL_OTHERS.map(([x, r]) => opt(x, x, 'Working on ' + r, S.sel.has(x))).join('');
+    action = {label: n ? `Send to ${n} ${n===1?'family':'families'}` : 'Pick families to nudge', enabled: n > 0, cls:'btn-bark'};
+    const who = esc(by || 'A leader');
+    preview = `<b>Subject:</b> ${who} is teaching ${esc(t.title)} this Sunday<br><br>Hi! ${who} is teaching <b>${esc(t.title)}</b> (${esc(t.code)}) at the meeting on Sunday, Oct 25. Want your scout in? One tap: <u>Yes, sign them up</u>.`;
+    footer = 'Nothing is sent until you tap Send · logged as sent by you';
+  }
+  if (m === 'remind') {
+    $('role').textContent = 'Send a reminder'; $('sheetName').textContent = "Haven't answered"; $('sub').textContent = `${NA_SCOUTS.length} scouts · ${NA_ADULTS.length} adults · Sunday, Oct 25`;
+    $('listTitle').textContent = 'Who to remind'; $('listSub').textContent = `${n} selected`;
+    quick = [['allS', `All scouts (${NA_SCOUTS.length})`], ['allA', `All adults (${NA_ADULTS.length})`], ['clear', 'Clear']];
+    list = `<div class="sep">Scouts · goes to their family</div>` + NA_SCOUTS.map(x => opt(x, x, OLDER.has(x) ? 'Parents + scout (13+, verified)' : 'Parents', S.sel.has(x))).join('') +
+           `<div class="sep">Adults</div>` + NA_ADULTS.map(x => opt(x, x, 'Adult', S.sel.has(x))).join('');
+    action = {label: n ? `Send to ${n}` : 'Pick who to remind', enabled: n > 0, cls:'btn-navy'};
+    preview = `<b>Subject:</b> Coming Sunday? Tell us in one tap<br><br>Troop meeting Sunday, Oct 25. Let us know if you’re coming and what you’d like to work on: <u>Answer for Sunday</u> (opens your meeting page).`;
+    footer = 'Nothing is sent until you tap Send · logged as sent by you';
+  }
+  if (m === 'seed') {
+    $('role').textContent = 'Seed this meeting'; $('sheetName').textContent = 'Sunday, Oct 25'; $('sub').textContent = 'Focus topics show as “meeting focus” in scouts’ pick lists';
+    $('listTitle').textContent = `Focus · ${n}`; $('listSub').textContent = 'Each tap saves';
+    quick = [['sets', 'From a focus set…']];
+    list = TOPICS.map(t => opt(t.id, t.title, t.code, S.sel.has(t.id))).join('');
+    footer = 'Saves as you go · seeded by you';
+  }
+
+  $('note').hidden = !note; $('note').textContent = note;
+  $('quick').innerHTML = quick.map(([k, l]) => `<button data-q="${k}">${l}</button>`).join(''); $('quick').hidden = !quick.length;
+  $('list').innerHTML = list;
+  $('preview').hidden = !preview; $('msg').innerHTML = preview;
+  const a = $('action');
+  a.textContent = S.saved ? '✓ Sent' : action.label;
+  a.className = 'btn btn-block ' + (S.saved ? 'btn-done' : action.cls);
+  a.disabled = !action.enabled && !S.saved;
+  $('footer').textContent = footer;
+}
+
+/* ===================== Events ===================== */
+document.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.mode === 'offer') { enterOffer(null, 'board'); return; }
+  if (b.dataset.mode) { S.mode = b.dataset.mode; S.name = null; reset(); render(); return; }
+  if (b.dataset.addoffer !== undefined) { enterOffer(S.name, 'adult'); return; }
+  if (b.dataset.v) { S.answer = b.dataset.v; render(); return; }
+  if (b.dataset.k) {
+    if (b.getAttribute('aria-disabled') === 'true') return;
+    const k = b.dataset.k; S.sel.has(k) ? S.sel.delete(k) : S.sel.add(k);
+    // Picks imply Coming (README: effective answer).
+    if ((S.mode === 'scout' || S.mode === 'adult') && S.sel.size && !S.answer) S.answer = 'coming';
+    const top = $('list').scrollTop; render(); $('list').scrollTop = top;
+    document.querySelector(`[data-k="${CSS.escape(k)}"]`)?.focus(); return;
+  }
+  if (b.dataset.q === 'fits') FITS.forEach(x => S.sel.add(x));
+  if (b.dataset.q === 'allS') NA_SCOUTS.forEach(x => S.sel.add(x));
+  if (b.dataset.q === 'allA') NA_ADULTS.forEach(x => S.sel.add(x));
+  if (b.dataset.q === 'clear') S.sel.clear();
+  if (b.dataset.q) { render(); return; }
+  if (b.id === 'action') {
+    if (S.mode === 'offer') {
+      const {topic, teacher} = S.offer;
+      if (S.offerFrom === 'adult') {
+        // Back to the adult: the new offer is listed first and ticked as theirs.
+        const id = 'new' + Date.now();
+        TOPICS.unshift({id, title: topic.title, code: topic.code, meta: 'added by you · just now', own: true});
+        S.mode = 'adult'; S.name = S.offerTeacher; S.sel.add(id); S.answer = S.answer || 'coming';
+        if (!teacher) TOPICS[0].meta = 'no teacher yet · added by you';
+        if (teacher && teacher !== S.offerTeacher) { S.sel.delete(id); TOPICS[0].meta = 'teacher: ' + teacher + ' · added by you'; }
+        render(); $('list').scrollTop = 0; return;
+      }
+      location.href = boardUrl('&offer=' + encodeURIComponent(JSON.stringify({code: topic.code, title: topic.title, kind: topic.kind, free: !!topic.free, group: !!topic.group, teacher}))); return;
+    }
+    if (S.mode === 'nudge') { location.href = boardUrl(`&nudged=${S.topic}:${S.sel.size}`); return; }
+    if (S.mode === 'remind') { S.saved = true; render(); return; }
+    close(); return;
+  }
+  if (b.id === 'close') close();
+});
+$('backdrop').addEventListener('click', close);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+function close() {
+  if (S.mode === 'offer' && S.offerFrom === 'adult') { S.mode = 'adult'; S.name = S.offerTeacher; render(); return; }
+  location.href = boardUrl();
+}
+
+if (S.mode === 'offer') enterOffer(p.get('teacher'), p.get('from') || 'board');
+else { reset(); render(); }
+if (S.mode !== 'offer') $('close').focus();
+window.addEventListener('resize', render);
+</script>
+</body>
+</html>

@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#f4f5f6;font-family:'Open Sans',Arial,sans-serif;color:#1f2a30}a{color:#1e3a4a}a:hover{color:#2a4f63}button,input,select{font-family:inherit}</style>
+</helmet>
+<div style="min-height:100vh;display:flex;flex-direction:column;min-width:1000px">
+  <div style="background:#1e3a4a;color:#fff;padding:16px 28px;display:flex;align-items:center;gap:24px">
+    <div style="flex:1;min-width:0">
+      <div style="font-size:12.5px;color:rgba(255,255,255,.7)"><a href="This Sunday Board.dc.html" style="color:rgba(255,255,255,.85)">Meeting plan</a> › Focus sets</div>
+      <div style="font-size:22px;font-weight:700;margin-top:2px">Focus sets</div>
+      <div style="font-size:13.5px;color:rgba(255,255,255,.8);margin-top:2px">Group and label requirements once, then use a set to seed any meeting.</div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-size:13.5px;font-weight:700">{{ viewerName }}</div>
+      <div style="font-size:12.5px;color:rgba(255,255,255,.75)">{{ viewerRole }}</div>
+    </div>
+  </div>
+  <sc-if value="{{ readOnly }}" hint-placeholder-val="{{ false }}">
+    <div style="background:#fdf6e3;border-bottom:1px solid #eadfbf;padding:10px 28px;font-size:13.5px;color:#6b500c;font-weight:600">View only. Only the planning team (SPL, Mindy, Jason, Patrick) can create, edit, or seed focus sets.</div>
+  </sc-if>
+
+  <div style="flex:1;display:grid;grid-template-columns:250px minmax(0,1fr) 350px;gap:20px;padding:20px 28px 28px;align-items:start">
+
+    <div style="background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(30,58,74,.12);overflow:hidden">
+      <div style="padding:14px 16px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #eceff1">
+        <span style="flex:1;font-size:16px;font-weight:700;color:#1e3a4a">Sets · {{ setCount }}</span>
+        <sc-if value="{{ canEdit }}" hint-placeholder-val="{{ true }}">
+          <button onClick="{{ newSet }}" style="min-height:36px;padding:0 12px;border-radius:6px;border:none;background:#1e3a4a;color:#fff;font-size:13.5px;font-weight:700;cursor:pointer;white-space:nowrap">+ New set</button>
+        </sc-if>
+      </div>
+      <div style="padding:10px 16px;display:flex;flex-wrap:wrap;gap:5px;border-bottom:1px solid #eceff1">
+        <sc-for list="{{ labelFilters }}" as="l" hint-placeholder-count="5">
+          <button onClick="{{ l.onClick }}" style="min-height:30px;padding:2px 10px;border-radius:15px;border:1px solid {{ l.bd }};background:{{ l.bg }};color:{{ l.fg }};font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap">{{ l.label }}</button>
+        </sc-for>
+      </div>
+      <div style="display:flex;flex-direction:column">
+        <sc-for list="{{ setList }}" as="s" hint-placeholder-count="5">
+          <button onClick="{{ s.onClick }}" style="display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:10px 16px;min-height:60px;border:none;border-bottom:1px solid #f0f2f3;background:{{ s.bg }};text-align:left;cursor:pointer;box-shadow:{{ s.mark }}" style-hover="background:#eef3f7">
+            <span style="font-size:14.5px;font-weight:700;color:#1e3a4a">{{ s.name }}</span>
+            <span style="font-size:12.5px;color:#5f6b73">{{ s.meta }}</span>
+            <span style="display:flex;flex-wrap:wrap;gap:4px;line-height:1.4">
+              <sc-for list="{{ s.labels }}" as="l" hint-placeholder-count="1">
+                <span style="font-size:11px;font-weight:700;padding:1px 7px;border-radius:3px;background:#fdf6e3;color:#6b500c;white-space:nowrap">{{ l }}</span>
+              </sc-for>
+            </span>
+          </button>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(30,58,74,.12);display:flex;flex-direction:column;min-width:0">
+      <div style="padding:16px 18px;border-bottom:1px solid #eceff1;display:flex;flex-direction:column;gap:10px">
+        <div style="font-size:16px;font-weight:700;color:#1e3a4a">Find requirements <span style="font-size:13px;font-weight:400;color:#5f6b73">{{ catalogSummary }}</span></div>
+        <input value="{{ q }}" onChange="{{ onQuery }}" placeholder="Search by name or code: knots, Tenderfoot 4a, First Aid 9…" style="width:100%;box-sizing:border-box;min-height:46px;padding:0 14px;border:1px solid #b8c4cb;border-radius:6px;font-size:15px;background:#fbfcfc"></input>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <div style="display:flex;border:1px solid #b8c4cb;border-radius:6px;overflow:hidden">
+            <sc-for list="{{ kindOpts }}" as="k" hint-placeholder-count="3">
+              <button onClick="{{ k.onClick }}" style="min-height:36px;padding:0 14px;border:none;background:{{ k.bg }};color:{{ k.fg }};font-size:13.5px;font-weight:600;cursor:pointer">{{ k.label }}</button>
+            </sc-for>
+          </div>
+          <sc-if value="{{ hasSrc }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ clearSrc }}" style="min-height:36px;padding:0 12px;border-radius:18px;border:1px solid #1e3a4a;background:#e8eef2;color:#1e3a4a;font-size:13.5px;font-weight:700;cursor:pointer">{{ srcLabel }} ✕</button>
+          </sc-if>
+          <span style="margin-left:auto;font-size:13px;color:#5f6b73;white-space:nowrap">{{ resultSummary }}</span>
+        </div>
+      </div>
+
+      <sc-if value="{{ loading }}" hint-placeholder-val="{{ false }}">
+        <div style="padding:24px 18px;font-size:14px;color:#5f6b73">Loading requirements…</div>
+      </sc-if>
+
+      <sc-if value="{{ browsing }}" hint-placeholder-val="{{ false }}">
+        <div style="padding:16px 18px;display:flex;flex-direction:column;gap:12px">
+          <div style="font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#3d5a3e">Ranks</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px">
+            <sc-for list="{{ rankTiles }}" as="r" hint-placeholder-count="7">
+              <button onClick="{{ r.onClick }}" style="display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:44px;padding:0 12px;white-space:nowrap;border:1px solid #c5d6c6;background:#f4f8f4;border-radius:6px;cursor:pointer;font-size:14px;font-weight:700;color:#1f2a30" style-hover="border-color:#1e3a4a"><span>{{ r.name }}</span><span style="font-size:12.5px;font-weight:400;color:#5f6b73">{{ r.count }}</span></button>
+            </sc-for>
+          </div>
+          <div style="font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#2a4f63;margin-top:6px">Merit badges · {{ badgeCount }}</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px">
+            <sc-for list="{{ badgeTiles }}" as="r" hint-placeholder-count="12">
+              <button onClick="{{ r.onClick }}" style="display:flex;justify-content:space-between;align-items:center;gap:6px;min-height:40px;padding:0 12px;border:1px solid #d2dce3;background:#fff;border-radius:6px;cursor:pointer;font-size:13.5px;color:#1f2a30;text-align:left" style-hover="border-color:#1e3a4a;background:#f2f6f9"><span style="flex:1;min-width:0;font-weight:600">{{ r.name }}</span><span style="flex:none;font-size:12px;color:#5f6b73;white-space:nowrap">{{ r.tag }}</span></button>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ searching }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column">
+          <sc-if value="{{ noResults }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:24px 18px;font-size:14px;color:#5f6b73">Nothing matches. Try fewer words, or a code like "2c".</div>
+          </sc-if>
+          <sc-for list="{{ groups }}" as="g" hint-placeholder-count="3">
+            <div style="border-bottom:1px solid #e3e7ea">
+              <div style="display:flex;align-items:center;gap:10px;padding:10px 18px;background:#f7f8f9;position:sticky;top:0">
+                <span style="font-size:11.5px;font-weight:700;padding:2px 7px;border-radius:3px;background:{{ g.kindBg }};color:{{ g.kindFg }}">{{ g.kindLabel }}</span>
+                <span style="font-size:15px;font-weight:700">{{ g.src }}</span>
+                <span style="font-size:12.5px;color:#5f6b73">{{ g.countLabel }}</span>
+                <sc-if value="{{ g.canAddAll }}" hint-placeholder-val="{{ false }}">
+                  <button onClick="{{ g.addAll }}" style="margin-left:auto;min-height:32px;padding:0 12px;border-radius:5px;border:1px solid #1e3a4a;background:#fff;color:#1e3a4a;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">{{ g.addAllLabel }}</button>
+                </sc-if>
+              </div>
+              <sc-for list="{{ g.rows }}" as="r" hint-placeholder-count="4">
+                <button onClick="{{ r.toggle }}" style="display:flex;align-items:center;gap:12px;width:100%;min-height:46px;padding:6px 18px;border:none;border-top:1px solid #f0f2f3;background:{{ r.rowBg }};text-align:left;cursor:pointer;color:#1f2a30" style-hover="background:#eef3f7">
+                  <span style="width:22px;height:22px;flex:none;border-radius:4px;border:2px solid #1e3a4a;background:{{ r.box }};color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center">{{ r.mark }}</span>
+                  <span style="width:56px;flex:none;font-size:13px;font-weight:700;color:#8b6914">{{ r.code }}</span>
+                  <span style="display:flex;flex-direction:column;min-width:0">
+                    <span style="font-size:14px">{{ r.label }}</span>
+                    <span style="font-size:12px;color:#5f6b73">{{ r.meta }}</span>
+                  </span>
+                </button>
+              </sc-for>
+              <sc-if value="{{ g.hasMore }}" hint-placeholder-val="{{ false }}">
+                <button onClick="{{ g.expand }}" style="width:100%;min-height:38px;border:none;border-top:1px solid #f0f2f3;background:#fff;color:#1e3a4a;font-size:13px;font-weight:700;cursor:pointer;text-decoration:underline">{{ g.moreLabel }}</button>
+              </sc-if>
+            </div>
+          </sc-for>
+          <sc-if value="{{ moreGroups }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ showMoreGroups }}" style="min-height:44px;border:none;background:#f7f8f9;color:#1e3a4a;font-size:13.5px;font-weight:700;cursor:pointer">{{ moreGroupsLabel }}</button>
+          </sc-if>
+        </div>
+      </sc-if>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:16px;position:sticky;top:20px">
+      <sc-if value="{{ hasActive }}" hint-placeholder-val="{{ true }}">
+        <div style="background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(30,58,74,.12);overflow:hidden">
+          <div style="padding:14px 16px;border-bottom:1px solid #eceff1;display:flex;flex-direction:column;gap:10px">
+            <div style="font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#5f6b73">Set name</div>
+            <input value="{{ active.name }}" onChange="{{ onName }}" disabled="{{ readOnly }}" style="width:100%;box-sizing:border-box;min-height:42px;padding:0 12px;border:1px solid #b8c4cb;border-radius:6px;font-size:16px;font-weight:700;color:#1e3a4a"></input>
+            <div style="font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#5f6b73">Labels</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+              <sc-for list="{{ active.labelChips }}" as="l" hint-placeholder-count="2">
+                <span style="display:flex;align-items:center;gap:4px;min-height:30px;padding:0 4px 0 10px;border-radius:15px;background:#fdf6e3;border:1px solid #e6d29a;color:#6b500c;font-size:13px;font-weight:700;white-space:nowrap">{{ l.label }}<button onClick="{{ l.remove }}" style="width:24px;height:24px;border:none;background:none;color:#6b500c;cursor:pointer;font-size:13px">✕</button></span>
+              </sc-for>
+            </div>
+            <sc-if value="{{ canEdit }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;gap:6px">
+                <input value="{{ newLabel }}" onChange="{{ onNewLabel }}" onKeyDown="{{ onLabelKey }}" placeholder="Add a label…" style="flex:1;min-width:0;min-height:36px;padding:0 10px;border:1px solid #c9d1d6;border-radius:6px;font-size:13.5px"></input>
+                <button onClick="{{ addLabel }}" style="min-height:36px;padding:0 12px;border-radius:6px;border:1px solid #1e3a4a;background:#fff;color:#1e3a4a;font-size:13px;font-weight:700;cursor:pointer">Add</button>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:4px">
+                <sc-for list="{{ labelSuggestions }}" as="l" hint-placeholder-count="3">
+                  <button onClick="{{ l.add }}" style="min-height:28px;padding:0 9px;border-radius:14px;border:1px dashed #c9b57a;background:#fff;color:#6b500c;font-size:12px;cursor:pointer;white-space:nowrap">+ {{ l.label }}</button>
+                </sc-for>
+              </div>
+            </sc-if>
+          </div>
+          <div style="padding:12px 16px 6px;display:flex;align-items:baseline;gap:8px">
+            <span style="font-size:15px;font-weight:700;color:#1e3a4a">In this set · {{ active.count }}</span>
+            <span style="font-size:12.5px;color:#5f6b73">{{ active.used }}</span>
+          </div>
+          <div style="max-height:360px;overflow-y:auto;padding:0 16px 12px">
+            <sc-if value="{{ active.empty }}" hint-placeholder-val="{{ false }}">
+              <div style="font-size:13.5px;color:#5f6b73;padding:10px 0">Empty. Search on the left and check requirements to add them.</div>
+            </sc-if>
+            <sc-for list="{{ active.groups }}" as="g" hint-placeholder-count="2">
+              <div style="padding-top:8px">
+                <div style="font-size:12.5px;font-weight:700;color:{{ g.color }};padding-bottom:4px">{{ g.src }} · {{ g.n }}</div>
+                <sc-for list="{{ g.items }}" as="r" hint-placeholder-count="2">
+                  <div style="display:flex;align-items:center;gap:8px;min-height:38px;border-top:1px solid #f0f2f3">
+                    <span style="width:46px;flex:none;font-size:12.5px;font-weight:700;color:#8b6914">{{ r.code }}</span>
+                    <span style="flex:1;min-width:0;font-size:13.5px">{{ r.label }}</span>
+                    <sc-if value="{{ canEdit }}" hint-placeholder-val="{{ true }}">
+                      <button onClick="{{ r.remove }}" title="Remove from set" style="width:32px;height:32px;flex:none;border:1px solid #e3e7ea;border-radius:5px;background:#fff;color:#8c3b3b;cursor:pointer">✕</button>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-for>
+          </div>
+          <div style="padding:14px 16px;border-top:1px solid #eadfbf;background:#fffdf7;display:flex;flex-direction:column;gap:8px">
+            <div style="font-size:14px;font-weight:700;color:#6b500c">Seed a meeting with this set</div>
+            <sc-if value="{{ canEdit }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;gap:6px">
+                <select value="{{ seedMeeting }}" onChange="{{ onSeedMeeting }}" style="flex:1;min-height:42px;border:1px solid #c9d1d6;border-radius:6px;padding:0 10px;font-size:14px;background:#fff">
+                  <sc-for list="{{ meetings }}" as="m" hint-placeholder-count="3"><option value="{{ m }}">{{ m }}</option></sc-for>
+                </select>
+                <button onClick="{{ seed }}" style="min-height:42px;padding:0 16px;border-radius:6px;border:none;background:#8b6914;color:#fff;font-size:14px;font-weight:700;cursor:pointer" style-hover="background:#76590f">Seed</button>
+              </div>
+              <div style="font-size:12.5px;color:#5f6b73">Each requirement becomes a focus topic on that meeting's board. Existing focus topics stay.</div>
+            </sc-if>
+            <sc-if value="{{ readOnly }}" hint-placeholder-val="{{ false }}">
+              <div style="font-size:13px;color:#5f6b73">Only SPL, Mindy, Jason and Patrick can seed a meeting.</div>
+            </sc-if>
+            <sc-if value="{{ hasSeededMsg }}" hint-placeholder-val="{{ false }}">
+              <div style="font-size:13px;font-weight:700;color:#3d5a3e">✓ {{ seededMsg }} · <a href="This Sunday Board.dc.html">open the board</a></div>
+            </sc-if>
+          </div>
+          <sc-if value="{{ canEdit }}" hint-placeholder-val="{{ true }}">
+            <div style="padding:10px 16px;border-top:1px solid #eceff1;display:flex;gap:8px">
+              <button onClick="{{ duplicate }}" style="min-height:36px;padding:0 12px;border-radius:6px;border:1px solid #c9d1d6;background:#fff;color:#1e3a4a;font-size:13px;font-weight:600;cursor:pointer">Duplicate</button>
+              <button onClick="{{ removeSet }}" style="min-height:36px;padding:0 12px;border-radius:6px;border:1px solid #e3c9c9;background:#fff;color:#8c3b3b;font-size:13px;font-weight:600;cursor:pointer;margin-left:auto;white-space:nowrap">Delete set</button>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;viewer&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Patrick B&quot;,&quot;Mindy&quot;,&quot;Jason&quot;,&quot;SPL&quot;,&quot;Alex S (not on planning team)&quot;],&quot;default&quot;:&quot;Patrick B&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+const PLANNERS=["SPL","Mindy","Jason","Patrick B"];
+const RANK_ORDER=["scout","tenderfoot","second-class","first-class","star","life","eagle"];
+const plural=(n,w,p)=>n+" "+(n===1?w:(p||w+"s"));
+class Component extends DCLogic {
+  state={ready:false,q:"",kind:"all",src:null,sets:[],active:null,expanded:{},groupCap:10,labelFilter:null,newLabel:"",seedMeeting:"Sun, Oct 25",seededMsg:null};
+  componentDidMount(){
+    import(new URL("focus-catalog.js",location.href).href).then(m=>{
+      this.cat=m;this.byId=Object.fromEntries(m.ITEMS.map(i=>[i.id,i]));
+      this.hay=m.ITEMS.map(i=>({i,h:(i.src+" "+i.code+" "+i.src+i.code+" "+i.label+" "+(i.group||"")).toLowerCase()}));
+      this.setState({ready:true,sets:m.SETS.map(s=>({...s,items:[...s.items],labels:[...s.labels]})),active:m.SETS[0].id});
+    });
+  }
+  viewer(){return (this.props.viewer||"Patrick B").split(" (")[0];}
+  upd(fn){if(!PLANNERS.includes(this.viewer()))return;this.setState(S=>({sets:S.sets.map(s=>s.id===S.active?fn(s):s)}));}
+  toggle(id){this.upd(s=>({...s,items:s.items.includes(id)?s.items.filter(x=>x!==id):[...s.items,id]}));}
+  addLabel(l){l=(l||"").trim();if(!l)return;this.upd(s=>s.labels.includes(l)?s:{...s,labels:[...s.labels,l]});this.setState({newLabel:""});}
+  renderVals(){
+    const S=this.state,v=this.viewer(),canEdit=PLANNERS.includes(v);
+    const base={viewerName:v==="SPL"?"Senior Patrol Leader":v,viewerRole:canEdit?"Planning team":"Leader · view only",canEdit,readOnly:!canEdit,q:S.q,newLabel:S.newLabel,seedMeeting:S.seedMeeting,meetings:["Sun, Oct 25","Sun, Nov 1","Sun, Nov 8","Sun, Nov 15"],
+      onQuery:e=>this.setState({q:e.target.value,groupCap:10,expanded:{}}),
+      kindOpts:[["all","All"],["rank","Rank"],["mb","Merit badge"]].map(([k,l])=>({label:l,onClick:()=>this.setState({kind:k,src:null}),bg:S.kind===k?"#1e3a4a":"#fff",fg:S.kind===k?"#fff":"#1e3a4a"}))};
+    if(!S.ready)return {...base,setCount:"",catalogSummary:"",resultSummary:"",loading:true,browsing:false,searching:false,hasActive:false,setList:[],labelFilters:[],groups:[],rankTiles:[],badgeTiles:[],labelSuggestions:[],active:{}};
+    const {RANKS,BADGES,ITEMS}=this.cat;
+    const act=S.sets.find(s=>s.id===S.active);
+    const inSet=new Set(act?act.items:[]);
+    const allLabels=[...new Set(S.sets.flatMap(s=>s.labels))].sort();
+    const labelFilters=[{label:"All sets",key:null},...allLabels.map(l=>({label:l,key:l}))].map(x=>{const on=S.labelFilter===x.key;return {label:x.label,onClick:()=>this.setState({labelFilter:x.key}),bg:on?"#1e3a4a":"#fff",fg:on?"#fff":"#1e3a4a",bd:on?"#1e3a4a":"#c9d1d6"};});
+    const setList=S.sets.filter(s=>!S.labelFilter||s.labels.includes(S.labelFilter)).map(s=>{const on=s.id===S.active;return {name:s.name||"Untitled set",labels:s.labels,meta:plural(s.items.length,"requirement")+(s.used&&s.used.length?" · used "+s.used.join(", "):""),onClick:()=>this.setState({active:s.id,seededMsg:null}),bg:on?"#e8eef2":"#fff",mark:on?"inset 4px 0 0 #1e3a4a":"none"};});
+    // search
+    const toks=S.q.toLowerCase().split(/\s+/).filter(Boolean);
+    const searching=!!(toks.length||S.src);
+    let found=[];
+    if(searching){found=this.hay.filter(({i,h})=>(S.kind==="all"||i.kind===S.kind)&&(!S.src||i.srcId===S.src)&&toks.every(t=>h.includes(t))).map(x=>x.i);}
+    const gmap=new Map();for(const i of found){const k=i.kind+":"+i.srcId;if(!gmap.has(k))gmap.set(k,[]);gmap.get(k).push(i);}
+    const gkeys=[...gmap.keys()].sort((a,b)=>{const [ka,ia]=a.split(":"),[kb,ib]=b.split(":");if(ka!==kb)return ka==="rank"?-1:1;if(ka==="rank")return RANK_ORDER.indexOf(ia)-RANK_ORDER.indexOf(ib);return gmap.get(a)[0].src.localeCompare(gmap.get(b)[0].src);});
+    const groups=gkeys.slice(0,S.groupCap).map(k=>{const list=gmap.get(k),first=list[0],exp=!!S.expanded[k]||!!S.src,shown=exp?list:list.slice(0,6);const notIn=list.filter(i=>!inSet.has(i.id));
+      return {src:first.src,kindLabel:first.kind==="rank"?"Rank":"Merit badge",kindBg:first.kind==="rank"?"#eef2ee":"#e8eef2",kindFg:first.kind==="rank"?"#3d5a3e":"#1e3a4a",countLabel:plural(list.length,"match","matches"),
+        canAddAll:canEdit&&notIn.length>1,addAllLabel:"Add all "+notIn.length,addAll:()=>this.upd(s=>({...s,items:[...s.items,...notIn.map(i=>i.id)]})),
+        hasMore:list.length>shown.length,moreLabel:"Show "+(list.length-shown.length)+" more in "+first.src,expand:()=>this.setState(s=>({expanded:{...s.expanded,[k]:true}})),
+        rows:shown.map(i=>{const on=inSet.has(i.id);return {code:i.code,label:i.label,meta:i.group||(i.kind==="rank"?i.src+" rank":i.src+" merit badge"),box:on?"#1e3a4a":"#fff",mark:on?"✓":"",rowBg:on?"#f2f6f9":"#fff",toggle:()=>this.toggle(i.id)};})};});
+    const srcName=S.src?(RANKS.find(r=>r.id===S.src)||BADGES.find(b=>b.id===S.src)||{}).name:"";
+    // active set view
+    let active={},hasActive=!!act,labelSuggestions=[];
+    if(act){
+      const items=act.items.map(id=>this.byId[id]).filter(Boolean);
+      const gm=new Map();for(const i of items){const k=i.kind+":"+i.srcId;if(!gm.has(k))gm.set(k,[]);gm.get(k).push(i);}
+      active={name:act.name,count:items.length,empty:!items.length,used:act.used&&act.used.length?"Used "+act.used.join(", "):"Not used yet",
+        labelChips:act.labels.map(l=>({label:l,remove:()=>this.upd(s=>({...s,labels:s.labels.filter(x=>x!==l)}))})),
+        groups:[...gm.entries()].map(([k,list])=>({src:list[0].src,n:list.length,color:list[0].kind==="rank"?"#3d5a3e":"#2a4f63",items:list.map(i=>({code:i.code,label:i.label,remove:()=>this.toggle(i.id)}))}))};
+      labelSuggestions=[...new Set([...allLabels,"New scouts","Merit badge night","Outdoor skills","Spring","Fall"])].filter(l=>!act.labels.includes(l)).slice(0,6).map(l=>({label:l,add:()=>this.addLabel(l)}));
+    }
+    return {...base,loading:false,searching,browsing:!searching,noResults:searching&&!found.length,groups,
+      moreGroups:gkeys.length>S.groupCap,moreGroupsLabel:"Show "+Math.min(10,gkeys.length-S.groupCap)+" more of "+(gkeys.length-S.groupCap)+" remaining sources",showMoreGroups:()=>this.setState(s=>({groupCap:s.groupCap+10})),
+      resultSummary:searching?plural(found.length,"requirement")+" in "+plural(gkeys.length,"source"):"Pick a rank or badge, or search",
+      catalogSummary:"· "+ITEMS.length.toLocaleString()+" in this sample · full database in the live app",
+      hasSrc:!!S.src,srcLabel:srcName,clearSrc:()=>this.setState({src:null}),
+      rankTiles:RANKS.filter(()=>S.kind!=="mb").map(r=>({name:r.name,count:r.count,onClick:()=>this.setState({src:r.id,kind:"rank"})})),
+      badgeTiles:BADGES.filter(()=>S.kind!=="rank").map(b=>({name:b.name,tag:(b.eagle?"Eagle · ":"")+b.count,onClick:()=>this.setState({src:b.id,kind:"mb"})})),badgeCount:BADGES.length,
+      setCount:S.sets.length,labelFilters,setList,hasActive,active,labelSuggestions,
+      onName:e=>{const val=e.target.value;this.upd(s=>({...s,name:val}));},
+      onNewLabel:e=>this.setState({newLabel:e.target.value}),onLabelKey:e=>{if(e.key==="Enter")this.addLabel(S.newLabel);},addLabel:()=>this.addLabel(S.newLabel),
+      newSet:()=>{const id="s"+Date.now();this.setState(s=>({sets:[{id,name:"Untitled set",labels:[],items:[],used:[]},...s.sets],active:id,labelFilter:null,seededMsg:null}));},
+      duplicate:()=>{if(!act)return;const id="s"+Date.now();this.setState(s=>({sets:[{...act,id,name:act.name+" (copy)",items:[...act.items],labels:[...act.labels],used:[]},...s.sets],active:id}));},
+      removeSet:()=>{this.setState(s=>{const rest=s.sets.filter(x=>x.id!==s.active);return {sets:rest,active:rest[0]?rest[0].id:null};});},
+      onSeedMeeting:e=>this.setState({seedMeeting:e.target.value}),
+      seed:()=>{if(!act||!canEdit)return;const m=S.seedMeeting;this.upd(s=>({...s,used:[...(s.used||[]),m.replace("Sun, ","")]}));this.setState({seededMsg:"Seeded "+m+" with "+plural(act.items.length,"focus topic")});},
+      hasSeededMsg:!!S.seededMsg,seededMsg:S.seededMsg};
+  }
+}
+</script>
+</body>
+</html>

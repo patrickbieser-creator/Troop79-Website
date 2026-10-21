@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session 64 — Meeting Planner II</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #3d5a3e;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #f0eecd;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); vertical-align: top; }
+        tr:hover { background: var(--nw-sage); }
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+        code { font-family: 'Courier New', monospace; font-size: 0.85em; background: var(--nw-light-gray); padding: 0 0.3em; border-radius: 3px; }
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+        @media print { body { background: white; } header { padding: 1.5rem; } .container { padding: 1rem; } .stat { break-inside: avoid; } }
+        @media (max-width: 600px) { header h1 { font-size: 1.5rem; } .stats { flex-direction: column; } }
+    </style>
+<body>
+    <header>
+        <h1>Meeting Planner II: a planner on the main site</h1>
+        <p class="subtitle">Session 64. Patrick&rsquo;s new meeting-planning design was reviewed, settled in a plan with phone mock-ups, and built. P1, a read-only Meeting Planner at /planner with three new access rights, is live. P2, which adds editing, Assign, Add an offer, adult-only emails and no teaching cap, is built and waiting to ship.</p>
+        <div class="meta">
+            <span>&#128197; October 21, 2026</span>
+            <span>&#129302; Operator (Opus 5.5)</span>
+            <span>&#128204; Troop79-Website</span>
+            <span>&#128640; v1.239.1 &rarr; v1.240.0 (v1.241.0 on a branch)</span>
+        </div>
+    </header>
+    <div class="container">
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">4</div><div class="label">Feature commits (1 live, 3 on a branch)</div></div>
+            <div class="stat"><div class="number">2</div><div class="label">Migrations (1 in production)</div></div>
+            <div class="stat"><div class="number">8</div><div class="label">Decisions (D-416&ndash;D-423)</div></div>
+            <div class="stat"><div class="number">~6893</div><div class="label">Tests (was ~6780)</div></div>
+        </div>
+        <h2>What Was Accomplished</h2>
+        <div class="callout callout-teal">
+            <strong>The outcome:</strong> people Patrick chooses can open &ldquo;Meeting Planner&rdquo; from the menu under their name and see Sunday&rsquo;s whole board. With P2, the SPL and leaders can run it: answer for someone, assign a teacher, add an offer, and (adults only) send requests and nudges.
+        </div>
+        <h3>Design review and plan</h3>
+        <ul>
+            <li>Reviewed the meeting-plan-II handoff against v1 and settled the open questions with Patrick. Everything is in Plans/Meeting-Planner-II.md as Decisions 1&ndash;13, with 10a&ndash;10c added during the build.</li>
+            <li>Brad built phone mock-ups of the board, the drawer and Meeting Live, then added &ldquo;Add an offer&rdquo; to every view.</li>
+            <li>Merit badge nights become ordinary meetings built from focus sets. &ldquo;Session&rdquo; is renamed &ldquo;rotation&rdquo;, and a class can repeat across rotations.</li>
+        </ul>
+        <h3>P1, live (v1.240.0)</h3>
+        <ul>
+            <li>/planner shows the This Sunday board read-only: attendance bars, ready to teach, requests with everyone qualified grouped by their answer, offers with likely fits, who hasn&rsquo;t answered, and the Everyone wall. It refreshes itself and works on a phone.</li>
+            <li>Three new rights, granted one person at a time: View, Use, and Seed. Planner rights are not leader rights: tech-lead found that any right used to count as &ldquo;leader&rdquo; in Admin, the Library and Menu Monster, and that is fixed.</li>
+        </ul>
+        <h3>P2, built on a branch (v1.241.0)</h3>
+        <ul>
+            <li>Every name opens a drawer: a person&rsquo;s answer, a scout&rsquo;s picks, or an adult&rsquo;s teaching. Changes save on tap and record who entered them. There is also an &ldquo;Enter for someone&rdquo; search.</li>
+            <li>Assign, Add an offer (with a teacher), Send request and Nudge families. The emails are for adults only, and the SPL can edit but never sends.</li>
+            <li>No teaching cap for adults: a migration re-creates two database functions without the limit of 2.</li>
+            <li>tech-lead reviewed each phase&rsquo;s approach and qa-lead reviewed each build. Every must-fix is done, and the warnings were fixed with tests.</li>
+        </ul>
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Decision</th></tr></thead>
+            <tbody>
+                <tr><td>D-416</td><td>The Meeting Planner is a public page at /planner with three rights (view, edit, seed) granted one person at a time. Planner rights are never leader rights.</td></tr>
+                <tr><td>D-417</td><td>A viewer sees everything. Editors, including the SPL, change the board. Email is adults only.</td></tr>
+                <tr><td>D-418</td><td>No teaching cap for adults. The matcher&rsquo;s limits are suggestions only.</td></tr>
+                <tr><td>D-419</td><td>Rotations, not sessions: open-ended, with an optional location. A class can repeat across rotations. Retakes are allowed and marked with a star. No patrol grouping. Meeting Live&rsquo;s saved placement replaces the matcher.</td></tr>
+                <tr><td>D-420</td><td>Merit badge nights are ordinary meetings built from focus sets. The stations and rotations screens are retired in P5.</td></tr>
+                <tr><td>D-421</td><td>A visitor on Meeting Live becomes a guest person. Editors record attendance. A red banner appears when the viewer can&rsquo;t record it.</td></tr>
+                <tr><td>D-422</td><td>An offer names a teacher until P3 seeding. P2 splits into P2a and P2b.</td></tr>
+                <tr><td>D-423</td><td>Planner phases are built in a git worktree on a feature branch and ship on Patrick&rsquo;s word, migration first.</td></tr>
+            </tbody>
+        </table>
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Ship P2 when Patrick says so: migration 20261202100000 first, then fast-forward main.</li>
+            <li>P3: seeding and focus sets. P4: Meeting Live. P5: reminders, and retiring Admin&rsquo;s This Sunday tab, board settings, stations and rotations.</li>
+            <li>qa-lead warnings to handle later: no limit on emails across topics, a double-click race on sends, and a slow nudge list.</li>
+            <li>Four test failures that come from the local data (an admin home count and three wreath daily-cap tests) need looking into.</li>
+        </ul>
+        <h2>Files Changed</h2>
+        <table>
+            <thead><tr><th>Area</th><th>Files</th></tr></thead>
+            <tbody>
+                <tr><td>Planner (public)</td><td>(public)/planner/{page,board-view,fold,planner-poller,planner-client,person-drawer,offer-drawer,nudge-drawer,actions}.tsx/.ts, planner.module.css</td></tr>
+                <tr><td>Shared</td><td>_components/drawer.tsx(+css), account-control.tsx, api/session-status/route.ts</td></tr>
+                <tr><td>Libraries</td><td>lib/meeting-planner-{access,board,load,drawer}.ts, meeting-invites-send.ts, capabilities.ts, admin-actor.ts, require-capability.ts, library-viewer.ts, login-events.ts, site-pages-tree.ts, meeting-board-teach.ts</td></tr>
+                <tr><td>Admin and member</td><td>access-table.tsx, meeting-plan/actions.ts, styleguide/public, member/meeting/teach-board.tsx, i/[token]/invite-card.tsx, Menu Monster leader checks</td></tr>
+                <tr><td>Database</td><td>20261201100000_meeting_planner_capabilities (live), 20261202100000_meeting_teach_no_cap (branch)</td></tr>
+                <tr><td>Tests</td><td>meeting-planner-{access,board,drawer}, planner-{actions,board-view,board-edit,rights-sites}, login-events-role, and v1 cap tests updated</td></tr>
+                <tr><td>Design</td><td>Plans/Meeting-Planner-II.md, prototypes/meeting-plan-II/ (handoff + phone mock-ups)</td></tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

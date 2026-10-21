@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#eef0f1;font-family:'Open Sans',Arial,sans-serif;color:#1f2a30}a{color:#1e3a4a}a:hover{color:#2a4f63}button{font-family:inherit}</style>
+</helmet>
+<div style="min-height:100vh;display:flex;flex-direction:column;min-width:1100px">
+  <div style="background:#1e3a4a;color:#fff;padding:14px 28px;display:flex;align-items:center;gap:28px">
+    <div style="flex:1;min-width:0">
+      <div style="font-size:12.5px;color:rgba(255,255,255,.7)"><a href="This Sunday Board.dc.html" style="color:rgba(255,255,255,.85)">Meeting plan</a> › Live</div>
+      <div style="font-size:24px;font-weight:700">Sunday, Oct 25 · Sessions <span style="font-size:14px;font-weight:600;color:#9fd19f;margin-left:8px">● Live</span></div>
+    </div>
+    <sc-if value="{{ hasConflicts }}" hint-placeholder-val="{{ false }}">
+      <div style="background:#fbf0ee;color:#8c3b3b;border-radius:6px;padding:8px 12px;font-size:13.5px;font-weight:700">{{ conflictSummary }}</div>
+    </sc-if>
+  </div>
+  <div style="padding:10px 28px;background:#fff;border-bottom:1px solid #e3e7ea;font-size:13.5px;color:#5f6b73;display:flex;gap:18px;flex-wrap:wrap">
+    <span><b style="color:#1e3a4a">Drag a card</b> to change its session.</span>
+    <span><b style="color:#1e3a4a">Drag a scout</b> onto another card, or back to "Nothing assigned".</span>
+    <span><b style="color:#1e3a4a">Drag a teacher</b> onto another card to swap, or click the teacher to pick someone else.</span>
+    <span>Everyone assigned counts as here. Click a scout to mark them <b style="color:#1e3a4a">not present</b>.</span>
+  </div>
+
+  <div style="flex:1;display:grid;grid-template-columns:{{ gridCols }};gap:16px;padding:18px 28px 28px;align-items:stretch">
+    <sc-for list="{{ columns }}" as="col" hint-placeholder-count="4">
+      <div onDragOver="{{ col.onDragOver }}" onDrop="{{ col.onDrop }}" style="display:flex;flex-direction:column;gap:10px;padding:12px;border-radius:10px;background:{{ col.bg }};border:2px {{ col.borderStyle }} {{ col.bd }};min-height:520px;transition:background .12s,border-color .12s">
+        <div style="display:flex;flex-wrap:wrap;align-items:baseline;column-gap:8px;padding:0 4px">
+          <span style="flex:none;white-space:nowrap;font-size:19px;font-weight:700;color:{{ col.titleColor }}">{{ col.title }}</span>
+          <span style="font-size:13px;color:#5f6b73">{{ col.sub }}</span>
+        </div>
+        <sc-if value="{{ col.hasExtra }}" hint-placeholder-val="{{ false }}">
+          <div onDragOver="{{ pool.onDragOver }}" onDrop="{{ pool.onDrop }}" style="background:{{ pool.bg }};border:2px dashed {{ pool.bd }};border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:6px">
+            <div style="font-size:13.5px;font-weight:700;color:#8b6914">Coming, nothing assigned · {{ pool.count }}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:5px">
+              <sc-for list="{{ pool.scouts }}" as="p" hint-placeholder-count="2">
+                <button draggable="true" onDragStart="{{ p.onDragStart }}" onDragEnd="{{ p.onDragEnd }}" onClick="{{ p.toggle }}" title="{{ p.tip }}" style="min-height:34px;padding:3px 11px;border-radius:17px;border:1px {{ p.bs }} {{ p.bd }};background:{{ p.bg }};color:{{ p.fg }};text-decoration:{{ p.deco }};font-size:13.5px;font-weight:600;cursor:grab;white-space:nowrap">{{ p.label }}</button>
+              </sc-for>
+              <sc-if value="{{ pool.empty }}" hint-placeholder-val="{{ false }}"><span style="font-size:13px;color:#5f6b73;align-self:center">Everyone has a session.</span></sc-if>
+              <button onClick="{{ pool.add.openAdd }}" style="min-height:34px;padding:0 11px;border-radius:17px;border:1px dashed #1e3a4a;background:#fff;color:#1e3a4a;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">+ Add a scout</button>
+            </div>
+            <sc-if value="{{ pool.add.open }}" hint-placeholder-val="{{ false }}">
+              <div onClick="{{ stop }}" style="border:1px solid #c9d1d6;border-radius:6px;background:#fff;padding:8px;display:flex;flex-direction:column;gap:6px">
+                <input value="{{ pool.add.q }}" onChange="{{ pool.add.onQ }}" placeholder="Find a scout, or type a visitor's name" style="min-height:38px;padding:0 10px;border:1px solid #b8c4cb;border-radius:5px;font-size:14px"></input>
+                <div style="max-height:200px;overflow-y:auto;display:flex;flex-direction:column">
+                  <sc-for list="{{ pool.add.results }}" as="r" hint-placeholder-count="3">
+                    <button onClick="{{ r.pick }}" style="flex:none;min-height:38px;padding:0 10px;border:none;border-bottom:1px solid #eceff1;background:#fff;text-align:left;font-size:14px;font-weight:600;cursor:pointer;color:#1f2a30" style-hover="background:#e8eef2">{{ r.name }}</button>
+                  </sc-for>
+                  <sc-if value="{{ pool.add.none }}" hint-placeholder-val="{{ false }}"><div style="padding:8px 10px;font-size:13px;color:#5f6b73">No one else on the roster matches.</div></sc-if>
+                </div>
+                <sc-if value="{{ pool.add.hasNew }}" hint-placeholder-val="{{ false }}">
+                  <button onClick="{{ pool.add.addNew }}" style="min-height:38px;border-radius:5px;border:1px dashed #1e3a4a;background:#f2f6f9;color:#1e3a4a;font-size:13.5px;font-weight:700;cursor:pointer">{{ pool.add.newLabel }}</button>
+                </sc-if>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+        <sc-if value="{{ col.empty }}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;font-size:14px;color:#7a868d;border-radius:8px">{{ col.emptyText }}</div>
+        </sc-if>
+        <sc-for list="{{ col.cards }}" as="c" hint-placeholder-count="2">
+          <div draggable="true" onDragStart="{{ c.onDragStart }}" onDragEnd="{{ c.onDragEnd }}" onDragOver="{{ c.onDragOver }}" onDrop="{{ c.onDrop }}" style="background:#fff;border-radius:8px;box-shadow:{{ c.shadow }};border-top:4px solid {{ c.accent }};padding:12px 14px;cursor:grab;opacity:{{ c.opacity }};display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;align-items:flex-start;gap:8px">
+              <div style="flex:1;min-width:0">
+                <div style="font-size:12.5px;font-weight:700;color:#8b6914">{{ c.code }}</div>
+                <div style="font-size:18px;font-weight:700;line-height:1.25">{{ c.title }}</div>
+              </div>
+              <span style="font-size:18px;color:#a3adb3;line-height:1;padding-top:2px" title="Drag to move">⋮⋮</span>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px">
+              <span style="font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#5f6b73">Teacher</span>
+              <button draggable="true" onDragStart="{{ c.teacherDragStart }}" onDragEnd="{{ c.onDragEnd }}" onClick="{{ c.togglePicker }}" title="Drag to swap, or click to change" style="display:flex;align-items:center;gap:6px;min-height:34px;padding:0 10px;border-radius:6px;border:1px solid #9fb6c4;background:#e8eef2;color:#1e3a4a;font-size:14px;font-weight:700;cursor:grab;white-space:nowrap">{{ c.teacher }} <span style="font-size:11px;color:#5f6b73">▾</span></button>
+            </div>
+            <sc-if value="{{ c.picking }}" hint-placeholder-val="{{ false }}">
+              <div style="border:1px solid #c9d1d6;border-radius:6px;background:#fff;max-height:260px;overflow-y:auto;display:flex;flex-direction:column">
+                <sc-for list="{{ c.picker }}" as="t" hint-placeholder-count="4">
+                  <button onClick="{{ t.pick }}" style="flex:none;display:flex;align-items:center;gap:8px;min-height:40px;padding:4px 10px;border:none;border-bottom:1px solid #eceff1;background:{{ t.bg }};text-align:left;cursor:pointer;color:#1f2a30" style-hover="background:#e8eef2">
+                    <span style="flex:1;min-width:0;font-size:14px;font-weight:700">{{ t.name }}</span>
+                    <span style="font-size:12px;color:{{ t.noteColor }};text-align:right">{{ t.note }}</span>
+                  </button>
+                </sc-for>
+              </div>
+            </sc-if>
+            <div style="display:flex;flex-wrap:wrap;gap:5px;min-height:34px">
+              <sc-for list="{{ c.scouts }}" as="p" hint-placeholder-count="3">
+                <button draggable="true" onDragStart="{{ p.onDragStart }}" onDragEnd="{{ p.onDragEnd }}" onClick="{{ p.toggle }}" title="{{ p.tip }}" style="min-height:34px;padding:3px 11px;border-radius:17px;border:1px {{ p.bs }} {{ p.bd }};background:{{ p.bg }};color:{{ p.fg }};text-decoration:{{ p.deco }};font-size:13.5px;font-weight:600;cursor:grab;white-space:nowrap">{{ p.label }}</button>
+              </sc-for>
+              <sc-if value="{{ c.noScouts }}" hint-placeholder-val="{{ false }}"><span style="font-size:13px;color:#7a868d;align-self:center">No scouts. Drag some in.</span></sc-if>
+              <button onClick="{{ c.add.openAdd }}" style="min-height:34px;padding:0 11px;border-radius:17px;border:1px dashed #1e3a4a;background:#fff;color:#1e3a4a;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">+ Add</button>
+            </div>
+            <sc-if value="{{ c.add.open }}" hint-placeholder-val="{{ false }}">
+              <div onClick="{{ stop }}" style="border:1px solid #c9d1d6;border-radius:6px;background:#fff;padding:8px;display:flex;flex-direction:column;gap:6px">
+                <input value="{{ c.add.q }}" onChange="{{ c.add.onQ }}" placeholder="Find a scout, or type a visitor's name" style="min-height:38px;padding:0 10px;border:1px solid #b8c4cb;border-radius:5px;font-size:14px"></input>
+                <div style="max-height:200px;overflow-y:auto;display:flex;flex-direction:column">
+                  <sc-for list="{{ c.add.results }}" as="r" hint-placeholder-count="3">
+                    <button onClick="{{ r.pick }}" style="flex:none;min-height:38px;padding:0 10px;border:none;border-bottom:1px solid #eceff1;background:#fff;text-align:left;font-size:14px;font-weight:600;cursor:pointer;color:#1f2a30" style-hover="background:#e8eef2">{{ r.name }}</button>
+                  </sc-for>
+                  <sc-if value="{{ c.add.none }}" hint-placeholder-val="{{ false }}"><div style="padding:8px 10px;font-size:13px;color:#5f6b73">No one else on the roster matches.</div></sc-if>
+                </div>
+                <sc-if value="{{ c.add.hasNew }}" hint-placeholder-val="{{ false }}">
+                  <button onClick="{{ c.add.addNew }}" style="min-height:38px;border-radius:5px;border:1px dashed #1e3a4a;background:#f2f6f9;color:#1e3a4a;font-size:13.5px;font-weight:700;cursor:pointer">{{ c.add.newLabel }}</button>
+                </sc-if>
+              </div>
+            </sc-if>
+            <sc-for list="{{ c.warnings }}" as="w" hint-placeholder-count="0">
+              <div style="font-size:12.5px;font-weight:700;color:#8c3b3b;background:#fbf0ee;border-radius:5px;padding:5px 8px">{{ w }}</div>
+            </sc-for>
+            <div style="display:flex;align-items:center;gap:4px;border-top:1px solid #f0f2f3;padding-top:8px">
+              <span style="font-size:12px;color:#5f6b73;margin-right:4px;white-space:nowrap">Move to</span>
+              <sc-for list="{{ c.moves }}" as="m" hint-placeholder-count="4">
+                <button onClick="{{ m.onClick }}" style="min-width:36px;min-height:32px;padding:0 8px;border-radius:5px;border:1px solid {{ m.bd }};background:{{ m.bg }};color:{{ m.fg }};font-size:13px;font-weight:700;cursor:pointer">{{ m.label }}</button>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const SESSIONS=[
+ {id:"fa",code:"Tenderfoot 4a",title:"First aid basics",teacher:"Dan V",scouts:["Finn P","Lily P","Owen R","Hazel S"],kind:"rank"},
+ {id:"cyber",code:"Star 6",title:"Cyber Chip for grade",teacher:"Patrick B",scouts:["Anjali S"],kind:"rank"},
+ {id:"fire",code:"Second Class 2f",title:"Build and light a fire",teacher:"Alex S",scouts:["Owen R","Jack P","Lucy L"],kind:"rank"},
+ {id:"knots",code:"Tenderfoot 3a–3d",title:"Knots and lashings",teacher:"Jenna M",scouts:["Finn P","Hazel S"],kind:"rank"},
+ {id:"compass",code:"Second Class 3a",title:"Compass and orienting a map",teacher:"Patrick B",scouts:["Lucy L"],kind:"rank"},
+ {id:"oath",code:"Scout 1a",title:"Oath, Law, motto, slogan",teacher:"Alex S",scouts:["Adi A","Ben B","Winnie B"],kind:"rank"},
+ {id:"elec",code:"Electricity · req 5",title:"Electricity make-up",teacher:"Tom K",scouts:["Robbie H"],kind:"mb"}
+];
+const ADULTS=[["Patrick B","here"],["Alex S","here"],["Jenna M","here"],["Dan V","here"],["Rachel D","here"],["Mark F","here"],["Tom K","here"],["Mike T","not sure"],["Karen O","no answer"],["Greg H","no answer"]];
+const ROSTER=["Adi A","Anjali S","Aubrey R","Ben B","Damian N","Eloise L","Emory M","Finn P","Fiona K","Hadley B","Hazel S","Henry E","Isaac H","Jack P","Jameson K","Kevin P","Lee P","Lily P","Lucy L","Miren G","Oliver K","Oliver P","Oliver V","Oscar B","Owen R","Piper K","Quinn B","Robbie H","Simon P","Solomon R","Todd M","Veronica K","Violet B","Winnie B"];
+const COLS=[["u","Not scheduled"],["1","Session 1"],["2","Session 2"],["3","Session 3"]];
+const KEY="meetingLive.v2";
+class Component extends DCLogic {
+  state={...this.load(),absent:{},adding:null,addQ:"",drag:null,over:null,overCard:null,picker:null};
+  load(){try{const v=JSON.parse(localStorage.getItem(KEY));if(v&&v.data)return v;}catch(e){}
+    return {place:{fa:"1",cyber:"1",fire:"1",knots:"2",compass:"2",oath:"2",elec:"u"},data:Object.fromEntries(SESSIONS.map(s=>[s.id,{teacher:s.teacher,scouts:[...s.scouts]}])),pool:["Simon P","Emory M"]};}
+  save(S){try{localStorage.setItem(KEY,JSON.stringify({place:S.place,data:S.data,pool:S.pool}));}catch(e){}}
+  commit(fn){this.setState(S=>{const n={...fn(S),drag:null,over:null,overCard:null};this.save({...S,...n});return n;});}
+  moveCard(id,slot){this.commit(S=>({place:{...S.place,[id]:slot}}));}
+  moveScout(name,from,to){if(from===to)return;this.commit(S=>{const data={...S.data};let pool=[...S.pool];
+    if(from==="pool")pool=pool.filter(x=>x!==name);else data[from]={...data[from],scouts:data[from].scouts.filter(x=>x!==name)};
+    if(to==="pool"){if(!pool.includes(name))pool.push(name);}else if(!data[to].scouts.includes(name))data[to]={...data[to],scouts:[...data[to].scouts,name]};
+    return {data,pool};});}
+  setTeacher(to,name,from){this.commit(S=>{const data={...S.data};const old=data[to].teacher;data[to]={...data[to],teacher:name};if(from&&from!==to)data[from]={...data[from],teacher:old};return {data,picker:null};});}
+  payload(e){let p=this.state.drag;try{const t=e.dataTransfer.getData("text/plain");if(t)p=JSON.parse(t);}catch(x){}return p;}
+  start(e,p){e.stopPropagation();try{e.dataTransfer.setData("text/plain",JSON.stringify(p));e.dataTransfer.effectAllowed="move";}catch(x){}this.setState({drag:p});}
+  addScout(name,to){this.commit(S=>{const data={...S.data};let pool=[...S.pool];if(to==="pool"){if(!pool.includes(name))pool.push(name);}else data[to]={...data[to],scouts:[...data[to].scouts,name]};return {data,pool,adding:null,addQ:""};});}
+  renderVals(){
+    const S=this.state,D=S.data;
+    const onBoard=new Set([...Object.values(D).flatMap(d=>d.scouts),...S.pool]);
+    const addFor=to=>{const q=S.addQ.trim().toLowerCase();const r=ROSTER.filter(n=>!onBoard.has(n)&&(!q||n.toLowerCase().includes(q)));return {open:S.adding===to,openAdd:e=>{e.stopPropagation();this.setState(s=>({adding:s.adding===to?null:to,addQ:""}));},
+      q:S.addQ,onQ:e=>this.setState({addQ:e.target.value}),results:r.map(n=>({name:n,pick:e=>{e.stopPropagation();this.addScout(n,to);}})),none:!r.length,
+      addNew:e=>{e.stopPropagation();const v=S.addQ.trim();if(v)this.addScout(v,to);},hasNew:!!S.addQ.trim()&&!ROSTER.some(n=>n.toLowerCase()===S.addQ.trim().toLowerCase()),newLabel:"+ Add “"+S.addQ.trim()+"” as a visitor"};};
+    const inSlot=k=>SESSIONS.filter(s=>(S.place[s.id]||"u")===k);
+    const end=()=>this.setState({drag:null,over:null,overCard:null});
+    const chip=(n,from)=>{const h=!S.absent[n];return {label:h?"✓ "+n:n,tip:(h?"Here. Click to mark not present":"Not present. Click to mark here")+" · drag to move",bg:h?"#eef2ee":"#ffffff",fg:h?"#2f4a30":"#5f6b73",bd:h?"#9dbb9e":"#9aa6ad",bs:h?"solid":"dotted",deco:"none",
+      toggle:e=>{e.stopPropagation();this.setState(s=>({absent:{...s.absent,[n]:!s.absent[n]}}));},onDragStart:e=>this.start(e,{type:"scout",name:n,from}),onDragEnd:end};};
+    const slotOf=id=>S.place[id]||"u";
+    const warnFor=(s,k)=>{if(k==="u")return [];const me=D[s.id];const w=[];inSlot(k).filter(o=>o.id!==s.id).forEach(o=>{const d=D[o.id];if(d.teacher===me.teacher)w.push(me.teacher+" is also teaching "+o.title+" in this session");const both=me.scouts.filter(x=>d.scouts.includes(x));if(both.length)w.push(both.join(", ")+" also in "+o.title);});return w;};
+    let conflicts=0;const drag=S.drag;
+    const s3used=inSlot("3").length>0||(S.over==="3"&&drag&&drag.type==="card");
+    const columns=COLS.map(([k,title])=>{
+      const cards=inSlot(k).map(s=>{const d=D[s.id],w=warnFor(s,k);conflicts+=w.length;const tgt=S.overCard===s.id&&drag&&drag.type!=="card";
+        const busy=n=>SESSIONS.filter(o=>o.id!==s.id&&D[o.id].teacher===n&&slotOf(o.id)!=="u");
+        const picker=ADULTS.map(([n,stt])=>{const b=busy(n),same=b.filter(o=>slotOf(o.id)===k);return {name:n,note:n===d.teacher?"current":(same.length?"busy: "+same[0].title:(b.length?"teaching in session "+slotOf(b[0].id):stt)),noteColor:same.length?"#8c3b3b":"#5f6b73",bg:n===d.teacher?"#e8eef2":"#fff",pick:e=>{e.stopPropagation();this.setTeacher(s.id,n,null);}};}).sort((a,b)=>(a.noteColor===b.noteColor?0:a.noteColor==="#8c3b3b"?1:-1));
+        return {add:addFor(s.id),code:s.code,title:s.title,teacher:d.teacher,scouts:d.scouts.map(n=>chip(n,s.id)),noScouts:!d.scouts.length,warnings:w,
+          accent:k==="u"?"#a3adb3":(s.kind==="mb"?"#2a6a8e":"#3d5a3e"),opacity:drag&&drag.type==="card"&&drag.id===s.id?".45":"1",
+          shadow:tgt?"0 0 0 3px #1e3a4a":"0 1px 3px rgba(30,58,74,.16)",
+          picking:S.picker===s.id,picker,togglePicker:e=>{e.stopPropagation();this.setState(x=>({picker:x.picker===s.id?null:s.id}));},
+          onDragStart:e=>this.start(e,{type:"card",id:s.id}),onDragEnd:end,
+          teacherDragStart:e=>this.start(e,{type:"teacher",name:d.teacher,from:s.id}),
+          onDragOver:e=>{const p=S.drag;if(p&&p.type!=="card"){e.preventDefault();e.stopPropagation();if(S.overCard!==s.id)this.setState({overCard:s.id,over:null});}},
+          onDrop:e=>{const p=this.payload(e);if(!p||p.type==="card")return;e.preventDefault();e.stopPropagation();if(p.type==="scout")this.moveScout(p.name,p.from,s.id);else this.setTeacher(s.id,p.name,p.from);},
+          moves:COLS.map(([mk])=>{const on=mk===k;return {label:mk==="u"?"—":mk,onClick:e=>{e.stopPropagation();this.moveCard(s.id,mk);},bg:on?"#1e3a4a":"#fff",fg:on?"#fff":"#1e3a4a",bd:on?"#1e3a4a":"#c9d1d6"};})};});
+      const over=S.over===k&&drag&&drag.type==="card";
+      const teachers=new Set(inSlot(k).map(s=>D[s.id].teacher)).size,sc=new Set(inSlot(k).flatMap(s=>D[s.id].scouts)).size;
+      return {title,cards,empty:!cards.length&&k!=="u",hasExtra:k==="u",
+        sub:k==="u"?(cards.length?cards.length+" waiting":""):(cards.length?cards.length+" sessions · "+sc+" scouts · "+teachers+" teachers":(k==="3"?"rarely used":"")),
+        emptyText:k==="3"?"Drop a session here only if you need a third block.":"Drop session cards here.",
+        bg:over?"#e8eef2":(k==="u"?"#e4e7e9":(k==="3"&&!cards.length?"#f4f5f6":"#fafbfb")),bd:over?"#1e3a4a":(k==="3"&&!cards.length?"#c9d1d6":"transparent"),borderStyle:k==="3"&&!cards.length&&!over?"dashed":"solid",
+        titleColor:k==="u"?"#4a5961":(k==="3"&&!cards.length?"#7a868d":"#1e3a4a"),
+        onDragOver:e=>{const p=S.drag;if(p&&p.type==="card"){e.preventDefault();if(S.over!==k)this.setState({over:k,overCard:null});}},
+        onDrop:e=>{const p=this.payload(e);if(p&&p.type==="card"){e.preventDefault();this.moveCard(p.id,k);}}};});
+    const poolOver=S.overCard==="pool";
+    const pool={add:addFor("pool"),scouts:S.pool.map(n=>chip(n,"pool")),count:S.pool.length,empty:!S.pool.length,bg:poolOver?"#fdf6e3":"#fff",bd:poolOver?"#8b6914":(drag&&drag.type==="scout"?"#d9c37e":"#eadfbf"),
+      onDragOver:e=>{const p=S.drag;if(p&&p.type==="scout"){e.preventDefault();e.stopPropagation();if(S.overCard!=="pool")this.setState({overCard:"pool"});}},
+      onDrop:e=>{const p=this.payload(e);if(p&&p.type==="scout"){e.preventDefault();e.stopPropagation();this.moveScout(p.name,p.from,"pool");}}};
+    const allScouts=[...new Set([...Object.values(D).flatMap(d=>d.scouts),...S.pool])];
+    return {stop:e=>e.stopPropagation(),columns,pool,gridCols:"minmax(300px,1.2fr) minmax(0,1fr) minmax(0,1fr) "+(s3used?"minmax(0,1fr)":"180px"),
+      placedCount:SESSIONS.filter(s=>slotOf(s.id)!=="u").length+" of "+SESSIONS.length,
+      hasConflicts:conflicts>0,conflictSummary:conflicts+(conflicts===1?" overlap":" overlaps")+" to fix"};
+  }
+}
+</script>
+</body>
+</html>

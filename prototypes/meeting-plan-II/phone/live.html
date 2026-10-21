@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Meeting Live · phone</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="phone.css?v=4">
+<style>
+  body { background: #d9dde0; }
+  .frame { background: #eef0f1; }
+
+  /* Decision 9: red banner when the viewer can't record attendance. */
+  .ro-banner { background: var(--banner-red); color: #fff; padding: 10px var(--gutter); font-size: 13.5px; line-height: 1.35; }
+  .ro-banner b { display: block; font-size: 14.5px; }
+
+  .top { background: var(--navy); color: #fff; padding: 10px var(--gutter) 12px; }
+  .top .crumb { font-size: 12.5px; color: rgba(255,255,255,.75); }
+  .top .crumb a { color: rgba(255,255,255,.9); }
+  .top-row { display: flex; align-items: center; gap: 10px; margin-top: 2px; }
+  .top h1 { margin: 0; font-size: 20px; flex: 1; min-width: 0; line-height: 1.25; }
+  .top h1 .lv { font-size: 13px; font-weight: 600; color: #9fd19f; margin-left: 6px; white-space: nowrap; }
+  .overlaps { min-height: 40px; padding: 0 10px; border-radius: 6px; border: 0; background: var(--danger-tint); color: var(--danger); font-size: 13px; font-weight: 700; white-space: nowrap; }
+
+  /* Sticky rotation switcher + light multi-editor cue */
+  .switcher { position: sticky; top: 0; z-index: 20; background: #fff; border-bottom: 1px solid var(--line); box-shadow: 0 2px 6px rgba(20,32,40,.08); }
+  .tabs { display: flex; gap: 4px; overflow-x: auto; padding: 6px 8px 0; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { position: relative; flex: none; min-width: 58px; min-height: 52px; padding: 4px 10px 6px; border: 0; border-bottom: 3px solid transparent; background: none; color: var(--slate); text-align: left; display: flex; flex-direction: column; justify-content: center; }
+  .tab .tl { font-size: 14.5px; font-weight: 700; white-space: nowrap; }
+  .tab .loc { font-size: 11.5px; color: var(--meta); max-width: 84px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tab .ct { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 9px; background: #e4e7e9; font-size: 11.5px; text-align: center; color: var(--slate); }
+  .tab[aria-selected="true"] { color: var(--navy); border-bottom-color: var(--navy); }
+  .tab[aria-selected="true"] .ct { background: var(--navy); color: #fff; }
+  .tab .warn { position: absolute; top: 6px; right: 4px; width: 8px; height: 8px; border-radius: 50%; background: var(--danger); }
+  .tab.add { min-width: 48px; margin-top: 6px; align-items: center; font-size: 22px; font-weight: 600; color: var(--navy); border-left: 1px solid var(--line); box-shadow: -8px 0 8px -6px rgba(20,32,40,.15); }
+  .tab .loc { max-width: 72px; }
+  .tab.pulse { animation: pulse 900ms ease 2; }
+  @keyframes pulse { 50% { background: var(--info-tint); } }
+  .sync { display: flex; align-items: center; gap: 6px; padding: 4px var(--gutter) 6px; font-size: 12px; color: var(--meta); border-top: 1px solid var(--line-2); }
+  .sync .dot { width: 7px; height: 7px; border-radius: 50%; background: #5aa35c; flex: none; }
+  .sync .sep { color: var(--line-4); }
+
+  /* Rotation panel */
+  .panel { padding: 12px 12px 120px; display: grid; gap: 12px; }
+  .rhead { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 0 4px; }
+  .rhead h2 { margin: 0; font-size: 19px; color: var(--navy); }
+  .locbtn { min-height: var(--tap); padding: 0 10px; border-radius: 6px; border: 1px dashed var(--line-4); background: #fff; font-size: 13.5px; font-weight: 600; color: var(--navy); display: inline-flex; align-items: center; gap: 6px; }
+  .locbtn .ed { font-size: 12px; color: var(--meta); font-weight: 600; }
+  .locform { display: flex; gap: 6px; width: 100%; }
+  .locform input { flex: 1; min-width: 0; min-height: var(--tap); border: 1px solid var(--line-4); border-radius: 6px; padding: 0 10px; font-size: 16px; }
+  .rsum { width: 100%; font-size: 13px; color: var(--meta); padding: 0 4px; }
+  .help { font-size: 12.5px; color: var(--meta); padding: 0 4px; }
+  .empty-rot { background: #f7f8f9; border: 2px dashed var(--line-3); border-radius: 10px; padding: 20px 16px; text-align: center; font-size: 14px; color: var(--meta); }
+
+  .pool { background: #fff; border: 2px dashed var(--bark-edge-2); border-radius: 8px; padding: 10px 12px; }
+  .pool h3 { margin: 0 0 8px; font-size: 14px; color: var(--bark); }
+
+  .lcard { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(30,58,74,.16); border-top: 4px solid var(--forest); padding: 10px 12px 12px; display: grid; gap: 10px; scroll-margin-top: 110px; }
+  .lcard.mb { border-top-color: var(--adult-blue); }
+  .lcard.other { border-top-color: var(--slate); }
+  .addclass { border-style: dashed !important; }
+  .sheet.tall { height: 88vh; }
+  .sheet-foot { flex: none; border-top: 1px solid var(--line); padding: 10px var(--gutter) 12px; box-shadow: 0 -4px 12px rgba(20,32,40,.06); }
+  .sheet-foot .saved { font-size: 12.5px; color: var(--forest); font-weight: 600; margin-top: 6px; text-align: center; }
+  .lcard.un { border-top-color: #a3adb3; }
+  .lcard.flash { animation: flash 2.6s ease-out; }
+  @keyframes flash { 0%, 30% { background: #fff6d6; box-shadow: 0 0 0 3px #e6d29a; } 100% { background: #fff; } }
+  .ch { display: flex; align-items: flex-start; gap: 8px; }
+  .ch .ttl { flex: 1; min-width: 0; }
+  .ch h3 { margin: 1px 0 0; font-size: 17.5px; line-height: 1.25; }
+  .rep { display: inline-block; margin-left: 4px; font-size: 11px; font-weight: 700; color: var(--navy); background: var(--info-tint); border-radius: 4px; padding: 0 6px; vertical-align: 1px; }
+  .more { width: var(--tap); height: var(--tap); flex: none; margin: -4px -6px 0 0; border: 0; background: none; border-radius: 6px; font-size: 20px; font-weight: 700; color: var(--meta); }
+  .more:hover { background: var(--info-tint); }
+  .trow { display: flex; align-items: center; gap: 8px; }
+  .trow .lbl { font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--meta); }
+  .tbtn { display: inline-flex; align-items: center; gap: 6px; min-height: var(--tap); padding: 0 12px; border-radius: 6px; border: 1px solid var(--info-edge); background: var(--info-tint); color: var(--navy); font-size: 14.5px; font-weight: 700; }
+  .tbtn.none { background: var(--bark-tint); border-color: var(--bark-edge); color: var(--bark-2); }
+  .tplain { font-size: 14.5px; font-weight: 700; color: var(--navy); }
+
+  /* Scout chips: present = green with check; not present = dotted grey, name only. */
+  .chip.out { background: #fff; border: 1px dotted #9aa6ad; color: var(--meta); }
+  button.chip:hover { border-color: var(--forest); }
+  .chip.addc { border: 1px dashed var(--navy); background: #fff; color: var(--navy); font-weight: 700; }
+  .chip.visitor::after { content: 'visitor'; margin-left: 6px; font-size: 11px; font-weight: 700; color: var(--meta); }
+  /* Retake (8c): a small, subtle star in the chip's corner. Nothing louder. */
+  .star { position: absolute; top: -4px; right: -3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 1px solid var(--bark-edge); color: var(--bark); font-size: 10px; line-height: 14px; text-align: center; }
+  .noscouts { font-size: 13px; color: var(--faint); align-self: center; }
+
+  .warnl { font-size: 12.5px; font-weight: 700; color: var(--danger); background: var(--danger-tint); border-radius: 5px; padding: 6px 8px; }
+  .updated { font-size: 12px; color: var(--bark-2); font-weight: 600; }
+  .moverow { display: flex; align-items: center; gap: 6px; border-top: 1px solid #f0f2f3; padding-top: 10px; overflow-x: auto; }
+  .moverow .lbl { font-size: 12.5px; color: var(--meta); white-space: nowrap; margin-right: 2px; }
+  .mv { flex: none; min-width: var(--tap); min-height: var(--tap); padding: 0 10px; border-radius: 6px; border: 1px solid var(--line-3); background: #fff; color: var(--navy); font-size: 14px; font-weight: 700; }
+  .mv[aria-pressed="true"] { background: var(--navy); color: #fff; border-color: var(--navy); }
+  .legend { font-size: 12px; color: var(--meta); padding: 4px 4px 0; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+  .legend .chip { min-height: 26px; padding: 0 8px; font-size: 12px; }
+
+  /* Sheet extras */
+  .sheet-sub { font-size: 13px; color: var(--meta); margin-top: 2px; }
+  .sheet-group { font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--meta); background: #f7f8f9; padding: 6px var(--gutter); }
+  .sheet-row[aria-current="true"] { background: var(--info-tint); }
+  .sheet-row .note.busy { color: var(--danger); }
+  .sheet-search { padding: 10px var(--gutter); border-bottom: 1px solid var(--line-2); }
+  .sheet-search input { width: 100%; min-height: var(--tap); border: 1px solid var(--line-4); border-radius: 6px; padding: 0 12px; font-size: 16px; }
+  .sheet-cancel { padding: 10px var(--gutter) 14px; }
+  .rotpick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 12px var(--gutter); }
+  .rotpick .btn { flex-direction: column; min-height: 56px; gap: 0; }
+  .rotpick .btn small { font-size: 11.5px; font-weight: 600; color: var(--meta); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="frame">
+  <div class="mockbar" role="group" aria-label="Mock controls">
+    <b>Mock</b>
+    <button id="mView" aria-pressed="false">View-only viewer</button>
+    <button id="mMindy">Mindy edits</button>
+    <button id="mJason">Jason's move beats yours</button>
+    <a href="index.html">All mocks</a>
+  </div>
+
+  <div class="ro-banner" id="roBanner" role="alert" hidden>
+    <b>View only: you can't record attendance here.</b>
+    You can see every class, but changes and attendance are off. Ask Mindy or Jason for edit rights.
+  </div>
+
+  <header class="top">
+    <div class="crumb"><a href="board.html">Meeting Planner</a> › Live</div>
+    <div class="top-row">
+      <h1>Sunday, Oct 25 · Rotations<span class="lv">● Live</span></h1>
+      <button class="overlaps" id="overlaps" hidden></button>
+    </div>
+  </header>
+
+  <nav class="switcher" aria-label="Rotations">
+    <div style="display:flex;align-items:stretch"><div class="tabs" role="tablist" id="tabs" style="flex:1;min-width:0"></div>
+      <button class="tab add" id="addRot" data-act="addRot" aria-label="Add rotation">+</button></div>
+    <div class="sync" id="sync" aria-live="polite"></div>
+  </nav>
+
+  <main class="panel" id="panel" role="tabpanel"></main>
+</div>
+
+<div class="backdrop" id="backdrop" hidden></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" hidden></div>
+<div class="toast" id="toast" role="status" aria-live="polite"><span id="toastMsg" style="flex:1"></span><button class="btn" id="toastBtn"></button></div>
+
+<script src="offer.js"></script>
+<script>
+/* ===================== Sample data =====================
+   Rotation numbers are open-ended (Decision 8). rot:null = Not scheduled.
+   fa1/fa2 are two repeats of ONE class (topic t4a), each with its own teacher and scouts (8a). */
+let ROT = [{n:1, loc:'Main hall'}, {n:2, loc:'Back room'}, {n:3, loc:''}];
+let CLASSES = [
+  {id:'fa1',   topic:'t4a',  code:'Tenderfoot 4a',      title:'First aid basics',            kind:'rank', rot:1,    teacher:'Dan V',     scouts:['Finn P','Lily P','Hazel S']},
+  {id:'cyber', topic:'s6',   code:'Star 6',             title:'Cyber Chip for grade',        kind:'rank', rot:1,    teacher:'Patrick B', scouts:['Anjali S']},
+  {id:'fire',  topic:'sc2f', code:'Second Class 2f',    title:'Build and light a fire',      kind:'rank', rot:1,    teacher:'Alex S',    scouts:['Owen R','Jack P']},
+  {id:'fa2',   topic:'t4a',  code:'Tenderfoot 4a',      title:'First aid basics',            kind:'rank', rot:2,    teacher:'Rachel D',  scouts:['Owen R','Todd M','Finn P']},
+  {id:'knots', topic:'t3',   code:'Tenderfoot 3a–3d', title:'Knots and lashings',       kind:'rank', rot:2,    teacher:'Jenna M',   scouts:['Hazel S','Lucy L']},
+  {id:'compass',topic:'sc3a',code:'Second Class 3a',    title:'Compass and orienting a map', kind:'rank', rot:2,    teacher:'Patrick B', scouts:['Lucy L']},
+  {id:'oath',  topic:'s1a',  code:'Scout 1a',           title:'Oath, Law, motto, slogan',    kind:'rank', rot:2,    teacher:'Jenna M',   scouts:['Adi A','Ben B','Winnie B']},
+  {id:'elec',  topic:'el5',  code:'Electricity · req 5', title:'Electricity make-up',  kind:'mb',   rot:null, teacher:'Tom K',     scouts:['Robbie H']}
+];
+let POOL = ['Simon P','Emory M'];
+const DONE = {'Hazel S':['t3']};            // already completed → retake star (8c)
+const COUNSELORS = {el5:['Tom K']};
+const ADULTS = [['Patrick B','coming'],['Alex S','coming'],['Jenna M','coming'],['Dan V','coming'],['Rachel D','coming'],['Mark F','coming'],['Tom K','coming'],['Mike T','not sure'],['Karen O','no answer'],['Greg H','no answer']];
+const ROSTER = ['Adi A','Anjali S','Aubrey R','Ben B','Damian N','Eloise L','Emory M','Finn P','Fiona K','Hadley B','Hazel S','Henry E','Isaac H','Jack P','Jameson K','Kevin P','Lee P','Lily P','Lucy L','Miren G','Oliver K','Oliver P','Oliver V','Oscar B','Owen R','Piper K','Quinn B','Robbie H','Simon P','Solomon R','Todd M','Veronica K','Violet B','Winnie B'];
+
+const S = { tab:'1', absent:new Set(), view:false, flash:{}, sync:{by:'Mindy', when:'just now'}, editLoc:false, visitors:new Set(), nextId:1, undo:null };
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const cls = id => CLASSES.find(c => c.id === id);
+const rotName = r => r ? 'Rotation ' + r : 'Not scheduled';
+const names = a => a.length < 3 ? a.join(' and ') : a.slice(0, -1).join(', ') + ' and ' + a.at(-1);
+
+/* ===================== Conflicts =====================
+   1) scout in two repeats of the same class   2) scout in two classes in one rotation   3) teacher busy in one rotation */
+function warningsFor(c) {
+  const w = [];
+  CLASSES.forEach(o => {
+    if (o === c) return;
+    const both = c.scouts.filter(x => o.scouts.includes(x));
+    if (o.topic === c.topic && both.length) w.push(`${names(both)} also in the ${o.rot ? 'Rotation ' + o.rot : 'unscheduled'} repeat of this class`);
+    else if (c.rot && o.rot === c.rot && both.length) w.push(`${names(both)} also in ${o.title} this rotation`);
+    if (c.rot && o.rot === c.rot && c.teacher && o.teacher === c.teacher) w.push(`${c.teacher} is also teaching ${o.title} this rotation`);
+  });
+  return w;
+}
+function overlapCount() {
+  let n = 0;
+  for (let i = 0; i < CLASSES.length; i++) for (let j = i + 1; j < CLASSES.length; j++) {
+    const a = CLASSES[i], b = CLASSES[j], both = a.scouts.some(x => b.scouts.includes(x));
+    if (both && (a.topic === b.topic || (a.rot && a.rot === b.rot))) n++;
+    if (a.rot && a.rot === b.rot && a.teacher && a.teacher === b.teacher) n++;
+  }
+  return n;
+}
+
+/* ===================== Render ===================== */
+function render() {
+  $('roBanner').hidden = !S.view;
+  $('mView').setAttribute('aria-pressed', String(S.view));
+  const n = overlapCount();
+  $('overlaps').hidden = !n; $('overlaps').textContent = `${n} overlap${n===1?'':'s'}${S.view ? '' : ' to fix'}`;
+  renderTabs(); renderSync(); renderPanel();
+}
+
+function renderTabs() {
+  const tabs = [{k:'u', label:'Not scheduled', loc:'', count: CLASSES.filter(c => !c.rot).length + (POOL.length ? 1 : 0)},
+                ...ROT.map(r => ({k:String(r.n), label:'R' + r.n, loc:r.loc, count: CLASSES.filter(c => c.rot === r.n).length}))];
+  $('tabs').innerHTML = tabs.map(t => {
+    const warn = CLASSES.some(c => String(c.rot || 'u') === t.k && warningsFor(c).length);
+    return `<button class="tab" role="tab" id="tab-${t.k}" aria-selected="${S.tab === t.k}" aria-controls="panel" data-tab="${t.k}"
+      aria-label="${t.k==='u'?'Not scheduled':'Rotation ' + t.k}${t.loc?', ' + esc(t.loc):''}, ${t.count} ${t.k==='u'?'items':'classes'}${warn?', has overlaps':''}">
+      <span class="tl">${esc(t.label)}<span class="ct">${t.count}</span></span>${t.k!=='u' ? `<span class="loc">${t.loc ? esc(t.loc) : '&nbsp;'}</span>` : ''}${warn?'<span class="warn" aria-hidden="true"></span>':''}</button>`;
+  }).join('');
+  $('addRot').hidden = S.view;
+  $('panel').setAttribute('aria-labelledby', 'tab-' + S.tab);
+  $(`tab-${S.tab}`)?.scrollIntoView({block:'nearest', inline:'nearest'});
+}
+
+function renderSync() {
+  $('sync').innerHTML = `<span class="dot" aria-hidden="true"></span><span>Mindy and Jason are also here</span><span class="sep">·</span><span>Updated by ${esc(S.sync.by)} · ${esc(S.sync.when)}</span>`;
+}
+
+function chip(name, from) {
+  const out = S.absent.has(name), c = from !== 'pool' && cls(from);
+  const retake = c && (DONE[name] || []).includes(c.topic);
+  const label = (out ? '' : '✓ ') + esc(name);
+  const star = retake ? `<span class="star" aria-hidden="true">★</span>` : '';
+  const aria = `${esc(name)}, ${out ? 'not present' : 'here'}${retake ? ', retake: already completed this' : ''}${S.visitors.has(name) ? ', visitor' : ''}`;
+  const k = `chip ${out ? 'out' : ''} ${S.visitors.has(name) ? 'visitor' : ''}`;
+  return S.view ? `<span class="${k}" aria-label="${aria}">${label}${star}</span>`
+                : `<button class="${k}" aria-label="${aria}" aria-haspopup="dialog" data-act="scout" data-name="${esc(name)}" data-from="${from}">${label}${star}</button>`;
+}
+
+function card(c) {
+  const w = warningsFor(c), repeats = CLASSES.filter(o => o !== c && o.topic === c.topic);
+  const f = S.flash[c.id];
+  const teacher = S.view ? `<span class="tplain">${c.teacher ? esc(c.teacher) : 'No teacher yet'}</span>`
+    : `<button class="tbtn ${c.teacher ? '' : 'none'}" data-act="teacher" data-id="${c.id}" aria-haspopup="dialog" aria-label="Teacher: ${c.teacher ? esc(c.teacher) : 'none'}. Change">${c.teacher ? esc(c.teacher) : 'Pick a teacher'} <span aria-hidden="true" style="font-size:11px;color:var(--meta)">▾</span></button>`;
+  const moves = [null, ...ROT.map(r => r.n)].map(r => `<button class="mv" data-act="move" data-id="${c.id}" data-to="${r ?? ''}" aria-pressed="${c.rot === r}" aria-label="${r ? 'Rotation ' + r : 'Not scheduled'}">${r ?? '—'}</button>`).join('');
+  return `<article class="lcard ${c.kind === 'mb' ? 'mb' : c.kind === 'other' ? 'other' : ''} ${c.rot ? '' : 'un'} ${f ? 'flash' : ''}" id="card-${c.id}" aria-labelledby="h-${c.id}">
+    <div class="ch"><div class="ttl"><span class="code">${esc(c.code)}</span>${repeats.length ? `<span class="rep">Repeat · also ${repeats.map(o => o.rot ? 'R' + o.rot : 'unscheduled').join(', ')}</span>` : ''}
+      <h3 id="h-${c.id}">${esc(c.title)}</h3></div>
+      ${S.view ? '' : `<button class="more" data-act="more" data-id="${c.id}" aria-haspopup="dialog" aria-label="More for ${esc(c.title)}">⋯</button>`}</div>
+    <div class="trow"><span class="lbl">Teacher</span>${teacher}${COUNSELORS[c.topic]?.includes(c.teacher) ? '<span class="tag tag-counselor">Counselor</span>' : ''}</div>
+    <div class="chips">${c.scouts.map(n => chip(n, c.id)).join('')}${c.scouts.length ? '' : '<span class="noscouts">No scouts yet.</span>'}
+      ${S.view ? '' : `<button class="chip addc" data-act="add" data-to="${c.id}" aria-haspopup="dialog">+ Add</button>`}</div>
+    ${w.map(x => `<div class="warnl">${esc(x)}</div>`).join('')}
+    ${f ? `<div class="updated">${esc(f)}</div>` : ''}
+    ${S.view ? '' : `<div class="moverow" role="group" aria-label="Move ${esc(c.title)} to"><span class="lbl">Move to</span>${moves}</div>`}
+  </article>`;
+}
+
+function renderPanel() {
+  const P = $('panel');
+  if (S.tab === 'u') {
+    const cards = CLASSES.filter(c => !c.rot);
+    P.innerHTML = `<div class="rhead"><h2>Not scheduled</h2><span class="rsum">${cards.length} class${cards.length===1?'':'es'} waiting</span></div>
+      <section class="pool" aria-labelledby="poolH"><h3 id="poolH">Coming, nothing assigned · ${POOL.length}</h3>
+        <div class="chips">${POOL.map(n => chip(n, 'pool')).join('')}${POOL.length ? '' : '<span class="noscouts">Everyone has a class.</span>'}
+        ${S.view ? '' : `<button class="chip addc" data-act="add" data-to="pool" aria-haspopup="dialog">+ Add a scout</button>`}</div></section>
+      ${cards.map(card).join('') || '<div class="empty-rot">Every class has a rotation.</div>'}
+      ${S.view ? '' : `<button class="btn btn-ghost btn-block addclass" data-act="addClass" aria-haspopup="dialog">+ Add a class</button>`}`;
+    return;
+  }
+  const r = ROT.find(x => String(x.n) === S.tab), cards = CLASSES.filter(c => c.rot === r.n);
+  const scouts = new Set(cards.flatMap(c => c.scouts)), out = [...scouts].filter(n => S.absent.has(n)).length;
+  const teachers = new Set(cards.map(c => c.teacher).filter(Boolean)).size;
+  const loc = S.view ? (r.loc ? `<span class="meta">${esc(r.loc)}</span>` : '')
+    : S.editLoc ? `<form class="locform" data-form="loc"><label class="sr-only" for="locIn">Location for Rotation ${r.n}</label>
+        <input id="locIn" value="${esc(r.loc)}" placeholder="e.g. Back room" maxlength="40"><button class="btn btn-navy" type="submit">Save</button></form>`
+    : `<button class="locbtn" data-act="loc" aria-label="${r.loc ? 'Location: ' + esc(r.loc) + '. Edit' : 'Add a location'}">${r.loc ? esc(r.loc) + ' <span class="ed">Edit</span>' : '+ Add a location'}</button>`;
+  const lastEmpty = !cards.length && r.n === ROT.length && r.n > 3;
+  P.innerHTML = `<div class="rhead"><h2>Rotation ${r.n}</h2>${loc}
+      <span class="rsum">${cards.length} class${cards.length===1?'':'es'} · ${scouts.size} scouts${out ? ` (${out} not here)` : ''} · ${teachers} teacher${teachers===1?'':'s'}</span></div>
+    ${S.view ? '' : '<div class="help">Tap a scout to mark not present or move them. Tap the teacher to change. Everyone assigned counts as here.</div>'}
+    ${cards.map(card).join('') || `<div class="empty-rot">Rotation ${r.n} is empty.${S.view ? '' : ' Use <b>Move to</b> on a class, or <b>⋯ › Repeat</b> a class into this rotation.'}
+        ${lastEmpty && !S.view ? `<div style="margin-top:12px"><button class="btn btn-ghost" data-act="dropRot">Remove Rotation ${r.n}</button></div>` : ''}</div>`}
+    ${S.view ? '' : `<button class="btn btn-ghost btn-block addclass" data-act="addClass" aria-haspopup="dialog">+ Add a class</button>`}
+    <div class="legend"><span><span class="chip" style="position:relative">✓ Here<span class="star" style="top:-6px">★</span></span> star = retake, already completed</span><span><span class="chip out">Not here</span></span></div>`;
+  if (S.editLoc) { const i = $('locIn'); i.focus(); i.select(); }
+}
+
+/* ===================== Sheets ===================== */
+let opener = null;
+function openSheet(html) {
+  opener = opener || document.activeElement;
+  const sh = $('sheet'), bd = $('backdrop');
+  sh.classList.remove('tall');
+  sh.innerHTML = `<div class="grabber" aria-hidden="true"></div>${html}`;
+  sh.hidden = false; bd.hidden = false;
+  requestAnimationFrame(() => { sh.classList.add('open'); bd.classList.add('open'); });
+  (sh.querySelector('input') || sh.querySelector('.sheet-body button, .rotpick button') || sh.querySelector('button'))?.focus();
+}
+function closeSheet() {
+  const sh = $('sheet'), bd = $('backdrop');
+  sh.classList.remove('open'); bd.classList.remove('open');
+  setTimeout(() => { sh.hidden = true; bd.hidden = true; }, 240);
+  const key = opener && opener.dataset ? opener.dataset : null; opener = null;
+  // Restore focus to the control that opened the sheet (it may have been re-rendered).
+  if (key && key.act) { const sel = Object.entries(key).map(([k, v]) => `[data-${k.replace(/[A-Z]/g, m => '-' + m.toLowerCase())}="${CSS.escape(v)}"]`).join(''); document.querySelector(sel)?.focus(); }
+}
+const head = (title, sub) => `<div class="sheet-head"><div style="flex:1;min-width:0"><h2 id="sheetTitle">${title}</h2>${sub ? `<div class="sheet-sub">${sub}</div>` : ''}</div><button class="icon-btn" data-act="close" aria-label="Close">✕</button></div>`;
+const cancel = `<div class="sheet-cancel"><button class="btn btn-ghost btn-block" data-act="close">Cancel</button></div>`;
+
+function sheetScout(name, from) {
+  const c = from !== 'pool' && cls(from), out = S.absent.has(name), retake = c && (DONE[name] || []).includes(c.topic);
+  const where = c ? `${esc(c.title)} · ${rotName(c.rot)}` : 'Coming, nothing assigned';
+  openSheet(head(esc(name), where + (retake ? '<br>★ Retake: already completed this class' : '')) + `<div class="sheet-body">
+    <button class="sheet-row" data-act="toggleHere" data-name="${esc(name)}">${out ? 'Mark here' : 'Mark not present'}<span class="note">${out ? 'Counts on Roll Call' : 'Off Roll Call for tonight'}</span></button>
+    <button class="sheet-row" data-act="pickClass" data-name="${esc(name)}" data-from="${from}">${c ? 'Move to another class…' : 'Put in a class…'}</button>
+    ${c ? `<button class="sheet-row danger" data-act="unassign" data-name="${esc(name)}" data-from="${from}">Remove from this class<span class="note">Back to “nothing assigned”</span></button>` : ''}
+  </div>${cancel}`);
+}
+
+function sheetPickClass(name, from) {
+  const inRot = r => CLASSES.find(o => o.id !== from && o.rot === r && o.scouts.includes(name));
+  const inTopic = t => CLASSES.find(o => o.id !== from && o.topic === t && o.scouts.includes(name));
+  const row = o => {
+    if (o.scouts.includes(name)) return `<button class="sheet-row" disabled style="color:var(--faint);cursor:default"><span>${esc(o.title)}</span><span class="note">already in this class</span></button>`;
+    const clash = (o.rot && inRot(o.rot)) ? `already in ${inRot(o.rot).title}` : inTopic(o.topic) ? 'in another repeat of this' : '';
+    const retake = (DONE[name] || []).includes(o.topic) ? ' ★' : '';
+    return `<button class="sheet-row" data-act="moveScout" data-name="${esc(name)}" data-from="${from}" data-to="${o.id}">
+      <span>${esc(o.title)}${retake}<br><span class="meta" style="font-weight:400">${o.teacher ? esc(o.teacher) : 'No teacher yet'} · ${o.scouts.length} scouts</span></span>
+      <span class="note ${clash ? 'busy' : ''}">${clash ? esc(clash) : ''}</span></button>`;
+  };
+  const groups = [...ROT.map(r => [rotName(r.n) + (r.loc ? ' · ' + r.loc : ''), CLASSES.filter(o => o.rot === r.n && o.id !== from)]), ['Not scheduled', CLASSES.filter(o => !o.rot && o.id !== from)]];
+  openSheet(head(`Move ${esc(name)} to…`, from === 'pool' ? 'Coming, nothing assigned' : `Now in ${esc(cls(from).title)}`) + `<div class="sheet-body">
+    ${groups.filter(g => g[1].length).map(([l, list]) => `<div class="sheet-group">${esc(l)}</div>${list.map(row).join('')}`).join('')}
+    ${from !== 'pool' ? `<div class="sheet-group">Unassign</div><button class="sheet-row" data-act="unassign" data-name="${esc(name)}" data-from="${from}">Coming, nothing assigned</button>` : ''}
+  </div>${cancel}`);
+}
+
+function sheetTeacher(id) {
+  const c = cls(id);
+  const rows = ADULTS.map(([n, ans]) => {
+    const other = CLASSES.filter(o => o.id !== id && o.teacher === n && o.rot);
+    const same = c.rot && other.find(o => o.rot === c.rot);
+    const note = n === c.teacher ? 'current' : same ? 'busy: ' + same.title : other.length ? 'teaching in ' + other.map(o => 'R' + o.rot).join(', ') : ans;
+    return {n, note, busy: !!same, cur: n === c.teacher, counselor: COUNSELORS[c.topic]?.includes(n)};
+  }).sort((a, b) => (b.cur - a.cur) || (b.counselor - a.counselor) || (a.busy - b.busy));
+  openSheet(head('Teacher', `${esc(c.title)} · ${rotName(c.rot)}`) + `<div class="sheet-body">
+    ${rows.map(r => `<button class="sheet-row" data-act="setTeacher" data-id="${id}" data-name="${esc(r.n)}" ${r.cur ? 'aria-current="true"' : ''}>${esc(r.n)}${r.counselor ? ' <span class="tag tag-counselor">Counselor</span>' : ''}<span class="note ${r.busy ? 'busy' : ''}">${esc(r.note)}</span></button>`).join('')}
+    <button class="sheet-row" data-act="setTeacher" data-id="${id}" data-name="">No teacher yet</button>
+  </div>${cancel}`);
+}
+
+function sheetAdd(to, q = '') {
+  const onBoard = new Set([...CLASSES.flatMap(c => c.scouts), ...POOL]);
+  const ql = q.trim().toLowerCase();
+  const res = ROSTER.filter(n => !onBoard.has(n) && (!ql || n.toLowerCase().includes(ql)));
+  const exact = ROSTER.some(n => n.toLowerCase() === ql);
+  const target = to === 'pool' ? 'Coming, nothing assigned' : cls(to).title;
+  const body = `${res.map(n => `<button class="sheet-row" data-act="addPick" data-to="${to}" data-name="${esc(n)}">${esc(n)}</button>`).join('') || '<div class="meta" style="padding:12px 16px">No one else on the roster matches.</div>'}
+    ${ql && !exact ? `<div style="padding:10px 16px"><button class="btn btn-ghost btn-block" style="border-style:dashed" data-act="addVisitor" data-to="${to}" data-name="${esc(q.trim())}">+ Add “${esc(q.trim())}” as a visitor</button></div>` : ''}`;
+  if ($('sheet').classList.contains('open') && $('addQ')) { $('addResults').innerHTML = body; return; }
+  openSheet(head('Add a scout', 'To ' + esc(target)) + `<div class="sheet-search"><label class="sr-only" for="addQ">Find a scout or type a visitor's name</label>
+    <input id="addQ" data-to="${to}" placeholder="Find a scout, or type a visitor's name" autocomplete="off"></div><div class="sheet-body" id="addResults">${body}</div>${cancel}`);
+}
+
+/* Add a class: same picker as the drawer's "Add an offer"; the card lands in the rotation being viewed. */
+let addState = null;
+function sheetAddClass() {
+  const rot = S.tab === 'u' ? null : +S.tab, r = ROT.find(x => x.n === rot);
+  openSheet(head('Add a class', 'Lands in ' + esc(rotName(rot)) + (r && r.loc ? ' · ' + esc(r.loc) : '')) +
+    `<div class="sheet-body" id="addClassBody" style="padding:0 var(--gutter)"></div>
+     <div class="sheet-foot"><button class="btn btn-navy btn-block" id="addClassGo" data-act="addClassGo" style="min-height:48px;font-size:15px" disabled>Pick what will be taught</button>
+     <div class="saved">Recorded as entered by you</div></div>`);
+  $('sheet').classList.add('tall');
+  addState = {topic:null, teacher:null, rot};
+  const pk = OfferPicker($('addClassBody'), {teacher:null, onChange: st => {
+    addState.topic = st.topic; addState.teacher = st.teacher;
+    const b = $('addClassGo'); b.disabled = !st.topic; b.textContent = st.topic ? 'Add class' : 'Pick what will be taught';
+  }});
+  pk.focus();
+}
+
+function sheetMore(id) {
+  const c = cls(id);
+  openSheet(head(esc(c.title), `${esc(c.code)} · ${rotName(c.rot)}`) + `<div class="sheet-body">
+    <button class="sheet-row" data-act="repeatPick" data-id="${id}">Repeat in another rotation…<span class="note">new card, own teacher and scouts</span></button>
+    <button class="sheet-row danger" data-act="removeClass" data-id="${id}">Remove this class<span class="note">scouts go to “nothing assigned”</span></button>
+  </div>${cancel}`);
+}
+function sheetRepeat(id) {
+  const c = cls(id);
+  openSheet(head('Repeat in…', esc(c.title)) + `<div class="rotpick">${ROT.filter(r => r.n !== c.rot).map(r => `<button class="btn btn-ghost" data-act="repeat" data-id="${id}" data-to="${r.n}">Rotation ${r.n}<small>${esc(r.loc || 'no location')}</small></button>`).join('')}</div>${cancel}`);
+}
+
+/* ===================== Mutations ===================== */
+function flash(id, text) { S.flash[id] = text; setTimeout(() => { delete S.flash[id]; renderPanel(); }, 9000); }
+function mine() { S.sync = {by:'you', when:'just now'}; }
+function removeFrom(from, name) { if (from === 'pool') POOL = POOL.filter(x => x !== name); else { const c = cls(from); c.scouts = c.scouts.filter(x => x !== name); } }
+function addTo(to, name) { if (to === 'pool') { if (!POOL.includes(name)) POOL.push(name); } else { const c = cls(to); if (!c.scouts.includes(name)) c.scouts.push(name); } }
+
+let toastTimer;
+function toast(msg, btnLabel, onBtn) {
+  $('toastMsg').textContent = msg; $('toastBtn').textContent = btnLabel || 'OK';
+  $('toastBtn').onclick = () => { $('toast').classList.remove('show'); onBtn && onBtn(); };
+  $('toast').classList.add('show'); clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => $('toast').classList.remove('show'), 6000);
+}
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const d = b.dataset, a = d.act;
+  if (d.tab) { S.tab = d.tab; S.editLoc = false; render(); window.scrollTo({top: 0}); return; }
+  if (!a) return;
+  if (a === 'close') return closeSheet();
+  if (S.view) return;   // view-only: no writes (the server refuses them too)
+  switch (a) {
+    case 'addRot': ROT.push({n: ROT.length + 1, loc: ''}); S.tab = String(ROT.length); mine(); render(); break;
+    case 'dropRot': ROT.pop(); S.tab = String(ROT.length); render(); break;
+    case 'loc': S.editLoc = true; renderPanel(); break;
+    case 'move': {
+      const c = cls(d.id), to = d.to ? +d.to : null, prev = c.rot;
+      if (to === prev) break;
+      c.rot = to; mine(); render();
+      const t = $('tab-' + (to || 'u')); t?.classList.add('pulse'); setTimeout(() => t?.classList.remove('pulse'), 1900);
+      toast(`Moved “${c.title}” to ${rotName(to)}.`, 'Undo', () => { c.rot = prev; render(); });
+      break;
+    }
+    case 'scout': sheetScout(d.name, d.from); break;
+    case 'toggleHere': S.absent.has(d.name) ? S.absent.delete(d.name) : S.absent.add(d.name); mine(); render(); closeSheet(); break;
+    case 'pickClass': sheetPickClass(d.name, d.from); break;
+    case 'moveScout': { removeFrom(d.from, d.name); addTo(d.to, d.name); mine(); render(); closeSheet(); const c = cls(d.to); toast(`${d.name} moved to ${c.title} (${rotName(c.rot)}).`, 'Undo', () => { removeFrom(d.to, d.name); addTo(d.from, d.name); render(); }); break; }
+    case 'unassign': removeFrom(d.from, d.name); addTo('pool', d.name); mine(); render(); closeSheet(); toast(`${d.name} is back in “Coming, nothing assigned”.`, 'Undo', () => { removeFrom('pool', d.name); addTo(d.from, d.name); render(); }); break;
+    case 'teacher': sheetTeacher(d.id); break;
+    case 'setTeacher': cls(d.id).teacher = d.name || null; mine(); render(); closeSheet(); break;
+    case 'add': sheetAdd(d.to); break;
+    case 'addPick': addTo(d.to, d.name); mine(); render(); closeSheet(); break;
+    case 'addVisitor': S.visitors.add(d.name); addTo(d.to, d.name); mine(); render(); closeSheet(); toast(`${d.name} added as a visitor (a guest record).`); break;
+    case 'more': sheetMore(d.id); break;
+    case 'addClass': sheetAddClass(); break;
+    case 'addClassGo': {
+      const {topic, teacher, rot} = addState; if (!topic) break;
+      const same = CLASSES.find(o => o.code === topic.code && !topic.free);   // same requirement = a repeat of that class
+      const id = 'n' + (S.nextId++);
+      CLASSES.push({id, topic: same ? same.topic : 'new:' + topic.code + ':' + topic.title, code: topic.free ? 'Other' : topic.code, title: topic.title,
+        kind: topic.kind === 'mb' ? 'mb' : topic.free ? 'other' : 'rank', rot, teacher: teacher || null, scouts: []});
+      mine(); flash(id, 'Added by you · just now'); render(); closeSheet();
+      setTimeout(() => $('card-' + id)?.scrollIntoView({behavior: 'smooth', block: 'start'}), 60);
+      break;
+    }
+    case 'repeatPick': sheetRepeat(d.id); break;
+    case 'repeat': {
+      const c = cls(d.id), id = 'r' + (S.nextId++);
+      CLASSES.push({...c, id, rot: +d.to, teacher: null, scouts: []});
+      mine(); closeSheet(); S.tab = d.to; flash(id, 'New repeat · pick a teacher and add scouts'); render();
+      setTimeout(() => $('card-' + id)?.scrollIntoView({behavior: 'smooth', block: 'start'}), 50);
+      break;
+    }
+    case 'removeClass': { const c = cls(d.id); c.scouts.forEach(n => addTo('pool', n)); CLASSES = CLASSES.filter(x => x !== c); mine(); render(); closeSheet(); toast(`Removed “${c.title}”.`); break; }
+  }
+});
+document.addEventListener('submit', e => {
+  if (e.target.dataset.form !== 'loc') return;
+  e.preventDefault();
+  ROT.find(x => String(x.n) === S.tab).loc = $('locIn').value.trim();
+  S.editLoc = false; mine(); render(); document.querySelector('[data-act="loc"]')?.focus();
+});
+document.addEventListener('input', e => { if (e.target.id === 'addQ') sheetAdd(e.target.dataset.to, e.target.value); });
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if (!$('sheet').hidden) closeSheet(); else if (S.editLoc) { S.editLoc = false; renderPanel(); }
+});
+$('backdrop').addEventListener('click', closeSheet);
+$('overlaps').addEventListener('click', () => {
+  const c = CLASSES.find(x => warningsFor(x).length); if (!c) return;
+  S.tab = String(c.rot || 'u'); render();
+  const el = $('card-' + c.id); el.scrollIntoView({behavior: 'smooth', block: 'start'}); el.classList.add('flash');
+});
+
+/* ===================== Mock: other leaders ===================== */
+$('mView').addEventListener('click', () => { S.view = !S.view; S.editLoc = false; render(); closeSheet(); });
+$('mMindy').addEventListener('click', () => {
+  // Another phone marks Lily P not present. Seen within a poll cycle; a light cue, no interruption.
+  S.absent.add('Lily P'); S.sync = {by:'Mindy', when:'just now'};
+  flash('fa1', 'Updated by Mindy · just now: Lily P not present'); render();
+});
+$('mJason').addEventListener('click', () => {
+  // You tapped "Move to 3" on Build and light a fire, but Jason had just moved it to R2.
+  // The stale-write check refuses yours, reloads the placement, and says so.
+  const c = cls('fire'); c.rot = 2; S.sync = {by:'Jason', when:'just now'}; S.tab = '2';
+  flash('fire', 'Moved to Rotation 2 by Jason · just now'); render();
+  $('card-fire').scrollIntoView({behavior: 'smooth', block: 'start'});
+  toast('Jason moved this card a moment ago — refreshed.', 'OK');
+});
+
+render();
+</script>
+</body>
+</html>

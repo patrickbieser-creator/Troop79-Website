@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="position:absolute;inset:0;background:rgba(20,32,40,.38)" onClick="{{ d.close }}"></div>
+<div style="position:absolute;top:{{ d.top }};right:0;height:860px;max-height:100%;width:440px;border-radius:8px 0 0 8px;overflow:hidden;background:#ffffff;box-shadow:-8px 0 28px rgba(20,32,40,.22);display:flex;flex-direction:column;font-family:'Open Sans',Arial,sans-serif;color:#1f2a30">
+  <div style="padding:22px 24px 16px;border-bottom:1px solid #e3e7ea;display:flex;align-items:flex-start;gap:12px">
+    <div style="flex:1;min-width:0">
+      <div style="font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5f6b73">{{ d.roleLabel }}</div>
+      <div style="font-size:24px;font-weight:700;color:#1e3a4a;margin-top:2px">{{ d.name }}</div>
+      <div style="font-size:13px;color:#5f6b73;margin-top:2px">{{ d.sub }}</div>
+    </div>
+    <button onClick="{{ d.close }}" style="width:40px;height:40px;border:1px solid #c9d1d6;border-radius:6px;background:#fff;font-size:18px;cursor:pointer;color:#1e3a4a" style-hover="background:#e8eef2">✕</button>
+  </div>
+  <sc-if value="{{ d.hasOpts }}" hint-placeholder-val="{{ true }}"><div style="padding:18px 24px;border-bottom:1px solid #e3e7ea">
+    <div style="font-size:14px;font-weight:700;margin-bottom:10px">Coming Sunday?</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+      <sc-for list="{{ d.opts }}" as="o" hint-placeholder-count="3">
+        <button onClick="{{ o.onClick }}" style="min-height:44px;border-radius:6px;border:1px solid {{ o.bd }};background:{{ o.bg }};color:{{ o.fg }};font-family:inherit;font-size:14px;font-weight:600;cursor:pointer">{{ o.label }}</button>
+      </sc-for>
+    </div>
+    <sc-if value="{{ d.hasNote }}" hint-placeholder-val="{{ false }}">
+      <div style="margin-top:10px;font-size:13px;color:#7a5c10;background:#fdf6e3;border-radius:6px;padding:8px 10px">{{ d.note }}</div>
+    </sc-if>
+  </div></sc-if>
+  <div style="padding:16px 24px 8px;display:flex;align-items:baseline;gap:10px">
+    <div style="font-size:14px;font-weight:700">{{ d.listTitle }}</div>
+    <div style="font-size:12.5px;color:#5f6b73">{{ d.listSub }}</div>
+  </div>
+  <sc-if value="{{ d.hasQuick }}" hint-placeholder-val="{{ false }}"><div style="display:flex;gap:6px;padding:0 24px 10px">
+    <sc-for list="{{ d.quick }}" as="q" hint-placeholder-count="2"><button onClick="{{ q.onClick }}" style="min-height:34px;padding:0 12px;border-radius:5px;border:1px solid #c9d1d6;background:#fff;color:#1e3a4a;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap" style-hover="border-color:#1e3a4a">{{ q.label }}</button></sc-for>
+  </div></sc-if>
+  <div style="flex:1;overflow-y:auto;padding:0 16px 16px;display:flex;flex-direction:column;gap:6px">
+    <sc-for list="{{ d.list }}" as="r" hint-placeholder-count="6">
+      <button onClick="{{ r.toggle }}" style="display:flex;align-items:center;gap:12px;min-height:54px;padding:8px 10px;border:1px solid {{ r.bd }};border-radius:6px;background:{{ r.rowBg }};text-align:left;cursor:pointer;font-family:inherit;color:#1f2a30" style-hover="border-color:#1e3a4a">
+        <span style="width:24px;height:24px;flex:none;border-radius:4px;border:2px solid #1e3a4a;background:{{ r.box }};color:#fff;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center">{{ r.mark }}</span>
+        <span style="display:flex;flex-direction:column;min-width:0">
+          <span style="font-size:14.5px;font-weight:600">{{ r.title }}</span>
+          <span style="font-size:12.5px;color:#5f6b73">{{ r.meta }}</span>
+        </span>
+      </button>
+    </sc-for>
+  </div>
+  <sc-if value="{{ d.hasAction }}" hint-placeholder-val="{{ false }}"><div style="padding:12px 24px 0;border-top:1px solid #e3e7ea"><button onClick="{{ d.onAction }}" style="width:100%;min-height:46px;border-radius:6px;border:none;background:{{ d.actionBg }};color:#fff;font-size:15px;font-weight:700;cursor:pointer">{{ d.actionLabel }}</button></div></sc-if>
+  <div style="padding:12px 24px;border-top:1px solid #e3e7ea;font-size:12.5px;color:#3d5a3e;font-weight:600">{{ d.footer }}</div>
+</div>
+</x-dc>
+</body>
+</html>

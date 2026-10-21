@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>This Sunday · phone</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="phone.css?v=4">
+<style>
+  /* ---------- Header + attendance bars ---------- */
+  .hdr { background: #fff; border-bottom: 1px solid var(--line); padding: 14px var(--gutter) 14px; }
+  .crumb { font-size: 12.5px; color: var(--meta); }
+  .crumb a { color: var(--navy); }
+  .hdr h1 { margin: 2px 0 0; font-size: 20px; line-height: 1.25; color: var(--navy); }
+  .hdr .sub { font-size: 13px; color: var(--meta); margin-top: 2px; }
+  .live { color: var(--forest); font-weight: 700; }
+  .viewonly-pill { display: inline-block; margin-left: 6px; font-size: 11.5px; font-weight: 700; color: var(--slate); background: #eceff1; border-radius: 10px; padding: 1px 8px; }
+  .bars { display: grid; gap: 10px; margin-top: 12px; }
+  .bar-label { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; color: var(--navy); }
+  .bar { height: 14px; border-radius: 7px; background: var(--line); overflow: hidden; display: flex; margin-top: 4px; }
+  .bar span { height: 100%; }
+  .legend { font-size: 12.5px; color: var(--meta); margin-top: 4px; display: flex; flex-wrap: wrap; gap: 0 10px; }
+  .legend b { color: var(--text); }
+
+  /* ---------- Meeting focus strip ---------- */
+  .focus { background: #fffdf7; border-bottom: 1px solid var(--bark-edge-2); padding: 10px 0 12px; }
+  .focus-top { display: flex; align-items: center; gap: 8px; padding: 0 var(--gutter); }
+  .focus-label { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--bark-2); flex: 1; }
+  .focus-top a { font-size: 13px; font-weight: 600; min-height: var(--tap); display: inline-flex; align-items: center; padding: 0 4px; }
+  .focus-top .btn { min-height: 40px; padding: 0 12px; font-size: 13.5px; }
+  .seed-locked { border: 1px dashed var(--line-4) !important; background: #f4f5f6 !important; color: var(--faint) !important; }
+  .seed-note { font-size: 12.5px; color: var(--meta); padding: 6px var(--gutter) 0; }
+  .scroller { display: flex; gap: 8px; overflow-x: auto; padding: 8px var(--gutter) 2px; scroll-snap-type: x proximity; scrollbar-width: none; }
+  .scroller::-webkit-scrollbar { display: none; }
+  .fchip { flex: none; scroll-snap-align: start; min-height: var(--tap); padding: 6px 12px; border-radius: 8px; border: 1px solid var(--bark-edge); background: var(--bark-tint); text-align: left; max-width: 230px; }
+  .fchip.matched { border-color: var(--forest-edge); background: var(--forest-tint); }
+  .fchip b { display: block; font-size: 13.5px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fchip span { font-size: 12px; color: var(--meta); }
+
+  /* ---------- Enter for someone (sticky) ---------- */
+  .efs { position: sticky; top: 0; z-index: 20; background: var(--navy); color: #fff; padding: 10px var(--gutter); box-shadow: 0 2px 8px rgba(20,32,40,.18); }
+  .efs label { display: block; font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: rgba(255,255,255,.8); margin-bottom: 4px; }
+  .efs-row { display: flex; gap: 8px; }
+  .efs input { flex: 1; min-width: 0; min-height: var(--tap); border-radius: 6px; border: 0; padding: 0 12px; font-size: 16px; /* 16px stops iOS zoom-on-focus */ color: var(--text); }
+  .efs .icon-btn { background: transparent; border-color: rgba(255,255,255,.35); color: #fff; }
+  .pills { display: none; gap: 6px; margin-top: 8px; }
+  .efs.active .pills { display: flex; }
+  .pill { min-height: 36px; padding: 0 14px; border-radius: 18px; border: 1px solid rgba(255,255,255,.55); background: transparent; color: #fff; font-size: 13px; font-weight: 700; }
+  .pill[aria-pressed="true"] { background: #fff; color: var(--navy); }
+  .results { display: none; margin-top: 8px; background: #fff; border-radius: 6px; max-height: 50vh; overflow-y: auto; overscroll-behavior: contain; }
+  .efs.active .results { display: block; }
+  .res { display: flex; align-items: center; gap: 8px; width: 100%; min-height: var(--tap); padding: 4px 12px; border: 0; border-bottom: 1px solid var(--line-2); background: #fff; text-align: left; color: var(--text); text-decoration: none; }
+  .res:hover { background: var(--info-tint); }
+  .res b { font-size: 14.5px; }
+  .res .role { font-size: 12px; font-weight: 700; }
+  .res .ans { margin-left: auto; font-size: 12.5px; color: var(--meta); }
+  .res-empty { padding: 12px; font-size: 13.5px; color: var(--meta); }
+
+  /* ---------- Body ---------- */
+  main { padding: 14px 12px 32px; display: grid; gap: 14px; }
+  .row { padding: 12px 14px; border-top: 1px solid var(--line-2); }
+  .row:first-child { border-top: 0; }
+  .row h3 { margin: 2px 0 6px; font-size: 16.5px; line-height: 1.3; }
+  .empty { padding: 16px 14px; font-size: 14px; color: var(--meta); }
+  .ready-meta { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 8px; }
+  .ready-meta .who { font-size: 14px; font-weight: 700; color: var(--navy-2); }
+  .undo { background: none; border: 0; padding: 0 4px; min-height: var(--tap); color: var(--navy); font-size: 13px; font-weight: 700; text-decoration: underline; }
+  .waiting { font-size: 13px; color: var(--danger); }
+  .seeded { font-size: 12.5px; color: var(--bark-2); }
+  .chip-btn { cursor: pointer; }
+  .chip-btn:hover { border-color: var(--forest); }
+  .chip-plain { background: #fff; border-color: var(--line-3); color: var(--text); }
+
+  /* teacher list, collapsed behind a toggle on phone */
+  .tl-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: var(--tap); margin-top: 10px; padding: 0 12px; border: 1px solid var(--line-3); border-radius: 6px; background: #fff; font-size: 14px; font-weight: 700; color: var(--navy); }
+  .tl-toggle .caret { transition: transform 160ms ease; }
+  .tl-toggle[aria-expanded="true"] { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+  .tl-toggle[aria-expanded="true"] .caret { transform: rotate(180deg); }
+  .tl { border: 1px solid #dde3e7; border-top: 0; border-radius: 0 0 6px 6px; }
+  .tl-hint { font-size: 12px; color: var(--meta); padding: 6px 12px 0; }
+  .tl-group { font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; background: #f7f8f9; padding: 6px 12px; margin-top: 6px; }
+  .tl-row { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-top: 1px solid var(--line-2); }
+  .tl-row .nm { flex: 1; min-width: 0; }
+  .tl-row .nm b { font-size: 14.5px; color: var(--navy); }
+  .tl-row .nm div { font-size: 12px; color: var(--meta); }
+  .tl-row .btn { min-height: 40px; padding: 0 10px; font-size: 13px; }
+  .sent { font-size: 13px; font-weight: 700; color: var(--forest); padding: 0 6px; }
+  .email-note { font-size: 12.5px; color: var(--meta); padding: 10px 14px; background: #f7f8f9; border-bottom: 1px solid var(--line-2); }
+
+  .fits { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+  .fits .meta { margin-right: 2px; }
+  .nudged { font-size: 13.5px; font-weight: 700; color: var(--forest); margin-top: 10px; }
+
+  .names { display: flex; flex-wrap: wrap; gap: 6px; }
+  .namebtn { min-height: var(--tap); padding: 0 12px; border-radius: 6px; border: 1px solid var(--line-3); background: #fff; font-size: 14px; font-weight: 600; color: var(--text); text-decoration: none; display: inline-flex; align-items: center; }
+  .namebtn.adult { background: #eef3f7; }
+  a.namebtn:hover { border-color: var(--navy); }
+  .subhead { font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--slate); margin: 12px 0 6px; }
+  .subhead:first-child { margin-top: 0; }
+
+  .plain-head { padding: 12px 14px 4px; display: flex; align-items: baseline; gap: 8px; }
+  .plain-head h2 { margin: 0; font-size: 16.5px; color: var(--navy); }
+  .who-row { display: block; min-height: var(--tap); padding: 6px 14px; border-top: 1px solid var(--line-2); text-decoration: none; color: var(--text); }
+  a.who-row:hover { background: var(--info-tint); }
+  .who-row b { font-size: 14.5px; }
+  .who-row div { font-size: 12.5px; color: var(--meta); }
+  .who-row div.free { color: var(--bark); }
+  .grouplabel { font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--meta); padding: 10px 14px 4px; }
+
+  /* Everyone wall: per-status collapsible lists */
+  .wall-head { display: flex; align-items: center; gap: 8px; padding: 4px 2px 0; }
+  .wall-head h2 { margin: 0; font-size: 17px; color: var(--navy); flex: 1; }
+  details.st { border-top: 1px solid var(--line-2); }
+  details.st > summary { list-style: none; display: flex; align-items: center; gap: 10px; min-height: var(--tap); padding: 0 14px; cursor: pointer; font-size: 14.5px; font-weight: 700; }
+  details.st > summary::-webkit-details-marker { display: none; }
+  details.st > summary .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  details.st > summary .n { margin-left: auto; color: var(--meta); font-weight: 600; }
+  details.st > summary .caret { transition: transform 160ms ease; color: var(--meta); }
+  details.st[open] > summary .caret { transform: rotate(180deg); }
+  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 0 14px 12px; }
+  .tile { min-height: var(--tap); padding: 5px 10px; border-radius: 6px; border: 1px solid var(--line-3); background: #fff; text-decoration: none; color: var(--text); display: flex; flex-direction: column; justify-content: center; }
+  a.tile:hover { border-color: var(--navy); }
+  .tile b { font-size: 14px; font-weight: 600; }
+  .tile span { font-size: 12px; color: var(--meta); }
+  .wall-card-head { padding: 10px 14px; font-size: 14px; font-weight: 700; }
+
+  /* "+ Add an offer" in a header band; the count moves under the title to make room at 390px. */
+  .band .sub2 { display: block; text-align: left; font-size: 12.5px; }
+  .band-add { flex: none; min-height: var(--tap); padding: 0 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,.75); background: rgba(255,255,255,.12); color: #fff; font-size: 13.5px; font-weight: 700; white-space: nowrap; }
+  .band-add:hover { background: rgba(255,255,255,.24); }
+  .added { font-size: 12.5px; font-weight: 600; color: var(--forest); margin-top: 4px; }
+  .row.fresh { animation: fresh 2.6s ease-out; }
+  @keyframes fresh { 0%, 30% { background: #fff6d6; } 100% { background: #fff; } }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="frame">
+
+  <!-- MOCK CONTROLS (review only). Viewer drives the rights in Plan decisions 2, 4, 5. -->
+  <div class="mockbar" role="group" aria-label="Mock controls">
+    <b>Mock</b> Viewer:
+    <button data-viewer="planner" aria-pressed="true">Mindy · seed</button>
+    <button data-viewer="edit" aria-pressed="false">Dan V · edit</button>
+    <button data-viewer="spl" aria-pressed="false">Kevin P · SPL</button>
+    <button data-viewer="view" aria-pressed="false">Sara L · view</button>
+    <a href="index.html">All mocks</a>
+  </div>
+
+  <header class="hdr">
+    <div class="crumb"><a href="index.html">Meeting Planner</a> › This Sunday · <a href="live.html">Live ›</a></div>
+    <h1>Sunday, October 25 · Troop meeting</h1>
+    <div class="sub">Sign-ups open until Sun 5:30 pm · <span class="live">● Live</span><span class="viewonly-pill" id="viewPill" hidden>View only</span></div>
+    <div class="bars" id="bars"></div>
+  </header>
+
+  <section class="focus" aria-labelledby="focusLabel">
+    <div class="focus-top">
+      <span class="focus-label" id="focusLabel">Meeting focus</span>
+      <a href="#" data-ctl="any">Focus sets</a>
+      <button class="btn btn-bark" id="seedBtn">Seed</button>
+    </div>
+    <div class="seed-note" id="seedNote" hidden>Only the planning team (SPL, Mindy, Jason, Patrick) can seed a meeting.</div>
+    <div class="scroller" id="focusChips" aria-label="Focus topics, scroll sideways"></div>
+  </section>
+
+  <!-- Pinned search. Pills + results only appear once focused / typed, to keep the sticky bar ~64px. -->
+  <section class="efs" id="efs" aria-label="Enter for someone">
+    <label for="q">Enter for someone</label>
+    <div class="efs-row">
+      <input id="q" type="text" enterkeyhint="search" placeholder="Type a name…" autocomplete="off" aria-controls="results">
+      <button class="icon-btn" id="efsClose" aria-label="Close search" hidden>✕</button>
+    </div>
+    <div class="pills" role="group" aria-label="Show">
+      <button class="pill" data-f="all" aria-pressed="false">Everyone</button>
+      <button class="pill" data-f="scout" aria-pressed="false">Scouts</button>
+      <button class="pill" data-f="adult" aria-pressed="false">Adults</button>
+    </div>
+    <div class="results" id="results" role="list"></div>
+  </section>
+
+  <main>
+    <section class="card" aria-labelledby="h-ready">
+      <div class="band" style="background:var(--forest)"><span class="badge" style="color:var(--forest)" aria-hidden="true">✓</span><h2 id="h-ready">Ready to teach<span class="sum sub2" id="readySum"></span></h2><button class="band-add" data-ctl="edit" data-addoffer>+ Add an offer</button></div>
+      <div id="ready"></div>
+    </section>
+
+    <section class="card" aria-labelledby="h-req">
+      <div class="band" style="background:var(--danger)"><span class="badge" style="color:var(--danger)" aria-hidden="true">1</span><h2 id="h-req">Requests with no teacher</h2><span class="sum" id="reqSum"></span></div>
+      <div class="email-note" id="splNote" hidden>Requests, nudges and reminders are emailed by adult leaders. You can still assign a teacher who is here.</div>
+      <div id="requests"></div>
+    </section>
+
+    <section class="card" aria-labelledby="h-off">
+      <div class="band" style="background:var(--bark)"><span class="badge" style="color:var(--bark)" aria-hidden="true">2</span><h2 id="h-off">Offered, no takers yet<span class="sum sub2" id="offSum"></span></h2><button class="band-add" data-ctl="edit" data-addoffer>+ Add an offer</button></div>
+      <div id="offers"></div>
+    </section>
+
+    <section class="card" aria-labelledby="h-na">
+      <div class="band" style="background:var(--slate)"><span class="badge" style="color:var(--slate)" aria-hidden="true">3</span><h2 id="h-na">Haven't answered</h2><span class="sum" id="naSum"></span></div>
+      <div class="row" id="noanswer"></div>
+    </section>
+
+    <section class="card" aria-labelledby="h-who">
+      <div class="plain-head"><h2 id="h-who">Who's coming</h2><span class="meta" id="whoSum"></span></div>
+      <div id="who"></div>
+    </section>
+
+    <section aria-labelledby="h-wall" style="display:grid;gap:10px">
+      <div class="wall-head"><h2 id="h-wall">Everyone</h2></div>
+      <div class="card"><div class="wall-card-head" style="background:#e4ede4">Scouts</div><div id="wallScouts"></div></div>
+      <div class="card"><div class="wall-card-head" style="background:#e3ecf2">Adults</div><div id="wallAdults"></div></div>
+      <button class="btn btn-navy btn-block" data-ctl="email" onclick="location.href='drawer.html?mode=remind'">Choose who to remind…</button>
+    </section>
+  </main>
+</div>
+
+<script>
+/* ===================== Sample data (Oct 25, midweek) ===================== */
+const SCOUTS = [
+  // name, answer, detail (picks or rank being worked on), wallTag
+  ['Anjali S','coming',['Cyber Chip for grade'],'1 pick'],
+  ['Finn P','coming',['First aid basics','Knots and lashings'],'2 picks'],
+  ['Hazel S','coming',['First aid basics','Knots and lashings'],'2 picks'],
+  ['Jack P','coming',['Build and light a fire'],'1 pick'],
+  ['Lily P','coming',['First aid basics'],'1 pick'],
+  ['Lucy L','coming',['Build and light a fire','Compass and orienting a map'],'2 picks'],
+  ['Owen R','coming',['First aid basics','Build and light a fire'],'2 picks'],
+  ['Robbie H','coming',['Electricity make-up'],'1 pick'],
+  ['Simon P','coming',[],'Tenderfoot'],
+  ['Emory M','notsure',[],'Second Class'],['Quinn B','notsure',[],'Tenderfoot'],
+  ['Todd M','cant',[],'Picks saved'],
+  ...[['Adi A','Scout'],['Aubrey R','First Class'],['Ben B','Scout'],['Damian N','Second Class'],['Eloise L','First Class'],['Fiona K','Tenderfoot'],['Hadley B','Second Class'],['Henry E','Second Class'],['Isaac H','Second Class'],['Jameson K','Second Class'],['Kevin P','Tenderfoot'],['Lee P','Second Class'],['Miren G','Tenderfoot'],['Oliver K','Second Class'],['Oliver P','Second Class'],['Oliver V','Second Class'],['Oscar B','Scout'],['Piper K','Tenderfoot'],['Solomon R','Second Class'],['Veronica K','Second Class'],['Violet B','Scout'],['Winnie B','Scout']].map(([n,r])=>[n,'none',[],r])
+];
+const ADULTS = [
+  ['Patrick B','coming',['Cyber Chip for grade'],'Teaching 1'],
+  ['Alex S','coming',['Oath, Law, motto, slogan','First Class badge meaning'],'Teaching 2'],
+  ['Jenna M','coming',['Knots and lashings'],'Teaching 1'],
+  ['Dan V','coming',[],'Free'],['Rachel D','coming',[],'Free'],['Mark F','coming',[],'Free'],
+  ['Mike T','notsure',[],'Can teach'],['Chris N','notsure',[],'Can teach'],
+  ['Sara L','cant',[],'Can teach'],['Paul J','cant',[],'Can teach'],
+  ...['Karen O','Tom K','Greg H','Ben W','Laura P','Nina G','Steve R','Dana K','Joe M'].map(n=>[n,'none',[],'Can teach'])
+];
+const ANSWER = {coming:'Coming',notsure:'Not sure',cant:"Can't",none:'No answer'};
+const ADULT_STATUS = {coming:'Coming',notsure:'Not sure yet',none:'Hasn’t answered'};
+
+let TOPICS = [
+  {id:'fa', code:'Tenderfoot 4a', title:'First aid basics', kind:'rank', min:30, weeks:3, focus:'Patrick B', wanters:['Finn P','Hazel S','Lily P','Owen R'],
+   teachers:{coming:[['Dan V',''],['Jenna M','teaching 1'],['Mark F',''],['Rachel D','']], notsure:[['Chris N','']], none:[['Ben W',''],['Greg H',''],['Joe M',''],['Karen O',''],['Laura P',''],['Steve R','']]}},
+  {id:'fire', code:'Second Class 2f', title:'Build and light a fire', kind:'rank', min:25, weeks:1, wanters:['Jack P','Lucy L','Owen R'],
+   teachers:{coming:[['Alex S','teaching 2'],['Mark F','']], notsure:[['Chris N',''],['Mike T','']], none:[['Ben W',''],['Greg H',''],['Steve R','']]}},
+  {id:'elec', code:'Electricity · req 5', title:'Electricity make-up', kind:'mb', min:20, weeks:2, wanters:['Robbie H'],
+   teachers:{none:[['Tom K','',true]]}},
+  {id:'compass', code:'Second Class 3a', title:'Compass and orienting a map', kind:'rank', min:30, weeks:1, wanters:['Lucy L'],
+   teachers:{coming:[['Dan V',''],['Patrick B','teaching 1']], notsure:[['Chris N','']], none:[['Joe M','']]}},
+  {id:'flag', code:'Tenderfoot 7a', title:'Flag ceremony and folding', kind:'rank', min:20, weeks:0, focus:'Mindy', wanters:[],
+   teachers:{coming:[['Rachel D','']]}}
+];
+let READY = [
+  {code:'Tenderfoot 3a–3d', title:'Knots and lashings', teacher:'Jenna M', scouts:['Finn P','Hazel S'], min:30},
+  {code:'Star 6', title:'Cyber Chip for grade', teacher:'Patrick B', scouts:['Anjali S'], min:15}
+];
+let OFFERS = [
+  {id:'oath', code:'Scout 1a', title:'Oath, Law, motto, slogan', by:'Alex S', fits:['Adi A','Ben B','Oscar B','Violet B','Winnie B']},
+  {id:'fcb', code:'Scout 1d', title:'First Class badge meaning', by:'Alex S', fits:['Adi A','Ben B','Oscar B','Violet B','Winnie B']}
+];
+
+/* ===================== State ===================== */
+const S = { viewer:'planner', open:{}, sent:{}, nudged:{}, filter:null, q:'', lastAssign:null };
+const can = {
+  edit:  () => S.viewer !== 'view',
+  email: () => S.viewer === 'planner' || S.viewer === 'edit',   // Decision 5: email is adults only
+  seed:  () => S.viewer === 'planner' || S.viewer === 'spl'
+};
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const isAdult = n => ADULTS.some(a => a[0] === n);
+const drawerHref = n => `drawer.html?mode=${isAdult(n)?'adult':'scout'}&name=${encodeURIComponent(n)}&viewer=${S.viewer}`;
+/* A person: a link to their drawer for editors, plain text for view-only (they see everything, no controls). */
+function person(n, cls, inner) {
+  inner = inner || esc(n);
+  return can.edit() ? `<a class="${cls}" href="${drawerHref(n)}">${inner}</a>` : `<span class="${cls}">${inner}</span>`;
+}
+const chip = n => person(n, 'chip chip-btn');
+
+/* ===================== Render ===================== */
+function bars() {
+  const mk = (label, list, comingColor) => {
+    const c = k => list.filter(p => p[1] === k).length, t = list.length;
+    const seg = (k, col) => `<span style="width:${c(k)/t*100}%;background:${col}"></span>`;
+    return `<div><div class="bar-label"><span>${label}</span><span>${t}</span></div>
+      <div class="bar" role="img" aria-label="${label}: ${c('coming')} coming, ${c('notsure')} not sure, ${c('cant')} can't, ${c('none')} no answer">${seg('coming',comingColor)}${seg('notsure','var(--notsure)')}${seg('cant','var(--cant)')}</div>
+      <div class="legend"><span><b style="color:${comingColor}">● ${c('coming')} coming</b></span><span>${c('notsure')} not sure</span><span>${c('cant')} can't</span><span>${c('none')} no answer</span></div></div>`;
+  };
+  document.getElementById('bars').innerHTML = mk('Scouts', SCOUTS, 'var(--forest)') + mk('Adults', ADULTS, 'var(--adult-blue)');
+}
+
+function focusStrip() {
+  const seeded = [...TOPICS.filter(t => t.focus), ...READY.filter(r => r.focus)];
+  document.getElementById('focusChips').innerHTML = seeded.map(t =>
+    `<a class="fchip ${t.teacher?'matched':''}" href="#t-${t.id||''}" style="text-decoration:none"><b>${esc(t.title)}</b><span>${t.teacher?esc(t.teacher):'no teacher'} · ${(t.wanters||t.scouts).length} scouts</span></a>`
+  ).join('') || '<span class="meta" style="padding:8px 0">Nothing seeded yet.</span>';
+  const seedBtn = document.getElementById('seedBtn');
+  seedBtn.hidden = !can.edit();
+  seedBtn.classList.toggle('seed-locked', !can.seed());
+  seedBtn.setAttribute('aria-disabled', String(!can.seed()));
+  document.getElementById('seedNote').hidden = !(can.edit() && !can.seed());
+}
+
+function ready() {
+  const el = document.getElementById('ready');
+  document.getElementById('readySum').textContent = READY.length + (READY.length === 1 ? ' class' : ' classes');
+  if (!READY.length) { el.innerHTML = '<div class="empty">Nothing is ready yet. A class shows up here once it has a teacher and at least one scout.</div>'; return; }
+  el.innerHTML = READY.map((r, i) => `<div class="row">
+    <div class="code">${esc(r.code)}</div><h3>${esc(r.title)}</h3>
+    <div class="chips">${r.scouts.map(chip).join('')}</div>
+    <div class="ready-meta"><div><span class="who">${esc(r.teacher)}</span> <span class="meta">· ${r.scouts.length} scout${r.scouts.length>1?'s':''} · ${r.min} min</span></div>
+    ${S.lastAssign === r.title && can.edit() ? `<button class="undo" data-undo="${i}">Undo assignment</button>` : ''}</div></div>`).join('');
+}
+
+function requests() {
+  const el = document.getElementById('requests');
+  document.getElementById('splNote').hidden = S.viewer !== 'spl';
+  const waiting = TOPICS.reduce((a, t) => a + t.wanters.length, 0);
+  document.getElementById('reqSum').textContent = `${TOPICS.length} topics · ${waiting} waiting`;
+  if (!TOPICS.length) { el.innerHTML = '<div class="empty">Every request has a teacher.</div>'; return; }
+  el.innerHTML = TOPICS.map(t => {
+    const groups = [['coming','Coming','var(--forest)'],['notsure','Not sure yet','var(--bark)'],['none',"Haven't answered",'var(--slate)']];
+    const n = groups.reduce((a, [k]) => a + (t.teachers[k]||[]).length, 0);
+    const open = !!S.open[t.id];
+    const rows = groups.filter(([k]) => (t.teachers[k]||[]).length).map(([k, label, col]) =>
+      `<div class="tl-group" style="color:${col}">${label} · ${t.teachers[k].length}${k==='none'?'<span style="font-weight:600;text-transform:none;letter-spacing:0"> · a request invites them</span>':''}</div>` +
+      t.teachers[k].map(([name, extra, counselor]) => {
+        const key = t.id + '|' + name;
+        const status = (k === 'none' ? ADULT_STATUS.none : ADULT_STATUS[k]) + (extra ? ' · ' + extra : '');
+        const send = !can.email() ? '' : (S.sent[key] ? `<span class="sent">✓ Request sent</span>` : `<button class="btn btn-navy" data-send="${esc(key)}">Send request</button>`);
+        const assign = can.edit() ? `<button class="btn btn-ghost" data-assign="${esc(key)}">Assign</button>` : '';
+        return `<div class="tl-row"><div class="nm"><b>${esc(name)}</b>${counselor?' <span class="tag tag-counselor">Counselor</span>':''}<div>${status}</div></div>${send}${assign}</div>`;
+      }).join('')).join('');
+    return `<div class="row" id="t-${t.id}">
+      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px"><span class="code">${esc(t.code)}</span>
+        <span class="tag ${t.kind==='mb'?'tag-mb':'tag-rank'}">${t.kind==='mb'?'Merit badge':'Rank'}</span>
+        <span class="meta">about ${t.min} min</span>${t.focus?'<span class="tag tag-focus">Focus</span>':''}</div>
+      <h3>${esc(t.title)}</h3>
+      <div class="waiting">${t.wanters.length ? `${t.wanters.length} scout${t.wanters.length>1?'s':''} waiting${t.weeks>1?` · asked ${t.weeks} weeks running`:''}` : 'Seeded focus · no scouts picked it yet'}</div>
+      ${t.focus ? `<div class="seeded">Focus · seeded by ${esc(t.focus)}</div>` : ''}
+      ${t.wanters.length ? `<div class="chips" style="margin-top:8px">${t.wanters.map(chip).join('')}</div>` : ''}
+      <button class="tl-toggle" aria-expanded="${open}" aria-controls="tl-${t.id}" data-toggle="${t.id}">
+        <span>${n} ${n===1?'person':'people'} can teach this</span><span class="caret" aria-hidden="true">▾</span></button>
+      <div class="tl" id="tl-${t.id}" ${open?'':'hidden'}><div class="tl-hint">Grouped by their answer${t.kind==='mb'?' · registered counselors first':''}. People who can't come are left out.</div>${rows}</div>
+    </div>`;
+  }).join('');
+}
+
+function offers() {
+  const el = document.getElementById('offers');
+  document.getElementById('offSum').textContent = OFFERS.length + (OFFERS.length === 1 ? ' offer' : ' offers');
+  if (!OFFERS.length) { el.innerHTML = '<div class="empty">Every offer has scouts.</div>'; return; }
+  el.innerHTML = OFFERS.map(o => `<div class="row ${o.added ? 'fresh' : ''}" id="o-${o.id}">
+    <div><span class="code">${esc(o.code)}</span> ${o.group ? '<span class="tag tag-focus">Focus group</span> ' : ''}<span class="meta">${o.by ? `Offered by <b style="color:var(--text)">${esc(o.by)}</b>` : '<b style="color:var(--bark)">No teacher yet</b>'}</span></div>
+    <h3>${esc(o.title)}</h3>
+    ${o.added ? '<div class="added">Added by you · just now</div>' : ''}
+    ${o.fits.length ? `<div class="fits"><span class="meta">Likely fits:</span>${o.fits.map(n => person(n, 'chip chip-btn chip-plain')).join('')}</div>`
+      : o.free ? '<div class="meta" style="margin-top:4px">No likely fits: a free-text class isn’t tied to a requirement.</div>' : ''}
+    ${S.nudged[o.id] ? `<div class="nudged">✓ Nudged ${S.nudged[o.id]} families · just now</div>` :
+      can.email() ? `<a class="btn btn-bark-soft btn-block" style="margin-top:10px;text-decoration:none" href="drawer.html?mode=nudge&topic=${o.id}&title=${encodeURIComponent(o.title)}&code=${encodeURIComponent(o.code)}&by=${encodeURIComponent(o.by || '')}&viewer=${S.viewer}">Choose families to nudge…</a>` : ''}
+  </div>`).join('');
+}
+
+function noAnswer() {
+  const sc = SCOUTS.filter(p => p[1] === 'none'), ad = ADULTS.filter(p => p[1] === 'none');
+  document.getElementById('naSum').textContent = `${sc.length} scouts · ${ad.length} adults`;
+  document.getElementById('noanswer').innerHTML =
+    (can.edit() ? '<p class="meta" style="margin:0 0 10px">Tap a name to answer for them (phone, text, or in the hall).</p>' : '') +
+    `<div class="subhead">Scouts · ${sc.length}</div><div class="names">${sc.map(p => person(p[0], 'namebtn')).join('')}</div>
+     <div class="subhead">Adults · ${ad.length}</div><div class="names">${ad.map(p => person(p[0], 'namebtn adult')).join('')}</div>` +
+    (can.email() ? '<a class="btn btn-navy btn-block" style="margin-top:12px;text-decoration:none" href="drawer.html?mode=remind">Choose who to remind…</a>' : '');
+}
+
+function who() {
+  const sc = SCOUTS.filter(p => p[1] === 'coming'), ad = ADULTS.filter(p => p[1] === 'coming');
+  document.getElementById('whoSum').textContent = `${sc.length} scouts · ${ad.length} adults`;
+  const row = (p, adult) => {
+    const has = p[2].length;
+    const detail = has ? (adult ? 'Teaching: ' : '') + p[2].join(', ') : (adult ? 'Not teaching yet: free to assign' : 'Nothing picked: will be placed by rank');
+    return person(p[0], 'who-row', `<b>${esc(p[0])}</b><div class="${has?'':'free'}">${esc(detail)}</div>`);
+  };
+  const tagged = (list, k, fmt) => list.filter(p => p[1] === k).map(p => person(p[0], 'namebtn', fmt(p))).join('');
+  document.getElementById('who').innerHTML =
+    `<div class="grouplabel">Scouts</div>${sc.map(p => row(p, false)).join('')}
+     <div class="grouplabel">Adults</div>${ad.map(p => row(p, true)).join('')}
+     <div class="grouplabel">Not sure yet</div><div class="names" style="padding:0 14px 6px">${tagged([...SCOUTS, ...ADULTS], 'notsure', p => esc(p[0]))}</div>
+     <div class="grouplabel">Can't make it</div><div class="names" style="padding:0 14px 14px">${tagged([...SCOUTS, ...ADULTS], 'cant', p => esc(p[0]) + (p[0]==='Todd M' ? ' <span class="meta">&nbsp;· 3 saved for later</span>' : ''))}</div>`;
+}
+
+function wall() {
+  const mk = (list, comingColor, openKey) => [['coming','Coming',comingColor],['notsure','Not sure','var(--notsure)'],['cant',"Can't",'var(--cant)'],['none','No answer','var(--line-4)']].map(([k, label, col]) => {
+    const ppl = list.filter(p => p[1] === k);
+    return `<details class="st" ${k===openKey?'open':''}><summary><span class="dot" style="background:${col}"></span>${label}<span class="n">${ppl.length}</span><span class="caret" aria-hidden="true">▾</span></summary>
+      <div class="tiles">${ppl.map(p => person(p[0], 'tile', `<b>${esc(p[0])}</b><span>${esc(p[3])}</span>`)).join('') || '<span class="meta">Nobody</span>'}</div></details>`;
+  }).join('');
+  document.getElementById('wallScouts').innerHTML = mk(SCOUTS, 'var(--forest)', 'coming');
+  document.getElementById('wallAdults').innerHTML = mk(ADULTS, 'var(--adult-blue)', 'coming');
+}
+
+/* ---------- Enter for someone ---------- */
+function results() {
+  const box = document.getElementById('results'), efs = document.getElementById('efs');
+  const q = S.q.trim().toLowerCase();
+  const active = !!q || !!S.filter || document.activeElement === document.getElementById('q');
+  efs.classList.toggle('active', active);
+  document.getElementById('efsClose').hidden = !active;
+  document.querySelectorAll('.pill').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.f === S.filter)));
+  if (!q && !S.filter) { box.innerHTML = '<div class="res-empty">Type a name, or pick Everyone, Scouts or Adults.</div>'; return; }
+  const all = [...SCOUTS.map(p => [...p, 'scout']), ...ADULTS.map(p => [...p, 'adult'])]
+    .filter(p => (S.filter === 'all' || !S.filter || p[4] === S.filter) && (!q || p[0].toLowerCase().includes(q)))
+    .sort((a, b) => a[0].localeCompare(b[0]));
+  box.innerHTML = all.length ? all.map(p => `<a class="res" role="listitem" href="${drawerHref(p[0])}"><b>${esc(p[0])}</b>
+      <span class="role" style="color:${p[4]==='scout'?'var(--forest)':'var(--navy-2)'}">${p[4]==='scout'?'Scout':'Adult'}</span><span class="ans">${ANSWER[p[1]]}</span></a>`).join('')
+    : `<div class="res-empty">No one on the roster matches “${esc(S.q)}”.</div>`;
+}
+
+function render() {
+  document.querySelectorAll('[data-viewer]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.viewer === S.viewer)));
+  document.getElementById('viewPill').hidden = can.edit();
+  document.getElementById('efs').hidden = !can.edit();
+  document.querySelectorAll('[data-ctl="email"]').forEach(b => b.hidden = !can.email());
+  document.querySelectorAll('[data-ctl="edit"]').forEach(b => b.hidden = !can.edit());   // Add an offer: SPL + edit adults; never view-only
+  document.querySelectorAll('[data-ctl="any"]').forEach(b => b.hidden = false);
+  bars(); focusStrip(); ready(); requests(); offers(); noAnswer(); who(); wall(); results();
+}
+
+/* ===================== Events ===================== */
+document.addEventListener('click', e => {
+  const t = e.target.closest('button,a');
+  if (!t) return;
+  if (t.dataset.viewer) { S.viewer = t.dataset.viewer; render(); return; }
+  if (t.dataset.addoffer !== undefined && can.edit()) { location.href = `drawer.html?mode=offer&from=board&viewer=${S.viewer}`; return; }
+  if (t.dataset.toggle) { S.open[t.dataset.toggle] = !S.open[t.dataset.toggle]; requests(); document.querySelector(`[data-toggle="${t.dataset.toggle}"]`).focus(); return; }
+  if (t.dataset.send) { S.sent[t.dataset.send] = true; requests(); return; }
+  if (t.dataset.assign) {
+    // Assign: marks the adult Coming, moves the topic to Ready (or to No takers when it has no scouts).
+    const [id, name] = t.dataset.assign.split('|');
+    const topic = TOPICS.find(x => x.id === id);
+    TOPICS = TOPICS.filter(x => x !== topic);
+    const a = ADULTS.find(x => x[0] === name); if (a) { a[1] = 'coming'; a[2] = [...a[2], topic.title]; a[3] = 'Teaching ' + a[2].length; }
+    if (topic.wanters.length) { READY.push({code:topic.code, title:topic.title, teacher:name, scouts:topic.wanters, min:topic.min, focus:topic.focus, _topic:topic}); S.lastAssign = topic.title; }
+    else OFFERS.push({id:topic.id, code:topic.code, title:topic.title, by:name, fits:['Kevin P','Miren G','Piper K','Fiona K']});
+    render(); return;
+  }
+  if (t.dataset.undo) {
+    const r = READY.splice(+t.dataset.undo, 1)[0];
+    if (r._topic) TOPICS.unshift(r._topic);
+    const a = ADULTS.find(x => x[0] === r.teacher); if (a) { a[2] = a[2].filter(x => x !== r.title); a[3] = a[2].length ? 'Teaching ' + a[2].length : 'Free'; }
+    S.lastAssign = null; render(); return;
+  }
+  if (t.dataset.f) { S.filter = S.filter === t.dataset.f ? null : t.dataset.f; results(); return; }
+  if (t.id === 'efsClose') { S.q = ''; S.filter = null; const q = document.getElementById('q'); q.value = ''; q.blur(); results(); return; }
+  if (t.id === 'seedBtn' && can.seed()) { location.href = 'drawer.html?mode=seed'; return; }
+  if (t.getAttribute('href') === '#') e.preventDefault();
+});
+const q = document.getElementById('q');
+q.addEventListener('input', () => { S.q = q.value; results(); });
+q.addEventListener('focus', results);
+q.addEventListener('blur', () => setTimeout(results, 150));
+q.addEventListener('keydown', e => { if (e.key === 'Escape') document.getElementById('efsClose').click(); });
+
+/* "Nudged" receipt when coming back from the drawer (?nudged=oath:3). */
+const params = new URLSearchParams(location.search);
+if (['planner','edit','spl','view'].includes(params.get('viewer'))) S.viewer = params.get('viewer');
+const back = params.get('nudged');
+if (back) { const [id, n] = back.split(':'); S.nudged[id] = n; }
+/* A saved offer coming back from drawer.html?mode=offer. It has no scouts yet, so it lands in Offered, no takers
+   (it would go to Ready to teach only once it has a teacher AND scouts). */
+let newOffer = null;
+try { newOffer = JSON.parse(params.get('offer')); } catch (e) {}
+const waitingFor = newOffer && !newOffer.free && TOPICS.find(t => t.code === newOffer.code);
+if (newOffer && newOffer.title && newOffer.teacher && waitingFor && waitingFor.wanters.length) {
+  // The offer matches a request that already has scouts waiting: teacher + scouts = Ready to teach.
+  TOPICS = TOPICS.filter(t => t !== waitingFor);
+  READY.unshift({code:waitingFor.code, title:waitingFor.title, teacher:newOffer.teacher, scouts:waitingFor.wanters, min:waitingFor.min, focus:waitingFor.focus, _topic:waitingFor});
+  S.lastAssign = waitingFor.title; newOffer.ready = true;
+} else if (newOffer && newOffer.title) {
+  OFFERS.unshift({id:'new', code:newOffer.code, title:newOffer.title, by:newOffer.teacher, added:true, free:newOffer.free, group:newOffer.group,
+    fits: newOffer.free ? [] : ['Fiona K','Kevin P','Miren G','Piper K']});
+  if (newOffer.teacher) { const a = ADULTS.find(x => x[0] === newOffer.teacher); if (a) { a[1] = 'coming'; a[2] = [...a[2], newOffer.title]; a[3] = 'Teaching ' + a[2].length; } }
+}
+render();
+if (newOffer && newOffer.title) setTimeout(() => { const el = document.getElementById(newOffer.ready ? 'h-ready' : 'o-new'); el && el.scrollIntoView({block:'center'}); }, 50);
+</script>
+</body>
+</html>

@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#dfe2e4;font-family:'Open Sans',Arial,sans-serif;color:#1f2a30}a{color:#1e3a4a}a:hover{color:#2a4f63}button,select{font-family:inherit}</style>
+</helmet>
+<section style="padding:48px;display:flex;flex-direction:column;gap:28px">
+  <div style="max-width:1280px">
+    <div style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#5f6b73">Turn 1 · This Sunday board, three directions</div>
+    <div style="font-size:15px;color:#363636;margin-top:6px;line-height:1.5;text-wrap:pretty"><a href="#1a">1a</a> is a to-do list: numbered problems, each with its fix built in. <a href="#1b">1b</a> lays topics out as lanes by match status, with a wall of everyone below. <a href="#1c">1c</a> asks one question at a time on the left and answers it in a table you can edit. All three work: assign teachers, nudge families, send reminders, or click any name to answer for that person.</div>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:56px;align-items:flex-start">
+
+  <!-- ============ 1a ============ -->
+  <div id="1a" style="width:1280px;flex:none;display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;align-items:baseline;gap:12px">
+      <span style="background:#1e3a4a;color:#fff;font-size:14px;font-weight:700;padding:3px 10px;border-radius:4px">1a</span>
+      <span style="font-size:18px;font-weight:700;color:#1e3a4a">Action queue</span>
+      <span style="font-size:14px;color:#5f6b73">Problems in order of priority, each with its fix inline. A roster of who's coming sits on the right.</span>
+    </div>
+    <div data-artboard="1" style="position:relative;background:#f4f5f6;border-radius:10px;overflow:hidden;box-shadow:0 2px 14px rgba(20,32,40,.14);min-height:900px">
+      <div style="background:#ffffff;border-bottom:1px solid #e3e7ea;padding:20px 28px;display:flex;align-items:center;gap:32px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:22px;font-weight:700;color:#1e3a4a">Sunday, October 25 · Troop meeting</div>
+          <div style="font-size:13.5px;color:#5f6b73;margin-top:3px">Sign-ups open until Sun 5:30 pm · <span style="color:#3d5a3e;font-weight:600">● Live</span></div>
+        </div>
+        <div style="display:flex;gap:28px;align-items:center">
+          <div style="width:320px">
+            <div style="display:flex;justify-content:space-between;font-size:13.5px;font-weight:700;color:#1e3a4a;margin-bottom:6px"><span>Scouts</span><span>{{ a.scoutBar.total }}</span></div>
+            <div style="display:flex;height:14px;border-radius:7px;overflow:hidden;background:#e3e7ea">
+              <div style="width:{{ a.scoutBar.comingPct }};background:#3d5a3e"></div>
+              <div style="width:{{ a.scoutBar.unsurePct }};background:#d9b44a"></div>
+              <div style="width:{{ a.scoutBar.cantPct }};background:#b86b6b"></div>
+            </div>
+            <div style="display:flex;gap:12px;font-size:12.5px;margin-top:6px;color:#4a5961"><span style="color:#3d5a3e;font-weight:700">● {{ a.scoutBar.coming }} coming</span><span>{{ a.scoutBar.unsure }} not sure</span><span>{{ a.scoutBar.cant }} can't</span><span>{{ a.scoutBar.none }} no answer</span></div>
+          </div>
+          <div style="width:320px">
+            <div style="display:flex;justify-content:space-between;font-size:13.5px;font-weight:700;color:#1e3a4a;margin-bottom:6px"><span>Adults</span><span>{{ a.adultBar.total }}</span></div>
+            <div style="display:flex;height:14px;border-radius:7px;overflow:hidden;background:#e3e7ea">
+              <div style="width:{{ a.adultBar.comingPct }};background:#2a6a8e"></div>
+              <div style="width:{{ a.adultBar.unsurePct }};background:#d9b44a"></div>
+              <div style="width:{{ a.adultBar.cantPct }};background:#b86b6b"></div>
+            </div>
+            <div style="display:flex;gap:12px;font-size:12.5px;margin-top:6px;color:#4a5961"><span style="color:#2a6a8e;font-weight:700">● {{ a.adultBar.coming }} coming</span><span>{{ a.adultBar.unsure }} not sure</span><span>{{ a.adultBar.cant }} can't</span><span>{{ a.adultBar.none }} no answer</span></div>
+          </div>
+        </div>
+      </div>
+      <div style="background:#fffdf7;border-bottom:1px solid #eadfbf;padding:12px 28px;display:flex;align-items:center;gap:10px">
+        <span style="flex:none;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#6b500c">Meeting focus</span>
+        <sc-for list="{{ a.focus }}" as="f" hint-placeholder-count="2">
+          <span style="display:flex;flex-direction:column;padding:4px 12px;border-radius:6px;border:1px solid {{ f.bd }};background:{{ f.bg }}"><span style="font-size:13.5px;font-weight:700">{{ f.title }}</span><span style="font-size:11.5px;color:#5f6b73">{{ f.status }}</span></span>
+        </sc-for>
+        <sc-if value="{{ a.noFocus }}" hint-placeholder-val="{{ false }}"><span style="font-size:13.5px;color:#5f6b73">Nothing seeded yet. Offers so far come only from teachers.</span></sc-if>
+        <div style="margin-left:auto;flex:none;display:flex;align-items:center;gap:10px;white-space:nowrap"><a href="Focus Sets.dc.html" style="font-size:13.5px;font-weight:600;color:#6b500c">Focus sets</a>
+          <sc-if value="{{ a.canSeed }}" hint-placeholder-val="{{ true }}">
+            <button onClick="{{ a.openSeed }}" style="min-height:40px;padding:0 16px;border-radius:6px;border:1px solid #8b6914;background:#8b6914;color:#fff;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap" style-hover="background:#76590f">Seed this meeting</button>
+          </sc-if>
+          <sc-if value="{{ a.cannotSeed }}" hint-placeholder-val="{{ false }}">
+            <span style="font-size:12.5px;color:#5f6b73;max-width:260px;text-align:right">Only the planning team (SPL, Mindy, Jason, Patrick) can seed a meeting.</span>
+            <button disabled="{{ true }}" style="min-height:40px;padding:0 16px;border-radius:6px;border:1px dashed #c9d1d6;background:#f4f5f6;color:#8a959c;font-size:14px;font-weight:700;cursor:not-allowed">Seed this meeting</button>
+          </sc-if>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:24px;padding:24px 28px 32px">
+        <div style="display:flex;flex-direction:column;gap:20px">
+
+          <div style="background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(30,58,74,.12);overflow:hidden">
+            <div style="background:#3d5a3e;color:#fff;padding:12px 18px;display:flex;align-items:center;gap:12px">
+              <span style="width:28px;height:28px;border-radius:50%;background:#fff;color:#3d5a3e;font-weight:700;display:flex;align-items:center;justify-content:center">✓</span>
+              <span style="font-size:17px;font-weight:700">Ready to teach</span>
+              <span style="margin-left:auto;font-size:13.5px;font-weight:600">{{ a.matchedSummary }}</span>
+            </div>
+            <sc-if value="{{ a.noMatched }}" hint-placeholder-val="{{ false }}"><div style="padding:16px 18px;font-size:14px;color:#5f6b73;line-height:1.5">Nothing is ready yet. A session shows up here once it has a teacher and at least one scout.</div></sc-if>
+            <sc-for list="{{ a.matched }}" as="t" hint-placeholder-count="2">
+              <div style="display:grid;grid-template-columns:minmax(0,1fr) 200px;gap:16px;padding:14px 18px;border-top:1px solid #eceff1;align-items:center">
+                <div>
+                  <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap">
+                    <span style="font-size:12.5px;font-weight:700;color:#8b6914">{{ t.code }}</span>
+                    <span style="font-size:16px;font-weight:700">{{ t.title }}</span>
+                  </div>
+                  <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
+                    <sc-for list="{{ t.wanters }}" as="p" hint-placeholder-count="2">
+                      <button onClick="{{ p.open }}" style="min-height:34px;padding:5px 12px;border:1px solid #c5d6c6;background:#eef2ee;border-radius:17px;font-size:13.5px;cursor:pointer;color:#1f2a30;white-space:nowrap" style-hover="border-color:#1e3a4a">{{ p.name }}</button>
+                    </sc-for>
+                  </div>
+                </div>
+                <div style="text-align:right">
+                  <div style="font-size:14px;font-weight:700;color:#2a4f63">{{ t.teacherName }}</div>
+                  <div style="font-size:12.5px;color:#5f6b73">{{ t.countLabel }}</div>
+                  <sc-if value="{{ t.recent }}" hint-placeholder-val="{{ false }}">
+                    <button onClick="{{ t.undo }}" style="margin-top:4px;background:none;border:none;color:#1e3a4a;text-decoration:underline;font-size:13px;cursor:pointer;padding:4px 0">Undo assignment</button>
+                  </sc-if>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(30,58,74,.12);overflow:hidden">
+            <div style="background:#8c3b3b;color:#fff;padding:12px 18px;display:flex;align-items:center;gap:12px">
+              <span style="width:28px;height:28px;border-radius:50%;background:#fff;color:#8c3b3b;font-weight:700;display:flex;align-items:center;justify-content:center">1</span>
+              <span style="font-size:17px;font-weight:700">Requests with no teacher</span>
+              <span style="margin-left:auto;font-size:13.5px;font-weight:600">{{ a.needSummary }}</span>
+            </div>
+            <sc-if value="{{ a.noNeed }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:18px;font-size:14px;color:#3d5a3e;font-weight:600">✓ Every request has a teacher.</div>
+            </sc-if>
+            <sc-for list="{{ a.needTeacher }}" as="t" hint-placeholder-count="3">
+              <div style="display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:20px;padding:16px 18px;border-top:1px solid #eceff1">
+                <div>
+                  <div style="display:flex;gap:8px;align-items:center">
+                    <span style="font-size:12.5px;font-weight:700;color:#8b6914">{{ t.code }}</span>
+                    <span style="font-size:11.5px;font-weight:700;padding:2px 7px;border-radius:3px;background:{{ t.kindBg }};color:{{ t.kindFg }}">{{ t.kindLabel }}</span>
+                    <span style="font-size:12.5px;color:#5f6b73">{{ t.minutes }}</span><sc-if value="{{ t.seeded }}" hint-placeholder-val="{{ false }}"><span title="{{ t.seedLabel }}" style="font-size:11px;font-weight:700;padding:1px 7px;border-radius:3px;background:#fdf6e3;color:#6b500c;border:1px solid #e6d29a">Focus</span></sc-if>
+                  </div>
+                  <div style="font-size:17px;font-weight:700;margin:3px 0 4px">{{ t.title }}</div>
+                  <div style="font-size:13px;color:#8c3b3b;font-weight:600;margin-bottom:8px">{{ t.wantLabel }}</div><sc-if value="{{ t.seeded }}" hint-placeholder-val="{{ false }}"><div style="font-size:12.5px;color:#6b500c;margin:-4px 0 8px">{{ t.seedLabel }}</div></sc-if>
+                  <div style="display:flex;flex-wrap:wrap;gap:6px">
+                    <sc-for list="{{ t.wanters }}" as="p" hint-placeholder-count="3">
+                      <button onClick="{{ p.open }}" style="min-height:36px;padding:6px 14px;border:1px solid #c5d6c6;background:#eef2ee;border-radius:18px;font-size:14px;cursor:pointer;color:#1f2a30;white-space:nowrap" style-hover="border-color:#1e3a4a">{{ p.name }}</button>
+                    </sc-for>
+                  </div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:6px">
+                  
+                  <sc-if value="{{ t.hasSugg }}" hint-placeholder-val="{{ true }}"><div style="display:flex;align-items:baseline;gap:8px;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#5f6b73"><span>{{ t.canTeachLabel }}</span><span style="text-transform:none;letter-spacing:0;font-weight:400">{{ t.canTeachSub }}</span></div><div style="max-height:256px;overflow-y:auto;overflow-x:hidden;border:1px solid #dde3e7;border-radius:6px;display:flex;flex-direction:column"><sc-for list="{{ t.suggestions }}" as="s" hint-placeholder-count="2"><sc-if value="{{ s.hasHead }}" hint-placeholder-val="{{ false }}"><div style="flex:none;padding:6px 12px 4px;background:#f7f8f9;border-bottom:1px solid #eceff1;font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:{{ s.headColor }}">{{ s.head }}</div></sc-if>
+                    <div style="display:flex;align-items:center;gap:8px;min-height:42px;padding:4px 8px 4px 12px;border-radius:0;border-bottom:1px solid #eceff1;background:#fff;flex:none">
+                      <span style="flex:1;min-width:0;display:flex;flex-direction:column"><span style="font-size:14.5px;font-weight:700;color:#1e3a4a">{{ s.name }}</span><span style="font-size:12px;color:#5f6b73">{{ s.short }}</span></span>
+                      <sc-if value="{{ s.notAsked }}" hint-placeholder-val="{{ true }}"><button onClick="{{ s.ask }}" title="Sends the email invite" style="min-height:36px;padding:0 12px;border-radius:5px;border:none;background:#1e3a4a;color:#fff;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap" style-hover="background:#163040">Send request</button></sc-if>
+                      <sc-if value="{{ s.asked }}" hint-placeholder-val="{{ false }}"><span style="font-size:12.5px;font-weight:700;color:#3d5a3e;white-space:nowrap">✓ Request sent</span></sc-if>
+                      <button onClick="{{ s.assign }}" title="Assign now, e.g. at the meeting" style="min-height:36px;padding:0 10px;border-radius:5px;border:1px solid #b8c4cb;background:#fff;color:#1e3a4a;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap" style-hover="border-color:#1e3a4a">Assign</button>
+                    </div>
+                  </sc-for></div></sc-if>
+                  <sc-if value="{{ t.noSugg }}" hint-placeholder-val="{{ false }}">
+                    <div style="font-size:13.5px;color:#5f6b73;padding:8px 0">No one has listed this skill yet. Recruit someone, or open an adult's page to assign them anyway.</div>
+                  </sc-if>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(30,58,74,.12);overflow:hidden">
+            <div style="background:#8b6914;color:#fff;padding:12px 18px;display:flex;align-items:center;gap:12px">
+              <span style="width:28px;height:28px;border-radius:50%;background:#fff;color:#8b6914;font-weight:700;display:flex;align-items:center;justify-content:center">2</span>
+              <span style="font-size:17px;font-weight:700">Offered, no takers yet</span>
+              <span style="margin-left:auto;font-size:13.5px;font-weight:600">{{ a.noneSummary }}</span>
+            </div>
+            <sc-if value="{{ a.noNone }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:18px;font-size:14px;color:#3d5a3e;font-weight:600">✓ Every offer has at least one scout.</div>
+            </sc-if>
+            <sc-for list="{{ a.noTakers }}" as="t" hint-placeholder-count="2">
+              <div style="display:grid;grid-template-columns:minmax(0,1fr) 240px;gap:20px;padding:16px 18px;border-top:1px solid #eceff1;align-items:center">
+                <div>
+                  <div style="display:flex;gap:8px;align-items:center">
+                    <span style="font-size:12.5px;font-weight:700;color:#8b6914">{{ t.code }}</span>
+                    <span style="font-size:12.5px;color:#5f6b73">Offered by <b style="color:#2a4f63">{{ t.teacherName }}</b></span>
+                  </div>
+                  <div style="font-size:17px;font-weight:700;margin:3px 0 8px">{{ t.title }}</div>
+                  <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+                    <span style="font-size:13px;color:#5f6b73;margin-right:4px">Likely fits:</span>
+                    <sc-for list="{{ t.likely }}" as="p" hint-placeholder-count="3">
+                      <button onClick="{{ p.open }}" style="min-height:36px;padding:6px 14px;border:1px solid #c9d1d6;background:#fff;border-radius:18px;font-size:14px;cursor:pointer;color:#1f2a30;white-space:nowrap" style-hover="border-color:#1e3a4a;background:#e8eef2">{{ p.name }}</button>
+                    </sc-for>
+                  </div>
+                </div>
+                <sc-if value="{{ t.notNudged }}" hint-placeholder-val="{{ true }}">
+                  <button onClick="{{ t.nudge }}" style="min-height:44px;border-radius:6px;border:1px solid #8b6914;background:#fdf6e3;color:#6b500c;font-size:14.5px;font-weight:700;cursor:pointer" style-hover="background:#f8ecc8">{{ t.nudgeLabel }}</button>
+                </sc-if>
+                <sc-if value="{{ t.nudged }}" hint-placeholder-val="{{ false }}">
+                  <div style="font-size:13.5px;color:#3d5a3e;font-weight:600;text-align:center">✓ {{ t.nudgedLabel }}</div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(30,58,74,.12);overflow:hidden">
+            <div style="background:#4a5961;color:#fff;padding:12px 18px;display:flex;align-items:center;gap:12px">
+              <span style="width:28px;height:28px;border-radius:50%;background:#fff;color:#4a5961;font-weight:700;display:flex;align-items:center;justify-content:center">3</span>
+              <span style="font-size:17px;font-weight:700">Haven't answered</span>
+              <span style="margin-left:auto;font-size:13.5px;font-weight:600">{{ a.noAnswerSummary }}</span>
+            </div>
+            <div style="padding:16px 18px;display:flex;flex-direction:column;gap:14px">
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="font-size:13.5px;color:#5f6b73;flex:1">Click a name to answer for them (phone, text, or in the hall).</div>
+                <sc-if value="{{ a.notReminded }}" hint-placeholder-val="{{ true }}">
+                  <button onClick="{{ a.remind }}" style="min-height:44px;padding:0 18px;border-radius:6px;border:none;background:#1e3a4a;color:#fff;font-size:14.5px;font-weight:700;cursor:pointer" style-hover="background:#163040">{{ a.remindLabel }}</button>
+                </sc-if>
+                <sc-if value="{{ a.reminded }}" hint-placeholder-val="{{ false }}">
+                  <span style="font-size:13.5px;color:#3d5a3e;font-weight:600">✓ {{ a.remindedLabel }}</span>
+                </sc-if>
+              </div>
+              <div style="font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#3d5a3e">Scouts · {{ a.noAnswerScoutCount }}</div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                <sc-for list="{{ a.noAnswerScouts }}" as="p" hint-placeholder-count="12">
+                  <button onClick="{{ p.open }}" style="min-height:38px;padding:6px 14px;border:1px solid #c9d1d6;background:#fff;border-radius:6px;font-size:14px;cursor:pointer;color:#1f2a30;white-space:nowrap" style-hover="border-color:#1e3a4a;background:#e8eef2">{{ p.name }}</button>
+                </sc-for>
+              </div>
+              <div style="font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#2a4f63">Adults · {{ a.noAnswerAdultCount }}</div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                <sc-for list="{{ a.noAnswerAdults }}" as="p" hint-placeholder-count="3">
+                  <button onClick="{{ p.open }}" style="min-height:38px;padding:6px 14px;border:1px solid #c3d3de;background:#eef3f7;border-radius:6px;font-size:14px;cursor:pointer;color:#1f2a30;white-space:nowrap" style-hover="border-color:#1e3a4a">{{ p.name }}</button>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+
+          
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <div style="background:#1e3a4a;border-radius:8px;padding:16px 18px;color:#fff">
+            <div style="font-size:16px;font-weight:700">Enter for someone</div>
+            <div style="font-size:13px;color:rgba(255,255,255,.75);margin:3px 0 10px">Took an answer by phone or text? Find the person.</div>
+            <input value="{{ a.findQ }}" onChange="{{ a.onFind }}" placeholder="Type a name…" style="width:100%;box-sizing:border-box;min-height:44px;border-radius:6px;border:none;padding:0 12px;font-size:15px;color:#1f2a30;background:#fff"></input>
+            <div style="display:flex;gap:6px;margin-top:8px">
+              <sc-for list="{{ a.findKinds }}" as="k" hint-placeholder-count="3">
+                <button onClick="{{ k.onClick }}" style="min-height:30px;padding:0 12px;border-radius:15px;border:1px solid rgba(255,255,255,.5);background:{{ k.bg }};color:{{ k.fg }};font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap">{{ k.label }}</button>
+              </sc-for>
+            </div>
+            <sc-if value="{{ a.hasFind }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-top:8px;background:#fff;border-radius:6px;max-height:300px;overflow-y:auto;display:flex;flex-direction:column">
+                <sc-for list="{{ a.findResults }}" as="p" hint-placeholder-count="4">
+                  <button onClick="{{ p.open }}" style="flex:none;display:flex;align-items:center;gap:10px;min-height:42px;padding:4px 12px;border:none;border-bottom:1px solid #eceff1;background:#fff;text-align:left;cursor:pointer;color:#1f2a30" style-hover="background:#e8eef2">
+                    <span style="flex:1;min-width:0;font-size:14.5px;font-weight:700">{{ p.name }}</span>
+                    <span style="font-size:12px;font-weight:700;color:{{ p.roleColor }}">{{ p.role }}</span>
+                    <span style="width:86px;font-size:12px;color:#5f6b73;text-align:right">{{ p.status }}</span>
+                  </button>
+                </sc-for>
+                <sc-if value="{{ a.noFind }}" hint-placeholder-val="{{ false }}"><div style="padding:12px;font-size:13.5px;color:#5f6b73">No one matches.</div></sc-if>
+              </div>
+            </sc-if>
+          </div>
+          <div style="background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(30,58,74,.12);overflow:hidden">
+            <div style="padding:14px 18px;border-bottom:1px solid #eceff1;display:flex;align-items:baseline;gap:8px">
+              <span style="font-size:16px;font-weight:700;color:#1e3a4a">Who's coming</span>
+              <span style="font-size:13px;color:#5f6b73">{{ a.comingSummary }}</span>
+            </div>
+            <div style="padding:10px 18px 4px;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#3d5a3e">Scouts</div>
+            <sc-for list="{{ a.comingScouts }}" as="p" hint-placeholder-count="6">
+              <div style="display:flex;align-items:center;border-top:1px solid #f0f2f3">
+                <button onClick="{{ p.open }}" style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;padding:4px 18px;min-height:40px;background:none;border:none;text-align:left;cursor:pointer;color:#1f2a30" style-hover="background:#f4f7f4">
+                  <span style="font-size:14.5px;font-weight:700">{{ p.name }}</span>
+                  <span style="font-size:12.5px;color:{{ p.detailColor }}">{{ p.detail }}</span>
+                </button>
+                <sc-if value="{{ showCheckIn }}" hint-placeholder-val="{{ false }}">
+                  <button onClick="{{ p.toggleHere }}" style="margin-right:14px;min-width:64px;min-height:36px;border-radius:6px;border:1px solid {{ p.hereBd }};background:{{ p.hereBg }};color:{{ p.hereFg }};font-size:13px;font-weight:700;cursor:pointer">{{ p.hereLabel }}</button>
+                </sc-if>
+              </div>
+            </sc-for>
+            <div style="padding:14px 18px 4px;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#2a4f63">Adults</div>
+            <sc-for list="{{ a.comingAdults }}" as="p" hint-placeholder-count="3">
+              <div style="display:flex;align-items:center;border-top:1px solid #f0f2f3">
+                <button onClick="{{ p.open }}" style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;padding:4px 18px;min-height:40px;background:none;border:none;text-align:left;cursor:pointer;color:#1f2a30" style-hover="background:#f2f6f9">
+                  <span style="font-size:14.5px;font-weight:700">{{ p.name }}</span>
+                  <span style="font-size:12.5px;color:{{ p.detailColor }}">{{ p.detail }}</span>
+                </button>
+                <sc-if value="{{ showCheckIn }}" hint-placeholder-val="{{ false }}">
+                  <button onClick="{{ p.toggleHere }}" style="margin-right:14px;min-width:64px;min-height:36px;border-radius:6px;border:1px solid {{ p.hereBd }};background:{{ p.hereBg }};color:{{ p.hereFg }};font-size:13px;font-weight:700;cursor:pointer">{{ p.hereLabel }}</button>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+          <div style="background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(30,58,74,.12);padding:14px 18px;display:flex;flex-direction:column;gap:10px">
+            <div style="font-size:15px;font-weight:700;color:#1e3a4a">Not sure yet</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              <sc-for list="{{ a.unsure }}" as="p" hint-placeholder-count="2">
+                <button onClick="{{ p.open }}" style="min-height:38px;padding:6px 14px;border:1px solid #c9d1d6;background:#fff;border-radius:6px;font-size:14px;cursor:pointer;color:#1f2a30;white-space:nowrap" style-hover="border-color:#1e3a4a">{{ p.name }}</button>
+              </sc-for>
+              <sc-if value="{{ a.noUnsure }}" hint-placeholder-val="{{ false }}"><span style="font-size:13.5px;color:#5f6b73">Nobody.</span></sc-if>
+            </div>
+            <div style="font-size:15px;font-weight:700;color:#1e3a4a;margin-top:6px">Can't make it</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              <sc-for list="{{ a.cant }}" as="p" hint-placeholder-count="1">
+                <button onClick="{{ p.open }}" style="min-height:38px;padding:6px 14px;border:1px solid #c9d1d6;background:#f4f5f6;border-radius:6px;font-size:14px;cursor:pointer;color:#5f6b73;white-space:nowrap" style-hover="border-color:#1e3a4a">{{ p.label }}</button>
+              </sc-for>
+              <sc-if value="{{ a.noCant }}" hint-placeholder-val="{{ false }}"><span style="font-size:13.5px;color:#5f6b73">Nobody.</span></sc-if>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="padding:0 28px 32px;display:flex;flex-direction:column;gap:18px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="font-size:18px;font-weight:700;color:#1e3a4a">Everyone</div>
+          <div style="font-size:13.5px;color:#5f6b73;flex:1">Click any name to answer for them.</div>
+          <sc-if value="{{ a.notReminded }}" hint-placeholder-val="{{ true }}">
+            <button onClick="{{ a.remind }}" style="min-height:42px;padding:0 16px;border-radius:6px;border:none;background:#1e3a4a;color:#fff;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap">{{ a.remindLabel }}</button>
+          </sc-if>
+          <sc-if value="{{ a.reminded }}" hint-placeholder-val="{{ false }}"><span style="font-size:13.5px;color:#3d5a3e;font-weight:600">✓ {{ a.remindedLabel }}</span></sc-if>
+        </div>
+        <div style="background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(30,58,74,.12);overflow:hidden">
+          <div style="background:#e4ede4;padding:10px 16px;font-size:14px;font-weight:700;color:#3d5a3e">Scouts</div>
+          <div style="display:grid;grid-template-columns:1.2fr .7fr .6fr 2fr">
+            <sc-for list="{{ a.scoutGroups }}" as="g" hint-placeholder-count="4">
+              <div style="padding:12px 14px;border-right:1px solid #eceff1;display:flex;flex-direction:column;gap:6px">
+                <div style="font-size:13px;font-weight:700;color:{{ g.color }}">{{ g.label }} · {{ g.count }}</div>
+                <div style="display:flex;flex-wrap:wrap;gap:5px">
+                  <sc-for list="{{ g.people }}" as="p" hint-placeholder-count="3">
+                    <button onClick="{{ p.open }}" style="min-height:38px;padding:5px 12px;border:1px solid #d2d9dd;background:{{ g.tile }};border-radius:6px;font-size:13.5px;cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;text-align:left" style-hover="border-color:#1e3a4a">
+                      <span style="font-weight:600">{{ p.name }}</span>
+                      <span style="font-size:11.5px;color:#5f6b73">{{ p.tag }}</span>
+                    </button>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(30,58,74,.12);overflow:hidden">
+          <div style="background:#e3ecf2;padding:10px 16px;font-size:14px;font-weight:700;color:#2a4f63">Adults</div>
+          <div style="display:grid;grid-template-columns:1.2fr .7fr .6fr 2fr">
+            <sc-for list="{{ a.adultGroups }}" as="g" hint-placeholder-count="4">
+              <div style="padding:12px 14px;border-right:1px solid #eceff1;display:flex;flex-direction:column;gap:6px">
+                <div style="font-size:13px;font-weight:700;color:{{ g.color }}">{{ g.label }} · {{ g.count }}</div>
+                <div style="display:flex;flex-wrap:wrap;gap:5px">
+                  <sc-for list="{{ g.people }}" as="p" hint-placeholder-count="2">
+                    <button onClick="{{ p.open }}" style="min-height:38px;padding:5px 12px;border:1px solid #d2d9dd;background:{{ g.tile }};border-radius:6px;font-size:13.5px;cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;text-align:left" style-hover="border-color:#1e3a4a">
+                      <span style="font-weight:600">{{ p.name }}</span>
+                      <span style="font-size:11.5px;color:#5f6b73">{{ p.tag }}</span>
+                    </button>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+      <sc-if value="{{ a.hasDrawer }}" hint-placeholder-val="{{ false }}">
+        <dc-import name="PersonDrawer" d="{{ a.drawer }}" style="position:absolute;inset:0;z-index:20" hint-size="0px,0px"></dc-import>
+      </sc-if>
+    </div>
+  </div>
+
+  <!-- ============ 1b ============ -->
+  <div id="1b" style="width:1280px;flex:none;display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;align-items:baseline;gap:12px">
+      <span style="background:#1e3a4a;color:#fff;font-size:14px;font-weight:700;padding:3px 10px;border-radius:4px">1b</span>
+      <span style="font-size:18px;font-weight:700;color:#1e3a4a">Topic lanes + people wall</span>
+      <span style="font-size:14px;color:#5f6b73">Topics sorted into three lanes by match status. Below them, everyone grouped by their answer.</span>
+    </div>
+    <div data-artboard="1" style="position:relative;background:#f4f5f6;border-radius:10px;overflow:hidden;box-shadow:0 2px 14px rgba(20,32,40,.14);min-height:900px">
+      <div style="background:#1e3a4a;color:#fff;padding:18px 28px;display:grid;grid-template-columns:minmax(0,1fr) 380px 380px;gap:32px;align-items:center">
+        <div>
+          <div style="font-size:21px;font-weight:700">Sunday, Oct 25 · Troop meeting</div>
+          <div style="font-size:13px;color:rgba(255,255,255,.75);margin-top:3px">Rank + merit badge make-ups · Open until Sun 5:30 pm</div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:13.5px;font-weight:700;margin-bottom:6px"><span>Scouts</span><span>{{ b.scoutBar.total }}</span></div>
+          <div style="display:flex;height:14px;border-radius:7px;overflow:hidden;background:rgba(255,255,255,.18)">
+            <div style="width:{{ b.scoutBar.comingPct }};background:#8fc08f"></div>
+            <div style="width:{{ b.scoutBar.unsurePct }};background:#e3c46a"></div>
+            <div style="width:{{ b.scoutBar.cantPct }};background:#c98b8b"></div>
+          </div>
+          <div style="display:flex;gap:12px;font-size:12.5px;margin-top:6px;color:rgba(255,255,255,.9)"><span>● {{ b.scoutBar.coming }} coming</span><span>{{ b.scoutBar.unsure }} not sure</span><span>{{ b.scoutBar.cant }} can't</span><span>{{ b.scoutBar.none }} no answer</span></div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:13.5px;font-weight:700;margin-bottom:6px"><span>Adults</span><span>{{ b.adultBar.total }}</span></div>
+          <div style="display:flex;height:14px;border-radius:7px;overflow:hidden;background:rgba(255,255,255,.18)">
+            <div style="width:{{ b.adultBar.comingPct }};background:#9cc3dc"></div>
+            <div style="width:{{ b.adultBar.unsurePct }};background:#e3c46a"></div>
+            <div style="width:{{ b.adultBar.cantPct }};background:#c98b8b"></div>
+          </div>
+          <div style="display:flex;gap:12px;font-size:12.5px;margin-top:6px;color:rgba(255,255,255,.9)"><span>● {{ b.adultBar.coming }} coming</span><span>{{ b.adultBar.unsure }} not sure</span><span>{{ b.adultBar.cant }} can't</span><span>{{ b.adultBar.none }} no answer</span></div>
+        </div>
+      </div>
+      <div style="background:#fffdf7;border-bottom:1px solid #eadfbf;padding:12px 28px;display:flex;align-items:center;gap:10px">
+        <span style="flex:none;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#6b500c">Meeting focus</span>
+        <sc-for list="{{ b.focus }}" as="f" hint-placeholder-count="2">
+          <span style="display:flex;flex-direction:column;padding:4px 12px;border-radius:6px;border:1px solid {{ f.bd }};background:{{ f.bg }}"><span style="font-size:13.5px;font-weight:700">{{ f.title }}</span><span style="font-size:11.5px;color:#5f6b73">{{ f.status }}</span></span>
+        </sc-for>
+        <sc-if value="{{ b.noFocus }}" hint-placeholder-val="{{ false }}"><span style="font-size:13.5px;color:#5f6b73">Nothing seeded yet. Offers so far come only from teachers.</span></sc-if>
+        <div style="margin-left:auto;flex:none;display:flex;align-items:center;gap:10px;white-space:nowrap"><a href="Focus Sets.dc.html" style="font-size:13.5px;font-weight:600;color:#6b500c">Focus sets</a>
+          <sc-if value="{{ b.canSeed }}" hint-placeholder-val="{{ true }}">
+            <button onClick="{{ b.openSeed }}" style="min-height:40px;padding:0 16px;border-radius:6px;border:1px solid #8b6914;background:#8b6914;color:#fff;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap" style-hover="background:#76590f">Seed this meeting</button>
+          </sc-if>
+          <sc-if value="{{ b.cannotSeed }}" hint-placeholder-val="{{ false }}">
+            <span style="font-size:12.5px;color:#5f6b73;max-width:260px;text-align:right">Only the planning team (SPL, Mindy, Jason, Patrick) can seed a meeting.</span>
+            <button disabled="{{ true }}" style="min-height:40px;padding:0 16px;border-radius:6px;border:1px dashed #c9d1d6;background:#f4f5f6;color:#8a959c;font-size:14px;font-weight:700;cursor:not-allowed">Seed this meeting</button>
+          </sc-if>
+        </div>
+      </div>
+      <div style="padding:22px 28px 8px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;align-items:start">
+        <div style="background:#eef2ee;border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:10px;border-top:4px solid #3d5a3e">
+          <div style="display:flex;align-items:baseline;gap:8px;padding:2px 4px"><span style="font-size:16px;font-weight:700;color:#3d5a3e">Ready to teach</span><span style="font-size:13px;color:#3d5a3e">{{ b.matchedSummary }}</span></div>
+          <sc-if value="{{ b.noMatched }}" hint-placeholder-val="{{ false }}"><div style="padding:4px;font-size:14px;color:#5f6b73;line-height:1.5">Nothing is ready yet. A session shows up here once it has a teacher and at least one scout.</div></sc-if>
+          <sc-for list="{{ b.matched }}" as="t" hint-placeholder-count="2">
+            <div style="background:#fff;border-radius:6px;padding:12px;box-shadow:0 1px 2px rgba(0,0,0,.08)">
+              <div style="font-size:12px;font-weight:700;color:#8b6914">{{ t.code }}</div>
+              <div style="font-size:15.5px;font-weight:700;margin:2px 0 2px">{{ t.title }}</div>
+              <div style="font-size:12.5px;color:#5f6b73;margin-bottom:8px">Teacher: <b style="color:#2a4f63">{{ t.teacherName }}</b> · {{ t.countLabel }}</div>
+              <div style="display:flex;flex-wrap:wrap;gap:5px">
+                <sc-for list="{{ t.wanters }}" as="p" hint-placeholder-count="2">
+                  <button onClick="{{ p.open }}" style="min-height:32px;padding:4px 11px;border:1px solid #c5d6c6;background:#eef2ee;border-radius:16px;font-size:13px;cursor:pointer;white-space:nowrap" style-hover="border-color:#1e3a4a">{{ p.name }}</button>
+                </sc-for>
+              </div>
+              <sc-if value="{{ t.recent }}" hint-placeholder-val="{{ false }}">
+                <button onClick="{{ t.undo }}" style="margin-top:6px;background:none;border:none;color:#1e3a4a;text-decoration:underline;font-size:13px;cursor:pointer;padding:4px 0">Undo assignment</button>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+        <div style="background:#fbf0ee;border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:10px;border-top:4px solid #8c3b3b">
+          <div style="display:flex;align-items:baseline;gap:8px;padding:2px 4px"><span style="font-size:16px;font-weight:700;color:#8c3b3b">Needs a teacher</span><span style="font-size:13px;color:#8c3b3b">{{ b.needSummary }}</span></div>
+          <sc-if value="{{ b.noNeed }}" hint-placeholder-val="{{ false }}"><div style="font-size:13.5px;color:#5f6b73;padding:4px">Every request has a teacher.</div></sc-if>
+          <sc-for list="{{ b.needTeacher }}" as="t" hint-placeholder-count="3">
+            <div style="background:#fff;border-radius:6px;padding:12px;box-shadow:0 1px 2px rgba(0,0,0,.08)">
+              <div style="display:flex;gap:6px;align-items:center"><span style="font-size:12px;font-weight:700;color:#8b6914">{{ t.code }}</span><span style="font-size:11px;font-weight:700;padding:1px 6px;border-radius:3px;background:{{ t.kindBg }};color:{{ t.kindFg }}">{{ t.kindLabel }}</span><sc-if value="{{ t.seeded }}" hint-placeholder-val="{{ false }}"><span title="{{ t.seedLabel }}" style="font-size:11px;font-weight:700;padding:1px 7px;border-radius:3px;background:#fdf6e3;color:#6b500c;border:1px solid #e6d29a">Focus</span></sc-if></div>
+              <div style="font-size:15.5px;font-weight:700;margin:2px 0 2px">{{ t.title }}</div>
+              <div style="font-size:12.5px;color:#8c3b3b;font-weight:600;margin-bottom:8px">{{ t.wantLabel }}</div>
+              <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px">
+                <sc-for list="{{ t.wanters }}" as="p" hint-placeholder-count="2">
+                  <button onClick="{{ p.open }}" style="min-height:32px;padding:4px 11px;border:1px solid #c5d6c6;background:#eef2ee;border-radius:16px;font-size:13px;cursor:pointer;white-space:nowrap" style-hover="border-color:#1e3a4a">{{ p.name }}</button>
+                </sc-for>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:5px">
+                <sc-if value="{{ t.hasSugg }}" hint-placeholder-val="{{ true }}"><div style="display:flex;align-items:baseline;gap:8px;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#5f6b73"><span>{{ t.canTeachLabel }}</span><span style="text-transform:none;letter-spacing:0;font-weight:400">{{ t.canTeachSub }}</span></div><div style="max-height:256px;overflow-y:auto;overflow-x:hidden;border:1px solid #dde3e7;border-radius:6px;display:flex;flex-direction:column"><sc-for list="{{ t.suggestions }}" as="s" hint-placeholder-count="1"><sc-if value="{{ s.hasHead }}" hint-placeholder-val="{{ false }}"><div style="flex:none;padding:6px 12px 4px;background:#f7f8f9;border-bottom:1px solid #eceff1;font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:{{ s.headColor }}">{{ s.head }}</div></sc-if>
+                  <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;min-height:42px;padding:6px 8px 8px 10px;border-radius:0;border-bottom:1px solid #eceff1;background:#fff;flex:none">
+                    <span style="flex:1 1 100%;min-width:0;display:flex;flex-direction:column"><span style="font-size:13.5px;font-weight:700;color:#1e3a4a">{{ s.name }}</span><span style="font-size:11.5px;color:#5f6b73">{{ s.short }}</span></span>
+                    <sc-if value="{{ s.notAsked }}" hint-placeholder-val="{{ true }}"><button onClick="{{ s.ask }}" title="Sends the email invite" style="min-height:34px;padding:0 12px;border-radius:5px;border:none;background:#1e3a4a;color:#fff;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap" style-hover="background:#163040">Send request</button></sc-if>
+                      <sc-if value="{{ s.asked }}" hint-placeholder-val="{{ false }}"><span style="font-size:12.5px;font-weight:700;color:#3d5a3e;white-space:nowrap">✓ Request sent</span></sc-if>
+                      <button onClick="{{ s.assign }}" title="Assign now, e.g. at the meeting" style="min-height:34px;padding:0 10px;border-radius:5px;border:1px solid #b8c4cb;background:#fff;color:#1e3a4a;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap" style-hover="border-color:#1e3a4a">Assign</button>
+                  </div>
+                </sc-for></div></sc-if>
+                <sc-if value="{{ t.noSugg }}" hint-placeholder-val="{{ false }}"><div style="font-size:12.5px;color:#5f6b73">No one lists this skill yet.</div></sc-if>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="background:#fdf6e3;border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:10px;border-top:4px solid #8b6914">
+          <div style="display:flex;align-items:baseline;gap:8px;padding:2px 4px"><span style="font-size:16px;font-weight:700;color:#6b500c">Offered, no takers</span><span style="font-size:13px;color:#6b500c">{{ b.noneSummary }}</span></div>
+          <sc-if value="{{ b.noNone }}" hint-placeholder-val="{{ false }}"><div style="font-size:13.5px;color:#5f6b73;padding:4px">Every offer has scouts.</div></sc-if>
+          <sc-for list="{{ b.noTakers }}" as="t" hint-placeholder-count="2">
+            <div style="background:#fff;border-radius:6px;padding:12px;box-shadow:0 1px 2px rgba(0,0,0,.08)">
+              <div style="font-size:12px;font-weight:700;color:#8b6914">{{ t.code }}</div>
+              <div style="font-size:15.5px;font-weight:700;margin:2px 0 2px">{{ t.title }}</div>
+              <div style="font-size:12.5px;color:#5f6b73;margin-bottom:8px">Teacher: <b style="color:#2a4f63">{{ t.teacherName }}</b> · 0 scouts</div>
+              <div style="font-size:12px;color:#5f6b73;margin-bottom:5px">Likely fits</div>
+              <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px">
+                <sc-for list="{{ t.likely }}" as="p" hint-placeholder-count="2">
+                  <button onClick="{{ p.open }}" style="min-height:32px;padding:4px 11px;border:1px solid #c9d1d6;background:#fff;border-radius:16px;font-size:13px;cursor:pointer;white-space:nowrap" style-hover="border-color:#1e3a4a">{{ p.name }}</button>
+                </sc-for>
+              </div>
+              <sc-if value="{{ t.notNudged }}" hint-placeholder-val="{{ true }}">
+                <button onClick="{{ t.nudge }}" style="width:100%;min-height:40px;border-radius:5px;border:1px solid #8b6914;background:#fdf6e3;color:#6b500c;font-size:13.5px;font-weight:700;cursor:pointer">{{ t.nudgeLabel }}</button>
+              </sc-if>
+              <sc-if value="{{ t.nudged }}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:#3d5a3e;font-weight:600">✓ {{ t.nudgedLabel }}</div></sc-if>
+            </div>
+          </sc-for>
+        </div>
+        
+      </div>
+      <div style="padding:14px 28px 32px;display:flex;flex-direction:column;gap:18px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="font-size:18px;font-weight:700;color:#1e3a4a">Everyone</div>
+          <div style="font-size:13.5px;color:#5f6b73;flex:1">Click any name to answer for them.</div>
+          <sc-if value="{{ b.notReminded }}" hint-placeholder-val="{{ true }}">
+            <button onClick="{{ b.remind }}" style="min-height:42px;padding:0 16px;border-radius:6px;border:none;background:#1e3a4a;color:#fff;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap">{{ b.remindLabel }}</button>
+          </sc-if>
+          <sc-if value="{{ b.reminded }}" hint-placeholder-val="{{ false }}"><span style="font-size:13.5px;color:#3d5a3e;font-weight:600">✓ {{ b.remindedLabel }}</span></sc-if>
+        </div>
+        <div style="background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(30,58,74,.12);overflow:hidden">
+          <div style="background:#e4ede4;padding:10px 16px;font-size:14px;font-weight:700;color:#3d5a3e">Scouts</div>
+          <div style="display:grid;grid-template-columns:1.2fr .7fr .6fr 2fr">
+            <sc-for list="{{ b.scoutGroups }}" as="g" hint-placeholder-count="4">
+              <div style="padding:12px 14px;border-right:1px solid #eceff1;display:flex;flex-direction:column;gap:6px">
+                <div style="font-size:13px;font-weight:700;color:{{ g.color }}">{{ g.label }} · {{ g.count }}</div>
+                <div style="display:flex;flex-wrap:wrap;gap:5px">
+                  <sc-for list="{{ g.people }}" as="p" hint-placeholder-count="3">
+                    <button onClick="{{ p.open }}" style="min-height:38px;padding:5px 12px;border:1px solid #d2d9dd;background:{{ g.tile }};border-radius:6px;font-size:13.5px;cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;text-align:left" style-hover="border-color:#1e3a4a">
+                      <span style="font-weight:600">{{ p.name }}</span>
+                      <span style="font-size:11.5px;color:#5f6b73">{{ p.tag }}</span>
+                    </button>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(30,58,74,.12);overflow:hidden">
+          <div style="background:#e3ecf2;padding:10px 16px;font-size:14px;font-weight:700;color:#2a4f63">Adults</div>
+          <div style="display:grid;grid-template-columns:1.2fr .7fr .6fr 2fr">
+            <sc-for list="{{ b.adultGroups }}" as="g" hint-placeholder-count="4">
+              <div style="padding:12px 14px;border-right:1px solid #eceff1;display:flex;flex-direction:column;gap:6px">
+                <div style="font-size:13px;font-weight:700;color:{{ g.color }}">{{ g.label }} · {{ g.count }}</div>
+                <div style="display:flex;flex-wrap:wrap;gap:5px">
+                  <sc-for list="{{ g.people }}" as="p" hint-placeholder-count="2">
+                    <button onClick="{{ p.open }}" style="min-height:38px;padding:5px 12px;border:1px solid #d2d9dd;background:{{ g.tile }};border-radius:6px;font-size:13.5px;cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;text-align:left" style-hover="border-color:#1e3a4a">
+                      <span style="font-weight:600">{{ p.name }}</span>
+                      <span style="font-size:11.5px;color:#5f6b73">{{ p.tag }}</span>
+                    </button>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+      <sc-if value="{{ b.hasDrawer }}" hint-placeholder-val="{{ false }}">
+        <dc-import name="PersonDrawer" d="{{ b.drawer }}" style="position:absolute;inset:0;z-index:20" hint-size="0px,0px"></dc-import>
+      </sc-if>
+    </div>
+  </div>
+
+  <!-- ============ 1c ============ -->
+  <div id="1c" style="width:1280px;flex:none;display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;align-items:baseline;gap:12px">
+      <span style="background:#1e3a4a;color:#fff;font-size:14px;font-weight:700;padding:3px 10px;border-radius:4px">1c</span>
+      <span style="font-size:18px;font-weight:700;color:#1e3a4a">One question at a time</span>
+      <span style="font-size:14px;color:#5f6b73">Each of your tasks is a question on the left. The answer is a table you can edit in place.</span>
+    </div>
+    <div data-artboard="1" style="position:relative;background:#f4f5f6;border-radius:10px;overflow:hidden;box-shadow:0 2px 14px rgba(20,32,40,.14);min-height:900px;display:grid;grid-template-columns:290px minmax(0,1fr)">
+      <div style="background:#1e3a4a;color:#fff;padding:22px 14px;display:flex;flex-direction:column;gap:6px">
+        <div style="padding:0 10px 14px">
+          <div style="font-size:19px;font-weight:700">Sunday, Oct 25</div>
+          <div style="font-size:13px;color:rgba(255,255,255,.75);margin-top:2px">Troop meeting · open until 5:30 pm</div>
+        </div>
+        <sc-for list="{{ c.rail }}" as="r" hint-placeholder-count="6">
+          <button onClick="{{ r.onClick }}" style="display:flex;align-items:center;gap:10px;min-height:52px;padding:8px 12px;border-radius:6px;border:none;background:{{ r.bg }};color:{{ r.fg }};cursor:pointer;text-align:left">
+            <span style="flex:1;font-size:14.5px;font-weight:600;line-height:1.3">{{ r.label }}</span>
+            <span style="min-width:30px;height:26px;padding:0 8px;border-radius:13px;background:{{ r.pillBg }};color:{{ r.pillFg }};font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center">{{ r.count }}</span>
+          </button>
+        </sc-for>
+        <div style="margin-top:auto;padding:14px 10px 0;font-size:12.5px;color:rgba(255,255,255,.65);line-height:1.5">Red counts need action before Sunday. Click any name to answer for that person.</div>
+      </div>
+      <div style="padding:24px 28px 32px;display:flex;flex-direction:column;gap:16px;min-width:0">
+        <div style="background:#fffdf7;border:1px solid #eadfbf;border-radius:8px;padding:12px 16px;display:flex;align-items:center;gap:10px">
+        <span style="flex:none;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#6b500c">Meeting focus</span>
+        <sc-for list="{{ c.focus }}" as="f" hint-placeholder-count="2">
+          <span style="display:flex;flex-direction:column;padding:4px 12px;border-radius:6px;border:1px solid {{ f.bd }};background:{{ f.bg }}"><span style="font-size:13.5px;font-weight:700">{{ f.title }}</span><span style="font-size:11.5px;color:#5f6b73">{{ f.status }}</span></span>
+        </sc-for>
+        <sc-if value="{{ c.noFocus }}" hint-placeholder-val="{{ false }}"><span style="font-size:13.5px;color:#5f6b73">Nothing seeded yet. Offers so far come only from teachers.</span></sc-if>
+        <div style="margin-left:auto;flex:none;display:flex;align-items:center;gap:10px;white-space:nowrap"><a href="Focus Sets.dc.html" style="font-size:13.5px;font-weight:600;color:#6b500c">Focus sets</a>
+          <sc-if value="{{ c.canSeed }}" hint-placeholder-val="{{ true }}">
+            <button onClick="{{ c.openSeed }}" style="min-height:40px;padding:0 16px;border-radius:6px;border:1px solid #8b6914;background:#8b6914;color:#fff;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap" style-hover="background:#76590f">Seed this meeting</button>
+          </sc-if>
+          <sc-if value="{{ c.cannotSeed }}" hint-placeholder-val="{{ false }}">
+            <span style="font-size:12.5px;color:#5f6b73;max-width:260px;text-align:right">Only the planning team (SPL, Mindy, Jason, Patrick) can seed a meeting.</span>
+            <button disabled="{{ true }}" style="min-height:40px;padding:0 16px;border-radius:6px;border:1px dashed #c9d1d6;background:#f4f5f6;color:#8a959c;font-size:14px;font-weight:700;cursor:not-allowed">Seed this meeting</button>
+          </sc-if>
+        </div>
+      </div>
+      <div style="display:flex;align-items:flex-end;gap:16px">
+          <div style="flex:1">
+            <div style="font-size:24px;font-weight:700;color:#1e3a4a">{{ c.heading }}</div>
+            <div style="font-size:14px;color:#5f6b73;margin-top:3px">{{ c.subheading }}</div>
+          </div>
+          <sc-if value="{{ c.showRemind }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ c.remind }}" style="min-height:44px;padding:0 18px;border-radius:6px;border:none;background:#1e3a4a;color:#fff;font-size:14.5px;font-weight:700;cursor:pointer">{{ c.remindLabel }}</button>
+          </sc-if>
+          <sc-if value="{{ c.showReminded }}" hint-placeholder-val="{{ false }}"><span style="font-size:13.5px;color:#3d5a3e;font-weight:600">✓ {{ c.remindedLabel }}</span></sc-if>
+        </div>
+
+        <sc-if value="{{ c.isReady }}" hint-placeholder-val="{{ false }}">
+          <div style="background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(30,58,74,.12);overflow:hidden">
+            <div style="display:grid;grid-template-columns:minmax(0,1.3fr) 160px minmax(0,1.6fr) 120px;gap:16px;padding:10px 18px;background:#e4ede4;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#3d5a3e"><span>Session</span><span>Teacher</span><span>Scouts</span><span></span></div>
+            <sc-if value="{{ c.noMatched }}" hint-placeholder-val="{{ false }}"><div style="padding:18px;font-size:14px;color:#5f6b73;line-height:1.5">Nothing is ready yet. A session shows up here once it has a teacher and at least one scout.</div></sc-if>
+            <sc-for list="{{ c.matched }}" as="t" hint-placeholder-count="2">
+              <div style="display:grid;grid-template-columns:minmax(0,1.3fr) 160px minmax(0,1.6fr) 120px;gap:16px;padding:12px 18px;border-top:1px solid #eceff1;align-items:center">
+                <div><div style="font-size:12.5px;font-weight:700;color:#8b6914">{{ t.code }}</div><div style="font-size:16px;font-weight:700">{{ t.title }}</div><div style="font-size:12.5px;color:#5f6b73">{{ t.countLabel }}</div></div>
+                <div style="font-size:14px;font-weight:700;color:#2a4f63">{{ t.teacherName }}</div>
+                <div style="display:flex;flex-wrap:wrap;gap:5px">
+                  <sc-for list="{{ t.wanters }}" as="p" hint-placeholder-count="2">
+                    <button onClick="{{ p.open }}" style="min-height:34px;padding:4px 12px;border:1px solid #c5d6c6;background:#eef2ee;border-radius:17px;font-size:13.5px;cursor:pointer;white-space:nowrap" style-hover="border-color:#1e3a4a">{{ p.name }}</button>
+                  </sc-for>
+                </div>
+                <div><sc-if value="{{ t.recent }}" hint-placeholder-val="{{ false }}"><button onClick="{{ t.undo }}" style="background:none;border:none;color:#1e3a4a;text-decoration:underline;font-size:13px;cursor:pointer;padding:4px 0">Undo assignment</button></sc-if></div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ c.isNeed }}" hint-placeholder-val="{{ false }}">
+          <div style="background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(30,58,74,.12);overflow:hidden">
+            <div style="display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1.5fr);gap:16px;padding:10px 18px;background:#f0f2f3;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#5f6b73"><span>Topic</span><span>Who wants it</span><span>Assign a teacher</span></div>
+            <sc-if value="{{ c.noNeed }}" hint-placeholder-val="{{ false }}"><div style="padding:18px;font-size:14px;color:#3d5a3e;font-weight:600">✓ Every request has a teacher.</div></sc-if>
+            <sc-for list="{{ c.needTeacher }}" as="t" hint-placeholder-count="3">
+              <div style="display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1.5fr);gap:16px;padding:14px 18px;border-top:1px solid #eceff1;align-items:start">
+                <div>
+                  <div style="font-size:12.5px;font-weight:700;color:#8b6914">{{ t.code }} · <span style="color:#5f6b73;font-weight:400">{{ t.kindLabel }}</span> <sc-if value="{{ t.seeded }}" hint-placeholder-val="{{ false }}"><span title="{{ t.seedLabel }}" style="font-size:11px;font-weight:700;padding:1px 7px;border-radius:3px;background:#fdf6e3;color:#6b500c;border:1px solid #e6d29a">Focus</span></sc-if></div>
+                  <div style="font-size:16px;font-weight:700">{{ t.title }}</div>
+                  <div style="font-size:12.5px;color:#8c3b3b;font-weight:600">{{ t.weeksLabel }}</div>
+                </div>
+                <div style="display:flex;flex-wrap:wrap;gap:5px">
+                  <sc-for list="{{ t.wanters }}" as="p" hint-placeholder-count="2">
+                    <button onClick="{{ p.open }}" style="min-height:34px;padding:4px 12px;border:1px solid #c5d6c6;background:#eef2ee;border-radius:17px;font-size:13.5px;cursor:pointer;white-space:nowrap" style-hover="border-color:#1e3a4a">{{ p.name }}</button>
+                  </sc-for>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:5px">
+                  <sc-if value="{{ t.hasSugg }}" hint-placeholder-val="{{ true }}"><div style="display:flex;align-items:baseline;gap:8px;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#5f6b73"><span>{{ t.canTeachLabel }}</span><span style="text-transform:none;letter-spacing:0;font-weight:400">{{ t.canTeachSub }}</span></div><div style="max-height:256px;overflow-y:auto;overflow-x:hidden;border:1px solid #dde3e7;border-radius:6px;display:flex;flex-direction:column"><sc-for list="{{ t.suggestions }}" as="s" hint-placeholder-count="2"><sc-if value="{{ s.hasHead }}" hint-placeholder-val="{{ false }}"><div style="flex:none;padding:6px 12px 4px;background:#f7f8f9;border-bottom:1px solid #eceff1;font-size:11.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:{{ s.headColor }}">{{ s.head }}</div></sc-if>
+                    <div style="display:flex;align-items:center;gap:8px;min-height:42px;padding:4px 8px 4px 12px;border-radius:0;border-bottom:1px solid #eceff1;background:#fff;flex:none">
+                      <span style="flex:1;min-width:0;display:flex;flex-direction:column"><span style="font-size:14px;font-weight:700;color:#1e3a4a">{{ s.name }}</span><span style="font-size:12px;color:#5f6b73">{{ s.short }}</span></span>
+                      <sc-if value="{{ s.notAsked }}" hint-placeholder-val="{{ true }}"><button onClick="{{ s.ask }}" title="Sends the email invite" style="min-height:36px;padding:0 12px;border-radius:5px;border:none;background:#1e3a4a;color:#fff;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap" style-hover="background:#163040">Send request</button></sc-if>
+                      <sc-if value="{{ s.asked }}" hint-placeholder-val="{{ false }}"><span style="font-size:12.5px;font-weight:700;color:#3d5a3e;white-space:nowrap">✓ Request sent</span></sc-if>
+                      <button onClick="{{ s.assign }}" title="Assign now, e.g. at the meeting" style="min-height:36px;padding:0 10px;border-radius:5px;border:1px solid #b8c4cb;background:#fff;color:#1e3a4a;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap" style-hover="border-color:#1e3a4a">Assign</button>
+                    </div>
+                  </sc-for></div></sc-if>
+                  <sc-if value="{{ t.noSugg }}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:#5f6b73">No one lists this skill. Open an adult's page to assign them.</div></sc-if>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ c.isNone }}" hint-placeholder-val="{{ false }}">
+          <div style="background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(30,58,74,.12);overflow:hidden">
+            <div style="display:grid;grid-template-columns:minmax(0,1.3fr) 140px minmax(0,1.4fr) 200px;gap:16px;padding:10px 18px;background:#f0f2f3;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#5f6b73"><span>Offer</span><span>Teacher</span><span>Likely fits</span><span></span></div>
+            <sc-if value="{{ c.noNone }}" hint-placeholder-val="{{ false }}"><div style="padding:18px;font-size:14px;color:#3d5a3e;font-weight:600">✓ Every offer has scouts.</div></sc-if>
+            <sc-for list="{{ c.noTakers }}" as="t" hint-placeholder-count="2">
+              <div style="display:grid;grid-template-columns:minmax(0,1.3fr) 140px minmax(0,1.4fr) 200px;gap:16px;padding:14px 18px;border-top:1px solid #eceff1;align-items:center">
+                <div><div style="font-size:12.5px;font-weight:700;color:#8b6914">{{ t.code }}</div><div style="font-size:16px;font-weight:700">{{ t.title }}</div></div>
+                <div style="font-size:14px;font-weight:600;color:#2a4f63">{{ t.teacherName }}</div>
+                <div style="display:flex;flex-wrap:wrap;gap:5px">
+                  <sc-for list="{{ t.likely }}" as="p" hint-placeholder-count="2">
+                    <button onClick="{{ p.open }}" style="min-height:34px;padding:4px 12px;border:1px solid #c9d1d6;background:#fff;border-radius:17px;font-size:13.5px;cursor:pointer;white-space:nowrap" style-hover="border-color:#1e3a4a">{{ p.name }}</button>
+                  </sc-for>
+                </div>
+                <div>
+                  <sc-if value="{{ t.notNudged }}" hint-placeholder-val="{{ true }}">
+                    <button onClick="{{ t.nudge }}" style="width:100%;min-height:42px;border-radius:5px;border:1px solid #8b6914;background:#fdf6e3;color:#6b500c;font-size:14px;font-weight:700;cursor:pointer">{{ t.nudgeLabel }}</button>
+                  </sc-if>
+                  <sc-if value="{{ t.nudged }}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:#3d5a3e;font-weight:600">✓ {{ t.nudgedLabel }}</div></sc-if>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ c.isPeople }}" hint-placeholder-val="{{ false }}">
+          <div style="background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(30,58,74,.12);overflow:hidden">
+            <div style="display:grid;grid-template-columns:170px 330px minmax(0,1fr) 90px;gap:16px;padding:10px 18px;background:#f0f2f3;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#5f6b73"><span>Name</span><span>Coming Sunday?</span><span>Picks / teaching</span><span>{{ c.hereHead }}</span></div>
+            <sc-for list="{{ c.rows }}" as="r" hint-placeholder-count="8">
+              <div style="display:grid;grid-template-columns:170px 330px minmax(0,1fr) 90px;gap:16px;padding:8px 18px;border-top:1px solid #eceff1;align-items:center;min-height:56px">
+                <button onClick="{{ r.open }}" style="display:flex;flex-direction:column;align-items:flex-start;background:none;border:none;padding:4px 0;cursor:pointer;text-align:left">
+                  <span style="font-size:15px;font-weight:700;color:#1e3a4a;text-decoration:underline;text-decoration-color:#c9d1d6;text-underline-offset:3px">{{ r.name }}</span>
+                  <span style="font-size:12px;font-weight:700;color:{{ r.roleColor }}">{{ r.role }}</span>
+                </button>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px">
+                  <sc-for list="{{ r.opts }}" as="o" hint-placeholder-count="3">
+                    <button onClick="{{ o.onClick }}" style="min-height:38px;border-radius:5px;border:1px solid {{ o.bd }};background:{{ o.bg }};color:{{ o.fg }};font-size:13px;font-weight:600;cursor:pointer">{{ o.label }}</button>
+                  </sc-for>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;min-width:0">
+                  <span style="flex:1;font-size:13.5px;color:{{ r.detailColor }};min-width:0">{{ r.detail }}</span>
+                  <button onClick="{{ r.open }}" style="min-height:34px;padding:0 12px;border-radius:5px;border:1px solid #c9d1d6;background:#fff;font-size:13px;font-weight:600;color:#1e3a4a;cursor:pointer;white-space:nowrap" style-hover="border-color:#1e3a4a">{{ r.editLabel }}</button>
+                </div>
+                <div>
+                  <sc-if value="{{ showCheckIn }}" hint-placeholder-val="{{ false }}">
+                    <button onClick="{{ r.toggleHere }}" style="min-width:70px;min-height:36px;border-radius:6px;border:1px solid {{ r.hereBd }};background:{{ r.hereBg }};color:{{ r.hereFg }};font-size:13px;font-weight:700;cursor:pointer">{{ r.hereLabel }}</button>
+                  </sc-if>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+      </div>
+      <sc-if value="{{ c.hasDrawer }}" hint-placeholder-val="{{ false }}">
+        <dc-import name="PersonDrawer" d="{{ c.drawer }}" style="position:absolute;inset:0;z-index:20" hint-size="0px,0px"></dc-import>
+      </sc-if>
+    </div>
+  </div>
+
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;scenario&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Midweek (sample data)&quot;,&quot;Early week (like today)&quot;],&quot;default&quot;:&quot;Midweek (sample data)&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;viewer&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Patrick B&quot;,&quot;Mindy&quot;,&quot;Jason&quot;,&quot;SPL&quot;,&quot;Alex S (not on planning team)&quot;],&quot;default&quot;:&quot;Patrick B&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;showCheckIn&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;}}">
+const SCOUTS=["Adi A","Anjali S","Aubrey R","Ben B","Damian N","Eloise L","Emory M","Finn P","Fiona K","Hadley B","Hazel S","Henry E","Isaac H","Jack P","Jameson K","Kevin P","Lee P","Lily P","Lucy L","Miren G","Oliver K","Oliver P","Oliver V","Oscar B","Owen R","Piper K","Quinn B","Robbie H","Simon P","Solomon R","Todd M","Veronica K","Violet B","Winnie B"];
+const RANKS={"Adi A":"Scout","Ben B":"Scout","Winnie B":"Scout","Violet B":"Scout","Oscar B":"Scout","Anjali S":"Star","Robbie H":"First Class","Todd M":"First Class","Aubrey R":"First Class","Eloise L":"First Class","Finn P":"Tenderfoot","Lily P":"Tenderfoot","Hazel S":"Tenderfoot","Simon P":"Tenderfoot","Quinn B":"Tenderfoot","Piper K":"Tenderfoot","Kevin P":"Tenderfoot","Miren G":"Tenderfoot","Fiona K":"Tenderfoot"};
+const rankOf=s=>RANKS[s]||"Second Class";
+const ADULTS=[{name:"Patrick B",skills:["cyber","compass"]},{name:"Alex S",skills:["oath","fcb","fire"]},{name:"Jenna M",skills:["knots","fa"]},{name:"Dan V",skills:["fa","compass"]},{name:"Mike T",skills:["fire"]},{name:"Sara L",skills:["knots"]},{name:"Karen O",skills:["fa"]},{name:"Tom K",skills:["elec"],counselor:true},{name:"Greg H",skills:[]},{name:"Rachel D",skills:["fa","knots","flag"]},{name:"Ben W",skills:["fa","fire"]},{name:"Chris N",skills:["fa","compass","fire"]},{name:"Laura P",skills:["fa"]},{name:"Mark F",skills:["fa","knots","fire","meal"]},{name:"Nina G",skills:["fa","cyber"]},{name:"Paul J",skills:["fa","compass"]},{name:"Steve R",skills:["fa","fire","knots"]},{name:"Dana K",skills:["fa"]},{name:"Joe M",skills:["fire","compass"]}];
+const ADULT_SET=new Set(ADULTS.map(a=>a.name));
+const TOPICS=[
+ {id:"fa",code:"Tenderfoot 4a",title:"First aid basics",kind:"rank",min:30,weeks:3,skill:"First aid",forRank:"Tenderfoot"},
+ {id:"fire",code:"Second Class 2f",title:"Build and light a fire",kind:"rank",min:25,weeks:1,skill:"Fire safety",forRank:"Second Class"},
+ {id:"knots",code:"Tenderfoot 3a–3d",title:"Knots and lashings",kind:"rank",min:30,weeks:1,skill:"Knots",forRank:"Tenderfoot"},
+ {id:"cyber",code:"Star 6",title:"Cyber Chip for grade",kind:"rank",min:15,weeks:1,skill:"Cyber safety",forRank:"Star"},
+ {id:"elec",code:"Electricity · req 5",title:"Electricity make-up",kind:"mb",min:20,weeks:2,skill:"Electricity",forRank:null},
+ {id:"compass",code:"Second Class 3a",title:"Compass and orienting a map",kind:"rank",min:30,weeks:1,skill:"Navigation",forRank:"Second Class"},
+ {id:"oath",code:"Scout 1a",title:"Oath, Law, motto, slogan",kind:"rank",min:20,weeks:1,skill:"Scout basics",forRank:"Scout"},
+ {id:"fcb",code:"Scout 1d",title:"First Class badge meaning",kind:"rank",min:15,weeks:1,skill:"Scout basics",forRank:"Scout"},
+ {id:"flag",code:"Tenderfoot 7a",title:"Flag ceremony and folding",kind:"rank",min:20,weeks:1,skill:"Flag ceremony",forRank:"Tenderfoot"},
+ {id:"meal",code:"First Class 2a",title:"Plan a patrol menu",kind:"rank",min:30,weeks:1,skill:"Cooking",forRank:"First Class"}
+];
+const LABEL={coming:"Coming",unsure:"Not sure yet",cant:"Can't make it"};
+const SCEN={
+ midweek:{status:{"Simon P":"coming","Emory M":"unsure","Quinn B":"unsure","Todd M":"cant","Patrick B":"coming","Alex S":"coming","Jenna M":"coming","Dan V":"coming","Mike T":"unsure","Sara L":"cant","Rachel D":"coming","Chris N":"unsure","Mark F":"coming","Paul J":"cant"},
+  picks:{"Anjali S":["cyber"],"Finn P":["fa","knots"],"Lily P":["fa"],"Owen R":["fa","fire"],"Hazel S":["fa","knots"],"Jack P":["fire"],"Lucy L":["fire","compass"],"Robbie H":["elec"],"Todd M":["compass","fire","elec"]},
+  teacher:{cyber:"Patrick B",knots:"Jenna M",oath:"Alex S",fcb:"Alex S"},seeded:{fa:"Patrick B",flag:"Mindy"}},
+ early:{status:{"Todd M":"cant","Patrick B":"coming","Alex S":"coming"},picks:{"Anjali S":["cyber"],"Todd M":["compass","fire","elec"]},teacher:{cyber:"Patrick B",oath:"Alex S",fcb:"Alex S"}}
+};
+const PLANNERS=["SPL","Mindy","Jason","Patrick B"];
+const plural=(n,w)=>n+" "+w+(n===1?"":"s");
+
+class Component extends DCLogic {
+  state = this.init(this.props && this.props.scenario);
+  init(sc){const s=SCEN[sc==="Early week (like today)"?"early":"midweek"];return {status:{...s.status},picks:JSON.parse(JSON.stringify(s.picks)),teacher:{...s.teacher},seeded:{...(s.seeded||{})},recent:{},asked:{},nudged:{},nudgeSel:{},reminded:false,here:{},drawer:null,filter:"ready"};}
+  componentDidUpdate(pp){if(pp.scenario!==this.props.scenario)this.setState(this.init(this.props.scenario));}
+  eff(n){const S=this.state;if(S.status[n])return S.status[n];if(ADULT_SET.has(n))return Object.values(S.teacher).includes(n)?"coming":null;return (S.picks[n]||[]).length?"coming":null;}
+  setStatus(n,v){this.setState(S=>{const status={...S.status,[n]:v};let teacher=S.teacher;if(ADULT_SET.has(n)&&v==="cant"){teacher={...teacher};for(const k in teacher)if(teacher[k]===n)teacher[k]=null;}return {status,teacher};});}
+  togglePick(n,tid){this.setState(S=>{const cur=S.picks[n]||[];let nx=cur.includes(tid)?cur.filter(x=>x!==tid):(cur.length<5?[...cur,tid]:cur);const status={...S.status};if(!status[n]&&nx.length)status[n]="coming";return {picks:{...S.picks,[n]:nx},status};});}
+  toggleTeach(n,tid){this.setState(S=>{const teacher={...S.teacher,[tid]:S.teacher[tid]===n?null:n};const status={...S.status};if(teacher[tid]===n&&status[n]!=="coming")status[n]="coming";return {teacher,status};});}
+  assign(tid,n){this.setState(S=>({teacher:{...S.teacher,[tid]:n},status:{...S.status,[n]:"coming"},recent:{...S.recent,[tid]:true}}));}
+  toggleSeed(tid){this.setState(S=>{const seeded={...S.seeded};if(seeded[tid])delete seeded[tid];else seeded[tid]=this.viewer();return {seeded};});}
+  topOf(e){const el=e&&e.currentTarget;const art=el&&el.closest&&el.closest("[data-artboard]");if(!art)return 0;const a=art.getBoundingClientRect(),r=el.getBoundingClientRect();const k=a.height/art.offsetHeight||1;const y=(r.top-a.top)/k;return Math.max(0,Math.min(y-220,art.offsetHeight-860));}
+  viewer(){const v=this.props.viewer||"Patrick B";return v.split(" (")[0];}
+  canSeed(){return PLANNERS.includes(this.viewer());}
+  undo(tid){this.setState(S=>({teacher:{...S.teacher,[tid]:null},recent:{...S.recent,[tid]:false}}));}
+
+  build(dir){
+    const S=this.state, st=n=>this.eff(n);
+    const open=n=>e=>this.setState({drawer:{dir,name:n,top:this.topOf(e)}});
+    const chip=n=>({name:n,open:open(n)});
+    const pickers=t=>SCOUTS.filter(s=>(S.picks[s]||[]).includes(t.id)&&st(s)!=="cant");
+    const teachCount=a=>TOPICS.filter(t=>S.teacher[t.id]===a).length;
+    const idleOffers=a=>TOPICS.filter(t=>S.teacher[t.id]===a&&!pickers(t).length).length;
+    const kind=t=>t.kind==="mb"?{kindLabel:"Merit badge",kindBg:"#e8eef2",kindFg:"#1e3a4a"}:{kindLabel:"Rank",kindBg:"#eef2ee",kindFg:"#3d5a3e"};
+    const base=t=>({id:t.id,code:t.code,title:t.title,minutes:"about "+t.min+" min",...kind(t),seeded:!!S.seeded[t.id],seedLabel:S.seeded[t.id]?"Focus · seeded by "+S.seeded[t.id]:""});
+    const sugg=t=>ADULTS.filter(a=>a.skills.includes(t.id)&&st(a.name)!=="cant").map(a=>{
+      const s=st(a.name),n=teachCount(a.name),idle=idleOffers(a.name);
+      const score=s==="coming"?0:s==="unsure"?1:2;
+      const parts=[s?LABEL[s]:"No answer yet",a.counselor&&t.kind==="mb"?"registered counselor":"has "+t.skill.toLowerCase(),n?(idle?"offers have no takers":"teaching "+n+" already"):"not teaching yet"];
+      return {name:a.name,score,why:parts.join(" · "),short:[s?LABEL[s]:"Hasn't answered · a request invites them",n?"teaching "+n:"",a.counselor&&t.kind==="mb"?"counselor":""].filter(Boolean).join(" · "),assign:()=>this.assign(t.id,a.name)};
+    }).sort((x,y)=>x.score-y.score||x.name.localeCompare(y.name)).map((x,i,arr)=>{const g=x.score,first=i===0||arr[i-1].score!==g,cnt=arr.filter(y=>y.score===g).length;const hd={hasHead:first,head:(g===0?"Coming":g===1?"Not sure yet":"Haven't answered")+" · "+cnt,headColor:g===0?"#3d5a3e":g===1?"#8b6914":"#4a5961"};const asked=!!(S.asked[t.id]&&S.asked[t.id][x.name]);return {...x,...hd,asked,notAsked:!asked,ask:()=>this.setState(s=>({asked:{...s.asked,[t.id]:{...(s.asked[t.id]||{}),[x.name]:true}}})),rowBg:i===0?"#e8eef2":"#ffffff",bd:i===0?"#9fb6c4":"#dde3e7"};});
+    const needTeacher=TOPICS.filter(t=>!S.teacher[t.id]&&(pickers(t).length||S.seeded[t.id])).map(t=>{const p=pickers(t),sg=sugg(t);return {...base(t),wanters:p.map(chip),noWanters:!p.length,wantLabel:!p.length?"Seeded focus · no scouts picked it yet":plural(p.length,"scout")+" waiting"+(t.weeks>1?" · asked "+t.weeks+" weeks running":""),weeksLabel:plural(p.length,"scout")+(t.weeks>1?" · asked "+t.weeks+" weeks":""),suggestions:sg,noSugg:!sg.length,hasSugg:sg.length>0,canTeachLabel:(sg.length+(sg.length===1?" person":" people"))+" can teach this",canTeachSub:"grouped by their answer"};}).sort((a,b)=>b.wanters.length-a.wanters.length);
+    const likelyFor=t=>SCOUTS.filter(s=>t.forRank&&rankOf(s)===t.forRank&&st(s)!=="cant"&&!(S.picks[s]||[]).includes(t.id)).slice(0,6);
+    const noTakers=TOPICS.filter(t=>S.teacher[t.id]&&!pickers(t).length).map(t=>{const l=likelyFor(t);return {...base(t),teacherName:S.teacher[t.id],likely:l.map(chip),nudged:!!S.nudged[t.id],notNudged:!S.nudged[t.id],nudgeLabel:"Choose families to nudge…",nudgedLabel:"Nudged "+(S.nudged[t.id]||0)+(S.nudged[t.id]===1?" family":" families")+" · just now",nudge:e=>this.setState({drawer:{dir,nudge:t.id,top:this.topOf(e)}})};});
+    const matched=TOPICS.filter(t=>S.teacher[t.id]&&pickers(t).length).map(t=>{const p=pickers(t);return {...base(t),teacherName:S.teacher[t.id],wanters:p.map(chip),countLabel:plural(p.length,"scout")+" · "+t.min+" min",recent:!!S.recent[t.id],undo:()=>this.undo(t.id)};});
+    const by=(list,v)=>list.filter(n=>st(n)===v);
+    const AD=ADULTS.map(a=>a.name);
+    const naS=by(SCOUTS,null),naA=by(AD,null);
+    const pickTitles=n=>(S.picks[n]||[]).map(id=>TOPICS.find(t=>t.id===id).title);
+    const teachTitles=n=>TOPICS.filter(t=>S.teacher[t.id]===n).map(t=>t.title);
+    const here=n=>{const h=!!S.here[n];return {hereLabel:h?"✓ Here":"Here?",hereBg:h?"#3d5a3e":"#fff",hereFg:h?"#fff":"#3d5a3e",hereBd:"#3d5a3e",toggleHere:()=>this.setState(s=>({here:{...s.here,[n]:!s.here[n]}}))};};
+    const scoutDetail=n=>{const t=pickTitles(n);return t.length?{detail:t.join(", "),detailColor:"#5f6b73"}:{detail:"Nothing picked: will be placed by rank",detailColor:"#8b6914"};};
+    const adultDetail=n=>{const t=teachTitles(n);return t.length?{detail:"Teaching: "+t.join(", "),detailColor:"#5f6b73"}:{detail:"Not teaching yet: free to assign",detailColor:"#8b6914"};};
+    const comingScouts=by(SCOUTS,"coming").map(n=>({...chip(n),...scoutDetail(n),...here(n)}));
+    const comingAdults=by(AD,"coming").map(n=>({...chip(n),...adultDetail(n),...here(n)}));
+    const unsure=[...by(SCOUTS,"unsure"),...by(AD,"unsure")].map(chip);
+    const cant=[...by(SCOUTS,"cant"),...by(AD,"cant")].map(n=>{const k=(S.picks[n]||[]).length;return {...chip(n),label:k?n+" · "+k+" saved for later":n};});
+    const naTotal=naS.length+naA.length;
+    const remind={remind:e=>this.setState({drawer:{dir,remind:true,top:this.topOf(e)}}),reminded:!!S.reminded,notReminded:!S.reminded,remindLabel:"Choose who to remind…",remindedLabel:"Reminder sent to "+S.reminded+" · just now"};
+    const waiting=new Set(needTeacher.flatMap(t=>t.wanters.map(w=>w.name))).size;
+    const opts=n=>["coming","unsure","cant"].map(v=>{const on=st(n)===v;const col=v==="coming"?"#3d5a3e":v==="unsure"?"#8b6914":"#8c3b3b";return {label:v==="unsure"?"Not sure":v==="cant"?"Can't":"Coming",onClick:()=>this.setStatus(n,v),bg:on?col:"#fff",fg:on?"#fff":"#1f2a30",bd:on?col:"#c9d1d6"};});
+    let drawer=null;
+    const canSeed=this.canSeed();
+    const focus=TOPICS.filter(t=>S.seeded[t.id]).map(t=>{const p=pickers(t).length,tc=S.teacher[t.id];return {title:t.title,status:(tc?tc:"no teacher")+" · "+plural(p,"scout"),bg:tc&&p?"#eef2ee":"#fdf6e3",bd:tc&&p?"#c5d6c6":"#e6d29a"};});
+    const seedVals={focus,noFocus:!focus.length,canSeed,cannotSeed:!canSeed,openSeed:e=>this.setState({drawer:{dir,seed:true,top:this.topOf(e)}}),focusCount:focus.length,viewerName:this.viewer()};
+    if(S.drawer&&S.drawer.dir===dir&&S.drawer.remind){
+      const sel=S.remindSel||{},close=()=>this.setState({drawer:null});
+      const setSel=o=>this.setState({remindSel:o});
+      const n=Object.values(sel).filter(Boolean).length;
+      const pool=[...naS.map(x=>[x,"Scout"]),...naA.map(x=>[x,"Adult"])];
+      const list=pool.map(([p,k])=>{const on=!!sel[p];return {title:p,meta:k==="Scout"?"Scout · working on "+rankOf(p):"Adult"+(ADULTS.find(a=>a.name===p).skills.length?" · can teach":""),on,box:on?"#1e3a4a":"#fff",mark:on?"✓":"",rowBg:on?"#e8eef2":"#fff",bd:on?"#1e3a4a":"#e3e7ea",toggle:()=>setSel({...sel,[p]:!sel[p]})};});
+      drawer={name:"Send a reminder",roleLabel:"Haven't answered · "+naTotal,sub:"Pick who gets a reminder. Scouts' reminders go to their family.",hasOpts:false,hasNote:true,note:"Message: “Are you coming Sunday, Oct 25? Tap to answer and pick what to work on.”",listTitle:n+" selected",listSub:"No one is selected until you choose",list,close,footer:"Nothing is sent until you press Send",
+        hasQuick:true,quick:[{label:"All scouts ("+naS.length+")",onClick:()=>setSel({...sel,...Object.fromEntries(naS.map(x=>[x,true]))})},{label:"All adults ("+naA.length+")",onClick:()=>setSel({...sel,...Object.fromEntries(naA.map(x=>[x,true]))})},{label:"Clear",onClick:()=>setSel({})}],
+        hasAction:true,actionLabel:n?"Send to "+n:"Pick at least one person",actionBg:n?"#1e3a4a":"#b9c3c9",onAction:()=>{if(!n)return;this.setState({reminded:n,remindSel:{},drawer:null});}};
+    } else if(S.drawer&&S.drawer.dir===dir&&S.drawer.nudge){
+      const t=TOPICS.find(x=>x.id===S.drawer.nudge),sel=S.nudgeSel[t.id]||{};
+      const close=()=>this.setState({drawer:null});
+      const likely=new Set(likelyFor(t));
+      const pool=SCOUTS.filter(s=>st(s)!=="cant"&&!(S.picks[s]||[]).includes(t.id)).sort((a,b)=>(likely.has(b)?1:0)-(likely.has(a)?1:0)||a.localeCompare(b));
+      const setSel=o=>this.setState(s=>({nudgeSel:{...s.nudgeSel,[t.id]:o}}));
+      const n=Object.values(sel).filter(Boolean).length;
+      const list=pool.map(s=>{const on=!!sel[s];return {title:s,meta:"Working on "+rankOf(s)+(likely.has(s)?" · likely fit":"")+" · "+(st(s)?LABEL[st(s)]:"no answer yet"),on,box:on?"#8b6914":"#fff",mark:on?"✓":"",rowBg:on?"#fdf6e3":"#fff",bd:on?"#8b6914":"#e3e7ea",toggle:()=>setSel({...sel,[s]:!sel[s]})};});
+      drawer={name:"Nudge families",roleLabel:t.code+" · "+t.title,sub:S.teacher[t.id]+" is teaching this Sunday. Pick which families get a note.",hasOpts:false,hasNote:true,note:"Message: “"+S.teacher[t.id]+" is teaching "+t.title+" on Sunday. Want to add it to your picks?”",listTitle:"Families · "+n+" selected",listSub:"Likely fits are listed first",list,close,footer:"Nothing is sent until you press Send",
+        quick:[{label:"Select likely fits ("+likely.size+")",onClick:()=>setSel(Object.fromEntries([...likely].map(s=>[s,true])))},{label:"Clear",onClick:()=>setSel({})}],hasQuick:true,
+        hasAction:true,actionLabel:n?"Send to "+n+(n===1?" family":" families"):"Pick at least one family",actionBg:n?"#8b6914":"#c9c2ad",onAction:()=>{if(!n)return;this.setState(s=>({nudged:{...s.nudged,[t.id]:n},drawer:null}));}};
+    } else if(S.drawer&&S.drawer.dir===dir&&S.drawer.seed){
+      const close=()=>this.setState({drawer:null});
+      const list=TOPICS.map(t=>{const on=!!S.seeded[t.id];const p=pickers(t).length;return {title:t.title,meta:t.code+" · "+plural(p,"scout")+" picked"+(S.teacher[t.id]?" · "+S.teacher[t.id]+" teaching":" · no teacher")+(on?" · seeded by "+S.seeded[t.id]:""),on,box:on?"#8b6914":"#fff",mark:on?"✓":"",rowBg:on?"#fdf6e3":"#fff",bd:on?"#8b6914":"#e3e7ea",toggle:()=>this.toggleSeed(t.id)};});
+      drawer={name:"Seed this meeting",roleLabel:"Planning team · "+this.viewer(),sub:"Choose the requirements this meeting should focus on. They show up first for scouts and teachers.",hasOpts:false,hasNote:false,note:"",listTitle:"Focus topics · "+focus.length,listSub:"Each one needs a teacher until someone takes it",list,close,footer:"Only SPL, Mindy, Jason and Patrick can seed a meeting"};
+    } else if(S.drawer&&S.drawer.dir===dir){
+      const n=S.drawer.name,isA=ADULT_SET.has(n),s=st(n);
+      const close=()=>this.setState({drawer:null});
+      if(isA){const a=ADULTS.find(x=>x.name===n);const k=teachCount(n);
+        const list=[...TOPICS].sort((x,y)=>(a.skills.includes(y.id)?1:0)-(a.skills.includes(x.id)?1:0)).map(t=>{const on=S.teacher[t.id]===n,other=S.teacher[t.id]&&!on,p=pickers(t).length;return {title:t.title,meta:t.code+" · "+plural(p,"scout")+" want it"+(a.skills.includes(t.id)?" · has skill":"")+(other?" · "+S.teacher[t.id]+" teaching":""),on,box:on?"#1e3a4a":"#fff",mark:on?"✓":"",rowBg:on?"#e8eef2":"#fff",bd:on?"#1e3a4a":"#e3e7ea",toggle:()=>this.toggleTeach(n,t.id)};});
+        drawer={name:n,roleLabel:"Adult",sub:a.counselor?"Merit badge counselor":"Skills: "+(a.skills.length?a.skills.map(id=>TOPICS.find(t=>t.id===id).skill).join(", "):"none listed"),opts:opts(n),hasNote:k>2,note:"Teaching "+k+". Most adults take 1–2, but this is allowed.",hasOpts:true,footer:"Saves as you go · recorded as entered by you",listTitle:"Teaching · "+k,listSub:"Topics matching their skills are listed first",list,close};
+      }else{const mine=S.picks[n]||[];
+        const list=TOPICS.map(t=>{const on=mine.includes(t.id);return {title:t.title,meta:t.code+(S.seeded[t.id]?" · meeting focus":"")+(S.teacher[t.id]?" · teacher: "+S.teacher[t.id]:" · no teacher yet"),on,box:on?"#1e3a4a":"#fff",mark:on?"✓":"",rowBg:on?"#eef2ee":"#fff",bd:on?"#3d5a3e":"#e3e7ea",toggle:()=>this.togglePick(n,t.id)};});
+        drawer={name:n,roleLabel:"Scout",sub:"Working on "+rankOf(n),opts:opts(n),hasNote:s==="cant"&&mine.length>0,note:"Can't make it. Their picks are saved for a later meeting.",hasOpts:true,footer:"Saves as you go · recorded as entered by you",listTitle:"Picks · "+mine.length+" of 5",listSub:"They'll work on one or two",list,close};
+      }
+    }
+    if(drawer)drawer.top=Math.round(S.drawer.top||0)+"px";
+    const groups=(list,tileC,isA)=>[["coming","Coming","#3d5a3e",tileC],["unsure","Not sure","#8b6914","#fffaf0"],["cant","Can't","#8c3b3b","#f6f7f8"],[null,"No answer","#4a5961","#ffffff"]].map(([v,label,color,tile])=>{const ppl=by(list,v);return {label,color,tile,count:ppl.length,people:ppl.map(n=>({...chip(n),tag:isA?(teachTitles(n).length?"Teaching "+teachTitles(n).length:v==="coming"?"Free":(ADULTS.find(a=>a.name===n).skills.length?"Can teach":"")):(v==="cant"&&(S.picks[n]||[]).length?"Picks saved":((S.picks[n]||[]).length?plural((S.picks[n]||[]).length,"pick"):rankOf(n)))}))};});
+    const bar=(list)=>{const t=list.length,c=by(list,"coming").length,u=by(list,"unsure").length,k=by(list,"cant").length;const pct=x=>(x/t*100).toFixed(1)+"%";return {total:t,coming:c,unsure:u,cant:k,none:t-c-u-k,comingPct:pct(c),unsurePct:pct(u),cantPct:pct(k)};};
+    const comingAll=[...by(SCOUTS,"coming"),...by(AD,"coming")];
+    const maybe=[...by(SCOUTS,"unsure"),...by(SCOUTS,"cant"),...by(AD,"unsure"),...by(AD,"cant")];
+    const F=S.filter;
+    const rail=[["ready","Ready to teach",matched.length,false],["need","Requests with no teacher",needTeacher.length,true],["none","Offers with no takers",noTakers.length,true],["noanswer","Who hasn't answered",naTotal,naTotal>0],["coming","Who's coming",comingAll.length,false],["maybe","Not sure or can't",maybe.length,false],["all","Everyone",SCOUTS.length+AD.length,false]].map(([k,label,count,warn])=>{const on=F===k;return {label,count,onClick:()=>this.setState({filter:k}),bg:on?"#ffffff":"transparent",fg:on?"#1e3a4a":"#ffffff",pillBg:warn&&count?"#c25a50":(on?"#e8eef2":"rgba(255,255,255,.18)"),pillFg:warn&&count?"#fff":(on?"#1e3a4a":"#fff")};});
+    const peopleFor={coming:comingAll,maybe,noanswer:[...naS,...naA],all:[...SCOUTS,...AD]}[F]||[];
+    const rows=peopleFor.map(n=>{const isA=ADULT_SET.has(n);const d=isA?adultDetail(n):scoutDetail(n);return {...chip(n),...d,...here(n),role:isA?"Adult":"Scout · "+rankOf(n),roleColor:isA?"#2a4f63":"#3d5a3e",opts:opts(n),editLabel:isA?"Edit teaching":"Edit picks"};});
+    const heads={ready:["Ready to teach","Sessions with a teacher and at least one scout. This starts empty each week and fills in as people sign up."],need:["Requests with no teacher","Scouts asked for these and nobody is teaching them yet. Everyone who can teach is listed, with people who are coming first."],none:["Offers with no takers","An adult offered to teach these and no scout has picked them. Nudge scouts who could use them."],noanswer:["Who hasn't answered","No answer isn't a no. Answer for them here, or send one reminder."],coming:["Who's coming","Everyone marked Coming, plus anyone with a pick or a teaching sign-up."],maybe:["Not sure or can't make it","Not-sure scouts get placed by rank. Can't-make-it picks are saved for later."],all:["Everyone","All scouts and adults on the roster."]}[F];
+    return {...seedVals,needTeacher,noNeed:!needTeacher.length,needSummary:needTeacher.length?plural(needTeacher.length,"topic")+" · "+plural(waiting,"scout")+" waiting":"All clear",
+      noTakers,noNone:!noTakers.length,noMatched:!matched.length,noneSummary:noTakers.length?plural(noTakers.length,"offer"):"All clear",
+      matched,matchedSummary:plural(matched.length,"session"),
+      noAnswerScouts:naS.map(chip),noAnswerAdults:naA.map(chip),noAnswerScoutCount:naS.length,noAnswerAdultCount:naA.length,noAnswerSummary:plural(naS.length,"scout")+" · "+plural(naA.length,"adult"),...remind,
+      comingScouts,comingAdults,unsure,cant,noUnsure:!unsure.length,noCant:!cant.length,
+      scoutsComing:comingScouts.length,adultsComing:comingAdults.length,problemCount:needTeacher.length+noTakers.length+(naTotal?1:0),
+      comingSummary:comingScouts.length+" scouts · "+comingAdults.length+" adults",
+      findQ:S.findQ,onFind:e=>this.setState({findQ:e.target.value}),
+      findKinds:[["all","Everyone"],["scout","Scouts"],["adult","Adults"]].map(([k,l])=>{const on=(S.findKind||"all")===k;return {label:l,onClick:()=>this.setState({findKind:k}),bg:on?"#ffffff":"transparent",fg:on?"#1e3a4a":"#ffffff"};}),
+      ...(()=>{const q=(S.findQ||"").trim().toLowerCase(),fk=S.findKind||"all";const show=!!q||fk!=="all";const pool=[...SCOUTS.map(n=>[n,"scout"]),...AD.map(n=>[n,"adult"])].filter(([n,k])=>(fk==="all"||fk===k)&&(!q||n.toLowerCase().includes(q))).sort((x,y)=>x[0].localeCompare(y[0]));const r=pool.map(([n,k])=>({...chip(n),role:k==="adult"?"Adult":"Scout",roleColor:k==="adult"?"#2a4f63":"#3d5a3e",status:st(n)?LABEL[st(n)]:"No answer"}));return {hasFind:show,findResults:r,noFind:show&&!r.length};})(),
+      pickPerson:e=>{const v=e.target.value;if(v){this.setState({drawer:{dir,name:v,top:this.topOf(e)}});e.target.value="";}},
+      hasDrawer:!!drawer,drawer,
+      scoutBar:bar(SCOUTS),adultBar:bar(AD),scoutGroups:groups(SCOUTS,"#f4f8f4",false),adultGroups:groups(AD,"#f2f6f9",true),
+      rail,heading:heads[0],subheading:heads[1],isNeed:F==="need",isNone:F==="none",isReady:F==="ready",isPeople:!["need","none","ready"].includes(F),rows,
+      showRemind:F==="noanswer"&&!S.reminded&&naTotal>0,showReminded:F==="noanswer"&&S.reminded,hereHead:this.props.showCheckIn?"Here":""};
+  }
+  renderVals(){
+    const everyone=[...SCOUTS.map(n=>({name:n,label:n+" · scout"})),...ADULTS.map(a=>({name:a.name,label:a.name+" · adult"}))].sort((x,y)=>x.name.localeCompare(y.name));
+    return {a:this.build("1a"),b:this.build("1b"),c:this.build("1c"),everyone,showCheckIn:!!this.props.showCheckIn};
+  }
+}
+</script>
+</body>
+</html>

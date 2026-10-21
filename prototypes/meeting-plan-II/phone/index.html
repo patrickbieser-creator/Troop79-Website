@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Planner phone mocks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="phone.css?v=4">
+<style>
+  .hdr { background: var(--navy); color: #fff; padding: 18px var(--gutter); }
+  .hdr h1 { margin: 0; font-size: 21px; }
+  .hdr p { margin: 4px 0 0; font-size: 13.5px; color: rgba(255,255,255,.8); }
+  main { padding: 14px 12px 28px; display: grid; gap: 12px; }
+  .link { display: block; background: #fff; border-radius: 8px; box-shadow: var(--shadow-card); padding: 14px 16px; text-decoration: none; color: var(--text); border-left: 4px solid var(--navy); }
+  .link:hover { box-shadow: 0 0 0 2px var(--navy); }
+  .link b { font-size: 16.5px; color: var(--navy); }
+  .link p { margin: 4px 0 0; font-size: 13.5px; color: var(--meta); }
+  .fine { font-size: 12.5px; color: var(--meta); padding: 0 4px; }
+</style>
+</head>
+<body>
+<div class="frame">
+  <header class="hdr">
+    <h1>Meeting Planner II · phone</h1>
+    <p>390px mock-ups for review before P1. Desktop handoff: <a href="../README.md" style="color:#fff">README</a>.</p>
+  </header>
+  <main>
+    <a class="link" href="board.html"><b>This Sunday board</b>
+      <p>One column: the right-hand column moves under the header, the name search stays pinned while you scroll, teacher lists fold behind “N people can teach this ▾”, and the Everyone wall becomes one folding list per answer.</p></a>
+    <a class="link" href="drawer.html?mode=scout&name=Finn%20P"><b>Person drawer</b>
+      <p>A full-screen bottom sheet, not a side panel. The header, Coming control and Send/Done button stay put and only the list scrolls. Toggle Scout, Nudge families, Adult, Remind and Seed at the top.</p></a>
+    <a class="link" href="live.html"><b>Meeting Live</b>
+      <p>One rotation at a time behind sticky tabs (Not scheduled · R1 · R2 · R3 · +) instead of side-by-side columns. Tap replaces drag: tap a scout for here/move/remove, tap a teacher to pick, and use Move to on each card. Shows rotation locations, repeats, the retake star, overlaps, the view-only banner and other leaders' changes.</p></a>
+    <div class="link" style="border-left-color:var(--forest)"><b>Add an offer (on every view)</b>
+      <p>Editors (the SPL and adults with edit rights, never view-only) can add a class someone will teach: search one requirement, pick a focus group, or type a title, then an optional teacher. Board: “+ Add an offer” on Ready to teach and Offered, no takers. Drawer: <a href="drawer.html?mode=offer&from=board">Add an offer</a> mode, plus “+ Offer something else” in Adult mode. Live: “+ Add a class” in every rotation and in Not scheduled.</p></div>
+    <p class="fine">Striped “Mock” bars are review controls, not part of the design. Sample data only: nothing is saved, and reloading resets each page.</p>
+  </main>
+</div>
+</body>
+</html>
