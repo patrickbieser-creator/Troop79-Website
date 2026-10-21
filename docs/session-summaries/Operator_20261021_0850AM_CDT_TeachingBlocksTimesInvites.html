@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session 63 — Teaching Blocks, Times, Invites</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #3d5a3e;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #f0eecd;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); vertical-align: top; }
+        tr:hover { background: var(--nw-sage); }
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+        code { font-family: 'Courier New', monospace; font-size: 0.85em; background: var(--nw-light-gray); padding: 0 0.3em; border-radius: 3px; }
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+        @media print { body { background: white; } header { padding: 1.5rem; } .container { padding: 1rem; } .stat { break-inside: avoid; } }
+        @media (max-width: 600px) { header h1 { font-size: 1.5rem; } .stats { flex-direction: column; } }
+    </style>
+<body>
+    <header>
+        <h1>Teaching blocks, teaching times, and invites by email</h1>
+        <p class="subtitle">Session 63. The Sunday board now treats a teaching block as one session (up to 12 per meeting, no clock), knows how long each requirement takes and lists its parts the way the Clipboard does. The Troop 79 Bugler can now invite adults to teach and offer a requirement to scouts, and each invite is answered with one tap and no sign-in.</p>
+        <div class="meta">
+            <span>&#128197; October 20&ndash;21, 2026</span>
+            <span>&#129302; Operator (Opus 5.5)</span>
+            <span>&#128204; Troop79-Website</span>
+            <span>&#128640; v1.239.0 &rarr; v1.239.1</span>
+        </div>
+    </header>
+    <div class="container">
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">7</div><div class="label">Feature commits</div></div>
+            <div class="stat"><div class="number">3</div><div class="label">Production migrations</div></div>
+            <div class="stat"><div class="number">5</div><div class="label">Decisions (D-411&ndash;D-415)</div></div>
+            <div class="stat"><div class="number">~6780</div><div class="label">Tests (was 6670)</div></div>
+        </div>
+        <h2>What Was Accomplished</h2>
+        <div class="callout callout-teal">
+            <strong>The outcome:</strong> a leader can now go from &ldquo;nobody is teaching First Aid&rdquo; to an email in the right inboxes in a few clicks. People answer with one tap, and the board fills in as they do.
+        </div>
+        <h3>Invites by email (T-5)</h3>
+        <ul>
+            <li>&ldquo;Invite teachers&hellip;&rdquo; on a topic nobody is teaching emails the people worth asking. A tap on Yes puts them on the board as the teacher.</li>
+            <li>&ldquo;Offer to scouts&hellip;&rdquo; and &ldquo;Offer a requirement to scouts&hellip;&rdquo; email each scout&rsquo;s parents (always) and the scout from 13. Yes makes it the scout&rsquo;s first pick and marks them coming.</li>
+            <li>A link answers only its own invite and never signs anyone in. It works once and closes at 6:00 PM on the meeting day. qa-lead reviewed both phases twice, and every required fix is in. Both phases were checked end to end in the browser.</li>
+        </ul>
+        <h3>Teaching blocks, times and parts</h3>
+        <ul>
+            <li>A block is one adult teaching one group: up to 12 per meeting, numbered first half then second. The halves are a guide, never a limit.</li>
+            <li>Every requirement has an expected teaching time, 15 minutes to start, edited in Req codes. A requirement with parts takes their total.</li>
+            <li>First Aid, lashings and fitness list their parts wherever they appear on the board.</li>
+        </ul>
+        <h3>A calmer Sunday board</h3>
+        <ul>
+            <li>&ldquo;Wanted, no teacher&rdquo; shows who to ask, not every adult who could teach it.</li>
+            <li>The ten counts sit on one line, tinted for scouts and adults, and the block-by-block match moved to Group Sessions.</li>
+            <li>Meeting Plan is its own entry on the admin top bar.</li>
+        </ul>
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Decision</th></tr></thead>
+            <tbody>
+                <tr><td>D-411</td><td>A teaching block is a session: up to 12 per meeting, no clock; the rough halves are a guide only</td></tr>
+                <tr><td>D-412</td><td>Every requirement has a teaching time (default 15). A requirement with parts takes their sum. Scouts pick the parent and its parts are shown</td></tr>
+                <tr><td>D-413</td><td>Invite links answer one invite and never sign anyone in. They expire at 6 PM Central on the meeting day and come from the Troop 79 Bugler</td></tr>
+                <tr><td>D-414</td><td>Scout invites always copy parents (parent and in the household), and the scout from 13. Yes is the first pick in one transaction</td></tr>
+                <tr><td>D-415</td><td>Meeting Plan is its own admin top-bar section</td></tr>
+            </tbody>
+        </table>
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Patrick: set real teaching times in Req codes, then send a first teacher invite and a first scout offer to his own family.</li>
+            <li>Invite follow-ups: the candidate list&rsquo;s own test, a test at the 100-email cap, freeform topics, and the badge editor resetting minutes.</li>
+            <li>Matcher-Tune-Up T-1: a teaching guide for each skill.</li>
+            <li>Carried over: find why ranks aren&rsquo;t reaching BSA, the first EmailOctopus sync, wreath round 2 (closes Nov 15).</li>
+        </ul>
+        <h2>Files Changed</h2>
+        <table>
+            <thead><tr><th>Area</th><th>Files</th></tr></thead>
+            <tbody>
+                <tr><td>Libraries</td><td>lib/meeting-board-match.ts, meeting-board-picklist.ts, meeting-board-supply.ts, meeting-board.ts, meeting-invites.ts, meeting-invites-db.ts, meeting-invite-email.ts, email.ts, email-templates.ts, identity-challenge.ts, advancement-catalog.ts, audit.ts, site-pages-tree.ts</td></tr>
+                <tr><td>Admin</td><td>meeting-plan/{this-sunday,board-settings,actions,invite-teachers,offer-to-scouts}.tsx/.ts, meetings/load-agenda.ts, lookups/{req-codes-table,page,actions}, _components/nav-data.ts, audit/page.tsx</td></tr>
+                <tr><td>Public</td><td>i/[token]/{page,invite-card}.tsx, i/actions.ts, member/meeting/{scout-board,teach-board,topic-parts}.tsx</td></tr>
+                <tr><td>Database</td><td>20261128100000_requirement_teach_minutes, 20261129100000_meeting_invites, 20261130100000_meeting_pick_invites</td></tr>
+                <tr><td>Tests</td><td>meeting-invites*, meeting-pick-invites-db, meeting-invite-{email,page,send-action}, req-codes-minutes, matcher and board view suites updated</td></tr>
+                <tr><td>Config and docs</td><td>next.config.ts (/i headers), changelog.html</td></tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
