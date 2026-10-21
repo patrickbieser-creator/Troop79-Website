@@ -92,6 +92,13 @@ export function applyRedirect(
   };
 }
 
+/** EMAIL_FROM with another display name: 'Troop 79 <news@x>' or 'news@x' → 'Troop 79 Bugler <news@x>'.
+ *  The address never changes (it is the verified sending domain); only the name readers see. */
+export function fromWithName(from: string, name: string): string {
+  const address = /<([^>]+)>/.exec(from)?.[1] ?? from.trim();
+  return `${name} <${address}>`;
+}
+
 /**
  * Sends the message individually to each recipient (see the loop below for
  * why a shared To: is not acceptable). `confirm` must be true or this only
@@ -106,6 +113,8 @@ export async function sendEmail(opts: {
   /** Per-message Reply-To (the signup confirmation uses the first leader
    *  address); falls back to EMAIL_REPLY_TO, then none. */
   replyTo?: string;
+  /** A display name in place of EMAIL_FROM's (the meeting invites come from "Troop 79 Bugler"). */
+  fromName?: string;
 }): Promise<SendResult> {
   const intended = [...new Set(opts.to.map((e) => e.trim().toLowerCase()).filter(Boolean))];
   if (intended.length === 0)
@@ -123,7 +132,8 @@ export async function sendEmail(opts: {
   if (!opts.confirm) return { status: 'dry-run', to, redirectedFrom };
 
   const resend = client();
-  const from = process.env.EMAIL_FROM;
+  const configured = process.env.EMAIL_FROM;
+  const from = configured && opts.fromName ? fromWithName(configured, opts.fromName) : configured;
   if (!resend || !from) {
     return {
       status: 'skipped',

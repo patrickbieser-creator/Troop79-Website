@@ -80,6 +80,20 @@ export const TEMPLATE_KINDS: TemplateKind[] = [
     label: 'Signup — leader notification',
     audience: 'leader',
     fields: [...EVENT_FIELDS, ...SIGNUP_FIELDS, ...LEADER_ONLY_FIELDS]
+  },
+  {
+    // Meeting invites, P1 (Plans/Matcher-Tune-Up.md T-5). The answer link is the email's button, never a field.
+    kind: 'meeting.invite.teacher',
+    label: 'Meeting — invite to teach',
+    audience: 'family',
+    fields: [
+      { token: 'name', label: 'Their first name' },
+      { token: 'topic', label: 'Topic' },
+      { token: 'code', label: 'Requirement code' },
+      { token: 'minutes', label: 'How long it takes' },
+      { token: 'parts', label: 'Its parts (list)' },
+      { token: 'day', label: 'Meeting day' }
+    ]
   }
 ];
 

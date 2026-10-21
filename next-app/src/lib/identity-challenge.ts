@@ -67,8 +67,9 @@ async function sha256Hex(input: string): Promise<string> {
 }
 
 /** SHA-256(value || server-side pepper) — a database dump of login_tokens
- *  alone yields no usable credential (Technical Approach). */
-async function hashSecret(raw: string): Promise<string> {
+ *  alone yields no usable credential (Technical Approach). Exported for the
+ *  meeting invite links (lib/meeting-invites-db.ts), which keep the same rule. */
+export async function hashSecret(raw: string): Promise<string> {
   return sha256Hex(`${raw}${getPepper()}`);
 }
 

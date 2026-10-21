@@ -228,7 +228,7 @@ describe('resolveMessage + registry', () => {
   });
 
   it('TemplateKinds_AreARegistry_NotAnEnum', () => {
-    expect(TEMPLATE_KINDS.map((k) => k.kind)).toEqual(['signup.family', 'signup.leader']);
+    expect(TEMPLATE_KINDS.map((k) => k.kind)).toEqual(['signup.family', 'signup.leader', 'meeting.invite.teacher']);
     expect(templateKind('newsletter')).toBeUndefined(); // added by registering, not migrating
   });
 });

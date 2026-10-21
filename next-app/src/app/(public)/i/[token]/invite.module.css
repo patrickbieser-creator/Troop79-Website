@@ -1,0 +1,17 @@
+/* A meeting invite's answer page (Plans/Matcher-Tune-Up.md T-5). */
+.ask {
+  font-family: var(--font-playfair), serif;
+  font-size: var(--fs-xl);
+  margin: 0 0 var(--sp-1);
+}
+.meta {
+  color: var(--text-meta);
+  font-size: var(--fs-sm);
+  margin: 0 0 var(--sp-3);
+}
+.answers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  margin-top: var(--sp-4);
+}

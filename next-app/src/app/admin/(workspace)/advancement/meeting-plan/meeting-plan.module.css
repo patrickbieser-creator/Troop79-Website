@@ -615,3 +615,21 @@ a.chip:hover {
   font-weight: 700;
   color: var(--admin-gray-700);
 }
+
+/* T-5: "Invite teachers…" under a wanted topic's shortlist, and its dialog's list. */
+.inviteRow {
+  display: flex;
+  align-items: center;
+  gap: var(--admin-space-2);
+  margin-top: var(--admin-space-2);
+}
+.inviteList {
+  list-style: none;
+  margin: 0 0 var(--admin-space-3);
+  padding: 0;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+.inviteList li {
+  padding: var(--admin-space-1) 0;
+}

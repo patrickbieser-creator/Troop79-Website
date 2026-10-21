@@ -32,6 +32,15 @@ const nextConfig: NextConfig = {
           { key: 'Cache-Control', value: 'no-store' },
           { key: 'X-Robots-Tag', value: 'noindex, nofollow' }
         ]
+      },
+      {
+        // A meeting invite's answer link carries its secret in the path (Plans/Matcher-Tune-Up.md T-5, qa-lead M5).
+        source: '/i/:path*',
+        headers: [
+          { key: 'Referrer-Policy', value: 'no-referrer' },
+          { key: 'Cache-Control', value: 'no-store' },
+          { key: 'X-Robots-Tag', value: 'noindex, nofollow' }
+        ]
       }
     ];
   },

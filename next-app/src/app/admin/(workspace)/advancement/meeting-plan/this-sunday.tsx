@@ -27,6 +27,9 @@ import { loadBoardStamp, loadBoardState, loadNextMeeting, type BoardMeeting } fr
 import { minutesText, topicWords, type TopicPart, type TopicWords } from '@/lib/meeting-board-picklist';
 import { boardName, effectiveIntent, summarizeBoard, type BoardCounts, type BoardMode, type Intent } from '@/lib/meeting-board-shared';
 import { HALF_LABEL, seatsFor, sessionWords } from '@/lib/meeting-board-match';
+import { countInvites, inviteCountsText } from '@/lib/meeting-invites';
+import { loadInviteRows } from '@/lib/meeting-invites-db';
+import { InviteTeachers } from './invite-teachers';
 import { assessTeacher, commitmentCounts, flagText, teacherIntent, teacherName, topicSkill, weeksAsked } from '@/lib/meeting-board-teach';
 import { loadLiveMatch, loadTeachBoard } from '@/lib/meeting-board-supply';
 import { loadRotationBoard } from '@/lib/meeting-board-stations';
@@ -109,7 +112,7 @@ export interface ThisSundayData {
   adults: { coming: number; undecided: number; notComing: number; teaching: number };
   topics: { key: string; label: string; codeLabel: string; names: string[]; teachers: SupplyTeacher[]; parts?: TopicPart[]; minutes?: number | null }[];
   /** The recruiting list: asked for, nobody teaching. `blocked`: committed teachers with no room for another session. */
-  wanted: { key: string; label: string; codeLabel: string; names: string[]; weeks: number; canTeach: CanTeach[]; blocked?: string[] }[];
+  wanted: { key: string; label: string; codeLabel: string; names: string[]; weeks: number; canTeach: CanTeach[]; blocked?: string[]; invites?: string }[];
   /** Put on the board by a teacher, asked for by nobody. */
   offered: { key: string; label: string; codeLabel: string; teachers: SupplyTeacher[] }[];
   skillOffers: (BoardPerson & { skill: string; note: string | null; scouts: number })[];
@@ -209,6 +212,9 @@ export async function loadThisSunday(): Promise<ThisSundayData | null> {
           return { key, label: t.label, codeLabel: t.codeLabel, names: t.names, weeks: weeksAsked(firstAsked.get(key) ?? [], meeting.date), canTeach };
         })
         .sort((a, b) => b.names.length - a.names.length || b.weeks - a.weeks);
+  // T-5: who has been invited to teach each wanted topic, and how they answered.
+  const inviteCounts = countInvites(await loadInviteRows(sb, meeting.entryId));
+  for (const w of wanted) (w as { invites?: string }).invites = inviteCountsText(inviteCounts.get(w.key));
   const matchView: ThisSundayMatch | null = match
     ? {
         sessions: match.sessions.length,
@@ -626,6 +632,12 @@ export function ThisSundayView({ data }: { data: ThisSundayData | null }) {
                     <td className={styles.alignRight}>{w.names.length}</td>
                     <td>
                       {w.canTeach.length ? <CanTeachCell list={w.canTeach} /> : <span className={styles.noTeacher}>Nobody on file</span>}
+                      {w.canTeach.length > 0 && (
+                        <div className={styles.inviteRow}>
+                          <InviteTeachers entryId={meeting.entryId} topicKey={w.key} label={w.label} people={w.canTeach} />
+                          {w.invites && <span className={styles.teachMeta}>{w.invites}</span>}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act, render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 /**
  * Meeting Plan › This Sunday (Phase 1): the live demand board, and the poller that keeps it live (every ~10 s, only
@@ -10,7 +11,8 @@ const stamp = vi.hoisted(() => vi.fn());
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh, push: vi.fn() }) }));
 vi.mock('@/lib/supabase/server', () => ({ createAdminClient: () => ({}) }));
 vi.mock('@/lib/advancement-catalog', () => ({ loadAdvancementCatalog: async () => ({}) }));
-vi.mock('../src/app/admin/(workspace)/advancement/meeting-plan/actions', () => ({ boardStampAction: stamp }));
+const invite = vi.hoisted(() => vi.fn());
+vi.mock('../src/app/admin/(workspace)/advancement/meeting-plan/actions', () => ({ boardStampAction: stamp, sendTeachInvitesAction: invite }));
 
 const { ThisSundayView } = await import('../src/app/admin/(workspace)/advancement/meeting-plan/this-sunday');
 const { BoardPoller, POLL_MS, JITTER_MS } = await import('../src/app/admin/(workspace)/advancement/meeting-plan/board-poller');
@@ -42,6 +44,7 @@ const data = {
       codeLabel: 'Tenderfoot 3a',
       names: ['Leo M'],
       weeks: 3,
+      invites: 'Invited 3 · 1 yes',
       canTeach: [
         { personId: 41, name: 'Karen O', note: 'not sure yet', tier: 'ask' as const },
         { personId: 44, name: 'Becky V', note: 'no answer', tier: 'listed' as const },
@@ -105,6 +108,31 @@ describe('ThisSundayView', () => {
     render(<ThisSundayView data={data} />);
     const row = screen.getByText(/asked 3 weeks/).closest('tr')!;
     expect(row.textContent).toContain('Ask: Karen O (not sure yet)');
+  });
+
+  it('Leader_InvitesTeachers_AskAndListedTickedByDefault', async () => {
+    invite.mockResolvedValue({ ok: true, sent: ['Karen O', 'Becky V'], skipped: [] });
+    render(<ThisSundayView data={data} />);
+    const row = screen.getByText(/asked 3 weeks/).closest('tr')!;
+    await userEvent.click(within(row).getByRole('button', { name: 'Invite teachers…' }));
+    const dialog = screen.getByRole('dialog', { name: 'Invite teachers: Knots' });
+    const ticked = within(dialog).getAllByRole('checkbox').filter((c) => (c as HTMLInputElement).checked).map((c) => c.getAttribute('aria-label'));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Send to 2' }));
+    expect([ticked, invite.mock.calls[0][0]]).toEqual([['Karen O', 'Becky V'], { entryId: 5, topicKey: 'tenderfoot-3a', personIds: [41, 44] }]);
+  });
+
+  it('Leader_SeesWhoWasSentTo_AfterSending', async () => {
+    invite.mockResolvedValue({ ok: true, sent: ['Karen O'], skipped: [{ name: 'Becky V', reason: 'no email on file' }] });
+    render(<ThisSundayView data={data} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Invite teachers…' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Send to 2' }));
+    const dialog = screen.getByRole('dialog', { name: 'Invite teachers: Knots' });
+    expect(within(dialog).getByRole('status').textContent).toBe('Sent to Karen O. Not sent: Becky V (no email on file).');
+  });
+
+  it('Leader_SeesInviteCounts_OnTheWantedTopic', () => {
+    render(<ThisSundayView data={data} />);
+    expect(screen.getByText(/asked 3 weeks/).closest('tr')!.textContent).toContain('Invited 3 · 1 yes');
   });
 
   it('Leader_SeesWhoListedTheSkill_AfterWhoToAsk', () => {
