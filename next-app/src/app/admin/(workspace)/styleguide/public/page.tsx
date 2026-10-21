@@ -32,7 +32,7 @@ import { SectionDivider } from '@/app/_components/section-divider';
 import { GoalBar } from '@/app/_components/goal-bar';
 import { goalProgress } from '@/lib/wreaths/scout-entry';
 import cardS from '@/app/_components/card.module.css';
-import { PublicAccountControlSpecimen, PublicBlockedSaveSpecimen, PublicBrandDetailSpecimen, PublicDietRowsSpecimen, PublicFinishLineSpecimen, PublicAmountScaleSpecimen, PublicGearSpecimen, PublicMenuEditListSpecimen, PublicStepperSpecimen, PublicTabStripSpecimen } from './specimens';
+import { PublicAccountControlSpecimen, PublicDrawerSpecimen, PublicBlockedSaveSpecimen, PublicBrandDetailSpecimen, PublicDietRowsSpecimen, PublicFinishLineSpecimen, PublicAmountScaleSpecimen, PublicGearSpecimen, PublicMenuEditListSpecimen, PublicStepperSpecimen, PublicTabStripSpecimen } from './specimens';
 import { IngredientList } from '@/app/(public)/library/menu-monster/_components/ingredient-list';
 import { StepStrip } from '@/app/(public)/library/menu-monster/menus/_components/step-strip';
 import { SummaryRail } from '@/app/(public)/library/menu-monster/menus/_components/summary-rail';
@@ -423,6 +423,17 @@ export default function PublicStyleguidePage() {
               640px and under, the full name as its accessible name. Menu: My page, Meeting Planner (only with <code>canPlanner</code>), Admin (only with <code>canAdmin</code>),
               Sign out (a form POST). Esc and a click outside close it. Hidden on <code>/signin</code> routes. Replaced the
               Members tab, the utility bar&rsquo;s &ldquo;Signed in as&rdquo; and /member&rsquo;s Sign Out.
+            </p>
+          </div>
+
+          {/* Drawer — a side panel over the page (Meeting Planner, 2026-10-21) */}
+          <div className={sg.specimenBlock}>
+            <PublicDrawerSpecimen />
+            <p className={sg.specimenInlineNote}>
+              <code>Drawer</code> from <code>_components/drawer</code> &mdash; a native modal <code>&lt;dialog&gt;</code>: 440px from
+              the right, the full screen at 480px and under. Eyebrow, title, subtitle and Close stay at the top, an optional footer
+              (the primary action) at the bottom; only the body scrolls. Esc, Close or a click on the dimmed page closes it, and
+              focus returns to what opened it. Used by the Meeting Planner&rsquo;s person and offer drawers.
             </p>
           </div>
 

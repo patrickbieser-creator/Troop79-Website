@@ -1,0 +1,95 @@
+/* Shared public Drawer (drawer.tsx). The dialog box fills the viewport; the panel sits on its right edge. */
+
+.drawer {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.drawer::backdrop {
+  background: color-mix(in srgb, var(--navy) 38%, transparent);
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  width: min(440px, 100%);
+  height: 100%;
+  margin-left: auto;
+  background: var(--warm-white);
+  border-radius: var(--rad-lg) 0 0 var(--rad-lg);
+  box-shadow: var(--shadow-hover);
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-5) var(--sp-5) var(--sp-4);
+  border-bottom: 1px solid var(--border-light);
+}
+.headText {
+  flex: 1;
+  min-width: 0;
+}
+.eyebrow {
+  margin: 0;
+  font: 700 var(--fs-xs) / 1.4 var(--font-ui);
+  color: var(--text-meta);
+}
+.title {
+  margin: var(--sp-1) 0 0;
+  font: 700 var(--fs-2xl) / 1.2 var(--font-ui);
+  color: var(--navy);
+}
+.sub {
+  margin: var(--sp-1) 0 0;
+  font: var(--fs-sm) / 1.4 var(--font-ui);
+  color: var(--text-meta);
+}
+.close {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-md);
+  background: var(--warm-white);
+  font: var(--fs-lg) / 1 var(--font-ui);
+  color: var(--text-head);
+  cursor: pointer;
+}
+.close:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--sp-4) var(--sp-5);
+}
+
+.foot {
+  display: grid;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-5) var(--sp-4);
+  border-top: 1px solid var(--border-light);
+}
+
+@media (max-width: 480px) {
+  .panel {
+    width: 100%;
+    border-radius: 0;
+  }
+  .head,
+  .body,
+  .foot {
+    padding-left: var(--sp-4);
+    padding-right: var(--sp-4);
+  }
+}

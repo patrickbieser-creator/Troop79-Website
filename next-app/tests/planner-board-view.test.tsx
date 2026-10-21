@@ -83,4 +83,9 @@ describe('PlannerBoardView', () => {
     const row = screen.getByText('Oath, Law, motto, slogan').closest('li')!;
     expect(within(row).getByText('Adi A')).toBeTruthy();
   });
+
+  it('NoTeacher_SaysTheTimeOnce', () => {
+    render(<PlannerBoardView board={BOARD} heading={null} />);
+    expect(screen.getByText('about 30 min')).toBeTruthy();
+  });
 });

@@ -18,7 +18,6 @@ let noEmail = 0;
 let scoutPerson = 0;
 let leader = 0;
 let topicKey = '';
-let otherKeys: string[] = [];
 const people: number[] = [];
 const scoutIds: string[] = [];
 const households: number[] = [];
@@ -55,7 +54,7 @@ beforeAll(async () => {
   households.push(hh!.id);
   await sb.from('household_members').insert([adult, noEmail, scoutPerson].map((person_id) => ({ household_id: hh!.id, person_id })));
   const { data: reqs } = await sb.from('rank_requirements').select('rank_id, code').is('parent_id', null).eq('rank_id', 'tenderfoot').order('sort_order').limit(3);
-  [topicKey, ...otherKeys] = ((reqs ?? []) as { rank_id: string; code: string }[]).map((r) => `${r.rank_id}-${r.code}`);
+  [topicKey] = ((reqs ?? []) as { rank_id: string; code: string }[]).map((r) => `${r.rank_id}-${r.code}`);
 });
 
 afterEach(async () => {

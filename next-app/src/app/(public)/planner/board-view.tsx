@@ -2,8 +2,10 @@
  * The Meeting Planner's This Sunday board, design 1a, read-only (Plans/Meeting-Planner-II.md, P1;
  * prototypes/meeting-plan-II/README.md "Screen 1", phone layout from prototypes/meeting-plan-II/phone/board.html).
  *
- * Everyone who may view sees everything (Decision 4). P1 has no controls for anyone: P2 adds Enter for someone, Send
- * request, Assign, nudges, reminders and Add an offer for editors. The Meeting focus strip arrives with seeding (P3).
+ * Everyone who may view sees everything (Decision 4). Editors (P2a) also get: every name opens that person's drawer,
+ * Assign beside each person who could teach a request, "+ Add an offer", and Enter for someone. Viewers see the same
+ * board with plain names and no buttons (the client pieces in planner-client.tsx check the planner context). Send
+ * request and nudges are P2b; the Meeting focus strip arrives with seeding (P3).
  *
  * Desktop: a header with the two attendance bars, then cards on the left (Ready to teach, Requests with no teacher,
  * Offered no takers, Haven't answered) and Who's coming on the right, then the Everyone wall. At 900px the right
@@ -13,6 +15,7 @@ import type { ReactNode } from 'react';
 import type { AttendanceCounts, CanTeachPerson, PlannerBoard, PlannerPerson, WallColumns } from '@/lib/meeting-planner-board';
 import { minutesText } from '@/lib/meeting-board-picklist';
 import { Fold } from './fold';
+import { AddOfferButton, AssignButton, EnterForSomeone, PersonName, type SomeoneRow } from './planner-client';
 import styles from './planner.module.css';
 
 const KIND_LABEL = { rank: 'Rank', mb: 'Merit badge', ff: 'Other' } as const;
@@ -47,7 +50,7 @@ function AttendanceBar({ label, counts, tone }: { label: string; counts: Attenda
   );
 }
 
-function Card({ tone, badge, title, summary, children }: { tone: 'ready' | 'need' | 'offer' | 'quiet'; badge: string; title: string; summary: string; children: ReactNode }) {
+function Card({ tone, badge, title, summary, action, children }: { tone: 'ready' | 'need' | 'offer' | 'quiet'; badge: string; title: string; summary: string; action?: ReactNode; children: ReactNode }) {
   return (
     <section className={styles.card}>
       <header className={`${styles.band} ${styles[tone]}`}>
@@ -56,6 +59,7 @@ function Card({ tone, badge, title, summary, children }: { tone: 'ready' | 'need
         </span>
         <h2 className={styles.bandTitle}>{title}</h2>
         <span className={styles.bandSummary}>{summary}</span>
+        {action}
       </header>
       {children}
     </section>
@@ -66,15 +70,15 @@ function Chips({ people, adult }: { people: readonly PlannerPerson[]; adult?: bo
   return (
     <ul className={styles.chips}>
       {people.map((p) => (
-        <li key={p.personId} className={adult ? styles.chipAdult : styles.chip}>
-          {p.name}
+        <li key={p.personId}>
+          <PersonName personId={p.personId} name={p.name} className={adult ? styles.chipAdult : styles.chip} />
         </li>
       ))}
     </ul>
   );
 }
 
-function TeacherGroup({ label, tone, people }: { label: string; tone: 'coming' | 'unsure' | 'none'; people: readonly CanTeachPerson[] }) {
+function TeacherGroup({ label, tone, people, topic }: { label: string; tone: 'coming' | 'unsure' | 'none'; people: readonly CanTeachPerson[]; topic: { key: string; title: string } }) {
   if (!people.length) return null;
   return (
     <>
@@ -83,11 +87,14 @@ function TeacherGroup({ label, tone, people }: { label: string; tone: 'coming' |
       </li>
       {people.map((p) => (
         <li key={p.personId} className={styles.teacherRow}>
-          <span className={styles.teacherName}>{p.name}</span>
-          <span className={styles.teacherStatus}>
-            {p.status}
-            {p.requested ? ' · request sent' : ''}
+          <span className={styles.teacherWho}>
+            <PersonName personId={p.personId} name={p.name} className={styles.teacherName} />
+            <span className={styles.teacherStatus}>
+              {p.status}
+              {p.requested ? ' · request sent' : ''}
+            </span>
           </span>
+          <AssignButton personId={p.personId} name={p.name} topicKey={topic.key} title={topic.title} />
         </li>
       ))}
     </>
@@ -100,7 +107,7 @@ function Wall({ title, cols, tone }: { title: string; cols: WallColumns; tone: '
       <ul className={styles.tiles}>
         {tiles.map((t) => (
           <li key={t.personId} className={tone === 'adult' ? styles.tileAdult : styles.tile}>
-            <span className={styles.tileName}>{t.name}</span>
+            <PersonName personId={t.personId} name={t.name} className={styles.tileName} />
             {t.tag ? <span className={styles.tileTag}>{t.tag}</span> : null}
           </li>
         ))}
@@ -120,6 +127,15 @@ function Wall({ title, cols, tone }: { title: string; cols: WallColumns; tone: '
   );
 }
 
+const ANSWER_WORD = { coming: 'Coming', undecided: 'Not sure', notComing: 'Can’t', noAnswer: 'No answer' } as const;
+
+/** Everyone on the board, for Enter for someone: scouts, then adults, with their answer. */
+function someone(board: PlannerBoard): SomeoneRow[] {
+  const rows = (cols: WallColumns, role: SomeoneRow['role']) =>
+    (Object.keys(ANSWER_WORD) as (keyof WallColumns)[]).flatMap((k) => cols[k].map((t) => ({ personId: t.personId, name: t.name, role, answer: ANSWER_WORD[k] })));
+  return [...rows(board.everyone.scouts, 'Scout'), ...rows(board.everyone.adults, 'Adult')].sort((a, b) => a.name.localeCompare(b.name));
+}
+
 export function PlannerBoardView({ board, heading }: { board: PlannerBoard; heading: ReactNode }) {
   const waitingTotal = new Set(board.noTeacher.flatMap((r) => r.waiting.map((p) => p.personId))).size;
   const { scouts: hs, adults: ha } = board.haventAnswered;
@@ -135,7 +151,7 @@ export function PlannerBoardView({ board, heading }: { board: PlannerBoard; head
 
       <div className={styles.body}>
         <div className={styles.left}>
-          <Card tone="ready" badge="✓" title="Ready to teach" summary={plural(board.ready.length, 'session')}>
+          <Card tone="ready" badge="✓" title="Ready to teach" summary={plural(board.ready.length, 'session')} action={<AddOfferButton />}>
             {board.ready.length ? (
               <ul className={styles.rows}>
                 {board.ready.map((r) => (
@@ -147,7 +163,14 @@ export function PlannerBoardView({ board, heading }: { board: PlannerBoard; head
                       <Chips people={r.scouts} />
                     </div>
                     <div className={styles.readyTeacher}>
-                      <p className={styles.teacherName}>{r.teachers.map((t) => t.name).join(', ')}</p>
+                      <p className={styles.teacherName}>
+                        {r.teachers.map((t, i) => (
+                          <span key={t.personId}>
+                            {i ? ', ' : ''}
+                            <PersonName personId={t.personId} name={t.name} />
+                          </span>
+                        ))}
+                      </p>
                       <p className={styles.meta}>
                         {plural(r.scouts.length, 'scout')}
                         {r.minutes ? ` · ${minutesText(r.minutes)}` : ''}
@@ -170,7 +193,7 @@ export function PlannerBoardView({ board, heading }: { board: PlannerBoard; head
                       <p className={styles.tagLine}>
                         <span className={styles.code}>{r.codeLabel}</span>
                         <span className={r.kind === 'mb' ? styles.kindMb : styles.kindRank}>{KIND_LABEL[r.kind]}</span>
-                        {r.minutes ? <span className={styles.meta}>about {minutesText(r.minutes)}</span> : null}
+                        {r.minutes ? <span className={styles.meta}>{minutesText(r.minutes)}</span> : null}
                       </p>
                       <p className={styles.bigTitle}>{r.title}</p>
                       <p className={styles.waitLine}>
@@ -189,9 +212,9 @@ export function PlannerBoardView({ board, heading }: { board: PlannerBoard; head
                     >
                       {r.canTeach.total ? (
                         <ul className={styles.teacherList}>
-                          <TeacherGroup label="Coming" tone="coming" people={r.canTeach.coming} />
-                          <TeacherGroup label="Not sure yet" tone="unsure" people={r.canTeach.undecided} />
-                          <TeacherGroup label="Haven’t answered" tone="none" people={r.canTeach.noAnswer} />
+                          <TeacherGroup label="Coming" tone="coming" people={r.canTeach.coming} topic={r} />
+                          <TeacherGroup label="Not sure yet" tone="unsure" people={r.canTeach.undecided} topic={r} />
+                          <TeacherGroup label="Haven’t answered" tone="none" people={r.canTeach.noAnswer} topic={r} />
                         </ul>
                       ) : (
                         <p className={styles.empty}>Nobody on file can teach this yet.</p>
@@ -205,14 +228,22 @@ export function PlannerBoardView({ board, heading }: { board: PlannerBoard; head
             )}
           </Card>
 
-          <Card tone="offer" badge="2" title="Offered, no takers yet" summary={plural(board.offered.length, 'offer')}>
+          <Card tone="offer" badge="2" title="Offered, no takers yet" summary={plural(board.offered.length, 'offer')} action={<AddOfferButton />}>
             {board.offered.length ? (
               <ul className={styles.rows}>
                 {board.offered.map((o) => (
                   <li key={o.key} className={styles.offerRow}>
                     <p className={styles.tagLine}>
                       <span className={styles.code}>{o.codeLabel}</span>
-                      <span className={styles.meta}>Offered by {o.teachers.map((t) => t.name).join(', ')}</span>
+                      <span className={styles.meta}>
+                        Offered by{' '}
+                        {o.teachers.map((t, i) => (
+                          <span key={t.personId}>
+                            {i ? ', ' : ''}
+                            <PersonName personId={t.personId} name={t.name} />
+                          </span>
+                        ))}
+                      </span>
                     </p>
                     <p className={styles.bigTitle}>{o.title}</p>
                     {o.likelyFits.length ? (
@@ -249,6 +280,7 @@ export function PlannerBoardView({ board, heading }: { board: PlannerBoard; head
         </div>
 
         <aside className={styles.right}>
+          <EnterForSomeone people={someone(board)} />
           <section className={styles.sideCard}>
             <h2 className={styles.sideTitle}>
               Who’s coming{' '}
@@ -263,7 +295,7 @@ export function PlannerBoardView({ board, heading }: { board: PlannerBoard; head
                   <ul className={styles.comingList}>
                     {board.whosComing[k].map((p) => (
                       <li key={p.personId} className={styles.comingRow}>
-                        <span className={styles.comingName}>{p.name}</span>
+                        <PersonName personId={p.personId} name={p.name} className={styles.comingName} />
                         <span className={p.nothingYet ? styles.comingNudge : styles.comingDetail}>{p.detail}</span>
                       </li>
                     ))}
@@ -279,9 +311,8 @@ export function PlannerBoardView({ board, heading }: { board: PlannerBoard; head
             {board.cantMakeIt.length ? (
               <ul className={styles.chips}>
                 {board.cantMakeIt.map((p) => (
-                  <li key={p.personId} className={styles.chipMuted}>
-                    {p.name}
-                    {p.saved ? ` · ${p.saved} saved for later` : ''}
+                  <li key={p.personId}>
+                    <PersonName personId={p.personId} name={`${p.name}${p.saved ? ` · ${p.saved} saved for later` : ''}`} className={styles.chipMuted} />
                   </li>
                 ))}
               </ul>

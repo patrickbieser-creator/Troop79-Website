@@ -3,10 +3,14 @@
 /**
  * Keeps the planner board live: the public twin of Admin's BoardPoller (same rules: ~10 s with jitter, paused while
  * the tab is hidden, refresh only when the board's stamp changed). Renders the header's "● Live" marker.
+ *
+ * P2a: inside the planner's provider it shares the page's stamp, skips a tick while a save is in flight, and takes the
+ * stamp a save returned, so it never refreshes over a result the drawer already shows.
  */
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { plannerStampAction } from './actions';
+import { usePlanner } from './planner-client';
 import styles from './planner.module.css';
 
 const POLL_MS = 10_000;
@@ -14,20 +18,23 @@ const JITTER_MS = 2_000;
 
 export function PlannerPoller({ entryId, stamp }: { entryId: number; stamp: string }) {
   const router = useRouter();
-  const last = useRef(stamp);
+  const sync = usePlanner()?.sync;
+  const own = useRef(stamp);
+  const last = sync?.stamp ?? own;
   const [stale, setStale] = useState(false);
 
   useEffect(() => {
     last.current = stamp;
-  }, [stamp]);
+  }, [stamp, last]);
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | null = null;
     let stopped = false;
     let failures = 0;
     const check = async () => {
+      if (sync?.busy()) return;
       const res = await plannerStampAction(entryId);
-      if (stopped) return;
+      if (stopped || sync?.busy()) return;
       if (!res.ok) {
         failures++;
         setStale(failures >= 3);
@@ -57,7 +64,7 @@ export function PlannerPoller({ entryId, stamp }: { entryId: number; stamp: stri
       if (timer) clearTimeout(timer);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [entryId, router]);
+  }, [entryId, router, last, sync]);
 
   return (
     <span className={stale ? styles.liveStale : styles.live} role="status">

@@ -328,7 +328,6 @@
   color: var(--navy-light);
 }
 .teacherRow {
-  display: grid;
   flex: none;
   min-height: 42px;
   padding: var(--sp-2) var(--sp-3);
@@ -455,6 +454,330 @@
 .tileTag {
   font: var(--fs-2xs) / 1.3 var(--font-ui);
   color: var(--text-meta);
+}
+
+/* ── P2a: editor controls ───────────────────────────────────────────────────────────────────────────────────── */
+/* A name that opens a drawer. :where() keeps the reset at zero specificity, so a chip or tile class still wins. */
+:where(.nameBtn) {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+}
+.nameBtn {
+  cursor: pointer;
+}
+.nameBtn:hover {
+  text-decoration: underline;
+}
+.nameBtn:focus-visible,
+.assignBtn:focus-visible,
+.bandAction:focus-visible,
+.opt:focus-visible,
+.optOn:focus-visible,
+.segBtn:focus-visible,
+.enterRow:focus-visible,
+.pill:focus-visible,
+.pillOn:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.bandAction {
+  flex: none;
+  min-height: 34px;
+  padding: 0 var(--sp-3);
+  border: 1px solid currentColor;
+  border-radius: var(--rad-md);
+  background: transparent;
+  font: 600 var(--fs-sm) / 1 var(--font-ui);
+  color: inherit;
+  cursor: pointer;
+}
+
+.teacherRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.teacherWho {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+.assignWrap {
+  display: grid;
+  justify-items: end;
+  gap: var(--sp-1);
+}
+.assignBtn {
+  min-height: 36px;
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-md);
+  background: var(--warm-white);
+  font: 600 var(--fs-sm) / 1 var(--font-ui);
+  color: var(--navy);
+  cursor: pointer;
+}
+.assigned {
+  font: 600 var(--fs-sm) / 1.3 var(--font-ui);
+  color: var(--forest);
+}
+.rowProblem {
+  margin: var(--sp-1) 0 0;
+  padding: var(--sp-1) var(--sp-2);
+  border: 1px solid var(--status-danger);
+  border-radius: var(--rad-md);
+  background: var(--status-danger-bg);
+  font: 600 var(--fs-sm) / 1.4 var(--font-ui);
+  color: var(--status-danger);
+}
+
+/* Enter for someone */
+.enterCard {
+  padding: var(--sp-4);
+  border-radius: var(--rad-lg);
+  background: var(--navy);
+  color: var(--on-navy-strong);
+}
+.enterTitle {
+  margin: 0;
+  font: 700 var(--fs-lg) / 1.3 var(--font-ui);
+  color: inherit;
+}
+.enterSub {
+  margin: var(--sp-1) 0 var(--sp-3);
+  font: var(--fs-sm) / 1.4 var(--font-ui);
+  color: var(--on-navy-soft);
+}
+.enterInput {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-md);
+  background: var(--warm-white);
+  font: 16px / 1.3 var(--font-ui);
+  color: var(--text-head);
+}
+.pills {
+  display: flex;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+}
+.pill,
+.pillOn {
+  min-height: 34px;
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--on-navy-faint);
+  border-radius: var(--rad-pill);
+  font: 600 var(--fs-sm) / 1 var(--font-ui);
+  cursor: pointer;
+}
+.pill {
+  background: transparent;
+  color: var(--on-navy-strong);
+}
+.pillOn {
+  background: var(--warm-white);
+  color: var(--navy);
+}
+.enterList {
+  max-height: 300px;
+  margin: var(--sp-3) 0 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  border-radius: var(--rad-md);
+  background: var(--warm-white);
+}
+.enterRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  min-height: 42px;
+  padding: 0 var(--sp-3);
+  border: 0;
+  border-bottom: 1px solid var(--border-light);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.enterName {
+  flex: 1;
+  font: 700 var(--fs-md) / 1.3 var(--font-ui);
+  color: var(--text-head);
+}
+.roleScout,
+.roleAdult,
+.enterAnswer {
+  font: var(--fs-sm) / 1.3 var(--font-ui);
+}
+.roleScout {
+  color: var(--forest);
+}
+.roleAdult {
+  color: var(--navy-mid);
+}
+.enterAnswer {
+  color: var(--text-meta);
+}
+.enterEmpty {
+  margin: var(--sp-2) 0 0;
+  font: var(--fs-sm) / 1.4 var(--font-ui);
+  color: var(--on-navy-soft);
+}
+
+/* the drawers' insides */
+.answer {
+  margin: 0 0 var(--sp-4);
+  padding: 0;
+  border: 0;
+}
+.bad {
+  padding: var(--sp-2);
+  border: 1px solid var(--status-danger);
+  border-radius: var(--rad-md);
+}
+.drawerLabel {
+  margin: var(--sp-3) 0 var(--sp-2);
+  padding: 0;
+  font: 700 var(--fs-md) / 1.3 var(--font-ui);
+  color: var(--text-head);
+}
+.seg {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-2);
+}
+.segBtn {
+  min-height: 44px;
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-md);
+  background: var(--warm-white);
+  font: 600 var(--fs-md) / 1 var(--font-ui);
+  color: var(--text-head);
+  cursor: pointer;
+}
+.segComing {
+  border-color: var(--forest);
+  background: var(--forest);
+  color: var(--warm-white);
+}
+.segUnsure {
+  border-color: var(--bark);
+  background: var(--bark);
+  color: var(--warm-white);
+}
+.segCant {
+  border-color: var(--status-danger);
+  background: var(--status-danger);
+  color: var(--warm-white);
+}
+.drawerNote {
+  margin: 0 0 var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--rad-md);
+  background: var(--status-warning-bg);
+  font: var(--fs-sm) / 1.4 var(--font-ui);
+  color: var(--bark);
+}
+.drawerFoot {
+  margin: 0;
+  font: var(--fs-sm) / 1.4 var(--font-ui);
+  color: var(--forest);
+}
+.optList {
+  display: grid;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.opt,
+.optOn {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  min-height: 54px;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border-light);
+  border-radius: var(--rad-md);
+  background: var(--warm-white);
+  text-align: left;
+  cursor: pointer;
+}
+.optOn {
+  border-color: var(--forest);
+  background: var(--status-success-bg);
+}
+.check {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--navy);
+  border-radius: var(--rad-md);
+  font: 700 var(--fs-sm) / 1 var(--font-ui);
+  color: var(--warm-white);
+}
+.optOn .check {
+  background: var(--navy);
+}
+.optText {
+  display: grid;
+  min-width: 0;
+}
+.optTitle {
+  font: 600 var(--fs-md) / 1.3 var(--font-ui);
+  color: var(--text-head);
+}
+.optMeta {
+  font: var(--fs-sm) / 1.4 var(--font-ui);
+  color: var(--text-meta);
+}
+.quietAdd,
+.linkBtn {
+  min-height: 40px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: 600 var(--fs-md) / 1.3 var(--font-ui);
+  color: var(--navy);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.quietAdd {
+  margin-top: var(--sp-3);
+}
+.primaryWide {
+  min-height: 46px;
+  border: 0;
+  border-radius: var(--rad-md);
+  background: var(--forest);
+  font: 700 var(--fs-md) / 1 var(--font-ui);
+  color: var(--warm-white);
+  cursor: pointer;
+}
+.primaryWide:disabled {
+  background: var(--border-mid);
+  cursor: default;
+}
+.chosen {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  border: 1px solid var(--forest);
+  border-radius: var(--rad-md);
+  background: var(--status-success-bg);
 }
 
 /* ── narrower screens ───────────────────────────────────────────────────────────────────────────────────────── */

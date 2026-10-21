@@ -166,7 +166,7 @@ describe('supply', () => {
   it('MemberCard_TeacherLine_SaysAnswerAndCount', () => {
     expect([teacherLine('rank', null, 0), teacherLine('rank', null, 1), teacherLine('rank', 'undecided', 0), teacherLine('rank', 'not_coming', 2), teacherLine('closed', 'coming', 1)]).toEqual([
       'No answer yet',
-      'Coming · teaching 1 of 2',
+      'Coming · teaching 1',
       'Not sure yet',
       'Can’t make it',
       'No sign-ups this week'

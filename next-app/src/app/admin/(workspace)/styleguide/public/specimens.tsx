@@ -19,6 +19,7 @@ import type { Ingredient, RestrictionKey } from '@/lib/menu-monster/types';
 import { AddPackageForm } from '@/app/(public)/library/menu-monster/menus/_components/add-package-form';
 import menuMonsterS from '@/app/(public)/library/menu-monster/menus/_components/workspace.module.css';
 import { AccountControlView } from '@/app/_components/account-control';
+import { Drawer } from '@/app/_components/drawer';
 import type { SessionStatus } from '@/app/api/session-status/route';
 
 export function PublicTabStripSpecimen() {
@@ -235,5 +236,22 @@ export function PublicAccountControlSpecimen() {
       <AccountControlView status={SPECIMEN_SIGNED_IN} pathname="/news" search="" signOutAction={() => {}} />
       <AccountControlView status={SPECIMEN_SIGNED_IN} pathname="/news" search="" signOutAction={() => {}} defaultOpen />
     </div>
+  );
+}
+
+/** The shared Drawer, opened on demand (it is a native modal over the page). Nothing here saves. */
+export function PublicDrawerSpecimen() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
+        Open a drawer
+      </Button>
+      {open ? (
+        <Drawer eyebrow="Scout" title="Finn P" sub="Working on Tenderfoot" onClose={() => setOpen(false)} footer={<span className={sg.specimenInlineNote}>The footer stays put while the body scrolls.</span>}>
+          <p className={sg.specimenInlineNote}>The body scrolls; the header and footer stay.</p>
+        </Drawer>
+      ) : null}
+    </>
   );
 }
