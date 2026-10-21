@@ -59,6 +59,16 @@ describe('board counts', () => {
     expect(inviteCountsText(c.get('a'))).toBe('Invited 3 · 1 yes · 1 no');
   });
 
+  it('Board_CountsAScoutOnce_ThoughBothParentsWereEmailed_AndBothSaidNo', () => {
+    const c = countInvites([
+      { topic_key: 'a', invitee_person_id: 7, response: 'declined' },
+      { topic_key: 'a', invitee_person_id: 7, response: 'declined' },
+      { topic_key: 'a', invitee_person_id: 8, response: 'declined' },
+      { topic_key: 'a', invitee_person_id: 8, response: 'accepted' }
+    ]);
+    expect(inviteCountsText(c.get('a'), 'Offered to')).toBe('Offered to 2 · 1 yes · 1 no');
+  });
+
   it('Board_SaysNothing_WhenNobodyWasInvited', () => {
     expect(inviteCountsText(undefined)).toBe('');
   });

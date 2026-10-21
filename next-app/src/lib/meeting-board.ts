@@ -344,7 +344,8 @@ export interface BoardWriter {
 
 export type BoardWriteResult = { ok: true } | { ok: false; error: string };
 
-const carryJson = (carry: BoardPick[] | null) =>
+/** Carried picks as the pick RPCs take them (p_carry). Also used by the invite answer (lib/meeting-invites-db). */
+export const carryJson = (carry: BoardPick[] | null) =>
   (carry ?? []).map((p) => ({
     topic_key: p.key,
     first_asked_on: p.firstAskedOn,

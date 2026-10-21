@@ -32,8 +32,12 @@ export default async function InvitePage({ params, searchParams }: { params: Pro
       <PageShell width="narrow">
         <InviteCard
           state={state}
+          kind={invite?.kind ?? 'teach'}
           token={token}
+          inviteeId={invite?.inviteeId ?? 0}
           inviteeName={invite?.inviteeName ?? ''}
+          recipientName={invite?.recipientName ?? ''}
+          recipientIsInvitee={invite?.recipientIsInvitee ?? true}
           topic={words?.label ?? invite?.topicKey ?? ''}
           code={words?.codeLabel ?? ''}
           minutes={minutesText(words?.minutes)}

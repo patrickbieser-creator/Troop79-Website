@@ -25,6 +25,49 @@ Could you teach it? Use the button below to say yes or not this week. You don't 
 Thank you!`
 };
 
+export const PICK_INVITE_KIND = 'meeting.invite.scout';
+
+/** P2: a scout's invite, to their parents (always) and to the scout from 13. The answer links ride below the body. */
+export const DEFAULT_PICK_INVITE: InviteTemplate = {
+  subject: '[topic] is on for [day]',
+  body: `Hi [name],
+
+We're offering **[topic]** ([code]) at the troop meeting on [day], and [scouts] can work on it there.
+
+[parts]
+
+Answer with the link below. Yes makes it the first pick and marks them coming. You can also pick something else, or say not this week. You don't need to sign in to say yes.
+
+Questions? Reply to a leader, not to this email.`
+};
+
+export interface PickInviteValues {
+  name: string;
+  /** 'Anjali S' or 'Anjali S and Finn S'. */
+  scouts: string;
+  topic: string;
+  code: string;
+  parts: string[];
+  day: string;
+}
+
+/** The scout invite, with one answer link per scout appended (never a template field, so no template can drop it). */
+export function renderPickInvite(t: InviteTemplate, v: PickInviteValues, links: { scoutName: string; url: string }[], toScout: boolean): { subject: string; md: string } {
+  const vals: Record<string, string> = {
+    name: v.name,
+    scouts: v.scouts,
+    topic: v.topic,
+    code: v.code,
+    parts: v.parts.length ? `What it covers:\n\n${v.parts.map((p) => `- ${p}`).join('\n')}` : '',
+    day: v.day
+  };
+  const answer = toScout
+    ? `**[Answer the invite](${links[0]?.url ?? ''})**`
+    : links.map((l) => `**[Answer for ${l.scoutName}](${l.url})**`).join('\n\n');
+  const md = `${fillTokens(t.body, vals)}\n\n${answer}`.replace(/\n{3,}/g, '\n\n').trim();
+  return { subject: fillTokens(t.subject, vals).replace(/\s+/g, ' ').trim(), md };
+}
+
 export interface TeachInviteValues {
   name: string;
   topic: string;

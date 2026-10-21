@@ -8,13 +8,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const m = vi.hoisted(() => ({
   actor: { subjectKind: 'adult', personId: 82 } as { subjectKind: string; personId: number | null },
   create: vi.fn(),
+  createPick: vi.fn(),
   del: vi.fn(),
   send: vi.fn(),
   audit: vi.fn()
 }));
 vi.mock('@/lib/require-capability', () => ({ requireCapability: async () => m.actor }));
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn(), updateTag: vi.fn(), unstable_cache: (fn: unknown) => fn }));
-vi.mock('@/lib/meeting-invites-db', () => ({ createTeachInvites: m.create, deleteInvites: m.del }));
+vi.mock('@/lib/meeting-invites-db', () => ({ createTeachInvites: m.create, createPickInvites: m.createPick, deleteInvites: m.del }));
 vi.mock('@/lib/email', () => ({ sendEmail: m.send }));
 vi.mock('@/lib/audit', () => ({ recordAudit: m.audit }));
 vi.mock('@/lib/site-url', () => ({ siteUrl: () => 'https://www.troop-79.com' }));
@@ -36,12 +37,12 @@ const chain = (result: unknown) => {
 };
 vi.mock('@/lib/supabase/server', () => ({ createAdminClient: () => ({ from: () => chain({ data: { entry_date: '2091-03-04' } }) }) }));
 
-const { sendTeachInvitesAction } = await import('../src/app/admin/(workspace)/advancement/meeting-plan/actions');
+const { sendTeachInvitesAction, sendPickInvitesAction } = await import('../src/app/admin/(workspace)/advancement/meeting-plan/actions');
 
 const invite = (personId: number, token: string) => ({ inviteId: personId * 10, personId, name: `Person ${personId}`, sentTo: `p${personId}@example.com`, token });
 
 beforeEach(() => {
-  for (const f of [m.create, m.del, m.send, m.audit]) f.mockReset();
+  for (const f of [m.create, m.createPick, m.del, m.send, m.audit]) f.mockReset();
   m.actor = { subjectKind: 'adult', personId: 82 };
 });
 
@@ -84,5 +85,45 @@ describe('sendTeachInvitesAction', () => {
     m.send.mockResolvedValue({ status: 'sent', to: [] });
     await sendTeachInvitesAction({ entryId: 5, topicKey: 'tenderfoot-3a', personIds: [41] });
     expect(m.audit.mock.calls[0][0]).toMatchObject({ area: 'meeting', action: 'invite.teach', entityId: 5 });
+  });
+});
+
+describe('sendPickInvitesAction (P2)', () => {
+  const parentOfTwo = {
+    recipientId: 50,
+    name: 'Jamie T',
+    sentTo: 'jamie@example.com',
+    isScout: false,
+    scouts: [
+      { scoutId: 1, scoutName: 'Anjali Sankpal', inviteId: 11, token: 'a'.repeat(64) },
+      { scoutId: 2, scoutName: 'Finn Paltzer', inviteId: 12, token: 'b'.repeat(64) }
+    ]
+  };
+
+  it('AParentOfTwo_GetsOneEmail_WithALinkForEachScout', async () => {
+    m.createPick.mockResolvedValue({ ok: true, recipients: [parentOfTwo], skipped: [] });
+    m.send.mockResolvedValue({ status: 'sent', to: [] });
+    const res = await sendPickInvitesAction({ entryId: 5, topicKey: 'tenderfoot-3a', scoutIds: [1, 2] });
+    const mail = m.send.mock.calls[0][0];
+    expect([m.send.mock.calls.length, mail.fromName, mail.html.includes(`/i/${'a'.repeat(64)}`), mail.html.includes(`/i/${'b'.repeat(64)}`), res.ok && res.sent]).toEqual([
+      1,
+      'Troop 79 Bugler',
+      true,
+      true,
+      ['Anjali S', 'Finn P']
+    ]);
+  });
+
+  it('AnEmailThatDidntGoOut_TakesThatFamilysInvitesWithIt', async () => {
+    m.createPick.mockResolvedValue({ ok: true, recipients: [parentOfTwo], skipped: [] });
+    m.send.mockResolvedValue({ status: 'error', to: [] });
+    await sendPickInvitesAction({ entryId: 5, topicKey: 'tenderfoot-3a', scoutIds: [1, 2] });
+    expect(m.del.mock.calls[0][1]).toEqual([11, 12]);
+  });
+
+  it('AYouthLeader_CantOfferToScouts', async () => {
+    m.actor = { subjectKind: 'scout', personId: 9 };
+    const res = await sendPickInvitesAction({ entryId: 5, topicKey: 'tenderfoot-3a', scoutIds: [1] });
+    expect([res.ok, m.createPick.mock.calls.length]).toEqual([false, 0]);
   });
 });

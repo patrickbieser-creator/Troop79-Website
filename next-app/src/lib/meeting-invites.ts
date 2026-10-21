@@ -20,7 +20,7 @@ export function inviteExpiresAt(meetingDate: string): string {
   return centralToInstant(meetingDate, '18:00');
 }
 
-export type InviteResponse = 'accepted' | 'declined' | 'changed';
+export type InviteResponse = 'accepted' | 'declined' | 'changed' | 'superseded';
 
 /** What a link shows: still open, already answered (and how), past its time, or nothing we recognise. */
 export type InviteState = 'open' | 'answered' | 'expired' | 'void' | 'unknown';
@@ -42,24 +42,27 @@ export interface InviteCounts {
 }
 
 export function countInvites(rows: readonly { topic_key: string; invitee_person_id: number; response: InviteResponse | null }[]): Map<string, InviteCounts> {
-  const out = new Map<string, InviteCounts>();
-  const seen = new Set<string>();
-  // A resend after 24 hours makes a second row; a person counts once per topic, by their latest answer.
+  // By person, not by row: a resend after 24 hours, or a scout's two parents, are several rows for one person. Yes wins
+  // over no (one parent said no, the other yes = yes).
+  const per = new Map<string, Map<number, { yes: boolean; no: boolean }>>();
   for (const r of rows) {
-    const c = out.get(r.topic_key) ?? { invited: 0, accepted: 0, declined: 0 };
-    const who = `${r.topic_key}:${r.invitee_person_id}`;
-    if (!seen.has(who)) {
-      seen.add(who);
-      c.invited++;
-    }
-    if (r.response === 'accepted') c.accepted++;
-    if (r.response === 'declined') c.declined++;
-    out.set(r.topic_key, c);
+    const people = per.get(r.topic_key) ?? new Map<number, { yes: boolean; no: boolean }>();
+    const p = people.get(r.invitee_person_id) ?? { yes: false, no: false };
+    if (r.response === 'accepted') p.yes = true;
+    if (r.response === 'declined') p.no = true;
+    people.set(r.invitee_person_id, p);
+    per.set(r.topic_key, people);
+  }
+  const out = new Map<string, InviteCounts>();
+  for (const [key, people] of per) {
+    const list = [...people.values()];
+    out.set(key, { invited: list.length, accepted: list.filter((p) => p.yes).length, declined: list.filter((p) => p.no && !p.yes).length });
   }
   return out;
 }
 
-export function inviteCountsText(c: InviteCounts | undefined): string {
+/** "Invited 6 · 2 yes · 1 no" (teachers); "Offered to 6 · …" (scouts). */
+export function inviteCountsText(c: InviteCounts | undefined, lead = 'Invited'): string {
   if (!c?.invited) return '';
-  return [`Invited ${c.invited}`, c.accepted ? `${c.accepted} yes` : '', c.declined ? `${c.declined} no` : ''].filter(Boolean).join(' · ');
+  return [`${lead} ${c.invited}`, c.accepted ? `${c.accepted} yes` : '', c.declined ? `${c.declined} no` : ''].filter(Boolean).join(' · ');
 }

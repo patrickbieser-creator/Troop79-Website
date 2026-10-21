@@ -94,6 +94,20 @@ export const TEMPLATE_KINDS: TemplateKind[] = [
       { token: 'parts', label: 'Its parts (list)' },
       { token: 'day', label: 'Meeting day' }
     ]
+  },
+  {
+    // Meeting invites, P2: to a scout's parents (always) and the scout from 13. The answer links follow the body.
+    kind: 'meeting.invite.scout',
+    label: 'Meeting — offer a requirement to scouts',
+    audience: 'family',
+    fields: [
+      { token: 'name', label: 'Their first name' },
+      { token: 'scouts', label: 'Which scouts' },
+      { token: 'topic', label: 'Topic' },
+      { token: 'code', label: 'Requirement code' },
+      { token: 'parts', label: 'Its parts (list)' },
+      { token: 'day', label: 'Meeting day' }
+    ]
   }
 ];
 

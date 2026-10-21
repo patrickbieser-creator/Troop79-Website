@@ -40,13 +40,20 @@ export async function answerInviteAction(formData: FormData): Promise<void> {
 
   await recordAuditAs(
     sb,
-    { personId: res.inviteeId, label: 'invite link' },
+    { personId: res.recipientId, label: 'invite link' },
     {
       area: 'meeting',
       action: res.response === 'accepted' ? 'invite.accept' : 'invite.decline',
       entityType: 'meeting_invite',
       entityId: res.inviteId,
-      summary: res.response === 'accepted' ? 'Said yes to a teaching invite' : 'Said not this week to a teaching invite'
+      summary:
+        res.kind === 'pick'
+          ? res.response === 'accepted'
+            ? 'Said yes to a scout invite (now their first pick)'
+            : 'Said not this week to a scout invite'
+          : res.response === 'accepted'
+            ? 'Said yes to a teaching invite'
+            : 'Said not this week to a teaching invite'
     }
   );
   redirect(back);

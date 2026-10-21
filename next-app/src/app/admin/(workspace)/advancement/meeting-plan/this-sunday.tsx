@@ -30,6 +30,10 @@ import { HALF_LABEL, seatsFor, sessionWords } from '@/lib/meeting-board-match';
 import { countInvites, inviteCountsText } from '@/lib/meeting-invites';
 import { loadInviteRows } from '@/lib/meeting-invites-db';
 import { InviteTeachers } from './invite-teachers';
+import { OfferToScouts, type OfferChoiceGroup } from './offer-to-scouts';
+
+/** Offers to scouts are for rank requirements (a whole badge or a freeform topic has no pick-list entry to offer). */
+const isRankKey = (key: string) => !key.startsWith('mb:') && !key.startsWith('ff:');
 import { assessTeacher, commitmentCounts, flagText, teacherIntent, teacherName, topicSkill, weeksAsked } from '@/lib/meeting-board-teach';
 import { loadLiveMatch, loadTeachBoard } from '@/lib/meeting-board-supply';
 import { loadRotationBoard } from '@/lib/meeting-board-stations';
@@ -107,14 +111,16 @@ export interface ThisSundayData {
   /** The live match (Phase 3a, rank boards only). */
   match?: ThisSundayMatch | null;
   stamp: string;
+  /** Every meeting-doable rank requirement, for "Offer a requirement to scouts…" (T-5 P2). */
+  offerChoices?: OfferChoiceGroup[];
   counts: BoardCounts;
   /** Adults and Junior Leaders who answered or signed up to teach (a commitment counts as Coming). */
   adults: { coming: number; undecided: number; notComing: number; teaching: number };
-  topics: { key: string; label: string; codeLabel: string; names: string[]; teachers: SupplyTeacher[]; parts?: TopicPart[]; minutes?: number | null }[];
+  topics: { key: string; label: string; codeLabel: string; names: string[]; teachers: SupplyTeacher[]; parts?: TopicPart[]; minutes?: number | null; offers?: string }[];
   /** The recruiting list: asked for, nobody teaching. `blocked`: committed teachers with no room for another session. */
   wanted: { key: string; label: string; codeLabel: string; names: string[]; weeks: number; canTeach: CanTeach[]; blocked?: string[]; invites?: string }[];
   /** Put on the board by a teacher, asked for by nobody. */
-  offered: { key: string; label: string; codeLabel: string; teachers: SupplyTeacher[] }[];
+  offered: { key: string; label: string; codeLabel: string; teachers: SupplyTeacher[]; offers?: string }[];
   skillOffers: (BoardPerson & { skill: string; note: string | null; scouts: number })[];
   undecidedAdults: (BoardPerson & { fits: string[] })[];
   notComingAdults: BoardPerson[];
@@ -213,8 +219,22 @@ export async function loadThisSunday(): Promise<ThisSundayData | null> {
         })
         .sort((a, b) => b.names.length - a.names.length || b.weeks - a.weeks);
   // T-5: who has been invited to teach each wanted topic, and how they answered.
-  const inviteCounts = countInvites(await loadInviteRows(sb, meeting.entryId));
+  const inviteRows = await loadInviteRows(sb, meeting.entryId);
+  const inviteCounts = countInvites(inviteRows.filter((r) => r.kind === 'teach'));
   for (const w of wanted) (w as { invites?: string }).invites = inviteCountsText(inviteCounts.get(w.key));
+  // P2: scouts offered each topic, counted once per scout however many parents were emailed.
+  const offerCounts = countInvites(inviteRows.filter((r) => r.kind === 'pick'));
+  for (const t of topics) (t as { offers?: string }).offers = inviteCountsText(offerCounts.get(t.key), 'Offered to');
+  const sortedRanks = [...catalog.ranks].sort((a, b) => a.sort_order - b.sort_order);
+  const offerChoices: OfferChoiceGroup[] = sortedRanks
+    .map((r) => ({
+      rank: r.display_name,
+      options: catalog.rankRequirements
+        .filter((q) => q.rank_id === r.id && q.parent_id == null && q.venue !== 'outing' && q.code.toLowerCase() !== 'bor')
+        .sort((a, b) => a.sort_order - b.sort_order)
+        .map((q) => ({ key: `${r.id}-${q.code}`, label: `${q.code} ${q.label}` }))
+    }))
+    .filter((g) => g.options.length > 0);
   const matchView: ThisSundayMatch | null = match
     ? {
         sessions: match.sessions.length,
@@ -251,7 +271,7 @@ export async function loadThisSunday(): Promise<ThisSundayData | null> {
     const s = seat ? match.sessions.find((x) => x.id === seat.sessionId) : undefined;
     return s ? sessionWords(s.keys, catalog, skillNames, teach.freeformTitles).title : null;
   };
-  const offered = teach.match.offered.map((key) => ({ key, ...words(key), teachers: supplyTeachers(key) }));
+  const offered = teach.match.offered.map((key) => ({ key, ...words(key), teachers: supplyTeachers(key), offers: inviteCountsText(offerCounts.get(key), 'Offered to') }));
   const skillOffers = teach.supply.skillOffers
     .filter((o) => !teach.supply.notComing.has(o.personId))
     .map((o) => {
@@ -341,6 +361,7 @@ export async function loadThisSunday(): Promise<ThisSundayData | null> {
     mb,
     match: matchView,
     stamp,
+    offerChoices,
     counts,
     adults,
     topics,
@@ -569,7 +590,10 @@ export function ThisSundayView({ data }: { data: ThisSundayData | null }) {
 
       <div className={styles.boardCols}>
         <div>
-          <h2 className={styles.sectionTitle}>What scouts asked for</h2>
+          <div className={styles.boardHead}>
+            <h2 className={styles.sectionTitle}>What scouts asked for</h2>
+            {data.offerChoices && <OfferToScouts entryId={meeting.entryId} choices={data.offerChoices} />}
+          </div>
           {data.topics.length ? (
             <table className={styles.table}>
               <thead>
@@ -587,6 +611,12 @@ export function ThisSundayView({ data }: { data: ThisSundayData | null }) {
                       <span className={styles.scoutName}>{t.label}</span>
                       <div className={styles.patrol}>{[t.codeLabel, minutesText(t.minutes)].filter(Boolean).join(' · ')}</div>
                       <TopicPartList parts={t.parts} title={t.label} />
+                      {isRankKey(t.key) && (
+                        <div className={styles.inviteRow}>
+                          <OfferToScouts entryId={meeting.entryId} topicKey={t.key} label={t.label} />
+                          {t.offers && <span className={styles.teachMeta}>{t.offers}</span>}
+                        </div>
+                      )}
                     </td>
                     <td className={styles.alignRight}>{t.names.length}</td>
                     <td>{t.teachers.length ? <TeacherLinks list={t.teachers} /> : <span className={styles.noTeacher}>No teacher yet</span>}</td>
@@ -656,6 +686,12 @@ export function ThisSundayView({ data }: { data: ThisSundayData | null }) {
                     <td>
                       <span className={styles.scoutName}>{o.label}</span>
                       <div className={styles.patrol}>{o.codeLabel}</div>
+                      {isRankKey(o.key) && (
+                        <div className={styles.inviteRow}>
+                          <OfferToScouts entryId={meeting.entryId} topicKey={o.key} label={o.label} />
+                          {o.offers && <span className={styles.teachMeta}>{o.offers}</span>}
+                        </div>
+                      )}
                     </td>
                     <td>
                       <TeacherLinks list={o.teachers} />

@@ -27,7 +27,11 @@ const card = (o: Partial<Parameters<typeof InviteCard>[0]> = {}) =>
   render(
     <InviteCard
       state="open"
+      kind="teach"
       token={'a'.repeat(64)}
+      inviteeId={41}
+      recipientName="Dan Bieser"
+      recipientIsInvitee
       inviteeName="Dan Bieser"
       topic="First Aid for Tenderfoot"
       code="Tenderfoot 4a"
@@ -86,15 +90,55 @@ describe('the invite card', () => {
   });
 });
 
+describe('a scout invite, to a parent', () => {
+  const parentCard = (o: Partial<Parameters<typeof InviteCard>[0]> = {}) =>
+    card({ kind: 'pick', inviteeId: 7, inviteeName: 'Anjali Sankpal', recipientName: 'Jamie Tatera', recipientIsInvitee: false, ...o });
+
+  it('ParentsCard_SaysWhoItsAbout_AndOffersYesAndNotThisWeek', () => {
+    parentCard();
+    expect([
+      screen.getByText(/This invite is for/).textContent,
+      screen.getByRole('button', { name: 'Yes, make it Anjali’s first pick' }) != null,
+      screen.getByRole('button', { name: 'Not this week' }) != null
+    ]).toEqual(['This invite is for Jamie Tatera, about Anjali Sankpal. If that isn’t you, please don’t answer it.', true, true]);
+  });
+
+  it('PickSomethingElse_GoesToSignIn_ThenTheScoutsSundayPage_CarryingNoToken', () => {
+    parentCard();
+    const href = screen.getByRole('link', { name: 'Pick something else' }).getAttribute('href')!;
+    expect([href, href.includes('a'.repeat(64))]).toEqual(['/signin?next=%2Fmember%2Fmeeting%3Fscout%3D7', false]);
+  });
+
+  it('AScoutsOwnCard_SaysYesIllCome', () => {
+    parentCard({ recipientIsInvitee: true, recipientName: 'Anjali Sankpal' });
+    expect(screen.getByRole('button', { name: 'Yes, I’ll come' })).toBeTruthy();
+  });
+
+  it('AfterAYes_SaysItIsTheFirstPick_AndTheyAreComing', () => {
+    parentCard({ state: 'answered', response: 'accepted' });
+    expect(screen.getByText(/First Aid for Tenderfoot is Anjali’s first pick/)).toBeTruthy();
+  });
+
+  it('AnotherFamilyMemberAnsweredFirst_SaysNothingMoreToDo', () => {
+    parentCard({ state: 'answered', response: 'superseded' });
+    expect(screen.getByText(/Someone already said yes for Anjali/)).toBeTruthy();
+  });
+
+  it('FivePicksAlready_SaysHowToSwapOne', () => {
+    parentCard({ err: 'picks' });
+    expect(screen.getByRole('alert').textContent).toContain('Anjali already has 5 picks');
+  });
+});
+
 describe('answering', () => {
   it('Yes_AnswersTheInvite_AndLandsBackOnIt', async () => {
-    m.respond.mockResolvedValue({ ok: true, response: 'accepted', inviteId: 7, inviteeId: 41 });
+    m.respond.mockResolvedValue({ ok: true, kind: 'teach', response: 'accepted', inviteId: 7, inviteeId: 41, recipientId: 41 });
     const url = await run(form('accept'));
     expect([m.respond.mock.calls[0][2], url]).toEqual(['accept', `/i/${'a'.repeat(64)}`]);
   });
 
   it('AnAnswer_RefreshesTheInvitePage_SoItShowsTheResult', async () => {
-    m.respond.mockResolvedValue({ ok: true, response: 'accepted', inviteId: 7, inviteeId: 41 });
+    m.respond.mockResolvedValue({ ok: true, kind: 'teach', response: 'accepted', inviteId: 7, inviteeId: 41, recipientId: 41 });
     await run(form('accept'));
     expect(revalidate).toHaveBeenCalledWith('/i/[token]', 'page');
   });
@@ -129,7 +173,7 @@ describe('answering', () => {
   });
 
   it('AnAnswer_IsAudited_AsTheInvitee', async () => {
-    m.respond.mockResolvedValue({ ok: true, response: 'declined', inviteId: 7, inviteeId: 41 });
+    m.respond.mockResolvedValue({ ok: true, kind: 'teach', response: 'declined', inviteId: 7, inviteeId: 41, recipientId: 41 });
     await run(form('decline'));
     expect(m.audit.mock.calls[0][1]).toMatchObject({ personId: 41 });
   });

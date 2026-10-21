@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { DEFAULT_TEACH_INVITE, renderTeachInvite } from '../src/lib/meeting-invite-email';
+import { DEFAULT_PICK_INVITE, DEFAULT_TEACH_INVITE, renderPickInvite, renderTeachInvite } from '../src/lib/meeting-invite-email';
 import { fromWithName } from '../src/lib/email';
 import { templateKind } from '../src/lib/email-templates';
 
@@ -42,5 +42,18 @@ describe('teacher invite email', () => {
 
   it('InviteCopy_IsAnEditableTemplateKind', () => {
     expect(templateKind('meeting.invite.teacher')?.fields.map((f) => f.token)).toEqual(['name', 'topic', 'code', 'minutes', 'parts', 'day']);
+  });
+
+  it('ScoutInvite_ToAParent_CarriesALinkForEachScout', () => {
+    const r = renderPickInvite(DEFAULT_PICK_INVITE, { ...vals, scouts: 'Anjali S and Finn S' }, [
+      { scoutName: 'Anjali S', url: 'https://x/i/a' },
+      { scoutName: 'Finn S', url: 'https://x/i/b' }
+    ], false);
+    expect([r.md.includes('[Answer for Anjali S](https://x/i/a)'), r.md.includes('[Answer for Finn S](https://x/i/b)'), r.md.includes('Reply to a leader')]).toEqual([true, true, true]);
+  });
+
+  it('ScoutInvite_ToTheScout_HasOneAnswerLink', () => {
+    const r = renderPickInvite(DEFAULT_PICK_INVITE, { ...vals, scouts: 'you' }, [{ scoutName: 'Anjali S', url: 'https://x/i/a' }], true);
+    expect([r.md.includes('[Answer the invite](https://x/i/a)'), r.md.includes('Answer for')]).toEqual([true, false]);
   });
 });

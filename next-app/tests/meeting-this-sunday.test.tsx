@@ -12,7 +12,13 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh, push: vi.fn() }
 vi.mock('@/lib/supabase/server', () => ({ createAdminClient: () => ({}) }));
 vi.mock('@/lib/advancement-catalog', () => ({ loadAdvancementCatalog: async () => ({}) }));
 const invite = vi.hoisted(() => vi.fn());
-vi.mock('../src/app/admin/(workspace)/advancement/meeting-plan/actions', () => ({ boardStampAction: stamp, sendTeachInvitesAction: invite }));
+const offer = vi.hoisted(() => ({ candidates: vi.fn(), send: vi.fn() }));
+vi.mock('../src/app/admin/(workspace)/advancement/meeting-plan/actions', () => ({
+  boardStampAction: stamp,
+  sendTeachInvitesAction: invite,
+  scoutCandidatesAction: offer.candidates,
+  sendPickInvitesAction: offer.send
+}));
 
 const { ThisSundayView } = await import('../src/app/admin/(workspace)/advancement/meeting-plan/this-sunday');
 const { BoardPoller, POLL_MS, JITTER_MS } = await import('../src/app/admin/(workspace)/advancement/meeting-plan/board-poller');
@@ -20,6 +26,7 @@ const { BoardPoller, POLL_MS, JITTER_MS } = await import('../src/app/admin/(work
 const data = {
   meeting: { entryId: 5, title: 'Troop Meeting', mode: 'rank' as const, dateLabel: 'Sunday, October 25, 2026' },
   stamp: '1:0:1:100',
+  offerChoices: [{ rank: 'Tenderfoot', options: [{ key: 'tenderfoot-3a', label: '3a Knots' }, { key: 'tenderfoot-5a', label: '5a Buddy system' }] }],
   counts: { coming: 3, undecided: 1, notComing: 1, noAnswer: 20, picks: 4, held: 2 },
   adults: { coming: 2, undecided: 1, notComing: 1, teaching: 2 },
   topics: [
@@ -29,6 +36,7 @@ const data = {
       codeLabel: 'Tenderfoot 4a',
       names: ['Anjali S', 'Finn P'],
       teachers: [{ personId: 40, name: 'Dan V', notes: ['from a First Aid offer'] }],
+      offers: 'Offered to 4 · 2 yes',
       minutes: 25,
       parts: [
         { code: '4a.1', label: 'Simple cuts', minutes: 5 },
@@ -128,6 +136,36 @@ describe('ThisSundayView', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Send to 2' }));
     const dialog = screen.getByRole('dialog', { name: 'Invite teachers: Knots' });
     expect(within(dialog).getByRole('status').textContent).toBe('Sent to Karen O. Not sent: Becky V (no email on file).');
+  });
+
+  it('Leader_OffersATopicToScouts_ThoseWhoHaventPickedItTicked', async () => {
+    offer.candidates.mockResolvedValue({ ok: true, scouts: [{ personId: 1, name: 'Leo M', note: 'coming', ticked: true }, { personId: 2, name: 'Finn P', note: 'coming · picked it', ticked: false }] });
+    offer.send.mockResolvedValue({ ok: true, sent: ['Leo M'], skipped: [] });
+    render(<ThisSundayView data={data} />);
+    const row = screen.getByText('First aid').closest('tr')!;
+    await userEvent.click(within(row).getByRole('button', { name: 'Offer to scouts…' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Offer to scouts: First aid' });
+    await within(dialog).findByRole('checkbox', { name: 'Leo M' });
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Send to 1' }));
+    expect([offer.candidates.mock.calls[0][0], offer.send.mock.calls[0][0]]).toEqual([
+      { entryId: 5, topicKey: 'tenderfoot-4a' },
+      { entryId: 5, topicKey: 'tenderfoot-4a', scoutIds: [1] }
+    ]);
+  });
+
+  it('Leader_OffersARequirementNobodyAskedFor_FromThePicker', async () => {
+    offer.candidates.mockResolvedValue({ ok: true, scouts: [{ personId: 3, name: 'Theo P', note: 'no answer', ticked: true }] });
+    render(<ThisSundayView data={data} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Offer a requirement to scouts…' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Offer a requirement to scouts' });
+    await userEvent.selectOptions(within(dialog).getByRole('combobox', { name: 'Requirement' }), 'tenderfoot-5a');
+    await within(dialog).findByRole('checkbox', { name: 'Theo P' });
+    expect(offer.candidates.mock.calls.at(-1)?.[0]).toEqual({ entryId: 5, topicKey: 'tenderfoot-5a' });
+  });
+
+  it('Leader_SeesOfferCounts_OnTheTopic', () => {
+    render(<ThisSundayView data={data} />);
+    expect(screen.getByText('First aid').closest('tr')!.textContent).toContain('Offered to 4 · 2 yes');
   });
 
   it('Leader_SeesInviteCounts_OnTheWantedTopic', () => {
