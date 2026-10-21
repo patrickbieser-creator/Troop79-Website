@@ -16,7 +16,7 @@ import { centralToday } from '@/lib/dates';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 import { loadAdvancementCatalog, type AdvancementCatalog } from '@/lib/advancement-catalog';
 import { buildPickList, isPickFinished, rankOfKey, rankTrees, trayPicks, type FocusPickIn, type PickListView, type ScoutBoardView } from '@/lib/meeting-board-picklist';
-import { focusPicks, loadFocusTopics } from '@/lib/meeting-focus-db';
+import { focusPicks, focusWordsMore, loadFocusTopics } from '@/lib/meeting-focus-db';
 import {
   boardName,
   carryForward,
@@ -435,7 +435,11 @@ export async function loadScoutBoard(
   }
 ): Promise<ScoutBoard> {
   const progress = await loadScoutProgress(sb, [scout.scoutId]);
-  const focus = opts.focus ?? focusPicks(await loadFocusTopics(sb, meeting.entryId), { ...catalog, meritBadgeRequirements: catalog.meritBadgeRequirements ?? [] });
+  const full = { ...catalog, meritBadgeRequirements: catalog.meritBadgeRequirements ?? [] };
+  const topics = await loadFocusTopics(sb, meeting.entryId);
+  const focus = opts.focus ?? focusPicks(topics, full);
+  // A pick of a focus group or merit badge requirement unseeded since keeps its words in the tray.
+  const words = focusWordsMore(topics, full);
   const [eff, intents] = await Promise.all([
     loadEffectivePicks(sb, meeting, [scout], catalog, progress),
     loadIntents(sb, meeting.entryId, [scout.personId])
@@ -466,7 +470,9 @@ export async function loadScoutBoard(
         mbs: catalog.meritBadges,
         names,
         scoutPersonId: scout.personId,
-        viewerPersonId: opts.viewerPersonId
+        viewerPersonId: opts.viewerPersonId,
+        titles: words.titles,
+        more: words.more
       })
     },
     pickList,

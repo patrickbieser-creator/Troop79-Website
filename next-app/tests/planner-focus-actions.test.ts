@@ -284,6 +284,23 @@ describe('unseeding and deleting', () => {
     expect([picked.ok, topics.map((t) => [t.topic_key, t.seeded_at, t.seeded_by_person_id])]).toEqual([true, [[mbKey, null, null]]]);
   });
 
+  it('UnseededGroupWithAPick_KeepsItsTitle_InTheDrawerAndTheTray', async () => {
+    const set = await makeSet('Kept title', [rankKeys[0], mbSubKey]);
+    asSeeder();
+    await (await actions()).plannerSeedSetAction({ entryId: meeting, setId: set });
+    asEditor();
+    await (await actions()).plannerTogglePickAction({ entryId: meeting, personId: young, key: `fg:${set}`, on: true });
+    asSeeder();
+    await (await actions()).plannerUnseedAction({ entryId: meeting, key: `fg:${set}` });
+    asEditor();
+    const res = await (await actions()).plannerOpenPersonAction({ entryId: meeting, personId: young });
+    const opt = res.ok ? res.drawer.options.find((o) => o.key === `fg:${set}`) : undefined;
+    const { loadScoutBoard, loadBoardScouts, loadMeetingById } = await import('../src/lib/meeting-board');
+    const { fetchAdvancementCatalog } = await import('../src/lib/advancement-catalog');
+    const board = await loadScoutBoard(sb, (await loadMeetingById(sb, meeting))!, (await loadBoardScouts(sb, [young]))[0], await fetchAdvancementCatalog(sb), { viewerPersonId: editorAdult });
+    expect([opt?.title, board.view.picks.find((p) => p.key === `fg:${set}`)?.label]).toEqual([`${TEST_PREFIX} Kept title`, `${TEST_PREFIX} Kept title`]);
+  });
+
   it('DeletingASet_LeavesTheSeededGroupIntact', async () => {
     const set = await makeSet('Deleted later', [rankKeys[0], rankKeys[1]]);
     asSeeder();

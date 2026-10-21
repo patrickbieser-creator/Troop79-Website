@@ -519,7 +519,7 @@ export async function loadSundayNoTeacher(sb: SupabaseClient, today?: string): P
   const wanted = [...teach.match.wanted].sort((a, b) => (teach.demand.get(b)?.length ?? 0) - (teach.demand.get(a)?.length ?? 0));
   const n = wanted.length;
   const items: AttentionItem[] = wanted.slice(0, SHOWN).map((key) => {
-    const w = topicWords(key, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, teach.freeformTitles);
+    const w = topicWords(key, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, teach.freeformTitles, { mbReqs: catalog.meritBadgeRequirements, members: teach.members });
     const asked = teach.demand.get(key)?.length ?? 0;
     return { label: w?.label ?? key, meta: `${asked} ${asked === 1 ? 'scout' : 'scouts'}`, href };
   });

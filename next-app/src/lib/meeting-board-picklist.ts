@@ -380,6 +380,9 @@ export function trayPicks(
     names: ReadonlyMap<number, string>;
     scoutPersonId: number;
     viewerPersonId: number | null;
+    /** P3: focus-group titles for picks of a topic no longer seeded, and the words' extras. */
+    titles?: ReadonlyMap<string, string>;
+    more?: TopicWordsMore;
   }
 ): TrayPick[] {
   const order = new Map(allRows(ctx.view).map((r, i) => [r.key, i]));
@@ -387,7 +390,7 @@ export function trayPicks(
     const seeded = (ctx.view.focus ?? []).find((r) => r.key === p.key);
     const words = seeded
       ? { label: seeded.label, codeLabel: seeded.codeLabel, kind: seeded.kind }
-      : (topicWords(p.key, ctx.ranks, ctx.rankReqs, ctx.mbs, new Map(ctx.view.offered.map((r) => [r.key, r.label]))) ?? { label: p.key, codeLabel: '', kind: 'rank' as const });
+      : (topicWords(p.key, ctx.ranks, ctx.rankReqs, ctx.mbs, new Map([...(ctx.titles ?? []), ...ctx.view.offered.map((r) => [r.key, r.label] as const)]), ctx.more) ?? { label: p.key, codeLabel: '', kind: 'rank' as const });
     const by = p.enteredByPersonId;
     const addedBy = by != null && by !== ctx.scoutPersonId && by !== ctx.viewerPersonId ? boardName(ctx.names.get(by) ?? '') || null : null;
     return { ...p, ...words, addedBy };

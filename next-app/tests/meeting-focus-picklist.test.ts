@@ -117,3 +117,27 @@ describe('teachers', () => {
     expect([topicSkill('fg:7', RANKS, REQS), topicSkill('first-aid-9', RANKS, REQS)]).toEqual([null, null]);
   });
 });
+
+describe('session words (qa-lead, P3)', () => {
+  const catalog = { ranks: RANKS, rankRequirements: REQS, meritBadges: MBS };
+
+  it('SeededMbReqSession_ReadsFirstAid9_NotTheKey', async () => {
+    const { sessionWords } = await import('../src/lib/meeting-board-match');
+    const w = sessionWords(['first-aid-9'], catalog, new Map(), undefined, { mbReqs: MB_REQS });
+    expect([w.title, w.codeLabel, w.minutes]).toEqual(['Head and spine injuries', 'First Aid 9', 10]);
+  });
+
+  it('FocusGroupSession_HasItsTitleAndParts', async () => {
+    const { sessionWords } = await import('../src/lib/meeting-board-match');
+    const w = sessionWords(['fg:7'], catalog, new Map(), new Map([['fg:7', 'First aid night']]), { mbReqs: MB_REQS, members: new Map([['fg:7', ['tenderfoot-4a.1', 'first-aid-9a']]]) });
+    expect([w.title, w.codeLabel, w.parts.map((p) => p.code), w.minutes]).toEqual(['First aid night', 'Meeting focus', ['Tenderfoot 4a.1', 'First Aid 9a'], 15]);
+  });
+
+  it('TrayPick_OfAnUnseededFocusGroup_KeepsItsTitle', async () => {
+    const { trayPicks } = await import('../src/lib/meeting-board-picklist');
+    const v = buildPickList({ currentRank: 'scout', ranks: RANKS, rankReqs: REQS, mbs: MBS, mbProgress: [], rankCodes: new Set() });
+    const pick = { key: 'fg:7', priority: null, later: false, note: null, firstAskedOn: '2026-10-25', enteredByPersonId: null, carriedFrom: null };
+    const [t] = trayPicks([pick], { view: v, ranks: RANKS, rankReqs: REQS, mbs: MBS, names: new Map(), scoutPersonId: 1, viewerPersonId: 1, titles: new Map([['fg:7', 'First aid night']]), more: { mbReqs: MB_REQS } });
+    expect([t.label, t.codeLabel]).toEqual(['First aid night', 'Meeting focus']);
+  });
+});

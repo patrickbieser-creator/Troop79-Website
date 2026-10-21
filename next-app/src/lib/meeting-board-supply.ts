@@ -186,7 +186,7 @@ export interface TeachBoard {
   freeform: { key: string; title: string }[];
   /** Freeform and focus-group titles by key (topicWords' titles). */
   freeformTitles: Map<string, string>;
-  /** What a planner seeded on this meeting (P3). */
+  /** What a planner seeded on this meeting (P3), seeded topics only. */
   focus: FocusTopic[];
   /** Focus groups' items by key (topicWords' members). */
   members: Map<string, string[]>;
@@ -201,7 +201,8 @@ export async function loadTeachBoard(
   board: readonly BoardScoutRow[],
   include: 'all' | readonly number[] = []
 ): Promise<TeachBoard> {
-  const [rows, focus] = await Promise.all([loadSupplyRows(sb, [meeting.entryId]), loadFocusTopics(sb, meeting.entryId)]);
+  const [rows, topics] = await Promise.all([loadSupplyRows(sb, [meeting.entryId]), loadFocusTopics(sb, meeting.entryId)]);
+  const focus = topics.filter((t) => t.seeded);
   const withRows = [...rows.topicTeachers.map((r) => r.personId), ...rows.skillOffers.map((r) => r.personId)];
   const people = await loadTeacherPeople(sb, include === 'all' ? 'all' : [...withRows, ...include], meeting.date, catalog);
   // Someone who signed up and no longer qualifies still shows with their rows (eligible: false), so they or a leader
@@ -219,8 +220,9 @@ export async function loadTeachBoard(
   };
   const { demand } = summarizeBoard(board);
   const freeform = rows.freeform.map((f) => ({ key: f.key, title: f.title }));
-  const titles = new Map([...freeform.map((f) => [f.key, f.title] as const), ...focus.filter((f) => f.title).map((f) => [f.key, f.title!] as const)]);
-  return { ctx, people, supply, intents, demand, freeform, freeformTitles: titles, focus, members: new Map(focus.map((f) => [f.key, f.members])), match: matchSupply(demand, supply) };
+  // Titles and members for every focus group on the board, seeded or kept for its picks after an unseed.
+  const titles = new Map([...freeform.map((f) => [f.key, f.title] as const), ...topics.filter((f) => f.title).map((f) => [f.key, f.title!] as const)]);
+  return { ctx, people, supply, intents, demand, freeform, freeformTitles: titles, focus, members: new Map(topics.map((f) => [f.key, f.members])), match: matchSupply(demand, supply) };
 }
 
 /**

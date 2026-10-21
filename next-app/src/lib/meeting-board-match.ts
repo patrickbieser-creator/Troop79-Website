@@ -27,7 +27,7 @@
  *   7. "Later" picks and Can't-make-it scouts are ignored here; their picks are kept for the next board.
  */
 import type { AdvancementCatalog, CatalogRank, CatalogRankRequirement } from '@/lib/advancement-catalog';
-import { nextRankOf, topicWords, type TopicPart, type TopicWords } from '@/lib/meeting-board-picklist';
+import { nextRankOf, topicWords, type TopicPart, type TopicWords, type TopicWordsMore } from '@/lib/meeting-board-picklist';
 import { effectiveIntent, orderPicks, type BoardPick, type Intent } from '@/lib/meeting-board-shared';
 import { assessTeacher, teacherName, topicSkill, weeksAsked, type SupplyInput, type TeachFlag, type TeacherPerson } from '@/lib/meeting-board-teach';
 import { openRankTops, rankLeafCompletion } from '@/lib/rank-calculus';
@@ -429,10 +429,12 @@ export function sessionWords(
   keys: readonly string[],
   catalog: Pick<AdvancementCatalog, 'ranks' | 'rankRequirements' | 'meritBadges'>,
   skillNames: ReadonlyMap<string, string>,
-  freeformTitles?: ReadonlyMap<string, string>
+  freeformTitles?: ReadonlyMap<string, string>,
+  /** P3: merit badge requirements and focus groups' members, for seeded topics. */
+  more?: TopicWordsMore
 ): { title: string; codeLabel: string; kind: 'rank' | 'mb' | 'ff' | 'focus'; skillId: string | null; parts: TopicPart[]; minutes: number | null } {
   const words = (k: string): TopicWords =>
-    topicWords(k, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, freeformTitles) ?? { label: k, codeLabel: '', kind: 'rank', parts: [], minutes: null };
+    topicWords(k, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, freeformTitles, more) ?? { label: k, codeLabel: '', kind: 'rank', parts: [], minutes: null };
   const all = keys.map(words);
   const first = all[0] ?? words('');
   const skillId = keys.length ? topicSkill(keys[0], catalog.ranks, catalog.rankRequirements) : null;
@@ -468,14 +470,16 @@ export interface MatchLine {
 }
 
 interface LineSources {
-  catalog: Pick<AdvancementCatalog, 'ranks' | 'rankRequirements' | 'meritBadges' | 'skills'>;
+  catalog: Pick<AdvancementCatalog, 'ranks' | 'rankRequirements' | 'meritBadges' | 'skills'> & Partial<Pick<AdvancementCatalog, 'meritBadgeRequirements'>>;
   people: ReadonlyMap<number, Pick<TeacherPerson, 'kind' | 'displayName' | 'lastName' | 'gender'>>;
   freeformTitles?: ReadonlyMap<string, string>;
+  /** P3: focus groups' items by key. */
+  members?: ReadonlyMap<string, readonly string[]>;
   scoutNames: ReadonlyMap<number, string>;
 }
 
 function lineFor(match: MatchResult, s: MatchSession, src: LineSources, seat?: MatchSeat): MatchLine {
-  const w = sessionWords(s.keys, src.catalog, new Map(src.catalog.skills.map((k) => [k.id, k.name])), src.freeformTitles);
+  const w = sessionWords(s.keys, src.catalog, new Map(src.catalog.skills.map((k) => [k.id, k.name])), src.freeformTitles, { mbReqs: src.catalog.meritBadgeRequirements, members: src.members });
   const t = src.people.get(s.teacherId);
   return {
     block: `Block ${s.block + 1} · ${HALF_LABEL[s.half]}`,

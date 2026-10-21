@@ -153,7 +153,7 @@ export async function loadThisSunday(): Promise<ThisSundayData | null> {
   const person = (r: { personId: number }) => ({ personId: r.personId, name: nameOf.get(r.personId) ?? '' });
   const intentOf = new Map(rows.map((r) => [r.personId, effectiveIntent(r.intent, r.picks)]));
   const words = (key: string): TopicWords =>
-    topicWords(key, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, teach.freeformTitles) ?? { label: key, codeLabel: '', kind: 'rank', parts: [], minutes: null };
+    topicWords(key, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, teach.freeformTitles, { mbReqs: catalog.meritBadgeRequirements, members: teach.members }) ?? { label: key, codeLabel: '', kind: 'rank', parts: [], minutes: null };
   const teacherPerson = (id: number) => {
     const p = teach.people.get(id);
     return { personId: id, name: p ? teacherName(p, 'admin') : `Person ${id}` };
@@ -245,7 +245,7 @@ export async function loadThisSunday(): Promise<ThisSundayData | null> {
           sessions: match.sessions
             .filter((s) => s.block === b)
             .map((s) => {
-              const w = sessionWords(s.keys, catalog, skillNames, teach.freeformTitles);
+              const w = sessionWords(s.keys, catalog, skillNames, teach.freeformTitles, { mbReqs: catalog.meritBadgeRequirements, members: teach.members });
               const notes = flagText(s.flags, 'admin');
               if (s.via === 'offer') notes.unshift(`from a ${skillNames.get(w.skillId ?? '') ?? ''} offer`);
               return {
@@ -269,7 +269,7 @@ export async function loadThisSunday(): Promise<ThisSundayData | null> {
     if (!match) return undefined;
     const seat = seatsFor(match, personId)[0];
     const s = seat ? match.sessions.find((x) => x.id === seat.sessionId) : undefined;
-    return s ? sessionWords(s.keys, catalog, skillNames, teach.freeformTitles).title : null;
+    return s ? sessionWords(s.keys, catalog, skillNames, teach.freeformTitles, { mbReqs: catalog.meritBadgeRequirements, members: teach.members }).title : null;
   };
   const offered = teach.match.offered.map((key) => ({ key, ...words(key), teachers: supplyTeachers(key), offers: inviteCountsText(offerCounts.get(key), 'Offered to') }));
   const skillOffers = teach.supply.skillOffers

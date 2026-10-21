@@ -86,9 +86,9 @@ export async function loadBoardTray(entryId: number): Promise<BoardTray | null> 
 export function matchedCandidates(
   match: MatchResult,
   src: {
-    catalog: Pick<AdvancementCatalog, 'ranks' | 'rankRequirements' | 'meritBadges' | 'skills'>;
+    catalog: Pick<AdvancementCatalog, 'ranks' | 'rankRequirements' | 'meritBadges' | 'skills'> & Partial<Pick<AdvancementCatalog, 'meritBadgeRequirements'>>;
     rows: readonly Pick<BoardScoutRow, 'personId' | 'name'>[];
-    teach: Pick<TeachBoard, 'people' | 'freeformTitles'>;
+    teach: Pick<TeachBoard, 'people' | 'freeformTitles'> & Partial<Pick<TeachBoard, 'members'>>;
   }
 ): MatchedCandidate[] {
   const skillNames = new Map(src.catalog.skills.map((s) => [s.id, s.name]));
@@ -98,7 +98,7 @@ export function matchedCandidates(
     return p ? teacherName(p, 'scout') : '';
   };
   return match.sessions.map((s) => {
-    const w = sessionWords(s.keys, src.catalog, skillNames, src.teach.freeformTitles);
+    const w = sessionWords(s.keys, src.catalog, skillNames, src.teach.freeformTitles, { mbReqs: src.catalog.meritBadgeRequirements, members: src.teach.members });
     const block = `Block ${s.block + 1} · ${HALF_LABEL[s.half]}`;
     const scouts = s.scouts.map((x) => scoutName.get(x.personId) ?? '').filter(Boolean).sort();
     const leaders = [s.teacherId, ...s.coTeacherIds].map(teacher).filter(Boolean);
@@ -118,7 +118,7 @@ export function matchedCandidates(
         leaderName: leaders.length ? leaders.join(', ') : null,
         skillId: w.skillId,
         requirements: s.keys.map((k) => {
-          const t = topicWords(k, src.catalog.ranks, src.catalog.rankRequirements, src.catalog.meritBadges, src.teach.freeformTitles);
+          const t = topicWords(k, src.catalog.ranks, src.catalog.rankRequirements, src.catalog.meritBadges, src.teach.freeformTitles, { mbReqs: src.catalog.meritBadgeRequirements, members: src.teach.members });
           return { code: t?.codeLabel ?? k, label: t?.label ?? k };
         }),
         scouts: scouts.length ? scouts : null

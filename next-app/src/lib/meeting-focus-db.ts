@@ -24,6 +24,8 @@ export interface FocusTopic {
   seededBy: string | null;
   /** A focus group's items, in order. */
   members: string[];
+  /** On the meeting's focus now (false: unseeded, kept for the picks or teachers on it). */
+  seeded: boolean;
 }
 
 type TopicRow = {
@@ -31,19 +33,25 @@ type TopicRow = {
   kind: FocusTopic['kind'];
   title: string | null;
   seeded_by_person_id: number | null;
+  seeded_at: string | null;
   people: { display_name: string } | { display_name: string }[] | null;
   meeting_topic_members: { item_key: string; position: number }[] | null;
 };
 const one = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? (v[0] ?? null) : (v ?? null));
 
-/** What a planner seeded on this meeting. */
+/**
+ * What a planner seeded on this meeting, plus every focus group and merit badge requirement on it that was unseeded but
+ * kept for its picks or teachers (seeded: false), so their words never fall back to the raw key. Callers that want
+ * the focus itself filter on `seeded`.
+ */
 export async function loadFocusTopics(sb: SupabaseClient, entryId: number): Promise<FocusTopic[]> {
   const { data, error } = await sb
     .from('meeting_topics')
-    .select('topic_key, kind, title, seeded_by_person_id, people:seeded_by_person_id(display_name), meeting_topic_members(item_key, position)')
+    .select('topic_key, kind, title, seeded_by_person_id, seeded_at, people:seeded_by_person_id(display_name), meeting_topic_members(item_key, position)')
     .eq('calendar_entry_id', entryId)
-    .not('seeded_at', 'is', null)
-    .order('seeded_at');
+    .or('seeded_at.not.is.null,kind.in.(focus_group,mb_req)')
+    .order('seeded_at', { nullsFirst: false })
+    .order('id');
   if (error) throw new Error(error.message);
   return ((data ?? []) as unknown as TopicRow[]).map((r) => ({
     key: r.topic_key,
@@ -51,7 +59,8 @@ export async function loadFocusTopics(sb: SupabaseClient, entryId: number): Prom
     title: r.title,
     seededByPersonId: r.seeded_by_person_id,
     seededBy: one(r.people) ? boardName(one(r.people)!.display_name) : null,
-    members: [...(r.meeting_topic_members ?? [])].sort((a, b) => a.position - b.position).map((m) => m.item_key)
+    members: [...(r.meeting_topic_members ?? [])].sort((a, b) => a.position - b.position).map((m) => m.item_key),
+    seeded: r.seeded_at != null
   }));
 }
 
@@ -68,7 +77,7 @@ export function focusWordsMore(topics: readonly FocusTopic[], catalog: Catalog) 
 /** Seeded topics as the scout's pick list takes them (a catalog key that no longer resolves is left out). */
 export function focusPicks(topics: readonly FocusTopic[], catalog: Catalog): FocusPickIn[] {
   const { titles, more } = focusWordsMore(topics, catalog);
-  return topics.flatMap((t) => {
+  return topics.filter((t) => t.seeded).flatMap((t) => {
     const w = topicWords(t.key, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, titles, more);
     return w ? [{ key: t.key, label: w.label, codeLabel: w.codeLabel, parts: w.parts }] : [];
   });

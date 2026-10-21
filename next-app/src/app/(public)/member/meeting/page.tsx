@@ -237,7 +237,7 @@ export default async function MeetingBoardPage({ searchParams }: { searchParams:
   // from the match (the agenda's scout names are free text a leader may have edited, so they aren't mapped back).
   const planSet = await isAgendaPublished(sb, meeting.entryId);
   const match = meeting.mode === 'rank' && !planSet ? await loadLiveMatch(sb, meeting, everyone, teach) : null;
-  const lineSrc = { catalog, people: teach.people, freeformTitles: teach.freeformTitles, scoutNames: new Map(everyone.map((r) => [r.personId, boardName(r.name)])) };
+  const lineSrc = { catalog, people: teach.people, freeformTitles: teach.freeformTitles, members: teach.members, scoutNames: new Map(everyone.map((r) => [r.personId, boardName(r.name)])) };
   const assigned = match && chosen ? seatLines(match, chosen.personId, lineSrc) : [];
   const teaching = match && teacher ? teachingLines(match, teacher.personId, lineSrc) : [];
 
