@@ -18,6 +18,7 @@ import { NOT_PLANNABLE, SM_CONFERENCE_CODES } from '@/lib/rank-calculus';
 import { rankTrees, topicWords, type TopicPart, type TopicWords } from '@/lib/meeting-board-picklist';
 import { boardName, effectiveIntent, summarizeBoard, type Intent } from '@/lib/meeting-board-shared';
 import { matchBoard, type MatchResult } from '@/lib/meeting-board-match';
+import { loadFocusTopics, type FocusTopic } from '@/lib/meeting-focus-db';
 import {
   assessTeacher,
   flagText,
@@ -183,7 +184,12 @@ export interface TeachBoard {
   /** Who wants what for this meeting (Can't-make-it scouts and "later" picks left out). */
   demand: Map<string, number[]>;
   freeform: { key: string; title: string }[];
+  /** Freeform and focus-group titles by key (topicWords' titles). */
   freeformTitles: Map<string, string>;
+  /** What a planner seeded on this meeting (P3). */
+  focus: FocusTopic[];
+  /** Focus groups' items by key (topicWords' members). */
+  members: Map<string, string[]>;
   match: ReturnType<typeof matchSupply>;
 }
 
@@ -195,7 +201,7 @@ export async function loadTeachBoard(
   board: readonly BoardScoutRow[],
   include: 'all' | readonly number[] = []
 ): Promise<TeachBoard> {
-  const rows = await loadSupplyRows(sb, [meeting.entryId]);
+  const [rows, focus] = await Promise.all([loadSupplyRows(sb, [meeting.entryId]), loadFocusTopics(sb, meeting.entryId)]);
   const withRows = [...rows.topicTeachers.map((r) => r.personId), ...rows.skillOffers.map((r) => r.personId)];
   const people = await loadTeacherPeople(sb, include === 'all' ? 'all' : [...withRows, ...include], meeting.date, catalog);
   // Someone who signed up and no longer qualifies still shows with their rows (eligible: false), so they or a leader
@@ -213,7 +219,8 @@ export async function loadTeachBoard(
   };
   const { demand } = summarizeBoard(board);
   const freeform = rows.freeform.map((f) => ({ key: f.key, title: f.title }));
-  return { ctx, people, supply, intents, demand, freeform, freeformTitles: new Map(freeform.map((f) => [f.key, f.title])), match: matchSupply(demand, supply) };
+  const titles = new Map([...freeform.map((f) => [f.key, f.title] as const), ...focus.filter((f) => f.title).map((f) => [f.key, f.title!] as const)]);
+  return { ctx, people, supply, intents, demand, freeform, freeformTitles: titles, focus, members: new Map(focus.map((f) => [f.key, f.members])), match: matchSupply(demand, supply) };
 }
 
 /**
@@ -419,7 +426,7 @@ const short = (date: string) => fmtDate(date, { year: false });
 export async function loadTeachView(
   sb: SupabaseClient,
   meeting: Pick<BoardMeeting, 'entryId' | 'date'>,
-  catalog: Pick<AdvancementCatalog, 'ranks' | 'rankRequirements' | 'meritBadges' | 'skills'>,
+  catalog: Pick<AdvancementCatalog, 'ranks' | 'rankRequirements' | 'meritBadges' | 'skills'> & Partial<Pick<AdvancementCatalog, 'meritBadgeRequirements'>>,
   personId: number,
   opts: { board: readonly BoardScoutRow[]; upcoming: readonly Pick<BoardMeeting, 'entryId' | 'date'>[]; teach?: TeachBoard }
 ): Promise<TeachView | null> {
@@ -432,7 +439,7 @@ export async function loadTeachView(
   const firstAsked = new Map<string, string[]>();
   for (const s of opts.board) for (const p of s.picks) firstAsked.set(p.key, [...(firstAsked.get(p.key) ?? []), p.firstAskedOn]);
   const words = (key: string): TopicWords =>
-    topicWords(key, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, t.freeformTitles) ?? { label: key, codeLabel: '', kind: 'rank', parts: [], minutes: null };
+    topicWords(key, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, t.freeformTitles, { mbReqs: catalog.meritBadgeRequirements, members: t.members }) ?? { label: key, codeLabel: '', kind: 'rank', parts: [], minutes: null };
   const scoutsFor = (key: string) => (t.demand.get(key) ?? []).map((id) => nameOfScout.get(id) ?? '').filter(Boolean).sort();
   const skillName = new Map(catalog.skills.map((s) => [s.id, s.name]));
 

@@ -44,6 +44,7 @@ const p = (personId: number, name: string) => ({ personId, name });
 const counts = { coming: 1, undecided: 0, notComing: 0, noAnswer: 1, total: 2 };
 const empty = { coming: [], undecided: [], notComing: [], noAnswer: [] };
 const BOARD: PlannerBoard = {
+  focus: [],
   attendance: { scouts: counts, adults: counts },
   ready: [],
   noTeacher: [

@@ -11,18 +11,22 @@
  * A row a teacher has signed up for (or that a matching skill offer covers) carries one quiet "Teacher: Mr. Vest" tag
  * (Phase 2); the caller works out who from lib/meeting-board-teach.
  *
+ * Meeting Planner P3: what a planner seeded on this meeting. A focus group ('fg:7', one pick, one class) and a single merit
+ * badge requirement ('first-aid-9') come first, under "Meeting focus"; a seeded rank requirement stays in its rank group
+ * with a `focus` mark. Neither a focus group nor a merit badge requirement is ever finished (a retake is allowed).
+ *
  * Finished requirements are absent. The engine's rules decide what can be worked on at a meeting at all (its
  * NOT_PLANNABLE set and the 95% Scoutmaster-conference gate, via lib/rank-calculus); an outing-only requirement is
  * listed but disabled with "Needs an outing". The pick unit is the top-level requirement (Decision 15).
  */
 import { buildReqTree, type ReqNode } from '@/lib/mb-helpers';
 import { rankNodeSatisfied, rankTopPlannable } from '@/lib/rank-calculus';
-import type { CatalogMeritBadge, CatalogRank, CatalogRankRequirement } from '@/lib/advancement-catalog';
+import type { CatalogMeritBadge, CatalogMeritBadgeRequirement, CatalogRank, CatalogRankRequirement } from '@/lib/advancement-catalog';
 import { boardName, orderPicks, othersLabel, type BoardPick, type Intent } from '@/lib/meeting-board-shared';
 
 export interface PickRow {
   key: string;
-  kind: 'rank' | 'mb' | 'ff';
+  kind: 'rank' | 'mb' | 'ff' | 'focus';
   /** The requirement code ('4a') under its rank heading; null for a badge. */
   code: string | null;
   label: string;
@@ -33,8 +37,10 @@ export interface PickRow {
   others: string;
   /** The teacher coming for it, as scouts see them ("Mr. Vest", "Maya S"); null when nobody yet. */
   teacher: string | null;
-  /** Its sub-requirements as the Clipboard lists them, the scout's done ones marked (T-4); rank rows only. */
+  /** Its sub-requirements as the Clipboard lists them, the scout's done ones marked (T-4); rank and focus rows. */
   parts?: TopicPart[];
+  /** Seeded on this meeting (P3): a rank row in its group carries the mark; Meeting focus rows are all seeded. */
+  focus?: boolean;
 }
 
 export interface PickGroup {
@@ -55,6 +61,8 @@ export interface PickListView {
   badges: PickRow[];
   /** Freeform topics a teacher offered on this board ("Knife sharpening"). */
   offered: PickRow[];
+  /** Seeded focus groups and merit badge requirements (P3), listed first under "Meeting focus". */
+  focus?: PickRow[];
 }
 
 export interface PickListInput {
@@ -72,6 +80,17 @@ export interface PickListInput {
   teacherByKey?: ReadonlyMap<string, string>;
   /** Freeform topics on this board (Phase 2). */
   freeform?: readonly { key: string; title: string }[];
+  /** What a planner seeded on this board (P3), with its words. */
+  focus?: readonly FocusPickIn[];
+}
+
+/** A seeded topic as the pick list takes it. */
+export interface FocusPickIn {
+  key: string;
+  label: string;
+  /** 'Meeting focus' for a focus group, 'First Aid 9', 'Tenderfoot 4a'. */
+  codeLabel: string;
+  parts?: TopicPart[];
 }
 
 type RankNode = ReqNode<CatalogRankRequirement>;
@@ -94,6 +113,15 @@ export function nextRankOf(currentRank: string | null, ranks: readonly CatalogRa
 
 /** The tray's second line for a freeform topic. */
 export const OFFERED_LABEL = 'Offered this week';
+/** The tray's second line for a focus group, and the pick list's heading for what was seeded (P3). */
+export const FOCUS_LABEL = 'Meeting focus';
+
+/** The rank a key belongs to ('tenderfoot-4a' -> tenderfoot); undefined for a badge, freeform, focus group or a merit
+ *  badge requirement. Rank ids carry dashes, so the longest match wins. */
+export function rankOfKey<R extends Pick<CatalogRank, 'id'>>(key: string, ranks: readonly R[]): R | undefined {
+  if (key.startsWith('mb:') || key.startsWith('ff:') || key.startsWith('fg:')) return undefined;
+  return [...ranks].sort((a, b) => b.id.length - a.id.length).find((r) => key.startsWith(`${r.id}-`));
+}
 
 export function buildPickList(input: PickListInput): PickListView {
   const sorted = [...input.ranks].sort((a, b) => a.sort_order - b.sort_order);
@@ -102,6 +130,7 @@ export function buildPickList(input: PickListInput): PickListView {
   const codes = input.rankCodes as Set<string>;
   const others = (key: string) => othersLabel(input.othersByKey?.get(key) ?? []);
   const teacher = (key: string) => input.teacherByKey?.get(key) ?? null;
+  const seeded = new Set((input.focus ?? []).map((f) => f.key));
 
   const groups: PickGroup[] = [];
   const startAt = nextRankId ? sorted.findIndex((r) => r.id === nextRankId) : sorted.length;
@@ -121,7 +150,8 @@ export function buildPickList(input: PickListInput): PickListView {
         outing: top.venue === 'outing',
         others: others(key),
         teacher: teacher(key),
-        parts: topicParts(top, input.rankReqs, codes)
+        parts: topicParts(top, input.rankReqs, codes),
+        ...(seeded.has(key) ? { focus: true } : {})
       });
     }
     if (rows.length || rank.id === nextRankId) groups.push({ rankId: rank.id, title: rank.display_name, next: rank.id === nextRankId, rows });
@@ -147,13 +177,18 @@ export function buildPickList(input: PickListInput): PickListView {
     badges: byName.filter((m) => !started.has(m.id) && !awarded.has(m.id)).map(badgeRow),
     offered: [...(input.freeform ?? [])]
       .sort((a, b) => a.title.localeCompare(b.title))
-      .map((f) => ({ key: f.key, kind: 'ff' as const, code: null, label: f.title, codeLabel: OFFERED_LABEL, outing: false, others: others(f.key), teacher: teacher(f.key) }))
+      .map((f) => ({ key: f.key, kind: 'ff' as const, code: null, label: f.title, codeLabel: OFFERED_LABEL, outing: false, others: others(f.key), teacher: teacher(f.key) })),
+    // A seeded rank requirement is marked in its group (above); everything else seeded is listed here.
+    focus: (input.focus ?? [])
+      .filter((f) => !rankOfKey(f.key, sorted))
+      .map((f) => ({ key: f.key, kind: 'focus' as const, code: f.codeLabel === FOCUS_LABEL ? null : f.codeLabel, label: f.label, codeLabel: f.codeLabel, outing: false, others: others(f.key), teacher: teacher(f.key), parts: f.parts, focus: true }))
   };
 }
 
-/** Every row in the view, in list order (the catalog order unranked picks sort by). */
+/** Every row in the view, in list order (the catalog order unranked picks sort by), each key once. */
 export function allRows(view: PickListView): PickRow[] {
-  return [...view.offered, ...view.groups.flatMap((g) => g.rows), ...view.working, ...view.badges];
+  const seen = new Set<string>();
+  return [...(view.focus ?? []), ...view.offered, ...view.groups.flatMap((g) => g.rows), ...view.working, ...view.badges].filter((r) => !seen.has(r.key) && seen.add(r.key));
 }
 
 /** What a scout may add on this board: every listed row except the outing-only ones. The server action checks it. */
@@ -176,8 +211,8 @@ export function isPickFinished(
   }
 ): boolean {
   if (key.startsWith('mb:')) return ctx.awardedMbs.has(key.slice(3));
-  if (key.startsWith('ff:')) return false;
-  const rank = [...ctx.ranks].sort((a, b) => b.id.length - a.id.length).find((r) => key.startsWith(`${r.id}-`));
+  // A freeform topic, a focus group and a merit badge requirement are never finished (P3: a retake is allowed).
+  const rank = rankOfKey(key, ctx.ranks);
   if (!rank) return false;
   const sortOf = new Map(ctx.ranks.map((r) => [r.id, r.sort_order]));
   const mine = ctx.currentRank ? sortOf.get(ctx.currentRank) : undefined;
@@ -191,37 +226,77 @@ export function isPickFinished(
  *  before 95% of the rank). The planner's likely fits use it so they match the pick list and the nudge list. */
 export function isPickOutOfReach(key: string, ctx: Parameters<typeof isPickFinished>[1]): boolean {
   if (isPickFinished(key, ctx)) return true;
-  const rank = [...ctx.ranks].sort((a, b) => b.id.length - a.id.length).find((r) => key.startsWith(`${r.id}-`));
+  const rank = rankOfKey(key, ctx.ranks);
   if (!rank) return false;
   const tree = ctx.trees.get(rank.id) ?? [];
   const top = tree.find((n) => n.code === key.slice(rank.id.length + 1));
   return top ? !rankTopPlannable(tree, rank.id, top, ctx.rankCodes as Set<string>) : false;
 }
 
+/** What topicWords needs for seeded topics (P3): merit badge requirements, and each focus group's members. */
+export interface TopicWordsMore {
+  mbReqs?: readonly CatalogMeritBadgeRequirement[];
+  /** A focus group's item keys, by its key ('fg:7'). */
+  members?: ReadonlyMap<string, readonly string[]>;
+}
+
 /** The tray's words for a key: 'First aid' / 'Tenderfoot 4a'. Null for a key the catalog no longer has (or a freeform
- *  topic whose title wasn't passed). */
+ *  topic or focus group whose title wasn't passed; a merit badge requirement without `more.mbReqs`). `freeformTitles`
+ *  holds the freeform and focus-group titles. */
 export function topicWords(
   key: string,
   ranks: readonly CatalogRank[],
   rankReqs: readonly CatalogRankRequirement[],
   mbs: readonly CatalogMeritBadge[],
-  freeformTitles?: ReadonlyMap<string, string>
+  freeformTitles?: ReadonlyMap<string, string>,
+  more?: TopicWordsMore
 ): TopicWords | null {
   if (key.startsWith('ff:')) {
     const title = freeformTitles?.get(key);
     return title ? { label: title, codeLabel: OFFERED_LABEL, kind: 'ff', parts: [], minutes: null } : null;
   }
+  if (key.startsWith('fg:')) {
+    const title = freeformTitles?.get(key);
+    if (!title) return null;
+    const parts = (more?.members?.get(key) ?? []).map((k) => itemPart(k, ranks, rankReqs, mbs, more?.mbReqs ?? [])).filter((p): p is TopicPart => p != null);
+    return { label: title, codeLabel: FOCUS_LABEL, kind: 'focus', parts, minutes: parts.length ? parts.reduce((n, p) => n + p.minutes, 0) : null };
+  }
   if (key.startsWith('mb:')) {
     const mb = mbs.find((m) => m.id === key.slice(3));
     return mb ? { label: mb.name, codeLabel: 'Merit badge', kind: 'mb', parts: [], minutes: null } : null;
   }
-  const rank = [...ranks].sort((a, b) => b.id.length - a.id.length).find((r) => key.startsWith(`${r.id}-`));
-  if (!rank) return null;
+  const rank = rankOfKey(key, ranks);
+  if (!rank) {
+    // A top-level merit badge requirement ('first-aid-9'), seeded on a meeting (P3).
+    const row = (more?.mbReqs ?? []).find((r) => r.parent_id == null && `${r.mb_id}-${r.code}` === key);
+    const mb = row ? mbs.find((m) => m.id === row.mb_id) : undefined;
+    if (!row || !mb) return null;
+    const parts = topicParts(row, more?.mbReqs ?? []);
+    return { label: row.label, codeLabel: `${mb.name} ${row.code}`, kind: 'mb', parts, minutes: teachMinutes(row, parts) };
+  }
   const code = key.slice(rank.id.length + 1);
   const row = rankReqs.find((r) => r.rank_id === rank.id && r.code === code && r.parent_id == null);
   if (!row) return null;
   const parts = topicParts(row, rankReqs);
   return { label: row.label, codeLabel: `${rank.display_name} ${code}`, kind: 'rank', parts, minutes: teachMinutes(row, parts) };
+}
+
+/** One item of a focus group as its class's part: 'Tenderfoot 4a.1' / 'Cuts', any level. Null when the catalog lost it. */
+export function itemPart(
+  key: string,
+  ranks: readonly CatalogRank[],
+  rankReqs: readonly CatalogRankRequirement[],
+  mbs: readonly CatalogMeritBadge[],
+  mbReqs: readonly CatalogMeritBadgeRequirement[]
+): TopicPart | null {
+  const rank = rankOfKey(key, ranks);
+  const rows: readonly (CatalogRankRequirement | CatalogMeritBadgeRequirement)[] = rank ? rankReqs.filter((r) => r.rank_id === rank.id) : mbReqs;
+  const row = rank ? rows.find((r) => r.code === key.slice(rank.id.length + 1)) : mbReqs.find((r) => `${r.mb_id}-${r.code}` === key);
+  if (!row) return null;
+  const source = rank ? rank.display_name : (mbs.find((m) => m.id === (row as CatalogMeritBadgeRequirement).mb_id)?.name ?? '');
+  const kids = rows.filter((r) => r.parent_id === row.id);
+  const minutes = kids.length ? kids.reduce((n, r) => n + (r.teach_minutes ?? DEFAULT_TEACH_MINUTES), 0) : (row.teach_minutes ?? DEFAULT_TEACH_MINUTES);
+  return { code: `${source} ${row.code}`.trim(), label: row.label, minutes };
 }
 
 /** The 15-minute head start every requirement gets until a leader sets its time (T-3). */
@@ -238,23 +313,23 @@ export interface TopicPart {
 export interface TopicWords {
   label: string;
   codeLabel: string;
-  kind: 'rank' | 'mb' | 'ff';
+  kind: 'rank' | 'mb' | 'ff' | 'focus';
   /** Sub-requirements (Tenderfoot 4a.1-4a.8); empty when it has none. */
   parts: TopicPart[];
   /** Expected minutes to teach it (T-3); null for a whole badge or a freeform topic. */
   minutes: number | null;
 }
 
-/** A top-level rank requirement's sub-requirements in catalog order; `codes` marks the ones a scout has done. */
-export function topicParts(row: CatalogRankRequirement, rankReqs: readonly CatalogRankRequirement[], codes?: ReadonlySet<string>): TopicPart[] {
-  return rankReqs
+/** A top-level requirement's sub-requirements in catalog order; `codes` marks the ones a scout has done (rank only). */
+export function topicParts<R extends CatalogRankRequirement | CatalogMeritBadgeRequirement>(row: R, reqs: readonly R[], codes?: ReadonlySet<string>): TopicPart[] {
+  return reqs
     .filter((r) => r.parent_id === row.id)
     .sort((a, b) => a.sort_order - b.sort_order)
     .map((r) => ({
       code: r.code,
       label: r.label,
       minutes: r.teach_minutes ?? DEFAULT_TEACH_MINUTES,
-      ...(codes ? { done: codes.has(`${row.rank_id}-${r.code}`) } : {})
+      ...(codes && 'rank_id' in row ? { done: codes.has(`${row.rank_id}-${r.code}`) } : {})
     }));
 }
 
@@ -275,14 +350,14 @@ export function minutesText(minutes: number | null | undefined): string {
 }
 
 /** One source of truth: a requirement with sub-requirements takes the sum of theirs, otherwise its own. */
-export function teachMinutes(row: Pick<CatalogRankRequirement, 'teach_minutes'>, parts: readonly TopicPart[]): number {
+export function teachMinutes(row: { teach_minutes?: number | null }, parts: readonly TopicPart[]): number {
   return parts.length ? parts.reduce((n, p) => n + p.minutes, 0) : (row.teach_minutes ?? DEFAULT_TEACH_MINUTES);
 }
 
 export interface TrayPick extends BoardPick {
   label: string;
   codeLabel: string;
-  kind: 'rank' | 'mb' | 'ff';
+  kind: 'rank' | 'mb' | 'ff' | 'focus';
   /** Board name of whoever added it, when that was neither the scout nor the person looking. */
   addedBy: string | null;
 }
@@ -309,7 +384,10 @@ export function trayPicks(
 ): TrayPick[] {
   const order = new Map(allRows(ctx.view).map((r, i) => [r.key, i]));
   return orderPicks(picks, (k) => order.get(k) ?? Number.MAX_SAFE_INTEGER).map((p) => {
-    const words = topicWords(p.key, ctx.ranks, ctx.rankReqs, ctx.mbs, new Map(ctx.view.offered.map((r) => [r.key, r.label]))) ?? { label: p.key, codeLabel: '', kind: 'rank' as const };
+    const seeded = (ctx.view.focus ?? []).find((r) => r.key === p.key);
+    const words = seeded
+      ? { label: seeded.label, codeLabel: seeded.codeLabel, kind: seeded.kind }
+      : (topicWords(p.key, ctx.ranks, ctx.rankReqs, ctx.mbs, new Map(ctx.view.offered.map((r) => [r.key, r.label]))) ?? { label: p.key, codeLabel: '', kind: 'rank' as const });
     const by = p.enteredByPersonId;
     const addedBy = by != null && by !== ctx.scoutPersonId && by !== ctx.viewerPersonId ? boardName(ctx.names.get(by) ?? '') || null : null;
     return { ...p, ...words, addedBy };

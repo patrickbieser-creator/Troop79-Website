@@ -13,6 +13,7 @@ const counts = { coming: 2, undecided: 1, notComing: 1, noAnswer: 2, total: 6 };
 const wall = { coming: [{ ...p(1, 'Finn P'), tag: '1 pick' }], undecided: [], notComing: [{ ...p(3, 'Todd M'), tag: 'Picks saved' }], noAnswer: [{ ...p(4, 'Adi A'), tag: 'Scout' }] };
 
 const BOARD: PlannerBoard = {
+  focus: [],
   attendance: { scouts: counts, adults: counts },
   ready: [{ key: 'star-6', codeLabel: 'Star 6', title: 'Cyber Chip for grade', kind: 'rank', minutes: 15, teachers: [p(10, 'Patrick B')], scouts: [p(2, 'Anjali S')] }],
   noTeacher: [

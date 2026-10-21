@@ -12,9 +12,9 @@ import { fmtDateFull } from '@/lib/format-date';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 import { loadBoardStamp, loadBoardState, loadNextMeeting, loadScoutProgress, type BoardMeeting } from '@/lib/meeting-board';
 import { loadTeachBoard } from '@/lib/meeting-board-supply';
-import { assessTeacher, teacherName } from '@/lib/meeting-board-teach';
+import { assessTeacher, teacherName, teachersFor } from '@/lib/meeting-board-teach';
 import { boardName } from '@/lib/meeting-board-shared';
-import { isPickOutOfReach, nextRankOf, rankTrees, topicWords } from '@/lib/meeting-board-picklist';
+import { isPickOutOfReach, nextRankOf, rankOfKey, rankTrees, topicWords } from '@/lib/meeting-board-picklist';
 import { loadInviteRows } from '@/lib/meeting-invites-db';
 import { buildPlannerBoard, type PlannerBoard, type PlannerTopic } from '@/lib/meeting-planner-board';
 
@@ -53,8 +53,13 @@ export async function loadPlannerPage(sb: SupabaseClient): Promise<PlannerPage |
   ];
   const committed = new Set(commitments.map((c) => c.personId));
 
+  // P3: seeded topics are on the board even before anyone picks them or offers to teach them.
+  const seededKeys = teach.focus.map((f) => f.key);
+  const teachersForKey = new Map([...teach.match.teachers].map(([key, list]) => [key, list.map((t) => t.personId)]));
+  for (const key of seededKeys) if (!teachersForKey.has(key)) teachersForKey.set(key, teachersFor(key, teach.supply).map((t) => t.personId));
+
   // Topic words for every key on the board.
-  const keys = new Set([...teach.demand.keys(), ...commitments.map((c) => c.key)]);
+  const keys = new Set([...teach.demand.keys(), ...commitments.map((c) => c.key), ...seededKeys]);
   const topics = new Map<string, PlannerTopic>();
   for (const key of keys) {
     if (key.startsWith('skill:')) {
@@ -62,13 +67,13 @@ export async function loadPlannerPage(sb: SupabaseClient): Promise<PlannerPage |
       topics.set(key, { key, codeLabel: 'Skill offer', title: name, kind: 'ff', minutes: null, rankId: null });
       continue;
     }
-    const w = topicWords(key, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, teach.freeformTitles);
-    const rank = w?.kind === 'rank' ? [...catalog.ranks].sort((a, b) => b.id.length - a.id.length).find((r) => key.startsWith(`${r.id}-`)) : undefined;
+    const w = topicWords(key, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, teach.freeformTitles, { mbReqs: catalog.meritBadgeRequirements, members: teach.members });
+    const rank = w?.kind === 'rank' ? rankOfKey(key, catalog.ranks) : undefined;
     topics.set(key, { key, codeLabel: w?.codeLabel ?? '', title: w?.label ?? key, kind: w?.kind ?? 'ff', minutes: w?.minutes ?? null, rankId: rank?.id ?? null });
   }
 
   const pool = [...teach.people.values()].filter((p) => p.eligible !== false);
-  const qualified = new Map(teach.match.wanted.map((key) => [key, pool.filter((p) => assessTeacher(p, key, teach.ctx).qualified).map((p) => p.personId)]));
+  const qualified = new Map([...new Set([...teach.match.wanted, ...seededKeys])].map((key) => [key, pool.filter((p) => assessTeacher(p, key, teach.ctx).qualified).map((p) => p.personId)]));
   const adults = [...teach.people.values()]
     .filter((p) => p.kind === 'adult')
     .filter((p) => leaderIds.has(p.personId) || p.skills.size > 0 || p.counselorFor.size > 0 || teach.intents.has(p.personId) || committed.has(p.personId))
@@ -95,10 +100,11 @@ export async function loadPlannerPage(sb: SupabaseClient): Promise<PlannerPage |
     adults,
     topics,
     commitments,
-    teachersFor: new Map([...teach.match.teachers].map(([key, list]) => [key, list.map((t) => t.personId)])),
+    teachersFor: teachersForKey,
     qualified,
     requested: new Set(inviteRows.filter((r) => r.kind === 'teach').map((r) => `${r.topic_key}:${r.invitee_person_id}`)),
-    finished
+    finished,
+    seeded: new Map(teach.focus.map((f) => [f.key, { by: f.seededBy }]))
   });
 
   return {

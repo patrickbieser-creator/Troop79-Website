@@ -516,6 +516,14 @@ details.group > summary .meta {
 }
 
 /* ── Phase 2: the teacher side (prototypes/meeting-board/meeting.html, teach section) ── */
+/* P3: a seeded rank requirement in its rank group */
+.focusTag {
+  display: block;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--bark);
+  margin-top: 2px;
+}
 .teacherTag {
   display: block;
   font-size: var(--fs-xs);

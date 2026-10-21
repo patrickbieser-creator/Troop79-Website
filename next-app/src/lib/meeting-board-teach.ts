@@ -17,7 +17,7 @@
  *   - A person who said "Can't make it" is left out of the supply, and their rows are kept (Decision 4).
  */
 import type { CatalogRank, CatalogRankRequirement } from '@/lib/advancement-catalog';
-import { isPickFinished, type rankTrees } from '@/lib/meeting-board-picklist';
+import { isPickFinished, rankOfKey, type rankTrees } from '@/lib/meeting-board-picklist';
 import { boardName, type Intent } from '@/lib/meeting-board-shared';
 
 export type TeacherKind = 'adult' | 'junior';
@@ -71,12 +71,10 @@ export function freeformKey(title: string): string {
   return t ? `ff:${t.toLowerCase()}` : '';
 }
 
-const rankOf = (key: string, ranks: readonly CatalogRank[]) => [...ranks].sort((a, b) => b.id.length - a.id.length).find((r) => key.startsWith(`${r.id}-`));
-
-/** The topic's skill: its top-level requirement's skill_id. Null for a badge, a freeform topic, or no skill. */
+/** The topic's skill: its top-level requirement's skill_id. Null for a badge, a freeform topic, a focus group, a merit
+ *  badge requirement, or no skill. */
 export function topicSkill(key: string, ranks: readonly CatalogRank[], rankReqs: readonly CatalogRankRequirement[]): string | null {
-  if (key.startsWith('mb:') || key.startsWith('ff:')) return null;
-  const rank = rankOf(key, ranks);
+  const rank = rankOfKey(key, ranks);
   if (!rank) return null;
   const code = key.slice(rank.id.length + 1);
   return rankReqs.find((r) => r.rank_id === rank.id && r.code === code && r.parent_id == null)?.skill_id ?? null;
@@ -100,11 +98,12 @@ export interface TeachAssessment {
 }
 
 export function assessTeacher(p: TeacherPerson, key: string, ctx: TeachContext): TeachAssessment {
-  if (key.startsWith('ff:')) return { qualified: true, flags: [], refused: false };
   if (key.startsWith('mb:')) {
     const counselor = p.counselorFor.has(key.slice(3));
     return { qualified: p.kind === 'adult', flags: counselor ? [] : ['needs_counselor'], refused: false };
   }
+  // A freeform topic, a focus group or a merit badge requirement (P3; counselor-first ordering is deferred): anyone.
+  if (!rankOfKey(key, ctx.ranks)) return { qualified: true, flags: [], refused: false };
   const skill = topicSkill(key, ctx.ranks, ctx.rankReqs);
   if (p.kind === 'junior' && skill && ctx.youthTeachable.get(skill) === false) return { qualified: false, flags: [], refused: true };
   const flags: TeachFlag[] = [];

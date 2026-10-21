@@ -15,7 +15,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { centralToday } from '@/lib/dates';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 import { loadAdvancementCatalog, type AdvancementCatalog } from '@/lib/advancement-catalog';
-import { buildPickList, isPickFinished, rankTrees, trayPicks, type PickListView, type ScoutBoardView } from '@/lib/meeting-board-picklist';
+import { buildPickList, isPickFinished, rankOfKey, rankTrees, trayPicks, type FocusPickIn, type PickListView, type ScoutBoardView } from '@/lib/meeting-board-picklist';
+import { focusPicks, loadFocusTopics } from '@/lib/meeting-focus-db';
 import {
   boardName,
   carryForward,
@@ -244,12 +245,14 @@ export async function loadEffectivePicks(
     }
   }
 
-  // A freeform pick carries only to a board where a teacher offered it again (the topic has to exist there).
-  if ([...priorByPerson.values()].some((list) => list.some((p) => p.key.startsWith('ff:')))) {
-    const { data, error } = await sb.from('meeting_topics').select('topic_key').eq('calendar_entry_id', meeting.entryId).eq('kind', 'freeform');
+  // A freeform pick carries only to a board where a teacher offered it again, and a focus group or merit badge
+  // requirement (P3) only to a board where it was seeded or offered again: the topic has to exist there.
+  const onlyIfThere = (key: string) => !key.startsWith('mb:') && !rankOfKey(key, catalog.ranks);
+  if ([...priorByPerson.values()].some((list) => list.some((p) => onlyIfThere(p.key)))) {
+    const { data, error } = await sb.from('meeting_topics').select('topic_key').eq('calendar_entry_id', meeting.entryId).in('kind', ['freeform', 'focus_group', 'mb_req']);
     if (error) throw new Error(error.message);
     const here = new Set(((data ?? []) as { topic_key: string }[]).map((t) => t.topic_key));
-    for (const [pid, list] of priorByPerson) priorByPerson.set(pid, list.filter((p) => !p.key.startsWith('ff:') || here.has(p.key)));
+    for (const [pid, list] of priorByPerson) priorByPerson.set(pid, list.filter((p) => !onlyIfThere(p.key) || here.has(p.key)));
   }
 
   const needProgress = scouts.filter((s) => priorByPerson.has(s.personId));
@@ -419,9 +422,11 @@ export async function loadScoutBoard(
   sb: SupabaseClient,
   meeting: Pick<BoardMeeting, 'entryId' | 'date'>,
   scout: BoardScout,
-  catalog: Pick<AdvancementCatalog, 'ranks' | 'rankRequirements' | 'meritBadges'>,
+  catalog: Pick<AdvancementCatalog, 'ranks' | 'rankRequirements' | 'meritBadges'> & Partial<Pick<AdvancementCatalog, 'meritBadgeRequirements'>>,
   opts: {
     viewerPersonId: number | null;
+    /** P3: what a planner seeded on this board; loaded here when not passed. */
+    focus?: readonly FocusPickIn[];
     othersByKey?: ReadonlyMap<string, readonly string[]>;
     /** Phase 2: the teacher coming for each key, as scouts see them. */
     teacherByKey?: ReadonlyMap<string, string>;
@@ -430,6 +435,7 @@ export async function loadScoutBoard(
   }
 ): Promise<ScoutBoard> {
   const progress = await loadScoutProgress(sb, [scout.scoutId]);
+  const focus = opts.focus ?? focusPicks(await loadFocusTopics(sb, meeting.entryId), { ...catalog, meritBadgeRequirements: catalog.meritBadgeRequirements ?? [] });
   const [eff, intents] = await Promise.all([
     loadEffectivePicks(sb, meeting, [scout], catalog, progress),
     loadIntents(sb, meeting.entryId, [scout.personId])
@@ -445,7 +451,8 @@ export async function loadScoutBoard(
     rankCodes: p.rankCodes,
     othersByKey: opts.othersByKey,
     teacherByKey: opts.teacherByKey,
-    freeform: opts.freeform
+    freeform: opts.freeform,
+    focus
   });
   const names = await loadPeopleNames(sb, mine.picks.map((x) => x.enteredByPersonId).filter((id): id is number => id != null));
   return {

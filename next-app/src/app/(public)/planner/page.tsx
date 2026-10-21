@@ -4,7 +4,7 @@
  *
  * The This Sunday board for the next meeting (board-view.tsx): read-only for a viewer; an editor (P2a) also opens a
  * person's drawer, assigns, adds offers. Signed out → sign in and come back; signed in without a planner right → a
- * plain "no access" message.
+ * plain "no access" message. P3: a second tab, Focus sets (./focus-sets), and seeding for the planning team.
  */
 import { redirect } from "next/navigation";
 import { resolveAdminActor } from "@/lib/admin-actor";
@@ -18,6 +18,7 @@ import { Notice } from "@/app/_components/notice";
 import { PlannerBoardView } from "./board-view";
 import { PlannerPoller } from "./planner-poller";
 import { PlannerProvider } from "./planner-client";
+import { PlannerTabs } from "./planner-tabs";
 import styles from "./planner.module.css";
 
 export const dynamic = "force-dynamic";
@@ -49,6 +50,7 @@ export default async function PlannerPage() {
     return (
       <>
         <PageHeader kicker="Meeting Planner" title="No meeting coming up" />
+        <PlannerTabs active="board" />
         <PageShell width="narrow">
           <Notice tone="info">
             There’s no troop meeting on the calendar yet. The board opens once
@@ -78,11 +80,12 @@ export default async function PlannerPage() {
   return (
     <PlannerProvider
       entryId={page.meeting.entryId}
-      canEdit={access.canEdit} canEmail={access.canEmail}
+      canEdit={access.canEdit} canEmail={access.canEmail} canSeed={access.canSeed}
       adults={adults}
       stamp={page.stamp}
     >
       <div className={styles.page}>
+        <PlannerTabs active="board" />
         {page.meeting.mode === "closed" ? (
           <>
             <header className={styles.head}>{heading}</header>
@@ -91,7 +94,7 @@ export default async function PlannerPage() {
             </div>
           </>
         ) : (
-          <PlannerBoardView board={page.board} heading={heading} />
+          <PlannerBoardView board={page.board} heading={heading} canSeed={access.canSeed} />
         )}
       </div>
     </PlannerProvider>

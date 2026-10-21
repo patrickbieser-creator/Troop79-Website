@@ -9,6 +9,7 @@
  * Viewers (no edit right) get plain names and no buttons: PersonName renders a span, the buttons render nothing.
  * P2b: Send request and "Choose families to nudge…" render for adult editors only (canEmail); a scout editor (the SPL)
  * sees AdultsSendEmails instead.
+ * P3: a seed holder (canSeed) gets "Seed this meeting" on the Meeting focus strip, and may leave an offer's teacher blank.
  */
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { useRouter } from 'next/navigation';
@@ -16,6 +17,8 @@ import { plannerAssignAction, plannerSendRequestAction } from './actions';
 import { PersonDrawerView } from './person-drawer';
 import { OfferDrawer } from './offer-drawer';
 import { NudgeDrawer } from './nudge-drawer';
+import { SeedDrawer } from './seed-drawer';
+import type { FocusChip } from '@/lib/meeting-planner-board';
 import styles from './planner.module.css';
 
 export const SAVE_FAILED = 'That didn’t save. Check your connection and try again.';
@@ -32,7 +35,12 @@ export interface NudgeTopic {
   teachers: string;
 }
 
-type Open = { mode: 'person'; personId: number } | { mode: 'offer'; teacherId: number | null; back: number | null } | ({ mode: 'nudge' } & NudgeTopic) | null;
+type Open =
+  | { mode: 'person'; personId: number }
+  | { mode: 'offer'; teacherId: number | null; back: number | null }
+  | ({ mode: 'nudge' } & NudgeTopic)
+  | { mode: 'seed'; focus: readonly FocusChip[] }
+  | null;
 
 interface Sync {
   /** The last board stamp the page has seen or written. */
@@ -47,6 +55,9 @@ interface PlannerCtx {
   canEdit: boolean;
   /** An adult editor: may send requests and nudges. */
   canEmail: boolean;
+  /** The planning team (P3): may seed this meeting. */
+  canSeed: boolean;
+  openSeed: (focus: readonly FocusChip[]) => void;
   /** Families nudged this visit, by topic key ("✓ Nudged 5 families · just now"). */
   nudged: ReadonlyMap<string, number>;
   openNudge: (topic: NudgeTopic) => void;
@@ -66,6 +77,7 @@ export function PlannerProvider({
   entryId,
   canEdit,
   canEmail = false,
+  canSeed = false,
   adults,
   stamp,
   children
@@ -73,6 +85,7 @@ export function PlannerProvider({
   entryId: number;
   canEdit: boolean;
   canEmail?: boolean;
+  canSeed?: boolean;
   adults: readonly PlannerAdult[];
   stamp: string;
   children: ReactNode;
@@ -108,6 +121,8 @@ export function PlannerProvider({
       entryId,
       canEdit,
       canEmail: canEdit && canEmail,
+      canSeed,
+      openSeed: (focus) => setOpen({ mode: 'seed', focus }),
       nudged,
       openNudge: (topic) => setOpen({ mode: 'nudge', ...topic }),
       adults,
@@ -115,7 +130,7 @@ export function PlannerProvider({
       openOffer: (teacherId = null, back = null) => setOpen({ mode: 'offer', teacherId, back }),
       sync
     }),
-    [entryId, canEdit, canEmail, nudged, adults, sync]
+    [entryId, canEdit, canEmail, canSeed, nudged, adults, sync]
   );
 
   return (
@@ -125,6 +140,7 @@ export function PlannerProvider({
       {open?.mode === 'offer' ? (
         <OfferDrawer teacherId={open.teacherId} onClose={() => setOpen(open.back != null ? { mode: 'person', personId: open.back } : null)} />
       ) : null}
+      {open?.mode === 'seed' ? <SeedDrawer focus={open.focus} onClose={() => setOpen(null)} /> : null}
       {open?.mode === 'nudge' ? (
         <NudgeDrawer
           topicKey={open.topicKey}
@@ -150,10 +166,21 @@ export function PersonName({ personId, name, className }: { personId: number; na
   );
 }
 
-/** "+ Add an offer" on a card header. Editors only. */
+/** "Seed this meeting" on the Meeting focus strip. The planning team only (P3). */
+export function SeedButton({ focus }: { focus: readonly FocusChip[] }) {
+  const p = usePlanner();
+  if (!p?.canSeed) return null;
+  return (
+    <button type="button" className={styles.seedBtn} onClick={() => p.openSeed(focus)}>
+      Seed this meeting
+    </button>
+  );
+}
+
+/** "+ Add an offer" on a card header. Editors and the planning team (a teacher-less offer is a seed). */
 export function AddOfferButton() {
   const p = usePlanner();
-  if (!p?.canEdit) return null;
+  if (!p?.canEdit && !p?.canSeed) return null;
   return (
     <button type="button" className={styles.bandAction} onClick={() => p.openOffer()}>
       + Add an offer

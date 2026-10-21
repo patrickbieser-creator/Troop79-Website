@@ -89,7 +89,7 @@ export async function loadPersonDrawer(sb: SupabaseClient, meeting: Pick<BoardMe
   const rankName = new Map(catalog.ranks.map((r) => [r.id, r.display_name]));
   const scoutName = new Map(rows.map((r) => [r.personId, boardName(r.name)]));
   const words = (key: string) => {
-    const w = topicWords(key, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, teach.freeformTitles);
+    const w = topicWords(key, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, teach.freeformTitles, { mbReqs: catalog.meritBadgeRequirements, members: teach.members });
     return { title: w?.label ?? key, codeLabel: w?.codeLabel ?? '' };
   };
   const teachers = (key: string) =>
@@ -97,7 +97,8 @@ export async function loadPersonDrawer(sb: SupabaseClient, meeting: Pick<BoardMe
       const p = teach.people.get(t.personId);
       return p ? teacherName(p, 'admin') : (scoutName.get(t.personId) ?? `Person ${t.personId}`);
     });
-  const boardKeys = [...new Set([...teach.demand.keys(), ...teach.match.offered, ...teach.supply.topicTeachers.filter((t) => !teach.supply.notComing.has(t.personId)).map((t) => t.key)])];
+  // P3: what was seeded is on the board too, first.
+  const boardKeys = [...new Set([...teach.focus.map((f) => f.key), ...teach.demand.keys(), ...teach.match.offered, ...teach.supply.topicTeachers.filter((t) => !teach.supply.notComing.has(t.personId)).map((t) => t.key)])];
 
   const scoutRow = rows.find((r) => r.personId === personId);
   if (scoutRow) {

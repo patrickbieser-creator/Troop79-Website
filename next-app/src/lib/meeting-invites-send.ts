@@ -33,7 +33,7 @@ export async function sendTeachInvites(sb: SupabaseClient, input: { entryId: num
     return { ok: false, error: 'Malformed request' };
   }
   const catalog = await loadAdvancementCatalog();
-  const words = topicWords(input.topicKey, catalog.ranks, catalog.rankRequirements, catalog.meritBadges);
+  const words = topicWords(input.topicKey, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, undefined, { mbReqs: catalog.meritBadgeRequirements });
   // Freeform topics carry their title on the board, not in the catalog; P1 invites cover catalog topics only.
   if (!words) return { ok: false, error: 'That topic can’t be invited for yet.' };
   const made = await createTeachInvites(sb, { entryId: input.entryId, topicKey: input.topicKey, personIds: input.personIds, sentBy: input.sentBy });
@@ -136,7 +136,7 @@ export async function sendPickInvites(sb: SupabaseClient, input: { entryId: numb
     return { ok: false, error: 'Malformed request' };
   }
   const catalog = await loadAdvancementCatalog();
-  const words = topicWords(input.topicKey, catalog.ranks, catalog.rankRequirements, catalog.meritBadges);
+  const words = topicWords(input.topicKey, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, undefined, { mbReqs: catalog.meritBadgeRequirements });
   if (!words) return { ok: false, error: 'That topic can’t be offered yet.' };
   const made = await createPickInvites(sb, { entryId: input.entryId, topicKey: input.topicKey, scoutIds: input.scoutIds, sentBy: input.sentBy });
   if (!made.ok) return made;

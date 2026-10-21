@@ -7,11 +7,14 @@
  *
  * Search matches every typed word against the code and the words ("tenderfoot 4a", "first aid"). The Add button is
  * greyed only while nothing is chosen; pressed without a teacher, it marks the teacher list and says why.
+ *
+ * P3 (Decision 10b): the planning team may choose "No teacher yet" for a requirement: that seeds it on the meeting. A
+ * whole badge or a typed title still needs a teacher.
  */
 import { useEffect, useState } from 'react';
 import { Drawer } from '@/app/_components/drawer';
 import { FREEFORM_MAX } from '@/lib/meeting-board-teach';
-import { plannerAddOfferAction, plannerOfferChoicesAction, type OfferChoice } from './actions';
+import { plannerAddOfferAction, plannerOfferChoicesAction, plannerSeedTopicAction, type OfferChoice } from './actions';
 import { usePlanner } from './planner-client';
 import styles from './planner.module.css';
 
@@ -44,13 +47,17 @@ export function OfferDrawer({ teacherId, onClose }: { teacherId: number | null; 
 
   async function add() {
     if (!what) return;
-    if (teacher == null) {
-      setProblem({ at: 'teacher', text: 'Choose who teaches it.' });
+    const seedable = p.canSeed && what.kind === 'key' && !what.key.startsWith('mb:');
+    if (teacher == null && !seedable) {
+      setProblem({ at: 'teacher', text: p.canSeed ? 'A whole badge or a typed title needs a teacher.' : 'Choose who teaches it.' });
       return;
     }
     setSaving(true);
     setProblem(null);
-    const res = await p.sync.run(() => plannerAddOfferAction({ entryId: p.entryId, personId: teacher, what: what.kind === 'key' ? { key: what.key } : { title: what.title } }));
+    const res =
+      teacher == null && what.kind === 'key'
+        ? await p.sync.run(() => plannerSeedTopicAction({ entryId: p.entryId, key: what.key }))
+        : await p.sync.run(() => plannerAddOfferAction({ entryId: p.entryId, personId: teacher!, what: what.kind === 'key' ? { key: what.key } : { title: what.title } }));
     setSaving(false);
     if (res.ok) onClose();
     else setProblem({ at: 'save', text: res.error });
@@ -135,6 +142,27 @@ export function OfferDrawer({ teacherId, onClose }: { teacherId: number | null; 
           </p>
         ) : null}
         <ul className={styles.optList} aria-label="Who teaches it">
+          {p.canSeed ? (
+            <li>
+              <button
+                type="button"
+                aria-pressed={teacher == null}
+                className={teacher == null ? styles.optOn : styles.opt}
+                onClick={() => {
+                  setTeacher(null);
+                  if (problem?.at === 'teacher') setProblem(null);
+                }}
+              >
+                <span className={styles.check} aria-hidden="true">
+                  {teacher == null ? '✓' : ''}
+                </span>
+                <span className={styles.optText}>
+                  <span className={styles.optTitle}>No teacher yet</span>
+                  <span className={styles.optMeta}>Seeds it as meeting focus</span>
+                </span>
+              </button>
+            </li>
+          ) : null}
           {p.adults.map((a) => (
             <li key={a.personId}>
               <button

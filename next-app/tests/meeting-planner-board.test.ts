@@ -200,3 +200,50 @@ describe('edge cases', () => {
   });
 });
 
+
+describe('seeded focus (P3)', () => {
+  const FG = { key: 'fg:7', codeLabel: 'Meeting focus', title: 'First aid night', kind: 'focus' as const, minutes: 45, rankId: null };
+  const seeded = (keys: string[]) => new Map(keys.map((k) => [k, { by: 'Mindy K' }]));
+
+  it('SeededTopic_ShowsUnderNoTeacher_WithZeroPicks', () => {
+    const b = buildPlannerBoard(input({ topics: new Map([TF4A, SC2F, S1A, FG].map((t) => [t.key, t])), seeded: seeded(['fg:7']) }));
+    const row = b.noTeacher.find((r) => r.key === 'fg:7');
+    expect([row?.waiting, row?.seededBy, row?.title]).toEqual([[], 'Mindy K', 'First aid night']);
+  });
+
+  it('SeededTopic_WithATeacherAndNoPicks_IsOfferedNoTakers', () => {
+    const b = buildPlannerBoard(
+      input({
+        topics: new Map([TF4A, SC2F, S1A, FG].map((t) => [t.key, t])),
+        seeded: seeded(['fg:7']),
+        commitments: [{ key: 'scout-1a', personId: 14 }, { key: 'fg:7', personId: 10 }],
+        teachersFor: new Map([['scout-1a', [14]], ['fg:7', [10]]])
+      })
+    );
+    expect([b.noTeacher.some((r) => r.key === 'fg:7'), b.offered.find((o) => o.key === 'fg:7')?.seededBy]).toEqual([false, 'Mindy K']);
+  });
+
+  it('SeededTopic_WithAPick_IsAnOrdinaryRequest_MarkedFocus', () => {
+    const b = buildPlannerBoard(input({ seeded: seeded(['tenderfoot-4a']) }));
+    expect(b.noTeacher.map((r) => [r.key, r.waiting.length, r.seededBy])).toEqual([['tenderfoot-4a', 1, 'Mindy K']]);
+  });
+
+  it('UnseededTopic_HasNoFocusMark', () => {
+    expect(buildPlannerBoard(input()).noTeacher[0].seededBy).toBeNull();
+  });
+
+  it('FocusStrip_ListsEverySeededTopic_WithItsTeacherAndScouts', () => {
+    const b = buildPlannerBoard(
+      input({
+        topics: new Map([TF4A, SC2F, S1A, FG].map((t) => [t.key, t])),
+        seeded: seeded(['fg:7', 'tenderfoot-4a']),
+        commitments: [{ key: 'scout-1a', personId: 14 }, { key: 'tenderfoot-4a', personId: 10 }],
+        teachersFor: new Map([['scout-1a', [14]], ['tenderfoot-4a', [10]]])
+      })
+    );
+    expect(b.focus.map((f) => [f.key, f.title, f.teachers, f.scouts])).toEqual([
+      ['fg:7', 'First aid night', [], 0],
+      ['tenderfoot-4a', 'First aid basics', ['Dan V'], 1]
+    ]);
+  });
+});

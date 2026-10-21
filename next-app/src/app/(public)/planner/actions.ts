@@ -9,6 +9,7 @@
  * with leader = true and the editor as entered_by, so the RPCs keep their own rules (active scouts only, 5 picks, who
  * may teach, Junior Leaders and adults-only skills, closed and past boards).
  * P2b: Send request and nudges go through v1's invite senders (lib/meeting-invites-send), adults only.
+ * P3: seeding (a focus set, or one requirement) and unseeding, for meeting_planner.seed holders only.
  * Each write returns the person's fresh drawer and the board's new stamp, so the poller doesn't refresh over it.
  */
 import { revalidatePath } from 'next/cache';
@@ -34,6 +35,7 @@ import { scoutCandidates, sendPickInvites, sendTeachInvites } from '@/lib/meetin
 import { assessTeacher, FREEFORM_MAX, freeformTitle } from '@/lib/meeting-board-teach';
 import { plannerAccess } from '@/lib/meeting-planner-access';
 import { loadPersonDrawer, type PersonDrawer } from '@/lib/meeting-planner-drawer';
+import { seedFocusSet, seedTopic, unseedTopic } from '@/lib/meeting-focus-db';
 
 export type PlannerDrawerResult = { ok: true; drawer: PersonDrawer; stamp: string } | { ok: false; error: string };
 export type PlannerWriteResult = { ok: true; stamp: string } | { ok: false; error: string };
@@ -79,6 +81,7 @@ type Editor = Exclude<Awaited<ReturnType<typeof editor>>, { ok: false }>;
 
 function revalidate() {
   revalidatePath('/planner');
+  revalidatePath('/planner/focus-sets');
   revalidatePath('/member');
   revalidatePath('/member/meeting');
   revalidatePath('/admin/advancement/meeting-plan');
@@ -260,4 +263,55 @@ export async function plannerSendNudgeAction(input: { entryId: number; topicKey:
   if (!res.ok) return res;
   revalidate();
   return { ...res, stamp: await loadBoardStamp(e.sb, e.meeting.entryId) };
+}
+
+// ── P3: seeding (meeting_planner.seed only, Decision 2) ──────────────────────────────────────────────────────────────
+
+export type PlannerSeedResult = { ok: true; stamp: string; count: number } | { ok: false; error: string };
+
+/** A seed holder acting on an upcoming, published meeting that takes sign-ups. Refused before the database is touched. */
+async function seeder(entryId: unknown) {
+  if (!Number.isInteger(entryId)) return fail('Malformed request');
+  const actor = await resolveAdminActor();
+  if (!plannerAccess(actor).canSeed || actor?.personId == null) return fail('Only the planning team can seed a meeting.');
+  const sb = createAdminClient();
+  const meeting = await loadMeetingById(sb, entryId as number);
+  if (!meeting) return fail('That meeting is no longer on the calendar.');
+  const { data: entry } = await sb.from('calendar_entries').select('status').eq('id', meeting.entryId).maybeSingle();
+  if ((entry as { status: string } | null)?.status !== 'published' || meeting.mode === 'closed') return fail('That meeting isn’t taking sign-ups.');
+  if (meeting.date < centralToday()) return fail('That meeting has passed.');
+  return { ok: true as const, sb, meeting, actorPersonId: actor.personId };
+}
+
+/** Seed a meeting with a focus set: one focus group (one pick, one class). Existing focus topics stay. */
+export async function plannerSeedSetAction(input: { entryId: number; setId: number }): Promise<PlannerSeedResult> {
+  const s = await seeder(input?.entryId);
+  if (!s.ok) return s;
+  if (!Number.isInteger(input.setId)) return fail('Malformed request');
+  const res = await seedFocusSet(s.sb, s.meeting.entryId, input.setId, s.actorPersonId);
+  if (!res.ok) return res;
+  revalidate();
+  return { ok: true, count: res.count, stamp: await loadBoardStamp(s.sb, s.meeting.entryId) };
+}
+
+/** Seed one top-level requirement (rank or merit badge). Also "+ Add an offer" with no teacher (Decision 10b). */
+export async function plannerSeedTopicAction(input: { entryId: number; key: string }): Promise<PlannerWriteResult> {
+  const s = await seeder(input?.entryId);
+  if (!s.ok) return s;
+  if (typeof input.key !== 'string' || !input.key) return fail('Malformed request');
+  const res = await seedTopic(s.sb, s.meeting.entryId, input.key, s.actorPersonId);
+  if (!res.ok) return res;
+  revalidate();
+  return { ok: true, stamp: await loadBoardStamp(s.sb, s.meeting.entryId) };
+}
+
+/** Take a topic off the meeting's focus. Picks and teachers on it stay; with none, it leaves the board. */
+export async function plannerUnseedAction(input: { entryId: number; key: string }): Promise<PlannerWriteResult> {
+  const s = await seeder(input?.entryId);
+  if (!s.ok) return s;
+  if (typeof input.key !== 'string' || !input.key) return fail('Malformed request');
+  const res = await unseedTopic(s.sb, s.meeting.entryId, input.key);
+  if (!res.ok) return res;
+  revalidate();
+  return { ok: true, stamp: await loadBoardStamp(s.sb, s.meeting.entryId) };
 }

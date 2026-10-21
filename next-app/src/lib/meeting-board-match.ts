@@ -430,7 +430,7 @@ export function sessionWords(
   catalog: Pick<AdvancementCatalog, 'ranks' | 'rankRequirements' | 'meritBadges'>,
   skillNames: ReadonlyMap<string, string>,
   freeformTitles?: ReadonlyMap<string, string>
-): { title: string; codeLabel: string; kind: 'rank' | 'mb' | 'ff'; skillId: string | null; parts: TopicPart[]; minutes: number | null } {
+): { title: string; codeLabel: string; kind: 'rank' | 'mb' | 'ff' | 'focus'; skillId: string | null; parts: TopicPart[]; minutes: number | null } {
   const words = (k: string): TopicWords =>
     topicWords(k, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, freeformTitles) ?? { label: k, codeLabel: '', kind: 'rank', parts: [], minutes: null };
   const all = keys.map(words);

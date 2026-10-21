@@ -856,9 +856,382 @@
   margin: var(--sp-2) 0 0;
 }
 
+/* ── P3: tabs, the Meeting focus strip, seeding ─────────────────────────────────────────────────────────────── */
+.tabs {
+  padding: var(--sp-3) var(--sp-7) 0;
+  background: var(--warm-white);
+}
+.kindFocus {
+  padding: 0 var(--sp-2);
+  border-radius: var(--rad-md);
+  background: var(--status-warning-bg);
+  font: 700 var(--fs-2xs) / 1.6 var(--font-ui);
+  color: var(--bark);
+}
+.focusStrip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-7);
+  border-bottom: 1px solid var(--khaki-light);
+  background: var(--cream);
+}
+.focusLabel {
+  margin: 0;
+  font: 700 var(--fs-sm) / 1.4 var(--font-ui);
+  color: var(--bark);
+}
+.focusChips {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.focusChip,
+.focusChipMatched {
+  display: grid;
+  padding: var(--sp-1) var(--sp-3);
+  border: 1px solid var(--khaki-light);
+  border-radius: var(--rad-md);
+  background: var(--status-warning-bg);
+  font: var(--fs-xs) / 1.35 var(--font-ui);
+  color: var(--text-meta);
+}
+.focusChipMatched {
+  border-color: var(--forest);
+  background: var(--status-success-bg);
+}
+.focusChipTitle {
+  font: 700 var(--fs-sm) / 1.3 var(--font-ui);
+  color: var(--text-head);
+}
+.focusNone {
+  flex: 1;
+  margin: 0;
+  font: var(--fs-sm) / 1.4 var(--font-ui);
+  color: var(--text-meta);
+}
+.seedBtn,
+.seedSmall {
+  flex: none;
+  border: 0;
+  border-radius: var(--rad-md);
+  background: var(--bark);
+  font: 700 var(--fs-sm) / 1 var(--font-ui);
+  color: var(--warm-white);
+  cursor: pointer;
+}
+.seedBtn {
+  min-height: 40px;
+  padding: 0 var(--sp-4);
+}
+.seedSmall {
+  min-height: 36px;
+  padding: 0 var(--sp-3);
+}
+.seedBtn:disabled,
+.seedSmall:disabled {
+  background: var(--border-mid);
+  cursor: default;
+}
+.seedBtn:focus-visible,
+.seedSmall:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+.seedRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  min-height: 54px;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border-light);
+  border-radius: var(--rad-md);
+  background: var(--warm-white);
+}
+.seedHits {
+  margin-top: var(--sp-3);
+}
+
+/* ── P3: Focus sets (/planner/focus-sets) ───────────────────────────────────────────────────────────────────── */
+.fsGrid {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr) 350px;
+  gap: var(--sp-5);
+  align-items: start;
+  padding: var(--sp-5) var(--sp-7) var(--sp-8);
+}
+.fsCol {
+  display: grid;
+  gap: var(--sp-3);
+  min-width: 0;
+  padding: var(--sp-4);
+  border-radius: var(--rad-lg);
+  background: var(--warm-white);
+  box-shadow: var(--shadow-card);
+}
+.fsColHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+.fsColTitle {
+  margin: 0;
+  font: 700 var(--fs-lg) / 1.3 var(--font-ui);
+  color: var(--navy);
+}
+.fsPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.fsPill,
+.fsPillOn {
+  min-height: 34px;
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-pill);
+  font: 600 var(--fs-sm) / 1 var(--font-ui);
+  cursor: pointer;
+}
+.fsPill {
+  background: var(--warm-white);
+  color: var(--text-head);
+}
+.fsPillOn {
+  border-color: var(--navy);
+  background: var(--navy);
+  color: var(--warm-white);
+}
+.fsSetList,
+.fsRows {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.fsSet,
+.fsSetOn {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  min-height: 60px;
+  padding: var(--sp-2) var(--sp-3);
+  border: 0;
+  border-bottom: 1px solid var(--border-light);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.fsSetOn {
+  background: var(--status-info-bg);
+  box-shadow: inset 4px 0 0 var(--navy);
+}
+.fsLabels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+}
+.fsLabel {
+  padding: 0 var(--sp-2);
+  border-radius: var(--rad-md);
+  background: var(--status-warning-bg);
+  font: 700 var(--fs-2xs) / 1.6 var(--font-ui);
+  color: var(--bark);
+}
+.fsItems {
+  max-height: 360px;
+  overflow-y: auto;
+}
+.fsGroupHead {
+  margin: var(--sp-2) 0 var(--sp-1);
+  font: 700 var(--fs-sm) / 1.3 var(--font-ui);
+  color: var(--text-head);
+}
+.fsItem {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 40px;
+  border-bottom: 1px solid var(--border-light);
+}
+.fsItemLabel {
+  flex: 1;
+  min-width: 0;
+  font: var(--fs-sm) / 1.4 var(--font-ui);
+  color: var(--text-body);
+}
+.fsRemove {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--rad-md);
+  background: var(--warm-white);
+  font: 600 var(--fs-sm) / 1 var(--font-ui);
+  color: var(--status-danger);
+  cursor: pointer;
+}
+.fsTiles,
+.fsTilesRank {
+  display: grid;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.fsTiles {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+.fsTilesRank {
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+}
+.fsTile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  width: 100%;
+  min-height: 40px;
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--border-light);
+  border-radius: var(--rad-md);
+  background: var(--warm-white);
+  font: 600 var(--fs-sm) / 1.3 var(--font-ui);
+  color: var(--text-head);
+  text-align: left;
+  cursor: pointer;
+}
+.fsResultGroup {
+  border-top: 1px solid var(--border-light);
+}
+.fsGroupBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+.fsResult {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  min-height: 46px;
+  padding: var(--sp-1) 0;
+  border: 0;
+  border-bottom: 1px solid var(--border-light);
+  background: transparent;
+  text-align: left;
+}
+button.fsResult {
+  cursor: pointer;
+}
+.fsResult .code,
+.fsItem .code {
+  flex: none;
+  min-width: 3.5em;
+}
+.fsResult[aria-pressed='true'] .check {
+  background: var(--navy);
+}
+.fsLabelChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.fsLabelChip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding-left: var(--sp-3);
+  border: 1px solid var(--khaki-light);
+  border-radius: var(--rad-pill);
+  background: var(--status-warning-bg);
+  font: 700 var(--fs-sm) / 1 var(--font-ui);
+  color: var(--bark);
+}
+.fsLabelChip .fsRemove {
+  border: 0;
+  background: transparent;
+}
+.fsAddLabel {
+  display: flex;
+  gap: var(--sp-2);
+}
+.fsBadInput {
+  border-color: var(--status-danger);
+}
+.fsSuggest {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+}
+.fsSuggestBtn {
+  min-height: 34px;
+  padding: 0 var(--sp-2);
+  border: 1px dashed var(--khaki);
+  border-radius: var(--rad-pill);
+  background: transparent;
+  font: 600 var(--fs-xs) / 1 var(--font-ui);
+  color: var(--bark);
+  cursor: pointer;
+}
+.fsSaveBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--border-light);
+}
+.fsSeed {
+  padding: var(--sp-3);
+  border-radius: var(--rad-md);
+  background: var(--cream);
+}
+.fsSeedTitle {
+  margin: 0 0 var(--sp-2);
+  font: 700 var(--fs-md) / 1.3 var(--font-ui);
+  color: var(--bark);
+}
+.fsSeedRow {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--sp-2);
+}
+.fsSeedField {
+  flex: 1;
+  margin-bottom: 0;
+}
+.fsDelete {
+  text-align: right;
+}
+.fsPill:focus-visible,
+.fsPillOn:focus-visible,
+.fsSet:focus-visible,
+.fsSetOn:focus-visible,
+.fsTile:focus-visible,
+.fsResult:focus-visible,
+.fsRemove:focus-visible,
+.fsSuggestBtn:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
 /* ── narrower screens ───────────────────────────────────────────────────────────────────────────────────────── */
 @media (max-width: 900px) {
-  .body {
+  .body,
+  .fsGrid {
     grid-template-columns: minmax(0, 1fr);
   }
   .needRow {
@@ -875,7 +1248,10 @@
 @media (max-width: 640px) {
   .head,
   .body,
-  .noticeWrap {
+  .noticeWrap,
+  .tabs,
+  .focusStrip,
+  .fsGrid {
     padding-left: var(--sp-4);
     padding-right: var(--sp-4);
   }

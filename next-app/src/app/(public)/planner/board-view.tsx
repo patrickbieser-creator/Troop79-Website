@@ -5,20 +5,21 @@
  * Everyone who may view sees everything (Decision 4). Editors (P2a) also get: every name opens that person's drawer,
  * Assign beside each person who could teach a request, "+ Add an offer", and Enter for someone. Viewers see the same
  * board with plain names and no buttons (the client pieces in planner-client.tsx check the planner context). Send
- * request and nudges are P2b; the Meeting focus strip arrives with seeding (P3).
+ * request and nudges are P2b. P3: the Meeting focus strip lists what was seeded ("Seed this meeting" for the planning
+ * team); a seeded topic carries a Focus tag, and one nobody picked yet still asks for a teacher.
  *
  * Desktop: a header with the two attendance bars, then cards on the left (Ready to teach, Requests with no teacher,
  * Offered no takers, Haven't answered) and Who's coming on the right, then the Everyone wall. At 900px the right
  * column drops under the cards; on a phone the teacher lists and the Everyone wall's other columns fold.
  */
 import type { ReactNode } from 'react';
-import type { AttendanceCounts, CanTeachPerson, PlannerBoard, PlannerPerson, WallColumns } from '@/lib/meeting-planner-board';
+import type { AttendanceCounts, CanTeachPerson, FocusChip, PlannerBoard, PlannerPerson, WallColumns } from '@/lib/meeting-planner-board';
 import { minutesText } from '@/lib/meeting-board-picklist';
 import { Fold } from './fold';
-import { AddOfferButton, AdultsSendEmails, AssignButton, EnterForSomeone, NudgeButton, PersonName, SendRequestButton, type SomeoneRow } from './planner-client';
+import { AddOfferButton, AdultsSendEmails, AssignButton, EnterForSomeone, NudgeButton, PersonName, SeedButton, SendRequestButton, type SomeoneRow } from './planner-client';
 import styles from './planner.module.css';
 
-const KIND_LABEL = { rank: 'Rank', mb: 'Merit badge', ff: 'Other' } as const;
+const KIND_LABEL = { rank: 'Rank', mb: 'Merit badge', ff: 'Other', focus: 'Focus' } as const;
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 /** A stacked bar: coming, not sure, can't; the empty track is "no answer". SVG so the widths are attributes. */
@@ -95,7 +96,7 @@ function TeacherGroup({ label, tone, people, topic }: { label: string; tone: 'co
             </span>
           </span>
           <span className={styles.rowActions}>
-            {topic.kind !== 'ff' ? <SendRequestButton personId={p.personId} name={p.name} topicKey={topic.key} title={topic.title} requested={p.requested} /> : null}
+            {topic.kind !== 'ff' && topic.kind !== 'focus' ? <SendRequestButton personId={p.personId} name={p.name} topicKey={topic.key} title={topic.title} requested={p.requested} /> : null}
             <AssignButton personId={p.personId} name={p.name} topicKey={topic.key} title={topic.title} />
           </span>
         </li>
@@ -130,6 +131,33 @@ function Wall({ title, cols, tone }: { title: string; cols: WallColumns; tone: '
   );
 }
 
+/** The Meeting focus strip: one chip per seeded topic, "{teacher | no teacher} · N scouts". */
+function FocusStrip({ focus }: { focus: readonly FocusChip[] }) {
+  return (
+    <section className={styles.focusStrip} aria-label="Meeting focus">
+      <h2 className={styles.focusLabel}>Meeting focus</h2>
+      {focus.length ? (
+        <ul className={styles.focusChips}>
+          {focus.map((f) => (
+            <li key={f.key} className={f.teachers.length ? styles.focusChipMatched : styles.focusChip}>
+              <span className={styles.focusChipTitle}>{f.title}</span>
+              <span>
+                {f.teachers.length ? f.teachers.join(', ') : 'no teacher'} · {plural(f.scouts, 'scout')}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className={styles.focusNone}>Nothing seeded yet.</p>
+      )}
+      <SeedButton focus={focus} />
+    </section>
+  );
+}
+
+/** The Focus tag on a seeded requirement (a focus group's own code line already says "Meeting focus"). */
+const FocusTag = ({ seededBy, kind }: { seededBy?: string | null; kind: string }) => (seededBy != null && kind !== 'focus' ? <span className={styles.kindFocus}>Focus</span> : null);
+
 const ANSWER_WORD = { coming: 'Coming', undecided: 'Not sure', notComing: 'Can’t', noAnswer: 'No answer' } as const;
 
 /** Everyone on the board, for Enter for someone: scouts, then adults, with their answer. */
@@ -139,7 +167,7 @@ function someone(board: PlannerBoard): SomeoneRow[] {
   return [...rows(board.everyone.scouts, 'Scout'), ...rows(board.everyone.adults, 'Adult')].sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export function PlannerBoardView({ board, heading }: { board: PlannerBoard; heading: ReactNode }) {
+export function PlannerBoardView({ board, heading, canSeed = false }: { board: PlannerBoard; heading: ReactNode; canSeed?: boolean }) {
   const waitingTotal = new Set(board.noTeacher.flatMap((r) => r.waiting.map((p) => p.personId))).size;
   const { scouts: hs, adults: ha } = board.haventAnswered;
   return (
@@ -151,6 +179,7 @@ export function PlannerBoardView({ board, heading }: { board: PlannerBoard; head
           <AttendanceBar label="Adults" counts={board.attendance.adults} tone="adult" />
         </div>
       </header>
+      {board.focus.length || canSeed ? <FocusStrip focus={board.focus} /> : null}
 
       <div className={styles.body}>
         <div className={styles.left}>
@@ -161,7 +190,7 @@ export function PlannerBoardView({ board, heading }: { board: PlannerBoard; head
                   <li key={r.key} className={styles.readyRow}>
                     <div>
                       <p className={styles.codeLine}>
-                        <span className={styles.code}>{r.codeLabel}</span> <span className={styles.rowTitle}>{r.title}</span>
+                        <span className={styles.code}>{r.codeLabel}</span> <span className={styles.rowTitle}>{r.title}</span> <FocusTag seededBy={r.seededBy} kind={r.kind} />
                       </p>
                       <Chips people={r.scouts} />
                     </div>
@@ -196,13 +225,17 @@ export function PlannerBoardView({ board, heading }: { board: PlannerBoard; head
                     <div>
                       <p className={styles.tagLine}>
                         <span className={styles.code}>{r.codeLabel}</span>
-                        <span className={r.kind === 'mb' ? styles.kindMb : styles.kindRank}>{KIND_LABEL[r.kind]}</span>
+                        {r.kind !== 'focus' ? <span className={r.kind === 'mb' ? styles.kindMb : styles.kindRank}>{KIND_LABEL[r.kind]}</span> : null}
                         {r.minutes ? <span className={styles.meta}>{minutesText(r.minutes)}</span> : null}
+                        <FocusTag seededBy={r.seededBy} kind={r.kind} />
                       </p>
                       <p className={styles.bigTitle}>{r.title}</p>
                       <p className={styles.waitLine}>
-                        {plural(r.waiting.length, 'scout')} waiting{r.weeks > 1 ? ` · asked ${r.weeks} weeks running` : ''}
+                        {r.waiting.length
+                          ? `${plural(r.waiting.length, 'scout')} waiting${r.weeks > 1 ? ` · asked ${r.weeks} weeks running` : ''}`
+                          : 'Seeded focus · no scouts picked it yet'}
                       </p>
+                      {r.seededBy ? <p className={styles.meta}>Seeded by {r.seededBy}</p> : null}
                       <Chips people={r.waiting} />
                     </div>
                     <Fold
@@ -239,6 +272,7 @@ export function PlannerBoardView({ board, heading }: { board: PlannerBoard; head
                   <li key={o.key} className={styles.offerRow}>
                     <p className={styles.tagLine}>
                       <span className={styles.code}>{o.codeLabel}</span>
+                      <FocusTag seededBy={o.seededBy} kind={o.kind} />
                       <span className={styles.meta}>
                         Offered by{' '}
                         {o.teachers.map((t, i) => (

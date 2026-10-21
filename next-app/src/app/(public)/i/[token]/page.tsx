@@ -24,7 +24,7 @@ export default async function InvitePage({ params, searchParams }: { params: Pro
   const [{ token }, { err }] = await Promise.all([params, searchParams]);
   const { state, invite } = await inspectInvite(createAdminClient(), token);
   const catalog = invite ? await loadAdvancementCatalog() : null;
-  const words = invite && catalog ? topicWords(invite.topicKey, catalog.ranks, catalog.rankRequirements, catalog.meritBadges) : null;
+  const words = invite && catalog ? topicWords(invite.topicKey, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, undefined, { mbReqs: catalog.meritBadgeRequirements }) : null;
 
   return (
     <>

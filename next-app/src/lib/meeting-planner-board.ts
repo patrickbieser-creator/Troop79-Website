@@ -12,6 +12,9 @@
  *   - An adult's answer is teacherIntent: a teaching commitment means Coming.
  *   - "Can teach this" is everyone qualified (assessTeacher, done by the loader), grouped Coming / Not sure yet /
  *     Haven't answered, sorted by name, with Can't-make-it people left out. There is no best-fit ranking yet.
+ *   - Seeded focus (P3): a seeded topic is on the board even with no scout. No teacher → Requests with no teacher
+ *     ("Seeded focus · no scouts picked it yet"); a teacher and no scout → Offered, no takers. The Focus strip lists
+ *     every seeded topic with its teacher and how many scouts picked it.
  *   - Likely fits for an offer nobody picked: scouts working on that rank who haven't picked it, haven't finished it,
  *     and can still come (the same people the nudge list offers it to).
  */
@@ -23,7 +26,7 @@ export interface PlannerTopic {
   /** 'Tenderfoot 4a', 'Electricity 5', 'Merit badge', 'Offered this week'. */
   codeLabel: string;
   title: string;
-  kind: 'rank' | 'mb' | 'ff';
+  kind: 'rank' | 'mb' | 'ff' | 'focus';
   minutes: number | null;
   /** The rank a rank requirement belongs to (for likely fits); null otherwise. */
   rankId: string | null;
@@ -64,6 +67,8 @@ export interface PlannerInput {
   requested: ReadonlySet<string>;
   /** `${key}:${personId}` for an offered requirement the scout has finished or can't take up yet (left out of likely fits). */
   finished?: ReadonlySet<string>;
+  /** Seeded topics (P3) by key, with who seeded them ('Mindy K'; null once that person is gone). */
+  seeded?: ReadonlyMap<string, { by: string | null }>;
 }
 
 export interface PlannerPerson {
@@ -87,6 +92,8 @@ export interface ReadyRow {
   minutes: number | null;
   teachers: PlannerPerson[];
   scouts: PlannerPerson[];
+  /** Who seeded it ('Mindy K'); undefined when not seeded, null when the seeder is gone. */
+  seededBy?: string | null;
 }
 
 export interface CanTeachPerson extends PlannerPerson {
@@ -105,6 +112,8 @@ export interface NoTeacherRow {
   /** Weeks running it has been asked for (at least 1). */
   weeks: number;
   canTeach: { coming: CanTeachPerson[]; undecided: CanTeachPerson[]; noAnswer: CanTeachPerson[]; total: number };
+  /** Seeded: who seeded it ('Mindy K', or '' when that person is gone); null when it isn't seeded. */
+  seededBy?: string | null;
 }
 
 export interface OfferedRow {
@@ -114,6 +123,19 @@ export interface OfferedRow {
   kind: PlannerTopic['kind'];
   teachers: PlannerPerson[];
   likelyFits: PlannerPerson[];
+  /** Seeded: who seeded it ('Mindy K', or '' when that person is gone); null when it isn't seeded. */
+  seededBy?: string | null;
+}
+
+/** One chip on the Meeting focus strip. */
+export interface FocusChip {
+  key: string;
+  codeLabel: string;
+  title: string;
+  kind: PlannerTopic['kind'];
+  teachers: string[];
+  /** Scouts who picked it for this meeting. */
+  scouts: number;
 }
 
 export interface ComingRow extends PlannerPerson {
@@ -134,6 +156,8 @@ export interface WallColumns {
 }
 
 export interface PlannerBoard {
+  /** Seeded topics (P3), focus groups first. */
+  focus: FocusChip[];
   attendance: { scouts: AttendanceCounts; adults: AttendanceCounts };
   ready: ReadyRow[];
   noTeacher: NoTeacherRow[];
@@ -193,14 +217,22 @@ export function buildPlannerBoard(input: PlannerInput): PlannerBoard {
   const person = (id: number): PlannerPerson => ({ personId: id, name: nameOf.get(id) ?? `Person ${id}` });
   const teachersOf = (key: string) => (input.teachersFor.get(key) ?? []).map(person);
 
+  const seededBy = (key: string): string | null => {
+    const s = input.seeded?.get(key);
+    return s ? (s.by ?? '') : null;
+  };
+  // A seeded topic nobody picked yet is on the board too, with nobody waiting.
+  const rows = new Map(demand);
+  for (const key of input.seeded?.keys() ?? []) if (!rows.has(key) && !teachersOf(key).length) rows.set(key, []);
+
   const ready: ReadyRow[] = [];
   const noTeacher: NoTeacherRow[] = [];
-  for (const [key, ids] of demand) {
+  for (const [key, ids] of rows) {
     const t = topicOf(key);
     const base = { key, codeLabel: t.codeLabel, title: t.title, kind: t.kind, minutes: t.minutes };
     const waiting = ids.map(person).sort(byName);
     if (teachersOf(key).length) {
-      ready.push({ ...base, teachers: teachersOf(key), scouts: waiting });
+      ready.push({ ...base, teachers: teachersOf(key), scouts: waiting, ...(seededBy(key) != null ? { seededBy: seededBy(key) } : {}) });
       continue;
     }
     const canTeach: NoTeacherRow['canTeach'] = { coming: [], undecided: [], noAnswer: [], total: 0 };
@@ -216,13 +248,13 @@ export function buildPlannerBoard(input: PlannerInput): PlannerBoard {
     canTeach.coming.sort(byName);
     canTeach.undecided.sort(byName);
     canTeach.noAnswer.sort(byName);
-    noTeacher.push({ ...base, waiting, weeks: weeksAsked(firstAsked.get(key) ?? [], input.meetingDate), canTeach });
+    noTeacher.push({ ...base, waiting, weeks: weeksAsked(firstAsked.get(key) ?? [], input.meetingDate), canTeach, seededBy: seededBy(key) });
   }
   ready.sort((a, b) => a.codeLabel.localeCompare(b.codeLabel));
   noTeacher.sort((a, b) => b.waiting.length - a.waiting.length || b.weeks - a.weeks || a.codeLabel.localeCompare(b.codeLabel));
 
-  // Offered, no takers: a topic someone is teaching that no scout picked.
-  const offeredKeys = [...new Set(input.commitments.map((c) => c.key))].filter((k) => !demand.has(k) && teachersOf(k).length);
+  // Offered, no takers: a topic someone is teaching that no scout picked (a seeded one too).
+  const offeredKeys = [...new Set([...input.commitments.map((c) => c.key), ...(input.seeded?.keys() ?? [])])].filter((k) => !demand.has(k) && teachersOf(k).length);
   const offered: OfferedRow[] = offeredKeys
     .map((key) => {
       const t = topicOf(key);
@@ -232,7 +264,7 @@ export function buildPlannerBoard(input: PlannerInput): PlannerBoard {
             .map((s) => person(s.personId))
             .sort(byName)
         : [];
-      return { key, codeLabel: t.codeLabel, title: t.title, kind: t.kind, teachers: teachersOf(key), likelyFits };
+      return { key, codeLabel: t.codeLabel, title: t.title, kind: t.kind, teachers: teachersOf(key), likelyFits, seededBy: seededBy(key) };
     })
     .sort((a, b) => a.codeLabel.localeCompare(b.codeLabel));
 
@@ -240,7 +272,15 @@ export function buildPlannerBoard(input: PlannerInput): PlannerBoard {
   const sortedAdults = [...adults].sort(byName);
   const pick = (p: PlannerPerson): PlannerPerson => ({ personId: p.personId, name: p.name });
 
+  const focus: FocusChip[] = [...(input.seeded?.keys() ?? [])]
+    .map((key) => {
+      const t = topicOf(key);
+      return { key, codeLabel: t.codeLabel, title: t.title, kind: t.kind, teachers: teachersOf(key).map((p) => p.name), scouts: demand.get(key)?.length ?? 0 };
+    })
+    .sort((a, b) => Number(b.kind === 'focus') - Number(a.kind === 'focus') || a.codeLabel.localeCompare(b.codeLabel) || a.title.localeCompare(b.title));
+
   return {
+    focus,
     attendance: { scouts: counts(scouts.map((s) => s.answer)), adults: counts(adults.map((a) => a.answer)) },
     ready,
     noTeacher,
