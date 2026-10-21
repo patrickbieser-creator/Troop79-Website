@@ -1,7 +1,8 @@
 /**
  * /planner/live — Meeting Live (Plans/Meeting-Planner-II.md, Decisions 8, 8a, 8c, 12; P4a). The next meeting's
  * classes by rotation: the board's match as a preview until someone starts Meeting Live, then the saved placement,
- * which is the truth from then on. Anyone who may view the planner sees it; an editor (the SPL included) may start it.
+ * which is the truth from then on. Anyone who may view the planner sees it; an editor (the SPL included) starts it and
+ * (P4b) edits it in place. Rank meetings only: a meeting set up in Admin as a merit badge night keeps v1's stations.
  * Phones get one rotation at a time with a switcher. It polls every ~3 s: several leaders run it at once in the room.
  */
 import { redirect } from 'next/navigation';
@@ -10,7 +11,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { fmtDateFull } from '@/lib/format-date';
 import { loadBoardStamp, loadNextMeeting } from '@/lib/meeting-board';
 import { plannerAccess } from '@/lib/meeting-planner-access';
-import { loadLiveView } from '@/lib/meeting-live';
+import { loadLiveChoices, loadLiveView } from '@/lib/meeting-live';
 import { PageHeader } from '@/app/_components/page-header';
 import { PageShell } from '@/app/_components/page-shell';
 import { Notice } from '@/app/_components/notice';
@@ -42,18 +43,26 @@ export default async function MeetingLivePage() {
 
   const sb = createAdminClient();
   const meeting = await loadNextMeeting(sb);
-  if (!meeting || meeting.mode === 'closed') {
+  if (!meeting || meeting.mode !== 'rank') {
     return (
       <div className={styles.page}>
         <PlannerTabs active="live" />
         <div className={styles.noticeWrap}>
-          <Notice tone="info">{meeting ? 'No sign-ups this week, so there’s nothing to run.' : 'There’s no troop meeting on the calendar yet.'}</Notice>
+          <Notice tone="info">{!meeting
+              ? 'There’s no troop meeting on the calendar yet.'
+              : meeting.mode === 'closed'
+                ? 'No sign-ups this week, so there’s nothing to run.'
+                : 'This meeting is set up as a merit badge night in Admin, which runs from its stations.'}</Notice>
         </div>
       </div>
     );
   }
 
-  const [view, stamp] = await Promise.all([loadLiveView(sb, meeting), loadBoardStamp(sb, meeting.entryId)]);
+  const [view, stamp, choices] = await Promise.all([
+    loadLiveView(sb, meeting),
+    loadBoardStamp(sb, meeting.entryId),
+    access.canEdit ? loadLiveChoices(sb, meeting) : undefined
+  ]);
   return (
     <div className={styles.page}>
       <PlannerTabs active="live" />
@@ -66,7 +75,7 @@ export default async function MeetingLivePage() {
           </p>
         </div>
       </header>
-      <LiveBoard view={view} canEdit={access.canEdit} entryId={meeting.entryId} />
+      <LiveBoard view={view} canEdit={access.canEdit} entryId={meeting.entryId} choices={choices} />
     </div>
   );
 }

@@ -7,8 +7,31 @@ import type { LiveView } from '../src/lib/meeting-live-shared';
  * rotation columns on desktop, one rotation at a time with a switcher on a phone, conflict lines, the retake star, and
  * a single "Start Meeting Live" for editors before anyone has started it.
  */
-const mocks = vi.hoisted(() => ({ start: vi.fn(), refresh: vi.fn() }));
-vi.mock('../src/app/(public)/planner/live-actions', () => ({ plannerLiveStartAction: mocks.start }));
+const mocks = vi.hoisted(() => ({
+  start: vi.fn(),
+  refresh: vi.fn(),
+  moveScout: vi.fn(),
+  setTeacher: vi.fn(),
+  moveClass: vi.fn(),
+  repeatClass: vi.fn(),
+  removeClass: vi.fn(),
+  addRotation: vi.fn(),
+  dropRotation: vi.fn(),
+  setLocation: vi.fn(),
+  addClass: vi.fn()
+}));
+vi.mock('../src/app/(public)/planner/live-actions', () => ({
+  plannerLiveStartAction: mocks.start,
+  plannerLiveMoveScoutAction: mocks.moveScout,
+  plannerLiveSetTeacherAction: mocks.setTeacher,
+  plannerLiveMoveClassAction: mocks.moveClass,
+  plannerLiveRepeatClassAction: mocks.repeatClass,
+  plannerLiveRemoveClassAction: mocks.removeClass,
+  plannerLiveAddRotationAction: mocks.addRotation,
+  plannerLiveDropRotationAction: mocks.dropRotation,
+  plannerLiveSetLocationAction: mocks.setLocation,
+  plannerLiveAddClassAction: mocks.addClass
+}));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: mocks.refresh }) }));
 
 import { LiveBoard } from '../src/app/(public)/planner/live/live-board';
@@ -23,6 +46,7 @@ const card = (o: Partial<LiveView['cards'][number]> & Pick<LiveView['cards'][num
   members: [],
   repeats: [],
   conflicts: [],
+  version: 1,
   ...o
 });
 
@@ -43,7 +67,7 @@ const VIEW: LiveView = {
 
 afterEach(() => {
   cleanup();
-  mocks.start.mockReset();
+  for (const m of Object.values(mocks)) m.mockReset();
 });
 
 describe('LiveBoard', () => {
@@ -118,5 +142,101 @@ describe('LiveBoard', () => {
     render(<LiveBoard view={VIEW} canEdit entryId={5} />);
     fireEvent.click(screen.getByRole('button', { name: 'Start Meeting Live' }));
     expect(await screen.findByText('That meeting has passed.')).toBeTruthy();
+  });
+});
+
+const CHOICES = {
+  teachers: [
+    { personId: 10, name: 'Dan V' },
+    { personId: 12, name: 'Jenna M' }
+  ],
+  topics: [{ key: 'scout-1a', label: 'Scout 1a · Oath, Law, motto, slogan' }],
+  scouts: [
+    { personId: 4, name: 'Simon P' },
+    { personId: 5, name: 'Emory M' }
+  ]
+};
+const ok = { ok: true, stamp: 'x' };
+const editor = (v: Partial<LiveView> = {}) => render(<LiveBoard view={{ ...VIEW, started: true, ...v }} canEdit entryId={5} choices={CHOICES} />);
+
+describe('LiveBoard editing (P4b)', () => {
+  it('Viewer_SeesNoEditingControls', () => {
+    render(<LiveBoard view={{ ...VIEW, started: true }} canEdit={false} entryId={5} choices={CHOICES} />);
+    expect([
+      screen.queryAllByRole('group', { name: /^Move .* to$/ }).length,
+      screen.queryByRole('button', { name: /^Teacher:/ }),
+      screen.queryByRole('button', { name: '+ Add rotation' })
+    ]).toEqual([0, null, null]);
+  });
+
+  it('Editor_MoveTo_MovesTheClass', async () => {
+    mocks.moveClass.mockResolvedValue(ok);
+    editor();
+    const r1 = screen.getByRole('region', { name: 'Rotation 1' });
+    fireEvent.click(within(within(r1).getByRole('group', { name: 'Move First aid basics to' })).getByRole('button', { name: 'Rotation 2' }));
+    await waitFor(() => expect(mocks.moveClass).toHaveBeenCalledWith({ entryId: 5, classId: 's:a', version: 1, rotation: 2 }));
+  });
+
+  it('StaleWrite_SaysSoAndRefreshes', async () => {
+    mocks.moveClass.mockResolvedValue({ ok: false, stale: true, error: 'x' });
+    editor();
+    const r1 = screen.getByRole('region', { name: 'Rotation 1' });
+    fireEvent.click(within(within(r1).getByRole('group', { name: 'Move First aid basics to' })).getByRole('button', { name: 'Not scheduled' }));
+    expect(await screen.findByText('Someone else changed this. Here’s the latest.')).toBeTruthy();
+    expect(mocks.refresh).toHaveBeenCalled();
+  });
+
+  it('Editor_DragsACardOntoARotation', async () => {
+    mocks.moveClass.mockResolvedValue(ok);
+    window.matchMedia = vi.fn().mockReturnValue({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }) as never;
+    editor();
+    const data = new Map<string, string>();
+    const dataTransfer = { setData: (k: string, v: string) => data.set(k, v), getData: (k: string) => data.get(k) ?? '', types: ['application/x-live'], effectAllowed: 'move', dropEffect: 'move' };
+    const r1 = screen.getByRole('region', { name: 'Rotation 1' });
+    fireEvent.dragStart(within(r1).getByRole('article', { name: 'First aid basics' }), { dataTransfer });
+    fireEvent.drop(screen.getByRole('region', { name: 'Rotation 2' }), { dataTransfer });
+    await waitFor(() => expect(mocks.moveClass).toHaveBeenCalledWith({ entryId: 5, classId: 's:a', version: 1, rotation: 2 }));
+  });
+
+  it('Editor_PicksATeacherFromTheSheet', async () => {
+    mocks.setTeacher.mockResolvedValue(ok);
+    editor();
+    fireEvent.click(within(screen.getByRole('region', { name: 'Rotation 1' })).getByRole('button', { name: 'Teacher: Dan V. Change' }));
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /Jenna M/ }));
+    await waitFor(() => expect(mocks.setTeacher).toHaveBeenCalledWith({ entryId: 5, classId: 's:a', version: 1, teacherId: 12 }));
+  });
+
+  it('Editor_RemovesAScoutFromAClass', async () => {
+    mocks.moveScout.mockResolvedValue(ok);
+    editor();
+    fireEvent.click(within(screen.getByRole('region', { name: 'Rotation 2' })).getByRole('button', { name: /^Finn P/ }));
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /Remove from this class/ }));
+    await waitFor(() => expect(mocks.moveScout).toHaveBeenCalledWith({ entryId: 5, personId: 1, from: 's:b', to: null }));
+  });
+
+  it('Editor_PutsAPoolScoutInAClass', async () => {
+    mocks.moveScout.mockResolvedValue(ok);
+    editor();
+    fireEvent.click(within(screen.getByRole('region', { name: 'Not scheduled' })).getByRole('button', { name: /^Simon P/ }));
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /^First aid basics · Rotation 2/ }));
+    await waitFor(() => expect(mocks.moveScout).toHaveBeenCalledWith({ entryId: 5, personId: 4, from: null, to: 's:b' }));
+  });
+
+  it('Editor_AddsARotation', async () => {
+    mocks.addRotation.mockResolvedValue(ok);
+    editor();
+    fireEvent.click(screen.getAllByRole('button', { name: '+ Add rotation' })[0]);
+    await waitFor(() => expect(mocks.addRotation).toHaveBeenCalledWith({ entryId: 5, expectMax: 2 }));
+  });
+
+  it('Editor_AddsAnOfferToARotation', async () => {
+    mocks.addClass.mockResolvedValue(ok);
+    editor();
+    fireEvent.click(within(screen.getByRole('region', { name: 'Rotation 2' })).getByRole('button', { name: '+ Add an offer' }));
+    const dlg = screen.getByRole('dialog');
+    fireEvent.change(within(dlg).getByLabelText('What'), { target: { value: 'scout-1a' } });
+    fireEvent.change(within(dlg).getByLabelText('Teacher'), { target: { value: '12' } });
+    fireEvent.click(within(dlg).getByRole('button', { name: 'Add to Rotation 2' }));
+    await waitFor(() => expect(mocks.addClass).toHaveBeenCalledWith({ entryId: 5, key: 'scout-1a', title: null, teacherId: 12, rotation: 2 }));
   });
 });

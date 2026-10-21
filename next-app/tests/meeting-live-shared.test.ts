@@ -25,6 +25,7 @@ const cls = (o: Partial<LiveClassIn> & Pick<LiveClassIn, 'id'>): LiveClassIn => 
   teacherId: null,
   memberIds: [],
   position: 0,
+  version: 1,
   ...o
 });
 
@@ -129,6 +130,7 @@ const SAVED: SavedPlacement = {
   ]
 };
 
+
 describe('placementAsMatch', () => {
   const m = placementAsMatch(SAVED);
 
@@ -149,8 +151,35 @@ describe('placementAsMatch', () => {
     ]);
   });
 
-  it('Adapter_HasNoMatcherLists_TheSavedPlacementIsTheTruth', () => {
+  it('Adapter_HasNoMatcherLists_WithoutTheBoard', () => {
     expect([m.wanted, m.offeredNoTakers, m.undecidedScouts, m.undecidedAdults, m.comingNothing]).toEqual([[], [], [], [], []]);
+  });
+
+  // qa-lead (P4a): after Live starts the member and admin screens must not go quiet.
+  const pick = { key: 'scout-1a', priority: null, firstAskedOn: '2094-01-01', later: false, note: null, carriedFrom: null, enteredByPersonId: null };
+  const board = [
+    { personId: 1, intent: 'coming' as const, picks: [] },
+    { personId: 6, intent: 'coming' as const, picks: [] },
+    { personId: 7, intent: null, picks: [pick] },
+    { personId: 8, intent: 'undecided' as const, picks: [] },
+    { personId: 2, intent: 'undecided' as const, picks: [] },
+    { personId: 9, intent: 'not_coming' as const, picks: [] },
+    { personId: 10, intent: 'coming' as const, picks: [] }
+  ];
+  const withBoard = placementAsMatch(SAVED, board);
+
+  it('Adapter_ComingNothing_IsComingMinusPlacedAndTeachers', () => {
+    expect(withBoard.comingNothing).toEqual([
+      { personId: 6, suggestion: null },
+      { personId: 7, suggestion: null }
+    ]);
+  });
+
+  it('Adapter_UndecidedScouts_SayWhetherTheyArePlaced', () => {
+    expect(withBoard.undecidedScouts).toEqual([
+      { personId: 2, placed: true },
+      { personId: 8, placed: false }
+    ]);
   });
 });
 
@@ -159,7 +188,7 @@ describe('buildLiveView', () => {
     started: true,
     rotations: SAVED.rotations,
     classes: [
-      cls({ id: 'c:5', rotation: 1, teacherId: 10, memberIds: [1, 2] }),
+      cls({ id: 'c:5', rotation: 1, teacherId: 10, memberIds: [1, 2], version: 3 }),
       cls({ id: 'c:7', rotation: 2, teacherId: 11, memberIds: [1, 3], position: 0 }),
       cls({ id: 'c:9', topicKey: 'scout-1a', title: 'Oath, Law', rotation: null, memberIds: [] })
     ],
@@ -186,6 +215,10 @@ describe('buildLiveView', () => {
 
   it('View_PoolLeavesOutAnyonePlaced', () => {
     expect(view.pool).toEqual([{ personId: 4, name: '#4' }]);
+  });
+
+  it('View_CarriesEachCardsVersion_PreviewIsOne', () => {
+    expect(view.cards.map((c) => c.version)).toEqual([3, 1, 1]);
   });
 
   it('View_NamesTheTeacher_OrNone', () => {

@@ -10,12 +10,14 @@
  *     snapshot); an offer with a teacher and no takers becomes a Not scheduled card. Skill offers with no takers have
  *     no topic and are left out; co-teachers are not carried (a known gap).
  *   - placementAsMatch: a saved placement as a MatchResult, so every reader of the match (the member page, the agenda
- *     tray, v1's This Sunday) reads the saved placement once Live has started. The matcher's lists (wanted, offered,
- *     undecided, coming with nothing) are empty: the saved placement is the truth.
+ *     tray, v1's This Sunday) reads the saved placement once Live has started. Given the board, "coming, nothing
+ *     assigned" is coming − placed − teaching and the "Not sure yet" scouts say whether they're placed (qa-lead, P4a:
+ *     the other screens must not go quiet); wanted and offered stay empty: the saved placement is the truth.
  *   - buildLiveView: the cards, repeats, retake stars, conflicts and the "Coming, nothing assigned" pool the Live
  *     screen draws, from either the preview or the saved placement.
  */
 import type { MatchResult, MatchSession } from '@/lib/meeting-board-match';
+import { effectiveIntent, type BoardPick, type Intent } from '@/lib/meeting-board-shared';
 
 export type LiveKind = 'rank' | 'mb' | 'ff' | 'focus';
 
@@ -37,6 +39,8 @@ export interface LiveClassIn {
   teacherId: number | null;
   memberIds: readonly number[];
   position: number;
+  /** The card's version (P4b's stale-write check); a preview card is 1, what meeting_live_start gives it. */
+  version: number;
 }
 
 export interface LiveMember {
@@ -59,6 +63,8 @@ export interface LiveCard {
   repeats: (number | null)[];
   /** Conflict lines for this card, in card order. */
   conflicts: string[];
+  /** Sent back with every card write (P4b): a mismatch means someone else changed it first. */
+  version: number;
 }
 
 export interface LiveView {
@@ -189,7 +195,10 @@ export interface SavedPlacement {
 const byPlace = (a: { rotation: number | null; position: number; id: number }, b: { rotation: number | null; position: number; id: number }) =>
   (a.rotation ?? 1e9) - (b.rotation ?? 1e9) || a.position - b.position || a.id - b.id;
 
-export function placementAsMatch(p: SavedPlacement): MatchResult {
+/** A board row as the adapter needs it: who said what. */
+export type PlacementBoardRow = { personId: number; intent: Intent | null; picks: readonly Pick<BoardPick, 'later'>[] };
+
+export function placementAsMatch(p: SavedPlacement, board: readonly PlacementBoardRow[] = []): MatchResult {
   const classes = [...p.classes].sort(byPlace);
   const sessions: MatchSession[] = classes.map((c, i) => ({
     id: savedId(c.id),
@@ -208,15 +217,20 @@ export function placementAsMatch(p: SavedPlacement): MatchResult {
   }));
   const seats = new Map<number, MatchResult['assignments'][number]['seats']>();
   for (const s of sessions) for (const x of s.scouts) seats.set(x.personId, [...(seats.get(x.personId) ?? []), { ...x, sessionId: s.id, block: s.block }]);
+  const teaching = new Set(classes.map((c) => c.teacherId).filter((id): id is number => id != null));
+  const rows = [...board].sort((a, b) => a.personId - b.personId);
+  const intentOf = (r: PlacementBoardRow) => effectiveIntent(r.intent, r.picks);
   return {
     blockCount: sessions.length,
     sessions,
     assignments: [...seats].sort(([a], [b]) => a - b).map(([personId, list]) => ({ personId, seats: list })),
     wanted: [],
     offeredNoTakers: [],
-    undecidedScouts: [],
+    undecidedScouts: rows.filter((r) => intentOf(r) === 'undecided').map((r) => ({ personId: r.personId, placed: seats.has(r.personId) })),
     undecidedAdults: [],
-    comingNothing: []
+    comingNothing: rows
+      .filter((r) => intentOf(r) === 'coming' && !seats.has(r.personId) && !teaching.has(r.personId))
+      .map((r) => ({ personId: r.personId, suggestion: null }))
   };
 }
 
@@ -248,7 +262,8 @@ export function buildLiveView(input: {
       teacher: c.teacherId != null ? { personId: c.teacherId, name: input.nameOf(c.teacherId) } : null,
       members: c.memberIds.map((personId) => ({ personId, name: input.nameOf(personId), retake: input.retake(personId, c.topicKey) })).sort(byName),
       repeats: classes.filter((o) => o !== c && o.topicKey === c.topicKey).map((o) => o.rotation),
-      conflicts: lines.get(c.id) ?? []
+      conflicts: lines.get(c.id) ?? [],
+      version: c.version
     })),
     pool: [...new Set(input.pool)]
       .filter((id) => !busy.has(id))

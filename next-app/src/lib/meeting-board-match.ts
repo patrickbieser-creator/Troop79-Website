@@ -12,8 +12,8 @@
  *      teacher's SESSIONS_PER_TEACHER. A session is live once a scout asked for it for THIS meeting: one scout is enough
  *      (Patrick, R1: one-scout sessions are allowed), so the plan's "2 picks, 1 for a merit badge make-up" is not a gate.
  *   3. Teaching blocks (Patrick, 2026-10-20): a block IS a session, one adult teaching one group, with no clock; how
- *      long one takes can't be predicted, so nothing is bound to a time period. Up to MAX_BLOCKS a meeting; a teacher
- *      leads up to SESSIONS_PER_TEACHER. A session over 8 splits into a Group B led again by the same teacher. Blocks
+ *      long one takes can't be predicted, so nothing is bound to a time period. No cap a meeting (P4, Decision 8:
+ *      rotations are open-ended); a teacher leads up to SESSIONS_PER_TEACHER, a suggestion only (8d). A session over 8 splits into a Group B led again by the same teacher. Blocks
  *      are numbered first half, then second (HALF_LABEL: a rough guide, never a constraint), biggest first.
  *   4. Scouts: at most TWO sessions (Decision 1); 8 a session. Everyone gets one before anyone gets a second. A
  *      contested seat goes by the scout's own ranking of it
@@ -36,9 +36,7 @@ import { openRankTops, rankLeafCompletion } from '@/lib/rank-calculus';
 export const SESSION_CAP = 8;
 /** Topics a scout is matched to (Decision 1). */
 export const MAX_TOPICS_PER_SCOUT = 2;
-/** Teaching blocks (sessions) a meeting can hold; unused ones show as "Not filled" (Patrick, 2026-10-20). */
-export const MAX_BLOCKS = 12;
-/** Sessions one teacher leads, one after the other: the commitment cap. */
+/** Sessions one teacher leads, one after the other: a suggestion the matcher keeps (8d); Meeting Live enforces nothing. */
 export const SESSIONS_PER_TEACHER = 2;
 /** The rough halves a session is suggested for (MatchSession.half): a guide, never a constraint. */
 export const HALF_LABEL = ['First half, about 4:15', 'Second half, about 4:45'] as const;
@@ -101,13 +99,13 @@ export interface MatchSession {
 }
 
 export interface MatchResult {
-  /** Teaching blocks available (MAX_BLOCKS); `sessions` fill the first of them. */
+  /** Teaching blocks: one per live session (P4: no meeting-wide cap). */
   blockCount: number;
   /** Live sessions in block order. */
   sessions: MatchSession[];
   /** Each scout's seats, by block. Only scouts with at least one. */
   assignments: { personId: number; seats: (MatchSeat & { sessionId: string; block: number })[] }[];
-  /** Asked for, nobody to teach it (a teacher already leading their limit, or every block taken, counts: they're named
+  /** Asked for, nobody to teach it (a teacher already leading their limit counts: they're named
    *  in blockedTeacherIds). */
   wanted: { key: string; scoutIds: number[]; weeks: number; canTeach: number[]; blockedTeacherIds: number[] }[];
   /** Put on the board by a teacher, asked for by nobody: a topic (key) or a skill offer (skillId). */
@@ -252,10 +250,10 @@ export function matchBoard(input: MatchInput): MatchResult {
     }
   }
 
-  // ── teaching blocks: a session each, no clock; MAX_BLOCKS a meeting, SESSIONS_PER_TEACHER a teacher ────────────
+  // ── teaching blocks: a session each, no clock, no meeting-wide cap; SESSIONS_PER_TEACHER a teacher ──────────────
   const sections: Section[] = [];
   const led = new Map<number, number>(); // teacher → sessions they lead
-  const room = (unit: Unit) => sections.length < MAX_BLOCKS && (led.get(unit.teacherId) ?? 0) < SESSIONS_PER_TEACHER;
+  const room = (unit: Unit) => (led.get(unit.teacherId) ?? 0) < SESSIONS_PER_TEACHER;
   const place = (unit: Unit) => {
     led.set(unit.teacherId, (led.get(unit.teacherId) ?? 0) + 1);
     sections.push({ unit, group: null, coTeacherIds: unit.coTeacherIds, seats: [] });
@@ -415,7 +413,7 @@ export function matchBoard(input: MatchInput): MatchResult {
     .map((p) => ({ personId: p.personId, fits: wanted.filter((w) => { const a = assessTeacher(p, w.key, ctx); return a.qualified && !a.refused; }).map((w) => w.key) }));
 
   return {
-    blockCount: MAX_BLOCKS,
+    blockCount: out.length,
     sessions: out,
     assignments,
     wanted,

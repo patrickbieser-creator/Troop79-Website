@@ -74,7 +74,7 @@ export interface MatchCard {
 }
 
 export interface ThisSundayMatch {
-  /** All MAX_BLOCKS teaching blocks; `half` is a filled one's rough half (null = not filled). */
+  /** One block per session (P4: no meeting-wide cap); `half` is its rough half. */
   blocks: { label: string; half: 0 | 1 | null; sessions: MatchCard[] }[];
   sessions: number;
   /** The meeting editor's Agenda tab, whose tray promotes these. */

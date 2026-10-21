@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { MAX_BLOCKS, engineSuggestions, matchBoard, nextRankCompletion, seatLines, seatsFor, teachingFor, teachingLines, type MatchInput, type MatchScout } from '../src/lib/meeting-board-match';
+import { engineSuggestions, matchBoard, nextRankCompletion, seatLines, seatsFor, teachingFor, teachingLines, type MatchInput, type MatchScout } from '../src/lib/meeting-board-match';
 import { rankTrees } from '../src/lib/meeting-board-picklist';
 import type { BoardPick, Intent } from '../src/lib/meeting-board-shared';
 import type { SupplyInput, TeachContext, TeacherPerson } from '../src/lib/meeting-board-teach';
@@ -184,8 +184,8 @@ describe('matcher: assignment', () => {
     ]);
   });
 
-  it('Matcher_HoldsAtMostTwelveBlocks_AndListsTheRestAsNoRoom', () => {
-    // Thirteen teachers, thirteen freeform topics, one scout each.
+  it('Matcher_HasNoMeetingWideCap_ThirteenTeachersMakeThirteenSessions', () => {
+    // Thirteen teachers, thirteen freeform topics, one scout each (Decision 8: MAX_BLOCKS is gone; rotations are open-ended).
     const ids = range(1, 13);
     const r = matchBoard(
       input({
@@ -194,7 +194,7 @@ describe('matcher: assignment', () => {
         teach: ids.map((id) => ({ personId: 100 + id, key: `ff:topic ${id}` }))
       })
     );
-    expect([r.sessions.length, r.blockCount, r.wanted.map((w) => w.blockedTeacherIds.length)]).toEqual([MAX_BLOCKS, MAX_BLOCKS, [1]]);
+    expect([r.sessions.length, r.blockCount, r.wanted.length]).toEqual([13, 13, 0]);
   });
 
   it('Matcher_CapsSessionAtEight_WhenTopicOversubscribed', () => {

@@ -16,7 +16,7 @@ import { loadBoardState, loadPeopleNames, loadScoutProgress, type BoardMeeting, 
 import { boardName, effectiveIntent } from '@/lib/meeting-board-shared';
 import { isPickFinished, rankTrees } from '@/lib/meeting-board-picklist';
 import { sessionWords, type MatchResult } from '@/lib/meeting-board-match';
-import { loadLiveMatch, loadTeachBoard, sanitizeRpcError, type TeachBoard } from '@/lib/meeting-board-supply';
+import { loadLiveMatch, loadTeachBoard, loadTeacherPeople, sanitizeRpcError, type TeachBoard } from '@/lib/meeting-board-supply';
 import { teacherName } from '@/lib/meeting-board-teach';
 import {
   buildLiveView,
@@ -88,7 +88,7 @@ export async function loadMatchOrPlacement(
   teach: Pick<TeachBoard, 'supply' | 'intents'>
 ): Promise<MatchResult> {
   const saved = await loadSavedPlacement(sb, meeting.entryId);
-  return saved ? placementAsMatch(saved) : loadLiveMatch(sb, meeting, board, teach);
+  return saved ? placementAsMatch(saved, board) : loadLiveMatch(sb, meeting, board, teach);
 }
 
 type Catalog = AdvancementCatalog;
@@ -146,7 +146,7 @@ export async function loadLiveView(sb: SupabaseClient, meeting: BoardMeeting): P
   if (saved) {
     classes = saved.classes.map((c) => {
       const w = words([c.topicKey]);
-      return { id: savedId(c.id), topicKey: c.topicKey, rotation: c.rotation, title: c.title ?? w.title, codeLabel: w.codeLabel, kind: w.kind, teacherId: c.teacherId, memberIds: c.memberIds, position: c.position };
+      return { id: savedId(c.id), topicKey: c.topicKey, rotation: c.rotation, title: c.title ?? w.title, codeLabel: w.codeLabel, kind: w.kind, teacherId: c.teacherId, memberIds: c.memberIds, position: c.position, version: c.version };
     });
     rotations = saved.rotations;
     // Coming, nothing assigned: scouts who said Coming (or picked), or were marked here, and aren't in a class.
@@ -162,7 +162,7 @@ export async function loadLiveView(sb: SupabaseClient, meeting: BoardMeeting): P
     const keysOf = new Map(match.sessions.map((s) => [s.id, s.keys]));
     classes = snapshot.classes.map((c) => {
       const w = words(keysOf.get(c.sourceKey) ?? [c.topicKey]);
-      return { id: previewId(c.sourceKey), topicKey: c.topicKey, rotation: c.rotation, title: c.title ?? w.title, codeLabel: w.codeLabel, kind: w.kind, teacherId: c.teacherId, memberIds: c.memberIds, position: c.position };
+      return { id: previewId(c.sourceKey), topicKey: c.topicKey, rotation: c.rotation, title: c.title ?? w.title, codeLabel: w.codeLabel, kind: w.kind, teacherId: c.teacherId, memberIds: c.memberIds, position: c.position, version: 1 };
     });
     rotations = snapshot.rotations;
     pool = match.comingNothing.map((x) => x.personId);
@@ -193,4 +193,57 @@ export async function loadLiveView(sb: SupabaseClient, meeting: BoardMeeting): P
   };
 
   return buildLiveView({ started: !!saved, rotations, classes, nameOf: (id) => names.get(id) ?? '', retake, pool });
+}
+
+// ── P4b: editing ─────────────────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * A card id from the screen as a saved class id. 'c:<id>' is a saved card. 's:<source key>' is a preview card: the
+ * first edit starts Meeting Live (idempotent), and the card is found by the matcher session it was copied from. Null
+ * when it can't be found (the matcher no longer has that session, or it was removed): the caller says it's stale.
+ */
+export async function resolveLiveClass(sb: SupabaseClient, meeting: BoardMeeting, actorPersonId: number, id: string): Promise<number | null> {
+  if (/^c:\d+$/.test(id)) return Number(id.slice(2));
+  if (!id.startsWith('s:')) return null;
+  const started = await startMeetingLive(sb, meeting, actorPersonId);
+  if (!started.ok) throw new Error(started.error);
+  const { data, error } = await sb.from('meeting_classes').select('id').eq('calendar_entry_id', meeting.entryId).eq('source_key', id.slice(2)).maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data as { id: number } | null)?.id ?? null;
+}
+
+export interface LiveChoices {
+  /** Who can be picked to teach: adults first, then Junior Leaders, by name. */
+  teachers: { personId: number; name: string }[];
+  /** "+ Add an offer": the topics already on this meeting's board. */
+  topics: { key: string; label: string }[];
+  /** "+ Add" a scout: every active scout. */
+  scouts: { personId: number; name: string }[];
+}
+
+/** The pickers' lists, for editors only. */
+export async function loadLiveChoices(sb: SupabaseClient, meeting: BoardMeeting): Promise<LiveChoices> {
+  const catalog = await loadAdvancementCatalog();
+  const [teachers, rows, topics] = await Promise.all([
+    loadTeacherPeople(sb, 'all', meeting.date, catalog),
+    loadBoardState(sb, meeting, catalog),
+    sb.from('meeting_topics').select('topic_key').eq('calendar_entry_id', meeting.entryId)
+  ]);
+  if (topics.error) throw new Error(topics.error.message);
+  const teach = await loadTeachBoard(sb, meeting, catalog, rows);
+  const words = wordsFor(catalog, teach);
+  const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name);
+  return {
+    teachers: [...teachers.values()]
+      .filter((p) => p.eligible !== false)
+      .sort((a, b) => Number(a.kind !== 'adult') - Number(b.kind !== 'adult') || teacherName(a, 'admin').localeCompare(teacherName(b, 'admin')))
+      .map((p) => ({ personId: p.personId, name: teacherName(p, 'admin') })),
+    topics: ((topics.data ?? []) as { topic_key: string }[])
+      .map((t) => {
+        const w = words([t.topic_key]);
+        return { key: t.topic_key, label: w.codeLabel ? `${w.codeLabel} · ${w.title}` : w.title };
+      })
+      .sort((a, b) => a.label.localeCompare(b.label)),
+    scouts: rows.map((r) => ({ personId: r.personId, name: boardName(r.name) })).sort(byName)
+  };
 }
