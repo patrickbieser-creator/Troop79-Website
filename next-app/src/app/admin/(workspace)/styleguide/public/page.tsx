@@ -420,7 +420,7 @@ export default function PublicStyleguidePage() {
               <code>AccountControl</code> from <code>_components/account-control</code> &mdash; signed out, signed in, and open.
               &ldquo;Sign in&rdquo; is quiet (never the navy primary) and carries <code>?next=</code> the current page (none on
               Home); signed in it is a disclosure button, &ldquo;Patrick B&rdquo; on desktop and initials in a 44px circle at
-              640px and under, the full name as its accessible name. Menu: My page, Admin (only with <code>canAdmin</code>),
+              640px and under, the full name as its accessible name. Menu: My page, Meeting Planner (only with <code>canPlanner</code>), Admin (only with <code>canAdmin</code>),
               Sign out (a form POST). Esc and a click outside close it. Hidden on <code>/signin</code> routes. Replaced the
               Members tab, the utility bar&rsquo;s &ldquo;Signed in as&rdquo; and /member&rsquo;s Sign Out.
             </p>

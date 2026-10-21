@@ -9,6 +9,7 @@ import { requireVerifiedScoutIdentity } from '@/lib/family-access';
 import { isMenuId } from '@/lib/menu-monster/menus';
 import { loadMenuWith } from '@/lib/menu-monster/menus-store';
 import { resolveAdminActor } from '@/lib/admin-actor';
+import { holdsLeaderCapability } from '@/lib/capabilities';
 import type { AuditActor } from '@/lib/audit';
 import { menuViewer, recipeAuthor } from '../../menu-monster/menus/_components/scout-menus';
 
@@ -61,7 +62,7 @@ export const isRefused = (v: object): v is Fail => 'ok' in v;
 /** Any adult with admin access (Decision 2) — never a scout identity, even one holding a capability. */
 export async function leaderActor(): Promise<AuditActor | Fail> {
   const actor = await resolveAdminActor();
-  if (!actor || actor.subjectKind === 'scout' || actor.capabilities.size === 0) {
+  if (!actor || actor.subjectKind === 'scout' || !holdsLeaderCapability(actor.capabilities)) {
     return { ok: false, error: 'Only leaders can do that.' };
   }
   return { personId: actor.personId, label: actor.label };

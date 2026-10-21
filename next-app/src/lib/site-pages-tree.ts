@@ -80,6 +80,7 @@ const RESERVED_TOP_LEVEL = new Set([
   'member',
   'news',
   'photos',
+  'planner',
   'profile',
   'robots',
   'scouts',

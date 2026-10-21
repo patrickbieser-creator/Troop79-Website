@@ -223,7 +223,8 @@ const SPECIMEN_SIGNED_IN: SessionStatus = {
   label: 'Patrick Bieser',
   canViewProfile: true,
   isVerifiedMember: true,
-  canAdmin: true
+  canAdmin: true,
+  canPlanner: true
 };
 
 /** The nav's account control in its states. Sign out here is inert. */

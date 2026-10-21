@@ -17,6 +17,7 @@ import { redirect } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
 import { getIdentitySessionIfValid, requireVerifiedScoutIdentity } from '@/lib/family-access';
 import { resolveAdminActor } from '@/lib/admin-actor';
+import { holdsLeaderCapability } from '@/lib/capabilities';
 import { resolveFamilyScope } from '@/lib/household-scope';
 import { isEpochCurrent } from '@/lib/identity-session';
 import { loadMenuMonsterCatalog } from '@/lib/menu-monster/data';
@@ -86,7 +87,7 @@ export async function menuViewer(): Promise<MenuViewer | null> {
   const session = await getIdentitySessionIfValid();
   if (session?.subjectKind === 'scout') return { kind: 'scout', personId: session.personId, displayName: session.displayName };
   const actor = await resolveAdminActor();
-  if (actor && actor.subjectKind !== 'scout' && actor.capabilities.size > 0) return { kind: 'leader', personId: actor.personId, label: actor.label };
+  if (actor && actor.subjectKind !== 'scout' && holdsLeaderCapability(actor.capabilities)) return { kind: 'leader', personId: actor.personId, label: actor.label };
   if (session?.subjectKind === 'adult') {
     const sb = createAdminClient();
     // A parent reads unshared menus (prices paid included), so a revoked session ends here, not at cookie expiry (qa-lead).

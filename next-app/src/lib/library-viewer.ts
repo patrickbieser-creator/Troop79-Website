@@ -32,6 +32,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { resolveAdminActor, actorHas, type AdminActor } from '@/lib/admin-actor';
+import { holdsLeaderCapability } from '@/lib/capabilities';
 import { getIdentitySessionIfValid } from '@/lib/family-access';
 import { isEpochCurrent } from '@/lib/identity-session';
 import { loadHouseholdByKey } from '@/lib/households';
@@ -58,10 +59,11 @@ export function actorCanProxyLibrary(actor: AdminActor | null): boolean {
  * full rationale. Deliberately not `actor !== null`: a verified scout
  * identity can hold a real capability (the youth_leader bundle grants
  * `meeting_plan.use`) without being an adult leader, so `capabilities.size`
- * alone is not enough to gate leaders-only material.
+ * alone is not enough to gate leaders-only material. Nor are the Meeting
+ * Planner rights, which a parent or scout may hold (holdsLeaderCapability).
  */
 export function actorIsLibraryLeader(actor: AdminActor | null): boolean {
-  return !!actor && actor.subjectKind !== 'scout' && actor.capabilities.size > 0;
+  return !!actor && actor.subjectKind !== 'scout' && holdsLeaderCapability(actor.capabilities);
 }
 
 export interface SwitchOption {
@@ -173,8 +175,8 @@ export async function resolveLibraryViewer(
  *
  * See actorIsLibraryLeader() above for the decision itself. Family and
  * verified-household (non-admin) sessions are excluded the same way they
- * always were: they hold no capability at all, so `capabilities.size === 0`
- * already excludes them.
+ * always were: they hold no leader capability (at most a Meeting Planner
+ * right), so holdsLeaderCapability() excludes them.
  */
 export async function viewerIsLeader(): Promise<boolean> {
   return actorIsLibraryLeader(await resolveAdminActor());

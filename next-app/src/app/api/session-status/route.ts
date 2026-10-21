@@ -34,6 +34,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { IDENTITY_COOKIE, verifyIdentitySession } from '@/lib/identity-session';
 import { actorCanEnterAdmin, resolveAdminActor } from '@/lib/admin-actor';
+import { plannerAccess } from '@/lib/meeting-planner-access';
 
 export type SessionLevel = 'Scout' | 'Family';
 
@@ -53,6 +54,9 @@ export interface SessionStatus {
   isVerifiedMember: boolean;
   /** The person may enter /admin — the workspace layout's own rule. */
   canAdmin: boolean;
+  /** The person holds a Meeting Planner right (view, edit or seed), so the menu offers /planner. Read from the same
+   *  actor as canAdmin: no extra database read. */
+  canPlanner: boolean;
 }
 
 const SIGNED_OUT: SessionStatus = {
@@ -61,7 +65,8 @@ const SIGNED_OUT: SessionStatus = {
   label: null,
   canViewProfile: false,
   isVerifiedMember: false,
-  canAdmin: false
+  canAdmin: false,
+  canPlanner: false
 };
 
 export async function GET() {
@@ -76,13 +81,15 @@ export async function GET() {
 
   let status: SessionStatus;
   if (identitySession) {
+    const actor = await resolveAdminActor();
     status = {
       loggedIn: true,
       level: identitySession.subjectKind === 'adult' ? 'Family' : 'Scout',
       label: identitySession.displayName,
       canViewProfile: identitySession.subjectKind === 'adult',
       isVerifiedMember: true,
-      canAdmin: actorCanEnterAdmin(await resolveAdminActor())
+      canAdmin: actorCanEnterAdmin(actor),
+      canPlanner: plannerAccess(actor).canView
     };
   } else {
     // Covers "no cookies at all" AND "troop password only" — see above.

@@ -14,6 +14,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { holdsLeaderCapability, isCapability } from '@/lib/capabilities';
 
 /** 'hint' rows are never successful logins — they record a Bugle-link
  *  resolve that found nobody (lib/signin-hint.ts), which is what the per-IP
@@ -90,14 +91,16 @@ export async function recordLoginEvent(supabase: SupabaseClient, input: RecordLo
 
     if (input.personId) {
       const [{ data: capRows }, { count }] = await Promise.all([
-        supabase.from('person_capabilities').select('capability').eq('person_id', input.personId).limit(1),
+        supabase.from('person_capabilities').select('capability').eq('person_id', input.personId),
         supabase
           .from('login_events')
           .select('id', { count: 'exact', head: true })
           .eq('person_id', input.personId)
           .eq('success', true)
       ]);
-      roleSnapshot = (capRows ?? []).length > 0 ? 'leader' : 'family';
+      // A Meeting Planner right alone (a parent given View) is not a leader.
+      const caps = new Set((capRows ?? []).map((r) => r.capability as string).filter(isCapability));
+      roleSnapshot = holdsLeaderCapability(caps) ? 'leader' : 'family';
       isFirstLogin = input.success && (count ?? 0) === 0;
     }
 

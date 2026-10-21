@@ -11,9 +11,10 @@
  *     the navy primary: "Join Troop 79" stays the louder call to action.
  *   Signed in — a disclosure button (aria-expanded / aria-controls, not an
  *     ARIA menu): "Patrick B" on desktop, initials in a 44px circle on a
- *     phone, the full name as its accessible name. It opens My page, Admin
- *     (only when the person may enter /admin) and Sign out, which stays a
- *     <form> POST to logOutEverywhereAction.
+ *     phone, the full name as its accessible name. It opens My page, Meeting
+ *     Planner (only with a planner right), Admin (only when the person may
+ *     enter /admin) and Sign out, which stays a <form> POST to
+ *     logOutEverywhereAction.
  *
  * Session state comes from /api/session-status after hydration, so the
  * public layout stays static (see site-nav.tsx). Until it arrives the
@@ -153,6 +154,13 @@ export function AccountControlView({
               My page
             </Link>
           </li>
+          {status.canPlanner ? (
+            <li>
+              <Link href="/planner" className={styles.accountItem} onClick={close}>
+                Meeting Planner
+              </Link>
+            </li>
+          ) : null}
           {status.canAdmin ? (
             <li>
               <Link href="/admin" className={styles.accountItem} onClick={close}>

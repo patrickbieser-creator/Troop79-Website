@@ -28,7 +28,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { LEADER_COOKIE, verifySession, type SessionRole } from '@/lib/leader-session';
 import { IDENTITY_COOKIE, verifyIdentitySession, type IdentitySubjectKind } from '@/lib/identity-session';
 import { leaderSessionPersonId } from '@/lib/session-person';
-import { CAPABILITIES, loadPersonAuthz, type Capability } from '@/lib/capabilities';
+import { CAPABILITIES, holdsLeaderCapability, loadPersonAuthz, PLANNER_CAPABILITIES, type Capability } from '@/lib/capabilities';
 
 export interface AdminActor {
   /** Which credential authorized this request. */
@@ -84,7 +84,7 @@ export interface AdminActor {
  * codebase should default to the SAME exclusion unless it genuinely was
  * part of what the legacy password already did.
  */
-const LEGACY_EXCLUDED: ReadonlySet<Capability> = new Set(['finance.manage', 'finance.view']);
+const LEGACY_EXCLUDED: ReadonlySet<Capability> = new Set(['finance.manage', 'finance.view', ...PLANNER_CAPABILITIES]);
 
 function legacyCapabilities(): Set<Capability> {
   return new Set(CAPABILITIES.filter((c) => !LEGACY_EXCLUDED.has(c)));
@@ -139,11 +139,12 @@ export const resolveAdminActor = cache(async function resolveAdminActor(): Promi
  * May this actor enter /admin at all? The workspace layout's admission rule,
  * named so the public nav's account menu (api/session-status) asks the same
  * question instead of keeping a second copy of it: a resolved actor holding
- * at least one capability. Null (no credential, or a revoked session) and an
+ * at least one LEADER capability (planner rights alone never admit, see
+ * holdsLeaderCapability). Null (no credential, or a revoked session) and an
  * empty grant set are both "no".
  */
 export function actorCanEnterAdmin(actor: AdminActor | null): boolean {
-  return actor != null && actor.capabilities.size > 0;
+  return actor != null && holdsLeaderCapability(actor.capabilities);
 }
 
 export function actorHas(actor: AdminActor | null, capability: Capability): boolean {

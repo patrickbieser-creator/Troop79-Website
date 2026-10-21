@@ -27,10 +27,29 @@ export const CAPABILITIES = [
   'library.moderate',
   'library.proxy_view',
   'finance.manage',
-  'finance.view'
+  'finance.view',
+  'meeting_planner.view',
+  'meeting_planner.edit',
+  'meeting_planner.seed'
 ] as const;
 
 export type Capability = (typeof CAPABILITIES)[number];
+
+/**
+ * The public Meeting Planner's rights (Plans/Meeting-Planner-II.md, Decision 2): view the whole board, edit it, seed a
+ * meeting (the planning team). They reach /planner ONLY. They are not leader rights: a parent or scout given View must
+ * not enter /admin or count as a leader in the Library or Menu Monster, so every "is this a leader" question asks
+ * holdsLeaderCapability(), never `capabilities.size` (tech-lead, 2026-10-21).
+ */
+export const PLANNER_CAPABILITIES = ['meeting_planner.view', 'meeting_planner.edit', 'meeting_planner.seed'] as const satisfies readonly Capability[];
+
+const PLANNER_SET: ReadonlySet<Capability> = new Set(PLANNER_CAPABILITIES);
+
+/** Holds at least one right that is not a planner right: the "may enter /admin", "is a leader" question. */
+export function holdsLeaderCapability(capabilities: ReadonlySet<Capability>): boolean {
+  for (const c of capabilities) if (!PLANNER_SET.has(c)) return true;
+  return false;
+}
 
 export function isCapability(value: string): value is Capability {
   return (CAPABILITIES as readonly string[]).includes(value);
@@ -46,7 +65,10 @@ export const CAPABILITY_LABEL: Record<Capability, string> = {
   'library.moderate': 'Moderate the Library',
   'library.proxy_view': 'View the Library as a scout',
   'finance.manage': 'Manage troop finances',
-  'finance.view': 'View troop finances (read-only)'
+  'finance.view': 'View troop finances (read-only)',
+  'meeting_planner.view': 'View the Meeting Planner',
+  'meeting_planner.edit': 'Use the Meeting Planner',
+  'meeting_planner.seed': 'Seed meetings (planning team)'
 };
 
 /**
@@ -170,8 +192,9 @@ export async function hasCapability(
   return authz.capabilities.has(capability);
 }
 
-/** True when the person holds any capability at all — the "may this person
- *  reach /admin" question, kept separate so proxy.ts has one thing to ask. */
+/** True when the person holds any leader capability — the "may this person
+ *  reach /admin" question, kept separate so proxy.ts has one thing to ask.
+ *  Planner rights alone don't count (holdsLeaderCapability). */
 export async function hasAnyCapability(
   supabase: SupabaseClient,
   personId: number,
@@ -180,5 +203,5 @@ export async function hasAnyCapability(
   const authz = await loadPersonAuthz(supabase, personId);
   if (!authz) return false;
   if (authz.sessionEpoch !== issuedEpoch) return false;
-  return authz.capabilities.size > 0;
+  return holdsLeaderCapability(authz.capabilities);
 }

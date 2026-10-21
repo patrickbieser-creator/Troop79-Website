@@ -18,7 +18,7 @@
  */
 
 import { resolveAdminActor, type AdminActor } from '@/lib/admin-actor';
-import { CAPABILITY_LABEL, type Capability } from '@/lib/capabilities';
+import { CAPABILITY_LABEL, holdsLeaderCapability, type Capability } from '@/lib/capabilities';
 
 export async function requireCapability(capability: Capability): Promise<AdminActor> {
   const actor = await resolveAdminActor();
@@ -45,11 +45,11 @@ export async function requireAnyOf(capabilities: readonly Capability[]): Promise
   return actor;
 }
 
-/** Any capability at all — the "may this person be in /admin" question. */
+/** Any leader capability — the "may this person be in /admin" question (planner rights alone don't count). */
 export async function requireAnyCapability(): Promise<AdminActor> {
   const actor = await resolveAdminActor();
   if (!actor) throw new Error('Not authenticated');
-  if (actor.capabilities.size === 0) {
+  if (!holdsLeaderCapability(actor.capabilities)) {
     throw new Error('This account does not have admin access.');
   }
   return actor;

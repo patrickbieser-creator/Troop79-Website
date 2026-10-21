@@ -102,6 +102,28 @@ describe('session status', () => {
     expect((await status()).canAdmin).toBe(false);
   });
 
+  it('CanAdmin_IsFalse_WhenTheActorHoldsOnlyPlannerRights', async () => {
+    mocks.identity = identity();
+    mocks.actor = actor(['meeting_planner.view']);
+    expect((await status()).canAdmin).toBe(false);
+  });
+
+  it('CanPlanner_IsTrue_WhenTheActorHoldsAnyPlannerRight', async () => {
+    mocks.identity = identity();
+    mocks.actor = actor(['meeting_planner.view']);
+    expect((await status()).canPlanner).toBe(true);
+  });
+
+  it('CanPlanner_IsFalse_WithoutAPlannerRight', async () => {
+    mocks.identity = identity();
+    mocks.actor = actor(['advancement.write']);
+    expect((await status()).canPlanner).toBe(false);
+  });
+
+  it('CanPlanner_IsFalse_WhenSignedOut', async () => {
+    expect((await status()).canPlanner).toBe(false);
+  });
+
   it('Response_IsNeverCached', async () => {
     const res = await GET();
     expect(res.headers.get('cache-control')).toBe('no-store');

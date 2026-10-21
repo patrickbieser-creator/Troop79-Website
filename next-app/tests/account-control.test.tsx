@@ -32,7 +32,8 @@ const SIGNED_OUT: SessionStatus = {
   label: null,
   canViewProfile: false,
   isVerifiedMember: false,
-  canAdmin: false
+  canAdmin: false,
+  canPlanner: false
 };
 
 function signedIn(over: Partial<SessionStatus> = {}): SessionStatus {
@@ -43,6 +44,7 @@ function signedIn(over: Partial<SessionStatus> = {}): SessionStatus {
     canViewProfile: true,
     isVerifiedMember: true,
     canAdmin: false,
+    canPlanner: false,
     ...over
   };
 }
@@ -175,6 +177,25 @@ describe('AccountControl — signed in', () => {
     const button = await openMenuFor(signedIn({ canAdmin: false }));
     fireEvent.click(button);
     expect(screen.queryByRole('link', { name: 'Admin' })).toBeNull();
+  });
+
+  it('MeetingPlanner_AppearsOnlyWhenCanPlanner', async () => {
+    const button = await openMenuFor(signedIn({ canPlanner: true }));
+    fireEvent.click(button);
+    expect(screen.getByRole('link', { name: 'Meeting Planner' }).getAttribute('href')).toBe('/planner');
+  });
+
+  it('MeetingPlanner_IsAbsentWithoutCanPlanner', async () => {
+    const button = await openMenuFor(signedIn({ canPlanner: false }));
+    fireEvent.click(button);
+    expect(screen.queryByRole('link', { name: 'Meeting Planner' })).toBeNull();
+  });
+
+  it('MeetingPlanner_SitsBetweenMyPageAndAdmin', async () => {
+    const button = await openMenuFor(signedIn({ canPlanner: true, canAdmin: true }));
+    fireEvent.click(button);
+    const names = screen.getAllByRole('link').map((a) => a.textContent);
+    expect(names.slice(names.indexOf('My page'), names.indexOf('Admin') + 1)).toEqual(['My page', 'Meeting Planner', 'Admin']);
   });
 
   it('SignOut_PostsTheCurrentPathAsNext', async () => {
