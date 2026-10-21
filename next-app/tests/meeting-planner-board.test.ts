@@ -109,6 +109,11 @@ describe('Offered, no takers yet', () => {
     expect(b.offered.map((o) => [o.key, o.teachers.map((t) => t.name)])).toEqual([['scout-1a', ['Alex S']]]);
   });
 
+  it('Offered_LikelyFits_LeaveOutAScoutWhoFinishedIt', () => {
+    // The nudge list (v1's scoutCandidates) only offers what a scout can still pick, so the board says the same.
+    expect(buildPlannerBoard(input({ finished: new Set(['scout-1a:4']) })).offered[0].likelyFits).toEqual([]);
+  });
+
   it('Offered_LikelyFits_AreScoutsWorkingOnThatRank_WhoCanStillCome', () => {
     // Adi works on Scout and hasn't answered; Ben works on Scout but can't make it.
     expect(buildPlannerBoard(input()).offered[0].likelyFits.map((s) => s.name)).toEqual(['Adi A']);

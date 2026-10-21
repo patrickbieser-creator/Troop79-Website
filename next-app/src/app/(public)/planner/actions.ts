@@ -7,7 +7,8 @@
  * P2a: an editor (meeting_planner.edit; the SPL holds it as a scout) enters answers and picks for someone, signs an
  * adult up to teach or takes them off, assigns a teacher, and adds an offer. Every write goes through v1's writers
  * with leader = true and the editor as entered_by, so the RPCs keep their own rules (active scouts only, 5 picks, who
- * may teach, Junior Leaders and adults-only skills, closed and past boards). No email here: that's P2b, adults only.
+ * may teach, Junior Leaders and adults-only skills, closed and past boards).
+ * P2b: Send request and nudges go through v1's invite senders (lib/meeting-invites-send), adults only.
  * Each write returns the person's fresh drawer and the board's new stamp, so the poller doesn't refresh over it.
  */
 import { revalidatePath } from 'next/cache';
@@ -26,10 +27,11 @@ import {
   setMeetingIntent,
   type BoardWriteResult
 } from '@/lib/meeting-board';
-import { loadSupplyRows, loadTeacherPeople, teachTopic, unteachTopic } from '@/lib/meeting-board-supply';
+import { loadSupplyRows, loadTeacherPeople, teachContext, teachTopic, unteachTopic } from '@/lib/meeting-board-supply';
 import { INTENTS, type Intent } from '@/lib/meeting-board-shared';
-import { pickableKeys } from '@/lib/meeting-board-picklist';
-import { FREEFORM_MAX, freeformTitle } from '@/lib/meeting-board-teach';
+import { nextRankOf, pickableKeys } from '@/lib/meeting-board-picklist';
+import { scoutCandidates, sendPickInvites, sendTeachInvites } from '@/lib/meeting-invites-send';
+import { assessTeacher, FREEFORM_MAX, freeformTitle } from '@/lib/meeting-board-teach';
 import { plannerAccess } from '@/lib/meeting-planner-access';
 import { loadPersonDrawer, type PersonDrawer } from '@/lib/meeting-planner-drawer';
 
@@ -183,4 +185,78 @@ export async function plannerOfferChoicesAction(): Promise<{ ok: true; choices: 
   );
   const badges = [...catalog.meritBadges].sort((a, b) => a.name.localeCompare(b.name)).map((m) => ({ key: `mb:${m.id}`, codeLabel: 'Merit badge', label: m.name }));
   return { ok: true, choices: [...reqs, ...badges] };
+}
+
+// ── P2b: email (adults only, Decision 5) ─────────────────────────────────────────────────────────────────────────────
+
+export type PlannerSendResult = { ok: true; sent: string[]; skipped: { name: string; reason: string }[]; stamp: string } | { ok: false; error: string };
+
+/** An editor who signed in as an adult: the SPL edits the board but never sends email. */
+async function emailer(entryId: unknown, topicKey: unknown) {
+  const e = await editor(entryId, 0);
+  if (!e.ok) return e;
+  if (!plannerAccess(await resolveAdminActor()).canEmail) return fail('Emails are sent by adults. Ask an adult leader to send this one.');
+  if (typeof topicKey !== 'string' || !topicKey) return fail('Malformed request');
+  // Only about something on this meeting's board (asked for, offered or ready), never an arbitrary catalog key.
+  const { data: topic } = await e.sb.from('meeting_topics').select('id').eq('calendar_entry_id', e.meeting.entryId).eq('topic_key', topicKey).maybeSingle();
+  if (!topic) return fail('That isn’t on this meeting’s board.');
+  return { ...e, topicKey };
+}
+
+/** Send request: the Troop 79 Bugler asks one adult to teach a request (v1's teacher invite, T-5 P1). */
+export async function plannerSendRequestAction(input: { entryId: number; topicKey: string; personId: number }): Promise<PlannerSendResult> {
+  const e = await emailer(input?.entryId, input?.topicKey);
+  if (!e.ok) return e;
+  if (!Number.isInteger(input.personId)) return fail('Malformed request');
+  // Only to someone who could teach it (the board lists only them; qa-lead, 2026-10-21).
+  const catalog = await loadAdvancementCatalog();
+  const who = (await loadTeacherPeople(e.sb, [input.personId], e.meeting.date, catalog)).get(input.personId);
+  if (!who || who.eligible === false || !assessTeacher(who, e.topicKey, teachContext(catalog)).qualified) return fail('They aren’t someone who can teach that.');
+  const res = await sendTeachInvites(e.sb, { entryId: e.meeting.entryId, topicKey: e.topicKey, personIds: [input.personId], sentBy: e.actorPersonId });
+  if (!res.ok) return res;
+  revalidate();
+  return { ...res, stamp: await loadBoardStamp(e.sb, e.meeting.entryId) };
+}
+
+export interface NudgeFamily {
+  personId: number;
+  name: string;
+  /** 'Working on Scout · likely fit · no answer yet'. */
+  meta: string;
+  likely: boolean;
+}
+
+/**
+ * Who an offer could be nudged to (v1's scoutCandidates: every active scout who can pick it and hasn't said they can't
+ * come), minus anyone who already picked it. Likely fits (working on that rank) first. Nobody is preselected.
+ */
+export async function plannerNudgeFamiliesAction(input: { entryId: number; topicKey: string }): Promise<{ ok: true; families: NudgeFamily[] } | { ok: false; error: string }> {
+  const e = await emailer(input?.entryId, input?.topicKey);
+  if (!e.ok) return e;
+  const res = await scoutCandidates(e.sb, { entryId: e.meeting.entryId, topicKey: e.topicKey });
+  if (!res.ok) return res;
+  const catalog = await loadAdvancementCatalog();
+  const rankName = new Map(catalog.ranks.map((r) => [r.id, r.display_name]));
+  const topicRank = [...catalog.ranks].sort((a, b) => b.id.length - a.id.length).find((r) => e.topicKey.startsWith(`${r.id}-`))?.id ?? null;
+  const scouts = new Map((await loadBoardScouts(e.sb)).map((s) => [s.personId, s]));
+  const families = res.scouts
+    .filter((c) => c.ticked)
+    .map((c) => {
+      const working = nextRankOf(scouts.get(c.personId)?.currentRank ?? null, catalog.ranks);
+      const likely = topicRank != null && working === topicRank;
+      return { personId: c.personId, name: c.name, likely, meta: [working ? `Working on ${rankName.get(working) ?? working}` : null, likely ? 'likely fit' : null, c.note].filter(Boolean).join(' · ') };
+    })
+    .sort((a, b) => Number(b.likely) - Number(a.likely) || a.name.localeCompare(b.name));
+  return { ok: true, families };
+}
+
+/** Nudge families: the Troop 79 Bugler offers the requirement to the chosen scouts (v1's pick invite, T-5 P2). */
+export async function plannerSendNudgeAction(input: { entryId: number; topicKey: string; scoutIds: number[] }): Promise<PlannerSendResult> {
+  if (!Array.isArray(input?.scoutIds) || !input.scoutIds.length || !input.scoutIds.every((id) => Number.isInteger(id))) return fail('Choose at least one family.');
+  const e = await emailer(input.entryId, input.topicKey);
+  if (!e.ok) return e;
+  const res = await sendPickInvites(e.sb, { entryId: e.meeting.entryId, topicKey: e.topicKey, scoutIds: input.scoutIds, sentBy: e.actorPersonId });
+  if (!res.ok) return res;
+  revalidate();
+  return { ...res, stamp: await loadBoardStamp(e.sb, e.meeting.entryId) };
 }

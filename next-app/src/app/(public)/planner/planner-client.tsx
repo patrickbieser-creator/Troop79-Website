@@ -7,12 +7,15 @@
  * over a result the drawer already shows; the board behind refreshes once when the save settles).
  *
  * Viewers (no edit right) get plain names and no buttons: PersonName renders a span, the buttons render nothing.
+ * P2b: Send request and "Choose families to nudge…" render for adult editors only (canEmail); a scout editor (the SPL)
+ * sees AdultsSendEmails instead.
  */
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { useRouter } from 'next/navigation';
-import { plannerAssignAction } from './actions';
+import { plannerAssignAction, plannerSendRequestAction } from './actions';
 import { PersonDrawerView } from './person-drawer';
 import { OfferDrawer } from './offer-drawer';
+import { NudgeDrawer } from './nudge-drawer';
 import styles from './planner.module.css';
 
 export const SAVE_FAILED = 'That didn’t save. Check your connection and try again.';
@@ -22,7 +25,14 @@ export interface PlannerAdult {
   name: string;
 }
 
-type Open = { mode: 'person'; personId: number } | { mode: 'offer'; teacherId: number | null; back: number | null } | null;
+export interface NudgeTopic {
+  topicKey: string;
+  title: string;
+  codeLabel: string;
+  teachers: string;
+}
+
+type Open = { mode: 'person'; personId: number } | { mode: 'offer'; teacherId: number | null; back: number | null } | ({ mode: 'nudge' } & NudgeTopic) | null;
 
 interface Sync {
   /** The last board stamp the page has seen or written. */
@@ -35,6 +45,11 @@ interface Sync {
 interface PlannerCtx {
   entryId: number;
   canEdit: boolean;
+  /** An adult editor: may send requests and nudges. */
+  canEmail: boolean;
+  /** Families nudged this visit, by topic key ("✓ Nudged 5 families · just now"). */
+  nudged: ReadonlyMap<string, number>;
+  openNudge: (topic: NudgeTopic) => void;
   adults: readonly PlannerAdult[];
   openPerson: (personId: number) => void;
   openOffer: (teacherId?: number | null, back?: number | null) => void;
@@ -47,9 +62,24 @@ export function usePlanner(): PlannerCtx | null {
   return useContext(Ctx);
 }
 
-export function PlannerProvider({ entryId, canEdit, adults, stamp, children }: { entryId: number; canEdit: boolean; adults: readonly PlannerAdult[]; stamp: string; children: ReactNode }) {
+export function PlannerProvider({
+  entryId,
+  canEdit,
+  canEmail = false,
+  adults,
+  stamp,
+  children
+}: {
+  entryId: number;
+  canEdit: boolean;
+  canEmail?: boolean;
+  adults: readonly PlannerAdult[];
+  stamp: string;
+  children: ReactNode;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState<Open>(null);
+  const [nudged, setNudged] = useState<ReadonlyMap<string, number>>(new Map());
   const stampRef = useRef(stamp);
   const pending = useRef(0);
 
@@ -77,12 +107,15 @@ export function PlannerProvider({ entryId, canEdit, adults, stamp, children }: {
     () => ({
       entryId,
       canEdit,
+      canEmail: canEdit && canEmail,
+      nudged,
+      openNudge: (topic) => setOpen({ mode: 'nudge', ...topic }),
       adults,
       openPerson: (personId) => setOpen({ mode: 'person', personId }),
       openOffer: (teacherId = null, back = null) => setOpen({ mode: 'offer', teacherId, back }),
       sync
     }),
-    [entryId, canEdit, adults, sync]
+    [entryId, canEdit, canEmail, nudged, adults, sync]
   );
 
   return (
@@ -91,6 +124,16 @@ export function PlannerProvider({ entryId, canEdit, adults, stamp, children }: {
       {open?.mode === 'person' ? <PersonDrawerView key={open.personId} personId={open.personId} onClose={() => setOpen(null)} /> : null}
       {open?.mode === 'offer' ? (
         <OfferDrawer teacherId={open.teacherId} onClose={() => setOpen(open.back != null ? { mode: 'person', personId: open.back } : null)} />
+      ) : null}
+      {open?.mode === 'nudge' ? (
+        <NudgeDrawer
+          topicKey={open.topicKey}
+          title={open.title}
+          codeLabel={open.codeLabel}
+          teachers={open.teachers}
+          onSent={(n) => setNudged((m) => new Map(m).set(open.topicKey, n))}
+          onClose={() => setOpen(null)}
+        />
       ) : null}
     </Ctx.Provider>
   );
@@ -141,6 +184,53 @@ export function AssignButton({ personId, name, topicKey, title }: { personId: nu
       ) : null}
     </span>
   );
+}
+
+/** Send request: the Troop 79 Bugler asks this adult to teach the request. Adult editors only. */
+export function SendRequestButton({ personId, name, topicKey, title, requested }: { personId: number; name: string; topicKey: string; title: string; requested: boolean }) {
+  const p = usePlanner();
+  const [state, setState] = useState<'idle' | 'sending' | 'sent' | string>(requested ? 'sent' : 'idle');
+  if (!p?.canEmail) return null;
+  if (state === 'sent') return <span className={styles.assigned}>✓ Request sent</span>;
+  const send = async () => {
+    setState('sending');
+    const res = await p.sync.run(() => plannerSendRequestAction({ entryId: p.entryId, topicKey, personId }));
+    if (!res.ok) setState(res.error);
+    else if (res.sent.length) setState('sent');
+    else setState(`Not sent: ${res.skipped.map((s) => s.reason).join(', ') || 'nobody to email'}.`);
+  };
+  return (
+    <span className={styles.assignWrap}>
+      <button type="button" className={styles.requestBtn} onClick={send} disabled={state === 'sending'} aria-label={`Send ${name} a request to teach ${title}`}>
+        {state === 'sending' ? 'Sending…' : 'Send request'}
+      </button>
+      {state !== 'idle' && state !== 'sending' ? (
+        <span className={styles.rowProblem} role="alert">
+          {state}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+/** "Choose families to nudge…" on an offer nobody picked (rank requirements only, as v1). Adult editors only. */
+export function NudgeButton(topic: NudgeTopic) {
+  const p = usePlanner();
+  if (!p?.canEmail) return null;
+  const n = p.nudged.get(topic.topicKey);
+  if (n) return <span className={styles.assigned}>✓ Nudged {n === 1 ? '1 family' : `${n} families`} · just now</span>;
+  return (
+    <button type="button" className={styles.nudgeBtn} onClick={() => p.openNudge(topic)}>
+      Choose families to nudge…
+    </button>
+  );
+}
+
+/** For a scout editor (the SPL): one line where the email buttons would be. */
+export function AdultsSendEmails() {
+  const p = usePlanner();
+  if (!p?.canEdit || p.canEmail) return null;
+  return <p className={styles.emailNote}>Requests and nudges are emailed by adults.</p>;
 }
 
 export interface SomeoneRow {

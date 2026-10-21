@@ -12,7 +12,8 @@
  *   - An adult's answer is teacherIntent: a teaching commitment means Coming.
  *   - "Can teach this" is everyone qualified (assessTeacher, done by the loader), grouped Coming / Not sure yet /
  *     Haven't answered, sorted by name, with Can't-make-it people left out. There is no best-fit ranking yet.
- *   - Likely fits for an offer nobody picked: scouts working on that rank who haven't picked it and can still come.
+ *   - Likely fits for an offer nobody picked: scouts working on that rank who haven't picked it, haven't finished it,
+ *     and can still come (the same people the nudge list offers it to).
  */
 import { effectiveIntent, type BoardPick, type Intent } from '@/lib/meeting-board-shared';
 import { teacherIntent, weeksAsked } from '@/lib/meeting-board-teach';
@@ -61,6 +62,8 @@ export interface PlannerInput {
   qualified: ReadonlyMap<string, readonly number[]>;
   /** `${key}:${personId}` for each teacher request already sent this meeting. */
   requested: ReadonlySet<string>;
+  /** `${key}:${personId}` for an offered requirement the scout has already finished (left out of likely fits). */
+  finished?: ReadonlySet<string>;
 }
 
 export interface PlannerPerson {
@@ -224,7 +227,10 @@ export function buildPlannerBoard(input: PlannerInput): PlannerBoard {
     .map((key) => {
       const t = topicOf(key);
       const likelyFits = t.rankId
-        ? scouts.filter((s) => s.workingOnRankId === t.rankId && s.answer !== 'not_coming' && !s.picks.some((p) => p.key === key)).map((s) => person(s.personId)).sort(byName)
+        ? scouts
+            .filter((s) => s.workingOnRankId === t.rankId && s.answer !== 'not_coming' && !s.picks.some((p) => p.key === key) && !input.finished?.has(`${key}:${s.personId}`))
+            .map((s) => person(s.personId))
+            .sort(byName)
         : [];
       return { key, codeLabel: t.codeLabel, title: t.title, kind: t.kind, teachers: teachersOf(key), likelyFits };
     })

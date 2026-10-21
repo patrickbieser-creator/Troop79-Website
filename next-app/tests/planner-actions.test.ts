@@ -72,6 +72,7 @@ beforeAll(async () => {
 
 afterEach(async () => {
   for (const e of entries) {
+    await sb.from('meeting_invites').delete().eq('calendar_entry_id', e);
     await sb.from('meeting_topics').delete().eq('calendar_entry_id', e);
     await sb.from('meeting_pick_lists').delete().eq('calendar_entry_id', e);
     await sb.from('meeting_intents').delete().eq('calendar_entry_id', e);
@@ -80,6 +81,7 @@ afterEach(async () => {
 });
 
 afterAll(async () => {
+  await sb.from('teaching_skills').delete().in('person_id', people);
   await sb.from('calendar_entries').delete().in('id', entries);
   await sb.from('scouts').delete().in('id', scoutIds);
   await sb.from('people').delete().in('id', people);
@@ -234,3 +236,83 @@ describe('teaching', () => {
     expect(res.ok && [res.choices.some((c) => c.key === keys[0]), res.choices.some((c) => c.key.startsWith('mb:'))]).toEqual([true, true]);
   });
 });
+
+describe('email (P2b, adults only)', () => {
+  it('Spl_IsRefused_WhenSendingARequest', async () => {
+    asSpl();
+    expect(await (await actions()).plannerSendRequestAction({ entryId: meeting, topicKey: keys[0], personId: teacher })).toEqual({
+      ok: false,
+      error: 'Emails are sent by adults. Ask an adult leader to send this one.'
+    });
+  });
+
+  it('Viewer_IsRefused_WhenNudging', async () => {
+    asViewer();
+    expect((await (await actions()).plannerSendNudgeAction({ entryId: meeting, topicKey: keys[0], scoutIds: [young] })).ok).toBe(false);
+  });
+
+  it('Spl_CantListFamiliesToNudge', async () => {
+    asSpl();
+    expect((await (await actions()).plannerNudgeFamiliesAction({ entryId: meeting, topicKey: keys[0] })).ok).toBe(false);
+  });
+
+  it('Editor_SendRequest_GoesThroughTheInviteSender', async () => {
+    asEditor();
+    const act = await actions();
+    await act.plannerTogglePickAction({ entryId: meeting, personId: young, key: keys[0], on: true });
+    // Qualified means the requirement's skill is in what they've said they can teach (v1's assessTeacher).
+    const { data: req } = await sb.from('rank_requirements').select('skill_id').eq('rank_id', 'tenderfoot').eq('code', keys[0].slice('tenderfoot-'.length)).is('parent_id', null).single();
+    await sb.from('teaching_skills').insert({ person_id: teacher, skill_id: (req as { skill_id: string }).skill_id });
+    const res = await act.plannerSendRequestAction({ entryId: meeting, topicKey: keys[0], personId: teacher });
+    // The suite never mails anyone: the fixture adult has no email, so the sender says why it skipped them.
+    expect(res.ok && res.skipped.map((x) => x.name)).toEqual([`${TEST_PREFIX} PLA Teacher`]);
+  });
+
+  it('SendRequest_AboutATopicNotOnThisMeeting_IsRefused', async () => {
+    asEditor();
+    expect(await (await actions()).plannerSendRequestAction({ entryId: meeting, topicKey: keys[2], personId: teacher })).toEqual({ ok: false, error: 'That isn’t on this meeting’s board.' });
+  });
+
+  it('SendRequest_ToSomeoneWhoCantTeach_IsRefused', async () => {
+    asEditor();
+    const act = await actions();
+    await act.plannerTogglePickAction({ entryId: meeting, personId: young, key: keys[0], on: true });
+    expect(await act.plannerSendRequestAction({ entryId: meeting, topicKey: keys[0], personId: young })).toEqual({ ok: false, error: 'They aren’t someone who can teach that.' });
+  });
+
+  it('Nudge_GoesThroughTheInviteSender', async () => {
+    asEditor();
+    const act = await actions();
+    await act.plannerAssignAction({ entryId: meeting, personId: teacher, key: keys[1] });
+    const res = await act.plannerSendNudgeAction({ entryId: meeting, topicKey: keys[1], scoutIds: [young] });
+    // The fixture scout's household has no parent with an email, so nobody is reached and the sender says so.
+    expect(res.ok && res.sent).toEqual([]);
+  });
+
+  it('Nudge_WithABadScoutId_IsRefused', async () => {
+    asEditor();
+    expect(await (await actions()).plannerSendNudgeAction({ entryId: meeting, topicKey: keys[0], scoutIds: ['x' as unknown as number] })).toEqual({ ok: false, error: 'Choose at least one family.' });
+  });
+
+  it('NudgeFamilies_ListsAScoutWorkingOnThatRank_AsALikelyFit', async () => {
+    asEditor();
+    const act = await actions();
+    await act.plannerAssignAction({ entryId: meeting, personId: teacher, key: keys[0] });
+    const res = await act.plannerNudgeFamiliesAction({ entryId: meeting, topicKey: keys[0] });
+    expect(res.ok && res.families.find((f) => f.personId === young)?.likely).toBe(true);
+  });
+
+  it('NudgeFamilies_LeavesOutAScoutWhoAlreadyPickedIt', async () => {
+    asEditor();
+    const act = await actions();
+    await act.plannerTogglePickAction({ entryId: meeting, personId: young, key: keys[0], on: true });
+    const res = await act.plannerNudgeFamiliesAction({ entryId: meeting, topicKey: keys[0] });
+    expect(res.ok && res.families.some((f) => f.personId === young)).toBe(false);
+  });
+
+  it('Nudge_WithNobodyChosen_SaysWhy', async () => {
+    asEditor();
+    expect(await (await actions()).plannerSendNudgeAction({ entryId: meeting, topicKey: keys[0], scoutIds: [] })).toEqual({ ok: false, error: 'Choose at least one family.' });
+  });
+});
+

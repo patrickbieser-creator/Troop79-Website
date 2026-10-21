@@ -15,7 +15,7 @@ import type { ReactNode } from 'react';
 import type { AttendanceCounts, CanTeachPerson, PlannerBoard, PlannerPerson, WallColumns } from '@/lib/meeting-planner-board';
 import { minutesText } from '@/lib/meeting-board-picklist';
 import { Fold } from './fold';
-import { AddOfferButton, AssignButton, EnterForSomeone, PersonName, type SomeoneRow } from './planner-client';
+import { AddOfferButton, AdultsSendEmails, AssignButton, EnterForSomeone, NudgeButton, PersonName, SendRequestButton, type SomeoneRow } from './planner-client';
 import styles from './planner.module.css';
 
 const KIND_LABEL = { rank: 'Rank', mb: 'Merit badge', ff: 'Other' } as const;
@@ -78,7 +78,7 @@ function Chips({ people, adult }: { people: readonly PlannerPerson[]; adult?: bo
   );
 }
 
-function TeacherGroup({ label, tone, people, topic }: { label: string; tone: 'coming' | 'unsure' | 'none'; people: readonly CanTeachPerson[]; topic: { key: string; title: string } }) {
+function TeacherGroup({ label, tone, people, topic }: { label: string; tone: 'coming' | 'unsure' | 'none'; people: readonly CanTeachPerson[]; topic: { key: string; title: string; kind: string } }) {
   if (!people.length) return null;
   return (
     <>
@@ -94,7 +94,10 @@ function TeacherGroup({ label, tone, people, topic }: { label: string; tone: 'co
               {p.requested ? ' · request sent' : ''}
             </span>
           </span>
-          <AssignButton personId={p.personId} name={p.name} topicKey={topic.key} title={topic.title} />
+          <span className={styles.rowActions}>
+            {topic.kind !== 'ff' ? <SendRequestButton personId={p.personId} name={p.name} topicKey={topic.key} title={topic.title} requested={p.requested} /> : null}
+            <AssignButton personId={p.personId} name={p.name} topicKey={topic.key} title={topic.title} />
+          </span>
         </li>
       ))}
     </>
@@ -185,6 +188,7 @@ export function PlannerBoardView({ board, heading }: { board: PlannerBoard; head
           </Card>
 
           <Card tone="need" badge="1" title="Requests with no teacher" summary={`${plural(board.noTeacher.length, 'topic')} · ${plural(waitingTotal, 'scout')} waiting`}>
+            <AdultsSendEmails />
             {board.noTeacher.length ? (
               <ul className={styles.rows}>
                 {board.noTeacher.map((r) => (
@@ -252,6 +256,7 @@ export function PlannerBoardView({ board, heading }: { board: PlannerBoard; head
                         <Chips people={o.likelyFits} />
                       </div>
                     ) : null}
+                    {o.kind === 'rank' ? <NudgeButton topicKey={o.key} title={o.title} codeLabel={o.codeLabel} teachers={o.teachers.map((t) => t.name).join(', ')} /> : null}
                   </li>
                 ))}
               </ul>

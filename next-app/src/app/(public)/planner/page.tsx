@@ -78,7 +78,7 @@ export default async function PlannerPage() {
   return (
     <PlannerProvider
       entryId={page.meeting.entryId}
-      canEdit={access.canEdit}
+      canEdit={access.canEdit} canEmail={access.canEmail}
       adults={adults}
       stamp={page.stamp}
     >

@@ -10,11 +10,11 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { loadAdvancementCatalog } from '@/lib/advancement-catalog';
 import { fmtDateFull } from '@/lib/format-date';
 import { fetchAllRows } from '@/lib/supabase/paginate';
-import { loadBoardStamp, loadBoardState, loadNextMeeting, type BoardMeeting } from '@/lib/meeting-board';
+import { loadBoardStamp, loadBoardState, loadNextMeeting, loadScoutProgress, type BoardMeeting } from '@/lib/meeting-board';
 import { loadTeachBoard } from '@/lib/meeting-board-supply';
 import { assessTeacher, teacherName } from '@/lib/meeting-board-teach';
 import { boardName } from '@/lib/meeting-board-shared';
-import { nextRankOf, topicWords } from '@/lib/meeting-board-picklist';
+import { isPickFinished, nextRankOf, rankTrees, topicWords } from '@/lib/meeting-board-picklist';
 import { loadInviteRows } from '@/lib/meeting-invites-db';
 import { buildPlannerBoard, type PlannerBoard, type PlannerTopic } from '@/lib/meeting-planner-board';
 
@@ -74,6 +74,18 @@ export async function loadPlannerPage(sb: SupabaseClient): Promise<PlannerPage |
     .filter((p) => leaderIds.has(p.personId) || p.skills.size > 0 || p.counselorFor.size > 0 || teach.intents.has(p.personId) || committed.has(p.personId))
     .map((p) => ({ personId: p.personId, name: teacherName(p, 'admin'), intent: teach.intents.get(p.personId) ?? null, canTeach: p.skills.size > 0 || p.counselorFor.size > 0 }));
 
+  // Offers nobody picked: who has already finished each one, so likely fits match the nudge list.
+  const finished = new Set<string>();
+  if (teach.match.offered.length) {
+    const progress = await loadScoutProgress(sb, rows.map((r) => r.scoutId));
+    const trees = rankTrees(catalog.rankRequirements);
+    for (const r of rows) {
+      const p = progress.get(r.scoutId);
+      const ctx = { currentRank: r.currentRank, ranks: catalog.ranks, trees, rankCodes: p?.rankCodes ?? new Set<string>(), awardedMbs: new Set((p?.mbProgress ?? []).filter((m) => m.awarded).map((m) => m.mb_id)) };
+      for (const key of teach.match.offered) if (isPickFinished(key, ctx)) finished.add(`${key}:${r.personId}`);
+    }
+  }
+
   const board = buildPlannerBoard({
     meetingDate: meeting.date,
     scouts: rows.map((r) => {
@@ -85,7 +97,8 @@ export async function loadPlannerPage(sb: SupabaseClient): Promise<PlannerPage |
     commitments,
     teachersFor: new Map([...teach.match.teachers].map(([key, list]) => [key, list.map((t) => t.personId)])),
     qualified,
-    requested: new Set(inviteRows.filter((r) => r.kind === 'teach').map((r) => `${r.topic_key}:${r.invitee_person_id}`))
+    requested: new Set(inviteRows.filter((r) => r.kind === 'teach').map((r) => `${r.topic_key}:${r.invitee_person_id}`)),
+    finished
   });
 
   return {

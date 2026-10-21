@@ -780,6 +780,82 @@
   background: var(--status-success-bg);
 }
 
+/* ── P2b: email (adult editors) ─────────────────────────────────────────────────────────────────────────────── */
+.rowActions {
+  display: flex;
+  flex: none;
+  align-items: flex-start;
+  gap: var(--sp-2);
+}
+.requestBtn {
+  min-height: 36px;
+  padding: 0 var(--sp-3);
+  border: 0;
+  border-radius: var(--rad-md);
+  background: var(--navy);
+  font: 600 var(--fs-sm) / 1 var(--font-ui);
+  color: var(--warm-white);
+  cursor: pointer;
+}
+.nudgeBtn {
+  min-height: 44px;
+  margin-top: var(--sp-3);
+  padding: 0 var(--sp-4);
+  border: 1px solid var(--bark);
+  border-radius: var(--rad-md);
+  background: var(--status-warning-bg);
+  font: 600 var(--fs-md) / 1 var(--font-ui);
+  color: var(--bark);
+  cursor: pointer;
+}
+.requestBtn:focus-visible,
+.nudgeBtn:focus-visible,
+.quickBtn:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+.emailNote {
+  margin: 0;
+  padding: var(--sp-2) var(--sp-4);
+  border-bottom: 1px solid var(--border-light);
+  font: var(--fs-sm) / 1.4 var(--font-ui);
+  color: var(--text-meta);
+}
+.quick {
+  display: flex;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+}
+.quickBtn {
+  min-height: 36px;
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-md);
+  background: var(--warm-white);
+  font: 600 var(--fs-sm) / 1 var(--font-ui);
+  color: var(--text-head);
+  cursor: pointer;
+}
+.quickBtn:disabled {
+  color: var(--text-meta);
+  cursor: default;
+}
+.preview {
+  margin-bottom: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--rad-md);
+  background: var(--newsprint);
+  font: var(--fs-sm) / 1.45 var(--font-ui);
+  color: var(--text-body);
+}
+.preview summary {
+  font-weight: 600;
+  cursor: pointer;
+}
+.preview p {
+  margin: var(--sp-2) 0 0;
+}
+
 /* ── narrower screens ───────────────────────────────────────────────────────────────────────────────────────── */
 @media (max-width: 900px) {
   .body {
@@ -817,6 +893,9 @@
   }
   .teacherList {
     max-height: none;
+  }
+  .teacherRow {
+    flex-wrap: wrap;
   }
   .wallGrid {
     grid-template-columns: minmax(0, 1fr);
