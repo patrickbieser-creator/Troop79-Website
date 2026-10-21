@@ -14,7 +14,7 @@ import { loadBoardStamp, loadBoardState, loadNextMeeting, loadScoutProgress, typ
 import { loadTeachBoard } from '@/lib/meeting-board-supply';
 import { assessTeacher, teacherName } from '@/lib/meeting-board-teach';
 import { boardName } from '@/lib/meeting-board-shared';
-import { isPickFinished, nextRankOf, rankTrees, topicWords } from '@/lib/meeting-board-picklist';
+import { isPickOutOfReach, nextRankOf, rankTrees, topicWords } from '@/lib/meeting-board-picklist';
 import { loadInviteRows } from '@/lib/meeting-invites-db';
 import { buildPlannerBoard, type PlannerBoard, type PlannerTopic } from '@/lib/meeting-planner-board';
 
@@ -74,7 +74,7 @@ export async function loadPlannerPage(sb: SupabaseClient): Promise<PlannerPage |
     .filter((p) => leaderIds.has(p.personId) || p.skills.size > 0 || p.counselorFor.size > 0 || teach.intents.has(p.personId) || committed.has(p.personId))
     .map((p) => ({ personId: p.personId, name: teacherName(p, 'admin'), intent: teach.intents.get(p.personId) ?? null, canTeach: p.skills.size > 0 || p.counselorFor.size > 0 }));
 
-  // Offers nobody picked: who has already finished each one, so likely fits match the nudge list.
+  // Offers nobody picked: who has finished each one or can't take it up yet, so likely fits match the nudge list.
   const finished = new Set<string>();
   if (teach.match.offered.length) {
     const progress = await loadScoutProgress(sb, rows.map((r) => r.scoutId));
@@ -82,7 +82,7 @@ export async function loadPlannerPage(sb: SupabaseClient): Promise<PlannerPage |
     for (const r of rows) {
       const p = progress.get(r.scoutId);
       const ctx = { currentRank: r.currentRank, ranks: catalog.ranks, trees, rankCodes: p?.rankCodes ?? new Set<string>(), awardedMbs: new Set((p?.mbProgress ?? []).filter((m) => m.awarded).map((m) => m.mb_id)) };
-      for (const key of teach.match.offered) if (isPickFinished(key, ctx)) finished.add(`${key}:${r.personId}`);
+      for (const key of teach.match.offered) if (isPickOutOfReach(key, ctx)) finished.add(`${key}:${r.personId}`);
     }
   }
 

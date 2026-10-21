@@ -62,7 +62,7 @@ export interface PlannerInput {
   qualified: ReadonlyMap<string, readonly number[]>;
   /** `${key}:${personId}` for each teacher request already sent this meeting. */
   requested: ReadonlySet<string>;
-  /** `${key}:${personId}` for an offered requirement the scout has already finished (left out of likely fits). */
+  /** `${key}:${personId}` for an offered requirement the scout has finished or can't take up yet (left out of likely fits). */
   finished?: ReadonlySet<string>;
 }
 

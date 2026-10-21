@@ -33,6 +33,7 @@ let editorAdult = 0;
 let spl = 0;
 let teacher = 0;
 let young = 0; // working on Tenderfoot
+let other = 0; // a second scout working on Tenderfoot
 let keys: string[] = [];
 
 async function entry(date: string, o: Record<string, unknown> = {}): Promise<number> {
@@ -66,6 +67,7 @@ beforeAll(async () => {
   teacher = await person('Teacher');
   spl = await scout('Spl', 'star');
   young = await scout('Young', 'scout');
+  other = await scout('Other', 'scout');
   const { data: reqs } = await sb.from('rank_requirements').select('rank_id, code').is('parent_id', null).eq('rank_id', 'tenderfoot').neq('venue', 'outing').order('sort_order').limit(3);
   keys = ((reqs ?? []) as { rank_id: string; code: string }[]).map((r) => `${r.rank_id}-${r.code}`);
 });
@@ -185,6 +187,48 @@ describe('answers and picks', () => {
     asEditor();
     const res = await (await actions()).plannerOpenPersonAction({ entryId: meeting, personId: young });
     expect(res.ok && [res.drawer.kind, res.drawer.sub, res.drawer.options.some((o) => o.key === keys[0])]).toEqual(['scout', 'Working on Tenderfoot', true]);
+  });
+});
+
+describe('an assignment goes with the picks it was made for', () => {
+  const pickFor = (act: Awaited<ReturnType<typeof actions>>, pid: number, on: boolean) => act.plannerTogglePickAction({ entryId: meeting, personId: pid, key: keys[0], on });
+
+  it('Assign_IsTakenOff_WhenTheOnlyPickIsRemoved', async () => {
+    asEditor();
+    const act = await actions();
+    await pickFor(act, young, true);
+    await act.plannerAssignAction({ entryId: meeting, personId: teacher, key: keys[0] });
+    await pickFor(act, young, false);
+    expect(await teachingOf(teacher)).toEqual([]);
+  });
+
+  it('Assign_Stays_WhileAnotherScoutStillPicksIt', async () => {
+    asEditor();
+    const act = await actions();
+    await pickFor(act, young, true);
+    await act.plannerAssignAction({ entryId: meeting, personId: teacher, key: keys[0] });
+    await pickFor(act, other, true);
+    await pickFor(act, young, false);
+    expect((await teachingOf(teacher)).map((t) => t.meeting_topics.topic_key)).toEqual([keys[0]]);
+  });
+
+  it('AddOffer_Stays_WhenAScoutPicksItAndTakesItBack', async () => {
+    asEditor();
+    const act = await actions();
+    await act.plannerAddOfferAction({ entryId: meeting, personId: teacher, what: { key: keys[0] } });
+    await pickFor(act, young, true);
+    await pickFor(act, young, false);
+    expect((await teachingOf(teacher)).map((t) => t.meeting_topics.topic_key)).toEqual([keys[0]]);
+  });
+
+  it('Assign_OfSomeoneAlreadyTeachingIt_LeavesTheirSignUp_WhenThePickGoes', async () => {
+    asEditor();
+    const act = await actions();
+    await act.plannerToggleTeachAction({ entryId: meeting, personId: teacher, key: keys[0], on: true });
+    await pickFor(act, young, true);
+    await act.plannerAssignAction({ entryId: meeting, personId: teacher, key: keys[0] });
+    await pickFor(act, young, false);
+    expect((await teachingOf(teacher)).map((t) => t.meeting_topics.topic_key)).toEqual([keys[0]]);
   });
 });
 

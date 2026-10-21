@@ -27,7 +27,7 @@ import {
   setMeetingIntent,
   type BoardWriteResult
 } from '@/lib/meeting-board';
-import { loadSupplyRows, loadTeacherPeople, teachContext, teachTopic, unteachTopic } from '@/lib/meeting-board-supply';
+import { assignForPicks, loadSupplyRows, loadTeacherPeople, teachContext, teachTopic, unteachTopic } from '@/lib/meeting-board-supply';
 import { INTENTS, type Intent } from '@/lib/meeting-board-shared';
 import { nextRankOf, pickableKeys } from '@/lib/meeting-board-picklist';
 import { scoutCandidates, sendPickInvites, sendTeachInvites } from '@/lib/meeting-invites-send';
@@ -133,14 +133,15 @@ export async function plannerToggleTeachAction(input: { entryId: number; personI
 }
 
 /**
- * Assign: for the day of the meeting. The person teaches the topic and is marked Coming. Two writes, both idempotent;
+ * Assign: for the day of the meeting. The person teaches the topic (for the scouts who picked it: they come off it
+ * when nobody picks it any more) and is marked Coming. Two writes, both idempotent;
  * if the second fails the commitment stands and the message says so.
  */
 export async function plannerAssignAction(input: { entryId: number; personId: number; key: string }): Promise<PlannerWriteResult> {
   const e = await editor(input?.entryId, input?.personId);
   if (!e.ok) return e;
   if (typeof input.key !== 'string') return fail('Malformed request');
-  const taught = await teachTopic(e.sb, { personId: e.personId, actorPersonId: e.actorPersonId, leader: true }, [e.meeting.entryId], { key: input.key }, null);
+  const taught = await assignForPicks(e.sb, { personId: e.personId, actorPersonId: e.actorPersonId, leader: true }, e.meeting.entryId, input.key);
   if (!taught.ok) return taught;
   revalidate();
   const coming = await setMeetingIntent(e.sb, { entryId: e.meeting.entryId, personId: e.personId, actorPersonId: e.actorPersonId, leader: true }, 'coming');

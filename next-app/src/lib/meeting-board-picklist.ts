@@ -187,6 +187,17 @@ export function isPickFinished(
   return top ? rankNodeSatisfied(top, rank.id, ctx.rankCodes as Set<string>) : false;
 }
 
+/** A pick the scout can't take up: finished, or a rank requirement the rank rules hold back (a Scoutmaster conference
+ *  before 95% of the rank). The planner's likely fits use it so they match the pick list and the nudge list. */
+export function isPickOutOfReach(key: string, ctx: Parameters<typeof isPickFinished>[1]): boolean {
+  if (isPickFinished(key, ctx)) return true;
+  const rank = [...ctx.ranks].sort((a, b) => b.id.length - a.id.length).find((r) => key.startsWith(`${r.id}-`));
+  if (!rank) return false;
+  const tree = ctx.trees.get(rank.id) ?? [];
+  const top = tree.find((n) => n.code === key.slice(rank.id.length + 1));
+  return top ? !rankTopPlannable(tree, rank.id, top, ctx.rankCodes as Set<string>) : false;
+}
+
 /** The tray's words for a key: 'First aid' / 'Tenderfoot 4a'. Null for a key the catalog no longer has (or a freeform
  *  topic whose title wasn't passed). */
 export function topicWords(

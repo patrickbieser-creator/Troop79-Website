@@ -14,7 +14,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { centralToday } from '@/lib/dates';
 import { fetchAllRows } from '@/lib/supabase/paginate';
-import type { AdvancementCatalog } from '@/lib/advancement-catalog';
+import { loadAdvancementCatalog, type AdvancementCatalog } from '@/lib/advancement-catalog';
 import { buildPickList, isPickFinished, rankTrees, trayPicks, type PickListView, type ScoutBoardView } from '@/lib/meeting-board-picklist';
 import {
   boardName,
@@ -363,7 +363,31 @@ export async function addMeetingPick(sb: SupabaseClient, w: BoardWriter, key: st
 
 export async function removeMeetingPick(sb: SupabaseClient, w: BoardWriter, key: string): Promise<BoardWriteResult> {
   const { error } = await sb.rpc('meeting_remove_pick', { ...base(w), p_topic_key: key, p_carry: carryJson(w.carry) });
-  return done(error);
+  if (error) return done(error);
+  await releaseAssignmentsNobodyPicks(sb, w.entryId, key);
+  return { ok: true };
+}
+
+/** A teacher Assigned for the scouts who picked a topic (for_picks) comes off it once no scout picks it any more,
+ *  carried picks included. The pick is already gone, so a failure here is logged, not returned. */
+async function releaseAssignmentsNobodyPicks(sb: SupabaseClient, entryId: number, key: string): Promise<void> {
+  const { data, error } = await sb
+    .from('meeting_topic_teachers')
+    .select('topic_id, meeting_topics!inner(topic_key)')
+    .eq('calendar_entry_id', entryId)
+    .eq('for_picks', true)
+    .eq('meeting_topics.topic_key', key);
+  const topicIds = [...new Set(((data ?? []) as { topic_id: number }[]).map((r) => r.topic_id))];
+  if (error || !topicIds.length) {
+    if (error) console.error('releaseAssignmentsNobodyPicks', error.message);
+    return;
+  }
+  const meeting = await loadMeetingById(sb, entryId);
+  if (!meeting) return;
+  const rows = await loadBoardState(sb, meeting, await loadAdvancementCatalog());
+  if (rows.some((s) => s.picks.some((p) => p.key === key))) return;
+  const gone = await sb.from('meeting_topic_teachers').delete().eq('for_picks', true).in('topic_id', topicIds);
+  if (gone.error) console.error('releaseAssignmentsNobodyPicks', gone.error.message);
 }
 
 /** keys null clears the order. */

@@ -30,7 +30,16 @@ export const NOT_PLANNABLE: ReadonlySet<string> = new Set([
 
 // Scoutmaster conferences cap a rank — suggest them only when the scout has completed ≥95% of that rank's
 // requirement leaves (user rule, 2026-07-11). Suggesting one earlier wastes a slot on something that can't happen yet.
-export const SM_CONFERENCE_CODES: ReadonlySet<string> = new Set(['tenderfoot-10', 'second-class-11', 'first-class-12']);
+// Every rank has one (Scout, Star, Life and Eagle were missing until 2026-10-21).
+export const SM_CONFERENCE_CODES: ReadonlySet<string> = new Set([
+  'scout-7',
+  'tenderfoot-10',
+  'second-class-11',
+  'first-class-12',
+  'star-7',
+  'life-7',
+  'eagle-6'
+]);
 export const SM_CONFERENCE_THRESHOLD = 0.95;
 
 /** A rank requirement node is satisfied when its leaves are on the ledger (code "tenderfoot-3a"), rolled up by its

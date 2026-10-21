@@ -308,6 +308,25 @@ export async function teachTopic(sb: SupabaseClient, w: TeachWriter, entryIds: r
   return done(error);
 }
 
+/**
+ * The planner's Assign: teachTopic for the scouts waiting on it. A new sign-up is marked for_picks, so it comes off
+ * when no scout picks the topic any more (lib/meeting-board removeMeetingPick). Someone already teaching it keeps
+ * their own sign-up unmarked.
+ */
+export async function assignForPicks(sb: SupabaseClient, w: TeachWriter, entryId: number, key: string): Promise<BoardWriteResult> {
+  const mine = () =>
+    sb.from('meeting_topic_teachers').select('topic_id, meeting_topics!inner(topic_key)').eq('calendar_entry_id', entryId).eq('person_id', w.personId).eq('meeting_topics.topic_key', key);
+  const before = await mine();
+  if (before.error) return { ok: false, error: SAVE_FAILED };
+  const taught = await teachTopic(sb, w, [entryId], { key }, null);
+  if (!taught.ok || (before.data ?? []).length) return taught;
+  const after = await mine();
+  const topicIds = ((after.data ?? []) as { topic_id: number }[]).map((r) => r.topic_id);
+  if (after.error || !topicIds.length) return { ok: false, error: SAVE_FAILED };
+  const { error } = await sb.from('meeting_topic_teachers').update({ for_picks: true }).eq('person_id', w.personId).in('topic_id', topicIds);
+  return done(error);
+}
+
 export async function unteachTopic(sb: SupabaseClient, w: TeachWriter, entryId: number, key: string): Promise<BoardWriteResult> {
   const { error } = await sb.rpc('meeting_unteach_topic', { ...base(w), p_entry: entryId, p_topic_key: key });
   return done(error);
