@@ -74,3 +74,39 @@ describe('Merit Badge Catalog save keeps per-requirement data', () => {
     expect((await rows())['4'][0]).toBe(15);
   });
 });
+
+async function saveResult(tree: Node[]) {
+  const { updateMeritBadge } = await import('../src/app/admin/(workspace)/advancement/lookups/actions');
+  const fd = new FormData();
+  fd.set('id', MB);
+  fd.set('name', `${TEST_PREFIX} Rewrite`);
+  fd.set('counselors', '[]');
+  fd.set('reqTree', JSON.stringify(tree));
+  return updateMeritBadge(fd);
+}
+
+describe('Merit Badge Catalog save rewrites the tree atomically', () => {
+  // A duplicate code fails on the second insert — midway through the rewrite.
+  const failing = () => [node('1', [node('1a')]), node('9', [], '9'), node('9', [], '9')];
+
+  it('Save_FailingMidway_ReturnsAnErrorInsteadOfThrowing', async () => {
+    const res = await saveResult(failing());
+    expect(res.ok).toBe(false);
+  });
+
+  it('Save_FailingMidway_LeavesTheOriginalTreeIntact', async () => {
+    await saveResult(failing()).catch(() => undefined);
+    expect(await rows()).toEqual({ '1': [40, 'outing'], '1a': [25, 'either'], '2': [30, 'either'] });
+  });
+
+  it('Save_RemovedRequirement_IsDropped', async () => {
+    await save([node('1', [node('1a')])]);
+    expect(Object.keys(await rows()).sort()).toEqual(['1', '1a']);
+  });
+
+  it('Save_CodeSwap_KeepsEachRequirementsOwnValues', async () => {
+    await save([node('2', [node('1a')], '1'), node('1', [], '2')]);
+    const r = await rows();
+    expect([r['2'], r['1']]).toEqual([[40, 'outing'], [30, 'either']]);
+  });
+});

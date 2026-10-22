@@ -640,21 +640,22 @@ export async function updateMeritBadge(formData: FormData): Promise<Result> {
     if (counselorError) return { ok: false, error: `Counselors not saved: ${counselorError.message}` };
   }
 
-  // Replace-on-save for the requirement tree. Walk depth-first inserting
-  // parents before children so parent_id linkage is honored. The editor
-  // doesn't send teach_minutes or venue, so they ride through the rewrite,
-  // matched by code (the original code for a renamed requirement).
+  // Replace-on-save for the requirement tree: one Postgres function deletes and
+  // re-inserts it in a single transaction, so a failure midway (a duplicate
+  // code, a transient error) rolls back and the original tree stands. The
+  // editor doesn't send teach_minutes or venue; the function carries them
+  // through by code (the original code for a renamed requirement).
   if (reqTree) {
-    const { data: was, error: wasErr } = await supabase
-      .from('merit_badge_requirements')
-      .select('code, teach_minutes, venue')
-      .eq('mb_id', id);
-    if (wasErr) return { ok: false, error: wasErr.message };
-    const kept: KeptReqData = new Map(
-      ((was ?? []) as { code: string; teach_minutes: number; venue: string }[]).map((r) => [r.code, { teach_minutes: r.teach_minutes, venue: r.venue }])
-    );
-    await supabase.from('merit_badge_requirements').delete().eq('mb_id', id);
-    await insertReqTree(supabase, id, reqTree, null, kept);
+    const { error: treeErr } = await supabase.rpc('replace_merit_badge_requirements', { p_mb_id: id, p_tree: reqTree });
+    if (treeErr) {
+      const dup = treeErr.code === '23505';
+      return {
+        ok: false,
+        error: dup
+          ? 'Requirements not saved: two requirements share a code. Nothing changed.'
+          : `Requirements not saved: ${treeErr.message}. Nothing changed.`
+      };
+    }
   }
 
   updateTag('advancement-catalog');
@@ -862,42 +863,6 @@ export async function updateLeadershipPosition(formData: FormData): Promise<Resu
 }
 export async function deleteLeadershipPosition(formData: FormData): Promise<Result> {
   return deleteNamedLookup('leadership_positions', formData);
-}
-
-/** Per-requirement data the editor doesn't send, by code, carried through a tree rewrite. */
-type KeptReqData = Map<string, { teach_minutes: number; venue: string }>;
-
-async function insertReqTree(
-  supabase: ReturnType<typeof createAdminClient>,
-  mbId: string,
-  nodes: ReqInput[],
-  parentDbId: number | null,
-  kept: KeptReqData = new Map()
-): Promise<void> {
-  let sortOrder = 0;
-  for (const node of nodes) {
-    if (!node.code.trim() || !node.label.trim()) continue;
-    const carry = kept.get((node.originalCode ?? node.code).trim());
-    const { data, error } = await supabase
-      .from('merit_badge_requirements')
-      .insert({
-        mb_id: mbId,
-        parent_id: parentDbId,
-        code: node.code.trim(),
-        label: node.label.trim(),
-        complete_rule: node.complete_rule,
-        complete_n: node.complete_rule === 'n-of' ? node.complete_n : null,
-        sort_order: sortOrder,
-        ...(carry ?? {})
-      })
-      .select('id')
-      .single();
-    if (error) throw new Error(`req ${node.code}: ${error.message}`);
-    sortOrder++;
-    if (node.children?.length) {
-      await insertReqTree(supabase, mbId, node.children, data.id, kept);
-    }
-  }
 }
 
 // ── Skills & teaching (Meeting Plan) ──────────────────────────────────────

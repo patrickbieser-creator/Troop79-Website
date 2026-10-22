@@ -32,7 +32,7 @@ const stale = (): { ok: false; error: string; stale: true } => ({ ok: false, err
 /** The RPCs' own messages are written for people; anything else is not shown raw. */
 const KNOWN = /^(Rotations 1 and 2|Only the last rotation|Move its classes|That’s as many rotations|That isn’t something|That meeting|Give the visitor)/;
 const NOT_TODAY = 'Attendance is taken on the day of the meeting.';
-const NOT_A_TEACHER = 'Teaching is for adults and Junior Leaders.';
+const NOT_A_TEACHER = 'Only adults, Junior Leaders, and scouts at First Class or above can teach.';
 
 type Editor = { ok: true; sb: SupabaseClient; meeting: BoardMeeting; actorPersonId: number; actorLabel: string };
 

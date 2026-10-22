@@ -7,9 +7,14 @@ import path from 'node:path';
  * (`households.system_key = 'meeting-visitors'`). It is nobody's family, so
  * every read that LISTS households must filter `system_key is null`.
  *
- * Grep-shaped guard: for every `from('households')` read in src/, the chained
- * calls must either filter on system_key or fetch by id (`.eq('id', …)` /
- * `.in('id', …)` — a lookup of households already known, not a list).
+ * A TRIPWIRE, not a proof: a regex scan of src/ for `from('households')`
+ * reads whose chained calls must either filter on system_key or fetch by id
+ * (`.eq('id', …)` / `.in('id', …)` — a lookup of households already known,
+ * not a list). It only sees chains written inline with no nested parentheses
+ * in an argument; a query built across variables or with an embedded select
+ * like `select('id, household_members(person_id)')` slips past it. The sanity
+ * test below fails if the scan stops finding reads at all, so a broken regex
+ * can't pass silently.
  */
 
 const SRC = path.join(__dirname, '..', 'src');
@@ -37,15 +42,17 @@ function isScoped(chain: string): boolean {
   return /system_key/.test(chain) || /\.(eq|in)\(\s*['"]id['"]/.test(chain);
 }
 
-describe('household lists skip system households', () => {
-  it('every households read filters system_key or fetches by id', () => {
-    const offenders: string[] = [];
-    for (const f of walk(SRC)) {
-      const src = fs.readFileSync(f, 'utf8');
-      for (const chain of householdReads(src)) {
-        if (!isScoped(chain)) offenders.push(`${path.relative(SRC, f)}: ${chain.trim()}`);
-      }
-    }
+const reads: { file: string; chain: string }[] = walk(SRC).flatMap((f) =>
+  householdReads(fs.readFileSync(f, 'utf8')).map((chain) => ({ file: path.relative(SRC, f), chain }))
+);
+
+describe('household lists skip system households (tripwire)', () => {
+  it('the scanner finds households reads to check', () => {
+    expect(reads.length).toBeGreaterThan(0);
+  });
+
+  it('every households read it finds filters system_key or fetches by id', () => {
+    const offenders = reads.filter((r) => !isScoped(r.chain)).map((r) => `${r.file}: ${r.chain.trim()}`);
     expect(offenders).toEqual([]);
   });
 });
