@@ -20,6 +20,7 @@ const calls = vi.hoisted(() => ({
   request: vi.fn(),
   families: vi.fn(),
   nudge: vi.fn(),
+  remind: vi.fn(),
   refresh: vi.fn()
 }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: calls.refresh }) }));
@@ -34,7 +35,8 @@ vi.mock('../src/app/(public)/planner/actions', () => ({
   plannerOfferChoicesAction: calls.choices,
   plannerSendRequestAction: calls.request,
   plannerNudgeFamiliesAction: calls.families,
-  plannerSendNudgeAction: calls.nudge
+  plannerSendNudgeAction: calls.nudge,
+  plannerSendRemindersAction: calls.remind
 }));
 
 import { PlannerBoardView } from '../src/app/(public)/planner/board-view';
@@ -82,10 +84,10 @@ const SCOUT_DRAWER: PersonDrawer = {
   ]
 };
 
-function renderBoard(canEdit = true, canEmail = true) {
+function renderBoard(canEdit = true, canEmail = true, board: PlannerBoard = BOARD) {
   return render(
     <PlannerProvider entryId={500} canEdit={canEdit} canEmail={canEmail} adults={[p(11, 'Dan V')]} stamp="s1">
-      <PlannerBoardView board={BOARD} heading={null} />
+      <PlannerBoardView board={board} heading={null} />
     </PlannerProvider>
   );
 }
@@ -236,5 +238,31 @@ describe('email (P2b)', () => {
     fireEvent.click(await screen.findByRole('checkbox', { name: /Adi A/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Send to 1 family' }));
     expect(await screen.findByText('✓ Nudged 1 family · just now')).toBeTruthy();
+  });
+});
+
+describe('reminders (P5b)', () => {
+  const WAITING: PlannerBoard = { ...BOARD, haventAnswered: { scouts: [p(4, 'Adi A')], adults: [p(12, 'Kim L')] } };
+
+  it('AdultEditor_RemindsEveryone_AfterOneConfirm', async () => {
+    calls.remind.mockResolvedValue({ ok: true, sent: ['Adi A', 'Kim L'], reminded: [4, 12], skipped: [], stamp: 's2' });
+    renderBoard(true, true, WAITING);
+    fireEvent.click(screen.getByRole('button', { name: 'Remind everyone…' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Send reminders' }));
+    expect([await screen.findByText('✓ Reminded 2 people · just now') != null, calls.remind.mock.calls[0][0]]).toEqual([true, { entryId: 500, personIds: [4, 12] }]);
+  });
+
+  it('Spl_SeesNoRemindButton', () => {
+    renderBoard(true, false, WAITING);
+    expect(screen.queryByRole('button', { name: 'Remind everyone…' })).toBeNull();
+  });
+
+  it('Drawer_Remind_ForSomeoneWhoHasntAnswered', async () => {
+    calls.open.mockResolvedValue({ ok: true, drawer: { ...SCOUT_DRAWER, shown: null, picked: 0 }, stamp: 's1' });
+    calls.remind.mockResolvedValue({ ok: false, error: 'They’ve already answered.' });
+    renderBoard();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Finn P' })[0]);
+    fireEvent.click(await screen.findByRole('button', { name: 'Remind Finn P' }));
+    expect((await screen.findByRole('alert')).textContent).toBe('They’ve already answered.');
   });
 });

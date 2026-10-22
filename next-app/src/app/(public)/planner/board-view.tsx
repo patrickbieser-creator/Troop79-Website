@@ -8,6 +8,8 @@
  * request and nudges are P2b. P3: the Meeting focus strip lists what was seeded ("Seed this meeting" for the planning
  * team); a seeded topic carries a Focus tag, and one nobody picked yet still asks for a teacher.
  *
+ * P5b: adult editors get "Remind everyone…" on Haven't answered (and "Remind" in each person's drawer).
+ *
  * Desktop: a header with the two attendance bars, then cards on the left (Ready to teach, Requests with no teacher,
  * Offered no takers, Haven't answered) and Who's coming on the right, then the Everyone wall. At 900px the right
  * column drops under the cards; on a phone the teacher lists and the Everyone wall's other columns fold.
@@ -16,7 +18,7 @@ import type { ReactNode } from 'react';
 import type { AttendanceCounts, CanTeachPerson, FocusChip, PlannerBoard, PlannerPerson, WallColumns } from '@/lib/meeting-planner-board';
 import { minutesText } from '@/lib/meeting-board-picklist';
 import { Fold } from './fold';
-import { AddOfferButton, AdultsSendEmails, AssignButton, EnterForSomeone, NudgeButton, PersonName, SeedButton, SendRequestButton, type SomeoneRow } from './planner-client';
+import { AddOfferButton, AdultsSendEmails, AssignButton, EnterForSomeone, NudgeButton, PersonName, RemindEveryone, SeedButton, SendRequestButton, type SomeoneRow } from './planner-client';
 import styles from './planner.module.css';
 
 const KIND_LABEL = { rank: 'Rank', mb: 'Merit badge', ff: 'Other', focus: 'Focus' } as const;
@@ -314,6 +316,7 @@ export function PlannerBoardView({ board, heading, canSeed = false }: { board: P
                 </>
               ) : null}
               {!hs.length && !ha.length ? <p className={styles.empty}>Everyone has answered.</p> : null}
+              <RemindEveryone personIds={[...hs, ...ha].map((x) => x.personId)} />
             </div>
           </Card>
         </div>

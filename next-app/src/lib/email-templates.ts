@@ -108,6 +108,17 @@ export const TEMPLATE_KINDS: TemplateKind[] = [
       { token: 'parts', label: 'Its parts (list)' },
       { token: 'day', label: 'Meeting day' }
     ]
+  },
+  {
+    // Meeting Planner P5b: to someone who hasn't answered. The meeting-page link is the email's button, never a field.
+    kind: 'meeting.reminder',
+    label: 'Meeting — reminder to answer',
+    audience: 'family',
+    fields: [
+      { token: 'name', label: 'Their first name' },
+      { token: 'people', label: 'Who it’s about ("you", or the scouts)' },
+      { token: 'day', label: 'Meeting day' }
+    ]
   }
 ];
 

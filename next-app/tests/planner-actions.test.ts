@@ -296,6 +296,23 @@ describe('email (P2b, adults only)', () => {
     });
   });
 
+  it('ScoutEditor_IsRefused_WhenSendingReminders', async () => {
+    asSpl();
+    expect(await (await actions()).plannerSendRemindersAction({ entryId: meeting, personIds: [young] })).toEqual({
+      ok: false,
+      error: 'Emails are sent by adults. Ask an adult leader to send this one.'
+    });
+  });
+
+  it('Remind_GoesThroughTheReminderSender_OnlyForSomeoneWhoHasntAnswered', async () => {
+    asEditor();
+    const act = await actions();
+    await act.plannerSetAnswerAction({ entryId: meeting, personId: other, intent: 'coming' });
+    const res = await act.plannerSendRemindersAction({ entryId: meeting, personIds: [young, other] });
+    // The fixture scout's household has no parent with an email; the one who answered isn't sent to the sender at all.
+    expect(res.ok && res.skipped).toEqual([{ name: `${TEST_PREFIX} PLA Young`, reason: 'no parent with an email in their household' }]);
+  });
+
   it('Viewer_IsRefused_WhenNudging', async () => {
     asViewer();
     expect((await (await actions()).plannerSendNudgeAction({ entryId: meeting, topicKey: keys[0], scoutIds: [young] })).ok).toBe(false);

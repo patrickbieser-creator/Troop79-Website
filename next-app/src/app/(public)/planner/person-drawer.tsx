@@ -4,14 +4,15 @@
  * The person drawer (Plans/Meeting-Planner-II.md P2a; prototypes/meeting-plan-II/README.md "Screen 2"): one person's
  * "Coming Sunday?" and, for a scout, up to 5 picks; for an adult (or a Junior Leader), what they're teaching, no cap.
  * Everything saves on tap and is recorded as entered by the editor. A refusal is said in place, under the control
- * that caused it, and that control goes back to how it was.
+ * that caused it, and that control goes back to how it was. P5b: someone who hasn't answered gets "Remind" (adult
+ * editors only), which emails them, or a scout's parents.
  */
 import { useEffect, useState } from 'react';
 import { Drawer } from '@/app/_components/drawer';
 import { INTENT_LABEL, type Intent } from '@/lib/meeting-board-shared';
 import type { DrawerOption, PersonDrawer } from '@/lib/meeting-planner-drawer';
 import { plannerOpenPersonAction, plannerSetAnswerAction, plannerTogglePickAction, plannerToggleTeachAction, type PlannerDrawerResult } from './actions';
-import { SAVE_FAILED, usePlanner } from './planner-client';
+import { RemindButton, SAVE_FAILED, usePlanner } from './planner-client';
 import styles from './planner.module.css';
 
 const ANSWERS: { intent: Intent; label: string; cls: string }[] = [
@@ -130,6 +131,7 @@ export function PersonDrawerView({ personId, onClose }: { personId: number; onCl
             {problem.text}
           </p>
         ) : null}
+        {drawer.shown == null ? <RemindButton personId={personId} name={drawer.name} /> : null}
       </fieldset>
 
       {scout && drawer.shown === 'not_coming' && drawer.picked ? <p className={styles.drawerNote}>Picks are saved for a later meeting.</p> : null}

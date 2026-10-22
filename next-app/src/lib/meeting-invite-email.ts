@@ -92,3 +92,31 @@ export function renderTeachInvite(t: InviteTemplate, v: TeachInviteValues): { su
     .trim();
   return { subject: fillTokens(t.subject, vals).replace(/\s+/g, ' ').trim(), md };
 }
+
+export const REMINDER_KIND = 'meeting.reminder';
+
+/** P5b: to someone who hasn't answered "Coming Sunday?" (a scout's parents, the scout from 13, or an adult). The link
+ *  to /member/meeting is the email's button, never a field. */
+export const DEFAULT_REMINDER: InviteTemplate = {
+  subject: 'Troop meeting on [day]: coming?',
+  body: `Hi [name],
+
+We haven't had an answer for [people] for the troop meeting on [day]. Coming, not sure, or can't make it: any answer helps us plan who teaches what.
+
+Use the button below to answer.`
+};
+
+export interface ReminderValues {
+  name: string;
+  /** 'you', or 'Anjali S and Finn S'. */
+  people: string;
+  day: string;
+}
+
+export function renderReminder(t: InviteTemplate, v: ReminderValues): { subject: string; md: string } {
+  const vals: Record<string, string> = { name: v.name, people: v.people, day: v.day };
+  const md = fillTokens(t.body, vals)
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+  return { subject: fillTokens(t.subject, vals).replace(/\s+/g, ' ').trim(), md };
+}

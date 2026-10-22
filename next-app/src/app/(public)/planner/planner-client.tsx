@@ -10,10 +10,12 @@
  * P2b: Send request and "Choose families to nudge…" render for adult editors only (canEmail); a scout editor (the SPL)
  * sees AdultsSendEmails instead.
  * P3: a seed holder (canSeed) gets "Seed this meeting" on the Meeting focus strip, and may leave an offer's teacher blank.
+ * P5b: reminders, adult editors only: "Remind" in the person drawer and "Remind everyone…" on the Haven't answered
+ * card. Who was reminded this visit is kept here, so the drawer and the card agree.
  */
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { useRouter } from 'next/navigation';
-import { plannerAssignAction, plannerSendRequestAction } from './actions';
+import { plannerAssignAction, plannerSendRemindersAction, plannerSendRequestAction } from './actions';
 import { PersonDrawerView } from './person-drawer';
 import { OfferDrawer } from './offer-drawer';
 import { NudgeDrawer } from './nudge-drawer';
@@ -61,6 +63,9 @@ interface PlannerCtx {
   /** Families nudged this visit, by topic key ("✓ Nudged 5 families · just now"). */
   nudged: ReadonlyMap<string, number>;
   openNudge: (topic: NudgeTopic) => void;
+  /** People reminded this visit (P5b). */
+  reminded: ReadonlySet<number>;
+  markReminded: (personIds: readonly number[]) => void;
   adults: readonly PlannerAdult[];
   openPerson: (personId: number) => void;
   openOffer: (teacherId?: number | null, back?: number | null) => void;
@@ -93,6 +98,7 @@ export function PlannerProvider({
   const router = useRouter();
   const [open, setOpen] = useState<Open>(null);
   const [nudged, setNudged] = useState<ReadonlyMap<string, number>>(new Map());
+  const [reminded, setReminded] = useState<ReadonlySet<number>>(new Set());
   const stampRef = useRef(stamp);
   const pending = useRef(0);
 
@@ -125,12 +131,14 @@ export function PlannerProvider({
       openSeed: (focus) => setOpen({ mode: 'seed', focus }),
       nudged,
       openNudge: (topic) => setOpen({ mode: 'nudge', ...topic }),
+      reminded,
+      markReminded: (ids) => setReminded((r) => new Set([...r, ...ids])),
       adults,
       openPerson: (personId) => setOpen({ mode: 'person', personId }),
       openOffer: (teacherId = null, back = null) => setOpen({ mode: 'offer', teacherId, back }),
       sync
     }),
-    [entryId, canEdit, canEmail, canSeed, nudged, adults, sync]
+    [entryId, canEdit, canEmail, canSeed, nudged, reminded, adults, sync]
   );
 
   return (
@@ -258,6 +266,91 @@ export function AdultsSendEmails() {
   const p = usePlanner();
   if (!p?.canEdit || p.canEmail) return null;
   return <p className={styles.emailNote}>Requests and nudges are emailed by adults.</p>;
+}
+
+/** "Not sent: 2 reminded in the last 24 hours, Finn P (no parent with an email in their household)." */
+export function notSentText(skipped: readonly { name: string; reason: string }[]): string {
+  const by = new Map<string, string[]>();
+  for (const s of skipped) by.set(s.reason, [...(by.get(s.reason) ?? []), s.name]);
+  const parts = [...by].map(([reason, names]) => (names.length === 1 ? `${names[0]} (${reason})` : `${names.length} ${reason}`));
+  return parts.length ? `Not sent: ${parts.join(', ')}.` : '';
+}
+
+type RemindState = { phase: 'idle' | 'confirm' | 'sending' } | { phase: 'done'; sent: number; note: string } | { phase: 'problem'; text: string };
+
+/** Send reminders and say what happened: "✓ Reminded …", plus who wasn't sent to and why. */
+function useRemind(personIds: readonly number[]) {
+  const p = usePlanner();
+  const [state, setState] = useState<RemindState>({ phase: 'idle' });
+  const send = async () => {
+    if (!p) return;
+    setState({ phase: 'sending' });
+    const res = await p.sync.run(() => plannerSendRemindersAction({ entryId: p.entryId, personIds: [...personIds] }));
+    if (!res.ok) return setState({ phase: 'problem', text: res.error });
+    if (!res.sent.length) return setState({ phase: 'problem', text: notSentText(res.skipped) || 'Nobody to remind.' });
+    p.markReminded(res.reminded);
+    setState({ phase: 'done', sent: res.sent.length, note: notSentText(res.skipped) });
+  };
+  return { p, state, setState, send };
+}
+
+/** "Remind" in the person drawer, for someone who hasn't answered. Adult editors only. */
+export function RemindButton({ personId, name }: { personId: number; name: string }) {
+  const { p, state, send } = useRemind([personId]);
+  if (!p?.canEmail) return null;
+  if (state.phase === 'done' || (state.phase === 'idle' && p.reminded.has(personId))) return <p className={styles.assigned}>✓ Reminded · just now</p>;
+  return (
+    <div className={styles.remindRow}>
+      <button type="button" className={styles.quickBtn} onClick={send} disabled={state.phase === 'sending'} aria-label={`Remind ${name}`}>
+        {state.phase === 'sending' ? 'Sending…' : 'Remind'}
+      </button>
+      {state.phase === 'problem' ? (
+        <p className={styles.rowProblem} role="alert">
+          {state.text}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/** "Remind everyone…" on the Haven't answered card: one confirm, then one email per family or adult. Adult editors only. */
+export function RemindEveryone({ personIds }: { personIds: readonly number[] }) {
+  const { p, state, setState, send } = useRemind(personIds);
+  if (!p?.canEmail || !personIds.length) return null;
+  const n = personIds.length;
+  if (state.phase === 'done') {
+    return (
+      <div className={styles.remindRow}>
+        <p className={styles.assigned}>✓ Reminded {state.sent === 1 ? '1 person' : `${state.sent} people`} · just now</p>
+        {state.note ? <p className={styles.meta}>{state.note}</p> : null}
+      </div>
+    );
+  }
+  if (state.phase === 'confirm' || state.phase === 'sending') {
+    return (
+      <div className={styles.remindRow}>
+        <p className={styles.remindAsk}>Email a reminder about {n === 1 ? '1 person' : `${n} people`}? A scout’s goes to their parents.</p>
+        <button type="button" className={styles.requestBtn} onClick={send} disabled={state.phase === 'sending'}>
+          {state.phase === 'sending' ? 'Sending…' : 'Send reminders'}
+        </button>
+        <button type="button" className={styles.quickBtn} onClick={() => setState({ phase: 'idle' })} disabled={state.phase === 'sending'}>
+          Cancel
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div className={styles.remindRow}>
+      <button type="button" className={styles.quickBtn} onClick={() => setState({ phase: 'confirm' })}>
+        Remind everyone…
+      </button>
+      {state.phase === 'problem' ? (
+        <p className={styles.rowProblem} role="alert">
+          {state.text}
+        </p>
+      ) : null}
+    </div>
+  );
 }
 
 export interface SomeoneRow {

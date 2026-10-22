@@ -10,6 +10,7 @@
  * may teach, Junior Leaders and adults-only skills, closed and past boards).
  * P2b: Send request and nudges go through v1's invite senders (lib/meeting-invites-send), adults only.
  * P3: seeding (a focus set, or one requirement) and unseeding, for meeting_planner.seed holders only.
+ * P5b: reminders to people who haven't answered, adults only, through the same invite pipeline.
  * Each write returns the person's fresh drawer and the board's new stamp, so the poller doesn't refresh over it.
  */
 import { revalidatePath } from 'next/cache';
@@ -32,7 +33,9 @@ import { assignForPicks, loadSupplyRows, loadTeacherPeople, teachContext, teachT
 import { INTENTS, type Intent } from '@/lib/meeting-board-shared';
 import { BOR_LABEL, borCodeLabel, nextRankOf, pickableKeys } from '@/lib/meeting-board-picklist';
 import { borKey } from '@/lib/rank-calculus';
-import { scoutCandidates, sendPickInvites, sendTeachInvites } from '@/lib/meeting-invites-send';
+import { scoutCandidates, sendPickInvites, sendReminders, sendTeachInvites } from '@/lib/meeting-invites-send';
+import { REMINDER_SEND_CAP } from '@/lib/meeting-invites';
+import { loadPlannerPage } from '@/lib/meeting-planner-load';
 import { assessTeacher, FREEFORM_MAX, freeformTitle } from '@/lib/meeting-board-teach';
 import { plannerAccess } from '@/lib/meeting-planner-access';
 import { loadPersonDrawer, type PersonDrawer } from '@/lib/meeting-planner-drawer';
@@ -199,10 +202,17 @@ export async function plannerOfferChoicesAction(): Promise<{ ok: true; choices: 
 export type PlannerSendResult = { ok: true; sent: string[]; skipped: { name: string; reason: string }[]; stamp: string } | { ok: false; error: string };
 
 /** An editor who signed in as an adult: the SPL edits the board but never sends email. */
-async function emailer(entryId: unknown, topicKey: unknown) {
+async function adultEmailer(entryId: unknown) {
   const e = await editor(entryId, 0);
   if (!e.ok) return e;
   if (!plannerAccess(await resolveAdminActor()).canEmail) return fail('Emails are sent by adults. Ask an adult leader to send this one.');
+  return e;
+}
+
+/** An adult emailer, about one topic on this meeting's board. */
+async function emailer(entryId: unknown, topicKey: unknown) {
+  const e = await adultEmailer(entryId);
+  if (!e.ok) return e;
   if (typeof topicKey !== 'string' || !topicKey) return fail('Malformed request');
   // Only about something on this meeting's board (asked for, offered or ready), never an arbitrary catalog key.
   const { data: topic } = await e.sb.from('meeting_topics').select('id').eq('calendar_entry_id', e.meeting.entryId).eq('topic_key', topicKey).maybeSingle();
@@ -263,6 +273,31 @@ export async function plannerSendNudgeAction(input: { entryId: number; topicKey:
   const e = await emailer(input.entryId, input.topicKey);
   if (!e.ok) return e;
   const res = await sendPickInvites(e.sb, { entryId: e.meeting.entryId, topicKey: e.topicKey, scoutIds: input.scoutIds, sentBy: e.actorPersonId });
+  if (!res.ok) return res;
+  revalidate();
+  return { ...res, stamp: await loadBoardStamp(e.sb, e.meeting.entryId) };
+}
+
+// ── P5b: reminders (adults only, Decision 5; Decision 11) ────────────────────────────────────────────────────────
+
+/**
+ * Remind (one person, from their drawer) or Remind everyone (the Haven't answered card). Only people the board itself
+ * lists under Haven't answered are reminded, whatever the page sent; sendReminders re-checks each answer, the 24-hour
+ * dedupe and the caps.
+ */
+export type PlannerRemindResult = { ok: true; sent: string[]; reminded: number[]; skipped: { name: string; reason: string }[]; stamp: string } | { ok: false; error: string };
+
+export async function plannerSendRemindersAction(input: { entryId: number; personIds: number[] }): Promise<PlannerRemindResult> {
+  const e = await adultEmailer(input?.entryId);
+  if (!e.ok) return e;
+  const ids = input.personIds;
+  if (!Array.isArray(ids) || !ids.length || !ids.every((id) => Number.isInteger(id))) return fail('Choose at least one person.');
+  if (ids.length > REMINDER_SEND_CAP) return fail(`One send reaches at most ${REMINDER_SEND_CAP} people.`);
+  const page = await loadPlannerPage(e.sb, e.meeting);
+  const waiting = new Map([...(page?.board.haventAnswered.scouts ?? []), ...(page?.board.haventAnswered.adults ?? [])].map((p) => [p.personId, p.name]));
+  const ask = [...new Set(ids)].filter((id) => waiting.has(id));
+  if (!ask.length) return fail(ids.length === 1 ? 'They’ve already answered.' : 'Everyone has already answered.');
+  const res = await sendReminders(e.sb, { entryId: e.meeting.entryId, personIds: ask, sentBy: e.actorPersonId });
   if (!res.ok) return res;
   revalidate();
   return { ...res, stamp: await loadBoardStamp(e.sb, e.meeting.entryId) };

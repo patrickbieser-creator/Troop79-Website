@@ -10,6 +10,8 @@
  *     we sent to (a "sign out everywhere" voids invites too), and the meeting is still ahead (M2);
  *   - who and how many is checked here at send, never trusted from the dialog (M3); a decline is only ever recorded
  *     by the decline answer itself (M7).
+ * P5b reminders (kind 'remind', createReminders) share the table for the dedupe and the log, but carry no token and
+ * link to /member/meeting: no redeem path can match one (LINK_KINDS), and the board's counts leave them out.
  * Sender permission is checked at SEND time only (the action's meeting_plan.use); a later loss of that capability
  * doesn't void invites already sent.
  */
@@ -18,9 +20,11 @@ import { centralToday } from '@/lib/dates';
 import { deliverableEmailFor, hashSecret, identityForPerson } from '@/lib/identity-challenge';
 import { teachTopic } from '@/lib/meeting-board-supply';
 import { loadAdvancementCatalog, type AdvancementCatalog } from '@/lib/advancement-catalog';
-import { carryJson, loadBoardScouts, loadMeetingById, loadScoutBoard } from '@/lib/meeting-board';
+import { carryJson, loadBoardScouts, loadEffectivePicks, loadIntents, loadMeetingById, loadScoutBoard } from '@/lib/meeting-board';
+import { effectiveIntent } from '@/lib/meeting-board-shared';
+import { teacherIntent } from '@/lib/meeting-board-teach';
 import { pickableKeys } from '@/lib/meeting-board-picklist';
-import { INVITE_DEDUPE_HOURS, INVITE_FAILURES_PER_HOUR, INVITE_SEND_CAP, inviteExpiresAt, inviteState, type InviteResponse, type InviteState } from '@/lib/meeting-invites';
+import { INVITE_DEDUPE_HOURS, INVITE_FAILURES_PER_HOUR, INVITE_SEND_CAP, inviteExpiresAt, REMINDER_SEND_CAP, REMINDER_TOPIC_KEY, inviteState, type InviteResponse, type InviteState } from '@/lib/meeting-invites';
 
 /** 32 random bytes as LOWERCASE hex: mail gateways that lowercase URLs can't break it (see identity-challenge's
  *  randomLinkToken for the 2026-08-16 bug that set this rule). */
@@ -155,6 +159,8 @@ interface InviteRow {
   consumed_at: string | null;
   response: InviteResponse | null;
 }
+/** The kinds a link can answer. A reminder ('remind') has no token and is never one of them (P5b). */
+const LINK_KINDS = ['teach', 'pick'];
 const INVITE_COLS = 'id, calendar_entry_id, topic_key, kind, invitee_person_id, invitee_epoch, recipient_person_id, recipient_epoch, expires_at, consumed_at, response';
 
 export interface InviteView {
@@ -175,7 +181,7 @@ export interface InviteView {
 /** Read-only: what a link is, for the GET of /i/<token>. Writes NOTHING (a scanner's prefetch must not spend it). */
 export async function inspectInvite(sb: SupabaseClient, token: string, now: Date = new Date()): Promise<{ state: InviteState; invite: InviteView | null }> {
   if (!/^[0-9a-f]{64}$/i.test(token)) return { state: 'unknown', invite: null };
-  const { data } = await sb.from('meeting_invites').select(INVITE_COLS).eq('token_hash', await hashSecret(token.toLowerCase())).maybeSingle();
+  const { data } = await sb.from('meeting_invites').select(INVITE_COLS).eq('token_hash', await hashSecret(token.toLowerCase())).in('kind', LINK_KINDS).maybeSingle();
   const row = data as InviteRow | null;
   if (!row) return { state: 'unknown', invite: null };
   const [{ data: people }, { data: entry }] = await Promise.all([
@@ -214,7 +220,7 @@ export interface RespondDeps {
 export async function respondToInvite(sb: SupabaseClient, token: string, answer: 'accept' | 'decline', deps: RespondDeps = {}): Promise<RespondResult> {
   if (!/^[0-9a-f]{64}$/i.test(token)) return { ok: false, state: 'unknown' };
   const hash = await hashSecret(token.toLowerCase());
-  const { data } = await sb.from('meeting_invites').select('kind').eq('token_hash', hash).maybeSingle();
+  const { data } = await sb.from('meeting_invites').select('kind').eq('token_hash', hash).in('kind', LINK_KINDS).maybeSingle();
   const kind = (data as { kind: 'teach' | 'pick' } | null)?.kind;
   if (!kind) return { ok: false, state: 'unknown' };
   return kind === 'pick' ? answerPickInvite(sb, token, hash, answer, deps) : answerTeachInvite(sb, token, hash, answer, deps.now ?? new Date());
@@ -332,6 +338,58 @@ export function scoutMayBeMailed(birthdate: string | null, meetingDate: string):
   return age >= 13;
 }
 
+type FamilyPerson = { id: number; display_name: string; active: boolean; session_epoch: number; birthdate: string | null; primary_email: string | null };
+
+/** The scouts, their parents (parent_of) and the scouts' own verified addresses: what scoutRecipients decides from. */
+interface ScoutFamilies {
+  person: Map<number, FamilyPerson>;
+  parentsOf: Map<number, number[]>;
+  verifiedEmail: Map<number, string>;
+}
+
+async function loadScoutFamilies(sb: SupabaseClient, scoutIds: readonly number[]): Promise<ScoutFamilies> {
+  const ids = [...scoutIds];
+  const parentsOf = new Map<number, number[]>();
+  if (!ids.length) return { person: new Map(), parentsOf, verifiedEmail: new Map() };
+  const { data: rels } = await sb.from('relationships').select('person_id, related_person_id').eq('type', 'parent_of').in('related_person_id', ids);
+  for (const r of (rels ?? []) as { person_id: number; related_person_id: number }[]) parentsOf.set(r.related_person_id, [...(parentsOf.get(r.related_person_id) ?? []), r.person_id]);
+  const everyone = [...new Set([...ids, ...[...parentsOf.values()].flat()])];
+  const [{ data: peopleRows }, { data: verified }] = await Promise.all([
+    sb.from('people').select('id, display_name, active, session_epoch, birthdate, primary_email').in('id', everyone),
+    sb.from('person_emails').select('person_id, email').in('person_id', ids).eq('is_primary', true).not('verified_at', 'is', null).is('bounced_at', null).is('unsubscribed_at', null)
+  ]);
+  return {
+    person: new Map(((peopleRows ?? []) as FamilyPerson[]).map((p) => [p.id, p])),
+    parentsOf,
+    verifiedEmail: new Map(((verified ?? []) as { person_id: number; email: string }[]).map((e) => [e.person_id, e.email]))
+  };
+}
+
+/**
+ * Who a scout's email goes to (P2 offers, P5b reminders; Decision 11): each parent who is still active, has an address,
+ * and may act for the scout (an adult in their household, the rule an answer is held to), plus the scout from 13 with
+ * a verified address of their own. The caller refuses a scout with no parent in the list.
+ */
+async function scoutRecipients(
+  sb: SupabaseClient,
+  family: ScoutFamilies,
+  scoutId: number,
+  meetingDate: string
+): Promise<{ recipientId: number; sentTo: string; epoch: number; isScout: boolean }[]> {
+  const out: { recipientId: number; sentTo: string; epoch: number; isScout: boolean }[] = [];
+  for (const parentId of family.parentsOf.get(scoutId) ?? []) {
+    const parent = family.person.get(parentId);
+    if (!parent?.active || !parent.primary_email) continue;
+    const { data: may } = await sb.rpc('_meeting_may_act_for', { p_actor: parentId, p_target: scoutId, p_leader: false });
+    if (may !== true) continue;
+    out.push({ recipientId: parentId, sentTo: parent.primary_email, epoch: parent.session_epoch, isScout: false });
+  }
+  const self = family.person.get(scoutId);
+  const own = family.verifiedEmail.get(scoutId);
+  if (self && own && scoutMayBeMailed(self.birthdate, meetingDate)) out.push({ recipientId: scoutId, sentTo: own, epoch: self.session_epoch, isScout: true });
+  return out;
+}
+
 /**
  * P2: offers one topic to the ticked scouts. Parents are ALWAYS copied (Patrick); the scout too when 13 or older with a
  * verified address. Everything about who is reached is decided here, never by the dialog: each scout must still be an
@@ -367,17 +425,8 @@ export async function createPickInvites(
 
   const catalog = await (deps.loadCatalog ?? loadAdvancementCatalog)();
   const scouts = new Map((await loadBoardScouts(sb, ids)).map((s) => [s.personId, s]));
-  const { data: rels } = await sb.from('relationships').select('person_id, related_person_id').eq('type', 'parent_of').in('related_person_id', ids);
-  const parentsOf = new Map<number, number[]>();
-  for (const r of (rels ?? []) as { person_id: number; related_person_id: number }[]) parentsOf.set(r.related_person_id, [...(parentsOf.get(r.related_person_id) ?? []), r.person_id]);
-  const everyone = [...new Set([...ids, ...[...parentsOf.values()].flat()])];
-  const [{ data: peopleRows }, { data: verified }] = await Promise.all([
-    sb.from('people').select('id, display_name, active, session_epoch, birthdate, primary_email').in('id', everyone),
-    sb.from('person_emails').select('person_id, email').in('person_id', ids).eq('is_primary', true).not('verified_at', 'is', null).is('bounced_at', null).is('unsubscribed_at', null)
-  ]);
-  type P = { id: number; display_name: string; active: boolean; session_epoch: number; birthdate: string | null; primary_email: string | null };
-  const person = new Map(((peopleRows ?? []) as P[]).map((p) => [p.id, p]));
-  const verifiedEmail = new Map(((verified ?? []) as { person_id: number; email: string }[]).map((e) => [e.person_id, e.email]));
+  const family = await loadScoutFamilies(sb, ids);
+  const person = family.person;
 
   type Plan = { scoutId: number; scoutName: string; recipientId: number; sentTo: string; epoch: number; isScout: boolean };
   const plans: Plan[] = [];
@@ -398,24 +447,12 @@ export async function createPickInvites(
       skipped.push({ personId: scoutId, name, reason: 'already done, or not something they can pick' });
       continue;
     }
-    const mine: Plan[] = [];
-    for (const parentId of parentsOf.get(scoutId) ?? []) {
-      const parent = person.get(parentId);
-      if (!parent?.active || !parent.primary_email) continue;
-      const { data: may } = await sb.rpc('_meeting_may_act_for', { p_actor: parentId, p_target: scoutId, p_leader: false });
-      if (may !== true) continue;
-      mine.push({ scoutId, scoutName: name, recipientId: parentId, sentTo: parent.primary_email, epoch: parent.session_epoch, isScout: false });
-    }
-    const self = person.get(scoutId);
-    const own = verifiedEmail.get(scoutId);
-    if (self && own && scoutMayBeMailed(self.birthdate, meeting.date)) {
-      mine.push({ scoutId, scoutName: name, recipientId: scoutId, sentTo: own, epoch: self.session_epoch, isScout: true });
-    }
+    const mine = await scoutRecipients(sb, family, scoutId, meeting.date);
     if (!mine.some((m) => !m.isScout)) {
       skipped.push({ personId: scoutId, name, reason: 'no parent with an email in their household' });
       continue;
     }
-    plans.push(...mine);
+    plans.push(...mine.map((m) => ({ ...m, scoutId, scoutName: name })));
   }
   const emails = new Set(plans.map((x) => x.recipientId)).size;
   if (emails > PICK_INVITE_EMAIL_CAP) return { ok: false, error: `That would send ${emails} emails; one send makes at most ${PICK_INVITE_EMAIL_CAP}.` };
@@ -448,6 +485,136 @@ export async function createPickInvites(
   return { ok: true, recipients: [...recipients.values()], skipped };
 }
 
+/** One reminder email: everyone it covers (a parent's unanswered scouts; an adult or a scout themself). */
+export interface ReminderRecipient {
+  recipientId: number;
+  name: string;
+  sentTo: string;
+  /** The scout's own address (13 or older, verified). */
+  isScout: boolean;
+  people: { personId: number; name: string; inviteId: number }[];
+}
+
+export type CreateRemindersResult = { ok: true; recipients: ReminderRecipient[]; skipped: SkippedInvite[] } | { ok: false; error: string };
+
+/**
+ * P5b (Plans/Meeting-Planner-II.md Decision 11): one reminder row per (person, recipient) for the people who haven't
+ * answered "Coming Sunday?". Everything is re-decided here, whatever the board sent: a scout who answered (or has a pick
+ * for this meeting, which means Coming) or an adult who answered (or is teaching) is skipped, as is anyone reminded in
+ * the last 24 hours. A scout's reminder goes to their parents and, from 13, to the scout (scoutRecipients); an adult's
+ * to themselves. The rows carry no token: the email links to /member/meeting.
+ */
+export async function createReminders(
+  sb: SupabaseClient,
+  input: { entryId: number; personIds: readonly number[]; sentBy: number | null },
+  deps: { now?: Date; loadCatalog?: () => Promise<AdvancementCatalog> } = {}
+): Promise<CreateRemindersResult> {
+  const now = deps.now ?? new Date();
+  const ids = [...new Set(input.personIds.filter((n) => Number.isInteger(n) && n > 0))];
+  if (!ids.length) return { ok: false, error: 'Choose at least one person.' };
+  if (ids.length > REMINDER_SEND_CAP) return { ok: false, error: `One send reaches at most ${REMINDER_SEND_CAP} people.` };
+  const meetingRow = await upcomingMeeting(sb, input.entryId);
+  const meeting = meetingRow ? await loadMeetingById(sb, input.entryId) : null;
+  if (!meetingRow || !meeting || meeting.closed) return { ok: false, error: 'That meeting has passed, or isn’t taking sign-ups.' };
+
+  const since = new Date(now.getTime() - INVITE_DEDUPE_HOURS * 3600_000).toISOString();
+  const catalog = await (deps.loadCatalog ?? loadAdvancementCatalog)();
+  const scouts = await loadBoardScouts(sb, ids);
+  const scoutIdSet = new Set(scouts.map((s) => s.personId));
+  const [{ data: recent }, intents, picks, { data: topicTeachers }, { data: skillOffers }, family] = await Promise.all([
+    sb.from('meeting_invites').select('invitee_person_id').eq('calendar_entry_id', input.entryId).eq('kind', 'remind').in('invitee_person_id', ids).gt('sent_at', since),
+    loadIntents(sb, input.entryId, ids),
+    loadEffectivePicks(sb, meeting, scouts, catalog),
+    sb.from('meeting_topic_teachers').select('person_id').eq('calendar_entry_id', input.entryId).in('person_id', ids),
+    sb.from('meeting_teaching_offers').select('person_id').eq('calendar_entry_id', input.entryId).in('person_id', ids),
+    loadScoutFamilies(sb, [...scoutIdSet])
+  ]);
+  const remindedLately = new Set(((recent ?? []) as { invitee_person_id: number }[]).map((r) => r.invitee_person_id));
+  const commitments = new Map<number, number>();
+  for (const r of [...(topicTeachers ?? []), ...(skillOffers ?? [])] as { person_id: number }[]) commitments.set(r.person_id, (commitments.get(r.person_id) ?? 0) + 1);
+
+  type Plan = { personId: number; name: string; recipientId: number; recipientName: string; sentTo: string; epoch: number; inviteeEpoch: number; isScout: boolean };
+  const plans: Plan[] = [];
+  const skipped: SkippedInvite[] = [];
+  for (const personId of ids) {
+    const isScout = scoutIdSet.has(personId);
+    // The board's haventAnswered rule: effectiveIntent for a scout, teacherIntent for an adult.
+    const answer = isScout ? effectiveIntent(intents.get(personId) ?? null, picks.get(personId)?.picks ?? []) : teacherIntent(intents.get(personId) ?? null, commitments.get(personId) ?? 0);
+    if (isScout) {
+      const self = family.person.get(personId);
+      const name = self?.display_name ?? `Person ${personId}`;
+      if (answer) {
+        skipped.push({ personId, name, reason: 'already answered' });
+        continue;
+      }
+      if (remindedLately.has(personId)) {
+        skipped.push({ personId, name, reason: `reminded in the last ${INVITE_DEDUPE_HOURS} hours` });
+        continue;
+      }
+      const mine = await scoutRecipients(sb, family, personId, meeting.date);
+      if (!mine.some((m) => !m.isScout)) {
+        skipped.push({ personId, name, reason: 'no parent with an email in their household' });
+        continue;
+      }
+      for (const m of mine) {
+        plans.push({ personId, name, recipientId: m.recipientId, recipientName: family.person.get(m.recipientId)?.display_name ?? '', sentTo: m.sentTo, epoch: m.epoch, inviteeEpoch: self?.session_epoch ?? 0, isScout: m.isScout });
+      }
+      continue;
+    }
+    const who = await identityForPerson(sb, personId, null);
+    const name = who?.displayName ?? `Person ${personId}`;
+    if (!who || who.subjectKind !== 'adult') {
+      skipped.push({ personId, name, reason: 'not an active member' });
+      continue;
+    }
+    if (answer) {
+      skipped.push({ personId, name, reason: 'already answered' });
+      continue;
+    }
+    if (remindedLately.has(personId)) {
+      skipped.push({ personId, name, reason: `reminded in the last ${INVITE_DEDUPE_HOURS} hours` });
+      continue;
+    }
+    const sentTo = await deliverableEmailFor(sb, personId);
+    if (!sentTo) {
+      skipped.push({ personId, name, reason: 'no email on file' });
+      continue;
+    }
+    plans.push({ personId, name, recipientId: personId, recipientName: name, sentTo, epoch: who.epoch, inviteeEpoch: who.epoch, isScout: false });
+  }
+  const emails = new Set(plans.map((x) => x.recipientId)).size;
+  if (emails > REMINDER_SEND_CAP) return { ok: false, error: `That would send ${emails} emails; one send makes at most ${REMINDER_SEND_CAP}.` };
+
+  const recipients = new Map<number, ReminderRecipient>();
+  for (const x of plans) {
+    const { data, error } = await sb
+      .from('meeting_invites')
+      .insert({
+        calendar_entry_id: input.entryId,
+        topic_key: REMINDER_TOPIC_KEY,
+        kind: 'remind',
+        invitee_person_id: x.personId,
+        recipient_person_id: x.recipientId,
+        sent_to: x.sentTo,
+        invitee_epoch: x.inviteeEpoch,
+        recipient_epoch: x.epoch,
+        token_hash: null,
+        expires_at: inviteExpiresAt(meeting.date),
+        sent_by: input.sentBy
+      })
+      .select('id')
+      .single();
+    if (error || !data) {
+      skipped.push({ personId: x.personId, name: x.name, reason: 'couldn’t be saved' });
+      continue;
+    }
+    const r = recipients.get(x.recipientId) ?? { recipientId: x.recipientId, name: x.recipientName, sentTo: x.sentTo, isScout: x.isScout, people: [] };
+    r.people.push({ personId: x.personId, name: x.name, inviteId: (data as { id: number }).id });
+    recipients.set(x.recipientId, r);
+  }
+  return { ok: true, recipients: [...recipients.values()], skipped };
+}
+
 /** Per-IP limit on failed answers (qa-lead M4). The raw token is never logged. */
 export async function tooManyInviteFailures(sb: SupabaseClient, ip: string | null, now: Date = new Date()): Promise<boolean> {
   const since = new Date(now.getTime() - 3600_000).toISOString();
@@ -470,6 +637,7 @@ export async function loadInviteRows(
   sb: SupabaseClient,
   entryId: number
 ): Promise<{ kind: 'teach' | 'pick'; topic_key: string; invitee_person_id: number; response: InviteResponse | null }[]> {
-  const { data } = await sb.from('meeting_invites').select('kind, topic_key, invitee_person_id, response, sent_at').eq('calendar_entry_id', entryId).order('sent_at');
+  // Reminders (P5b) ask nobody to teach or take anything, so they never count as asked.
+  const { data } = await sb.from('meeting_invites').select('kind, topic_key, invitee_person_id, response, sent_at').eq('calendar_entry_id', entryId).in('kind', LINK_KINDS).order('sent_at');
   return (data ?? []) as { kind: 'teach' | 'pick'; topic_key: string; invitee_person_id: number; response: InviteResponse | null }[];
 }

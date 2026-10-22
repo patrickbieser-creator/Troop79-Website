@@ -12,6 +12,10 @@ export const INVITE_SEND_CAP = 40;
 export const INVITE_DEDUPE_HOURS = 24;
 /** Failed redeems one address may make an hour before the page stops answering (qa-lead M4). */
 export const INVITE_FAILURES_PER_HOUR = 20;
+/** P5b: people one reminder send may cover, and emails it may make ("Remind everyone" on a full board). */
+export const REMINDER_SEND_CAP = 100;
+/** A reminder is about the meeting, not one topic. */
+export const REMINDER_TOPIC_KEY = 'reminder';
 /** The name the invite emails come from (Patrick: never a named leader). */
 export const INVITE_SENDER_NAME = 'Troop 79 Bugler';
 

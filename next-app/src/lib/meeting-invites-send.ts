@@ -3,7 +3,7 @@
  * "Invite teachers…" and "Offer to scouts…", moved here unchanged so the public Meeting Planner sends through the same
  * path. Server-only. The CALLER decides who may send (Admin: an adult holding meeting_plan.use; the planner: an adult
  * holding meeting_planner.edit) and revalidates its own pages; everything about who may be invited is re-decided in
- * createTeachInvites / createPickInvites.
+ * createTeachInvites / createPickInvites / createReminders. P5b adds reminders (sendReminders).
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { loadBoardScouts, loadMeetingById, loadScoutBoard } from '@/lib/meeting-board';
@@ -14,9 +14,20 @@ import { renderMarkdownEmail } from '@/lib/email-markdown';
 import { sendEmail } from '@/lib/email';
 import { fmtDateFull } from '@/lib/format-date';
 import { minutesText, pickableKeys, topicWords } from '@/lib/meeting-board-picklist';
-import { DEFAULT_PICK_INVITE, DEFAULT_TEACH_INVITE, PICK_INVITE_KIND, renderPickInvite, renderTeachInvite, TEACH_INVITE_KIND, type InviteTemplate } from '@/lib/meeting-invite-email';
+import {
+  DEFAULT_PICK_INVITE,
+  DEFAULT_REMINDER,
+  DEFAULT_TEACH_INVITE,
+  PICK_INVITE_KIND,
+  REMINDER_KIND,
+  renderPickInvite,
+  renderReminder,
+  renderTeachInvite,
+  TEACH_INVITE_KIND,
+  type InviteTemplate
+} from '@/lib/meeting-invite-email';
 import { INVITE_SENDER_NAME } from '@/lib/meeting-invites';
-import { createPickInvites, createTeachInvites, deleteInvites } from '@/lib/meeting-invites-db';
+import { createPickInvites, createReminders, createTeachInvites, deleteInvites } from '@/lib/meeting-invites-db';
 import { siteUrl } from '@/lib/site-url';
 
 export type SendInvitesResult =
@@ -204,4 +215,75 @@ export async function sendPickInvites(sb: SupabaseClient, input: { entryId: numb
     });
   }
   return { ok: true, sent: [...offered], skipped };
+}
+
+/** The template saved for a kind (the newest live one), else the default. */
+async function templateFor(sb: SupabaseClient, kind: string, fallback: InviteTemplate): Promise<InviteTemplate> {
+  const { data } = await sb.from('email_templates').select('subject, body').eq('kind', kind).is('retired_at', null).order('updated_at', { ascending: false }).limit(1).maybeSingle();
+  return (data as InviteTemplate | null) ?? fallback;
+}
+
+/**
+ * Meeting Planner P5b (Plans/Meeting-Planner-II.md Decision 11): the Troop 79 Bugler reminds the chosen people who
+ * haven't answered. One email per recipient naming everyone it covers (a parent with two unanswered scouts gets one);
+ * the button is the plain meeting page, no token. A reminder whose email doesn't go out is deleted, so the 24-hour
+ * dedupe never holds back someone who was never reached.
+ */
+export type SendRemindersResult = { ok: true; sent: string[]; reminded: number[]; skipped: { name: string; reason: string }[] } | { ok: false; error: string };
+
+export async function sendReminders(sb: SupabaseClient, input: { entryId: number; personIds: number[]; sentBy: number | null }): Promise<SendRemindersResult> {
+  if (!input || !Number.isInteger(input.entryId) || !Array.isArray(input.personIds)) return { ok: false, error: 'Malformed request' };
+  const made = await createReminders(sb, { entryId: input.entryId, personIds: input.personIds, sentBy: input.sentBy });
+  if (!made.ok) return made;
+
+  const { data: entry } = await sb.from('calendar_entries').select('entry_date').eq('id', input.entryId).single();
+  const template = await templateFor(sb, REMINDER_KIND, DEFAULT_REMINDER);
+  const { data: names } = await sb.from('people').select('id, nickname, first_name, display_name').in('id', made.recipients.map((r) => r.recipientId));
+  const firstName = new Map(
+    ((names ?? []) as { id: number; nickname: string | null; first_name: string | null; display_name: string }[]).map((p) => [p.id, p.nickname || p.first_name || p.display_name])
+  );
+  const day = entry ? fmtDateFull((entry as { entry_date: string }).entry_date) : 'Sunday';
+  const url = `${siteUrl()}/member/meeting`;
+
+  const reminded = new Set<string>();
+  const remindedIds = new Set<number>();
+  const skipped = made.skipped.map(({ name, reason }) => ({ name, reason }));
+  const unsent = new Set(made.recipients.flatMap((r) => r.people.map((p) => p.inviteId)));
+  let emails = 0;
+  try {
+    for (const r of made.recipients) {
+      const self = r.people.length === 1 && r.people[0].personId === r.recipientId;
+      const { subject, md } = renderReminder(template, {
+        name: firstName.get(r.recipientId) ?? r.name,
+        people: r.isScout || self ? 'you' : r.people.map((p) => boardName(p.name)).join(' and '),
+        day
+      });
+      const { html, text } = renderMarkdownEmail({ md, actionUrl: url, actionLabel: 'Answer on the meeting page' });
+      const res = await sendEmail({ to: [r.sentTo], subject, html, text, confirm: true, fromName: INVITE_SENDER_NAME });
+      if (res.status === 'sent') {
+        emails++;
+        for (const p of r.people) {
+          unsent.delete(p.inviteId);
+          reminded.add(boardName(p.name));
+          remindedIds.add(p.personId);
+        }
+      } else {
+        skipped.push({ name: r.name, reason: res.status === 'skipped' ? 'email isn’t set up on this server' : 'the email didn’t go out' });
+      }
+    }
+  } catch {
+    // Whoever wasn't reached keeps no reminder row; the finally deletes them.
+  } finally {
+    await deleteInvites(sb, [...unsent]);
+  }
+  if (emails) {
+    await recordAudit({
+      area: 'meeting',
+      action: 'invite.remind',
+      entityType: 'calendar_entry',
+      entityId: input.entryId,
+      summary: `Reminded ${[...reminded].join(', ')} (${emails} emails)`
+    });
+  }
+  return { ok: true, sent: [...reminded], reminded: [...remindedIds], skipped };
 }

@@ -32,8 +32,9 @@ async function loadLeaderIds(sb: SupabaseClient): Promise<Set<number>> {
   return new Set(rows.map((r) => r.person_id));
 }
 
-export async function loadPlannerPage(sb: SupabaseClient): Promise<PlannerPage | null> {
-  const meeting = await loadNextMeeting(sb);
+/** The next meeting's board, or (P5b, the reminder action re-deciding who hasn't answered) a given meeting's. */
+export async function loadPlannerPage(sb: SupabaseClient, forMeeting?: BoardMeeting): Promise<PlannerPage | null> {
+  const meeting = forMeeting ?? (await loadNextMeeting(sb));
   if (!meeting) return null;
   const catalog = await loadAdvancementCatalog();
   const [rows, stamp, leaderIds, inviteRows] = await Promise.all([
