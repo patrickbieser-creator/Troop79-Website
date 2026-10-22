@@ -10,7 +10,8 @@
  * started starts it (copy on first write) and finds a preview card ('s:…') by the matcher session it came from.
  * Card writes carry the card's version; a scout move is compare-and-set. Someone else's change first comes back as
  * { ok: false, stale: true } and the screen refreshes. Drag-and-drop and "Move to" call the same actions.
- * P4c adds attendance and visitors here.
+ * P4c: attendance (event_attendance through Roll Call's cascade, ledger credit included) and visitors, only on the
+ * meeting day (Central). The same edit right takes attendance (Open Questions: edit alone is enough, SPL included).
  */
 import { revalidatePath } from 'next/cache';
 import { resolveAdminActor } from '@/lib/admin-actor';
@@ -19,6 +20,7 @@ import { centralToday } from '@/lib/dates';
 import { loadBoardStamp, loadMeetingById, type BoardMeeting } from '@/lib/meeting-board';
 import { plannerAccess } from '@/lib/meeting-planner-access';
 import { SAVE_FAILED } from '@/lib/meeting-board-supply';
+import { loadEntryContext, recordAttendance, removeAttendance } from '@/lib/attendance-admin';
 import { liveStartedAt, resolveLiveClass, startMeetingLive } from '@/lib/meeting-live';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -28,9 +30,10 @@ const STALE_TEXT = 'Someone else changed this. Here’s the latest.';
 const fail = (error: string): { ok: false; error: string } => ({ ok: false, error });
 const stale = (): { ok: false; error: string; stale: true } => ({ ok: false, error: STALE_TEXT, stale: true });
 /** The RPCs' own messages are written for people; anything else is not shown raw. */
-const KNOWN = /^(Rotations 1 and 2|Only the last rotation|Move its classes|That’s as many rotations|That isn’t something|That meeting)/;
+const KNOWN = /^(Rotations 1 and 2|Only the last rotation|Move its classes|That’s as many rotations|That isn’t something|That meeting|Give the visitor)/;
+const NOT_TODAY = 'Attendance is taken on the day of the meeting.';
 
-type Editor = { ok: true; sb: SupabaseClient; meeting: BoardMeeting; actorPersonId: number };
+type Editor = { ok: true; sb: SupabaseClient; meeting: BoardMeeting; actorPersonId: number; actorLabel: string };
 
 /** An editor acting on an upcoming (or today's), published rank meeting. */
 async function liveEditor(entryId: unknown): Promise<Editor | { ok: false; error: string }> {
@@ -44,7 +47,7 @@ async function liveEditor(entryId: unknown): Promise<Editor | { ok: false; error
   if ((entry as { status: string } | null)?.status !== 'published' || meeting.mode === 'closed') return fail('That meeting isn’t taking sign-ups.');
   if (meeting.mode !== 'rank') return fail('Meeting Live runs rank meetings. This one is set up as a merit badge night in Admin.');
   if (meeting.date < centralToday()) return fail('That meeting has passed. Reload the page for the next one.');
-  return { ok: true, sb, meeting, actorPersonId: actor.personId };
+  return { ok: true, sb, meeting, actorPersonId: actor.personId, actorLabel: actor.label };
 }
 
 function revalidate() {
@@ -198,4 +201,54 @@ export async function plannerLiveAddClassAction(input: { entryId: number; key: s
       p_rotation: input.rotation
     })
   );
+}
+
+/** Mark someone here or not here (attendance). The meeting day only. */
+export async function plannerLiveSetPresentAction(input: { entryId: number; personId: number; present: boolean }): Promise<LiveWriteResult> {
+  const e = await liveEditor(input?.entryId);
+  if (!e.ok) return e;
+  if (!isPerson(input.personId) || typeof input.present !== 'boolean') return fail('Malformed request');
+  if (e.meeting.date !== centralToday()) return fail(NOT_TODAY);
+  try {
+    const { data: who } = await e.sb.from('people').select('id').eq('id', input.personId).is('merged_into_person_id', null).maybeSingle();
+    if (!who) return fail('That person isn’t on the roster.');
+    const ctx = await loadEntryContext(e.sb, e.meeting.entryId);
+    if (!ctx) return fail('That meeting is no longer on the calendar.');
+    const res = input.present
+      ? await recordAttendance(e.sb, ctx, input.personId, null, 'manual', e.actorLabel)
+      : await removeAttendance(e.sb, ctx, input.personId, e.actorLabel);
+    if (!res.ok) return fail(SAVE_FAILED);
+    await e.sb.rpc('meeting_live_touch', { p_entry: e.meeting.entryId });
+    revalidate();
+    return { ok: true, stamp: await loadBoardStamp(e.sb, e.meeting.entryId) };
+  } catch {
+    return fail(SAVE_FAILED);
+  }
+}
+
+/** "+ Add as visitor": a guest person, marked here, in a class (to) or in the pool (to null). The meeting day only. */
+export async function plannerLiveAddVisitorAction(input: { entryId: number; name: string; to: string | null }): Promise<LiveWriteResult> {
+  const e = await liveEditor(input?.entryId);
+  if (!e.ok) return e;
+  if (typeof input.name !== 'string' || input.name.length > 200 || (input.to !== null && !isCardId(input.to))) return fail('Malformed request');
+  if (e.meeting.date !== centralToday()) return fail(NOT_TODAY);
+  try {
+    const to = input.to === null ? null : await cardOf(e, input.to);
+    if (input.to !== null && to === null) return stale();
+    const ctx = await loadEntryContext(e.sb, e.meeting.entryId);
+    if (!ctx) return fail('That meeting is no longer on the calendar.');
+    const { error } = await e.sb.rpc('meeting_live_add_visitor', {
+      p_entry: e.meeting.entryId,
+      p_actor: e.actorPersonId,
+      p_by: e.actorLabel,
+      p_name: input.name,
+      p_to: to,
+      p_qty: ctx.defaultQty
+    });
+    if (error) return error.message === 'STALE' ? stale() : fail(KNOWN.test(error.message) ? error.message : SAVE_FAILED);
+    revalidate();
+    return { ok: true, stamp: await loadBoardStamp(e.sb, e.meeting.entryId) };
+  } catch {
+    return fail(SAVE_FAILED);
+  }
 }

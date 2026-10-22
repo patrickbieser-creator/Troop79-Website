@@ -68,7 +68,7 @@ export async function loadRosterPrintData(): Promise<RosterPrintInput> {
 
   const [households, members, people, scoutCoreRows, relations, leaders, ranks] = await Promise.all([
     fetchAllRows<{ id: number; label: string }>((f, t) =>
-      supabase.from('households').select('id, label').order('id').range(f, t)
+      supabase.from('households').select('id, label').is('system_key', null).order('id').range(f, t)
     ),
     fetchAllRows<MemberRow>((f, t) =>
       supabase.from('household_members').select('household_id, person_id').order('household_id').order('person_id').range(f, t)

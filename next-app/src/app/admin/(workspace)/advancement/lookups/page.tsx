@@ -223,7 +223,7 @@ async function loadLookups() {
   ] = await Promise.all([
     supabase.from('skills').select('id, name, youth_teachable, sort_order').order('sort_order'),
     supabase.from('teaching_skills').select('person_id, skill_id'),
-    supabase.from('households').select('id, label').order('label'),
+    supabase.from('households').select('id, label').is('system_key', null).order('label'),
     // Members carried through so each household can be told apart by WHO is
     // in it. Two families sharing a surname is normal — the troop has two
     // Stollenwerk households — and the label alone cannot distinguish them.

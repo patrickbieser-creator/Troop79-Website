@@ -48,6 +48,10 @@ export interface LiveMember {
   name: string;
   /** Already completed this class (8c): a small star on the chip; placing them is still allowed. */
   retake: boolean;
+  /** Marked here (event_attendance, P4c). */
+  present: boolean;
+  /** A Meeting Live visitor (a guest person, P4c). */
+  visitor: boolean;
 }
 
 export interface LiveCard {
@@ -57,7 +61,7 @@ export interface LiveCard {
   title: string;
   codeLabel: string;
   kind: LiveKind;
-  teacher: { personId: number; name: string } | null;
+  teacher: { personId: number; name: string; present: boolean } | null;
   members: LiveMember[];
   /** The rotations of this class's other repeats (null = a Not scheduled repeat). Empty when it isn't repeated. */
   repeats: (number | null)[];
@@ -73,8 +77,8 @@ export interface LiveView {
   rotations: LiveRotation[];
   /** Rotation order (Not scheduled last), then position. */
   cards: LiveCard[];
-  /** Coming, nothing assigned. */
-  pool: { personId: number; name: string }[];
+  /** Coming (or here), nothing assigned. */
+  pool: { personId: number; name: string; present: boolean; visitor: boolean }[];
   /** How many overlapping pairs need fixing (the header's red count). */
   overlaps: number;
 }
@@ -244,7 +248,13 @@ export function buildLiveView(input: {
   retake: (personId: number, topicKey: string) => boolean;
   /** Coming (or here) scouts; anyone placed in a class or teaching one is left out. */
   pool: readonly number[];
+  /** Marked here (P4c). */
+  present?: (personId: number) => boolean;
+  /** A visitor (P4c). */
+  visitor?: (personId: number) => boolean;
 }): LiveView {
+  const here = input.present ?? (() => false);
+  const visiting = input.visitor ?? (() => false);
   const classes = [...input.classes].sort((a, b) => (a.rotation ?? 1e9) - (b.rotation ?? 1e9) || a.position - b.position || a.id.localeCompare(b.id));
   const { lines, count } = liveConflicts(classes, input.nameOf);
   const busy = new Set(classes.flatMap((c) => [...c.memberIds, ...(c.teacherId != null ? [c.teacherId] : [])]));
@@ -259,15 +269,17 @@ export function buildLiveView(input: {
       title: c.title,
       codeLabel: c.codeLabel,
       kind: c.kind,
-      teacher: c.teacherId != null ? { personId: c.teacherId, name: input.nameOf(c.teacherId) } : null,
-      members: c.memberIds.map((personId) => ({ personId, name: input.nameOf(personId), retake: input.retake(personId, c.topicKey) })).sort(byName),
+      teacher: c.teacherId != null ? { personId: c.teacherId, name: input.nameOf(c.teacherId), present: here(c.teacherId) } : null,
+      members: c.memberIds
+        .map((personId) => ({ personId, name: input.nameOf(personId), retake: input.retake(personId, c.topicKey), present: here(personId), visitor: visiting(personId) }))
+        .sort(byName),
       repeats: classes.filter((o) => o !== c && o.topicKey === c.topicKey).map((o) => o.rotation),
       conflicts: lines.get(c.id) ?? [],
       version: c.version
     })),
     pool: [...new Set(input.pool)]
       .filter((id) => !busy.has(id))
-      .map((personId) => ({ personId, name: input.nameOf(personId) }))
+      .map((personId) => ({ personId, name: input.nameOf(personId), present: here(personId), visitor: visiting(personId) }))
       .sort(byName),
     overlaps: count
   };

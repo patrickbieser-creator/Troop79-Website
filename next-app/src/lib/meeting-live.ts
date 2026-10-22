@@ -11,6 +11,8 @@
  *   - loadLiveView: what /planner/live draws: the matcher's preview before start, the saved placement after.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { centralToday } from '@/lib/dates';
+import { loadEntryContext, seedAttendance } from '@/lib/attendance-admin';
 import { loadAdvancementCatalog, type AdvancementCatalog } from '@/lib/advancement-catalog';
 import { loadBoardState, loadPeopleNames, loadScoutProgress, type BoardMeeting, type BoardScoutRow } from '@/lib/meeting-board';
 import { boardName, effectiveIntent } from '@/lib/meeting-board-shared';
@@ -29,6 +31,9 @@ import {
   type LiveView,
   type SavedPlacement
 } from '@/lib/meeting-live-shared';
+
+/** The system household that hosts Meeting Live visitors (P4c, households.system_key). */
+export const VISITORS_KEY = 'meeting-visitors';
 
 const one = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? (v[0] ?? null) : (v ?? null));
 
@@ -143,20 +148,31 @@ export async function loadLiveView(sb: SupabaseClient, meeting: BoardMeeting): P
   let classes: LiveClassIn[];
   let rotations: LiveView['rotations'];
   let pool: number[];
+  // Who is here (P4c): event_attendance is the one presence truth; visitors are guests of the visitors household.
+  const [attRes, visitorHh] = await Promise.all([
+    sb.from('event_attendance').select('person_id').eq('calendar_entry_id', meeting.entryId),
+    sb.from('households').select('id').eq('system_key', VISITORS_KEY).maybeSingle()
+  ]);
+  if (attRes.error) throw new Error(attRes.error.message);
+  const attended = new Set(((attRes.data ?? []) as { person_id: number }[]).map((a) => a.person_id));
+  const visitorIds = new Set<number>();
+  const hhId = (visitorHh.data as { id: number } | null)?.id;
+  if (hhId != null && attended.size) {
+    const { data, error } = await sb.from('people').select('id').eq('guest_host_household_id', hhId).in('id', [...attended]);
+    if (error) throw new Error(error.message);
+    for (const r of (data ?? []) as { id: number }[]) visitorIds.add(r.id);
+  }
+  const scoutIds = new Set(rows.map((r) => r.personId));
+  // Here, nothing assigned: attended scouts and visitors (an adult who is here is not waiting for a class).
+  const hereWaiting = [...attended].filter((id) => scoutIds.has(id) || visitorIds.has(id));
   if (saved) {
     classes = saved.classes.map((c) => {
       const w = words([c.topicKey]);
       return { id: savedId(c.id), topicKey: c.topicKey, rotation: c.rotation, title: c.title ?? w.title, codeLabel: w.codeLabel, kind: w.kind, teacherId: c.teacherId, memberIds: c.memberIds, position: c.position, version: c.version };
     });
     rotations = saved.rotations;
-    // Coming, nothing assigned: scouts who said Coming (or picked), or were marked here, and aren't in a class.
-    const { data, error } = await sb.from('event_attendance').select('person_id').eq('calendar_entry_id', meeting.entryId);
-    if (error) throw new Error(error.message);
-    const scouts = new Set(rows.map((r) => r.personId));
-    pool = [
-      ...rows.filter((r) => effectiveIntent(r.intent, r.picks) === 'coming').map((r) => r.personId),
-      ...((data ?? []) as { person_id: number }[]).map((a) => a.person_id).filter((id) => scouts.has(id))
-    ];
+    // Coming, nothing assigned: scouts who said Coming (or picked), or are here, and aren't in a class.
+    pool = [...rows.filter((r) => effectiveIntent(r.intent, r.picks) === 'coming').map((r) => r.personId), ...hereWaiting];
   } else {
     const { match, snapshot } = await matchSnapshot(sb, meeting, catalog, rows, teach);
     const keysOf = new Map(match.sessions.map((s) => [s.id, s.keys]));
@@ -165,14 +181,14 @@ export async function loadLiveView(sb: SupabaseClient, meeting: BoardMeeting): P
       return { id: previewId(c.sourceKey), topicKey: c.topicKey, rotation: c.rotation, title: c.title ?? w.title, codeLabel: w.codeLabel, kind: w.kind, teacherId: c.teacherId, memberIds: c.memberIds, position: c.position, version: 1 };
     });
     rotations = snapshot.rotations;
-    pool = match.comingNothing.map((x) => x.personId);
+    pool = [...match.comingNothing.map((x) => x.personId), ...hereWaiting];
   }
 
   // Names: scouts as the board says them, teachers as the planner does, anyone else by their record.
   const rowOf = new Map(rows.map((r) => [r.personId, r]));
   const names = new Map<number, string>(rows.map((r) => [r.personId, boardName(r.name)]));
   for (const [id, p] of teach.people) if (!names.has(id)) names.set(id, teacherName(p, 'admin'));
-  const missing = [...new Set(classes.flatMap((c) => [...c.memberIds, ...(c.teacherId != null ? [c.teacherId] : [])]))].filter((id) => !names.has(id));
+  const missing = [...new Set([...classes.flatMap((c) => [...c.memberIds, ...(c.teacherId != null ? [c.teacherId] : [])]), ...pool])].filter((id) => !names.has(id));
   for (const [id, n] of await loadPeopleNames(sb, missing)) names.set(id, boardName(n));
 
   // Retake (8c): a placed scout who has already completed the class's topic gets a star.
@@ -192,7 +208,16 @@ export async function loadLiveView(sb: SupabaseClient, meeting: BoardMeeting): P
     });
   };
 
-  return buildLiveView({ started: !!saved, rotations, classes, nameOf: (id) => names.get(id) ?? '', retake, pool });
+  return buildLiveView({
+    started: !!saved,
+    rotations,
+    classes,
+    nameOf: (id) => names.get(id) ?? '',
+    retake,
+    pool,
+    present: (id) => attended.has(id),
+    visitor: (id) => visitorIds.has(id)
+  });
 }
 
 // ── P4b: editing ─────────────────────────────────────────────────────────────────────────────────────────────────
@@ -246,4 +271,25 @@ export async function loadLiveChoices(sb: SupabaseClient, meeting: BoardMeeting)
       .sort((a, b) => a.label.localeCompare(b.label)),
     scouts: rows.map((r) => ({ personId: r.personId, name: boardName(r.name) })).sort(byName)
   };
+}
+
+// ── P4c: attendance ──────────────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * The meeting day's one-time seed (P4 spec section 4, Roll Call's seedFromSignup pattern): once Meeting Live has
+ * started and only on the meeting day (Central), placed scouts and class teachers are marked here, through Roll Call's
+ * cascade (ledger credit included). Claimed under the Live lock, so two leaders opening Live at once seed once. True
+ * when this call seeded.
+ */
+export async function seedLiveAttendance(sb: SupabaseClient, meeting: BoardMeeting, by: string): Promise<boolean> {
+  if (meeting.date !== centralToday()) return false;
+  const { data: claimed, error } = await sb.rpc('meeting_live_claim_seed', { p_entry: meeting.entryId });
+  if (error) throw new Error(error.message);
+  if (claimed !== true) return false;
+  const [ctx, saved] = await Promise.all([loadEntryContext(sb, meeting.entryId), loadSavedPlacement(sb, meeting.entryId)]);
+  if (!ctx || !saved) return true;
+  const ids = saved.classes.flatMap((c) => [...c.memberIds, ...(c.teacherId != null ? [c.teacherId] : [])]);
+  await seedAttendance(sb, ctx, ids, by);
+  await sb.rpc('meeting_live_touch', { p_entry: meeting.entryId });
+  return true;
 }

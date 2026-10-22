@@ -540,9 +540,51 @@
   border-color: var(--status-danger);
 }
 
+/* ── P4c: attendance ──────────────────────────────────────────────────────────────────────────────────────────── */
+/* Decision 9: a red banner when the viewer can't record attendance. */
+.roBanner {
+  margin-bottom: var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--rad-md);
+  background: var(--status-danger);
+  font: var(--fs-sm) / 1.4 var(--font-ui);
+  color: var(--warm-white);
+}
+/* Not here (the meeting day only): white, dotted, name only. */
+.chipOut,
+.chipBtnOut {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 var(--sp-3);
+  border: 1px dotted var(--text-meta);
+  border-radius: var(--rad-pill);
+  background: var(--warm-white);
+  font: 600 var(--fs-sm) / 1.2 var(--font-ui);
+  color: var(--text-meta);
+}
+.chipBtnOut {
+  min-height: 44px;
+  cursor: pointer;
+}
+.chipBtnOut:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.visitorTag {
+  margin-left: var(--sp-2);
+  font: 700 var(--fs-2xs) / 1 var(--font-ui);
+  color: var(--text-meta);
+}
+
 @media (max-width: 640px) {
   .addColumn {
     display: none;
+  }
+  .roBanner {
+    margin: 0;
+    border-radius: 0;
   }
   .live {
     padding: 0 0 var(--sp-8);
@@ -550,6 +592,9 @@
   .bar {
     margin: 0;
     padding: var(--sp-3) var(--sp-4);
+  }
+  .pool .chipAdd {
+    margin-top: var(--sp-2);
   }
   .switcher {
     position: sticky;

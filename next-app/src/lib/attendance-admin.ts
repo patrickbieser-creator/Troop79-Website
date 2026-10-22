@@ -27,7 +27,8 @@
  */
 
 import type { createAdminClient } from '@/lib/supabase/server';
-import { ledgerCodeFor, type CreditKind } from '@/lib/attendance-shared';
+import { creditRuleFor, defaultQtyFor, ledgerCodeFor, type CreditKind } from '@/lib/attendance-shared';
+import { loadCalendarCategories } from '@/lib/calendar';
 
 export type Result = { ok: boolean; error?: string };
 
@@ -271,4 +272,35 @@ export async function seedAttendance(
     }
   }
   return { added, problems };
+}
+
+/**
+ * The calendar entry as the cascade needs it: its date, title, and what credit its category grants. Shared by Roll
+ * Call and Meeting Live (P4c), so both write the same attendance and the same credit.
+ */
+export async function loadEntryContext(db: Db, entryId: number): Promise<EntryContext | null> {
+  const [{ data: entry }, categories] = await Promise.all([
+    db.from('calendar_entries').select('id, entry_date, end_date, category, title').eq('id', entryId).maybeSingle(),
+    loadCalendarCategories()
+  ]);
+  if (!entry) return null;
+  const rule = creditRuleFor(categories, entry.category as string);
+  return {
+    id: entry.id as number,
+    entryDate: entry.entry_date as string,
+    title: entry.title as string,
+    creditKind: rule.creditKind,
+    defaultQty: defaultQtyFor(rule.creditKind, entry.entry_date as string, (entry.end_date as string) ?? null)
+  };
+}
+
+/**
+ * Mark one person absent: retire the credit FIRST, then delete the attendance row (the ordering rule at the top of
+ * this file). Shared by Roll Call's markAbsent and Meeting Live.
+ */
+export async function removeAttendance(db: Db, ctx: EntryContext, personId: number, by: string): Promise<Result> {
+  const creditResult = await retireCredit(db, ctx, personId, by);
+  if (!creditResult.ok) return creditResult;
+  const { error } = await db.from('event_attendance').delete().eq('calendar_entry_id', ctx.id).eq('person_id', personId);
+  return error ? { ok: false, error: error.message } : { ok: true };
 }

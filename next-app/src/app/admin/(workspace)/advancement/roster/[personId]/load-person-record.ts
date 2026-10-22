@@ -77,7 +77,7 @@ export async function loadPersonRecord(personId: number): Promise<LoadPersonReco
     getPersonEmails(personId),
     supabase.from('scouts').select(SCOUT_RECORD_COLS).eq('person_id', personId).maybeSingle(),
     supabase.from('people').select('gender').eq('id', personId).maybeSingle(),
-    supabase.from('households').select('id, label').order('label'),
+    supabase.from('households').select('id, label').is('system_key', null).order('label'),
     supabase.from('leaders').select('code, can_login').eq('person_id', personId).limit(1).maybeSingle()
   ]);
   const scout = (scoutRes.data as ScoutRecordRow | null) ?? null;

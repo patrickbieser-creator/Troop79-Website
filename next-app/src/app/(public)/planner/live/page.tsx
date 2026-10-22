@@ -4,14 +4,17 @@
  * which is the truth from then on. Anyone who may view the planner sees it; an editor (the SPL included) starts it and
  * (P4b) edits it in place. Rank meetings only: a meeting set up in Admin as a merit badge night keeps v1's stations.
  * Phones get one rotation at a time with a switcher. It polls every ~3 s: several leaders run it at once in the room.
+ * P4c: attendance on the meeting day (Central) only. An editor's first load that day seeds placed scouts and class
+ * teachers as here, once. A viewer sees a red banner: they can't record attendance.
  */
 import { redirect } from 'next/navigation';
 import { resolveAdminActor } from '@/lib/admin-actor';
 import { createAdminClient } from '@/lib/supabase/server';
-import { fmtDateFull } from '@/lib/format-date';
+import { fmtDateFull, fmtDay } from '@/lib/format-date';
+import { centralToday } from '@/lib/dates';
 import { loadBoardStamp, loadNextMeeting } from '@/lib/meeting-board';
 import { plannerAccess } from '@/lib/meeting-planner-access';
-import { loadLiveChoices, loadLiveView } from '@/lib/meeting-live';
+import { loadLiveChoices, loadLiveView, seedLiveAttendance } from '@/lib/meeting-live';
 import { PageHeader } from '@/app/_components/page-header';
 import { PageShell } from '@/app/_components/page-shell';
 import { Notice } from '@/app/_components/notice';
@@ -58,6 +61,12 @@ export default async function MeetingLivePage() {
     );
   }
 
+  const meetingDay = meeting.date === centralToday();
+  if (access.canEdit && meetingDay) {
+    // A failed seed never blocks the page: Roll Call and the toggles still work.
+    await seedLiveAttendance(sb, meeting, actor.label).catch(() => false);
+  }
+  const attendance = { open: meetingDay, note: meetingDay ? null : `Attendance opens on ${fmtDay(meeting.date)}.` };
   const [view, stamp, choices] = await Promise.all([
     loadLiveView(sb, meeting),
     loadBoardStamp(sb, meeting.entryId),
@@ -75,7 +84,7 @@ export default async function MeetingLivePage() {
           </p>
         </div>
       </header>
-      <LiveBoard view={view} canEdit={access.canEdit} entryId={meeting.entryId} choices={choices} />
+      <LiveBoard view={view} canEdit={access.canEdit} entryId={meeting.entryId} choices={choices} attendance={attendance} />
     </div>
   );
 }

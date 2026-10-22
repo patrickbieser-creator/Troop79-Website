@@ -18,7 +18,9 @@ const mocks = vi.hoisted(() => ({
   addRotation: vi.fn(),
   dropRotation: vi.fn(),
   setLocation: vi.fn(),
-  addClass: vi.fn()
+  addClass: vi.fn(),
+  setPresent: vi.fn(),
+  addVisitor: vi.fn()
 }));
 vi.mock('../src/app/(public)/planner/live-actions', () => ({
   plannerLiveStartAction: mocks.start,
@@ -30,7 +32,9 @@ vi.mock('../src/app/(public)/planner/live-actions', () => ({
   plannerLiveAddRotationAction: mocks.addRotation,
   plannerLiveDropRotationAction: mocks.dropRotation,
   plannerLiveSetLocationAction: mocks.setLocation,
-  plannerLiveAddClassAction: mocks.addClass
+  plannerLiveAddClassAction: mocks.addClass,
+  plannerLiveSetPresentAction: mocks.setPresent,
+  plannerLiveAddVisitorAction: mocks.addVisitor
 }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: mocks.refresh }) }));
 
@@ -42,7 +46,7 @@ const card = (o: Partial<LiveView['cards'][number]> & Pick<LiveView['cards'][num
   title: 'First aid basics',
   codeLabel: 'Tenderfoot 4a',
   kind: 'rank',
-  teacher: { personId: 10, name: 'Dan V' },
+  teacher: { personId: 10, name: 'Dan V', present: false },
   members: [],
   repeats: [],
   conflicts: [],
@@ -57,11 +61,11 @@ const VIEW: LiveView = {
     { number: 2, location: null }
   ],
   cards: [
-    card({ id: 's:a', members: [{ personId: 1, name: 'Finn P', retake: false }, { personId: 2, name: 'Lily P', retake: true }], repeats: [2], conflicts: ['Finn P also in the Rotation 2 repeat of this class'] }),
-    card({ id: 's:b', rotation: 2, teacher: { personId: 11, name: 'Rachel D' }, members: [{ personId: 1, name: 'Finn P', retake: false }], repeats: [1], conflicts: ['Finn P also in the Rotation 1 repeat of this class'] }),
+    card({ id: 's:a', members: [{ personId: 1, name: 'Finn P', retake: false, present: false, visitor: false }, { personId: 2, name: 'Lily P', retake: true, present: false, visitor: false }], repeats: [2], conflicts: ['Finn P also in the Rotation 2 repeat of this class'] }),
+    card({ id: 's:b', rotation: 2, teacher: { personId: 11, name: 'Rachel D', present: false }, members: [{ personId: 1, name: 'Finn P', retake: false, present: false, visitor: false }], repeats: [1], conflicts: ['Finn P also in the Rotation 1 repeat of this class'] }),
     card({ id: 's:c', rotation: null, topicKey: 'scout-1a', title: 'Oath, Law, motto, slogan', codeLabel: 'Scout 1a', teacher: null })
   ],
-  pool: [{ personId: 4, name: 'Simon P' }],
+  pool: [{ personId: 4, name: 'Simon P', present: false, visitor: false }],
   overlaps: 1
 };
 
@@ -254,5 +258,45 @@ describe('LiveBoard add a scout (qa-lead, P4b)', () => {
     fireEvent.click(within(screen.getByRole('region', { name: 'Not scheduled' })).getByRole('button', { name: 'Add a scout to Oath, Law, motto, slogan' }));
     const dlg = screen.getByRole('dialog');
     expect([within(dlg).queryByRole('button', { name: /^Finn P/ }), within(dlg).getByRole('button', { name: /^Simon P/ }) != null]).toEqual([null, true]);
+  });
+});
+
+describe('LiveBoard attendance (P4c)', () => {
+  const here = { ...VIEW, started: true, cards: VIEW.cards.map((c) => ({ ...c, members: c.members.map((m) => ({ ...m, present: m.personId === 1 })) })) };
+  const open = { open: true, note: null };
+
+  it('Viewer_SeesTheRedBanner', () => {
+    render(<LiveBoard view={here} canEdit={false} entryId={5} attendance={open} />);
+    expect(screen.getByRole('alert').textContent).toContain('View only: you can’t record attendance here.');
+  });
+
+  it('PresentScout_ShowsACheck', () => {
+    render(<LiveBoard view={here} canEdit={false} entryId={5} attendance={open} />);
+    expect(within(screen.getByRole('region', { name: 'Rotation 2' })).getByLabelText('Finn P, here').textContent).toBe('✓ Finn P');
+  });
+
+  it('Editor_MarksAScoutNotPresent_FromTheSheet', async () => {
+    mocks.setPresent.mockResolvedValue(ok);
+    render(<LiveBoard view={here} canEdit entryId={5} choices={CHOICES} attendance={open} />);
+    fireEvent.click(within(screen.getByRole('region', { name: 'Rotation 2' })).getByRole('button', { name: /^Finn P/ }));
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /Mark not present/ }));
+    await waitFor(() => expect(mocks.setPresent).toHaveBeenCalledWith({ entryId: 5, personId: 1, present: false }));
+  });
+
+  it('NotTheMeetingDay_SaysSo_AndOffersNoToggle', () => {
+    render(<LiveBoard view={here} canEdit entryId={5} choices={CHOICES} attendance={{ open: false, note: 'Attendance opens on Sun, Oct 25.' }} />);
+    expect(screen.getByText('Attendance opens on Sun, Oct 25.')).toBeTruthy();
+    fireEvent.click(within(screen.getByRole('region', { name: 'Rotation 2' })).getByRole('button', { name: /^Finn P/ }));
+    expect(within(screen.getByRole('dialog')).queryByRole('button', { name: /Mark (not present|here)/ })).toBeNull();
+  });
+
+  it('Editor_AddsAVisitorByName', async () => {
+    mocks.addVisitor.mockResolvedValue(ok);
+    render(<LiveBoard view={here} canEdit entryId={5} choices={CHOICES} attendance={open} />);
+    fireEvent.click(within(screen.getByRole('region', { name: 'Rotation 1' })).getByRole('button', { name: 'Add a scout to First aid basics' }));
+    const dlg = screen.getByRole('dialog');
+    fireEvent.change(within(dlg).getByLabelText('Find a name'), { target: { value: 'Pat Q' } });
+    fireEvent.click(within(dlg).getByRole('button', { name: '+ Add “Pat Q” as a visitor' }));
+    await waitFor(() => expect(mocks.addVisitor).toHaveBeenCalledWith({ entryId: 5, name: 'Pat Q', to: 's:a' }));
   });
 });

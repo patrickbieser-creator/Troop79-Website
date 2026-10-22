@@ -135,7 +135,8 @@ interface HouseholdRows {
  *  (pinned by tests/household-by-key.test.ts). */
 async function fetchHouseholdRows(scope?: { householdIds: number[]; personIds: number[] }): Promise<HouseholdRows> {
   const supabase = createAdminClient();
-  const householdsQ = supabase.from('households').select('id, label');
+  // System households (Meeting Live's visitors, households.system_key) are nobody's family: never offered.
+  const householdsQ = supabase.from('households').select('id, label').is('system_key', null);
   const membersQ = supabase.from('household_members').select('household_id, person_id');
   // Merged-away records are excluded here rather than everywhere downstream:
   // a person merged into another must never appear as a second option.

@@ -27,6 +27,8 @@ import {
   plannerLiveRemoveClassAction,
   plannerLiveRepeatClassAction,
   plannerLiveSetLocationAction,
+  plannerLiveAddVisitorAction,
+  plannerLiveSetPresentAction,
   plannerLiveSetTeacherAction,
   plannerLiveStartAction,
   type LiveWriteResult
@@ -59,23 +61,54 @@ type Sheet =
   | { kind: 'teacher'; card: LiveCard }
   | { kind: 'scout'; personId: number; name: string; from: LiveCard | null }
   | { kind: 'more'; card: LiveCard }
-  | { kind: 'addScout'; card: LiveCard }
+  | { kind: 'addScout'; card: LiveCard | null }
   | { kind: 'addClass'; rotation: number | null }
   | { kind: 'location'; number: number; location: string | null }
   | null;
 
 const EMPTY_CHOICES: LiveChoicesProp = { teachers: [], topics: [], scouts: [] };
 
+/** P4c: attendance is open on the meeting day only; `note` says why it isn't. */
+export interface LiveAttendanceProp {
+  open: boolean;
+  note: string | null;
+}
+const CLOSED: LiveAttendanceProp = { open: false, note: null };
+
+/** A chip's spoken name: who, whether they're here (on the meeting day), retake, visitor. Undefined = just the name. */
+function chipLabel(name: string, m: { present?: boolean; retake?: boolean; visitor?: boolean }, open: boolean): string | undefined {
+  const label = `${name}${open ? (m.present ? ', here' : ', not here') : ''}${m.retake ? ', retake: already completed this' : ''}${m.visitor ? ', visitor' : ''}`;
+  return label === name ? undefined : label;
+}
+
+/** A chip's face: ✓ when here (meeting day), the name, a visitor tag, the retake star. */
+function ChipFace({ name, present, visitor, retake, open }: { name: string; present?: boolean; visitor?: boolean; retake?: boolean; open: boolean }) {
+  return (
+    <>
+      {open && present ? '✓ ' : ''}
+      {name}
+      {visitor ? <span className={styles.visitorTag}>visitor</span> : null}
+      {retake ? (
+        <span className={styles.star} aria-hidden="true">
+          ★
+        </span>
+      ) : null}
+    </>
+  );
+}
+
 export function LiveBoard({
   view,
   canEdit,
   entryId,
-  choices = EMPTY_CHOICES
+  choices = EMPTY_CHOICES,
+  attendance = CLOSED
 }: {
   view: LiveView;
   canEdit: boolean;
   entryId: number;
   choices?: LiveChoicesProp;
+  attendance?: LiveAttendanceProp;
 }) {
   const router = useRouter();
   const columns: Column[] = [
@@ -200,9 +233,17 @@ export function LiveBoard({
     }
   };
 
-  const showBar = !view.started || view.overlaps > 0 || notice != null;
+  const setPresent = (personId: number, present: boolean) => run(() => plannerLiveSetPresentAction({ entryId, personId, present }));
+  const addVisitor = (name: string, to: string | null) => run(() => plannerLiveAddVisitorAction({ entryId, name, to }));
+  const dayNote = canEdit && !attendance.open ? attendance.note : null;
+  const showBar = !view.started || view.overlaps > 0 || notice != null || dayNote != null;
   return (
     <div className={styles.live} aria-busy={busy}>
+      {!canEdit ? (
+        <div className={styles.roBanner} role="alert">
+          <strong>View only: you can’t record attendance here.</strong> You can see every class, but changes and attendance are off.
+        </div>
+      ) : null}
       {showBar ? (
         <div className={styles.bar}>
           {!view.started ? (
@@ -223,6 +264,7 @@ export function LiveBoard({
               ) : null}
             </span>
           ) : null}
+          {dayNote ? <p className={styles.preview}>{dayNote}</p> : null}
           {notice ? (
             <p className={styles.notice} role="status">
               {notice}
@@ -336,11 +378,16 @@ export function LiveBoard({
                   {view.pool.length ? (
                     <ul className={styles.chips}>
                       {view.pool.map((p) => (
-                        <li key={p.personId} className={canEdit ? styles.chipItem : styles.chip}>
+                        <li
+                          key={p.personId}
+                          className={canEdit ? styles.chipItem : attendance.open && !p.present ? styles.chipOut : styles.chip}
+                          aria-label={canEdit ? undefined : chipLabel(p.name, p, attendance.open)}
+                        >
                           {canEdit ? (
                             <button
                               type="button"
-                              className={styles.chipBtn}
+                              className={attendance.open && !p.present ? styles.chipBtnOut : styles.chipBtn}
+                              aria-label={chipLabel(p.name, p, attendance.open)}
                               draggable={fine}
                               onDragStart={(e) =>
                                 dragStart(e, {
@@ -358,10 +405,10 @@ export function LiveBoard({
                                 })
                               }
                             >
-                              {p.name}
+                              <ChipFace name={p.name} present={p.present} visitor={p.visitor} open={attendance.open} />
                             </button>
                           ) : (
-                            p.name
+                            <ChipFace name={p.name} present={p.present} visitor={p.visitor} open={attendance.open} />
                           )}
                         </li>
                       ))}
@@ -369,6 +416,11 @@ export function LiveBoard({
                   ) : (
                     <p className={styles.quiet}>Everyone has a class.</p>
                   )}
+                  {canEdit && attendance.open ? (
+                    <button type="button" className={styles.chipAdd} onClick={() => setSheet({ kind: 'addScout', card: null })}>
+                      + Add a scout
+                    </button>
+                  ) : null}
                 </section>
               ) : null}
               {cards.map((x) => (
@@ -376,6 +428,7 @@ export function LiveBoard({
                   key={x.id}
                   card={x}
                   canEdit={canEdit}
+                  open={attendance.open}
                   draggable={fine}
                   over={over === x.id}
                   rotations={view.rotations.map((r) => r.number)}
@@ -449,6 +502,9 @@ export function LiveBoard({
           sheet={sheet}
           view={view}
           choices={choices}
+          open={attendance.open}
+          onPresent={setPresent}
+          onVisitor={addVisitor}
           onClose={() => setSheet(null)}
           onSetTeacher={(card, teacherId) =>
             run(() =>
@@ -501,6 +557,7 @@ export function LiveBoard({
 function LiveCardView({
   card,
   canEdit,
+  open,
   draggable,
   over,
   rotations,
@@ -515,6 +572,7 @@ function LiveCardView({
 }: {
   card: LiveCard;
   canEdit: boolean;
+  open: boolean;
   draggable: boolean;
   over: boolean;
   rotations: number[];
@@ -535,7 +593,6 @@ function LiveCardView({
         : card.kind === 'rank' || card.kind === 'focus'
           ? styles.cardRank
           : styles.cardOther;
-  const retakeLabel = (name: string, retake: boolean) => (retake ? `${name}, retake: already completed this` : undefined);
   return (
     <article
       className={`${styles.card} ${kind}`}
@@ -585,28 +642,18 @@ function LiveCardView({
               <li key={m.personId} className={styles.chipItem}>
                 <button
                   type="button"
-                  className={styles.chipBtn}
-                  aria-label={retakeLabel(m.name, m.retake)}
+                  className={open && !m.present ? styles.chipBtnOut : styles.chipBtn}
+                  aria-label={chipLabel(m.name, m, open)}
                   draggable={draggable}
                   onDragStart={(e) => onDragStartScout(e, m.personId)}
                   onClick={() => onScout(m.personId, m.name)}
                 >
-                  {m.name}
-                  {m.retake ? (
-                    <span className={styles.star} aria-hidden="true">
-                      ★
-                    </span>
-                  ) : null}
+                  <ChipFace name={m.name} present={m.present} visitor={m.visitor} retake={m.retake} open={open} />
                 </button>
               </li>
             ) : (
-              <li key={m.personId} className={styles.chip} aria-label={retakeLabel(m.name, m.retake)}>
-                {m.name}
-                {m.retake ? (
-                  <span className={styles.star} aria-hidden="true">
-                    ★
-                  </span>
-                ) : null}
+              <li key={m.personId} className={open && !m.present ? styles.chipOut : styles.chip} aria-label={chipLabel(m.name, m, open)}>
+                <ChipFace name={m.name} present={m.present} visitor={m.visitor} retake={m.retake} open={open} />
               </li>
             )
           )}
@@ -674,6 +721,9 @@ function LiveSheet({
   sheet,
   view,
   choices,
+  open,
+  onPresent,
+  onVisitor,
   onClose,
   onSetTeacher,
   onMoveScout,
@@ -685,6 +735,9 @@ function LiveSheet({
   sheet: NonNullable<Sheet>;
   view: LiveView;
   choices: LiveChoicesProp;
+  open: boolean;
+  onPresent: (personId: number, present: boolean) => void;
+  onVisitor: (name: string, to: string | null) => void;
   onClose: () => void;
   onSetTeacher: (card: LiveCard, teacherId: number | null) => void;
   onMoveScout: (personId: number, from: string | null, to: string | null) => void;
@@ -713,6 +766,13 @@ function LiveSheet({
       view.cards.filter((o) => o.id !== c.id && o.teacher?.personId === personId && o.rotation != null).map((o) => `R${o.rotation}`);
     return (
       <Drawer eyebrow="Teacher" title={c.title} sub={rotWord(c.rotation)} onClose={onClose}>
+        {open && c.teacher ? (
+          <ul className={styles.sheetList}>
+            <SheetRow note={c.teacher.present ? 'Off Roll Call for tonight' : 'Counts on Roll Call'} onClick={() => onPresent(c.teacher!.personId, !c.teacher!.present)}>
+              {`${c.teacher.present ? 'Mark not present' : 'Mark here'}: ${c.teacher.name}`}
+            </SheetRow>
+          </ul>
+        ) : null}
         {finder}
         <ul className={styles.sheetList}>
           {[...choices.teachers]
@@ -746,9 +806,15 @@ function LiveSheet({
     const inTopic = (key: string, id: string) =>
       view.cards.find((o) => o.id !== id && o.id !== from?.id && o.topicKey === key && o.members.some((m) => m.personId === personId));
     const targets = view.cards.filter((o) => o.id !== from?.id);
+    const isHere = (from ? from.members : view.pool).find((m) => m.personId === personId)?.present ?? false;
     return (
       <Drawer eyebrow={from ? `${from.title} · ${rotWord(from.rotation)}` : 'Coming, nothing assigned'} title={sheet.name} onClose={onClose}>
         <ul className={styles.sheetList}>
+          {open ? (
+            <SheetRow note={isHere ? 'Off Roll Call for tonight' : 'Counts on Roll Call'} onClick={() => onPresent(personId, !isHere)}>
+              {isHere ? 'Mark not present' : 'Mark here'}
+            </SheetRow>
+          ) : null}
           {from ? (
             <SheetRow danger note="Back to “nothing assigned”" onClick={() => onMoveScout(personId, from.id, null)}>
               Remove from this class
@@ -811,13 +877,15 @@ function LiveSheet({
   if (sheet.kind === 'addScout') {
     const c = sheet.card;
     const pool = new Set(view.pool.map((p) => p.personId));
+    const herePool = new Set(view.pool.filter((p) => p.present).map((p) => p.personId));
+    const typed = find.trim();
     // Scouts in no class yet; a placed scout moves from their own chip (a move is compare-and-set from that class).
     const placed = new Set(view.cards.flatMap((o) => o.members.map((m) => m.personId)));
     const list = choices.scouts
-      .filter((s) => !placed.has(s.personId))
+      .filter((s) => !placed.has(s.personId) && (c != null || !herePool.has(s.personId)))
       .sort((a, b) => Number(!pool.has(a.personId)) - Number(!pool.has(b.personId)));
     return (
-      <Drawer eyebrow="Add a scout" title={c.title} sub={rotWord(c.rotation)} onClose={onClose}>
+      <Drawer eyebrow="Add a scout" title={c ? c.title : 'Here, nothing assigned'} sub={c ? rotWord(c.rotation) : undefined} onClose={onClose}>
         {finder}
         <ul className={styles.sheetList}>
           {list
@@ -826,11 +894,16 @@ function LiveSheet({
               <SheetRow
                 key={s.personId}
                 note={pool.has(s.personId) ? 'coming, nothing assigned' : undefined}
-                onClick={() => onMoveScout(s.personId, null, c.id)}
+                onClick={() => (c ? onMoveScout(s.personId, null, c.id) : onPresent(s.personId, true))}
               >
                 {s.name}
               </SheetRow>
             ))}
+          {open && typed.length >= 2 ? (
+            <SheetRow onClick={() => onVisitor(typed, c ? c.id : null)}>
+              {`+ Add “${typed}” as a visitor`}
+            </SheetRow>
+          ) : null}
         </ul>
       </Drawer>
     );

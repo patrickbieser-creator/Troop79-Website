@@ -12,11 +12,10 @@
 import { revalidatePath } from 'next/cache';
 import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
-import { loadCalendarCategories } from '@/lib/calendar';
-import { creditRuleFor, defaultQtyFor } from '@/lib/attendance-shared';
 import {
+  loadEntryContext as loadContext,
   recordAttendance,
-  retireCredit,
+  removeAttendance,
   seedAttendance,
   syncCredit,
   type EntryContext,
@@ -30,30 +29,9 @@ function revalidateRollCall(entryId: number) {
   revalidatePath('/admin/advancement/audits');
 }
 
+/** The entry's context with the service-role client (lib/attendance-admin, shared with Meeting Live). */
 async function loadEntryContext(entryId: number): Promise<EntryContext | null> {
-  const supabase = createAdminClient();
-  const [{ data: entry }, categories] = await Promise.all([
-    supabase
-      .from('calendar_entries')
-      .select('id, entry_date, end_date, category, title')
-      .eq('id', entryId)
-      .maybeSingle(),
-    loadCalendarCategories()
-  ]);
-  if (!entry) return null;
-
-  const rule = creditRuleFor(categories, entry.category as string);
-  return {
-    id: entry.id as number,
-    entryDate: entry.entry_date as string,
-    title: entry.title as string,
-    creditKind: rule.creditKind,
-    defaultQty: defaultQtyFor(
-      rule.creditKind,
-      entry.entry_date as string,
-      (entry.end_date as string) ?? null
-    )
-  };
+  return loadContext(createAdminClient(), entryId);
 }
 
 export async function markAttended(
@@ -76,26 +54,10 @@ export async function markAbsent(entryId: number, personId: number): Promise<Res
   const ctx = await loadEntryContext(entryId);
   if (!ctx) return { ok: false, error: 'That entry no longer exists.' };
 
-  const supabase = createAdminClient();
-
-  /*
-   * CREDIT FIRST, then attendance — the reverse of the obvious order.
-   *
-   * A failure part-way must leave attendance-without-credit (loud: the scout is
-   * visibly short and the reconciliation audit says so), never
-   * credit-without-attendance (quiet: a scout holds credit for an event they
-   * were removed from). Deleting the attendance row first would produce exactly
-   * the failure this design exists to avoid — flagged by qa-lead.
-   */
-  const creditResult = await retireCredit(supabase, ctx, personId, session.label);
-  if (!creditResult.ok) return creditResult;
-
-  const { error } = await supabase
-    .from('event_attendance')
-    .delete()
-    .eq('calendar_entry_id', entryId)
-    .eq('person_id', personId);
-  if (error) return { ok: false, error: error.message };
+  // CREDIT FIRST, then attendance (the ordering rule in lib/attendance-admin): a failure part-way leaves
+  // attendance-without-credit, never credit-without-attendance.
+  const result = await removeAttendance(createAdminClient(), ctx, personId, session.label);
+  if (!result.ok) return result;
 
   revalidateRollCall(entryId);
   return { ok: true };
