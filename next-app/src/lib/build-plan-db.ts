@@ -12,7 +12,7 @@ import { loadAdvancementCatalog } from '@/lib/advancement-catalog';
 import { loadIntents } from '@/lib/meeting-board';
 import { boardName } from '@/lib/meeting-board-shared';
 import { loadTeacherPeople, teachContext } from '@/lib/meeting-board-supply';
-import { assessTeacher, teacherName, topicSkill } from '@/lib/meeting-board-teach';
+import { assessTeacher, teacherName, topicSkill, type TeacherPerson } from '@/lib/meeting-board-teach';
 import { itemView } from '@/lib/meeting-focus-db';
 import { loadPlannerLists } from '@/lib/people-lists';
 import { teacherChoices, type TeacherChoice } from '@/lib/build-plan';
@@ -101,28 +101,63 @@ export async function loadMixOnMeeting(sb: SupabaseClient, entryId: number, key:
 
 /** Who could teach an offering, for its Edit: everyone in the teacher pool, qualified first with why (teacherChoices). */
 export async function loadTeacherChoices(sb: SupabaseClient, meeting: { entryId: number; date: string }, key: string): Promise<TeacherChoice[]> {
+  return (await loadTeacherChoicesMany(sb, meeting, [key])).choices.get(key) ?? [];
+}
+
+type TopicKeyRow = { person_id?: number; item_key?: string; meeting_topics: One<{ topic_key: string }> };
+
+/**
+ * teacherChoices for many offerings over ONE read of the pool (Build a Plan B3's invite sheet): the catalog, the pool,
+ * who teaches each key now and the mixes' parts are read once, whatever the number of keys. Also returns the pool's
+ * people (their kind: a teach ask goes to adults only).
+ */
+export async function loadTeacherChoicesMany(
+  sb: SupabaseClient,
+  meeting: { entryId: number; date: string },
+  keys: readonly string[]
+): Promise<{ choices: Map<string, TeacherChoice[]>; people: Map<number, TeacherPerson> }> {
+  const mixes = keys.filter((k) => k.startsWith('fg:'));
   const [catalog, lists, current, members] = await Promise.all([
     loadAdvancementCatalog(),
     loadPlannerLists(),
-    sb.from('meeting_topic_teachers').select('person_id, meeting_topics!inner(topic_key)').eq('calendar_entry_id', meeting.entryId).eq('meeting_topics.topic_key', key),
-    key.startsWith('fg:')
-      ? sb.from('meeting_topic_members').select('item_key, meeting_topics!inner(calendar_entry_id, topic_key)').eq('meeting_topics.calendar_entry_id', meeting.entryId).eq('meeting_topics.topic_key', key)
+    sb.from('meeting_topic_teachers').select('person_id, meeting_topics!inner(topic_key)').eq('calendar_entry_id', meeting.entryId).in('meeting_topics.topic_key', [...keys]),
+    mixes.length
+      ? sb.from('meeting_topic_members').select('item_key, meeting_topics!inner(calendar_entry_id, topic_key)').eq('meeting_topics.calendar_entry_id', meeting.entryId).in('meeting_topics.topic_key', mixes)
       : null
   ]);
   const err = current.error ?? members?.error;
   if (err) throw new Error(err.message);
   const people = await loadTeacherPeople(sb, 'all', meeting.date, catalog, { pool: lists.pool });
+  const byKey = (rows: TopicKeyRow[]) => {
+    const m = new Map<string, TopicKeyRow[]>();
+    for (const r of rows) {
+      const k = one(r.meeting_topics)?.topic_key;
+      if (k) m.set(k, [...(m.get(k) ?? []), r]);
+    }
+    return m;
+  };
+  const teachingBy = byKey((current.data ?? []) as unknown as TopicKeyRow[]);
+  const membersBy = byKey((members?.data ?? []) as unknown as TopicKeyRow[]);
   // Someone already teaching it who isn't in the pool any more still shows, so they can be taken off.
-  const teaching = new Set(((current.data ?? []) as { person_id: number }[]).map((r) => r.person_id));
-  const missing = [...teaching].filter((id) => !people.has(id));
+  const missing = [...new Set([...teachingBy.values()].flat().map((r) => r.person_id!))].filter((id) => !people.has(id));
   if (missing.length) for (const [id, p] of await loadTeacherPeople(sb, missing, meeting.date, catalog, { evenIfIneligible: true })) people.set(id, p);
-  return teacherChoices({
-    people: [...people.values()],
-    key,
-    members: ((members?.data ?? []) as { item_key: string }[]).map((m) => m.item_key),
-    ctx: teachContext(catalog),
-    skillNames: new Map(catalog.skills.map((s) => [s.id, s.name])),
-    badges: catalog.meritBadges.map((m) => ({ id: m.id, name: m.name })),
-    teaching
-  });
+  const ctx = teachContext(catalog);
+  const skillNames = new Map(catalog.skills.map((x) => [x.id, x.name]));
+  const badges = catalog.meritBadges.map((m) => ({ id: m.id, name: m.name }));
+  const all = [...people.values()];
+  const choices = new Map(
+    keys.map((key) => [
+      key,
+      teacherChoices({
+        people: all,
+        key,
+        members: (membersBy.get(key) ?? []).map((m) => m.item_key!),
+        ctx,
+        skillNames,
+        badges,
+        teaching: new Set((teachingBy.get(key) ?? []).map((r) => r.person_id!))
+      })
+    ])
+  );
+  return { choices, people };
 }

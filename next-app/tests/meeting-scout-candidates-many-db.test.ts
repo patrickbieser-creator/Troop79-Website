@@ -62,13 +62,13 @@ async function scout(id: number, rank: string): Promise<void> {
 async function oneByOne(key: string) {
   const m = await loadMeetingById(sb, meeting);
   const catalog = await loadCatalog();
-  const out: { personId: number; name: string; note: string; ticked: boolean }[] = [];
+  const out: { personId: number; name: string; note: string; ticked: boolean; currentRank: string | null }[] = [];
   for (const s of await loadBoardScouts(sb)) {
     const board = await loadScoutBoard(sb, m!, s, catalog, { viewerPersonId: null });
     const intent = board.view.intent;
     if (intent === 'not_coming' || !pickableKeys(board.pickList).has(key)) continue;
     const picked = board.picks.some((p) => p.key === key);
-    out.push({ personId: s.personId, name: boardName(s.name), note: `${intent ? INTENT_LABEL[intent] : 'no answer'}${picked ? ' · picked it' : ''}`, ticked: !picked });
+    out.push({ personId: s.personId, name: boardName(s.name), note: `${intent ? INTENT_LABEL[intent] : 'no answer'}${picked ? ' · picked it' : ''}`, ticked: !picked, currentRank: s.currentRank });
   }
   return out.sort((a, b) => Number(b.ticked) - Number(a.ticked) || a.name.localeCompare(b.name));
 }

@@ -22,7 +22,8 @@ import { loadPlannerPage } from '@/lib/meeting-planner-load';
 import { loadPlannerLists } from '@/lib/people-lists';
 import { loadEngineInput } from '@/lib/meeting-suggest/load-input';
 import { buildMeetingPlan } from '@/lib/meeting-suggest/engine';
-import { pickMeeting, planRows, PLAN_MEETINGS, rankSuggestions, SUGGESTION_LIMIT } from '@/lib/build-plan';
+import { invitedCount, pickMeeting, planRows, PLAN_MEETINGS, rankSuggestions, SUGGESTION_LIMIT } from '@/lib/build-plan';
+import { loadInviteRows } from '@/lib/meeting-invites-db';
 import { PageHeader } from '@/app/_components/page-header';
 import { PageShell } from '@/app/_components/page-shell';
 import { Notice } from '@/app/_components/notice';
@@ -32,6 +33,9 @@ import styles from '../planner.module.css';
 import s from './build.module.css';
 
 export const dynamic = 'force-dynamic';
+// Server Actions take the page's maxDuration. Invite… (B3) sends up to 100 digest emails a few at a time and starts no
+// new batch after 40 s (lib/meeting-invite-digest-send), well inside this.
+export const maxDuration = 60;
 
 export const metadata = {
   title: 'Build a Plan — Meeting Planner — Scout Troop 79'
@@ -99,7 +103,7 @@ export default async function BuildPlanPage({ searchParams }: { searchParams: Pr
     );
   }
 
-  const page = await loadPlannerPage(sb, meeting, lists);
+  const [page, inviteRows] = await Promise.all([loadPlannerPage(sb, meeting, lists), loadInviteRows(sb, meeting.entryId).catch(() => [])]);
   if (!page) return null;
   const rows = planRows(page.board);
   const heading = (
@@ -130,6 +134,8 @@ export default async function BuildPlanPage({ searchParams }: { searchParams: Pr
         rows={rows}
         canSeed={access.canSeed}
         canEdit={access.canEdit}
+        canEmail={access.canEmail}
+        invited={invitedCount(inviteRows)}
         dayLabel={fmtDate(meeting.date, { year: false })}
         stamp={page.stamp}
         heading={heading}

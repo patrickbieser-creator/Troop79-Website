@@ -83,7 +83,12 @@ export function afterRemove(row: PlanRow, stays: boolean): PlanRow | null {
   return { ...row, seeded: false, origin: row.scouts ? 'scouts' : 'teacher' };
 }
 
-/** The rail: "5 offerings · 3 with teachers · 14 scouts signed up" (invited counts arrive in B3). */
+/** B3's "N invited": the people asked to teach or offered a class on this meeting (each counted once). */
+export function invitedCount(rows: readonly { invitee_person_id: number }[]): number {
+  return new Set(rows.map((r) => r.invitee_person_id)).size;
+}
+
+/** The rail: "5 offerings · 3 with teachers · 14 scouts signed up" (B3 adds "· 6 invited", from invitedCount). */
 export function planSummary(rows: readonly PlanRow[]): { offerings: number; withTeachers: number; scouts: number } {
   return { offerings: rows.length, withTeachers: rows.filter((r) => r.teachers.length).length, scouts: rows.reduce((n, r) => n + r.scouts, 0) };
 }

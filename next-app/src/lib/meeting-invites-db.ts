@@ -28,7 +28,7 @@ import { INVITE_DEDUPE_HOURS, INVITE_FAILURES_PER_HOUR, INVITE_SEND_CAP, inviteE
 
 /** 32 random bytes as LOWERCASE hex: mail gateways that lowercase URLs can't break it (see identity-challenge's
  *  randomLinkToken for the 2026-08-16 bug that set this rule). */
-function randomInviteToken(): string {
+export function randomInviteToken(): string {
   const bytes = new Uint8Array(32);
   crypto.getRandomValues(bytes);
   return Array.from(bytes)
@@ -42,7 +42,7 @@ interface MeetingRow {
 }
 
 /** A troop meeting whose day hasn't passed (Central), or null. */
-async function upcomingMeeting(sb: SupabaseClient, entryId: number): Promise<MeetingRow | null> {
+export async function upcomingMeeting(sb: SupabaseClient, entryId: number): Promise<MeetingRow | null> {
   const { data } = await sb.from('calendar_entries').select('id, entry_date, category').eq('id', entryId).maybeSingle();
   const row = data as (MeetingRow & { category: string }) | null;
   if (!row || row.entry_date < centralToday()) return null;
@@ -344,13 +344,13 @@ export function scoutMayBeMailed(birthdate: string | null, meetingDate: string):
 type FamilyPerson = { id: number; display_name: string; active: boolean; session_epoch: number; birthdate: string | null; primary_email: string | null };
 
 /** The scouts, their parents (parent_of) and the scouts' own verified addresses: what scoutRecipients decides from. */
-interface ScoutFamilies {
+export interface ScoutFamilies {
   person: Map<number, FamilyPerson>;
   parentsOf: Map<number, number[]>;
   verifiedEmail: Map<number, string>;
 }
 
-async function loadScoutFamilies(sb: SupabaseClient, scoutIds: readonly number[]): Promise<ScoutFamilies> {
+export async function loadScoutFamilies(sb: SupabaseClient, scoutIds: readonly number[]): Promise<ScoutFamilies> {
   const ids = [...scoutIds];
   const parentsOf = new Map<number, number[]>();
   if (!ids.length) return { person: new Map(), parentsOf, verifiedEmail: new Map() };
@@ -390,6 +390,67 @@ async function scoutRecipients(
   const self = family.person.get(scoutId);
   const own = family.verifiedEmail.get(scoutId);
   if (self && own && scoutMayBeMailed(self.birthdate, meetingDate)) out.push({ recipientId: scoutId, sentTo: own, epoch: self.session_epoch, isScout: true });
+  return out;
+}
+
+/** Who an email reaches: a scout's parent, the scout themself, or an adult. */
+export interface MailRecipient {
+  recipientId: number;
+  sentTo: string;
+  epoch: number;
+  isScout: boolean;
+}
+
+/**
+ * Build a Plan B3: scoutRecipients for many scouts in ONE round trip (meeting_may_act_for_many, the same rule per pair),
+ * so the invite sheet and the digest send decide alike however many families there are. A scout with no parent in
+ * their list is the caller's to refuse.
+ */
+export async function scoutRecipientsMany(sb: SupabaseClient, family: ScoutFamilies, scoutIds: readonly number[], meetingDate: string): Promise<Map<number, MailRecipient[]>> {
+  const pairs = scoutIds.flatMap((target) =>
+    (family.parentsOf.get(target) ?? []).filter((actor) => family.person.get(actor)?.active && family.person.get(actor)?.primary_email).map((actor) => ({ actor, target }))
+  );
+  const may = new Set<string>();
+  if (pairs.length) {
+    const { data, error } = await sb.rpc('meeting_may_act_for_many', { p_pairs: pairs });
+    if (error) throw new Error(error.message);
+    for (const r of (data ?? []) as { actor: number; target: number }[]) may.add(`${r.actor}:${r.target}`);
+  }
+  const out = new Map<number, MailRecipient[]>();
+  for (const scoutId of scoutIds) {
+    const list: MailRecipient[] = [];
+    for (const parentId of family.parentsOf.get(scoutId) ?? []) {
+      const parent = family.person.get(parentId);
+      if (!parent?.primary_email || !may.has(`${parentId}:${scoutId}`)) continue;
+      list.push({ recipientId: parentId, sentTo: parent.primary_email, epoch: parent.session_epoch, isScout: false });
+    }
+    const self = family.person.get(scoutId);
+    const own = family.verifiedEmail.get(scoutId);
+    if (self && own && scoutMayBeMailed(self.birthdate, meetingDate)) list.push({ recipientId: scoutId, sentTo: own, epoch: self.session_epoch, isScout: true });
+    out.set(scoutId, list);
+  }
+  return out;
+}
+
+/**
+ * Build a Plan B3: the adults a teach ask may go to, in two reads (identityForPerson's rule, batched): an active person
+ * in the directory who isn't an active scout, with a primary address. Anyone else is absent from the map.
+ */
+export async function adultRecipients(sb: SupabaseClient, personIds: readonly number[]): Promise<Map<number, MailRecipient & { name: string }>> {
+  const ids = [...new Set(personIds)];
+  const out = new Map<number, MailRecipient & { name: string }>();
+  if (!ids.length) return out;
+  const [{ data: dir, error: e1 }, { data: rows, error: e2 }] = await Promise.all([
+    sb.from('person_directory').select('person_id, tab').in('person_id', ids),
+    sb.from('people').select('id, display_name, active, session_epoch, primary_email').in('id', ids)
+  ]);
+  if (e1 || e2) throw new Error((e1 ?? e2)!.message);
+  const adult = new Set(((dir ?? []) as { person_id: number; tab: string }[]).filter((d) => d.tab !== 'active_scout').map((d) => d.person_id));
+  for (const p of (rows ?? []) as { id: number; display_name: string; active: boolean; session_epoch: number | null; primary_email: string | null }[]) {
+    const to = p.primary_email?.trim();
+    if (!adult.has(p.id) || !p.active || p.session_epoch == null || !to) continue;
+    out.set(p.id, { recipientId: p.id, sentTo: to, epoch: p.session_epoch, isScout: false, name: p.display_name });
+  }
   return out;
 }
 

@@ -28,8 +28,12 @@ import { SET_NAME_MAX, type FocusSetItem } from '@/lib/meeting-focus';
 import { plannerAccess } from '@/lib/meeting-planner-access';
 import { plannerSeeder } from '@/lib/meeting-planner-seeder';
 import { loadPlannerLists } from '@/lib/people-lists';
-import { loadMixOnMeeting, loadTeacherChoices, teachersOfKeys } from '@/lib/build-plan-db';
-import { isOfferingKey, PLAN_MEETINGS, type TeacherChoice } from '@/lib/build-plan';
+import { loadMixOnMeeting, loadTeacherChoices, loadTeacherChoicesMany, teachersOfKeys } from '@/lib/build-plan-db';
+import { invitedCount, isOfferingKey, PLAN_MEETINGS, type TeacherChoice } from '@/lib/build-plan';
+import { loadInviteRows } from '@/lib/meeting-invites-db';
+import { loadInviteSheet } from '@/lib/meeting-invite-digest-db';
+import { sendInviteDigests } from '@/lib/meeting-invite-digest-send';
+import { DIGEST_INVITE_CAP, DIGEST_KEYS_MAX, type InviteSection } from '@/lib/meeting-invite-digest';
 
 const fail = (error: string): { ok: false; error: string } => ({ ok: false, error });
 
@@ -194,4 +198,70 @@ export async function plannerSetTeacherAction(input: { entryId: number; key: str
     s.sb.from('meeting_topics').select('id').eq('calendar_entry_id', s.meeting.entryId).eq('topic_key', input.key).maybeSingle()
   ]);
   return { ok: true, teachers: teachers.get(input.key) ?? [], onBoard: topic.error != null || topic.data != null, prior: s.prior, stamp };
+}
+
+// ── B3: Invite… (adults with the edit right; Decision 2: one digest per recipient) ──────────────────────────────────
+
+/** An adult editor on one of the next meetings, with the keys on its plan. A scout editor (the SPL) never sends. */
+async function inviteGate(entryId: unknown) {
+  const s = await gate(entryId, 'edit');
+  if (!s.ok) return s;
+  if (!plannerAccess(await resolveAdminActor()).canEmail) return fail('Only adults send email.');
+  const { data, error } = await s.sb.from('meeting_topics').select('topic_key').eq('calendar_entry_id', s.meeting.entryId);
+  if (error) return fail('That didn’t load. Try again.');
+  return { ...s, onPlan: ((data ?? []) as { topic_key: string }[]).map((r) => r.topic_key) };
+}
+
+export type InviteSheetResult = { ok: true; sections: InviteSection[] } | { ok: false; error: string };
+
+/** The review sheet: every offering on the plan, or the one row a per-row Invite opened it for. */
+export async function plannerInviteSheetAction(input: { entryId: number; key?: string }): Promise<InviteSheetResult> {
+  if (input?.key !== undefined && !isTopicKey(input.key)) return fail('Malformed request');
+  const s = await inviteGate(input?.entryId);
+  if (!s.ok) return s;
+  const keys = input.key !== undefined ? s.onPlan.filter((k) => k === input.key) : s.onPlan;
+  if (input.key !== undefined && !keys.length) return fail('That isn’t on this meeting’s plan.');
+  try {
+    return { ok: true, sections: await loadInviteSheet(s.sb, s.meeting, keys) };
+  } catch {
+    return fail('The list didn’t load. Close and try again.');
+  }
+}
+
+export type InviteSendResult =
+  | { ok: true; sent: string[]; emails: number; skipped: { name: string; reason: string }[]; invited: number; prior: string; stamp: string }
+  | { ok: false; error: string };
+
+const idList = (xs: unknown): xs is number[] => Array.isArray(xs) && xs.length <= DIGEST_INVITE_CAP && xs.every((n) => Number.isInteger(n));
+
+/**
+ * Send N emails: the ticked teach asks and scout offers, one digest per recipient. Only offerings on this meeting's
+ * plan; a teach ask only to a qualified adult not already teaching it (the sheet's rule, re-read here); everything
+ * else about who may be invited is re-decided in createInviteDigest.
+ */
+export async function plannerSendInvitesAction(input: { entryId: number; teach: { key: string; personIds: number[] }[]; pick: { key: string; scoutIds: number[] }[] }): Promise<InviteSendResult> {
+  const teach = input?.teach;
+  const pick = input?.pick;
+  if (!Array.isArray(teach) || !Array.isArray(pick) || teach.length + pick.length > DIGEST_KEYS_MAX * 2) return fail('Malformed request');
+  if (!teach.every((t) => isTopicKey(t?.key) && idList(t.personIds)) || !pick.every((p) => isTopicKey(p?.key) && idList(p.scoutIds))) return fail('Malformed request');
+  if (!teach.some((t) => t.personIds.length) && !pick.some((p) => p.scoutIds.length)) return fail('Tick at least one person.');
+  const s = await inviteGate(input.entryId);
+  if (!s.ok) return s;
+  const onPlan = new Set(s.onPlan);
+  if (![...teach, ...pick].every((x) => onPlan.has(x.key))) return fail('That isn’t on this meeting’s plan.');
+
+  const skippedTeach: { name: string; reason: string }[] = [];
+  let allowed = teach;
+  if (teach.length) {
+    const { choices, people } = await loadTeacherChoicesMany(s.sb, s.meeting, [...new Set(teach.map((t) => t.key))]);
+    allowed = teach.map((t) => {
+      const ok = new Set((choices.get(t.key) ?? []).filter((c) => c.qualified && !c.teaching && people.get(c.personId)?.kind === 'adult').map((c) => c.personId));
+      for (const id of t.personIds) if (!ok.has(id)) skippedTeach.push({ name: people.get(id)?.displayName ?? `Person ${id}`, reason: 'isn’t someone who can teach that' });
+      return { key: t.key, personIds: t.personIds.filter((id) => ok.has(id)) };
+    });
+  }
+  const res = await sendInviteDigests(s.sb, { entryId: s.meeting.entryId, teach: allowed, pick, sentBy: s.actorPersonId });
+  if (!res.ok) return res;
+  const [stamp, rows] = await Promise.all([loadBoardStamp(s.sb, s.meeting.entryId), loadInviteRows(s.sb, s.meeting.entryId)]);
+  return { ...res, skipped: [...skippedTeach, ...res.skipped], invited: invitedCount(rows), prior: s.prior, stamp };
 }

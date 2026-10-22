@@ -13,6 +13,10 @@
  *
  * B2: seed holders get one quiet add row under the list (+ Requirement, + Focus set, + New mix: ./add-offering), and
  * each row a quiet Edit (./edit-offering): its teacher for editors, a mix's requirements for seed holders.
+ *
+ * B3: once the plan has an offering, editors get the one primary "Invite…" in a sticky bottom bar (./invite-sheet:
+ * one digest email per recipient), and adults a quiet per-row Invite scoped to that row. For a scout editor (the SPL)
+ * the button is greyed with the reason; the server refuses regardless. The rail gains "N invited".
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
@@ -46,6 +50,7 @@ import {
 } from '../build-actions';
 import { AddOffering } from './add-offering';
 import { EditOffering } from './edit-offering';
+import { InviteSheet } from './invite-sheet';
 import { rowCode } from './requirement-search';
 import { PlannerPoller } from '../planner-poller';
 import s from './build.module.css';
@@ -70,6 +75,8 @@ export function BuildPlanView({
   rows: initialRows,
   canSeed,
   canEdit = false,
+  canEmail = false,
+  invited: initialInvited = 0,
   dayLabel = '',
   stamp,
   heading,
@@ -80,6 +87,10 @@ export function BuildPlanView({
   canSeed: boolean;
   /** meeting_planner.edit: an offering's teacher (B2). */
   canEdit?: boolean;
+  /** An adult editor: sends invites (B3). */
+  canEmail?: boolean;
+  /** People invited (teach or offer) on this meeting so far. */
+  invited?: number;
   /** 'Oct 25': a new mix's name until typed over. */
   dayLabel?: string;
   stamp: string;
@@ -98,6 +109,14 @@ export function BuildPlanView({
   }
   const [suggestions, setSuggestions] = useState<Feed>({ status: 'loading' });
   const [sheet, setSheet] = useState(false);
+  /** The Invite sheet: every offering (''), or one row's key. */
+  const [inviting, setInviting] = useState<string | null>(null);
+  const [invited, setInvited] = useState(initialInvited);
+  const [loadedInvited, setLoadedInvited] = useState(initialInvited);
+  if (loadedInvited !== initialInvited) {
+    setLoadedInvited(initialInvited);
+    setInvited(initialInvited);
+  }
   const [removing, setRemoving] = useState<{ row: PlanRow; trigger: HTMLElement | null } | null>(null);
   /** The row whose Edit is open, as it was when opened: the drawer stays (saying so) if the row leaves the plan. */
   const [editing, setEditing] = useState<PlanRow | null>(null);
@@ -171,7 +190,7 @@ export function BuildPlanView({
       {heading}
       <div className={s.rail}>
         <p className={s.railText}>
-          {plural(sum.offerings, 'offering')} · {sum.withTeachers} with {sum.withTeachers === 1 ? 'a teacher' : 'teachers'} · {plural(sum.scouts, 'scout')} signed up ·{' '}
+          {plural(sum.offerings, 'offering')} · {sum.withTeachers} with {sum.withTeachers === 1 ? 'a teacher' : 'teachers'} · {plural(sum.scouts, 'scout')} signed up · {invited} invited ·{' '}
           <PlannerPoller entryId={entryId} stamp={stamp} build stampRef={stampRef} />
         </p>
         {canSeed ? (
@@ -194,6 +213,7 @@ export function BuildPlanView({
                   canSeed={canSeed}
                   canEdit={canEdit || (canSeed && r.key.startsWith('fg:'))}
                   onEdit={() => setEditing(r)}
+                  onInvite={canEmail ? () => setInviting(r.key) : undefined}
                   onRemove={(trigger) => setRemoving({ row: r, trigger })}
                 />
               ))}
@@ -227,6 +247,26 @@ export function BuildPlanView({
           onTeachers={(res) => onTeachers(editing.key, res)}
           onMix={(res) => onMix(editing.key, res)}
           onClose={() => setEditing(null)}
+        />
+      ) : null}
+      {canEdit && rows.length ? (
+        <div className={s.inviteBar}>
+          {canEmail ? null : <span className={s.inviteWhy}>Only adults send email</span>}
+          <Button variant="primary" onClick={() => setInviting('')} disabled={!canEmail} aria-haspopup="dialog">
+            Invite…
+          </Button>
+        </div>
+      ) : null}
+      {inviting !== null && canEmail ? (
+        <InviteSheet
+          entryId={entryId}
+          rows={rows}
+          only={inviting || null}
+          onSent={(res) => {
+            landed(res);
+            setInvited(res.invited);
+          }}
+          onClose={() => setInviting(null)}
         />
       ) : null}
       {removing ? (
@@ -264,12 +304,15 @@ function PlanRowView({
   canSeed,
   canEdit,
   onEdit,
+  onInvite,
   onRemove
 }: {
   row: PlanRow;
   canSeed: boolean;
   canEdit: boolean;
   onEdit: () => void;
+  /** Adults only: the Invite sheet for this row. */
+  onInvite?: () => void;
   onRemove: (trigger: HTMLElement | null) => void;
 }) {
   return (
@@ -289,6 +332,11 @@ function PlanRowView({
           {canEdit ? (
             <button type="button" className={s.editBtn} onClick={onEdit} aria-haspopup="dialog" aria-label={`Edit ${row.title}`}>
               Edit
+            </button>
+          ) : null}
+          {onInvite ? (
+            <button type="button" className={s.editBtn} onClick={onInvite} aria-haspopup="dialog" aria-label={`Invite for ${row.title}`}>
+              Invite
             </button>
           ) : null}
           {canSeed ? <RowMenu row={row} onRemove={onRemove} /> : null}

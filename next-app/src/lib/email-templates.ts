@@ -119,6 +119,18 @@ export const TEMPLATE_KINDS: TemplateKind[] = [
       { token: 'people', label: 'Who it’s about ("you", or the scouts)' },
       { token: 'day', label: 'Meeting day' }
     ]
+  },
+  {
+    // Build a Plan B3 (Decision 2): one email per recipient listing every invite for them. Each invite's answer link
+    // is listed below the body, never a field.
+    kind: 'meeting.invite_digest',
+    label: 'Meeting — invites (one email per family)',
+    audience: 'family',
+    fields: [
+      { token: 'name', label: 'Their first name' },
+      { token: 'people', label: 'Who it’s about ("you", or the scouts)' },
+      { token: 'day', label: 'Meeting day' }
+    ]
   }
 ];
 

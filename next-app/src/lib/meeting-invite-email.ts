@@ -120,3 +120,56 @@ export function renderReminder(t: InviteTemplate, v: ReminderValues): { subject:
     .trim();
   return { subject: fillTokens(t.subject, vals).replace(/\s+/g, ' ').trim(), md };
 }
+
+export const INVITE_DIGEST_KIND = 'meeting.invite_digest';
+
+/**
+ * Build a Plan B3 (Plans/Build-A-Plan.md Decision 2): ONE email per recipient for a meeting, listing every invite for
+ * them (teach asks and scout offers). Each invite keeps its own answer link, and the list rides below the body (never a
+ * template field), so no template can drop or rewrite a link.
+ */
+export const DEFAULT_INVITE_DIGEST: InviteTemplate = {
+  subject: 'Troop meeting on [day]: invites for [people]',
+  body: `Hi [name],
+
+We're planning the troop meeting on [day] and would like to ask [people] about the classes below. Each one has its own link, so answer them one at a time. Yes on a class to work on makes it the first pick and marks them coming. You don't need to sign in.
+
+Questions? Reply to a leader, not to this email.`
+};
+
+export interface DigestValues {
+  name: string;
+  /** 'you', 'Anjali S', 'you and Anjali S'. */
+  people: string;
+  day: string;
+}
+
+export interface DigestItem {
+  kind: 'teach' | 'pick';
+  /** The scout a pick is for ('Anjali S'); the teacher's own name for a teach ask. */
+  inviteeName: string;
+  /** True when the invite is about the recipient themself (a teach ask, or a scout's own address). */
+  aboutRecipient: boolean;
+  code: string;
+  topic: string;
+  /** 'about 20 minutes' for a teach ask; '' when unknown. */
+  minutes: string;
+  url: string;
+}
+
+/** The digest, with the invites listed under the body: teach asks first, then each scout's offers. */
+export function renderInviteDigest(t: InviteTemplate, v: DigestValues, items: readonly DigestItem[]): { subject: string; md: string } {
+  const vals: Record<string, string> = { name: v.name, people: v.people, day: v.day };
+  const line = (i: DigestItem, label: string) => `- **${i.code}** ${i.topic}${i.minutes ? ` (${i.minutes})` : ''}: **[${label}](${i.url})**`;
+  const blocks: string[] = [];
+  const teach = items.filter((i) => i.kind === 'teach');
+  if (teach.length) blocks.push(`**Can you teach?**\n\n${teach.map((i) => line(i, 'Answer')).join('\n')}`);
+  const scouts = [...new Set(items.filter((i) => i.kind === 'pick').map((i) => i.inviteeName))];
+  for (const who of scouts) {
+    const mine = items.filter((i) => i.kind === 'pick' && i.inviteeName === who);
+    const own = mine[0]?.aboutRecipient;
+    blocks.push(`**${own ? 'For you' : `For ${who}`}**\n\n${mine.map((i) => line(i, own ? 'Answer' : `Answer for ${who}`)).join('\n')}`);
+  }
+  const md = `${fillTokens(t.body, vals)}\n\n${blocks.join('\n\n')}`.replace(/\n{3,}/g, '\n\n').trim();
+  return { subject: fillTokens(t.subject, vals).replace(/\s+/g, ' ').trim(), md };
+}

@@ -32,7 +32,7 @@ import { createPickInvites, createReminders, createTeachInvites, deleteInvites, 
 import { siteUrl } from '@/lib/site-url';
 
 /** An invite's words: catalog keys from the catalog, a focus group or freeform topic from its row on this meeting. */
-async function inviteWords(sb: SupabaseClient, entryId: number, key: string) {
+export async function inviteWords(sb: SupabaseClient, entryId: number, key: string) {
   const [catalog, own] = await Promise.all([loadAdvancementCatalog(), loadTopicWordsFor(sb, entryId, key)]);
   return topicWords(key, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, own.titles, { mbReqs: catalog.meritBadgeRequirements, members: own.members });
 }
@@ -117,6 +117,8 @@ export interface ScoutCandidate {
   note: string;
   /** Proposed: hasn't picked it yet. The leader decides. */
   ticked: boolean;
+  /** Their current rank ('scout'), for "Working on Tenderfoot" (Build a Plan B3's sheet). */
+  currentRank?: string | null;
 }
 
 export type ScoutCandidatesResult = { ok: true; scouts: ScoutCandidate[] } | { ok: false; error: string };
@@ -185,7 +187,7 @@ export async function scoutCandidatesMany(
     for (const [key, list] of byKey) {
       if (!pickable.has(key)) continue;
       const picked = mine.some((x) => x.key === key);
-      list.push({ personId: scout.personId, name: boardName(scout.name), note: `${intent ? INTENT_LABEL[intent] : 'no answer'}${picked ? ' · picked it' : ''}`, ticked: !picked });
+      list.push({ personId: scout.personId, name: boardName(scout.name), note: `${intent ? INTENT_LABEL[intent] : 'no answer'}${picked ? ' · picked it' : ''}`, ticked: !picked, currentRank: scout.currentRank });
     }
   }
   for (const list of byKey.values()) list.sort((a, b) => Number(b.ticked) - Number(a.ticked) || a.name.localeCompare(b.name));
@@ -296,9 +298,9 @@ export const REMINDER_TIME_BUDGET_MS = 40_000;
 /** One email that hasn't answered by now counts as not sent, so the last batch still ends inside maxDuration. */
 export const REMINDER_EMAIL_TIMEOUT_MS = 15_000;
 
-const EMAIL_TIMED_OUT = Symbol('timed out');
+export const EMAIL_TIMED_OUT = Symbol('timed out');
 /** sendEmail, or EMAIL_TIMED_OUT once the timeout passes (the late send may still land; its row is gone by then). */
-function sendEmailWithin(ms: number, opts: Parameters<typeof sendEmail>[0]): Promise<Awaited<ReturnType<typeof sendEmail>> | typeof EMAIL_TIMED_OUT> {
+export function sendEmailWithin(ms: number, opts: Parameters<typeof sendEmail>[0]): Promise<Awaited<ReturnType<typeof sendEmail>> | typeof EMAIL_TIMED_OUT> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<typeof EMAIL_TIMED_OUT>((resolve) => {
     timer = setTimeout(() => resolve(EMAIL_TIMED_OUT), ms);
