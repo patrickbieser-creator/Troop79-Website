@@ -9,7 +9,8 @@
 -- Concurrency (two leaders on two phones):
 --   - card writes (teacher, rotation, repeat, remove) carry the card's expected version; a mismatch or a card that is
 --     gone raises 'STALE' and changes nothing (set teacher and move bump the card's version);
---   - a scout move is compare-and-set: delete (from class, person); no row = 'STALE'; then insert into the target;
+--   - a scout move is compare-and-set: delete (from class, person); no row = 'STALE'; then insert into the target. From
+--     "nothing assigned" (p_from null), a scout already in any class of this meeting = 'STALE';
 --   - add rotation takes the count the client saw (expect_max); if it moved, nothing is added;
 --   - only the last rotation drops, only when empty, and never 1 or 2; a location is last-write-wins.
 -- "+ Add an offer" on Live (meeting_live_add_class) makes a card from a requirement key or a free-text title; with a
@@ -54,6 +55,12 @@ begin
     delete from meeting_class_members m using meeting_classes c
      where m.class_id = p_from and m.person_id = p_person and c.id = m.class_id and c.calendar_entry_id = p_entry;
     if not found then raise exception 'STALE'; end if;
+  elsif p_to is not null and exists (
+    select 1 from meeting_class_members m join meeting_classes c on c.id = m.class_id
+     where m.person_id = p_person and c.calendar_entry_id = p_entry
+  ) then
+    -- Placing a scout from "nothing assigned" is compare-and-set too: someone placed them first (qa-lead, P4b).
+    raise exception 'STALE';
   end if;
   if p_to is not null then
     if not exists (select 1 from meeting_classes where id = p_to and calendar_entry_id = p_entry) then

@@ -811,8 +811,10 @@ function LiveSheet({
   if (sheet.kind === 'addScout') {
     const c = sheet.card;
     const pool = new Set(view.pool.map((p) => p.personId));
+    // Scouts in no class yet; a placed scout moves from their own chip (a move is compare-and-set from that class).
+    const placed = new Set(view.cards.flatMap((o) => o.members.map((m) => m.personId)));
     const list = choices.scouts
-      .filter((s) => !c.members.some((m) => m.personId === s.personId))
+      .filter((s) => !placed.has(s.personId))
       .sort((a, b) => Number(!pool.has(a.personId)) - Number(!pool.has(b.personId)));
     return (
       <Drawer eyebrow="Add a scout" title={c.title} sub={rotWord(c.rotation)} onClose={onClose}>

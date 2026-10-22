@@ -174,7 +174,7 @@ describe('who may edit Meeting Live', () => {
 });
 
 describe('two leaders at once', () => {
-  it('ConcurrentMoves_DoNotLoseAWrite (a stale card version)', async () => {
+  it('SequentialMoves_DoNotLoseAWrite (a stale card version)', async () => {
     const [c] = await started([{ topic_key: key, rotation: 1, members: [] }]);
     asEditor();
     const a = await live();
@@ -183,7 +183,7 @@ describe('two leaders at once', () => {
     expect([first.ok, second.ok, !second.ok && second.stale, (await classRow(c))?.rotation, (await classRow(c))?.teacher_person_id]).toEqual([true, false, true, 2, null]);
   });
 
-  it('ConcurrentMoves_DoNotLoseAWrite (a scout who has already gone)', async () => {
+  it('SequentialMoves_DoNotLoseAWrite (a scout who has already gone)', async () => {
     const [x, y, z] = await started([
       { topic_key: key, rotation: 1, members: [ann] },
       { topic_key: key2, rotation: 1, members: [] },
@@ -194,6 +194,70 @@ describe('two leaders at once', () => {
     const first = await a.plannerLiveMoveScoutAction({ entryId: meeting, personId: ann, from: `c:${x}`, to: `c:${y}` });
     const second = await a.plannerLiveMoveScoutAction({ entryId: meeting, personId: ann, from: `c:${x}`, to: `c:${z}` });
     expect([first.ok, !second.ok && second.stale, await membersOf(y), await membersOf(z)]).toEqual([true, true, [ann], []]);
+  });
+
+  it('ConcurrentMoves_OnTheSameCardVersion_ExactlyOneWins', async () => {
+    const [c] = await started([{ topic_key: key, rotation: 1, members: [] }]);
+    asEditor();
+    const a = await live();
+    const [x, y] = await Promise.all([
+      a.plannerLiveMoveClassAction({ entryId: meeting, classId: `c:${c}`, version: 1, rotation: 2 }),
+      a.plannerLiveMoveClassAction({ entryId: meeting, classId: `c:${c}`, version: 1, rotation: null })
+    ]);
+    const winner = x.ok ? 2 : null;
+    expect([[x.ok, y.ok].filter(Boolean).length, [x, y].filter((r) => !r.ok && r.stale).length, (await classRow(c))?.rotation, (await classRow(c))?.version]).toEqual([
+      1,
+      1,
+      x.ok ? winner : null,
+      2
+    ]);
+  });
+
+  it('TwoLeadersPlacingTheSameUnplacedScout_OnlyOneWins', async () => {
+    const [p, q] = await started([
+      { topic_key: key, rotation: 1, members: [] },
+      { topic_key: key2, rotation: 1, members: [] }
+    ]);
+    asEditor();
+    const a = await live();
+    const first = await a.plannerLiveMoveScoutAction({ entryId: meeting, personId: ann, from: null, to: `c:${p}` });
+    const second = await a.plannerLiveMoveScoutAction({ entryId: meeting, personId: ann, from: null, to: `c:${q}` });
+    expect([first.ok, !second.ok && second.stale, await membersOf(p), await membersOf(q)]).toEqual([true, true, [ann], []]);
+  });
+
+  it('TwoLeadersPlacingTheSameUnplacedScout_InParallel_OnlyOneWins', async () => {
+    const [p, q] = await started([
+      { topic_key: key, rotation: 1, members: [] },
+      { topic_key: key2, rotation: 1, members: [] }
+    ]);
+    asEditor();
+    const a = await live();
+    const res = await Promise.all([
+      a.plannerLiveMoveScoutAction({ entryId: meeting, personId: ann, from: null, to: `c:${p}` }),
+      a.plannerLiveMoveScoutAction({ entryId: meeting, personId: ann, from: null, to: `c:${q}` })
+    ]);
+    expect([res.filter((r) => r.ok).length, (await membersOf(p)).length + (await membersOf(q)).length]).toEqual([1, 1]);
+  });
+
+  it('AClassFromAnotherMeeting_IsStale_AndNothingChanges', async () => {
+    const [c] = await started([{ topic_key: key, rotation: 1, members: [ann] }]);
+    const other = await entry('2097-03-21');
+    const { error: e1 } = await sb.rpc('_meeting_topic_id', { p_entry: other, p_key: key });
+    if (e1) throw new Error(e1.message);
+    const { error: e2 } = await sb.rpc('meeting_live_start', { p_entry: other, p_actor: editorAdult, p_snapshot: { rotations: [], classes: [] } });
+    if (e2) throw new Error(e2.message);
+    asEditor();
+    const a = await live();
+    // Acting on `other` with this meeting's class id: every card op and a scout move into it.
+    const results = await Promise.all([
+      a.plannerLiveMoveClassAction({ entryId: other, classId: `c:${c}`, version: 1, rotation: 2 }),
+      a.plannerLiveSetTeacherAction({ entryId: other, classId: `c:${c}`, version: 1, teacherId: teacher }),
+      a.plannerLiveRemoveClassAction({ entryId: other, classId: `c:${c}`, version: 1 }),
+      a.plannerLiveMoveScoutAction({ entryId: other, personId: ann, from: `c:${c}`, to: null })
+    ]);
+    const row = await classRow(c);
+    await clearMeeting(other);
+    expect([results.every((r) => !r.ok && r.stale), row?.rotation, row?.teacher_person_id, row?.version, await membersOf(c)]).toEqual([true, 1, null, 1, [ann]]);
   });
 
   it('EveryEdit_BumpsLiveVersion_SoPollersSeeIt', async () => {

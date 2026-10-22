@@ -240,3 +240,19 @@ describe('LiveBoard editing (P4b)', () => {
     await waitFor(() => expect(mocks.addClass).toHaveBeenCalledWith({ entryId: 5, key: 'scout-1a', title: null, teacherId: 12, rotation: 2 }));
   });
 });
+
+describe('LiveBoard add a scout (qa-lead, P4b)', () => {
+  it('AddScout_ListsOnlyScoutsInNoClass', () => {
+    render(
+      <LiveBoard
+        view={{ ...VIEW, started: true }}
+        canEdit
+        entryId={5}
+        choices={{ ...CHOICES, scouts: [...CHOICES.scouts, { personId: 1, name: 'Finn P' }] }}
+      />
+    );
+    fireEvent.click(within(screen.getByRole('region', { name: 'Not scheduled' })).getByRole('button', { name: 'Add a scout to Oath, Law, motto, slogan' }));
+    const dlg = screen.getByRole('dialog');
+    expect([within(dlg).queryByRole('button', { name: /^Finn P/ }), within(dlg).getByRole('button', { name: /^Simon P/ }) != null]).toEqual([null, true]);
+  });
+});
