@@ -421,6 +421,11 @@
 .tickOn:hover {
   background: var(--cream);
 }
+.tick[aria-disabled='true'],
+.tickOn[aria-disabled='true'] {
+  opacity: 0.6;
+  cursor: progress;
+}
 .tick:focus-visible,
 .tickOn:focus-visible {
   outline: var(--focus-ring);

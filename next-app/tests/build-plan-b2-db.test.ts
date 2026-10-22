@@ -203,6 +203,82 @@ describe('Build a Plan B2: the teacher', () => {
   });
 });
 
+describe('Build a Plan B2: qa follow-ups (who may, and what an edit keeps)', () => {
+  const mixOn = async (name: string, items = [parts[0]]) => {
+    asSeeder();
+    const made = await (await actions()).plannerNewMixAction({ entryId: meeting, name: `${TEST_PREFIX} BP2 ${name}`, items });
+    if (!made.ok) throw new Error(made.error);
+    track(made.key);
+    return made.key;
+  };
+
+  it('MixAction_IsRefused_ForNonSeeder', async () => {
+    await clearTopics();
+    const key = await mixOn('read');
+    asEditor();
+    expect(await (await actions()).plannerMixAction({ entryId: meeting, key })).toEqual({ ok: false, error: 'Only the planning team can seed a meeting.' });
+  });
+
+  it('TeacherChoicesAction_IsRefused_ForNonEditor', async () => {
+    await clearTopics();
+    asSeeder();
+    await (await actions()).plannerAddOfferingAction({ entryId: meeting, keys: [tops[0]] });
+    expect(await (await actions()).plannerTeacherChoicesAction({ entryId: meeting, key: tops[0] })).toEqual({ ok: false, error: 'Only someone who can edit the Meeting Planner can do that.' });
+  });
+
+  it('EditMix_IsRefused_ForNonSeeder', async () => {
+    await clearTopics();
+    const key = await mixOn('guarded');
+    asEditor();
+    const res = await (await actions()).plannerEditMixAction({ entryId: meeting, key, name: `${TEST_PREFIX} BP2 hijack`, items: [parts[1]] });
+    expect({ res, here: await members(key) }).toEqual({ res: { ok: false, error: 'Only the planning team can seed a meeting.' }, here: [parts[0]] });
+  });
+
+  it('EditMix_IsRefused_ForSetNotOnTheMeeting', async () => {
+    await clearTopics();
+    asSeeder();
+    const saved = await sb.rpc('focus_set_save', { p_actor: seeder, p_set: null, p_name: `${TEST_PREFIX} BP2 elsewhere`, p_labels: [], p_items: [parts[0]] });
+    const id = track(`fg:${saved.data}`);
+    const res = await (await actions()).plannerEditMixAction({ entryId: meeting, key: `fg:${id}`, name: `${TEST_PREFIX} BP2 elsewhere`, items: [parts[1]] });
+    expect({ ok: res.ok, set: await setItems(id) }).toEqual({ ok: false, set: [parts[0]] });
+  });
+
+  it('EditMix_UnseededClass_StaysUnseeded', async () => {
+    await clearTopics();
+    const key = await mixOn('unseeded');
+    await sb.from('meeting_topics').update({ seeded_at: null }).eq('calendar_entry_id', meeting).eq('topic_key', key);
+    await (await actions()).plannerEditMixAction({ entryId: meeting, key, name: `${TEST_PREFIX} BP2 unseeded`, items: [parts[1]] });
+    const { data } = await sb.from('meeting_topics').select('seeded_at').eq('calendar_entry_id', meeting).eq('topic_key', key).single();
+    expect({ seeded: (data as { seeded_at: string | null }).seeded_at, here: await members(key) }).toEqual({ seeded: null, here: [parts[1]] });
+  });
+
+  it('EditMix_MeetingsAlreadySeeded_KeepTheirCopy', async () => {
+    await clearTopics();
+    const key = await mixOn('copies');
+    const { data: other, error } = await sb.from('calendar_entries').insert({ entry_date: '2085-03-11', category: 'Troop Meeting', title: `Troop Meeting ${TEST_PREFIX}` }).select('id').single();
+    if (error) throw new Error(error.message);
+    const otherId = (other as { id: number }).id;
+    try {
+      const seeded = await sb.rpc('meeting_seed_focus_set', { p_entry: otherId, p_set: Number(key.slice(3)), p_actor: seeder });
+      if (seeded.error) throw new Error(seeded.error.message);
+      await (await actions()).plannerEditMixAction({ entryId: meeting, key, name: `${TEST_PREFIX} BP2 copies`, items: [parts[2]] });
+      const { data } = await sb.from('meeting_topic_members').select('item_key, meeting_topics!inner(calendar_entry_id, topic_key)').eq('meeting_topics.calendar_entry_id', otherId).eq('meeting_topics.topic_key', key);
+      expect(((data ?? []) as { item_key: string }[]).map((r) => r.item_key)).toEqual([parts[0]]);
+    } finally {
+      await sb.from('meeting_topics').delete().eq('calendar_entry_id', otherId);
+      await sb.from('calendar_entries').delete().eq('id', otherId);
+    }
+  });
+
+  it('SetTeacher_IsRefused_ForKeyNotOnTheMeeting', async () => {
+    await clearTopics();
+    asEditor();
+    const res = await (await actions()).plannerSetTeacherAction({ entryId: meeting, key: tops[2], personId: teacher, on: true });
+    const { count } = await sb.from('meeting_topics').select('id', { count: 'exact', head: true }).eq('calendar_entry_id', meeting);
+    expect({ res, topics: count }).toEqual({ res: { ok: false, error: 'That isn’t on this meeting’s plan.' }, topics: 0 });
+  });
+});
+
 describe('Build a Plan B2: round trips', () => {
   it('BuildPlan_B2Writes_UseBoundedRoundTrips', async () => {
     const { plannerAddFocusSetAction, plannerNewMixAction, plannerEditMixAction, plannerSetTeacherAction, plannerAddOfferingAction } = await actions();
@@ -234,7 +310,7 @@ describe('Build a Plan B2: round trips', () => {
     const teach = await trips(() => plannerSetTeacherAction({ entryId: meeting, key: tops[1], personId: teacher, on: true }));
     // Gate (meeting; categories + next meetings) and prior stamp = 4, then:
     //   set: seed + stamp + title + topic teachers + offers = 9; mix: new_mix + stamp = 6; edit: edit_mix + stamp = 6;
-    //   teacher: teach RPC + stamp + topic + topic teachers + offers + answers = 10.
-    expect({ set, mix, edit, teach }).toEqual({ set: 9, mix: 6, edit: 6, teach: 10 });
+    //   teacher: on-the-plan check + teach RPC + stamp + topic + topic teachers + offers + answers = 11.
+    expect({ set, mix, edit, teach }).toEqual({ set: 9, mix: 6, edit: 6, teach: 11 });
   });
 });

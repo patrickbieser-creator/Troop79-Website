@@ -198,7 +198,8 @@ export function teacherChoices(input: {
       return skill && p.skills.has(skill) && assessTeacher(p, k, ctx).qualified ? { skill, badge: null } : null;
     }
     const b = badgeOf(k, input.badges);
-    return b && p.counselorFor.has(b.id) ? { skill: null, badge: b.name } : null;
+    // A whole badge (mb:) is adults only, counselor or not (qa-lead B2 #6): assessTeacher decides, as for a requirement.
+    return b && p.counselorFor.has(b.id) && assessTeacher(p, k, ctx).qualified ? { skill: null, badge: b.name } : null;
   };
   const out: TeacherChoice[] = [];
   for (const p of input.people) {

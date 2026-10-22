@@ -8,7 +8,9 @@
  *                 untick takes them off: each saves at once, like the planner's person drawer. Server-checked.
  *   Requirements  (meeting_planner.seed, a mix only) its name and requirements, saved with "Save changes"; closing the
  *                 drawer discards. It edits the focus set too: the note says so, and that meetings it is already on
- *                 keep their own copy.
+ *                 keep their own copy. Dirty-gated Save with Discard changes beside it (back to the last save).
+ * A control busy saving is aria-disabled (not disabled), so keyboard focus stays on it (qa-lead B2 #1). When unticking
+ * the last teacher takes the row off the plan, the drawer stays open and says so (`gone`), never unmounting silently.
  * Each write hands the page its slice (onTeachers / onMix); the drawer never reloads the plan.
  */
 import { useEffect, useState } from 'react';
@@ -29,10 +31,13 @@ export function EditOffering({
   canSeed,
   onTeachers,
   onMix,
-  onClose
+  onClose,
+  gone = false
 }: {
   entryId: number;
   row: PlanRow;
+  /** The row left the plan while the drawer was open (its last teacher was taken off). */
+  gone?: boolean;
   canEdit: boolean;
   canSeed: boolean;
   onTeachers: (res: Extract<BuildTeacherResult, { ok: true }>) => void;
@@ -42,8 +47,13 @@ export function EditOffering({
   const isMix = row.key.startsWith('fg:');
   return (
     <Drawer eyebrow="Edit" title={row.title} sub={row.codeLabel} onClose={onClose}>
-      {canEdit ? <TeacherSection entryId={entryId} rowKey={row.key} onTeachers={onTeachers} /> : null}
-      {canSeed && isMix ? <MixSection entryId={entryId} rowKey={row.key} onMix={onMix} /> : null}
+      {gone ? (
+        <p className={s.pickMeta} role="status">
+          Removed from the plan.
+        </p>
+      ) : null}
+      {canEdit && !gone ? <TeacherSection entryId={entryId} rowKey={row.key} onTeachers={onTeachers} /> : null}
+      {canSeed && isMix && !gone ? <MixSection entryId={entryId} rowKey={row.key} onMix={onMix} /> : null}
     </Drawer>
   );
 }
@@ -80,7 +90,7 @@ function TeacherSection({ entryId, rowKey, onTeachers }: { entryId: number; rowK
     <ul className={s.pickList}>
       {items.map((c) => (
         <li key={c.personId}>
-          <button type="button" className={c.teaching ? s.tickOn : s.tick} aria-pressed={c.teaching} disabled={busy === c.personId} onClick={() => toggle(c)}>
+          <button type="button" className={c.teaching ? s.tickOn : s.tick} aria-pressed={c.teaching} aria-disabled={busy === c.personId || undefined} onClick={() => toggle(c)}>
             <span className={s.tickBox} aria-hidden="true">
               {c.teaching ? '✓' : ''}
             </span>
@@ -150,6 +160,11 @@ function MixSection({ entryId, rowKey, onMix }: { entryId: number; rowKey: strin
   if (saved === 'failed') return <p className={s.problem}>The mix didn’t load. Close and try again.</p>;
   const dirty = name !== saved.name || items.map((i) => i.key).join('|') !== saved.items.map((i) => i.key).join('|');
 
+  const discard = () => {
+    setName(saved.name);
+    setItems(saved.items);
+    setProblem(null);
+  };
   const save = async () => {
     if (busy || !dirty) return;
     if (!name.trim()) return setProblem({ at: 'name', text: 'Give the mix a name.' });
@@ -190,8 +205,11 @@ function MixSection({ entryId, rowKey, onMix }: { entryId: number; rowKey: strin
         </p>
       ) : null}
       <div className={s.mixActions}>
-        <Button variant="primary" size="sm" onClick={save} disabled={busy || !dirty} title={dirty ? undefined : 'No changes to save yet'}>
+        <Button variant="primary" size="sm" onClick={save} disabled={!dirty} aria-disabled={busy || undefined} title={dirty ? undefined : 'No changes to save yet'}>
           {busy ? 'Saving changes…' : dirty ? 'Save changes' : 'Saved'}
+        </Button>
+        <Button variant="ghost" size="sm" onClick={discard} disabled={!dirty || busy}>
+          Discard changes
         </Button>
       </div>
     </section>

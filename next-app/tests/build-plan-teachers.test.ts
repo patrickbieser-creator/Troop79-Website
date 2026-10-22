@@ -81,6 +81,13 @@ describe('Build a Plan B2: teacher choices', () => {
     ]);
   });
 
+  it('SetTeacher_JuniorCounselor_IsNotQualifiedForAWholeBadge', () => {
+    // qa-lead B2 #6: a whole badge (mb:) is adults only (assessTeacher), counselor or not.
+    const junior = person(6, 'Finn Ford', { kind: 'junior', currentRank: 'first-class', counselorFor: new Set(['camping']) });
+    const list = teacherChoices({ ...base, people: [...PEOPLE, junior], key: 'mb:camping' });
+    expect(list.filter((c) => c.qualified).map((c) => c.name)).toEqual(['Dana D']);
+  });
+
   it('SetTeacher_MixCountsAnyPart', () => {
     const list = teacherChoices({ ...base, people: PEOPLE, key: 'fg:7', members: ['tenderfoot-4a', 'camping-4'] });
     expect(list.filter((c) => c.qualified).map((c) => [c.name, c.reason])).toEqual([

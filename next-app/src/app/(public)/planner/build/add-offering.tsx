@@ -79,7 +79,7 @@ function RequirementPanel({ onPlan, addRequirement }: AddOfferingProps) {
             {onPlan.has(r.key) ? (
               <span className={s.onPlan}>✓ On the plan</span>
             ) : (
-              <Button variant="secondary" size="sm" className={s.addBtn} disabled={busy === r.key} onClick={() => add(r)} aria-label={`Add ${rowCode(r)}`}>
+              <Button variant="secondary" size="sm" className={s.addBtn} aria-disabled={busy === r.key || undefined} onClick={() => add(r)} aria-label={`Add ${rowCode(r)}`}>
                 {busy === r.key ? 'Adding…' : 'Add'}
               </Button>
             )}
@@ -118,7 +118,7 @@ function SetPanel({ onPlan, addSet }: AddOfferingProps) {
   const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
   const shown = Array.isArray(sets) ? sets.filter((x) => words.every((w) => `${x.name} ${x.labels.join(' ')}`.toLowerCase().includes(w))) : [];
   const add = async (x: FocusSetView) => {
-    if (busy != null) return;
+    if (busy != null || !x.items.length) return;
     setBusy(x.id);
     setProblem(null);
     const err = await addSet(x);
@@ -155,7 +155,7 @@ function SetPanel({ onPlan, addSet }: AddOfferingProps) {
               {onPlan.has(`fg:${x.id}`) ? (
                 <span className={s.onPlan}>✓ On the plan</span>
               ) : (
-                <Button variant="secondary" size="sm" className={s.addBtn} disabled={busy === x.id || !x.items.length} onClick={() => add(x)} aria-label={`Add ${x.name}`}>
+                <Button variant="secondary" size="sm" className={s.addBtn} disabled={!x.items.length} aria-disabled={busy === x.id || undefined} onClick={() => add(x)} aria-label={`Add ${x.name}`}>
                   {busy === x.id ? 'Adding…' : 'Add'}
                 </Button>
               )}
@@ -255,7 +255,7 @@ function MixPanel({ defaultMixName, newMix, onDone }: AddOfferingProps & { onDon
       ) : null}
       <MixPicker ticked={ticked} onChange={setTicked} />
       <div className={s.mixActions}>
-        <Button variant="secondary" size="sm" onClick={save} disabled={busy || !ticked.length}>
+        <Button variant="secondary" size="sm" onClick={save} disabled={!ticked.length} aria-disabled={busy || undefined}>
           {busy ? 'Adding…' : ticked.length ? `Add mix of ${plural(ticked.length, 'requirement')}` : 'Add mix'}
         </Button>
         {problem?.at === 'save' ? (

@@ -12,6 +12,12 @@
  *     every key), then the stamp and who teaches the new rows (two reads; more only when someone could be teaching
  *     them). The same count however many keys.
  *   - Remove: the gate, the prior stamp, the unseed RPC, one read of whether the topic stayed, the stamp.
+ *
+ * The stamp window (qa-lead B2 #2, documented rather than closed): `prior` and `stamp` are read outside the write's
+ * own lock, so a change someone else commits between the prior read and the after read is folded into `stamp` and
+ * that page won't refresh for it. Reading both inside the RPC's lock would only narrow it (picks and answers don't
+ * take the seed lock), so the window stays; the cost is one missed refresh, which the next poll tick or any later
+ * change repairs (the poller compares the whole board stamp).
  */
 import { resolveAdminActor } from '@/lib/admin-actor';
 import { createAdminClient } from '@/lib/supabase/server';
@@ -174,6 +180,11 @@ export async function plannerSetTeacherAction(input: { entryId: number; key: str
   if (!isTopicKey(input?.key) || !Number.isInteger(input.personId) || typeof input.on !== 'boolean') return fail('Malformed request');
   const s = await gate(input.entryId, 'edit');
   if (!s.ok) return s;
+  if (input.on) {
+    // Only an offering already on the plan (qa-lead B2 #4): an edit-only holder must not put a new topic on the meeting.
+    const { data: onPlan } = await s.sb.from('meeting_topics').select('id').eq('calendar_entry_id', s.meeting.entryId).eq('topic_key', input.key).maybeSingle();
+    if (!onPlan) return fail('That isn’t on this meeting’s plan.');
+  }
   const w = { personId: input.personId, actorPersonId: s.actorPersonId, leader: true };
   const res = input.on ? await teachTopic(s.sb, w, [s.meeting.entryId], { key: input.key }, null) : await unteachTopic(s.sb, w, s.meeting.entryId, input.key);
   if (!res.ok) return res;

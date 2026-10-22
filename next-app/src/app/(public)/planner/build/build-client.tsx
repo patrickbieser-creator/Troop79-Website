@@ -99,7 +99,8 @@ export function BuildPlanView({
   const [suggestions, setSuggestions] = useState<Feed>({ status: 'loading' });
   const [sheet, setSheet] = useState(false);
   const [removing, setRemoving] = useState<{ row: PlanRow; trigger: HTMLElement | null } | null>(null);
-  const [editing, setEditing] = useState<string | null>(null);
+  /** The row whose Edit is open, as it was when opened: the drawer stays (saying so) if the row leaves the plan. */
+  const [editing, setEditing] = useState<PlanRow | null>(null);
   const stampRef = useRef(stamp);
   const listHeadRef = useRef<HTMLHeadingElement | null>(null);
   const onFeed = useCallback((f: Feed) => setSuggestions(f), []);
@@ -162,7 +163,7 @@ export function BuildPlanView({
     landed(res);
     setRows((rs) => rs.map((r) => (r.key === key ? { ...r, title: res.title } : r)));
   };
-  const editingRow = rows.find((r) => r.key === editing) ?? null;
+  const editingRow = editing ? (rows.find((r) => r.key === editing.key) ?? null) : null;
 
   const suggestedList = <SuggestedList feed={suggestions} shown={shown} onAdd={add} />;
   return (
@@ -192,7 +193,7 @@ export function BuildPlanView({
                   row={r}
                   canSeed={canSeed}
                   canEdit={canEdit || (canSeed && r.key.startsWith('fg:'))}
-                  onEdit={() => setEditing(r.key)}
+                  onEdit={() => setEditing(r)}
                   onRemove={(trigger) => setRemoving({ row: r, trigger })}
                 />
               ))}
@@ -216,14 +217,15 @@ export function BuildPlanView({
           {suggestedList}
         </Drawer>
       ) : null}
-      {editingRow ? (
+      {editing ? (
         <EditOffering
           entryId={entryId}
-          row={editingRow}
+          row={editingRow ?? editing}
+          gone={!editingRow}
           canEdit={canEdit}
           canSeed={canSeed}
-          onTeachers={(res) => onTeachers(editingRow.key, res)}
-          onMix={(res) => onMix(editingRow.key, res)}
+          onTeachers={(res) => onTeachers(editing.key, res)}
+          onMix={(res) => onMix(editing.key, res)}
           onClose={() => setEditing(null)}
         />
       ) : null}
