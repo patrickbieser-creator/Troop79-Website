@@ -320,9 +320,10 @@ describe('scouts pick seeded topics', () => {
     asSeeder();
     await (await actions()).plannerSeedTopicAction({ entryId: meeting, key: mbKey });
     asEditor();
-    const res = await (await actions()).plannerTogglePickAction({ entryId: meeting, personId: young, key: mbKey, on: true });
-    const opt = res.ok ? res.drawer.options.find((o) => o.key === mbKey) : undefined;
-    expect([res.ok, opt?.on, opt?.meta.startsWith('First Aid')]).toEqual([true, true, true]);
+    const tick = await (await actions()).plannerTogglePickAction({ entryId: meeting, personId: young, key: mbKey, on: true });
+    const res = await (await actions()).plannerOpenPersonAction({ entryId: meeting, personId: young });
+    const opt = tick.ok && res.ok ? res.drawer.options.find((o) => o.key === mbKey) : undefined;
+    expect([tick.ok, opt?.on, opt?.meta.startsWith('First Aid')]).toEqual([true, true, true]);
   });
 
   it('UnseededMbReq_IsNotPickable', async () => {
@@ -337,7 +338,7 @@ describe('scouts pick seeded topics', () => {
     asEditor();
     const res = await (await actions()).plannerTogglePickAction({ entryId: meeting, personId: young, key: `fg:${set}`, on: true });
     const { count } = await sb.from('meeting_topic_picks').select('person_id', { count: 'exact', head: true }).eq('calendar_entry_id', meeting).eq('person_id', young);
-    expect([res.ok && res.drawer.kind === 'scout' && res.drawer.picked, count]).toEqual([1, 1]);
+    expect([res.ok && res.tick.count, count]).toEqual([1, 1]);
   });
 
   it('AnFgKey_IsNeverCreatedByAPick', async () => {

@@ -36,6 +36,7 @@ let past = 0; // 2020-03-01
 let campout = 0; // 2094-03-07, not a meeting
 let draft = 0; // 2094-03-08, a meeting not yet published
 let mbNight = 0; // 2094-03-15, a meeting with a board row (v1's merit badge nights had one)
+let earlier = 0; // 2094-02-22, the board before `meeting` (carried picks)
 let gone = 0; // an inactive person
 let editorAdult = 0;
 let spl = 0;
@@ -71,6 +72,7 @@ beforeAll(async () => {
   campout = await entry('2094-03-07', { category: 'Campout / Overnight', title: `Campout ${TEST_PREFIX}` });
   draft = await entry('2094-03-08', { status: 'draft' });
   mbNight = await entry('2094-03-15');
+  earlier = await entry('2094-02-22');
   const { error } = await sb.from('meeting_boards').insert({ calendar_entry_id: mbNight });
   if (error) throw new Error(error.message);
   gone = await person('Gone', { active: false });
@@ -179,7 +181,8 @@ describe('answers and picks', () => {
 
   it('Editor_TicksAPick_AndTheDrawerShowsIt', async () => {
     asEditor();
-    const res = await (await actions()).plannerTogglePickAction({ entryId: meeting, personId: young, key: keys[0], on: true });
+    await (await actions()).plannerTogglePickAction({ entryId: meeting, personId: young, key: keys[0], on: true });
+    const res = await (await actions()).plannerOpenPersonAction({ entryId: meeting, personId: young });
     expect(res.ok && res.drawer.options.find((o) => o.key === keys[0])?.on).toBe(true);
   });
 
@@ -188,7 +191,25 @@ describe('answers and picks', () => {
     const act = await actions();
     await act.plannerTogglePickAction({ entryId: meeting, personId: young, key: keys[0], on: true });
     const res = await act.plannerTogglePickAction({ entryId: meeting, personId: young, key: keys[0], on: false });
-    expect(res.ok && res.drawer.kind === 'scout' && res.drawer.picked).toBe(0);
+    expect(res.ok && res.tick.count).toBe(0);
+  });
+
+  it('TogglePick_ReturnsOnlyWhatChanged', async () => {
+    asEditor();
+    const res = await (await actions()).plannerTogglePickAction({ entryId: meeting, personId: young, key: keys[0], on: true });
+    expect(res.ok && res.tick).toEqual({ key: keys[0], on: true, count: 1, intent: null, shown: 'coming' });
+  });
+
+  it('ToggleTeach_ReturnsOnlyWhatChanged', async () => {
+    asEditor();
+    const res = await (await actions()).plannerToggleTeachAction({ entryId: meeting, personId: teacher, key: keys[0], on: true });
+    expect(res.ok && res.tick).toEqual({ key: keys[0], on: true, count: 1, intent: null, shown: 'coming' });
+  });
+
+  it('SetAnswer_ReturnsOnlyWhatChanged', async () => {
+    asEditor();
+    const res = await (await actions()).plannerSetAnswerAction({ entryId: meeting, personId: young, intent: 'undecided' });
+    expect(res.ok && res.tick).toEqual({ key: null, on: null, count: null, intent: 'undecided', shown: 'undecided' });
   });
 
   it('Editor_CantPickSomethingOffTheirList', async () => {
@@ -255,6 +276,56 @@ describe('an assignment goes with the picks it was made for', () => {
     await pickFor(act, young, true);
     await pickFor(act, young, false);
     expect((await teachingOf(teacher)).map((t) => t.meeting_topics.topic_key)).toEqual([keys[0]]);
+  });
+
+  it('Assign_Stays_WhileAScoutsCarriedPickStillHoldsIt', async () => {
+    asEditor();
+    const act = await actions();
+    // `other` picked it on an earlier board and hasn't touched this one: the pick carries here.
+    await act.plannerTogglePickAction({ entryId: earlier, personId: other, key: keys[0], on: true });
+    await pickFor(act, young, true);
+    await act.plannerAssignAction({ entryId: meeting, personId: teacher, key: keys[0] });
+    await pickFor(act, young, false);
+    expect((await teachingOf(teacher)).map((t) => t.meeting_topics.topic_key)).toEqual([keys[0]]);
+  });
+
+  it('Assign_IsTakenOff_WhenAnEarlierBoardNoLongerPicksIt', async () => {
+    asEditor();
+    const act = await actions();
+    await act.plannerTogglePickAction({ entryId: earlier, personId: other, key: keys[0], on: true });
+    await act.plannerTogglePickAction({ entryId: earlier, personId: other, key: keys[0], on: false });
+    await pickFor(act, young, true);
+    await act.plannerAssignAction({ entryId: meeting, personId: teacher, key: keys[0] });
+    await pickFor(act, young, false);
+    expect(await teachingOf(teacher)).toEqual([]);
+  });
+
+  it('RemovePickRpc_ReleasesAForPicksAssign_ByItself', async () => {
+    asEditor();
+    const act = await actions();
+    await pickFor(act, young, true);
+    await act.plannerAssignAction({ entryId: meeting, personId: teacher, key: keys[0] });
+    await sb.rpc('meeting_remove_pick', { p_entry: meeting, p_person: young, p_actor: editorAdult, p_leader: true, p_topic_key: keys[0], p_carry: [] });
+    expect(await teachingOf(teacher)).toEqual([]);
+  });
+
+  it('RemovePickRpc_LeavesASelfSignUp', async () => {
+    asEditor();
+    const act = await actions();
+    await act.plannerToggleTeachAction({ entryId: meeting, personId: teacher, key: keys[0], on: true });
+    await pickFor(act, young, true);
+    await sb.rpc('meeting_remove_pick', { p_entry: meeting, p_person: young, p_actor: editorAdult, p_leader: true, p_topic_key: keys[0], p_carry: [] });
+    expect((await teachingOf(teacher)).length).toBe(1);
+  });
+
+  it('RemovePickRpc_ReturnsTheScoutsWhoseCarriedPickMayHoldIt', async () => {
+    asEditor();
+    const act = await actions();
+    await act.plannerTogglePickAction({ entryId: earlier, personId: other, key: keys[0], on: true });
+    await pickFor(act, young, true);
+    await act.plannerAssignAction({ entryId: meeting, personId: teacher, key: keys[0] });
+    const { data } = await sb.rpc('meeting_remove_pick', { p_entry: meeting, p_person: young, p_actor: editorAdult, p_leader: true, p_topic_key: keys[0], p_carry: [] });
+    expect(data).toEqual([other]);
   });
 
   it('Assign_OfSomeoneAlreadyTeachingIt_LeavesTheirSignUp_WhenThePickGoes', async () => {

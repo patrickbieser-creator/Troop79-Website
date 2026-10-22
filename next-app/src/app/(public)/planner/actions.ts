@@ -11,7 +11,7 @@
  * P2b: Send request and nudges go through v1's invite senders (lib/meeting-invites-send), adults only.
  * P3: seeding (a focus set, or one requirement) and unseeding, for meeting_planner.seed holders only.
  * P5b: reminders to people who haven't answered, adults only, through the same invite pipeline.
- * Each write returns the person's fresh drawer and the board's new stamp, so the poller doesn't refresh over it.
+ * Each write returns what it changed and the board's new stamp, so the poller doesn't refresh over it.
  * A drawer write revalidates nothing (perf, 2026-10-22): any revalidatePath makes Next re-render /planner inside the
  * action's response, and the planner refreshes the board itself, once, when the drawer closes (planner-client).
  */
@@ -24,26 +24,39 @@ import {
   addMeetingPick,
   loadBoardScouts,
   loadBoardStamp,
-  loadMeetingById,
+  loadIntents,
+  loadMeetingForWrite,
   loadNextMeeting,
   loadScoutBoard,
   removeMeetingPick,
-  setMeetingIntent,
-  type BoardWriteResult
+  setMeetingIntent
 } from '@/lib/meeting-board';
 import { assignForPicks, loadSupplyRows, loadTeacherPeople, teachContext, teachTopic, unteachTopic } from '@/lib/meeting-board-supply';
-import { INTENTS, type Intent } from '@/lib/meeting-board-shared';
+import { effectiveIntent, INTENTS, type Intent } from '@/lib/meeting-board-shared';
 import { BOR_LABEL, borCodeLabel, nextRankOf, pickableKeys } from '@/lib/meeting-board-picklist';
 import { borKey } from '@/lib/rank-calculus';
 import { scoutCandidates, sendPickInvites, sendReminders, sendTeachInvites } from '@/lib/meeting-invites-send';
 import { REMINDER_SEND_CAP } from '@/lib/meeting-invites';
 import { loadPlannerPage } from '@/lib/meeting-planner-load';
-import { assessTeacher, FREEFORM_MAX, freeformTitle } from '@/lib/meeting-board-teach';
+import { assessTeacher, FREEFORM_MAX, freeformTitle, teacherIntent } from '@/lib/meeting-board-teach';
 import { plannerAccess } from '@/lib/meeting-planner-access';
 import { loadPersonDrawer, type PersonDrawer } from '@/lib/meeting-planner-drawer';
 import { seedFocusSet, seedTopic, unseedTopic } from '@/lib/meeting-focus-db';
 
 export type PlannerDrawerResult = { ok: true; drawer: PersonDrawer; stamp: string } | { ok: false; error: string };
+/**
+ * What one drawer write changed (perf, 2026-10-22): the option ticked (null for an answer), the person's count (picks
+ * for this meeting, or topics they teach; null when unchanged), their stored answer and what the board shows for them.
+ * The drawer lays it over what it has instead of the server reloading the whole board to redraw one drawer.
+ */
+export interface DrawerTick {
+  key: string | null;
+  on: boolean | null;
+  count: number | null;
+  intent: Intent | null;
+  shown: Intent | null;
+}
+export type PlannerTickResult = { ok: true; tick: DrawerTick; stamp: string } | { ok: false; error: string };
 export type PlannerWriteResult = { ok: true; stamp: string } | { ok: false; error: string };
 
 const fail = (error: string): { ok: false; error: string } => ({ ok: false, error });
@@ -68,10 +81,9 @@ async function editor(entryId: unknown, personId: unknown) {
   const actor = await resolveAdminActor();
   if (!plannerAccess(actor).canEdit || actor?.personId == null) return fail('Only someone who can edit the Meeting Planner can do that.');
   const sb = createAdminClient();
-  const meeting = await loadMeetingById(sb, entryId as number);
+  const meeting = await loadMeetingForWrite(sb, entryId as number);
   if (!meeting) return fail('That meeting is no longer on the calendar.');
-  const { data: entry } = await sb.from('calendar_entries').select('status').eq('id', meeting.entryId).maybeSingle();
-  if ((entry as { status: string } | null)?.status !== 'published' || meeting.closed) return fail('That meeting isn’t taking sign-ups.');
+  if (!meeting.published || meeting.closed) return fail('That meeting isn’t taking sign-ups.');
   if (meeting.date < centralToday()) return fail('That meeting has passed. Reload the page for the next one.');
   return { ok: true as const, sb, meeting, actorPersonId: actor.personId, personId: personId as number };
 }
@@ -93,51 +105,65 @@ function revalidate() {
   revalidatePath('/admin/advancement/meeting-plan');
 }
 
-async function drawerAfter(e: Editor, res: BoardWriteResult): Promise<PlannerDrawerResult> {
-  if (!res.ok) return res;
+/** Open someone's drawer: the one full read. Writes from it return only what changed (DrawerTick). */
+export async function plannerOpenPersonAction(input: { entryId: number; personId: number }): Promise<PlannerDrawerResult> {
+  const e = await editor(input?.entryId, input?.personId);
+  if (!e.ok) return e;
   const [drawer, stamp] = await Promise.all([loadPersonDrawer(e.sb, e.meeting, e.personId, e.actorPersonId), loadBoardStamp(e.sb, e.meeting.entryId)]);
   return drawer ? { ok: true, drawer, stamp } : fail('That person isn’t on the board.');
 }
 
-/** Open someone's drawer. */
-export async function plannerOpenPersonAction(input: { entryId: number; personId: number }): Promise<PlannerDrawerResult> {
-  const e = await editor(input?.entryId, input?.personId);
-  if (!e.ok) return e;
-  return drawerAfter(e, { ok: true });
-}
-
-/** Coming / Not sure / Can't, for a scout or an adult. */
-export async function plannerSetAnswerAction(input: { entryId: number; personId: number; intent: Intent }): Promise<PlannerDrawerResult> {
+/** Coming / Not sure / Can't, for a scout or an adult. A stored answer is what the board shows. */
+export async function plannerSetAnswerAction(input: { entryId: number; personId: number; intent: Intent }): Promise<PlannerTickResult> {
   const e = await editor(input?.entryId, input?.personId);
   if (!e.ok) return e;
   if (!INTENTS.includes(input.intent)) return fail('Malformed request');
   if (!(await onTheBoard(e))) return fail('That person isn’t on the board.');
-  return drawerAfter(e, await setMeetingIntent(e.sb, { entryId: e.meeting.entryId, personId: e.personId, actorPersonId: e.actorPersonId, leader: true }, input.intent));
+  const res = await setMeetingIntent(e.sb, { entryId: e.meeting.entryId, personId: e.personId, actorPersonId: e.actorPersonId, leader: true }, input.intent);
+  if (!res.ok) return res;
+  return { ok: true, tick: { key: null, on: null, count: null, intent: input.intent, shown: input.intent }, stamp: await loadBoardStamp(e.sb, e.meeting.entryId) };
 }
 
-/** Tick or untick one of a scout's picks. */
-export async function plannerTogglePickAction(input: { entryId: number; personId: number; key: string; on: boolean }): Promise<PlannerDrawerResult> {
+/** Tick or untick one of a scout's picks. The board read before the write (for the carry and the pick list) also
+ *  gives what changed: their picks for this meeting with this one added or taken off. */
+export async function plannerTogglePickAction(input: { entryId: number; personId: number; key: string; on: boolean }): Promise<PlannerTickResult> {
   const e = await editor(input?.entryId, input?.personId);
   if (!e.ok) return e;
   if (typeof input.key !== 'string' || typeof input.on !== 'boolean') return fail('Malformed request');
-  const scout = (await loadBoardScouts(e.sb, [e.personId]))[0];
+  const [scouts, supply, catalog] = await Promise.all([loadBoardScouts(e.sb, [e.personId]), loadSupplyRows(e.sb, [e.meeting.entryId]), loadAdvancementCatalog()]);
+  const scout = scouts[0];
   if (!scout) return fail('Picks are for scouts.');
-  const catalog = await loadAdvancementCatalog();
-  const freeform = (await loadSupplyRows(e.sb, [e.meeting.entryId])).freeform.map((f) => ({ key: f.key, title: f.title }));
+  const freeform = supply.freeform.map((f) => ({ key: f.key, title: f.title }));
   const board = await loadScoutBoard(e.sb, e.meeting, scout, catalog, { viewerPersonId: e.actorPersonId, freeform });
   const writer = { entryId: e.meeting.entryId, personId: e.personId, actorPersonId: e.actorPersonId, leader: true, carry: board.hasOwnList ? null : board.picks };
-  if (!input.on) return drawerAfter(e, await removeMeetingPick(e.sb, writer, input.key));
-  if (!pickableKeys(board.pickList).has(input.key)) return fail('That isn’t on their pick list.');
-  return drawerAfter(e, await addMeetingPick(e.sb, writer, input.key, { later: false, markComing: false }));
+  if (input.on && !pickableKeys(board.pickList).has(input.key)) return fail('That isn’t on their pick list.');
+  const res = input.on ? await addMeetingPick(e.sb, writer, input.key, { later: false, markComing: false }) : await removeMeetingPick(e.sb, writer, input.key);
+  if (!res.ok) return res;
+  const now = new Set(board.picks.filter((p) => !p.later).map((p) => p.key));
+  if (input.on) now.add(input.key);
+  else now.delete(input.key);
+  const intent = board.view.intent;
+  const shown = effectiveIntent(intent, [...now].map(() => ({ later: false })));
+  return { ok: true, tick: { key: input.key, on: input.on, count: now.size, intent, shown }, stamp: await loadBoardStamp(e.sb, e.meeting.entryId) };
 }
 
 /** Sign an adult (or a Junior Leader) up to teach a topic, or take them off it. No cap (Decision 7). */
-export async function plannerToggleTeachAction(input: { entryId: number; personId: number; key: string; on: boolean }): Promise<PlannerDrawerResult> {
+export async function plannerToggleTeachAction(input: { entryId: number; personId: number; key: string; on: boolean }): Promise<PlannerTickResult> {
   const e = await editor(input?.entryId, input?.personId);
   if (!e.ok) return e;
   if (typeof input.key !== 'string' || typeof input.on !== 'boolean') return fail('Malformed request');
   const w = { personId: e.personId, actorPersonId: e.actorPersonId, leader: true };
-  return drawerAfter(e, input.on ? await teachTopic(e.sb, w, [e.meeting.entryId], { key: input.key }, null) : await unteachTopic(e.sb, w, e.meeting.entryId, input.key));
+  const res = input.on ? await teachTopic(e.sb, w, [e.meeting.entryId], { key: input.key }, null) : await unteachTopic(e.sb, w, e.meeting.entryId, input.key);
+  if (!res.ok) return res;
+  const [teaching, intents, stamp] = await Promise.all([
+    e.sb.from('meeting_topic_teachers').select('topic_id', { count: 'exact', head: true }).eq('calendar_entry_id', e.meeting.entryId).eq('person_id', e.personId),
+    loadIntents(e.sb, e.meeting.entryId, [e.personId]),
+    loadBoardStamp(e.sb, e.meeting.entryId)
+  ]);
+  if (teaching.error) throw new Error(teaching.error.message);
+  const count = teaching.count ?? 0;
+  const intent = intents.get(e.personId) ?? null;
+  return { ok: true, tick: { key: input.key, on: input.on, count, intent, shown: teacherIntent(intent, count) }, stamp };
 }
 
 /**
@@ -158,7 +184,7 @@ export async function plannerAssignAction(input: { entryId: number; personId: nu
 }
 
 /** Add an offer: a requirement or a typed title, taught by someone (P2a: a teacher is required; Decision 10b). */
-export async function plannerAddOfferAction(input: { entryId: number; personId: number; what: { key: string } | { title: string } }): Promise<PlannerDrawerResult> {
+export async function plannerAddOfferAction(input: { entryId: number; personId: number; what: { key: string } | { title: string } }): Promise<PlannerWriteResult> {
   const e = await editor(input?.entryId, input?.personId);
   if (!e.ok) return e;
   const what = input.what;
@@ -171,7 +197,9 @@ export async function plannerAddOfferAction(input: { entryId: number; personId: 
     title = freeformTitle(collapsed);
   }
   const w = { personId: e.personId, actorPersonId: e.actorPersonId, leader: true };
-  return drawerAfter(e, await teachTopic(e.sb, w, [e.meeting.entryId], 'key' in what ? { key: what.key } : { title }, null));
+  const res = await teachTopic(e.sb, w, [e.meeting.entryId], 'key' in what ? { key: what.key } : { title }, null);
+  if (!res.ok) return res;
+  return { ok: true, stamp: await loadBoardStamp(e.sb, e.meeting.entryId) };
 }
 
 export interface OfferChoice {
@@ -318,10 +346,9 @@ async function seeder(entryId: unknown) {
   const actor = await resolveAdminActor();
   if (!plannerAccess(actor).canSeed || actor?.personId == null) return fail('Only the planning team can seed a meeting.');
   const sb = createAdminClient();
-  const meeting = await loadMeetingById(sb, entryId as number);
+  const meeting = await loadMeetingForWrite(sb, entryId as number);
   if (!meeting) return fail('That meeting is no longer on the calendar.');
-  const { data: entry } = await sb.from('calendar_entries').select('status').eq('id', meeting.entryId).maybeSingle();
-  if ((entry as { status: string } | null)?.status !== 'published' || meeting.closed) return fail('That meeting isn’t taking sign-ups.');
+  if (!meeting.published || meeting.closed) return fail('That meeting isn’t taking sign-ups.');
   if (meeting.date < centralToday()) return fail('That meeting has passed.');
   return { ok: true as const, sb, meeting, actorPersonId: actor.personId };
 }

@@ -88,8 +88,9 @@ describe('a board of review on the planner', () => {
     const act = await actions();
     const picked = await act.plannerTogglePickAction({ entryId: meeting, personId: ready, key: BOR, on: true });
     const assigned = await act.plannerAssignAction({ entryId: meeting, personId: teacher, key: BOR });
+    const drawer = await act.plannerOpenPersonAction({ entryId: meeting, personId: ready });
     const { data: topic } = await sb.from('meeting_topics').select('kind, rank_id, req_code, meeting_topic_teachers(person_id)').eq('calendar_entry_id', meeting).eq('topic_key', BOR).single();
-    const opt = picked.ok ? picked.drawer.options.find((o) => o.key === BOR) : undefined;
+    const opt = drawer.ok ? drawer.drawer.options.find((o) => o.key === BOR) : undefined;
     expect([picked.ok, opt?.title, opt?.meta.startsWith('Tenderfoot board of review'), assigned.ok, topic]).toEqual([
       true,
       'Board of review',

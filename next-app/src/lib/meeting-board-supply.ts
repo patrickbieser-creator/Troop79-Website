@@ -193,23 +193,31 @@ export interface TeachBoard {
   match: ReturnType<typeof matchSupply>;
 }
 
-/** The teacher side of one meeting against its demand. `include`: extra people to load as teachers ('all' for admin). */
+/**
+ * The teacher side of one meeting against its demand. `include`: extra people to load as teachers ('all' for admin).
+ * `board` may be a promise (perf, 2026-10-22): it is only needed for the demand at the end, so the caller can load the
+ * board and this side at once. With 'all', the teacher pool and the answers load alongside the meeting's rows too.
+ */
 export async function loadTeachBoard(
   sb: SupabaseClient,
   meeting: Pick<BoardMeeting, 'entryId' | 'date'>,
   catalog: Catalog,
-  board: readonly BoardScoutRow[],
+  board: readonly BoardScoutRow[] | Promise<readonly BoardScoutRow[]>,
   include: 'all' | readonly number[] = []
 ): Promise<TeachBoard> {
-  const [rows, topics] = await Promise.all([loadSupplyRows(sb, [meeting.entryId]), loadFocusTopics(sb, meeting.entryId)]);
+  const [[rows, topics], everyone, allIntents] = await Promise.all([
+    Promise.all([loadSupplyRows(sb, [meeting.entryId]), loadFocusTopics(sb, meeting.entryId)]),
+    include === 'all' ? loadTeacherPeople(sb, 'all', meeting.date, catalog) : null,
+    loadIntents(sb, meeting.entryId)
+  ]);
   const focus = topics.filter((t) => t.seeded);
   const withRows = [...rows.topicTeachers.map((r) => r.personId), ...rows.skillOffers.map((r) => r.personId)];
-  const people = await loadTeacherPeople(sb, include === 'all' ? 'all' : [...withRows, ...include], meeting.date, catalog);
+  const people = everyone ?? (await loadTeacherPeople(sb, [...withRows, ...(include as readonly number[])], meeting.date, catalog));
   // Someone who signed up and no longer qualifies still shows with their rows (eligible: false), so they or a leader
   // can take them back.
   const missing = [...new Set(withRows)].filter((id) => !people.has(id));
   if (missing.length) for (const [id, p] of await loadTeacherPeople(sb, missing, meeting.date, catalog, { evenIfIneligible: true })) people.set(id, p);
-  const intents = await loadIntents(sb, meeting.entryId, [...people.keys()]);
+  const intents = new Map([...allIntents].filter(([id]) => people.has(id)));
   const ctx = teachContext(catalog);
   const supply: SupplyInput = {
     topicTeachers: rows.topicTeachers,
@@ -218,7 +226,7 @@ export async function loadTeachBoard(
     notComing: new Set([...intents].filter(([, it]) => it === 'not_coming').map(([id]) => id)),
     ctx
   };
-  const { demand } = summarizeBoard(board);
+  const { demand } = summarizeBoard(await board);
   const freeform = rows.freeform.map((f) => ({ key: f.key, title: f.title }));
   // Titles and members for every focus group on the board, seeded or kept for its picks after an unseed.
   const titles = new Map([...freeform.map((f) => [f.key, f.title] as const), ...topics.filter((f) => f.title).map((f) => [f.key, f.title!] as const)]);

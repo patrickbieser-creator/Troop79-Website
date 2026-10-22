@@ -84,6 +84,9 @@ const SCOUT_DRAWER: PersonDrawer = {
   ]
 };
 
+/** The server's answer to ticking Knots on: what changed, not the whole drawer. */
+const KNOTS_ON = { key: 'tenderfoot-3a', on: true, count: 2, intent: null, shown: 'coming' as const };
+
 function renderBoard(canEdit = true, canEmail = true, board: PlannerBoard = BOARD) {
   return render(
     <PlannerProvider entryId={500} canEdit={canEdit} canEmail={canEmail} adults={[p(11, 'Dan V')]} stamp="s1">
@@ -120,7 +123,7 @@ describe('an editor', () => {
   });
 
   it('Drawer_TickingAPick_SavesItForTheScout', async () => {
-    calls.pick.mockResolvedValue({ ok: true, drawer: SCOUT_DRAWER, stamp: 's2' });
+    calls.pick.mockResolvedValue({ ok: true, tick: KNOTS_ON, stamp: 's2' });
     renderBoard();
     fireEvent.click(screen.getAllByRole('button', { name: 'Finn P' })[0]);
     fireEvent.click(await screen.findByRole('checkbox', { name: /Knots/ }));
@@ -128,7 +131,7 @@ describe('an editor', () => {
   });
 
   it('Drawer_TickingAPick_DoesNotRefreshTheBoard', async () => {
-    calls.pick.mockResolvedValue({ ok: true, drawer: SCOUT_DRAWER, stamp: 's2' });
+    calls.pick.mockResolvedValue({ ok: true, tick: KNOTS_ON, stamp: 's2' });
     renderBoard();
     fireEvent.click(screen.getAllByRole('button', { name: 'Finn P' })[0]);
     fireEvent.click(await screen.findByRole('checkbox', { name: /Knots/ }));
@@ -138,7 +141,7 @@ describe('an editor', () => {
   });
 
   it('Drawer_ClosingAfterATick_RefreshesTheBoardOnce', async () => {
-    calls.pick.mockResolvedValue({ ok: true, drawer: SCOUT_DRAWER, stamp: 's2' });
+    calls.pick.mockResolvedValue({ ok: true, tick: KNOTS_ON, stamp: 's2' });
     renderBoard();
     fireEvent.click(screen.getAllByRole('button', { name: 'Finn P' })[0]);
     fireEvent.click(await screen.findByRole('checkbox', { name: /Knots/ }));
@@ -185,14 +188,14 @@ describe('an editor', () => {
 
   it('Drawer_ASecondTick_WaitsForTheFirstWrite', async () => {
     let finish: (v: unknown) => void = () => {};
-    calls.pick.mockReturnValueOnce(new Promise((r) => (finish = r))).mockResolvedValue({ ok: true, drawer: SCOUT_DRAWER, stamp: 's3' });
+    calls.pick.mockReturnValueOnce(new Promise((r) => (finish = r))).mockResolvedValue({ ok: true, tick: { ...KNOTS_ON, key: 'tenderfoot-4a', on: false, count: 1 }, stamp: 's3' });
     renderBoard();
     fireEvent.click(screen.getAllByRole('button', { name: 'Finn P' })[0]);
     fireEvent.click(await screen.findByRole('checkbox', { name: /Knots/ }));
     fireEvent.click(screen.getByRole('checkbox', { name: /First aid/ }));
     await act(async () => {});
     const before = calls.pick.mock.calls.length;
-    await act(async () => finish({ ok: true, drawer: { ...SCOUT_DRAWER, picked: 2, options: SCOUT_DRAWER.options.map((o) => ({ ...o, on: true })) }, stamp: 's2' }));
+    await act(async () => finish({ ok: true, tick: KNOTS_ON, stamp: 's2' }));
     await waitFor(() => expect([before, calls.pick.mock.calls.length]).toEqual([1, 2]));
   });
 
@@ -208,6 +211,14 @@ describe('an editor', () => {
     fireEvent.click(await screen.findByRole('checkbox', { name: /Knots/ }));
     fireEvent.click(screen.getByRole('checkbox', { name: /Swim/ }));
     expect([(await screen.findByRole('alert')).textContent, calls.pick.mock.calls.length]).toEqual(['Already 5 picks. Untick one to add another.', 1]);
+  });
+
+  it('Drawer_TakesTheCountTheServerReturns', async () => {
+    calls.pick.mockResolvedValue({ ok: true, tick: { ...KNOTS_ON, count: 3 }, stamp: 's2' });
+    renderBoard();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Finn P' })[0]);
+    fireEvent.click(await screen.findByRole('checkbox', { name: /Knots/ }));
+    expect(await screen.findByText(/Picks · 3 of 5/)).toBeTruthy();
   });
 
   it('Drawer_ARefusal_IsSaidInPlace', async () => {

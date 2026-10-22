@@ -92,6 +92,15 @@ export async function loadMeetingById(sb: SupabaseClient, entryId: number): Prom
   return data ? toMeeting(data as unknown as EntryRow) : null;
 }
 
+/** A meeting and whether its calendar entry is published, in one read (the planner's write checks). */
+export async function loadMeetingForWrite(sb: SupabaseClient, entryId: number): Promise<(BoardMeeting & { published: boolean }) | null> {
+  const { data, error } = await sb.from('calendar_entries').select(`${ENTRY_COLS}, status`).eq('id', entryId).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) return null;
+  const row = data as unknown as EntryRow & { status: string };
+  return { ...toMeeting(row), published: row.status === 'published' };
+}
+
 export interface BoardScout {
   personId: number;
   scoutId: string;
@@ -359,33 +368,34 @@ export async function addMeetingPick(sb: SupabaseClient, w: BoardWriter, key: st
   return done(error);
 }
 
+/**
+ * Untick. A teacher Assigned for the scouts who picked a topic (for_picks, D-424) comes off it once no scout picks it
+ * any more, carried picks included: the RPC settles that in its own transaction (migration 20261213100000), except
+ * when a scout who hasn't touched this board may still carry the pick from an earlier one. Whether that carried pick
+ * is finished is the ledger's call, so the RPC returns those scouts and only they are checked here.
+ */
 export async function removeMeetingPick(sb: SupabaseClient, w: BoardWriter, key: string): Promise<BoardWriteResult> {
-  const { error } = await sb.rpc('meeting_remove_pick', { ...base(w), p_topic_key: key, p_carry: carryJson(w.carry) });
+  const { data, error } = await sb.rpc('meeting_remove_pick', { ...base(w), p_topic_key: key, p_carry: carryJson(w.carry) });
   if (error) return done(error);
-  await releaseAssignmentsNobodyPicks(sb, w.entryId, key);
+  const carriers = ((data ?? []) as (number | string)[]).map(Number);
+  if (carriers.length) await releaseUnlessCarried(sb, w.entryId, key, carriers);
   return { ok: true };
 }
 
-/** A teacher Assigned for the scouts who picked a topic (for_picks) comes off it once no scout picks it any more,
- *  carried picks included. The pick is already gone, so a failure here is logged, not returned. */
-async function releaseAssignmentsNobodyPicks(sb: SupabaseClient, entryId: number, key: string): Promise<void> {
-  const { data, error } = await sb
-    .from('meeting_topic_teachers')
-    .select('topic_id, meeting_topics!inner(topic_key)')
-    .eq('calendar_entry_id', entryId)
-    .eq('for_picks', true)
-    .eq('meeting_topics.topic_key', key);
+/** The pick is already gone, so a failure here is logged, not returned. */
+async function releaseUnlessCarried(sb: SupabaseClient, entryId: number, key: string, carriers: readonly number[]): Promise<void> {
+  const [meeting, scouts, catalog] = await Promise.all([loadMeetingById(sb, entryId), loadBoardScouts(sb, carriers), loadAdvancementCatalog()]);
+  if (!meeting) return;
+  const picks = await loadEffectivePicks(sb, meeting, scouts, catalog);
+  if ([...picks.values()].some((e) => e.picks.some((p) => p.key === key))) return;
+  const { data, error } = await sb.from('meeting_topic_teachers').select('topic_id, meeting_topics!inner(topic_key)').eq('calendar_entry_id', entryId).eq('for_picks', true).eq('meeting_topics.topic_key', key);
   const topicIds = [...new Set(((data ?? []) as { topic_id: number }[]).map((r) => r.topic_id))];
   if (error || !topicIds.length) {
-    if (error) console.error('releaseAssignmentsNobodyPicks', error.message);
+    if (error) console.error('releaseUnlessCarried', error.message);
     return;
   }
-  const meeting = await loadMeetingById(sb, entryId);
-  if (!meeting) return;
-  const rows = await loadBoardState(sb, meeting, await loadAdvancementCatalog());
-  if (rows.some((s) => s.picks.some((p) => p.key === key))) return;
   const gone = await sb.from('meeting_topic_teachers').delete().eq('for_picks', true).in('topic_id', topicIds);
-  if (gone.error) console.error('releaseAssignmentsNobodyPicks', gone.error.message);
+  if (gone.error) console.error('releaseUnlessCarried', gone.error.message);
 }
 
 /** keys null clears the order. */
@@ -429,9 +439,8 @@ export async function loadScoutBoard(
     freeform?: readonly { key: string; title: string }[];
   }
 ): Promise<ScoutBoard> {
-  const progress = await loadScoutProgress(sb, [scout.scoutId]);
+  const [progress, topics] = await Promise.all([loadScoutProgress(sb, [scout.scoutId]), loadFocusTopics(sb, meeting.entryId)]);
   const full = { ...catalog, meritBadgeRequirements: catalog.meritBadgeRequirements ?? [] };
-  const topics = await loadFocusTopics(sb, meeting.entryId);
   const focus = opts.focus ?? focusPicks(topics, full);
   // A pick of a focus group or merit badge requirement unseeded since keeps its words in the tray.
   const words = focusWordsMore(topics, full);

@@ -12,7 +12,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Drawer } from '@/app/_components/drawer';
 import { INTENT_LABEL, type Intent } from '@/lib/meeting-board-shared';
 import type { DrawerOption, PersonDrawer } from '@/lib/meeting-planner-drawer';
-import { plannerOpenPersonAction, plannerSetAnswerAction, plannerTogglePickAction, plannerToggleTeachAction, type PlannerDrawerResult } from './actions';
+import { plannerOpenPersonAction, plannerSetAnswerAction, plannerTogglePickAction, plannerToggleTeachAction, type DrawerTick, type PlannerTickResult } from './actions';
 import { RemindButton, SAVE_FAILED, usePlanner } from './planner-client';
 import styles from './planner.module.css';
 
@@ -46,6 +46,14 @@ function withTicks(d: PersonDrawer, ticks: readonly Tick[]): PersonDrawer {
   return d.kind === 'scout' ? { ...d, options, picked: count, shown } : { ...d, options, teaching: count, shown };
 }
 
+/** What one write changed, laid over the confirmed drawer (the server no longer reloads the whole drawer per tick). */
+function withTick(d: PersonDrawer, t: DrawerTick): PersonDrawer {
+  const options = t.key == null ? d.options : d.options.map((o) => (o.key === t.key && o.on !== t.on ? { ...o, on: !!t.on } : o));
+  const base = { ...d, options, intent: t.intent, shown: t.shown };
+  if (t.count == null) return base;
+  return base.kind === 'scout' ? { ...base, picked: t.count } : { ...base, teaching: t.count };
+}
+
 export function PersonDrawerView({ personId, onClose }: { personId: number; onClose: () => void }) {
   const p = usePlanner()!;
   const [confirmed, setConfirmed] = useState<PersonDrawer | null>(null);
@@ -72,7 +80,7 @@ export function PersonDrawerView({ personId, onClose }: { personId: number; onCl
   const drawer = useMemo(() => (confirmed ? withTicks(confirmed, ticks) : null), [confirmed, ticks]);
 
   /** Every write for this person goes through one queue, in click order; the board behind refreshes on close. */
-  function write(write: () => Promise<PlannerDrawerResult>) {
+  function write(write: () => Promise<PlannerTickResult>) {
     return serial(personId, () => run(write, { defer: true }));
   }
 
@@ -100,7 +108,7 @@ export function PersonDrawerView({ personId, onClose }: { personId: number; onCl
         ? plannerTogglePickAction({ entryId: p.entryId, personId, key: o.key, on: tick.on })
         : plannerToggleTeachAction({ entryId: p.entryId, personId, key: o.key, on: tick.on })
     );
-    if (res.ok) setConfirmed(res.drawer);
+    if (res.ok) setConfirmed((d) => (d ? withTick(d, res.tick) : d));
     else setProblem({ at: o.key, text: res.error });
     setTicks((t) => t.filter((x) => x.id !== tick.id));
   };
@@ -109,7 +117,7 @@ export function PersonDrawerView({ personId, onClose }: { personId: number; onCl
     setProblem(null);
     const res = await write(() => plannerSetAnswerAction({ entryId: p.entryId, personId, intent }));
     setAnswering(false);
-    if (res.ok) setConfirmed(res.drawer);
+    if (res.ok) setConfirmed((d) => (d ? withTick(d, res.tick) : d));
     else setProblem({ at: 'answer', text: res.error });
   };
   const saving = answering || ticks.length > 0;

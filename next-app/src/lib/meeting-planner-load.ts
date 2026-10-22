@@ -37,13 +37,15 @@ export async function loadPlannerPage(sb: SupabaseClient, forMeeting?: BoardMeet
   const meeting = forMeeting ?? (await loadNextMeeting(sb));
   if (!meeting) return null;
   const catalog = await loadAdvancementCatalog();
-  const [rows, stamp, leaderIds, inviteRows] = await Promise.all([
-    loadBoardState(sb, meeting, catalog),
+  // The board and its teacher side load at once (perf, 2026-10-22): loadTeachBoard needs the rows only at its end.
+  const boardRows = loadBoardState(sb, meeting, catalog);
+  const [rows, teach, stamp, leaderIds, inviteRows] = await Promise.all([
+    boardRows,
+    loadTeachBoard(sb, meeting, catalog, boardRows, 'all'),
     loadBoardStamp(sb, meeting.entryId),
     loadLeaderIds(sb),
     loadInviteRows(sb, meeting.entryId)
   ]);
-  const teach = await loadTeachBoard(sb, meeting, catalog, rows, 'all');
   const rankName = new Map(catalog.ranks.map((r) => [r.id, r.display_name]));
   const skillName = new Map(catalog.skills.map((s) => [s.id, s.name]));
 

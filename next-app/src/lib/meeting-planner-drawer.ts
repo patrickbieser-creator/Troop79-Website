@@ -84,8 +84,8 @@ export function drawerOptions(input: {
 /** One person's drawer on this meeting, or null when they're neither an active scout nor someone who may teach. */
 export async function loadPersonDrawer(sb: SupabaseClient, meeting: Pick<BoardMeeting, 'entryId' | 'date'>, personId: number, viewerPersonId: number | null): Promise<PersonDrawer | null> {
   const catalog = await loadAdvancementCatalog();
-  const rows = await loadBoardState(sb, meeting, catalog);
-  const teach = await loadTeachBoard(sb, meeting, catalog, rows, 'all');
+  const board = loadBoardState(sb, meeting, catalog);
+  const [rows, teach] = await Promise.all([board, loadTeachBoard(sb, meeting, catalog, board, 'all')]);
   const rankName = new Map(catalog.ranks.map((r) => [r.id, r.display_name]));
   const scoutName = new Map(rows.map((r) => [r.personId, boardName(r.name)]));
   const words = (key: string) => {
