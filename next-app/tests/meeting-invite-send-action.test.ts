@@ -11,7 +11,9 @@ const m = vi.hoisted(() => ({
   createPick: vi.fn(),
   del: vi.fn(),
   send: vi.fn(),
-  audit: vi.fn()
+  audit: vi.fn(),
+  /** The meeting_topics row a focus group or freeform topic reads its words from (null: none). */
+  topic: null as unknown
 }));
 vi.mock('@/lib/require-capability', () => ({ requireCapability: async () => m.actor }));
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn(), updateTag: vi.fn(), unstable_cache: (fn: unknown) => fn }));
@@ -27,15 +29,15 @@ vi.mock('@/lib/advancement-catalog', () => ({
     skills: []
   })
 }));
-const chain = (result: unknown) => {
+const chain = (result: unknown, table?: string) => {
   const q: Record<string, unknown> = {};
   for (const k of ['select', 'eq', 'is', 'in', 'order', 'limit']) q[k] = () => q;
   q.single = async () => result;
-  q.maybeSingle = async () => ({ data: null });
+  q.maybeSingle = async () => ({ data: table === 'meeting_topics' ? m.topic : null, error: null });
   q.then = (res: (v: unknown) => void) => res({ data: [{ id: 41, nickname: 'Dan', first_name: 'Daniel', display_name: 'Dan Bieser' }] });
   return q;
 };
-vi.mock('@/lib/supabase/server', () => ({ createAdminClient: () => ({ from: () => chain({ data: { entry_date: '2091-03-04' } }) }) }));
+vi.mock('@/lib/supabase/server', () => ({ createAdminClient: () => ({ from: (table: string) => chain({ data: { entry_date: '2091-03-04' } }, table) }) }));
 
 const { createAdminClient } = await import('@/lib/supabase/server');
 const { sendTeachInvites, sendPickInvites } = await import('../src/lib/meeting-invites-send');
@@ -48,7 +50,11 @@ const invite = (personId: number, token: string) => ({ inviteId: personId * 10, 
 beforeEach(() => {
   for (const f of [m.create, m.createPick, m.del, m.send, m.audit]) f.mockReset();
   m.actor = { subjectKind: 'adult', personId: 82 };
+  m.topic = null;
 });
+
+/** A seeded focus group on the meeting: its title and the requirement it covers. */
+const focusGroup = { title: 'Knots night', meeting_topic_members: [{ item_key: 'tenderfoot-3a', position: 0 }] };
 
 describe('sendTeachInvitesAction', () => {
   it('Leader_SendsEachInvite_FromTheBugler_WithItsOwnLink', async () => {
@@ -78,6 +84,27 @@ describe('sendTeachInvitesAction', () => {
     expect([m.del.mock.calls.flatMap((c) => c[1]), res.ok && res.sent]).toEqual([[420], ['Person 41']]);
   });
 
+
+  it('SendTeachInvites_FocusGroupKey_Sends', async () => {
+    m.topic = focusGroup;
+    m.create.mockResolvedValue({ ok: true, invites: [invite(41, 'a'.repeat(64))], skipped: [] });
+    m.send.mockResolvedValue({ status: 'sent', to: [] });
+    const res = await sendTeachInvitesAction({ entryId: 5, topicKey: 'fg:7', personIds: [41] });
+    expect([res.ok && res.sent, m.send.mock.calls[0]?.[0].html.includes('Knots night')]).toEqual([['Person 41'], true]);
+  });
+
+  it('SendTeachInvites_FreeformKey_Sends', async () => {
+    m.topic = { title: 'Flag ceremony practice', meeting_topic_members: [] };
+    m.create.mockResolvedValue({ ok: true, invites: [invite(41, 'a'.repeat(64))], skipped: [] });
+    m.send.mockResolvedValue({ status: 'sent', to: [] });
+    const res = await sendTeachInvitesAction({ entryId: 5, topicKey: 'ff:12', personIds: [41] });
+    expect(res.ok && res.sent).toEqual(['Person 41']);
+  });
+
+  it('AFocusGroupNotOnTheMeeting_IsRefused_BeforeAnythingIsMinted', async () => {
+    const res = await sendTeachInvitesAction({ entryId: 5, topicKey: 'fg:7', personIds: [41] });
+    expect([res.ok, m.create.mock.calls.length]).toEqual([false, 0]);
+  });
 
   it('TheSend_IsAudited', async () => {
     m.create.mockResolvedValue({ ok: true, invites: [invite(41, 'a'.repeat(64))], skipped: [] });
@@ -111,6 +138,14 @@ describe('sendPickInvitesAction (P2)', () => {
       true,
       ['Anjali S', 'Finn P']
     ]);
+  });
+
+  it('SendPickInvites_FocusGroupKey_Sends', async () => {
+    m.topic = focusGroup;
+    m.createPick.mockResolvedValue({ ok: true, recipients: [parentOfTwo], skipped: [] });
+    m.send.mockResolvedValue({ status: 'sent', to: [] });
+    const res = await sendPickInvitesAction({ entryId: 5, topicKey: 'fg:7', scoutIds: [1, 2] });
+    expect([res.ok && res.sent, m.send.mock.calls[0]?.[0].html.includes('Knots night')]).toEqual([['Anjali S', 'Finn P'], true]);
   });
 
   it('AnEmailThatDidntGoOut_TakesThatFamilysInvitesWithIt', async () => {

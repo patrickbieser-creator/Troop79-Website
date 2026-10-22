@@ -27,8 +27,15 @@ import {
   type InviteTemplate
 } from '@/lib/meeting-invite-email';
 import { INVITE_SENDER_NAME } from '@/lib/meeting-invites';
+import { loadTopicWordsFor } from '@/lib/meeting-focus-db';
 import { createPickInvites, createReminders, createTeachInvites, deleteInvites, type ReminderRecipient } from '@/lib/meeting-invites-db';
 import { siteUrl } from '@/lib/site-url';
+
+/** An invite's words: catalog keys from the catalog, a focus group or freeform topic from its row on this meeting. */
+async function inviteWords(sb: SupabaseClient, entryId: number, key: string) {
+  const [catalog, own] = await Promise.all([loadAdvancementCatalog(), loadTopicWordsFor(sb, entryId, key)]);
+  return topicWords(key, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, own.titles, { mbReqs: catalog.meritBadgeRequirements, members: own.members });
+}
 
 export type SendInvitesResult =
   | { ok: true; sent: string[]; skipped: { name: string; reason: string }[] }
@@ -43,9 +50,7 @@ export async function sendTeachInvites(sb: SupabaseClient, input: { entryId: num
   if (!input || !Number.isInteger(input.entryId) || typeof input.topicKey !== 'string' || !Array.isArray(input.personIds)) {
     return { ok: false, error: 'Malformed request' };
   }
-  const catalog = await loadAdvancementCatalog();
-  const words = topicWords(input.topicKey, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, undefined, { mbReqs: catalog.meritBadgeRequirements });
-  // Freeform topics carry their title on the board, not in the catalog; P1 invites cover catalog topics only.
+  const words = await inviteWords(sb, input.entryId, input.topicKey);
   if (!words) return { ok: false, error: 'That topic can’t be invited for yet.' };
   const made = await createTeachInvites(sb, { entryId: input.entryId, topicKey: input.topicKey, personIds: input.personIds, sentBy: input.sentBy });
   if (!made.ok) return made;
@@ -146,8 +151,7 @@ export async function sendPickInvites(sb: SupabaseClient, input: { entryId: numb
   if (!input || !Number.isInteger(input.entryId) || typeof input.topicKey !== 'string' || !Array.isArray(input.scoutIds)) {
     return { ok: false, error: 'Malformed request' };
   }
-  const catalog = await loadAdvancementCatalog();
-  const words = topicWords(input.topicKey, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, undefined, { mbReqs: catalog.meritBadgeRequirements });
+  const words = await inviteWords(sb, input.entryId, input.topicKey);
   if (!words) return { ok: false, error: 'That topic can’t be offered yet.' };
   const made = await createPickInvites(sb, { entryId: input.entryId, topicKey: input.topicKey, scoutIds: input.scoutIds, sentBy: input.sentBy });
   if (!made.ok) return made;

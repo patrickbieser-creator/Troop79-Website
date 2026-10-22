@@ -9,6 +9,7 @@ import { loadAdvancementCatalog } from '@/lib/advancement-catalog';
 import { fmtDateFull } from '@/lib/format-date';
 import { minutesText, topicWords } from '@/lib/meeting-board-picklist';
 import { inspectInvite } from '@/lib/meeting-invites-db';
+import { loadTopicWordsFor } from '@/lib/meeting-focus-db';
 import { PageHeader } from '@/app/_components/page-header';
 import { PageShell } from '@/app/_components/page-shell';
 import { InviteCard } from './invite-card';
@@ -22,9 +23,13 @@ export const metadata = {
 
 export default async function InvitePage({ params, searchParams }: { params: Promise<{ token: string }>; searchParams: Promise<{ err?: string }> }) {
   const [{ token }, { err }] = await Promise.all([params, searchParams]);
-  const { state, invite } = await inspectInvite(createAdminClient(), token);
-  const catalog = invite ? await loadAdvancementCatalog() : null;
-  const words = invite && catalog ? topicWords(invite.topicKey, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, undefined, { mbReqs: catalog.meritBadgeRequirements }) : null;
+  const sb = createAdminClient();
+  const { state, invite } = await inspectInvite(sb, token);
+  const [catalog, own] = invite ? await Promise.all([loadAdvancementCatalog(), loadTopicWordsFor(sb, invite.entryId, invite.topicKey)]) : [null, null];
+  const words =
+    invite && catalog && own
+      ? topicWords(invite.topicKey, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, own.titles, { mbReqs: catalog.meritBadgeRequirements, members: own.members })
+      : null;
 
   return (
     <>

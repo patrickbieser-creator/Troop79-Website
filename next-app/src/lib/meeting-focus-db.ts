@@ -74,6 +74,27 @@ export function focusWordsMore(topics: readonly FocusTopic[], catalog: Catalog) 
   };
 }
 
+/**
+ * The titles and members topicWords needs for ONE key on a meeting (the invite senders and the /i/ page): a focus
+ * group's or freeform topic's own meeting_topics row. A catalog key needs neither, so it costs no query. Build a Plan B0.
+ */
+export async function loadTopicWordsFor(sb: SupabaseClient, entryId: number, key: string): Promise<{ titles: Map<string, string>; members: Map<string, string[]> }> {
+  const out = { titles: new Map<string, string>(), members: new Map<string, string[]>() };
+  if (!key.startsWith('fg:') && !key.startsWith('ff:')) return out;
+  const { data, error } = await sb
+    .from('meeting_topics')
+    .select('title, meeting_topic_members(item_key, position)')
+    .eq('calendar_entry_id', entryId)
+    .eq('topic_key', key)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  const row = data as Pick<TopicRow, 'title' | 'meeting_topic_members'> | null;
+  if (!row) return out;
+  if (row.title) out.titles.set(key, row.title);
+  out.members.set(key, [...(row.meeting_topic_members ?? [])].sort((x, y) => x.position - y.position).map((m) => m.item_key));
+  return out;
+}
+
 /** Seeded topics as the scout's pick list takes them (a catalog key that no longer resolves is left out). */
 export function focusPicks(topics: readonly FocusTopic[], catalog: Catalog): FocusPickIn[] {
   const { titles, more } = focusWordsMore(topics, catalog);
