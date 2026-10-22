@@ -997,6 +997,10 @@
   justify-content: space-between;
   gap: var(--sp-2);
 }
+/* The active set panel's head: "+ New set" alone, at the right. */
+.fsColHeadEnd {
+  justify-content: flex-end;
+}
 .fsColTitle {
   margin: 0;
   font: 700 var(--fs-lg) / 1.3 var(--font-ui);

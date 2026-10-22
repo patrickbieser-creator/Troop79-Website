@@ -4,13 +4,13 @@
  * Focus sets, the client side (Plans/Meeting-Planner-II.md P3; prototypes/meeting-plan-II/README.md "Screen 4"). Three
  * columns on a wide screen (sets · find requirements · the active set), one column on a phone in that order.
  *
- *   - Sets: "+ New set", label filter pills, one row per set (name, "N requirements · used Oct 11", labels).
+ *   - Sets: label filter pills, one row per set (name, "N requirements · used Oct 11", labels).
  *   - Find requirements: the server search (every typed word against rank or badge, code, label and the requirement
  *     it sits under), All / Rank / Merit badge, 50 rows a page grouped by rank or badge. With nothing typed, the ranks
  *     and badges to browse. A tick adds a row to the active set's draft.
- *   - The active set: name, labels, what's in it, then Save changes / Discard changes (the save-button standard:
- *     greyed only when nothing changed; pressed while incomplete it marks the field and says why), Seed a meeting,
- *     and Delete.
+ *   - The active set: "+ New set" at the top right (seed right only), then name, labels, what's in it, then Save
+ *     changes / Discard changes (the save-button standard: greyed only when nothing changed; pressed while incomplete
+ *     it marks the field and says why), Seed a meeting, and Delete.
  *
  * Read-only for anyone without meeting_planner.seed: no ticks, no editing, no seeding.
  */
@@ -80,11 +80,6 @@ export function FocusSetsClient({
           <h2 id="fs-sets" className={styles.fsColTitle}>
             Sets · {sets.length}
           </h2>
-          {canSeed ? (
-            <Button size="sm" variant="secondary" onClick={() => open('new')}>
-              + New set
-            </Button>
-          ) : null}
         </div>
         {allLabels.length ? (
           <div className={styles.fsPills} role="group" aria-label="Show sets labelled">
@@ -129,6 +124,13 @@ export function FocusSetsClient({
       <Finder sources={sources} editing={editing} inDraft={inDraft} onToggle={toggleItem} onAddAll={addAll} />
 
       <section className={styles.fsCol} aria-label="The set">
+        {canSeed ? (
+          <div className={`${styles.fsColHead} ${styles.fsColHeadEnd}`}>
+            <Button size="sm" variant="secondary" onClick={() => open('new')}>
+              + New set
+            </Button>
+          </div>
+        ) : null}
         {activeId == null ? (
           <p className={styles.empty}>{canSeed ? 'Choose a set, or make a new one.' : 'Choose a set to see what’s in it.'}</p>
         ) : canSeed ? (
