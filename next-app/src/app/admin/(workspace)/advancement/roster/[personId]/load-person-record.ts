@@ -76,12 +76,14 @@ export async function loadPersonRecord(personId: number): Promise<LoadPersonReco
     getPersonDetail(personId),
     getPersonEmails(personId),
     supabase.from('scouts').select(SCOUT_RECORD_COLS).eq('person_id', personId).maybeSingle(),
-    supabase.from('people').select('gender').eq('id', personId).maybeSingle(),
+    supabase.from('people').select('gender, is_test').eq('id', personId).maybeSingle(),
     supabase.from('households').select('id, label').is('system_key', null).order('label'),
     supabase.from('leaders').select('code, can_login').eq('person_id', personId).limit(1).maybeSingle()
   ]);
   const scout = (scoutRes.data as ScoutRecordRow | null) ?? null;
-  const gender = (genderRes.data as { gender: string | null } | null)?.gender ?? null;
+  const genderRow = genderRes.data as { gender: string | null; is_test: boolean } | null;
+  const gender = genderRow?.gender ?? null;
+  const isTest = genderRow?.is_test ?? false;
   const leaderRow = leaderRes.data as { code: string; can_login: boolean } | null;
   const leader = leaderRow ? { code: leaderRow.code, canLogin: leaderRow.can_login } : null;
   const households = ((householdsRes.data ?? []) as { id: number; label: string }[]).map((h) => ({
@@ -114,6 +116,7 @@ export async function loadPersonRecord(personId: number): Promise<LoadPersonReco
       emails,
       scout,
       gender,
+      isTest,
       leader,
       rankLabel,
       household,

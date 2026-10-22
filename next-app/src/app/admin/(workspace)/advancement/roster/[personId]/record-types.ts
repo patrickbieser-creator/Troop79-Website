@@ -151,6 +151,8 @@ export interface PersonRecord {
   /** people.gender ('M' | 'F' | null) — outside LEADER_PERSON_FIELDS, so it
    *  rides here rather than in detail.fields. Edited on a scout's Details. */
   gender: string | null;
+  /** people.is_test: a test record, left out of the EmailOctopus sync and the BSA roster check. Absent = false. */
+  isTest?: boolean;
   /** The linked leaders row, when one exists: sign-off code and the
    *  Access & Permissions flag (leaders.can_login — a separate switch from
    *  "can sign in", which is derived from the addresses). Also one of the

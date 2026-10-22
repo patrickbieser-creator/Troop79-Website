@@ -47,6 +47,7 @@ import { ContactSection } from './contact-section';
 import { FamilySection } from './family-section';
 import { RolesBlock } from './roles-block';
 import { DangerZone } from './danger-zone';
+import { TestRecordSection } from './test-record-section';
 import { HistoryFact } from './history-card';
 import { HistorySection } from './history-section';
 import { HistoryDialog, type HistoryView } from './history-dialog';
@@ -357,6 +358,8 @@ export function PersonRecord({ record, from }: { record: PersonRecordData; from:
           )}
 
           <HistorySection history={history} onOpenLog={openLog} onOpenDetail={openDetail} />
+
+          <TestRecordSection personId={record.personId} isTest={record.isTest ?? false} />
 
           <DangerZone
             personId={record.personId}

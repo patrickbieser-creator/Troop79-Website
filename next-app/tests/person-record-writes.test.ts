@@ -22,7 +22,7 @@ vi.mock('@/lib/supabase/server', () => ({ createAdminClient: () => adminClient()
 vi.mock('next/cache', () => ({ revalidatePath: () => undefined, updateTag: () => undefined, revalidateTag: () => undefined }));
 
 import { updateScoutFields, updateScoutIdentity } from '../src/app/admin/(workspace)/advancement/lookups/actions';
-import { setHousehold, updatePersonDemographics } from '../src/app/admin/(workspace)/advancement/roster/person-actions';
+import { setHousehold, setPersonIsTest, updatePersonDemographics } from '../src/app/admin/(workspace)/advancement/roster/person-actions';
 
 const admin = adminClient();
 const SCOUT_ID = 'ZZWRT1';
@@ -231,6 +231,14 @@ describe('Phase 2 section writes — one section, one action, field-level audit 
     const res = await updatePersonDemographics(adultId, fd);
     expect(res.ok).toBe(false);
     expect(res.error).toMatch(/First and last name are required/);
+  });
+
+  it('SetPersonIsTest_WritesTheFlag_AndAuditsIt', async () => {
+    const res = await setPersonIsTest(adultId, true);
+    const { data } = await admin.from('people').select('is_test').eq('id', adultId).single();
+    const audit = await latestAudit('person', String(adultId));
+    await admin.from('people').update({ is_test: false }).eq('id', adultId);
+    expect([res, data, audit.details]).toEqual([{ ok: true }, { is_test: true }, [{ field: 'Test record', from: 'No', to: 'Yes' }]]);
   });
 
   it('SetHousehold_RecordsFromToLabels', async () => {

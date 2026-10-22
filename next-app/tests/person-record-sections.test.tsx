@@ -3,7 +3,7 @@ import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PersonRecord } from '../src/app/admin/(workspace)/advancement/roster/[personId]/person-record';
 import type { PersonRecord as PersonRecordData } from '../src/app/admin/(workspace)/advancement/roster/[personId]/record-types';
-import { setHousehold, updatePersonDemographics } from '../src/app/admin/(workspace)/advancement/roster/person-actions';
+import { setHousehold, setPersonIsTest, updatePersonDemographics } from '../src/app/admin/(workspace)/advancement/roster/person-actions';
 
 /**
  * Person Editor Rethink, Phase 2 (Plans/Person-Editor-Rethink.md) — the
@@ -24,6 +24,7 @@ vi.mock('next/navigation', () => ({
 vi.mock('../src/app/admin/(workspace)/advancement/roster/person-actions', () => ({
   setPersonActive: vi.fn(async () => ({ ok: true })),
   setHousehold: vi.fn(async () => ({ ok: true })),
+  setPersonIsTest: vi.fn(async () => ({ ok: true })),
   updatePersonDemographics: vi.fn(async () => ({ ok: true }))
 }));
 vi.mock('../src/app/admin/(workspace)/advancement/roster/[personId]/scout-status-actions', () => ({
@@ -37,6 +38,7 @@ vi.mock('../src/app/admin/(workspace)/advancement/lookups/actions', () => ({
 beforeEach(() => {
   vi.mocked(updatePersonDemographics).mockClear().mockResolvedValue({ ok: true });
   vi.mocked(setHousehold).mockClear().mockResolvedValue({ ok: true });
+  vi.mocked(setPersonIsTest).mockClear().mockResolvedValue({ ok: true });
 });
 
 function adultRecord(): PersonRecordData {
@@ -304,5 +306,25 @@ describe('Person record sections — read → Edit → Save/Cancel, one at a tim
     render(<PersonRecord record={record} from="adult" />);
     const family = section('Household & family');
     expect(within(family).getByText('No one else in this household yet.')).toBeTruthy();
+  });
+});
+
+describe('Test record', () => {
+  it('Leader_TicksTestRecord_SavesTheFlag', async () => {
+    const user = userEvent.setup();
+    render(<PersonRecord record={adultRecord()} from="adult" />);
+    const card = section('Test record');
+    await user.click(within(card).getByRole('button', { name: 'Edit' }));
+    await user.click(within(card).getByRole('checkbox', { name: /Test record/ }));
+    await user.click(within(card).getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(setPersonIsTest).toHaveBeenCalledWith(401, true));
+  });
+
+  it('Leader_SeesWhatATestRecordIsLeftOutOf', async () => {
+    const user = userEvent.setup();
+    render(<PersonRecord record={adultRecord()} from="adult" />);
+    const card = section('Test record');
+    await user.click(within(card).getByRole('button', { name: 'Edit' }));
+    expect(within(card).getByText(/Left out of the EmailOctopus sync and the BSA roster check/)).toBeTruthy();
   });
 });

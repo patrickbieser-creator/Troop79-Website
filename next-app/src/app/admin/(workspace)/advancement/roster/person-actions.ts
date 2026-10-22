@@ -750,6 +750,37 @@ export async function updatePersonDemographics(personId: number, formData: FormD
  * on record, because they are attached to ledger history, past events and
  * other people's relationships. Deleting them was never an option.
  */
+/**
+ * Mark someone as a test record (people.is_test), or not. A test record is left out of the EmailOctopus sync and the
+ * BSA roster check (lib/newsletter-sync-db, lib/bsa-roster-db). The record page's Test record section.
+ */
+export async function setPersonIsTest(personId: number, isTest: boolean): Promise<Result> {
+  await requireCapability('roster.manage');
+  if (!Number.isInteger(personId) || typeof isTest !== 'boolean') return { ok: false, error: 'Malformed request' };
+
+  const supabase = createAdminClient();
+  const { data: before, error: readErr } = await supabase.from('people').select('is_test').eq('id', personId).maybeSingle();
+  if (readErr) return { ok: false, error: readErr.message };
+  if (!before) return { ok: false, error: 'That person is no longer on the roster.' };
+  const was = (before as { is_test: boolean }).is_test;
+
+  const { error } = await supabase.from('people').update({ is_test: isTest, updated_at: new Date().toISOString() }).eq('id', personId);
+  if (error) return { ok: false, error: error.message };
+
+  const yesNo = (v: boolean) => (v ? 'Yes' : 'No');
+  await recordAudit({
+    area: 'roster',
+    action: 'update',
+    entityType: 'person',
+    entityId: personId,
+    summary: `Updated person ${personId} — Test record`,
+    details: [{ field: 'Test record', from: yesNo(was), to: yesNo(isTest) }]
+  });
+
+  revalidate();
+  return { ok: true };
+}
+
 export async function setPersonActive(
   personId: number,
   active: boolean,
