@@ -46,6 +46,11 @@ export interface PlanScoutTeacher {
 export interface PlanSession {
   /** 1-based session number, stable within a snapshot. */
   id: number;
+  /**
+   * The planner board's topic key: 'tenderfoot-3a' (rank) or 'first-aid-2' (a merit badge's top-level requirement),
+   * never 'rank:…' / 'mb:…'. Optional: snapshots published before Build a Plan B0 have none.
+   */
+  key?: string;
   tier: TierId;
   kind: 'rank' | 'mb';
   /** Display code, e.g. "Tenderfoot 3a" or "Personal Management 2a". */
@@ -70,6 +75,8 @@ export interface PlanSession {
 }
 
 export interface ScoutSuggestion {
+  /** The planner board's topic key (as PlanSession.key); absent on older snapshots. */
+  key?: string;
   kind: 'rank' | 'mb';
   /** Short display code, e.g. "TF 3a" or "MB Personal Mgmt 2a". */
   codeLabel: string;

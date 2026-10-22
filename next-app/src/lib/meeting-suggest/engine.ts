@@ -1,5 +1,6 @@
 /**
- * Meeting Plan suggestion engine — pure functions, no I/O.
+ * Meeting Plan suggestion engine — pure functions, no I/O. Lives in lib/ since Build a Plan B0 (Plans/Build-A-Plan.md)
+ * so the planner can suggest from it; every session and suggestion carries the board's topic key.
  *
  * Same batch shape as audits/checks/bor-requirements.ts: raw catalog rows →
  * buildReqTree → isGroupSatisfied walk against per-scout ledger code sets.
@@ -9,7 +10,8 @@
  *     per scout. Sub-requirements roll up to their parent (taught together).
  *   - Prefer requirements shared by several scouts (they make group sessions).
  *   - Older scouts (next rank Star+) also get merit badge suggestions,
- *     Eagle-required first, drawn from badges in progress or with a counselor.
+ *     Eagle-required first, drawn from badges in progress or with a counselor:
+ *     one top-level requirement each ('first-aid-2'), never a whole badge.
  *   - Group sessions need ≥2 scouts; cohorts over 8 split by patrol.
  *   - Teacher matching: requirement skill → teaching_skills, keyed to people
  *     (Phase 0a of Plans/Meeting-Requests-And-Teaching-Offers.md): adults —
@@ -138,8 +140,14 @@ function collectMissingMbLeaves(node: MbNode, mbId: string, codes: Set<string>, 
 // ── candidates ─────────────────────────────────────────────────────────────
 
 interface Candidate {
-  /** Grouping key: `rank:tenderfoot-3a` or `mb:personal-management`. */
+  /** Grouping key: `rank:tenderfoot-3a` or `mb:first-aid-2` (one top-level requirement, never a whole badge). */
   key: string;
+  /** The planner board's topic key: `tenderfoot-3a` or `first-aid-2`. */
+  boardKey: string;
+  /** The rank or merit badge the requirement belongs to. */
+  sourceId: string;
+  /** The requirement's own code: `3a`, `2`. */
+  code: string;
   kind: 'rank' | 'mb';
   codeLabel: string;
   label: string;
@@ -262,6 +270,9 @@ export function buildMeetingPlan(input: EngineInput): MeetingPlanPayload {
       for (const top of open.meeting) {
         candidates.push({
           key: `rank:${next}-${top.code}`,
+          boardKey: `${next}-${top.code}`,
+          sourceId: next,
+          code: top.code,
           kind: 'rank',
           codeLabel: `${abbr} ${top.code}`,
           label: top.label,
@@ -284,24 +295,25 @@ export function buildMeetingPlan(input: EngineInput): MeetingPlanPayload {
       }
 
       const mbCodes = mbCodesByScout.get(scout.id) ?? new Set<string>();
-      const mbCandidates: { mbId: string; eagle: boolean; inProgress: boolean; firstLeaf: EngineMbReqRow }[] = [];
+      // One requirement, never the whole badge (Meeting Planner II Decision 10): the badge's first unfinished top-level
+      // requirement with something left to do at a meeting, keyed as the board keys it ('first-aid-2').
+      const mbCandidates: { mbId: string; eagle: boolean; inProgress: boolean; top: EngineMbReqRow }[] = [];
       for (const mbId of pool) {
         if (awarded.has(mbId)) continue;
         const tree = mbTree.get(mbId);
         if (!tree || tree.length === 0) continue;
-        const missing: EngineMbReqRow[] = [];
-        for (const top of tree) {
-          if (!mbNodeSatisfied(top, mbId, mbCodes)) {
-            collectMissingMbLeaves(top, mbId, mbCodes, missing);
-          }
-        }
-        const meetingDoable = missing.filter((m) => m.venue !== 'outing');
-        if (meetingDoable.length === 0) continue;
+        const top = tree.find((t) => {
+          if (mbNodeSatisfied(t, mbId, mbCodes)) return false;
+          const missing: EngineMbReqRow[] = [];
+          collectMissingMbLeaves(t, mbId, mbCodes, missing);
+          return missing.some((m) => m.venue !== 'outing');
+        });
+        if (!top) continue;
         mbCandidates.push({
           mbId,
           eagle: mbById.get(mbId)?.eagle ?? false,
           inProgress: inProgress.has(mbId),
-          firstLeaf: meetingDoable[0]
+          top
         });
       }
       mbCandidates.sort(
@@ -313,10 +325,13 @@ export function buildMeetingPlan(input: EngineInput): MeetingPlanPayload {
       for (const mc of mbCandidates.slice(0, MAX_MB_CANDIDATES_PER_SCOUT)) {
         const mb = mbById.get(mc.mbId);
         candidates.push({
-          key: `mb:${mc.mbId}`,
+          key: `mb:${mc.mbId}-${mc.top.code}`,
+          boardKey: `${mc.mbId}-${mc.top.code}`,
+          sourceId: mc.mbId,
+          code: mc.top.code,
           kind: 'mb',
-          codeLabel: `${mb?.name ?? mc.mbId} ${mc.firstLeaf.code}`,
-          label: mc.firstLeaf.label,
+          codeLabel: `${mb?.name ?? mc.mbId} ${mc.top.code}`,
+          label: mc.top.label,
           eagle: mc.eagle,
           skillId: null,
           sortOrder: 0
@@ -371,10 +386,7 @@ export function buildMeetingPlan(input: EngineInput): MeetingPlanPayload {
   const protoSessions: ProtoSession[] = [];
   for (const { candidate, scoutIds } of membersByKey.values()) {
     if (scoutIds.length < 2) continue;
-    const tier =
-      candidate.kind === 'mb'
-        ? 'older'
-        : tierForRank(candidate.key.slice('rank:'.length).split('-').slice(0, -1).join('-'));
+    const tier = candidate.kind === 'mb' ? 'older' : tierForRank(candidate.sourceId);
     // Keep patrols together when splitting: sort by patrol, then name.
     const sorted = [...scoutIds].sort((a, b) => {
       const ra = scoutRefs.get(a)!;
@@ -446,7 +458,7 @@ export function buildMeetingPlan(input: EngineInput): MeetingPlanPayload {
 
     const counselors =
       c.kind === 'mb'
-        ? (counselorsByMb.get(c.key.slice('mb:'.length)) ?? [])
+        ? (counselorsByMb.get(c.sourceId) ?? [])
             .slice(0, MAX_ADULT_TEACHERS)
         : [];
 
@@ -463,6 +475,7 @@ export function buildMeetingPlan(input: EngineInput): MeetingPlanPayload {
 
     sessions.push({
       id,
+      key: c.boardKey,
       tier: proto.tier,
       kind: c.kind,
       codeLabel: sessionCodeLabel(c, rankLabel, mbById),
@@ -494,6 +507,7 @@ export function buildMeetingPlan(input: EngineInput): MeetingPlanPayload {
     const next = nextRankByScout.get(scout.id) ?? null;
     const abbr = next ? (RANK_ABBR[next] ?? next) : '';
     const suggestions: ScoutSuggestion[] = selected.map((c) => ({
+      key: c.boardKey,
       kind: c.kind,
       codeLabel: c.codeLabel,
       label: c.label,
@@ -596,13 +610,6 @@ function sessionCodeLabel(
   rankLabel: Map<string, string>,
   mbById: Map<string, { id: string; name: string; eagle: boolean }>
 ): string {
-  if (c.kind === 'mb') {
-    const mbId = c.key.slice('mb:'.length);
-    return `${mbById.get(mbId)?.name ?? mbId} · Merit Badge`;
-  }
-  const full = c.key.slice('rank:'.length); // e.g. "second-class-2f"
-  const dash = full.lastIndexOf('-');
-  const rankId = full.slice(0, dash);
-  const code = full.slice(dash + 1);
-  return `${rankLabel.get(rankId) ?? rankId} ${code}`;
+  if (c.kind === 'mb') return `${mbById.get(c.sourceId)?.name ?? c.sourceId} ${c.code}`;
+  return `${rankLabel.get(c.sourceId) ?? c.sourceId} ${c.code}`;
 }
