@@ -135,11 +135,15 @@ afterAll(async () => {
   await sb.from('people').delete().in('id', people);
 });
 
+/** v1's fields only: B6 adds the likely rule's facts (likely, covers, badge), which v1 never had. */
+const v1 = (list: readonly { personId: number; name: string; note: string; ticked: boolean; currentRank?: string | null }[] | undefined) =>
+  list?.map((c) => ({ personId: c.personId, name: c.name, note: c.note, ticked: c.ticked, currentRank: c.currentRank }));
+
 describe('scoutCandidatesMany (Build a Plan B0)', () => {
   it('ScoutCandidatesMany_AgreesWithScoutCandidates_PerKey', async () => {
     const many = await scoutCandidatesMany(sb, { entryId: meeting, keys }, { loadCatalog });
     const expected = Object.fromEntries(await Promise.all(keys.map(async (k) => [k, await oneByOne(k)] as const)));
-    expect(many.ok && Object.fromEntries(keys.map((k) => [k, many.byKey.get(k)]))).toEqual(expected);
+    expect(many.ok && Object.fromEntries(keys.map((k) => [k, v1(many.byKey.get(k))]))).toEqual(expected);
   }, 120_000);
 
   it('ScoutCandidatesMany_QueryCount_DoesNotGrowWithKeys', async () => {
@@ -161,7 +165,7 @@ describe('scoutCandidatesMany (Build a Plan B0)', () => {
     const many = await scoutCandidatesMany(sb, { entryId: meeting, keys: [BOR] }, { loadCatalog });
     const expected = await oneByOne(BOR);
     // Not vacuous: the fixture scout who finished Tenderfoot is offered its board of review.
-    expect({ many: many.ok && many.byKey.get(BOR), doneOffered: expected.some((c) => c.personId === done) }).toEqual({ many: expected, doneOffered: true });
+    expect({ many: many.ok && v1(many.byKey.get(BOR)), doneOffered: expected.some((c) => c.personId === done) }).toEqual({ many: expected, doneOffered: true });
   }, 120_000);
 
   it('ScoutCandidatesMany_QueryCount_DoesNotGrowWithScouts', async () => {

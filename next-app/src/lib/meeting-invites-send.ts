@@ -13,7 +13,8 @@ import { recordAudit } from '@/lib/audit';
 import { renderMarkdownEmail } from '@/lib/email-markdown';
 import { sendEmail } from '@/lib/email';
 import { fmtDateFull } from '@/lib/format-date';
-import { buildPickList, minutesText, pickableKeys, topicWords } from '@/lib/meeting-board-picklist';
+import { buildPickList, minutesText, pickableKeys, rankOfKey, rankTrees, topicWords } from '@/lib/meeting-board-picklist';
+import { badgeName, likelyFit, unfinishedMembers } from '@/lib/build-plan';
 import {
   DEFAULT_PICK_INVITE,
   DEFAULT_REMINDER,
@@ -119,6 +120,12 @@ export interface ScoutCandidate {
   ticked: boolean;
   /** Their current rank ('scout'), for "Working on Tenderfoot" (Build a Plan B3's sheet). */
   currentRank?: string | null;
+  /** B6: the likely rule (lib/build-plan likelyFit), decided here where the scout's progress is at hand. */
+  likely?: boolean;
+  /** B6: a mix's parts that make it likely ('4a', '5c'), for the reason line. */
+  covers?: string[];
+  /** B6: an MB requirement's badge, when it is in progress ('First Aid'), for the reason line. */
+  badge?: string | null;
 }
 
 export type ScoutCandidatesResult = { ok: true; scouts: ScoutCandidate[] } | { ok: false; error: string };
@@ -165,6 +172,10 @@ export async function scoutCandidatesMany(
   const progress = await loadScoutProgress(sb, scouts.map((s) => s.scoutId));
   const picks = await loadEffectivePicks(sb, meeting, scouts, catalog, progress);
   const focus = focusPicks(topics, catalog);
+  // B6: the likely rule's facts (a mix's members, each scout's open badges), from what is already loaded.
+  const members = new Map(topics.map((t) => [t.key, t.members]));
+  const badges = catalog.meritBadges.map((m) => ({ id: m.id, name: m.name }));
+  const trees = rankTrees(catalog.rankRequirements);
 
   const byKey = new Map<string, ScoutCandidate[]>(input.keys.map((k) => [k, []]));
   for (const scout of scouts) {
@@ -184,10 +195,24 @@ export async function scoutCandidatesMany(
       })
     );
     const mine = picks.get(scout.personId)?.picks ?? [];
+    const awardedMbs = new Set(p.mbProgress.filter((m) => m.awarded).map((m) => m.mb_id));
+    const badgesInProgress = new Set(p.mbProgress.filter((m) => !m.awarded && m.has_any_req).map((m) => m.mb_id));
     for (const [key, list] of byKey) {
       if (!pickable.has(key)) continue;
       const picked = mine.some((x) => x.key === key);
-      list.push({ personId: scout.personId, name: boardName(scout.name), note: `${intent ? INTENT_LABEL[intent] : 'no answer'}${picked ? ' · picked it' : ''}`, ticked: !picked, currentRank: scout.currentRank });
+      const unfinished = key.startsWith('fg:') ? unfinishedMembers(members.get(key) ?? [], { currentRank: scout.currentRank, ranks: catalog.ranks, trees, rankCodes: p.rankCodes, awardedMbs, badges }) : undefined;
+      const fit = likelyFit({ currentRank: scout.currentRank, unfinished, badgesInProgress }, key, catalog.ranks, badges);
+      const badge = !key.startsWith('fg:') && fit.likely && !rankOfKey(key, catalog.ranks) ? (badgeName(key, badges) ?? null) : null;
+      list.push({
+        personId: scout.personId,
+        name: boardName(scout.name),
+        note: `${intent ? INTENT_LABEL[intent] : 'no answer'}${picked ? ' · picked it' : ''}`,
+        ticked: !picked,
+        currentRank: scout.currentRank,
+        likely: fit.likely,
+        covers: fit.covers,
+        badge
+      });
     }
   }
   for (const list of byKey.values()) list.sort((a, b) => Number(b.ticked) - Number(a.ticked) || a.name.localeCompare(b.name));

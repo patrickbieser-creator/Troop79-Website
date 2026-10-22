@@ -49,7 +49,12 @@ describe('Build a Plan row lines (pure)', () => {
   });
 
   it('IsLikelyFit_RankKey_OnlyForScoutsWorkingOnThatRank', () => {
-    expect([isLikelyFit('scout', 'tenderfoot-4a', RANKS), isLikelyFit('tenderfoot', 'tenderfoot-4a', RANKS), isLikelyFit('tenderfoot', 'fg:7', RANKS)]).toEqual([true, false, true]);
+    expect([isLikelyFit({ currentRank: 'scout' }, 'tenderfoot-4a', RANKS), isLikelyFit({ currentRank: 'tenderfoot' }, 'tenderfoot-4a', RANKS)]).toEqual([true, false]);
+  });
+
+  // B6: the `topic == null` shortcut is gone; a mix with nothing open for the scout is not likely.
+  it('IsLikelyFit_MixWithNothingOpen_IsNotLikely', () => {
+    expect(isLikelyFit({ currentRank: 'tenderfoot' }, 'fg:7', RANKS)).toBe(false);
   });
 
   it('LikelyNames_LeavesOutScoutsWhoPickedIt', () => {

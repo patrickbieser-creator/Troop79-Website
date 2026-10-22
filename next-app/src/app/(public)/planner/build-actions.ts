@@ -33,9 +33,9 @@ import { invitedCount, isOfferingKey, PLAN_MEETINGS, type TeacherChoice } from '
 // The most keys one Add sends (Suggestions mode's "Add N to the plan" chunks at it). Mirrors meeting_seed_many's cap.
 import { ADD_MAX } from '@/lib/build-plan-suggest';
 import { loadInviteRows } from '@/lib/meeting-invites-db';
-import { loadInviteSheet } from '@/lib/meeting-invite-digest-db';
+import { loadInviteTab } from '@/lib/meeting-invite-digest-db';
 import { sendInviteDigests } from '@/lib/meeting-invite-digest-send';
-import { DIGEST_INVITE_CAP, DIGEST_KEYS_MAX, type InviteSection } from '@/lib/meeting-invite-digest';
+import { DIGEST_INVITE_CAP, DIGEST_KEYS_MAX, type InviteTabData } from '@/lib/meeting-invite-digest';
 
 const fail = (error: string): { ok: false; error: string } => ({ ok: false, error });
 
@@ -216,9 +216,9 @@ async function inviteGate(entryId: unknown) {
   return { ...s, onPlan: ((data ?? []) as { topic_key: string }[]).map((r) => r.topic_key) };
 }
 
-export type InviteSheetResult = { ok: true; sections: InviteSection[] } | { ok: false; error: string };
+export type InviteSheetResult = ({ ok: true } & InviteTabData) | { ok: false; error: string };
 
-/** The review sheet: every offering on the plan, or the one row a per-row Invite opened it for. */
+/** The Invite tab's data after a send (B6): every offering on the plan, or one. The page loads it first itself. */
 export async function plannerInviteSheetAction(input: { entryId: number; key?: string }): Promise<InviteSheetResult> {
   if (input?.key !== undefined && !isTopicKey(input.key)) return fail('Malformed request');
   const s = await inviteGate(input?.entryId);
@@ -226,7 +226,7 @@ export async function plannerInviteSheetAction(input: { entryId: number; key?: s
   const keys = input.key !== undefined ? s.onPlan.filter((k) => k === input.key) : s.onPlan;
   if (input.key !== undefined && !keys.length) return fail('That isn’t on this meeting’s plan.');
   try {
-    return { ok: true, sections: await loadInviteSheet(s.sb, s.meeting, keys) };
+    return { ok: true, ...(await loadInviteTab(s.sb, s.meeting, keys)) };
   } catch {
     return fail('The list didn’t load. Close and try again.');
   }

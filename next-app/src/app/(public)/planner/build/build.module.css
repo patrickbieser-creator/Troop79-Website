@@ -192,6 +192,17 @@
   background: transparent;
   cursor: default;
 }
+/* B6: the menu's Invite, a plain (non-danger) item above Remove. */
+.menuLink {
+  composes: menuItem;
+  display: flex;
+  align-items: center;
+  color: var(--navy);
+  text-decoration: none;
+}
+.menuLink:hover {
+  background: var(--cream);
+}
 .menuWhy {
   margin: 0;
   padding: 0 var(--sp-4) var(--sp-2);
@@ -482,7 +493,7 @@
   cursor: pointer;
 }
 
-/* ── B3: Invite… ──────────────────────────────────────────────────────────────────────────────────────────────── */
+/* ── B6: the bottom bar's one primary, "Next: Invite →" (B3's Invite… bar, retired) ──────────────────────────────────────────────────────────────────────────────────────────────── */
 .inviteBar {
   position: sticky;
   bottom: 0;

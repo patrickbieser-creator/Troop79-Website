@@ -7,15 +7,15 @@
  * badge), and anyone who answered or signed up for this meeting. Other parents appear once they answer.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { loadAdvancementCatalog } from '@/lib/advancement-catalog';
+import { loadAdvancementCatalog, type AdvancementCatalog } from '@/lib/advancement-catalog';
 import { fmtDateFull } from '@/lib/format-date';
 import { fetchAllRows } from '@/lib/supabase/paginate';
-import { loadBoardStamp, loadBoardState, loadNextMeeting, loadScoutProgress, type BoardMeeting } from '@/lib/meeting-board';
-import { loadTeachBoard } from '@/lib/meeting-board-supply';
+import { loadBoardStamp, loadBoardState, loadNextMeeting, loadScoutProgress, type BoardMeeting, type BoardScoutRow } from '@/lib/meeting-board';
+import { loadTeachBoard, type TeachBoard } from '@/lib/meeting-board-supply';
 import { assessTeacher, canTeachFocusGroup, teacherName, teachersFor } from '@/lib/meeting-board-teach';
 import { boardName } from '@/lib/meeting-board-shared';
 import { isPickOutOfReach, nextRankOf, rankOfKey, rankTrees, topicWords } from '@/lib/meeting-board-picklist';
-import { loadInviteRows } from '@/lib/meeting-invites-db';
+import { loadInviteRows, type InviteHistory } from '@/lib/meeting-invites-db';
 import { boardScoutsOf, type PlannerLists } from '@/lib/people-lists';
 import { buildPlannerBoard, type PlannerBoard, type PlannerTopic } from '@/lib/meeting-planner-board';
 
@@ -24,6 +24,10 @@ export interface PlannerPage {
   board: PlannerBoard;
   /** The board's version stamp, for the poller. */
   stamp: string;
+  /** The meeting's invite history, already read for the board (B6: the Invite tab's chips reuse it). */
+  inviteRows: InviteHistory[];
+  /** What the board was built from (B6: the agenda tray names teachers formally from it, and runs Live's seam on it). */
+  src: { catalog: AdvancementCatalog; rows: BoardScoutRow[]; teach: TeachBoard };
 }
 
 async function loadLeaderIds(sb: SupabaseClient): Promise<Set<number>> {
@@ -121,6 +125,8 @@ export async function loadPlannerPage(sb: SupabaseClient, forMeeting?: BoardMeet
   return {
     meeting: { entryId: meeting.entryId, title: meeting.title, closed: meeting.closed, date: meeting.date, dateLabel: fmtDateFull(meeting.date) },
     board,
-    stamp
+    stamp,
+    inviteRows,
+    src: { catalog, rows, teach }
   };
 }

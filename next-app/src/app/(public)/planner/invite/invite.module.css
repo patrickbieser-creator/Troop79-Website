@@ -1,0 +1,309 @@
+/* The Invite tab (Plans/Build-A-Plan.md, B6), on public tokens like the rest of the planner. Desktop: three zones,
+   the offerings (280px), the selected offering, and a sticky Review (320px). Under 900px: one column; the list drills
+   into the detail and a sticky bar opens the Review in the Drawer. Targets are 44px. */
+
+.solo {
+  padding: var(--sp-6) var(--sp-7);
+}
+.notices {
+  display: grid;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-7) 0;
+}
+.notices:empty {
+  display: none;
+}
+.sent {
+  margin: 0;
+  font: 600 var(--fs-sm) / 1.4 var(--font-ui);
+  color: var(--forest);
+}
+.switch {
+  padding: var(--sp-4) var(--sp-7) 0;
+}
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-pill);
+  overflow: hidden;
+  background: var(--warm-white);
+}
+.segOption {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--sp-4);
+  font: 600 var(--fs-sm) / 1 var(--font-ui);
+  color: var(--navy);
+  cursor: pointer;
+}
+.segOption + .segOption,
+.segOn + .segOption,
+.segOption + .segOn {
+  border-left: 1px solid var(--border-mid);
+}
+.segOn {
+  composes: segOption;
+  background: var(--navy);
+  color: var(--warm-white);
+}
+.segInput {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.segOption:has(.segInput:focus-visible) {
+  outline: var(--focus-ring);
+  outline-offset: -2px;
+}
+
+/* ── the three zones ──────────────────────────────────────────────────────────────────────────────────────── */
+.layout {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr) 320px;
+  gap: var(--sp-6);
+  align-items: start;
+  padding: var(--sp-5) var(--sp-7);
+}
+.layout[data-drill]:not(:has(.list)) {
+  grid-template-columns: minmax(0, 1fr) 320px;
+}
+.offerings {
+  display: grid;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.offering {
+  display: grid;
+  gap: var(--sp-1);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--sp-3);
+  border: 1px solid var(--border-light);
+  border-radius: var(--rad-md);
+  background: var(--warm-white);
+  text-align: left;
+  cursor: pointer;
+}
+.offering:hover {
+  border-color: var(--border-mid);
+}
+.offering:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+.offeringOn {
+  composes: offering;
+  border-color: var(--navy);
+  background: var(--cream);
+}
+.offeringTitle {
+  font: 600 var(--fs-sm) / 1.35 var(--font-ui);
+  color: var(--text-head);
+}
+.meta {
+  font: var(--fs-xs) / 1.4 var(--font-ui);
+  color: var(--text-meta);
+}
+.detail {
+  min-width: 0;
+}
+.detailBody {
+  display: grid;
+  gap: var(--sp-3);
+}
+.detailTitle {
+  margin: 0;
+  font: 700 var(--fs-lg) / 1.3 var(--font-ui);
+  color: var(--text-head);
+}
+.back {
+  display: none;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: 600 var(--fs-sm) / 1 var(--font-ui);
+  color: var(--navy);
+  cursor: pointer;
+}
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-4);
+  margin: 0;
+}
+.quiet {
+  justify-self: start;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: 600 var(--fs-sm) / 1.3 var(--font-ui);
+  color: var(--navy);
+  text-align: left;
+  cursor: pointer;
+}
+.quiet:hover {
+  text-decoration: underline;
+}
+.quiet:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+.who {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-2);
+}
+.chip {
+  padding: 0 var(--sp-2);
+  border: 1px solid var(--border-light);
+  border-radius: var(--rad-pill);
+  font: 600 var(--fs-2xs) / 1.6 var(--font-ui);
+  color: var(--text-meta);
+}
+.chipYes {
+  composes: chip;
+  border-color: var(--forest);
+  color: var(--forest);
+}
+.chipNo {
+  composes: chip;
+  border-color: var(--status-danger);
+  color: var(--status-danger);
+}
+/* A tick past this send's cap: marked in place. */
+.over {
+  box-shadow: inset 3px 0 0 var(--status-warning);
+}
+.overNote {
+  display: block;
+  margin: 0;
+  font: 600 var(--fs-xs) / 1.4 var(--font-ui);
+  color: var(--status-warning);
+}
+.people {
+  display: grid;
+  gap: var(--sp-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.personName {
+  margin: 0;
+  font: 700 var(--fs-sm) / 1.3 var(--font-ui);
+  color: var(--text-head);
+}
+
+/* ── the Review ───────────────────────────────────────────────────────────────────────────────────────────── */
+.review {
+  position: sticky;
+  top: 56px;
+  padding: var(--sp-4);
+  border: 1px solid var(--border-light);
+  border-radius: var(--rad-lg);
+  background: var(--warm-white);
+}
+.reviewBody {
+  display: grid;
+  gap: var(--sp-3);
+}
+.groups {
+  display: grid;
+  gap: var(--sp-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.group {
+  display: grid;
+  padding-bottom: var(--sp-2);
+  border-bottom: 1px solid var(--border-light);
+}
+.groupLine {
+  margin: 0;
+  font: var(--fs-sm) / 1.4 var(--font-ui);
+  color: var(--text-body);
+}
+.reviewFoot {
+  display: grid;
+  gap: var(--sp-2);
+}
+.why {
+  margin: 0;
+  font: var(--fs-sm) / 1.4 var(--font-ui);
+  color: var(--text-meta);
+}
+.phoneBar {
+  display: none;
+}
+.preview {
+  width: min(600px, calc(100vw - 2 * var(--sp-5)));
+  padding: var(--sp-5);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-lg);
+  background: var(--warm-white);
+  color: var(--text-body);
+}
+.preview::backdrop {
+  background: color-mix(in srgb, var(--navy) 38%, transparent);
+}
+.previewBody {
+  margin: var(--sp-3) 0;
+  padding: var(--sp-4);
+  border: 1px solid var(--border-light);
+  border-radius: var(--rad-md);
+  background: var(--cream);
+}
+
+/* ── phone: one column, the list drills into the detail ──────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .layout,
+  .layout[data-drill]:not(:has(.list)) {
+    grid-template-columns: minmax(0, 1fr);
+    padding: var(--sp-4);
+  }
+  .review {
+    display: none;
+  }
+  .layout[data-drill='list'] .detail {
+    display: none;
+  }
+  .layout[data-drill='detail'] .list {
+    display: none;
+  }
+  .back {
+    display: inline-flex;
+    align-items: center;
+  }
+  .notices,
+  .switch {
+    padding-left: var(--sp-4);
+    padding-right: var(--sp-4);
+  }
+  .solo {
+    padding: var(--sp-4);
+  }
+  .phoneBar {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    display: flex;
+    padding: var(--sp-2) var(--sp-4);
+    border-top: 1px solid var(--border-light);
+    background: var(--cream);
+  }
+  .phoneBar > button {
+    flex: 1;
+    min-height: 44px;
+  }
+}

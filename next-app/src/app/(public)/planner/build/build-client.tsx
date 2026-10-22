@@ -18,9 +18,9 @@
  * ./add-offering; the open one sits under the heading, above the list: Patrick, 2026-10-22), and each row a quiet Edit
  * (./edit-offering): its teacher for editors, a mix's requirements for seed holders.
  *
- * B3: once the plan has an offering, editors get the one primary "Invite…" in a sticky bottom bar (./invite-sheet:
- * one digest email per recipient), and adults a quiet per-row Invite scoped to that row. For a scout editor (the SPL)
- * the button is greyed with the reason; the server refuses regardless. The rail gains "N invited".
+ * B6: invites moved to their own tab (/planner/invite). Once the plan has an offering, the bottom bar's one primary is
+ * "Next: Invite →"; a row's ⋯ menu keeps Invite as an afterthought (above Remove), opening that tab on the row's
+ * offering. "N invited" lives only in the Invite tab's summary.
  *
  * A row says only what's exceptional (Patrick, 2026-10-22): no origin tag on the planner's own rows, no scout line when
  * nobody signed up and nobody is likely. The likely scouts stream in behind Suspense too (LikelyFeed).
@@ -59,7 +59,6 @@ import {
 } from '../build-actions';
 import { AddOffering } from './add-offering';
 import { EditOffering } from './edit-offering';
-import { InviteSheet } from './invite-sheet';
 import { rowCode } from './requirement-search';
 import { PlannerPoller } from '../planner-poller';
 import { SuggestionsWorkspace, type SuggestFeed } from './suggestions';
@@ -101,8 +100,6 @@ export function BuildPlanView({
   rows: initialRows,
   canSeed,
   canEdit = false,
-  canEmail = false,
-  invited: initialInvited = 0,
   dayLabel = '',
   stamp,
   heading,
@@ -128,10 +125,6 @@ export function BuildPlanView({
   canSeed: boolean;
   /** meeting_planner.edit: an offering's teacher (B2). */
   canEdit?: boolean;
-  /** An adult editor: sends invites (B3). */
-  canEmail?: boolean;
-  /** People invited (teach or offer) on this meeting so far. */
-  invited?: number;
   /** 'Oct 25': a new mix's name until typed over. */
   dayLabel?: string;
   stamp: string;
@@ -151,14 +144,6 @@ export function BuildPlanView({
   const [suggestions, setSuggestions] = useState<SuggestFeed>({ status: 'loading' });
   /** Suggestions mode on a phone: the plan in the Drawer. */
   const [planSheet, setPlanSheet] = useState(false);
-  /** The Invite sheet: every offering (''), or one row's key. */
-  const [inviting, setInviting] = useState<string | null>(null);
-  const [invited, setInvited] = useState(initialInvited);
-  const [loadedInvited, setLoadedInvited] = useState(initialInvited);
-  if (loadedInvited !== initialInvited) {
-    setLoadedInvited(initialInvited);
-    setInvited(initialInvited);
-  }
   const [removing, setRemoving] = useState<{ row: PlanRow; trigger: HTMLElement | null } | null>(null);
   /** The row whose Edit is open, as it was when opened: the drawer stays (saying so) if the row leaves the plan. */
   const [editing, setEditing] = useState<PlanRow | null>(null);
@@ -179,6 +164,7 @@ export function BuildPlanView({
     else router.refresh();
   };
 
+  const inviteHref = `/planner/invite?meeting=${entryId}`;
   const onPlan = useMemo(() => new Set(rows.map((r) => r.key)), [rows]);
   const sum = planSummary(rows);
 
@@ -323,7 +309,7 @@ export function BuildPlanView({
         {heading}
         <div className={s.rail}>
           <p className={s.railText}>
-            {plural(sum.offerings, 'offering')} · {sum.withTeachers} with {sum.withTeachers === 1 ? 'a teacher' : 'teachers'} · {plural(sum.scouts, 'scout')} signed up · {invited} invited ·{' '}
+            {plural(sum.offerings, 'offering')} · {sum.withTeachers} with {sum.withTeachers === 1 ? 'a teacher' : 'teachers'} · {plural(sum.scouts, 'scout')} signed up ·{' '}
             <PlannerPoller entryId={entryId} stamp={stamp} build stampRef={stampRef} />
           </p>
         </div>
@@ -349,7 +335,7 @@ export function BuildPlanView({
                     canSeed={canSeed}
                     canEdit={canEdit || (canSeed && r.key.startsWith('fg:'))}
                     onEdit={() => setEditing(r)}
-                    onInvite={canEmail ? () => setInviting(r.key) : undefined}
+                    inviteHref={canEdit || canSeed ? `${inviteHref}&offering=${encodeURIComponent(r.key)}` : undefined}
                     onRemove={(trigger) => setRemoving({ row: r, trigger })}
                   />
                 ))}
@@ -371,25 +357,12 @@ export function BuildPlanView({
             onClose={() => setEditing(null)}
           />
         ) : null}
-        {canEdit && rows.length ? (
+        {rows.length ? (
           <div className={s.inviteBar}>
-            {canEmail ? null : <span className={s.inviteWhy}>Only adults send email</span>}
-            <Button variant="primary" onClick={() => setInviting('')} disabled={!canEmail} aria-haspopup="dialog">
-              Invite…
+            <Button variant="primary" href={inviteHref}>
+              Next: Invite →
             </Button>
           </div>
-        ) : null}
-        {inviting !== null && canEmail ? (
-          <InviteSheet
-            entryId={entryId}
-            rows={rows}
-            only={inviting || null}
-            onSent={(res) => {
-              landed(res);
-              setInvited(res.invited);
-            }}
-            onClose={() => setInviting(null)}
-          />
         ) : null}
         {removing ? (
           <RemoveDialog
@@ -417,7 +390,7 @@ function PlanRowView({
   canSeed,
   canEdit,
   onEdit,
-  onInvite,
+  inviteHref,
   onRemove
 }: {
   row: PlanRow;
@@ -426,8 +399,8 @@ function PlanRowView({
   canSeed: boolean;
   canEdit: boolean;
   onEdit: () => void;
-  /** Adults only: the Invite sheet for this row. */
-  onInvite?: () => void;
+  /** The Invite tab on this row's offering (B6: an afterthought in the ⋯ menu, above Remove). */
+  inviteHref?: string;
   onRemove: (trigger: HTMLElement | null) => void;
 }) {
   const teachers = teacherLine(row);
@@ -454,12 +427,7 @@ function PlanRowView({
                 Edit
               </button>
             ) : null}
-            {onInvite ? (
-              <button type="button" className={s.editBtn} onClick={onInvite} aria-haspopup="dialog" aria-label={`Invite for ${row.title}`}>
-                Invite
-              </button>
-            ) : null}
-            {canSeed ? <RowMenu row={row} onRemove={onRemove} /> : null}
+            {canSeed || inviteHref ? <RowMenu row={row} inviteHref={inviteHref} canRemove={canSeed} onRemove={onRemove} /> : null}
           </span>
         ) : null}
       </span>
@@ -467,8 +435,11 @@ function PlanRowView({
   );
 }
 
-/** The row's ⋯: Remove, last; for a row the planner didn't add, Remove is greyed with the reason under it. */
-function RowMenu({ row, onRemove }: { row: PlanRow; onRemove: (trigger: HTMLElement | null) => void }) {
+/**
+ * The row's ⋯: Invite (B6, opens the Invite tab on this offering), then Remove, last, for seed holders; for a row the
+ * planner didn't add, Remove is greyed with the reason under it.
+ */
+function RowMenu({ row, inviteHref, canRemove, onRemove }: { row: PlanRow; inviteHref?: string; canRemove: boolean; onRemove: (trigger: HTMLElement | null) => void }) {
   const { open, wrapRef, triggerRef, onBlur, toggle, close } = useDisclosure();
   const why = cannotRemoveReason(row);
   return (
@@ -478,18 +449,27 @@ function RowMenu({ row, onRemove }: { row: PlanRow; onRemove: (trigger: HTMLElem
       </button>
       {open ? (
         <div className={s.menuPop}>
-          <button
-            type="button"
-            className={s.menuItem}
-            disabled={why != null}
-            onClick={() => {
-              close();
-              onRemove(triggerRef.current);
-            }}
-          >
-            Remove
-          </button>
-          {why ? <p className={s.menuWhy}>{why}</p> : null}
+          {inviteHref ? (
+            <Link href={inviteHref} className={s.menuLink}>
+              Invite
+            </Link>
+          ) : null}
+          {canRemove ? (
+            <>
+              <button
+                type="button"
+                className={s.menuItem}
+                disabled={why != null}
+                onClick={() => {
+                  close();
+                  onRemove(triggerRef.current);
+                }}
+              >
+                Remove
+              </button>
+              {why ? <p className={s.menuWhy}>{why}</p> : null}
+            </>
+          ) : null}
         </div>
       ) : null}
     </div>

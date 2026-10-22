@@ -23,6 +23,12 @@ import { createInviteDigest, type DigestInput, type DigestRecipient } from '@/li
 import { digestPeople } from '@/lib/meeting-invite-digest';
 import { siteUrl } from '@/lib/site-url';
 
+/** The digest's copy as it would go out now: the saved template, else the default (B6's Preview renders with it). */
+export async function loadDigestTemplate(sb: SupabaseClient): Promise<InviteTemplate> {
+  const { data } = await sb.from('email_templates').select('subject, body').eq('kind', INVITE_DIGEST_KIND).is('retired_at', null).order('updated_at', { ascending: false }).limit(1).maybeSingle();
+  return (data as InviteTemplate | null) ?? DEFAULT_INVITE_DIGEST;
+}
+
 export type SendDigestResult = { ok: true; sent: string[]; emails: number; skipped: { name: string; reason: string }[] } | { ok: false; error: string };
 
 export async function sendInviteDigests(
@@ -54,8 +60,7 @@ export async function sendInviteDigests(
 
   try {
     const { data: entry } = await sb.from('calendar_entries').select('entry_date').eq('id', input.entryId).single();
-    const { data: saved } = await sb.from('email_templates').select('subject, body').eq('kind', INVITE_DIGEST_KIND).is('retired_at', null).order('updated_at', { ascending: false }).limit(1).maybeSingle();
-    const template = (saved as InviteTemplate | null) ?? DEFAULT_INVITE_DIGEST;
+    const template = await loadDigestTemplate(sb);
     const { data: names } = await sb.from('people').select('id, nickname, first_name, display_name').in('id', made.recipients.map((r) => r.recipientId));
     const firstName = new Map(
       ((names ?? []) as { id: number; nickname: string | null; first_name: string | null; display_name: string }[]).map((p) => [p.id, p.nickname || p.first_name || p.display_name])

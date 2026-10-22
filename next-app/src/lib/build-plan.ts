@@ -14,7 +14,9 @@ import type { PlannerBoard } from '@/lib/meeting-planner-board';
 import { assessTeacher, flagText, teacherName, topicSkill, type TeachContext, type TeacherPerson } from '@/lib/meeting-board-teach';
 import { nextRankOf, rankOfKey } from '@/lib/meeting-board-picklist';
 import { othersLabel } from '@/lib/meeting-board-shared';
-import type { CatalogRank } from '@/lib/advancement-catalog';
+import type { CatalogRank, CatalogRankRequirement } from '@/lib/advancement-catalog';
+import type { ReqNode } from '@/lib/mb-helpers';
+import { rankNodeSatisfied } from '@/lib/rank-calculus';
 
 export type PlanOrigin = 'planner' | 'scouts' | 'teacher';
 export type PlanState = 'ready' | 'needs-teacher' | 'needs-scouts';
@@ -79,16 +81,103 @@ export function scoutLine(r: Pick<PlanRow, 'scouts'>, likely: readonly string[] 
   return likely?.length ? `Likely: ${othersLabel(likely, LIKELY_SHOWN)}` : null;
 }
 
-/** Invite…'s likely fit (B3): a scout working on the key's rank (their next rank); any scout for a badge or a mix. */
-export function isLikelyFit(currentRank: string | null, key: string, ranks: readonly CatalogRank[]): boolean {
-  const topic = rankOfKey(key, ranks)?.id ?? null;
-  return topic == null || nextRankOf(currentRank, ranks) === topic;
+/** What the likely rule reads about one scout (B6): their rank, and for a mix or a badge what they still have open. */
+export interface LikelyFacts {
+  currentRank: string | null;
+  /** A mix's members this scout hasn't finished (read only for an fg: key). */
+  unfinished?: readonly string[];
+  /** The badges this scout has in progress (started, not awarded). */
+  badgesInProgress?: ReadonlySet<string>;
 }
 
-/** The likely scouts for one key, by name: candidates who haven't picked it and are a likely fit. */
-export function likelyNames(cands: readonly { name: string; ticked: boolean; currentRank?: string | null }[], key: string, ranks: readonly CatalogRank[]): string[] {
+export interface LikelyFitResult {
+  likely: boolean;
+  /** A mix: the parts that make it likely ('4a', '5c', 'First Aid 9'), for the reason line. */
+  covers: string[];
+}
+
+/**
+ * The likely rule, one everywhere (B6; README:102, meeting-planner-board.ts): a scout is likely for an offering when
+ * they are working on it, never just because nothing rules them out (the old `topic == null` shortcut is gone).
+ *   - A rank requirement: its rank is the scout's next rank.
+ *   - A focus group (a mix): at least one member they haven't finished is at their next rank, or is a requirement of
+ *     a badge they have in progress.
+ *   - A merit badge requirement (or a whole badge): the badge is in progress.
+ *   - Anything else (a teacher's freeform offer): never likely; it sits under "Show all eligible".
+ * The candidate list (scoutCandidatesMany) has already left out who picked, finished or can't reach it.
+ */
+export function likelyFit(f: LikelyFacts, key: string, ranks: readonly CatalogRank[], badges: readonly { id: string; name: string }[] = []): LikelyFitResult {
+  const next = nextRankOf(f.currentRank, ranks);
+  const started = (k: string) => {
+    const b = badgeOf(k, badges);
+    return b && f.badgesInProgress?.has(b.id) ? b : null;
+  };
+  if (key.startsWith('fg:')) {
+    const covers: string[] = [];
+    for (const m of f.unfinished ?? []) {
+      const rank = rankOfKey(m, ranks);
+      if (rank) {
+        if (next != null && rank.id === next) covers.push(m.slice(rank.id.length + 1));
+        continue;
+      }
+      const b = started(m);
+      if (b) covers.push(`${b.name} ${m.slice(b.id.length + 1)}`);
+    }
+    return { likely: covers.length > 0, covers };
+  }
+  const rank = rankOfKey(key, ranks);
+  if (rank) return { likely: next != null && next === rank.id, covers: [] };
+  if (key.startsWith('ff:')) return { likely: false, covers: [] };
+  return { likely: started(key) != null, covers: [] };
+}
+
+/**
+ * A mix's members this scout hasn't finished (B6, for likelyFit): a rank member is finished when the scout is at or past
+ * its rank or the ledger satisfies it (any level: 'tenderfoot-4a' or 'tenderfoot-4a.1'); a badge member when the badge
+ * is awarded. Pure.
+ */
+export function unfinishedMembers(
+  members: readonly string[],
+  ctx: {
+    currentRank: string | null;
+    ranks: readonly CatalogRank[];
+    trees: ReadonlyMap<string, ReqNode<CatalogRankRequirement>[]>;
+    rankCodes: ReadonlySet<string>;
+    awardedMbs: ReadonlySet<string>;
+    badges: readonly { id: string; name: string }[];
+  }
+): string[] {
+  const sortOf = new Map(ctx.ranks.map((r) => [r.id, r.sort_order]));
+  const mine = ctx.currentRank ? sortOf.get(ctx.currentRank) : undefined;
+  const find = (nodes: readonly ReqNode<CatalogRankRequirement>[], code: string): ReqNode<CatalogRankRequirement> | undefined => {
+    for (const n of nodes) {
+      if (n.code === code) return n;
+      const hit = find(n.children, code);
+      if (hit) return hit;
+    }
+    return undefined;
+  };
+  return members.filter((m) => {
+    const rank = rankOfKey(m, ctx.ranks);
+    if (!rank) {
+      const b = badgeOf(m, ctx.badges);
+      return !(b && ctx.awardedMbs.has(b.id));
+    }
+    if (mine != null && mine >= rank.sort_order) return false;
+    const node = find(ctx.trees.get(rank.id) ?? [], m.slice(rank.id.length + 1));
+    return node ? !rankNodeSatisfied(node, rank.id, ctx.rankCodes as Set<string>) : !ctx.rankCodes.has(m);
+  });
+}
+
+export function isLikelyFit(f: LikelyFacts, key: string, ranks: readonly CatalogRank[], badges: readonly { id: string; name: string }[] = []): boolean {
+  return likelyFit(f, key, ranks, badges).likely;
+}
+
+/** The likely scouts for one key, by name: candidates who haven't picked it and are likely (as the candidate list
+ *  decided, or by rank alone when it didn't say). */
+export function likelyNames(cands: readonly { name: string; ticked: boolean; currentRank?: string | null; likely?: boolean }[], key: string, ranks: readonly CatalogRank[]): string[] {
   return cands
-    .filter((c) => c.ticked && isLikelyFit(c.currentRank ?? null, key, ranks))
+    .filter((c) => c.ticked && (c.likely ?? isLikelyFit({ currentRank: c.currentRank ?? null }, key, ranks)))
     .map((c) => c.name)
     .sort((a, b) => a.localeCompare(b));
 }
@@ -182,6 +271,11 @@ function badgeOf<B extends { id: string }>(key: string, badges: readonly B[]): B
   const id = key.startsWith('mb:') ? key.slice(3) : null;
   if (id) return badges.find((b) => b.id === id);
   return [...badges].sort((a, b) => b.id.length - a.id.length).find((b) => key.startsWith(`${b.id}-`));
+}
+
+/** The badge's name for a merit badge key ('first-aid-9' → 'First Aid'), or undefined. */
+export function badgeName(key: string, badges: readonly { id: string; name: string }[]): string | undefined {
+  return badgeOf(key, badges)?.name;
 }
 
 /**

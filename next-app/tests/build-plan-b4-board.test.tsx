@@ -67,6 +67,7 @@ describe("Who's coming", () => {
     render(<PlannerTabs active="board" />);
     expect(screen.getAllByRole('tab').map((a) => [a.textContent, a.getAttribute('href')])).toEqual([
       ['Build a Plan', '/planner/build'],
+      ['Invite', '/planner/invite'],
       ['Who’s coming', '/planner'],
       ['Meeting Live', '/planner/live'],
       ['Focus sets', '/planner/focus-sets']

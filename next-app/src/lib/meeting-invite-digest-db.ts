@@ -19,11 +19,13 @@ import { loadMeetingById } from '@/lib/meeting-board';
 import { nextRankOf } from '@/lib/meeting-board-picklist';
 import { INVITE_DEDUPE_HOURS, inviteExpiresAt } from '@/lib/meeting-invites';
 import { hashSecret } from '@/lib/identity-challenge';
-import { adultRecipients, loadScoutFamilies, NO_EMAIL_ON_FILE, randomInviteToken, scoutRecipientsMany, upcomingMeeting, type MailRecipient } from '@/lib/meeting-invites-db';
+import { adultRecipients, loadInviteRows, loadScoutFamilies, NO_EMAIL_ON_FILE, randomInviteToken, scoutRecipientsMany, upcomingMeeting, type InviteHistory, type MailRecipient } from '@/lib/meeting-invites-db';
+import { loadHouseholds } from '@/lib/households';
+import { boardName } from '@/lib/meeting-board-shared';
 import { scoutCandidatesMany } from '@/lib/meeting-invites-send';
 import { loadTeacherChoicesMany } from '@/lib/build-plan-db';
-import { isLikelyFit, likelyNames } from '@/lib/build-plan';
-import { DIGEST_EMAIL_CAP, DIGEST_INVITE_CAP, DIGEST_KEYS_MAX, type InviteKind, type InvitePerson, type InviteSection } from '@/lib/meeting-invite-digest';
+import { likelyNames } from '@/lib/build-plan';
+import { DIGEST_EMAIL_CAP, DIGEST_INVITE_CAP, DIGEST_KEYS_MAX, inviteChips, tickId, type InviteKind, type InvitePerson, type InviteRecipient, type InviteSection, type InviteTabData } from '@/lib/meeting-invite-digest';
 
 const LINK_KINDS = ['teach', 'pick'];
 
@@ -60,61 +62,120 @@ export async function loadLikelyScouts(
   return Object.fromEntries(keys.map((key) => [key, likelyNames(cands.byKey.get(key) ?? [], key, catalog.ranks)]));
 }
 
+/** How many qualified adults an offering shows before "Show everyone who could teach (n)" (B6). */
+export const TOP_TEACHERS = 5;
+
+const capital = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
+
 /**
- * The invite sheet for some of a meeting's offerings. Teachers: qualified adults not already teaching it (the board's
- * qualified-teacher rule, teacherChoices). Scouts: scoutCandidatesMany minus anyone who picked it; "likely" when it is
- * their next rank's (any scout for a badge or a mix). Anyone invited for it in the last 24 hours, or whose email would
- * reach nobody, is listed but blocked with the reason.
+ * The Invite tab's data (B6) for some of a meeting's offerings, in a bounded number of round trips whatever the
+ * number of offerings (pinned in a test): ONE scoutCandidatesMany for every key, ONE teacher-choices batch, ONE read
+ * of the meeting's invite history (or the caller's, when it already read it), then the recipients' families.
+ *
+ *   Teachers, in tiers: whoever teaches it (a locked line), pending asks (asked, no answer yet), the top
+ *   TOP_TEACHERS qualified adults (counselors first), the rest of the adults, then scouts who could teach (labelled,
+ *   asked in person: a teach email goes to adults only).
+ *   Scouts: every candidate (scoutCandidatesMany), "likely" by the one rule (lib/build-plan likelyFit), with a reason
+ *   line ("Working on First Class · mix covers 4a, 5c · Coming") and who the email reaches ("Parents: Dana R, Rob R").
+ *   Chips come from the whole history (inviteChips): Yes, Can't, Asked Tue, Asked <24h; Picked it from the board.
+ *   Anyone reached about it in the last 24 hours, or whose email would reach nobody, is blocked with the reason.
  */
+export async function loadInviteTab(
+  sb: SupabaseClient,
+  meeting: { entryId: number; date: string },
+  keys: readonly string[],
+  deps: { now?: Date; loadCatalog?: () => Promise<AdvancementCatalog>; history?: readonly InviteHistory[] } = {}
+): Promise<InviteTabData> {
+  if (!keys.length) return { sections: [], recipients: {} };
+  const now = deps.now ?? new Date();
+  const since = new Date(now.getTime() - INVITE_DEDUPE_HOURS * 3600_000).toISOString();
+  const [catalog, teach, cands, history] = await Promise.all([
+    (deps.loadCatalog ?? loadAdvancementCatalog)(),
+    loadTeacherChoicesMany(sb, meeting, keys),
+    scoutCandidatesMany(sb, { entryId: meeting.entryId, keys }, deps),
+    deps.history ? Promise.resolve(deps.history) : loadInviteRows(sb, meeting.entryId)
+  ]);
+  if (!cands.ok) throw new Error(cands.error);
+  const chips = inviteChips(history, now);
+  const lately = new Set(history.filter((r) => (r.sent_at ?? '') > since).map((r) => `${r.kind}|${r.topic_key}|${r.invitee_person_id}|${r.recipient_person_id}`));
+  const isAdult = (id: number) => teach.people.get(id)?.kind === 'adult';
+  const teacherIds = [...new Set([...teach.choices.values()].flat().filter((c) => c.qualified && !c.teaching && isAdult(c.personId)).map((c) => c.personId))];
+  const scoutIds = [...new Set([...cands.byKey.values()].flat().map((c) => c.personId))];
+  const [adults, family, households] = await Promise.all([adultRecipients(sb, teacherIds), loadScoutFamilies(sb, scoutIds), loadHouseholds()]);
+  const reach = await scoutRecipientsMany(sb, family, scoutIds, meeting.date);
+  const recipientIds = [...new Set([...adults.to.keys(), ...[...reach.values()].flat().map((r) => r.recipientId)])];
+  const { data: names } = recipientIds.length ? await sb.from('people').select('id, nickname, first_name, display_name').in('id', recipientIds) : { data: [] };
+  const rankName = new Map(catalog.ranks.map((r) => [r.id, r.display_name]));
+
+  const recipients: Record<number, InviteRecipient> = {};
+  const scoutRecipient = new Set([...reach.values()].flat().filter((r) => r.isScout).map((r) => r.recipientId));
+  for (const p of (names ?? []) as { id: number; nickname: string | null; first_name: string | null; display_name: string }[]) {
+    const home = households.find((h) => h.scouts.some((x) => x.personId === p.id) || h.adults.some((x) => x.personId === p.id));
+    recipients[p.id] = {
+      name: boardName(p.display_name),
+      first: p.nickname || p.first_name || p.display_name,
+      family: home?.key ?? `person:${p.id}`,
+      familyLabel: home?.label ?? boardName(p.display_name),
+      isScout: scoutRecipient.has(p.id)
+    };
+  }
+  const nameOf = (id: number) => recipients[id]?.name ?? '';
+  const chipOf = (kind: 'teach' | 'pick', key: string, id: number) => chips.get(tickId(kind, key, id));
+
+  const sections = keys.map((key): InviteSection => {
+    const choices = (teach.choices.get(key) ?? []).filter((c) => c.qualified || c.teaching);
+    let shown = 0;
+    const teachers: InvitePerson[] = choices.map((c) => {
+      const chip = chipOf('teach', key, c.personId);
+      const base = { personId: c.personId, name: c.name, reason: c.reason ?? '', counselor: c.counselor, likely: true, chip: chip?.chip, askedAt: chip?.at ?? null };
+      if (c.teaching) return { ...base, tier: 'assigned' as const, recipients: [], blocked: 'Teaching it', to: '' };
+      if (!isAdult(c.personId)) return { ...base, reason: [c.reason, 'Scout'].filter(Boolean).join(' · '), tier: 'scout' as const, recipients: [], blocked: 'Ask a scout in person', to: '' };
+      const to = adults.to.get(c.personId);
+      const blocked = lately.has(`teach|${key}|${c.personId}|${c.personId}`) ? `asked in the last ${INVITE_DEDUPE_HOURS} hours` : !to ? (adults.why.get(c.personId) ?? NO_EMAIL_ON_FILE) : null;
+      const pending = chip?.chip === 'recent' || chip?.chip === 'asked';
+      const tier = pending ? ('pending' as const) : shown++ < TOP_TEACHERS ? ('top' as const) : ('more' as const);
+      return { ...base, tier, recipients: to ? [c.personId] : [], blocked, to: to ? nameOf(c.personId) || c.name : '' };
+    });
+    const order: Record<string, number> = { assigned: 0, pending: 1, top: 2, more: 3, scout: 4 };
+    teachers.sort((a, b) => order[a.tier!] - order[b.tier!]);
+
+    const scouts: InvitePerson[] = (cands.byKey.get(key) ?? [])
+      .map((c) => {
+        const working = nextRankOf(c.currentRank ?? null, catalog.ranks);
+        const all = reach.get(c.personId) ?? [];
+        const hasParent = all.some((r) => !r.isScout);
+        // Only the recipients not reached about this lately: after a partial failure, just the one who missed it.
+        const to = all.filter((r) => !lately.has(`pick|${key}|${c.personId}|${r.recipientId}`)).map((r) => r.recipientId);
+        const picked = !c.ticked;
+        const blocked = picked ? 'Picked it already' : !hasParent ? 'no parent with an email' : !to.length ? `offered in the last ${INVITE_DEDUPE_HOURS} hours` : null;
+        const answer = capital(c.note.split(' · ')[0]);
+        const reason = [
+          c.badge ? `${c.badge} in progress` : working ? `Working on ${rankName.get(working) ?? working}` : null,
+          c.covers?.length ? `mix covers ${c.covers.join(', ')}` : null,
+          answer
+        ]
+          .filter(Boolean)
+          .join(' · ');
+        const parents = all.filter((r) => !r.isScout).map((r) => nameOf(r.recipientId) || boardName(family.person.get(r.recipientId)?.display_name ?? ''));
+        const self = all.some((r) => r.isScout);
+        const words = [parents.length ? `${parents.length === 1 ? 'Parent' : 'Parents'}: ${parents.join(', ')}` : null, self ? `${c.name} (own email)` : null].filter(Boolean).join(' · ');
+        const chip = picked ? { chip: 'picked' as const, at: null } : chipOf('pick', key, c.personId);
+        return { personId: c.personId, name: c.name, reason, likely: !picked && (c.likely ?? false), recipients: hasParent && !picked ? to : [], blocked, chip: chip?.chip, askedAt: chip?.at ?? null, to: words };
+      })
+      .sort((a, b) => Number(b.likely) - Number(a.likely) || a.name.localeCompare(b.name));
+    return { key, teachers, scouts };
+  });
+  return { sections, recipients };
+}
+
+/** The B3 sheet's shape: the Invite tab's sections. */
 export async function loadInviteSheet(
   sb: SupabaseClient,
   meeting: { entryId: number; date: string },
   keys: readonly string[],
   deps: { now?: Date; loadCatalog?: () => Promise<AdvancementCatalog> } = {}
 ): Promise<InviteSection[]> {
-  if (!keys.length) return [];
-  const since = new Date((deps.now ?? new Date()).getTime() - INVITE_DEDUPE_HOURS * 3600_000).toISOString();
-  const [catalog, teach, cands, lately] = await Promise.all([
-    (deps.loadCatalog ?? loadAdvancementCatalog)(),
-    loadTeacherChoicesMany(sb, meeting, keys),
-    scoutCandidatesMany(sb, { entryId: meeting.entryId, keys }, deps),
-    invitedLately(sb, meeting.entryId, keys, since)
-  ]);
-  if (!cands.ok) throw new Error(cands.error);
-  const teacherIds = [...new Set([...teach.choices.values()].flat().filter((c) => c.qualified && !c.teaching && teach.people.get(c.personId)?.kind === 'adult').map((c) => c.personId))];
-  const scoutIds = [...new Set([...cands.byKey.values()].flat().filter((c) => c.ticked).map((c) => c.personId))];
-  const [adults, family] = await Promise.all([adultRecipients(sb, teacherIds), loadScoutFamilies(sb, scoutIds)]);
-  const reach = await scoutRecipientsMany(sb, family, scoutIds, meeting.date);
-  const rankName = new Map(catalog.ranks.map((r) => [r.id, r.display_name]));
-
-  return keys.map((key) => {
-    const teachers: InvitePerson[] = (teach.choices.get(key) ?? [])
-      .filter((c) => c.qualified && !c.teaching && teach.people.get(c.personId)?.kind === 'adult')
-      .map((c) => {
-        const to = adults.to.get(c.personId);
-        const blocked = lately.has(`teach|${key}|${c.personId}|${c.personId}`)
-          ? `asked in the last ${INVITE_DEDUPE_HOURS} hours`
-          : !to
-            ? (adults.why.get(c.personId) ?? NO_EMAIL_ON_FILE)
-            : null;
-        return { personId: c.personId, name: c.name, reason: c.reason ?? '', counselor: c.counselor, likely: true, recipients: to ? [c.personId] : [], blocked };
-      });
-    const scouts: InvitePerson[] = (cands.byKey.get(key) ?? [])
-      .filter((c) => c.ticked)
-      .map((c) => {
-        const working = nextRankOf(c.currentRank ?? null, catalog.ranks);
-        const likely = isLikelyFit(c.currentRank ?? null, key, catalog.ranks);
-        const all = reach.get(c.personId) ?? [];
-        const hasParent = all.some((r) => !r.isScout);
-        // Only the recipients not reached about this lately: after a partial failure, just the one who missed it.
-        const to = all.filter((r) => !lately.has(`pick|${key}|${c.personId}|${r.recipientId}`)).map((r) => r.recipientId);
-        const blocked = !hasParent ? 'no parent with an email' : !to.length ? `offered in the last ${INVITE_DEDUPE_HOURS} hours` : null;
-        const reason = [working ? `Working on ${rankName.get(working) ?? working}` : null, c.note].filter(Boolean).join(' · ');
-        return { personId: c.personId, name: c.name, reason, likely, recipients: hasParent ? to : [], blocked };
-      })
-      .sort((a, b) => Number(b.likely) - Number(a.likely) || a.name.localeCompare(b.name));
-    return { key, teachers, scouts };
-  });
+  return (await loadInviteTab(sb, meeting, keys, deps)).sections;
 }
 
 export interface DigestInvite {

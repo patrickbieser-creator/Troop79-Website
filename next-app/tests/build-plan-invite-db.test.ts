@@ -12,17 +12,18 @@ import { TEST_PREFIX } from './helpers/signup-fixtures';
 const sb = adminClient();
 const state = vi.hoisted(() => ({
   actor: null as null | { personId: number; subjectKind: 'adult' | 'scout'; capabilities: Set<string> },
-  counter: null as null | { n: number },
+  counter: null as null | { n: number; tables?: string[] },
   send: vi.fn(async (opts: { to: string[] }) => ({ status: 'sent', to: opts.to }))
 }));
 
-function counting(target: SupabaseClient, counter: { n: number }): SupabaseClient {
+function counting(target: SupabaseClient, counter: { n: number; tables?: string[] }): SupabaseClient {
   return new Proxy(target, {
     get(t, prop, receiver) {
       const v = Reflect.get(t, prop, receiver);
       if ((prop === 'from' || prop === 'rpc') && typeof v === 'function') {
         return (...args: unknown[]) => {
           counter.n++;
+          counter.tables?.push(String(args[0]));
           return (v as (...a: unknown[]) => unknown).apply(t, args);
         };
       }
@@ -44,6 +45,7 @@ vi.mock('@/lib/dates', async (orig) => ({ ...(await orig<typeof import('../src/l
 const { fetchAdvancementCatalog } = await import('../src/lib/advancement-catalog');
 const { sendInviteDigests } = await import('../src/lib/meeting-invite-digest-send');
 const { digestEmails, selection, tickId } = await import('../src/lib/meeting-invite-digest');
+const { loadInviteTab } = await import('../src/lib/meeting-invite-digest-db');
 const actions = () => import('../src/app/(public)/planner/build-actions');
 const loadCatalog = () => fetchAdvancementCatalog(sb);
 
@@ -296,5 +298,32 @@ describe('the sheet', () => {
       }
     };
     expect(await trips(keys[0])).toBe(await trips());
+  }, 60_000);
+});
+
+/** B6: the Invite tab loads in a bounded number of round trips: one scoutCandidatesMany for every key, one
+ *  teacher-choices batch, one read of the invite history; the same count for one offering as for all of them. */
+describe('the Invite tab', () => {
+  const trips = async (ks: string[]) => {
+    const counter = { n: 0, tables: [] as string[] };
+    state.counter = counter;
+    try {
+      await loadInviteTab(counting(sb, counter), { entryId: meeting, date: '2094-03-07' }, ks, { loadCatalog });
+      return counter;
+    } finally {
+      state.counter = null;
+    }
+  };
+
+  it('InviteTab_LoadsInBoundedRoundTrips', async () => {
+    const one = await trips([keys[0]]);
+    const all = await trips(keys);
+    expect([all.n, all.tables.filter((t) => t === 'meeting_invites').length]).toEqual([one.n, 1]);
+  }, 60_000);
+
+  it('InviteTab_ScoutsCarryWhoGetsTheEmail', async () => {
+    const tab = await loadInviteTab(sb, { entryId: meeting, date: '2094-03-07' }, [keys[0]], { loadCatalog });
+    const mine = tab.sections[0].scouts.find((p) => p.personId === younger);
+    expect(mine?.to).toMatch(/^Parent: /);
   }, 60_000);
 });

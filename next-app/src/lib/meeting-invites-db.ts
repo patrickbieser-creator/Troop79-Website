@@ -727,11 +727,23 @@ export async function recordInviteFailure(sb: SupabaseClient, ip: string | null,
 }
 
 /** Invites on one meeting, for the board's counts. */
-export async function loadInviteRows(
-  sb: SupabaseClient,
-  entryId: number
-): Promise<{ kind: 'teach' | 'pick'; topic_key: string; invitee_person_id: number; response: InviteResponse | null }[]> {
+/** One ask on a meeting, as the Invite tab's history reads it (B6): who, about what, to whom, answered, when. */
+export interface InviteHistory {
+  kind: 'teach' | 'pick';
+  topic_key: string;
+  invitee_person_id: number;
+  recipient_person_id: number;
+  response: InviteResponse | null;
+  sent_at: string;
+}
+
+export async function loadInviteRows(sb: SupabaseClient, entryId: number): Promise<InviteHistory[]> {
   // Reminders (P5b) ask nobody to teach or take anything, so they never count as asked.
-  const { data } = await sb.from('meeting_invites').select('kind, topic_key, invitee_person_id, response, sent_at').eq('calendar_entry_id', entryId).in('kind', LINK_KINDS).order('sent_at');
-  return (data ?? []) as { kind: 'teach' | 'pick'; topic_key: string; invitee_person_id: number; response: InviteResponse | null }[];
+  const { data } = await sb
+    .from('meeting_invites')
+    .select('kind, topic_key, invitee_person_id, recipient_person_id, response, sent_at')
+    .eq('calendar_entry_id', entryId)
+    .in('kind', LINK_KINDS)
+    .order('sent_at');
+  return (data ?? []) as InviteHistory[];
 }
