@@ -24,11 +24,12 @@ import { loadEngineInput } from '@/lib/meeting-suggest/load-input';
 import { buildMeetingPlan } from '@/lib/meeting-suggest/engine';
 import { invitedCount, pickMeeting, planRows, PLAN_MEETINGS, rankSuggestions, SUGGESTION_LIMIT } from '@/lib/build-plan';
 import { loadInviteRows } from '@/lib/meeting-invites-db';
+import { loadLikelyScouts } from '@/lib/meeting-invite-digest-db';
 import { PageHeader } from '@/app/_components/page-header';
 import { PageShell } from '@/app/_components/page-shell';
 import { Notice } from '@/app/_components/notice';
 import { PlannerTabs } from '../planner-tabs';
-import { BuildPlanView, SuggestionsFeed } from './build-client';
+import { BuildPlanView, LikelyFeed, SuggestionsFeed } from './build-client';
 import styles from '../planner.module.css';
 import s from './build.module.css';
 
@@ -44,6 +45,15 @@ export const metadata = {
 /** The engine's suggestions for one meeting, minus what is on the plan (a few spare, so an Add still leaves 8). */
 async function Suggested({ meeting, onPlan }: { meeting: BoardMeeting; onPlan: string[] }) {
   return <SuggestionsFeed list={await suggestionsFor(meeting, onPlan)} />;
+}
+
+/**
+ * Each row's likely scouts (the "Likely: …" line), streamed so the plan never waits for them: one scoutCandidatesMany
+ * for every row nobody signed up for yet. A failure shows no line rather than an error.
+ */
+async function Likely({ entryId, keys }: { entryId: number; keys: string[] }) {
+  const byKey = await loadLikelyScouts(createAdminClient(), entryId, keys).catch(() => null);
+  return <LikelyFeed byKey={byKey} />;
 }
 
 /**
@@ -140,11 +150,16 @@ export default async function BuildPlanPage({ searchParams }: { searchParams: Pr
         stamp={page.stamp}
         heading={heading}
         feed={
-          access.canSeed ? (
+          <>
             <Suspense fallback={null}>
-              <Suggested meeting={meeting} onPlan={rows.map((r) => r.key)} />
+              <Likely entryId={meeting.entryId} keys={rows.filter((r) => !r.scouts).map((r) => r.key)} />
             </Suspense>
-          ) : undefined
+            {access.canSeed ? (
+              <Suspense fallback={null}>
+                <Suggested meeting={meeting} onPlan={rows.map((r) => r.key)} />
+              </Suspense>
+            ) : null}
+          </>
         }
       />
     </div>

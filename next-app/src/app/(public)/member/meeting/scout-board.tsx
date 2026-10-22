@@ -210,7 +210,7 @@ export function ScoutBoard(props: ScoutBoardProps) {
             {showCode && r.code && <span className={styles.code}>{r.code}</span>}
             <b>{r.label}</b>
           </span>
-          {r.focus && r.kind !== 'focus' && <span className={styles.focusTag}>Meeting focus</span>}
+          {r.focus && r.kind !== 'focus' && <span className={styles.focusTag}>Focus</span>}
           {r.teacher && <span className={styles.teacherTag}>Teacher: {r.teacher}</span>}
           {(r.outing || r.others) && (
             <span className={styles.who}>{r.outing ? `Needs an outing${r.others ? ` · ${r.others}` : ''}` : r.others}</span>
@@ -325,7 +325,7 @@ export function ScoutBoard(props: ScoutBoardProps) {
 
       {(pickList.focus ?? []).length > 0 && (
         <div className={styles.group}>
-          <h3 className={styles.groupHead}>Meeting focus</h3>
+          <h3 className={styles.groupHead}>Focus</h3>
           <ul className={styles.picks}>{(pickList.focus ?? []).map((r) => row(r))}</ul>
         </div>
       )}

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, waitFor, within } from '@testing-library/react';
 import type { PlanRow } from '../src/lib/build-plan';
 
 /**
@@ -17,7 +17,7 @@ vi.mock('../src/app/(public)/planner/build-actions', () => ({
 }));
 vi.mock('../src/app/(public)/planner/actions', () => ({ plannerStampAction: vi.fn(async () => ({ ok: false })) }));
 
-const { BuildPlanView, SuggestionsFeed } = await import('../src/app/(public)/planner/build/build-client');
+const { BuildPlanView, LikelyFeed, SuggestionsFeed } = await import('../src/app/(public)/planner/build/build-client');
 
 const row = (key: string, o: Partial<PlanRow> = {}): PlanRow => ({
   key,
@@ -27,7 +27,6 @@ const row = (key: string, o: Partial<PlanRow> = {}): PlanRow => ({
   seeded: true,
   teachers: [],
   scouts: 0,
-  likely: 0,
   canTeach: 2,
   state: 'needs-teacher',
   ...o
@@ -59,7 +58,7 @@ describe('BuildPlanView', () => {
     // First Add: the board was as the page saw it (prior s0): keep s1, no refresh.
     add.mockResolvedValueOnce({ ok: true, added: ['scout-2'], teachers: {}, prior: 's0', stamp: 's1' });
     fireEvent.click(await screen.findByRole('button', { name: 'Add Scout 2 Flag' }));
-    await screen.findByText('Just added');
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Add Scout 2 Flag' })).toBeNull());
     const quiet = nav.refresh.mock.calls.length;
     cleanup();
     // Second render: someone else changed the board since load (prior s9, not s0): refresh.
@@ -101,5 +100,51 @@ describe('BuildPlanView', () => {
     fireEvent.click(open);
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
     await waitFor(() => expect(document.activeElement).toBe(open));
+  });
+});
+
+/** Patrick, 2026-10-22: the adds by the heading, likely scouts on each row, only the exceptional origins tagged. */
+describe('BuildPlanView layout (2026-10-22)', () => {
+  const rowOf = (title: string) => screen.getByText(title).closest('li') as HTMLElement;
+
+  it('BuildPlan_AddActions_SitInTheHeadingRow', () => {
+    render(<BuildPlanView entryId={1} rows={ROWS} canSeed stamp="s" heading={null} />);
+    const head = screen.getByRole('heading', { name: 'The plan' }).parentElement as HTMLElement;
+    expect(within(head).getAllByRole('button', { name: /^\+ / }).map((b) => b.textContent)).toEqual(['+ Requirement', '+ Focus set', '+ New mix']);
+  });
+
+  it('BuildPlan_AddedRow_ShowsNoJustAdded', async () => {
+    render(<BuildPlanView entryId={1} rows={ROWS} canSeed stamp="s0" heading={null} feed={<SuggestionsFeed list={SUGGESTIONS} />} />);
+    add.mockResolvedValueOnce({ ok: true, added: ['scout-2'], teachers: {}, prior: 's0', stamp: 's1' });
+    fireEvent.click(await screen.findByRole('button', { name: 'Add Scout 2 Flag' }));
+    await waitFor(() => expect(screen.getAllByRole('listitem').some((li) => li.textContent?.includes('Flag'))).toBe(true));
+    expect(screen.queryByText('Just added')).toBeNull();
+  });
+
+  it('BuildPlan_RowWithoutScouts_ListsLikelyScoutsAndHowManyMore', async () => {
+    const likely = { 'tenderfoot-4a': ['Anjali S', 'Finn P', 'Leo K', 'Max B', 'Nia R', 'Omar T', 'Pia W'] };
+    render(<BuildPlanView entryId={1} rows={ROWS} canSeed stamp="s" heading={null} feed={<LikelyFeed byKey={likely} />} />);
+    expect(await screen.findByText('Likely: Anjali S, Finn P, Leo K +4')).toBeTruthy();
+  });
+
+  it('BuildPlan_RowWithNoScoutsAndNoLikely_HasNoScoutLine', () => {
+    render(<BuildPlanView entryId={1} rows={ROWS} canSeed stamp="s" heading={null} feed={<LikelyFeed byKey={{ 'tenderfoot-4a': [] }} />} />);
+    expect(within(rowOf('Title tenderfoot-4a')).queryByText(/signed up|Likely|No scouts|No likely/)).toBeNull();
+  });
+
+  it('BuildPlan_PlannerRow_HasNoOriginTag', () => {
+    render(<BuildPlanView entryId={1} rows={ROWS} canSeed stamp="s" heading={null} />);
+    expect(screen.queryByText('Planner')).toBeNull();
+  });
+
+  it('BuildPlan_ScoutPickedRow_StillSaysScoutsAsked', () => {
+    render(<BuildPlanView entryId={1} rows={ROWS} canSeed stamp="s" heading={null} />);
+    expect(within(rowOf('Title scout-1a')).getByText('Scouts asked')).toBeTruthy();
+  });
+
+  it('BuildPlan_StateLabel_SharesOneLineWithTheRowButtons', () => {
+    render(<BuildPlanView entryId={1} rows={ROWS} canSeed canEdit stamp="s" heading={null} />);
+    const state = within(rowOf('Title tenderfoot-4a')).getByText('Needs a teacher');
+    expect(state.parentElement?.contains(screen.getByRole('button', { name: 'Edit Title tenderfoot-4a' }))).toBe(true);
   });
 });

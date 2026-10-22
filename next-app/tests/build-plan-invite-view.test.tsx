@@ -28,7 +28,7 @@ vi.mock('../src/app/(public)/planner/actions', () => ({ plannerStampAction: vi.f
 
 const { BuildPlanView } = await import('../src/app/(public)/planner/build/build-client');
 
-const ROWS: PlanRow[] = [{ key: 'tenderfoot-4a', codeLabel: 'Tenderfoot 4a', title: 'First aid', origin: 'planner', seeded: true, teachers: [], scouts: 0, likely: 0, canTeach: 2, state: 'needs-teacher' }];
+const ROWS: PlanRow[] = [{ key: 'tenderfoot-4a', codeLabel: 'Tenderfoot 4a', title: 'First aid', origin: 'planner', seeded: true, teachers: [], scouts: 0, canTeach: 2, state: 'needs-teacher' }];
 const person = (personId: number, recipients: number[], o: { likely?: boolean; blocked?: string } = {}) => ({ personId, name: `P${personId}`, reason: 'r', likely: o.likely ?? true, recipients, blocked: o.blocked ?? null });
 
 afterEach(() => {

@@ -1,8 +1,9 @@
 'use client';
 
 /**
- * Build a Plan's one quiet add row under the plan list (Plans/Build-A-Plan.md, B2; AGENTS.md "Lists end in one quiet
- * add row"): "+ Requirement  + Focus set  + New mix", each opening inline with Cancel.
+ * Build a Plan's quiet adds (Plans/Build-A-Plan.md, B2): "+ Requirement  + Focus set  + New mix", each opening inline
+ * with Cancel. They sit on "The plan" heading's line and open under it, above the list (Patrick, 2026-10-22: the named
+ * exception to AGENTS.md "Lists end in one quiet add row").
  *
  *   + Requirement  the server search, whole requirements only; Add puts one on the plan. The row stays open for the
  *                  next one and says what it added. (No typed free-text title: the seed RPCs take catalog keys and
@@ -141,10 +142,13 @@ function SetPanel({ onPlan, addSet }: AddOfferingProps) {
           {shown.map((x) => (
             <li key={x.id} className={s.pickRow}>
               <span>
-                <span className={s.pickTitle}>{x.name}</span>
-                <span className={s.pickMeta}>
-                  {plural(x.items.length, 'requirement')}
-                  {x.labels.length ? ` · ${x.labels.join(', ')}` : ''}
+                {/* Name and meta on one line, wrapping on a narrow phone (Patrick, 2026-10-22). */}
+                <span className={s.pickLine}>
+                  <span className={s.pickTitle}>{x.name}</span>
+                  <span className={s.pickMeta}>
+                    {plural(x.items.length, 'requirement')}
+                    {x.labels.length ? ` · ${x.labels.join(', ')}` : ''}
+                  </span>
                 </span>
                 {problem?.id === x.id ? (
                   <span className={s.problem} role="alert">

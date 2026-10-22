@@ -30,8 +30,8 @@ vi.mock('../src/app/(public)/planner/actions', () => ({ plannerStampAction: vi.f
 
 const { BuildPlanView } = await import('../src/app/(public)/planner/build/build-client');
 
-const REQ: PlanRow = { key: 'tenderfoot-4a', codeLabel: 'Tenderfoot 4a', title: 'First aid', origin: 'teacher', seeded: false, teachers: ['Beth B'], scouts: 0, likely: 0, canTeach: 0, state: 'needs-scouts' };
-const MIX: PlanRow = { key: 'fg:9', codeLabel: 'Focus set', title: 'Mix', origin: 'planner', seeded: true, teachers: [], scouts: 0, likely: 0, canTeach: 0, state: 'needs-teacher' };
+const REQ: PlanRow = { key: 'tenderfoot-4a', codeLabel: 'Tenderfoot 4a', title: 'First aid', origin: 'teacher', seeded: false, teachers: ['Beth B'], scouts: 0, canTeach: 0, state: 'needs-scouts' };
+const MIX: PlanRow = { key: 'fg:9', codeLabel: 'Focus set', title: 'Mix', origin: 'planner', seeded: true, teachers: [], scouts: 0, canTeach: 0, state: 'needs-teacher' };
 const ITEM = { key: 'tenderfoot-4a', kind: 'rank' as const, sourceId: 'tenderfoot', sourceName: 'Tenderfoot', code: '4a', label: 'First aid' };
 const BETH = { personId: 2, name: 'Beth B', reason: 'Teaches First aid', counselor: false, qualified: true, teaching: true };
 

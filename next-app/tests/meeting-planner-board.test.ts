@@ -202,7 +202,7 @@ describe('edge cases', () => {
 
 
 describe('seeded focus (P3)', () => {
-  const FG = { key: 'fg:7', codeLabel: 'Meeting focus', title: 'First aid night', kind: 'focus' as const, minutes: 45, rankId: null };
+  const FG = { key: 'fg:7', codeLabel: 'Focus', title: 'First aid night', kind: 'focus' as const, minutes: 45, rankId: null };
   const seeded = (keys: string[]) => new Map(keys.map((k) => [k, { by: 'Mindy K' }]));
 
   it('SeededTopic_ShowsUnderNoTeacher_WithZeroPicks', () => {

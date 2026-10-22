@@ -22,6 +22,7 @@ import { hashSecret } from '@/lib/identity-challenge';
 import { adultRecipients, loadScoutFamilies, NO_EMAIL_ON_FILE, randomInviteToken, scoutRecipientsMany, upcomingMeeting, type MailRecipient } from '@/lib/meeting-invites-db';
 import { scoutCandidatesMany } from '@/lib/meeting-invites-send';
 import { loadTeacherChoicesMany } from '@/lib/build-plan-db';
+import { isLikelyFit, likelyNames } from '@/lib/build-plan';
 import { DIGEST_EMAIL_CAP, DIGEST_INVITE_CAP, DIGEST_KEYS_MAX, type InviteKind, type InvitePerson, type InviteSection } from '@/lib/meeting-invite-digest';
 
 const LINK_KINDS = ['teach', 'pick'];
@@ -43,9 +44,20 @@ async function invitedLately(sb: SupabaseClient, entryId: number, keys: readonly
   );
 }
 
-/** The rank a key belongs to ('tenderfoot-4a' → tenderfoot), or null (a badge, a mix). */
-function rankOf(key: string, ranks: readonly { id: string }[]): string | null {
-  return [...ranks].sort((a, b) => b.id.length - a.id.length).find((r) => key.startsWith(`${r.id}-`))?.id ?? null;
+/**
+ * Build a Plan's "Likely: …" line (Patrick, 2026-10-22): per key, the scouts Invite… would mark likely (who haven't
+ * picked it), by name. One scoutCandidatesMany for every key, so the round trips don't grow with the plan (pinned).
+ */
+export async function loadLikelyScouts(
+  sb: SupabaseClient,
+  entryId: number,
+  keys: readonly string[],
+  deps: { loadCatalog?: () => Promise<AdvancementCatalog> } = {}
+): Promise<Record<string, string[]>> {
+  if (!keys.length) return {};
+  const [catalog, cands] = await Promise.all([(deps.loadCatalog ?? loadAdvancementCatalog)(), scoutCandidatesMany(sb, { entryId, keys }, deps)]);
+  if (!cands.ok) throw new Error(cands.error);
+  return Object.fromEntries(keys.map((key) => [key, likelyNames(cands.byKey.get(key) ?? [], key, catalog.ranks)]));
 }
 
 /**
@@ -76,7 +88,6 @@ export async function loadInviteSheet(
   const rankName = new Map(catalog.ranks.map((r) => [r.id, r.display_name]));
 
   return keys.map((key) => {
-    const topicRank = rankOf(key, catalog.ranks);
     const teachers: InvitePerson[] = (teach.choices.get(key) ?? [])
       .filter((c) => c.qualified && !c.teaching && teach.people.get(c.personId)?.kind === 'adult')
       .map((c) => {
@@ -92,7 +103,7 @@ export async function loadInviteSheet(
       .filter((c) => c.ticked)
       .map((c) => {
         const working = nextRankOf(c.currentRank ?? null, catalog.ranks);
-        const likely = topicRank == null || working === topicRank;
+        const likely = isLikelyFit(c.currentRank ?? null, key, catalog.ranks);
         const all = reach.get(c.personId) ?? [];
         const hasParent = all.some((r) => !r.isScout);
         // Only the recipients not reached about this lately: after a partial failure, just the one who missed it.

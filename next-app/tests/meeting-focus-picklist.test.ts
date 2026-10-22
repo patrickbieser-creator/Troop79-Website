@@ -5,7 +5,7 @@ import type { CatalogMeritBadge, CatalogMeritBadgeRequirement, CatalogRank, Cata
 
 /**
  * Seeded topics in a scout's pick list (Meeting Planner P3; tech-lead's spec section 2): a focus group (one pick, one
- * class) and a single merit badge requirement come first under "Meeting focus"; a seeded rank requirement stays in its
+ * class) and a single merit badge requirement come first under "Focus"; a seeded rank requirement stays in its
  * rank group, marked focus. Neither a focus group nor a merit badge requirement is ever "finished" (retakes allowed).
  */
 const RANKS: CatalogRank[] = [
@@ -46,7 +46,7 @@ const FA9 = mbReq('9', 'Head and spine injuries');
 const MB_REQS: CatalogMeritBadgeRequirement[] = [FA9, mbReq('9a', 'Signs of a concussion', { parent_id: FA9.id, teach_minutes: 10 })];
 
 const focus = [
-  { key: 'fg:7', label: 'First aid night', codeLabel: 'Meeting focus' },
+  { key: 'fg:7', label: 'First aid night', codeLabel: 'Focus' },
   { key: 'first-aid-9', label: 'Head and spine injuries', codeLabel: 'First Aid 9' },
   { key: 'tenderfoot-4a', label: 'First aid', codeLabel: 'Tenderfoot 4a' }
 ];
@@ -90,7 +90,7 @@ describe('finished and words', () => {
   it('FocusGroupWords_TakeTheirTitle_AndTheirMembersAsParts', () => {
     const w = topicWords('fg:7', RANKS, REQS, MBS, new Map([['fg:7', 'First aid night']]), { mbReqs: MB_REQS, members: new Map([['fg:7', ['tenderfoot-4a.1', 'first-aid-9a']]]) });
     expect([w?.codeLabel, w?.label, w?.kind, w?.parts.map((p) => [p.code, p.label]), w?.minutes]).toEqual([
-      'Meeting focus',
+      'Focus',
       'First aid night',
       'focus',
       [
@@ -130,7 +130,7 @@ describe('session words (qa-lead, P3)', () => {
   it('FocusGroupSession_HasItsTitleAndParts', async () => {
     const { sessionWords } = await import('../src/lib/meeting-board-match');
     const w = sessionWords(['fg:7'], catalog, new Map(), new Map([['fg:7', 'First aid night']]), { mbReqs: MB_REQS, members: new Map([['fg:7', ['tenderfoot-4a.1', 'first-aid-9a']]]) });
-    expect([w.title, w.codeLabel, w.parts.map((p) => p.code), w.minutes]).toEqual(['First aid night', 'Meeting focus', ['Tenderfoot 4a.1', 'First Aid 9a'], 15]);
+    expect([w.title, w.codeLabel, w.parts.map((p) => p.code), w.minutes]).toEqual(['First aid night', 'Focus', ['Tenderfoot 4a.1', 'First Aid 9a'], 15]);
   });
 
   it('TrayPick_OfAnUnseededFocusGroup_KeepsItsTitle', async () => {
@@ -138,6 +138,6 @@ describe('session words (qa-lead, P3)', () => {
     const v = buildPickList({ currentRank: 'scout', ranks: RANKS, rankReqs: REQS, mbs: MBS, mbProgress: [], rankCodes: new Set() });
     const pick = { key: 'fg:7', priority: null, later: false, note: null, firstAskedOn: '2026-10-25', enteredByPersonId: null, carriedFrom: null };
     const [t] = trayPicks([pick], { view: v, ranks: RANKS, rankReqs: REQS, mbs: MBS, names: new Map(), scoutPersonId: 1, viewerPersonId: 1, titles: new Map([['fg:7', 'First aid night']]), more: { mbReqs: MB_REQS } });
-    expect([t.label, t.codeLabel]).toEqual(['First aid night', 'Meeting focus']);
+    expect([t.label, t.codeLabel]).toEqual(['First aid night', 'Focus']);
   });
 });

@@ -20,6 +20,7 @@ const { addMeetingPick, loadBoardScouts, loadMeetingById, loadScoutBoard, setMee
 const { pickableKeys } = await import('../src/lib/meeting-board-picklist');
 const { boardName, INTENT_LABEL } = await import('../src/lib/meeting-board-shared');
 const { scoutCandidatesMany } = await import('../src/lib/meeting-invites-send');
+const { loadLikelyScouts } = await import('../src/lib/meeting-invite-digest-db');
 
 const sb = adminClient();
 const loadCatalog = () => fetchAdvancementCatalog(sb);
@@ -185,5 +186,22 @@ describe('scoutCandidatesMany (Build a Plan B0)', () => {
     const c = counting();
     await scoutCandidatesMany(c.client, { entryId: meeting, keys }, { loadCatalog });
     expect(c.calls()).toBeLessThanOrEqual(20);
+  }, 60_000);
+});
+
+/** Build a Plan's "Likely: …" line (Patrick, 2026-10-22): one scoutCandidatesMany for every key on the plan. */
+describe('loadLikelyScouts', () => {
+  it('LoadLikelyScouts_RoundTrips_SameAsOneScoutCandidatesManyCall', async () => {
+    const one = counting();
+    await scoutCandidatesMany(one.client, { entryId: meeting, keys }, { loadCatalog });
+    const likely = counting();
+    await loadLikelyScouts(likely.client, meeting, keys, { loadCatalog });
+    expect(likely.calls()).toBe(one.calls());
+  }, 60_000);
+
+  it('LoadLikelyScouts_LeavesOutTheScoutWhoPickedIt', async () => {
+    const byKey = await loadLikelyScouts(sb, meeting, [keys[0]], { loadCatalog });
+    const pickerName = boardName(`${TEST_PREFIX} SCM Picker`);
+    expect(byKey[keys[0]].includes(pickerName)).toBe(false);
   }, 60_000);
 });

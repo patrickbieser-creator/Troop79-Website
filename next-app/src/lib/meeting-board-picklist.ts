@@ -12,7 +12,7 @@
  * (Phase 2); the caller works out who from lib/meeting-board-teach.
  *
  * Meeting Planner P3: what a planner seeded on this meeting. A focus group ('fg:7', one pick, one class) and a single merit
- * badge requirement ('first-aid-9') come first, under "Meeting focus"; a seeded rank requirement stays in its rank group
+ * badge requirement ('first-aid-9') come first, under "Focus"; a seeded rank requirement stays in its rank group
  * with a `focus` mark. Neither a focus group nor a merit badge requirement is ever finished (a retake is allowed).
  *
  * Finished requirements are absent. The engine's rules decide what can be worked on at a meeting at all (its
@@ -39,7 +39,7 @@ export interface PickRow {
   teacher: string | null;
   /** Its sub-requirements as the Clipboard lists them, the scout's done ones marked (T-4); rank and focus rows. */
   parts?: TopicPart[];
-  /** Seeded on this meeting (P3): a rank row in its group carries the mark; Meeting focus rows are all seeded. */
+  /** Seeded on this meeting (P3): a rank row in its group carries the mark; Focus rows are all seeded. */
   focus?: boolean;
 }
 
@@ -61,7 +61,7 @@ export interface PickListView {
   badges: PickRow[];
   /** Freeform topics a teacher offered on this board ("Knife sharpening"). */
   offered: PickRow[];
-  /** Seeded focus groups and merit badge requirements (P3), listed first under "Meeting focus". */
+  /** Seeded focus groups and merit badge requirements (P3), listed first under "Focus". */
   focus?: PickRow[];
 }
 
@@ -88,7 +88,7 @@ export interface PickListInput {
 export interface FocusPickIn {
   key: string;
   label: string;
-  /** 'Meeting focus' for a focus group, 'First Aid 9', 'Tenderfoot 4a'. */
+  /** 'Focus' for a focus group, 'First Aid 9', 'Tenderfoot 4a'. */
   codeLabel: string;
   parts?: TopicPart[];
 }
@@ -118,7 +118,7 @@ export const BOR_LABEL = 'Board of review';
 export const borCodeLabel = (rankName: string) => `${rankName} board of review`;
 
 /** The tray's second line for a focus group, and the pick list's heading for what was seeded (P3). */
-export const FOCUS_LABEL = 'Meeting focus';
+export const FOCUS_LABEL = 'Focus';
 
 /** The rank a key belongs to ('tenderfoot-4a' -> tenderfoot); undefined for a badge, freeform, focus group or a merit
  *  badge requirement. Rank ids carry dashes, so the longest match wins. */

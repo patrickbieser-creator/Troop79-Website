@@ -97,7 +97,7 @@ describe('Build a Plan B2: teacher choices', () => {
   });
 
   it('WithTeachers_StateFollowsAndUnheldRowGoes', () => {
-    const row: PlanRow = { key: 'k', codeLabel: 'K', title: 'T', origin: 'planner', seeded: true, teachers: [], scouts: 2, likely: 0, canTeach: 0, state: 'needs-teacher' };
+    const row: PlanRow = { key: 'k', codeLabel: 'K', title: 'T', origin: 'planner', seeded: true, teachers: [], scouts: 2, canTeach: 0, state: 'needs-teacher' };
     expect([withTeachers(row, ['Beth B'], true)?.state, withTeachers({ ...row, scouts: 0 }, ['Beth B'], true)?.state, withTeachers(row, [], false)]).toEqual(['ready', 'needs-scouts', null]);
   });
 });

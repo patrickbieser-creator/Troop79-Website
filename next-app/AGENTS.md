@@ -257,3 +257,4 @@ edit → swap/diet → "Back to the troop's …" → **Remove** last, and "Leave
 Every quantity is a plain `NumberBox` (People, diets, brand packages, shopping "How many", gear counts); the − n +
 `Stepper` is for event sign-up only. One documented exception: the troop ingredient browser keeps "+ Ingredient" above
 its long, searchable list. Plan of record: `Plans/Completed/Menu-Monster-Add-Pattern.md`; specimens on both styleguides.
+Exception: Build a Plan (`/planner/build`) puts its adds on "The plan" heading's line and opens them under it, above the list (Patrick, 2026-10-22).

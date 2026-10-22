@@ -13,7 +13,9 @@
 import type { MeetingPlanPayload } from '@/lib/meeting-plan-types';
 import type { PlannerBoard } from '@/lib/meeting-planner-board';
 import { assessTeacher, flagText, teacherName, topicSkill, type TeachContext, type TeacherPerson } from '@/lib/meeting-board-teach';
-import { rankOfKey } from '@/lib/meeting-board-picklist';
+import { nextRankOf, rankOfKey } from '@/lib/meeting-board-picklist';
+import { othersLabel } from '@/lib/meeting-board-shared';
+import type { CatalogRank } from '@/lib/advancement-catalog';
 
 export type PlanOrigin = 'planner' | 'scouts' | 'teacher';
 export type PlanState = 'ready' | 'needs-teacher' | 'needs-scouts';
@@ -33,13 +35,9 @@ export interface PlanRow {
   teachers: string[];
   /** Scouts who picked it for this meeting. */
   scouts: number;
-  /** Needs scouts: scouts working on that rank who could take it and haven't picked it. */
-  likely: number;
-  /** Needs a teacher: people qualified to teach it who can still come. */
-  canTeach: number;
+  /** Needs a teacher: people qualified to teach it who can still come; null when added on this page and not counted yet. */
+  canTeach: number | null;
   state: PlanState;
-  /** Just added on this page: the board hasn't counted who could teach it yet (the next refresh does). */
-  fresh?: boolean;
 }
 
 /** Each class on the board as a plan row: ready first, then the ones that need something, by code. */
@@ -48,19 +46,52 @@ export function planRows(board: Pick<PlannerBoard, 'ready' | 'noTeacher' | 'offe
   const rows: PlanRow[] = [
     ...board.ready.map((r) => {
       const seeded = r.seededBy != null;
-      return { key: r.key, codeLabel: r.codeLabel, title: r.title, origin: origin(seeded, r.scouts.length), seeded, teachers: r.teachers.map((t) => t.name), scouts: r.scouts.length, likely: 0, canTeach: 0, state: 'ready' as const };
+      return { key: r.key, codeLabel: r.codeLabel, title: r.title, origin: origin(seeded, r.scouts.length), seeded, teachers: r.teachers.map((t) => t.name), scouts: r.scouts.length, canTeach: 0, state: 'ready' as const };
     }),
     ...board.noTeacher.map((r) => {
       const seeded = r.seededBy != null;
-      return { key: r.key, codeLabel: r.codeLabel, title: r.title, origin: origin(seeded, r.waiting.length), seeded, teachers: [], scouts: r.waiting.length, likely: 0, canTeach: r.canTeach.total, state: 'needs-teacher' as const };
+      return { key: r.key, codeLabel: r.codeLabel, title: r.title, origin: origin(seeded, r.waiting.length), seeded, teachers: [], scouts: r.waiting.length, canTeach: r.canTeach.total, state: 'needs-teacher' as const };
     }),
     ...board.offered.map((r) => {
       const seeded = r.seededBy != null;
-      return { key: r.key, codeLabel: r.codeLabel, title: r.title, origin: origin(seeded, 0), seeded, teachers: r.teachers.map((t) => t.name), scouts: 0, likely: r.likelyFits.length, canTeach: 0, state: 'needs-scouts' as const };
+      return { key: r.key, codeLabel: r.codeLabel, title: r.title, origin: origin(seeded, 0), seeded, teachers: r.teachers.map((t) => t.name), scouts: 0, canTeach: 0, state: 'needs-scouts' as const };
     })
   ];
   const order: Record<PlanState, number> = { ready: 0, 'needs-teacher': 1, 'needs-scouts': 2 };
   return rows.sort((a, b) => order[a.state] - order[b.state] || a.codeLabel.localeCompare(b.codeLabel) || a.title.localeCompare(b.title));
+}
+
+/** The row's teacher line: who teaches it, else how many could; nothing while a just-added row isn't counted yet. */
+export function teacherLine(r: Pick<PlanRow, 'teachers' | 'canTeach'>): string | null {
+  if (r.teachers.length) return r.teachers.join(', ');
+  if (r.canTeach == null) return null;
+  return r.canTeach ? `${r.canTeach} ${r.canTeach === 1 ? 'person' : 'people'} could teach it` : 'Nobody listed can teach it yet';
+}
+
+/** How many likely scouts a row names before "+N". */
+export const LIKELY_SHOWN = 3;
+
+/**
+ * The row's scout line (Patrick, 2026-10-22): "3 signed up" once scouts picked it; otherwise the likely scouts by name
+ * ("Likely: Finn P, Anjali S, Leo K +4"); nothing when there are neither.
+ */
+export function scoutLine(r: Pick<PlanRow, 'scouts'>, likely: readonly string[] | undefined): string | null {
+  if (r.scouts) return `${r.scouts} signed up`;
+  return likely?.length ? `Likely: ${othersLabel(likely, LIKELY_SHOWN)}` : null;
+}
+
+/** Invite…'s likely fit (B3): a scout working on the key's rank (their next rank); any scout for a badge or a mix. */
+export function isLikelyFit(currentRank: string | null, key: string, ranks: readonly CatalogRank[]): boolean {
+  const topic = rankOfKey(key, ranks)?.id ?? null;
+  return topic == null || nextRankOf(currentRank, ranks) === topic;
+}
+
+/** The likely scouts for one key, by name: candidates who haven't picked it and are a likely fit. */
+export function likelyNames(cands: readonly { name: string; ticked: boolean; currentRank?: string | null }[], key: string, ranks: readonly CatalogRank[]): string[] {
+  return cands
+    .filter((c) => c.ticked && isLikelyFit(c.currentRank ?? null, key, ranks))
+    .map((c) => c.name)
+    .sort((a, b) => a.localeCompare(b));
 }
 
 /** Why a row can't be removed, or null when it can (a seeded row). */
@@ -135,7 +166,7 @@ export function rankSuggestions(plan: Pick<MeetingPlanPayload, 'sessions'>, onPl
 
 /** A row for an offering just added: the planner's, with whoever already teaches it (a matching skill offer). */
 export function addedRow(s: Pick<SuggestionView, 'key' | 'codeLabel' | 'title'>, teachers: readonly string[] = []): PlanRow {
-  return { key: s.key, codeLabel: s.codeLabel, title: s.title, origin: 'planner', seeded: true, teachers: [...teachers], scouts: 0, likely: 0, canTeach: 0, state: teachers.length ? 'needs-scouts' : 'needs-teacher', fresh: true };
+  return { key: s.key, codeLabel: s.codeLabel, title: s.title, origin: 'planner', seeded: true, teachers: [...teachers], scouts: 0, canTeach: null, state: teachers.length ? 'needs-scouts' : 'needs-teacher' };
 }
 
 /** An Add over the rows shown: a row already there becomes the planner's (and keeps its picks); a new one is added. */

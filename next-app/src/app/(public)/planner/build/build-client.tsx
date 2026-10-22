@@ -11,12 +11,16 @@
  * Viewers see the plan with no controls. Suggestions stream in behind Suspense (SuggestionsFeed hands them over), so
  * the plan never waits for the engine.
  *
- * B2: seed holders get one quiet add row under the list (+ Requirement, + Focus set, + New mix: ./add-offering), and
- * each row a quiet Edit (./edit-offering): its teacher for editors, a mix's requirements for seed holders.
+ * B2: seed holders get the quiet adds on "The plan" heading's line (+ Requirement, + Focus set, + New mix:
+ * ./add-offering; the open one sits under the heading, above the list: Patrick, 2026-10-22), and each row a quiet Edit
+ * (./edit-offering): its teacher for editors, a mix's requirements for seed holders.
  *
  * B3: once the plan has an offering, editors get the one primary "Invite…" in a sticky bottom bar (./invite-sheet:
  * one digest email per recipient), and adults a quiet per-row Invite scoped to that row. For a scout editor (the SPL)
  * the button is greyed with the reason; the server refuses regardless. The rail gains "N invited".
+ *
+ * A row says only what's exceptional (Patrick, 2026-10-22): no origin tag on the planner's own rows, no scout line when
+ * nobody signed up and nobody is likely. The likely scouts stream in behind Suspense too (LikelyFeed).
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
@@ -31,6 +35,8 @@ import {
   removeConsequence,
   STATE_LABEL,
   SUGGESTION_LIMIT,
+  scoutLine,
+  teacherLine,
   keepWriteStamp,
   withAdded,
   withTeachers,
@@ -60,6 +66,8 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
 
 type Feed = { status: 'loading' } | { status: 'ready'; list: SuggestionView[] } | { status: 'failed' };
 const FeedCtx = createContext<((f: Feed) => void) | null>(null);
+type Likely = Record<string, string[]>;
+const LikelyCtx = createContext<((l: Likely) => void) | null>(null);
 
 /** Streams in behind Suspense: hands the engine's suggestions to the view and renders nothing itself. */
 export function SuggestionsFeed({ list }: { list: SuggestionView[] | null }) {
@@ -67,6 +75,15 @@ export function SuggestionsFeed({ list }: { list: SuggestionView[] | null }) {
   useEffect(() => {
     set?.(list ? { status: 'ready', list } : { status: 'failed' });
   }, [list, set]);
+  return null;
+}
+
+/** Streams in behind Suspense: hands each row's likely scouts (by key) to the view; null (the read failed) shows none. */
+export function LikelyFeed({ byKey }: { byKey: Likely | null }) {
+  const set = useContext(LikelyCtx);
+  useEffect(() => {
+    if (byKey) set?.(byKey);
+  }, [byKey, set]);
   return null;
 }
 
@@ -95,7 +112,7 @@ export function BuildPlanView({
   dayLabel?: string;
   stamp: string;
   heading: ReactNode;
-  /** The Suspense-wrapped SuggestionsFeed (seed holders only). */
+  /** The Suspense-wrapped feeds: LikelyFeed, and SuggestionsFeed for seed holders. */
   feed?: ReactNode;
 }) {
   const router = useRouter();
@@ -123,6 +140,7 @@ export function BuildPlanView({
   const stampRef = useRef(stamp);
   const listHeadRef = useRef<HTMLHeadingElement | null>(null);
   const onFeed = useCallback((f: Feed) => setSuggestions(f), []);
+  const [likely, setLikely] = useState<Likely>({});
 
   /** A write landed: keep its stamp when nothing else changed the board since; otherwise refresh to show the rest. */
   const landed = (res: { prior: string; stamp: string }) => {
@@ -186,121 +204,116 @@ export function BuildPlanView({
 
   const suggestedList = <SuggestedList feed={suggestions} shown={shown} onAdd={add} />;
   return (
-    <FeedCtx.Provider value={onFeed}>
-      {heading}
-      <div className={s.rail}>
-        <p className={s.railText}>
-          {plural(sum.offerings, 'offering')} · {sum.withTeachers} with {sum.withTeachers === 1 ? 'a teacher' : 'teachers'} · {plural(sum.scouts, 'scout')} signed up · {invited} invited ·{' '}
-          <PlannerPoller entryId={entryId} stamp={stamp} build stampRef={stampRef} />
-        </p>
-        {canSeed ? (
-          <button type="button" className={s.railSheet} onClick={() => setSheet(true)} aria-haspopup="dialog">
-            Suggested{shown.length ? ` · ${shown.length}` : ''}
-          </button>
-        ) : null}
-      </div>
-      <div className={canSeed ? s.layout : s.layoutSolo}>
-        <section aria-labelledby="build-plan">
-          <h2 id="build-plan" className={s.sectionTitle} ref={listHeadRef} tabIndex={-1}>
-            The plan
-          </h2>
-          {rows.length ? (
-            <ul className={s.list}>
-              {rows.map((r) => (
-                <PlanRowView
-                  key={r.key}
-                  row={r}
-                  canSeed={canSeed}
-                  canEdit={canEdit || (canSeed && r.key.startsWith('fg:'))}
-                  onEdit={() => setEditing(r)}
-                  onInvite={canEmail ? () => setInviting(r.key) : undefined}
-                  onRemove={(trigger) => setRemoving({ row: r, trigger })}
-                />
-              ))}
-            </ul>
-          ) : (
-            <p className={s.empty}>Nothing planned yet.</p>
-          )}
-          {canSeed ? <AddOffering onPlan={onPlan} defaultMixName={mixName(dayLabel)} addRequirement={addRequirement} addSet={addSet} newMix={newMix} /> : null}
-        </section>
-        {canSeed ? (
-          <aside className={s.suggested} aria-labelledby="build-suggested">
-            <h2 id="build-suggested" className={s.sectionTitle}>
-              Suggested
-            </h2>
-            {suggestedList}
-          </aside>
-        ) : null}
-      </div>
-      {sheet ? (
-        <Drawer title="Suggested" onClose={() => setSheet(false)}>
-          {suggestedList}
-        </Drawer>
-      ) : null}
-      {editing ? (
-        <EditOffering
-          entryId={entryId}
-          row={editingRow ?? editing}
-          gone={!editingRow}
-          canEdit={canEdit}
-          canSeed={canSeed}
-          onTeachers={(res) => onTeachers(editing.key, res)}
-          onMix={(res) => onMix(editing.key, res)}
-          onClose={() => setEditing(null)}
-        />
-      ) : null}
-      {canEdit && rows.length ? (
-        <div className={s.inviteBar}>
-          {canEmail ? null : <span className={s.inviteWhy}>Only adults send email</span>}
-          <Button variant="primary" onClick={() => setInviting('')} disabled={!canEmail} aria-haspopup="dialog">
-            Invite…
-          </Button>
+    <LikelyCtx.Provider value={setLikely}>
+      <FeedCtx.Provider value={onFeed}>
+        {heading}
+        <div className={s.rail}>
+          <p className={s.railText}>
+            {plural(sum.offerings, 'offering')} · {sum.withTeachers} with {sum.withTeachers === 1 ? 'a teacher' : 'teachers'} · {plural(sum.scouts, 'scout')} signed up · {invited} invited ·{' '}
+            <PlannerPoller entryId={entryId} stamp={stamp} build stampRef={stampRef} />
+          </p>
+          {canSeed ? (
+            <button type="button" className={s.railSheet} onClick={() => setSheet(true)} aria-haspopup="dialog">
+              Suggested{shown.length ? ` · ${shown.length}` : ''}
+            </button>
+          ) : null}
         </div>
-      ) : null}
-      {inviting !== null && canEmail ? (
-        <InviteSheet
-          entryId={entryId}
-          rows={rows}
-          only={inviting || null}
-          onSent={(res) => {
-            landed(res);
-            setInvited(res.invited);
-          }}
-          onClose={() => setInviting(null)}
-        />
-      ) : null}
-      {removing ? (
-        <RemoveDialog
-          row={removing.row}
-          onRemove={() => remove(removing.row)}
-          onClose={() => {
-            const trigger = removing.trigger;
-            setRemoving(null);
-            // Back to the row's ⋯ when the row is still there; to the list's heading when it went.
-            requestAnimationFrame(() => (trigger?.isConnected ? trigger.focus() : listHeadRef.current?.focus()));
-          }}
-        />
-      ) : null}
-      {feed}
-    </FeedCtx.Provider>
+        <div className={canSeed ? s.layout : s.layoutSolo}>
+          <section aria-labelledby="build-plan">
+            <div className={s.planHead}>
+              <h2 id="build-plan" className={s.sectionTitle} ref={listHeadRef} tabIndex={-1}>
+                The plan
+              </h2>
+              {canSeed ? <AddOffering onPlan={onPlan} defaultMixName={mixName(dayLabel)} addRequirement={addRequirement} addSet={addSet} newMix={newMix} /> : null}
+            </div>
+            {rows.length ? (
+              <ul className={s.list}>
+                {rows.map((r) => (
+                  <PlanRowView
+                    key={r.key}
+                    row={r}
+                    likely={likely[r.key]}
+                    canSeed={canSeed}
+                    canEdit={canEdit || (canSeed && r.key.startsWith('fg:'))}
+                    onEdit={() => setEditing(r)}
+                    onInvite={canEmail ? () => setInviting(r.key) : undefined}
+                    onRemove={(trigger) => setRemoving({ row: r, trigger })}
+                  />
+                ))}
+              </ul>
+            ) : (
+              <p className={s.empty}>Nothing planned yet.</p>
+            )}
+          </section>
+          {canSeed ? (
+            <aside className={s.suggested} aria-labelledby="build-suggested">
+              <h2 id="build-suggested" className={s.sectionTitle}>
+                Suggested
+              </h2>
+              {suggestedList}
+            </aside>
+          ) : null}
+        </div>
+        {sheet ? (
+          <Drawer title="Suggested" onClose={() => setSheet(false)}>
+            {suggestedList}
+          </Drawer>
+        ) : null}
+        {editing ? (
+          <EditOffering
+            entryId={entryId}
+            row={editingRow ?? editing}
+            gone={!editingRow}
+            canEdit={canEdit}
+            canSeed={canSeed}
+            onTeachers={(res) => onTeachers(editing.key, res)}
+            onMix={(res) => onMix(editing.key, res)}
+            onClose={() => setEditing(null)}
+          />
+        ) : null}
+        {canEdit && rows.length ? (
+          <div className={s.inviteBar}>
+            {canEmail ? null : <span className={s.inviteWhy}>Only adults send email</span>}
+            <Button variant="primary" onClick={() => setInviting('')} disabled={!canEmail} aria-haspopup="dialog">
+              Invite…
+            </Button>
+          </div>
+        ) : null}
+        {inviting !== null && canEmail ? (
+          <InviteSheet
+            entryId={entryId}
+            rows={rows}
+            only={inviting || null}
+            onSent={(res) => {
+              landed(res);
+              setInvited(res.invited);
+            }}
+            onClose={() => setInviting(null)}
+          />
+        ) : null}
+        {removing ? (
+          <RemoveDialog
+            row={removing.row}
+            onRemove={() => remove(removing.row)}
+            onClose={() => {
+              const trigger = removing.trigger;
+              setRemoving(null);
+              // Back to the row's ⋯ when the row is still there; to the list's heading when it went.
+              requestAnimationFrame(() => (trigger?.isConnected ? trigger.focus() : listHeadRef.current?.focus()));
+            }}
+          />
+        ) : null}
+        {feed}
+      </FeedCtx.Provider>
+    </LikelyCtx.Provider>
   );
-}
-
-function teacherLine(r: PlanRow): string {
-  if (r.teachers.length) return r.teachers.join(', ');
-  if (r.fresh) return 'Just added';
-  return r.canTeach ? `${plural(r.canTeach, 'person', 'people')} could teach it` : 'Nobody listed can teach it yet';
-}
-
-function scoutLine(r: PlanRow): string {
-  const parts = [r.scouts ? `${r.scouts} signed up` : null, r.likely ? `${r.likely} likely, not yet asked` : null].filter(Boolean);
-  return parts.length ? parts.join(' · ') : 'No scouts yet';
 }
 
 const STATE_CLASS = { ready: s.stateReady, 'needs-teacher': s.stateTeacher, 'needs-scouts': s.stateScouts } as const;
 
 function PlanRowView({
   row,
+  likely,
   canSeed,
   canEdit,
   onEdit,
@@ -308,6 +321,8 @@ function PlanRowView({
   onRemove
 }: {
   row: PlanRow;
+  /** Its likely scouts by name, once streamed in. */
+  likely?: string[];
   canSeed: boolean;
   canEdit: boolean;
   onEdit: () => void;
@@ -315,33 +330,39 @@ function PlanRowView({
   onInvite?: () => void;
   onRemove: (trigger: HTMLElement | null) => void;
 }) {
+  const teachers = teacherLine(row);
+  const scouts = scoutLine(row, likely);
   return (
     <li className={s.row}>
       <div>
         <p className={s.rowTitle}>
           {row.codeLabel ? <span className={s.code}>{row.codeLabel}</span> : null}
           {row.title}
-          <span className={s.origin}>{ORIGIN_LABEL[row.origin]}</span>
+          {/* The planner's rows are the rule; only the exceptions say where they came from (Patrick, 2026-10-22). */}
+          {row.origin === 'planner' ? null : <span className={s.origin}>{ORIGIN_LABEL[row.origin]}</span>}
         </p>
-        <p className={s.rowLine}>{teacherLine(row)}</p>
-        <p className={s.rowLine}>{scoutLine(row)}</p>
+        {teachers ? <p className={s.rowLine}>{teachers}</p> : null}
+        {scouts ? <p className={s.rowLine}>{scouts}</p> : null}
       </div>
-      <span className={STATE_CLASS[row.state]}>{STATE_LABEL[row.state]}</span>
-      {canEdit || canSeed ? (
-        <span className={s.rowActions}>
-          {canEdit ? (
-            <button type="button" className={s.editBtn} onClick={onEdit} aria-haspopup="dialog" aria-label={`Edit ${row.title}`}>
-              Edit
-            </button>
-          ) : null}
-          {onInvite ? (
-            <button type="button" className={s.editBtn} onClick={onInvite} aria-haspopup="dialog" aria-label={`Invite for ${row.title}`}>
-              Invite
-            </button>
-          ) : null}
-          {canSeed ? <RowMenu row={row} onRemove={onRemove} /> : null}
-        </span>
-      ) : null}
+      {/* The state label and the row's buttons: one flex line, centred on each other (Patrick, 2026-10-22). */}
+      <span className={s.rowEnd}>
+        <span className={STATE_CLASS[row.state]}>{STATE_LABEL[row.state]}</span>
+        {canEdit || canSeed ? (
+          <span className={s.rowActions}>
+            {canEdit ? (
+              <button type="button" className={s.editBtn} onClick={onEdit} aria-haspopup="dialog" aria-label={`Edit ${row.title}`}>
+                Edit
+              </button>
+            ) : null}
+            {onInvite ? (
+              <button type="button" className={s.editBtn} onClick={onInvite} aria-haspopup="dialog" aria-label={`Invite for ${row.title}`}>
+                Invite
+              </button>
+            ) : null}
+            {canSeed ? <RowMenu row={row} onRemove={onRemove} /> : null}
+          </span>
+        ) : null}
+      </span>
     </li>
   );
 }

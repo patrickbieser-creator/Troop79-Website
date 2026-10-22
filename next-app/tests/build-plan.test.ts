@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { pickMeeting, planRows, rankSuggestions } from '../src/lib/build-plan';
+import { isLikelyFit, likelyNames, pickMeeting, planRows, rankSuggestions, scoutLine, teacherLine } from '../src/lib/build-plan';
 import type { PlanSession } from '../src/lib/meeting-plan-types';
 
 /**
@@ -52,5 +52,42 @@ describe('Build a Plan B1 (pure)', () => {
       ['tenderfoot-4a', 'scouts', false, 'needs-teacher'],
       ['scout-2', 'planner', true, 'needs-scouts']
     ]);
+  });
+});
+
+/** Patrick, 2026-10-22: a row's scout line names the likely scouts, and says nothing when there are none. */
+describe('Build a Plan row lines (pure)', () => {
+  const RANKS = [
+    { id: 'scout', display_name: 'Scout', sort_order: 1 },
+    { id: 'tenderfoot', display_name: 'Tenderfoot', sort_order: 2 }
+  ] as Parameters<typeof isLikelyFit>[2];
+
+  it('ScoutLine_NamesThreeLikelyScouts_ThenHowManyMore', () => {
+    expect(scoutLine({ scouts: 0 }, ['Anjali S', 'Finn P', 'Leo K', 'Max B', 'Nia R'])).toBe('Likely: Anjali S, Finn P, Leo K +2');
+  });
+
+  it('ScoutLine_NoSignupsAndNoLikelyScouts_IsNull', () => {
+    expect(scoutLine({ scouts: 0 }, [])).toBeNull();
+  });
+
+  it('ScoutLine_WithSignups_KeepsTheSignedUpLine', () => {
+    expect(scoutLine({ scouts: 3 }, ['Finn P'])).toBe('3 signed up');
+  });
+
+  it('TeacherLine_JustAddedRowNotCountedYet_IsNull', () => {
+    expect(teacherLine({ teachers: [], canTeach: null })).toBeNull();
+  });
+
+  it('IsLikelyFit_RankKey_OnlyForScoutsWorkingOnThatRank', () => {
+    expect([isLikelyFit('scout', 'tenderfoot-4a', RANKS), isLikelyFit('tenderfoot', 'tenderfoot-4a', RANKS), isLikelyFit('tenderfoot', 'fg:7', RANKS)]).toEqual([true, false, true]);
+  });
+
+  it('LikelyNames_LeavesOutScoutsWhoPickedIt', () => {
+    const cands = [
+      { name: 'Leo K', ticked: true, currentRank: 'scout' },
+      { name: 'Finn P', ticked: false, currentRank: 'scout' },
+      { name: 'Anjali S', ticked: true, currentRank: 'scout' }
+    ];
+    expect(likelyNames(cands, 'tenderfoot-4a', RANKS)).toEqual(['Anjali S', 'Leo K']);
   });
 });
