@@ -44,7 +44,8 @@ export function PersonDrawerView({ personId, onClose }: { personId: number; onCl
   async function save(at: string, write: () => Promise<PlannerDrawerResult>) {
     setSaving(at);
     setProblem(null);
-    const res = await p.sync.run(write);
+    // The board behind refreshes once, when the drawer closes (planner-client), not on every tick.
+    const res = await p.sync.run(write, { defer: true });
     setSaving(null);
     if (res.ok) setDrawer(res.drawer);
     else setProblem({ at, text: res.error });

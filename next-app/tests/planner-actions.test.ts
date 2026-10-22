@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeAll, afterAll, afterEach } from 'vitest';
+import { revalidatePath } from 'next/cache';
 import { adminClient } from './helpers/admin-client';
 import { TEST_PREFIX } from './helpers/signup-fixtures';
 
@@ -199,6 +200,29 @@ describe('answers and picks', () => {
     asEditor();
     const res = await (await actions()).plannerOpenPersonAction({ entryId: meeting, personId: young });
     expect(res.ok && [res.drawer.kind, res.drawer.sub, res.drawer.options.some((o) => o.key === keys[0])]).toEqual(['scout', 'Working on Tenderfoot', true]);
+  });
+});
+
+describe('a drawer tick does not reload the board (the board refreshes once when the drawer closes)', () => {
+  it('TogglePick_DoesNotRevalidateThePlanner', async () => {
+    asEditor();
+    vi.mocked(revalidatePath).mockClear();
+    await (await actions()).plannerTogglePickAction({ entryId: meeting, personId: young, key: keys[0], on: true });
+    expect(vi.mocked(revalidatePath)).not.toHaveBeenCalled();
+  });
+
+  it('ToggleTeach_DoesNotRevalidateThePlanner', async () => {
+    asEditor();
+    vi.mocked(revalidatePath).mockClear();
+    await (await actions()).plannerToggleTeachAction({ entryId: meeting, personId: teacher, key: keys[0], on: true });
+    expect(vi.mocked(revalidatePath)).not.toHaveBeenCalled();
+  });
+
+  it('SetAnswer_FromTheDrawer_DoesNotRevalidateThePlanner', async () => {
+    asEditor();
+    vi.mocked(revalidatePath).mockClear();
+    await (await actions()).plannerSetAnswerAction({ entryId: meeting, personId: young, intent: 'coming' });
+    expect(vi.mocked(revalidatePath)).not.toHaveBeenCalled();
   });
 });
 

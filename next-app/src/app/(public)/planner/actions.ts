@@ -12,6 +12,8 @@
  * P3: seeding (a focus set, or one requirement) and unseeding, for meeting_planner.seed holders only.
  * P5b: reminders to people who haven't answered, adults only, through the same invite pipeline.
  * Each write returns the person's fresh drawer and the board's new stamp, so the poller doesn't refresh over it.
+ * A drawer write revalidates nothing (perf, 2026-10-22): any revalidatePath makes Next re-render /planner inside the
+ * action's response, and the planner refreshes the board itself, once, when the drawer closes (planner-client).
  */
 import { revalidatePath } from 'next/cache';
 import { resolveAdminActor } from '@/lib/admin-actor';
@@ -93,7 +95,6 @@ function revalidate() {
 
 async function drawerAfter(e: Editor, res: BoardWriteResult): Promise<PlannerDrawerResult> {
   if (!res.ok) return res;
-  revalidate();
   const [drawer, stamp] = await Promise.all([loadPersonDrawer(e.sb, e.meeting, e.personId, e.actorPersonId), loadBoardStamp(e.sb, e.meeting.entryId)]);
   return drawer ? { ok: true, drawer, stamp } : fail('That person isn’t on the board.');
 }

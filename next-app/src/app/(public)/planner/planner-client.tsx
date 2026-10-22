@@ -5,6 +5,9 @@
  * the person drawer or the Add an offer drawer, and that keeps the poller off a write in flight (tech-lead,
  * 2026-10-21: the poller skips while a save is pending, then takes the stamp the save returned, so it doesn't refresh
  * over a result the drawer already shows; the board behind refreshes once when the save settles).
+ * Perf (2026-10-22): a write from the person drawer is `defer`red: the board behind is NOT refreshed per tick, only
+ * once when the drawer closes (or when the last write still in flight lands after it closed). The poller has already
+ * adopted each save's stamp, so without that refresh on close the board would stay stale.
  *
  * Viewers (no edit right) get plain names and no buttons: PersonName renders a span, the buttons render nothing.
  * P2b: Send request and "Choose families to nudge…" render for adult editors only (canEmail); a scout editor (the SPL)
@@ -49,7 +52,8 @@ interface Sync {
   stamp: RefObject<string>;
   /** A save is pending: the poller waits. */
   busy: () => boolean;
-  run: <T extends { ok: boolean; stamp?: string }>(write: () => Promise<T>) => Promise<T>;
+  /** `defer`: don't refresh the board for this write; it refreshes once when the drawer closes. */
+  run: <T extends { ok: boolean; stamp?: string }>(write: () => Promise<T>, opts?: { defer?: boolean }) => Promise<T>;
 }
 
 interface PlannerCtx {
@@ -101,10 +105,20 @@ export function PlannerProvider({
   const [reminded, setReminded] = useState<ReadonlySet<number>>(new Set());
   const stampRef = useRef(stamp);
   const pending = useRef(0);
+  /** A deferred write landed: the board behind owes one refresh. */
+  const owed = useRef(false);
+  /** A drawer is open (deferred writes wait for it to close). */
+  const showing = useRef(false);
+
+  const refreshNow = useCallback(() => {
+    owed.current = false;
+    router.refresh();
+  }, [router]);
 
   const run = useCallback(
-    async <T extends { ok: boolean; stamp?: string }>(write: () => Promise<T>): Promise<T> => {
+    async <T extends { ok: boolean; stamp?: string }>(write: () => Promise<T>, opts?: { defer?: boolean }): Promise<T> => {
       pending.current++;
+      if (opts?.defer) owed.current = true;
       try {
         const res = await write();
         if (res.ok && res.stamp) stampRef.current = res.stamp;
@@ -114,10 +128,19 @@ export function PlannerProvider({
         return { ok: false, error: SAVE_FAILED } as unknown as T;
       } finally {
         pending.current--;
-        if (pending.current === 0) router.refresh();
+        if (pending.current === 0 && (!opts?.defer || (owed.current && !showing.current))) refreshNow();
       }
     },
-    [router]
+    [refreshNow]
+  );
+
+  const show = useCallback(
+    (next: Open) => {
+      showing.current = next != null;
+      setOpen(next);
+      if (next == null && owed.current && pending.current === 0) refreshNow();
+    },
+    [refreshNow]
   );
 
   // Its own memo, so a refresh (new `adults` array) doesn't hand the poller a new sync and restart its timer.
@@ -128,27 +151,27 @@ export function PlannerProvider({
       canEdit,
       canEmail: canEdit && canEmail,
       canSeed,
-      openSeed: (focus) => setOpen({ mode: 'seed', focus }),
+      openSeed: (focus) => show({ mode: 'seed', focus }),
       nudged,
-      openNudge: (topic) => setOpen({ mode: 'nudge', ...topic }),
+      openNudge: (topic) => show({ mode: 'nudge', ...topic }),
       reminded,
       markReminded: (ids) => setReminded((r) => new Set([...r, ...ids])),
       adults,
-      openPerson: (personId) => setOpen({ mode: 'person', personId }),
-      openOffer: (teacherId = null, back = null) => setOpen({ mode: 'offer', teacherId, back }),
+      openPerson: (personId) => show({ mode: 'person', personId }),
+      openOffer: (teacherId = null, back = null) => show({ mode: 'offer', teacherId, back }),
       sync
     }),
-    [entryId, canEdit, canEmail, canSeed, nudged, reminded, adults, sync]
+    [entryId, canEdit, canEmail, canSeed, nudged, reminded, adults, sync, show]
   );
 
   return (
     <Ctx.Provider value={value}>
       {children}
-      {open?.mode === 'person' ? <PersonDrawerView key={open.personId} personId={open.personId} onClose={() => setOpen(null)} /> : null}
+      {open?.mode === 'person' ? <PersonDrawerView key={open.personId} personId={open.personId} onClose={() => show(null)} /> : null}
       {open?.mode === 'offer' ? (
-        <OfferDrawer teacherId={open.teacherId} onClose={() => setOpen(open.back != null ? { mode: 'person', personId: open.back } : null)} />
+        <OfferDrawer teacherId={open.teacherId} onClose={() => show(open.back != null ? { mode: 'person', personId: open.back } : null)} />
       ) : null}
-      {open?.mode === 'seed' ? <SeedDrawer focus={open.focus} onClose={() => setOpen(null)} /> : null}
+      {open?.mode === 'seed' ? <SeedDrawer focus={open.focus} onClose={() => show(null)} /> : null}
       {open?.mode === 'nudge' ? (
         <NudgeDrawer
           topicKey={open.topicKey}
@@ -156,7 +179,7 @@ export function PlannerProvider({
           codeLabel={open.codeLabel}
           teachers={open.teachers}
           onSent={(n) => setNudged((m) => new Map(m).set(open.topicKey, n))}
-          onClose={() => setOpen(null)}
+          onClose={() => show(null)}
         />
       ) : null}
     </Ctx.Provider>

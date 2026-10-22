@@ -127,6 +127,37 @@ describe('an editor', () => {
     await waitFor(() => expect(calls.pick).toHaveBeenCalledWith({ entryId: 500, personId: 1, key: 'tenderfoot-3a', on: true }));
   });
 
+  it('Drawer_TickingAPick_DoesNotRefreshTheBoard', async () => {
+    calls.pick.mockResolvedValue({ ok: true, drawer: SCOUT_DRAWER, stamp: 's2' });
+    renderBoard();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Finn P' })[0]);
+    fireEvent.click(await screen.findByRole('checkbox', { name: /Knots/ }));
+    await waitFor(() => expect(calls.pick).toHaveBeenCalled());
+    await act(async () => {});
+    expect(calls.refresh).not.toHaveBeenCalled();
+  });
+
+  it('Drawer_ClosingAfterATick_RefreshesTheBoardOnce', async () => {
+    calls.pick.mockResolvedValue({ ok: true, drawer: SCOUT_DRAWER, stamp: 's2' });
+    renderBoard();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Finn P' })[0]);
+    fireEvent.click(await screen.findByRole('checkbox', { name: /Knots/ }));
+    fireEvent.click(await screen.findByRole('checkbox', { name: /First aid/ }));
+    await waitFor(() => expect(calls.pick).toHaveBeenCalledTimes(2));
+    await act(async () => {});
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    await waitFor(() => expect(calls.refresh).toHaveBeenCalledTimes(1));
+  });
+
+  it('Drawer_ClosingWithoutAChange_DoesNotRefreshTheBoard', async () => {
+    renderBoard();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Finn P' })[0]);
+    await screen.findByRole('checkbox', { name: /Knots/ });
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    await act(async () => {});
+    expect(calls.refresh).not.toHaveBeenCalled();
+  });
+
   it('Drawer_ARefusal_IsSaidInPlace', async () => {
     calls.pick.mockResolvedValue({ ok: false, error: 'You have 5 picks.' });
     renderBoard();
