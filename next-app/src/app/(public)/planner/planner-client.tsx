@@ -54,6 +54,12 @@ interface Sync {
   busy: () => boolean;
   /** `defer`: don't refresh the board for this write; it refreshes once when the drawer closes. */
   run: <T extends { ok: boolean; stamp?: string }>(write: () => Promise<T>, opts?: { defer?: boolean }) => Promise<T>;
+  /**
+   * One person's writes (and the drawer's load) one at a time, in click order: the first write on a new board turns a
+   * scout's carried picks into their own, so two at once could race. Kept here, not in the drawer, so a drawer closed
+   * and reopened mid-save still loads after the writes before it.
+   */
+  serial: <T>(personId: number, task: () => Promise<T>) => Promise<T>;
 }
 
 interface PlannerCtx {
@@ -134,6 +140,17 @@ export function PlannerProvider({
     [refreshNow]
   );
 
+  const queues = useRef(new Map<number, Promise<unknown>>());
+  const serial = useCallback(<T,>(personId: number, task: () => Promise<T>): Promise<T> => {
+    const next = (queues.current.get(personId) ?? Promise.resolve()).then(task, task);
+    const tail = next.catch(() => undefined);
+    queues.current.set(personId, tail);
+    void tail.then(() => {
+      if (queues.current.get(personId) === tail) queues.current.delete(personId);
+    });
+    return next;
+  }, []);
+
   const show = useCallback(
     (next: Open) => {
       showing.current = next != null;
@@ -144,7 +161,7 @@ export function PlannerProvider({
   );
 
   // Its own memo, so a refresh (new `adults` array) doesn't hand the poller a new sync and restart its timer.
-  const sync = useMemo<Sync>(() => ({ stamp: stampRef, busy: () => pending.current > 0, run }), [run]);
+  const sync = useMemo<Sync>(() => ({ stamp: stampRef, busy: () => pending.current > 0, run, serial }), [run, serial]);
   const value = useMemo<PlannerCtx>(
     () => ({
       entryId,

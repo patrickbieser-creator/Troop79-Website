@@ -158,6 +158,58 @@ describe('an editor', () => {
     expect(calls.refresh).not.toHaveBeenCalled();
   });
 
+  it('Drawer_TickingAPick_FlipsTheBoxBeforeTheServerAnswers', async () => {
+    calls.pick.mockReturnValue(new Promise(() => {}));
+    renderBoard();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Finn P' })[0]);
+    fireEvent.click(await screen.findByRole('checkbox', { name: /Knots/ }));
+    expect(screen.getByRole('checkbox', { name: /Knots/ }).getAttribute('aria-checked')).toBe('true');
+  });
+
+  it('Drawer_ARefusal_PutsTheBoxBack', async () => {
+    calls.pick.mockResolvedValue({ ok: false, error: 'You have 5 picks.' });
+    renderBoard();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Finn P' })[0]);
+    fireEvent.click(await screen.findByRole('checkbox', { name: /Knots/ }));
+    await screen.findByRole('alert');
+    expect(screen.getByRole('checkbox', { name: /Knots/ }).getAttribute('aria-checked')).toBe('false');
+  });
+
+  it('Drawer_OtherOptions_StayClickableWhileATickSaves', async () => {
+    calls.pick.mockReturnValue(new Promise(() => {}));
+    renderBoard();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Finn P' })[0]);
+    fireEvent.click(await screen.findByRole('checkbox', { name: /Knots/ }));
+    expect(screen.getByRole('checkbox', { name: /First aid/ }).hasAttribute('disabled')).toBe(false);
+  });
+
+  it('Drawer_ASecondTick_WaitsForTheFirstWrite', async () => {
+    let finish: (v: unknown) => void = () => {};
+    calls.pick.mockReturnValueOnce(new Promise((r) => (finish = r))).mockResolvedValue({ ok: true, drawer: SCOUT_DRAWER, stamp: 's3' });
+    renderBoard();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Finn P' })[0]);
+    fireEvent.click(await screen.findByRole('checkbox', { name: /Knots/ }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /First aid/ }));
+    await act(async () => {});
+    const before = calls.pick.mock.calls.length;
+    await act(async () => finish({ ok: true, drawer: { ...SCOUT_DRAWER, picked: 2, options: SCOUT_DRAWER.options.map((o) => ({ ...o, on: true })) }, stamp: 's2' }));
+    await waitFor(() => expect([before, calls.pick.mock.calls.length]).toEqual([1, 2]));
+  });
+
+  it('Drawer_TheFivePickCap_CountsTicksNotYetSaved', async () => {
+    calls.pick.mockReturnValue(new Promise(() => {}));
+    calls.open.mockResolvedValue({
+      ok: true,
+      drawer: { ...SCOUT_DRAWER, picked: 4, options: [...SCOUT_DRAWER.options, { key: 'tenderfoot-5a', title: 'Swim', meta: '', on: false, section: 'more' }] },
+      stamp: 's1'
+    });
+    renderBoard();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Finn P' })[0]);
+    fireEvent.click(await screen.findByRole('checkbox', { name: /Knots/ }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /Swim/ }));
+    expect([(await screen.findByRole('alert')).textContent, calls.pick.mock.calls.length]).toEqual(['Already 5 picks. Untick one to add another.', 1]);
+  });
+
   it('Drawer_ARefusal_IsSaidInPlace', async () => {
     calls.pick.mockResolvedValue({ ok: false, error: 'You have 5 picks.' });
     renderBoard();

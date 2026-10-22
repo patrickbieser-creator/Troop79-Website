@@ -3,11 +3,12 @@
 /**
  * The person drawer (Plans/Meeting-Planner-II.md P2a; prototypes/meeting-plan-II/README.md "Screen 2"): one person's
  * "Coming Sunday?" and, for a scout, up to 5 picks; for an adult (or a Junior Leader), what they're teaching, no cap.
- * Everything saves on tap and is recorded as entered by the editor. A refusal is said in place, under the control
- * that caused it, and that control goes back to how it was. P5b: someone who hasn't answered gets "Remind" (adult
+ * Everything saves on tap and is recorded as entered by the editor. A tick shows at once (perf, 2026-10-22) and saves
+ * behind it, one write at a time per person; the 5-pick cap counts ticks still saving. A refusal is said in place,
+ * under the control that caused it, and that control goes back to how it was. P5b: someone who hasn't answered gets "Remind" (adult
  * editors only), which emails them, or a scout's parents.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Drawer } from '@/app/_components/drawer';
 import { INTENT_LABEL, type Intent } from '@/lib/meeting-board-shared';
 import type { DrawerOption, PersonDrawer } from '@/lib/meeting-planner-drawer';
@@ -21,34 +22,58 @@ const ANSWERS: { intent: Intent; label: string; cls: string }[] = [
   { intent: 'not_coming', label: 'Can’t', cls: styles.segCant }
 ];
 
+/** A tick not yet confirmed by the server. */
+interface Tick {
+  id: number;
+  key: string;
+  on: boolean;
+}
+
+/** The drawer as the editor sees it: what the server last confirmed, with the ticks still saving laid over it. The
+ *  counts and the implied answer follow the same rules as the server (effectiveIntent / teacherIntent: a pick for this
+ *  meeting or a teaching commitment means Coming when there's no stored answer). */
+function withTicks(d: PersonDrawer, ticks: readonly Tick[]): PersonDrawer {
+  if (!ticks.length) return d;
+  const on = new Map(d.options.map((o) => [o.key, o.on]));
+  let count = d.kind === 'scout' ? d.picked : d.teaching;
+  for (const t of ticks) {
+    if (!on.has(t.key) || on.get(t.key) === t.on) continue;
+    on.set(t.key, t.on);
+    count += t.on ? 1 : -1;
+  }
+  const options = d.options.map((o) => (on.get(o.key) === o.on ? o : { ...o, on: on.get(o.key)! }));
+  const shown = d.intent ?? (count > 0 ? 'coming' : null);
+  return d.kind === 'scout' ? { ...d, options, picked: count, shown } : { ...d, options, teaching: count, shown };
+}
+
 export function PersonDrawerView({ personId, onClose }: { personId: number; onClose: () => void }) {
   const p = usePlanner()!;
-  const [drawer, setDrawer] = useState<PersonDrawer | null>(null);
+  const [confirmed, setConfirmed] = useState<PersonDrawer | null>(null);
+  const [ticks, setTicks] = useState<Tick[]>([]);
   const [problem, setProblem] = useState<{ at: string; text: string } | null>(null);
-  const [saving, setSaving] = useState<string | null>(null);
+  const [answering, setAnswering] = useState(false);
+  const nextId = useRef(0);
+  const { serial, run } = p.sync;
 
   useEffect(() => {
     let live = true;
-    plannerOpenPersonAction({ entryId: p.entryId, personId })
+    serial(personId, () => plannerOpenPersonAction({ entryId: p.entryId, personId }))
       .then((res) => {
         if (!live) return;
-        if (res.ok) setDrawer(res.drawer);
+        if (res.ok) setConfirmed(res.drawer);
         else setProblem({ at: 'open', text: res.error });
       })
       .catch(() => live && setProblem({ at: 'open', text: SAVE_FAILED.replace('save', 'open') }));
     return () => {
       live = false;
     };
-  }, [p.entryId, personId]);
+  }, [p.entryId, personId, serial]);
 
-  async function save(at: string, write: () => Promise<PlannerDrawerResult>) {
-    setSaving(at);
-    setProblem(null);
-    // The board behind refreshes once, when the drawer closes (planner-client), not on every tick.
-    const res = await p.sync.run(write, { defer: true });
-    setSaving(null);
-    if (res.ok) setDrawer(res.drawer);
-    else setProblem({ at, text: res.error });
+  const drawer = useMemo(() => (confirmed ? withTicks(confirmed, ticks) : null), [confirmed, ticks]);
+
+  /** Every write for this person goes through one queue, in click order; the board behind refreshes on close. */
+  function write(write: () => Promise<PlannerDrawerResult>) {
+    return serial(personId, () => run(write, { defer: true }));
   }
 
   if (!drawer) {
@@ -65,12 +90,29 @@ export function PersonDrawerView({ personId, onClose }: { personId: number; onCl
 
   const scout = drawer.kind === 'scout';
   const full = scout && drawer.picked >= drawer.max;
-  const toggle = (o: DrawerOption) =>
-    save(o.key, () =>
+  /** Optimistic: the box flips now; a refusal puts it back and says why under it. */
+  const toggle = async (o: DrawerOption) => {
+    const tick = { id: nextId.current++, key: o.key, on: !o.on };
+    setProblem(null);
+    setTicks((t) => [...t, tick]);
+    const res = await write(() =>
       scout
-        ? plannerTogglePickAction({ entryId: p.entryId, personId, key: o.key, on: !o.on })
-        : plannerToggleTeachAction({ entryId: p.entryId, personId, key: o.key, on: !o.on })
+        ? plannerTogglePickAction({ entryId: p.entryId, personId, key: o.key, on: tick.on })
+        : plannerToggleTeachAction({ entryId: p.entryId, personId, key: o.key, on: tick.on })
     );
+    if (res.ok) setConfirmed(res.drawer);
+    else setProblem({ at: o.key, text: res.error });
+    setTicks((t) => t.filter((x) => x.id !== tick.id));
+  };
+  const answer = async (intent: Intent) => {
+    setAnswering(true);
+    setProblem(null);
+    const res = await write(() => plannerSetAnswerAction({ entryId: p.entryId, personId, intent }));
+    setAnswering(false);
+    if (res.ok) setConfirmed(res.drawer);
+    else setProblem({ at: 'answer', text: res.error });
+  };
+  const saving = answering || ticks.length > 0;
   const option = (o: DrawerOption) => {
     const blocked = scout && full && !o.on;
     return (
@@ -80,7 +122,6 @@ export function PersonDrawerView({ personId, onClose }: { personId: number; onCl
           role="checkbox"
           aria-checked={o.on}
           className={o.on ? styles.optOn : styles.opt}
-          disabled={saving != null}
           onClick={() => (blocked ? setProblem({ at: o.key, text: `Already ${drawer.max} picks. Untick one to add another.` }) : toggle(o))}
         >
           <span className={styles.check} aria-hidden="true">
@@ -119,8 +160,8 @@ export function PersonDrawerView({ personId, onClose }: { personId: number; onCl
               type="button"
               className={drawer.shown === a.intent ? `${styles.segBtn} ${a.cls}` : styles.segBtn}
               aria-pressed={drawer.shown === a.intent}
-              disabled={saving != null}
-              onClick={() => (drawer.intent === a.intent ? undefined : save('answer', () => plannerSetAnswerAction({ entryId: p.entryId, personId, intent: a.intent })))}
+              disabled={answering}
+              onClick={() => (drawer.intent === a.intent ? undefined : answer(a.intent))}
             >
               {a.label}
             </button>
