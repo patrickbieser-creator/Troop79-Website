@@ -239,6 +239,18 @@ export type SendRemindersResult = { ok: true; sent: string[]; reminded: number[]
 export const REMINDER_BATCH = 5;
 /** No new batch starts after this; the planner page's maxDuration is 60 s. */
 export const REMINDER_TIME_BUDGET_MS = 40_000;
+/** One email that hasn't answered by now counts as not sent, so the last batch still ends inside maxDuration. */
+export const REMINDER_EMAIL_TIMEOUT_MS = 15_000;
+
+const EMAIL_TIMED_OUT = Symbol('timed out');
+/** sendEmail, or EMAIL_TIMED_OUT once the timeout passes (the late send may still land; its row is gone by then). */
+function sendEmailWithin(ms: number, opts: Parameters<typeof sendEmail>[0]): Promise<Awaited<ReturnType<typeof sendEmail>> | typeof EMAIL_TIMED_OUT> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<typeof EMAIL_TIMED_OUT>((resolve) => {
+    timer = setTimeout(() => resolve(EMAIL_TIMED_OUT), ms);
+  });
+  return Promise.race([sendEmail(opts), timeout]).finally(() => clearTimeout(timer));
+}
 
 /** 'you', 'Anjali S and Finn S', or 'you and Finn S' when the recipient is among the people they're reminded about. */
 function reminderPeople(r: ReminderRecipient): string {
@@ -259,52 +271,50 @@ export async function sendReminders(
   const made = await createReminders(sb, { entryId: input.entryId, personIds: input.personIds, sentBy: input.sentBy });
   if (!made.ok) return made;
 
-  const { data: entry } = await sb.from('calendar_entries').select('entry_date').eq('id', input.entryId).single();
-  const template = await templateFor(sb, REMINDER_KIND, DEFAULT_REMINDER);
-  const { data: names } = await sb.from('people').select('id, nickname, first_name, display_name').in('id', made.recipients.map((r) => r.recipientId));
-  const firstName = new Map(
-    ((names ?? []) as { id: number; nickname: string | null; first_name: string | null; display_name: string }[]).map((p) => [p.id, p.nickname || p.first_name || p.display_name])
-  );
-  const day = entry ? fmtDateFull((entry as { entry_date: string }).entry_date) : 'Sunday';
-  const url = `${siteUrl()}/member/meeting`;
-
   const reminded = new Set<string>();
   const remindedIds = new Set<number>();
   const skipped = made.skipped.map(({ name, reason }) => ({ name, reason }));
+  // Every minted row is unsent until its email goes out; the finally below deletes whatever is left, setup failures included.
   const unsent = new Set(made.recipients.flatMap((r) => r.people.map((p) => p.inviteId)));
   let emails = 0;
 
-  /** One recipient: sent, or their rows are gone before this returns. Never throws. */
-  const remindOne = async (r: ReminderRecipient): Promise<void> => {
-    let reason = 'the email didn’t go out';
-    try {
-      const { subject, md } = renderReminder(template, { name: firstName.get(r.recipientId) ?? r.name, people: reminderPeople(r), day });
-      const { html, text } = renderMarkdownEmail({ md, actionUrl: url, actionLabel: 'Answer on the meeting page' });
-      const res = await sendEmail({ to: [r.sentTo], subject, html, text, confirm: true, fromName: INVITE_SENDER_NAME });
-      if (res.status === 'sent') {
-        emails++;
-        for (const p of r.people) {
-          unsent.delete(p.inviteId);
-          reminded.add(boardName(p.name));
-          remindedIds.add(p.personId);
-        }
-        return;
-      }
-      if (res.status === 'skipped') reason = 'email isn’t set up on this server';
-    } catch {
-      // Reported and deleted below, like any email that didn't go out.
-    }
-    skipped.push({ name: r.name, reason });
-    const ids = r.people.map((p) => p.inviteId);
-    for (const id of ids) unsent.delete(id);
-    try {
-      await deleteInvites(sb, ids);
-    } catch {
-      for (const id of ids) unsent.add(id); // the final sweep tries again
-    }
-  };
-
   try {
+    const { data: entry } = await sb.from('calendar_entries').select('entry_date').eq('id', input.entryId).single();
+    const template = await templateFor(sb, REMINDER_KIND, DEFAULT_REMINDER);
+    const { data: names } = await sb.from('people').select('id, nickname, first_name, display_name').in('id', made.recipients.map((r) => r.recipientId));
+    const firstName = new Map(
+      ((names ?? []) as { id: number; nickname: string | null; first_name: string | null; display_name: string }[]).map((p) => [p.id, p.nickname || p.first_name || p.display_name])
+    );
+    const day = entry ? fmtDateFull((entry as { entry_date: string }).entry_date) : 'Sunday';
+    const url = `${siteUrl()}/member/meeting`;
+
+    /** One recipient: sent, or their rows are gone (or back in the final sweep) before this returns. Never throws. */
+    const remindOne = async (r: ReminderRecipient): Promise<void> => {
+      let reason = 'the email didn’t go out';
+      try {
+        const { subject, md } = renderReminder(template, { name: firstName.get(r.recipientId) ?? r.name, people: reminderPeople(r), day });
+        const { html, text } = renderMarkdownEmail({ md, actionUrl: url, actionLabel: 'Answer on the meeting page' });
+        const res = await sendEmailWithin(REMINDER_EMAIL_TIMEOUT_MS, { to: [r.sentTo], subject, html, text, confirm: true, fromName: INVITE_SENDER_NAME });
+        if (res !== EMAIL_TIMED_OUT && res.status === 'sent') {
+          emails++;
+          for (const p of r.people) {
+            unsent.delete(p.inviteId);
+            reminded.add(boardName(p.name));
+            remindedIds.add(p.personId);
+          }
+          return;
+        }
+        if (res !== EMAIL_TIMED_OUT && res.status === 'skipped') reason = 'email isn’t set up on this server';
+      } catch {
+        // Reported and deleted below, like any email that didn't go out.
+      }
+      skipped.push({ name: r.name, reason });
+      const ids = r.people.map((p) => p.inviteId);
+      for (const id of ids) unsent.delete(id);
+      const gone = await deleteInvites(sb, ids).catch(() => false);
+      if (!gone) for (const id of ids) unsent.add(id); // the final sweep tries again
+    };
+
     for (let i = 0; i < made.recipients.length; i += REMINDER_BATCH) {
       if (clock() - started > REMINDER_TIME_BUDGET_MS) {
         for (const r of made.recipients.slice(i)) skipped.push({ name: r.name, reason: 'out of time on this send; send again' });

@@ -141,8 +141,11 @@ export async function createTeachInvites(
 }
 
 /** Undo a mint whose email never went out, so the board doesn't count it as invited. */
-export async function deleteInvites(sb: SupabaseClient, inviteIds: readonly number[]): Promise<void> {
-  if (inviteIds.length) await sb.from('meeting_invites').delete().in('id', [...inviteIds]);
+/** True when the rows are gone (or there were none). */
+export async function deleteInvites(sb: SupabaseClient, inviteIds: readonly number[]): Promise<boolean> {
+  if (!inviteIds.length) return true;
+  const { error } = await sb.from('meeting_invites').delete().in('id', [...inviteIds]);
+  return !error;
 }
 
 interface InviteRow {

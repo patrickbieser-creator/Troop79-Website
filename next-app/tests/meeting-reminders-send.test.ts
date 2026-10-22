@@ -24,7 +24,7 @@ const chain = () => {
 };
 const sb = { from: () => chain() } as unknown as SupabaseClient;
 
-const { sendReminders, REMINDER_BATCH } = await import('../src/lib/meeting-invites-send');
+const { sendReminders, REMINDER_BATCH, REMINDER_EMAIL_TIMEOUT_MS } = await import('../src/lib/meeting-invites-send');
 
 const recipient = (id: number, people: [number, string, number][]) => ({
   recipientId: id,
@@ -37,6 +37,7 @@ const deleted = () => m.del.mock.calls.flatMap((c) => c[1] as number[]);
 
 beforeEach(() => {
   for (const f of [m.create, m.del, m.send, m.audit]) f.mockReset();
+  m.del.mockResolvedValue(true);
 });
 
 describe('the reminder email', () => {
@@ -110,6 +111,35 @@ describe('an email that does not go out', () => {
     const clock = vi.fn().mockReturnValueOnce(0).mockReturnValueOnce(0).mockReturnValue(10 * 60_000);
     await sendReminders(sb, { entryId: 5, personIds: many.map((r) => r.people[0].personId), sentBy: 82 }, { clock });
     expect(deleted()).toEqual([300 + REMINDER_BATCH, 301 + REMINDER_BATCH]);
+  });
+
+  it('Reminder_IsDeleted_WhenTheEmailSetupThrows', async () => {
+    m.create.mockResolvedValue({ ok: true, recipients: [recipient(41, [[7, 'Anjali Smith', 70]])], skipped: [] });
+    const broken = { from: () => { throw new Error('fetch failed'); } } as unknown as SupabaseClient;
+    await sendReminders(broken, { entryId: 5, personIds: [7], sentBy: 82 }).catch(() => undefined);
+    expect(deleted()).toEqual([70]);
+  });
+
+  it('Reminder_IsSweptAgain_WhenItsDeleteFails', async () => {
+    m.create.mockResolvedValue({ ok: true, recipients: [recipient(41, [[7, 'Anjali Smith', 70]])], skipped: [] });
+    m.send.mockResolvedValue({ status: 'error', to: [] });
+    m.del.mockResolvedValueOnce(false);
+    await sendReminders(sb, { entryId: 5, personIds: [7], sentBy: 82 });
+    expect(deleted()).toEqual([70, 70]);
+  });
+
+  it('Reminder_IsDeleted_WhenTheEmailHangs', async () => {
+    vi.useFakeTimers();
+    try {
+      m.create.mockResolvedValue({ ok: true, recipients: [recipient(41, [[7, 'Anjali Smith', 70]])], skipped: [] });
+      m.send.mockReturnValue(new Promise(() => undefined));
+      const done = sendReminders(sb, { entryId: 5, personIds: [7], sentBy: 82 });
+      await vi.advanceTimersByTimeAsync(REMINDER_EMAIL_TIMEOUT_MS);
+      await done;
+      expect(deleted()).toEqual([70]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
