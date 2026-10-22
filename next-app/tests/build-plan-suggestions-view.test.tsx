@@ -259,6 +259,18 @@ describe('Suggestions › Teaching chips', () => {
     expect(teachChip.mock.calls).toEqual([[{ entryId: 1, key: 'tenderfoot-4a', personId: 7 }]]);
   });
 
+  it('TeachingChip_Assign_FocusNeverDropsToBody', async () => {
+    // The chip turns into a "teaching" span on Assign: focus moves to the row's other chip or its heading, never body.
+    await teaching(ON_PLAN);
+    teachChip.mockResolvedValueOnce(ok({ key: 'tenderfoot-4a', added: false }));
+    fireEvent.click(within(danRow()).getByRole('button', { name: 'Assign Dan K to Tenderfoot 4a First aid' }));
+    fireEvent.click(within(confirmDlg()).getByRole('button', { name: 'Assign' }));
+    await waitFor(() => expect(within(danRow()).getByText('teaching')).toBeTruthy());
+    await new Promise((r) => requestAnimationFrame(() => r(null)));
+    await new Promise((r) => requestAnimationFrame(() => r(null)));
+    expect([document.activeElement === document.body, danRow().contains(document.activeElement)]).toEqual([false, true]);
+  });
+
   it('TeachingChip_TeachingAlready_ReadsTeaching_WithNoClick', async () => {
     await teaching([row('tenderfoot-4a', { codeLabel: 'Tenderfoot 4a', title: 'First aid', teachers: ['Dan K'], teacherIds: [7] })]);
     expect([within(danRow()).getByText('teaching') != null, within(danRow()).queryByRole('button', { name: /Tenderfoot 4a/ })]).toEqual([true, null]);

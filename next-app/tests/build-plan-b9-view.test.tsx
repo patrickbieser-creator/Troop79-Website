@@ -145,6 +145,19 @@ describe('B9 orphans on the rail', () => {
     expect(nav.refresh).not.toHaveBeenCalled();
   });
 
+  it('Orphans_NoOfferings_ShowsNoCount', async () => {
+    plan({ rows: [] });
+    await waitFor(() => expect(screen.getByText(/signed up/)).toBeTruthy());
+    await new Promise((r) => setTimeout(r, 0));
+    expect(screen.queryByText(/nothing on this plan/)).toBeNull();
+  });
+
+  it('Orphans_Count_IsInAPoliteLiveRegion', async () => {
+    plan();
+    const count = await screen.findByRole('button', { name: '2 scouts have nothing on this plan' });
+    expect(count.closest('[aria-live="polite"]')).not.toBeNull();
+  });
+
   it('Orphans_Viewer_NoAdd', async () => {
     plan({ canSeed: false });
     fireEvent.click(await screen.findByRole('button', { name: '2 scouts have nothing on this plan' }));

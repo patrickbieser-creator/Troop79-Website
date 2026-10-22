@@ -39,15 +39,24 @@ export function orphanUniverse(planKeys: readonly string[], d: Pick<SuggestionsD
 /** One candidate as the orphan rule reads it: likely, or already picked it (`ticked` false). */
 type Cand = { personId: number; likely?: boolean; ticked: boolean };
 
+/** A scout the cached engine read doesn't know yet (it is up to two minutes old): said, never a bare name. */
+export const NOT_IN_CACHE = 'Suggestions refresh shortly';
+
 /**
  * OrphansData from what is already loaded: scoutCandidatesMany over the universe (byKey + eligible) and the cached
  * engine read (its By Scout rows give each scout's items and reason).
+ *
+ * A scout is covered by a likely key, a pick, or one of their OWN suggested items (qa-lead B9: an Eagle-required badge
+ * with a counselor isn't "likely" until it is in progress, yet adding it is exactly what covers them). `universe`, when
+ * given, bounds `covers` to it, so a pick outside the plan and the suggestions never reaches the client.
  */
 export function orphansData(
   eligible: readonly { personId: number; scoutId: string; name: string; picked: readonly string[] }[],
   byKey: ReadonlyMap<string, readonly Cand[]>,
-  suggestions: Pick<SuggestionsData, 'scouts'>
+  suggestions: Pick<SuggestionsData, 'scouts'>,
+  universe?: readonly string[]
 ): OrphansData {
+  const within = universe ? new Set(universe) : null;
   const covers = new Map<number, Set<string>>();
   for (const [key, cands] of byKey) {
     for (const c of cands) {
@@ -66,8 +75,8 @@ export function orphansData(
         name: row?.name ?? e.name,
         rankLabel: row?.rankLabel ?? '',
         items: row?.items ?? [],
-        reason: row?.reason ?? null,
-        covers: [...new Set([...(covers.get(e.personId) ?? []), ...e.picked])]
+        reason: row ? (row.reason ?? null) : NOT_IN_CACHE,
+        covers: [...new Set([...(covers.get(e.personId) ?? []), ...e.picked, ...(row?.items ?? []).map((i) => i.key)])].filter((k) => !within || within.has(k))
       };
     })
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -79,8 +88,8 @@ export function orphanScouts(d: OrphansData, planKeys: ReadonlySet<string>): Orp
   return d.scouts.filter((s) => !s.covers.some((k) => planKeys.has(k)));
 }
 
-/** The rail's words: "3 scouts have nothing on this plan"; nothing at all for 0. */
-export function orphansLabel(n: number): string | null {
-  if (n <= 0) return null;
+/** The rail's words: "3 scouts have nothing on this plan"; nothing at all for 0, or when the plan has no offerings. */
+export function orphansLabel(n: number, offerings?: number): string | null {
+  if (n <= 0 || offerings === 0) return null;
   return n === 1 ? '1 scout has nothing on this plan' : `${n} scouts have nothing on this plan`;
 }

@@ -381,8 +381,8 @@ function Teaching({
       {lookups}
       <ul className={s.rows}>
         {rows.map(({ t, keys }) => (
-          <li key={t.id} className={s.scout}>
-            <p className={s.who}>
+          <li key={t.id} className={s.scout} data-teacher-row>
+            <p className={s.who} data-teacher-head tabIndex={-1}>
               {t.name}
               {t.meta ? <span className={s.whoMeta}>{t.scout ? `${t.meta} scout` : t.meta}</span> : null}
             </p>
@@ -460,13 +460,21 @@ function TeachChip({
     );
   }
   const go = async () => {
+    // The leader's row, read before the write: a confirmed Assign turns this chip into a "teaching" span (qa-lead B9).
+    const rowEl = chipRef.current?.closest<HTMLElement>('[data-teacher-row]') ?? null;
     setBusy(true);
     setProblem(null);
     const err = await onTeach!(item, teacher.personId!);
     setBusy(false);
     setAsking(false);
     if (err) setProblem(err);
-    requestAnimationFrame(() => chipRef.current?.focus());
+    requestAnimationFrame(() => {
+      const chip = chipRef.current;
+      if (chip?.isConnected) return chip.focus();
+      // The chip is gone: the row's next chip, else its heading; never body.
+      const next = rowEl?.querySelector<HTMLElement>('button[aria-haspopup="dialog"]');
+      (next ?? rowEl?.querySelector<HTMLElement>('[data-teacher-head]'))?.focus();
+    });
   };
   const what = `${item.codeLabel} ${item.title}`;
   const plan = dayLabel ? `the ${dayLabel} plan` : 'the plan';

@@ -149,3 +149,60 @@ describe('B9 orphans', () => {
     expect(orphanUniverse(['fg:1', 'tenderfoot-4a'], DATA)).toEqual(['fg:1', 'tenderfoot-4a', 'scout-2', 'tenderfoot-3a', 'tenderfoot-5']);
   });
 });
+
+/** B9 qa follow-ups (2026-10-22): the reason codes' order, an Eagle scout, and an orphan's own items covering them. */
+describe('B9 qa follow-ups', () => {
+  const rq = (rank: string, id: number, code: string): EngineRankReqRow => ({ ...tf(id, code), rank_id: rank });
+  const withStar = (scouts: EngineInput['scouts'], ledger: { scout_id: string; code: string }[], o: Partial<EngineInput> = {}): EngineInput => {
+    const base = input(scouts, ledger);
+    // Star: 1 (time-based, never planned) and 7 (the Scoutmaster conference).
+    return { ...base, rankReqs: [...base.rankReqs, rq('star', 11, '1'), rq('star', 12, '7')], ...o };
+  };
+  const firstAid = {
+    mbs: [{ id: 'first-aid', name: 'First Aid', eagle: true }],
+    mbReqs: [{ id: 21, mb_id: 'first-aid', parent_id: null, code: '1', label: 'Do 1', complete_rule: 'all' as const, complete_n: null, sort_order: 1, venue: 'meeting' as const }],
+    counselors: [{ mb_id: 'first-aid', person_id: 99 }]
+  };
+
+  it('Engine_OnlyTimeBasedLeft_ReasonIsNotPlannable', () => {
+    expect(reasonOf(input([scout('e', 'scout')], signed('e', 'tenderfoot-3a', 'tenderfoot-10')), 'e')).toEqual({ reason: 'not-plannable', rankId: 'tenderfoot' });
+  });
+
+  it('Engine_StarAndUp_NoMbWinsOverSmcWaiting', () => {
+    // Star 7 waits for 95% (Star 1 is open), and there is no badge to work on: no-mb is said first.
+    expect(reasonOf(withStar([scout('f', 'first-class')], []), 'f')).toEqual({ reason: 'no-mb', rankId: null });
+  });
+
+  it('Engine_EagleScout_NoBadge_ReasonIsFinished', () => {
+    // Star is the last rank here, so a Star scout's next rank is null (an Eagle scout's, in the real catalog).
+    expect(reasonOf(withStar([scout('g', 'star')], []), 'g')).toEqual({ reason: 'finished', rankId: null });
+  });
+
+  it('Orphans_OwnSuggestedItemOnPlan_ClearsThem', () => {
+    // An Eagle-required badge with a counselor, not in progress: the engine suggests it, the likely rule doesn't.
+    const plan = buildMeetingPlan(withStar([scout('f', 'first-class')], [], firstAid));
+    const sug = suggestionsData(plan, ranks);
+    const key = sug.scouts.find((s) => s.id === 'f')!.items[0].key;
+    const data = orphansData([{ personId: 102, scoutId: 'f', name: 'Scout f', picked: [] }], new Map([[key, [{ personId: 102, likely: false, ticked: true }]]]), sug);
+    expect(orphanScouts(data, new Set([key])).length).toBe(0);
+  });
+
+  it('Orphans_Covers_AreOnlyUniverseKeys', () => {
+    const data = orphansData(
+      [{ personId: 1, scoutId: 'a', name: 'Ann A', picked: ['ff:9', 'secret-pick'] }],
+      new Map([['tenderfoot-4a', [{ personId: 1, likely: true, ticked: true }]]]),
+      { scouts: [] },
+      ['tenderfoot-4a', 'ff:9']
+    );
+    expect(data.scouts[0].covers).toEqual(['tenderfoot-4a', 'ff:9']);
+  });
+
+  it('Orphans_NotInEngineCache_SaysSuggestionsRefreshShortly', () => {
+    const data = orphansData([{ personId: 1, scoutId: 'new', name: 'New N', picked: [] }], new Map(), { scouts: [] });
+    expect(data.scouts[0].reason).toBe('Suggestions refresh shortly');
+  });
+
+  it('OrphansLabel_NoOfferings_IsNothing', () => {
+    expect(orphansLabel(3, 0)).toBeNull();
+  });
+});

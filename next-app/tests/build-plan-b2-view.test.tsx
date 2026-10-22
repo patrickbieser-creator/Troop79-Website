@@ -7,12 +7,13 @@ import type { PlanRow } from '../src/lib/build-plan';
  * + New mix), a new mix added as one class, and a quiet Edit per row for editors. Server actions are mocked; their
  * rules are in build-plan-b2-db.test.ts.
  */
-vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
-const m = vi.hoisted(() => ({ newMix: vi.fn(), search: vi.fn() }));
+const nav = vi.hoisted(() => ({ refresh: vi.fn() }));
+vi.mock('next/navigation', () => ({ useRouter: () => nav }));
+const m = vi.hoisted(() => ({ newMix: vi.fn(), search: vi.fn(), addOffering: vi.fn(), addSet: vi.fn(), sets: vi.fn(async () => ({ ok: true, sets: [] as unknown[] })) }));
 vi.mock('../src/app/(public)/planner/build-actions', () => ({
-  plannerAddOfferingAction: vi.fn(),
+  plannerAddOfferingAction: m.addOffering,
   plannerRemoveOfferingAction: vi.fn(),
-  plannerAddFocusSetAction: vi.fn(),
+  plannerAddFocusSetAction: m.addSet,
   plannerNewMixAction: m.newMix,
   plannerEditMixAction: vi.fn(),
   plannerMixAction: vi.fn(async () => ({ ok: false, error: 'x' })),
@@ -22,7 +23,7 @@ vi.mock('../src/app/(public)/planner/build-actions', () => ({
 }));
 vi.mock('../src/app/(public)/planner/focus-actions', () => ({
   focusSearchAction: m.search,
-  focusSetsAction: vi.fn(async () => ({ ok: true, sets: [] }))
+  focusSetsAction: m.sets
 }));
 vi.mock('../src/app/(public)/planner/actions', () => ({ plannerStampAction: vi.fn(async () => ({ ok: false })) }));
 
@@ -37,6 +38,9 @@ afterEach(() => {
   cleanup();
   m.newMix.mockReset();
   m.search.mockReset();
+  m.addOffering.mockReset();
+  m.addSet.mockReset();
+  nav.refresh.mockReset();
 });
 
 describe('Build a Plan B2 (screen)', () => {
@@ -72,5 +76,40 @@ describe('Build a Plan B2 (screen)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add mix of 1 requirement' }));
     const row = await screen.findByText((_, el) => el?.tagName === 'LI' && (el.textContent ?? '').includes('Mix for Oct 25'));
     expect(row.querySelector('p span')?.textContent).toBe('Focus');
+  });
+
+  // B9 qa: an add from the heading's row can cover a scout outside the orphan universe, so it refreshes the streamed
+  // count (once), even when the write's stamp kept.
+  it('AddRequirement_RefreshesTheOrphanCount', async () => {
+    m.search.mockResolvedValue({ ok: true, rows: [HIT], hasMore: false });
+    m.addOffering.mockResolvedValue({ ok: true, added: ['tenderfoot-4b'], teachers: {}, prior: 's', stamp: 's2' });
+    render(<BuildPlanView entryId={1} rows={ROWS} canSeed stamp="s" heading={null} dayLabel="Oct 25" />);
+    fireEvent.click(screen.getByRole('button', { name: '+ Requirement' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search requirements' }), { target: { value: 'bites' } });
+    fireEvent.click(await screen.findByRole('button', { name: /^Add / }, { timeout: 2000 }));
+    await waitFor(() => expect(m.addOffering).toHaveBeenCalled());
+    await waitFor(() => expect(nav.refresh).toHaveBeenCalledTimes(1));
+  });
+
+  it('AddSet_RefreshesTheOrphanCount', async () => {
+    m.sets.mockResolvedValueOnce({ ok: true, sets: [{ id: 5, name: 'Knots set', labels: [], items: [{ key: 'tenderfoot-4b' }] }] });
+    m.addSet.mockResolvedValue({ ok: true, key: 'fg:5', title: 'Knots set', count: 1, teachers: [], prior: 's', stamp: 's2' });
+    render(<BuildPlanView entryId={1} rows={ROWS} canSeed stamp="s" heading={null} dayLabel="Oct 25" />);
+    fireEvent.click(screen.getByRole('button', { name: '+ Focus set' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Add Knots set' }));
+    await waitFor(() => expect(m.addSet).toHaveBeenCalled());
+    await waitFor(() => expect(nav.refresh).toHaveBeenCalledTimes(1));
+  });
+
+  it('NewMix_RefreshesTheOrphanCount', async () => {
+    m.search.mockResolvedValue({ ok: true, rows: [HIT], hasMore: false });
+    m.newMix.mockResolvedValue({ ok: true, key: 'fg:9', title: 'Mix for Oct 25', count: 1, teachers: [], prior: 's', stamp: 's2' });
+    render(<BuildPlanView entryId={1} rows={ROWS} canSeed stamp="s" heading={null} dayLabel="Oct 25" />);
+    fireEvent.click(screen.getByRole('button', { name: '+ New mix' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search requirements to tick' }), { target: { value: 'bites' } });
+    fireEvent.click(await screen.findByRole('button', { name: /Bites/ }, { timeout: 2000 }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add mix of 1 requirement' }));
+    await waitFor(() => expect(m.newMix).toHaveBeenCalled());
+    await waitFor(() => expect(nav.refresh).toHaveBeenCalledTimes(1));
   });
 });

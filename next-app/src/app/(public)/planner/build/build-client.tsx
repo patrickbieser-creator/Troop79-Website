@@ -177,13 +177,22 @@ export function BuildPlanView({
     if (keepWriteStamp(stampRef.current, res.prior)) stampRef.current = res.stamp;
     else router.refresh();
   };
+  /**
+   * B9 qa: an add from the heading's row (a searched requirement, a focus set, a new mix) may cover a scout through a key
+   * outside the orphan universe, so it always refreshes once to recompute the streamed count. Suggestion adds stay on
+   * `landed` (their keys recount on the client; no double refresh).
+   */
+  const landedRecount = (res: { prior: string; stamp: string }) => {
+    if (keepWriteStamp(stampRef.current, res.prior)) stampRef.current = res.stamp;
+    router.refresh();
+  };
 
   const inviteHref = `/planner/invite?meeting=${entryId}`;
   const onPlan = useMemo(() => new Set(rows.map((r) => r.key)), [rows]);
   const sum = planSummary(rows);
   // B9: recounted from the rows on every Add or Remove; no reload.
   const orphans = useMemo(() => (orphanData ? orphanScouts(orphanData, onPlan) : []), [orphanData, onPlan]);
-  const orphanText = orphansLabel(orphans.length);
+  const orphanText = orphansLabel(orphans.length, rows.length);
 
   /**
    * B5: add suggestions to the plan through the one batched action, at most ADD_MAX keys per call (in order; a failure
@@ -223,13 +232,13 @@ export function BuildPlanView({
 
   /** B2: a class (a focus set or a new mix) the server added. */
   const addClass = (res: Extract<BuildClassResult, { ok: true }>) => {
-    landed(res);
+    landedRecount(res);
     setRows((rs) => withAdded(rs, { key: res.key, codeLabel: FOCUS_LABEL, title: res.title }, res.teachers));
   };
   const addRequirement = async (r: FocusSearchRow): Promise<string | null> => {
     const res = await plannerAddOfferingAction({ entryId, keys: [r.key] }).catch(() => ({ ok: false as const, error: SAVE_FAILED }));
     if (!res.ok) return res.error;
-    landed(res);
+    landedRecount(res);
     setRows((rs) => withAdded(rs, { key: r.key, codeLabel: rowCode(r), title: r.label }, res.teachers[r.key] ?? []));
     return null;
   };
@@ -349,14 +358,17 @@ export function BuildPlanView({
           <div className={s.rail}>
             <p className={s.railText}>
               {plural(sum.offerings, 'offering')} · {sum.withTeachers} with {sum.withTeachers === 1 ? 'a teacher' : 'teachers'} · {plural(sum.scouts, 'scout')} signed up ·{' '}
-              {orphanText ? (
-                <>
-                  <button type="button" className={s.railLink} onClick={() => setOrphanSheet(true)} aria-haspopup="dialog">
-                    {orphanText}
-                  </button>{' '}
-                  ·{' '}
-                </>
-              ) : null}
+              {/* B9 qa: always mounted, so a recount after an Add is announced politely. */}
+              <span aria-live="polite">
+                {orphanText ? (
+                  <>
+                    <button type="button" className={s.railLink} onClick={() => setOrphanSheet(true)} aria-haspopup="dialog">
+                      {orphanText}
+                    </button>{' '}
+                    ·{' '}
+                  </>
+                ) : null}
+              </span>
               <PlannerPoller entryId={entryId} stamp={stamp} build stampRef={stampRef} />
             </p>
           </div>

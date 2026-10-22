@@ -21,5 +21,5 @@ export async function loadOrphans(
   const keys = orphanUniverse(planKeys, suggestions);
   const cands = await scoutCandidatesMany(sb, { entryId, keys }, deps);
   if (!cands.ok) throw new Error(cands.error);
-  return orphansData(cands.eligible, cands.byKey, suggestions);
+  return orphansData(cands.eligible, cands.byKey, suggestions, keys);
 }

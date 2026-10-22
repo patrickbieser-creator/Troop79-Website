@@ -255,7 +255,8 @@ export function buildMeetingPlan(input: EngineInput): MeetingPlanPayload {
   const noSuggestionReason = (scoutId: string, next: string | null, codes: Set<string>): { reason: NoSuggestionReason; rankId: string | null } => {
     const tree = next ? (rankTree.get(next) ?? []) : [];
     if (next && rankBorPickable(tree, next, codes)) return { reason: 'bor-next', rankId: next };
-    if (tierForRank(next) === 'older' && (mbPoolSize.get(scoutId) ?? 0) === 0) return { reason: 'no-mb', rankId: null };
+    // An Eagle scout (no next rank) is finished, not short of a badge (qa-lead B9).
+    if (next && tierForRank(next) === 'older' && (mbPoolSize.get(scoutId) ?? 0) === 0) return { reason: 'no-mb', rankId: null };
     const open = next ? tree.filter((t) => t.code.toLowerCase() !== 'bor' && !rankNodeSatisfied(t, next, codes)) : [];
     const smc = open.find((t) => SM_CONFERENCE_CODES.has(`${next}-${t.code}`));
     if (smc && next && rankLeafCompletion(tree, next, codes, smc.code) < SM_CONFERENCE_THRESHOLD) return { reason: 'smc-waiting', rankId: next };
