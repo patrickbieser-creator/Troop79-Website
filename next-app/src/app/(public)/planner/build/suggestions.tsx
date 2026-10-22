@@ -9,8 +9,8 @@
  *   By Scout                  each scout's next ≤3 requirements, merit badges included for older scouts. B9: every
  *                             active scout is listed; one with none says why (the engine's reason, worded).
  *   Teaching                  who can teach what. Each requirement chip in a leader's row is the control (Patrick,
- *                             2026-10-22): "Add with <Name> teaching" (not on the plan: adds it with them teaching),
- *                             "Assign <Name>" (on the plan, someone else or nobody teaching), or "on plan · teaching".
+ *                             2026-10-22), labelled "Scout 2 · Flag": a click asks first (add it with them teaching,
+ *                             or make them its teacher), with "on plan" and "teaching" markers.
  *                             Rows take no tick: one leader's choice never lights up another's.
  *   Needs a campout           a collapsed footer on every lens, with no Add.
  *   Solo needs (B9)           a collapsed footer on Group Sessions: what only one scout needs, with Add.
@@ -45,6 +45,7 @@ import {
   type SuggestionsData
 } from '@/lib/build-plan-suggest';
 import s from './suggestions.module.css';
+import b from './build.module.css';
 
 export type SuggestFeed = { status: 'loading' } | { status: 'ready'; data: SuggestionsData } | { status: 'failed' };
 
@@ -62,8 +63,11 @@ export function SuggestionsWorkspace({
   onTeach,
   onRemove,
   onLeave,
-  lookupsHref
+  lookupsHref,
+  dayLabel
 }: {
+  /** 'Oct 25': the Teaching confirm's "to the Oct 25 plan". */
+  dayLabel?: string;
   feed: SuggestFeed;
   rows: readonly PlanRow[];
   canSeed: boolean;
@@ -195,7 +199,7 @@ export function SuggestionsWorkspace({
         {feed.status === 'failed' ? <p className={s.empty}>Suggestions didn’t load. Reload the page to try again.</p> : null}
         {data && lens === 'sessions' ? <Sessions data={data} filter={filter} onPlan={onPlan} tick={tick} ctl={ctl} /> : null}
         {data && lens === 'scouts' ? <Scouts data={data} filter={filter} onPlan={onPlan} tick={tick} ctl={ctl} /> : null}
-        {data && lens === 'teaching' ? <Teaching data={data} filter={filter} rowByKey={rowByKey} byKey={byKey} canSeed={canSeed} canEdit={canEdit} onTeach={onTeach} lookupsHref={lookupsHref} /> : null}
+        {data && lens === 'teaching' ? <Teaching data={data} filter={filter} rowByKey={rowByKey} byKey={byKey} canSeed={canSeed} canEdit={canEdit} onTeach={onTeach} lookupsHref={lookupsHref} dayLabel={dayLabel} /> : null}
         {data && lens === 'sessions' ? <SoloNeeds data={data} filter={filter} onPlan={onPlan} ctl={ctl} /> : null}
         {data ? <Campout data={data} filter={filter} /> : null}
       </div>
@@ -343,8 +347,10 @@ function Teaching({
   canSeed,
   canEdit,
   onTeach,
-  lookupsHref
+  lookupsHref,
+  dayLabel
 }: {
+  dayLabel?: string;
   data: SuggestionsData;
   filter: SuggestFilter;
   rowByKey: ReadonlyMap<string, PlanRow>;
@@ -385,7 +391,7 @@ function Teaching({
               <ul className={s.chips}>
                 {keys.map((k) => (
                   <li key={k}>
-                    <TeachChip item={byKey.get(k)!} row={rowByKey.get(k)} teacher={t} canSeed={canSeed} canEdit={canEdit} onTeach={onTeach} />
+                    <TeachChip item={byKey.get(k)!} row={rowByKey.get(k)} teacher={t} canSeed={canSeed} canEdit={canEdit} onTeach={onTeach} dayLabel={dayLabel} />
                   </li>
                 ))}
               </ul>
@@ -400,9 +406,12 @@ function Teaching({
 }
 
 /**
- * One requirement in a leader's Teaching row. Teaching it already → "on plan · teaching". On the plan → "Assign <Name>"
- * (edit right). Not on the plan → "Add with <Name> teaching" (seed and edit rights). Without the right, or for a
- * non-person teacher (Summer Camp), the chip is plain text: never a dead button.
+ * One requirement in a leader's Teaching row, labelled with its code and short title ("Scout 2 · Flag"; Patrick,
+ * 2026-10-22). Not on the plan: the plain chip. On the plan, someone else or nobody teaching: the same chip with a
+ * small "on plan" marker. They teach it already: a quiet "teaching" marker and no click. The accessible name keeps the
+ * whole action ("Add Scout 2 Flag with Dan K teaching", "Assign Dan K to …"). A click opens a confirm Dialog; nothing
+ * is written until its primary ("Add to plan" or "Assign") is pressed, and Cancel or Esc returns focus to the chip.
+ * Without the right, or for a non-person teacher (Summer Camp), the chip is plain text: never a dead button.
  */
 function TeachChip({
   item,
@@ -410,7 +419,8 @@ function TeachChip({
   teacher,
   canSeed,
   canEdit,
-  onTeach
+  onTeach,
+  dayLabel
 }: {
   item: SuggestItem;
   row: PlanRow | undefined;
@@ -418,58 +428,115 @@ function TeachChip({
   canSeed: boolean;
   canEdit: boolean;
   onTeach?: (item: SuggestItem, personId: number) => Promise<string | null>;
+  /** 'Oct 25': the confirm's "to the Oct 25 plan". */
+  dayLabel?: string;
 }) {
   const [busy, setBusy] = useState(false);
+  const [asking, setAsking] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  const chipRef = useRef<HTMLButtonElement | null>(null);
   const teaching = row != null && (row.teacherIds ? teacher.personId != null && row.teacherIds.includes(teacher.personId) : row.teachers.includes(teacher.name));
-  const label = (
-    <span className={s.code}>
-      {item.eagle ? '★ ' : ''}
-      {item.codeLabel}
-    </span>
-  );
+  const short = `${item.eagle ? '★ ' : ''}${item.codeLabel} · ${item.title}`;
   if (teaching) {
     return (
       <span className={s.chipOn}>
-        {label} on plan · teaching
+        {short} <span className={s.chipMark}>teaching</span>
       </span>
     );
   }
+  const marker = row ? (
+    <>
+      {' '}
+      <span className={s.chipMark}>on plan</span>
+    </>
+  ) : null;
   const may = teacher.personId != null && onTeach != null && canEdit && (row != null || canSeed);
   if (!may) {
     return (
       <span className={row ? s.chipOn : s.chip}>
-        {label}
-        {row ? ' on plan' : ''}
+        {short}
+        {marker}
       </span>
     );
   }
   const go = async () => {
-    if (busy) return;
     setBusy(true);
     setProblem(null);
     const err = await onTeach!(item, teacher.personId!);
     setBusy(false);
+    setAsking(false);
     if (err) setProblem(err);
+    requestAnimationFrame(() => chipRef.current?.focus());
   };
   const what = `${item.codeLabel} ${item.title}`;
+  const plan = dayLabel ? `the ${dayLabel} plan` : 'the plan';
   return (
     <>
       <button
         type="button"
+        ref={chipRef}
         className={s.chipBtn}
-        onClick={go}
+        onClick={() => {
+          if (!busy) setAsking(true);
+        }}
         aria-disabled={busy || undefined}
+        aria-haspopup="dialog"
         aria-label={row ? `Assign ${teacher.name} to ${what}` : `Add ${what} with ${teacher.name} teaching`}
       >
-        {label} {busy ? 'Saving…' : row ? `Assign ${teacher.name}` : `Add with ${teacher.name} teaching`}
+        {busy ? 'Saving…' : short}
+        {busy ? null : marker}
       </button>
       {problem ? (
         <span className={s.problemBox} role="alert">
           {problem}
         </span>
       ) : null}
+      {asking ? (
+        <ChipConfirm
+          question={row ? `Make ${teacher.name} the teacher for ${short}?` : `Add ${short} to ${plan}, with ${teacher.name} teaching?`}
+          confirm={row ? 'Assign' : 'Add to plan'}
+          busy={busy}
+          onConfirm={go}
+          onClose={() => {
+            setAsking(false);
+            requestAnimationFrame(() => chipRef.current?.focus());
+          }}
+        />
+      ) : null}
     </>
+  );
+}
+
+/** The Teaching chip's confirm: Build a Plan's dialog pattern (native modal, Cancel + one primary). */
+function ChipConfirm({ question, confirm, busy, onConfirm, onClose }: { question: string; confirm: string; busy: boolean; onConfirm: () => void; onClose: () => void }) {
+  const ref = useRef<HTMLDialogElement | null>(null);
+  useEffect(() => {
+    const dlg = ref.current;
+    if (dlg && typeof dlg.showModal === 'function' && !dlg.open) dlg.showModal();
+    else dlg?.setAttribute('open', '');
+  }, []);
+  return (
+    <dialog
+      ref={ref}
+      className={b.confirm}
+      aria-labelledby="teach-confirm-title"
+      onCancel={(e) => {
+        e.preventDefault();
+        if (!busy) onClose();
+      }}
+    >
+      <h2 id="teach-confirm-title" className={b.confirmTitle}>
+        {question}
+      </h2>
+      <div className={b.confirmActions}>
+        <Button variant="ghost" onClick={onClose} disabled={busy}>
+          Cancel
+        </Button>
+        <Button variant="primary" onClick={onConfirm} disabled={busy}>
+          {busy ? 'Saving…' : confirm}
+        </Button>
+      </div>
+    </dialog>
   );
 }
 

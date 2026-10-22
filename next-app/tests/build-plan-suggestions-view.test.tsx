@@ -188,10 +188,11 @@ describe('Suggestions mode, more', () => {
 });
 
 /**
- * Suggestions › Teaching (Patrick, 2026-10-22): each requirement chip in a leader's row is the control. Not on the plan
- * → "Add with <Name> teaching" (adds it with that leader teaching, one action); on the plan without them → "Assign
- * <Name>"; with them → "on plan · teaching". Rows have no tick and no row-level Add, so one leader's choice never
- * lights up another's.
+ * Suggestions › Teaching (Patrick, 2026-10-22): each requirement chip in a leader's row is the control, labelled with
+ * the code and the requirement's short title ("Scout 2 · Flag"); a small "on plan" marker when it is on the plan
+ * without them, a quiet "teaching" with no click when they teach it. Its accessible name keeps the action. A click
+ * opens a confirm Dialog; nothing is written until its primary is pressed. Rows have no tick and no row-level Add, so
+ * one leader's choice never lights up another's.
  */
 describe('Suggestions › Teaching chips', () => {
   const danRow = () => screen.getByText('Dan K', { selector: 'p' }).closest('li') as HTMLElement;
@@ -201,26 +202,66 @@ describe('Suggestions › Teaching chips', () => {
     lens('Teaching');
   };
   const ok = (o: object = {}) => ({ ok: true, key: 'scout-2', added: true, teachers: ['Dan K'], onBoard: true, prior: 's0', stamp: 's1', ...o });
+  const ON_PLAN = [row('tenderfoot-4a', { codeLabel: 'Tenderfoot 4a', title: 'First aid' })];
+  const confirmDlg = () => screen.getByRole('dialog');
 
-  it('TeachingChip_AddsWithThatTeacher', async () => {
+  it('TeachingChip_ShowsCodeAndTitle', async () => {
+    await teaching();
+    const chip = within(danRow()).getByRole('button', { name: 'Add Scout 2 Flag with Dan K teaching' });
+    expect(chip.textContent).toBe('Scout 2 · Flag');
+  });
+
+  it('TeachingChip_AccessibleName_KeepsTheAction', async () => {
+    await teaching(ON_PLAN);
+    expect([
+      within(danRow()).getByRole('button', { name: 'Add Scout 2 Flag with Dan K teaching' }) != null,
+      within(danRow()).getByRole('button', { name: 'Assign Dan K to Tenderfoot 4a First aid' }) != null
+    ]).toEqual([true, true]);
+  });
+
+  it('TeachingChip_OnPlan_ShowsAnOnPlanMarker', async () => {
+    await teaching(ON_PLAN);
+    const chip = within(danRow()).getByRole('button', { name: 'Assign Dan K to Tenderfoot 4a First aid' });
+    expect(chip.textContent).toBe('Tenderfoot 4a · First aid on plan');
+  });
+
+  it('TeachingChip_Click_OpensConfirm_WithoutWriting', async () => {
+    await teaching();
+    fireEvent.click(within(danRow()).getByRole('button', { name: 'Add Scout 2 Flag with Dan K teaching' }));
+    expect([within(confirmDlg()).getByText('Add Scout 2 · Flag to the plan, with Dan K teaching?') != null, teachChip.mock.calls.length]).toEqual([true, 0]);
+  });
+
+  it('TeachingChip_Confirm_AddsWithThatTeacher', async () => {
     await teaching();
     teachChip.mockResolvedValueOnce(ok());
     fireEvent.click(within(danRow()).getByRole('button', { name: 'Add Scout 2 Flag with Dan K teaching' }));
-    await waitFor(() => expect(within(danRow()).getByText(/on plan · teaching/)).toBeTruthy());
+    fireEvent.click(within(confirmDlg()).getByRole('button', { name: 'Add to plan' }));
+    await waitFor(() => expect(within(danRow()).getByText('teaching')).toBeTruthy());
     expect([teachChip.mock.calls, add.mock.calls.length]).toEqual([[[{ entryId: 1, key: 'scout-2', personId: 7 }]], 0]);
   });
 
-  it('TeachingChip_AssignsOnExistingOffering', async () => {
-    await teaching([row('tenderfoot-4a', { codeLabel: 'Tenderfoot 4a', title: 'First aid' })]);
+  it('TeachingChip_Cancel_WritesNothing', async () => {
+    await teaching();
+    const chip = within(danRow()).getByRole('button', { name: 'Add Scout 2 Flag with Dan K teaching' });
+    fireEvent.click(chip);
+    fireEvent.click(within(confirmDlg()).getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(document.activeElement).toBe(chip));
+    expect([screen.queryByRole('dialog'), teachChip.mock.calls.length]).toEqual([null, 0]);
+  });
+
+  it('TeachingChip_AssignsOnExistingOffering_AfterConfirm', async () => {
+    await teaching(ON_PLAN);
     teachChip.mockResolvedValueOnce(ok({ key: 'tenderfoot-4a', added: false }));
     fireEvent.click(within(danRow()).getByRole('button', { name: 'Assign Dan K to Tenderfoot 4a First aid' }));
+    expect(within(confirmDlg()).getByText('Make Dan K the teacher for Tenderfoot 4a · First aid?')).toBeTruthy();
+    fireEvent.click(within(confirmDlg()).getByRole('button', { name: 'Assign' }));
     await waitFor(() => expect(teachChip).toHaveBeenCalled());
     expect(teachChip.mock.calls).toEqual([[{ entryId: 1, key: 'tenderfoot-4a', personId: 7 }]]);
   });
 
-  it('TeachingChip_TeachingAlready_ReadsOnPlanTeaching', async () => {
+  it('TeachingChip_TeachingAlready_ReadsTeaching_WithNoClick', async () => {
     await teaching([row('tenderfoot-4a', { codeLabel: 'Tenderfoot 4a', title: 'First aid', teachers: ['Dan K'], teacherIds: [7] })]);
-    expect([within(danRow()).getByText(/on plan · teaching/) != null, within(danRow()).queryByRole('button', { name: /Tenderfoot 4a/ })]).toEqual([true, null]);
+    expect([within(danRow()).getByText('teaching') != null, within(danRow()).queryByRole('button', { name: /Tenderfoot 4a/ })]).toEqual([true, null]);
   });
 
   it('TeachingRows_HaveNoTicks_SoNoCrossRowLighting', async () => {

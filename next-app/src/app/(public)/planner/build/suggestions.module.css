@@ -273,6 +273,11 @@
   outline: var(--focus-ring);
   outline-offset: 2px;
 }
+/* "on plan" / "teaching" on a Teaching chip: small and quiet, so the requirement reads first. */
+.chipMark {
+  font: 400 var(--fs-2xs) / 1.3 var(--font-ui);
+  color: var(--text-meta);
+}
 .chipBtn[aria-disabled='true'] {
   opacity: 0.6;
   cursor: progress;

@@ -317,6 +317,7 @@ export function BuildPlanView({
             onRemove={(row, trigger) => setRemoving({ row, trigger })}
             onLeave={() => (backFromSuggestions = true)}
             lookupsHref={lookupsHref}
+            dayLabel={dayLabel}
           />
         </div>
         {planSheet ? (
