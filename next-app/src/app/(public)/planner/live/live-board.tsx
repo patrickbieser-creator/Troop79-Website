@@ -12,11 +12,16 @@
  * "+ Add an offer", and drag-and-drop on a fine pointer (a mouse), which calls the same actions as the buttons. The first
  * edit starts Meeting Live on the server. When someone else got there first, the screen says so and refreshes.
  * View-only users get no controls (and the server refuses them anyway).
+ * B8 (D-429): here / not here is a draft, recorded after the meeting through the approval checklist. Start asks to
+ * confirm when the meeting is in the future. "More actions…" holds "Discard Live arrangement" behind a danger Dialog
+ * that names what goes and what stays. Every write tells the server whether this screen showed Live started, so a tab
+ * left open after a Discard gets "someone else changed this" instead of silently restarting Live.
  */
 import { useEffect, useState, type DragEvent, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/app/_components/button';
 import { Drawer } from '@/app/_components/drawer';
+import { ConfirmDialog, LiveMoreActions } from './live-dialogs';
 import type { LiveCard, LiveView } from '@/lib/meeting-live-shared';
 import {
   plannerLiveAddClassAction,
@@ -28,6 +33,7 @@ import {
   plannerLiveRepeatClassAction,
   plannerLiveSetLocationAction,
   plannerLiveAddVisitorAction,
+  plannerLiveDiscardAction,
   plannerLiveSetPresentAction,
   plannerLiveSetTeacherAction,
   plannerLiveStartAction,
@@ -68,13 +74,21 @@ type Sheet =
 
 const EMPTY_CHOICES: LiveChoicesProp = { teachers: [], topics: [], scouts: [] };
 
-/** P4c: attendance is open on the meeting day only; `note` says why it isn't. */
+/** P4c: here / not here is open on the meeting day only; `note` says why it isn't. B8: the taps are a draft. */
 export interface LiveAttendanceProp {
   open: boolean;
   note: string | null;
-  /** The meeting-day seed couldn't mark some people (editors only). */
-  problem?: string | null;
 }
+
+/** B8: Start asks to confirm for a meeting in the future; `label` names its day ('Sun, Oct 25'). */
+export interface LiveMeetingProp {
+  label: string;
+  future: boolean;
+}
+
+export const DISCARD_LOST = 'The classes, rotations, moves and here / not-here ticks made on Meeting Live are deleted.';
+export const DISCARD_KEPT = 'Recorded attendance, visitors, offerings and teacher sign-ups stay. The board goes back to the matcher and follows new sign-ups again.';
+export const startConfirmText = (label: string) => `Start Meeting Live for ${label}? Changes you make there stop following new sign-ups until you discard it.`;
 const CLOSED: LiveAttendanceProp = { open: false, note: null };
 
 /** A chip's spoken name: who, whether they're here (on the meeting day), retake, visitor. Undefined = just the name. */
@@ -104,13 +118,15 @@ export function LiveBoard({
   canEdit,
   entryId,
   choices = EMPTY_CHOICES,
-  attendance = CLOSED
+  attendance = CLOSED,
+  meeting = null
 }: {
   view: LiveView;
   canEdit: boolean;
   entryId: number;
   choices?: LiveChoicesProp;
   attendance?: LiveAttendanceProp;
+  meeting?: LiveMeetingProp | null;
 }) {
   const router = useRouter();
   const columns: Column[] = [
@@ -137,6 +153,7 @@ export function LiveBoard({
   const [sheet, setSheet] = useState<Sheet>(null);
   const [fine, setFine] = useState(false);
   const [over, setOver] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState<'start' | 'discard' | null>(null);
   const cardsIn = (c: Column) => view.cards.filter((x) => x.rotation === c.rotation);
 
   // Drag-and-drop only where there's a mouse; touch uses "Move to" and the sheets.
@@ -150,6 +167,7 @@ export function LiveBoard({
   }, [canEdit]);
 
   const begin = async () => {
+    setConfirming(null);
     setStart('starting');
     try {
       const res = await plannerLiveStartAction({ entryId });
@@ -237,9 +255,23 @@ export function LiveBoard({
 
   const setPresent = (personId: number, present: boolean) => run(() => plannerLiveSetPresentAction({ entryId, personId, present }));
   const addVisitor = (name: string, to: string | null) => run(() => plannerLiveAddVisitorAction({ entryId, name, to }));
+  /** Start: straight away for today's meeting; a future one asks first (B8). */
+  const askStart = () => (meeting?.future ? setConfirming('start') : void begin());
+  /** Discard: returns the problem to show in the Dialog, or null when it went. */
+  const discard = async (): Promise<string | null> => {
+    try {
+      const res = await plannerLiveDiscardAction({ entryId });
+      if (!res.ok) return res.error;
+      setNotice(null);
+      router.refresh();
+      return null;
+    } catch {
+      return FAILED;
+    }
+  };
+  const started = view.started;
   const dayNote = canEdit && !attendance.open ? attendance.note : null;
-  const seedProblem = canEdit ? (attendance.problem ?? null) : null;
-  const showBar = !view.started || view.overlaps > 0 || notice != null || dayNote != null || seedProblem != null;
+  const showBar = !view.started || view.overlaps > 0 || notice != null || dayNote != null || (canEdit && view.started);
   return (
     <div className={styles.live} aria-busy={busy}>
       {!canEdit ? (
@@ -257,7 +289,7 @@ export function LiveBoard({
           ) : null}
           {!view.started && canEdit ? (
             <span className={styles.startWrap}>
-              <Button onClick={begin} disabled={start === 'starting'}>
+              <Button onClick={askStart} disabled={start === 'starting'}>
                 {start === 'starting' ? 'Starting…' : 'Start Meeting Live'}
               </Button>
               {start !== 'idle' && start !== 'starting' ? (
@@ -268,14 +300,25 @@ export function LiveBoard({
             </span>
           ) : null}
           {dayNote ? <p className={styles.preview}>{dayNote}</p> : null}
-          {seedProblem ? <p className={styles.notice}>{seedProblem}</p> : null}
           {notice ? (
             <p className={styles.notice} role="status">
               {notice}
             </p>
           ) : null}
           {view.overlaps ? <span className={styles.overlaps}>{plural(view.overlaps, 'overlap')}</span> : null}
+          {canEdit && view.started ? <LiveMoreActions onDiscard={() => setConfirming('discard')} /> : null}
         </div>
+      ) : null}
+      {confirming === 'start' && meeting ? (
+        <ConfirmDialog title="Start Meeting Live?" confirm="Start Meeting Live" onConfirm={begin} onClose={() => setConfirming(null)}>
+          <p className={styles.confirmText}>{startConfirmText(meeting.label)}</p>
+        </ConfirmDialog>
+      ) : null}
+      {confirming === 'discard' ? (
+        <ConfirmDialog title="Discard the Live arrangement?" confirm="Discard arrangement" busyLabel="Discarding…" danger onConfirm={discard} onClose={() => setConfirming(null)}>
+          <p className={styles.confirmText}>{DISCARD_LOST}</p>
+          <p className={styles.confirmText}>{DISCARD_KEPT}</p>
+        </ConfirmDialog>
       ) : null}
 
       <div className={styles.switcher}>
@@ -315,7 +358,8 @@ export function LiveBoard({
               run(() =>
                 plannerLiveAddRotationAction({
                   entryId,
-                  expectMax: maxRotation
+                  expectMax: maxRotation,
+                  expectStarted: started
                 })
               )
             }
@@ -461,7 +505,8 @@ export function LiveBoard({
                         run(() =>
                           plannerLiveDropRotationAction({
                             entryId,
-                            number: c.rotation!
+                            number: c.rotation!,
+                            expectStarted: started
                           })
                         )
                       }
@@ -483,7 +528,8 @@ export function LiveBoard({
               run(() =>
                 plannerLiveAddRotationAction({
                   entryId,
-                  expectMax: maxRotation
+                  expectMax: maxRotation,
+                  expectStarted: started
                 })
               )
             }
@@ -547,11 +593,12 @@ export function LiveBoard({
                 key: what.key,
                 title: what.title,
                 teacherId,
-                rotation
+                rotation,
+                expectStarted: started
               })
             )
           }
-          onLocation={(number, location) => run(() => plannerLiveSetLocationAction({ entryId, number, location }))}
+          onLocation={(number, location) => run(() => plannerLiveSetLocationAction({ entryId, number, location, expectStarted: started }))}
         />
       ) : null}
     </div>
@@ -772,7 +819,7 @@ function LiveSheet({
       <Drawer eyebrow="Teacher" title={c.title} sub={rotWord(c.rotation)} onClose={onClose}>
         {open && c.teacher ? (
           <ul className={styles.sheetList}>
-            <SheetRow note={c.teacher.present ? 'Off Roll Call for tonight' : 'Counts on Roll Call'} onClick={() => onPresent(c.teacher!.personId, !c.teacher!.present)}>
+            <SheetRow note={c.teacher.present ? 'Not here, for the attendance check' : 'Here, for the attendance check'} onClick={() => onPresent(c.teacher!.personId, !c.teacher!.present)}>
               {`${c.teacher.present ? 'Mark not present' : 'Mark here'}: ${c.teacher.name}`}
             </SheetRow>
           </ul>
@@ -815,7 +862,7 @@ function LiveSheet({
       <Drawer eyebrow={from ? `${from.title} · ${rotWord(from.rotation)}` : 'Coming, nothing assigned'} title={sheet.name} onClose={onClose}>
         <ul className={styles.sheetList}>
           {open ? (
-            <SheetRow note={isHere ? 'Off Roll Call for tonight' : 'Counts on Roll Call'} onClick={() => onPresent(personId, !isHere)}>
+            <SheetRow note={isHere ? 'Not here, for the attendance check' : 'Here, for the attendance check'} onClick={() => onPresent(personId, !isHere)}>
               {isHere ? 'Mark not present' : 'Mark here'}
             </SheetRow>
           ) : null}

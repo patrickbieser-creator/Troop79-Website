@@ -4,22 +4,25 @@
  * which is the truth from then on. Anyone who may view the planner sees it; an editor (the SPL included) starts it and
  * (P4b) edits it in place. Any open meeting runs here; a merit badge night is just a meeting (P5a, Decision 10).
  * Phones get one rotation at a time with a switcher. It polls every ~3 s: several leaders run it at once in the room.
- * P4c: attendance on the meeting day (Central) only. An editor's first load that day seeds placed scouts and class
- * teachers as here, once. A viewer sees a red banner: they can't record attendance.
+ * P4c: here / not here on the meeting day (Central) only. A viewer sees a red banner: they can't record attendance.
+ * B8 (D-429): nothing is automatic. Opening Live records nobody (the day-of seed is gone); the taps are a draft, and
+ * once the meeting is over an editor approves them through "Would you like to update attendance?". Start asks to
+ * confirm for a future meeting.
  */
 import { redirect } from 'next/navigation';
 import { resolveAdminActor } from '@/lib/admin-actor';
 import { createAdminClient } from '@/lib/supabase/server';
 import { fmtDateFull, fmtDay } from '@/lib/format-date';
-import { centralToday } from '@/lib/dates';
+import { centralToday, instantToCentral } from '@/lib/dates';
 import { loadBoardStamp, loadNextMeeting } from '@/lib/meeting-board';
 import { plannerAccess } from '@/lib/meeting-planner-access';
-import { loadLiveChoices, loadLiveView, seedLiveAttendance } from '@/lib/meeting-live';
+import { loadAttendancePrompt, loadLiveChoices, loadLiveView } from '@/lib/meeting-live';
 import { PageHeader } from '@/app/_components/page-header';
 import { PageShell } from '@/app/_components/page-shell';
 import { Notice } from '@/app/_components/notice';
 import { PlannerPoller } from '../planner-poller';
 import { PlannerTabs } from '../planner-tabs';
+import { AttendancePrompt } from '../attendance-review';
 import { LiveBoard } from './live-board';
 import styles from '../planner.module.css';
 
@@ -57,25 +60,17 @@ export default async function MeetingLivePage() {
     );
   }
 
-  const meetingDay = meeting.date === centralToday();
-  let failed = 0;
-  if (access.canEdit && meetingDay) {
-    // A failed seed never blocks the page: Roll Call and the toggles still work. It is logged, and editors are told.
-    try {
-      failed = (await seedLiveAttendance(sb, meeting, actor.label)).failed;
-    } catch (err) {
-      console.error(`Meeting Live seed failed for entry ${meeting.entryId}:`, err);
-    }
-  }
+  const today = centralToday();
+  const meetingDay = meeting.date === today;
   const attendance = {
     open: meetingDay,
-    note: meetingDay ? null : `Attendance opens on ${fmtDay(meeting.date)}.`,
-    problem: failed ? `${failed === 1 ? '1 person' : `${failed} people`} couldn’t be marked here: tap them to try again.` : null
+    note: meetingDay ? null : `Attendance opens on ${fmtDay(meeting.date)}.`
   };
-  const [view, stamp, choices] = await Promise.all([
+  const [view, stamp, choices, prompt] = await Promise.all([
     loadLiveView(sb, meeting),
     loadBoardStamp(sb, meeting.entryId),
-    access.canEdit ? loadLiveChoices(sb, meeting) : undefined
+    access.canEdit ? loadLiveChoices(sb, meeting) : undefined,
+    access.canEdit ? loadPromptQuietly(sb) : null
   ]);
   return (
     <div className={styles.page}>
@@ -89,7 +84,25 @@ export default async function MeetingLivePage() {
           </p>
         </div>
       </header>
-      <LiveBoard view={view} canEdit={access.canEdit} entryId={meeting.entryId} choices={choices} attendance={attendance} />
+      {prompt ? <AttendancePrompt key={JSON.stringify(prompt)} review={prompt} label={fmtDay(prompt.date)} /> : null}
+      <LiveBoard
+        view={view}
+        canEdit={access.canEdit}
+        entryId={meeting.entryId}
+        choices={choices}
+        attendance={attendance}
+        meeting={{ label: fmtDay(meeting.date), future: meeting.date > today }}
+      />
     </div>
   );
+}
+
+/** The attendance prompt never blocks the page: a failed load is logged and the prompt is left off. */
+async function loadPromptQuietly(sb: ReturnType<typeof createAdminClient>) {
+  try {
+    return await loadAttendancePrompt(sb, instantToCentral(new Date().toISOString()));
+  } catch (err) {
+    console.error('Attendance prompt failed to load:', err);
+    return null;
+  }
 }

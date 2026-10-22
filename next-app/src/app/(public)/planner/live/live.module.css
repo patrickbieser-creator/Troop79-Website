@@ -624,3 +624,76 @@
     padding: 0 var(--sp-4);
   }
 }
+
+/* ── B8: More actions… (Discard) and the confirm dialog ───────────────────────────────────────────────────────── */
+.moreWrap {
+  position: relative;
+  margin-left: auto;
+}
+.moreBtn {
+  min-height: 44px;
+  padding: 0 var(--sp-3);
+  border: 0;
+  border-radius: var(--rad-md);
+  background: transparent;
+  font: 600 var(--fs-sm) / 1 var(--font-ui);
+  color: var(--text-meta);
+  cursor: pointer;
+}
+.moreBtn:hover,
+.moreBtn[aria-expanded='true'] {
+  background: var(--border-light);
+  color: var(--navy);
+}
+.morePop {
+  position: absolute;
+  right: 0;
+  z-index: 3;
+  width: 240px;
+  padding: var(--sp-1) 0;
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-md);
+  background: var(--warm-white);
+  box-shadow: var(--shadow-card);
+}
+.moreDanger {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 var(--sp-4);
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font: 600 var(--fs-sm) / 1 var(--font-ui);
+  color: var(--status-danger);
+  cursor: pointer;
+}
+.moreDanger:hover {
+  background: var(--status-danger-bg);
+}
+.confirm {
+  width: min(440px, calc(100vw - 2 * var(--sp-5)));
+  padding: var(--sp-5);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-lg);
+  background: var(--warm-white);
+  color: var(--text-body);
+}
+.confirm::backdrop {
+  background: color-mix(in srgb, var(--navy) 38%, transparent);
+}
+.confirmTitle {
+  margin: 0;
+  font: 700 var(--fs-lg) / 1.3 var(--font-ui);
+  color: var(--navy);
+}
+.confirmText {
+  margin: var(--sp-3) 0 0;
+  font: var(--fs-sm) / 1.5 var(--font-ui);
+}
+.confirmActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-3);
+  margin-top: var(--sp-5);
+}

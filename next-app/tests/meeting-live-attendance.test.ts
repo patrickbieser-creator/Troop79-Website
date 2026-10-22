@@ -6,13 +6,12 @@ import { centralToday } from '../src/lib/dates';
 import { addMeetingPick, loadMeetingById } from '../src/lib/meeting-board';
 
 /**
- * Meeting Live P4c: attendance and visitors (Plans/Meeting-Planner-II.md Decision 9; the tech-lead's P4 spec section 4).
- * Meeting Live takes attendance into event_attendance, the one presence truth that Roll Call reads, through the same
- * cascade as Roll Call (recordAttendance / removeAttendance), so a scout's meeting credit lands in the ledger and is
- * retired first on removal. Writes only on the meeting day (Central), editors only (the SPL included). The first Live
- * load of the day seeds placed scouts and class teachers once. "+ Add as visitor" makes a guest person hosted by a
- * system household that no household list shows. Real local database; the admin actor is mocked. The "today" meeting
- * is a test-owned entry dated today; others are dated 2098. Cleanup by test-owned ids only.
+ * Meeting Live P4c: here / not here and visitors (Plans/Meeting-Planner-II.md Decision 9; the tech-lead's P4 spec
+ * section 4), as amended by Build a Plan B8 (D-429): a tap is a DRAFT (meeting_live_presence) and never writes
+ * event_attendance or the ledger; attendance is approved after the meeting (tests/meeting-live-b8-db.test.ts). Taps only
+ * on the meeting day (Central), editors only (the SPL included). There is no day-of seed any more. "+ Add as visitor"
+ * makes a guest person hosted by a system household that no household list shows. Real local database; the admin actor
+ * is mocked. The "today" meeting is a test-owned entry dated today; others are dated 2098. Cleanup by test-owned ids only.
  */
 const sb = adminClient();
 const state = vi.hoisted(() => ({
@@ -84,10 +83,15 @@ async function clearMeeting(entryId: number) {
   await sb.from('meeting_pick_lists').delete().eq('calendar_entry_id', entryId);
   await sb.from('meeting_intents').delete().eq('calendar_entry_id', entryId);
   await sb.from('event_attendance').delete().eq('calendar_entry_id', entryId);
+  await sb.from('meeting_live_presence').delete().eq('calendar_entry_id', entryId);
   if (scoutIds.length) await sb.from('ledger_entries').delete().in('scout_id', scoutIds);
 }
 const present = async (entryId: number) =>
   (((await sb.from('event_attendance').select('person_id').eq('calendar_entry_id', entryId)).data ?? []) as { person_id: number }[]).map((r) => r.person_id).sort((a, b) => a - b);
+const drafted = async (entryId: number) =>
+  (((await sb.from('meeting_live_presence').select('person_id').eq('calendar_entry_id', entryId).eq('present', true)).data ?? []) as { person_id: number }[])
+    .map((r) => r.person_id)
+    .sort((a, b) => a - b);
 const visitorHousehold = async () => (await sb.from('households').select('id, label').eq('system_key', 'meeting-visitors').maybeSingle()).data as { id: number; label: string } | null;
 
 beforeAll(async () => {
@@ -153,23 +157,21 @@ describe('who and when', () => {
   });
 });
 
-describe('attendance through Roll Call’s cascade', () => {
-  it('MeetingLive_Attendance_WritesEventAttendance (with ledger credit)', async () => {
+describe('here / not here is a draft (B8)', () => {
+  it('MarkingHere_IsADraftTick', async () => {
     await started(today, [{ topic_key: key, rotation: 1, members: [ann] }]);
     asEditor();
-    const res = await (await live()).plannerLiveSetPresentAction({ entryId: today, personId: ann, present: true });
-    const { data: ledger } = await sb.from('ledger_entries').select('kind, deleted_at').eq('calendar_entry_id', today).eq('scout_id', `vitest-mla-${ann}`);
-    expect([res.ok, await present(today), ledger]).toEqual([true, [ann], [{ kind: 'meeting_attendance', deleted_at: null }]]);
+    await (await live()).plannerLiveSetPresentAction({ entryId: today, personId: ann, present: true });
+    expect(await drafted(today)).toEqual([ann]);
   });
 
-  it('MarkingNotPresent_RetiresTheCreditAndDropsTheRow', async () => {
+  it('MarkingNotPresent_ClearsTheDraftTick', async () => {
     await started(today, [{ topic_key: key, rotation: 1, members: [ann] }]);
     asEditor();
     const a = await live();
     await a.plannerLiveSetPresentAction({ entryId: today, personId: ann, present: true });
-    const res = await a.plannerLiveSetPresentAction({ entryId: today, personId: ann, present: false });
-    const { data: ledger } = await sb.from('ledger_entries').select('deleted_at').eq('calendar_entry_id', today).eq('scout_id', `vitest-mla-${ann}`).single();
-    expect([res.ok, await present(today), (ledger as { deleted_at: string | null }).deleted_at != null]).toEqual([true, [], true]);
+    await a.plannerLiveSetPresentAction({ entryId: today, personId: ann, present: false });
+    expect(await drafted(today)).toEqual([]);
   });
 
   it('AttendanceChange_BumpsLiveVersion', async () => {
@@ -179,28 +181,6 @@ describe('attendance through Roll Call’s cascade', () => {
     asEditor();
     await (await live()).plannerLiveSetPresentAction({ entryId: today, personId: bo, present: true });
     expect(await v()).toBeGreaterThan(before);
-  });
-});
-
-describe('seeding the day', () => {
-  it('Seeding_MarksPlacedScoutsAndTeachers_Once', async () => {
-    await started(today, [{ topic_key: key, rotation: 1, teacher_person_id: teacher, members: [ann] }]);
-    const m = (await loadMeetingById(sb, today))!;
-    const { seedLiveAttendance } = await lib();
-    const first = (await seedLiveAttendance(sb, m, 'Editor')).seeded;
-    const afterFirst = await present(today);
-    asEditor();
-    await (await live()).plannerLiveSetPresentAction({ entryId: today, personId: ann, present: false });
-    const second = (await seedLiveAttendance(sb, m, 'Editor')).seeded;
-    expect([first, afterFirst, second, await present(today)]).toEqual([true, [teacher, ann].sort((a, b) => a - b), false, [teacher]]);
-  });
-
-  it('Seeding_WaitsForTheMeetingDay_AndForLiveToStart', async () => {
-    const { seedLiveAttendance } = await lib();
-    const notStarted = (await seedLiveAttendance(sb, (await loadMeetingById(sb, today))!, 'Editor')).seeded;
-    await started(later, [{ topic_key: key, rotation: 1, members: [ann] }]);
-    const notToday = (await seedLiveAttendance(sb, (await loadMeetingById(sb, later))!, 'Editor')).seeded;
-    expect([notStarted, notToday, await present(today), await present(later)]).toEqual([false, false, [], []]);
   });
 });
 
@@ -214,7 +194,7 @@ describe('visitors', () => {
     const { data: p } = await sb.from('people').select('id, display_name, guest_host_household_id').eq('guest_host_household_id', hh!.id).eq('display_name', `${TEST_PREFIX} Vic Visitor`).single();
     const vic = (p as { id: number }).id;
     const { data: m } = await sb.from('meeting_class_members').select('person_id').eq('class_id', c);
-    expect([res.ok, hh?.label, (await present(today)).includes(vic), (m ?? []).map((x) => (x as { person_id: number }).person_id)]).toEqual([true, 'Meeting visitors', true, [vic]]);
+    expect([res.ok, hh?.label, (await drafted(today)).includes(vic), (m ?? []).map((x) => (x as { person_id: number }).person_id)]).toEqual([true, 'Meeting visitors', true, [vic]]);
   });
 
   it('TwoVisitors_ShareOneSystemHousehold', async () => {
@@ -264,21 +244,6 @@ describe('visitors', () => {
 });
 
 describe('qa-lead follow-ups (P4c)', () => {
-  it('Seeding_CountsAndLogsWhoCouldntBeMarked', async () => {
-    // A person with two scout records makes the credit lookup fail: the seed keeps going and says how many failed.
-    const twin = await scout('Twin', 'scout');
-    const extra = `vitest-mla-${twin}-b`;
-    const { error } = await sb.from('scouts').insert({ id: extra, first_name: `${TEST_PREFIX} MLA`, last_name: 'Twin', display_name: `${TEST_PREFIX} MLA Twin`, person_id: twin, active: true });
-    if (error) throw new Error(error.message);
-    scoutIds.push(extra);
-    await started(today, [{ topic_key: key, rotation: 1, teacher_person_id: teacher, members: [ann, twin] }]);
-    const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    const res = await (await lib()).seedLiveAttendance(sb, (await loadMeetingById(sb, today))!, 'Editor');
-    const logged = spy.mock.calls.length > 0;
-    spy.mockRestore();
-    expect([res, logged]).toEqual([{ seeded: true, failed: 1 }, true]);
-  });
-
   it('SetPresent_RefusesSomeoneNotOnThisMeetingsBoard', async () => {
     const { data: gone, error } = await sb.from('people').insert({ display_name: `${TEST_PREFIX} MLA Gone`, first_name: `${TEST_PREFIX} MLA`, last_name: 'Gone', active: false }).select('id').single();
     if (error) throw new Error(error.message);

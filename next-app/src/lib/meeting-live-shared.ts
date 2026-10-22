@@ -284,3 +284,97 @@ export function buildLiveView(input: {
     overlaps: count
   };
 }
+
+// ── B8: attendance is approved after the meeting (D-429) ─────────────────────────────────────────────────────────
+
+/**
+ * Is the meeting over? After its last day (Central), or on that day once its end time has passed. Without an end time
+ * the meeting runs to the end of its day: the calendar's meetings usually carry a start time only.
+ * `now` is Central wall-clock ('YYYY-MM-DD', 'HH:MM'); `endTime` may be 'HH:MM' or 'HH:MM:SS'.
+ */
+export function meetingIsOver(m: { date: string; endDate?: string | null; endTime?: string | null }, now: { date: string; time: string }): boolean {
+  const last = m.endDate && m.endDate > m.date ? m.endDate : m.date;
+  if (now.date !== last) return now.date > last;
+  return m.endTime ? now.time >= m.endTime.slice(0, 5) : false;
+}
+
+export type AttendanceGroupKey = 'class' | 'teaching' | 'visitor' | 'here' | 'recorded';
+
+export const ATTENDANCE_GROUP_LABEL: Record<AttendanceGroupKey, string> = {
+  class: 'In a class',
+  teaching: 'Teaching',
+  visitor: 'Visitors',
+  here: 'Marked here',
+  recorded: 'Already on Roll Call'
+};
+
+export interface AttendanceReviewPerson {
+  personId: number;
+  name: string;
+  /** Already in event_attendance. */
+  recorded: boolean;
+  /** The checklist's starting tick: recorded, or the draft says here (placed, teaching and visitors count as here
+   *  unless someone marked them not present). A recorded person always starts ticked: removing them takes an untick. */
+  ticked: boolean;
+}
+
+export interface AttendanceReview {
+  entryId: number;
+  /** 'YYYY-MM-DD'. */
+  date: string;
+  groups: { key: AttendanceGroupKey; label: string; people: AttendanceReviewPerson[] }[];
+}
+
+/**
+ * The approval checklist from the draft. Each person once, in the first group that fits: Visitors, Teaching, In a
+ * class, Marked here (a "here" tap on someone in no class), Already on Roll Call (recorded, and nothing else). Someone
+ * marked not present who is in no class and not recorded is left off. Names sort within a group; empty groups drop.
+ */
+export function buildAttendanceReview(input: {
+  entryId: number;
+  date: string;
+  placed: readonly number[];
+  teachers: readonly number[];
+  visitors: readonly number[];
+  /** Draft taps: person → here (true) or not (false). */
+  draft: ReadonlyMap<number, boolean>;
+  recorded: ReadonlySet<number>;
+  nameOf: (personId: number) => string;
+}): AttendanceReview {
+  const groupOf = new Map<number, AttendanceGroupKey>();
+  const put = (ids: Iterable<number>, key: AttendanceGroupKey) => {
+    for (const id of ids) if (!groupOf.has(id)) groupOf.set(id, key);
+  };
+  put(input.visitors, 'visitor');
+  put(input.teachers, 'teaching');
+  put(input.placed, 'class');
+  put([...input.draft].filter(([, here]) => here).map(([id]) => id), 'here');
+  put(input.recorded, 'recorded');
+  const order: AttendanceGroupKey[] = ['class', 'teaching', 'visitor', 'here', 'recorded'];
+  return {
+    entryId: input.entryId,
+    date: input.date,
+    groups: order
+      .map((key) => ({
+        key,
+        label: ATTENDANCE_GROUP_LABEL[key],
+        people: [...groupOf]
+          .filter(([, k]) => k === key)
+          .map(([personId]) => {
+            const recorded = input.recorded.has(personId);
+            return { personId, name: input.nameOf(personId), recorded, ticked: recorded || (input.draft.get(personId) ?? true) };
+          })
+          .sort((a, b) => a.name.localeCompare(b.name))
+      }))
+      .filter((g) => g.people.length > 0)
+  };
+}
+
+/** What "Record attendance" will do: who to add (ticked, not recorded) and who to remove (recorded, unticked). */
+export function attendanceChanges(review: AttendanceReview, ticked: ReadonlySet<number>): { add: number[]; remove: number[] } {
+  const people = review.groups.flatMap((g) => g.people);
+  return {
+    add: people.filter((p) => !p.recorded && ticked.has(p.personId)).map((p) => p.personId),
+    remove: people.filter((p) => p.recorded && !ticked.has(p.personId)).map((p) => p.personId)
+  };
+}

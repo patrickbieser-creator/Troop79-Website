@@ -9,10 +9,11 @@
  *   - startMeetingLive: copy on FIRST WRITE (Decision 8): run the matcher and save its output with meeting_live_start,
  *     which is idempotent under the meeting's Live lock.
  *   - loadLiveView: what /planner/live draws: the matcher's preview before start, the saved placement after.
+ *   - B8 (D-429): presence on Live is a DRAFT (meeting_live_presence); nothing here writes attendance on its own. After
+ *     the meeting, loadAttendancePrompt / loadAttendanceReview give the approval checklist, and the server action
+ *     records only the differences through Roll Call's cascade. discardMeetingLive undoes Live.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { centralToday } from '@/lib/dates';
-import { loadEntryContext, seedAttendance } from '@/lib/attendance-admin';
 import { loadAdvancementCatalog, type AdvancementCatalog } from '@/lib/advancement-catalog';
 import { loadBoardState, loadPeopleNames, loadScoutProgress, type BoardMeeting, type BoardScoutRow } from '@/lib/meeting-board';
 import { boardName, effectiveIntent } from '@/lib/meeting-board-shared';
@@ -21,11 +22,14 @@ import { sessionWords, type MatchResult } from '@/lib/meeting-board-match';
 import { loadLiveMatch, loadTeachBoard, loadTeacherPeople, sanitizeRpcError, type TeachBoard } from '@/lib/meeting-board-supply';
 import { teacherName } from '@/lib/meeting-board-teach';
 import {
+  buildAttendanceReview,
   buildLiveView,
+  meetingIsOver,
   placementAsMatch,
   previewId,
   savedId,
   snapshotFromMatch,
+  type AttendanceReview,
   type LiveClassIn,
   type LiveSnapshot,
   type LiveView,
@@ -148,20 +152,10 @@ export async function loadLiveView(sb: SupabaseClient, meeting: BoardMeeting): P
   let classes: LiveClassIn[];
   let rotations: LiveView['rotations'];
   let pool: number[];
-  // Who is here (P4c): event_attendance is the one presence truth; visitors are guests of the visitors household.
-  const [attRes, visitorHh] = await Promise.all([
-    sb.from('event_attendance').select('person_id').eq('calendar_entry_id', meeting.entryId),
-    sb.from('households').select('id').eq('system_key', VISITORS_KEY).maybeSingle()
-  ]);
-  if (attRes.error) throw new Error(attRes.error.message);
-  const attended = new Set(((attRes.data ?? []) as { person_id: number }[]).map((a) => a.person_id));
-  const visitorIds = new Set<number>();
-  const hhId = (visitorHh.data as { id: number } | null)?.id;
-  if (hhId != null && attended.size) {
-    const { data, error } = await sb.from('people').select('id').eq('guest_host_household_id', hhId).in('id', [...attended]);
-    if (error) throw new Error(error.message);
-    for (const r of (data ?? []) as { id: number }[]) visitorIds.add(r.id);
-  }
+  // Who is here (B8): the draft tap when there is one, else what Roll Call has recorded. Visitors are guests of the
+  // visitors household with a draft row or recorded attendance at this meeting.
+  const { here: hereOf, visitors: visitorIds } = await loadPresence(sb, meeting.entryId);
+  const attended = new Set([...hereOf].filter(([, v]) => v).map(([id]) => id));
   const scoutIds = new Set(rows.map((r) => r.personId));
   // Here, nothing assigned: attended scouts and visitors (an adult who is here is not waiting for a class).
   const hereWaiting = [...attended].filter((id) => scoutIds.has(id) || visitorIds.has(id));
@@ -283,55 +277,138 @@ export async function loadLiveChoices(sb: SupabaseClient, meeting: BoardMeeting)
   };
 }
 
-// ── P4c: attendance ──────────────────────────────────────────────────────────────────────────────────────────────
+// ── P4c / B8: presence ───────────────────────────────────────────────────────────────────────────────────────────
+
+/** The visitors household's id, or null before the first visitor. */
+async function visitorsHouseholdId(sb: SupabaseClient): Promise<number | null> {
+  const { data, error } = await sb.from('households').select('id').eq('system_key', VISITORS_KEY).maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data as { id: number } | null)?.id ?? null;
+}
 
 /**
- * The meeting day's one-time seed (P4 spec section 4, Roll Call's seedFromSignup pattern): once Meeting Live has
- * started and only on the meeting day (Central), placed scouts and class teachers are marked here, through Roll Call's
- * cascade (ledger credit included). Claimed under the Live lock, so two leaders opening Live at once seed once.
- * `seeded`: this call seeded. `failed`: how many people the seed couldn't mark (qa-lead, P4c): the claim is already
- * taken, so they are not retried; the problems are logged and the page tells editors to tap those people.
+ * One meeting's presence: `draft` (Live's taps), `recorded` (event_attendance), `here` (the draft tap when there is
+ * one, else recorded) and `visitors` (guests of the visitors household with a draft row or recorded attendance here).
  */
-export async function seedLiveAttendance(sb: SupabaseClient, meeting: BoardMeeting, by: string): Promise<{ seeded: boolean; failed: number }> {
-  if (meeting.date !== centralToday()) return { seeded: false, failed: 0 };
-  const { data: claimed, error } = await sb.rpc('meeting_live_claim_seed', { p_entry: meeting.entryId });
-  if (error) throw new Error(error.message);
-  if (claimed !== true) return { seeded: false, failed: 0 };
-  const [ctx, saved] = await Promise.all([loadEntryContext(sb, meeting.entryId), loadSavedPlacement(sb, meeting.entryId)]);
-  if (!ctx || !saved) return { seeded: true, failed: 0 };
-  const ids = saved.classes.flatMap((c) => [...c.memberIds, ...(c.teacherId != null ? [c.teacherId] : [])]);
-  const { problems } = await seedAttendance(sb, ctx, ids, by);
-  if (problems.length) console.error(`Meeting Live seed for entry ${meeting.entryId}: ${problems.length} not marked`, problems);
-  const touch = await sb.rpc('meeting_live_touch', { p_entry: meeting.entryId });
-  if (touch.error) console.error(`Meeting Live touch failed for entry ${meeting.entryId}: ${touch.error.message}`);
-  return { seeded: true, failed: problems.length };
+export async function loadPresence(sb: SupabaseClient, entryId: number) {
+  const [draftRes, attRes, hhId] = await Promise.all([
+    sb.from('meeting_live_presence').select('person_id, present').eq('calendar_entry_id', entryId),
+    sb.from('event_attendance').select('person_id').eq('calendar_entry_id', entryId),
+    visitorsHouseholdId(sb)
+  ]);
+  if (draftRes.error) throw new Error(draftRes.error.message);
+  if (attRes.error) throw new Error(attRes.error.message);
+  const draft = new Map(((draftRes.data ?? []) as { person_id: number; present: boolean }[]).map((r) => [r.person_id, r.present]));
+  const recorded = new Set(((attRes.data ?? []) as { person_id: number }[]).map((r) => r.person_id));
+  const here = new Map<number, boolean>([...[...recorded].map((id) => [id, true] as const), ...draft]);
+  const visitors = new Set<number>();
+  const everyone = [...new Set([...draft.keys(), ...recorded])];
+  if (hhId != null && everyone.length) {
+    const { data, error } = await sb.from('people').select('id').eq('guest_host_household_id', hhId).in('id', everyone);
+    if (error) throw new Error(error.message);
+    for (const r of (data ?? []) as { id: number }[]) visitors.add(r.id);
+  }
+  return { draft, recorded, here, visitors };
 }
 
 /**
  * Who Meeting Live may mark here (qa-lead, P4c): an active scout, an adult on the roster (the planner's picker), a
- * visitor recorded at THIS meeting, or anyone placed in or teaching one of its classes.
+ * visitor of THIS meeting (a draft row or recorded attendance), or anyone placed in or teaching one of its classes.
  */
 export async function onLiveBoard(sb: SupabaseClient, entryId: number, personId: number): Promise<boolean> {
-  const [scout, adult, placed, teaching, visitor] = await Promise.all([
+  const [scout, adult, placed, teaching, drafted, attended] = await Promise.all([
     sb.from('scouts').select('id').eq('person_id', personId).eq('active', true).limit(1),
     sb.from('person_directory').select('person_id').eq('person_id', personId).in('tab', ['leader', 'adult']).eq('in_picker', true).limit(1),
     sb.from('meeting_class_members').select('person_id, meeting_classes!inner(calendar_entry_id)').eq('person_id', personId).eq('meeting_classes.calendar_entry_id', entryId).limit(1),
     sb.from('meeting_classes').select('id').eq('calendar_entry_id', entryId).eq('teacher_person_id', personId).limit(1),
-    // A visitor here: hosted by the visitors household and marked at THIS meeting.
-    sb
-      .from('event_attendance')
-      .select('person_id, people!inner(guest_host_household_id)')
-      .eq('calendar_entry_id', entryId)
-      .eq('person_id', personId)
-      .not('people.guest_host_household_id', 'is', null)
-      .limit(1)
+    // A visitor here: a draft row or recorded attendance at THIS meeting (checked against the household below).
+    sb.from('meeting_live_presence').select('person_id').eq('calendar_entry_id', entryId).eq('person_id', personId).limit(1),
+    sb.from('event_attendance').select('person_id').eq('calendar_entry_id', entryId).eq('person_id', personId).limit(1)
   ]);
-  for (const r of [scout, adult, placed, teaching, visitor]) if (r.error) throw new Error(r.error.message);
+  for (const r of [scout, adult, placed, teaching, drafted, attended]) if (r.error) throw new Error(r.error.message);
   if ([scout, adult, placed, teaching].some((r) => (r.data ?? []).length > 0)) return true;
-  const host = ((visitor.data ?? []) as unknown as { people: { guest_host_household_id: number } | { guest_host_household_id: number }[] }[])[0]?.people;
-  const hostId = Array.isArray(host) ? host[0]?.guest_host_household_id : host?.guest_host_household_id;
-  if (hostId == null) return false;
-  const { data, error } = await sb.from('households').select('id').eq('id', hostId).eq('system_key', VISITORS_KEY).maybeSingle();
+  if (![drafted, attended].some((r) => (r.data ?? []).length > 0)) return false;
+  const hhId = await visitorsHouseholdId(sb);
+  if (hhId == null) return false;
+  const { data, error } = await sb.from('people').select('id').eq('id', personId).eq('guest_host_household_id', hhId).maybeSingle();
   if (error) throw new Error(error.message);
   return data != null;
+}
+
+// ── B8: Discard, and attendance approved after the meeting ───────────────────────────────────────────────────────
+
+/** "Discard Live arrangement" (meeting_live_discard, under the Live lock). `discarded`: there was one to discard. */
+export async function discardMeetingLive(sb: SupabaseClient, entryId: number, actorPersonId: number): Promise<{ ok: true; discarded: boolean } | { ok: false; error: string }> {
+  const { data, error } = await sb.rpc('meeting_live_discard', { p_entry: entryId, p_actor: actorPersonId });
+  if (error) return { ok: false, error: sanitizeRpcError(error.message) };
+  return { ok: true, discarded: data === true };
+}
+
+/** A meeting's calendar facts as the "is it over?" rule reads them. */
+export interface OverFacts {
+  entryId: number;
+  date: string;
+  endDate: string | null;
+  endTime: string | null;
+}
+
+export async function loadOverFacts(sb: SupabaseClient, entryId: number): Promise<OverFacts | null> {
+  const { data, error } = await sb.from('calendar_entries').select('id, entry_date, end_date, end_time').eq('id', entryId).maybeSingle();
+  if (error) throw new Error(error.message);
+  const r = data as { id: number; entry_date: string; end_date: string | null; end_time: string | null } | null;
+  return r ? { entryId: r.id, date: r.entry_date, endDate: r.end_date, endTime: r.end_time } : null;
+}
+
+/** The approval checklist for one meeting: its draft (the saved placement, Live's taps, visitors) and Roll Call. */
+export async function loadAttendanceReview(sb: SupabaseClient, entryId: number, date: string): Promise<AttendanceReview> {
+  const [saved, presence] = await Promise.all([loadSavedPlacement(sb, entryId), loadPresence(sb, entryId)]);
+  const classes = saved?.classes ?? [];
+  const placed = classes.flatMap((c) => c.memberIds);
+  const teachers = classes.map((c) => c.teacherId).filter((id): id is number => id != null);
+  const ids = [...new Set([...placed, ...teachers, ...presence.draft.keys(), ...presence.recorded])];
+  const names = await loadPeopleNames(sb, ids);
+  return buildAttendanceReview({
+    entryId,
+    date,
+    placed,
+    teachers,
+    visitors: [...presence.visitors],
+    draft: presence.draft,
+    recorded: presence.recorded,
+    nameOf: (id) => boardName(names.get(id) ?? '')
+  });
+}
+
+/**
+ * "Would you like to update attendance?": the most recent troop meeting that is over (as of `now`, Central wall
+ * clock) and has a draft to approve (a Live arrangement or Live taps), with its checklist. Null when there is none.
+ */
+export async function loadAttendancePrompt(sb: SupabaseClient, now: { date: string; time: string }): Promise<AttendanceReview | null> {
+  const { data: cats, error: catErr } = await sb.from('calendar_categories').select('label').eq('behavior', 'meeting');
+  if (catErr) throw new Error(catErr.message);
+  const labels = ((cats ?? []) as { label: string }[]).map((c) => c.label);
+  if (!labels.length) return null;
+  const { data, error } = await sb
+    .from('calendar_entries')
+    .select('id, entry_date, end_date, end_time')
+    .in('category', labels)
+    .eq('status', 'published')
+    .lte('entry_date', now.date)
+    .order('entry_date', { ascending: false })
+    .order('id', { ascending: false })
+    .limit(3);
+  if (error) throw new Error(error.message);
+  const rows = (data ?? []) as { id: number; entry_date: string; end_date: string | null; end_time: string | null }[];
+  const last = rows.find((r) => meetingIsOver({ date: r.entry_date, endDate: r.end_date, endTime: r.end_time }, now));
+  if (!last) return null;
+  const [boardRes, draftRes] = await Promise.all([
+    sb.from('meeting_boards').select('live_started_at').eq('calendar_entry_id', last.id).maybeSingle(),
+    sb.from('meeting_live_presence').select('person_id', { count: 'exact', head: true }).eq('calendar_entry_id', last.id)
+  ]);
+  if (boardRes.error) throw new Error(boardRes.error.message);
+  if (draftRes.error) throw new Error(draftRes.error.message);
+  const started = (boardRes.data as { live_started_at: string | null } | null)?.live_started_at != null;
+  if (!started && !draftRes.count) return null;
+  const review = await loadAttendanceReview(sb, last.id, last.entry_date);
+  return review.groups.length ? review : null;
 }

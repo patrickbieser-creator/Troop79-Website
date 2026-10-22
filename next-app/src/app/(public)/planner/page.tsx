@@ -9,17 +9,23 @@
  * Build a Plan is the first tab, but /planner stays Who's coming and does NOT redirect editors to /planner/build
  * (B4): the reminder and request emails link here, and the person who opens one wants the replies, not the plan. The
  * plan strip links to Build for this meeting.
+ *
+ * B8: once the last meeting is over, editors get "Would you like to update attendance?" under the tabs (the approval
+ * checklist; attendance-review.tsx).
  */
 import { redirect } from "next/navigation";
 import { resolveAdminActor } from "@/lib/admin-actor";
 import { createAdminClient } from "@/lib/supabase/server";
 import { fmtDay } from "@/lib/format-date";
+import { instantToCentral } from "@/lib/dates";
+import { loadAttendancePrompt } from "@/lib/meeting-live";
 import { plannerAccess } from "@/lib/meeting-planner-access";
 import { loadPlannerPage } from "@/lib/meeting-planner-load";
 import { loadPlannerLists } from "@/lib/people-lists";
 import { PageHeader } from "@/app/_components/page-header";
 import { PageShell } from "@/app/_components/page-shell";
 import { Notice } from "@/app/_components/notice";
+import { AttendancePrompt } from "./attendance-review";
 import { PlannerBoardView } from "./board-view";
 import { PlannerPoller } from "./planner-poller";
 import { PlannerProvider } from "./planner-client";
@@ -54,12 +60,25 @@ export default async function PlannerPage() {
   }
 
   // The slow-changing lists come from the cross-request cache (lib/people-lists); picks and answers are read fresh.
-  const page = await loadPlannerPage(createAdminClient(), undefined, await loadPlannerLists());
+  const sb = createAdminClient();
+  const [page, prompt] = await Promise.all([
+    loadPlannerPage(sb, undefined, await loadPlannerLists()),
+    access.canEdit
+      ? loadAttendancePrompt(sb, instantToCentral(new Date().toISOString())).catch((err) => {
+          console.error("Attendance prompt failed to load:", err);
+          return null;
+        })
+      : null,
+  ]);
+  const promptEl = prompt ? (
+    <AttendancePrompt key={JSON.stringify(prompt)} review={prompt} label={fmtDay(prompt.date)} />
+  ) : null;
   if (!page) {
     return (
       <>
         <PageHeader kicker="Meeting Planner" title="No meeting coming up" />
         <PlannerTabs active="board" />
+        {promptEl}
         <PageShell width="narrow">
           <Notice tone="info">
             There’s no troop meeting on the calendar yet. The board opens once
@@ -95,6 +114,7 @@ export default async function PlannerPage() {
     >
       <div className={styles.page}>
         <PlannerTabs active="board" />
+        {promptEl}
         {page.meeting.closed ? (
           <>
             <header className={styles.head}>{heading}</header>

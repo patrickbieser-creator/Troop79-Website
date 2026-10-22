@@ -10,8 +10,15 @@
  * started starts it (copy on first write) and finds a preview card ('s:…') by the matcher session it came from.
  * Card writes carry the card's version; a scout move is compare-and-set. Someone else's change first comes back as
  * { ok: false, stale: true } and the screen refreshes. Drag-and-drop and "Move to" call the same actions.
- * P4c: attendance (event_attendance through Roll Call's cascade, ledger credit included) and visitors, only on the
- * meeting day (Central). The same edit right takes attendance (Open Questions: edit alone is enough, SPL included).
+ * P4c: here / not here and visitors, only on the meeting day (Central). The same edit right takes them (edit alone is
+ * enough, the SPL included).
+ *
+ * B8 (Plans/Build-A-Plan.md; D-429): nothing is automatic. A tap here / not here and a visitor are a DRAFT
+ * (meeting_live_presence); attendance is recorded after the meeting by plannerRecordAttendanceAction, which applies
+ * only the differences through Roll Call's cascade (ledger credit included). plannerLiveDiscardAction undoes Live at
+ * any time. The stale-tab guard: a write may start Live only from a preview ('s:' card, or expectStarted: false from a
+ * screen that showed the preview). A saved card ('c:') or a screen that showed Live started, when Live isn't started
+ * (someone discarded it), gets STALE and the screen refreshes; it never silently restarts Live.
  */
 import { revalidatePath } from 'next/cache';
 import { resolveAdminActor } from '@/lib/admin-actor';
@@ -22,7 +29,18 @@ import { plannerAccess } from '@/lib/meeting-planner-access';
 import { SAVE_FAILED } from '@/lib/meeting-board-supply';
 import { loadEntryContext, recordAttendance, removeAttendance } from '@/lib/attendance-admin';
 import { NOT_A_TEACHER } from '@/lib/can-offer-to-teach';
-import { canTeachOnLive, liveStartedAt, onLiveBoard, resolveLiveClass, startMeetingLive } from '@/lib/meeting-live';
+import { instantToCentral } from '@/lib/dates';
+import {
+  canTeachOnLive,
+  discardMeetingLive,
+  liveStartedAt,
+  loadAttendanceReview,
+  loadOverFacts,
+  onLiveBoard,
+  resolveLiveClass,
+  startMeetingLive
+} from '@/lib/meeting-live';
+import { meetingIsOver } from '@/lib/meeting-live-shared';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 export type LiveWriteResult = { ok: true; stamp: string } | { ok: false; error: string; stale?: true };
@@ -56,10 +74,15 @@ function revalidate() {
   revalidatePath('/member/meeting');
 }
 
-/** Run one Live write: start Live first when it hasn't (copy on first write), map STALE, return the new stamp. */
-async function write(e: Editor, run: () => PromiseLike<{ error: { message: string } | null }>): Promise<LiveWriteResult> {
+/**
+ * Run one Live write: when Live hasn't started, start it first (copy on first write), but only when the write came
+ * from the preview (`mayStart`); otherwise the screen is stale (Live was discarded) and nothing is written. Maps STALE
+ * and returns the new stamp.
+ */
+async function write(e: Editor, run: () => PromiseLike<{ error: { message: string } | null }>, mayStart: boolean): Promise<LiveWriteResult> {
   try {
     if (!(await liveStartedAt(e.sb, e.meeting.entryId))) {
+      if (!mayStart) return stale();
       const s = await startMeetingLive(e.sb, e.meeting, e.actorPersonId);
       if (!s.ok) return s;
     }
@@ -79,6 +102,9 @@ const isCardId = (v: unknown): v is string => typeof v === 'string' && /^(c:\d+|
 const isVersion = (v: unknown): v is number => Number.isInteger(v) && (v as number) > 0;
 const isRotation = (v: unknown): v is number | null => v === null || (Number.isInteger(v) && (v as number) >= 1 && (v as number) <= 99);
 const isPerson = (v: unknown): v is number => Number.isInteger(v) && (v as number) > 0;
+const isPreview = (id: string | null | undefined) => typeof id === 'string' && id.startsWith('s:');
+/** A write without a card: it may start Live only when the screen said it showed the preview (false). Missing = no. */
+const fromPreview = (expectStarted: unknown) => expectStarted === false;
 
 /** A card from the screen, as a saved class id (starting Live when the card is a preview). Null = stale. */
 async function cardOf(e: Editor, id: string): Promise<number | null> {
@@ -109,7 +135,11 @@ export async function plannerLiveMoveScoutAction(input: { entryId: number; perso
     const from = input.from === null ? null : await cardOf(e, input.from);
     const to = input.to === null ? null : await cardOf(e, input.to);
     if ((input.from !== null && from === null) || (input.to !== null && to === null)) return stale();
-    return write(e, () => e.sb.rpc('meeting_live_move_scout', { p_entry: e.meeting.entryId, p_actor: e.actorPersonId, p_person: input.personId, p_from: from, p_to: to }));
+    return write(
+      e,
+      () => e.sb.rpc('meeting_live_move_scout', { p_entry: e.meeting.entryId, p_actor: e.actorPersonId, p_person: input.personId, p_from: from, p_to: to }),
+      isPreview(input.from) || isPreview(input.to)
+    );
   } catch {
     return fail(SAVE_FAILED);
   }
@@ -129,7 +159,7 @@ async function cardOp(
     if (teacherId !== null && !(await canTeachOnLive(e.sb, e.meeting, teacherId))) return fail(NOT_A_TEACHER);
     const id = await cardOf(e, input.classId);
     if (id === null) return stale();
-    return write(e, () => rpc(e, id));
+    return write(e, () => rpc(e, id), isPreview(input.classId));
   } catch {
     return fail(SAVE_FAILED);
   }
@@ -163,31 +193,42 @@ export async function plannerLiveRemoveClassAction(input: { entryId: number; cla
 }
 
 /** "+ Add rotation": adds one after the highest the screen showed (another leader's add first = nothing more). */
-export async function plannerLiveAddRotationAction(input: { entryId: number; expectMax: number }): Promise<LiveWriteResult> {
+export async function plannerLiveAddRotationAction(input: { entryId: number; expectMax: number; expectStarted?: boolean }): Promise<LiveWriteResult> {
   const e = await liveEditor(input?.entryId);
   if (!e.ok) return e;
   if (!Number.isInteger(input.expectMax) || input.expectMax < 0 || input.expectMax > 99) return fail('Malformed request');
-  return write(e, () => e.sb.rpc('meeting_live_add_rotation', { p_entry: e.meeting.entryId, p_actor: e.actorPersonId, p_expect_max: input.expectMax }));
+  return write(e, () => e.sb.rpc('meeting_live_add_rotation', { p_entry: e.meeting.entryId, p_actor: e.actorPersonId, p_expect_max: input.expectMax }), fromPreview(input.expectStarted));
 }
 
 /** Remove the last rotation, when it's empty (never Rotation 1 or 2). */
-export async function plannerLiveDropRotationAction(input: { entryId: number; number: number }): Promise<LiveWriteResult> {
+export async function plannerLiveDropRotationAction(input: { entryId: number; number: number; expectStarted?: boolean }): Promise<LiveWriteResult> {
   const e = await liveEditor(input?.entryId);
   if (!e.ok) return e;
   if (!isRotation(input.number) || input.number === null) return fail('Malformed request');
-  return write(e, () => e.sb.rpc('meeting_live_drop_rotation', { p_entry: e.meeting.entryId, p_actor: e.actorPersonId, p_number: input.number }));
+  return write(e, () => e.sb.rpc('meeting_live_drop_rotation', { p_entry: e.meeting.entryId, p_actor: e.actorPersonId, p_number: input.number }), fromPreview(input.expectStarted));
 }
 
 /** A rotation's location ("Back room"); blank clears it. */
-export async function plannerLiveSetLocationAction(input: { entryId: number; number: number; location: string }): Promise<LiveWriteResult> {
+export async function plannerLiveSetLocationAction(input: { entryId: number; number: number; location: string; expectStarted?: boolean }): Promise<LiveWriteResult> {
   const e = await liveEditor(input?.entryId);
   if (!e.ok) return e;
   if (!isRotation(input.number) || input.number === null || typeof input.location !== 'string' || input.location.length > 200) return fail('Malformed request');
-  return write(e, () => e.sb.rpc('meeting_live_set_location', { p_entry: e.meeting.entryId, p_actor: e.actorPersonId, p_number: input.number, p_location: input.location }));
+  return write(
+    e,
+    () => e.sb.rpc('meeting_live_set_location', { p_entry: e.meeting.entryId, p_actor: e.actorPersonId, p_number: input.number, p_location: input.location }),
+    fromPreview(input.expectStarted)
+  );
 }
 
 /** "+ Add an offer" on Live: a requirement already on the board (key) or a free-text title, an optional teacher. */
-export async function plannerLiveAddClassAction(input: { entryId: number; key: string | null; title: string | null; teacherId: number | null; rotation: number | null }): Promise<LiveWriteResult> {
+export async function plannerLiveAddClassAction(input: {
+  entryId: number;
+  key: string | null;
+  title: string | null;
+  teacherId: number | null;
+  rotation: number | null;
+  expectStarted?: boolean;
+}): Promise<LiveWriteResult> {
   const e = await liveEditor(input?.entryId);
   if (!e.ok) return e;
   const key = typeof input.key === 'string' && input.key.trim() ? input.key.trim().slice(0, 120) : null;
@@ -206,11 +247,12 @@ export async function plannerLiveAddClassAction(input: { entryId: number; key: s
       p_title: key ? null : title,
       p_teacher: input.teacherId,
       p_rotation: input.rotation
-    })
+    }),
+    fromPreview(input.expectStarted)
   );
 }
 
-/** Mark someone here or not here (attendance). The meeting day only. */
+/** Mark someone here or not here: a DRAFT tap (B8), recorded after the meeting. The meeting day only. */
 export async function plannerLiveSetPresentAction(input: { entryId: number; personId: number; present: boolean }): Promise<LiveWriteResult> {
   const e = await liveEditor(input?.entryId);
   if (!e.ok) return e;
@@ -218,15 +260,8 @@ export async function plannerLiveSetPresentAction(input: { entryId: number; pers
   if (e.meeting.date !== centralToday()) return fail(NOT_TODAY);
   try {
     if (!(await onLiveBoard(e.sb, e.meeting.entryId, input.personId))) return fail('That person isn’t on this meeting’s board.');
-    const ctx = await loadEntryContext(e.sb, e.meeting.entryId);
-    if (!ctx) return fail('That meeting is no longer on the calendar.');
-    const res = input.present
-      ? await recordAttendance(e.sb, ctx, input.personId, null, 'manual', e.actorLabel)
-      : await removeAttendance(e.sb, ctx, input.personId, e.actorLabel);
-    if (!res.ok) return fail(SAVE_FAILED);
-    // The attendance is saved either way; a failed bump only delays other screens until the next stamp change.
-    const touch = await e.sb.rpc('meeting_live_touch', { p_entry: e.meeting.entryId });
-    if (touch.error) console.error(`Meeting Live touch failed for entry ${e.meeting.entryId}: ${touch.error.message}`);
+    const { error } = await e.sb.rpc('meeting_live_set_presence', { p_entry: e.meeting.entryId, p_actor: e.actorPersonId, p_person: input.personId, p_present: input.present });
+    if (error) return fail(SAVE_FAILED);
     revalidate();
     return { ok: true, stamp: await loadBoardStamp(e.sb, e.meeting.entryId) };
   } catch {
@@ -234,7 +269,7 @@ export async function plannerLiveSetPresentAction(input: { entryId: number; pers
   }
 }
 
-/** "+ Add as visitor": a guest person, marked here, in a class (to) or in the pool (to null). The meeting day only. */
+/** "+ Add as visitor": a guest person, ticked here in the draft (B8), in a class (to) or the pool (to null). The meeting day only. */
 export async function plannerLiveAddVisitorAction(input: { entryId: number; name: string; to: string | null }): Promise<LiveWriteResult> {
   const e = await liveEditor(input?.entryId);
   if (!e.ok) return e;
@@ -243,19 +278,97 @@ export async function plannerLiveAddVisitorAction(input: { entryId: number; name
   try {
     const to = input.to === null ? null : await cardOf(e, input.to);
     if (input.to !== null && to === null) return stale();
-    const ctx = await loadEntryContext(e.sb, e.meeting.entryId);
-    if (!ctx) return fail('That meeting is no longer on the calendar.');
-    const { error } = await e.sb.rpc('meeting_live_add_visitor', {
+    const { error } = await e.sb.rpc('meeting_live_add_visitor_draft', {
       p_entry: e.meeting.entryId,
       p_actor: e.actorPersonId,
-      p_by: e.actorLabel,
       p_name: input.name,
-      p_to: to,
-      p_qty: ctx.defaultQty
+      p_to: to
     });
     if (error) return error.message === 'STALE' ? stale() : fail(KNOWN.test(error.message) ? error.message : SAVE_FAILED);
     revalidate();
     return { ok: true, stamp: await loadBoardStamp(e.sb, e.meeting.entryId) };
+  } catch {
+    return fail(SAVE_FAILED);
+  }
+}
+
+// ── B8: Discard, and attendance approved after the meeting ───────────────────────────────────────────────────────
+
+type Approver = { ok: true; sb: SupabaseClient; actorPersonId: number; actorLabel: string };
+
+/** Someone with planner Edit (the SPL included), on any meeting still on the calendar: no date or sign-up checks. */
+async function plannerEditor(entryId: unknown): Promise<Approver | { ok: false; error: string }> {
+  if (!Number.isInteger(entryId)) return fail('Malformed request');
+  const actor = await resolveAdminActor();
+  if (!plannerAccess(actor).canEdit || actor?.personId == null) return fail('Only someone who can edit the Meeting Planner can do that.');
+  return { ok: true, sb: createAdminClient(), actorPersonId: actor.personId, actorLabel: actor.label };
+}
+
+/**
+ * "Discard Live arrangement": the classes, rotations, moves and draft ticks go; recorded attendance, visitors,
+ * offerings and teacher sign-ups stay. Allowed any time, the meeting day included. The board's matcher view returns.
+ */
+export async function plannerLiveDiscardAction(input: { entryId: number }): Promise<LiveWriteResult> {
+  const e = await plannerEditor(input?.entryId);
+  if (!e.ok) return e;
+  try {
+    if (!(await loadOverFacts(e.sb, input.entryId))) return fail('That meeting is no longer on the calendar.');
+    const res = await discardMeetingLive(e.sb, input.entryId, e.actorPersonId);
+    if (!res.ok) return fail(SAVE_FAILED);
+    revalidate();
+    return { ok: true, stamp: await loadBoardStamp(e.sb, input.entryId) };
+  } catch {
+    return fail(SAVE_FAILED);
+  }
+}
+
+export type RecordAttendanceResult = { ok: true; added: number; removed: number; failed: number } | { ok: false; error: string };
+
+const NOT_OVER = 'Attendance is recorded once the meeting is over.';
+const NOT_ON_LIST = 'Someone on that list isn’t on this meeting’s checklist. Reload and try again.';
+const isIdList = (v: unknown): v is number[] => Array.isArray(v) && v.length <= 500 && v.every(isPerson);
+
+/**
+ * "Record attendance for N people" (B8): after the meeting, an editor approves the checklist. Only the differences are
+ * applied, against what Roll Call has NOW: `add` people not yet recorded are recorded (ledger credit included); `remove`
+ * people still recorded are removed (credit retired first). Nobody is removed unless named in `remove`, a deliberate
+ * untick. Everyone named must be on the meeting's checklist.
+ */
+export async function plannerRecordAttendanceAction(input: { entryId: number; add: number[]; remove: number[] }): Promise<RecordAttendanceResult> {
+  const e = await plannerEditor(input?.entryId);
+  if (!e.ok) return e;
+  if (!isIdList(input.add) || !isIdList(input.remove)) return fail('Malformed request');
+  try {
+    const facts = await loadOverFacts(e.sb, input.entryId);
+    if (!facts) return fail('That meeting is no longer on the calendar.');
+    if (!meetingIsOver(facts, instantToCentral(new Date().toISOString()))) return fail(NOT_OVER);
+    const review = await loadAttendanceReview(e.sb, facts.entryId, facts.date);
+    const people = new Map(review.groups.flatMap((g) => g.people).map((p) => [p.personId, p]));
+    if ([...input.add, ...input.remove].some((id) => !people.has(id))) return fail(NOT_ON_LIST);
+    const ctx = await loadEntryContext(e.sb, facts.entryId);
+    if (!ctx) return fail('That meeting is no longer on the calendar.');
+    const toAdd = [...new Set(input.add)].filter((id) => !people.get(id)!.recorded);
+    const toRemove = [...new Set(input.remove)].filter((id) => people.get(id)!.recorded && !input.add.includes(id));
+    let added = 0;
+    let removed = 0;
+    let failed = 0;
+    for (const id of toAdd) {
+      const r = await recordAttendance(e.sb, ctx, id, null, 'manual', e.actorLabel);
+      if (r.ok) added++;
+      else failed++;
+    }
+    for (const id of toRemove) {
+      const r = await removeAttendance(e.sb, ctx, id, e.actorLabel);
+      if (r.ok) removed++;
+      else failed++;
+    }
+    if (failed) console.error(`Record attendance for entry ${facts.entryId}: ${failed} not saved`);
+    if (added || removed) {
+      const touch = await e.sb.rpc('meeting_live_touch', { p_entry: facts.entryId });
+      if (touch.error) console.error(`Meeting Live touch failed for entry ${facts.entryId}: ${touch.error.message}`);
+    }
+    revalidate();
+    return { ok: true, added, removed, failed };
   } catch {
     return fail(SAVE_FAILED);
   }

@@ -1,0 +1,103 @@
+/* "Would you like to update attendance?" (attendance-review.tsx; Build a Plan B8). A quiet line under the planner
+   tabs, and the approval checklist in the shared Drawer. Public tokens only. */
+
+.prompt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3) var(--sp-4);
+  margin: var(--sp-4) var(--sp-7) 0;
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-md);
+  background: var(--warm-white);
+}
+.ask {
+  flex: 1 1 260px;
+  margin: 0;
+  font: 600 var(--fs-md) / 1.4 var(--font-ui);
+  color: var(--text-head);
+}
+.quiet {
+  flex: 1 1 260px;
+  margin: 0;
+  font: var(--fs-sm) / 1.4 var(--font-ui);
+  color: var(--text-meta);
+}
+.link {
+  min-height: 44px;
+  padding: 0 var(--sp-2);
+  border: 0;
+  background: transparent;
+  font: 600 var(--fs-sm) / 1 var(--font-ui);
+  color: var(--navy);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.done {
+  flex-basis: 100%;
+  margin: 0;
+  font: 600 var(--fs-sm) / 1.4 var(--font-ui);
+  color: var(--forest);
+}
+
+/* ── the checklist ── */
+.group {
+  margin: 0 0 var(--sp-5);
+  padding: 0;
+  border: 0;
+}
+.legend {
+  padding: 0;
+  margin-bottom: var(--sp-2);
+  font: 700 var(--fs-xs) / 1.4 var(--font-ui);
+  color: var(--text-meta);
+}
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: 44px;
+  border-bottom: 1px solid var(--border-light);
+  cursor: pointer;
+}
+.box {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  accent-color: var(--navy);
+}
+.name {
+  flex: 1;
+  font: var(--fs-md) / 1.3 var(--font-ui);
+  color: var(--text-body);
+}
+.tag {
+  font: 600 var(--fs-2xs) / 1 var(--font-ui);
+  color: var(--forest);
+}
+.foot {
+  display: grid;
+  gap: var(--sp-2);
+}
+.sum {
+  margin: 0;
+  font: var(--fs-sm) / 1.4 var(--font-ui);
+  color: var(--text-meta);
+}
+.problem {
+  margin: 0;
+  font: 600 var(--fs-sm) / 1.4 var(--font-ui);
+  color: var(--status-danger);
+}
+
+@media (max-width: 640px) {
+  .prompt {
+    margin: var(--sp-3) var(--sp-4) 0;
+  }
+}
