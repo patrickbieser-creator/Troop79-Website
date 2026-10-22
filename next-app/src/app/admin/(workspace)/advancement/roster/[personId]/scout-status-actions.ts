@@ -5,6 +5,7 @@ import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import { recordAudit } from '@/lib/audit';
 import { INACTIVE_REASON_LABEL, type InactiveReason } from '@/lib/supabase/types';
+import { expirePeopleLists } from '@/lib/people-lists';
 
 /**
  * A scout's Active/Inactive status on its own (Plans/Person-Editor-Rethink.md
@@ -45,6 +46,8 @@ function revalidateAll() {
 }
 
 export async function setScoutActive(scoutId: string, active: boolean, reason?: string): Promise<Result> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   try {
     await requireCapability('roster.manage');
   } catch {

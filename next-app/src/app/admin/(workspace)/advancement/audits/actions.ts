@@ -5,6 +5,7 @@ import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import { syncCredit } from '@/lib/attendance-admin';
 import { ledgerCodeFor, qtyForMissingCreditResolution, type CreditKind } from '@/lib/attendance-shared';
+import { expirePeopleLists } from '@/lib/people-lists';
 
 /**
  * The Audits section's one write path, shared by every check: backfilling
@@ -25,6 +26,8 @@ interface MissingItem {
 }
 
 export async function fillMissingRankRequirements(formData: FormData): Promise<Result> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   let session;
   try {
     session = await requireCapability('advancement.write');
@@ -87,6 +90,8 @@ interface ResolveResult {
  * as a manual Advancement Ledger delete, just applied to N-1 rows at once.
  */
 export async function resolveDuplicateLedgerEntries(formData: FormData): Promise<ResolveResult> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   let session;
   try {
     session = await requireCapability('advancement.write');
@@ -251,6 +256,8 @@ export async function addAttendanceForOrphanedCredit(formData: FormData): Promis
 /** credit_orphaned, choice B: they weren't there after all — retire the
  *  credit. Soft delete, same trail as a manual Advancement Ledger delete. */
 export async function retireOrphanedCredit(formData: FormData): Promise<ReconcileResult> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   let session;
   try {
     session = await requireCapability('advancement.write');
@@ -283,6 +290,8 @@ export async function retireOrphanedCredit(formData: FormData): Promise<Reconcil
 /** qty_mismatch: the leader picks which side is right; the other side is
  *  brought in line with it. Never averaged or guessed. */
 export async function resolveQtyMismatch(formData: FormData): Promise<ReconcileResult> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   try {
     await requireCapability('advancement.write');
   } catch {
@@ -327,6 +336,8 @@ export async function resolveQtyMismatch(formData: FormData): Promise<ReconcileR
  *  follows it, never the other way around. Recomputes `code` too, since a
  *  meeting's code embeds its date (ledgerCodeFor). */
 export async function resolveDateDrift(formData: FormData): Promise<ReconcileResult> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   try {
     await requireCapability('advancement.write');
   } catch {

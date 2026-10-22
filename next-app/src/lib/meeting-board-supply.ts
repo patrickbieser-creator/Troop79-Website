@@ -12,6 +12,7 @@ import type { AdvancementCatalog } from '@/lib/advancement-catalog';
 import { canOfferToTeach } from '@/lib/can-offer-to-teach';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 import type { JuniorLeaderOverride } from '@/lib/participant-class';
+import type { TeacherPoolRows } from '@/lib/people-lists';
 import { loadIntents, loadScoutProgress, type BoardMeeting, type BoardScoutRow, type BoardWriteResult } from '@/lib/meeting-board';
 import { fmtDate } from '@/lib/format-date';
 import { NOT_PLANNABLE, SM_CONFERENCE_CODES } from '@/lib/rank-calculus';
@@ -58,12 +59,14 @@ export async function loadTeacherPeople(
   who: 'all' | readonly number[],
   onDate: string,
   catalog: Pick<AdvancementCatalog, 'ranks'>,
-  opts: { evenIfIneligible?: boolean } = {}
+  opts: { evenIfIneligible?: boolean; pool?: TeacherPoolRows } = {}
 ): Promise<Map<number, TeacherPerson>> {
   const out = new Map<number, TeacherPerson>();
   if (who !== 'all' && !who.length) return out;
   const ids = who === 'all' ? null : [...new Set(who)];
-  const [dir, scouts] = await Promise.all([
+  // 'all' with the planner's cached directory rows (lib/people-lists): only the Junior Leaders' ledger is read.
+  const pool = who === 'all' ? opts.pool : undefined;
+  const [dir, scouts] = pool ? [pool.adults.map((person_id) => ({ person_id })), pool.scouts] : await Promise.all([
     fetchAllRows<{ person_id: number }>((from, to) => {
       let q = sb.from('person_directory').select('person_id').in('tab', ['leader', 'adult']).eq('in_picker', true);
       if (ids) q = q.in('person_id', ids);
@@ -102,18 +105,26 @@ export async function loadTeacherPeople(
   const keep = [...kindOf.keys()];
   if (!keep.length) return out;
 
-  const [people, skills, counselors, progress] = await Promise.all([
-    fetchAllRows<{ id: number; display_name: string; first_name: string | null; last_name: string | null; gender: string | null }>((from, to) =>
-      sb.from('people').select('id, display_name, first_name, last_name, gender').in('id', keep).order('id').range(from, to)
-    ),
-    fetchAllRows<{ person_id: number; skill_id: string }>((from, to) =>
-      sb.from('teaching_skills').select('person_id, skill_id').in('person_id', keep).order('person_id').order('skill_id').range(from, to)
-    ),
-    fetchAllRows<{ person_id: number; mb_id: string }>((from, to) =>
-      sb.from('merit_badge_counselors').select('person_id, mb_id').in('person_id', keep).order('id').range(from, to)
-    ),
-    loadScoutProgress(sb, juniors.map((s) => s.id))
-  ]);
+  const kept = new Set(keep);
+  const [people, skills, counselors, progress] = pool
+    ? await Promise.all([
+        pool.people.filter((p) => kept.has(p.id)),
+        pool.skills.filter((s) => kept.has(s.person_id)),
+        pool.counselors.filter((c) => kept.has(c.person_id)),
+        loadScoutProgress(sb, juniors.map((s) => s.id))
+      ])
+    : await Promise.all([
+        fetchAllRows<{ id: number; display_name: string; first_name: string | null; last_name: string | null; gender: string | null }>((from, to) =>
+          sb.from('people').select('id, display_name, first_name, last_name, gender').in('id', keep).order('id').range(from, to)
+        ),
+        fetchAllRows<{ person_id: number; skill_id: string }>((from, to) =>
+          sb.from('teaching_skills').select('person_id, skill_id').in('person_id', keep).order('person_id').order('skill_id').range(from, to)
+        ),
+        fetchAllRows<{ person_id: number; mb_id: string }>((from, to) =>
+          sb.from('merit_badge_counselors').select('person_id, mb_id').in('person_id', keep).order('id').range(from, to)
+        ),
+        loadScoutProgress(sb, juniors.map((s) => s.id))
+      ]);
   const skillsOf = new Map<number, Set<string>>();
   for (const s of skills) skillsOf.set(s.person_id, (skillsOf.get(s.person_id) ?? new Set()).add(s.skill_id));
   const badgesOf = new Map<number, Set<string>>();
@@ -203,11 +214,12 @@ export async function loadTeachBoard(
   meeting: Pick<BoardMeeting, 'entryId' | 'date'>,
   catalog: Catalog,
   board: readonly BoardScoutRow[] | Promise<readonly BoardScoutRow[]>,
-  include: 'all' | readonly number[] = []
+  include: 'all' | readonly number[] = [],
+  opts: { pool?: TeacherPoolRows } = {}
 ): Promise<TeachBoard> {
   const [[rows, topics], everyone, allIntents] = await Promise.all([
     Promise.all([loadSupplyRows(sb, [meeting.entryId]), loadFocusTopics(sb, meeting.entryId)]),
-    include === 'all' ? loadTeacherPeople(sb, 'all', meeting.date, catalog) : null,
+    include === 'all' ? loadTeacherPeople(sb, 'all', meeting.date, catalog, { pool: opts.pool }) : null,
     loadIntents(sb, meeting.entryId)
   ]);
   const focus = topics.filter((t) => t.seeded);

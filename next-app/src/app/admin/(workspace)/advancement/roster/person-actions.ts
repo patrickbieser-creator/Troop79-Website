@@ -20,6 +20,7 @@ import {
 
 import { centralToday } from '@/lib/dates';
 import { ROLE_LABEL } from './[personId]/record-types';
+import { expirePeopleLists } from '@/lib/people-lists';
 /**
  * Person-level edits behind the Roster's Leaders and Adults tabs.
  *
@@ -121,6 +122,8 @@ export type GrantableRole =
  * family typing a known email means "this is that person".
  */
 export async function createPerson(formData: FormData): Promise<Result & { personId?: number }> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   await requireCapability('roster.manage');
 
   const firstName = String(formData.get('first_name') ?? '').trim();
@@ -222,6 +225,8 @@ export async function createPerson(formData: FormData): Promise<Result & { perso
 }
 
 export async function addRole(personId: number, role: GrantableRole): Promise<Result> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   await requireCapability('roster.manage');
 
   const supabase = createAdminClient();
@@ -258,6 +263,8 @@ export async function addRole(personId: number, role: GrantableRole): Promise<Re
 /** Ends a role rather than deleting it — "stopped helping out in 2026" is a
  *  fact worth keeping, and it is what moves someone back to the Adults tab. */
 export async function endRole(roleId: number): Promise<Result> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   await requireCapability('roster.manage');
 
   const supabase = createAdminClient();
@@ -294,6 +301,8 @@ export async function endRole(roleId: number): Promise<Result> {
 
 /** Deletes an ended role outright, for one recorded in error. */
 export async function deleteRole(roleId: number): Promise<Result> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   await requireCapability('roster.manage');
 
   const supabase = createAdminClient();
@@ -786,6 +795,8 @@ export async function setPersonActive(
   active: boolean,
   reason?: string
 ): Promise<Result> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   await requireCapability('roster.manage');
 
   const supabase = createAdminClient();
@@ -914,6 +925,8 @@ export async function createAdultForScout(
   type: 'parent_of' | 'guardian_of' | 'emergency_contact_for',
   isGuardian: boolean
 ): Promise<Result & { personId?: number; linked?: boolean }> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   await requireCapability('roster.manage');
   const trimmed = name.trim();
   if (!trimmed) return { ok: false, error: 'A name is required.' };
@@ -985,6 +998,8 @@ export async function createAdultForScout(
  * re-entering by hand loses whichever of those the eye misses.
  */
 export async function mergePersonInto(loserId: number, survivorId: number): Promise<Result> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   const session = await requireCapability('roster.manage');
   if (loserId === survivorId) return { ok: false, error: 'Pick two different people.' };
 
@@ -1050,6 +1065,8 @@ export async function mergePersonInto(loserId: number, survivorId: number): Prom
  * orphaning them.
  */
 export async function deletePerson(personId: number): Promise<Result> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   await requireCapability('roster.manage');
   const supabase = createAdminClient();
 

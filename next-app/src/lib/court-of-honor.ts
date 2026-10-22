@@ -38,6 +38,7 @@ import {
   type ReportRange,
   type RawLedgerRow
 } from '@/lib/advancement-report';
+import { expirePeopleLists } from '@/lib/people-lists';
 
 function cleanLabel(label: string): string {
   return label.replace(/[.*]+$/, '').trim();
@@ -186,6 +187,8 @@ export async function markItemsPresented(
   ceremonyEndDate: string,
   presentedBy: string
 ): Promise<void> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   const ids = collectPresentableEntryIds(report);
   if (ids.length === 0) return;
 

@@ -19,6 +19,7 @@ import {
 import { sendEmail, renderEmail, troopEmail } from '@/lib/email';
 import { addPersonEmail, setPrimaryEmail, removePersonEmail, type PersonEmailLabel } from '@/lib/person-emails';
 import { loadScoutRows } from '@/lib/scout-row';
+import { expirePeopleLists } from '@/lib/people-lists';
 
 const PROFILE_PATH = '/profile';
 
@@ -349,6 +350,8 @@ export async function withdrawChangeRequestAction(formData: FormData): Promise<v
  * the others rather than failing here.
  */
 export async function addHouseholdMemberAction(formData: FormData): Promise<void> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   const { session, party } = await requireParty();
   const back = PROFILE_PATH;
 

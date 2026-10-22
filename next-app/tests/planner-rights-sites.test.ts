@@ -18,6 +18,7 @@ vi.mock('../src/lib/admin-actor', async (orig) => ({
 }));
 vi.mock('server-only', () => ({}));
 vi.mock('../src/lib/supabase/server', () => ({ createAdminClient: () => ({}) }));
+vi.mock('../src/lib/people-lists', () => ({ loadPlannerLists: async () => ({ meetingLabels: ['Troop Meeting'], leaderIds: [], pool: null }) }));
 vi.mock('../src/lib/meeting-board', () => ({
   loadNextMeeting: async () => (mocks.nextEntryId == null ? null : { entryId: mocks.nextEntryId }),
   loadBoardStamp: async () => 'stamp-1'

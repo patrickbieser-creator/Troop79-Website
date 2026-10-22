@@ -61,16 +61,20 @@ function toMeeting(r: EntryRow): BoardMeeting {
   };
 }
 
-export async function loadNextMeeting(sb: SupabaseClient, today: string = centralToday()): Promise<BoardMeeting | null> {
-  return (await loadUpcomingMeetings(sb, 1, today))[0] ?? null;
+/** `meetingLabels`: the meeting categories when the caller has them (the planner's cached lists, lib/people-lists). */
+export async function loadNextMeeting(sb: SupabaseClient, today: string = centralToday(), meetingLabels?: readonly string[]): Promise<BoardMeeting | null> {
+  return (await loadUpcomingMeetings(sb, 1, today, meetingLabels))[0] ?? null;
 }
 
 /** The next `limit` published Troop Meeting entries on or after today (Central), soonest first: the dates a standing
  *  teaching offer can list (Phase 2). Closed ones are included; the caller filters on `closed`. */
-export async function loadUpcomingMeetings(sb: SupabaseClient, limit: number, today: string = centralToday()): Promise<BoardMeeting[]> {
-  const { data: cats, error: catErr } = await sb.from('calendar_categories').select('label').eq('behavior', 'meeting');
-  if (catErr) throw new Error(catErr.message);
-  const labels = ((cats ?? []) as { label: string }[]).map((c) => c.label);
+export async function loadUpcomingMeetings(sb: SupabaseClient, limit: number, today: string = centralToday(), meetingLabels?: readonly string[]): Promise<BoardMeeting[]> {
+  let labels = meetingLabels ? [...meetingLabels] : null;
+  if (!labels) {
+    const { data: cats, error: catErr } = await sb.from('calendar_categories').select('label').eq('behavior', 'meeting');
+    if (catErr) throw new Error(catErr.message);
+    labels = ((cats ?? []) as { label: string }[]).map((c) => c.label);
+  }
   if (!labels.length) return [];
   const { data, error } = await sb
     .from('calendar_entries')
@@ -313,13 +317,15 @@ export interface BoardScoutRow extends BoardScout {
 }
 
 /** Everyone on the board: every active scout with their answer and effective picks. One read path for the member
- *  page's "who else picked" and the admin tab's counts. */
+ *  page's "who else picked" and the admin tab's counts. `activeScouts`: the list when the caller has it (the planner's
+ *  cached lists, lib/people-lists boardScoutsOf). */
 export async function loadBoardState(
   sb: SupabaseClient,
   meeting: Pick<BoardMeeting, 'entryId' | 'date'>,
-  catalog: Pick<AdvancementCatalog, 'ranks' | 'rankRequirements'>
+  catalog: Pick<AdvancementCatalog, 'ranks' | 'rankRequirements'>,
+  activeScouts?: readonly BoardScout[]
 ): Promise<BoardScoutRow[]> {
-  const scouts = await loadBoardScouts(sb);
+  const scouts = activeScouts ?? (await loadBoardScouts(sb));
   const [picks, intents] = await Promise.all([loadEffectivePicks(sb, meeting, scouts, catalog), loadIntents(sb, meeting.entryId)]);
   return scouts.map((s) => ({
     ...s,

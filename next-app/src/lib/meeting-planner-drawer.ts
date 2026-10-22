@@ -18,6 +18,7 @@ import { loadTeachBoard } from '@/lib/meeting-board-supply';
 import { assessTeacher, teacherIntent, teacherName } from '@/lib/meeting-board-teach';
 import { boardName, effectiveIntent, MAX_PICKS, type Intent } from '@/lib/meeting-board-shared';
 import { allRows, nextRankOf, topicWords } from '@/lib/meeting-board-picklist';
+import { boardScoutsOf, type PeopleLists } from '@/lib/people-lists';
 
 export interface DrawerOption {
   key: string;
@@ -82,10 +83,16 @@ export function drawerOptions(input: {
 }
 
 /** One person's drawer on this meeting, or null when they're neither an active scout nor someone who may teach. */
-export async function loadPersonDrawer(sb: SupabaseClient, meeting: Pick<BoardMeeting, 'entryId' | 'date'>, personId: number, viewerPersonId: number | null): Promise<PersonDrawer | null> {
+export async function loadPersonDrawer(
+  sb: SupabaseClient,
+  meeting: Pick<BoardMeeting, 'entryId' | 'date'>,
+  personId: number,
+  viewerPersonId: number | null,
+  lists?: PeopleLists
+): Promise<PersonDrawer | null> {
   const catalog = await loadAdvancementCatalog();
-  const board = loadBoardState(sb, meeting, catalog);
-  const [rows, teach] = await Promise.all([board, loadTeachBoard(sb, meeting, catalog, board, 'all')]);
+  const board = loadBoardState(sb, meeting, catalog, lists ? boardScoutsOf(lists) : undefined);
+  const [rows, teach] = await Promise.all([board, loadTeachBoard(sb, meeting, catalog, board, 'all', { pool: lists?.pool })]);
   const rankName = new Map(catalog.ranks.map((r) => [r.id, r.display_name]));
   const scoutName = new Map(rows.map((r) => [r.personId, boardName(r.name)]));
   const words = (key: string) => {

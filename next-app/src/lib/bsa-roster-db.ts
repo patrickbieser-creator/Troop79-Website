@@ -8,6 +8,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 import type { RegistrationUpdate, RosterPerson } from '@/lib/bsa-roster';
+import { expirePeopleLists } from '@/lib/people-lists';
 
 interface PersonRow {
   id: number;
@@ -83,6 +84,8 @@ export async function loadRosterPeople(sb: SupabaseClient): Promise<RosterPerson
 
 /** Write each matched member's registration. Returns how many people were updated. */
 export async function saveRegistrations(sb: SupabaseClient, updates: RegistrationUpdate[]): Promise<number> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   let saved = 0;
   for (const u of updates) {
     const { error } = await sb

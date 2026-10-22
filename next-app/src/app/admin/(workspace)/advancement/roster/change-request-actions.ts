@@ -19,6 +19,7 @@ import {
   type EditableScoutField,
   type FieldValue
 } from '@/lib/change-requests';
+import { expirePeopleLists } from '@/lib/people-lists';
 
 /**
  * Leader-side review for family-submitted change requests
@@ -91,6 +92,8 @@ export async function getPendingChangeRequest(
 }
 
 export async function approveChangeRequest(id: number): Promise<Result> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   const session = await requireCapability('roster.manage');
   const supabase = createAdminClient();
 

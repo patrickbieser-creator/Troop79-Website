@@ -42,6 +42,7 @@ import { assessTeacher, FREEFORM_MAX, freeformTitle, teacherIntent } from '@/lib
 import { plannerAccess } from '@/lib/meeting-planner-access';
 import { loadPersonDrawer, type PersonDrawer } from '@/lib/meeting-planner-drawer';
 import { seedFocusSet, seedTopic, unseedTopic } from '@/lib/meeting-focus-db';
+import { loadPlannerLists } from '@/lib/people-lists';
 
 export type PlannerDrawerResult = { ok: true; drawer: PersonDrawer; stamp: string } | { ok: false; error: string };
 /**
@@ -65,7 +66,8 @@ export async function plannerStampAction(entryId: number): Promise<{ ok: true; s
   if (!plannerAccess(await resolveAdminActor()).canView || !Number.isInteger(entryId)) return { ok: false };
   try {
     const sb = createAdminClient();
-    if ((await loadNextMeeting(sb))?.entryId !== entryId) return { ok: false };
+    const lists = await loadPlannerLists();
+    if ((await loadNextMeeting(sb, undefined, lists.meetingLabels))?.entryId !== entryId) return { ok: false };
     return { ok: true, stamp: await loadBoardStamp(sb, entryId) };
   } catch {
     return { ok: false };
@@ -109,7 +111,8 @@ function revalidate() {
 export async function plannerOpenPersonAction(input: { entryId: number; personId: number }): Promise<PlannerDrawerResult> {
   const e = await editor(input?.entryId, input?.personId);
   if (!e.ok) return e;
-  const [drawer, stamp] = await Promise.all([loadPersonDrawer(e.sb, e.meeting, e.personId, e.actorPersonId), loadBoardStamp(e.sb, e.meeting.entryId)]);
+  const lists = await loadPlannerLists();
+  const [drawer, stamp] = await Promise.all([loadPersonDrawer(e.sb, e.meeting, e.personId, e.actorPersonId, lists), loadBoardStamp(e.sb, e.meeting.entryId)]);
   return drawer ? { ok: true, drawer, stamp } : fail('That person isn’t on the board.');
 }
 
@@ -321,7 +324,7 @@ export async function plannerSendRemindersAction(input: { entryId: number; perso
   if (!e.ok) return e;
   const ids = input.personIds;
   if (!Array.isArray(ids) || !ids.length || !ids.every((id) => Number.isInteger(id))) return fail('Choose at least one person.');
-  const page = await loadPlannerPage(e.sb, e.meeting);
+  const page = await loadPlannerPage(e.sb, e.meeting, await loadPlannerLists());
   if (!page) return fail('That meeting isn’t available. Reload the page.');
   const waiting = new Map([...page.board.haventAnswered.scouts, ...page.board.haventAnswered.adults].map((p) => [p.personId, p.name]));
   // The cap applies to who is actually waiting, in the board's order; anyone past it is named, not dropped silently.

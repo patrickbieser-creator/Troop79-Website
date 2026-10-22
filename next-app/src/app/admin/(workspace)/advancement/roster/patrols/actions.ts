@@ -6,6 +6,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { recordAudit } from '@/lib/audit';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 import { diffAssignments, type PatrolDraft, type PatrolScout } from '@/lib/patrol-assign';
+import { expirePeopleLists } from '@/lib/people-lists';
 
 /**
  * Save a whole screen of patrol changes at once.
@@ -28,6 +29,8 @@ interface Result {
 const SCOUT_COLS = 'id, display_name, patrol, current_rank, graduation_year, active';
 
 export async function savePatrolAssignments(draft: PatrolDraft): Promise<Result> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   try {
     await requireCapability('roster.manage');
   } catch {

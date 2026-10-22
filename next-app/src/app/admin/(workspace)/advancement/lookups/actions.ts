@@ -19,6 +19,7 @@ import { SITE_TEXT_KEYS } from '@/lib/site-text';
 import { SEO_KEYS } from '@/lib/seo';
 import { saveTeachingSkills, undoTeachingSkillChange, markTeachingSkillChangeReviewed } from '@/lib/teaching-skills';
 import { parseTeachMinutes } from '@/lib/meeting-board-picklist';
+import { expireMeetingCategories, expirePeopleLists } from '@/lib/people-lists';
 
 /** The event-tab kinds an event can be classified as — Day Outing/Fundraiser
  *  have no natural quantity of their own, Camping/Hiking are implied by
@@ -204,6 +205,8 @@ function revalidateAll() {
 // and grep found zero remaining callers.
 
 export async function createScout(formData: FormData): Promise<Result> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   try {
     await requireCapability('roster.manage');
   } catch {
@@ -303,6 +306,8 @@ export async function createScout(formData: FormData): Promise<Result> {
 }
 
 export async function updateScout(formData: FormData): Promise<Result> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   try {
     await requireCapability('roster.manage');
   } catch {
@@ -426,6 +431,8 @@ export async function updateScout(formData: FormData): Promise<Result> {
 // stays until the old dialog editor retires (Phase 6).
 
 export async function updateScoutIdentity(scoutId: string, input: ScoutIdentityInput): Promise<Result> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   try {
     await requireCapability('roster.manage');
   } catch {
@@ -503,6 +510,8 @@ export async function updateScoutIdentity(scoutId: string, input: ScoutIdentityI
 }
 
 export async function updateScoutFields(scoutId: string, input: ScoutFieldsInput): Promise<Result> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   try {
     await requireCapability('roster.manage');
   } catch {
@@ -577,6 +586,8 @@ export async function updateScoutFields(scoutId: string, input: ScoutFieldsInput
 // ── Merit Badges ───────────────────────────────────────────────────────────
 
 export async function updateMeritBadge(formData: FormData): Promise<Result> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   try {
     await requireCapability('roster.manage');
   } catch {
@@ -1013,6 +1024,8 @@ export async function setTeachingSkills(formData: FormData): Promise<Result> {
  * inside the six-month window) BEFORE promoting, or temporarily re-activate.
  */
 export async function promoteScoutToAdult(formData: FormData): Promise<Result> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   try {
     await requireCapability('roster.manage');
   } catch {
@@ -1102,6 +1115,8 @@ export async function promoteScoutToAdult(formData: FormData): Promise<Result> {
  * counting toward the rank/MB.
  */
 export async function updateReqCode(formData: FormData): Promise<Result> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   try {
     await requireCapability('roster.manage');
   } catch {
@@ -1266,6 +1281,8 @@ function validateCategory(f: CategoryFields): string | null {
 }
 
 export async function createCalendarCategory(formData: FormData): Promise<Result> {
+  // The planner caches which categories are meetings (lib/people-lists); expired when this action ends.
+  expireMeetingCategories();
   try {
     await requireCapability('roster.manage');
   } catch {
@@ -1293,6 +1310,8 @@ export async function createCalendarCategory(formData: FormData): Promise<Result
  * change into calendar_entries and photo_albums as part of the same statement.
  */
 export async function updateCalendarCategory(formData: FormData): Promise<Result> {
+  // The planner caches which categories are meetings (lib/people-lists); expired when this action ends.
+  expireMeetingCategories();
   try {
     await requireCapability('roster.manage');
   } catch {
@@ -1318,6 +1337,8 @@ export async function updateCalendarCategory(formData: FormData): Promise<Result
 }
 
 export async function deleteCalendarCategory(formData: FormData): Promise<Result> {
+  // The planner caches which categories are meetings (lib/people-lists); expired when this action ends.
+  expireMeetingCategories();
   try {
     await requireCapability('roster.manage');
   } catch {

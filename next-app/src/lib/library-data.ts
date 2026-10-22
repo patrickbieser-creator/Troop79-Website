@@ -26,6 +26,7 @@ import { isDuplicateLedgerEntry } from '@/lib/ledger-dedup';
 import { notifyReviewOutcome } from '@/lib/review-notifications';
 import { fmtDate } from '@/lib/format-date';
 import { buildReqTree, type ReqNode } from '@/lib/mb-helpers';
+import { expirePeopleLists } from '@/lib/people-lists';
 
 export interface PlacedResource extends LibraryResource {
   placement: Pick<LibraryPlacement, 'id' | 'pinned' | 'sort_order' | 'target_kind' | 'target_key'>;
@@ -734,6 +735,8 @@ export async function approveSubmission(
   id: number,
   reviewer: string
 ): Promise<{ error: string | null; ledgerEntryId?: number }> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   const { data: sub } = await supabase
     .from('requirement_submissions')
     .select('*')

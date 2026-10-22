@@ -15,6 +15,7 @@ import { safeInternalPath } from '@/lib/safe-redirect';
 import { loadHouseholdByKey, storedHouseholdId } from '@/lib/households';
 import { parseNewAdults } from '@/lib/new-adults';
 import { changeFor, loadHouseholdSnapshot, sendSignupConfirmations } from '@/lib/signup-confirmation-send';
+import { expirePeopleLists } from '@/lib/people-lists';
 
 /**
  * Family gate: exchange the shared troop password for the family cookie.
@@ -88,6 +89,8 @@ function friendlyError(message: string): string {
  * by anyone who can craft a POST.
  */
 export async function submitSignupAction(formData: FormData): Promise<void> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   const eventId = Number(formData.get('eventId'));
   const signupId = Number(formData.get('signupId'));
   const requestedHouseholdKey = String(formData.get('householdKey') ?? '');

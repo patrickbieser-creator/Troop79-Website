@@ -12,6 +12,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { fmtDay } from "@/lib/format-date";
 import { plannerAccess } from "@/lib/meeting-planner-access";
 import { loadPlannerPage } from "@/lib/meeting-planner-load";
+import { loadPlannerLists } from "@/lib/people-lists";
 import { PageHeader } from "@/app/_components/page-header";
 import { PageShell } from "@/app/_components/page-shell";
 import { Notice } from "@/app/_components/notice";
@@ -48,7 +49,8 @@ export default async function PlannerPage() {
     );
   }
 
-  const page = await loadPlannerPage(createAdminClient());
+  // The slow-changing lists come from the cross-request cache (lib/people-lists); picks and answers are read fresh.
+  const page = await loadPlannerPage(createAdminClient(), undefined, await loadPlannerLists());
   if (!page) {
     return (
       <>

@@ -5,6 +5,7 @@ import { requireCapability } from '@/lib/require-capability';
 import { adminActorLabel } from '@/lib/admin-actor';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { LedgerKind } from '@/lib/supabase/types';
+import { expirePeopleLists } from '@/lib/people-lists';
 
 const VALID_KINDS: ReadonlySet<LedgerKind> = new Set<LedgerKind>([
   'rank_requirement',
@@ -33,6 +34,8 @@ async function leaderInitials(): Promise<string> {
 }
 
 export async function archiveLedgerEntry(formData: FormData): Promise<void> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   await requireCapability('advancement.write');
   const id = Number(formData.get('id'));
   const reason = String(formData.get('reason') ?? '').trim() || null;
@@ -52,6 +55,8 @@ export async function archiveLedgerEntry(formData: FormData): Promise<void> {
 }
 
 export async function softDeleteLedgerEntry(formData: FormData): Promise<void> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   await requireCapability('advancement.write');
   const id = Number(formData.get('id'));
   const reason = String(formData.get('reason') ?? '').trim();
@@ -83,6 +88,8 @@ interface UpdateResult {
  * dedicated actions.
  */
 export async function updateLedgerEntry(formData: FormData): Promise<UpdateResult> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   try {
     await requireCapability('advancement.write');
   } catch {
@@ -157,6 +164,8 @@ function parseIds(formData: FormData): number[] {
  * clobbering row-specific data.
  */
 export async function bulkUpdateLedgerEntries(formData: FormData): Promise<BulkResult> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   try {
     await requireCapability('advancement.write');
   } catch {
@@ -222,6 +231,8 @@ export async function bulkUpdateLedgerEntries(formData: FormData): Promise<BulkR
 
 /** Bulk archive — soft, reason optional (matches the single-row action). */
 export async function bulkArchiveLedgerEntries(formData: FormData): Promise<BulkResult> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   try {
     await requireCapability('advancement.write');
   } catch {
@@ -253,6 +264,8 @@ export async function bulkArchiveLedgerEntries(formData: FormData): Promise<Bulk
 
 /** Bulk delete — soft, reason REQUIRED (matches the single-row action). */
 export async function bulkDeleteLedgerEntries(formData: FormData): Promise<BulkResult> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   try {
     await requireCapability('advancement.write');
   } catch {
@@ -284,6 +297,8 @@ export async function bulkDeleteLedgerEntries(formData: FormData): Promise<BulkR
 }
 
 export async function restoreLedgerEntry(formData: FormData): Promise<void> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   await requireCapability('advancement.write');
   const id = Number(formData.get('id'));
   if (!Number.isFinite(id) || id <= 0) throw new Error('Invalid id');
@@ -324,6 +339,8 @@ function revalidateAwardViews() {
  * flag, not a link to an event.
  */
 export async function setScoutbookSubmitted(formData: FormData): Promise<ConfirmResult> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   try {
     await requireCapability('advancement.write');
   } catch {
@@ -349,6 +366,8 @@ export async function setScoutbookSubmitted(formData: FormData): Promise<Confirm
 }
 
 export async function setPresented(formData: FormData): Promise<ConfirmResult> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   try {
     await requireCapability('advancement.write');
   } catch {
@@ -376,6 +395,8 @@ export async function setPresented(formData: FormData): Promise<ConfirmResult> {
 /** Bulk "mark as submitted" — the Scoutbook Export page's one-click action
  *  right after a successful upload, over every row in the current preview. */
 export async function bulkSetScoutbookSubmitted(formData: FormData): Promise<BulkResult> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   try {
     await requireCapability('advancement.write');
   } catch {

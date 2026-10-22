@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { ledgerCodeFor, type CreditKind } from '@/lib/attendance-shared';
+import { expirePeopleLists } from '@/lib/people-lists';
 
 export interface CalendarEntryDependents {
   attendanceCount: number;
@@ -203,6 +204,8 @@ export async function executeCalendarEntryMerge(
   loseId: number,
   by: string
 ): Promise<MergeResult> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   const plan = await planCalendarEntryMerge(admin, keepId, loseId);
   if (plan.conflicts.length > 0) {
     return { ok: false, error: plan.conflicts.map((c) => c.detail).join(' ') };

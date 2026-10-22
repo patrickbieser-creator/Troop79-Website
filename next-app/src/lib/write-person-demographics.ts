@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { expirePeopleLists } from '@/lib/people-lists';
 
 /**
  * The one writer for a human's contact/demographic facts on `people`
@@ -45,6 +46,8 @@ export async function writePersonDemographics(
   personId: number,
   fields: PersonDemographicsFields
 ): Promise<WriteResult> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   const patch: Record<string, unknown> = { ...fields };
   if (Object.keys(patch).length === 0) return { error: null };
   patch.updated_at = new Date().toISOString();

@@ -29,6 +29,7 @@
 import type { createAdminClient } from '@/lib/supabase/server';
 import { creditRuleFor, defaultQtyFor, ledgerCodeFor, type CreditKind } from '@/lib/attendance-shared';
 import { loadCalendarCategories } from '@/lib/calendar';
+import { expirePeopleLists } from '@/lib/people-lists';
 
 export type Result = { ok: boolean; error?: string };
 
@@ -90,6 +91,8 @@ export async function syncCredit(
    *  does) — saves a round trip per person. */
   knownScoutId?: string | null
 ): Promise<Result> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   if (!ctx.creditKind) return { ok: true }; // category grants nothing
 
   let scoutId: string | null;
@@ -135,6 +138,8 @@ export async function retireCredit(
   personId: number,
   by: string
 ): Promise<Result> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   if (!ctx.creditKind) return { ok: true };
 
   let scoutId: string | null;
@@ -189,6 +194,8 @@ export async function adoptLegacyCredit(
   ctx: EntryContext,
   scoutId: string
 ): Promise<void> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   if (!ctx.creditKind) return;
   await db
     .from('ledger_entries')

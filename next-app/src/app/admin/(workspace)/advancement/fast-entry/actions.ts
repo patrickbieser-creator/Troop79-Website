@@ -7,6 +7,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import type { LedgerKind } from '@/lib/supabase/types';
 import { DEDUP_KINDS, queryExistingSet, filterOutExisting as filterOutExistingGeneric } from '@/lib/ledger-dedup';
 import { keyForLedgerRow } from './picker-types';
+import { expirePeopleLists } from '@/lib/people-lists';
 
 interface EntryToInsert {
   scout_id: string;
@@ -90,6 +91,8 @@ export async function checkExistingCompletions(formData: FormData): Promise<Skip
  * Shared payload shape so a single Server Action covers both.
  */
 export async function addLedgerEntries(formData: FormData): Promise<SaveResult> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   let session;
   try {
     session = await requireCapability('advancement.write');
@@ -479,6 +482,8 @@ function targetN(node: CatalogReqWithChildren): number {
  * completed picker checkbox and provides a reason to undo it.
  */
 export async function undoCompletion(formData: FormData): Promise<SaveResult> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   try {
     await requireCapability('advancement.write');
   } catch {

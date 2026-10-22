@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import { recordAudit } from '@/lib/audit';
+import { expirePeopleLists } from '@/lib/people-lists';
 
 /**
  * People → Guests tab writes (Plans/Guests-As-People.md Phase 2).
@@ -31,6 +32,8 @@ function revalidate() {
  * zero, never by catching the constraint error.
  */
 export async function forgetGuest(personId: number): Promise<Result> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   await requireCapability('roster.manage');
   const supabase = createAdminClient();
 
@@ -82,6 +85,8 @@ export async function forgetGuest(personId: number): Promise<Result> {
  * flagged merged, never destroyed.
  */
 export async function promoteGuest(guestPersonId: number, survivorPersonId: number): Promise<Result> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   const session = await requireCapability('roster.manage');
   if (guestPersonId === survivorPersonId) return { ok: false, error: 'Pick a different person to merge into.' };
   const supabase = createAdminClient();

@@ -13,6 +13,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { canOfferToTeach } from '@/lib/can-offer-to-teach';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 import type { JuniorLeaderOverride } from '@/lib/participant-class';
+import { expirePeopleLists } from '@/lib/people-lists';
 
 export type TeachingProfileKind = 'adult' | 'junior' | 'none';
 
@@ -128,6 +129,8 @@ export async function saveTeachingSkills(
   source: TeachingSource,
   by: ChangedBy
 ): Promise<SaveTeachingResult> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   const { data, error } = await sb.rpc('set_teaching_skills', {
     p_person_id: personId,
     p_skill_ids: skillIds,
@@ -147,6 +150,8 @@ export async function undoTeachingSkillChange(
   changeId: number,
   by: ChangedBy
 ): Promise<{ ok: true; outcome: UndoOutcome } | { ok: false; error: string }> {
+  // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
+  expirePeopleLists();
   const { data, error } = await sb.rpc('undo_teaching_skill_change', {
     p_change_id: changeId,
     p_changed_by_person_id: by.personId,

@@ -16,6 +16,7 @@ import { assessTeacher, canTeachFocusGroup, teacherName, teachersFor } from '@/l
 import { boardName } from '@/lib/meeting-board-shared';
 import { isPickOutOfReach, nextRankOf, rankOfKey, rankTrees, topicWords } from '@/lib/meeting-board-picklist';
 import { loadInviteRows } from '@/lib/meeting-invites-db';
+import { boardScoutsOf, type PlannerLists } from '@/lib/people-lists';
 import { buildPlannerBoard, type PlannerBoard, type PlannerTopic } from '@/lib/meeting-planner-board';
 
 export interface PlannerPage {
@@ -32,18 +33,22 @@ async function loadLeaderIds(sb: SupabaseClient): Promise<Set<number>> {
   return new Set(rows.map((r) => r.person_id));
 }
 
-/** The next meeting's board, or (P5b, the reminder action re-deciding who hasn't answered) a given meeting's. */
-export async function loadPlannerPage(sb: SupabaseClient, forMeeting?: BoardMeeting): Promise<PlannerPage | null> {
-  const meeting = forMeeting ?? (await loadNextMeeting(sb));
+/**
+ * The next meeting's board, or (P5b, the reminder action re-deciding who hasn't answered) a given meeting's. `lists`:
+ * the cached scouts, teacher pool, leaders and meeting categories (lib/people-lists loadPlannerLists); read fresh
+ * when not passed.
+ */
+export async function loadPlannerPage(sb: SupabaseClient, forMeeting?: BoardMeeting, lists?: PlannerLists): Promise<PlannerPage | null> {
+  const meeting = forMeeting ?? (await loadNextMeeting(sb, undefined, lists?.meetingLabels));
   if (!meeting) return null;
   const catalog = await loadAdvancementCatalog();
   // The board and its teacher side load at once (perf, 2026-10-22): loadTeachBoard needs the rows only at its end.
-  const boardRows = loadBoardState(sb, meeting, catalog);
+  const boardRows = loadBoardState(sb, meeting, catalog, lists ? boardScoutsOf(lists) : undefined);
   const [rows, teach, stamp, leaderIds, inviteRows] = await Promise.all([
     boardRows,
-    loadTeachBoard(sb, meeting, catalog, boardRows, 'all'),
+    loadTeachBoard(sb, meeting, catalog, boardRows, 'all', { pool: lists?.pool }),
     loadBoardStamp(sb, meeting.entryId),
-    loadLeaderIds(sb),
+    lists ? new Set(lists.leaderIds) : loadLeaderIds(sb),
     loadInviteRows(sb, meeting.entryId)
   ]);
   const rankName = new Map(catalog.ranks.map((r) => [r.id, r.display_name]));
