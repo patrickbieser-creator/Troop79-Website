@@ -22,6 +22,9 @@ import { PlannerTabs } from "./planner-tabs";
 import styles from "./planner.module.css";
 
 export const dynamic = "force-dynamic";
+// Server Actions take the page's maxDuration. Reminders (P5b) send up to 100 emails a few at a time and start no new
+// batch after 40 s (lib/meeting-invites-send REMINDER_TIME_BUDGET_MS), so the cleanup always runs inside this.
+export const maxDuration = 60;
 
 export const metadata = {
   title: "Meeting Planner — Scout Troop 79",

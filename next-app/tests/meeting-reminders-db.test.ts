@@ -95,54 +95,100 @@ describe('who a reminder reaches', () => {
     );
   });
 
-  it('Reminder_ToTwoScoutsOfOneParent_IsOneEmail', async () => {
+  it('Reminder_ToTwoScoutsOfOneParent_IsOneEmailToTheParent', async () => {
     const r = await made([older, younger]);
-    const toParent = r.recipients.filter((x) => x.recipientId === parent);
-    expect([toParent.length, toParent[0]?.people.map((p) => p.personId).sort()]).toEqual([1, [older, younger].sort()]);
+    expect(r.recipients.filter((x) => x.recipientId === parent)).toHaveLength(1);
+  });
+
+  it('Reminder_ToTwoScoutsOfOneParent_NamesBothScouts', async () => {
+    const r = await made([older, younger]);
+    expect(r.recipients.find((x) => x.recipientId === parent)?.people.map((p) => p.personId).sort()).toEqual([older, younger].sort());
   });
 });
 
 describe('who is skipped', () => {
-  it('Reminder_IsSkipped_WhenPersonAlreadyAnswered', async () => {
-    await sb.from('meeting_intents').insert({ calendar_entry_id: meeting, person_id: younger, intent: 'not_coming', entered_by_person_id: parent });
-    const r = await made([younger]);
-    expect([r.recipients.length, r.skipped.map((s) => s.reason)]).toEqual([0, ['already answered']]);
+  const answered = () => sb.from('meeting_intents').insert({ calendar_entry_id: meeting, person_id: younger, intent: 'not_coming', entered_by_person_id: parent });
+
+  it('Reminder_SendsNothing_WhenPersonAlreadyAnswered', async () => {
+    await answered();
+    expect((await made([younger])).recipients).toEqual([]);
   });
 
-  it('Reminder_IsSkipped_WhenSentWithin24Hours', async () => {
+  it('Reminder_SaysAlreadyAnswered_WhenPersonAlreadyAnswered', async () => {
+    await answered();
+    expect((await made([younger])).skipped.map((s) => s.reason)).toEqual(['already answered']);
+  });
+
+  it('Reminder_SendsNothing_WhenSentWithin24Hours', async () => {
     await made([younger]);
-    const again = await made([younger]);
-    expect([again.recipients.length, again.skipped.map((s) => s.reason)]).toEqual([0, ['reminded in the last 24 hours']]);
+    expect((await made([younger])).recipients).toEqual([]);
+  });
+
+  it('Reminder_SaysRemindedLately_WhenSentWithin24Hours', async () => {
+    await made([younger]);
+    expect((await made([younger])).skipped.map((s) => s.reason)).toEqual(['reminded in the last 24 hours']);
+  });
+});
+
+describe('the 24-hour dedupe holds in the database (qa-lead, P5b)', () => {
+  const remindRows = async () => ((await sb.from('meeting_invites').select('id').eq('calendar_entry_id', meeting).eq('kind', 'remind').eq('invitee_person_id', younger)).data ?? []).length;
+
+  it('Reminder_IsMintedOnce_WhenTwoSendsRace', async () => {
+    await Promise.all([remind([younger]), remind([younger])]);
+    expect(await remindRows()).toBe(1);
+  });
+
+  it('MintReminders_InsertsNothing_ForSomeoneRemindedWithin24Hours', async () => {
+    await made([younger]);
+    const row = { invitee_person_id: younger, recipient_person_id: parent, sent_to: 'x@example.com', invitee_epoch: 0, recipient_epoch: 0, expires_at: new Date(Date.now() + 86400_000).toISOString(), sent_by: null };
+    const { data } = await sb.rpc('meeting_mint_reminders', { p_entry: meeting, p_since: new Date(Date.now() - 86400_000).toISOString(), p_rows: [row] });
+    expect(data).toEqual([]);
   });
 });
 
 describe('a reminder row is not an invite', () => {
+  const row = (o: Record<string, unknown>) => ({
+    calendar_entry_id: meeting,
+    topic_key: 'reminder',
+    kind: 'remind',
+    invitee_person_id: younger,
+    recipient_person_id: parent,
+    sent_to: 'x@example.com',
+    invitee_epoch: 0,
+    recipient_epoch: 0,
+    token_hash: null,
+    expires_at: new Date().toISOString(),
+    ...o
+  });
+
   it('Board_IgnoresReminderRows_WhenCountingInvites', async () => {
     await made([younger]);
     expect(await loadInviteRows(sb, meeting)).toEqual([]);
   });
 
-  it('Reminder_Row_CannotBeRedeemed_ByAnyToken', async () => {
+  it('Reminder_Row_CarriesNoToken', async () => {
     await made([younger]);
     const { data } = await sb.from('meeting_invites').select('kind, topic_key, token_hash').eq('calendar_entry_id', meeting);
-    const answer = await respondToInvite(sb, '0'.repeat(64), 'accept', { loadCatalog: catalog });
-    const { error: withToken } = await sb.from('meeting_invites').insert({
-      calendar_entry_id: meeting,
-      topic_key: 'reminder',
-      kind: 'remind',
-      invitee_person_id: younger,
-      recipient_person_id: parent,
-      sent_to: 'x@example.com',
-      invitee_epoch: 0,
-      recipient_epoch: 0,
-      token_hash: 'f'.repeat(64),
-      expires_at: new Date().toISOString()
-    });
-    expect([data, (await inspectInvite(sb, '0'.repeat(64))).state, answer.ok, withToken != null]).toEqual([
-      [{ kind: 'remind', topic_key: 'reminder', token_hash: null }],
-      'unknown',
-      false,
-      true
-    ]);
+    expect(data).toEqual([{ kind: 'remind', topic_key: 'reminder', token_hash: null }]);
+  });
+
+  it('Reminder_Row_IsUnknown_ToTheLinkReader', async () => {
+    await made([younger]);
+    expect((await inspectInvite(sb, '0'.repeat(64))).state).toBe('unknown');
+  });
+
+  it('Reminder_Row_CannotBeAnswered_ByAnyToken', async () => {
+    await made([younger]);
+    expect((await respondToInvite(sb, '0'.repeat(64), 'accept', { loadCatalog: catalog })).ok).toBe(false);
+  });
+
+  it('Reminder_Row_WithAToken_IsRejected', async () => {
+    const { error } = await sb.from('meeting_invites').insert(row({ token_hash: 'f'.repeat(64) }));
+    expect(error?.message).toMatch(/meeting_invites_remind_has_no_token/);
+  });
+
+  it('InviteRow_WithNoToken_IsRejected', async () => {
+    const { error } = await sb.from('meeting_invites').insert(row({ kind: 'teach', topic_key: 'tenderfoot-1a' }));
+    expect(error?.message).toMatch(/meeting_invites_remind_has_no_token/);
   });
 });

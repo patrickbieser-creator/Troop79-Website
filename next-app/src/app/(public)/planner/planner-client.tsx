@@ -282,10 +282,15 @@ type RemindState = { phase: 'idle' | 'confirm' | 'sending' } | { phase: 'done'; 
 function useRemind(personIds: readonly number[]) {
   const p = usePlanner();
   const [state, setState] = useState<RemindState>({ phase: 'idle' });
+  // Two clicks in one frame both reach the handler before the disabled button renders; the ref lets only one send.
+  const inFlight = useRef(false);
   const send = async () => {
-    if (!p) return;
+    if (!p || inFlight.current) return;
+    inFlight.current = true;
     setState({ phase: 'sending' });
-    const res = await p.sync.run(() => plannerSendRemindersAction({ entryId: p.entryId, personIds: [...personIds] }));
+    const res = await p.sync.run(() => plannerSendRemindersAction({ entryId: p.entryId, personIds: [...personIds] })).finally(() => {
+      inFlight.current = false;
+    });
     if (!res.ok) return setState({ phase: 'problem', text: res.error });
     if (!res.sent.length) return setState({ phase: 'problem', text: notSentText(res.skipped) || 'Nobody to remind.' });
     p.markReminded(res.reminded);

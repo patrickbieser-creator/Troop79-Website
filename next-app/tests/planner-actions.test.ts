@@ -10,8 +10,14 @@ import { TEST_PREFIX } from './helpers/signup-fixtures';
  */
 const sb = adminClient();
 const state = vi.hoisted(() => ({
-  actor: null as null | { personId: number; subjectKind: 'adult' | 'scout'; capabilities: Set<string> }
+  actor: null as null | { personId: number; subjectKind: 'adult' | 'scout'; capabilities: Set<string> },
+  /** P5b: what loadPlannerPage returns instead of the real page ('real' = pass through). */
+  page: 'real' as 'real' | null | { board: { haventAnswered: { scouts: { personId: number; name: string }[]; adults: { personId: number; name: string }[] } } }
 }));
+vi.mock('@/lib/meeting-planner-load', async (importOriginal) => {
+  const real = await importOriginal<typeof import('../src/lib/meeting-planner-load')>();
+  return { ...real, loadPlannerPage: (...a: Parameters<typeof real.loadPlannerPage>) => (state.page === 'real' ? real.loadPlannerPage(...a) : Promise.resolve(state.page)) };
+});
 vi.mock('@/lib/supabase/server', async () => {
   const { adminClient: make } = await import('./helpers/admin-client');
   return { createAdminClient: () => make() };
@@ -84,6 +90,7 @@ afterEach(async () => {
     await sb.from('meeting_intents').delete().eq('calendar_entry_id', e);
   }
   state.actor = null;
+  state.page = 'real';
 });
 
 afterAll(async () => {
@@ -310,6 +317,32 @@ describe('email (P2b, adults only)', () => {
     const res = await act.plannerSendRemindersAction({ entryId: meeting, personIds: [young, other] });
     // The fixture scout's household has no parent with an email; the one who answered isn't sent to the sender at all.
     expect(res.ok && res.skipped).toEqual([{ name: `${TEST_PREFIX} PLA Young`, reason: 'no parent with an email in their household' }]);
+  });
+
+  it('Remind_DropsPeopleNotOnHaventAnswered', async () => {
+    asEditor();
+    const res = await (await actions()).plannerSendRemindersAction({ entryId: meeting, personIds: [young, gone] });
+    expect(res.ok && res.skipped.map((s) => s.name)).toEqual([`${TEST_PREFIX} PLA Young`]);
+  });
+
+  it('Remind_AppliesTheCap_AfterDroppingPeopleNotWaiting', async () => {
+    asEditor();
+    const bogus = Array.from({ length: 101 }, (_, i) => 2_000_000_000 + i);
+    expect((await (await actions()).plannerSendRemindersAction({ entryId: meeting, personIds: [young, ...bogus] })).ok).toBe(true);
+  });
+
+  it('Remind_SaysWhoIsLeftOver_WhenMoreThanTheCapAreWaiting', async () => {
+    asEditor();
+    const waiting = Array.from({ length: 101 }, (_, i) => ({ personId: 2_000_000_000 + i, name: `Nobody ${i}` }));
+    state.page = { board: { haventAnswered: { scouts: waiting, adults: [] } } };
+    const res = await (await actions()).plannerSendRemindersAction({ entryId: meeting, personIds: waiting.map((w) => w.personId) });
+    expect(res.ok && res.skipped.filter((s) => s.reason.startsWith('over the 100-person limit'))).toEqual([{ name: 'Nobody 100', reason: 'over the 100-person limit for one send; reload and send again' }]);
+  });
+
+  it('Remind_SaysTheMeetingIsntAvailable_WhenThePlannerPageIsGone', async () => {
+    asEditor();
+    state.page = null;
+    expect(await (await actions()).plannerSendRemindersAction({ entryId: meeting, personIds: [young] })).toEqual({ ok: false, error: 'That meeting isn’t available. Reload the page.' });
   });
 
   it('Viewer_IsRefused_WhenNudging', async () => {

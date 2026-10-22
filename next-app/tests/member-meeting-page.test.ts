@@ -9,7 +9,7 @@ import { TEST_PREFIX } from './helpers/signup-fixtures';
  * local database; the sign-in and "which meeting is next" seams are mocked to the fixture. Fixtures are dated 2092.
  */
 const sb = adminClient();
-const state = vi.hoisted(() => ({ entryId: 0, personId: 0 }));
+const state = vi.hoisted(() => ({ entryId: 0, personId: 0, leader: false }));
 vi.mock('@/lib/supabase/server', async () => {
   const { adminClient: make } = await import('./helpers/admin-client');
   return { createAdminClient: () => make() };
@@ -20,7 +20,10 @@ vi.mock('@/lib/member-viewer', () => ({
 }));
 vi.mock('@/lib/family-access', () => ({ getIdentitySessionIfValid: async () => ({ personId: state.personId, subjectKind: 'scout' }) }));
 vi.mock('@/lib/identity-session', () => ({ isEpochCurrent: async () => true }));
-vi.mock('@/lib/admin-actor', () => ({ resolveAdminActor: async () => null, actorHas: () => false }));
+vi.mock('@/lib/admin-actor', () => ({
+  resolveAdminActor: async () => (state.leader ? { personId: -1, subjectKind: 'adult', capabilities: new Set(['meeting_plan.use']) } : null),
+  actorHas: (_a: unknown, cap: string) => state.leader && cap === 'meeting_plan.use'
+}));
 vi.mock('@/lib/meeting-board', async (orig) => {
   const real = await orig<typeof import('@/lib/meeting-board')>();
   return { ...real, loadNextMeeting: (s: Parameters<typeof real.loadMeetingById>[0]) => real.loadMeetingById(s, state.entryId) };
@@ -62,5 +65,16 @@ describe('/member/meeting on a meeting with a board row', () => {
     const { default: Page } = await import('../src/app/(public)/member/meeting/page');
     const html = renderToStaticMarkup(await Page({ searchParams: Promise.resolve({}) }));
     expect([html.includes('Merit badge night'), html.includes('Your picks')]).toEqual([false, true]);
+  });
+
+  it('OnBehalf_BackLink_GoesToTheMeetingPlanner', async () => {
+    state.leader = true;
+    try {
+      const { default: Page } = await import('../src/app/(public)/member/meeting/page');
+      const html = renderToStaticMarkup(await Page({ searchParams: Promise.resolve({ for: String(state.personId) }) }));
+      expect(html).toMatch(/href="\/planner"[^>]*>[^<]*Back to the Meeting Planner/);
+    } finally {
+      state.leader = false;
+    }
   });
 });

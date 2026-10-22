@@ -24,7 +24,7 @@ import { carryJson, loadBoardScouts, loadEffectivePicks, loadIntents, loadMeetin
 import { effectiveIntent } from '@/lib/meeting-board-shared';
 import { teacherIntent } from '@/lib/meeting-board-teach';
 import { pickableKeys } from '@/lib/meeting-board-picklist';
-import { INVITE_DEDUPE_HOURS, INVITE_FAILURES_PER_HOUR, INVITE_SEND_CAP, inviteExpiresAt, REMINDER_SEND_CAP, REMINDER_TOPIC_KEY, inviteState, type InviteResponse, type InviteState } from '@/lib/meeting-invites';
+import { INVITE_DEDUPE_HOURS, INVITE_FAILURES_PER_HOUR, INVITE_SEND_CAP, inviteExpiresAt, REMINDER_SEND_CAP, inviteState, type InviteResponse, type InviteState } from '@/lib/meeting-invites';
 
 /** 32 random bytes as LOWERCASE hex: mail gateways that lowercase URLs can't break it (see identity-challenge's
  *  randomLinkToken for the 2026-08-16 bug that set this rule). */
@@ -585,31 +585,40 @@ export async function createReminders(
   const emails = new Set(plans.map((x) => x.recipientId)).size;
   if (emails > REMINDER_SEND_CAP) return { ok: false, error: `That would send ${emails} emails; one send makes at most ${REMINDER_SEND_CAP}.` };
 
+  // The check above gives the plain reasons; meeting_mint_reminders is the backstop. Under a per-meeting lock it
+  // re-checks the 24 hours and inserts in one statement, so a double-click or a second editor can't email twice.
   const recipients = new Map<number, ReminderRecipient>();
+  if (!plans.length) return { ok: true, recipients: [], skipped };
+  const expiresAt = inviteExpiresAt(meeting.date);
+  const { data, error } = await sb.rpc('meeting_mint_reminders', {
+    p_entry: input.entryId,
+    p_since: since,
+    p_rows: plans.map((x) => ({
+      invitee_person_id: x.personId,
+      recipient_person_id: x.recipientId,
+      sent_to: x.sentTo,
+      invitee_epoch: x.inviteeEpoch,
+      recipient_epoch: x.epoch,
+      expires_at: expiresAt,
+      sent_by: input.sentBy
+    }))
+  });
+  if (error) {
+    for (const personId of new Set(plans.map((x) => x.personId))) skipped.push({ personId, name: plans.find((x) => x.personId === personId)!.name, reason: 'couldn’t be saved' });
+    return { ok: true, recipients: [], skipped };
+  }
+  const minted = new Map(((data ?? []) as { invite_id: number; invitee: number; recipient: number }[]).map((m) => [`${m.invitee}:${m.recipient}`, m.invite_id]));
+  const told = new Set<number>();
   for (const x of plans) {
-    const { data, error } = await sb
-      .from('meeting_invites')
-      .insert({
-        calendar_entry_id: input.entryId,
-        topic_key: REMINDER_TOPIC_KEY,
-        kind: 'remind',
-        invitee_person_id: x.personId,
-        recipient_person_id: x.recipientId,
-        sent_to: x.sentTo,
-        invitee_epoch: x.inviteeEpoch,
-        recipient_epoch: x.epoch,
-        token_hash: null,
-        expires_at: inviteExpiresAt(meeting.date),
-        sent_by: input.sentBy
-      })
-      .select('id')
-      .single();
-    if (error || !data) {
-      skipped.push({ personId: x.personId, name: x.name, reason: 'couldn’t be saved' });
+    const inviteId = minted.get(`${x.personId}:${x.recipientId}`);
+    if (inviteId == null) {
+      // Someone else's send got there first.
+      if (!told.has(x.personId)) skipped.push({ personId: x.personId, name: x.name, reason: `reminded in the last ${INVITE_DEDUPE_HOURS} hours` });
+      told.add(x.personId);
       continue;
     }
     const r = recipients.get(x.recipientId) ?? { recipientId: x.recipientId, name: x.recipientName, sentTo: x.sentTo, isScout: x.isScout, people: [] };
-    r.people.push({ personId: x.personId, name: x.name, inviteId: (data as { id: number }).id });
+    r.people.push({ personId: x.personId, name: x.name, inviteId });
     recipients.set(x.recipientId, r);
   }
   return { ok: true, recipients: [...recipients.values()], skipped };

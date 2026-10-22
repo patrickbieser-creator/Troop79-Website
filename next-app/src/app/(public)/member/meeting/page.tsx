@@ -149,7 +149,7 @@ export default async function MeetingBoardPage({ searchParams }: { searchParams:
   const teacherId = onBehalf ? forId! : proxy ? null : session!.personId;
 
   const back = onBehalf
-    ? { href: '/admin/advancement/meeting-plan', label: '← Back to Meeting Plan' }
+    ? { href: '/planner', label: '← Back to the Meeting Planner' }
     : { href: proxy ? `/member?viewScout=${proxy.personId}` : '/member', label: '← Back to Members' };
   const meeting = await loadNextMeeting(sb);
 

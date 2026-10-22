@@ -27,7 +27,7 @@ import {
   type InviteTemplate
 } from '@/lib/meeting-invite-email';
 import { INVITE_SENDER_NAME } from '@/lib/meeting-invites';
-import { createPickInvites, createReminders, createTeachInvites, deleteInvites } from '@/lib/meeting-invites-db';
+import { createPickInvites, createReminders, createTeachInvites, deleteInvites, type ReminderRecipient } from '@/lib/meeting-invites-db';
 import { siteUrl } from '@/lib/site-url';
 
 export type SendInvitesResult =
@@ -228,11 +228,34 @@ async function templateFor(sb: SupabaseClient, kind: string, fallback: InviteTem
  * haven't answered. One email per recipient naming everyone it covers (a parent with two unanswered scouts gets one);
  * the button is the plain meeting page, no token. A reminder whose email doesn't go out is deleted, so the 24-hour
  * dedupe never holds back someone who was never reached.
+ *
+ * Send safety (qa-lead, 2026-10-22): emails go out REMINDER_BATCH at a time; each recipient's rows are deleted the
+ * moment their email fails or throws (not only in a final sweep a timeout could skip); and once REMINDER_TIME_BUDGET_MS
+ * has passed no new batch starts: the rest are deleted and reported, well inside the planner page's maxDuration.
  */
 export type SendRemindersResult = { ok: true; sent: string[]; reminded: number[]; skipped: { name: string; reason: string }[] } | { ok: false; error: string };
 
-export async function sendReminders(sb: SupabaseClient, input: { entryId: number; personIds: number[]; sentBy: number | null }): Promise<SendRemindersResult> {
+/** Emails in flight at once. */
+export const REMINDER_BATCH = 5;
+/** No new batch starts after this; the planner page's maxDuration is 60 s. */
+export const REMINDER_TIME_BUDGET_MS = 40_000;
+
+/** 'you', 'Anjali S and Finn S', or 'you and Finn S' when the recipient is among the people they're reminded about. */
+function reminderPeople(r: ReminderRecipient): string {
+  if (r.isScout) return 'you';
+  const self = r.people.some((p) => p.personId === r.recipientId);
+  const others = r.people.filter((p) => p.personId !== r.recipientId).map((p) => boardName(p.name));
+  return [...(self ? ['you'] : []), ...others].join(' and ');
+}
+
+export async function sendReminders(
+  sb: SupabaseClient,
+  input: { entryId: number; personIds: number[]; sentBy: number | null },
+  deps: { clock?: () => number } = {}
+): Promise<SendRemindersResult> {
   if (!input || !Number.isInteger(input.entryId) || !Array.isArray(input.personIds)) return { ok: false, error: 'Malformed request' };
+  const clock = deps.clock ?? Date.now;
+  const started = clock();
   const made = await createReminders(sb, { entryId: input.entryId, personIds: input.personIds, sentBy: input.sentBy });
   if (!made.ok) return made;
 
@@ -250,14 +273,12 @@ export async function sendReminders(sb: SupabaseClient, input: { entryId: number
   const skipped = made.skipped.map(({ name, reason }) => ({ name, reason }));
   const unsent = new Set(made.recipients.flatMap((r) => r.people.map((p) => p.inviteId)));
   let emails = 0;
-  try {
-    for (const r of made.recipients) {
-      const self = r.people.length === 1 && r.people[0].personId === r.recipientId;
-      const { subject, md } = renderReminder(template, {
-        name: firstName.get(r.recipientId) ?? r.name,
-        people: r.isScout || self ? 'you' : r.people.map((p) => boardName(p.name)).join(' and '),
-        day
-      });
+
+  /** One recipient: sent, or their rows are gone before this returns. Never throws. */
+  const remindOne = async (r: ReminderRecipient): Promise<void> => {
+    let reason = 'the email didn’t go out';
+    try {
+      const { subject, md } = renderReminder(template, { name: firstName.get(r.recipientId) ?? r.name, people: reminderPeople(r), day });
       const { html, text } = renderMarkdownEmail({ md, actionUrl: url, actionLabel: 'Answer on the meeting page' });
       const res = await sendEmail({ to: [r.sentTo], subject, html, text, confirm: true, fromName: INVITE_SENDER_NAME });
       if (res.status === 'sent') {
@@ -267,13 +288,32 @@ export async function sendReminders(sb: SupabaseClient, input: { entryId: number
           reminded.add(boardName(p.name));
           remindedIds.add(p.personId);
         }
-      } else {
-        skipped.push({ name: r.name, reason: res.status === 'skipped' ? 'email isn’t set up on this server' : 'the email didn’t go out' });
+        return;
       }
+      if (res.status === 'skipped') reason = 'email isn’t set up on this server';
+    } catch {
+      // Reported and deleted below, like any email that didn't go out.
     }
-  } catch {
-    // Whoever wasn't reached keeps no reminder row; the finally deletes them.
+    skipped.push({ name: r.name, reason });
+    const ids = r.people.map((p) => p.inviteId);
+    for (const id of ids) unsent.delete(id);
+    try {
+      await deleteInvites(sb, ids);
+    } catch {
+      for (const id of ids) unsent.add(id); // the final sweep tries again
+    }
+  };
+
+  try {
+    for (let i = 0; i < made.recipients.length; i += REMINDER_BATCH) {
+      if (clock() - started > REMINDER_TIME_BUDGET_MS) {
+        for (const r of made.recipients.slice(i)) skipped.push({ name: r.name, reason: 'out of time on this send; send again' });
+        break;
+      }
+      await Promise.all(made.recipients.slice(i, i + REMINDER_BATCH).map(remindOne));
+    }
   } finally {
+    // Whoever wasn't reached keeps no reminder row.
     await deleteInvites(sb, [...unsent]);
   }
   if (emails) {

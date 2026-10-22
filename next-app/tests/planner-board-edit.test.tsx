@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor, within } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, waitFor, within, act } from '@testing-library/react';
 import type { PlannerBoard } from '../src/lib/meeting-planner-board';
 import type { PersonDrawer } from '../src/lib/meeting-planner-drawer';
 
@@ -250,6 +250,26 @@ describe('reminders (P5b)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remind everyone…' }));
     fireEvent.click(screen.getByRole('button', { name: 'Send reminders' }));
     expect([await screen.findByText('✓ Reminded 2 people · just now') != null, calls.remind.mock.calls[0][0]]).toEqual([true, { entryId: 500, personIds: [4, 12] }]);
+  });
+
+  it('SendReminders_SendsOnce_WhenDoubleClicked', async () => {
+    calls.remind.mockReturnValue(new Promise(() => {}));
+    renderBoard(true, true, WAITING);
+    fireEvent.click(screen.getByRole('button', { name: 'Remind everyone…' }));
+    const send = screen.getByRole('button', { name: 'Send reminders' });
+    act(() => {
+      send.click();
+      send.click();
+    });
+    expect(calls.remind).toHaveBeenCalledTimes(1);
+  });
+
+  it('SendReminders_IsDisabled_WhileSending', async () => {
+    calls.remind.mockReturnValue(new Promise(() => {}));
+    renderBoard(true, true, WAITING);
+    fireEvent.click(screen.getByRole('button', { name: 'Remind everyone…' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Send reminders' }));
+    expect((await screen.findByRole('button', { name: 'Sending…' })).hasAttribute('disabled')).toBe(true);
   });
 
   it('Spl_SeesNoRemindButton', () => {

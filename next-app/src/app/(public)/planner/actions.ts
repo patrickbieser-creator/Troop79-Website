@@ -292,15 +292,19 @@ export async function plannerSendRemindersAction(input: { entryId: number; perso
   if (!e.ok) return e;
   const ids = input.personIds;
   if (!Array.isArray(ids) || !ids.length || !ids.every((id) => Number.isInteger(id))) return fail('Choose at least one person.');
-  if (ids.length > REMINDER_SEND_CAP) return fail(`One send reaches at most ${REMINDER_SEND_CAP} people.`);
   const page = await loadPlannerPage(e.sb, e.meeting);
-  const waiting = new Map([...(page?.board.haventAnswered.scouts ?? []), ...(page?.board.haventAnswered.adults ?? [])].map((p) => [p.personId, p.name]));
-  const ask = [...new Set(ids)].filter((id) => waiting.has(id));
-  if (!ask.length) return fail(ids.length === 1 ? 'They’ve already answered.' : 'Everyone has already answered.');
+  if (!page) return fail('That meeting isn’t available. Reload the page.');
+  const waiting = new Map([...page.board.haventAnswered.scouts, ...page.board.haventAnswered.adults].map((p) => [p.personId, p.name]));
+  // The cap applies to who is actually waiting, in the board's order; anyone past it is named, not dropped silently.
+  const wanted = new Set(ids);
+  const all = [...waiting.keys()].filter((id) => wanted.has(id));
+  if (!all.length) return fail(ids.length === 1 ? 'They’ve already answered.' : 'Everyone has already answered.');
+  const ask = all.slice(0, REMINDER_SEND_CAP);
+  const over = all.slice(REMINDER_SEND_CAP).map((id) => ({ name: waiting.get(id) ?? `Person ${id}`, reason: `over the ${REMINDER_SEND_CAP}-person limit for one send; reload and send again` }));
   const res = await sendReminders(e.sb, { entryId: e.meeting.entryId, personIds: ask, sentBy: e.actorPersonId });
   if (!res.ok) return res;
   revalidate();
-  return { ...res, stamp: await loadBoardStamp(e.sb, e.meeting.entryId) };
+  return { ...res, skipped: [...res.skipped, ...over], stamp: await loadBoardStamp(e.sb, e.meeting.entryId) };
 }
 
 // ── P3: seeding (meeting_planner.seed only, Decision 2) ──────────────────────────────────────────────────────────────

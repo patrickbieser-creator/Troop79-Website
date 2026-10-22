@@ -26,3 +26,42 @@ alter table public.meeting_invites
 
 -- The reminder dedupe reads (entry, kind, invitee, sent_at).
 create index if not exists meeting_invites_entry_kind_invitee_idx on public.meeting_invites (calendar_entry_id, kind, invitee_person_id, sent_at);
+
+-- 3. meeting_mint_reminders (qa-lead, 2026-10-22): the 24-hour dedupe's database backstop. The app checks first (for the
+--    plain "reminded in the last 24 hours" reasons), but a double-click or two editors could both pass that check and
+--    email twice. This takes a per-meeting transaction advisory lock, then re-checks and inserts in one statement, so
+--    a second send waits for the first to commit and then finds its rows. Returns the rows it made; a person reminded
+--    since p_since gets none (the caller reports them). Posture: invoker, search_path pinned, service role only.
+create or replace function public.meeting_mint_reminders(p_entry bigint, p_since timestamptz, p_rows jsonb)
+returns table (invite_id bigint, invitee bigint, recipient bigint)
+language plpgsql
+security invoker
+set search_path = public, pg_temp
+as $$
+begin
+  if p_rows is null or jsonb_typeof(p_rows) <> 'array' then
+    raise exception 'Malformed reminders.';
+  end if;
+  perform pg_advisory_xact_lock(hashtextextended(format('meeting_reminders:%s', p_entry), 0));
+  return query
+  with wanted as (
+    select * from jsonb_to_recordset(p_rows) as w(
+      invitee_person_id bigint, recipient_person_id bigint, sent_to text, invitee_epoch integer, recipient_epoch integer,
+      expires_at timestamptz, sent_by bigint)
+  ), made as (
+    insert into meeting_invites (calendar_entry_id, topic_key, kind, invitee_person_id, recipient_person_id, sent_to,
+                                 invitee_epoch, recipient_epoch, token_hash, expires_at, sent_by)
+    select p_entry, 'reminder', 'remind', w.invitee_person_id, w.recipient_person_id, w.sent_to,
+           w.invitee_epoch, w.recipient_epoch, null, w.expires_at, w.sent_by
+      from wanted w
+     where not exists (
+       select 1 from meeting_invites m
+        where m.calendar_entry_id = p_entry and m.kind = 'remind'
+          and m.invitee_person_id = w.invitee_person_id and m.sent_at > p_since)
+    returning meeting_invites.id, meeting_invites.invitee_person_id, meeting_invites.recipient_person_id
+  )
+  select made.id, made.invitee_person_id, made.recipient_person_id from made;
+end;
+$$;
+revoke all on function public.meeting_mint_reminders(bigint, timestamptz, jsonb) from public, anon, authenticated;
+grant execute on function public.meeting_mint_reminders(bigint, timestamptz, jsonb) to service_role;
