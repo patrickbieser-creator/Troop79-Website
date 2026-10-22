@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { render, screen, cleanup, fireEvent, waitFor, within } from '@testing-library/react';
 import type { HasNeedsScout } from '../src/lib/has-needs';
-import type { PickerBadge, PickerRank } from '../src/lib/has-needs-picker';
+import { PICK_MAX, togglePick, type PickerBadge, type PickerRank } from '../src/lib/has-needs-picker';
 
 /**
  * Build a Plan B7 (Plans/Build-A-Plan.md "B7: Has/Needs as a planner tab"), the screen: the tab's place, the three
@@ -41,6 +41,20 @@ const MEETINGS = [
   { entryId: 2, label: 'Nov 1' }
 ];
 
+const TAB_CSS = fs.readFileSync(path.join(__dirname, '..', 'src', 'app', '_components', 'tab-strip.module.css'), 'utf8');
+/** One rule's declarations, found by its exact selector (comments stripped, whitespace normalised). */
+function cssDeclarations(css: string, selector: string): Record<string, string> {
+  const rules = css.replace(/\/\*[\s\S]*?\*\//g, '').split('}');
+  const body = rules.map((r) => r.split('{')).find(([sel]) => sel.trim().replace(/\s+/g, ' ') === selector)?.[1] ?? '';
+  return Object.fromEntries(
+    body
+      .split(';')
+      .map((d) => d.split(':').map((x) => x.trim()))
+      .filter(([k, v]) => k && v)
+      .map(([k, ...v]) => [k, v.join(':')])
+  );
+}
+
 function at(search: string) {
   window.history.replaceState(null, '', `/planner/has-needs${search}`);
 }
@@ -61,11 +75,19 @@ describe('the Has/Needs tab (B7)', () => {
     expect([tabs.length, tabs[tabs.length - 1].textContent, tabs[tabs.length - 1].getAttribute('href')]).toEqual([6, 'Has/Needs', '/planner/has-needs']);
   });
 
-  it('PlannerTabs_ScrollOnPhone', () => {
+  it('PlannerTabs_UseTheScrollingStrip', () => {
     render(<PlannerTabs active="hasneeds" />);
-    const css = fs.readFileSync(path.join(__dirname, '..', 'src', 'app', '_components', 'tab-strip.module.css'), 'utf8');
-    const rule = /\.scroll\s*\{([^}]*)\}/.exec(css)?.[1] ?? '';
-    expect([/scroll/.test(screen.getByRole('tablist').className), /overflow-x:\s*auto/.test(rule), /flex-wrap:\s*nowrap/.test(rule)]).toEqual([true, true, true]);
+    expect(screen.getByRole('tablist').className.split(' ').some((c) => /scroll/.test(c))).toBe(true);
+  });
+
+  it('PlannerTabs_ScrollingStrip_KeepsTheFocusOutlineInside', () => {
+    // A scroller clips at its padding box (qa-lead, B7): the focus outline must sit inside the tab. A browser
+    // tab-through is still the real check; this pins the rule.
+    expect(cssDeclarations(TAB_CSS, '.scroll .tab:focus-visible')['outline-offset']).toMatch(/^-\d/);
+  });
+
+  it('PlannerTabs_ScrollingStrip_StaysOnOneLine', () => {
+    expect([cssDeclarations(TAB_CSS, '.scroll')['flex-wrap'], cssDeclarations(TAB_CSS, '.scroll')['overflow-x']]).toEqual(['nowrap', 'auto']);
   });
 
   it('HasNeeds_ShowsHasNeedsPartialColumns', () => {
@@ -89,10 +111,16 @@ describe('the Has/Needs tab (B7)', () => {
     expect([restored, window.location.search]).toEqual([true, '?pick=rank:tenderfoot-4a,rank:tenderfoot-4b']);
   });
 
-  it('HasNeeds_Viewer_CanSee_NoAdd', () => {
+  it('HasNeeds_Viewer_CanSee', () => {
     at('?pick=rank:tenderfoot-4a');
     renderTab({ canSeed: false });
-    expect([screen.getByRole('heading', { level: 2, name: 'Has (2)' }) != null, screen.queryByRole('button', { name: /^Add / })]).toEqual([true, null]);
+    expect(screen.getByRole('heading', { level: 2, name: 'Has (2)' })).toBeTruthy();
+  });
+
+  it('HasNeeds_Viewer_HasNoAdd', () => {
+    at('?pick=rank:tenderfoot-4a');
+    renderTab({ canSeed: false });
+    expect(screen.queryByRole('button', { name: /^Add / })).toBeNull();
   });
 
   it('HasNeeds_SingleRequirement_OffersAddForSeeder', () => {
@@ -114,5 +142,51 @@ describe('the Has/Needs tab (B7)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add First Aid 9 to Oct 25 plan' }));
     await waitFor(() => expect(screen.getByText('On plan')).toBeTruthy());
     expect(m.add.mock.calls).toEqual([[{ entryId: 1, keys: ['first-aid-9'] }]]);
+  });
+
+  it('HasNeeds_AddFails_SaysWhyInPlace', async () => {
+    m.add.mockResolvedValue({ ok: false, error: 'That meeting has passed.' });
+    at('?pick=rank:tenderfoot-4a');
+    renderTab();
+    fireEvent.click(screen.getByRole('button', { name: 'Add Tenderfoot 4a to Oct 25 plan' }));
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('That meeting has passed.'));
+  });
+
+  it('HasNeeds_AddFails_DoesNotSayOnPlan', async () => {
+    m.add.mockResolvedValue({ ok: false, error: 'That meeting has passed.' });
+    at('?pick=rank:tenderfoot-4a');
+    renderTab();
+    fireEvent.click(screen.getByRole('button', { name: 'Add Tenderfoot 4a to Oct 25 plan' }));
+    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
+    expect(screen.queryByText('On plan')).toBeNull();
+  });
+
+  it('HasNeeds_ColumnHeadings_AreNotLiveRegions', () => {
+    at('?pick=rank:tenderfoot-4a');
+    renderTab();
+    expect(screen.getAllByRole('heading', { level: 2 }).filter((h) => h.hasAttribute('aria-live'))).toEqual([]);
+  });
+
+  it('HasNeeds_OneLiveSummary_CountsTheSplit', () => {
+    at('?pick=rank:tenderfoot-4a,rank:tenderfoot-4b');
+    renderTab();
+    const live = within(screen.getByRole('region', { name: 'Results' })).getAllByText((_, el) => el?.getAttribute('aria-live') === 'polite');
+    expect(live.map((el) => el.textContent)).toEqual(['1 have · 1 need · 1 partial']);
+  });
+});
+
+describe('the pick cap (B7 qa)', () => {
+  const full = Array.from({ length: PICK_MAX }, (_, i) => `rank:x-${i}`);
+
+  it('TogglePick_AtTheCap_AddsNothing', () => {
+    expect(togglePick(full, 'rank:extra').next).toEqual(full);
+  });
+
+  it('TogglePick_AtTheCap_SaysCapped', () => {
+    expect(togglePick(full, 'rank:extra').capped).toBe(true);
+  });
+
+  it('TogglePick_AtTheCap_StillUnticks', () => {
+    expect(togglePick(full, full[0]).next.length).toBe(PICK_MAX - 1);
   });
 });

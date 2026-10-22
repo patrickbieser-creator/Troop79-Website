@@ -100,11 +100,19 @@ describe('the Invite tab', () => {
     expect(screen.getByRole('link', { name: 'Build a Plan' }).getAttribute('href')).toBe('/planner/build?meeting=1');
   });
 
-  it('InviteTab_Viewer_And_SPL_ReadOnly', () => {
+  it('InviteTab_Viewer_And_SPL_SendIsDisabled', () => {
     renderTab({ canEmail: false });
-    const send = screen.getByRole('button', { name: /^Send \d+ emails? to/ }) as HTMLButtonElement;
-    const tick = screen.getByText('P10').closest('button');
-    expect([send.disabled, screen.queryByText('Only adults send email') != null, tick?.getAttribute('aria-disabled')]).toEqual([true, true, 'true']);
+    expect((screen.getByRole('button', { name: /^Send \d+ emails? to/ }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('InviteTab_Viewer_And_SPL_SaysOnlyAdultsSendEmail', () => {
+    renderTab({ canEmail: false });
+    expect(screen.queryByText('Only adults send email')).not.toBeNull();
+  });
+
+  it('InviteTab_Viewer_And_SPL_TicksAreReadOnly', () => {
+    renderTab({ canEmail: false });
+    expect(screen.getByText('P10').closest('button')?.getAttribute('aria-disabled')).toBe('true');
   });
 
   it('InviteTab_SendButton_CountsEmailsAndFamilies', () => {
@@ -185,9 +193,14 @@ describe('B6 qa follow-ups', () => {
     expect(document.querySelectorAll('[id="invite-review"]').length).toBe(1);
   });
 
-  it('InviteTab_Viewer_PhoneBar_SaysReviewOnly', () => {
+  it('InviteTab_Viewer_PhoneBar_HasNoSendCount', () => {
     renderTab({ canEmail: false });
-    expect([screen.queryByRole('button', { name: /· Review$/ }), screen.getByRole('button', { name: 'Review' }) != null]).toEqual([null, true]);
+    expect(screen.queryByRole('button', { name: /· Review$/ })).toBeNull();
+  });
+
+  it('InviteTab_Viewer_PhoneBar_SaysReview', () => {
+    renderTab({ canEmail: false });
+    expect(screen.getByRole('button', { name: 'Review' })).toBeTruthy();
   });
 
   it('InviteTab_PreviewClose_ReturnsFocusToItsOpener', () => {

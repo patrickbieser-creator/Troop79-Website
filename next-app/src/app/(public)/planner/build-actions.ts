@@ -24,6 +24,8 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { loadBoardStamp, loadUpcomingMeetings } from '@/lib/meeting-board';
 import { editMix, newMix, seedFocusSet, seedMany, unseedTopic } from '@/lib/meeting-focus-db';
 import { teachTopic, unteachTopic } from '@/lib/meeting-board-supply';
+import { canTeachOnLive } from '@/lib/meeting-live';
+import { NOT_A_TEACHER } from '@/lib/can-offer-to-teach';
 import { SET_NAME_MAX, type FocusSetItem } from '@/lib/meeting-focus';
 import { plannerAccess } from '@/lib/meeting-planner-access';
 import { plannerSeeder } from '@/lib/meeting-planner-seeder';
@@ -223,6 +225,12 @@ export async function plannerTeachingChipAction(input: { entryId: number; key: s
   if (!e.ok) return e;
   const { data: onPlan, error } = await e.sb.from('meeting_topics').select('id').eq('calendar_entry_id', e.meeting.entryId).eq('topic_key', input.key).maybeSingle();
   if (error) return fail('That didn’t load. Try again.');
+  // The teacher rule Live uses (qa-lead, B7): meeting_teach_topic's backstop admits any active scout, whatever the rank.
+  try {
+    if (!(await canTeachOnLive(e.sb, e.meeting, input.personId))) return fail(NOT_A_TEACHER);
+  } catch {
+    return fail('That didn’t load. Try again.');
+  }
   let added = false;
   if (!onPlan) {
     const s = await plannerSeeder(input.entryId, { within: PLAN_MEETINGS });

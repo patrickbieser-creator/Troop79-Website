@@ -6,7 +6,7 @@
  * One load, every part in parallel, and the split runs on the client (lib/has-needs), so ticking costs nothing:
  *   - the requirement trees from the shared advancement catalog (cached hourly), the four lower ranks and every badge
  *     with a loaded tree;
- *   - the active scouts, one read;
+ *   - the active scouts, one read, without test people (people.is_test: Charlie Walters and friends; qa-lead, B7);
  *   - the ledger's requirement rows and the awarded badges, paged past PostgREST's 1000-row cap (fetchAllRows). AWARD
  *     IMPLIES LEAVES: an awarded badge credits every one of its leaves (withAwardedBadgeLeaves), as on the Admin page;
  *   - for a seed holder only (the add hook), the next meetings and ONE read of what is already on their plans.
@@ -62,7 +62,7 @@ export async function loadHasNeedsPage(
 
   const [catalog, scoutsRes, ledgerRows, awardedRows, plan] = await Promise.all([
     (deps.loadCatalog ?? loadAdvancementCatalog)(),
-    sb.from('scouts').select('id, first_name, display_name, current_rank').eq('active', true),
+    sb.from('scouts').select('id, first_name, display_name, current_rank, people(is_test)').eq('active', true),
     fetchAllRows<{ scout_id: string; code: string; kind: string }>((from, to) =>
       sb.from('ledger_active').select('scout_id, code, kind').in('kind', ['rank_requirement', 'merit_badge_requirement']).order('id').range(from, to)
     ),
@@ -118,7 +118,9 @@ export async function loadHasNeedsPage(
   const awardedByScout = new Map<string, string[]>();
   for (const row of awardedRows) awardedByScout.set(row.scout_id, [...(awardedByScout.get(row.scout_id) ?? []), row.mb_id]);
 
-  const scouts: HasNeedsScout[] = ((scoutsRes.data ?? []) as { id: string; first_name: string; display_name: string; current_rank: string | null }[]).map((s) => ({
+  type ScoutRow = { id: string; first_name: string; display_name: string; current_rank: string | null; people: { is_test: boolean } | { is_test: boolean }[] | null };
+  const isTest = (r: ScoutRow) => (Array.isArray(r.people) ? r.people[0]?.is_test : r.people?.is_test) === true;
+  const scouts: HasNeedsScout[] = ((scoutsRes.data ?? []) as unknown as ScoutRow[]).filter((r) => !isTest(r)).map((s) => ({
     id: s.id,
     firstName: s.first_name,
     displayName: s.display_name,

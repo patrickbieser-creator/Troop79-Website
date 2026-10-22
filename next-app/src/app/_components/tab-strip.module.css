@@ -26,6 +26,8 @@
 }
 .scroll::-webkit-scrollbar { display: none; }
 .scroll .tab { flex: none; white-space: nowrap; margin-bottom: 0; }
+/* A scroller clips at its padding box, so the outline goes inside the tab (WCAG 2.4.7/2.4.11; qa-lead, B7). */
+.scroll .tab:focus-visible { outline-offset: -3px; }
 
 .tab {
   font-family: var(--font-ui);

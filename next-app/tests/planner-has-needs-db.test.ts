@@ -53,4 +53,12 @@ describe('the Has/Needs tab load (B7)', () => {
       others: tables.filter((t) => !['scouts', 'meeting_topics', 'ledger_active', 'mb_progress'].includes(t))
     }).toEqual({ scouts: 1, meeting_topics: 1, ledgerPaged: true, awardedPaged: true, others: [] });
   }, 60_000);
+
+  it('HasNeeds_LeavesOutTestPeople', async () => {
+    const catalog = await fetchAdvancementCatalog(sb);
+    const { data } = await sb.from('scouts').select('id, people!inner(is_test)').eq('active', true).eq('people.is_test', true);
+    const testIds = new Set(((data ?? []) as { id: string }[]).map((r) => r.id));
+    const page = await loadHasNeedsPage(sb, { canSeed: false, loadCatalog: async () => catalog });
+    expect(page.scouts.filter((x) => testIds.has(x.id)).map((x) => x.displayName)).toEqual([]);
+  }, 60_000);
 });

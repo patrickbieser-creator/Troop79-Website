@@ -83,6 +83,16 @@ export function leafLabels(ranks: readonly PickerRank[], badges: readonly Picker
 /** The most keys the URL carries (a guard on a hand-edited link, far past any real selection). */
 export const PICK_MAX = 60;
 
+/** "You can check up to 60." (qa-lead, B7): shown in place when a tick would pass PICK_MAX. */
+export const PICK_CAP_TEXT = `You can check up to ${PICK_MAX}. Untick one to add another.`;
+
+/** Tick or untick one key. A tick past PICK_MAX changes nothing and says so (capped). */
+export function togglePick(checked: readonly string[], key: string): { next: string[]; capped: boolean } {
+  if (checked.includes(key)) return { next: checked.filter((k) => k !== key), capped: false };
+  if (checked.length >= PICK_MAX) return { next: [...checked], capped: true };
+  return { next: [...checked, key], capped: false };
+}
+
 /** `?pick=` as the selection: known leaf keys only, in order, once each. */
 export function parsePick(value: string | null | undefined, known: ReadonlySet<string>): string[] {
   if (!value) return [];

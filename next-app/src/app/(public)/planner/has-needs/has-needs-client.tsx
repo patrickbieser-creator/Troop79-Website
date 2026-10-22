@@ -7,7 +7,7 @@
  *
  * Desktop, three zones: the picker (320px; the four lower ranks' trees with leaf checkboxes, a group shown with its
  * rule but never ticked; merit badges as a searchable chip grid that drills into one badge), the results (Has · Needs ·
- * Partial, Partial naming what's missing, counts in aria-live headings, a rank filter), and a sticky "Checked (n)" tray
+ * Partial, Partial naming what's missing, plain count headings with one aria-live summary line, a rank filter), and a sticky "Checked (n)" tray
  * of removable chips with Clear. Phone: a Requirements | Results switch, a sticky "N checked · N have · N need · See
  * who" bar, a two-column badge grid, stacked lists, 44px targets.
  *
@@ -23,7 +23,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { Button } from '@/app/_components/button';
 import { EmptyState } from '@/app/_components/empty-state';
 import { mbKey, rankKey, splitScouts, type HasNeedsScout } from '@/lib/has-needs';
-import { flattenTree, leafLabels, offeringOf, parsePick, pickHref, type PickerBadge, type PickerRank, type PickerRow } from '@/lib/has-needs-picker';
+import { flattenTree, leafLabels, offeringOf, parsePick, pickHref, PICK_CAP_TEXT, togglePick, type PickerBadge, type PickerRank, type PickerRow } from '@/lib/has-needs-picker';
 import { plannerAddOfferingAction } from '../build-actions';
 import s from './has-needs.module.css';
 
@@ -66,7 +66,12 @@ export function HasNeedsView({
     setSeen(next.join(','));
     window.history.replaceState(null, '', pickHref(pathname, next));
   };
-  const toggle = (key: string) => commit(checked.includes(key) ? checked.filter((k) => k !== key) : [...checked, key]);
+  const [capped, setCapped] = useState(false);
+  const toggle = (key: string) => {
+    const t = togglePick(checked, key);
+    setCapped(t.capped);
+    if (!t.capped) commit(t.next);
+  };
 
   const [pane, setPane] = useState<'requirements' | 'results'>(checked.length ? 'results' : 'requirements');
   const [rankFilter, setRankFilter] = useState('');
@@ -104,7 +109,7 @@ export function HasNeedsView({
   );
   const column = (name: string, n: number, list: ReactNode[]) => (
     <section className={s.col} aria-label={name}>
-      <h2 className={s.colHead} aria-live="polite">
+      <h2 className={s.colHead}>
         {name} ({n})
       </h2>
       {list.length ? <ul className={s.list}>{list}</ul> : <p className={s.none}>None.</p>}
@@ -146,6 +151,9 @@ export function HasNeedsView({
               </select>
             </label>
           </div>
+          <p className={s.srOnly} aria-live="polite">
+            {checked.length ? `${has.length} have · ${needs.length} need · ${partial.length} partial` : ''}
+          </p>
           {checked.length === 0 ? (
             <EmptyState>Tick a requirement to see who has it and who needs it.</EmptyState>
           ) : (
@@ -184,13 +192,25 @@ export function HasNeedsView({
                   </li>
                 ))}
               </ul>
-              <button type="button" className={s.quiet} onClick={() => commit([])}>
+              <button
+                type="button"
+                className={s.quiet}
+                onClick={() => {
+                  setCapped(false);
+                  commit([]);
+                }}
+              >
                 Clear
               </button>
             </>
           ) : (
             <p className={s.none}>Nothing ticked.</p>
           )}
+          {capped ? (
+            <p className={s.problem} role="status">
+              {PICK_CAP_TEXT}
+            </p>
+          ) : null}
           {single ? (
             <div className={s.add}>
               {meetings.length > 1 ? (
