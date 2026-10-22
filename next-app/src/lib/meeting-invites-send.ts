@@ -6,14 +6,14 @@
  * createTeachInvites / createPickInvites / createReminders. P5b adds reminders (sendReminders).
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { loadBoardScouts, loadMeetingById, loadScoutBoard } from '@/lib/meeting-board';
+import { loadBoardScouts, loadEffectivePicks, loadIntents, loadMeetingById, loadScoutProgress } from '@/lib/meeting-board';
 import { boardName, INTENT_LABEL } from '@/lib/meeting-board-shared';
-import { loadAdvancementCatalog } from '@/lib/advancement-catalog';
+import { loadAdvancementCatalog, type AdvancementCatalog } from '@/lib/advancement-catalog';
 import { recordAudit } from '@/lib/audit';
 import { renderMarkdownEmail } from '@/lib/email-markdown';
 import { sendEmail } from '@/lib/email';
 import { fmtDateFull } from '@/lib/format-date';
-import { minutesText, pickableKeys, topicWords } from '@/lib/meeting-board-picklist';
+import { buildPickList, minutesText, pickableKeys, topicWords } from '@/lib/meeting-board-picklist';
 import {
   DEFAULT_PICK_INVITE,
   DEFAULT_REMINDER,
@@ -27,7 +27,7 @@ import {
   type InviteTemplate
 } from '@/lib/meeting-invite-email';
 import { INVITE_SENDER_NAME } from '@/lib/meeting-invites';
-import { loadTopicWordsFor } from '@/lib/meeting-focus-db';
+import { focusPicks, loadFocusTopics, loadTopicWordsFor } from '@/lib/meeting-focus-db';
 import { createPickInvites, createReminders, createTeachInvites, deleteInvites, type ReminderRecipient } from '@/lib/meeting-invites-db';
 import { siteUrl } from '@/lib/site-url';
 
@@ -124,22 +124,72 @@ export type ScoutCandidatesResult = { ok: true; scouts: ScoutCandidate[] } | { o
 /**
  * Meeting invites, P2: who a requirement could be offered to. Every active scout who can pick it for this meeting
  * (not done, in reach) and hasn't said they can't make it; ticked when it isn't on their list yet. A proposal only:
- * sendPickInvites re-decides everything.
+ * sendPickInvites re-decides everything. One key: scoutCandidatesMany with one key.
  */
-export async function scoutCandidates(sb: SupabaseClient, input: { entryId: number; topicKey: string }): Promise<ScoutCandidatesResult> {
-  if (!input || !Number.isInteger(input.entryId) || typeof input.topicKey !== 'string') return { ok: false, error: 'Malformed request' };
+export async function scoutCandidates(
+  sb: SupabaseClient,
+  input: { entryId: number; topicKey: string },
+  deps: { loadCatalog?: () => Promise<AdvancementCatalog> } = {}
+): Promise<ScoutCandidatesResult> {
+  if (!input || typeof input.topicKey !== 'string') return { ok: false, error: 'Malformed request' };
+  const res = await scoutCandidatesMany(sb, { entryId: input.entryId, keys: [input.topicKey] }, deps);
+  return res.ok ? { ok: true, scouts: res.byKey.get(input.topicKey) ?? [] } : res;
+}
+
+export type ScoutCandidatesManyResult = { ok: true; byKey: Map<string, ScoutCandidate[]> } | { ok: false; error: string };
+
+/**
+ * Build a Plan B0 (Plans/Build-A-Plan.md): scoutCandidates for many keys over ONE board load. The board is read once
+ * for every active scout (progress, seeded focus, effective picks, answers), each scout's pick list is built once,
+ * and every key is answered from those lists, so the round trips don't grow with scouts or keys (v1 loaded a whole
+ * scout board per scout). Agrees with v1's per-scout loadScoutBoard path key for key (pinned in a test).
+ */
+export async function scoutCandidatesMany(
+  sb: SupabaseClient,
+  input: { entryId: number; keys: readonly string[] },
+  deps: { loadCatalog?: () => Promise<AdvancementCatalog> } = {}
+): Promise<ScoutCandidatesManyResult> {
+  if (!input || !Number.isInteger(input.entryId) || !Array.isArray(input.keys) || !input.keys.every((k) => typeof k === 'string')) {
+    return { ok: false, error: 'Malformed request' };
+  }
   const meeting = await loadMeetingById(sb, input.entryId);
   if (!meeting || meeting.closed) return { ok: false, error: 'This meeting has no picks.' };
-  const catalog = await loadAdvancementCatalog();
-  const scouts: ScoutCandidate[] = [];
-  for (const scout of await loadBoardScouts(sb)) {
-    const board = await loadScoutBoard(sb, meeting, scout, catalog, { viewerPersonId: null });
-    const intent = board.view.intent;
-    if (intent === 'not_coming' || !pickableKeys(board.pickList).has(input.topicKey)) continue;
-    const picked = board.picks.some((p) => p.key === input.topicKey);
-    scouts.push({ personId: scout.personId, name: boardName(scout.name), note: `${intent ? INTENT_LABEL[intent] : 'no answer'}${picked ? ' · picked it' : ''}`, ticked: !picked });
+  const [catalog, scouts, topics, intents] = await Promise.all([
+    (deps.loadCatalog ?? loadAdvancementCatalog)(),
+    loadBoardScouts(sb),
+    loadFocusTopics(sb, meeting.entryId),
+    loadIntents(sb, meeting.entryId)
+  ]);
+  const progress = await loadScoutProgress(sb, scouts.map((s) => s.scoutId));
+  const picks = await loadEffectivePicks(sb, meeting, scouts, catalog, progress);
+  const focus = focusPicks(topics, catalog);
+
+  const byKey = new Map<string, ScoutCandidate[]>(input.keys.map((k) => [k, []]));
+  for (const scout of scouts) {
+    const intent = intents.get(scout.personId) ?? null;
+    if (intent === 'not_coming') continue;
+    const p = progress.get(scout.scoutId) ?? { rankCodes: new Set<string>(), mbProgress: [] };
+    // The pick list as loadScoutBoard builds it for a candidate check (no others, teachers or freeform).
+    const pickable = pickableKeys(
+      buildPickList({
+        currentRank: scout.currentRank,
+        ranks: catalog.ranks,
+        rankReqs: catalog.rankRequirements,
+        mbs: catalog.meritBadges,
+        mbProgress: p.mbProgress,
+        rankCodes: p.rankCodes,
+        focus
+      })
+    );
+    const mine = picks.get(scout.personId)?.picks ?? [];
+    for (const [key, list] of byKey) {
+      if (!pickable.has(key)) continue;
+      const picked = mine.some((x) => x.key === key);
+      list.push({ personId: scout.personId, name: boardName(scout.name), note: `${intent ? INTENT_LABEL[intent] : 'no answer'}${picked ? ' · picked it' : ''}`, ticked: !picked });
+    }
   }
-  return { ok: true, scouts: scouts.sort((a, b) => Number(b.ticked) - Number(a.ticked) || a.name.localeCompare(b.name)) };
+  for (const list of byKey.values()) list.sort((a, b) => Number(b.ticked) - Number(a.ticked) || a.name.localeCompare(b.name));
+  return { ok: true, byKey };
 }
 
 /**
