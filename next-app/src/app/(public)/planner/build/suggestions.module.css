@@ -239,6 +239,44 @@
   composes: chip;
   opacity: 0.6;
 }
+/* Teaching: a leader's requirements, each its own control (Patrick, 2026-10-22). */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: var(--sp-1) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.chips .chip,
+.chips .chipOn {
+  margin-right: 0;
+}
+.chipBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  min-height: 44px;
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-pill);
+  background: var(--warm-white);
+  font: 600 var(--fs-xs) / 1.3 var(--font-ui);
+  color: var(--navy);
+  cursor: pointer;
+}
+.chipBtn:hover {
+  border-color: var(--navy);
+}
+.chipBtn:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+.chipBtn[aria-disabled='true'] {
+  opacity: 0.6;
+  cursor: progress;
+}
 
 /* ── an item's end: Add, or On plan + Remove ─────────────────────────────────────────────────────────────── */
 .end {

@@ -105,6 +105,8 @@ export interface RosterAdult {
 
 export interface RosterScoutInstructor {
   id: string;
+  /** The scout's person id (the Teaching lens sets them as a teacher); null for a scout with no person row. */
+  personId?: number | null;
   name: string;
   rankLabel: string;
   skills: string[];

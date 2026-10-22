@@ -60,6 +60,8 @@ export interface SuggestScout {
 
 export interface SuggestTeacher {
   id: string;
+  /** The person a Teaching chip sets as teacher; null for a non-person source (Summer Camp), which gets no control. */
+  personId: number | null;
   name: string;
   /** An adult's role ('ASM'), a scout's rank. */
   meta: string | null;
@@ -182,8 +184,8 @@ export function suggestionsData(payload: MeetingPlanPayload, rankRows: readonly 
     return [...size.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([k]) => k);
   };
   const teachers: SuggestTeacher[] = [
-    ...payload.rosterAdults.map((a) => ({ id: `a:${a.code}`, name: teacherName(a.code, a.name), meta: a.role, scout: false, skills: a.skills, keys: keysOf(a.sessionIds) })),
-    ...payload.rosterScoutInstructors.map((s) => ({ id: `s:${s.id}`, name: boardName(s.name), meta: s.rankLabel, scout: true, skills: s.skills, keys: keysOf(s.sessionIds) }))
+    ...payload.rosterAdults.map((a) => ({ id: `a:${a.code}`, personId: /^\d+$/.test(a.code) ? Number(a.code) : null, name: teacherName(a.code, a.name), meta: a.role, scout: false, skills: a.skills, keys: keysOf(a.sessionIds) })),
+    ...payload.rosterScoutInstructors.map((s) => ({ id: `s:${s.id}`, personId: s.personId ?? null, name: boardName(s.name), meta: s.rankLabel, scout: true, skills: s.skills, keys: keysOf(s.sessionIds) }))
   ];
 
   // ── Needs a campout ───────────────────────────────────────────────────────────────────────────────────────

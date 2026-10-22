@@ -204,6 +204,44 @@ export async function plannerSetTeacherAction(input: { entryId: number; key: str
   return { ok: true, teachers: teachers.get(input.key) ?? [], onBoard: topic.error != null || topic.data != null, prior: s.prior, stamp };
 }
 
+// ── Suggestions › Teaching chips (Patrick, 2026-10-22) ─────────────────────────────────────────────────────────────
+
+export type TeachingChipResult =
+  | { ok: true; key: string; added: boolean; teachers: string[]; onBoard: boolean; prior: string; stamp: string; problem?: string }
+  | { ok: false; error: string };
+
+/**
+ * A Teaching chip: this leader teaches this requirement. On the plan already → set them as its teacher (edit right).
+ * Not on the plan → add it AND set them (the seed right and the edit right, both checked before anything is written,
+ * so a refusal leaves nothing half-done). The add and the teacher are two writes; if the teacher write fails after the
+ * add, the result carries `problem` ("Added to the plan, but the teacher wasn't set: …"): the row shows as added, with
+ * no teacher, and the chip says why, rather than looking like success.
+ */
+export async function plannerTeachingChipAction(input: { entryId: number; key: string; personId: number }): Promise<TeachingChipResult> {
+  if (!isOfferingKey(input?.key) || !Number.isInteger(input.personId)) return fail('Malformed request');
+  const e = await gate(input.entryId, 'edit');
+  if (!e.ok) return e;
+  const { data: onPlan, error } = await e.sb.from('meeting_topics').select('id').eq('calendar_entry_id', e.meeting.entryId).eq('topic_key', input.key).maybeSingle();
+  if (error) return fail('That didn’t load. Try again.');
+  let added = false;
+  if (!onPlan) {
+    const s = await plannerSeeder(input.entryId, { within: PLAN_MEETINGS });
+    if (!s.ok) return s;
+    const res = await seedMany(e.sb, e.meeting.entryId, [input.key], e.actorPersonId);
+    if (!res.ok) return res;
+    added = true;
+  }
+  const taught = await teachTopic(e.sb, { personId: input.personId, actorPersonId: e.actorPersonId, leader: true }, [e.meeting.entryId], { key: input.key }, null);
+  if (!taught.ok && !added) return taught;
+  const [stamp, teachers, topic] = await Promise.all([
+    loadBoardStamp(e.sb, e.meeting.entryId),
+    teachersOfKeys(e.sb, e.meeting, [input.key]),
+    e.sb.from('meeting_topics').select('id').eq('calendar_entry_id', e.meeting.entryId).eq('topic_key', input.key).maybeSingle()
+  ]);
+  const problem = taught.ok ? undefined : `Added to the plan, but the teacher wasn’t set: ${taught.error}`;
+  return { ok: true, key: input.key, added, teachers: teachers.get(input.key) ?? [], onBoard: topic.error != null || topic.data != null, prior: e.prior, stamp, ...(problem ? { problem } : {}) };
+}
+
 // ── B3: Invite… (adults with the edit right; Decision 2: one digest per recipient) ──────────────────────────────────
 
 /** An adult editor on one of the next meetings, with the keys on its plan. A scout editor (the SPL) never sends. */

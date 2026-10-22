@@ -570,12 +570,14 @@ export function buildMeetingPlan(input: EngineInput): MeetingPlanPayload {
     }))
     .sort((a, b) => b.sessionIds.length - a.sessionIds.length || a.name.localeCompare(b.name));
 
+  const personOfScout = new Map([...scoutByPerson].map(([personId, sc]) => [sc.id, personId]));
   const rosterScoutInstructors = [...skillNamesByInstructor.entries()]
     .filter(([id]) => mayTeach(id))
     .map(([id, skills]) => {
       const ref = scoutRefs.get(id)!;
       return {
         id,
+        personId: personOfScout.get(id) ?? null,
         name: ref.name,
         rankLabel: ref.rankLabel,
         skills,

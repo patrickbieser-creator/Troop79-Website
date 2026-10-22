@@ -34,6 +34,8 @@ export interface PlanRow {
   seeded: boolean;
   /** Who is teaching it ('Maria L'). */
   teachers: string[];
+  /** Their person ids, where known (the Teaching lens's "on plan · teaching"). */
+  teacherIds?: number[];
   /** Scouts who picked it for this meeting. */
   scouts: number;
   /** Needs a teacher: people qualified to teach it who can still come; null when added on this page and not counted yet. */
@@ -47,7 +49,7 @@ export function planRows(board: Pick<PlannerBoard, 'ready' | 'noTeacher' | 'offe
   const rows: PlanRow[] = [
     ...board.ready.map((r) => {
       const seeded = r.seededBy != null;
-      return { key: r.key, codeLabel: r.codeLabel, title: r.title, origin: origin(seeded, r.scouts.length), seeded, teachers: r.teachers.map((t) => t.name), scouts: r.scouts.length, canTeach: 0, state: 'ready' as const };
+      return { key: r.key, codeLabel: r.codeLabel, title: r.title, origin: origin(seeded, r.scouts.length), seeded, teachers: r.teachers.map((t) => t.name), teacherIds: r.teachers.map((t) => t.personId), scouts: r.scouts.length, canTeach: 0, state: 'ready' as const };
     }),
     ...board.noTeacher.map((r) => {
       const seeded = r.seededBy != null;
@@ -55,7 +57,7 @@ export function planRows(board: Pick<PlannerBoard, 'ready' | 'noTeacher' | 'offe
     }),
     ...board.offered.map((r) => {
       const seeded = r.seededBy != null;
-      return { key: r.key, codeLabel: r.codeLabel, title: r.title, origin: origin(seeded, 0), seeded, teachers: r.teachers.map((t) => t.name), scouts: 0, canTeach: 0, state: 'needs-scouts' as const };
+      return { key: r.key, codeLabel: r.codeLabel, title: r.title, origin: origin(seeded, 0), seeded, teachers: r.teachers.map((t) => t.name), teacherIds: r.teachers.map((t) => t.personId), scouts: 0, canTeach: 0, state: 'needs-scouts' as const };
     })
   ];
   const order: Record<PlanState, number> = { ready: 0, 'needs-teacher': 1, 'needs-scouts': 2 };
@@ -336,11 +338,12 @@ export function teacherChoices(input: {
 }
 
 /** The row after its teachers changed (B2 Edit): its teacher line and state follow; gone when nothing holds it. */
-export function withTeachers(row: PlanRow, teachers: readonly string[], onBoard: boolean): PlanRow | null {
+export function withTeachers(row: PlanRow, teachers: readonly string[], onBoard: boolean, teacherIds?: readonly number[]): PlanRow | null {
   if (!onBoard) return null;
   const state: PlanState = teachers.length ? (row.scouts ? 'ready' : 'needs-scouts') : 'needs-teacher';
   const origin: PlanOrigin = row.seeded ? 'planner' : row.scouts ? 'scouts' : 'teacher';
-  return { ...row, teachers: [...teachers], state, origin };
+  // Ids only when the caller knows them; otherwise they're unknown (the Teaching lens then matches by name).
+  return { ...row, teachers: [...teachers], teacherIds: teacherIds ? [...teacherIds] : undefined, state, origin };
 }
 
 /** "Mix for Oct 25": a new mix's name until the planner types one. */

@@ -42,6 +42,6 @@ export const DATA: SuggestionsData = {
       ]
     }
   ],
-  teachers: [{ id: 'a:7', name: 'Dan K', meta: 'ASM', scout: false, skills: ['Knots', 'First aid'], keys: ['scout-2', 'tenderfoot-4a'] }],
+  teachers: [{ id: 'a:7', personId: 7, name: 'Dan K', meta: 'ASM', scout: false, skills: ['Knots', 'First aid'], keys: ['scout-2', 'tenderfoot-4a'] }],
   campout: [{ codeLabel: 'TF 1b', title: 'Spend a night camping', scouts: ['Anjali S'], ranks: ['tenderfoot'] }]
 };

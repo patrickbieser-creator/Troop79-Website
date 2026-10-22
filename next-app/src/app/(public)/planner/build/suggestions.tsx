@@ -7,11 +7,14 @@
  *   Group Sessions (default)  a card per session, grouped by rank: the requirement, N need it, the group by name, the
  *                             best teacher and the other qualified ones.
  *   By Scout                  each scout's next ≤3 requirements, merit badges included for older scouts.
- *   Teaching                  who can teach what; a row can add that teacher's biggest session.
+ *   Teaching                  who can teach what. Each requirement chip in a leader's row is the control (Patrick,
+ *                             2026-10-22): "Add with <Name> teaching" (not on the plan: adds it with them teaching),
+ *                             "Assign <Name>" (on the plan, someone else or nobody teaching), or "on plan · teaching".
+ *                             Rows take no tick: one leader's choice never lights up another's.
  *   Needs a campout           a collapsed footer on every lens, with no Add.
  *
  * The sticky bar holds the meeting switcher, the lens and the filters (rank, MB only, show what's already on the plan).
- * Seed holders get one-click Add on each item and a tick on every lens; the ticks survive lens switches and go in one
+ * Seed holders get one-click Add on each item and a tick on Group Sessions and By Scout; the ticks survive lens switches and go in one
  * "Add N to the plan" (the page's batched add). An item already on the plan reads On plan, with the plan's own quiet
  * Remove (seeded rows only; others say why). Viewers see the lenses read-only. Lens switches, filters and ticks are
  * client state: nothing here reloads anything.
@@ -51,6 +54,8 @@ export function SuggestionsWorkspace({
   planHref,
   onOpenPlan,
   addItems,
+  canEdit = false,
+  onTeach,
   onRemove,
   onLeave,
   lookupsHref
@@ -65,6 +70,10 @@ export function SuggestionsWorkspace({
   onOpenPlan: () => void;
   /** The page's batched add: resolves to an error to show, or null. */
   addItems: (items: SuggestItem[]) => Promise<string | null>;
+  /** The edit right: a Teaching chip sets a teacher (adding the offering too needs canSeed as well). */
+  canEdit?: boolean;
+  /** A Teaching chip: this leader teaches this item (added first when it isn't on the plan). An error to show, or null. */
+  onTeach?: (item: SuggestItem, personId: number) => Promise<string | null>;
   onRemove: (row: PlanRow, trigger: HTMLElement | null) => void;
   /** "Back to the plan" was chosen (the plan then puts focus back on its Suggestions link). */
   onLeave?: () => void;
@@ -182,7 +191,7 @@ export function SuggestionsWorkspace({
         {feed.status === 'failed' ? <p className={s.empty}>Suggestions didn’t load. Reload the page to try again.</p> : null}
         {data && lens === 'sessions' ? <Sessions data={data} filter={filter} onPlan={onPlan} tick={tick} ctl={ctl} /> : null}
         {data && lens === 'scouts' ? <Scouts data={data} filter={filter} onPlan={onPlan} tick={tick} ctl={ctl} /> : null}
-        {data && lens === 'teaching' ? <Teaching data={data} filter={filter} onPlan={onPlan} byKey={byKey} tick={tick} ctl={ctl} lookupsHref={lookupsHref} /> : null}
+        {data && lens === 'teaching' ? <Teaching data={data} filter={filter} rowByKey={rowByKey} byKey={byKey} canSeed={canSeed} canEdit={canEdit} onTeach={onTeach} lookupsHref={lookupsHref} /> : null}
         {data ? <Campout data={data} filter={filter} /> : null}
       </div>
 
@@ -322,7 +331,26 @@ function Scouts({ data, filter, onPlan, tick, ctl }: LensProps) {
   );
 }
 
-function Teaching({ data, filter, onPlan, byKey, tick, ctl, lookupsHref }: LensProps & { byKey: ReadonlyMap<string, SuggestItem>; lookupsHref?: string }) {
+function Teaching({
+  data,
+  filter,
+  rowByKey,
+  byKey,
+  canSeed,
+  canEdit,
+  onTeach,
+  lookupsHref
+}: {
+  data: SuggestionsData;
+  filter: SuggestFilter;
+  rowByKey: ReadonlyMap<string, PlanRow>;
+  byKey: ReadonlyMap<string, SuggestItem>;
+  canSeed: boolean;
+  canEdit: boolean;
+  onTeach?: (item: SuggestItem, personId: number) => Promise<string | null>;
+  lookupsHref?: string;
+}) {
+  const onPlan = new Set(rowByKey.keys());
   const rows = data.teachers
     .map((t) => ({ t, keys: teacherKeysShown(t.keys, byKey, onPlan, filter) }))
     .filter(({ keys }) => keys.length || (filter.rank == null && !filter.mbOnly));
@@ -340,41 +368,103 @@ function Teaching({ data, filter, onPlan, byKey, tick, ctl, lookupsHref }: LensP
     );
   return (
     <>
-    {lookups}
-    <ul className={s.rows}>
-      {rows.map(({ t, keys }) => {
-        const best = keys.map((k) => byKey.get(k)!).find((i) => !onPlan.has(i.key));
-        return (
+      {lookups}
+      <ul className={s.rows}>
+        {rows.map(({ t, keys }) => (
           <li key={t.id} className={s.scout}>
-            <div className={s.itemLine}>
-              {best ? tick(best) : null}
-              <p className={s.who}>
-                {t.name}
-                {t.meta ? <span className={s.whoMeta}>{t.scout ? `${t.meta} scout` : t.meta}</span> : null}
-              </p>
-              {best ? ctl(best) : null}
-            </div>
+            <p className={s.who}>
+              {t.name}
+              {t.meta ? <span className={s.whoMeta}>{t.scout ? `${t.meta} scout` : t.meta}</span> : null}
+            </p>
             <p className={s.meta}>{t.skills.join(' · ')}</p>
             {keys.length ? (
-              <p className={s.names}>
-                {keys.map((k, i) => {
-                  const item = byKey.get(k)!;
-                  return (
-                    <span key={k} className={onPlan.has(k) ? s.chipOn : s.chip}>
-                      {item.codeLabel}
-                      {onPlan.has(k) ? ' · on plan' : ''}
-                      {i < keys.length - 1 ? ' ' : ''}
-                    </span>
-                  );
-                })}
-              </p>
+              <ul className={s.chips}>
+                {keys.map((k) => (
+                  <li key={k}>
+                    <TeachChip item={byKey.get(k)!} row={rowByKey.get(k)} teacher={t} canSeed={canSeed} canEdit={canEdit} onTeach={onTeach} />
+                  </li>
+                ))}
+              </ul>
             ) : (
               <p className={s.meta}>No session for them this week</p>
             )}
           </li>
-        );
-      })}
-    </ul>
+        ))}
+      </ul>
+    </>
+  );
+}
+
+/**
+ * One requirement in a leader's Teaching row. Teaching it already → "on plan · teaching". On the plan → "Assign <Name>"
+ * (edit right). Not on the plan → "Add with <Name> teaching" (seed and edit rights). Without the right, or for a
+ * non-person teacher (Summer Camp), the chip is plain text: never a dead button.
+ */
+function TeachChip({
+  item,
+  row,
+  teacher,
+  canSeed,
+  canEdit,
+  onTeach
+}: {
+  item: SuggestItem;
+  row: PlanRow | undefined;
+  teacher: SuggestionsData['teachers'][number];
+  canSeed: boolean;
+  canEdit: boolean;
+  onTeach?: (item: SuggestItem, personId: number) => Promise<string | null>;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  const teaching = row != null && (row.teacherIds ? teacher.personId != null && row.teacherIds.includes(teacher.personId) : row.teachers.includes(teacher.name));
+  const label = (
+    <span className={s.code}>
+      {item.eagle ? '★ ' : ''}
+      {item.codeLabel}
+    </span>
+  );
+  if (teaching) {
+    return (
+      <span className={s.chipOn}>
+        {label} on plan · teaching
+      </span>
+    );
+  }
+  const may = teacher.personId != null && onTeach != null && canEdit && (row != null || canSeed);
+  if (!may) {
+    return (
+      <span className={row ? s.chipOn : s.chip}>
+        {label}
+        {row ? ' on plan' : ''}
+      </span>
+    );
+  }
+  const go = async () => {
+    if (busy) return;
+    setBusy(true);
+    setProblem(null);
+    const err = await onTeach!(item, teacher.personId!);
+    setBusy(false);
+    if (err) setProblem(err);
+  };
+  const what = `${item.codeLabel} ${item.title}`;
+  return (
+    <>
+      <button
+        type="button"
+        className={s.chipBtn}
+        onClick={go}
+        aria-disabled={busy || undefined}
+        aria-label={row ? `Assign ${teacher.name} to ${what}` : `Add ${what} with ${teacher.name} teaching`}
+      >
+        {label} {busy ? 'Saving…' : row ? `Assign ${teacher.name}` : `Add with ${teacher.name} teaching`}
+      </button>
+      {problem ? (
+        <span className={s.problemBox} role="alert">
+          {problem}
+        </span>
+      ) : null}
     </>
   );
 }

@@ -52,6 +52,7 @@ import type { FocusSearchRow, FocusSetView } from '@/lib/meeting-focus';
 import {
   plannerAddFocusSetAction,
   plannerAddOfferingAction,
+  plannerTeachingChipAction,
   plannerNewMixAction,
   plannerRemoveOfferingAction,
   type BuildClassResult,
@@ -228,6 +229,24 @@ export function BuildPlanView({
     addClass(res);
     return null;
   };
+  /**
+   * Suggestions › Teaching: a chip sets that leader as the teacher, adding the offering first when it isn't on the plan
+   * (one server action). Resolves to an error (or the "added, but…" problem) to show on the chip, or null.
+   */
+  const teachChip = async (item: SuggestItem, personId: number): Promise<string | null> => {
+    const res = await plannerTeachingChipAction({ entryId, key: item.key, personId }).catch(() => ({ ok: false as const, error: SAVE_FAILED }));
+    if (!res.ok) return res.error;
+    landed(res);
+    setRows((rs) => {
+      const withRow = res.added ? withAdded(rs, item, []) : rs;
+      return withRow.flatMap((r) => {
+        if (r.key !== item.key) return [r];
+        const ids = res.problem ? r.teacherIds : [...new Set([...(r.teacherIds ?? []), personId])];
+        return withTeachers(r, res.teachers, res.onBoard, ids) ?? [];
+      });
+    });
+    return res.problem ?? null;
+  };
   const onTeachers = (key: string, res: Extract<BuildTeacherResult, { ok: true }>) => {
     landed(res);
     setRows((rs) => rs.flatMap((r) => (r.key === key ? (withTeachers(r, res.teachers, res.onBoard) ?? []) : [r])));
@@ -277,6 +296,8 @@ export function BuildPlanView({
             planHref={planHref}
             onOpenPlan={() => setPlanSheet(true)}
             addItems={addItems}
+            canEdit={canEdit}
+            onTeach={teachChip}
             onRemove={(row, trigger) => setRemoving({ row, trigger })}
             onLeave={() => (backFromSuggestions = true)}
             lookupsHref={lookupsHref}

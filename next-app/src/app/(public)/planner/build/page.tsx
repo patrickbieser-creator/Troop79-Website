@@ -54,7 +54,7 @@ async function Likely({ entryId, keys }: { entryId: number; keys: string[] }) {
  * answer) re-renders this page. Suggestions are advice; what is on the plan is the client's own rows, so an Add shows
  * On plan at once. JSON-only values. A failure (the engine refused) is not cached.
  */
-const suggestionsCached = unstable_cache(async (date: string, title: string) => loadSuggestionsData(date, title), ['build-plan-suggestions-b5'], { revalidate: 120 });
+const suggestionsCached = unstable_cache(async (date: string, title: string) => loadSuggestionsData(date, title), ['build-plan-suggestions-b5-teacher-ids'], { revalidate: 120 });
 
 /** Streams the one engine read into the workspace; null (it failed) says so there. */
 async function Suggestions({ meeting }: { meeting: BoardMeeting }) {

@@ -315,3 +315,52 @@ describe('Build a Plan B2: round trips', () => {
     expect({ set, mix, edit, teach }).toEqual({ set: 9, mix: 6, edit: 6, teach: 11 });
   });
 });
+
+/**
+ * Suggestions › Teaching chips (Patrick, 2026-10-22): one action per chip. Not on the plan → add it AND set that leader
+ * as its teacher (needs the seed right and the edit right, both checked before any write); on the plan → set the
+ * teacher only (edit right).
+ */
+describe('Build a Plan: Teaching chips', () => {
+  const both = () => (state.actor = { personId: seeder, subjectKind: 'adult', capabilities: new Set(['meeting_planner.seed', 'meeting_planner.edit']) });
+  const teachersOn = async (key: string) => {
+    const { data } = await sb.from('meeting_topic_teachers').select('person_id, for_picks, meeting_topics!inner(topic_key)').eq('calendar_entry_id', meeting).eq('meeting_topics.topic_key', key);
+    return ((data ?? []) as { person_id: number; for_picks: boolean }[]).map((r) => [r.person_id, r.for_picks]);
+  };
+
+  it('TeachingChip_AddsWithThatTeacher', async () => {
+    await clearTopics();
+    both();
+    const res = await (await actions()).plannerTeachingChipAction({ entryId: meeting, key: tops[0], personId: teacher });
+    expect({ res: res.ok && [res.added, res.teachers], seeded: await seededKeys(), teachers: await teachersOn(tops[0]) }).toEqual({
+      res: [true, [boardName(`${TEST_PREFIX} BP2 Teacher`)]],
+      seeded: [tops[0]],
+      teachers: [[teacher, false]]
+    });
+  });
+
+  it('TeachingChip_AssignsOnExistingOffering_WithEditRightOnly', async () => {
+    await clearTopics();
+    asSeeder();
+    await (await actions()).plannerAddOfferingAction({ entryId: meeting, keys: [tops[0]] });
+    asEditor();
+    const res = await (await actions()).plannerTeachingChipAction({ entryId: meeting, key: tops[0], personId: teacher });
+    expect({ added: res.ok && res.added, teachers: await teachersOn(tops[0]) }).toEqual({ added: false, teachers: [[teacher, false]] });
+  });
+
+  it('TeachingChip_NotOnPlan_WithoutSeedRight_IsRefused', async () => {
+    await clearTopics();
+    asEditor();
+    const res = await (await actions()).plannerTeachingChipAction({ entryId: meeting, key: tops[0], personId: teacher });
+    const { count } = await sb.from('meeting_topics').select('id', { count: 'exact', head: true }).eq('calendar_entry_id', meeting);
+    expect({ res, topics: count }).toEqual({ res: { ok: false, error: 'Only the planning team can seed a meeting.' }, topics: 0 });
+  });
+
+  it('TeachingChip_WithoutEditRight_IsRefused_BeforeAnyAdd', async () => {
+    await clearTopics();
+    asSeeder();
+    const res = await (await actions()).plannerTeachingChipAction({ entryId: meeting, key: tops[0], personId: teacher });
+    const { count } = await sb.from('meeting_topics').select('id', { count: 'exact', head: true }).eq('calendar_entry_id', meeting);
+    expect({ res, topics: count }).toEqual({ res: { ok: false, error: 'Only someone who can edit the Meeting Planner can do that.' }, topics: 0 });
+  });
+});

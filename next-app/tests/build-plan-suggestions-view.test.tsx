@@ -13,9 +13,11 @@ const nav = vi.hoisted(() => ({ refresh: vi.fn(), push: vi.fn() }));
 vi.mock('next/navigation', () => ({ useRouter: () => nav }));
 const add = vi.hoisted(() => vi.fn());
 const remove = vi.hoisted(() => vi.fn());
+const teachChip = vi.hoisted(() => vi.fn());
 vi.mock('../src/app/(public)/planner/build-actions', () => ({
   plannerAddOfferingAction: add,
   plannerRemoveOfferingAction: remove,
+  plannerTeachingChipAction: teachChip,
   plannerBuildStampAction: vi.fn(async () => ({ ok: false }))
 }));
 vi.mock('../src/app/(public)/planner/actions', () => ({ plannerStampAction: vi.fn(async () => ({ ok: false })) }));
@@ -36,8 +38,8 @@ const row = (key: string, o: Partial<PlanRow> = {}): PlanRow => ({
 });
 const ROWS = [row('tenderfoot-4a', { codeLabel: 'Tenderfoot 4a', title: 'First aid' }), row('scout-1a', { origin: 'scouts', seeded: false, scouts: 3, state: 'ready' })];
 
-const mode = (canSeed = true, rows = ROWS) =>
-  render(<BuildPlanView entryId={1} rows={rows} canSeed={canSeed} stamp="s0" heading={null} mode="suggestions" planHref="/planner/build?meeting=1" feed={<SuggestionsFeed data={DATA} />} />);
+const mode = (canSeed = true, rows = ROWS, canEdit = canSeed) =>
+  render(<BuildPlanView entryId={1} rows={rows} canSeed={canSeed} canEdit={canEdit} stamp="s0" heading={null} mode="suggestions" planHref="/planner/build?meeting=1" feed={<SuggestionsFeed data={DATA} />} />);
 const lens = (name: string) => fireEvent.click(screen.getByRole('radio', { name }));
 const workspace = () => screen.getByRole('region', { name: 'Suggestions' });
 
@@ -47,6 +49,7 @@ afterEach(() => {
   nav.push.mockReset();
   add.mockReset();
   remove.mockReset();
+  teachChip.mockReset();
 });
 
 describe('Suggestions mode', () => {
@@ -86,7 +89,7 @@ describe('Suggestions mode', () => {
     await within(workspace()).findByText('Flag');
     lens('Teaching');
     const t = screen.getByText('Dan K', { selector: 'p' }).closest('li') as HTMLElement;
-    expect([t.textContent?.includes('Knots · First aid'), t.textContent?.includes('Scout 2'), within(t).getByRole('button', { name: 'Add Scout 2 Flag' }) != null]).toEqual([true, true, true]);
+    expect([t.textContent?.includes('Knots · First aid'), t.textContent?.includes('Scout 2'), within(t).getByRole('button', { name: 'Add Scout 2 Flag with Dan K teaching' }) != null]).toEqual([true, true, true]);
   });
 
   it('NeedsCampout_HasNoAdd', async () => {
@@ -181,5 +184,54 @@ describe('Suggestions mode, more', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add 25 to the plan' }));
     await waitFor(() => expect(add).toHaveBeenCalledTimes(2));
     expect(add.mock.calls.map((c) => c[0].keys.length)).toEqual([20, 5]);
+  });
+});
+
+/**
+ * Suggestions › Teaching (Patrick, 2026-10-22): each requirement chip in a leader's row is the control. Not on the plan
+ * → "Add with <Name> teaching" (adds it with that leader teaching, one action); on the plan without them → "Assign
+ * <Name>"; with them → "on plan · teaching". Rows have no tick and no row-level Add, so one leader's choice never
+ * lights up another's.
+ */
+describe('Suggestions › Teaching chips', () => {
+  const danRow = () => screen.getByText('Dan K', { selector: 'p' }).closest('li') as HTMLElement;
+  const teaching = async (rows: PlanRow[] = [], canSeed = true, canEdit = canSeed) => {
+    mode(canSeed, rows, canEdit);
+    await within(workspace()).findByText('Flag');
+    lens('Teaching');
+  };
+  const ok = (o: object = {}) => ({ ok: true, key: 'scout-2', added: true, teachers: ['Dan K'], onBoard: true, prior: 's0', stamp: 's1', ...o });
+
+  it('TeachingChip_AddsWithThatTeacher', async () => {
+    await teaching();
+    teachChip.mockResolvedValueOnce(ok());
+    fireEvent.click(within(danRow()).getByRole('button', { name: 'Add Scout 2 Flag with Dan K teaching' }));
+    await waitFor(() => expect(within(danRow()).getByText(/on plan · teaching/)).toBeTruthy());
+    expect([teachChip.mock.calls, add.mock.calls.length]).toEqual([[[{ entryId: 1, key: 'scout-2', personId: 7 }]], 0]);
+  });
+
+  it('TeachingChip_AssignsOnExistingOffering', async () => {
+    await teaching([row('tenderfoot-4a', { codeLabel: 'Tenderfoot 4a', title: 'First aid' })]);
+    teachChip.mockResolvedValueOnce(ok({ key: 'tenderfoot-4a', added: false }));
+    fireEvent.click(within(danRow()).getByRole('button', { name: 'Assign Dan K to Tenderfoot 4a First aid' }));
+    await waitFor(() => expect(teachChip).toHaveBeenCalled());
+    expect(teachChip.mock.calls).toEqual([[{ entryId: 1, key: 'tenderfoot-4a', personId: 7 }]]);
+  });
+
+  it('TeachingChip_TeachingAlready_ReadsOnPlanTeaching', async () => {
+    await teaching([row('tenderfoot-4a', { codeLabel: 'Tenderfoot 4a', title: 'First aid', teachers: ['Dan K'], teacherIds: [7] })]);
+    expect([within(danRow()).getByText(/on plan · teaching/) != null, within(danRow()).queryByRole('button', { name: /Tenderfoot 4a/ })]).toEqual([true, null]);
+  });
+
+  it('TeachingRows_HaveNoTicks_SoNoCrossRowLighting', async () => {
+    mode(true, []);
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'Select Scout 2 Flag' }));
+    lens('Teaching');
+    expect([within(danRow()).queryAllByRole('checkbox').length, within(danRow()).queryByRole('button', { name: /^Add Scout 2 Flag$/ })]).toEqual([0, null]);
+  });
+
+  it('TeachingChip_WithoutEditRight_ShowsNoDeadButton', async () => {
+    await teaching([], true, false);
+    expect(within(danRow()).queryAllByRole('button').length).toBe(0);
   });
 });
