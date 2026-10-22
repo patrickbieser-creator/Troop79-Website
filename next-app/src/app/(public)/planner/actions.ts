@@ -43,6 +43,7 @@ import { plannerAccess } from '@/lib/meeting-planner-access';
 import { loadPersonDrawer, type PersonDrawer } from '@/lib/meeting-planner-drawer';
 import { seedFocusSet, seedTopic, unseedTopic } from '@/lib/meeting-focus-db';
 import { loadPlannerLists } from '@/lib/people-lists';
+import { plannerSeeder } from '@/lib/meeting-planner-seeder';
 
 export type PlannerDrawerResult = { ok: true; drawer: PersonDrawer; stamp: string } | { ok: false; error: string };
 /**
@@ -343,18 +344,8 @@ export async function plannerSendRemindersAction(input: { entryId: number; perso
 
 export type PlannerSeedResult = { ok: true; stamp: string; count: number } | { ok: false; error: string };
 
-/** A seed holder acting on an upcoming, published meeting that takes sign-ups. Refused before the database is touched. */
-async function seeder(entryId: unknown) {
-  if (!Number.isInteger(entryId)) return fail('Malformed request');
-  const actor = await resolveAdminActor();
-  if (!plannerAccess(actor).canSeed || actor?.personId == null) return fail('Only the planning team can seed a meeting.');
-  const sb = createAdminClient();
-  const meeting = await loadMeetingForWrite(sb, entryId as number);
-  if (!meeting) return fail('That meeting is no longer on the calendar.');
-  if (!meeting.published || meeting.closed) return fail('That meeting isn’t taking sign-ups.');
-  if (meeting.date < centralToday()) return fail('That meeting has passed.');
-  return { ok: true as const, sb, meeting, actorPersonId: actor.personId };
-}
+/** A seed holder acting on an upcoming, published meeting that takes sign-ups (lib/meeting-planner-seeder). */
+const seeder = plannerSeeder;
 
 /** Seed a meeting with a focus set: one focus group (one pick, one class). Existing focus topics stay. */
 export async function plannerSeedSetAction(input: { entryId: number; setId: number }): Promise<PlannerSeedResult> {

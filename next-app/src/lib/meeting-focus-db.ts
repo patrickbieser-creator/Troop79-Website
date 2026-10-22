@@ -155,7 +155,7 @@ export function itemView(key: string, catalog: Catalog): FocusSetView['items'][n
 }
 
 /** The RPCs' own messages are written for people; anything else is not shown raw. */
-const KNOWN = /^(Give the set|That isn’t a requirement|Keep labels|Keep a set|That set|That meeting|Seed one|Seed a whole)/;
+const KNOWN = /^(Add up to|Give the set|That isn’t a requirement|Keep labels|Keep a set|That set|That meeting|Seed one|Seed a whole)/;
 const said = (message: string) => (KNOWN.test(message) ? message : 'Couldn’t save that. Try again.');
 export type FocusWrite<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 
@@ -177,6 +177,13 @@ export async function seedFocusSet(sb: SupabaseClient, entryId: number, setId: n
 export async function seedTopic(sb: SupabaseClient, entryId: number, key: string, actorPersonId: number): Promise<FocusWrite> {
   const { error } = await sb.rpc('meeting_seed_topic', { p_entry: entryId, p_key: key, p_actor: actorPersonId });
   return error ? { ok: false, error: said(error.message) } : { ok: true };
+}
+
+/** Build a Plan B1: seed several top-level requirements in one call (one lock, idempotent per key). The keys this
+ *  call newly seeded come back; a key already seeded is left as it was. */
+export async function seedMany(sb: SupabaseClient, entryId: number, keys: readonly string[], actorPersonId: number): Promise<FocusWrite<{ seeded: string[] }>> {
+  const { data, error } = await sb.rpc('meeting_seed_many', { p_entry: entryId, p_keys: keys, p_actor: actorPersonId });
+  return error ? { ok: false, error: said(error.message) } : { ok: true, seeded: (data ?? []) as string[] };
 }
 
 export async function unseedTopic(sb: SupabaseClient, entryId: number, key: string): Promise<FocusWrite> {

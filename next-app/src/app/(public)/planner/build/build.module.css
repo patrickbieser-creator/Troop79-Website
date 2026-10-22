@@ -1,0 +1,302 @@
+/* Build a Plan (Plans/Build-A-Plan.md, B1), on public tokens like the rest of the planner: forest = ready,
+   status-danger = needs a teacher, bark = needs scouts and the planner's own rows. Breakpoints are the public canon
+   (900 / 640). Phone: rows become cards, Suggested becomes a sheet opened from the rail, targets are 44px. */
+
+.switcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin: var(--sp-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.meetingLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--sp-4);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-pill);
+  font: 600 var(--fs-sm) / 1 var(--font-ui);
+  color: var(--navy);
+  text-decoration: none;
+  background: var(--warm-white);
+}
+.meetingLink:hover {
+  border-color: var(--navy);
+}
+.meetingLink:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.meetingOn {
+  composes: meetingLink;
+  border-color: var(--navy);
+  background: var(--navy);
+  color: var(--warm-white);
+}
+
+/* ── the rail ─────────────────────────────────────────────────────────────────────────────────────────────── */
+.rail {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  min-height: 44px;
+  padding: var(--sp-2) var(--sp-7);
+  border-bottom: 1px solid var(--border-light);
+  background: var(--cream);
+  font: var(--fs-sm) / 1.4 var(--font-ui);
+  color: var(--text-head);
+}
+.railText {
+  margin: 0;
+}
+.railSheet {
+  display: none;
+  min-height: 44px;
+  padding: 0 var(--sp-4);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-pill);
+  background: var(--warm-white);
+  font: 600 var(--fs-sm) / 1 var(--font-ui);
+  color: var(--navy);
+  cursor: pointer;
+}
+
+/* ── layout ───────────────────────────────────────────────────────────────────────────────────────────────── */
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: var(--sp-6);
+  padding: var(--sp-5) var(--sp-7);
+}
+.layoutSolo {
+  composes: layout;
+  grid-template-columns: minmax(0, 1fr);
+}
+.sectionTitle {
+  margin: 0 0 var(--sp-3);
+  font: 700 var(--fs-md) / 1.3 var(--font-ui);
+  color: var(--navy);
+}
+
+/* ── the plan list ────────────────────────────────────────────────────────────────────────────────────────── */
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--border-light);
+}
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: start;
+  gap: var(--sp-3);
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--border-light);
+}
+.rowTitle {
+  margin: 0;
+  font: 600 var(--fs-md) / 1.35 var(--font-ui);
+  color: var(--text-head);
+}
+.code {
+  margin-right: var(--sp-2);
+  font: 700 var(--fs-xs) / 1.35 var(--font-ui);
+  color: var(--text-meta);
+}
+.origin {
+  margin-left: var(--sp-2);
+  font: 600 var(--fs-2xs) / 1.35 var(--font-ui);
+  color: var(--bark);
+}
+.rowLine {
+  margin: var(--sp-1) 0 0;
+  font: var(--fs-sm) / 1.4 var(--font-ui);
+  color: var(--text-body);
+}
+.state {
+  font: 700 var(--fs-xs) / 1.6 var(--font-ui);
+  white-space: nowrap;
+}
+.stateReady {
+  composes: state;
+  color: var(--forest);
+}
+.stateTeacher {
+  composes: state;
+  color: var(--status-danger);
+}
+.stateScouts {
+  composes: state;
+  color: var(--bark);
+}
+.empty {
+  margin: 0;
+  padding: var(--sp-4) 0;
+  font: italic var(--fs-sm) / 1.5 var(--font-ui);
+  color: var(--text-meta);
+}
+.problem {
+  margin: var(--sp-1) 0 0;
+  font: 600 var(--fs-sm) / 1.4 var(--font-ui);
+  color: var(--status-danger);
+}
+
+/* ── the row's ⋯ menu ─────────────────────────────────────────────────────────────────────────────────────── */
+.menuWrap {
+  position: relative;
+}
+.menuBtn {
+  width: 44px;
+  height: 44px;
+  margin: calc(-1 * var(--sp-2)) 0;
+  border: 0;
+  border-radius: var(--rad-md);
+  background: transparent;
+  font: 700 var(--fs-lg) / 1 var(--font-ui);
+  color: var(--text-meta);
+  cursor: pointer;
+}
+.menuBtn:hover,
+.menuBtn[aria-expanded='true'] {
+  background: var(--border-light);
+  color: var(--navy);
+}
+.menuPop {
+  position: absolute;
+  right: 0;
+  z-index: 3;
+  width: 240px;
+  padding: var(--sp-1) 0;
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-md);
+  background: var(--warm-white);
+  box-shadow: var(--shadow-card);
+}
+.menuItem {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 var(--sp-4);
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font: 600 var(--fs-sm) / 1 var(--font-ui);
+  color: var(--status-danger);
+  cursor: pointer;
+}
+.menuItem:hover {
+  background: var(--status-danger-bg);
+}
+.menuItem:disabled {
+  color: var(--text-meta);
+  background: transparent;
+  cursor: default;
+}
+.menuWhy {
+  margin: 0;
+  padding: 0 var(--sp-4) var(--sp-2);
+  font: var(--fs-xs) / 1.4 var(--font-ui);
+  color: var(--text-meta);
+}
+
+/* ── Suggested ────────────────────────────────────────────────────────────────────────────────────────────── */
+.suggested {
+  align-self: start;
+}
+.suggestList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.suggestion {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--border-light);
+}
+.suggestTitle {
+  margin: 0;
+  font: 600 var(--fs-sm) / 1.35 var(--font-ui);
+  color: var(--text-head);
+}
+.suggestMeta {
+  margin: var(--sp-1) 0 0;
+  font: var(--fs-xs) / 1.4 var(--font-ui);
+  color: var(--text-meta);
+}
+.addBtn {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* ── the danger confirm ───────────────────────────────────────────────────────────────────────────────────── */
+.confirm {
+  width: min(440px, calc(100vw - 2 * var(--sp-5)));
+  padding: var(--sp-5);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-lg);
+  background: var(--warm-white);
+  color: var(--text-body);
+}
+.confirm::backdrop {
+  background: color-mix(in srgb, var(--navy) 38%, transparent);
+}
+.confirmTitle {
+  margin: 0;
+  font: 700 var(--fs-lg) / 1.3 var(--font-ui);
+  color: var(--navy);
+}
+.confirmText {
+  margin: var(--sp-3) 0 0;
+  font: var(--fs-sm) / 1.5 var(--font-ui);
+}
+.confirmActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-3);
+  margin-top: var(--sp-5);
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+    padding: var(--sp-4);
+  }
+  .suggested {
+    display: none;
+  }
+  .railSheet {
+    display: inline-flex;
+    align-items: center;
+  }
+  .rail {
+    padding: var(--sp-2) var(--sp-4);
+  }
+}
+
+@media (max-width: 640px) {
+  .list {
+    display: grid;
+    gap: var(--sp-3);
+    border-top: 0;
+  }
+  .row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: var(--sp-3) var(--sp-4);
+    border: 1px solid var(--border-light);
+    border-radius: var(--rad-lg);
+    background: var(--warm-white);
+  }
+  .row .state {
+    grid-row: 2;
+    grid-column: 1;
+  }
+}

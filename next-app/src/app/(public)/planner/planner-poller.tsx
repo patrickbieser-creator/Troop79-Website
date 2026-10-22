@@ -8,21 +8,39 @@
  * stamp a save returned, so it never refreshes over a result the drawer already shows.
  *
  * P4: Meeting Live polls faster (pollMs 3 s, jitter 1 s): several leaders run it at once on their phones.
+ *
+ * Build a Plan (B1): `build` asks for the stamp of any meeting the switcher offers, and `stampRef` is the page's own
+ * last-seen stamp (Build sits outside the planner's provider), so a write's returned stamp never triggers a refresh.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import { useRouter } from 'next/navigation';
 import { plannerStampAction } from './actions';
+import { plannerBuildStampAction } from './build-actions';
 import { usePlanner } from './planner-client';
 import styles from './planner.module.css';
 
 const POLL_MS = 10_000;
 const JITTER_MS = 2_000;
 
-export function PlannerPoller({ entryId, stamp, pollMs = POLL_MS, jitterMs = JITTER_MS }: { entryId: number; stamp: string; pollMs?: number; jitterMs?: number }) {
+export function PlannerPoller({
+  entryId,
+  stamp,
+  pollMs = POLL_MS,
+  jitterMs = JITTER_MS,
+  build = false,
+  stampRef
+}: {
+  entryId: number;
+  stamp: string;
+  pollMs?: number;
+  jitterMs?: number;
+  build?: boolean;
+  stampRef?: RefObject<string>;
+}) {
   const router = useRouter();
   const sync = usePlanner()?.sync;
   const own = useRef(stamp);
-  const last = sync?.stamp ?? own;
+  const last = sync?.stamp ?? stampRef ?? own;
   const [stale, setStale] = useState(false);
 
   useEffect(() => {
@@ -35,7 +53,7 @@ export function PlannerPoller({ entryId, stamp, pollMs = POLL_MS, jitterMs = JIT
     let failures = 0;
     const check = async () => {
       if (sync?.busy()) return;
-      const res = await plannerStampAction(entryId);
+      const res = await (build ? plannerBuildStampAction : plannerStampAction)(entryId);
       if (stopped || sync?.busy()) return;
       if (!res.ok) {
         failures++;
@@ -66,7 +84,7 @@ export function PlannerPoller({ entryId, stamp, pollMs = POLL_MS, jitterMs = JIT
       if (timer) clearTimeout(timer);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [entryId, router, last, sync, pollMs, jitterMs]);
+  }, [entryId, router, last, sync, pollMs, jitterMs, build]);
 
   return (
     <span className={stale ? styles.liveStale : styles.live} role="status">
