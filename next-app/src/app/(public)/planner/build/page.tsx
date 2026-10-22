@@ -11,6 +11,7 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { unstable_cache } from 'next/cache';
 import { resolveAdminActor } from '@/lib/admin-actor';
 import { createAdminClient } from '@/lib/supabase/server';
 import { fmtDay } from '@/lib/format-date';
@@ -41,11 +42,28 @@ async function Suggested({ meeting, onPlan }: { meeting: BoardMeeting; onPlan: s
   return <SuggestionsFeed list={await suggestionsFor(meeting, onPlan)} />;
 }
 
+/**
+ * The engine's ranked suggestions for one meeting, cached for two minutes (qa-lead, 2026-10-22): the engine reads the
+ * whole ledger, and every poller refresh (someone's pick, someone's answer) re-renders this page. A short TTL is the
+ * simpler of the two options (the other: recompute only on refreshes a seed change caused); suggestions are advice,
+ * and what is already on the plan is filtered out per render, so an Add never shows its own suggestion again.
+ * JSON-only values (an array of plain objects). Null (the engine refused) is not cached.
+ */
+const CACHE_TOP = 40;
+const rankedFor = unstable_cache(
+  async (date: string, title: string) => {
+    const res = await loadEngineInput(date, title);
+    if (!res.ok) throw new Error('engine input');
+    return rankSuggestions(buildMeetingPlan(res.input), new Set(), CACHE_TOP).map((x) => ({ ...x, bestTeacher: x.bestTeacher ? boardName(x.bestTeacher) : null }));
+  },
+  ['build-plan-suggestions'],
+  { revalidate: 120 }
+);
+
 async function suggestionsFor(meeting: BoardMeeting, onPlan: string[]) {
   try {
-    const res = await loadEngineInput(meeting.date, meeting.title);
-    if (!res.ok) return null;
-    return rankSuggestions(buildMeetingPlan(res.input), new Set(onPlan), SUGGESTION_LIMIT * 2).map((x) => ({ ...x, bestTeacher: x.bestTeacher ? boardName(x.bestTeacher) : null }));
+    const on = new Set(onPlan);
+    return (await rankedFor(meeting.date, meeting.title)).filter((x) => !on.has(x.key)).slice(0, SUGGESTION_LIMIT * 2);
   } catch {
     return null;
   }
@@ -107,7 +125,7 @@ export default async function BuildPlanPage({ searchParams }: { searchParams: Pr
     <div className={styles.page}>
       <PlannerTabs active="build" />
       <BuildPlanView
-        key={`${meeting.entryId}:${page.stamp}`}
+        key={meeting.entryId}
         entryId={meeting.entryId}
         rows={rows}
         canSeed={access.canSeed}

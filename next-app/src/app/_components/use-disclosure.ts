@@ -4,7 +4,7 @@
  * A plain disclosure: a trigger button with aria-expanded and a panel of
  * ordinary buttons or links. Escape closes it and returns focus to the
  * trigger; so does focus moving to something outside it (Tab away) or a press
- * outside. Shared by the ⋯ row menu and the Add-a-meal list.
+ * outside. Shared by Menu Monster's ⋯ row menu and Add-a-meal list, and Build a Plan's row menu.
  */
 
 import { useEffect, useRef, useState, type FocusEvent } from 'react';

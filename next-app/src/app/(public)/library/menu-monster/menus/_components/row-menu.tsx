@@ -10,7 +10,7 @@
  */
 
 import Link from 'next/link';
-import { useDisclosure } from './use-disclosure';
+import { useDisclosure } from '@/app/_components/use-disclosure';
 import s from './workspace.module.css';
 
 export type RowMenuItem = { label: string; href?: string; onSelect?: () => void; danger?: boolean };

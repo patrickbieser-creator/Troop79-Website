@@ -12,11 +12,11 @@
  * the plan never waits for the engine.
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/app/_components/button';
 import { Drawer } from '@/app/_components/drawer';
-import { useDisclosure } from '@/app/(public)/library/menu-monster/menus/_components/use-disclosure';
+import { useDisclosure } from '@/app/_components/use-disclosure';
 import {
-  addedRow,
   afterRemove,
   cannotRemoveReason,
   ORIGIN_LABEL,
@@ -24,6 +24,8 @@ import {
   removeConsequence,
   STATE_LABEL,
   SUGGESTION_LIMIT,
+  keepWriteStamp,
+  withAdded,
   type PlanRow,
   type SuggestionView
 } from '@/lib/build-plan';
@@ -62,12 +64,27 @@ export function BuildPlanView({
   /** The Suspense-wrapped SuggestionsFeed (seed holders only). */
   feed?: ReactNode;
 }) {
+  const router = useRouter();
   const [rows, setRows] = useState(initialRows);
+  // A refresh (the poller, or a write that found someone else's change) hands in fresh rows: they replace what is shown,
+  // while dialogs, the sheet and errors stay open (the page keys this view on the meeting only; qa-lead, 2026-10-22).
+  const [loaded, setLoaded] = useState(initialRows);
+  if (loaded !== initialRows) {
+    setLoaded(initialRows);
+    setRows(initialRows);
+  }
   const [suggestions, setSuggestions] = useState<Feed>({ status: 'loading' });
   const [sheet, setSheet] = useState(false);
-  const [removing, setRemoving] = useState<PlanRow | null>(null);
+  const [removing, setRemoving] = useState<{ row: PlanRow; trigger: HTMLElement | null } | null>(null);
   const stampRef = useRef(stamp);
+  const listHeadRef = useRef<HTMLHeadingElement | null>(null);
   const onFeed = useCallback((f: Feed) => setSuggestions(f), []);
+
+  /** A write landed: keep its stamp when nothing else changed the board since; otherwise refresh to show the rest. */
+  const landed = (res: { prior: string; stamp: string }) => {
+    if (keepWriteStamp(stampRef.current, res.prior)) stampRef.current = res.stamp;
+    else router.refresh();
+  };
 
   const onPlan = useMemo(() => new Set(rows.map((r) => r.key)), [rows]);
   const shown = suggestions.status === 'ready' ? suggestions.list.filter((x) => !onPlan.has(x.key)).slice(0, SUGGESTION_LIMIT) : [];
@@ -76,15 +93,15 @@ export function BuildPlanView({
   const add = async (x: SuggestionView): Promise<string | null> => {
     const res = await plannerAddOfferingAction({ entryId, keys: [x.key] }).catch(() => ({ ok: false as const, error: SAVE_FAILED }));
     if (!res.ok) return res.error;
-    stampRef.current = res.stamp;
-    setRows((rs) => (rs.some((r) => r.key === x.key) ? rs : [...rs, addedRow(x)]));
+    landed(res);
+    setRows((rs) => withAdded(rs, x, res.teachers[x.key] ?? []));
     return null;
   };
 
   const remove = async (row: PlanRow): Promise<string | null> => {
     const res = await plannerRemoveOfferingAction({ entryId, key: row.key }).catch(() => ({ ok: false as const, error: SAVE_FAILED }));
     if (!res.ok) return res.error;
-    stampRef.current = res.stamp;
+    landed(res);
     setRows((rs) => rs.flatMap((r) => (r.key === row.key ? (afterRemove(r, res.stays) ?? []) : [r])));
     return null;
   };
@@ -106,13 +123,13 @@ export function BuildPlanView({
       </div>
       <div className={canSeed ? s.layout : s.layoutSolo}>
         <section aria-labelledby="build-plan">
-          <h2 id="build-plan" className={s.sectionTitle}>
+          <h2 id="build-plan" className={s.sectionTitle} ref={listHeadRef} tabIndex={-1}>
             The plan
           </h2>
           {rows.length ? (
             <ul className={s.list}>
               {rows.map((r) => (
-                <PlanRowView key={r.key} row={r} canSeed={canSeed} onRemove={() => setRemoving(r)} />
+                <PlanRowView key={r.key} row={r} canSeed={canSeed} onRemove={(trigger) => setRemoving({ row: r, trigger })} />
               ))}
             </ul>
           ) : (
@@ -133,7 +150,18 @@ export function BuildPlanView({
           {suggestedList}
         </Drawer>
       ) : null}
-      {removing ? <RemoveDialog row={removing} onRemove={() => remove(removing)} onClose={() => setRemoving(null)} /> : null}
+      {removing ? (
+        <RemoveDialog
+          row={removing.row}
+          onRemove={() => remove(removing.row)}
+          onClose={() => {
+            const trigger = removing.trigger;
+            setRemoving(null);
+            // Back to the row's ⋯ when the row is still there; to the list's heading when it went.
+            requestAnimationFrame(() => (trigger?.isConnected ? trigger.focus() : listHeadRef.current?.focus()));
+          }}
+        />
+      ) : null}
       {feed}
     </FeedCtx.Provider>
   );
@@ -141,6 +169,7 @@ export function BuildPlanView({
 
 function teacherLine(r: PlanRow): string {
   if (r.teachers.length) return r.teachers.join(', ');
+  if (r.fresh) return 'Just added';
   return r.canTeach ? `${plural(r.canTeach, 'person', 'people')} could teach it` : 'Nobody listed can teach it yet';
 }
 
@@ -151,7 +180,7 @@ function scoutLine(r: PlanRow): string {
 
 const STATE_CLASS = { ready: s.stateReady, 'needs-teacher': s.stateTeacher, 'needs-scouts': s.stateScouts } as const;
 
-function PlanRowView({ row, canSeed, onRemove }: { row: PlanRow; canSeed: boolean; onRemove: () => void }) {
+function PlanRowView({ row, canSeed, onRemove }: { row: PlanRow; canSeed: boolean; onRemove: (trigger: HTMLElement | null) => void }) {
   return (
     <li className={s.row}>
       <div>
@@ -170,7 +199,7 @@ function PlanRowView({ row, canSeed, onRemove }: { row: PlanRow; canSeed: boolea
 }
 
 /** The row's ⋯: Remove, last; for a row the planner didn't add, Remove is greyed with the reason under it. */
-function RowMenu({ row, onRemove }: { row: PlanRow; onRemove: () => void }) {
+function RowMenu({ row, onRemove }: { row: PlanRow; onRemove: (trigger: HTMLElement | null) => void }) {
   const { open, wrapRef, triggerRef, onBlur, toggle, close } = useDisclosure();
   const why = cannotRemoveReason(row);
   return (
@@ -186,7 +215,7 @@ function RowMenu({ row, onRemove }: { row: PlanRow; onRemove: () => void }) {
             disabled={why != null}
             onClick={() => {
               close();
-              onRemove();
+              onRemove(triggerRef.current);
             }}
           >
             Remove

@@ -13,7 +13,7 @@
 import type { MealSlot } from '@/lib/menu-monster/types';
 import { MEALS } from '@/lib/menu-monster/units';
 import { MAX_MENU_MEALS } from '@/lib/menu-monster/menus';
-import { useDisclosure } from './use-disclosure';
+import { useDisclosure } from '@/app/_components/use-disclosure';
 import s from './workspace.module.css';
 
 const slotLabel = (slot: MealSlot) => MEALS.find((m) => m.key === slot)?.label ?? slot;

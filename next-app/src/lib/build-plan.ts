@@ -36,6 +36,8 @@ export interface PlanRow {
   /** Needs a teacher: people qualified to teach it who can still come. */
   canTeach: number;
   state: PlanState;
+  /** Just added on this page: the board hasn't counted who could teach it yet (the next refresh does). */
+  fresh?: boolean;
 }
 
 /** Each class on the board as a plan row: ready first, then the ones that need something, by code. */
@@ -124,7 +126,27 @@ export function rankSuggestions(plan: Pick<MeetingPlanPayload, 'sessions'>, onPl
   return [...byKey.values()].sort((a, b) => b.need - a.need || a.codeLabel.localeCompare(b.codeLabel)).slice(0, limit);
 }
 
-/** A row for an offering just added from a suggestion: the planner's, nobody on it yet. */
-export function addedRow(s: Pick<SuggestionView, 'key' | 'codeLabel' | 'title'>): PlanRow {
-  return { key: s.key, codeLabel: s.codeLabel, title: s.title, origin: 'planner', seeded: true, teachers: [], scouts: 0, likely: 0, canTeach: 0, state: 'needs-teacher' };
+/** A row for an offering just added: the planner's, with whoever already teaches it (a matching skill offer). */
+export function addedRow(s: Pick<SuggestionView, 'key' | 'codeLabel' | 'title'>, teachers: readonly string[] = []): PlanRow {
+  return { key: s.key, codeLabel: s.codeLabel, title: s.title, origin: 'planner', seeded: true, teachers: [...teachers], scouts: 0, likely: 0, canTeach: 0, state: teachers.length ? 'needs-scouts' : 'needs-teacher', fresh: true };
+}
+
+/** An Add over the rows shown: a row already there becomes the planner's (and keeps its picks); a new one is added. */
+export function withAdded(rows: readonly PlanRow[], s: Pick<SuggestionView, 'key' | 'codeLabel' | 'title'>, teachers: readonly string[] = []): PlanRow[] {
+  if (rows.some((r) => r.key === s.key)) return rows.map((r) => (r.key === s.key ? { ...r, seeded: true, origin: 'planner' } : r));
+  return [...rows, addedRow(s, teachers)];
+}
+
+/** A catalog requirement key as an Add or Remove may carry it: 'tenderfoot-4a', 'first-aid-9b', 'second-class-BoR'. */
+export function isOfferingKey(key: unknown): key is string {
+  return typeof key === 'string' && /^[a-z0-9][a-z0-9.-]{0,118}[a-z0-9]$/i.test(key);
+}
+
+/**
+ * Whether the page may keep the stamp a write returned (qa-lead, 2026-10-22): only when the board was as the page last
+ * saw it just before the write, so nothing but this write changed it. Otherwise someone else changed the board too and
+ * the page must refresh to show it.
+ */
+export function keepWriteStamp(seen: string, prior: string): boolean {
+  return prior !== '' && prior === seen;
 }
