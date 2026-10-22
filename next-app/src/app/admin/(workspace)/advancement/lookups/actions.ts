@@ -641,10 +641,20 @@ export async function updateMeritBadge(formData: FormData): Promise<Result> {
   }
 
   // Replace-on-save for the requirement tree. Walk depth-first inserting
-  // parents before children so parent_id linkage is honored.
+  // parents before children so parent_id linkage is honored. The editor
+  // doesn't send teach_minutes or venue, so they ride through the rewrite,
+  // matched by code (the original code for a renamed requirement).
   if (reqTree) {
+    const { data: was, error: wasErr } = await supabase
+      .from('merit_badge_requirements')
+      .select('code, teach_minutes, venue')
+      .eq('mb_id', id);
+    if (wasErr) return { ok: false, error: wasErr.message };
+    const kept: KeptReqData = new Map(
+      ((was ?? []) as { code: string; teach_minutes: number; venue: string }[]).map((r) => [r.code, { teach_minutes: r.teach_minutes, venue: r.venue }])
+    );
     await supabase.from('merit_badge_requirements').delete().eq('mb_id', id);
-    await insertReqTree(supabase, id, reqTree, null);
+    await insertReqTree(supabase, id, reqTree, null, kept);
   }
 
   updateTag('advancement-catalog');
@@ -854,15 +864,20 @@ export async function deleteLeadershipPosition(formData: FormData): Promise<Resu
   return deleteNamedLookup('leadership_positions', formData);
 }
 
+/** Per-requirement data the editor doesn't send, by code, carried through a tree rewrite. */
+type KeptReqData = Map<string, { teach_minutes: number; venue: string }>;
+
 async function insertReqTree(
   supabase: ReturnType<typeof createAdminClient>,
   mbId: string,
   nodes: ReqInput[],
-  parentDbId: number | null
+  parentDbId: number | null,
+  kept: KeptReqData = new Map()
 ): Promise<void> {
   let sortOrder = 0;
   for (const node of nodes) {
     if (!node.code.trim() || !node.label.trim()) continue;
+    const carry = kept.get((node.originalCode ?? node.code).trim());
     const { data, error } = await supabase
       .from('merit_badge_requirements')
       .insert({
@@ -872,14 +887,15 @@ async function insertReqTree(
         label: node.label.trim(),
         complete_rule: node.complete_rule,
         complete_n: node.complete_rule === 'n-of' ? node.complete_n : null,
-        sort_order: sortOrder
+        sort_order: sortOrder,
+        ...(carry ?? {})
       })
       .select('id')
       .single();
     if (error) throw new Error(`req ${node.code}: ${error.message}`);
     sortOrder++;
     if (node.children?.length) {
-      await insertReqTree(supabase, mbId, node.children, data.id);
+      await insertReqTree(supabase, mbId, node.children, data.id, kept);
     }
   }
 }
