@@ -72,6 +72,8 @@ const EMPTY_CHOICES: LiveChoicesProp = { teachers: [], topics: [], scouts: [] };
 export interface LiveAttendanceProp {
   open: boolean;
   note: string | null;
+  /** The meeting-day seed couldn't mark some people (editors only). */
+  problem?: string | null;
 }
 const CLOSED: LiveAttendanceProp = { open: false, note: null };
 
@@ -236,7 +238,8 @@ export function LiveBoard({
   const setPresent = (personId: number, present: boolean) => run(() => plannerLiveSetPresentAction({ entryId, personId, present }));
   const addVisitor = (name: string, to: string | null) => run(() => plannerLiveAddVisitorAction({ entryId, name, to }));
   const dayNote = canEdit && !attendance.open ? attendance.note : null;
-  const showBar = !view.started || view.overlaps > 0 || notice != null || dayNote != null;
+  const seedProblem = canEdit ? (attendance.problem ?? null) : null;
+  const showBar = !view.started || view.overlaps > 0 || notice != null || dayNote != null || seedProblem != null;
   return (
     <div className={styles.live} aria-busy={busy}>
       {!canEdit ? (
@@ -265,6 +268,7 @@ export function LiveBoard({
             </span>
           ) : null}
           {dayNote ? <p className={styles.preview}>{dayNote}</p> : null}
+          {seedProblem ? <p className={styles.notice}>{seedProblem}</p> : null}
           {notice ? (
             <p className={styles.notice} role="status">
               {notice}

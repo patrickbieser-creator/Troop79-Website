@@ -21,7 +21,7 @@ import { loadBoardStamp, loadMeetingById, type BoardMeeting } from '@/lib/meetin
 import { plannerAccess } from '@/lib/meeting-planner-access';
 import { SAVE_FAILED } from '@/lib/meeting-board-supply';
 import { loadEntryContext, recordAttendance, removeAttendance } from '@/lib/attendance-admin';
-import { liveStartedAt, resolveLiveClass, startMeetingLive } from '@/lib/meeting-live';
+import { liveStartedAt, onLiveBoard, resolveLiveClass, startMeetingLive } from '@/lib/meeting-live';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 export type LiveWriteResult = { ok: true; stamp: string } | { ok: false; error: string; stale?: true };
@@ -210,15 +210,16 @@ export async function plannerLiveSetPresentAction(input: { entryId: number; pers
   if (!isPerson(input.personId) || typeof input.present !== 'boolean') return fail('Malformed request');
   if (e.meeting.date !== centralToday()) return fail(NOT_TODAY);
   try {
-    const { data: who } = await e.sb.from('people').select('id').eq('id', input.personId).is('merged_into_person_id', null).maybeSingle();
-    if (!who) return fail('That person isn’t on the roster.');
+    if (!(await onLiveBoard(e.sb, e.meeting.entryId, input.personId))) return fail('That person isn’t on this meeting’s board.');
     const ctx = await loadEntryContext(e.sb, e.meeting.entryId);
     if (!ctx) return fail('That meeting is no longer on the calendar.');
     const res = input.present
       ? await recordAttendance(e.sb, ctx, input.personId, null, 'manual', e.actorLabel)
       : await removeAttendance(e.sb, ctx, input.personId, e.actorLabel);
     if (!res.ok) return fail(SAVE_FAILED);
-    await e.sb.rpc('meeting_live_touch', { p_entry: e.meeting.entryId });
+    // The attendance is saved either way; a failed bump only delays other screens until the next stamp change.
+    const touch = await e.sb.rpc('meeting_live_touch', { p_entry: e.meeting.entryId });
+    if (touch.error) console.error(`Meeting Live touch failed for entry ${e.meeting.entryId}: ${touch.error.message}`);
     revalidate();
     return { ok: true, stamp: await loadBoardStamp(e.sb, e.meeting.entryId) };
   } catch {

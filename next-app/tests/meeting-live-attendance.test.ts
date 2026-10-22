@@ -187,19 +187,19 @@ describe('seeding the day', () => {
     await started(today, [{ topic_key: key, rotation: 1, teacher_person_id: teacher, members: [ann] }]);
     const m = (await loadMeetingById(sb, today))!;
     const { seedLiveAttendance } = await lib();
-    const first = await seedLiveAttendance(sb, m, 'Editor');
+    const first = (await seedLiveAttendance(sb, m, 'Editor')).seeded;
     const afterFirst = await present(today);
     asEditor();
     await (await live()).plannerLiveSetPresentAction({ entryId: today, personId: ann, present: false });
-    const second = await seedLiveAttendance(sb, m, 'Editor');
+    const second = (await seedLiveAttendance(sb, m, 'Editor')).seeded;
     expect([first, afterFirst, second, await present(today)]).toEqual([true, [teacher, ann].sort((a, b) => a - b), false, [teacher]]);
   });
 
   it('Seeding_WaitsForTheMeetingDay_AndForLiveToStart', async () => {
     const { seedLiveAttendance } = await lib();
-    const notStarted = await seedLiveAttendance(sb, (await loadMeetingById(sb, today))!, 'Editor');
+    const notStarted = (await seedLiveAttendance(sb, (await loadMeetingById(sb, today))!, 'Editor')).seeded;
     await started(later, [{ topic_key: key, rotation: 1, members: [ann] }]);
-    const notToday = await seedLiveAttendance(sb, (await loadMeetingById(sb, later))!, 'Editor');
+    const notToday = (await seedLiveAttendance(sb, (await loadMeetingById(sb, later))!, 'Editor')).seeded;
     expect([notStarted, notToday, await present(today), await present(later)]).toEqual([false, false, [], []]);
   });
 });
@@ -260,6 +260,62 @@ describe('visitors', () => {
     for (const f of ['src/app/admin/(workspace)/advancement/lookups/page.tsx', 'src/app/admin/(workspace)/advancement/roster/[personId]/load-person-record.ts', 'src/lib/households.ts', 'src/lib/roster-print-data.ts']) {
       expect([f, readFileSync(new URL(`../${f}`, import.meta.url), 'utf8').includes(".is('system_key', null)")]).toEqual([f, true]);
     }
+  });
+});
+
+describe('qa-lead follow-ups (P4c)', () => {
+  it('Seeding_CountsAndLogsWhoCouldntBeMarked', async () => {
+    // A person with two scout records makes the credit lookup fail: the seed keeps going and says how many failed.
+    const twin = await scout('Twin', 'scout');
+    const extra = `vitest-mla-${twin}-b`;
+    const { error } = await sb.from('scouts').insert({ id: extra, first_name: `${TEST_PREFIX} MLA`, last_name: 'Twin', display_name: `${TEST_PREFIX} MLA Twin`, person_id: twin, active: true });
+    if (error) throw new Error(error.message);
+    scoutIds.push(extra);
+    await started(today, [{ topic_key: key, rotation: 1, teacher_person_id: teacher, members: [ann, twin] }]);
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const res = await (await lib()).seedLiveAttendance(sb, (await loadMeetingById(sb, today))!, 'Editor');
+    const logged = spy.mock.calls.length > 0;
+    spy.mockRestore();
+    expect([res, logged]).toEqual([{ seeded: true, failed: 1 }, true]);
+  });
+
+  it('SetPresent_RefusesSomeoneNotOnThisMeetingsBoard', async () => {
+    const { data: gone, error } = await sb.from('people').insert({ display_name: `${TEST_PREFIX} MLA Gone`, first_name: `${TEST_PREFIX} MLA`, last_name: 'Gone', active: false }).select('id').single();
+    if (error) throw new Error(error.message);
+    people.push((gone as { id: number }).id);
+    await started(today, []);
+    asEditor();
+    const res = await (await live()).plannerLiveSetPresentAction({ entryId: today, personId: (gone as { id: number }).id, present: true });
+    expect([res, await present(today)]).toEqual([{ ok: false, error: 'That person isn’t on this meeting’s board.' }, []]);
+  });
+
+  it('SetPresent_RefusesAVisitorFromAnotherMeeting', async () => {
+    await started(later, []);
+    await sb.from('event_attendance').delete().eq('calendar_entry_id', later);
+    const { data: hh } = await sb.from('households').upsert({ label: 'Meeting visitors', system_key: 'meeting-visitors' }, { onConflict: 'system_key', ignoreDuplicates: true }).select('id');
+    const hhId = ((hh ?? []) as { id: number }[])[0]?.id ?? (await visitorHousehold())!.id;
+    const { data: v, error } = await sb.from('people').insert({ display_name: `${TEST_PREFIX} MLA Elsewhere`, first_name: `${TEST_PREFIX} MLA`, last_name: 'Elsewhere', guest_host_household_id: hhId }).select('id').single();
+    if (error) throw new Error(error.message);
+    visitors.push((v as { id: number }).id);
+    await sb.from('event_attendance').insert({ calendar_entry_id: later, person_id: (v as { id: number }).id, source: 'manual' });
+    await started(today, []);
+    asEditor();
+    const res = await (await live()).plannerLiveSetPresentAction({ entryId: today, personId: (v as { id: number }).id, present: true });
+    expect(res).toEqual({ ok: false, error: 'That person isn’t on this meeting’s board.' });
+  });
+
+  it('SetPresent_AllowsAThisMeetingVisitor_AndAnAdult', async () => {
+    // A visitor in a class stays on the screen when marked not here, so they can be marked here again.
+    const [c] = await started(today, [{ topic_key: key, rotation: 1, members: [] }]);
+    asEditor();
+    const a = await live();
+    await a.plannerLiveAddVisitorAction({ entryId: today, name: `${TEST_PREFIX} Here Visitor`, to: `c:${c}` });
+    await trackVisitors();
+    const vid = visitors[visitors.length - 1];
+    const off = await a.plannerLiveSetPresentAction({ entryId: today, personId: vid, present: false });
+    const on = await a.plannerLiveSetPresentAction({ entryId: today, personId: vid, present: true });
+    const adult = await a.plannerLiveSetPresentAction({ entryId: today, personId: teacher, present: true });
+    expect([off.ok, on.ok, adult.ok]).toEqual([true, true, true]);
   });
 });
 

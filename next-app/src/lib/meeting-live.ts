@@ -278,18 +278,50 @@ export async function loadLiveChoices(sb: SupabaseClient, meeting: BoardMeeting)
 /**
  * The meeting day's one-time seed (P4 spec section 4, Roll Call's seedFromSignup pattern): once Meeting Live has
  * started and only on the meeting day (Central), placed scouts and class teachers are marked here, through Roll Call's
- * cascade (ledger credit included). Claimed under the Live lock, so two leaders opening Live at once seed once. True
- * when this call seeded.
+ * cascade (ledger credit included). Claimed under the Live lock, so two leaders opening Live at once seed once.
+ * `seeded`: this call seeded. `failed`: how many people the seed couldn't mark (qa-lead, P4c): the claim is already
+ * taken, so they are not retried; the problems are logged and the page tells editors to tap those people.
  */
-export async function seedLiveAttendance(sb: SupabaseClient, meeting: BoardMeeting, by: string): Promise<boolean> {
-  if (meeting.date !== centralToday()) return false;
+export async function seedLiveAttendance(sb: SupabaseClient, meeting: BoardMeeting, by: string): Promise<{ seeded: boolean; failed: number }> {
+  if (meeting.date !== centralToday()) return { seeded: false, failed: 0 };
   const { data: claimed, error } = await sb.rpc('meeting_live_claim_seed', { p_entry: meeting.entryId });
   if (error) throw new Error(error.message);
-  if (claimed !== true) return false;
+  if (claimed !== true) return { seeded: false, failed: 0 };
   const [ctx, saved] = await Promise.all([loadEntryContext(sb, meeting.entryId), loadSavedPlacement(sb, meeting.entryId)]);
-  if (!ctx || !saved) return true;
+  if (!ctx || !saved) return { seeded: true, failed: 0 };
   const ids = saved.classes.flatMap((c) => [...c.memberIds, ...(c.teacherId != null ? [c.teacherId] : [])]);
-  await seedAttendance(sb, ctx, ids, by);
-  await sb.rpc('meeting_live_touch', { p_entry: meeting.entryId });
-  return true;
+  const { problems } = await seedAttendance(sb, ctx, ids, by);
+  if (problems.length) console.error(`Meeting Live seed for entry ${meeting.entryId}: ${problems.length} not marked`, problems);
+  const touch = await sb.rpc('meeting_live_touch', { p_entry: meeting.entryId });
+  if (touch.error) console.error(`Meeting Live touch failed for entry ${meeting.entryId}: ${touch.error.message}`);
+  return { seeded: true, failed: problems.length };
+}
+
+/**
+ * Who Meeting Live may mark here (qa-lead, P4c): an active scout, an adult on the roster (the planner's picker), a
+ * visitor recorded at THIS meeting, or anyone placed in or teaching one of its classes.
+ */
+export async function onLiveBoard(sb: SupabaseClient, entryId: number, personId: number): Promise<boolean> {
+  const [scout, adult, placed, teaching, visitor] = await Promise.all([
+    sb.from('scouts').select('id').eq('person_id', personId).eq('active', true).limit(1),
+    sb.from('person_directory').select('person_id').eq('person_id', personId).in('tab', ['leader', 'adult']).eq('in_picker', true).limit(1),
+    sb.from('meeting_class_members').select('person_id, meeting_classes!inner(calendar_entry_id)').eq('person_id', personId).eq('meeting_classes.calendar_entry_id', entryId).limit(1),
+    sb.from('meeting_classes').select('id').eq('calendar_entry_id', entryId).eq('teacher_person_id', personId).limit(1),
+    // A visitor here: hosted by the visitors household and marked at THIS meeting.
+    sb
+      .from('event_attendance')
+      .select('person_id, people!inner(guest_host_household_id)')
+      .eq('calendar_entry_id', entryId)
+      .eq('person_id', personId)
+      .not('people.guest_host_household_id', 'is', null)
+      .limit(1)
+  ]);
+  for (const r of [scout, adult, placed, teaching, visitor]) if (r.error) throw new Error(r.error.message);
+  if ([scout, adult, placed, teaching].some((r) => (r.data ?? []).length > 0)) return true;
+  const host = ((visitor.data ?? []) as unknown as { people: { guest_host_household_id: number } | { guest_host_household_id: number }[] }[])[0]?.people;
+  const hostId = Array.isArray(host) ? host[0]?.guest_host_household_id : host?.guest_host_household_id;
+  if (hostId == null) return false;
+  const { data, error } = await sb.from('households').select('id').eq('id', hostId).eq('system_key', VISITORS_KEY).maybeSingle();
+  if (error) throw new Error(error.message);
+  return data != null;
 }

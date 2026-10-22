@@ -300,3 +300,10 @@ describe('LiveBoard attendance (P4c)', () => {
     await waitFor(() => expect(mocks.addVisitor).toHaveBeenCalledWith({ entryId: 5, name: 'Pat Q', to: 's:a' }));
   });
 });
+
+describe('LiveBoard seed problems (qa-lead, P4c)', () => {
+  it('Editor_SeesHowManyCouldntBeMarked', () => {
+    render(<LiveBoard view={{ ...VIEW, started: true }} canEdit entryId={5} choices={CHOICES} attendance={{ open: true, note: null, problem: '2 people couldn’t be marked here: tap them to try again.' }} />);
+    expect(screen.getByText('2 people couldn’t be marked here: tap them to try again.')).toBeTruthy();
+  });
+});

@@ -62,11 +62,20 @@ export default async function MeetingLivePage() {
   }
 
   const meetingDay = meeting.date === centralToday();
+  let failed = 0;
   if (access.canEdit && meetingDay) {
-    // A failed seed never blocks the page: Roll Call and the toggles still work.
-    await seedLiveAttendance(sb, meeting, actor.label).catch(() => false);
+    // A failed seed never blocks the page: Roll Call and the toggles still work. It is logged, and editors are told.
+    try {
+      failed = (await seedLiveAttendance(sb, meeting, actor.label)).failed;
+    } catch (err) {
+      console.error(`Meeting Live seed failed for entry ${meeting.entryId}:`, err);
+    }
   }
-  const attendance = { open: meetingDay, note: meetingDay ? null : `Attendance opens on ${fmtDay(meeting.date)}.` };
+  const attendance = {
+    open: meetingDay,
+    note: meetingDay ? null : `Attendance opens on ${fmtDay(meeting.date)}.`,
+    problem: failed ? `${failed === 1 ? '1 person' : `${failed} people`} couldn’t be marked here: tap them to try again.` : null
+  };
   const [view, stamp, choices] = await Promise.all([
     loadLiveView(sb, meeting),
     loadBoardStamp(sb, meeting.entryId),
