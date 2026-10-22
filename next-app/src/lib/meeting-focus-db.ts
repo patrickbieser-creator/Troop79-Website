@@ -155,7 +155,7 @@ export function itemView(key: string, catalog: Catalog): FocusSetView['items'][n
 }
 
 /** The RPCs' own messages are written for people; anything else is not shown raw. */
-const KNOWN = /^(Add up to|Give the set|That isn’t a requirement|Keep labels|Keep a set|That set|That meeting|Seed one|Seed a whole)/;
+const KNOWN = /^(Add up to|Tick at least|Give the set|That isn’t a requirement|Keep labels|Keep a set|That set|That meeting|Seed one|Seed a whole)/;
 const said = (message: string) => (KNOWN.test(message) ? message : 'Couldn’t save that. Try again.');
 export type FocusWrite<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 
@@ -184,6 +184,18 @@ export async function seedTopic(sb: SupabaseClient, entryId: number, key: string
 export async function seedMany(sb: SupabaseClient, entryId: number, keys: readonly string[], actorPersonId: number): Promise<FocusWrite<{ seeded: string[] }>> {
   const { data, error } = await sb.rpc('meeting_seed_many', { p_entry: entryId, p_keys: keys, p_actor: actorPersonId });
   return error ? { ok: false, error: said(error.message) } : { ok: true, seeded: (data ?? []) as string[] };
+}
+
+/** Build a Plan B2: save a new focus set and seed it on the meeting as one class, in one transaction. The set's id. */
+export async function newMix(sb: SupabaseClient, entryId: number, name: string, items: readonly string[], actorPersonId: number): Promise<FocusWrite<{ setId: number }>> {
+  const { data, error } = await sb.rpc('meeting_new_mix', { p_entry: entryId, p_name: name, p_items: [...items], p_actor: actorPersonId });
+  return error ? { ok: false, error: said(error.message) } : { ok: true, setId: Number(data) };
+}
+
+/** Build a Plan B2: change a mix's name and requirements: the focus set, and this meeting's class with it. */
+export async function editMix(sb: SupabaseClient, entryId: number, setId: number, name: string, items: readonly string[], actorPersonId: number): Promise<FocusWrite<{ count: number }>> {
+  const { data, error } = await sb.rpc('meeting_edit_mix', { p_entry: entryId, p_set: setId, p_name: name, p_items: [...items], p_actor: actorPersonId });
+  return error ? { ok: false, error: said(error.message) } : { ok: true, count: Number(data) };
 }
 
 export async function unseedTopic(sb: SupabaseClient, entryId: number, key: string): Promise<FocusWrite> {

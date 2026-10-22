@@ -31,7 +31,7 @@ import { GEAR_HOMES, gearKey, menuGearRows, packedSummary, parseGear, type GearI
 import { mealTitle } from '@/lib/menu-monster/menu-view';
 import { MealLetters } from './meal-letters';
 import { setGearExtrasAction, setGearPackedAction } from '../../../_tools/menu-monster/gear-actions';
-import { AddRow } from '../../_components/add-row';
+import { AddRow } from '@/app/_components/add-row';
 import { GearPicker } from '../../_components/gear-picker';
 import s from './workspace.module.css';
 

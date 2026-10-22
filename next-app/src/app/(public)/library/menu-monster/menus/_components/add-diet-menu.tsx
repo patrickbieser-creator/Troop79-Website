@@ -9,7 +9,7 @@
 import { useState } from 'react';
 import type { RestrictionKey } from '@/lib/menu-monster/types';
 import { RESTRICTION_BY_KEY } from '@/lib/menu-monster/units';
-import { AddRow } from '../../_components/add-row';
+import { AddRow } from '@/app/_components/add-row';
 import s from './workspace.module.css';
 
 export function AddDietMenu({ id, diets, onPick }: { id: string; diets: readonly RestrictionKey[]; onPick: (key: RestrictionKey) => void }) {

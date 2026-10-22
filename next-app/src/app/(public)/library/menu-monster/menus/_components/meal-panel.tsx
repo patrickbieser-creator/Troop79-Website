@@ -52,7 +52,7 @@ import { MAX_GEAR_COUNT, gearKey, gearText, gearMealSlots, mealGearEntries, meal
 import { GearPicker } from '../../_components/gear-picker';
 import { MealPeople } from './meal-people';
 import { MealLetters } from './meal-letters';
-import { AddRow } from '../../_components/add-row';
+import { AddRow } from '@/app/_components/add-row';
 import { RECIPES_HREF } from '../../recipes/_components/paths';
 import { composePlan, mealCatalog, type EditOp, type Menu, type MenuMeal, type RecipeEdits } from '@/lib/menu-monster/menus';
 import { mealTitle, mealUnpricedItems, recipeShares } from '@/lib/menu-monster/menu-view';

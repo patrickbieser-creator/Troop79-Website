@@ -36,7 +36,7 @@ import { PublicAccountControlSpecimen, PublicDrawerSpecimen, PublicBlockedSaveSp
 import { IngredientList } from '@/app/(public)/library/menu-monster/_components/ingredient-list';
 import { StepStrip } from '@/app/(public)/library/menu-monster/menus/_components/step-strip';
 import { SummaryRail } from '@/app/(public)/library/menu-monster/menus/_components/summary-rail';
-import { AddRow } from '@/app/(public)/library/menu-monster/_components/add-row';
+import { AddRow } from '@/app/_components/add-row';
 import menuMonsterS from '@/app/(public)/library/menu-monster/menus/_components/workspace.module.css';
 import type { PlanProgress } from '@/lib/menu-monster/menu-view';
 import { FormCard, Field, TextInput } from '@/app/_components/form';
@@ -540,8 +540,8 @@ export default function PublicStyleguidePage() {
               ]}
             />
             <p className={sg.specimenInlineNote}>
-              <code>AddRow</code> from <code>menu-monster/_components/add-row</code> &mdash; add rows: one per container, links at rest, search on tap,
-              Cancel always visible; a single food has no + Ingredient. Sites: meal panel (+ Food / + Gear), ingredient lists (+ Ingredient), Gear tab (+ Gear), Who&rsquo;s eating (+ Diet), Ingredients tab (+ Ingredient, whose form keeps its own Cancel). Admin twin: <code>AdminAddRow</code>. Cancel and Esc (nothing typed) close it and return focus to the link; the
+              <code>AddRow</code> from <code>_components/add-row</code> (shared since Build a Plan B2) &mdash; add rows: one per container, links at rest, search on tap,
+              Cancel always visible; a single food has no + Ingredient. Sites: meal panel (+ Food / + Gear), ingredient lists (+ Ingredient), Gear tab (+ Gear), Who&rsquo;s eating (+ Diet), Ingredients tab (+ Ingredient, whose form keeps its own Cancel), Meeting Planner &rsaquo; Build a Plan (+ Requirement / + Focus set / + New mix). Admin twin: <code>AdminAddRow</code>. Cancel and Esc (nothing typed) close it and return focus to the link; the
               caller&rsquo;s extra controls (the ingredient list&rsquo;s &ldquo;for Everyone&rdquo; select) ride in <code>trailing</code>, before Cancel.
             </p>
           </div>

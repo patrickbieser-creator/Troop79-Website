@@ -14,7 +14,7 @@ import { redirect } from 'next/navigation';
 import { unstable_cache } from 'next/cache';
 import { resolveAdminActor } from '@/lib/admin-actor';
 import { createAdminClient } from '@/lib/supabase/server';
-import { fmtDay } from '@/lib/format-date';
+import { fmtDate, fmtDay } from '@/lib/format-date';
 import { loadUpcomingMeetings, type BoardMeeting } from '@/lib/meeting-board';
 import { boardName } from '@/lib/meeting-board-shared';
 import { plannerAccess } from '@/lib/meeting-planner-access';
@@ -129,6 +129,8 @@ export default async function BuildPlanPage({ searchParams }: { searchParams: Pr
         entryId={meeting.entryId}
         rows={rows}
         canSeed={access.canSeed}
+        canEdit={access.canEdit}
+        dayLabel={fmtDate(meeting.date, { year: false })}
         stamp={page.stamp}
         heading={heading}
         feed={

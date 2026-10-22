@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
-import { AddRow } from '../src/app/(public)/library/menu-monster/_components/add-row';
+import { AddRow } from '../src/app/_components/add-row';
 
 /**
  * AddRow — the one add pattern per container (Plans/Menu-Monster-Add-Pattern.md, Decisions 3-5): quiet links at

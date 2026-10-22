@@ -19,7 +19,7 @@ import { fracText } from '@/lib/menu-monster/units';
 import { RowMenu } from '../menus/_components/row-menu';
 import { AmountEditor, type AmountUnits } from './ingredient-list-edit';
 import { IngredientSearch, type IngredientChoice } from './ingredient-search';
-import { AddRow } from './add-row';
+import { AddRow } from '@/app/_components/add-row';
 import { Grip, useDragReorder } from './reorder';
 import s from './ingredient-list.module.css';
 

@@ -19,7 +19,7 @@ import { useRouter } from 'next/navigation';
 import type { Catalog, Section } from '@/lib/menu-monster/types';
 import { RESTRICTION_BY_KEY, SECTIONS, SECTION_ORDER, priceText } from '@/lib/menu-monster/units';
 import { browseIngredients } from '@/lib/menu-monster/ingredient-browse';
-import { AddRow } from './add-row';
+import { AddRow } from '@/app/_components/add-row';
 import { FilterChips, SearchBox } from './browse-controls';
 import { NewIngredientForm } from '../recipes/_components/new-ingredient-form';
 import { submitIngredientAction } from '../../_tools/menu-monster/ingredient-actions';

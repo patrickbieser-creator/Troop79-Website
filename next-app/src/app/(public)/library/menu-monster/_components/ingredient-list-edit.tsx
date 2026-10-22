@@ -39,7 +39,7 @@ import { idleLabel, scopeLabel, type IngredientRow } from '@/lib/menu-monster/in
 import { SelectInput } from '@/app/_components/form';
 import { RowMenu, type RowMenuItem } from '../menus/_components/row-menu';
 import { IngredientSearch, type IngredientChoice } from './ingredient-search';
-import { AddRow } from './add-row';
+import { AddRow } from '@/app/_components/add-row';
 import s from './ingredient-list.module.css';
 
 /** What a row's ⋯, amount box or search asked for. The parent builds the ops. */

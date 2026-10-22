@@ -12,6 +12,8 @@
  */
 import type { MeetingPlanPayload } from '@/lib/meeting-plan-types';
 import type { PlannerBoard } from '@/lib/meeting-planner-board';
+import { assessTeacher, flagText, teacherName, topicSkill, type TeachContext, type TeacherPerson } from '@/lib/meeting-board-teach';
+import { rankOfKey } from '@/lib/meeting-board-picklist';
 
 export type PlanOrigin = 'planner' | 'scouts' | 'teacher';
 export type PlanState = 'ready' | 'needs-teacher' | 'needs-scouts';
@@ -149,4 +151,87 @@ export function isOfferingKey(key: unknown): key is string {
  */
 export function keepWriteStamp(seen: string, prior: string): boolean {
   return prior !== '' && prior === seen;
+}
+
+// ── B2: the teacher picker ─────────────────────────────────────────────────────────────────────────────────────────
+
+export interface TeacherChoice {
+  personId: number;
+  name: string;
+  /** Why they fit, in one line ('Teaches First aid', 'Counselor for Camping'); for anyone else, what's missing. */
+  reason: string | null;
+  counselor: boolean;
+  qualified: boolean;
+  /** Teaching it now. */
+  teaching: boolean;
+}
+
+/** The merit badge a requirement key belongs to ('first-aid-9' → first-aid): the longest badge id it starts with. */
+function badgeOf<B extends { id: string }>(key: string, badges: readonly B[]): B | undefined {
+  const id = key.startsWith('mb:') ? key.slice(3) : null;
+  if (id) return badges.find((b) => b.id === id);
+  return [...badges].sort((a, b) => b.id.length - a.id.length).find((b) => key.startsWith(`${b.id}-`));
+}
+
+/**
+ * Who could teach an offering (B2 Edit), qualified first, each with a one-line reason:
+ *   - a rank requirement: holds its teaching skill (and, a Junior Leader, has finished it and the skill is youth-teachable);
+ *   - a merit badge requirement or badge: a registered counselor for that badge (labelled);
+ *   - a focus group (a mix): covers at least one of its parts, by skill or as a counselor.
+ * Everyone else in the pool follows, adults only, with what is missing. Nobody the database would refuse (a Junior
+ * Leader on an adults-only skill) is listed. Whoever teaches it now is listed first, even if they no longer qualify.
+ */
+export function teacherChoices(input: {
+  people: readonly TeacherPerson[];
+  key: string;
+  members: readonly string[];
+  ctx: TeachContext;
+  skillNames: ReadonlyMap<string, string>;
+  badges: readonly { id: string; name: string }[];
+  teaching: ReadonlySet<number>;
+}): TeacherChoice[] {
+  const { key, ctx } = input;
+  const skillName = (id: string) => input.skillNames.get(id) ?? id;
+  const fit = (p: TeacherPerson, k: string): { skill: string | null; badge: string | null } | null => {
+    if (rankOfKey(k, ctx.ranks)) {
+      const skill = topicSkill(k, ctx.ranks, ctx.rankReqs);
+      return skill && p.skills.has(skill) && assessTeacher(p, k, ctx).qualified ? { skill, badge: null } : null;
+    }
+    const b = badgeOf(k, input.badges);
+    return b && p.counselorFor.has(b.id) ? { skill: null, badge: b.name } : null;
+  };
+  const out: TeacherChoice[] = [];
+  for (const p of input.people) {
+    const teaching = input.teaching.has(p.personId);
+    if (p.eligible === false && !teaching) continue;
+    const base = { personId: p.personId, name: teacherName(p, 'admin'), teaching };
+    const fits = (key.startsWith('fg:') ? input.members : [key]).map((k) => fit(p, k)).filter((f): f is NonNullable<typeof f> => f != null);
+    if (fits.length) {
+      const skills = [...new Set(fits.flatMap((f) => (f.skill ? [skillName(f.skill)] : [])))];
+      const badges = [...new Set(fits.flatMap((f) => (f.badge ? [f.badge] : [])))];
+      const parts = [skills.length ? `Teaches ${skills.join(', ')}` : null, badges.length ? `Counselor for ${badges.join(', ')}` : null].filter(Boolean);
+      out.push({ ...base, reason: parts.join(' · '), counselor: badges.length > 0, qualified: true });
+      continue;
+    }
+    const a = key.startsWith('fg:') ? { flags: [], refused: false } : assessTeacher(p, key, ctx);
+    if (a.refused || (p.kind !== 'adult' && !teaching)) continue;
+    const missing = flagText(a.flags, 'admin');
+    out.push({ ...base, reason: missing.length ? missing.join(' · ') : null, counselor: false, qualified: false });
+  }
+  return out.sort(
+    (a, b) => Number(b.teaching) - Number(a.teaching) || Number(b.qualified) - Number(a.qualified) || Number(b.counselor) - Number(a.counselor) || a.name.localeCompare(b.name)
+  );
+}
+
+/** The row after its teachers changed (B2 Edit): its teacher line and state follow; gone when nothing holds it. */
+export function withTeachers(row: PlanRow, teachers: readonly string[], onBoard: boolean): PlanRow | null {
+  if (!onBoard) return null;
+  const state: PlanState = teachers.length ? (row.scouts ? 'ready' : 'needs-scouts') : 'needs-teacher';
+  const origin: PlanOrigin = row.seeded ? 'planner' : row.scouts ? 'scouts' : 'teacher';
+  return { ...row, teachers: [...teachers], state, origin };
+}
+
+/** "Mix for Oct 25": a new mix's name until the planner types one. */
+export function mixName(dayLabel: string): string {
+  return `Mix for ${dayLabel}`;
 }

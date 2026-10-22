@@ -1,7 +1,8 @@
 'use client';
 
 /**
- * The one add pattern per container in Menu Monster (Plans/Menu-Monster-Add-Pattern.md, Decisions 3-5; look:
+ * The one add pattern per container (Plans/Menu-Monster-Add-Pattern.md, Decisions 3-5; shared since Build a Plan B2,
+ * whose plan list ends in one too; look:
  * /admin/styleguide/public → Menu Monster planner flow → Add rows).
  *
  *   At rest   a list ends in quiet links — "+ Food  + Gear", "+ Ingredient". Real <button>s, 44px tall.

@@ -10,6 +10,9 @@
  * danger dialog that names the consequence, and a row scouts picked or a teacher offered says why it can't go.
  * Viewers see the plan with no controls. Suggestions stream in behind Suspense (SuggestionsFeed hands them over), so
  * the plan never waits for the engine.
+ *
+ * B2: seed holders get one quiet add row under the list (+ Requirement, + Focus set, + New mix: ./add-offering), and
+ * each row a quiet Edit (./edit-offering): its teacher for editors, a mix's requirements for seed holders.
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
@@ -26,10 +29,24 @@ import {
   SUGGESTION_LIMIT,
   keepWriteStamp,
   withAdded,
+  withTeachers,
+  mixName,
   type PlanRow,
   type SuggestionView
 } from '@/lib/build-plan';
-import { plannerAddOfferingAction, plannerRemoveOfferingAction } from '../build-actions';
+import { FOCUS_LABEL } from '@/lib/meeting-board-picklist';
+import type { FocusSearchRow, FocusSetView } from '@/lib/meeting-focus';
+import {
+  plannerAddFocusSetAction,
+  plannerAddOfferingAction,
+  plannerNewMixAction,
+  plannerRemoveOfferingAction,
+  type BuildClassResult,
+  type BuildTeacherResult
+} from '../build-actions';
+import { AddOffering } from './add-offering';
+import { EditOffering } from './edit-offering';
+import { rowCode } from './requirement-search';
 import { PlannerPoller } from '../planner-poller';
 import s from './build.module.css';
 
@@ -52,6 +69,8 @@ export function BuildPlanView({
   entryId,
   rows: initialRows,
   canSeed,
+  canEdit = false,
+  dayLabel = '',
   stamp,
   heading,
   feed
@@ -59,6 +78,10 @@ export function BuildPlanView({
   entryId: number;
   rows: PlanRow[];
   canSeed: boolean;
+  /** meeting_planner.edit: an offering's teacher (B2). */
+  canEdit?: boolean;
+  /** 'Oct 25': a new mix's name until typed over. */
+  dayLabel?: string;
   stamp: string;
   heading: ReactNode;
   /** The Suspense-wrapped SuggestionsFeed (seed holders only). */
@@ -76,6 +99,7 @@ export function BuildPlanView({
   const [suggestions, setSuggestions] = useState<Feed>({ status: 'loading' });
   const [sheet, setSheet] = useState(false);
   const [removing, setRemoving] = useState<{ row: PlanRow; trigger: HTMLElement | null } | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
   const stampRef = useRef(stamp);
   const listHeadRef = useRef<HTMLHeadingElement | null>(null);
   const onFeed = useCallback((f: Feed) => setSuggestions(f), []);
@@ -106,6 +130,40 @@ export function BuildPlanView({
     return null;
   };
 
+  /** B2: a class (a focus set or a new mix) the server added. */
+  const addClass = (res: Extract<BuildClassResult, { ok: true }>) => {
+    landed(res);
+    setRows((rs) => withAdded(rs, { key: res.key, codeLabel: FOCUS_LABEL, title: res.title }, res.teachers));
+  };
+  const addRequirement = async (r: FocusSearchRow): Promise<string | null> => {
+    const res = await plannerAddOfferingAction({ entryId, keys: [r.key] }).catch(() => ({ ok: false as const, error: SAVE_FAILED }));
+    if (!res.ok) return res.error;
+    landed(res);
+    setRows((rs) => withAdded(rs, { key: r.key, codeLabel: rowCode(r), title: r.label }, res.teachers[r.key] ?? []));
+    return null;
+  };
+  const addSet = async (x: FocusSetView): Promise<string | null> => {
+    const res = await plannerAddFocusSetAction({ entryId, setId: x.id }).catch(() => ({ ok: false as const, error: SAVE_FAILED }));
+    if (!res.ok) return res.error;
+    addClass({ ...res, title: res.title || x.name });
+    return null;
+  };
+  const newMix = async (name: string, items: FocusSearchRow[]): Promise<string | null> => {
+    const res = await plannerNewMixAction({ entryId, name, items: items.map((i) => i.key) }).catch(() => ({ ok: false as const, error: SAVE_FAILED }));
+    if (!res.ok) return res.error;
+    addClass(res);
+    return null;
+  };
+  const onTeachers = (key: string, res: Extract<BuildTeacherResult, { ok: true }>) => {
+    landed(res);
+    setRows((rs) => rs.flatMap((r) => (r.key === key ? (withTeachers(r, res.teachers, res.onBoard) ?? []) : [r])));
+  };
+  const onMix = (key: string, res: Extract<BuildClassResult, { ok: true }>) => {
+    landed(res);
+    setRows((rs) => rs.map((r) => (r.key === key ? { ...r, title: res.title } : r)));
+  };
+  const editingRow = rows.find((r) => r.key === editing) ?? null;
+
   const suggestedList = <SuggestedList feed={suggestions} shown={shown} onAdd={add} />;
   return (
     <FeedCtx.Provider value={onFeed}>
@@ -129,12 +187,20 @@ export function BuildPlanView({
           {rows.length ? (
             <ul className={s.list}>
               {rows.map((r) => (
-                <PlanRowView key={r.key} row={r} canSeed={canSeed} onRemove={(trigger) => setRemoving({ row: r, trigger })} />
+                <PlanRowView
+                  key={r.key}
+                  row={r}
+                  canSeed={canSeed}
+                  canEdit={canEdit || (canSeed && r.key.startsWith('fg:'))}
+                  onEdit={() => setEditing(r.key)}
+                  onRemove={(trigger) => setRemoving({ row: r, trigger })}
+                />
               ))}
             </ul>
           ) : (
-            <p className={s.empty}>{canSeed ? 'Nothing planned yet. Start from a suggestion.' : 'Nothing planned yet.'}</p>
+            <p className={s.empty}>Nothing planned yet.</p>
           )}
+          {canSeed ? <AddOffering onPlan={onPlan} defaultMixName={mixName(dayLabel)} addRequirement={addRequirement} addSet={addSet} newMix={newMix} /> : null}
         </section>
         {canSeed ? (
           <aside className={s.suggested} aria-labelledby="build-suggested">
@@ -149,6 +215,17 @@ export function BuildPlanView({
         <Drawer title="Suggested" onClose={() => setSheet(false)}>
           {suggestedList}
         </Drawer>
+      ) : null}
+      {editingRow ? (
+        <EditOffering
+          entryId={entryId}
+          row={editingRow}
+          canEdit={canEdit}
+          canSeed={canSeed}
+          onTeachers={(res) => onTeachers(editingRow.key, res)}
+          onMix={(res) => onMix(editingRow.key, res)}
+          onClose={() => setEditing(null)}
+        />
       ) : null}
       {removing ? (
         <RemoveDialog
@@ -180,7 +257,19 @@ function scoutLine(r: PlanRow): string {
 
 const STATE_CLASS = { ready: s.stateReady, 'needs-teacher': s.stateTeacher, 'needs-scouts': s.stateScouts } as const;
 
-function PlanRowView({ row, canSeed, onRemove }: { row: PlanRow; canSeed: boolean; onRemove: (trigger: HTMLElement | null) => void }) {
+function PlanRowView({
+  row,
+  canSeed,
+  canEdit,
+  onEdit,
+  onRemove
+}: {
+  row: PlanRow;
+  canSeed: boolean;
+  canEdit: boolean;
+  onEdit: () => void;
+  onRemove: (trigger: HTMLElement | null) => void;
+}) {
   return (
     <li className={s.row}>
       <div>
@@ -193,7 +282,16 @@ function PlanRowView({ row, canSeed, onRemove }: { row: PlanRow; canSeed: boolea
         <p className={s.rowLine}>{scoutLine(row)}</p>
       </div>
       <span className={STATE_CLASS[row.state]}>{STATE_LABEL[row.state]}</span>
-      {canSeed ? <RowMenu row={row} onRemove={onRemove} /> : null}
+      {canEdit || canSeed ? (
+        <span className={s.rowActions}>
+          {canEdit ? (
+            <button type="button" className={s.editBtn} onClick={onEdit} aria-haspopup="dialog" aria-label={`Edit ${row.title}`}>
+              Edit
+            </button>
+          ) : null}
+          {canSeed ? <RowMenu row={row} onRemove={onRemove} /> : null}
+        </span>
+      ) : null}
     </li>
   );
 }

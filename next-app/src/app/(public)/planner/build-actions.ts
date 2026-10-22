@@ -16,12 +16,14 @@
 import { resolveAdminActor } from '@/lib/admin-actor';
 import { createAdminClient } from '@/lib/supabase/server';
 import { loadBoardStamp, loadUpcomingMeetings } from '@/lib/meeting-board';
-import { seedMany, unseedTopic } from '@/lib/meeting-focus-db';
+import { editMix, newMix, seedFocusSet, seedMany, unseedTopic } from '@/lib/meeting-focus-db';
+import { teachTopic, unteachTopic } from '@/lib/meeting-board-supply';
+import { SET_NAME_MAX, type FocusSetItem } from '@/lib/meeting-focus';
 import { plannerAccess } from '@/lib/meeting-planner-access';
 import { plannerSeeder } from '@/lib/meeting-planner-seeder';
 import { loadPlannerLists } from '@/lib/people-lists';
-import { teachersOfKeys } from '@/lib/build-plan-db';
-import { isOfferingKey, PLAN_MEETINGS } from '@/lib/build-plan';
+import { loadMixOnMeeting, loadTeacherChoices, teachersOfKeys } from '@/lib/build-plan-db';
+import { isOfferingKey, PLAN_MEETINGS, type TeacherChoice } from '@/lib/build-plan';
 
 const fail = (error: string): { ok: false; error: string } => ({ ok: false, error });
 
@@ -31,11 +33,25 @@ const ADD_MAX = 20;
 export type BuildAddResult = { ok: true; added: string[]; teachers: Record<string, string[]>; prior: string; stamp: string } | { ok: false; error: string };
 export type BuildRemoveResult = { ok: true; stays: boolean; prior: string; stamp: string } | { ok: false; error: string };
 
-/** The seed gate on one of the next meetings, with the board's stamp as it stood before the write. */
-async function gate(entryId: unknown) {
+/** The seed gate (or, for a teacher, the edit gate) on one of the next meetings, with the board's stamp as it stood
+ *  before the write. */
+async function gate(entryId: unknown, right: 'seed' | 'edit' = 'seed') {
   if (!Number.isInteger(entryId)) return fail('Malformed request');
-  const [s, prior] = await Promise.all([plannerSeeder(entryId, { within: PLAN_MEETINGS }), loadBoardStamp(createAdminClient(), entryId as number).catch(() => '')]);
+  const [s, prior] = await Promise.all([plannerSeeder(entryId, { within: PLAN_MEETINGS, right }), loadBoardStamp(createAdminClient(), entryId as number).catch(() => '')]);
   return s.ok ? { ...s, prior } : s;
+}
+
+const MIX_KEY = /^fg:(\d{1,18})$/;
+/** A focus set item: a requirement key at any level ('tenderfoot-4a.1', 'first-aid-9b'). */
+const isItemKey = (k: unknown): k is string => typeof k === 'string' && /^[a-z0-9][a-z0-9.-]{0,118}[a-z0-9]$/i.test(k);
+const MIX_MAX = 300;
+function mixInput(name: unknown, items: unknown): { name: string; items: string[] } | { error: string } {
+  if (typeof name !== 'string' || !Array.isArray(items) || items.length > MIX_MAX || !items.every(isItemKey)) return { error: 'Malformed request' };
+  const n = name.trim().replace(/\s+/g, ' ');
+  if (!n) return { error: 'Give the mix a name.' };
+  if (n.length > SET_NAME_MAX) return { error: `Keep the name to ${SET_NAME_MAX} characters.` };
+  if (!items.length) return { error: 'Tick at least one requirement.' };
+  return { name: n, items: [...new Set(items)] };
 }
 
 /** Add one or more offerings (top-level requirements) to a meeting's plan: live to scouts at once (Decision 1). */
@@ -77,4 +93,94 @@ export async function plannerBuildStampAction(entryId: number): Promise<{ ok: tr
   } catch {
     return { ok: false };
   }
+}
+
+// ── B2: focus sets, new mixes, editing a mix, the teacher ────────────────────────────────────────────────────────────
+
+export type BuildClassResult = { ok: true; key: string; title: string; count: number; teachers: string[]; prior: string; stamp: string } | { ok: false; error: string };
+
+/** Add a focus set to the plan as one class (fg:<id>). Adding it again changes nothing. */
+export async function plannerAddFocusSetAction(input: { entryId: number; setId: number }): Promise<BuildClassResult> {
+  if (!Number.isInteger(input?.setId)) return fail('Malformed request');
+  const s = await gate(input.entryId);
+  if (!s.ok) return s;
+  const res = await seedFocusSet(s.sb, s.meeting.entryId, input.setId, s.actorPersonId);
+  if (!res.ok) return res;
+  const key = `fg:${input.setId}`;
+  const [stamp, teachers, title] = await Promise.all([
+    loadBoardStamp(s.sb, s.meeting.entryId),
+    teachersOfKeys(s.sb, s.meeting, [key]).catch(() => new Map<string, string[]>()),
+    s.sb.from('meeting_topics').select('title').eq('calendar_entry_id', s.meeting.entryId).eq('topic_key', key).maybeSingle()
+  ]);
+  return { ok: true, key, title: (title.data as { title: string } | null)?.title ?? '', count: res.count, teachers: teachers.get(key) ?? [], prior: s.prior, stamp };
+}
+
+/**
+ * A new mix: the ticked requirements saved as a new focus set AND added to the plan as one class, in one transaction
+ * (meeting_new_mix), so a failure leaves no set behind.
+ */
+export async function plannerNewMixAction(input: { entryId: number; name: string; items: string[] }): Promise<BuildClassResult> {
+  const m = mixInput(input?.name, input?.items);
+  if ('error' in m) return fail(m.error);
+  const s = await gate(input.entryId);
+  if (!s.ok) return s;
+  const res = await newMix(s.sb, s.meeting.entryId, m.name, m.items, s.actorPersonId);
+  if (!res.ok) return res;
+  return { ok: true, key: `fg:${res.setId}`, title: m.name, count: m.items.length, teachers: [], prior: s.prior, stamp: await loadBoardStamp(s.sb, s.meeting.entryId) };
+}
+
+export type BuildMixResult = { ok: true; setId: number; name: string; items: FocusSetItem[] } | { ok: false; error: string };
+
+/** A mix on the plan, for its Edit: its name and the requirements this meeting's class holds. */
+export async function plannerMixAction(input: { entryId: number; key: string }): Promise<BuildMixResult> {
+  if (typeof input?.key !== 'string' || !MIX_KEY.test(input.key)) return fail('Malformed request');
+  const s = await plannerSeeder(input.entryId, { within: PLAN_MEETINGS });
+  if (!s.ok) return s;
+  const mix = await loadMixOnMeeting(s.sb, s.meeting.entryId, input.key);
+  return mix ? { ok: true, ...mix } : fail('That set is no longer on this meeting.');
+}
+
+/** Change a mix's name and requirements: the focus set (wherever it is used next) and this meeting's class. */
+export async function plannerEditMixAction(input: { entryId: number; key: string; name: string; items: string[] }): Promise<BuildClassResult> {
+  const id = typeof input?.key === 'string' ? MIX_KEY.exec(input.key)?.[1] : undefined;
+  if (!id) return fail('Malformed request');
+  const m = mixInput(input.name, input.items);
+  if ('error' in m) return fail(m.error);
+  const s = await gate(input.entryId);
+  if (!s.ok) return s;
+  const res = await editMix(s.sb, s.meeting.entryId, Number(id), m.name, m.items, s.actorPersonId);
+  if (!res.ok) return res;
+  return { ok: true, key: input.key, title: m.name, count: res.count, teachers: [], prior: s.prior, stamp: await loadBoardStamp(s.sb, s.meeting.entryId) };
+}
+
+const isTopicKey = (k: unknown): k is string => isOfferingKey(k) || (typeof k === 'string' && (MIX_KEY.test(k) || /^(ff|mb):.{1,100}$/.test(k)));
+
+/** Who could teach an offering: qualified first with why, counselors labelled (editors only). */
+export async function plannerTeacherChoicesAction(input: { entryId: number; key: string }): Promise<{ ok: true; choices: TeacherChoice[] } | { ok: false; error: string }> {
+  if (!isTopicKey(input?.key)) return fail('Malformed request');
+  const s = await plannerSeeder(input.entryId, { within: PLAN_MEETINGS, right: 'edit' });
+  if (!s.ok) return s;
+  return { ok: true, choices: await loadTeacherChoices(s.sb, s.meeting, input.key) };
+}
+
+export type BuildTeacherResult = { ok: true; teachers: string[]; onBoard: boolean; prior: string; stamp: string } | { ok: false; error: string };
+
+/**
+ * Set or clear one teacher on an offering (edit right): signs them up to teach it (for_picks false: theirs until taken
+ * off) or takes them off. The RPCs re-check who may teach. Returns the row's teachers and whether it is still on the
+ * meeting (a row nothing else holds goes when its last teacher does).
+ */
+export async function plannerSetTeacherAction(input: { entryId: number; key: string; personId: number; on: boolean }): Promise<BuildTeacherResult> {
+  if (!isTopicKey(input?.key) || !Number.isInteger(input.personId) || typeof input.on !== 'boolean') return fail('Malformed request');
+  const s = await gate(input.entryId, 'edit');
+  if (!s.ok) return s;
+  const w = { personId: input.personId, actorPersonId: s.actorPersonId, leader: true };
+  const res = input.on ? await teachTopic(s.sb, w, [s.meeting.entryId], { key: input.key }, null) : await unteachTopic(s.sb, w, s.meeting.entryId, input.key);
+  if (!res.ok) return res;
+  const [stamp, teachers, topic] = await Promise.all([
+    loadBoardStamp(s.sb, s.meeting.entryId),
+    teachersOfKeys(s.sb, s.meeting, [input.key]),
+    s.sb.from('meeting_topics').select('id').eq('calendar_entry_id', s.meeting.entryId).eq('topic_key', input.key).maybeSingle()
+  ]);
+  return { ok: true, teachers: teachers.get(input.key) ?? [], onBoard: topic.error != null || topic.data != null, prior: s.prior, stamp };
 }
