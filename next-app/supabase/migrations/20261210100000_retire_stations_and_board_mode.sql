@@ -32,6 +32,10 @@ begin
   if exists (select 1 from public.meeting_stations) or exists (select 1 from public.meeting_rotation_placements) then
     raise exception 'meeting_stations or meeting_rotation_placements still has rows; P5c retires them only when empty.';
   end if;
+  -- A stored merit badge or closed override would vanish silently with the column; the calendar decides from here on.
+  if exists (select 1 from public.meeting_boards where board_mode <> 'rank') then
+    raise exception 'meeting_boards has a non-rank board_mode; P5c drops the column only when every board is rank.';
+  end if;
 end;
 $$;
 
