@@ -95,3 +95,17 @@ export async function makeWreathFixture(status: 'draft' | 'open' | 'closed' = 'o
     }
   };
 }
+
+/**
+ * How many orders the scout-notice cap (place-order.ts, perSellerNoticeDay) already counts for this person at `now`:
+ * every order credited to them in the 24 hours before `now`, in ANY sale. The fixture sellers are real scouts and
+ * the local DB mirrors production, so their real orders count too — a cap test sets its limit relative to this.
+ */
+export async function noticesAlreadyCounted(personId: number, now: number): Promise<number> {
+  const { count } = await adminClient()
+    .from('wreath_orders')
+    .select('id', { count: 'exact', head: true })
+    .eq('credited_person_id', personId)
+    .gte('placed_at', new Date(now - 24 * 3600_000).toISOString());
+  return count ?? 0;
+}

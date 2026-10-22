@@ -335,12 +335,17 @@ describe('the board', () => {
 
   it('Leader_SeesAdminHomeRow_WhenARequestHasNoTeacher', async () => {
     const { loadSundayNoTeacher } = await import('../src/app/admin/(workspace)/advancement/dashboard/attention-items');
+    // The local DB mirrors production, whose scouts' standing requests reach this fixture meeting too: assert the
+    // change this test's own request makes (a delta), never an absolute count. If a real scout already wants the
+    // same topic, our pick adds no new "no teacher" row.
+    const added = (await teachBoardFor(meeting1)).teach.match.wanted.includes(knotKey) ? 0 : 1;
     const before = (await loadSundayNoTeacher(sb, '2093-03-01')).count;
     await pickFor(young, knotKey);
     const mid = await loadSundayNoTeacher(sb, '2093-03-01');
     const forPlanner = await loadSundayNoTeacher(sb, '2093-03-01', { planner: true });
     await sb.rpc('meeting_teach_topic', { p_entries: [meeting1], p_person: parent, p_actor: parent, p_leader: false, p_topic_key: knotKey, p_title: null, p_note: null });
     const after = (await loadSundayNoTeacher(sb, '2093-03-01')).count;
-    expect([before, mid.count, mid.label.endsWith('1 request with no teacher'), mid.href, forPlanner.href, after]).toEqual([0, 1, true, '/admin/advancement/meeting-plan', '/planner', 0]);
+    const n = before + added;
+    expect([mid.count, mid.label.endsWith(`${n} ${n === 1 ? 'request' : 'requests'} with no teacher`), mid.href, forPlanner.href, after]).toEqual([n, true, '/admin/advancement/meeting-plan', '/planner', before]);
   });
 });

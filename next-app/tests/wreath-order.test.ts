@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeAll, afterAll, beforeEach } from 'vitest';
 import { adminClient } from './helpers/admin-client';
-import { makeWreathFixture, NOW_R1, NOW_R2, NOW_AFTER, R1, R2, type WreathFixture } from './helpers/wreath-fixture';
+import { makeWreathFixture, noticesAlreadyCounted, NOW_R1, NOW_R2, NOW_AFTER, R1, R2, type WreathFixture } from './helpers/wreath-fixture';
 import { placeOrder, type PlaceOrderDeps } from '../src/lib/wreaths/place-order';
 
 /**
@@ -193,7 +193,8 @@ describe('who the order is credited to', () => {
 
   it('ScoutHouseholdNotice_IsCappedPerSellerPerDay_ButTheOrderStillSaves', async () => {
     householdEmails.mockClear();
-    const limits = { perSellerNoticeDay: 2 };
+    // Room for exactly two more notices, whatever this scout's real (mirrored) orders and earlier tests already used.
+    const limits = { perSellerNoticeDay: (await noticesAlreadyCounted(fx.sellerB.personId, NOW_R1)) + 2 };
     const results: boolean[] = [];
     for (let i = 0; i < 4; i++) {
       const r = await placeOrder(

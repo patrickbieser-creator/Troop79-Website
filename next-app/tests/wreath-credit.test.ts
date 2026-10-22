@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeAll, afterAll, beforeEach } from 'vitest';
 import { adminClient } from './helpers/admin-client';
-import { makeWreathFixture, NOW_R1, type WreathFixture } from './helpers/wreath-fixture';
+import { makeWreathFixture, noticesAlreadyCounted, NOW_R1, type WreathFixture } from './helpers/wreath-fixture';
 import { placeOrder, type PlaceOrderDeps } from '../src/lib/wreaths/place-order';
 import { createSellerSearchLimiter, searchSellers } from '../src/lib/wreaths/seller-search';
 import { LINK_NOT_FOUND } from '../src/lib/wreaths/copy';
@@ -119,9 +119,8 @@ describe('picking a scout to credit', () => {
   });
 
   it('CheckoutCredit_HouseholdNotice_SharesTheDailyCapWithScoutLinkOrders', async () => {
-    const before = (await admin.from('wreath_orders').select('id', { count: 'exact', head: true }).eq('sale_id', fx.saleId).eq('credited_person_id', fx.sellerB.personId)).count ?? 0;
-    // Room for exactly one more notice, whatever earlier tests left credited to this scout.
-    const limits = { perSellerNoticeDay: before + 1 };
+    // Room for exactly one more notice, whatever earlier tests and this scout's real (mirrored) orders already used.
+    const limits = { perSellerNoticeDay: (await noticesAlreadyCounted(fx.sellerB.personId, NOW_R1)) + 1 };
     for (let i = 0; i < 3; i++) await placeOrder(input({ creditSellerId: sellerBId }), deps({ limits }));
     // Already-credited orders count toward the cap, however they were credited.
     expect(householdEmails.mock.calls.length).toBe(1);

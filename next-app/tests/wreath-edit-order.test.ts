@@ -370,7 +370,9 @@ describe('editOrder: credit and delivery (was Reassign)', () => {
     expect(await orderRow(id)).toMatchObject({ credited_person_id: null, delivering_person_id: null, fulfillment: 'pickup' });
     const blob = JSON.stringify((await editAudit(id))[0].details);
     expect(blob).toContain('Troop store');
-    expect(blob).toContain(fx.sellerA.first);
+    // The audit names people by display_name (nickname-aware), not the scout record's formal first name.
+    const { data: credited } = await admin.from('people').select('display_name').eq('id', fx.sellerA.personId).single();
+    expect(blob).toContain((credited as { display_name: string }).display_name);
   });
 
   it('EditOrder_RepricesTheDeliveryFee_WithTheItems', async () => {
