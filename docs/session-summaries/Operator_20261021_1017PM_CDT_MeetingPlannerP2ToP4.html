@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session 65: Meeting Planner P2 to P4</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #3d5a3e;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #f0eecd;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); vertical-align: top; }
+        tr:hover { background: var(--nw-sage); }
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+        code { font-family: 'Courier New', monospace; font-size: 0.85em; background: var(--nw-light-gray); padding: 0 0.3em; border-radius: 3px; }
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+        @media print { body { background: white; } header { padding: 1.5rem; } .container { padding: 1rem; } .stat { break-inside: avoid; } }
+        @media (max-width: 600px) { header h1 { font-size: 1.5rem; } .stats { flex-direction: column; } }
+    </style>
+<body>
+    <header>
+        <h1>Meeting Planner: P2 through P4 shipped</h1>
+        <p class="subtitle">Session 65. P2 shipped. A planner bug was fixed: the Scoutmaster conference now waits for 95% of a rank, and an assignment goes away when its pick does. P3 brought focus sets and seeding, then boards of review became pickable. P4 (Meeting Live: placement, editing, attendance and visitors) was built and shipped while Patrick was away. The session ended with a fix for a flaky Menu Monster test.</p>
+        <div class="meta">
+            <span>&#128197; October 21, 2026</span>
+            <span>&#129302; Operator (Opus 5.5)</span>
+            <span>&#128204; Troop79-Website</span>
+            <span>&#128640; v1.240.0 &rarr; v1.243.0</span>
+        </div>
+    </header>
+    <div class="container">
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">4</div><div class="label">Releases (v1.241.0&ndash;v1.243.0)</div></div>
+            <div class="stat"><div class="number">7</div><div class="label">Migrations, all in production</div></div>
+            <div class="stat"><div class="number">5</div><div class="label">Decisions (D-424&ndash;D-428)</div></div>
+            <div class="stat"><div class="number">7035</div><div class="label">Tests (was 6893)</div></div>
+        </div>
+        <h2>What Was Accomplished</h2>
+        <div class="callout callout-teal">
+            <strong>The outcome:</strong> the planning team can now seed a meeting from focus sets and then run it live on their phones. That covers rotations, repeated classes, moving scouts, attendance into Roll Call, and visitors. The pick lists also follow the rank rules: a Scoutmaster conference appears only at 95% of the rank, and a board of review appears once the rest of the rank is done.
+        </div>
+        <h3>The fix (v1.241.1)</h3>
+        <ul>
+            <li>Every rank&rsquo;s Scoutmaster conference now waits until 95% of the rank is done. Scout, Star, Life and Eagle had been missing from the rule.</li>
+            <li>An Assign is tied to the picks it was made for. When the last of those picks is removed, the assignment goes too, unless the teacher signed up on their own. Mindy&rsquo;s orphaned row in production was deleted.</li>
+        </ul>
+        <h3>P3: focus sets and seeding (v1.242.0)</h3>
+        <ul>
+            <li>Focus sets: named groups of requirements, each one a single pick. A meeting can be seeded from a set or with single rank and merit badge requirements, using a server-side search. Seeding needs the Seed right.</li>
+            <li>A board of review can be picked once every other requirement of the rank is done, and an open Scoutmaster conference doesn&rsquo;t block it.</li>
+            <li>qa-lead failed the first build because some sessions showed raw keys. That was fixed and re-checked.</li>
+        </ul>
+        <h3>P4: Meeting Live (v1.243.0)</h3>
+        <ul>
+            <li>Once anyone edits the meeting, the plan is saved and replaces the automatic match everywhere it shows.</li>
+            <li>Rotations are open-ended and classes can repeat across them. Conflicts show as lines. Scouts move by drag or &ldquo;Move to&rdquo;. Two leaders can edit at once without overwriting each other.</li>
+            <li>Attendance taken on Live goes to the meeting&rsquo;s Roll Call, with ledger credit, on the meeting day. &ldquo;+ Add as visitor&rdquo; records a guest.</li>
+            <li>Each part had a tech-lead design review and a qa-lead build review. Every must-fix and the important warnings were fixed with tests.</li>
+        </ul>
+        <h3>Menu Monster test flake</h3>
+        <ul>
+            <li>&ldquo;Swap for&hellip;&rdquo; focuses the search one animation frame later. On a busy machine the test&rsquo;s Escape arrived before that focus. The test now waits for the focus first. A forced 300 ms delay reproduced the exact failure.</li>
+        </ul>
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Decision</th></tr></thead>
+            <tbody>
+                <tr><td>D-424</td><td>An assignment made for picks goes away with the picks. Teachers who signed up on their own stay.</td></tr>
+                <tr><td>D-425</td><td>The Scoutmaster conference waits for 95% on every rank. A board of review is pickable once the rest of the rank is done, with the conference excepted.</td></tr>
+                <tr><td>D-426</td><td>Once Meeting Live starts, its saved placement takes over from the matcher. Two editors are kept apart by a stale check. It covers rank meetings only until P5.</td></tr>
+                <tr><td>D-427</td><td>Visitors are hosted by a system household that never appears in family lists.</td></tr>
+                <tr><td>D-428</td><td>&ldquo;Build and push while I&rsquo;m away&rdquo; ships each named phase once its full gate and reviews are green.</td></tr>
+            </tbody>
+        </table>
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Patrick checks v1.241.1&ndash;v1.243.0 in production, including Meeting Live on a phone. Sunday is the first real attendance test.</li>
+            <li>P5: reminders, retiring Admin&rsquo;s This Sunday tab, and the mode switch that opens Live to merit badge nights.</li>
+            <li>Merge the duplicate Mindy Stollenwerk records.</li>
+            <li>Fix the four test failures caused by local data.</li>
+        </ul>
+        <h2>Files Changed</h2>
+        <table>
+            <thead><tr><th>Area</th><th>Files</th></tr></thead>
+            <tbody>
+                <tr><td>Planner (public)</td><td>(public)/planner/{actions,focus-actions,live-actions}.ts, seed-drawer.tsx, planner-tabs.tsx, focus-sets/, live/{page,live-board}.tsx, live.module.css</td></tr>
+                <tr><td>Libraries</td><td>lib/rank-calculus.ts, meeting-board{,-picklist,-supply,-match}.ts, meeting-planner-load.ts, meeting-focus{,-db}.ts, meeting-live{,-shared}.ts, attendance-admin.ts</td></tr>
+                <tr><td>Member and admin</td><td>member/meeting/page.tsx, load-agenda.ts, this-sunday.tsx, household readers (system_key filter)</td></tr>
+                <tr><td>Database</td><td>20261202100000 through 20261208100000 (no teach cap, for_picks, focus sets, board of review, meeting_live, live editing, live attendance)</td></tr>
+                <tr><td>Tests</td><td>rank-sm-conference-gate, planner-actions, meeting-focus-*, planner-focus-actions, meeting-live-*, rls-every-table, menu-monster-meal-panel, menu-monster-menu-edit-list</td></tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

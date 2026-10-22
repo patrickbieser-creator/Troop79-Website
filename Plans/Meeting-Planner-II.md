@@ -1,6 +1,6 @@
 # Meeting Planner II
 
-**Status:** Parked (design reviewed, decisions taken 2026-10-21; open questions below block P1)
+**Status:** IN PROGRESS: P1–P4 SHIPPED v1.240.0–v1.243.0 (2026-10-21, 4c87a4e1 → a7232203); P5 left
 **Parked:** 2026-10-21
 **Priority:** High
 
