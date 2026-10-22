@@ -32,7 +32,7 @@ import { SectionDivider } from '@/app/_components/section-divider';
 import { GoalBar } from '@/app/_components/goal-bar';
 import { goalProgress } from '@/lib/wreaths/scout-entry';
 import cardS from '@/app/_components/card.module.css';
-import { PublicAccountControlSpecimen, PublicDrawerSpecimen, PublicBlockedSaveSpecimen, PublicBrandDetailSpecimen, PublicDietRowsSpecimen, PublicFinishLineSpecimen, PublicAmountScaleSpecimen, PublicGearSpecimen, PublicMenuEditListSpecimen, PublicStepperSpecimen, PublicTabStripSpecimen } from './specimens';
+import { PublicAccountControlSpecimen, PublicDrawerSpecimen, PublicBlockedSaveSpecimen, PublicBrandDetailSpecimen, PublicDietRowsSpecimen, PublicFinishLineSpecimen, PublicAmountScaleSpecimen, PublicGearSpecimen, PublicMenuEditListSpecimen, PublicStepperSpecimen, PublicTabStripSpecimen, PublicTabStripScrollSpecimen } from './specimens';
 import { IngredientList } from '@/app/(public)/library/menu-monster/_components/ingredient-list';
 import { StepStrip } from '@/app/(public)/library/menu-monster/menus/_components/step-strip';
 import { SummaryRail } from '@/app/(public)/library/menu-monster/menus/_components/summary-rail';
@@ -451,6 +451,13 @@ export default function PublicStyleguidePage() {
           {/* TabStrip */}
           <div className={sg.specimenBlock}>
             <PublicTabStripSpecimen />
+          </div>
+          <div className={sg.specimenBlock}>
+            <PublicTabStripScrollSpecimen />
+            <p className={sg.specimenInlineNote}>
+              <code>scroll</code>: one line that scrolls sideways instead of wrapping, for a strip that outgrows a phone (the
+              Meeting Planner&rsquo;s six tabs).
+            </p>
           </div>
 
           {/* Badge tones */}

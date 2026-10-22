@@ -79,7 +79,7 @@ afterEach(() => {
 describe('the Invite tab', () => {
   it('InviteTab_IsBetweenBuildAndWhosComing', () => {
     render(<PlannerTabs active="invite" />);
-    expect(screen.getAllByRole('tab').map((a) => a.textContent)).toEqual(['Build a Plan', 'Invite', 'Who’s coming', 'Meeting Live', 'Focus sets']);
+    expect(screen.getAllByRole('tab').map((a) => a.textContent)).toEqual(['Build a Plan', 'Invite', 'Who’s coming', 'Meeting Live', 'Focus sets', 'Has/Needs']);
   });
 
   it('InviteTab_ShowAllEligible_ExpandsRest', () => {

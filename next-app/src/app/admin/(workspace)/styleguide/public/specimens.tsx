@@ -37,6 +37,13 @@ export function PublicTabStripSpecimen() {
   );
 }
 
+/** TabStrip `scroll`: one line that scrolls sideways instead of wrapping (the Meeting Planner's six tabs, B7). */
+export function PublicTabStripScrollSpecimen() {
+  const [active, setActive] = useState('build');
+  const tabs = ['Build a Plan', 'Invite', 'Who’s coming', 'Meeting Live', 'Focus sets', 'Has/Needs'];
+  return <TabStrip ariaLabel="Scrolling TabStrip specimen" activeKey={active} scroll items={tabs.map((label, i) => ({ key: i === 0 ? 'build' : label, label, onSelect: () => setActive(i === 0 ? 'build' : label) }))} />;
+}
+
 /** The shared compact dialer, live: a labelled Stepper (Label: − n +), a bare one at its minimum, and the framed cents box. */
 export function PublicStepperSpecimen() {
   const [people, setPeople] = useState(8);

@@ -20,14 +20,17 @@ export type TabItem = {
 export function TabStrip({
   items,
   activeKey,
-  ariaLabel
+  ariaLabel,
+  scroll = false
 }: {
   items: TabItem[];
   activeKey: string;
   ariaLabel: string;
+  /** One line that scrolls sideways instead of wrapping (the Meeting Planner's six tabs on a phone). */
+  scroll?: boolean;
 }) {
   return (
-    <div role="tablist" aria-label={ariaLabel} className={s.strip}>
+    <div role="tablist" aria-label={ariaLabel} className={scroll ? `${s.strip} ${s.scroll}` : s.strip}>
       {items.map((item) => {
         const active = item.key === activeKey;
         const cls = active ? `${s.tab} ${s.active}` : s.tab;

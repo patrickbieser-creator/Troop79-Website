@@ -70,7 +70,8 @@ describe("Who's coming", () => {
       ['Invite', '/planner/invite'],
       ['Who’s coming', '/planner'],
       ['Meeting Live', '/planner/live'],
-      ['Focus sets', '/planner/focus-sets']
+      ['Focus sets', '/planner/focus-sets'],
+      ['Has/Needs', '/planner/has-needs']
     ]);
   });
 
