@@ -371,6 +371,20 @@ describe('cards', () => {
     const { data } = await sb.from('meeting_classes').select('rotation, meeting_topics(kind)').eq('calendar_entry_id', meeting).single();
     expect(data).toEqual({ rotation: null, meeting_topics: { kind: 'freeform' } });
   });
+
+  it('SetTeacher_ToSomeoneWhoCannotTeach_IsRefusedPlainly', async () => {
+    const [c] = await started([{ topic_key: key, rotation: 1, members: [] }]);
+    asEditor();
+    const res = await (await live()).plannerLiveSetTeacherAction({ entryId: meeting, classId: `c:${c}`, version: 1, teacherId: bo });
+    expect([res, (await classRow(c))?.teacher_person_id]).toEqual([{ ok: false, error: 'Teaching is for adults and Junior Leaders.' }, null]);
+  });
+
+  it('AddAnOffer_WithSomeoneWhoCannotTeach_IsRefusedPlainly', async () => {
+    await started([]);
+    asEditor();
+    const res = await (await live()).plannerLiveAddClassAction({ entryId: meeting, key: key2, title: null, teacherId: bo, rotation: 1 });
+    expect([res, await classCount()]).toEqual([{ ok: false, error: 'Teaching is for adults and Junior Leaders.' }, 0]);
+  });
 });
 
 describe('rotations', () => {

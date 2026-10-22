@@ -21,7 +21,7 @@ import { loadBoardStamp, loadMeetingById, type BoardMeeting } from '@/lib/meetin
 import { plannerAccess } from '@/lib/meeting-planner-access';
 import { SAVE_FAILED } from '@/lib/meeting-board-supply';
 import { loadEntryContext, recordAttendance, removeAttendance } from '@/lib/attendance-admin';
-import { liveStartedAt, onLiveBoard, resolveLiveClass, startMeetingLive } from '@/lib/meeting-live';
+import { canTeachOnLive, liveStartedAt, onLiveBoard, resolveLiveClass, startMeetingLive } from '@/lib/meeting-live';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 export type LiveWriteResult = { ok: true; stamp: string } | { ok: false; error: string; stale?: true };
@@ -32,6 +32,7 @@ const stale = (): { ok: false; error: string; stale: true } => ({ ok: false, err
 /** The RPCs' own messages are written for people; anything else is not shown raw. */
 const KNOWN = /^(Rotations 1 and 2|Only the last rotation|Move its classes|That’s as many rotations|That isn’t something|That meeting|Give the visitor)/;
 const NOT_TODAY = 'Attendance is taken on the day of the meeting.';
+const NOT_A_TEACHER = 'Teaching is for adults and Junior Leaders.';
 
 type Editor = { ok: true; sb: SupabaseClient; meeting: BoardMeeting; actorPersonId: number; actorLabel: string };
 
@@ -119,12 +120,14 @@ export async function plannerLiveMoveScoutAction(input: { entryId: number; perso
 async function cardOp(
   input: { entryId: number; classId: string; version: number },
   valid: boolean,
-  rpc: (e: Editor, classId: number) => PromiseLike<{ error: { message: string } | null }>
+  rpc: (e: Editor, classId: number) => PromiseLike<{ error: { message: string } | null }>,
+  teacherId: number | null = null
 ): Promise<LiveWriteResult> {
   const e = await liveEditor(input?.entryId);
   if (!e.ok) return e;
   if (!isCardId(input.classId) || !isVersion(input.version) || !valid) return fail('Malformed request');
   try {
+    if (teacherId !== null && !(await canTeachOnLive(e.sb, e.meeting, teacherId))) return fail(NOT_A_TEACHER);
     const id = await cardOf(e, input.classId);
     if (id === null) return stale();
     return write(e, () => rpc(e, id));
@@ -133,10 +136,11 @@ async function cardOp(
   }
 }
 
-/** Set a card's teacher, or clear it (teacherId null). */
+/** Set a card's teacher, or clear it (teacherId null). The teacher must be someone Live's picker offers. */
 export async function plannerLiveSetTeacherAction(input: { entryId: number; classId: string; version: number; teacherId: number | null }): Promise<LiveWriteResult> {
   return cardOp(input, input?.teacherId === null || isPerson(input?.teacherId), (e, id) =>
-    e.sb.rpc('meeting_live_set_teacher', { p_entry: e.meeting.entryId, p_actor: e.actorPersonId, p_class: id, p_expected: input.version, p_teacher: input.teacherId })
+    e.sb.rpc('meeting_live_set_teacher', { p_entry: e.meeting.entryId, p_actor: e.actorPersonId, p_class: id, p_expected: input.version, p_teacher: input.teacherId }),
+    input?.teacherId ?? null
   );
 }
 
@@ -190,6 +194,11 @@ export async function plannerLiveAddClassAction(input: { entryId: number; key: s
   const key = typeof input.key === 'string' && input.key.trim() ? input.key.trim().slice(0, 120) : null;
   const title = typeof input.title === 'string' && input.title.trim() ? input.title.trim().slice(0, 80) : null;
   if ((!key && !title) || !isRotation(input.rotation) || (input.teacherId !== null && !isPerson(input.teacherId))) return fail('Malformed request');
+  try {
+    if (input.teacherId !== null && !(await canTeachOnLive(e.sb, e.meeting, input.teacherId))) return fail(NOT_A_TEACHER);
+  } catch {
+    return fail(SAVE_FAILED);
+  }
   return write(e, () =>
     e.sb.rpc('meeting_live_add_class', {
       p_entry: e.meeting.entryId,

@@ -237,6 +237,16 @@ export async function resolveLiveClass(sb: SupabaseClient, meeting: BoardMeeting
   return (data as { id: number } | null)?.id ?? null;
 }
 
+/**
+ * Live's teacher rule, the same one its picker offers (loadLiveChoices): an adult, or a scout who may teach (First
+ * Class and up, or a Junior Leader) as of the meeting date. Checked on the server before a teacher is saved.
+ */
+export async function canTeachOnLive(sb: SupabaseClient, meeting: BoardMeeting, personId: number): Promise<boolean> {
+  const teachers = await loadTeacherPeople(sb, [personId], meeting.date, await loadAdvancementCatalog());
+  const t = teachers.get(personId);
+  return t !== undefined && t.eligible !== false;
+}
+
 export interface LiveChoices {
   /** Who can be picked to teach: adults first, then Junior Leaders, by name. */
   teachers: { personId: number; name: string }[];
