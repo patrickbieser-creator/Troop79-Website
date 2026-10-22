@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CATALOG } from './helpers/menu-monster-fixture';
 import { seedPlan } from '../src/lib/menu-monster/engine';
@@ -152,6 +152,8 @@ describe('IngredientList (menu-edit)', () => {
     const u = user();
     render(<Harness />);
     await pickItem(u, 'Bacon', 'Swap for…');
+    // Swap focuses the search on the next animation frame; wait for it as a person's Esc would.
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('combobox', { name: 'Swap Bacon for' })));
     await u.keyboard('{Escape}');
     expect({ search: screen.queryByRole('combobox', { name: 'Swap Bacon for' }), focused: document.activeElement }).toEqual({ search: null, focused: more('Bacon') });
   });

@@ -299,6 +299,8 @@ describe('MealEditor', () => {
       render(editor());
       await user.click(screen.getByRole('button', { name: 'More for Bacon' }));
       await user.click(screen.getByRole('button', { name: 'Swap for…' }));
+      // Swap focuses the search on the next animation frame; a person's Esc can't beat it, a loaded test runner can.
+      await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('combobox')));
       await user.keyboard('{Escape}');
       // Esc with nothing typed leaves the row (the add row's Cancel): the links come back, and the next search adds again.
       expect([screen.queryByRole('combobox'), panel().getByRole('button', { name: '+ Food' }) != null]).toEqual([null, true]);
