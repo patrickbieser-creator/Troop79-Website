@@ -8,10 +8,10 @@ import { BUNDLES, CAPABILITIES, type Capability } from '../src/lib/capabilities'
  */
 
 // The hrefs the rail offered at v1.214.0 (before Wave 2), for the regression test — minus Roster
-// Import, retired on purpose 2026-10-20 (a one-time Google Sheets import), and with Meeting Plan's generator swapped for
-// what is left of it, By Scout & Roster (Build a Plan B4: the generator redirects to /planner/build).
+// Import, retired on purpose 2026-10-20 (a one-time Google Sheets import), and Meeting Plan, retired in Build a Plan B5
+// (its generator, By Scout and Teaching Roster are lenses of /planner/build?view=suggestions).
 const FORMER_RAIL_HREFS = [
-  '/admin', '/admin/advancement/fast-entry', '/admin/advancement/meeting-plan/by-scout', '/admin/advancement/has-needs',
+  '/admin', '/admin/advancement/fast-entry', '/admin/advancement/has-needs',
   '/admin/advancement/ledger', '/admin/advancement/roster', '/admin/advancement/records', '/admin/advancement/mb-progress',
   '/admin/advancement/audits', '/admin/advancement/report', '/admin/advancement/court-of-honor',
   '/admin/advancement/scoutbook-export', '/admin/advancement/meetings/report', '/admin/news/articles', '/admin/news/pages',
@@ -102,7 +102,7 @@ describe('AdminHome card grid', () => {
 
   it('AdminHome_PlacesReportsAfterMoneyAndBeforePeople', () => {
     const titles = hubGroups(visible(ALL, true), { wreathOpen: false }).map((g) => g.title);
-    expect(titles).toEqual(['Advancement', 'Calendar & Content', 'Meeting Plan', 'Money', 'Reports', 'People & Setup', 'Troop admin tools']);
+    expect(titles).toEqual(['Advancement', 'Calendar & Content', 'Money', 'Reports', 'People & Setup', 'Troop admin tools']);
   });
 
   it('AdminHome_TintsEveryGroupItsOwnEarthTone_AndLeavesTheToolsRowUntinted', () => {
@@ -111,7 +111,6 @@ describe('AdminHome card grid', () => {
     expect(tints).toEqual({
       Advancement: 'moss',
       'Calendar & Content': 'sky',
-      'Meeting Plan': 'moss',
       Money: 'wheat',
       Reports: 'clay',
       'People & Setup': 'stone',
@@ -229,7 +228,7 @@ describe('Section bar and tabs', () => {
 
   it('AdminNav_LabelsTheBar_LikeThePrototype', () => {
     expect(labels(nav(ALL_CAPS, '/admin', true).bar)).toEqual([
-      'Home', 'Advancement', 'Calendar & Content', 'Meeting Plan', 'Money', 'Reports', 'People', 'Tools'
+      'Home', 'Advancement', 'Calendar & Content', 'Money', 'Reports', 'People', 'Tools'
     ]);
   });
 

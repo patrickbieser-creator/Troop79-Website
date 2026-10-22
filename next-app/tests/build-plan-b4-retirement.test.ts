@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 
@@ -70,30 +70,7 @@ describe('the public plan page', () => {
 });
 
 describe("Admin's generator", () => {
-  const landingFor = async (capabilities: string[]) => {
-    vi.resetModules();
-    const redirect = vi.fn((to: string) => {
-      throw new Error(`REDIRECT ${to}`);
-    });
-    vi.doMock('next/navigation', () => ({ redirect, permanentRedirect: redirect }));
-    vi.doMock('@/lib/admin-actor', () => ({ resolveAdminActor: async () => ({ capabilities: new Set(capabilities), subjectKind: 'leader' }) }));
-    const { default: Page } = await import('../src/app/admin/(workspace)/advancement/meeting-plan/page');
-    try {
-      return await Page().then(() => 'no redirect', (e: Error) => e.message);
-    } finally {
-      vi.doUnmock('next/navigation');
-      vi.doUnmock('@/lib/admin-actor');
-    }
-  };
-
-  it('AdminMeetingPlan_RedirectsToBuild', async () => {
-    expect(await landingFor(['meeting_plan.use', 'meeting_planner.view'])).toBe('REDIRECT /planner/build');
-  });
-
-  it('AdminMeetingPlan_RedirectsToByScout_WithoutPlannerRights', async () => {
-    expect(await landingFor(['meeting_plan.use'])).toBe('REDIRECT /admin/advancement/meeting-plan/by-scout');
-  });
-
+  // Where /admin/advancement/meeting-plan lands moved with B5 (Suggestions mode): build-plan-b5-retirement.test.ts.
   it('OldPublicMeetingPlan_RedirectsToThePlanner', () => {
     const config = readFileSync(path.join(ROOT, 'next.config.ts'), 'utf8');
     expect(config).toMatch(/source: '\/meeting-plan', destination: '\/planner'/);

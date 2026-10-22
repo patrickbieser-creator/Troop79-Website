@@ -201,7 +201,6 @@ describe('admin nav contents', () => {
       'Overview',
       'Advancement',
       'Calendar & Content',
-      'Meeting Plan',
       'Money',
       'Reports',
       'People & Setup',

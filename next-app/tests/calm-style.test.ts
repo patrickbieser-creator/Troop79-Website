@@ -99,7 +99,6 @@ const SCREENS: Record<string, string[]> = {
   ],
   R6: [
     'admin/(workspace)/advancement/fast-entry/fast-entry.module.css',
-    'admin/(workspace)/advancement/meeting-plan/meeting-plan.module.css',
     'admin/(workspace)/advancement/roster/roster.module.css',
     'admin/(workspace)/advancement/ledger/ledger.module.css',
     'admin/(workspace)/calendar/calendar.module.css',

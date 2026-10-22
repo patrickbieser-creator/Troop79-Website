@@ -58,7 +58,7 @@ import dlg from '../../_components/dialog.module.css';
 import me from '../../_components/message-editor-dialog.module.css';
 import dt from '../../_components/data-table.module.css';
 import cal from '../../calendar/calendar.module.css';
-import plan from '../../advancement/meeting-plan/meeting-plan.module.css';
+import lk from '../../advancement/lookups/lookups.module.css';
 import ev from '../../events/events-admin.module.css';
 import mm from '../../news/media-manager/media-manager.module.css';
 import util from '../../utilities/utilities.module.css';
@@ -219,7 +219,7 @@ const SCOREBOARD: {
       '✓ SHIPPED: shared Badge (neutral/success/warning/danger/info/muted) — meetings, calendar, articles, article-editor, roster, roster-import, roll-call, court-of-honor, report converted 2026-08-21',
     phase: 'A',
     notes:
-      'Deliberate exception: CATEGORICAL tags (lookups rank/MB/Eagle, meeting-plan track tags, scoutbook-export type badges) — categories are not statuses. The library workstation exception dissolved in Phase C: its stylesheet turned out to be admin-only (the public copy is a separate file), so its pills were re-tokened in place'
+      'Deliberate exception: CATEGORICAL tags (lookups rank/MB/Eagle, scoutbook-export type badges) — categories are not statuses. The library workstation exception dissolved in Phase C: its stylesheet turned out to be admin-only (the public copy is a separate file), so its pills were re-tokened in place'
   },
   {
     pattern: 'Actions ▾ menu',
@@ -232,10 +232,10 @@ const SCOREBOARD: {
     pattern: 'Data tables',
     copies: '15 of 16 <table> screens compose the shared sheet (wave 2, 2026-08-25)',
     canonical:
-      'ONE stylesheet: _components/data-table.module.css — .compact (calendar canon; composed by albums, meetings, meeting-plan, roster, scoutbook-export, dashboard, lookups, media-manager, patrols), .card + .cardWrap (ledger canon, composes too; records, finance/reimbursements, articles, access), .dense (events-admin roster canon — rules still literal there, .dense ready to compose). Seven names: Compact, Card, Dense Grid, RecordList, Board, ExpandableSummary, PrintTable',
+      'ONE stylesheet: _components/data-table.module.css — .compact (calendar canon; composed by albums, meetings, roster, scoutbook-export, dashboard, lookups, media-manager, patrols), .card + .cardWrap (ledger canon, composes too; records, finance/reimbursements, articles, access), .dense (events-admin roster canon — rules still literal there, .dense ready to compose). Seven names: Compact, Card, Dense Grid, RecordList, Board, ExpandableSummary, PrintTable',
     phase: 'B',
     notes:
-      'Left: events-admin .table onto .dense (another agent owns events/ this session); fast-entry’s audit tape (.tapeTable, a receipt-style tape, not one of the seven) keeps its own .cellRight for Qty; the .cellRight/.alignRight classes that remain (lookups, meeting-plan) are on Actions columns, not numbers — candidates for .actionsCell, not .numCell. History: Phase B normalized the two clusters (2026-08-21); Phase C swept inline textAlign; SortHeader/useSortable (_components/use-sortable) is the client-side sort; finance’s URL-param server sort is deliberately separate; stretched-link rows (.rowLink) on calendar, scouts, people, articles'
+      'Left: events-admin .table onto .dense (another agent owns events/ this session); fast-entry’s audit tape (.tapeTable, a receipt-style tape, not one of the seven) keeps its own .cellRight for Qty; the .cellRight/.alignRight classes that remain (lookups) are on Actions columns, not numbers — candidates for .actionsCell, not .numCell. History: Phase B normalized the two clusters (2026-08-21); Phase C swept inline textAlign; SortHeader/useSortable (_components/use-sortable) is the client-side sort; finance’s URL-param server sort is deliberately separate; stretched-link rows (.rowLink) on calendar, scouts, people, articles'
   },
   {
     pattern: 'Cards / panels',
@@ -701,7 +701,7 @@ export default function StyleguidePage() {
           component — meetings, calendar, articles, roster, roster-import, roll-call,
           court-of-honor, and report all render it now. Rule of thumb: STATUS pills
           (draft/published/active/…) are Badges; CATEGORICAL tags with their own meaning
-          (lookups&rsquo; rank/MB/Eagle, meeting-plan&rsquo;s track tags,
+          (lookups&rsquo; rank/MB/Eagle,
           scoutbook-export&rsquo;s type badges) deliberately keep per-screen classes. The
           library-workstation exception dissolved in Phase C — its stylesheet turned out to
           be admin-only (the public copy is a separate file), so its pills were re-tokened.
@@ -743,10 +743,11 @@ export default function StyleguidePage() {
           </Specimen>
           <Specimen
             label="Categorical tags — NOT Badges (deliberate)"
-            note="Categories are not statuses — mapping them onto status colors would erase a real distinction. These keep their per-screen classes (meeting-plan shown; lookups' rank/MB and scoutbook-export's type badges likewise)."
+            note="Categories are not statuses — mapping them onto status colors would erase a real distinction. These keep their per-screen classes (lookups' rank/MB/Eagle shown; scoutbook-export's type badges likewise)."
           >
-            <span className={`${plan.tag} ${plan.tagEagle}`}>★ Eagle-required</span>
-            <span className={`${plan.tag} ${plan.tagAdult}`}>Adults only</span>
+            <span className={`${lk.tag} ${lk.tagRank}`}>Rank</span>
+            <span className={`${lk.tag} ${lk.tagMb}`}>MB</span>
+            <span className={`${lk.tag} ${lk.tagEagle}`}>Eagle</span>
           </Specimen>
           <Specimen
             label="Inline annotation — .offEventNote (signup builder)"
@@ -924,7 +925,7 @@ export default function StyleguidePage() {
           <Specimen
             label="Compact cluster"
             canonical
-            note="calendar canon — 12.5px, tight padding, sentence-case gray headers with no band (calm R5). Members: calendar, albums, meetings, roster, scoutbook-export, meeting-plan."
+            note="calendar canon — 12.5px, tight padding, sentence-case gray headers with no band (calm R5). Members: calendar, albums, meetings, roster, scoutbook-export."
           >
             <table className={cal.table}>
               <thead>
