@@ -497,6 +497,41 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
+    <!-- RELEASE v1.248.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.248.0</span>
+        <span class="release-date">October 22, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Meeting Planner: the Invite tab</p>
+        <ul class="change-list">
+          <li><span>Invites have their own tab, <strong>Invite</strong>, between Build a Plan and Who&rsquo;s coming, with the same meeting switcher. The offerings are on the left with how ready each one is (&ldquo;Maria L agreed &middot; 5 likely &middot; 2 asked &middot; 1 yes&rdquo;), the chosen offering in the middle, and a Review on the right.</span></li>
+          <li><span>Each person shows why they fit, where they stand (<strong>Not asked</strong>, <strong>Asked Tue</strong>, <strong>Asked &lt;24h</strong>, <strong>Yes</strong>, <strong>Can&rsquo;t</strong>, <strong>Picked it</strong>) and who gets the email (&ldquo;Parents: Dana, Rob&rdquo;). Someone asked more than a day ago with no answer can be asked again, but starts unticked.</span></li>
+          <li><span>Teachers come first: whoever is teaching it, then anyone already asked, then the five best-qualified adults, with <strong>Show everyone who could teach</strong> for the rest. Teachers start ticked only when nobody teaches it and nobody has been asked.</span></li>
+          <li><span>Quiet controls per offering: <strong>Tick all likely</strong>, <strong>Clear</strong>, <strong>Show all eligible (n)</strong> and a folded <strong>Said no (n)</strong>. <strong>By person</strong> shows one row per scout or adult with every offering they could be asked about.</span></li>
+          <li><span>The Review groups what will go out by family, with <strong>Preview email</strong> showing the real email. The one button reads <strong>Send N emails to M families</strong>. One send covers up to 20 offerings, 200 invites and 100 emails; anything past that stays ticked, is marked, and goes with the next send.</span></li>
+          <li><span>Offerings with no teacher are named in a warning, but you can still send. An empty plan points to Build a Plan, and a past or closed meeting is read-only. Anyone who can see the planner can look; only adults can send.</span></li>
+          <li><span>On a phone, the list opens into each offering, and a bar at the bottom opens the Review.</span></li>
+        </ul>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Build a Plan</p>
+        <ul class="change-list">
+          <li><span><strong>Likely</strong> scouts are now only the ones working on it: for a mix, scouts whose next rank has an unfinished part of it; for a merit badge requirement, scouts who have started the badge. The &ldquo;Likely: &hellip;&rdquo; line on each row is shorter to match.</span></li>
+          <li><span>The Invite&hellip; button, its bar and the &ldquo;N invited&rdquo; count are gone. Once the plan has an offering, the bottom bar has <strong>Next: Invite &rarr;</strong>, and a row&rsquo;s &#8943; menu has <strong>Invite</strong> (above Remove) to open the Invite tab on that offering.</span></li>
+        </ul>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Admin</p>
+        <ul class="change-list">
+          <li><span>Admin Home no longer has the &ldquo;requests with no teacher&rdquo; row; the planner lives on the members&rsquo; side.</span></li>
+          <li><span>The meeting agenda&rsquo;s tray now shows the meeting&rsquo;s actual plan from the Meeting Planner, every offering with its teacher and the scouts signed up so far, or Meeting Live&rsquo;s placement once Live has started. Before, it showed only classes that already had both a teacher and scouts.</span></li>
+        </ul>
+      </div>
+    </div>
+
     <!-- RELEASE v1.247.1 -->
     <div class="release">
       <div class="release-header">
