@@ -1,6 +1,6 @@
 /**
  * The meeting board (Phase 1 of Plans/Meeting-Requests-And-Teaching-Offers.md): the rules both sides share, pure and
- * client-safe (no directive, no server imports), so /member/meeting, the admin "This Sunday" tab and their tests read
+ * client-safe (no directive, no server imports), so /member/meeting, the planner and their tests read
  * one definition.
  *
  *   - Closed: a calendar entry that isn't a Troop Meeting, or a "No Troop Meeting" week. The calendar alone decides

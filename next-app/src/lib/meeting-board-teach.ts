@@ -1,6 +1,6 @@
 /**
  * The teacher side of the meeting board (Phase 2 of Plans/Meeting-Requests-And-Teaching-Offers.md): the rules, pure and
- * client-safe (no directive, no server imports), so /member/meeting, the admin "This Sunday" tab and their tests read
+ * client-safe (no directive, no server imports), so /member/meeting, the planner and their tests read
  * one definition.
  *
  *   - Each adult or Junior Leader teaches one or two things per meeting: a topic ("I'll teach this", a requirement

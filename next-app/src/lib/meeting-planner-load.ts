@@ -1,5 +1,5 @@
 /**
- * Loads the Meeting Planner's This Sunday board for the next meeting (Plans/Meeting-Planner-II.md, P1). Server-only:
+ * Loads the Meeting Planner's Who's coming board for the next meeting (Plans/Meeting-Planner-II.md, P1). Server-only:
  * it reads with the service-role client, so the caller gates (the /planner page checks plannerAccess first).
  *
  * Every read is v1's (lib/meeting-board*.ts, lib/meeting-invites-db.ts); this file only shapes them into

@@ -1,7 +1,7 @@
 /**
  * The meeting board's live matcher (Phase 3a of Plans/Meeting-Requests-And-Teaching-Offers.md, "Matching rules", rank
  * mode). A PURE, deterministic function over the board: picks, answers, teachers and skill offers in, teaching blocks
- * and the unmatched lists out. No I/O and client-safe, so This Sunday, the meeting editor's tray,
+ * and the unmatched lists out. No I/O and client-safe, so Who’s coming, the meeting editor's tray,
  * /member/meeting and the tests all read one definition. Same input (in any order) = same output.
  *
  *   1. Teachers: a person committed to a topic teaches it (an unqualified one is allowed, with the Phase 2 flags); a
@@ -428,7 +428,7 @@ export function matchBoard(input: MatchInput): MatchResult {
 
 /**
  * What a session is called: one topic is its own label ("Knots", "Tenderfoot 3a"); merged siblings are their skill
- * ("First Aid", "Tenderfoot 4a, 4b"). Same words on This Sunday, the tray and the member page.
+ * ("First Aid", "Tenderfoot 4a, 4b"). Same words on Who’s coming, the tray and the member page.
  */
 export function sessionWords(
   keys: readonly string[],

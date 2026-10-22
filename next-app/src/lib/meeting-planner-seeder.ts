@@ -1,7 +1,7 @@
 /**
  * The planner's seed gate (Plans/Meeting-Planner-II.md Decision 2; Build a Plan B1): a meeting_planner.seed holder
  * acting on an upcoming, published meeting that takes sign-ups. Refused before the database is written. Server-only
- * (the service-role client); shared by the This Sunday seed actions and Build a Plan's, so both refuse alike.
+ * (the service-role client); shared by Build a Plan's actions (B4: the board's own seed actions retired).
  *
  * `right: 'edit'` (Build a Plan B2, an offering's teacher): the same meeting checks for a meeting_planner.edit holder.
  * `within` (Build a Plan, qa-lead 2026-10-22): the meeting must also be one of the next N open meetings the switcher

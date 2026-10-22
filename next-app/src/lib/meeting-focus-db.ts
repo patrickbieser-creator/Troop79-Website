@@ -174,13 +174,9 @@ export async function seedFocusSet(sb: SupabaseClient, entryId: number, setId: n
   return error ? { ok: false, error: said(error.message) } : { ok: true, count: Number(data) };
 }
 
-export async function seedTopic(sb: SupabaseClient, entryId: number, key: string, actorPersonId: number): Promise<FocusWrite> {
-  const { error } = await sb.rpc('meeting_seed_topic', { p_entry: entryId, p_key: key, p_actor: actorPersonId });
-  return error ? { ok: false, error: said(error.message) } : { ok: true };
-}
-
 /** Build a Plan B1: seed several top-level requirements in one call (one lock, idempotent per key). The keys this
- *  call newly seeded come back; a key already seeded is left as it was. */
+ *  call newly seeded come back; a key already seeded is left as it was. B4 (one add path): the ONE seed of a
+ *  requirement; every "add an offering without a teacher" reaches it through plannerAddOfferingAction. */
 export async function seedMany(sb: SupabaseClient, entryId: number, keys: readonly string[], actorPersonId: number): Promise<FocusWrite<{ seeded: string[] }>> {
   const { data, error } = await sb.rpc('meeting_seed_many', { p_entry: entryId, p_keys: keys, p_actor: actorPersonId });
   return error ? { ok: false, error: said(error.message) } : { ok: true, seeded: (data ?? []) as string[] };

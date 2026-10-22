@@ -8,8 +8,9 @@
  * adult up to teach or takes them off, assigns a teacher, and adds an offer. Every write goes through v1's writers
  * with leader = true and the editor as entered_by, so the RPCs keep their own rules (active scouts only, 5 picks, who
  * may teach, Junior Leaders and adults-only skills, closed and past boards).
- * P2b: Send request and nudges go through v1's invite senders (lib/meeting-invites-send), adults only.
- * P3: seeding (a focus set, or one requirement) and unseeding, for meeting_planner.seed holders only.
+ * P2b: Send request goes through v1's invite sender (lib/meeting-invites-send), adults only.
+ * B4 (Build a Plan, one add path): seeding moved to build-actions (plannerAddOfferingAction, plannerAddFocusSetAction,
+ * plannerRemoveOfferingAction); the nudge actions retired with the Offered card (Build's Invite… offers a class).
  * P5b: reminders to people who haven't answered, adults only, through the same invite pipeline.
  * Each write returns what it changed and the board's new stamp, so the poller doesn't refresh over it.
  * A drawer write revalidates nothing (perf, 2026-10-22): any revalidatePath makes Next re-render /planner inside the
@@ -33,17 +34,15 @@ import {
 } from '@/lib/meeting-board';
 import { assignForPicks, loadSupplyRows, loadTeacherPeople, teachContext, teachTopic, unteachTopic } from '@/lib/meeting-board-supply';
 import { effectiveIntent, INTENTS, type Intent } from '@/lib/meeting-board-shared';
-import { BOR_LABEL, borCodeLabel, nextRankOf, pickableKeys } from '@/lib/meeting-board-picklist';
+import { BOR_LABEL, borCodeLabel, pickableKeys } from '@/lib/meeting-board-picklist';
 import { borKey } from '@/lib/rank-calculus';
-import { scoutCandidates, sendPickInvites, sendReminders, sendTeachInvites } from '@/lib/meeting-invites-send';
+import { sendReminders, sendTeachInvites } from '@/lib/meeting-invites-send';
 import { REMINDER_SEND_CAP } from '@/lib/meeting-invites';
 import { loadPlannerPage } from '@/lib/meeting-planner-load';
 import { assessTeacher, FREEFORM_MAX, freeformTitle, teacherIntent } from '@/lib/meeting-board-teach';
 import { plannerAccess } from '@/lib/meeting-planner-access';
 import { loadPersonDrawer, type PersonDrawer } from '@/lib/meeting-planner-drawer';
-import { seedFocusSet, seedTopic, unseedTopic } from '@/lib/meeting-focus-db';
 import { loadPlannerLists } from '@/lib/people-lists';
-import { plannerSeeder } from '@/lib/meeting-planner-seeder';
 
 export type PlannerDrawerResult = { ok: true; drawer: PersonDrawer; stamp: string } | { ok: false; error: string };
 /**
@@ -105,7 +104,6 @@ function revalidate() {
   revalidatePath('/planner/focus-sets');
   revalidatePath('/member');
   revalidatePath('/member/meeting');
-  revalidatePath('/admin/advancement/meeting-plan');
 }
 
 /** Open someone's drawer: the one full read. Writes from it return only what changed (DrawerTick). */
@@ -268,49 +266,6 @@ export async function plannerSendRequestAction(input: { entryId: number; topicKe
   return { ...res, stamp: await loadBoardStamp(e.sb, e.meeting.entryId) };
 }
 
-export interface NudgeFamily {
-  personId: number;
-  name: string;
-  /** 'Working on Scout · likely fit · no answer yet'. */
-  meta: string;
-  likely: boolean;
-}
-
-/**
- * Who an offer could be nudged to (v1's scoutCandidates: every active scout who can pick it and hasn't said they can't
- * come), minus anyone who already picked it. Likely fits (working on that rank) first. Nobody is preselected.
- */
-export async function plannerNudgeFamiliesAction(input: { entryId: number; topicKey: string }): Promise<{ ok: true; families: NudgeFamily[] } | { ok: false; error: string }> {
-  const e = await emailer(input?.entryId, input?.topicKey);
-  if (!e.ok) return e;
-  const res = await scoutCandidates(e.sb, { entryId: e.meeting.entryId, topicKey: e.topicKey });
-  if (!res.ok) return res;
-  const catalog = await loadAdvancementCatalog();
-  const rankName = new Map(catalog.ranks.map((r) => [r.id, r.display_name]));
-  const topicRank = [...catalog.ranks].sort((a, b) => b.id.length - a.id.length).find((r) => e.topicKey.startsWith(`${r.id}-`))?.id ?? null;
-  const scouts = new Map((await loadBoardScouts(e.sb)).map((s) => [s.personId, s]));
-  const families = res.scouts
-    .filter((c) => c.ticked)
-    .map((c) => {
-      const working = nextRankOf(scouts.get(c.personId)?.currentRank ?? null, catalog.ranks);
-      const likely = topicRank != null && working === topicRank;
-      return { personId: c.personId, name: c.name, likely, meta: [working ? `Working on ${rankName.get(working) ?? working}` : null, likely ? 'likely fit' : null, c.note].filter(Boolean).join(' · ') };
-    })
-    .sort((a, b) => Number(b.likely) - Number(a.likely) || a.name.localeCompare(b.name));
-  return { ok: true, families };
-}
-
-/** Nudge families: the Troop 79 Bugler offers the requirement to the chosen scouts (v1's pick invite, T-5 P2). */
-export async function plannerSendNudgeAction(input: { entryId: number; topicKey: string; scoutIds: number[] }): Promise<PlannerSendResult> {
-  if (!Array.isArray(input?.scoutIds) || !input.scoutIds.length || !input.scoutIds.every((id) => Number.isInteger(id))) return fail('Choose at least one family.');
-  const e = await emailer(input.entryId, input.topicKey);
-  if (!e.ok) return e;
-  const res = await sendPickInvites(e.sb, { entryId: e.meeting.entryId, topicKey: e.topicKey, scoutIds: input.scoutIds, sentBy: e.actorPersonId });
-  if (!res.ok) return res;
-  revalidate();
-  return { ...res, stamp: await loadBoardStamp(e.sb, e.meeting.entryId) };
-}
-
 // ── P5b: reminders (adults only, Decision 5; Decision 11) ────────────────────────────────────────────────────────
 
 /**
@@ -338,44 +293,4 @@ export async function plannerSendRemindersAction(input: { entryId: number; perso
   if (!res.ok) return res;
   revalidate();
   return { ...res, skipped: [...res.skipped, ...over], stamp: await loadBoardStamp(e.sb, e.meeting.entryId) };
-}
-
-// ── P3: seeding (meeting_planner.seed only, Decision 2) ──────────────────────────────────────────────────────────────
-
-export type PlannerSeedResult = { ok: true; stamp: string; count: number } | { ok: false; error: string };
-
-/** A seed holder acting on an upcoming, published meeting that takes sign-ups (lib/meeting-planner-seeder). */
-const seeder = plannerSeeder;
-
-/** Seed a meeting with a focus set: one focus group (one pick, one class). Existing focus topics stay. */
-export async function plannerSeedSetAction(input: { entryId: number; setId: number }): Promise<PlannerSeedResult> {
-  const s = await seeder(input?.entryId);
-  if (!s.ok) return s;
-  if (!Number.isInteger(input.setId)) return fail('Malformed request');
-  const res = await seedFocusSet(s.sb, s.meeting.entryId, input.setId, s.actorPersonId);
-  if (!res.ok) return res;
-  revalidate();
-  return { ok: true, count: res.count, stamp: await loadBoardStamp(s.sb, s.meeting.entryId) };
-}
-
-/** Seed one top-level requirement (rank or merit badge). Also "+ Add an offer" with no teacher (Decision 10b). */
-export async function plannerSeedTopicAction(input: { entryId: number; key: string }): Promise<PlannerWriteResult> {
-  const s = await seeder(input?.entryId);
-  if (!s.ok) return s;
-  if (typeof input.key !== 'string' || !input.key) return fail('Malformed request');
-  const res = await seedTopic(s.sb, s.meeting.entryId, input.key, s.actorPersonId);
-  if (!res.ok) return res;
-  revalidate();
-  return { ok: true, stamp: await loadBoardStamp(s.sb, s.meeting.entryId) };
-}
-
-/** Take a topic off the meeting's focus. Picks and teachers on it stay; with none, it leaves the board. */
-export async function plannerUnseedAction(input: { entryId: number; key: string }): Promise<PlannerWriteResult> {
-  const s = await seeder(input?.entryId);
-  if (!s.ok) return s;
-  if (typeof input.key !== 'string' || !input.key) return fail('Malformed request');
-  const res = await unseedTopic(s.sb, s.meeting.entryId, input.key);
-  if (!res.ok) return res;
-  revalidate();
-  return { ok: true, stamp: await loadBoardStamp(s.sb, s.meeting.entryId) };
 }

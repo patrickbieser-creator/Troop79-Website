@@ -4,7 +4,7 @@
  * Focus sets (Plans/Meeting-Planner-II.md, Decision 10; P3): a planner's reusable, labelled groups of requirements,
  * and the server search they are built from. Anyone who may view the planner can search and see the sets; creating,
  * editing and deleting a set is for meeting_planner.seed holders only, refused before the database is touched.
- * Seeding a meeting from a set is plannerSeedSetAction (./actions).
+ * Adding a set to a meeting's plan is Build a Plan's plannerAddFocusSetAction (../build-actions; B4, one add path).
  */
 import { revalidatePath } from 'next/cache';
 import { resolveAdminActor } from '@/lib/admin-actor';

@@ -15,7 +15,7 @@ vi.mock('../src/app/(public)/planner/focus-actions', () => ({
   focusSaveSetAction: vi.fn(),
   focusSearchAction: vi.fn()
 }));
-vi.mock('../src/app/(public)/planner/actions', () => ({ plannerSeedSetAction: vi.fn() }));
+vi.mock('../src/app/(public)/planner/build-actions', () => ({ plannerAddFocusSetAction: vi.fn() }));
 
 const SETS: FocusSetView[] = [
   {

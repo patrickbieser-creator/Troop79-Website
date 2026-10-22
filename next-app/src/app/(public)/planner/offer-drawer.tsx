@@ -8,13 +8,16 @@
  * Search matches every typed word against the code and the words ("tenderfoot 4a", "first aid"). The Add button is
  * greyed only while nothing is chosen; pressed without a teacher, it marks the teacher list and says why.
  *
- * P3 (Decision 10b): the planning team may choose "No teacher yet" for a requirement: that seeds it on the meeting. A
- * whole badge or a typed title still needs a teacher.
+ * P3 (Decision 10b): the planning team may choose "No teacher yet" for a requirement: that puts it on the meeting's
+ * plan. Build a Plan B4 (one add path): it goes through Build's own add, plannerAddOfferingAction, so no two code paths
+ * seed a topic; an offer with a teacher keeps the teach path (plannerAddOfferAction). A whole badge or a typed title
+ * still needs a teacher.
  */
 import { useEffect, useState } from 'react';
 import { Drawer } from '@/app/_components/drawer';
 import { FREEFORM_MAX } from '@/lib/meeting-board-teach';
-import { plannerAddOfferAction, plannerOfferChoicesAction, plannerSeedTopicAction, type OfferChoice } from './actions';
+import { plannerAddOfferAction, plannerOfferChoicesAction, type OfferChoice } from './actions';
+import { plannerAddOfferingAction } from './build-actions';
 import { usePlanner } from './planner-client';
 import styles from './planner.module.css';
 
@@ -56,7 +59,7 @@ export function OfferDrawer({ teacherId, onClose }: { teacherId: number | null; 
     setProblem(null);
     const res =
       teacher == null && what.kind === 'key'
-        ? await p.sync.run(() => plannerSeedTopicAction({ entryId: p.entryId, key: what.key }))
+        ? await p.sync.run(() => plannerAddOfferingAction({ entryId: p.entryId, keys: [what.key] }))
         : await p.sync.run(() => plannerAddOfferAction({ entryId: p.entryId, personId: teacher!, what: what.kind === 'key' ? { key: what.key } : { title: what.title } }));
     setSaving(false);
     if (res.ok) onClose();
@@ -79,7 +82,7 @@ export function OfferDrawer({ teacherId, onClose }: { teacherId: number | null; 
     <Drawer
       eyebrow="Add an offer"
       title="What will be taught?"
-      sub="It goes on this Sunday’s board."
+      sub="It goes on this meeting’s plan."
       onClose={onClose}
       footer={
         <>
@@ -158,7 +161,7 @@ export function OfferDrawer({ teacherId, onClose }: { teacherId: number | null; 
                 </span>
                 <span className={styles.optText}>
                   <span className={styles.optTitle}>No teacher yet</span>
-                  <span className={styles.optMeta}>Seeds it as meeting focus</span>
+                  <span className={styles.optMeta}>Puts it on the plan</span>
                 </span>
               </button>
             </li>

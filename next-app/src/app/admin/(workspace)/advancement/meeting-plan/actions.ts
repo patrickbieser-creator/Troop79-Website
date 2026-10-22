@@ -1,10 +1,7 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
 import { requireCapability } from '@/lib/require-capability';
-import { createAdminClient } from '@/lib/supabase/server';
 import type { MeetingPlanPayload } from '@/lib/meeting-plan-types';
-import { retargetPlan } from '@/lib/meeting-plan-publish';
 import { buildMeetingPlan } from '@/lib/meeting-suggest/engine';
 import { loadEngineInput } from '@/lib/meeting-suggest/load-input';
 
@@ -15,8 +12,8 @@ interface GenerateResult {
 }
 
 /**
- * Compute a meeting plan for the given date — pure read + engine pass, no
- * DB writes. The leader reviews the result and publishes it separately.
+ * Compute the ledger engine's suggestions for the given date — pure read + engine pass, no DB writes. By Scout and
+ * Teaching Roster read it (Build a Plan B4: Publish to Site retired).
  */
 export async function generatePlan(formData: FormData): Promise<GenerateResult> {
   try {
@@ -35,82 +32,4 @@ export async function generatePlan(formData: FormData): Promise<GenerateResult> 
   if (!loaded.ok) return { ok: false, error: loaded.error };
 
   return { ok: true, payload: buildMeetingPlan(loaded.input) };
-}
-
-interface PublishResult {
-  ok: boolean;
-  error?: string;
-}
-
-/**
- * Publish a generated plan as the snapshot for its meeting date (one snapshot
- * per date — regenerating and republishing replaces it).
- */
-export async function publishPlan(formData: FormData): Promise<PublishResult> {
-  let session;
-  try {
-    session = await requireCapability('meeting_plan.use');
-  } catch {
-    return { ok: false, error: 'Not authenticated' };
-  }
-
-  const raw = String(formData.get('payload') ?? '');
-  let payload: MeetingPlanPayload;
-  try {
-    payload = JSON.parse(raw) as MeetingPlanPayload;
-  } catch {
-    return { ok: false, error: 'Plan payload was malformed' };
-  }
-  if (!payload || payload.version !== 1 || !/^\d{4}-\d{2}-\d{2}$/.test(payload.meetingDate)) {
-    return { ok: false, error: 'Plan payload was malformed' };
-  }
-
-  // The date the leader had selected when they hit Publish WINS over the one
-  // baked into the payload. A plan is a reusable suggestion, so generating for
-  // one date and publishing for another is legitimate; what was not legitimate
-  // was publishing under the generated date while the field showed a different
-  // one. See lib/meeting-plan-publish.ts.
-  const selectedDate = String(formData.get('meetingDate') ?? '').trim();
-  if (selectedDate && !/^\d{4}-\d{2}-\d{2}$/.test(selectedDate)) {
-    return { ok: false, error: 'Pick a meeting date' };
-  }
-  payload = retargetPlan(payload, selectedDate);
-
-  const supabase = createAdminClient();
-  const { error } = await supabase.from('meeting_plans').upsert(
-    {
-      meeting_date: payload.meetingDate,
-      title: payload.title,
-      status: 'published',
-      payload,
-      generated_at: payload.generatedAt,
-      generated_by: session.label ?? null
-    },
-    { onConflict: 'meeting_date' }
-  );
-  if (error) return { ok: false, error: error.message };
-
-  revalidatePath('/meeting-plan');
-  revalidatePath('/admin/advancement/meeting-plan');
-  return { ok: true };
-}
-
-/** Remove a published snapshot (e.g., the meeting's theme changed). */
-export async function unpublishPlan(formData: FormData): Promise<PublishResult> {
-  try {
-    await requireCapability('meeting_plan.use');
-  } catch {
-    return { ok: false, error: 'Not authenticated' };
-  }
-  const meetingDate = String(formData.get('meetingDate') ?? '').trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(meetingDate)) {
-    return { ok: false, error: 'Missing meeting date' };
-  }
-  const supabase = createAdminClient();
-  const { error } = await supabase.from('meeting_plans').delete().eq('meeting_date', meetingDate);
-  if (error) return { ok: false, error: error.message };
-
-  revalidatePath('/meeting-plan');
-  revalidatePath('/admin/advancement/meeting-plan');
-  return { ok: true };
 }

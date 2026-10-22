@@ -76,7 +76,6 @@ const RESERVED_TOP_LEVEL = new Set([
   'favicon',
   'i',
   'library',
-  'meeting-plan',
   'member',
   'news',
   'photos',

@@ -1,24 +1,28 @@
 /**
- * The Meeting Planner's This Sunday board, design 1a, read-only (Plans/Meeting-Planner-II.md, P1;
- * prototypes/meeting-plan-II/README.md "Screen 1", phone layout from prototypes/meeting-plan-II/phone/board.html).
+ * Who's coming, the Meeting Planner's attendance board (Plans/Meeting-Planner-II.md P1, design 1a; Build a Plan B4,
+ * Decision 4 renamed the tab). Phone layout from prototypes/meeting-plan-II/phone/board.html.
  *
  * Everyone who may view sees everything (Decision 4). Editors (P2a) also get: every name opens that person's drawer,
  * Assign beside each person who could teach a request, "+ Add an offer", and Enter for someone. Viewers see the same
- * board with plain names and no buttons (the client pieces in planner-client.tsx check the planner context). Send
- * request and nudges are P2b. P3: the Meeting focus strip lists what was seeded ("Seed this meeting" for the planning
- * team); a seeded topic carries a Focus tag, and one nobody picked yet still asks for a teacher.
+ * board with plain names and no buttons (the client pieces in planner-client.tsx check the planner context). P2b: Send
+ * request, adults only. P5b: adult editors get "Remind everyone…" on Haven't answered (and "Remind" in each drawer).
  *
- * P5b: adult editors get "Remind everyone…" on Haven't answered (and "Remind" in each person's drawer).
+ * B4 (Build a Plan "Consolidation"): what the meeting offers is Build a Plan's job. The Meeting focus strip and the
+ * seed drawer retired; the plan strip links to this meeting on /planner/build ("Edit the plan", "See the plan" for a
+ * viewer) and keeps the board's one "+ Add an offer" (Decision 10a). The Ready to teach and Offered, no takers cards
+ * moved into Build as row states (Ready / Needs scouts; their nudges are Build's Invite…). Requests with no teacher
+ * stays: who among the people able to teach it is coming, Assign (teaches it and is marked Coming) and Send request
+ * have no home in Build yet.
  *
- * Desktop: a header with the two attendance bars, then cards on the left (Ready to teach, Requests with no teacher,
- * Offered no takers, Haven't answered) and Who's coming on the right, then the Everyone wall. At 900px the right
- * column drops under the cards; on a phone the teacher lists and the Everyone wall's other columns fold.
+ * Desktop: a header with the two attendance bars, the plan strip, then cards on the left (Requests with no teacher,
+ * Haven't answered) and Who's coming on the right, then the Everyone wall. At 900px the right column drops under the
+ * cards; on a phone the teacher lists and the Everyone wall's other columns fold.
  */
 import type { ReactNode } from 'react';
-import type { AttendanceCounts, CanTeachPerson, FocusChip, PlannerBoard, PlannerPerson, WallColumns } from '@/lib/meeting-planner-board';
+import type { AttendanceCounts, CanTeachPerson, PlannerBoard, PlannerPerson, WallColumns } from '@/lib/meeting-planner-board';
 import { minutesText } from '@/lib/meeting-board-picklist';
 import { Fold } from './fold';
-import { AddOfferButton, AdultsSendEmails, AssignButton, EnterForSomeone, NudgeButton, PersonName, RemindEveryone, SeedButton, SendRequestButton, type SomeoneRow } from './planner-client';
+import { AddOfferButton, AdultsSendEmails, AssignButton, EnterForSomeone, PersonName, PlanLink, RemindEveryone, SendRequestButton, type SomeoneRow } from './planner-client';
 import styles from './planner.module.css';
 
 const KIND_LABEL = { rank: 'Rank', mb: 'Merit badge', ff: 'Other', focus: 'Focus' } as const;
@@ -133,32 +137,8 @@ function Wall({ title, cols, tone }: { title: string; cols: WallColumns; tone: '
   );
 }
 
-/** The Meeting focus strip: one chip per seeded topic, "{teacher | no teacher} · N scouts". */
-function FocusStrip({ focus }: { focus: readonly FocusChip[] }) {
-  return (
-    <section className={styles.focusStrip} aria-label="Meeting focus">
-      <h2 className={styles.focusLabel}>Meeting focus</h2>
-      {focus.length ? (
-        <ul className={styles.focusChips}>
-          {focus.map((f) => (
-            <li key={f.key} className={f.teachers.length ? styles.focusChipMatched : styles.focusChip}>
-              <span className={styles.focusChipTitle}>{f.title}</span>
-              <span>
-                {f.teachers.length ? f.teachers.join(', ') : 'no teacher'} · {plural(f.scouts, 'scout')}
-              </span>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className={styles.focusNone}>Nothing seeded yet.</p>
-      )}
-      <SeedButton focus={focus} />
-    </section>
-  );
-}
-
-/** The Focus tag on a seeded requirement (a focus group's own code line already says "Meeting focus"). */
-const FocusTag = ({ seededBy, kind }: { seededBy?: string | null; kind: string }) => (seededBy != null && kind !== 'focus' ? <span className={styles.kindFocus}>Focus</span> : null);
+/** The Planner tag on a requirement the planning team put on the plan (Build a Plan's origin word; a focus set says so already). */
+const FocusTag = ({ seededBy, kind }: { seededBy?: string | null; kind: string }) => (seededBy != null && kind !== 'focus' ? <span className={styles.kindFocus}>Planner</span> : null);
 
 const ANSWER_WORD = { coming: 'Coming', undecided: 'Not sure', notComing: 'Can’t', noAnswer: 'No answer' } as const;
 
@@ -169,7 +149,7 @@ function someone(board: PlannerBoard): SomeoneRow[] {
   return [...rows(board.everyone.scouts, 'Scout'), ...rows(board.everyone.adults, 'Adult')].sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export function PlannerBoardView({ board, heading, canSeed = false }: { board: PlannerBoard; heading: ReactNode; canSeed?: boolean }) {
+export function PlannerBoardView({ board, heading, entryId }: { board: PlannerBoard; heading: ReactNode; entryId: number }) {
   const waitingTotal = new Set(board.noTeacher.flatMap((r) => r.waiting.map((p) => p.personId))).size;
   const { scouts: hs, adults: ha } = board.haventAnswered;
   return (
@@ -181,43 +161,13 @@ export function PlannerBoardView({ board, heading, canSeed = false }: { board: P
           <AttendanceBar label="Adults" counts={board.attendance.adults} tone="adult" />
         </div>
       </header>
-      {board.focus.length || canSeed ? <FocusStrip focus={board.focus} /> : null}
+      <section className={styles.planStrip} aria-label="This meeting’s plan">
+        <PlanLink entryId={entryId} />
+        <AddOfferButton />
+      </section>
 
       <div className={styles.body}>
         <div className={styles.left}>
-          <Card tone="ready" badge="✓" title="Ready to teach" summary={plural(board.ready.length, 'session')} action={<AddOfferButton />}>
-            {board.ready.length ? (
-              <ul className={styles.rows}>
-                {board.ready.map((r) => (
-                  <li key={r.key} className={styles.readyRow}>
-                    <div>
-                      <p className={styles.codeLine}>
-                        <span className={styles.code}>{r.codeLabel}</span> <span className={styles.rowTitle}>{r.title}</span> <FocusTag seededBy={r.seededBy} kind={r.kind} />
-                      </p>
-                      <Chips people={r.scouts} />
-                    </div>
-                    <div className={styles.readyTeacher}>
-                      <p className={styles.teacherName}>
-                        {r.teachers.map((t, i) => (
-                          <span key={t.personId}>
-                            {i ? ', ' : ''}
-                            <PersonName personId={t.personId} name={t.name} />
-                          </span>
-                        ))}
-                      </p>
-                      <p className={styles.meta}>
-                        {plural(r.scouts.length, 'scout')}
-                        {r.minutes ? ` · ${minutesText(r.minutes)}` : ''}
-                      </p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className={styles.empty}>Nothing is ready yet. A session shows up here once it has a teacher and at least one scout.</p>
-            )}
-          </Card>
-
           <Card tone="need" badge="1" title="Requests with no teacher" summary={`${plural(board.noTeacher.length, 'topic')} · ${plural(waitingTotal, 'scout')} waiting`}>
             <AdultsSendEmails />
             {board.noTeacher.length ? (
@@ -235,9 +185,9 @@ export function PlannerBoardView({ board, heading, canSeed = false }: { board: P
                       <p className={styles.waitLine}>
                         {r.waiting.length
                           ? `${plural(r.waiting.length, 'scout')} waiting${r.weeks > 1 ? ` · asked ${r.weeks} weeks running` : ''}`
-                          : 'Seeded focus · no scouts picked it yet'}
+                          : 'On the plan · no scouts picked it yet'}
                       </p>
-                      {r.seededBy ? <p className={styles.meta}>Seeded by {r.seededBy}</p> : null}
+                      {r.seededBy ? <p className={styles.meta}>Added by {r.seededBy}</p> : null}
                       <Chips people={r.waiting} />
                     </div>
                     <Fold
@@ -264,40 +214,6 @@ export function PlannerBoardView({ board, heading, canSeed = false }: { board: P
               </ul>
             ) : (
               <p className={styles.empty}>Every request has a teacher.</p>
-            )}
-          </Card>
-
-          <Card tone="offer" badge="2" title="Offered, no takers yet" summary={plural(board.offered.length, 'offer')} action={<AddOfferButton />}>
-            {board.offered.length ? (
-              <ul className={styles.rows}>
-                {board.offered.map((o) => (
-                  <li key={o.key} className={styles.offerRow}>
-                    <p className={styles.tagLine}>
-                      <span className={styles.code}>{o.codeLabel}</span>
-                      <FocusTag seededBy={o.seededBy} kind={o.kind} />
-                      <span className={styles.meta}>
-                        Offered by{' '}
-                        {o.teachers.map((t, i) => (
-                          <span key={t.personId}>
-                            {i ? ', ' : ''}
-                            <PersonName personId={t.personId} name={t.name} />
-                          </span>
-                        ))}
-                      </span>
-                    </p>
-                    <p className={styles.bigTitle}>{o.title}</p>
-                    {o.likelyFits.length ? (
-                      <div className={styles.fits}>
-                        <span className={styles.meta}>Likely fits:</span>
-                        <Chips people={o.likelyFits} />
-                      </div>
-                    ) : null}
-                    {o.kind === 'rank' ? <NudgeButton topicKey={o.key} title={o.title} codeLabel={o.codeLabel} teachers={o.teachers.map((t) => t.name).join(', ')} /> : null}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className={styles.empty}>Every offer has scouts.</p>
             )}
           </Card>
 

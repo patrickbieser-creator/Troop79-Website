@@ -6,6 +6,7 @@ import type { PersonDrawer } from '../src/lib/meeting-planner-drawer';
 /**
  * The planner board for an editor (Plans/Meeting-Planner-II.md P2a): names open the person drawer, Assign sits beside
  * each person who could teach a request, "+ Add an offer" opens the offer drawer, Enter for someone finds a person.
+ * Build a Plan B4 retired the nudges with the Offered card (Build's Invite… offers a class).
  * A viewer gets none of it. The server actions are mocked; their rules are tested in planner-actions.test.ts.
  */
 
@@ -18,8 +19,6 @@ const calls = vi.hoisted(() => ({
   offer: vi.fn(),
   choices: vi.fn(),
   request: vi.fn(),
-  families: vi.fn(),
-  nudge: vi.fn(),
   remind: vi.fn(),
   refresh: vi.fn()
 }));
@@ -34,10 +33,9 @@ vi.mock('../src/app/(public)/planner/actions', () => ({
   plannerAddOfferAction: calls.offer,
   plannerOfferChoicesAction: calls.choices,
   plannerSendRequestAction: calls.request,
-  plannerNudgeFamiliesAction: calls.families,
-  plannerSendNudgeAction: calls.nudge,
   plannerSendRemindersAction: calls.remind
 }));
+vi.mock('../src/app/(public)/planner/build-actions', () => ({ plannerAddOfferingAction: vi.fn() }));
 
 import { PlannerBoardView } from '../src/app/(public)/planner/board-view';
 import { PlannerProvider } from '../src/app/(public)/planner/planner-client';
@@ -46,7 +44,6 @@ const p = (personId: number, name: string) => ({ personId, name });
 const counts = { coming: 1, undecided: 0, notComing: 0, noAnswer: 1, total: 2 };
 const empty = { coming: [], undecided: [], notComing: [], noAnswer: [] };
 const BOARD: PlannerBoard = {
-  focus: [],
   attendance: { scouts: counts, adults: counts },
   ready: [],
   noTeacher: [
@@ -90,7 +87,7 @@ const KNOTS_ON = { key: 'tenderfoot-3a', on: true, count: 2, intent: null, shown
 function renderBoard(canEdit = true, canEmail = true, board: PlannerBoard = BOARD) {
   return render(
     <PlannerProvider entryId={500} canEdit={canEdit} canEmail={canEmail} adults={[p(11, 'Dan V')]} stamp="s1">
-      <PlannerBoardView board={board} heading={null} />
+      <PlannerBoardView board={board} heading={null} entryId={500} />
     </PlannerProvider>
   );
 }
@@ -287,11 +284,7 @@ describe('email (P2b)', () => {
 
   it('Spl_SeesNoEmailButtons_AndIsToldAdultsSendThem', () => {
     renderBoard(true, false);
-    expect([screen.queryByRole('button', { name: /request to teach/ }), screen.queryByRole('button', { name: 'Choose families to nudge…' }), screen.getByText('Requests and nudges are emailed by adults.') != null]).toEqual([
-      null,
-      null,
-      true
-    ]);
+    expect([screen.queryByRole('button', { name: /request to teach/ }), screen.getByText('Requests are emailed by adults.') != null]).toEqual([null, true]);
   });
 
   it('SendRequest_ShowsRequestSent', async () => {
@@ -299,39 +292,6 @@ describe('email (P2b)', () => {
     renderBoard();
     fireEvent.click(screen.getByRole('button', { name: 'Send Dan V a request to teach First aid basics' }));
     expect(await screen.findByText('✓ Request sent')).toBeTruthy();
-  });
-
-  it('Nudge_StartsWithNobodySelected', async () => {
-    calls.families.mockResolvedValue({ ok: true, families: [{ personId: 4, name: 'Adi A', meta: 'Working on Scout · likely fit', likely: true }] });
-    renderBoard();
-    fireEvent.click(screen.getByRole('button', { name: 'Choose families to nudge…' }));
-    expect((await screen.findByRole('checkbox', { name: /Adi A/ })).getAttribute('aria-checked')).toBe('false');
-  });
-
-  it('Nudge_SendsOnlyTheChosenFamilies', async () => {
-    calls.families.mockResolvedValue({
-      ok: true,
-      families: [
-        { personId: 4, name: 'Adi A', meta: 'likely fit', likely: true },
-        { personId: 5, name: 'Ben B', meta: '', likely: false }
-      ]
-    });
-    calls.nudge.mockResolvedValue({ ok: true, sent: ['Adi A'], skipped: [], stamp: 's2' });
-    renderBoard();
-    fireEvent.click(screen.getByRole('button', { name: 'Choose families to nudge…' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Select likely fits (1)' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Send to 1 family' }));
-    await waitFor(() => expect(calls.nudge).toHaveBeenCalledWith({ entryId: 500, topicKey: 'scout-1a', scoutIds: [4] }));
-  });
-
-  it('Nudge_AfterSending_TheBoardSaysSo', async () => {
-    calls.families.mockResolvedValue({ ok: true, families: [{ personId: 4, name: 'Adi A', meta: '', likely: true }] });
-    calls.nudge.mockResolvedValue({ ok: true, sent: ['Adi A'], skipped: [], stamp: 's2' });
-    renderBoard();
-    fireEvent.click(screen.getByRole('button', { name: 'Choose families to nudge…' }));
-    fireEvent.click(await screen.findByRole('checkbox', { name: /Adi A/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Send to 1 family' }));
-    expect(await screen.findByText('✓ Nudged 1 family · just now')).toBeTruthy();
   });
 });
 

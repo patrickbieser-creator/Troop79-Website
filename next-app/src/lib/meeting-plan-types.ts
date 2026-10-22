@@ -1,11 +1,7 @@
 /**
- * Meeting Plan snapshot payload — the JSON stored in `meeting_plans.payload`
- * and rendered by both the admin preview and the public /meeting-plan page.
- *
- * Kept in lib/ (not under the admin route) because the public page imports
- * these types too. The payload is self-contained on purpose: once published,
- * the public page renders the snapshot without re-deriving anything from the
- * ledger.
+ * The meeting-suggestion engine's payload (lib/meeting-suggest): Build a Plan's Suggested column, Admin's By Scout and
+ * Teaching Roster, and the meeting agenda read it. Build a Plan B4 retired Publish to Site and the public page that
+ * rendered stored snapshots of it; nothing stores it now.
  */
 
 export type TierId = 'new' | 'experienced' | 'older';

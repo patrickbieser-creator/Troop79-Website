@@ -10,20 +10,19 @@
  * adopted each save's stamp, so without that refresh on close the board would stay stale.
  *
  * Viewers (no edit right) get plain names and no buttons: PersonName renders a span, the buttons render nothing.
- * P2b: Send request and "Choose families to nudge…" render for adult editors only (canEmail); a scout editor (the SPL)
- * sees AdultsSendEmails instead.
- * P3: a seed holder (canSeed) gets "Seed this meeting" on the Meeting focus strip, and may leave an offer's teacher blank.
+ * P2b: Send request renders for adult editors only (canEmail); a scout editor (the SPL) sees AdultsSendEmails instead.
+ * P3: a seed holder (canSeed) may leave an offer's teacher blank: Build a Plan's own add puts it on the plan (B4).
+ * B4 (Build a Plan "Consolidation"): the seed drawer and the nudge drawer retired with the cards that opened them
+ * (Build's Invite… offers a class to families); the plan strip's PlanLink opens this meeting on /planner/build.
  * P5b: reminders, adult editors only: "Remind" in the person drawer and "Remind everyone…" on the Haven't answered
  * card. Who was reminded this visit is kept here, so the drawer and the card agree.
  */
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { plannerAssignAction, plannerSendRemindersAction, plannerSendRequestAction } from './actions';
 import { PersonDrawerView } from './person-drawer';
 import { OfferDrawer } from './offer-drawer';
-import { NudgeDrawer } from './nudge-drawer';
-import { SeedDrawer } from './seed-drawer';
-import type { FocusChip } from '@/lib/meeting-planner-board';
 import styles from './planner.module.css';
 
 export const SAVE_FAILED = 'That didn’t save. Check your connection and try again.';
@@ -33,18 +32,9 @@ export interface PlannerAdult {
   name: string;
 }
 
-export interface NudgeTopic {
-  topicKey: string;
-  title: string;
-  codeLabel: string;
-  teachers: string;
-}
-
 type Open =
   | { mode: 'person'; personId: number }
   | { mode: 'offer'; teacherId: number | null; back: number | null }
-  | ({ mode: 'nudge' } & NudgeTopic)
-  | { mode: 'seed'; focus: readonly FocusChip[] }
   | null;
 
 interface Sync {
@@ -65,14 +55,10 @@ interface Sync {
 interface PlannerCtx {
   entryId: number;
   canEdit: boolean;
-  /** An adult editor: may send requests and nudges. */
+  /** An adult editor: may send requests and reminders. */
   canEmail: boolean;
-  /** The planning team (P3): may seed this meeting. */
+  /** The planning team (P3): may put an offering on the plan without a teacher. */
   canSeed: boolean;
-  openSeed: (focus: readonly FocusChip[]) => void;
-  /** Families nudged this visit, by topic key ("✓ Nudged 5 families · just now"). */
-  nudged: ReadonlyMap<string, number>;
-  openNudge: (topic: NudgeTopic) => void;
   /** People reminded this visit (P5b). */
   reminded: ReadonlySet<number>;
   markReminded: (personIds: readonly number[]) => void;
@@ -107,7 +93,6 @@ export function PlannerProvider({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState<Open>(null);
-  const [nudged, setNudged] = useState<ReadonlyMap<string, number>>(new Map());
   const [reminded, setReminded] = useState<ReadonlySet<number>>(new Set());
   const stampRef = useRef(stamp);
   const pending = useRef(0);
@@ -168,9 +153,6 @@ export function PlannerProvider({
       canEdit,
       canEmail: canEdit && canEmail,
       canSeed,
-      openSeed: (focus) => show({ mode: 'seed', focus }),
-      nudged,
-      openNudge: (topic) => show({ mode: 'nudge', ...topic }),
       reminded,
       markReminded: (ids) => setReminded((r) => new Set([...r, ...ids])),
       adults,
@@ -178,7 +160,7 @@ export function PlannerProvider({
       openOffer: (teacherId = null, back = null) => show({ mode: 'offer', teacherId, back }),
       sync
     }),
-    [entryId, canEdit, canEmail, canSeed, nudged, reminded, adults, sync, show]
+    [entryId, canEdit, canEmail, canSeed, reminded, adults, sync, show]
   );
 
   return (
@@ -187,17 +169,6 @@ export function PlannerProvider({
       {open?.mode === 'person' ? <PersonDrawerView key={open.personId} personId={open.personId} onClose={() => show(null)} /> : null}
       {open?.mode === 'offer' ? (
         <OfferDrawer teacherId={open.teacherId} onClose={() => show(open.back != null ? { mode: 'person', personId: open.back } : null)} />
-      ) : null}
-      {open?.mode === 'seed' ? <SeedDrawer focus={open.focus} onClose={() => show(null)} /> : null}
-      {open?.mode === 'nudge' ? (
-        <NudgeDrawer
-          topicKey={open.topicKey}
-          title={open.title}
-          codeLabel={open.codeLabel}
-          teachers={open.teachers}
-          onSent={(n) => setNudged((m) => new Map(m).set(open.topicKey, n))}
-          onClose={() => show(null)}
-        />
       ) : null}
     </Ctx.Provider>
   );
@@ -214,14 +185,13 @@ export function PersonName({ personId, name, className }: { personId: number; na
   );
 }
 
-/** "Seed this meeting" on the Meeting focus strip. The planning team only (P3). */
-export function SeedButton({ focus }: { focus: readonly FocusChip[] }) {
+/** The plan strip's link to this meeting on Build a Plan (B4): "Edit the plan" for editors and the planning team. */
+export function PlanLink({ entryId }: { entryId: number }) {
   const p = usePlanner();
-  if (!p?.canSeed) return null;
   return (
-    <button type="button" className={styles.seedBtn} onClick={() => p.openSeed(focus)}>
-      Seed this meeting
-    </button>
+    <Link href={`/planner/build?meeting=${entryId}`} className={styles.planLink}>
+      {p?.canEdit || p?.canSeed ? 'Edit the plan' : 'See the plan'}
+    </Link>
   );
 }
 
@@ -288,24 +258,11 @@ export function SendRequestButton({ personId, name, topicKey, title, requested }
   );
 }
 
-/** "Choose families to nudge…" on an offer nobody picked (rank requirements only, as v1). Adult editors only. */
-export function NudgeButton(topic: NudgeTopic) {
-  const p = usePlanner();
-  if (!p?.canEmail) return null;
-  const n = p.nudged.get(topic.topicKey);
-  if (n) return <span className={styles.assigned}>✓ Nudged {n === 1 ? '1 family' : `${n} families`} · just now</span>;
-  return (
-    <button type="button" className={styles.nudgeBtn} onClick={() => p.openNudge(topic)}>
-      Choose families to nudge…
-    </button>
-  );
-}
-
 /** For a scout editor (the SPL): one line where the email buttons would be. */
 export function AdultsSendEmails() {
   const p = usePlanner();
   if (!p?.canEdit || p.canEmail) return null;
-  return <p className={styles.emailNote}>Requests and nudges are emailed by adults.</p>;
+  return <p className={styles.emailNote}>Requests are emailed by adults.</p>;
 }
 
 /** "Not sent: 2 reminded in the last 24 hours, Finn P (no parent with an email in their household)." */

@@ -6,7 +6,8 @@ import { TEST_PREFIX } from './helpers/signup-fixtures';
 
 /**
  * Meeting Planner P3 (Plans/Meeting-Planner-II.md, Decisions 2 and 10; the tech-lead's P3 spec): focus sets, seeding a
- * meeting with a set (one focus group = one pick) or with one requirement, unseeding, and the server search. Only a
+ * meeting with a set (one focus group = one pick) or with one requirement, unseeding, and the server search. Since
+ * Build a Plan B4 every seed goes through Build's actions (seedSet / seedTopic / unseed below). Only a
  * meeting_planner.seed holder may seed or keep sets: everyone else is refused before the database is touched. Real
  * local database; the admin actor is mocked. Fixture meetings are dated 2095 so they never collide with the real
  * calendar or another file's fixtures.
@@ -22,8 +23,16 @@ vi.mock('@/lib/supabase/server', async () => {
 vi.mock('@/lib/admin-actor', () => ({ resolveAdminActor: async () => state.actor }));
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn(), updateTag: vi.fn(), unstable_cache: (fn: unknown) => fn }));
 
+// Build a Plan's gate takes the next 4 meetings from "today": put today just before this file's 2095 meeting.
+vi.mock('@/lib/dates', async (orig) => ({ ...(await orig<typeof import('../src/lib/dates')>()), centralToday: () => '2095-01-20' }));
+
 const actions = () => import('../src/app/(public)/planner/actions');
 const focus = () => import('../src/app/(public)/planner/focus-actions');
+// Build a Plan B4 (one add path): seeding is Build's own add, remove and focus-set add; the board's seed actions retired.
+const build = () => import('../src/app/(public)/planner/build-actions');
+const seedSet = async (input: { entryId: number; setId: number }) => (await build()).plannerAddFocusSetAction(input);
+const seedTopic = async (input: { entryId: number; key: string }) => (await build()).plannerAddOfferingAction({ entryId: input.entryId, keys: [input.key] });
+const unseed = async (input: { entryId: number; key: string }) => (await build()).plannerRemoveOfferingAction(input);
 
 const entries: number[] = [];
 const people: number[] = [];
@@ -137,12 +146,11 @@ describe('only the planning team seeds and keeps focus sets', () => {
       const set = await makeSet('Refused', [rankKeys[0]]);
       const before = await setCount();
       as();
-      const act = await actions();
       const fa = await focus();
       const results = [
-        await act.plannerSeedSetAction({ entryId: meeting, setId: set }),
-        await act.plannerSeedTopicAction({ entryId: meeting, key: rankKeys[1] }),
-        await act.plannerUnseedAction({ entryId: meeting, key: rankKeys[1] }),
+        await seedSet({ entryId: meeting, setId: set }),
+        await seedTopic({ entryId: meeting, key: rankKeys[1] }),
+        await unseed({ entryId: meeting, key: rankKeys[1] }),
         await fa.focusSaveSetAction({ id: null, name: `${TEST_PREFIX} Sneaky`, labels: [], items: [rankKeys[0]] }),
         await fa.focusSaveSetAction({ id: set, name: `${TEST_PREFIX} Renamed`, labels: [], items: [] }),
         await fa.focusDeleteSetAction({ id: set })
@@ -199,7 +207,7 @@ describe('seeding', () => {
   it('FocusSet_Seed_MakesOneFocusGroup_WithTheSetsItemsSnapshot', async () => {
     const set = await makeSet('First aid night', [mbKey, mbSubKey, rankKeys[0]]);
     asSeeder();
-    const res = await (await actions()).plannerSeedSetAction({ entryId: meeting, setId: set });
+    const res = await seedSet({ entryId: meeting, setId: set });
     const topics = await topicsOn();
     expect([res.ok && res.count, topics.map((t) => [t.topic_key, t.kind, t.title, t.seeded_by_person_id, t.focus_set_id]), await membersOf(`fg:${set}`)]).toEqual([
       3,
@@ -212,53 +220,50 @@ describe('seeding', () => {
     const a = await makeSet('A', [rankKeys[0]]);
     const b = await makeSet('B', [rankKeys[1]]);
     asSeeder();
-    const act = await actions();
-    await act.plannerSeedTopicAction({ entryId: meeting, key: rankKeys[2] });
-    await act.plannerSeedSetAction({ entryId: meeting, setId: a });
-    await act.plannerSeedSetAction({ entryId: meeting, setId: b });
+    await seedTopic({ entryId: meeting, key: rankKeys[2] });
+    await seedSet({ entryId: meeting, setId: a });
+    await seedSet({ entryId: meeting, setId: b });
     expect((await topicsOn()).filter((t) => t.seeded_at).map((t) => t.topic_key).sort()).toEqual([`fg:${a}`, `fg:${b}`, rankKeys[2]].sort());
   });
 
   it('FocusSet_SeedTwice_IsIdempotent_AndKeepsTheFirstSnapshot', async () => {
     const set = await makeSet('Twice', [rankKeys[0]]);
     asSeeder();
-    const act = await actions();
-    await act.plannerSeedSetAction({ entryId: meeting, setId: set });
+    await seedSet({ entryId: meeting, setId: set });
     await sb.rpc('focus_set_save', { p_actor: seeder, p_set: set, p_name: `${TEST_PREFIX} Twice renamed`, p_labels: [], p_items: [rankKeys[1], rankKeys[2]] });
-    const again = await act.plannerSeedSetAction({ entryId: meeting, setId: set });
+    const again = await seedSet({ entryId: meeting, setId: set });
     const topics = await topicsOn();
     expect([again.ok, topics.length, topics[0].title, await membersOf(`fg:${set}`)]).toEqual([true, 1, `${TEST_PREFIX} Twice`, [rankKeys[0]]]);
   });
 
   it('SeedTopic_AcceptsATopLevelMeritBadgeRequirement', async () => {
     asSeeder();
-    await (await actions()).plannerSeedTopicAction({ entryId: meeting, key: mbKey });
+    await seedTopic({ entryId: meeting, key: mbKey });
     expect((await topicsOn()).map((t) => [t.topic_key, t.kind, !!t.seeded_at])).toEqual([[mbKey, 'mb_req', true]]);
   });
 
   it('SeedTopic_RefusesASubRequirement', async () => {
     asSeeder();
-    const res = await (await actions()).plannerSeedTopicAction({ entryId: meeting, key: mbSubKey });
+    const res = await seedTopic({ entryId: meeting, key: mbSubKey });
     expect([res.ok, await topicsOn()]).toEqual([false, []]);
   });
 
   it('SeedTopic_RefusesAWholeBadge', async () => {
     asSeeder();
-    expect((await (await actions()).plannerSeedTopicAction({ entryId: meeting, key: 'mb:first-aid' })).ok).toBe(false);
+    expect((await seedTopic({ entryId: meeting, key: 'mb:first-aid' })).ok).toBe(false);
   });
 
   it('Seeding_ChangesTheBoardStamp', async () => {
     asSeeder();
     const before = String((await sb.rpc('meeting_board_stamp', { p_entry: meeting })).data);
-    const res = await (await actions()).plannerSeedTopicAction({ entryId: meeting, key: rankKeys[0] });
+    const res = await seedTopic({ entryId: meeting, key: rankKeys[0] });
     expect(res.ok && res.stamp !== before).toBe(true);
   });
 
   it('Unseeding_ChangesTheBoardStamp', async () => {
     asSeeder();
-    const act = await actions();
-    const seeded = await act.plannerSeedTopicAction({ entryId: meeting, key: rankKeys[0] });
-    const res = await act.plannerUnseedAction({ entryId: meeting, key: rankKeys[0] });
+    const seeded = await seedTopic({ entryId: meeting, key: rankKeys[0] });
+    const res = await unseed({ entryId: meeting, key: rankKeys[0] });
     expect(seeded.ok && res.ok && res.stamp !== seeded.stamp).toBe(true);
   });
 });
@@ -267,19 +272,18 @@ describe('unseeding and deleting', () => {
   it('Unseed_WithNoPicks_RemovesTheTopic', async () => {
     const set = await makeSet('Gone', [rankKeys[0]]);
     asSeeder();
-    const act = await actions();
-    await act.plannerSeedSetAction({ entryId: meeting, setId: set });
-    await act.plannerUnseedAction({ entryId: meeting, key: `fg:${set}` });
+    await seedSet({ entryId: meeting, setId: set });
+    await unseed({ entryId: meeting, key: `fg:${set}` });
     expect(await topicsOn()).toEqual([]);
   });
 
   it('Unseed_WithPicks_KeepsTheRow', async () => {
     asSeeder();
-    await (await actions()).plannerSeedTopicAction({ entryId: meeting, key: mbKey });
+    await seedTopic({ entryId: meeting, key: mbKey });
     asEditor();
     const picked = await (await actions()).plannerTogglePickAction({ entryId: meeting, personId: young, key: mbKey, on: true });
     asSeeder();
-    await (await actions()).plannerUnseedAction({ entryId: meeting, key: mbKey });
+    await unseed({ entryId: meeting, key: mbKey });
     const topics = await topicsOn();
     expect([picked.ok, topics.map((t) => [t.topic_key, t.seeded_at, t.seeded_by_person_id])]).toEqual([true, [[mbKey, null, null]]]);
   });
@@ -287,11 +291,11 @@ describe('unseeding and deleting', () => {
   it('UnseededGroupWithAPick_KeepsItsTitle_InTheDrawerAndTheTray', async () => {
     const set = await makeSet('Kept title', [rankKeys[0], mbSubKey]);
     asSeeder();
-    await (await actions()).plannerSeedSetAction({ entryId: meeting, setId: set });
+    await seedSet({ entryId: meeting, setId: set });
     asEditor();
     await (await actions()).plannerTogglePickAction({ entryId: meeting, personId: young, key: `fg:${set}`, on: true });
     asSeeder();
-    await (await actions()).plannerUnseedAction({ entryId: meeting, key: `fg:${set}` });
+    await unseed({ entryId: meeting, key: `fg:${set}` });
     asEditor();
     const res = await (await actions()).plannerOpenPersonAction({ entryId: meeting, personId: young });
     const opt = res.ok ? res.drawer.options.find((o) => o.key === `fg:${set}`) : undefined;
@@ -304,7 +308,7 @@ describe('unseeding and deleting', () => {
   it('DeletingASet_LeavesTheSeededGroupIntact', async () => {
     const set = await makeSet('Deleted later', [rankKeys[0], rankKeys[1]]);
     asSeeder();
-    await (await actions()).plannerSeedSetAction({ entryId: meeting, setId: set });
+    await seedSet({ entryId: meeting, setId: set });
     const del = await (await focus()).focusDeleteSetAction({ id: set });
     const topics = await topicsOn();
     expect([del.ok, topics.map((t) => [t.topic_key, t.title, t.focus_set_id, !!t.seeded_at]), await membersOf(`fg:${set}`)]).toEqual([
@@ -318,7 +322,7 @@ describe('unseeding and deleting', () => {
 describe('scouts pick seeded topics', () => {
   it('SeededMbReq_AppearsInScoutPickList_AndIsPickable', async () => {
     asSeeder();
-    await (await actions()).plannerSeedTopicAction({ entryId: meeting, key: mbKey });
+    await seedTopic({ entryId: meeting, key: mbKey });
     asEditor();
     const tick = await (await actions()).plannerTogglePickAction({ entryId: meeting, personId: young, key: mbKey, on: true });
     const res = await (await actions()).plannerOpenPersonAction({ entryId: meeting, personId: young });
@@ -334,7 +338,7 @@ describe('scouts pick seeded topics', () => {
   it('FocusGroup_IsOnePick_ForTheScout', async () => {
     const set = await makeSet('Group pick', [rankKeys[0], rankKeys[1], mbSubKey]);
     asSeeder();
-    await (await actions()).plannerSeedSetAction({ entryId: meeting, setId: set });
+    await seedSet({ entryId: meeting, setId: set });
     asEditor();
     const res = await (await actions()).plannerTogglePickAction({ entryId: meeting, personId: young, key: `fg:${set}`, on: true });
     const { count } = await sb.from('meeting_topic_picks').select('person_id', { count: 'exact', head: true }).eq('calendar_entry_id', meeting).eq('person_id', young);
@@ -350,7 +354,7 @@ describe('scouts pick seeded topics', () => {
 describe('Add an offer without a teacher', () => {
   it('Seeder_AddsAnOfferWithNoTeacher_AsASeed', async () => {
     asSeeder();
-    await (await actions()).plannerSeedTopicAction({ entryId: meeting, key: rankKeys[0] });
+    await seedTopic({ entryId: meeting, key: rankKeys[0] });
     const { count } = await sb.from('meeting_topic_teachers').select('person_id', { count: 'exact', head: true }).eq('calendar_entry_id', meeting);
     expect([(await topicsOn()).map((t) => [t.topic_key, !!t.seeded_at]), count]).toEqual([[[rankKeys[0], true]], 0]);
   });

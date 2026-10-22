@@ -1,6 +1,7 @@
 /**
  * /planner/focus-sets — Focus sets (Plans/Meeting-Planner-II.md Decision 10, P3; prototypes/meeting-plan-II/README.md
- * "Screen 4"). The planning team groups and labels requirements once, then seeds any upcoming meeting from a set.
+ * "Screen 4"). The planning team groups and labels requirements once, then adds a set to one of the next 4 meetings'
+ * plans (Build a Plan B4: through Build's own add).
  * Anyone who may view the planner sees the sets and can search, read-only; creating, editing, deleting and seeding
  * are for meeting_planner.seed holders (checked again on the server by every action).
  */
@@ -10,6 +11,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { loadAdvancementCatalog } from '@/lib/advancement-catalog';
 import { fmtDay } from '@/lib/format-date';
 import { loadUpcomingMeetings } from '@/lib/meeting-board';
+import { PLAN_MEETINGS } from '@/lib/build-plan';
 import { loadFocusSets, searchCounts } from '@/lib/meeting-focus-db';
 import { plannerAccess } from '@/lib/meeting-planner-access';
 import { PageHeader } from '@/app/_components/page-header';
@@ -57,7 +59,7 @@ export default async function FocusSetsPage() {
         canSeed={access.canSeed}
         sets={sets}
         sources={sources}
-        meetings={meetings.filter((m) => !m.closed).map((m) => ({ entryId: m.entryId, label: fmtDay(m.date) }))}
+        meetings={meetings.filter((m) => !m.closed).slice(0, PLAN_MEETINGS).map((m) => ({ entryId: m.entryId, label: fmtDay(m.date) }))}
       />
     </div>
   );

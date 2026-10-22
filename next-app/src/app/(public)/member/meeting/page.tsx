@@ -223,7 +223,7 @@ export default async function MeetingBoardPage({ searchParams }: { searchParams:
     return `/member/meeting?${q}`;
   };
 
-  // Phase 3a: the live match, the same computation as This Sunday and the editor's tray, said as "so far".
+  // Phase 3a: the live match, the same computation as Who’s coming and the editor's tray, said as "so far".
   // Once the meeting's agenda is published the agenda is the answer: the page links to it and says nothing personal
   // from the match (the agenda's scout names are free text a leader may have edited, so they aren't mapped back).
   const planSet = await isAgendaPublished(sb, meeting.entryId);

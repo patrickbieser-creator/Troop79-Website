@@ -440,16 +440,6 @@ describe('email (P2b, adults only)', () => {
     expect(await (await actions()).plannerSendRemindersAction({ entryId: meeting, personIds: [young] })).toEqual({ ok: false, error: 'That meeting isn’t available. Reload the page.' });
   });
 
-  it('Viewer_IsRefused_WhenNudging', async () => {
-    asViewer();
-    expect((await (await actions()).plannerSendNudgeAction({ entryId: meeting, topicKey: keys[0], scoutIds: [young] })).ok).toBe(false);
-  });
-
-  it('Spl_CantListFamiliesToNudge', async () => {
-    asSpl();
-    expect((await (await actions()).plannerNudgeFamiliesAction({ entryId: meeting, topicKey: keys[0] })).ok).toBe(false);
-  });
-
   it('Editor_SendRequest_GoesThroughTheInviteSender', async () => {
     asEditor();
     const act = await actions();
@@ -473,50 +463,4 @@ describe('email (P2b, adults only)', () => {
     await act.plannerTogglePickAction({ entryId: meeting, personId: young, key: keys[0], on: true });
     expect(await act.plannerSendRequestAction({ entryId: meeting, topicKey: keys[0], personId: young })).toEqual({ ok: false, error: 'They aren’t someone who can teach that.' });
   });
-
-  it('Nudge_GoesThroughTheInviteSender', async () => {
-    asEditor();
-    const act = await actions();
-    await act.plannerAssignAction({ entryId: meeting, personId: teacher, key: keys[1] });
-    const res = await act.plannerSendNudgeAction({ entryId: meeting, topicKey: keys[1], scoutIds: [young] });
-    // The fixture scout's household has no parent with an email, so nobody is reached and the sender says so.
-    expect(res.ok && res.sent).toEqual([]);
-  });
-
-  it('Nudge_WithABadScoutId_IsRefused', async () => {
-    asEditor();
-    expect(await (await actions()).plannerSendNudgeAction({ entryId: meeting, topicKey: keys[0], scoutIds: ['x' as unknown as number] })).toEqual({ ok: false, error: 'Choose at least one family.' });
-  });
-
-  it('NudgeFamilies_ListsAScoutWorkingOnThatRank_AsALikelyFit', async () => {
-    asEditor();
-    const act = await actions();
-    await act.plannerAssignAction({ entryId: meeting, personId: teacher, key: keys[0] });
-    const res = await act.plannerNudgeFamiliesAction({ entryId: meeting, topicKey: keys[0] });
-    expect(res.ok && res.families.find((f) => f.personId === young)?.likely).toBe(true);
-  });
-
-  it('NudgeFamilies_LeavesOutAScoutWhoAlreadyPickedIt', async () => {
-    asEditor();
-    const act = await actions();
-    await act.plannerTogglePickAction({ entryId: meeting, personId: young, key: keys[0], on: true });
-    const res = await act.plannerNudgeFamiliesAction({ entryId: meeting, topicKey: keys[0] });
-    expect(res.ok && res.families.some((f) => f.personId === young)).toBe(false);
-  });
-
-  // P5a (Decision 10): a merit badge night is just a meeting. A legacy board row saying merit_badge changes nothing.
-  it('Editor_CanSendNudge_OnAnyOpenMeeting', async () => {
-    asEditor();
-    await sb.rpc('_meeting_topic_id', { p_entry: mbNight, p_key: keys[0] });
-    const act = await actions();
-    const families = await act.plannerNudgeFamiliesAction({ entryId: mbNight, topicKey: keys[0] });
-    const sent = await act.plannerSendNudgeAction({ entryId: mbNight, topicKey: keys[0], scoutIds: [young] });
-    expect([families.ok, sent.ok]).toEqual([true, true]);
-  });
-
-  it('Nudge_WithNobodyChosen_SaysWhy', async () => {
-    asEditor();
-    expect(await (await actions()).plannerSendNudgeAction({ entryId: meeting, topicKey: keys[0], scoutIds: [] })).toEqual({ ok: false, error: 'Choose at least one family.' });
-  });
 });
-

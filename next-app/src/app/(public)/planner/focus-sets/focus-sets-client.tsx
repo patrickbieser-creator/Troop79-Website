@@ -10,7 +10,9 @@
  *     and badges to browse. A tick adds a row to the active set's draft.
  *   - The active set: "+ New set" at the top right (seed right only), then name, labels, what's in it, then Save
  *     changes / Discard changes (the save-button standard: greyed only when nothing changed; pressed while incomplete
- *     it marks the field and says why), Seed a meeting, and Delete.
+ *     it marks the field and says why), Add to a meeting's plan, and Delete.
+ * Build a Plan B4 (one add path): adding a set to a meeting is Build's own plannerAddFocusSetAction, on the next 4
+ * meetings Build's switcher offers.
  *
  * Read-only for anyone without meeting_planner.seed: no ticks, no editing, no seeding.
  */
@@ -22,7 +24,7 @@ import { Field, SaveProblem, SelectInput, TextInput } from '@/app/_components/fo
 import { fmtDate } from '@/lib/format-date';
 import { draftKey, draftProblem, groupItems, LABEL_MAX, normalizeLabel, type FocusSearchRow, type FocusSetItem, type FocusSetView, type FocusSource, type SetDraft } from '@/lib/meeting-focus';
 import { focusCountsAction, focusDeleteSetAction, focusSaveSetAction, focusSearchAction } from '../focus-actions';
-import { plannerSeedSetAction } from '../actions';
+import { plannerAddFocusSetAction } from '../build-actions';
 import styles from '../planner.module.css';
 
 type Kind = 'all' | 'rank' | 'mb';
@@ -438,9 +440,9 @@ function SetEditor({
     if (id == null || dirty) return setSeed({ state: 'bad', text: 'Save the set first.' });
     if (meeting == null) return;
     setSeed({ state: 'seeding' });
-    const res = await plannerSeedSetAction({ entryId: meeting, setId: id }).catch(() => ({ ok: false as const, error: 'That didn’t save. Check your connection and try again.' }));
+    const res = await plannerAddFocusSetAction({ entryId: meeting, setId: id }).catch(() => ({ ok: false as const, error: 'That didn’t save. Check your connection and try again.' }));
     const when = meetings.find((m) => m.entryId === meeting)?.label ?? '';
-    setSeed(res.ok ? { state: 'done', text: `✓ Seeded ${when} with ${plural(res.count, 'requirement')}`, entryId: meeting } : { state: 'bad', text: res.error });
+    setSeed(res.ok ? { state: 'done', text: `✓ On the plan for ${when}, ${plural(res.count, 'requirement')}`, entryId: meeting } : { state: 'bad', text: res.error });
   }
 
   async function remove() {
@@ -535,7 +537,7 @@ function SetEditor({
 
       {!isNew ? (
         <div className={styles.fsSeed}>
-          <h3 className={styles.fsSeedTitle}>Seed a meeting with this set</h3>
+          <h3 className={styles.fsSeedTitle}>Add this set to a meeting’s plan</h3>
           {meetings.length ? (
             <>
               <div className={styles.fsSeedRow}>
@@ -549,12 +551,12 @@ function SetEditor({
                   </SelectInput>
                 </Field>
                 <button type="button" className={styles.seedBtn} onClick={seedIt} disabled={seed.state === 'seeding' || !draft.items.length}>
-                  {seed.state === 'seeding' ? 'Seeding…' : 'Seed'}
+                  {seed.state === 'seeding' ? 'Adding…' : 'Add to the plan'}
                 </button>
               </div>
               {seed.state === 'done' ? (
                 <p className={styles.assigned}>
-                  {seed.text} · <Link href="/planner">open the board</Link>
+                  {seed.text} · <Link href={`/planner/build?meeting=${seed.entryId}`}>open the plan</Link>
                 </p>
               ) : null}
               {seed.state === 'bad' ? (

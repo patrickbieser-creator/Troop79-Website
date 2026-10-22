@@ -54,7 +54,6 @@ function revalidate() {
   revalidatePath('/planner');
   revalidatePath('/planner/live');
   revalidatePath('/member/meeting');
-  revalidatePath('/admin/advancement/meeting-plan');
 }
 
 /** Run one Live write: start Live first when it hasn't (copy on first write), map STALE, return the new stamp. */

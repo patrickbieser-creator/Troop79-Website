@@ -88,7 +88,6 @@ async function resolve(t: Target) {
     if (!res.ok) return res;
     revalidatePath('/member');
     revalidatePath('/member/meeting');
-    revalidatePath('/admin/advancement/meeting-plan');
     const fresh = await loadScoutBoard(sb, meeting, scout, catalog, { viewerPersonId: actorPersonId, freeform });
     return { ok: true, view: fresh.view };
   };

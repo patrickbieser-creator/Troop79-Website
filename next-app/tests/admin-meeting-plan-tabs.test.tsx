@@ -2,22 +2,24 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 
 /**
- * Meeting Planner II, P5c (Plans/Meeting-Planner-II.md Decision 1): Admin's Meeting Plan is the generator only. This
- * Sunday, its board settings, stations and invites moved to /planner; the page keeps Generate Plan, Group Sessions
- * (the ledger suggestions), By Scout, Teaching Roster and Publish to Site. Server actions are the mock boundary.
+ * Build a Plan B4 (Plans/Build-A-Plan.md, Decision 3): Admin's generator (Generate Plan / Group Sessions) and Publish to
+ * Site retired; /admin/advancement/meeting-plan redirects to /planner/build (build-plan-b4-retirement.test.ts). By
+ * Scout and Teaching Roster only ever lived inside the generator, so they stay on their own page, read-only. Server
+ * actions are the mock boundary.
  */
-vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }), usePathname: () => '/admin/advancement/meeting-plan' }));
-vi.mock('../src/app/admin/(workspace)/advancement/meeting-plan/actions', () => ({ generatePlan: vi.fn(), publishPlan: vi.fn(), unpublishPlan: vi.fn() }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }), usePathname: () => '/admin/advancement/meeting-plan/by-scout' }));
+vi.mock('../src/app/admin/(workspace)/advancement/meeting-plan/actions', () => ({ generatePlan: vi.fn() }));
 
-const { PlanView } = await import('../src/app/admin/(workspace)/advancement/meeting-plan/plan-view');
+const { PlanView } = await import('../src/app/admin/(workspace)/advancement/meeting-plan/by-scout/scout-view');
 
-describe('Admin Meeting Plan', () => {
-  it('AdminMeetingPlan_ShowsGeneratorTabsOnly', () => {
-    render(<PlanView published={[]} defaultDate="2096-02-02" />);
+describe('By Scout and Teaching Roster', () => {
+  it('ByScout_ShowsItsTwoViews_AndNoPublish', () => {
+    render(<PlanView defaultDate="2096-02-02" />);
     const tabs = screen.getAllByRole('tab').map((t) => t.textContent);
-    expect([tabs, screen.getByRole('button', { name: 'Generate Plan' }) != null, screen.queryByText(/This Sunday/)]).toEqual([
-      ['Group Sessions', 'By Scout', 'Teaching Roster'],
+    expect([tabs, screen.getByRole('button', { name: 'Show' }) != null, screen.queryByText(/Publish/), screen.queryByText(/Group Sessions/)]).toEqual([
+      ['By Scout', 'Teaching Roster'],
       true,
+      null,
       null
     ]);
   });

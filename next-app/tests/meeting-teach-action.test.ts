@@ -348,10 +348,9 @@ describe('the board', () => {
     const before = (await loadSundayNoTeacher(sb, '2093-03-01')).count;
     await pickFor(young, knotKey);
     const mid = await loadSundayNoTeacher(sb, '2093-03-01');
-    const forPlanner = await loadSundayNoTeacher(sb, '2093-03-01', { planner: true });
     await sb.rpc('meeting_teach_topic', { p_entries: [meeting1], p_person: parent, p_actor: parent, p_leader: false, p_topic_key: knotKey, p_title: null, p_note: null });
     const after = (await loadSundayNoTeacher(sb, '2093-03-01')).count;
     const n = before + added;
-    expect([mid.count, mid.label.endsWith(`${n} ${n === 1 ? 'request' : 'requests'} with no teacher`), mid.href, forPlanner.href, after]).toEqual([n, true, '/admin/advancement/meeting-plan', '/planner', before]);
+    expect([mid.count, mid.label.endsWith(`${n} ${n === 1 ? 'request' : 'requests'} with no teacher`), mid.href, after]).toEqual([n, true, '/planner', before]);
   });
 });

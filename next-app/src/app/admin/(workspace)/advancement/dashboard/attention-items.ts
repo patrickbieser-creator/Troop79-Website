@@ -505,12 +505,13 @@ async function loadTeachingSkillChangesToReview(sb: SupabaseClient): Promise<Att
 /**
  * The next meeting's recruiting list (Plans/Meeting-Requests-And-Teaching-Offers.md, Phase 2; Prototype feedback,
  * Brad's question 4): topics scouts asked for that nobody is teaching yet, beside the teaching-skill-changes row.
- * Links to the Meeting Planner (/planner) for someone who can view it; otherwise to Admin's Meeting Plan (P5c retired
- * its This Sunday tab, so that is the generator now). A closed meeting counts 0.
+ * Links to the Meeting Planner's Who's coming (/planner), where the Requests with no teacher card lives. Shown only
+ * to someone who can view the planner (Build a Plan B4 retired Admin's generator, the old fallback). A closed meeting
+ * counts 0.
  * `today` is for tests (the next meeting on or after it).
  */
-export async function loadSundayNoTeacher(sb: SupabaseClient, today?: string, opts: { planner?: boolean } = {}): Promise<AttentionCategory> {
-  const href = opts.planner ? '/planner' : '/admin/advancement/meeting-plan';
+export async function loadSundayNoTeacher(sb: SupabaseClient, today?: string): Promise<AttentionCategory> {
+  const href = '/planner';
   const meeting = await loadNextMeeting(sb, today);
   const day = meeting ? fmtDay(meeting.date, { year: false }).split(',')[0] : 'Sunday';
   const empty = queue('sunday-no-teacher', `${day}: no requests waiting for a teacher`, [], href, 'no teacher', 0);
@@ -540,8 +541,7 @@ export async function loadSundayNoTeacher(sb: SupabaseClient, today?: string, op
  *  - pending news ..................... news.write
  *  - next open sign-up ................ calendar.write
  *  - teaching-skill changes ........... roster.manage (Lookups, where Undo and Mark reviewed live)
- *  - Sunday's requests with no teacher  meeting_plan.use or Meeting Planner view (links to /planner when they can
- *                                       view it, else Admin's Meeting Plan), right after the skill changes
+ *  - Sunday's requests with no teacher  Meeting Planner view (links to /planner), right after the skill changes
  */
 export async function loadAttentionCategories(
   capabilities: ReadonlySet<Capability>,
@@ -559,7 +559,7 @@ export async function loadAttentionCategories(
   if (has('calendar.write')) jobs.push(loadNextOpenSignup(sb));
   if (has('roster.manage')) jobs.push(loadTeachingSkillChangesToReview(sb));
   const planner = plannerAccess({ capabilities: capabilities as Set<Capability>, subjectKind: null }).canView;
-  if (planner || has('meeting_plan.use')) jobs.push(loadSundayNoTeacher(sb, undefined, { planner }));
+  if (planner) jobs.push(loadSundayNoTeacher(sb));
 
   const categories = (await Promise.all(jobs)).filter((c): c is AttentionCategory => c !== null);
   // A queue with nothing in it is noise, not signal — drop it rather than

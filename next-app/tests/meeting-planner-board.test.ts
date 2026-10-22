@@ -231,19 +231,4 @@ describe('seeded focus (P3)', () => {
   it('UnseededTopic_HasNoFocusMark', () => {
     expect(buildPlannerBoard(input()).noTeacher[0].seededBy).toBeNull();
   });
-
-  it('FocusStrip_ListsEverySeededTopic_WithItsTeacherAndScouts', () => {
-    const b = buildPlannerBoard(
-      input({
-        topics: new Map([TF4A, SC2F, S1A, FG].map((t) => [t.key, t])),
-        seeded: seeded(['fg:7', 'tenderfoot-4a']),
-        commitments: [{ key: 'scout-1a', personId: 14 }, { key: 'tenderfoot-4a', personId: 10 }],
-        teachersFor: new Map([['scout-1a', [14]], ['tenderfoot-4a', [10]]])
-      })
-    );
-    expect(b.focus.map((f) => [f.key, f.title, f.teachers, f.scouts])).toEqual([
-      ['fg:7', 'First aid night', [], 0],
-      ['tenderfoot-4a', 'First aid basics', ['Dan V'], 1]
-    ]);
-  });
 });

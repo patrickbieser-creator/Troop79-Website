@@ -4,7 +4,7 @@
  *
  *   - loadSavedPlacement: the saved placement, or null while Meeting Live hasn't started.
  *   - loadMatchOrPlacement: THE seam every reader of the match goes through (the member page, the agenda tray, v1's
- *     This Sunday until P5). Before Live starts it is the matcher (loadLiveMatch); once live_started_at is set, the
+ *     the Sunday board until P5). Before Live starts it is the matcher (loadLiveMatch); once live_started_at is set, the
  *     saved placement as a MatchResult (placementAsMatch). The planner board keeps its own loaders: it stays on screen.
  *   - startMeetingLive: copy on FIRST WRITE (Decision 8): run the matcher and save its output with meeting_live_start,
  *     which is idempotent under the meeting's Live lock.

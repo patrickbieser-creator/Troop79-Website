@@ -1,5 +1,5 @@
 /**
- * The Meeting Planner's This Sunday board, design 1a (Plans/Meeting-Planner-II.md; prototypes/meeting-plan-II/README.md
+ * The Meeting Planner's Who's coming board, design 1a (Plans/Meeting-Planner-II.md; prototypes/meeting-plan-II/README.md
  * "Screen 1"). PURE and client-safe: the loader (lib/meeting-planner-load.ts) gathers v1's demand and supply, this
  * turns them into the board, and the tests read it without a database.
  *
@@ -128,17 +128,6 @@ export interface OfferedRow {
   seededBy?: string | null;
 }
 
-/** One chip on the Meeting focus strip. */
-export interface FocusChip {
-  key: string;
-  codeLabel: string;
-  title: string;
-  kind: PlannerTopic['kind'];
-  teachers: string[];
-  /** Scouts who picked it for this meeting. */
-  scouts: number;
-}
-
 export interface ComingRow extends PlannerPerson {
   detail: string;
   /** Nothing picked (a scout) or not teaching (an adult): the detail line is a nudge. */
@@ -157,8 +146,6 @@ export interface WallColumns {
 }
 
 export interface PlannerBoard {
-  /** Seeded topics (P3), focus groups first. */
-  focus: FocusChip[];
   attendance: { scouts: AttendanceCounts; adults: AttendanceCounts };
   ready: ReadyRow[];
   noTeacher: NoTeacherRow[];
@@ -273,15 +260,7 @@ export function buildPlannerBoard(input: PlannerInput): PlannerBoard {
   const sortedAdults = [...adults].sort(byName);
   const pick = (p: PlannerPerson): PlannerPerson => ({ personId: p.personId, name: p.name });
 
-  const focus: FocusChip[] = [...(input.seeded?.keys() ?? [])]
-    .map((key) => {
-      const t = topicOf(key);
-      return { key, codeLabel: t.codeLabel, title: t.title, kind: t.kind, teachers: teachersOf(key).map((p) => p.name), scouts: demand.get(key)?.length ?? 0 };
-    })
-    .sort((a, b) => Number(b.kind === 'focus') - Number(a.kind === 'focus') || a.codeLabel.localeCompare(b.codeLabel) || a.title.localeCompare(b.title));
-
   return {
-    focus,
     attendance: { scouts: counts(scouts.map((s) => s.answer)), adults: counts(adults.map((a) => a.answer)) },
     ready,
     noTeacher,

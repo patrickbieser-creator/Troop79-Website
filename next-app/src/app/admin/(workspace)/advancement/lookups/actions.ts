@@ -916,7 +916,6 @@ export async function createSkill(formData: FormData): Promise<Result> {
   }
   updateTag('advancement-catalog');
   revalidateAll();
-  revalidatePath('/admin/advancement/meeting-plan');
   return { ok: true };
 }
 
@@ -939,7 +938,6 @@ export async function updateSkill(formData: FormData): Promise<Result> {
   if (error) return { ok: false, error: error.message };
   updateTag('advancement-catalog');
   revalidateAll();
-  revalidatePath('/admin/advancement/meeting-plan');
   return { ok: true };
 }
 
@@ -964,7 +962,6 @@ export async function deleteSkill(formData: FormData): Promise<Result> {
   if (error) return { ok: false, error: error.message };
   updateTag('advancement-catalog');
   revalidateAll();
-  revalidatePath('/admin/advancement/meeting-plan');
   return { ok: true };
 }
 
@@ -1004,7 +1001,6 @@ export async function setTeachingSkills(formData: FormData): Promise<Result> {
   const res = await saveTeachingSkills(createAdminClient(), personId, wanted, 'admin', { personId: session.personId, label: session.label ?? null });
   if (!res.ok) return { ok: false, error: res.error };
   revalidatePath('/admin/advancement/lookups');
-  revalidatePath('/admin/advancement/meeting-plan');
   return { ok: true };
 }
 

@@ -379,7 +379,6 @@ export const NEVER_SITEMAPPED: readonly string[] = [
   '/news/submit',
   '/library/submit',
   '/library/submit-proof',
-  '/meeting-plan',
   '/advancement/report'
 ];
 

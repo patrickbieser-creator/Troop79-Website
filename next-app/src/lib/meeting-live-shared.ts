@@ -10,7 +10,7 @@
  *     snapshot); an offer with a teacher and no takers becomes a Not scheduled card. Skill offers with no takers have
  *     no topic and are left out; co-teachers are not carried (a known gap).
  *   - placementAsMatch: a saved placement as a MatchResult, so every reader of the match (the member page, the agenda
- *     tray, v1's This Sunday) reads the saved placement once Live has started. Given the board, "coming, nothing
+ *     tray, v1's Admin Sunday tab) reads the saved placement once Live has started. Given the board, "coming, nothing
  *     assigned" is coming − placed − teaching and the "Not sure yet" scouts say whether they're placed (qa-lead, P4a:
  *     the other screens must not go quiet); wanted and offered stay empty: the saved placement is the truth.
  *   - buildLiveView: the cards, repeats, retake stars, conflicts and the "Coming, nothing assigned" pool the Live

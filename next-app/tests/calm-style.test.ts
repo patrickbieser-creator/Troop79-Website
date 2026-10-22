@@ -218,7 +218,6 @@ const SITE_KEEP: Record<string, string[]> = {
   // Photo album print stickers and spines mirror the printed album labels.
   '(public)/photos/photos.module.css': ['.printSticker', '.printDate', '.spineMon'],
   // Codes are data shown in caps.
-  '(public)/meeting-plan/meeting-plan.module.css': ['.reqCode'],
   'admin/(workspace)/advancement/meetings/meetings.module.css': ['.candidateCode']
 };
 const allCss = (dir: string): string[] =>

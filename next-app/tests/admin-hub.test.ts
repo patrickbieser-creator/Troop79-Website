@@ -8,9 +8,10 @@ import { BUNDLES, CAPABILITIES, type Capability } from '../src/lib/capabilities'
  */
 
 // The hrefs the rail offered at v1.214.0 (before Wave 2), for the regression test — minus Roster
-// Import, retired on purpose 2026-10-20 (a one-time Google Sheets import).
+// Import, retired on purpose 2026-10-20 (a one-time Google Sheets import), and with Meeting Plan's generator swapped for
+// what is left of it, By Scout & Roster (Build a Plan B4: the generator redirects to /planner/build).
 const FORMER_RAIL_HREFS = [
-  '/admin', '/admin/advancement/fast-entry', '/admin/advancement/meeting-plan', '/admin/advancement/has-needs',
+  '/admin', '/admin/advancement/fast-entry', '/admin/advancement/meeting-plan/by-scout', '/admin/advancement/has-needs',
   '/admin/advancement/ledger', '/admin/advancement/roster', '/admin/advancement/records', '/admin/advancement/mb-progress',
   '/admin/advancement/audits', '/admin/advancement/report', '/admin/advancement/court-of-honor',
   '/admin/advancement/scoutbook-export', '/admin/advancement/meetings/report', '/admin/news/articles', '/admin/news/pages',

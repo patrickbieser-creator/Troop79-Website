@@ -4,8 +4,8 @@ import { PlannerBoardView } from '../src/app/(public)/planner/board-view';
 import type { PlannerBoard } from '../src/lib/meeting-planner-board';
 
 /**
- * The read-only planner board (Plans/Meeting-Planner-II.md, P1): a viewer sees everything (Decision 4) and there are no
- * controls yet (P2 adds them for editors).
+ * The read-only planner board, Who's coming (Plans/Meeting-Planner-II.md, P1): a viewer sees everything (Decision 4)
+ * and there are no controls (P2 adds them for editors). Build a Plan B4 moved the Ready and Offered cards into Build.
  */
 
 const p = (personId: number, name: string) => ({ personId, name });
@@ -13,7 +13,6 @@ const counts = { coming: 2, undecided: 1, notComing: 1, noAnswer: 2, total: 6 };
 const wall = { coming: [{ ...p(1, 'Finn P'), tag: '1 pick' }], undecided: [], notComing: [{ ...p(3, 'Todd M'), tag: 'Picks saved' }], noAnswer: [{ ...p(4, 'Adi A'), tag: 'Scout' }] };
 
 const BOARD: PlannerBoard = {
-  focus: [],
   attendance: { scouts: counts, adults: counts },
   ready: [{ key: 'star-6', codeLabel: 'Star 6', title: 'Cyber Chip for grade', kind: 'rank', minutes: 15, teachers: [p(10, 'Patrick B')], scouts: [p(2, 'Anjali S')] }],
   noTeacher: [
@@ -45,48 +44,37 @@ afterEach(cleanup);
 
 describe('PlannerBoardView', () => {
   it('Viewer_SeesFullBoard_WithNoControls', () => {
-    render(<PlannerBoardView board={BOARD} heading={<h1>Sunday</h1>} />);
-    for (const h of ['Ready to teach', 'Requests with no teacher', 'Offered, no takers yet', 'Haven’t answered', 'Who’s coming', 'Everyone']) {
+    render(<PlannerBoardView board={BOARD} heading={<h1>Sunday</h1>} entryId={1} />);
+    for (const h of ['Requests with no teacher', 'Haven’t answered', 'Who’s coming', 'Everyone']) {
       expect(screen.getByRole('heading', { name: new RegExp(h) })).toBeTruthy();
     }
     expect(screen.queryAllByRole('button')).toHaveLength(0);
   });
 
   it('NoTeacher_ShowsWhoCanTeach_GroupedByAnswer', () => {
-    render(<PlannerBoardView board={BOARD} heading={null} />);
+    render(<PlannerBoardView board={BOARD} heading={null} entryId={1} />);
     const list = screen.getByText('2 people can teach this').closest('details')!;
     expect(within(list).getByText('Coming · 1')).toBeTruthy();
     expect(within(list).getByText('Haven’t answered · 1')).toBeTruthy();
   });
 
   it('NoTeacher_SaysWhenARequestWasAlreadySent', () => {
-    render(<PlannerBoardView board={BOARD} heading={null} />);
+    render(<PlannerBoardView board={BOARD} heading={null} entryId={1} />);
     expect(screen.getByText(/a request invites them · request sent/)).toBeTruthy();
   });
 
   it('NoTeacher_SaysHowLongItHasBeenAsked', () => {
-    render(<PlannerBoardView board={BOARD} heading={null} />);
+    render(<PlannerBoardView board={BOARD} heading={null} entryId={1} />);
     expect(screen.getByText('1 scout waiting · asked 3 weeks running')).toBeTruthy();
   });
 
   it('CantMakeIt_ShowsPicksSavedForLater', () => {
-    render(<PlannerBoardView board={BOARD} heading={null} />);
+    render(<PlannerBoardView board={BOARD} heading={null} entryId={1} />);
     expect(screen.getByText('Todd M · 2 saved for later')).toBeTruthy();
   });
 
-  it('ReadyToTeach_ShowsItsEmptyState', () => {
-    render(<PlannerBoardView board={{ ...BOARD, ready: [] }} heading={null} />);
-    expect(screen.getByText(/Nothing is ready yet/)).toBeTruthy();
-  });
-
-  it('Offered_ListsLikelyFits', () => {
-    render(<PlannerBoardView board={BOARD} heading={null} />);
-    const row = screen.getByText('Oath, Law, motto, slogan').closest('li')!;
-    expect(within(row).getByText('Adi A')).toBeTruthy();
-  });
-
   it('NoTeacher_SaysTheTimeOnce', () => {
-    render(<PlannerBoardView board={BOARD} heading={null} />);
+    render(<PlannerBoardView board={BOARD} heading={null} entryId={1} />);
     expect(screen.getByText('about 30 min')).toBeTruthy();
   });
 });

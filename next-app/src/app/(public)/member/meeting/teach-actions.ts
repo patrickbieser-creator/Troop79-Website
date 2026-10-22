@@ -78,7 +78,6 @@ async function resolve(t: TeachTarget, op: 'add' | 'edit' = 'add') {
     if (!res.ok) return res;
     revalidatePath('/member');
     revalidatePath('/member/meeting');
-    revalidatePath('/admin/advancement/meeting-plan');
     const board = await loadBoardState(sb, meeting, catalog);
     const view = await loadTeachView(sb, meeting, catalog, t.personId, { board, upcoming });
     // Someone who no longer qualifies and just took back their last row has nothing left to show.

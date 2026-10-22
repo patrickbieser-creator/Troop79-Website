@@ -125,7 +125,7 @@ const SCOREBOARD: ReadonlyArray<readonly [string, string, string]> = [
   [
     'Page header / masthead',
     '11 files re-declare + 2 pages inline',
-    'PageHeader SHIPPED (A) — sanctioned local headers: photos + events index (genuine two-column layouts), event-detail/profile (kind-chip eyebrow / narrow scale; type sizes on canon since C), meeting-plan meta row (needs a meta slot)'
+    'PageHeader SHIPPED (A) — sanctioned local headers: photos + events index (genuine two-column layouts), event-detail/profile (kind-chip eyebrow / narrow scale; type sizes on canon since C); meeting-plan meta row retired with /meeting-plan (Build a Plan B4)'
   ],
   [
     'Page shell (1180px)',
@@ -762,8 +762,8 @@ export default function PublicStyleguidePage() {
           <strong>Sanctioned locals after closeout (Phase D, 2026-08-21)</strong> &mdash;
           every remaining divergence is deliberate and documented in its scoreboard row:
           two-column headers (photos, events index), kind-chip/narrow headers
-          (event-detail, profile), meeting-plan&rsquo;s meta-row header (wants a PageHeader
-          meta slot if a second case appears); <code>.signOutBtn</code> +
+          (event-detail, profile) (meeting-plan&rsquo;s meta-row header retired with the page, Build a
+          Plan B4); <code>.signOutBtn</code> +
           scout-account&rsquo;s compact proxy button + page-bodyabout-join&rsquo;s khaki CTArsquo;s khaki CTA +
           calendar pager/month chrome; name-search + tagSelect (layout-divergent form
           controls); categorical tags (<code>.catTag</code>, <code>.tagChip</code>,{' '}

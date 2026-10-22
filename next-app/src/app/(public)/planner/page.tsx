@@ -2,9 +2,13 @@
  * /planner — the Meeting Planner (Plans/Meeting-Planner-II.md). Reached from the account menu under the signed-in
  * name ("Meeting Planner"), for anyone holding meeting_planner.view, .edit or .seed (granted one person at a time).
  *
- * The This Sunday board for the next meeting (board-view.tsx): read-only for a viewer; an editor (P2a) also opens a
- * person's drawer, assigns, adds offers. Signed out → sign in and come back; signed in without a planner right → a
- * plain "no access" message. P3: a second tab, Focus sets (./focus-sets), and seeding for the planning team.
+ * Who's coming (Build a Plan Decision 4 renamed the tab), the attendance board for the next meeting
+ * (board-view.tsx): read-only for a viewer; an editor (P2a) also opens a person's drawer, assigns, adds offers. Signed
+ * out → sign in and come back; signed in without a planner right → a plain "no access" message.
+ *
+ * Build a Plan is the first tab, but /planner stays Who's coming and does NOT redirect editors to /planner/build
+ * (B4): the reminder and request emails link here, and the person who opens one wants the replies, not the plan. The
+ * plan strip links to Build for this meeting.
  */
 import { redirect } from "next/navigation";
 import { resolveAdminActor } from "@/lib/admin-actor";
@@ -99,7 +103,7 @@ export default async function PlannerPage() {
             </div>
           </>
         ) : (
-          <PlannerBoardView board={page.board} heading={heading} canSeed={access.canSeed} />
+          <PlannerBoardView board={page.board} heading={heading} entryId={page.meeting.entryId} />
         )}
       </div>
     </PlannerProvider>

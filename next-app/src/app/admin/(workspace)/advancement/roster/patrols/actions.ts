@@ -70,7 +70,6 @@ export async function savePatrolAssignments(draft: PatrolDraft): Promise<Result>
   revalidatePath('/admin/advancement/roster');
   revalidatePath('/admin/advancement/roster/patrols');
   revalidatePath('/admin/roster-print');
-  revalidatePath('/admin/advancement/meeting-plan');
   revalidatePath('/advancement');
   // Scout pages are rendered per request — no site-wide purge needed
   // (Plans/Performance-Review-2026-08-27.md #9).

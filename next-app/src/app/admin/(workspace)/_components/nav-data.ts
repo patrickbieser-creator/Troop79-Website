@@ -219,16 +219,17 @@ export const SECTIONS: NavSection[] = [
   },
   {
     // Its own bar entry (Patrick, 2026-10-20). Since P5c the Sunday board lives in the Meeting Planner (/planner);
-    // this is the ledger-suggestion generator.
+    // Build a Plan B4 retired the generator and Publish to Site (planning is /planner/build), leaving By Scout and
+    // Teaching Roster.
     title: 'Meeting Plan',
     // Advancement work, so Advancement's tone on Home; every tone is taken.
     tint: 'moss',
     items: [
       {
-        label: 'Meeting Plan',
-        href: '/admin/advancement/meeting-plan',
+        label: 'By Scout & Roster',
+        href: '/admin/advancement/meeting-plan/by-scout',
         matchPath: '/admin/advancement/meeting-plan',
-        description: 'Suggested advancement from the ledger, published to the site',
+        description: 'What each scout could work on next, and who is set up to teach',
         capability: 'meeting_plan.use'
       }
     ]
