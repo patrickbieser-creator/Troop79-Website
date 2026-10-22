@@ -413,7 +413,7 @@ describe('Calendar entry workbench — one tab per layer', () => {
       agenda: {
         meeting: { id: 3, status: 'draft', title: 'PLC Meeting' } as never,
         sessions: [],
-        candidates: null,
+        board: null,
         onUpdateMeeting: vi.fn(),
         onSetStatus: vi.fn(),
         onCreateSession: vi.fn(),

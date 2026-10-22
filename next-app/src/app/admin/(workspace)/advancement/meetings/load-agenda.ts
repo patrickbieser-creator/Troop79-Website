@@ -1,8 +1,8 @@
 /**
  * Loads what the agenda editor needs for one meeting — its sessions, the
  * meeting's plan (Build a Plan's offerings, or Meeting Live's saved placement
- * once Live has started; B6) and the Meeting Plan engine's suggestions for
- * that date. Shared by the editor's own
+ * once Live has started; B6). The engine's own suggestions panel retired
+ * 2026-10-22 (B7): the tray is the plan. Shared by the editor's own
  * page (/admin/advancement/meetings/[id]) and the calendar entry workbench,
  * which renders the editor inside its Agenda tab (Patrick, 2026-08-24: "Can
  * the agenda editor also be opened immediately when clicking on that tab?").
@@ -10,9 +10,6 @@
 
 import { createAdminClient } from '@/lib/supabase/server';
 import type { MeetingSession } from '@/lib/supabase/types';
-import { buildMeetingPlan } from '@/lib/meeting-suggest/engine';
-import { loadEngineInput } from '@/lib/meeting-suggest/load-input';
-import { publicName } from '@/lib/meeting-plan-types';
 import type { AdvancementCatalog } from '@/lib/advancement-catalog';
 import { loadMeetingById, type BoardScoutRow } from '@/lib/meeting-board';
 import type { TeachBoard } from '@/lib/meeting-board-supply';
@@ -24,34 +21,7 @@ import { HALF_LABEL, sessionWords, type MatchResult } from '@/lib/meeting-board-
 import { topicWords } from '@/lib/meeting-board-picklist';
 import { boardName } from '@/lib/meeting-board-shared';
 import { flagText, teacherName } from '@/lib/meeting-board-teach';
-import type { BoardTray, Candidate, MatchedCandidate } from './[id]/meeting-editor';
-
-/** null = engine unavailable (load error) — the tray shows a quiet note. */
-export async function loadCandidates(meetingDate: string, title: string): Promise<Candidate[] | null> {
-  try {
-    const loaded = await loadEngineInput(meetingDate, title);
-    if (!loaded.ok) return null;
-    const payload = buildMeetingPlan(loaded.input);
-    return payload.sessions.map((s) => {
-      const teachers = [...s.adultTeachers, ...s.counselors].map((t) => t.name);
-      const scoutTeachers = s.scoutTeachers.map((t) => `${t.name} (${t.rankLabel})`);
-      return {
-        key: s.id,
-        codeLabel: s.codeLabel,
-        reqLabel: s.title,
-        eagle: s.eagle,
-        track: s.kind === 'mb' ? 'Merit Badge' : 'Open Advancement',
-        skillId: s.skillId,
-        skillName: s.skillName,
-        leaderName: teachers.length > 0 ? teachers.join(', ') : scoutTeachers.join(', ') || null,
-        scouts: s.scouts.map((sc) => publicName(sc.name)),
-        groupPart: s.groupPart
-      };
-    });
-  } catch {
-    return null;
-  }
-}
+import type { BoardTray, MatchedCandidate } from './[id]/meeting-editor';
 
 /**
  * The tray's planner half: what the Meeting Planner says will be taught, each class pre-filled as an agenda item
@@ -62,7 +32,7 @@ export async function loadCandidates(meetingDate: string, title: string): Promis
  *   - Once Live has started: its saved placement (loadMatchOrPlacement, the one seam every reader of the match uses).
  * Promoting goes through the same promotePlanSession as an engine suggestion; nothing is written until a leader adds
  * it. Names are as the agenda shows them to families: adults formally ("Mr. Vest"), scouts and Junior Leaders first
- * name + last initial ("Finn P"). null = the planner failed to load (the tray says so and the engine half still works).
+ * name + last initial ("Finn P"). null = the planner failed to load (the tray says so).
  */
 export async function loadBoardTray(entryId: number): Promise<BoardTray | null> {
   try {
@@ -175,17 +145,16 @@ export function matchedCandidates(
   });
 }
 
-export async function loadAgendaEditorData(meetingId: number, entryDate: string, title: string, entryId?: number) {
+export async function loadAgendaEditorData(meetingId: number, entryId: number) {
   const supabase = createAdminClient();
-  const [{ data: sessions }, candidates, board] = await Promise.all([
+  const [{ data: sessions }, board] = await Promise.all([
     supabase
       .from('meeting_sessions')
       .select('*')
       .eq('meeting_id', meetingId)
       .order('sort_order', { ascending: true })
       .order('id', { ascending: true }),
-    loadCandidates(entryDate, title),
-    entryId != null ? loadBoardTray(entryId) : Promise.resolve(undefined)
+    loadBoardTray(entryId)
   ]);
-  return { sessions: (sessions ?? []) as MeetingSession[], candidates, board };
+  return { sessions: (sessions ?? []) as MeetingSession[], board };
 }

@@ -120,7 +120,7 @@ export default async function CalendarEntryPage({
   // ── the active tab's own data ──
   const agendaPromise =
     tab === 'agenda' && meeting
-      ? loadAgendaEditorData(meeting.id as number, row.entry_date, meeting.title as string, entryId)
+      ? loadAgendaEditorData(meeting.id as number, entryId)
       : Promise.resolve(null);
   const rollCallPromise =
     tab === 'roll-call' ? Promise.all([loadAttendance(entryId), loadCandidates(entryId)]) : Promise.resolve(null);
@@ -211,7 +211,6 @@ export default async function CalendarEntryPage({
           ? {
               meeting: meeting as Meeting,
               sessions: agenda.sessions,
-              candidates: agenda.candidates,
               board: agenda.board,
               onUpdateMeeting: updateMeeting,
               onSetStatus: setMeetingStatus,

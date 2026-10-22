@@ -154,10 +154,11 @@ describe('the candidate tray', () => {
     expect([b?.source, s?.teacher, s?.blockLabel]).toEqual(['plan', '', 'Needs a teacher']);
   });
 
-  it('EngineTray_StillLoads_BesideTheBoardHalf', async () => {
+  // Patrick, 2026-10-22 (B7 extra): the engine suggestions panel is retired, so the editor loads the plan tray only.
+  it('AgendaEditor_LoadsThePlanTray_NoEngineSuggestions', async () => {
     await boardUp();
-    const data = await (await tray()).loadAgendaEditorData(meetingId, '2094-05-03', 'Troop Meeting', entry);
-    expect([Array.isArray(data.candidates), mine(data.board) != null]).toEqual([true, true]);
+    const data = await (await tray()).loadAgendaEditorData(meetingId, entry);
+    expect(['candidates' in data, mine(data.board) != null]).toEqual([false, true]);
   });
 });
 

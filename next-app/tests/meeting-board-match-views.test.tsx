@@ -58,7 +58,6 @@ function editor(board: Parameters<typeof MeetingEditor>[0]['board'], onPromote =
       board={board}
       entry={{ id: 5, entry_date: '2026-11-01' }}
       sessions={sessions}
-      candidates={[]}
       onUpdateMeeting={vi.fn(ok)}
       onSetStatus={vi.fn(ok)}
       onCreateSession={vi.fn(ok)}
@@ -95,14 +94,15 @@ describe('the meeting editor tray', () => {
     expect(screen.getByText('This meeting has no board. Build the agenda by hand.')).toBeTruthy();
   });
 
-  it('Tray_KeepsTheEngineSuggestions_UnderTheirOwnHeading', () => {
+  // Patrick, 2026-10-22 (B7 extra): the agenda tray is the plan only; the engine's own suggestions panel is retired.
+  it('Tray_HasNoEngineSuggestionsPanel', () => {
     editor({ closed: false, sessions: [], wanted: 0 });
-    expect([screen.getByText('Engine suggestions (ledger only)') != null, screen.getByText('Nothing on the plan yet.') != null]).toEqual([true, true]);
+    expect([screen.queryByText(/Engine suggestions|Plan Suggestions/), screen.getByText('Nothing on the plan yet.') != null]).toEqual([null, true]);
   });
 
-  it('Tray_WithoutABoard_IsUnchanged', () => {
-    editor(undefined);
-    expect([screen.queryByText('From the Meeting Planner'), screen.getByText('Plan Suggestions') != null]).toEqual([null, true]);
+  it('Tray_PlanFailedToLoad_SaysSo', () => {
+    editor(null);
+    expect(screen.getByText(/The plan didn.t load right now/)).toBeTruthy();
   });
 });
 

@@ -18,20 +18,6 @@ import { FormPanel } from '../../../../_components/form-panel';
 
 type ActionResult = { ok: boolean; error?: string };
 
-/** One Meeting Plan engine suggestion, flattened for the tray. */
-export interface Candidate {
-  key: number;
-  codeLabel: string;
-  reqLabel: string;
-  eagle: boolean;
-  track: string;
-  skillId: string | null;
-  skillName: string | null;
-  leaderName: string | null;
-  scouts: string[];
-  groupPart: string | null;
-}
-
 /** One live-matched session from the meeting board (Phase 3a), pre-filled for the agenda. */
 export interface MatchedCandidate {
   id: string;
@@ -61,14 +47,12 @@ export interface BoardTray {
 
 interface Props {
   meeting: Meeting;
-  /** The meeting board's live match (Phase 3a). null = failed to load; undefined = not loaded (older callers). */
-  board?: BoardTray | null;
+  /** The meeting's plan (Build a Plan, or Meeting Live's placement once it starts). null = failed to load. */
+  board: BoardTray | null;
   /** The calendar entry this meeting is the agenda layer of. The entry owns the
    *  date and the public URL — the agenda no longer carries either. */
   entry: { id: number; entry_date: string };
   sessions: MeetingSession[];
-  /** null = engine unavailable (load error) — tray shows a quiet note. */
-  candidates: Candidate[] | null;
   onUpdateMeeting: (fd: FormData) => Promise<ActionResult>;
   onSetStatus: (id: number, status: 'draft' | 'published') => Promise<ActionResult>;
   onCreateSession: (fd: FormData) => Promise<ActionResult>;
@@ -93,7 +77,6 @@ export function MeetingEditor({
   board,
   entry,
   sessions,
-  candidates,
   onUpdateMeeting,
   onSetStatus,
   onCreateSession,
@@ -109,7 +92,6 @@ export function MeetingEditor({
   const [savedNote, setSavedNote] = useState(false);
   const [openFor, setOpenFor] = useState<MeetingSession | { newIn: MeetingSection } | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
-  const [addedKeys, setAddedKeys] = useState<Set<number>>(new Set());
   const [addedMatched, setAddedMatched] = useState<Set<string>>(new Set());
   const dialogRef = useRef<HTMLDialogElement>(null);
   /** The logistics form, so Publish can commit it before flipping status. */
@@ -220,27 +202,11 @@ export function MeetingEditor({
     run(`del-${s.id}`, () => onDeleteSession(s.id, meeting.id));
   }
 
-  function promote(c: Candidate) {
-    const payload: PromotePayload = {
-      meetingId: meeting.id,
-      title: c.skillName ? `${c.skillName}: ${c.codeLabel}` : c.codeLabel,
-      description: c.reqLabel + (c.groupPart ? ` (Group ${c.groupPart})` : ''),
-      track: c.track,
-      leaderName: c.leaderName,
-      skillId: c.skillId,
-      requirements: [{ code: c.codeLabel, label: c.reqLabel }],
-      scouts: c.scouts.length ? c.scouts : null
-    };
-    run(`promote-${c.key}`, () => onPromote(payload), () => {
-      setAddedKeys((prev) => new Set(prev).add(c.key));
-    });
-  }
-
   /** Already on the agenda (added earlier, this visit or before): same title and description as its promote payload. */
   const onAgenda = (c: MatchedCandidate) =>
     addedMatched.has(c.id) || agenda.some((s) => s.title === c.promote.title && (s.description ?? null) === c.promote.description);
 
-  /** A board session into the agenda: the same one-way copy as an engine suggestion; the board is never changed. */
+  /** A plan session into the agenda: a one-way copy; the plan is never changed. */
   function promoteMatched(c: MatchedCandidate) {
     run(`promote-m-${c.id}`, () => onPromote({ meetingId: meeting.id, ...c.promote }), () => {
       setAddedMatched((prev) => new Set(prev).add(c.id));
@@ -399,10 +365,9 @@ export function MeetingEditor({
 
         {/* ── candidate tray ── */}
         <aside className={styles.tray}>
-          {board !== undefined && (
-            <FormPanel title="From the Meeting Planner">
+          <FormPanel title="From the Meeting Planner">
               {board === null ? (
-                <p className={styles.trayNote}>The board&rsquo;s match didn&rsquo;t load right now. The engine&rsquo;s suggestions below still work.</p>
+                <p className={styles.trayNote}>The plan didn&rsquo;t load right now. Reload, or build the agenda by hand.</p>
               ) : board.closed ? (
                 <p className={styles.trayNote}>This meeting has no board. Build the agenda by hand.</p>
               ) : (
@@ -449,64 +414,6 @@ export function MeetingEditor({
                 </>
               )}
             </FormPanel>
-          )}
-          <FormPanel title={board !== undefined ? 'Engine suggestions (ledger only)' : 'Plan Suggestions'}>
-            <p className={styles.trayNote}>
-              The Meeting Plan engine&rsquo;s suggestions for {fmtDateFull(entry.entry_date)}.
-              Promoting copies one into the agenda as an editable item &mdash; the plan itself is
-              never changed.
-            </p>
-            {candidates === null ? (
-              <p className={styles.trayNote}>
-                Suggestions unavailable right now (engine data failed to load). You can still build
-                the agenda by hand.
-              </p>
-            ) : candidates.length === 0 ? (
-              <p className={styles.trayNote}>No suggestions for this date.</p>
-            ) : (
-              candidates.map((c) => (
-                <div key={c.key} className={styles.candidateCard}>
-                  <div className={styles.candidateCode}>
-                    {c.track}
-                    {c.eagle && <span className={styles.eagleTag}> · Eagle</span>}
-                    {c.groupPart && <> · Group {c.groupPart}</>}
-                  </div>
-                  <div className={styles.candidateTitle}>
-                    {c.skillName ? `${c.skillName}: ${c.codeLabel}` : c.codeLabel}
-                  </div>
-                  <div className={styles.candidateMeta}>
-                    {c.reqLabel}
-                    {c.leaderName && (
-                      <>
-                        <br />
-                        Teacher: {c.leaderName}
-                      </>
-                    )}
-                    {c.scouts.length > 0 && (
-                      <>
-                        <br />
-                        {c.scouts.length} scout{c.scouts.length === 1 ? '' : 's'}: {c.scouts.join(', ')}
-                      </>
-                    )}
-                  </div>
-                  <div className={styles.candidateFoot}>
-                    {addedKeys.has(c.key) ? (
-                      <span className={styles.candidateAdded}>Added ✓</span>
-                    ) : (
-                      <span />
-                    )}
-                    <Button
-                      size="sm"
-                      onClick={() => promote(c)}
-                      disabled={busyKey === `promote-${c.key}`}
-                    >
-                      {busyKey === `promote-${c.key}` ? 'Adding…' : addedKeys.has(c.key) ? 'Add again' : 'Add to agenda'}
-                    </Button>
-                  </div>
-                </div>
-              ))
-            )}
-          </FormPanel>
         </aside>
       </div>
 

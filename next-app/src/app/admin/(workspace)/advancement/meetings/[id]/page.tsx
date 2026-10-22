@@ -2,7 +2,7 @@
  * /admin/advancement/meetings/[id] — the agenda editor for one meeting.
  *
  * Left: logistics + the pre-meeting and agenda session builders.
- * Right: the candidate tray — the meeting board's live match (Phase 3a) and this date's Meeting Plan engine suggestions,
+ * Right: the candidate tray — the meeting's plan (Build a Plan's offerings, or Meeting Live's placement once it starts),
  * each one promotable into the agenda as a prefilled, editable session.
  * Promotion copies data one way; plan snapshots are never touched.
  */
@@ -53,14 +53,13 @@ export default async function MeetingEditorPage({ params }: { params: Promise<{ 
   if (!entry) notFound();
   const entryDate = entry.entry_date as string;
 
-  const { sessions, candidates, board } = await loadAgendaEditorData(meetingId, entryDate, meeting.title as string, entry.id as number);
+  const { sessions, board } = await loadAgendaEditorData(meetingId, entry.id as number);
 
   return (
     <MeetingEditor
       meeting={meeting as Meeting}
       entry={{ id: entry.id as number, entry_date: entryDate }}
       sessions={sessions}
-      candidates={candidates}
       board={board}
       onUpdateMeeting={updateMeeting}
       onSetStatus={setMeetingStatus}
