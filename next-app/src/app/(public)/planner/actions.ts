@@ -10,7 +10,7 @@
  * may teach, Junior Leaders and adults-only skills, closed and past boards).
  * P2b: Send request goes through v1's invite sender (lib/meeting-invites-send), adults only.
  * B4 (Build a Plan, one add path): seeding moved to build-actions (plannerAddOfferingAction, plannerAddFocusSetAction,
- * plannerRemoveOfferingAction); the nudge actions retired with the Offered card (Build's Invite… offers a class).
+ * plannerRemoveOfferingAction); the nudge actions retired with the Offered card (the Invite tab offers a class).
  * P5b: reminders to people who haven't answered, adults only, through the same invite pipeline.
  * Each write returns what it changed and the board's new stamp, so the poller doesn't refresh over it.
  * A drawer write revalidates nothing (perf, 2026-10-22): any revalidatePath makes Next re-render /planner inside the

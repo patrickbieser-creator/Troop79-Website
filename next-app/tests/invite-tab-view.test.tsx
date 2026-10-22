@@ -151,3 +151,63 @@ describe('what left Build a Plan (B6)', () => {
     expect(screen.queryByText(/invited/)).toBeNull();
   });
 });
+
+/** B6 qa follow-ups (2026-10-22). */
+describe('B6 qa follow-ups', () => {
+  const offeringButton = () => within(screen.getByRole('navigation', { name: 'Offerings' })).getByRole('button');
+
+  it('InviteTab_Send_SkippedRecipientStaysTicked', async () => {
+    // P10 and P12 went out (fresh asks in the refreshed data); the server skipped P11, who has no chip.
+    m.send.mockResolvedValue({ ok: true, sent: ['P10', 'P12'], emails: 2, skipped: [{ name: 'P11', reason: 'didn’t go out' }], invited: 2, prior: 's', stamp: 's2' });
+    const asked = { chip: 'recent' as const, askedAt: new Date().toISOString(), blocked: 'Asked in the last day' };
+    m.sheet.mockResolvedValue({ ok: true, sections: [{ ...DATA.sections[0], scouts: [person(10, [40], asked), person(11, [40]), person(12, [40, 12], asked), person(14, [60], { likely: false })] }], recipients: RECIPIENTS });
+    renderTab();
+    fireEvent.click(screen.getByRole('button', { name: 'Send 3 emails to 2 families' }));
+    await waitFor(() => expect(screen.getAllByText('Asked <24h').length).toBe(2));
+    expect(screen.getByText('P11').closest('button')?.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('InviteTab_PhoneDrill_FocusesTheDetailHeading', () => {
+    renderTab({ initialKey: null });
+    fireEvent.click(offeringButton());
+    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 2, name: /First aid/ }));
+  });
+
+  it('InviteTab_BackToOfferings_FocusesThatOffering', () => {
+    renderTab();
+    fireEvent.click(screen.getByRole('button', { name: '← Offerings' }));
+    expect(document.activeElement).toBe(offeringButton());
+  });
+
+  it('InviteTab_ReviewHeadingIds_StayUnique_WithTheDrawerOpen', () => {
+    renderTab();
+    fireEvent.click(screen.getByRole('button', { name: 'Send 3 emails · Review' }));
+    expect(document.querySelectorAll('[id="invite-review"]').length).toBe(1);
+  });
+
+  it('InviteTab_Viewer_PhoneBar_SaysReviewOnly', () => {
+    renderTab({ canEmail: false });
+    expect([screen.queryByRole('button', { name: /· Review$/ }), screen.getByRole('button', { name: 'Review' }) != null]).toEqual([null, true]);
+  });
+
+  it('InviteTab_PreviewClose_ReturnsFocusToItsOpener', () => {
+    renderTab();
+    const opener = screen.getAllByRole('button', { name: /^Preview email/ })[0];
+    fireEvent.click(opener);
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Close' }));
+    expect(document.activeElement).toBe(opener);
+  });
+
+  it('InviteTab_TickAllLikely_SkipsScoutsWhoSaidYes', () => {
+    renderTab({ data: { ...DATA, sections: [{ ...DATA.sections[0], scouts: [person(10, [40]), person(11, [40], { chip: 'yes' })] }] } });
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Tick all likely' }));
+    expect(screen.getByText('P11').closest('button')?.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('InviteTab_Preview_HasNoInviteLink', () => {
+    renderTab();
+    fireEvent.click(screen.getAllByRole('button', { name: /^Preview email/ })[0]);
+    expect(screen.getByRole('dialog').innerHTML).not.toMatch(/\/i\//);
+  });
+});

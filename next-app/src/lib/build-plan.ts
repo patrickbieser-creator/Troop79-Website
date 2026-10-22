@@ -12,7 +12,7 @@
  */
 import type { PlannerBoard } from '@/lib/meeting-planner-board';
 import { assessTeacher, flagText, teacherName, topicSkill, type TeachContext, type TeacherPerson } from '@/lib/meeting-board-teach';
-import { nextRankOf, rankOfKey } from '@/lib/meeting-board-picklist';
+import { isPickOutOfReach, nextRankOf, rankOfKey } from '@/lib/meeting-board-picklist';
 import { othersLabel } from '@/lib/meeting-board-shared';
 import type { CatalogRank, CatalogRankRequirement } from '@/lib/advancement-catalog';
 import type { ReqNode } from '@/lib/mb-helpers';
@@ -134,7 +134,7 @@ export function likelyFit(f: LikelyFacts, key: string, ranks: readonly CatalogRa
 /**
  * A mix's members this scout hasn't finished (B6, for likelyFit): a rank member is finished when the scout is at or past
  * its rank or the ledger satisfies it (any level: 'tenderfoot-4a' or 'tenderfoot-4a.1'); a badge member when the badge
- * is awarded. Pure.
+ * is awarded. A rank member the rank rules hold back (isPickOutOfReach) doesn't count either. Pure.
  */
 export function unfinishedMembers(
   members: readonly string[],
@@ -164,7 +164,13 @@ export function unfinishedMembers(
       return !(b && ctx.awardedMbs.has(b.id));
     }
     if (mine != null && mine >= rank.sort_order) return false;
-    const node = find(ctx.trees.get(rank.id) ?? [], m.slice(rank.id.length + 1));
+    const tree = ctx.trees.get(rank.id) ?? [];
+    const code = m.slice(rank.id.length + 1);
+    // Held back by the rank rules (qa-lead B6 #4): a member whose top-level requirement the pick list wouldn't offer
+    // (a Scoutmaster conference before 95% of the rank, a board of review not yet reachable) covers nothing yet.
+    const top = tree.find((t) => t.code === code || find(t.children, code));
+    if (isPickOutOfReach(top ? `${rank.id}-${top.code}` : m, ctx)) return false;
+    const node = find(tree, code);
     return node ? !rankNodeSatisfied(node, rank.id, ctx.rankCodes as Set<string>) : !ctx.rankCodes.has(m);
   });
 }

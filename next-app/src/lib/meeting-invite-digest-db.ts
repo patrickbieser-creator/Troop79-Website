@@ -2,8 +2,8 @@
  * Build a Plan B3 (Plans/Build-A-Plan.md "Invite…", Decision 2), the database half. Server-only, service role; the
  * caller gates (an adult holding meeting_planner.edit).
  *
- *   loadInviteSheet     per offering, the teachers to ask and the scouts to offer it to, each with who the email would
- *                       reach. Bounded: the same round trips for one offering or all of them (pinned in a test).
+ *   loadInviteTab       per offering, the teachers to ask and the scouts to offer it to, each with who the email would
+ *                       reach (the Invite tab, B6). Bounded: the same round trips for one offering or all of them (pinned in a test).
  *   createInviteDigest  mints one row per invite (teach / pick, per recipient, as P1/P2 do) and groups them by
  *                       RECIPIENT: one email each. Who may be invited is re-decided here, whatever the sheet sent:
  *                       a teach ask goes to an active adult with an address; a pick to a scout who can still pick it
@@ -166,16 +166,6 @@ export async function loadInviteTab(
     return { key, teachers, scouts };
   });
   return { sections, recipients };
-}
-
-/** The B3 sheet's shape: the Invite tab's sections. */
-export async function loadInviteSheet(
-  sb: SupabaseClient,
-  meeting: { entryId: number; date: string },
-  keys: readonly string[],
-  deps: { now?: Date; loadCatalog?: () => Promise<AdvancementCatalog> } = {}
-): Promise<InviteSection[]> {
-  return (await loadInviteTab(sb, meeting, keys, deps)).sections;
 }
 
 export interface DigestInvite {

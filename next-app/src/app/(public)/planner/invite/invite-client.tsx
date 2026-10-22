@@ -14,7 +14,8 @@
  *
  * Ticks are client state until Send (no reload per tick). Send goes through plannerSendInvitesAction within the
  * per-send caps (sendPlan): anything past a cap stays ticked, is marked in place and goes in the next send. After a
- * send the tab's data is read again (plannerInviteSheetAction), so the chips and blocks follow.
+ * send the tab's data is read again (plannerInviteSheetAction), so the chips and blocks follow; only the invites that
+ * now carry a fresh ask come off (ticksAfterSend), so a recipient the server skipped stays ticked too.
  *
  * Not ready warns, it doesn't block (Patrick): a Notice names the offerings with no teacher, whose teacher asks start
  * ticked. Viewers and the SPL see everything read-only; a past or closed meeting is read-only.
@@ -38,6 +39,7 @@ import {
   reviewGroups,
   sendPlan,
   tickId,
+  ticksAfterSend,
   type InviteKind,
   type InvitePerson,
   type InviteSection,
@@ -106,6 +108,17 @@ export function InviteView({
   const [problem, setProblem] = useState<string | null>(null);
   const [sent, setSent] = useState<Sent | null>(null);
   const inFlight = useRef(false);
+  /** Phone drill-down focus (qa-lead B6 #2): where focus goes once the list or the detail has rendered. */
+  const focusNext = useRef<'detail' | string | null>(null);
+  const listRef = useRef<HTMLElement | null>(null);
+  const previewOpener = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const target = focusNext.current;
+    if (target == null) return;
+    focusNext.current = null;
+    if (target === 'detail') document.getElementById('invite-detail-title')?.focus();
+    else document.getElementById(offeringButtonId(target))?.focus();
+  }, [drill, selected]);
 
   const canSend = canEmail && !readOnly;
   const plan = useMemo(() => sendPlan(sections, ticks, recipients), [sections, ticks, recipients]);
@@ -144,11 +157,13 @@ export function InviteView({
       return;
     }
     setSent(res);
-    // The sent ticks come off; the overflow stays ticked for the next send.
-    const went = new Set([...plan.teach.flatMap((t) => t.personIds.map((id) => tickId('teach', t.key, id))), ...plan.pick.flatMap((p) => p.scoutIds.map((id) => tickId('pick', p.key, id)))]);
-    setTicks((t) => new Set([...t].filter((id) => !went.has(id))));
+    // Only what now carries a fresh ask comes off; a skipped recipient and the overflow stay ticked (qa-lead B6 #1).
+    // If the refresh fails, the ticks stay: the server's 24-hour dedupe keeps a second send from emailing anyone twice.
     const fresh = await plannerInviteSheetAction({ entryId }).catch(() => null);
-    if (fresh?.ok) setData({ sections: fresh.sections, recipients: fresh.recipients });
+    if (fresh?.ok) {
+      setData({ sections: fresh.sections, recipients: fresh.recipients });
+      setTicks((t) => ticksAfterSend(t, fresh.sections));
+    }
     inFlight.current = false;
     setBusy(false);
   };
@@ -171,12 +186,16 @@ export function InviteView({
       {busy ? 'Sending…' : sendLabel}
     </Button>
   );
-  const review = (
+  const review = (headingId: string) => (
     <Review
+      headingId={headingId}
       groups={groups}
       rowOf={rowOf}
       overflow={plan.overflow.size}
-      onPreview={(group, recipientId) => setPreview({ group, recipientId })}
+      onPreview={(group, recipientId, opener) => {
+        previewOpener.current = opener;
+        setPreview({ group, recipientId });
+      }}
       foot={
         readOnly ? null : (
           <>
@@ -246,7 +265,7 @@ export function InviteView({
       </div>
       <div className={s.layout} data-drill={view === 'offering' ? drill : 'detail'}>
         {view === 'offering' ? (
-          <nav className={s.list} aria-label="Offerings">
+          <nav className={s.list} aria-label="Offerings" ref={listRef}>
             <ul className={s.offerings}>
               {rows.map((r) => {
                 const sec = byKey.get(r.key);
@@ -258,9 +277,13 @@ export function InviteView({
                       type="button"
                       className={r.key === selected ? s.offeringOn : s.offering}
                       aria-current={r.key === selected ? 'true' : undefined}
+                      id={offeringButtonId(r.key)}
                       onClick={() => {
                         setSelected(r.key);
                         setDrill('detail');
+                        // On a phone the list goes away under the finger: take focus to what replaced it. On a desktop
+                        // the list stays (offsetParent set), so focus stays on the offering.
+                        if (!listRef.current?.offsetParent) focusNext.current = 'detail';
                       }}
                     >
                       <span className={s.offeringTitle}>
@@ -280,7 +303,14 @@ export function InviteView({
         <section className={s.detail} aria-label={view === 'offering' ? (currentRow?.title ?? 'Offering') : 'By person'}>
           {view === 'offering' ? (
             <>
-              <button type="button" className={s.back} onClick={() => setDrill('list')}>
+              <button
+                type="button"
+                className={s.back}
+                onClick={() => {
+                  focusNext.current = selected;
+                  setDrill('list');
+                }}
+              >
                 ← Offerings
               </button>
               {current && currentRow ? (
@@ -304,19 +334,19 @@ export function InviteView({
           )}
         </section>
         <aside className={s.review} aria-labelledby="invite-review">
-          {review}
+          {review('invite-review')}
         </aside>
       </div>
       {readOnly ? null : (
         <div className={s.phoneBar}>
           <Button variant="primary" onClick={() => setReviewSheet(true)} aria-haspopup="dialog">
-            {`Send ${plural(plan.emails, 'email')} · Review`}
+            {canSend ? `Send ${plural(plan.emails, 'email')} · Review` : 'Review'}
           </Button>
         </div>
       )}
       {reviewSheet ? (
         <Drawer title="Review" onClose={() => setReviewSheet(false)}>
-          {review}
+          {review('invite-review-sheet')}
         </Drawer>
       ) : null}
       {preview ? (
@@ -327,12 +357,18 @@ export function InviteView({
           rowOf={rowOf}
           template={template}
           day={day}
-          onClose={() => setPreview(null)}
+          onClose={() => {
+            setPreview(null);
+            // Back to the Preview that opened it (qa-lead B6 #3).
+            previewOpener.current?.focus();
+          }}
         />
       ) : null}
     </>
   );
 }
+
+const offeringButtonId = (key: string) => `invite-offering-${key.replace(/[^a-z0-9-]/gi, '_')}`;
 
 const sentLine = (res: Sent, overflow: number) =>
   `${res.emails ? `Sent ${plural(res.emails, 'email')}.` : 'Nothing went out.'}${overflow ? ` ${plural(overflow, 'more invite')} ticked past this send’s limit: send again.` : ''}`;
@@ -425,13 +461,13 @@ function OfferingDetail({
   const tickable = (kind: InviteKind, list: InvitePerson[]) => list.filter((p) => !p.blocked && p.tier !== 'assigned').map((p) => tickId(kind, sec.key, p.personId));
   return (
     <div className={s.detailBody}>
-      <h2 className={s.detailTitle}>
+      <h2 id="invite-detail-title" className={s.detailTitle} tabIndex={-1}>
         {row.codeLabel ? <span className={b.code}>{row.codeLabel}</span> : null}
         {row.title}
       </h2>
       {readOnly ? null : (
         <p className={s.controls}>
-          <button type="button" className={s.quiet} onClick={() => onMany(tickable('pick', likely), true)}>
+          <button type="button" className={s.quiet} onClick={() => onMany(tickable('pick', likely.filter((p) => p.chip !== 'yes' && p.chip !== 'picked')), true)}>
             Tick all likely
           </button>
           <button type="button" className={s.quiet} onClick={() => onMany([...tickable('teach', sec.teachers), ...tickable('pick', sec.scouts)], false)}>
@@ -518,22 +554,25 @@ function PeopleView({
 }
 
 function Review({
+  headingId,
   groups,
   rowOf,
   overflow,
   onPreview,
   foot
 }: {
+  /** Unique per copy: the sticky Review and the phone Drawer's can both be in the page. */
+  headingId: string;
   groups: ReviewGroup[];
   rowOf: ReadonlyMap<string, PlanRow>;
   overflow: number;
-  onPreview: (group: ReviewGroup, recipientId: number) => void;
+  onPreview: (group: ReviewGroup, recipientId: number, opener: HTMLElement) => void;
   foot: ReactNode;
 }) {
   const code = (key: string) => rowOf.get(key)?.codeLabel || rowOf.get(key)?.title || key;
   return (
     <div className={s.reviewBody}>
-      <h2 id="invite-review" className={b.editLabel}>
+      <h2 id={headingId} className={b.editLabel}>
         Review
       </h2>
       {groups.length ? (
@@ -544,7 +583,7 @@ function Review({
                 <span className={b.pickTitle}>{g.label}:</span> {g.about.map((a) => `${a.name} (${a.keys.map(code).join(', ')})`).join(', ')}
               </p>
               {g.recipients.map((r) => (
-                <button key={r.recipientId} type="button" className={s.quiet} onClick={() => onPreview(g, r.recipientId)} aria-haspopup="dialog">
+                <button key={r.recipientId} type="button" className={s.quiet} onClick={(e) => onPreview(g, r.recipientId, e.currentTarget)} aria-haspopup="dialog">
                   Preview email{g.recipients.length > 1 ? ` to ${r.name}` : ''}
                 </button>
               ))}

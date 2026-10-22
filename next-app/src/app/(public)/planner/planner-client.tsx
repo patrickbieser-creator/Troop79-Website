@@ -13,7 +13,7 @@
  * P2b: Send request renders for adult editors only (canEmail); a scout editor (the SPL) sees AdultsSendEmails instead.
  * P3: a seed holder (canSeed) may leave an offer's teacher blank: Build a Plan's own add puts it on the plan (B4).
  * B4 (Build a Plan "Consolidation"): the seed drawer and the nudge drawer retired with the cards that opened them
- * (Build's Invite… offers a class to families); the plan strip's PlanLink opens this meeting on /planner/build.
+ * (the Invite tab offers a class to families); the plan strip's PlanLink opens this meeting on /planner/build.
  * P5b: reminders, adult editors only: "Remind" in the person drawer and "Remind everyone…" on the Haven't answered
  * card. Who was reminded this visit is kept here, so the drawer and the card agree.
  */

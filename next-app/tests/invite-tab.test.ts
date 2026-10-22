@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { likelyFit, unfinishedMembers } from '../src/lib/build-plan';
-import { chipLabel, defaultTicks, inviteChips, sendPlan, tickId, DIGEST_EMAIL_CAP, type InvitePerson, type InviteSection } from '../src/lib/meeting-invite-digest';
+import { chipLabel, defaultTicks, inviteChips, sendPlan, tickId, ticksAfterSend, DIGEST_EMAIL_CAP, type InvitePerson, type InviteSection } from '../src/lib/meeting-invite-digest';
 import { rankTrees } from '../src/lib/meeting-board-picklist';
 
 /**
@@ -103,5 +103,25 @@ describe('per-send caps (B6)', () => {
     const ticks = new Set([tickId('teach', 'a', 9), tickId('pick', 'a', 1), tickId('pick', 'a', 2)]);
     const plan = sendPlan(sections, ticks, { 9: { family: 'h1' }, 40: { family: 'h2' }, 41: { family: 'h2' } });
     expect([plan.emails, plan.families]).toEqual([3, 2]);
+  });
+});
+
+/** B6 qa follow-ups (2026-10-22). */
+describe('B6 qa follow-ups (pure)', () => {
+  it('InviteTab_MixMember_HeldBackByRankRules_DoesntCover', () => {
+    // First Class 12 is the Scoutmaster conference: held back until 95% of the rank, so it covers nothing yet.
+    const trees = rankTrees([
+      { id: 1, rank_id: 'first-class', parent_id: null, code: '4a', label: 'x', sort_order: 1 },
+      { id: 2, rank_id: 'first-class', parent_id: null, code: '12', label: 'SMC', sort_order: 2 }
+    ] as never);
+    const open = unfinishedMembers(['first-class-4a', 'first-class-12'], { currentRank: 'second-class', ranks: RANKS, trees, rankCodes: new Set(), awardedMbs: new Set(), badges: BADGES });
+    expect(open).toEqual(['first-class-4a']);
+  });
+
+  it('InviteTab_Send_OverflowAndSkippedStayTicked', () => {
+    // 1 was sent (the refreshed data shows a fresh ask), 2 was skipped by the server (no chip), 3 was past the cap.
+    const sections: InviteSection[] = [{ key: 'a', teachers: [], scouts: [person(1, { chip: 'recent', blocked: 'Asked in the last day' }), person(2), person(3)] }];
+    const ticks = new Set([1, 2, 3].map((id) => tickId('pick', 'a', id)));
+    expect([...ticksAfterSend(ticks, sections)]).toEqual([tickId('pick', 'a', 2), tickId('pick', 'a', 3)]);
   });
 });

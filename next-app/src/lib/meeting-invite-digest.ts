@@ -150,6 +150,20 @@ export function defaultTicks(sections: readonly InviteSection[], hasTeacher: (ke
   return out;
 }
 
+/**
+ * The ticks after a send, from the tab's refreshed data (qa-lead B6 #1): an invite that now carries a fresh ask ("Asked
+ * <24h") went out and comes off; everything else stays ticked, so a recipient the server skipped and the overflow past
+ * a cap go in the next send. Pure.
+ */
+export function ticksAfterSend(ticks: ReadonlySet<string>, sections: readonly InviteSection[]): Set<string> {
+  const went = new Set<string>();
+  for (const s of sections) {
+    for (const p of s.teachers) if (p.chip === 'recent') went.add(tickId('teach', s.key, p.personId));
+    for (const p of s.scouts) if (p.chip === 'recent') went.add(tickId('pick', s.key, p.personId));
+  }
+  return new Set([...ticks].filter((id) => !went.has(id)));
+}
+
 /** The ticked invites the server is asked for (blocked people never, whatever the ticks say). */
 export function selection(sections: readonly InviteSection[], ticks: ReadonlySet<string>): { teach: { key: string; personIds: number[] }[]; pick: { key: string; scoutIds: number[] }[] } {
   const on = (kind: InviteKind, key: string, p: InvitePerson) => !p.blocked && ticks.has(tickId(kind, key, p.personId));
