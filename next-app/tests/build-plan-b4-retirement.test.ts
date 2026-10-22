@@ -70,14 +70,33 @@ describe('the public plan page', () => {
 });
 
 describe("Admin's generator", () => {
-  it('AdminMeetingPlan_RedirectsToBuild', async () => {
+  const landingFor = async (capabilities: string[]) => {
+    vi.resetModules();
     const redirect = vi.fn((to: string) => {
       throw new Error(`REDIRECT ${to}`);
     });
     vi.doMock('next/navigation', () => ({ redirect, permanentRedirect: redirect }));
+    vi.doMock('@/lib/admin-actor', () => ({ resolveAdminActor: async () => ({ capabilities: new Set(capabilities), subjectKind: 'leader' }) }));
     const { default: Page } = await import('../src/app/admin/(workspace)/advancement/meeting-plan/page');
-    await expect(async () => Page()).rejects.toThrow('REDIRECT /planner/build');
-    vi.doUnmock('next/navigation');
+    try {
+      return await Page().then(() => 'no redirect', (e: Error) => e.message);
+    } finally {
+      vi.doUnmock('next/navigation');
+      vi.doUnmock('@/lib/admin-actor');
+    }
+  };
+
+  it('AdminMeetingPlan_RedirectsToBuild', async () => {
+    expect(await landingFor(['meeting_plan.use', 'meeting_planner.view'])).toBe('REDIRECT /planner/build');
+  });
+
+  it('AdminMeetingPlan_RedirectsToByScout_WithoutPlannerRights', async () => {
+    expect(await landingFor(['meeting_plan.use'])).toBe('REDIRECT /admin/advancement/meeting-plan/by-scout');
+  });
+
+  it('OldPublicMeetingPlan_RedirectsToThePlanner', () => {
+    const config = readFileSync(path.join(ROOT, 'next.config.ts'), 'utf8');
+    expect(config).toMatch(/source: '\/meeting-plan', destination: '\/planner'/);
   });
 
   it('AdminNav_PointsNoEntryAtTheGenerator', () => {

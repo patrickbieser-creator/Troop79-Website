@@ -46,11 +46,12 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
-      // The public plan page was superseded by /meetings (the curated
-      // agenda); launch-week bookmarks land on the new page. Plan detail
-      // remains available in the admin workspace. Not permanent, in case
-      // the page ever comes back.
-      { source: '/meeting-plan', destination: '/meetings', permanent: false }
+      // The public plan page is retired (Build a Plan B4); the Meeting
+      // Planner is the plan of record now, so old bookmarks and shared
+      // links land there (it asks visitors to sign in). /meetings, the
+      // previous target, no longer exists. Not permanent, in case a public
+      // plan page ever comes back.
+      { source: '/meeting-plan', destination: '/planner', permanent: false }
     ];
   },
   experimental: {
