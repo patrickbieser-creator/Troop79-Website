@@ -7,7 +7,7 @@
  * others"), each with a one-line reason. Someone who can't be invited is listed, greyed, with why. Nothing sends until
  * "Send N emails", where N is the number of digest emails the ticks make (one per recipient, digestEmails).
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { Button } from '@/app/_components/button';
 import { Drawer } from '@/app/_components/drawer';
 import type { PlanRow } from '@/lib/build-plan';
@@ -38,6 +38,7 @@ export function InviteSheet({
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<Extract<InviteSendResult, { ok: true }> | null>(null);
   const inFlight = useRef(false);
+  const summary = useRef<HTMLDivElement>(null);
   const byKey = useMemo(() => new Map(rows.map((r) => [r.key, r])), [rows]);
 
   useEffect(() => {
@@ -83,6 +84,10 @@ export function InviteSheet({
     setDone(res);
     onSent(res);
   };
+  // Send swaps to Close and the list to the summary: focus follows to the summary (qa-lead B3 #2).
+  useEffect(() => {
+    if (done) summary.current?.focus();
+  }, [done]);
 
   const title = only ? (byKey.get(only)?.title ?? 'Invite') : 'Invite';
   const footer = done ? (
@@ -104,11 +109,14 @@ export function InviteSheet({
 
   return (
     <Drawer eyebrow={only ? 'Invite' : undefined} title={title} sub={only ? byKey.get(only)?.codeLabel : undefined} onClose={onClose} footer={footer}>
+      {/* One live region, in the sheet from the start; its text changes as the sheet loads and sends (qa-lead B3 #2). */}
+      <p className={sections === null && !done ? s.pickMeta : s.srOnly} role="status">
+        {done ? sentLine(done) : sections === null ? 'Finding who to invite…' : ''}
+      </p>
       {done ? (
-        <SentSummary res={done} />
+        <SentSummary res={done} focusRef={summary} />
       ) : (
         <>
-          {sections === null ? <p className={s.pickMeta}>Finding who to invite…</p> : null}
           {sections === 'failed' ? <p className={s.problem}>{problem ?? 'The list didn’t load. Close and try again.'}</p> : null}
           {Array.isArray(sections) && !sections.some((x) => x.teachers.length || x.scouts.length) ? <p className={s.pickMeta}>Nobody to invite for this yet.</p> : null}
           {list.map((sec) =>
@@ -182,10 +190,13 @@ function SheetSection({ sec, row, showHead, ticks, onToggle }: { sec: InviteSect
   );
 }
 
-function SentSummary({ res }: { res: Extract<InviteSendResult, { ok: true }> }) {
+const sentLine = (res: Extract<InviteSendResult, { ok: true }>) => (res.emails ? `Sent ${plural(res.emails, 'email')}.` : 'Nothing went out.');
+
+/** What the send did. Announced through the sheet's live region; focused when it appears. */
+function SentSummary({ res, focusRef }: { res: Extract<InviteSendResult, { ok: true }>; focusRef: RefObject<HTMLDivElement | null> }) {
   return (
-    <div className={s.editSection} role="status">
-      <p className={s.editLabel}>{res.emails ? `Sent ${plural(res.emails, 'email')}.` : 'Nothing went out.'}</p>
+    <div className={s.editSection} ref={focusRef} tabIndex={-1}>
+      <p className={s.editLabel}>{sentLine(res)}</p>
       {res.sent.length ? <p className={s.pickMeta}>Invited {res.sent.join(', ')}.</p> : null}
       {res.skipped.length ? (
         <>

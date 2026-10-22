@@ -29,6 +29,7 @@ const chain = () => {
 const sb = { from: () => chain() } as unknown as SupabaseClient;
 
 const { sendInviteDigests } = await import('../src/lib/meeting-invite-digest-send');
+const { REMINDER_BATCH, REMINDER_EMAIL_TIMEOUT_MS, REMINDER_TIME_BUDGET_MS } = await import('../src/lib/meeting-invites-send');
 
 const token = (n: number) => n.toString(16).padStart(64, '0');
 const parent = {
@@ -64,5 +65,36 @@ describe('the digest email', () => {
     m.send.mockResolvedValueOnce({ status: 'sent', to: [] }).mockResolvedValueOnce({ status: 'error', to: [] });
     await sendInviteDigests(sb, input);
     expect(m.del.mock.calls.flatMap((c) => c[1] as number[])).toEqual([9]);
+  });
+});
+
+describe('send safety (the reminder sender rules)', () => {
+  const deleted = () => m.del.mock.calls.flatMap((c) => c[1] as number[]);
+  const one = (n: number) => ({ recipientId: 100 + n, name: `R ${n}`, sentTo: `r${n}@example.com`, isScout: false, invites: [{ inviteId: 300 + n, token: token(300 + n), kind: 'pick' as const, key: 'tenderfoot-4a', inviteeId: 200 + n, inviteeName: `S ${n}` }] });
+
+  it('Invite_Digest_EmailThatHangs15Seconds_IsDeleted', async () => {
+    expect(REMINDER_EMAIL_TIMEOUT_MS).toBe(15_000);
+    vi.useFakeTimers();
+    try {
+      m.create.mockResolvedValue({ ok: true, recipients: [other], skipped: [] });
+      m.send.mockReturnValue(new Promise(() => undefined));
+      const done = sendInviteDigests(sb, input);
+      await vi.advanceTimersByTimeAsync(REMINDER_EMAIL_TIMEOUT_MS);
+      await done;
+      expect(deleted()).toEqual([9]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('Invite_Digest_PastThe40SecondBudget_StartsNoNewBatch', async () => {
+    expect(REMINDER_TIME_BUDGET_MS).toBe(40_000);
+    const many = Array.from({ length: REMINDER_BATCH + 2 }, (_, i) => one(i));
+    m.create.mockResolvedValue({ ok: true, recipients: many, skipped: [] });
+    m.send.mockResolvedValue({ status: 'sent', to: [] });
+    // Started at 0; the first batch starts at 0; the next would start 41 s in.
+    const clock = vi.fn().mockReturnValueOnce(0).mockReturnValueOnce(0).mockReturnValue(REMINDER_TIME_BUDGET_MS + 1_000);
+    const res = await sendInviteDigests(sb, input, { clock });
+    expect([m.send.mock.calls.length, deleted(), res.ok && res.skipped.filter((x) => x.reason.startsWith('out of time')).length]).toEqual([REMINDER_BATCH, [300 + REMINDER_BATCH, 301 + REMINDER_BATCH], 2]);
   });
 });

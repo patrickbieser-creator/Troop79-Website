@@ -260,6 +260,10 @@ export async function plannerSendInvitesAction(input: { entryId: number; teach: 
       return { key: t.key, personIds: t.personIds.filter((id) => ok.has(id)) };
     });
   }
+  if (!allowed.some((t) => t.personIds.length) && !pick.some((p) => p.scoutIds.length)) {
+    // Every tick was refused here: say who and why, send nothing.
+    return { ok: true, sent: [], emails: 0, skipped: skippedTeach, invited: invitedCount(await loadInviteRows(s.sb, s.meeting.entryId)), prior: s.prior, stamp: s.prior };
+  }
   const res = await sendInviteDigests(s.sb, { entryId: s.meeting.entryId, teach: allowed, pick, sentBy: s.actorPersonId });
   if (!res.ok) return res;
   const [stamp, rows] = await Promise.all([loadBoardStamp(s.sb, s.meeting.entryId), loadInviteRows(s.sb, s.meeting.entryId)]);

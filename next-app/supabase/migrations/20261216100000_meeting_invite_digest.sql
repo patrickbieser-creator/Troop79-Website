@@ -6,9 +6,11 @@
 -- as P1/P2 mint them, so the board's "who did we ask" counts and the link rules don't change.
 --
 -- 1. meeting_mint_invites: the 24-hour dedupe's database backstop, like meeting_mint_reminders. Under a per-meeting
---    transaction advisory lock it inserts the rows it was given except where the same (meeting, kind, topic, invitee)
---    was invited since p_since, in one statement, so a double-click or a second editor can't email twice. Rows for one
---    invitee in the same call all go in (the NOT EXISTS sees the statement's snapshot). Returns what it made.
+--    transaction advisory lock it inserts the rows it was given except where the same (meeting, kind, topic, invitee,
+--    RECIPIENT) was invited since p_since, in one statement, so a double-click or a second editor can't email twice.
+--    Per recipient (qa-lead B3 #3): when one parent's email went out and the other's failed (its rows deleted), a send
+--    again inside 24 hours reaches the parent who missed it. Rows for one invitee in the same call all go in (the NOT
+--    EXISTS sees the statement's snapshot). Returns what it made.
 -- 2. meeting_may_act_for_many: _meeting_may_act_for over many (actor, target) pairs in one round trip, so the sheet and
 --    the send decide a scout's recipients with one call however many families there are. Same rule, same answers.
 --
@@ -43,7 +45,8 @@ begin
      where not exists (
        select 1 from meeting_invites m
         where m.calendar_entry_id = p_entry and m.kind = w.kind and m.topic_key = w.topic_key
-          and m.invitee_person_id = w.invitee_person_id and m.sent_at > p_since)
+          and m.invitee_person_id = w.invitee_person_id and m.recipient_person_id = w.recipient_person_id
+          and m.sent_at > p_since)
     returning meeting_invites.id, meeting_invites.kind, meeting_invites.topic_key, meeting_invites.invitee_person_id,
               meeting_invites.recipient_person_id
   )

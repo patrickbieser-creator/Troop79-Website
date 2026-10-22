@@ -539,3 +539,9 @@
     min-height: 44px;
   }
 }
+
+/* A live region that is in the page from the start but shows nothing until it has something to say (qa-lead B3 #2). */
+.srOnly {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}

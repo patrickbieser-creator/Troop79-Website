@@ -8,8 +8,10 @@
  *                       RECIPIENT: one email each. Who may be invited is re-decided here, whatever the sheet sent:
  *                       a teach ask goes to an active adult with an address; a pick to a scout who can still pick it
  *                       (not done, in reach, not coming = no), hasn't picked it, with a parent who may act for them.
- *                       The 24-hour dedupe per (meeting, kind, topic, invitee) is checked for the reasons and again in
- *                       meeting_mint_invites under a per-meeting lock, so a double-click can't email twice.
+ *                       The 24-hour dedupe per (meeting, kind, topic, invitee, RECIPIENT) is checked for the reasons and
+ *                       again in meeting_mint_invites under a per-meeting lock, so a double-click can't email twice. Per
+ *                       recipient (qa-lead B3 #3): when one parent's email went out and the other's failed (its rows
+ *                       deleted), sending again inside 24 hours reaches the parent who missed it, and only them.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { loadAdvancementCatalog, type AdvancementCatalog } from '@/lib/advancement-catalog';
@@ -17,24 +19,28 @@ import { loadMeetingById } from '@/lib/meeting-board';
 import { nextRankOf } from '@/lib/meeting-board-picklist';
 import { INVITE_DEDUPE_HOURS, inviteExpiresAt } from '@/lib/meeting-invites';
 import { hashSecret } from '@/lib/identity-challenge';
-import { adultRecipients, loadScoutFamilies, randomInviteToken, scoutRecipientsMany, upcomingMeeting, type MailRecipient } from '@/lib/meeting-invites-db';
+import { adultRecipients, loadScoutFamilies, NO_EMAIL_ON_FILE, randomInviteToken, scoutRecipientsMany, upcomingMeeting, type MailRecipient } from '@/lib/meeting-invites-db';
 import { scoutCandidatesMany } from '@/lib/meeting-invites-send';
 import { loadTeacherChoicesMany } from '@/lib/build-plan-db';
 import { DIGEST_EMAIL_CAP, DIGEST_INVITE_CAP, DIGEST_KEYS_MAX, type InviteKind, type InvitePerson, type InviteSection } from '@/lib/meeting-invite-digest';
 
 const LINK_KINDS = ['teach', 'pick'];
 
-/** Who was invited lately, as `${kind}|${key}|${invitee}`. */
+/** Who was invited lately, as `${kind}|${key}|${invitee}|${recipient}`: one email reached that recipient about them. */
 async function invitedLately(sb: SupabaseClient, entryId: number, keys: readonly string[], since: string): Promise<Set<string>> {
   const { data, error } = await sb
     .from('meeting_invites')
-    .select('kind, topic_key, invitee_person_id')
+    .select('kind, topic_key, invitee_person_id, recipient_person_id')
     .eq('calendar_entry_id', entryId)
     .in('kind', LINK_KINDS)
     .in('topic_key', [...keys])
     .gt('sent_at', since);
   if (error) throw new Error(error.message);
-  return new Set(((data ?? []) as { kind: string; topic_key: string; invitee_person_id: number }[]).map((r) => `${r.kind}|${r.topic_key}|${r.invitee_person_id}`));
+  return new Set(
+    ((data ?? []) as { kind: string; topic_key: string; invitee_person_id: number; recipient_person_id: number }[]).map(
+      (r) => `${r.kind}|${r.topic_key}|${r.invitee_person_id}|${r.recipient_person_id}`
+    )
+  );
 }
 
 /** The rank a key belongs to ('tenderfoot-4a' → tenderfoot), or null (a badge, a mix). */
@@ -74,8 +80,12 @@ export async function loadInviteSheet(
     const teachers: InvitePerson[] = (teach.choices.get(key) ?? [])
       .filter((c) => c.qualified && !c.teaching && teach.people.get(c.personId)?.kind === 'adult')
       .map((c) => {
-        const to = adults.get(c.personId);
-        const blocked = lately.has(`teach|${key}|${c.personId}`) ? `asked in the last ${INVITE_DEDUPE_HOURS} hours` : !to ? 'no email on file' : null;
+        const to = adults.to.get(c.personId);
+        const blocked = lately.has(`teach|${key}|${c.personId}|${c.personId}`)
+          ? `asked in the last ${INVITE_DEDUPE_HOURS} hours`
+          : !to
+            ? (adults.why.get(c.personId) ?? NO_EMAIL_ON_FILE)
+            : null;
         return { personId: c.personId, name: c.name, reason: c.reason ?? '', counselor: c.counselor, likely: true, recipients: to ? [c.personId] : [], blocked };
       });
     const scouts: InvitePerson[] = (cands.byKey.get(key) ?? [])
@@ -83,9 +93,11 @@ export async function loadInviteSheet(
       .map((c) => {
         const working = nextRankOf(c.currentRank ?? null, catalog.ranks);
         const likely = topicRank == null || working === topicRank;
-        const to = (reach.get(c.personId) ?? []).map((r) => r.recipientId);
-        const hasParent = (reach.get(c.personId) ?? []).some((r) => !r.isScout);
-        const blocked = lately.has(`pick|${key}|${c.personId}`) ? `offered in the last ${INVITE_DEDUPE_HOURS} hours` : !hasParent ? 'no parent with an email' : null;
+        const all = reach.get(c.personId) ?? [];
+        const hasParent = all.some((r) => !r.isScout);
+        // Only the recipients not reached about this lately: after a partial failure, just the one who missed it.
+        const to = all.filter((r) => !lately.has(`pick|${key}|${c.personId}|${r.recipientId}`)).map((r) => r.recipientId);
+        const blocked = !hasParent ? 'no parent with an email' : !to.length ? `offered in the last ${INVITE_DEDUPE_HOURS} hours` : null;
         const reason = [working ? `Working on ${rankName.get(working) ?? working}` : null, c.note].filter(Boolean).join(' · ');
         return { personId: c.personId, name: c.name, reason, likely, recipients: hasParent ? to : [], blocked };
       })
@@ -165,12 +177,12 @@ export async function createInviteDigest(
   const skipped: DigestSkip[] = [];
   for (const t of teach) {
     for (const personId of t.ids) {
-      const who = adults.get(personId);
+      const who = adults.to.get(personId);
       if (!who) {
-        skipped.push({ personId, name: `Person ${personId}`, key: t.key, reason: 'not an adult with an email on file' });
+        skipped.push({ personId, name: `Person ${personId}`, key: t.key, reason: adults.why.get(personId) ?? 'not an adult with an email on file' });
         continue;
       }
-      if (lately.has(`teach|${t.key}|${personId}`)) {
+      if (lately.has(`teach|${t.key}|${personId}|${personId}`)) {
         skipped.push({ personId, name: who.name, key: t.key, reason: lateReason });
         continue;
       }
@@ -190,10 +202,6 @@ export async function createInviteDigest(
         skipped.push({ personId: scoutId, name: c.name, key: p.key, reason: 'already picked it' });
         continue;
       }
-      if (lately.has(`pick|${p.key}|${scoutId}`)) {
-        skipped.push({ personId: scoutId, name: c.name, key: p.key, reason: lateReason });
-        continue;
-      }
       passing.push({ key: p.key, scoutId, name: c.name });
     }
   }
@@ -207,8 +215,13 @@ export async function createInviteDigest(
         skipped.push({ personId: x.scoutId, name: x.name, key: x.key, reason: 'no parent with an email in their household' });
         continue;
       }
+      const fresh = mine.filter((m) => !lately.has(`pick|${x.key}|${x.scoutId}|${m.recipientId}`));
+      if (!fresh.length) {
+        skipped.push({ personId: x.scoutId, name: x.name, key: x.key, reason: lateReason });
+        continue;
+      }
       const epoch = family.person.get(x.scoutId)?.session_epoch ?? 0;
-      for (const m of mine) {
+      for (const m of fresh) {
         plans.push({ ...m, kind: 'pick', key: x.key, inviteeId: x.scoutId, inviteeName: x.name, inviteeEpoch: epoch, recipientName: family.person.get(m.recipientId)?.display_name ?? '' });
       }
     }

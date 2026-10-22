@@ -17,6 +17,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { centralToday } from '@/lib/dates';
+import { householdKeyForPerson, loadHouseholds } from '@/lib/households';
 import { deliverableEmailFor, hashSecret, identityForPerson } from '@/lib/identity-challenge';
 import { teachTopic } from '@/lib/meeting-board-supply';
 import { loadAdvancementCatalog, type AdvancementCatalog } from '@/lib/advancement-catalog';
@@ -432,26 +433,46 @@ export async function scoutRecipientsMany(sb: SupabaseClient, family: ScoutFamil
   return out;
 }
 
+/** Why a teach ask can't reach someone (adultRecipients' `why`). */
+export const NOT_IN_A_HOUSEHOLD = 'not in a household';
+export const NO_EMAIL_ON_FILE = 'no email on file';
+
 /**
- * Build a Plan B3: the adults a teach ask may go to, in two reads (identityForPerson's rule, batched): an active person
- * in the directory who isn't an active scout, with a primary address. Anyone else is absent from the map.
+ * Build a Plan B3: the adults a teach ask may go to, batched, under identityForPerson's rule (the rule the answer is
+ * held to when they open the link): an active person in the directory who isn't an active scout, placed in a household
+ * (resolveHouseholdKeyForPerson's rule, over ONE household load rather than one per person: qa-lead B3 #1, an adult the
+ * answer path can't place would get a link that answers void), with a primary address. `to` holds who can be emailed;
+ * `why` says why anyone else asked about can't (absent from both: not an adult on record at all).
  */
-export async function adultRecipients(sb: SupabaseClient, personIds: readonly number[]): Promise<Map<number, MailRecipient & { name: string }>> {
+export async function adultRecipients(
+  sb: SupabaseClient,
+  personIds: readonly number[]
+): Promise<{ to: Map<number, MailRecipient & { name: string }>; why: Map<number, string> }> {
   const ids = [...new Set(personIds)];
-  const out = new Map<number, MailRecipient & { name: string }>();
-  if (!ids.length) return out;
-  const [{ data: dir, error: e1 }, { data: rows, error: e2 }] = await Promise.all([
+  const to = new Map<number, MailRecipient & { name: string }>();
+  const why = new Map<number, string>();
+  if (!ids.length) return { to, why };
+  const [{ data: dir, error: e1 }, { data: rows, error: e2 }, households] = await Promise.all([
     sb.from('person_directory').select('person_id, tab').in('person_id', ids),
-    sb.from('people').select('id, display_name, active, session_epoch, primary_email').in('id', ids)
+    sb.from('people').select('id, display_name, active, session_epoch, primary_email').in('id', ids),
+    loadHouseholds()
   ]);
   if (e1 || e2) throw new Error((e1 ?? e2)!.message);
   const adult = new Set(((dir ?? []) as { person_id: number; tab: string }[]).filter((d) => d.tab !== 'active_scout').map((d) => d.person_id));
   for (const p of (rows ?? []) as { id: number; display_name: string; active: boolean; session_epoch: number | null; primary_email: string | null }[]) {
-    const to = p.primary_email?.trim();
-    if (!adult.has(p.id) || !p.active || p.session_epoch == null || !to) continue;
-    out.set(p.id, { recipientId: p.id, sentTo: to, epoch: p.session_epoch, isScout: false, name: p.display_name });
+    if (!adult.has(p.id) || !p.active || p.session_epoch == null) continue;
+    if (!householdKeyForPerson(households, p.id)) {
+      why.set(p.id, NOT_IN_A_HOUSEHOLD);
+      continue;
+    }
+    const address = p.primary_email?.trim();
+    if (!address) {
+      why.set(p.id, NO_EMAIL_ON_FILE);
+      continue;
+    }
+    to.set(p.id, { recipientId: p.id, sentTo: address, epoch: p.session_epoch, isScout: false, name: p.display_name });
   }
-  return out;
+  return { to, why };
 }
 
 /**

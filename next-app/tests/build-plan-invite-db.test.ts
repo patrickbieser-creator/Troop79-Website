@@ -51,6 +51,11 @@ let meeting = 0;
 let older = 0; // 14 at the meeting, verified own address
 let younger = 0; // 11 at the meeting
 let parent = 0; // in the household, parent_of both; also asked to teach
+let noHome = 0; // a youth who left (inactive, under 18) with an address: in the directory, in no household
+let stranger = 0; // an adult with an address and no teaching skill: not qualified to teach anything here
+let twoParentScout = 0; // a second family: one scout, two parents (parentA, parentB)
+let parentA = 0;
+let parentB = 0;
 let keys: string[] = [];
 let finished = ''; // a top-level Tenderfoot requirement `younger` has signed off
 const people: number[] = [];
@@ -93,6 +98,22 @@ beforeAll(async () => {
   households.push(h!.id);
   await sb.from('household_members').insert([older, younger, parent].map((person_id) => ({ household_id: h!.id, person_id })));
   await sb.from('relationships').insert([older, younger].map((related_person_id) => ({ person_id: parent, related_person_id, type: 'parent_of' })));
+
+  noHome = await person('NoHome', { email: true, birthdate: '2015-01-01' });
+  {
+    const { error: e } = await sb.from('scouts').insert({ id: `vitest-bai-${noHome}`, first_name: TEST_PREFIX, last_name: `BAI ${noHome}`, display_name: `${TEST_PREFIX} BAI ${noHome}`, person_id: noHome, active: false, inactive_reason: 'moved_away', current_rank: 'scout' });
+    if (e) throw new Error(e.message);
+    scoutIds.push(`vitest-bai-${noHome}`);
+  }
+  stranger = await person('Stranger', { email: true });
+  twoParentScout = await person('TwoParents', { email: true, verified: true, birthdate: '2083-01-01' });
+  await scout(twoParentScout);
+  parentA = await person('ParentA', { email: true });
+  parentB = await person('ParentB', { email: true });
+  const { data: h2 } = await sb.from('households').insert({ label: `${TEST_PREFIX} BAI family 2` }).select('id').single();
+  households.push(h2!.id);
+  await sb.from('household_members').insert([twoParentScout, parentA, parentB].map((person_id) => ({ household_id: h2!.id, person_id })));
+  await sb.from('relationships').insert([parentA, parentB].map((person_id) => ({ person_id, related_person_id: twoParentScout, type: 'parent_of' })));
 
   const { data: tf } = await sb.from('rank_requirements').select('id, parent_id, code, venue, skill_id, sort_order').eq('rank_id', 'tenderfoot').order('sort_order');
   const rows = (tf ?? []) as { id: number; parent_id: number | null; code: string; venue: string; skill_id: string | null }[];
@@ -164,10 +185,80 @@ describe('who is refused', () => {
     expect(state.send).not.toHaveBeenCalled();
   });
 
+  it('Invite_AdultWithNoHousehold_IsNotInvited', async () => {
+    const res = await send([{ key: keys[0], personIds: [noHome] }], []);
+    expect([state.send.mock.calls.length, res.ok && res.skipped.map((x) => x.reason.split(' (')[0])]).toEqual([0, ['not in a household']]);
+  });
+
+  it('Invite_ResendAfterPartialFailure_ReachesTheParentWhoMissedIt', async () => {
+    state.send.mockImplementationOnce(async (opts: { to: string[] }) => (opts.to[0] === mail(parentB) ? { status: 'error', to: opts.to } : { status: 'sent', to: opts.to }));
+    state.send.mockImplementationOnce(async (opts: { to: string[] }) => (opts.to[0] === mail(parentB) ? { status: 'error', to: opts.to } : { status: 'sent', to: opts.to }));
+    await send([], [{ key: keys[0], scoutIds: [twoParentScout] }]);
+    state.send.mockClear();
+    await send([], [{ key: keys[0], scoutIds: [twoParentScout] }]);
+    expect(sentTo()).toEqual([mail(parentB)]);
+  });
+
+  it('Invite_ConcurrentDoubleSend_MintsOnce', async () => {
+    await Promise.all([send([], [{ key: keys[0], scoutIds: [younger] }]), send([], [{ key: keys[0], scoutIds: [younger] }])]);
+    const { data } = await sb.from('meeting_invites').select('id').eq('calendar_entry_id', meeting).eq('invitee_person_id', younger);
+    expect([data?.length, state.send.mock.calls.length]).toEqual([1, 1]);
+  });
+
   it('ScoutEditor_IsRefused_WhenInviting', async () => {
     state.actor = { personId: older, subjectKind: 'scout', capabilities: new Set(['meeting_planner.edit']) };
     const res = await (await actions()).plannerSendInvitesAction({ entryId: meeting, teach: [], pick: [{ key: keys[0], scoutIds: [younger] }] });
     expect(res).toEqual({ ok: false, error: 'Only adults send email.' });
+  });
+});
+
+describe('forged input is refused by the server', () => {
+  const sendAction = async (teach: { key: string; personIds: number[] }[], pick: { key: string; scoutIds: number[] }[]) => {
+    asAdultEditor();
+    return (await actions()).plannerSendInvitesAction({ entryId: meeting, teach, pick });
+  };
+  const reasons = (res: Awaited<ReturnType<typeof sendAction>>) => (res.ok ? res.skipped.map((x) => x.reason.split(' (')[0]) : [res.error]);
+
+  it('SendInvites_UnqualifiedAdultAsTeacher_IsRefused', async () => {
+    const res = await sendAction([{ key: keys[0], personIds: [stranger] }], []);
+    expect([state.send.mock.calls.length, reasons(res)]).toEqual([0, ['isn’t someone who can teach that']]);
+  });
+
+  it('SendInvites_ScoutAsTeacher_IsRefused', async () => {
+    const res = await sendAction([{ key: keys[0], personIds: [younger] }], []);
+    expect([state.send.mock.calls.length, reasons(res)]).toEqual([0, ['isn’t someone who can teach that']]);
+  });
+
+  it('SendInvites_OutsiderAsTeacher_IsRefused', async () => {
+    const res = await sendAction([{ key: keys[0], personIds: [2_000_000_000] }], []);
+    expect([state.send.mock.calls.length, reasons(res)]).toEqual([0, ['isn’t someone who can teach that']]);
+  });
+
+  it('SendInvites_ScoutWhoDoesNotNeedIt_IsRefused', async () => {
+    const seeded = await sb.rpc('meeting_seed_many', { p_entry: meeting, p_keys: [finished], p_actor: parent });
+    if (seeded.error) throw new Error(seeded.error.message);
+    try {
+      const res = await sendAction([], [{ key: finished, scoutIds: [younger] }]);
+      expect([state.send.mock.calls.length, reasons(res)]).toEqual([0, ['already done, or not something they can pick']]);
+    } finally {
+      await sb.rpc('meeting_unseed_topic', { p_entry: meeting, p_key: finished });
+    }
+  });
+
+  it('SendInvites_KeyOffThePlan_IsRefused', async () => {
+    const res = await sendAction([], [{ key: 'second-class-9z', scoutIds: [younger] }]);
+    expect([state.send.mock.calls.length, reasons(res)]).toEqual([0, ['That isn’t on this meeting’s plan.']]);
+  });
+
+  it('ScoutEditor_IsRefused_OnTheSheet', async () => {
+    state.actor = { personId: older, subjectKind: 'scout', capabilities: new Set(['meeting_planner.edit']) };
+    expect(await (await actions()).plannerInviteSheetAction({ entryId: meeting })).toEqual({ ok: false, error: 'Only adults send email.' });
+  });
+
+  it('ScoutEditor_IsRefused_OnATeachAsk', async () => {
+    state.actor = { personId: older, subjectKind: 'scout', capabilities: new Set(['meeting_planner.edit']) };
+    const res = await (await actions()).plannerSendInvitesAction({ entryId: meeting, teach: [{ key: keys[0], personIds: [parent] }], pick: [] });
+    expect([state.send.mock.calls.length, res]).toEqual([0, { ok: false, error: 'Only adults send email.' }]);
   });
 });
 

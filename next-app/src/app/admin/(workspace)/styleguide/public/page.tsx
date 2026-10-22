@@ -411,6 +411,17 @@ export default function PublicStyleguidePage() {
             <span className={sg.specimenInlineNote}>
               size=&quot;sm&quot; — section-header CTAs and chrome rows (Phase C)
             </span>
+            <div className={sg.specimenGap} />
+            <Button variant="primary" aria-disabled>
+              Saving changes…
+            </Button>{' '}
+            <Button variant="secondary" size="sm" aria-disabled>
+              Sending…
+            </Button>{' '}
+            <span className={sg.specimenInlineNote}>
+              <code>aria-disabled</code> (Build a Plan B2/B3) — dimmed while a save or send is in flight, but still focusable,
+              so keyboard focus stays on it. <code>disabled</code> is for a control with nothing to do yet.
+            </span>
           </div>
 
           {/* Account control — the right end of the sticky nav (2026-10-19) */}

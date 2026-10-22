@@ -13,7 +13,7 @@
  * the last teacher takes the row off the plan, the drawer stays open and says so (`gone`), never unmounting silently.
  * Each write hands the page its slice (onTeachers / onMix); the drawer never reloads the plan.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/app/_components/button';
 import { Drawer } from '@/app/_components/drawer';
 import type { PlanRow, TeacherChoice } from '@/lib/build-plan';
@@ -45,13 +45,17 @@ export function EditOffering({
   onClose: () => void;
 }) {
   const isMix = row.key.startsWith('fg:');
+  // A live region mounted from the start (its text set later), so "Removed from the plan." is announced; and since the
+  // focused teacher toggle unmounts with its section, focus moves here (qa-lead B3 #2).
+  const status = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (gone) status.current?.focus();
+  }, [gone]);
   return (
     <Drawer eyebrow="Edit" title={row.title} sub={row.codeLabel} onClose={onClose}>
-      {gone ? (
-        <p className={s.pickMeta} role="status">
-          Removed from the plan.
-        </p>
-      ) : null}
+      <p ref={status} className={gone ? s.pickMeta : s.srOnly} role="status" tabIndex={-1}>
+        {gone ? 'Removed from the plan.' : ''}
+      </p>
       {canEdit && !gone ? <TeacherSection entryId={entryId} rowKey={row.key} onTeachers={onTeachers} /> : null}
       {canSeed && isMix && !gone ? <MixSection entryId={entryId} rowKey={row.key} onMix={onMix} /> : null}
     </Drawer>

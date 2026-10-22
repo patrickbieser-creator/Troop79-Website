@@ -72,6 +72,24 @@ describe('the teacher toggle', () => {
   });
 });
 
+describe('the edit drawer status line (qa-lead B3 #2)', () => {
+  it('EditDrawer_StatusLine_IsALiveRegionFromTheStart', async () => {
+    const beth = await openTeacher();
+    const status = within(screen.getByRole('dialog')).getByRole('status');
+    m.setTeacher.mockResolvedValue({ ok: true, teachers: [], onBoard: false, prior: 's', stamp: 's2' });
+    fireEvent.click(beth);
+    await waitFor(() => expect(status.textContent).toBe('Removed from the plan.'));
+  });
+
+  it('TeacherToggle_LastTeacherOff_MovesFocusToTheStatusLine', async () => {
+    const beth = await openTeacher();
+    beth.focus();
+    m.setTeacher.mockResolvedValue({ ok: true, teachers: [], onBoard: false, prior: 's', stamp: 's2' });
+    fireEvent.click(beth);
+    await waitFor(() => expect(document.activeElement?.textContent).toBe('Removed from the plan.'));
+  });
+});
+
 describe('the mix section', () => {
   it('MixSection_Clean_SaysSaved', async () => {
     await openMix();
