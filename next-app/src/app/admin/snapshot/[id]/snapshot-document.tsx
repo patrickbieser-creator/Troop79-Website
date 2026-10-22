@@ -82,7 +82,7 @@ export async function loadSnapshot(signupId: number): Promise<{ input: SnapshotI
       loadSignupAnswers(supabase, s.id).then((data) => ({ data })),
       supabase.from('people').select('id, display_name, primary_phone, primary_email'),
       supabase.from('scouts').select('id, person_id, graduation_year'),
-      supabase.from('households').select('id, label'),
+      supabase.from('households').select('id, label').is('system_key', null),
       supabase.from('household_members').select('household_id, person_id'),
       supabase.from('relationships').select('person_id, related_person_id, type').in('type', ['parent_of', 'guardian_of']),
       fetchAllRows<{ id: number; occurred_on: string; amount: number; kind: string; method: string | null; memo: string | null; signup_entry_id: number | null; voided_at: string | null }>((from, to) =>

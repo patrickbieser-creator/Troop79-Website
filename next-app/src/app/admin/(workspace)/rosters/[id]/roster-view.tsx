@@ -133,7 +133,7 @@ export async function loadRoster(signupId: number) {
       .order('sort')
       .order('id'),
     supabase.from('scouts').select('id, display_name, active'),
-    supabase.from('households').select('id, label'),
+    supabase.from('households').select('id, label').is('system_key', null),
 
     // health_form_date is a DATE only — the hint beside the "Health form in
     // hand" leader column (Plans/Event-Logistics.md §D); never the form.

@@ -127,7 +127,9 @@ export default async function RosterPage({
       .from("ranks")
       .select("id, display_name, sort_order")
       .order("sort_order"),
-    supabase.from("households").select("id, label").order("label"),
+    // system_key read so labels cover Meeting Live's visitors household (guests tab)
+    // while the pickers below offer family households only.
+    supabase.from("households").select("id, label, system_key").order("label"),
     supabase.from("household_members").select("household_id, person_id"),
     // Forgotten guests (active=false) are history, not roster — not listed.
     supabase
@@ -160,7 +162,13 @@ export default async function RosterPage({
   const rankLabel = Object.fromEntries(
     ranks.map((r) => [r.id, r.display_name]),
   );
-  const households = (householdsRes.data ?? []) as unknown as HouseholdOption[];
+  const allHouseholds = (householdsRes.data ?? []) as unknown as (HouseholdOption & {
+    system_key: string | null;
+  })[];
+  // System households (Meeting Live's visitors) are nobody's family: never offered.
+  const households: HouseholdOption[] = allHouseholds
+    .filter((h) => h.system_key == null)
+    .map(({ id, label }) => ({ id, label }));
   const householdByPerson: Record<number, number> = {};
   // Who is in each household, so two families sharing a surname can be told
   // apart. A label alone is not an identifier: production already has two
@@ -178,7 +186,7 @@ export default async function RosterPage({
     if (name) (householdMembers[m.household_id] ??= []).push(name);
   }
 
-  const householdLabel = new Map(households.map((h) => [h.id, h.label]));
+  const householdLabel = new Map(allHouseholds.map((h) => [h.id, h.label]));
   const guestRows = buildGuestTabRows({
     people: guestPeople,
     entries: guestEntries,
