@@ -142,6 +142,18 @@ describe('the candidate tray', () => {
     expect(res).toEqual({ closed: true, sessions: [], wanted: 0 });
   });
 
+  // Build a Plan B6 ("Planner out of Admin"): before Meeting Live starts, the tray is the meeting's plan, so an offering
+  // the planner added with no scouts and no teacher yet is there (the matcher alone would leave it out).
+  it('AgendaTray_ReflectsThePlan', async () => {
+    const { data: req } = await sb.from('rank_requirements').select('code').eq('rank_id', 'tenderfoot').is('parent_id', null).neq('venue', 'outing').order('sort_order').limit(1).single();
+    const key = `tenderfoot-${(req as { code: string }).code}`;
+    const seeded = await sb.rpc('meeting_seed_many', { p_entry: entry, p_keys: [key], p_actor: teacher });
+    if (seeded.error) throw new Error(seeded.error.message);
+    const b = await (await tray()).loadBoardTray(entry);
+    const s = b?.sessions.find((x) => x.codeLabel === `Tenderfoot ${(req as { code: string }).code}`);
+    expect([b?.source, s?.teacher, s?.blockLabel]).toEqual(['plan', '', 'Needs a teacher']);
+  });
+
   it('EngineTray_StillLoads_BesideTheBoardHalf', async () => {
     await boardUp();
     const data = await (await tray()).loadAgendaEditorData(meetingId, '2094-05-03', 'Troop Meeting', entry);

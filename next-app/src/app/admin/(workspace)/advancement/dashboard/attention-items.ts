@@ -20,11 +20,6 @@ import { centralToday } from '@/lib/dates';
 import { loadAdminSale } from '@/lib/wreaths/admin-data';
 import { fmtMoney2 } from '@/lib/wreaths/rules';
 import { countUnreviewedTeachingSkillChanges, loadTeachingSkillChanges } from '@/lib/teaching-skills';
-import { loadAdvancementCatalog } from '@/lib/advancement-catalog';
-import { loadBoardState, loadNextMeeting } from '@/lib/meeting-board';
-import { topicWords } from '@/lib/meeting-board-picklist';
-import { loadTeachBoard } from '@/lib/meeting-board-supply';
-import { plannerAccess } from '@/lib/meeting-planner-access';
 
 export interface AttentionItem {
   label: string;
@@ -503,33 +498,6 @@ async function loadTeachingSkillChangesToReview(sb: SupabaseClient): Promise<Att
 }
 
 /**
- * The next meeting's recruiting list (Plans/Meeting-Requests-And-Teaching-Offers.md, Phase 2; Prototype feedback,
- * Brad's question 4): topics scouts asked for that nobody is teaching yet, beside the teaching-skill-changes row.
- * Links to the Meeting Planner's Who's coming (/planner), where the Requests with no teacher card lives. Shown only
- * to someone who can view the planner (Build a Plan B4 retired Admin's generator, the old fallback). A closed meeting
- * counts 0.
- * `today` is for tests (the next meeting on or after it).
- */
-export async function loadSundayNoTeacher(sb: SupabaseClient, today?: string): Promise<AttentionCategory> {
-  const href = '/planner';
-  const meeting = await loadNextMeeting(sb, today);
-  const day = meeting ? fmtDay(meeting.date, { year: false }).split(',')[0] : 'Sunday';
-  const empty = queue('sunday-no-teacher', `${day}: no requests waiting for a teacher`, [], href, 'no teacher', 0);
-  if (!meeting || meeting.closed) return empty;
-  const catalog = await loadAdvancementCatalog();
-  const board = await loadBoardState(sb, meeting, catalog);
-  const teach = await loadTeachBoard(sb, meeting, catalog, board);
-  const wanted = [...teach.match.wanted].sort((a, b) => (teach.demand.get(b)?.length ?? 0) - (teach.demand.get(a)?.length ?? 0));
-  const n = wanted.length;
-  const items: AttentionItem[] = wanted.slice(0, SHOWN).map((key) => {
-    const w = topicWords(key, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, teach.freeformTitles, { mbReqs: catalog.meritBadgeRequirements, members: teach.members });
-    const asked = teach.demand.get(key)?.length ?? 0;
-    return { label: w?.label ?? key, meta: `${asked} ${asked === 1 ? 'scout' : 'scouts'}`, href };
-  });
-  return queue('sunday-no-teacher', `${day}: ${n} ${n === 1 ? 'request' : 'requests'} with no teacher`, items, href, 'no teacher', n);
-}
-
-/**
  * Home's "Needs you today" rows for this actor. Each category is gated by the
  * capability that opens the queue it links to — the same one the target page
  * and its actions enforce (this list is for the reader, not the boundary).
@@ -541,7 +509,9 @@ export async function loadSundayNoTeacher(sb: SupabaseClient, today?: string): P
  *  - pending news ..................... news.write
  *  - next open sign-up ................ calendar.write
  *  - teaching-skill changes ........... roster.manage (Lookups, where Undo and Mark reviewed live)
- *  - Sunday's requests with no teacher  Meeting Planner view (links to /planner), right after the skill changes
+ *
+ * No planner row (Build a Plan B6, "Planner out of Admin"): the planner lives on the public side, and Admin Home gets
+ * no planner link.
  */
 export async function loadAttentionCategories(
   capabilities: ReadonlySet<Capability>,
@@ -558,8 +528,6 @@ export async function loadAttentionCategories(
   if (has('news.write')) jobs.push(loadPendingNews(sb));
   if (has('calendar.write')) jobs.push(loadNextOpenSignup(sb));
   if (has('roster.manage')) jobs.push(loadTeachingSkillChangesToReview(sb));
-  const planner = plannerAccess({ capabilities: capabilities as Set<Capability>, subjectKind: null }).canView;
-  if (planner) jobs.push(loadSundayNoTeacher(sb));
 
   const categories = (await Promise.all(jobs)).filter((c): c is AttentionCategory => c !== null);
   // A queue with nothing in it is noise, not signal — drop it rather than

@@ -97,12 +97,12 @@ describe('the meeting editor tray', () => {
 
   it('Tray_KeepsTheEngineSuggestions_UnderTheirOwnHeading', () => {
     editor({ closed: false, sessions: [], wanted: 0 });
-    expect([screen.getByText('Engine suggestions (ledger only)') != null, screen.getByText('Nothing matched yet.') != null]).toEqual([true, true]);
+    expect([screen.getByText('Engine suggestions (ledger only)') != null, screen.getByText('Nothing on the plan yet.') != null]).toEqual([true, true]);
   });
 
   it('Tray_WithoutABoard_IsUnchanged', () => {
     editor(undefined);
-    expect([screen.queryByText("From this week's board"), screen.getByText('Plan Suggestions') != null]).toEqual([null, true]);
+    expect([screen.queryByText('From the Meeting Planner'), screen.getByText('Plan Suggestions') != null]).toEqual([null, true]);
   });
 });
 

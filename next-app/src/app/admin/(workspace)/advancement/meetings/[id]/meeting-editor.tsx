@@ -52,6 +52,8 @@ export interface MatchedCandidate {
 export interface BoardTray {
   /** The meeting takes no sign-ups (not a troop meeting, or "No troop meeting"). */
   closed: boolean;
+  /** B6: the meeting's plan (before Meeting Live), or Live's saved placement once it has started. */
+  source?: 'plan' | 'live';
   sessions: MatchedCandidate[];
   /** Requests with no teacher (shown as a pointer to the Meeting Planner). */
   wanted: number;
@@ -398,7 +400,7 @@ export function MeetingEditor({
         {/* ── candidate tray ── */}
         <aside className={styles.tray}>
           {board !== undefined && (
-            <FormPanel title="From this week's board">
+            <FormPanel title="From the Meeting Planner">
               {board === null ? (
                 <p className={styles.trayNote}>The board&rsquo;s match didn&rsquo;t load right now. The engine&rsquo;s suggestions below still work.</p>
               ) : board.closed ? (
@@ -406,12 +408,14 @@ export function MeetingEditor({
               ) : (
                 <>
                   <p className={styles.trayNote}>
-                    Matched live from what scouts picked and who signed up to teach. Adding copies a session into the
-                    agenda as an editable item; the board itself is never changed, and nothing is published until you
-                    publish the agenda.
+                    {board.source === 'live'
+                      ? 'Meeting Live’s placement, as the leaders saved it.'
+                      : 'This meeting’s plan from Build a Plan: each offering with its teacher and the scouts signed up so far.'}{' '}
+                    Adding copies one into the agenda as an editable item; the plan itself is never changed, and nothing
+                    is published until you publish the agenda.
                   </p>
                   {board.sessions.length === 0 ? (
-                    <p className={styles.trayNote}>Nothing matched yet.</p>
+                    <p className={styles.trayNote}>Nothing on the plan yet.</p>
                   ) : (
                     board.sessions.map((c) => (
                       <div key={c.id} className={styles.candidateCard}>

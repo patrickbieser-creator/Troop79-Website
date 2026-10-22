@@ -1,7 +1,8 @@
 /**
  * Loads what the agenda editor needs for one meeting — its sessions, the
- * meeting board's live match (Phase 3a) and the Meeting Plan engine's
- * suggestions for that date. Shared by the editor's own
+ * meeting's plan (Build a Plan's offerings, or Meeting Live's saved placement
+ * once Live has started; B6) and the Meeting Plan engine's suggestions for
+ * that date. Shared by the editor's own
  * page (/admin/advancement/meetings/[id]) and the calendar entry workbench,
  * which renders the editor inside its Agenda tab (Patrick, 2026-08-24: "Can
  * the agenda editor also be opened immediately when clicking on that tab?").
@@ -12,10 +13,13 @@ import type { MeetingSession } from '@/lib/supabase/types';
 import { buildMeetingPlan } from '@/lib/meeting-suggest/engine';
 import { loadEngineInput } from '@/lib/meeting-suggest/load-input';
 import { publicName } from '@/lib/meeting-plan-types';
-import { loadAdvancementCatalog, type AdvancementCatalog } from '@/lib/advancement-catalog';
-import { loadBoardState, loadMeetingById, type BoardScoutRow } from '@/lib/meeting-board';
-import { loadTeachBoard, type TeachBoard } from '@/lib/meeting-board-supply';
-import { loadMatchOrPlacement } from '@/lib/meeting-live';
+import type { AdvancementCatalog } from '@/lib/advancement-catalog';
+import { loadMeetingById, type BoardScoutRow } from '@/lib/meeting-board';
+import type { TeachBoard } from '@/lib/meeting-board-supply';
+import { liveStartedAt, loadMatchOrPlacement } from '@/lib/meeting-live';
+import { loadPlannerPage } from '@/lib/meeting-planner-load';
+import type { PlannerBoard, PlannerPerson } from '@/lib/meeting-planner-board';
+import { planRows, STATE_LABEL } from '@/lib/build-plan';
 import { HALF_LABEL, sessionWords, type MatchResult } from '@/lib/meeting-board-match';
 import { topicWords } from '@/lib/meeting-board-picklist';
 import { boardName } from '@/lib/meeting-board-shared';
@@ -50,25 +54,79 @@ export async function loadCandidates(meetingDate: string, title: string): Promis
 }
 
 /**
- * The tray's board half (Phase 3a of Plans/Meeting-Requests-And-Teaching-Offers.md): this meeting's live match, each
- * session pre-filled as an agenda item (title, teacher, audience). Promoting goes through the same promotePlanSession
- * as an engine suggestion; nothing is written until a leader adds it. Names are as the agenda shows them to families:
- * adults formally ("Mr. Vest"), scouts and Junior Leaders first name + last initial ("Finn P").
- * null = the board failed to load (the tray says so and the engine half still works).
+ * The tray's planner half: what the Meeting Planner says will be taught, each class pre-filled as an agenda item
+ * (title, teacher, audience), so the published agenda matches the plan (Build a Plan B6, "Planner out of Admin";
+ * before B6 this was the matcher's raw output, which left out every offering without both a teacher and a scout).
+ *   - Before Meeting Live starts: the meeting's plan, Build a Plan's offerings with their teachers and the scouts
+ *     signed up so far (the same rows Build shows, planRows over the planner board), labelled with their state.
+ *   - Once Live has started: its saved placement (loadMatchOrPlacement, the one seam every reader of the match uses).
+ * Promoting goes through the same promotePlanSession as an engine suggestion; nothing is written until a leader adds
+ * it. Names are as the agenda shows them to families: adults formally ("Mr. Vest"), scouts and Junior Leaders first
+ * name + last initial ("Finn P"). null = the planner failed to load (the tray says so and the engine half still works).
  */
 export async function loadBoardTray(entryId: number): Promise<BoardTray | null> {
   try {
     const sb = createAdminClient();
     const meeting = await loadMeetingById(sb, entryId);
     if (!meeting || meeting.closed) return { closed: true, sessions: [], wanted: 0 };
-    const catalog = await loadAdvancementCatalog();
-    const rows = await loadBoardState(sb, meeting, catalog);
-    const teach = await loadTeachBoard(sb, meeting, catalog, rows);
-    const match = await loadMatchOrPlacement(sb, meeting, rows, teach);
-    return { closed: false, sessions: matchedCandidates(match, { catalog, rows, teach }), wanted: match.wanted.length };
+    const [page, started] = await Promise.all([loadPlannerPage(sb, meeting), liveStartedAt(sb, entryId)]);
+    if (!page) return null;
+    const { catalog, rows, teach } = page.src;
+    if (started) {
+      const match = await loadMatchOrPlacement(sb, meeting, rows, teach);
+      return { closed: false, source: 'live', sessions: matchedCandidates(match, { catalog, rows, teach }), wanted: match.wanted.length };
+    }
+    return { closed: false, source: 'plan', sessions: planCandidates(page.board, { catalog, teach }), wanted: 0 };
   } catch {
     return null;
   }
+}
+
+/** The meeting's plan (Build a Plan's rows) as tray cards with their promote payload. Pure. */
+export function planCandidates(
+  board: Pick<PlannerBoard, 'ready' | 'noTeacher' | 'offered'>,
+  src: {
+    catalog: Pick<AdvancementCatalog, 'ranks' | 'rankRequirements' | 'meritBadges' | 'skills'> & Partial<Pick<AdvancementCatalog, 'meritBadgeRequirements'>>;
+    teach: Pick<TeachBoard, 'people' | 'freeformTitles'> & Partial<Pick<TeachBoard, 'members'>>;
+  }
+): MatchedCandidate[] {
+  const skillNames = new Map(src.catalog.skills.map((s) => [s.id, s.name]));
+  const more = { mbReqs: src.catalog.meritBadgeRequirements, members: src.teach.members };
+  const people = new Map<string, { teachers: readonly PlannerPerson[]; scouts: readonly PlannerPerson[] }>([
+    ...board.ready.map((r) => [r.key, { teachers: r.teachers, scouts: r.scouts }] as const),
+    ...board.noTeacher.map((r) => [r.key, { teachers: [], scouts: r.waiting }] as const),
+    ...board.offered.map((r) => [r.key, { teachers: r.teachers, scouts: [] }] as const)
+  ]);
+  const teacher = (t: PlannerPerson) => {
+    const p = src.teach.people.get(t.personId);
+    return p ? teacherName(p, 'scout') : t.name;
+  };
+  return planRows(board).map((row) => {
+    const w = sessionWords([row.key], src.catalog, skillNames, src.teach.freeformTitles, more);
+    const who = people.get(row.key) ?? { teachers: [], scouts: [] };
+    const leaders = who.teachers.map(teacher).filter(Boolean);
+    const scouts = who.scouts.map((x) => x.name).filter(Boolean).sort();
+    const codeLabel = row.codeLabel || w.codeLabel;
+    return {
+      id: `plan:${row.key}`,
+      blockLabel: STATE_LABEL[row.state],
+      title: row.title,
+      codeLabel,
+      group: null,
+      teacher: leaders.join(', '),
+      flags: [],
+      scouts,
+      promote: {
+        title: row.title,
+        description: codeLabel,
+        track: w.kind === 'mb' ? 'Merit Badge' : 'Open Advancement',
+        leaderName: leaders.length ? leaders.join(', ') : null,
+        skillId: w.skillId,
+        requirements: [{ code: codeLabel || row.key, label: row.title }],
+        scouts: scouts.length ? scouts : null
+      }
+    };
+  });
 }
 
 /** Matched sessions as tray cards with their promote payload. Pure. */

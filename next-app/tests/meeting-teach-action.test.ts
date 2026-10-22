@@ -6,8 +6,8 @@ import { NOT_A_TEACHER } from '../src/lib/can-offer-to-teach';
 /**
  * /member/meeting teach section (Phase 2): the server actions act only for the verified session (self, or a leader on
  * behalf), only for someone who may teach (an adult, or a Junior Leader by canOfferToTeach); standing offers post a row
- * per date and mark problems by field; the loaders give scouts their "Teacher: Mr. Vest" tag and admin home its
- * "requests with no teacher" count. Real local database; the session and the admin actor are mocked. Fixture meetings
+ * per date and mark problems by field; the loaders give scouts their "Teacher: Mr. Vest" tag, and admin home has no
+ * planner row (Build a Plan B6). Real local database; the session and the admin actor are mocked. Fixture meetings
  * are dated 2093 so they never collide with the real calendar or another file's fixtures; every row is deleted by id.
  */
 const sb = adminClient();
@@ -339,18 +339,12 @@ describe('the board', () => {
     expect([JSON.stringify(view).includes('555-0199'), JSON.stringify([...(await supply()).teacherTags(b.teach)]).includes('555-0199')]).toEqual([false, false]);
   });
 
-  it('Leader_SeesAdminHomeRow_WhenARequestHasNoTeacher', async () => {
-    const { loadSundayNoTeacher } = await import('../src/app/admin/(workspace)/advancement/dashboard/attention-items');
-    // The local DB mirrors production, whose scouts' standing requests reach this fixture meeting too: assert the
-    // change this test's own request makes (a delta), never an absolute count. If a real scout already wants the
-    // same topic, our pick adds no new "no teacher" row.
-    const added = (await teachBoardFor(meeting1)).teach.match.wanted.includes(knotKey) ? 0 : 1;
-    const before = (await loadSundayNoTeacher(sb, '2093-03-01')).count;
+  // Build a Plan B6 ("Planner out of Admin"): the planner lives on the public side; Admin Home has no planner row,
+  // even for a planner with a request that has no teacher.
+  it('AdminHome_HasNoPlannerRow', async () => {
+    const { loadAttentionCategories } = await import('../src/app/admin/(workspace)/advancement/dashboard/attention-items');
     await pickFor(young, knotKey);
-    const mid = await loadSundayNoTeacher(sb, '2093-03-01');
-    await sb.rpc('meeting_teach_topic', { p_entries: [meeting1], p_person: parent, p_actor: parent, p_leader: false, p_topic_key: knotKey, p_title: null, p_note: null });
-    const after = (await loadSundayNoTeacher(sb, '2093-03-01')).count;
-    const n = before + added;
-    expect([mid.count, mid.label.endsWith(`${n} ${n === 1 ? 'request' : 'requests'} with no teacher`), mid.href, after]).toEqual([n, true, '/planner', before]);
+    const rows = await loadAttentionCategories(new Set(['meeting_planner.view', 'meeting_planner.edit', 'meeting_planner.seed']) as never, sb);
+    expect(rows.filter((r) => r.href.startsWith('/planner'))).toEqual([]);
   });
 });
