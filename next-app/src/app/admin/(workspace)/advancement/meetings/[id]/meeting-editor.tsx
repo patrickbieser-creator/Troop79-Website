@@ -47,11 +47,12 @@ export interface MatchedCandidate {
   promote: Omit<PromotePayload, 'meetingId'>;
 }
 
-/** The tray's board half: the meeting's mode and its matched sessions (rank) or stations (merit badge, Phase 3b). */
+/** The tray's board half: whether the meeting takes sign-ups, and its matched sessions. A merit badge night is just a
+ *  meeting (Decision 10 of Plans/Meeting-Planner-II.md). */
 export interface BoardTray {
-  mode: 'rank' | 'merit_badge' | 'closed';
+  mode: 'rank' | 'closed';
   sessions: MatchedCandidate[];
-  /** Requests with no teacher (shown as a pointer to This Sunday); on a merit badge night, stations with no teacher. */
+  /** Requests with no teacher (shown as a pointer to the Meeting Planner). */
   wanted: number;
 }
 
@@ -403,21 +404,13 @@ export function MeetingEditor({
                 <p className={styles.trayNote}>This meeting has no board. Build the agenda by hand.</p>
               ) : (
                 <>
-                  {board.mode === 'merit_badge' ? (
-                    <p className={styles.trayNote}>
-                      Merit badge night: one card per station, with its teacher, place and rotation order. Adding copies a
-                      station into the agenda as an editable item; the board itself is never changed, and nothing is
-                      published until you publish the agenda.
-                    </p>
-                  ) : (
-                    <p className={styles.trayNote}>
-                      Matched live from what scouts picked and who signed up to teach. Adding copies a session into the
-                      agenda as an editable item; the board itself is never changed, and nothing is published until you
-                      publish the agenda.
-                    </p>
-                  )}
+                  <p className={styles.trayNote}>
+                    Matched live from what scouts picked and who signed up to teach. Adding copies a session into the
+                    agenda as an editable item; the board itself is never changed, and nothing is published until you
+                    publish the agenda.
+                  </p>
                   {board.sessions.length === 0 ? (
-                    <p className={styles.trayNote}>{board.mode === 'merit_badge' ? 'No stations yet. Set them on This Sunday.' : 'Nothing matched yet.'}</p>
+                    <p className={styles.trayNote}>Nothing matched yet.</p>
                   ) : (
                     board.sessions.map((c) => (
                       <div key={c.id} className={styles.candidateCard}>
@@ -444,10 +437,8 @@ export function MeetingEditor({
                   )}
                   {board.wanted > 0 && (
                     <p className={styles.trayNote}>
-                      {board.mode === 'merit_badge'
-                        ? `${board.wanted} ${board.wanted === 1 ? 'station has' : 'stations have'} no teacher yet.`
-                        : `Not here: ${board.wanted} ${board.wanted === 1 ? 'request' : 'requests'} with no teacher.`}{' '}
-                      <Link href="/admin/advancement/meeting-plan">See This Sunday</Link>
+                      Not here: {board.wanted} {board.wanted === 1 ? 'request' : 'requests'} with no teacher.{' '}
+                      <Link href="/planner">Open the Meeting Planner</Link>
                     </p>
                   )}
                 </>

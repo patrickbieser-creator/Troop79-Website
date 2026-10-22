@@ -14,9 +14,6 @@
  *     flagged (matcher rule 1); an adults-only skill has no button for a Junior Leader.
  *   - "Offer something": a skill, a requirement or something else, on one or more dates, with a note. Each date is its
  *     own commitment. Problems are marked in place.
- *   - Phase 3b, a merit badge night: the badge's stations instead, each with "I'll take this station" (the counselor
- *     flag applies), and for a station they teach, which group comes in each rotation. Anything else they
- *     signed up for this week shows as held for a regular meeting, with Remove.
  */
 import { useId, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
@@ -27,7 +24,6 @@ import { INTENT_LABEL, type Intent } from '@/lib/meeting-board-shared';
 import { minutesText } from '@/lib/meeting-board-picklist';
 import type { OfferChoices, TeachItem, TeachView, WantedItem } from '@/lib/meeting-board-supply';
 import type { MatchLine } from '@/lib/meeting-board-match';
-import type { StationTeachLine } from '@/lib/meeting-board-rotations';
 import { IntentControl, Saved } from './scout-board';
 import {
   meetingPostOfferAction,
@@ -45,7 +41,6 @@ const FLASH_MS = 1800;
 
 export interface TeachBoardProps {
   entryId: number;
-  mode: 'rank' | 'merit_badge';
   subject: { personId: number; firstName: string; isSelf: boolean };
   initial: TeachView;
   choices: OfferChoices;
@@ -54,12 +49,6 @@ export interface TeachBoardProps {
   /** Phase 3a: the sessions the live match has this person teaching so far, by block. Empty once the agenda is
    *  published (the page links to it). */
   teaching?: MatchLine[];
-  /** Phase 3b, a merit badge night: its stations as this person sees them (rotation order only on their own, and only
-   *  until the agenda is published). */
-  stations?: StationTeachLine[];
-  mbName?: string | null;
-  /** "sign-off needs a counselor" when this person isn't a counselor for the night's badge. */
-  stationFlags?: string[];
 }
 
 type OfferType = OfferWhat['type'];
@@ -196,100 +185,7 @@ export function TeachBoard(props: TeachBoardProps) {
     </p>
   );
 
-  if (view.canAdd && props.mode === 'merit_badge' && view.intent !== 'not_coming') {
-    const stations = props.stations ?? [];
-    const stationKeys = new Set(stations.map((s) => s.key));
-    const held = view.items.filter((i) => !(i.kind === 'topic' && stationKeys.has(i.key)));
-    const take = (s: StationTeachLine) => {
-      if (readOnly) return;
-      run(() => meetingTeachAction({ ...target, key: s.key }), { what: 'teach', say: `Saved. ${you} teaching ${s.title}.`, errorAt: s.key });
-    };
-    const drop = (s: StationTeachLine) => run(() => meetingUnteachAction({ ...target, key: s.key }), { what: 'teach', say: 'Saved. Removed.' });
-    return (
-      <section className={styles.teach} aria-labelledby={`${ids}-teach`}>
-        {head}
-        {intentBlock}
-        <div>
-          <h3 className={styles.groupHead}>
-            <span>
-              {props.mbName ? `${props.mbName} stations` : 'Stations'}
-              <Saved on={flash.teach > 0} />
-            </span>
-            <span className={styles.meta}>
-              {view.count}
-            </span>
-          </h3>
-          {stations.length ? (
-            stations.map((s) => (
-              <div key={s.key} className={styles.teachWrap}>
-                <div className={styles.teachRow}>
-                  <span className={styles.grow}>
-                    <b>
-                      {s.index + 1}. {s.title}
-                    </b>
-                    <small>
-                      {[s.place, s.codes, s.others.length ? `Teacher: ${s.others.join(', ')}` : s.mine ? null : 'No teacher yet'].filter(Boolean).join(' · ')}
-                      {s.mine && props.stationFlags && props.stationFlags.length > 0 && <span className={styles.flag}> · {props.stationFlags.join(' · ')}</span>}
-                    </small>
-                    {s.mine && s.visits.length > 0 && (
-                      <ul className={styles.assignList}>
-                        {s.visits.map((v) => (
-                          <li key={v}>{v}</li>
-                        ))}
-                      </ul>
-                    )}
-                  </span>
-                  {!readOnly &&
-                    (s.mine ? (
-                      <button type="button" className={styles.linkBtn} onClick={() => drop(s)} aria-label={`Remove ${s.title}`}>
-                        Remove
-                      </button>
-                    ) : (
-                      <Button size="sm" variant="secondary" onClick={() => take(s)}>
-                        I&rsquo;ll take this station
-                      </Button>
-                    ))}
-                </div>
-                {errKey === s.key && (
-                  <p className={styles.badNote} role="alert">
-                    {problem}
-                  </p>
-                )}
-              </div>
-            ))
-          ) : (
-            <p className={styles.emptyLine}>A leader hasn&rsquo;t set up the stations yet. You can take one once they&rsquo;re posted.</p>
-          )}
-          {problem && !errKey && (
-            <p className={styles.badNote} role="alert">
-              {problem}
-            </p>
-          )}
-        </div>
-        {held.length > 0 && (
-          <div className={styles.group}>
-            <h3 className={styles.groupHead}>Held for a regular meeting</h3>
-            {held.map((item) => (
-              <div key={`${item.kind}:${item.key}`} className={styles.teachRow}>
-                <span className={styles.grow}>
-                  <b>{item.kind === 'offer' ? `${item.label} (any requirement)` : item.label}</b>
-                  <small>{item.sub}</small>
-                </span>
-                {!readOnly && (
-                  <button type="button" className={styles.linkBtn} onClick={() => remove(item)} aria-label={`${item.kind === 'offer' ? 'Withdraw' : 'Remove'} ${item.label}`}>
-                    {item.kind === 'offer' ? 'Withdraw' : 'Remove'}
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-        {liveRegion}
-      </section>
-    );
-  }
-
-  if (view.canAdd && (view.intent === 'not_coming' || props.mode === 'merit_badge')) {
+  if (view.canAdd && view.intent === 'not_coming') {
     return (
       <section className={styles.teach} aria-labelledby={`${ids}-teach`}>
         {head}

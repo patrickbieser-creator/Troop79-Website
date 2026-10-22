@@ -2,7 +2,7 @@
  * /planner/live — Meeting Live (Plans/Meeting-Planner-II.md, Decisions 8, 8a, 8c, 12; P4a). The next meeting's
  * classes by rotation: the board's match as a preview until someone starts Meeting Live, then the saved placement,
  * which is the truth from then on. Anyone who may view the planner sees it; an editor (the SPL included) starts it and
- * (P4b) edits it in place. Rank meetings only: a meeting set up in Admin as a merit badge night keeps v1's stations.
+ * (P4b) edits it in place. Any open meeting runs here; a merit badge night is just a meeting (P5a, Decision 10).
  * Phones get one rotation at a time with a switcher. It polls every ~3 s: several leaders run it at once in the room.
  * P4c: attendance on the meeting day (Central) only. An editor's first load that day seeds placed scouts and class
  * teachers as here, once. A viewer sees a red banner: they can't record attendance.
@@ -46,16 +46,12 @@ export default async function MeetingLivePage() {
 
   const sb = createAdminClient();
   const meeting = await loadNextMeeting(sb);
-  if (!meeting || meeting.mode !== 'rank') {
+  if (!meeting || meeting.closed) {
     return (
       <div className={styles.page}>
         <PlannerTabs active="live" />
         <div className={styles.noticeWrap}>
-          <Notice tone="info">{!meeting
-              ? 'There’s no troop meeting on the calendar yet.'
-              : meeting.mode === 'closed'
-                ? 'No sign-ups this week, so there’s nothing to run.'
-                : 'This meeting is set up as a merit badge night in Admin, which runs from its stations.'}</Notice>
+          <Notice tone="info">{!meeting ? 'There’s no troop meeting on the calendar yet.' : 'No sign-ups this week, so there’s nothing to run.'}</Notice>
         </div>
       </div>
     );

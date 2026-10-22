@@ -363,8 +363,6 @@ describe('the member page', () => {
     render(
       <ScoutBoard
         entryId={1}
-        mode="rank"
-        mbName={null}
         dayName="Sunday"
         subject={{ personId: 7, firstName: 'Finn', isSelf: true }}
         initial={{ personId: 7, intent: 'coming', picks: [] }}

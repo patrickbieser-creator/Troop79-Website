@@ -507,7 +507,7 @@ export async function loadTeachView(
 export function offerChoices(
   me: Pick<TeacherPerson, 'kind' | 'skills'>,
   catalog: Pick<AdvancementCatalog, 'ranks' | 'rankRequirements' | 'skills'>,
-  upcoming: readonly Pick<BoardMeeting, 'entryId' | 'date' | 'mode'>[]
+  upcoming: readonly Pick<BoardMeeting, 'entryId' | 'date' | 'closed'>[]
 ): OfferChoices {
   const youth = new Map(catalog.skills.map((s) => [s.id, s.youth_teachable]));
   const skills = catalog.skills.filter((s) => me.skills.has(s.id) && (me.kind === 'adult' || s.youth_teachable)).map((s) => ({ id: s.id, name: s.name }));
@@ -523,7 +523,7 @@ export function offerChoices(
         .map((q) => ({ key: `${r.id}-${q.code}`, label: `${q.code} ${q.label}` }))
     }))
     .filter((g) => g.options.length);
-  return { skills, requirements, dates: upcoming.filter((m) => m.mode === 'rank').map((m) => ({ entryId: m.entryId, label: short(m.date) })) };
+  return { skills, requirements, dates: upcoming.filter((m) => !m.closed).map((m) => ({ entryId: m.entryId, label: short(m.date) })) };
 }
 
 /** The ranks a requirement offer lists: the ones taught at regular meetings (Scout through First Class). */

@@ -504,7 +504,7 @@ async function loadTeachingSkillChangesToReview(sb: SupabaseClient): Promise<Att
 /**
  * The next meeting's recruiting list (Plans/Meeting-Requests-And-Teaching-Offers.md, Phase 2; Prototype feedback,
  * Brad's question 4): topics scouts asked for that nobody is teaching yet, beside the teaching-skill-changes row.
- * Links to Meeting Plan › This Sunday. Only a rank board has requests; a closed or merit badge night counts 0.
+ * Links to Meeting Plan › This Sunday. A closed meeting counts 0.
  * `today` is for tests (the next meeting on or after it).
  */
 export async function loadSundayNoTeacher(sb: SupabaseClient, today?: string): Promise<AttentionCategory> {
@@ -512,7 +512,7 @@ export async function loadSundayNoTeacher(sb: SupabaseClient, today?: string): P
   const meeting = await loadNextMeeting(sb, today);
   const day = meeting ? fmtDay(meeting.date, { year: false }).split(',')[0] : 'Sunday';
   const empty = queue('sunday-no-teacher', `${day}: no requests waiting for a teacher`, [], href, 'no teacher', 0);
-  if (!meeting || meeting.mode !== 'rank') return empty;
+  if (!meeting || meeting.closed) return empty;
   const catalog = await loadAdvancementCatalog();
   const board = await loadBoardState(sb, meeting, catalog);
   const teach = await loadTeachBoard(sb, meeting, catalog, board);

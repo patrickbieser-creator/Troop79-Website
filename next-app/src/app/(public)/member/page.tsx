@@ -295,7 +295,7 @@ async function loadMeetingCard(personId: number, viewerIsScout: boolean, proxyin
   if (!scouts.length && !teaches) return null;
   const day = fmtDateFull(meeting.date);
   const title = `${day.split(',')[0]}’s meeting`;
-  if (meeting.mode === 'closed') {
+  if (meeting.closed) {
     return { title, body: `${meeting.title}, ${day}.`, href: '/member/meeting', live: ['No sign-ups this week'] };
   }
   const [picks, intents, me] = await Promise.all([
@@ -303,10 +303,10 @@ async function loadMeetingCard(personId: number, viewerIsScout: boolean, proxyin
     loadIntents(sb, meeting.entryId, scouts.map((s) => s.personId)),
     teaches ? loadTeacherState(sb, meeting.entryId, personId) : Promise.resolve(null)
   ]);
-  const line = (s: (typeof scouts)[number]) => scoutLine(meeting.mode, intents.get(s.personId) ?? null, picks.get(s.personId)?.picks ?? []);
+  const line = (s: (typeof scouts)[number]) => scoutLine(intents.get(s.personId) ?? null, picks.get(s.personId)?.picks ?? []);
   const scoutLines = viewerIsScout ? scouts.slice(0, 1).map(line) : scouts.map((s) => `${firstNameOf(s.name)}: ${line(s)}`);
   // A Junior Leader's answer is their scout line; only what they teach is added. An adult gets their own line.
-  const teachLines = !me ? [] : viewerIsScout ? (me.count ? [`Teaching ${me.count}`] : []) : [`You: ${teacherLine(meeting.mode, me.intent, me.count)}`];
+  const teachLines = !me ? [] : viewerIsScout ? (me.count ? [`Teaching ${me.count}`] : []) : [`You: ${teacherLine(me.intent, me.count)}`];
   const body = scouts.length
     ? `${day}. Say if you’re coming and pick what to work on${teaches ? ', or what you’ll teach' : ''}.`
     : `${day}. Say if you’re coming and what you’ll teach.`;

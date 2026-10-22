@@ -217,8 +217,7 @@ export function weeksAsked(firstAsked: readonly string[], meetingDate: string): 
 }
 
 /** One line of live state for a teacher on the next meeting (the /member card): "Coming · teaching 1 of 2". */
-export function teacherLine(mode: 'rank' | 'merit_badge' | 'closed', explicit: Intent | null, commitments: number): string {
-  if (mode === 'closed') return 'No sign-ups this week';
+export function teacherLine(explicit: Intent | null, commitments: number): string {
   const it = teacherIntent(explicit, commitments);
   if (it === 'not_coming') return 'Can’t make it';
   const said = it === 'coming' ? 'Coming' : it === 'undecided' ? 'Not sure yet' : 'No answer yet';

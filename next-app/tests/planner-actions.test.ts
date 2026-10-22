@@ -28,6 +28,7 @@ let meeting = 0; // 2094-03-01
 let past = 0; // 2020-03-01
 let campout = 0; // 2094-03-07, not a meeting
 let draft = 0; // 2094-03-08, a meeting not yet published
+let mbNight = 0; // 2094-03-15, a legacy merit badge board row (v1's Admin)
 let gone = 0; // an inactive person
 let editorAdult = 0;
 let spl = 0;
@@ -62,6 +63,10 @@ beforeAll(async () => {
   past = await entry('2020-03-01');
   campout = await entry('2094-03-07', { category: 'Campout / Overnight', title: `Campout ${TEST_PREFIX}` });
   draft = await entry('2094-03-08', { status: 'draft' });
+  mbNight = await entry('2094-03-15');
+  const { data: mb } = await sb.from('merit_badges').select('id').limit(1).single();
+  const { error } = await sb.from('meeting_boards').insert({ calendar_entry_id: mbNight, board_mode: 'merit_badge', board_mb_id: (mb as { id: string }).id });
+  if (error) throw new Error(error.message);
   gone = await person('Gone', { active: false });
   editorAdult = await person('Editor');
   teacher = await person('Teacher');
@@ -84,6 +89,7 @@ afterEach(async () => {
 
 afterAll(async () => {
   await sb.from('teaching_skills').delete().in('person_id', people);
+  await sb.from('meeting_boards').delete().in('calendar_entry_id', entries);
   await sb.from('calendar_entries').delete().in('id', entries);
   await sb.from('scouts').delete().in('id', scoutIds);
   await sb.from('people').delete().in('id', people);
@@ -352,6 +358,16 @@ describe('email (P2b, adults only)', () => {
     await act.plannerTogglePickAction({ entryId: meeting, personId: young, key: keys[0], on: true });
     const res = await act.plannerNudgeFamiliesAction({ entryId: meeting, topicKey: keys[0] });
     expect(res.ok && res.families.some((f) => f.personId === young)).toBe(false);
+  });
+
+  // P5a (Decision 10): a merit badge night is just a meeting. A legacy board row saying merit_badge changes nothing.
+  it('Editor_CanSendNudge_OnAnyOpenMeeting', async () => {
+    asEditor();
+    await sb.rpc('_meeting_topic_id', { p_entry: mbNight, p_key: keys[0] });
+    const act = await actions();
+    const families = await act.plannerNudgeFamiliesAction({ entryId: mbNight, topicKey: keys[0] });
+    const sent = await act.plannerSendNudgeAction({ entryId: mbNight, topicKey: keys[0], scoutIds: [young] });
+    expect([families.ok, sent.ok]).toEqual([true, true]);
   });
 
   it('Nudge_WithNobodyChosen_SaysWhy', async () => {

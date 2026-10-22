@@ -25,7 +25,7 @@ import { loadAdvancementCatalog } from '@/lib/advancement-catalog';
 import { fmtDateFull } from '@/lib/format-date';
 import { loadBoardStamp, loadBoardState, loadNextMeeting, type BoardMeeting } from '@/lib/meeting-board';
 import { minutesText, topicWords, type TopicPart, type TopicWords } from '@/lib/meeting-board-picklist';
-import { boardName, effectiveIntent, summarizeBoard, type BoardCounts, type BoardMode, type Intent } from '@/lib/meeting-board-shared';
+import { boardName, effectiveIntent, summarizeBoard, type BoardCounts, type Intent } from '@/lib/meeting-board-shared';
 import { HALF_LABEL, seatsFor, sessionWords } from '@/lib/meeting-board-match';
 import { countInvites, inviteCountsText } from '@/lib/meeting-invites';
 import { loadInviteRows } from '@/lib/meeting-invites-db';
@@ -37,8 +37,8 @@ const isRankKey = (key: string) => !key.startsWith('mb:') && !key.startsWith('ff
 import { assessTeacher, commitmentCounts, flagText, teacherIntent, teacherName, topicSkill, weeksAsked } from '@/lib/meeting-board-teach';
 import { loadTeachBoard } from '@/lib/meeting-board-supply';
 import { loadMatchOrPlacement } from '@/lib/meeting-live';
-import { loadRotationBoard } from '@/lib/meeting-board-stations';
-import type { StationDraft } from '@/lib/meeting-board-rotations';
+import { loadLegacyBoard, loadRotationBoard } from '@/lib/meeting-board-stations';
+import type { BoardMode, StationDraft } from '@/lib/meeting-board-rotations';
 import type { CatalogMeritBadgeRequirement } from '@/lib/advancement-catalog';
 import { RotationsEditor, type RotationEditorData } from './rotations-editor';
 import { Notice } from '../../_components/notice';
@@ -93,7 +93,7 @@ export interface MbNight {
 }
 
 export interface ThisSundayData {
-  meeting: Pick<BoardMeeting, 'entryId' | 'title' | 'mode'> & { dateLabel: string };
+  meeting: Pick<BoardMeeting, 'entryId' | 'title'> & { mode: BoardMode; dateLabel: string };
   /** Board settings (Phase 3a): the saved mode, badge and block count, the badges an MB night can use; Phase 3b: the
    *  night's stations and those badges' top-level requirements (what a station is built from). */
   board?: {
@@ -146,6 +146,8 @@ export async function loadThisSunday(): Promise<ThisSundayData | null> {
   const sb = createAdminClient();
   const meeting = await loadNextMeeting(sb);
   if (!meeting) return null;
+  // v1's stored mode, read here only until P5c retires this tab (the rest of the app knows open or closed).
+  const legacy = await loadLegacyBoard(sb, meeting);
   const catalog = await loadAdvancementCatalog();
   const [rows, stamp] = await Promise.all([loadBoardState(sb, meeting, catalog), loadBoardStamp(sb, meeting.entryId)]);
   const teach = await loadTeachBoard(sb, meeting, catalog, rows, 'all');
@@ -190,7 +192,7 @@ export async function loadThisSunday(): Promise<ThisSundayData | null> {
     Number(adultIntent(a.personId) !== 'coming') - Number(adultIntent(b.personId) !== 'coming') || a.name.localeCompare(b.name);
 
   // Phase 3a: the live match (rank boards). It owns the unmatched lists; a merit badge night keeps Phase 2's.
-  const match = meeting.mode === 'rank' ? await loadMatchOrPlacement(sb, meeting, rows, teach) : null;
+  const match = legacy.mode === 'rank' ? await loadMatchOrPlacement(sb, meeting, rows, teach) : null;
   const skillNames = new Map(catalog.skills.map((s) => [s.id, s.name]));
   const keyLabel = (key: string) => words(key).codeLabel || words(key).label;
   const wanted = match
@@ -301,7 +303,7 @@ export async function loadThisSunday(): Promise<ThisSundayData | null> {
   const badgesWithReqs = new Set(catalog.meritBadgeRequirements.map((r) => r.mb_id));
 
   // Phase 3b: a merit badge night's stations and rotations.
-  const rot = meeting.mode === 'merit_badge' ? await loadRotationBoard(sb, meeting, catalog, rows, teach) : null;
+  const rot = legacy.mode === 'merit_badge' ? await loadRotationBoard(sb, meeting, catalog, rows, teach) : null;
   let mb: MbNight | null = null;
   if (rot) {
     const nameFor = (id: number) => nameOf.get(id) ?? `Scout ${id}`;
@@ -345,11 +347,11 @@ export async function loadThisSunday(): Promise<ThisSundayData | null> {
     };
   }
   return {
-    meeting: { entryId: meeting.entryId, title: meeting.title, mode: meeting.mode, dateLabel: fmtDateFull(meeting.date) },
+    meeting: { entryId: meeting.entryId, title: meeting.title, mode: legacy.mode, dateLabel: fmtDateFull(meeting.date) },
     board: {
-      mode: meeting.mode,
-      mbId: meeting.mbId ?? '',
-      blockCount: meeting.blockCount,
+      mode: legacy.mode,
+      mbId: legacy.mbId ?? '',
+      blockCount: legacy.blockCount,
       badges: catalog.meritBadges
         .filter((m) => badgesWithReqs.has(m.id))
         .map((m) => ({ id: m.id, name: m.name }))

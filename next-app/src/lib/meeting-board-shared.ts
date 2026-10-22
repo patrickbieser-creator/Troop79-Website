@@ -3,8 +3,8 @@
  * client-safe (no directive, no server imports), so /member/meeting, the admin "This Sunday" tab and their tests read
  * one definition.
  *
- *   - Board mode: no meeting_boards row = rank for a Troop Meeting entry, closed for anything else and for a
- *     "No Troop Meeting" week. Same rule as the SQL meeting_board_mode().
+ *   - Closed: a calendar entry that isn't a Troop Meeting, or a "No Troop Meeting" week. The calendar alone decides
+ *     (Decision 10 of Plans/Meeting-Planner-II.md: a merit badge night is just a meeting; there is no stored mode).
  *   - Names on every board surface: first name + last initial, no period ("Finn P", Patrick 2026-10-18).
  *   - Intent: explicit answer wins; otherwise a pick for this meeting (not a "later" one) means Coming. Implied coming
  *     is computed here, never stored.
@@ -14,7 +14,6 @@
  */
 import { centralToInstant } from '@/lib/dates';
 
-export type BoardMode = 'rank' | 'merit_badge' | 'closed';
 export type Intent = 'coming' | 'undecided' | 'not_coming';
 
 export const INTENTS: readonly Intent[] = ['coming', 'undecided', 'not_coming'];
@@ -29,10 +28,9 @@ export const MAX_PICKS = 5;
 /** Sunday 5:30 pm, Central: after it the page says the plan is set. Nothing refuses a later write. */
 export const SOFT_CLOSE_TIME = '17:30';
 
-export function resolveBoardMode(input: { boardMode: BoardMode | null; categoryBehavior: string | null; title: string }): BoardMode {
-  if (input.boardMode) return input.boardMode;
-  if (input.categoryBehavior !== 'meeting') return 'closed';
-  return /^\s*no\s+troop\s+meeting/i.test(input.title) ? 'closed' : 'rank';
+/** No sign-ups: the entry's category doesn't behave as a meeting, or its title says "No Troop Meeting". */
+export function isMeetingClosed(input: { categoryBehavior: string | null; title: string }): boolean {
+  return input.categoryBehavior !== 'meeting' || /^\s*no\s+troop\s+meeting/i.test(input.title);
 }
 
 /** "Finn Parker" → "Finn P". A one-word name stays as it is. */
@@ -163,10 +161,7 @@ export function decideActFor(input: {
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /** One line of live state for a scout on the next meeting: "Coming · 3 picks" (the /member card, the switcher). */
-export function scoutLine(mode: BoardMode, explicit: Intent | null, picks: readonly Pick<BoardPick, 'later'>[]): string {
-  if (mode === 'closed') return 'No sign-ups this week';
-  // A merit badge night holds rank picks (Phase 3b): only an explicit answer says Coming.
-  if (mode === 'merit_badge') return explicit ? INTENT_LABEL[explicit] : 'No answer yet';
+export function scoutLine(explicit: Intent | null, picks: readonly Pick<BoardPick, 'later'>[]): string {
   const it = effectiveIntent(explicit, picks);
   if (it === 'not_coming') return INTENT_LABEL.not_coming;
   if (!it) return picks.length ? plural(picks.length, 'pick') : 'No answer yet';

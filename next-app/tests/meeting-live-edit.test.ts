@@ -32,7 +32,7 @@ const entries: number[] = [];
 const people: number[] = [];
 const scoutIds: string[] = [];
 let meeting = 0; // 2097-03-07
-let mbNight = 0; // 2097-03-14, a merit badge board set up in Admin
+let mbNight = 0; // 2097-03-14, a legacy merit badge board row (set up in v1's Admin)
 let editorAdult = 0;
 let teacher = 0;
 let teacher2 = 0;
@@ -166,10 +166,11 @@ describe('who may edit Meeting Live', () => {
     expect([res.ok, await membersOf(a), await membersOf(b)]).toEqual([true, [], [ann]]);
   });
 
-  it('MeritBadgeNight_IsRefused_WithAPlainReason', async () => {
+  // P5a (Decision 10): a merit badge night is just a meeting. A board row still saying merit_badge changes nothing.
+  it('Planner_CanOpenLive_WhenMeetingHasLegacyMeritBadgeRow', async () => {
     asEditor();
     const res = await (await live()).plannerLiveStartAction({ entryId: mbNight });
-    expect(res).toEqual({ ok: false, error: 'Meeting Live runs rank meetings. This one is set up as a merit badge night in Admin.' });
+    expect(res.ok).toBe(true);
   });
 });
 

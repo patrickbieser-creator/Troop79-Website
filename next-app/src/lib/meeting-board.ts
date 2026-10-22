@@ -20,9 +20,8 @@ import { focusPicks, focusWordsMore, loadFocusTopics } from '@/lib/meeting-focus
 import {
   boardName,
   carryForward,
-  resolveBoardMode,
+  isMeetingClosed,
   summarizeBoard,
-  type BoardMode,
   type BoardPick,
   type Intent
 } from '@/lib/meeting-board-shared';
@@ -34,9 +33,9 @@ export interface BoardMeeting {
   title: string;
   startTime: string | null;
   location: string | null;
-  mode: BoardMode;
-  mbId: string | null;
-  blockCount: number;
+  /** No sign-ups this week (not a Troop Meeting, or "No Troop Meeting"). From the calendar only: a merit badge night is
+   *  just a meeting (Decision 10 of Plans/Meeting-Planner-II.md). */
+  closed: boolean;
 }
 
 type EntryRow = {
@@ -47,22 +46,18 @@ type EntryRow = {
   location: string | null;
   category: string;
   calendar_categories: { behavior: string | null } | { behavior: string | null }[] | null;
-  meeting_boards: { board_mode: BoardMode; board_mb_id: string | null; block_count: number } | { board_mode: BoardMode; board_mb_id: string | null; block_count: number }[] | null;
 };
 const one = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? (v[0] ?? null) : (v ?? null));
-const ENTRY_COLS = 'id, entry_date, title, start_time, location, category, calendar_categories(behavior), meeting_boards(board_mode, board_mb_id, block_count)';
+const ENTRY_COLS = 'id, entry_date, title, start_time, location, category, calendar_categories(behavior)';
 
 function toMeeting(r: EntryRow): BoardMeeting {
-  const board = one(r.meeting_boards);
   return {
     entryId: r.id,
     date: r.entry_date,
     title: r.title,
     startTime: r.start_time,
     location: r.location,
-    mode: resolveBoardMode({ boardMode: board?.board_mode ?? null, categoryBehavior: one(r.calendar_categories)?.behavior ?? null, title: r.title }),
-    mbId: board?.board_mb_id ?? null,
-    blockCount: board?.block_count ?? 2
+    closed: isMeetingClosed({ categoryBehavior: one(r.calendar_categories)?.behavior ?? null, title: r.title })
   };
 }
 
@@ -71,7 +66,7 @@ export async function loadNextMeeting(sb: SupabaseClient, today: string = centra
 }
 
 /** The next `limit` published Troop Meeting entries on or after today (Central), soonest first: the dates a standing
- *  teaching offer can list (Phase 2). Closed and merit badge boards are included; the caller filters by mode. */
+ *  teaching offer can list (Phase 2). Closed ones are included; the caller filters on `closed`. */
 export async function loadUpcomingMeetings(sb: SupabaseClient, limit: number, today: string = centralToday()): Promise<BoardMeeting[]> {
   const { data: cats, error: catErr } = await sb.from('calendar_categories').select('label').eq('behavior', 'meeting');
   if (catErr) throw new Error(catErr.message);

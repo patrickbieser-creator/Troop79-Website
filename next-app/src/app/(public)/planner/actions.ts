@@ -66,7 +66,7 @@ async function editor(entryId: unknown, personId: unknown) {
   const meeting = await loadMeetingById(sb, entryId as number);
   if (!meeting) return fail('That meeting is no longer on the calendar.');
   const { data: entry } = await sb.from('calendar_entries').select('status').eq('id', meeting.entryId).maybeSingle();
-  if ((entry as { status: string } | null)?.status !== 'published' || meeting.mode === 'closed') return fail('That meeting isn’t taking sign-ups.');
+  if ((entry as { status: string } | null)?.status !== 'published' || meeting.closed) return fail('That meeting isn’t taking sign-ups.');
   if (meeting.date < centralToday()) return fail('That meeting has passed. Reload the page for the next one.');
   return { ok: true as const, sb, meeting, actorPersonId: actor.personId, personId: personId as number };
 }
@@ -281,7 +281,7 @@ async function seeder(entryId: unknown) {
   const meeting = await loadMeetingById(sb, entryId as number);
   if (!meeting) return fail('That meeting is no longer on the calendar.');
   const { data: entry } = await sb.from('calendar_entries').select('status').eq('id', meeting.entryId).maybeSingle();
-  if ((entry as { status: string } | null)?.status !== 'published' || meeting.mode === 'closed') return fail('That meeting isn’t taking sign-ups.');
+  if ((entry as { status: string } | null)?.status !== 'published' || meeting.closed) return fail('That meeting isn’t taking sign-ups.');
   if (meeting.date < centralToday()) return fail('That meeting has passed.');
   return { ok: true as const, sb, meeting, actorPersonId: actor.personId };
 }

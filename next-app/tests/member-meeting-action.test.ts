@@ -245,7 +245,7 @@ describe('carry-forward and counts', () => {
 
   it('Board_NextMeeting_IsTheNextMeetingEntryOnOrAfterToday', async () => {
     const next = await (await board()).loadNextMeeting(sb, '2091-01-08');
-    expect([next?.entryId, next?.mode]).toEqual([meetingB, 'rank']);
+    expect([next?.entryId, next?.closed]).toEqual([meetingB, false]);
   });
 });
 

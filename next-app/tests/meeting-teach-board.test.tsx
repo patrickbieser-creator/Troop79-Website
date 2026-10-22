@@ -65,7 +65,6 @@ function board(view: Partial<TeachView> = {}, over: Partial<Parameters<typeof Te
   return render(
     <TeachBoard
       entryId={1}
-      mode="rank"
       subject={{ personId: 9, firstName: 'Dan', isSelf: true }}
       initial={{ ...VIEW, ...view }}
       choices={CHOICES}

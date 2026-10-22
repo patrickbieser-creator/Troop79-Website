@@ -26,7 +26,11 @@
 import type { CatalogMeritBadgeRequirement } from '@/lib/advancement-catalog';
 import { buildReqTree, type ReqNode } from '@/lib/mb-helpers';
 import { mbNodeSatisfied } from '@/lib/rank-calculus';
-import { effectiveIntent, type BoardMode, type BoardPick, type Intent } from '@/lib/meeting-board-shared';
+import { effectiveIntent, type BoardPick, type Intent } from '@/lib/meeting-board-shared';
+
+/** v1's stored meeting_boards.board_mode. Read only by v1's Admin stations screens until P5 retires them; the rest of
+ *  the app knows only open or closed (Decision 10 of Plans/Meeting-Planner-II.md). */
+export type BoardMode = 'rank' | 'merit_badge' | 'closed';
 
 /** Scouts per rotation group: the engine's group cap. */
 export const ROTATION_GROUP_CAP = 8;

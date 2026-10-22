@@ -19,7 +19,7 @@ import { loadInviteRows } from '@/lib/meeting-invites-db';
 import { buildPlannerBoard, type PlannerBoard, type PlannerTopic } from '@/lib/meeting-planner-board';
 
 export interface PlannerPage {
-  meeting: Pick<BoardMeeting, 'entryId' | 'title' | 'mode' | 'date'> & { dateLabel: string };
+  meeting: Pick<BoardMeeting, 'entryId' | 'title' | 'closed' | 'date'> & { dateLabel: string };
   board: PlannerBoard;
   /** The board's version stamp, for the poller. */
   stamp: string;
@@ -108,7 +108,7 @@ export async function loadPlannerPage(sb: SupabaseClient): Promise<PlannerPage |
   });
 
   return {
-    meeting: { entryId: meeting.entryId, title: meeting.title, mode: meeting.mode, date: meeting.date, dateLabel: fmtDateFull(meeting.date) },
+    meeting: { entryId: meeting.entryId, title: meeting.title, closed: meeting.closed, date: meeting.date, dateLabel: fmtDateFull(meeting.date) },
     board,
     stamp
   };

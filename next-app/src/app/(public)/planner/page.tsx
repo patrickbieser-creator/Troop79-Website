@@ -86,7 +86,7 @@ export default async function PlannerPage() {
     >
       <div className={styles.page}>
         <PlannerTabs active="board" />
-        {page.meeting.mode === "closed" ? (
+        {page.meeting.closed ? (
           <>
             <header className={styles.head}>{heading}</header>
             <div className={styles.noticeWrap}>

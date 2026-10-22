@@ -133,10 +133,13 @@ describe('the candidate tray', () => {
     expect(await stamp()).toBe(before);
   });
 
-  it('Tray_SaysClosed_OnAClosedBoard', async () => {
+  // P5a (Decision 10): the calendar alone closes a meeting ("No Troop Meeting"), never a stored board mode.
+  it('Tray_SaysClosed_OnAClosedMeeting', async () => {
     await boardUp();
-    await sb.rpc('meeting_set_board', { p_entry: entry, p_mode: 'closed', p_mb_id: null, p_block_count: null });
-    expect(await (await tray()).loadBoardTray(entry)).toEqual({ mode: 'closed', sessions: [], wanted: 0 });
+    await sb.from('calendar_entries').update({ title: `No Troop Meeting ${TEST_PREFIX}` }).eq('id', entry);
+    const res = await (await tray()).loadBoardTray(entry);
+    await sb.from('calendar_entries').update({ title: `Troop Meeting ${TEST_PREFIX}` }).eq('id', entry);
+    expect(res).toEqual({ mode: 'closed', sessions: [], wanted: 0 });
   });
 
   it('EngineTray_StillLoads_BesideTheBoardHalf', async () => {

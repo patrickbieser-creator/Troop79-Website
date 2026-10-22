@@ -113,7 +113,7 @@ export type ScoutCandidatesResult = { ok: true; scouts: ScoutCandidate[] } | { o
 export async function scoutCandidates(sb: SupabaseClient, input: { entryId: number; topicKey: string }): Promise<ScoutCandidatesResult> {
   if (!input || !Number.isInteger(input.entryId) || typeof input.topicKey !== 'string') return { ok: false, error: 'Malformed request' };
   const meeting = await loadMeetingById(sb, input.entryId);
-  if (!meeting || meeting.mode !== 'rank') return { ok: false, error: 'This meeting has no picks.' };
+  if (!meeting || meeting.closed) return { ok: false, error: 'This meeting has no picks.' };
   const catalog = await loadAdvancementCatalog();
   const scouts: ScoutCandidate[] = [];
   for (const scout of await loadBoardScouts(sb)) {

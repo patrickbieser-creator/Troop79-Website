@@ -57,7 +57,7 @@ export default async function FocusSetsPage() {
         canSeed={access.canSeed}
         sets={sets}
         sources={sources}
-        meetings={meetings.filter((m) => m.mode !== 'closed').map((m) => ({ entryId: m.entryId, label: fmtDay(m.date) }))}
+        meetings={meetings.filter((m) => !m.closed).map((m) => ({ entryId: m.entryId, label: fmtDay(m.date) }))}
       />
     </div>
   );

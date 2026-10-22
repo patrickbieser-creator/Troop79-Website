@@ -5,8 +5,8 @@
  *
  * P4a: Start Meeting Live: the matcher's current output becomes the meeting's saved placement.
  * P4b: the edits. Every one checks meeting_planner.edit here, on the server (the SPL holds it as a scout); viewers are
- * refused whatever the page showed them. Meeting Live runs rank meetings only: a meeting set up in Admin as a merit
- * badge night keeps v1's stations until P5 retires that mode (qa-lead, P4a). The first edit on a meeting that hasn't
+ * refused whatever the page showed them. Meeting Live runs any open meeting: a merit badge night is just a meeting
+ * (P5a, Decision 10). The first edit on a meeting that hasn't
  * started starts it (copy on first write) and finds a preview card ('s:…') by the matcher session it came from.
  * Card writes carry the card's version; a scout move is compare-and-set. Someone else's change first comes back as
  * { ok: false, stale: true } and the screen refreshes. Drag-and-drop and "Move to" call the same actions.
@@ -35,7 +35,7 @@ const NOT_TODAY = 'Attendance is taken on the day of the meeting.';
 
 type Editor = { ok: true; sb: SupabaseClient; meeting: BoardMeeting; actorPersonId: number; actorLabel: string };
 
-/** An editor acting on an upcoming (or today's), published rank meeting. */
+/** An editor acting on an upcoming (or today's), published meeting that takes sign-ups. */
 async function liveEditor(entryId: unknown): Promise<Editor | { ok: false; error: string }> {
   if (!Number.isInteger(entryId)) return fail('Malformed request');
   const actor = await resolveAdminActor();
@@ -44,8 +44,7 @@ async function liveEditor(entryId: unknown): Promise<Editor | { ok: false; error
   const meeting = await loadMeetingById(sb, entryId as number);
   if (!meeting) return fail('That meeting is no longer on the calendar.');
   const { data: entry } = await sb.from('calendar_entries').select('status').eq('id', meeting.entryId).maybeSingle();
-  if ((entry as { status: string } | null)?.status !== 'published' || meeting.mode === 'closed') return fail('That meeting isn’t taking sign-ups.');
-  if (meeting.mode !== 'rank') return fail('Meeting Live runs rank meetings. This one is set up as a merit badge night in Admin.');
+  if ((entry as { status: string } | null)?.status !== 'published' || meeting.closed) return fail('That meeting isn’t taking sign-ups.');
   if (meeting.date < centralToday()) return fail('That meeting has passed. Reload the page for the next one.');
   return { ok: true, sb, meeting, actorPersonId: actor.personId, actorLabel: actor.label };
 }

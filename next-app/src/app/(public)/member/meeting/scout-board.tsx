@@ -20,7 +20,6 @@ import { Button } from '@/app/_components/button';
 import { INTENT_LABEL, MAX_PICKS, effectiveIntent, type Intent } from '@/lib/meeting-board-shared';
 import type { PickListView, PickRow, ScoutBoardView, TrayPick } from '@/lib/meeting-board-picklist';
 import type { MatchLine } from '@/lib/meeting-board-match';
-import type { MbScoutLines } from '@/lib/meeting-board-rotations';
 import {
   meetingAddPickAction,
   meetingRemovePickAction,
@@ -37,8 +36,6 @@ const FLASH_MS = 1800;
 
 export interface ScoutBoardProps {
   entryId: number;
-  mode: 'rank' | 'merit_badge';
-  mbName: string | null;
   /** 'Sunday', from the meeting date. */
   dayName: string;
   subject: { personId: number; firstName: string; isSelf: boolean };
@@ -49,56 +46,6 @@ export interface ScoutBoardProps {
   /** Phase 3a: what the live match gives this scout so far ("So far, you're in First aid, your #2"), by block. Empty
    *  once the agenda is published: the page links to the agenda instead. */
   assigned?: MatchLine[];
-  /** Phase 3b, a merit badge night: whether they have the badge, where a leader placed them, and their group and night
-   *  so far. Null once the agenda is published (the page links to it) or before stations are set. */
-  mbNight?: MbScoutLines | null;
-}
-
-/** "So far, you're in Group B": a merit badge night's rotation draft before the agenda is published (Phase 3b). */
-export function RotationCard({ night, isSelf, name }: { night: MbScoutLines; isSelf: boolean; name: string }) {
-  if (night.hasBadge) {
-    if (!night.helping && !night.otherWork) return null;
-    return (
-      <div className={styles.assignCard}>
-        <p className={styles.assignHead}>
-          {night.helping
-            ? `So far, ${isSelf ? 'you’re' : `${name} is`} helping at ${night.helping}.`
-            : `So far, a leader has other work for ${isSelf ? 'you' : name} tonight.`}
-        </p>
-        <p className={styles.helper}>Leaders set the plan before the meeting, so this can still change.</p>
-      </div>
-    );
-  }
-  if (!night.group) return null;
-  return (
-    <div className={styles.assignCard}>
-      <p className={styles.assignHead}>
-        So far, {isSelf ? 'you’re' : `${name} is`} in Group {night.group}
-      </p>
-      <ul className={styles.assignList}>
-        {night.stops.map((s) => (
-          <li key={s.rotation}>
-            Rotation {s.rotation} ·{' '}
-            {s.free ? (
-              <>
-                <b>Free: help out</b>
-                <span className={styles.meta}> · already done {s.title}</span>
-              </>
-            ) : (
-              <>
-                <b>{s.title}</b>
-                <span className={styles.meta}>
-                  {s.place ? ` · ${s.place}` : ''}
-                  {s.teacher ? ` · ${s.teacher}` : ''}
-                </span>
-              </>
-            )}
-          </li>
-        ))}
-      </ul>
-      <p className={styles.helper}>Leaders set the plan before the meeting, so this can still change.</p>
-    </div>
-  );
 }
 
 /** "So far, you're in First aid, your #2, then Knots": the live match before the agenda is published. */
@@ -239,44 +186,6 @@ export function ScoutBoard(props: ScoutBoardProps) {
     }
     setRankMode(true);
     if (!ranked) saveOrder(view.picks.map((p) => p.key), 'Saved. Use the arrows to put them in order.');
-  }
-
-  // ── merit badge night: no pick list (Decision 10). Rank picks are held for the next regular meeting. ──
-  if (props.mode === 'merit_badge') {
-    const night = props.mbNight ?? null;
-    return (
-      <>
-        {night && view.intent !== 'not_coming' && <RotationCard night={night} isSelf={subject.isSelf} name={name} />}
-        <div className={styles.notice}>
-          <p>
-            <strong className={styles.big}>Merit badge night{props.mbName ? `: ${props.mbName}` : ''}.</strong>
-          </p>
-          <p>
-            {night?.hasBadge
-              ? `${subject.isSelf ? 'You have' : `${name} has`} this badge, so ${subject.isSelf ? 'you’ll' : 'they’ll'} help teach or work on something else.`
-              : `${subject.isSelf ? 'You’ll' : `${name} will`} be assigned a rotation.`}
-          </p>
-        </div>
-        <IntentControl
-          groupName={`${ids}-intent`}
-          label={subject.isSelf ? 'Are you coming?' : `Is ${name} coming?`}
-          value={view.intent}
-          options={['coming', 'not_coming']}
-          helper={view.intent === 'not_coming' ? 'Got it. Thanks for letting us know.' : null}
-          saved={flash.intent > 0}
-          disabled={readOnly}
-          onChange={chooseIntent}
-        />
-        {view.picks.length > 0 && (
-          <p className={styles.meta}>
-            {subject.isSelf ? 'Your' : `${name}’s`} picks are saved for next time ({view.picks.length}).
-          </p>
-        )}
-        <p className={styles.sr} aria-live="polite">
-          {live}
-        </p>
-      </>
-    );
   }
 
   const whose = subject.isSelf ? 'Your picks' : `${name}’s picks`;

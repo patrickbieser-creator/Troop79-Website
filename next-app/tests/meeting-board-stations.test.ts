@@ -514,37 +514,11 @@ describe('the rotation draft from the database (loadRotationBoard)', () => {
 });
 
 describe('the meeting editor tray on a merit badge night (loadBoardTray)', () => {
-  it('Tray_HasOneCardPerStation_WithTeacherPlaceRotationsAndWhoWorksOnIt', async () => {
+  // P5a (Decision 10): a merit badge night is just a meeting. The tray shows the board's match, never stations.
+  it('Tray_OnALegacyMeritBadgeBoard_ShowsTheMatch_NotStations', async () => {
     await setStations([st('First', [codes[0]], null, 'Back room'), st('Second', [codes[1]])]);
-    const [a] = await stationRows();
-    await teach(a.meeting_topics.topic_key);
-    for (const p of [s1, s2]) await intent(p, 'coming');
     const { loadBoardTray } = await import('../src/app/admin/(workspace)/advancement/meetings/load-agenda');
     const t = (await loadBoardTray(mbNight))!;
-    const [first, second] = t.sessions;
-    const mine = (names: string[]) => names.filter((n) => n.startsWith(TEST_PREFIX)).length;
-    expect([
-      t.mode,
-      t.sessions.map((c) => [c.blockLabel, c.title]),
-      first.teacher !== '',
-      first.flags,
-      t.wanted,
-      first.promote.description?.startsWith(`${first.codeLabel} · Back room · Rotations 1: Group`),
-      // Scout One finished the first station: not in its audience, still in the second's.
-      [mine(first.scouts), mine(second.scouts)],
-      first.promote.track
-    ]).toEqual([
-      'merit_badge',
-      [
-        ['Station 1', 'First'],
-        ['Station 2', 'Second']
-      ],
-      true,
-      ['sign-off needs a counselor'],
-      1,
-      true,
-      [1, 2],
-      'Merit Badge'
-    ]);
+    expect([t.mode, t.sessions.some((c) => c.blockLabel.startsWith('Station'))]).toEqual(['rank', false]);
   });
 });

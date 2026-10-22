@@ -4,7 +4,8 @@
  * reads and writes.
  *
  * One read path for every surface: This Sunday and its rotations editor, the meeting editor's tray, and
- * /member/meeting all call loadRotationBoard, so a scout, their teacher and the leader see the same groups.
+ * /member/meeting all called loadRotationBoard. Since P5a (Decision 10 of Plans/Meeting-Planner-II.md) only v1's Admin This Sunday does;
+ * the stored mode is read here and nowhere else, until P5c retires stations.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AdvancementCatalog } from '@/lib/advancement-catalog';
@@ -17,6 +18,7 @@ import {
   draftRotations,
   type Placement,
   type RotationResult,
+  type BoardMode,
   type Station,
   type StationDraft
 } from '@/lib/meeting-board-rotations';
@@ -30,6 +32,15 @@ type StationRow = {
   meeting_topics: { topic_key: string; mb_id: string | null } | { topic_key: string; mb_id: string | null }[] | null;
 };
 const one = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? (v[0] ?? null) : (v ?? null));
+
+/** v1's stored board settings (mode, badge, blocks), read only by v1's Admin screens until P5 retires them. A closed
+ *  meeting is closed whatever the row says; no row = rank. */
+export async function loadLegacyBoard(sb: SupabaseClient, meeting: Pick<BoardMeeting, 'entryId' | 'closed'>): Promise<{ mode: BoardMode; mbId: string | null; blockCount: number }> {
+  const { data, error } = await sb.from('meeting_boards').select('board_mode, board_mb_id, block_count').eq('calendar_entry_id', meeting.entryId).maybeSingle();
+  if (error) throw new Error(error.message);
+  const row = data as { board_mode: BoardMode; board_mb_id: string | null; block_count: number } | null;
+  return { mode: meeting.closed ? 'closed' : (row?.board_mode ?? 'rank'), mbId: row?.board_mb_id ?? null, blockCount: row?.block_count ?? 2 };
+}
 
 /** A meeting's stations for this badge, in the leader's order. */
 export async function loadStations(sb: SupabaseClient, entryId: number, mbId: string | null): Promise<Station[]> {
@@ -80,13 +91,14 @@ export interface RotationBoard {
  */
 export async function loadRotationBoard(
   sb: SupabaseClient,
-  meeting: Pick<BoardMeeting, 'entryId' | 'mode' | 'mbId'>,
+  meeting: Pick<BoardMeeting, 'entryId' | 'closed'>,
   catalog: Pick<AdvancementCatalog, 'meritBadges' | 'meritBadgeRequirements'>,
   rows: readonly BoardScoutRow[],
   teach?: Pick<TeachBoard, 'supply'>
 ): Promise<RotationBoard | null> {
-  if (meeting.mode !== 'merit_badge' || !meeting.mbId) return null;
-  const mbId = meeting.mbId;
+  const board = await loadLegacyBoard(sb, meeting);
+  if (board.mode !== 'merit_badge' || !board.mbId) return null;
+  const mbId = board.mbId;
   const [stations, placements] = await Promise.all([loadStations(sb, meeting.entryId, mbId), loadPlacements(sb, meeting.entryId)]);
   const intentOf = new Map(rows.map((r) => [r.personId, boardIntent('merit_badge', r.intent, r.picks)]));
   const scoutIds = rows.map((r) => r.scoutId);

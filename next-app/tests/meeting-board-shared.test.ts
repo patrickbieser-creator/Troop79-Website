@@ -4,11 +4,11 @@ import {
   carryForward,
   decideActFor,
   effectiveIntent,
+  isMeetingClosed,
   isPastSoftClose,
   onBehalfAccess,
   orderPicks,
   othersLabel,
-  resolveBoardMode,
   scoutLine,
   summarizeBoard,
   type BoardPick
@@ -67,14 +67,14 @@ const MBS: CatalogMeritBadge[] = [
   { id: 'chess', name: 'Chess', eagle: false }
 ];
 
-describe('board mode', () => {
-  it('Board_DefaultsClosed_ForNonMeetingCalendarEntry', () => {
+describe('closed meetings', () => {
+  // P5a (Decision 10): the calendar alone decides; there is no stored mode.
+  it('Meeting_IsClosed_WhenCategoryNotMeetingOrTitleSaysNoTroopMeeting', () => {
     expect([
-      resolveBoardMode({ boardMode: null, categoryBehavior: 'meeting', title: 'Troop Meeting' }),
-      resolveBoardMode({ boardMode: null, categoryBehavior: null, title: 'Campout' }),
-      resolveBoardMode({ boardMode: null, categoryBehavior: 'meeting', title: 'No Troop Meeting' }),
-      resolveBoardMode({ boardMode: 'merit_badge', categoryBehavior: 'meeting', title: 'Troop Meeting' })
-    ]).toEqual(['rank', 'closed', 'closed', 'merit_badge']);
+      isMeetingClosed({ categoryBehavior: 'meeting', title: 'Troop Meeting' }),
+      isMeetingClosed({ categoryBehavior: null, title: 'Campout' }),
+      isMeetingClosed({ categoryBehavior: 'meeting', title: 'No Troop Meeting' })
+    ]).toEqual([false, true, true]);
   });
 });
 
@@ -252,9 +252,9 @@ describe('on behalf', () => {
   });
 });
 
-describe('scoutLine on a merit badge night (Phase 3b)', () => {
-  it('Scout_CarriedRankPicks_DoNotSayComing_OnAMeritBadgeNight', () => {
+describe('scoutLine', () => {
+  it('Scout_PickSaysComing_OnAnyOpenMeeting', () => {
     const held = [{ later: false }];
-    expect([scoutLine('merit_badge', null, held), scoutLine('merit_badge', 'coming', held), scoutLine('rank', null, held)]).toEqual(['No answer yet', 'Coming', 'Coming · 1 pick']);
+    expect([scoutLine(null, held), scoutLine('coming', held), scoutLine(null, [])]).toEqual(['Coming · 1 pick', 'Coming · 1 pick', 'No answer yet']);
   });
 });

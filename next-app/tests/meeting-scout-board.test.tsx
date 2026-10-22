@@ -76,8 +76,6 @@ function board(view: Partial<ScoutBoardView> = {}, over: Partial<Parameters<type
   return render(
     <ScoutBoard
       entryId={1}
-      mode="rank"
-      mbName={null}
       dayName="Sunday"
       subject={{ personId: 7, firstName: 'Finn', isSelf: true }}
       initial={{ personId: 7, intent: null, picks: [], ...view }}
@@ -209,16 +207,6 @@ describe('ScoutBoard', () => {
   it('Parent_SeesTheScoutsName_InTheQuestionAndTray', () => {
     board({}, { subject: { personId: 7, firstName: 'Finn', isSelf: false } });
     expect([screen.getByRole('radiogroup', { name: 'Is Finn coming?' }), screen.getByText('Finn’s picks (0 of 5)')]).toHaveLength(2);
-  });
-
-  it('MeritBadgeNight_HasNoPickList_JustTheBadgeAndComing', () => {
-    board({}, { mode: 'merit_badge', mbName: 'Cooking' });
-    expect([
-      screen.getByText('Merit badge night: Cooking.'),
-      screen.getByText('You’ll be assigned a rotation.'),
-      screen.queryByRole('button', { name: /First aid/ }),
-      screen.getAllByRole('radio').length
-    ]).toEqual([expect.anything(), expect.anything(), null, 2]);
   });
 
   it('ReadOnly_ProxyView_CannotTap', async () => {

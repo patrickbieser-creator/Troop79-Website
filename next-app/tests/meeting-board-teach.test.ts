@@ -164,12 +164,11 @@ describe('supply', () => {
     expect([teacherIntent(null, 1), teacherIntent(null, 0), teacherIntent('not_coming', 1)]).toEqual(['coming', null, 'not_coming']);
   });
   it('MemberCard_TeacherLine_SaysAnswerAndCount', () => {
-    expect([teacherLine('rank', null, 0), teacherLine('rank', null, 1), teacherLine('rank', 'undecided', 0), teacherLine('rank', 'not_coming', 2), teacherLine('closed', 'coming', 1)]).toEqual([
+    expect([teacherLine(null, 0), teacherLine(null, 1), teacherLine('undecided', 0), teacherLine('not_coming', 2)]).toEqual([
       'No answer yet',
       'Coming · teaching 1',
       'Not sure yet',
-      'Can’t make it',
-      'No sign-ups this week'
+      'Can’t make it'
     ]);
   });
   it('WeeksAsked_CountsFromTheEarliestAsk', () => {

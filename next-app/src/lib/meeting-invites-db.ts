@@ -352,7 +352,7 @@ export async function createPickInvites(
   const meetingRow = await upcomingMeeting(sb, input.entryId);
   const meeting = meetingRow ? await loadMeetingById(sb, input.entryId) : null;
   if (!meetingRow || !meeting) return { ok: false, error: 'That meeting has passed, or isn’t a troop meeting.' };
-  if (meeting.mode !== 'rank') return { ok: false, error: 'This meeting has no picks.' };
+  if (meeting.closed) return { ok: false, error: 'This meeting has no picks.' };
 
   const since = new Date(now.getTime() - INVITE_DEDUPE_HOURS * 3600_000).toISOString();
   const { data: recent } = await sb
