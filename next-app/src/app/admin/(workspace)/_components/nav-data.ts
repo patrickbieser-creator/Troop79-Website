@@ -218,7 +218,8 @@ export const SECTIONS: NavSection[] = [
     ]
   },
   {
-    // Its own bar entry (Patrick, 2026-10-20): the Sunday board is used every week, not a tab under Advancement.
+    // Its own bar entry (Patrick, 2026-10-20). Since P5c the Sunday board lives in the Meeting Planner (/planner);
+    // this is the ledger-suggestion generator.
     title: 'Meeting Plan',
     // Advancement work, so Advancement's tone on Home; every tone is taken.
     tint: 'moss',
@@ -227,7 +228,7 @@ export const SECTIONS: NavSection[] = [
         label: 'Meeting Plan',
         href: '/admin/advancement/meeting-plan',
         matchPath: '/admin/advancement/meeting-plan',
-        description: 'Sunday meeting plan from who needs what',
+        description: 'Suggested advancement from the ledger, published to the site',
         capability: 'meeting_plan.use'
       }
     ]

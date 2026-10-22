@@ -108,9 +108,10 @@ describe('meeting board mode', () => {
     expect(modes).toEqual(['rank', 'closed', 'closed']);
   });
 
-  it('Board_UsesTheLeadersMode_WhenARowExists', async () => {
-    await sb.from('meeting_boards').insert({ calendar_entry_id: meetingEntry, board_mode: 'closed' });
-    expect((await sb.rpc('meeting_board_mode', { p_entry: meetingEntry })).data).toBe('closed');
+  // P5c: the stored mode is retired; a board row changes nothing, the calendar alone decides.
+  it('Board_IgnoresTheBoardRow_TheCalendarDecides', async () => {
+    await sb.from('meeting_boards').insert({ calendar_entry_id: meetingEntry });
+    expect((await sb.rpc('meeting_board_mode', { p_entry: meetingEntry })).data).toBe('rank');
   });
 });
 
@@ -175,8 +176,7 @@ describe('meeting picks', () => {
   });
 
   it('Board_RefusesPicks_WhenMeetingClosed', async () => {
-    await sb.from('meeting_boards').insert({ calendar_entry_id: meetingEntry, board_mode: 'closed' });
-    const closed = await add({ person: scoutA, actor: scoutA, key: keys[0] });
+    const closed = await add({ entry: noMeetingEntry, person: scoutA, actor: scoutA, key: keys[0] });
     const nonMeeting = await add({ entry: nonMeetingEntry, person: scoutA, actor: scoutA, key: keys[0] });
     expect([closed.error?.message, nonMeeting.error?.message]).toEqual(['There are no picks for this meeting.', 'There are no picks for this meeting.']);
   });
@@ -322,10 +322,11 @@ describe('qa-lead follow-ups', () => {
   it('Board_AllowsRemoveAndReorder_OnAClosedBoard_ButNotAdd', async () => {
     await add({ person: scoutA, actor: scoutA, key: keys[0] });
     await add({ person: scoutA, actor: scoutA, key: keys[1] });
-    await sb.from('meeting_boards').insert({ calendar_entry_id: meetingEntry, board_mode: 'closed' });
+    await sb.from('calendar_entries').update({ title: `No Troop Meeting ${TEST_PREFIX}` }).eq('id', meetingEntry);
     const order = await sb.rpc('meeting_set_pick_order', { p_entry: meetingEntry, p_person: scoutA, p_actor: scoutA, p_leader: false, p_keys: [keys[1], keys[0]], p_carry: [] });
     const remove = await sb.rpc('meeting_remove_pick', { p_entry: meetingEntry, p_person: scoutA, p_actor: scoutA, p_leader: false, p_topic_key: keys[0], p_carry: [] });
     const added = await add({ person: scoutA, actor: scoutA, key: keys[2] });
+    await sb.from('calendar_entries').update({ title: `Troop Meeting ${TEST_PREFIX}` }).eq('id', meetingEntry);
     expect([order.error, remove.error, added.error?.message, (await picksOf(scoutA)).map((p) => p.meeting_topics.topic_key)]).toEqual([
       null,
       null,

@@ -32,7 +32,7 @@ const entries: number[] = [];
 const people: number[] = [];
 const scoutIds: string[] = [];
 let meeting = 0; // 2097-03-07
-let mbNight = 0; // 2097-03-14, a legacy merit badge board row (set up in v1's Admin)
+let mbNight = 0; // 2097-03-14, a meeting whose board row already exists (v1's merit badge nights had one)
 let editorAdult = 0;
 let teacher = 0;
 let teacher2 = 0;
@@ -113,8 +113,7 @@ beforeAll(async () => {
   bo = await scout('Bo', 'scout');
   const { data: reqs } = await sb.from('rank_requirements').select('rank_id, code').is('parent_id', null).eq('rank_id', 'tenderfoot').neq('venue', 'outing').order('sort_order').limit(2);
   [key, key2] = ((reqs ?? []) as { rank_id: string; code: string }[]).map((r) => `${r.rank_id}-${r.code}`);
-  const { data: mb } = await sb.from('merit_badges').select('id').limit(1).single();
-  const { error } = await sb.from('meeting_boards').insert({ calendar_entry_id: mbNight, board_mode: 'merit_badge', board_mb_id: (mb as { id: string }).id });
+  const { error } = await sb.from('meeting_boards').insert({ calendar_entry_id: mbNight });
   if (error) throw new Error(error.message);
 });
 
@@ -166,8 +165,8 @@ describe('who may edit Meeting Live', () => {
     expect([res.ok, await membersOf(a), await membersOf(b)]).toEqual([true, [], [ann]]);
   });
 
-  // P5a (Decision 10): a merit badge night is just a meeting. A board row still saying merit_badge changes nothing.
-  it('Planner_CanOpenLive_WhenMeetingHasLegacyMeritBadgeRow', async () => {
+  // P5a/P5c (Decision 10): a merit badge night is just a meeting. Live starts on any open meeting, board row or not.
+  it('Live_RunsOnAnyOpenMeeting', async () => {
     asEditor();
     const res = await (await live()).plannerLiveStartAction({ entryId: mbNight });
     expect(res.ok).toBe(true);

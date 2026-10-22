@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 /**
- * Meeting invites, P1: the send action (Plans/Matcher-Tune-Up.md T-5). The database half and the mail transport are
- * the mock boundary; what's checked here is the action's own job: an adult leader only, one email per invite from
+ * Meeting invites, P1: the send (Plans/Matcher-Tune-Up.md T-5, lib/meeting-invites-send). The database half and the mail
+ * transport are the mock boundary; what's checked here is the send's own job (who may send is the planner's check): one email per invite from
  * the Troop 79 Bugler carrying that invite's own link, and an invite whose email didn't go out deleted.
  */
 const m = vi.hoisted(() => ({
@@ -37,7 +37,11 @@ const chain = (result: unknown) => {
 };
 vi.mock('@/lib/supabase/server', () => ({ createAdminClient: () => ({ from: () => chain({ data: { entry_date: '2091-03-04' } }) }) }));
 
-const { sendTeachInvitesAction, sendPickInvitesAction } = await import('../src/app/admin/(workspace)/advancement/meeting-plan/actions');
+const { createAdminClient } = await import('@/lib/supabase/server');
+const { sendTeachInvites, sendPickInvites } = await import('../src/lib/meeting-invites-send');
+// Admin's wrappers retired with This Sunday (P5c); the planner calls these same functions after its own access check.
+const sendTeachInvitesAction = (input: { entryId: number; topicKey: string; personIds: number[] }) => sendTeachInvites(createAdminClient(), { ...input, sentBy: 82 });
+const sendPickInvitesAction = (input: { entryId: number; topicKey: string; scoutIds: number[] }) => sendPickInvites(createAdminClient(), { ...input, sentBy: 82 });
 
 const invite = (personId: number, token: string) => ({ inviteId: personId * 10, personId, name: `Person ${personId}`, sentTo: `p${personId}@example.com`, token });
 
@@ -74,11 +78,6 @@ describe('sendTeachInvitesAction', () => {
     expect([m.del.mock.calls.flatMap((c) => c[1]), res.ok && res.sent]).toEqual([[420], ['Person 41']]);
   });
 
-  it('AYouthLeader_CantSendInvites', async () => {
-    m.actor = { subjectKind: 'scout', personId: 9 };
-    const res = await sendTeachInvitesAction({ entryId: 5, topicKey: 'tenderfoot-3a', personIds: [41] });
-    expect([res.ok, m.create.mock.calls.length]).toEqual([false, 0]);
-  });
 
   it('TheSend_IsAudited', async () => {
     m.create.mockResolvedValue({ ok: true, invites: [invite(41, 'a'.repeat(64))], skipped: [] });
@@ -121,9 +120,4 @@ describe('sendPickInvitesAction (P2)', () => {
     expect(m.del.mock.calls[0][1]).toEqual([11, 12]);
   });
 
-  it('AYouthLeader_CantOfferToScouts', async () => {
-    m.actor = { subjectKind: 'scout', personId: 9 };
-    const res = await sendPickInvitesAction({ entryId: 5, topicKey: 'tenderfoot-3a', scoutIds: [1] });
-    expect([res.ok, m.createPick.mock.calls.length]).toEqual([false, 0]);
-  });
 });

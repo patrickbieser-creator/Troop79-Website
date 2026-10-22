@@ -162,12 +162,12 @@ describe('answering', () => {
   it('WhenTheTeachSignupRefuses_TheInviteStaysOpen', async () => {
     // A board closed after the invite went out refuses the sign-up (there is no teaching cap any more).
     const sent = await firstToken();
-    await sb.from('meeting_boards').upsert({ calendar_entry_id: meeting, board_mode: 'closed' }, { onConflict: 'calendar_entry_id' });
+    await sb.from('calendar_entries').update({ title: `No Troop Meeting ${TEST_PREFIX}` }).eq('id', meeting);
     try {
       const res = await respondToInvite(sb, sent.token, 'accept');
       expect([res.ok, !res.ok && res.code, (await inspectInvite(sb, sent.token)).state]).toEqual([false, 'save', 'open']);
     } finally {
-      await sb.from('meeting_boards').delete().eq('calendar_entry_id', meeting);
+      await sb.from('calendar_entries').update({ title: `Troop Meeting ${TEST_PREFIX}` }).eq('id', meeting);
     }
   });
 

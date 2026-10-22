@@ -50,7 +50,8 @@ export interface MatchedCandidate {
 /** The tray's board half: whether the meeting takes sign-ups, and its matched sessions. A merit badge night is just a
  *  meeting (Decision 10 of Plans/Meeting-Planner-II.md). */
 export interface BoardTray {
-  mode: 'rank' | 'closed';
+  /** The meeting takes no sign-ups (not a troop meeting, or "No troop meeting"). */
+  closed: boolean;
   sessions: MatchedCandidate[];
   /** Requests with no teacher (shown as a pointer to the Meeting Planner). */
   wanted: number;
@@ -400,7 +401,7 @@ export function MeetingEditor({
             <FormPanel title="From this week's board">
               {board === null ? (
                 <p className={styles.trayNote}>The board&rsquo;s match didn&rsquo;t load right now. The engine&rsquo;s suggestions below still work.</p>
-              ) : board.mode === 'closed' ? (
+              ) : board.closed ? (
                 <p className={styles.trayNote}>This meeting has no board. Build the agenda by hand.</p>
               ) : (
                 <>

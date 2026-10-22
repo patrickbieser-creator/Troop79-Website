@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, type ReactNode } from 'react';
+import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import {
   TIER_LABEL,
@@ -29,22 +29,17 @@ interface Props {
   published: PublishedPlanRow[];
   /** Next Sunday — the troop's meeting day. */
   defaultDate: string;
-  /** The live "This Sunday" board (server-rendered), the first tab. */
-  thisSunday: ReactNode;
-  /** Group Sessions (Phase 3a): the live match, read-only (server-rendered). The engine's ledger-only sessions follow
-   *  it once a plan is generated. */
-  groupSessions?: ReactNode;
 }
 
-type PlanTab = 'board' | 'sessions' | 'scouts' | 'roster';
+type PlanTab = 'sessions' | 'scouts' | 'roster';
 
 const TIERS: TierId[] = ['new', 'experienced', 'older'];
 
-export function PlanView({ published, defaultDate, thisSunday, groupSessions }: Props) {
+export function PlanView({ published, defaultDate }: Props) {
   const [meetingDate, setMeetingDate] = useState(defaultDate);
   const [payload, setPayload] = useState<MeetingPlanPayload | null>(null);
-  // This Sunday (the live board) is the first tab; the three plan tabs below it are the generator, as before.
-  const [tab, setTab] = useState<PlanTab>('board');
+  // The generator's three tabs (P5c retired This Sunday; the live board is the Meeting Planner's).
+  const [tab, setTab] = useState<PlanTab>('sessions');
   const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -112,14 +107,12 @@ export function PlanView({ published, defaultDate, thisSunday, groupSessions }: 
   return (
     <>
       {/* Shared pill TabStrip — Patrick's Phase B call (2026-08-21): the underline/navy tab one-off folds into the one
-          tab pattern. This Sunday leads (Phase 1 of Plans/Meeting-Requests-And-Teaching-Offers.md: consolidate, not a
-          4th screen). */}
+          tab pattern. */}
       <div className={styles.tabsRow}>
         <TabStrip
           ariaLabel="Plan view"
           activeKey={tab}
           items={[
-            { key: 'board', label: 'This Sunday', onSelect: () => setTab('board') },
             { key: 'sessions', label: 'Group Sessions', onSelect: () => setTab('sessions') },
             { key: 'scouts', label: 'By Scout', onSelect: () => setTab('scouts') },
             { key: 'roster', label: 'Teaching Roster', onSelect: () => setTab('roster') }
@@ -127,17 +120,6 @@ export function PlanView({ published, defaultDate, thisSunday, groupSessions }: 
         />
       </div>
 
-      {tab === 'board' ? (
-        thisSunday
-      ) : (
-      <>
-      {tab === 'sessions' && groupSessions && (
-        <div className={styles.section}>
-          <h2 className={styles.sectionTitle}>This Sunday&rsquo;s match</h2>
-          {groupSessions}
-          <h2 className={`${styles.sectionTitle} ${styles.section}`}>Ledger suggestions</h2>
-        </div>
-      )}
       <div className={styles.generateBar}>
         <label className={styles.field}>
           Meeting date
@@ -232,8 +214,6 @@ export function PlanView({ published, defaultDate, thisSunday, groupSessions }: 
           </table>
         )}
       </div>
-      </>
-      )}
     </>
   );
 }

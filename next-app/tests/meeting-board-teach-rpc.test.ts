@@ -241,9 +241,11 @@ describe('who may teach', () => {
 });
 
 describe('qa-lead follow-ups', () => {
-  it('Board_RefusesTeaching_OnAMeritBadgeNight', async () => {
-    await sb.from('meeting_boards').insert({ calendar_entry_id: meeting1, board_mode: 'merit_badge' });
-    expect((await teach({ person: parent, actor: parent })).error?.message).toBe('There’s no teaching sign-up for this meeting.');
+  // P5c (Decision 10): a merit badge night is just a meeting; there are no stations, so any open meeting takes teachers.
+  it('TeachTopic_Succeeds_OnOpenMeeting_WithNoStations', async () => {
+    await sb.from('meeting_boards').insert({ calendar_entry_id: meeting1 });
+    const { error } = await teach({ person: parent, actor: parent });
+    expect([error, (await teachingOf(parent)).length]).toEqual([null, 1]);
   });
 
   it('Guest_CannotTeach', async () => {
@@ -282,8 +284,10 @@ describe('qa-lead follow-ups', () => {
 
 describe('board state', () => {
   it('Board_RefusesTeaching_WhenMeetingClosed', async () => {
-    await sb.from('meeting_boards').insert({ calendar_entry_id: meeting1, board_mode: 'closed' });
+    // Closed comes from the calendar alone (P5c): a "No Troop Meeting" title.
+    await sb.from('calendar_entries').update({ title: `No Troop Meeting ${TEST_PREFIX}` }).eq('id', meeting1);
     const [closed, nonMeeting] = await Promise.all([teach({ person: parent, actor: parent }), offer({ entries: [campout], person: parent, actor: parent })]);
+    await sb.from('calendar_entries').update({ title: `Troop Meeting ${TEST_PREFIX}` }).eq('id', meeting1);
     expect([closed.error?.message, nonMeeting.error?.message]).toEqual(['There’s no teaching sign-up for this meeting.', 'There’s no teaching sign-up for this meeting.']);
   });
 

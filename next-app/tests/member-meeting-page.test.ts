@@ -4,8 +4,8 @@ import { adminClient } from './helpers/admin-client';
 import { TEST_PREFIX } from './helpers/signup-fixtures';
 
 /**
- * /member/meeting after P5a (Plans/Meeting-Planner-II.md, Decision 10): a merit badge night is just a meeting. A
- * meeting whose board row still says merit_badge (set up in v1's Admin) shows a scout the ordinary pick list. Real
+ * /member/meeting after P5a/P5c (Plans/Meeting-Planner-II.md, Decision 10): a merit badge night is just a meeting. A
+ * meeting with a board row (v1's merit badge nights had one; the stored mode is gone) shows the ordinary pick list. Real
  * local database; the sign-in and "which meeting is next" seams are mocked to the fixture. Fixtures are dated 2092.
  */
 const sb = adminClient();
@@ -38,8 +38,7 @@ beforeAll(async () => {
     .single();
   if (e1) throw new Error(e1.message);
   state.entryId = entry!.id as number;
-  const { data: mb } = await sb.from('merit_badges').select('id').limit(1).single();
-  const { error: e2 } = await sb.from('meeting_boards').insert({ calendar_entry_id: state.entryId, board_mode: 'merit_badge', board_mb_id: (mb as { id: string }).id });
+  const { error: e2 } = await sb.from('meeting_boards').insert({ calendar_entry_id: state.entryId });
   if (e2) throw new Error(e2.message);
   const { data: p, error: e3 } = await sb.from('people').insert({ display_name: `${TEST_PREFIX} MMP Ann`, first_name: `${TEST_PREFIX} MMP`, last_name: 'Ann' }).select('id').single();
   if (e3) throw new Error(e3.message);
@@ -58,8 +57,8 @@ afterAll(async () => {
   await sb.from('people').delete().eq('id', state.personId);
 });
 
-describe('/member/meeting on a legacy merit badge board', () => {
-  it('MemberMeetingPage_ShowsRankBoard_WhenStoredModeIsMeritBadge', async () => {
+describe('/member/meeting on a meeting with a board row', () => {
+  it('MemberMeetingPage_ShowsRankBoard_WhenTheMeetingHasABoardRow', async () => {
     const { default: Page } = await import('../src/app/(public)/member/meeting/page');
     const html = renderToStaticMarkup(await Page({ searchParams: Promise.resolve({}) }));
     expect([html.includes('Merit badge night'), html.includes('Your picks')]).toEqual([false, true]);

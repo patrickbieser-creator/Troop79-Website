@@ -139,7 +139,7 @@ describe('the candidate tray', () => {
     await sb.from('calendar_entries').update({ title: `No Troop Meeting ${TEST_PREFIX}` }).eq('id', entry);
     const res = await (await tray()).loadBoardTray(entry);
     await sb.from('calendar_entries').update({ title: `Troop Meeting ${TEST_PREFIX}` }).eq('id', entry);
-    expect(res).toEqual({ mode: 'closed', sessions: [], wanted: 0 });
+    expect(res).toEqual({ closed: true, sessions: [], wanted: 0 });
   });
 
   it('EngineTray_StillLoads_BesideTheBoardHalf', async () => {

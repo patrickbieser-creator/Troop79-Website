@@ -7,10 +7,6 @@ import type { MeetingPlanPayload } from '@/lib/meeting-plan-types';
 import { retargetPlan } from '@/lib/meeting-plan-publish';
 import { buildMeetingPlan } from './engine';
 import { loadEngineInput } from './load-input';
-import { loadBoardStamp } from '@/lib/meeting-board';
-import { saveRotations, setStations } from '@/lib/meeting-board-stations';
-import type { Placement, StationDraft } from '@/lib/meeting-board-rotations';
-import { scoutCandidates, sendPickInvites, sendTeachInvites, type ScoutCandidatesResult, type SendInvitesResult } from '@/lib/meeting-invites-send';
 
 interface GenerateResult {
   ok: boolean;
@@ -99,7 +95,7 @@ export async function publishPlan(formData: FormData): Promise<PublishResult> {
   return { ok: true };
 }
 
-/** Remove a published snapshot (e.g., meeting theme changed to an MB night). */
+/** Remove a published snapshot (e.g., the meeting's theme changed). */
 export async function unpublishPlan(formData: FormData): Promise<PublishResult> {
   try {
     await requireCapability('meeting_plan.use');
@@ -117,142 +113,4 @@ export async function unpublishPlan(formData: FormData): Promise<PublishResult> 
   revalidatePath('/meeting-plan');
   revalidatePath('/admin/advancement/meeting-plan');
   return { ok: true };
-}
-
-export type BoardSettingsResult = { ok: true } | { ok: false; error: string };
-
-/** The RPC's own messages are written for leaders; anything else (a constraint, a dropped connection) is not shown raw. */
-const BOARD_KNOWN = /^(That meeting isn’t|That meeting has passed|Only troop meetings|Choose rank|Teaching blocks are|Choose the badge|That badge)/;
-
-/**
- * This Sunday's board settings (Phase 3a): rank with 1-3 teaching blocks, merit badge with its badge (stations are
- * Phase 3b), or closed. One RPC (meeting_set_board) validates and upserts; picks are never touched.
- */
-export async function setMeetingBoardAction(input: { entryId: number; mode: string; mbId: string | null; blockCount: number }): Promise<BoardSettingsResult> {
-  let actor;
-  try {
-    actor = await requireCapability('meeting_plan.use');
-  } catch {
-    return { ok: false, error: 'Not authenticated' };
-  }
-  // meeting_plan.use is also in the youth_leader bundle (SPL / PL): the board's mode is an adult leader's call, the
-  // same line on-behalf entry draws.
-  if (actor.subjectKind === 'scout') return { ok: false, error: 'Only an adult leader can change the board.' };
-  if (!input || !Number.isInteger(input.entryId) || typeof input.mode !== 'string') return { ok: false, error: 'Malformed request' };
-  const { error } = await createAdminClient().rpc('meeting_set_board', {
-    p_entry: input.entryId,
-    p_mode: input.mode,
-    p_mb_id: input.mode === 'merit_badge' ? (input.mbId ?? null) : null,
-    p_block_count: Number.isInteger(input.blockCount) ? input.blockCount : null
-  });
-  if (error) return { ok: false, error: BOARD_KNOWN.test(error.message) ? error.message : 'Couldn’t save the board. Try again.' };
-  revalidatePath('/admin/advancement/meeting-plan');
-  revalidatePath('/member/meeting');
-  revalidatePath('/member');
-  return { ok: true };
-}
-
-/** Who may set up a merit badge night or arrange its rotations: an adult holding meeting_plan.use (the board line). */
-async function adultLeader(): Promise<{ ok: true; personId: number | null } | { ok: false; error: string }> {
-  let actor;
-  try {
-    actor = await requireCapability('meeting_plan.use');
-  } catch {
-    return { ok: false, error: 'Not authenticated' };
-  }
-  if (actor.subjectKind === 'scout') return { ok: false, error: 'Only an adult leader can change the board.' };
-  return { ok: true, personId: actor.personId ?? null };
-}
-
-const refreshBoard = () => {
-  revalidatePath('/admin/advancement/meeting-plan');
-  revalidatePath('/member/meeting');
-  revalidatePath('/member');
-};
-
-/**
- * A merit badge night's board and stations in one save (Phase 3b): the badge, then 2-6 stations, each a name, an
- * optional place and the badge's top-level requirements it covers. One RPC (meeting_set_stations) validates the lot
- * and writes it in one transaction; a saved station keeps its teachers through a rename or a requirement change.
- */
-export async function setMeetingStationsAction(input: { entryId: number; mbId: string; stations: StationDraft[] }): Promise<BoardSettingsResult> {
-  const who = await adultLeader();
-  if (!who.ok) return who;
-  if (!input || !Number.isInteger(input.entryId) || typeof input.mbId !== 'string' || !Array.isArray(input.stations)) return { ok: false, error: 'Malformed request' };
-  const stations: StationDraft[] = [];
-  for (const s of input.stations) {
-    if (!s || typeof s.title !== 'string' || !Array.isArray(s.codes) || s.codes.some((c) => typeof c !== 'string')) return { ok: false, error: 'Malformed request' };
-    if (s.topicId != null && !Number.isInteger(s.topicId)) return { ok: false, error: 'Malformed request' };
-    stations.push({ topicId: s.topicId ?? null, title: s.title.trim(), location: typeof s.location === 'string' ? s.location.trim() : '', codes: s.codes });
-  }
-  const res = await setStations(createAdminClient(), input.entryId, input.mbId, stations);
-  if (res.ok) refreshBoard();
-  return res;
-}
-
-/**
- * The leader's rotation arrangement (Phase 3b): everyone shown, pinned where they are, plus badge holders placed as
- * helpers or on other work. An empty list is "Start over from the draft". Saved by meeting_save_rotations, which
- * records a scout the leader placed with no answer as Coming.
- */
-export async function saveRotationsAction(input: { entryId: number; placements: { personId: number; placement: Placement }[] }): Promise<BoardSettingsResult> {
-  const who = await adultLeader();
-  if (!who.ok) return who;
-  if (!input || !Number.isInteger(input.entryId) || !Array.isArray(input.placements)) return { ok: false, error: 'Malformed request' };
-  for (const p of input.placements) {
-    const pl = p?.placement;
-    const fine =
-      Number.isInteger(p?.personId) &&
-      !!pl &&
-      ((pl.kind === 'group' && Number.isInteger(pl.group)) || (pl.kind === 'helper' && Number.isInteger(pl.topicId)) || pl.kind === 'other');
-    if (!fine) return { ok: false, error: 'Malformed request' };
-  }
-  const res = await saveRotations(createAdminClient(), input.entryId, who.personId, input.placements);
-  if (res.ok) refreshBoard();
-  return res;
-}
-
-/**
- * This Sunday tab (Phase 1 of Plans/Meeting-Requests-And-Teaching-Offers.md): the board's version stamp, polled every
- * ~10 s; the tab refreshes only when it changes.
- */
-export async function boardStampAction(entryId: number): Promise<{ ok: true; stamp: string } | { ok: false; error: string }> {
-  try {
-    await requireCapability('meeting_plan.use');
-  } catch {
-    return { ok: false, error: 'Not authenticated' };
-  }
-  if (!Number.isInteger(entryId)) return { ok: false, error: 'Malformed request' };
-  try {
-    return { ok: true, stamp: await loadBoardStamp(createAdminClient(), entryId) };
-  } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : 'Stamp failed' };
-  }
-}
-
-export type { ScoutCandidate, ScoutCandidatesResult, SendInvitesResult } from '@/lib/meeting-invites-send';
-
-/** Invite teachers (T-5 P1). The body lives in lib/meeting-invites-send so the planner sends the same way. */
-export async function sendTeachInvitesAction(input: { entryId: number; topicKey: string; personIds: number[] }): Promise<SendInvitesResult> {
-  const who = await adultLeader();
-  if (!who.ok) return who;
-  const res = await sendTeachInvites(createAdminClient(), { ...input, sentBy: who.personId });
-  refreshBoard();
-  return res;
-}
-
-/** Who a requirement could be offered to (T-5 P2). */
-export async function scoutCandidatesAction(input: { entryId: number; topicKey: string }): Promise<ScoutCandidatesResult> {
-  const who = await adultLeader();
-  if (!who.ok) return who;
-  return scoutCandidates(createAdminClient(), input);
-}
-
-/** Offer a requirement to scouts (T-5 P2). */
-export async function sendPickInvitesAction(input: { entryId: number; topicKey: string; scoutIds: number[] }): Promise<SendInvitesResult> {
-  const who = await adultLeader();
-  if (!who.ok) return who;
-  const res = await sendPickInvites(createAdminClient(), { ...input, sentBy: who.personId });
-  refreshBoard();
-  return res;
 }

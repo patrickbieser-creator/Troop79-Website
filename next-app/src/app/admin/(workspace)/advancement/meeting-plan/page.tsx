@@ -9,9 +9,9 @@
  * meetings simply don't get a plan. Publishing stores a snapshot in
  * `meeting_plans` that the public /meeting-plan page renders.
  *
- * The first tab, This Sunday, is the live meeting board (Phase 1 of Plans/Meeting-Requests-And-Teaching-Offers.md):
- * who's coming and what scouts asked for, by name. Phase 3a adds the live match there, and Group Sessions shows that
- * match read-only (the ledger-only suggestions stay below it, for Generate Plan / Publish to Site).
+ * Meeting Planner II, P5c (Plans/Meeting-Planner-II.md Decision 1): This Sunday, its board settings, stations and
+ * invites moved to the public Meeting Planner at /planner. This page is the generator only: Generate Plan, Group
+ * Sessions (the ledger suggestions), By Scout, Teaching Roster and Publish to Site.
  */
 
 import { createAdminClient } from '@/lib/supabase/server';
@@ -19,9 +19,6 @@ import { requireCapability } from '@/lib/require-capability';
 import { nextSunday } from '@/lib/dates';
 import { PlanView, type PublishedPlanRow } from './plan-view';
 import { PageTitle } from '../../_components/page-title';
-import Link from 'next/link';
-import { loadThisSunday, MatchBlocks, ThisSundayView } from './this-sunday';
-import styles from './meeting-plan.module.css';
 
 export const metadata = {
   title: 'Meeting Plan — Troop 79'
@@ -43,37 +40,19 @@ async function loadData(): Promise<{ published: PublishedPlanRow[] }> {
 }
 
 export default async function MeetingPlanPage() {
-  const actor = await requireCapability('meeting_plan.use');
-  const [{ published }, board] = await Promise.all([loadData(), loadThisSunday()]);
-  // A youth leader (SPL / PL) sees the board but doesn't set it (the action refuses a scout too).
-  if (board && actor.subjectKind === 'scout') board.board = undefined;
-  // Group Sessions (Phase 3a, jenna's review): the live match, read-only, linking to the editor tray.
-  const groupSessions = !board ? (
-    <div className={styles.empty}>There&rsquo;s no troop meeting on the calendar yet.</div>
-  ) : board.match ? (
-    <>
-      <p className={styles.barNote}>
-        Read-only: what the matcher would run for {board.meeting.dateLabel}. Add sessions from the{' '}
-        <Link href={board.match.agendaHref}>meeting editor&rsquo;s tray</Link>; that is the one place the agenda changes.
-      </p>
-      <MatchBlocks match={board.match} linkPeople={false} />
-    </>
-  ) : (
-    <p className={styles.barNote}>
-      Group Sessions shows the rank-board match. {board.meeting.dateLabel} is {board.meeting.mode === 'closed' ? 'closed' : 'a merit badge night'}.
-    </p>
-  );
+  await requireCapability('meeting_plan.use');
+  const { published } = await loadData();
 
   return (
     <>
       <PageTitle back={null}
         title="Meeting Plan"
-        sub="This Sunday shows who's coming to the next meeting and what scouts asked for, live. The other tabs
-          generate suggested advancement from the ledger: up to three meeting-doable requirements per scout, in
-          sessions of eight or fewer with a qualified teacher, to review and publish to the public site."
+        sub="Suggested advancement from the ledger: up to three meeting-doable requirements per scout, in sessions of
+          eight or fewer with a qualified teacher, to review and publish to the public site. Who's coming and what scouts
+          asked for live in the Meeting Planner."
       />
 
-      <PlanView published={published} defaultDate={nextSunday()} thisSunday={<ThisSundayView data={board} />} groupSessions={groupSessions} />
+      <PlanView published={published} defaultDate={nextSunday()} />
     </>
   );
 }

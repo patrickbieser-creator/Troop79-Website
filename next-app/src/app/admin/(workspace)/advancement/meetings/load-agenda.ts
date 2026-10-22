@@ -60,12 +60,12 @@ export async function loadBoardTray(entryId: number): Promise<BoardTray | null> 
   try {
     const sb = createAdminClient();
     const meeting = await loadMeetingById(sb, entryId);
-    if (!meeting || meeting.closed) return { mode: 'closed', sessions: [], wanted: 0 };
+    if (!meeting || meeting.closed) return { closed: true, sessions: [], wanted: 0 };
     const catalog = await loadAdvancementCatalog();
     const rows = await loadBoardState(sb, meeting, catalog);
     const teach = await loadTeachBoard(sb, meeting, catalog, rows);
     const match = await loadMatchOrPlacement(sb, meeting, rows, teach);
-    return { mode: 'rank', sessions: matchedCandidates(match, { catalog, rows, teach }), wanted: match.wanted.length };
+    return { closed: false, sessions: matchedCandidates(match, { catalog, rows, teach }), wanted: match.wanted.length };
   } catch {
     return null;
   }
