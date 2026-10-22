@@ -1,0 +1,255 @@
+/**
+ * Build a Plan B5, Suggestions mode (Plans/Build-A-Plan.md): the engine's payload (lib/meeting-suggest) shaped for the
+ * mode's three lenses and its campout footer, plus the filters. PURE and client-safe; the page builds it once per
+ * engine run (cached), and every lens switch, filter and tick after that is client state over it.
+ *
+ *   Group Sessions  one card per board key (a cohort split by patrol is one card with its groups), with the scouts by
+ *                   name, how many need it, the best teacher and the other qualified ones.
+ *   By Scout        each scout's next ≤3 requirements (the engine's own pick, merit badges included for older scouts).
+ *   Teaching        the teaching roster: who can teach what, and the sessions they could take this meeting (best first).
+ *   Needs a campout campout-only items with the scouts who need them; never added from here.
+ *
+ * A plan item is a topic key, so an item is either on the plan or not: one scout's requirement whose key is already
+ * a session's just reads On plan. Names are the board's ("Dan K").
+ */
+import type { MeetingPlanPayload, PlanSession } from '@/lib/meeting-plan-types';
+import { boardName } from '@/lib/meeting-board-shared';
+
+export type Lens = 'sessions' | 'scouts' | 'teaching';
+export const LENS_LABEL: Record<Lens, string> = { sessions: 'Group Sessions', scouts: 'By Scout', teaching: 'Teaching' };
+
+/** Anything Add can put on the plan: its key, its labels, and the ranks it is for (the rank filter). */
+export interface SuggestItem {
+  key: string;
+  /** 'Tenderfoot 4a', 'First Aid 2'. */
+  codeLabel: string;
+  title: string;
+  kind: 'rank' | 'mb';
+  eagle: boolean;
+  /** The rank a rank requirement belongs to; for a merit badge, the ranks its scouts are working toward. */
+  ranks: string[];
+}
+
+export interface SuggestTeacherRef {
+  name: string;
+  /** 'counselor', 'Star scout'; null for an adult teaching by skill. */
+  note: string | null;
+}
+
+export interface SuggestCard extends SuggestItem {
+  /** The requirement's rank; null for a merit badge. */
+  rankId: string | null;
+  need: number;
+  /** One group, or the patrol split (A, B…) when more than 8 need it. */
+  groups: { part: string | null; scouts: string[] }[];
+  best: SuggestTeacherRef | null;
+  others: SuggestTeacherRef[];
+  skillName: string | null;
+  adultOnly: boolean;
+  youthTeachable: boolean;
+}
+
+export interface SuggestScout {
+  id: string;
+  name: string;
+  patrol: string | null;
+  rankLabel: string;
+  nextRankId: string | null;
+  items: SuggestItem[];
+}
+
+export interface SuggestTeacher {
+  id: string;
+  name: string;
+  /** An adult's role ('ASM'), a scout's rank. */
+  meta: string | null;
+  scout: boolean;
+  skills: string[];
+  /** The sessions they could take this meeting, their biggest first. */
+  keys: string[];
+}
+
+export interface CampoutItem {
+  codeLabel: string;
+  title: string;
+  scouts: string[];
+  ranks: string[];
+}
+
+export interface SuggestionsData {
+  /** The ranks in play, in rank order (the rank filter's choices). */
+  ranks: { id: string; label: string }[];
+  cards: SuggestCard[];
+  scouts: SuggestScout[];
+  teachers: SuggestTeacher[];
+  campout: CampoutItem[];
+}
+
+export interface SuggestFilter {
+  rank: string | null;
+  mbOnly: boolean;
+  /** Off: items already on the plan are hidden; on (default): shown, dimmed. */
+  showOnPlan: boolean;
+}
+
+export const DEFAULT_FILTER: SuggestFilter = { rank: null, mbOnly: false, showOnPlan: true };
+
+type RankRow = { id: string; display_name: string; sort_order: number };
+
+/** A teacher key that is a person id gets the board's name; a non-person source (Summer Camp) keeps its own. */
+const teacherName = (code: string, name: string) => (/^\d+$/.test(code) ? boardName(name) : name);
+
+export function suggestionsData(payload: MeetingPlanPayload, rankRows: readonly RankRow[]): SuggestionsData {
+  const ranks = [...rankRows].sort((a, b) => a.sort_order - b.sort_order);
+  const order = new Map(ranks.map((r, i) => [r.id, i]));
+  const label = new Map(ranks.map((r) => [r.id, r.display_name]));
+  const nextRank = (current: string | null): string | null => {
+    if (!current) return ranks[0]?.id ?? null;
+    const i = order.get(current);
+    return i == null ? null : (ranks[i + 1]?.id ?? null);
+  };
+  const byLength = [...ranks].sort((a, b) => b.id.length - a.id.length);
+  const rankOfKey = (key: string) => byLength.find((r) => key.startsWith(`${r.id}-`))?.id ?? null;
+  const inOrder = (ids: Iterable<string | null>) => [...new Set([...ids].filter((x): x is string => x != null))].sort((a, b) => (order.get(a) ?? 99) - (order.get(b) ?? 99));
+
+  // ── Group Sessions: one card per key ──────────────────────────────────────────────────────────────────────
+  const ref = (t: PlanSession): SuggestTeacherRef[] => [
+    ...t.adultTeachers.map((a) => ({ name: teacherName(a.code, a.name), note: null })),
+    ...t.counselors.map((c) => ({ name: teacherName(c.code, c.name), note: 'counselor' })),
+    ...t.scoutTeachers.map((s) => ({ name: boardName(s.name), note: `${s.rankLabel} scout` }))
+  ];
+  const cards = new Map<string, SuggestCard & { scoutRanks: (string | null)[] }>();
+  const sessionKey = new Map<number, { key: string; size: number }>();
+  for (const s of payload.sessions) {
+    if (!s.key) continue;
+    sessionKey.set(s.id, { key: s.key, size: s.scouts.length });
+    const names = s.scouts.map((x) => boardName(x.name));
+    const have = cards.get(s.key);
+    if (have) {
+      have.need += s.scouts.length;
+      have.groups.push({ part: s.groupPart, scouts: names });
+      have.scoutRanks.push(...s.scouts.map((x) => nextRank(x.rankId)));
+      continue;
+    }
+    const teachers = ref(s);
+    const rankId = s.kind === 'rank' ? rankOfKey(s.key) : null;
+    cards.set(s.key, {
+      key: s.key,
+      codeLabel: s.codeLabel,
+      title: s.title,
+      kind: s.kind,
+      eagle: s.eagle,
+      ranks: [],
+      rankId,
+      need: s.scouts.length,
+      groups: [{ part: s.groupPart, scouts: names }],
+      best: teachers[0] ?? null,
+      others: teachers.slice(1),
+      skillName: s.skillName,
+      adultOnly: s.adultOnly,
+      youthTeachable: s.youthTeachable,
+      scoutRanks: s.scouts.map((x) => nextRank(x.rankId))
+    });
+  }
+  const cardList: SuggestCard[] = [...cards.values()].map(({ scoutRanks, ...c }) => ({ ...c, ranks: c.rankId ? [c.rankId] : inOrder(scoutRanks) }));
+
+  // ── By Scout ──────────────────────────────────────────────────────────────────────────────────────────────
+  const scouts: SuggestScout[] = payload.byScout.map((row) => {
+    const next = nextRank(row.scout.rankId);
+    return {
+      id: row.scout.id,
+      name: boardName(row.scout.name),
+      patrol: row.scout.patrol,
+      rankLabel: row.scout.rankLabel,
+      nextRankId: next,
+      items: row.suggestions.flatMap((x) => {
+        if (!x.key) return [];
+        const rankId = x.kind === 'rank' ? rankOfKey(x.key) : null;
+        const codeLabel = rankId ? `${label.get(rankId) ?? rankId} ${x.key.slice(rankId.length + 1)}` : x.codeLabel;
+        return [{ key: x.key, codeLabel, title: x.label, kind: x.kind, eagle: x.eagle, ranks: rankId ? [rankId] : inOrder([next]) }];
+      })
+    };
+  });
+
+  // ── Teaching ──────────────────────────────────────────────────────────────────────────────────────────────
+  const keysOf = (ids: readonly number[]) => {
+    const all = ids.flatMap((id) => {
+      const k = sessionKey.get(id);
+      return k ? [k] : [];
+    });
+    const size = new Map<string, number>();
+    for (const k of all) size.set(k.key, (size.get(k.key) ?? 0) + k.size);
+    return [...size.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([k]) => k);
+  };
+  const teachers: SuggestTeacher[] = [
+    ...payload.rosterAdults.map((a) => ({ id: `a:${a.code}`, name: teacherName(a.code, a.name), meta: a.role, scout: false, skills: a.skills, keys: keysOf(a.sessionIds) })),
+    ...payload.rosterScoutInstructors.map((s) => ({ id: `s:${s.id}`, name: boardName(s.name), meta: s.rankLabel, scout: true, skills: s.skills, keys: keysOf(s.sessionIds) }))
+  ];
+
+  // ── Needs a campout ───────────────────────────────────────────────────────────────────────────────────────
+  const campout = new Map<string, CampoutItem & { scoutRanks: (string | null)[] }>();
+  for (const s of scouts) {
+    const row = payload.byScout.find((r) => r.scout.id === s.id);
+    for (const o of row?.needsOuting ?? []) {
+      const k = `${o.codeLabel}|${o.label}`;
+      const have = campout.get(k) ?? { codeLabel: o.codeLabel, title: o.label, scouts: [], ranks: [], scoutRanks: [] };
+      have.scouts.push(s.name);
+      have.scoutRanks.push(s.nextRankId);
+      campout.set(k, have);
+    }
+  }
+  const campoutList = [...campout.values()].map(({ scoutRanks, ...c }) => ({ ...c, ranks: inOrder(scoutRanks) }));
+
+  const inPlay = inOrder([...cardList.flatMap((c) => c.ranks), ...scouts.map((s) => s.nextRankId), ...campoutList.flatMap((c) => c.ranks)]);
+  return {
+    ranks: inPlay.map((id) => ({ id, label: label.get(id) ?? id })),
+    cards: cardList,
+    scouts,
+    teachers,
+    campout: campoutList
+  };
+}
+
+/** Whether a card (or any item) shows under the filters. */
+export function cardShown(item: Pick<SuggestItem, 'kind' | 'ranks'>, onPlan: boolean, f: SuggestFilter): boolean {
+  if (onPlan && !f.showOnPlan) return false;
+  if (f.mbOnly && item.kind !== 'mb') return false;
+  return f.rank == null || item.ranks.includes(f.rank);
+}
+
+/** A scout's items that show under the filters. */
+export function scoutItemsShown<T extends Pick<SuggestItem, 'key' | 'kind' | 'ranks'>>(items: readonly T[], onPlan: ReadonlySet<string>, f: SuggestFilter): T[] {
+  return items.filter((i) => cardShown(i, onPlan.has(i.key), f));
+}
+
+/** A teacher's session keys that show under the filters (each key's kind and ranks from its card). */
+export function teacherKeysShown(keys: readonly string[], byKey: ReadonlyMap<string, Pick<SuggestItem, 'kind' | 'ranks'>>, onPlan: ReadonlySet<string>, f: SuggestFilter): string[] {
+  return keys.filter((k) => {
+    const item = byKey.get(k);
+    return item != null && cardShown(item, onPlan.has(k), f);
+  });
+}
+
+/** A campout item shows unless merit badges only, or another rank, is chosen. */
+export function campoutShown(item: Pick<CampoutItem, 'ranks'>, f: SuggestFilter): boolean {
+  if (f.mbOnly) return false;
+  return f.rank == null || item.ranks.includes(f.rank);
+}
+
+/** The most keys one Add action carries (meeting_seed_many's own cap). */
+export const ADD_MAX = 20;
+
+/** "Add N to the plan" sends at most ADD_MAX keys per action, in order. */
+export function addChunks<T>(items: readonly T[], size = ADD_MAX): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}
+
+/** Every addable item by key (cards first, so a session's labels win over one scout's). */
+export function itemsByKey(d: SuggestionsData): Map<string, SuggestItem> {
+  const m = new Map<string, SuggestItem>();
+  for (const c of d.cards) m.set(c.key, c);
+  for (const s of d.scouts) for (const i of s.items) if (!m.has(i.key)) m.set(i.key, i);
+  return m;
+}
