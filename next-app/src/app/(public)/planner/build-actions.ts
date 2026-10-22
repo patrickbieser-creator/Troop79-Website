@@ -139,9 +139,9 @@ export async function plannerNewMixAction(input: { entryId: number; name: string
   return { ok: true, key: `fg:${res.setId}`, title: m.name, count: m.items.length, teachers: [], prior: s.prior, stamp: await loadBoardStamp(s.sb, s.meeting.entryId) };
 }
 
-export type BuildMixResult = { ok: true; setId: number; name: string; items: FocusSetItem[] } | { ok: false; error: string };
+export type BuildMixResult = { ok: true; setId: number; name: string; setName: string; items: FocusSetItem[] } | { ok: false; error: string };
 
-/** A mix on the plan, for its Edit: its name and the requirements this meeting's class holds. */
+/** A mix on the plan, for its Edit: this meeting's name and requirements, and the focus set's own name (B5b). */
 export async function plannerMixAction(input: { entryId: number; key: string }): Promise<BuildMixResult> {
   if (typeof input?.key !== 'string' || !MIX_KEY.test(input.key)) return fail('Malformed request');
   const s = await plannerSeeder(input.entryId, { within: PLAN_MEETINGS });
@@ -150,15 +150,19 @@ export async function plannerMixAction(input: { entryId: number; key: string }):
   return mix ? { ok: true, ...mix } : fail('That set is no longer on this meeting.');
 }
 
-/** Change a mix's name and requirements: the focus set (wherever it is used next) and this meeting's class. */
-export async function plannerEditMixAction(input: { entryId: number; key: string; name: string; items: string[] }): Promise<BuildClassResult> {
+/**
+ * Change a mix's name and requirements on THIS meeting's class only (B5b). `updateSet` ("Also update the focus set",
+ * confirmed in a Dialog) writes the focus set too, for plans that add it from now on. Both need the seed right; other
+ * meetings keep their copy either way.
+ */
+export async function plannerEditMixAction(input: { entryId: number; key: string; name: string; items: string[]; updateSet?: boolean }): Promise<BuildClassResult> {
   const id = typeof input?.key === 'string' ? MIX_KEY.exec(input.key)?.[1] : undefined;
-  if (!id) return fail('Malformed request');
+  if (!id || (input.updateSet !== undefined && typeof input.updateSet !== 'boolean')) return fail('Malformed request');
   const m = mixInput(input.name, input.items);
   if ('error' in m) return fail(m.error);
   const s = await gate(input.entryId);
   if (!s.ok) return s;
-  const res = await editMix(s.sb, s.meeting.entryId, Number(id), m.name, m.items, s.actorPersonId);
+  const res = await editMix(s.sb, s.meeting.entryId, Number(id), m.name, m.items, s.actorPersonId, input.updateSet === true);
   if (!res.ok) return res;
   return { ok: true, key: input.key, title: m.name, count: res.count, teachers: [], prior: s.prior, stamp: await loadBoardStamp(s.sb, s.meeting.entryId) };
 }

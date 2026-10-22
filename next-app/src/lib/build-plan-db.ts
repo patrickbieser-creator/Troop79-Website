@@ -82,21 +82,21 @@ export async function teachersOfKeys(sb: SupabaseClient, meeting: { entryId: num
   return out;
 }
 
-/** A mix on a meeting: its focus set, the class's name and the requirements it holds there (with their words). */
-export async function loadMixOnMeeting(sb: SupabaseClient, entryId: number, key: string): Promise<{ setId: number; name: string; items: FocusSetItem[] } | null> {
+/** A mix on a meeting: its focus set (and the set's own name), the class's name and the requirements it holds there. */
+export async function loadMixOnMeeting(sb: SupabaseClient, entryId: number, key: string): Promise<{ setId: number; name: string; setName: string; items: FocusSetItem[] } | null> {
   const { data, error } = await sb
     .from('meeting_topics')
-    .select('title, focus_set_id, meeting_topic_members(item_key, position)')
+    .select('title, focus_set_id, focus_sets(name), meeting_topic_members(item_key, position)')
     .eq('calendar_entry_id', entryId)
     .eq('topic_key', key)
     .eq('kind', 'focus_group')
     .maybeSingle();
   if (error) throw new Error(error.message);
-  const row = data as { title: string | null; focus_set_id: number | null; meeting_topic_members: { item_key: string; position: number }[] | null } | null;
+  const row = data as { title: string | null; focus_set_id: number | null; focus_sets: One<{ name: string }>; meeting_topic_members: { item_key: string; position: number }[] | null } | null;
   if (!row || row.focus_set_id == null) return null;
   const catalog = await loadAdvancementCatalog();
   const items = [...(row.meeting_topic_members ?? [])].sort((a, b) => a.position - b.position).map((m) => itemView(m.item_key, catalog));
-  return { setId: row.focus_set_id, name: row.title ?? '', items };
+  return { setId: row.focus_set_id, name: row.title ?? '', setName: one(row.focus_sets)?.name ?? row.title ?? '', items };
 }
 
 /** Who could teach an offering, for its Edit: everyone in the teacher pool, qualified first with why (teacherChoices). */

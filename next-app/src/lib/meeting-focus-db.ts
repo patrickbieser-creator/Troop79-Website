@@ -188,9 +188,12 @@ export async function newMix(sb: SupabaseClient, entryId: number, name: string, 
   return error ? { ok: false, error: said(error.message) } : { ok: true, setId: Number(data) };
 }
 
-/** Build a Plan B2: change a mix's name and requirements: the focus set, and this meeting's class with it. */
-export async function editMix(sb: SupabaseClient, entryId: number, setId: number, name: string, items: readonly string[], actorPersonId: number): Promise<FocusWrite<{ count: number }>> {
-  const { data, error } = await sb.rpc('meeting_edit_mix', { p_entry: entryId, p_set: setId, p_name: name, p_items: [...items], p_actor: actorPersonId });
+/**
+ * Build a Plan B2/B5b: change a mix's name and requirements on this meeting's class only; with `updateSet`, the focus
+ * set too (one transaction). Other meetings keep their copy either way.
+ */
+export async function editMix(sb: SupabaseClient, entryId: number, setId: number, name: string, items: readonly string[], actorPersonId: number, updateSet = false): Promise<FocusWrite<{ count: number }>> {
+  const { data, error } = await sb.rpc('meeting_edit_mix', { p_entry: entryId, p_set: setId, p_name: name, p_items: [...items], p_actor: actorPersonId, p_update_set: updateSet });
   return error ? { ok: false, error: said(error.message) } : { ok: true, count: Number(data) };
 }
 

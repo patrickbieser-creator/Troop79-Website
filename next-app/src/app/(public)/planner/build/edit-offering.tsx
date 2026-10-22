@@ -7,8 +7,10 @@
  *                 (counselors say so), then other adults with what is missing. A tick signs them up to teach it, an
  *                 untick takes them off: each saves at once, like the planner's person drawer. Server-checked.
  *   Requirements  (meeting_planner.seed, a mix only) its name and requirements, saved with "Save changes"; closing the
- *                 drawer discards. It edits the focus set too: the note says so, and that meetings it is already on
- *                 keep their own copy. Dirty-gated Save with Discard changes beside it (back to the last save).
+ *                 drawer discards. Save changes THIS meeting's copy only (B5b). "Also update the focus set '<name>'…",
+ *                 a quiet action below, asks first in a danger Dialog; its confirm saves the draft here AND the set in
+ *                 one call (no double save). Meetings already using the set keep theirs either way. Dirty-gated Save
+ *                 with Discard changes beside it (back to the last save).
  * A control busy saving is aria-disabled (not disabled), so keyboard focus stays on it (qa-lead B2 #1). When unticking
  * the last teacher takes the row off the plan, the drawer stays open and says so (`gone`), never unmounting silently.
  * Each write hands the page its slice (onTeachers / onMix); the drawer never reloads the plan.
@@ -139,6 +141,8 @@ const asRow = (i: FocusSetItem): FocusSearchRow => ({ ...i, parent: null, topLev
 
 function MixSection({ entryId, rowKey, onMix }: { entryId: number; rowKey: string; onMix: (res: Extract<BuildClassResult, { ok: true }>) => void }) {
   const [saved, setSaved] = useState<{ name: string; items: FocusSearchRow[] } | null | 'failed'>(null);
+  const [masterName, setMasterName] = useState('');
+  const [confirming, setConfirming] = useState(false);
   const [name, setName] = useState('');
   const [items, setItems] = useState<FocusSearchRow[]>([]);
   const [busy, setBusy] = useState(false);
@@ -151,6 +155,7 @@ function MixSection({ entryId, rowKey, onMix }: { entryId: number; rowKey: strin
         if (!res.ok) return setSaved('failed');
         const it = res.items.map(asRow);
         setSaved({ name: res.name, items: it });
+        setMasterName(res.setName);
         setName(res.name);
         setItems(it);
       })
@@ -169,18 +174,35 @@ function MixSection({ entryId, rowKey, onMix }: { entryId: number; rowKey: strin
     setItems(saved.items);
     setProblem(null);
   };
-  const save = async () => {
-    if (busy || !dirty) return;
-    if (!name.trim()) return setProblem({ at: 'name', text: 'Give the mix a name.' });
-    if (!items.length) return setProblem({ at: 'items', text: 'Tick at least one requirement.' });
+  /** Marks a missing name or an empty mix in place; true when the draft can be written. */
+  const whole = () => {
+    if (!name.trim()) setProblem({ at: 'name', text: 'Give the mix a name.' });
+    else if (!items.length) setProblem({ at: 'items', text: 'Tick at least one requirement.' });
+    else return true;
+    return false;
+  };
+  /** One write: this meeting's copy, plus the focus set when `updateSet`. The error to show, or null. */
+  const write = async (updateSet: boolean): Promise<string | null> => {
     setBusy(true);
     setProblem(null);
-    const res = await plannerEditMixAction({ entryId, key: rowKey, name, items: items.map((i) => i.key) }).catch(() => ({ ok: false as const, error: SAVE_FAILED }));
+    const input = { entryId, key: rowKey, name, items: items.map((i) => i.key) };
+    const res = await plannerEditMixAction(updateSet ? { ...input, updateSet } : input).catch(() => ({ ok: false as const, error: SAVE_FAILED }));
     setBusy(false);
-    if (!res.ok) return setProblem({ at: 'save', text: res.error });
+    if (!res.ok) return res.error;
     setSaved({ name: res.title, items });
     setName(res.title);
+    if (updateSet) setMasterName(res.title);
     onMix(res);
+    return null;
+  };
+  const save = async () => {
+    if (busy || !dirty || !whole()) return;
+    const err = await write(false);
+    if (err) setProblem({ at: 'save', text: err });
+  };
+  const askUpdateSet = () => {
+    if (busy || !whole()) return;
+    setConfirming(true);
   };
 
   return (
@@ -188,7 +210,7 @@ function MixSection({ entryId, rowKey, onMix }: { entryId: number; rowKey: strin
       <h3 id="edit-mix" className={s.editLabel}>
         Requirements
       </h3>
-      <p className={s.pickMeta}>This changes the focus set “{saved.name}” too. Meetings it’s already on keep theirs.</p>
+      <p className={s.pickMeta}>Changes this meeting only.</p>
       <label className={s.fieldLabel}>
         Name
         <input
@@ -216,6 +238,64 @@ function MixSection({ entryId, rowKey, onMix }: { entryId: number; rowKey: strin
           Discard changes
         </Button>
       </div>
+      <div className={s.mixActions}>
+        <Button variant="ghost" size="sm" onClick={askUpdateSet} aria-disabled={busy || undefined}>
+          Also update the focus set ‘{masterName}’…
+        </Button>
+      </div>
+      {confirming ? <UpdateSetDialog masterName={masterName} dirty={dirty} onConfirm={() => write(true)} onClose={() => setConfirming(false)} /> : null}
     </section>
+  );
+}
+
+/** "Are you sure?" before the master focus set changes. With a dirty draft its one action saves the draft here too. */
+function UpdateSetDialog({ masterName, dirty, onConfirm, onClose }: { masterName: string; dirty: boolean; onConfirm: () => Promise<string | null>; onClose: () => void }) {
+  const ref = useRef<HTMLDialogElement | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  useEffect(() => {
+    const dlg = ref.current;
+    if (dlg && typeof dlg.showModal === 'function' && !dlg.open) dlg.showModal();
+    else dlg?.setAttribute('open', '');
+  }, []);
+  const go = async () => {
+    if (busy) return;
+    setBusy(true);
+    const err = await onConfirm();
+    setBusy(false);
+    if (err) setProblem(err);
+    else onClose();
+  };
+  return (
+    <dialog
+      ref={ref}
+      className={s.confirm}
+      aria-labelledby="build-update-set-title"
+      onCancel={(e) => {
+        e.preventDefault();
+        if (!busy) onClose();
+      }}
+    >
+      <h2 id="build-update-set-title" className={s.confirmTitle}>
+        Are you sure?
+      </h2>
+      <p className={s.confirmText}>
+        Update the focus set ‘{masterName}’? Plans that add it from now on get these requirements. Meetings already using it keep theirs.
+      </p>
+      {dirty ? <p className={s.confirmText}>Your unsaved changes are saved to this meeting as well.</p> : null}
+      {problem ? (
+        <p className={s.problem} role="alert">
+          {problem}
+        </p>
+      ) : null}
+      <div className={s.confirmActions}>
+        <Button variant="ghost" onClick={onClose} disabled={busy}>
+          Cancel
+        </Button>
+        <Button variant="danger" onClick={go} aria-disabled={busy || undefined}>
+          {busy ? 'Updating…' : 'Update the focus set'}
+        </Button>
+      </div>
+    </dialog>
   );
 }

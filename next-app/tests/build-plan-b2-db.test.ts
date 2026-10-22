@@ -170,7 +170,8 @@ describe('Build a Plan B2: manual add', () => {
     const made = await plannerNewMixAction({ entryId: meeting, name: `${TEST_PREFIX} BP2 edit`, items: [parts[0]] });
     if (!made.ok) throw new Error(made.error);
     const id = track(made.key);
-    const res = await plannerEditMixAction({ entryId: meeting, key: made.key, name: `${TEST_PREFIX} BP2 edited`, items: [parts[2], parts[1]] });
+    // Since B5b the focus set changes only with updateSet ("Also update the focus set"); Save alone is this meeting's.
+    const res = await plannerEditMixAction({ entryId: meeting, key: made.key, name: `${TEST_PREFIX} BP2 edited`, items: [parts[2], parts[1]], updateSet: true });
     expect({ count: res.ok && res.count, set: await setItems(id), here: await members(made.key) }).toEqual({ count: 2, set: [parts[2], parts[1]], here: [parts[2], parts[1]] });
   });
 });
