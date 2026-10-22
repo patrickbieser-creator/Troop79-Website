@@ -201,7 +201,7 @@ function MixSection({ entryId, rowKey, onMix }: { entryId: number; rowKey: strin
         />
       </label>
       <div className={problem?.at === 'items' ? s.badBox : undefined}>
-        <MixPicker ticked={items} onChange={setItems} />
+        <MixPicker ticked={items} onChange={setItems} label="Add a requirement" />
       </div>
       {problem ? (
         <p className={s.problem} role="alert">

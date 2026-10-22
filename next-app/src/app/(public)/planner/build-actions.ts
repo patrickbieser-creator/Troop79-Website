@@ -30,6 +30,8 @@ import { plannerSeeder } from '@/lib/meeting-planner-seeder';
 import { loadPlannerLists } from '@/lib/people-lists';
 import { loadMixOnMeeting, loadTeacherChoices, loadTeacherChoicesMany, teachersOfKeys } from '@/lib/build-plan-db';
 import { invitedCount, isOfferingKey, PLAN_MEETINGS, type TeacherChoice } from '@/lib/build-plan';
+// The most keys one Add sends (Suggestions mode's "Add N to the plan" chunks at it). Mirrors meeting_seed_many's cap.
+import { ADD_MAX } from '@/lib/build-plan-suggest';
 import { loadInviteRows } from '@/lib/meeting-invites-db';
 import { loadInviteSheet } from '@/lib/meeting-invite-digest-db';
 import { sendInviteDigests } from '@/lib/meeting-invite-digest-send';
@@ -37,8 +39,6 @@ import { DIGEST_INVITE_CAP, DIGEST_KEYS_MAX, type InviteSection } from '@/lib/me
 
 const fail = (error: string): { ok: false; error: string } => ({ ok: false, error });
 
-/** The most keys one Add sends (the Suggested column shows at most 8). Mirrors meeting_seed_many's own cap. */
-const ADD_MAX = 20;
 
 export type BuildAddResult = { ok: true; added: string[]; teachers: Record<string, string[]>; prior: string; stamp: string } | { ok: false; error: string };
 export type BuildRemoveResult = { ok: true; stays: boolean; prior: string; stamp: string } | { ok: false; error: string };

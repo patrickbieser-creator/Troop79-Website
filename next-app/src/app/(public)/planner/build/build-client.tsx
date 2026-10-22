@@ -1,15 +1,18 @@
 'use client';
 
 /**
- * Build a Plan's client side (Plans/Build-A-Plan.md, B1): the plan list, the summary rail and the Suggested column
- * (a sheet on a phone). The page renders it with the plan as loaded; every write lays its returned slice over the
- * rows here (no whole-board reload, no revalidatePath per click) and keeps the stamp it returned, so the poller only
- * refreshes for someone else's change.
+ * Build a Plan's client side (Plans/Build-A-Plan.md, B1): the plan list and the summary rail. The page renders it with
+ * the plan as loaded; every write lays its returned slice over the rows here (no whole-board reload, no revalidatePath
+ * per click) and keeps the stamp it returned, so the poller only refreshes for someone else's change.
  *
- * Seed holders (canSeed) get Add on each suggestion and a ⋯ menu per row; Remove is for seeded rows only, behind a
- * danger dialog that names the consequence, and a row scouts picked or a teacher offered says why it can't go.
- * Viewers see the plan with no controls. Suggestions stream in behind Suspense (SuggestionsFeed hands them over), so
- * the plan never waits for the engine.
+ * Seed holders (canSeed) get a ⋯ menu per row; Remove is for seeded rows only, behind a danger dialog that names the
+ * consequence, and a row scouts picked or a teacher offered says why it can't go. Viewers see the plan with no controls.
+ *
+ * B5 (Suggestions mode, ?view=suggestions): "Suggestions" is the heading bar's first link, for every viewer. The mode
+ * replaces the old right-hand Suggested column: the workspace (./suggestions) takes the main area and the plan shrinks
+ * to a slim live rail on the left (one line per item and the count; a "Plan (n)" Drawer on a phone). The one engine
+ * read streams in behind Suspense (SuggestionsFeed); Esc or "Back to the plan" leaves. Adds go through the batched
+ * action, ADD_MAX keys per call.
  *
  * B2: seed holders get the quiet adds on "The plan" heading's line (+ Requirement, + Focus set, + New mix:
  * ./add-offering; the open one sits under the heading, above the list: Patrick, 2026-10-22), and each row a quiet Edit
@@ -23,6 +26,7 @@
  * nobody signed up and nobody is likely. The likely scouts stream in behind Suspense too (LikelyFeed).
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/app/_components/button';
 import { Drawer } from '@/app/_components/drawer';
@@ -34,16 +38,15 @@ import {
   planSummary,
   removeConsequence,
   STATE_LABEL,
-  SUGGESTION_LIMIT,
   scoutLine,
   teacherLine,
   keepWriteStamp,
   withAdded,
   withTeachers,
   mixName,
-  type PlanRow,
-  type SuggestionView
+  type PlanRow
 } from '@/lib/build-plan';
+import { addChunks, type SuggestionsData, type SuggestItem } from '@/lib/build-plan-suggest';
 import { FOCUS_LABEL } from '@/lib/meeting-board-picklist';
 import type { FocusSearchRow, FocusSetView } from '@/lib/meeting-focus';
 import {
@@ -59,22 +62,22 @@ import { EditOffering } from './edit-offering';
 import { InviteSheet } from './invite-sheet';
 import { rowCode } from './requirement-search';
 import { PlannerPoller } from '../planner-poller';
+import { SuggestionsWorkspace, type SuggestFeed } from './suggestions';
 import s from './build.module.css';
 
 const SAVE_FAILED = 'That didn’t save. Check your connection and try again.';
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
-type Feed = { status: 'loading' } | { status: 'ready'; list: SuggestionView[] } | { status: 'failed' };
-const FeedCtx = createContext<((f: Feed) => void) | null>(null);
+const FeedCtx = createContext<((f: SuggestFeed) => void) | null>(null);
 type Likely = Record<string, string[]>;
 const LikelyCtx = createContext<((l: Likely) => void) | null>(null);
 
-/** Streams in behind Suspense: hands the engine's suggestions to the view and renders nothing itself. */
-export function SuggestionsFeed({ list }: { list: SuggestionView[] | null }) {
+/** Streams in behind Suspense (Suggestions mode): hands the one engine read to the view and renders nothing itself. */
+export function SuggestionsFeed({ data }: { data: SuggestionsData | null }) {
   const set = useContext(FeedCtx);
   useEffect(() => {
-    set?.(list ? { status: 'ready', list } : { status: 'failed' });
-  }, [list, set]);
+    set?.(data ? { status: 'ready', data } : { status: 'failed' });
+  }, [data, set]);
   return null;
 }
 
@@ -97,8 +100,20 @@ export function BuildPlanView({
   dayLabel = '',
   stamp,
   heading,
-  feed
+  feed,
+  mode = 'plan',
+  planHref = '',
+  suggestionsHref = '',
+  switcher
 }: {
+  /** B5: the plan (default), or Suggestions mode (?view=suggestions): the workspace with the plan as a slim rail. */
+  mode?: 'plan' | 'suggestions';
+  /** This meeting's plan (where Esc and "Back to the plan" go). */
+  planHref?: string;
+  /** This meeting in Suggestions mode (the heading bar's first link). */
+  suggestionsHref?: string;
+  /** Suggestions mode: the meeting switcher, which moves into the workspace's sticky bar. */
+  switcher?: ReactNode;
   entryId: number;
   rows: PlanRow[];
   canSeed: boolean;
@@ -112,7 +127,7 @@ export function BuildPlanView({
   dayLabel?: string;
   stamp: string;
   heading: ReactNode;
-  /** The Suspense-wrapped feeds: LikelyFeed, and SuggestionsFeed for seed holders. */
+  /** The Suspense-wrapped feeds: LikelyFeed (the plan), SuggestionsFeed (Suggestions mode). */
   feed?: ReactNode;
 }) {
   const router = useRouter();
@@ -124,8 +139,9 @@ export function BuildPlanView({
     setLoaded(initialRows);
     setRows(initialRows);
   }
-  const [suggestions, setSuggestions] = useState<Feed>({ status: 'loading' });
-  const [sheet, setSheet] = useState(false);
+  const [suggestions, setSuggestions] = useState<SuggestFeed>({ status: 'loading' });
+  /** Suggestions mode on a phone: the plan in the Drawer. */
+  const [planSheet, setPlanSheet] = useState(false);
   /** The Invite sheet: every offering (''), or one row's key. */
   const [inviting, setInviting] = useState<string | null>(null);
   const [invited, setInvited] = useState(initialInvited);
@@ -139,7 +155,7 @@ export function BuildPlanView({
   const [editing, setEditing] = useState<PlanRow | null>(null);
   const stampRef = useRef(stamp);
   const listHeadRef = useRef<HTMLHeadingElement | null>(null);
-  const onFeed = useCallback((f: Feed) => setSuggestions(f), []);
+  const onFeed = useCallback((f: SuggestFeed) => setSuggestions(f), []);
   const [likely, setLikely] = useState<Likely>({});
 
   /** A write landed: keep its stamp when nothing else changed the board since; otherwise refresh to show the rest. */
@@ -149,16 +165,34 @@ export function BuildPlanView({
   };
 
   const onPlan = useMemo(() => new Set(rows.map((r) => r.key)), [rows]);
-  const shown = suggestions.status === 'ready' ? suggestions.list.filter((x) => !onPlan.has(x.key)).slice(0, SUGGESTION_LIMIT) : [];
   const sum = planSummary(rows);
 
-  const add = async (x: SuggestionView): Promise<string | null> => {
-    const res = await plannerAddOfferingAction({ entryId, keys: [x.key] }).catch(() => ({ ok: false as const, error: SAVE_FAILED }));
-    if (!res.ok) return res.error;
-    landed(res);
-    setRows((rs) => withAdded(rs, x, res.teachers[x.key] ?? []));
+  /**
+   * B5: add suggestions to the plan through the one batched action, at most ADD_MAX keys per call (in order; a failure
+   * stops there and says why, and what went before stays added). Each call's slice lands as it returns.
+   */
+  const addItems = async (items: SuggestItem[]): Promise<string | null> => {
+    for (const chunk of addChunks(items)) {
+      const res = await plannerAddOfferingAction({ entryId, keys: chunk.map((x) => x.key) }).catch(() => ({ ok: false as const, error: SAVE_FAILED }));
+      if (!res.ok) return res.error;
+      landed(res);
+      setRows((rs) => chunk.reduce((acc, x) => withAdded(acc, x, res.teachers[x.key] ?? []), rs));
+    }
     return null;
   };
+
+  // Suggestions mode: Esc leaves it (unless a dialog is open, or the key belongs to a field).
+  useEffect(() => {
+    if (mode !== 'suggestions') return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented || document.querySelector('dialog[open]')) return;
+      const t = e.target as HTMLElement | null;
+      if (t && /^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName) && (t as HTMLInputElement).type !== 'checkbox' && (t as HTMLInputElement).type !== 'radio') return;
+      router.push(planHref);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [mode, planHref, router]);
 
   const remove = async (row: PlanRow): Promise<string | null> => {
     const res = await plannerRemoveOfferingAction({ entryId, key: row.key }).catch(() => ({ ok: false as const, error: SAVE_FAILED }));
@@ -202,7 +236,69 @@ export function BuildPlanView({
   };
   const editingRow = editing ? (rows.find((r) => r.key === editing.key) ?? null) : null;
 
-  const suggestedList = <SuggestedList feed={suggestions} shown={shown} onAdd={add} />;
+  const suggestionsLink = (
+    <Link href={suggestionsHref} className={s.suggestionsLink}>
+      Suggestions
+    </Link>
+  );
+  if (mode === 'suggestions') {
+    const railList = rows.length ? (
+      <ul className={s.railList}>
+        {rows.map((r) => (
+          <li key={r.key} className={s.railItem} title={`${r.codeLabel} ${r.title}`}>
+            {r.codeLabel && r.codeLabel !== FOCUS_LABEL ? <span className={s.code}>{r.codeLabel}</span> : null}
+            {r.title}
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <p className={s.empty}>Nothing planned yet.</p>
+    );
+    return (
+      <FeedCtx.Provider value={onFeed}>
+        {heading}
+        <div className={s.suggestLayout}>
+          <aside className={s.planRail} aria-labelledby="build-plan">
+            <h2 id="build-plan" className={s.sectionTitle} ref={listHeadRef} tabIndex={-1}>
+              The plan <span className={s.railCount}>({rows.length})</span>
+            </h2>
+            {railList}
+            <p className={s.railPoll}>
+              <PlannerPoller entryId={entryId} stamp={stamp} build stampRef={stampRef} />
+            </p>
+          </aside>
+          <SuggestionsWorkspace
+            feed={suggestions}
+            rows={rows}
+            canSeed={canSeed}
+            switcher={switcher}
+            planHref={planHref}
+            onOpenPlan={() => setPlanSheet(true)}
+            addItems={addItems}
+            onRemove={(row, trigger) => setRemoving({ row, trigger })}
+          />
+        </div>
+        {planSheet ? (
+          <Drawer title={`The plan (${rows.length})`} onClose={() => setPlanSheet(false)}>
+            {railList}
+          </Drawer>
+        ) : null}
+        {removing ? (
+          <RemoveDialog
+            row={removing.row}
+            onRemove={() => remove(removing.row)}
+            onClose={() => {
+              const trigger = removing.trigger;
+              setRemoving(null);
+              requestAnimationFrame(() => (trigger?.isConnected ? trigger.focus() : listHeadRef.current?.focus()));
+            }}
+          />
+        ) : null}
+        {feed}
+      </FeedCtx.Provider>
+    );
+  }
+
   return (
     <LikelyCtx.Provider value={setLikely}>
       <FeedCtx.Provider value={onFeed}>
@@ -212,19 +308,18 @@ export function BuildPlanView({
             {plural(sum.offerings, 'offering')} · {sum.withTeachers} with {sum.withTeachers === 1 ? 'a teacher' : 'teachers'} · {plural(sum.scouts, 'scout')} signed up · {invited} invited ·{' '}
             <PlannerPoller entryId={entryId} stamp={stamp} build stampRef={stampRef} />
           </p>
-          {canSeed ? (
-            <button type="button" className={s.railSheet} onClick={() => setSheet(true)} aria-haspopup="dialog">
-              Suggested{shown.length ? ` · ${shown.length}` : ''}
-            </button>
-          ) : null}
         </div>
-        <div className={canSeed ? s.layout : s.layoutSolo}>
+        <div className={s.layoutSolo}>
           <section aria-labelledby="build-plan">
             <div className={s.planHead}>
               <h2 id="build-plan" className={s.sectionTitle} ref={listHeadRef} tabIndex={-1}>
                 The plan
               </h2>
-              {canSeed ? <AddOffering onPlan={onPlan} defaultMixName={mixName(dayLabel)} addRequirement={addRequirement} addSet={addSet} newMix={newMix} /> : null}
+              {canSeed ? (
+                <AddOffering lead={suggestionsLink} onPlan={onPlan} defaultMixName={mixName(dayLabel)} addRequirement={addRequirement} addSet={addSet} newMix={newMix} />
+              ) : (
+                <div className={s.addRow}>{suggestionsLink}</div>
+              )}
             </div>
             {rows.length ? (
               <ul className={s.list}>
@@ -245,20 +340,7 @@ export function BuildPlanView({
               <p className={s.empty}>Nothing planned yet.</p>
             )}
           </section>
-          {canSeed ? (
-            <aside className={s.suggested} aria-labelledby="build-suggested">
-              <h2 id="build-suggested" className={s.sectionTitle}>
-                Suggested
-              </h2>
-              {suggestedList}
-            </aside>
-          ) : null}
         </div>
-        {sheet ? (
-          <Drawer title="Suggested" onClose={() => setSheet(false)}>
-            {suggestedList}
-          </Drawer>
-        ) : null}
         {editing ? (
           <EditOffering
             entryId={entryId}
@@ -441,56 +523,5 @@ function RemoveDialog({ row, onRemove, onClose }: { row: PlanRow; onRemove: () =
         </Button>
       </div>
     </dialog>
-  );
-}
-
-function SuggestedList({ feed, shown, onAdd }: { feed: Feed; shown: SuggestionView[]; onAdd: (x: SuggestionView) => Promise<string | null> }) {
-  if (feed.status === 'loading') return <p className={s.empty}>Finding suggestions…</p>;
-  if (feed.status === 'failed') return <p className={s.empty}>Suggestions didn’t load. Reload the page to try again.</p>;
-  if (!shown.length) return <p className={s.empty}>No suggestions: every shared need is on the plan.</p>;
-  return (
-    <ul className={s.suggestList}>
-      {shown.map((x) => (
-        <SuggestionRow key={x.key} x={x} onAdd={onAdd} />
-      ))}
-    </ul>
-  );
-}
-
-function SuggestionRow({ x, onAdd }: { x: SuggestionView; onAdd: (x: SuggestionView) => Promise<string | null> }) {
-  const [busy, setBusy] = useState(false);
-  const [problem, setProblem] = useState<string | null>(null);
-  // Two clicks in one frame both reach the handler before the disabled button renders; the ref lets only one add.
-  const inFlight = useRef(false);
-  const add = async () => {
-    if (inFlight.current) return;
-    inFlight.current = true;
-    setBusy(true);
-    setProblem(null);
-    const err = await onAdd(x);
-    inFlight.current = false;
-    setBusy(false);
-    if (err) setProblem(err);
-  };
-  return (
-    <li className={s.suggestion}>
-      <div>
-        <p className={s.suggestTitle}>
-          <span className={s.code}>{x.codeLabel}</span>
-          {x.title}
-        </p>
-        <p className={s.suggestMeta}>
-          {x.need} need it{x.bestTeacher ? ` · best teacher: ${x.bestTeacher}` : ''}
-        </p>
-        {problem ? (
-          <p className={s.problem} role="alert">
-            {problem}
-          </p>
-        ) : null}
-      </div>
-      <Button variant="secondary" size="sm" className={s.addBtn} onClick={add} disabled={busy} aria-label={`Add ${x.codeLabel} ${x.title}`}>
-        {busy ? 'Adding…' : 'Add'}
-      </Button>
-    </li>
   );
 }

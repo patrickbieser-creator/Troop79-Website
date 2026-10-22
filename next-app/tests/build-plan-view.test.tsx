@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, cleanup, fireEvent, waitFor, within } from '@testing-library/react';
 import type { PlanRow } from '../src/lib/build-plan';
+import { DATA } from './helpers/suggestions-fixture';
 
 /**
  * Build a Plan B1 (Plans/Build-A-Plan.md), the screen: a viewer sees the plan with no controls; a seed holder's ⋯ on
@@ -9,6 +10,7 @@ import type { PlanRow } from '../src/lib/build-plan';
  */
 const nav = vi.hoisted(() => ({ refresh: vi.fn() }));
 vi.mock('next/navigation', () => ({ useRouter: () => nav }));
+const SUGGEST = { mode: 'suggestions' as const, planHref: '/p' };
 const add = vi.hoisted(() => vi.fn());
 vi.mock('../src/app/(public)/planner/build-actions', () => ({
   plannerAddOfferingAction: add,
@@ -32,7 +34,6 @@ const row = (key: string, o: Partial<PlanRow> = {}): PlanRow => ({
   ...o
 });
 const ROWS = [row('tenderfoot-4a'), row('scout-1a', { origin: 'scouts', seeded: false, scouts: 3, teachers: ['Dan K'], state: 'ready' })];
-const SUGGESTIONS = [{ key: 'scout-2', codeLabel: 'Scout 2', title: 'Flag', need: 4, bestTeacher: 'Dan K' }];
 
 afterEach(() => {
   cleanup();
@@ -42,7 +43,7 @@ afterEach(() => {
 
 describe('BuildPlanView', () => {
   it('BuildPlan_Viewer_SeesNoControls', () => {
-    render(<BuildPlanView entryId={1} rows={ROWS} canSeed={false} stamp="s" heading={null} feed={<SuggestionsFeed list={SUGGESTIONS} />} />);
+    render(<BuildPlanView entryId={1} rows={ROWS} canSeed={false} stamp="s" heading={null} />);
     expect(screen.queryAllByRole('button')).toHaveLength(0);
   });
 
@@ -54,7 +55,7 @@ describe('BuildPlanView', () => {
   });
 
   it('BuildPlan_Write_RefreshesOnlyWhenSomeoneElseChangedTheBoard', async () => {
-    render(<BuildPlanView entryId={1} rows={ROWS} canSeed stamp="s0" heading={null} feed={<SuggestionsFeed list={SUGGESTIONS} />} />);
+    render(<BuildPlanView entryId={1} rows={ROWS} canSeed stamp="s0" heading={null} {...SUGGEST} feed={<SuggestionsFeed data={DATA} />} />);
     // First Add: the board was as the page saw it (prior s0): keep s1, no refresh.
     add.mockResolvedValueOnce({ ok: true, added: ['scout-2'], teachers: {}, prior: 's0', stamp: 's1' });
     fireEvent.click(await screen.findByRole('button', { name: 'Add Scout 2 Flag' }));
@@ -62,7 +63,7 @@ describe('BuildPlanView', () => {
     const quiet = nav.refresh.mock.calls.length;
     cleanup();
     // Second render: someone else changed the board since load (prior s9, not s0): refresh.
-    render(<BuildPlanView entryId={1} rows={ROWS} canSeed stamp="s0" heading={null} feed={<SuggestionsFeed list={SUGGESTIONS} />} />);
+    render(<BuildPlanView entryId={1} rows={ROWS} canSeed stamp="s0" heading={null} {...SUGGEST} feed={<SuggestionsFeed data={DATA} />} />);
     add.mockResolvedValueOnce({ ok: true, added: ['scout-2'], teachers: {}, prior: 's9', stamp: 's10' });
     fireEvent.click(await screen.findByRole('button', { name: 'Add Scout 2 Flag' }));
     await waitFor(() => expect(nav.refresh).toHaveBeenCalled());
@@ -78,9 +79,12 @@ describe('BuildPlanView', () => {
   });
 
   it('BuildPlan_AddedRow_ShowsTeacherFromSkillOffer', async () => {
-    render(<BuildPlanView entryId={1} rows={ROWS} canSeed stamp="s0" heading={null} feed={<SuggestionsFeed list={SUGGESTIONS} />} />);
+    const { rerender } = render(<BuildPlanView entryId={1} rows={ROWS} canSeed stamp="s0" heading={null} {...SUGGEST} feed={<SuggestionsFeed data={DATA} />} />);
     add.mockResolvedValueOnce({ ok: true, added: ['scout-2'], teachers: { 'scout-2': ['Maria L'] }, prior: 's0', stamp: 's1' });
     fireEvent.click(await screen.findByRole('button', { name: 'Add Scout 2 Flag' }));
+    await waitFor(() => expect(add).toHaveBeenCalled());
+    // The same view showing the plan (the rows it holds): the added row carries its teacher.
+    rerender(<BuildPlanView entryId={1} rows={ROWS} canSeed stamp="s0" heading={null} />);
     expect(await screen.findByText('Maria L')).toBeTruthy();
   });
 
@@ -91,15 +95,6 @@ describe('BuildPlanView', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     await waitFor(() => expect(document.activeElement).toBe(trigger));
-  });
-
-  it('BuildPlan_SuggestedSheetClose_ReturnsFocusToItsButton', async () => {
-    render(<BuildPlanView entryId={1} rows={ROWS} canSeed stamp="s0" heading={null} />);
-    const open = screen.getByRole('button', { name: /^Suggested/ });
-    open.focus();
-    fireEvent.click(open);
-    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
-    await waitFor(() => expect(document.activeElement).toBe(open));
   });
 });
 
@@ -114,7 +109,7 @@ describe('BuildPlanView layout (2026-10-22)', () => {
   });
 
   it('BuildPlan_AddedRow_ShowsNoJustAdded', async () => {
-    render(<BuildPlanView entryId={1} rows={ROWS} canSeed stamp="s0" heading={null} feed={<SuggestionsFeed list={SUGGESTIONS} />} />);
+    render(<BuildPlanView entryId={1} rows={ROWS} canSeed stamp="s0" heading={null} {...SUGGEST} feed={<SuggestionsFeed data={DATA} />} />);
     add.mockResolvedValueOnce({ ok: true, added: ['scout-2'], teachers: {}, prior: 's0', stamp: 's1' });
     fireEvent.click(await screen.findByRole('button', { name: 'Add Scout 2 Flag' }));
     await waitFor(() => expect(screen.getAllByRole('listitem').some((li) => li.textContent?.includes('Flag'))).toBe(true));

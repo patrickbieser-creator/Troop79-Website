@@ -96,6 +96,11 @@ describe('the mix section', () => {
     expect((screen.getByRole('button', { name: 'Saved' }) as HTMLButtonElement).disabled).toBe(true);
   });
 
+  it('MixSection_RequirementSearch_IsLabelledAddARequirement', async () => {
+    await openMix();
+    expect((screen.getByRole('textbox', { name: 'Add a requirement' }) as HTMLInputElement).placeholder).toBe('Tenderfoot 4a, first aid…');
+  });
+
   it('MixSection_Dirty_OffersSaveChanges', async () => {
     const name = await openMix();
     fireEvent.change(name, { target: { value: 'Mix two' } });

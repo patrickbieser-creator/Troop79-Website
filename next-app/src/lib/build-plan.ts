@@ -1,6 +1,6 @@
 /**
- * Build a Plan (Plans/Build-A-Plan.md, B1): the plan of one meeting as rows, the meeting switcher's choice, and the
- * engine's suggestions as the Suggested column shows them. PURE and client-safe; the page and the actions shape their
+ * Build a Plan (Plans/Build-A-Plan.md, B1): the plan of one meeting as rows and the meeting switcher's choice
+ * (Suggestions mode's lenses are lib/build-plan-suggest). PURE and client-safe; the page and the actions shape their
  * reads with it and the tests read it without a database.
  *
  * One store, no new plan entity: a plan row is whatever the planner board counts as a class on that meeting (ready,
@@ -10,7 +10,6 @@
  *   - Only a seeded row can be removed, and removing it is an unseed: the picks and teachers on it stay, so the row
  *     stays as theirs. A row scouts picked or a teacher offered says why it can't be removed.
  */
-import type { MeetingPlanPayload } from '@/lib/meeting-plan-types';
 import type { PlannerBoard } from '@/lib/meeting-planner-board';
 import { assessTeacher, flagText, teacherName, topicSkill, type TeachContext, type TeacherPerson } from '@/lib/meeting-board-teach';
 import { nextRankOf, rankOfKey } from '@/lib/meeting-board-picklist';
@@ -133,44 +132,20 @@ export function pickMeeting<T extends { entryId: number }>(meetings: readonly T[
   return meetings.find((m) => m.entryId === wanted) ?? meetings[0] ?? null;
 }
 
-export interface SuggestionView {
+/** What an Add needs to show a new row: its key and labels (a suggestion, a searched requirement, a set). */
+export interface OfferingRef {
   key: string;
   codeLabel: string;
   title: string;
-  /** Scouts who still need it. */
-  need: number;
-  /** The engine's first teacher (an adult, a counselor, or a scout who may teach it); null when it found nobody. */
-  bestTeacher: string | null;
-}
-
-export const SUGGESTION_LIMIT = 8;
-
-/**
- * The engine's sessions as suggestions: one per board key (a cohort split by patrol counts once, its parts summed),
- * ranked by shared need, without anything already on the plan, at most `limit`.
- */
-export function rankSuggestions(plan: Pick<MeetingPlanPayload, 'sessions'>, onPlan: ReadonlySet<string>, limit = SUGGESTION_LIMIT): SuggestionView[] {
-  const byKey = new Map<string, SuggestionView>();
-  for (const s of plan.sessions) {
-    if (!s.key || onPlan.has(s.key)) continue;
-    const have = byKey.get(s.key);
-    if (have) {
-      have.need += s.scouts.length;
-      continue;
-    }
-    const best = s.adultTeachers[0]?.name ?? s.counselors[0]?.name ?? s.scoutTeachers[0]?.name ?? null;
-    byKey.set(s.key, { key: s.key, codeLabel: s.codeLabel, title: s.title, need: s.scouts.length, bestTeacher: best });
-  }
-  return [...byKey.values()].sort((a, b) => b.need - a.need || a.codeLabel.localeCompare(b.codeLabel)).slice(0, limit);
 }
 
 /** A row for an offering just added: the planner's, with whoever already teaches it (a matching skill offer). */
-export function addedRow(s: Pick<SuggestionView, 'key' | 'codeLabel' | 'title'>, teachers: readonly string[] = []): PlanRow {
+export function addedRow(s: OfferingRef, teachers: readonly string[] = []): PlanRow {
   return { key: s.key, codeLabel: s.codeLabel, title: s.title, origin: 'planner', seeded: true, teachers: [...teachers], scouts: 0, canTeach: null, state: teachers.length ? 'needs-scouts' : 'needs-teacher' };
 }
 
 /** An Add over the rows shown: a row already there becomes the planner's (and keeps its picks); a new one is added. */
-export function withAdded(rows: readonly PlanRow[], s: Pick<SuggestionView, 'key' | 'codeLabel' | 'title'>, teachers: readonly string[] = []): PlanRow[] {
+export function withAdded(rows: readonly PlanRow[], s: OfferingRef, teachers: readonly string[] = []): PlanRow[] {
   if (rows.some((r) => r.key === s.key)) return rows.map((r) => (r.key === s.key ? { ...r, seeded: true, origin: 'planner' } : r));
   return [...rows, addedRow(s, teachers)];
 }

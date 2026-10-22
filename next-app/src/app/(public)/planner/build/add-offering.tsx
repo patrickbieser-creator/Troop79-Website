@@ -13,7 +13,7 @@
  *                  level. Add mix saves it as a focus set and adds it as one class in one step.
  * The writes belong to the page (BuildPlanView): each callback resolves to an error to show, or null.
  */
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useId, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { AddRow } from '@/app/_components/add-row';
 import { Button } from '@/app/_components/button';
@@ -25,6 +25,8 @@ import s from './build.module.css';
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 export interface AddOfferingProps {
+  /** B5: "Suggestions", the heading bar's first link. */
+  lead?: ReactNode;
   onPlan: ReadonlySet<string>;
   defaultMixName: string;
   addRequirement: (r: FocusSearchRow) => Promise<string | null>;
@@ -37,6 +39,7 @@ export function AddOffering(p: AddOfferingProps) {
   return (
     <AddRow
       className={s.addRow}
+      lead={p.lead}
       open={open}
       onOpenChange={(id) => setOpen(id)}
       actions={[
@@ -172,8 +175,18 @@ function SetPanel({ onPlan, addSet }: AddOfferingProps) {
 }
 
 /** Pick requirements (any level) for a mix: the search with toggles, then what is ticked, each with Remove. */
-export function MixPicker({ ticked, onChange }: { ticked: FocusSearchRow[]; onChange: (next: FocusSearchRow[]) => void }) {
+export function MixPicker({
+  ticked,
+  onChange,
+  label
+}: {
+  ticked: FocusSearchRow[];
+  onChange: (next: FocusSearchRow[]) => void;
+  /** A visible label above the search box, tied to it (a mix's Edit: "Add a requirement"); otherwise an aria-label. */
+  label?: string;
+}) {
   const [q, setQ] = useState('');
+  const searchId = useId();
   const found = useRequirementSearch(q, false);
   const on = new Set(ticked.map((t) => t.key));
   const toggle = (r: FocusSearchRow) => onChange(on.has(r.key) ? ticked.filter((t) => t.key !== r.key) : [...ticked, r]);
@@ -194,7 +207,20 @@ export function MixPicker({ ticked, onChange }: { ticked: FocusSearchRow[]; onCh
           ))}
         </ul>
       ) : null}
-      <input type="text" className={s.addInput} placeholder="Tenderfoot 4a, first aid…" aria-label="Search requirements to tick" value={q} onChange={(e) => setQ(e.target.value)} />
+      {label ? (
+        <label htmlFor={searchId} className={s.fieldLabel}>
+          {label}
+        </label>
+      ) : null}
+      <input
+        type="text"
+        id={searchId}
+        className={s.addInput}
+        placeholder="Tenderfoot 4a, first aid…"
+        aria-label={label ? undefined : 'Search requirements to tick'}
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+      />
       <SearchResults
         state={found}
         render={(r) => (

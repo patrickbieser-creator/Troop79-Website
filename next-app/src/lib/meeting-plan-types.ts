@@ -1,7 +1,7 @@
 /**
- * The meeting-suggestion engine's payload (lib/meeting-suggest): Build a Plan's Suggested column, Admin's By Scout and
- * Teaching Roster, and the meeting agenda read it. Build a Plan B4 retired Publish to Site and the public page that
- * rendered stored snapshots of it; nothing stores it now.
+ * The meeting-suggestion engine's payload (lib/meeting-suggest): Build a Plan's Suggestions mode (lib/build-plan-suggest
+ * shapes it for its lenses) and the meeting agenda read it. Build a Plan B4 retired Publish to Site and the public page
+ * that rendered stored snapshots of it; B5 retired Admin's By Scout / Teaching Roster page. Nothing stores it.
  */
 
 export type TierId = 'new' | 'experienced' | 'older';

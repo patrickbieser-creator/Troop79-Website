@@ -1,6 +1,6 @@
 /* Build a Plan (Plans/Build-A-Plan.md, B1), on public tokens like the rest of the planner: forest = ready,
    status-danger = needs a teacher, bark = needs scouts and the planner's own rows. Breakpoints are the public canon
-   (900 / 640). Phone: rows become cards, Suggested becomes a sheet opened from the rail, targets are 44px. */
+   (900 / 640). Phone: rows become cards, targets are 44px. */
 
 .switcher {
   display: flex;
@@ -55,22 +55,10 @@
 .railText {
   margin: 0;
 }
-.railSheet {
-  display: none;
-  min-height: 44px;
-  padding: 0 var(--sp-4);
-  border: 1px solid var(--border-mid);
-  border-radius: var(--rad-pill);
-  background: var(--warm-white);
-  font: 600 var(--fs-sm) / 1 var(--font-ui);
-  color: var(--navy);
-  cursor: pointer;
-}
-
 /* ── layout ───────────────────────────────────────────────────────────────────────────────────────────────── */
 .layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--sp-6);
   padding: var(--sp-5) var(--sp-7);
 }
@@ -236,38 +224,6 @@
   outline-offset: 2px;
 }
 
-/* ── Suggested ────────────────────────────────────────────────────────────────────────────────────────────── */
-.suggested {
-  align-self: start;
-}
-.suggestList {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.suggestion {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--sp-3);
-  padding: var(--sp-3) 0;
-  border-bottom: 1px solid var(--border-light);
-}
-.suggestTitle {
-  margin: 0;
-  font: 600 var(--fs-sm) / 1.35 var(--font-ui);
-  color: var(--text-head);
-}
-.suggestMeta {
-  margin: var(--sp-1) 0 0;
-  font: var(--fs-xs) / 1.4 var(--font-ui);
-  color: var(--text-meta);
-}
-.addBtn {
-  min-width: 44px;
-  min-height: 44px;
-}
-
 /* ── the danger confirm ───────────────────────────────────────────────────────────────────────────────────── */
 .confirm {
   width: min(440px, calc(100vw - 2 * var(--sp-5)));
@@ -300,13 +256,6 @@
   .layout {
     grid-template-columns: minmax(0, 1fr);
     padding: var(--sp-4);
-  }
-  .suggested {
-    display: none;
-  }
-  .railSheet {
-    display: inline-flex;
-    align-items: center;
   }
   .rail {
     padding: var(--sp-2) var(--sp-4);
@@ -576,4 +525,67 @@
 .srOnly {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
+/* ── B5: Suggestions mode ─────────────────────────────────────────────────────────────────────────────────── */
+/* "Suggestions", the heading bar's first link: the add row's link look, as a real link. */
+.suggestionsLink {
+  composes: link from '../../../_components/add-row.module.css';
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+/* The plan as a slim live rail on the left; the workspace takes the rest. Phone: the rail goes (Plan (n) opens it). */
+.suggestLayout {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: var(--sp-6);
+  padding: var(--sp-4) var(--sp-7) var(--sp-5);
+}
+.planRail {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  max-height: 100vh;
+  overflow-y: auto;
+  padding-top: var(--sp-2);
+}
+.railCount {
+  font-weight: 400;
+  color: var(--text-meta);
+}
+.railList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--border-light);
+}
+.railItem {
+  padding: var(--sp-2) 0;
+  border-bottom: 1px solid var(--border-light);
+  font: var(--fs-sm) / 1.4 var(--font-ui);
+  color: var(--text-head);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.railPoll {
+  margin: var(--sp-2) 0 0;
+  font: var(--fs-xs) / 1.4 var(--font-ui);
+  color: var(--text-meta);
+}
+@media (max-width: 900px) {
+  .suggestLayout {
+    grid-template-columns: 200px minmax(0, 1fr);
+    gap: var(--sp-4);
+    padding: var(--sp-3) var(--sp-4);
+  }
+}
+@media (max-width: 640px) {
+  .suggestLayout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .planRail {
+    display: none;
+  }
 }
