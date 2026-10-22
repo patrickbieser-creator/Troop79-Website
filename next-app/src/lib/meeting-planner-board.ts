@@ -10,8 +10,9 @@
  *   - A scout's answer is effectiveIntent: a pick for this meeting means Coming. A scout who can't make it keeps their
  *     picks for later, so they ask for nothing this week (summarizeBoard).
  *   - An adult's answer is teacherIntent: a teaching commitment means Coming.
- *   - "Can teach this" is everyone qualified (assessTeacher, done by the loader), grouped Coming / Not sure yet /
- *     Haven't answered, sorted by name, with Can't-make-it people left out. There is no best-fit ranking yet.
+ *   - "Can teach this" is everyone qualified (assessTeacher, done by the loader; for a focus group, canTeachFocusGroup:
+ *     a skill covering one of its parts), grouped Coming / Not sure yet / Haven't answered, sorted by name, with
+ *     Can't-make-it people left out. There is no best-fit ranking yet.
  *   - Seeded focus (P3): a seeded topic is on the board even with no scout. No teacher → Requests with no teacher
  *     ("Seeded focus · no scouts picked it yet"); a teacher and no scout → Offered, no takers. The Focus strip lists
  *     every seeded topic with its teacher and how many scouts picked it.

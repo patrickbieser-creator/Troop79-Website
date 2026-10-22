@@ -117,6 +117,22 @@ export function assessTeacher(p: TeacherPerson, key: string, ctx: TeachContext):
   return { qualified: flags.length === 0, flags, refused: false };
 }
 
+/**
+ * "N people can teach this" for a focus group: someone whose teaching skill covers at least one of the group's parts
+ * (a rank requirement whose skill they hold and that assessTeacher clears, so a Junior Leader is still kept off an
+ * adults-only skill and must have finished it), or a counselor for a merit badge requirement's badge. A part with
+ * no skill doesn't count: the group's whole point is the parts, so "anyone" would list everybody.
+ */
+export function canTeachFocusGroup(p: TeacherPerson, memberKeys: readonly string[], ctx: TeachContext): boolean {
+  return memberKeys.some((key) => {
+    if (rankOfKey(key, ctx.ranks)) {
+      const skill = topicSkill(key, ctx.ranks, ctx.rankReqs);
+      return skill != null && p.skills.has(skill) && assessTeacher(p, key, ctx).qualified;
+    }
+    return [...p.counselorFor].some((mbId) => key.startsWith(`${mbId}-`));
+  });
+}
+
 const FLAG_SELF: Record<TeachFlag, string> = {
   not_in_skills: 'not in what you’ve said you can teach',
   needs_counselor: 'sign-off needs a counselor',

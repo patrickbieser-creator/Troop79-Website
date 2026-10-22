@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   assessTeacher,
+  canTeachFocusGroup,
   commitmentCounts,
   formalName,
   freeformKey,
@@ -122,6 +123,22 @@ describe('qualification', () => {
     const before = assessTeacher(p, 'tenderfoot-3a', CTX).qualified;
     const after = assessTeacher({ ...p, skills: new Set(['knots']) }, 'tenderfoot-3a', CTX).qualified;
     expect([before, after]).toEqual([false, true]);
+  });
+});
+
+describe('who can teach a focus group', () => {
+  const parts = ['tenderfoot-3a', 'tenderfoot-7a', 'cooking-4'];
+  it('Adult_WithASkillCoveringOnePart_CanTeachTheGroup', () => {
+    expect(canTeachFocusGroup(adult(1, { skills: new Set(['knots']) }), parts, CTX)).toBe(true);
+  });
+  it('Adult_WithNoSkillCoveringAPart_CannotTeachTheGroup', () => {
+    expect(canTeachFocusGroup(adult(1, { skills: new Set(['navigation']) }), parts, CTX)).toBe(false);
+  });
+  it('JuniorLeader_WithOnlyAnAdultsOnlySkill_CannotTeachTheGroup', () => {
+    expect(canTeachFocusGroup(junior(1, { skills: new Set(['first-aid']) }), ['tenderfoot-4a'], CTX)).toBe(false);
+  });
+  it('Counselor_ForAPartsBadge_CanTeachTheGroup', () => {
+    expect(canTeachFocusGroup(adult(1, { counselorFor: new Set(['cooking']) }), parts, CTX)).toBe(true);
   });
 });
 

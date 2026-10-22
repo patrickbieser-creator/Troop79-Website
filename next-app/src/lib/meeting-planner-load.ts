@@ -12,7 +12,7 @@ import { fmtDateFull } from '@/lib/format-date';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 import { loadBoardStamp, loadBoardState, loadNextMeeting, loadScoutProgress, type BoardMeeting } from '@/lib/meeting-board';
 import { loadTeachBoard } from '@/lib/meeting-board-supply';
-import { assessTeacher, teacherName, teachersFor } from '@/lib/meeting-board-teach';
+import { assessTeacher, canTeachFocusGroup, teacherName, teachersFor } from '@/lib/meeting-board-teach';
 import { boardName } from '@/lib/meeting-board-shared';
 import { isPickOutOfReach, nextRankOf, rankOfKey, rankTrees, topicWords } from '@/lib/meeting-board-picklist';
 import { loadInviteRows } from '@/lib/meeting-invites-db';
@@ -74,7 +74,10 @@ export async function loadPlannerPage(sb: SupabaseClient, forMeeting?: BoardMeet
   }
 
   const pool = [...teach.people.values()].filter((p) => p.eligible !== false);
-  const qualified = new Map([...new Set([...teach.match.wanted, ...seededKeys])].map((key) => [key, pool.filter((p) => assessTeacher(p, key, teach.ctx).qualified).map((p) => p.personId)]));
+  // A focus group counts only people whose skills cover one of its parts (canTeachFocusGroup), not everyone.
+  const canTeachKey = (p: (typeof pool)[number], key: string) =>
+    key.startsWith('fg:') ? canTeachFocusGroup(p, teach.members.get(key) ?? [], teach.ctx) : assessTeacher(p, key, teach.ctx).qualified;
+  const qualified = new Map([...new Set([...teach.match.wanted, ...seededKeys])].map((key) => [key, pool.filter((p) => canTeachKey(p, key)).map((p) => p.personId)]));
   const adults = [...teach.people.values()]
     .filter((p) => p.kind === 'adult')
     .filter((p) => leaderIds.has(p.personId) || p.skills.size > 0 || p.counselorFor.size > 0 || teach.intents.has(p.personId) || committed.has(p.personId))
