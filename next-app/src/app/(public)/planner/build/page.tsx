@@ -142,6 +142,7 @@ export default async function BuildPlanPage({ searchParams }: { searchParams: Pr
         planHref={hrefOf(meeting.entryId, false)}
         suggestionsHref={hrefOf(meeting.entryId, true)}
         switcher={suggesting ? switcher : undefined}
+        lookupsHref={actor.capabilities.has('roster.manage') ? '/admin/advancement/lookups' : undefined}
         feed={
           suggesting ? (
             <Suspense fallback={null}>

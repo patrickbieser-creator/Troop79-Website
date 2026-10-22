@@ -69,6 +69,12 @@ const SAVE_FAILED = 'That didn’t save. Check your connection and try again.';
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 const FeedCtx = createContext<((f: SuggestFeed) => void) | null>(null);
+
+/**
+ * Set when Suggestions mode is left (Esc or "Back to the plan"): the plan view that mounts next puts focus back on its
+ * "Suggestions" link (qa-lead B5 #3). Client-side navigation keeps module state; a full load starts it false.
+ */
+let backFromSuggestions = false;
 type Likely = Record<string, string[]>;
 const LikelyCtx = createContext<((l: Likely) => void) | null>(null);
 
@@ -104,8 +110,11 @@ export function BuildPlanView({
   mode = 'plan',
   planHref = '',
   suggestionsHref = '',
-  switcher
+  switcher,
+  lookupsHref
 }: {
+  /** Lookups, for a leader who holds roster.manage: "Edit in Lookups" in the Teaching lens. */
+  lookupsHref?: string;
   /** B5: the plan (default), or Suggestions mode (?view=suggestions): the workspace with the plan as a slim rail. */
   mode?: 'plan' | 'suggestions';
   /** This meeting's plan (where Esc and "Back to the plan" go). */
@@ -155,6 +164,12 @@ export function BuildPlanView({
   const [editing, setEditing] = useState<PlanRow | null>(null);
   const stampRef = useRef(stamp);
   const listHeadRef = useRef<HTMLHeadingElement | null>(null);
+  const suggestionsLinkRef = useRef<HTMLAnchorElement | null>(null);
+  useEffect(() => {
+    if (mode !== 'plan' || !backFromSuggestions) return;
+    backFromSuggestions = false;
+    suggestionsLinkRef.current?.focus();
+  }, [mode]);
   const onFeed = useCallback((f: SuggestFeed) => setSuggestions(f), []);
   const [likely, setLikely] = useState<Likely>({});
 
@@ -188,6 +203,7 @@ export function BuildPlanView({
       if (e.key !== 'Escape' || e.defaultPrevented || document.querySelector('dialog[open]')) return;
       const t = e.target as HTMLElement | null;
       if (t && /^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName) && (t as HTMLInputElement).type !== 'checkbox' && (t as HTMLInputElement).type !== 'radio') return;
+      backFromSuggestions = true;
       router.push(planHref);
     };
     document.addEventListener('keydown', onKey);
@@ -237,7 +253,7 @@ export function BuildPlanView({
   const editingRow = editing ? (rows.find((r) => r.key === editing.key) ?? null) : null;
 
   const suggestionsLink = (
-    <Link href={suggestionsHref} className={s.suggestionsLink}>
+    <Link href={suggestionsHref} className={s.suggestionsLink} ref={suggestionsLinkRef}>
       Suggestions
     </Link>
   );
@@ -276,6 +292,8 @@ export function BuildPlanView({
             onOpenPlan={() => setPlanSheet(true)}
             addItems={addItems}
             onRemove={(row, trigger) => setRemoving({ row, trigger })}
+            onLeave={() => (backFromSuggestions = true)}
+            lookupsHref={lookupsHref}
           />
         </div>
         {planSheet ? (

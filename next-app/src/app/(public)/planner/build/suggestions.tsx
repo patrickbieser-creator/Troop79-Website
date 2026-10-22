@@ -15,8 +15,11 @@
  * "Add N to the plan" (the page's batched add). An item already on the plan reads On plan, with the plan's own quiet
  * Remove (seeded rows only; others say why). Viewers see the lenses read-only. Lens switches, filters and ticks are
  * client state: nothing here reloads anything.
+ * Focus (qa-lead B5 #3): the workspace takes focus when the mode opens; after an Add (one, or "Add N to the plan") it
+ * moves to the next Add still there, else the workspace, never body. "Finding suggestions…" is a live region that is
+ * there from the start. Leaders who may edit Lookups (roster.manage) get "Edit in Lookups" in the Teaching lens.
  */
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { Button } from '@/app/_components/button';
 import { cannotRemoveReason, type PlanRow } from '@/lib/build-plan';
@@ -48,7 +51,9 @@ export function SuggestionsWorkspace({
   planHref,
   onOpenPlan,
   addItems,
-  onRemove
+  onRemove,
+  onLeave,
+  lookupsHref
 }: {
   feed: SuggestFeed;
   rows: readonly PlanRow[];
@@ -61,7 +66,15 @@ export function SuggestionsWorkspace({
   /** The page's batched add: resolves to an error to show, or null. */
   addItems: (items: SuggestItem[]) => Promise<string | null>;
   onRemove: (row: PlanRow, trigger: HTMLElement | null) => void;
+  /** "Back to the plan" was chosen (the plan then puts focus back on its Suggestions link). */
+  onLeave?: () => void;
+  /** Lookups, for a leader who holds the right that page needs (roster.manage); absent otherwise. */
+  lookupsHref?: string;
 }) {
+  const sectionRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    sectionRef.current?.focus();
+  }, []);
   const [lens, setLens] = useState<Lens>('sessions');
   const [filter, setFilter] = useState<SuggestFilter>(DEFAULT_FILTER);
   const [ticked, setTicked] = useState<ReadonlySet<string>>(new Set());
@@ -83,9 +96,21 @@ export function SuggestionsWorkspace({
       return next;
     });
 
-  const addOne = async (item: SuggestItem) => {
+  /** The Add buttons on screen, in order. */
+  const addButtons = () => Array.from(sectionRef.current?.querySelectorAll<HTMLElement>('[data-suggest-add]') ?? []);
+  /** Focus the first of these still on screen, else the workspace: never body. */
+  const focusFirst = (candidates: HTMLElement[]) =>
+    requestAnimationFrame(() => (candidates.find((c) => c.isConnected) ?? sectionRef.current)?.focus());
+
+  const addOne = async (item: SuggestItem, trigger: HTMLElement | null) => {
+    const all = addButtons();
+    const at = trigger ? all.indexOf(trigger) : -1;
+    const next = [...all.slice(at + 1), ...all.slice(0, Math.max(at, 0))].filter((b) => b.dataset.suggestAdd !== item.key);
     const err = await addItems([item]);
-    if (!err) setTicked((t) => (t.has(item.key) ? new Set([...t].filter((k) => k !== item.key)) : t));
+    if (!err) {
+      setTicked((t) => (t.has(item.key) ? new Set([...t].filter((k) => k !== item.key)) : t));
+      focusFirst(next);
+    }
     return err;
   };
   const addTicked = async () => {
@@ -95,7 +120,11 @@ export function SuggestionsWorkspace({
     const err = await addItems(pending.map((k) => byKey.get(k)!));
     setBusy(false);
     if (err) setBarProblem(err);
-    else setTicked(new Set());
+    else {
+      const added = new Set(pending);
+      setTicked(new Set());
+      focusFirst(addButtons().filter((b) => !added.has(b.dataset.suggestAdd ?? '')));
+    }
   };
 
   const ctl = (item: SuggestItem) => (
@@ -107,7 +136,7 @@ export function SuggestionsWorkspace({
     ) : null;
 
   return (
-    <section className={s.workspace} aria-label="Suggestions">
+    <section className={s.workspace} aria-label="Suggestions" ref={sectionRef} tabIndex={-1}>
       <div className={s.bar}>
         {switcher}
         <div className={s.barRow}>
@@ -139,7 +168,7 @@ export function SuggestionsWorkspace({
             <button type="button" className={s.planBtn} onClick={onOpenPlan} aria-haspopup="dialog">
               Plan ({rows.length})
             </button>
-            <Link href={planHref} className={s.back}>
+            <Link href={planHref} className={s.back} onClick={onLeave}>
               Back to the plan
             </Link>
           </span>
@@ -147,11 +176,13 @@ export function SuggestionsWorkspace({
       </div>
 
       <div className={s.body}>
-        {feed.status === 'loading' ? <p className={s.empty}>Finding suggestions…</p> : null}
+        <p className={feed.status === 'loading' ? s.empty : s.srOnly} role="status">
+          {feed.status === 'loading' ? 'Finding suggestions…' : ''}
+        </p>
         {feed.status === 'failed' ? <p className={s.empty}>Suggestions didn’t load. Reload the page to try again.</p> : null}
         {data && lens === 'sessions' ? <Sessions data={data} filter={filter} onPlan={onPlan} tick={tick} ctl={ctl} /> : null}
         {data && lens === 'scouts' ? <Scouts data={data} filter={filter} onPlan={onPlan} tick={tick} ctl={ctl} /> : null}
-        {data && lens === 'teaching' ? <Teaching data={data} filter={filter} onPlan={onPlan} byKey={byKey} tick={tick} ctl={ctl} /> : null}
+        {data && lens === 'teaching' ? <Teaching data={data} filter={filter} onPlan={onPlan} byKey={byKey} tick={tick} ctl={ctl} lookupsHref={lookupsHref} /> : null}
         {data ? <Campout data={data} filter={filter} /> : null}
       </div>
 
@@ -167,7 +198,7 @@ export function SuggestionsWorkspace({
               <button type="button" className={s.quiet} onClick={() => setTicked(new Set())} disabled={busy}>
                 Clear
               </button>
-              <Button variant="primary" onClick={addTicked} disabled={busy}>
+              <Button variant="primary" onClick={addTicked} aria-disabled={busy || undefined}>
                 {busy ? 'Adding…' : `Add ${pending.length} to the plan`}
               </Button>
             </>
@@ -291,12 +322,25 @@ function Scouts({ data, filter, onPlan, tick, ctl }: LensProps) {
   );
 }
 
-function Teaching({ data, filter, onPlan, byKey, tick, ctl }: LensProps & { byKey: ReadonlyMap<string, SuggestItem> }) {
+function Teaching({ data, filter, onPlan, byKey, tick, ctl, lookupsHref }: LensProps & { byKey: ReadonlyMap<string, SuggestItem>; lookupsHref?: string }) {
   const rows = data.teachers
     .map((t) => ({ t, keys: teacherKeysShown(t.keys, byKey, onPlan, filter) }))
     .filter(({ keys }) => keys.length || (filter.rank == null && !filter.mbOnly));
-  if (!rows.length) return <p className={s.empty}>{data.teachers.length ? 'Nothing matches these filters.' : 'Nobody has a teaching skill yet.'}</p>;
+  const lookups = lookupsHref ? (
+    <p className={s.meta}>
+      <Link href={lookupsHref}>Edit in Lookups</Link>
+    </p>
+  ) : null;
+  if (!rows.length)
+    return (
+      <>
+        {lookups}
+        <p className={s.empty}>{data.teachers.length ? 'Nothing matches these filters.' : 'Nobody has a teaching skill yet.'}</p>
+      </>
+    );
   return (
+    <>
+    {lookups}
     <ul className={s.rows}>
       {rows.map(({ t, keys }) => {
         const best = keys.map((k) => byKey.get(k)!).find((i) => !onPlan.has(i.key));
@@ -331,6 +375,7 @@ function Teaching({ data, filter, onPlan, byKey, tick, ctl }: LensProps & { byKe
         );
       })}
     </ul>
+    </>
   );
 }
 
@@ -366,7 +411,7 @@ function ItemAction({
   item: SuggestItem;
   row: PlanRow | undefined;
   canSeed: boolean;
-  onAdd: (item: SuggestItem) => Promise<string | null>;
+  onAdd: (item: SuggestItem, trigger: HTMLElement | null) => Promise<string | null>;
   onRemove: (row: PlanRow, trigger: HTMLElement | null) => void;
 }) {
   const [busy, setBusy] = useState(false);
@@ -386,17 +431,25 @@ function ItemAction({
     );
   }
   if (!canSeed) return null;
-  const add = async () => {
+  const add = async (trigger: HTMLElement) => {
     if (busy) return;
     setBusy(true);
     setProblem(null);
-    const err = await onAdd(item);
+    const err = await onAdd(item, trigger);
     setBusy(false);
     if (err) setProblem(err);
   };
   return (
     <span className={s.end}>
-      <Button variant="secondary" size="sm" className={s.addBtn} onClick={add} disabled={busy} aria-label={`Add ${item.codeLabel} ${item.title}`}>
+      <Button
+        variant="secondary"
+        size="sm"
+        className={s.addBtn}
+        onClick={(e) => add(e.currentTarget)}
+        aria-disabled={busy || undefined}
+        data-suggest-add={item.key}
+        aria-label={`Add ${item.codeLabel} ${item.title}`}
+      >
         {busy ? 'Adding…' : 'Add'}
       </Button>
       {problem ? (

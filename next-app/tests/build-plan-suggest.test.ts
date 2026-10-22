@@ -151,6 +151,22 @@ describe('Suggestions mode (pure)', () => {
     expect([campoutShown({ ranks: ['scout'] }, NONE), campoutShown({ ranks: ['scout'] }, { ...NONE, mbOnly: true })]).toEqual([true, false]);
   });
 
+  it('SuggestionsData_SurvivesAJsonRoundTrip', () => {
+    // It is cached (unstable_cache: JSON values only) and streamed to the client: no Map, Set, Date or undefined in it.
+    const d = suggestionsData(
+      payload({
+        sessions: [
+          session(1, 'tenderfoot-4a', [ref('a', 'scout'), ref('b', 'scout')], { groupPart: 'A', adultTeachers: [{ code: '7', name: 'Dan Kowalski' }], skillName: 'First aid' }),
+          session(2, 'first-aid-2', [ref('c', 'first-class'), ref('d', 'star')], { kind: 'mb', tier: 'older', codeLabel: 'First Aid 2', scoutTeachers: [{ id: 'z', name: 'Finn Peters', rankLabel: 'Star' }] })
+        ],
+        byScout: [scoutRow(ref('a', 'scout'), [{ key: 'tenderfoot-4a', kind: 'rank', codeLabel: 'TF 4a', label: 'First aid', eagle: false, sessionId: 1 }], [{ codeLabel: 'TF 1b', label: 'Campout' }])],
+        rosterAdults: [{ code: '7', name: 'Dan Kowalski', role: 'ASM', skills: ['First aid'], sessionIds: [1] }]
+      }),
+      RANKS
+    );
+    expect(JSON.parse(JSON.stringify(d))).toStrictEqual(d);
+  });
+
   it('AddChunks_SplitAtTheActionsCap', () => {
     expect(addChunks(Array.from({ length: 45 }, (_, i) => i)).map((c) => c.length)).toEqual([20, 20, 5]);
   });
