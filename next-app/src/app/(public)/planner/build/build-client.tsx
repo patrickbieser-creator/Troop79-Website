@@ -62,7 +62,8 @@ import { AddOffering } from './add-offering';
 import { EditOffering } from './edit-offering';
 import { rowCode } from './requirement-search';
 import { PlannerPoller } from '../planner-poller';
-import { SuggestionsWorkspace, type SuggestFeed } from './suggestions';
+import { ItemAction, SuggestionsWorkspace, type SuggestFeed } from './suggestions';
+import { orphanScouts, orphansLabel, type OrphansData, type OrphanScout } from '@/lib/build-plan-orphans';
 import s from './build.module.css';
 
 const SAVE_FAILED = 'That didn’t save. Check your connection and try again.';
@@ -77,6 +78,7 @@ const FeedCtx = createContext<((f: SuggestFeed) => void) | null>(null);
 let backFromSuggestions = false;
 type Likely = Record<string, string[]>;
 const LikelyCtx = createContext<((l: Likely) => void) | null>(null);
+const OrphansCtx = createContext<((o: OrphansData) => void) | null>(null);
 
 /** Streams in behind Suspense (Suggestions mode): hands the one engine read to the view and renders nothing itself. */
 export function SuggestionsFeed({ data }: { data: SuggestionsData | null }) {
@@ -93,6 +95,15 @@ export function LikelyFeed({ byKey }: { byKey: Likely | null }) {
   useEffect(() => {
     if (byKey) set?.(byKey);
   }, [byKey, set]);
+  return null;
+}
+
+/** B9: streams in behind Suspense: hands the orphan data to the view; null (the read failed) shows no count. */
+export function OrphansFeed({ data }: { data: OrphansData | null }) {
+  const set = useContext(OrphansCtx);
+  useEffect(() => {
+    if (data) set?.(data);
+  }, [data, set]);
   return null;
 }
 
@@ -158,6 +169,8 @@ export function BuildPlanView({
   }, [mode]);
   const onFeed = useCallback((f: SuggestFeed) => setSuggestions(f), []);
   const [likely, setLikely] = useState<Likely>({});
+  const [orphanData, setOrphanData] = useState<OrphansData | null>(null);
+  const [orphanSheet, setOrphanSheet] = useState(false);
 
   /** A write landed: keep its stamp when nothing else changed the board since; otherwise refresh to show the rest. */
   const landed = (res: { prior: string; stamp: string }) => {
@@ -168,6 +181,9 @@ export function BuildPlanView({
   const inviteHref = `/planner/invite?meeting=${entryId}`;
   const onPlan = useMemo(() => new Set(rows.map((r) => r.key)), [rows]);
   const sum = planSummary(rows);
+  // B9: recounted from the rows on every Add or Remove; no reload.
+  const orphans = useMemo(() => (orphanData ? orphanScouts(orphanData, onPlan) : []), [orphanData, onPlan]);
+  const orphanText = orphansLabel(orphans.length);
 
   /**
    * B5: add suggestions to the plan through the one batched action, at most ADD_MAX keys per call (in order; a failure
@@ -326,80 +342,172 @@ export function BuildPlanView({
 
   return (
     <LikelyCtx.Provider value={setLikely}>
-      <FeedCtx.Provider value={onFeed}>
-        {heading}
-        <div className={s.rail}>
-          <p className={s.railText}>
-            {plural(sum.offerings, 'offering')} · {sum.withTeachers} with {sum.withTeachers === 1 ? 'a teacher' : 'teachers'} · {plural(sum.scouts, 'scout')} signed up ·{' '}
-            <PlannerPoller entryId={entryId} stamp={stamp} build stampRef={stampRef} />
-          </p>
-        </div>
-        <div className={s.layoutSolo}>
-          <section aria-labelledby="build-plan">
-            <div className={s.planHead}>
-              <h2 id="build-plan" className={s.sectionTitle} ref={listHeadRef} tabIndex={-1}>
-                The plan
-              </h2>
-              {canSeed ? (
-                <AddOffering lead={suggestionsLink} onPlan={onPlan} defaultMixName={mixName(dayLabel)} addRequirement={addRequirement} addSet={addSet} newMix={newMix} />
-              ) : (
-                <div className={s.addRow}>{suggestionsLink}</div>
-              )}
-            </div>
-            {rows.length ? (
-              <ul className={s.list}>
-                {rows.map((r) => (
-                  <PlanRowView
-                    key={r.key}
-                    row={r}
-                    likely={likely[r.key]}
-                    canSeed={canSeed}
-                    canEdit={canEdit || (canSeed && r.key.startsWith('fg:'))}
-                    onEdit={() => setEditing(r)}
-                    inviteHref={canEdit || canSeed ? `${inviteHref}&offering=${encodeURIComponent(r.key)}` : undefined}
-                    onRemove={(trigger) => setRemoving({ row: r, trigger })}
-                  />
-                ))}
-              </ul>
-            ) : (
-              <p className={s.empty}>Nothing planned yet.</p>
-            )}
-          </section>
-        </div>
-        {editing ? (
-          <EditOffering
-            entryId={entryId}
-            row={editingRow ?? editing}
-            gone={!editingRow}
-            canEdit={canEdit}
-            canSeed={canSeed}
-            onTeachers={(res) => onTeachers(editing.key, res)}
-            onMix={(res) => onMix(editing.key, res)}
-            onClose={() => setEditing(null)}
-          />
-        ) : null}
-        {rows.length ? (
-          <div className={s.inviteBar}>
-            <Button variant="primary" href={inviteHref}>
-              Next: Invite →
-            </Button>
+      <OrphansCtx.Provider value={setOrphanData}>
+        <FeedCtx.Provider value={onFeed}>
+          {heading}
+          <div className={s.rail}>
+            <p className={s.railText}>
+              {plural(sum.offerings, 'offering')} · {sum.withTeachers} with {sum.withTeachers === 1 ? 'a teacher' : 'teachers'} · {plural(sum.scouts, 'scout')} signed up ·{' '}
+              {orphanText ? (
+                <>
+                  <button type="button" className={s.railLink} onClick={() => setOrphanSheet(true)} aria-haspopup="dialog">
+                    {orphanText}
+                  </button>{' '}
+                  ·{' '}
+                </>
+              ) : null}
+              <PlannerPoller entryId={entryId} stamp={stamp} build stampRef={stampRef} />
+            </p>
           </div>
-        ) : null}
-        {removing ? (
-          <RemoveDialog
-            row={removing.row}
-            onRemove={() => remove(removing.row)}
-            onClose={() => {
-              const trigger = removing.trigger;
-              setRemoving(null);
-              // Back to the row's ⋯ when the row is still there; to the list's heading when it went.
-              requestAnimationFrame(() => (trigger?.isConnected ? trigger.focus() : listHeadRef.current?.focus()));
-            }}
-          />
-        ) : null}
-        {feed}
-      </FeedCtx.Provider>
+          <div className={s.layoutSolo}>
+            <section aria-labelledby="build-plan">
+              <div className={s.planHead}>
+                <h2 id="build-plan" className={s.sectionTitle} ref={listHeadRef} tabIndex={-1}>
+                  The plan
+                </h2>
+                {canSeed ? (
+                  <AddOffering lead={suggestionsLink} onPlan={onPlan} defaultMixName={mixName(dayLabel)} addRequirement={addRequirement} addSet={addSet} newMix={newMix} />
+                ) : (
+                  <div className={s.addRow}>{suggestionsLink}</div>
+                )}
+              </div>
+              {rows.length ? (
+                <ul className={s.list}>
+                  {rows.map((r) => (
+                    <PlanRowView
+                      key={r.key}
+                      row={r}
+                      likely={likely[r.key]}
+                      canSeed={canSeed}
+                      canEdit={canEdit || (canSeed && r.key.startsWith('fg:'))}
+                      onEdit={() => setEditing(r)}
+                      inviteHref={canEdit || canSeed ? `${inviteHref}&offering=${encodeURIComponent(r.key)}` : undefined}
+                      onRemove={(trigger) => setRemoving({ row: r, trigger })}
+                    />
+                  ))}
+                </ul>
+              ) : (
+                <p className={s.empty}>Nothing planned yet.</p>
+              )}
+            </section>
+          </div>
+          {editing ? (
+            <EditOffering
+              entryId={entryId}
+              row={editingRow ?? editing}
+              gone={!editingRow}
+              canEdit={canEdit}
+              canSeed={canSeed}
+              onTeachers={(res) => onTeachers(editing.key, res)}
+              onMix={(res) => onMix(editing.key, res)}
+              onClose={() => setEditing(null)}
+            />
+          ) : null}
+          {rows.length ? (
+            <div className={s.inviteBar}>
+              <Button variant="primary" href={inviteHref}>
+                Next: Invite →
+              </Button>
+            </div>
+          ) : null}
+          {removing ? (
+            <RemoveDialog
+              row={removing.row}
+              onRemove={() => remove(removing.row)}
+              onClose={() => {
+                const trigger = removing.trigger;
+                setRemoving(null);
+                // Back to the row's ⋯ when the row is still there; to the list's heading when it went.
+                requestAnimationFrame(() => (trigger?.isConnected ? trigger.focus() : listHeadRef.current?.focus()));
+              }}
+            />
+          ) : null}
+          {orphanSheet ? (
+            <OrphansDrawer
+              orphans={orphans}
+              rows={rows}
+              canSeed={canSeed}
+              addItems={addItems}
+              onRemove={(row, trigger) => setRemoving({ row, trigger })}
+              onClose={() => {
+                setOrphanSheet(false);
+                // The count's button is gone when nobody is left: back to the plan's heading, never body.
+                if (!orphans.length) requestAnimationFrame(() => listHeadRef.current?.focus());
+              }}
+            />
+          ) : null}
+          {feed}
+        </FeedCtx.Provider>
+      </OrphansCtx.Provider>
     </LikelyCtx.Provider>
+  );
+}
+
+/**
+ * B9: the scouts with nothing on this plan, each with their likely next items (the engine's) and an Add (seed right;
+ * the page's batched add). After an Add the list recounts; a scout now covered leaves it, and focus moves to the next
+ * Add still there, else the list. Viewers see the list without Add.
+ */
+function OrphansDrawer({
+  orphans,
+  rows,
+  canSeed,
+  addItems,
+  onRemove,
+  onClose
+}: {
+  orphans: readonly OrphanScout[];
+  rows: readonly PlanRow[];
+  canSeed: boolean;
+  addItems: (items: SuggestItem[]) => Promise<string | null>;
+  onRemove: (row: PlanRow, trigger: HTMLElement | null) => void;
+  onClose: () => void;
+}) {
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const rowByKey = useMemo(() => new Map(rows.map((r) => [r.key, r])), [rows]);
+  const onAdd = async (item: SuggestItem, trigger: HTMLElement | null) => {
+    const all = Array.from(listRef.current?.querySelectorAll<HTMLElement>('[data-suggest-add]') ?? []);
+    const at = trigger ? all.indexOf(trigger) : -1;
+    const next = [...all.slice(at + 1), ...all.slice(0, Math.max(at, 0))].filter((b) => b.dataset.suggestAdd !== item.key);
+    const err = await addItems([item]);
+    if (!err) requestAnimationFrame(() => (next.find((b) => b.isConnected) ?? listRef.current)?.focus());
+    return err;
+  };
+  return (
+    <Drawer title={orphansLabel(orphans.length) ?? 'Everyone has something on this plan'} onClose={onClose}>
+      <div ref={listRef} tabIndex={-1} className={s.orphanList}>
+        {orphans.length ? (
+          <ul className={s.orphanRows}>
+            {orphans.map((o) => (
+              <li key={o.scoutId} className={s.orphan}>
+                <p className={s.orphanWho}>
+                  {o.name}
+                  {o.rankLabel ? <span className={s.orphanMeta}>{o.rankLabel}</span> : null}
+                </p>
+                {o.items.length ? (
+                  <ul className={s.orphanItems}>
+                    {o.items.map((i) => (
+                      <li key={i.key} className={s.orphanItem}>
+                        <p className={s.orphanTitle}>
+                          <span className={s.code}>
+                            {i.eagle ? '★ ' : ''}
+                            {i.codeLabel}
+                          </span>
+                          {i.title}
+                        </p>
+                        <ItemAction item={i} row={rowByKey.get(i.key)} canSeed={canSeed} onAdd={onAdd} onRemove={onRemove} />
+                      </li>
+                    ))}
+                  </ul>
+                ) : o.reason ? (
+                  <p className={s.orphanReason}>{o.reason}</p>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
+    </Drawer>
   );
 }
 

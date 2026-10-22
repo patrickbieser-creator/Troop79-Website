@@ -87,12 +87,27 @@ export interface OutingItem {
   label: string;
 }
 
+/**
+ * Why a scout has no suggestion this meeting (Build a Plan B9): a machine code; the UI layer words it
+ * (lib/build-plan-suggest noSuggestionText).
+ *   bor-next       every requirement of the next rank but the conference is done: a board of review is next.
+ *   no-mb          Star and up: no merit badge in progress, and no Eagle-required badge with a counselor.
+ *   smc-waiting    the Scoutmaster conference waits for 95% of the next rank.
+ *   not-plannable  only time-based, Scout spirit or campout items are left.
+ *   finished       nothing left that a meeting can plan.
+ */
+export type NoSuggestionReason = 'bor-next' | 'no-mb' | 'smc-waiting' | 'not-plannable' | 'finished';
+
 export interface PlanByScout {
   scout: PlanScoutRef;
   tier: TierId;
   suggestions: ScoutSuggestion[];
   /** Campout-only outstanding items — kept visible, never suggested. */
   needsOuting: OutingItem[];
+  /** B9: set when `suggestions` is empty (every active scout is reported); absent on older snapshots. */
+  reason?: NoSuggestionReason | null;
+  /** The rank the reason names (the scout's next rank), when it names one. */
+  reasonRankId?: string | null;
 }
 
 export interface RosterAdult {

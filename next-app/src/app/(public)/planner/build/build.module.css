@@ -600,3 +600,61 @@
     display: none;
   }
 }
+
+/* ── B9: "N scouts have nothing on this plan" (the rail's link and its Drawer list) ──────────────────────────── */
+.railLink {
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: 600 var(--fs-sm) / 1.4 var(--font-ui);
+  color: var(--navy);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.railLink:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+.orphanList:focus {
+  outline: none;
+}
+.orphanRows,
+.orphanItems {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.orphan {
+  display: grid;
+  gap: var(--sp-1);
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--border-light);
+}
+.orphanWho {
+  margin: 0;
+  font: 700 var(--fs-sm) / 1.4 var(--font-ui);
+  color: var(--text-head);
+}
+.orphanMeta {
+  margin-left: var(--sp-2);
+  font-weight: 400;
+  color: var(--text-meta);
+}
+.orphanItem {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  padding: var(--sp-1) 0;
+}
+.orphanTitle {
+  flex: 1;
+  margin: 0;
+  font: 600 var(--fs-sm) / 1.4 var(--font-ui);
+  color: var(--text-head);
+}
+.orphanReason {
+  margin: 0;
+  font: var(--fs-xs) / 1.4 var(--font-ui);
+  color: var(--text-meta);
+}

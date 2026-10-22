@@ -145,7 +145,17 @@ export async function scoutCandidates(
   return res.ok ? { ok: true, scouts: res.byKey.get(input.topicKey) ?? [] } : res;
 }
 
-export type ScoutCandidatesManyResult = { ok: true; byKey: Map<string, ScoutCandidate[]> } | { ok: false; error: string };
+/** B9: an active scout who hasn't said they can't make it, with what they picked (the orphan count's population). */
+export interface EligibleScout {
+  personId: number;
+  scoutId: string;
+  name: string;
+  currentRank: string | null;
+  /** Their effective picks for this meeting, by key. */
+  picked: string[];
+}
+
+export type ScoutCandidatesManyResult = { ok: true; byKey: Map<string, ScoutCandidate[]>; eligible: EligibleScout[] } | { ok: false; error: string };
 
 /**
  * Build a Plan B0 (Plans/Build-A-Plan.md): scoutCandidates for many keys over ONE board load. The board is read once
@@ -178,10 +188,12 @@ export async function scoutCandidatesMany(
   const trees = rankTrees(catalog.rankRequirements);
 
   const byKey = new Map<string, ScoutCandidate[]>(input.keys.map((k) => [k, []]));
+  const eligible: EligibleScout[] = [];
   for (const scout of scouts) {
     const intent = intents.get(scout.personId) ?? null;
     if (intent === 'not_coming') continue;
     const p = progress.get(scout.scoutId) ?? { rankCodes: new Set<string>(), mbProgress: [] };
+    eligible.push({ personId: scout.personId, scoutId: scout.scoutId, name: boardName(scout.name), currentRank: scout.currentRank, picked: (picks.get(scout.personId)?.picks ?? []).map((x) => x.key) });
     // The pick list as loadScoutBoard builds it for a candidate check (no others, teachers or freeform).
     const pickable = pickableKeys(
       buildPickList({
@@ -216,7 +228,7 @@ export async function scoutCandidatesMany(
     }
   }
   for (const list of byKey.values()) list.sort((a, b) => Number(b.ticked) - Number(a.ticked) || a.name.localeCompare(b.name));
-  return { ok: true, byKey };
+  return { ok: true, byKey, eligible };
 }
 
 /**

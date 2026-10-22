@@ -9,7 +9,7 @@
  *
  * B5: ?view=suggestions is Suggestions mode (every viewer; read-only without the Seed right). Entering it costs the
  * plan rows plus ONE engine read (cached two minutes), streamed behind Suspense so the plan rail never waits for the
- * ledger; the plan view no longer runs the engine at all.
+ * ledger. B9: the plan view streams the orphan count from that same cached engine read plus one scoutCandidatesMany.
  */
 import { Suspense } from 'react';
 import Link from 'next/link';
@@ -25,11 +25,12 @@ import { loadPlannerLists } from '@/lib/people-lists';
 import { loadSuggestionsData } from '@/lib/build-plan-suggest-db';
 import { pickMeeting, planRows, PLAN_MEETINGS } from '@/lib/build-plan';
 import { loadLikelyScouts } from '@/lib/meeting-invite-digest-db';
+import { loadOrphans } from '@/lib/build-plan-orphans-db';
 import { PageHeader } from '@/app/_components/page-header';
 import { PageShell } from '@/app/_components/page-shell';
 import { Notice } from '@/app/_components/notice';
 import { PlannerTabs } from '../planner-tabs';
-import { BuildPlanView, LikelyFeed, SuggestionsFeed } from './build-client';
+import { BuildPlanView, LikelyFeed, OrphansFeed, SuggestionsFeed } from './build-client';
 import styles from '../planner.module.css';
 import s from './build.module.css';
 
@@ -54,7 +55,18 @@ async function Likely({ entryId, keys }: { entryId: number; keys: string[] }) {
  * answer) re-renders this page. Suggestions are advice; what is on the plan is the client's own rows, so an Add shows
  * On plan at once. JSON-only values. A failure (the engine refused) is not cached.
  */
-const suggestionsCached = unstable_cache(async (date: string, title: string) => loadSuggestionsData(date, title), ['build-plan-suggestions-b5-teacher-ids'], { revalidate: 120 });
+const suggestionsCached = unstable_cache(async (date: string, title: string) => loadSuggestionsData(date, title), ['build-plan-suggestions-b9-reasons'], { revalidate: 120 });
+
+/**
+ * B9: "N scouts have nothing on this plan", streamed so the plan never waits for it: the cached engine read (shared with
+ * Suggestions mode) plus ONE scoutCandidatesMany over the plan's and the suggestions' keys. A failure shows nothing.
+ */
+async function Orphans({ meeting, keys }: { meeting: BoardMeeting; keys: string[] }) {
+  const data = await suggestionsCached(meeting.date, meeting.title)
+    .then((sug) => loadOrphans(createAdminClient(), meeting.entryId, keys, sug))
+    .catch(() => null);
+  return <OrphansFeed data={data} />;
+}
 
 /** Streams the one engine read into the workspace; null (it failed) says so there. */
 async function Suggestions({ meeting }: { meeting: BoardMeeting }) {
@@ -143,9 +155,14 @@ export default async function BuildPlanPage({ searchParams }: { searchParams: Pr
               <Suggestions meeting={meeting} />
             </Suspense>
           ) : (
-            <Suspense fallback={null}>
-              <Likely entryId={meeting.entryId} keys={rows.filter((r) => !r.scouts).map((r) => r.key)} />
-            </Suspense>
+            <>
+              <Suspense fallback={null}>
+                <Likely entryId={meeting.entryId} keys={rows.filter((r) => !r.scouts).map((r) => r.key)} />
+              </Suspense>
+              <Suspense fallback={null}>
+                <Orphans meeting={meeting} keys={rows.map((r) => r.key)} />
+              </Suspense>
+            </>
           )
         }
       />

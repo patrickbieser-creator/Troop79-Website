@@ -12,7 +12,7 @@
  * A plan item is a topic key, so an item is either on the plan or not: one scout's requirement whose key is already
  * a session's just reads On plan. Names are the board's ("Dan K").
  */
-import type { MeetingPlanPayload, PlanSession } from '@/lib/meeting-plan-types';
+import type { MeetingPlanPayload, NoSuggestionReason, PlanSession } from '@/lib/meeting-plan-types';
 import { boardName } from '@/lib/meeting-board-shared';
 
 export type Lens = 'sessions' | 'scouts' | 'teaching';
@@ -56,6 +56,8 @@ export interface SuggestScout {
   rankLabel: string;
   nextRankId: string | null;
   items: SuggestItem[];
+  /** B9: why a scout with no items has none, worded (noSuggestionText); null when they have some. */
+  reason?: string | null;
 }
 
 export interface SuggestTeacher {
@@ -164,6 +166,7 @@ export function suggestionsData(payload: MeetingPlanPayload, rankRows: readonly 
       patrol: row.scout.patrol,
       rankLabel: row.scout.rankLabel,
       nextRankId: next,
+      reason: row.suggestions.length ? null : noSuggestionText(row.reason ?? null, row.reasonRankId ? (label.get(row.reasonRankId) ?? row.reasonRankId) : null),
       items: row.suggestions.flatMap((x) => {
         if (!x.key) return [];
         const rankId = x.kind === 'rank' ? rankOfKey(x.key) : null;
@@ -210,6 +213,57 @@ export function suggestionsData(payload: MeetingPlanPayload, rankRows: readonly 
     teachers,
     campout: campoutList
   };
+}
+
+/**
+ * B9: the engine's reason code as the By Scout lens words it. A snapshot from before B9 (no code) says nothing.
+ */
+export function noSuggestionText(reason: NoSuggestionReason | null, rankLabel: string | null): string | null {
+  switch (reason) {
+    case 'bor-next':
+      return rankLabel ? `Ready for the ${rankLabel} board of review` : 'Ready for a board of review';
+    case 'no-mb':
+      return 'No merit badge in progress';
+    case 'smc-waiting':
+      return `Nothing to plan: Scoutmaster conference waits for 95% of ${rankLabel ?? 'the rank'}`;
+    case 'not-plannable':
+      return 'Only time-based, Scout spirit or campout items left';
+    case 'finished':
+      return 'Finished everything plannable';
+    default:
+      return null;
+  }
+}
+
+/**
+ * B9, By Scout: whether a scout's row shows under the filters. A scout with items shows when any item does; one with
+ * none (their reason line) shows unless merit badges only, or another next rank, is chosen.
+ */
+export function scoutRowShown(sc: Pick<SuggestScout, 'items' | 'nextRankId'>, shownItems: number, f: SuggestFilter): boolean {
+  if (sc.items.length) return shownItems > 0;
+  if (f.mbOnly) return false;
+  return f.rank == null || sc.nextRankId === f.rank;
+}
+
+/** B9, Group Sessions' "Solo needs": a requirement only one scout needs (it never made a session of two). */
+export interface SoloNeed {
+  item: SuggestItem;
+  scout: string;
+}
+
+/** Every scout's selection whose key has no session card, in the order By Scout lists them. */
+export function soloNeeds(d: Pick<SuggestionsData, 'cards' | 'scouts'>): SoloNeed[] {
+  const carded = new Set(d.cards.map((c) => c.key));
+  const seen = new Set<string>();
+  const out: SoloNeed[] = [];
+  for (const sc of d.scouts) {
+    for (const item of sc.items) {
+      if (carded.has(item.key) || seen.has(item.key)) continue;
+      seen.add(item.key);
+      out.push({ item, scout: sc.name });
+    }
+  }
+  return out;
 }
 
 /** Whether a card (or any item) shows under the filters. */

@@ -6,12 +6,14 @@
  *
  *   Group Sessions (default)  a card per session, grouped by rank: the requirement, N need it, the group by name, the
  *                             best teacher and the other qualified ones.
- *   By Scout                  each scout's next ≤3 requirements, merit badges included for older scouts.
+ *   By Scout                  each scout's next ≤3 requirements, merit badges included for older scouts. B9: every
+ *                             active scout is listed; one with none says why (the engine's reason, worded).
  *   Teaching                  who can teach what. Each requirement chip in a leader's row is the control (Patrick,
  *                             2026-10-22): "Add with <Name> teaching" (not on the plan: adds it with them teaching),
  *                             "Assign <Name>" (on the plan, someone else or nobody teaching), or "on plan · teaching".
  *                             Rows take no tick: one leader's choice never lights up another's.
  *   Needs a campout           a collapsed footer on every lens, with no Add.
+ *   Solo needs (B9)           a collapsed footer on Group Sessions: what only one scout needs, with Add.
  *
  * The sticky bar holds the meeting switcher, the lens and the filters (rank, MB only, show what's already on the plan).
  * Seed holders get one-click Add on each item and a tick on Group Sessions and By Scout; the ticks survive lens switches and go in one
@@ -33,6 +35,8 @@ import {
   itemsByKey,
   LENS_LABEL,
   scoutItemsShown,
+  scoutRowShown,
+  soloNeeds,
   teacherKeysShown,
   type Lens,
   type SuggestCard,
@@ -192,6 +196,7 @@ export function SuggestionsWorkspace({
         {data && lens === 'sessions' ? <Sessions data={data} filter={filter} onPlan={onPlan} tick={tick} ctl={ctl} /> : null}
         {data && lens === 'scouts' ? <Scouts data={data} filter={filter} onPlan={onPlan} tick={tick} ctl={ctl} /> : null}
         {data && lens === 'teaching' ? <Teaching data={data} filter={filter} rowByKey={rowByKey} byKey={byKey} canSeed={canSeed} canEdit={canEdit} onTeach={onTeach} lookupsHref={lookupsHref} /> : null}
+        {data && lens === 'sessions' ? <SoloNeeds data={data} filter={filter} onPlan={onPlan} ctl={ctl} /> : null}
         {data ? <Campout data={data} filter={filter} /> : null}
       </div>
 
@@ -226,7 +231,6 @@ type LensProps = {
   ctl: (item: SuggestItem) => ReactNode;
 };
 
-const filtering = (f: SuggestFilter) => f.rank != null || f.mbOnly || !f.showOnPlan;
 
 function Sessions({ data, filter, onPlan, tick, ctl }: LensProps) {
   const shown = data.cards.filter((c) => cardShown(c, onPlan.has(c.key), filter));
@@ -291,7 +295,7 @@ const who = (t: { name: string; note: string | null }) => (t.note ? `${t.name} (
 function Scouts({ data, filter, onPlan, tick, ctl }: LensProps) {
   const rows = data.scouts
     .map((sc) => ({ sc, items: scoutItemsShown(sc.items, onPlan, filter) }))
-    .filter(({ sc, items }) => items.length || (!filtering(filter) && !sc.items.length));
+    .filter(({ sc, items }) => scoutRowShown(sc, items.length, filter));
   if (!rows.length) return <p className={s.empty}>{data.scouts.length ? 'Nothing matches these filters.' : 'No scout has a suggestion this week.'}</p>;
   return (
     <ul className={s.rows}>
@@ -322,9 +326,9 @@ function Scouts({ data, filter, onPlan, tick, ctl }: LensProps) {
                 </li>
               ))}
             </ul>
-          ) : (
-            <p className={s.meta}>Only campout items left</p>
-          )}
+          ) : sc.reason ? (
+            <p className={s.meta}>{sc.reason}</p>
+          ) : null}
         </li>
       ))}
     </ul>
@@ -469,6 +473,37 @@ function TeachChip({
   );
 }
 
+/**
+ * B9: Group Sessions' "Solo needs", collapsed like the campout footer: each requirement only one scout needs (it never
+ * made a session of two), with that scout and the same Add / On plan as everywhere else. Filters apply.
+ */
+function SoloNeeds({ data, filter, onPlan, ctl }: Pick<LensProps, 'data' | 'filter' | 'onPlan' | 'ctl'>) {
+  const shown = soloNeeds(data).filter((n) => cardShown(n.item, onPlan.has(n.item.key), filter));
+  if (!shown.length) return null;
+  return (
+    <details className={s.solo}>
+      <summary>Solo needs ({shown.length})</summary>
+      <ul className={s.rows}>
+        {shown.map((n) => (
+          <li key={n.item.key} className={onPlan.has(n.item.key) ? s.itemOn : s.soloRow}>
+            <div className={s.itemLine}>
+              <p className={s.itemTitle}>
+                <span className={s.code}>
+                  {n.item.eagle ? '★ ' : ''}
+                  {n.item.codeLabel}
+                </span>
+                {n.item.title}
+              </p>
+              {ctl(n.item)}
+            </div>
+            <p className={s.names}>{n.scout}</p>
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
 function Campout({ data, filter }: { data: SuggestionsData; filter: SuggestFilter }) {
   const shown = data.campout.filter((c) => campoutShown(c, filter));
   if (!shown.length) return null;
@@ -491,7 +526,7 @@ function Campout({ data, filter }: { data: SuggestionsData; filter: SuggestFilte
 }
 
 /** An item's end: Add (with its error in place), or On plan with the plan's quiet Remove; nothing for a viewer. */
-function ItemAction({
+export function ItemAction({
   item,
   row,
   canSeed,

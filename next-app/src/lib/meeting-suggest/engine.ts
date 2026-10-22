@@ -18,14 +18,24 @@
  *     leaders and parents alike — and, when the skill is youth-teachable,
  *     scouts who canOfferToTeach (First Class+ or Junior Leader).
  *   - Campout-only outstanding items are reported separately (needsOuting).
+ *   - Every scout is reported (B9): one with no suggestion carries a reason code (NoSuggestionReason), never skipped.
  */
 
 import { buildReqTree, type ReqNode } from '@/lib/mb-helpers';
 import { canOfferToTeach } from '@/lib/can-offer-to-teach';
-import { mbNodeSatisfied, openRankTops } from '@/lib/rank-calculus';
+import {
+  mbNodeSatisfied,
+  openRankTops,
+  rankBorPickable,
+  rankLeafCompletion,
+  rankNodeSatisfied,
+  SM_CONFERENCE_CODES,
+  SM_CONFERENCE_THRESHOLD
+} from '@/lib/rank-calculus';
 import type { ReqVenue, Skill } from '@/lib/supabase/types';
 import {
   type MeetingPlanPayload,
+  type NoSuggestionReason,
   type PlanByScout,
   type PlanScoutRef,
   type PlanSession,
@@ -234,6 +244,24 @@ export function buildMeetingPlan(input: EngineInput): MeetingPlanPayload {
   const nextRankByScout = new Map<string, string | null>();
   const candidatesByScout = new Map<string, Candidate[]>();
   const outingByScout = new Map<string, EngineRankReqRow[]>();
+  /** Older scouts: how many badges the MB pass could draw from (in progress, or Eagle-required with a counselor). */
+  const mbPoolSize = new Map<string, number>();
+  const reasonByScout = new Map<string, { reason: NoSuggestionReason; rankId: string | null }>();
+
+  /**
+   * B9: why a scout with no candidate has none, first match wins: a board of review is next; (Star and up) no badge to
+   * work on; the conference waits for 95%; only non-plannable or campout items left; otherwise finished.
+   */
+  const noSuggestionReason = (scoutId: string, next: string | null, codes: Set<string>): { reason: NoSuggestionReason; rankId: string | null } => {
+    const tree = next ? (rankTree.get(next) ?? []) : [];
+    if (next && rankBorPickable(tree, next, codes)) return { reason: 'bor-next', rankId: next };
+    if (tierForRank(next) === 'older' && (mbPoolSize.get(scoutId) ?? 0) === 0) return { reason: 'no-mb', rankId: null };
+    const open = next ? tree.filter((t) => t.code.toLowerCase() !== 'bor' && !rankNodeSatisfied(t, next, codes)) : [];
+    const smc = open.find((t) => SM_CONFERENCE_CODES.has(`${next}-${t.code}`));
+    if (smc && next && rankLeafCompletion(tree, next, codes, smc.code) < SM_CONFERENCE_THRESHOLD) return { reason: 'smc-waiting', rankId: next };
+    if (open.length > 0 || (mbPoolSize.get(scoutId) ?? 0) > 0) return { reason: 'not-plannable', rankId: next };
+    return { reason: 'finished', rankId: null };
+  };
 
   for (const scout of input.scouts) {
     scoutRefs.set(scout.id, {
@@ -293,6 +321,7 @@ export function buildMeetingPlan(input: EngineInput): MeetingPlanPayload {
       for (const mb of input.mbs) {
         if (mb.eagle && counseledMbs.has(mb.id) && !awarded.has(mb.id)) pool.add(mb.id);
       }
+      mbPoolSize.set(scout.id, [...pool].filter((id) => !awarded.has(id)).length);
 
       const mbCodes = mbCodesByScout.get(scout.id) ?? new Set<string>();
       // One requirement, never the whole badge (Meeting Planner II Decision 10): the badge's first unfinished top-level
@@ -342,6 +371,7 @@ export function buildMeetingPlan(input: EngineInput): MeetingPlanPayload {
     if (candidates.length > 0 || (outingByScout.get(scout.id)?.length ?? 0) > 0) {
       candidatesByScout.set(scout.id, candidates);
     }
+    if (candidates.length === 0) reasonByScout.set(scout.id, noSuggestionReason(scout.id, next, codes));
   }
 
   // ── pass 2: shared counts, then top-3 per scout ─────────────────────────
@@ -502,7 +532,8 @@ export function buildMeetingPlan(input: EngineInput): MeetingPlanPayload {
   for (const scout of input.scouts) {
     const selected = selectedByScout.get(scout.id) ?? [];
     const outing = outingByScout.get(scout.id) ?? [];
-    if (selected.length === 0 && outing.length === 0) continue;
+    // B9: every active scout is reported; one with no suggestion carries why (reasonByScout), never skipped.
+    const why = selected.length === 0 ? (reasonByScout.get(scout.id) ?? { reason: 'finished' as const, rankId: null }) : null;
 
     const next = nextRankByScout.get(scout.id) ?? null;
     const abbr = next ? (RANK_ABBR[next] ?? next) : '';
@@ -522,7 +553,9 @@ export function buildMeetingPlan(input: EngineInput): MeetingPlanPayload {
       needsOuting: outing.slice(0, MAX_OUTING_ITEMS).map((leaf) => ({
         codeLabel: `${abbr} ${leaf.code}`,
         label: leaf.label
-      }))
+      })),
+      reason: why?.reason ?? null,
+      reasonRankId: why?.rankId ?? null
     });
   }
   byScout.sort(

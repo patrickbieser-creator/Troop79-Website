@@ -383,3 +383,10 @@
 .workspace:focus {
   outline: none;
 }
+/* B9: Group Sessions' "Solo needs" footer: the campout footer's shape, with an Add per row. */
+.solo {
+  composes: campout;
+}
+.soloRow {
+  composes: campoutRow;
+}
