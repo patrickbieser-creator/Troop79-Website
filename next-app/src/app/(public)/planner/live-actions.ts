@@ -21,6 +21,7 @@ import { loadBoardStamp, loadMeetingById, type BoardMeeting } from '@/lib/meetin
 import { plannerAccess } from '@/lib/meeting-planner-access';
 import { SAVE_FAILED } from '@/lib/meeting-board-supply';
 import { loadEntryContext, recordAttendance, removeAttendance } from '@/lib/attendance-admin';
+import { NOT_A_TEACHER } from '@/lib/can-offer-to-teach';
 import { canTeachOnLive, liveStartedAt, onLiveBoard, resolveLiveClass, startMeetingLive } from '@/lib/meeting-live';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -32,7 +33,6 @@ const stale = (): { ok: false; error: string; stale: true } => ({ ok: false, err
 /** The RPCs' own messages are written for people; anything else is not shown raw. */
 const KNOWN = /^(Rotations 1 and 2|Only the last rotation|Move its classes|That’s as many rotations|That isn’t something|That meeting|Give the visitor)/;
 const NOT_TODAY = 'Attendance is taken on the day of the meeting.';
-const NOT_A_TEACHER = 'Only adults, Junior Leaders, and scouts at First Class or above can teach.';
 
 type Editor = { ok: true; sb: SupabaseClient; meeting: BoardMeeting; actorPersonId: number; actorLabel: string };
 

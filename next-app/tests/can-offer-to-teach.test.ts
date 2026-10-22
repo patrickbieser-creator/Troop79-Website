@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { canOfferToTeach } from '../src/lib/can-offer-to-teach';
+import { canOfferToTeach, NOT_A_TEACHER } from '../src/lib/can-offer-to-teach';
 
 /**
  * Who among the scouts may offer to teach (Plans/Meeting-Requests-And-Teaching-Offers.md, Decision 11 / Q-D): any
@@ -33,5 +33,12 @@ describe('canOfferToTeach', () => {
 
   it('JuniorLeader_UnrankedYoungScout_CannotOffer', () => {
     expect(canOfferToTeach(scout({ rankSortOrder: null, graduationYear: null }))).toBe(false);
+  });
+});
+
+describe('the can’t-teach message', () => {
+  // One message for Meeting Live and the member teach page, and it names this file's rule: adults, Junior Leaders, First Class+.
+  it('NotATeacher_StatesTheRule', () => {
+    expect(NOT_A_TEACHER).toBe('Only adults, Junior Leaders, and scouts at First Class or above can teach.');
   });
 });

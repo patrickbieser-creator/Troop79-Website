@@ -236,7 +236,7 @@ describe('who may teach', () => {
   it('InactivePerson_CannotTeach', async () => {
     const gone = await person('Gone');
     await sb.from('people').update({ active: false }).eq('id', gone);
-    expect((await teach({ person: gone, actor: gone })).error?.message).toBe('Teaching is for adults and Junior Leaders.');
+    expect((await teach({ person: gone, actor: gone })).error?.message).toBe('That person can’t teach at troop meetings.');
   });
 });
 
@@ -251,7 +251,7 @@ describe('qa-lead follow-ups', () => {
   it('Guest_CannotTeach', async () => {
     const guest = await person('Guest');
     await sb.from('people').update({ guest_host_household_id: households[0] }).eq('id', guest);
-    expect((await teach({ person: guest, actor: guest })).error?.message).toBe('Teaching is for adults and Junior Leaders.');
+    expect((await teach({ person: guest, actor: guest })).error?.message).toBe('That person can’t teach at troop meetings.');
   });
 
   it('Adult_CannotRemoveSomeoneElsesCommitment', async () => {

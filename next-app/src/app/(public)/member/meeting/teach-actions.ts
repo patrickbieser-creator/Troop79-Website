@@ -17,6 +17,7 @@ import { getIdentitySessionIfValid } from '@/lib/family-access';
 import { isEpochCurrent } from '@/lib/identity-session';
 import { actorHas, resolveAdminActor } from '@/lib/admin-actor';
 import { centralToday } from '@/lib/dates';
+import { NOT_A_TEACHER } from '@/lib/can-offer-to-teach';
 import { loadAdvancementCatalog } from '@/lib/advancement-catalog';
 import { INTENTS, type Intent } from '@/lib/meeting-board-shared';
 import { freeformTitle } from '@/lib/meeting-board-teach';
@@ -70,7 +71,7 @@ async function resolve(t: TeachTarget, op: 'add' | 'edit' = 'add') {
   if (meeting.date < centralToday()) return fail('That meeting has passed. Reload the page for the next one.');
   const catalog = await loadAdvancementCatalog();
   const me = (await loadTeacherPeople(sb, [t.personId], meeting.date, catalog)).get(t.personId);
-  if (!me && op === 'add') return fail('Teaching is for adults and Junior Leaders.');
+  if (!me && op === 'add') return fail(NOT_A_TEACHER);
   const upcoming = await loadUpcomingMeetings(sb, OFFER_DATES, meeting.date);
   const writer: TeachWriter = { personId: t.personId, actorPersonId, leader };
   const refresh = async (res: BoardWriteResult): Promise<TeachActionResult> => {
@@ -125,7 +126,7 @@ export type OfferWhat = { type: 'skill'; skillId: string } | { type: 'req'; key:
 export async function meetingPostOfferAction(t: TeachTarget & { what: OfferWhat; entryIds: number[]; note?: string }): Promise<TeachActionResult> {
   const r = await resolve(t);
   if (!r.ok) return r;
-  if (!r.me) return fail('Teaching is for adults and Junior Leaders.');
+  if (!r.me) return fail(NOT_A_TEACHER);
   const choices = offerChoices(r.me, r.catalog, r.upcoming);
   const what = t.what;
   if (!what || typeof what !== 'object') return fail('Malformed request');

@@ -20,3 +20,9 @@ export function canOfferToTeach(s: {
   if (s.rankSortOrder != null && s.rankSortOrder >= s.firstClassSortOrder) return true;
   return defaultClassFor({ isScout: true, graduationYear: s.graduationYear, override: s.override, onDate: s.onDate }) === 'junior_leader';
 }
+
+/**
+ * The one "can't teach" message, true for every app path that asks loadTeacherPeople (Meeting Live's teacher, the
+ * member teach page): an adult, or a scout canOfferToTeach admits. Lives here, beside the rule it states.
+ */
+export const NOT_A_TEACHER = 'Only adults, Junior Leaders, and scouts at First Class or above can teach.';

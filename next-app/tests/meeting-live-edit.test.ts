@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { adminClient } from './helpers/admin-client';
 import { TEST_PREFIX } from './helpers/signup-fixtures';
+import { NOT_A_TEACHER } from '../src/lib/can-offer-to-teach';
 import { addMeetingPick, loadMeetingById } from '../src/lib/meeting-board';
 import { teachTopic } from '../src/lib/meeting-board-supply';
 
@@ -376,14 +377,14 @@ describe('cards', () => {
     const [c] = await started([{ topic_key: key, rotation: 1, members: [] }]);
     asEditor();
     const res = await (await live()).plannerLiveSetTeacherAction({ entryId: meeting, classId: `c:${c}`, version: 1, teacherId: bo });
-    expect([res, (await classRow(c))?.teacher_person_id]).toEqual([{ ok: false, error: 'Only adults, Junior Leaders, and scouts at First Class or above can teach.' }, null]);
+    expect([res, (await classRow(c))?.teacher_person_id]).toEqual([{ ok: false, error: NOT_A_TEACHER }, null]);
   });
 
   it('AddAnOffer_WithSomeoneWhoCannotTeach_IsRefusedPlainly', async () => {
     await started([]);
     asEditor();
     const res = await (await live()).plannerLiveAddClassAction({ entryId: meeting, key: key2, title: null, teacherId: bo, rotation: 1 });
-    expect([res, await classCount()]).toEqual([{ ok: false, error: 'Only adults, Junior Leaders, and scouts at First Class or above can teach.' }, 0]);
+    expect([res, await classCount()]).toEqual([{ ok: false, error: NOT_A_TEACHER }, 0]);
   });
 });
 

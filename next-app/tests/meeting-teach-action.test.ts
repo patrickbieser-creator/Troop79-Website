@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeAll, afterAll, afterEach } from 'vitest';
 import { adminClient } from './helpers/admin-client';
 import { TEST_PREFIX } from './helpers/signup-fixtures';
+import { NOT_A_TEACHER } from '../src/lib/can-offer-to-teach';
 
 /**
  * /member/meeting teach section (Phase 2): the server actions act only for the verified session (self, or a leader on
@@ -126,7 +127,7 @@ describe('who may teach', () => {
   it('Scout_WhoIsNotAJuniorLeader_CannotTeach', async () => {
     asScout(young);
     const r = await (await actions()).meetingTeachAction({ entryId: meeting1, personId: young, key: knotKey });
-    expect(r).toEqual({ ok: false, error: 'Teaching is for adults and Junior Leaders.' });
+    expect(r).toEqual({ ok: false, error: NOT_A_TEACHER });
   });
 
   it('JuniorLeader_CanCommitToTeach', async () => {
@@ -231,6 +232,11 @@ describe('qa-lead follow-ups (round 2)', () => {
       { ok: false, error: 'Couldn’t save that. Try again.' },
       'Junior Leaders can’t teach that: it’s adults only.'
     ]);
+  });
+
+  it('RpcGuard_CantTeachMessage_IsShownNotSwallowed', async () => {
+    const s = await supply();
+    expect(s.sanitizeRpcError('That person can’t teach at troop meetings.')).toBe('That person can’t teach at troop meetings.');
   });
 
   it('Adult_RemovesTheirOwnCommitment_OutsideTheirSkills', async () => {
