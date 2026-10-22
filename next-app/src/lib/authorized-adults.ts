@@ -1,6 +1,6 @@
 /**
  * The "authorized adult" pool for login is the same adult-leader set the
- * Meeting Plan engine already computes (see meeting-plan/load-input.ts):
+ * Meeting Plan engine already computes (see lib/meeting-suggest/load-input.ts):
  * real people (is_person) who aren't currently an active scout's youth-leader
  * initials. Reusing `leaders` instead of a second table means there's one
  * place to add/remove a person, not two lists that can drift apart.

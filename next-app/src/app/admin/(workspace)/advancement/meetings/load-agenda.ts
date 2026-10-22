@@ -9,8 +9,8 @@
 
 import { createAdminClient } from '@/lib/supabase/server';
 import type { MeetingSession } from '@/lib/supabase/types';
-import { buildMeetingPlan } from '../meeting-plan/engine';
-import { loadEngineInput } from '../meeting-plan/load-input';
+import { buildMeetingPlan } from '@/lib/meeting-suggest/engine';
+import { loadEngineInput } from '@/lib/meeting-suggest/load-input';
 import { publicName } from '@/lib/meeting-plan-types';
 import { loadAdvancementCatalog, type AdvancementCatalog } from '@/lib/advancement-catalog';
 import { loadBoardState, loadMeetingById, type BoardScoutRow } from '@/lib/meeting-board';

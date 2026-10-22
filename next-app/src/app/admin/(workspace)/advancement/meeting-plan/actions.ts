@@ -5,8 +5,8 @@ import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { MeetingPlanPayload } from '@/lib/meeting-plan-types';
 import { retargetPlan } from '@/lib/meeting-plan-publish';
-import { buildMeetingPlan } from './engine';
-import { loadEngineInput } from './load-input';
+import { buildMeetingPlan } from '@/lib/meeting-suggest/engine';
+import { loadEngineInput } from '@/lib/meeting-suggest/load-input';
 
 interface GenerateResult {
   ok: boolean;

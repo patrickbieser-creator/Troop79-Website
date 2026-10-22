@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildMeetingPlan, type EngineInput, type EngineRankReqRow } from '../src/app/admin/(workspace)/advancement/meeting-plan/engine';
+import { buildMeetingPlan, type EngineInput, type EngineRankReqRow } from '../src/lib/meeting-suggest/engine';
 
 /**
  * The meeting engine's teacher matching, keyed to people (Plans/Meeting-Requests-And-Teaching-Offers.md, Phase 0a):

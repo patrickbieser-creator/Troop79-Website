@@ -251,8 +251,8 @@ describe('carry-forward and counts', () => {
 
 describe('the engine', () => {
   it('Engine_Unchanged_WhenBoardEdited', async () => {
-    const { loadEngineInput } = await import('../src/app/admin/(workspace)/advancement/meeting-plan/load-input');
-    const { buildMeetingPlan } = await import('../src/app/admin/(workspace)/advancement/meeting-plan/engine');
+    const { loadEngineInput } = await import('../src/lib/meeting-suggest/load-input');
+    const { buildMeetingPlan } = await import('../src/lib/meeting-suggest/engine');
     const plan = async () => {
       const res = await loadEngineInput('2091-01-07', 'Vitest');
       if (!res.ok) throw new Error(res.error);

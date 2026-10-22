@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { loadEngineInput } from '../src/app/admin/(workspace)/advancement/meeting-plan/load-input';
-import { buildMeetingPlan } from '../src/app/admin/(workspace)/advancement/meeting-plan/engine';
+import { loadEngineInput } from '../src/lib/meeting-suggest/load-input';
+import { buildMeetingPlan } from '../src/lib/meeting-suggest/engine';
 
 /** The engine's loader against the real local database, after the Phase 0a re-key: teachers come from teaching_skills. */
 vi.mock('@/lib/supabase/server', async () => {

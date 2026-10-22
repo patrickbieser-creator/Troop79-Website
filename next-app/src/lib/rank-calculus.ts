@@ -1,7 +1,7 @@
 /**
  * The rank-requirement completion calculus, shared by the Meeting Plan engine and the meeting board's pick list
  * (Plans/Meeting-Requests-And-Teaching-Offers.md, specialist review: "one completion calculus, don't add a third").
- * Moved here verbatim from meeting-plan/engine.ts so the public /member/meeting loader can use it without reaching
+ * Moved here verbatim from the suggestion engine (now lib/meeting-suggest/engine.ts) so the public /member/meeting loader can use it without reaching
  * into the admin workspace. Pure: no I/O, no framework imports.
  */
 import { isGroupSatisfied, type ReqNode } from '@/lib/mb-helpers';
@@ -79,7 +79,7 @@ export function rankNodeSatisfied<T extends CalcRow>(node: ReqNode<T>, rankId: s
 }
 
 /** A merit badge requirement node is satisfied when its leaves are on the ledger (code "first-aid-1a"), rolled up by its
- *  all / any / n-of rule. Moved here verbatim from meeting-plan/engine.ts (Phase 3b of
+ *  all / any / n-of rule. Moved here verbatim from the suggestion engine (now lib/meeting-suggest/engine.ts) (Phase 3b of
  *  Plans/Meeting-Requests-And-Teaching-Offers.md: a merit badge night skips the stations a scout has finished), so the
  *  engine and the rotation draft read one calculus. */
 export function mbNodeSatisfied<T extends CalcRow>(node: ReqNode<T>, mbId: string, codes: ReadonlySet<string>): boolean {
