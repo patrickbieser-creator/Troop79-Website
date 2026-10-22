@@ -652,8 +652,8 @@ export async function updateMeritBadge(formData: FormData): Promise<Result> {
       return {
         ok: false,
         error: dup
-          ? 'Requirements not saved: two requirements share a code. Nothing changed.'
-          : `Requirements not saved: ${treeErr.message}. Nothing changed.`
+          ? 'Requirements not saved: two requirements share a code. The requirements are as they were; the badge’s other changes were saved.'
+          : `Requirements not saved: ${treeErr.message}. The requirements are as they were; the badge’s other changes were saved.`
       };
     }
   }
