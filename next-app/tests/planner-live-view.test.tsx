@@ -40,7 +40,7 @@ vi.mock('../src/app/(public)/planner/live-actions', () => ({
 }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: mocks.refresh }) }));
 
-import { DISCARD_KEPT, DISCARD_LOST, LiveBoard, startConfirmText } from '../src/app/(public)/planner/live/live-board';
+import { DISCARD_KEPT, DISCARD_LOST, LIVE_STARTED_NOTE, LiveBoard, startConfirmText } from '../src/app/(public)/planner/live/live-board';
 
 const card = (o: Partial<LiveView['cards'][number]> & Pick<LiveView['cards'][number], 'id'>): LiveView['cards'][number] => ({
   topicKey: 'tenderfoot-4a',
@@ -373,6 +373,32 @@ describe('LiveBoard B8: reversible Live', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Discard Live arrangement' }));
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Discard arrangement' }));
     expect((await within(screen.getByRole('dialog')).findByRole('alert')).textContent).toBe('Only someone who can edit the Meeting Planner can do that.');
+  });
+
+  it('Discard_ThenRefresh_FocusesStart', async () => {
+    mocks.discard.mockResolvedValue(ok);
+    const { rerender } = editor();
+    fireEvent.click(screen.getByRole('button', { name: 'More actions…' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Discard Live arrangement' }));
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Discard arrangement' }));
+    await waitFor(() => expect(mocks.refresh).toHaveBeenCalled());
+    rerender(<LiveBoard view={{ ...VIEW, started: false }} canEdit entryId={5} choices={CHOICES} />);
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Start Meeting Live' })));
+  });
+
+  it('PreviewEdit_OnAFutureMeeting_SaysLiveStarted', async () => {
+    mocks.addRotation.mockResolvedValue(ok);
+    render(<LiveBoard view={VIEW} canEdit entryId={5} choices={CHOICES} meeting={FUTURE} />);
+    fireEvent.click(screen.getAllByRole('button', { name: '+ Add rotation' })[0]);
+    expect(await screen.findByText(LIVE_STARTED_NOTE)).toBeTruthy();
+  });
+
+  it('PreviewEdit_OnTodaysMeeting_SaysNothingMore', async () => {
+    mocks.addRotation.mockResolvedValue(ok);
+    render(<LiveBoard view={VIEW} canEdit entryId={5} choices={CHOICES} meeting={{ label: 'Thu, Oct 22', future: false }} />);
+    fireEvent.click(screen.getAllByRole('button', { name: '+ Add rotation' })[0]);
+    await waitFor(() => expect(mocks.refresh).toHaveBeenCalled());
+    expect(screen.queryByText(LIVE_STARTED_NOTE)).toBeNull();
   });
 
   it('PreviewWrite_SaysTheScreenShowedThePreview', async () => {

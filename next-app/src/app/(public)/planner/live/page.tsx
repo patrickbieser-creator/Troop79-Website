@@ -84,7 +84,7 @@ export default async function MeetingLivePage() {
           </p>
         </div>
       </header>
-      {prompt ? <AttendancePrompt key={JSON.stringify(prompt)} review={prompt} label={fmtDay(prompt.date)} /> : null}
+      {prompt ? <AttendancePrompt key={prompt.entryId} review={prompt} label={fmtDay(prompt.date)} /> : null}
       <LiveBoard
         view={view}
         canEdit={access.canEdit}

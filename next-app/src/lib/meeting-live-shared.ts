@@ -340,7 +340,14 @@ export function buildAttendanceReview(input: {
   draft: ReadonlyMap<number, boolean>;
   recorded: ReadonlySet<number>;
   nameOf: (personId: number) => string;
+  /**
+   * The meeting ran under the old P4c code (meeting_boards.attendance_seeded_at is set). There, "Mark not present"
+   * deleted the attendance row and left no draft row, so a placed or teaching person with no draft row and no
+   * attendance may have been marked not here: they start UNticked rather than credited by one careless tap.
+   */
+  seededByOldCode?: boolean;
 }): AttendanceReview {
+  const noTap = !input.seededByOldCode;
   const groupOf = new Map<number, AttendanceGroupKey>();
   const put = (ids: Iterable<number>, key: AttendanceGroupKey) => {
     for (const id of ids) if (!groupOf.has(id)) groupOf.set(id, key);
@@ -362,7 +369,7 @@ export function buildAttendanceReview(input: {
           .filter(([, k]) => k === key)
           .map(([personId]) => {
             const recorded = input.recorded.has(personId);
-            return { personId, name: input.nameOf(personId), recorded, ticked: recorded || (input.draft.get(personId) ?? true) };
+            return { personId, name: input.nameOf(personId), recorded, ticked: recorded || (input.draft.get(personId) ?? noTap) };
           })
           .sort((a, b) => a.name.localeCompare(b.name))
       }))

@@ -69,6 +69,15 @@ describe('the checklist', () => {
     expect(ticks(draftReview())).toEqual({ class: [1], teaching: [3], visitor: [4], here: [5] });
   });
 
+  it('UpdateAttendance_OldCodeMeeting_NoDraftRow_StartsUnticked', () => {
+    // attendance_seeded_at set: the old "Mark not present" deleted attendance and left no draft row (B8 qa).
+    expect(ticks(draftReview({ seededByOldCode: true }))).toEqual({ class: [], teaching: [], visitor: [4], here: [5] });
+  });
+
+  it('UpdateAttendance_OldCodeMeeting_RecordedStillStartsTicked', () => {
+    expect(ticks(draftReview({ seededByOldCode: true, recorded: new Set([1]) })).class).toEqual([1]);
+  });
+
   it('UpdateAttendance_GroupsEachPersonOnce', () => {
     const r = draftReview({ placed: [1, 3], teachers: [3], recorded: new Set([1, 7]) });
     expect(r.groups.map((g) => [g.key, g.people.map((p) => p.personId)])).toEqual([
@@ -108,9 +117,9 @@ describe('the prompt and its checklist', () => {
     expect(screen.getByText('Attendance for Sun, Oct 18 is recorded.')).toBeTruthy();
   });
 
-  it('Checklist_CountsWhoWillBeRecorded', () => {
+  it('Checklist_CountsEveryAddAsAChange', () => {
     const dlg = open(draftReview());
-    expect(within(dlg).getByRole('button', { name: 'Record attendance for 4 people' })).toBeTruthy();
+    expect(within(dlg).getByRole('button', { name: 'Record 4 changes' })).toBeTruthy();
   });
 
   it('Checklist_MarksWhoIsAlreadyRecorded', () => {
@@ -121,7 +130,7 @@ describe('the prompt and its checklist', () => {
   it('UpdateAttendance_SendsOnlyTheChanges', async () => {
     m.record.mockResolvedValue({ ok: true, added: 3, removed: 0, failed: 0 });
     const dlg = open(draftReview({ recorded: new Set([1]) }));
-    fireEvent.click(within(dlg).getByRole('button', { name: 'Record attendance for 4 people' }));
+    fireEvent.click(within(dlg).getByRole('button', { name: 'Record 3 changes' }));
     await waitFor(() => expect(m.record).toHaveBeenCalledWith({ entryId: 9, add: [3, 4, 5], remove: [] }));
   });
 
@@ -129,8 +138,29 @@ describe('the prompt and its checklist', () => {
     m.record.mockResolvedValue({ ok: true, added: 0, removed: 1, failed: 0 });
     const dlg = open(draftReview({ recorded: new Set([1, 3, 4]) }));
     fireEvent.click(within(dlg).getByRole('checkbox', { name: /Ann A/ }));
-    fireEvent.click(within(dlg).getByRole('button', { name: /^Record attendance for/ }));
+    fireEvent.click(within(dlg).getByRole('button', { name: /^Record \d+ change/ }));
     await waitFor(() => expect(m.record).toHaveBeenCalledWith({ entryId: 9, add: [5], remove: [1] }));
+  });
+
+  it('Checklist_CountsTheChanges_NotTheTicks', () => {
+    // Ann is recorded and stays ticked; Cy, Dee and Eve are added: three changes, four ticks.
+    const dlg = open(draftReview({ recorded: new Set([1]) }));
+    expect(within(dlg).getByRole('button', { name: 'Record 3 changes' })).toBeTruthy();
+  });
+
+  it('Checklist_OneChange_IsSingular', () => {
+    const dlg = open(draftReview({ recorded: new Set([1, 3, 4]) }));
+    expect(within(dlg).getByRole('button', { name: 'Record 1 change' })).toBeTruthy();
+  });
+
+  it('Recorded_StatusSurvivesTheRefresh', async () => {
+    m.record.mockResolvedValue({ ok: true, added: 4, removed: 0, failed: 0 });
+    const { rerender } = render(<AttendancePrompt key={9} review={draftReview()} label="Sun, Oct 18" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Update attendance' }));
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Record 4 changes' }));
+    await waitFor(() => expect(m.refresh).toHaveBeenCalled());
+    rerender(<AttendancePrompt key={9} review={draftReview({ recorded: new Set([1, 3, 4, 5]) })} label="Sun, Oct 18" />);
+    expect(screen.getByRole('status').textContent).toBe('Attendance recorded for Sun, Oct 18.');
   });
 
   it('Checklist_NothingToChange_IsGreyedAndSaysRecorded', () => {
@@ -142,7 +172,7 @@ describe('the prompt and its checklist', () => {
   it('Checklist_Refused_SaysWhyInPlace', async () => {
     m.record.mockResolvedValue({ ok: false, error: 'Only someone who can edit the Meeting Planner can do that.' });
     const dlg = open(draftReview());
-    fireEvent.click(within(dlg).getByRole('button', { name: 'Record attendance for 4 people' }));
+    fireEvent.click(within(dlg).getByRole('button', { name: 'Record 4 changes' }));
     expect((await within(dlg).findByRole('alert')).textContent).toBe('Only someone who can edit the Meeting Planner can do that.');
   });
 });

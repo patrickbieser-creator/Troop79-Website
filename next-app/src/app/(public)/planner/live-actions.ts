@@ -37,6 +37,7 @@ import {
   loadAttendanceReview,
   loadOverFacts,
   onLiveBoard,
+  type OverFacts,
   resolveLiveClass,
   startMeetingLive
 } from '@/lib/meeting-live';
@@ -294,14 +295,27 @@ export async function plannerLiveAddVisitorAction(input: { entryId: number; name
 
 // ── B8: Discard, and attendance approved after the meeting ───────────────────────────────────────────────────────
 
-type Approver = { ok: true; sb: SupabaseClient; actorPersonId: number; actorLabel: string };
+type Approver = { ok: true; sb: SupabaseClient; actorPersonId: number; actorLabel: string; facts: OverFacts };
 
-/** Someone with planner Edit (the SPL included), on any meeting still on the calendar: no date or sign-up checks. */
+const NOT_A_MEETING = 'That isn’t a troop meeting on the calendar.';
+
+/**
+ * Someone with planner Edit (the SPL included), on a published troop meeting (category behavior 'meeting', the filter
+ * loadAttendancePrompt uses): no date or sign-up checks. Anything else (a campout, a draft entry) is refused, so planner
+ * Edit never reaches another event's Roll Call or its ledger credit.
+ */
 async function plannerEditor(entryId: unknown): Promise<Approver | { ok: false; error: string }> {
   if (!Number.isInteger(entryId)) return fail('Malformed request');
   const actor = await resolveAdminActor();
   if (!plannerAccess(actor).canEdit || actor?.personId == null) return fail('Only someone who can edit the Meeting Planner can do that.');
-  return { ok: true, sb: createAdminClient(), actorPersonId: actor.personId, actorLabel: actor.label };
+  const sb = createAdminClient();
+  try {
+    const facts = await loadOverFacts(sb, entryId as number);
+    if (!facts) return fail(NOT_A_MEETING);
+    return { ok: true, sb, actorPersonId: actor.personId, actorLabel: actor.label, facts };
+  } catch {
+    return fail(SAVE_FAILED);
+  }
 }
 
 /**
@@ -312,11 +326,10 @@ export async function plannerLiveDiscardAction(input: { entryId: number }): Prom
   const e = await plannerEditor(input?.entryId);
   if (!e.ok) return e;
   try {
-    if (!(await loadOverFacts(e.sb, input.entryId))) return fail('That meeting is no longer on the calendar.');
-    const res = await discardMeetingLive(e.sb, input.entryId, e.actorPersonId);
+    const res = await discardMeetingLive(e.sb, e.facts.entryId, e.actorPersonId);
     if (!res.ok) return fail(SAVE_FAILED);
     revalidate();
-    return { ok: true, stamp: await loadBoardStamp(e.sb, input.entryId) };
+    return { ok: true, stamp: await loadBoardStamp(e.sb, e.facts.entryId) };
   } catch {
     return fail(SAVE_FAILED);
   }
@@ -329,7 +342,7 @@ const NOT_ON_LIST = 'Someone on that list isn’t on this meeting’s checklist.
 const isIdList = (v: unknown): v is number[] => Array.isArray(v) && v.length <= 500 && v.every(isPerson);
 
 /**
- * "Record attendance for N people" (B8): after the meeting, an editor approves the checklist. Only the differences are
+ * "Record N changes" (B8): after the meeting, an editor approves the checklist. Only the differences are
  * applied, against what Roll Call has NOW: `add` people not yet recorded are recorded (ledger credit included); `remove`
  * people still recorded are removed (credit retired first). Nobody is removed unless named in `remove`, a deliberate
  * untick. Everyone named must be on the meeting's checklist.
@@ -339,8 +352,7 @@ export async function plannerRecordAttendanceAction(input: { entryId: number; ad
   if (!e.ok) return e;
   if (!isIdList(input.add) || !isIdList(input.remove)) return fail('Malformed request');
   try {
-    const facts = await loadOverFacts(e.sb, input.entryId);
-    if (!facts) return fail('That meeting is no longer on the calendar.');
+    const facts = e.facts;
     if (!meetingIsOver(facts, instantToCentral(new Date().toISOString()))) return fail(NOT_OVER);
     const review = await loadAttendanceReview(e.sb, facts.entryId, facts.date);
     const people = new Map(review.groups.flatMap((g) => g.people).map((p) => [p.personId, p]));

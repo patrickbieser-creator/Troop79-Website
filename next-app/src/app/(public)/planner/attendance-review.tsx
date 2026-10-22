@@ -6,10 +6,12 @@
  * automatic: Live's taps are a draft, and this is where they become Roll Call.
  *
  * The prompt opens a checklist (the shared Drawer) pre-filled from the draft: placed scouts, teachers, visitors and
- * anyone ticked here, grouped, one tick each, with who is already recorded marked. "Record attendance for N people"
+ * anyone ticked here, grouped, one tick each, with who is already recorded marked. "Record N changes"
  * sends only the differences (plannerRecordAttendanceAction, Roll Call's cascade with its ledger credit). A recorded
  * person starts ticked, so removing them takes a deliberate untick. Re-running shows what's recorded and applies only
- * changes; with nothing to change the button is greyed and says "Attendance recorded".
+ * changes; with nothing to change the button is greyed and says "Attendance recorded". The button counts the changes
+ * ("Record 3 changes"), with "Adds 2 · Removes 1" beside it. The pages key this on the meeting's entry id, so the
+ * "Attendance recorded…" status survives the refresh that follows a save.
  */
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -21,6 +23,7 @@ import s from './attendance-review.module.css';
 
 const FAILED = 'That didn’t save. Check your connection and try again.';
 const people = (n: number) => `${n} ${n === 1 ? 'person' : 'people'}`;
+const changesLabel = (n: number) => `Record ${n} ${n === 1 ? 'change' : 'changes'}`;
 
 export function AttendancePrompt({ review, label }: { review: AttendanceReview; label: string }) {
   const router = useRouter();
@@ -103,7 +106,7 @@ export function AttendancePrompt({ review, label }: { review: AttendanceReview; 
               ) : null}
               {sum ? <p className={s.sum}>{sum}</p> : null}
               <Button onClick={record} disabled={!dirty || busy} title={dirty ? undefined : 'No changes to record'}>
-                {busy ? 'Recording…' : dirty ? `Record attendance for ${people(ticked.size)}` : 'Attendance recorded'}
+                {busy ? 'Recording…' : dirty ? changesLabel(changes.add.length + changes.remove.length) : 'Attendance recorded'}
               </Button>
             </div>
           }

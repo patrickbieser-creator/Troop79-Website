@@ -352,16 +352,30 @@ export interface OverFacts {
   endTime: string | null;
 }
 
+/**
+ * A PUBLISHED TROOP MEETING's calendar facts (its category's behavior is 'meeting': the filter loadAttendancePrompt
+ * uses), or null. B8 qa: every after-the-meeting action goes through this, so a crafted call can't reach a campout's
+ * Roll Call (and its ledger credit) through the planner's Edit right.
+ */
 export async function loadOverFacts(sb: SupabaseClient, entryId: number): Promise<OverFacts | null> {
-  const { data, error } = await sb.from('calendar_entries').select('id, entry_date, end_date, end_time').eq('id', entryId).maybeSingle();
+  const { data, error } = await sb.from('calendar_entries').select('id, entry_date, end_date, end_time, status, calendar_categories(behavior)').eq('id', entryId).maybeSingle();
   if (error) throw new Error(error.message);
-  const r = data as { id: number; entry_date: string; end_date: string | null; end_time: string | null } | null;
-  return r ? { entryId: r.id, date: r.entry_date, endDate: r.end_date, endTime: r.end_time } : null;
+  type Cat = { behavior: string | null };
+  const r = data as { id: number; entry_date: string; end_date: string | null; end_time: string | null; status: string; calendar_categories: Cat | Cat[] | null } | null;
+  if (!r || r.status !== 'published') return null;
+  const cat = Array.isArray(r.calendar_categories) ? r.calendar_categories[0] : r.calendar_categories;
+  if (cat?.behavior !== 'meeting') return null;
+  return { entryId: r.id, date: r.entry_date, endDate: r.end_date, endTime: r.end_time };
 }
 
 /** The approval checklist for one meeting: its draft (the saved placement, Live's taps, visitors) and Roll Call. */
 export async function loadAttendanceReview(sb: SupabaseClient, entryId: number, date: string): Promise<AttendanceReview> {
-  const [saved, presence] = await Promise.all([loadSavedPlacement(sb, entryId), loadPresence(sb, entryId)]);
+  const [saved, presence, boardRes] = await Promise.all([
+    loadSavedPlacement(sb, entryId),
+    loadPresence(sb, entryId),
+    sb.from('meeting_boards').select('attendance_seeded_at').eq('calendar_entry_id', entryId).maybeSingle()
+  ]);
+  if (boardRes.error) throw new Error(boardRes.error.message);
   const classes = saved?.classes ?? [];
   const placed = classes.flatMap((c) => c.memberIds);
   const teachers = classes.map((c) => c.teacherId).filter((id): id is number => id != null);
@@ -375,7 +389,8 @@ export async function loadAttendanceReview(sb: SupabaseClient, entryId: number, 
     visitors: [...presence.visitors],
     draft: presence.draft,
     recorded: presence.recorded,
-    nameOf: (id) => boardName(names.get(id) ?? '')
+    nameOf: (id) => boardName(names.get(id) ?? ''),
+    seededByOldCode: (boardRes.data as { attendance_seeded_at: string | null } | null)?.attendance_seeded_at != null
   });
 }
 

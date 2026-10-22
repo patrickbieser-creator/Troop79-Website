@@ -35,14 +35,17 @@ let householdExisted = true;
 let today = 0;
 let future = 0;
 let past = 0;
+let campout = 0;
+let campoutToday = 0;
+let draftPast = 0;
 let editorAdult = 0;
 let teacher = 0;
 let ann = 0;
 let bo = 0;
 let key = '';
 
-async function entry(date: string): Promise<number> {
-  const { data, error } = await sb.from('calendar_entries').insert({ entry_date: date, category: 'Troop Meeting', title: `Troop Meeting ${TEST_PREFIX}`, status: 'published' }).select('id').single();
+async function entry(date: string, category = 'Troop Meeting', status = 'published'): Promise<number> {
+  const { data, error } = await sb.from('calendar_entries').insert({ entry_date: date, category, title: `${category} ${TEST_PREFIX}`, status }).select('id').single();
   if (error) throw new Error(error.message);
   entries.push(data!.id);
   return data!.id as number;
@@ -103,6 +106,9 @@ beforeAll(async () => {
   today = await entry(centralToday());
   future = await entry('2079-05-07');
   past = await entry('2020-03-01');
+  campout = await entry('2020-03-07', 'Campout / Overnight');
+  campoutToday = await entry(centralToday(), 'Campout / Overnight');
+  draftPast = await entry('2020-03-08', 'Troop Meeting', 'draft');
   editorAdult = await person('Editor');
   teacher = await person('Teacher');
   ann = await scout('Ann');
@@ -336,5 +342,146 @@ describe('DB-first is safe for the code in production (main = bb45acc7)', () => 
     ]);
     await trackVisitors();
     expect(res.map((r) => r.error)).toEqual([null, null, null, null]);
+  });
+});
+
+describe('B8 qa: only a published troop meeting (the filter loadAttendancePrompt uses)', () => {
+  it('RecordAttendance_OnACampout_IsRefused', async () => {
+    await sb.from('event_attendance').insert({ calendar_entry_id: campout, person_id: ann, qty: 1, source: 'manual', recorded_by: 'Earlier' });
+    asEditor();
+    const res = await (await live()).plannerRecordAttendanceAction({ entryId: campout, add: [], remove: [ann] });
+    expect(res.ok).toBe(false);
+  });
+
+  it('RecordAttendance_OnACampout_ChangesNothing', async () => {
+    await sb.from('event_attendance').insert({ calendar_entry_id: campout, person_id: ann, qty: 1, source: 'manual', recorded_by: 'Earlier' });
+    asEditor();
+    await (await live()).plannerRecordAttendanceAction({ entryId: campout, add: [], remove: [ann] });
+    expect(await recorded(campout)).toEqual([ann]);
+  });
+
+  it('RecordAttendance_OnAnUnpublishedMeeting_ChangesNothing', async () => {
+    await sb.from('event_attendance').insert({ calendar_entry_id: draftPast, person_id: ann, qty: 1, source: 'manual', recorded_by: 'Earlier' });
+    asEditor();
+    await (await live()).plannerRecordAttendanceAction({ entryId: draftPast, add: [], remove: [ann] });
+    expect(await recorded(draftPast)).toEqual([ann]);
+  });
+
+  it('Discard_OnACampout_ChangesNothing', async () => {
+    await sb.rpc('meeting_live_set_presence', { p_entry: campout, p_actor: editorAdult, p_person: ann, p_present: true });
+    asEditor();
+    await (await live()).plannerLiveDiscardAction({ entryId: campout });
+    const { data } = await sb.from('meeting_live_presence').select('person_id').eq('calendar_entry_id', campout);
+    expect(data).toEqual([{ person_id: ann }]);
+  });
+
+  it('LivePresence_OnACampout_WritesNoDraft', async () => {
+    asEditor();
+    await (await live()).plannerLiveSetPresentAction({ entryId: campoutToday, personId: ann, present: false });
+    const { count } = await sb.from('meeting_live_presence').select('person_id', { count: 'exact', head: true }).eq('calendar_entry_id', campoutToday);
+    expect(count).toBe(0);
+  });
+
+  it('LiveVisitor_OnACampout_IsRefused', async () => {
+    asEditor();
+    const res = await (await live()).plannerLiveAddVisitorAction({ entryId: campoutToday, name: `${TEST_PREFIX} B8 Camp`, to: null });
+    await trackVisitors();
+    expect(res.ok).toBe(false);
+  });
+});
+
+describe('B8 qa: recording is idempotent and an untick retires the credit', () => {
+  it('RecordAttendance_ReSubmitted_AddsNothingMore', async () => {
+    await started(past, [{ rotation: 1, members: [bo] }]);
+    asEditor();
+    const a = await live();
+    await a.plannerRecordAttendanceAction({ entryId: past, add: [bo], remove: [] });
+    const again = await a.plannerRecordAttendanceAction({ entryId: past, add: [bo], remove: [] });
+    expect(again).toEqual({ ok: true, added: 0, removed: 0, failed: 0 });
+  });
+
+  it('RecordAttendance_ReSubmitted_LeavesOneLedgerCredit', async () => {
+    await started(past, [{ rotation: 1, members: [bo] }]);
+    asEditor();
+    const a = await live();
+    await a.plannerRecordAttendanceAction({ entryId: past, add: [bo], remove: [] });
+    await a.plannerRecordAttendanceAction({ entryId: past, add: [bo], remove: [] });
+    const { data } = await sb.from('ledger_entries').select('id').eq('calendar_entry_id', past).eq('scout_id', `vitest-b8-${bo}`).is('deleted_at', null);
+    expect(data?.length).toBe(1);
+  });
+
+  it('RecordAttendance_AnUntick_RetiresTheLedgerCredit', async () => {
+    await started(past, [{ rotation: 1, members: [bo] }]);
+    asEditor();
+    const a = await live();
+    await a.plannerRecordAttendanceAction({ entryId: past, add: [bo], remove: [] });
+    await a.plannerRecordAttendanceAction({ entryId: past, add: [], remove: [bo] });
+    const { data } = await sb.from('ledger_entries').select('deleted_by').eq('calendar_entry_id', past).eq('scout_id', `vitest-b8-${bo}`);
+    expect(data).toEqual([{ deleted_by: 'Editor' }]);
+  });
+});
+
+describe('B8 qa: an old-code meeting (attendance_seeded_at set)', () => {
+  it('Review_OldCodeMeeting_PlacedWithNoDraftRow_StartsUnticked', async () => {
+    await started(past, [{ rotation: 1, members: [ann] }]);
+    await sb.from('meeting_boards').update({ attendance_seeded_at: new Date().toISOString() }).eq('calendar_entry_id', past);
+    const review = await (await lib()).loadAttendanceReview(sb, past, '2020-03-01');
+    expect(review.groups.flatMap((g) => g.people).find((p) => p.personId === ann)?.ticked).toBe(false);
+  });
+});
+
+describe('B8 qa: Discard under concurrency', () => {
+  it('StaleEdit_AfterDiscardAndRestart_ReturnsStale', async () => {
+    const [c] = await started(future, [{ rotation: 1, members: [ann] }]);
+    asEditor();
+    const a = await live();
+    await a.plannerLiveDiscardAction({ entryId: future });
+    await started(future, [{ rotation: 1, members: [bo] }]);
+    const res = await a.plannerLiveMoveClassAction({ entryId: future, classId: `c:${c}`, version: 1, rotation: 2 });
+    expect(!res.ok && res.stale).toBe(true);
+  });
+
+  it('StaleEdit_RacingDiscard_NeverRestartsLive', async () => {
+    const [c] = await started(future, [{ rotation: 1, members: [ann] }]);
+    asEditor();
+    const a = await live();
+    await Promise.all([
+      a.plannerLiveDiscardAction({ entryId: future }),
+      a.plannerLiveMoveClassAction({ entryId: future, classId: `c:${c}`, version: 1, rotation: 2 })
+    ]);
+    expect((await board(future))?.live_started_at).toBeNull();
+  });
+});
+
+describe('B8 qa: merge_people moves the draft', () => {
+  it('Merge_MovesTheLosersDraftRow_ToTheSurvivor', async () => {
+    const survivor = await person('MergeKeep');
+    const loser = await person('MergeGo');
+    await sb.rpc('meeting_live_set_presence', { p_entry: future, p_actor: editorAdult, p_person: loser, p_present: true });
+    const m = await sb.rpc('merge_people', { p_survivor: survivor, p_loser: loser, p_decided_by: 'vitest' });
+    if (m.error) throw new Error(m.error.message);
+    const { data } = await sb.from('meeting_live_presence').select('person_id, present').eq('calendar_entry_id', future);
+    expect(data).toEqual([{ person_id: survivor, present: true }]);
+  });
+
+  it('Merge_BothHaveADraftRow_KeepsTheSurvivors', async () => {
+    const survivor = await person('MergeKeep2');
+    const loser = await person('MergeGo2');
+    await sb.rpc('meeting_live_set_presence', { p_entry: future, p_actor: editorAdult, p_person: survivor, p_present: false });
+    await sb.rpc('meeting_live_set_presence', { p_entry: future, p_actor: editorAdult, p_person: loser, p_present: true });
+    const m = await sb.rpc('merge_people', { p_survivor: survivor, p_loser: loser, p_decided_by: 'vitest' });
+    if (m.error) throw new Error(m.error.message);
+    const { data } = await sb.from('meeting_live_presence').select('person_id, present').eq('calendar_entry_id', future);
+    expect(data).toEqual([{ person_id: survivor, present: false }]);
+  });
+
+  it('Merge_RepointsEnteredBy', async () => {
+    const survivor = await person('MergeKeep3');
+    const loser = await person('MergeGo3');
+    await sb.rpc('meeting_live_set_presence', { p_entry: future, p_actor: loser, p_person: ann, p_present: true });
+    const m = await sb.rpc('merge_people', { p_survivor: survivor, p_loser: loser, p_decided_by: 'vitest' });
+    if (m.error) throw new Error(m.error.message);
+    const { data } = await sb.from('meeting_live_presence').select('entered_by_person_id').eq('calendar_entry_id', future).eq('person_id', ann);
+    expect(data).toEqual([{ entered_by_person_id: survivor }]);
   });
 });

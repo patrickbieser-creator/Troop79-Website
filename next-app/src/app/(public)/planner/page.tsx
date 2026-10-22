@@ -71,7 +71,7 @@ export default async function PlannerPage() {
       : null,
   ]);
   const promptEl = prompt ? (
-    <AttendancePrompt key={JSON.stringify(prompt)} review={prompt} label={fmtDay(prompt.date)} />
+    <AttendancePrompt key={prompt.entryId} review={prompt} label={fmtDay(prompt.date)} />
   ) : null;
   if (!page) {
     return (

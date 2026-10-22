@@ -17,7 +17,7 @@
  * that names what goes and what stays. Every write tells the server whether this screen showed Live started, so a tab
  * left open after a Discard gets "someone else changed this" instead of silently restarting Live.
  */
-import { useEffect, useState, type DragEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/app/_components/button';
 import { Drawer } from '@/app/_components/drawer';
@@ -87,6 +87,8 @@ export interface LiveMeetingProp {
 }
 
 export const DISCARD_LOST = 'The classes, rotations, moves and here / not-here ticks made on Meeting Live are deleted.';
+/** B8 qa: the first edit on a future meeting's preview starts Live; say so quietly, and where the way back is. */
+export const LIVE_STARTED_NOTE = 'Meeting Live started. Discard is in More actions.';
 export const DISCARD_KEPT = 'Recorded attendance, visitors, offerings and teacher sign-ups stay. The board goes back to the matcher and follows new sign-ups again.';
 export const startConfirmText = (label: string) => `Start Meeting Live for ${label}? Changes you make there stop following new sign-ups until you discard it.`;
 const CLOSED: LiveAttendanceProp = { open: false, note: null };
@@ -154,6 +156,15 @@ export function LiveBoard({
   const [fine, setFine] = useState(false);
   const [over, setOver] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<'start' | 'discard' | null>(null);
+  const [startedNote, setStartedNote] = useState(false);
+  // After a Discard, the More actions trigger is gone: focus goes to Start once the refreshed view shows it (B8 qa).
+  const focusStart = useRef(false);
+  const startWrap = useRef<HTMLSpanElement | null>(null);
+  useEffect(() => {
+    if (!focusStart.current || view.started) return;
+    startWrap.current?.querySelector('button')?.focus();
+    focusStart.current = false;
+  }, [view.started]);
   const cardsIn = (c: Column) => view.cards.filter((x) => x.rotation === c.rotation);
 
   // Drag-and-drop only where there's a mouse; touch uses "Move to" and the sheets.
@@ -183,8 +194,10 @@ export function LiveBoard({
   const run = async (write: () => Promise<LiveWriteResult>) => {
     setBusy(true);
     setSheet(null);
+    const fromPreview = !view.started;
     try {
       const res = await write();
+      if (res.ok && fromPreview && meeting?.future) setStartedNote(true);
       if (res.ok) setNotice(null);
       else setNotice(res.stale ? STALE : res.error);
       router.refresh();
@@ -263,6 +276,8 @@ export function LiveBoard({
       const res = await plannerLiveDiscardAction({ entryId });
       if (!res.ok) return res.error;
       setNotice(null);
+      setStartedNote(false);
+      focusStart.current = true;
       router.refresh();
       return null;
     } catch {
@@ -288,7 +303,7 @@ export function LiveBoard({
             </p>
           ) : null}
           {!view.started && canEdit ? (
-            <span className={styles.startWrap}>
+            <span className={styles.startWrap} ref={startWrap}>
               <Button onClick={askStart} disabled={start === 'starting'}>
                 {start === 'starting' ? 'Starting…' : 'Start Meeting Live'}
               </Button>
@@ -300,6 +315,11 @@ export function LiveBoard({
             </span>
           ) : null}
           {dayNote ? <p className={styles.preview}>{dayNote}</p> : null}
+          {startedNote ? (
+            <p className={styles.preview} role="status">
+              {LIVE_STARTED_NOTE}
+            </p>
+          ) : null}
           {notice ? (
             <p className={styles.notice} role="status">
               {notice}
