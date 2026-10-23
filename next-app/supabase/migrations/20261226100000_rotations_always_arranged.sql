@@ -9,15 +9,19 @@
 --    decides anything by itself; it is "Suggest an arrangement" (4).
 -- 3. meeting_live_reset(entry, actor): "Reset to match picks". Discard (what it drops and keeps is unchanged: B8), then
 --    begin again from the plan when it has anything: every offering gets a Not scheduled class and scouts land by their
---    picks. Returns true when there was an arrangement to reset.
+--    picks. Returns true when there was an arrangement to reset. The server refuses it once the meeting is over (its
+--    arrangement and taps are then the attendance checklist's draft).
 -- 4. meeting_live_suggest(entry, actor, snapshot): "Suggest an arrangement". Discard, then meeting_live_start with the
 --    matcher's snapshot (the server builds it, as Start did), then reconcile: offerings the matcher left out get their
 --    classes and late picks land.
 -- 5. Data: upcoming meetings with something on their plan and no arrangement begin one now.
 --
--- Lock order is L1/L2's: these take the Live lock first. The deferred triggers may now take the Live lock at commit on a
--- meeting that had no arrangement when the write began (its writer took no Live lock); a Live edit on that same meeting
--- in that same instant could deadlock (Postgres fails one). That window is a meeting's very first write; accepted.
+-- Lock order is L1/L2's: these take the Live lock first. Known, accepted (qa-lead, L3): a writer that began while the
+-- meeting had no arrangement took no Live lock, but takes it at commit through the deferred trigger. Meanwhile another
+-- write may have begun the arrangement, so a Live edit (or Suggest) can hold the Live lock and wait on that writer's
+-- uncommitted topic key while the writer waits for the lock: Postgres fails one, and the screen says "That didn't
+-- save". Two first writes at once are safe (the begin re-checks under the lock). The window is a meeting's first
+-- write(s) only.
 -- DEPLOY ORDER: DB-first. Production's L2 code reads a begun arrangement like any started one (its Live screen shows
 -- the cards and no Start button once started) and its Discard still works (a plan's next write begins it again).
 -- Posture (D-051 / D-239): functions invoker, search_path pinned, EXECUTE only to service_role.

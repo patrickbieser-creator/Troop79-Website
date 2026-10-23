@@ -44,6 +44,7 @@ import {
 } from '@/lib/meeting-board';
 import { isAgendaPublished, loadTeachBoard, loadTeachView, offerChoices, OFFER_DATES, teacherTags } from '@/lib/meeting-board-supply';
 import { loadMatchOrPlacement } from '@/lib/meeting-live';
+import { taughtOnly } from '@/lib/meeting-live-shared';
 import { seatLines, teachingLines } from '@/lib/meeting-board-match';
 import { boardName, effectiveIntent, firstNameOf, isPastSoftClose, onBehalfAccess, scoutLine, type Intent } from '@/lib/meeting-board-shared';
 import { PageHeader } from '@/app/_components/page-header';
@@ -227,7 +228,8 @@ export default async function MeetingBoardPage({ searchParams }: { searchParams:
   // Once the meeting's agenda is published the agenda is the answer: the page links to it and says nothing personal
   // from the match (the agenda's scout names are free text a leader may have edited, so they aren't mapped back).
   const planSet = await isAgendaPublished(sb, meeting.entryId);
-  const match = !planSet ? await loadMatchOrPlacement(sb, meeting, everyone, teach) : null;
+  // Rotations L3 (qa-lead): a class with no teacher yet isn't something a family is told they're in.
+  const match = !planSet ? taughtOnly(await loadMatchOrPlacement(sb, meeting, everyone, teach)) : null;
   const lineSrc = { catalog, people: teach.people, freeformTitles: teach.freeformTitles, members: teach.members, scoutNames: new Map(everyone.map((r) => [r.personId, boardName(r.name)])) };
   const assigned = match && chosen ? seatLines(match, chosen.personId, lineSrc) : [];
   const teaching = match && teacher ? teachingLines(match, teacher.personId, lineSrc) : [];

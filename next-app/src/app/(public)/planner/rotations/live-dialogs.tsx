@@ -18,7 +18,7 @@ export function LiveMoreActions({ onSuggest, onReset }: { onSuggest: () => void;
   const { open, wrapRef, triggerRef, onBlur, toggle, close } = useDisclosure();
   return (
     <div className={styles.moreWrap} ref={wrapRef} onBlur={onBlur}>
-      <button type="button" ref={triggerRef} className={styles.moreBtn} aria-expanded={open} onClick={toggle}>
+      <button type="button" ref={triggerRef} className={styles.moreActionsBtn} aria-expanded={open} onClick={toggle}>
         More actions…
       </button>
       {open ? (

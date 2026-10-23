@@ -210,11 +210,13 @@ export interface SavedPlacement {
 const byPlace = (a: { rotation: number | null; position: number; id: number }, b: { rotation: number | null; position: number; id: number }) =>
   (a.rotation ?? 1e9) - (b.rotation ?? 1e9) || a.position - b.position || a.id - b.id;
 
-/** A board row as the adapter needs it: who said what. */
-export type PlacementBoardRow = { personId: number; intent: Intent | null; picks: readonly Pick<BoardPick, 'later'>[] };
+/** A board row as the adapter needs it: who said what (a pick's key and rank, when given, say "your #2"). */
+export type PlacementBoardRow = { personId: number; intent: Intent | null; picks: readonly (Pick<BoardPick, 'later'> & Partial<Pick<BoardPick, 'key' | 'priority'>>)[] };
 
 export function placementAsMatch(p: SavedPlacement, board: readonly PlacementBoardRow[] = []): MatchResult {
   const classes = [...p.classes].sort(byPlace);
+  // qa-lead, L3: a seat says which of the scout's own picks it answers, as the matcher's did.
+  const pickNo = (personId: number, key: string) => board.find((r) => r.personId === personId)?.picks.find((x) => x.key === key && !x.later)?.priority ?? null;
   const sessions: MatchSession[] = classes.map((c, i) => ({
     id: savedId(c.id),
     unitId: savedId(c.id),
@@ -228,7 +230,7 @@ export function placementAsMatch(p: SavedPlacement, board: readonly PlacementBoa
     coTeacherIds: [],
     via: 'topic',
     flags: [],
-    scouts: [...c.memberIds].sort((a, b) => a - b).map((personId) => ({ personId, key: c.topicKey, pickNo: null, via: 'pick' as const }))
+    scouts: [...c.memberIds].sort((a, b) => a - b).map((personId) => ({ personId, key: c.topicKey, pickNo: pickNo(personId, c.topicKey), via: 'pick' as const }))
   }));
   const seats = new Map<number, MatchResult['assignments'][number]['seats']>();
   for (const s of sessions) for (const x of s.scouts) seats.set(x.personId, [...(seats.get(x.personId) ?? []), { ...x, sessionId: s.id, block: s.block }]);
@@ -246,6 +248,22 @@ export function placementAsMatch(p: SavedPlacement, board: readonly PlacementBoa
     comingNothing: rows
       .filter((r) => intentOf(r) === 'coming' && !seats.has(r.personId) && !teaching.has(r.personId))
       .map((r) => ({ personId: r.personId, suggestion: null }))
+  };
+}
+
+/**
+ * Rotations L3 (qa-lead): what a FAMILY is told. Since L3 every pick has a class at once, often with no teacher yet; the
+ * planner's screens show those, but a scout's page must not say "You're in" a class nobody teaches. The match without
+ * its teacherless classes (and their seats); the planner's own screens keep the full match.
+ */
+export function taughtOnly(match: MatchResult): MatchResult {
+  const sessions = match.sessions.filter((s) => s.teacherId != null);
+  const kept = new Set(sessions.map((s) => s.id));
+  return {
+    ...match,
+    blockCount: sessions.length,
+    sessions,
+    assignments: match.assignments.map((a) => ({ ...a, seats: a.seats.filter((x) => kept.has(x.sessionId)) })).filter((a) => a.seats.length > 0)
   };
 }
 

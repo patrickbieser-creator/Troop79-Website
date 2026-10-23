@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { MatchResult, MatchSession } from '../src/lib/meeting-board-match';
-import { buildLiveView, joinNames, liveConflicts, placementAsMatch, snapshotFromMatch, type LiveClassIn, type SavedPlacement } from '../src/lib/meeting-live-shared';
+import { buildLiveView, joinNames, liveConflicts, placementAsMatch, snapshotFromMatch, taughtOnly, type LiveClassIn, type SavedPlacement } from '../src/lib/meeting-live-shared';
 
 /**
  * Meeting Live's pure side (Plans/Meeting-Planner-II.md, Decisions 8, 8a, 8c; the tech-lead's P4 spec sections 3 and
@@ -175,11 +175,30 @@ describe('placementAsMatch', () => {
     ]);
   });
 
+  // qa-lead, L3: a seat says which of the scout's own picks it is ("your #2"), as the matcher's did.
+  it('Adapter_Seat_CarriesTheScoutsPickNumber', () => {
+    const ranked = placementAsMatch(SAVED, [{ personId: 4, intent: 'coming', picks: [{ ...pick, priority: 2 }] }]);
+    expect(ranked.sessions.find((x) => x.id === 'c:9')?.scouts[0].pickNo).toBe(2);
+  });
+
   it('Adapter_UndecidedScouts_SayWhetherTheyArePlaced', () => {
     expect(withBoard.undecidedScouts).toEqual([
       { personId: 2, placed: true },
       { personId: 8, placed: false }
     ]);
+  });
+});
+
+// Rotations L3 (qa-lead): a family is never told they're in a class nobody teaches yet.
+describe('taughtOnly', () => {
+  const t = taughtOnly(placementAsMatch(SAVED));
+
+  it('TaughtOnly_DropsTheClassWithNoTeacher', () => {
+    expect(t.sessions.map((x) => x.id)).toEqual(['c:5', 'c:9']);
+  });
+
+  it('TaughtOnly_ItsScoutsHaveNoSeat', () => {
+    expect(t.assignments.map((a) => a.personId)).toEqual([1, 2, 4]);
   });
 });
 

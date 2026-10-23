@@ -442,6 +442,9 @@ async function plannerEditor(entryId: unknown): Promise<Approver | { ok: false; 
 export async function plannerLiveResetAction(input: { entryId: number }): Promise<LiveWriteResult> {
   const e = await plannerEditor(input?.entryId);
   if (!e.ok) return e;
+  // qa-lead, L3: once the meeting is over its arrangement and taps are the attendance checklist's draft; a Reset then
+  // would rebuild it and tick everyone placed.
+  if (meetingIsOver(e.facts, instantToCentral(new Date().toISOString()))) return fail(OVER_NO_RESET);
   try {
     const res = await resetMeetingLive(e.sb, e.facts.entryId, e.actorPersonId);
     if (!res.ok) return fail(SAVE_FAILED);
@@ -455,6 +458,7 @@ export async function plannerLiveResetAction(input: { entryId: number }): Promis
 export type RecordAttendanceResult = { ok: true; added: number; removed: number; failed: number } | { ok: false; error: string };
 
 const NOT_OVER = 'Attendance is recorded once the meeting is over.';
+const OVER_NO_RESET = 'The meeting is over, so its rotations are now the attendance check. Reset is for before the meeting.';
 const NOT_ON_LIST = 'Someone on that list isn’t on this meeting’s checklist. Reload and try again.';
 const isIdList = (v: unknown): v is number[] => Array.isArray(v) && v.length <= 500 && v.every(isPerson);
 

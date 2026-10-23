@@ -712,6 +712,22 @@
   position: relative;
   margin-left: auto;
 }
+/* The bar's "More actions…" trigger: its own words on one line (it had borrowed the card ⋯'s 44 px square). */
+.moreActionsBtn {
+  min-height: 44px;
+  padding: 0 var(--sp-2);
+  border: 0;
+  border-radius: var(--rad-md);
+  background: none;
+  font: var(--fs-sm) / 1 var(--font-ui);
+  color: var(--navy);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.moreActionsBtn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
 .moreBtn {
   min-height: 44px;
   padding: 0 var(--sp-3);

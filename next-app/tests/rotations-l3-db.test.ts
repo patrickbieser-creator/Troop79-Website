@@ -166,6 +166,16 @@ describe('Rotations L3: Reset to match picks', () => {
     expect((await classesFor(key)).map((c) => c.teacher_person_id)).toEqual([maria]);
   });
 
+  // qa-lead: once the meeting is over its arrangement is the attendance checklist's draft; Reset would rebuild it.
+  it('Reset_MeetingOver_IsRefused', async () => {
+    const { data } = await sb.from('calendar_entries').insert({ entry_date: '2020-05-24', category: 'Troop Meeting', title: `Troop Meeting ${TEST_PREFIX}` }).select('id').single();
+    const past = (data as { id: number }).id;
+    entries.push(past);
+    asEditor();
+    const res = await (await live()).plannerLiveResetAction({ entryId: past });
+    expect([res.ok, !res.ok && res.error]).toEqual([false, 'The meeting is over, so its rotations are now the attendance check. Reset is for before the meeting.']);
+  });
+
   it('Reset_Viewer_IsRefused', async () => {
     await seed(key);
     const [c] = await classesFor(key);
