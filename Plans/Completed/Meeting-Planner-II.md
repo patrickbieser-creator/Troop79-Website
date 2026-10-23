@@ -1,6 +1,6 @@
 # Meeting Planner II
 
-**Status:** IN PROGRESS: P1–P4 SHIPPED v1.240.0–v1.243.0 (2026-10-21, 4c87a4e1 → a7232203); P5 left
+**Status:** SHIPPED v1.240.0–v1.244.0 (2026-10-21 → 2026-10-22; P5 final commit 6f8de666). Successor: Plans/Build-A-Plan.md
 **Parked:** 2026-10-21
 **Priority:** High
 

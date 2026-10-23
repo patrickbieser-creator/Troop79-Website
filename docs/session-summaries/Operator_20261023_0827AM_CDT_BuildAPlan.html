@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session 66 — Meeting Planner P5 and Build a Plan</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #3d5a3e;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #f0eecd;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); vertical-align: top; }
+        tr:hover { background: var(--nw-sage); }
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+        code { font-family: 'Courier New', monospace; font-size: 0.85em; background: var(--nw-light-gray); padding: 0 0.3em; border-radius: 3px; }
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+        @media print { body { background: white; } header { padding: 1.5rem; } .container { padding: 1rem; } .stat { break-inside: avoid; } }
+        @media (max-width: 600px) { header h1 { font-size: 1.5rem; } .stats { flex-direction: column; } }
+    </style>
+<body>
+    <header>
+        <h1>Meeting Planner P5 and Build a Plan</h1>
+        <p class="subtitle">Session 66. Meeting Planner II is finished. The planner now opens with a full workflow: build the Sunday plan from suggestions or by hand, invite teachers and families from a dedicated tab, check Has/Needs and find scouts the plan leaves out, then run Meeting Live without any attendance being written automatically. The session also made the planner much faster, retired the old planning screens in Admin, and fixed bugs in ledger sign-off and auditing.</p>
+        <div class="meta">
+            <span>&#128197; October 21&ndash;23, 2026</span>
+            <span>&#129302; Operator (Opus 5.5)</span>
+            <span>&#128204; Troop79-Website</span>
+            <span>&#128640; v1.243.0 &rarr; v1.253.0</span>
+        </div>
+    </header>
+    <div class="container">
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">16</div><div class="label">Releases (v1.244.0&ndash;v1.253.0)</div></div>
+            <div class="stat"><div class="number">15</div><div class="label">Migrations, all in production</div></div>
+            <div class="stat"><div class="number">8</div><div class="label">Decisions (D-429&ndash;D-436)</div></div>
+            <div class="stat"><div class="number">7722</div><div class="label">Tests (was 7035), all passing</div></div>
+        </div>
+        <h2>What Was Accomplished</h2>
+        <div class="callout callout-teal">
+            <strong>The outcome:</strong> a planner can now go from &ldquo;what should we teach Sunday?&rdquo; to &ldquo;who&rsquo;s teaching and who&rsquo;s coming&rdquo; in one place. Suggestions come from the advancement ledger. Teachers get one email with one page to answer, and that page also asks what else they&rsquo;d enjoy teaching. The scouts the plan misses are listed. Attendance is recorded only when someone approves it. Every release passed the full test suite and a qa-lead review before shipping.
+        </div>
+        <h3>Meeting Planner II completed (P5)</h3>
+        <ul>
+            <li>Reminder emails, one per person, linking to the meeting page.</li>
+            <li>A merit badge night is now an ordinary meeting. The old mode switch, stations and Admin&rsquo;s This Sunday tab are retired, and that tab lives on as &ldquo;Who&rsquo;s coming&rdquo;.</li>
+        </ul>
+        <h3>Faster planner</h3>
+        <ul>
+            <li>Ticking a name no longer reloads the page twice. Requests per tick dropped from about 98 to 13, and the box flips the moment you click.</li>
+            <li>The site now runs in Cleveland, next to its database.</li>
+        </ul>
+        <h3>Build a Plan (new)</h3>
+        <ul>
+            <li>The plan is a list of offerings. Edit and remove each one, add a requirement, a focus set or a new mix, and use the persistent tool buttons.</li>
+            <li>Suggestions mode brings back the old Admin generator in full: Group Sessions, By Scout, Teaching, solo needs and campout items. Clicking a teaching chip asks for confirmation before it adds a requirement with that leader teaching.</li>
+            <li>The orphan check shows &ldquo;N scouts have nothing on this plan&rdquo;, with a reason for each scout.</li>
+            <li>Has/Needs moved from Admin to a planner tab. The Admin version retires once Patrick approves.</li>
+        </ul>
+        <h3>Invites</h3>
+        <ul>
+            <li>The full-screen Invite tab lists offerings, people and a review of who gets what. Its By person view lets one email cover all of an adult&rsquo;s classes.</li>
+            <li>Teacher emails say which scouts each class helps. One &ldquo;Choose what you&rsquo;ll teach&rdquo; page lets an adult answer everything and change their mind until 6 PM on the meeting day. The same page asks what else they&rsquo;d enjoy teaching, now or later, and those answers appear in a &ldquo;New talent&rdquo; list for planners.</li>
+            <li>Emails to parents use scouts&rsquo; first names. When a scout has no email on file, a P.S. invites the parents to add one.</li>
+        </ul>
+        <h3>Meeting Live</h3>
+        <ul>
+            <li>Attendance is never written automatically. After the meeting, an &ldquo;Update attendance?&rdquo; checklist has to be approved.</li>
+            <li>A Live arrangement can be discarded. A &ldquo;Needs attention&rdquo; strip offers one-click fixes for drift between the plan and Live. Anjali&rsquo;s Star 6 case is one example.</li>
+            <li>The model for making Live a schedule that stays in step with the plan was adopted. Its first phase, L0, is live.</li>
+        </ul>
+        <h3>Fixes found along the way</h3>
+        <ul>
+            <li>Proof approvals were signed with a full name and could carry the next day&rsquo;s date. The production data is corrected.</li>
+            <li>Ledger edits are now in the audit log, and invite answers in the log now name who answered.</li>
+            <li>Saving a merit badge reset its requirements&rsquo; teaching minutes. It now keeps them, and the save is all-or-nothing.</li>
+            <li>The four tests that depended on local data were fixed for good.</li>
+        </ul>
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Decision</th></tr></thead>
+            <tbody>
+                <tr><td>D-429</td><td>Meeting Live can be undone, and attendance is only recorded once someone approves it.</td></tr>
+                <tr><td>D-430</td><td>A merit badge night is just a meeting. This Sunday, the stations and the board mode are retired.</td></tr>
+                <tr><td>D-431</td><td>The planner never reloads the board on a click. Server functions run in cle1.</td></tr>
+                <tr><td>D-432</td><td>Build a Plan is the plan of record, and a plan is just the meeting&rsquo;s offerings.</td></tr>
+                <tr><td>D-433</td><td>Invites have their own tab. Each adult gets one digest email and one teach page.</td></tr>
+                <tr><td>D-434</td><td>Rotations: one arrangement that stays in step with the live plan. L0 has shipped and L1&ndash;L3 are next.</td></tr>
+                <tr><td>D-435</td><td>Ledger edits are audited, and proof approvals are signed the way Fast Entry signs them.</td></tr>
+                <tr><td>D-436</td><td>Teaching interests are kept separate from qualifications, and only editors see New talent.</td></tr>
+            </tbody>
+        </table>
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Rotations L1&ndash;L3: pins and auto-placement, one shared teacher, and the rename to Rotations.</li>
+            <li>Patrick checks everything in production, sends a real teacher digest to himself, and approves the new Has/Needs page.</li>
+            <li>Pending decisions: whether to drop the meeting_plans table, and whether to rename the meeting_plan.use right.</li>
+        </ul>
+        <h2>Files Changed</h2>
+        <table>
+            <thead><tr><th>Area</th><th>Files</th></tr></thead>
+            <tbody>
+                <tr><td>Planner (public)</td><td>(public)/planner/{build,invite,has-needs,live}/, build-actions.ts, live-actions.ts, planner-tabs.tsx; (public)/i/teach/[token]/; member/teaching, member/meeting</td></tr>
+                <tr><td>Libraries</td><td>lib/meeting-suggest/, build-plan*.ts, build-plan-orphans*.ts, meeting-invite-digest*.ts, meeting-teach-pages.ts, teaching-interests*.ts, meeting-live*.ts, people-lists.ts, ledger-audit.ts, rank-abbrev.ts, has-needs-db.ts, library-data.ts</td></tr>
+                <tr><td>Admin (retired or trimmed)</td><td>advancement/meeting-plan/ (redirects only), dashboard attention items, meetings/load-agenda.ts, lookups/actions.ts, roster person record (Test record)</td></tr>
+                <tr><td>Database</td><td>20261209100000 through 20261223100000 (15 migrations)</td></tr>
+                <tr><td>Infra</td><td>next-app/vercel.json (cle1)</td></tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
