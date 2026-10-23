@@ -21,6 +21,10 @@
  * attendance row that justifies it — the reverse of the obvious order, and the
  * reason it is spelled out here.
  *
+ * AUDITED (qa-lead, 2026-10-22): a retire and a revive each write the ledger
+ * audit row (lib/ledger-audit) for the ledger row they change; a brand-new
+ * credit is the ledger's own record and isn't audited.
+ *
  * SOFT DELETE, NEVER HARD. Unchecking a box must not destroy advancement
  * history: a mis-click has to be recoverable, and the Advancement Ledger's own
  * delete already works this way.
@@ -30,6 +34,7 @@ import type { createAdminClient } from '@/lib/supabase/server';
 import { creditRuleFor, defaultQtyFor, ledgerCodeFor, type CreditKind } from '@/lib/attendance-shared';
 import { loadCalendarCategories } from '@/lib/calendar';
 import { expirePeopleLists } from '@/lib/people-lists';
+import { auditLedgerStatus, loadLedgerForAudit } from '@/lib/ledger-audit';
 
 export type Result = { ok: boolean; error?: string };
 
@@ -103,6 +108,15 @@ export async function syncCredit(
   }
   if (!scoutId) return { ok: true }; // adults have no ledger
 
+  // A removed credit this upsert revives is audited as a restore (snapshot first; a failed read just skips the row).
+  const { data: removed } = await db
+    .from('ledger_entries')
+    .select('id')
+    .eq('calendar_entry_id', ctx.id)
+    .eq('scout_id', scoutId)
+    .not('deleted_at', 'is', null);
+  const revived = removed?.length ? await loadLedgerForAudit(db, (removed as { id: number }[]).map((r) => r.id)) : new Map();
+
   const { error } = await db.from('ledger_entries').upsert(
     {
       scout_id: scoutId,
@@ -121,7 +135,9 @@ export async function syncCredit(
     },
     { onConflict: 'calendar_entry_id,scout_id' }
   );
-  return error ? { ok: false, error: `Attendance saved, credit failed: ${error.message}` } : { ok: true };
+  if (error) return { ok: false, error: `Attendance saved, credit failed: ${error.message}` };
+  await auditLedgerStatus(revived, 'restore', `Roll Call for "${ctx.title}"`);
+  return { ok: true };
 }
 
 /**
@@ -155,6 +171,15 @@ export async function retireCredit(
     deleted_by: by,
     deleted_reason: `Removed from Roll Call for "${ctx.title}"`
   };
+  const legacyCode = ledgerCodeFor(ctx.creditKind, ctx.id, ctx.entryDate);
+
+  // Snapshot what this retires (both kinds below) for the ledger audit trail.
+  const [linked, legacy] = await Promise.all([
+    db.from('ledger_entries').select('id').eq('calendar_entry_id', ctx.id).eq('scout_id', scoutId).is('deleted_at', null),
+    db.from('ledger_entries').select('id').is('calendar_entry_id', null).eq('scout_id', scoutId).eq('code', legacyCode).eq('date', ctx.entryDate).is('deleted_at', null)
+  ]);
+  const retiring = [...(linked.data ?? []), ...(legacy.data ?? [])].map((r) => (r as { id: number }).id);
+  const before = retiring.length ? await loadLedgerForAudit(db, retiring) : new Map();
 
   const { error } = await db
     .from('ledger_entries')
@@ -172,9 +197,13 @@ export async function retireCredit(
     .update(removal)
     .is('calendar_entry_id', null)
     .eq('scout_id', scoutId)
-    .eq('code', ledgerCodeFor(ctx.creditKind, ctx.id, ctx.entryDate))
+    .eq('code', legacyCode)
     .eq('date', ctx.entryDate)
     .is('deleted_at', null);
+  // Both updates ran (the legacy one may have failed): audit what the first certainly retired, and the legacy rows too
+  // when that update landed.
+  const legacyIds = new Set((legacy.data ?? []).map((r) => (r as { id: number }).id));
+  await auditLedgerStatus(legacyErr ? new Map([...before].filter(([id]) => !legacyIds.has(id))) : before, 'delete', removal.deleted_reason);
   return legacyErr
     ? { ok: false, error: `Could not remove the legacy credit: ${legacyErr.message}` }
     : { ok: true };

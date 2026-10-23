@@ -7,6 +7,10 @@
  *
  * Callers snapshot the rows BEFORE their write (loadLedgerForAudit), write, then hand the snapshot and what they
  * wrote to auditLedgerEdits / auditLedgerStatus. Never throws (recordAudit's invariant: auditing never breaks a save).
+ * A bulk system change (a requirement code rename) writes ONE summarised row instead (auditLedgerBulk).
+ *
+ * EXCEPTION TO D-257 (Patrick, 2026-10-22): these summaries include the changed values, not only field names, by his
+ * request. Failure logs name no entry (lib/audit auditRef).
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { recordAudit, type AuditDetail, type AuditEntry } from '@/lib/audit';
@@ -111,16 +115,22 @@ export async function loadLedgerForAudit(sb: SupabaseClient, ids: readonly numbe
       }
     }
   } catch (e) {
-    console.error('ledger audit snapshot failed:', e);
+    console.error('ledger audit snapshot failed:', e instanceof Error ? e.message : 'unknown error');
   }
   return out;
 }
 
-/** Display names for scout ids (a scout change reads "Anjali Shah → Finn Parker"). */
+/** Display names for scout ids (a scout change reads "Anjali Shah → Finn Parker"). Runs after the write, so it never
+ *  throws: a failed read gives no names (the change reads by scout id) rather than a saved edit that looks failed. */
 export async function scoutNamesFor(sb: SupabaseClient, scoutIds: readonly string[]): Promise<Map<string, string>> {
   if (!scoutIds.length) return new Map();
-  const { data } = await sb.from('scouts').select('id, display_name').in('id', [...new Set(scoutIds)]);
-  return new Map(((data ?? []) as { id: string; display_name: string }[]).map((s) => [s.id, s.display_name]));
+  try {
+    const { data } = await sb.from('scouts').select('id, display_name').in('id', [...new Set(scoutIds)]);
+    return new Map(((data ?? []) as { id: string; display_name: string }[]).map((s) => [s.id, s.display_name]));
+  } catch (e) {
+    console.error('ledger audit scout names failed:', e instanceof Error ? e.message : 'unknown error');
+    return new Map();
+  }
 }
 
 function entry(row: LedgerAuditRow, action: string, summary: string, details: AuditDetail[]): AuditEntry {
@@ -156,4 +166,12 @@ export async function auditLedgerStatus(before: ReadonlyMap<number, LedgerAuditR
       return recordAudit(entry(row, action, ledgerStatusSummary(row, action, reason), details));
     })
   );
+}
+
+/**
+ * A bulk system change to many ledger rows (a requirement code rename): ONE summarised audit row, not one per row.
+ * Never throws.
+ */
+export async function auditLedgerBulk(e: { action: string; entityType: string; entityId: string; summary: string; details?: AuditDetail[] }): Promise<void> {
+  await recordAudit({ area: 'advancement', action: e.action, entityType: e.entityType, entityId: e.entityId, summary: e.summary, details: e.details ?? [] });
 }

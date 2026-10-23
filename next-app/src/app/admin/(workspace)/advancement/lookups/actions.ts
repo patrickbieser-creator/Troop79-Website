@@ -5,6 +5,7 @@ import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import { writePersonDemographics } from '@/lib/write-person-demographics';
 import { recordAudit, type AuditDetail } from '@/lib/audit';
+import { auditLedgerBulk } from '@/lib/ledger-audit';
 import { gradeFromGradYear, gradeLabel, SWIM_CLASS_LABEL } from '@/lib/demographics';
 import type { LedgerKind } from '@/lib/supabase/types';
 
@@ -1160,16 +1161,28 @@ export async function updateReqCode(formData: FormData): Promise<Result> {
   if (error) return { ok: false, error: error.message };
 
   if (code !== originalCode) {
-    const { error: cascadeErr } = await supabase
+    const { data: renamed, error: cascadeErr } = await supabase
       .from('ledger_entries')
       .update({ code: `${parentId}-${code}` })
       .eq('kind', kind)
-      .eq('code', `${parentId}-${originalCode}`);
+      .eq('code', `${parentId}-${originalCode}`)
+      .select('id');
     if (cascadeErr) {
       return {
         ok: false,
         error: `Catalog renamed, but couldn't update matching ledger entries: ${cascadeErr.message}`
       };
+    }
+    // A bulk system change: one summarised ledger audit row, not one per ledger row (qa-lead, 2026-10-22).
+    const n = renamed?.length ?? 0;
+    if (n) {
+      await auditLedgerBulk({
+        action: 'update',
+        entityType: 'requirement',
+        entityId: `${parentId}-${code}`,
+        summary: `Renamed requirement code ${parentId}-${originalCode} → ${parentId}-${code} on ${n} ledger ${n === 1 ? 'row' : 'rows'}`,
+        details: [{ field: 'code', from: `${parentId}-${originalCode}`, to: `${parentId}-${code}` }]
+      });
     }
 
     // Resource Library rides the same composite codes (Plans/Resource-Library.md)

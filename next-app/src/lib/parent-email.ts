@@ -1,7 +1,8 @@
 /**
  * Meeting emails to a PARENT about their own scouts (Patrick, 2026-10-22):
  *   - name them by first name ("Anjali", not "Anjali S"); two scouts in one email who share a first name keep their
- *     last initial, those two only. Teacher-facing lines, leader screens and the audit trail keep the board name.
+ *     last initial, those two only; when that collides too, two letters of the last name ("Sam Sm", "Sam Sh"), and
+ *     when even that can't tell them apart, a number ("Sam S 1", "Sam S 2"). Teacher-facing lines, leader screens and the audit trail keep the board name.
  *   - when a scout the email names has NO email address on file (no person_emails row; an address that is merely
  *     unverified or under 13 still counts as on file), end with a P.S. inviting the parent to add one on /profile.
  *     It rides after the button (renderMarkdownEmail `postscript`), never in the editable template. A scout's own
@@ -17,9 +18,27 @@ export const SCOUT_EMAIL_PATH = '/profile';
 /** personId → the name a parent's email uses. `name` may be a full name or a board name ('Anjali S'). */
 export function scoutFirstNames(scouts: readonly { personId: number; name: string }[]): Map<number, string> {
   const unique = [...new Map(scouts.map((s) => [s.personId, s.name])).entries()];
-  const count = new Map<string, number>();
-  for (const [, name] of unique) count.set(firstNameOf(name), (count.get(firstNameOf(name)) ?? 0) + 1);
-  return new Map(unique.map(([id, name]) => [id, (count.get(firstNameOf(name)) ?? 0) > 1 ? boardName(name) : firstNameOf(name)]));
+  const tally = (names: readonly string[]) => names.reduce((m, n) => m.set(n, (m.get(n) ?? 0) + 1), new Map<string, number>());
+  const lastOf = (name: string) => name.trim().split(/\s+/).slice(1).pop() ?? '';
+  const twoLetters = (name: string) => {
+    const last = lastOf(name);
+    return last.length > 1 ? `${firstNameOf(name)} ${last[0].toUpperCase()}${last[1].toLowerCase()}` : boardName(name);
+  };
+  const firsts = tally(unique.map(([, n]) => firstNameOf(n)));
+  const step1 = unique.map(([id, n]) => [id, (firsts.get(firstNameOf(n)) ?? 0) > 1 ? boardName(n) : firstNameOf(n)] as const);
+  const boards = tally(step1.map(([, n]) => n));
+  const step2 = step1.map(([id, n], i) => [id, (boards.get(n) ?? 0) > 1 ? twoLetters(unique[i][1]) : n] as const);
+  const twos = tally(step2.map(([, n]) => n));
+  const seen = new Map<string, number>();
+  return new Map(
+    step2.map(([id, n], i) => {
+      if ((twos.get(n) ?? 0) < 2) return [id, n];
+      const base = step1[i][1];
+      const k = (seen.get(base) ?? 0) + 1;
+      seen.set(base, k);
+      return [id, `${base} ${k}`];
+    })
+  );
 }
 
 /** "Anjali", "Anjali or Leo", "Anjali, Leo or Sam". */

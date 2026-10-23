@@ -186,6 +186,8 @@ export function LiveBoard({
     setAllFixed(!drift.length);
     setFocusTo({ index: fixing.index, n: (focusTo?.n ?? 0) + 1 });
   }
+  // "All fixed" belongs to that moment (L0 qa follow-up): new drift resets it, so the strip goes once that drift does.
+  if (allFixed && drift.length) setAllFixed(false);
   const attentionRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
     if (!focusTo) return;
@@ -257,10 +259,15 @@ export function LiveBoard({
       const res = await write();
       if (res.ok && fromPreview && meeting?.future) setStartedNote(true);
       if (res.ok) setNotice(res.note ?? null);
-      else setNotice(res.stale ? STALE : res.error);
+      else {
+        setNotice(res.stale ? STALE : res.error);
+        // A failed fix forgets its line (L0 qa follow-up): a later change mustn't move focus or say "Fixed".
+        setFixing(null);
+      }
       router.refresh();
     } catch {
       setNotice(FAILED);
+      setFixing(null);
     } finally {
       setBusy(false);
     }

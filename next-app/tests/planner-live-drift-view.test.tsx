@@ -290,6 +290,29 @@ describe('Needs attention: focus after a fix (L0 qa)', () => {
     expect(screen.getByRole('status').textContent).toBe('Fixed · 4 left');
   });
 
+  // L0 qa follow-up: a failed fix forgets the line, so a later change elsewhere doesn't steal focus or say "Fixed".
+  it('Fix_Failed_LaterChangeDoesNotMoveFocus', async () => {
+    mocks.moveScout.mockResolvedValue({ ok: false, error: 'Nope' });
+    const r = render(<LiveBoard view={VIEW} canEdit entryId={1} />);
+    fireEvent.click(within(strip()).getByRole('button', { name: 'Remove from class' }));
+    await waitFor(() => expect(mocks.refresh).toHaveBeenCalled());
+    within(strip()).getByRole('button', { name: 'Make a class' }).focus();
+    r.rerender(<LiveBoard view={without('x:c:1:1')} canEdit entryId={1} />);
+    expect(document.activeElement?.textContent).toBe('Make a class');
+  });
+
+  // L0 qa follow-up: "All fixed" belongs to that moment; new drift resets it, so the strip goes once that drift does.
+  it('AllFixed_NewDriftThenNone_StripGoes', async () => {
+    mocks.removeClass.mockResolvedValue(ok);
+    const r = render(<LiveBoard view={VIEW} canEdit entryId={1} />);
+    fireEvent.click(within(strip()).getByRole('button', { name: 'Remove class' }));
+    await waitFor(() => expect(mocks.refresh).toHaveBeenCalled());
+    r.rerender(<LiveBoard view={{ ...VIEW, drift: [] }} canEdit entryId={1} />);
+    r.rerender(<LiveBoard view={VIEW} canEdit entryId={1} />);
+    r.rerender(<LiveBoard view={{ ...VIEW, drift: [] }} canEdit entryId={1} />);
+    expect(screen.queryByRole('region', { name: /^Needs attention/ })).toBeNull();
+  });
+
   it('MakeClass_PartialNote_IsShown', async () => {
     mocks.makeClass.mockResolvedValue({ ...ok, note: 'Made the class; 1 scout couldn’t be placed: Ben T.' });
     render(<LiveBoard view={VIEW} canEdit entryId={1} />);

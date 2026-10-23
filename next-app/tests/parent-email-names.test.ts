@@ -31,3 +31,22 @@ describe('scoutFirstNames', () => {
     expect(names.get(7)).toBe('Anjali');
   });
 });
+
+/** L0 qa follow-up: same first name AND last initial gets a disambiguator (two letters of the last name, else a number). */
+describe('scoutFirstNames: same first name and last initial', () => {
+  it('SameFirstAndInitial_UsesTwoLettersOfTheLastName', () => {
+    const names = scoutFirstNames([
+      { personId: 7, name: 'Sam Smith' },
+      { personId: 8, name: 'Sam Shah' }
+    ]);
+    expect([...names.values()]).toEqual(['Sam Sm', 'Sam Sh']);
+  });
+
+  it('SameFirstAndLastName_AreNumbered', () => {
+    const names = scoutFirstNames([
+      { personId: 7, name: 'Sam S' },
+      { personId: 8, name: 'Sam S' }
+    ]);
+    expect([...names.values()]).toEqual(['Sam S 1', 'Sam S 2']);
+  });
+});

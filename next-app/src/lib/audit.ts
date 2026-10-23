@@ -16,6 +16,12 @@
  * THE ONE INVARIANT: auditing must never break a save. Both entry points
  * swallow every failure (logged to the server console) — a lost audit row
  * is strictly better than a leader's edit erroring after the write landed.
+ * The failure log names only area/action/entity id, never the entry: summaries
+ * and details can carry names and notes (qa-lead, 2026-10-22).
+ *
+ * EXCEPTION TO D-257 (Patrick, 2026-10-22): ledger audit summaries
+ * (lib/ledger-audit) include the changed VALUES ("date Aug 18, 2026 → Oct 5,
+ * 2025"), by his request, so the trail reads without opening each row.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -86,6 +92,9 @@ export interface AuditActor {
   label: string;
 }
 
+/** What a failure log may name: 'advancement/update/42'. Never the summary or details (names, notes). */
+const auditRef = (entry: AuditEntry) => `${entry.area}/${entry.action}/${entry.entityId ?? '-'}`;
+
 /**
  * The db-testable half: write one audit row as a known actor. Never throws.
  */
@@ -107,9 +116,9 @@ export async function recordAuditAs(
         ? { changes: Array.isArray(entry.details) ? entry.details : [], people: entry.subjects }
         : (entry.details ?? null)
     });
-    if (error) console.error('audit_log write failed:', error.message, entry);
+    if (error) console.error('audit_log write failed:', error.message, auditRef(entry));
   } catch (e) {
-    console.error('audit_log write failed:', e, entry);
+    console.error('audit_log write failed:', e instanceof Error ? e.message : 'unknown error', auditRef(entry));
   }
 }
 

@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { ledgerCodeFor, type CreditKind } from '@/lib/attendance-shared';
 import { expirePeopleLists } from '@/lib/people-lists';
+import { auditLedgerEdits, auditLedgerStatus, loadLedgerForAudit } from '@/lib/ledger-audit';
 
 export interface CalendarEntryDependents {
   attendanceCount: number;
@@ -282,30 +283,32 @@ export async function executeCalendarEntryMerge(
     const loseCredits = (loseRows ?? []) as { id: number; scout_id: string; kind: CreditKind }[];
 
     const supersedeIds = loseCredits.filter((c) => keepScoutIds.has(c.scout_id)).map((c) => c.id);
+    // The ledger audit trail (qa-lead, 2026-10-22): every credit this merge retires or repoints, snapshotted first.
+    const before = loseCredits.length ? await loadLedgerForAudit(admin, loseCredits.map((c) => c.id)) : new Map();
+    const only = (id: number) => new Map(before.has(id) ? [[id, before.get(id)!]] : []);
     if (supersedeIds.length > 0) {
+      const reason = `Duplicate — merged into calendar entry #${keepId} via Merge`;
       const { error } = await admin
         .from('ledger_entries')
         .update({
           deleted_at: new Date().toISOString(),
           deleted_by: by,
-          deleted_reason: `Duplicate — merged into calendar entry #${keepId} via Merge`
+          deleted_reason: reason
         })
         .in('id', supersedeIds);
       if (error) return { ok: false, error: `Could not supersede duplicate credit: ${error.message}` };
+      await auditLedgerStatus(new Map(supersedeIds.flatMap((id) => [...only(id)])), 'delete', reason);
     }
 
     const toMove = loseCredits.filter((c) => !keepScoutIds.has(c.scout_id));
     for (const credit of toMove) {
+      const patch = { date: keepEntry.entry_date, label: keepEntry.title, code: ledgerCodeFor(credit.kind, keepId, keepEntry.entry_date) };
       const { error } = await admin
         .from('ledger_entries')
-        .update({
-          calendar_entry_id: keepId,
-          date: keepEntry.entry_date,
-          label: keepEntry.title,
-          code: ledgerCodeFor(credit.kind, keepId, keepEntry.entry_date)
-        })
+        .update({ calendar_entry_id: keepId, ...patch })
         .eq('id', credit.id);
       if (error) return { ok: false, error: `Could not move credit for ${credit.scout_id}: ${error.message}` };
+      await auditLedgerEdits(only(credit.id), patch);
     }
   }
 
