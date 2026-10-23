@@ -313,7 +313,7 @@
   .layout,
   .layout[data-drill]:not(:has(.list)) {
     grid-template-columns: minmax(0, 1fr);
-    padding: var(--sp-4);
+    padding: var(--sp-4) var(--sp-7);
   }
   .review {
     display: none;
@@ -328,20 +328,15 @@
     display: inline-flex;
     align-items: center;
   }
-  .notices,
-  .switch {
-    padding-left: var(--sp-4);
-    padding-right: var(--sp-4);
-  }
   .solo {
-    padding: var(--sp-4);
+    padding: var(--sp-4) var(--sp-7);
   }
   .phoneBar {
     position: sticky;
     bottom: 0;
     z-index: 2;
     display: flex;
-    padding: var(--sp-2) var(--sp-4);
+    padding: var(--sp-2) var(--sp-7);
     border-top: 1px solid var(--border-light);
     background: var(--cream);
   }
@@ -370,4 +365,18 @@
 }
 .talentNote {
   overflow-wrap: anywhere;
+}
+
+/* The planner's one page gutter (Patrick, 2026-10-23: buttons sat on the screen's edge): 28px, and 16px on a phone. An
+   iPad (641-900px) keeps 28px so every zone lines up under the page header. */
+@media (max-width: 640px) {
+  .layout,
+  .layout[data-drill]:not(:has(.list)),
+  .notices,
+  .switch,
+  .solo,
+  .phoneBar {
+    padding-left: var(--sp-4);
+    padding-right: var(--sp-4);
+  }
 }

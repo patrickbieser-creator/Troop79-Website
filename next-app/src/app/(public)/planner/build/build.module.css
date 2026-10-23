@@ -266,10 +266,7 @@
 @media (max-width: 900px) {
   .layout {
     grid-template-columns: minmax(0, 1fr);
-    padding: var(--sp-4);
-  }
-  .rail {
-    padding: var(--sp-2) var(--sp-4);
+    padding: var(--sp-4) var(--sp-7);
   }
 }
 
@@ -301,6 +298,7 @@
   justify-content: flex-start;
   gap: var(--sp-2);
   margin-bottom: var(--sp-3);
+  padding: 0 var(--sp-7);
 }
 /* A sub-view's top: "← Back to the plan" at the left, then its heading. */
 .subHead {
@@ -314,6 +312,8 @@
 .backLink {
   display: inline-flex;
   align-items: center;
+  /* A flex row drops the space after the arrow; the gap is it. */
+  gap: var(--sp-1);
   min-height: 44px;
   font: 600 var(--fs-sm) / 1 var(--font-ui);
   color: var(--navy);
@@ -326,9 +326,13 @@
   outline: var(--focus-ring);
   outline-offset: 2px;
 }
+/* Suggestions mode's "← Back to the plan" + heading: the page gutter (in plan mode the sub-view carries it). */
+.modeHead {
+  padding: 0 var(--sp-7);
+}
 .subView {
   margin-bottom: var(--sp-5);
-  padding-bottom: var(--sp-3);
+  padding: 0 var(--sp-7) var(--sp-3);
   border-bottom: 1px solid var(--border-light);
 }
 
@@ -603,7 +607,7 @@
   .suggestLayout {
     grid-template-columns: 200px minmax(0, 1fr);
     gap: var(--sp-4);
-    padding: var(--sp-3) var(--sp-4);
+    padding: var(--sp-3) var(--sp-7);
   }
 }
 @media (max-width: 640px) {
@@ -705,4 +709,27 @@
 .rotationBtn:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
+}
+
+/* The planner's one page gutter (Patrick, 2026-10-23: buttons sat on the screen's edge): 28px, and 16px on a phone. An
+   iPad (641-900px) keeps 28px so every zone lines up under the page header. */
+@media (max-width: 640px) {
+  .layout,
+  .suggestLayout {
+    padding-left: var(--sp-4);
+    padding-right: var(--sp-4);
+  }
+  .rail {
+    padding: var(--sp-2) var(--sp-4);
+  }
+  .buildNav,
+  .subView {
+    padding-left: var(--sp-4);
+    padding-right: var(--sp-4);
+  }
+}
+@media (max-width: 640px) {
+  .modeHead {
+    padding: 0 var(--sp-4);
+  }
 }

@@ -17,7 +17,7 @@
 /* ── Requirements | Results (phone only) ─────────────────────────────────────────────────────────────────── */
 .switch {
   display: none;
-  padding: var(--sp-4) var(--sp-4) 0;
+  padding: var(--sp-4) var(--sp-7) 0;
 }
 .seg {
   display: inline-flex;
@@ -374,7 +374,7 @@
   }
   .layout {
     grid-template-columns: minmax(0, 1fr);
-    padding: var(--sp-4);
+    padding: var(--sp-4) var(--sp-7);
   }
   .layout[data-pane='requirements'] .results,
   .layout[data-pane='requirements'] .tray,
@@ -410,5 +410,15 @@
   }
   .phoneBar > button {
     min-height: 44px;
+  }
+}
+
+/* The planner's one page gutter (Patrick, 2026-10-23: buttons sat on the screen's edge): 28px, and 16px on a phone. An
+   iPad (641-900px) keeps 28px so every zone lines up under the page header. */
+@media (max-width: 640px) {
+  .layout,
+  .switch {
+    padding-left: var(--sp-4);
+    padding-right: var(--sp-4);
   }
 }

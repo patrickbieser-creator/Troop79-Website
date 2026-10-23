@@ -400,7 +400,7 @@ export function BuildPlanView({
           go('plan');
         }}
       >
-        <span aria-hidden="true">← </span>Back to the plan
+        <span aria-hidden="true">←</span>Back to the plan
       </Link>
       <h2 id="build-view-title" className={s.sectionTitle} ref={viewHeadRef} tabIndex={-1}>
         {title}
@@ -424,7 +424,7 @@ export function BuildPlanView({
       <FeedCtx.Provider value={onFeed}>
         {heading}
         {navBar}
-        {subHead(VIEW_TITLE.suggestions)}
+        <div className={s.modeHead}>{subHead(VIEW_TITLE.suggestions)}</div>
         <div className={s.suggestLayout}>
           <aside className={s.planRail} aria-labelledby="build-plan">
             <h2 id="build-plan" className={s.sectionTitle} ref={listHeadRef} tabIndex={-1}>
