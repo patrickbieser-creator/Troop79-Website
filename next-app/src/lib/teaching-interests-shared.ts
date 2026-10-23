@@ -33,6 +33,11 @@ export function interestShort(h: Pick<InterestHit, 'kind' | 'sourceName' | 'code
   return shortRequirement(`${h.sourceName} ${h.code ?? ''}`, h.label);
 }
 
+/** "New talent" is for planner editors who are adults (Patrick, qa-lead B10c #1): Edit, and not signed in as a scout. */
+export function canSeeNewTalent(viewer: { canEdit: boolean; canEmail: boolean }): boolean {
+  return viewer.canEdit && viewer.canEmail;
+}
+
 /** A whole badge can be recorded as an interest but never offered for this Sunday (it isn't one class). */
 export const canTeachNow = (key: string) => !key.startsWith('mb:');
 

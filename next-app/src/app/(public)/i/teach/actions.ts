@@ -80,6 +80,7 @@ const SEARCH_SAYS: Record<string, string> = {
   limit: 'That’s a lot of searches for one page. To add more, sign in to What I can teach.',
   expired: 'This page has closed.',
   superseded: 'A newer email replaced this page.',
+  void: 'This link doesn’t work any more.',
   unknown: 'This link doesn’t work any more.',
   error: 'The search didn’t work. Try again.'
 };

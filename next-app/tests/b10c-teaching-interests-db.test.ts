@@ -50,6 +50,8 @@ let teacher = 0;
 let keys: string[] = [];
 let allKeys: string[] = [];
 const people: number[] = [];
+const scouts: string[] = [];
+const EDITOR = { canEdit: true, canEmail: true };
 const households: number[] = [];
 const mail = (id: number) => `zzvitest-b10c-${id}-${process.pid}@example.com`;
 
@@ -103,6 +105,7 @@ afterEach(async () => {
 });
 
 afterAll(async () => {
+  if (scouts.length) await sb.from('scouts').delete().in('id', scouts);
   await sb.from('meeting_topics').delete().eq('calendar_entry_id', meeting);
   await sb.from('calendar_entries').delete().eq('id', meeting);
   await sb.from('household_members').delete().in('household_id', households);
@@ -244,8 +247,107 @@ describe('B10d: the Invite tab', () => {
     const token = await sendPage();
     await addInterestsFromPage(sb, token, [pick(keys[1], 'recent'), pick(keys[2], 'old')], []);
     await sb.from('teaching_interests').update({ created_at: new Date(Date.now() - 31 * 86400_000).toISOString() }).eq('person_id', teacher).eq('topic_key', keys[2]);
-    const mine = (await loadNewTalent(sb)).find((g) => g.personId === teacher);
+    const mine = (await loadNewTalent(sb, EDITOR)).find((g) => g.personId === teacher);
     expect(mine?.items.map((i) => i.note)).toEqual(['recent']);
+  }, 60_000);
+
+  // qa-lead B10c #1 (Patrick): planner editors who are adults only, enforced where it loads; adults' interests only.
+  const listed = async (who: number, access = EDITOR) => (await loadNewTalent(sb, access)).some((g) => g.personId === who);
+  const memberAdd = (who: number, key: string) => sb.rpc('teaching_interest_add_member', { p_person: who, p_items: [{ key, note: null }] });
+
+  it('NewTalent_ViewOnly_GetsNothing', async () => {
+    await memberAdd(teacher, keys[1]);
+    expect(await loadNewTalent(sb, { canEdit: false, canEmail: false })).toEqual([]);
+  }, 60_000);
+
+  it('NewTalent_ScoutEditor_GetsNothing', async () => {
+    await memberAdd(teacher, keys[1]);
+    expect(await loadNewTalent(sb, { canEdit: true, canEmail: false })).toEqual([]);
+  }, 60_000);
+
+  it('NewTalent_LeavesOutInactivePeople', async () => {
+    const gone = await adult(`Inactive ${people.length}`);
+    await memberAdd(gone, keys[1]);
+    await sb.from('people').update({ active: false }).eq('id', gone);
+    expect(await listed(gone)).toBe(false);
+  }, 60_000);
+
+  it('NewTalent_LeavesOutRemovedRows', async () => {
+    await memberAdd(teacher, keys[1]);
+    await sb.from('teaching_interests').update({ removed_at: new Date().toISOString() }).eq('person_id', teacher);
+    expect(await listed(teacher)).toBe(false);
+  }, 60_000);
+
+  it('NewTalent_LeavesOutScouts', async () => {
+    const youth = await adult(`Scout ${people.length}`);
+    const id = `vitest-b10c-${youth}`;
+    const { error } = await sb.from('scouts').insert({ id, first_name: TEST_PREFIX, last_name: 'B10c Scout', display_name: `${TEST_PREFIX} B10c Scout`, person_id: youth, active: true, current_rank: 'first-class', graduation_year: 2095 });
+    if (error) throw new Error(error.message);
+    scouts.push(id);
+    await memberAdd(youth, keys[1]);
+    expect(await listed(youth)).toBe(false);
+  }, 60_000);
+});
+
+/** qa-lead B10c #6 / #7 / #8: closed pages, a stranger's token, and the per-page "this Sunday" cap. */
+describe('B10c qa: what a page link can do', () => {
+  const voidPage = async () => {
+    const { data } = await sb.from('people').select('session_epoch').eq('id', teacher).single();
+    const epoch = (data as { session_epoch: number }).session_epoch;
+    await sb.from('people').update({ session_epoch: epoch + 1 }).eq('id', teacher);
+    return () => sb.from('people').update({ session_epoch: epoch }).eq('id', teacher);
+  };
+  const supersede = async () => {
+    const first = await sendPage();
+    await sb.from('meeting_invites').update({ sent_at: new Date(Date.now() - 25 * 3600_000).toISOString() }).eq('calendar_entry_id', meeting);
+    await sendPage();
+    return first;
+  };
+
+  it('Save_SupersededPage_Refused', async () => {
+    const res = await addInterestsFromPage(sb, await supersede(), [pick(keys[1])], []);
+    expect([res.ok ? 'saved' : res.state, await active()]).toEqual(['superseded', []]);
+  }, 60_000);
+
+  it('Search_SupersededPage_Refused', async () => {
+    const res = await searchInterestsFromPage(sb, await supersede(), 'knot');
+    expect(res.ok ? 'ok' : res.state).toBe('superseded');
+  }, 60_000);
+
+  it('Save_VoidedPage_Refused', async () => {
+    const token = await sendPage();
+    const restore = await voidPage();
+    try {
+      const res = await addInterestsFromPage(sb, token, [pick(keys[1])], []);
+      expect([res.ok ? 'saved' : res.state, await active()]).toEqual(['void', []]);
+    } finally {
+      await restore();
+    }
+  }, 60_000);
+
+  it('Search_VoidedPage_Refused', async () => {
+    const token = await sendPage();
+    const restore = await voidPage();
+    try {
+      const res = await searchInterestsFromPage(sb, token, 'knot');
+      expect(res.ok ? 'ok' : res.state).toBe('void');
+    } finally {
+      await restore();
+    }
+  }, 60_000);
+
+  it('StrangersToken_OnlyTouchesTheStranger', async () => {
+    const stranger = await adult(`Stranger ${people.length}`);
+    const theirs = await sendPage(stranger);
+    await addInterestsFromPage(sb, theirs, [pick(keys[1])], []);
+    expect([await active(teacher), await active(stranger)]).toEqual([[], [keys[1]]]);
+  }, 60_000);
+
+  it('NowToggle_CapsAtFivePerPage', async () => {
+    const token = await sendPage();
+    await addInterestsFromPage(sb, token, keys.slice(1, 4).map((k) => pick(k)), keys.slice(1, 4));
+    const res = await addInterestsFromPage(sb, token, [pick(keys[4]), pick(keys[5]), pick(keys[0])], [keys[4], keys[5], keys[0]]);
+    expect([res.ok, await teachesKey(keys[4])]).toEqual([false, 0]);
   }, 60_000);
 });
 

@@ -114,8 +114,6 @@ export default async function TeachingPage({ searchParams }: { searchParams: Pro
               <TeachingForm skills={profile.skills} junior={junior} readOnly={proxy != null} />
             </div>
             <div className={`${surface.card} ${styles.panel}`}>
-              <h2 className={styles.subHead}>Also enjoy teaching</h2>
-              <p className={styles.fine}>Requirements and merit badges you&rsquo;d enjoy teaching, now or some day. Leaders see these when they plan.</p>
               <MyInterests items={interests} readOnly={proxy != null} />
             </div>
             {profile.kind === 'adult' && (

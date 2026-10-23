@@ -97,3 +97,21 @@
   flex-wrap: wrap;
   gap: var(--sp-2);
 }
+/* "Your picks": the list Save sends, with its heading (focus lands here when the last pick goes). */
+.picks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.picksHead {
+  font-size: var(--fs-md);
+  color: var(--text-head);
+  margin: 0;
+}
+/* Pressed Save with nothing picked: the place it needs filling is marked (problems marked in place). */
+.bad {
+  border: 1px solid var(--status-danger);
+  background: var(--status-danger-bg);
+  border-radius: var(--rad-md);
+  padding: var(--sp-3);
+}

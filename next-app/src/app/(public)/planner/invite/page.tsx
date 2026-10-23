@@ -89,8 +89,9 @@ export default async function InvitePage({ searchParams }: { searchParams: Promi
   const [tab, template, talent] = await Promise.all([
     readOnly || !rows.length ? Promise.resolve(data) : loadInviteTab(sb, meeting, rows.map((r) => r.key), { history: page.inviteRows }).catch(() => null),
     loadDigestTemplate(sb),
-    // B10d: "New talent (n)". A failed read just leaves it off; the tab still works.
-    loadNewTalent(sb).catch(() => null)
+    // B10d: "New talent (n)", planner editors who are adults only (checked inside the load). A failed read just leaves
+    // it off; the tab still works.
+    loadNewTalent(sb, access).catch(() => null)
   ]);
   data = tab;
 

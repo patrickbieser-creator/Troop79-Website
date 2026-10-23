@@ -19,11 +19,13 @@
 --    budget with the answers); re-checks the recipient (active, same session_epoch). The person is the page's
 --    recipient, never a parameter. "Also this Sunday" keys (≤ 5, requirements only, each one of this submit's picks)
 --    are validated here and handed back; the app then signs the adult up through teachTopic (meeting_teach_topic).
+--    The page also counts them (meeting_invite_pages.now_count): at most 5 through one page, across submits.
 -- 5. teaching_interest_add_member / teaching_interest_remove: /member/teaching (the app passes the VERIFIED session's
 --    person; remove only touches that person's own row).
 -- 6. teaching_interest_catalog_search: whole badges by name, then requirements (focus search's matcher), every hit
 --    mapped to its top-level requirement, 20 rows. teaching_interest_search_page wraps it for the answer page: page
---    open and under its cap of 60 searches (meeting_invite_pages.search_count, added by B10b).
+--    open, its recipient re-checked (active, same session_epoch), and under its cap of 60 searches
+--    (meeting_invite_pages.search_count, added by B10b).
 --
 -- DEPLOY ORDER: DB-first. Everything here is new; nothing the code in production (main f61c7b6b) reads or calls
 -- changes. Posture (D-051 / D-239): RLS on, no policies; functions security invoker, search_path pinned, EXECUTE for
@@ -42,6 +44,9 @@ create table if not exists public.teaching_interests (
   constraint teaching_interests_note_len check (note is null or char_length(note) <= 140),
   constraint teaching_interests_key_len check (char_length(topic_key) between 3 and 120)
 );
+-- qa-lead B10c #7: "Also this Sunday" is capped per page too (≤ 5 offers through one page, across submits).
+alter table public.meeting_invite_pages add column if not exists now_count integer not null default 0;
+
 create unique index if not exists teaching_interests_active_key on public.teaching_interests (person_id, topic_key) where removed_at is null;
 create index if not exists teaching_interests_recent_idx on public.teaching_interests (created_at desc) where removed_at is null;
 alter table public.teaching_interests enable row level security;
@@ -139,7 +144,10 @@ begin
   if not exists (select 1 from people x where x.id = p.recipient_person_id and x.active and x.session_epoch = p.recipient_epoch) then
     return jsonb_build_object('state', 'void');
   end if;
-  update meeting_invite_pages set submit_count = submit_count + 1 where id = p.id;
+  if p.now_count + cardinality(v_now) > 5 then
+    raise exception 'Offer up to 5 for this Sunday from this page. To offer more, sign in to your Sunday page.';
+  end if;
+  update meeting_invite_pages set submit_count = submit_count + 1, now_count = now_count + cardinality(v_now) where id = p.id;
   v_res := public._teaching_interest_add(p.recipient_person_id, p_items, 'teach_page', p.calendar_entry_id);
   return jsonb_build_object('state', 'saved', 'page_id', p.id, 'entry', p.calendar_entry_id, 'recipient', p.recipient_person_id,
                             'added', v_res->'added', 'now', to_jsonb(v_now));
@@ -248,6 +256,10 @@ begin
   if not found then return jsonb_build_object('state', 'unknown'); end if;
   if p.superseded_at is not null then return jsonb_build_object('state', 'superseded'); end if;
   if p.expires_at <= now() then return jsonb_build_object('state', 'expired'); end if;
+  -- The same recipient check as a save (qa-lead B10c #6): a "sign out everywhere" (or a merge away) closes it.
+  if not exists (select 1 from people x where x.id = p.recipient_person_id and x.active and x.session_epoch = p.recipient_epoch) then
+    return jsonb_build_object('state', 'void');
+  end if;
   if p.search_count >= 60 then return jsonb_build_object('state', 'limit'); end if;
   update meeting_invite_pages set search_count = search_count + 1 where id = p.id;
   select coalesce(jsonb_agg(to_jsonb(s)), '[]'::jsonb) into v_rows

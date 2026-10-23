@@ -159,7 +159,7 @@ export function TeachPageCard(props: {
         <h2 id="talent-head" className={styles.talentHead}>
           What else would you enjoy teaching, now or in the future?
         </h2>
-        <FieldHint>Leaders keep these for later. Tick &ldquo;Also this Sunday&rdquo; to offer a requirement at this meeting too.</FieldHint>
+        <FieldHint>The troop&rsquo;s meeting planners see these when they plan. Tick &ldquo;Also this Sunday&rdquo; to offer a requirement at this meeting too.</FieldHint>
         <InterestPicker allowNow search={(q) => searchTeachInterestsAction(props.token, q)} save={(picks, now) => saveInterests(props.token, picks, now)} />
       </section>
     </FormCard>

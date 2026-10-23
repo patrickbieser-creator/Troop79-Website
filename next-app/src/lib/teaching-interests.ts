@@ -15,7 +15,8 @@ import { hashSecret } from '@/lib/identity-challenge';
 import { teachTopic } from '@/lib/meeting-board-supply';
 
 export * from '@/lib/teaching-interests-shared';
-import { interestShort, INTEREST_NOTE_MAX, INTEREST_SEARCH_MAX, NEW_TALENT_DAYS, type InterestHit, type InterestKind, type InterestPick, type TalentGroup } from '@/lib/teaching-interests-shared';
+import { interestShort, INTEREST_NOTE_MAX, INTEREST_SEARCH_MAX, NEW_TALENT_DAYS, type InterestHit, type InterestKind, type InterestPick, type TalentGroup, canSeeNewTalent } from '@/lib/teaching-interests-shared';
+import type { PlannerAccess } from '@/lib/meeting-planner-access';
 
 type HitRow = { topic_key: string; kind: InterestKind; source_name: string; code: string | null; label: string };
 const toHit = (r: HitRow): InterestHit => ({ key: r.topic_key, kind: r.kind, sourceName: r.source_name, code: r.code, label: r.label });
@@ -43,14 +44,14 @@ const said = (message: string) => (KNOWN.test(message) ? message : 'That didn’
 
 const TOKEN = /^[0-9a-f]{64}$/i;
 
-export type PageSearchResult = { ok: true; rows: InterestHit[] } | { ok: false; state: 'unknown' | 'expired' | 'superseded' | 'limit' | 'error' };
+export type PageSearchResult = { ok: true; rows: InterestHit[] } | { ok: false; state: 'unknown' | 'expired' | 'superseded' | 'void' | 'limit' | 'error' };
 
 /** One search from an answer page: counted against the page's 60; q ≤ 80; 20 rows. */
 export async function searchInterestsFromPage(sb: SupabaseClient, token: string, q: string): Promise<PageSearchResult> {
   if (!TOKEN.test(token)) return { ok: false, state: 'unknown' };
   const { data, error } = await sb.rpc('teaching_interest_search_page', { p_token_hash: await hashSecret(token.toLowerCase()), p_q: q.slice(0, INTEREST_SEARCH_MAX) });
   if (error) return { ok: false, state: 'error' };
-  const res = data as { state: 'ok' | 'unknown' | 'expired' | 'superseded' | 'limit'; rows?: HitRow[] };
+  const res = data as { state: 'ok' | 'unknown' | 'expired' | 'superseded' | 'void' | 'limit'; rows?: HitRow[] };
   if (res.state !== 'ok') return { ok: false, state: res.state };
   return { ok: true, rows: (res.rows ?? []).map(toHit) };
 }
@@ -140,8 +141,13 @@ export async function loadMyInterests(sb: SupabaseClient, personId: number): Pro
 
 // ── the Invite tab's "New talent" ────────────────────────────────────────────────────────────────────────────────
 
-/** Interests added in the last 30 days, grouped by adult (newest adult first, their items newest first). */
-export async function loadNewTalent(sb: SupabaseClient, now: Date = new Date(), days = NEW_TALENT_DAYS): Promise<TalentGroup[]> {
+/**
+ * Interests added in the last 30 days, grouped by adult (newest adult first, their items newest first). Patrick
+ * (qa-lead B10c #1): only a planner editor who is an adult sees them, so a View-only or scout viewer gets nothing
+ * here, at the load; and only adults' interests are listed (never an active scout's, Junior Leaders included).
+ */
+export async function loadNewTalent(sb: SupabaseClient, viewer: Pick<PlannerAccess, 'canEdit' | 'canEmail'>, now: Date = new Date(), days = NEW_TALENT_DAYS): Promise<TalentGroup[]> {
+  if (!canSeeNewTalent(viewer)) return [];
   const since = new Date(now.getTime() - days * 86_400_000).toISOString();
   const { data, error } = await sb
     .from('teaching_interests')
@@ -154,7 +160,12 @@ export async function loadNewTalent(sb: SupabaseClient, now: Date = new Date(), 
     .limit(500);
   if (error) throw new Error(error.message);
   type Row = InterestRow & { people: { display_name: string } | { display_name: string }[] | null };
-  const rows = (data ?? []) as unknown as Row[];
+  const all = (data ?? []) as unknown as Row[];
+  const owners = [...new Set(all.map((r) => r.person_id))];
+  const { data: youth, error: youthErr } = owners.length ? await sb.from('scouts').select('person_id').eq('active', true).in('person_id', owners) : { data: [], error: null };
+  if (youthErr) throw new Error(youthErr.message);
+  const scouts = new Set(((youth ?? []) as { person_id: number }[]).map((y) => y.person_id));
+  const rows = all.filter((r) => !scouts.has(r.person_id));
   const words = await describeInterests(sb, rows.map((r) => r.topic_key));
   const groups = new Map<number, TalentGroup>();
   for (const r of rows) {

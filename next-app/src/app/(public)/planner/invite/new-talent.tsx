@@ -1,8 +1,9 @@
 /**
  * Build a Plan B10d: the Invite tab's collapsed "New talent (n)": what adults said they'd enjoy teaching in the last 30
- * days (teaching_interests), grouped by adult: the name, each item the short way, its note, the date. Anyone who can
- * view the planner sees it. Patrick: this is the ONLY place interests show on the Invite tab (no per-class tier), and
- * the engine and matcher ignore them. Notes are plain text: React escapes them and nothing links them.
+ * days (teaching_interests), grouped by adult: the name, each item the short way, its note, the date. Only planner
+ * editors who are adults see it, and only adults' interests are listed (loadNewTalent enforces both; qa-lead B10c #1).
+ * Patrick: this is the ONLY place interests show on the Invite tab (no per-class tier), and the engine and matcher
+ * ignore them. Notes are plain text: React escapes them and nothing links them.
  */
 import { fmtDate } from '@/lib/format-date';
 import type { TalentGroup } from '@/lib/teaching-interests-shared';

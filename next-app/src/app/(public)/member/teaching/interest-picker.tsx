@@ -6,8 +6,12 @@
  * /member/teaching (signed in). Search the whole catalog, add requirements or whole merit badges, give each an optional
  * short note, then "Save interests". It saves on its own, apart from any other form on the page. Notes are plain
  * text: React escapes them and nothing ever turns them into links.
+ *
+ * Accessibly (qa-lead B10c #2–#5): a persistent status announces each search ("3 results" / "Nothing matches"); an
+ * added result keeps its label in its name ("…, added"); removing a pick moves focus to the next pick's Remove, or to
+ * the "Your picks" heading when none is left; Save stays enabled and, pressed with nothing picked, says why in place.
  */
-import { useId, useState, useTransition } from 'react';
+import { useEffect, useId, useRef, useState, useTransition } from 'react';
 import { Button } from '@/app/_components/button';
 import { Notice } from '@/app/_components/notice';
 import { SaveProblem, TextInput } from '@/app/_components/form';
@@ -23,6 +27,8 @@ interface Picked {
   now: boolean;
 }
 
+const NOTHING_PICKED = 'Add something first: search above, then press + Add.';
+
 export function InterestPicker({ search, save, allowNow, onSaved }: { search: SearchFn; save: SaveFn; allowNow: boolean; onSaved?: () => void }) {
   const id = useId();
   const [q, setQ] = useState('');
@@ -33,8 +39,22 @@ export function InterestPicker({ search, save, allowNow, onSaved }: { search: Se
   const [message, setMessage] = useState<string | null>(null);
   const [searching, startSearch] = useTransition();
   const [saving, startSave] = useTransition();
+  const listRef = useRef<HTMLUListElement | null>(null);
+  const headingRef = useRef<HTMLHeadingElement | null>(null);
+  /** After a Remove: the index whose Remove takes focus once the list re-renders. */
+  const focusAt = useRef<number | null>(null);
   const nowCount = picked.filter((p) => p.now).length;
   const full = picked.length >= INTEREST_SUBMIT_CAP;
+  const blocked = problem === NOTHING_PICKED;
+
+  useEffect(() => {
+    const at = focusAt.current;
+    if (at == null) return;
+    focusAt.current = null;
+    const buttons = listRef.current?.querySelectorAll<HTMLButtonElement>('button[data-remove]');
+    if (buttons?.length) buttons[Math.min(at, buttons.length - 1)].focus();
+    else headingRef.current?.focus();
+  }, [picked]);
 
   function runSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -53,7 +73,14 @@ export function InterestPicker({ search, save, allowNow, onSaved }: { search: Se
 
   function add(hit: InterestHit) {
     setMessage(null);
+    setProblem(null);
     setPicked((p) => (p.some((x) => x.hit.key === hit.key) || p.length >= INTEREST_SUBMIT_CAP ? p : [...p, { hit, note: '', now: false }]));
+  }
+
+  function remove(key: string) {
+    const at = picked.findIndex((x) => x.hit.key === key);
+    focusAt.current = Math.max(at, 0);
+    setPicked((p) => p.filter((x) => x.hit.key !== key));
   }
 
   function patch(key: string, change: Partial<Picked>) {
@@ -61,7 +88,12 @@ export function InterestPicker({ search, save, allowNow, onSaved }: { search: Se
   }
 
   function submit() {
-    if (!picked.length) return;
+    if (saving) return;
+    setMessage(null);
+    if (!picked.length) {
+      setProblem(NOTHING_PICKED);
+      return;
+    }
     setProblem(null);
     startSave(async () => {
       const res = await save(
@@ -79,6 +111,7 @@ export function InterestPicker({ search, save, allowNow, onSaved }: { search: Se
   }
 
   const pickedKeys = new Set(picked.map((p) => p.hit.key));
+  const resultsSaid = rows == null ? '' : rows.length ? `${rows.length} ${rows.length === 1 ? 'result' : 'results'}` : 'Nothing matches';
   return (
     <div className={styles.picker}>
       <form role="search" onSubmit={runSearch} className={styles.searchRow}>
@@ -101,57 +134,70 @@ export function InterestPicker({ search, save, allowNow, onSaved }: { search: Se
         </div>
       </form>
       {searchProblem && <Notice tone="error">{searchProblem}</Notice>}
-      {rows && (
-        <ul className={styles.results} aria-label="Search results">
-          {rows.length === 0 && <li className={styles.meta}>Nothing matches. Try other words.</li>}
-          {rows.map((r) => (
-            <li key={r.key} className={styles.result}>
-              <span>{interestShort(r)}</span>
-              <Button variant="ghost" onClick={() => add(r)} disabled={pickedKeys.has(r.key) || full} aria-label={`Add ${interestShort(r)}`}>
-                {pickedKeys.has(r.key) ? 'Added' : '+ Add'}
-              </Button>
-            </li>
-          ))}
-        </ul>
-      )}
-      {full && <p className={styles.meta}>That’s {INTEREST_SUBMIT_CAP}, the most for one save. Save these, then add more.</p>}
-      {picked.length > 0 && (
-        <ul className={styles.picked} aria-label="Your picks">
-          {picked.map((p) => {
-            const label = interestShort(p.hit);
-            const nowOff = !p.now && nowCount >= INTEREST_NOW_CAP;
+      <p role="status" aria-label="Search results" className={styles.meta}>
+        {resultsSaid}
+      </p>
+      {rows && rows.length > 0 && (
+        <ul className={styles.results} aria-label="Search results list">
+          {rows.map((r) => {
+            const label = interestShort(r);
+            const added = pickedKeys.has(r.key);
             return (
-              <li key={p.hit.key} className={styles.pick}>
-                <div className={styles.pickHead}>
-                  <strong>{label}</strong>
-                  <Button variant="ghost" onClick={() => setPicked((x) => x.filter((y) => y.hit.key !== p.hit.key))} aria-label={`Remove ${label}`}>
-                    Remove
-                  </Button>
-                </div>
-                <label className={styles.noteLabel}>
-                  <span>Note (optional)</span>
-                  <TextInput
-                    type="text"
-                    className={styles.input}
-                    value={p.note}
-                    maxLength={INTEREST_NOTE_MAX}
-                    placeholder="e.g. I teach this at work"
-                    onChange={(e) => patch(p.hit.key, { note: e.target.value })}
-                  />
-                </label>
-                {allowNow && canTeachNow(p.hit.key) && (
-                  <label className={styles.now}>
-                    <input type="checkbox" checked={p.now} disabled={nowOff} onChange={(e) => patch(p.hit.key, { now: e.target.checked })} />
-                    <span>Also this Sunday{nowOff ? ` (up to ${INTEREST_NOW_CAP})` : ''}</span>
-                  </label>
-                )}
+              <li key={r.key} className={styles.result}>
+                <span>{label}</span>
+                <Button variant="ghost" onClick={() => add(r)} disabled={added || full} aria-label={added ? `${label}, added` : `Add ${label}`}>
+                  {added ? 'Added' : '+ Add'}
+                </Button>
               </li>
             );
           })}
         </ul>
       )}
+      {full && <p className={styles.meta}>That’s {INTEREST_SUBMIT_CAP}, the most for one save. Save these, then add more.</p>}
+      <section className={blocked ? `${styles.picks} ${styles.bad}` : styles.picks} aria-labelledby={`${id}-picks`}>
+        <h3 id={`${id}-picks`} ref={headingRef} tabIndex={-1} className={styles.picksHead}>
+          Your picks
+        </h3>
+        {picked.length === 0 ? (
+          <p className={styles.meta}>Nothing picked yet.</p>
+        ) : (
+          <ul className={styles.picked} ref={listRef}>
+            {picked.map((p) => {
+              const label = interestShort(p.hit);
+              const nowOff = !p.now && nowCount >= INTEREST_NOW_CAP;
+              return (
+                <li key={p.hit.key} className={styles.pick}>
+                  <div className={styles.pickHead}>
+                    <strong>{label}</strong>
+                    <Button variant="ghost" data-remove="" onClick={() => remove(p.hit.key)} aria-label={`Remove ${label}`}>
+                      Remove
+                    </Button>
+                  </div>
+                  <label className={styles.noteLabel}>
+                    <span>Note (optional)</span>
+                    <TextInput
+                      type="text"
+                      className={styles.input}
+                      value={p.note}
+                      maxLength={INTEREST_NOTE_MAX}
+                      placeholder="e.g. I teach this at work"
+                      onChange={(e) => patch(p.hit.key, { note: e.target.value })}
+                    />
+                  </label>
+                  {allowNow && canTeachNow(p.hit.key) && (
+                    <label className={styles.now}>
+                      <input type="checkbox" checked={p.now} disabled={nowOff} onChange={(e) => patch(p.hit.key, { now: e.target.checked })} />
+                      <span>Also this Sunday{nowOff ? ` (up to ${INTEREST_NOW_CAP})` : ''}</span>
+                    </label>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
       <div className={styles.foot}>
-        <Button variant="primary" onClick={submit} disabled={!picked.length || saving} title={picked.length ? undefined : 'Add something first'}>
+        <Button variant="primary" onClick={submit} aria-disabled={saving || undefined}>
           {saving ? 'Saving…' : 'Save interests'}
         </Button>
         <span role="status" aria-live="polite" className={styles.meta}>
