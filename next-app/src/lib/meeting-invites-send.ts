@@ -31,7 +31,7 @@ import { INVITE_SENDER_NAME } from '@/lib/meeting-invites';
 import { focusPicks, loadFocusTopics, loadTopicWordsFor } from '@/lib/meeting-focus-db';
 import { createPickInvites, createReminders, createTeachInvites, deleteInvites, type ReminderRecipient } from '@/lib/meeting-invites-db';
 import { siteUrl } from '@/lib/site-url';
-import { scoutFirstNames } from '@/lib/parent-email';
+import { parentPs, personIdsWithEmail, scoutFirstNames } from '@/lib/parent-email';
 
 /** An invite's words: catalog keys from the catalog, a focus group or freeform topic from its row on this meeting. */
 export async function inviteWords(sb: SupabaseClient, entryId: number, key: string) {
@@ -261,6 +261,7 @@ export async function sendPickInvites(sb: SupabaseClient, input: { entryId: numb
     ((names ?? []) as { id: number; nickname: string | null; first_name: string | null; display_name: string }[]).map((p) => [p.id, p.nickname || p.first_name || p.display_name])
   );
   const day = entry ? fmtDateFull((entry as { entry_date: string }).entry_date) : 'Sunday';
+  const pickWithEmail = await personIdsWithEmail(sb, made.recipients.flatMap((r) => (r.isScout ? [] : r.scouts.map((s) => s.scoutId))));
 
   const sentTo: string[] = [];
   const offered = new Set<string>();
@@ -272,6 +273,7 @@ export async function sendPickInvites(sb: SupabaseClient, input: { entryId: numb
       const first = scoutFirstNames(r.scouts.map((s) => ({ personId: s.scoutId, name: s.scoutName })));
       const nameIn = (s: (typeof r.scouts)[number]) => first.get(s.scoutId) ?? boardName(s.scoutName);
       const scoutNames = r.scouts.map(nameIn);
+      const postscript = r.isScout ? null : parentPs(r.scouts.map((s) => ({ personId: s.scoutId, name: nameIn(s) })), pickWithEmail, siteUrl());
       const { subject, md } = renderPickInvite(
         template,
         {
@@ -285,7 +287,7 @@ export async function sendPickInvites(sb: SupabaseClient, input: { entryId: numb
         r.scouts.map((s) => ({ scoutName: nameIn(s), url: `${siteUrl()}/i/${s.token}` })),
         r.isScout
       );
-      const { html, text } = renderMarkdownEmail({ md });
+      const { html, text } = renderMarkdownEmail({ md, postscript });
       const res = await sendEmail({ to: [r.sentTo], subject, html, text, confirm: true, fromName: INVITE_SENDER_NAME });
       if (res.status === 'sent') {
         sentTo.push(r.name);
@@ -349,15 +351,19 @@ export function sendEmailWithin(ms: number, opts: Parameters<typeof sendEmail>[0
   return Promise.race([sendEmail(opts), timeout]).finally(() => clearTimeout(timer));
 }
 
-/** 'you', 'Anjali and Finn', or 'you and Finn' when the recipient is among the people they're reminded about. A
- *  parent's own scouts go by first name (lib/parent-email). */
+/** A parent's own scouts in a reminder, by first name (lib/parent-email); none for a scout's own copy. */
+function reminderScouts(r: ReminderRecipient): { personId: number; name: string }[] {
+  if (r.isScout) return [];
+  const others = r.people.filter((p) => p.personId !== r.recipientId);
+  const first = scoutFirstNames(others);
+  return others.map((p) => ({ personId: p.personId, name: first.get(p.personId) ?? boardName(p.name) }));
+}
+
+/** 'you', 'Anjali and Finn', or 'you and Finn' when the recipient is among the people they're reminded about. */
 function reminderPeople(r: ReminderRecipient): string {
   if (r.isScout) return 'you';
   const self = r.people.some((p) => p.personId === r.recipientId);
-  const others = r.people.filter((p) => p.personId !== r.recipientId);
-  const first = scoutFirstNames(others);
-  const names = others.map((p) => first.get(p.personId) ?? boardName(p.name));
-  return [...(self ? ['you'] : []), ...names].join(' and ');
+  return [...(self ? ['you'] : []), ...reminderScouts(r).map((p) => p.name)].join(' and ');
 }
 
 export async function sendReminders(
@@ -387,13 +393,15 @@ export async function sendReminders(
     );
     const day = entry ? fmtDateFull((entry as { entry_date: string }).entry_date) : 'Sunday';
     const url = `${siteUrl()}/member/meeting`;
+    const withEmail = await personIdsWithEmail(sb, made.recipients.flatMap((r) => reminderScouts(r).map((p) => p.personId)));
 
     /** One recipient: sent, or their rows are gone (or back in the final sweep) before this returns. Never throws. */
     const remindOne = async (r: ReminderRecipient): Promise<void> => {
       let reason = 'the email didn’t go out';
       try {
         const { subject, md } = renderReminder(template, { name: firstName.get(r.recipientId) ?? r.name, people: reminderPeople(r), day });
-        const { html, text } = renderMarkdownEmail({ md, actionUrl: url, actionLabel: 'Answer on the meeting page' });
+        const postscript = parentPs(reminderScouts(r), withEmail, siteUrl());
+        const { html, text } = renderMarkdownEmail({ md, actionUrl: url, actionLabel: 'Answer on the meeting page', postscript });
         const res = await sendEmailWithin(REMINDER_EMAIL_TIMEOUT_MS, { to: [r.sentTo], subject, html, text, confirm: true, fromName: INVITE_SENDER_NAME });
         if (res !== EMAIL_TIMED_OUT && res.status === 'sent') {
           emails++;

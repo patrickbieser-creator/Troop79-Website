@@ -160,16 +160,25 @@ export function markdownToEmailText(md: string): string {
     .join('\n\n');
 }
 
-/** Complete message: the shared shell around the markdown body. */
-export function renderMarkdownEmail(opts: { md: string; actionUrl?: string; actionLabel?: string }): { html: string; text: string } {
+/**
+ * Complete message: the shared shell around the markdown body. `postscript` (markdown) goes after the action button,
+ * outside any editable template, so a template edit can't drop it (a parent email's P.S., 2026-10-22).
+ */
+export function renderMarkdownEmail(opts: { md: string; actionUrl?: string; actionLabel?: string; postscript?: string | null }): { html: string; text: string } {
   const body = markdownToEmailHtml(opts.md);
   const button = opts.actionUrl
     ? `<p style="margin:4px 0 16px"><a href="${esc(opts.actionUrl)}" style="background:#1e3a4a;color:#fff;text-decoration:none;padding:9px 18px;border-radius:3px;display:inline-block">${esc(opts.actionLabel ?? 'Open')}</a></p>`
     : '';
   const html = `<div style="font-family:-apple-system,Segoe UI,Arial,sans-serif;font-size:15px;line-height:1.55;color:#363636;max-width:560px">
 ${body}
-${button}<p style="margin:18px 0 0;font-size:12px;color:#787060">Scout Troop 79 · Milwaukee, WI</p>
+${button}${opts.postscript ? `${markdownToEmailHtml(opts.postscript)}\n` : ''}<p style="margin:18px 0 0;font-size:12px;color:#787060">Scout Troop 79 · Milwaukee, WI</p>
 </div>`;
-  const text = [markdownToEmailText(opts.md), ...(opts.actionUrl ? ['', `${opts.actionLabel ?? 'Open'}: ${opts.actionUrl}`] : []), '', 'Scout Troop 79 - Milwaukee, WI'].join('\n');
+  const text = [
+    markdownToEmailText(opts.md),
+    ...(opts.actionUrl ? ['', `${opts.actionLabel ?? 'Open'}: ${opts.actionUrl}`] : []),
+    ...(opts.postscript ? ['', markdownToEmailText(opts.postscript)] : []),
+    '',
+    'Scout Troop 79 - Milwaukee, WI'
+  ].join('\n');
   return { html, text };
 }

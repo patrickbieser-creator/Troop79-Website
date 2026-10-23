@@ -22,7 +22,7 @@ import { EMAIL_TIMED_OUT, inviteWords, REMINDER_BATCH, REMINDER_EMAIL_TIMEOUT_MS
 import { createInviteDigest, type DigestInput, type DigestRecipient } from '@/lib/meeting-invite-digest-db';
 import { digestPeople } from '@/lib/meeting-invite-digest';
 import { siteUrl } from '@/lib/site-url';
-import { scoutFirstNames } from '@/lib/parent-email';
+import { parentPs, personIdsWithEmail, scoutFirstNames } from '@/lib/parent-email';
 
 /** The digest's copy as it would go out now: the saved template, else the default (B6's Preview renders with it). */
 export async function loadDigestTemplate(sb: SupabaseClient): Promise<InviteTemplate> {
@@ -67,6 +67,8 @@ export async function sendInviteDigests(
       ((names ?? []) as { id: number; nickname: string | null; first_name: string | null; display_name: string }[]).map((p) => [p.id, p.nickname || p.first_name || p.display_name])
     );
     const day = entry ? fmtDateFull((entry as { entry_date: string }).entry_date) : 'Sunday';
+    // The P.S.: which of the scouts named in parents' emails have an address on file (one read for the whole send).
+    const withEmail = await personIdsWithEmail(sb, made.recipients.flatMap((r) => (r.isScout ? [] : r.invites.filter((i) => i.kind === 'pick').map((i) => i.inviteeId))));
 
     /** One recipient: sent, or their rows are gone (or back in the final sweep) before this returns. Never throws. */
     const sendOne = async (r: DigestRecipient): Promise<void> => {
@@ -93,7 +95,9 @@ export async function sendInviteDigests(
           };
         });
         const { subject, md } = renderInviteDigest(template, { name: firstName.get(r.recipientId) ?? r.name, people: digestPeople(r.recipientId, r.isScout, about), day }, items);
-        const { html, text } = renderMarkdownEmail({ md });
+        const pickScouts = [...new Map(r.invites.filter((i) => i.kind === 'pick').map((i) => [i.inviteeId, { personId: i.inviteeId, name: scoutName(i) }])).values()];
+        const postscript = r.isScout ? null : parentPs(pickScouts, withEmail, siteUrl());
+        const { html, text } = renderMarkdownEmail({ md, postscript });
         const res = await sendEmailWithin(REMINDER_EMAIL_TIMEOUT_MS, { to: [r.sentTo], subject, html, text, confirm: true, fromName: INVITE_SENDER_NAME });
         if (res !== EMAIL_TIMED_OUT && res.status === 'sent') {
           emails++;

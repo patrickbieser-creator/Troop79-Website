@@ -7,6 +7,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
  * /i/<token> link; a recipient whose email didn't go out takes their rows with them.
  */
 const m = vi.hoisted(() => ({ create: vi.fn(), del: vi.fn(), send: vi.fn(), audit: vi.fn() }));
+const emails = vi.hoisted(() => new Set<number>());
 vi.mock('@/lib/meeting-invite-digest-db', () => ({ createInviteDigest: m.create }));
 vi.mock('@/lib/meeting-invites-db', async (orig) => ({ ...(await orig<typeof import('../src/lib/meeting-invites-db')>()), deleteInvites: m.del }));
 vi.mock('@/lib/meeting-invites-send', async (orig) => ({
@@ -18,15 +19,16 @@ vi.mock('@/lib/audit', () => ({ recordAudit: m.audit }));
 vi.mock('@/lib/site-url', () => ({ siteUrl: () => 'https://www.troop-79.com' }));
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn(), updateTag: vi.fn(), unstable_cache: (fn: unknown) => fn }));
 
-const chain = () => {
+const chain = (table: string) => {
   const q: Record<string, unknown> = {};
   for (const k of ['select', 'eq', 'is', 'in', 'order', 'limit']) q[k] = () => q;
   q.single = async () => ({ data: { entry_date: '2092-11-02' } });
   q.maybeSingle = async () => ({ data: null });
-  q.then = (res: (v: unknown) => void) => res({ data: [] });
+  // person_emails: who has an address on file (the P.S.); everything else reads empty.
+  q.then = (res: (v: unknown) => void) => res({ data: table === 'person_emails' ? [...emails].map((person_id) => ({ person_id })) : [] });
   return q;
 };
-const sb = { from: () => chain() } as unknown as SupabaseClient;
+const sb = { from: (table: string) => chain(table) } as unknown as SupabaseClient;
 
 const { sendInviteDigests } = await import('../src/lib/meeting-invite-digest-send');
 const { REMINDER_BATCH, REMINDER_EMAIL_TIMEOUT_MS, REMINDER_TIME_BUDGET_MS } = await import('../src/lib/meeting-invites-send');
@@ -49,6 +51,7 @@ const input = { entryId: 5, teach: [{ key: 'tenderfoot-4a', personIds: [41] }], 
 beforeEach(() => {
   for (const f of Object.values(m)) f.mockReset();
   m.del.mockResolvedValue(true);
+  emails.clear();
 });
 
 describe('the digest email', () => {
@@ -67,6 +70,36 @@ describe('the digest email', () => {
     await sendInviteDigests(sb, input);
     const text = (m.send.mock.calls[0][0] as { text: string }).text;
     expect([text.includes('Answer for Anjali'), text.includes('Anjali S')]).toEqual([true, false]);
+  });
+
+  it('Invite_Digest_ScoutWithNoEmail_GetsThePs', async () => {
+    m.create.mockResolvedValue({ ok: true, recipients: [parent], skipped: [] });
+    m.send.mockResolvedValue({ status: 'sent', to: [] });
+    await sendInviteDigests(sb, input);
+    expect((m.send.mock.calls[0][0] as { text: string }).text).toContain('P.S. If Anjali has an email address');
+  });
+
+  it('Invite_Digest_ScoutWithAnEmail_NoPs', async () => {
+    emails.add(7);
+    m.create.mockResolvedValue({ ok: true, recipients: [parent], skipped: [] });
+    m.send.mockResolvedValue({ status: 'sent', to: [] });
+    await sendInviteDigests(sb, input);
+    expect((m.send.mock.calls[0][0] as { text: string }).text).not.toContain('P.S.');
+  });
+
+  it('Invite_Digest_ScoutsOwnCopy_NoPs', async () => {
+    const own = { recipientId: 7, name: 'Anjali Smith', sentTo: 'a7@example.com', isScout: true, invites: [{ inviteId: 2, token: token(2), kind: 'pick' as const, key: 'tenderfoot-4a', inviteeId: 7, inviteeName: 'Anjali S' }] };
+    m.create.mockResolvedValue({ ok: true, recipients: [own], skipped: [] });
+    m.send.mockResolvedValue({ status: 'sent', to: [] });
+    await sendInviteDigests(sb, input);
+    expect((m.send.mock.calls[0][0] as { text: string }).text).not.toContain('P.S.');
+  });
+
+  it('Invite_Digest_TeachOnly_NoPs', async () => {
+    m.create.mockResolvedValue({ ok: true, recipients: [{ ...parent, invites: [parent.invites[0]] }], skipped: [] });
+    m.send.mockResolvedValue({ status: 'sent', to: [] });
+    await sendInviteDigests(sb, input);
+    expect((m.send.mock.calls[0][0] as { text: string }).text).not.toContain('P.S.');
   });
 
   it('Invite_DeletesRows_WhenDigestEmailFails', async () => {

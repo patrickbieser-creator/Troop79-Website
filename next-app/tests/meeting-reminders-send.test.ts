@@ -8,21 +8,23 @@ import type { SupabaseClient } from '@supabase/supabase-js';
  * transport throws, or the send runs out of time), and emails go out in small concurrent batches.
  */
 const m = vi.hoisted(() => ({ create: vi.fn(), del: vi.fn(), send: vi.fn(), audit: vi.fn() }));
+const emails = vi.hoisted(() => new Set<number>());
 vi.mock('@/lib/meeting-invites-db', () => ({ createReminders: m.create, deleteInvites: m.del, createTeachInvites: vi.fn(), createPickInvites: vi.fn() }));
 vi.mock('@/lib/email', () => ({ sendEmail: m.send }));
 vi.mock('@/lib/audit', () => ({ recordAudit: m.audit }));
 vi.mock('@/lib/site-url', () => ({ siteUrl: () => 'https://www.troop-79.com' }));
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn(), updateTag: vi.fn(), unstable_cache: (fn: unknown) => fn }));
 
-const chain = () => {
+const chain = (table: string) => {
   const q: Record<string, unknown> = {};
   for (const k of ['select', 'eq', 'is', 'in', 'order', 'limit']) q[k] = () => q;
   q.single = async () => ({ data: { entry_date: '2092-11-02' } });
   q.maybeSingle = async () => ({ data: null });
-  q.then = (res: (v: unknown) => void) => res({ data: [] });
+  // person_emails: who has an address on file (the P.S.); everything else reads empty.
+  q.then = (res: (v: unknown) => void) => res({ data: table === 'person_emails' ? [...emails].map((person_id) => ({ person_id })) : [] });
   return q;
 };
-const sb = { from: () => chain() } as unknown as SupabaseClient;
+const sb = { from: (table: string) => chain(table) } as unknown as SupabaseClient;
 
 const { sendReminders, REMINDER_BATCH, REMINDER_EMAIL_TIMEOUT_MS } = await import('../src/lib/meeting-invites-send');
 
@@ -37,6 +39,7 @@ const deleted = () => m.del.mock.calls.flatMap((c) => c[1] as number[]);
 
 beforeEach(() => {
   for (const f of [m.create, m.del, m.send, m.audit]) f.mockReset();
+  emails.clear();
   m.del.mockResolvedValue(true);
 });
 
@@ -72,6 +75,50 @@ describe('the reminder email', () => {
 
   it('Reminder_SameFirstNameSiblings_KeepTheirLastInitial', async () => {
     expect((await sendOne([[7, 'Sam Smith', 70], [8, 'Sam Jones', 80]])).text).toContain('an answer for Sam S and Sam J for');
+  });
+});
+
+describe('the P.S. about a scout email address (2026-10-22)', () => {
+  const mail = async (people: [number, string, number][], o: { isScout?: boolean } = {}) => {
+    m.create.mockResolvedValue({ ok: true, recipients: [{ ...recipient(41, people), isScout: o.isScout ?? false }], skipped: [] });
+    m.send.mockResolvedValue({ status: 'sent', to: [] });
+    await sendReminders(sb, { entryId: 5, personIds: people.map((p) => p[0]), sentBy: 82 });
+    return m.send.mock.calls[0][0] as { html: string; text: string };
+  };
+
+  it('Reminder_ScoutWithNoEmail_GetsThePs', async () => {
+    expect((await mail([[7, 'Anjali Smith', 70]])).text).toContain('P.S. If Anjali has an email address');
+  });
+
+  it('Reminder_ScoutWithAnEmail_NoPs', async () => {
+    emails.add(7);
+    expect((await mail([[7, 'Anjali Smith', 70]])).text).not.toContain('P.S.');
+  });
+
+  it('Reminder_TwoScoutsWithNoEmail_AreNamedTogether', async () => {
+    expect((await mail([[7, 'Anjali Smith', 70], [8, 'Leo Smith', 80]])).text).toContain('P.S. If Anjali or Leo has an email address');
+  });
+
+  it('Reminder_OnlyTheScoutWithNoEmail_IsNamed', async () => {
+    emails.add(8);
+    expect((await mail([[7, 'Anjali Smith', 70], [8, 'Leo Smith', 80]])).text).toContain('P.S. If Anjali has');
+  });
+
+  it('Reminder_ScoutsOwnCopy_NoPs', async () => {
+    expect((await mail([[7, 'Anjali Smith', 70]], { isScout: true })).text).not.toContain('P.S.');
+  });
+
+  it('Reminder_AdultAboutThemself_NoPs', async () => {
+    expect((await mail([[41, 'Kim Lee', 71]])).text).not.toContain('P.S.');
+  });
+
+  it('Reminder_Ps_LinksTheProfilePage', async () => {
+    expect((await mail([[7, 'Anjali Smith', 70]])).html).toContain('href="https://www.troop-79.com/profile"');
+  });
+
+  it('Reminder_Ps_ComesAfterTheButton', async () => {
+    const { html } = await mail([[7, 'Anjali Smith', 70]]);
+    expect(html.indexOf('P.S.') > html.indexOf('/member/meeting')).toBe(true);
   });
 });
 
