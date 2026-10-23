@@ -146,9 +146,10 @@ export async function startMeetingLive(sb: SupabaseClient, meeting: BoardMeeting
   const { snapshot } = await matchSnapshot(sb, meeting, catalog, rows, teach);
   const { data, error } = await sb.rpc('meeting_live_start', { p_entry: meeting.entryId, p_actor: actorPersonId, p_snapshot: snapshotJson(snapshot) });
   if (error) return { ok: false, error: sanitizeRpcError(error.message) };
-  // Rotations L1: the copy is the matcher's; reconcile lands the late picks it left out (a class with no teacher).
+  // Rotations L1: the copy is the matcher's; reconcile lands the late picks it left out (a class with no teacher). Live
+  // has started either way, so a failure here is logged, not returned: the next pick or Live edit reconciles again.
   const rec = await sb.rpc('meeting_reconcile', { p_entry: meeting.entryId });
-  if (rec.error) return { ok: false, error: sanitizeRpcError(rec.error.message) };
+  if (rec.error) console.error(`meeting_reconcile after start failed for entry ${meeting.entryId}: ${rec.error.message}`);
   return { ok: true, started: data === true };
 }
 

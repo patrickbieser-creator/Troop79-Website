@@ -233,6 +233,57 @@ describe('Rotations L1: unpinned scouts leave on their own', () => {
   });
 });
 
+describe('Rotations L1 qa: who reconcile leaves alone', () => {
+  it('CarriedPicks_NoPickList_NeverRemoved', async () => {
+    // A scout whose picks are carried (no list of their own on this board): the database can't see them, so it never
+    // decides they dropped one.
+    const [c] = await started([{ topic_key: key, rotation: 1, members: [ann] }]);
+    await answer(ben, 'coming');
+    expect(await membersOf(c)).toEqual([ann]);
+  });
+
+  it('Teacher_PicksTheirOwnTopic_DoesNotLand', async () => {
+    const [c] = await started([{ topic_key: key, rotation: 1 }]);
+    await sb.from('meeting_classes').update({ teacher_person_id: ann }).eq('id', c);
+    await pick(ann, key);
+    expect(await membersOf(c)).toEqual([]);
+  });
+
+  it('Adult_InAClass_IsUntouched', async () => {
+    const [c] = await started([{ topic_key: key, rotation: 1 }]);
+    await sb.from('meeting_class_members').insert({ class_id: c, person_id: editor });
+    await pick(ann, key);
+    await answer(ann, 'not_coming');
+    expect(await membersOf(c)).toEqual([editor]);
+  });
+
+  it('CantThenComing_LandsAgain', async () => {
+    const [c] = await started([{ topic_key: key, rotation: 1 }]);
+    await pick(ann, key);
+    await answer(ann, 'not_coming');
+    await answer(ann, 'coming');
+    expect(await membersOf(c)).toEqual([ann]);
+  });
+
+  it('PastMeeting_NothingMoves', async () => {
+    const { data } = await sb.from('calendar_entries').insert({ entry_date: '2020-05-03', category: 'Troop Meeting', title: `Troop Meeting ${TEST_PREFIX}` }).select('id').single();
+    const past = (data as { id: number }).id;
+    entries.push(past);
+    try {
+      const { data: t } = await sb.rpc('_meeting_topic_id', { p_entry: past, p_key: key });
+      await sb.from('meeting_boards').insert({ calendar_entry_id: past, live_started_at: new Date().toISOString() });
+      const { data: cl } = await sb.from('meeting_classes').insert({ calendar_entry_id: past, topic_id: t as number }).select('id').single();
+      const classId = (cl as { id: number }).id;
+      await sb.from('meeting_class_members').insert({ class_id: classId, person_id: ann, pinned: false });
+      await sb.from('meeting_intents').insert({ calendar_entry_id: past, person_id: ann, intent: 'not_coming' });
+      const { data: n } = await sb.rpc('meeting_reconcile', { p_entry: past });
+      expect([n, await membersOf(classId)]).toEqual([0, [ann]]);
+    } finally {
+      await clearMeeting(past);
+    }
+  });
+});
+
 describe('Rotations L1: a hand is never overruled', () => {
   it('MoveByHand_Pins_AndClearsNew', async () => {
     const [c1, c2] = await started([

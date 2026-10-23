@@ -30,8 +30,8 @@
 --      - every pick and answer, through deferred constraint triggers on meeting_topic_picks and meeting_intents (at
 --        commit, so merge_people and a carried-picks copy are reconciled once they are whole);
 --      - the server's Start (the TS calls meeting_reconcile after meeting_live_start).
---    Lock order: a pick write takes its per-scout board lock, then (at commit) the Live lock. No Live RPC takes a board
---    lock, so the two never wait on each other in opposite order.
+--    Lock order: a pick or answer write takes its per-scout board lock, then the Live lock (section 8b), then writes;
+--    a Live edit takes the Live lock and never a board lock. So the two never wait on each other in opposite order.
 -- 6. meeting_live_move_scout (redefined): a move by hand pins the scout in the class they land in and clears New;
 --    taking them out of a class (to the pool or another topic) holds them out of that topic; placing them in a topic
 --    clears its hold.
@@ -336,6 +336,117 @@ grant execute on function public._meeting_live_bump(bigint) to service_role;
 grant execute on function public.meeting_live_move_scout(bigint, bigint, bigint, bigint, bigint) to service_role;
 grant execute on function public.meeting_live_dismiss_new(bigint, bigint, bigint, bigint) to service_role;
 grant execute on function public.meeting_live_discard(bigint, bigint) to service_role;
+
+-- ── 8b. lock order: pick and answer writes take the Live lock up front (qa-lead, L1) ─────────────────────────────
+-- The deferred triggers reconcile at commit, under the Live lock. Without this, a pick that inserted a new topic would
+-- wait at commit for the Live lock while a Live edit holding it waited on that topic's uncommitted key: a deadlock
+-- Postgres breaks by failing one of them. Every pick write starts in _meeting_pick_guard and every answer in
+-- meeting_set_intent (meeting_answer_pick_invite goes through meeting_add_pick); both now take the per-scout board
+-- lock, then the Live lock when the meeting has an arrangement, then write. A Live edit never takes a board lock, so
+-- the order is always board → Live → rows. Bodies are pg_get_functiondef's, with only the marked lines added.
+-- Known, accepted: merge_people locks both people rows first and reconciles at commit; a Live edit placing one of
+-- those two people in that same instant could deadlock (Postgres fails one; the merge or the move is retried).
+create or replace function public._meeting_live_lock_if_started(p_entry bigint) returns void
+language plpgsql
+security invoker
+set search_path = public, pg_temp
+as $$
+begin
+  if (select live_started_at from meeting_boards where calendar_entry_id = p_entry) is not null then
+    perform public._meeting_live_lock(p_entry);
+  end if;
+end;
+$$;
+
+CREATE OR REPLACE FUNCTION public._meeting_pick_guard(p_entry bigint, p_person bigint, p_actor bigint, p_leader boolean, p_carry jsonb, p_op text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  c jsonb;
+  v_topic bigint;
+begin
+  perform pg_advisory_xact_lock(hashtextextended(format('meeting_board:%s:%s', p_entry, p_person), 0));
+  -- Rotations L1: the Live lock next, before any row is written, so this write's reconcile (at commit) never waits
+  -- on a Live edit that is waiting on this write's rows.
+  perform public._meeting_live_lock_if_started(p_entry);
+  if not exists (select 1 from calendar_entries where id = p_entry) then
+    raise exception 'That meeting no longer exists.';
+  end if;
+  if (select entry_date from calendar_entries where id = p_entry) < (now() at time zone 'America/Chicago')::date then
+    raise exception 'That meeting has passed.';
+  end if;
+  if not exists (select 1 from scouts where person_id = p_person and active) then
+    raise exception 'Picks are for scouts.';
+  end if;
+  if not public._meeting_may_act_for(p_actor, p_person, p_leader) then
+    raise exception 'You can only pick for yourself or the scouts in your household.';
+  end if;
+  if p_op = 'add' and public.meeting_board_mode(p_entry) <> 'rank' then
+    raise exception 'There are no picks for this meeting.';
+  end if;
+  if exists (select 1 from meeting_pick_lists where calendar_entry_id = p_entry and person_id = p_person) then
+    return;
+  end if;
+  insert into meeting_pick_lists (calendar_entry_id, person_id) values (p_entry, p_person);
+  for c in select * from jsonb_array_elements(coalesce(p_carry, '[]'::jsonb)) loop
+    exit when (select count(*) from meeting_topic_picks where calendar_entry_id = p_entry and person_id = p_person) >= 5;
+    v_topic := public._meeting_topic_id(p_entry, c->>'topic_key');
+    continue when v_topic is null;
+    insert into meeting_topic_picks (topic_id, calendar_entry_id, person_id, priority, first_asked_on, note, later, entered_by_person_id)
+    values (
+      v_topic, p_entry, p_person,
+      nullif(c->>'priority', '')::smallint,
+      coalesce(nullif(c->>'first_asked_on', '')::date, (now() at time zone 'America/Chicago')::date),
+      nullif(left(btrim(coalesce(c->>'note', '')), 200), ''),
+      false,
+      nullif(c->>'entered_by_person_id', '')::bigint
+    )
+    on conflict (topic_id, person_id) do nothing;
+  end loop;
+  -- A carried order with gaps (a finished pick dropped off) renumbers 1..n; an unranked list stays unranked.
+  update meeting_topic_picks p set priority = o.n
+    from (
+      select topic_id, row_number() over (order by priority, topic_id) as n
+        from meeting_topic_picks where calendar_entry_id = p_entry and person_id = p_person and priority is not null
+    ) o
+   where p.topic_id = o.topic_id and p.person_id = p_person;
+end;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.meeting_set_intent(p_entry bigint, p_person bigint, p_actor bigint, p_leader boolean, p_intent text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+begin
+  perform pg_advisory_xact_lock(hashtextextended(format('meeting_board:%s:%s', p_entry, p_person), 0));
+  -- Rotations L1: the Live lock next, before any row is written, so this write's reconcile (at commit) never waits
+  -- on a Live edit that is waiting on this write's rows.
+  perform public._meeting_live_lock_if_started(p_entry);
+  if p_intent not in ('coming', 'undecided', 'not_coming') then raise exception 'Unknown answer %', p_intent; end if;
+  if not exists (select 1 from calendar_entries where id = p_entry) then
+    raise exception 'That meeting no longer exists.';
+  end if;
+  if (select entry_date from calendar_entries where id = p_entry) < (now() at time zone 'America/Chicago')::date then
+    raise exception 'That meeting has passed.';
+  end if;
+  if not public._meeting_may_act_for(p_actor, p_person, p_leader) then
+    raise exception 'You can only answer for yourself or the scouts in your household.';
+  end if;
+  if public.meeting_board_mode(p_entry) = 'closed' then
+    raise exception 'There are no sign-ups for this meeting.';
+  end if;
+  insert into meeting_intents (calendar_entry_id, person_id, intent, entered_by_person_id)
+  values (p_entry, p_person, p_intent, p_actor)
+  on conflict (calendar_entry_id, person_id)
+  do update set intent = excluded.intent, entered_by_person_id = excluded.entered_by_person_id, updated_at = now();
+end;
+$function$;
+
+revoke all on function public._meeting_live_lock_if_started(bigint) from public, anon, authenticated;
+grant execute on function public._meeting_live_lock_if_started(bigint) to service_role;
 
 -- ── 9. merge_people: pinned / is_new and holds ────────────────────────────────────────────────────────────────────
 -- Re-created from 20261223100000 (the current definition); the only changes are the class-member insert (+ pinned,

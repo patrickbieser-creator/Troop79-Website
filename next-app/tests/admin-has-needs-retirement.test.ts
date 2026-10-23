@@ -15,7 +15,10 @@ const landingFor = async (capabilities: string[]) => {
   const redirect = vi.fn((to: string) => {
     throw new Error(`REDIRECT ${to}`);
   });
-  vi.doMock('next/navigation', () => ({ redirect, permanentRedirect: redirect }));
+  const permanentRedirect = vi.fn((to: string) => {
+    throw new Error(`PERMANENT ${to}`);
+  });
+  vi.doMock('next/navigation', () => ({ redirect, permanentRedirect }));
   vi.doMock('@/lib/admin-actor', () => ({ resolveAdminActor: async () => ({ capabilities: new Set(capabilities), subjectKind: 'leader' }) }));
   const { default: Page } = await import(PAGE);
   try {
@@ -33,6 +36,11 @@ describe('Admin Has/Needs retirement', () => {
 
   it('AdminHasNeeds_WithoutPlannerRights_LandsOnAdminHome', async () => {
     expect(await landingFor(['advancement.write'])).toBe('REDIRECT /admin');
+  });
+
+  // qa-lead: the landing depends on the viewer's rights, so it must not be a cacheable 308.
+  it('AdminHasNeeds_RedirectIsTemporary', async () => {
+    expect(await landingFor(['advancement.write'])).not.toMatch(/^PERMANENT/);
   });
 
   it('AdminHasNeeds_ToolAndStylesAreGone', () => {
