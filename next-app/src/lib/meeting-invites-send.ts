@@ -31,6 +31,7 @@ import { INVITE_SENDER_NAME } from '@/lib/meeting-invites';
 import { focusPicks, loadFocusTopics, loadTopicWordsFor } from '@/lib/meeting-focus-db';
 import { createPickInvites, createReminders, createTeachInvites, deleteInvites, type ReminderRecipient } from '@/lib/meeting-invites-db';
 import { siteUrl } from '@/lib/site-url';
+import { scoutFirstNames } from '@/lib/parent-email';
 
 /** An invite's words: catalog keys from the catalog, a focus group or freeform topic from its row on this meeting. */
 export async function inviteWords(sb: SupabaseClient, entryId: number, key: string) {
@@ -267,7 +268,10 @@ export async function sendPickInvites(sb: SupabaseClient, input: { entryId: numb
   const unsent = new Set(made.recipients.flatMap((r) => r.scouts.map((s) => s.inviteId)));
   try {
     for (const r of made.recipients) {
-      const scoutNames = r.scouts.map((s) => boardName(s.scoutName));
+      // A parent's email names their own scouts by first name (lib/parent-email).
+      const first = scoutFirstNames(r.scouts.map((s) => ({ personId: s.scoutId, name: s.scoutName })));
+      const nameIn = (s: (typeof r.scouts)[number]) => first.get(s.scoutId) ?? boardName(s.scoutName);
+      const scoutNames = r.scouts.map(nameIn);
       const { subject, md } = renderPickInvite(
         template,
         {
@@ -278,7 +282,7 @@ export async function sendPickInvites(sb: SupabaseClient, input: { entryId: numb
           parts: words.parts.map((p) => `${p.code} ${p.label}`),
           day
         },
-        r.scouts.map((s) => ({ scoutName: boardName(s.scoutName), url: `${siteUrl()}/i/${s.token}` })),
+        r.scouts.map((s) => ({ scoutName: nameIn(s), url: `${siteUrl()}/i/${s.token}` })),
         r.isScout
       );
       const { html, text } = renderMarkdownEmail({ md });
@@ -345,12 +349,15 @@ export function sendEmailWithin(ms: number, opts: Parameters<typeof sendEmail>[0
   return Promise.race([sendEmail(opts), timeout]).finally(() => clearTimeout(timer));
 }
 
-/** 'you', 'Anjali S and Finn S', or 'you and Finn S' when the recipient is among the people they're reminded about. */
+/** 'you', 'Anjali and Finn', or 'you and Finn' when the recipient is among the people they're reminded about. A
+ *  parent's own scouts go by first name (lib/parent-email). */
 function reminderPeople(r: ReminderRecipient): string {
   if (r.isScout) return 'you';
   const self = r.people.some((p) => p.personId === r.recipientId);
-  const others = r.people.filter((p) => p.personId !== r.recipientId).map((p) => boardName(p.name));
-  return [...(self ? ['you'] : []), ...others].join(' and ');
+  const others = r.people.filter((p) => p.personId !== r.recipientId);
+  const first = scoutFirstNames(others);
+  const names = others.map((p) => first.get(p.personId) ?? boardName(p.name));
+  return [...(self ? ['you'] : []), ...names].join(' and ');
 }
 
 export async function sendReminders(

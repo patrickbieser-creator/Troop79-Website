@@ -22,6 +22,7 @@ import { EMAIL_TIMED_OUT, inviteWords, REMINDER_BATCH, REMINDER_EMAIL_TIMEOUT_MS
 import { createInviteDigest, type DigestInput, type DigestRecipient } from '@/lib/meeting-invite-digest-db';
 import { digestPeople } from '@/lib/meeting-invite-digest';
 import { siteUrl } from '@/lib/site-url';
+import { scoutFirstNames } from '@/lib/parent-email';
 
 /** The digest's copy as it would go out now: the saved template, else the default (B6's Preview renders with it). */
 export async function loadDigestTemplate(sb: SupabaseClient): Promise<InviteTemplate> {
@@ -71,16 +72,19 @@ export async function sendInviteDigests(
     const sendOne = async (r: DigestRecipient): Promise<void> => {
       let reason = 'the email didn’t go out';
       try {
+        // A parent's email names their own scouts by first name (lib/parent-email); teach asks keep theirs.
+        const first = r.isScout ? new Map<number, string>() : scoutFirstNames(r.invites.filter((i) => i.kind === 'pick').map((i) => ({ personId: i.inviteeId, name: i.inviteeName })));
+        const scoutName = (i: DigestRecipient['invites'][number]) => (i.kind === 'pick' ? (first.get(i.inviteeId) ?? i.inviteeName) : i.inviteeName);
         // Who it's about: the scouts it offers to, and the recipient themself when it asks them to teach.
         const about = [
-          ...r.invites.filter((i) => i.kind === 'pick').map((i) => ({ personId: i.inviteeId, name: i.inviteeName })),
+          ...r.invites.filter((i) => i.kind === 'pick').map((i) => ({ personId: i.inviteeId, name: scoutName(i) })),
           ...(r.invites.some((i) => i.kind === 'teach') ? [{ personId: r.recipientId, name: '' }] : [])
         ];
         const items = r.invites.map((i) => {
           const w = words.get(i.key)!;
           return {
             kind: i.kind,
-            inviteeName: i.inviteeName,
+            inviteeName: scoutName(i),
             aboutRecipient: i.kind === 'teach' || r.isScout,
             code: w.codeLabel,
             topic: w.label,

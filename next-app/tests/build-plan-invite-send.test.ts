@@ -60,6 +60,15 @@ describe('the digest email', () => {
     expect(new Set(text.match(/\/i\/[0-9a-f]{64}/g))).toEqual(new Set([1, 2, 3].map((n) => `/i/${token(n)}`)));
   });
 
+  // Patrick, 2026-10-22: a parent's email names their own scout by first name; the teach ask is untouched.
+  it('Invite_Digest_ScoutLine_UsesTheFirstName', async () => {
+    m.create.mockResolvedValue({ ok: true, recipients: [parent], skipped: [] });
+    m.send.mockResolvedValue({ status: 'sent', to: [] });
+    await sendInviteDigests(sb, input);
+    const text = (m.send.mock.calls[0][0] as { text: string }).text;
+    expect([text.includes('Answer for Anjali'), text.includes('Anjali S')]).toEqual([true, false]);
+  });
+
   it('Invite_DeletesRows_WhenDigestEmailFails', async () => {
     m.create.mockResolvedValue({ ok: true, recipients: [parent, other], skipped: [] });
     m.send.mockResolvedValueOnce({ status: 'sent', to: [] }).mockResolvedValueOnce({ status: 'error', to: [] });

@@ -62,7 +62,16 @@ describe('the reminder email', () => {
   });
 
   it('Reminder_SaysYou_WhenTheRecipientIsAmongThePeople', async () => {
-    expect((await sendOne([[7, 'Anjali Smith', 70], [41, 'Kim Lee', 71]])).text).toContain('an answer for you and Anjali S');
+    expect((await sendOne([[7, 'Anjali Smith', 70], [41, 'Kim Lee', 71]])).text).toContain('an answer for you and Anjali for');
+  });
+
+  // Patrick, 2026-10-22: a parent's email names their own scout by first name.
+  it('Reminder_NamesTheScoutByFirstName', async () => {
+    expect((await sendOne()).text).toContain('an answer for Anjali for');
+  });
+
+  it('Reminder_SameFirstNameSiblings_KeepTheirLastInitial', async () => {
+    expect((await sendOne([[7, 'Sam Smith', 70], [8, 'Sam Jones', 80]])).text).toContain('an answer for Sam S and Sam J for');
   });
 });
 
