@@ -25,11 +25,13 @@ import { pickMeeting, planRows, PLAN_MEETINGS } from '@/lib/build-plan';
 import { loadInviteTab } from '@/lib/meeting-invite-digest-db';
 import { loadDigestTemplate } from '@/lib/meeting-invite-digest-send';
 import type { InviteTabData } from '@/lib/meeting-invite-digest';
+import { loadNewTalent } from '@/lib/teaching-interests';
 import { PageHeader } from '@/app/_components/page-header';
 import { PageShell } from '@/app/_components/page-shell';
 import { Notice } from '@/app/_components/notice';
 import { PlannerTabs } from '../planner-tabs';
 import { InviteView } from './invite-client';
+import { NewTalent } from './new-talent';
 import styles from '../planner.module.css';
 import s from '../build/build.module.css';
 
@@ -84,9 +86,11 @@ export default async function InvitePage({ searchParams }: { searchParams: Promi
   if (!page) return null;
   const rows = planRows(page.board);
   let data: InviteTabData | null = { sections: [], recipients: {} };
-  const [tab, template] = await Promise.all([
+  const [tab, template, talent] = await Promise.all([
     readOnly || !rows.length ? Promise.resolve(data) : loadInviteTab(sb, meeting, rows.map((r) => r.key), { history: page.inviteRows }).catch(() => null),
-    loadDigestTemplate(sb)
+    loadDigestTemplate(sb),
+    // B10d: "New talent (n)". A failed read just leaves it off; the tab still works.
+    loadNewTalent(sb).catch(() => null)
   ]);
   data = tab;
 
@@ -128,6 +132,7 @@ export default async function InvitePage({ searchParams }: { searchParams: Promi
         template={template}
         day={fmtDateFull(meeting.date)}
         heading={heading}
+        talent={talent?.length ? <NewTalent groups={talent} /> : null}
       />
     </div>
   );

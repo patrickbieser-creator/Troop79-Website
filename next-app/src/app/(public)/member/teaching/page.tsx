@@ -16,6 +16,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { resolveMemberViewer } from '@/lib/member-viewer';
 import { centralToday } from '@/lib/dates';
 import { loadTeachingProfile } from '@/lib/teaching-skills';
+import { loadMyInterests } from '@/lib/teaching-interests';
 import { PageHeader } from '@/app/_components/page-header';
 import { PageShell } from '@/app/_components/page-shell';
 import { Button } from '@/app/_components/button';
@@ -23,6 +24,7 @@ import surface from '@/app/_components/card.module.css';
 import { MemberProxyBanner } from '../member-proxy-banner';
 import memberStyles from '../member.module.css';
 import { TeachingForm } from './teaching-form';
+import { MyInterests, type MyInterestRow } from './my-interests';
 import styles from './teaching.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -73,6 +75,15 @@ export default async function TeachingPage({ searchParams }: { searchParams: Pro
   const profile = !proxy && loaded.kind === 'adult' && session!.subjectKind !== 'adult' ? { ...loaded, kind: 'none' as const } : loaded;
   const back = proxy ? `/member?viewScout=${proxy.personId}` : '/member';
   const junior = profile.kind === 'junior';
+  // B10d: "Also enjoy teaching". "Add to what I can teach" only for a skill this card offers and they don't hold yet.
+  const offered = new Map(profile.skills.map((s) => [s.id, s]));
+  const interests: MyInterestRow[] =
+    profile.kind === 'none'
+      ? []
+      : (await loadMyInterests(supabase, personId)).map((i) => {
+          const skill = i.skillId ? offered.get(i.skillId) : undefined;
+          return { id: i.id, short: i.short, note: i.note, createdAt: i.createdAt, addSkill: skill && !skill.held ? { id: skill.id, name: skill.name } : null };
+        });
 
   return (
     <>
@@ -101,6 +112,11 @@ export default async function TeachingPage({ searchParams }: { searchParams: Pro
                 </p>
               )}
               <TeachingForm skills={profile.skills} junior={junior} readOnly={proxy != null} />
+            </div>
+            <div className={`${surface.card} ${styles.panel}`}>
+              <h2 className={styles.subHead}>Also enjoy teaching</h2>
+              <p className={styles.fine}>Requirements and merit badges you&rsquo;d enjoy teaching, now or some day. Leaders see these when they plan.</p>
+              <MyInterests items={interests} readOnly={proxy != null} />
             </div>
             {profile.kind === 'adult' && (
               <div className={`${surface.card} ${styles.panel}`}>

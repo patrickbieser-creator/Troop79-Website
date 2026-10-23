@@ -74,3 +74,14 @@
 .actions {
   margin-top: var(--sp-4);
 }
+/* B10c: "What else would you enjoy teaching" below the answers. */
+.talent {
+  margin-top: var(--sp-6);
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--rule);
+}
+.talentHead {
+  color: var(--text-head);
+  font-size: var(--fs-lg);
+  margin: 0 0 var(--sp-2);
+}

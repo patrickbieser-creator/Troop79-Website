@@ -76,7 +76,8 @@ export function InviteView({
   initialKey,
   template,
   day,
-  heading
+  heading,
+  talent = null
 }: {
   entryId: number;
   /** The plan's offerings (Build's rows). */
@@ -95,6 +96,8 @@ export function InviteView({
   /** 'Sunday, October 25, 2026': the digest's [day]. */
   day: string;
   heading: ReactNode;
+  /** B10d: the collapsed "New talent (n)" list (server-rendered). */
+  talent?: ReactNode;
 }) {
   const [data, setData] = useState(initialData);
   const sections = useMemo(() => data?.sections ?? [], [data]);
@@ -179,6 +182,7 @@ export function InviteView({
         <div className={s.solo}>
           <EmptyState action={<Link href={buildHref}>Build a Plan</Link>}>Nothing on the plan yet, so there’s nobody to invite.</EmptyState>
         </div>
+        {talent ? <div className={s.notices}>{talent}</div> : null}
       </>
     );
   }
@@ -251,6 +255,7 @@ export function InviteView({
             </ul>
           </details>
         ) : null}
+        {talent}
       </div>
       <div className={s.switch}>
         <span className={s.seg} role="radiogroup" aria-label="View">

@@ -10,7 +10,9 @@ import { minutesText } from '@/lib/meeting-board-picklist';
 import { scoutsHelpedText } from '@/lib/meeting-invite-digest';
 import { shortCode } from '@/lib/rank-abbrev';
 import type { TeachPageLine, TeachPageState } from '@/lib/meeting-teach-pages';
-import { answerTeachPageAction } from '../actions';
+import { answerTeachPageAction, saveTeachInterestsAction, searchTeachInterestsAction } from '../actions';
+import { InterestPicker } from '@/app/(public)/member/teaching/interest-picker';
+import type { InterestPick } from '@/lib/teaching-interests-shared';
 import styles from './teach-page.module.css';
 
 type Choice = 'yes' | 'no' | null;
@@ -152,6 +154,32 @@ export function TeachPageCard(props: {
           </div>
         )}
       </form>
+      {/* B10c: talent discovery, only while the page is open (a closed page returned above, so it has no picker). */}
+      <section className={styles.talent} aria-labelledby="talent-head">
+        <h2 id="talent-head" className={styles.talentHead}>
+          What else would you enjoy teaching, now or in the future?
+        </h2>
+        <FieldHint>Leaders keep these for later. Tick &ldquo;Also this Sunday&rdquo; to offer a requirement at this meeting too.</FieldHint>
+        <InterestPicker allowNow search={(q) => searchTeachInterestsAction(props.token, q)} save={(picks, now) => saveInterests(props.token, picks, now)} />
+      </section>
     </FormCard>
   );
+}
+
+/** Save, then say what happened, including any "Also this Sunday" the teach rules refused. */
+async function saveInterests(token: string, picks: InterestPick[], now: string[]): Promise<{ ok: true; message: string } | { ok: false; error: string }> {
+  const res = await saveTeachInterestsAction(token, picks, now);
+  if (!res.ok) return res;
+  const offered = res.now.filter((n) => n.ok).length;
+  const refused = res.now.filter((n) => !n.ok);
+  return {
+    ok: true,
+    message: [
+      `Saved ${res.saved === 1 ? '1 interest' : `${res.saved} interests`}. Thank you!`,
+      offered ? `You’re down to teach ${offered === 1 ? 'one more class' : `${offered} more classes`} this Sunday.` : '',
+      refused.length ? `${refused.length === 1 ? 'One' : refused.length} couldn’t be offered for this Sunday: ${refused[0].error ?? 'please try again'}` : ''
+    ]
+      .filter(Boolean)
+      .join(' ')
+  };
 }

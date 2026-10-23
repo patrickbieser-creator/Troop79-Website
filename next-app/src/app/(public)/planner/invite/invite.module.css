@@ -350,3 +350,24 @@
     min-height: 44px;
   }
 }
+
+/* ── B10d: "New talent (n)", collapsed, by adult ─────────────────────────────────────────────────────────────── */
+.talent {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--sp-3);
+}
+.talentPerson {
+  color: var(--text-head);
+}
+.talentItems {
+  margin: var(--sp-1) 0 0;
+  padding-left: var(--sp-5);
+  font-size: var(--fs-sm);
+  color: var(--text-body);
+}
+.talentNote {
+  overflow-wrap: anywhere;
+}
