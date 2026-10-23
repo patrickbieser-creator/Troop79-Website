@@ -98,6 +98,11 @@ const planTeachers = async (k: string) =>
   (((await sb.from('meeting_topic_teachers').select('person_id, meeting_topics!inner(topic_key)').eq('calendar_entry_id', meeting).eq('meeting_topics.topic_key', k)).data ?? []) as { person_id: number }[])
     .map((r) => r.person_id)
     .sort((a, b) => a - b);
+const leadOf = async (k: string) =>
+  (((await sb.from('meeting_topic_teachers').select('person_id, lead, meeting_topics!inner(topic_key)').eq('calendar_entry_id', meeting).eq('meeting_topics.topic_key', k)).data ?? []) as {
+    person_id: number;
+    lead: boolean;
+  }[]).find((r) => r.lead)?.person_id ?? null;
 const membersOf = async (classId: number) =>
   (((await sb.from('meeting_class_members').select('person_id').eq('class_id', classId)).data ?? []) as { person_id: number }[]).map((m) => m.person_id);
 const asEditor = () => (state.actor = { personId: editor, subjectKind: 'adult', capabilities: new Set(['meeting_planner.edit']) });
@@ -156,6 +161,14 @@ describe('Rotations L2: every offering has a class', () => {
     await seed(key);
     await unseed(key);
     expect(await classesFor(key)).toEqual([]);
+  });
+
+  // qa-lead: unseed can't delete a topic that has a class; reconcile takes the row once the class goes.
+  it('RemoveOffering_NothingHoldsIt_TheTopicRowGoes', async () => {
+    await start();
+    await seed(key);
+    await unseed(key);
+    expect((await sb.from('meeting_topics').select('id').eq('calendar_entry_id', meeting).eq('topic_key', key)).data).toEqual([]);
   });
 
   it('RemoveOffering_ScoutsStillPickIt_ClassStays', async () => {
@@ -229,16 +242,47 @@ describe('Rotations L2: one teacher', () => {
     const [c] = await classesFor(key);
     asEditor();
     const res = await (await live()).plannerLiveSetTeacherAction({ entryId: meeting, classId: `c:${c.id}`, version: c.version, teacherId: dan });
-    expect([res.ok, await planTeachers(key), (await classesFor(key))[0].teacher_person_id]).toEqual([true, [dan], dan]);
+    expect([res.ok, await leadOf(key), (await classesFor(key))[0].teacher_person_id]).toEqual([true, dan, dan]);
   });
 
-  it('CardTeacher_Cleared_TakesThePlanTeachersOff', async () => {
+  // qa-lead: choosing never deletes a sign-up; the volunteer who said Yes stays on the plan as a co-teacher.
+  it('CardTeacher_SingleClass_KeepsEveryoneElsesSignUp', async () => {
+    await start();
+    await teach(maria, key);
+    const [c] = await classesFor(key);
+    asEditor();
+    await (await live()).plannerLiveSetTeacherAction({ entryId: meeting, classId: `c:${c.id}`, version: c.version, teacherId: dan });
+    expect(await planTeachers(key)).toEqual([maria, dan].sort((a, b) => a - b));
+  });
+
+  it('CardTeacher_SingleClass_KeepsAnAssignedTeacher', async () => {
+    await start();
+    await teach(maria, key);
+    const { data: t } = await sb.from('meeting_topics').select('id').eq('calendar_entry_id', meeting).eq('topic_key', key).single();
+    await sb.from('meeting_topic_teachers').update({ for_picks: true }).eq('topic_id', (t as { id: number }).id).eq('person_id', maria);
+    const [c] = await classesFor(key);
+    asEditor();
+    await (await live()).plannerLiveSetTeacherAction({ entryId: meeting, classId: `c:${c.id}`, version: c.version, teacherId: dan });
+    expect((await planTeachers(key)).includes(maria)).toBe(true);
+  });
+
+  it('CardTeacher_Cleared_ThisClassOnly', async () => {
     await start();
     await teach(maria, key);
     const [c] = await classesFor(key);
     asEditor();
     await (await live()).plannerLiveSetTeacherAction({ entryId: meeting, classId: `c:${c.id}`, version: c.version, teacherId: null });
-    expect([await planTeachers(key), (await classesFor(key))[0]?.teacher_person_id]).toEqual([[], null]);
+    expect([await planTeachers(key), (await classesFor(key))[0]?.teacher_person_id]).toEqual([[maria], null]);
+  });
+
+  it('CardTeacher_SaidCant_IsRefused', async () => {
+    await start();
+    await teach(maria, key);
+    await answer(dan, 'not_coming');
+    const [c] = await classesFor(key);
+    asEditor();
+    const res = await (await live()).plannerLiveSetTeacherAction({ entryId: meeting, classId: `c:${c.id}`, version: c.version, teacherId: dan });
+    expect([res.ok, !res.ok && res.error, (await classesFor(key))[0].teacher_person_id]).toEqual([false, 'That teacher said they can’t make it.', maria]);
   });
 
   it('CardTeacher_Repeat_OnlyThatRepeat', async () => {
@@ -291,6 +335,36 @@ describe('Rotations L2: one teacher', () => {
     const first = (await classesFor(key))[0];
     await a.plannerLiveRemoveClassAction({ entryId: meeting, classId: `c:${first.id}`, version: first.version });
     expect((await classesFor(key)).map((x) => x.teacher_person_id)).toEqual([dan]);
+  });
+
+  // qa-lead: a plan teacher who signed up first doesn't take the class from the matcher's choice.
+  it('Start_MatcherTeacher_StaysWhenThePlanAlreadyHadOne', async () => {
+    await teach(maria, key2);
+    const { error } = await sb.rpc('meeting_live_start', {
+      p_entry: meeting,
+      p_actor: editor,
+      p_snapshot: { rotations: [], classes: [{ source_key: 't:0', topic_key: key2, title: null, rotation: 1, teacher_person_id: dan, position: 0, members: [] }] }
+    });
+    expect([error, (await classesFor(key2)).map((c) => c.teacher_person_id)]).toEqual([null, [dan]]);
+  });
+
+  it('Start_MatcherSplitIntoRepeats_EachKeepsItsTeacher', async () => {
+    await teach(maria, key2);
+    await sb.rpc('meeting_live_start', {
+      p_entry: meeting,
+      p_actor: editor,
+      p_snapshot: {
+        rotations: [],
+        classes: [
+          { source_key: 't:0', topic_key: key2, title: null, rotation: 1, teacher_person_id: maria, position: 0, members: [] },
+          { source_key: 't:1', topic_key: key2, title: null, rotation: 2, teacher_person_id: dan, position: 0, members: [] }
+        ]
+      }
+    });
+    const first = (await classesFor(key2))[0];
+    asEditor();
+    await (await live()).plannerLiveRemoveClassAction({ entryId: meeting, classId: `c:${first.id}`, version: first.version });
+    expect((await classesFor(key2)).map((c) => c.teacher_person_id)).toEqual([dan]);
   });
 
   it('Start_MatcherTeacher_ReachesThePlan', async () => {

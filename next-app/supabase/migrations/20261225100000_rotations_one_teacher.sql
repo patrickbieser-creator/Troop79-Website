@@ -10,20 +10,25 @@
 --      plan's at this deploy. A single class without it mirrors the plan.
 --    - meeting_topics.class_set_aside_at: a planner removed the topic's last class by hand. No class is made for it
 --      again automatically until it is added to the plan again (seeded after this) or a class is made for it by hand.
+--    - meeting_topic_teachers.lead: the topic's lead teacher, chosen on a card (qa-lead, L2). Choosing never deletes
+--      anyone's sign-up: the others stay on the plan as co-teachers, so a volunteer who said Yes is never lost.
 -- 2. "On the plan" (_meeting_topic_on_plan): seeded (Build a Plan), a teacher signed up who hasn't said Can't make it, or
 --    a current pick of a Coming active scout (L1's own Coming rule: said Coming, or picked with no answer).
 -- 3. _meeting_reconcile_core gains three steps around L1's two (leave, land):
 --      a. leave (L1);
---      b. auto classes that are empty and off the plan go;
+--      b. auto classes that are empty and off the plan go, and their topic row with them when nothing else holds it (no
+--         pick of any kind, no teacher, no other class, not seeded), as meeting_unseed_topic did before every offering
+--         had a class;
 --      c. every topic on the plan with no class (and not set aside) gets one in Not scheduled, auto, no teacher yet;
 --      d. land (L1);
---      e. one teacher: a single class without an override takes the plan's teacher (the first to sign up who hasn't
---         said Can't make it; none = no teacher), bumping the card's version so a stale card write is refused. A single
+--      e. one teacher: a single class without an override takes the plan's teacher (the lead, else the first to sign
+--         up, of those who haven't said Can't make it; none = no teacher), bumping the card's version so a stale card write is refused. A single
 --         class whose override already agrees with the plan drops the override.
 -- 4. Live edits by hand:
---    - meeting_live_set_teacher: on a single class it WRITES THE PLAN (the chosen teacher signs up for the topic, the
---      topic's other teachers come off; clearing takes them all off) and the class mirrors it; on a repeat it sets that
---      repeat's own teacher (override). The class stops being auto.
+--    - meeting_live_set_teacher: on a single class it WRITES THE PLAN: the chosen teacher signs up for the topic (if
+--      they hadn't) and becomes its lead; nobody else's sign-up is touched. Clearing a card ("No teacher yet") is that
+--      class only (override; Needs attention then offers the plan's teacher). On a repeat it sets that repeat's own
+--      teacher (override). Someone who said Can't make it is refused. The class stops being auto.
 --    - meeting_live_move_class: the class stops being auto.
 --    - meeting_live_repeat_class: every class of the topic keeps its own teacher from now on (override); none is auto.
 --    - meeting_live_remove_class: removing a topic's last class sets the topic aside.
@@ -37,7 +42,10 @@
 --    has an arrangement: _meeting_seed_guard (seed_many, seed_topic, seed_focus_set, new_mix, edit_mix),
 --    meeting_unseed_topic and _meeting_teach_guard (teach, unteach, answer pages through teach). Bodies are
 --    pg_get_functiondef's with only the marked line added. meeting_live_start also signs the matcher's teachers up for
---    their topics (6b), so a class taught through a skill offer keeps its teacher.
+--    their topics and makes each the lead of its single class (6b), so the matcher's choice stands; a topic the matcher
+--    split into repeats starts with each repeat's own teacher. Known, accepted (as L1): merge_people rewrites teacher
+--    rows without the Live lock and reconciles at commit; a Live edit on one of the two merged people in that instant
+--    could deadlock (Postgres fails one). A merge carries a sign-up but not its lead mark.
 -- 7. Data: classes of a topic with two or more classes, and single classes with a teacher who isn't the plan's, get
 --    teacher_override (nobody's teacher changes at deploy). Then every upcoming meeting with an arrangement reconciles
 --    once, so its offerings show their classes now rather than at the next sign-up.
@@ -52,6 +60,7 @@ alter table public.meeting_classes
   add column if not exists auto boolean not null default false,
   add column if not exists teacher_override boolean not null default false;
 alter table public.meeting_topics add column if not exists class_set_aside_at timestamptz;
+alter table public.meeting_topic_teachers add column if not exists lead boolean not null default false;
 
 -- ── 2. on the plan ────────────────────────────────────────────────────────────────────────────────────────────────
 create or replace function public._meeting_topic_on_plan(p_entry bigint, p_topic bigint) returns boolean
@@ -74,7 +83,7 @@ as $$
       );
 $$;
 
--- The plan's teacher for a topic: the first to sign up who hasn't said Can't make it.
+-- The plan's teacher for a topic: the lead, else the first to sign up, of those who haven't said Can't make it.
 create or replace function public._meeting_plan_teacher(p_entry bigint, p_topic bigint) returns bigint
 language sql
 stable
@@ -85,7 +94,7 @@ as $$
     from meeting_topic_teachers x
    where x.topic_id = p_topic
      and not exists (select 1 from meeting_intents i where i.calendar_entry_id = p_entry and i.person_id = x.person_id and i.intent = 'not_coming')
-   order by x.created_at, x.person_id
+   order by x.lead desc, x.created_at, x.person_id
    limit 1;
 $$;
 
@@ -135,14 +144,23 @@ begin
   get diagnostics v_n = row_count;
   v_changed := v_changed + v_n;
 
-  -- b. An auto class left empty whose topic is off the plan goes.
-  delete from meeting_classes c
-   where c.calendar_entry_id = p_entry
-     and c.auto
-     and not exists (select 1 from meeting_class_members m where m.class_id = c.id)
-     and not public._meeting_topic_on_plan(p_entry, c.topic_id);
-  get diagnostics v_n = row_count;
-  v_changed := v_changed + v_n;
+  -- b. An auto class left empty whose topic is off the plan goes, and the topic row with it when nothing holds it.
+  for r in
+    delete from meeting_classes c
+     where c.calendar_entry_id = p_entry
+       and c.auto
+       and not exists (select 1 from meeting_class_members m where m.class_id = c.id)
+       and not public._meeting_topic_on_plan(p_entry, c.topic_id)
+    returning c.topic_id
+  loop
+    v_changed := v_changed + 1;
+    delete from meeting_topics t
+     where t.id = r.topic_id
+       and t.seeded_at is null
+       and not exists (select 1 from meeting_topic_picks x where x.topic_id = t.id)
+       and not exists (select 1 from meeting_topic_teachers x where x.topic_id = t.id)
+       and not exists (select 1 from meeting_classes x where x.topic_id = t.id);
+  end loop;
 
   -- c. Every topic on the plan has a class: a new one waits in Not scheduled.
   for r in
@@ -242,22 +260,28 @@ declare
   v_single boolean;
 begin
   perform public._meeting_live_edit(p_entry);
+  -- Someone who said Can't make it isn't this meeting's teacher (the plan's rule would take them straight off).
+  if p_teacher is not null and exists (
+    select 1 from meeting_intents i where i.calendar_entry_id = p_entry and i.person_id = p_teacher and i.intent = 'not_coming'
+  ) then
+    raise exception 'That teacher said they can’t make it.';
+  end if;
   select topic_id into v_topic from meeting_classes where id = p_class and calendar_entry_id = p_entry;
   if v_topic is null then raise exception 'STALE'; end if;
   v_single := (select count(*) from meeting_classes where topic_id = v_topic) = 1;
   update meeting_classes
-     set teacher_person_id = p_teacher, teacher_override = not v_single, auto = false,
+     set teacher_person_id = p_teacher, teacher_override = (not v_single) or p_teacher is null, auto = false,
          version = version + 1, entered_by_person_id = p_actor, updated_at = now()
    where id = p_class and calendar_entry_id = p_entry and version = p_expected
   returning version into v_version;
   if v_version is null then raise exception 'STALE'; end if;
-  if v_single then
-    if p_teacher is not null then
-      insert into meeting_topic_teachers (topic_id, calendar_entry_id, person_id, entered_by_person_id)
-      values (v_topic, p_entry, p_teacher, p_actor)
-      on conflict (topic_id, person_id) do nothing;
-    end if;
-    delete from meeting_topic_teachers where topic_id = v_topic and person_id is distinct from p_teacher;
+  if v_single and p_teacher is not null then
+    -- The plan's teacher: signed up (if they weren't) and the topic's lead. Nobody else's sign-up is touched.
+    insert into meeting_topic_teachers (topic_id, calendar_entry_id, person_id, entered_by_person_id)
+    values (v_topic, p_entry, p_teacher, p_actor)
+    on conflict (topic_id, person_id) do nothing;
+    update meeting_topic_teachers set lead = (person_id = p_teacher), updated_at = now()
+     where topic_id = v_topic and lead is distinct from (person_id = p_teacher);
   end if;
   perform public._meeting_live_bump(p_entry);
   return (select version from meeting_classes where id = p_class);
@@ -584,6 +608,18 @@ begin
     on conflict do nothing;
   end loop;
 
+  -- Rotations L2: the matcher's choice stands. A single class's teacher is its topic's lead; a topic the matcher split
+  -- into repeats keeps each repeat's own teacher.
+  update meeting_topic_teachers x
+     set lead = (x.person_id = c.teacher_person_id), updated_at = now()
+    from meeting_classes c
+   where c.calendar_entry_id = p_entry and c.teacher_person_id is not null
+     and x.topic_id = c.topic_id
+     and (select count(*) from meeting_classes o where o.topic_id = c.topic_id) = 1
+     and x.lead is distinct from (x.person_id = c.teacher_person_id);
+  update meeting_classes c set teacher_override = true
+   where c.calendar_entry_id = p_entry
+     and (select count(*) from meeting_classes o where o.topic_id = c.topic_id) > 1;
   update meeting_boards set live_started_at = now(), live_version = live_version + 1, updated_at = now()
    where calendar_entry_id = p_entry;
   return true;

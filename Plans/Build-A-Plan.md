@@ -322,6 +322,49 @@ Live drift apart (plan = topic teachers, picks and intents; Live = class teacher
   once anything is arranged; the matcher becomes a one-time "Suggest an arrangement"), simplify the agenda seam, write
   an ADR amending D-426 / D-429 / Decision 8.
 
+### As built (2026-10-23, session 67)
+
+**L1 (LIVE v1.254.0, migration 20261224100000):**
+- `_meeting_reconcile_core` runs under the Live lock, on an upcoming meeting with an arrangement, and touches scouts only.
+  - Unpinned members leave when they say Can't, or drop the class's pick. That needs their own pick list; carried picks
+    are invisible to the database. Merged sibling classes and "Not sure yet" scouts with no picks are spared.
+  - Coming scouts' current picks land in a class of that topic. The scout must be held out of nothing, teaching nothing
+    and in fewer than 2 classes. The class must have fewer than 8 and a rotation they're free in; fewest members wins.
+    They land unpinned and `is_new`.
+- It runs from `_meeting_live_bump` (every Live edit), from deferred constraint triggers on picks and intents, and
+  after the server's Start.
+- A hand move pins. Taking a scout out of a topic by hand writes `meeting_live_holds`. Placing them back clears it, and
+  Discard clears it.
+- "New" chips: Mark seen (sheet) and Mark all seen (bar). Dismissing doesn't pin.
+- Lock order: pick and answer writers take the board lock, then the Live lock (`_meeting_live_lock_if_started`), then
+  write. Live edits never take a board lock. The merge_people vs Live-move edge is accepted.
+
+**L2 (migration 20261225100000):**
+- `meeting_classes.auto` / `teacher_override`, and `meeting_topics.class_set_aside_at`.
+- "On the plan" = seeded, a teacher who hasn't said Can't, or a Coming scout's current pick.
+- Reconcile makes a Not scheduled auto class per topic on the plan. It removes empty auto classes that leave the plan.
+- A single class without an override mirrors `_meeting_plan_teacher`, and the sync bumps the card version.
+- A card's teacher on a single class writes the plan: the chosen teacher signs up and the others come off. A repeat
+  keeps its own teacher.
+- Removing a topic's last class by hand sets the topic aside until a class is made for it, or it is seeded again.
+- Start signs the matcher's class teachers up for their topics.
+- Topic and teacher writers take the Live lock up front. Needs attention no longer flags a repeat's teacher.
+
+**L3 design:**
+- **Auto-start:** `meeting_reconcile` begins an empty arrangement (rotations 1 and 2) on an upcoming, published, open
+  meeting as soon as anything is on its plan. There is no Start button. Rotations shows the arrangement from the
+  plan's first offering. A meeting with nothing planned shows an empty state that points at Build a Plan.
+- **More actions:**
+  - "Reset to match picks" (`meeting_live_reset`) replaces Discard: classes back to Not scheduled, scouts by their
+    picks, hand moves and holds gone. It keeps what Discard kept (recorded attendance, visitors, offerings, teacher
+    sign-ups).
+  - "Suggest an arrangement" (`meeting_live_suggest`) is the matcher once: the arrangement is replaced by the matcher's,
+    then reconciled. Both actions sit behind a danger confirm that names what's lost.
+- **Build rows:** a "Rotation — 1 2 …" pressed-button group on each offering's class (the same control as Live's
+  "Move to"). A repeated offering shows its rotations as text, with a link to Rotations.
+- **Rename:** the tab, title and copy say "Rotations"; `/planner/live` redirects to `/planner/rotations` (query kept).
+- **ADR:** D-437 amends D-426, D-429 and Decision 8.
+
 ## B10: The teacher digest and the "choose what you'll teach" page (Patrick, 2026-10-22)
 
 The By person view on the Invite tab already batches one adult's classes into one digest email. Patrick's additions:

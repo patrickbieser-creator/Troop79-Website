@@ -1122,7 +1122,7 @@ function LiveSheet({
               );
             })}
           {c.teacher ? (
-            <SheetRow danger onClick={() => onSetTeacher(c, null)}>
+            <SheetRow danger note={c.repeats.length ? undefined : 'this class only; the plan keeps its teachers'} onClick={() => onSetTeacher(c, null)}>
               No teacher yet
             </SheetRow>
           ) : null}

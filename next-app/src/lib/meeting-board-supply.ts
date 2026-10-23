@@ -162,7 +162,14 @@ export async function loadSupplyRows(sb: SupabaseClient, entryIds: readonly numb
   if (!entryIds.length) return { topicTeachers: [], skillOffers: [], freeform: [] };
   const ids = [...new Set(entryIds)];
   const [t, o, f] = await Promise.all([
-    sb.from('meeting_topic_teachers').select('calendar_entry_id, person_id, note, entered_by_person_id, created_at, meeting_topics(topic_key)').in('calendar_entry_id', ids).order('created_at'),
+    // Rotations L2: a topic's lead teacher (chosen on a class card) first, then sign-up order: the plan's teacher.
+    sb
+      .from('meeting_topic_teachers')
+      .select('calendar_entry_id, person_id, note, entered_by_person_id, created_at, meeting_topics(topic_key)')
+      .in('calendar_entry_id', ids)
+      .order('lead', { ascending: false })
+      .order('created_at')
+      .order('person_id'),
     sb.from('meeting_teaching_offers').select('calendar_entry_id, person_id, skill_id, note, created_at').in('calendar_entry_id', ids).order('created_at'),
     sb.from('meeting_topics').select('calendar_entry_id, topic_key, title').in('calendar_entry_id', ids).eq('kind', 'freeform')
   ]);

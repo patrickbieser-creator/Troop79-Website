@@ -58,7 +58,7 @@ const STALE_TEXT = 'Someone else changed this. Here’s the latest.';
 const fail = (error: string): { ok: false; error: string } => ({ ok: false, error });
 const stale = (): { ok: false; error: string; stale: true } => ({ ok: false, error: STALE_TEXT, stale: true });
 /** The RPCs' own messages are written for people; anything else is not shown raw. */
-const KNOWN = /^(Rotations 1 and 2|Only the last rotation|Move its classes|That’s as many rotations|That isn’t something|That meeting|Give the visitor)/;
+const KNOWN = /^(Rotations 1 and 2|Only the last rotation|Move its classes|That’s as many rotations|That isn’t something|That meeting|Give the visitor|That teacher said)/;
 const NOT_TODAY = 'Attendance is taken on the day of the meeting.';
 
 type Editor = { ok: true; sb: SupabaseClient; meeting: BoardMeeting; actorPersonId: number; actorLabel: string };

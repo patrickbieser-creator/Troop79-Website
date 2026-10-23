@@ -346,6 +346,7 @@ export async function loadMakeClass(sb: SupabaseClient, meeting: BoardMeeting, k
       .select('person_id, created_at, meeting_topics!inner(topic_key)')
       .eq('calendar_entry_id', meeting.entryId)
       .eq('meeting_topics.topic_key', key)
+      .order('lead', { ascending: false })
       .order('created_at'),
     loadBoardState(sb, meeting, catalog)
   ]);
