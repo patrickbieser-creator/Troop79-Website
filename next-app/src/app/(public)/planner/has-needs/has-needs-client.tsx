@@ -230,8 +230,8 @@ export function HasNeedsView({
                   On plan
                 </p>
               ) : (
-                <Button variant="secondary" onClick={add} aria-disabled={adding || undefined}>
-                  {adding ? 'Adding…' : `Add ${single.label} to ${meetingLabel} plan`}
+                <Button variant="secondary" onClick={add} aria-disabled={adding || undefined} aria-label={`Add ${single.full} to the ${meetingLabel} plan`}>
+                  {adding ? 'Adding…' : `Add ${single.short}`}
                 </Button>
               )}
               {addProblem ? (

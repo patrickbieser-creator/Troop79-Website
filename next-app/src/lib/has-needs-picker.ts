@@ -11,6 +11,7 @@
  */
 import { optionalityLabel } from '@/lib/mb-helpers';
 import { mbKey, rankKey } from '@/lib/has-needs';
+import { rankAbbrev } from '@/lib/rank-abbrev';
 
 export interface PickerNode {
   code: string;
@@ -106,17 +107,31 @@ export function pickHref(pathname: string, keys: readonly string[]): string {
 
 const contains = (node: PickerNode, code: string): boolean => node.code === code || node.children.some((c) => contains(c, code));
 
-/** The top-level requirement a ticked leaf belongs to, as Build a Plan's board key and its label. Null if unknown. */
-export function offeringOf(key: string, ranks: readonly PickerRank[], badges: readonly PickerBadge[]): { key: string; label: string } | null {
-  const find = (src: { id: string; name: string; tree: PickerNode[] }[], rest: string) => {
+export interface Offering {
+  /** Build a Plan's board key ('tenderfoot-4a'). */
+  key: string;
+  /** 'Tenderfoot 4a', 'First Aid 9'. */
+  label: string;
+  /** The visible short form (Patrick, 2026-10-22): 'Ten 4a · First aid'; a merit badge keeps its name. */
+  short: string;
+  /** The spoken form: 'Tenderfoot 4a First aid'. */
+  full: string;
+}
+
+/** The top-level requirement a ticked leaf belongs to, as Build a Plan's board key and its labels. Null if unknown. */
+export function offeringOf(key: string, ranks: readonly PickerRank[], badges: readonly PickerBadge[]): Offering | null {
+  const find = (src: { id: string; name: string; tree: PickerNode[] }[], rest: string, rank: boolean): Offering | null => {
     // Ids carry dashes ('second-class', 'first-aid'): the longest id the key starts with.
     const owner = src.filter((x) => rest.startsWith(`${x.id}-`)).sort((a, b) => b.id.length - a.id.length)[0];
     if (!owner) return null;
     const code = rest.slice(owner.id.length + 1);
     const top = owner.tree.find((t) => contains(t, code));
-    return top ? { key: `${owner.id}-${top.code}`, label: `${owner.name} ${top.code}` } : null;
+    if (!top) return null;
+    const label = `${owner.name} ${top.code}`;
+    const lead = `${rank ? rankAbbrev(owner.id) : owner.name} ${top.code}`;
+    return { key: `${owner.id}-${top.code}`, label, short: top.label ? `${lead} · ${top.label}` : lead, full: top.label ? `${label} ${top.label}` : label };
   };
-  if (key.startsWith('rank:')) return find(ranks as PickerRank[], key.slice(5));
-  if (key.startsWith('mb:')) return find(badges as PickerBadge[], key.slice(3));
+  if (key.startsWith('rank:')) return find(ranks as PickerRank[], key.slice(5), true);
+  if (key.startsWith('mb:')) return find(badges as PickerBadge[], key.slice(3), false);
   return null;
 }

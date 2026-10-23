@@ -4,7 +4,7 @@
  * selection lives in the URL (?pick=<key>,<key>), so a view can be shared.
  *
  * Gated like the other planner tabs: anyone with planner View sees it (Patrick). A seed holder also gets the add hook
- * (one requirement → "Add <code> to <meeting> plan", Build a Plan's own action, checked again on the server).
+ * (one requirement → "Add Ten 3a · Square Knot use" for the chosen meeting, Build a Plan's own action, checked again on the server).
  *
  * One load (lib/has-needs-db): the cached catalog, the active scouts, the ledger and awarded badges, and for a seed
  * holder the next meetings and what is on their plans. The split runs on the client, so ticking costs no round trip.
