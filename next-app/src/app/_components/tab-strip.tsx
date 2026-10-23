@@ -3,15 +3,10 @@
  * restyle R1, 2026-10-03; was a joined segmented row). API mirrors the admin
  * TabStrip (items / activeKey / ariaLabel; items take href OR onSelect),
  * implemented on the public tokens. Canonical rendering: /admin/styleguide/public.
- *
- * An item with BOTH href and onSelect is a real link (open in a new tab, copy the
- * address) whose plain click runs onSelect instead of navigating — Build a Plan's
- * bar switches its sub-views in place and keeps the URL itself (2026-10-22).
  */
 'use client';
 
 import Link from 'next/link';
-import type { MouseEvent } from 'react';
 import s from './tab-strip.module.css';
 
 export type TabItem = {
@@ -21,9 +16,6 @@ export type TabItem = {
   href?: string;
   onSelect?: () => void;
 };
-
-/** A click the page may take over: the main button, no modifier (those open a new tab or window). */
-const plainClick = (e: MouseEvent) => e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey;
 
 export function TabStrip({
   items,
@@ -44,7 +36,6 @@ export function TabStrip({
         const cls = active ? `${s.tab} ${s.active}` : s.tab;
         const count = item.count != null ? <span className={s.count}> ({item.count})</span> : null;
         if (item.href != null) {
-          const onSelect = item.onSelect;
           return (
             <Link
               key={item.key}
@@ -52,15 +43,6 @@ export function TabStrip({
               aria-selected={active}
               href={item.href}
               className={cls}
-              onClick={
-                onSelect
-                  ? (e) => {
-                      if (!plainClick(e)) return;
-                      e.preventDefault();
-                      onSelect();
-                    }
-                  : undefined
-              }
             >
               {item.label}
               {count}

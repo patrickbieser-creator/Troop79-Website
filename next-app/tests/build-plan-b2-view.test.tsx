@@ -46,19 +46,19 @@ afterEach(() => {
 describe('Build a Plan B2 (screen)', () => {
   it('BuildPlan_SeedHolder_GetsThreeAddsInTheBar', () => {
     render(<BuildPlanView entryId={1} rows={ROWS} canSeed stamp="s" heading={null} dayLabel="Oct 25" />);
-    expect(screen.getAllByRole('tab', { name: /^\+ / }).map((b) => b.textContent)).toEqual(['+ Requirement', '+ Focus set', '+ New mix']);
+    expect(screen.getAllByRole('link', { name: /^\+ / }).map((b) => b.textContent)).toEqual(['+ Requirement', '+ Focus set', '+ New mix']);
   });
 
   it('BuildPlan_Editor_GetsEditButNoAdds', () => {
     render(<BuildPlanView entryId={1} rows={ROWS} canSeed={false} canEdit stamp="s" heading={null} />);
-    expect([screen.queryByRole('button', { name: 'Edit First aid' }) != null, screen.queryAllByRole('tab', { name: /^\+ / }).length]).toEqual([true, 0]);
+    expect([screen.queryByRole('button', { name: 'Edit First aid' }) != null, screen.queryAllByRole('link', { name: /^\+ / }).length]).toEqual([true, 0]);
   });
 
   it('NewMix_FromAddRow_AddsOneClassRow', async () => {
     m.search.mockResolvedValue({ ok: true, rows: [HIT], hasMore: false });
     m.newMix.mockResolvedValue({ ok: true, key: 'fg:9', title: 'Mix for Oct 25', count: 1, teachers: [], prior: 's', stamp: 's2' });
     render(<BuildPlanView entryId={1} rows={ROWS} canSeed stamp="s" heading={null} dayLabel="Oct 25" />);
-    fireEvent.click(screen.getByRole('tab', { name: '+ New mix' }));
+    fireEvent.click(screen.getByRole('link', { name: '+ New mix' }));
     fireEvent.change(screen.getByRole('textbox', { name: 'Search requirements to tick' }), { target: { value: 'bites' } });
     fireEvent.click(await screen.findByRole('button', { name: /Bites/ }, { timeout: 2000 }));
     fireEvent.click(screen.getByRole('button', { name: 'Add mix of 1 requirement' }));
@@ -70,7 +70,7 @@ describe('Build a Plan B2 (screen)', () => {
     m.search.mockResolvedValue({ ok: true, rows: [HIT], hasMore: false });
     m.newMix.mockResolvedValue({ ok: true, key: 'fg:9', title: 'Mix for Oct 25', count: 1, teachers: [], prior: 's', stamp: 's2' });
     render(<BuildPlanView entryId={1} rows={ROWS} canSeed stamp="s" heading={null} dayLabel="Oct 25" />);
-    fireEvent.click(screen.getByRole('tab', { name: '+ New mix' }));
+    fireEvent.click(screen.getByRole('link', { name: '+ New mix' }));
     fireEvent.change(screen.getByRole('textbox', { name: 'Search requirements to tick' }), { target: { value: 'bites' } });
     fireEvent.click(await screen.findByRole('button', { name: /Bites/ }, { timeout: 2000 }));
     fireEvent.click(screen.getByRole('button', { name: 'Add mix of 1 requirement' }));
@@ -84,7 +84,7 @@ describe('Build a Plan B2 (screen)', () => {
     m.search.mockResolvedValue({ ok: true, rows: [HIT], hasMore: false });
     m.addOffering.mockResolvedValue({ ok: true, added: ['tenderfoot-4b'], teachers: {}, prior: 's', stamp: 's2' });
     render(<BuildPlanView entryId={1} rows={ROWS} canSeed stamp="s" heading={null} dayLabel="Oct 25" />);
-    fireEvent.click(screen.getByRole('tab', { name: '+ Requirement' }));
+    fireEvent.click(screen.getByRole('link', { name: '+ Requirement' }));
     fireEvent.change(screen.getByRole('textbox', { name: 'Search requirements' }), { target: { value: 'bites' } });
     fireEvent.click(await screen.findByRole('button', { name: /^Add / }, { timeout: 2000 }));
     await waitFor(() => expect(m.addOffering).toHaveBeenCalled());
@@ -95,7 +95,7 @@ describe('Build a Plan B2 (screen)', () => {
     m.sets.mockResolvedValueOnce({ ok: true, sets: [{ id: 5, name: 'Knots set', labels: [], items: [{ key: 'tenderfoot-4b' }] }] });
     m.addSet.mockResolvedValue({ ok: true, key: 'fg:5', title: 'Knots set', count: 1, teachers: [], prior: 's', stamp: 's2' });
     render(<BuildPlanView entryId={1} rows={ROWS} canSeed stamp="s" heading={null} dayLabel="Oct 25" />);
-    fireEvent.click(screen.getByRole('tab', { name: '+ Focus set' }));
+    fireEvent.click(screen.getByRole('link', { name: '+ Focus set' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Add Knots set' }));
     await waitFor(() => expect(m.addSet).toHaveBeenCalled());
     await waitFor(() => expect(nav.refresh).toHaveBeenCalledTimes(1));
@@ -105,7 +105,7 @@ describe('Build a Plan B2 (screen)', () => {
     m.search.mockResolvedValue({ ok: true, rows: [HIT], hasMore: false });
     m.newMix.mockResolvedValue({ ok: true, key: 'fg:9', title: 'Mix for Oct 25', count: 1, teachers: [], prior: 's', stamp: 's2' });
     render(<BuildPlanView entryId={1} rows={ROWS} canSeed stamp="s" heading={null} dayLabel="Oct 25" />);
-    fireEvent.click(screen.getByRole('tab', { name: '+ New mix' }));
+    fireEvent.click(screen.getByRole('link', { name: '+ New mix' }));
     fireEvent.change(screen.getByRole('textbox', { name: 'Search requirements to tick' }), { target: { value: 'bites' } });
     fireEvent.click(await screen.findByRole('button', { name: /Bites/ }, { timeout: 2000 }));
     fireEvent.click(screen.getByRole('button', { name: 'Add mix of 1 requirement' }));

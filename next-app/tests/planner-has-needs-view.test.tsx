@@ -126,20 +126,28 @@ describe('the Has/Needs tab (B7)', () => {
   it('HasNeeds_SingleRequirement_OffersAddForSeeder', () => {
     at('?pick=rank:tenderfoot-4a');
     renderTab();
-    expect(screen.getByRole('button', { name: 'Add Tenderfoot 4a First aid to the Oct 25 plan' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Add Ten 4a · First aid to the Oct 25 plan' })).toBeTruthy();
   });
 
   // Patrick, 2026-10-22: rank abbreviation + number + the picker's short text; the meeting stays in the spoken name.
   it('HasNeeds_AddLabel_UsesRankAbbreviation', () => {
     at('?pick=rank:tenderfoot-4a');
     renderTab();
-    expect(screen.getByRole('button', { name: 'Add Tenderfoot 4a First aid to the Oct 25 plan' }).textContent).toBe('Add Ten 4a · First aid');
+    expect(screen.getByRole('button', { name: 'Add Ten 4a · First aid to the Oct 25 plan' }).textContent).toBe('Add Ten 4a · First aid');
+  });
+
+  // qa-lead, nav batch (WCAG 2.5.3 Label in Name): the spoken name starts with the words on the button.
+  it('HasNeeds_AddLabel_NameStartsWithVisibleText', () => {
+    at('?pick=rank:tenderfoot-4a');
+    renderTab();
+    const btn = screen.getByRole('button', { name: /^Add / });
+    expect(btn.getAttribute('aria-label')?.startsWith(btn.textContent ?? '\u0000')).toBe(true);
   });
 
   it('HasNeeds_AddLabel_MeritBadgeKeepsName', () => {
     at('?pick=mb:first-aid-9b');
     renderTab();
-    expect(screen.getByRole('button', { name: 'Add First Aid 9 Rescues to the Oct 25 plan' }).textContent).toBe('Add First Aid 9 · Rescues');
+    expect(screen.getByRole('button', { name: 'Add First Aid 9 · Rescues to the Oct 25 plan' }).textContent).toBe('Add First Aid 9 · Rescues');
   });
 
   it('HasNeeds_MultiSelection_HasNoAdd', () => {
@@ -152,7 +160,7 @@ describe('the Has/Needs tab (B7)', () => {
     m.add.mockResolvedValue({ ok: true, added: ['first-aid-9'], teachers: {}, prior: 's', stamp: 's2' });
     at('?pick=mb:first-aid-9b');
     renderTab();
-    fireEvent.click(screen.getByRole('button', { name: 'Add First Aid 9 Rescues to the Oct 25 plan' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add First Aid 9 · Rescues to the Oct 25 plan' }));
     await waitFor(() => expect(screen.getByText('On plan')).toBeTruthy());
     expect(m.add.mock.calls).toEqual([[{ entryId: 1, keys: ['first-aid-9'] }]]);
   });
@@ -161,7 +169,7 @@ describe('the Has/Needs tab (B7)', () => {
     m.add.mockResolvedValue({ ok: false, error: 'That meeting has passed.' });
     at('?pick=rank:tenderfoot-4a');
     renderTab();
-    fireEvent.click(screen.getByRole('button', { name: 'Add Tenderfoot 4a First aid to the Oct 25 plan' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add Ten 4a · First aid to the Oct 25 plan' }));
     await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('That meeting has passed.'));
   });
 
@@ -169,7 +177,7 @@ describe('the Has/Needs tab (B7)', () => {
     m.add.mockResolvedValue({ ok: false, error: 'That meeting has passed.' });
     at('?pick=rank:tenderfoot-4a');
     renderTab();
-    fireEvent.click(screen.getByRole('button', { name: 'Add Tenderfoot 4a First aid to the Oct 25 plan' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add Ten 4a · First aid to the Oct 25 plan' }));
     await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
     expect(screen.queryByText('On plan')).toBeNull();
   });

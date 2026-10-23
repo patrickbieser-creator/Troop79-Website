@@ -466,7 +466,6 @@ function TeachChip({
       (next ?? rowEl?.querySelector<HTMLElement>('[data-teacher-head]'))?.focus();
     });
   };
-  const what = `${item.codeLabel} ${item.title}`;
   const plan = dayLabel ? `the ${dayLabel} plan` : 'the plan';
   return (
     <>
@@ -479,7 +478,7 @@ function TeachChip({
         }}
         aria-disabled={busy || undefined}
         aria-haspopup="dialog"
-        aria-label={row ? `Assign ${teacher.name} to ${what}` : `Add ${what} with ${teacher.name} teaching`}
+        aria-label={busy ? undefined : row ? `${short} on plan, assign ${teacher.name}` : `${short}, add with ${teacher.name} teaching`}
       >
         {busy ? 'Saving…' : short}
         {busy ? null : marker}

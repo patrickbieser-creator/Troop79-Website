@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { render, screen, cleanup, fireEvent, waitFor, within } from '@testing-library/react';
 import type { PlanRow } from '../src/lib/build-plan';
 import { DATA } from './helpers/suggestions-fixture';
@@ -44,9 +46,9 @@ function renderAt(view: View, o: { canSeed?: boolean } = {}) {
     />
   );
 }
-const strip = () => screen.getByRole('tablist', { name: 'Build a Plan' });
-const tabs = () => within(strip()).getAllByRole('tab');
-const selected = () => tabs().filter((t) => t.getAttribute('aria-selected') === 'true').map((t) => t.textContent);
+const strip = () => screen.getByRole('navigation', { name: 'Build a Plan' });
+const tabs = () => within(strip()).getAllByRole('link');
+const selected = () => tabs().filter((t) => t.getAttribute('aria-current') === 'page').map((t) => t.textContent);
 
 beforeEach(() => window.history.replaceState(null, '', PLAN));
 afterEach(() => {
@@ -55,6 +57,30 @@ afterEach(() => {
 });
 
 describe('Build a Plan navigation', () => {
+  // Patrick, 2026-10-22: the tools sit right after "The plan" as buttons, left-aligned, not text links far right.
+  it('BuildNav_Buttons_InOrder', () => {
+    renderAt('plan');
+    expect(tabs().map((t) => t.textContent)).toEqual(ALL);
+  });
+
+  it('BuildNav_Buttons_AreLeftAligned', () => {
+    const css = readFileSync(join(__dirname, '../src/app/(public)/planner/build/build.module.css'), 'utf8');
+    const rule = /\.buildNav\s*\{([^}]*)\}/.exec(css)?.[1] ?? '';
+    expect([/justify-content:\s*flex-start/.test(rule), /flex-wrap:\s*wrap/.test(rule), /margin-left:\s*auto/.test(rule)]).toEqual([true, true, false]);
+  });
+
+  it('BuildNav_Selected_IsTheFilledButton', () => {
+    renderAt('add-set');
+    const cur = within(strip()).getByRole('link', { name: '+ Focus set' });
+    const other = within(strip()).getByRole('link', { name: 'The plan' });
+    expect([cur.getAttribute('aria-current'), cur.className === other.className, other.getAttribute('aria-current')]).toEqual(['page', false, null]);
+  });
+
+  it('BuildNav_Viewer_SeesTwoButtons', () => {
+    renderAt('plan', { canSeed: false });
+    expect(tabs().length).toBe(2);
+  });
+
   it('BuildNav_IsVisibleInEverySubView', () => {
     const seen = (['plan', 'suggestions', 'add-requirement', 'add-set', 'new-mix'] as View[]).map((v) => {
       renderAt(v);
@@ -67,7 +93,7 @@ describe('Build a Plan navigation', () => {
 
   it('BuildNav_ThePlan_ReturnsToMainView', () => {
     renderAt('add-requirement');
-    fireEvent.click(within(strip()).getByRole('tab', { name: 'The plan' }));
+    fireEvent.click(within(strip()).getByRole('link', { name: 'The plan' }));
     expect([screen.queryByRole('textbox', { name: 'Search requirements' }), selected()]).toEqual([null, ['The plan']]);
   });
 
@@ -81,13 +107,18 @@ describe('Build a Plan navigation', () => {
     expect(tabs().map((t) => t.textContent)).toEqual(['The plan', 'Suggestions']);
   });
 
-  it('BuildNav_UrlRoundTrips', () => {
+  it('BuildNav_UrlRoundTrips', async () => {
     renderAt('plan');
-    fireEvent.click(within(strip()).getByRole('tab', { name: '+ New mix' }));
+    fireEvent.click(within(strip()).getByRole('link', { name: '+ New mix' }));
     const pushed = window.location.search;
     window.history.pushState(null, '', `${PLAN}&view=add-set`);
     fireEvent(window, new PopStateEvent('popstate'));
-    expect([pushed, selected()]).toEqual(['?meeting=1&view=new-mix', ['+ Focus set']]);
+    const popped = selected();
+    // qa-lead, nav batch: Back after an in-place switch lands on the view before it, URL and bar both.
+    window.history.back();
+    await waitFor(() => expect(window.location.search).toBe('?meeting=1&view=new-mix'));
+    await waitFor(() => expect(selected()).toEqual(['+ New mix']));
+    expect([pushed, popped, window.location.search, selected()]).toEqual(['?meeting=1&view=new-mix', ['+ Focus set'], '?meeting=1&view=new-mix', ['+ New mix']]);
   });
 
   it('BuildNav_Viewer_AddViewInUrl_ShowsThePlan', () => {
@@ -97,19 +128,19 @@ describe('Build a Plan navigation', () => {
 
   it('BuildNav_FromSuggestions_NavigatesToTheView', () => {
     renderAt('suggestions');
-    fireEvent.click(within(strip()).getByRole('tab', { name: '+ Requirement' }));
+    fireEvent.click(within(strip()).getByRole('link', { name: '+ Requirement' }));
     expect(nav.push.mock.calls).toEqual([[`${PLAN}&view=add-requirement`]]);
   });
 
   it('BuildNav_Switch_FocusesTheViewHeading', async () => {
     renderAt('plan');
-    fireEvent.click(within(strip()).getByRole('tab', { name: '+ Focus set' }));
+    fireEvent.click(within(strip()).getByRole('link', { name: '+ Focus set' }));
     await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Add a focus set' })));
   });
 
   it('BuildNav_ThePlan_FocusesThePlanHeading', async () => {
     renderAt('new-mix');
-    fireEvent.click(within(strip()).getByRole('tab', { name: 'The plan' }));
+    fireEvent.click(within(strip()).getByRole('link', { name: 'The plan' }));
     await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'The plan' })));
   });
 

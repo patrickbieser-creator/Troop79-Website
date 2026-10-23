@@ -34,7 +34,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/app/_components/button';
 import { Drawer } from '@/app/_components/drawer';
-import { TabStrip } from '@/app/_components/tab-strip';
 import { BUILD_NAV, isAddView, parseBuildView, VIEW_TITLE, viewHref, type BuildView } from '@/lib/build-plan-view';
 import { useDisclosure } from '@/app/_components/use-disclosure';
 import {
@@ -85,6 +84,7 @@ let focusOnArrival = false;
 
 /** A click the page may take over: the main button, no modifier (those open a new tab or window). */
 const plainClick = (e: MouseEvent) => e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey;
+
 type Likely = Record<string, string[]>;
 const LikelyCtx = createContext<((l: Likely) => void) | null>(null);
 const OrphansCtx = createContext<((o: OrphansData) => void) | null>(null);
@@ -345,16 +345,29 @@ export function BuildPlanView({
   };
   const editingRow = editing ? (rows.find((r) => r.key === editing.key) ?? null) : null;
 
-  /** The persistent bar (Patrick, 2026-10-22): real links, so a view opens in a new tab too; a plain click is go(). */
+  /**
+   * The persistent bar (Patrick, 2026-10-22): a left-aligned row of buttons right after the title, The plan first. Each is
+   * a real link (a view opens in a new tab too); a plain click is go(). The current view is the filled one.
+   */
   const navBar = (
-    <div className={s.buildNav}>
-      <TabStrip
-        ariaLabel="Build a Plan"
-        scroll
-        activeKey={view}
-        items={BUILD_NAV.filter((n) => canSeed || !isAddView(n.view)).map((n) => ({ key: n.view, label: n.label, href: hrefOf(n.view), onSelect: () => go(n.view) }))}
-      />
-    </div>
+    <nav className={s.buildNav} aria-label="Build a Plan">
+      {BUILD_NAV.filter((n) => canSeed || !isAddView(n.view)).map((n) => (
+        <Button
+          key={n.view}
+          size="sm"
+          variant={n.view === view ? 'primary' : 'secondary'}
+          href={hrefOf(n.view)}
+          aria-current={n.view === view ? 'page' : undefined}
+          onClick={(e) => {
+            if (!plainClick(e)) return;
+            e.preventDefault();
+            go(n.view);
+          }}
+        >
+          {n.label}
+        </Button>
+      ))}
+    </nav>
   );
   /** A sub-view's top: "← Back to the plan", then its heading (where focus lands). */
   const subHead = (title: string) => (

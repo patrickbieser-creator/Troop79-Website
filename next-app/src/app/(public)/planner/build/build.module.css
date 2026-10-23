@@ -294,7 +294,12 @@
 
 /* ── the persistent bar and the sub-views (Patrick, 2026-10-22) ──────────────────────────────────────────────── */
 /* "The plan · Suggestions · + Requirement · + Focus set · + New mix": the shared TabStrip, scrolling on a phone. */
+/* Build a Plan's view bar (Patrick, 2026-10-22): buttons, left-aligned, wrapping on a phone. */
 .buildNav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: var(--sp-2);
   margin-bottom: var(--sp-3);
 }
 /* A sub-view's top: "← Back to the plan" at the left, then its heading. */

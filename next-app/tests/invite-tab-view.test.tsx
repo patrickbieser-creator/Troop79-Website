@@ -120,6 +120,17 @@ describe('the Invite tab', () => {
     expect(screen.getByRole('button', { name: 'Send 3 emails to 2 families' })).toBeTruthy();
   });
 
+  // qa-lead, nav batch: two recipients with one display name must not share a spoken name.
+  it('InviteReview_SameName_PreviewNamesDiffer', () => {
+    const twins: InviteTabData = {
+      sections: [{ key: 'tenderfoot-4a', teachers: [], scouts: [person(10, [40]), person(15, [50])] }],
+      recipients: { ...RECIPIENTS, 50: { name: 'Dana W', first: 'Dana', family: 'h:5', familyLabel: 'Wilson family', isScout: false } }
+    };
+    renderTab({ data: twins });
+    const names = screen.getAllByRole('button', { name: /^Preview the email to Dana W/ }).map((b) => b.getAttribute('aria-label'));
+    expect(names.length === 2 && new Set(names).size === 2).toBe(true);
+  });
+
   it('InviteTab_Preview_UsesDigestRenderer', () => {
     renderTab();
     fireEvent.click(screen.getByRole('button', { name: 'Preview the email to Dana W' }));

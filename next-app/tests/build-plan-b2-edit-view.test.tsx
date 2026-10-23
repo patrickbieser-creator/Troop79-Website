@@ -134,7 +134,7 @@ describe('the add row', () => {
     m.search.mockResolvedValue({ ok: true, rows: [{ ...ITEM, key: 'tenderfoot-4b', code: '4b', label: 'Bites', parent: null, topLevel: true }], hasMore: false });
     m.addOffering.mockReturnValue(new Promise(() => undefined));
     render(<BuildPlanView entryId={1} rows={[]} canSeed stamp="s" heading={null} dayLabel="Oct 25" />);
-    fireEvent.click(screen.getByRole('tab', { name: '+ Requirement' }));
+    fireEvent.click(screen.getByRole('link', { name: '+ Requirement' }));
     fireEvent.change(screen.getByRole('textbox', { name: 'Search requirements' }), { target: { value: 'bites' } });
     const add = await screen.findByRole('button', { name: 'Add Tenderfoot 4b' }, { timeout: 2000 });
     add.focus();

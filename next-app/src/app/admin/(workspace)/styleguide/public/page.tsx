@@ -422,6 +422,23 @@ export default function PublicStyleguidePage() {
               <code>aria-disabled</code> (Build a Plan B2/B3) — dimmed while a save or send is in flight, but still focusable,
               so keyboard focus stays on it. <code>disabled</code> is for a control with nothing to do yet.
             </span>
+            <div className={sg.specimenGap} />
+            <nav aria-label="View bar specimen">
+              <Button variant="primary" size="sm" href="#" aria-current="page">
+                The plan
+              </Button>{' '}
+              <Button variant="secondary" size="sm" href="#">
+                Suggestions
+              </Button>{' '}
+              <Button variant="secondary" size="sm" href="#">
+                + Requirement
+              </Button>
+            </nav>
+            <span className={sg.specimenInlineNote}>
+              A view bar (Build a Plan, 2026-10-22): left-aligned sm link-buttons that wrap on a phone; the current view is the
+              filled primary with <code>aria-current=&quot;page&quot;</code>, the rest secondary. A plain click may switch in place
+              (<code>onClick</code> crosses to the link); a modified click still opens a new tab.
+            </span>
           </div>
 
           {/* Account control — the right end of the sticky nav (2026-10-19) */}
@@ -456,9 +473,7 @@ export default function PublicStyleguidePage() {
             <PublicTabStripScrollSpecimen />
             <p className={sg.specimenInlineNote}>
               <code>scroll</code>: one line that scrolls sideways instead of wrapping, for a strip that outgrows a phone (the
-              Meeting Planner&rsquo;s six tabs). An item with both <code>href</code> and <code>onSelect</code> stays a real link (new tab, copy
-              address) whose plain click runs <code>onSelect</code>: Build a Plan&rsquo;s bar switches its views in place and keeps the
-              URL itself.
+              Meeting Planner&rsquo;s six tabs).
             </p>
           </div>
 
@@ -561,7 +576,7 @@ export default function PublicStyleguidePage() {
             />
             <p className={sg.specimenInlineNote}>
               <code>AddRow</code> from <code>_components/add-row</code> &mdash; add rows: one per container, links at rest, search on tap,
-              Cancel always visible; a single food has no + Ingredient. Sites: meal panel (+ Food / + Gear), ingredient lists (+ Ingredient), Gear tab (+ Gear), Who&rsquo;s eating (+ Diet), Ingredients tab (+ Ingredient, whose form keeps its own Cancel). (Build a Plan&rsquo;s adds moved to its TabStrip bar, 2026-10-22.) Admin twin: <code>AdminAddRow</code>. Cancel and Esc (nothing typed) close it and return focus to the link; the
+              Cancel always visible; a single food has no + Ingredient. Sites: meal panel (+ Food / + Gear), ingredient lists (+ Ingredient), Gear tab (+ Gear), Who&rsquo;s eating (+ Diet), Ingredients tab (+ Ingredient, whose form keeps its own Cancel). (Build a Plan&rsquo;s adds moved to its view bar of Buttons, 2026-10-22.) Admin twin: <code>AdminAddRow</code>. Cancel and Esc (nothing typed) close it and return focus to the link; the
               caller&rsquo;s extra controls (the ingredient list&rsquo;s &ldquo;for Everyone&rdquo; select) ride in <code>trailing</code>, before Cancel.
             </p>
           </div>

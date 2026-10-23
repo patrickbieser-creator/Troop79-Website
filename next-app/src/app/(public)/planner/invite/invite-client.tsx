@@ -575,6 +575,7 @@ function Review({
     const r = rowOf.get(key);
     return r ? shortRequirement(r.codeLabel, r.title) : key;
   };
+  const spoken = spokenRecipients(groups);
   return (
     <div className={s.reviewBody}>
       <h2 id={headingId} className={b.editLabel}>
@@ -587,12 +588,13 @@ function Review({
               {/* One compact block per email (Patrick, 2026-10-22): the recipient + a Preview icon, then one line per invite. */}
               {g.recipients.map((r) => {
                 const scouts = new Set(r.items.filter((i) => i.kind === 'pick').map((i) => i.inviteeId));
-                const listName = `Invites in the email to ${r.name}`;
+                const who = spoken.get(r.recipientId) ?? r.name;
+                const listName = `Invites in the email to ${who}`;
                 return (
                   <div key={r.recipientId} className={s.recipient}>
                     <p className={s.recipientHead}>
                       <span className={b.pickTitle}>{r.name}</span>
-                      <button type="button" className={s.previewIcon} onClick={(e) => onPreview(g, r.recipientId, e.currentTarget)} aria-haspopup="dialog" aria-label={`Preview the email to ${r.name}`} title="Preview the email">
+                      <button type="button" className={s.previewIcon} onClick={(e) => onPreview(g, r.recipientId, e.currentTarget)} aria-haspopup="dialog" aria-label={`Preview the email to ${who}`} title="Preview the email">
                         <PreviewIcon />
                       </button>
                     </p>
@@ -619,6 +621,34 @@ function Review({
 }
 
 const firstName = (name: string) => name.trim().split(/\s+/)[0] ?? name;
+
+/**
+ * Each recipient's spoken name in the Review (qa-lead, nav batch): the display name, and when two recipients share one,
+ * who their email is about ("Dana W, for Anjali and Ben"); a number if that still collides.
+ */
+export function spokenRecipients(groups: readonly Pick<ReviewGroup, 'recipients'>[]): Map<number, string> {
+  const all = groups.flatMap((g) => g.recipients);
+  const count = (names: string[]) => names.reduce((m, n) => m.set(n, (m.get(n) ?? 0) + 1), new Map<string, number>());
+  const byName = count(all.map((r) => r.name));
+  const first = all.map((r) => {
+    if ((byName.get(r.name) ?? 0) < 2) return r.name;
+    const about = [...new Set(r.items.map((i) => (i.kind === 'teach' ? 'teaching' : firstName(i.inviteeName))))];
+    return about.length ? `${r.name}, for ${joinWords(about)}` : r.name;
+  });
+  const again = count(first);
+  const seen = new Map<string, number>();
+  return new Map(
+    all.map((r, i) => {
+      const n = first[i];
+      if ((again.get(n) ?? 0) < 2) return [r.recipientId, n];
+      const k = (seen.get(n) ?? 0) + 1;
+      seen.set(n, k);
+      return [r.recipientId, `${n} (${k})`];
+    })
+  );
+}
+
+const joinWords = (w: readonly string[]) => (w.length < 3 ? w.join(' and ') : `${w.slice(0, -1).join(', ')} and ${w[w.length - 1]}`);
 
 /** An eye: "see the email". Drawn in currentColor, so it takes the button's token colour. */
 function PreviewIcon() {
