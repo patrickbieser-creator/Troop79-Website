@@ -4,8 +4,8 @@ import type { PlanRow } from '../src/lib/build-plan';
 import { DATA } from './helpers/suggestions-fixture';
 
 /**
- * Build a Plan's persistent navigation (Patrick, 2026-10-22): one bar on every sub-view, "The plan · Suggestions ·
- * + Requirement · + Focus set · + New mix", the current one highlighted; The plan always goes home; each sub-view has
+ * Build a Plan's persistent navigation (Patrick, 2026-10-22): one bar on every sub-view, "Plans · Suggestions ·
+ * Requirements · Focus sets · A mix", the current one highlighted; The plan always goes home; each sub-view has
  * "← Back to the plan"; the view lives in the URL (?view=…). Server actions are mocked.
  */
 const nav = vi.hoisted(() => ({ refresh: vi.fn(), push: vi.fn() }));
@@ -25,7 +25,7 @@ type View = NonNullable<Parameters<typeof BuildPlanView>[0]['view']>;
 
 const PLAN = '/planner/build?meeting=1';
 const ROWS: PlanRow[] = [{ key: 'tenderfoot-4a', codeLabel: 'Tenderfoot 4a', title: 'First aid', origin: 'planner', seeded: true, teachers: [], scouts: 0, canTeach: 2, state: 'needs-teacher' }];
-const ALL = ['The plan', 'Suggestions', '+ Requirement', '+ Focus set', '+ New mix'];
+const ALL = ['Plans', 'Suggestions', 'Requirements', 'Focus sets', 'A mix'];
 
 function renderAt(view: View, o: { canSeed?: boolean } = {}) {
   const suggesting = view === 'suggestions';
@@ -70,8 +70,8 @@ describe('Build a Plan navigation', () => {
   // L0 qa (1): the views have their own primary (Invite, Add); the bar's current view is marked, never filled.
   it('BuildNav_Selected_IsMarkedLikeTheOthers', () => {
     renderAt('add-set');
-    const cur = within(strip()).getByRole('link', { name: '+ Focus set' });
-    const other = within(strip()).getByRole('link', { name: 'The plan' });
+    const cur = within(strip()).getByRole('link', { name: 'Focus sets' });
+    const other = within(strip()).getByRole('link', { name: 'Plans' });
     expect([cur.getAttribute('aria-current'), cur.className === other.className]).toEqual(['page', true]);
   });
 
@@ -97,23 +97,23 @@ describe('Build a Plan navigation', () => {
 
   it('BuildNav_ThePlan_ReturnsToMainView', () => {
     renderAt('add-requirement');
-    fireEvent.click(within(strip()).getByRole('link', { name: 'The plan' }));
-    expect([screen.queryByRole('textbox', { name: 'Search requirements' }), selected()]).toEqual([null, ['The plan']]);
+    fireEvent.click(within(strip()).getByRole('link', { name: 'Plans' }));
+    expect([screen.queryByRole('textbox', { name: 'Search requirements' }), selected()]).toEqual([null, ['Plans']]);
   });
 
   it('BuildNav_HighlightsCurrentView', () => {
     renderAt('add-set');
-    expect(selected()).toEqual(['+ Focus set']);
+    expect(selected()).toEqual(['Focus sets']);
   });
 
   it('BuildNav_Viewer_HidesAddItems', () => {
     renderAt('plan', { canSeed: false });
-    expect(tabs().map((t) => t.textContent)).toEqual(['The plan', 'Suggestions']);
+    expect(tabs().map((t) => t.textContent)).toEqual(['Plans', 'Suggestions']);
   });
 
   it('BuildNav_UrlRoundTrips', async () => {
     renderAt('plan');
-    fireEvent.click(within(strip()).getByRole('link', { name: '+ New mix' }));
+    fireEvent.click(within(strip()).getByRole('link', { name: 'A mix' }));
     const pushed = window.location.search;
     window.history.pushState(null, '', `${PLAN}&view=add-set`);
     fireEvent(window, new PopStateEvent('popstate'));
@@ -121,43 +121,43 @@ describe('Build a Plan navigation', () => {
     // qa-lead, nav batch: Back after an in-place switch lands on the view before it, URL and bar both.
     window.history.back();
     await waitFor(() => expect(window.location.search).toBe('?meeting=1&view=new-mix'));
-    await waitFor(() => expect(selected()).toEqual(['+ New mix']));
-    expect([pushed, popped, window.location.search, selected()]).toEqual(['?meeting=1&view=new-mix', ['+ Focus set'], '?meeting=1&view=new-mix', ['+ New mix']]);
+    await waitFor(() => expect(selected()).toEqual(['A mix']));
+    expect([pushed, popped, window.location.search, selected()]).toEqual(['?meeting=1&view=new-mix', ['Focus sets'], '?meeting=1&view=new-mix', ['A mix']]);
   });
 
   it('BuildNav_Viewer_AddViewInUrl_ShowsThePlan', () => {
     renderAt('add-set', { canSeed: false });
-    expect(selected()).toEqual(['The plan']);
+    expect(selected()).toEqual(['Plans']);
   });
 
   it('BuildNav_FromSuggestions_NavigatesToTheView', () => {
     renderAt('suggestions');
-    fireEvent.click(within(strip()).getByRole('link', { name: '+ Requirement' }));
+    fireEvent.click(within(strip()).getByRole('link', { name: 'Requirements' }));
     expect(nav.push.mock.calls).toEqual([[`${PLAN}&view=add-requirement`]]);
   });
 
   it('BuildNav_Switch_FocusesTheViewHeading', async () => {
     renderAt('plan');
-    fireEvent.click(within(strip()).getByRole('link', { name: '+ Focus set' }));
+    fireEvent.click(within(strip()).getByRole('link', { name: 'Focus sets' }));
     await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Add a focus set' })));
   });
 
   it('BuildNav_ThePlan_FocusesThePlanHeading', async () => {
     renderAt('new-mix');
-    fireEvent.click(within(strip()).getByRole('link', { name: 'The plan' }));
+    fireEvent.click(within(strip()).getByRole('link', { name: 'Plans' }));
     await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'The plan' })));
   });
 
   it('BuildNav_SubView_HasBackToThePlan', () => {
     renderAt('add-requirement');
     fireEvent.click(screen.getByRole('link', { name: 'Back to the plan' }));
-    expect([selected(), window.location.search]).toEqual([['The plan'], '?meeting=1']);
+    expect([selected(), window.location.search]).toEqual([['Plans'], '?meeting=1']);
   });
 
   it('BuildNav_AddView_EscReturnsToThePlan', () => {
     renderAt('add-set');
     fireEvent.keyDown(document.body, { key: 'Escape' });
-    expect(selected()).toEqual(['The plan']);
+    expect(selected()).toEqual(['Plans']);
   });
 
   it('BuildNav_Suggestions_HasNoBarBackLink', () => {

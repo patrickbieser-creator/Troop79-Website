@@ -8,8 +8,8 @@
  * Seed holders (canSeed) get a ⋯ menu per row; Remove is for seeded rows only, behind a danger dialog that names the
  * consequence, and a row scouts picked or a teacher offered says why it can't go. Viewers see the plan with no controls.
  *
- * One persistent bar on every sub-view (Patrick, 2026-10-22; lib/build-plan-view): "The plan · Suggestions ·
- * + Requirement · + Focus set · + New mix" (viewers: the first two), the current one highlighted. Each view is linkable
+ * One persistent bar on every sub-view (Patrick, 2026-10-22; lib/build-plan-view): "Plans · Suggestions ·
+ * Requirements · Focus sets · A mix" (viewers: the first two), the current one highlighted. Each view is linkable
  * (?view=suggestions|add-requirement|add-set|new-mix). The plan and the three adds switch in place (history.pushState;
  * popstate follows Back/Forward); Suggestions needs the server's engine read, so going to or from it navigates. Every
  * sub-view starts with "← Back to the plan" and its heading; focus moves to the new view's heading (the plan's, on the

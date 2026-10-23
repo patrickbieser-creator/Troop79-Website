@@ -105,7 +105,7 @@ describe('BuildPlanView layout (2026-10-22)', () => {
   it('BuildPlan_AddActions_SitInTheBuildBar', () => {
     render(<BuildPlanView entryId={1} rows={ROWS} canSeed stamp="s" heading={null} />);
     const bar = screen.getByRole('navigation', { name: 'Build a Plan' });
-    expect(within(bar).getAllByRole('link', { name: /^\+ / }).map((b) => b.textContent)).toEqual(['+ Requirement', '+ Focus set', '+ New mix']);
+    expect(within(bar).getAllByRole('link', { name: /^(Requirements|Focus sets|A mix)$/ }).map((b) => b.textContent)).toEqual(['Requirements', 'Focus sets', 'A mix']);
   });
 
   it('BuildPlan_AddedRow_ShowsNoJustAdded', async () => {

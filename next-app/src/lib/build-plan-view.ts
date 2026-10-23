@@ -9,11 +9,11 @@ export type BuildView = 'plan' | 'suggestions' | AddView;
 
 /** The persistent bar's items, in order. Viewers (no Seed right) get the first two only. */
 export const BUILD_NAV: readonly { view: BuildView; label: string }[] = [
-  { view: 'plan', label: 'The plan' },
+  { view: 'plan', label: 'Plans' },
   { view: 'suggestions', label: 'Suggestions' },
-  { view: 'add-requirement', label: '+ Requirement' },
-  { view: 'add-set', label: '+ Focus set' },
-  { view: 'new-mix', label: '+ New mix' }
+  { view: 'add-requirement', label: 'Requirements' },
+  { view: 'add-set', label: 'Focus sets' },
+  { view: 'new-mix', label: 'A mix' }
 ];
 
 /** Each sub-view's heading (focus lands on it when the view opens). */

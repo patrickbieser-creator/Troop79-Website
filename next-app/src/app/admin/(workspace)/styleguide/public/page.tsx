@@ -425,13 +425,13 @@ export default function PublicStyleguidePage() {
             <div className={sg.specimenGap} />
             <nav aria-label="View bar specimen">
               <Button variant="secondary" size="sm" href="#" aria-current="page">
-                The plan
+                Plans
               </Button>{' '}
               <Button variant="secondary" size="sm" href="#">
                 Suggestions
               </Button>{' '}
               <Button variant="secondary" size="sm" href="#">
-                + Requirement
+                Requirements
               </Button>
             </nav>
             <span className={sg.specimenInlineNote}>

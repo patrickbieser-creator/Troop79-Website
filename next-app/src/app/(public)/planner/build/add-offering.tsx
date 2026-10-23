@@ -2,14 +2,14 @@
 
 /**
  * Build a Plan's adds (Plans/Build-A-Plan.md, B2), each its own sub-view since 2026-10-22 (Patrick): the persistent bar
- * "The plan · Suggestions · + Requirement · + Focus set · + New mix" opens one (?view=add-requirement|add-set|new-mix),
+ * "Plans · Suggestions · Requirements · Focus sets · A mix" opens one (?view=add-requirement|add-set|new-mix),
  * BuildPlanView gives it "← Back to the plan" and a heading, and The plan, Back or Esc leaves it.
  *
- *   + Requirement  the server search, whole requirements only; Add puts one on the plan. The view stays open for the
+ *   Requirements  the server search, whole requirements only; Add puts one on the plan. The view stays open for the
  *                  next one and says what it added. (No typed free-text title: the seed RPCs take catalog keys and
  *                  focus groups only, and a typed title needs a teacher, so it stays on "+ Add an offer".)
- *   + Focus set    the planner's sets, filtered by name or label; Add puts the set on as one class.
- *   + New mix      a name ("Mix for Oct 25" until typed over) and requirements ticked from the same search, any
+ *   Focus sets    the planner's sets, filtered by name or label; Add puts the set on as one class.
+ *   A mix      a name ("Mix for Oct 25" until typed over) and requirements ticked from the same search, any
  *                  level. Add mix saves it as a focus set and adds it as one class in one step, then goes back to the plan.
  * The writes belong to the page (BuildPlanView): each callback resolves to an error to show, or null.
  */
