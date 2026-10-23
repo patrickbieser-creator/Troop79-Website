@@ -161,11 +161,31 @@ describe('AttentionInbox next open sign-up', () => {
     return data.id as number;
   }
 
+  /** The local DB mirrors production, so a real open sign-up dated today (an older entry) can outrank the fixture:
+   *  the expected row is whichever open, published, not-past sign-up comes first by date, then entry id. */
+  async function expectedNextHref(): Promise<string> {
+    const { data } = await admin
+      .from('event_signups')
+      .select('calendar_entries!inner(id, entry_date, status)')
+      .eq('status', 'open')
+      .gt('deadline', new Date().toISOString())
+      .eq('calendar_entries.status', 'published')
+      .gte('calendar_entries.entry_date', centralToday());
+    type E = { id: number; entry_date: string };
+    const entries = ((data ?? []) as unknown as { calendar_entries: E | E[] }[])
+      .map((r) => (Array.isArray(r.calendar_entries) ? r.calendar_entries[0] : r.calendar_entries))
+      .sort((a, b) => a.entry_date.localeCompare(b.entry_date) || a.id - b.id);
+    return `/admin/calendar/${entries[0].id}`;
+  }
+
   it('AttentionInbox_ShowsTheNextOpenSignup_ForCalendarWritersOnly', async () => {
-    const id = await entryWithSignup();
+    await entryWithSignup();
     const row = find(await load(caps('calendar.write')), 'next-signup');
-    expect(row?.items[0]?.label).toBe('[TEST] Inbox Campout');
-    expect(row?.items[0]?.href).toBe(`/admin/calendar/${id}`);
+    expect(row?.items[0]?.href).toBe(await expectedNextHref());
+  });
+
+  it('AttentionInbox_HidesTheNextOpenSignup_FromNonCalendarWriters', async () => {
+    await entryWithSignup();
     expect(find(await load(caps('finance.manage', 'news.write')), 'next-signup')).toBeUndefined();
   });
 
