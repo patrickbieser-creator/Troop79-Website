@@ -112,8 +112,8 @@ afterAll(async () => {
 });
 
 /** Sends a teach digest for the seeded class and returns the page token the email carried. */
-async function sendPage(): Promise<string> {
-  await sendInviteDigests(sb, { entryId: meeting, teach: [{ key: keys[0], personIds: [teacher] }], pick: [], sentBy: null }, { loadCatalog });
+async function sendPage(who = teacher): Promise<string> {
+  await sendInviteDigests(sb, { entryId: meeting, teach: [{ key: keys[0], personIds: [who] }], pick: [], sentBy: null }, { loadCatalog });
   const opts = state.send.mock.calls.at(-1)?.[0] as { html?: string; text?: string } | undefined;
   const token = /\/i\/teach\/([0-9a-f]{64})/.exec(`${opts?.html ?? ''} ${opts?.text ?? ''}`)?.[1] ?? '';
   if (!token) throw new Error('fixture: no page token');
@@ -246,6 +246,44 @@ describe('B10d: the Invite tab', () => {
     await sb.from('teaching_interests').update({ created_at: new Date(Date.now() - 31 * 86400_000).toISOString() }).eq('person_id', teacher).eq('topic_key', keys[2]);
     const mine = (await loadNewTalent(sb)).find((g) => g.personId === teacher);
     expect(mine?.items.map((i) => i.note)).toEqual(['recent']);
+  }, 60_000);
+});
+
+/** A merge (merge_people) carries interests and teach pages to the person kept. */
+describe('merge_people', () => {
+  const merge = async (survivor: number, loser: number) => {
+    const { error } = await sb.rpc('merge_people', { p_survivor: survivor, p_loser: loser, p_decided_by: 'vitest' });
+    if (error) throw new Error(error.message);
+  };
+
+  it('Merge_MovesInterests', async () => {
+    const survivor = await adult(`Survivor ${people.length}`);
+    const loser = await adult(`Loser ${people.length}`);
+    const token = await sendPage(loser);
+    await addInterestsFromPage(sb, token, [pick(keys[1]), pick('mb:first-aid')], []);
+    await merge(survivor, loser);
+    expect(await active(survivor)).toEqual([keys[1], 'mb:first-aid'].sort());
+  }, 60_000);
+
+  it('Merge_DuplicateTopic_KeepsTheSurvivorsRow', async () => {
+    const survivor = await adult(`Survivor ${people.length}`);
+    const loser = await adult(`Loser ${people.length}`);
+    await sb.rpc('teaching_interest_add_member', { p_person: survivor, p_items: [{ key: keys[1], note: 'survivor' }] });
+    await sb.rpc('teaching_interest_add_member', { p_person: loser, p_items: [{ key: keys[1], note: 'loser' }, { key: keys[2], note: null }] });
+    await merge(survivor, loser);
+    const { data } = await sb.from('teaching_interests').select('topic_key, note').eq('person_id', survivor).is('removed_at', null).order('topic_key');
+    expect(data).toEqual([...[{ topic_key: keys[1], note: 'survivor' }, { topic_key: keys[2], note: null }]].sort((a, b) => a.topic_key.localeCompare(b.topic_key)));
+  }, 60_000);
+
+  it('Merge_LosersTeachPage_MovesToSurvivor', async () => {
+    const survivor = await adult(`Survivor ${people.length}`);
+    const loser = await adult(`Loser ${people.length}`);
+    const token = await sendPage(loser);
+    await merge(survivor, loser);
+    const view = await inspectTeachPage(sb, token);
+    await answerTeachPage(sb, token, [{ inviteId: view.page!.lines[0].inviteId, answer: 'yes' }]);
+    const { data } = await sb.from('meeting_topic_teachers').select('person_id').eq('calendar_entry_id', meeting);
+    expect([view.state, data]).toEqual(['open', [{ person_id: survivor }]]);
   }, 60_000);
 });
 
