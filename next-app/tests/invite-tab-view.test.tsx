@@ -122,7 +122,7 @@ describe('the Invite tab', () => {
 
   it('InviteTab_Preview_UsesDigestRenderer', () => {
     renderTab();
-    fireEvent.click(screen.getAllByRole('button', { name: /^Preview email/ })[0]);
+    fireEvent.click(screen.getByRole('button', { name: 'Preview the email to Dana W' }));
     const dialog = screen.getByRole('dialog');
     expect([digest.calls > 0, within(dialog).getByText(/Subject: Troop meeting on Sunday, October 25, 2026: invites for/) != null]).toEqual([true, true]);
   });
@@ -203,9 +203,9 @@ describe('B6 qa follow-ups', () => {
     expect(screen.getByRole('button', { name: 'Review' })).toBeTruthy();
   });
 
-  it('InviteTab_PreviewClose_ReturnsFocusToItsOpener', () => {
+  it('InviteReview_PreviewClose_ReturnsFocusToTheIcon', () => {
     renderTab();
-    const opener = screen.getAllByRole('button', { name: /^Preview email/ })[0];
+    const opener = screen.getByRole('button', { name: 'Preview the email to Dana W' });
     fireEvent.click(opener);
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Close' }));
     expect(document.activeElement).toBe(opener);
@@ -220,7 +220,33 @@ describe('B6 qa follow-ups', () => {
 
   it('InviteTab_Preview_HasNoInviteLink', () => {
     renderTab();
-    fireEvent.click(screen.getAllByRole('button', { name: /^Preview email/ })[0]);
+    fireEvent.click(screen.getByRole('button', { name: 'Preview the email to Dana W' }));
     expect(screen.getByRole('dialog').innerHTML).not.toMatch(/\/i\//);
+  });
+});
+
+/** Patrick, 2026-10-22: a compact Review rail: one header line per recipient with a Preview icon, one line per invite. */
+describe('the compact Review rail', () => {
+  const lines = (name: string) => within(screen.getByRole('list', { name: `Invites in the email to ${name}` })).getAllByRole('listitem').map((li) => li.textContent);
+
+  it('InviteReview_PreviewIcon_ReplacesTheLink', () => {
+    renderTab();
+    expect([screen.queryAllByRole('button', { name: /^Preview email/ }).length, screen.getByRole('button', { name: 'Preview the email to Dana W' }).textContent]).toEqual([0, '']);
+  });
+
+  it('InviteReview_OneLinePerInvite_InTheShortForm', () => {
+    renderTab();
+    expect([lines('Teach T'), lines('P12')]).toEqual([['Teach · Ten 4a · First aid'], ['Ten 4a · First aid']]);
+  });
+
+  it('InviteReview_MultiScoutRecipient_PrefixesFirstName', () => {
+    renderTab({ data: { ...DATA, sections: [{ ...DATA.sections[0], scouts: [person(10, [40], { name: 'Charlie W' }), person(11, [40], { name: 'Sam W' })] }] } });
+    expect(lines('Dana W')).toEqual(['Charlie · Ten 4a · First aid', 'Sam · Ten 4a · First aid']);
+  });
+
+  it('InviteByPerson_UsesTheShortForm', () => {
+    renderTab();
+    fireEvent.click(screen.getByRole('radio', { name: 'By person' }));
+    expect(screen.getAllByText('Ten 4a · First aid').length).toBeGreaterThan(0);
   });
 });

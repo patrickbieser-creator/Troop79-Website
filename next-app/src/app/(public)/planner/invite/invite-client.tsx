@@ -7,8 +7,9 @@
  *   - centre: the selected offering, teachers first then scouts, each row a tick, the name, a reason line, a status
  *     chip and who gets the email; quiet controls (Tick all likely, Clear, Show all eligible (n), Said no (n)). A
  *     By offering | By person switch shows the same ticks one row per person instead;
- *   - right (sticky): the Review, grouped by family then recipient, with Preview email (a Dialog rendered by the real
- *     digest renderer) and the one primary, "Send N emails to M families".
+ *   - right (sticky): the Review, grouped by family, one compact block per recipient (name + a Preview icon, then one
+ *     short line per invite: "Ten 3a · Square Knot use"); Preview opens a Dialog rendered by the real
+ *     digest renderer; and the one primary, "Send N emails to M families".
  * Phone: one column; the list drills into the detail, and a sticky "Send N emails · Review" bar opens the Review in
  * the Drawer.
  *
@@ -29,6 +30,7 @@ import { Notice } from '@/app/_components/notice';
 import { fmtDate, fmtDay } from '@/lib/format-date';
 import { STATE_LABEL, type PlanRow } from '@/lib/build-plan';
 import { renderMarkdownEmail } from '@/lib/email-markdown';
+import { shortRequirement } from '@/lib/rank-abbrev';
 import { renderInviteDigest, type InviteTemplate } from '@/lib/meeting-invite-email';
 import {
   byPerson,
@@ -544,7 +546,7 @@ function PeopleView({
             {row.entries.map(({ key, person }) => {
               const id = tickId(row.kind, key, person.personId);
               const r = rowOf.get(key);
-              return <PersonTick key={key} id={id} p={person} on={ticks.has(id)} over={overflow.has(id)} readOnly={readOnly} onToggle={onToggle} chip={chip} label={r ? [r.codeLabel, r.title].filter(Boolean).join(' ') : key} />;
+              return <PersonTick key={key} id={id} p={person} on={ticks.has(id)} over={overflow.has(id)} readOnly={readOnly} onToggle={onToggle} chip={chip} label={r ? shortRequirement(r.codeLabel, r.title) : key} />;
             })}
           </ul>
         </li>
@@ -569,7 +571,10 @@ function Review({
   onPreview: (group: ReviewGroup, recipientId: number, opener: HTMLElement) => void;
   foot: ReactNode;
 }) {
-  const code = (key: string) => rowOf.get(key)?.codeLabel || rowOf.get(key)?.title || key;
+  const short = (key: string) => {
+    const r = rowOf.get(key);
+    return r ? shortRequirement(r.codeLabel, r.title) : key;
+  };
   return (
     <div className={s.reviewBody}>
       <h2 id={headingId} className={b.editLabel}>
@@ -579,14 +584,28 @@ function Review({
         <ul className={s.groups}>
           {groups.map((g) => (
             <li key={g.family} className={s.group}>
-              <p className={s.groupLine}>
-                <span className={b.pickTitle}>{g.label}:</span> {g.about.map((a) => `${a.name} (${a.keys.map(code).join(', ')})`).join(', ')}
-              </p>
-              {g.recipients.map((r) => (
-                <button key={r.recipientId} type="button" className={s.quiet} onClick={(e) => onPreview(g, r.recipientId, e.currentTarget)} aria-haspopup="dialog">
-                  Preview email{g.recipients.length > 1 ? ` to ${r.name}` : ''}
-                </button>
-              ))}
+              {/* One compact block per email (Patrick, 2026-10-22): the recipient + a Preview icon, then one line per invite. */}
+              {g.recipients.map((r) => {
+                const scouts = new Set(r.items.filter((i) => i.kind === 'pick').map((i) => i.inviteeId));
+                const listName = `Invites in the email to ${r.name}`;
+                return (
+                  <div key={r.recipientId} className={s.recipient}>
+                    <p className={s.recipientHead}>
+                      <span className={b.pickTitle}>{r.name}</span>
+                      <button type="button" className={s.previewIcon} onClick={(e) => onPreview(g, r.recipientId, e.currentTarget)} aria-haspopup="dialog" aria-label={`Preview the email to ${r.name}`} title="Preview the email">
+                        <PreviewIcon />
+                      </button>
+                    </p>
+                    <ul className={s.inviteLines} aria-label={listName}>
+                      {r.items.map((i) => (
+                        <li key={`${i.kind}-${i.key}-${i.inviteeId}`}>
+                          {[i.kind === 'teach' ? 'Teach' : scouts.size > 1 ? firstName(i.inviteeName) : null, short(i.key)].filter(Boolean).join(' · ')}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })}
             </li>
           ))}
         </ul>
@@ -596,6 +615,18 @@ function Review({
       {overflow ? <p className={s.overNote}>{plural(overflow, 'more invite')} past this send’s limit: send again after this one.</p> : null}
       <div className={s.reviewFoot}>{foot}</div>
     </div>
+  );
+}
+
+const firstName = (name: string) => name.trim().split(/\s+/)[0] ?? name;
+
+/** An eye: "see the email". Drawn in currentColor, so it takes the button's token colour. */
+function PreviewIcon() {
+  return (
+    <svg className={s.icon} viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+      <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+      <circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" strokeWidth="2" />
+    </svg>
   );
 }
 
