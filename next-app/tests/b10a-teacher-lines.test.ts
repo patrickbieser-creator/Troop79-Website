@@ -42,4 +42,17 @@ describe('the teacher digest', () => {
     const { md } = renderInviteDigest(DEFAULT_INVITE_DIGEST, { name: 'Kim', people: 'you', day: 'Sunday' }, [teach({ minutes: '', helped: scoutsHelped([]) })]);
     expect(md).toContain('- **Ten 3a** Square Knot use: no scouts yet');
   });
+
+  it('Digest_TeachLine_AndNMore', () => {
+    const helped = scoutsHelped(['Al A', 'Bo B', 'Cy C', 'Di D', 'Ed E', 'Fy F', 'Gu G'].map((n) => cand(n)));
+    const { md } = renderInviteDigest(DEFAULT_INVITE_DIGEST, { name: 'Kim', people: 'you', day: 'Sunday' }, [teach({ minutes: '', helped })]);
+    expect(md).toContain(': 7 scouts (Al A, Bo B, Cy C, Di D, Ed E and 2 more)');
+  });
+});
+
+describe('test scouts (qa-lead B10a #1)', () => {
+  it('ScoutsHelped_TestScouts_NotNamedOrCounted', () => {
+    const h = scoutsHelped([cand('Charlie Walters', { picked: true, isTest: true }), cand('Todd Test', { isTest: true }), cand('Leo King')]);
+    expect(h).toEqual({ count: 1, names: ['Leo K'], more: 0 });
+  });
 });

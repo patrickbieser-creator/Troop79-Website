@@ -1161,12 +1161,12 @@ export async function updateReqCode(formData: FormData): Promise<Result> {
   if (error) return { ok: false, error: error.message };
 
   if (code !== originalCode) {
-    const { data: renamed, error: cascadeErr } = await supabase
+    // Counted, not returned (qa-lead B10a #5): a returned id list would cap at 1000 rows and undercount the audit.
+    const { count: renamedCount, error: cascadeErr } = await supabase
       .from('ledger_entries')
-      .update({ code: `${parentId}-${code}` })
+      .update({ code: `${parentId}-${code}` }, { count: 'exact' })
       .eq('kind', kind)
-      .eq('code', `${parentId}-${originalCode}`)
-      .select('id');
+      .eq('code', `${parentId}-${originalCode}`);
     if (cascadeErr) {
       return {
         ok: false,
@@ -1174,7 +1174,7 @@ export async function updateReqCode(formData: FormData): Promise<Result> {
       };
     }
     // A bulk system change: one summarised ledger audit row, not one per ledger row (qa-lead, 2026-10-22).
-    const n = renamed?.length ?? 0;
+    const n = renamedCount ?? 0;
     if (n) {
       await auditLedgerBulk({
         action: 'update',

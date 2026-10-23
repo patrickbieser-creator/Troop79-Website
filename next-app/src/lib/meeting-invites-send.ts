@@ -129,6 +129,8 @@ export interface ScoutCandidate {
   badge?: string | null;
   /** B10a: their answer to "Coming Sunday?" (null: no answer); scoutsHelped reads it. */
   intent?: Intent | null;
+  /** people.is_test: offered like anyone, never named or counted in a teach line (qa-lead B10a #1). */
+  isTest?: boolean;
 }
 
 export type ScoutCandidatesResult = { ok: true; scouts: ScoutCandidate[] } | { ok: false; error: string };
@@ -158,7 +160,15 @@ export interface EligibleScout {
   picked: string[];
 }
 
-export type ScoutCandidatesManyResult = { ok: true; byKey: Map<string, ScoutCandidate[]>; eligible: EligibleScout[] } | { ok: false; error: string };
+export type ScoutCandidatesManyResult =
+  | {
+      ok: true;
+      byKey: Map<string, ScoutCandidate[]>;
+      eligible: EligibleScout[];
+      /** The meeting's mixes and freeform classes, as topicWords reads them (qa-lead B10a #2: the Preview's minutes). */
+      words?: { titles: Map<string, string>; members: Map<string, string[]> };
+    }
+  | { ok: false; error: string };
 
 /**
  * Build a Plan B0 (Plans/Build-A-Plan.md): scoutCandidates for many keys over ONE board load. The board is read once
@@ -227,12 +237,14 @@ export async function scoutCandidatesMany(
         likely: fit.likely,
         covers: fit.covers,
         badge,
-        intent
+        intent,
+        isTest: scout.isTest === true
       });
     }
   }
   for (const list of byKey.values()) list.sort((a, b) => Number(b.ticked) - Number(a.ticked) || a.name.localeCompare(b.name));
-  return { ok: true, byKey, eligible };
+  const titles = new Map(topics.filter((t) => t.title).map((t) => [t.key, t.title as string]));
+  return { ok: true, byKey, eligible, words: { titles, members: new Map(topics.map((t) => [t.key, [...t.members]])) } };
 }
 
 /**

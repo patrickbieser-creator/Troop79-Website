@@ -173,12 +173,20 @@ export async function retireCredit(
   };
   const legacyCode = ledgerCodeFor(ctx.creditKind, ctx.id, ctx.entryDate);
 
-  // Snapshot what this retires (both kinds below) for the ledger audit trail.
-  const [linked, legacy] = await Promise.all([
-    db.from('ledger_entries').select('id').eq('calendar_entry_id', ctx.id).eq('scout_id', scoutId).is('deleted_at', null),
-    db.from('ledger_entries').select('id').is('calendar_entry_id', null).eq('scout_id', scoutId).eq('code', legacyCode).eq('date', ctx.entryDate).is('deleted_at', null)
-  ]);
-  const retiring = [...(linked.data ?? []), ...(legacy.data ?? [])].map((r) => (r as { id: number }).id);
+  // Snapshot what this retires (both kinds below) for the ledger audit trail. The snapshot is for the audit only: a
+  // read that throws leaves it empty and the retire still runs (qa-lead B10a #4).
+  type IdRows = { data: { id: number }[] | null };
+  let linked: IdRows = { data: null };
+  let legacy: IdRows = { data: null };
+  try {
+    [linked, legacy] = (await Promise.all([
+      db.from('ledger_entries').select('id').eq('calendar_entry_id', ctx.id).eq('scout_id', scoutId).is('deleted_at', null),
+      db.from('ledger_entries').select('id').is('calendar_entry_id', null).eq('scout_id', scoutId).eq('code', legacyCode).eq('date', ctx.entryDate).is('deleted_at', null)
+    ])) as IdRows[];
+  } catch {
+    // Audited as nothing; the retire below is what matters.
+  }
+  const retiring = [...(linked.data ?? []), ...(legacy.data ?? [])].map((r) => r.id);
   const before = retiring.length ? await loadLedgerForAudit(db, retiring) : new Map();
 
   const { error } = await db

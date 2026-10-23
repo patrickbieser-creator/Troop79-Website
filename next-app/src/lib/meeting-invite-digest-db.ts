@@ -160,11 +160,12 @@ export async function loadInviteTab(
         const self = all.some((r) => r.isScout);
         const words = [parents.length ? `${parents.length === 1 ? 'Parent' : 'Parents'}: ${parents.join(', ')}` : null, self ? `${c.name} (own email)` : null].filter(Boolean).join(' · ');
         const chip = picked ? { chip: 'picked' as const, at: null } : chipOf('pick', key, c.personId);
-        return { personId: c.personId, name: c.name, reason, likely: !picked && (c.likely ?? false), recipients: hasParent && !picked ? to : [], blocked, chip: chip?.chip, askedAt: chip?.at ?? null, to: words };
+        return { personId: c.personId, name: c.name, reason, likely: !picked && (c.likely ?? false), recipients: hasParent && !picked ? to : [], blocked, chip: chip?.chip, askedAt: chip?.at ?? null, to: words, ...(c.isTest ? { isTest: true } : {}) };
       })
       .sort((a, b) => Number(b.likely) - Number(a.likely) || a.name.localeCompare(b.name));
-    // B10a: the Preview's teach line shows the minutes the send would (a catalog key; a mix's or freeform's stay unknown).
-    const minutes = topicWords(key, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, undefined, { mbReqs: catalog.meritBadgeRequirements })?.minutes ?? null;
+    // B10a: the Preview's teach line shows the minutes the send would: the same topicWords call as inviteWords, with the
+    // meeting's mixes from the board load already made (qa-lead B10a #2).
+    const minutes = topicWords(key, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, cands.words?.titles, { mbReqs: catalog.meritBadgeRequirements, members: cands.words?.members })?.minutes ?? null;
     return { key, teachers, scouts, minutes };
   });
   return { sections, recipients };
@@ -245,7 +246,7 @@ export async function createInviteDigest(
   const helped: Record<string, ScoutsHelped> = Object.fromEntries(
     [...new Set(teach.map((t) => t.key))].map((k) => [
       k,
-      scoutsHelped((cands.byKey.get(k) ?? []).map((c) => ({ name: c.name, picked: !c.ticked, likely: c.likely ?? false, intent: c.intent })))
+      scoutsHelped((cands.byKey.get(k) ?? []).map((c) => ({ name: c.name, picked: !c.ticked, likely: c.likely ?? false, intent: c.intent, isTest: c.isTest })))
     ])
   );
   const lateReason = `already invited in the last ${INVITE_DEDUPE_HOURS} hours`;

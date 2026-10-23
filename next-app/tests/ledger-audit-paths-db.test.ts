@@ -180,6 +180,31 @@ describe('Roll Call', () => {
     expect((await logged(id)).map((r) => r.action)).toEqual(['delete']);
   });
 
+  it('RollCallRetire_SnapshotReadThrows_StillRetires', async () => {
+    const e = await entry('2094-05-17');
+    const id = await credit(e, '2094-05-17');
+    // The audit snapshot's reads throw (a dropped connection); the retire's own update must still run.
+    const throwing = new Proxy(sb, {
+      get(t, prop, receiver) {
+        const v = Reflect.get(t, prop, receiver);
+        if (prop !== 'from' || typeof v !== 'function') return v;
+        return (table: string) => {
+          const q = (v as (x: string) => ReturnType<SupabaseClient['from']>).call(t, table);
+          if (table !== 'ledger_entries') return q;
+          return new Proxy(q, {
+            get(qt, qp, qr) {
+              if (qp === 'select') return () => { throw new Error('fetch failed'); };
+              const qv = Reflect.get(qt, qp, qr);
+              return typeof qv === 'function' ? qv.bind(qt) : qv;
+            }
+          });
+        };
+      }
+    });
+    await (await rollCall()).retireCredit(throwing, ctx(e, '2094-05-17'), personA, 'LGP');
+    expect((await fresh(id)).deleted_at).not.toBeNull();
+  });
+
   it('RollCallRevive_IsAudited', async () => {
     const e = await entry('2094-05-23');
     const id = await credit(e, '2094-05-23', { deleted_at: new Date().toISOString(), deleted_by: 'LGP', deleted_reason: 'Removed from Roll Call' });

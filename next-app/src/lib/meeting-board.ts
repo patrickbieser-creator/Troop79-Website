@@ -110,22 +110,27 @@ export interface BoardScout {
   scoutId: string;
   name: string;
   currentRank: string | null;
+  /** people.is_test (Charlie Walters & co): still on the board (Patrick tries the planner with them), never named in an
+   *  email (qa-lead B10a #1). */
+  isTest?: boolean;
 }
 
 /** Active scouts with a person record (picks are keyed to the person). Pass ids to narrow. */
 export async function loadBoardScouts(sb: SupabaseClient, personIds?: readonly number[]): Promise<BoardScout[]> {
-  let q = sb.from('scouts').select('id, display_name, person_id, current_rank').eq('active', true).not('person_id', 'is', null).order('display_name');
+  let q = sb.from('scouts').select('id, display_name, person_id, current_rank, people(is_test)').eq('active', true).not('person_id', 'is', null).order('display_name');
   if (personIds) {
     if (!personIds.length) return [];
     q = q.in('person_id', personIds as number[]);
   }
   const { data, error } = await q;
   if (error) throw new Error(error.message);
-  return ((data ?? []) as { id: string; display_name: string; person_id: number; current_rank: string | null }[]).map((s) => ({
+  type Row = { id: string; display_name: string; person_id: number; current_rank: string | null; people: { is_test: boolean } | { is_test: boolean }[] | null };
+  return ((data ?? []) as unknown as Row[]).map((s) => ({
     personId: s.person_id,
     scoutId: s.id,
     name: s.display_name,
-    currentRank: s.current_rank
+    currentRank: s.current_rank,
+    isTest: (Array.isArray(s.people) ? s.people[0]?.is_test : s.people?.is_test) === true
   }));
 }
 

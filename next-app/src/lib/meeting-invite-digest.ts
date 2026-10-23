@@ -35,6 +35,8 @@ export interface InvitePerson {
   tier?: TeacherTier;
   /** B6: who gets the email, in words ('Parents: Dana R, Rob R', 'Maria L'); '' when nobody can be reached. */
   to?: string;
+  /** A test scout (people.is_test): offered like anyone, left out of the Preview's teach lines (qa-lead B10a #1). */
+  isTest?: boolean;
 }
 
 export type TeacherTier = 'assigned' | 'pending' | 'top' | 'more' | 'scout';
@@ -350,6 +352,8 @@ export interface HelpedCandidate {
   likely: boolean;
   /** Their answer to "Coming Sunday?"; Can't make it never counts. */
   intent?: Intent | null;
+  /** people.is_test (qa-lead B10a #1): never named or counted. */
+  isTest?: boolean;
 }
 
 export interface ScoutsHelped {
@@ -370,7 +374,7 @@ export const HELPED_SHOWN = 5;
  */
 export function scoutsHelped(candidates: readonly HelpedCandidate[], opts: { cap?: number } = {}): ScoutsHelped {
   const cap = opts.cap ?? HELPED_SHOWN;
-  const going = candidates.filter((c) => c.intent !== 'not_coming');
+  const going = candidates.filter((c) => c.intent !== 'not_coming' && !c.isTest);
   const byName = (a: HelpedCandidate, b: HelpedCandidate) => a.name.localeCompare(b.name);
   const all = [...going.filter((c) => c.picked).sort(byName), ...going.filter((c) => !c.picked && c.likely).sort(byName)].map((c) => boardName(c.name));
   return { count: all.length, names: all.slice(0, cap), more: Math.max(0, all.length - cap) };
@@ -384,5 +388,5 @@ export function scoutsHelpedText(h: ScoutsHelped): string {
 
 /** The Invite tab's Preview: an offering's scouts as scoutsHelped reads them (a picked scout carries the Picked chip). */
 export function sectionHelped(s: Pick<InviteSection, 'scouts'> | undefined): ScoutsHelped {
-  return scoutsHelped((s?.scouts ?? []).map((p) => ({ name: p.name, picked: p.chip === 'picked', likely: p.likely })));
+  return scoutsHelped((s?.scouts ?? []).map((p) => ({ name: p.name, picked: p.chip === 'picked', likely: p.likely, isTest: p.isTest })));
 }

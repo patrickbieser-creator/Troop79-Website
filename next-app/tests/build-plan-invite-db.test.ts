@@ -327,3 +327,86 @@ describe('the Invite tab', () => {
     expect(mine?.to).toMatch(/^Parent: /);
   }, 60_000);
 });
+
+/**
+ * qa-lead B10a follow-ups: the teach lines (helped) leave test scouts out of the names AND the count, a Can't-make-it
+ * scout never reaches them, createInviteDigest hands back the snapshot, and the Preview's minutes for a mix are the
+ * email's. Fixture scouts carry one-word display names so boardName can't confuse them with the other fixtures.
+ */
+describe('B10a qa: the teach lines', () => {
+  let testLikely = 0;
+  let testPicked = 0;
+  const qaScout = async (label: string) => {
+    const id = await person(`Qa${label}`);
+    const sid = `vitest-bai-${id}`;
+    const { error } = await sb.from('scouts').insert({ id: sid, first_name: TEST_PREFIX, last_name: `Qa${label}`, display_name: `${TEST_PREFIX}Qa${label} X`, person_id: id, active: true, current_rank: 'scout' });
+    if (error) throw new Error(error.message);
+    scoutIds.push(sid);
+    return id;
+  };
+  const digest = async () => {
+    const mod = await import('../src/lib/meeting-invite-digest-db');
+    const res = await mod.createInviteDigest(sb, { entryId: meeting, teach: [{ key: keys[0], personIds: [parent] }], pick: [], sentBy: null }, { loadCatalog });
+    if (!res.ok) throw new Error(res.error);
+    await sb.from('meeting_invites').delete().eq('calendar_entry_id', meeting);
+    return res.helped?.[keys[0]] ?? null;
+  };
+  const flag = (on: boolean) => sb.from('people').update({ is_test: on }).in('id', [testLikely, testPicked]);
+
+  beforeAll(async () => {
+    testLikely = await qaScout('Likely');
+    testPicked = await qaScout('Picked');
+    await flag(true);
+    const pick = await sb.rpc('meeting_add_pick', { p_entry: meeting, p_person: testPicked, p_actor: parent, p_leader: true, p_topic_key: keys[0], p_later: false, p_mark_coming: false, p_carry: [] });
+    if (pick.error) throw new Error(pick.error.message);
+  }, 60_000);
+
+  afterAll(async () => {
+    await flag(false);
+    await sb.from('meeting_topic_picks').delete().eq('calendar_entry_id', meeting);
+    await sb.from('meeting_pick_lists').delete().eq('calendar_entry_id', meeting);
+  });
+
+  it('CreateDigest_ReturnsHelpedSnapshot', async () => {
+    expect(typeof (await digest())?.count).toBe('number');
+  }, 60_000);
+
+  it('Helped_TestScouts_NotNamedOrCounted', async () => {
+    const on = await digest();
+    await flag(false);
+    try {
+      const off = await digest();
+      const ours = (h: typeof on) => (h?.names ?? []).filter((n) => n.startsWith(`${TEST_PREFIX}Qa`));
+      expect([ours(on), (off?.count ?? 0) - (on?.count ?? 0), ours(off).length > 0]).toEqual([[], 2, true]);
+    } finally {
+      await flag(true);
+    }
+  }, 120_000);
+
+  it('ScoutCandidates_CantMakeIt_Excluded', async () => {
+    const { scoutCandidatesMany } = await import('../src/lib/meeting-invites-send');
+    await sb.from('meeting_intents').upsert({ calendar_entry_id: meeting, person_id: younger, intent: 'not_coming', entered_by_person_id: parent });
+    try {
+      const res = await scoutCandidatesMany(sb, { entryId: meeting, keys: [keys[0]] }, { loadCatalog });
+      expect(res.ok && res.byKey.get(keys[0])?.some((c) => c.personId === younger)).toBe(false);
+    } finally {
+      await sb.from('meeting_intents').delete().eq('calendar_entry_id', meeting).eq('person_id', younger);
+    }
+  }, 60_000);
+
+  it('Preview_UsesSameTeachLines', async () => {
+    const { newMix, unseedTopic } = await import('../src/lib/meeting-focus-db');
+    const { inviteWords } = await import('../src/lib/meeting-invites-send');
+    const made = await newMix(sb, meeting, `${TEST_PREFIX} BAI qa mix`, [keys[1], keys[2]], parent);
+    if (!made.ok) throw new Error(made.error);
+    const key = `fg:${made.setId}`;
+    try {
+      const tab = await loadInviteTab(sb, { entryId: meeting, date: '2094-03-07' }, [key], { loadCatalog });
+      const words = await inviteWords(sb, meeting, key);
+      expect([tab.sections[0]?.minutes, words?.minutes != null]).toEqual([words?.minutes, true]);
+    } finally {
+      await unseedTopic(sb, meeting, key);
+      await sb.from('focus_sets').delete().eq('id', made.setId);
+    }
+  }, 60_000);
+});
