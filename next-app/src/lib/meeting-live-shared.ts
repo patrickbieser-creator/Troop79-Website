@@ -16,6 +16,8 @@
  *   - buildLiveView: the cards, repeats, retake stars, conflicts and the "Not in a class yet" pool the Live screen
  *     draws, from either the preview or the saved placement.
  *   - liveDrift (Rotations L0): where the plan and a started arrangement disagree, each case with its fix.
+ *   - Rotations L1: the database keeps a started arrangement in step with the plan (meeting_reconcile). Here only the
+ *     marks it leaves show: a member placed automatically is New until a planner dismisses it.
  */
 import type { MatchResult, MatchSession } from '@/lib/meeting-board-match';
 import { effectiveIntent, type BoardPick, type Intent } from '@/lib/meeting-board-shared';
@@ -39,6 +41,8 @@ export interface LiveClassIn {
   kind: LiveKind;
   teacherId: number | null;
   memberIds: readonly number[];
+  /** Rotations L1: members placed automatically since the arrangement started, not yet dismissed. */
+  newIds?: readonly number[];
   position: number;
   /** The card's version (P4b's stale-write check); a preview card is 1, what meeting_live_start gives it. */
   version: number;
@@ -53,6 +57,8 @@ export interface LiveMember {
   present: boolean;
   /** A Meeting Live visitor (a guest person, P4c). */
   visitor: boolean;
+  /** Rotations L1: placed automatically (a late pick), until a planner dismisses it. */
+  isNew: boolean;
 }
 
 export interface LiveCard {
@@ -191,6 +197,8 @@ export interface SavedClass {
   position: number;
   version: number;
   memberIds: number[];
+  /** Rotations L1: placed automatically, not yet dismissed (meeting_class_members.is_new). */
+  newIds: number[];
 }
 
 export interface SavedPlacement {
@@ -402,7 +410,14 @@ export function buildLiveView(input: {
       kind: c.kind,
       teacher: c.teacherId != null ? { personId: c.teacherId, name: input.nameOf(c.teacherId), present: here(c.teacherId) } : null,
       members: c.memberIds
-        .map((personId) => ({ personId, name: input.nameOf(personId), retake: input.retake(personId, c.topicKey), present: here(personId), visitor: visiting(personId) }))
+        .map((personId) => ({
+          personId,
+          name: input.nameOf(personId),
+          retake: input.retake(personId, c.topicKey),
+          present: here(personId),
+          visitor: visiting(personId),
+          isNew: (c.newIds ?? []).includes(personId)
+        }))
         .sort(byName),
       repeats: classes.filter((o) => o !== c && o.topicKey === c.topicKey).map((o) => o.rotation),
       conflicts: lines.get(c.id) ?? [],
@@ -478,8 +493,14 @@ export function buildAttendanceReview(input: {
    * attendance may have been marked not here: they start UNticked rather than credited by one careless tap.
    */
   seededByOldCode?: boolean;
+  /**
+   * Rotations L1: said Can't make it. A planner's hand keeps them in their class (pinned), but with no tap they start
+   * UNticked: the class is not evidence they came.
+   */
+  notComing?: ReadonlySet<number>;
 }): AttendanceReview {
   const noTap = !input.seededByOldCode;
+  const saidCant = input.notComing ?? new Set<number>();
   const groupOf = new Map<number, AttendanceGroupKey>();
   const put = (ids: Iterable<number>, key: AttendanceGroupKey) => {
     for (const id of ids) if (!groupOf.has(id)) groupOf.set(id, key);
@@ -501,7 +522,7 @@ export function buildAttendanceReview(input: {
           .filter(([, k]) => k === key)
           .map(([personId]) => {
             const recorded = input.recorded.has(personId);
-            return { personId, name: input.nameOf(personId), recorded, ticked: recorded || (input.draft.get(personId) ?? noTap) };
+            return { personId, name: input.nameOf(personId), recorded, ticked: recorded || (input.draft.get(personId) ?? (noTap && !saidCant.has(personId))) };
           })
           .sort((a, b) => a.name.localeCompare(b.name))
       }))

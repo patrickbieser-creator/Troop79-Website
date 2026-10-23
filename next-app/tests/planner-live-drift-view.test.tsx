@@ -37,7 +37,7 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: mocks.refresh }
 
 import { LiveBoard } from '../src/app/(public)/planner/live/live-board';
 
-const member = (personId: number, name: string) => ({ personId, name, retake: false, present: false, visitor: false });
+const member = (personId: number, name: string) => ({ personId, name, retake: false, present: false, visitor: false, isNew: false });
 const VIEW: LiveView = {
   started: true,
   rotations: [

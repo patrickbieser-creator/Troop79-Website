@@ -52,7 +52,7 @@ describe('AdminNav (section bar + tabs)', () => {
     render(<Shell caps={['advancement.write']} />);
     const tabs = within(screen.getByRole('navigation', { name: 'Advancement section' }));
     expect(tabs.getAllByRole('tab').map((t) => t.textContent)).toEqual([
-      'Dashboard', 'Fast Entry', 'Ledger', 'Submit & Present', 'MB Progress', 'Has/Needs'
+      'Dashboard', 'Fast Entry', 'Ledger', 'Submit & Present', 'MB Progress'
     ]);
     expect(tabs.getByRole('tab', { name: 'Ledger' }).getAttribute('aria-selected')).toBe('true');
     expect(tabs.getByRole('tab', { name: 'Dashboard' }).getAttribute('aria-selected')).toBe('false');

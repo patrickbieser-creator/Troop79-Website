@@ -23,6 +23,9 @@
  * L0 qa: a fix's buttons stay focusable while it saves (aria-disabled + a guard); when its line goes, focus moves to
  * the next line's first button, or the strip heading (tabIndex -1) when none follows, and the persistent status says
  * "Fixed · n left" / "All fixed" (the B8 focusStart pattern). Make a class names any scout it couldn't place.
+ * Rotations L1: the database keeps a started arrangement in step with the plan. A scout placed from a late pick says
+ * New on their chip; editors mark it seen from the scout's sheet, or all at once from the bar ("Mark all seen").
+ * Removing a scout from a class by hand keeps them out of it (the sheet says so).
  */
 import { useEffect, useRef, useState, type DragEvent, type ReactNode, type RefObject } from 'react';
 import { useRouter } from 'next/navigation';
@@ -46,6 +49,7 @@ import {
   plannerLiveStartAction,
   plannerLiveMakeClassAction,
   plannerLiveUseClassTeacherAction,
+  plannerLiveDismissNewAction,
   type LiveWriteResult
 } from '../live-actions';
 import styles from './live.module.css';
@@ -98,25 +102,43 @@ export interface LiveMeetingProp {
 export const DISCARD_LOST = 'The classes, rotations, moves and here / not-here ticks made on Meeting Live are deleted.';
 /** B8 qa: the first edit on a future meeting's preview starts Live; say so quietly, and where the way back is. */
 export const LIVE_STARTED_NOTE = 'Meeting Live started. Discard is in More actions.';
-export const DISCARD_KEPT = 'Recorded attendance, visitors, offerings and teacher sign-ups stay. The board goes back to the matcher and follows new sign-ups again.';
-export const startConfirmText = (label: string) => `Start Meeting Live for ${label}? Changes you make there stop following new sign-ups until you discard it.`;
+export const DISCARD_KEPT = 'Recorded attendance, visitors, offerings and teacher sign-ups stay. The board goes back to the matcher’s suggestion.';
+export const startConfirmText = (label: string) =>
+  `Start Meeting Live for ${label}? New picks still land in their classes; anyone you move by hand stays where you put them.`;
 const CLOSED: LiveAttendanceProp = { open: false, note: null };
 
-/** A chip's spoken name: who, whether they're here (on the meeting day), retake, visitor. Undefined = just the name. */
-function chipLabel(name: string, m: { present?: boolean; retake?: boolean; visitor?: boolean; picks?: readonly string[] }, open: boolean): string | undefined {
+/** A chip's spoken name: who, new, whether they're here (on the meeting day), retake, visitor. Undefined = just the name. */
+function chipLabel(name: string, m: { present?: boolean; retake?: boolean; visitor?: boolean; isNew?: boolean; picks?: readonly string[] }, open: boolean): string | undefined {
   const picked = m.picks?.length ? `, picked ${m.picks.join(', ')}` : '';
-  const label = `${name}${open ? (m.present ? ', here' : ', not here') : ''}${m.retake ? ', retake: already completed this' : ''}${m.visitor ? ', visitor' : ''}`;
+  const label = `${name}${m.isNew ? ', new' : ''}${open ? (m.present ? ', here' : ', not here') : ''}${m.retake ? ', retake: already completed this' : ''}${m.visitor ? ', visitor' : ''}`;
   if (label === name) return undefined;
   return `${label}${picked}`;
 }
 
-/** A chip's face: ✓ when here (meeting day), the name, a visitor tag, the retake star. */
-function ChipFace({ name, present, visitor, retake, open, picks }: { name: string; present?: boolean; visitor?: boolean; retake?: boolean; open: boolean; picks?: readonly string[] }) {
+/** A chip's face: ✓ when here (meeting day), the name, a New tag (L1), a visitor tag, the retake star. */
+function ChipFace({
+  name,
+  present,
+  visitor,
+  retake,
+  isNew,
+  open,
+  picks
+}: {
+  name: string;
+  present?: boolean;
+  visitor?: boolean;
+  retake?: boolean;
+  isNew?: boolean;
+  open: boolean;
+  picks?: readonly string[];
+}) {
   return (
     <>
       {open && present ? '✓ ' : ''}
       {name}
       {picks?.length ? <span className={styles.chipPicks}>{picks.join(', ')}</span> : null}
+      {isNew ? <span className={styles.newTag}>New</span> : null}
       {visitor ? <span className={styles.visitorTag}>visitor</span> : null}
       {retake ? (
         <span className={styles.star} aria-hidden="true">
@@ -283,6 +305,9 @@ export function LiveBoard({
       })
     );
   const moveScout = (personId: number, from: string | null, to: string | null) => run(() => plannerLiveMoveScoutAction({ entryId, personId, from, to }));
+  /** L1: "New" goes from one chip (classId + personId) or from all of them (both null). */
+  const dismissNew = (classId: string | null, personId: number | null) => run(() => plannerLiveDismissNewAction({ entryId, classId, personId }));
+  const newCount = view.started ? view.cards.reduce((n, c) => n + c.members.filter((m) => m.isNew).length, 0) : 0;
 
   // ── drag-and-drop ──
   const dragStart = (e: DragEvent, payload: Drag) => {
@@ -390,6 +415,14 @@ export function LiveBoard({
             {notice ?? said ?? ''}
           </p>
           {view.overlaps ? <span className={styles.overlaps}>{plural(view.overlaps, 'overlap')}</span> : null}
+          {canEdit && newCount ? (
+            <span className={styles.newSummary}>
+              <span>{`${newCount} placed from a late pick`}</span>
+              <Button variant="ghost" onClick={() => void dismissNew(null, null)} disabled={busy}>
+                Mark all seen
+              </Button>
+            </span>
+          ) : null}
           {canEdit && view.started ? <LiveMoreActions onDiscard={() => setConfirming('discard')} /> : null}
         </div>
       ) : null}
@@ -684,6 +717,7 @@ export function LiveBoard({
             )
           }
           onMoveScout={moveScout}
+          onDismissNew={dismissNew}
           onRepeat={(card, rotation) =>
             run(() =>
               plannerLiveRepeatClassAction({
@@ -822,7 +856,7 @@ function LiveCardView({
                   onDragStart={(e) => onDragStartScout(e, m.personId)}
                   onClick={() => onScout(m.personId, m.name)}
                 >
-                  <ChipFace name={m.name} present={m.present} visitor={m.visitor} retake={m.retake} open={open} />
+                  <ChipFace name={m.name} present={m.present} visitor={m.visitor} retake={m.retake} isNew={m.isNew} open={open} />
                 </button>
               </li>
             ) : (
@@ -832,7 +866,7 @@ function LiveCardView({
                 aria-label={chipLabel(m.name, m, open)}
                 data-problem={badMember(m.personId) ? 'true' : undefined}
               >
-                <ChipFace name={m.name} present={m.present} visitor={m.visitor} retake={m.retake} open={open} />
+                <ChipFace name={m.name} present={m.present} visitor={m.visitor} retake={m.retake} isNew={m.isNew} open={open} />
               </li>
             )
           )}
@@ -1018,6 +1052,7 @@ function LiveSheet({
   onClose,
   onSetTeacher,
   onMoveScout,
+  onDismissNew,
   onRepeat,
   onRemove,
   onAddClass,
@@ -1032,6 +1067,7 @@ function LiveSheet({
   onClose: () => void;
   onSetTeacher: (card: LiveCard, teacherId: number | null) => void;
   onMoveScout: (personId: number, from: string | null, to: string | null) => void;
+  onDismissNew: (classId: string, personId: number) => void;
   onRepeat: (card: LiveCard, rotation: number | null) => void;
   onRemove: (card: LiveCard) => void;
   onAddClass: (what: { key: string | null; title: string | null }, teacherId: number | null, rotation: number | null) => void;
@@ -1098,6 +1134,7 @@ function LiveSheet({
       view.cards.find((o) => o.id !== id && o.id !== from?.id && o.topicKey === key && o.members.some((m) => m.personId === personId));
     const targets = view.cards.filter((o) => o.id !== from?.id);
     const isHere = (from ? from.members : view.pool).find((m) => m.personId === personId)?.present ?? false;
+    const isNew = from?.members.find((m) => m.personId === personId)?.isNew ?? false;
     return (
       <Drawer eyebrow={from ? `${from.title} · ${rotWord(from.rotation)}` : 'Not in a class yet'} title={sheet.name} onClose={onClose}>
         <ul className={styles.sheetList}>
@@ -1106,8 +1143,13 @@ function LiveSheet({
               {isHere ? 'Mark not present' : 'Mark here'}
             </SheetRow>
           ) : null}
+          {from && isNew ? (
+            <SheetRow note="Placed here from a late pick" onClick={() => onDismissNew(from.id, personId)}>
+              Mark seen
+            </SheetRow>
+          ) : null}
           {from ? (
-            <SheetRow danger note="Back to “Not in a class yet”" onClick={() => onMoveScout(personId, from.id, null)}>
+            <SheetRow danger note="Back to “Not in a class yet”; won’t be put back automatically" onClick={() => onMoveScout(personId, from.id, null)}>
               Remove from this class
             </SheetRow>
           ) : null}

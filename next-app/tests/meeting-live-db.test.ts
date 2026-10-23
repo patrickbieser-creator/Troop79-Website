@@ -193,12 +193,12 @@ describe('the saved placement is the truth', () => {
     await teach(meeting, teacher, key);
     asEditor();
     await (await live()).plannerLiveStartAction({ entryId: meeting });
-    await pick(meeting, cy, key); // the board moves on; the matcher would now seat Cy too
+    await pick(meeting, cy, key); // the board moves on: Cy's late pick lands in the saved class (Rotations L1)
     const m = (await loadMeetingById(sb, meeting))!;
     const b = await boardOf(m);
     const match = await (await lib()).loadMatchOrPlacement(sb, m, b.rows, b.teach);
     const s = match.sessions.find((x) => x.teacherId === teacher)!;
-    expect([s.id.startsWith('c:'), s.rotation, mine(s.scouts.map((x) => x.personId))]).toEqual([true, 1, mine([ann, bo])]);
+    expect([s.id.startsWith('c:'), s.rotation, mine(s.scouts.map((x) => x.personId))]).toEqual([true, 1, mine([ann, bo, cy])]);
   });
 
   it('BeforeStart_TheSeamReturnsTheMatcher', async () => {

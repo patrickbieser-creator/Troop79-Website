@@ -63,8 +63,8 @@ const VIEW: LiveView = {
     { number: 2, location: null }
   ],
   cards: [
-    card({ id: 's:a', members: [{ personId: 1, name: 'Finn P', retake: false, present: false, visitor: false }, { personId: 2, name: 'Lily P', retake: true, present: false, visitor: false }], repeats: [2], conflicts: ['Finn P also in the Rotation 2 repeat of this class'] }),
-    card({ id: 's:b', rotation: 2, teacher: { personId: 11, name: 'Rachel D', present: false }, members: [{ personId: 1, name: 'Finn P', retake: false, present: false, visitor: false }], repeats: [1], conflicts: ['Finn P also in the Rotation 1 repeat of this class'] }),
+    card({ id: 's:a', members: [{ personId: 1, name: 'Finn P', retake: false, present: false, visitor: false, isNew: false }, { personId: 2, name: 'Lily P', retake: true, present: false, visitor: false, isNew: false }], repeats: [2], conflicts: ['Finn P also in the Rotation 2 repeat of this class'] }),
+    card({ id: 's:b', rotation: 2, teacher: { personId: 11, name: 'Rachel D', present: false }, members: [{ personId: 1, name: 'Finn P', retake: false, present: false, visitor: false, isNew: false }], repeats: [1], conflicts: ['Finn P also in the Rotation 1 repeat of this class'] }),
     card({ id: 's:c', rotation: null, topicKey: 'scout-1a', title: 'Oath, Law, motto, slogan', codeLabel: 'Scout 1a', teacher: null })
   ],
   pool: [{ personId: 4, name: 'Simon P', present: false, visitor: false, picks: [] }],

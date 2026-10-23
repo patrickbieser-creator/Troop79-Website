@@ -20,6 +20,9 @@
  * teacher), on the same edit right and stale checks. The stale-tab guard: a write may start Live only from a preview ('s:' card, or expectStarted: false from a
  * screen that showed the preview). A saved card ('c:') or a screen that showed Live started, when Live isn't started
  * (someone discarded it), gets STALE and the screen refreshes; it never silently restarts Live.
+ * Rotations L1: every Live edit ends in the database's reconcile (meeting_reconcile), so a class made here fills with
+ * its pickers on its own; a move here pins the scout (and taking one out of a topic keeps them out of it). The New
+ * mark on an automatic placement goes with plannerLiveDismissNewAction.
  */
 import { revalidatePath } from 'next/cache';
 import { resolveAdminActor } from '@/lib/admin-actor';
@@ -271,12 +274,12 @@ function makeClassNote(names: readonly string[]): string {
 
 /**
  * "Make a class" / "Create class and place": a Not scheduled card for a topic on the plan, taught by the plan's first
- * teacher who may teach on Live (none when nobody can), with every coming scout who picked it and is in no class yet.
- * Only on a started arrangement (the strip shows only there): not started = stale. A class for the topic already there
- * = stale (someone fixed it first). The add and each placement are Live's own RPCs (the lock, live_version); a scout
- * someone placed meanwhile is skipped by the move's compare-and-set. The existence check and the add are two calls, so
- * two leaders in the same instant could each make one; the second shows as a repeat, which Remove takes away. A scout
- * who can't be placed doesn't stop the rest (L0 qa): the class stays and `note` names them.
+ * teacher who may teach on Live (none when nobody can). Its pickers land through the add's own reconcile (Rotations
+ * L1: unpinned, marked New), under the Live lock. Only on a started arrangement (the strip shows only there): not
+ * started = stale. A class for the topic already there = stale (someone fixed it first). The existence check and the
+ * add are two calls, so two leaders in the same instant could each make one; the second shows as a repeat, which
+ * Remove takes away. A picker reconcile couldn't place (in two classes already, or taken out of it by hand) doesn't
+ * stop the rest (L0 qa): the class stays and `note` names them.
  */
 export async function plannerLiveMakeClassAction(input: { entryId: number; key: string }): Promise<LiveWriteResult> {
   const e = await liveEditor(input?.entryId);
@@ -304,12 +307,10 @@ export async function plannerLiveMakeClassAction(input: { entryId: number; key: 
     });
     if (added.error) return added.error.message === 'STALE' ? stale() : fail(KNOWN.test(added.error.message) ? added.error.message : SAVE_FAILED);
     const classId = added.data as number;
-    // L0 qa: every picker gets a try; one who can't be placed doesn't stop the rest, and the class stays.
-    const missed: string[] = [];
-    for (const p of plan.pickers) {
-      const { error } = await e.sb.rpc('meeting_live_move_scout', { p_entry: e.meeting.entryId, p_actor: e.actorPersonId, p_person: p.personId, p_from: null, p_to: classId });
-      if (error && error.message !== 'STALE') missed.push(p.name);
-    }
+    const { data: placed, error: placedErr } = await e.sb.from('meeting_class_members').select('person_id').eq('class_id', classId);
+    if (placedErr) throw new Error(placedErr.message);
+    const inClass = new Set(((placed ?? []) as { person_id: number }[]).map((m) => m.person_id));
+    const missed = plan.pickers.filter((p) => !inClass.has(p.personId)).map((p) => p.name);
     revalidate();
     const stamp = await loadBoardStamp(e.sb, e.meeting.entryId);
     return missed.length ? { ok: true, stamp, note: makeClassNote(missed) } : { ok: true, stamp };
@@ -345,6 +346,20 @@ export async function plannerLiveUseClassTeacherAction(input: { entryId: number;
   } catch {
     return fail(SAVE_FAILED);
   }
+}
+
+/**
+ * Rotations L1: "New" goes from an automatic placement: one chip (classId + personId) or every one on the meeting (both
+ * null). It doesn't pin them: reconcile may still take them out if they say Can't or drop the pick.
+ */
+export async function plannerLiveDismissNewAction(input: { entryId: number; classId: string | null; personId: number | null }): Promise<LiveWriteResult> {
+  const e = await liveEditor(input?.entryId);
+  if (!e.ok) return e;
+  const one = input.classId !== null && /^c:\d+$/.test(String(input.classId)) && isPerson(input.personId);
+  const all = input.classId === null && input.personId === null;
+  if (!one && !all) return fail('Malformed request');
+  const classId = one ? Number((input.classId as string).slice(2)) : null;
+  return write(e, () => e.sb.rpc('meeting_live_dismiss_new', { p_entry: e.meeting.entryId, p_actor: e.actorPersonId, p_class: classId, p_person: one ? input.personId : null }), false);
 }
 
 /** Mark someone here or not here: a DRAFT tap (B8), recorded after the meeting. The meeting day only. */

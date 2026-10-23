@@ -15,24 +15,11 @@ import { driftText } from '../src/lib/meeting-live-shared';
  */
 const sb = adminClient();
 const state = vi.hoisted(() => ({
-  actor: null as null | { personId: number; subjectKind: 'adult' | 'scout'; capabilities: Set<string> },
-  /** L0 qa: the server's placement of this person fails (not STALE), to drive Make a class's partial path. */
-  failMoveFor: null as number | null
+  actor: null as null | { personId: number; subjectKind: 'adult' | 'scout'; capabilities: Set<string> }
 }));
 vi.mock('@/lib/supabase/server', async () => {
   const { adminClient: make } = await import('./helpers/admin-client');
-  const failing = (client: SupabaseClient) =>
-    new Proxy(client, {
-      get(target, prop, receiver) {
-        const v = Reflect.get(target, prop, receiver);
-        if (prop !== 'rpc' || typeof v !== 'function') return v;
-        return (fn: string, args: Record<string, unknown>) =>
-          fn === 'meeting_live_move_scout' && args?.p_person === state.failMoveFor
-            ? Promise.resolve({ data: null, error: { message: 'boom' } })
-            : (v as (...a: unknown[]) => unknown).apply(target, [fn, args]);
-      }
-    });
-  return { createAdminClient: () => failing(make()) };
+  return { createAdminClient: () => make() };
 });
 vi.mock('@/lib/admin-actor', () => ({ resolveAdminActor: async () => state.actor }));
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn(), updateTag: vi.fn(), unstable_cache: (fn: unknown) => fn }));
@@ -93,7 +80,13 @@ async function started(classes: { topic_key: string; rotation: number | null; te
   const rows = (data ?? []) as { id: number; source_key: string }[];
   return classes.map((_, i) => rows.find((r) => r.source_key === `t:${i}`)!.id);
 }
+/** Rotations L1: a scout placed by hand. Unpinned ones leave on their own when they say Can't or drop the pick. */
+const pin = async (classId: number, personId: number) => {
+  const { error } = await sb.from('meeting_class_members').update({ pinned: true }).eq('class_id', classId).eq('person_id', personId);
+  if (error) throw new Error(error.message);
+};
 async function clearMeeting(entryId: number) {
+  await sb.from('meeting_live_holds').delete().eq('calendar_entry_id', entryId);
   const { data: cls } = await sb.from('meeting_classes').select('id').eq('calendar_entry_id', entryId);
   const ids = ((cls ?? []) as { id: number }[]).map((c) => c.id);
   if (ids.length) await sb.from('meeting_classes').delete().in('id', ids);
@@ -141,7 +134,6 @@ beforeAll(async () => {
 afterEach(async () => {
   await clearMeeting(meeting);
   state.actor = null;
-  state.failMoveFor = null;
 });
 
 afterAll(async () => {
@@ -202,7 +194,8 @@ describe('Rotations L0: the fixes', () => {
 
   it('Drift_CantMakeIt_Placed_ShowsOnTheLoadedView', async () => {
     await pick(ben, key);
-    await started([{ topic_key: key, rotation: 1, members: [ben] }]);
+    const [c] = await started([{ topic_key: key, rotation: 1, members: [ben] }]);
+    await pin(c, ben);
     await cant(ben);
     expect((await view()).drift.filter((d) => d.kind === 'cant' && d.personId === ben).length).toBe(1);
   });
@@ -210,6 +203,7 @@ describe('Rotations L0: the fixes', () => {
   it('Drift_RemoveFromClass_Removes', async () => {
     await pick(ben, key);
     const [c] = await started([{ topic_key: key, rotation: 1, members: [ben] }]);
+    await pin(c, ben);
     await cant(ben);
     asEditor();
     const res = await (await live()).plannerLiveMoveScoutAction({ entryId: meeting, personId: ben, from: `c:${c}`, to: null });
@@ -269,11 +263,12 @@ describe('Rotations L0: the fixes', () => {
 });
 
 describe('Rotations L0 qa: Make a class keeps going', () => {
+  // Rotations L1: the pickers land through reconcile; Ben was taken out of key2 by hand earlier, so he stays out.
   async function twoPickers() {
     await realCase();
     await pick(ben, key2);
-    await sb.from('meeting_class_members').delete().eq('person_id', ben);
-    state.failMoveFor = ben;
+    const { data: t } = await sb.from('meeting_topics').select('id').eq('calendar_entry_id', meeting).eq('topic_key', key2).single();
+    await sb.from('meeting_live_holds').insert({ calendar_entry_id: meeting, person_id: ben, topic_id: (t as { id: number }).id });
     asEditor();
     return (await live()).plannerLiveMakeClassAction({ entryId: meeting, key: key2 });
   }
@@ -382,7 +377,8 @@ describe('Rotations L0: perf', () => {
   // Drift comes from what the Live page already loads: no read per class, scout or drift line.
   it('Drift_LoadsInBoundedRoundTrips', async () => {
     await pick(ben, key);
-    await started([{ topic_key: key, rotation: 1, teacher_person_id: teacher2, members: [ben] }]);
+    const [c] = await started([{ topic_key: key, rotation: 1, teacher_person_id: teacher2, members: [ben] }]);
+    await pin(c, ben);
     await teach(teacher2, key);
     const calm = counting();
     const calmView = await view(calm.client);

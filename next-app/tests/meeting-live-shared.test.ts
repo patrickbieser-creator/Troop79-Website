@@ -124,9 +124,9 @@ const SAVED: SavedPlacement = {
     { number: 3, location: null }
   ],
   classes: [
-    { id: 7, topicKey: 'tenderfoot-4a', title: 'First Aid', rotation: 2, teacherId: null, position: 0, version: 1, memberIds: [3] },
-    { id: 5, topicKey: 'tenderfoot-4a', title: null, rotation: 1, teacherId: 10, position: 0, version: 1, memberIds: [1, 2] },
-    { id: 9, topicKey: 'scout-1a', title: null, rotation: null, teacherId: 11, position: 0, version: 1, memberIds: [4] }
+    { id: 7, topicKey: 'tenderfoot-4a', title: 'First Aid', rotation: 2, teacherId: null, position: 0, version: 1, memberIds: [3], newIds: [] },
+    { id: 5, topicKey: 'tenderfoot-4a', title: null, rotation: 1, teacherId: 10, position: 0, version: 1, memberIds: [1, 2], newIds: [] },
+    { id: 9, topicKey: 'scout-1a', title: null, rotation: null, teacherId: 11, position: 0, version: 1, memberIds: [4], newIds: [] }
   ]
 };
 

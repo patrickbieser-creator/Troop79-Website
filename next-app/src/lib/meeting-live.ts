@@ -14,6 +14,8 @@
  *     records only the differences through Roll Call's cascade. discardMeetingLive undoes Live.
  *   - Rotations L0: loadLiveView carries the drift (liveDrift) from what it already loads; loadMakeClass and
  *     loadClassForTeacherFix are the reads behind the strip's two composed fixes.
+ *   - Rotations L1: the database reconciles a started arrangement on every pick, answer and Live edit
+ *     (meeting_reconcile); startMeetingLive runs it once after the copy, so late picks the matcher left out land now.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { loadAdvancementCatalog, type AdvancementCatalog } from '@/lib/advancement-catalog';
@@ -59,7 +61,7 @@ export async function loadSavedPlacement(sb: SupabaseClient, entryId: number): P
     sb.from('meeting_rotations').select('number, location').eq('calendar_entry_id', entryId).order('number'),
     sb
       .from('meeting_classes')
-      .select('id, rotation, teacher_person_id, title, position, version, meeting_topics(topic_key), meeting_class_members(person_id)')
+      .select('id, rotation, teacher_person_id, title, position, version, meeting_topics(topic_key), meeting_class_members(person_id, is_new)')
       .eq('calendar_entry_id', entryId)
       .order('id')
   ]);
@@ -73,7 +75,7 @@ export async function loadSavedPlacement(sb: SupabaseClient, entryId: number): P
     position: number;
     version: number;
     meeting_topics: { topic_key: string } | { topic_key: string }[] | null;
-    meeting_class_members: { person_id: number }[] | null;
+    meeting_class_members: { person_id: number; is_new: boolean }[] | null;
   };
   return {
     startedAt,
@@ -88,7 +90,8 @@ export async function loadSavedPlacement(sb: SupabaseClient, entryId: number): P
         teacherId: r.teacher_person_id,
         position: r.position,
         version: r.version,
-        memberIds: (r.meeting_class_members ?? []).map((m) => m.person_id).sort((a, b) => a - b)
+        memberIds: (r.meeting_class_members ?? []).map((m) => m.person_id).sort((a, b) => a - b),
+        newIds: (r.meeting_class_members ?? []).filter((m) => m.is_new).map((m) => m.person_id).sort((a, b) => a - b)
       }))
   };
 }
@@ -143,6 +146,9 @@ export async function startMeetingLive(sb: SupabaseClient, meeting: BoardMeeting
   const { snapshot } = await matchSnapshot(sb, meeting, catalog, rows, teach);
   const { data, error } = await sb.rpc('meeting_live_start', { p_entry: meeting.entryId, p_actor: actorPersonId, p_snapshot: snapshotJson(snapshot) });
   if (error) return { ok: false, error: sanitizeRpcError(error.message) };
+  // Rotations L1: the copy is the matcher's; reconcile lands the late picks it left out (a class with no teacher).
+  const rec = await sb.rpc('meeting_reconcile', { p_entry: meeting.entryId });
+  if (rec.error) return { ok: false, error: sanitizeRpcError(rec.error.message) };
   return { ok: true, started: data === true };
 }
 
@@ -169,7 +175,19 @@ export async function loadLiveView(sb: SupabaseClient, meeting: BoardMeeting): P
     classes = saved.classes.map((c) => {
       const w = words([c.topicKey]);
       if (c.title != null) merged.add(savedId(c.id));
-      return { id: savedId(c.id), topicKey: c.topicKey, rotation: c.rotation, title: c.title ?? w.title, codeLabel: w.codeLabel, kind: w.kind, teacherId: c.teacherId, memberIds: c.memberIds, position: c.position, version: c.version };
+      return {
+        id: savedId(c.id),
+        topicKey: c.topicKey,
+        rotation: c.rotation,
+        title: c.title ?? w.title,
+        codeLabel: w.codeLabel,
+        kind: w.kind,
+        teacherId: c.teacherId,
+        memberIds: c.memberIds,
+        newIds: c.newIds,
+        position: c.position,
+        version: c.version
+      };
     });
     rotations = saved.rotations;
     // Coming, nothing assigned: scouts who said Coming (or picked), or are here, and aren't in a class.
@@ -314,14 +332,14 @@ export async function loadLiveChoices(sb: SupabaseClient, meeting: BoardMeeting)
 /**
  * What "Make a class" for `key` takes on a started arrangement: whether the topic is on the plan, whether a class for
  * it exists already (someone fixed it first), the plan's teachers in sign-up order (Can't-make-it left out), and the
- * scouts to place: coming, picked it for this meeting, in no class and teaching none (placing them from "nothing
- * assigned" is the RPC's compare-and-set).
+ * scouts who should land in it: coming, picked it for this meeting, teaching none (Rotations L1: reconcile places them,
+ * in another class or not; the action names any it couldn't).
  */
 export async function loadMakeClass(sb: SupabaseClient, meeting: BoardMeeting, key: string): Promise<{ onPlan: boolean; exists: boolean; teacherIds: number[]; pickers: { personId: number; name: string }[] }> {
   const catalog = await loadAdvancementCatalog();
   const [topic, cls, teachers, rows] = await Promise.all([
     sb.from('meeting_topics').select('id').eq('calendar_entry_id', meeting.entryId).eq('topic_key', key).maybeSingle(),
-    sb.from('meeting_classes').select('teacher_person_id, meeting_topics(topic_key), meeting_class_members(person_id)').eq('calendar_entry_id', meeting.entryId),
+    sb.from('meeting_classes').select('teacher_person_id, meeting_topics(topic_key)').eq('calendar_entry_id', meeting.entryId),
     sb
       .from('meeting_topic_teachers')
       .select('person_id, created_at, meeting_topics!inner(topic_key)')
@@ -332,9 +350,8 @@ export async function loadMakeClass(sb: SupabaseClient, meeting: BoardMeeting, k
   ]);
   const err = topic.error ?? cls.error ?? teachers.error;
   if (err) throw new Error(err.message);
-  type C = { teacher_person_id: number | null; meeting_topics: { topic_key: string } | { topic_key: string }[] | null; meeting_class_members: { person_id: number }[] | null };
+  type C = { teacher_person_id: number | null; meeting_topics: { topic_key: string } | { topic_key: string }[] | null };
   const classes = (cls.data ?? []) as unknown as C[];
-  const placed = new Set(classes.flatMap((c) => (c.meeting_class_members ?? []).map((m) => m.person_id)));
   const busy = new Set(classes.map((c) => c.teacher_person_id).filter((id): id is number => id != null));
   const ids = [...new Set(((teachers.data ?? []) as { person_id: number }[]).map((t) => t.person_id))];
   const intents = await loadIntents(sb, meeting.entryId, ids);
@@ -343,7 +360,7 @@ export async function loadMakeClass(sb: SupabaseClient, meeting: BoardMeeting, k
     exists: classes.some((c) => one(c.meeting_topics)?.topic_key === key),
     teacherIds: ids.filter((id) => intents.get(id) !== 'not_coming'),
     pickers: rows
-      .filter((r) => effectiveIntent(r.intent, r.picks) === 'coming' && r.picks.some((p) => !p.later && p.key === key) && !placed.has(r.personId) && !busy.has(r.personId))
+      .filter((r) => effectiveIntent(r.intent, r.picks) === 'coming' && r.picks.some((p) => !p.later && p.key === key) && !busy.has(r.personId))
       .map((r) => ({ personId: r.personId, name: r.name }))
   };
 }
@@ -467,12 +484,14 @@ export async function loadOverFacts(sb: SupabaseClient, entryId: number): Promis
 
 /** The approval checklist for one meeting: its draft (the saved placement, Live's taps, visitors) and Roll Call. */
 export async function loadAttendanceReview(sb: SupabaseClient, entryId: number, date: string): Promise<AttendanceReview> {
-  const [saved, presence, boardRes] = await Promise.all([
+  const [saved, presence, boardRes, cantRes] = await Promise.all([
     loadSavedPlacement(sb, entryId),
     loadPresence(sb, entryId),
-    sb.from('meeting_boards').select('attendance_seeded_at').eq('calendar_entry_id', entryId).maybeSingle()
+    sb.from('meeting_boards').select('attendance_seeded_at').eq('calendar_entry_id', entryId).maybeSingle(),
+    sb.from('meeting_intents').select('person_id').eq('calendar_entry_id', entryId).eq('intent', 'not_coming')
   ]);
   if (boardRes.error) throw new Error(boardRes.error.message);
+  if (cantRes.error) throw new Error(cantRes.error.message);
   const classes = saved?.classes ?? [];
   const placed = classes.flatMap((c) => c.memberIds);
   const teachers = classes.map((c) => c.teacherId).filter((id): id is number => id != null);
@@ -487,7 +506,8 @@ export async function loadAttendanceReview(sb: SupabaseClient, entryId: number, 
     draft: presence.draft,
     recorded: presence.recorded,
     nameOf: (id) => boardName(names.get(id) ?? ''),
-    seededByOldCode: (boardRes.data as { attendance_seeded_at: string | null } | null)?.attendance_seeded_at != null
+    seededByOldCode: (boardRes.data as { attendance_seeded_at: string | null } | null)?.attendance_seeded_at != null,
+    notComing: new Set(((cantRes.data ?? []) as { person_id: number }[]).map((r) => r.person_id))
   });
 }
 
