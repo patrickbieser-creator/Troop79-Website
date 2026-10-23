@@ -1,6 +1,6 @@
 # Build a Plan
 
-**Status:** COMPLETE — B0–B10 + Rotations L0–L3 LIVE (v1.246.0–v1.254.0, 2026-10-23). Meeting Live is now Rotations.
+**Status:** SHIPPED v1.254.0 (2026-10-23, f0304170) — B0–B10 + Rotations L0–L3 LIVE (v1.246.0–v1.254.0). Meeting Live is now Rotations.
 
 **meeting_plans table kept (one published snapshot, 2026-10-18); drop after Patrick confirms.** B4 retired every reader and writer in src/; the drop is a contraction migration of its own (code-first), guarded to refuse while recent published rows exist.
 **Priority:** High: "likely to be the primary method of interacting with the meeting planner".

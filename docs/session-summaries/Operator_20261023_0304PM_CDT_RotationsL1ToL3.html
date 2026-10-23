@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rotations L1-L3</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #3d5a3e;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #f0eecd;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); vertical-align: top; }
+        tr:hover { background: var(--nw-sage); }
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+        code { font-family: 'Courier New', monospace; font-size: 0.85em; background: var(--nw-light-gray); padding: 0 0.3em; border-radius: 3px; }
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+        @media print { body { background: white; } header { padding: 1.5rem; } .container { padding: 1rem; } .stat { break-inside: avoid; } }
+        @media (max-width: 600px) { header h1 { font-size: 1.5rem; } .stats { flex-direction: column; } }
+    </style>
+<body>
+    <header>
+        <h1>Rotations L1&ndash;L3</h1>
+        <p class="subtitle">Session 67. Meeting Live became Rotations: one arrangement per meeting that starts itself and keeps in step with the plan as scouts pick, say they can&rsquo;t come, or teachers change. The old Admin Has/Needs retired, and the planner screens got proper side margins on phones and iPads.</p>
+        <div class="meta">
+            <span>&#128197; October 23, 2026</span>
+            <span>&#129302; Operator (Opus 5.5)</span>
+            <span>&#128204; Troop79-Website</span>
+            <span>&#128640; v1.253.0 &rarr; v1.254.0</span>
+        </div>
+    </header>
+    <div class="container">
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">11</div><div class="label">Commits, one release (v1.254.0)</div></div>
+            <div class="stat"><div class="number">3</div><div class="label">Migrations, all in production</div></div>
+            <div class="stat"><div class="number">2</div><div class="label">Decisions (D-437&ndash;D-438)</div></div>
+            <div class="stat"><div class="number">7812</div><div class="label">Tests (was 7722), all passing</div></div>
+        </div>
+        <h2>What Was Accomplished</h2>
+        <div class="callout callout-teal">
+            <strong>The outcome:</strong> a planner no longer has to press Start or chase drift. Once a meeting is published and has a plan, its rotations exist, late sign-ups land in a class marked New, scouts who say they can&rsquo;t come leave, and every offering has a class with one teacher. Hand moves are respected. Each phase passed the full suite and a qa-lead review before shipping.
+        </div>
+        <h3>Rotations L1: keeps up with sign-ups</h3>
+        <ul>
+            <li>Late picks drop into a class with room and a free rotation, tagged New until someone marks them seen.</li>
+            <li>A scout moved by hand stays put; one who says Can&rsquo;t or drops the pick leaves unless they were placed by hand.</li>
+        </ul>
+        <h3>Rotations L2: every offering has a class, and one teacher</h3>
+        <ul>
+            <li>Anything on the plan gets a class automatically; removing the last class sets that offering aside.</li>
+            <li>The class card picks the lead teacher; a teacher who said they can&rsquo;t come can&rsquo;t be chosen. A repeat can keep its own teacher.</li>
+        </ul>
+        <h3>Rotations L3: Meeting Live is now Rotations</h3>
+        <ul>
+            <li>The tab and address are Rotations; old links still work. Start and Discard are gone: More actions offers Suggest an arrangement and Reset (Reset is refused after the meeting).</li>
+            <li>Build a Plan shows Rotation 1&middot;2&middot;3 on each row. Families see only classes that have a teacher.</li>
+        </ul>
+        <h3>Also</h3>
+        <ul>
+            <li>Admin&rsquo;s Has/Needs retired; its links open the planner tab.</li>
+            <li>Planner screens sit 28px from the edge (16px on a phone), checked at phone and iPad widths.</li>
+            <li>Build a Plan&rsquo;s buttons read Plans &middot; Suggestions &middot; Requirements &middot; Focus sets &middot; A mix.</li>
+        </ul>
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Decision</th></tr></thead>
+            <tbody>
+                <tr><td>D-437</td><td>Rotations is one arrangement that reconciles itself with the plan: pins from hand moves, New for late picks, a class per offering, one shared teacher, and it begins on its own. Amends D-426, D-429 and Decision 8.</td></tr>
+                <tr><td>D-438</td><td>The planner&rsquo;s page gutter is 28px, 16px on a phone; Build a Plan&rsquo;s bar uses Patrick&rsquo;s names.</td></tr>
+            </tbody>
+        </table>
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Patrick checks Rotations on the Oct 25 meeting, the margins on a real iPhone and iPad, and the attendance checklist after Sunday.</li>
+            <li>Decide whether the view headings (&ldquo;The plan&rdquo;, &ldquo;New mix&rdquo;) should follow the new button names.</li>
+            <li>Pending: drop the meeting_plans table, rename the meeting_plan.use right, duplicate Mindy merge.</li>
+        </ul>
+        <h2>Files Changed</h2>
+        <table>
+            <thead><tr><th>Area</th><th>Files</th></tr></thead>
+            <tbody>
+                <tr><td>Planner (public)</td><td>(public)/planner/rotations/ (was live/, which now redirects), build/, invite/, has-needs/ CSS, live-actions.ts; member/meeting</td></tr>
+                <tr><td>Libraries</td><td>meeting-live.ts, meeting-live-shared.ts, meeting-board-supply.ts, build-plan.ts, build-plan-view.ts</td></tr>
+                <tr><td>Admin</td><td>advancement Has/Needs (redirect only), nav-data, meetings/load-agenda.ts, meeting-editor.tsx, styleguide</td></tr>
+                <tr><td>Database</td><td>20261224100000, 20261225100000, 20261226100000</td></tr>
+                <tr><td>Tests</td><td>rotations-l1/l2/l3 db + view, admin-has-needs-retirement, 28 fixture files clean classes before topics</td></tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
