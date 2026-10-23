@@ -21,6 +21,9 @@ export const metadata = {
 export default async function TeachPage({ params, searchParams }: { params: Promise<{ token: string }>; searchParams: Promise<{ err?: string; saved?: string; failed?: string }> }) {
   const [{ token }, sp] = await Promise.all([params, searchParams]);
   const { state, page } = await inspectTeachPage(createAdminClient(), token);
+  // A closed page (expired, replaced, voided) hands the client NOTHING about who or which scouts (qa-lead B10b #1): a
+  // client component's props ride in the RSC payload whether or not it renders them.
+  const view = state === 'open' ? page : null;
   const failed = (sp.failed ?? '')
     .split('.')
     .map(Number)
@@ -32,9 +35,9 @@ export default async function TeachPage({ params, searchParams }: { params: Prom
         <TeachPageCard
           state={state}
           token={token}
-          recipientName={page?.recipientName ?? ''}
-          day={page?.meetingDate ? fmtDateFull(page.meetingDate) : ''}
-          lines={page?.lines ?? []}
+          recipientName={view?.recipientName ?? ''}
+          day={view?.meetingDate ? fmtDateFull(view.meetingDate) : ''}
+          lines={view?.lines ?? []}
           err={sp.err ?? null}
           saved={sp.saved === '1'}
           failed={failed}

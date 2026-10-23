@@ -136,7 +136,26 @@ begin
   select coalesce(jsonb_object_agg(e.key, e.value), '{}'::jsonb) into v_lines
     from (select o.id, x.key, x.value from meeting_invite_pages o, jsonb_each(o.lines) x where o.id = any(v_old) order by o.id) e;
   update meeting_invite_pages set lines = v_lines || p.lines where id = p.id;
-  update meeting_invites set page_id = p.id where page_id = any(v_old);
+  -- One line per class on the new page (qa-lead B10b #3): a class this send asks about again keeps ONLY the new row.
+  -- The new row takes over an older answer (so a "Not this week" here releases what the older Yes signed up); an older
+  -- unanswered ask is closed as superseded; the older rows stay on their old page as history.
+  update meeting_invites n
+     set consumed_at = o.consumed_at, response = o.response, responded_at = o.responded_at
+    from (select distinct on (x.topic_key) x.topic_key, x.consumed_at, x.response, x.responded_at
+            from meeting_invites x
+           where x.page_id = any(v_old) and x.response in ('accepted', 'declined')
+           order by x.topic_key, x.responded_at desc, x.id desc) o
+   where n.page_id = p.id and n.topic_key = o.topic_key and n.response is null and n.consumed_at is null;
+  update meeting_invites m
+     set consumed_at = now(), response = 'superseded', responded_at = now()
+   where m.page_id = any(v_old) and m.consumed_at is null and m.response is null
+     and (exists (select 1 from meeting_invites n where n.page_id = p.id and n.topic_key = m.topic_key)
+          or m.id <> (select max(x.id) from meeting_invites x where x.page_id = any(v_old) and x.topic_key = m.topic_key));
+  -- The rest (classes this send didn't ask about, the latest row of each) move onto the new page.
+  update meeting_invites m set page_id = p.id
+   where m.page_id = any(v_old)
+     and not exists (select 1 from meeting_invites n where n.page_id = p.id and n.topic_key = m.topic_key)
+     and m.id = (select max(x.id) from meeting_invites x where x.page_id = any(v_old) and x.topic_key = m.topic_key);
   update meeting_invite_pages set superseded_at = now() where id = any(v_old);
   return cardinality(v_old);
 end;

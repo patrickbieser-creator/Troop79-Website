@@ -78,7 +78,10 @@ export async function inspectTeachPage(sb: SupabaseClient, token: string, now: D
   ]);
   const who = person as { display_name: string; active: boolean; session_epoch: number } | null;
   const stale = !who || !who.active || who.session_epoch !== page.recipient_epoch;
-  const lines: TeachPageLine[] = ((rows ?? []) as { id: number; topic_key: string; consumed_at: string | null; response: string | null }[]).map((r) => {
+  // One line per class, the latest row (meeting_supersede_teach_pages keeps one; this holds it on the page too).
+  const latest = new Map<string, { id: number; topic_key: string; consumed_at: string | null; response: string | null }>();
+  for (const r of (rows ?? []) as { id: number; topic_key: string; consumed_at: string | null; response: string | null }[]) latest.set(r.topic_key, r);
+  const lines: TeachPageLine[] = [...latest.values()].map((r) => {
     const snap = page.lines?.[r.topic_key];
     const answered = r.response === 'accepted' || r.response === 'declined';
     return {

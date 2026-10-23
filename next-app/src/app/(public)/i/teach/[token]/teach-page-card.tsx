@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { Button } from '@/app/_components/button';
 import { Notice } from '@/app/_components/notice';
@@ -45,6 +45,16 @@ export function TeachPageCard(props: {
   const open = props.lines.filter((l) => l.available);
   const [choices, setChoices] = useState<Record<number, Choice>>(() => Object.fromEntries(open.map((l) => [l.inviteId, l.answer])));
   const dirty = open.some((l) => (choices[l.inviteId] ?? null) !== l.answer);
+  // After a submit the page reloads at the top (qa-lead B10b #4): focus the first line that failed, else the result
+  // Notice, so it is announced where the eye and the screen reader land.
+  const resultRef = useRef<HTMLDivElement | null>(null);
+  const formRef = useRef<HTMLFormElement | null>(null);
+  const firstFailed = props.failed[0];
+  const hasResult = props.saved || Boolean(props.err);
+  useEffect(() => {
+    if (firstFailed != null) formRef.current?.querySelector<HTMLInputElement>(`input[name="line-${firstFailed}"]`)?.focus();
+    else if (hasResult) resultRef.current?.focus();
+  }, [firstFailed, hasResult]);
   const answeredBefore = open.some((l) => l.answer != null);
   const signIn = (
     <Link href={`/signin?next=${encodeURIComponent('/member/meeting')}`}>sign in to your Sunday page</Link>
@@ -69,26 +79,42 @@ export function TeachPageCard(props: {
 
   return (
     <FormCard>
-      {props.err && errText[props.err] && <Notice tone="error">{errText[props.err]}</Notice>}
-      {props.saved && !dirty && <Notice tone="success">Saved. Thank you! You can change an answer here until 6:00 PM on {props.day || 'the meeting day'}.</Notice>}
+      {props.err && errText[props.err] && (
+        <Notice tone="error" tabIndex={-1} ref={resultRef}>
+          {errText[props.err]}
+        </Notice>
+      )}
+      {props.saved && !props.err && (
+        <Notice tone="success" tabIndex={-1} ref={resultRef}>
+          Saved. Thank you! You can change an answer here until 6:00 PM on {props.day || 'the meeting day'}.
+        </Notice>
+      )}
       {props.failed.length > 0 && <Notice tone="error">Some classes couldn’t be saved; they’re marked below.</Notice>}
       <p className={styles.meta}>{props.day}</p>
       <FieldHint>For {props.recipientName}; if that isn’t you, don’t answer.</FieldHint>
-      <form action={answerTeachPageAction} className={styles.form}>
+      <form action={answerTeachPageAction} className={styles.form} ref={formRef}>
         <input type="hidden" name="token" value={props.token} />
         <ul className={styles.lines}>
           {props.lines.map((l) => {
             const name = `line-${l.inviteId}`;
             const bad = props.failed.includes(l.inviteId);
+            const noteId = `line-${l.inviteId}-problem`;
             return (
               <li key={l.inviteId} className={bad ? `${styles.line} ${styles.bad}` : styles.line}>
-                <fieldset className={styles.fieldset} disabled={!l.available} aria-invalid={bad || undefined}>
+                {/* One radio group per class, named by its legend; a failed line marks the group and points at its note. */}
+                <fieldset
+                  className={styles.fieldset}
+                  disabled={!l.available}
+                  role={l.available ? 'radiogroup' : undefined}
+                  aria-invalid={bad || undefined}
+                  aria-describedby={bad ? noteId : undefined}
+                >
                   <legend className={styles.legend}>
                     <strong>{shortCode(l.code)}</strong> {l.topic}
                   </legend>
                   <p className={styles.meta}>{[minutesText(l.minutes), scoutsHelpedText(l.helped)].filter(Boolean).join(' · ')}</p>
                   {l.available ? (
-                    <div className={styles.choice} role="radiogroup" aria-label={`${shortCode(l.code)} ${l.topic}`}>
+                    <div className={styles.choice}>
                       {(
                         [
                           ['yes', 'Yes, I’ll teach it'],
@@ -110,7 +136,11 @@ export function TeachPageCard(props: {
                   ) : (
                     <p className={styles.gone}>No longer available</p>
                   )}
-                  {bad && <p className={styles.badNote}>Couldn’t save this one. Please try again.</p>}
+                  {bad && (
+                    <p id={noteId} className={styles.badNote}>
+                      Couldn’t save this one. Please try again.
+                    </p>
+                  )}
                 </fieldset>
               </li>
             );

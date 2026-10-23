@@ -259,3 +259,121 @@ describe('deploy order: DB first', () => {
     expect([minted.error, res.ok, await teaching()]).toEqual([null, true, 1]);
   }, 60_000);
 });
+
+/** qa-lead B10b follow-ups. */
+describe('B10b qa: what a closed page shows', () => {
+  /** Everything the page hands to the client (the RSC payload carries a client component's props, rendered or not). */
+  const html = async (token: string) => {
+    const { default: TeachPage } = await import('../src/app/(public)/i/teach/[token]/page');
+    const tree = await TeachPage({ params: Promise.resolve({ token }), searchParams: Promise.resolve({}) });
+    return JSON.stringify(tree, (k, v) => (k === '_owner' || k === '_store' ? undefined : v));
+  };
+  const leaks = (out: string) => [out.includes(`${TEST_PREFIX} B10b Teacher`), /\d+ scouts? \(/.test(out), out.includes('no scouts yet')];
+
+  it('TeachPage_Expired_LeaksNoNames', async () => {
+    const token = await sendTeach([keys[0]]);
+    await sb.from('meeting_invite_pages').update({ expires_at: new Date(Date.now() - 60_000).toISOString() }).eq('calendar_entry_id', meeting);
+    expect(leaks(await html(token))).toEqual([false, false, false]);
+  }, 60_000);
+
+  it('TeachPage_Superseded_LeaksNoNames', async () => {
+    const first = await sendTeach([keys[0]]);
+    await sendTeach([keys[1]]);
+    expect(leaks(await html(first))).toEqual([false, false, false]);
+  }, 60_000);
+
+  it('TeachPage_Open_ShowsTheTeacher', async () => {
+    const token = await sendTeach([keys[0]]);
+    expect(leaks(await html(token))[0]).toBe(true);
+  }, 60_000);
+});
+
+describe('B10b qa: answers', () => {
+  const teachRow = async (who: number, key: string) =>
+    (await sb.from('meeting_topic_teachers').select('for_picks, meeting_topics!inner(topic_key)').eq('calendar_entry_id', meeting).eq('person_id', who).eq('meeting_topics.topic_key', key)).data as { for_picks: boolean }[] | null;
+
+  it('TeachPage_Superseded_RefusesSubmit', async () => {
+    const first = await sendTeach([keys[0]]);
+    const [line] = await lineIds(first);
+    await sendTeach([keys[1]]);
+    const res = await answerTeachPage(sb, first, [{ inviteId: line, answer: 'yes' }]);
+    expect([res.ok ? 'answered' : res.state, await teaching()]).toEqual(['superseded', 0]);
+  }, 60_000);
+
+  it('TeachPage_NoToYes_SignsUp', async () => {
+    const token = await sendTeach([keys[0]]);
+    const [line] = await lineIds(token);
+    await answerTeachPage(sb, token, [{ inviteId: line, answer: 'no' }]);
+    await answerTeachPage(sb, token, [{ inviteId: line, answer: 'yes' }]);
+    const { data } = await sb.from('meeting_invites').select('response').eq('id', line).single();
+    expect([await teaching(), data?.response]).toEqual([1, 'accepted']);
+  }, 60_000);
+
+  it('TeachPage_RepeatYes_IsIdempotent', async () => {
+    const token = await sendTeach([keys[0]]);
+    const [line] = await lineIds(token);
+    await answerTeachPage(sb, token, [{ inviteId: line, answer: 'yes' }]);
+    const again = await answerTeachPage(sb, token, [{ inviteId: line, answer: 'yes' }]);
+    expect([again.ok && again.lines[0]?.result, await teaching()]).toEqual(['unchanged', 1]);
+  }, 60_000);
+
+  it('TeachPage_YesToNo_LeavesOtherTeachersAlone', async () => {
+    const t = await sb.rpc('meeting_teach_topic', { p_entries: [meeting], p_person: other, p_actor: other, p_leader: false, p_topic_key: keys[0], p_title: null, p_note: null });
+    if (t.error) throw new Error(t.error.message);
+    const token = await sendTeach([keys[0]]);
+    const [line] = await lineIds(token);
+    await answerTeachPage(sb, token, [{ inviteId: line, answer: 'yes' }]);
+    await answerTeachPage(sb, token, [{ inviteId: line, answer: 'no' }]);
+    expect([await teaching(), await teaching(other)]).toEqual([0, 1]);
+  }, 60_000);
+
+  // D-424: the planner's Assign marks a sign-up for_picks. A Yes leaves it as it is; a Yes -> No removes it (accepted).
+  const assigned = async () => {
+    const t = await sb.rpc('meeting_teach_topic', { p_entries: [meeting], p_person: teacher, p_actor: teacher, p_leader: true, p_topic_key: keys[0], p_title: null, p_note: null });
+    if (t.error) throw new Error(t.error.message);
+    await sb.from('meeting_topic_teachers').update({ for_picks: true }).eq('calendar_entry_id', meeting).eq('person_id', teacher);
+  };
+
+  it('TeachPage_Yes_KeepsAnAssignedRowForPicks', async () => {
+    await assigned();
+    const token = await sendTeach([keys[0]]);
+    const [line] = await lineIds(token);
+    await answerTeachPage(sb, token, [{ inviteId: line, answer: 'yes' }]);
+    expect(await teachRow(teacher, keys[0])).toEqual([{ for_picks: true, meeting_topics: { topic_key: keys[0] } }]);
+  }, 60_000);
+
+  it('TeachPage_YesToNo_RemovesAnAssignedRow', async () => {
+    await assigned();
+    const token = await sendTeach([keys[0]]);
+    const [line] = await lineIds(token);
+    await answerTeachPage(sb, token, [{ inviteId: line, answer: 'yes' }]);
+    await answerTeachPage(sb, token, [{ inviteId: line, answer: 'no' }]);
+    expect(await teachRow(teacher, keys[0])).toEqual([]);
+  }, 60_000);
+});
+
+describe('B10b qa: a re-invite for the same class', () => {
+  /** A second ask for the same class after the 24-hour dedupe window. */
+  const reask = async () => {
+    await sb.from('meeting_invites').update({ sent_at: new Date(Date.now() - 25 * 3600_000).toISOString() }).eq('calendar_entry_id', meeting);
+    return sendTeach([keys[0]]);
+  };
+
+  it('Supersede_SameKey_OneLinePerKey', async () => {
+    await sendTeach([keys[0], keys[1]]);
+    const second = await reask();
+    const { data } = await sb.from('meeting_invites').select('topic_key').eq('page_id', (await pageOf(second))!.id);
+    expect((data ?? []).map((r) => r.topic_key).sort()).toEqual([keys[0], keys[1]].sort());
+  }, 60_000);
+
+  it('Supersede_SameKey_CarriesTheAnswer_SoNoReleases', async () => {
+    const first = await sendTeach([keys[0]]);
+    const [old] = await lineIds(first);
+    await answerTeachPage(sb, first, [{ inviteId: old, answer: 'yes' }]);
+    const second = await reask();
+    const view = await inspectTeachPage(sb, second);
+    const line = view.page!.lines[0];
+    await answerTeachPage(sb, second, [{ inviteId: line.inviteId, answer: 'no' }]);
+    expect([view.page?.lines.length, line.answer, await teaching()]).toEqual([1, 'yes', 0]);
+  }, 60_000);
+});

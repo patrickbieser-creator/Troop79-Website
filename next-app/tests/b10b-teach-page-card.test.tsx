@@ -46,3 +46,28 @@ describe('the teach page card', () => {
     expect(screen.getByRole('link', { name: 'sign in to your Sunday page' }).getAttribute('href')).toBe('/signin?next=%2Fmember%2Fmeeting');
   });
 });
+
+/** qa-lead B10b #4 / #5: where focus lands after a submit, and what a failed line announces. */
+describe('the teach page card, accessibly', () => {
+  it('TeachPageCard_AfterSave_FocusesTheResult', () => {
+    card({ saved: true, lines: [line({ answer: 'yes' })] });
+    expect([document.activeElement?.getAttribute('role'), document.activeElement?.textContent?.startsWith('Saved. Thank you!')]).toEqual(['status', true]);
+  });
+
+  it('TeachPageCard_AfterAFailedLine_FocusesThatLine', () => {
+    card({ failed: [1] });
+    expect(document.activeElement).toBe(screen.getByRole('radio', { name: 'Yes, I’ll teach it' }));
+  });
+
+  it('TeachPageCard_FailedLine_MarksTheGroupAndDescribesWhy', () => {
+    card({ failed: [1] });
+    const group = screen.getByRole('radiogroup');
+    const note = document.getElementById(group.getAttribute('aria-describedby') ?? '');
+    expect([group.getAttribute('aria-invalid'), note?.textContent]).toEqual(['true', 'Couldn’t save this one. Please try again.']);
+  });
+
+  it('TeachPageCard_OneRadiogroupPerClass_NamedByItsLegend', () => {
+    card();
+    expect(screen.getAllByRole('radiogroup').map((g) => g.textContent?.startsWith('Ten 3a Square Knot use'))).toEqual([true]);
+  });
+});

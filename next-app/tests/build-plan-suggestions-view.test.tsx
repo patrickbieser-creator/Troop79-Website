@@ -271,9 +271,8 @@ describe('Suggestions › Teaching chips', () => {
     fireEvent.click(within(danRow()).getByRole('button', { name: 'Tenderfoot 4a · First aid on plan, assign Dan K' }));
     fireEvent.click(within(confirmDlg()).getByRole('button', { name: 'Assign' }));
     await waitFor(() => expect(within(danRow()).getByText('teaching')).toBeTruthy());
-    await new Promise((r) => requestAnimationFrame(() => r(null)));
-    await new Promise((r) => requestAnimationFrame(() => r(null)));
-    expect([document.activeElement === document.body, danRow().contains(document.activeElement)]).toEqual([false, true]);
+    // The move is scheduled on animation frames; wait for it rather than counting frames (flaked under a full run).
+    await waitFor(() => expect([document.activeElement === document.body, danRow().contains(document.activeElement)]).toEqual([false, true]));
   });
 
   it('TeachingChip_TeachingAlready_ReadsTeaching_WithNoClick', async () => {
