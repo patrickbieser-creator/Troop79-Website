@@ -246,7 +246,7 @@ troop ingredient list, the admin recipe builder — ends in exactly ONE quiet ad
 of look-alike dashed boxes: at rest it is one or more link-buttons ("+ Food  + Gear", "+ Ingredient", "+ Diet"); a tap
 swaps the row for the thing it adds (the search, the diet list) with a visible **Cancel** at the row's right (Esc and
 leaving an empty box also close; focus returns to the link); when one action is open the other links sit on their own
-line BELOW the open content, never beside it. Public: `src/app/_components/add-row.tsx` (shared; Menu Monster and Build a Plan)
+line BELOW the open content, never beside it. Public: `src/app/_components/add-row.tsx` (shared)
 (`actions`, `open`/`defaultOpen`, `onOpenChange(id, reason)`, `trailing` for a control that sits before Cancel);
 admin: `admin/(workspace)/library/menu-monster/admin-add-row.tsx` on `--admin-*` tokens — never the public component
 across the firewall (same for `AdminNumberBox` vs the shared `NumberBox`). Rules that ride with it: an open food on a
@@ -257,4 +257,4 @@ edit → swap/diet → "Back to the troop's …" → **Remove** last, and "Leave
 Every quantity is a plain `NumberBox` (People, diets, brand packages, shopping "How many", gear counts); the − n +
 `Stepper` is for event sign-up only. One documented exception: the troop ingredient browser keeps "+ Ingredient" above
 its long, searchable list. Plan of record: `Plans/Completed/Menu-Monster-Add-Pattern.md`; specimens on both styleguides.
-Exception: Build a Plan (`/planner/build`) puts its adds on "The plan" heading's line and opens them under it, above the list (Patrick, 2026-10-22).
+Exception: Build a Plan (`/planner/build`) has no add row: its adds are sub-views on one persistent TabStrip bar, "The plan · Suggestions · + Requirement · + Focus set · + New mix", each linkable as `?view=…` with "← Back to the plan" (Patrick, 2026-10-22; `lib/build-plan-view`).

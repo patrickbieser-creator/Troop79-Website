@@ -292,26 +292,42 @@
   }
 }
 
-/* ── B2: the add row and the edit drawer ──────────────────────────────────────────────────────────────────── */
-/* "The plan" with its quiet adds on the same line (Patrick, 2026-10-22); an opened add takes the full width under it,
-   above the list. On a phone the adds may wrap under the heading. */
-.planHead {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  column-gap: var(--sp-4);
+/* ── the persistent bar and the sub-views (Patrick, 2026-10-22) ──────────────────────────────────────────────── */
+/* "The plan · Suggestions · + Requirement · + Focus set · + New mix": the shared TabStrip, scrolling on a phone. */
+.buildNav {
   margin-bottom: var(--sp-3);
 }
-.planHead .sectionTitle {
-  margin: 0 auto 0 0;
+/* A sub-view's top: "← Back to the plan" at the left, then its heading. */
+.subHead {
+  display: grid;
+  justify-items: start;
+  margin-bottom: var(--sp-2);
 }
-.planHead .addRow {
-  border-top: 0;
-  padding: 0;
+.subHead .sectionTitle {
+  margin: 0;
 }
-.planHead .addRow[data-state='open'] {
-  flex-basis: 100%;
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font: 600 var(--fs-sm) / 1 var(--font-ui);
+  color: var(--navy);
+  text-decoration: none;
 }
+.backLink:hover {
+  text-decoration: underline;
+}
+.backLink:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+.subView {
+  margin-bottom: var(--sp-5);
+  padding-bottom: var(--sp-3);
+  border-bottom: 1px solid var(--border-light);
+}
+
+/* ── B2: the adds and the edit drawer ─────────────────────────────────────────────────────────────────────── */
 .addPanel {
   display: grid;
   gap: var(--sp-2);
@@ -539,13 +555,6 @@
 }
 
 /* ── B5: Suggestions mode ─────────────────────────────────────────────────────────────────────────────────── */
-/* "Suggestions", the heading bar's first link: the add row's link look, as a real link. */
-.suggestionsLink {
-  composes: link from '../../../_components/add-row.module.css';
-  display: inline-flex;
-  align-items: center;
-  text-decoration: none;
-}
 /* The plan as a slim live rail on the left; the workspace takes the rest. Phone: the rail goes (Plan (n) opens it). */
 .suggestLayout {
   display: grid;

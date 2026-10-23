@@ -8,14 +8,18 @@
  * Seed holders (canSeed) get a ⋯ menu per row; Remove is for seeded rows only, behind a danger dialog that names the
  * consequence, and a row scouts picked or a teacher offered says why it can't go. Viewers see the plan with no controls.
  *
- * B5 (Suggestions mode, ?view=suggestions): "Suggestions" is the heading bar's first link, for every viewer. The mode
- * replaces the old right-hand Suggested column: the workspace (./suggestions) takes the main area and the plan shrinks
- * to a slim live rail on the left (one line per item and the count; a "Plan (n)" Drawer on a phone). The one engine
- * read streams in behind Suspense (SuggestionsFeed); Esc or "Back to the plan" leaves. Adds go through the batched
- * action, ADD_MAX keys per call.
+ * One persistent bar on every sub-view (Patrick, 2026-10-22; lib/build-plan-view): "The plan · Suggestions ·
+ * + Requirement · + Focus set · + New mix" (viewers: the first two), the current one highlighted. Each view is linkable
+ * (?view=suggestions|add-requirement|add-set|new-mix). The plan and the three adds switch in place (history.pushState;
+ * popstate follows Back/Forward); Suggestions needs the server's engine read, so going to or from it navigates. Every
+ * sub-view starts with "← Back to the plan" and its heading; focus moves to the new view's heading (the plan's, on the
+ * way back). Esc leaves Suggestions and the adds, as before.
  *
- * B2: seed holders get the quiet adds on "The plan" heading's line (+ Requirement, + Focus set, + New mix:
- * ./add-offering; the open one sits under the heading, above the list: Patrick, 2026-10-22), and each row a quiet Edit
+ * B5 (Suggestions mode): the workspace (./suggestions) takes the main area and the plan shrinks to a slim live rail on
+ * the left (one line per item and the count; a "Plan (n)" Drawer on a phone). The one engine read streams in behind
+ * Suspense (SuggestionsFeed). Adds go through the batched action, ADD_MAX keys per call.
+ *
+ * B2: seed holders get the adds (./add-offering, one sub-view each, above the plan list), and each row a quiet Edit
  * (./edit-offering): its teacher for editors, a mix's requirements for seed holders.
  *
  * B6: invites moved to their own tab (/planner/invite). Once the plan has an offering, the bottom bar's one primary is
@@ -25,11 +29,13 @@
  * A row says only what's exceptional (Patrick, 2026-10-22): no origin tag on the planner's own rows, no scout line when
  * nobody signed up and nobody is likely. The likely scouts stream in behind Suspense too (LikelyFeed).
  */
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/app/_components/button';
 import { Drawer } from '@/app/_components/drawer';
+import { TabStrip } from '@/app/_components/tab-strip';
+import { BUILD_NAV, isAddView, parseBuildView, VIEW_TITLE, viewHref, type BuildView } from '@/lib/build-plan-view';
 import { useDisclosure } from '@/app/_components/use-disclosure';
 import {
   afterRemove,
@@ -58,7 +64,7 @@ import {
   type BuildClassResult,
   type BuildTeacherResult
 } from '../build-actions';
-import { AddOffering } from './add-offering';
+import { AddPanel } from './add-offering';
 import { EditOffering } from './edit-offering';
 import { rowCode } from './requirement-search';
 import { PlannerPoller } from '../planner-poller';
@@ -72,10 +78,13 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
 const FeedCtx = createContext<((f: SuggestFeed) => void) | null>(null);
 
 /**
- * Set when Suggestions mode is left (Esc or "Back to the plan"): the plan view that mounts next puts focus back on its
- * "Suggestions" link (qa-lead B5 #3). Client-side navigation keeps module state; a full load starts it false.
+ * Set when Suggestions mode is left for another view (Esc, the bar, "Back to the plan"): the view that mounts next puts
+ * focus on its heading (qa-lead B5 #3). Client-side navigation keeps module state; a full load starts it false.
  */
-let backFromSuggestions = false;
+let focusOnArrival = false;
+
+/** A click the page may take over: the main button, no modifier (those open a new tab or window). */
+const plainClick = (e: MouseEvent) => e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey;
 type Likely = Record<string, string[]>;
 const LikelyCtx = createContext<((l: Likely) => void) | null>(null);
 const OrphansCtx = createContext<((o: OrphansData) => void) | null>(null);
@@ -117,7 +126,8 @@ export function BuildPlanView({
   heading,
   feed,
   mode = 'plan',
-  planHref = '',
+  view: initialView = 'plan',
+  planHref: planHrefProp = '',
   suggestionsHref = '',
   switcher,
   lookupsHref
@@ -126,9 +136,11 @@ export function BuildPlanView({
   lookupsHref?: string;
   /** B5: the plan (default), or Suggestions mode (?view=suggestions): the workspace with the plan as a slim rail. */
   mode?: 'plan' | 'suggestions';
-  /** This meeting's plan (where Esc and "Back to the plan" go). */
+  /** Plan mode: the view it opens on (?view=add-requirement|add-set|new-mix; the plan by default). */
+  view?: BuildView;
+  /** This meeting's plan (where Esc, The plan and "Back to the plan" go). */
   planHref?: string;
-  /** This meeting in Suggestions mode (the heading bar's first link). */
+  /** This meeting in Suggestions mode (the bar's Suggestions). */
   suggestionsHref?: string;
   /** Suggestions mode: the meeting switcher, which moves into the workspace's sticky bar. */
   switcher?: ReactNode;
@@ -145,6 +157,8 @@ export function BuildPlanView({
   feed?: ReactNode;
 }) {
   const router = useRouter();
+  const planHref = planHrefProp || `/planner/build?meeting=${entryId}`;
+  const hrefOf = (v: BuildView) => (v === 'suggestions' && suggestionsHref ? suggestionsHref : viewHref(planHref, v));
   const [rows, setRows] = useState(initialRows);
   // A refresh (the poller, or a write that found someone else's change) hands in fresh rows: they replace what is shown,
   // while dialogs, the sheet and errors stay open (the page keys this view on the meeting only; qa-lead, 2026-10-22).
@@ -161,12 +175,55 @@ export function BuildPlanView({
   const [editing, setEditing] = useState<PlanRow | null>(null);
   const stampRef = useRef(stamp);
   const listHeadRef = useRef<HTMLHeadingElement | null>(null);
-  const suggestionsLinkRef = useRef<HTMLAnchorElement | null>(null);
+  /** The current sub-view's heading (Suggestions, or an add). */
+  const viewHeadRef = useRef<HTMLHeadingElement | null>(null);
+
+  // ── the sub-views ──
+  const [view, setView] = useState<BuildView>(() => (mode === 'suggestions' ? 'suggestions' : parseBuildView(initialView === 'suggestions' ? 'plan' : initialView, canSeed)));
+  const focusView = useRef(false);
+  const focusHeading = useCallback((v: BuildView) => (v === 'plan' ? listHeadRef.current : viewHeadRef.current)?.focus(), []);
+  // Arriving: Suggestions always takes focus to its heading (it was entered on purpose); the plan or an add only when
+  // reached from Suggestions (a full load of the plan leaves focus alone). On mount only: later switches focus below.
+  const [arrivedView] = useState(view);
   useEffect(() => {
-    if (mode !== 'plan' || !backFromSuggestions) return;
-    backFromSuggestions = false;
-    suggestionsLinkRef.current?.focus();
-  }, [mode]);
+    if (mode === 'suggestions') {
+      focusHeading('suggestions');
+      return;
+    }
+    if (!focusOnArrival) return;
+    focusOnArrival = false;
+    focusHeading(arrivedView);
+  }, [mode, arrivedView, focusHeading]);
+  useEffect(() => {
+    if (!focusView.current) return;
+    focusView.current = false;
+    focusHeading(view);
+  }, [view, focusHeading]);
+  // Back/Forward between the plan and the adds: the URL is the view (Suggestions entries are Next's own navigations).
+  useEffect(() => {
+    if (mode !== 'plan') return;
+    const onPop = () => {
+      const v = parseBuildView(new URLSearchParams(window.location.search).get('view'), canSeed);
+      if (v !== 'suggestions') setView(v);
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [mode, canSeed]);
+  /** Go to a view: in place between the plan and the adds; a navigation to or from Suggestions. */
+  const go = (v: BuildView) => {
+    if (v === view) {
+      focusHeading(v);
+      return;
+    }
+    if (mode === 'suggestions' || v === 'suggestions') {
+      if (mode === 'suggestions') focusOnArrival = true;
+      router.push(hrefOf(v));
+      return;
+    }
+    window.history.pushState(null, '', hrefOf(v));
+    focusView.current = true;
+    setView(v);
+  };
   const onFeed = useCallback((f: SuggestFeed) => setSuggestions(f), []);
   const [likely, setLikely] = useState<Likely>({});
   const [orphanData, setOrphanData] = useState<OrphansData | null>(null);
@@ -208,19 +265,25 @@ export function BuildPlanView({
     return null;
   };
 
-  // Suggestions mode: Esc leaves it (unless a dialog is open, or the key belongs to a field).
+  // Suggestions and the adds: Esc goes back to the plan (unless a dialog is open, or the key belongs to a field; in an
+  // add's box an empty field lets Esc through, as the old add row did).
+  const goRef = useRef(go);
   useEffect(() => {
-    if (mode !== 'suggestions') return;
+    goRef.current = go;
+  });
+  useEffect(() => {
+    if (view === 'plan') return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || e.defaultPrevented || document.querySelector('dialog[open]')) return;
       const t = e.target as HTMLElement | null;
-      if (t && /^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName) && (t as HTMLInputElement).type !== 'checkbox' && (t as HTMLInputElement).type !== 'radio') return;
-      backFromSuggestions = true;
-      router.push(planHref);
+      if (t && /^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName) && (t as HTMLInputElement).type !== 'checkbox' && (t as HTMLInputElement).type !== 'radio') {
+        if (view === 'suggestions' || t.tagName !== 'INPUT' || (t as HTMLInputElement).value !== '') return;
+      }
+      goRef.current('plan');
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [mode, planHref, router]);
+  }, [view]);
 
   const remove = async (row: PlanRow): Promise<string | null> => {
     const res = await plannerRemoveOfferingAction({ entryId, key: row.key }).catch(() => ({ ok: false as const, error: SAVE_FAILED }));
@@ -282,10 +345,35 @@ export function BuildPlanView({
   };
   const editingRow = editing ? (rows.find((r) => r.key === editing.key) ?? null) : null;
 
-  const suggestionsLink = (
-    <Link href={suggestionsHref} className={s.suggestionsLink} ref={suggestionsLinkRef}>
-      Suggestions
-    </Link>
+  /** The persistent bar (Patrick, 2026-10-22): real links, so a view opens in a new tab too; a plain click is go(). */
+  const navBar = (
+    <div className={s.buildNav}>
+      <TabStrip
+        ariaLabel="Build a Plan"
+        scroll
+        activeKey={view}
+        items={BUILD_NAV.filter((n) => canSeed || !isAddView(n.view)).map((n) => ({ key: n.view, label: n.label, href: hrefOf(n.view), onSelect: () => go(n.view) }))}
+      />
+    </div>
+  );
+  /** A sub-view's top: "← Back to the plan", then its heading (where focus lands). */
+  const subHead = (title: string) => (
+    <div className={s.subHead}>
+      <Link
+        href={planHref}
+        className={s.backLink}
+        onClick={(e) => {
+          if (!plainClick(e)) return;
+          e.preventDefault();
+          go('plan');
+        }}
+      >
+        <span aria-hidden="true">← </span>Back to the plan
+      </Link>
+      <h2 id="build-view-title" className={s.sectionTitle} ref={viewHeadRef} tabIndex={-1}>
+        {title}
+      </h2>
+    </div>
   );
   if (mode === 'suggestions') {
     const railList = rows.length ? (
@@ -303,6 +391,8 @@ export function BuildPlanView({
     return (
       <FeedCtx.Provider value={onFeed}>
         {heading}
+        {navBar}
+        {subHead(VIEW_TITLE.suggestions)}
         <div className={s.suggestLayout}>
           <aside className={s.planRail} aria-labelledby="build-plan">
             <h2 id="build-plan" className={s.sectionTitle} ref={listHeadRef} tabIndex={-1}>
@@ -318,13 +408,11 @@ export function BuildPlanView({
             rows={rows}
             canSeed={canSeed}
             switcher={switcher}
-            planHref={planHref}
             onOpenPlan={() => setPlanSheet(true)}
             addItems={addItems}
             canEdit={canEdit}
             onTeach={teachChip}
             onRemove={(row, trigger) => setRemoving({ row, trigger })}
-            onLeave={() => (backFromSuggestions = true)}
             lookupsHref={lookupsHref}
             dayLabel={dayLabel}
           />
@@ -355,6 +443,7 @@ export function BuildPlanView({
       <OrphansCtx.Provider value={setOrphanData}>
         <FeedCtx.Provider value={onFeed}>
           {heading}
+          {navBar}
           <div className={s.rail}>
             <p className={s.railText}>
               {plural(sum.offerings, 'offering')} · {sum.withTeachers} with {sum.withTeachers === 1 ? 'a teacher' : 'teachers'} · {plural(sum.scouts, 'scout')} signed up ·{' '}
@@ -372,18 +461,17 @@ export function BuildPlanView({
               <PlannerPoller entryId={entryId} stamp={stamp} build stampRef={stampRef} />
             </p>
           </div>
+          {isAddView(view) && canSeed ? (
+            <section className={s.subView} aria-labelledby="build-view-title">
+              {subHead(VIEW_TITLE[view])}
+              <AddPanel key={view} view={view} onPlan={onPlan} defaultMixName={mixName(dayLabel)} addRequirement={addRequirement} addSet={addSet} newMix={newMix} onDone={() => go('plan')} />
+            </section>
+          ) : null}
           <div className={s.layoutSolo}>
             <section aria-labelledby="build-plan">
-              <div className={s.planHead}>
-                <h2 id="build-plan" className={s.sectionTitle} ref={listHeadRef} tabIndex={-1}>
-                  The plan
-                </h2>
-                {canSeed ? (
-                  <AddOffering lead={suggestionsLink} onPlan={onPlan} defaultMixName={mixName(dayLabel)} addRequirement={addRequirement} addSet={addSet} newMix={newMix} />
-                ) : (
-                  <div className={s.addRow}>{suggestionsLink}</div>
-                )}
-              </div>
+              <h2 id="build-plan" className={s.sectionTitle} ref={listHeadRef} tabIndex={-1}>
+                The plan
+              </h2>
               {rows.length ? (
                 <ul className={s.list}>
                   {rows.map((r) => (

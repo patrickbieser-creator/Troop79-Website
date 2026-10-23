@@ -7,6 +7,7 @@
  * removes (checked again by every action). The switcher offers the next 4 published, open troop meetings, the next
  * one by default; the choice lives in the URL (?meeting=<entryId>).
  *
+ * ?view= is the sub-view (lib/build-plan-view): suggestions, or (seed holders) add-requirement | add-set | new-mix.
  * B5: ?view=suggestions is Suggestions mode (every viewer; read-only without the Seed right). Entering it costs the
  * plan rows plus ONE engine read (cached two minutes), streamed behind Suspense so the plan rail never waits for the
  * ledger. B9: the plan view streams the orphan count from that same cached engine read plus one scoutCandidatesMany.
@@ -24,6 +25,7 @@ import { loadPlannerPage } from '@/lib/meeting-planner-load';
 import { loadPlannerLists } from '@/lib/people-lists';
 import { loadSuggestionsData } from '@/lib/build-plan-suggest-db';
 import { pickMeeting, planRows, PLAN_MEETINGS } from '@/lib/build-plan';
+import { parseBuildView } from '@/lib/build-plan-view';
 import { loadLikelyScouts } from '@/lib/meeting-invite-digest-db';
 import { loadOrphans } from '@/lib/build-plan-orphans-db';
 import { PageHeader } from '@/app/_components/page-header';
@@ -94,7 +96,8 @@ export default async function BuildPlanPage({ searchParams }: { searchParams: Pr
   const meetings = (await loadUpcomingMeetings(sb, PLAN_MEETINGS * 2, undefined, lists.meetingLabels)).filter((m) => !m.closed).slice(0, PLAN_MEETINGS);
   const params = await searchParams;
   const meeting = pickMeeting(meetings, params.meeting);
-  const suggesting = (Array.isArray(params.view) ? params.view[0] : params.view) === 'suggestions';
+  const view = parseBuildView(params.view, access.canSeed);
+  const suggesting = view === 'suggestions';
   if (!meeting) {
     return (
       <div className={styles.page}>
@@ -145,6 +148,7 @@ export default async function BuildPlanPage({ searchParams }: { searchParams: Pr
         stamp={page.stamp}
         heading={heading}
         mode={suggesting ? 'suggestions' : 'plan'}
+        view={view}
         planHref={hrefOf(meeting.entryId, false)}
         suggestionsHref={hrefOf(meeting.entryId, true)}
         switcher={suggesting ? switcher : undefined}

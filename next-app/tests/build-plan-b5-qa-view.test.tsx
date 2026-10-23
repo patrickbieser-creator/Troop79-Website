@@ -34,7 +34,6 @@ const mode = (o: { feed?: boolean; lookupsHref?: string } = {}) =>
       feed={o.feed === false ? null : <SuggestionsFeed data={DATA} />}
     />
   );
-const workspace = () => screen.getByRole('region', { name: 'Suggestions' });
 
 afterEach(() => {
   cleanup();
@@ -43,17 +42,18 @@ afterEach(() => {
 });
 
 describe('B5 qa: focus in Suggestions mode', () => {
-  it('SuggestionsMode_OnEnter_FocusesTheWorkspace', async () => {
+  // Since the persistent bar (2026-10-22): focus goes to the view's heading, entering and leaving.
+  it('SuggestionsMode_OnEnter_FocusesItsHeading', async () => {
     mode();
-    await waitFor(() => expect(document.activeElement).toBe(workspace()));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('heading', { level: 2, name: 'Suggestions' })));
   });
 
-  it('SuggestionsMode_OnLeave_ReturnsFocusToTheSuggestionsLink', async () => {
+  it('SuggestionsMode_OnLeave_FocusesThePlanHeading', async () => {
     mode();
     fireEvent.keyDown(document.body, { key: 'Escape' });
     cleanup();
     render(<BuildPlanView entryId={1} rows={[]} canSeed stamp="s0" heading={null} suggestionsHref={`${PLAN}&view=suggestions`} />);
-    await waitFor(() => expect(document.activeElement?.textContent).toBe('Suggestions'));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'The plan' })));
   });
 
   it('SuggestionsMode_SingleAdd_MovesFocusToTheNextAdd', async () => {

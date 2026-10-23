@@ -857,7 +857,7 @@ export default function StyleguidePage() {
       <section className={sg.section}>
         <h2 className={sg.sectionHead}>Add Row</h2>
         <p className={sg.sectionNote}>
-          The admin twin of the public <code>AddRow</code> (<code>src/app/_components/add-row</code>: Menu Monster and Build a Plan) (Plans/Menu-Monster-Add-Pattern.md, Phase 2; Patrick
+          The admin twin of the public <code>AddRow</code> (<code>src/app/_components/add-row</code>: Menu Monster) (Plans/Menu-Monster-Add-Pattern.md, Phase 2; Patrick
           2026-10-07: &ldquo;UX is better&rdquo;). A list ends in one quiet link (&ldquo;+ Ingredient&rdquo; &mdash; a short verb, never the
           container&rsquo;s name); a tap swaps it for the search with a quiet <strong>Cancel</strong> at the row&rsquo;s right end.
           Cancel and Esc (nothing typed) close it and give focus back to the link; so does leaving the box empty. Picking a result

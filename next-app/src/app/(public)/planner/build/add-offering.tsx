@@ -1,22 +1,22 @@
 'use client';
 
 /**
- * Build a Plan's quiet adds (Plans/Build-A-Plan.md, B2): "+ Requirement  + Focus set  + New mix", each opening inline
- * with Cancel. They sit on "The plan" heading's line and open under it, above the list (Patrick, 2026-10-22: the named
- * exception to AGENTS.md "Lists end in one quiet add row").
+ * Build a Plan's adds (Plans/Build-A-Plan.md, B2), each its own sub-view since 2026-10-22 (Patrick): the persistent bar
+ * "The plan · Suggestions · + Requirement · + Focus set · + New mix" opens one (?view=add-requirement|add-set|new-mix),
+ * BuildPlanView gives it "← Back to the plan" and a heading, and The plan, Back or Esc leaves it.
  *
- *   + Requirement  the server search, whole requirements only; Add puts one on the plan. The row stays open for the
+ *   + Requirement  the server search, whole requirements only; Add puts one on the plan. The view stays open for the
  *                  next one and says what it added. (No typed free-text title: the seed RPCs take catalog keys and
  *                  focus groups only, and a typed title needs a teacher, so it stays on "+ Add an offer".)
  *   + Focus set    the planner's sets, filtered by name or label; Add puts the set on as one class.
  *   + New mix      a name ("Mix for Oct 25" until typed over) and requirements ticked from the same search, any
- *                  level. Add mix saves it as a focus set and adds it as one class in one step.
+ *                  level. Add mix saves it as a focus set and adds it as one class in one step, then goes back to the plan.
  * The writes belong to the page (BuildPlanView): each callback resolves to an error to show, or null.
  */
 import { useEffect, useId, useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import { AddRow } from '@/app/_components/add-row';
 import { Button } from '@/app/_components/button';
+import type { AddView } from '@/lib/build-plan-view';
 import type { FocusSearchRow, FocusSetView } from '@/lib/meeting-focus';
 import { focusSetsAction } from '../focus-actions';
 import { rowCode, useRequirementSearch } from './requirement-search';
@@ -25,8 +25,6 @@ import s from './build.module.css';
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 export interface AddOfferingProps {
-  /** B5: "Suggestions", the heading bar's first link. */
-  lead?: ReactNode;
   onPlan: ReadonlySet<string>;
   defaultMixName: string;
   addRequirement: (r: FocusSearchRow) => Promise<string | null>;
@@ -34,21 +32,11 @@ export interface AddOfferingProps {
   newMix: (name: string, items: FocusSearchRow[]) => Promise<string | null>;
 }
 
-export function AddOffering(p: AddOfferingProps) {
-  const [open, setOpen] = useState<string | null>(null);
-  return (
-    <AddRow
-      className={s.addRow}
-      lead={p.lead}
-      open={open}
-      onOpenChange={(id) => setOpen(id)}
-      actions={[
-        { id: 'req', label: 'Requirement', content: <RequirementPanel {...p} /> },
-        { id: 'set', label: 'Focus set', content: <SetPanel {...p} /> },
-        { id: 'mix', label: 'New mix', content: <MixPanel {...p} onDone={() => setOpen(null)} /> }
-      ]}
-    />
-  );
+/** One add view's content. `onDone`: a new mix was added (the page goes back to the plan). */
+export function AddPanel({ view, onDone, ...p }: AddOfferingProps & { view: AddView; onDone: () => void }) {
+  if (view === 'add-requirement') return <RequirementPanel {...p} />;
+  if (view === 'add-set') return <SetPanel {...p} />;
+  return <MixPanel {...p} onDone={onDone} />;
 }
 
 function RequirementPanel({ onPlan, addRequirement }: AddOfferingProps) {

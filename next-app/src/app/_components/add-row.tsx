@@ -1,8 +1,7 @@
 'use client';
 
 /**
- * The one add pattern per container (Plans/Menu-Monster-Add-Pattern.md, Decisions 3-5; shared since Build a Plan B2,
- * whose plan list ends in one too; look:
+ * The one add pattern per container (Plans/Menu-Monster-Add-Pattern.md, Decisions 3-5; look:
  * /admin/styleguide/public → Menu Monster planner flow → Add rows).
  *
  *   At rest   a list ends in quiet links — "+ Food  + Gear", "+ Ingredient". Real <button>s, 44px tall.
@@ -38,12 +37,9 @@ export function AddRow({
   defaultOpen = null,
   onOpenChange,
   trailing,
-  lead,
   className
 }: {
   actions: readonly AddAction[];
-  /** A link that leads the row's links, never opening content of its own (Build a Plan's "Suggestions"). */
-  lead?: ReactNode;
   /** Controlled: the open action's id, or null when resting. Omit for the row to manage itself. */
   open?: string | null;
   defaultOpen?: string | null;
@@ -137,16 +133,14 @@ export function AddRow({
             </button>
           </div>
           {/* The other actions sit on their own line BELOW the open content, never beside the search (Patrick, 2026-10-07). */}
-          {(actions.length > 1 || lead) && (
+          {actions.length > 1 && (
             <div className={s.links}>
-              {lead}
               {actions.filter((a) => a.id !== current.id).map(linkFor)}
             </div>
           )}
         </>
       ) : (
         <div className={s.links}>
-          {lead}
           {actions.map(linkFor)}
         </div>
       )}

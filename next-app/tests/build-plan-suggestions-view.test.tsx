@@ -53,11 +53,9 @@ afterEach(() => {
 });
 
 describe('Suggestions mode', () => {
-  it('Suggestions_IsTheFirstHeadingLink', () => {
+  it('Suggestions_IsInTheBuildBar', () => {
     render(<BuildPlanView entryId={1} rows={ROWS} canSeed stamp="s" heading={null} suggestionsHref="/planner/build?meeting=1&view=suggestions" />);
-    const head = screen.getByRole('heading', { name: 'The plan' }).parentElement as HTMLElement;
-    const first = head.querySelector('a, button') as HTMLAnchorElement;
-    expect([first.textContent, first.getAttribute('href')]).toEqual(['Suggestions', '/planner/build?meeting=1&view=suggestions']);
+    expect(screen.getByRole('tab', { name: 'Suggestions' }).getAttribute('href')).toBe('/planner/build?meeting=1&view=suggestions');
   });
 
   it('SuggestionsMode_ShowsPlanRail_AndHidesSuggestedColumn', () => {

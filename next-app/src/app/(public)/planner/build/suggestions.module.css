@@ -88,17 +88,6 @@
   color: var(--text-body);
   cursor: pointer;
 }
-.back {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  font: 600 var(--fs-sm) / 1 var(--font-ui);
-  color: var(--navy);
-}
-.back:focus-visible {
-  outline: var(--focus-ring);
-  outline-offset: 2px;
-}
 .planBtn {
   display: none;
   min-height: 44px;

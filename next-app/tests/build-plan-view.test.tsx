@@ -102,10 +102,10 @@ describe('BuildPlanView', () => {
 describe('BuildPlanView layout (2026-10-22)', () => {
   const rowOf = (title: string) => screen.getByText(title).closest('li') as HTMLElement;
 
-  it('BuildPlan_AddActions_SitInTheHeadingRow', () => {
+  it('BuildPlan_AddActions_SitInTheBuildBar', () => {
     render(<BuildPlanView entryId={1} rows={ROWS} canSeed stamp="s" heading={null} />);
-    const head = screen.getByRole('heading', { name: 'The plan' }).parentElement as HTMLElement;
-    expect(within(head).getAllByRole('button', { name: /^\+ / }).map((b) => b.textContent)).toEqual(['+ Requirement', '+ Focus set', '+ New mix']);
+    const bar = screen.getByRole('tablist', { name: 'Build a Plan' });
+    expect(within(bar).getAllByRole('tab', { name: /^\+ / }).map((b) => b.textContent)).toEqual(['+ Requirement', '+ Focus set', '+ New mix']);
   });
 
   it('BuildPlan_AddedRow_ShowsNoJustAdded', async () => {

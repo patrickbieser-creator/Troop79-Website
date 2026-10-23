@@ -56,13 +56,11 @@ export function SuggestionsWorkspace({
   rows,
   canSeed,
   switcher,
-  planHref,
   onOpenPlan,
   addItems,
   canEdit = false,
   onTeach,
   onRemove,
-  onLeave,
   lookupsHref,
   dayLabel
 }: {
@@ -73,7 +71,6 @@ export function SuggestionsWorkspace({
   canSeed: boolean;
   /** The meeting switcher (the next 4 meetings, each staying in this mode). */
   switcher?: ReactNode;
-  planHref: string;
   /** Phone: opens the plan in the Drawer. */
   onOpenPlan: () => void;
   /** The page's batched add: resolves to an error to show, or null. */
@@ -83,15 +80,11 @@ export function SuggestionsWorkspace({
   /** A Teaching chip: this leader teaches this item (added first when it isn't on the plan). An error to show, or null. */
   onTeach?: (item: SuggestItem, personId: number) => Promise<string | null>;
   onRemove: (row: PlanRow, trigger: HTMLElement | null) => void;
-  /** "Back to the plan" was chosen (the plan then puts focus back on its Suggestions link). */
-  onLeave?: () => void;
   /** Lookups, for a leader who holds the right that page needs (roster.manage); absent otherwise. */
   lookupsHref?: string;
 }) {
+  // Focus on arrival goes to the view's heading (BuildPlanView); the section is the fallback after an Add.
   const sectionRef = useRef<HTMLElement | null>(null);
-  useEffect(() => {
-    sectionRef.current?.focus();
-  }, []);
   const [lens, setLens] = useState<Lens>('sessions');
   const [filter, setFilter] = useState<SuggestFilter>(DEFAULT_FILTER);
   const [ticked, setTicked] = useState<ReadonlySet<string>>(new Set());
@@ -185,9 +178,6 @@ export function SuggestionsWorkspace({
             <button type="button" className={s.planBtn} onClick={onOpenPlan} aria-haspopup="dialog">
               Plan ({rows.length})
             </button>
-            <Link href={planHref} className={s.back} onClick={onLeave}>
-              Back to the plan
-            </Link>
           </span>
         </div>
       </div>
