@@ -208,3 +208,100 @@ describe('Not in a class yet', () => {
     expect(within(pool).getByText('Star 6 · Cyber Chip')).toBeTruthy();
   });
 });
+
+/**
+ * L0 qa (accessibility): a fix never drops focus on <body>. The fix buttons stay focusable while a write is out
+ * (aria-disabled + a guard, not disabled); once the line goes, focus moves to the next line's first button, or to the
+ * strip heading when no line follows; the persistent status says "Fixed · n left" or "All fixed".
+ */
+describe('Needs attention: focus after a fix (L0 qa)', () => {
+  const without = (...ids: string[]): LiveView => ({ ...VIEW, drift: VIEW.drift.filter((d) => !ids.includes(d.id)) });
+  async function fixed(name: string, next: LiveView, mock: keyof typeof mocks) {
+    mocks[mock].mockResolvedValue(ok);
+    const r = render(<LiveBoard view={VIEW} canEdit entryId={1} />);
+    const button = within(strip()).getByRole('button', { name });
+    button.focus();
+    fireEvent.click(button);
+    await waitFor(() => expect(mocks.refresh).toHaveBeenCalled());
+    r.rerender(<LiveBoard view={next} canEdit entryId={1} />);
+  }
+
+  it('Fix_WhileSaving_ButtonStaysFocusable', () => {
+    mocks.moveScout.mockReturnValue(new Promise(() => {}));
+    render(<LiveBoard view={VIEW} canEdit entryId={1} />);
+    const button = within(strip()).getByRole('button', { name: 'Remove from class' });
+    fireEvent.click(button);
+    expect([button.hasAttribute('disabled'), button.getAttribute('aria-disabled')]).toEqual([false, 'true']);
+  });
+
+  it('Fix_WhileSaving_SecondClickWritesNothing', () => {
+    mocks.moveScout.mockReturnValue(new Promise(() => {}));
+    render(<LiveBoard view={VIEW} canEdit entryId={1} />);
+    fireEvent.click(within(strip()).getByRole('button', { name: 'Remove from class' }));
+    fireEvent.click(within(strip()).getByRole('button', { name: 'Make a class' }));
+    expect(mocks.makeClass).not.toHaveBeenCalled();
+  });
+
+  it('Fix_LineGoes_FocusMovesToTheNextLine', async () => {
+    await fixed('Remove from class', without('x:c:1:1'), 'moveScout');
+    expect(document.activeElement?.textContent).toBe('Use Maria L');
+  });
+
+  it('Fix_LineGoes_FocusNeverOnBody', async () => {
+    await fixed('Remove from class', without('x:c:1:1'), 'moveScout');
+    expect(document.activeElement === document.body).toBe(false);
+  });
+
+  it('Fix_LastLineInTheList_FocusesTheHeading', async () => {
+    await fixed('Remove class', without('r:c:2'), 'removeClass');
+    expect(document.activeElement).toBe(within(strip()).getByRole('heading'));
+  });
+
+  it('Fix_LineGoes_AnnouncesHowManyAreLeft', async () => {
+    await fixed('Remove from class', without('x:c:1:1'), 'moveScout');
+    expect(screen.getByRole('status').textContent).toBe('Fixed · 4 left');
+  });
+
+  it('Fix_LastLineOfAll_AnnouncesAllFixed', async () => {
+    await fixed('Remove class', { ...VIEW, drift: [] }, 'removeClass');
+    expect(screen.getByRole('status').textContent).toBe('All fixed');
+  });
+
+  it('Fix_LastLineOfAll_FocusesTheHeading', async () => {
+    await fixed('Remove class', { ...VIEW, drift: [] }, 'removeClass');
+    expect(document.activeElement).toBe(screen.getByRole('heading', { name: /^Needs attention/ }));
+  });
+
+  it('Keep_FocusMovesToTheNextLine', () => {
+    render(<LiveBoard view={VIEW} canEdit entryId={1} />);
+    fireEvent.click(within(strip()).getByRole('button', { name: 'Keep' }));
+    expect(document.activeElement?.textContent).toBe('Use Maria L');
+  });
+
+  it('KeepAsExtra_LastLine_FocusesTheHeading', () => {
+    render(<LiveBoard view={VIEW} canEdit entryId={1} />);
+    fireEvent.click(within(strip()).getByRole('button', { name: 'Keep as extra' }));
+    expect(document.activeElement).toBe(within(strip()).getByRole('heading'));
+  });
+
+  it('Keep_AnnouncesHowManyAreLeft', () => {
+    render(<LiveBoard view={VIEW} canEdit entryId={1} />);
+    fireEvent.click(within(strip()).getByRole('button', { name: 'Keep' }));
+    expect(screen.getByRole('status').textContent).toBe('Fixed · 4 left');
+  });
+
+  it('MakeClass_PartialNote_IsShown', async () => {
+    mocks.makeClass.mockResolvedValue({ ...ok, note: 'Made the class; 1 scout couldn’t be placed: Ben T.' });
+    render(<LiveBoard view={VIEW} canEdit entryId={1} />);
+    fireEvent.click(within(strip()).getByRole('button', { name: 'Make a class' }));
+    expect(await screen.findByText('Made the class; 1 scout couldn’t be placed: Ben T.')).toBeTruthy();
+  });
+});
+
+describe('Needs attention: the pool chip names its problem (L0 qa)', () => {
+  it('PoolChip_AccessibleName_IncludesTheProblem', () => {
+    render(<LiveBoard view={VIEW} canEdit entryId={1} />);
+    const pool = screen.getByRole('region', { name: /^Not in a class yet/ });
+    expect(within(pool).getByRole('button', { name: /Anjali S picked Star 6 · no class/ })).toBeTruthy();
+  });
+});

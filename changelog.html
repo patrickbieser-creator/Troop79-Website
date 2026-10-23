@@ -510,12 +510,16 @@ py -m http.server 8000</pre>
           <li><span>Once Meeting Live has started, a red <strong>Needs attention (n)</strong> box at the top lists every place the plan and the classes no longer agree, each with a one-click fix: an offering with no class (<strong>Make a class</strong>: a Not scheduled card with the plan&rsquo;s teacher and the scouts who picked it), a scout whose pick has no class (<strong>Create class and place</strong>), a placed scout who said Can&rsquo;t make it or dropped that pick (<strong>Remove from class</strong> or <strong>Keep</strong>), a teacher who differs between the plan and the class (<strong>Use</strong> one or the other, by name), and a class whose offering left the plan (<strong>Keep as extra</strong> or <strong>Remove class</strong>).</span></li>
           <li><span>Each problem is also outlined in red where it is: the card, or the scout&rsquo;s chip. Keep hides a line until you reload the page. Only planners with Edit see the buttons; everyone else sees the list.</span></li>
           <li><span>&ldquo;Coming, nothing assigned&rdquo; is now <strong>Not in a class yet</strong>, and each scout there shows what they picked (&ldquo;Star 6 &middot; Cyber Chip&rdquo;).</span></li>
+          <li><span>After a fix, the keyboard stays in the list: focus moves to the next line (or the box&rsquo;s heading when none follows), and a screen reader hears &ldquo;Fixed &middot; 3 left&rdquo; or &ldquo;All fixed&rdquo;. A scout&rsquo;s chip in Not in a class yet now says its problem out loud too.</span></li>
+          <li><span><strong>Make a class</strong> places every scout it can: if one can&rsquo;t be placed, the class still stands and the screen names who (&ldquo;Made the class; 1 scout couldn&rsquo;t be placed: Ben T.&rdquo;). <strong>Use</strong> a class&rsquo;s teacher now refuses someone who can&rsquo;t teach. A dropped pick reads &ldquo;Ben T doesn&rsquo;t pick Scout 1a&rdquo;.</span></li>
+          <li><span>Build a Plan&rsquo;s view bar no longer uses the filled green button for the view you&rsquo;re on (each view has its own main button, like Invite); the current view is bold and underlined instead.</span></li>
         </ul>
       </div>
       <div class="change-group">
         <p class="change-group-title">Resource Library: proof approvals</p>
         <ul class="change-list">
           <li><span><strong>Approving a proof</strong> now signs the advancement record with the approving leader&rsquo;s code (&ldquo;PB&rdquo;, the same as Fast Entry; their initials if they have no code) instead of their full name, and dates it today in Central time. An approval after 7 PM no longer lands on tomorrow&rsquo;s date.</span></li>
+          <li><span>When a leader&rsquo;s initials would match another leader&rsquo;s code (two &ldquo;KP&rdquo;s), the approval signs with the reviewer&rsquo;s name instead, so it never reads as someone else&rsquo;s sign-off.</span></li>
         </ul>
       </div>
     </div>

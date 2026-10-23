@@ -67,7 +67,7 @@ describe('liveDrift', () => {
   });
 
   it('Drift_DroppedPick_Shows', () => {
-    expect(texts({ board: [{ personId: BEN, intent: 'coming', picks: [pick('tenderfoot-4a')] }] })).toEqual(['Ben T no longer picks Scout 1a']);
+    expect(texts({ board: [{ personId: BEN, intent: 'coming', picks: [pick('tenderfoot-4a')] }] })).toEqual(['Ben T doesn’t pick Scout 1a']);
   });
 
   it('Drift_DroppedPick_MergedClass_IsNotFlagged', () => {

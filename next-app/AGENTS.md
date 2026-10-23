@@ -257,4 +257,4 @@ edit → swap/diet → "Back to the troop's …" → **Remove** last, and "Leave
 Every quantity is a plain `NumberBox` (People, diets, brand packages, shopping "How many", gear counts); the − n +
 `Stepper` is for event sign-up only. One documented exception: the troop ingredient browser keeps "+ Ingredient" above
 its long, searchable list. Plan of record: `Plans/Completed/Menu-Monster-Add-Pattern.md`; specimens on both styleguides.
-Exception: Build a Plan (`/planner/build`) has no add row: its adds are sub-views on one persistent view bar of left-aligned Buttons (current = filled, aria-current), "The plan · Suggestions · + Requirement · + Focus set · + New mix", each linkable as `?view=…` with "← Back to the plan" (Patrick, 2026-10-22; `lib/build-plan-view`).
+Exception: Build a Plan (`/planner/build`) has no add row: its adds are sub-views on one persistent view bar of left-aligned secondary Buttons (current = aria-current="page", bold + underlined, never filled: each view has its own primary), "The plan · Suggestions · + Requirement · + Focus set · + New mix", each linkable as `?view=…` with "← Back to the plan" (Patrick, 2026-10-22; `lib/build-plan-view`).

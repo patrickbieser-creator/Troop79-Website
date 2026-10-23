@@ -1,6 +1,4 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { render, screen, cleanup, fireEvent, waitFor, within } from '@testing-library/react';
 import type { PlanRow } from '../src/lib/build-plan';
 import { DATA } from './helpers/suggestions-fixture';
@@ -63,17 +61,23 @@ describe('Build a Plan navigation', () => {
     expect(tabs().map((t) => t.textContent)).toEqual(ALL);
   });
 
-  it('BuildNav_Buttons_AreLeftAligned', () => {
-    const css = readFileSync(join(__dirname, '../src/app/(public)/planner/build/build.module.css'), 'utf8');
-    const rule = /\.buildNav\s*\{([^}]*)\}/.exec(css)?.[1] ?? '';
-    expect([/justify-content:\s*flex-start/.test(rule), /flex-wrap:\s*wrap/.test(rule), /margin-left:\s*auto/.test(rule)]).toEqual([true, true, false]);
+  // L0 qa (1): the bar's buttons sit straight in the bar, in order, with nothing (a spacer, a wrapper) pushing them right.
+  it('BuildNav_Buttons_SitDirectlyInTheBar', () => {
+    renderAt('plan');
+    expect(Array.from(strip().children).map((c) => c.textContent)).toEqual(ALL);
   });
 
-  it('BuildNav_Selected_IsTheFilledButton', () => {
+  // L0 qa (1): the views have their own primary (Invite, Add); the bar's current view is marked, never filled.
+  it('BuildNav_Selected_IsMarkedLikeTheOthers', () => {
     renderAt('add-set');
     const cur = within(strip()).getByRole('link', { name: '+ Focus set' });
     const other = within(strip()).getByRole('link', { name: 'The plan' });
-    expect([cur.getAttribute('aria-current'), cur.className === other.className, other.getAttribute('aria-current')]).toEqual(['page', false, null]);
+    expect([cur.getAttribute('aria-current'), cur.className === other.className]).toEqual(['page', true]);
+  });
+
+  it('BuildNav_NoButtonIsPrimary', () => {
+    renderAt('plan');
+    expect(tabs().filter((t) => /primary/.test(t.className)).length).toBe(0);
   });
 
   it('BuildNav_Viewer_SeesTwoButtons', () => {

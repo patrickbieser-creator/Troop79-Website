@@ -20,8 +20,11 @@
  * where the plan and the arrangement disagree, each with its one-click fix (editors only; viewers see the list). Each
  * case is also marked in place: the card or chip outlined in red, the sentence on the card. Keep / Keep as extra hide a
  * line for this visit only (component state: nothing is saved, a reload brings it back; L1 makes it stick).
+ * L0 qa: a fix's buttons stay focusable while it saves (aria-disabled + a guard); when its line goes, focus moves to
+ * the next line's first button, or the strip heading (tabIndex -1) when none follows, and the persistent status says
+ * "Fixed · n left" / "All fixed" (the B8 focusStart pattern). Make a class names any scout it couldn't place.
  */
-import { useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type DragEvent, type ReactNode, type RefObject } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/app/_components/button';
 import { Drawer } from '@/app/_components/drawer';
@@ -169,13 +172,38 @@ export function LiveBoard({
   /** L0: lines hidden with Keep / Keep as extra, for this visit only. */
   const [kept, setKept] = useState<ReadonlySet<string>>(() => new Set());
   const drift = view.started ? view.drift.filter((d) => !kept.has(d.id)) : [];
-  const keep = (id: string) => setKept((k) => new Set([...k, id]));
+  /** L0 qa: the line a fix was pressed on (and where it sat), until it leaves the list. */
+  const [fixing, setFixing] = useState<{ id: string; index: number } | null>(null);
+  /** Where focus goes once that line has gone: the line now at its place, or the heading. `n` makes each one new. */
+  const [focusTo, setFocusTo] = useState<{ index: number; n: number } | null>(null);
+  /** The persistent status's words after a fix ("Fixed · 3 left"); a problem notice wins over it. */
+  const [said, setSaid] = useState<string | null>(null);
+  const [allFixed, setAllFixed] = useState(false);
+  if (fixing && !drift.some((d) => d.id === fixing.id)) {
+    // Adjusting state to the new list during render (not in an effect): the line went, say so and move focus.
+    setFixing(null);
+    setSaid(drift.length ? `Fixed · ${drift.length} left` : 'All fixed');
+    setAllFixed(!drift.length);
+    setFocusTo({ index: fixing.index, n: (focusTo?.n ?? 0) + 1 });
+  }
+  const attentionRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!focusTo) return;
+    const root = attentionRef.current;
+    const next = root?.querySelectorAll('li')[focusTo.index]?.querySelector<HTMLElement>('button');
+    (next ?? root?.querySelector<HTMLElement>('h2'))?.focus();
+  }, [focusTo]);
+  const startFix = (d: LiveDrift) => setFixing({ id: d.id, index: drift.findIndex((x) => x.id === d.id) });
+  const keep = (d: LiveDrift) => {
+    startFix(d);
+    setKept((k) => new Set([...k, d.id]));
+  };
   // Marked in place: a card's sentences, and the chips (placed or waiting) a line is about.
   const cardProblems = new Map<string, string[]>();
   const badMember = new Set<string>();
-  const badPool = new Set<number>();
+  const badPool = new Map<number, string[]>();
   for (const d of drift) {
-    if (d.kind === 'pick') badPool.add(d.personId);
+    if (d.kind === 'pick') badPool.set(d.personId, [...(badPool.get(d.personId) ?? []), driftText(d)]);
     if (d.kind === 'offering' || d.kind === 'pick') continue;
     cardProblems.set(d.classId, [...(cardProblems.get(d.classId) ?? []), driftText(d)]);
     if (d.kind === 'cant' || d.kind === 'dropped') badMember.add(`${d.classId}|${d.personId}`);
@@ -189,6 +217,12 @@ export function LiveBoard({
     focusStart.current = false;
   }, [view.started]);
   const cardsIn = (c: Column) => view.cards.filter((x) => x.rotation === c.rotation);
+  /** A waiting chip's spoken name, with its problem when it has one (L0 qa: the outline alone isn't heard). */
+  const poolLabel = (p: LiveView['pool'][number]) => {
+    const base = chipLabel(p.name, p, attendance.open);
+    const problems = badPool.get(p.personId);
+    return problems ? `${base ?? p.name}. ${problems.join('. ')}` : base;
+  };
 
   // Drag-and-drop only where there's a mouse; touch uses "Move to" and the sheets.
   useEffect(() => {
@@ -217,11 +251,12 @@ export function LiveBoard({
   const run = async (write: () => Promise<LiveWriteResult>) => {
     setBusy(true);
     setSheet(null);
+    setSaid(null);
     const fromPreview = !view.started;
     try {
       const res = await write();
       if (res.ok && fromPreview && meeting?.future) setStartedNote(true);
-      if (res.ok) setNotice(null);
+      if (res.ok) setNotice(res.note ?? null);
       else setNotice(res.stale ? STALE : res.error);
       router.refresh();
     } catch {
@@ -343,11 +378,10 @@ export function LiveBoard({
               {LIVE_STARTED_NOTE}
             </p>
           ) : null}
-          {notice ? (
-            <p className={styles.notice} role="status">
-              {notice}
-            </p>
-          ) : null}
+          {/* Persistent, so a fix's "Fixed · n left" is heard (L0 qa); a problem notice shows instead. */}
+          <p className={notice ? styles.notice : styles.srOnly} role="status">
+            {notice ?? said ?? ''}
+          </p>
           {view.overlaps ? <span className={styles.overlaps}>{plural(view.overlaps, 'overlap')}</span> : null}
           {canEdit && view.started ? <LiveMoreActions onDiscard={() => setConfirming('discard')} /> : null}
         </div>
@@ -364,17 +398,33 @@ export function LiveBoard({
         </ConfirmDialog>
       ) : null}
 
-      {drift.length ? (
+      {drift.length || (allFixed && view.started) ? (
         <NeedsAttention
           drift={drift}
           canEdit={canEdit}
           busy={busy}
+          sectionRef={attentionRef}
           onKeep={keep}
-          onMakeClass={(key) => run(() => plannerLiveMakeClassAction({ entryId, key }))}
-          onRemoveScout={(personId, classId) => moveScout(personId, classId, null)}
-          onUsePlan={(d) => run(() => plannerLiveSetTeacherAction({ entryId, classId: d.classId, version: d.version, teacherId: d.plan.personId }))}
-          onUseClass={(d, teacherId) => run(() => plannerLiveUseClassTeacherAction({ entryId, classId: d.classId, version: d.version, teacherId }))}
-          onRemoveClass={(d) => run(() => plannerLiveRemoveClassAction({ entryId, classId: d.classId, version: d.version }))}
+          onMakeClass={(d) => {
+            startFix(d);
+            void run(() => plannerLiveMakeClassAction({ entryId, key: d.key }));
+          }}
+          onRemoveScout={(d) => {
+            startFix(d);
+            void moveScout(d.personId, d.classId, null);
+          }}
+          onUsePlan={(d) => {
+            startFix(d);
+            void run(() => plannerLiveSetTeacherAction({ entryId, classId: d.classId, version: d.version, teacherId: d.plan.personId }));
+          }}
+          onUseClass={(d, teacherId) => {
+            startFix(d);
+            void run(() => plannerLiveUseClassTeacherAction({ entryId, classId: d.classId, version: d.version, teacherId }));
+          }}
+          onRemoveClass={(d) => {
+            startFix(d);
+            void run(() => plannerLiveRemoveClassAction({ entryId, classId: d.classId, version: d.version }));
+          }}
         />
       ) : null}
 
@@ -486,14 +536,14 @@ export function LiveBoard({
                         <li
                           key={p.personId}
                           className={canEdit ? styles.chipItem : attendance.open && !p.present ? styles.chipOut : styles.chip}
-                          aria-label={canEdit ? undefined : chipLabel(p.name, p, attendance.open)}
+                          aria-label={canEdit ? undefined : poolLabel(p)}
                           data-problem={badPool.has(p.personId) ? 'true' : undefined}
                         >
                           {canEdit ? (
                             <button
                               type="button"
                               className={attendance.open && !p.present ? styles.chipBtnOut : styles.chipBtn}
-                              aria-label={chipLabel(p.name, p, attendance.open)}
+                              aria-label={poolLabel(p)}
                               draggable={fine}
                               onDragStart={(e) =>
                                 dragStart(e, {
@@ -829,6 +879,7 @@ function NeedsAttention({
   drift,
   canEdit,
   busy,
+  sectionRef,
   onKeep,
   onMakeClass,
   onRemoveScout,
@@ -839,25 +890,30 @@ function NeedsAttention({
   drift: LiveDrift[];
   canEdit: boolean;
   busy: boolean;
-  onKeep: (id: string) => void;
-  onMakeClass: (key: string) => void;
-  onRemoveScout: (personId: number, classId: string) => void;
+  sectionRef: RefObject<HTMLElement | null>;
+  onKeep: (d: LiveDrift) => void;
+  onMakeClass: (d: Extract<LiveDrift, { kind: 'offering' | 'pick' }>) => void;
+  onRemoveScout: (d: Extract<LiveDrift, { kind: 'cant' | 'dropped' }>) => void;
   onUsePlan: (d: Extract<LiveDrift, { kind: 'teacher' }>) => void;
   onUseClass: (d: Extract<LiveDrift, { kind: 'teacher' }>, teacherId: number) => void;
   onRemoveClass: (d: Extract<LiveDrift, { kind: 'orphan' }>) => void;
 }) {
+  // While a write is out the buttons stay focusable (aria-disabled, not disabled) and a press does nothing (L0 qa).
+  const guard = (fn: () => void) => () => {
+    if (!busy) fn();
+  };
   const fixes = (d: LiveDrift, textId: string): ReactNode => {
-    const common = { size: 'sm' as const, disabled: busy, 'aria-describedby': textId };
+    const common = { size: 'sm' as const, 'aria-disabled': busy || undefined, 'aria-describedby': textId };
     switch (d.kind) {
       case 'offering':
         return (
-          <Button {...common} onClick={() => onMakeClass(d.key)}>
+          <Button {...common} onClick={guard(() => onMakeClass(d))}>
             Make a class
           </Button>
         );
       case 'pick':
         return (
-          <Button {...common} onClick={() => onMakeClass(d.key)}>
+          <Button {...common} onClick={guard(() => onMakeClass(d))}>
             Create class and place
           </Button>
         );
@@ -865,10 +921,10 @@ function NeedsAttention({
       case 'dropped':
         return (
           <>
-            <Button {...common} onClick={() => onRemoveScout(d.personId, d.classId)}>
+            <Button {...common} onClick={guard(() => onRemoveScout(d))}>
               Remove from class
             </Button>
-            <Button {...common} variant="ghost" onClick={() => onKeep(d.id)}>
+            <Button {...common} variant="ghost" onClick={guard(() => onKeep(d))}>
               Keep
             </Button>
           </>
@@ -876,11 +932,11 @@ function NeedsAttention({
       case 'teacher':
         return (
           <>
-            <Button {...common} variant="secondary" onClick={() => onUsePlan(d)}>
+            <Button {...common} variant="secondary" onClick={guard(() => onUsePlan(d))}>
               {`Use ${d.plan.name}`}
             </Button>
             {d.current ? (
-              <Button {...common} variant="secondary" onClick={() => onUseClass(d, d.current!.personId)}>
+              <Button {...common} variant="secondary" onClick={guard(() => onUseClass(d, d.current!.personId))}>
                 {`Use ${d.current.name}`}
               </Button>
             ) : null}
@@ -889,10 +945,10 @@ function NeedsAttention({
       case 'orphan':
         return (
           <>
-            <Button {...common} variant="ghost" onClick={() => onKeep(d.id)}>
+            <Button {...common} variant="ghost" onClick={guard(() => onKeep(d))}>
               Keep as extra
             </Button>
-            <Button {...common} variant="danger" onClick={() => onRemoveClass(d)}>
+            <Button {...common} variant="danger" onClick={guard(() => onRemoveClass(d))}>
               Remove class
             </Button>
           </>
@@ -900,10 +956,11 @@ function NeedsAttention({
     }
   };
   return (
-    <section className={styles.attention} aria-labelledby="live-attention">
-      <h2 id="live-attention" className={styles.attentionTitle}>
+    <section ref={sectionRef} className={drift.length ? styles.attention : styles.attentionDone} aria-labelledby="live-attention">
+      <h2 id="live-attention" className={styles.attentionTitle} tabIndex={-1}>
         {`Needs attention (${drift.length})`}
       </h2>
+      {drift.length ? null : <p className={styles.attentionText}>All fixed.</p>}
       <ul className={styles.attentionList}>
         {drift.map((d, i) => {
           const textId = `live-attention-${i}`;

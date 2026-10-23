@@ -48,7 +48,8 @@ import {
 import { meetingIsOver } from '@/lib/meeting-live-shared';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-export type LiveWriteResult = { ok: true; stamp: string } | { ok: false; error: string; stale?: true };
+/** `note`: it saved, with something the screen must still say (Make a class: who couldn't be placed). */
+export type LiveWriteResult = { ok: true; stamp: string; note?: string } | { ok: false; error: string; stale?: true };
 
 const STALE_TEXT = 'Someone else changed this. Here’s the latest.';
 const fail = (error: string): { ok: false; error: string } => ({ ok: false, error });
@@ -263,13 +264,19 @@ export async function plannerLiveAddClassAction(input: {
 const isTopicKey = (v: unknown): v is string => typeof v === 'string' && /^[a-z0-9:][a-z0-9:._-]{0,119}$/i.test(v);
 const NOT_ON_PLAN = 'That isn’t on this meeting’s plan any more.';
 
+/** "Made the class; 2 scouts couldn't be placed: Ben T, Finn P." */
+function makeClassNote(names: readonly string[]): string {
+  return `Made the class; ${names.length} ${names.length === 1 ? 'scout' : 'scouts'} couldn’t be placed: ${names.join(', ')}.`;
+}
+
 /**
  * "Make a class" / "Create class and place": a Not scheduled card for a topic on the plan, taught by the plan's first
  * teacher who may teach on Live (none when nobody can), with every coming scout who picked it and is in no class yet.
  * Only on a started arrangement (the strip shows only there): not started = stale. A class for the topic already there
  * = stale (someone fixed it first). The add and each placement are Live's own RPCs (the lock, live_version); a scout
  * someone placed meanwhile is skipped by the move's compare-and-set. The existence check and the add are two calls, so
- * two leaders in the same instant could each make one; the second shows as a repeat, which Remove takes away.
+ * two leaders in the same instant could each make one; the second shows as a repeat, which Remove takes away. A scout
+ * who can't be placed doesn't stop the rest (L0 qa): the class stays and `note` names them.
  */
 export async function plannerLiveMakeClassAction(input: { entryId: number; key: string }): Promise<LiveWriteResult> {
   const e = await liveEditor(input?.entryId);
@@ -297,12 +304,15 @@ export async function plannerLiveMakeClassAction(input: { entryId: number; key: 
     });
     if (added.error) return added.error.message === 'STALE' ? stale() : fail(KNOWN.test(added.error.message) ? added.error.message : SAVE_FAILED);
     const classId = added.data as number;
-    for (const personId of plan.pickers) {
-      const { error } = await e.sb.rpc('meeting_live_move_scout', { p_entry: e.meeting.entryId, p_actor: e.actorPersonId, p_person: personId, p_from: null, p_to: classId });
-      if (error && error.message !== 'STALE') return fail(SAVE_FAILED);
+    // L0 qa: every picker gets a try; one who can't be placed doesn't stop the rest, and the class stays.
+    const missed: string[] = [];
+    for (const p of plan.pickers) {
+      const { error } = await e.sb.rpc('meeting_live_move_scout', { p_entry: e.meeting.entryId, p_actor: e.actorPersonId, p_person: p.personId, p_from: null, p_to: classId });
+      if (error && error.message !== 'STALE') missed.push(p.name);
     }
     revalidate();
-    return { ok: true, stamp: await loadBoardStamp(e.sb, e.meeting.entryId) };
+    const stamp = await loadBoardStamp(e.sb, e.meeting.entryId);
+    return missed.length ? { ok: true, stamp, note: makeClassNote(missed) } : { ok: true, stamp };
   } catch {
     return fail(SAVE_FAILED);
   }
@@ -321,6 +331,7 @@ export async function plannerLiveUseClassTeacherAction(input: { entryId: number;
     if (!(await liveStartedAt(e.sb, e.meeting.entryId))) return stale();
     const c = await loadClassForTeacherFix(e.sb, e.meeting.entryId, Number(input.classId.slice(2)));
     if (!c || c.version !== input.version || c.teacherId !== input.teacherId) return stale();
+    if (!(await canTeachOnLive(e.sb, e.meeting, input.teacherId))) return fail(NOT_A_TEACHER);
     const w = { personId: input.teacherId, actorPersonId: e.actorPersonId, leader: true };
     const taught = await teachTopic(e.sb, w, [e.meeting.entryId], { key: c.key }, null);
     if (!taught.ok) return taught;

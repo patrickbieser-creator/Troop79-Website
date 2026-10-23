@@ -15,11 +15,24 @@ import { driftText } from '../src/lib/meeting-live-shared';
  */
 const sb = adminClient();
 const state = vi.hoisted(() => ({
-  actor: null as null | { personId: number; subjectKind: 'adult' | 'scout'; capabilities: Set<string> }
+  actor: null as null | { personId: number; subjectKind: 'adult' | 'scout'; capabilities: Set<string> },
+  /** L0 qa: the server's placement of this person fails (not STALE), to drive Make a class's partial path. */
+  failMoveFor: null as number | null
 }));
 vi.mock('@/lib/supabase/server', async () => {
   const { adminClient: make } = await import('./helpers/admin-client');
-  return { createAdminClient: () => make() };
+  const failing = (client: SupabaseClient) =>
+    new Proxy(client, {
+      get(target, prop, receiver) {
+        const v = Reflect.get(target, prop, receiver);
+        if (prop !== 'rpc' || typeof v !== 'function') return v;
+        return (fn: string, args: Record<string, unknown>) =>
+          fn === 'meeting_live_move_scout' && args?.p_person === state.failMoveFor
+            ? Promise.resolve({ data: null, error: { message: 'boom' } })
+            : (v as (...a: unknown[]) => unknown).apply(target, [fn, args]);
+      }
+    });
+  return { createAdminClient: () => failing(make()) };
 });
 vi.mock('@/lib/admin-actor', () => ({ resolveAdminActor: async () => state.actor }));
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn(), updateTag: vi.fn(), unstable_cache: (fn: unknown) => fn }));
@@ -128,6 +141,7 @@ beforeAll(async () => {
 afterEach(async () => {
   await clearMeeting(meeting);
   state.actor = null;
+  state.failMoveFor = null;
 });
 
 afterAll(async () => {
@@ -251,6 +265,51 @@ describe('Rotations L0: the fixes', () => {
     asEditor();
     const res = await (await live()).plannerLiveRemoveClassAction({ entryId: meeting, classId: `c:${o}`, version: 1 });
     expect([res.ok, (await view()).drift.filter((d) => d.kind === 'orphan').length]).toEqual([true, 0]);
+  });
+});
+
+describe('Rotations L0 qa: Make a class keeps going', () => {
+  async function twoPickers() {
+    await realCase();
+    await pick(ben, key2);
+    await sb.from('meeting_class_members').delete().eq('person_id', ben);
+    state.failMoveFor = ben;
+    asEditor();
+    return (await live()).plannerLiveMakeClassAction({ entryId: meeting, key: key2 });
+  }
+
+  it('MakeClass_PartialFailure_KeepsTheClass_PlacesTheRest', async () => {
+    await twoPickers();
+    const [made] = await classesFor(key2);
+    expect(made ? await membersOf(made.id) : null).toEqual([anjali]);
+  });
+
+  it('MakeClass_PartialFailure_NamesWhoCouldNotBePlaced', async () => {
+    const res = await twoPickers();
+    expect(res.ok && res.note).toBe(`Made the class; 1 scout couldn’t be placed: ${TEST_PREFIX} MLD Ben.`);
+  });
+});
+
+describe('Rotations L0 qa: Use <class teacher> checks who may teach', () => {
+  it('UseClassTeacher_IneligibleTeacher_IsRefused', async () => {
+    await pick(ben, key);
+    const [c] = await started([{ topic_key: key, rotation: 1, teacher_person_id: anjali, members: [ben] }]);
+    await teach(teacher, key);
+    asEditor();
+    const res = await (await live()).plannerLiveUseClassTeacherAction({ entryId: meeting, classId: `c:${c}`, version: 1, teacherId: anjali });
+    expect([res.ok, await planTeachers(key)]).toEqual([false, [teacher]]);
+  });
+});
+
+describe('Rotations L0 qa: the matcher agrees with itself', () => {
+  it('Drift_MatcherArrangement_HasNoDrift', async () => {
+    await teach(teacher, key);
+    await pick(ben, key);
+    await teach(teacher2, key2);
+    await pick(anjali, key2);
+    asEditor();
+    const res = await (await live()).plannerLiveStartAction({ entryId: meeting });
+    expect([res.ok, ours((await view()).drift)]).toEqual([true, []]);
   });
 });
 

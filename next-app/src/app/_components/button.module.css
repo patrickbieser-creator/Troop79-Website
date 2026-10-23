@@ -37,6 +37,14 @@
   border: 1px solid var(--border-mid);
 }
 .secondary:hover { border-color: var(--forest); color: var(--forest); }
+/* A view bar's current view (Build a Plan, L0 qa): marked, never filled, so the view's own primary stays the one. */
+.secondary[aria-current="page"] {
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+  border-color: var(--navy);
+}
 
 .ghost {
   background: none;

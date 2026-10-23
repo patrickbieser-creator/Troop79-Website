@@ -347,7 +347,8 @@ export function BuildPlanView({
 
   /**
    * The persistent bar (Patrick, 2026-10-22): a left-aligned row of buttons right after the title, The plan first. Each is
-   * a real link (a view opens in a new tab too); a plain click is go(). The current view is the filled one.
+   * a real link (a view opens in a new tab too); a plain click is go(). All secondary (L0 qa: the views carry their own
+   * primary, Invite or Add); the current view is aria-current="page", which Button marks bold and underlined.
    */
   const navBar = (
     <nav className={s.buildNav} aria-label="Build a Plan">
@@ -355,7 +356,7 @@ export function BuildPlanView({
         <Button
           key={n.view}
           size="sm"
-          variant={n.view === view ? 'primary' : 'secondary'}
+          variant="secondary"
           href={hrefOf(n.view)}
           aria-current={n.view === view ? 'page' : undefined}
           onClick={(e) => {

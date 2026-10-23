@@ -725,14 +725,20 @@ export async function loadActiveScoutsList(
   }));
 }
 
-/** The ledger's "Signed-Off By" for a reviewer: their leader code, else their initials. */
+/**
+ * The ledger's "Signed-Off By" for a reviewer: their leader code, else their initials, else their label. Initials that
+ * are another leader's code ("KP") would sign as that leader, so then the label (L0 qa); no person = the label.
+ */
 async function signerCode(supabase: SupabaseClient, reviewer: string, personId: number | null): Promise<string> {
-  if (personId != null) {
-    const { data } = await supabase.from('leaders').select('code').eq('person_id', personId).limit(1).maybeSingle();
-    const code = (data as { code: string | null } | null)?.code?.trim();
-    if (code) return code;
-  }
-  return initialsFor(reviewer) || reviewer;
+  if (personId == null) return reviewer;
+  const { data } = await supabase.from('leaders').select('code').eq('person_id', personId).order('code').limit(1).maybeSingle();
+  const code = (data as { code: string | null } | null)?.code?.trim();
+  if (code) return code;
+  const initials = initialsFor(reviewer);
+  if (!initials) return reviewer;
+  const { data: holder } = await supabase.from('leaders').select('person_id').eq('code', initials).maybeSingle();
+  const owner = (holder as { person_id: number | null } | null)?.person_id;
+  return holder && owner !== personId ? reviewer : initials;
 }
 
 /**
@@ -744,7 +750,8 @@ async function signerCode(supabase: SupabaseClient, reviewer: string, personId: 
  *
  * Signed like Fast Entry (2026-10-22): `by` is the approving leader's code ("PB",
  * leaders.code for `reviewerPersonId`), or the reviewer's initials when they have
- * no code; `date` is today in Central (the UTC date was tomorrow after 7 PM).
+ * no code (the label when those initials are another leader's code, or there's no person); `date` is today in
+ * Central (the UTC date was tomorrow after 7 PM).
  * `entered_by` and `reviewed_by` stay the reviewer's label.
  */
 export async function approveSubmission(

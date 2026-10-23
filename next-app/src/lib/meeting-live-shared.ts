@@ -282,7 +282,7 @@ export function driftText(d: LiveDrift): string {
     case 'cant':
       return `${d.name} said Can’t make it · in ${d.title}`;
     case 'dropped':
-      return `${d.name} no longer picks ${d.title}`;
+      return `${d.name} doesn’t pick ${d.title}`;
     case 'teacher':
       return d.current ? `${d.title}: the plan says ${d.plan.name}, the class has ${d.current.name}` : `${d.title} has no teacher · the plan says ${d.plan.name}`;
     case 'orphan':

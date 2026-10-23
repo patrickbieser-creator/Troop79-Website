@@ -17,6 +17,10 @@ const ledgerIds: number[] = [];
 const leaderCodes: string[] = [];
 let leader = 0;
 let noCode = 0;
+let other = 0;
+/** L0 qa (3): another leader already holds the code these initials would make. */
+const TAKEN_LABEL = 'Qa Xb Jc';
+const TAKEN = 'QXJ';
 const CODE = `Z${Date.now() % 100000}`;
 
 async function person(label: string): Promise<number> {
@@ -39,7 +43,7 @@ async function submission(suffix: string): Promise<number> {
   submissionIds.push(data!.id);
   return data!.id as number;
 }
-async function approve(subId: number, label: string, personId: number) {
+async function approve(subId: number, label: string, personId: number | null) {
   const res = await approveSubmission(sb, subId, label, personId);
   if (res.error || !res.ledgerEntryId) throw new Error(res.error ?? 'no ledger row');
   ledgerIds.push(res.ledgerEntryId);
@@ -53,6 +57,9 @@ beforeAll(async () => {
   const { error } = await sb.from('leaders').insert({ code: CODE, name: `${TEST_PREFIX} ASS Leader`, person_id: leader });
   if (error) throw new Error(error.message);
   leaderCodes.push(CODE);
+  other = await person('Other');
+  const taken = await sb.from('leaders').insert({ code: TAKEN, name: `${TEST_PREFIX} ASS Other`, person_id: other });
+  if (!taken.error) leaderCodes.push(TAKEN);
 });
 
 afterEach(() => {
@@ -90,5 +97,17 @@ describe('approveSubmission signs like Fast Entry', () => {
     vi.setSystemTime(new Date('2026-10-22T01:30:00Z'));
     const row = await approve(id, 'Patrick Bieser', leader);
     expect(row.date).toBe('2026-10-21');
+  });
+});
+
+describe('approveSubmission never signs as someone else (L0 qa)', () => {
+  it('ApproveSubmission_InitialsAreAnotherLeadersCode_SignsWithTheLabel', async () => {
+    const row = await approve(await submission('taken'), TAKEN_LABEL, noCode);
+    expect(row.by).toBe(TAKEN_LABEL);
+  });
+
+  it('ApproveSubmission_NoPerson_SignsWithTheLabel', async () => {
+    const row = await approve(await submission('noperson'), 'Maria Lopez', null);
+    expect(row.by).toBe('Maria Lopez');
   });
 });

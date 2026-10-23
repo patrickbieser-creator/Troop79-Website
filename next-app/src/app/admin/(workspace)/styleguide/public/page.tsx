@@ -424,7 +424,7 @@ export default function PublicStyleguidePage() {
             </span>
             <div className={sg.specimenGap} />
             <nav aria-label="View bar specimen">
-              <Button variant="primary" size="sm" href="#" aria-current="page">
+              <Button variant="secondary" size="sm" href="#" aria-current="page">
                 The plan
               </Button>{' '}
               <Button variant="secondary" size="sm" href="#">
@@ -436,7 +436,8 @@ export default function PublicStyleguidePage() {
             </nav>
             <span className={sg.specimenInlineNote}>
               A view bar (Build a Plan, 2026-10-22): left-aligned sm link-buttons that wrap on a phone; the current view is the
-              filled primary with <code>aria-current=&quot;page&quot;</code>, the rest secondary. A plain click may switch in place
+              secondary too, with <code>aria-current=&quot;page&quot;</code>, which <code>Button</code> marks bold and underlined
+              (never the filled primary: each view has its own, Invite or Add, L0 qa). A plain click may switch in place
               (<code>onClick</code> crosses to the link); a modified click still opens a new tab.
             </span>
           </div>

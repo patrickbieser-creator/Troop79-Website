@@ -293,6 +293,20 @@
   border-radius: var(--rad-md);
   background: var(--status-danger-bg);
 }
+.attentionDone {
+  margin-bottom: var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--rule);
+  border-radius: var(--rad-md);
+}
+.attentionDone .attentionTitle {
+  color: var(--bark);
+}
+/* L0 qa: the persistent status when it has nothing to show (a fix's "Fixed · n left" is heard, not seen). */
+.srOnly {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
 .attentionTitle {
   margin: 0 0 var(--sp-2);
   font: 700 var(--fs-md) / 1.3 var(--font-ui);

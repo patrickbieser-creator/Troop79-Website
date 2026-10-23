@@ -156,7 +156,7 @@ export async function loadLiveView(sb: SupabaseClient, meeting: BoardMeeting): P
   let classes: LiveClassIn[];
   let rotations: LiveView['rotations'];
   let pool: number[];
-  /** Saved classes that merged sibling picks (a title snapshot): L0's "no longer picks" leaves them alone. */
+  /** Saved classes that merged sibling picks (a title snapshot): L0's "doesn't pick" leaves them alone. */
   const merged = new Set<string>();
   // Who is here (B8): the draft tap when there is one, else what Roll Call has recorded. Visitors are guests of the
   // visitors household with a draft row or recorded attendance at this meeting.
@@ -317,7 +317,7 @@ export async function loadLiveChoices(sb: SupabaseClient, meeting: BoardMeeting)
  * scouts to place: coming, picked it for this meeting, in no class and teaching none (placing them from "nothing
  * assigned" is the RPC's compare-and-set).
  */
-export async function loadMakeClass(sb: SupabaseClient, meeting: BoardMeeting, key: string): Promise<{ onPlan: boolean; exists: boolean; teacherIds: number[]; pickers: number[] }> {
+export async function loadMakeClass(sb: SupabaseClient, meeting: BoardMeeting, key: string): Promise<{ onPlan: boolean; exists: boolean; teacherIds: number[]; pickers: { personId: number; name: string }[] }> {
   const catalog = await loadAdvancementCatalog();
   const [topic, cls, teachers, rows] = await Promise.all([
     sb.from('meeting_topics').select('id').eq('calendar_entry_id', meeting.entryId).eq('topic_key', key).maybeSingle(),
@@ -344,7 +344,7 @@ export async function loadMakeClass(sb: SupabaseClient, meeting: BoardMeeting, k
     teacherIds: ids.filter((id) => intents.get(id) !== 'not_coming'),
     pickers: rows
       .filter((r) => effectiveIntent(r.intent, r.picks) === 'coming' && r.picks.some((p) => !p.later && p.key === key) && !placed.has(r.personId) && !busy.has(r.personId))
-      .map((r) => r.personId)
+      .map((r) => ({ personId: r.personId, name: r.name }))
   };
 }
 
