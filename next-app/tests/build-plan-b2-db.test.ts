@@ -61,6 +61,8 @@ async function person(label: string): Promise<number> {
 }
 async function clearTopics() {
   await sb.from('meeting_topic_teachers').delete().eq('calendar_entry_id', meeting);
+  // Rotations L3: a topic's classes first (their FK keeps a topic under a class).
+  await sb.from('meeting_classes').delete().eq('calendar_entry_id', meeting);
   await sb.from('meeting_topics').delete().eq('calendar_entry_id', meeting);
 }
 async function seededKeys(): Promise<string[]> {
@@ -247,6 +249,9 @@ describe('Build a Plan B2: qa follow-ups (who may, and what an edit keeps)', () 
   it('EditMix_UnseededClass_StaysUnseeded', async () => {
     await clearTopics();
     const key = await mixOn('unseeded');
+    // Rotations L2: a topic nothing holds goes with its class, so a teacher's sign-up keeps this one, unseeded.
+    const { data: t } = await sb.from('meeting_topics').select('id').eq('calendar_entry_id', meeting).eq('topic_key', key).single();
+    await sb.from('meeting_topic_teachers').insert({ topic_id: (t as { id: number }).id, calendar_entry_id: meeting, person_id: seeder });
     await sb.from('meeting_topics').update({ seeded_at: null }).eq('calendar_entry_id', meeting).eq('topic_key', key);
     await (await actions()).plannerEditMixAction({ entryId: meeting, key, name: `${TEST_PREFIX} BP2 unseeded`, items: [parts[1]] });
     const { data } = await sb.from('meeting_topics').select('seeded_at').eq('calendar_entry_id', meeting).eq('topic_key', key).single();
@@ -266,6 +271,8 @@ describe('Build a Plan B2: qa follow-ups (who may, and what an edit keeps)', () 
       const { data } = await sb.from('meeting_topic_members').select('item_key, meeting_topics!inner(calendar_entry_id, topic_key)').eq('meeting_topics.calendar_entry_id', otherId).eq('meeting_topics.topic_key', key);
       expect(((data ?? []) as { item_key: string }[]).map((r) => r.item_key)).toEqual([parts[0]]);
     } finally {
+      // Rotations L3: a topic's classes first (their FK keeps a topic under a class).
+      await sb.from('meeting_classes').delete().eq('calendar_entry_id', otherId);
       await sb.from('meeting_topics').delete().eq('calendar_entry_id', otherId);
       await sb.from('calendar_entries').delete().eq('id', otherId);
     }

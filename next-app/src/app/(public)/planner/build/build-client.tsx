@@ -49,7 +49,10 @@ import {
   withAdded,
   withTeachers,
   mixName,
-  type PlanRow
+  rotationLabel,
+  type PlanArrangement,
+  type PlanRow,
+  type RowClass
 } from '@/lib/build-plan';
 import { addChunks, type SuggestionsData, type SuggestItem } from '@/lib/build-plan-suggest';
 import { FOCUS_LABEL } from '@/lib/meeting-board-picklist';
@@ -67,6 +70,7 @@ import { AddPanel } from './add-offering';
 import { EditOffering } from './edit-offering';
 import { rowCode } from './requirement-search';
 import { PlannerPoller } from '../planner-poller';
+import { plannerLiveMoveClassAction } from '../live-actions';
 import { ItemAction, SuggestionsWorkspace, type SuggestFeed } from './suggestions';
 import { orphanScouts, orphansLabel, type OrphansData, type OrphanScout } from '@/lib/build-plan-orphans';
 import s from './build.module.css';
@@ -119,6 +123,7 @@ export function OrphansFeed({ data }: { data: OrphansData | null }) {
 export function BuildPlanView({
   entryId,
   rows: initialRows,
+  arrangement = null,
   canSeed,
   canEdit = false,
   dayLabel = '',
@@ -146,6 +151,8 @@ export function BuildPlanView({
   switcher?: ReactNode;
   entryId: number;
   rows: PlanRow[];
+  /** Rotations L3: each offering's classes on the arrangement (null = nothing arranged yet): the row's rotation chips. */
+  arrangement?: PlanArrangement | null;
   canSeed: boolean;
   /** meeting_planner.edit: an offering's teacher (B2). */
   canEdit?: boolean;
@@ -168,6 +175,17 @@ export function BuildPlanView({
     setRows(initialRows);
   }
   const [suggestions, setSuggestions] = useState<SuggestFeed>({ status: 'loading' });
+  /** L3: a rotation chip's move: Live's own action (edit right, the card's version); the page then reloads. */
+  const rotationsHref = '/planner/rotations';
+  const moveRotation = async (c: RowClass, rotation: number | null): Promise<string | null> => {
+    try {
+      const res = await plannerLiveMoveClassAction({ entryId, classId: c.id, version: c.version, rotation });
+      router.refresh();
+      return res.ok ? null : res.error;
+    } catch {
+      return 'That didn’t save. Check your connection and try again.';
+    }
+  };
   /** Suggestions mode on a phone: the plan in the Drawer. */
   const [planSheet, setPlanSheet] = useState(false);
   const [removing, setRemoving] = useState<{ row: PlanRow; trigger: HTMLElement | null } | null>(null);
@@ -498,6 +516,10 @@ export function BuildPlanView({
                       onEdit={() => setEditing(r)}
                       inviteHref={canEdit || canSeed ? `${inviteHref}&offering=${encodeURIComponent(r.key)}` : undefined}
                       onRemove={(trigger) => setRemoving({ row: r, trigger })}
+                      classes={arrangement?.classes[r.key]}
+                      rotations={arrangement?.rotations ?? []}
+                      rotationsHref={rotationsHref}
+                      onRotation={canEdit ? moveRotation : undefined}
                     />
                   ))}
                 </ul>
@@ -635,9 +657,19 @@ function PlanRowView({
   canEdit,
   onEdit,
   inviteHref,
-  onRemove
+  onRemove,
+  classes,
+  rotations = [],
+  rotationsHref,
+  onRotation
 }: {
   row: PlanRow;
+  /** L3: this offering's classes on the arrangement; none = nothing arranged yet (no chips). */
+  classes?: RowClass[];
+  rotations?: number[];
+  rotationsHref?: string;
+  /** L3: move the class; resolves with the problem to show, or null. Absent = view only. */
+  onRotation?: (c: RowClass, rotation: number | null) => Promise<string | null>;
   /** Its likely scouts by name, once streamed in. */
   likely?: string[];
   canSeed: boolean;
@@ -660,6 +692,7 @@ function PlanRowView({
         </p>
         {teachers ? <p className={s.rowLine}>{teachers}</p> : null}
         {scouts ? <p className={s.rowLine}>{scouts}</p> : null}
+        {classes?.length ? <RotationChips row={row} classes={classes} rotations={rotations} href={rotationsHref} onMove={onRotation} /> : null}
       </div>
       {/* The state label and the row's buttons: one flex line, centred on each other (Patrick, 2026-10-22). */}
       <span className={s.rowEnd}>
@@ -676,6 +709,72 @@ function PlanRowView({
         ) : null}
       </span>
     </li>
+  );
+}
+
+/**
+ * Rotations L3: where the offering's class sits. One class: "Rotation — 1 2 …" as pressed buttons for an editor (Live's
+ * "Move to", the same action), its rotation as text for a viewer. A repeated offering lists its rotations, with a link to
+ * Rotations, where repeats are arranged.
+ */
+function RotationChips({
+  row,
+  classes,
+  rotations,
+  href,
+  onMove
+}: {
+  row: PlanRow;
+  classes: RowClass[];
+  rotations: number[];
+  href?: string;
+  onMove?: (c: RowClass, rotation: number | null) => Promise<string | null>;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  if (classes.length > 1) {
+    return (
+      <p className={s.rowLine}>
+        {`Repeats: ${classes.map((c) => (c.rotation == null ? 'Not scheduled' : `R${c.rotation}`)).join(', ')}`}
+        {href ? (
+          <>
+            {' · '}
+            <Link href={href}>Arrange in Rotations</Link>
+          </>
+        ) : null}
+      </p>
+    );
+  }
+  const c = classes[0];
+  if (!onMove) return <p className={s.rowLine}>{rotationLabel(c.rotation)}</p>;
+  const move = async (r: number | null) => {
+    if (busy || r === c.rotation) return;
+    setBusy(true);
+    setProblem(await onMove(c, r));
+    setBusy(false);
+  };
+  return (
+    <div className={s.rotationRow} role="group" aria-label={`Rotation for ${row.title}`}>
+      <span className={s.rotationLabel}>Rotation</span>
+      {[null, ...rotations].map((r) => (
+        <button
+          key={r ?? 'u'}
+          type="button"
+          className={s.rotationBtn}
+          aria-pressed={c.rotation === r}
+          aria-label={rotationLabel(r)}
+          aria-disabled={busy || undefined}
+          onClick={() => void move(r)}
+        >
+          {r ?? '—'}
+        </button>
+      ))}
+      {problem ? (
+        <span className={s.problem} role="alert">
+          {problem}
+        </span>
+      ) : null}
+    </div>
   );
 }
 

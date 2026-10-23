@@ -48,6 +48,8 @@ async function person(label: string): Promise<number> {
 const topics = async () => (await sb.from('meeting_topics').select('id', { count: 'exact', head: true }).eq('calendar_entry_id', meeting)).count;
 async function clearTopics() {
   await sb.from('meeting_topic_teachers').delete().eq('calendar_entry_id', meeting);
+  // Rotations L3: a topic's classes first (their FK keeps a topic under a class).
+  await sb.from('meeting_classes').delete().eq('calendar_entry_id', meeting);
   await sb.from('meeting_topics').delete().eq('calendar_entry_id', meeting);
 }
 

@@ -73,6 +73,8 @@ async function boardUp() {
 
 afterEach(async () => {
   await sb.from('meeting_sessions').delete().eq('meeting_id', meetingId);
+  // Rotations L3: a topic's classes first (their FK keeps a topic under a class).
+  await sb.from('meeting_classes').delete().eq('calendar_entry_id', entry);
   await sb.from('meeting_topics').delete().eq('calendar_entry_id', entry);
   await sb.from('meeting_pick_lists').delete().eq('calendar_entry_id', entry);
   await sb.from('meeting_intents').delete().eq('calendar_entry_id', entry);
@@ -142,8 +144,9 @@ describe('the candidate tray', () => {
     expect(res).toEqual({ closed: true, sessions: [], wanted: 0 });
   });
 
-  // Build a Plan B6 ("Planner out of Admin"): before Meeting Live starts, the tray is the meeting's plan, so an offering
-  // the planner added with no scouts and no teacher yet is there (the matcher alone would leave it out).
+  // Build a Plan B6 ("Planner out of Admin"): an offering the planner added with no scouts and no teacher yet is in the
+  // tray (the matcher alone would leave it out). Rotations L3: the add begins the arrangement, so it is the offering's
+  // Not scheduled class.
   it('AgendaTray_ReflectsThePlan', async () => {
     const { data: req } = await sb.from('rank_requirements').select('code').eq('rank_id', 'tenderfoot').is('parent_id', null).neq('venue', 'outing').order('sort_order').limit(1).single();
     const key = `tenderfoot-${(req as { code: string }).code}`;
@@ -151,7 +154,7 @@ describe('the candidate tray', () => {
     if (seeded.error) throw new Error(seeded.error.message);
     const b = await (await tray()).loadBoardTray(entry);
     const s = b?.sessions.find((x) => x.codeLabel === `Tenderfoot ${(req as { code: string }).code}`);
-    expect([b?.source, s?.teacher, s?.blockLabel]).toEqual(['plan', '', 'Needs a teacher']);
+    expect([b?.source, s?.teacher, s?.blockLabel]).toEqual(['live', '', 'Not scheduled']);
   });
 
   // Patrick, 2026-10-22 (B7 extra): the engine suggestions panel is retired, so the editor loads the plan tray only.

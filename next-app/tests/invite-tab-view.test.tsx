@@ -80,7 +80,7 @@ describe('the Invite tab', () => {
   // Patrick, 2026-10-22: Who's coming is the first tab; Invite stays right after Build a Plan.
   it('PlannerTabs_WhosComingFirst_ThenBuildInvite', () => {
     render(<PlannerTabs active="invite" />);
-    expect(screen.getAllByRole('tab').map((a) => a.textContent)).toEqual(['Who’s coming', 'Build a Plan', 'Invite', 'Meeting Live', 'Focus sets', 'Has/Needs']);
+    expect(screen.getAllByRole('tab').map((a) => a.textContent)).toEqual(['Who’s coming', 'Build a Plan', 'Invite', 'Rotations', 'Focus sets', 'Has/Needs']);
   });
 
   it('InviteTab_ShowAllEligible_ExpandsRest', () => {

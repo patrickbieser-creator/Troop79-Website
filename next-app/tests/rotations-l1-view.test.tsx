@@ -9,7 +9,7 @@ import type { LiveView } from '../src/lib/meeting-live-shared';
  */
 const mocks = vi.hoisted(() => ({ refresh: vi.fn(), dismissNew: vi.fn() }));
 vi.mock('../src/app/(public)/planner/live-actions', () => ({
-  plannerLiveStartAction: vi.fn(),
+  plannerLiveSuggestAction: vi.fn(),
   plannerLiveMoveScoutAction: vi.fn(),
   plannerLiveSetTeacherAction: vi.fn(),
   plannerLiveMoveClassAction: vi.fn(),
@@ -21,14 +21,14 @@ vi.mock('../src/app/(public)/planner/live-actions', () => ({
   plannerLiveAddClassAction: vi.fn(),
   plannerLiveSetPresentAction: vi.fn(),
   plannerLiveAddVisitorAction: vi.fn(),
-  plannerLiveDiscardAction: vi.fn(),
+  plannerLiveResetAction: vi.fn(),
   plannerLiveMakeClassAction: vi.fn(),
   plannerLiveUseClassTeacherAction: vi.fn(),
   plannerLiveDismissNewAction: mocks.dismissNew
 }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: mocks.refresh }) }));
 
-import { LiveBoard, TEACHER_IS_PLANS, TEACHER_REPEAT_ONLY } from '../src/app/(public)/planner/live/live-board';
+import { LiveBoard, TEACHER_IS_PLANS, TEACHER_REPEAT_ONLY } from '../src/app/(public)/planner/rotations/live-board';
 
 const member = (personId: number, name: string, isNew = false) => ({ personId, name, retake: false, present: false, visitor: false, isNew });
 const VIEW: LiveView = {

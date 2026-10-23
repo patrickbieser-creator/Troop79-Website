@@ -35,6 +35,15 @@ const scoutIds: string[] = [];
 let meeting = 0; // 2097-03-07
 let mbNight = 0; // 2097-03-14, a meeting whose board row already exists (v1's merit badge nights had one)
 let editorAdult = 0;
+
+/** Rotations L2/L3: every offering has a class, so a planner removing it by hand is how a picker waits for one. */
+async function removeClassesOf(entryId: number, k: string) {
+  const { data } = await sb.from('meeting_classes').select('id, version, meeting_topics!inner(topic_key)').eq('calendar_entry_id', entryId).eq('meeting_topics.topic_key', k);
+  for (const c of (data ?? []) as unknown as { id: number; version: number }[]) {
+    const { error } = await sb.rpc('meeting_live_remove_class', { p_entry: entryId, p_actor: editorAdult, p_class: c.id, p_expected: c.version });
+    if (error) throw new Error(error.message);
+  }
+}
 let teacher = 0;
 let teacher2 = 0;
 let spl = 0;
@@ -74,7 +83,7 @@ const teach = async (personId: number, k: string) => {
 /** Start Live straight from a snapshot: class ids back, in the order given. */
 async function started(classes: { topic_key: string; rotation: number | null; teacher_person_id?: number | null; members: number[] }[]): Promise<number[]> {
   for (const c of classes) await sb.rpc('_meeting_topic_id', { p_entry: meeting, p_key: c.topic_key });
-  const { error } = await sb.rpc('meeting_live_start', {
+  const { error } = await sb.rpc('meeting_live_suggest', {
     p_entry: meeting,
     p_actor: editorAdult,
     p_snapshot: { rotations: [], classes: classes.map((c, i) => ({ source_key: `t:${i}`, title: null, teacher_person_id: null, position: i, ...c })) }
@@ -85,11 +94,17 @@ async function started(classes: { topic_key: string; rotation: number | null; te
   return classes.map((_, i) => rows.find((r) => r.source_key === `t:${i}`)!.id);
 }
 async function clearMeeting(entryId: number) {
+  // Rotations L3: empty the plan first, or a reconcile on the way out begins the arrangement again.
+  await sb.from('meeting_topics').update({ seeded_at: null }).eq('calendar_entry_id', entryId);
+  await sb.from('meeting_topic_teachers').delete().eq('calendar_entry_id', entryId);
+  await sb.from('meeting_topic_picks').delete().eq('calendar_entry_id', entryId);
   const { data: cls } = await sb.from('meeting_classes').select('id').eq('calendar_entry_id', entryId);
   const ids = ((cls ?? []) as { id: number }[]).map((c) => c.id);
   if (ids.length) await sb.from('meeting_classes').delete().in('id', ids);
   await sb.from('meeting_rotations').delete().eq('calendar_entry_id', entryId);
   await sb.from('meeting_boards').delete().eq('calendar_entry_id', entryId);
+  // Rotations L3: a topic's classes first (their FK keeps a topic under a class).
+  await sb.from('meeting_classes').delete().eq('calendar_entry_id', entryId);
   await sb.from('meeting_topics').delete().eq('calendar_entry_id', entryId);
   await sb.from('meeting_pick_lists').delete().eq('calendar_entry_id', entryId);
   await sb.from('meeting_intents').delete().eq('calendar_entry_id', entryId);
@@ -142,7 +157,7 @@ describe('who may edit Meeting Live', () => {
     const a = await live();
     const id = `c:${c}`;
     const results = await Promise.all([
-      a.plannerLiveStartAction({ entryId: meeting }),
+      a.plannerLiveSuggestAction({ entryId: meeting }),
       a.plannerLiveMoveScoutAction({ entryId: meeting, personId: ann, from: id, to: null }),
       a.plannerLiveSetTeacherAction({ entryId: meeting, classId: id, version: 1, teacherId: teacher }),
       a.plannerLiveMoveClassAction({ entryId: meeting, classId: id, version: 1, rotation: 2 }),
@@ -169,7 +184,7 @@ describe('who may edit Meeting Live', () => {
   // P5a/P5c (Decision 10): a merit badge night is just a meeting. Live starts on any open meeting, board row or not.
   it('Live_RunsOnAnyOpenMeeting', async () => {
     asEditor();
-    const res = await (await live()).plannerLiveStartAction({ entryId: mbNight });
+    const res = await (await live()).plannerLiveSuggestAction({ entryId: mbNight });
     expect(res.ok).toBe(true);
   });
 });
@@ -245,7 +260,7 @@ describe('two leaders at once', () => {
     const other = await entry('2097-03-21');
     const { error: e1 } = await sb.rpc('_meeting_topic_id', { p_entry: other, p_key: key });
     if (e1) throw new Error(e1.message);
-    const { error: e2 } = await sb.rpc('meeting_live_start', { p_entry: other, p_actor: editorAdult, p_snapshot: { rotations: [], classes: [] } });
+    const { error: e2 } = await sb.rpc('meeting_live_suggest', { p_entry: other, p_actor: editorAdult, p_snapshot: { rotations: [], classes: [] } });
     if (e2) throw new Error(e2.message);
     asEditor();
     const a = await live();
@@ -277,6 +292,8 @@ describe('the first edit starts Live', () => {
     await pick(bo, key2);
     await teach(teacher, key);
     await teach(teacher2, key2);
+    // Rotations L3: the writes above began an arrangement; Discard is how a meeting has none (a past one, or reset).
+    await sb.rpc('meeting_live_discard', { p_entry: meeting, p_actor: editorAdult });
     const m = (await loadMeetingById(sb, meeting))!;
     const view = await (await lib()).loadLiveView(sb, m);
     const [p1, p2] = [teacher, teacher2].map((t) => view.cards.find((c) => c.teacher?.personId === t)!);
@@ -438,6 +455,7 @@ describe('after Live starts, the other screens keep their lists', () => {
     await pick(ann, key);
     await pick(bo, key2);
     await started([{ topic_key: key, rotation: 1, members: [ann] }]);
+    await removeClassesOf(meeting, key2);
     const m = (await loadMeetingById(sb, meeting))!;
     const { loadAdvancementCatalog } = await import('../src/lib/advancement-catalog');
     const { loadBoardState } = await import('../src/lib/meeting-board');

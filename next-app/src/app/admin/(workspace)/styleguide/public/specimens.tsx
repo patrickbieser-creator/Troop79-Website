@@ -40,7 +40,7 @@ export function PublicTabStripSpecimen() {
 /** TabStrip `scroll`: one line that scrolls sideways instead of wrapping (the Meeting Planner's six tabs, B7). */
 export function PublicTabStripScrollSpecimen() {
   const [active, setActive] = useState('build');
-  const tabs = ['Who’s coming', 'Build a Plan', 'Invite', 'Meeting Live', 'Focus sets', 'Has/Needs'];
+  const tabs = ['Who’s coming', 'Build a Plan', 'Invite', 'Rotations', 'Focus sets', 'Has/Needs'];
   return <TabStrip ariaLabel="Scrolling TabStrip specimen" activeKey={active} scroll items={tabs.map((label, i) => ({ key: i === 0 ? 'build' : label, label, onSelect: () => setActive(i === 0 ? 'build' : label) }))} />;
 }
 

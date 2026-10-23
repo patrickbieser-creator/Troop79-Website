@@ -74,10 +74,14 @@ const unseed = async (k: string) => {
 };
 /** An arrangement with nothing in it yet (rotations 1 and 2). */
 async function start() {
-  const { error } = await sb.rpc('meeting_live_start', { p_entry: meeting, p_actor: editor, p_snapshot: { rotations: [], classes: [] } });
+  const { error } = await sb.rpc('meeting_live_suggest', { p_entry: meeting, p_actor: editor, p_snapshot: { rotations: [], classes: [] } });
   if (error) throw new Error(error.message);
 }
 async function clearMeeting(entryId: number) {
+  // Rotations L3: empty the plan first, or a reconcile on the way out begins the arrangement again.
+  await sb.from('meeting_topics').update({ seeded_at: null }).eq('calendar_entry_id', entryId);
+  await sb.from('meeting_topic_teachers').delete().eq('calendar_entry_id', entryId);
+  await sb.from('meeting_topic_picks').delete().eq('calendar_entry_id', entryId);
   await sb.from('meeting_live_holds').delete().eq('calendar_entry_id', entryId);
   const { data: cls } = await sb.from('meeting_classes').select('id').eq('calendar_entry_id', entryId);
   const ids = ((cls ?? []) as { id: number }[]).map((c) => c.id);
@@ -86,6 +90,8 @@ async function clearMeeting(entryId: number) {
   await sb.from('meeting_boards').delete().eq('calendar_entry_id', entryId);
   await sb.from('meeting_topic_teachers').delete().eq('calendar_entry_id', entryId);
   await sb.from('meeting_topic_picks').delete().eq('calendar_entry_id', entryId);
+  // Rotations L3: a topic's classes first (their FK keeps a topic under a class).
+  await sb.from('meeting_classes').delete().eq('calendar_entry_id', entryId);
   await sb.from('meeting_topics').delete().eq('calendar_entry_id', entryId);
   await sb.from('meeting_pick_lists').delete().eq('calendar_entry_id', entryId);
   await sb.from('meeting_intents').delete().eq('calendar_entry_id', entryId);
@@ -136,11 +142,6 @@ describe('Rotations L2: every offering has a class', () => {
     await start();
     await seed(key);
     expect((await classesFor(key)).map((c) => [c.rotation, c.auto])).toEqual([[null, true]]);
-  });
-
-  it('AddOffering_NoArrangement_MakesNoClass', async () => {
-    await seed(key);
-    expect(await classesFor(key)).toEqual([]);
   });
 
   it('TeacherSignsUp_NewTopic_ClassHasThatTeacher', async () => {
@@ -229,7 +230,7 @@ describe('Rotations L2: every offering has a class', () => {
     asEditor();
     const a = await live();
     await a.plannerLiveRemoveClassAction({ entryId: meeting, classId: `c:${c.id}`, version: c.version });
-    await a.plannerLiveDiscardAction({ entryId: meeting });
+    await a.plannerLiveResetAction({ entryId: meeting });
     const { data } = await sb.from('meeting_topics').select('class_set_aside_at').eq('calendar_entry_id', meeting).eq('topic_key', key).single();
     expect((data as { class_set_aside_at: string | null }).class_set_aside_at).toBeNull();
   });
@@ -340,7 +341,7 @@ describe('Rotations L2: one teacher', () => {
   // qa-lead: a plan teacher who signed up first doesn't take the class from the matcher's choice.
   it('Start_MatcherTeacher_StaysWhenThePlanAlreadyHadOne', async () => {
     await teach(maria, key2);
-    const { error } = await sb.rpc('meeting_live_start', {
+    const { error } = await sb.rpc('meeting_live_suggest', {
       p_entry: meeting,
       p_actor: editor,
       p_snapshot: { rotations: [], classes: [{ source_key: 't:0', topic_key: key2, title: null, rotation: 1, teacher_person_id: dan, position: 0, members: [] }] }
@@ -350,7 +351,7 @@ describe('Rotations L2: one teacher', () => {
 
   it('Start_MatcherSplitIntoRepeats_EachKeepsItsTeacher', async () => {
     await teach(maria, key2);
-    await sb.rpc('meeting_live_start', {
+    await sb.rpc('meeting_live_suggest', {
       p_entry: meeting,
       p_actor: editor,
       p_snapshot: {
@@ -369,7 +370,7 @@ describe('Rotations L2: one teacher', () => {
 
   it('Start_MatcherTeacher_ReachesThePlan', async () => {
     await sb.rpc('_meeting_topic_id', { p_entry: meeting, p_key: key2 });
-    const { error } = await sb.rpc('meeting_live_start', {
+    const { error } = await sb.rpc('meeting_live_suggest', {
       p_entry: meeting,
       p_actor: editor,
       p_snapshot: { rotations: [], classes: [{ source_key: 't:0', topic_key: key2, title: null, rotation: 1, teacher_person_id: maria, position: 0, members: [] }] }

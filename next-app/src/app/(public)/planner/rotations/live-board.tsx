@@ -26,11 +26,15 @@
  * Rotations L1: the database keeps a started arrangement in step with the plan. A scout placed from a late pick says
  * New on their chip; editors mark it seen from the scout's sheet, or all at once from the bar ("Mark all seen").
  * Removing a scout from a class by hand keeps them out of it (the sheet says so).
+ * Rotations L3 (D-437): the screen is "Rotations". An arrangement begins on its own from the plan, so there is no Start;
+ * a meeting with nothing planned says so and points at Build a Plan. "More actions…" holds "Suggest an arrangement"
+ * (the matcher, once) and "Reset to match picks" (was Discard), each behind a confirm that names what is replaced.
  * Rotations L2: one teacher. A single class's teacher is the plan's (the sheet says "also the plan's teacher"); a repeat
  * keeps its own ("this repeat only"). Every offering on the plan has a card, made in Not scheduled.
  */
 import { useEffect, useRef, useState, type DragEvent, type ReactNode, type RefObject } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Button } from '@/app/_components/button';
 import { Drawer } from '@/app/_components/drawer';
 import { ConfirmDialog, LiveMoreActions } from './live-dialogs';
@@ -45,10 +49,10 @@ import {
   plannerLiveRepeatClassAction,
   plannerLiveSetLocationAction,
   plannerLiveAddVisitorAction,
-  plannerLiveDiscardAction,
+  plannerLiveResetAction,
+  plannerLiveSuggestAction,
   plannerLiveSetPresentAction,
   plannerLiveSetTeacherAction,
-  plannerLiveStartAction,
   plannerLiveMakeClassAction,
   plannerLiveUseClassTeacherAction,
   plannerLiveDismissNewAction,
@@ -95,21 +99,18 @@ export interface LiveAttendanceProp {
   note: string | null;
 }
 
-/** B8: Start asks to confirm for a meeting in the future; `label` names its day ('Sun, Oct 25'). */
-export interface LiveMeetingProp {
-  label: string;
-  future: boolean;
-}
-
-export const DISCARD_LOST = 'The classes, rotations, moves and here / not-here ticks made on Meeting Live are deleted.';
-/** B8 qa: the first edit on a future meeting's preview starts Live; say so quietly, and where the way back is. */
-export const LIVE_STARTED_NOTE = 'Meeting Live started. Discard is in More actions.';
-export const DISCARD_KEPT = 'Recorded attendance, visitors, offerings and teacher sign-ups stay. The board goes back to the matcher’s suggestion.';
+/** L3: what "Reset to match picks" clears, and what it leaves. */
+export const RESET_LOST = 'Rotations, moves made by hand and here / not-here ticks are cleared.';
+export const RESET_KEPT =
+  'Every offering goes back to Not scheduled and scouts are placed by their picks again. Recorded attendance, visitors, offerings and teacher sign-ups stay.';
+/** L3: what "Suggest an arrangement" does. */
+export const SUGGEST_TEXT =
+  'The matcher puts the classes into rotations from picks and teachers. It replaces the current rotations and anything moved by hand; offerings it leaves out wait in Not scheduled.';
+/** L3: a meeting with nothing planned has no arrangement yet. */
+export const NOTHING_PLANNED = 'Nothing is planned for this meeting yet. Offerings added in Build a Plan show up here as classes.';
 /** Rotations L2 (Decision 4): the teacher sheet says where the choice lands. */
 export const TEACHER_IS_PLANS = 'also the plan’s teacher';
 export const TEACHER_REPEAT_ONLY = 'this repeat only';
-export const startConfirmText = (label: string) =>
-  `Start Meeting Live for ${label}? New picks still land in their classes; anyone you move by hand stays where you put them.`;
 const CLOSED: LiveAttendanceProp = { open: false, note: null };
 
 /** A chip's spoken name: who, new, whether they're here (on the meeting day), retake, visitor. Undefined = just the name. */
@@ -159,15 +160,13 @@ export function LiveBoard({
   canEdit,
   entryId,
   choices = EMPTY_CHOICES,
-  attendance = CLOSED,
-  meeting = null
+  attendance = CLOSED
 }: {
   view: LiveView;
   canEdit: boolean;
   entryId: number;
   choices?: LiveChoicesProp;
   attendance?: LiveAttendanceProp;
-  meeting?: LiveMeetingProp | null;
 }) {
   const router = useRouter();
   const columns: Column[] = [
@@ -188,14 +187,12 @@ export function LiveBoard({
   ];
   const maxRotation = view.rotations.reduce((n, r) => Math.max(n, r.number), 0);
   const [tab, setTab] = useState(columns[1]?.key ?? 'u');
-  const [start, setStart] = useState<'idle' | 'starting' | string>('idle');
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [sheet, setSheet] = useState<Sheet>(null);
   const [fine, setFine] = useState(false);
   const [over, setOver] = useState<string | null>(null);
-  const [confirming, setConfirming] = useState<'start' | 'discard' | null>(null);
-  const [startedNote, setStartedNote] = useState(false);
+  const [confirming, setConfirming] = useState<'suggest' | 'reset' | null>(null);
   /** L0: lines hidden with Keep / Keep as extra, for this visit only. */
   const [kept, setKept] = useState<ReadonlySet<string>>(() => new Set());
   const drift = view.started ? view.drift.filter((d) => !kept.has(d.id)) : [];
@@ -237,14 +234,12 @@ export function LiveBoard({
     cardProblems.set(d.classId, [...(cardProblems.get(d.classId) ?? []), driftText(d)]);
     if (d.kind === 'cant' || d.kind === 'dropped') badMember.add(`${d.classId}|${d.personId}`);
   }
-  // After a Discard, the More actions trigger is gone: focus goes to Start once the refreshed view shows it (B8 qa).
-  const focusStart = useRef(false);
-  const startWrap = useRef<HTMLSpanElement | null>(null);
+  // After Reset or Suggest the menu item is gone: focus goes back to the More actions trigger (B8 qa's pattern).
+  const barRef = useRef<HTMLDivElement | null>(null);
+  const [refocus, setRefocus] = useState(0);
   useEffect(() => {
-    if (!focusStart.current || view.started) return;
-    startWrap.current?.querySelector('button')?.focus();
-    focusStart.current = false;
-  }, [view.started]);
+    if (refocus) barRef.current?.querySelector<HTMLElement>('button[aria-expanded]')?.focus();
+  }, [refocus, view]);
   const cardsIn = (c: Column) => view.cards.filter((x) => x.rotation === c.rotation);
   /** A waiting chip's spoken name, with its problem when it has one (L0 qa: the outline alone isn't heard). */
   const poolLabel = (p: LiveView['pool'][number]) => {
@@ -263,28 +258,13 @@ export function LiveBoard({
     return () => mq?.removeEventListener?.('change', set);
   }, [canEdit]);
 
-  const begin = async () => {
-    setConfirming(null);
-    setStart('starting');
-    try {
-      const res = await plannerLiveStartAction({ entryId });
-      if (!res.ok) return setStart(res.error);
-      setStart('idle');
-      router.refresh();
-    } catch {
-      setStart(FAILED);
-    }
-  };
-
   /** Every edit: one write, then the latest from the server. Someone else first = say so and show theirs. */
   const run = async (write: () => Promise<LiveWriteResult>) => {
     setBusy(true);
     setSheet(null);
     setSaid(null);
-    const fromPreview = !view.started;
     try {
       const res = await write();
-      if (res.ok && fromPreview && meeting?.future) setStartedNote(true);
       if (res.ok) setNotice(res.note ?? null);
       else {
         setNotice(res.stale ? STALE : res.error);
@@ -363,17 +343,15 @@ export function LiveBoard({
 
   const setPresent = (personId: number, present: boolean) => run(() => plannerLiveSetPresentAction({ entryId, personId, present }));
   const addVisitor = (name: string, to: string | null) => run(() => plannerLiveAddVisitorAction({ entryId, name, to }));
-  /** Start: straight away for today's meeting; a future one asks first (B8). */
-  const askStart = () => (meeting?.future ? setConfirming('start') : void begin());
-  /** Discard: returns the problem to show in the Dialog, or null when it went. */
-  const discard = async (): Promise<string | null> => {
+  /** Reset or Suggest (L3): returns the problem to show in the Dialog, or null when it went. */
+  const replace = (act: () => Promise<LiveWriteResult>) => async (): Promise<string | null> => {
     try {
-      const res = await plannerLiveDiscardAction({ entryId });
-      if (!res.ok) return res.error;
+      const res = await act();
+      if (!res.ok) return res.stale ? STALE : res.error;
       setNotice(null);
-      setStartedNote(false);
-      focusStart.current = true;
+      setKept(new Set());
       router.refresh();
+      setRefocus((n) => n + 1);
       return null;
     } catch {
       return FAILED;
@@ -382,6 +360,7 @@ export function LiveBoard({
   const started = view.started;
   const dayNote = canEdit && !attendance.open ? attendance.note : null;
   const showBar = !view.started || view.overlaps > 0 || notice != null || dayNote != null || (canEdit && view.started);
+  const planHref = `/planner/build?meeting=${entryId}`;
   return (
     <div className={styles.live} aria-busy={busy}>
       {!canEdit ? (
@@ -390,31 +369,19 @@ export function LiveBoard({
         </div>
       ) : null}
       {showBar ? (
-        <div className={styles.bar}>
+        <div className={styles.bar} ref={barRef}>
           {!view.started ? (
             <p className={styles.preview}>
-              The board’s match so far. It changes as answers come in until Meeting Live starts
-              {canEdit ? ', or until the first change here' : ''}.
-            </p>
-          ) : null}
-          {!view.started && canEdit ? (
-            <span className={styles.startWrap} ref={startWrap}>
-              <Button onClick={askStart} disabled={start === 'starting'}>
-                {start === 'starting' ? 'Starting…' : 'Start Meeting Live'}
-              </Button>
-              {start !== 'idle' && start !== 'starting' ? (
-                <span className={styles.problem} role="alert">
-                  {start}
-                </span>
+              {NOTHING_PLANNED}
+              {canEdit ? (
+                <>
+                  {' '}
+                  <Link href={planHref}>Build a Plan</Link>
+                </>
               ) : null}
-            </span>
+            </p>
           ) : null}
           {dayNote ? <p className={styles.preview}>{dayNote}</p> : null}
-          {startedNote ? (
-            <p className={styles.preview} role="status">
-              {LIVE_STARTED_NOTE}
-            </p>
-          ) : null}
           {/* Persistent, so a fix's "Fixed · n left" is heard (L0 qa); a problem notice shows instead. */}
           <p className={notice ? styles.notice : styles.srOnly} role="status">
             {notice ?? said ?? ''}
@@ -428,18 +395,32 @@ export function LiveBoard({
               </Button>
             </span>
           ) : null}
-          {canEdit && view.started ? <LiveMoreActions onDiscard={() => setConfirming('discard')} /> : null}
+          {canEdit && view.started ? <LiveMoreActions onSuggest={() => setConfirming('suggest')} onReset={() => setConfirming('reset')} /> : null}
         </div>
       ) : null}
-      {confirming === 'start' && meeting ? (
-        <ConfirmDialog title="Start Meeting Live?" confirm="Start Meeting Live" onConfirm={begin} onClose={() => setConfirming(null)}>
-          <p className={styles.confirmText}>{startConfirmText(meeting.label)}</p>
+      {confirming === 'suggest' ? (
+        <ConfirmDialog
+          title="Suggest an arrangement?"
+          confirm="Suggest an arrangement"
+          busyLabel="Arranging…"
+          danger
+          onConfirm={replace(() => plannerLiveSuggestAction({ entryId }))}
+          onClose={() => setConfirming(null)}
+        >
+          <p className={styles.confirmText}>{SUGGEST_TEXT}</p>
         </ConfirmDialog>
       ) : null}
-      {confirming === 'discard' ? (
-        <ConfirmDialog title="Discard the Live arrangement?" confirm="Discard arrangement" busyLabel="Discarding…" danger onConfirm={discard} onClose={() => setConfirming(null)}>
-          <p className={styles.confirmText}>{DISCARD_LOST}</p>
-          <p className={styles.confirmText}>{DISCARD_KEPT}</p>
+      {confirming === 'reset' ? (
+        <ConfirmDialog
+          title="Reset to match picks?"
+          confirm="Reset to match picks"
+          busyLabel="Resetting…"
+          danger
+          onConfirm={replace(() => plannerLiveResetAction({ entryId }))}
+          onClose={() => setConfirming(null)}
+        >
+          <p className={styles.confirmText}>{RESET_LOST}</p>
+          <p className={styles.confirmText}>{RESET_KEPT}</p>
         </ConfirmDialog>
       ) : null}
 

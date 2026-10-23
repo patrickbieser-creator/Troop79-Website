@@ -374,7 +374,7 @@ export function MeetingEditor({
                 <>
                   <p className={styles.trayNote}>
                     {board.source === 'live'
-                      ? 'Meeting Live’s placement, as the leaders saved it.'
+                      ? 'The meeting’s rotations, as the planner arranged them.'
                       : 'This meeting’s plan from Build a Plan: each offering with its teacher and the scouts signed up so far.'}{' '}
                     Adding copies one into the agenda as an editable item; the plan itself is never changed, and nothing
                     is published until you publish the agenda.

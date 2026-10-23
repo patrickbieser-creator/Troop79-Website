@@ -17,7 +17,7 @@ const mocks = vi.hoisted(() => ({
   useClassTeacher: vi.fn()
 }));
 vi.mock('../src/app/(public)/planner/live-actions', () => ({
-  plannerLiveStartAction: vi.fn(),
+  plannerLiveSuggestAction: vi.fn(),
   plannerLiveMoveScoutAction: mocks.moveScout,
   plannerLiveSetTeacherAction: mocks.setTeacher,
   plannerLiveMoveClassAction: vi.fn(),
@@ -29,13 +29,13 @@ vi.mock('../src/app/(public)/planner/live-actions', () => ({
   plannerLiveAddClassAction: vi.fn(),
   plannerLiveSetPresentAction: vi.fn(),
   plannerLiveAddVisitorAction: vi.fn(),
-  plannerLiveDiscardAction: vi.fn(),
+  plannerLiveResetAction: vi.fn(),
   plannerLiveMakeClassAction: mocks.makeClass,
   plannerLiveUseClassTeacherAction: mocks.useClassTeacher
 }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: mocks.refresh }) }));
 
-import { LiveBoard } from '../src/app/(public)/planner/live/live-board';
+import { LiveBoard } from '../src/app/(public)/planner/rotations/live-board';
 
 const member = (personId: number, name: string) => ({ personId, name, retake: false, present: false, visitor: false, isNew: false });
 const VIEW: LiveView = {

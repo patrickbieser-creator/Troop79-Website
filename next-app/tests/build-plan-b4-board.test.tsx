@@ -69,7 +69,7 @@ describe("Who's coming", () => {
       ['Who’s coming', '/planner'],
       ['Build a Plan', '/planner/build'],
       ['Invite', '/planner/invite'],
-      ['Meeting Live', '/planner/live'],
+      ['Rotations', '/planner/rotations'],
       ['Focus sets', '/planner/focus-sets'],
       ['Has/Needs', '/planner/has-needs']
     ]);

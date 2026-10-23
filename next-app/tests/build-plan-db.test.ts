@@ -84,6 +84,8 @@ async function clearTopics() {
   await sb.from('meeting_topic_teachers').delete().eq('calendar_entry_id', meeting);
   await sb.from('meeting_topic_picks').delete().eq('calendar_entry_id', meeting);
   await sb.from('meeting_pick_lists').delete().eq('calendar_entry_id', meeting);
+  // Rotations L3: a topic's classes first (their FK keeps a topic under a class).
+  await sb.from('meeting_classes').delete().eq('calendar_entry_id', meeting);
   await sb.from('meeting_topics').delete().eq('calendar_entry_id', meeting);
 }
 const asSeeder = () => (state.actor = { personId: seeder, subjectKind: 'adult', capabilities: new Set(['meeting_planner.seed']) });
@@ -114,6 +116,8 @@ beforeAll(async () => {
 afterAll(async () => {
   await clearTopics();
   await sb.from('meeting_intents').delete().in('calendar_entry_id', entries);
+  // Rotations L3: a topic's classes first (their FK keeps a topic under a class).
+  await sb.from('meeting_classes').delete().in('calendar_entry_id', entries);
   await sb.from('meeting_topics').delete().in('calendar_entry_id', entries);
   await sb.from('calendar_entries').delete().in('id', entries);
   await sb.from('scouts').delete().in('id', scoutIds);

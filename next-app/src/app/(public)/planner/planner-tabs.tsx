@@ -18,7 +18,7 @@ export function PlannerTabs({ active }: { active: 'build' | 'invite' | 'board' |
           { key: 'board', label: 'Who’s coming', href: '/planner' },
           { key: 'build', label: 'Build a Plan', href: '/planner/build' },
           { key: 'invite', label: 'Invite', href: '/planner/invite' },
-          { key: 'live', label: 'Meeting Live', href: '/planner/live' },
+          { key: 'live', label: 'Rotations', href: '/planner/rotations' },
           { key: 'focus', label: 'Focus sets', href: '/planner/focus-sets' },
           { key: 'hasneeds', label: 'Has/Needs', href: '/planner/has-needs' }
         ]}

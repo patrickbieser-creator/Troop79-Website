@@ -65,7 +65,7 @@ const answer = async (personId: number, intent: 'coming' | 'undecided' | 'not_co
 /** Start the arrangement straight from a snapshot: class ids back, in the order given. */
 async function started(classes: { topic_key: string; rotation: number | null; members?: number[] }[]): Promise<number[]> {
   for (const c of classes) await sb.rpc('_meeting_topic_id', { p_entry: meeting, p_key: c.topic_key });
-  const { error } = await sb.rpc('meeting_live_start', {
+  const { error } = await sb.rpc('meeting_live_suggest', {
     p_entry: meeting,
     p_actor: editor,
     p_snapshot: { rotations: [], classes: classes.map((c, i) => ({ source_key: `t:${i}`, title: null, teacher_person_id: null, position: i, members: [], ...c })) }
@@ -76,6 +76,10 @@ async function started(classes: { topic_key: string; rotation: number | null; me
   return classes.map((_, i) => rows.find((r) => r.source_key === `t:${i}`)!.id);
 }
 async function clearMeeting(entryId: number) {
+  // Rotations L3: empty the plan first, or a reconcile on the way out begins the arrangement again.
+  await sb.from('meeting_topics').update({ seeded_at: null }).eq('calendar_entry_id', entryId);
+  await sb.from('meeting_topic_teachers').delete().eq('calendar_entry_id', entryId);
+  await sb.from('meeting_topic_picks').delete().eq('calendar_entry_id', entryId);
   await sb.from('meeting_live_holds').delete().eq('calendar_entry_id', entryId);
   const { data: cls } = await sb.from('meeting_classes').select('id').eq('calendar_entry_id', entryId);
   const ids = ((cls ?? []) as { id: number }[]).map((c) => c.id);
@@ -85,6 +89,8 @@ async function clearMeeting(entryId: number) {
   await sb.from('meeting_live_presence').delete().eq('calendar_entry_id', entryId);
   await sb.from('meeting_topic_teachers').delete().eq('calendar_entry_id', entryId);
   await sb.from('meeting_topic_picks').delete().eq('calendar_entry_id', entryId);
+  // Rotations L3: a topic's classes first (their FK keeps a topic under a class).
+  await sb.from('meeting_classes').delete().eq('calendar_entry_id', entryId);
   await sb.from('meeting_topics').delete().eq('calendar_entry_id', entryId);
   await sb.from('meeting_pick_lists').delete().eq('calendar_entry_id', entryId);
   await sb.from('meeting_intents').delete().eq('calendar_entry_id', entryId);
@@ -140,11 +146,6 @@ describe('Rotations L1: late picks land', () => {
     await sb.from('meeting_topics').update({ class_set_aside_at: new Date().toISOString() }).eq('id', t as number);
     await pick(ann, key2);
     expect((await view()).pool.some((p) => p.personId === ann)).toBe(true);
-  });
-
-  it('LatePick_NotStarted_NothingIsArranged', async () => {
-    await pick(ann, key);
-    expect((await sb.from('meeting_classes').select('id').eq('calendar_entry_id', meeting)).data).toEqual([]);
   });
 
   it('LatePick_NotSureYet_DoesNotLand', async () => {
@@ -224,7 +225,7 @@ describe('Rotations L1: unpinned scouts leave on their own', () => {
     await pick(ann, key2);
     await pick(ann, key3);
     await sb.rpc('_meeting_topic_id', { p_entry: meeting, p_key: key });
-    const { error } = await sb.rpc('meeting_live_start', {
+    const { error } = await sb.rpc('meeting_live_suggest', {
       p_entry: meeting,
       p_actor: editor,
       p_snapshot: { rotations: [], classes: [{ source_key: 't:0', topic_key: key, title: 'First Aid', rotation: 1, teacher_person_id: null, position: 0, members: [ann] }] }
@@ -316,7 +317,8 @@ describe('Rotations L1: a hand is never overruled', () => {
     await pick(ann, key);
     await pick(ann, key2);
     const [c] = await started([{ topic_key: key, rotation: 1 }]);
-    await move(ann, null, c);
+    // Rotations L3: Ann's pick landed her already; a move by hand (here, into the same class) pins her.
+    await move(ann, c, c);
     await unpick(ann, key);
     expect(await membersOf(c)).toEqual([ann]);
   });
@@ -356,7 +358,7 @@ describe('Rotations L1: a hand is never overruled', () => {
     await pick(ann, key);
     await move(ann, c, null);
     asEditor();
-    await (await live()).plannerLiveDiscardAction({ entryId: meeting });
+    await (await live()).plannerLiveResetAction({ entryId: meeting });
     const { data } = await sb.from('meeting_live_holds').select('person_id').eq('calendar_entry_id', meeting);
     expect(data).toEqual([]);
   });
@@ -411,7 +413,7 @@ describe('Rotations L1: start reconciles', () => {
     await pick(ann, key);
     await pick(ben, key);
     asEditor();
-    const res = await (await live()).plannerLiveStartAction({ entryId: meeting });
+    const res = await (await live()).plannerLiveSuggestAction({ entryId: meeting });
     await (await live()).plannerLiveAddClassAction({ entryId: meeting, key, title: null, teacherId: null, rotation: 1, expectStarted: true });
     const { data } = await sb.from('meeting_classes').select('id, meeting_topics!inner(topic_key)').eq('calendar_entry_id', meeting).eq('meeting_topics.topic_key', key);
     const all = (await Promise.all(((data ?? []) as { id: number }[]).map((c) => membersOf(c.id)))).flat().sort((a, b) => a - b);

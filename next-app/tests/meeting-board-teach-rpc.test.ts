@@ -84,6 +84,8 @@ beforeAll(async () => {
 
 afterEach(async () => {
   for (const e of [meeting1, meeting2, meeting3, campout, past]) {
+    // Rotations L3: a topic's classes first (their FK keeps a topic under a class).
+    await sb.from('meeting_classes').delete().eq('calendar_entry_id', e);
     await sb.from('meeting_topics').delete().eq('calendar_entry_id', e);
     await sb.from('meeting_teaching_offers').delete().eq('calendar_entry_id', e);
     await sb.from('meeting_boards').delete().eq('calendar_entry_id', e);

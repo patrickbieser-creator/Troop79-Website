@@ -79,11 +79,17 @@ const teach = async (entryId: number, personId: number, k: string) => {
 };
 /** Drops the placement first (a class holds its topic), then the board's rows. */
 async function clearMeeting(entryId: number) {
+  // Rotations L3: empty the plan first, or a reconcile on the way out begins the arrangement again.
+  await sb.from('meeting_topics').update({ seeded_at: null }).eq('calendar_entry_id', entryId);
+  await sb.from('meeting_topic_teachers').delete().eq('calendar_entry_id', entryId);
+  await sb.from('meeting_topic_picks').delete().eq('calendar_entry_id', entryId);
   const { data: cls } = await sb.from('meeting_classes').select('id').eq('calendar_entry_id', entryId);
   const ids = ((cls ?? []) as { id: number }[]).map((c) => c.id);
   if (ids.length) await sb.from('meeting_classes').delete().in('id', ids);
   await sb.from('meeting_rotations').delete().eq('calendar_entry_id', entryId);
   await sb.from('meeting_boards').delete().eq('calendar_entry_id', entryId);
+  // Rotations L3: a topic's classes first (their FK keeps a topic under a class).
+  await sb.from('meeting_classes').delete().eq('calendar_entry_id', entryId);
   await sb.from('meeting_topics').delete().eq('calendar_entry_id', entryId);
   await sb.from('meeting_pick_lists').delete().eq('calendar_entry_id', entryId);
   await sb.from('meeting_intents').delete().eq('calendar_entry_id', entryId);
@@ -135,13 +141,15 @@ describe('starting Meeting Live', () => {
   it('Viewer_IsRefused_AndNothingIsSaved', async () => {
     await pick(meeting, ann, key);
     await teach(meeting, teacher, key);
+    // Rotations L3: the pick began the arrangement; a viewer's Suggest changes none of it.
+    const before = await classCount(meeting);
     asViewer();
-    const res = await (await live()).plannerLiveStartAction({ entryId: meeting });
-    expect([res.ok, await classCount(meeting)]).toEqual([false, 0]);
+    const res = await (await live()).plannerLiveSuggestAction({ entryId: meeting });
+    expect([res.ok, await classCount(meeting)]).toEqual([false, before]);
   });
 
   it('SignedOut_IsRefused', async () => {
-    expect((await (await live()).plannerLiveStartAction({ entryId: meeting })).ok).toBe(false);
+    expect((await (await live()).plannerLiveSuggestAction({ entryId: meeting })).ok).toBe(false);
   });
 
   it('Editor_StartsMeetingLive_CopyingTheMatch', async () => {
@@ -149,7 +157,7 @@ describe('starting Meeting Live', () => {
     await pick(meeting, bo, key);
     await teach(meeting, teacher, key);
     asEditor();
-    const res = await (await live()).plannerLiveStartAction({ entryId: meeting });
+    const res = await (await live()).plannerLiveSuggestAction({ entryId: meeting });
     const { data } = await sb.from('meeting_classes').select('rotation, teacher_person_id, entered_by_person_id, meeting_topics(topic_key), meeting_class_members(person_id)').eq('calendar_entry_id', meeting);
     const rows = (data ?? []) as unknown as { rotation: number; teacher_person_id: number; entered_by_person_id: number; meeting_topics: { topic_key: string }; meeting_class_members: { person_id: number }[] }[];
     const mineRow = rows.find((r) => r.teacher_person_id === teacher)!;
@@ -160,7 +168,7 @@ describe('starting Meeting Live', () => {
     await pick(meeting, ann, key);
     await teach(meeting, teacher, key);
     asSpl();
-    expect((await (await live()).plannerLiveStartAction({ entryId: meeting })).ok).toBe(true);
+    expect((await (await live()).plannerLiveSuggestAction({ entryId: meeting })).ok).toBe(true);
   });
 
   it('Start_IsIdempotent_TheSecondStartChangesNothing', async () => {
@@ -168,12 +176,12 @@ describe('starting Meeting Live', () => {
     await teach(meeting, teacher, key);
     asEditor();
     const act = await live();
-    await act.plannerLiveStartAction({ entryId: meeting });
+    await act.plannerLiveSuggestAction({ entryId: meeting });
     await pick(meeting, bo, key2);
     await teach(meeting, editorAdult, key2);
     // Rotations L2: those two writes give key2 its class on their own; a second Start adds nothing more.
     const before = await classCount(meeting);
-    const again = await act.plannerLiveStartAction({ entryId: meeting });
+    const again = await act.plannerLiveSuggestAction({ entryId: meeting });
     expect([again.ok, await classCount(meeting)]).toEqual([true, before]);
   });
 
@@ -182,7 +190,7 @@ describe('starting Meeting Live', () => {
     await teach(meeting, teacher, key);
     const before = localSql(`select public.meeting_board_stamp(${meeting})`);
     asEditor();
-    await (await live()).plannerLiveStartAction({ entryId: meeting });
+    await (await live()).plannerLiveSuggestAction({ entryId: meeting });
     expect(localSql(`select public.meeting_board_stamp(${meeting})`)).not.toBe(before);
   });
 });
@@ -193,7 +201,7 @@ describe('the saved placement is the truth', () => {
     await pick(meeting, bo, key);
     await teach(meeting, teacher, key);
     asEditor();
-    await (await live()).plannerLiveStartAction({ entryId: meeting });
+    await (await live()).plannerLiveSuggestAction({ entryId: meeting });
     await pick(meeting, cy, key); // the board moves on: Cy's late pick lands in the saved class (Rotations L1)
     const m = (await loadMeetingById(sb, meeting))!;
     const b = await boardOf(m);
@@ -205,6 +213,8 @@ describe('the saved placement is the truth', () => {
   it('BeforeStart_TheSeamReturnsTheMatcher', async () => {
     await pick(meeting, ann, key);
     await teach(meeting, teacher, key);
+    // Rotations L3: the writes above began an arrangement; Discard is how a meeting has none (a past one, or reset).
+    await sb.rpc('meeting_live_discard', { p_entry: meeting, p_actor: teacher });
     const m = (await loadMeetingById(sb, meeting))!;
     const b = await boardOf(m);
     const match = await (await lib()).loadMatchOrPlacement(sb, m, b.rows, b.teach);
@@ -214,11 +224,13 @@ describe('the saved placement is the truth', () => {
   it('LiveView_ShowsThePreviewBeforeStart_AndTheSavedPlacementAfter', async () => {
     await pick(meeting, ann, key);
     await teach(meeting, teacher, key);
+    // Rotations L3: the writes above began an arrangement; Discard is how a meeting has none (a past one, or reset).
+    await sb.rpc('meeting_live_discard', { p_entry: meeting, p_actor: teacher });
     const m = (await loadMeetingById(sb, meeting))!;
     const { loadLiveView } = await lib();
     const before = await loadLiveView(sb, m);
     asEditor();
-    await (await live()).plannerLiveStartAction({ entryId: meeting });
+    await (await live()).plannerLiveSuggestAction({ entryId: meeting });
     const after = await loadLiveView(sb, m);
     const card = (v: typeof before) => v.cards.find((c) => c.teacher?.personId === teacher)!;
     expect([before.started, card(before).id.startsWith('s:'), after.started, card(after).id.startsWith('c:'), after.rotations.map((r) => r.number)]).toEqual([false, true, true, true, [1, 2]]);
@@ -228,7 +240,7 @@ describe('the saved placement is the truth', () => {
 describe('repeats and retakes on the Live view', () => {
   it('MeetingLive_RepeatClass_InSecondRotation_WithDifferentScouts', async () => {
     await pick(meeting, ann, key); // makes the topic row
-    const ok = await sb.rpc('meeting_live_start', {
+    const ok = await sb.rpc('meeting_live_suggest', {
       p_entry: meeting,
       p_actor: editorAdult,
       p_snapshot: snapshot([
@@ -247,7 +259,7 @@ describe('repeats and retakes on the Live view', () => {
 
   it('MeetingLive_FlagsConflict_WhenScoutInTwoRepeatsOfSameClass', async () => {
     await pick(meeting, ann, key);
-    await sb.rpc('meeting_live_start', {
+    await sb.rpc('meeting_live_suggest', {
       p_entry: meeting,
       p_actor: editorAdult,
       p_snapshot: snapshot([
@@ -261,7 +273,7 @@ describe('repeats and retakes on the Live view', () => {
 
   it('MeetingLive_MarksRetake_WhenScoutAlreadyCompletedClass', async () => {
     await pick(meeting, ann, key);
-    await sb.rpc('meeting_live_start', { p_entry: meeting, p_actor: editorAdult, p_snapshot: snapshot([{ topic_key: key, rotation: 1, members: [ann, done] }]) });
+    await sb.rpc('meeting_live_suggest', { p_entry: meeting, p_actor: editorAdult, p_snapshot: snapshot([{ topic_key: key, rotation: 1, members: [ann, done] }]) });
     const v = await (await lib()).loadLiveView(sb, (await loadMeetingById(sb, meeting))!);
     const c = v.cards.find((x) => x.topicKey === key)!;
     expect(c.members.map((x) => [x.personId, x.retake]).sort((a, b) => Number(a[0]) - Number(b[0]))).toEqual(
@@ -277,7 +289,7 @@ describe('the schema holds', () => {
   it('Unseed_KeepsTheTopic_WhenAClassHoldsIt', async () => {
     const seeded = await sb.rpc('meeting_seed_topic', { p_entry: meeting, p_key: key, p_actor: editorAdult });
     if (seeded.error) throw new Error(seeded.error.message);
-    await sb.rpc('meeting_live_start', { p_entry: meeting, p_actor: editorAdult, p_snapshot: snapshot([{ topic_key: key, rotation: null, members: [] }]) });
+    await sb.rpc('meeting_live_suggest', { p_entry: meeting, p_actor: editorAdult, p_snapshot: snapshot([{ topic_key: key, rotation: null, members: [] }]) });
     const { error } = await sb.rpc('meeting_unseed_topic', { p_entry: meeting, p_key: key });
     const { data } = await sb.from('meeting_topics').select('seeded_at').eq('calendar_entry_id', meeting).eq('topic_key', key).maybeSingle();
     expect([error, data ? (data as { seeded_at: string | null }).seeded_at : 'gone']).toEqual([null, null]);
@@ -288,7 +300,7 @@ describe('the schema holds', () => {
     if (!res.ok) throw new Error(res.error);
     const { data: t } = await sb.from('meeting_topics').select('topic_key').eq('calendar_entry_id', meeting).eq('kind', 'freeform').single();
     const ff = (t as { topic_key: string }).topic_key;
-    await sb.rpc('meeting_live_start', { p_entry: meeting, p_actor: editorAdult, p_snapshot: snapshot([{ topic_key: ff, rotation: 1, teacher_person_id: teacher, members: [] }]) });
+    await sb.rpc('meeting_live_suggest', { p_entry: meeting, p_actor: editorAdult, p_snapshot: snapshot([{ topic_key: ff, rotation: 1, teacher_person_id: teacher, members: [] }]) });
     const { error } = await sb.rpc('meeting_unteach_topic', { p_entry: meeting, p_person: teacher, p_actor: editorAdult, p_leader: true, p_topic_key: ff });
     expect([error, await classCount(meeting)]).toEqual([null, 1]);
   });
@@ -296,7 +308,7 @@ describe('the schema holds', () => {
   it('DeletingTheMeeting_TakesItsPlacementWithIt', async () => {
     const other = await entry('2096-04-12');
     await pick(other, ann, key);
-    await sb.rpc('meeting_live_start', { p_entry: other, p_actor: editorAdult, p_snapshot: snapshot([{ topic_key: key, rotation: 1, members: [ann] }]) });
+    await sb.rpc('meeting_live_suggest', { p_entry: other, p_actor: editorAdult, p_snapshot: snapshot([{ topic_key: key, rotation: 1, members: [ann] }]) });
     const { error } = await sb.from('calendar_entries').delete().eq('id', other);
     expect([error, await classCount(other)]).toEqual([null, 0]);
   });
@@ -305,7 +317,7 @@ describe('the schema holds', () => {
     const survivor = await person('Survivor');
     const loser = await person('Loser');
     await pick(meeting, ann, key);
-    await sb.rpc('meeting_live_start', { p_entry: meeting, p_actor: loser, p_snapshot: snapshot([{ topic_key: key, rotation: 1, teacher_person_id: loser, members: [loser, survivor] }]) });
+    await sb.rpc('meeting_live_suggest', { p_entry: meeting, p_actor: loser, p_snapshot: snapshot([{ topic_key: key, rotation: 1, teacher_person_id: loser, members: [loser, survivor] }]) });
     const { error } = await sb.rpc('merge_people', { p_survivor: survivor, p_loser: loser, p_decided_by: 'vitest' });
     if (error) throw new Error(error.message);
     const { data } = await sb.from('meeting_classes').select('teacher_person_id, entered_by_person_id, meeting_class_members(person_id, entered_by_person_id)').eq('calendar_entry_id', meeting).single();

@@ -70,7 +70,7 @@ const teach = async (personId: number, k: string) => {
 /** Start Live straight from a snapshot: class ids back, in the order given. */
 async function started(classes: { topic_key: string; rotation: number | null; teacher_person_id?: number | null; members: number[] }[]): Promise<number[]> {
   for (const c of classes) await sb.rpc('_meeting_topic_id', { p_entry: meeting, p_key: c.topic_key });
-  const { error } = await sb.rpc('meeting_live_start', {
+  const { error } = await sb.rpc('meeting_live_suggest', {
     p_entry: meeting,
     p_actor: editor,
     p_snapshot: { rotations: [], classes: classes.map((c, i) => ({ source_key: `t:${i}`, title: null, teacher_person_id: null, position: i, ...c })) }
@@ -86,6 +86,10 @@ const pin = async (classId: number, personId: number) => {
   if (error) throw new Error(error.message);
 };
 async function clearMeeting(entryId: number) {
+  // Rotations L3: empty the plan first, or a reconcile on the way out begins the arrangement again.
+  await sb.from('meeting_topics').update({ seeded_at: null }).eq('calendar_entry_id', entryId);
+  await sb.from('meeting_topic_teachers').delete().eq('calendar_entry_id', entryId);
+  await sb.from('meeting_topic_picks').delete().eq('calendar_entry_id', entryId);
   await sb.from('meeting_live_holds').delete().eq('calendar_entry_id', entryId);
   const { data: cls } = await sb.from('meeting_classes').select('id').eq('calendar_entry_id', entryId);
   const ids = ((cls ?? []) as { id: number }[]).map((c) => c.id);
@@ -94,6 +98,8 @@ async function clearMeeting(entryId: number) {
   await sb.from('meeting_boards').delete().eq('calendar_entry_id', entryId);
   await sb.from('meeting_topic_teachers').delete().eq('calendar_entry_id', entryId);
   await sb.from('meeting_topic_picks').delete().eq('calendar_entry_id', entryId);
+  // Rotations L3: a topic's classes first (their FK keeps a topic under a class).
+  await sb.from('meeting_classes').delete().eq('calendar_entry_id', entryId);
   await sb.from('meeting_topics').delete().eq('calendar_entry_id', entryId);
   await sb.from('meeting_pick_lists').delete().eq('calendar_entry_id', entryId);
   await sb.from('meeting_intents').delete().eq('calendar_entry_id', entryId);
@@ -181,6 +187,8 @@ describe('Rotations L0: the drift on a started arrangement', () => {
 
   it('Drift_NotStarted_IsEmpty', async () => {
     await teach(teacher, key2);
+    // Rotations L3: the writes above began an arrangement; Discard is how a meeting has none (a past one, or reset).
+    await sb.rpc('meeting_live_discard', { p_entry: meeting, p_actor: editor });
     expect((await view()).drift).toEqual([]);
   });
 
@@ -322,7 +330,7 @@ describe('Rotations L0 qa: the matcher agrees with itself', () => {
     await teach(teacher2, key2);
     await pick(anjali, key2);
     asEditor();
-    const res = await (await live()).plannerLiveStartAction({ entryId: meeting });
+    const res = await (await live()).plannerLiveSuggestAction({ entryId: meeting });
     expect([res.ok, ours((await view()).drift)]).toEqual([true, []]);
   });
 });
@@ -363,6 +371,8 @@ describe('Rotations L0: rights and stale checks', () => {
 
   it('Drift_MakeClass_LiveNotStarted_IsStale', async () => {
     await teach(teacher, key2);
+    // Rotations L3: the writes above began an arrangement; Discard is how a meeting has none (a past one, or reset).
+    await sb.rpc('meeting_live_discard', { p_entry: meeting, p_actor: editor });
     asEditor();
     const res = await (await live()).plannerLiveMakeClassAction({ entryId: meeting, key: key2 });
     expect([!res.ok && res.stale, (await classesFor(key2)).length]).toEqual([true, 0]);

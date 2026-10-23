@@ -8,7 +8,7 @@
  *     saved placement as a MatchResult (placementAsMatch). The planner board keeps its own loaders: it stays on screen.
  *   - startMeetingLive: copy on FIRST WRITE (Decision 8): run the matcher and save its output with meeting_live_start,
  *     which is idempotent under the meeting's Live lock.
- *   - loadLiveView: what /planner/live draws: the matcher's preview before start, the saved placement after.
+ *   - loadLiveView: what /planner/rotations draws: the matcher's preview before start, the saved placement after.
  *   - B8 (D-429): presence on Live is a DRAFT (meeting_live_presence); nothing here writes attendance on its own. After
  *     the meeting, loadAttendancePrompt / loadAttendanceReview give the approval checklist, and the server action
  *     records only the differences through Roll Call's cascade. discardMeetingLive undoes Live.
@@ -16,6 +16,10 @@
  *     loadClassForTeacherFix are the reads behind the strip's two composed fixes.
  *   - Rotations L1: the database reconciles a started arrangement on every pick, answer and Live edit
  *     (meeting_reconcile); startMeetingLive runs it once after the copy, so late picks the matcher left out land now.
+ *   - Rotations L3 (D-437): an arrangement begins on its own once anything is on a meeting's plan, so there is no Start.
+ *     The matcher is "Suggest an arrangement" (suggestMeetingLive: the arrangement is replaced by the matcher's, then
+ *     reconciled), and Discard is "Reset to match picks" (resetMeetingLive). startMeetingLive stays for the first Live
+ *     edit on a meeting with nothing planned yet.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { loadAdvancementCatalog, type AdvancementCatalog } from '@/lib/advancement-catalog';
@@ -26,6 +30,7 @@ import { sessionWords, type MatchResult } from '@/lib/meeting-board-match';
 import { loadLiveMatch, loadTeachBoard, loadTeacherPeople, sanitizeRpcError, type TeachBoard } from '@/lib/meeting-board-supply';
 import { teacherName } from '@/lib/meeting-board-teach';
 import { shortRequirement } from '@/lib/rank-abbrev';
+import type { PlanArrangement } from '@/lib/build-plan';
 import {
   buildAttendanceReview,
   buildLiveView,
@@ -151,6 +156,27 @@ export async function startMeetingLive(sb: SupabaseClient, meeting: BoardMeeting
   const rec = await sb.rpc('meeting_reconcile', { p_entry: meeting.entryId });
   if (rec.error) console.error(`meeting_reconcile after start failed for entry ${meeting.entryId}: ${rec.error.message}`);
   return { ok: true, started: data === true };
+}
+
+/**
+ * "Suggest an arrangement" (L3): the matcher's current output replaces the arrangement (meeting_live_suggest discards,
+ * copies it, then reconciles, all under the Live lock). The caller has checked the editor's right and the meeting.
+ */
+export async function suggestMeetingLive(sb: SupabaseClient, meeting: BoardMeeting, actorPersonId: number): Promise<{ ok: true } | { ok: false; error: string }> {
+  const catalog = await loadAdvancementCatalog();
+  const rows = await loadBoardState(sb, meeting, catalog);
+  const teach = await loadTeachBoard(sb, meeting, catalog, rows);
+  const { snapshot } = await matchSnapshot(sb, meeting, catalog, rows, teach);
+  const { error } = await sb.rpc('meeting_live_suggest', { p_entry: meeting.entryId, p_actor: actorPersonId, p_snapshot: snapshotJson(snapshot) });
+  if (error) return { ok: false, error: sanitizeRpcError(error.message) };
+  return { ok: true };
+}
+
+/** "Reset to match picks" (L3): Discard, then begin again from the plan (meeting_live_reset). `reset`: there was one. */
+export async function resetMeetingLive(sb: SupabaseClient, entryId: number, actorPersonId: number): Promise<{ ok: true; reset: boolean } | { ok: false; error: string }> {
+  const { data, error } = await sb.rpc('meeting_live_reset', { p_entry: entryId, p_actor: actorPersonId });
+  if (error) return { ok: false, error: sanitizeRpcError(error.message) };
+  return { ok: true, reset: data === true };
 }
 
 /** What the Live screen draws for one meeting. */
@@ -328,6 +354,20 @@ export async function loadLiveChoices(sb: SupabaseClient, meeting: BoardMeeting)
   };
 }
 
+/**
+ * Rotations L3: the arrangement for Build a Plan's rotation chips: the rotation numbers and each offering's classes by
+ * topic key, in rotation order. Null when the meeting has no arrangement (nothing planned yet).
+ */
+export async function loadPlanArrangement(sb: SupabaseClient, entryId: number): Promise<PlanArrangement | null> {
+  const saved = await loadSavedPlacement(sb, entryId);
+  if (!saved) return null;
+  const classes: PlanArrangement['classes'] = {};
+  for (const c of [...saved.classes].sort((a, b) => (a.rotation ?? 1e9) - (b.rotation ?? 1e9) || a.position - b.position || a.id - b.id)) {
+    (classes[c.topicKey] ??= []).push({ id: savedId(c.id), rotation: c.rotation, version: c.version });
+  }
+  return { rotations: saved.rotations.map((r) => r.number).sort((a, b) => a - b), classes };
+}
+
 // ── Rotations L0: the fixes' reads ───────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -452,13 +492,6 @@ export async function onLiveBoard(sb: SupabaseClient, entryId: number, personId:
 }
 
 // ── B8: Discard, and attendance approved after the meeting ───────────────────────────────────────────────────────
-
-/** "Discard Live arrangement" (meeting_live_discard, under the Live lock). `discarded`: there was one to discard. */
-export async function discardMeetingLive(sb: SupabaseClient, entryId: number, actorPersonId: number): Promise<{ ok: true; discarded: boolean } | { ok: false; error: string }> {
-  const { data, error } = await sb.rpc('meeting_live_discard', { p_entry: entryId, p_actor: actorPersonId });
-  if (error) return { ok: false, error: sanitizeRpcError(error.message) };
-  return { ok: true, discarded: data === true };
-}
 
 /** A meeting's calendar facts as the "is it over?" rule reads them. */
 export interface OverFacts {

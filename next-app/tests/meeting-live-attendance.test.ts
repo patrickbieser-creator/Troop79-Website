@@ -35,6 +35,15 @@ let householdExisted = true;
 let today = 0; // a meeting dated today (Central)
 let later = 0; // 2098-04-04
 let editorAdult = 0;
+
+/** Rotations L2/L3: every offering has a class, so a planner removing it by hand is how a picker waits for one. */
+async function removeClassesOf(entryId: number, k: string) {
+  const { data } = await sb.from('meeting_classes').select('id, version, meeting_topics!inner(topic_key)').eq('calendar_entry_id', entryId).eq('meeting_topics.topic_key', k);
+  for (const c of (data ?? []) as unknown as { id: number; version: number }[]) {
+    const { error } = await sb.rpc('meeting_live_remove_class', { p_entry: entryId, p_actor: editorAdult, p_class: c.id, p_expected: c.version });
+    if (error) throw new Error(error.message);
+  }
+}
 let teacher = 0;
 let spl = 0;
 let ann = 0;
@@ -63,7 +72,7 @@ async function scout(label: string, rank: string): Promise<number> {
 }
 async function started(entryId: number, classes: { topic_key: string; rotation: number | null; teacher_person_id?: number | null; members: number[] }[]): Promise<number[]> {
   for (const c of classes) await sb.rpc('_meeting_topic_id', { p_entry: entryId, p_key: c.topic_key });
-  const { error } = await sb.rpc('meeting_live_start', {
+  const { error } = await sb.rpc('meeting_live_suggest', {
     p_entry: entryId,
     p_actor: editorAdult,
     p_snapshot: { rotations: [], classes: classes.map((c, i) => ({ source_key: `t:${i}`, title: null, teacher_person_id: null, position: i, ...c })) }
@@ -74,11 +83,17 @@ async function started(entryId: number, classes: { topic_key: string; rotation: 
   return classes.map((_, i) => rows.find((r) => r.source_key === `t:${i}`)!.id);
 }
 async function clearMeeting(entryId: number) {
+  // Rotations L3: empty the plan first, or a reconcile on the way out begins the arrangement again.
+  await sb.from('meeting_topics').update({ seeded_at: null }).eq('calendar_entry_id', entryId);
+  await sb.from('meeting_topic_teachers').delete().eq('calendar_entry_id', entryId);
+  await sb.from('meeting_topic_picks').delete().eq('calendar_entry_id', entryId);
   const { data: cls } = await sb.from('meeting_classes').select('id').eq('calendar_entry_id', entryId);
   const ids = ((cls ?? []) as { id: number }[]).map((c) => c.id);
   if (ids.length) await sb.from('meeting_classes').delete().in('id', ids);
   await sb.from('meeting_rotations').delete().eq('calendar_entry_id', entryId);
   await sb.from('meeting_boards').delete().eq('calendar_entry_id', entryId);
+  // Rotations L3: a topic's classes first (their FK keeps a topic under a class).
+  await sb.from('meeting_classes').delete().eq('calendar_entry_id', entryId);
   await sb.from('meeting_topics').delete().eq('calendar_entry_id', entryId);
   await sb.from('meeting_pick_lists').delete().eq('calendar_entry_id', entryId);
   await sb.from('meeting_intents').delete().eq('calendar_entry_id', entryId);
@@ -297,6 +312,7 @@ describe('the pool and the people', () => {
     const res = await addMeetingPick(sb, { entryId: today, personId: ann, actorPersonId: editorAdult, leader: true, carry: null }, key, { later: false, markComing: true });
     if (!res.ok) throw new Error(res.error);
     await started(today, []);
+    await removeClassesOf(today, key);
     const v = await (await lib()).loadLiveView(sb, (await loadMeetingById(sb, today))!);
     expect(v.pool.find((x) => x.personId === ann)?.present).toBe(false);
   });

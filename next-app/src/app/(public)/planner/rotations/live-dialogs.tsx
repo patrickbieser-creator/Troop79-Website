@@ -3,8 +3,9 @@
 /**
  * Meeting Live's page-level menu and confirm (Build a Plan B8, Plans/Build-A-Plan.md; D-429).
  *
- *   - LiveMoreActions: "More actions…", a quiet disclosure in the bar. Its one item, "Discard Live arrangement", is a
- *     danger item that opens a danger Dialog (the edit-screen standard: a destructive menu item names its consequence).
+ *   - LiveMoreActions: "More actions…", a quiet disclosure in the bar. Rotations L3: "Suggest an arrangement" (the
+ *     matcher, once) and "Reset to match picks" (was Discard). Both replace the arrangement, so both are danger items
+ *     that open a danger Dialog (the edit-screen standard: a destructive menu item names its consequence).
  *   - ConfirmDialog: a native modal <dialog> with Cancel and one confirm, as Build a Plan's Remove dialog. The confirm
  *     may return a problem to show in place (red, role=alert); the dialog closes when it returns nothing.
  */
@@ -13,7 +14,7 @@ import { Button } from '@/app/_components/button';
 import { useDisclosure } from '@/app/_components/use-disclosure';
 import styles from './live.module.css';
 
-export function LiveMoreActions({ onDiscard }: { onDiscard: () => void }) {
+export function LiveMoreActions({ onSuggest, onReset }: { onSuggest: () => void; onReset: () => void }) {
   const { open, wrapRef, triggerRef, onBlur, toggle, close } = useDisclosure();
   return (
     <div className={styles.moreWrap} ref={wrapRef} onBlur={onBlur}>
@@ -27,10 +28,20 @@ export function LiveMoreActions({ onDiscard }: { onDiscard: () => void }) {
             className={styles.moreDanger}
             onClick={() => {
               close();
-              onDiscard();
+              onSuggest();
             }}
           >
-            Discard Live arrangement
+            Suggest an arrangement
+          </button>
+          <button
+            type="button"
+            className={styles.moreDanger}
+            onClick={() => {
+              close();
+              onReset();
+            }}
+          >
+            Reset to match picks
           </button>
         </div>
       ) : null}

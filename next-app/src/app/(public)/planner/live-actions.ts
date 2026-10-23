@@ -23,6 +23,8 @@
  * Rotations L1: every Live edit ends in the database's reconcile (meeting_reconcile), so a class made here fills with
  * its pickers on its own; a move here pins the scout (and taking one out of a topic keeps them out of it). The New
  * mark on an automatic placement goes with plannerLiveDismissNewAction.
+ * Rotations L3 (D-437): Start and Discard retire. An arrangement begins on its own from the plan; "Suggest an
+ * arrangement" replaces it with the matcher's, and "Reset to match picks" rebuilds it from the plan.
  */
 import { revalidatePath } from 'next/cache';
 import { resolveAdminActor } from '@/lib/admin-actor';
@@ -37,7 +39,6 @@ import { teachTopic, unteachTopic } from '@/lib/meeting-board-supply';
 import { instantToCentral } from '@/lib/dates';
 import {
   canTeachOnLive,
-  discardMeetingLive,
   liveStartedAt,
   loadAttendanceReview,
   loadClassForTeacherFix,
@@ -45,8 +46,10 @@ import {
   loadOverFacts,
   onLiveBoard,
   type OverFacts,
+  resetMeetingLive,
   resolveLiveClass,
-  startMeetingLive
+  startMeetingLive,
+  suggestMeetingLive
 } from '@/lib/meeting-live';
 import { meetingIsOver } from '@/lib/meeting-live-shared';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -79,7 +82,7 @@ async function liveEditor(entryId: unknown): Promise<Editor | { ok: false; error
 
 function revalidate() {
   revalidatePath('/planner');
-  revalidatePath('/planner/live');
+  revalidatePath('/planner/rotations');
   revalidatePath('/member/meeting');
 }
 
@@ -120,13 +123,16 @@ async function cardOf(e: Editor, id: string): Promise<number | null> {
   return resolveLiveClass(e.sb, e.meeting, e.actorPersonId, id);
 }
 
-/** Start Meeting Live: the board's current match becomes the saved placement. */
-export async function plannerLiveStartAction(input: { entryId: number }): Promise<LiveWriteResult> {
+/**
+ * "Suggest an arrangement" (L3): the matcher's current output replaces the arrangement, then reconcile adds what it left
+ * out. An upcoming meeting only. Hand moves and rotations are replaced: the screen confirms first.
+ */
+export async function plannerLiveSuggestAction(input: { entryId: number }): Promise<LiveWriteResult> {
   const e = await liveEditor(input?.entryId);
   if (!e.ok) return e;
   try {
-    const res = await startMeetingLive(e.sb, e.meeting, e.actorPersonId);
-    if (!res.ok) return res;
+    const res = await suggestMeetingLive(e.sb, e.meeting, e.actorPersonId);
+    if (!res.ok) return fail(KNOWN.test(res.error) ? res.error : SAVE_FAILED);
     revalidate();
     return { ok: true, stamp: await loadBoardStamp(e.sb, e.meeting.entryId) };
   } catch {
@@ -428,14 +434,16 @@ async function plannerEditor(entryId: unknown): Promise<Approver | { ok: false; 
 }
 
 /**
- * "Discard Live arrangement": the classes, rotations, moves and draft ticks go; recorded attendance, visitors,
- * offerings and teacher sign-ups stay. Allowed any time, the meeting day included. The board's matcher view returns.
+ * "Reset to match picks" (L3, was Discard): the classes, rotations, moves, holds and draft ticks go; recorded
+ * attendance, visitors, offerings and teacher sign-ups stay. Then, on an upcoming meeting with a plan, the arrangement
+ * begins again from it: every offering in Not scheduled, scouts by their picks. Allowed any time, the meeting day
+ * included (a past meeting is only cleared).
  */
-export async function plannerLiveDiscardAction(input: { entryId: number }): Promise<LiveWriteResult> {
+export async function plannerLiveResetAction(input: { entryId: number }): Promise<LiveWriteResult> {
   const e = await plannerEditor(input?.entryId);
   if (!e.ok) return e;
   try {
-    const res = await discardMeetingLive(e.sb, e.facts.entryId, e.actorPersonId);
+    const res = await resetMeetingLive(e.sb, e.facts.entryId, e.actorPersonId);
     if (!res.ok) return fail(SAVE_FAILED);
     revalidate();
     return { ok: true, stamp: await loadBoardStamp(e.sb, e.facts.entryId) };

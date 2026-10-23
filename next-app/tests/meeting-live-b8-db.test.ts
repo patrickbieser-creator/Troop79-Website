@@ -66,7 +66,7 @@ async function scout(label: string): Promise<number> {
 }
 async function started(entryId: number, classes: { rotation: number | null; teacher_person_id?: number | null; members: number[] }[]): Promise<number[]> {
   await sb.rpc('_meeting_topic_id', { p_entry: entryId, p_key: key });
-  const { error } = await sb.rpc('meeting_live_start', {
+  const { error } = await sb.rpc('meeting_live_suggest', {
     p_entry: entryId,
     p_actor: editorAdult,
     p_snapshot: { rotations: [], classes: classes.map((c, i) => ({ source_key: `t:${i}`, topic_key: key, title: null, teacher_person_id: null, position: i, ...c })) }
@@ -77,11 +77,17 @@ async function started(entryId: number, classes: { rotation: number | null; teac
   return classes.map((_, i) => rows.find((r) => r.source_key === `t:${i}`)!.id);
 }
 async function clearMeeting(entryId: number) {
+  // Rotations L3: empty the plan first, or a reconcile on the way out begins the arrangement again.
+  await sb.from('meeting_topics').update({ seeded_at: null }).eq('calendar_entry_id', entryId);
+  await sb.from('meeting_topic_teachers').delete().eq('calendar_entry_id', entryId);
+  await sb.from('meeting_topic_picks').delete().eq('calendar_entry_id', entryId);
   await sb.from('meeting_classes').delete().eq('calendar_entry_id', entryId);
   await sb.from('meeting_rotations').delete().eq('calendar_entry_id', entryId);
   await sb.from('meeting_live_presence').delete().eq('calendar_entry_id', entryId);
   await sb.from('meeting_boards').delete().eq('calendar_entry_id', entryId);
   await sb.from('meeting_topic_teachers').delete().eq('calendar_entry_id', entryId);
+  // Rotations L3: a topic's classes first (their FK keeps a topic under a class).
+  await sb.from('meeting_classes').delete().eq('calendar_entry_id', entryId);
   await sb.from('meeting_topics').delete().eq('calendar_entry_id', entryId);
   await sb.from('event_attendance').delete().eq('calendar_entry_id', entryId);
   if (scoutIds.length) await sb.from('ledger_entries').delete().in('scout_id', scoutIds);
@@ -135,7 +141,7 @@ describe('nothing automatic', () => {
   it('LiveOpen_OnMeetingDay_RecordsNoAttendance', async () => {
     await started(today, [{ rotation: 1, teacher_person_id: teacher, members: [ann] }]);
     asEditor();
-    await (await import('../src/app/(public)/planner/live/page')).default();
+    await (await import('../src/app/(public)/planner/rotations/page')).default();
     expect(await recorded(today)).toEqual([]);
   });
 
@@ -237,23 +243,18 @@ describe('Would you like to update attendance?', () => {
 });
 
 describe('Discard Live arrangement', () => {
-  it('Discard_ClearsArrangement', async () => {
+  // Rotations L3: Discard became "Reset to match picks": the hand work goes and the arrangement is rebuilt from the plan.
+  it('Reset_ClearsTheHandWork_AndRebuilds', async () => {
     await started(future, [{ rotation: 1, teacher_person_id: teacher, members: [ann] }]);
     await sb.rpc('meeting_live_set_presence', { p_entry: future, p_actor: editorAdult, p_person: bo, p_present: true });
     asEditor();
-    const res = await (await live()).plannerLiveDiscardAction({ entryId: future });
-    const [cls, rot, draft] = await Promise.all([
-      sb.from('meeting_classes').select('id', { count: 'exact', head: true }).eq('calendar_entry_id', future),
+    const res = await (await live()).plannerLiveResetAction({ entryId: future });
+    const [scheduled, rot, draft] = await Promise.all([
+      sb.from('meeting_classes').select('id', { count: 'exact', head: true }).eq('calendar_entry_id', future).not('rotation', 'is', null),
       sb.from('meeting_rotations').select('number', { count: 'exact', head: true }).eq('calendar_entry_id', future),
       sb.from('meeting_live_presence').select('person_id', { count: 'exact', head: true }).eq('calendar_entry_id', future)
     ]);
-    expect({ ok: res.ok, startedAt: (await board(future))?.live_started_at, classes: cls.count, rotations: rot.count, draft: draft.count }).toEqual({
-      ok: true,
-      startedAt: null,
-      classes: 0,
-      rotations: 0,
-      draft: 0
-    });
+    expect({ ok: res.ok, scheduled: scheduled.count, rotations: rot.count, draft: draft.count }).toEqual({ ok: true, scheduled: 0, rotations: 2, draft: 0 });
   });
 
   it('Discard_KeepsAttendanceVisitorsAndOfferings', async () => {
@@ -266,7 +267,7 @@ describe('Discard Live arrangement', () => {
     const vid = Number(added.data);
     visitors.push(vid);
     await sb.from('event_attendance').insert({ calendar_entry_id: future, person_id: ann, qty: 1, source: 'manual', recorded_by: 'Earlier' });
-    await a.plannerLiveDiscardAction({ entryId: future });
+    await a.plannerLiveResetAction({ entryId: future });
     const [topics, guest, draft] = await Promise.all([
       sb.from('meeting_topics').select('topic_key').eq('calendar_entry_id', future),
       sb.from('people').select('id').eq('id', vid).maybeSingle(),
@@ -284,22 +285,24 @@ describe('Discard Live arrangement', () => {
     await started(future, [{ rotation: 1, members: [ann] }]);
     const before = (await board(future))!.live_version;
     asEditor();
-    await (await live()).plannerLiveDiscardAction({ entryId: future });
+    await (await live()).plannerLiveResetAction({ entryId: future });
     expect((await board(future))!.live_version).toBeGreaterThan(before);
   });
 
   it('Discard_RequiresEdit', async () => {
     await started(future, [{ rotation: 1, members: [ann] }]);
     asViewer();
-    const res = await (await live()).plannerLiveDiscardAction({ entryId: future });
+    const res = await (await live()).plannerLiveResetAction({ entryId: future });
     expect([res.ok, (await board(future))?.live_started_at != null]).toEqual([false, true]);
   });
 
   it('Discard_ThenStart_CopiesTheMatcherAgain', async () => {
     await started(future, [{ rotation: 1, members: [ann] }]);
     await sb.rpc('meeting_live_discard', { p_entry: future, p_actor: editorAdult });
-    const again = await sb.rpc('meeting_live_start', { p_entry: future, p_actor: editorAdult, p_snapshot: { rotations: [], classes: [{ source_key: 't:0', topic_key: key, rotation: 1, members: [bo] }] } });
-    expect([again.error, again.data]).toEqual([null, true]);
+    const again = await sb.rpc('meeting_live_suggest', { p_entry: future, p_actor: editorAdult, p_snapshot: { rotations: [], classes: [{ source_key: 't:0', topic_key: key, rotation: 1, members: [bo] }] } });
+    const { data } = await sb.from('meeting_classes').select('rotation, meeting_class_members(person_id)').eq('calendar_entry_id', future).eq('source_key', 't:0').single();
+    const c = data as { rotation: number; meeting_class_members: { person_id: number }[] };
+    expect([again.error, c.rotation, c.meeting_class_members.map((m) => m.person_id).includes(bo)]).toEqual([null, 1, true]);
   });
 });
 
@@ -308,7 +311,7 @@ describe('the stale-tab guard', () => {
     const [c] = await started(future, [{ rotation: 1, members: [ann] }]);
     asEditor();
     const a = await live();
-    await a.plannerLiveDiscardAction({ entryId: future });
+    await a.plannerLiveResetAction({ entryId: future });
     const res = await a.plannerLiveMoveClassAction({ entryId: future, classId: `c:${c}`, version: 1, rotation: 2 });
     expect([res.ok, !res.ok && res.stale, (await board(future))?.live_started_at]).toEqual([false, true, null]);
   });
@@ -317,7 +320,7 @@ describe('the stale-tab guard', () => {
     await started(future, []);
     asEditor();
     const a = await live();
-    await a.plannerLiveDiscardAction({ entryId: future });
+    await a.plannerLiveResetAction({ entryId: future });
     const res = await a.plannerLiveAddRotationAction({ entryId: future, expectMax: 2, expectStarted: true });
     expect([!res.ok && res.stale, (await board(future))?.live_started_at]).toEqual([true, null]);
   });
@@ -370,7 +373,7 @@ describe('B8 qa: only a published troop meeting (the filter loadAttendancePrompt
   it('Discard_OnACampout_ChangesNothing', async () => {
     await sb.rpc('meeting_live_set_presence', { p_entry: campout, p_actor: editorAdult, p_person: ann, p_present: true });
     asEditor();
-    await (await live()).plannerLiveDiscardAction({ entryId: campout });
+    await (await live()).plannerLiveResetAction({ entryId: campout });
     const { data } = await sb.from('meeting_live_presence').select('person_id').eq('calendar_entry_id', campout);
     expect(data).toEqual([{ person_id: ann }]);
   });
@@ -435,7 +438,7 @@ describe('B8 qa: Discard under concurrency', () => {
     const [c] = await started(future, [{ rotation: 1, members: [ann] }]);
     asEditor();
     const a = await live();
-    await a.plannerLiveDiscardAction({ entryId: future });
+    await a.plannerLiveResetAction({ entryId: future });
     await started(future, [{ rotation: 1, members: [bo] }]);
     const res = await a.plannerLiveMoveClassAction({ entryId: future, classId: `c:${c}`, version: 1, rotation: 2 });
     expect(!res.ok && res.stale).toBe(true);
@@ -446,7 +449,7 @@ describe('B8 qa: Discard under concurrency', () => {
     asEditor();
     const a = await live();
     await Promise.all([
-      a.plannerLiveDiscardAction({ entryId: future }),
+      a.plannerLiveResetAction({ entryId: future }),
       a.plannerLiveMoveClassAction({ entryId: future, classId: `c:${c}`, version: 1, rotation: 2 })
     ]);
     expect((await board(future))?.live_started_at).toBeNull();

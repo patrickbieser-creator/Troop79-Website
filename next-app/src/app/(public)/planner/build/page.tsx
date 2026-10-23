@@ -28,6 +28,7 @@ import { pickMeeting, planRows, PLAN_MEETINGS } from '@/lib/build-plan';
 import { parseBuildView } from '@/lib/build-plan-view';
 import { loadLikelyScouts } from '@/lib/meeting-invite-digest-db';
 import { loadOrphans } from '@/lib/build-plan-orphans-db';
+import { loadPlanArrangement } from '@/lib/meeting-live';
 import { PageHeader } from '@/app/_components/page-header';
 import { PageShell } from '@/app/_components/page-shell';
 import { Notice } from '@/app/_components/notice';
@@ -109,7 +110,7 @@ export default async function BuildPlanPage({ searchParams }: { searchParams: Pr
     );
   }
 
-  const page = await loadPlannerPage(sb, meeting, lists);
+  const [page, arrangement] = await Promise.all([loadPlannerPage(sb, meeting, lists), loadPlanArrangement(sb, meeting.entryId)]);
   if (!page) return null;
   const rows = planRows(page.board);
   const hrefOf = (entryId: number, suggestions = suggesting) => `/planner/build?meeting=${entryId}${suggestions ? '&view=suggestions' : ''}`;
@@ -142,6 +143,7 @@ export default async function BuildPlanPage({ searchParams }: { searchParams: Pr
         key={`${meeting.entryId}:${suggesting ? "s" : "p"}`}
         entryId={meeting.entryId}
         rows={rows}
+        arrangement={arrangement}
         canSeed={access.canSeed}
         canEdit={access.canEdit}
         dayLabel={fmtDate(meeting.date, { year: false })}

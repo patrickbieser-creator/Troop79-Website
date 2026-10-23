@@ -672,3 +672,37 @@
   font: var(--fs-xs) / 1.4 var(--font-ui);
   color: var(--text-meta);
 }
+
+/* Rotations L3: a row's "Rotation — 1 2" (Live's "Move to", the same 44 px pressed buttons). */
+.rotationRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+}
+.rotationLabel {
+  font: var(--fs-xs) / 1.2 var(--font-ui);
+  color: var(--text-meta);
+}
+.rotationBtn {
+  flex: none;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 var(--sp-2);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-md);
+  background: var(--warm-white);
+  font: 700 var(--fs-sm) / 1 var(--font-ui);
+  color: var(--navy);
+  cursor: pointer;
+}
+.rotationBtn[aria-pressed='true'] {
+  border-color: var(--navy);
+  background: var(--navy);
+  color: var(--warm-white);
+}
+.rotationBtn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}

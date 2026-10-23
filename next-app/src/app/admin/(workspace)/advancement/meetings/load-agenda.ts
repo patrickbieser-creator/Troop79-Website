@@ -30,6 +30,8 @@ import type { BoardTray, MatchedCandidate } from './[id]/meeting-editor';
  *   - Before Meeting Live starts: the meeting's plan, Build a Plan's offerings with their teachers and the scouts
  *     signed up so far (the same rows Build shows, planRows over the planner board), labelled with their state.
  *   - Once Live has started: its saved placement (loadMatchOrPlacement, the one seam every reader of the match uses).
+ *     Rotations L3: an arrangement begins with a meeting's first offering, so this is the tray whenever anything is
+ *     planned; each card is labelled by its rotation.
  * Promoting goes through the same promotePlanSession as an engine suggestion; nothing is written until a leader adds
  * it. Names are as the agenda shows them to families: adults formally ("Mr. Vest"), scouts and Junior Leaders first
  * name + last initial ("Finn P"). null = the planner failed to load (the tray says so).
@@ -44,7 +46,7 @@ export async function loadBoardTray(entryId: number): Promise<BoardTray | null> 
     const { catalog, rows, teach } = page.src;
     if (started) {
       const match = await loadMatchOrPlacement(sb, meeting, rows, teach);
-      return { closed: false, source: 'live', sessions: matchedCandidates(match, { catalog, rows, teach }), wanted: match.wanted.length };
+      return { closed: false, source: 'live', sessions: matchedCandidates(match, { catalog, rows, teach }, true), wanted: match.wanted.length };
     }
     return { closed: false, source: 'plan', sessions: planCandidates(page.board, { catalog, teach }), wanted: 0 };
   } catch {
@@ -106,7 +108,9 @@ export function matchedCandidates(
     catalog: Pick<AdvancementCatalog, 'ranks' | 'rankRequirements' | 'meritBadges' | 'skills'> & Partial<Pick<AdvancementCatalog, 'meritBadgeRequirements'>>;
     rows: readonly Pick<BoardScoutRow, 'personId' | 'name'>[];
     teach: Pick<TeachBoard, 'people' | 'freeformTitles'> & Partial<Pick<TeachBoard, 'members'>>;
-  }
+  },
+  /** The match is a saved arrangement (label by rotation), not the matcher's output. */
+  started = false
 ): MatchedCandidate[] {
   const skillNames = new Map(src.catalog.skills.map((s) => [s.id, s.name]));
   const scoutName = new Map(src.rows.map((r) => [r.personId, boardName(r.name)]));
@@ -117,7 +121,9 @@ export function matchedCandidates(
   return match.sessions.map((s) => {
     const sw = sessionWords(s.keys, src.catalog, skillNames, src.teach.freeformTitles, { mbReqs: src.catalog.meritBadgeRequirements, members: src.teach.members });
     const w = { ...sw, title: s.title ?? sw.title };
-    const block = `Block ${s.block + 1} · ${HALF_LABEL[s.half]}`;
+    // Rotations L3: the arrangement's own rotation ('Rotation 2', 'Not scheduled'); the matcher's block and half only
+    // for a meeting with nothing arranged.
+    const block = started ? (s.rotation == null ? 'Not scheduled' : `Rotation ${s.rotation}`) : `Block ${s.block + 1} · ${HALF_LABEL[s.half]}`;
     const scouts = s.scouts.map((x) => scoutName.get(x.personId) ?? '').filter(Boolean).sort();
     const leaders = [s.teacherId, ...s.coTeacherIds].filter((id): id is number => id != null).map(teacher).filter(Boolean);
     return {

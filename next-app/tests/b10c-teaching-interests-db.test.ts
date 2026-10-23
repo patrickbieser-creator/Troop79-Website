@@ -106,6 +106,8 @@ afterEach(async () => {
 
 afterAll(async () => {
   if (scouts.length) await sb.from('scouts').delete().in('id', scouts);
+  // Rotations L3: a topic's classes first (their FK keeps a topic under a class).
+  await sb.from('meeting_classes').delete().eq('calendar_entry_id', meeting);
   await sb.from('meeting_topics').delete().eq('calendar_entry_id', meeting);
   await sb.from('calendar_entries').delete().eq('id', meeting);
   await sb.from('household_members').delete().in('household_id', households);

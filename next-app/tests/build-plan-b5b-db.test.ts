@@ -49,6 +49,8 @@ async function newMeeting(date: string): Promise<number> {
 async function clearTopics() {
   for (const id of meetings) {
     await sb.from('meeting_topic_teachers').delete().eq('calendar_entry_id', id);
+    // Rotations L3: a topic's classes first (their FK keeps a topic under a class).
+    await sb.from('meeting_classes').delete().eq('calendar_entry_id', id);
     await sb.from('meeting_topics').delete().eq('calendar_entry_id', id);
   }
 }

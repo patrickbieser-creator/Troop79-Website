@@ -43,6 +43,24 @@ export interface PlanRow {
   state: PlanState;
 }
 
+/** Rotations L3: an offering's class on the meeting's arrangement, as a Build row's rotation chips move it. */
+export interface RowClass {
+  /** 'c:<class id>', Live's card id. */
+  id: string;
+  /** Null = Not scheduled. */
+  rotation: number | null;
+  version: number;
+}
+
+/** Rotations L3: the arrangement as Build a Plan shows it: the rotation numbers, and each offering's classes by key. */
+export interface PlanArrangement {
+  rotations: number[];
+  classes: Record<string, RowClass[]>;
+}
+
+/** 'Rotation 1', 'Not scheduled'. */
+export const rotationLabel = (r: number | null) => (r == null ? 'Not scheduled' : `Rotation ${r}`);
+
 /** Each class on the board as a plan row: ready first, then the ones that need something, by code. */
 export function planRows(board: Pick<PlannerBoard, 'ready' | 'noTeacher' | 'offered'>): PlanRow[] {
   const origin = (seeded: boolean, scouts: number): PlanOrigin => (seeded ? 'planner' : scouts ? 'scouts' : 'teacher');
