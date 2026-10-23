@@ -5,7 +5,8 @@
  *   loadInviteTab       per offering, the teachers to ask and the scouts to offer it to, each with who the email would
  *                       reach (the Invite tab, B6). Bounded: the same round trips for one offering or all of them (pinned in a test).
  *   createInviteDigest  mints one row per invite (teach / pick, per recipient, as P1/P2 do) and groups them by
- *                       RECIPIENT: one email each. Who may be invited is re-decided here, whatever the sheet sent:
+ *                       RECIPIENT: one email each. B10b: a teacher's rows go on ONE answer page (meeting_mint_teach_page,
+ *                       no per-row token); scout offers keep a token each. Who may be invited is re-decided here, whatever the sheet sent:
  *                       a teach ask goes to an active adult with an address; a pick to a scout who can still pick it
  *                       (not done, in reach, not coming = no), hasn't picked it, with a parent who may act for them.
  *                       The 24-hour dedupe per (meeting, kind, topic, invitee, RECIPIENT) is checked for the reasons and
@@ -19,6 +20,7 @@ import { loadMeetingById } from '@/lib/meeting-board';
 import { nextRankOf, topicWords } from '@/lib/meeting-board-picklist';
 import { INVITE_DEDUPE_HOURS, inviteExpiresAt } from '@/lib/meeting-invites';
 import { hashSecret } from '@/lib/identity-challenge';
+import { mintTeachPage, type TeachLineSnapshot } from '@/lib/meeting-teach-pages';
 import { adultRecipients, loadInviteRows, loadScoutFamilies, NO_EMAIL_ON_FILE, randomInviteToken, scoutRecipientsMany, upcomingMeeting, type InviteHistory, type MailRecipient } from '@/lib/meeting-invites-db';
 import { loadHouseholds } from '@/lib/households';
 import { boardName } from '@/lib/meeting-board-shared';
@@ -173,7 +175,7 @@ export async function loadInviteTab(
 
 export interface DigestInvite {
   inviteId: number;
-  /** For the email only; never stored or logged. */
+  /** For the email only; never stored or logged. '' for a teach ask: it is answered on the recipient's page (B10b). */
   token: string;
   kind: InviteKind;
   key: string;
@@ -189,6 +191,8 @@ export interface DigestRecipient {
   /** The scout's own address (13 or older, verified). */
   isScout: boolean;
   invites: DigestInvite[];
+  /** B10b: the page every teach ask in this email is answered on (/i/teach/<token>). The token is for the email only. */
+  page?: { pageId: number; token: string };
 }
 
 export interface DigestSkip {
@@ -220,7 +224,12 @@ const ids = (xs: readonly number[]) => [...new Set(xs.filter((n) => Number.isInt
 export async function createInviteDigest(
   sb: SupabaseClient,
   input: DigestInput,
-  deps: { now?: Date; loadCatalog?: () => Promise<AdvancementCatalog> } = {}
+  deps: {
+    now?: Date;
+    loadCatalog?: () => Promise<AdvancementCatalog>;
+    /** B10b: each key's words (inviteWords), snapshotted on a teacher's page. */
+    words?: ReadonlyMap<string, { codeLabel: string; label: string; minutes: number | null } | null>;
+  } = {}
 ): Promise<CreateDigestResult> {
   const teach = input.teach.map((t) => ({ key: t.key.trim(), ids: ids(t.personIds) })).filter((t) => t.ids.length);
   const pick = input.pick.map((p) => ({ key: p.key.trim(), ids: ids(p.scoutIds) })).filter((p) => p.ids.length);
@@ -309,45 +318,92 @@ export async function createInviteDigest(
   if (emails > DIGEST_EMAIL_CAP) return { ok: false, error: `That would send ${emails} emails; one send makes at most ${DIGEST_EMAIL_CAP}.` };
   if (!plans.length) return { ok: true, recipients: [], skipped, helped };
 
-  const tokens = await Promise.all(plans.map(async () => {
-    const token = randomInviteToken();
-    return { token, hash: await hashSecret(token) };
-  }));
   const expiresAt = inviteExpiresAt(meeting.date);
-  const { data, error } = await sb.rpc('meeting_mint_invites', {
-    p_entry: input.entryId,
-    p_since: since,
-    p_rows: plans.map((x, i) => ({
-      kind: x.kind,
-      topic_key: x.key,
-      invitee_person_id: x.inviteeId,
-      recipient_person_id: x.recipientId,
-      sent_to: x.sentTo,
-      invitee_epoch: x.inviteeEpoch,
-      recipient_epoch: x.epoch,
-      token_hash: tokens[i].hash,
-      expires_at: expiresAt,
-      sent_by: input.sentBy
-    }))
-  });
   const told = new Set<string>();
   const tell = (x: Plan, reason: string) => {
     const id = `${x.kind}|${x.key}|${x.inviteeId}`;
     if (!told.has(id)) skipped.push({ personId: x.inviteeId, name: x.inviteeName, key: x.key, reason });
     told.add(id);
   };
-  if (error) {
-    for (const x of plans) tell(x, 'couldn’t be saved');
-    return { ok: true, recipients: [], skipped, helped };
-  }
-  const minted = new Map(((data ?? []) as { invite_id: number; kind: string; topic_key: string; invitee: number; recipient: number }[]).map((m) => [`${m.kind}|${m.topic_key}|${m.invitee}|${m.recipient}`, m.invite_id]));
   const recipients = new Map<number, DigestRecipient>();
-  plans.forEach((x, i) => {
-    const inviteId = minted.get(`${x.kind}|${x.key}|${x.inviteeId}|${x.recipientId}`);
-    if (inviteId == null) return tell(x, lateReason); // someone else's send got there first
+  const into = (x: Plan) => {
     const r = recipients.get(x.recipientId) ?? { recipientId: x.recipientId, name: x.recipientName, sentTo: x.sentTo, isScout: x.isScout, invites: [] };
-    r.invites.push({ inviteId, token: tokens[i].token, kind: x.kind, key: x.key, inviteeId: x.inviteeId, inviteeName: x.inviteeName });
     recipients.set(x.recipientId, r);
-  });
+    return r;
+  };
+
+  // B10b: a teacher's asks go on ONE page (/i/teach/<token>), minted with its rows in one transaction; the rows carry
+  // no token. Each page snapshots its classes' words and scouts, so the page reads only what the email said.
+  const teachPlans = plans.filter((x) => x.kind === 'teach');
+  const byTeacher = new Map<number, Plan[]>();
+  for (const x of teachPlans) byTeacher.set(x.recipientId, [...(byTeacher.get(x.recipientId) ?? []), x]);
+  for (const [recipientId, mine] of byTeacher) {
+    const lines: Record<string, TeachLineSnapshot> = {};
+    for (const x of mine) {
+      const w = deps.words?.get(x.key);
+      lines[x.key] = { code: w?.codeLabel ?? x.key, topic: w?.label ?? x.key, minutes: w?.minutes ?? null, helped: helped[x.key] ?? { count: 0, names: [], more: 0 } };
+    }
+    let page: Awaited<ReturnType<typeof mintTeachPage>> = null;
+    try {
+      page = await mintTeachPage(
+        sb,
+        { entryId: input.entryId, since, recipientId, epoch: mine[0].epoch, expiresAt, sentTo: mine[0].sentTo, sentBy: input.sentBy, lines, keys: mine.map((x) => x.key) },
+        randomInviteToken
+      );
+    } catch {
+      for (const x of mine) tell(x, 'couldn’t be saved');
+      continue;
+    }
+    const made = new Map((page?.invites ?? []).map((i) => [i.key, i.inviteId]));
+    for (const x of mine) {
+      const inviteId = made.get(x.key);
+      if (inviteId == null) {
+        tell(x, lateReason); // someone else's send got there first
+        continue;
+      }
+      const r = into(x);
+      r.page = { pageId: page!.pageId, token: page!.token };
+      r.invites.push({ inviteId, token: '', kind: 'teach', key: x.key, inviteeId: x.inviteeId, inviteeName: x.inviteeName });
+    }
+  }
+
+  // Scout offers keep their per-invite links (P2), minted as before.
+  const pickPlans = plans.filter((x) => x.kind === 'pick');
+  if (pickPlans.length) {
+    const tokens = await Promise.all(
+      pickPlans.map(async () => {
+        const token = randomInviteToken();
+        return { token, hash: await hashSecret(token) };
+      })
+    );
+    const { data, error } = await sb.rpc('meeting_mint_invites', {
+      p_entry: input.entryId,
+      p_since: since,
+      p_rows: pickPlans.map((x, i) => ({
+        kind: x.kind,
+        topic_key: x.key,
+        invitee_person_id: x.inviteeId,
+        recipient_person_id: x.recipientId,
+        sent_to: x.sentTo,
+        invitee_epoch: x.inviteeEpoch,
+        recipient_epoch: x.epoch,
+        token_hash: tokens[i].hash,
+        expires_at: expiresAt,
+        sent_by: input.sentBy
+      }))
+    });
+    if (error) {
+      for (const x of pickPlans) tell(x, 'couldn’t be saved');
+    } else {
+      const minted = new Map(((data ?? []) as { invite_id: number; kind: string; topic_key: string; invitee: number; recipient: number }[]).map((m) => [`${m.kind}|${m.topic_key}|${m.invitee}|${m.recipient}`, m.invite_id]));
+      pickPlans.forEach((x, i) => {
+        const inviteId = minted.get(`${x.kind}|${x.key}|${x.inviteeId}|${x.recipientId}`);
+        if (inviteId == null) return tell(x, lateReason); // someone else's send got there first
+        into(x).invites.push({ inviteId, token: tokens[i].token, kind: x.kind, key: x.key, inviteeId: x.inviteeId, inviteeName: x.inviteeName });
+      });
+    }
+  }
+  // A recipient whose every row was a duplicate gets no email.
+  for (const [id, r] of recipients) if (!r.invites.length) recipients.delete(id);
   return { ok: true, recipients: [...recipients.values()], skipped, helped };
 }

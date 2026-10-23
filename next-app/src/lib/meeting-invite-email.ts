@@ -127,17 +127,21 @@ export const INVITE_DIGEST_KIND = 'meeting.invite_digest';
 
 /**
  * Build a Plan B3 (Plans/Build-A-Plan.md Decision 2): ONE email per recipient for a meeting, listing every invite for
- * them (teach asks and scout offers). Each invite keeps its own answer link, and the list rides below the body (never a
- * template field), so no template can drop or rewrite a link.
+ * them (teach asks and scout offers). Each scout offer keeps its own answer link; a teacher's asks share ONE button to
+ * their answer page (B10b). The list rides below the body (never a template field), so no template can drop or rewrite
+ * a link.
  */
 export const DEFAULT_INVITE_DIGEST: InviteTemplate = {
   subject: 'Troop meeting on [day]: invites for [people]',
   body: `Hi [name],
 
-We're planning the troop meeting on [day] and would like to ask [people] about the classes below. Each one has its own link, so answer them one at a time. Yes on a class to work on makes it the first pick and marks them coming. You don't need to sign in.
+We're planning the troop meeting on [day] and would like to ask [people] about the classes below. Answer with the links under them. Yes on a class to work on makes it the first pick and marks them coming. You don't need to sign in.
 
 Questions? Reply to a leader, not to this email.`
 };
+
+/** B10b: the one button under a digest's teach lines. */
+export const TEACH_PAGE_BUTTON = 'Choose what you’ll teach →';
 
 export interface DigestValues {
   name: string;
@@ -163,17 +167,19 @@ export interface DigestItem {
 
 /**
  * The digest, with the invites listed under the body: teach asks first, then each scout's offers. A teach line (B10a)
- * reads "**Ten 3a** Square Knot use (about 20 min): 3 scouts (Finn P, Anjali S, Leo K)", then its own answer link;
- * the scout and parent lines are unchanged.
+ * reads "**Ten 3a** Square Knot use (about 20 min): 3 scouts (Finn P, Anjali S, Leo K)" with no link of its own; one
+ * "Choose what you'll teach →" button follows the teach lines (B10b, the url of the teach items). The scout and
+ * parent lines are unchanged.
  */
 export function renderInviteDigest(t: InviteTemplate, v: DigestValues, items: readonly DigestItem[]): { subject: string; md: string } {
   const vals: Record<string, string> = { name: v.name, people: v.people, day: v.day };
   const line = (i: DigestItem, label: string) => `- **${i.code}** ${i.topic}${i.minutes ? ` (${i.minutes})` : ''}: **[${label}](${i.url})**`;
+  // B10b: teach lines carry no link of their own; ONE button opens the page where every class is answered.
   const teachLine = (i: DigestItem) =>
-    `- **${shortCode(i.code)}** ${i.topic}${i.minutes ? ` (${i.minutes})` : ''}: ${scoutsHelpedText(i.helped ?? { count: 0, names: [], more: 0 })} · **[Answer](${i.url})**`;
+    `- **${shortCode(i.code)}** ${i.topic}${i.minutes ? ` (${i.minutes})` : ''}: ${scoutsHelpedText(i.helped ?? { count: 0, names: [], more: 0 })}`;
   const blocks: string[] = [];
   const teach = items.filter((i) => i.kind === 'teach');
-  if (teach.length) blocks.push(`**Can you teach?**\n\n${teach.map(teachLine).join('\n')}`);
+  if (teach.length) blocks.push(`**Can you teach?**\n\n${teach.map(teachLine).join('\n')}\n\n**[${TEACH_PAGE_BUTTON}](${teach[0].url})**`);
   const scouts = [...new Set(items.filter((i) => i.kind === 'pick').map((i) => i.inviteeName))];
   for (const who of scouts) {
     const mine = items.filter((i) => i.kind === 'pick' && i.inviteeName === who);

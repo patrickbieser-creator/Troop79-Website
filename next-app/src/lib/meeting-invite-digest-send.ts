@@ -3,8 +3,10 @@
  * The CALLER decides who may send (an adult holding meeting_planner.edit) and which teachers qualify; who may be
  * invited at all is re-decided in createInviteDigest.
  *
- * Each recipient's email lists every invite for them (teach asks, then each scout's offers), each with its own /i/<token>
- * link answering exactly one invite (the P1/P2 capability, unchanged). Send safety follows the reminder sender (P5b,
+ * Each recipient's email lists every invite for them (teach asks, then each scout's offers). A scout offer has its own
+ * /i/<token> link answering exactly one invite (P2, unchanged); a teacher's asks are answered on ONE page,
+ * /i/teach/<token> (B10b), whose older page is superseded only once this email went out (a failed email deletes the
+ * new page and leaves the old one working). Send safety follows the reminder sender (P5b,
  * qa-lead 2026-10-22): emails go out REMINDER_BATCH at a time, each with a REMINDER_EMAIL_TIMEOUT_MS timeout; a
  * recipient's rows are deleted the moment their email fails, throws or times out; no new batch starts after
  * REMINDER_TIME_BUDGET_MS (the rest are deleted and reported); and a final sweep deletes anything still unsent.
@@ -20,6 +22,7 @@ import { INVITE_SENDER_NAME } from '@/lib/meeting-invites';
 import { deleteInvites } from '@/lib/meeting-invites-db';
 import { EMAIL_TIMED_OUT, inviteWords, REMINDER_BATCH, REMINDER_EMAIL_TIMEOUT_MS, REMINDER_TIME_BUDGET_MS, sendEmailWithin } from '@/lib/meeting-invites-send';
 import { createInviteDigest, type DigestInput, type DigestRecipient } from '@/lib/meeting-invite-digest-db';
+import { deleteTeachPages, supersedeOlderTeachPages } from '@/lib/meeting-teach-pages';
 import { digestPeople } from '@/lib/meeting-invite-digest';
 import { siteUrl } from '@/lib/site-url';
 import { parentPs, personIdsWithEmail, scoutFirstNames } from '@/lib/parent-email';
@@ -49,7 +52,7 @@ export async function sendInviteDigests(
   const unnamed = keys.filter((k) => !words.get(k));
   if (unnamed.length === keys.length) return { ok: false, error: 'Those can’t be invited for yet.' };
   const named = (k: string) => !unnamed.includes(k);
-  const made = await createInviteDigest(sb, { ...input, teach: input.teach.filter((t) => named(t.key)), pick: input.pick.filter((p) => named(p.key)) }, deps);
+  const made = await createInviteDigest(sb, { ...input, teach: input.teach.filter((t) => named(t.key)), pick: input.pick.filter((p) => named(p.key)) }, { ...deps, words });
   if (!made.ok) return made;
 
   const code = (k: string) => words.get(k)?.codeLabel ?? k;
@@ -57,6 +60,8 @@ export async function sendInviteDigests(
   for (const k of unnamed) skipped.push({ name: k, reason: 'can’t be invited for yet' });
   const sent = new Set<string>();
   const unsent = new Set(made.recipients.flatMap((r) => r.invites.map((i) => i.inviteId)));
+  // B10b: a teacher's new page, kept only once their email went out.
+  const unsentPages = new Set(made.recipients.flatMap((r) => (r.page ? [r.page.pageId] : [])));
   let emails = 0;
 
   try {
@@ -91,7 +96,8 @@ export async function sendInviteDigests(
             code: w.codeLabel,
             topic: w.label,
             minutes: i.kind === 'teach' ? minutesText(w.minutes) : '',
-            url: `${siteUrl()}/i/${i.token}`,
+            // B10b: every teach ask is answered on the recipient's one page; a scout offer keeps its own link.
+            url: i.kind === 'teach' && r.page ? `${siteUrl()}/i/teach/${r.page.token}` : `${siteUrl()}/i/${i.token}`,
             // B10a: the scouts a teach ask would help, as createInviteDigest snapshotted them for this send.
             helped: i.kind === 'teach' ? made.helped?.[i.key] : undefined
           };
@@ -107,6 +113,11 @@ export async function sendInviteDigests(
             unsent.delete(i.inviteId);
             sent.add(i.inviteeName);
           }
+          if (r.page) {
+            unsentPages.delete(r.page.pageId);
+            // Only now that this email went out does its page replace the older one (whose classes move onto it).
+            await supersedeOlderTeachPages(sb, r.page.pageId).catch(() => false);
+          }
           return;
         }
         if (res !== EMAIL_TIMED_OUT && res.status === 'skipped') reason = 'email isn’t set up on this server';
@@ -114,6 +125,12 @@ export async function sendInviteDigests(
         // Reported and deleted below, like any email that didn't go out.
       }
       skipped.push({ name: r.name, reason });
+      // The new page (and its rows) goes; any older page stays as it was, still answerable.
+      if (r.page) {
+        const pageId = r.page.pageId;
+        unsentPages.delete(pageId);
+        if (!(await deleteTeachPages(sb, [pageId]).catch(() => false))) unsentPages.add(pageId);
+      }
       const gone = r.invites.map((i) => i.inviteId);
       for (const id of gone) unsent.delete(id);
       if (!(await deleteInvites(sb, gone).catch(() => false))) for (const id of gone) unsent.add(id); // the final sweep tries again
@@ -127,7 +144,8 @@ export async function sendInviteDigests(
       await Promise.all(made.recipients.slice(i, i + REMINDER_BATCH).map(sendOne));
     }
   } finally {
-    // Whoever wasn't reached keeps no invite row (and no live link nobody has).
+    // Whoever wasn't reached keeps no invite row or page (and no live link nobody has).
+    await deleteTeachPages(sb, [...unsentPages]);
     await deleteInvites(sb, [...unsent]);
   }
   if (emails) {

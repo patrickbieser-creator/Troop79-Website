@@ -184,11 +184,11 @@ describe('a reminder row is not an invite', () => {
 
   it('Reminder_Row_WithAToken_IsRejected', async () => {
     const { error } = await sb.from('meeting_invites').insert(row({ token_hash: 'f'.repeat(64) }));
-    expect(error?.message).toMatch(/meeting_invites_remind_has_no_token/);
+    expect(error?.message).toMatch(/meeting_invites_token_or_page/);
   });
 
   it('InviteRow_WithNoToken_IsRejected', async () => {
     const { error } = await sb.from('meeting_invites').insert(row({ kind: 'teach', topic_key: 'tenderfoot-1a' }));
-    expect(error?.message).toMatch(/meeting_invites_remind_has_no_token/);
+    expect(error?.message).toMatch(/meeting_invites_token_or_page/);
   });
 });
