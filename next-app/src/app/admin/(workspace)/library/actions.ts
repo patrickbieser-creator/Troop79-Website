@@ -180,10 +180,10 @@ export async function restoreResourceAction(formData: FormData): Promise<void> {
  *  has this exact requirement — the error surfaces on the Proof Queue tab so
  *  the leader can Return it instead. */
 export async function approveSubmissionAction(formData: FormData): Promise<void> {
-  const reviewer = await guard();
+  const session = await requireCapability('library.moderate');
   const id = Number(formData.get('id'));
   if (!Number.isFinite(id) || id <= 0) fail('proof', 'Invalid submission id');
-  const { error } = await approveSubmission(createAdminClient(), id, reviewer);
+  const { error } = await approveSubmission(createAdminClient(), id, session.label, session.personId);
   if (error) fail('proof', error);
   await recordAudit({ area: 'library', action: 'approve', entityType: 'submission', entityId: id, summary: `Approved submission #${id}` });
   revalidatePath(ADMIN_PATH);

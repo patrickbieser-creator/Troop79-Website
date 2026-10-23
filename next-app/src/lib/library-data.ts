@@ -27,6 +27,8 @@ import { notifyReviewOutcome } from '@/lib/review-notifications';
 import { fmtDate } from '@/lib/format-date';
 import { buildReqTree, type ReqNode } from '@/lib/mb-helpers';
 import { expirePeopleLists } from '@/lib/people-lists';
+import { centralToday } from '@/lib/dates';
+import { initialsFor } from '@/lib/initials';
 
 export interface PlacedResource extends LibraryResource {
   placement: Pick<LibraryPlacement, 'id' | 'pinned' | 'sort_order' | 'target_kind' | 'target_key'>;
@@ -723,17 +725,33 @@ export async function loadActiveScoutsList(
   }));
 }
 
+/** The ledger's "Signed-Off By" for a reviewer: their leader code, else their initials. */
+async function signerCode(supabase: SupabaseClient, reviewer: string, personId: number | null): Promise<string> {
+  if (personId != null) {
+    const { data } = await supabase.from('leaders').select('code').eq('person_id', personId).limit(1).maybeSingle();
+    const code = (data as { code: string | null } | null)?.code?.trim();
+    if (code) return code;
+  }
+  return initialsFor(reviewer) || reviewer;
+}
+
 /**
  * Approves a pending proof submission: writes exactly the ledger row Fast
  * Entry would (same dup-blocked path, D-041) and back-links ledger_entry_id.
  * Blocked — not silently dropped — if the scout already has this exact
  * requirement, so the leader can choose to Return instead with feedback
  * rather than the approval vanishing with no explanation.
+ *
+ * Signed like Fast Entry (2026-10-22): `by` is the approving leader's code ("PB",
+ * leaders.code for `reviewerPersonId`), or the reviewer's initials when they have
+ * no code; `date` is today in Central (the UTC date was tomorrow after 7 PM).
+ * `entered_by` and `reviewed_by` stay the reviewer's label.
  */
 export async function approveSubmission(
   supabase: SupabaseClient,
   id: number,
-  reviewer: string
+  reviewer: string,
+  reviewerPersonId: number | null = null
 ): Promise<{ error: string | null; ledgerEntryId?: number }> {
   // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
   expirePeopleLists();
@@ -755,16 +773,19 @@ export async function approveSubmission(
     };
   }
 
-  const resolved = await resolveRequirementLabel(supabase, submission.target_kind, submission.target_key);
+  const [resolved, signer] = await Promise.all([
+    resolveRequirementLabel(supabase, submission.target_kind, submission.target_key),
+    signerCode(supabase, reviewer, reviewerPersonId)
+  ]);
   const { data: ledgerRow, error: ledgerErr } = await supabase
     .from('ledger_entries')
     .insert({
       scout_id: submission.scout_id,
-      date: new Date().toISOString().slice(0, 10),
+      date: centralToday(),
       kind,
       code: submission.target_key,
       label: resolved?.label ?? null,
-      by: reviewer,
+      by: signer,
       qty: 1,
       unit: 'complete',
       notes: 'Approved from a scout/family proof submission (Resource Library).',
