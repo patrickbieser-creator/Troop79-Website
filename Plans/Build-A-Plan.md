@@ -1,6 +1,6 @@
 # Build a Plan
 
-**Status:** IN PROGRESS — B0–B10 + Rotations L0 LIVE (v1.246.0–v1.253.0, main 33cd8034, 2026-10-23); Rotations L1–L3 next
+**Status:** COMPLETE — B0–B10 + Rotations L0–L3 LIVE (v1.246.0–v1.254.0, 2026-10-23). Meeting Live is now Rotations.
 
 **meeting_plans table kept (one published snapshot, 2026-10-18); drop after Patrick confirms.** B4 retired every reader and writer in src/; the drop is a contraction migration of its own (code-first), guarded to refuse while recent published rows exist.
 **Priority:** High: "likely to be the primary method of interacting with the meeting planner".
@@ -339,7 +339,7 @@ Live drift apart (plan = topic teachers, picks and intents; Live = class teacher
 - Lock order: pick and answer writers take the board lock, then the Live lock (`_meeting_live_lock_if_started`), then
   write. Live edits never take a board lock. The merge_people vs Live-move edge is accepted.
 
-**L2 (migration 20261225100000):**
+**L2 (LIVE, migration 20261225100000):** (qa follow-up: a card's teacher becomes the topic's `lead`; nobody's sign-up is deleted; Can't teachers refused; "No teacher yet" is that class only)
 - `meeting_classes.auto` / `teacher_override`, and `meeting_topics.class_set_aside_at`.
 - "On the plan" = seeded, a teacher who hasn't said Can't, or a Coming scout's current pick.
 - Reconcile makes a Not scheduled auto class per topic on the plan. It removes empty auto classes that leave the plan.
@@ -350,7 +350,7 @@ Live drift apart (plan = topic teachers, picks and intents; Live = class teacher
 - Start signs the matcher's class teachers up for their topics.
 - Topic and teacher writers take the Live lock up front. Needs attention no longer flags a repeat's teacher.
 
-**L3 design:**
+**L3 (LIVE, migration 20261226100000) design:** (qa follow-ups: /member/meeting shows only taught classes via `taughtOnly`; Reset refused once the meeting is over)
 - **Auto-start:** `meeting_reconcile` begins an empty arrangement (rotations 1 and 2) on an upcoming, published, open
   meeting as soon as anything is on its plan. There is no Start button. Rotations shows the arrangement from the
   plan's first offering. A meeting with nothing planned shows an empty state that points at Build a Plan.
