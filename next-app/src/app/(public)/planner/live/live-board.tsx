@@ -16,13 +16,17 @@
  * confirm when the meeting is in the future. "More actions…" holds "Discard Live arrangement" behind a danger Dialog
  * that names what goes and what stays. Every write tells the server whether this screen showed Live started, so a tab
  * left open after a Discard gets "someone else changed this" instead of silently restarting Live.
+ * Rotations L0 (Plans/Build-A-Plan.md, "Rotations"): on a started arrangement, "Needs attention (n)" at the top lists
+ * where the plan and the arrangement disagree, each with its one-click fix (editors only; viewers see the list). Each
+ * case is also marked in place: the card or chip outlined in red, the sentence on the card. Keep / Keep as extra hide a
+ * line for this visit only (component state: nothing is saved, a reload brings it back; L1 makes it stick).
  */
 import { useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/app/_components/button';
 import { Drawer } from '@/app/_components/drawer';
 import { ConfirmDialog, LiveMoreActions } from './live-dialogs';
-import type { LiveCard, LiveView } from '@/lib/meeting-live-shared';
+import { driftText, type LiveCard, type LiveDrift, type LiveView } from '@/lib/meeting-live-shared';
 import {
   plannerLiveAddClassAction,
   plannerLiveAddRotationAction,
@@ -37,6 +41,8 @@ import {
   plannerLiveSetPresentAction,
   plannerLiveSetTeacherAction,
   plannerLiveStartAction,
+  plannerLiveMakeClassAction,
+  plannerLiveUseClassTeacherAction,
   type LiveWriteResult
 } from '../live-actions';
 import styles from './live.module.css';
@@ -94,17 +100,20 @@ export const startConfirmText = (label: string) => `Start Meeting Live for ${lab
 const CLOSED: LiveAttendanceProp = { open: false, note: null };
 
 /** A chip's spoken name: who, whether they're here (on the meeting day), retake, visitor. Undefined = just the name. */
-function chipLabel(name: string, m: { present?: boolean; retake?: boolean; visitor?: boolean }, open: boolean): string | undefined {
+function chipLabel(name: string, m: { present?: boolean; retake?: boolean; visitor?: boolean; picks?: readonly string[] }, open: boolean): string | undefined {
+  const picked = m.picks?.length ? `, picked ${m.picks.join(', ')}` : '';
   const label = `${name}${open ? (m.present ? ', here' : ', not here') : ''}${m.retake ? ', retake: already completed this' : ''}${m.visitor ? ', visitor' : ''}`;
-  return label === name ? undefined : label;
+  if (label === name) return undefined;
+  return `${label}${picked}`;
 }
 
 /** A chip's face: ✓ when here (meeting day), the name, a visitor tag, the retake star. */
-function ChipFace({ name, present, visitor, retake, open }: { name: string; present?: boolean; visitor?: boolean; retake?: boolean; open: boolean }) {
+function ChipFace({ name, present, visitor, retake, open, picks }: { name: string; present?: boolean; visitor?: boolean; retake?: boolean; open: boolean; picks?: readonly string[] }) {
   return (
     <>
       {open && present ? '✓ ' : ''}
       {name}
+      {picks?.length ? <span className={styles.chipPicks}>{picks.join(', ')}</span> : null}
       {visitor ? <span className={styles.visitorTag}>visitor</span> : null}
       {retake ? (
         <span className={styles.star} aria-hidden="true">
@@ -157,6 +166,20 @@ export function LiveBoard({
   const [over, setOver] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<'start' | 'discard' | null>(null);
   const [startedNote, setStartedNote] = useState(false);
+  /** L0: lines hidden with Keep / Keep as extra, for this visit only. */
+  const [kept, setKept] = useState<ReadonlySet<string>>(() => new Set());
+  const drift = view.started ? view.drift.filter((d) => !kept.has(d.id)) : [];
+  const keep = (id: string) => setKept((k) => new Set([...k, id]));
+  // Marked in place: a card's sentences, and the chips (placed or waiting) a line is about.
+  const cardProblems = new Map<string, string[]>();
+  const badMember = new Set<string>();
+  const badPool = new Set<number>();
+  for (const d of drift) {
+    if (d.kind === 'pick') badPool.add(d.personId);
+    if (d.kind === 'offering' || d.kind === 'pick') continue;
+    cardProblems.set(d.classId, [...(cardProblems.get(d.classId) ?? []), driftText(d)]);
+    if (d.kind === 'cant' || d.kind === 'dropped') badMember.add(`${d.classId}|${d.personId}`);
+  }
   // After a Discard, the More actions trigger is gone: focus goes to Start once the refreshed view shows it (B8 qa).
   const focusStart = useRef(false);
   const startWrap = useRef<HTMLSpanElement | null>(null);
@@ -341,6 +364,20 @@ export function LiveBoard({
         </ConfirmDialog>
       ) : null}
 
+      {drift.length ? (
+        <NeedsAttention
+          drift={drift}
+          canEdit={canEdit}
+          busy={busy}
+          onKeep={keep}
+          onMakeClass={(key) => run(() => plannerLiveMakeClassAction({ entryId, key }))}
+          onRemoveScout={(personId, classId) => moveScout(personId, classId, null)}
+          onUsePlan={(d) => run(() => plannerLiveSetTeacherAction({ entryId, classId: d.classId, version: d.version, teacherId: d.plan.personId }))}
+          onUseClass={(d, teacherId) => run(() => plannerLiveUseClassTeacherAction({ entryId, classId: d.classId, version: d.version, teacherId }))}
+          onRemoveClass={(d) => run(() => plannerLiveRemoveClassAction({ entryId, classId: d.classId, version: d.version }))}
+        />
+      ) : null}
+
       <div className={styles.switcher}>
         <div className={styles.tabs} role="tablist" aria-label="Rotations">
           {columns.map((c) => {
@@ -441,7 +478,7 @@ export function LiveBoard({
                   {...dropZone('pool', (d) => d.t === 'scout' && d.from && moveScout(d.personId, d.from, null))}
                 >
                   <h3 id="live-pool" className={styles.poolTitle}>
-                    Coming, nothing assigned · {view.pool.length}
+                    Not in a class yet · {view.pool.length}
                   </h3>
                   {view.pool.length ? (
                     <ul className={styles.chips}>
@@ -450,6 +487,7 @@ export function LiveBoard({
                           key={p.personId}
                           className={canEdit ? styles.chipItem : attendance.open && !p.present ? styles.chipOut : styles.chip}
                           aria-label={canEdit ? undefined : chipLabel(p.name, p, attendance.open)}
+                          data-problem={badPool.has(p.personId) ? 'true' : undefined}
                         >
                           {canEdit ? (
                             <button
@@ -473,10 +511,10 @@ export function LiveBoard({
                                 })
                               }
                             >
-                              <ChipFace name={p.name} present={p.present} visitor={p.visitor} open={attendance.open} />
+                              <ChipFace name={p.name} present={p.present} visitor={p.visitor} open={attendance.open} picks={p.picks} />
                             </button>
                           ) : (
-                            <ChipFace name={p.name} present={p.present} visitor={p.visitor} open={attendance.open} />
+                            <ChipFace name={p.name} present={p.present} visitor={p.visitor} open={attendance.open} picks={p.picks} />
                           )}
                         </li>
                       ))}
@@ -499,6 +537,8 @@ export function LiveBoard({
                   open={attendance.open}
                   draggable={fine}
                   over={over === x.id}
+                  problems={cardProblems.get(x.id) ?? []}
+                  badMember={(personId) => badMember.has(`${x.id}|${personId}`)}
                   rotations={view.rotations.map((r) => r.number)}
                   onMove={(r) => moveClass(x, r)}
                   onTeacher={() => setSheet({ kind: 'teacher', card: x })}
@@ -631,6 +671,8 @@ function LiveCardView({
   open,
   draggable,
   over,
+  problems,
+  badMember,
   rotations,
   onMove,
   onTeacher,
@@ -646,6 +688,9 @@ function LiveCardView({
   open: boolean;
   draggable: boolean;
   over: boolean;
+  /** L0: what the plan disagrees with on this card (outlined in red, each sentence on the card). */
+  problems: string[];
+  badMember: (personId: number) => boolean;
   rotations: number[];
   onMove: (rotation: number | null) => void;
   onTeacher: () => void;
@@ -669,6 +714,7 @@ function LiveCardView({
       className={`${styles.card} ${kind}`}
       aria-labelledby={`live-card-${card.id}`}
       data-over={over ? 'true' : undefined}
+      data-problem={problems.length ? 'true' : undefined}
       draggable={canEdit && draggable}
       onDragStart={canEdit ? onDragStartCard : undefined}
       {...drop}
@@ -710,7 +756,7 @@ function LiveCardView({
         <ul className={styles.chips}>
           {card.members.map((m) =>
             canEdit ? (
-              <li key={m.personId} className={styles.chipItem}>
+              <li key={m.personId} className={styles.chipItem} data-problem={badMember(m.personId) ? 'true' : undefined}>
                 <button
                   type="button"
                   className={open && !m.present ? styles.chipBtnOut : styles.chipBtn}
@@ -723,7 +769,12 @@ function LiveCardView({
                 </button>
               </li>
             ) : (
-              <li key={m.personId} className={open && !m.present ? styles.chipOut : styles.chip} aria-label={chipLabel(m.name, m, open)}>
+              <li
+                key={m.personId}
+                className={open && !m.present ? styles.chipOut : styles.chip}
+                aria-label={chipLabel(m.name, m, open)}
+                data-problem={badMember(m.personId) ? 'true' : undefined}
+              >
                 <ChipFace name={m.name} present={m.present} visitor={m.visitor} retake={m.retake} open={open} />
               </li>
             )
@@ -740,6 +791,11 @@ function LiveCardView({
         <p className={styles.quiet}>No scouts yet.</p>
       )}
       {card.conflicts.map((line) => (
+        <p key={line} className={styles.conflict}>
+          {line}
+        </p>
+      ))}
+      {problems.map((line) => (
         <p key={line} className={styles.conflict}>
           {line}
         </p>
@@ -762,6 +818,106 @@ function LiveCardView({
         </div>
       ) : null}
     </article>
+  );
+}
+
+/**
+ * Rotations L0: "Needs attention (n)". One line per drift case, each with its fix. Viewers get the lines only. Each
+ * button's name is its visible words; the line it fixes is its description.
+ */
+function NeedsAttention({
+  drift,
+  canEdit,
+  busy,
+  onKeep,
+  onMakeClass,
+  onRemoveScout,
+  onUsePlan,
+  onUseClass,
+  onRemoveClass
+}: {
+  drift: LiveDrift[];
+  canEdit: boolean;
+  busy: boolean;
+  onKeep: (id: string) => void;
+  onMakeClass: (key: string) => void;
+  onRemoveScout: (personId: number, classId: string) => void;
+  onUsePlan: (d: Extract<LiveDrift, { kind: 'teacher' }>) => void;
+  onUseClass: (d: Extract<LiveDrift, { kind: 'teacher' }>, teacherId: number) => void;
+  onRemoveClass: (d: Extract<LiveDrift, { kind: 'orphan' }>) => void;
+}) {
+  const fixes = (d: LiveDrift, textId: string): ReactNode => {
+    const common = { size: 'sm' as const, disabled: busy, 'aria-describedby': textId };
+    switch (d.kind) {
+      case 'offering':
+        return (
+          <Button {...common} onClick={() => onMakeClass(d.key)}>
+            Make a class
+          </Button>
+        );
+      case 'pick':
+        return (
+          <Button {...common} onClick={() => onMakeClass(d.key)}>
+            Create class and place
+          </Button>
+        );
+      case 'cant':
+      case 'dropped':
+        return (
+          <>
+            <Button {...common} onClick={() => onRemoveScout(d.personId, d.classId)}>
+              Remove from class
+            </Button>
+            <Button {...common} variant="ghost" onClick={() => onKeep(d.id)}>
+              Keep
+            </Button>
+          </>
+        );
+      case 'teacher':
+        return (
+          <>
+            <Button {...common} variant="secondary" onClick={() => onUsePlan(d)}>
+              {`Use ${d.plan.name}`}
+            </Button>
+            {d.current ? (
+              <Button {...common} variant="secondary" onClick={() => onUseClass(d, d.current!.personId)}>
+                {`Use ${d.current.name}`}
+              </Button>
+            ) : null}
+          </>
+        );
+      case 'orphan':
+        return (
+          <>
+            <Button {...common} variant="ghost" onClick={() => onKeep(d.id)}>
+              Keep as extra
+            </Button>
+            <Button {...common} variant="danger" onClick={() => onRemoveClass(d)}>
+              Remove class
+            </Button>
+          </>
+        );
+    }
+  };
+  return (
+    <section className={styles.attention} aria-labelledby="live-attention">
+      <h2 id="live-attention" className={styles.attentionTitle}>
+        {`Needs attention (${drift.length})`}
+      </h2>
+      <ul className={styles.attentionList}>
+        {drift.map((d, i) => {
+          const textId = `live-attention-${i}`;
+          return (
+            <li key={d.id} className={styles.attentionItem}>
+              <p id={textId} className={styles.attentionText}>
+                {driftText(d)}
+              </p>
+              {canEdit ? <span className={styles.attentionActions}>{fixes(d, textId)}</span> : null}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 
@@ -879,7 +1035,7 @@ function LiveSheet({
     const targets = view.cards.filter((o) => o.id !== from?.id);
     const isHere = (from ? from.members : view.pool).find((m) => m.personId === personId)?.present ?? false;
     return (
-      <Drawer eyebrow={from ? `${from.title} · ${rotWord(from.rotation)}` : 'Coming, nothing assigned'} title={sheet.name} onClose={onClose}>
+      <Drawer eyebrow={from ? `${from.title} · ${rotWord(from.rotation)}` : 'Not in a class yet'} title={sheet.name} onClose={onClose}>
         <ul className={styles.sheetList}>
           {open ? (
             <SheetRow note={isHere ? 'Not here, for the attendance check' : 'Here, for the attendance check'} onClick={() => onPresent(personId, !isHere)}>
@@ -887,7 +1043,7 @@ function LiveSheet({
             </SheetRow>
           ) : null}
           {from ? (
-            <SheetRow danger note="Back to “nothing assigned”" onClick={() => onMoveScout(personId, from.id, null)}>
+            <SheetRow danger note="Back to “Not in a class yet”" onClick={() => onMoveScout(personId, from.id, null)}>
               Remove from this class
             </SheetRow>
           ) : null}
@@ -935,7 +1091,7 @@ function LiveSheet({
         <ul className={styles.sheetList}>
           <SheetRow
             danger
-            note={c.members.length ? `${plural(c.members.length, 'scout')} go back to “nothing assigned”` : undefined}
+            note={c.members.length ? `${plural(c.members.length, 'scout')} go back to “Not in a class yet”` : undefined}
             onClick={() => onRemove(c)}
           >
             Remove this class
@@ -964,7 +1120,7 @@ function LiveSheet({
             .map((s) => (
               <SheetRow
                 key={s.personId}
-                note={pool.has(s.personId) ? 'coming, nothing assigned' : undefined}
+                note={pool.has(s.personId) ? 'not in a class yet' : undefined}
                 onClick={() => (c ? onMoveScout(s.personId, null, c.id) : onPresent(s.personId, true))}
               >
                 {s.name}

@@ -67,8 +67,9 @@ const VIEW: LiveView = {
     card({ id: 's:b', rotation: 2, teacher: { personId: 11, name: 'Rachel D', present: false }, members: [{ personId: 1, name: 'Finn P', retake: false, present: false, visitor: false }], repeats: [1], conflicts: ['Finn P also in the Rotation 1 repeat of this class'] }),
     card({ id: 's:c', rotation: null, topicKey: 'scout-1a', title: 'Oath, Law, motto, slogan', codeLabel: 'Scout 1a', teacher: null })
   ],
-  pool: [{ personId: 4, name: 'Simon P', present: false, visitor: false }],
-  overlaps: 1
+  pool: [{ personId: 4, name: 'Simon P', present: false, visitor: false, picks: [] }],
+  overlaps: 1,
+  drift: []
 };
 
 afterEach(() => {

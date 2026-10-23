@@ -12,18 +12,22 @@
  *   - B8 (D-429): presence on Live is a DRAFT (meeting_live_presence); nothing here writes attendance on its own. After
  *     the meeting, loadAttendancePrompt / loadAttendanceReview give the approval checklist, and the server action
  *     records only the differences through Roll Call's cascade. discardMeetingLive undoes Live.
+ *   - Rotations L0: loadLiveView carries the drift (liveDrift) from what it already loads; loadMakeClass and
+ *     loadClassForTeacherFix are the reads behind the strip's two composed fixes.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { loadAdvancementCatalog, type AdvancementCatalog } from '@/lib/advancement-catalog';
-import { loadBoardState, loadPeopleNames, loadScoutProgress, type BoardMeeting, type BoardScoutRow } from '@/lib/meeting-board';
+import { loadBoardState, loadIntents, loadPeopleNames, loadScoutProgress, type BoardMeeting, type BoardScoutRow } from '@/lib/meeting-board';
 import { boardName, effectiveIntent } from '@/lib/meeting-board-shared';
 import { isPickFinished, rankTrees } from '@/lib/meeting-board-picklist';
 import { sessionWords, type MatchResult } from '@/lib/meeting-board-match';
 import { loadLiveMatch, loadTeachBoard, loadTeacherPeople, sanitizeRpcError, type TeachBoard } from '@/lib/meeting-board-supply';
 import { teacherName } from '@/lib/meeting-board-teach';
+import { shortRequirement } from '@/lib/rank-abbrev';
 import {
   buildAttendanceReview,
   buildLiveView,
+  liveDrift,
   meetingIsOver,
   placementAsMatch,
   previewId,
@@ -152,6 +156,8 @@ export async function loadLiveView(sb: SupabaseClient, meeting: BoardMeeting): P
   let classes: LiveClassIn[];
   let rotations: LiveView['rotations'];
   let pool: number[];
+  /** Saved classes that merged sibling picks (a title snapshot): L0's "no longer picks" leaves them alone. */
+  const merged = new Set<string>();
   // Who is here (B8): the draft tap when there is one, else what Roll Call has recorded. Visitors are guests of the
   // visitors household with a draft row or recorded attendance at this meeting.
   const { here: hereOf, visitors: visitorIds } = await loadPresence(sb, meeting.entryId);
@@ -162,6 +168,7 @@ export async function loadLiveView(sb: SupabaseClient, meeting: BoardMeeting): P
   if (saved) {
     classes = saved.classes.map((c) => {
       const w = words([c.topicKey]);
+      if (c.title != null) merged.add(savedId(c.id));
       return { id: savedId(c.id), topicKey: c.topicKey, rotation: c.rotation, title: c.title ?? w.title, codeLabel: w.codeLabel, kind: w.kind, teacherId: c.teacherId, memberIds: c.memberIds, position: c.position, version: c.version };
     });
     rotations = saved.rotations;
@@ -202,15 +209,40 @@ export async function loadLiveView(sb: SupabaseClient, meeting: BoardMeeting): P
     });
   };
 
+  // Rotations L0: the drift, and each pool scout's picks the short way. From what is loaded above: no further reads.
+  const codeOf = (key: string) => {
+    const w = words([key]);
+    return shortRequirement(w.codeLabel, '') || w.title;
+  };
+  const shortOf = (key: string) => {
+    const w = words([key]);
+    return shortRequirement(w.codeLabel, w.title);
+  };
+  const nameOf = (id: number) => names.get(id) ?? '';
+  const drift = saved
+    ? liveDrift({
+        classes: classes.map((c) => ({ id: c.id, topicKey: c.topicKey, title: c.title, teacherId: c.teacherId, memberIds: c.memberIds, version: c.version, merged: merged.has(c.id) })),
+        board: rows,
+        topicTeachers: teach.supply.topicTeachers,
+        notComing: teach.supply.notComing,
+        seeded: new Set(teach.focus.map((t) => t.key)),
+        freeform: new Set(teach.freeform.map((f) => f.key)),
+        labelOf: codeOf,
+        nameOf
+      })
+    : [];
+
   return buildLiveView({
     started: !!saved,
     rotations,
     classes,
-    nameOf: (id) => names.get(id) ?? '',
+    nameOf,
     retake,
     pool,
     present: (id) => attended.has(id),
-    visitor: (id) => visitorIds.has(id)
+    visitor: (id) => visitorIds.has(id),
+    picksOf: (id) => (rowOf.get(id)?.picks ?? []).filter((p) => !p.later).map((p) => shortOf(p.key)),
+    drift
   });
 }
 
@@ -274,6 +306,71 @@ export async function loadLiveChoices(sb: SupabaseClient, meeting: BoardMeeting)
       })
       .sort((a, b) => a.label.localeCompare(b.label)),
     scouts: rows.map((r) => ({ personId: r.personId, name: boardName(r.name) })).sort(byName)
+  };
+}
+
+// ── Rotations L0: the fixes' reads ───────────────────────────────────────────────────────────────────────────────
+
+/**
+ * What "Make a class" for `key` takes on a started arrangement: whether the topic is on the plan, whether a class for
+ * it exists already (someone fixed it first), the plan's teachers in sign-up order (Can't-make-it left out), and the
+ * scouts to place: coming, picked it for this meeting, in no class and teaching none (placing them from "nothing
+ * assigned" is the RPC's compare-and-set).
+ */
+export async function loadMakeClass(sb: SupabaseClient, meeting: BoardMeeting, key: string): Promise<{ onPlan: boolean; exists: boolean; teacherIds: number[]; pickers: number[] }> {
+  const catalog = await loadAdvancementCatalog();
+  const [topic, cls, teachers, rows] = await Promise.all([
+    sb.from('meeting_topics').select('id').eq('calendar_entry_id', meeting.entryId).eq('topic_key', key).maybeSingle(),
+    sb.from('meeting_classes').select('teacher_person_id, meeting_topics(topic_key), meeting_class_members(person_id)').eq('calendar_entry_id', meeting.entryId),
+    sb
+      .from('meeting_topic_teachers')
+      .select('person_id, created_at, meeting_topics!inner(topic_key)')
+      .eq('calendar_entry_id', meeting.entryId)
+      .eq('meeting_topics.topic_key', key)
+      .order('created_at'),
+    loadBoardState(sb, meeting, catalog)
+  ]);
+  const err = topic.error ?? cls.error ?? teachers.error;
+  if (err) throw new Error(err.message);
+  type C = { teacher_person_id: number | null; meeting_topics: { topic_key: string } | { topic_key: string }[] | null; meeting_class_members: { person_id: number }[] | null };
+  const classes = (cls.data ?? []) as unknown as C[];
+  const placed = new Set(classes.flatMap((c) => (c.meeting_class_members ?? []).map((m) => m.person_id)));
+  const busy = new Set(classes.map((c) => c.teacher_person_id).filter((id): id is number => id != null));
+  const ids = [...new Set(((teachers.data ?? []) as { person_id: number }[]).map((t) => t.person_id))];
+  const intents = await loadIntents(sb, meeting.entryId, ids);
+  return {
+    onPlan: topic.data != null,
+    exists: classes.some((c) => one(c.meeting_topics)?.topic_key === key),
+    teacherIds: ids.filter((id) => intents.get(id) !== 'not_coming'),
+    pickers: rows
+      .filter((r) => effectiveIntent(r.intent, r.picks) === 'coming' && r.picks.some((p) => !p.later && p.key === key) && !placed.has(r.personId) && !busy.has(r.personId))
+      .map((r) => r.personId)
+  };
+}
+
+/**
+ * A saved class as "Use <class teacher>" checks it: its topic, version and teacher; the plan's teachers for that topic;
+ * and who teaches another repeat of it (they stay on the plan). Null when the class is gone.
+ */
+export async function loadClassForTeacherFix(sb: SupabaseClient, entryId: number, classId: number) {
+  const { data, error } = await sb.from('meeting_classes').select('id, version, teacher_person_id, meeting_topics(topic_key)').eq('calendar_entry_id', entryId).eq('id', classId).maybeSingle();
+  if (error) throw new Error(error.message);
+  type R = { id: number; version: number; teacher_person_id: number | null; meeting_topics: { topic_key: string } | { topic_key: string }[] | null };
+  const r = data as R | null;
+  const key = one(r?.meeting_topics)?.topic_key ?? null;
+  if (!r || !key) return null;
+  const [siblings, plan] = await Promise.all([
+    sb.from('meeting_classes').select('id, teacher_person_id, meeting_topics!inner(topic_key)').eq('calendar_entry_id', entryId).eq('meeting_topics.topic_key', key).neq('id', classId),
+    sb.from('meeting_topic_teachers').select('person_id, meeting_topics!inner(topic_key)').eq('calendar_entry_id', entryId).eq('meeting_topics.topic_key', key)
+  ]);
+  const e2 = siblings.error ?? plan.error;
+  if (e2) throw new Error(e2.message);
+  return {
+    key,
+    version: r.version,
+    teacherId: r.teacher_person_id,
+    planTeachers: [...new Set(((plan.data ?? []) as { person_id: number }[]).map((t) => t.person_id))],
+    teachingRepeat: new Set(((siblings.data ?? []) as { teacher_person_id: number | null }[]).map((c) => c.teacher_person_id).filter((id): id is number => id != null))
   };
 }
 

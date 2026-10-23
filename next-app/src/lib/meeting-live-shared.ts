@@ -13,8 +13,9 @@
  *     tray, v1's Admin Sunday tab) reads the saved placement once Live has started. Given the board, "coming, nothing
  *     assigned" is coming − placed − teaching and the "Not sure yet" scouts say whether they're placed (qa-lead, P4a:
  *     the other screens must not go quiet); wanted and offered stay empty: the saved placement is the truth.
- *   - buildLiveView: the cards, repeats, retake stars, conflicts and the "Coming, nothing assigned" pool the Live
- *     screen draws, from either the preview or the saved placement.
+ *   - buildLiveView: the cards, repeats, retake stars, conflicts and the "Not in a class yet" pool the Live screen
+ *     draws, from either the preview or the saved placement.
+ *   - liveDrift (Rotations L0): where the plan and a started arrangement disagree, each case with its fix.
  */
 import type { MatchResult, MatchSession } from '@/lib/meeting-board-match';
 import { effectiveIntent, type BoardPick, type Intent } from '@/lib/meeting-board-shared';
@@ -77,10 +78,12 @@ export interface LiveView {
   rotations: LiveRotation[];
   /** Rotation order (Not scheduled last), then position. */
   cards: LiveCard[];
-  /** Coming (or here), nothing assigned. */
-  pool: { personId: number; name: string; present: boolean; visitor: boolean }[];
+  /** Not in a class yet: coming (or here), nothing assigned. `picks`: what they picked, short ('Star 6 · Cyber Chip'). */
+  pool: { personId: number; name: string; present: boolean; visitor: boolean; picks: string[] }[];
   /** How many overlapping pairs need fixing (the header's red count). */
   overlaps: number;
+  /** Rotations L0: where the plan and the arrangement have drifted apart (started only; empty before). */
+  drift: LiveDrift[];
 }
 
 export const rotationWord = (n: number | null) => (n == null ? 'Not scheduled' : `Rotation ${n}`);
@@ -238,6 +241,130 @@ export function placementAsMatch(p: SavedPlacement, board: readonly PlacementBoa
   };
 }
 
+// ── Rotations L0: where the plan and Live have drifted apart (Plans/Build-A-Plan.md, "Rotations") ─────────────────
+
+/**
+ * One drift case on a started arrangement, each with its one-click fix on the Live screen:
+ *   - offering: a topic someone teaches on the plan with no class → Make a class;
+ *   - pick: a scout in no class who picked a topic with no class → Create class and place (the same mechanism);
+ *   - cant / dropped: a placed scout who said Can't make it, or whose picks no longer include the class's topic →
+ *     Remove from class / Keep;
+ *   - teacher: the class's teacher isn't one of the plan's teachers for its topic → Use <plan> / Use <class>;
+ *   - orphan: a class whose topic nothing holds on the plan any more (not seeded, no picks, no teacher) → Keep as
+ *     extra / Remove class.
+ * `id` is stable across reloads: a session's Keep hides it by id.
+ */
+export type LiveDrift =
+  | { id: string; kind: 'offering'; key: string; label: string; teacherId: number | null }
+  | { id: string; kind: 'pick'; key: string; label: string; personId: number; name: string }
+  | { id: string; kind: 'cant' | 'dropped'; classId: string; title: string; personId: number; name: string }
+  | { id: string; kind: 'teacher'; classId: string; version: number; title: string; plan: { personId: number; name: string }; current: { personId: number; name: string } | null }
+  | { id: string; kind: 'orphan'; classId: string; version: number; title: string };
+
+export interface DriftClass {
+  id: string;
+  topicKey: string;
+  title: string;
+  teacherId: number | null;
+  memberIds: readonly number[];
+  version: number;
+  /** A matcher class that merged sibling picks (a title snapshot): its members picked a sibling, not its lead key. */
+  merged: boolean;
+}
+
+/** What a drift sentence says (the strip and the in-place note read one definition). */
+export function driftText(d: LiveDrift): string {
+  switch (d.kind) {
+    case 'offering':
+      return `${d.label} has no class`;
+    case 'pick':
+      return `${d.name} picked ${d.label} · no class`;
+    case 'cant':
+      return `${d.name} said Can’t make it · in ${d.title}`;
+    case 'dropped':
+      return `${d.name} no longer picks ${d.title}`;
+    case 'teacher':
+      return d.current ? `${d.title}: the plan says ${d.plan.name}, the class has ${d.current.name}` : `${d.title} has no teacher · the plan says ${d.plan.name}`;
+    case 'orphan':
+      return `${d.title} is no longer on the plan`;
+  }
+}
+
+/**
+ * The drift between the plan (topic teachers, picks, answers, seeded topics) and a started arrangement. Pure: the
+ * loader passes what the Live page already loaded. Freeform topics are never orphans (a "Something else…" class is an
+ * extra by nature). Adults and visitors in a class are not checked for picks.
+ */
+export function liveDrift(input: {
+  classes: readonly DriftClass[];
+  board: readonly { personId: number; intent: Intent | null; picks: readonly Pick<BoardPick, 'key' | 'later'>[] }[];
+  /** The plan's teachers in sign-up order (meeting_topic_teachers). */
+  topicTeachers: readonly { key: string; personId: number }[];
+  /** Teachers who said Can't make it: not the plan's teacher for this meeting. */
+  notComing: ReadonlySet<number>;
+  seeded: ReadonlySet<string>;
+  freeform: ReadonlySet<string>;
+  /** 'Star 6': the short code of a topic, or its title when it has none. */
+  labelOf: (key: string) => string;
+  nameOf: (personId: number) => string;
+}): LiveDrift[] {
+  const { classes, board } = input;
+  const classKeys = new Set(classes.map((c) => c.topicKey));
+  const placed = new Set(classes.flatMap((c) => c.memberIds));
+  const teaching = new Set(classes.map((c) => c.teacherId).filter((id): id is number => id != null));
+  const planTeachers = new Map<string, number[]>();
+  for (const t of input.topicTeachers) {
+    if (input.notComing.has(t.personId)) continue;
+    const list = planTeachers.get(t.key) ?? [];
+    if (!list.includes(t.personId)) planTeachers.set(t.key, [...list, t.personId]);
+  }
+  const anyTeacher = new Set(input.topicTeachers.map((t) => t.key));
+  const picked = new Set(board.flatMap((r) => r.picks.map((p) => p.key)));
+  const out: LiveDrift[] = [];
+
+  for (const [key, ids] of planTeachers) {
+    if (!classKeys.has(key)) out.push({ id: `o:${key}`, kind: 'offering', key, label: input.labelOf(key), teacherId: ids[0] ?? null });
+  }
+  const byName = (a: { personId: number }, b: { personId: number }) => input.nameOf(a.personId).localeCompare(input.nameOf(b.personId));
+  for (const r of [...board].sort(byName)) {
+    if (effectiveIntent(r.intent, r.picks) !== 'coming' || placed.has(r.personId) || teaching.has(r.personId)) continue;
+    for (const p of r.picks) {
+      if (p.later || classKeys.has(p.key)) continue;
+      out.push({ id: `p:${r.personId}:${p.key}`, kind: 'pick', key: p.key, label: input.labelOf(p.key), personId: r.personId, name: input.nameOf(r.personId) });
+    }
+  }
+  const rowOf = new Map(board.map((r) => [r.personId, r]));
+  for (const c of classes) {
+    for (const personId of [...c.memberIds].sort((a, b) => input.nameOf(a).localeCompare(input.nameOf(b)))) {
+      const r = rowOf.get(personId);
+      if (!r) continue;
+      const now = r.picks.filter((p) => !p.later);
+      const base = { classId: c.id, title: c.title, personId, name: input.nameOf(personId) };
+      if (effectiveIntent(r.intent, r.picks) === 'not_coming') out.push({ id: `x:${c.id}:${personId}`, kind: 'cant', ...base });
+      else if (!c.merged && now.length && !now.some((p) => p.key === c.topicKey)) out.push({ id: `d:${c.id}:${personId}`, kind: 'dropped', ...base });
+    }
+  }
+  for (const c of classes) {
+    const plan = planTeachers.get(c.topicKey) ?? [];
+    if (plan.length && (c.teacherId == null || !plan.includes(c.teacherId))) {
+      out.push({
+        id: `t:${c.id}:${c.teacherId ?? 'none'}:${plan[0]}`,
+        kind: 'teacher',
+        classId: c.id,
+        version: c.version,
+        title: c.title,
+        plan: { personId: plan[0], name: input.nameOf(plan[0]) },
+        current: c.teacherId != null ? { personId: c.teacherId, name: input.nameOf(c.teacherId) } : null
+      });
+    }
+  }
+  for (const c of classes) {
+    if (input.freeform.has(c.topicKey) || input.seeded.has(c.topicKey) || anyTeacher.has(c.topicKey) || picked.has(c.topicKey)) continue;
+    out.push({ id: `r:${c.id}`, kind: 'orphan', classId: c.id, version: c.version, title: c.title });
+  }
+  return out;
+}
+
 // ── the view model ───────────────────────────────────────────────────────────────────────────────────────────────
 
 export function buildLiveView(input: {
@@ -252,7 +379,11 @@ export function buildLiveView(input: {
   present?: (personId: number) => boolean;
   /** A visitor (P4c). */
   visitor?: (personId: number) => boolean;
+  /** What a pool scout picked, short (L0). */
+  picksOf?: (personId: number) => string[];
+  drift?: LiveDrift[];
 }): LiveView {
+  const picksOf = input.picksOf ?? (() => []);
   const here = input.present ?? (() => false);
   const visiting = input.visitor ?? (() => false);
   const classes = [...input.classes].sort((a, b) => (a.rotation ?? 1e9) - (b.rotation ?? 1e9) || a.position - b.position || a.id.localeCompare(b.id));
@@ -279,9 +410,10 @@ export function buildLiveView(input: {
     })),
     pool: [...new Set(input.pool)]
       .filter((id) => !busy.has(id))
-      .map((personId) => ({ personId, name: input.nameOf(personId), present: here(personId), visitor: visiting(personId) }))
+      .map((personId) => ({ personId, name: input.nameOf(personId), present: here(personId), visitor: visiting(personId), picks: picksOf(personId) }))
       .sort(byName),
-    overlaps: count
+    overlaps: count,
+    drift: input.started ? (input.drift ?? []) : []
   };
 }
 

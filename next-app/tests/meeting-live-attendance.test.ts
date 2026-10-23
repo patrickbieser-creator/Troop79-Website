@@ -290,7 +290,7 @@ describe('the pool and the people', () => {
     asEditor();
     await (await live()).plannerLiveSetPresentAction({ entryId: today, personId: bo, present: true });
     const v = await (await lib()).loadLiveView(sb, (await loadMeetingById(sb, today))!);
-    expect(v.pool.find((x) => x.personId === bo)).toEqual({ personId: bo, name: expect.any(String), present: true, visitor: false });
+    expect(v.pool.find((x) => x.personId === bo)).toEqual({ personId: bo, name: expect.any(String), present: true, visitor: false, picks: [] });
   });
 
   it('Pool_StillIncludesComingScouts_NotYetHere', async () => {

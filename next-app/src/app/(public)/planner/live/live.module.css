@@ -285,6 +285,59 @@
   font: 700 var(--fs-xs) / 1.35 var(--font-ui);
   color: var(--status-danger);
 }
+/* Rotations L0: "Needs attention (n)" and the problems it marks in place (problems-marked-in-place). */
+.attention {
+  margin-bottom: var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--status-danger);
+  border-radius: var(--rad-md);
+  background: var(--status-danger-bg);
+}
+.attentionTitle {
+  margin: 0 0 var(--sp-2);
+  font: 700 var(--fs-md) / 1.3 var(--font-ui);
+  color: var(--status-danger);
+}
+.attentionList {
+  display: grid;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.attentionItem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-3);
+}
+.attentionText {
+  flex: 1 1 240px;
+  margin: 0;
+  font: 600 var(--fs-sm) / 1.4 var(--font-ui);
+  color: var(--bark);
+}
+.attentionActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.card[data-problem='true'] {
+  outline: 2px solid var(--status-danger);
+  outline-offset: 2px;
+}
+[data-problem='true'] > .chipBtn,
+[data-problem='true'] > .chipBtnOut,
+.chip[data-problem='true'],
+.chipOut[data-problem='true'] {
+  outline: 2px solid var(--status-danger);
+  outline-offset: 1px;
+}
+.chipPicks {
+  margin-left: var(--sp-2);
+  font: var(--fs-xs) / 1.2 var(--font-ui);
+  color: var(--text-meta);
+}
 .legend {
   margin: var(--sp-4) 0 0;
   font: var(--fs-xs) / 1.4 var(--font-ui);

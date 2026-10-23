@@ -16,7 +16,8 @@
  * B8 (Plans/Build-A-Plan.md; D-429): nothing is automatic. A tap here / not here and a visitor are a DRAFT
  * (meeting_live_presence); attendance is recorded after the meeting by plannerRecordAttendanceAction, which applies
  * only the differences through Roll Call's cascade (ledger credit included). plannerLiveDiscardAction undoes Live at
- * any time. The stale-tab guard: a write may start Live only from a preview ('s:' card, or expectStarted: false from a
+ * any time. Rotations L0 adds two composed fixes for the "Needs attention" strip (Make a class, Use the class's
+ * teacher), on the same edit right and stale checks. The stale-tab guard: a write may start Live only from a preview ('s:' card, or expectStarted: false from a
  * screen that showed the preview). A saved card ('c:') or a screen that showed Live started, when Live isn't started
  * (someone discarded it), gets STALE and the screen refreshes; it never silently restarts Live.
  */
@@ -29,12 +30,15 @@ import { plannerAccess } from '@/lib/meeting-planner-access';
 import { SAVE_FAILED } from '@/lib/meeting-board-supply';
 import { loadEntryContext, recordAttendance, removeAttendance } from '@/lib/attendance-admin';
 import { NOT_A_TEACHER } from '@/lib/can-offer-to-teach';
+import { teachTopic, unteachTopic } from '@/lib/meeting-board-supply';
 import { instantToCentral } from '@/lib/dates';
 import {
   canTeachOnLive,
   discardMeetingLive,
   liveStartedAt,
   loadAttendanceReview,
+  loadClassForTeacherFix,
+  loadMakeClass,
   loadOverFacts,
   onLiveBoard,
   type OverFacts,
@@ -251,6 +255,85 @@ export async function plannerLiveAddClassAction(input: {
     }),
     fromPreview(input.expectStarted)
   );
+}
+
+// ── Rotations L0: the "Needs attention" fixes (Plans/Build-A-Plan.md, "Rotations") ───────────────────────────────
+// Remove from class, Use <plan teacher> and Remove class are the actions above. The two below compose existing writers.
+
+const isTopicKey = (v: unknown): v is string => typeof v === 'string' && /^[a-z0-9:][a-z0-9:._-]{0,119}$/i.test(v);
+const NOT_ON_PLAN = 'That isn’t on this meeting’s plan any more.';
+
+/**
+ * "Make a class" / "Create class and place": a Not scheduled card for a topic on the plan, taught by the plan's first
+ * teacher who may teach on Live (none when nobody can), with every coming scout who picked it and is in no class yet.
+ * Only on a started arrangement (the strip shows only there): not started = stale. A class for the topic already there
+ * = stale (someone fixed it first). The add and each placement are Live's own RPCs (the lock, live_version); a scout
+ * someone placed meanwhile is skipped by the move's compare-and-set. The existence check and the add are two calls, so
+ * two leaders in the same instant could each make one; the second shows as a repeat, which Remove takes away.
+ */
+export async function plannerLiveMakeClassAction(input: { entryId: number; key: string }): Promise<LiveWriteResult> {
+  const e = await liveEditor(input?.entryId);
+  if (!e.ok) return e;
+  if (!isTopicKey(input.key)) return fail('Malformed request');
+  try {
+    if (!(await liveStartedAt(e.sb, e.meeting.entryId))) return stale();
+    const plan = await loadMakeClass(e.sb, e.meeting, input.key);
+    if (!plan.onPlan) return fail(NOT_ON_PLAN);
+    if (plan.exists) return stale();
+    let teacherId: number | null = null;
+    for (const id of plan.teacherIds) {
+      if (await canTeachOnLive(e.sb, e.meeting, id)) {
+        teacherId = id;
+        break;
+      }
+    }
+    const added = await e.sb.rpc('meeting_live_add_class', {
+      p_entry: e.meeting.entryId,
+      p_actor: e.actorPersonId,
+      p_topic_key: input.key,
+      p_title: null,
+      p_teacher: teacherId,
+      p_rotation: null
+    });
+    if (added.error) return added.error.message === 'STALE' ? stale() : fail(KNOWN.test(added.error.message) ? added.error.message : SAVE_FAILED);
+    const classId = added.data as number;
+    for (const personId of plan.pickers) {
+      const { error } = await e.sb.rpc('meeting_live_move_scout', { p_entry: e.meeting.entryId, p_actor: e.actorPersonId, p_person: personId, p_from: null, p_to: classId });
+      if (error && error.message !== 'STALE') return fail(SAVE_FAILED);
+    }
+    revalidate();
+    return { ok: true, stamp: await loadBoardStamp(e.sb, e.meeting.entryId) };
+  } catch {
+    return fail(SAVE_FAILED);
+  }
+}
+
+/**
+ * "Use <class teacher>": the class's teacher becomes the plan's teacher for its topic, through the plan's own teach path
+ * (edit right; a plain sign-up, for_picks false). Plan teachers who teach no other repeat of it come off, so plan and
+ * class agree. The card's version and teacher must be what the screen showed (stale otherwise).
+ */
+export async function plannerLiveUseClassTeacherAction(input: { entryId: number; classId: string; version: number; teacherId: number }): Promise<LiveWriteResult> {
+  const e = await liveEditor(input?.entryId);
+  if (!e.ok) return e;
+  if (typeof input.classId !== 'string' || !/^c:\d+$/.test(input.classId) || !isVersion(input.version) || !isPerson(input.teacherId)) return fail('Malformed request');
+  try {
+    if (!(await liveStartedAt(e.sb, e.meeting.entryId))) return stale();
+    const c = await loadClassForTeacherFix(e.sb, e.meeting.entryId, Number(input.classId.slice(2)));
+    if (!c || c.version !== input.version || c.teacherId !== input.teacherId) return stale();
+    const w = { personId: input.teacherId, actorPersonId: e.actorPersonId, leader: true };
+    const taught = await teachTopic(e.sb, w, [e.meeting.entryId], { key: c.key }, null);
+    if (!taught.ok) return taught;
+    for (const other of c.planTeachers) {
+      if (other === input.teacherId || c.teachingRepeat.has(other)) continue;
+      const off = await unteachTopic(e.sb, { ...w, personId: other }, e.meeting.entryId, c.key);
+      if (!off.ok) return off;
+    }
+    revalidate();
+    return { ok: true, stamp: await loadBoardStamp(e.sb, e.meeting.entryId) };
+  } catch {
+    return fail(SAVE_FAILED);
+  }
 }
 
 /** Mark someone here or not here: a DRAFT tap (B8), recorded after the meeting. The meeting day only. */

@@ -214,7 +214,7 @@ describe('buildLiveView', () => {
   });
 
   it('View_PoolLeavesOutAnyonePlaced', () => {
-    expect(view.pool).toEqual([{ personId: 4, name: '#4', present: false, visitor: false }]);
+    expect(view.pool).toEqual([{ personId: 4, name: '#4', present: false, visitor: false, picks: [] }]);
   });
 
   it('View_CarriesEachCardsVersion_PreviewIsOne', () => {
