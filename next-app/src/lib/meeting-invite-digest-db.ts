@@ -16,7 +16,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { loadAdvancementCatalog, type AdvancementCatalog } from '@/lib/advancement-catalog';
 import { loadMeetingById } from '@/lib/meeting-board';
-import { nextRankOf } from '@/lib/meeting-board-picklist';
+import { nextRankOf, topicWords } from '@/lib/meeting-board-picklist';
 import { INVITE_DEDUPE_HOURS, inviteExpiresAt } from '@/lib/meeting-invites';
 import { hashSecret } from '@/lib/identity-challenge';
 import { adultRecipients, loadInviteRows, loadScoutFamilies, NO_EMAIL_ON_FILE, randomInviteToken, scoutRecipientsMany, upcomingMeeting, type InviteHistory, type MailRecipient } from '@/lib/meeting-invites-db';
@@ -25,7 +25,7 @@ import { boardName } from '@/lib/meeting-board-shared';
 import { scoutCandidatesMany } from '@/lib/meeting-invites-send';
 import { loadTeacherChoicesMany } from '@/lib/build-plan-db';
 import { likelyNames } from '@/lib/build-plan';
-import { DIGEST_EMAIL_CAP, DIGEST_INVITE_CAP, DIGEST_KEYS_MAX, inviteChips, tickId, type InviteKind, type InvitePerson, type InviteRecipient, type InviteSection, type InviteTabData } from '@/lib/meeting-invite-digest';
+import { DIGEST_EMAIL_CAP, DIGEST_INVITE_CAP, DIGEST_KEYS_MAX, inviteChips, scoutsHelped, tickId, type InviteKind, type ScoutsHelped, type InvitePerson, type InviteRecipient, type InviteSection, type InviteTabData } from '@/lib/meeting-invite-digest';
 
 const LINK_KINDS = ['teach', 'pick'];
 
@@ -163,7 +163,9 @@ export async function loadInviteTab(
         return { personId: c.personId, name: c.name, reason, likely: !picked && (c.likely ?? false), recipients: hasParent && !picked ? to : [], blocked, chip: chip?.chip, askedAt: chip?.at ?? null, to: words };
       })
       .sort((a, b) => Number(b.likely) - Number(a.likely) || a.name.localeCompare(b.name));
-    return { key, teachers, scouts };
+    // B10a: the Preview's teach line shows the minutes the send would (a catalog key; a mix's or freeform's stay unknown).
+    const minutes = topicWords(key, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, undefined, { mbReqs: catalog.meritBadgeRequirements })?.minutes ?? null;
+    return { key, teachers, scouts, minutes };
   });
   return { sections, recipients };
 }
@@ -202,7 +204,15 @@ export interface DigestInput {
   sentBy: number | null;
 }
 
-export type CreateDigestResult = { ok: true; recipients: DigestRecipient[]; skipped: DigestSkip[] } | { ok: false; error: string };
+export type CreateDigestResult =
+  | {
+      ok: true;
+      recipients: DigestRecipient[];
+      skipped: DigestSkip[];
+      /** B10a: per teach key, the scouts it would help (scoutsHelped), snapshotted now, at send time. */
+      helped?: Record<string, ScoutsHelped>;
+    }
+  | { ok: false; error: string };
 
 const ids = (xs: readonly number[]) => [...new Set(xs.filter((n) => Number.isInteger(n) && n > 0))];
 
@@ -225,13 +235,19 @@ export async function createInviteDigest(
 
   const now = deps.now ?? new Date();
   const since = new Date(now.getTime() - INVITE_DEDUPE_HOURS * 3600_000).toISOString();
-  const pickKeys = [...new Set(pick.map((p) => p.key))];
+  // One scoutCandidatesMany for every key: the picks' checks and the teach lines' scouts (B10a) from one board load.
   const [lately, adults, cands] = await Promise.all([
     invitedLately(sb, input.entryId, keys, since),
     adultRecipients(sb, teach.flatMap((t) => t.ids)),
-    pickKeys.length ? scoutCandidatesMany(sb, { entryId: input.entryId, keys: pickKeys }, deps) : null
+    scoutCandidatesMany(sb, { entryId: input.entryId, keys }, deps)
   ]);
-  if (cands && !cands.ok) return cands;
+  if (!cands.ok) return cands;
+  const helped: Record<string, ScoutsHelped> = Object.fromEntries(
+    [...new Set(teach.map((t) => t.key))].map((k) => [
+      k,
+      scoutsHelped((cands.byKey.get(k) ?? []).map((c) => ({ name: c.name, picked: !c.ticked, likely: c.likely ?? false, intent: c.intent })))
+    ])
+  );
   const lateReason = `already invited in the last ${INVITE_DEDUPE_HOURS} hours`;
 
   type Plan = MailRecipient & { kind: InviteKind; key: string; inviteeId: number; inviteeName: string; inviteeEpoch: number; recipientName: string };
@@ -251,7 +267,7 @@ export async function createInviteDigest(
       plans.push({ ...who, kind: 'teach', key: t.key, inviteeId: personId, inviteeName: who.name, inviteeEpoch: who.epoch, recipientName: who.name });
     }
   }
-  const byKey = cands?.ok ? cands.byKey : new Map();
+  const byKey = cands.byKey;
   const passing: { key: string; scoutId: number; name: string }[] = [];
   for (const p of pick) {
     for (const scoutId of p.ids) {
@@ -290,7 +306,7 @@ export async function createInviteDigest(
   }
   const emails = new Set(plans.map((x) => x.recipientId)).size;
   if (emails > DIGEST_EMAIL_CAP) return { ok: false, error: `That would send ${emails} emails; one send makes at most ${DIGEST_EMAIL_CAP}.` };
-  if (!plans.length) return { ok: true, recipients: [], skipped };
+  if (!plans.length) return { ok: true, recipients: [], skipped, helped };
 
   const tokens = await Promise.all(plans.map(async () => {
     const token = randomInviteToken();
@@ -321,7 +337,7 @@ export async function createInviteDigest(
   };
   if (error) {
     for (const x of plans) tell(x, 'couldn’t be saved');
-    return { ok: true, recipients: [], skipped };
+    return { ok: true, recipients: [], skipped, helped };
   }
   const minted = new Map(((data ?? []) as { invite_id: number; kind: string; topic_key: string; invitee: number; recipient: number }[]).map((m) => [`${m.kind}|${m.topic_key}|${m.invitee}|${m.recipient}`, m.invite_id]));
   const recipients = new Map<number, DigestRecipient>();
@@ -332,5 +348,5 @@ export async function createInviteDigest(
     r.invites.push({ inviteId, token: tokens[i].token, kind: x.kind, key: x.key, inviteeId: x.inviteeId, inviteeName: x.inviteeName });
     recipients.set(x.recipientId, r);
   });
-  return { ok: true, recipients: [...recipients.values()], skipped };
+  return { ok: true, recipients: [...recipients.values()], skipped, helped };
 }

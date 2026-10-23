@@ -91,7 +91,9 @@ export async function sendInviteDigests(
             code: w.codeLabel,
             topic: w.label,
             minutes: i.kind === 'teach' ? minutesText(w.minutes) : '',
-            url: `${siteUrl()}/i/${i.token}`
+            url: `${siteUrl()}/i/${i.token}`,
+            // B10a: the scouts a teach ask would help, as createInviteDigest snapshotted them for this send.
+            helped: i.kind === 'teach' ? made.helped?.[i.key] : undefined
           };
         });
         const { subject, md } = renderInviteDigest(template, { name: firstName.get(r.recipientId) ?? r.name, people: digestPeople(r.recipientId, r.isScout, about), day }, items);

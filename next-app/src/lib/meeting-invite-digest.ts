@@ -10,6 +10,8 @@
  * overflow marked in place (sendPlan), the Review grouped by family (reviewGroups), and the By person view (byPerson).
  */
 
+import { boardName, type Intent } from '@/lib/meeting-board-shared';
+
 export interface InvitePerson {
   personId: number;
   name: string;
@@ -41,6 +43,8 @@ export interface InviteSection {
   key: string;
   teachers: InvitePerson[];
   scouts: InvitePerson[];
+  /** B10a: expected minutes to teach it, for the Preview's teach line; null when unknown (a mix, a freeform topic). */
+  minutes?: number | null;
 }
 
 /** B6: a recipient as the Review shows them: grouped by family, previewed by first name. */
@@ -335,4 +339,50 @@ export function offeringLine(teachers: readonly string[], s: InviteSection | und
   return [teachers.length ? `${teachers.join(', ')} agreed` : null, likely ? `${likely} likely` : null, asked ? `${asked} asked` : null, yes ? `${yes} yes` : null]
     .filter(Boolean)
     .join(' · ');
+}
+
+// ── B10a: the scouts a class would help, for the teacher digest ──────────────────────────────────────────────────
+
+/** One scout as scoutsHelped reads them: picked it, or likely by the one rule (lib/build-plan likelyFit). */
+export interface HelpedCandidate {
+  name: string;
+  picked: boolean;
+  likely: boolean;
+  /** Their answer to "Coming Sunday?"; Can't make it never counts. */
+  intent?: Intent | null;
+}
+
+export interface ScoutsHelped {
+  count: number;
+  /** Up to the cap, as boardName ('Finn P': the digest goes to adults, so the initial stays). */
+  names: string[];
+  /** How many past the cap ("and N more"). */
+  more: number;
+}
+
+/** How many names a teach line shows before "and N more". */
+export const HELPED_SHOWN = 5;
+
+/**
+ * Build a Plan B10a (Plans/Build-A-Plan.md "B10 spec"): the scouts a class would help. Those who PICKED it first, then
+ * the likely ones, each group by name; anyone who said they can't make it is left out. Pure: the send (from
+ * scoutCandidatesMany) and the Invite tab's Preview (from its sections) both go through it.
+ */
+export function scoutsHelped(candidates: readonly HelpedCandidate[], opts: { cap?: number } = {}): ScoutsHelped {
+  const cap = opts.cap ?? HELPED_SHOWN;
+  const going = candidates.filter((c) => c.intent !== 'not_coming');
+  const byName = (a: HelpedCandidate, b: HelpedCandidate) => a.name.localeCompare(b.name);
+  const all = [...going.filter((c) => c.picked).sort(byName), ...going.filter((c) => !c.picked && c.likely).sort(byName)].map((c) => boardName(c.name));
+  return { count: all.length, names: all.slice(0, cap), more: Math.max(0, all.length - cap) };
+}
+
+/** '3 scouts (Finn P, Anjali S, Leo K)', '7 scouts (… and 2 more)', 'no scouts yet'. */
+export function scoutsHelpedText(h: ScoutsHelped): string {
+  if (!h.count) return 'no scouts yet';
+  return `${h.count} ${h.count === 1 ? 'scout' : 'scouts'} (${h.names.join(', ')}${h.more ? ` and ${h.more} more` : ''})`;
+}
+
+/** The Invite tab's Preview: an offering's scouts as scoutsHelped reads them (a picked scout carries the Picked chip). */
+export function sectionHelped(s: Pick<InviteSection, 'scouts'> | undefined): ScoutsHelped {
+  return scoutsHelped((s?.scouts ?? []).map((p) => ({ name: p.name, picked: p.chip === 'picked', likely: p.likely })));
 }

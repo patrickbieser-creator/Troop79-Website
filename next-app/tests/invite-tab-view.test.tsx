@@ -230,6 +230,13 @@ describe('B6 qa follow-ups', () => {
     expect(screen.getByText('P11').closest('button')?.getAttribute('aria-pressed')).toBe('false');
   });
 
+  // B10a: the teacher's Preview renders the same teach line as the send (scoutsHelped: likely scouts, never P14).
+  it('Preview_UsesSameTeachLines', () => {
+    renderTab();
+    fireEvent.click(screen.getByRole('button', { name: 'Preview the email to Teach T' }));
+    expect(screen.getByRole('dialog').textContent).toContain('Ten 4a First aid: 3 scouts (P10, P11, P12)');
+  });
+
   it('InviteTab_Preview_HasNoInviteLink', () => {
     renderTab();
     fireEvent.click(screen.getByRole('button', { name: 'Preview the email to Dana W' }));

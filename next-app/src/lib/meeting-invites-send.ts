@@ -7,7 +7,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { loadBoardScouts, loadEffectivePicks, loadIntents, loadMeetingById, loadScoutProgress } from '@/lib/meeting-board';
-import { boardName, INTENT_LABEL } from '@/lib/meeting-board-shared';
+import { boardName, INTENT_LABEL, type Intent } from '@/lib/meeting-board-shared';
 import { loadAdvancementCatalog, type AdvancementCatalog } from '@/lib/advancement-catalog';
 import { recordAudit } from '@/lib/audit';
 import { renderMarkdownEmail } from '@/lib/email-markdown';
@@ -127,6 +127,8 @@ export interface ScoutCandidate {
   covers?: string[];
   /** B6: an MB requirement's badge, when it is in progress ('First Aid'), for the reason line. */
   badge?: string | null;
+  /** B10a: their answer to "Coming Sunday?" (null: no answer); scoutsHelped reads it. */
+  intent?: Intent | null;
 }
 
 export type ScoutCandidatesResult = { ok: true; scouts: ScoutCandidate[] } | { ok: false; error: string };
@@ -224,7 +226,8 @@ export async function scoutCandidatesMany(
         currentRank: scout.currentRank,
         likely: fit.likely,
         covers: fit.covers,
-        badge
+        badge,
+        intent
       });
     }
   }

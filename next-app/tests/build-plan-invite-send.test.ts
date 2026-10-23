@@ -102,6 +102,15 @@ describe('the digest email', () => {
     expect((m.send.mock.calls[0][0] as { text: string }).text).not.toContain('P.S.');
   });
 
+  // B10a: the teach line names the scouts it would help, as snapshotted at send time (createInviteDigest's `helped`).
+  it('Digest_TeachLines_RenderCountAndNames', async () => {
+    const helped = { 'tenderfoot-4a': { count: 3, names: ['Finn P', 'Anjali S', 'Leo K'], more: 0 } };
+    m.create.mockResolvedValue({ ok: true, recipients: [{ ...parent, invites: [parent.invites[0]] }], skipped: [], helped });
+    m.send.mockResolvedValue({ status: 'sent', to: [] });
+    await sendInviteDigests(sb, input);
+    expect((m.send.mock.calls[0][0] as { text: string }).text).toContain('Topic tenderfoot-4a (about 20 min): 3 scouts (Finn P, Anjali S, Leo K)');
+  });
+
   it('Invite_DeletesRows_WhenDigestEmailFails', async () => {
     m.create.mockResolvedValue({ ok: true, recipients: [parent, other], skipped: [] });
     m.send.mockResolvedValueOnce({ status: 'sent', to: [] }).mockResolvedValueOnce({ status: 'error', to: [] });

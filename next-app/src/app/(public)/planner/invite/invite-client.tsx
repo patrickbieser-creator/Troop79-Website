@@ -31,6 +31,7 @@ import { fmtDate, fmtDay } from '@/lib/format-date';
 import { STATE_LABEL, type PlanRow } from '@/lib/build-plan';
 import { renderMarkdownEmail } from '@/lib/email-markdown';
 import { shortRequirement } from '@/lib/rank-abbrev';
+import { minutesText } from '@/lib/meeting-board-picklist';
 import { renderInviteDigest, type InviteTemplate } from '@/lib/meeting-invite-email';
 import {
   byPerson,
@@ -39,6 +40,7 @@ import {
   digestPeople,
   offeringLine,
   reviewGroups,
+  sectionHelped,
   sendPlan,
   tickId,
   ticksAfterSend,
@@ -357,6 +359,7 @@ export function InviteView({
           recipientId={preview.recipientId}
           recipients={recipients}
           rowOf={rowOf}
+          sectionOf={byKey}
           template={template}
           day={day}
           onClose={() => {
@@ -666,6 +669,7 @@ function PreviewDialog({
   recipientId,
   recipients,
   rowOf,
+  sectionOf,
   template,
   day,
   onClose
@@ -674,6 +678,8 @@ function PreviewDialog({
   recipientId: number;
   recipients: InviteTabData['recipients'];
   rowOf: ReadonlyMap<string, PlanRow>;
+  /** B10a: each offering's scouts and minutes, for the teach lines (the same scoutsHelped the send uses). */
+  sectionOf: ReadonlyMap<string, InviteSection>;
   template: InviteTemplate;
   day: string;
   onClose: () => void;
@@ -693,8 +699,9 @@ function PreviewDialog({
     aboutRecipient: i.kind === 'teach' || isScout,
     code: rowOf.get(i.key)?.codeLabel || 'Focus',
     topic: rowOf.get(i.key)?.title ?? i.key,
-    minutes: '',
-    url: '#preview'
+    minutes: i.kind === 'teach' ? minutesText(sectionOf.get(i.key)?.minutes) : '',
+    url: '#preview',
+    helped: i.kind === 'teach' ? sectionHelped(sectionOf.get(i.key)) : undefined
   }));
   const about = [
     ...(rec?.items ?? []).filter((i) => i.kind === 'pick').map((i) => ({ personId: i.inviteeId, name: i.inviteeName })),

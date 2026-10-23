@@ -23,7 +23,11 @@ const RANK_CODE = /^(Scout|Tenderfoot|Second Class|First Class|Star|Life|Eagle) 
  * 'Ten 3a · Square Knot use'. A merit badge keeps its name ('First Aid 9 · Rescues'); no code leaves the title alone.
  */
 export function shortRequirement(codeLabel: string, title: string): string {
+  return [shortCode(codeLabel), title].filter(Boolean).join(' · ');
+}
+
+/** A rank code the short way ('Tenderfoot 3a' → 'Ten 3a'); anything else as given (B10a's teach lines). */
+export function shortCode(codeLabel: string): string {
   const m = RANK_CODE.exec(codeLabel.trim());
-  const code = m ? `${rankAbbrev(m[1])} ${m[2]}` : codeLabel.trim();
-  return [code, title].filter(Boolean).join(' · ');
+  return m ? `${rankAbbrev(m[1])} ${m[2]}` : codeLabel.trim();
 }

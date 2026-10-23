@@ -4,6 +4,8 @@
  * link is never a merge field: it rides as the email's button, so a template can't drop or rewrite it.
  */
 import { fillTokens } from '@/lib/signup-confirmation';
+import { scoutsHelpedText, type ScoutsHelped } from '@/lib/meeting-invite-digest';
+import { shortCode } from '@/lib/rank-abbrev';
 
 export const TEACH_INVITE_KIND = 'meeting.invite.teacher';
 
@@ -155,15 +157,23 @@ export interface DigestItem {
   /** 'about 20 minutes' for a teach ask; '' when unknown. */
   minutes: string;
   url: string;
+  /** B10a, a teach ask: the scouts it would help (scoutsHelped), snapshotted at send time. None = "no scouts yet". */
+  helped?: ScoutsHelped;
 }
 
-/** The digest, with the invites listed under the body: teach asks first, then each scout's offers. */
+/**
+ * The digest, with the invites listed under the body: teach asks first, then each scout's offers. A teach line (B10a)
+ * reads "**Ten 3a** Square Knot use (about 20 min): 3 scouts (Finn P, Anjali S, Leo K)", then its own answer link;
+ * the scout and parent lines are unchanged.
+ */
 export function renderInviteDigest(t: InviteTemplate, v: DigestValues, items: readonly DigestItem[]): { subject: string; md: string } {
   const vals: Record<string, string> = { name: v.name, people: v.people, day: v.day };
   const line = (i: DigestItem, label: string) => `- **${i.code}** ${i.topic}${i.minutes ? ` (${i.minutes})` : ''}: **[${label}](${i.url})**`;
+  const teachLine = (i: DigestItem) =>
+    `- **${shortCode(i.code)}** ${i.topic}${i.minutes ? ` (${i.minutes})` : ''}: ${scoutsHelpedText(i.helped ?? { count: 0, names: [], more: 0 })} · **[Answer](${i.url})**`;
   const blocks: string[] = [];
   const teach = items.filter((i) => i.kind === 'teach');
-  if (teach.length) blocks.push(`**Can you teach?**\n\n${teach.map((i) => line(i, 'Answer')).join('\n')}`);
+  if (teach.length) blocks.push(`**Can you teach?**\n\n${teach.map(teachLine).join('\n')}`);
   const scouts = [...new Set(items.filter((i) => i.kind === 'pick').map((i) => i.inviteeName))];
   for (const who of scouts) {
     const mine = items.filter((i) => i.kind === 'pick' && i.inviteeName === who);
