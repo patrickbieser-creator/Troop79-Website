@@ -6,6 +6,7 @@ import { adminActorLabel } from '@/lib/admin-actor';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { LedgerKind } from '@/lib/supabase/types';
 import { expirePeopleLists } from '@/lib/people-lists';
+import { auditLedgerEdits, auditLedgerStatus, loadLedgerForAudit, scoutNamesFor } from '@/lib/ledger-audit';
 
 const VALID_KINDS: ReadonlySet<LedgerKind> = new Set<LedgerKind>([
   'rank_requirement',
@@ -42,6 +43,7 @@ export async function archiveLedgerEntry(formData: FormData): Promise<void> {
   if (!Number.isFinite(id) || id <= 0) throw new Error('Invalid id');
 
   const supabase = createAdminClient();
+  const before = await loadLedgerForAudit(supabase, [id]);
   const { error } = await supabase
     .from('ledger_entries')
     .update({
@@ -51,6 +53,7 @@ export async function archiveLedgerEntry(formData: FormData): Promise<void> {
     })
     .eq('id', id);
   if (error) throw new Error(`archive failed: ${error.message}`);
+  await auditLedgerStatus(before, 'archive', reason);
   revalidatePath('/admin/advancement/ledger');
 }
 
@@ -64,6 +67,7 @@ export async function softDeleteLedgerEntry(formData: FormData): Promise<void> {
   if (!reason) throw new Error('Reason required when deleting a ledger row.');
 
   const supabase = createAdminClient();
+  const before = await loadLedgerForAudit(supabase, [id]);
   const { error } = await supabase
     .from('ledger_entries')
     .update({
@@ -73,6 +77,7 @@ export async function softDeleteLedgerEntry(formData: FormData): Promise<void> {
     })
     .eq('id', id);
   if (error) throw new Error(`delete failed: ${error.message}`);
+  await auditLedgerStatus(before, 'delete', reason);
   revalidatePath('/admin/advancement/ledger');
 }
 
@@ -116,21 +121,21 @@ export async function updateLedgerEntry(formData: FormData): Promise<UpdateResul
   if (!Number.isFinite(qty) || qty < 0) return { ok: false, error: 'Qty must be a number' };
 
   const supabase = createAdminClient();
-  const { error } = await supabase
-    .from('ledger_entries')
-    .update({
-      date,
-      scout_id: scoutId,
-      kind: kindRaw,
-      code,
-      label: label || null,
-      by: by || null,
-      qty,
-      unit: unit || 'complete',
-      notes: notes || null
-    })
-    .eq('id', id);
+  const before = await loadLedgerForAudit(supabase, [id]);
+  const patch = {
+    date,
+    scout_id: scoutId,
+    kind: kindRaw,
+    code,
+    label: label || null,
+    by: by || null,
+    qty,
+    unit: unit || 'complete',
+    notes: notes || null
+  };
+  const { error } = await supabase.from('ledger_entries').update(patch).eq('id', id);
   if (error) return { ok: false, error: error.message };
+  await auditLedgerEdits(before, patch, await scoutNamesFor(supabase, before.get(id)?.scout_id !== scoutId ? [scoutId] : []));
 
   revalidatePath('/admin/advancement/ledger');
   revalidatePath('/admin/advancement/fast-entry');
@@ -217,11 +222,13 @@ export async function bulkUpdateLedgerEntries(formData: FormData): Promise<BulkR
   }
 
   const supabase = createAdminClient();
+  const before = await loadLedgerForAudit(supabase, ids);
   const { error, count } = await supabase
     .from('ledger_entries')
     .update(patch, { count: 'exact' })
     .in('id', ids);
   if (error) return { ok: false, updated: 0, error: error.message };
+  await auditLedgerEdits(before, patch, await scoutNamesFor(supabase, typeof patch.scout_id === 'string' ? [patch.scout_id] : []));
 
   revalidatePath('/admin/advancement/ledger');
   revalidatePath('/admin/advancement/fast-entry');
@@ -243,6 +250,7 @@ export async function bulkArchiveLedgerEntries(formData: FormData): Promise<Bulk
   const reason = String(formData.get('reason') ?? '').trim() || null;
 
   const supabase = createAdminClient();
+  const before = await loadLedgerForAudit(supabase, ids);
   const { error, count } = await supabase
     .from('ledger_entries')
     .update(
@@ -255,6 +263,7 @@ export async function bulkArchiveLedgerEntries(formData: FormData): Promise<Bulk
     )
     .in('id', ids);
   if (error) return { ok: false, updated: 0, error: error.message };
+  await auditLedgerStatus(before, 'archive', reason);
 
   revalidatePath('/admin/advancement/ledger');
   revalidatePath('/admin/advancement/fast-entry');
@@ -277,6 +286,7 @@ export async function bulkDeleteLedgerEntries(formData: FormData): Promise<BulkR
   if (!reason) return { ok: false, updated: 0, error: 'A reason is required to delete.' };
 
   const supabase = createAdminClient();
+  const before = await loadLedgerForAudit(supabase, ids);
   const { error, count } = await supabase
     .from('ledger_entries')
     .update(
@@ -289,6 +299,7 @@ export async function bulkDeleteLedgerEntries(formData: FormData): Promise<BulkR
     )
     .in('id', ids);
   if (error) return { ok: false, updated: 0, error: error.message };
+  await auditLedgerStatus(before, 'delete', reason);
 
   revalidatePath('/admin/advancement/ledger');
   revalidatePath('/admin/advancement/fast-entry');
@@ -304,6 +315,7 @@ export async function restoreLedgerEntry(formData: FormData): Promise<void> {
   if (!Number.isFinite(id) || id <= 0) throw new Error('Invalid id');
 
   const supabase = createAdminClient();
+  const before = await loadLedgerForAudit(supabase, [id]);
   const { error } = await supabase
     .from('ledger_entries')
     .update({
@@ -316,6 +328,7 @@ export async function restoreLedgerEntry(formData: FormData): Promise<void> {
     })
     .eq('id', id);
   if (error) throw new Error(`restore failed: ${error.message}`);
+  await auditLedgerStatus(before, 'restore', null);
   revalidatePath('/admin/advancement/ledger');
 }
 

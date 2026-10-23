@@ -27,7 +27,8 @@ const AREA_LABEL: Record<AuditArea, string> = {
   menus: 'Menus',
   pages: 'Pages',
   wreaths: 'Wreath sale',
-  meeting: 'Meeting board'
+  meeting: 'Meeting board',
+  advancement: 'Advancement ledger'
 };
 
 interface AuditRow {

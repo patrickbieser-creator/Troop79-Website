@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { createAdminClient } from '@/lib/supabase/server';
 import { recordAuditAs } from '@/lib/audit';
+import { inviteAnswerAudit } from '@/lib/meeting-invite-audit';
 import { recordInviteFailure, respondToInvite, tooManyInviteFailures } from '@/lib/meeting-invites-db';
 
 /**
@@ -38,23 +39,8 @@ export async function answerInviteAction(formData: FormData): Promise<void> {
     redirect(back);
   }
 
-  await recordAuditAs(
-    sb,
-    { personId: res.recipientId, label: 'invite link' },
-    {
-      area: 'meeting',
-      action: res.response === 'accepted' ? 'invite.accept' : 'invite.decline',
-      entityType: 'meeting_invite',
-      entityId: res.inviteId,
-      summary:
-        res.kind === 'pick'
-          ? res.response === 'accepted'
-            ? 'Said yes to a scout invite (now their first pick)'
-            : 'Said not this week to a scout invite'
-          : res.response === 'accepted'
-            ? 'Said yes to a teaching invite'
-            : 'Said not this week to a teaching invite'
-    }
-  );
+  // Named (2026-10-22): "Dana W said not this week for Anjali S: Ten 3a · Square Knot (Oct 25)", as "Dana Walsh (invite link)".
+  const audit = await inviteAnswerAudit(sb, res);
+  await recordAuditAs(sb, audit.actor, audit.entry);
   redirect(back);
 }

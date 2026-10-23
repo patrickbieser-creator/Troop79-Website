@@ -1,5 +1,6 @@
 'use server';
 
+import { auditLedgerEdits, auditLedgerStatus, loadLedgerForAudit } from '@/lib/ledger-audit';
 import { revalidatePath } from 'next/cache';
 import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
@@ -117,18 +118,21 @@ export async function resolveDuplicateLedgerEntries(formData: FormData): Promise
   }
 
   const supabase = createAdminClient();
+  const before = await loadLedgerForAudit(supabase, deleteIds);
+  const reason = `Duplicate — kept #${keepId} via Audits`;
   const { error, count } = await supabase
     .from('ledger_entries')
     .update(
       {
         deleted_at: new Date().toISOString(),
         deleted_by: session.label,
-        deleted_reason: `Duplicate — kept #${keepId} via Audits`
+        deleted_reason: reason
       },
       { count: 'exact' }
     )
     .in('id', deleteIds);
   if (error) return { ok: false, error: error.message, deleted: 0 };
+  await auditLedgerStatus(before, 'delete', reason);
 
   revalidatePath('/admin/advancement/audits');
   revalidatePath('/admin/advancement/dashboard');
@@ -272,16 +276,19 @@ export async function retireOrphanedCredit(formData: FormData): Promise<Reconcil
   }
 
   const supabase = createAdminClient();
+  const before = await loadLedgerForAudit(supabase, [ledgerEntryId]);
+  const reason = 'No Roll Call attendance record for this event — resolved via Audits';
   const { error } = await supabase
     .from('ledger_entries')
     .update({
       deleted_at: new Date().toISOString(),
       deleted_by: session.label,
-      deleted_reason: 'No Roll Call attendance record for this event — resolved via Audits'
+      deleted_reason: reason
     })
     .eq('id', ledgerEntryId)
     .is('deleted_at', null);
   if (error) return { ok: false, error: error.message };
+  await auditLedgerStatus(before, 'delete', reason);
 
   revalidateAudits(scoutId || undefined);
   return { ok: true };
@@ -316,8 +323,10 @@ export async function resolveQtyMismatch(formData: FormData): Promise<ReconcileR
   const supabase = createAdminClient();
   if (useSide === 'roll_call') {
     if (!Number.isFinite(rollCallQty)) return { ok: false, error: 'Malformed request' };
+    const before = await loadLedgerForAudit(supabase, [ledgerEntryId]);
     const { error } = await supabase.from('ledger_entries').update({ qty: rollCallQty }).eq('id', ledgerEntryId);
     if (error) return { ok: false, error: error.message };
+    await auditLedgerEdits(before, { qty: rollCallQty });
   } else {
     if (!Number.isFinite(ledgerQty)) return { ok: false, error: 'Malformed request' };
     const { error } = await supabase
@@ -368,8 +377,10 @@ export async function resolveDateDrift(formData: FormData): Promise<ReconcileRes
     update.code = ledgerCodeFor(ledgerRow.kind as CreditKind, calendarEntryId, entry.entry_date);
   }
 
+  const before = await loadLedgerForAudit(supabase, [ledgerEntryId]);
   const { error } = await supabase.from('ledger_entries').update(update).eq('id', ledgerEntryId);
   if (error) return { ok: false, error: error.message };
+  await auditLedgerEdits(before, update);
 
   revalidateAudits();
   return { ok: true };

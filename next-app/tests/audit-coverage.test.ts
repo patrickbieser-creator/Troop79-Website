@@ -66,3 +66,24 @@ describe('content audit trail — read-only action files stay read-only', () => 
     });
   }
 });
+
+/**
+ * Ledger edits are audited (Patrick, 2026-10-22): every action file that changes an existing ledger_entries row
+ * snapshots it and records the change through lib/ledger-audit (tests/ledger-audit-db.test.ts drives each path). This
+ * catches a whole file losing its auditing; Scoutbook / Presented flags and attendance credit sync are not edits of
+ * the recorded fields and stay out.
+ */
+const LEDGER_EDIT_FILES = [
+  'src/app/admin/(workspace)/advancement/ledger/actions.ts',
+  'src/app/admin/(workspace)/advancement/fast-entry/actions.ts',
+  'src/app/admin/(workspace)/advancement/audits/actions.ts'
+];
+
+describe('ledger audit trail — every ledger edit path records to it', () => {
+  for (const file of LEDGER_EDIT_FILES) {
+    it(`${file.split('/').slice(-2).join('/')} audits through lib/ledger-audit`, () => {
+      const src = readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
+      expect(src).toMatch(/await auditLedger(Edits|Status)\(/);
+    });
+  }
+});

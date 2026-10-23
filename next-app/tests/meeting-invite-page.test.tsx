@@ -9,6 +9,13 @@ import { render, screen } from '@testing-library/react';
 const m = vi.hoisted(() => ({ respond: vi.fn(), tooMany: vi.fn(), fail: vi.fn(), audit: vi.fn(), redirect: vi.fn() }));
 vi.mock('@/lib/meeting-invites-db', () => ({ respondToInvite: m.respond, tooManyInviteFailures: m.tooMany, recordInviteFailure: m.fail }));
 vi.mock('@/lib/audit', () => ({ recordAuditAs: m.audit }));
+// The named summary is built (and DB-tested) in lib/meeting-invite-audit; here only that the action records what it builds.
+vi.mock('@/lib/meeting-invite-audit', () => ({
+  inviteAnswerAudit: async (_sb: unknown, res: { recipientId: number; inviteId: number }) => ({
+    actor: { personId: res.recipientId, label: 'Dana Walsh (invite link)' },
+    entry: { area: 'meeting', action: 'invite.decline', entityType: 'meeting_invite', entityId: res.inviteId, summary: 'Dana W said not this week for Anjali S: Ten 3a · Square Knot (Oct 25)' }
+  })
+}));
 vi.mock('@/lib/supabase/server', () => ({ createAdminClient: () => ({}) }));
 const revalidate = vi.hoisted(() => vi.fn());
 vi.mock('next/cache', () => ({ revalidatePath: revalidate }));
@@ -176,5 +183,11 @@ describe('answering', () => {
     m.respond.mockResolvedValue({ ok: true, kind: 'teach', response: 'declined', inviteId: 7, inviteeId: 41, recipientId: 41 });
     await run(form('decline'));
     expect(m.audit.mock.calls[0][1]).toMatchObject({ personId: 41 });
+  });
+
+  it('AnAnswer_IsAudited_ByName', async () => {
+    m.respond.mockResolvedValue({ ok: true, kind: 'pick', response: 'declined', inviteId: 7, inviteeId: 52, recipientId: 41 });
+    await run(form('decline'));
+    expect(m.audit.mock.calls[0][1].label).toBe('Dana Walsh (invite link)');
   });
 });

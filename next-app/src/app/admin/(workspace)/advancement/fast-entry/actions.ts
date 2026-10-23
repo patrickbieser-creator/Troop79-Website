@@ -1,5 +1,6 @@
 'use server';
 
+import { auditLedgerStatus, loadLedgerForAudit } from '@/lib/ledger-audit';
 import { revalidatePath } from 'next/cache';
 import { requireCapability } from '@/lib/require-capability';
 import { adminActorLabel } from '@/lib/admin-actor';
@@ -499,6 +500,7 @@ export async function undoCompletion(formData: FormData): Promise<SaveResult> {
   }
 
   const supabase = createAdminClient();
+  const before = await loadLedgerForAudit(supabase, [id]);
   const { error } = await supabase
     .from('ledger_entries')
     .update({
@@ -508,6 +510,7 @@ export async function undoCompletion(formData: FormData): Promise<SaveResult> {
     })
     .eq('id', id);
   if (error) return { ok: false, inserted: 0, error: error.message };
+  await auditLedgerStatus(before, 'delete', reason);
 
   revalidatePath('/admin/advancement/fast-entry');
   revalidatePath('/admin/advancement/ledger');

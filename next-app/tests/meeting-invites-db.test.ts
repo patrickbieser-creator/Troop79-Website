@@ -3,6 +3,8 @@ import { adminClient } from './helpers/admin-client';
 import { TEST_PREFIX } from './helpers/signup-fixtures';
 import { createTeachInvites, inspectInvite, respondToInvite } from '../src/lib/meeting-invites-db';
 import { INVITE_SEND_CAP } from '../src/lib/meeting-invites';
+import { inviteAnswerAudit } from '../src/lib/meeting-invite-audit';
+import { fetchAdvancementCatalog } from '../src/lib/advancement-catalog';
 
 /**
  * Meeting invites, P1 (Plans/Matcher-Tune-Up.md T-5, qa-lead review 2026-10-20): the database half against the real
@@ -178,5 +180,21 @@ describe('answering', () => {
 
   it('AMadeUpToken_IsUnknown', async () => {
     expect((await respondToInvite(sb, 'f'.repeat(64), 'accept')).ok).toBe(false);
+  });
+});
+
+describe('the audit row for an answer names who and what (2026-10-22)', () => {
+  it('TeachYes_AuditSummary_NamesTeacherTopicAndDay', async () => {
+    const sent = await firstToken();
+    const res = await respondToInvite(sb, sent.token, 'accept');
+    const audit = res.ok ? await inviteAnswerAudit(sb, res, { loadCatalog: () => fetchAdvancementCatalog(sb) }) : null;
+    expect(audit?.entry.summary).toMatch(new RegExp(`^${TEST_PREFIX} A said yes to teaching Ten \\S+ · .+ \\(Mar 4\\)$`));
+  });
+
+  it('TeachYes_AuditActor_IsTheRecipientByName', async () => {
+    const sent = await firstToken();
+    const res = await respondToInvite(sb, sent.token, 'accept');
+    const audit = res.ok ? await inviteAnswerAudit(sb, res, { loadCatalog: () => fetchAdvancementCatalog(sb) }) : null;
+    expect(audit?.actor).toEqual({ personId: adult, label: `${TEST_PREFIX} INV Adult (invite link)` });
   });
 });

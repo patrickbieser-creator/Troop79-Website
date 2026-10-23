@@ -1,8 +1,11 @@
 /**
  * Content audit trail (Patrick, 2026-08-30): every CRUD change to website
  * CONTENT — news, calendar, roster, resource library — dumps one row into
- * `audit_log` with a date and person tag. Advancement and finance are
- * deliberately excluded: both already have ledgers of record. The signup
+ * `audit_log` with a date and person tag. Finance is deliberately excluded
+ * (it has a ledger of record). Advancement was too, until edits to the
+ * ledger itself needed a trail (2026-10-22): every change to a
+ * ledger_entries row is audited in the 'advancement' area through
+ * lib/ledger-audit (new rows are the ledger's own record). The signup
  * workbench (events/actions.ts) is also out of scope for now — family
  * logistics and payments, not website content.
  *
@@ -19,7 +22,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/supabase/server';
 import { resolveAdminActor } from '@/lib/admin-actor';
 
-export const AUDIT_AREAS = ['news', 'calendar', 'roster', 'library', 'menus', 'pages', 'wreaths', 'meeting'] as const;
+export const AUDIT_AREAS = ['news', 'calendar', 'roster', 'library', 'menus', 'pages', 'wreaths', 'meeting', 'advancement'] as const;
 export type AuditArea = (typeof AUDIT_AREAS)[number];
 
 /**

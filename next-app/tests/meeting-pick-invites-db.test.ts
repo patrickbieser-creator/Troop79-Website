@@ -4,6 +4,7 @@ import { TEST_PREFIX } from './helpers/signup-fixtures';
 import { fetchAdvancementCatalog } from '../src/lib/advancement-catalog';
 import { createPickInvites, inspectInvite, respondToInvite, scoutMayBeMailed } from '../src/lib/meeting-invites-db';
 import { hashSecret } from '../src/lib/identity-challenge';
+import { inviteAnswerAudit } from '../src/lib/meeting-invite-audit';
 
 /**
  * Meeting invites, P2: scouts and parents (Plans/Matcher-Tune-Up.md T-5; qa-lead design review 2026-10-20). Real local
@@ -256,5 +257,14 @@ describe('the pick RPCs refuse anyone outside the household (qa-lead MUST 1)', (
   it('AParentOutsideTheHousehold_IsRefused', async () => {
     const { error } = await sb.rpc('meeting_add_pick', { p_entry: meeting, p_person: older, p_actor: awayParent, p_leader: false, p_topic_key: keys[0], p_later: false, p_mark_coming: true, p_carry: [] });
     expect(error).not.toBeNull();
+  });
+});
+
+describe('the audit row for a parent answer names both (2026-10-22)', () => {
+  it('ParentNo_AuditSummary_NamesParentScoutTopicAndDay', async () => {
+    const token = await linkFor(younger, parent);
+    const res = await answer(token, 'decline');
+    const audit = res.ok ? await inviteAnswerAudit(sb, res, { loadCatalog: catalog }) : null;
+    expect(audit?.entry.summary).toMatch(new RegExp(`^${TEST_PREFIX} P said not this week for ${TEST_PREFIX} Y: Ten \\S+ · .+ \\(Mar 4\\)$`));
   });
 });

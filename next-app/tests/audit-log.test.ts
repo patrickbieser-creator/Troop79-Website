@@ -64,10 +64,10 @@ describe('recordAuditAs', () => {
   });
 
   it('NeverThrows_WhenTheInsertFails_AuditingMustNotBreakASave', async () => {
-    // 'advancement' violates the area CHECK constraint — the insert fails at
+    // 'finance' violates the area CHECK constraint — the insert fails at
     // the DB, and recordAuditAs must swallow it.
     await expect(
-      recordAuditAs(admin, null, entry({ area: 'advancement' as AuditEntry['area'] }))
+      recordAuditAs(admin, null, entry({ area: 'finance' as AuditEntry['area'] }))
     ).resolves.toBeUndefined();
     const { data } = await admin.from('audit_log').select('id').eq('entity_type', MARKER);
     expect(data).toHaveLength(0);
