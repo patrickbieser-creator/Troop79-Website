@@ -26,6 +26,8 @@
  * Rotations L1: the database keeps a started arrangement in step with the plan. A scout placed from a late pick says
  * New on their chip; editors mark it seen from the scout's sheet, or all at once from the bar ("Mark all seen").
  * Removing a scout from a class by hand keeps them out of it (the sheet says so).
+ * Rotations L2: one teacher. A single class's teacher is the plan's (the sheet says "also the plan's teacher"); a repeat
+ * keeps its own ("this repeat only"). Every offering on the plan has a card, made in Not scheduled.
  */
 import { useEffect, useRef, useState, type DragEvent, type ReactNode, type RefObject } from 'react';
 import { useRouter } from 'next/navigation';
@@ -103,6 +105,9 @@ export const DISCARD_LOST = 'The classes, rotations, moves and here / not-here t
 /** B8 qa: the first edit on a future meeting's preview starts Live; say so quietly, and where the way back is. */
 export const LIVE_STARTED_NOTE = 'Meeting Live started. Discard is in More actions.';
 export const DISCARD_KEPT = 'Recorded attendance, visitors, offerings and teacher sign-ups stay. The board goes back to the matcher’s suggestion.';
+/** Rotations L2 (Decision 4): the teacher sheet says where the choice lands. */
+export const TEACHER_IS_PLANS = 'also the plan’s teacher';
+export const TEACHER_REPEAT_ONLY = 'this repeat only';
 export const startConfirmText = (label: string) =>
   `Start Meeting Live for ${label}? New picks still land in their classes; anyone you move by hand stays where you put them.`;
 const CLOSED: LiveAttendanceProp = { open: false, note: null };
@@ -1092,7 +1097,7 @@ function LiveSheet({
     const teachingAt = (personId: number) =>
       view.cards.filter((o) => o.id !== c.id && o.teacher?.personId === personId && o.rotation != null).map((o) => `R${o.rotation}`);
     return (
-      <Drawer eyebrow="Teacher" title={c.title} sub={rotWord(c.rotation)} onClose={onClose}>
+      <Drawer eyebrow="Teacher" title={c.title} sub={`${rotWord(c.rotation)} · ${c.repeats.length ? TEACHER_REPEAT_ONLY : TEACHER_IS_PLANS}`} onClose={onClose}>
         {open && c.teacher ? (
           <ul className={styles.sheetList}>
             <SheetRow note={c.teacher.present ? 'Not here, for the attendance check' : 'Here, for the attendance check'} onClick={() => onPresent(c.teacher!.personId, !c.teacher!.present)}>

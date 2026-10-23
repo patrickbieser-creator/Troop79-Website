@@ -257,7 +257,8 @@ export function placementAsMatch(p: SavedPlacement, board: readonly PlacementBoa
  *   - pick: a scout in no class who picked a topic with no class → Create class and place (the same mechanism);
  *   - cant / dropped: a placed scout who said Can't make it, or whose picks no longer include the class's topic →
  *     Remove from class / Keep;
- *   - teacher: the class's teacher isn't one of the plan's teachers for its topic → Use <plan> / Use <class>;
+ *   - teacher: a single class's teacher isn't one of the plan's teachers for its topic → Use <plan> / Use <class>
+ *     (Rotations L2: a repeat keeps its own teacher, so repeats are never this case);
  *   - orphan: a class whose topic nothing holds on the plan any more (not seeded, no picks, no teacher) → Keep as
  *     extra / Remove class.
  * `id` is stable across reloads: a session's Keep hides it by id.
@@ -352,7 +353,11 @@ export function liveDrift(input: {
       else if (!c.merged && now.length && !now.some((p) => p.key === c.topicKey)) out.push({ id: `d:${c.id}:${personId}`, kind: 'dropped', ...base });
     }
   }
+  const classCount = new Map<string, number>();
+  for (const c of classes) classCount.set(c.topicKey, (classCount.get(c.topicKey) ?? 0) + 1);
   for (const c of classes) {
+    // Rotations L2 (Decision 4): a repeat keeps its own teacher; only a single class answers to the plan's.
+    if ((classCount.get(c.topicKey) ?? 0) > 1) continue;
     const plan = planTeachers.get(c.topicKey) ?? [];
     if (plan.length && (c.teacherId == null || !plan.includes(c.teacherId))) {
       out.push({

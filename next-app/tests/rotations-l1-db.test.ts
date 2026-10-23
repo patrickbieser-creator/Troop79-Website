@@ -135,6 +135,9 @@ describe('Rotations L1: late picks land', () => {
 
   it('LatePick_NoClass_WaitsInNotInAClassYet', async () => {
     await started([{ topic_key: key, rotation: 1 }]);
+    // Rotations L2 makes a class for a new pick's topic; one a planner set aside (removed its last class) gets none.
+    const { data: t } = await sb.rpc('_meeting_topic_id', { p_entry: meeting, p_key: key2 });
+    await sb.from('meeting_topics').update({ class_set_aside_at: new Date().toISOString() }).eq('id', t as number);
     await pick(ann, key2);
     expect((await view()).pool.some((p) => p.personId === ann)).toBe(true);
   });

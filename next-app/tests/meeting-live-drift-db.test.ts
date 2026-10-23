@@ -145,10 +145,26 @@ afterAll(async () => {
 const asEditor = () => (state.actor = { personId: editor, subjectKind: 'adult', capabilities: new Set(['meeting_planner.edit']) });
 const asViewer = () => (state.actor = { personId: editor, subjectKind: 'adult', capabilities: new Set(['meeting_planner.view']) });
 
-/** The real case: Live started with one class; then a teacher on key2 and Anjali picks key2. */
+/**
+ * Rotations L2 makes a class for every offering on its own; the L0 cases below arise when a planner removed a topic's
+ * last class by hand (it is set aside), or for a class whose teacher already differed from the plan's at the L2 deploy.
+ */
+const setAside = async (k: string) => {
+  const { data } = await sb.rpc('_meeting_topic_id', { p_entry: meeting, p_key: k });
+  await sb.from('meeting_topics').update({ class_set_aside_at: new Date().toISOString() }).eq('id', data as number);
+};
+/** A class that keeps its own teacher (`personId`) while the plan names only `teacher`. */
+const legacyTeacher = async (classId: number, personId: number) => {
+  // The override first: taking them off the plan reconciles, and a class without one would follow the plan.
+  await sb.from('meeting_classes').update({ teacher_person_id: personId, teacher_override: true }).eq('id', classId);
+  await sb.from('meeting_topic_teachers').delete().eq('calendar_entry_id', meeting).eq('person_id', personId);
+};
+
+/** The real case: Live started with one class; then a teacher on key2 and Anjali picks key2 (its class set aside). */
 async function realCase() {
   await pick(ben, key);
   const [c] = await started([{ topic_key: key, rotation: 1, teacher_person_id: teacher2, members: [ben] }]);
+  await setAside(key2);
   await teach(teacher2, key);
   await teach(teacher, key2);
   await pick(anjali, key2);
@@ -214,6 +230,7 @@ describe('Rotations L0: the fixes', () => {
     await pick(ben, key);
     const [c] = await started([{ topic_key: key, rotation: 1, teacher_person_id: teacher2, members: [ben] }]);
     await teach(teacher, key);
+    await legacyTeacher(c, teacher2);
     const d = (await view()).drift.find((x) => x.kind === 'teacher' && x.classId === `c:${c}`);
     asEditor();
     const res = d?.kind === 'teacher' ? await (await live()).plannerLiveSetTeacherAction({ entryId: meeting, classId: d.classId, version: d.version, teacherId: d.plan.personId }) : null;
@@ -224,6 +241,7 @@ describe('Rotations L0: the fixes', () => {
     await pick(ben, key);
     const [c] = await started([{ topic_key: key, rotation: 1, teacher_person_id: teacher2, members: [ben] }]);
     await teach(teacher, key);
+    await legacyTeacher(c, teacher2);
     asEditor();
     const res = await (await live()).plannerLiveUseClassTeacherAction({ entryId: meeting, classId: `c:${c}`, version: 1, teacherId: teacher2 });
     expect([res.ok, await planTeachers(key)]).toEqual([true, [teacher2]]);
@@ -290,6 +308,7 @@ describe('Rotations L0 qa: Use <class teacher> checks who may teach', () => {
     await pick(ben, key);
     const [c] = await started([{ topic_key: key, rotation: 1, teacher_person_id: anjali, members: [ben] }]);
     await teach(teacher, key);
+    await legacyTeacher(c, anjali);
     asEditor();
     const res = await (await live()).plannerLiveUseClassTeacherAction({ entryId: meeting, classId: `c:${c}`, version: 1, teacherId: anjali });
     expect([res.ok, await planTeachers(key)]).toEqual([false, [teacher]]);
@@ -325,6 +344,7 @@ describe('Rotations L0: rights and stale checks', () => {
     await pick(ben, key);
     const [c] = await started([{ topic_key: key, rotation: 1, teacher_person_id: teacher2, members: [ben] }]);
     await teach(teacher, key);
+    await legacyTeacher(c, teacher2);
     asEditor();
     const a = await live();
     await a.plannerLiveMoveClassAction({ entryId: meeting, classId: `c:${c}`, version: 1, rotation: 2 });
@@ -382,6 +402,8 @@ describe('Rotations L0: perf', () => {
     await teach(teacher2, key);
     const calm = counting();
     const calmView = await view(calm.client);
+    await setAside(key2);
+    await setAside(key3);
     await teach(teacher, key2);
     await pick(anjali, key2);
     await teach(teacher, key3);

@@ -28,7 +28,7 @@ vi.mock('../src/app/(public)/planner/live-actions', () => ({
 }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: mocks.refresh }) }));
 
-import { LiveBoard } from '../src/app/(public)/planner/live/live-board';
+import { LiveBoard, TEACHER_IS_PLANS, TEACHER_REPEAT_ONLY } from '../src/app/(public)/planner/live/live-board';
 
 const member = (personId: number, name: string, isNew = false) => ({ personId, name, retake: false, present: false, visitor: false, isNew });
 const VIEW: LiveView = {
@@ -106,5 +106,20 @@ describe('Rotations L1: New on the Live screen', () => {
     render(<LiveBoard view={VIEW} canEdit entryId={133} />);
     fireEvent.click(screen.getByRole('button', { name: /^Anjali S, new/ }));
     expect((await screen.findByRole('button', { name: /^Remove from this class/ })).textContent).toContain('won’t be put back automatically');
+  });
+});
+
+describe('Rotations L2: one teacher on the Live screen', () => {
+  it('TeacherSheet_SingleClass_SaysItIsThePlansTeacher', async () => {
+    render(<LiveBoard view={VIEW} canEdit entryId={133} />);
+    fireEvent.click(screen.getByRole('button', { name: /^Teacher: Pat B/ }));
+    expect(await screen.findByText(`Rotation 1 · ${TEACHER_IS_PLANS}`)).toBeTruthy();
+  });
+
+  it('TeacherSheet_Repeat_SaysThisRepeatOnly', async () => {
+    const repeated: LiveView = { ...VIEW, cards: [{ ...VIEW.cards[0], repeats: [2] }] };
+    render(<LiveBoard view={repeated} canEdit entryId={133} />);
+    fireEvent.click(screen.getByRole('button', { name: /^Teacher: Pat B/ }));
+    expect(await screen.findByText(`Rotation 1 · ${TEACHER_REPEAT_ONLY}`)).toBeTruthy();
   });
 });

@@ -80,6 +80,15 @@ describe('liveDrift', () => {
     expect(texts({ classes, topicTeachers: [{ key: 'scout-1a', personId: PAT }] })).toEqual(['Scout 1a: the plan says Patrick B, the class has Maria L']);
   });
 
+  // Rotations L2 (Decision 4): a repeat of a class keeps its own teacher, so its differing from the plan isn't drift.
+  it('Drift_TeacherOnARepeat_IsNotFlagged', () => {
+    const classes = [
+      cls({ id: 'c:1', topicKey: 'scout-1a', teacherId: MARIA, memberIds: [BEN] }),
+      cls({ id: 'c:2', topicKey: 'scout-1a', teacherId: PAT })
+    ];
+    expect(drift({ classes }).filter((d) => d.kind === 'teacher')).toEqual([]);
+  });
+
   it('Drift_TeacherOnPlan_CantMakeIt_IsNotThePlanTeacher', () => {
     expect(texts({ topicTeachers: [{ key: 'scout-1a', personId: MARIA }, { key: 'scout-1a', personId: PAT }], notComing: new Set([PAT]) })).toEqual([]);
   });

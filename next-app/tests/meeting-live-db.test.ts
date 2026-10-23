@@ -169,9 +169,10 @@ describe('starting Meeting Live', () => {
     asEditor();
     const act = await live();
     await act.plannerLiveStartAction({ entryId: meeting });
-    const before = await classCount(meeting);
     await pick(meeting, bo, key2);
     await teach(meeting, editorAdult, key2);
+    // Rotations L2: those two writes give key2 its class on their own; a second Start adds nothing more.
+    const before = await classCount(meeting);
     const again = await act.plannerLiveStartAction({ entryId: meeting });
     expect([again.ok, await classCount(meeting)]).toEqual([true, before]);
   });
@@ -309,7 +310,9 @@ describe('the schema holds', () => {
     if (error) throw new Error(error.message);
     const { data } = await sb.from('meeting_classes').select('teacher_person_id, entered_by_person_id, meeting_class_members(person_id, entered_by_person_id)').eq('calendar_entry_id', meeting).single();
     const c = data as { teacher_person_id: number; entered_by_person_id: number; meeting_class_members: { person_id: number; entered_by_person_id: number }[] };
-    expect([c.teacher_person_id, c.entered_by_person_id, c.meeting_class_members]).toEqual([survivor, survivor, [{ person_id: survivor, entered_by_person_id: survivor }]]);
+    // Ann's pick lands too (Rotations L1, on the merge's reconcile); the merge is about the two people.
+    const theirs = c.meeting_class_members.filter((m) => m.person_id === survivor || m.person_id === loser);
+    expect([c.teacher_person_id, c.entered_by_person_id, theirs]).toEqual([survivor, survivor, [{ person_id: survivor, entered_by_person_id: survivor }]]);
   });
 
   it('NewTablesAndFunctions_AreServiceRoleOnly', () => {
