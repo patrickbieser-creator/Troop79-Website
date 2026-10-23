@@ -8,7 +8,7 @@
  *
  * One load (lib/has-needs-db): the cached catalog, the active scouts, the ledger and awarded badges, and for a seed
  * holder the next meetings and what is on their plans. The split runs on the client, so ticking costs no round trip.
- * Admin's /admin/advancement/has-needs stays until Patrick approves this page.
+ * Admin's copy retired 2026-10-23 and redirects here.
  */
 import { redirect } from 'next/navigation';
 import { resolveAdminActor } from '@/lib/admin-actor';

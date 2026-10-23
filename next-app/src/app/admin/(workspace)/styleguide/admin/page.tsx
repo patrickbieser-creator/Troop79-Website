@@ -1289,8 +1289,7 @@ export default function StyleguidePage() {
                 { key: 'l', label: 'Ledger', href: '#' },
                 { key: 'sp', label: 'Submit & Present', href: '#' },
                 { key: 'mb', label: 'MB Progress', href: '#' },
-                { key: 'mp', label: 'Meeting Plan', href: '#' },
-                { key: 'hn', label: 'Has/Needs', href: '#' }
+                { key: 'mp', label: 'Meeting Plan', href: '#' }
               ]}
             />
           </Specimen>

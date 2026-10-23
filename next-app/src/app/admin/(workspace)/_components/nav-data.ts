@@ -135,18 +135,13 @@ export const SECTIONS: NavSection[] = [
         matchPath: '/admin/advancement/mb-progress',
         description: 'Partial merit badges and their counselors',
         capability: 'advancement.write'
-      },
+      }
       // "Roll Call & Agendas" retired 2026-08-24 (Patrick): the Calendar list
       // carries every entry's agenda / signup / roll-call state as letter pills
       // that open the layer's screen. The Roll Call SHEET keeps its own route
       // under the entry — taking attendance is still a data-entry session.
-      {
-        label: 'Has/Needs',
-        href: '/admin/advancement/has-needs',
-        matchPath: '/admin/advancement/has-needs',
-        description: 'Who still needs a requirement',
-        capability: 'advancement.write'
-      }
+      // Has/Needs retired 2026-10-23 (Patrick approved the planner's tab):
+      // it lives at /planner/has-needs.
     ]
   },
   {

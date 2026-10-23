@@ -1,7 +1,7 @@
 /**
  * The planner's Has/Needs tab, its one read (Build a Plan B7, Plans/Build-A-Plan.md). Server-only, service role; the
- * page gates (planner View). Ported from Admin's /admin/advancement/has-needs, which keeps its own copy until Patrick
- * approves this one and it retires.
+ * page gates (planner View). Ported from Admin's Has/Needs, which retired
+ * 2026-10-23 and redirects here.
  *
  * One load, every part in parallel, and the split runs on the client (lib/has-needs), so ticking costs nothing:
  *   - the requirement trees from the shared advancement catalog (cached hourly), the four lower ranks and every badge

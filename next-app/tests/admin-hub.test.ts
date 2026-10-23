@@ -9,9 +9,10 @@ import { BUNDLES, CAPABILITIES, type Capability } from '../src/lib/capabilities'
 
 // The hrefs the rail offered at v1.214.0 (before Wave 2), for the regression test — minus Roster
 // Import, retired on purpose 2026-10-20 (a one-time Google Sheets import), and Meeting Plan, retired in Build a Plan B5
-// (its generator, By Scout and Teaching Roster are lenses of /planner/build?view=suggestions).
+// (its generator, By Scout and Teaching Roster are lenses of /planner/build?view=suggestions), and Has/Needs, retired
+// 2026-10-23 for the planner's /planner/has-needs.
 const FORMER_RAIL_HREFS = [
-  '/admin', '/admin/advancement/fast-entry', '/admin/advancement/has-needs',
+  '/admin', '/admin/advancement/fast-entry',
   '/admin/advancement/ledger', '/admin/advancement/roster', '/admin/advancement/records', '/admin/advancement/mb-progress',
   '/admin/advancement/audits', '/admin/advancement/report', '/admin/advancement/court-of-honor',
   '/admin/advancement/scoutbook-export', '/admin/advancement/meetings/report', '/admin/news/articles', '/admin/news/pages',
@@ -241,7 +242,7 @@ describe('Section bar and tabs', () => {
 
   it('AdminNav_AdvancementTabs_StartWithDashboard_AndCarryNoReports', () => {
     const n = nav(['advancement.write', 'meeting_plan.use'], '/admin/advancement/ledger');
-    expect(labels(n.tabs)).toEqual(['Dashboard', 'Fast Entry', 'Ledger', 'Submit & Present', 'MB Progress', 'Has/Needs']);
+    expect(labels(n.tabs)).toEqual(['Dashboard', 'Fast Entry', 'Ledger', 'Submit & Present', 'MB Progress']);
   });
 
   it.each([
