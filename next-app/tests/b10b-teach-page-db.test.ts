@@ -317,6 +317,27 @@ describe('B10b qa: answers', () => {
     expect([again.ok && again.lines[0]?.result, await teaching()]).toEqual(['unchanged', 1]);
   }, 60_000);
 
+  // B10b follow-up: a Yes on a line already 'accepted' still signs the teacher up, so one released elsewhere (the
+  // planner's unteach, the board's "I can't teach this") is back after they say Yes again.
+  it('TeachPage_YesAgain_AfterRelease_SignsBackUp', async () => {
+    const token = await sendTeach([keys[0]]);
+    const [line] = await lineIds(token);
+    await answerTeachPage(sb, token, [{ inviteId: line, answer: 'yes' }]);
+    const u = await sb.rpc('meeting_unteach_topic', { p_entry: meeting, p_person: teacher, p_actor: teacher, p_leader: true, p_topic_key: keys[0] });
+    if (u.error) throw new Error(u.error.message);
+    await answerTeachPage(sb, token, [{ inviteId: line, answer: 'yes' }]);
+    expect(await teaching()).toBe(1);
+  }, 60_000);
+
+  it('TeachPage_YesAgain_StillTeaching_KeepsOneRow', async () => {
+    const token = await sendTeach([keys[0]]);
+    const [line] = await lineIds(token);
+    await answerTeachPage(sb, token, [{ inviteId: line, answer: 'yes' }]);
+    await answerTeachPage(sb, token, [{ inviteId: line, answer: 'yes' }]);
+    await answerTeachPage(sb, token, [{ inviteId: line, answer: 'yes' }]);
+    expect(await teaching()).toBe(1);
+  }, 60_000);
+
   it('TeachPage_YesToNo_LeavesOtherTeachersAlone', async () => {
     const t = await sb.rpc('meeting_teach_topic', { p_entries: [meeting], p_person: other, p_actor: other, p_leader: false, p_topic_key: keys[0], p_title: null, p_note: null });
     if (t.error) throw new Error(t.error.message);
