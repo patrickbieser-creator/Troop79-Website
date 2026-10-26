@@ -230,3 +230,68 @@ Order_PriceComesFromServer_NotClient; Order_RejectsQuantityOutOfBounds_AndInacti
 
 ### Deploy order
 DB-first: the migration and seed go to production after a dry run, then the code, then the "where the money goes" copy as a site_pages row (or a code constant until it exists). Production migration gets an Opus risk check first.
+
+## Tune-up feedback (2026-10-19, Patrick). Parked, not built
+
+### W-1. An order note that admins and the scout/parent both see
+
+Admins and the scout or parent can add a note to a wreath order, and both sides see it.
+
+Today the order already has two notes, both from Release B (`20261103100000_wreath_scout_entered`):
+- `customer_note` (≤300): written when the order is placed.
+- `payment_note` (≤200): written about the hand payment.
+
+Neither is a shared, editable conversation note. To decide:
+- [ ] **New column or not:** a new `order_note`, or widen `customer_note` into it?
+- [ ] **Editing:** one editable note (last edit wins, showing who and when), or an append-only list of dated notes?
+- [ ] **Where the scout/parent sees and edits it:** the scout's order list, and/or the customer's `/wreaths/order/[token]` page.
+- [ ] **Who sees it:** is it ever shown to the customer, or only to troop members? Recommend troop-only; the customer keeps `customer_note`.
+
+### W-2. Show a short or over payment on screen, on the payment pill
+
+When the amount received differs from the calculated total, show it on screen. Patrick's suggestion: append it to the pill that shows the payment method, e.g. "Venmo · $5 short" / "Cash · $10 over (gift)".
+
+Data already exists:
+- Amount received is recorded since D-398: the ledger books what came in, and the troop absorbs a short payment.
+- Over-payments can count the extra as a gift (D-401).
+
+This is a display change on:
+- the admin orders panel and dashboard
+- the scout's order list
+- possibly the customer order page (decide: probably not on the customer page)
+
+Card orders are locked to the total, so they never show it.
+
+### W-3. Donate to Troop 79 (2026-10-19, Patrick)
+
+Under "Donate a wreath to veterans" on the store and on each scout's page, add a similar option to **donate money to Troop 79**. Several customers didn't want a wreath but wanted to give to the troop, and there was no way to do it.
+
+- A donation-only order is the point: there's no wreath, so nothing needs delivery.
+- **Patrick (2026-10-19):** the checkout's existing "Gift to Troop 79" box is *not* a valid donation path, because you can't reach checkout without a wreath in the cart. The donation must be its own entry point that puts a Donation line in the cart, so checkout works with only a donation.
+- Today's veteran donations are wreath *items* with a donated flag (`items.donatable`). A troop donation is a money amount, not an item.
+
+**Setting (Patrick):** the Wreath sale settings form (`settings-form.tsx`, next to the existing scouts' share of profit) gets a **"Scouts' share of donations"** percent, starting at **15%**. It is expected to change year to year, so it's a per-sale setting, the same as the share of profit.
+- **Confirmed (Patrick, 2026-10-19):** the troop committee sets the % of cash donations that goes to scout accounts, starting at 15%. It applies to the checkout's existing "Gift to Troop 79" on orders credited to a scout, and later to donation-only orders. It is being built ahead of the rest of W-3.
+
+Still to decide:
+- [x] **Amount:** preset buttons ($10 / $25 / $50) plus "Other amount". (Patrick, 2026-10-19)
+- [x] **A donation with no scout credit** (from the plain store) is 100% troop. (Patrick)
+- [x] **Ledger:** book it in the wreath sale's bucket as its own Donation line, separable in reports. (Patrick)
+- [x] **Card fees:** deduct the card processing fee from the donation. (Patrick)
+  - The customer is not charged an extra fee on the donation.
+  - The troop records the donation net of its share of the Stripe fee.
+  - The scouts' share is taken from that net amount (reading; confirm at build).
+- [x] **Acknowledgement:** yes, the confirmation email serves as a donation receipt. (Patrick) Wording to be checked with the treasurer: troop name, amount, date, and "no goods or services were provided" for donation-only orders.
+
+### W-4. A super user enters paper orders for a scout (2026-10-19, Patrick)
+
+Some scouts turn in orders on paper and never use the website. A super user who is signed in and on that scout's wreath page (`/wreaths/[seller]`) gets the normal **"Order for someone I know"** entry mode on that scout's behalf. Today that mode is offered only to the scout or a parent in their household.
+
+- **Super user = holds `finance.manage`**, the wreath admin capability. Wreath super-user-ness follows the domain's own capability, as finance-viewer and household switching do. This is a decision; Patrick can change it.
+- The order is credited to that scout. `entered_by_person_id` records the super user, and the audit says "entered by Dan V for Damian N".
+- Everything else is the same as the family path:
+  - source `paper`
+  - collected by the scout
+  - the same cutoff and lock rules
+  - the same refusal if the order changed under them
+- Server-side check: the action re-checks `finance.manage` from the session, never from a flag the client posted.
