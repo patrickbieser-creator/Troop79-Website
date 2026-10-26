@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>October 23, 2026</strong> &nbsp;&middot;&nbsp; v1.254.0</p>
+      <p>Last updated: <strong>October 26, 2026</strong> &nbsp;&middot;&nbsp; v1.255.0</p>
     </div>
   </div>
 
@@ -494,6 +494,25 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.255.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.255.0</span>
+        <span class="release-date">October 26, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Adult Skills and Scout Instructors: add and delete</p>
+        <ul class="change-list">
+          <li><span>The two cards on <strong>Lookups &amp; Admin</strong> now list only the people who teach, instead of every leader and every eligible scout with mostly empty rows.</span></li>
+          <li><span><strong>+ Add Adult</strong> and <strong>+ Add Scout</strong> pick someone and tick what they can teach. Adults can be any leader or parent; scouts can be anyone First Class or above, or a Junior Leader.</span></li>
+          <li><span><strong>Delete</strong> removes all of a person&rsquo;s teaching skills after a confirm that names them, and their row goes. Unticking every skill in Edit asks the same question. Each removal shows under Recent teaching-skill changes, where Undo puts it back.</span></li>
+          <li><span>Deleting someone here changes only what they can teach. Their roster record, their leader initials and every ledger entry they signed stay exactly as they were.</span></li>
+          <li><span>A scout who has left the troop but still holds a teaching skill shows under Adult Skills as &ldquo;Former scout&rdquo;, so those skills can be cleared.</span></li>
+        </ul>
       </div>
     </div>
 

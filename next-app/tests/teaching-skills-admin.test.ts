@@ -120,3 +120,31 @@ describe('merit badge counselors save', () => {
     }
   });
 });
+
+describe('Delete on Adult Skills (2026-10-26)', () => {
+  // Patrick: removing an adult as a teacher must leave every ledger entry they signed off untouched. Delete is a save
+  // of no skills, so it may touch teaching_skills and the change log only.
+  it('DeletingAnAdultsSkills_LeavesTheLedgerEntriesTheySignedIntact', async () => {
+    const adult = await makePerson('Signer');
+    const scout = await makeScout('Signed');
+    const code = `VT${adult}`;
+    const { error: le } = await admin.from('leaders').insert({ code, name: `${TEST_PREFIX} TS Signer`, person_id: adult });
+    if (le) throw new Error(`fixture leader: ${le.message}`);
+    const { data: entry, error: ee } = await admin
+      .from('ledger_entries')
+      .insert({ scout_id: `vitest-ts-${scout}`, kind: 'rank_requirement', code: 'tenderfoot-1a', date: '2026-01-04', by: code })
+      .select('*')
+      .single();
+    if (ee) throw new Error(`fixture entry: ${ee.message}`);
+    try {
+      expect(await save(adult, ['knots'])).toMatchObject({ ok: true });
+      expect(await save(adult, [])).toMatchObject({ ok: true });
+      const { data: after } = await admin.from('ledger_entries').select('*').eq('id', entry!.id).single();
+      expect(after).toEqual(entry);
+    } finally {
+      await admin.from('ledger_entries').delete().eq('id', entry!.id);
+      await admin.from('teaching_skill_changes').delete().eq('person_id', adult);
+      await admin.from('leaders').delete().eq('code', code);
+    }
+  });
+});
