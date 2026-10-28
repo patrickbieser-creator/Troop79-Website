@@ -1,6 +1,6 @@
 # Requirement Classification
 
-**Status:** Ready (all open questions answered 2026-10-28)
+**Status:** In progress. Steps 1-5 built on feat/requirement-classes (2026-10-28), waiting for "ship". Left: step 6 (merit badge first pass) and step 7 (drop venue).
 **Parked:** 2026-10-28
 **Priority:** High (feeds Build a Plan → Suggestions)
 
