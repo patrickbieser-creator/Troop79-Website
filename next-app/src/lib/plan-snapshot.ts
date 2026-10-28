@@ -12,6 +12,8 @@ export interface SnapshotOption {
   /** 'FC 7a, 7b' / 'Merit badge' / 'Tenderfoot 4a'. */
   sub: string;
   teacher: string | null;
+  /** What it covers, in words: '7a · Flag - display, raise, lower, fold'. */
+  items?: string[];
 }
 
 export interface SnapshotPayload {
@@ -27,7 +29,8 @@ export function snapshotPayload(tw: ThisWeek): SnapshotPayload {
       key: g.key,
       title: g.kind === 'badge' ? `${g.name} merit badge` : `${g.name} group`,
       sub: g.columns.map((c) => c.code).join(', '),
-      teacher: g.teacher?.name ?? null
+      teacher: g.teacher?.name ?? null,
+      items: g.columns.map((c) => `${c.code} · ${c.label}`)
     })),
     ...tw.extras.map((x) => ({ key: x.key, title: x.title, sub: x.codeLabel, teacher: x.teacher?.name ?? null }))
   ];
@@ -44,7 +47,7 @@ export function snapshotPayload(tw: ThisWeek): SnapshotPayload {
 export function canonical(p: SnapshotPayload): string {
   return JSON.stringify({
     focus: p.focus,
-    options: p.options.map((o) => ({ key: o.key, title: o.title, sub: o.sub, teacher: o.teacher })),
+    options: p.options.map((o) => ({ key: o.key, title: o.title, sub: o.sub, teacher: o.teacher, items: o.items ?? [] })),
     suggested: Object.keys(p.suggested)
       .sort((a, b) => Number(a) - Number(b))
       .map((k) => [k, p.suggested[k]])

@@ -10,7 +10,7 @@ import { useState } from 'react';
 import { Button } from '@/app/_components/button';
 import { fmtDateTime } from '@/lib/format-date';
 import { usePlanner } from './planner-client';
-import { twPublishAction } from './this-week-publish-actions';
+import { twPublishAction, twRevokeLinksAction } from './this-week-publish-actions';
 import s from './this-week.module.css';
 
 export interface SnapshotState {
@@ -27,6 +27,7 @@ export interface SnapshotState {
 export function PublishBar({ entryId, snapshot }: { entryId: number; snapshot: SnapshotState }) {
   const p = usePlanner();
   const [confirming, setConfirming] = useState(false);
+  const [closing, setClosing] = useState(false);
   const [everyone, setEveryone] = useState(false);
   const [busy, setBusy] = useState(false);
   const [said, setSaid] = useState<string | null>(null);
@@ -44,6 +45,21 @@ export function PublishBar({ entryId, snapshot }: { entryId: number; snapshot: S
       else {
         setSaid(res.message);
         setConfirming(false);
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const closeLinks = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = p ? await p.sync.run(() => twRevokeLinksAction({ entryId })) : await twRevokeLinksAction({ entryId });
+      if (!res.ok) setError(res.error);
+      else {
+        setSaid(res.message);
+        setClosing(false);
       }
     } finally {
       setBusy(false);
@@ -84,6 +100,23 @@ export function PublishBar({ entryId, snapshot }: { entryId: number; snapshot: S
             <Button variant={first || snapshot.changed ? 'primary' : 'secondary'} size="sm" disabled={!first && !snapshot.changed} onClick={() => setConfirming(true)} title={!first && !snapshot.changed ? 'Nothing changed since the last snapshot' : undefined}>
               {label}
             </Button>
+          )
+        ) : null}
+        {p?.canEmail && !first && !confirming ? (
+          closing ? (
+            <>
+              <span className={s.problem}>Close every family link for this meeting? Families can still sign in to answer.</span>
+              <Button variant="danger" size="sm" onClick={closeLinks} disabled={busy}>
+                Close the links
+              </Button>
+              <Button variant="secondary" size="sm" onClick={() => setClosing(false)} disabled={busy}>
+                Keep them
+              </Button>
+            </>
+          ) : (
+            <button type="button" className={s.quiet} onClick={() => setClosing(true)}>
+              Close family links…
+            </button>
           )
         ) : null}
         {said ? <span>{said}</span> : null}

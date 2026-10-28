@@ -121,6 +121,20 @@ export const TEMPLATE_KINDS: TemplateKind[] = [
     ]
   },
   {
+    // Meeting Planner III (Decision 5): "Publish snapshot". One email per family: the focus, this week's options
+    // with their scouts' suggestions marked, and one button to answer (/i/plan/<token>). The options list and the
+    // button ride below the body, never fields.
+    kind: 'meeting.plan_published',
+    label: 'Meeting — this week’s plan (one email per family)',
+    audience: 'family',
+    fields: [
+      { token: 'name', label: 'Their first name' },
+      { token: 'people', label: 'Who it’s about ("you", or the scouts)' },
+      { token: 'day', label: 'Meeting day' },
+      { token: 'focus', label: 'The focus' }
+    ]
+  },
+  {
     // Build a Plan B3 (Decision 2): one email per recipient listing every invite for them. Each invite's answer link
     // is listed below the body, never a field.
     kind: 'meeting.invite_digest',

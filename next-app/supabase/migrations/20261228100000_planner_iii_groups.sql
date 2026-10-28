@@ -14,6 +14,11 @@
 -- 7. merge_people: + the new tables (production's body, only those lines added).
 -- 8. meeting_plan_snapshots (P4): each "Publish snapshot": the families-visible plan as it was emailed, numbered per
 --    meeting; the page compares a hash of today's plan with the latest to say "families see an earlier version".
+-- 9. meeting_plan_pages (P4, qa-lead 2026-10-28): the published email's family link, /i/plan/<token>. A SCOPED
+--    capability, never a sign-in: the recipient's own scouts (fixed at mint), one meeting, intent + picks only; only
+--    the peppered hash is stored; expires 6 PM Central on the meeting day; a republish supersedes it; a planner can
+--    revoke a publish; at most 200 writes. meeting_plan_page_claim locks the page, refuses anything but an open page,
+--    re-checks the recipient's session_epoch and counts the write, all at once.
 --
 -- DEPLOY ORDER: DB-first (additive; the CHECK rewrite only widens). Posture (D-051 / D-239): RLS on, no policies,
 -- nothing granted to anon or authenticated; functions invoker with search_path pinned, EXECUTE to service_role only.
@@ -175,6 +180,51 @@ create table if not exists public.meeting_plan_snapshots (
 create index if not exists meeting_plan_snapshots_published_by_idx on public.meeting_plan_snapshots (published_by_person_id) where published_by_person_id is not null;
 alter table public.meeting_plan_snapshots enable row level security;
 revoke all on public.meeting_plan_snapshots from anon, authenticated;
+
+-- ── 9. the family link ───────────────────────────────────────────────────────────────────────────────────────────
+create table if not exists public.meeting_plan_pages (
+  id bigint generated always as identity primary key,
+  calendar_entry_id bigint not null references public.calendar_entries(id) on delete cascade,
+  recipient_person_id bigint not null references public.people(id) on delete cascade,
+  recipient_epoch integer not null,
+  token_hash text not null unique check (token_hash ~ '^[0-9a-f]{64}$'),
+  scout_person_ids bigint[] not null check (cardinality(scout_person_ids) between 1 and 12),
+  snapshot_n integer not null check (snapshot_n >= 1),
+  expires_at timestamptz not null,
+  superseded_at timestamptz,
+  revoked_at timestamptz,
+  write_count integer not null default 0 check (write_count >= 0),
+  created_at timestamptz not null default now()
+);
+create index if not exists meeting_plan_pages_entry_recipient_idx on public.meeting_plan_pages (calendar_entry_id, recipient_person_id);
+create index if not exists meeting_plan_pages_recipient_idx on public.meeting_plan_pages (recipient_person_id);
+alter table public.meeting_plan_pages enable row level security;
+revoke all on public.meeting_plan_pages from anon, authenticated;
+
+-- One write on a family link: the page as it stands, or an exception a person can read. Counts the write.
+create or replace function public.meeting_plan_page_claim(p_token_hash text, p_scout bigint)
+returns table (page_id bigint, calendar_entry_id bigint, recipient_person_id bigint)
+language plpgsql
+security invoker
+set search_path = public, pg_temp
+as $$
+declare
+  r meeting_plan_pages%rowtype;
+  v_epoch integer;
+  v_active boolean;
+begin
+  select * into r from meeting_plan_pages where token_hash = p_token_hash for update;
+  if not found then raise exception 'unknown'; end if;
+  if r.revoked_at is not null or r.superseded_at is not null then raise exception 'closed'; end if;
+  if r.expires_at <= now() then raise exception 'expired'; end if;
+  select session_epoch, active into v_epoch, v_active from people where id = r.recipient_person_id;
+  if not coalesce(v_active, false) or v_epoch is distinct from r.recipient_epoch then raise exception 'closed'; end if;
+  if not (p_scout = any (r.scout_person_ids)) then raise exception 'scope'; end if;
+  if r.write_count >= 200 then raise exception 'limit'; end if;
+  update meeting_plan_pages set write_count = write_count + 1 where id = r.id;
+  return query select r.id, r.calendar_entry_id, r.recipient_person_id;
+end;
+$$;
 
 -- ── 6. the board stamp: + roles and night badges ──────────────────────────────────────────────────────────────────
 create or replace function public.meeting_board_stamp(p_entry bigint) returns text
@@ -373,6 +423,12 @@ begin
   update public.meeting_scout_roles set set_by_person_id = p_survivor where set_by_person_id = p_loser;
   update public.meeting_night_badges set added_by_person_id = p_survivor where added_by_person_id = p_loser;
   update public.meeting_plan_snapshots set published_by_person_id = p_survivor where published_by_person_id = p_loser;
+  -- A family link keeps working for the survivor only if it was the loser's live epoch; its scouts follow the merge.
+  update public.meeting_plan_pages pg
+     set recipient_person_id = p_survivor,
+         recipient_epoch = case when pg.recipient_epoch = v_loser.session_epoch then v_survivor.session_epoch else pg.recipient_epoch end
+   where pg.recipient_person_id = p_loser;
+  update public.meeting_plan_pages set scout_person_ids = array_replace(scout_person_ids, p_loser, p_survivor) where p_loser = any (scout_person_ids);
   -- Teacher answer pages (B10b): the loser's pages and the teach rows on them become the survivor's. A page still
   -- open takes the survivor's session_epoch, so the link already in the (now the survivor's) inbox keeps working;
   -- a page already voided by a sign-out-everywhere stays void (its open rows were consumed then).
@@ -470,9 +526,11 @@ $function$;
 
 revoke all on function public._meeting_topic_id(bigint, text) from public, anon, authenticated;
 revoke all on function public.meeting_group_topic(bigint, text) from public, anon, authenticated;
+revoke all on function public.meeting_plan_page_claim(text, bigint) from public, anon, authenticated;
 revoke all on function public.meeting_board_stamp(bigint) from public, anon, authenticated;
 grant execute on function public._meeting_topic_id(bigint, text) to service_role;
 grant execute on function public.meeting_group_topic(bigint, text) to service_role;
+grant execute on function public.meeting_plan_page_claim(text, bigint) to service_role;
 grant execute on function public.meeting_board_stamp(bigint) to service_role;
 revoke all on function public.merge_people(bigint, bigint, text) from public, anon, authenticated;
 grant execute on function public.merge_people(bigint, bigint, text) to service_role;

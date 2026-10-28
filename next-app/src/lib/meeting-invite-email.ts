@@ -189,3 +189,40 @@ export function renderInviteDigest(t: InviteTemplate, v: DigestValues, items: re
   const md = `${fillTokens(t.body, vals)}\n\n${blocks.join('\n\n')}`.replace(/\n{3,}/g, '\n\n').trim();
   return { subject: fillTokens(t.subject, vals).replace(/\s+/g, ' ').trim(), md };
 }
+
+export const PLAN_PUBLISHED_KIND = 'meeting.plan_published';
+
+/** Meeting Planner III (Decision 5): the published plan, one email per family. The options ride below the body. */
+export const DEFAULT_PLAN_PUBLISHED: InviteTemplate = {
+  subject: 'Troop meeting on [day]: [focus]',
+  body: `Hi [name],
+
+Here's the plan for the troop meeting on [day]. The focus is [focus].
+
+Use the button below to say whether [people] can come and to pick two or three things to work on. The ones we suggest are marked, but any option is fine, and you can ask for something else. You don't need to sign in.`
+};
+
+/** The button under the published plan. */
+export const PLAN_PAGE_BUTTON = 'Answer and pick for this week →';
+
+export interface PlanEmailValues {
+  name: string;
+  people: string;
+  day: string;
+  focus: string;
+}
+
+export interface PlanEmailOption {
+  title: string;
+  sub: string;
+  /** First names of this family's scouts it's suggested for. */
+  suggestedFor: string[];
+}
+
+export function renderPlanPublished(t: InviteTemplate, v: PlanEmailValues, options: readonly PlanEmailOption[]): { subject: string; md: string } {
+  const vals: Record<string, string> = { name: v.name, people: v.people, day: v.day, focus: v.focus };
+  const line = (o: PlanEmailOption) => `- **${o.title}**${o.sub ? ` (${o.sub})` : ''}${o.suggestedFor.length ? `: suggested for ${o.suggestedFor.join(' and ')}` : ''}`;
+  const list = options.length ? `**This week's options**\n\n${options.map(line).join('\n')}` : '';
+  const md = `${fillTokens(t.body, vals)}\n\n${list}`.replace(/\n{3,}/g, '\n\n').trim();
+  return { subject: fillTokens(t.subject, vals).replace(/\s+/g, ' ').trim(), md };
+}

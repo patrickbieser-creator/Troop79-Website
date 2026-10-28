@@ -824,7 +824,7 @@ button.chip:focus-visible {
 
 /* ── snapshot bar ───────────────────────────────────────────────────────────────────────────────────────────── */
 .snap {
-  padding: var(--sp-3) var(--sp-7);
+  padding: var(--sp-3) max(var(--sp-7), calc((100% - 1400px) / 2 + var(--sp-7)));
   font: 600 var(--fs-sm) / 1.4 var(--font-ui);
   border-bottom: 1px solid var(--border-light);
 }
