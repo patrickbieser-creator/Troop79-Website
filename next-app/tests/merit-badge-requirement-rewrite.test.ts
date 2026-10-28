@@ -64,6 +64,13 @@ describe('Merit Badge Catalog save keeps per-requirement data', () => {
     expect((await rows())['1'][1]).toBe('outing');
   });
 
+  it('Save_KeepsEachRequirementsClassTags', async () => {
+    await admin.from('merit_badge_requirements').update({ class_codes: ['O', 'E'] }).eq('mb_id', MB).eq('code', '2');
+    await save([node('1', [node('1a')]), node('3', [], '2')]);
+    const { data } = await admin.from('merit_badge_requirements').select('class_codes').eq('mb_id', MB).eq('code', '3').single();
+    expect((data as { class_codes: string[] }).class_codes).toEqual(['O', 'E']);
+  });
+
   it('Save_RenamedRequirement_KeepsItsTeachMinutes', async () => {
     await save([node('1', [node('1a')]), node('3', [], '2')]);
     expect((await rows())['3'][0]).toBe(30);
