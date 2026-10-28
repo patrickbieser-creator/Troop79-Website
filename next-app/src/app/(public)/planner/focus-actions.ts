@@ -57,7 +57,9 @@ async function keeper() {
 }
 
 /** Create (id null) or save a set: name, labels, items in order. */
-export async function focusSaveSetAction(input: { id: number | null; name: string; labels: string[]; items: string[] }): Promise<{ ok: true; id: number } | { ok: false; error: string }> {
+/** `mbId` (Planner III): the set's paired merit badge, offered when the set is added to a night; null clears it,
+ *  undefined leaves it as it is. */
+export async function focusSaveSetAction(input: { id: number | null; name: string; labels: string[]; items: string[]; mbId?: string | null }): Promise<{ ok: true; id: number } | { ok: false; error: string }> {
   const k = await keeper();
   if (!k.ok) return k;
   if (
@@ -66,13 +68,19 @@ export async function focusSaveSetAction(input: { id: number | null; name: strin
     !Array.isArray(input.labels) ||
     !input.labels.every((l) => typeof l === 'string') ||
     !Array.isArray(input.items) ||
-    !input.items.every((i) => typeof i === 'string')
+    !input.items.every((i) => typeof i === 'string') ||
+    (input.mbId != null && (typeof input.mbId !== 'string' || !/^[a-z0-9][a-z0-9-]{0,80}$/.test(input.mbId)))
   )
     return fail('Malformed request');
   if (!input.name.trim()) return fail('Give the set a name.');
   const labels = [...new Set(input.labels.map(normalizeLabel).filter(Boolean))];
   if (labels.some((l) => l.length > LABEL_MAX)) return fail(`Keep labels to ${LABEL_MAX} characters.`);
-  const res = await saveFocusSet(createAdminClient(), k.personId, { id: input.id ?? null, name: input.name, labels, items: input.items });
+  const sb = createAdminClient();
+  const res = await saveFocusSet(sb, k.personId, { id: input.id ?? null, name: input.name, labels, items: input.items });
+  if (res.ok && input.mbId !== undefined) {
+    const { error } = await sb.from('focus_sets').update({ merit_badge_id: input.mbId }).eq('id', res.id);
+    if (error) return fail('The set saved, but its merit badge didn’t. Try again.');
+  }
   if (res.ok) revalidatePath('/planner/focus-sets');
   return res;
 }

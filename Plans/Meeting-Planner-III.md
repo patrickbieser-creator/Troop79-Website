@@ -41,6 +41,7 @@ covering every scout.
 | 7 | **A big group stays one class**; split by hand on Rotations if needed. |
 | 8 | **Merit badges:** a meeting may offer several merit badges, and may have no rank work at all. |
 | 9 | **Goal: build every phase and deploy.** Design II's planner, member page card and emails were only tested, never used widely, so **nothing built for meeting planning needs to be preserved**: retire freely, no per-item confirmation. Defaults taken: a republish emails only families whose options or suggestions changed (quiet "Email everyone"); every active family gets the email. |
+| 10 | **Live at the meeting is Design III's own view; Rotations retires** (Patrick, 2026-10-28). Session cards derived from the plan, tap to check in, attendance approved after the meeting. No rotation numbers, locations, moves or arrangement engine. |
 
 ## Folding in Who's coming (Decision 1)
 
@@ -157,8 +158,8 @@ Other implications:
       with a matching skill (counselors first for a badge), plus Merit badge group scouts set to Teach.
 - [ ] The Merit badge group card has a per-scout switch: Teach, or one of the night's badges.
 - [ ] Every job Who's coming did is on This week, and `/planner` shows This week.
-- [ ] Rotations shows one class per group with its teacher, plus badge and extra classes, and every plan edit shows
-      there without a reload.
+- [ ] Live at the meeting shows one session per group with its teacher, plus badge, Helping teach and extra
+      sessions, derived from the plan, and tapping a name checks the scout in.
 - [ ] Publish snapshot emails each family once: the focus, this week's options, their scout's suggestions marked,
       and a magic link to `/member/meeting`. After an edit, This week says families see snapshot n until republished.
 - [ ] `/member/meeting` shows the focus, the options with "Suggested for <scout>", ticks (2–3 asked, 5 max), Coming /
@@ -212,81 +213,64 @@ Screen, actions and family page:
 - [ ] `MemberMeeting_TickRemovedOption_IsRefusedWithReason()`
 - [ ] `RankChipTokens_ArePublicTokens_NotAdmin()` (covered by the design-system census)
 
-## Technical Approach (tech-lead reviewed 2026-10-28; Patrick's answers folded in)
+## Technical Approach (revised 2026-10-28 after Decision 10: Rotations retires)
 
-1. **Placement is computed in TS, not stored.** A pure `lib/focus-plan.ts` takes the roster, ranks, progress
-   (`loadScoutProgress`, incl. `mb_progress`), catalog and the meeting's focus items and badges, and returns the
-   groups, columns, ✓ cells, coverage and gaps. SQL can't compute it: the leaf roll-up lives in TS, and sign-offs fire
-   no triggers. This week derives it on every read. Only **choices** are stored: focus, badges, teachers, older
-   scouts' roles, gap fills.
-2. **Focus = the meeting's `fg:` topics, unchanged.** Picking a set still calls `meeting_seed_focus_set` (items
-   frozen in `meeting_topic_members`, as in B5b). Removing it still unseeds. The `fg:` topic stays pickable for old
-   plans, but an `fg:` that has groups is **not taught as its own class**: `_meeting_topic_on_plan` returns false for it.
-3. **A group is a topic of new kind `focus_group_part`**, one per rank or badge per meeting (not per set), so
-   several sets give the union of their columns: key `fr:<rankId>` for a rank group, `fr:mb:<mbId>` for a badge group.
-   Teachers, invites, picks, the teacher mirror and Rotations classes all work unchanged on a topic.
-   - Migration: widen `meeting_topics_kind_check`, add the branch to `meeting_topics_one_reference`, refuse `fr:`
-     keys in `_meeting_topic_id` and `meeting_seed_topic` (only the planner's RPCs create them).
-   - **Reconcile guards:** step 3a evicts unpinned members with a pick list that lacks the class's topic, so exempt
-     `focus_group_part` classes from 3a (placement, not picks, put most members there). A family's tick IS a pick on
-     the `fr:` topic, which pins them. The "begins on its own" rule counts fr / fg as plan.
-   - **Materialize with `meeting_apply_focus_placement(entry, actor, jsonb [{person, key}])`.** It takes
-     `_meeting_live_lock` first and writes members `pinned=false`, skipping not_coming scouts, pinned members and
-     `meeting_live_holds`. It removes only the unpinned group members who left the placement, then calls
-     `_meeting_live_bump`. It runs on a focus or role edit, on opening Rotations, and from This week's refresh, and
-     is skipped when the placement hash hasn't changed. It bypasses the 8-per-class and 2-per-scout late-pick caps
-     (Decision 7: a big group is one class).
-   - Membership isn't stored before the arrangement begins. This week is derived on read.
-4. **Badges:** the night's badges = badges in the focus sets' items (their `fr:mb:` groups) plus badges added
-   directly ("+ Merit badge", an `fr:mb:` group with no focus items: its columns are each scout's open top-level
-   requirements of that badge). `focus_sets.merit_badge_id` (nullable FK) is a suggestion shown in the picker, not a
-   rule. There is no per-meeting badge column (`board_mb_id` was dropped, D-430).
-5. **Roles and gap fills:** `meeting_scout_roles(calendar_entry_id, person_id, role, topic_key null)`, one row per
-   scout per meeting. Roles: `teach` (an older scout teaching or helping), `group` (moved to a named group or badge,
-   by hand — a gap fill or an older scout's badge choice), `request` (placed from requests and offers, topic_key =
-   the pick/offer). No row = placement decides. A hand choice is pinned in Rotations.
-6. **Snapshot and family email:** `meeting_plan_snapshots(calendar_entry_id, n, payload jsonb, payload_hash,
-   published_by, published_at)` (not `meeting_plans`, D-432). Payload = focus names, options (topic key, title,
-   teacher if set), and per-scout suggested keys. "Changed since" = hash of the canonical payload vs the latest.
-   - Email: a new template `meeting.plan_published` through the existing digest pipeline (`meeting_invites`, one per
-     family, adults only, per-send caps), with a magic link minted on the `login_tokens` path, scoped to land on
-     `/member/meeting?meeting=<entry>`, expiring 6 PM Central meeting day. qa-lead designs the link before P4 builds.
-   - `/member/meeting` reads the latest snapshot for the focus and suggestions, and live topics for what can be
-     ticked (a ticked option that's since been removed is refused with a reason).
-7. **Screen:** This week is `/planner` (the page Who's coming used). `/planner/build` redirects there with its query;
-   Suggestions keeps its `?view=`. Tabs: This week · Invite · Rotations · Focus sets · Has/Needs. Two columns at
-   ≥1100px, stacked below. Public components only (`Button`, `Drawer`, `Notice`, `TabStrip`, `EmptyState`) and the
-   existing person drawer.
-8. **Rank colors:** public tokens `--rank-{new,scout,tenderfoot,second,first,star,life,eagle}-{bg,ink}` with the
-   README's hex values. `--admin-*` is blocked on public routes.
-9. **Freshness and performance:** one loader for the screen (about 30 scouts, one `loadScoutProgress`), with its
-   query count pinned in a test. The 10s poller watches `meeting_board_stamp` and refetches only on change.
-   Sign-offs don't move the stamp, so the grid refetches when the tab regains focus, and has a quiet Refresh.
-10. **Fixtures:** delete `meeting_classes` before topics (D-437).
+Decision 10 removes the arrangement engine. That deletes the hardest part of the tech-lead review (reconcile guards and
+materializing placement into `meeting_class_members`): **nothing is materialized; Live is derived like the rest.**
 
-## Implementation Steps (each phase ships when qa passes; migrations wait on a branch until Patrick says ship, D-404)
+1. **Placement is computed in TS, never stored** (`lib/focus-plan.ts`, P0). Inputs: roster, ranks, progress (rank
+   AND merit badge ledger codes), catalog, the meeting's focus items, its direct badges, and the planners' choices.
+2. **Focus = the meeting's seeded `fg:` topics** (`meeting_seed_focus_set` / unseed, items frozen in
+   `meeting_topic_members`). They are the focus record only; never taught as a class.
+3. **A group is a `meeting_topics` row of new kind `focus_group_part`** (`fr:<rankId>`, `fr:mb:<mbId>`), so teachers
+   (`meeting_topic_teachers`), teacher invites and teach pages (`meeting_invites`, B10), and family picks
+   (`meeting_topic_picks`) all work on it unchanged. The row is created **lazily** by `meeting_group_topic(entry,
+   actor, key)` the first time something needs it (a teacher, an invite, a pick, a publish), which validates the key
+   (a group rank or a real badge). Which groups exist tonight is always the TS derivation; a stale row (its group
+   left the focus) is simply not shown.
+4. **Direct badges:** `meeting_night_badges(calendar_entry_id, mb_id, added_by_person_id, created_at)`.
+   `focus_sets.merit_badge_id` (nullable) is shown in the picker as the set's paired badge, and adding the set offers it.
+5. **Hand choices:** `meeting_scout_roles(calendar_entry_id, person_id, role ∈ teach|group|request, ref_key,
+   set_by_person_id, set_at)`, one row per scout per meeting. A family's tick on a group option writes a pick; a
+   scout who picked a group is placed there (picks outrank placement, roles outrank picks).
+6. **Extra classes ("From requests and offers"):** every non-group topic with a Coming scout's pick or a teacher
+   offer, each with its own teacher slot (`meeting_topic_teachers`, as today).
+7. **Live at the meeting** is This week's second view: session cards derived from the same plan (groups, badges,
+   Helping teach, extra classes). Tap a name → `meeting_live_presence` (the existing draft). After the meeting,
+   "Would you like to update attendance?" (B8) lists the derived plan's people + anyone ticked present, and writes
+   `event_attendance` through Roll Call as today.
+8. **Snapshot and family email** (P4): `meeting_plan_snapshots(calendar_entry_id, n, payload jsonb, payload_hash,
+   published_by_person_id, published_at)`. Payload = focus names, options (key, title, teacher), per-scout suggested
+   keys. "Changed since" = hash of the canonical payload vs the latest. Email `meeting.plan_published`, one per
+   family (adults only), through the `meeting_invites` digest pipeline, with a magic link on the `login_tokens` path
+   to `/member/meeting?meeting=<id>`, expiring 6 PM Central on the meeting day. A republish emails only families
+   whose options or suggestions changed (quiet "Email everyone").
+9. **Retire (P6):** Rotations (`meeting_rotations`, `meeting_classes`, `meeting_class_members`, `meeting_live_holds`,
+   `meeting_boards.live_*`, reconcile functions and their triggers on picks and intents), the matcher
+   (`meeting-board-match`, `loadMatchOrPlacement`), Build a Plan and Suggestions (`meeting-suggest`,
+   `build-plan*`), Who's coming, pick invites to families, and `meeting_plans`. The admin agenda's planner feed and
+   `/member/meeting` read the derived plan instead.
+10. **Screen:** This week at `/planner` (Who's coming's URL, so emailed links keep working). Tabs: This week · Invite
+    (teacher asks, by group) · Focus sets · Has/Needs. Public tokens and components only.
+11. **Freshness:** one loader per screen, query count pinned; the 10s poller keeps watching the board stamp
+    (picks, intents, topics, teachers), plus refetch on tab focus for sign-offs.
 
-1. **P0 (no migration):** `lib/focus-plan.ts` (ranks AND badges, rank-free nights) + the pure tests; public
-   rank-chip tokens.
-2. **P1 (no migration):** This week, **read-only**, at `/planner/this-week` behind the tab strip while Who's coming
-   stays: header with meeting switcher and coming-weeks strip, focus chips, coverage strip (incl. answer counts),
-   group cards (RSVP tints, "N need it"), checklist grid, Nothing assigned / No answer filters, legend, the person
-   drawer on name click. The focus popover is browse-only (adding a set today makes a single `fg:` class on Rotations).
-3. **P2 (one migration, worktree):** `focus_group_part` + reconcile guards, `meeting_apply_focus_placement`,
-   `focus_sets.merit_badge_id`, `meeting_scout_roles`. Screen: focus add/remove, "+ Merit badge", teacher slots,
-   the Merit badge group switch, the inline focus-set builder (incl. MB requirements), gap fill on row click
-   (Decision 2), From requests and offers classes with teacher slots, reminders. **Then fold:** This week moves to
-   `/planner`, Who's coming retires, `/planner/build` redirects.
-4. **P3:** Rotations shows the groups as classes (rank, badge, Helping teach, From requests and offers), applied on
-   open and on every focus or role edit.
-5. **P4 (migration):** Publish snapshot + family email + magic link + the reworked `/member/meeting`. Pick invites
-   to scout families leave the Invite tab.
-6. **P5:** Theme calendar on real focus sets and groups (per-week coverage, group × week grid).
-7. **P6:** retire leftovers (Decision 9, no confirmation needed): Design II surfaces Design III replaces, the
-   `meeting_plans` table, dead tables/RPCs.
+## Implementation Steps (one branch, `feat/planner-iii`, shipped together: Patrick's goal is every phase deployed)
 
-Per phase: tech-lead review of the migration before P2/P4, qa-lead after each phase (and on the magic link before
-P4), full quality gate, changelog bullets in the feature commit.
+1. **P0 (done, 9f96c2d6):** `lib/focus-plan.ts` + 33 tests; public rank and RSVP tokens.
+2. **P1:** the This week loader and screen (read side): header, meeting switcher, coming-weeks strip, focus chips,
+   coverage strip with answer counts, group cards, checklist grid, filters, legend, person drawer on name click.
+3. **P2 (migration):** `focus_group_part` + `meeting_group_topic`, `meeting_night_badges`, `meeting_scout_roles`,
+   `focus_sets.merit_badge_id`. Writes: focus add/remove, + Merit badge, teacher slots, Merit badge group switch,
+   gap-fill menu, inline focus-set builder (incl. MB requirements), reminders.
+4. **P3:** Live at the meeting (session cards, check-in) + attendance review on the derived plan.
+5. **P4 (migration):** Publish snapshot, family email + magic link, the reworked `/member/meeting`.
+6. **P5:** Theme calendar (per-week coverage, group × week grid).
+7. **P6 (migration):** retire what Decision 10 and Decision 9 free up (item 9 above); This week moves to `/planner`;
+   Invite asks teachers by group.
+
+Each phase: tests first, full gate; tech-lead on each migration, qa-lead on the whole before shipping (and on the
+magic link before P4 is built). Ship: `db push` (DB-first), ff-merge, push, Vercel Ready.
 
 ## Open Questions (for Patrick)
 

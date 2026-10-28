@@ -1,130 +1,125 @@
 /**
- * /planner — the Meeting Planner (Plans/Meeting-Planner-II.md). Reached from the account menu under the signed-in
- * name ("Meeting Planner"), for anyone holding meeting_planner.view, .edit or .seed (granted one person at a time).
+ * /planner — the Meeting Planner, This week (Plans/Meeting-Planner-III.md). Reached from the account menu for anyone
+ * holding meeting_planner.view, .edit or .seed. Emailed links (reminders, requests) point here.
  *
- * Who's coming (Build a Plan Decision 4 renamed the tab), the attendance board for the next meeting
- * (board-view.tsx): read-only for a viewer; an editor (P2a) also opens a person's drawer, assigns, adds offers. Signed
- * out → sign in and come back; signed in without a planner right → a plain "no access" message.
+ * One meeting's plan from its focus: every active scout in a group for the rank they work on (or the Merit badge
+ * group), the checklist of what each could work on, the gaps, the teachers, and Live at the meeting as a second view
+ * of the same plan (Decision 10). The switcher offers the next PLAN_MEETINGS open meetings (?meeting=<entryId>), the
+ * next one by default. Viewers see everything read-only; the planning team (seed) sets the focus and badges; editors
+ * place scouts and teachers; adult editors publish (email).
  *
- * Build a Plan is the first tab, but /planner stays Who's coming and does NOT redirect editors to /planner/build
- * (B4): the reminder and request emails link here, and the person who opens one wants the replies, not the plan. The
- * plan strip links to Build for this meeting.
- *
- * B8: once the last meeting is over, editors get "Would you like to update attendance?" under the tabs (the approval
- * checklist; attendance-review.tsx).
+ * B8: once the last meeting is over, editors get "Would you like to update attendance?" under the tabs.
  */
-import { redirect } from "next/navigation";
-import { resolveAdminActor } from "@/lib/admin-actor";
-import { createAdminClient } from "@/lib/supabase/server";
-import { fmtDay } from "@/lib/format-date";
-import { instantToCentral } from "@/lib/dates";
-import { loadAttendancePrompt } from "@/lib/meeting-live";
-import { plannerAccess } from "@/lib/meeting-planner-access";
-import { loadPlannerPage } from "@/lib/meeting-planner-load";
-import { loadPlannerLists } from "@/lib/people-lists";
-import { PageHeader } from "@/app/_components/page-header";
-import { PageShell } from "@/app/_components/page-shell";
-import { Notice } from "@/app/_components/notice";
-import { AttendancePrompt } from "./attendance-review";
-import { PlannerBoardView } from "./board-view";
-import { PlannerPoller } from "./planner-poller";
-import { PlannerProvider } from "./planner-client";
-import { PlannerTabs } from "./planner-tabs";
-import styles from "./planner.module.css";
+import { redirect } from 'next/navigation';
+import { resolveAdminActor } from '@/lib/admin-actor';
+import { createAdminClient } from '@/lib/supabase/server';
+import { fmtDateFull, fmtDay } from '@/lib/format-date';
+import { centralToday, instantToCentral } from '@/lib/dates';
+import { loadAttendancePrompt } from '@/lib/meeting-live';
+import { loadUpcomingMeetings } from '@/lib/meeting-board';
+import { plannerAccess } from '@/lib/meeting-planner-access';
+import { loadPlannerLists } from '@/lib/people-lists';
+import { loadFocusSets } from '@/lib/meeting-focus-db';
+import { loadAdvancementCatalog } from '@/lib/advancement-catalog';
+import { pickMeeting, PLAN_MEETINGS } from '@/lib/build-plan';
+import { buildThisWeek } from '@/lib/this-week';
+import { loadFocusNames, loadThisWeekData } from '@/lib/this-week-db';
+import { snapshotPayload } from '@/lib/plan-snapshot';
+import { loadSnapshotState } from '@/lib/plan-snapshot-db';
+import { PageHeader } from '@/app/_components/page-header';
+import { PageShell } from '@/app/_components/page-shell';
+import { Notice } from '@/app/_components/notice';
+import { AttendancePrompt } from './attendance-review';
+import { PlannerProvider } from './planner-client';
+import { PlannerTabs } from './planner-tabs';
+import { ThisWeekView } from './this-week-client';
+import styles from './planner.module.css';
 
-export const dynamic = "force-dynamic";
-// Server Actions take the page's maxDuration. Reminders (P5b) send up to 100 emails a few at a time and start no new
-// batch after 40 s (lib/meeting-invites-send REMINDER_TIME_BUDGET_MS), so the cleanup always runs inside this.
+export const dynamic = 'force-dynamic';
+// Server Actions take the page's maxDuration. Reminders and Publish send emails a few at a time and start no new batch
+// after 40 s, so their cleanup always runs inside this.
 export const maxDuration = 60;
 
 export const metadata = {
-  title: "Meeting Planner — Scout Troop 79",
+  title: 'Meeting Planner — Scout Troop 79'
 };
 
-export default async function PlannerPage() {
+export default async function PlannerPage({ searchParams }: { searchParams: Promise<{ meeting?: string | string[] }> }) {
   const actor = await resolveAdminActor();
-  if (!actor) redirect("/signin?next=/planner");
+  if (!actor) redirect('/signin?next=/planner');
   const access = plannerAccess(actor);
   if (!access.canView) {
     return (
       <>
         <PageHeader kicker="Members" title="Meeting Planner" />
         <PageShell width="narrow">
-          <Notice tone="info">
-            You don’t have access to the Meeting Planner. A troop leader can
-            give it to you.
-          </Notice>
+          <Notice tone="info">You don’t have access to the Meeting Planner. A troop leader can give it to you.</Notice>
         </PageShell>
       </>
     );
   }
 
-  // The slow-changing lists come from the cross-request cache (lib/people-lists); picks and answers are read fresh.
   const sb = createAdminClient();
-  const [page, prompt] = await Promise.all([
-    loadPlannerPage(sb, undefined, await loadPlannerLists()),
+  const lists = await loadPlannerLists();
+  const [upcoming, prompt] = await Promise.all([
+    loadUpcomingMeetings(sb, PLAN_MEETINGS * 2, undefined, lists.meetingLabels),
     access.canEdit
       ? loadAttendancePrompt(sb, instantToCentral(new Date().toISOString())).catch((err) => {
-          console.error("Attendance prompt failed to load:", err);
+          console.error('Attendance prompt failed to load:', err);
           return null;
         })
-      : null,
+      : null
   ]);
-  const promptEl = prompt ? (
-    <AttendancePrompt key={prompt.entryId} review={prompt} label={fmtDay(prompt.date)} />
-  ) : null;
-  if (!page) {
+  const meetings = upcoming.filter((m) => !m.closed).slice(0, PLAN_MEETINGS);
+  const meeting = pickMeeting(meetings, (await searchParams).meeting);
+  const promptEl = prompt ? <AttendancePrompt key={prompt.entryId} review={prompt} label={fmtDay(prompt.date)} /> : null;
+  if (!meeting) {
     return (
-      <>
-        <PageHeader kicker="Meeting Planner" title="No meeting coming up" />
-        <PlannerTabs active="board" />
+      <div className={styles.page}>
+        <PlannerTabs active="week" />
         {promptEl}
-        <PageShell width="narrow">
-          <Notice tone="info">
-            There’s no troop meeting on the calendar yet. The board opens once
-            one is published.
-          </Notice>
-        </PageShell>
-      </>
+        <div className={styles.noticeWrap}>
+          <Notice tone="info">There’s no troop meeting on the calendar yet. Plans open once one is published.</Notice>
+        </div>
+      </div>
     );
   }
 
-  const heading = (
-    <div>
-      <p className={styles.kicker}>Meeting Planner</p>
-      <h1 className={styles.title}>
-        {page.meeting.dateLabel} · {page.meeting.title}
-      </h1>
-      <p className={styles.sub}>
-        Sign-ups close at 5:30 pm on {fmtDay(page.meeting.date)} ·{" "}
-        <PlannerPoller entryId={page.meeting.entryId} stamp={page.stamp} />
-      </p>
-    </div>
+  const [data, focusNames, sets, presence] = await Promise.all([
+    loadThisWeekData(sb, meeting, lists),
+    loadFocusNames(sb, meetings.map((m) => m.entryId)),
+    loadAdvancementCatalog().then((c) => loadFocusSets(sb, c)),
+    sb.from('meeting_live_presence').select('person_id').eq('calendar_entry_id', meeting.entryId).eq('present', true)
+  ]);
+  const view = buildThisWeek(data.input);
+  const snapshot = await loadSnapshotState(
+    sb,
+    meeting.entryId,
+    snapshotPayload(view),
+    data.input.scouts.map((s) => s.personId)
   );
-  const e = page.board.everyone.adults;
-  const adults = [...e.coming, ...e.undecided, ...e.noAnswer]
-    .map((t) => ({ personId: t.personId, name: t.name }))
-    .sort((a, b) => a.name.localeCompare(b.name));
+  const adults = view.everyone.filter((t) => t.kind === 'adult').map((t) => ({ personId: t.personId, name: t.name }));
+
   return (
-    <PlannerProvider
-      entryId={page.meeting.entryId}
-      canEdit={access.canEdit} canEmail={access.canEmail} canSeed={access.canSeed}
-      adults={adults}
-      stamp={page.stamp}
-    >
+    <PlannerProvider entryId={meeting.entryId} canEdit={access.canEdit} canEmail={access.canEmail} canSeed={access.canSeed} adults={adults} stamp={data.stamp}>
       <div className={styles.page}>
-        <PlannerTabs active="board" />
+        <PlannerTabs active="week" />
         {promptEl}
-        {page.meeting.closed ? (
-          <>
-            <header className={styles.head}>{heading}</header>
-            <div className={styles.noticeWrap}>
-              <Notice tone="info">No sign-ups this week.</Notice>
-            </div>
-          </>
-        ) : (
-          <PlannerBoardView board={page.board} heading={heading} entryId={page.meeting.entryId} />
-        )}
+        <ThisWeekView
+          key={meeting.entryId}
+          entryId={meeting.entryId}
+          dayLabel={fmtDateFull(meeting.date)}
+          title={meeting.title}
+          weeks={meetings.map((m) => ({ entryId: m.entryId, dayLabel: fmtDay(m.date), focus: (focusNames.get(m.entryId) ?? []).join(' + '), current: m.entryId === meeting.entryId }))}
+          view={view}
+          sets={sets.map((x) => ({ id: x.id, name: x.name, labels: x.labels, count: x.items.length, lastUsed: x.lastUsed, mbId: x.mbId ?? null }))}
+          badges={data.catalog.meritBadges.map((m) => ({ id: m.id, name: m.name })).sort((a, b) => a.name.localeCompare(b.name))}
+          stamp={data.stamp}
+          canSeed={access.canSeed}
+          isToday={meeting.date === centralToday()}
+          snapshot={snapshot}
+          live={{ present: ((presence.data ?? []) as { person_id: number }[]).map((r) => r.person_id) }}
+        />
       </div>
     </PlannerProvider>
   );

@@ -237,6 +237,25 @@ describe('coverage and gaps', () => {
     expect(rowOf(plan([s], ['scout-1a']), s).allDone).toBe(false);
   });
 
+  it('Pick_OfAGroup_PlacesTheScoutThere', () => {
+    const s = scout('star');
+    const picks = new Map([[s.personId, ['tenderfoot-5', badgeGroupKey('first-aid')]]]);
+    expect(rowOf(plan([s], ['camping-1', 'first-aid-1'], { picks }), s).groupKey).toBe(badgeGroupKey('first-aid'));
+  });
+
+  it('Role_OutranksAPick', () => {
+    const s = scout('star');
+    const picks = new Map([[s.personId, [badgeGroupKey('first-aid')]]]);
+    const roles = new Map<number, ScoutRole>([[s.personId, { role: 'teach' }]]);
+    expect(rowOf(plan([s], ['first-aid-1'], { picks, roles }), s).status).toBe('teach');
+  });
+
+  it('Home_OfAGap_IsTheGroupOfTheirRank', () => {
+    const s = scout('scout');
+    const p = plan([s], ['tenderfoot-5'], { done: { [s.scoutId]: done(['tenderfoot-5']) } });
+    expect(rowOf(p, s).homeKey).toBe(rankGroupKey('tenderfoot'));
+  });
+
   it('Suggestions_ForScout_AreTheirPlacedGroup', () => {
     const s = scout('tenderfoot');
     const roles = new Map<number, ScoutRole>([[s.personId, { role: 'teach' }]]);

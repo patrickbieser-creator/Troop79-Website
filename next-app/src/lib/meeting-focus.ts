@@ -24,6 +24,8 @@ export interface FocusSetView {
   /** The last time it was seeded on a meeting (an instant), or null. */
   lastUsed: string | null;
   updatedAt: string;
+  /** Planner III: the set's paired merit badge (offered when the set is added to a night), or null. */
+  mbId?: string | null;
 }
 
 export interface FocusSearchRow extends FocusSetItem {

@@ -65,6 +65,9 @@ export interface FocusInput {
   badgeIds?: readonly string[];
   /** Keyed by personId. */
   roles?: ReadonlyMap<number, ScoutRole>;
+  /** Each scout's current picks for this meeting, keyed by personId. A family that ticked a group put the scout there:
+   *  picks outrank placement, and a planner's hand choice outranks picks. */
+  picks?: ReadonlyMap<number, readonly string[]>;
 }
 
 export interface FocusColumn {
@@ -113,6 +116,9 @@ export interface FocusRow {
   allDone: boolean;
   /** `request` only: the topic they were placed in from requests and offers. */
   requestKey?: string;
+  /** Where the checklist lists the scout when they sit in no group: the group of the rank they work on (or the next
+   *  one), the first badge group for an older scout; null when tonight has none of those. */
+  homeKey: string | null;
   /** The options the family email marks "Suggested for <scout>": the group placement chose. */
   suggested: string[];
 }
@@ -262,9 +268,11 @@ export function buildFocusPlan(input: FocusInput): FocusPlan {
     const held = s.currentRank != null ? rankSort.get(s.currentRank) : undefined;
     const counted = held == null || held < firstGroupSort;
     const base = { personId: s.personId, scoutId: s.scoutId, name: s.name, currentRank: s.currentRank, intent: s.intent, counted };
+    const withHome = <T extends object>(r: T) => ({ ...r, homeKey });
 
     // Where placement alone would put the scout.
     let auto: { groupKey: string | null; open: string[]; status: RowStatus; allDone: boolean };
+    let homeKey: string | null = firstBadge?.key ?? null;
     if (counted) {
       const own = groupRanks[held == null ? 0 : groupRanks.findIndex((r) => r.id === s.currentRank) + 1];
       const ownGroup = own ? groupByKey.get(rankGroupKey(own.id)) : undefined;
@@ -273,6 +281,7 @@ export function buildFocusPlan(input: FocusInput): FocusPlan {
       const next = own ? groupRanks[groupRanks.findIndex((r) => r.id === own.id) + 1] : undefined;
       const nextGroup = next ? groupByKey.get(rankGroupKey(next.id)) : undefined;
       const nextOpen = !ownOpen.length && nextGroup ? openIn(nextGroup, p) : [];
+      homeKey = ownGroup?.key ?? nextGroup?.key ?? null;
       if (ownGroup && ownOpen.length) auto = { groupKey: ownGroup.key, open: ownOpen, status: 'rank-work', allDone: false };
       else if (nextGroup && nextOpen.length) auto = { groupKey: nextGroup.key, open: nextOpen, status: 'rank-work', allDone: false };
       else auto = { groupKey: null, open: [], status: 'nothing', allDone: !!(ownGroup || nextGroup) };
@@ -283,9 +292,10 @@ export function buildFocusPlan(input: FocusInput): FocusPlan {
     }
     const suggested = auto.groupKey ? [auto.groupKey] : [];
 
-    const role = input.roles?.get(s.personId);
-    if (role?.role === 'teach') return { ...base, groupKey: null, open: [], status: 'teach', allDone: false, suggested };
-    if (role?.role === 'request') return { ...base, groupKey: null, open: [], status: 'request', allDone: false, requestKey: role.key, suggested };
+    const pickedGroup = input.picks?.get(s.personId)?.find((k) => groupByKey.has(k));
+    const role: ScoutRole | undefined = input.roles?.get(s.personId) ?? (pickedGroup ? { role: 'group', key: pickedGroup } : undefined);
+    if (role?.role === 'teach') return withHome({ ...base, groupKey: null, open: [], status: 'teach', allDone: false, suggested });
+    if (role?.role === 'request') return withHome({ ...base, groupKey: null, open: [], status: 'request', allDone: false, requestKey: role.key, suggested });
     if (role?.role === 'group') {
       const g = groupByKey.get(role.key);
       if (g) {
@@ -293,11 +303,11 @@ export function buildFocusPlan(input: FocusInput): FocusPlan {
         // An older scout moved into a rank group is there to help; a counted scout with nothing open there is placed
         // (a gap filled), not on rank work.
         const status: RowStatus = g.kind === 'badge' ? 'badge' : !counted ? 'teach' : open.length ? 'rank-work' : 'placed';
-        return { ...base, groupKey: g.key, open, status, allDone: false, suggested };
+        return withHome({ ...base, groupKey: g.key, open, status, allDone: false, suggested });
       }
       // The group left the focus: placement decides again.
     }
-    return { ...base, ...auto, suggested };
+    return withHome({ ...base, ...auto, suggested });
   });
 
   for (const r of rows) if (r.groupKey) groupByKey.get(r.groupKey)?.members.push(r.personId);

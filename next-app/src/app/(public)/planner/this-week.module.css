@@ -1,0 +1,844 @@
+/* Meeting Planner III, This week (Plans/Meeting-Planner-III.md; prototypes/meeting-plan-III/This Week.dc.html), on
+   public tokens. Name chips wear the rank the scout holds (--rank-*); group-card chips wear the answer (--rsvp-*); a
+   "Nothing assigned" row is --gap-row-bg. Two columns at 1100px and up, one below. Targets are 44px on a phone. */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: var(--sp-6) var(--sp-7) var(--sp-10);
+  box-sizing: border-box;
+}
+@media (max-width: 640px) {
+  .wrap {
+    padding: var(--sp-4);
+  }
+}
+
+/* ── header ─────────────────────────────────────────────────────────────────────────────────────────────────── */
+.headRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3) var(--sp-5);
+  margin-top: var(--sp-3);
+}
+.weeksLabel {
+  font: 600 var(--fs-xs) / 1 var(--font-ui);
+  color: var(--text-meta);
+}
+.weeks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.week {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  min-height: 36px;
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-pill);
+  background: var(--warm-white);
+  color: var(--navy);
+  font: var(--fs-sm) / 1.2 var(--font-ui);
+  text-decoration: none;
+}
+.week:hover {
+  border-color: var(--navy);
+}
+.week:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.weekOn {
+  composes: week;
+  border-color: var(--navy);
+  background: var(--navy);
+  color: var(--warm-white);
+}
+.weekDate {
+  font-weight: 700;
+}
+.headActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  align-items: center;
+}
+
+/* ── cards ───────────────────────────────────────────────────────────────────────────────────────────────────── */
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-5);
+  border-radius: var(--rad-lg);
+  background: var(--warm-white);
+  box-shadow: var(--shadow-card);
+}
+.cardTitle {
+  margin: 0;
+  font: 700 var(--fs-xl) / 1.3 var(--font-ui);
+  color: var(--text-head);
+}
+.cardSub {
+  margin: 0;
+  font: var(--fs-sm) / 1.45 var(--font-ui);
+  color: var(--text-meta);
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.rowLabel {
+  font: 600 var(--fs-sm) / 1.4 var(--font-ui);
+  color: var(--text-meta);
+  margin-right: var(--sp-1);
+}
+.muted {
+  font: var(--fs-sm) / 1.45 var(--font-ui);
+  color: var(--text-meta);
+}
+
+/* A picked focus set or badge: a removable chip. */
+.pick {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  min-height: 44px;
+  padding: 0 var(--sp-1) 0 var(--sp-4);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-md);
+  background: var(--status-info-bg);
+  color: var(--navy);
+  font: 700 var(--fs-sm) / 1.2 var(--font-ui);
+  box-sizing: border-box;
+}
+.pickBadge {
+  composes: pick;
+  background: var(--rsvp-coming-bg);
+  color: var(--rsvp-coming-ink);
+}
+.pickPlain {
+  padding-right: var(--sp-4);
+}
+.x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: var(--rad-md);
+  background: transparent;
+  color: inherit;
+  font: 700 var(--fs-lg) / 1 var(--font-ui);
+  cursor: pointer;
+}
+.x:hover {
+  background: var(--warm-white);
+}
+.x:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* ── popovers (focus sets, badges, teacher slots, place menu) ───────────────────────────────────────────────── */
+.popWrap {
+  position: relative;
+  display: inline-block;
+}
+.pop {
+  position: absolute;
+  top: calc(100% + var(--sp-2));
+  left: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  width: min(600px, calc(100vw - 2 * var(--sp-4)));
+  border: 1px solid var(--border-light);
+  border-radius: var(--rad-lg);
+  background: var(--warm-white);
+  box-shadow: var(--shadow-hover);
+}
+.popNarrow {
+  composes: pop;
+  width: min(340px, calc(100vw - 2 * var(--sp-4)));
+}
+.popRight {
+  left: auto;
+  right: 0;
+}
+.popHead {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--border-light);
+}
+.popList {
+  max-height: 340px;
+  overflow: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.popItem {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-4);
+  border-bottom: 1px solid var(--border-light);
+}
+.popItem:last-child {
+  border-bottom: 0;
+}
+.popMain {
+  flex: 1;
+  min-width: 0;
+}
+.popName {
+  font: 700 var(--fs-sm) / 1.3 var(--font-ui);
+  color: var(--text-head);
+}
+.popMeta {
+  font: var(--fs-xs) / 1.4 var(--font-ui);
+  color: var(--text-meta);
+}
+.popFoot {
+  padding: var(--sp-3) var(--sp-4);
+  border-top: 1px solid var(--border-light);
+}
+.popEmpty {
+  padding: var(--sp-4);
+  font: var(--fs-sm) / 1.4 var(--font-ui);
+  color: var(--text-meta);
+}
+.search {
+  min-height: 40px;
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-md);
+  font: 16px / 1.2 var(--font-ui);
+  color: var(--text-head);
+  background: var(--warm-white);
+}
+.search:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.fieldLabel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  font: 600 var(--fs-xs) / 1.3 var(--font-ui);
+  color: var(--text-meta);
+}
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+}
+.pill {
+  min-height: 32px;
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-pill);
+  background: var(--warm-white);
+  color: var(--navy);
+  font: 600 var(--fs-xs) / 1 var(--font-ui);
+  cursor: pointer;
+}
+.pill[aria-pressed='true'] {
+  border-color: var(--navy);
+  background: var(--navy);
+  color: var(--warm-white);
+}
+.pill:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.toggle {
+  composes: pill;
+  min-height: 36px;
+  font-size: var(--fs-sm);
+}
+.toggle[aria-pressed='true'] {
+  border-color: var(--forest);
+  background: var(--forest);
+}
+.menuBtn {
+  display: block;
+  width: 100%;
+  min-height: 40px;
+  padding: var(--sp-2) var(--sp-4);
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font: var(--fs-sm) / 1.3 var(--font-ui);
+  color: var(--text-head);
+  cursor: pointer;
+}
+.menuBtn:hover,
+.menuBtn:focus-visible {
+  outline: none;
+  background: var(--status-info-bg);
+}
+.menuBtn[aria-current='true'] {
+  font-weight: 700;
+}
+.menuHead {
+  padding: var(--sp-2) var(--sp-4) var(--sp-1);
+  font: 700 var(--fs-2xs) / 1.3 var(--font-ui);
+  color: var(--text-meta);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.menuNote {
+  display: block;
+  font: var(--fs-xs) / 1.3 var(--font-ui);
+  color: var(--text-meta);
+}
+
+/* ── coverage strip ──────────────────────────────────────────────────────────────────────────────────────────── */
+.coverage {
+  composes: card;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3) var(--sp-6);
+  padding: var(--sp-4) var(--sp-5);
+}
+.covMain {
+  flex: 1 1 260px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.covNum {
+  font: 700 var(--fs-md) / 1.3 var(--font-ui);
+  color: var(--text-head);
+}
+.covBar {
+  display: block;
+  width: 100%;
+  height: 10px;
+}
+.covTrack {
+  fill: var(--border-light);
+}
+.covFill {
+  fill: var(--forest);
+}
+.covStat {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 var(--sp-3);
+  border: 1px solid transparent;
+  border-radius: var(--rad-md);
+  background: transparent;
+  font: 600 var(--fs-sm) / 1.2 var(--font-ui);
+  color: var(--text-body);
+}
+button.covStat {
+  cursor: pointer;
+  border-color: var(--border-mid);
+}
+button.covStat:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.covWarn {
+  color: var(--status-danger);
+}
+.answers {
+  flex: 1 1 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1) var(--sp-5);
+  font: var(--fs-sm) / 1.4 var(--font-ui);
+  color: var(--text-meta);
+}
+.answers strong {
+  color: var(--text-head);
+}
+
+/* ── body ───────────────────────────────────────────────────────────────────────────────────────────────────── */
+.body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sp-5);
+  align-items: start;
+}
+@media (min-width: 1100px) {
+  .body {
+    grid-template-columns: minmax(320px, 1fr) minmax(0, 2fr);
+  }
+}
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+
+/* A group card: its header wears the rank it works toward. */
+.group {
+  composes: card;
+  padding: 0;
+  overflow: visible;
+  gap: 0;
+}
+.groupHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--rad-lg) var(--rad-lg) 0 0;
+}
+.groupName {
+  margin: 0;
+  font: 700 var(--fs-md) / 1.3 var(--font-ui);
+}
+.groupSub {
+  font: var(--fs-xs) / 1.3 var(--font-ui);
+}
+.groupCount {
+  font: 700 var(--fs-xs) / 1 var(--font-ui);
+  white-space: nowrap;
+}
+.groupBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4) var(--sp-4);
+}
+.reqs {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.req {
+  display: flex;
+  gap: var(--sp-2);
+  font: var(--fs-sm) / 1.35 var(--font-ui);
+  color: var(--text-body);
+}
+.reqCode {
+  flex: none;
+  min-width: 3.2em;
+  font-weight: 700;
+  color: var(--text-head);
+}
+.reqLabel {
+  flex: 1;
+  min-width: 0;
+}
+.reqNeed {
+  flex: none;
+  color: var(--text-meta);
+  font-size: var(--fs-xs);
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+}
+
+/* Header tints, by the rank a group works toward (the Merit badge group is stone). */
+.tone-scout { background: var(--rank-scout-bg); color: var(--rank-scout-ink); }
+.tone-tenderfoot { background: var(--rank-tenderfoot-bg); color: var(--rank-tenderfoot-ink); }
+.tone-second-class { background: var(--rank-second-bg); color: var(--rank-second-ink); }
+.tone-first-class { background: var(--rank-first-bg); color: var(--rank-first-ink); }
+.tone-mb { background: var(--rank-mb-group-bg); color: var(--rank-mb-group-ink); }
+.tone-extra { background: var(--status-info-bg); color: var(--navy); }
+
+/* ── name chips ─────────────────────────────────────────────────────────────────────────────────────────────── */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 var(--sp-2);
+  border: 1px solid var(--border-light);
+  border-radius: var(--rad-pill);
+  background: var(--warm-white);
+  color: var(--text-head);
+  font: 600 var(--fs-xs) / 1.2 var(--font-ui);
+  white-space: nowrap;
+}
+button.chip {
+  cursor: pointer;
+}
+button.chip:hover {
+  text-decoration: underline;
+}
+button.chip:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.rsvp-coming { background: var(--rsvp-coming-bg); color: var(--rsvp-coming-ink); border-color: var(--rsvp-coming-bg); }
+.rsvp-not_coming { background: var(--rsvp-cant-bg); color: var(--rsvp-cant-ink); border-color: var(--rsvp-cant-bg); }
+.rank-new { background: var(--rank-new-bg); color: var(--rank-new-ink); border-color: var(--rank-new-ring); }
+.rank-scout { background: var(--rank-scout-bg); color: var(--rank-scout-ink); border-color: var(--rank-scout-bg); }
+.rank-tenderfoot { background: var(--rank-tenderfoot-bg); color: var(--rank-tenderfoot-ink); border-color: var(--rank-tenderfoot-bg); }
+.rank-second-class { background: var(--rank-second-bg); color: var(--rank-second-ink); border-color: var(--rank-second-bg); }
+.rank-first-class { background: var(--rank-first-bg); color: var(--rank-first-ink); border-color: var(--rank-first-bg); }
+.rank-star { background: var(--rank-star-bg); color: var(--rank-star-ink); border-color: var(--rank-star-bg); }
+.rank-life { background: var(--rank-life-bg); color: var(--rank-life-ink); border-color: var(--rank-life-bg); }
+.rank-eagle { background: var(--rank-eagle-bg); color: var(--rank-eagle-ink); border-color: var(--rank-eagle-bg); }
+
+/* ── teacher slot ───────────────────────────────────────────────────────────────────────────────────────────── */
+.slot {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  min-height: 40px;
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-md);
+  background: var(--warm-white);
+  color: var(--text-head);
+  font: 600 var(--fs-sm) / 1.2 var(--font-ui);
+  cursor: pointer;
+}
+.slot:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.slotEmpty {
+  composes: slot;
+  border-color: var(--status-warning);
+  background: var(--status-warning-bg);
+  color: var(--bark);
+  font-weight: 700;
+}
+.slotText {
+  font: 600 var(--fs-sm) / 1.3 var(--font-ui);
+  color: var(--text-head);
+}
+.slotTextEmpty {
+  composes: slotText;
+  color: var(--bark);
+  font-weight: 700;
+}
+
+/* The Merit badge group: one switch per scout. */
+.olderList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.olderRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+.seg {
+  display: inline-flex;
+  flex-wrap: wrap;
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-md);
+  overflow: hidden;
+}
+.segBtn {
+  min-height: 36px;
+  padding: 0 var(--sp-3);
+  border: 0;
+  border-right: 1px solid var(--border-light);
+  background: var(--warm-white);
+  color: var(--navy);
+  font: 600 var(--fs-xs) / 1 var(--font-ui);
+  cursor: pointer;
+}
+.segBtn:last-child {
+  border-right: 0;
+}
+.segBtn[aria-checked='true'] {
+  background: var(--navy);
+  color: var(--warm-white);
+}
+.segBtn:focus-visible {
+  outline: none;
+  box-shadow: inset var(--focus-ring);
+}
+.segBtn:disabled {
+  cursor: default;
+}
+
+/* ── the checklist grid ─────────────────────────────────────────────────────────────────────────────────────── */
+.gridCard {
+  composes: card;
+  gap: var(--sp-4);
+}
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--rad-md);
+  background: var(--cream);
+  font: var(--fs-sm) / 1.45 var(--font-ui);
+  color: var(--text-body);
+}
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.legendGap {
+  display: inline-block;
+  width: 28px;
+  height: 18px;
+  border-radius: var(--rad-sm);
+  background: var(--gap-row-bg);
+}
+.scroll {
+  overflow-x: auto;
+}
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.sectionHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--rad-md);
+}
+.sectionName {
+  margin: 0;
+  font: 700 var(--fs-md) / 1.3 var(--font-ui);
+}
+.sectionSub {
+  font: var(--fs-xs) / 1.3 var(--font-ui);
+}
+.table {
+  border-collapse: separate;
+  border-spacing: 0 2px;
+  min-width: 100%;
+  font: var(--fs-sm) / 1.3 var(--font-ui);
+}
+.table th {
+  padding: var(--sp-1) var(--sp-1);
+  font: 700 var(--fs-xs) / 1.2 var(--font-ui);
+  color: var(--text-meta);
+  text-align: center;
+  white-space: nowrap;
+}
+.table th.nameCol,
+.table th.noteCol {
+  text-align: left;
+}
+.nameCol {
+  width: 190px;
+  min-width: 150px;
+  padding: var(--sp-1) var(--sp-2);
+}
+.noteCol {
+  min-width: 160px;
+  padding: var(--sp-1) var(--sp-3);
+  color: var(--text-meta);
+}
+.cell {
+  width: 34px;
+  min-width: 34px;
+  padding: 2px;
+  text-align: center;
+}
+.check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--rad-sm);
+  background: var(--warm-white);
+  font-weight: 700;
+}
+.checkOn {
+  composes: check;
+  border-color: var(--navy);
+  background: var(--navy);
+  color: var(--warm-white);
+}
+.gapRow td {
+  background: var(--gap-row-bg);
+}
+.gapRow td:first-child {
+  border-radius: var(--rad-md) 0 0 var(--rad-md);
+}
+.gapRow td:last-child {
+  border-radius: 0 var(--rad-md) var(--rad-md) 0;
+}
+.gapNote {
+  font-weight: 700;
+  color: var(--status-danger);
+}
+.noteCell {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.placeBtn {
+  min-height: 32px;
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--navy);
+  border-radius: var(--rad-md);
+  background: var(--warm-white);
+  color: var(--navy);
+  font: 700 var(--fs-xs) / 1 var(--font-ui);
+  cursor: pointer;
+}
+.placeBtn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.quiet {
+  composes: placeBtn;
+  border-color: var(--border-mid);
+  font-weight: 600;
+}
+
+/* ── the inline focus-set builder ───────────────────────────────────────────────────────────────────────────── */
+.builder {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sp-4);
+  padding: var(--sp-4);
+  border: 1px solid var(--border-light);
+  border-radius: var(--rad-lg);
+  background: var(--cream);
+}
+@media (min-width: 900px) {
+  .builder {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+.builderFull {
+  grid-column: 1 / -1;
+}
+.bad {
+  border: 2px solid var(--status-danger);
+  background: var(--status-danger-bg);
+}
+.badNote {
+  font: 600 var(--fs-xs) / 1.3 var(--font-ui);
+  color: var(--status-danger);
+}
+.results {
+  max-height: 320px;
+  overflow: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--border-light);
+  border-radius: var(--rad-md);
+  background: var(--warm-white);
+}
+.inSet {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.inSetGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.saveBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+}
+.problem {
+  font: 700 var(--fs-sm) / 1.3 var(--font-ui);
+  color: var(--status-danger);
+}
+
+/* ── Live at the meeting ────────────────────────────────────────────────────────────────────────────────────── */
+.sessions {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--sp-4);
+}
+.here {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-md);
+  background: var(--warm-white);
+  color: var(--text-head);
+  font: 600 var(--fs-sm) / 1.2 var(--font-ui);
+  cursor: pointer;
+}
+.here[aria-pressed='true'] {
+  border-color: var(--forest);
+  background: var(--forest);
+  color: var(--warm-white);
+}
+.here:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.here:disabled {
+  cursor: default;
+}
+
+/* ── snapshot bar ───────────────────────────────────────────────────────────────────────────────────────────── */
+.snap {
+  padding: var(--sp-3) var(--sp-7);
+  font: 600 var(--fs-sm) / 1.4 var(--font-ui);
+  border-bottom: 1px solid var(--border-light);
+}
+.snapOk {
+  composes: snap;
+  background: var(--status-success-bg);
+  color: var(--forest);
+}
+.snapOld {
+  composes: snap;
+  background: var(--status-warning-bg);
+  color: var(--bark);
+}
+.err {
+  font: 600 var(--fs-sm) / 1.3 var(--font-ui);
+  color: var(--status-danger);
+}
