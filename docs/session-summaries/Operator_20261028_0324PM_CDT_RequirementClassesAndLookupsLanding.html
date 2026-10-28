@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session 68: Requirement Classes and a Lookups Landing</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #3d5a3e;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #f0eecd;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); vertical-align: top; }
+        tr:hover { background: var(--nw-sage); }
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+        code { font-family: 'Courier New', monospace; font-size: 0.85em; background: var(--nw-light-gray); padding: 0 0.3em; border-radius: 3px; }
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+        @media print { body { background: white; } header { padding: 1.5rem; } .container { padding: 1rem; } .stat { break-inside: avoid; } }
+        @media (max-width: 600px) { header h1 { font-size: 1.5rem; } .stats { flex-direction: column; } }
+    </style>
+<body>
+    <header>
+        <h1>Requirement Classes and a Lookups Landing</h1>
+        <p class="subtitle">Session 68. Requirements now carry tags that say where they can be done, and the meeting planner suggests only what a meeting can hold. Lookups &amp; Admin became a landing page of links. Wreath card buyers stopped getting Venmo instructions, and now get a &ldquo;Paid by credit card&rdquo; email.</p>
+        <div class="meta">
+            <span>&#128197; October 26&ndash;28, 2026</span>
+            <span>&#129302; Operator (Opus 5.5)</span>
+            <span>&#128204; Troop79-Website</span>
+            <span>&#128640; v1.254.0 &rarr; v1.256.0</span>
+        </div>
+    </header>
+    <div class="container">
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">3</div><div class="label">Releases (v1.255.0, v1.255.1, v1.256.0)</div></div>
+            <div class="stat"><div class="number">1</div><div class="label">Migration, in production</div></div>
+            <div class="stat"><div class="number">5</div><div class="label">Decisions (D-439&ndash;D-443)</div></div>
+            <div class="stat"><div class="number">7910</div><div class="label">Tests (was 7812); one old capabilities test fails</div></div>
+        </div>
+        <h2>What Was Accomplished</h2>
+        <div class="callout callout-teal">
+            <strong>The outcome:</strong> the planner&rsquo;s Suggestions no longer offer requirements that need a lake, a campout or a visit to an official. Leaders tag requirements on Lookups &amp; Admin with any number of classes, and anything that doesn&rsquo;t fit a meeting is listed under &ldquo;Needs another setting&rdquo;. Nothing a leader adds by hand is filtered.
+        </div>
+        <h3>Requirement classes (v1.256.0)</h3>
+        <ul>
+            <li>Eight classes: Troop meeting, Campout, Outdoor event, Aquatics, Service project, Home / independent, Expert / external visit, Leadership / administrative. They can be added, edited and retired; one in use can&rsquo;t be deleted.</li>
+            <li>Requirements that needed an outing were tagged to match, and tenure, Scout spirit, positions of responsibility, the Eagle project and badge counts were tagged Leadership, so suggestions didn&rsquo;t change on the day of the switch.</li>
+            <li>Internal Requirement Codes shows each requirement&rsquo;s tags, filters by class, and ticks them in two columns, A to Z.</li>
+        </ul>
+        <h3>Lookups &amp; Admin landing page (v1.256.0)</h3>
+        <ul>
+            <li>Five groups of links instead of one long page; each opens its card on its own, expanded, with a Back link.</li>
+            <li>Links from the admin home, a merit badge page and the planner go straight to their card.</li>
+        </ul>
+        <h3>Wreath card payments (v1.255.1)</h3>
+        <ul>
+            <li>A customer who chooses card is told so, with no Venmo or PayPal lines; a few had paid twice.</li>
+            <li>Once Stripe confirms, the troop sends &ldquo;Paid by credit card&rdquo;, once, with copies to the order-copy addresses.</li>
+        </ul>
+        <h3>Also</h3>
+        <ul>
+            <li>Adult Skills and Scout Instructors list only people who teach, with Add and Delete (v1.255.0).</li>
+            <li>Gene Brown&rsquo;s sign-off initials (GB) added in production; a plan for editing initials on the person record is ready.</li>
+            <li>A Troop 79 design system published on claude.ai for Claude Design work; the nightly backup moved to noon.</li>
+        </ul>
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Decision</th></tr></thead>
+            <tbody>
+                <tr><td>D-439</td><td>Sign-off initials are edited on the person record; a code can be reused after 5 years (plan ready, not built).</td></tr>
+                <tr><td>D-440</td><td>Requirement classes are tags with no rules about how many; a gathering suggests what shares a tag; untagged counts as a meeting.</td></tr>
+                <tr><td>D-441</td><td>Lookups &amp; Admin is a landing page; each card opens alone at ?card=.</td></tr>
+                <tr><td>D-442</td><td>Wreath card orders: no other way to pay in the confirmation; &ldquo;Paid by credit card&rdquo; once Stripe confirms.</td></tr>
+                <tr><td>D-443</td><td>The claude.ai design system is a snapshot; the code&rsquo;s styleguides stay the source of truth.</td></tr>
+            </tbody>
+        </table>
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Patrick checks the Lookups landing, the Requirement classes card, Suggestions&rsquo; new footer, and the first live card order&rsquo;s emails.</li>
+            <li>Refund by hand the wreath customers who paid twice.</li>
+            <li>Merit badge first pass: proposed tags for every merit badge requirement, for Patrick to correct.</li>
+            <li>Build Sign-Off Initials; then drop the old venue column; fix the capabilities test.</li>
+        </ul>
+        <h2>Files Changed</h2>
+        <table>
+            <thead><tr><th>Area</th><th>Files</th></tr></thead>
+            <tbody>
+                <tr><td>Admin lookups</td><td>lookups/page.tsx (landing + ?card=), lookup-cards.ts, lookup-card.tsx, requirement-classes-editor.tsx, requirement-class-actions.ts, req-codes-table.tsx, actions.ts, skill-assign-editor.tsx</td></tr>
+                <tr><td>Planner</td><td>lib/requirement-class.ts, rank-calculus.ts, meeting-suggest/engine.ts + load-input.ts, build-plan-suggest.ts, meeting-board-supply.ts, meeting-board-picklist.ts, advancement-catalog.ts, planner/build/suggestions.tsx</td></tr>
+                <tr><td>Wreaths</td><td>lib/wreaths/emails.ts, place-order.ts, card-payments.ts, stripe-client.ts, checkout-form.tsx</td></tr>
+                <tr><td>Database</td><td>20261227100000_requirement_classes</td></tr>
+                <tr><td>Tests</td><td>requirement-class*, lookup-cards, lookups-landing, wreath-card-payments-db, wreath-order, wreath-public, req-codes-minutes, 12 planner fixture files</td></tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
