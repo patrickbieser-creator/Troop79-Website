@@ -53,6 +53,8 @@ import { ReqCodesTable, type ReqRow } from './req-codes-table';
 import { LookupCard } from './lookup-card';
 import { HouseholdsManager, type HouseholdMemberRow, type HouseholdRow } from './households-manager';
 import { SkillsEditor, type SkillRow } from './skills-editor';
+import { RequirementClassesEditor, type RequirementClassRow } from './requirement-classes-editor';
+import { effectiveClasses } from '@/lib/requirement-class';
 import { SkillAssignEditor } from './skill-assign-editor';
 import { buildTeachingRows, collectTeachingAdults, type TeachingScout } from './teaching-rows';
 import { TeachingChanges } from './teaching-changes';
@@ -181,12 +183,12 @@ async function loadLookups() {
     // editor for ranks, so this flat table is the only place to reach them.
     supabase
       .from('rank_requirements')
-      .select('id, rank_id, parent_id, code, label, teach_minutes')
+      .select('id, rank_id, parent_id, code, label, teach_minutes, class_codes')
       .order('rank_id')
       .order('code'),
     supabase
       .from('merit_badge_requirements')
-      .select('id, mb_id, code, label, teach_minutes')
+      .select('id, mb_id, code, label, teach_minutes, class_codes')
       .is('parent_id', null)
       .order('mb_id'),
     // Full MB requirement tree for the per-badge editor. Past the 1000-row
@@ -218,12 +220,19 @@ async function loadLookups() {
 
   const [
     skillsRes,
+    classesRes,
+    taggedMbReqs,
     teachingSkillsRes,
     adultDirectory,
     householdsRes,
     hhMembersRes
   ] = await Promise.all([
     supabase.from('skills').select('id, name, youth_teachable, sort_order').order('sort_order'),
+    supabase.from('requirement_classes').select('code, name, description, sort_order, retired_at').order('sort_order'),
+    // Every tagged requirement at every depth (untagged rows are most of them; only the tagged ones count usage).
+    fetchAllRows<{ class_codes: string[] }>((from, to) =>
+      supabase.from('merit_badge_requirements').select('class_codes').neq('class_codes', '{}').order('id').range(from, to)
+    ),
     supabase.from('teaching_skills').select('person_id, skill_id'),
     // The Adult Skills pool: every adult the person picker offers, leaders and parents alike (the planner's teacher
     // pool reads the same rows, lib/people-lists).
@@ -303,9 +312,16 @@ async function loadLookups() {
     officialTextByKey.set(`${t.source}:${t.parent_id}:${t.code}`, t.official_text);
   }
 
-  type RankReqFull = { id: number; rank_id: string; parent_id: number | null; code: string; label: string; teach_minutes: number };
+  type RankReqFull = { id: number; rank_id: string; parent_id: number | null; code: string; label: string; teach_minutes: number; class_codes: string[] };
   const rankReqRows = (rankReqsRes.data ?? []) as RankReqFull[];
   const rankCodeById = new Map(rankReqRows.map((r) => [r.id, r.code]));
+  const rankClassesById = new Map(rankReqRows.map((r) => [r.id, r.class_codes]));
+  // Requirement classes (Plans/Requirement-Classification.md) and how many requirements carry each.
+  const classUse = new Map<string, number>();
+  for (const r of [...rankReqRows, ...taggedMbReqs]) for (const c of r.class_codes) classUse.set(c, (classUse.get(c) ?? 0) + 1);
+  const requirementClasses: RequirementClassRow[] = (
+    (classesRes.data ?? []) as { code: string; name: string; description: string; sort_order: number; retired_at: string | null }[]
+  ).map((c) => ({ code: c.code, name: c.name, description: c.description, sortOrder: c.sort_order, retired: c.retired_at != null, usedBy: classUse.get(c.code) ?? 0 }));
   // T-3: a requirement with sub-requirements takes the sum of theirs.
   const partsMinutes = new Map<number, number>();
   for (const r of rankReqRows) if (r.parent_id !== null) partsMinutes.set(r.parent_id, (partsMinutes.get(r.parent_id) ?? 0) + r.teach_minutes);
@@ -321,9 +337,11 @@ async function loadLookups() {
       nestedUnder: r.parent_id !== null ? (rankCodeById.get(r.parent_id) ?? null) : null,
       officialText: officialTextByKey.get(`rank:${r.rank_id}:${r.code}`) ?? '',
       minutes: r.teach_minutes,
-      partsMinutes: partsMinutes.get(r.id) ?? null
+      partsMinutes: partsMinutes.get(r.id) ?? null,
+      classCodes: r.class_codes,
+      effectiveClasses: effectiveClasses(r.class_codes, r.parent_id !== null ? rankClassesById.get(r.parent_id) : undefined)
     })),
-    ...((mbReqsRes.data ?? []) as { id: number; mb_id: string; code: string; label: string; teach_minutes: number }[]).map(
+    ...((mbReqsRes.data ?? []) as { id: number; mb_id: string; code: string; label: string; teach_minutes: number; class_codes: string[] }[]).map(
       (r) => ({
         id: r.id,
         source: 'mb' as const,
@@ -334,7 +352,9 @@ async function loadLookups() {
         nestedUnder: null,
         officialText: officialTextByKey.get(`mb:${r.mb_id}:${r.code}`) ?? '',
         minutes: r.teach_minutes,
-        partsMinutes: null
+        partsMinutes: null,
+        classCodes: r.class_codes,
+        effectiveClasses: effectiveClasses(r.class_codes)
       })
     )
   ];
@@ -366,6 +386,7 @@ async function loadLookups() {
     ranks: ranks.map((r) => ({ id: r.id, display_name: r.display_name })),
     ranksFull: ranks,
     reqs,
+    requirementClasses,
     events: (eventsRes.data ?? []) as EventRow[],
     serviceProjects: (serviceProjectsRes.data ?? []) as NameRow[],
     leadershipPositions: (leadershipPositionsRes.data ?? []) as NameRow[],
@@ -387,6 +408,7 @@ export default async function LookupsPage() {
     mbReqTrees,
     ranksFull,
     reqs,
+    requirementClasses,
     events,
     serviceProjects,
     leadershipPositions,
@@ -515,7 +537,16 @@ export default async function LookupsPage() {
           title="Internal Requirement Codes"
           sub={`${reqs.length} top-level codes · renaming a code updates matching ledger entries too · nested sub-requirement trees are edited per-MB in the Merit Badge Catalog card`}
         >
-          <ReqCodesTable rows={reqs} />
+          <ReqCodesTable rows={reqs} classes={requirementClasses} />
+        </Card>
+      </div>
+
+      <div className={styles.grid}>
+        <Card
+          title="Requirement classes"
+          sub={`${requirementClasses.length} classes · tag where a requirement can be done, on Internal Requirement Codes · the meeting planner suggests what a meeting can hold (M, or untagged)`}
+        >
+          <RequirementClassesEditor rows={requirementClasses} />
         </Card>
       </div>
 

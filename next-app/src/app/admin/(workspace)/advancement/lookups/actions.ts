@@ -20,6 +20,7 @@ import { SITE_TEXT_KEYS } from '@/lib/site-text';
 import { SEO_KEYS } from '@/lib/seo';
 import { saveTeachingSkills, undoTeachingSkillChange, markTeachingSkillChangeReviewed } from '@/lib/teaching-skills';
 import { parseTeachMinutes } from '@/lib/meeting-board-picklist';
+import { normalizeClassCodes } from '@/lib/requirement-class';
 import { expireMeetingCategories, expirePeopleLists } from '@/lib/people-lists';
 
 /** The event-tab kinds an event can be classified as — Day Outing/Fundraiser
@@ -1134,12 +1135,37 @@ export async function updateReqCode(formData: FormData): Promise<Result> {
   if (source !== 'rank' && source !== 'mb') return { ok: false, error: 'Invalid source' };
   if (!code) return { ok: false, error: 'Code is required' };
   if (!label) return { ok: false, error: 'Label is required' };
+  // Class tags (Plans/Requirement-Classification.md): absent = leave them as they are.
+  const rawClasses = formData.get('class_codes');
+  let classCodes: string[] | null = null;
+  if (rawClasses != null) {
+    try {
+      classCodes = normalizeClassCodes(JSON.parse(String(rawClasses)));
+    } catch {
+      classCodes = null;
+    }
+    if (!classCodes) return { ok: false, error: 'Invalid class tags' };
+  }
 
   const table = source === 'rank' ? 'rank_requirements' : 'merit_badge_requirements';
   const parentField = source === 'rank' ? 'rank_id' : 'mb_id';
   const kind: LedgerKind = source === 'rank' ? 'rank_requirement' : 'merit_badge_requirement';
 
   const supabase = createAdminClient();
+
+  if (classCodes) {
+    // A tag must exist; a retired one may stay where it already is but can't be added.
+    const [{ data: known }, { data: current }] = await Promise.all([
+      supabase.from('requirement_classes').select('code, retired_at'),
+      supabase.from(table).select('class_codes').eq('id', id).maybeSingle()
+    ]);
+    const byCode = new Map(((known ?? []) as { code: string; retired_at: string | null }[]).map((k) => [k.code, k.retired_at]));
+    const had = new Set(((current as { class_codes?: string[] } | null)?.class_codes ?? []) as string[]);
+    const unknown = classCodes.find((c) => !byCode.has(c));
+    if (unknown) return { ok: false, error: `${unknown} isn't a requirement class` };
+    const retired = classCodes.find((c) => byCode.get(c) && !had.has(c));
+    if (retired) return { ok: false, error: `${retired} is retired, so it can't be added` };
+  }
 
   if (code !== originalCode) {
     const { data: clash } = await supabase
@@ -1156,7 +1182,7 @@ export async function updateReqCode(formData: FormData): Promise<Result> {
 
   const { error } = await supabase
     .from(table)
-    .update({ code, label, ...(teachMinutes != null ? { teach_minutes: teachMinutes } : {}) })
+    .update({ code, label, ...(teachMinutes != null ? { teach_minutes: teachMinutes } : {}), ...(classCodes ? { class_codes: classCodes } : {}) })
     .eq('id', id);
   if (error) return { ok: false, error: error.message };
 

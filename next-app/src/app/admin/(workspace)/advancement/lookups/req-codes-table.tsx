@@ -20,6 +20,7 @@ import styles from './lookups.module.css';
 import { Notice } from '../../_components/notice';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../_components/dialog';
 import { Button } from '../../../_components/button';
+import type { RequirementClass } from '@/lib/requirement-class';
 
 export interface ReqRow {
   id: number;
@@ -37,12 +38,24 @@ export interface ReqRow {
   minutes: number;
   /** A rank requirement with sub-requirements: the sum of theirs, which is its time (set on the parts, not here). */
   partsMinutes: number | null;
+  /** Its own class tags (Plans/Requirement-Classification.md); empty = untagged. */
+  classCodes: string[];
+  /** What the planner reads: its own tags, else its parent's, else M. */
+  effectiveClasses: string[];
 }
 
-export function ReqCodesTable({ rows }: { rows: ReqRow[] }) {
+/** The class filter: every class, one class (by effective tag), or the untagged ones. */
+const ALL = '';
+const UNTAGGED = '-';
+
+export function ReqCodesTable({ rows, classes }: { rows: ReqRow[]; classes: RequirementClass[] }) {
   const [openFor, setOpenFor] = useState<ReqRow | null>(null);
+  const [classFilter, setClassFilter] = useState(ALL);
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const t = useLookupTable(rows, (r) => `${r.code} ${r.label} ${r.parentLabel}`);
+  const filtered =
+    classFilter === ALL ? rows : classFilter === UNTAGGED ? rows.filter((r) => !r.classCodes.length) : rows.filter((r) => r.effectiveClasses.includes(classFilter));
+  const t = useLookupTable(filtered, (r) => `${r.code} ${r.label} ${r.parentLabel}`);
+  const untagged = rows.filter((r) => !r.classCodes.length).length;
 
   useEffect(() => {
     const dlg = dialogRef.current;
@@ -53,7 +66,18 @@ export function ReqCodesTable({ rows }: { rows: ReqRow[] }) {
 
   return (
     <>
-      {t.searchEl}
+      <div className={styles.cardToolbar}>
+        {t.searchEl}
+        <select className={styles.editInput} aria-label="Filter by class" value={classFilter} onChange={(e) => setClassFilter(e.target.value)}>
+          <option value={ALL}>All classes</option>
+          {classes.map((c) => (
+            <option key={c.code} value={c.code}>
+              {c.code} {c.name}
+            </option>
+          ))}
+          <option value={UNTAGGED}>Untagged ({untagged})</option>
+        </select>
+      </div>
       <div className={t.scrollClass}>
         <table className={styles.table}>
           <thead>
@@ -62,6 +86,7 @@ export function ReqCodesTable({ rows }: { rows: ReqRow[] }) {
               <th>Label</th>
               <th>Source</th>
               <th className={styles.cellRight}>Minutes</th>
+              <th>Classes</th>
               <th className={styles.cellRight}>Actions</th>
             </tr>
           </thead>
@@ -86,6 +111,15 @@ export function ReqCodesTable({ rows }: { rows: ReqRow[] }) {
                 <td className={styles.cellRight} data-col="minutes">
                   {r.partsMinutes != null ? `${r.partsMinutes} (its parts)` : r.minutes}
                 </td>
+                <td className={styles.codeCell}>
+                  {r.classCodes.length ? (
+                    r.classCodes.join(' ')
+                  ) : (
+                    <span className={styles.muted} title={r.nestedUnder ? 'Untagged: takes its parent’s classes' : 'Untagged: counts as a troop meeting'}>
+                      {r.effectiveClasses.join(' ')}
+                    </span>
+                  )}
+                </td>
                 <td className={styles.cellRight}>
                   <Button variant="secondary" size="sm" onClick={() => setOpenFor(r)}>
                     Edit
@@ -99,20 +133,21 @@ export function ReqCodesTable({ rows }: { rows: ReqRow[] }) {
       {t.footerEl}
 
       <Dialog ref={dialogRef} onClose={() => setOpenFor(null)}>
-        {openFor && <ReqCodeForm row={openFor} onClose={() => setOpenFor(null)} />}
+        {openFor && <ReqCodeForm row={openFor} classes={classes} onClose={() => setOpenFor(null)} />}
       </Dialog>
     </>
   );
 }
 
-export function ReqCodeForm({ row, onClose }: { row: ReqRow; onClose: () => void }) {
+export function ReqCodeForm({ row, classes, onClose }: { row: ReqRow; classes: RequirementClass[]; onClose: () => void }) {
   const [code, setCode] = useState(row.code);
+  const [tags, setTags] = useState<string[]>(row.classCodes);
   const [label, setLabel] = useState(row.label);
   const [officialText, setOfficialText] = useState(row.officialText);
   const [minutes, setMinutes] = useState(String(row.minutes));
   const [err, setErr] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const { dirty } = useSavedSnapshot(JSON.stringify({ code, label, officialText, minutes }));
+  const { dirty } = useSavedSnapshot(JSON.stringify({ code, label, officialText, minutes, tags }));
   const ownTime = row.partsMinutes == null;
   const badMinutes = ownTime && parseTeachMinutes(minutes) == null;
   const feedback = useSavePhase();
@@ -131,6 +166,7 @@ export function ReqCodeForm({ row, onClose }: { row: ReqRow; onClose: () => void
     fd.set('label', label.trim());
     fd.set('official_text', officialText.trim());
     if (ownTime) fd.set('teach_minutes', minutes.trim());
+    fd.set('class_codes', JSON.stringify(tags));
     feedback.start();
     startTransition(async () => {
       const res = await updateReqCode(fd);
@@ -190,6 +226,28 @@ export function ReqCodeForm({ row, onClose }: { row: ReqRow; onClose: () => void
             Minutes to teach: {row.partsMinutes}, set on its parts (the sub-requirements below it add up to this).
           </p>
         )}
+        <fieldset className={styles.editFieldFull}>
+          <legend className={styles.editLabel}>Classes: where it can be done</legend>
+          {/* A retired class shows only where it is already ticked; untagged counts as a troop meeting. */}
+          {classes
+            .filter((c) => !c.retired || tags.includes(c.code))
+            .map((c) => (
+              <label key={c.code} className={styles.checkInline} title={c.description}>
+                <input
+                  type="checkbox"
+                  checked={tags.includes(c.code)}
+                  onChange={(e) =>
+                    setTags((now) => {
+                      const next = e.target.checked ? [...now, c.code] : now.filter((x) => x !== c.code);
+                      return classes.map((k) => k.code).filter((k) => next.includes(k));
+                    })
+                  }
+                />
+                {c.code} {c.name}
+                {c.retired ? ' (retired)' : ''}
+              </label>
+            ))}
+        </fieldset>
         <label className={styles.editFieldFull}>
           <span className={styles.editLabel}>Official text (reference)</span>
           <textarea
