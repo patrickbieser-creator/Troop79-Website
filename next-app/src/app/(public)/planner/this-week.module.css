@@ -299,10 +299,8 @@
 }
 .menuHead {
   padding: var(--sp-2) var(--sp-4) var(--sp-1);
-  font: 700 var(--fs-2xs) / 1.3 var(--font-ui);
+  font: 700 var(--fs-xs) / 1.3 var(--font-ui);
   color: var(--text-meta);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
 .menuNote {
   display: block;
@@ -754,7 +752,8 @@ button.chip:focus-visible {
   grid-column: 1 / -1;
 }
 .bad {
-  border: 2px solid var(--status-danger);
+  border: 1px solid var(--status-danger);
+  box-shadow: 0 0 0 1px var(--status-danger);
   background: var(--status-danger-bg);
 }
 .badNote {

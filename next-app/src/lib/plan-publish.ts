@@ -11,7 +11,8 @@
  *   3. Each recipient gets a NEW family link (lib/plan-pages) in their email; once it has gone out, their older links
  *      for this meeting are superseded; a link whose email didn't go out is deleted.
  *   Send safety (like reminders): PUBLISH_BATCH at a time, no new batch after PUBLISH_TIME_BUDGET_MS, each email capped
- *   at PUBLISH_EMAIL_TIMEOUT_MS; whoever wasn't reached is reported and can be reached by publishing again.
+ *   at PUBLISH_EMAIL_TIMEOUT_MS; whoever wasn't reached is reported. Publishing again with nothing changed sends the
+ *   same snapshot to the families with no link for it yet (qa-lead 2026-10-28), and to nobody else.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { recordAudit } from '@/lib/audit';
@@ -53,28 +54,37 @@ interface Family {
 export async function publishPlan(
   sb: SupabaseClient,
   input: { meeting: Pick<BoardMeeting, 'entryId' | 'date'>; view: ThisWeek; scouts: readonly { personId: number; name: string; isTest?: boolean }[]; actorPersonId: number; everyone: boolean },
-  deps: { clock?: () => number } = {}
+  deps: { clock?: () => number; send?: typeof sendEmailWithin } = {}
 ): Promise<PublishOutcome> {
   const clock = deps.clock ?? Date.now;
+  const send = deps.send ?? sendEmailWithin;
   const started = clock();
   const payload: SnapshotPayload = snapshotPayload(input.view);
   const hash = payloadHash(payload);
   const latest = await loadLatestSnapshot(sb, input.meeting.entryId);
-  if (latest && latest.hash === hash && !input.everyone) return { ok: false, error: 'Nothing changed since the last snapshot.' };
-  const n = (latest?.n ?? 0) + 1;
-  const { error: snapErr } = await sb.from('meeting_plan_snapshots').insert({
-    calendar_entry_id: input.meeting.entryId,
-    n,
-    payload,
-    payload_hash: hash,
-    published_by_person_id: input.actorPersonId
-  });
-  if (snapErr) return { ok: false, error: snapErr.code === '23505' ? 'Someone else just published. Reload to see it.' : 'Couldn’t save the snapshot. Try again.' };
+  // Nothing changed: send the latest snapshot to the families it hasn't reached yet (a failed or timed-out send).
+  const resend = latest != null && latest.hash === hash && !input.everyone;
+  const n = resend ? latest.n : (latest?.n ?? 0) + 1;
+  let reached = new Set<number>();
+  if (resend) {
+    const { data, error } = await sb.from('meeting_plan_pages').select('recipient_person_id').eq('calendar_entry_id', input.meeting.entryId).eq('snapshot_n', n).is('revoked_at', null);
+    if (error) return { ok: false, error: 'Couldn’t read who has it. Try again.' };
+    reached = new Set(((data ?? []) as { recipient_person_id: number }[]).map((r) => r.recipient_person_id));
+  } else {
+    const { error: snapErr } = await sb.from('meeting_plan_snapshots').insert({
+      calendar_entry_id: input.meeting.entryId,
+      n,
+      payload,
+      payload_hash: hash,
+      published_by_person_id: input.actorPersonId
+    });
+    if (snapErr) return { ok: false, error: snapErr.code === '23505' ? 'Someone else just published. Reload to see it.' : 'Couldn’t save the snapshot. Try again.' };
+  }
 
   // Who to email.
   // Test scouts (people.is_test) are never named in an email (qa-lead B10a #1).
   const ids = input.scouts.filter((s) => !s.isTest).map((s) => s.personId);
-  const targets = new Set(input.everyone ? ids : changedScouts(latest?.payload ?? null, payload, ids));
+  const targets = new Set(input.everyone || resend ? ids : changedScouts(latest?.payload ?? null, payload, ids));
   const scouts = input.scouts.filter((s) => targets.has(s.personId));
   const family = await loadScoutFamilies(sb, scouts.map((s) => s.personId));
   const recipients = await scoutRecipientsMany(sb, family, scouts.map((s) => s.personId), input.meeting.date);
@@ -89,7 +99,8 @@ export async function publishPlan(
       byRecipient.set(m.recipientId, f);
     }
   }
-  const families = [...byRecipient.values()];
+  const families = [...byRecipient.values()].filter((f) => !reached.has(f.recipientId));
+  if (resend && !families.length) return { ok: false, error: 'Nothing changed, and every family has this snapshot.' };
 
   const template = await templateFor(sb, PLAN_PUBLISHED_KIND, DEFAULT_PLAN_PUBLISHED);
   const { data: names } = families.length ? await sb.from('people').select('id, nickname, first_name, display_name').in('id', families.map((f) => f.recipientId)) : { data: [] };
@@ -112,7 +123,7 @@ export async function publishPlan(
       }));
       const { subject, md } = renderPlanPublished(template, { name: firstName.get(f.recipientId) ?? '', people, day, focus }, options);
       const { html, text } = renderMarkdownEmail({ md, actionUrl: `${siteUrl()}/i/plan/${page.token}`, actionLabel: PLAN_PAGE_BUTTON });
-      const res = await sendEmailWithin(PUBLISH_EMAIL_TIMEOUT_MS, { to: [f.sentTo], subject, html, text, confirm: true, fromName: INVITE_SENDER_NAME });
+      const res = await send(PUBLISH_EMAIL_TIMEOUT_MS, { to: [f.sentTo], subject, html, text, confirm: true, fromName: INVITE_SENDER_NAME });
       if (res !== EMAIL_TIMED_OUT && res.status === 'sent') {
         emailed++;
         await supersedeOlderPlanPages(sb, { id: page.id, entryId: input.meeting.entryId, recipientId: f.recipientId });
@@ -132,7 +143,13 @@ export async function publishPlan(
     }
     await Promise.all(families.slice(i, i + PUBLISH_BATCH).map(sendOne));
   }
-  await sb.from('meeting_plan_snapshots').update({ emailed }).eq('calendar_entry_id', input.meeting.entryId).eq('n', n);
+  const { data: was } = await sb.from('meeting_plan_snapshots').select('emailed, meant').eq('calendar_entry_id', input.meeting.entryId).eq('n', n).single();
+  const prior = (was as { emailed: number; meant: number } | null) ?? { emailed: 0, meant: 0 };
+  await sb
+    .from('meeting_plan_snapshots')
+    .update(resend ? { emailed: prior.emailed + emailed } : { emailed, meant: families.length })
+    .eq('calendar_entry_id', input.meeting.entryId)
+    .eq('n', n);
   await recordAudit({
     area: 'meeting',
     action: 'plan.publish',

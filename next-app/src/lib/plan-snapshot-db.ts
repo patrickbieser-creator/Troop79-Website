@@ -15,19 +15,22 @@ export interface LatestSnapshot {
   payload: SnapshotPayload;
   hash: string;
   publishedAt: string;
+  /** Families it reached, and the families it was meant for. */
+  emailed: number;
+  meant: number;
 }
 
 export async function loadLatestSnapshot(sb: SupabaseClient, entryId: number): Promise<LatestSnapshot | null> {
   const { data, error } = await sb
     .from('meeting_plan_snapshots')
-    .select('n, payload, payload_hash, published_at')
+    .select('n, payload, payload_hash, published_at, emailed, meant')
     .eq('calendar_entry_id', entryId)
     .order('n', { ascending: false })
     .limit(1)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  const r = data as { n: number; payload: SnapshotPayload; payload_hash: string; published_at: string } | null;
-  return r ? { n: r.n, payload: r.payload, hash: r.payload_hash, publishedAt: r.published_at } : null;
+  const r = data as { n: number; payload: SnapshotPayload; payload_hash: string; published_at: string; emailed: number; meant: number } | null;
+  return r ? { n: r.n, payload: r.payload, hash: r.payload_hash, publishedAt: r.published_at, emailed: r.emailed, meant: r.meant } : null;
 }
 
 /** Households these scouts belong to: the "families" a publish emails. */
@@ -44,5 +47,6 @@ export async function loadSnapshotState(sb: SupabaseClient, entryId: number, now
   const hash = payloadHash(now);
   const changed = latest ? latest.hash !== hash : true;
   const [families, allFamilies] = await Promise.all([countFamilies(sb, latest && changed ? changedScouts(latest.payload, now, scouts) : latest ? [] : scouts), countFamilies(sb, scouts)]);
-  return { n: latest?.n ?? null, publishedAt: latest?.publishedAt ?? null, changed: latest ? changed : false, families, allFamilies };
+  const unreached = latest && !changed ? Math.max(0, latest.meant - latest.emailed) : 0;
+  return { n: latest?.n ?? null, publishedAt: latest?.publishedAt ?? null, changed: latest ? changed : false, families, allFamilies, unreached };
 }

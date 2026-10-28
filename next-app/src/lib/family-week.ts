@@ -14,7 +14,10 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AdvancementCatalog } from '@/lib/advancement-catalog';
-import { addMeetingPick, loadBoardScouts, loadScoutBoard, removeMeetingPick, setMeetingIntent, type BoardMeeting } from '@/lib/meeting-board';
+import { addMeetingPick, loadBoardScouts, loadMeetingForWrite, loadScoutBoard, loadUpcomingMeetings, removeMeetingPick, setMeetingIntent, type BoardMeeting } from '@/lib/meeting-board';
+import { centralToday } from '@/lib/dates';
+import { fetchMeetingLabels } from '@/lib/people-lists';
+import { PLANNER_WEEKS } from '@/lib/this-week';
 import { INTENTS, firstNameOf, type Intent } from '@/lib/meeting-board-shared';
 import { pickableKeys, type PickRow } from '@/lib/meeting-board-picklist';
 import { loadLatestSnapshot } from '@/lib/plan-snapshot-db';
@@ -116,4 +119,15 @@ export async function familyWrite(
   const isOption = (snap?.payload.options ?? []).some((o) => o.key === op.key);
   if (!isOption && !pickableKeys(side.board.pickList).has(op.key)) return { ok: false, error: 'That isn’t something to pick for this meeting.' };
   return addMeetingPick(sb, { ...writer, carry: [] }, op.key, { later: false, markComing: true });
+}
+
+/**
+ * The meeting a family write is for, or null (qa-lead 2026-10-28): a published troop meeting that takes sign-ups, today
+ * or later, and one of the next PLANNER_WEEKS meetings the planner offers. Never a campout, a draft or a far-off entry.
+ */
+export async function loadOpenMeeting(sb: SupabaseClient, entryId: number): Promise<BoardMeeting | null> {
+  const [meeting, labels] = await Promise.all([loadMeetingForWrite(sb, entryId), fetchMeetingLabels(sb)]);
+  if (!meeting || !meeting.published || meeting.closed || meeting.date < centralToday()) return null;
+  const upcoming = (await loadUpcomingMeetings(sb, PLANNER_WEEKS * 2, undefined, labels)).filter((m) => !m.closed).slice(0, PLANNER_WEEKS);
+  return upcoming.some((m) => m.entryId === entryId) ? meeting : null;
 }

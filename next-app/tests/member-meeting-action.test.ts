@@ -251,21 +251,4 @@ describe('carry-forward and counts', () => {
   });
 });
 
-describe('the engine', () => {
-  it('Engine_Unchanged_WhenBoardEdited', async () => {
-    const { loadEngineInput } = await import('../src/lib/meeting-suggest/load-input');
-    const { buildMeetingPlan } = await import('../src/lib/meeting-suggest/engine');
-    const plan = async () => {
-      const res = await loadEngineInput('2091-01-07', 'Vitest');
-      if (!res.ok) throw new Error(res.error);
-      const p = buildMeetingPlan(res.input);
-      return JSON.stringify({ ...p, generatedAt: '' });
-    };
-    const before = await plan();
-    asScout(scoutA);
-    const a = await actions();
-    await a.meetingAddPickAction({ entryId: meetingA, personId: scoutA, key });
-    await a.meetingSetIntentAction({ entryId: meetingA, personId: scoutA, intent: 'undecided' });
-    expect(await plan()).toBe(before);
-  });
-});
+

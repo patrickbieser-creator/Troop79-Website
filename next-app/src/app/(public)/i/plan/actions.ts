@@ -11,9 +11,8 @@ import { headers } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { createAdminClient } from '@/lib/supabase/server';
 import { loadAdvancementCatalog } from '@/lib/advancement-catalog';
-import { loadMeetingById } from '@/lib/meeting-board';
 import { recordInviteFailure, tooManyInviteFailures } from '@/lib/meeting-invites-db';
-import { familyWrite, type FamilyOp, type FamilyWrite } from '@/lib/family-week';
+import { familyWrite, loadOpenMeeting, type FamilyOp, type FamilyWrite } from '@/lib/family-week';
 import { claimPlanPage } from '@/lib/plan-pages';
 
 const CLOSED = 'This link has closed. Use the newest email from the troop, or sign in to the member page.';
@@ -31,7 +30,7 @@ export async function planPageWriteAction(input: { token: string; scoutId: numbe
     if (claim.state === 'scope') return { ok: false, error: 'That scout isn’t on this link.' };
     return { ok: false, error: claim.state === 'error' ? 'That didn’t save. Try again.' : CLOSED };
   }
-  const meeting = await loadMeetingById(sb, claim.entryId);
+  const meeting = await loadOpenMeeting(sb, claim.entryId);
   if (!meeting) return { ok: false, error: CLOSED };
   const res = await familyWrite(sb, { meeting, actorPersonId: claim.recipientId, scoutPersonId: input.scoutId, catalog: await loadAdvancementCatalog() }, input.op);
   if (res.ok) {

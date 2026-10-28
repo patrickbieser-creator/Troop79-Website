@@ -289,3 +289,22 @@ magic link before P4 is built). Ship: `db push` (DB-first), ff-merge, push, Verc
   only changes the token names (public vs admin).
 - Theme Calendar.dc.html is directional only (old theme list, old bands).
 - Related: D-440 (requirement classes), D-426/D-429/D-437 (Rotations), D-404 (ship on Patrick's word).
+
+## As built (2026-10-28, branch feat/planner-iii)
+
+- **One migration, 20261228100000_planner_iii_groups:** group topics (`focus_group_part`, lazy via
+  `_meeting_topic_id`), `meeting_night_badges`, `meeting_scout_roles`, `meeting_plan_snapshots`, `meeting_plan_pages`
+  + `meeting_plan_page_claim`, `focus_sets.merit_badge_id`, board stamp (+ roles, badges, snapshots, presence),
+  merge_people (+ the new tables, − Rotations). **Rotations retired in the same migration** (Decision 10): its
+  triggers, reconcile and meeting_live_* RPCs (presence kept, without the lock), tables, `meeting_boards.live_*` /
+  `attendance_seeded_at`, `meeting_topics.class_set_aside_at`, and `meeting_plans`.
+- **Columns** are the highest picked focus items (FC 7a, not 7a.1–7a.4). A scout whose own rank has nothing in the
+  focus moves to the next group when it has open work.
+- **Picks outrank placement, hand choices outrank picks.** Family ticks of a group are picks on its `fr:` topic.
+- **Teacher asks** are "Ask by email" in each teacher slot (the existing teacher digest and answer page), so the
+  Invite tab retired with Build a Plan, Who's coming and Rotations; their routes redirect to /planner.
+- **Family link** per qa-lead: scoped token, own scouts only, 6 PM expiry, superseded on republish, revocable ("Close
+  family links…"), GET writes nothing, 200-write cap; test scouts are never emailed.
+- **Picks:** at most 3 per scout (the server refuses a 4th); nothing carries over from an earlier meeting.
+- **The admin agenda's planner tray** reads This week's sessions.
+- PLANNER_WEEKS = 8 (This week's switcher, the Theme calendar, every gate).

@@ -114,7 +114,19 @@ const STATUS: ReadonlyArray<readonly [string, string, string]> = [
   ['danger', '--status-danger', '--status-danger-bg'],
   ['success', '--status-success', '--status-success-bg'],
   ['warning', '--status-warning', '--status-warning-bg'],
-  ['info', '--status-info', '--status-info-bg']
+  ['info', '--status-info', '--status-info-bg'],
+  // Meeting Planner III: a scout's name chip wears the rank they hold; group cards wear the answer.
+  ['rank: new scout', '--rank-new-ink', '--rank-new-bg'],
+  ['rank: Scout', '--rank-scout-ink', '--rank-scout-bg'],
+  ['rank: Tenderfoot', '--rank-tenderfoot-ink', '--rank-tenderfoot-bg'],
+  ['rank: Second Class', '--rank-second-ink', '--rank-second-bg'],
+  ['rank: First Class', '--rank-first-ink', '--rank-first-bg'],
+  ['rank: Star', '--rank-star-ink', '--rank-star-bg'],
+  ['rank: Life', '--rank-life-ink', '--rank-life-bg'],
+  ['rank: Eagle', '--rank-eagle-ink', '--rank-eagle-bg'],
+  ['Merit badge group', '--rank-mb-group-ink', '--rank-mb-group-bg'],
+  ['answer: coming', '--rsvp-coming-ink', '--rsvp-coming-bg'],
+  ['answer: can’t come', '--rsvp-cant-ink', '--rsvp-cant-bg']
 ];
 
 /* ── Scoreboard — the remediation work queue (audit 2026-08-21). A row is
@@ -269,7 +281,9 @@ export default function PublicStyleguidePage() {
           New in Phase 0 &mdash; the public side previously had <strong>no danger token at
           all</strong> (13 distinct reds in the wild). Danger canon is <code>#8c3b3b</code>{' '}
           (decided 2026-08-21); success reuses <code>--forest</code>, warning reuses{' '}
-          <code>--bark</code>, info reuses <code>--navy</code>.
+          <code>--bark</code>, info reuses <code>--navy</code>. Meeting Planner III adds the rank chips
+          (<code>--rank-*</code>, the rank a scout holds, never the only cue: the rank is in the chip&rsquo;s accessible
+          name), the answer tints (<code>--rsvp-*</code>) and <code>--gap-row-bg</code> for a row with nothing assigned.
         </p>
         <div>
           {STATUS.map(([tone, fg, bg]) => (

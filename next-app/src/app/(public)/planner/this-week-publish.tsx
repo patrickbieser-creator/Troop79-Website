@@ -22,6 +22,8 @@ export interface SnapshotState {
   /** Families a publish would email now (all of them before the first; those whose options changed after). */
   families: number;
   allFamilies: number;
+  /** The latest snapshot's families the email didn't reach (a failed or timed-out send). */
+  unreached: number;
 }
 
 export function PublishBar({ entryId, snapshot }: { entryId: number; snapshot: SnapshotState }) {
@@ -33,7 +35,8 @@ export function PublishBar({ entryId, snapshot }: { entryId: number; snapshot: S
   const [said, setSaid] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const first = snapshot.n == null;
-  const count = first || everyone ? snapshot.allFamilies : snapshot.families;
+  const retry = !first && !snapshot.changed && snapshot.unreached > 0;
+  const count = first || everyone ? snapshot.allFamilies : retry ? snapshot.unreached : snapshot.families;
   const label = first ? 'Publish snapshot' : snapshot.changed ? 'Publish new snapshot' : 'Published';
 
   const publish = async () => {
@@ -90,15 +93,21 @@ export function PublishBar({ entryId, snapshot }: { entryId: number; snapshot: S
               <Button variant="secondary" size="sm" onClick={() => setConfirming(false)} disabled={busy}>
                 Cancel
               </Button>
-              {!first ? (
+              {!first && !retry ? (
                 <label className={s.muted}>
                   <input type="checkbox" checked={everyone} onChange={(e) => setEveryone(e.target.checked)} /> Email everyone, not just families whose options changed
                 </label>
               ) : null}
             </>
           ) : (
-            <Button variant={first || snapshot.changed ? 'primary' : 'secondary'} size="sm" disabled={!first && !snapshot.changed} onClick={() => setConfirming(true)} title={!first && !snapshot.changed ? 'Nothing changed since the last snapshot' : undefined}>
-              {label}
+            <Button
+              variant={first || snapshot.changed || retry ? 'primary' : 'secondary'}
+              size="sm"
+              disabled={!first && !snapshot.changed && !retry}
+              onClick={() => setConfirming(true)}
+              title={!first && !snapshot.changed && !retry ? 'Nothing changed since the last snapshot' : undefined}
+            >
+              {retry ? `Send to the ${snapshot.unreached} not reached` : label}
             </Button>
           )
         ) : null}

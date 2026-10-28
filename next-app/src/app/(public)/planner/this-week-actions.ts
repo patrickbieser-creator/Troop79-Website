@@ -182,7 +182,9 @@ export async function twAskTeacherAction(input: { entryId: number; key: string; 
   if (!s.ok) return s;
   const { data: adult } = await s.sb.from('person_directory').select('person_id').eq('person_id', input.personId).in('tab', ['leader', 'adult']).eq('in_picker', true).limit(1);
   if (!(adult ?? []).length) return fail('Only adults are asked by email.');
-  const topic = isGroupKey(input.key) ? await s.sb.rpc('meeting_group_topic', { p_entry: s.meeting.entryId, p_key: input.key }) : { data: 1, error: null };
+  const topic = isGroupKey(input.key)
+    ? await s.sb.rpc('meeting_group_topic', { p_entry: s.meeting.entryId, p_key: input.key })
+    : await s.sb.from('meeting_topics').select('id').eq('calendar_entry_id', s.meeting.entryId).eq('topic_key', input.key).maybeSingle();
   if (topic.error || topic.data == null) return fail('That isn’t on this meeting’s plan.');
   const res = await sendInviteDigests(s.sb, { entryId: s.meeting.entryId, teach: [{ key: input.key, personIds: [input.personId] }], pick: [], sentBy: s.actorPersonId });
   if (!res.ok) return res;

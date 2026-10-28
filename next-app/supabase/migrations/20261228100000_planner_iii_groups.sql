@@ -10,7 +10,7 @@
 -- 4. meeting_scout_roles: a planner's hand choice for one scout at one meeting (teach / a group / a class from requests
 --    and offers). No row = placement decides.
 -- 5. focus_sets.merit_badge_id: the set's paired badge, offered when the set is added.
--- 6. meeting_board_stamp: + roles and night badges, so the poller sees them.
+-- 6. (meeting_board_stamp's new version ships in 20261229100000, with the retirement.)
 -- 7. merge_people: + the new tables (production's body, only those lines added).
 -- 8. meeting_plan_snapshots (P4): each "Publish snapshot": the families-visible plan as it was emailed, numbered per
 --    meeting; the page compares a hash of today's plan with the latest to say "families see an earlier version".
@@ -20,7 +20,8 @@
 --    revoke a publish; at most 200 writes. meeting_plan_page_claim locks the page, refuses anything but an open page,
 --    re-checks the recipient's session_epoch and counts the write, all at once.
 --
--- DEPLOY ORDER: DB-first (additive; the CHECK rewrite only widens). Posture (D-051 / D-239): RLS on, no policies,
+-- DEPLOY ORDER: DB-first. Additive only (the CHECK rewrite only widens); production's current code keeps working.
+-- The retirement of Rotations is 20261229100000, pushed AFTER this release's code is live (code-first). Posture (D-051 / D-239): RLS on, no policies,
 -- nothing granted to anon or authenticated; functions invoker with search_path pinned, EXECUTE to service_role only.
 
 -- ── 1. the group kind ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -175,6 +176,8 @@ create table if not exists public.meeting_plan_snapshots (
   published_by_person_id bigint references public.people(id) on delete set null,
   published_at timestamptz not null default now(),
   emailed integer not null default 0 check (emailed >= 0),
+  -- Families it was meant for: emailed < meant offers "Send to the families not reached".
+  meant integer not null default 0 check (meant >= 0),
   primary key (calendar_entry_id, n)
 );
 create index if not exists meeting_plan_snapshots_published_by_idx on public.meeting_plan_snapshots (published_by_person_id) where published_by_person_id is not null;
@@ -201,7 +204,9 @@ create index if not exists meeting_plan_pages_recipient_idx on public.meeting_pl
 alter table public.meeting_plan_pages enable row level security;
 revoke all on public.meeting_plan_pages from anon, authenticated;
 
--- One write on a family link: the page as it stands, or an exception a person can read. Counts the write.
+-- One write on a family link: the page as it stands, or an exception a person can read. Counts the write. The
+-- output columns share names with table columns; the body reads only the row variable r (never a bare column), so
+-- nothing is ambiguous.
 create or replace function public.meeting_plan_page_claim(p_token_hash text, p_scout bigint)
 returns table (page_id bigint, calendar_entry_id bigint, recipient_person_id bigint)
 language plpgsql
@@ -226,44 +231,7 @@ begin
 end;
 $$;
 
--- ── 6. the board stamp: + roles and night badges ──────────────────────────────────────────────────────────────────
-create or replace function public.meeting_board_stamp(p_entry bigint) returns text
-language sql
-stable
-security invoker
-set search_path = public, pg_temp
-as $$
-  select concat_ws(':',
-    (select count(*) from meeting_topic_picks where calendar_entry_id = p_entry),
-    (select count(*) from meeting_intents where calendar_entry_id = p_entry),
-    (select count(*) from meeting_pick_lists where calendar_entry_id = p_entry),
-    (select count(*) from meeting_topic_teachers where calendar_entry_id = p_entry),
-    (select count(*) from meeting_teaching_offers where calendar_entry_id = p_entry),
-    (select count(*) from meeting_topics where calendar_entry_id = p_entry and seeded_at is not null),
-    (select coalesce(live_version, 0) from meeting_boards where calendar_entry_id = p_entry),
-    (select count(*) from event_attendance where calendar_entry_id = p_entry),
-    (select count(*) from meeting_scout_roles where calendar_entry_id = p_entry),
-    (select count(*) from meeting_night_badges where calendar_entry_id = p_entry),
-    (select count(*) from meeting_plan_snapshots where calendar_entry_id = p_entry),
-    (select count(*) from meeting_live_presence where calendar_entry_id = p_entry and present),
-    (select coalesce(extract(epoch from greatest(
-        (select max(updated_at) from meeting_topic_picks where calendar_entry_id = p_entry),
-        (select max(updated_at) from meeting_intents where calendar_entry_id = p_entry),
-        (select max(created_at) from meeting_pick_lists where calendar_entry_id = p_entry),
-        (select max(updated_at) from meeting_topic_teachers where calendar_entry_id = p_entry),
-        (select max(updated_at) from meeting_teaching_offers where calendar_entry_id = p_entry),
-        (select max(seeded_at) from meeting_topics where calendar_entry_id = p_entry),
-        (select max(recorded_at) from event_attendance where calendar_entry_id = p_entry),
-        (select updated_at from meeting_boards where calendar_entry_id = p_entry),
-        (select max(set_at) from meeting_scout_roles where calendar_entry_id = p_entry),
-        (select max(created_at) from meeting_night_badges where calendar_entry_id = p_entry),
-        (select max(published_at) from meeting_plan_snapshots where calendar_entry_id = p_entry),
-        (select max(updated_at) from meeting_live_presence where calendar_entry_id = p_entry)
-      ))::text, '0'))
-  );
-$$;
-
--- ── 7. merge_people: + roles and night badges (production's body, only those lines added) ─────────────────────────
+-- ── 7. merge_people: + the new tables (production's body, only those lines added) ───────────────────────────────
 CREATE OR REPLACE FUNCTION public.merge_people(p_survivor bigint, p_loser bigint, p_decided_by text)
  RETURNS void
  LANGUAGE plpgsql
@@ -428,7 +396,9 @@ begin
      set recipient_person_id = p_survivor,
          recipient_epoch = case when pg.recipient_epoch = v_loser.session_epoch then v_survivor.session_epoch else pg.recipient_epoch end
    where pg.recipient_person_id = p_loser;
-  update public.meeting_plan_pages set scout_person_ids = array_replace(scout_person_ids, p_loser, p_survivor) where p_loser = any (scout_person_ids);
+  update public.meeting_plan_pages
+     set scout_person_ids = array(select distinct unnest(array_replace(scout_person_ids, p_loser, p_survivor)))
+   where p_loser = any (scout_person_ids);
   -- Teacher answer pages (B10b): the loser's pages and the teach rows on them become the survivor's. A page still
   -- open takes the survivor's session_epoch, so the link already in the (now the survivor's) inbox keeps working;
   -- a page already voided by a sign-out-everywhere stays void (its open rows were consumed then).
@@ -527,10 +497,8 @@ $function$;
 revoke all on function public._meeting_topic_id(bigint, text) from public, anon, authenticated;
 revoke all on function public.meeting_group_topic(bigint, text) from public, anon, authenticated;
 revoke all on function public.meeting_plan_page_claim(text, bigint) from public, anon, authenticated;
-revoke all on function public.meeting_board_stamp(bigint) from public, anon, authenticated;
 grant execute on function public._meeting_topic_id(bigint, text) to service_role;
 grant execute on function public.meeting_group_topic(bigint, text) to service_role;
 grant execute on function public.meeting_plan_page_claim(text, bigint) to service_role;
-grant execute on function public.meeting_board_stamp(bigint) to service_role;
 revoke all on function public.merge_people(bigint, bigint, text) from public, anon, authenticated;
 grant execute on function public.merge_people(bigint, bigint, text) to service_role;
