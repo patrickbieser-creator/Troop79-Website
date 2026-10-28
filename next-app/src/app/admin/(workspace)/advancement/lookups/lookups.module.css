@@ -520,6 +520,9 @@
 .textBase  { font-size: var(--admin-text-base); }
 .colorSwatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: var(--admin-space-4); }
 .checkInline     { font-size: var(--admin-text-base); display: inline-flex; align-items: center; gap: var(--admin-space-2); }
+/* Req codes → Classes: two columns filled top to bottom, one checkbox per line (the inline run read as one blur). */
+.classChecks     { columns: 2; column-gap: var(--admin-space-11); margin-top: var(--admin-space-2); }
+.classChecks .checkInline { display: flex; break-inside: avoid; padding: var(--admin-space-1) 0; }
 .checkInlineWide { display: inline-flex; align-items: center; gap: var(--admin-space-3); }
 .skillChecks { display: flex; flex-wrap: wrap; gap: var(--admin-space-2) var(--admin-space-7); }
 .skillCheck  { display: inline-flex; align-items: center; gap: var(--admin-space-2); font-size: var(--admin-text-base); white-space: nowrap; }

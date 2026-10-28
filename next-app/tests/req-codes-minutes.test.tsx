@@ -73,6 +73,11 @@ describe('class tags on requirements', () => {
     expect((update.mock.calls[0][0] as FormData).get('class_codes')).toBe('["M","A"]');
   });
 
+  it('ClassCheckboxes_AreInAlphabeticalOrderByName', () => {
+    render(<ReqCodeForm row={row()} classes={CLASSES} onClose={vi.fn()} />);
+    expect(screen.getAllByRole('checkbox').map((c) => c.closest('label')!.textContent)).toEqual(['A Aquatics', 'M Troop meeting']);
+  });
+
   it('RetiredClass_IsNotOffered_UnlessAlreadyTicked', () => {
     const { unmount } = render(<ReqCodeForm row={row()} classes={CLASSES} onClose={vi.fn()} />);
     const offered = screen.queryByRole('checkbox', { name: /Old one/ }) != null;

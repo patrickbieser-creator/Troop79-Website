@@ -228,9 +228,12 @@ export function ReqCodeForm({ row, classes, onClose }: { row: ReqRow; classes: R
         )}
         <fieldset className={styles.editFieldFull}>
           <legend className={styles.editLabel}>Classes: where it can be done</legend>
-          {/* A retired class shows only where it is already ticked; untagged counts as a troop meeting. */}
+          {/* A retired class shows only where it is already ticked; untagged counts as a troop meeting. Two columns,
+              A to Z by name, read top to bottom. */}
+          <div className={styles.classChecks}>
           {classes
             .filter((c) => !c.retired || tags.includes(c.code))
+            .sort((a, b) => a.name.localeCompare(b.name))
             .map((c) => (
               <label key={c.code} className={styles.checkInline} title={c.description}>
                 <input
@@ -247,6 +250,7 @@ export function ReqCodeForm({ row, classes, onClose }: { row: ReqRow; classes: R
                 {c.retired ? ' (retired)' : ''}
               </label>
             ))}
+          </div>
         </fieldset>
         <label className={styles.editFieldFull}>
           <span className={styles.editLabel}>Official text (reference)</span>
