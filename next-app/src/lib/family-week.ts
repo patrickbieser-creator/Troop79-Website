@@ -8,13 +8,14 @@
  *     works).
  *   - A scout's answer is Coming / Not sure yet / Can't make it (meeting_intents, as before).
  *   - A tick is a real pick on the option's topic (a group 'fr:…', a badge group, a class from requests and offers).
- *     At most PLAN_PICK_CAP ticks per scout, checked here. "Request something else" picks from the scout's own pick
+ *     At most PLAN_PICK_CAP ticks per scout, checked here and again in the database under the scout's pick lock
+ *     (meeting_add_pick_capped). "Request something else" picks from the scout's own pick
  *     list (their next rank, their badges in progress, any badge), the same list the RPC checks.
  *   - Design III carries nothing over from an earlier meeting (Decision 9): a write never hands the RPC carried picks.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AdvancementCatalog } from '@/lib/advancement-catalog';
-import { addMeetingPick, loadBoardScouts, loadMeetingForWrite, loadScoutBoard, loadUpcomingMeetings, removeMeetingPick, setMeetingIntent, type BoardMeeting } from '@/lib/meeting-board';
+import { loadBoardScouts, loadMeetingForWrite, loadScoutBoard, loadUpcomingMeetings, removeMeetingPick, setMeetingIntent, type BoardMeeting } from '@/lib/meeting-board';
 import { centralToday } from '@/lib/dates';
 import { fetchMeetingLabels } from '@/lib/people-lists';
 import { PLANNER_WEEKS } from '@/lib/this-week';
@@ -24,6 +25,7 @@ import { loadLatestSnapshot } from '@/lib/plan-snapshot-db';
 import type { SnapshotOption } from '@/lib/plan-snapshot';
 
 import { PLAN_PICK_CAP } from '@/lib/family-week-shared';
+import { sanitizeRpcError } from '@/lib/meeting-board-supply';
 
 export interface FamilyScout {
   personId: number;
@@ -118,7 +120,9 @@ export async function familyWrite(
   const snap = await loadLatestSnapshot(sb, w.meeting.entryId);
   const isOption = (snap?.payload.options ?? []).some((o) => o.key === op.key);
   if (!isOption && !pickableKeys(side.board.pickList).has(op.key)) return { ok: false, error: 'That isn’t something to pick for this meeting.' };
-  return addMeetingPick(sb, { ...writer, carry: [] }, op.key, { later: false, markComing: true });
+  // The cap is counted again in the database, under the scout's pick lock, so two ticks at once can't both pass.
+  const { error } = await sb.rpc('meeting_add_pick_capped', { p_entry: w.meeting.entryId, p_person: w.scoutPersonId, p_actor: w.actorPersonId, p_topic_key: op.key, p_cap: PLAN_PICK_CAP });
+  return error ? { ok: false, error: /^Pick up to/.test(error.message) ? error.message : sanitizeRpcError(error.message) } : { ok: true };
 }
 
 /**

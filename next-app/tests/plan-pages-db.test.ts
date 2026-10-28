@@ -94,6 +94,12 @@ describe('the family link', () => {
     expect(await claimPlanPage(sb, page.token, otherScout)).toEqual({ ok: false, state: 'scope' });
   });
 
+  it('Claim_RefusesAScoutTheRecipientMayNoLongerAnswerFor', async () => {
+    // The scout is on the link, but the recipient isn't (or is no longer) in their household: the household rule wins.
+    const page = await mintPlanPage(sb, { entryId: meeting, recipientId: parent, epoch, scoutIds: [scout, otherScout], snapshotN: 1, expiresAt: inviteExpiresAt(MEETING_DATE) });
+    expect(await claimPlanPage(sb, page.token, otherScout)).toEqual({ ok: false, state: 'scope' });
+  });
+
   it('Claim_CountsTheWrite', async () => {
     const page = await mint();
     await claimPlanPage(sb, page.token, scout);
@@ -126,6 +132,19 @@ describe('family writes', () => {
     const results = [];
     for (const key of keys) results.push((await familyWrite(sb, w, { op: 'pick', key, on: true })).ok);
     expect(results).toEqual([true, true, true, false]);
+  });
+
+  it('PicksAtOnce_CannotPassTheCap', async () => {
+    const catalog = await fetchAdvancementCatalog(sb as never);
+    await sb.from('meeting_topic_picks').delete().eq('calendar_entry_id', meeting).eq('person_id', scout);
+    const { data: sid } = await sb.from('scouts').select('id').eq('person_id', scout).single();
+    const { data: earned } = await sb.from('mb_progress').select('mb_id').eq('scout_id', (sid as { id: string }).id).eq('awarded', true);
+    const done = new Set(((earned ?? []) as { mb_id: string }[]).map((r) => r.mb_id));
+    const keys = catalog.meritBadges.filter((m) => !done.has(m.id)).slice(4, 9).map((m) => `mb:${m.id}`);
+    const w = { meeting: { entryId: meeting, date: MEETING_DATE }, actorPersonId: parent, scoutPersonId: scout, catalog };
+    await Promise.all(keys.map((key) => familyWrite(sb, w, { op: 'pick', key, on: true })));
+    const { count } = await sb.from('meeting_topic_picks').select('topic_id', { count: 'exact', head: true }).eq('calendar_entry_id', meeting).eq('person_id', scout).eq('later', false);
+    expect(count).toBe(3);
   });
 
   it('Answer_IsSavedForTheScout', async () => {

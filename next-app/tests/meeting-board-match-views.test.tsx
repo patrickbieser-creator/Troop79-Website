@@ -21,7 +21,6 @@ vi.mock('../src/app/(public)/member/meeting/actions', () => ({
 }));
 
 const { MeetingEditor } = await import('../src/app/admin/(workspace)/advancement/meetings/[id]/meeting-editor');
-const { ScoutBoard } = await import('../src/app/(public)/member/meeting/scout-board');
 const { PlanNotice } = await import('../src/app/(public)/member/meeting/plan-notice');
 
 beforeEach(() => {
@@ -107,35 +106,6 @@ describe('the meeting editor tray', () => {
 });
 
 describe('the member page', () => {
-  const scoutBoard = (o: Partial<Parameters<typeof ScoutBoard>[0]> = {}) =>
-    render(
-      <ScoutBoard
-        entryId={1}
-        dayName="Sunday"
-        subject={{ personId: 7, firstName: 'Finn', isSelf: true }}
-        initial={{ personId: 7, intent: 'coming', picks: [] }}
-        pickList={{ nextRankId: 'tenderfoot', groups: [], working: [], badges: [], offered: [] }}
-        onBehalf={false}
-        readOnly={false}
-        {...o}
-      />
-    );
-  const line = { block: 'Block 1', title: 'First aid', codeLabel: 'Tenderfoot 4a', pickNo: 2, placed: false, teacher: 'Mr. Vest', scouts: [] };
-
-  it('Scout_SeesSoFar_FromTheLiveMatch', () => {
-    scoutBoard({ assigned: [line, { ...line, block: 'Block 2', title: 'Knots', pickNo: null }] });
-    expect(screen.getByText('So far, you’re in First aid, your #2, then Knots')).toBeTruthy();
-  });
-
-  it('Parent_SeesTheScoutsName_AndPickNumber', () => {
-    scoutBoard({ subject: { personId: 7, firstName: 'Finn', isSelf: false }, assigned: [line] });
-    expect(screen.getByText('So far, Finn is in First aid, pick #2')).toBeTruthy();
-  });
-
-  it('Scout_WhoCantMakeIt_SeesNoAssignment', () => {
-    scoutBoard({ initial: { personId: 7, intent: 'not_coming', picks: [] }, assigned: [line] });
-    expect(screen.queryByText(/you’re in/)).toBeNull();
-  });
 
   it('Member_SeesALinkToTheAgenda_OnceItIsPublished_AndNoPersonalLine', () => {
     render(<PlanNotice planSet pastClose={false} entryId={5} />);
@@ -152,13 +122,4 @@ describe('the member page', () => {
     expect(container.textContent).toBe('');
   });
 
-  it('Scout_PlacedByTheEngine_IsToldWhy', () => {
-    scoutBoard({ assigned: [{ ...line, pickNo: null, placed: true }] });
-    expect(screen.getByText('Picked from what you need next.')).toBeTruthy();
-  });
-
-  it('MemberPage_NeverSaysTooLate', () => {
-    scoutBoard({ assigned: [line] });
-    expect(document.body.textContent?.toLowerCase().includes('too late')).toBe(false);
-  });
 });

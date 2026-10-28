@@ -4,6 +4,7 @@ import { adminClient } from './helpers/admin-client';
 import {
   CAPABILITIES,
   BUNDLES,
+  PLANNER_CAPABILITIES,
   expandBundle,
   isCapability,
   loadPersonAuthz,
@@ -161,7 +162,7 @@ describe('capabilities — Phase A', () => {
 
   // ── seed invariants (property tests over real data, no names hardcoded) ──
 
-  it('NoActiveScout_HoldsAnyCapability_AfterSeed', async () => {
+  it('NoActiveScout_HoldsAnAdultCapability', async () => {
     const admin = adminClient();
     const { data: scouts } = await admin.from('scouts').select('person_id').eq('active', true);
     const scoutPersonIds = (scouts ?? [])
@@ -176,8 +177,12 @@ describe('capabilities — Phase A', () => {
 
     // leaders.can_login is true for at least one active scout's leader code
     // (an older scout who teaches). Seeding from that flag without the
-    // isAdultPerson() filter would hand a youth roster.manage.
-    expect(grants ?? []).toEqual([]);
+    // isAdultPerson() filter would hand a youth roster.manage. A scout may hold
+    // only what is meant for youth: the Youth leader bundle (the SPL / PL) and
+    // the Meeting Planner rights, granted one person at a time (Planner II
+    // Decisions 2 and 5: the SPL edits; email stays adults only).
+    const youthOk = new Set<string>([...BUNDLES.youth_leader.capabilities, ...PLANNER_CAPABILITIES]);
+    expect((grants ?? []).filter((g) => !youthOk.has((g as { capability: string }).capability))).toEqual([]);
   });
 
   it('AtLeastOnePerson_HoldsEveryCapability_SoTheSystemIsNotBricked', async () => {

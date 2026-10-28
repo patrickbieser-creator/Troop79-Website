@@ -24,7 +24,7 @@ import { INTENT_LABEL, type Intent } from '@/lib/meeting-board-shared';
 import { minutesText } from '@/lib/meeting-board-picklist';
 import type { OfferChoices, TeachItem, TeachView, WantedItem } from '@/lib/meeting-board-supply';
 import type { MatchLine } from '@/lib/meeting-board-match';
-import { IntentControl, Saved } from './scout-board';
+import { IntentControl, Saved } from './answer-control';
 import {
   meetingPostOfferAction,
   meetingTeachAction,
