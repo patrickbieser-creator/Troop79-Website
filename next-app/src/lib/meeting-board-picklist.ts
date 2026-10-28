@@ -120,11 +120,13 @@ export const borCodeLabel = (rankName: string) => `${rankName} board of review`;
 
 /** The tray's second line for a focus group, and the pick list's heading for what was seeded (P3). */
 export const FOCUS_LABEL = 'Focus';
+/** Meeting Planner III: a group of the night's second line. */
+export const GROUP_LABEL = 'This week’s focus';
 
 /** The rank a key belongs to ('tenderfoot-4a' -> tenderfoot); undefined for a badge, freeform, focus group or a merit
  *  badge requirement. Rank ids carry dashes, so the longest match wins. */
 export function rankOfKey<R extends Pick<CatalogRank, 'id'>>(key: string, ranks: readonly R[]): R | undefined {
-  if (key.startsWith('mb:') || key.startsWith('ff:') || key.startsWith('fg:')) return undefined;
+  if (key.startsWith('mb:') || key.startsWith('ff:') || key.startsWith('fg:') || key.startsWith('fr:')) return undefined;
   return [...ranks].sort((a, b) => b.id.length - a.id.length).find((r) => key.startsWith(`${r.id}-`));
 }
 
@@ -277,6 +279,15 @@ export function topicWords(
   if (key.startsWith('mb:')) {
     const mb = mbs.find((m) => m.id === key.slice(3));
     return mb ? { label: mb.name, codeLabel: 'Merit badge', kind: 'mb', parts: [], minutes: null } : null;
+  }
+  // Meeting Planner III: a group of the night ('fr:tenderfoot', 'fr:mb:first-aid').
+  if (key.startsWith('fr:mb:')) {
+    const mb = mbs.find((m) => m.id === key.slice(6));
+    return mb ? { label: `${mb.name} merit badge`, codeLabel: GROUP_LABEL, kind: 'focus', parts: [], minutes: null } : null;
+  }
+  if (key.startsWith('fr:')) {
+    const r = ranks.find((x) => x.id === key.slice(3));
+    return r ? { label: `${r.display_name} group`, codeLabel: GROUP_LABEL, kind: 'focus', parts: [], minutes: null } : null;
   }
   const rank = rankOfKey(key, ranks);
   if (!rank) {

@@ -10,5 +10,5 @@ import { plannerAccess } from '@/lib/meeting-planner-access';
 
 export default async function MeetingPlanPage() {
   const actor = await resolveAdminActor();
-  redirect(plannerAccess(actor).canView ? '/planner/build?view=suggestions' : '/admin');
+  redirect(plannerAccess(actor).canView ? '/planner' : '/admin');
 }

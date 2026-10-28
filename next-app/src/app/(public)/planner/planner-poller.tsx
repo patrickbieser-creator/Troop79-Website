@@ -9,13 +9,12 @@
  *
  * P4: Meeting Live polls faster (pollMs 3 s, jitter 1 s): several leaders run it at once on their phones.
  *
- * Build a Plan (B1): `build` asks for the stamp of any meeting the switcher offers, and `stampRef` is the page's own
+ * Planner III: the stamp of any meeting the planner offers (twStampAction), and `stampRef` is the page's own
  * last-seen stamp (Build sits outside the planner's provider), so a write's returned stamp never triggers a refresh.
  */
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { useRouter } from 'next/navigation';
-import { plannerStampAction } from './actions';
-import { plannerBuildStampAction } from './build-actions';
+import { twStampAction } from './this-week-actions';
 import { usePlanner } from './planner-client';
 import styles from './planner.module.css';
 
@@ -27,14 +26,12 @@ export function PlannerPoller({
   stamp,
   pollMs = POLL_MS,
   jitterMs = JITTER_MS,
-  build = false,
   stampRef
 }: {
   entryId: number;
   stamp: string;
   pollMs?: number;
   jitterMs?: number;
-  build?: boolean;
   stampRef?: RefObject<string>;
 }) {
   const router = useRouter();
@@ -53,7 +50,7 @@ export function PlannerPoller({
     let failures = 0;
     const check = async () => {
       if (sync?.busy()) return;
-      const res = await (build ? plannerBuildStampAction : plannerStampAction)(entryId);
+      const res = await twStampAction(entryId);
       if (stopped || sync?.busy()) return;
       if (!res.ok) {
         failures++;
@@ -84,7 +81,7 @@ export function PlannerPoller({
       if (timer) clearTimeout(timer);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [entryId, router, last, sync, pollMs, jitterMs, build]);
+  }, [entryId, router, last, sync, pollMs, jitterMs]);
 
   return (
     <span className={stale ? styles.liveStale : styles.live} role="status">

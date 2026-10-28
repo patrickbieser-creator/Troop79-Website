@@ -24,7 +24,7 @@ import { Field, SaveProblem, SelectInput, TextInput } from '@/app/_components/fo
 import { fmtDate } from '@/lib/format-date';
 import { draftKey, draftProblem, groupItems, LABEL_MAX, normalizeLabel, type FocusSearchRow, type FocusSetItem, type FocusSetView, type FocusSource, type SetDraft } from '@/lib/meeting-focus';
 import { focusCountsAction, focusDeleteSetAction, focusSaveSetAction, focusSearchAction } from '../focus-actions';
-import { plannerAddFocusSetAction } from '../build-actions';
+import { twAddFocusSetAction } from '../this-week-actions';
 import styles from '../planner.module.css';
 
 type Kind = 'all' | 'rank' | 'mb';
@@ -440,9 +440,9 @@ function SetEditor({
     if (id == null || dirty) return setSeed({ state: 'bad', text: 'Save the set first.' });
     if (meeting == null) return;
     setSeed({ state: 'seeding' });
-    const res = await plannerAddFocusSetAction({ entryId: meeting, setId: id }).catch(() => ({ ok: false as const, error: 'That didn’t save. Check your connection and try again.' }));
+    const res = await twAddFocusSetAction({ entryId: meeting, setId: id }).catch(() => ({ ok: false as const, error: 'That didn’t save. Check your connection and try again.' }));
     const when = meetings.find((m) => m.entryId === meeting)?.label ?? '';
-    setSeed(res.ok ? { state: 'done', text: `✓ On the plan for ${when}, ${plural(res.count, 'requirement')}`, entryId: meeting } : { state: 'bad', text: res.error });
+    setSeed(res.ok ? { state: 'done', text: `✓ In the focus for ${when}`, entryId: meeting } : { state: 'bad', text: res.error });
   }
 
   async function remove() {
@@ -556,7 +556,7 @@ function SetEditor({
               </div>
               {seed.state === 'done' ? (
                 <p className={styles.assigned}>
-                  {seed.text} · <Link href={`/planner/build?meeting=${seed.entryId}`}>open the plan</Link>
+                  {seed.text} · <Link href={`/planner?meeting=${seed.entryId}`}>open the plan</Link>
                 </p>
               ) : null}
               {seed.state === 'bad' ? (

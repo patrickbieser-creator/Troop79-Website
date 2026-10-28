@@ -17,7 +17,7 @@ import { useEffect, useState } from 'react';
 import { Drawer } from '@/app/_components/drawer';
 import { FREEFORM_MAX } from '@/lib/meeting-board-teach';
 import { plannerAddOfferAction, plannerOfferChoicesAction, type OfferChoice } from './actions';
-import { plannerAddOfferingAction } from './build-actions';
+import { twAddRequirementAction } from './this-week-actions';
 import { usePlanner } from './planner-client';
 import styles from './planner.module.css';
 
@@ -59,7 +59,7 @@ export function OfferDrawer({ teacherId, onClose }: { teacherId: number | null; 
     setProblem(null);
     const res =
       teacher == null && what.kind === 'key'
-        ? await p.sync.run(() => plannerAddOfferingAction({ entryId: p.entryId, keys: [what.key] }))
+        ? await p.sync.run(() => twAddRequirementAction({ entryId: p.entryId, key: what.key }))
         : await p.sync.run(() => plannerAddOfferAction({ entryId: p.entryId, personId: teacher!, what: what.kind === 'key' ? { key: what.key } : { title: what.title } }));
     setSaving(false);
     if (res.ok) onClose();

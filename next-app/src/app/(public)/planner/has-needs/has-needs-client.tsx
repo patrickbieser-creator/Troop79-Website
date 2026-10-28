@@ -24,7 +24,7 @@ import { Button } from '@/app/_components/button';
 import { EmptyState } from '@/app/_components/empty-state';
 import { mbKey, rankKey, splitScouts, type HasNeedsScout } from '@/lib/has-needs';
 import { flattenTree, leafLabels, offeringOf, parsePick, pickHref, PICK_CAP_TEXT, togglePick, type PickerBadge, type PickerRank, type PickerRow } from '@/lib/has-needs-picker';
-import { plannerAddOfferingAction } from '../build-actions';
+import { twAddRequirementAction } from '../this-week-actions';
 import s from './has-needs.module.css';
 
 const ADD_FAILED = 'That didn’t add. Check your connection and try again.';
@@ -91,7 +91,7 @@ export function HasNeedsView({
     if (!single || adding) return;
     setAdding(true);
     setAddProblem(null);
-    const res = await plannerAddOfferingAction({ entryId: meetingId, keys: [single.key] }).catch(() => ({ ok: false as const, error: ADD_FAILED }));
+    const res = await twAddRequirementAction({ entryId: meetingId, key: single.key }).catch(() => ({ ok: false as const, error: ADD_FAILED }));
     setAdding(false);
     if (!res.ok) {
       setAddProblem(res.error);

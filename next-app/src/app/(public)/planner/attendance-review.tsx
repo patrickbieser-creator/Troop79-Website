@@ -18,7 +18,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/app/_components/button';
 import { Drawer } from '@/app/_components/drawer';
 import { attendanceChanges, type AttendanceReview } from '@/lib/meeting-live-shared';
-import { plannerRecordAttendanceAction } from './live-actions';
+import { plannerRecordAttendanceAction } from './attendance-actions';
 import s from './attendance-review.module.css';
 
 const FAILED = 'That didn’t save. Check your connection and try again.';

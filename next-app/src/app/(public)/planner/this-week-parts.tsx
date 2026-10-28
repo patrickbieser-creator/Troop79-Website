@@ -106,7 +106,8 @@ export function TeacherSlot({
   teacher,
   candidates,
   everyone,
-  onSet
+  onSet,
+  onAsk
 }: {
   slotKey: string;
   title: string;
@@ -114,9 +115,12 @@ export function TeacherSlot({
   candidates: readonly TwTeacher[];
   everyone: readonly TwTeacher[];
   onSet: (key: string, personId: number | null) => Promise<boolean>;
+  /** Adult editors: email this person the teacher ask (the digest and its answer page). Returns what happened. */
+  onAsk?: (key: string, personId: number) => Promise<string>;
 }) {
   const p = usePlanner();
   const [q, setQ] = useState('');
+  const [asked, setAsked] = useState<Record<number, string>>({});
   const text = teacher ? `Teacher: ${teacher.name}` : 'No teacher yet';
   if (!p?.canEdit) return <span className={teacher ? s.slotText : s.slotTextEmpty}>{text}</span>;
   const shown = new Set(candidates.map((c) => c.personId));
@@ -131,7 +135,7 @@ export function TeacherSlot({
           <ul className={s.popList}>
             {candidates.length ? null : <li className={s.popEmpty}>Nobody’s skills match yet. Pick someone else below.</li>}
             {candidates.map((c) => (
-              <li key={c.personId}>
+              <li key={c.personId} className={s.popItem}>
                 <button
                   type="button"
                   className={s.menuBtn}
@@ -141,8 +145,19 @@ export function TeacherSlot({
                   }}
                 >
                   {c.name}
-                  <span className={s.menuNote}>{[c.note, answer(c)].filter(Boolean).join(' · ')}</span>
+                  <span className={s.menuNote}>{[c.note, answer(c), asked[c.personId]].filter(Boolean).join(' · ')}</span>
                 </button>
+                {onAsk && p.canEmail && c.kind === 'adult' && teacher?.personId !== c.personId ? (
+                  <button
+                    type="button"
+                    className={s.quiet}
+                    aria-label={`Ask ${c.name} by email to teach ${title}`}
+                    disabled={!!asked[c.personId]}
+                    onClick={async () => setAsked({ ...asked, [c.personId]: await onAsk(slotKey, c.personId) })}
+                  >
+                    Ask by email
+                  </button>
+                ) : null}
               </li>
             ))}
           </ul>

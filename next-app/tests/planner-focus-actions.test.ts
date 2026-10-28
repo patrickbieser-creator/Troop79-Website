@@ -29,10 +29,11 @@ vi.mock('@/lib/dates', async (orig) => ({ ...(await orig<typeof import('../src/l
 const actions = () => import('../src/app/(public)/planner/actions');
 const focus = () => import('../src/app/(public)/planner/focus-actions');
 // Build a Plan B4 (one add path): seeding is Build's own add, remove and focus-set add; the board's seed actions retired.
-const build = () => import('../src/app/(public)/planner/build-actions');
-const seedSet = async (input: { entryId: number; setId: number }) => (await build()).plannerAddFocusSetAction(input);
-const seedTopic = async (input: { entryId: number; key: string }) => (await build()).plannerAddOfferingAction({ entryId: input.entryId, keys: [input.key] });
-const unseed = async (input: { entryId: number; key: string }) => (await build()).plannerRemoveOfferingAction(input);
+const tw = () => import('../src/app/(public)/planner/this-week-actions');
+const seedSet = async (input: { entryId: number; setId: number }) => (await tw()).twAddFocusSetAction(input);
+const seedTopic = async (input: { entryId: number; key: string }) => (await tw()).twAddRequirementAction(input);
+const unseed = async (input: { entryId: number; key: string }) =>
+  input.key.startsWith('fg:') ? (await tw()).twRemoveFocusAction(input) : (await tw()).twRemoveRequirementAction(input);
 
 const entries: number[] = [];
 const people: number[] = [];
@@ -211,8 +212,8 @@ describe('seeding', () => {
     asSeeder();
     const res = await seedSet({ entryId: meeting, setId: set });
     const topics = await topicsOn();
-    expect([res.ok && res.count, topics.map((t) => [t.topic_key, t.kind, t.title, t.seeded_by_person_id, t.focus_set_id]), await membersOf(`fg:${set}`)]).toEqual([
-      3,
+    expect([res.ok, topics.map((t) => [t.topic_key, t.kind, t.title, t.seeded_by_person_id, t.focus_set_id]), await membersOf(`fg:${set}`)]).toEqual([
+      true,
       [[`fg:${set}`, 'focus_group', `${TEST_PREFIX} First aid night`, seeder, set]],
       [mbKey, mbSubKey, rankKeys[0]]
     ]);

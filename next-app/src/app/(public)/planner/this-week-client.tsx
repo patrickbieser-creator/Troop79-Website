@@ -11,7 +11,7 @@ import { useState } from 'react';
 import type { ThisWeek, TwRow, TwSection } from '@/lib/this-week';
 import { usePlanner, RemindEveryone } from './planner-client';
 import { PlannerPoller } from './planner-poller';
-import { twSetRoleAction, twSetTeacherAction, type RoleInput } from './this-week-actions';
+import { twAskTeacherAction, twRemoveRequirementAction, twSetRoleAction, twSetTeacherAction, type RoleInput } from './this-week-actions';
 import { FocusCard, type SetChoice } from './this-week-focus';
 import { LiveView } from './this-week-live';
 import { NameChip, Popover, TeacherSlot, useWrite } from './this-week-parts';
@@ -88,7 +88,7 @@ export function ThisWeekView({
                 </li>
               ))}
             </ul>
-            <PlannerPoller entryId={entryId} stamp={stamp} build />
+            <PlannerPoller entryId={entryId} stamp={stamp} />
           </div>
         </div>
       </header>
@@ -105,6 +105,10 @@ function PlanView({ entryId, view, sets, badges, canSeed }: { entryId: number; v
   const w = useWrite();
   const [filter, setFilter] = useState<'all' | 'gaps' | 'noanswer'>('all');
   const setTeacher = (key: string, personId: number | null) => w.run(() => twSetTeacherAction({ entryId, key, personId }));
+  const ask = async (key: string, personId: number) => {
+    const res = await twAskTeacherAction({ entryId, key, personId }).catch(() => null);
+    return res?.ok ? (res.message ?? 'Asked by email.') : (res?.error ?? 'That didn’t send. Try again.');
+  };
   const setRole = (personId: number, role: RoleInput) => w.run(() => twSetRoleAction({ entryId, personId, ...role }));
   const { coverage: c, answers: a } = view;
   const badgeGroups = view.groups.filter((g) => g.kind === 'badge');
@@ -174,7 +178,7 @@ function PlanView({ entryId, view, sets, badges, canSeed }: { entryId: number; v
                   ))}
                   {g.members.length ? null : <span className={s.muted}>Nobody needs these tonight.</span>}
                 </div>
-                <TeacherSlot slotKey={g.key} title={`the ${g.name} group`} teacher={g.teacher} candidates={g.candidates} everyone={view.everyone} onSet={setTeacher} />
+                <TeacherSlot slotKey={g.key} title={`the ${g.name} group`} teacher={g.teacher} candidates={g.candidates} everyone={view.everyone} onSet={setTeacher} onAsk={ask} />
               </div>
             </section>
           ))}
@@ -246,7 +250,7 @@ function PlanView({ entryId, view, sets, badges, canSeed }: { entryId: number; v
                   ))}
                   {g.members.length ? null : <span className={s.muted}>Nobody taking it yet.</span>}
                 </div>
-                <TeacherSlot slotKey={g.key} title={`${g.name}`} teacher={g.teacher} candidates={g.candidates} everyone={view.everyone} onSet={setTeacher} />
+                <TeacherSlot slotKey={g.key} title={`${g.name}`} teacher={g.teacher} candidates={g.candidates} everyone={view.everyone} onSet={setTeacher} onAsk={ask} />
               </div>
             </section>
           ))}
@@ -289,7 +293,14 @@ function PlanView({ entryId, view, sets, badges, canSeed }: { entryId: number; v
                   ))}
                   {x.scouts.length ? null : <span className={s.muted}>Nobody signed up yet.</span>}
                 </div>
-                <TeacherSlot slotKey={x.key} title={x.title} teacher={x.teacher} candidates={x.candidates} everyone={view.everyone} onSet={setTeacher} />
+                <div className={s.row}>
+                  <TeacherSlot slotKey={x.key} title={x.title} teacher={x.teacher} candidates={x.candidates} everyone={view.everyone} onSet={setTeacher} onAsk={ask} />
+                  {canSeed && x.origin === 'planner' ? (
+                    <button type="button" className={s.quiet} disabled={w.busy} onClick={() => w.run(() => twRemoveRequirementAction({ entryId, key: x.key }))}>
+                      Remove from tonight
+                    </button>
+                  ) : null}
+                </div>
               </div>
             </section>
           ))}

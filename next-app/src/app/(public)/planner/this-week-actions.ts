@@ -8,9 +8,14 @@
  * Every write returns the board's stamp after it, so the page's poller doesn't refresh over its own change; the page
  * refreshes once the write lands (PlannerProvider's sync.run).
  */
+import { resolveAdminActor } from '@/lib/admin-actor';
+import { createAdminClient } from '@/lib/supabase/server';
 import { centralToday } from '@/lib/dates';
-import { loadBoardStamp } from '@/lib/meeting-board';
-import { seedFocusSet, unseedTopic } from '@/lib/meeting-focus-db';
+import { loadBoardStamp, loadUpcomingMeetings } from '@/lib/meeting-board';
+import { plannerAccess } from '@/lib/meeting-planner-access';
+import { loadPlannerLists } from '@/lib/people-lists';
+import { sendInviteDigests } from '@/lib/meeting-invite-digest-send';
+import { seedFocusSet, seedMany, unseedTopic } from '@/lib/meeting-focus-db';
 import { teachTopic, unteachTopic } from '@/lib/meeting-board-supply';
 import { plannerSeeder } from '@/lib/meeting-planner-seeder';
 import { PLANNER_WEEKS } from '@/lib/this-week';
@@ -140,4 +145,57 @@ export async function twSetPresentAction(input: { entryId: number; personId: num
   const { error } = await s.sb.rpc('meeting_live_set_presence', { p_entry: s.meeting.entryId, p_actor: s.actorPersonId, p_person: input.personId, p_present: input.present });
   if (error) return fail('Couldn’t save that. Try again.');
   return done(s);
+}
+
+/** The board stamp for the poller: any viewer, any of the meetings the planner offers. */
+export async function twStampAction(entryId: number): Promise<{ ok: true; stamp: string } | { ok: false }> {
+  if (!plannerAccess(await resolveAdminActor()).canView || !Number.isInteger(entryId)) return { ok: false };
+  try {
+    const sb = createAdminClient();
+    const lists = await loadPlannerLists();
+    const meetings = (await loadUpcomingMeetings(sb, PLANNER_WEEKS * 2, undefined, lists.meetingLabels)).filter((m) => !m.closed).slice(0, PLANNER_WEEKS);
+    if (!meetings.some((m) => m.entryId === entryId)) return { ok: false };
+    return { ok: true, stamp: await loadBoardStamp(sb, entryId) };
+  } catch {
+    return { ok: false };
+  }
+}
+
+/** Put one requirement on the night as a class of its own (a planner's extra; Has/Needs' add hook). */
+export async function twAddRequirementAction(input: { entryId: number; key: string }): Promise<TwResult> {
+  if (typeof input?.key !== 'string' || !REQUEST_KEY.test(input.key) || isGroupKey(input.key) || input.key.startsWith('ff:')) return fail('Malformed request');
+  const s = await gate(input.entryId, 'seed');
+  if (!s.ok) return s;
+  const res = await seedMany(s.sb, s.meeting.entryId, [input.key], s.actorPersonId);
+  return res.ok ? done(s) : res;
+}
+
+/**
+ * Ask someone by email to teach a group or class (adults with the edit right): the teacher digest (one email, the
+ * "Choose what you'll teach" page), for one person and one slot. Only an adult who may teach; the digest's own rules
+ * (24-hour dedupe, the teach page) apply.
+ */
+export async function twAskTeacherAction(input: { entryId: number; key: string; personId: number }): Promise<TwResult & { message?: string }> {
+  if (typeof input?.key !== 'string' || !(GROUP_KEY.test(input.key) || REQUEST_KEY.test(input.key)) || !Number.isInteger(input.personId)) return fail('Malformed request');
+  if (!plannerAccess(await resolveAdminActor()).canEmail) return fail('Only adults with the edit right send email.');
+  const s = await gate(input.entryId, 'edit');
+  if (!s.ok) return s;
+  const { data: adult } = await s.sb.from('person_directory').select('person_id').eq('person_id', input.personId).in('tab', ['leader', 'adult']).eq('in_picker', true).limit(1);
+  if (!(adult ?? []).length) return fail('Only adults are asked by email.');
+  const topic = isGroupKey(input.key) ? await s.sb.rpc('meeting_group_topic', { p_entry: s.meeting.entryId, p_key: input.key }) : { data: 1, error: null };
+  if (topic.error || topic.data == null) return fail('That isn’t on this meeting’s plan.');
+  const res = await sendInviteDigests(s.sb, { entryId: s.meeting.entryId, teach: [{ key: input.key, personIds: [input.personId] }], pick: [], sentBy: s.actorPersonId });
+  if (!res.ok) return res;
+  const said = res.emails ? 'Asked by email.' : res.skipped.length ? `Not sent: ${res.skipped.map((x) => x.reason).join('; ')}.` : 'Not sent.';
+  return { ...(await done(s)), message: said };
+}
+
+/** Take a planner-added class off the night (the unseed). It stays, as theirs, while scouts picked it or someone is
+ *  signed up to teach it. */
+export async function twRemoveRequirementAction(input: { entryId: number; key: string }): Promise<TwResult> {
+  if (typeof input?.key !== 'string' || !REQUEST_KEY.test(input.key) || isGroupKey(input.key) || input.key.startsWith('fg:')) return fail('Malformed request');
+  const s = await gate(input.entryId, 'seed');
+  if (!s.ok) return s;
+  const res = await unseedTopic(s.sb, s.meeting.entryId, input.key);
+  return res.ok ? done(s) : res;
 }
