@@ -75,6 +75,9 @@ export function ThisWeekView({
                 </button>
               ))}
             </div>
+            <Link href="/planner/calendar" className={s.week}>
+              Theme calendar
+            </Link>
             <span className={s.weeksLabel}>Coming weeks</span>
             <ul className={s.weeks}>
               {weeks.map((w) => (

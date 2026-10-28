@@ -712,6 +712,10 @@ button.chip:focus-visible {
   gap: var(--sp-2);
 }
 .placeBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
   min-height: 32px;
   padding: 0 var(--sp-3);
   border: 1px solid var(--navy);
@@ -841,4 +845,12 @@ button.chip:focus-visible {
 .err {
   font: 600 var(--fs-sm) / 1.3 var(--font-ui);
   color: var(--status-danger);
+}
+
+/* A group's name as a label in a table (the Theme calendar): its tone, no chip outline. */
+.bandName {
+  display: inline-block;
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--rad-pill);
+  font: 700 var(--fs-xs) / 1.2 var(--font-ui);
 }

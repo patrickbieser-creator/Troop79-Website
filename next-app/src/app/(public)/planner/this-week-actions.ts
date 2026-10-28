@@ -2,7 +2,7 @@
 
 /**
  * This week's writes (Plans/Meeting-Planner-III.md, P2). Each is gated before the database is touched
- * (lib/meeting-planner-seeder: an upcoming, published, open meeting, one of the next PLAN_MEETINGS):
+ * (lib/meeting-planner-seeder: an upcoming, published, open meeting, one of the next PLANNER_WEEKS):
  *   - the focus and the night's merit badges: the planning team (seed);
  *   - hand placement and teacher slots: editors (edit), the SPL included.
  * Every write returns the board's stamp after it, so the page's poller doesn't refresh over its own change; the page
@@ -13,13 +13,13 @@ import { loadBoardStamp } from '@/lib/meeting-board';
 import { seedFocusSet, unseedTopic } from '@/lib/meeting-focus-db';
 import { teachTopic, unteachTopic } from '@/lib/meeting-board-supply';
 import { plannerSeeder } from '@/lib/meeting-planner-seeder';
-import { PLAN_MEETINGS } from '@/lib/build-plan';
+import { PLANNER_WEEKS } from '@/lib/this-week';
 import { isGroupKey } from '@/lib/focus-plan';
 
 export type TwResult = { ok: true; stamp: string } | { ok: false; error: string };
 const fail = (error: string): { ok: false; error: string } => ({ ok: false, error });
 
-const gate = (entryId: unknown, right: 'seed' | 'edit') => plannerSeeder(entryId, { within: PLAN_MEETINGS, right });
+const gate = (entryId: unknown, right: 'seed' | 'edit') => plannerSeeder(entryId, { within: PLANNER_WEEKS, right });
 type Gate = Extract<Awaited<ReturnType<typeof gate>>, { ok: true }>;
 const done = async (s: Gate): Promise<TwResult> => ({ ok: true, stamp: await loadBoardStamp(s.sb, s.meeting.entryId) });
 

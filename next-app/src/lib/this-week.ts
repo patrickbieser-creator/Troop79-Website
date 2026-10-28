@@ -9,6 +9,9 @@ import { boardName, type BoardPick, type Intent } from '@/lib/meeting-board-shar
 import { rankOfKey, topicWords } from '@/lib/meeting-board-picklist';
 import { assessTeacher, canTeachFocusGroup, teacherName, type TeachContext, type TeacherPerson } from '@/lib/meeting-board-teach';
 
+/** How many coming meetings the planner works on: This week's switcher and the Theme calendar (Planner III). */
+export const PLANNER_WEEKS = 8;
+
 type Catalog = Pick<AdvancementCatalog, 'ranks' | 'rankRequirements' | 'meritBadges' | 'meritBadgeRequirements'>;
 
 export interface TwScoutIn {

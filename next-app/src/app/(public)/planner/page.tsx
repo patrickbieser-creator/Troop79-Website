@@ -4,7 +4,7 @@
  *
  * One meeting's plan from its focus: every active scout in a group for the rank they work on (or the Merit badge
  * group), the checklist of what each could work on, the gaps, the teachers, and Live at the meeting as a second view
- * of the same plan (Decision 10). The switcher offers the next PLAN_MEETINGS open meetings (?meeting=<entryId>), the
+ * of the same plan (Decision 10). The switcher offers the next PLANNER_WEEKS open meetings (?meeting=<entryId>), the
  * next one by default. Viewers see everything read-only; the planning team (seed) sets the focus and badges; editors
  * place scouts and teachers; adult editors publish (email).
  *
@@ -21,8 +21,8 @@ import { plannerAccess } from '@/lib/meeting-planner-access';
 import { loadPlannerLists } from '@/lib/people-lists';
 import { loadFocusSets } from '@/lib/meeting-focus-db';
 import { loadAdvancementCatalog } from '@/lib/advancement-catalog';
-import { pickMeeting, PLAN_MEETINGS } from '@/lib/build-plan';
-import { buildThisWeek } from '@/lib/this-week';
+import { pickMeeting } from '@/lib/build-plan';
+import { buildThisWeek, PLANNER_WEEKS } from '@/lib/this-week';
 import { loadFocusNames, loadThisWeekData } from '@/lib/this-week-db';
 import { snapshotPayload } from '@/lib/plan-snapshot';
 import { loadSnapshotState } from '@/lib/plan-snapshot-db';
@@ -62,7 +62,7 @@ export default async function PlannerPage({ searchParams }: { searchParams: Prom
   const sb = createAdminClient();
   const lists = await loadPlannerLists();
   const [upcoming, prompt] = await Promise.all([
-    loadUpcomingMeetings(sb, PLAN_MEETINGS * 2, undefined, lists.meetingLabels),
+    loadUpcomingMeetings(sb, PLANNER_WEEKS * 2, undefined, lists.meetingLabels),
     access.canEdit
       ? loadAttendancePrompt(sb, instantToCentral(new Date().toISOString())).catch((err) => {
           console.error('Attendance prompt failed to load:', err);
@@ -70,7 +70,7 @@ export default async function PlannerPage({ searchParams }: { searchParams: Prom
         })
       : null
   ]);
-  const meetings = upcoming.filter((m) => !m.closed).slice(0, PLAN_MEETINGS);
+  const meetings = upcoming.filter((m) => !m.closed).slice(0, PLANNER_WEEKS);
   const meeting = pickMeeting(meetings, (await searchParams).meeting);
   const promptEl = prompt ? <AttendancePrompt key={prompt.entryId} review={prompt} label={fmtDay(prompt.date)} /> : null;
   if (!meeting) {

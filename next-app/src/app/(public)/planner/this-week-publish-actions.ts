@@ -9,9 +9,8 @@ import { loadBoardScouts, loadBoardStamp } from '@/lib/meeting-board';
 import { plannerAccess } from '@/lib/meeting-planner-access';
 import { plannerSeeder } from '@/lib/meeting-planner-seeder';
 import { resolveAdminActor } from '@/lib/admin-actor';
-import { PLAN_MEETINGS } from '@/lib/build-plan';
 import { loadPlannerLists } from '@/lib/people-lists';
-import { buildThisWeek } from '@/lib/this-week';
+import { buildThisWeek, PLANNER_WEEKS } from '@/lib/this-week';
 import { loadThisWeekData } from '@/lib/this-week-db';
 import { publishPlan } from '@/lib/plan-publish';
 import { revokePlanPages } from '@/lib/plan-pages';
@@ -21,7 +20,7 @@ export type PublishResult = { ok: true; message: string; stamp: string } | { ok:
 export async function twPublishAction(input: { entryId: number; everyone: boolean }): Promise<PublishResult> {
   if (typeof input?.everyone !== 'boolean') return { ok: false, error: 'Malformed request' };
   if (!plannerAccess(await resolveAdminActor()).canEmail) return { ok: false, error: 'Only adults with the edit right send email.' };
-  const s = await plannerSeeder(input.entryId, { within: PLAN_MEETINGS, right: 'edit' });
+  const s = await plannerSeeder(input.entryId, { within: PLANNER_WEEKS, right: 'edit' });
   if (!s.ok) return s;
   try {
     const lists = await loadPlannerLists();
@@ -41,7 +40,7 @@ export async function twPublishAction(input: { entryId: number; everyone: boolea
 /** Cancel a publish: every family link for this meeting closes. The snapshots stay as history. */
 export async function twRevokeLinksAction(input: { entryId: number }): Promise<PublishResult> {
   if (!plannerAccess(await resolveAdminActor()).canEmail) return { ok: false, error: 'Only adults with the edit right can do that.' };
-  const s = await plannerSeeder(input?.entryId, { within: PLAN_MEETINGS, right: 'edit' });
+  const s = await plannerSeeder(input?.entryId, { within: PLANNER_WEEKS, right: 'edit' });
   if (!s.ok) return s;
   const n = await revokePlanPages(s.sb, s.meeting.entryId);
   return { ok: true, message: `${n} family link${n === 1 ? '' : 's'} closed.`, stamp: await loadBoardStamp(s.sb, s.meeting.entryId) };
