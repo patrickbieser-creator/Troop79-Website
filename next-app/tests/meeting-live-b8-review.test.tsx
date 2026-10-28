@@ -9,7 +9,7 @@ import { attendanceChanges, buildAttendanceReview, meetingIsOver, type Attendanc
  * tests/meeting-live-b8-db.test.ts.
  */
 const m = vi.hoisted(() => ({ record: vi.fn(), refresh: vi.fn() }));
-vi.mock('../src/app/(public)/planner/live-actions', () => ({ plannerRecordAttendanceAction: m.record }));
+vi.mock('../src/app/(public)/planner/attendance-actions', () => ({ plannerRecordAttendanceAction: m.record }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: m.refresh }) }));
 
 const { AttendancePrompt } = await import('../src/app/(public)/planner/attendance-review');

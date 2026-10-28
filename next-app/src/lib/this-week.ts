@@ -63,6 +63,8 @@ export interface TwTeacher {
   intent: Intent | null;
   /** 'Counselor', 'Scout instructor · Star'. */
   note: string | null;
+  /** As families see them: adults formally ('Mr. Vest'), scouts first name + last initial. */
+  formal: string;
 }
 
 export interface TwColumn {
@@ -216,7 +218,8 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
     name: teacherName(p, 'admin'),
     kind: p.kind,
     intent: input.intents.get(p.personId) ?? null,
-    note
+    note,
+    formal: teacherName(p, 'scout')
   });
   const pool = input.teachers;
   const poolBy = new Map(pool.map((p) => [p.personId, p]));
@@ -226,7 +229,7 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
     const p = poolBy.get(t.personId);
     if (p) return teacherOf(p);
     const s = scoutBy.get(t.personId);
-    return s ? { personId: s.personId, name: boardName(s.name), kind: 'junior', intent: s.intent, note: null } : null;
+    return s ? { personId: s.personId, name: boardName(s.name), kind: 'junior', intent: s.intent, note: null, formal: boardName(s.name) } : null;
   };
   const byAnswer = (a: TwTeacher, b: TwTeacher) => {
     const rank = (t: TwTeacher) => (t.intent === 'coming' ? 0 : t.intent == null || t.intent === 'undecided' ? 1 : 2);
@@ -237,7 +240,7 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
     .filter((r) => !r.counted && r.status === 'teach')
     .map((r) => {
       const s = scoutBy.get(r.personId)!;
-      return { personId: r.personId, name: boardName(s.name), kind: 'junior' as const, intent: s.intent, note: `Scout instructor · ${rankName.get(s.currentRank ?? '') ?? ''}` };
+      return { personId: r.personId, name: boardName(s.name), kind: 'junior' as const, intent: s.intent, note: `Scout instructor · ${rankName.get(s.currentRank ?? '') ?? ''}`, formal: boardName(s.name) };
     });
 
   const groups: TwGroup[] = plan.groups.map((g) => {

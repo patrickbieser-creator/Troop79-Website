@@ -16,7 +16,7 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(window.location.search)
 }));
 const m = vi.hoisted(() => ({ add: vi.fn() }));
-vi.mock('../src/app/(public)/planner/build-actions', () => ({ plannerAddOfferingAction: m.add }));
+vi.mock('../src/app/(public)/planner/this-week-actions', () => ({ twAddRequirementAction: m.add }));
 
 const { HasNeedsView } = await import('../src/app/(public)/planner/has-needs/has-needs-client');
 const { PlannerTabs } = await import('../src/app/(public)/planner/planner-tabs');
@@ -72,7 +72,7 @@ describe('the Has/Needs tab (B7)', () => {
   it('HasNeedsTab_IsLastTab', () => {
     render(<PlannerTabs active="hasneeds" />);
     const tabs = screen.getAllByRole('tab');
-    expect([tabs.length, tabs[tabs.length - 1].textContent, tabs[tabs.length - 1].getAttribute('href')]).toEqual([6, 'Has/Needs', '/planner/has-needs']);
+    expect([tabs.length, tabs[tabs.length - 1].textContent, tabs[tabs.length - 1].getAttribute('href')]).toEqual([3, 'Has/Needs', '/planner/has-needs']);
   });
 
   it('PlannerTabs_UseTheScrollingStrip', () => {
@@ -157,12 +157,12 @@ describe('the Has/Needs tab (B7)', () => {
   });
 
   it('HasNeeds_Add_UsesSharedAddAction', async () => {
-    m.add.mockResolvedValue({ ok: true, added: ['first-aid-9'], teachers: {}, prior: 's', stamp: 's2' });
+    m.add.mockResolvedValue({ ok: true, stamp: 's2' });
     at('?pick=mb:first-aid-9b');
     renderTab();
     fireEvent.click(screen.getByRole('button', { name: 'Add First Aid 9 · Rescues to the Oct 25 plan' }));
     await waitFor(() => expect(screen.getByText('On plan')).toBeTruthy());
-    expect(m.add.mock.calls).toEqual([[{ entryId: 1, keys: ['first-aid-9'] }]]);
+    expect(m.add.mock.calls).toEqual([[{ entryId: 1, key: 'first-aid-9' }]]);
   });
 
   it('HasNeeds_AddFails_SaysWhyInPlace', async () => {

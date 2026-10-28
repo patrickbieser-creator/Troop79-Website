@@ -159,9 +159,10 @@ describe('publish', () => {
     expect([results.filter((r) => r.ok).length, count]).toEqual([1, 1]);
   });
 
-  it('Republish_WithNothingChanged_IsRefused', async () => {
-    const res = await publishPlan(sb, { meeting: { entryId: meeting, date: MEETING_DATE }, view, scouts: [{ personId: scout, name: 'Test Scout' }], actorPersonId: parent, everyone: false });
-    expect(res.ok).toBe(false);
+  it('Republish_WithNothingChanged_MakesNoNewSnapshot', async () => {
+    await publishPlan(sb, { meeting: { entryId: meeting, date: MEETING_DATE }, view, scouts: [{ personId: scout, name: 'Test Scout' }], actorPersonId: parent, everyone: false });
+    const { count } = await sb.from('meeting_plan_snapshots').select('n', { count: 'exact', head: true }).eq('calendar_entry_id', meeting);
+    expect(count).toBe(1);
   });
 
   it('Publish_WhoseEmailDidNotGoOut_LeavesNoLink', async () => {

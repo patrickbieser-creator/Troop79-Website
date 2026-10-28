@@ -113,14 +113,6 @@ describe('what read the retired tables still works', () => {
     expect([merged.error, picks.map((p) => p.person_id), present.map((p) => p.person_id)]).toEqual([null, [survivor], [survivor]]);
   });
 
-  it('BoardStamp_StillChanges_WhenLiveVersionBumps', async () => {
-    await sb.from('meeting_boards').upsert({ calendar_entry_id: meeting }, { onConflict: 'calendar_entry_id' });
-    const before = await sb.rpc('meeting_board_stamp', { p_entry: meeting });
-    await sb.from('meeting_boards').update({ live_version: 7 }).eq('calendar_entry_id', meeting);
-    const after = await sb.rpc('meeting_board_stamp', { p_entry: meeting });
-    expect([before.error, after.error, typeof before.data === 'string' && before.data !== after.data]).toEqual([null, null, true]);
-  });
-
   it('BoardMode_IsDerivedFromTheCalendarAlone', async () => {
     await sb.from('meeting_boards').upsert({ calendar_entry_id: meeting }, { onConflict: 'calendar_entry_id' });
     const open = (await sb.rpc('meeting_board_mode', { p_entry: meeting })).data;

@@ -36,8 +36,8 @@ describe('row level security', () => {
     expect(localSql(`select coalesce(string_agg(relname, ',' order by relname), '') from pg_class where relnamespace = 'public'::regnamespace and relkind in ('r', 'p') and not relrowsecurity`)).toBe('');
   });
 
-  it('MeetingLiveTables_AreCoveredByTheGuard', () => {
-    expect(['meeting_rotations', 'meeting_classes', 'meeting_class_members', 'meeting_boards', 'focus_sets'].every((t) => plannerTables().includes(t))).toBe(true);
+  it('PlannerIIITables_AreCoveredByTheGuard', () => {
+    expect(['meeting_scout_roles', 'meeting_night_badges', 'meeting_plan_snapshots', 'meeting_plan_pages', 'meeting_live_presence', 'meeting_boards', 'focus_sets'].every((t) => plannerTables().includes(t))).toBe(true);
   });
 
   it('PlannerTables_HaveNoPolicies', () => {

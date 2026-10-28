@@ -54,14 +54,14 @@ export function planCandidates(view: ThisWeek): MatchedCandidate[] {
         g.kind === 'badge' ? `${g.name} merit badge` : `${g.name} group`,
         g.columns.map((c) => c.code).join(', '),
         g.kind === 'badge' ? 'Merit Badge' : 'Open Advancement',
-        g.teacher?.name ?? null,
+        g.teacher?.formal ?? null,
         g.members.filter(coming).map((m) => m.name),
         g.columns.map((c) => ({ code: c.code, label: c.label }))
       )
     ),
     ...(view.helpers.length ? [card('help', 'Helping teach', '', 'Open Advancement', null, view.helpers.filter(coming).map((m) => m.name), [])] : []),
     ...view.extras.map((x) =>
-      card(x.key, x.title, x.codeLabel, x.key.startsWith('mb:') ? 'Merit Badge' : 'Open Advancement', x.teacher?.name ?? null, x.scouts.filter(coming).map((m) => m.name), [{ code: x.codeLabel || x.key, label: x.title }])
+      card(x.key, x.title, x.codeLabel, x.key.startsWith('mb:') ? 'Merit Badge' : 'Open Advancement', x.teacher?.formal ?? null, x.scouts.filter(coming).map((m) => m.name), [{ code: x.codeLabel || x.key, label: x.title }])
     )
   ];
 }

@@ -61,10 +61,10 @@ afterAll(async () => {
 });
 
 describe('/member/meeting on a meeting with a board row', () => {
-  it('MemberMeetingPage_ShowsRankBoard_WhenTheMeetingHasABoardRow', async () => {
+  it('MemberMeetingPage_ShowsThisWeeksAnswer_WhenTheMeetingHasABoardRow', async () => {
     const { default: Page } = await import('../src/app/(public)/member/meeting/page');
     const html = renderToStaticMarkup(await Page({ searchParams: Promise.resolve({}) }));
-    expect([html.includes('Merit badge night'), html.includes('Your picks')]).toEqual([false, true]);
+    expect([html.includes('Merit badge night'), html.includes('Pick two or three things')]).toEqual([false, true]);
   });
 
   it('OnBehalf_BackLink_GoesToTheMeetingPlanner', async () => {
