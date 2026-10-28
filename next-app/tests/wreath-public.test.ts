@@ -218,6 +218,17 @@ describe('emails', () => {
     expect(text).not.toMatch(/qr/i);
   });
 
+  // A customer paying by card double-paid by Venmo after reading the pay-the-treasurer lines (Patrick, 2026-10-27).
+  it('ConfirmationEmail_NamesNoOtherWayToPay_WhenTheCustomerChoseCard', () => {
+    const { text } = customerConfirmationEmail({ ...ctx, payByCard: true });
+    expect(text).not.toMatch(/venmo|paypal|not paid yet/i);
+  });
+
+  it('ConfirmationEmail_SaysTheCustomerIsPayingByCard_WhenTheyChoseCard', () => {
+    const { text } = customerConfirmationEmail({ ...ctx, payByCard: true });
+    expect(text).toContain('by card');
+  });
+
   it('ScoutNoticeEmail_EscapesCustomerInput_AndNamesTheDelivery', () => {
     const { html, subject } = scoutNoticeEmail({ ...ctx, scoutFirstName: 'Ben', customerPhone: '414-555-0100', customerAddress: '<img src=x onerror=1> 1 Main St' });
     expect(html).not.toContain('<img');

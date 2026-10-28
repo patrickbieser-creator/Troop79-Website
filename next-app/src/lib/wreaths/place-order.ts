@@ -112,6 +112,8 @@ interface ParsedRequest {
   lines: CartLine[];
   gift: number;
   coverFee: boolean;
+  /** The customer chose card at checkout and is on the way to Stripe: the confirmation names no other way to pay. */
+  payByCard: boolean;
   fulfillment: 'pickup' | 'delivery' | null;
   name: string;
   email: string;
@@ -167,6 +169,7 @@ function parseRequest(raw: unknown): ParsedRequest | { error: PlaceOrderResult }
     lines,
     gift: raw.gift == null || raw.gift === '' ? 0 : num(raw.gift),
     coverFee: raw.coverFee === true,
+    payByCard: raw.payByCard === true,
     fulfillment: raw.fulfillment === 'pickup' || raw.fulfillment === 'delivery' ? raw.fulfillment : null,
     name,
     email: email.toLowerCase(),
@@ -416,7 +419,8 @@ export async function placeOrder(raw: unknown, deps: PlaceOrderDeps): Promise<Pl
       creditedTo: (seller ?? creditOnly)?.scout.name ?? null,
       orderUrl: `${deps.siteUrl}/wreaths/order/${result.public_token}`,
       changesBy: fmtDateFull(round === 1 ? sale.round1Cutoff : sale.round2Cutoff),
-      placedAt: new Date(now).toISOString()
+      placedAt: new Date(now).toISOString(),
+      payByCard: !entry && req.payByCard
     };
     if (entry) {
       // No email to the customer, ever. The person typing gets a confirmation, and the household's parents are

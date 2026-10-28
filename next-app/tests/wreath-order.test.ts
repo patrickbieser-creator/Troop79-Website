@@ -437,6 +437,12 @@ describe('order copies (Settings › Order copies)', () => {
     expect(copy()?.text.split('\n')[0]).toMatch(/^Copy for the troop/);
   });
 
+  it('CardOrder_ConfirmationAndCopy_NameNoOtherWayToPay', async () => {
+    send.mockClear();
+    await placeOrder(input({ payByCard: true }), deps());
+    expect(sent().filter((m) => /venmo|paypal/i.test(m.text))).toEqual([]);
+  });
+
   it('OrderCopies_AreNotAddedToTheScoutsHouseholdNotice', async () => {
     await placeOrder(input({ sellerSlug: fx.sellerA.slug, customer: { name: 'Vitest Buyer', email: 'copy@example.test', phone: '414-555-0100', street: '5 Link Ave', city: 'Milwaukee', zip: '53211' } }), deps());
     expect(sent().filter((m) => !/^Copy: /.test(m.subject)).flatMap((m) => m.to)).not.toContain('treasurer@example.test');

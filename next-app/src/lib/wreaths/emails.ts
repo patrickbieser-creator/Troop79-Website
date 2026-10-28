@@ -32,6 +32,8 @@ export interface OrderEmailContext {
   changesBy: string;
   /** When the order was placed (an instant): the donation receipt's date (W-3). Absent = no receipt lines. */
   placedAt?: string;
+  /** The customer chose card at checkout: the confirmation names no other way to pay (Patrick, 2026-10-27). */
+  payByCard?: boolean;
 }
 
 /** A donation with no wreath (W-3). */
@@ -69,23 +71,27 @@ export interface OrderCopy {
 }
 const copyNotice = (copy: OrderCopy) => `Copy for the troop: this is the confirmation sent to ${copy.sentTo}.`;
 
-/** The customer's receipt: what they ordered, and how to pay the treasurer with the order number in the note. */
+/**
+ * The customer's receipt: what they ordered, and how to pay the treasurer with the order number in the note. A card
+ * order is sent as the customer leaves for Stripe, so it names no other way to pay: the order page is the way back.
+ */
 export function customerConfirmationEmail(c: OrderEmailContext, copy?: OrderCopy): { subject: string; html: string; text: string } {
   const first = greetingName(c.customerName);
   const donationOnly = isDonationOnly(c);
+  const what = donationOnly ? `Your donation ${c.orderNumber} is recorded.` : `Your Troop 79 wreath order ${c.orderNumber} is placed.`;
   const { html, text } = renderEmail({
     heading: donationOnly
       ? first ? `Thank you, ${first}, for your donation to Troop 79.` : 'Thank you for your donation to Troop 79.'
       : first ? `Thank you, ${first}. Your order is placed.` : 'Thank you. Your order is placed.',
-    intro: donationOnly
-      ? `Your donation ${c.orderNumber} is recorded. It is not paid yet: please pay ${fmtMoney2(c.total)} and put ${c.orderNumber} in the payment note so we can match it.`
-      : `Your Troop 79 wreath order ${c.orderNumber} is placed. It is not paid yet: please pay ${fmtMoney2(c.total)} and put ${c.orderNumber} in the payment note so we can match it.`,
+    intro: c.payByCard
+      ? `${what} You chose to pay ${fmtMoney2(c.total)} by card. If the card payment didn’t go through, open your ${donationOnly ? 'donation' : 'order'} below to try again.`
+      : `${what} It is not paid yet: please pay ${fmtMoney2(c.total)} and put ${c.orderNumber} in the payment note so we can match it.`,
     bullets: [
       ...summaryBullets(c),
       ...(c.placedAt ? donationReceiptLines({ gift: c.gift, donationOnly, placedAt: c.placedAt }) : []),
-      `Pay by Venmo to ${PAY_TREASURER.venmoHandle} (${PAY_TREASURER.venmoUrl})`,
-      `Or by PayPal to ${PAY_TREASURER.paypalEmail}, choosing Friends and family`,
-      PAY_TREASURER.note,
+      ...(c.payByCard
+        ? []
+        : [`Pay by Venmo to ${PAY_TREASURER.venmoHandle} (${PAY_TREASURER.venmoUrl})`, `Or by PayPal to ${PAY_TREASURER.paypalEmail}, choosing Friends and family`, PAY_TREASURER.note]),
       ...(c.creditedTo ? [`Credited to ${c.creditedTo}`] : []),
       c.arrival
     ],
