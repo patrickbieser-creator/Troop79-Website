@@ -71,6 +71,38 @@
   --status-info:        var(--navy);
   --status-info-bg:     #e8eef2;
 
+  /* Rank chips (Meeting Planner III): a scout's name chip wears the rank they
+     HOLD, so a scout working ahead stands out in another rank's group. Same
+     hex values as the admin workspace's tints (README, prototypes/
+     meeting-plan-III); a new scout is white with a grey ring. Colour is never
+     the only cue: the rank is in the chip's accessible name. */
+  --rank-new-bg:      #ffffff;
+  --rank-new-ink:     #3a3f47;
+  --rank-new-ring:    #9ba1aa;
+  --rank-scout-bg:    #eaf1f6;
+  --rank-scout-ink:   #274d69;
+  --rank-tenderfoot-bg:  #d6efef;
+  --rank-tenderfoot-ink: #186e72;
+  --rank-second-bg:   #eef5eb;
+  --rank-second-ink:  #2c5a27;
+  --rank-first-bg:    #f8f0dc;
+  --rank-first-ink:   #6b4b0b;
+  --rank-star-bg:     #ece0f0;
+  --rank-star-ink:    #6b3f7a;
+  --rank-life-bg:     #e6e6ea;
+  --rank-life-ink:    #4a4a5a;
+  --rank-eagle-bg:    var(--navy);
+  --rank-eagle-ink:   #ffffff;
+  /* The Merit badge group's header (stone), and the planner's RSVP tints. */
+  --rank-mb-group-bg:  #f0eeea;
+  --rank-mb-group-ink: #46413a;
+  --rsvp-coming-bg:   #e3eee5;
+  --rsvp-coming-ink:  #2e6038;
+  --rsvp-cant-bg:     #f0f1f3;
+  --rsvp-cant-ink:    #6d7580;
+  /* A "Nothing assigned" row's tint. */
+  --gap-row-bg:       #f8ebe4;
+
   /* Hairline rule. Was a 16-read phantom whose fallbacks disagreed
      (#e4d9c4 ×12, #efe7d8, #d8ccb4) — the dominant value wins; the minority
      sites take a deliberate, near-invisible normalization delta. */

@@ -1,0 +1,596 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Plan this week from a focus</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#f5f6f8}a{color:#1e3a4a}a:hover{color:#2a5068}button,input{font-family:inherit}button:disabled{opacity:.55;cursor:default}input:focus,button:focus-visible{outline:2px solid #1e3a4a;outline-offset:1px}</style>
+</helmet>
+<div style="min-height:100vh;background:#f5f6f8;font-family:'Open Sans',Arial,sans-serif;color:#3a3f47">
+
+  <header style="background:#ffffff;border-bottom:1px solid #e2e4e8">
+    <div style="max-width:1400px;margin:0 auto;padding:18px 28px 14px;display:flex;flex-wrap:wrap;align-items:center;gap:16px 24px;box-sizing:border-box">
+      <div style="flex:1 1 440px;min-width:0">
+        <div style="font-size:12px;font-weight:600;color:#6d7580">Advancement › Meeting plan</div>
+        <h1 style="margin:2px 0 0;font-size:24px;font-weight:700;color:#1a1d21">Sunday, Nov 1 · {{ themeName }}</h1>
+        <p style="margin:4px 0 0;font-size:14px;line-height:1.5;color:#3a3f47;max-width:760px">Pick the focus sets for the night. Every scout gets a group by rank, and the checklist shows which requirements each scout could work on. A row with no boxes checked has nothing assigned yet.</p>
+      </div>
+      <nav aria-label="Meeting plan" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+        <a href="Theme Calendar.dc.html" style="display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border:1px solid #cdd1d6;border-radius:3px;background:#ffffff;color:#1e3a4a;font-size:14px;font-weight:600;text-decoration:none;box-sizing:border-box">Theme calendar</a>
+        <button onClick="{{ publish }}" disabled="{{ publishDisabled }}" style="min-height:44px;padding:0 20px;border:1px solid #1e3a4a;border-radius:3px;background:#1e3a4a;color:#ffffff;font-size:14px;font-weight:700;cursor:pointer">{{ publishLabel }}</button>
+      </nav>
+    </div>
+    <div style="max-width:1400px;margin:0 auto;padding:0 28px 14px;display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;box-sizing:border-box">
+      <div role="group" aria-label="View" style="display:inline-flex;border:1px solid #cdd1d6;border-radius:3px;overflow:hidden">
+        <sc-for list="{{ viewBtns }}" as="v" hint-placeholder-count="2">
+          <button onClick="{{ v.pick }}" aria-pressed="{{ v.pressed }}" style="min-height:40px;padding:0 18px;border:0;border-right:1px solid #e2e4e8;font-size:14px;font-weight:700;cursor:pointer;{{ v.st }}">{{ v.label }}</button>
+        </sc-for>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+        <span style="font-size:12px;font-weight:600;color:#6d7580;margin-right:4px">Coming weeks</span>
+        <sc-for list="{{ weeks }}" as="w" hint-placeholder-count="4">
+          <a href="Theme Calendar.dc.html" style="display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 12px;border-radius:999px;font-size:13px;text-decoration:none;box-sizing:border-box;{{ w.st }}"><strong style="font-weight:700">{{ w.date }}</strong> · {{ w.theme }}</a>
+        </sc-for>
+      </div>
+    </div>
+  </header>
+
+  <sc-if value="{{ hasSnap }}" hint-placeholder-val="{{ false }}">
+    <div style="border-bottom:1px solid #e2e4e8;{{ snapBarSt }}">
+      <div style="max-width:1400px;margin:0 auto;padding:12px 28px;font-size:14px;font-weight:600;box-sizing:border-box">{{ snapText }}</div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isPlan }}" hint-placeholder-val="{{ true }}">
+  <main style="max-width:1400px;margin:0 auto;padding:24px 28px 48px;display:flex;flex-direction:column;gap:20px;box-sizing:border-box">
+
+    <section aria-labelledby="focus-h" style="position:relative;background:#ffffff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.08);padding:20px 22px;display:flex;flex-direction:column;gap:14px">
+      <h2 id="focus-h" style="margin:0;font-size:20px;font-weight:700;color:#1a1d21">What do you want the focus to be?</h2>
+      <div style="position:relative;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+        <button onClick="{{ toggleSets }}" aria-expanded="{{ setsExpanded }}" style="min-height:44px;padding:0 16px;border:1px solid #1e3a4a;border-radius:3px;background:#1e3a4a;color:#ffffff;font-size:14px;font-weight:700;cursor:pointer">Focus set ▾</button>
+        <sc-for list="{{ selChips }}" as="c" hint-placeholder-count="1">
+          <span style="display:inline-flex;align-items:center;gap:4px;min-height:44px;padding:0 4px 0 14px;border:1px solid #cdd1d6;border-radius:3px;background:#e0e7ef;color:#1e3a4a;font-size:14px;font-weight:700;box-sizing:border-box">{{ c.name }}<button onClick="{{ c.remove }}" aria-label="{{ c.removeLabel }}" style="width:36px;height:36px;border:0;background:transparent;color:#1e3a4a;font-size:18px;cursor:pointer">×</button></span>
+        </sc-for>
+        <sc-if value="{{ noSel }}" hint-placeholder-val="{{ false }}">
+          <span style="font-size:14px;color:#6d7580">No focus set picked yet.</span>
+        </sc-if>
+
+        <sc-if value="{{ setsOpen }}" hint-placeholder-val="{{ false }}">
+          <div role="region" aria-label="Focus sets" style="position:absolute;top:52px;left:0;z-index:30;width:min(600px,100%);background:#ffffff;border:1px solid #e2e4e8;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.1);display:flex;flex-direction:column">
+            <div style="padding:14px 16px;border-bottom:1px solid #f0f1f3;display:flex;flex-direction:column;gap:10px">
+              <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#6d7580">Find a focus set
+                <input value="{{ q }}" onChange="{{ onQ }}" placeholder="First aid, knots, ceremonies…" style="min-height:40px;padding:0 10px;border:1px solid #cdd1d6;border-radius:3px;font-size:16px;color:#1a1d21;background:#ffffff">
+              </label>
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                <sc-for list="{{ labelPills }}" as="l" hint-placeholder-count="5">
+                  <button onClick="{{ l.pick }}" aria-pressed="{{ l.pressed }}" style="min-height:32px;padding:0 10px;border:1px solid;border-radius:999px;font-size:12.5px;font-weight:600;cursor:pointer;{{ l.st }}">{{ l.name }}</button>
+                </sc-for>
+              </div>
+            </div>
+            <div style="max-height:340px;overflow:auto">
+              <sc-for list="{{ setRows }}" as="s" hint-placeholder-count="6">
+                <div style="display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid #f0f1f3">
+                  <div style="flex:1;min-width:0">
+                    <div style="font-size:14px;font-weight:700;color:#1a1d21">{{ s.name }}</div>
+                    <div style="font-size:12px;color:#6d7580">{{ s.meta }}</div>
+                  </div>
+                  <button onClick="{{ s.toggle }}" aria-pressed="{{ s.pressed }}" style="min-width:92px;min-height:36px;padding:0 12px;border:1px solid;border-radius:3px;font-size:13px;font-weight:700;cursor:pointer;{{ s.st }}">{{ s.btn }}</button>
+                </div>
+              </sc-for>
+              <sc-if value="{{ noSetRows }}" hint-placeholder-val="{{ false }}">
+                <div style="padding:14px 16px;font-size:13px;color:#6d7580">No focus set matches. Add one below.</div>
+              </sc-if>
+            </div>
+            <div style="padding:10px 16px;display:flex;align-items:center;gap:8px">
+              <button onClick="{{ openBuilder }}" style="min-height:40px;padding:0 4px;border:0;background:transparent;color:#3d7a4a;font-size:14px;font-weight:700;cursor:pointer">+ Add a focus set</button>
+              <button onClick="{{ toggleSets }}" style="margin-left:auto;min-height:40px;padding:0 16px;border:1px solid #cdd1d6;border-radius:3px;background:#ffffff;color:#1e3a4a;font-size:13px;font-weight:700;cursor:pointer">Done</button>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+
+      <sc-if value="{{ builderOpen }}" hint-placeholder-val="{{ false }}">
+        <div role="region" aria-labelledby="builder-h" style="border:1px solid #e2e4e8;border-radius:8px;background:#eef1f5;padding:16px;display:flex;flex-direction:column;gap:14px">
+          <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+            <h3 id="builder-h" style="margin:0;font-size:16px;font-weight:700;color:#1a1d21">Add a focus set</h3>
+            <span style="font-size:13px;color:#6d7580">Mix requirements from any rank. Each rank's group only sees its own.</span>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end">
+            <label style="flex:1 1 280px;display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#3a3f47">Name
+              <input value="{{ dName }}" onChange="{{ onDName }}" aria-invalid="{{ nameBad }}" style="min-height:40px;padding:0 10px;border-radius:3px;font-size:16px;color:#1a1d21;background:#ffffff;{{ nameSt }}">
+            </label>
+            <div style="flex:2 1 360px;display:flex;flex-direction:column;gap:4px">
+              <span style="font-size:12px;font-weight:600;color:#3a3f47">Labels</span>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+                <sc-for list="{{ dLabels }}" as="l" hint-placeholder-count="2">
+                  <span style="display:inline-flex;align-items:center;gap:2px;min-height:32px;padding:0 2px 0 10px;border-radius:999px;background:#ffffff;border:1px solid #cdd1d6;font-size:12.5px;font-weight:600;color:#1e3a4a">{{ l.name }}<button onClick="{{ l.remove }}" aria-label="{{ l.removeLabel }}" style="width:28px;height:28px;border:0;background:transparent;color:#1e3a4a;cursor:pointer">×</button></span>
+                </sc-for>
+                <input value="{{ newLabel }}" onChange="{{ onNewLabel }}" aria-label="New label" placeholder="Fall, Outdoor skills…" style="min-height:36px;width:180px;padding:0 10px;border:1px solid #cdd1d6;border-radius:3px;font-size:16px;background:#ffffff">
+                <button onClick="{{ addLabel }}" style="min-height:36px;padding:0 10px;border:0;background:transparent;color:#3d7a4a;font-size:13px;font-weight:700;cursor:pointer">+ Label</button>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:stretch">
+            <div style="flex:3 1 420px;min-width:0;background:#ffffff;border-radius:4px;border:1px solid #e2e4e8;display:flex;flex-direction:column">
+              <div style="padding:12px 14px;border-bottom:1px solid #f0f1f3;display:flex;flex-direction:column;gap:8px">
+                <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#6d7580">Find requirements
+                  <input value="{{ dq }}" onChange="{{ onDq }}" placeholder="Search by code or words: 4a, bowline, fire…" style="min-height:40px;padding:0 10px;border:1px solid #cdd1d6;border-radius:3px;font-size:16px;color:#1a1d21">
+                </label>
+                <div role="group" aria-label="Rank" style="display:inline-flex;flex-wrap:wrap;gap:6px">
+                  <sc-for list="{{ rankPills }}" as="r" hint-placeholder-count="4">
+                    <button onClick="{{ r.pick }}" aria-pressed="{{ r.pressed }}" style="min-height:32px;padding:0 10px;border:1px solid;border-radius:999px;font-size:12.5px;font-weight:600;cursor:pointer;{{ r.st }}">{{ r.name }}</button>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="max-height:320px;overflow:auto">
+                <sc-for list="{{ results }}" as="r" hint-placeholder-count="8">
+                  <div style="display:grid;grid-template-columns:62px minmax(0,1fr) auto;gap:10px;align-items:center;min-height:40px;padding:2px 14px;border-bottom:1px solid #f0f1f3;font-size:13px">
+                    <span style="font-size:12px;font-weight:700;border-radius:3px;padding:2px 6px;text-align:center;{{ r.st }}">{{ r.code }}</span>
+                    <span style="color:#1a1d21">{{ r.label }}</span>
+                    <button onClick="{{ r.toggle }}" aria-pressed="{{ r.pressed }}" style="min-width:76px;min-height:32px;padding:0 10px;border:1px solid;border-radius:3px;font-size:12.5px;font-weight:700;cursor:pointer;{{ r.btnSt }}">{{ r.btn }}</button>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="flex:2 1 300px;min-width:0;background:#ffffff;border-radius:4px;border:1px solid #e2e4e8;display:flex;flex-direction:column">
+              <div style="padding:12px 14px;border-bottom:1px solid #f0f1f3;font-size:14px;font-weight:700;color:#1a1d21">In this set · {{ dCount }}</div>
+              <sc-if value="{{ dEmpty }}" hint-placeholder-val="{{ true }}">
+                <div style="padding:14px;font-size:13px;color:#6d7580">Search on the left and add requirements. You can mix Scout, Tenderfoot, Second Class and First Class.</div>
+              </sc-if>
+              <div style="max-height:360px;overflow:auto">
+                <sc-for list="{{ dGroups }}" as="g" hint-placeholder-count="2">
+                  <div style="padding:8px 14px 4px">
+                    <div style="font-size:12px;font-weight:700;border-radius:3px;padding:2px 8px;display:inline-block;{{ g.st }}">{{ g.name }} · {{ g.n }}</div>
+                    <sc-for list="{{ g.items }}" as="i" hint-placeholder-count="2">
+                      <div style="display:flex;align-items:center;gap:8px;min-height:34px;font-size:13px">
+                        <span style="font-weight:700;color:#1e3a4a;min-width:28px">{{ i.code }}</span>
+                        <span style="flex:1;min-width:0;color:#1a1d21">{{ i.label }}</span>
+                        <button onClick="{{ i.remove }}" aria-label="{{ i.removeLabel }}" style="width:32px;height:32px;border:0;background:transparent;color:#6d7580;font-size:16px;cursor:pointer">×</button>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px">
+            <button onClick="{{ saveSet }}" style="min-height:44px;padding:0 20px;border:1px solid #1e3a4a;border-radius:3px;background:#1e3a4a;color:#ffffff;font-size:14px;font-weight:700;cursor:pointer">Save focus set</button>
+            <button onClick="{{ cancelBuilder }}" style="min-height:44px;padding:0 16px;border:1px solid #cdd1d6;border-radius:3px;background:#ffffff;color:#1e3a4a;font-size:14px;font-weight:600;cursor:pointer">Cancel</button>
+            <sc-if value="{{ hasSaveErr }}" hint-placeholder-val="{{ false }}">
+              <span role="alert" style="font-size:13px;font-weight:700;color:#8c2f2f">{{ saveErr }}</span>
+            </sc-if>
+          </div>
+        </div>
+      </sc-if>
+
+      <div style="border-top:1px solid #f0f1f3;padding-top:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+        <span style="font-size:13px;font-weight:700;color:#1a1d21;margin-right:4px">Merit badge group</span>
+        <sc-for list="{{ mbBtns }}" as="m" hint-placeholder-count="5">
+          <button onClick="{{ m.pick }}" aria-pressed="{{ m.pressed }}" style="min-height:36px;padding:0 12px;border:1px solid;border-radius:3px;font-size:13px;font-weight:600;cursor:pointer;{{ m.st }}">{{ m.name }}</button>
+        </sc-for>
+      </div>
+    </section>
+
+    <section aria-label="Coverage" style="background:#ffffff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.08);padding:14px 22px;display:flex;flex-wrap:wrap;gap:12px 32px;align-items:center">
+      <div style="display:flex;align-items:baseline;gap:10px">
+        <span style="font-size:13px;font-weight:700;color:#1a1d21">Rank work</span>
+        <span style="font-size:22px;font-weight:700;color:#1a1d21;font-variant-numeric:tabular-nums">{{ rankWork }} of {{ counted }}</span>
+        <span style="font-size:16px;font-weight:700;color:#2e6038;font-variant-numeric:tabular-nums">{{ pct }}%</span>
+      </div>
+      <div style="flex:1 1 220px;position:relative;height:12px;border-radius:6px;background:#e2e4e8">
+        <div style="position:absolute;left:0;top:0;bottom:0;border-radius:6px;background:#a9c9b0;width:{{ somethingW }}"></div>
+        <div style="position:absolute;left:0;top:0;bottom:0;border-radius:6px;background:#3d7a4a;width:{{ pctW }}"></div>
+      </div>
+      <span style="font-size:13px;color:#3a3f47"><strong style="color:#86391a">{{ nothingCount }}</strong> with nothing assigned</span>
+      <span style="font-size:13px;color:#3a3f47"><strong style="color:#6b4b0b">{{ noTeacherCount }}</strong> groups without a teacher</span>
+    </section>
+
+    <div style="display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start">
+
+      <div style="flex:1 1 360px;max-width:440px;min-width:0;display:flex;flex-direction:column;gap:16px">
+        <sc-for list="{{ bandCards }}" as="b" hint-placeholder-count="3">
+          <section style="background:#ffffff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.08);overflow:hidden;display:flex;flex-direction:column">
+            <div style="background:{{ b.bg }};border-bottom:2px solid {{ b.edge }};padding:10px 14px;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px">
+              <h3 style="margin:0;font-size:16px;font-weight:700;color:{{ b.ink }}">{{ b.name }}</h3>
+              <span style="font-size:12.5px;color:{{ b.ink }}">{{ b.works }}</span>
+              <span style="margin-left:auto;font-size:13px;font-weight:700;color:{{ b.ink }};font-variant-numeric:tabular-nums">{{ b.count }}</span>
+            </div>
+            <div style="padding:10px 14px;display:flex;flex-direction:column;gap:2px;border-bottom:1px solid #f0f1f3">
+              <sc-for list="{{ b.reqs }}" as="r" hint-placeholder-count="4">
+                <div style="display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:8px;align-items:baseline;min-height:24px;font-size:13px">
+                  <span style="font-weight:700;color:#1e3a4a">{{ r.code }}</span>
+                  <span style="color:#1a1d21">{{ r.label }}</span>
+                  <span style="font-size:12px;color:#6d7580;font-variant-numeric:tabular-nums;white-space:nowrap">{{ r.need }}</span>
+                </div>
+              </sc-for>
+              <sc-if value="{{ b.noReqs }}" hint-placeholder-val="{{ false }}">
+                <div style="font-size:13px;color:#6d7580">These focus sets have no {{ b.rankName }} requirements.</div>
+              </sc-if>
+            </div>
+            <div style="padding:10px 14px;display:flex;flex-wrap:wrap;gap:6px;border-bottom:1px solid #f0f1f3">
+              <sc-for list="{{ b.scouts }}" as="s" hint-placeholder-count="6">
+                <span style="display:inline-flex;align-items:center;min-height:28px;padding:2px 10px;border-radius:999px;font-size:13px;box-sizing:border-box;{{ s.st }}">{{ s.label }}</span>
+              </sc-for>
+              <sc-if value="{{ b.empty }}" hint-placeholder-val="{{ false }}">
+                <span style="font-size:13px;color:#6d7580">No one in this group has open work in these focus sets.</span>
+              </sc-if>
+            </div>
+            <div style="padding:10px 14px;display:flex;flex-direction:column;gap:8px">
+              <sc-if value="{{ b.hasTeacher }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                  <span style="font-size:12px;font-weight:600;color:#6d7580">Teacher</span>
+                  <span style="font-size:14px;font-weight:700;color:#1a1d21">{{ b.teacher }}</span>
+                  <button onClick="{{ b.togglePick }}" style="margin-left:auto;min-height:36px;padding:0 12px;border:1px solid #cdd1d6;border-radius:3px;background:#ffffff;color:#1e3a4a;font-size:13px;font-weight:600;cursor:pointer">Change</button>
+                </div>
+              </sc-if>
+              <sc-if value="{{ b.noTeacher }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#fdf3d6;border-radius:4px;padding:8px 10px">
+                  <span style="font-size:13px;font-weight:700;color:#6b4b0b;flex:1 1 140px">No teacher yet</span>
+                  <button onClick="{{ b.togglePick }}" style="min-height:40px;padding:0 14px;border:1px solid #c19a3f;border-radius:3px;background:#ffffff;color:#6b4b0b;font-size:13px;font-weight:700;cursor:pointer">Choose teacher</button>
+                </div>
+              </sc-if>
+              <sc-if value="{{ b.picking }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;flex-direction:column;border:1px solid #e2e4e8;border-radius:4px;max-height:220px;overflow:auto">
+                  <sc-for list="{{ b.cands }}" as="c" hint-placeholder-count="4">
+                    <button onClick="{{ c.pick }}" style="display:flex;justify-content:space-between;gap:8px;align-items:center;min-height:40px;padding:0 12px;border:0;border-bottom:1px solid #f0f1f3;background:#ffffff;text-align:left;cursor:pointer;font-size:13px"><span style="font-weight:700;color:#1a1d21">{{ c.name }}</span><span style="color:#6d7580">{{ c.role }}</span></button>
+                  </sc-for>
+                </div>
+              </sc-if>
+            </div>
+          </section>
+        </sc-for>
+
+        <section aria-labelledby="older-h" style="background:#ffffff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.08);overflow:hidden">
+          <div style="background:#f0eeea;border-bottom:2px solid #9c9588;padding:10px 14px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+            <h3 id="older-h" style="margin:0;font-size:16px;font-weight:700;color:#46413a">Merit badge group</h3>
+            <span style="font-size:12.5px;color:#46413a">Teach or take a merit badge</span>
+          </div>
+          <sc-for list="{{ older }}" as="o" hint-placeholder-count="4">
+            <div style="padding:6px 14px;border-bottom:1px solid #f0f1f3;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <span title="{{ o.rank }}" style="flex:1 1 120px;font-size:14px;font-weight:700;{{ o.nameSt }};border-radius:4px;padding:3px 10px;max-width:max-content">{{ o.name }}</span>
+              <div role="group" aria-label="{{ o.groupLabel }}" style="display:inline-flex;border:1px solid #cdd1d6;border-radius:3px;overflow:hidden;margin-left:auto">
+                <button onClick="{{ o.setTeach }}" aria-pressed="{{ o.teachPressed }}" style="min-height:36px;padding:0 12px;border:0;font-size:13px;font-weight:600;cursor:pointer;{{ o.teachSt }}">Teach</button>
+                <button onClick="{{ o.setMb }}" aria-pressed="{{ o.mbPressed }}" style="min-height:36px;padding:0 12px;border:0;border-left:1px solid #cdd1d6;font-size:13px;font-weight:600;cursor:pointer;{{ o.mbSt }}">Merit badge</button>
+              </div>
+            </div>
+          </sc-for>
+          <div style="padding:10px 14px;font-size:13px;color:#3a3f47">{{ mbName }} merit badge · {{ mbCount }} · {{ teachCount }} teaching</div>
+        </section>
+      </div>
+
+      <div style="flex:999 1 640px;min-width:0;display:flex;flex-direction:column;gap:16px">
+        <section aria-labelledby="grid-h" style="background:#ffffff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.08);overflow:hidden">
+          <div style="padding:14px 18px;border-bottom:1px solid #e2e4e8;display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px">
+            <h2 id="grid-h" style="margin:0;font-size:17px;font-weight:700;color:#1a1d21">Scout checklist</h2>
+            <span style="font-size:13px;color:#6d7580">✓ = could work on it this week</span>
+            <div role="group" aria-label="Show" style="margin-left:auto;display:inline-flex;border:1px solid #cdd1d6;border-radius:3px;overflow:hidden">
+              <sc-for list="{{ gridFilters }}" as="f" hint-placeholder-count="2">
+                <button onClick="{{ f.pick }}" aria-pressed="{{ f.pressed }}" style="min-height:36px;padding:0 12px;border:0;border-right:1px solid #e2e4e8;font-size:13px;font-weight:600;cursor:pointer;{{ f.st }}">{{ f.label }}</button>
+              </sc-for>
+            </div>
+            <button onClick="{{ toggleLegend }}" aria-expanded="{{ legendExpanded }}" style="min-height:36px;padding:0 4px;border:0;background:transparent;color:#1e3a4a;font-size:13px;font-weight:600;text-decoration:underline;cursor:pointer">{{ legendLabel }}</button>
+          </div>
+          <sc-if value="{{ legendOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:12px 18px;border-bottom:1px solid #e2e4e8;background:#fafbfc;display:flex;flex-direction:column;gap:10px;font-size:13px">
+              <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+                <span style="font-weight:700;color:#1a1d21;margin-right:4px">Name color = current rank</span>
+                <sc-for list="{{ legendRanks }}" as="l" hint-placeholder-count="6">
+                  <span style="font-weight:700;border-radius:4px;padding:2px 8px;{{ l.st }}">{{ l.name }}</span>
+                </sc-for>
+              </div>
+              <div style="color:#3a3f47">Each section is a group named for the rank its scouts are working on, with that rank's requirements across the top. Names keep their current rank color. A tinted row has nothing assigned: either nothing on offer fits yet, or the scout has finished every requirement on offer.</div>
+            </div>
+          </sc-if>
+          <div style="overflow-x:auto">
+            <sc-for list="{{ sections }}" as="sec" hint-placeholder-count="3">
+              <div style="padding:12px 18px 6px;border-bottom:1px solid #e2e4e8;min-width:max-content">
+                <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px">
+                  <span style="font-size:13px;font-weight:700;border-radius:4px;padding:3px 10px;{{ sec.st }}">{{ sec.name }} group</span>
+                  <span style="font-size:12.5px;color:#6d7580">{{ sec.sub }}</span>
+                </div>
+                <div style="display:grid;align-items:end;min-height:24px;{{ sec.cols }}">
+                  <span></span>
+                  <sc-for list="{{ sec.heads }}" as="h" hint-placeholder-count="4">
+                    <span style="text-align:center;font-size:12px;font-weight:700;color:#1e3a4a" title="{{ h.label }}">{{ h.code }}</span>
+                  </sc-for>
+                  <span style="font-size:12px;font-weight:600;color:#6d7580;padding-left:12px">{{ sec.noteHead }}</span>
+                </div>
+                <sc-for list="{{ sec.rows }}" as="r" hint-placeholder-count="5">
+                  <div style="display:grid;align-items:center;min-height:36px;border-top:1px solid #f0f1f3;{{ sec.cols }};{{ r.rowSt }}">
+                    <span><span title="{{ r.rank }}" style="display:inline-block;font-size:13.5px;font-weight:700;border-radius:4px;padding:3px 10px;{{ r.nameSt }}">{{ r.name }}</span></span>
+                    <sc-for list="{{ r.cells }}" as="c" hint-placeholder-count="4">
+                      <span style="display:flex;justify-content:center"><span role="img" aria-label="{{ c.aria }}" style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:3px;font-size:13px;font-weight:700;box-sizing:border-box;{{ c.st }}">{{ c.mark }}</span></span>
+                    </sc-for>
+                    <span style="font-size:12.5px;padding-left:12px;{{ r.noteSt }}">{{ r.note }}</span>
+                  </div>
+                </sc-for>
+                <sc-if value="{{ sec.empty }}" hint-placeholder-val="{{ false }}">
+                  <div style="font-size:13px;color:#6d7580;padding:6px 0 8px">No one to show here.</div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ isLive }}" hint-placeholder-val="{{ false }}">
+  <main style="max-width:1400px;margin:0 auto;padding:24px 28px 48px;display:flex;flex-direction:column;gap:20px;box-sizing:border-box">
+    <div style="display:flex;flex-wrap:wrap;gap:12px 28px;align-items:baseline">
+      <h2 style="margin:0;font-size:20px;font-weight:700;color:#1a1d21">At the meeting</h2>
+      <span style="font-size:15px;font-weight:700;color:#2e6038;font-variant-numeric:tabular-nums">Here: {{ hereCount }}</span>
+      <span style="font-size:13px;color:#6d7580;flex:1 1 320px;text-align:right">Tap a name to check them in. Edits in Plan show up here right away.</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;align-items:start">
+      <sc-for list="{{ sessions }}" as="s" hint-placeholder-count="5">
+        <section style="background:#ffffff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.08);overflow:hidden">
+          <div style="background:{{ s.bg }};border-bottom:2px solid {{ s.edge }};padding:12px 16px;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline">
+            <h3 style="margin:0;font-size:16px;font-weight:700;color:{{ s.ink }}">{{ s.title }}</h3>
+            <span style="font-size:12.5px;color:{{ s.ink }}">{{ s.sub }}</span>
+            <span style="margin-left:auto;font-size:13px;font-weight:700;color:{{ s.ink }};font-variant-numeric:tabular-nums">{{ s.here }}</span>
+          </div>
+          <div style="padding:10px 16px;font-size:13px;border-bottom:1px solid #f0f1f3;{{ s.teacherSt }}">{{ s.teacher }}</div>
+          <div style="padding:12px 16px;display:flex;flex-wrap:wrap;gap:6px">
+            <sc-for list="{{ s.people }}" as="p" hint-placeholder-count="5">
+              <button onClick="{{ p.toggle }}" aria-pressed="{{ p.pressed }}" style="min-height:40px;padding:0 12px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;{{ p.st }}">{{ p.label }}</button>
+            </sc-for>
+          </div>
+          <sc-if value="{{ s.empty }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:0 16px 12px;font-size:13px;color:#6d7580">No one in this session yet.</div>
+          </sc-if>
+        </section>
+      </sc-for>
+    </div>
+  </main>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"target":{"editor":"range","min":40,"max":90,"step":5,"unit":"%","default":60},"$preview":{"width":1440,"height":2800}}'>
+const ROSTER=[["Adi A","Scout"],["Anjali S","Star"],["Aubrey R","First Class"],["Ben B","Scout"],["Damian N","Second Class"],["Eloise L","First Class"],["Emory M","Second Class"],["Finn P","Star"],["Fiona K","Tenderfoot"],["Hadley B","Second Class"],["Hazel S","Tenderfoot"],["Henry E","Life"],["Isaac H","Second Class"],["Jack P","Second Class"],["Jameson K","Life"],["Kevin P","Tenderfoot"],["Lee P","Second Class"],["Lily P","Tenderfoot"],["Lucy L","Second Class"],["Miren G","Tenderfoot"],["Oliver K","Second Class"],["Oliver P","Second Class"],["Oliver V","Second Class"],["Oscar B","Scout"],["Owen R","Star"],["Piper K","Tenderfoot"],["Quinn B","Tenderfoot"],["Robbie H","First Class"],["Simon P","Tenderfoot"],["Solomon R","Second Class"],["Todd M","First Class"],["Veronica K","Star"],["Violet B","New"],["Winnie B","New"]];
+const ADULTS=[{name:"Patrick B",skills:["compass"]},{name:"Alex S",skills:["fire"]},{name:"Jenna M",skills:["knots","fa"]},{name:"Dan V",skills:["fa","compass"]},{name:"Mike T",skills:["fire"]},{name:"Sara L",skills:["knots"]},{name:"Karen O",skills:["fa"]},{name:"Rachel D",skills:["fa","knots","flag"]},{name:"Ben W",skills:["fa","fire"]},{name:"Chris N",skills:["fa","compass","fire"]},{name:"Mark F",skills:["fa","knots","fire","meal"]},{name:"Steve R",skills:["fa","fire","knots"]},{name:"Joe M",skills:["fire","compass"]}];
+const HELD={"New":-1,"Scout":0,"Tenderfoot":1,"Second Class":2,"First Class":3,"Star":4,"Life":5};
+const RANK_NAME=["Scout","Tenderfoot","Second Class","First Class","Star","Life","Eagle"];
+const RANK_SHORT=["Scout","TF","2C","FC","Star","Life","Eagle"];
+const RANK_COLORS={"New":{bg:"#ffffff",ink:"#3a3f47"},"Scout":{bg:"#eaf1f6",ink:"#274d69"},"Tenderfoot":{bg:"#d6efef",ink:"#186e72"},"Second Class":{bg:"#eef5eb",ink:"#2c5a27"},"First Class":{bg:"#f8f0dc",ink:"#6b4b0b"},"Star":{bg:"#ece0f0",ink:"#6b3f7a"},"Life":{bg:"#e6e6ea",ink:"#4a4a5a"},"Eagle":{bg:"#1e3a4a",ink:"#ffffff"}};
+// Groups are named for the rank a scout is working on; the Merit badge group holds First Class and up.
+const BANDS=[
+  {id:"g0",name:"Scout",works:0,counted:true,sub:"New scouts",bg:"#eaf1f6",ink:"#274d69",edge:"#6f95b3"},
+  {id:"g1",name:"Tenderfoot",works:1,counted:true,sub:"Have Scout rank",bg:"#d6efef",ink:"#186e72",edge:"#5aa6a8"},
+  {id:"g2",name:"Second Class",works:2,counted:true,sub:"Have Tenderfoot",bg:"#eef5eb",ink:"#2c5a27",edge:"#6f9a60"},
+  {id:"g3",name:"First Class",works:3,counted:true,sub:"Have Second Class",bg:"#f8f0dc",ink:"#6b4b0b",edge:"#c19a3f"},
+  {id:"g4",name:"Merit badge",works:4,counted:false,sub:"First Class, Star and Life",bg:"#f0eeea",ink:"#46413a",edge:"#9c9588"}];
+const bandOf=r=>BANDS[Math.min(HELD[r]+1,4)];
+// Sample scouts who have finished every Scout–First Class requirement on offer.
+const COMPLETE=["Kevin P","Lucy L"];
+const CATL={
+  0:["1a|Scout Oath, Law, motto and slogan","1b|Scout spirit","1c|Sign, salute and handshake","1d|First Class badge","1e|Outdoor Code","1f|Pledge of Allegiance","2a|Troop leadership","2b|Four steps of advancement","2c|The ranks","2d|Merit badges","3a|Patrol method","3b|Patrol spirit","4a|Square knot, two half hitches, taut-line","4b|Care of rope","5|Pocket knife safety","6|Cyber Chip and abuse prevention","7|Scoutmaster conference"],
+  1:["1a|Pack for an overnight campout","1b|Pitch your own tent","1c|Practice the Outdoor Code","2a|Help prepare a campout meal","2b|Clean up after a meal safely","2c|Eat as a patrol","3a|Use the square knot","3b|Use two half hitches","3c|Use the taut-line hitch","3d|Knife, saw and ax care","4a|First aid for Tenderfoot","4b|Poisonous and hazardous plants","4c|Safety on campouts","4d|Make a first aid kit","5a|Buddy system on an outing","5b|What to do if you're lost","5c|Rules of safe hiking","6a|Fitness test","6b|30-day fitness plan","6c|Fitness retest","7a|Flag: display, raise, lower, fold","7b|1 hour of service","8|Teach the square knot (EDGE)","9|Scout Spirit and the Scout Law"],
+  2:["1a|5 troop activities","1b|Explain Leave No Trace","1c|Pick a patrol site, pitch a tent","2a|When to use a cooking fire","2b|Tinder, kindling and fuel","2c|Build a fire","2d|Backpacking stove safety","2e|Cook a hot breakfast","2f|Sheet bend and its use","2g|Bowline and its use","3a|Orient and read a map","3b|5-mile compass hike","3c|Hike hazards","3d|Find directions day and night","4|Signs of 10 wild animals","5a|Safe swim precautions","5b|Beginner swim test","5c|Water rescue","5d|Dangers of swimmer rescue","6a|First aid for Second Class","6b|Breathing, stroke, poison, bleeding","6c|Reduce injuries on campouts","6d|Emergencies at home and in the wild","6e|Car accident response","7a|Fitness","7b|Fitness challenges","7c|Drugs, alcohol and tobacco","8a|Lead a flag ceremony","8b|Flag folding and respect","8c|Budget to earn an item","8d|Shop for the item","8e|2 more hours of service","9a|Three R's of personal safety","9b|Bullying"],
+  3:["1a|10 troop activities","1b|Explain Tread Lightly","2a|Plan meals for a campout","2b|Budget and buy food","2c|Pots, pans and utensils","2d|Safe food handling","2e|Cook and supervise","3a|Discuss lashings","3b|Timber hitch and clove hitch","3c|Demonstrate three lashings","3d|Make a camp gadget","4a|1-mile orienteering course","4b|Geocache with a GPS","5a|Identify 10 native plants","5b|Weather forecast","5c|Signs of bad weather","5d|Extreme weather risks","6a|BSA swim test","6b|Safe trip afloat","6c|Parts of a canoe or kayak","6d|Position in a watercraft","6e|Line rescue","7a|First aid for First Class","7b|Transport an injured person","7c|Heart attack signs and CPR","7d|Utility hazards at home","7e|Home emergency plan","7f|Getting safe drinking water","8a|30-day fitness","8b|Fitness goals","9a|Rights and duties, with an official","9b|Investigate an environmental issue","9c|Track waste and plan to reduce","9d|3 more hours of service","10|Tell a friend about Scouts"]};
+const CAT={};[0,1,2,3].forEach(r=>{CAT[r]=CATL[r].map(s=>{const i=s.indexOf("|");return [s.slice(0,i),s.slice(i+1)];});});
+const labelOf=(r,c)=>{const x=CAT[r].find(e=>e[0]===c);return x?x[1]:c;};
+const FOCUS_SETS=[
+  {id:"fa",name:"First aid",labels:["First aid","Fall"],used:"Oct 11",skills:["fa"],mb:"First Aid",reqs:{1:["4a","4b","4c","4d"],2:["6a","6b","6c","6d","6e"],3:["7a","7b","7c","7d","7e","7f"]}},
+  {id:"kn",name:"Knots and lashings",labels:["Outdoor skills","Fall"],used:"Sep 27",skills:["knots"],mb:"Pioneering",reqs:{0:["4a","4b"],1:["3a","3b","3c","8"],2:["2f","2g"],3:["3a","3b","3c","3d"]}},
+  {id:"ca",name:"Camping",labels:["Outdoor skills","Campout prep"],used:"",skills:["fire","meal"],mb:"Camping",reqs:{0:["1e"],1:["1a","1b","1c"],2:["1b","1c","2a","2b","2c","2d"],3:["1b"]}},
+  {id:"co",name:"Camp cooking",labels:["Campout prep"],used:"",skills:["meal","fire"],mb:"Cooking",reqs:{1:["2a","2b","2c"],2:["2e"],3:["2a","2b","2c","2d","2e"]}},
+  {id:"ci",name:"Citizenship",labels:["Ceremonies"],used:"",skills:["flag"],mb:"Citizenship in the Community",reqs:{0:["1f"],1:["7a"],2:["8a","8b"],3:["9a","9b"]}},
+  {id:"fl",name:"Flags and ceremonies",labels:["Ceremonies"],used:"Oct 4",skills:["flag"],mb:"Citizenship in the Nation",reqs:{0:["1c","1f"],1:["7a"],2:["8a","8b"],3:[]}},
+  {id:"na",name:"Navigation",labels:["Outdoor skills"],used:"",skills:["compass"],mb:"Orienteering",reqs:{1:["5b","5c"],2:["3a","3c","3d"],3:["4a","4b"]}},
+  {id:"fi",name:"Fitness",labels:["Indoor night"],used:"",skills:[],mb:"Personal Fitness",reqs:{1:["6a","6b","6c"],2:["7a","7b","7c"],3:["8a","8b"]}},
+  {id:"nw",name:"Nature and weather",labels:["Outdoor skills","Spring"],used:"",skills:[],mb:"Weather",reqs:{1:["4b"],2:["4"],3:["5a","5b","5c","5d"]}},
+  {id:"aq",name:"Swimming and boating",labels:["Summer"],used:"Jul 12",skills:[],mb:"Swimming",reqs:{1:[],2:["5a","5b","5c","5d"],3:["6a","6b","6c","6d","6e"]}},
+  {id:"ps",name:"Personal safety",labels:["Indoor night"],used:"",skills:["fa"],mb:"Safety",reqs:{0:["5","6"],1:["5a"],2:["7c","9a","9b"],3:["7d","7e"]}}];
+const hv=s=>{let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0)%100;};
+const pace=n=>18+hv(n+"pace")*0.6;
+const isDone=(n,rank,code,works)=>COMPLETE.includes(n)&&rank<=3?true:rank<works?true:rank===works?hv(n+rank+code)<pace(n):hv(n+rank+code)<6;
+const rsvpOf=n=>{const v=hv(n+"rsvp");return v<58?"Coming":v<72?"Not sure":v<82?"Can't come":"No answer";};
+const codesFor=(T,rank)=>{const set=new Set();T.forEach(t=>(t.reqs[rank]||[]).forEach(c=>set.add(c)));return (CAT[rank]||[]).map(e=>e[0]).filter(c=>set.has(c));};
+const PILL_ON="background:#1e3a4a;color:#ffffff;border-color:#1e3a4a";
+const PILL_OFF="background:#ffffff;color:#1e3a4a;border-color:#cdd1d6";
+const rc=r=>"background:"+RANK_COLORS[r].bg+";color:"+RANK_COLORS[r].ink+(r==="New"?";box-shadow:inset 0 0 0 1px #9ba1aa":"");
+const rankLabel=r=>r==="New"?"New scout":r;
+
+class Component extends DCLogic {
+  state={view:"plan",sets:FOCUS_SETS,sel:["fa"],setsOpen:false,q:"",lab:null,builder:false,dName:"",dLabels:[],newLabel:"",dItems:[],dq:"",dRank:-1,saveTried:false,
+    mb:null,fills:{},older:{"Anjali S":"teach","Henry E":"teach"},teachers:{g0:"Jenna M"},picking:null,here:{},snap:null,snaps:0,gridFilter:"all",legend:false};
+  sig(){const s=this.state;return JSON.stringify([s.sel,s.mb,s.fills,s.older,s.teachers]);}
+  renderVals(){
+    const st=this.state;
+    const T=st.sel.map(id=>st.sets.find(t=>t.id===id)).filter(Boolean);
+    const themeName=T.length?T.map(t=>t.name).join(" + "):"No focus yet";
+    const mbList=[...new Set(st.sets.map(t=>t.mb))];
+    const mbName=st.mb||(T[0]?T[0].mb:mbList[0]);
+    const skills=T.flatMap(t=>t.skills);
+
+    // Each scout: open work at their own rank, and at the next rank if they're done.
+    const people=ROSTER.map(([name,rank])=>{
+      const b=bandOf(rank), rsvp=rsvpOf(name), idx=BANDS.indexOf(b);
+      if(!b.counted) return {name,rank,b,place:b,rsvp,older:true,open:[],up:[],checks:[],f:null};
+      const open=codesFor(T,b.works).filter(c=>!isDone(name,b.works,c,b.works));
+      const nb=BANDS[idx+1];
+      const up=nb.counted?codesFor(T,nb.works).filter(c=>!isDone(name,nb.works,c,b.works)):[];
+      const f=(name in st.fills)?st.fills[name]:(open.length?null:(up.length?"up":null));
+      const moved=!open.length&&f==="up"&&up.length>0;
+      return {name,rank,b,nb,place:moved?nb:b,moved,rsvp,older:false,open,up,checks:moved?up:open,f:open.length?null:f};
+    });
+    const counted=people.filter(p=>!p.older);
+    const nothing=counted.filter(p=>!p.checks.length&&!p.f);
+    const rankWork=counted.filter(p=>p.checks.length).length;
+    const something=rankWork+counted.filter(p=>!p.checks.length&&p.f).length;
+    const pct=counted.length?Math.round(rankWork/counted.length*100):0;
+
+    const chip=p=>{
+      const css=p.rsvp==="Coming"?"background:#e3eee5;color:#2e6038;border:1px solid #cfe2d3":p.rsvp==="Can't come"?"background:#f0f1f3;color:#6d7580;border:1px solid #e2e4e8":"background:#ffffff;color:#1a1d21;border:1px solid #cdd1d6";
+      return {label:p.name,st:css};
+    };
+    const older=people.filter(p=>p.older);
+    const olderTeach=older.filter(p=>st.older[p.name]==="teach");
+    const olderMb=older.filter(p=>st.older[p.name]!=="teach");
+    const candidates=[...ADULTS.filter(a=>a.skills.some(s=>skills.includes(s))).map(a=>({name:a.name,role:"Adult"})),...olderTeach.map(p=>({name:p.name,role:"Scout instructor · "+p.rank}))];
+    const bandCards=BANDS.filter(b=>b.counted).map(b=>{
+      const members=counted.filter(p=>p.place===b&&p.checks.length);
+      const reqs=codesFor(T,b.works).map(c=>({code:c,label:labelOf(b.works,c),need:members.filter(p=>p.checks.includes(c)).length+" need it"}));
+      const teacher=st.teachers[b.id]; const picking=st.picking===b.id;
+      return {id:b.id,name:b.name,works:b.sub,rankName:RANK_NAME[b.works],bg:b.bg,ink:b.ink,edge:b.edge,
+        count:members.length+(members.length===1?" scout":" scouts"),members,
+        scouts:members.map(chip),empty:members.length===0,reqs,noReqs:reqs.length===0,
+        hasTeacher:!!teacher,noTeacher:!teacher&&members.length>0,teacher:teacher||"",picking,
+        cands:candidates.map(c=>({name:c.name,role:c.role,pick:()=>this.setState({teachers:{...st.teachers,[b.id]:c.name},picking:null})})),
+        togglePick:()=>this.setState({picking:picking?null:b.id})};
+    }).filter(b=>b.members.length>0);
+
+    // Checklist grid: one section per group, the group's requirement codes as column heads.
+    const sections=BANDS.filter(b=>people.some(p=>p.place===b)).map(b=>{
+      const heads=b.counted?codesFor(T,b.works).map(c=>({code:c,label:RANK_SHORT[b.works]+" "+c+": "+labelOf(b.works,c)})):[];
+      const cols="grid-template-columns:190px"+(heads.length?" repeat("+heads.length+",34px)":"")+" minmax(160px,1fr)";
+      let rows=people.filter(p=>p.place===b);
+      if(st.gridFilter==="none") rows=rows.filter(p=>!p.older&&!p.checks.length&&!p.f);
+      rows=rows.sort((a,c)=>a.name.localeCompare(c.name)).map(p=>{
+        let note="",noteSt="color:#6d7580";
+        if(p.older){ note=st.older[p.name]==="teach"?"Teaching":mbName+" merit badge"; noteSt="color:#46413a"; }
+        else if(p.moved) note="";
+        else if(!p.checks.length){ if(p.f==="req"){note="From requests and offers";noteSt="color:#2e6038;font-weight:600";} else if(p.f==="teach"){note="Helps teach";noteSt="color:#2e6038;font-weight:600";} else {note=p.up.length||p.open.length?"Nothing assigned":"Nothing assigned · every offered requirement is done";noteSt="color:#86391a;font-weight:700";} }
+        return {name:p.name,rank:rankLabel(p.rank),nameSt:rc(p.rank),note,noteSt,
+          rowSt:(!p.older&&!p.checks.length&&!p.f)?"background:#f8ebe4":"",
+          cells:heads.map(h=>{const on=p.checks.includes(h.code);return {mark:on?"✓":"",aria:h.code+(on?" open":" signed off or not offered"),st:on?"background:#1e3a4a;color:#ffffff;border:1px solid #1e3a4a":"background:#ffffff;border:1px solid #cdd1d6"};})};
+      });
+      const allRows=people.filter(p=>p.place===b);
+      const none=allRows.filter(p=>!p.older&&!p.checks.length&&!p.f).length;
+      return {name:b.name,st:"background:"+b.bg+";color:"+b.ink,cols,heads,rows,empty:rows.length===0,
+        noteHead:b.counted?"":"Plan",
+        sub:b.sub+" · "+allRows.length+" scouts"+(none?" · "+none+" with nothing assigned":"")};
+    });
+
+    const gaps=counted.filter(p=>!p.open.length);
+    const gapRows=gaps.map(p=>{
+      const opts=[];
+      if(p.up.length) opts.push({k:"up",label:"Join the "+p.nb.name+" group · "+p.up.length+" open",st:"border:1px solid #1e3a4a;background:#1e3a4a;color:#ffffff"});
+      opts.push({k:"req",label:"Requests and offers",st:"border:1px solid #cdd1d6;background:#ffffff;color:#1e3a4a"});
+      opts.push({k:"teach",label:"Help teach",st:"border:1px solid #cdd1d6;background:#ffffff;color:#1e3a4a"});
+      const f=p.f;
+      const chosen=!f?"":f==="up"?"Joins the "+p.nb.name+" group":f==="req"?"From requests and offers":"Helps teach "+themeName;
+      return {name:p.name,rank:p.rank,nameSt:rc(p.rank),why:"Done with "+themeName+" for "+RANK_NAME[p.b.works],open:!f,done:!!f,chosen,
+        opts:opts.map(o=>({label:o.label,st:o.st,pick:()=>this.setState({fills:{...st.fills,[p.name]:o.k}})})),
+        change:()=>this.setState({fills:{...st.fills,[p.name]:null}})};
+    });
+
+    const olderRows=older.map(p=>{const c=st.older[p.name]||"mb";return {name:p.name,rank:rankLabel(p.rank),nameSt:rc(p.rank),groupLabel:p.name+": teach or merit badge",
+      teachPressed:c==="teach"?"true":"false",mbPressed:c==="mb"?"true":"false",
+      teachSt:c==="teach"?"background:#1e3a4a;color:#ffffff":"background:#ffffff;color:#1e3a4a",
+      mbSt:c==="mb"?"background:#3d7a4a;color:#ffffff":"background:#ffffff;color:#2e6038",
+      setTeach:()=>this.setState({older:{...st.older,[p.name]:"teach"}}),setMb:()=>this.setState({older:{...st.older,[p.name]:"mb"}})};});
+
+    // Focus set picker
+    const q=st.q.trim().toLowerCase();
+    const allLabels=[...new Set(st.sets.flatMap(s=>s.labels))];
+    const setRows=st.sets.filter(s=>(!st.lab||s.labels.includes(st.lab))&&(!q||(s.name+" "+s.labels.join(" ")).toLowerCase().includes(q))).map(s=>{
+      const on=st.sel.includes(s.id); const n=[0,1,2,3].reduce((a,r)=>a+(s.reqs[r]||[]).length,0);
+      return {name:s.name,meta:s.labels.join(" · ")+" · "+n+" requirements · "+(s.used?"Last used "+s.used:"Not used yet"),
+        pressed:on?"true":"false",btn:on?"✓ Added":"Add",st:on?"background:#3d7a4a;color:#ffffff;border-color:#3d7a4a":PILL_OFF,
+        toggle:()=>this.setState({sel:on?st.sel.filter(x=>x!==s.id):[...st.sel,s.id],fills:{},picking:null})};
+    });
+
+    // Add a focus set builder
+    const dq=st.dq.trim().toLowerCase();
+    const results=[0,1,2,3].filter(r=>st.dRank<0||st.dRank===r).flatMap(r=>CAT[r].map(([c,l])=>({r,c,l})))
+      .filter(x=>!dq||(RANK_SHORT[x.r]+" "+x.c+" "+x.c+" "+x.l).toLowerCase().includes(dq)).slice(0,60).map(x=>{
+        const key=x.r+"|"+x.c, on=st.dItems.includes(key);
+        return {code:RANK_SHORT[x.r]+" "+x.c,label:x.l,st:rc(RANK_NAME[x.r]),pressed:on?"true":"false",btn:on?"✓ Added":"Add",
+          btnSt:on?"background:#3d7a4a;color:#ffffff;border-color:#3d7a4a":PILL_OFF,
+          toggle:()=>this.setState({dItems:on?st.dItems.filter(k=>k!==key):[...st.dItems,key]})};
+      });
+    const dGroups=[0,1,2,3].map(r=>{
+      const items=st.dItems.filter(k=>k.startsWith(r+"|")).map(k=>k.split("|")[1]);
+      return {name:RANK_NAME[r],n:items.length,st:rc(RANK_NAME[r]),items:CAT[r].filter(e=>items.includes(e[0])).map(([c,l])=>({code:c,label:l,removeLabel:"Remove "+RANK_SHORT[r]+" "+c,remove:()=>this.setState({dItems:st.dItems.filter(k=>k!==r+"|"+c)})}))};
+    }).filter(g=>g.n>0);
+    const errs=[]; if(!st.dName.trim()) errs.push("Name the focus set"); if(!st.dItems.length) errs.push("Add at least one requirement");
+
+    const person=(name)=>{const on=!!st.here[name];
+      return {label:(on?"✓ ":"")+name,pressed:on?"true":"false",
+        st:on?"border:1px solid #3d7a4a;background:#3d7a4a;color:#ffffff":"border:1px solid #cdd1d6;background:#ffffff;color:#1a1d21",
+        toggle:()=>this.setState({here:{...st.here,[name]:!on}})};};
+    const hereIn=list=>list.filter(n=>st.here[n]).length+" of "+list.length+" here";
+    const helpers=counted.filter(p=>!p.checks.length&&p.f==="teach"), fromReq=counted.filter(p=>!p.checks.length&&p.f==="req");
+    const sessions=[
+      ...bandCards.map(b=>{const names=b.members.map(x=>x.name);return {title:b.name+" group",sub:themeName,bg:b.bg,ink:b.ink,edge:b.edge,
+        teacher:b.teacher?"Teacher: "+b.teacher:"No teacher yet",teacherSt:b.teacher?"color:#1a1d21;font-weight:600":"color:#6b4b0b;font-weight:700;background:#fdf3d6",
+        people:names.map(person),here:hereIn(names),empty:names.length===0};}),
+      {title:mbName+" merit badge",sub:"Merit badge group",bg:"#e3eee5",ink:"#2e6038",edge:"#3d7a4a",teacher:"Counselor: set when known",teacherSt:"color:#6d7580",
+        people:olderMb.map(p=>person(p.name)),here:hereIn(olderMb.map(p=>p.name)),empty:olderMb.length===0},
+      {title:"Helping teach",sub:themeName,bg:"#f0eeea",ink:"#46413a",edge:"#9c9588",teacher:"Older scouts and anyone done with the focus",teacherSt:"color:#6d7580",
+        people:[...olderTeach,...helpers].map(p=>person(p.name)),here:hereIn([...olderTeach,...helpers].map(p=>p.name)),empty:olderTeach.length+helpers.length===0},
+      {title:"From requests and offers",sub:"Other sessions",bg:"#eaf1f6",ink:"#274d69",edge:"#6f95b3",teacher:"Placed from the requests and offers list",teacherSt:"color:#6d7580",
+        people:fromReq.map(p=>person(p.name)),here:hereIn(fromReq.map(p=>p.name)),empty:fromReq.length===0}];
+
+    const sig=this.sig(); const changed=st.snap&&st.snap!==sig;
+    const weeks=[{date:"Sun, Nov 1",theme:themeName,cur:true},{date:"Sun, Nov 8",theme:"Knots and lashings"},{date:"Sun, Nov 15",theme:"Camping + Citizenship"},{date:"Sun, Nov 22",theme:"Not planned yet"}].map(w=>({date:w.date,theme:w.theme,st:w.cur?"background:#1e3a4a;color:#ffffff;border:1px solid #1e3a4a":"background:#ffffff;color:#1e3a4a;border:1px solid #cdd1d6"}));
+    const vb=(k,label)=>({label,pressed:st.view===k?"true":"false",st:st.view===k?"background:#1e3a4a;color:#ffffff":"background:#ffffff;color:#1e3a4a",pick:()=>this.setState({view:k,picking:null,setsOpen:false})});
+    const gf=(k,label)=>({label,pressed:st.gridFilter===k?"true":"false",st:st.gridFilter===k?"background:#1e3a4a;color:#ffffff":"background:#ffffff;color:#1e3a4a",pick:()=>this.setState({gridFilter:k})});
+    return {
+      themeName,
+      viewBtns:[vb("plan","Plan"),vb("live","Live at the meeting")],
+      isPlan:st.view==="plan",isLive:st.view==="live",
+      publish:()=>this.setState({snap:sig,snaps:st.snaps+1}),
+      publishLabel:!st.snap?"Publish snapshot":changed?"Publish new snapshot":"Published",
+      publishDisabled:!!st.snap&&!changed,
+      hasSnap:!!st.snap,
+      snapText:changed?"The plan has changed since snapshot "+st.snaps+" went out. Families still see the earlier version until you publish again.":"✓ Snapshot "+st.snaps+" published to families just now. The plan can keep changing.",
+      snapBarSt:changed?"background:#fdf3d6;color:#6b4b0b":"background:#f0f6f1;color:#2e6038",
+      weeks,
+
+      toggleSets:()=>this.setState({setsOpen:!st.setsOpen}),setsOpen:st.setsOpen,setsExpanded:st.setsOpen?"true":"false",
+      selChips:T.map(t=>({name:t.name,removeLabel:"Remove "+t.name,remove:()=>this.setState({sel:st.sel.filter(x=>x!==t.id),fills:{},picking:null})})),
+      noSel:T.length===0,
+      q:st.q,onQ:e=>this.setState({q:e.target.value}),
+      labelPills:[{name:"All",on:!st.lab,v:null},...allLabels.map(l=>({name:l,on:st.lab===l,v:l}))].map(l=>({name:l.name,pressed:l.on?"true":"false",st:l.on?PILL_ON:PILL_OFF,pick:()=>this.setState({lab:l.v})})),
+      setRows,noSetRows:setRows.length===0,
+      openBuilder:()=>this.setState({builder:true,setsOpen:false}),
+      builderOpen:st.builder,
+      dName:st.dName,onDName:e=>this.setState({dName:e.target.value}),
+      nameBad:st.saveTried&&!st.dName.trim()?"true":"false",
+      nameSt:st.saveTried&&!st.dName.trim()?"border:2px solid #c0392b;background:#fdf0ef":"border:1px solid #cdd1d6",
+      dLabels:st.dLabels.map(l=>({name:l,removeLabel:"Remove label "+l,remove:()=>this.setState({dLabels:st.dLabels.filter(x=>x!==l)})})),
+      newLabel:st.newLabel,onNewLabel:e=>this.setState({newLabel:e.target.value}),
+      addLabel:()=>{const v=st.newLabel.trim(); if(v&&!st.dLabels.includes(v)) this.setState({dLabels:[...st.dLabels,v],newLabel:""});},
+      dq:st.dq,onDq:e=>this.setState({dq:e.target.value}),
+      rankPills:[[-1,"All ranks"],[0,"Scout"],[1,"Tenderfoot"],[2,"Second Class"],[3,"First Class"]].map(([v,n])=>({name:n,pressed:st.dRank===v?"true":"false",st:st.dRank===v?PILL_ON:PILL_OFF,pick:()=>this.setState({dRank:v})})),
+      results,dGroups,dCount:st.dItems.length+(st.dItems.length===1?" requirement":" requirements"),dEmpty:st.dItems.length===0,
+      hasSaveErr:st.saveTried&&errs.length>0,saveErr:"Can't save yet: "+(errs[0]||"")+(errs.length>1?" (+"+(errs.length-1)+" more)":""),
+      saveSet:()=>{
+        if(errs.length){this.setState({saveTried:true});return;}
+        const id="u"+(st.sets.length+1); const reqs={0:[],1:[],2:[],3:[]};
+        st.dItems.forEach(k=>{const [r,c]=k.split("|");reqs[r].push(c);});
+        const s={id,name:st.dName.trim(),labels:st.dLabels.length?st.dLabels:["New"],used:"",skills:[],mb:mbName,reqs};
+        this.setState({sets:[...st.sets,s],sel:[...st.sel,id],builder:false,dName:"",dLabels:[],dItems:[],dq:"",dRank:0,newLabel:"",saveTried:false,fills:{}});
+      },
+      cancelBuilder:()=>this.setState({builder:false,saveTried:false}),
+
+      mbBtns:mbList.map(m=>{const on=m===mbName;return {name:m,pressed:on?"true":"false",st:on?"background:#3d7a4a;color:#ffffff;border-color:#3d7a4a":"background:#ffffff;color:#2e6038;border-color:#cdd1d6",pick:()=>this.setState({mb:m})};}),
+
+      pct,pctW:pct+"%",somethingW:(counted.length?Math.round(something/counted.length*100):0)+"%",
+      rankWork,counted:counted.length,nothingCount:nothing.length,
+      noTeacherCount:bandCards.filter(b=>b.noTeacher).length,
+      bandCards,sections,
+      gridFilters:[gf("all","Everyone"),gf("none","Nothing assigned · "+nothing.length)],
+      toggleLegend:()=>this.setState({legend:!st.legend}),legendOpen:st.legend,legendExpanded:st.legend?"true":"false",legendLabel:st.legend?"Hide legend":"Legend",
+      legendRanks:Object.keys(RANK_COLORS).map(r=>({name:rankLabel(r),st:rc(r)})),
+      gapRows,noGaps:gaps.length===0,
+      gapSummary:gaps.length+" scouts · "+nothing.length+" not placed",
+      older:olderRows,teachCount:olderTeach.length,mbCount:olderMb.length+(olderMb.length===1?" scout":" scouts"),mbName,
+      sessions,hereCount:Object.values(st.here).filter(Boolean).length
+    };
+  }
+}
+</script>
+</body>
+</html>
