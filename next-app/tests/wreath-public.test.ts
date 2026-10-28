@@ -6,7 +6,7 @@ import { adminClient } from './helpers/admin-client';
 import { makeWreathFixture, NOW_R1, type WreathFixture } from './helpers/wreath-fixture';
 import { placeOrder } from '../src/lib/wreaths/place-order';
 import { canonicalSlug, loadConfirmation, loadCurrentSale, loadStoreItems, resolveScoutLink } from '../src/lib/wreaths/public';
-import { customerConfirmationEmail, greetingName, scoutNoticeEmail } from '../src/lib/wreaths/emails';
+import { cardPaidEmail, customerConfirmationEmail, greetingName, scoutNoticeEmail } from '../src/lib/wreaths/emails';
 
 /**
  * Wreath sale, Release A — what the public may see (Plans/Wreath-Sale.md, Privacy): no customer address, phone
@@ -227,6 +227,21 @@ describe('emails', () => {
   it('ConfirmationEmail_SaysTheCustomerIsPayingByCard_WhenTheyChoseCard', () => {
     const { text } = customerConfirmationEmail({ ...ctx, payByCard: true });
     expect(text).toContain('by card');
+  });
+
+  it('CardPaidEmail_SaysPaidByCreditCard_WithTheAmount', () => {
+    const { text, subject } = cardPaidEmail({ ...ctx, paid: 57 });
+    expect([subject, text.includes('Paid by credit card — $57.00')]).toEqual(['Paid by credit card: Troop 79 wreath order W-1099', true]);
+  });
+
+  it('CardPaidEmail_NamesNoOtherWayToPay', () => {
+    const { text } = cardPaidEmail({ ...ctx, paid: 57 });
+    expect(text).not.toMatch(/venmo|paypal|not paid/i);
+  });
+
+  it('CardPaidEmail_Copy_SaysItIsACopy', () => {
+    const { text, subject } = cardPaidEmail({ ...ctx, paid: 57 }, { sentTo: 'Pat Buyer' });
+    expect([/^Copy: /.test(subject), text.split('\n')[0].startsWith('Copy for the troop')]).toEqual([true, true]);
   });
 
   it('ScoutNoticeEmail_EscapesCustomerInput_AndNamesTheDelivery', () => {

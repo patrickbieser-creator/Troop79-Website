@@ -441,6 +441,62 @@ describe('handleStripeEvent — payments', () => {
   });
 });
 
+// Patrick, 2026-10-27: once Stripe confirms, the customer gets "Paid by credit card" from the troop.
+describe('handleStripeEvent — paid by credit card email', () => {
+  const mail = vi.fn(async () => ({ status: 'sent', to: [] as string[] }));
+  const mailed = () => mail.mock.calls.map((c) => (c as unknown as [{ to: string[]; subject: string; text: string }])[0]);
+  const withMail = (s: StripeLike) => ({ ...deps(s), send: mail, replyTo: 'troop@example.test' });
+  async function openSession() {
+    const o = await makeOrder();
+    const s = fakeStripe();
+    await startCardCheckout({ token: o.public_token, coverFee: false }, deps(s));
+    const session = s.sessions.get((await orderRow(o.id)).stripe_session_id!)!;
+    const { data } = await admin.from('wreath_orders').select('customer_email').eq('id', o.id).single();
+    return { o, s, session, email: (data as { customer_email: string }).customer_email };
+  }
+  beforeAll(async () => {
+    await admin.from('wreath_sales').update({ order_cc: ['treasurer@example.test'] }).eq('id', fx.saleId);
+  });
+  afterAll(async () => {
+    await admin.from('wreath_sales').update({ order_cc: [] }).eq('id', fx.saleId);
+  });
+
+  it('PaidEmail_GoesToTheCustomer_OnceTheCardPaymentIsRecorded', async () => {
+    const { s, session, email } = await openSession();
+    mail.mockClear();
+    await handleStripeEvent(completed(session), withMail(s));
+    expect(mailed().filter((m) => m.to.includes(email)).map((m) => m.subject)).toEqual([expect.stringMatching(/^Paid by credit card: /)]);
+  });
+
+  it('PaidEmail_OrderCopies_GetTheirOwnCopy', async () => {
+    const { s, session } = await openSession();
+    mail.mockClear();
+    await handleStripeEvent(completed(session), withMail(s));
+    expect(mailed().find((m) => m.to.includes('treasurer@example.test'))?.subject).toMatch(/^Copy: /);
+  });
+
+  it('PaidEmail_IsNotSentAgain_WhenStripeConfirmsTheSamePaymentTwice', async () => {
+    const { s, session } = await openSession();
+    await handleStripeEvent(completed(session), withMail(s));
+    mail.mockClear();
+    const again = { ...completed(session), type: 'checkout.session.async_payment_succeeded' };
+    expect([await handleStripeEvent(again, withMail(s)), mail.mock.calls.length]).toEqual(['already_paid', 0]);
+  });
+
+  it('PaidEmail_IsNotSent_WhenThePaymentIsFlaggedForARefund', async () => {
+    const { s, session } = await openSession();
+    mail.mockClear();
+    await handleStripeEvent(completed(session, { amount_total: 1 }), withMail(s));
+    expect(mail).not.toHaveBeenCalled();
+  });
+
+  it('PaidEmail_ThatFailsToSend_StillRecordsThePayment', async () => {
+    const { o, s, session } = await openSession();
+    const broken = { ...withMail(s), send: async () => { throw new Error('resend down'); } };
+    expect([await handleStripeEvent(completed(session), broken), (await orderRow(o.id)).payment_status]).toEqual(['paid', 'paid']);
+  });
+});
+
 describe('handleStripeEvent — refunds', () => {
   async function paidOrder() {
     const o = await makeOrder();

@@ -2,6 +2,7 @@ import Stripe from 'stripe';
 import { createAdminClient } from '@/lib/supabase/server';
 import { siteUrl } from '@/lib/site-url';
 import { centralToday } from '@/lib/dates';
+import { sendEmail, troopEmail } from '@/lib/email';
 import { closeCheckoutForCancel, expireOpenCheckout, type CardDeps, type StripeLike } from './card-payments';
 
 /**
@@ -42,7 +43,9 @@ export function cardDeps(): CardDeps {
     stripe: stripeClient() as unknown as StripeLike,
     live: cardCheckoutLive(),
     siteUrl: siteUrl(),
-    today: centralToday
+    today: centralToday,
+    send: (m) => sendEmail({ ...m, confirm: true }),
+    replyTo: troopEmail()
   };
 }
 

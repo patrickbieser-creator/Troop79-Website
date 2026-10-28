@@ -505,10 +505,11 @@ py -m http.server 8000</pre>
         <span class="release-label"><span class="badge badge-fix">Fixed</span></span>
       </div>
       <div class="change-group">
-        <p class="change-group-title">Wreath sale: card orders no longer say to pay by Venmo or PayPal</p>
+        <p class="change-group-title">Wreath sale: card orders get card emails</p>
         <ul class="change-list">
           <li><span>When a customer chooses to pay by card, their order confirmation (and the troop&rsquo;s copy of it) now says they chose to pay by card. It no longer says the order is unpaid or lists Venmo and PayPal, which had led a few customers to pay twice.</span></li>
           <li><span>If the card payment didn&rsquo;t go through, the email points them back to their order page to try again.</span></li>
+          <li><span>Once Stripe confirms a card payment, the customer gets a <strong>Paid by credit card</strong> email from the troop with the amount, what they ordered and how it reaches them. The order-copy addresses get a copy. It is sent once, and never for a payment held back for a refund.</span></li>
         </ul>
       </div>
     </div>

@@ -1,6 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { checkoutIdempotencyKey, checkoutLineItems, withCardFeeCover, cardLedger, cardRefundRows, type CardOrder } from './card-checkout';
 import { fromCents, toCents } from './rules';
+import { fmtDateFull } from '@/lib/format-date';
+import { arrivalParagraphs } from './copy';
+import { cardPaidEmail } from './emails';
+import { loadConfirmation } from './public';
+import type { EmailMessage } from './place-order';
 
 /**
  * Release B card payments (Plans/Wreath-Stripe-Checkout.md, 2026-10-15) — the server half: start a Stripe Checkout
@@ -47,6 +52,9 @@ export interface CardDeps {
   /** The start action's caller IP (platform header; null in local dev) and test overrides of the hourly limits. */
   ip?: string | null;
   limits?: Partial<typeof CHECKOUT_LIMITS>;
+  /** The webhook's mailer for the "Paid by credit card" email; absent = no email (most tests). */
+  send?: (m: EmailMessage) => Promise<unknown>;
+  replyTo?: string;
 }
 
 /** Checkout Sessions the public start action may CREATE per hour (reusing an open one is free) — qa-lead, 2026-10-15. */
@@ -272,6 +280,57 @@ async function rpc(sb: SupabaseClient, fn: string, p: Record<string, unknown>): 
 }
 
 /**
+ * "Paid by credit card" to the customer, and a copy to each Settings › Order copies address. Best effort: the payment
+ * is already booked, so a mail failure is logged and never makes Stripe retry. A scout-entered order's customer is
+ * never emailed (place-order's rule), so only the copies go.
+ */
+async function sendCardPaidEmail(o: OrderRow, paid: number, deps: CardDeps): Promise<void> {
+  if (!deps.send) return;
+  try {
+    const sb = deps.supabase;
+    const { data } = await sb.from('wreath_orders').select('source, wreath_sales(order_cc)').eq('id', o.id).maybeSingle();
+    const row = data as unknown as { source: string; wreath_sales: { order_cc: string[] | null } | null } | null;
+    const c = await loadConfirmation(sb, o.public_token);
+    if (!row || !c) return;
+    const ctx = {
+      orderNumber: c.orderNumber,
+      customerName: o.customer_name,
+      items: c.items,
+      itemsSubtotal: c.itemsSubtotal,
+      deliveryFee: c.deliveryFee,
+      feeCovered: c.feeCovered,
+      gift: c.gift,
+      total: c.total,
+      arrival: arrivalParagraphs({
+        fulfillment: c.fulfillment,
+        scoutName: c.scoutName,
+        scoutFirstName: c.scoutFirstName,
+        outsideAreaRelative: c.outsideAreaRelative,
+        hasDonated: c.items.some((i) => i.donated),
+        distribution: c.distribution
+      }).join(' '),
+      creditedTo: c.scoutName,
+      orderUrl: `${deps.siteUrl}/wreaths/order/${o.public_token}`,
+      changesBy: c.changesBy ? fmtDateFull(c.changesBy) : '',
+      placedAt: c.placedAt,
+      paid
+    };
+    const customer = row.source !== 'paper' && o.customer_email ? o.customer_email.toLowerCase() : null;
+    if (customer) {
+      const mail = cardPaidEmail(ctx);
+      await deps.send({ to: [customer], subject: mail.subject, html: mail.html, text: mail.text, replyTo: deps.replyTo });
+    }
+    const copyTo = (row.wreath_sales?.order_cc ?? []).filter((a) => a && a.toLowerCase() !== customer);
+    if (copyTo.length) {
+      const cc = cardPaidEmail(ctx, { sentTo: customer ? o.customer_name : 'nobody: the scout entered this order' });
+      await deps.send({ to: copyTo, subject: cc.subject, html: cc.html, text: cc.text, replyTo: deps.replyTo });
+    }
+  } catch (e) {
+    console.error('[wreaths] paid-by-card email', o.order_number, e instanceof Error ? e.message : e);
+  }
+}
+
+/**
  * Applies one verified Stripe event. Returns what happened (for the log and the tests); throws on any database error
  * so the route answers 500 and Stripe retries.
  */
@@ -297,7 +356,7 @@ export async function handleStripeEvent(event: StripeEventLike, deps: CardDeps):
       const fee = await settledFee(deps.stripe, pi);
       // W-3: the donation is its own ledger row, net of its share of the fee.
       const rows = cardLedger({ orderNumber: o.order_number, customerName: o.customer_name, total: paid, gift: Number(o.gift), fee, saleYear: o.wreath_sales?.year ?? Number(deps.today().slice(0, 4)), today: deps.today() });
-      return rpc(sb, 'wreath_record_card_payment', {
+      const outcome = await rpc(sb, 'wreath_record_card_payment', {
         event_id: event.id,
         event_type: event.type,
         order_id: orderId,
@@ -309,6 +368,9 @@ export async function handleStripeEvent(event: StripeEventLike, deps: CardDeps):
         donation_row: rows.donation,
         fee_row: rows.feeRow
       });
+      // 'paid' happens once per order (a second confirmation is 'already_paid', a flagged one never 'paid').
+      if (outcome === 'paid') await sendCardPaidEmail(o, paid, deps);
+      return outcome;
     }
     case 'checkout.session.expired':
     case 'checkout.session.async_payment_failed': {

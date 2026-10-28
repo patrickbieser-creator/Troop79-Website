@@ -135,6 +135,33 @@ export function orderUpdatedEmail(c: OrderEmailContext & { paid: number | null }
   return { subject: subjectText(copy ? `Copy: updated wreath order ${c.orderNumber} for ${c.customerName}` : `Your Troop 79 wreath order ${c.orderNumber} is updated`), html, text };
 }
 
+/**
+ * The troop's own receipt once Stripe confirms a card payment (Patrick, 2026-10-27): paid, by card, nothing more to
+ * do. Sent once, from the webhook that books the payment; a flagged or duplicate payment sends nothing.
+ */
+export function cardPaidEmail(c: OrderEmailContext & { paid: number }, copy?: OrderCopy): { subject: string; html: string; text: string } {
+  const first = greetingName(c.customerName);
+  const donationOnly = isDonationOnly(c);
+  const what = donationOnly ? `donation ${c.orderNumber}` : `wreath order ${c.orderNumber}`;
+  const { html, text } = renderEmail({
+    heading: first ? `Thank you, ${first}. Your card payment is in.` : 'Thank you. Your card payment is in.',
+    intro: `We received your card payment of ${fmtMoney2(c.paid)} for Troop 79 ${what}. There is nothing more to pay.`,
+    bullets: [
+      ...summaryBullets(c),
+      `Paid by credit card — ${fmtMoney2(c.paid)}`,
+      ...(c.placedAt ? donationReceiptLines({ gift: c.gift, donationOnly, placedAt: c.placedAt }) : []),
+      ...(c.creditedTo ? [`Credited to ${c.creditedTo}`] : []),
+      c.arrival
+    ],
+    actionUrl: c.orderUrl,
+    actionLabel: donationOnly ? 'View your donation' : 'View your order',
+    outro: 'Questions: reply to this email.',
+    notice: copy && copyNotice(copy)
+  });
+  const subject = copy ? `Copy: paid by credit card, ${what} for ${c.customerName}` : `Paid by credit card: Troop 79 ${what}`;
+  return { subject: subjectText(subject), html, text };
+}
+
 /** A note to the credited scout's household: a new order to deliver. Goes only to addresses on file. */
 export function scoutNoticeEmail(
   c: OrderEmailContext & { scoutFirstName: string; customerPhone: string; customerAddress: string; creditOnly?: boolean }
