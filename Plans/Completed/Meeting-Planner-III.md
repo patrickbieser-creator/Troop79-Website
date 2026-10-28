@@ -1,6 +1,6 @@
 # Meeting Planner III — plan from a focus, then fill the gaps
 
-**Status:** ACTIVE: building P0 onward (goal: every phase, deployed). Tech-lead reviewed; Patrick answered 2026-10-28.
+**Status:** SHIPPED v1.257.0 (2026-10-28, main 70bbbd7b). Migrations 20261228100000 (DB-first) and 20261229100000 (code-first, after the deploy; prod sweep clean). P0–P7 done.
 **Parked:** 2026-10-28
 **Priority:** High: it changes how every meeting gets planned.
 
@@ -308,3 +308,17 @@ magic link before P4 is built). Ship: `db push` (DB-first), ff-merge, push, Verc
 - **Picks:** at most 3 per scout (the server refuses a 4th); nothing carries over from an earlier meeting.
 - **The admin agenda's planner tray** reads This week's sessions.
 - PLANNER_WEEKS = 8 (This week's switcher, the Theme calendar, every gate).
+
+### Shipping record (2026-10-28)
+
+- Production backup before the push: D:\Projects\Backups	roop79	roop79_2026-10-28_18-29.sql.
+- 20261228100000 pushed first (additive), then main fast-forwarded to 70bbbd7b and Vercel Ready, then
+  20261229100000 (Rotations retired). The tech-lead sweep for leftover references returned nothing.
+- **Deferred (qa-lead medium, for BACKLOG):** the 3-pick cap is checked in the app, not under a database lock (two
+  ticks at once could reach 4); a family link's scouts are fixed when it's minted (a scout leaving the household
+  keeps the link until 6 PM on the meeting day); member/meeting/scout-board.tsx and actions.ts are only partly live
+  (teach-board borrows IntentControl/Saved); engine.ts and build-plan.ts survive only for the person drawer and
+  pickMeeting.
+- **Eyes-on for Patrick:** This week on a real meeting (focus, + Merit badge, teacher slots, Ask by email, the
+  checklist's Place… menu), Publish snapshot to a test family first (it emails real families), the family link on a
+  phone, Live at the meeting on the next meeting day, the Theme calendar.
