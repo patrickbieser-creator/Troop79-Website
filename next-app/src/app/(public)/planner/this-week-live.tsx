@@ -95,7 +95,7 @@ export function LiveView({ entryId, view, isToday, present }: { entryId: number;
                   <span className={s.rowLabel}>Teacher</span>
                   {button(x.teacher)}
                 </div>
-              ) : (
+              ) : x.key === 'help' ? null : (
                 <span className={s.slotTextEmpty}>No teacher yet</span>
               )}
               <div className={s.chips}>{x.people.map(button)}</div>
