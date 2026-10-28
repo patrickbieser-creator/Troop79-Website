@@ -311,7 +311,7 @@ magic link before P4 is built). Ship: `db push` (DB-first), ff-merge, push, Verc
 
 ### Shipping record (2026-10-28)
 
-- Production backup before the push: D:\Projects\Backups	roop79	roop79_2026-10-28_18-29.sql.
+- Production backup before the push: D:\Projects\Backups\troop79\troop79_2026-10-28_18-29.sql.
 - 20261228100000 pushed first (additive), then main fast-forwarded to 70bbbd7b and Vercel Ready, then
   20261229100000 (Rotations retired). The tech-lead sweep for leftover references returned nothing.
 - **Deferred (qa-lead medium, for BACKLOG):** the 3-pick cap is checked in the app, not under a database lock (two
