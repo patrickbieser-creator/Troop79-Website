@@ -5,6 +5,7 @@
  * into the admin workspace. Pure: no I/O, no framework imports.
  */
 import { isGroupSatisfied, type ReqNode } from '@/lib/mb-helpers';
+import { planningState, topClasses } from '@/lib/requirement-class';
 
 /** The columns the walk reads. Rank and merit badge requirement rows both have them. */
 export interface CalcRow {
@@ -14,19 +15,13 @@ export interface CalcRow {
   code: string;
   complete_rule: 'all' | 'any' | 'n-of';
   complete_n: number | null;
+  /** Requirement class tags (lib/requirement-class); absent or empty = untagged = M. */
+  class_codes?: readonly string[] | null;
 }
 
-// Tenure, Scout Spirit, POR, MB-count rollups, and the Eagle project can't be "worked on" in a planned meeting block.
-// Scoutmaster conferences stay — they genuinely happen at meetings. Keyed `${rankId}-${code}`.
-export const NOT_PLANNABLE: ReadonlySet<string> = new Set([
-  'scout-1b',
-  'tenderfoot-9',
-  'second-class-10',
-  'first-class-11',
-  'star-1', 'star-2', 'star-3', 'star-5',
-  'life-1', 'life-2', 'life-3', 'life-5', 'life-6',
-  'eagle-1', 'eagle-2', 'eagle-3', 'eagle-4', 'eagle-5'
-]);
+// Tenure, Scout Spirit, POR, MB-count rollups and the Eagle project can't be "worked on" in a planned meeting block:
+// since Plans/Requirement-Classification.md they are DATA, tagged L (only), not a list here. Scoutmaster conferences
+// are M — they genuinely happen at meetings, behind the 95% gate below.
 
 // Scoutmaster conferences cap a rank — suggest them only when the scout has completed ≥95% of that rank's
 // requirement leaves (user rule, 2026-07-11). Suggesting one earlier wastes a slot on something that can't happen yet.
@@ -113,22 +108,22 @@ export function rankLeafCompletion<T extends CalcRow>(
   return total === 0 ? 0 : done / total;
 }
 
-/** Is this top-level requirement something a scout could work on at a meeting, as far as the rank rules go? False for
- *  the non-plannable ones, and for a Scoutmaster conference before 95% of the rank is done. (Venue is the caller's.) */
+/** Is this top-level requirement something a scout could work on, as far as the rank rules go? False for one tagged
+ *  only L, and for a Scoutmaster conference before 95% of the rank is done. (Which gathering is the caller's.) */
 export function rankTopPlannable<T extends CalcRow>(tree: ReqNode<T>[], rankId: string, top: ReqNode<T>, codes: Set<string>): boolean {
   const key = `${rankId}-${top.code}`;
-  if (NOT_PLANNABLE.has(key)) return false;
+  if (planningState(topClasses(top), 'meeting') === 'never') return false;
   if (SM_CONFERENCE_CODES.has(key) && rankLeafCompletion(tree, rankId, codes, top.code) < SM_CONFERENCE_THRESHOLD) return false;
   return true;
 }
 
 /**
  * The Meeting Plan engine's pass 1, rank half: a rank's top-level requirements a scout still has to do and could work
- * on, in catalog order, split into meeting-doable ones and outing-only ones (venue 'outing'). The engine suggests from
- * `meeting`; the meeting board's matcher places a "Not sure yet" scout from the same list (Phase 3a), so both read one
- * rule.
+ * on, in catalog order, split into ones a meeting holds (a tag of theirs is M, or untagged) and ones that need another
+ * setting. The engine suggests from `meeting`; the meeting board's matcher places a "Not sure yet" scout from the same
+ * list (Phase 3a), so both read one rule. A rank requirement's own tags decide: the top-level row is the unit.
  */
-export function openRankTops<T extends CalcRow & { venue: string }>(
+export function openRankTops<T extends CalcRow>(
   tree: ReqNode<T>[],
   rankId: string,
   codes: Set<string>
@@ -138,7 +133,7 @@ export function openRankTops<T extends CalcRow & { venue: string }>(
   for (const top of tree) {
     if (rankNodeSatisfied(top, rankId, codes)) continue;
     if (!rankTopPlannable(tree, rankId, top, codes)) continue;
-    (top.venue === 'outing' ? outing : meeting).push(top);
+    (planningState(topClasses(top), 'meeting') === 'fits' ? meeting : outing).push(top);
   }
   return { meeting, outing };
 }

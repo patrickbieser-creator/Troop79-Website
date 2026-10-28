@@ -7,7 +7,8 @@
  *                   name, how many need it, the best teacher and the other qualified ones.
  *   By Scout        each scout's next ≤3 requirements (the engine's own pick, merit badges included for older scouts).
  *   Teaching        the teaching roster: who can teach what, and the sessions they could take this meeting (best first).
- *   Needs a campout campout-only items with the scouts who need them; never added from here.
+ *   Needs another  items a meeting doesn't hold, under each class they need (Campout, Aquatics, Expert visit…;
+ *   setting        lib/requirement-class), with the scouts who need them; never added from here. (Data name: campout.)
  *
  * A plan item is a topic key, so an item is either on the plan or not: one scout's requirement whose key is already
  * a session's just reads On plan. Names are the board's ("Dan K").
@@ -78,7 +79,12 @@ export interface CampoutItem {
   title: string;
   scouts: string[];
   ranks: string[];
+  /** The class tags a meeting lacks: the headings it goes under. Empty on a snapshot from before classes. */
+  classes: string[];
 }
+
+/** A Needs another setting heading: a class code and name, or OTHER_SETTING for items from before classes. */
+export const OTHER_SETTING = { code: '', name: 'Campout or outing' };
 
 export interface SuggestionsData {
   /** The ranks in play, in rank order (the rank filter's choices). */
@@ -87,6 +93,8 @@ export interface SuggestionsData {
   scouts: SuggestScout[];
   teachers: SuggestTeacher[];
   campout: CampoutItem[];
+  /** The headings Needs another setting can show, in class order. */
+  settings: { code: string; name: string }[];
 }
 
 export interface SuggestFilter {
@@ -191,13 +199,13 @@ export function suggestionsData(payload: MeetingPlanPayload, rankRows: readonly 
     ...payload.rosterScoutInstructors.map((s) => ({ id: `s:${s.id}`, personId: s.personId ?? null, name: boardName(s.name), meta: s.rankLabel, scout: true, skills: s.skills, keys: keysOf(s.sessionIds) }))
   ];
 
-  // ── Needs a campout ───────────────────────────────────────────────────────────────────────────────────────
+  // ── Needs another setting ─────────────────────────────────────────────────────────────────────────────────
   const campout = new Map<string, CampoutItem & { scoutRanks: (string | null)[] }>();
   for (const s of scouts) {
     const row = payload.byScout.find((r) => r.scout.id === s.id);
     for (const o of row?.needsOuting ?? []) {
       const k = `${o.codeLabel}|${o.label}`;
-      const have = campout.get(k) ?? { codeLabel: o.codeLabel, title: o.label, scouts: [], ranks: [], scoutRanks: [] };
+      const have = campout.get(k) ?? { codeLabel: o.codeLabel, title: o.label, scouts: [], ranks: [], scoutRanks: [], classes: o.classes ?? [] };
       have.scouts.push(s.name);
       have.scoutRanks.push(s.nextRankId);
       campout.set(k, have);
@@ -211,7 +219,8 @@ export function suggestionsData(payload: MeetingPlanPayload, rankRows: readonly 
     cards: cardList,
     scouts,
     teachers,
-    campout: campoutList
+    campout: campoutList,
+    settings: [...(payload.requirementClasses ?? []), OTHER_SETTING]
   };
 }
 
@@ -227,7 +236,7 @@ export function noSuggestionText(reason: NoSuggestionReason | null, rankLabel: s
     case 'smc-waiting':
       return `Nothing to plan: Scoutmaster conference waits for 95% of ${rankLabel ?? 'the rank'}`;
     case 'not-plannable':
-      return 'Only time-based, Scout spirit or campout items left';
+      return 'Only time-based, Scout spirit or other-setting items left';
     case 'finished':
       return 'Finished everything plannable';
     default:
@@ -284,6 +293,11 @@ export function teacherKeysShown(keys: readonly string[], byKey: ReadonlyMap<str
     const item = byKey.get(k);
     return item != null && cardShown(item, onPlan.has(k), f);
   });
+}
+
+/** The items under one Needs another setting heading (an item with two tags is under both). */
+export function settingItems<T extends Pick<CampoutItem, 'classes'>>(items: readonly T[], code: string): T[] {
+  return items.filter((i) => (code === OTHER_SETTING.code ? i.classes.length === 0 : i.classes.includes(code)));
 }
 
 /** A campout item shows unless merit badges only, or another rank, is chosen. */

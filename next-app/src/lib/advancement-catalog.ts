@@ -28,7 +28,7 @@ import { cache } from 'react';
 import { unstable_cache } from 'next/cache';
 import { createAdminClient } from '@/lib/supabase/server';
 import { fetchAllRows } from '@/lib/supabase/paginate';
-import type { ReqVenue, Skill } from '@/lib/supabase/types';
+import type { Skill } from '@/lib/supabase/types';
 
 export interface CatalogRank {
   id: string;
@@ -45,7 +45,8 @@ export interface CatalogRankRequirement {
   complete_rule: 'all' | 'any' | 'n-of';
   complete_n: number | null;
   sort_order: number;
-  venue: ReqVenue;
+  /** Requirement class tags (lib/requirement-class); empty = untagged = M. */
+  class_codes: string[];
   skill_id: string | null;
   /** Expected minutes to teach it (T-3); a parent with sub-requirements uses their sum. Absent = the 15 default. */
   teach_minutes?: number;
@@ -66,7 +67,8 @@ export interface CatalogMeritBadgeRequirement {
   complete_rule: 'all' | 'any' | 'n-of';
   complete_n: number | null;
   sort_order: number;
-  venue: ReqVenue;
+  /** Requirement class tags (lib/requirement-class); empty = inherit the parent's, else M. */
+  class_codes: string[];
   /** Expected minutes to teach it (T-3). Absent = the 15 default. */
   teach_minutes?: number;
 }
@@ -77,6 +79,8 @@ export interface AdvancementCatalog {
   meritBadges: CatalogMeritBadge[];
   meritBadgeRequirements: CatalogMeritBadgeRequirement[];
   skills: Skill[];
+  /** The requirement classes' names, for Needs another setting's headings. Absent = a fixture without them. */
+  requirementClasses?: { code: string; name: string }[];
 }
 
 /**
@@ -89,11 +93,11 @@ export interface AdvancementCatalog {
 export async function fetchAdvancementCatalog(
   supabase: ReturnType<typeof createAdminClient>
 ): Promise<AdvancementCatalog> {
-  const [ranksRes, rankReqsRes, mbsRes, meritBadgeRequirements, skillsRes] = await Promise.all([
+  const [ranksRes, rankReqsRes, mbsRes, meritBadgeRequirements, skillsRes, classesRes] = await Promise.all([
     supabase.from('ranks').select('id, display_name, sort_order').order('sort_order'),
     supabase
       .from('rank_requirements')
-      .select('id, rank_id, parent_id, code, label, complete_rule, complete_n, sort_order, venue, skill_id, teach_minutes'),
+      .select('id, rank_id, parent_id, code, label, complete_rule, complete_n, sort_order, class_codes, skill_id, teach_minutes'),
     supabase.from('merit_badges').select('id, name, eagle'),
     // ~1.7k rows — past the 1000-row PostgREST cap, so this one still
     // paginates even though it now runs once per cache fill instead of
@@ -101,10 +105,11 @@ export async function fetchAdvancementCatalog(
     fetchAllRows<CatalogMeritBadgeRequirement>((from, to) =>
       supabase
         .from('merit_badge_requirements')
-        .select('id, mb_id, parent_id, code, label, complete_rule, complete_n, sort_order, venue, teach_minutes')
+        .select('id, mb_id, parent_id, code, label, complete_rule, complete_n, sort_order, class_codes, teach_minutes')
         .order('id').range(from, to)
     ),
-    supabase.from('skills').select('id, name, youth_teachable, sort_order').order('sort_order')
+    supabase.from('skills').select('id, name, youth_teachable, sort_order').order('sort_order'),
+    supabase.from('requirement_classes').select('code, name').order('sort_order')
   ]);
 
   return {
@@ -112,13 +117,16 @@ export async function fetchAdvancementCatalog(
     rankRequirements: (rankReqsRes.data ?? []) as CatalogRankRequirement[],
     meritBadges: (mbsRes.data ?? []) as CatalogMeritBadge[],
     meritBadgeRequirements,
-    skills: (skillsRes.data ?? []) as Skill[]
+    skills: (skillsRes.data ?? []) as Skill[],
+    requirementClasses: (classesRes.data ?? []) as { code: string; name: string }[]
   };
 }
 
 const cachedCatalog = unstable_cache(
   () => fetchAdvancementCatalog(createAdminClient()),
-  ['advancement-catalog'],
+  // The second part is the row shape: a cached copy from before requirement class tags (it had venue, no
+  // class_codes) would read every requirement as untagged for up to an hour after the deploy.
+  ['advancement-catalog', 'class-codes'],
   // Hourly fallback: the populate-mb-requirements skill and prod psql write
   // these tables outside the app, where no updateTag() runs.
   { tags: ['advancement-catalog'], revalidate: 3600 }

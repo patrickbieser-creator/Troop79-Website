@@ -15,7 +15,8 @@ import type { JuniorLeaderOverride } from '@/lib/participant-class';
 import type { TeacherPoolRows } from '@/lib/people-lists';
 import { loadIntents, loadScoutProgress, type BoardMeeting, type BoardScoutRow, type BoardWriteResult } from '@/lib/meeting-board';
 import { fmtDate } from '@/lib/format-date';
-import { NOT_PLANNABLE, SM_CONFERENCE_CODES } from '@/lib/rank-calculus';
+import { SM_CONFERENCE_CODES } from '@/lib/rank-calculus';
+import { fitsGathering, topClasses } from '@/lib/requirement-class';
 import { rankTrees, topicWords, type TopicPart, type TopicWords } from '@/lib/meeting-board-picklist';
 import { boardName, effectiveIntent, summarizeBoard, type Intent } from '@/lib/meeting-board-shared';
 import { matchBoard, type MatchResult } from '@/lib/meeting-board-match';
@@ -543,8 +544,9 @@ export function offerChoices(
     .map((r) => ({
       rank: r.display_name,
       options: catalog.rankRequirements
-        .filter((q) => q.rank_id === r.id && q.parent_id == null && q.venue !== 'outing' && q.code.toLowerCase() !== 'bor')
-        .filter((q) => !NOT_PLANNABLE.has(`${r.id}-${q.code}`) && !SM_CONFERENCE_CODES.has(`${r.id}-${q.code}`))
+        // What a meeting holds (lib/requirement-class): a tag M, or untagged; L-only and campout items never.
+        .filter((q) => q.rank_id === r.id && q.parent_id == null && fitsGathering(topClasses(q), 'meeting') && q.code.toLowerCase() !== 'bor')
+        .filter((q) => !SM_CONFERENCE_CODES.has(`${r.id}-${q.code}`))
         .filter((q) => me.kind === 'adult' || !q.skill_id || youth.get(q.skill_id) !== false)
         .sort((a, b) => a.sort_order - b.sort_order)
         .map((q) => ({ key: `${r.id}-${q.code}`, label: `${q.code} ${q.label}` }))

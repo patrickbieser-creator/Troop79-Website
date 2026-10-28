@@ -1,7 +1,14 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import { adminClient } from './helpers/admin-client';
 import { TEST_PREFIX } from './helpers/signup-fixtures';
-import { NOT_PLANNABLE } from '../src/lib/rank-calculus';
+
+/** lib/rank-calculus NOT_PLANNABLE as it stood before step 3 moved it into data (tag L). */
+const NOT_PLANNABLE = [
+  'scout-1b', 'tenderfoot-9', 'second-class-10', 'first-class-11',
+  'star-1', 'star-2', 'star-3', 'star-5',
+  'life-1', 'life-2', 'life-3', 'life-5', 'life-6',
+  'eagle-1', 'eagle-2', 'eagle-3', 'eagle-4', 'eagle-5'
+];
 
 /**
  * Requirement classes (Plans/Requirement-Classification.md, step 1): the lookup, the class_codes tags on both
@@ -100,6 +107,6 @@ describe('backfill parity', () => {
 
   it('NotPlannable_EveryKeyIsTaggedLeadershipOnly', () => {
     const byKey = new Map(rows.map((r) => [r.key, r.class_codes]));
-    expect([...NOT_PLANNABLE].filter((k) => JSON.stringify(byKey.get(k)) !== '["L"]')).toEqual([]);
+    expect(NOT_PLANNABLE.filter((k) => JSON.stringify(byKey.get(k)) !== '["L"]')).toEqual([]);
   });
 });

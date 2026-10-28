@@ -6,7 +6,7 @@
  * buildReqTree → isGroupSatisfied walk against per-scout ledger code sets.
  *
  * Rules (Plans/Meeting-Plan-Advancement-Suggestions.md):
- *   - Suggest next-rank TOP-LEVEL requirements with venue ≠ 'outing'; max 3
+ *   - Suggest next-rank TOP-LEVEL requirements a meeting holds (a class tag M, or untagged; lib/requirement-class); max 3
  *     per scout. Sub-requirements roll up to their parent (taught together).
  *   - Prefer requirements shared by several scouts (they make group sessions).
  *   - Older scouts (next rank Star+) also get merit badge suggestions,
@@ -32,7 +32,8 @@ import {
   SM_CONFERENCE_CODES,
   SM_CONFERENCE_THRESHOLD
 } from '@/lib/rank-calculus';
-import type { ReqVenue, Skill } from '@/lib/supabase/types';
+import type { Skill } from '@/lib/supabase/types';
+import { effectiveClasses, fitsGathering, settingGroups, topClasses } from '@/lib/requirement-class';
 import {
   type MeetingPlanPayload,
   type NoSuggestionReason,
@@ -62,7 +63,8 @@ export interface EngineRankReqRow {
   complete_rule: 'all' | 'any' | 'n-of';
   complete_n: number | null;
   sort_order: number;
-  venue: ReqVenue;
+  /** Requirement class tags; absent or empty = untagged = M. */
+  class_codes?: string[] | null;
   skill_id: string | null;
 }
 
@@ -75,7 +77,8 @@ export interface EngineMbReqRow {
   complete_rule: 'all' | 'any' | 'n-of';
   complete_n: number | null;
   sort_order: number;
-  venue: ReqVenue;
+  /** Requirement class tags; absent or empty = the parent's, else M. */
+  class_codes?: string[] | null;
 }
 
 export interface EngineInput {
@@ -109,6 +112,8 @@ export interface EngineInput {
   counselors: { mb_id: string; person_id: number | null; leader_code?: string | null }[];
   /** Names for the non-person counselor sources, by leader code. */
   counselorSources?: { code: string; name: string }[];
+  /** Requirement class names, for Needs another setting's headings. */
+  requirementClasses?: { code: string; name: string }[];
 }
 
 function tierForRank(rankId: string | null): TierId {
@@ -129,20 +134,22 @@ const RANK_ABBR: Record<string, string> = {
 };
 
 // ── satisfaction walk (bor-requirements pattern) ───────────────────────────
-// The rank half (rankNodeSatisfied, NOT_PLANNABLE, the 95% SM-conference gate) lives in lib/rank-calculus, shared
+// The rank half (rankNodeSatisfied, the L-only and 95% SM-conference gates) lives in lib/rank-calculus, shared
 // with the meeting board's pick list (one completion calculus).
 
 type RankNode = ReqNode<EngineRankReqRow>;
 type MbNode = ReqNode<EngineMbReqRow>;
 
-function collectMissingMbLeaves(node: MbNode, mbId: string, codes: Set<string>, out: EngineMbReqRow[]) {
+/** The unfinished leaves under a node, each with its effective class tags (own, else inherited down the tree). */
+function collectMissingMbLeaves(node: MbNode, mbId: string, codes: Set<string>, out: { row: EngineMbReqRow; tags: string[] }[], inherited?: string[]) {
+  const tags = effectiveClasses(node.class_codes, inherited);
   if (node.children.length === 0) {
-    if (!codes.has(`${mbId}-${node.code}`)) out.push(node);
+    if (!codes.has(`${mbId}-${node.code}`)) out.push({ row: node, tags });
     return;
   }
   for (const child of node.children) {
     if (!mbNodeSatisfied(child, mbId, codes)) {
-      collectMissingMbLeaves(child, mbId, codes, out);
+      collectMissingMbLeaves(child, mbId, codes, out, tags);
     }
   }
 }
@@ -292,8 +299,8 @@ export function buildMeetingPlan(input: EngineInput): MeetingPlanPayload {
       // becomes a single suggestion/session — never one per sub-leaf.
       const tree = rankTree.get(next) ?? [];
       const abbr = RANK_ABBR[next] ?? next;
-      // Unfinished, plannable (NOT_PLANNABLE and the 95% SM-conference gate), split by venue: lib/rank-calculus, shared
-      // with the meeting board's matcher.
+      // Unfinished, plannable (not L only, and the 95% SM-conference gate), split by whether a meeting holds it:
+      // lib/rank-calculus, shared with the meeting board's matcher.
       const open = openRankTops(tree, next, codes);
       const outing: EngineRankReqRow[] = open.outing;
       for (const top of open.meeting) {
@@ -334,9 +341,9 @@ export function buildMeetingPlan(input: EngineInput): MeetingPlanPayload {
         if (!tree || tree.length === 0) continue;
         const top = tree.find((t) => {
           if (mbNodeSatisfied(t, mbId, mbCodes)) return false;
-          const missing: EngineMbReqRow[] = [];
+          const missing: { row: EngineMbReqRow; tags: string[] }[] = [];
           collectMissingMbLeaves(t, mbId, mbCodes, missing);
-          return missing.some((m) => m.venue !== 'outing');
+          return missing.some((m) => fitsGathering(m.tags, 'meeting'));
         });
         if (!top) continue;
         mbCandidates.push({
@@ -553,7 +560,8 @@ export function buildMeetingPlan(input: EngineInput): MeetingPlanPayload {
       suggestions,
       needsOuting: outing.slice(0, MAX_OUTING_ITEMS).map((leaf) => ({
         codeLabel: `${abbr} ${leaf.code}`,
-        label: leaf.label
+        label: leaf.label,
+        classes: settingGroups(topClasses(leaf), 'meeting')
       })),
       reason: why?.reason ?? null,
       reasonRankId: why?.rankId ?? null
@@ -637,7 +645,8 @@ export function buildMeetingPlan(input: EngineInput): MeetingPlanPayload {
     sessions,
     byScout,
     rosterAdults,
-    rosterScoutInstructors
+    rosterScoutInstructors,
+    requirementClasses: input.requirementClasses ?? []
   };
 }
 

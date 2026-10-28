@@ -17,7 +17,7 @@ const ranks = [
   { id: 'star', display_name: 'Star', sort_order: 5 }
 ];
 const tf = (id: number, code: string): EngineRankReqRow => ({
-  id, rank_id: 'tenderfoot', parent_id: null, code, label: `Req ${code}`, complete_rule: 'all', complete_n: null, sort_order: id, venue: 'meeting', skill_id: null
+  id, rank_id: 'tenderfoot', parent_id: null, code, label: `Req ${code}`, complete_rule: 'all', complete_n: null, sort_order: id, class_codes: [], skill_id: null
 });
 const scout = (id: string, rank: string | null): EngineInput['scouts'][number] => ({
   id, display_name: `Scout ${id}`, patrol: null, current_rank: rank, person_id: id.charCodeAt(0), graduation_year: 2030, junior_leader_override: null
@@ -32,7 +32,7 @@ function input(scouts: EngineInput['scouts'], ledger: { scout_id: string; code: 
     generatedAt: '2026-10-22T00:00:00.000Z',
     scouts,
     ranks,
-    rankReqs: [tf(1, '3a'), tf(2, '9'), tf(3, '10')],
+    rankReqs: [tf(1, '3a'), { ...tf(2, '9'), class_codes: ['L'] }, tf(3, '10')],
     mbs: [],
     mbReqs: [],
     mbProgress: [],
@@ -94,7 +94,7 @@ describe('B9 By Scout', () => {
       'Ready for the First Class board of review',
       'No merit badge in progress',
       'Nothing to plan: Scoutmaster conference waits for 95% of First Class',
-      'Only time-based, Scout spirit or campout items left',
+      'Only time-based, Scout spirit or other-setting items left',
       'Finished everything plannable'
     ]);
   });
@@ -156,7 +156,7 @@ describe('B9 qa follow-ups', () => {
   const withStar = (scouts: EngineInput['scouts'], ledger: { scout_id: string; code: string }[], o: Partial<EngineInput> = {}): EngineInput => {
     const base = input(scouts, ledger);
     // Star: 1 (time-based, never planned) and 7 (the Scoutmaster conference).
-    return { ...base, rankReqs: [...base.rankReqs, rq('star', 11, '1'), rq('star', 12, '7')], ...o };
+    return { ...base, rankReqs: [...base.rankReqs, { ...rq('star', 11, '1'), class_codes: ['L'] }, rq('star', 12, '7')], ...o };
   };
   const firstAid = {
     mbs: [{ id: 'first-aid', name: 'First Aid', eagle: true }],

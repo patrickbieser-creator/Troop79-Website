@@ -16,11 +16,12 @@
  * with a `focus` mark. Neither a focus group nor a merit badge requirement is ever finished (a retake is allowed).
  *
  * Finished requirements are absent. The engine's rules decide what can be worked on at a meeting at all (its
- * NOT_PLANNABLE set and the 95% Scoutmaster-conference gate, via lib/rank-calculus); an outing-only requirement is
- * listed but disabled with "Needs an outing". The pick unit is the top-level requirement (Decision 15).
+ * L-only class tag and the 95% Scoutmaster-conference gate, via lib/rank-calculus); one a meeting doesn't hold (its
+ * class tags, lib/requirement-class) is listed but disabled with "Needs an outing". The pick unit is the top-level requirement (Decision 15).
  */
 import { buildReqTree, type ReqNode } from '@/lib/mb-helpers';
 import { BOR_CODE, borKey, isBorKey, rankBorPickable, rankNodeSatisfied, rankTopPlannable } from '@/lib/rank-calculus';
+import { planningState, topClasses } from '@/lib/requirement-class';
 import type { CatalogMeritBadge, CatalogMeritBadgeRequirement, CatalogRank, CatalogRankRequirement } from '@/lib/advancement-catalog';
 import { boardName, orderPicks, othersLabel, type BoardPick, type Intent } from '@/lib/meeting-board-shared';
 
@@ -151,7 +152,8 @@ export function buildPickList(input: PickListInput): PickListView {
         code: top.code,
         label: top.label,
         codeLabel: `${rank.display_name} ${top.code}`,
-        outing: top.venue === 'outing',
+        // Listed either way (a leader may add anything by hand); flagged when a meeting doesn't hold it.
+        outing: planningState(topClasses(top), 'meeting') !== 'fits',
         others: others(key),
         teacher: teacher(key),
         parts: topicParts(top, input.rankReqs, codes),

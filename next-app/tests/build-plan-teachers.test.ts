@@ -22,7 +22,7 @@ const req = (id: number, code: string, skill: string | null): CatalogRankRequire
   complete_rule: 'all',
   complete_n: null,
   sort_order: id,
-  venue: 'meeting' as CatalogRankRequirement['venue'],
+  class_codes: [] as string[],
   skill_id: skill
 });
 const rankReqs = [req(1, '4a', 'first-aid'), req(2, '3a', 'knots-adult')];

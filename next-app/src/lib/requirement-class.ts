@@ -44,6 +44,20 @@ export function settingGroups(tags: readonly ClassCode[], gathering: Gathering):
   return tags.filter((t) => !holds.has(t) && t !== LEADERSHIP_CLASS);
 }
 
+/**
+ * Where a requirement stands for a gathering: it `fits` (one tag is held); it needs `elsewhere` (a tag the gathering
+ * lacks, listed under Needs another setting); or `never` (only L: tenure, Scout spirit, positions of responsibility,
+ * the Eagle project, badge counts — what lib/rank-calculus NOT_PLANNABLE used to list).
+ */
+export type PlanningState = 'fits' | 'elsewhere' | 'never';
+export function planningState(tags: readonly ClassCode[], gathering: Gathering): PlanningState {
+  if (fitsGathering(tags, gathering)) return 'fits';
+  return settingGroups(tags, gathering).length ? 'elsewhere' : 'never';
+}
+
+/** A top-level row's effective tags (no parent to inherit from). */
+export const topClasses = (row: { class_codes?: readonly ClassCode[] | null }): ClassCode[] => effectiveClasses(row.class_codes);
+
 /** Request input → tags: single letters, uppercased, first occurrence kept. Null for anything else. */
 export function normalizeClassCodes(raw: unknown): ClassCode[] | null {
   if (!Array.isArray(raw)) return null;

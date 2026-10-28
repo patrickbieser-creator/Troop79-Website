@@ -27,7 +27,7 @@ const req = (rank_id: string, code: string, label: string, o: Partial<CatalogRan
   complete_rule: 'all',
   complete_n: null,
   sort_order: rid,
-  venue: 'either',
+  class_codes: [] as string[],
   skill_id: null,
   ...o
 });

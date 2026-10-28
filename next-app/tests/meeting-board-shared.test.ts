@@ -45,18 +45,18 @@ const req = (rank_id: string, code: string, label: string, o: Partial<CatalogRan
   complete_rule: 'all',
   complete_n: null,
   sort_order: rid,
-  venue: 'either',
+  class_codes: [] as string[],
   skill_id: null,
   ...o
 });
 const TF4 = req('tenderfoot', '4a', 'First aid');
 const REQS: CatalogRankRequirement[] = [
-  req('tenderfoot', '1a', 'Pack for a campout', { venue: 'outing' }),
+  req('tenderfoot', '1a', 'Pack for a campout', { class_codes: ['C'] }),
   TF4,
   req('tenderfoot', '4a.1', 'Cuts', { parent_id: TF4.id, teach_minutes: 5 }),
   req('tenderfoot', '4a.2', 'Blisters', { parent_id: TF4.id, teach_minutes: 20 }),
   req('tenderfoot', '3a', 'Knots'),
-  req('tenderfoot', '9', 'Scout spirit'),
+  req('tenderfoot', '9', 'Scout spirit', { class_codes: ['L'] }),
   req('tenderfoot', '10', 'Scoutmaster conference'),
   req('second-class', '2a', 'Map and compass'),
   req('first-class', '7a', 'Swim test')

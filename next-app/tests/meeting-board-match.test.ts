@@ -26,7 +26,7 @@ const req = (rank_id: string, code: string, label: string, o: Partial<CatalogRan
   complete_rule: 'all',
   complete_n: null,
   sort_order: rid,
-  venue: 'either',
+  class_codes: [] as string[],
   skill_id: null,
   ...o
 });
@@ -36,7 +36,7 @@ const REQS: CatalogRankRequirement[] = [
   req('tenderfoot', '4c', 'First aid kit', { skill_id: 'first-aid' }),
   req('tenderfoot', '3a', 'Knots', { skill_id: 'knots' }),
   req('tenderfoot', '3b', 'Lashings', { skill_id: 'knots' }),
-  req('tenderfoot', '1a', 'Campout', { venue: 'outing' }),
+  req('tenderfoot', '1a', 'Campout', { class_codes: ['C'] }),
   req('tenderfoot', '7a', 'Flag ceremony'),
   req('second-class', '2a', 'Map and compass', { skill_id: 'navigation' })
 ];

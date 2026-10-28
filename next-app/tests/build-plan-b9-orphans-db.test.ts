@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { adminClient } from './helpers/admin-client';
 import { TEST_PREFIX } from './helpers/signup-fixtures';
+import { planningState, topClasses } from '../src/lib/requirement-class';
 
 /**
  * Build a Plan B9 (Plans/Build-A-Plan.md, "B9: Finding orphans"), the read: who has nothing on a meeting's plan, from
@@ -78,7 +79,7 @@ beforeAll(async () => {
   await scout(away, 'tenderfoot');
   const tops = (rank: string) =>
     catalog.rankRequirements
-      .filter((r) => r.rank_id === rank && r.parent_id == null && r.venue !== 'outing' && r.code.toLowerCase() !== 'bor')
+      .filter((r) => r.rank_id === rank && r.parent_id == null && planningState(topClasses(r), 'meeting') !== 'elsewhere' && r.code.toLowerCase() !== 'bor')
       .sort((a, b) => a.sort_order - b.sort_order)
       .map((r) => `${rank}-${r.code}`);
   tfKey = tops('tenderfoot')[0];

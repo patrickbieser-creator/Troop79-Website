@@ -14,10 +14,10 @@ const ranks = [
   { id: 'star', display_name: 'Star', sort_order: 5 }
 ];
 const rankReq = (id: number, code: string): EngineRankReqRow => ({
-  id, rank_id: 'tenderfoot', parent_id: null, code, label: `Req ${code}`, complete_rule: 'all', complete_n: null, sort_order: id, venue: 'meeting', skill_id: null
+  id, rank_id: 'tenderfoot', parent_id: null, code, label: `Req ${code}`, complete_rule: 'all', complete_n: null, sort_order: id, class_codes: [], skill_id: null
 });
 const mbReq = (id: number, code: string, parent: number | null): EngineMbReqRow => ({
-  id, mb_id: 'first-aid', parent_id: parent, code, label: `First Aid ${code}`, complete_rule: 'all', complete_n: null, sort_order: id, venue: 'meeting'
+  id, mb_id: 'first-aid', parent_id: parent, code, label: `First Aid ${code}`, complete_rule: 'all', complete_n: null, sort_order: id, class_codes: []
 });
 const scout = (id: string, personId: number, rank: string | null): EngineInput['scouts'][number] => ({
   id, display_name: `Scout ${id}`, patrol: null, current_rank: rank, person_id: personId, graduation_year: 2030, junior_leader_override: null

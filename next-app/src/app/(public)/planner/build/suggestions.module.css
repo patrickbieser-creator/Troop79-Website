@@ -321,7 +321,7 @@
   color: var(--status-danger);
 }
 
-/* ── the campout footer ──────────────────────────────────────────────────────────────────────────────────── */
+/* ── the Needs another setting footer (class names: campout) ─────────────────────────────────────────────── */
 .campout {
   margin-top: var(--sp-5);
   border-top: 1px solid var(--border-light);
@@ -337,6 +337,12 @@
 .campoutRow {
   padding: var(--sp-2) 0;
   border-bottom: 1px solid var(--border-light);
+}
+/* One heading per class the meeting lacks (Campout, Aquatics…). */
+.settingHead {
+  margin: var(--sp-3) 0 0;
+  font: 600 var(--fs-xs) / 1.3 var(--font-ui);
+  color: var(--text-meta);
 }
 
 /* ── "Add N to the plan" ─────────────────────────────────────────────────────────────────────────────────── */

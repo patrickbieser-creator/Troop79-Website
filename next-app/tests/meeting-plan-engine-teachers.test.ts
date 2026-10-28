@@ -15,7 +15,7 @@ const ranks = [
   { id: 'star', display_name: 'Star', sort_order: 5 }
 ];
 const req = (id: number, code: string, skill: string | null): EngineRankReqRow => ({
-  id, rank_id: 'tenderfoot', parent_id: null, code, label: `Req ${code}`, complete_rule: 'all', complete_n: null, sort_order: id, venue: 'meeting', skill_id: skill
+  id, rank_id: 'tenderfoot', parent_id: null, code, label: `Req ${code}`, complete_rule: 'all', complete_n: null, sort_order: id, class_codes: [], skill_id: skill
 });
 const scout = (id: string, personId: number, rank: string | null, over: Partial<EngineInput['scouts'][number]> = {}): EngineInput['scouts'][number] => ({
   id, display_name: `Scout ${id}`, patrol: null, current_rank: rank, person_id: personId, graduation_year: 2033, junior_leader_override: null, ...over

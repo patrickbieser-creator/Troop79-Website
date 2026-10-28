@@ -12,7 +12,7 @@
  *                             2026-10-22), labelled "Scout 2 · Flag": a click asks first (add it with them teaching,
  *                             or make them its teacher), with "on plan" and "teaching" markers.
  *                             Rows take no tick: one leader's choice never lights up another's.
- *   Needs a campout           a collapsed footer on every lens, with no Add.
+ *   Needs another setting     a collapsed footer on every lens, grouped by class, with no Add.
  *   Solo needs (B9)           a collapsed footer on Group Sessions: what only one scout needs, with Add.
  *
  * The sticky bar holds the meeting switcher, the lens and the filters (rank, MB only, show what's already on the plan).
@@ -30,6 +30,7 @@ import { Button } from '@/app/_components/button';
 import { cannotRemoveReason, type PlanRow } from '@/lib/build-plan';
 import {
   campoutShown,
+  settingItems,
   cardShown,
   DEFAULT_FILTER,
   itemsByKey,
@@ -573,18 +574,27 @@ function Campout({ data, filter }: { data: SuggestionsData; filter: SuggestFilte
   if (!shown.length) return null;
   return (
     <details className={s.campout}>
-      <summary>Needs a campout ({shown.length})</summary>
-      <ul className={s.rows}>
-        {shown.map((c) => (
-          <li key={`${c.codeLabel}|${c.title}`} className={s.campoutRow}>
-            <p className={s.itemTitle}>
-              <span className={s.code}>{c.codeLabel}</span>
-              {c.title}
-            </p>
-            <p className={s.names}>{c.scouts.join(', ')}</p>
-          </li>
-        ))}
-      </ul>
+      <summary>Needs another setting ({shown.length})</summary>
+      {data.settings.map((setting) => {
+        const items = settingItems(shown, setting.code);
+        if (!items.length) return null;
+        return (
+          <section key={setting.code} aria-label={setting.name}>
+            <h3 className={s.settingHead}>{setting.name}</h3>
+            <ul className={s.rows}>
+              {items.map((c) => (
+                <li key={`${c.codeLabel}|${c.title}`} className={s.campoutRow}>
+                  <p className={s.itemTitle}>
+                    <span className={s.code}>{c.codeLabel}</span>
+                    {c.title}
+                  </p>
+                  <p className={s.names}>{c.scouts.join(', ')}</p>
+                </li>
+              ))}
+            </ul>
+          </section>
+        );
+      })}
     </details>
   );
 }

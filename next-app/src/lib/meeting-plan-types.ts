@@ -85,6 +85,8 @@ export interface ScoutSuggestion {
 export interface OutingItem {
   codeLabel: string;
   label: string;
+  /** The class tags a meeting lacks (Needs another setting's headings); absent on a snapshot from before classes. */
+  classes?: string[];
 }
 
 /**
@@ -93,7 +95,7 @@ export interface OutingItem {
  *   bor-next       every requirement of the next rank but the conference is done: a board of review is next.
  *   no-mb          Star and up: no merit badge in progress, and no Eagle-required badge with a counselor.
  *   smc-waiting    the Scoutmaster conference waits for 95% of the next rank.
- *   not-plannable  only time-based, Scout spirit or campout items are left.
+ *   not-plannable  only time-based, Scout spirit or other-setting items are left.
  *   finished       nothing left that a meeting can plan.
  */
 export type NoSuggestionReason = 'bor-next' | 'no-mb' | 'smc-waiting' | 'not-plannable' | 'finished';
@@ -102,7 +104,7 @@ export interface PlanByScout {
   scout: PlanScoutRef;
   tier: TierId;
   suggestions: ScoutSuggestion[];
-  /** Campout-only outstanding items — kept visible, never suggested. */
+  /** Items that need another setting (a campout, water, a visit…) — kept visible, never suggested. */
   needsOuting: OutingItem[];
   /** B9: set when `suggestions` is empty (every active scout is reported); absent on older snapshots. */
   reason?: NoSuggestionReason | null;
@@ -146,6 +148,8 @@ export interface MeetingPlanPayload {
   byScout: PlanByScout[];
   rosterAdults: RosterAdult[];
   rosterScoutInstructors: RosterScoutInstructor[];
+  /** Requirement class names for Needs another setting; absent on a snapshot from before classes. */
+  requirementClasses?: { code: string; name: string }[];
 }
 
 /** Public-page name treatment: "Mason Turner" → "Mason T." */

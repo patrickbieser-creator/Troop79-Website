@@ -92,7 +92,7 @@ describe('Suggestions mode', () => {
 
   it('NeedsCampout_HasNoAdd', async () => {
     mode();
-    const summary = await screen.findByText('Needs a campout (1)');
+    const summary = await screen.findByText('Needs another setting (1)');
     const details = summary.closest('details') as HTMLElement;
     expect([within(details).getByText('Spend a night camping') != null, within(details).queryAllByRole('button').length, within(details).queryAllByRole('checkbox').length]).toEqual([true, 0, 0]);
   });

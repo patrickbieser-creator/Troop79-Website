@@ -127,7 +127,8 @@ export async function loadEngineInput(meetingDate: string, title: string): Promi
     adults,
     teachingSkills,
     counselors,
-    counselorSources
+    counselorSources,
+    requirementClasses: catalog.requirementClasses ?? []
   };
 
   return { ok: true, input };

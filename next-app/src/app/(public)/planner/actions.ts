@@ -43,6 +43,7 @@ import { assessTeacher, FREEFORM_MAX, freeformTitle, teacherIntent } from '@/lib
 import { plannerAccess } from '@/lib/meeting-planner-access';
 import { loadPersonDrawer, type PersonDrawer } from '@/lib/meeting-planner-drawer';
 import { loadPlannerLists } from '@/lib/people-lists';
+import { fitsGathering, topClasses } from '@/lib/requirement-class';
 
 export type PlannerDrawerResult = { ok: true; drawer: PersonDrawer; stamp: string } | { ok: false; error: string };
 /**
@@ -219,7 +220,7 @@ export async function plannerOfferChoicesAction(): Promise<{ ok: true; choices: 
   const ranks = [...catalog.ranks].sort((a, b) => a.sort_order - b.sort_order);
   const reqs = ranks.flatMap((r) =>
     catalog.rankRequirements
-      .filter((q) => q.rank_id === r.id && q.parent_id == null && q.venue !== 'outing' && q.code.toLowerCase() !== 'bor')
+      .filter((q) => q.rank_id === r.id && q.parent_id == null && fitsGathering(topClasses(q), 'meeting') && q.code.toLowerCase() !== 'bor')
       .sort((a, b) => a.sort_order - b.sort_order)
       .map((q) => ({ key: `${r.id}-${q.code}`, codeLabel: `${r.display_name} ${q.code}`, label: q.label }))
       .concat(r.id === 'scout' ? [] : [{ key: borKey(r.id), codeLabel: borCodeLabel(r.display_name), label: BOR_LABEL }])

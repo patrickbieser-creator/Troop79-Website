@@ -22,7 +22,7 @@ const req = (rank_id: string, code: string, label: string, o: Partial<CatalogRan
   complete_rule: 'all',
   complete_n: null,
   sort_order: rid,
-  venue: 'either',
+  class_codes: [] as string[],
   skill_id: null,
   ...o
 });
@@ -39,7 +39,7 @@ const mbReq = (code: string, label: string, o: Partial<CatalogMeritBadgeRequirem
   complete_rule: 'all',
   complete_n: null,
   sort_order: mid,
-  venue: 'either',
+  class_codes: [] as string[],
   ...o
 });
 const FA9 = mbReq('9', 'Head and spine injuries');
