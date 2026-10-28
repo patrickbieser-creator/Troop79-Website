@@ -481,7 +481,7 @@ async function loadTeachingSkillChangesToReview(sb: SupabaseClient): Promise<Att
     loadTeachingSkillChanges(sb, { filter: 'review', limit: SHOWN }),
     countUnreviewedTeachingSkillChanges(sb)
   ]);
-  const href = '/admin/advancement/lookups#teaching-changes';
+  const href = '/admin/advancement/lookups?card=teaching-changes';
   const items: AttentionItem[] = rows.map((r) => ({
     label: `${r.personName} ${r.action} ${r.skillName}`,
     meta: fmtDate(r.changedAt, { year: false }),

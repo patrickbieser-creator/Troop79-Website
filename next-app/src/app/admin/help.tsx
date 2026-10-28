@@ -131,7 +131,7 @@ export const HELP = {
         <dl>
           <dt>Template</dt>
           <dd>
-            Wording from the library under <Link href="/admin/advancement/lookups">Lookups &amp; Admin</Link> —
+            Wording from the library under <Link href="/admin/advancement/lookups?card=email-templates">Lookups &amp; Admin › Email templates</Link> —
             written once, picked per event. &ldquo;Built-in default&rdquo; is the shipped wording.
           </dd>
           <dt>Customize</dt>

@@ -176,7 +176,7 @@ export default async function MbProgressDetailPage({
             )}
             {' · '}
             <Link
-              href={`/admin/advancement/lookups`}
+              href="/admin/advancement/lookups?card=merit-badges"
               className={styles.mbLink}
             >
               Edit catalog

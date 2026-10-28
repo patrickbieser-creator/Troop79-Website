@@ -1,15 +1,15 @@
 /**
- * /admin/advancement/lookups — Reference tables. Each card has an editor:
- *   - Merit Badges: edit (modal)
- *   - Internal Requirement Codes: edit (modal), top-level rows only — nested
- *     sub-requirement trees are edited per-MB in the Merit Badge card instead
+ * /admin/advancement/lookups — Reference tables and site settings. Since 2026-10-28 (Patrick: too many cards to
+ * scroll) the bare path is a landing page of grouped links (lookup-cards.ts) that reads no table; ?card=<id> opens one
+ * card on its own, expanded, under "← Back to Lookups & Admin", reading only what that card needs. Every editor's
+ * revalidatePath('/admin/advancement/lookups') still refreshes the open card: the query keeps one path.
  *
- * Scouts and adults are NOT here — they moved to /admin/advancement/roster in
- * v1.12. This page still READS both tables to populate the merit-badge
- * counselor and Meeting Plan skill-assignment pickers.
+ * Scouts and adults are NOT here — they moved to /admin/advancement/roster in v1.12. The catalog and teaching cards
+ * still READ both tables to populate the merit-badge counselor and Meeting Plan skill-assignment pickers.
  */
 
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/supabase/server';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 import { requireCapability } from '@/lib/require-capability';
@@ -51,6 +51,7 @@ import { NameLookupEditor, type NameRow } from './name-lookup-editor';
 import { EventEditor, type EventRow } from './event-editor';
 import { ReqCodesTable, type ReqRow } from './req-codes-table';
 import { LookupCard } from './lookup-card';
+import { LOOKUPS_PATH, findLookupCard, lookupCardHref, visibleLookupGroups } from './lookup-cards';
 import { HouseholdsManager, type HouseholdMemberRow, type HouseholdRow } from './households-manager';
 import { SkillsEditor, type SkillRow } from './skills-editor';
 import { RequirementClassesEditor, type RequirementClassRow } from './requirement-classes-editor';
@@ -103,8 +104,8 @@ import {
 } from './actions';
 import { createStore, renameStore, retireStore, restoreStore, deleteStore, moveStore } from './store-actions';
 import { listStoresWith } from '@/lib/menu-monster/stores';
-import styles from './lookups.module.css';
 import { PageTitle } from '../../_components/page-title';
+import { AdminHub } from '../../_components/admin-hub';
 
 interface MbReqRowFull {
   id: number;
@@ -398,87 +399,288 @@ async function loadLookups() {
   };
 }
 
-export default async function LookupsPage() {
+export default async function LookupsPage({ searchParams }: { searchParams: Promise<{ card?: string }> }) {
   const actor = await requireCapability('roster.manage');
-  const {
-    leaders,
-    scouts,
-    mbs,
-    counselorsByMb,
-    mbReqTrees,
-    ranksFull,
-    reqs,
-    requirementClasses,
-    events,
-    serviceProjects,
-    leadershipPositions,
-    skills,
-    skillIdsByPerson,
-    otherTeachers,
-    adultDirectory,
-    householdRows
-  } = await loadLookups();
   // The store list is Menu Monster content: its card (and read) is for people
   // who may moderate the Library, the capability its actions check.
   const canEditStores = actor.capabilities.has('library.moderate');
-  const [calendarCategories, articleTokens, siteTextMap, emailTemplates, stores] = await Promise.all([
-    loadCalendarCategories(),
-    loadArticleTokens(),
-    loadSiteText(createAdminClient()),
-    loadEmailTemplates(),
-    canEditStores ? listStoresWith(createAdminClient(), { includeRetired: true }) : Promise.resolve([])
-  ]);
-  const siteText: Partial<Record<SiteTextKey, string>> = {};
-  for (const def of SITE_TEXT_KEYS) {
-    const v = siteTextMap.get(def.key);
-    if (v) siteText[def.key] = v;
-  }
-  // Same site_settings read — seo.* keys live in the same table, so the SEO
-  // card costs no extra query.
-  const seoValues: Partial<Record<SeoSettingKey, string>> = {};
-  for (const def of SEO_KEYS) {
-    const v = siteTextMap.get(def.key);
-    if (v) seoValues[def.key] = v;
+  const id = (await searchParams).card;
+
+  // Landing (Patrick, 2026-10-28): grouped links; no table is read until a card is opened.
+  if (!id) {
+    return (
+      <>
+        <PageTitle
+          back={null}
+          title="Lookups & Admin"
+          sub={
+            <>
+              The editable Troop 79 taxonomy and site settings. Scouts and adults are managed on the{' '}
+              <Link href="/admin/advancement/roster">Roster</Link>.
+            </>
+          }
+        />
+        <AdminHub
+          groups={visibleLookupGroups(canEditStores).map((g) => ({
+            title: g.title,
+            quiet: false,
+            tint: g.tint,
+            cards: g.cards.map((c) => ({ key: c.id, title: c.title, description: c.blurb, href: lookupCardHref(c.id) }))
+          }))}
+        />
+      </>
+    );
   }
 
-  // Classify sign-off initials: youth = linked to an ACTIVE scout; aging out
-  // (scout inactive) automatically flips those initials to adult.
-  const activeScoutPersonIds = new Set(
-    scouts.filter((s) => s.active && s.person_id != null).map((s) => s.person_id as number)
+  const def = findLookupCard(id, canEditStores);
+  if (!def) notFound();
+  const { sub, body } = await cardContent(def.id);
+  return (
+    <>
+      <PageTitle back={{ label: 'Back to Lookups & Admin', href: LOOKUPS_PATH }} title={def.title} sub={sub} />
+      <LookupCard title={def.title} single>
+        {body}
+      </LookupCard>
+    </>
   );
-  const leaderType = (l: LeaderRow): 'adult' | 'youth' | 'source' =>
-    !l.is_person ? 'source' : l.person_id != null && activeScoutPersonIds.has(l.person_id) ? 'youth' : 'adult';
+}
 
-  // What each adult's login label would be if their login_name override were
-  // blank — shown as a placeholder hint in the edit dialog. Computed over the
-  // exact same pool the login system uses (current adults only — an active
-  // youth leader isn't in this set yet, even if Type=Youth here).
+/** One card's line and editor, reading only what that card needs. */
+async function cardContent(id: string): Promise<{ sub: string; body: React.ReactNode }> {
+  switch (id) {
+    case 'teaching-changes': {
+      const adminSb = createAdminClient();
+      const [changesToReview, changesAll] = await Promise.all([
+        loadTeachingSkillChanges(adminSb, { filter: 'review' }),
+        loadTeachingSkillChanges(adminSb, { filter: 'all' })
+      ]);
+      return {
+        sub: 'Adults and Junior Leaders set what they can teach on the member page; it counts right away and nothing waits for approval. Undo reverses a change (and is logged). Mark reviewed clears it from the admin-home count.',
+        body: (
+          <TeachingChanges
+            toReview={changesToReview}
+            all={changesAll}
+            onUndo={undoTeachingSkillChangeAction}
+            onMarkReviewed={markTeachingSkillChangeReviewedAction}
+          />
+        )
+      };
+    }
+    case 'categories': {
+      const calendarCategories = await loadCalendarCategories();
+      return {
+        sub: `${calendarCategories.length} categories · the ONE taxonomy — every event, photo album AND news story picks from this list (tags merged in, 2026-08-21) · renaming one updates everything that used it · a category in use can't be deleted · each has a public page at /category/<slug>`,
+        body: (
+          <CategoriesEditor
+            rows={calendarCategories}
+            onCreate={createCalendarCategory}
+            onUpdate={updateCalendarCategory}
+            onDelete={deleteCalendarCategory}
+          />
+        )
+      };
+    }
+    case 'article-typography':
+      return {
+        sub: 'how markdown stories are set — news posts, event write-ups and library narratives share it · blank means the built-in default · values only, so a typo can’t break the page',
+        body: <ArticleTokensEditor values={await loadArticleTokens()} onSave={saveArticleTokens} />
+      };
+    case 'event-reminder':
+    case 'search-visibility': {
+      const siteTextMap = await loadSiteText(createAdminClient());
+      if (id === 'event-reminder') {
+        const siteText: Partial<Record<SiteTextKey, string>> = {};
+        for (const def of SITE_TEXT_KEYS) {
+          const v = siteTextMap.get(def.key);
+          if (v) siteText[def.key] = v;
+        }
+        return {
+          sub: 'the follow-up sent from an event roster’s “Chase the non-responders” panel · blank means the built-in wording · {title} and {deadline} are filled when it’s sent',
+          body: <SiteTextEditor values={siteText} onSave={saveSiteText} />
+        };
+      }
+      // seo.* keys live in the same site_settings table.
+      const seoValues: Partial<Record<SeoSettingKey, string>> = {};
+      for (const def of SEO_KEYS) {
+        const v = siteTextMap.get(def.key);
+        if (v) seoValues[def.key] = v;
+      }
+      return {
+        sub: 'robots.txt, the sitemap, and what search engines and AI assistants are told about the troop · saved changes are live immediately, no deploy',
+        body: <SeoEditor values={seoValues} onSave={saveSeoSettings} />
+      };
+    }
+    case 'email-templates':
+      return {
+        sub: "the library the signup builder's Confirmation email block picks from · grouped by kind · fields in [brackets] fill in when sent · a template in use is retired, not deleted",
+        body: (
+          <EmailTemplatesEditor
+            rows={await loadEmailTemplates()}
+            previewCtx={samplePreviewContext(siteUrl())}
+            onCreate={createEmailTemplate}
+            onUpdate={updateEmailTemplate}
+            onRetire={retireEmailTemplate}
+            onRestore={restoreEmailTemplate}
+          />
+        )
+      };
+    case 'stores': {
+      const stores = await listStoresWith(createAdminClient(), { includeRetired: true });
+      return {
+        sub: `${stores.filter((s) => !s.retiredAt).length} stores · the pull-down on the Menu Monster price book's packages · renaming one updates its packages too`,
+        body: (
+          <StoresEditor
+            rows={stores}
+            onCreate={createStore}
+            onRename={renameStore}
+            onRetire={retireStore}
+            onRestore={restoreStore}
+            onDelete={deleteStore}
+            onMove={moveStore}
+          />
+        )
+      };
+    }
+  }
+  return lookupsCardContent(id, await loadLookups());
+}
 
-  // Skill-assignment rows (Meeting Plan), keyed to people; teaching-rows.ts decides who is listed and who Add offers.
-  // ADULTS: everyone the person picker offers (leaders and parents) plus adult leaders and anyone else who already
-  // teaches or counsels — the engine schedules them as adult teachers, adults-only skills included.
-  const adultLeaders = leaders.filter((l) => leaderType(l) === 'adult' && l.person_id != null);
+/** The cards that read the shared lookups load (catalog, pick lists, skills, teaching, households). */
+function lookupsCardContent(id: string, l: Awaited<ReturnType<typeof loadLookups>>): { sub: string; body: React.ReactNode } {
+  switch (id) {
+    case 'merit-badges':
+      return {
+        sub: `${l.mbs.length} merit badges · BSA Scoutbook IDs for export · assigned counselors`,
+        body: <MbEditor rows={l.mbs} leaders={counselorCandidates(l)} counselorsByMb={l.counselorsByMb} reqTreesByMb={l.mbReqTrees} />
+      };
+    case 'requirement-codes':
+      return {
+        sub: `${l.reqs.length} top-level codes · renaming a code updates matching ledger entries too · nested sub-requirement trees are edited per-MB in the Merit Badge Catalog`,
+        body: <ReqCodesTable rows={l.reqs} classes={l.requirementClasses} />
+      };
+    case 'requirement-classes':
+      return {
+        sub: `${l.requirementClasses.length} classes · tag where a requirement can be done, on Internal Requirement Codes · the meeting planner suggests what a meeting can hold (M, or untagged)`,
+        body: <RequirementClassesEditor rows={l.requirementClasses} />
+      };
+    case 'events':
+      return {
+        sub: `${l.events.length} events · each classified as a Campout, Hike, Day Outing, or Fundraiser so Fast Entry never has to ask twice · drives the Events tab pull-down · not a foreign key, so removing one only affects the picker`,
+        body: <EventEditor rows={l.events} onCreate={createEvent} onUpdate={updateEvent} onDelete={deleteEvent} />
+      };
+    case 'service-projects':
+      return {
+        sub: `${l.serviceProjects.length} projects · drives the Service tab pull-down · hours entered per data-entry`,
+        body: (
+          <NameLookupEditor
+            rows={l.serviceProjects}
+            noun="Service Project"
+            onCreate={createServiceProject}
+            onUpdate={updateServiceProject}
+            onDelete={deleteServiceProject}
+          />
+        )
+      };
+    case 'leadership-positions':
+      return {
+        sub: `${l.leadershipPositions.length} positions · drives the Leadership tab pull-down`,
+        body: (
+          <NameLookupEditor
+            rows={l.leadershipPositions}
+            noun="Leadership Position"
+            onCreate={createLeadershipPosition}
+            onUpdate={updateLeadershipPosition}
+            onDelete={deleteLeadershipPosition}
+          />
+        )
+      };
+    case 'skills':
+      return {
+        sub: `${l.skills.length} skills · drives teacher matching on the Meeting Plan · "Older scout may teach" is the per-skill authorization scope — First Aid, Woods Tools, Fire Safety, and Aquatics stay adults-only per the Guide to Safe Scouting`,
+        body: <SkillsEditor rows={l.skills} onCreate={createSkill} onUpdate={updateSkill} onDelete={deleteSkill} />
+      };
+    case 'adult-skills': {
+      const t = teachingData(l);
+      return {
+        sub: `${t.adultRows.length} adults who teach, leaders and parents alike — the Meeting Plan matches these to requirement skills when it fills the Teaching slot · Add gives someone a skill, Delete clears all of theirs · scouts teach via Scout Instructors instead`,
+        body: (
+          <SkillAssignEditor
+            people={t.adultRows}
+            candidates={t.adultCandidates}
+            skills={l.skills.map((s) => ({ id: s.id, name: s.name }))}
+            keyField="person_id"
+            noun="Adult"
+            onSave={setTeachingSkills}
+          />
+        )
+      };
+    }
+    case 'scout-instructors': {
+      const t = teachingData(l);
+      return {
+        sub: `${t.scoutRows.length} scouts who teach · Add offers anyone First Class or above, or a Junior Leader · blanket per-skill authorization — only youth-teachable skills can be assigned`,
+        body: (
+          <SkillAssignEditor
+            people={t.scoutRows}
+            candidates={t.scoutCandidates}
+            skills={l.skills.filter((s) => s.youth_teachable).map((s) => ({ id: s.id, name: s.name }))}
+            keyField="person_id"
+            noun="Scout"
+            onSave={setTeachingSkills}
+          />
+        )
+      };
+    }
+    case 'households':
+      return {
+        sub: `${l.householdRows.length} households · who belongs to one is set on each person under Roster · two families can share a surname, so name them apart`,
+        body: <HouseholdsManager households={l.householdRows} />
+      };
+  }
+  notFound();
+}
+
+/** Classify sign-off initials: youth = linked to an ACTIVE scout; aging out (scout inactive) flips them to adult. */
+function leaderTypes(l: Awaited<ReturnType<typeof loadLookups>>) {
+  const activeScoutPersonIds = new Set(l.scouts.filter((s) => s.active && s.person_id != null).map((s) => s.person_id as number));
+  const leaderType = (x: LeaderRow): 'adult' | 'youth' | 'source' =>
+    !x.is_person ? 'source' : x.person_id != null && activeScoutPersonIds.has(x.person_id) ? 'youth' : 'adult';
+  const adultLeaders = l.leaders.filter((x) => leaderType(x) === 'adult' && x.person_id != null);
+  return { activeScoutPersonIds, adultLeaders };
+}
+
+function counselorCandidates(l: Awaited<ReturnType<typeof loadLookups>>): CounselorCandidate[] {
+  const { adultLeaders } = leaderTypes(l);
+  return [
+    ...adultLeaders.map((x) => ({ personId: x.person_id as number, name: x.name, code: x.code })),
+    ...l.otherTeachers.map((p) => ({ personId: p.personId, name: p.name, code: null })),
+    // Non-person sources: Summer Camp stands in for the council camp staff who counsel at camp.
+    ...l.leaders.filter((x) => !x.is_person).map((x) => ({ personId: null, name: x.name, code: x.code }))
+  ];
+}
+
+/**
+ * Skill-assignment rows (Meeting Plan), keyed to people; teaching-rows.ts decides who is listed and who Add offers.
+ * ADULTS: everyone the person picker offers (leaders and parents) plus adult leaders and anyone else who already
+ * teaches or counsels. SCOUTS: Add offers whoever can offer to teach today (First Class+ or Junior Leader); anyone
+ * holding a skill is listed.
+ */
+function teachingData(l: Awaited<ReturnType<typeof loadLookups>>) {
+  const { activeScoutPersonIds, adultLeaders } = leaderTypes(l);
   const teachingAdults = collectTeachingAdults({
-    directory: adultDirectory.map((d) => ({ personId: d.person_id, name: d.display_name, tab: d.tab, inPicker: d.in_picker })),
-    adultLeaders: adultLeaders.map((l) => ({ personId: l.person_id as number, name: l.name, role: l.role })),
-    otherTeachers,
-    formerScouts: scouts
-      .filter((s) => !s.active && s.person_id != null && skillIdsByPerson.has(s.person_id))
+    directory: l.adultDirectory.map((d) => ({ personId: d.person_id, name: d.display_name, tab: d.tab, inPicker: d.in_picker })),
+    adultLeaders: adultLeaders.map((x) => ({ personId: x.person_id as number, name: x.name, role: x.role })),
+    otherTeachers: l.otherTeachers,
+    formerScouts: l.scouts
+      .filter((s) => !s.active && s.person_id != null && l.skillIdsByPerson.has(s.person_id))
       .map((s) => ({ personId: s.person_id as number, name: s.display_name })),
     activeScoutIds: activeScoutPersonIds
   });
-  const counselorCandidates: CounselorCandidate[] = [
-    ...adultLeaders.map((l) => ({ personId: l.person_id as number, name: l.name, code: l.code })),
-    ...otherTeachers.map((p) => ({ personId: p.personId, name: p.name, code: null })),
-    // Non-person sources: Summer Camp stands in for the council camp staff who counsel at camp.
-    ...leaders.filter((l) => !l.is_person).map((l) => ({ personId: null, name: l.name, code: l.code }))
-  ];
-  // SCOUTS: Add offers whoever can offer to teach today (First Class+ or Junior Leader); anyone holding a skill is listed.
-  const rankSort = new Map(ranksFull.map((r) => [r.id, r.sort_order]));
-  const rankName = new Map(ranksFull.map((r) => [r.id, r.display_name]));
+  const rankSort = new Map(l.ranksFull.map((r) => [r.id, r.sort_order]));
+  const rankName = new Map(l.ranksFull.map((r) => [r.id, r.display_name]));
   const firstClassSort = rankSort.get('first-class') ?? Number.MAX_SAFE_INTEGER;
   const today = centralToday();
-  const teachingScouts: TeachingScout[] = scouts
+  const teachingScouts: TeachingScout[] = l.scouts
     .filter((s) => s.active && s.person_id != null)
     .map((s) => ({
       personId: s.person_id as number,
@@ -492,253 +694,5 @@ export default async function LookupsPage() {
         onDate: today
       })
     }));
-  const { adultRows, adultCandidates, scoutRows, scoutCandidates } = buildTeachingRows({
-    adults: teachingAdults,
-    scouts: teachingScouts,
-    skillIdsByPerson
-  });
-  const youthSkills = skills.filter((s) => s.youth_teachable);
-  const adminSb = createAdminClient();
-  const [changesToReview, changesAll] = await Promise.all([
-    loadTeachingSkillChanges(adminSb, { filter: 'review' }),
-    loadTeachingSkillChanges(adminSb, { filter: 'all' })
-  ]);
-
-  return (
-    <>
-      <PageTitle back={null}
-        title="Lookups & Admin"
-        sub={
-          <>
-            The editable Troop 79 taxonomy. Internal codes, BSA Member IDs, leader signoff
-            initials, and the merit-badge catalog. Click <strong>Edit</strong> on any row to
-            make changes. Scouts and adults are managed on the{' '}
-            <Link href="/admin/advancement/roster">Roster</Link>.
-          </>
-        }
-      />
-
-      {/* The Scouts and "Adults and Instructors" cards used to sit here. They
-          moved to /admin/advancement/roster in v1.12 so the roster you read and
-          the record you correct are the same screen. This page still reads both
-          tables for the counselor and skill-assignment pickers below. */}
-
-      <div className={styles.grid}>
-        <Card title="Merit Badge Catalog" sub={`${mbs.length} merit badges · BSA Scoutbook IDs for export · assigned counselors`}>
-          <MbEditor
-            rows={mbs}
-            leaders={counselorCandidates}
-            counselorsByMb={counselorsByMb}
-            reqTreesByMb={mbReqTrees}
-          />
-        </Card>
-
-        <Card
-          title="Internal Requirement Codes"
-          sub={`${reqs.length} top-level codes · renaming a code updates matching ledger entries too · nested sub-requirement trees are edited per-MB in the Merit Badge Catalog card`}
-        >
-          <ReqCodesTable rows={reqs} classes={requirementClasses} />
-        </Card>
-      </div>
-
-      <div className={styles.grid}>
-        <Card
-          title="Requirement classes"
-          sub={`${requirementClasses.length} classes · tag where a requirement can be done, on Internal Requirement Codes · the meeting planner suggests what a meeting can hold (M, or untagged)`}
-        >
-          <RequirementClassesEditor rows={requirementClasses} />
-        </Card>
-      </div>
-
-      <div className={styles.grid}>
-        <Card
-          title="Events"
-          sub={`${events.length} events · each classified as a Campout, Hike, Day Outing, or Fundraiser so Fast Entry never has to ask twice · drives the Events tab pull-down · not a foreign key, so removing one only affects the picker`}
-        >
-          <EventEditor
-            rows={events}
-            onCreate={createEvent}
-            onUpdate={updateEvent}
-            onDelete={deleteEvent}
-          />
-        </Card>
-
-        <Card
-          title="Service Projects"
-          sub={`${serviceProjects.length} projects · drives the Service tab pull-down · hours entered per data-entry`}
-        >
-          <NameLookupEditor
-            rows={serviceProjects}
-            noun="Service Project"
-            onCreate={createServiceProject}
-            onUpdate={updateServiceProject}
-            onDelete={deleteServiceProject}
-          />
-        </Card>
-      </div>
-
-      <div className={styles.grid}>
-        <Card
-          title="Leadership Positions"
-          sub={`${leadershipPositions.length} positions · drives the Leadership tab pull-down`}
-        >
-          <NameLookupEditor
-            rows={leadershipPositions}
-            noun="Leadership Position"
-            onCreate={createLeadershipPosition}
-            onUpdate={updateLeadershipPosition}
-            onDelete={deleteLeadershipPosition}
-          />
-        </Card>
-
-        <Card
-          title="Skills (Meeting Plan)"
-          sub={`${skills.length} skills · drives teacher matching on the Meeting Plan · "Older scout may teach" is the per-skill authorization scope — First Aid, Woods Tools, Fire Safety, and Aquatics stay adults-only per the Guide to Safe Scouting`}
-        >
-          <SkillsEditor
-            rows={skills}
-            onCreate={createSkill}
-            onUpdate={updateSkill}
-            onDelete={deleteSkill}
-          />
-        </Card>
-      </div>
-
-      <div id="teaching-changes" className={styles.grid}>
-        <div className={styles.cardExpanded}>
-          <Card
-            title="Recent teaching-skill changes"
-            sub="Adults and Junior Leaders set what they can teach on the member page; it counts right away and nothing waits for approval. Undo reverses a change (and is logged). Mark reviewed clears it from the admin-home count."
-          >
-            <TeachingChanges
-              toReview={changesToReview}
-              all={changesAll}
-              onUndo={undoTeachingSkillChangeAction}
-              onMarkReviewed={markTeachingSkillChangeReviewedAction}
-            />
-          </Card>
-        </div>
-      </div>
-
-      <div className={styles.grid}>
-        <Card
-          title="Adult Skills"
-          sub={`${adultRows.length} adults who teach, leaders and parents alike — the Meeting Plan matches these to requirement skills when it fills the Teaching slot · Add gives someone a skill, Delete clears all of theirs · scouts teach via Scout Instructors instead`}
-        >
-          <SkillAssignEditor
-            people={adultRows}
-            candidates={adultCandidates}
-            skills={skills.map((s) => ({ id: s.id, name: s.name }))}
-            keyField="person_id"
-            noun="Adult"
-            onSave={setTeachingSkills}
-          />
-        </Card>
-
-        <Card
-          title="Scout Instructors"
-          sub={`${scoutRows.length} scouts who teach · Add offers anyone First Class or above, or a Junior Leader · blanket per-skill authorization — only youth-teachable skills can be assigned`}
-        >
-          <SkillAssignEditor
-            people={scoutRows}
-            candidates={scoutCandidates}
-            skills={youthSkills.map((s) => ({ id: s.id, name: s.name }))}
-            keyField="person_id"
-            noun="Scout"
-            onSave={setTeachingSkills}
-          />
-        </Card>
-      </div>
-
-      <div className={styles.grid}>
-        <Card
-          title="Categories"
-          sub={`${calendarCategories.length} categories · the ONE taxonomy — every event, photo album AND news story picks from this list (tags merged in, 2026-08-21) · renaming one updates everything that used it · a category in use can't be deleted · each has a public page at /category/<slug>`}
-        >
-          <CategoriesEditor
-            rows={calendarCategories}
-            onCreate={createCalendarCategory}
-            onUpdate={updateCalendarCategory}
-            onDelete={deleteCalendarCategory}
-          />
-        </Card>
-
-
-        <Card
-          title="Article Typography"
-          sub="how markdown stories are set — news posts, event write-ups and library narratives share it · blank means the built-in default · values only, so a typo can't break the page"
-        >
-          <ArticleTokensEditor values={articleTokens} onSave={saveArticleTokens} />
-        </Card>
-
-        <Card
-          title="Event reminder email"
-          sub="the follow-up sent from an event roster’s “Chase the non-responders” panel · blank means the built-in wording · {title} and {deadline} are filled when it’s sent"
-        >
-          <SiteTextEditor values={siteText} onSave={saveSiteText} />
-        </Card>
-
-        <Card
-          title="Email templates"
-          sub="the library the signup builder's Confirmation email block picks from · grouped by kind · fields in [brackets] fill in when sent · a template in use is retired, not deleted"
-        >
-          <EmailTemplatesEditor
-            rows={emailTemplates}
-            previewCtx={samplePreviewContext(siteUrl())}
-            onCreate={createEmailTemplate}
-            onUpdate={updateEmailTemplate}
-            onRetire={retireEmailTemplate}
-            onRestore={restoreEmailTemplate}
-          />
-        </Card>
-
-        <Card
-          title="Search &amp; AI visibility"
-          sub="robots.txt, the sitemap, and what search engines and AI assistants are told about the troop · saved changes are live immediately, no deploy"
-        >
-          <SeoEditor values={seoValues} onSave={saveSeoSettings} />
-        </Card>
-      </div>
-
-      {canEditStores && (
-        <div className={styles.grid}>
-          <Card
-            title="Menu Monster stores"
-            sub={`${stores.filter((s) => !s.retiredAt).length} stores · the pull-down on the Menu Monster price book's packages · renaming one updates its packages too`}
-          >
-            <StoresEditor
-              rows={stores}
-              onCreate={createStore}
-              onRename={renameStore}
-              onRetire={retireStore}
-              onRestore={restoreStore}
-              onDelete={deleteStore}
-              onMove={moveStore}
-            />
-          </Card>
-        </div>
-      )}
-
-      <div className={styles.grid}>
-        <Card
-          title="Households"
-          sub={`${householdRows.length} households · who belongs to one is set on each person under Roster · two families can share a surname, so name them apart`}
-        >
-          <HouseholdsManager households={householdRows} />
-        </Card>
-      </div>
-
-      {/* Resource Library superuser access ("view the Library as any active
-          scout") moved to /admin/access — it's a person_capabilities grant
-          (`library.proxy_view`) like every other capability now, not a
-          bespoke leader_code table with its own editor
-          (Plans/Unified-Identity-And-Capabilities.md). A second, purpose-built
-          editor here would just be a stale copy of what /admin/access already
-          shows correctly. */}
-    </>
-  );
+  return buildTeachingRows({ adults: teachingAdults, scouts: teachingScouts, skillIdsByPerson: l.skillIdsByPerson });
 }
-
-// Card = client component with Expand (full-width + all rows); the editors
-// window themselves to 15 rows via useLookupTable/LookupCardContext.
-const Card = LookupCard;

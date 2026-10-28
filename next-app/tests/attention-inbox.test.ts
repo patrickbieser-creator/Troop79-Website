@@ -277,7 +277,7 @@ describe('AttentionInbox teaching-skill changes', () => {
     const { saveTeachingSkills } = await import('../src/lib/teaching-skills');
     await saveTeachingSkills(admin, personId!, ['knots'], 'member', { personId, label: 'ZZVITEST Inbox Teacher' });
     const row = find(await load(caps('roster.manage')), 'teaching-skill-changes');
-    expect([row?.count, row?.href]).toEqual([before + 1, '/admin/advancement/lookups#teaching-changes']);
+    expect([row?.count, row?.href]).toEqual([before + 1, '/admin/advancement/lookups?card=teaching-changes']);
     expect(find(await load(caps('finance.manage', 'news.write')), 'teaching-skill-changes')).toBeUndefined();
   });
 });

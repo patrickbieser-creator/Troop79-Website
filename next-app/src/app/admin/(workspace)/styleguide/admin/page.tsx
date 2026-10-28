@@ -1143,7 +1143,8 @@ export default function StyleguidePage() {
           greyed &mdash; still clickable, whatever the tint &mdash; when not. &ldquo;Troop admin tools&rdquo; is a quiet,
           untinted row of plain links, always last. <code>/admin/reports</code> lists every report through{' '}
           <code>folderEntries()</code> as the same cards without a group heading (<code>AdminHubGrid</code>,{' '}
-          <code>ReportsLanding</code>).
+          <code>ReportsLanding</code>). <code>/admin/advancement/lookups</code> is the same tinted groups, one card per
+          lookup (<code>lookups/lookup-cards.ts</code>); a card opens on its own at <code>?card=&lt;id&gt;</code>, expanded.
         </p>
         <div className={sg.specimenGrid}>
           <Specimen

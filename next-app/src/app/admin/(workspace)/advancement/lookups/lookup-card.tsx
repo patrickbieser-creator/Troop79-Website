@@ -20,13 +20,23 @@ export function useLookupCard() {
 export function LookupCard({
   title,
   sub,
+  single,
   children
 }: {
   title: string;
   sub?: string;
+  /** The card is the whole screen (?card=<id>): expanded, and the page title carries its name and line. */
+  single?: boolean;
   children: React.ReactNode;
 }) {
   const [expanded, setExpanded] = useState(false);
+  if (single) {
+    return (
+      <div className={styles.card}>
+        <LookupCardContext.Provider value={{ expanded: true }}>{children}</LookupCardContext.Provider>
+      </div>
+    );
+  }
   return (
     <div className={`${styles.card} ${expanded ? styles.cardExpanded : ''}`}>
       <div className={styles.cardHead}>
