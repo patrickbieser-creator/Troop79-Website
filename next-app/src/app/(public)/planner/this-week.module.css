@@ -684,11 +684,10 @@ button.chip:focus-visible {
   background: var(--warm-white);
   font-weight: 700;
 }
-.checkOn {
+.checkDone {
   composes: check;
-  border-color: var(--navy);
-  background: var(--navy);
-  color: var(--warm-white);
+  border-color: var(--rsvp-coming-bg);
+  background: var(--rsvp-coming-bg);
 }
 .gapRow td {
   background: var(--gap-row-bg);

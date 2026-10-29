@@ -372,10 +372,12 @@ function Checklist({
             </span>
           ))}
           <span className={s.legendItem}>
-            <span className={s.checkOn} aria-hidden="true">
-              ✓
-            </span>
-            could work on it tonight
+            <span className={s.check} aria-hidden="true" />
+            still to do (could work on it tonight)
+          </span>
+          <span className={s.legendItem}>
+            <span className={s.checkDone} aria-hidden="true" />
+            already done
           </span>
           <span className={s.legendItem}>
             <span className={s.legendGap} aria-hidden="true" />
@@ -417,12 +419,13 @@ function Checklist({
                       <NameChip person={r} tone="rank" />
                     </td>
                     {sec.columns.map((col) => {
-                      const on = r.groupKey === sec.key && r.open.includes(col.key);
+                      // White = still to do (could work on it tonight); green = already done. The same reading as the
+                      // library's advancement views.
+                      const open = sec.key === r.groupKey ? r.open : sec.key === r.homeKey ? r.homeOpen : [];
+                      const isDone = !open.includes(col.key);
                       return (
                         <td key={col.key} className={s.cell}>
-                          <span className={on ? s.checkOn : s.check} role="img" aria-label={`${col.code}: ${on ? 'could work on it' : 'signed off or not offered'}`}>
-                            {on ? '✓' : ''}
-                          </span>
+                          <span className={isDone ? s.checkDone : s.check} role="img" aria-label={`${col.code}: ${isDone ? 'already done' : 'still to do'}`} />
                         </td>
                       );
                     })}

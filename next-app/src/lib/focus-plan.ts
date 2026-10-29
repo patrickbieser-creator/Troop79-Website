@@ -4,7 +4,8 @@
  * Every active scout lands in a group: the rank they're working on (Scout through First Class), or, holding First
  * Class or above, the Merit badge group, where each one teaches or takes one of the night's badges. A group exists
  * only when the focus has something for it, so a night can be all merit badges. The checklist's columns are the
- * focus items, and a ✓ is one the scout hasn't finished. A counted scout with no ✓ and no hand choice is a gap.
+ * focus items; an open one (a white cell; done is green) is one the scout hasn't finished. A counted scout with nothing
+ * open and no hand choice is a gap.
  *
  * Computed on every read, never stored: a sign-off at Fast Entry shows on the next load. Only the planners' choices
  * (`roles`) are inputs from the database. Pure: no I/O, no framework imports.
@@ -40,6 +41,9 @@ export interface FocusProgress {
   rankCodes: ReadonlySet<string>;
   /** Merit badge requirement leaves on the ledger: 'first-aid-1a'. */
   mbCodes: ReadonlySet<string>;
+  /** Badges earned (mb_progress.awarded). An earned badge is done whatever its requirements show: many were earned
+   *  before (or outside) the troop's requirement-level ledger. */
+  awardedMbs?: ReadonlySet<string>;
 }
 
 /** A planner's hand choice for one scout at one meeting. No choice = placement decides. */
@@ -90,7 +94,7 @@ export interface FocusGroup {
 }
 
 /**
- * - `rank-work`: placed in a rank group with at least one ✓ (counts toward coverage).
+ * - `rank-work`: placed in a rank group with at least one open column (counts toward coverage).
  * - `badge`: in a merit badge group.
  * - `teach`, `request`: a planner's choice.
  * - `placed`: moved by hand into a rank group where nothing is open (a gap filled, not rank work).
@@ -109,7 +113,7 @@ export interface FocusRow {
   counted: boolean;
   /** The group the scout sits in, null when none. */
   groupKey: string | null;
-  /** Columns of that group the scout hasn't finished: the ✓ cells. */
+  /** Columns of that group the scout hasn't finished: the checklist's white cells. */
   open: string[];
   status: RowStatus;
   /** `nothing` only: every requirement the night offers them is done. */
@@ -119,6 +123,8 @@ export interface FocusRow {
   /** Where the checklist lists the scout when they sit in no group: the group of the rank they work on (or the next
    *  one), the first badge group for an older scout; null when tonight has none of those. */
   homeKey: string | null;
+  /** Columns of the home group the scout hasn't finished: what the checklist shows when they sit in no group. */
+  homeOpen: string[];
   /** The options the family email marks "Suggested for <scout>": the group placement chose. */
   suggested: string[];
 }
@@ -256,7 +262,9 @@ export function buildFocusPlan(input: FocusInput): FocusPlan {
 
   const empty: FocusProgress = { rankCodes: new Set(), mbCodes: new Set() };
   const openIn = (g: FocusGroup, p: FocusProgress): string[] =>
-    g.columns
+    g.kind === 'badge' && p.awardedMbs?.has(g.refId)
+      ? []
+      : g.columns
       .filter((c) => {
         if (g.kind === 'rank') return !rankNodeSatisfied(rankIndex.get(g.refId)!.get(c.key)!.node, g.refId, p.rankCodes as Set<string>);
         return !mbNodeSatisfied(mbForest(g.refId).get(c.key)!.node, g.refId, p.mbCodes);
@@ -268,7 +276,10 @@ export function buildFocusPlan(input: FocusInput): FocusPlan {
     const held = s.currentRank != null ? rankSort.get(s.currentRank) : undefined;
     const counted = held == null || held < firstGroupSort;
     const base = { personId: s.personId, scoutId: s.scoutId, name: s.name, currentRank: s.currentRank, intent: s.intent, counted };
-    const withHome = <T extends object>(r: T) => ({ ...r, homeKey });
+    const withHome = <T extends object>(r: T) => {
+      const home = homeKey ? groupByKey.get(homeKey) : undefined;
+      return { ...r, homeKey, homeOpen: home ? openIn(home, p) : [] };
+    };
 
     // Where placement alone would put the scout.
     let auto: { groupKey: string | null; open: string[]; status: RowStatus; allDone: boolean };
@@ -285,10 +296,10 @@ export function buildFocusPlan(input: FocusInput): FocusPlan {
       if (ownGroup && ownOpen.length) auto = { groupKey: ownGroup.key, open: ownOpen, status: 'rank-work', allDone: false };
       else if (nextGroup && nextOpen.length) auto = { groupKey: nextGroup.key, open: nextOpen, status: 'rank-work', allDone: false };
       else auto = { groupKey: null, open: [], status: 'nothing', allDone: !!(ownGroup || nextGroup) };
-    } else if (firstBadge) {
-      auto = { groupKey: firstBadge.key, open: openIn(firstBadge, p), status: 'badge', allDone: false };
     } else {
-      auto = { groupKey: null, open: [], status: 'teach', allDone: false };
+      // The first of the night's badges this scout hasn't earned; none left (or none tonight) → they teach.
+      const badge = groups.find((g) => g.kind === 'badge' && !p.awardedMbs?.has(g.refId));
+      auto = badge ? { groupKey: badge.key, open: openIn(badge, p), status: 'badge', allDone: false } : { groupKey: null, open: [], status: 'teach', allDone: false };
     }
     const suggested = auto.groupKey ? [auto.groupKey] : [];
 

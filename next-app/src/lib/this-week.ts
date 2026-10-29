@@ -93,6 +93,9 @@ export interface TwRow extends TwPerson {
   counted: boolean;
   groupKey: string | null;
   open: string[];
+  /** The home group (where the checklist lists a scout who sits in no group) and what is still open there. */
+  homeKey: string | null;
+  homeOpen: string[];
   status: RowStatus;
   allDone: boolean;
   /** What the row's last cell says: '', 'Teaching', 'First Aid merit badge', 'From requests and offers', … */
@@ -308,6 +311,8 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
     counted: r.counted,
     groupKey: r.groupKey,
     open: r.open,
+    homeKey: r.homeKey,
+    homeOpen: r.homeOpen,
     status: r.status,
     allDone: r.allDone,
     note: noteOf(r),

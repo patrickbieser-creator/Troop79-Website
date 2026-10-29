@@ -54,7 +54,7 @@ function scout(currentRank: string | null, name = `Scout ${pid}`): FocusScout {
   pid++;
   return { personId: pid, scoutId: `S${pid}`, name, currentRank, intent: null };
 }
-const done = (rank: string[] = [], mb: string[] = []): FocusProgress => ({ rankCodes: new Set(rank), mbCodes: new Set(mb) });
+const done = (rank: string[] = [], mb: string[] = [], awarded: string[] = []): FocusProgress => ({ rankCodes: new Set(rank), mbCodes: new Set(mb), awardedMbs: new Set(awarded) });
 
 function plan(scouts: FocusScout[], focusKeys: string[], extra: Partial<FocusInput> & { done?: Record<string, FocusProgress> } = {}) {
   const progress = new Map(Object.entries(extra.done ?? {}));
@@ -143,6 +143,25 @@ describe('older scouts', () => {
   it('OlderScout_DefaultsToFirstBadge', () => {
     const s = scout('star');
     expect(rowOf(plan([s], ['camping-1', 'first-aid-1']), s).groupKey).toBe(badgeGroupKey('camping'));
+  });
+
+  it('OlderScout_WhoEarnedTheBadge_IsNotPutInItsGroup', () => {
+    const s = scout('star');
+    const p = plan([s], ['first-aid-1', 'camping-1'], { done: { [s.scoutId]: done([], [], ['first-aid']) } });
+    expect(rowOf(p, s).groupKey).toBe(badgeGroupKey('camping'));
+  });
+
+  it('OlderScout_WhoEarnedEveryBadgeTonight_Teaches', () => {
+    const s = scout('star');
+    const p = plan([s], ['first-aid-1'], { done: { [s.scoutId]: done([], [], ['first-aid']) } });
+    expect([rowOf(p, s).status, rowOf(p, s).groupKey]).toEqual(['teach', null]);
+  });
+
+  it('EarnedBadge_ShowsEveryColumnDone_EvenWithoutItsRequirementsOnTheLedger', () => {
+    const s = scout('star');
+    const roles = new Map<number, ScoutRole>([[s.personId, { role: 'group', key: badgeGroupKey('first-aid') }]]);
+    const p = plan([s], ['first-aid-1', 'first-aid-2'], { roles, done: { [s.scoutId]: done([], [], ['first-aid']) } });
+    expect(rowOf(p, s).open).toEqual([]);
   });
 
   it('OlderScout_Teaches_WhenTheNightHasNoBadge', () => {
@@ -254,6 +273,13 @@ describe('coverage and gaps', () => {
     const s = scout('scout');
     const p = plan([s], ['tenderfoot-5'], { done: { [s.scoutId]: done(['tenderfoot-5']) } });
     expect(rowOf(p, s).homeKey).toBe(rankGroupKey('tenderfoot'));
+  });
+
+  it('HomeOpen_ListsWhatIsStillOpen_InTheHomeGroup_ForAScoutPlacedElsewhere', () => {
+    const s = scout('scout');
+    const roles = new Map<number, ScoutRole>([[s.personId, { role: 'teach' }]]);
+    const p = plan([s], ['tenderfoot-4', 'tenderfoot-5'], { roles, done: { [s.scoutId]: done(['tenderfoot-5']) } });
+    expect([rowOf(p, s).homeKey, rowOf(p, s).homeOpen]).toEqual([rankGroupKey('tenderfoot'), ['tenderfoot-4']]);
   });
 
   it('Suggestions_ForScout_AreTheirPlacedGroup', () => {

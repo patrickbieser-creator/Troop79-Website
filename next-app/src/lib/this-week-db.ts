@@ -12,18 +12,28 @@ import { boardScoutsOf, type PlannerLists } from '@/lib/people-lists';
 import type { FocusProgress, ScoutRole } from '@/lib/focus-plan';
 import type { ThisWeekInput } from '@/lib/this-week';
 
-/** Each scout's rank and merit badge requirement leaves on the ledger (paginated: the ledger is far past 1000 rows). */
+/** Each scout's rank and merit badge requirement leaves on the ledger, and the badges they have earned (paginated: the
+ *  ledger is far past 1000 rows). An earned badge counts as done even when its requirements were never logged one by
+ *  one (most badges earned before the troop's requirement-level ledger). */
 export async function loadLeafCodes(sb: SupabaseClient, scoutIds: readonly string[]): Promise<Map<string, FocusProgress>> {
-  const out = new Map<string, { rankCodes: Set<string>; mbCodes: Set<string> }>(scoutIds.map((id) => [id, { rankCodes: new Set(), mbCodes: new Set() }]));
-  if (!scoutIds.length) return out;
-  const rows = await fetchAllRows<{ scout_id: string; code: string; kind: string }>((from, to) =>
-    sb.from('ledger_active').select('scout_id, code, kind').in('kind', ['rank_requirement', 'merit_badge_requirement']).in('scout_id', [...scoutIds]).order('id').range(from, to)
+  const out = new Map<string, { rankCodes: Set<string>; mbCodes: Set<string>; awardedMbs: Set<string> }>(
+    scoutIds.map((id) => [id, { rankCodes: new Set(), mbCodes: new Set(), awardedMbs: new Set() }])
   );
+  if (!scoutIds.length) return out;
+  const [rows, awarded] = await Promise.all([
+    fetchAllRows<{ scout_id: string; code: string; kind: string }>((from, to) =>
+      sb.from('ledger_active').select('scout_id, code, kind').in('kind', ['rank_requirement', 'merit_badge_requirement']).in('scout_id', [...scoutIds]).order('id').range(from, to)
+    ),
+    fetchAllRows<{ scout_id: string; mb_id: string }>((from, to) =>
+      sb.from('mb_progress').select('scout_id, mb_id').eq('awarded', true).in('scout_id', [...scoutIds]).order('scout_id').order('mb_id').range(from, to)
+    )
+  ]);
   for (const r of rows) {
     const p = out.get(r.scout_id);
     if (!p) continue;
     (r.kind === 'rank_requirement' ? p.rankCodes : p.mbCodes).add(r.code);
   }
+  for (const a of awarded) out.get(a.scout_id)?.awardedMbs.add(a.mb_id);
   return out;
 }
 
