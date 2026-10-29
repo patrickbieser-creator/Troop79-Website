@@ -269,3 +269,38 @@ describe('merge_people — Menu Monster references', () => {
     expect(data?.added_by_person_id).toBe(survivor);
   });
 });
+
+describe('merge_people — Meeting Planner III Emails (E1)', () => {
+  const admin = adminClient();
+  let meeting = 0;
+  let ids: number[] = [];
+
+  afterEach(async () => {
+    if (meeting) await admin.from('calendar_entries').delete().eq('id', meeting);
+    if (ids.length) await admin.from('people').delete().in('id', ids);
+    meeting = 0;
+    ids = [];
+  });
+
+  it('Merge_CarriesExclusionsSuggestionsHelpersAndEmails', async () => {
+    const { data: e } = await admin.from('calendar_entries').insert({ entry_date: '2086-05-05', category: 'Troop Meeting', title: `Troop Meeting ${TEST_PREFIX} MERGE` }).select('id').single();
+    meeting = e!.id as number;
+    const { data: p } = await admin.from('people').insert([{ display_name: `${TEST_PREFIX} Merge Survivor E1` }, { display_name: `${TEST_PREFIX} Merge Loser E1` }]).select('id');
+    ids = ((p ?? []) as { id: number }[]).map((r) => r.id);
+    const [survivor, loser] = ids;
+    await admin.from('meeting_scout_exclusions').insert({ calendar_entry_id: meeting, person_id: loser, topic_key: 'tenderfoot-1a' });
+    await admin.from('meeting_scout_suggestions').insert({ calendar_entry_id: meeting, person_id: loser, topic_key: 'tenderfoot-1b' });
+    await admin.from('meeting_scout_helpers').insert({ calendar_entry_id: meeting, person_id: loser, group_key: 'fr:tenderfoot' });
+    await admin.from('meeting_emails').insert({ calendar_entry_id: meeting, kind: 'plan', batch_id: '00000000-0000-4000-8000-000000000001', recipient_person_id: loser, sent_to: 'merge@example.com', about: { scouts: [loser] } });
+    const { error } = await admin.rpc('merge_people', { p_survivor: survivor, p_loser: loser, p_decided_by: 'test:merge' });
+    const one = async (t: string, col = 'person_id') => ((await admin.from(t).select(col).eq('calendar_entry_id', meeting)).data ?? []).map((r) => (r as unknown as Record<string, unknown>)[col]);
+    const { data: em } = await admin.from('meeting_emails').select('recipient_person_id, about').eq('calendar_entry_id', meeting).single();
+    expect([error, await one('meeting_scout_exclusions'), await one('meeting_scout_suggestions'), await one('meeting_scout_helpers'), em]).toEqual([
+      null,
+      [survivor],
+      [survivor],
+      [survivor],
+      { recipient_person_id: survivor, about: { scouts: [survivor] } }
+    ]);
+  });
+});

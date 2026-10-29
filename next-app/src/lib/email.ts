@@ -180,6 +180,47 @@ export async function sendEmail(opts: {
   return { status: 'sent', to, redirectedFrom };
 }
 
+export type SendOneResult =
+  | { status: 'sent'; id: string | null; deliveredTo: string }
+  | { status: 'error' | 'skipped' | 'unknown'; detail: string };
+
+/**
+ * One email to one address, always confirmed: the Emails screen's sender (lib/meeting-emails), which keeps its own
+ * log. Returns Resend's id so the webhook can match delivery and open events back to the log row. The idempotency key
+ * means a retry of the same request can't send it twice; the tags carry the log row's id as a fallback match. The dev
+ * relay (rule 5) still applies, and deliveredTo says where it really went. 'error' is Resend's own refusal (nothing
+ * went); 'unknown' is a throw, which may come after Resend accepted it.
+ */
+export async function sendOneEmail(opts: {
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+  fromName?: string;
+  replyTo?: string;
+  idempotencyKey: string;
+  tags?: { name: string; value: string }[];
+}): Promise<SendOneResult> {
+  const intended = opts.to.trim().toLowerCase();
+  if (!intended) return { status: 'skipped', detail: 'No deliverable address.' };
+  const { to, subject } = applyRedirect([intended], opts.subject, process.env.EMAIL_REDIRECT_TO);
+  const resend = client();
+  const configured = process.env.EMAIL_FROM;
+  const from = configured && opts.fromName ? fromWithName(configured, opts.fromName) : configured;
+  if (!resend || !from) return { status: 'skipped', detail: 'Email isn’t set up on this server.' };
+  try {
+    const { data, error } = await resend.emails.send(
+      { from, to, subject, html: opts.html, text: opts.text, replyTo: opts.replyTo || process.env.EMAIL_REPLY_TO || undefined, tags: opts.tags },
+      { idempotencyKey: opts.idempotencyKey }
+    );
+    if (error) return { status: 'error', detail: error.message };
+    return { status: 'sent', id: data?.id ?? null, deliveredTo: to[0] };
+  } catch (err) {
+    // A throw (network, abort) can come after Resend accepted it: not a definite failure.
+    return { status: 'unknown', detail: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 /** Minimal, readable HTML — troop mail lands in Gmail and phone clients, and
  *  a plain layout survives both far better than a designed template. */
 export function renderEmail(opts: {
