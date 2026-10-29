@@ -322,6 +322,12 @@ magic link before P4 is built). Ship: `db push` (DB-first), ff-merge, push, Verc
 - **Verified against production data:** production mirrored into local (sync 2026-10-28 18:50), the deployed code
   rendered every planner page and the member page as Patrick (all 200; retired routes redirect), with screenshots of
   This week, Live at the meeting on a phone and the member page. No errors in production logs after each deploy.
+- **End-to-end publish (2026-10-28, deployed code on the production mirror, dev email relay to Patrick only):**
+  Publish snapshot for Anjali's household on Nov 1 made snapshot 1 and sent 3 real emails ("Troop meeting on Sunday,
+  November 1, 2026: Citizenship"), each with its own /i/plan link; opening one signed out showed the focus and the
+  four options with their wording; ticking the Tenderfoot group saved a pick entered by the link's recipient,
+  marked Anjali Coming, and counted one write on the link. Test rows reverted afterwards. A publish in production
+  emails real families, so the first one is Patrick's call.
 - **Still open (small):** engine.ts and build-plan.ts survive only for the person drawer and pickMeeting.
 - **Eyes-on for Patrick:** This week on a real meeting (focus, + Merit badge, teacher slots, Ask by email, the
   checklist's Place… menu), Publish snapshot to a test family first (it emails real families), the family link on a
