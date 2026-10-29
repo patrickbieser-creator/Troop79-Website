@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>October 28, 2026</strong> &nbsp;&middot;&nbsp; v1.257.0</p>
+      <p>Last updated: <strong>October 29, 2026</strong> &nbsp;&middot;&nbsp; v1.257.0</p>
     </div>
   </div>
 
@@ -501,7 +501,7 @@ py -m http.server 8000</pre>
     <div class="release">
       <div class="release-header">
         <span class="release-version">v1.257.0</span>
-        <span class="release-date">October 28, 2026</span>
+        <span class="release-date">October 28&ndash;29, 2026</span>
         <span class="release-label"><span class="badge badge-feature">Feature</span></span>
       </div>
       <div class="change-group">
@@ -509,22 +509,36 @@ py -m http.server 8000</pre>
         <ul class="change-list">
           <li><span>The Meeting Planner opens on <strong>This week</strong>: pick the night&rsquo;s focus sets, and every active scout lands in a group for the rank they&rsquo;re working on (Scout, Tenderfoot, Second Class, First Class). Scouts holding First Class or above are in the <strong>Merit badge group</strong>, where each one teaches or takes one of the night&rsquo;s merit badges.</span></li>
           <li><span>A meeting can offer several merit badges, or only merit badges: add one with <strong>+ Merit badge</strong>, or it comes with a focus set that holds its requirements. A focus set can name the merit badge that goes with it.</span></li>
-          <li><span>The <strong>Scout checklist</strong> shows, for each scout, the focus requirements they could work on tonight. A scout who has finished their own rank&rsquo;s part moves up a group on their own. Names wear the colour of the rank the scout holds; a row with nothing assigned is tinted, and a filter shows just those.</span></li>
+          <li><span>A scout who has already earned a merit badge is no longer put in that badge&rsquo;s group, even when the badge&rsquo;s requirements were never logged one by one: they take the next badge of the night, or teach.</span></li>
           <li><span>A scout with nothing assigned can be placed by hand: a class from requests and offers, helping teach, or another group. A coverage line shows how many scouts have rank work tonight, how many have nothing, and which groups still need a teacher.</span></li>
-          <li><span>Each group, merit badge and extra class has one teacher slot, listing the people whose skills fit (counselors first for a badge). An adult editor can <strong>Ask by email</strong> from the slot. An empty slot is flagged but never blocks anything.</span></li>
+          <li><span>On the group cards, a requirement with sub-requirements (such as <strong>4a First Aid for Tenderfoot</strong>) opens on a click to list each one, with how many in the group still need it.</span></li>
           <li><span><strong>+ Add a focus set</strong> builds a new set right on This week, with rank and merit badge requirements. The <strong>Theme calendar</strong> shows the focus and coverage for the next eight meetings.</span></li>
           <li><span><strong>Live at the meeting</strong> is the same plan as session cards: tap a name to check someone in. Attendance is still approved after the meeting, never recorded on its own.</span></li>
+          <li><span>The <strong>Place&hellip;</strong>, teacher and focus menus open in view even at the bottom of the window or inside the checklist: they open upward when there&rsquo;s no room below.</span></li>
+          <li><span>Who&rsquo;s coming, Build a Plan, Invite and Rotations are gone; their old links open This week. The planner tabs are This week, Focus sets and Has/Needs.</span></li>
+        </ul>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">The Scout checklist</p>
+        <ul class="change-list">
+          <li><span>The <strong>Scout checklist</strong> shows, for each scout, the focus requirements they could work on tonight. A scout who has finished their own rank&rsquo;s part moves up a group on their own. Names wear the colour of the rank the scout holds; a row with nothing assigned is tinted, and a filter shows just those.</span></li>
+          <li><span>A white box is a requirement still to do and a green one is already done, the same way advancement reads in the merit badge library. Both are easy to tell apart at a glance, including on a highlighted row. An earned merit badge shows every requirement done.</span></li>
+          <li><span>Each rank sub-requirement is its own box (Tenderfoot 4a.1&ndash;4a.8, Second Class 6a.1&ndash;6a.7, First Class 7a.1&ndash;7a.4), so you can see exactly which parts a scout has signed off. Merit badges stay one box per requirement, and one a scout has partly done is split corner to corner, half green.</span></li>
+          <li><span>Older scouts who aren&rsquo;t taking one of the night&rsquo;s merit badges are listed under <strong>Not assigned &amp; available</strong>.</span></li>
+        </ul>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Teachers</p>
+        <ul class="change-list">
+          <li><span>Each group, merit badge and extra class has a teacher slot listing the people whose skills fit (counselors first for a badge). An adult editor can <strong>Ask by email</strong> from the slot. An empty slot is flagged but never blocks anything.</span></li>
+          <li><span>A group or class can have <strong>more than one teacher</strong>. Tick as many names as you need in the teacher list; it reads <strong>No teachers yet</strong> until someone is picked. The live view, the family email and the meeting agenda&rsquo;s tray list them all.</span></li>
+        </ul>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Families</p>
+        <ul class="change-list">
           <li><span><strong>Publish snapshot</strong> emails each family once, listing the focus and this week&rsquo;s options with their scout&rsquo;s suggestions marked, plus a link to answer without signing in. The plan can still change; after a change, a notice says families are seeing an earlier version until you publish again. Republishing emails only families whose options changed, unless you choose everyone.</span></li>
           <li><span>The family link and the member meeting page both show the focus and options. Families answer Coming, Not sure yet or Can&rsquo;t make it, tick two or three things (the suggested ones are marked), or request something else.</span></li>
-          <li><span>Who&rsquo;s coming, Build a Plan, Invite and Rotations are gone; their old links open This week. The planner tabs are This week, Focus sets and Has/Needs.</span></li>
-          <li><span>A scout who has already earned a merit badge is no longer put in that badge&rsquo;s group, even when the badge&rsquo;s requirements were never logged one by one: they take the next badge of the night, or teach. In the checklist an earned badge shows every requirement done.</span></li>
-          <li><span>Older scouts who aren&rsquo;t taking one of the night&rsquo;s merit badges are listed in the checklist under <strong>Not assigned &amp; available</strong>.</span></li>
-          <li><span>The checklist shows each rank sub-requirement as its own box (Tenderfoot 4a.1&ndash;4a.8, Second Class 6a.1&ndash;6a.7, First Class 7a.1&ndash;7a.4), so you can see exactly which parts a scout has signed off. Merit badges stay one box per requirement.</span></li>
-          <li><span>A merit badge requirement a scout has partly done shows a box split corner to corner, half green.</span></li>
-          <li><span>On the group cards, a requirement with sub-requirements (such as <strong>4a First Aid for Tenderfoot</strong>) opens on a click to list each one, with how many in the group still need it.</span></li>
-          <li><span>A group or class can have <strong>more than one teacher</strong>. Tick as many names as you need in the teacher list; it reads <strong>No teachers yet</strong> until someone is picked. The live view, the family email and the meeting agenda&rsquo;s tray list them all.</span></li>
-          <li><span>The <strong>Place&hellip;</strong>, teacher and focus menus open in view even at the bottom of the window or inside the checklist: they open upward when there&rsquo;s no room below.</span></li>
-          <li><span>In the <strong>Scout checklist</strong>, a white box is a requirement still to do and a green one is already done, the same way advancement reads in the merit badge library. Both are easy to tell apart at a glance, including on a highlighted row.</span></li>
           <li><span>Behind the scenes: the two-or-three-things limit holds even when a family taps quickly, and a family link stops answering for a scout as soon as the scout leaves that household.</span></li>
         </ul>
       </div>

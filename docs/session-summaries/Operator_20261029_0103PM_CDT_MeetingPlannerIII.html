@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meeting Planner III</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #3d5a3e;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #f0eecd;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); vertical-align: top; }
+        tr:hover { background: var(--nw-sage); }
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+        code { font-family: 'Courier New', monospace; font-size: 0.85em; background: var(--nw-light-gray); padding: 0 0.3em; border-radius: 3px; }
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+        @media print { body { background: white; } header { padding: 1.5rem; } .container { padding: 1rem; } .stat { break-inside: avoid; } }
+        @media (max-width: 600px) { header h1 { font-size: 1.5rem; } .stats { flex-direction: column; } }
+    </style>
+<body>
+    <header>
+        <h1>Meeting Planner III</h1>
+        <p class="subtitle">Session 69. The planner now plans a meeting from its focus. Every active scout lands in a group, a checklist shows exactly what each one could work on, and the gaps are obvious. Families get one email and a link to answer. The Design II planner and Rotations are retired.</p>
+        <div class="meta">
+            <span>&#128197; October 28&ndash;29, 2026</span>
+            <span>&#129302; Operator (Opus 5.5)</span>
+            <span>&#128204; Troop79-Website</span>
+            <span>&#128640; v1.256.0 &rarr; v1.257.0</span>
+        </div>
+    </header>
+    <div class="container">
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">1</div><div class="label">Release (v1.257.0), 22 commits</div></div>
+            <div class="stat"><div class="number">3</div><div class="label">Migrations, in production</div></div>
+            <div class="stat"><div class="number">6</div><div class="label">Decisions (D-444&ndash;D-449)</div></div>
+            <div class="stat"><div class="number">7364</div><div class="label">Tests, all passing (retired-feature tests deleted)</div></div>
+        </div>
+        <h2>What Was Accomplished</h2>
+        <div class="callout callout-teal">
+            <strong>The outcome:</strong> no scout is forgotten. Pick the night&rsquo;s focus sets and every active scout is placed in a group for the rank they&rsquo;re working on. Older scouts take one of the night&rsquo;s merit badges or teach. Any scout with nothing to do shows as a tinted row, ready to place by hand.
+        </div>
+        <h3>This week (P0&ndash;P7)</h3>
+        <ul>
+            <li>Group cards with requirement counts, RSVP-tinted names and teacher slots. A requirement with sub-requirements opens on a click.</li>
+            <li>A Merit badge group with a Teach / badge switch. A night can offer several badges, or badges only.</li>
+            <li>Coverage line, Place&hellip; / Change / Let placement decide, Live at the meeting and the Theme calendar for eight weeks.</li>
+            <li>Publish snapshot: one email per family with the options and suggestions, and a link to answer without signing in, ticking two or three things. The member meeting page shows the same.</li>
+            <li>Who&rsquo;s coming, Build a Plan, Invite and Rotations retired, along with their tables.</li>
+        </ul>
+        <h3>From Patrick&rsquo;s review</h3>
+        <ul>
+            <li>The checklist reads white = still to do and green = done, with a stronger green to meet contrast rules. Rank sub-requirements (4a.1&ndash;4a.8) get their own boxes, and a part-done merit badge requirement is half green.</li>
+            <li>Scouts who already earned a badge are no longer put in its group (the Veronica K / First Aid bug).</li>
+            <li>A group can have several teachers, and the planner&rsquo;s menus open in view instead of being cut off at the bottom of the screen.</li>
+        </ul>
+        <h3>Next screen: Emails</h3>
+        <ul>
+            <li>Patrick added an Emails screen to the design: invites, reminders and a sent log with scheduling and open tracking. Eleven questions with recommendations are waiting in Plans/Meeting-Planner-III-Emails.md.</li>
+        </ul>
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Decision</th></tr></thead>
+            <tbody>
+                <tr><td>D-444</td><td>Meeting Planner III replaces the Design II planner; Rotations is retired and its tables dropped.</td></tr>
+                <tr><td>D-445</td><td>Placement is computed on every read, never stored; hand roles outrank picks, which outrank placement; earned badges count as done.</td></tr>
+                <tr><td>D-446</td><td>Publish snapshot and the scoped family link; Patrick sends the first real one.</td></tr>
+                <tr><td>D-447</td><td>Checklist: white = to do, green = done, half green = part done; sub-requirement boxes for ranks only.</td></tr>
+                <tr><td>D-448</td><td>Groups and classes take any number of teachers.</td></tr>
+                <tr><td>D-449</td><td>Planner menus float and open upward when there&rsquo;s no room below.</td></tr>
+            </tbody>
+        </table>
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Answer the Emails screen questions, then plan, review and build it.</li>
+            <li>Patrick checks v1.257.0 in production and sends the first real Publish when ready.</li>
+            <li>Carried: the merit badge class first pass, Sign-Off Initials, the Library merit badge grid design.</li>
+        </ul>
+        <h2>Files Changed</h2>
+        <table>
+            <thead><tr><th>Area</th><th>Files</th></tr></thead>
+            <tbody>
+                <tr><td>Planner</td><td>(public)/planner/: page.tsx, this-week-*.tsx/.ts, this-week.module.css, calendar/, redirect pages for build, rotations, live and invite</td></tr>
+                <tr><td>Libraries</td><td>focus-plan.ts, this-week.ts, this-week-db.ts, plan-snapshot*.ts, plan-publish.ts, plan-pages.ts, family-week*.ts, theme-calendar.ts, meeting-live.ts, meeting-board-shared.ts</td></tr>
+                <tr><td>Families</td><td>(public)/i/plan/[token]/, (public)/member/meeting/ (reworked), meeting-invite-email.ts, email-templates.ts</td></tr>
+                <tr><td>Admin</td><td>advancement/meetings/load-agenda.ts, [id]/meeting-editor.tsx</td></tr>
+                <tr><td>Database</td><td>20261228100000_planner_iii_groups, 20261229100000_planner_iii_retire_rotations, 20261230100000_planner_iii_hardening</td></tr>
+                <tr><td>Tests</td><td>focus-plan, this-week-*, plan-pages-db, plan-publish-db, plan-snapshot, the popover/teacher-slot/req-item DOM tests; retired-feature tests deleted</td></tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
