@@ -126,7 +126,8 @@ const STATUS: ReadonlyArray<readonly [string, string, string]> = [
   ['rank: Eagle', '--rank-eagle-ink', '--rank-eagle-bg'],
   ['Merit badge group', '--rank-mb-group-ink', '--rank-mb-group-bg'],
   ['answer: coming', '--rsvp-coming-ink', '--rsvp-coming-bg'],
-  ['answer: can’t come', '--rsvp-cant-ink', '--rsvp-cant-bg']
+  ['answer: can’t come', '--rsvp-cant-ink', '--rsvp-cant-bg'],
+  ['checklist: already done', '--warm-white', '--check-done']
 ];
 
 /* ── Scoreboard — the remediation work queue (audit 2026-08-21). A row is

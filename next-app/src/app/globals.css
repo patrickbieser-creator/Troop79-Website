@@ -102,6 +102,10 @@
   --rsvp-cant-ink:    #6d7580;
   /* A "Nothing assigned" row's tint. */
   --gap-row-bg:       #f8ebe4;
+  /* The checklist's "already done" fill: 4.1:1 on white and 3.6:1 on the gap row
+     tint, so it clears WCAG 2.2's 3:1 for a non-text indicator (the lighter
+     #e3eee5 it replaced was 1.2:1). */
+  --check-done:       #4f8a4a;
 
   /* Hairline rule. Was a 16-read phantom whose fallbacks disagreed
      (#e4d9c4 ×12, #efe7d8, #d8ccb4) — the dominant value wins; the minority

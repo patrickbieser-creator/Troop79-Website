@@ -679,15 +679,16 @@ button.chip:focus-visible {
   justify-content: center;
   width: 28px;
   height: 28px;
-  border: 1px solid var(--border-light);
+  /* --text-meta: a to-do box must read against white (WCAG 2.2 non-text contrast, 3:1); --border-light was 1.3:1. */
+  border: 1px solid var(--text-meta);
   border-radius: var(--rad-sm);
   background: var(--warm-white);
   font-weight: 700;
 }
 .checkDone {
   composes: check;
-  border-color: var(--rsvp-coming-bg);
-  background: var(--rsvp-coming-bg);
+  border-color: var(--check-done);
+  background: var(--check-done);
 }
 .gapRow td {
   background: var(--gap-row-bg);
