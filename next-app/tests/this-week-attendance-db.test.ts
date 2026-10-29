@@ -70,6 +70,7 @@ async function clearMeeting(entryId: number) {
   await sb.from('meeting_live_presence').delete().eq('calendar_entry_id', entryId);
   await sb.from('meeting_topics').delete().eq('calendar_entry_id', entryId);
   await sb.from('event_attendance').delete().eq('calendar_entry_id', entryId);
+  await sb.from('meeting_boards').delete().eq('calendar_entry_id', entryId);
   if (scoutIds.length) await sb.from('ledger_entries').delete().in('scout_id', scoutIds);
 }
 const recorded = async (entryId: number) =>
@@ -190,5 +191,37 @@ describe('Record attendance', () => {
     asEditor();
     const res = await (await act()).plannerRecordAttendanceAction({ entryId: campout, add: [ann], remove: [] });
     expect([res.ok, await recorded(campout)]).toEqual([false, []]);
+  });
+});
+
+describe('No thanks: dismiss the prompt (Patrick, 2026-10-29)', () => {
+  it('Prompt_ShowsForThePastMeeting_BeforeADismiss', async () => {
+    await planned(past, [ann]);
+    expect((await (await lib()).loadAttendancePrompt(sb, { date: '2020-03-02', time: '09:00' }))?.entryId).toBe(past);
+  });
+
+  it('Editor_DismissesThePrompt_ItDoesNotAppearAgain', async () => {
+    await planned(past, [ann]);
+    asEditor();
+    const res = await (await act()).plannerDismissAttendanceAction({ entryId: past });
+    expect([res.ok, (await (await lib()).loadAttendancePrompt(sb, { date: '2020-03-02', time: '09:00' }))?.entryId]).toEqual([true, undefined]);
+  });
+
+  it('Dismissing_RecordsNoAttendance', async () => {
+    await planned(past, [ann]);
+    asEditor();
+    await (await act()).plannerDismissAttendanceAction({ entryId: past });
+    expect(await recorded(past)).toEqual([]);
+  });
+
+  it('Viewer_CannotDismissThePrompt', async () => {
+    await planned(past, [ann]);
+    asViewer();
+    expect((await (await act()).plannerDismissAttendanceAction({ entryId: past })).ok).toBe(false);
+  });
+
+  it('Dismiss_RefusesACampout', async () => {
+    asEditor();
+    expect((await (await act()).plannerDismissAttendanceAction({ entryId: campout })).ok).toBe(false);
   });
 });

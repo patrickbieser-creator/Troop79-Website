@@ -8,8 +8,8 @@ import { attendanceChanges, buildAttendanceReview, meetingIsOver, type Attendanc
  * recorded person starts ticked, so removing them takes a deliberate untick. The server side is pinned in
  * tests/meeting-live-b8-db.test.ts.
  */
-const m = vi.hoisted(() => ({ record: vi.fn(), refresh: vi.fn() }));
-vi.mock('../src/app/(public)/planner/attendance-actions', () => ({ plannerRecordAttendanceAction: m.record }));
+const m = vi.hoisted(() => ({ record: vi.fn(), dismiss: vi.fn(), refresh: vi.fn() }));
+vi.mock('../src/app/(public)/planner/attendance-actions', () => ({ plannerRecordAttendanceAction: m.record, plannerDismissAttendanceAction: m.dismiss }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: m.refresh }) }));
 
 const { AttendancePrompt } = await import('../src/app/(public)/planner/attendance-review');
@@ -174,5 +174,29 @@ describe('the prompt and its checklist', () => {
     const dlg = open(draftReview());
     fireEvent.click(within(dlg).getByRole('button', { name: 'Record 4 changes' }));
     expect((await within(dlg).findByRole('alert')).textContent).toBe('Only someone who can edit the Meeting Planner can do that.');
+  });
+});
+
+describe('No thanks (Patrick, 2026-10-29)', () => {
+  it('NoThanks_DismissesThePrompt', async () => {
+    m.dismiss.mockResolvedValue({ ok: true });
+    render(<AttendancePrompt review={draftReview()} label="Sun, Oct 18" />);
+    fireEvent.click(screen.getByRole('button', { name: 'No thanks, don’t ask again' }));
+    await waitFor(() => expect(screen.queryByText(/Would you like to update attendance/)).toBeNull());
+  });
+
+  it('NoThanks_RecordsNothing', async () => {
+    m.dismiss.mockResolvedValue({ ok: true });
+    render(<AttendancePrompt review={draftReview()} label="Sun, Oct 18" />);
+    fireEvent.click(screen.getByRole('button', { name: 'No thanks, don’t ask again' }));
+    await waitFor(() => expect(m.dismiss).toHaveBeenCalledWith({ entryId: 9 }));
+    expect(m.record).not.toHaveBeenCalled();
+  });
+
+  it('NoThanks_Refused_SaysWhy', async () => {
+    m.dismiss.mockResolvedValue({ ok: false, error: 'That didn’t save.' });
+    render(<AttendancePrompt review={draftReview()} label="Sun, Oct 18" />);
+    fireEvent.click(screen.getByRole('button', { name: 'No thanks, don’t ask again' }));
+    expect((await screen.findByRole('alert')).textContent).toBe('That didn’t save.');
   });
 });

@@ -18,7 +18,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/app/_components/button';
 import { Drawer } from '@/app/_components/drawer';
 import { attendanceChanges, type AttendanceReview } from '@/lib/meeting-live-shared';
-import { plannerRecordAttendanceAction } from './attendance-actions';
+import { plannerDismissAttendanceAction, plannerRecordAttendanceAction } from './attendance-actions';
 import s from './attendance-review.module.css';
 
 const FAILED = 'That didn’t save. Check your connection and try again.';
@@ -35,6 +35,7 @@ export function AttendancePrompt({ review, label }: { review: AttendanceReview; 
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
+  const [gone, setGone] = useState(false);
   const changes = attendanceChanges(review, ticked);
   const dirty = changes.add.length + changes.remove.length > 0;
   const recordedCount = all.filter((p) => p.recorded).length;
@@ -68,6 +69,23 @@ export function AttendancePrompt({ review, label }: { review: AttendanceReview; 
     }
   };
 
+  // No thanks (Patrick, 2026-10-29): gone for this meeting, for every editor; nothing is recorded.
+  const dismiss = async () => {
+    setBusy(true);
+    setProblem(null);
+    try {
+      const res = await plannerDismissAttendanceAction({ entryId: review.entryId });
+      if (!res.ok) return setProblem(res.error);
+      setGone(true);
+      router.refresh();
+    } catch {
+      setProblem(FAILED);
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (gone) return null;
+
   const sum = [changes.add.length ? `Adds ${changes.add.length}` : '', changes.remove.length ? `Removes ${changes.remove.length}` : ''].filter(Boolean).join(' · ');
   return (
     <section className={s.prompt} aria-label="Attendance">
@@ -77,6 +95,9 @@ export function AttendancePrompt({ review, label }: { review: AttendanceReview; 
           <Button variant="secondary" onClick={openList}>
             Update attendance
           </Button>
+          <button type="button" className={s.link} disabled={busy} onClick={() => void dismiss()}>
+            No thanks, don&rsquo;t ask again
+          </button>
         </>
       ) : (
         <>
@@ -89,6 +110,11 @@ export function AttendancePrompt({ review, label }: { review: AttendanceReview; 
       {done ? (
         <p className={s.done} role="status">
           {done}
+        </p>
+      ) : null}
+      {problem && !open ? (
+        <p className={s.problem} role="alert">
+          {problem}
         </p>
       ) : null}
       {open ? (

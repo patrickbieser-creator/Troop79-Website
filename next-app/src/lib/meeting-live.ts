@@ -129,6 +129,9 @@ export async function loadAttendancePrompt(sb: SupabaseClient, now: { date: stri
   const rows = (data ?? []) as { id: number; entry_date: string; end_date: string | null; end_time: string | null }[];
   const last = rows.find((r) => meetingIsOver({ date: r.entry_date, endDate: r.end_date, endTime: r.end_time }, now));
   if (!last) return null;
+  // No thanks (Patrick, 2026-10-29): an editor dismissed it for this meeting.
+  const { data: board } = await sb.from('meeting_boards').select('attendance_dismissed_at').eq('calendar_entry_id', last.id).maybeSingle();
+  if ((board as { attendance_dismissed_at: string | null } | null)?.attendance_dismissed_at) return null;
   // A plan (anything seeded) or Live's taps: something to approve.
   const [planRes, draftRes] = await Promise.all([
     sb.from('meeting_topics').select('id', { count: 'exact', head: true }).eq('calendar_entry_id', last.id).not('seeded_at', 'is', null),
