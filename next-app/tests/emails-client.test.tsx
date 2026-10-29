@@ -52,51 +52,51 @@ afterEach(() => cleanup());
 
 describe('Emails screen', () => {
   it('Leader_NothingTickedByDefault', () => {
-    render(<EmailsClient screen={data(siblings)} day="Sunday, Nov 1" />);
-    expect(screen.getAllByRole('checkbox').some((c) => (c as HTMLInputElement).checked)).toBe(false);
+    render(<EmailsClient screen={data(siblings)} day="Sunday, Nov 1" backHref="/planner" />);
+    expect(screen.getAllByRole('checkbox', { name: /Include the email/ }).some((c) => (c as HTMLInputElement).checked)).toBe(false);
   });
 
   it('Selection_CountsEmailsNotRows', async () => {
-    render(<EmailsClient screen={data(siblings)} day="Sunday, Nov 1" />);
+    render(<EmailsClient screen={data(siblings)} day="Sunday, Nov 1" backHref="/planner" />);
     await userEvent.setup().click(screen.getByRole('button', { name: 'Select all not sent yet' }));
     expect(screen.getByRole('button', { name: /Review and send/ }).textContent).toBe('Review and send 1 email');
   });
 
   it('BlockedRow_CannotBeTicked', () => {
-    render(<EmailsClient screen={data([row({ blocked: 'no parent email on file', recipients: [] })])} day="Sunday, Nov 1" />);
-    expect((screen.getByRole('checkbox', { name: 'Send to Lily P' }) as HTMLInputElement).disabled).toBe(true);
+    render(<EmailsClient screen={data([row({ blocked: 'no parent email on file', recipients: [] })])} day="Sunday, Nov 1" backHref="/planner" />);
+    expect((screen.getByRole('checkbox', { name: 'Include the email about Lily P' }) as HTMLInputElement).disabled).toBe(true);
   });
 
   it('Confirm_ListsEveryRecipient_AndTheCap', async () => {
-    render(<EmailsClient screen={data(siblings)} day="Sunday, Nov 1" />);
+    render(<EmailsClient screen={data(siblings)} day="Sunday, Nov 1" backHref="/planner" />);
     const u = userEvent.setup();
     await u.click(screen.getByRole('button', { name: 'Select all not sent yet' }));
     await u.click(screen.getByRole('button', { name: /Review and send/ }));
-    const c = within(screen.getByRole('region', { name: 'Review and send' }));
-    expect([c.getByText(/1 of a 150 limit/), c.getByText(/Laura P/).textContent]).toEqual([expect.anything(), expect.stringContaining('covers Lily P and Simon P')]);
+    const c = within(screen.getByRole('region', { name: 'Send 1 email to these people?' }));
+    expect([c.getByText(/1 of a 150-email limit/), c.getByText(/Laura P/).textContent]).toEqual([expect.anything(), 'Laura P (Lily P and Simon P)']);
   });
 
   it('Send_QueuesWhatTheConfirmationListed', async () => {
     queue.mockResolvedValue({ ok: true, batchId: '00000000-0000-4000-8000-000000000001', queued: 1, overflow: 0, refused: [] });
-    render(<EmailsClient screen={data(siblings)} day="Sunday, Nov 1" />);
+    render(<EmailsClient screen={data(siblings)} day="Sunday, Nov 1" backHref="/planner" />);
     const u = userEvent.setup();
     await u.click(screen.getByRole('button', { name: 'Select all not sent yet' }));
     await u.click(screen.getByRole('button', { name: /Review and send/ }));
-    await u.click(screen.getByRole('button', { name: 'Send now' }));
+    await u.click(screen.getByRole('button', { name: 'Send 1 now' }));
     expect(queue.mock.calls[0][0].emails).toEqual([{ kind: 'plan', recipientId: 50, scoutIds: [1, 2], override: null }]);
   });
 
   it('HowThisWorks_NamesTheEnforcedLimits', () => {
-    render(<EmailsClient screen={data(siblings)} day="Sunday, Nov 1" />);
+    render(<EmailsClient screen={data(siblings)} day="Sunday, Nov 1" backHref="/planner" />);
     expect(screen.getByText(/at most 150 emails/)).toBeTruthy();
   });
 
   it('Preview_UntickedParent_IsLeftOut', async () => {
-    render(<EmailsClient screen={data([row({ recipients: [laura, { personId: 51, name: 'Tom P', email: 'tom@example.com', isScout: false }] })])} day="Sunday, Nov 1" />);
+    render(<EmailsClient screen={data([row({ recipients: [laura, { personId: 51, name: 'Tom P', email: 'tom@example.com', isScout: false }] })])} day="Sunday, Nov 1" backHref="/planner" />);
     const u = userEvent.setup();
-    await u.click(screen.getByRole('checkbox', { name: 'Send to Lily P' }));
-    await u.click(screen.getByRole('button', { name: /Lily P/ }));
-    await u.click(within(screen.getByRole('complementary', { name: 'Preview' })).getByRole('checkbox', { name: /Tom P/ }));
+    await u.click(screen.getByRole('checkbox', { name: 'Include the email about Lily P' }));
+    await u.click(screen.getByRole('button', { name: 'Lily P' }));
+    await u.click(within(screen.getByRole('complementary', { name: 'Email preview' })).getByRole('checkbox', { name: /Tom P/ }));
     expect(screen.getByRole('button', { name: /Review and send/ }).textContent).toBe('Review and send 1 email');
   });
 });

@@ -17,6 +17,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AdvancementCatalog } from '@/lib/advancement-catalog';
 import { loadBoardScouts, type BoardMeeting } from '@/lib/meeting-board';
+import { boardName } from '@/lib/meeting-board-shared';
 import { adultRecipients, loadScoutFamilies, scoutRecipientsMany, type MailRecipient } from '@/lib/meeting-invites-db';
 import { loadFamilyWeek } from '@/lib/family-week';
 import type { PeopleLists } from '@/lib/people-lists';
@@ -143,7 +144,7 @@ export async function loadEmailScreen(sb: SupabaseClient, meeting: Pick<BoardMee
   const adults = await adultRecipients(sb, teacherIds);
   const allIds = [...scoutIds, ...[...recipients.values()].flat().map((r) => r.recipientId), ...teacherIds, ...log.flatMap((l) => (l.queued_by_person_id ? [l.queued_by_person_id] : []))];
   const who = await names(sb, allIds);
-  const nameOf = (id: number) => who.get(id)?.name ?? 'Someone';
+  const nameOf = (id: number) => (who.get(id) ? boardName(who.get(id)!.name) : 'Someone');
   const toScreen = (list: readonly MailRecipient[]): ScreenRecipient[] => list.map((r) => ({ personId: r.recipientId, name: nameOf(r.recipientId), email: r.sentTo, isScout: r.isScout }));
 
   const newest = (match: (l: LogDb) => boolean) => log.find(match) ?? null;
@@ -177,7 +178,7 @@ export async function loadEmailScreen(sb: SupabaseClient, meeting: Pick<BoardMee
       id: `${kind}:${s.personId}`,
       kind,
       personId: s.personId,
-      name: s.name,
+      name: boardName(s.name),
       rank: s.currentRank,
       isScout: true,
       about,

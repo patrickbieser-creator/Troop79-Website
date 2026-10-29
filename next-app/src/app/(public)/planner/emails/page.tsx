@@ -4,7 +4,6 @@
  * teacher invites and "Coming?" reminders, plus the Sent log. Nothing sends until an adult presses Send; each email
  * goes out one at a time and is logged. Adults holding meeting_planner.edit only (Q9), the Sent log included.
  */
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { resolveAdminActor } from '@/lib/admin-actor';
 import { createAdminClient } from '@/lib/supabase/server';
@@ -62,10 +61,7 @@ export default async function EmailsPage({ searchParams }: { searchParams: Promi
   return (
     <div className={styles.page}>
       <PlannerTabs active="emails" canEmail />
-      <div className={styles.noticeWrap}>
-        <Link href={`/planner?meeting=${meeting.entryId}`}>← Back to This week</Link>
-      </div>
-      <EmailsClient key={meeting.entryId} screen={screen} day={fmtDateFull(meeting.date)} />
+      <EmailsClient key={meeting.entryId} screen={screen} day={fmtDateFull(meeting.date)} backHref={`/planner?meeting=${meeting.entryId}`} />
     </div>
   );
 }
