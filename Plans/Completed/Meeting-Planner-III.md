@@ -1,6 +1,6 @@
 # Meeting Planner III — plan from a focus, then fill the gaps
 
-**Status:** SHIPPED v1.257.0 (2026-10-28, main 70bbbd7b). Migrations 20261228100000 (DB-first) and 20261229100000 (code-first, after the deploy; prod sweep clean). P0–P7 done.
+**Status:** SHIPPED v1.257.0 (2026-10-28, main 70bbbd7b). Migrations 20261228100000 (DB-first) and 20261229100000 (code-first, after the deploy; prod sweep clean). P0–P7 done and deployed (P7: 20261230100000, bd55d4cc).
 **Parked:** 2026-10-28
 **Priority:** High: it changes how every meeting gets planned.
 
@@ -314,11 +314,15 @@ magic link before P4 is built). Ship: `db push` (DB-first), ff-merge, push, Verc
 - Production backup before the push: D:\Projects\Backups\troop79\troop79_2026-10-28_18-29.sql.
 - 20261228100000 pushed first (additive), then main fast-forwarded to 70bbbd7b and Vercel Ready, then
   20261229100000 (Rotations retired). The tech-lead sweep for leftover references returned nothing.
-- **Deferred (qa-lead medium, for BACKLOG):** the 3-pick cap is checked in the app, not under a database lock (two
-  ticks at once could reach 4); a family link's scouts are fixed when it's minted (a scout leaving the household
-  keeps the link until 6 PM on the meeting day); member/meeting/scout-board.tsx and actions.ts are only partly live
-  (teach-board borrows IntentControl/Saved); engine.ts and build-plan.ts survive only for the person drawer and
-  pickMeeting.
+- **P7, hardening (8b5d1317, bd55d4cc; migration 20261230100000, DB-first), deployed the same evening:**
+  `meeting_add_pick_capped` holds the 3-pick cap under the scout's pick lock (a 5-tap race lands exactly 3); the
+  family link's claim re-checks the household rule on every write; the retired scout pick board and its actions are
+  deleted (teach-board keeps the answer control); Live's Helping teach card has no teacher slot; the youth
+  capability invariant allows the Youth leader bundle and planner rights, so the full suite is green (7328/7328).
+- **Verified against production data:** production mirrored into local (sync 2026-10-28 18:50), the deployed code
+  rendered every planner page and the member page as Patrick (all 200; retired routes redirect), with screenshots of
+  This week, Live at the meeting on a phone and the member page. No errors in production logs after each deploy.
+- **Still open (small):** engine.ts and build-plan.ts survive only for the person drawer and pickMeeting.
 - **Eyes-on for Patrick:** This week on a real meeting (focus, + Merit badge, teacher slots, Ask by email, the
   checklist's Place… menu), Publish snapshot to a test family first (it emails real families), the family link on a
   phone, Live at the meeting on the next meeting day, the Theme calendar.
