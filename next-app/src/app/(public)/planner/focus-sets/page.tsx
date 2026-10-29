@@ -47,7 +47,7 @@ export default async function FocusSetsPage() {
   const [sets, sources, meetings] = await Promise.all([loadFocusSets(sb, catalog), searchCounts(sb, { text: '', kind: 'all' }), loadUpcomingMeetings(sb, 8)]);
   return (
     <div className={styles.page}>
-      <PlannerTabs active="focus" />
+      <PlannerTabs active="focus" canEmail={access.canEmail} />
       <header className={styles.head}>
         <div>
           <p className={styles.kicker}>Meeting Planner</p>

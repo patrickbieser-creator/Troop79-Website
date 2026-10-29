@@ -66,7 +66,7 @@ export default async function HasNeedsPlannerPage() {
 
   return (
     <div className={styles.page}>
-      <PlannerTabs active="hasneeds" />
+      <PlannerTabs active="hasneeds" canEmail={access.canEmail} />
       <header className={styles.head}>
         <div>
           <p className={styles.kicker}>Meeting Planner</p>

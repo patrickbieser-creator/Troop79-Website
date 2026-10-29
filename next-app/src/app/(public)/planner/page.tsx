@@ -74,7 +74,7 @@ export default async function PlannerPage({ searchParams }: { searchParams: Prom
   if (!meeting) {
     return (
       <div className={styles.page}>
-        <PlannerTabs active="week" />
+        <PlannerTabs active="week" canEmail={access.canEmail} />
         {promptEl}
         <div className={styles.noticeWrap}>
           <Notice tone="info">There’s no troop meeting on the calendar yet. Plans open once one is published.</Notice>
@@ -99,7 +99,7 @@ export default async function PlannerPage({ searchParams }: { searchParams: Prom
   return (
     <PlannerProvider entryId={meeting.entryId} canEdit={access.canEdit} canEmail={access.canEmail} canSeed={access.canSeed} adults={adults} stamp={data.stamp}>
       <div className={styles.page}>
-        <PlannerTabs active="week" />
+        <PlannerTabs active="week" canEmail={access.canEmail} />
         {promptEl}
         <ThisWeekView
           key={meeting.entryId}

@@ -82,7 +82,7 @@ export default async function ThemeCalendarPage() {
 
   return (
     <div className={styles.page}>
-      <PlannerTabs active="week" />
+      <PlannerTabs active="week" canEmail={plannerAccess(actor).canEmail} />
       <div className={s.wrap}>
         <div>
           <p className={s.muted}>

@@ -51,7 +51,7 @@ export default async function EmailsPage({ searchParams }: { searchParams: Promi
   if (!meeting) {
     return (
       <div className={styles.page}>
-        <PlannerTabs active="week" />
+        <PlannerTabs active="emails" canEmail />
         <div className={styles.noticeWrap}>
           <Notice tone="info">There’s no troop meeting on the calendar yet.</Notice>
         </div>
@@ -61,7 +61,7 @@ export default async function EmailsPage({ searchParams }: { searchParams: Promi
   const screen = await loadEmailScreen(sb, meeting, lists, await loadAdvancementCatalog());
   return (
     <div className={styles.page}>
-      <PlannerTabs active="week" />
+      <PlannerTabs active="emails" canEmail />
       <div className={styles.noticeWrap}>
         <Link href={`/planner?meeting=${meeting.entryId}`}>← Back to This week</Link>
       </div>

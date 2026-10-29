@@ -75,6 +75,16 @@ describe('the Has/Needs tab (B7)', () => {
     expect([tabs.length, tabs[tabs.length - 1].textContent, tabs[tabs.length - 1].getAttribute('href')]).toEqual([3, 'Has/Needs', '/planner/has-needs']);
   });
 
+  it('PlannerTabs_AdultEditor_SeesTheEmailsTab', () => {
+    render(<PlannerTabs active="emails" canEmail />);
+    expect(screen.getByRole('tab', { name: 'Emails' }).getAttribute('href')).toBe('/planner/emails');
+  });
+
+  it('PlannerTabs_WithoutTheEmailRight_HasNoEmailsTab', () => {
+    render(<PlannerTabs active="week" />);
+    expect(screen.queryByRole('tab', { name: 'Emails' })).toBeNull();
+  });
+
   it('PlannerTabs_UseTheScrollingStrip', () => {
     render(<PlannerTabs active="hasneeds" />);
     expect(screen.getByRole('tablist').className.split(' ').some((c) => /scroll/.test(c))).toBe(true);
