@@ -87,18 +87,18 @@ describe('a family answers only for their own scouts, on an open meeting', () =>
   it('Family_CannotAnswerForAnotherHouseholdsScout', async () => {
     state.session = { personId: parent, subjectKind: 'adult' };
     const { familyWriteAction } = await import('../src/app/(public)/member/meeting/family-actions');
-    expect((await familyWriteAction({ entryId: meeting, scoutId: otherScout, op: { op: 'intent', intent: 'coming' } })).ok).toBe(false);
+    expect((await familyWriteAction({ entryId: meeting, scoutId: otherScout, op: { op: 'answer', choice: 'ok' } })).ok).toBe(false);
   });
 
   it('Family_AnswersForTheirOwnScout', async () => {
     state.session = { personId: parent, subjectKind: 'adult' };
     const { familyWriteAction } = await import('../src/app/(public)/member/meeting/family-actions');
-    expect((await familyWriteAction({ entryId: meeting, scoutId: ownScout, op: { op: 'intent', intent: 'coming' } })).ok).toBe(true);
+    expect((await familyWriteAction({ entryId: meeting, scoutId: ownScout, op: { op: 'answer', choice: 'ok' } })).ok).toBe(true);
   });
 
   it('Family_CannotAnswerOnACampout', async () => {
     state.session = { personId: parent, subjectKind: 'adult' };
     const { familyWriteAction } = await import('../src/app/(public)/member/meeting/family-actions');
-    expect((await familyWriteAction({ entryId: campout, scoutId: ownScout, op: { op: 'intent', intent: 'coming' } })).ok).toBe(false);
+    expect((await familyWriteAction({ entryId: campout, scoutId: ownScout, op: { op: 'answer', choice: 'ok' } })).ok).toBe(false);
   });
 });

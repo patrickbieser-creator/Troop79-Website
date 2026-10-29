@@ -10,6 +10,7 @@ import { minutesText } from '@/lib/meeting-board-picklist';
 import { scoutsHelpedText } from '@/lib/meeting-invite-digest';
 import { shortCode } from '@/lib/rank-abbrev';
 import type { TeachPageLine, TeachPageState } from '@/lib/meeting-teach-pages';
+import { DECLINE_NOTE_CHARS, DECLINE_NOTE_LINES } from '@/lib/decline-note';
 import { answerTeachPageAction, saveTeachInterestsAction, searchTeachInterestsAction } from '../actions';
 import { InterestPicker } from '@/app/(public)/member/teaching/interest-picker';
 import type { InterestPick } from '@/lib/teaching-interests-shared';
@@ -25,6 +26,32 @@ function SubmitButton({ dirty, answeredBefore }: { dirty: boolean; answeredBefor
     <Button variant="primary" type="submit" disabled={!dirty || pending} title={!dirty && !pending ? 'No changes to save yet' : undefined}>
       {label}
     </Button>
+  );
+}
+
+/** "Not this week": an optional note for the planners, 3 lines and 240 characters at most (Emails E2). It rides the
+ *  page's one submit. */
+function DeclineNote({ name, value, onChange }: { name: string; value: string; onChange: (v: string) => void }) {
+  const id = `${name}-box`;
+  return (
+    <div className={styles.note}>
+      <label htmlFor={id} className={styles.noteLabel}>
+        No problem. Anything you&rsquo;d like us to know?
+      </label>
+      <FieldHint>Optional. For example, another week that works, or another way you could help.</FieldHint>
+      <textarea
+        id={id}
+        name={name}
+        rows={DECLINE_NOTE_LINES}
+        maxLength={DECLINE_NOTE_CHARS}
+        className={styles.noteBox}
+        value={value}
+        onChange={(e) => onChange(e.target.value.split('\n').slice(0, DECLINE_NOTE_LINES).join('\n').slice(0, DECLINE_NOTE_CHARS))}
+      />
+      <span className={styles.noteCount}>
+        {DECLINE_NOTE_CHARS - value.length} characters left · up to {DECLINE_NOTE_LINES} lines
+      </span>
+    </div>
   );
 }
 
@@ -46,7 +73,8 @@ export function TeachPageCard(props: {
 }) {
   const open = props.lines.filter((l) => l.available);
   const [choices, setChoices] = useState<Record<number, Choice>>(() => Object.fromEntries(open.map((l) => [l.inviteId, l.answer])));
-  const dirty = open.some((l) => (choices[l.inviteId] ?? null) !== l.answer);
+  const [notes, setNotes] = useState<Record<number, string>>(() => Object.fromEntries(open.map((l) => [l.inviteId, l.note ?? ''])));
+  const dirty = open.some((l) => (choices[l.inviteId] ?? null) !== l.answer || (choices[l.inviteId] === 'no' && (notes[l.inviteId] ?? '') !== (l.note ?? '')));
   // After a submit the page reloads at the top (qa-lead B10b #4): focus the first line that failed, else the result
   // Notice, so it is announced where the eye and the screen reader land.
   const resultRef = useRef<HTMLDivElement | null>(null);
@@ -138,6 +166,9 @@ export function TeachPageCard(props: {
                   ) : (
                     <p className={styles.gone}>No longer available</p>
                   )}
+                  {l.available && choices[l.inviteId] === 'no' ? (
+                    <DeclineNote name={`note-${l.inviteId}`} value={notes[l.inviteId] ?? ''} onChange={(v) => setNotes((n) => ({ ...n, [l.inviteId]: v }))} />
+                  ) : null}
                   {bad && (
                     <p id={noteId} className={styles.badNote}>
                       Couldn’t save this one. Please try again.

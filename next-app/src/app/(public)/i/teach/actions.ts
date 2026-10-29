@@ -7,7 +7,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { recordAuditAs } from '@/lib/audit';
 import { inviteAnswerAudit } from '@/lib/meeting-invite-audit';
 import { recordInviteFailure, tooManyInviteFailures } from '@/lib/meeting-invites-db';
-import { answerTeachPage, type TeachAnswer } from '@/lib/meeting-teach-pages';
+import { answerTeachPage, saveDeclineNotes, type TeachAnswer } from '@/lib/meeting-teach-pages';
 import { boardName } from '@/lib/meeting-board-shared';
 import {
   addInterestsFromPage,
@@ -39,7 +39,14 @@ export async function answerTeachPageAction(formData: FormData): Promise<void> {
 
   if (await tooManyInviteFailures(sb, ip)) redirect(`${back}?err=busy`);
 
+  const notes: { inviteId: number; note: string }[] = [];
+  for (const [name, value] of formData.entries()) {
+    const m = /^note-(\d{1,12})$/.exec(name);
+    if (m && typeof value === 'string' && answers.some((a) => a.inviteId === Number(m[1]) && a.answer === 'no')) notes.push({ inviteId: Number(m[1]), note: value });
+  }
+
   const res = await answerTeachPage(sb, token, answers);
+  if (res.ok) await saveDeclineNotes(sb, res.pageId, notes);
   // The redirect lands on the same URL; without this the router cache shows the old answers.
   revalidatePath('/i/teach/[token]', 'page');
   if (!res.ok) {

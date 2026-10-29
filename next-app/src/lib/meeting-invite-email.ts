@@ -192,18 +192,19 @@ export function renderInviteDigest(t: InviteTemplate, v: DigestValues, items: re
 
 export const PLAN_PUBLISHED_KIND = 'meeting.plan_published';
 
-/** Meeting Planner III (Decision 5): the published plan, one email per family. The options ride below the body. */
+/** Meeting Planner III (Decision 5): the published plan, one email per family. The options ride below the body. Since
+ *  Emails E2 the plan is already set: families accept it or change it on the page, they don't pick. */
 export const DEFAULT_PLAN_PUBLISHED: InviteTemplate = {
   subject: 'Troop meeting on [day]: [focus]',
   body: `Hi [name],
 
 Here's the plan for the troop meeting on [day]. The focus is [focus].
 
-Use the button below to say whether [people] can come and to pick two or three things to work on. The ones we suggest are marked, but any option is fine, and you can ask for something else. You don't need to sign in.`
+The plan for [people] is already set. Use the button below to see it and tell us whether it works: one tap per scout. You can also change the plan or suggest something else. You don't need to sign in.`
 };
 
 /** The button under the published plan. */
-export const PLAN_PAGE_BUTTON = 'Answer and pick for this week →';
+export const PLAN_PAGE_BUTTON = 'See the plan and answer →';
 
 export interface PlanEmailValues {
   name: string;

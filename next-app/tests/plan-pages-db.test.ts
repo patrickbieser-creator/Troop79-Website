@@ -4,7 +4,8 @@ import { TEST_PREFIX } from './helpers/signup-fixtures';
 import { hashSecret } from '../src/lib/identity-challenge';
 import { inviteExpiresAt } from '../src/lib/meeting-invites';
 import { claimPlanPage, inspectPlanPage, mintPlanPage, revokePlanPages, supersedeOlderPlanPages } from '../src/lib/plan-pages';
-import { familyWrite } from '../src/lib/family-week';
+import { familyWrite, uncachedLists } from '../src/lib/family-week';
+import { SUGGESTION_CAP } from '../src/lib/family-week-shared';
 import { fetchAdvancementCatalog } from '../src/lib/advancement-catalog';
 import { publishPlan } from '../src/lib/plan-publish';
 import type { ThisWeek } from '../src/lib/this-week';
@@ -121,39 +122,62 @@ describe('the family link', () => {
 });
 
 describe('family writes', () => {
-  it('PicksOverTheCap_AreRejectedServerSide', async () => {
+  it('SuggestionsOverTheCap_AreRejectedServerSide', async () => {
     const catalog = await fetchAdvancementCatalog(sb as never);
+    await sb.from('meeting_scout_suggestions').delete().eq('calendar_entry_id', meeting).eq('person_id', scout);
     const w = { meeting: { entryId: meeting, date: MEETING_DATE }, actorPersonId: parent, scoutPersonId: scout, catalog };
-    // Four badges the scout may pick: any badge they haven't earned is on their own pick list.
-    const { data: sid } = await sb.from('scouts').select('id').eq('person_id', scout).single();
-    const { data: earned } = await sb.from('mb_progress').select('mb_id').eq('scout_id', (sid as { id: string }).id).eq('awarded', true);
-    const done = new Set(((earned ?? []) as { mb_id: string }[]).map((r) => r.mb_id));
-    const keys = catalog.meritBadges.filter((m) => !done.has(m.id)).slice(0, 4).map((m) => `mb:${m.id}`);
+    const keys = await requestableKeys(catalog, 0, SUGGESTION_CAP + 1);
+    const lists = await uncachedLists(sb);
     const results = [];
-    for (const key of keys) results.push((await familyWrite(sb, w, { op: 'pick', key, on: true })).ok);
-    expect(results).toEqual([true, true, true, false]);
+    for (const key of keys) results.push((await familyWrite(sb, w, { op: 'suggest', key, on: true }, { lists })).ok);
+    expect(results).toEqual([...keys.slice(0, SUGGESTION_CAP).map(() => true), false]);
   });
 
-  it('PicksAtOnce_CannotPassTheCap', async () => {
+  it('SuggestionsAtOnce_CannotPassTheCap', async () => {
     const catalog = await fetchAdvancementCatalog(sb as never);
-    await sb.from('meeting_topic_picks').delete().eq('calendar_entry_id', meeting).eq('person_id', scout);
-    const { data: sid } = await sb.from('scouts').select('id').eq('person_id', scout).single();
-    const { data: earned } = await sb.from('mb_progress').select('mb_id').eq('scout_id', (sid as { id: string }).id).eq('awarded', true);
-    const done = new Set(((earned ?? []) as { mb_id: string }[]).map((r) => r.mb_id));
-    const keys = catalog.meritBadges.filter((m) => !done.has(m.id)).slice(4, 9).map((m) => `mb:${m.id}`);
+    await sb.from('meeting_scout_suggestions').delete().eq('calendar_entry_id', meeting).eq('person_id', scout);
+    const keys = await requestableKeys(catalog, 6, SUGGESTION_CAP + 3);
+    const lists = await uncachedLists(sb);
     const w = { meeting: { entryId: meeting, date: MEETING_DATE }, actorPersonId: parent, scoutPersonId: scout, catalog };
-    await Promise.all(keys.map((key) => familyWrite(sb, w, { op: 'pick', key, on: true })));
-    const { count } = await sb.from('meeting_topic_picks').select('topic_id', { count: 'exact', head: true }).eq('calendar_entry_id', meeting).eq('person_id', scout).eq('later', false);
-    expect(count).toBe(3);
+    await Promise.all(keys.map((key) => familyWrite(sb, w, { op: 'suggest', key, on: true }, { lists })));
+    const { count } = await sb.from('meeting_scout_suggestions').select('topic_key', { count: 'exact', head: true }).eq('calendar_entry_id', meeting).eq('person_id', scout);
+    expect(count).toBe(SUGGESTION_CAP);
+  });
+
+  it('Family_CannotSuggest_SomethingOffTheList', async () => {
+    const catalog = await fetchAdvancementCatalog(sb as never);
+    const w = { meeting: { entryId: meeting, date: MEETING_DATE }, actorPersonId: parent, scoutPersonId: scout, catalog };
+    expect((await familyWrite(sb, w, { op: 'suggest', key: 'ff:anything', on: true }, { lists: await uncachedLists(sb) })).ok).toBe(false);
+  });
+
+  it('Family_CannotUntick_ARequirementNotInTheirPlan', async () => {
+    const catalog = await fetchAdvancementCatalog(sb as never);
+    const w = { meeting: { entryId: meeting, date: MEETING_DATE }, actorPersonId: parent, scoutPersonId: scout, catalog };
+    expect((await familyWrite(sb, w, { op: 'item', key: 'tenderfoot-1a', on: false }, { lists: await uncachedLists(sb) })).ok).toBe(false);
   });
 
   it('Answer_IsSavedForTheScout', async () => {
     const catalog = await fetchAdvancementCatalog(sb as never);
-    await familyWrite(sb, { meeting: { entryId: meeting, date: MEETING_DATE }, actorPersonId: parent, scoutPersonId: scout, catalog }, { op: 'intent', intent: 'not_coming' });
+    await familyWrite(sb, { meeting: { entryId: meeting, date: MEETING_DATE }, actorPersonId: parent, scoutPersonId: scout, catalog }, { op: 'answer', choice: 'out' });
     const { data } = await sb.from('meeting_intents').select('intent').eq('calendar_entry_id', meeting).eq('person_id', scout).single();
     expect((data as { intent: string }).intent).toBe('not_coming');
   });
+
+  it('Answer_ChangeReadsComing', async () => {
+    const catalog = await fetchAdvancementCatalog(sb as never);
+    await familyWrite(sb, { meeting: { entryId: meeting, date: MEETING_DATE }, actorPersonId: parent, scoutPersonId: scout, catalog }, { op: 'answer', choice: 'change' });
+    const { data } = await sb.from('meeting_intents').select('intent').eq('calendar_entry_id', meeting).eq('person_id', scout).single();
+    expect((data as { intent: string }).intent).toBe('coming');
+  });
 });
+
+/** Badges the scout hasn't earned: always on their own pick list, so always suggestable. */
+async function requestableKeys(catalog: Awaited<ReturnType<typeof fetchAdvancementCatalog>>, from: number, n: number): Promise<string[]> {
+  const { data: sid } = await sb.from('scouts').select('id').eq('person_id', scout).single();
+  const { data: earned } = await sb.from('mb_progress').select('mb_id').eq('scout_id', (sid as { id: string }).id).eq('awarded', true);
+  const done = new Set(((earned ?? []) as { mb_id: string }[]).map((r) => r.mb_id));
+  return catalog.meritBadges.filter((m) => !done.has(m.id)).slice(from, from + n).map((m) => `mb:${m.id}`);
+}
 
 describe('publish', () => {
   const view: ThisWeek = {

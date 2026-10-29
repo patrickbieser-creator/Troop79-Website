@@ -14,6 +14,7 @@ const line = (o: Partial<TeachPageLine> = {}): TeachPageLine => ({
   minutes: 20,
   helped: { count: 2, names: ['Finn P', 'Leo K'], more: 0 },
   answer: null,
+  note: null,
   available: true,
   ...o
 });
@@ -69,5 +70,17 @@ describe('the teach page card, accessibly', () => {
   it('TeachPageCard_OneRadiogroupPerClass_NamedByItsLegend', () => {
     card();
     expect(screen.getAllByRole('radiogroup').map((g) => g.textContent?.startsWith('Ten 3a Square Knot use'))).toEqual([true]);
+  });
+});
+
+describe('Not this week note (Emails E2)', () => {
+  it('Teacher_NotThisWeek_OffersAnOptionalNote', () => {
+    card({ lines: [line({ answer: 'no', note: 'Try me in December' })] });
+    expect((screen.getByLabelText(/Anything you’d like us to know/) as HTMLTextAreaElement).value).toBe('Try me in December');
+  });
+
+  it('Teacher_Yes_ShowsNoNoteBox', () => {
+    card({ lines: [line({ answer: 'yes' })] });
+    expect(screen.queryByLabelText(/Anything you’d like us to know/)).toBeNull();
   });
 });

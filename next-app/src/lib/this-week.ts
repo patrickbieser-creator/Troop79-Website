@@ -44,6 +44,14 @@ export interface ThisWeekInput {
   topicTeachers: readonly { key: string; personId: number }[];
   /** Freeform topics' titles. */
   titles: ReadonlyMap<string, string>;
+  /** A family's unticks (Emails E2), column keys by personId: off the plan at once. */
+  exclusions?: ReadonlyMap<number, ReadonlySet<string>>;
+  /** Merit badge group scouts helping teach a group (a family's answer), group key by personId. */
+  helpers?: ReadonlyMap<number, string>;
+  /** What a family suggested, by personId: a flag for the planners, never a placement. */
+  suggestions?: ReadonlyMap<number, readonly string[]>;
+  /** A teacher's note with "Not this week", by the topic (group) they were asked to teach. */
+  teacherNotes?: readonly { key: string; personId: number; note: string }[];
 }
 
 export interface TwPerson {
@@ -92,6 +100,8 @@ export interface TwGroup {
   teachers: TwTeacher[];
   /** Who could teach it: qualified first (counselors first for a badge), then Merit badge group scouts set to Teach. */
   candidates: TwTeacher[];
+  /** Notes from people who said "Not this week" to teaching it. */
+  declineNotes: { name: string; note: string }[];
 }
 
 export interface TwRow extends TwPerson {
@@ -115,6 +125,10 @@ export interface TwRow extends TwPerson {
   suggested: string[];
   /** A planner placed this scout by hand (meeting_scout_roles): "Let placement decide" undoes it. */
   hand: boolean;
+  /** What the family suggested, in words: a flag for the planners. */
+  familySuggestions: string[];
+  /** The planned requirements the family unticked, by code ('6a'). */
+  familyUnticked: string[];
 }
 
 export interface TwSection {
@@ -219,7 +233,9 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
     focusKeys,
     badgeIds: input.nightBadges,
     roles: input.roles,
-    picks
+    picks,
+    exclusions: input.exclusions,
+    helpers: input.helpers
   });
 
   // Teachers.
@@ -258,10 +274,12 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
 
   const groups: TwGroup[] = plan.groups.map((g) => {
     const members = g.members.map((id) => rowsBy.get(id)!).filter((r) => r);
+    // Can't make it takes a scout out of the group's work (Emails): their chip stays, greyed, but they need nothing.
+    const working = members.filter((m) => m.intent !== 'not_coming');
     const columns = g.columns.map((c) => ({
       ...c,
-      need: members.filter((m) => m.open.includes(c.key)).length,
-      subs: c.subs.map((x) => ({ ...x, need: members.filter((m) => m.marks[x.key] === 'open').length }))
+      need: working.filter((m) => m.open.includes(c.key)).length,
+      subs: c.subs.map((x) => ({ ...x, need: working.filter((m) => m.marks[x.key] === 'open').length }))
     }));
     let qualified: TwTeacher[];
     if (g.kind === 'badge') {
@@ -281,7 +299,14 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
       columns,
       members: members.map((m) => person(scoutBy.get(m.personId)!)),
       teachers: signedUp(g.key),
-      candidates: [...qualified, ...teachingScouts.filter((t) => !seen.has(t.personId))]
+      candidates: [...qualified, ...teachingScouts.filter((t) => !seen.has(t.personId))],
+      declineNotes: (input.teacherNotes ?? [])
+        .filter((n) => n.key === g.key)
+        .map((n) => {
+          const p = poolBy.get(n.personId);
+          const s = scoutBy.get(n.personId);
+          return { name: p ? teacherName(p, 'admin') : s ? boardName(s.name) : 'Someone', note: n.note };
+        })
     };
   });
   const groupBy = new Map(groups.map((g) => [g.key, g]));
@@ -311,6 +336,12 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
   });
   const extraTitle = new Map(extras.map((e) => [e.key, e.title]));
 
+  const wordsOf = (k: string) => {
+    const w = topicWords(k, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, input.titles, more);
+    return w ? (w.codeLabel ? `${w.codeLabel} ${w.label}` : w.label) : k;
+  };
+  const columnCode = new Map(plan.groups.flatMap((g) => g.columns.map((c) => [c.key, c.code] as const)));
+
   // The checklist: one section per group, then the scouts tonight has no group for.
   const noteOf = (r: FocusRow): string => {
     if (r.status === 'teach') return r.counted ? 'Helps teach' : 'Teaching';
@@ -335,7 +366,9 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
     gap: r.status === 'nothing',
     requestKey: r.requestKey ?? null,
     suggested: r.suggested,
-    hand: input.roles.has(r.personId)
+    hand: input.roles.has(r.personId),
+    familySuggestions: (input.suggestions?.get(r.personId) ?? []).map((k) => wordsOf(k)),
+    familyUnticked: [...(input.exclusions?.get(r.personId) ?? [])].filter((k) => columnCode.has(k)).map((k) => columnCode.get(k)!)
   });
   const byName = (a: TwRow, b: TwRow) => a.name.localeCompare(b.name);
   // An older scout in no badge group (teaching, or no badge tonight) is listed under "Not assigned & available".
@@ -360,7 +393,11 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
     .map((g) => ({ mbId: g.refId, name: mbName.get(g.refId) ?? g.refId, direct: input.nightBadges.includes(g.refId) }));
 
   const adults = pool.filter((p) => p.kind === 'adult');
-  const { counted, rankWork, nothing } = plan.coverage;
+  // Coverage counts the scouts who may come: Can't make it is out of it.
+  const may = plan.rows.filter((r) => r.counted && r.intent !== 'not_coming');
+  const counted = may.length;
+  const rankWork = may.filter((r) => r.status === 'rank-work').length;
+  const nothing = may.filter((r) => r.status === 'nothing').length;
   return {
     focus: input.focus.map((f) => ({ key: f.key, setId: f.setId, name: f.title })),
     badges,

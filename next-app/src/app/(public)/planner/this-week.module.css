@@ -931,3 +931,27 @@ button.chip:focus-visible {
   border-radius: var(--rad-pill);
   font: 700 var(--fs-xs) / 1.2 var(--font-ui);
 }
+
+/* A family's changes and suggestions on a scout's row, and teachers' "Not this week" notes (Emails E2). */
+.familyFlags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+}
+.familyFlag {
+  padding: 2px var(--sp-2);
+  border-radius: var(--rad-pill);
+  background: var(--status-info-bg);
+  color: var(--navy);
+  font: 600 var(--fs-xs) / 1.4 var(--font-ui);
+}
+.declineNotes {
+  margin: var(--sp-2) 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  font: var(--fs-xs) / 1.5 var(--font-ui);
+  color: var(--text-meta);
+}

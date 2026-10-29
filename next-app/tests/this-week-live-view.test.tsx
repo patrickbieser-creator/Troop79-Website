@@ -26,7 +26,8 @@ const view: ThisWeek = {
       columns: [{ key: 'tenderfoot-7a', code: '7a', label: 'Flag', need: 2, subs: [] }],
       members: [p(1, 'Adi A'), p(2, 'Ben B', 'not_coming')],
       teachers: [],
-      candidates: []
+      candidates: [],
+      declineNotes: []
     }
   ],
   sections: [],

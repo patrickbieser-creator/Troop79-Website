@@ -72,6 +72,12 @@ export interface FocusInput {
   /** Each scout's current picks for this meeting, keyed by personId. A family that ticked a group put the scout there:
    *  picks outrank placement, and a planner's hand choice outranks picks. */
   picks?: ReadonlyMap<number, readonly string[]>;
+  /** A family's unticks (Emails N2), column keys by personId: those columns leave the scout's plan at once. A key not
+   *  in the scout's group is ignored. Unticking every open column leaves the scout with nothing assigned. */
+  exclusions?: ReadonlyMap<number, ReadonlySet<string>>;
+  /** A Merit badge group scout's "help teach" answer (Emails N4), the group key by personId: they sit in that group as
+   *  a helper, the way a planner's move does. A planner's hand choice outranks it. */
+  helpers?: ReadonlyMap<number, string>;
 }
 
 export interface FocusColumn {
@@ -346,7 +352,9 @@ export function buildFocusPlan(input: FocusInput): FocusPlan {
     const suggested = auto.groupKey ? [auto.groupKey] : [];
 
     const pickedGroup = input.picks?.get(s.personId)?.find((k) => groupByKey.has(k));
-    const role: ScoutRole | undefined = input.roles?.get(s.personId) ?? (pickedGroup ? { role: 'group', key: pickedGroup } : undefined);
+    const helping = input.helpers?.get(s.personId);
+    const role: ScoutRole | undefined =
+      input.roles?.get(s.personId) ?? (helping && groupByKey.has(helping) ? { role: 'group', key: helping } : undefined) ?? (pickedGroup ? { role: 'group', key: pickedGroup } : undefined);
     if (role?.role === 'teach') return withHome({ ...base, groupKey: null, open: [], status: 'teach', allDone: false, suggested });
     if (role?.role === 'request') return withHome({ ...base, groupKey: null, open: [], status: 'request', allDone: false, requestKey: role.key, suggested });
     if (role?.role === 'group') {
@@ -362,6 +370,22 @@ export function buildFocusPlan(input: FocusInput): FocusPlan {
     }
     return withHome({ ...base, ...auto, suggested });
   });
+
+  // A family's unticks come off the plan last, whatever put the scout in their group.
+  for (const [i, r] of rows.entries()) {
+    const off = input.exclusions?.get(r.personId);
+    const g = r.groupKey ? groupByKey.get(r.groupKey) : undefined;
+    if (!off?.size || !g || (r.status !== 'rank-work' && r.status !== 'badge')) continue;
+    const gone = g.columns.filter((c) => off.has(c.key));
+    if (!gone.length) continue;
+    const marks = { ...r.marks };
+    for (const c of gone) {
+      delete marks[c.key];
+      for (const x of c.subs) delete marks[x.key];
+    }
+    const open = r.open.filter((k) => !off.has(k));
+    rows[i] = r.status === 'rank-work' && !open.length ? { ...r, groupKey: null, open: [], marks: {}, status: 'nothing', allDone: false } : { ...r, open, marks };
+  }
 
   for (const r of rows) if (r.groupKey) groupByKey.get(r.groupKey)?.members.push(r.personId);
 

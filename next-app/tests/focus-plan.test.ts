@@ -340,3 +340,51 @@ describe('coverage and gaps', () => {
     expect(rowOf(plan([s], ['second-class-6a'], { roles }), s).suggested).toEqual([rankGroupKey('second-class')]);
   });
 });
+
+describe('family answers (Emails E2)', () => {
+  const SC_FOCUS = ['second-class-6a', 'second-class-6b', 'first-class-7a', 'first-class-7b', 'tenderfoot-5'];
+
+  it('Family_UntickRemovesRequirement_FromThePlan', () => {
+    const s = scout('tenderfoot');
+    const r = rowOf(plan([s], SC_FOCUS, { exclusions: new Map([[s.personId, new Set(['second-class-6a'])]]) }), s);
+    expect([r.groupKey, r.open]).toEqual([rankGroupKey('second-class'), ['second-class-6b']]);
+  });
+
+  it('Family_UntickingEverything_LeavesNothingAssigned', () => {
+    const s = scout('tenderfoot');
+    const r = rowOf(plan([s], SC_FOCUS, { exclusions: new Map([[s.personId, new Set(['second-class-6a', 'second-class-6b'])]]) }), s);
+    expect([r.groupKey, r.status, r.open]).toEqual([null, 'nothing', []]);
+  });
+
+  it('Family_UntickOutsideThePlan_IsIgnored', () => {
+    const s = scout('tenderfoot');
+    const r = rowOf(plan([s], SC_FOCUS, { exclusions: new Map([[s.personId, new Set(['first-class-7a'])]]) }), s);
+    expect(r.open).toEqual(['second-class-6a', 'second-class-6b']);
+  });
+
+  it('Family_UntickARankColumn_DropsItsSubCells', () => {
+    const s = scout('second-class');
+    const r = rowOf(plan([s], SC_FOCUS, { exclusions: new Map([[s.personId, new Set(['first-class-7a'])]]) }), s);
+    expect(Object.keys(r.marks)).toEqual(['first-class-7b']);
+  });
+
+  it('Family_UntickCountsAgainstCoverage_OnlyWhenNothingIsLeft', () => {
+    const a = scout('tenderfoot');
+    const b = scout('tenderfoot');
+    const p = plan([a, b], SC_FOCUS, { exclusions: new Map([[a.personId, new Set(['second-class-6a', 'second-class-6b'])], [b.personId, new Set(['second-class-6a'])]]) });
+    expect([p.coverage.rankWork, p.coverage.nothing]).toEqual([1, 1]);
+  });
+
+  it('MeritBadgeScout_HelpTeach_ListsAsHelperNotTeacher', () => {
+    const s = scout('star');
+    const r = rowOf(plan([s], [...SC_FOCUS, 'first-aid-1'], { helpers: new Map([[s.personId, rankGroupKey('second-class')]]) }), s);
+    expect([r.groupKey, r.status]).toEqual([rankGroupKey('second-class'), 'teach']);
+  });
+
+  it('PlannerChoice_OutranksAFamilysHelpAnswer', () => {
+    const s = scout('star');
+    const roles = new Map<number, ScoutRole>([[s.personId, { role: 'group', key: badgeGroupKey('first-aid') }]]);
+    const r = rowOf(plan([s], [...SC_FOCUS, 'first-aid-1'], { roles, helpers: new Map([[s.personId, rankGroupKey('second-class')]]) }), s);
+    expect(r.groupKey).toBe(badgeGroupKey('first-aid'));
+  });
+});

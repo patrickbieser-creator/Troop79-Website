@@ -175,6 +175,7 @@ function PlanView({ entryId, view, sets, badges, canSeed }: { entryId: number; v
                   {g.members.length ? null : <span className={s.muted}>Nobody needs these tonight.</span>}
                 </div>
                 <TeacherSlot slotKey={g.key} title={`the ${g.name} group`} teachers={g.teachers} candidates={g.candidates} everyone={view.everyone} onSet={setTeacher} onAsk={ask} />
+                <DeclineNotes notes={g.declineNotes} />
               </div>
             </section>
           ))}
@@ -247,6 +248,7 @@ function PlanView({ entryId, view, sets, badges, canSeed }: { entryId: number; v
                   {g.members.length ? null : <span className={s.muted}>Nobody taking it yet.</span>}
                 </div>
                 <TeacherSlot slotKey={g.key} title={`${g.name}`} teachers={g.teachers} candidates={g.candidates} everyone={view.everyone} onSet={setTeacher} onAsk={ask} />
+                <DeclineNotes notes={g.declineNotes} />
               </div>
             </section>
           ))}
@@ -432,6 +434,7 @@ function Checklist({
                     <td className={s.noteCol}>
                       <div className={s.noteCell}>
                         <span className={r.gap ? s.gapNote : undefined}>{r.note}</span>
+                        <FamilyFlags row={r} />
                         <PlaceMenu row={r} view={view} onRole={onRole} busy={busy} />
                       </div>
                     </td>
@@ -484,5 +487,31 @@ function PlaceMenu({ row, view, onRole, busy }: { row: TwRow; view: ThisWeek; on
         </>
       )}
     </Popover>
+  );
+}
+
+/** What a family changed or suggested (Emails E2): a flag for the planners on the scout's row. Suggestions never place
+ *  anyone; a planner who takes one up places the scout with the usual tools. */
+export function FamilyFlags({ row }: { row: TwRow }) {
+  if (!row.familyUnticked.length && !row.familySuggestions.length) return null;
+  return (
+    <span className={s.familyFlags}>
+      {row.familyUnticked.length ? <span className={s.familyFlag}>Family took off {row.familyUnticked.join(', ')}</span> : null}
+      {row.familySuggestions.length ? <span className={s.familyFlag}>Family suggests: {row.familySuggestions.join(' · ')}</span> : null}
+    </span>
+  );
+}
+
+/** Notes from people who said "Not this week" to teaching a group. */
+export function DeclineNotes({ notes }: { notes: readonly { name: string; note: string }[] }) {
+  if (!notes.length) return null;
+  return (
+    <ul className={s.declineNotes} aria-label="Notes from people who can’t teach this week">
+      {notes.map((n, i) => (
+        <li key={i}>
+          <strong>{n.name}</strong> can&rsquo;t this week: &ldquo;{n.note}&rdquo;
+        </li>
+      ))}
+    </ul>
   );
 }

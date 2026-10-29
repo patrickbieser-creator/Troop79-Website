@@ -16,6 +16,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { hashSecret } from '@/lib/identity-challenge';
+import { cleanDeclineNote } from '@/lib/decline-note';
 import type { ScoutsHelped } from '@/lib/meeting-invite-digest';
 
 /** Submits one page takes (re-answering is allowed until the expiry, so more than an invite's single use). */
@@ -37,6 +38,8 @@ export interface TeachPageLine extends TeachLineSnapshot {
   key: string;
   /** The current answer; null = not answered yet. */
   answer: 'yes' | 'no' | null;
+  /** The note saved with a "Not this week" (Emails E2). */
+  note: string | null;
   /** False: voided, or no longer this page's to answer ("No longer available"). */
   available: boolean;
 }
@@ -74,13 +77,13 @@ export async function inspectTeachPage(sb: SupabaseClient, token: string, now: D
   const [{ data: person }, { data: entry }, { data: rows }] = await Promise.all([
     sb.from('people').select('display_name, active, session_epoch').eq('id', page.recipient_person_id).maybeSingle(),
     sb.from('calendar_entries').select('entry_date').eq('id', page.calendar_entry_id).maybeSingle(),
-    sb.from('meeting_invites').select('id, topic_key, consumed_at, response').eq('page_id', page.id).eq('kind', 'teach').order('id')
+    sb.from('meeting_invites').select('id, topic_key, consumed_at, response, decline_note').eq('page_id', page.id).eq('kind', 'teach').order('id')
   ]);
   const who = person as { display_name: string; active: boolean; session_epoch: number } | null;
   const stale = !who || !who.active || who.session_epoch !== page.recipient_epoch;
   // One line per class, the latest row (meeting_supersede_teach_pages keeps one; this holds it on the page too).
-  const latest = new Map<string, { id: number; topic_key: string; consumed_at: string | null; response: string | null }>();
-  for (const r of (rows ?? []) as { id: number; topic_key: string; consumed_at: string | null; response: string | null }[]) latest.set(r.topic_key, r);
+  const latest = new Map<string, { id: number; topic_key: string; consumed_at: string | null; response: string | null; decline_note: string | null }>();
+  for (const r of (rows ?? []) as { id: number; topic_key: string; consumed_at: string | null; response: string | null; decline_note: string | null }[]) latest.set(r.topic_key, r);
   const lines: TeachPageLine[] = [...latest.values()].map((r) => {
     const snap = page.lines?.[r.topic_key];
     const answered = r.response === 'accepted' || r.response === 'declined';
@@ -92,6 +95,7 @@ export async function inspectTeachPage(sb: SupabaseClient, token: string, now: D
       minutes: snap?.minutes ?? null,
       helped: snap?.helped ?? EMPTY_HELPED,
       answer: r.response === 'accepted' ? 'yes' : r.response === 'declined' ? 'no' : null,
+      note: r.response === 'declined' ? r.decline_note : null,
       available: !stale && (answered || (r.consumed_at == null && r.response == null))
     };
   });
@@ -151,6 +155,20 @@ export async function answerTeachPage(sb: SupabaseClient, token: string, answers
       was: l.was
     }))
   };
+}
+
+/**
+ * The notes sent with "Not this week" answers, after answerTeachPage accepted the submit. Only on this page's own
+ * declined invites; any other answer clears the note.
+ */
+export async function saveDeclineNotes(sb: SupabaseClient, pageId: number, notes: readonly { inviteId: number; note: string }[]): Promise<boolean> {
+  let ok = true;
+  for (const n of notes.slice(0, 50)) {
+    const { error } = await sb.from('meeting_invites').update({ decline_note: cleanDeclineNote(n.note) }).eq('id', n.inviteId).eq('page_id', pageId).eq('response', 'declined');
+    if (error) ok = false;
+  }
+  const { error } = await sb.from('meeting_invites').update({ decline_note: null }).eq('page_id', pageId).neq('response', 'declined').not('decline_note', 'is', null);
+  return ok && !error;
 }
 
 export interface MintedTeachPage {
