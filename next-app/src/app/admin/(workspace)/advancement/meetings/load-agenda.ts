@@ -35,16 +35,16 @@ export async function loadBoardTray(entryId: number): Promise<BoardTray | null> 
 
 /** This week's sessions as tray cards with their promote payload. Pure. */
 export function planCandidates(view: ThisWeek): MatchedCandidate[] {
-  const card = (key: string, title: string, codeLabel: string, track: string, teacher: string | null, scouts: string[], requirements: { code: string; label: string }[]): MatchedCandidate => ({
+  const card = (key: string, title: string, codeLabel: string, track: string, teachers: string[], scouts: string[], requirements: { code: string; label: string }[]): MatchedCandidate => ({
     id: `plan:${key}`,
     blockLabel: 'This week',
     title,
     codeLabel,
     group: null,
-    teacher: teacher ?? '',
+    teachers,
     flags: [],
     scouts: [...scouts].sort(),
-    promote: { title, description: codeLabel, track, leaderName: teacher, skillId: null, requirements, scouts: scouts.length ? [...scouts].sort() : null }
+    promote: { title, description: codeLabel, track, leaderName: joinNames(teachers) || null, skillId: null, requirements, scouts: scouts.length ? [...scouts].sort() : null }
   });
   const coming = (p: { intent: string | null }) => p.intent !== 'not_coming';
   return [
@@ -54,14 +54,14 @@ export function planCandidates(view: ThisWeek): MatchedCandidate[] {
         g.kind === 'badge' ? `${g.name} merit badge` : `${g.name} group`,
         g.columns.map((c) => c.code).join(', '),
         g.kind === 'badge' ? 'Merit Badge' : 'Open Advancement',
-        joinNames(g.teachers.map((t) => t.formal)) || null,
+        g.teachers.map((t) => t.formal),
         g.members.filter(coming).map((m) => m.name),
         g.columns.map((c) => ({ code: c.code, label: c.label }))
       )
     ),
-    ...(view.helpers.length ? [card('help', 'Helping teach', '', 'Open Advancement', null, view.helpers.filter(coming).map((m) => m.name), [])] : []),
+    ...(view.helpers.length ? [card('help', 'Helping teach', '', 'Open Advancement', [], view.helpers.filter(coming).map((m) => m.name), [])] : []),
     ...view.extras.map((x) =>
-      card(x.key, x.title, x.codeLabel, x.key.startsWith('mb:') ? 'Merit Badge' : 'Open Advancement', joinNames(x.teachers.map((t) => t.formal)) || null, x.scouts.filter(coming).map((m) => m.name), [{ code: x.codeLabel || x.key, label: x.title }])
+      card(x.key, x.title, x.codeLabel, x.key.startsWith('mb:') ? 'Merit Badge' : 'Open Advancement', x.teachers.map((t) => t.formal), x.scouts.filter(coming).map((m) => m.name), [{ code: x.codeLabel || x.key, label: x.title }])
     )
   ];
 }

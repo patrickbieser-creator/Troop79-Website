@@ -177,3 +177,8 @@ export function onBehalfAccess(input: { holdsMeetingPlan: boolean; actorIsScout:
   if (!input.holdsMeetingPlan || input.actorIsScout) return 'none';
   return input.hasVerifiedSignIn ? 'edit' : 'read-only';
 }
+
+/** Teachers' names as a phrase: 'Mr. Vest', 'Mr. Vest and Ms. Ruiz', 'A, B and C'; '' for none. */
+export function joinNames(names: readonly string[]): string {
+  return names.length < 3 ? names.join(' and ') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+}

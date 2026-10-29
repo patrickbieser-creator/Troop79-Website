@@ -6,6 +6,7 @@ import { BackNav } from '../../../_components/back-nav';
 import { useRouter } from 'next/navigation';
 import type { Meeting, MeetingSection, MeetingSession } from '@/lib/supabase/types';
 import { fmtDateFull } from '@/lib/format-date';
+import { joinNames } from '@/lib/meeting-board-shared';
 import type { PromotePayload } from '../actions';
 import styles from '../meetings.module.css';
 import { Badge } from '../../../_components/badge';
@@ -25,8 +26,8 @@ export interface MatchedCandidate {
   title: string;
   codeLabel: string;
   group: string | null;
-  /** As families see it: "Mr. Vest", a Junior Leader "Maya S". */
-  teacher: string;
+  /** As families see them: "Mr. Vest", a Junior Leader "Maya S". Any number; none yet = []. */
+  teachers: string[];
   /** "sign-off needs a counselor", "not in their skills". */
   flags: string[];
   scouts: string[];
@@ -390,7 +391,7 @@ export function MeetingEditor({
                         </div>
                         <div className={styles.candidateTitle}>{c.title}</div>
                         <div className={styles.candidateMeta}>
-                          {c.teacher ? `Teacher: ${c.teacher}` : 'No teacher yet'}
+                          {c.teachers.length ? `${c.teachers.length > 1 ? 'Teachers' : 'Teacher'}: ${joinNames(c.teachers)}` : 'No teachers yet'}
                           {c.flags.length > 0 && <> · {c.flags.join(' · ')}</>}
                           <br />
                           {c.scouts.length} scout{c.scouts.length === 1 ? '' : 's'}

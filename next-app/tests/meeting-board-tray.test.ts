@@ -93,8 +93,8 @@ describe('the candidate tray', () => {
   it('Tray_ShowsMatchedSession_PrefilledWithTitleTeacherAndAudience', async () => {
     await boardUp();
     const s = mine(await (await tray()).loadBoardTray(entry));
-    expect(s && { teacher: s.teacher, scouts: s.scouts, codeLabel: s.codeLabel, track: s.promote.track }).toEqual({
-      teacher: 'Mr. Knotworth',
+    expect(s && { teachers: s.teachers, scouts: s.scouts, codeLabel: s.codeLabel, track: s.promote.track }).toEqual({
+      teachers: ['Mr. Knotworth'],
       scouts: [`${TEST_PREFIX} A`, `${TEST_PREFIX} B`],
       codeLabel: 'Offered this week',
       track: 'Open Advancement'
@@ -151,7 +151,7 @@ describe('the candidate tray', () => {
     if (seeded.error) throw new Error(seeded.error.message);
     const b = await (await tray()).loadBoardTray(entry);
     const s = b?.sessions.find((x) => x.codeLabel === `Tenderfoot ${(req as { code: string }).code}`);
-    expect([b?.source, s?.teacher, s?.blockLabel]).toEqual(['plan', '', 'This week']);
+    expect([b?.source, s?.teachers, s?.blockLabel]).toEqual(['plan', [], 'This week']);
   });
 
   // Patrick, 2026-10-22 (B7 extra): the engine suggestions panel is retired, so the editor loads the plan tray only.

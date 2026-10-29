@@ -5,7 +5,7 @@
  */
 import type { AdvancementCatalog } from '@/lib/advancement-catalog';
 import { buildFocusPlan, isGroupKey, type CellMark, type FocusProgress, type FocusRow, type RowStatus, type ScoutRole } from '@/lib/focus-plan';
-import { boardName, type BoardPick, type Intent } from '@/lib/meeting-board-shared';
+import { boardName, joinNames, type BoardPick, type Intent } from '@/lib/meeting-board-shared';
 import { rankOfKey, topicWords } from '@/lib/meeting-board-picklist';
 import { assessTeacher, canTeachFocusGroup, teacherName, type TeachContext, type TeacherPerson } from '@/lib/meeting-board-teach';
 
@@ -67,10 +67,7 @@ export interface TwTeacher {
   formal: string;
 }
 
-/** Teachers' names as a phrase: 'Mr. Vest', 'Mr. Vest and Ms. Ruiz', 'A, B and C'; '' for none. */
-export function joinNames(names: readonly string[]): string {
-  return names.length < 3 ? names.join(' and ') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
-}
+export { joinNames };
 
 export interface TwColumn {
   key: string;

@@ -33,7 +33,7 @@ const matched: MatchedCandidate = {
   title: 'First Aid',
   codeLabel: 'Tenderfoot 4a, 4b',
   group: null,
-  teacher: 'Mr. Vest',
+  teachers: ['Mr. Vest'],
   flags: ['sign-off needs a counselor'],
   scouts: ['Anjali S', 'Finn P'],
   promote: {
@@ -74,6 +74,16 @@ describe('the meeting editor tray', () => {
   it('Tray_ShowsMatchedSessions_PrefilledFromTheBoard', () => {
     editor({ closed: false, sessions: [matched], wanted: 1 });
     expect([screen.getByText('Block 1 · Tenderfoot 4a, 4b') != null, screen.getByText(/Teacher: Mr\. Vest · sign-off needs a counselor/) != null, screen.getByText(/2 scouts: Anjali S, Finn P/) != null]).toEqual([true, true, true]);
+  });
+
+  it('Tray_SessionWithTwoTeachers_SaysTeachers', () => {
+    editor({ closed: false, sessions: [{ ...matched, teachers: ['Mr. Vest', 'Ms. Ruiz'] }], wanted: 0 });
+    expect(screen.getByText(/Teachers: Mr\. Vest and Ms\. Ruiz/)).toBeTruthy();
+  });
+
+  it('Tray_SessionWithNoTeacher_SaysNoTeachersYet', () => {
+    editor({ closed: false, sessions: [{ ...matched, teachers: [] }], wanted: 0 });
+    expect(screen.getByText(/No teachers yet/)).toBeTruthy();
   });
 
   it('Leader_PromotesMatchedSession_ThroughTheExistingFlow', async () => {
