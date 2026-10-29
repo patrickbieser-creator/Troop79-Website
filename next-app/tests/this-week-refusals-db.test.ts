@@ -20,6 +20,7 @@ vi.mock('@/lib/supabase/server', async () => {
 vi.mock('@/lib/admin-actor', () => ({ resolveAdminActor: async () => state.actor }));
 vi.mock('@/lib/family-access', () => ({ getIdentitySessionIfValid: async () => state.session }));
 vi.mock('@/lib/identity-session', async (orig) => ({ ...(await orig<typeof import('../src/lib/identity-session')>()), isEpochCurrent: async () => true }));
+vi.mock('next/headers', () => ({ headers: async () => new Headers({ 'x-forwarded-for': '203.0.113.79' }) }));
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn(), updateTag: vi.fn(), revalidateTag: vi.fn(), unstable_cache: (fn: unknown) => fn }));
 vi.mock('@/lib/dates', async (orig) => ({ ...(await orig<typeof import('../src/lib/dates')>()), centralToday: () => '2085-02-20' }));
 
@@ -56,6 +57,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  await sb.from('meeting_plan_pages').delete().in('calendar_entry_id', [meeting, campout]);
+  await sb.from('meeting_invite_failures').delete().eq('ip', '203.0.113.79');
   await sb.from('meeting_topic_picks').delete().in('calendar_entry_id', [meeting, campout]);
   await sb.from('meeting_intents').delete().in('calendar_entry_id', [meeting, campout]);
   await sb.from('meeting_topics').delete().in('calendar_entry_id', [meeting, campout]);
@@ -100,5 +103,30 @@ describe('a family answers only for their own scouts, on an open meeting', () =>
     state.session = { personId: parent, subjectKind: 'adult' };
     const { familyWriteAction } = await import('../src/app/(public)/member/meeting/family-actions');
     expect((await familyWriteAction({ entryId: campout, scoutId: ownScout, op: { op: 'answer', choice: 'ok' } })).ok).toBe(false);
+  });
+});
+
+describe('the email link answers only for the scouts it was minted for (Emails E2, qa-lead)', () => {
+  async function link(scoutIds: number[]) {
+    const { mintPlanPage } = await import('../src/lib/plan-pages');
+    const { data } = await sb.from('people').select('session_epoch').eq('id', parent).single();
+    return mintPlanPage(sb, { entryId: meeting, recipientId: parent, epoch: (data as { session_epoch: number }).session_epoch, scoutIds, snapshotN: null, expiresAt: '2085-03-05T00:00:00Z' });
+  }
+
+  it('TokenPage_CannotWrite_AScoutOffTheLink', async () => {
+    const { token } = await link([ownScout]);
+    const { planPageWriteAction } = await import('../src/app/(public)/i/plan/actions');
+    expect((await planPageWriteAction({ token, scoutId: otherScout, op: { op: 'answer', choice: 'out' } })).ok).toBe(false);
+  });
+
+  it('TokenPage_AnswersForTheLinksOwnScout', async () => {
+    const { token } = await link([ownScout]);
+    const { planPageWriteAction } = await import('../src/app/(public)/i/plan/actions');
+    expect((await planPageWriteAction({ token, scoutId: ownScout, op: { op: 'answer', choice: 'ok' } })).ok).toBe(true);
+  });
+
+  it('TokenPage_UnknownToken_IsRefused', async () => {
+    const { planPageWriteAction } = await import('../src/app/(public)/i/plan/actions');
+    expect((await planPageWriteAction({ token: 'f'.repeat(64), scoutId: ownScout, op: { op: 'answer', choice: 'ok' } })).ok).toBe(false);
   });
 });

@@ -34,7 +34,7 @@ vi.mock('@/lib/dates', async (orig) => ({ ...(await orig<typeof import('../src/l
 
 const { fetchAdvancementCatalog } = await import('../src/lib/advancement-catalog');
 const { sendInviteDigests } = await import('../src/lib/meeting-invite-digest-send');
-const { answerTeachPage, inspectTeachPage } = await import('../src/lib/meeting-teach-pages');
+const { answerTeachPage, inspectTeachPage, saveDeclineNotes } = await import('../src/lib/meeting-teach-pages');
 const { hashSecret } = await import('../src/lib/identity-challenge');
 const { randomInviteToken, respondToInvite } = await import('../src/lib/meeting-invites-db');
 const { DEFAULT_INVITE_DIGEST, TEACH_PAGE_BUTTON, renderInviteDigest } = await import('../src/lib/meeting-invite-email');
@@ -399,4 +399,35 @@ describe('B10b qa: a re-invite for the same class', () => {
     await answerTeachPage(sb, second, [{ inviteId: line.inviteId, answer: 'no' }]);
     expect([view.page?.lines.length, line.answer, await teaching()]).toEqual([1, 'yes', 0]);
   }, 60_000);
+});
+
+describe('Emails E2: a Not this week note', () => {
+  it('Teacher_NotThisWeek_SavesTheNote', async () => {
+    const token = await sendTeach([keys[0]]);
+    const [line] = await lineIds(token);
+    const res = await answerTeachPage(sb, token, [{ inviteId: line, answer: 'no' }]);
+    await saveDeclineNotes(sb, res.ok ? res.pageId : 0, [{ inviteId: line, note: 'December works' }]);
+    expect((await inspectTeachPage(sb, token)).page?.lines[0].note).toBe('December works');
+  });
+
+  it('DeclineNote_CannotLandOnAnotherPagesInvite', async () => {
+    const mine = await sendTeach([keys[0]]);
+    const theirs = await sendTeach([keys[1]], other);
+    const [theirLine] = await lineIds(theirs);
+    await answerTeachPage(sb, theirs, [{ inviteId: theirLine, answer: 'no' }]);
+    const minePage = await pageOf(mine);
+    await saveDeclineNotes(sb, minePage!.id, [{ inviteId: theirLine, note: 'not mine to write' }]);
+    expect((await inspectTeachPage(sb, theirs)).page?.lines[0].note).toBeNull();
+  });
+
+  it('DeclineNote_ClearsWhenTheAnswerTurnsYes', async () => {
+    const token = await sendTeach([keys[0]]);
+    const [line] = await lineIds(token);
+    const no = await answerTeachPage(sb, token, [{ inviteId: line, answer: 'no' }]);
+    await saveDeclineNotes(sb, no.ok ? no.pageId : 0, [{ inviteId: line, note: 'Maybe later' }]);
+    const yes = await answerTeachPage(sb, token, [{ inviteId: line, answer: 'yes' }]);
+    await saveDeclineNotes(sb, yes.ok ? yes.pageId : 0, []);
+    const { data } = await sb.from('meeting_invites').select('decline_note').eq('id', line).single();
+    expect((data as { decline_note: string | null }).decline_note).toBeNull();
+  });
 });

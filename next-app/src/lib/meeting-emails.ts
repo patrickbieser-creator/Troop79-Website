@@ -12,10 +12,12 @@
  *      Idempotency-Key, and records the result. The completion write only lands on the claim it made.
  *      - Resend refused, or it couldn't be built: 'failed' with the reason, and the minted link is removed.
  *      - Timed out, or the send threw: 'unknown'. Resend may still deliver it, so the link stays and nothing re-sends
- *        it on its own. A claim that goes stale (the page died mid-send) turns 'unknown' the same way.
+ *        it on its own (only a person, with Send again). A claim that goes stale (the page died mid-send) turns 'unknown' the same way.
  *   3. unfinishedSends: batches that still hold queued emails nobody is sending (the page closed partway). The screen
  *      shows "N emails didn't finish sending · Send them now"; there is no timer, so nothing sends without a person.
  *   4. requeueEmails: "Send again" for failed or unknown rows: new rows in a new batch; the old rows stay as the record.
+ *      A new row is a new Idempotency-Key, so sending an 'unknown' one again CAN deliver twice: the screen says "Check
+ *      before sending again". The key only guards retries of the same row.
  */
 import { randomUUID } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -143,12 +145,15 @@ export async function sendNextEmail(sb: SupabaseClient, input: { entryId: number
   if (claimErr) throw new Error('Couldn’t pick the next email. Try again.');
   const c = ((claim ?? []) as { email_id: number; claimed_at: string }[])[0];
   if (!c) return { done: true };
-  const { data: rowData } = await sb.from('meeting_emails').select('*').eq('id', c.email_id).single();
+  const { data: rowData, error: rowErr } = await sb.from('meeting_emails').select('*').eq('id', c.email_id).maybeSingle();
+  if (rowErr || !rowData) throw new Error('Couldn’t read the next email. Try again.');
   const row = rowData as EmailRow;
 
   // The completion write lands only on this claim: a row that went stale and was re-decided meanwhile stays as it is.
   const finish = async (patch: Record<string, unknown>): Promise<SendStep> => {
-    await sb.from('meeting_emails').update(patch).eq('id', row.id).eq('status', 'sending').eq('claimed_at', c.claimed_at);
+    const { data: hit, error } = await sb.from('meeting_emails').update(patch).eq('id', row.id).eq('status', 'sending').eq('claimed_at', c.claimed_at).select('id');
+    // No row: the claim went stale and was re-decided meanwhile (or the write failed). Said in the log, never hidden.
+    if (error || !hit?.length) console.error(`meeting email ${row.id}: the ${String(patch.status)} result didn’t land on its claim`, error?.message ?? '');
     return { done: false, id: row.id, status: patch.status as EmailStatus, failure: (patch.failure as string | undefined) ?? null };
   };
 

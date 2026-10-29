@@ -46,7 +46,7 @@ export async function answerTeachPageAction(formData: FormData): Promise<void> {
   }
 
   const res = await answerTeachPage(sb, token, answers);
-  if (res.ok) await saveDeclineNotes(sb, res.pageId, notes);
+  if (res.ok && !(await saveDeclineNotes(sb, res.pageId, notes))) console.error(`teach page ${res.pageId}: a Not this week note didn’t save`);
   // The redirect lands on the same URL; without this the router cache shows the old answers.
   revalidatePath('/i/teach/[token]', 'page');
   if (!res.ok) {

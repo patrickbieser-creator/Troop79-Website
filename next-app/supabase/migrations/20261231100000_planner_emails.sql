@@ -4,8 +4,8 @@
 -- 1. meeting_emails: one row per email about a meeting (a household's plan email, a teacher invite, a reminder). A
 --    Send queues every row first; the open page then sends them one at a time (meeting_email_claim). Status:
 --      queued → sending → sent | failed | unknown
---    'unknown' = the send timed out, or a claim went stale: Resend may still have delivered it. A retry sends the same
---    row with the same Resend Idempotency-Key, so it can't arrive twice. plan_sent keeps each scout's plan exactly as
+--    'unknown' = the send timed out, or a claim went stale: Resend may still have delivered it, so nothing sends it
+--    again on its own. Each row is its own Resend Idempotency-Key; "Send again" makes a new row (a person's call). plan_sent keeps each scout's plan exactly as
 --    emailed (the "Plan changed since sent" flag compares it with the planner-side plan). body_md_override = "Edit this
 --    email". delivery_status / delivered_at / opened_at come from Resend's webhook, and only ever move forward.
 -- 2. meeting_scout_exclusions: a family unticked a planned requirement. It applies at once: placement leaves that
