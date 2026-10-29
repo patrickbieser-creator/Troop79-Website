@@ -130,3 +130,29 @@ describe('the email link answers only for the scouts it was minted for (Emails E
     expect((await planPageWriteAction({ token: 'f'.repeat(64), scoutId: ownScout, op: { op: 'answer', choice: 'ok' } })).ok).toBe(false);
   });
 });
+
+describe('the Emails screen is adults with the edit right only (Emails E3, Q9)', () => {
+  it('ScoutEditor_IsRefused_WhenQueuingEmails', async () => {
+    state.actor = { personId: ownScout, label: 'SPL', subjectKind: 'scout', capabilities: new Set(['meeting_planner.edit']) };
+    const { emailsQueueAction } = await import('../src/app/(public)/planner/emails/actions');
+    expect((await emailsQueueAction({ entryId: meeting, emails: [{ kind: 'plan', recipientId: parent, scoutIds: [ownScout] }] })).ok).toBe(false);
+  });
+
+  it('LeaderWithoutPlannerRights_CannotQueueEmails', async () => {
+    state.actor = { personId: adult, label: 'Leader', subjectKind: 'adult', capabilities: new Set(['roster.edit', 'meeting_planner.view']) };
+    const { emailsQueueAction } = await import('../src/app/(public)/planner/emails/actions');
+    expect((await emailsQueueAction({ entryId: meeting, emails: [{ kind: 'plan', recipientId: parent, scoutIds: [ownScout] }] })).ok).toBe(false);
+  });
+
+  it('SendNext_IsRefused_ForAScoutEditor', async () => {
+    state.actor = { personId: ownScout, label: 'SPL', subjectKind: 'scout', capabilities: new Set(['meeting_planner.edit']) };
+    const { emailsSendNextAction } = await import('../src/app/(public)/planner/emails/actions');
+    expect((await emailsSendNextAction({ entryId: meeting, batchId: '00000000-0000-4000-8000-000000000001' })).ok).toBe(false);
+  });
+
+  it('SendNext_RefusesAMalformedBatch', async () => {
+    state.actor = { personId: adult, label: 'Leader', subjectKind: 'adult', capabilities: new Set(['meeting_planner.edit']) };
+    const { emailsSendNextAction } = await import('../src/app/(public)/planner/emails/actions');
+    expect((await emailsSendNextAction({ entryId: meeting, batchId: 'x' })).ok).toBe(false);
+  });
+});

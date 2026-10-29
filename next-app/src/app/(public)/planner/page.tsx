@@ -6,7 +6,7 @@
  * group), the checklist of what each could work on, the gaps, the teachers, and Live at the meeting as a second view
  * of the same plan (Decision 10). The switcher offers the next PLANNER_WEEKS open meetings (?meeting=<entryId>), the
  * next one by default. Viewers see everything read-only; the planning team (seed) sets the focus and badges; editors
- * place scouts and teachers; adult editors publish (email).
+ * place scouts and teachers; adult editors send email from the Emails screen (/planner/emails).
  *
  * B8: once the last meeting is over, editors get "Would you like to update attendance?" under the tabs.
  */
@@ -24,8 +24,6 @@ import { loadAdvancementCatalog } from '@/lib/advancement-catalog';
 import { pickMeeting } from '@/lib/build-plan';
 import { buildThisWeek, PLANNER_WEEKS } from '@/lib/this-week';
 import { loadFocusNames, loadThisWeekData } from '@/lib/this-week-db';
-import { snapshotPayload } from '@/lib/plan-snapshot';
-import { loadSnapshotState } from '@/lib/plan-snapshot-db';
 import { PageHeader } from '@/app/_components/page-header';
 import { PageShell } from '@/app/_components/page-shell';
 import { Notice } from '@/app/_components/notice';
@@ -92,12 +90,10 @@ export default async function PlannerPage({ searchParams }: { searchParams: Prom
     sb.from('meeting_live_presence').select('person_id').eq('calendar_entry_id', meeting.entryId).eq('present', true)
   ]);
   const view = buildThisWeek(data.input);
-  const snapshot = await loadSnapshotState(
-    sb,
-    meeting.entryId,
-    snapshotPayload(view),
-    data.input.scouts.map((s) => s.personId)
-  );
+  // The Emails link's "(N not sent)": scouts on the plan whose family has no plan email for this meeting yet.
+  const { data: sent } = await sb.from('meeting_emails').select('about').eq('calendar_entry_id', meeting.entryId).eq('kind', 'plan').in('status', ['sent', 'queued', 'sending', 'unknown']);
+  const emailed = new Set(((sent ?? []) as { about: { scouts?: number[] } }[]).flatMap((r) => r.about.scouts ?? []));
+  const notSent = data.input.scouts.filter((x) => !emailed.has(x.personId)).length;
   const adults = view.everyone.filter((t) => t.kind === 'adult').map((t) => ({ personId: t.personId, name: t.name }));
 
   return (
@@ -117,7 +113,7 @@ export default async function PlannerPage({ searchParams }: { searchParams: Prom
           stamp={data.stamp}
           canSeed={access.canSeed}
           isToday={meeting.date === centralToday()}
-          snapshot={snapshot}
+          notSent={notSent}
           live={{ present: ((presence.data ?? []) as { person_id: number }[]).map((r) => r.person_id) }}
         />
       </div>

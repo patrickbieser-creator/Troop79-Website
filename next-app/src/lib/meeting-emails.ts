@@ -22,6 +22,7 @@
 import { randomUUID } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { sendOneEmail, type SendOneResult } from '@/lib/email';
+import type { PlanSent } from '@/lib/meeting-email-build';
 
 /** At most this many emails per Send. Shown on the confirmation and in "How this works". */
 export const EMAIL_SEND_CAP = 150;
@@ -43,8 +44,8 @@ export interface QueueEmail {
   recipientPersonId: number | null;
   sentTo: string;
   about: EmailAbout;
-  /** Each scout's plan as emailed, by person id. */
-  planSent?: Record<string, { group: string | null; items: string[] }> | null;
+  /** Each scout's plan as emailed, by person id (lib/meeting-email-build). */
+  planSent?: PlanSent | null;
   subject?: string | null;
   bodyMdOverride?: string | null;
 }

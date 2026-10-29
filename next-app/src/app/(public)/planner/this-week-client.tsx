@@ -9,13 +9,12 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { joinNames, type ThisWeek, type TwRow, type TwSection } from '@/lib/this-week';
-import { usePlanner, RemindEveryone } from './planner-client';
+import { usePlanner } from './planner-client';
 import { PlannerPoller } from './planner-poller';
-import { twAskTeacherAction, twRemoveRequirementAction, twSetRoleAction, twSetTeacherAction, type RoleInput } from './this-week-actions';
+import { twRemoveRequirementAction, twSetRoleAction, twSetTeacherAction, type RoleInput } from './this-week-actions';
 import { FocusCard, type SetChoice } from './this-week-focus';
 import { LiveView } from './this-week-live';
 import { NameChip, Popover, ReqItem, TeacherSlot, useWrite } from './this-week-parts';
-import { PublishBar, type SnapshotState } from './this-week-publish';
 import s from './this-week.module.css';
 
 export interface WeekLink {
@@ -40,7 +39,7 @@ export function ThisWeekView({
   stamp,
   canSeed,
   isToday,
-  snapshot,
+  notSent,
   live
 }: {
   entryId: number;
@@ -53,7 +52,8 @@ export function ThisWeekView({
   stamp: string;
   canSeed: boolean;
   isToday: boolean;
-  snapshot: SnapshotState;
+  /** Scouts with a plan whose family hasn't been emailed for this meeting yet. */
+  notSent: number;
   live: { present: number[] };
 }) {
   const [mode, setMode] = useState<'plan' | 'live'>(isToday ? 'live' : 'plan');
@@ -92,7 +92,7 @@ export function ThisWeekView({
           </div>
         </div>
       </header>
-      <PublishBar entryId={entryId} snapshot={snapshot} />
+      <EmailsLink entryId={entryId} notSent={notSent} />
       <div className={s.wrap}>
         {mode === 'plan' ? <PlanView entryId={entryId} view={view} sets={sets} badges={badges} canSeed={canSeed} /> : <LiveView entryId={entryId} view={view} isToday={isToday} present={live.present} />}
       </div>
@@ -105,10 +105,6 @@ function PlanView({ entryId, view, sets, badges, canSeed }: { entryId: number; v
   const w = useWrite();
   const [filter, setFilter] = useState<'all' | 'gaps' | 'noanswer'>('all');
   const setTeacher = (key: string, personId: number | null, on: boolean) => w.run(() => twSetTeacherAction({ entryId, key, personId, on }));
-  const ask = async (key: string, personId: number) => {
-    const res = await twAskTeacherAction({ entryId, key, personId }).catch(() => null);
-    return res?.ok ? (res.message ?? 'Asked by email.') : (res?.error ?? 'That didn’t send. Try again.');
-  };
   const setRole = (personId: number, role: RoleInput) => w.run(() => twSetRoleAction({ entryId, personId, ...role }));
   const { coverage: c, answers: a } = view;
   const badgeGroups = view.groups.filter((g) => g.kind === 'badge');
@@ -140,7 +136,6 @@ function PlanView({ entryId, view, sets, badges, canSeed }: { entryId: number; v
           <span>
             Adults: <strong>{a.adults.coming}</strong> coming · <strong>{a.adults.undecided}</strong> not sure · <strong>{a.adults.notComing}</strong> can’t
           </span>
-          {p?.canEmail && view.adultsNoAnswer.length ? <RemindEveryone personIds={view.adultsNoAnswer.map((t) => t.personId)} /> : null}
         </div>
         {w.error ? (
           <p className={s.err} role="alert">
@@ -174,7 +169,7 @@ function PlanView({ entryId, view, sets, badges, canSeed }: { entryId: number; v
                   ))}
                   {g.members.length ? null : <span className={s.muted}>Nobody needs these tonight.</span>}
                 </div>
-                <TeacherSlot slotKey={g.key} title={`the ${g.name} group`} teachers={g.teachers} candidates={g.candidates} everyone={view.everyone} onSet={setTeacher} onAsk={ask} />
+                <TeacherSlot slotKey={g.key} title={`the ${g.name} group`} teachers={g.teachers} candidates={g.candidates} everyone={view.everyone} onSet={setTeacher} />
                 <DeclineNotes notes={g.declineNotes} />
               </div>
             </section>
@@ -247,7 +242,7 @@ function PlanView({ entryId, view, sets, badges, canSeed }: { entryId: number; v
                   ))}
                   {g.members.length ? null : <span className={s.muted}>Nobody taking it yet.</span>}
                 </div>
-                <TeacherSlot slotKey={g.key} title={`${g.name}`} teachers={g.teachers} candidates={g.candidates} everyone={view.everyone} onSet={setTeacher} onAsk={ask} />
+                <TeacherSlot slotKey={g.key} title={`${g.name}`} teachers={g.teachers} candidates={g.candidates} everyone={view.everyone} onSet={setTeacher} />
                 <DeclineNotes notes={g.declineNotes} />
               </div>
             </section>
@@ -292,7 +287,7 @@ function PlanView({ entryId, view, sets, badges, canSeed }: { entryId: number; v
                   {x.scouts.length ? null : <span className={s.muted}>Nobody signed up yet.</span>}
                 </div>
                 <div className={s.row}>
-                  <TeacherSlot slotKey={x.key} title={x.title} teachers={x.teachers} candidates={x.candidates} everyone={view.everyone} onSet={setTeacher} onAsk={ask} />
+                  <TeacherSlot slotKey={x.key} title={x.title} teachers={x.teachers} candidates={x.candidates} everyone={view.everyone} onSet={setTeacher} />
                   {canSeed && x.origin === 'planner' ? (
                     <button type="button" className={s.quiet} disabled={w.busy} onClick={() => w.run(() => twRemoveRequirementAction({ entryId, key: x.key }))}>
                       Remove from tonight
@@ -513,5 +508,18 @@ export function DeclineNotes({ notes }: { notes: readonly { name: string; note: 
         </li>
       ))}
     </ul>
+  );
+}
+
+/** Every email about the meeting lives on the Emails screen (Emails E3): adult editors only. */
+function EmailsLink({ entryId, notSent }: { entryId: number; notSent: number }) {
+  const p = usePlanner();
+  if (!p?.canEmail) return null;
+  return (
+    <div className={s.wrap}>
+      <Link href={`/planner/emails?meeting=${entryId}`} className={s.week}>
+        Emails{notSent ? ` (${notSent} not sent)` : ''}
+      </Link>
+    </div>
   );
 }
