@@ -322,14 +322,14 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
     hand: input.roles.has(r.personId)
   });
   const byName = (a: TwRow, b: TwRow) => a.name.localeCompare(b.name);
-  // An older scout with no group (teaching, or no badge tonight) is listed under the Merit badge group.
+  // An older scout in no badge group (teaching, or no badge tonight) is listed under "Not assigned & available".
   const sectionOf = (r: FocusRow) => r.groupKey ?? (r.counted ? (r.homeKey ?? 'none') : 'older');
   const sections: TwSection[] = groups.map((g) => {
     const rows = plan.rows.filter((r) => sectionOf(r) === g.key).map(toRow).sort(byName);
     return { key: g.key, kind: g.kind, name: g.name, columns: g.columns.map(({ key, code, label }) => ({ key, code, label })), rows, gaps: rows.filter((r) => r.gap).length };
   });
   const olderRows = plan.rows.filter((r) => sectionOf(r) === 'older').map(toRow).sort(byName);
-  if (olderRows.length) sections.push({ key: 'older', kind: 'none', name: 'Merit badge group', columns: [], rows: olderRows, gaps: 0 });
+  if (olderRows.length) sections.push({ key: 'older', kind: 'none', name: 'Not assigned & available', columns: [], rows: olderRows, gaps: 0 });
   const loose = plan.rows.filter((r) => sectionOf(r) === 'none').map(toRow).sort(byName);
   if (loose.length) sections.push({ key: 'none', kind: 'none', name: 'Not in a group', columns: [], rows: loose, gaps: loose.filter((r) => r.gap).length });
 
