@@ -5,7 +5,7 @@ import {
   EMAIL_CLAIM_STALE_SECONDS,
   EMAIL_SEND_CAP,
   queueEmails,
-  requeueEmails,
+  claimRetry,
   sendNextEmail,
   unfinishedSends,
   type QueueEmail,
@@ -199,14 +199,30 @@ describe('unfinished sends', () => {
     expect(await unfinishedSends(sb, meeting)).toEqual([]);
   });
 
-  it('Leader_CanRequeue_AFailedEmail_InANewBatch', async () => {
+  it('SendAgain_MarksTheFailedEmailRetried', async () => {
     const q = await queueEmails(sb, { entryId: meeting, actorPersonId: actor, emails: [plan('again@example.com', [scoutA])] });
     const { d } = deps(() => 'error');
     await sendNextEmail(sb, { entryId: meeting, batchId: q.ok ? q.batchId : '' }, d);
     const [failed] = await rows();
-    const re = await requeueEmails(sb, { entryId: meeting, actorPersonId: actor, ids: [failed.id] });
-    const after = await rows();
-    expect([re.ok && re.queued, after.map((x) => x.status), after[1]?.batch_id !== failed.batch_id]).toEqual([1, ['failed', 'queued'], true]);
+    const got = await claimRetry(sb, { entryId: meeting, ids: [failed.id] });
+    expect([got.map((r) => r.id), (await rows()).map((x) => x.status)]).toEqual([[failed.id], ['retried']]);
+  });
+
+  it('SendAgain_Twice_ClaimsTheEmailOnce', async () => {
+    const q = await queueEmails(sb, { entryId: meeting, actorPersonId: actor, emails: [plan('twice@example.com', [scoutA])] });
+    const { d } = deps(() => 'timeout');
+    await sendNextEmail(sb, { entryId: meeting, batchId: q.ok ? q.batchId : '' }, d);
+    const [unknown] = await rows();
+    const [a, b] = await Promise.all([claimRetry(sb, { entryId: meeting, ids: [unknown.id, unknown.id] }), claimRetry(sb, { entryId: meeting, ids: [unknown.id] })]);
+    expect(a.length + b.length).toBe(1);
+  });
+
+  it('SendAgain_IgnoresASentEmail', async () => {
+    const q = await queueEmails(sb, { entryId: meeting, actorPersonId: actor, emails: [plan('fine@example.com', [scoutA])] });
+    const { d } = deps();
+    await sendNextEmail(sb, { entryId: meeting, batchId: q.ok ? q.batchId : '' }, d);
+    const [sent] = await rows();
+    expect(await claimRetry(sb, { entryId: meeting, ids: [sent.id] })).toEqual([]);
   });
 });
 

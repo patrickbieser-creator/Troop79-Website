@@ -105,3 +105,24 @@ describe('a plan email', () => {
     expect((await sb.from('meeting_plan_pages').select('id', { count: 'exact', head: true }).eq('calendar_entry_id', meeting)).count).toBe(before);
   });
 });
+
+describe('already emailed (qa-lead E3 #2)', () => {
+  it('Queue_RefusesAFamilyAlreadyEmailed', async () => {
+    await sb.from('meeting_emails').insert({ calendar_entry_id: meeting, kind: 'plan', batch_id: '00000000-0000-4000-8000-0000000000aa', recipient_person_id: parent, sent_to: parentEmail, about: { scouts: [scout] }, status: 'sent' });
+    const r = await queue([{ kind: 'plan', recipientId: parent, scoutIds: [scout] }]);
+    await sb.from('meeting_emails').delete().eq('calendar_entry_id', meeting);
+    expect([r.ok && r.emails.length, r.ok && r.refused.length]).toEqual([0, 1]);
+  }, 60_000);
+
+  it('Queue_AllowsADeliberateResend', async () => {
+    await sb.from('meeting_emails').insert({ calendar_entry_id: meeting, kind: 'plan', batch_id: '00000000-0000-4000-8000-0000000000ab', recipient_person_id: parent, sent_to: parentEmail, about: { scouts: [scout] }, status: 'sent' });
+    const r = await queue([{ kind: 'plan', recipientId: parent, scoutIds: [scout], resend: true }]);
+    await sb.from('meeting_emails').delete().eq('calendar_entry_id', meeting);
+    expect(r.ok && r.emails.length).toBe(1);
+  }, 60_000);
+
+  it('Queue_RefusesAMalformedRecipient', async () => {
+    const r = await queue([{ kind: 'plan', recipientId: 'x' as unknown as number, scoutIds: [scout] }]);
+    expect(r.ok).toBe(false);
+  }, 60_000);
+});

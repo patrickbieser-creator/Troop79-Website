@@ -278,6 +278,8 @@ export interface QueueRequest {
   /** teacher: the group. */
   group?: string;
   override?: string | null;
+  /** A deliberate second email (a row already sent, or Send again). Without it, anyone already emailed is refused. */
+  resend?: boolean;
 }
 
 export type BuildQueueResult = { ok: true; emails: QueueEmail[]; refused: string[] } | { ok: false; error: string };
@@ -286,6 +288,17 @@ export type BuildQueueResult = { ok: true; emails: QueueEmail[]; refused: string
  *  refused with a reason, never sent to someone else. */
 export async function buildQueue(sb: SupabaseClient, meeting: Pick<BoardMeeting, 'entryId' | 'date'>, view: ThisWeek, lists: Pick<PeopleLists, 'pool'>, catalog: AdvancementCatalog, reqs: readonly QueueRequest[]): Promise<BuildQueueResult> {
   if (!Array.isArray(reqs) || reqs.length > EMAIL_SEND_CAP * 2) return { ok: false, error: 'Malformed request' };
+  if (!reqs.every((r) => r && Number.isInteger(r.recipientId) && (r.scoutIds == null || (Array.isArray(r.scoutIds) && r.scoutIds.every((n: unknown) => Number.isInteger(n)))))) return { ok: false, error: 'Malformed request' };
+  // Already emailed (qa-lead E3 #2): a stale page or a second tab doesn't send families the same email again.
+  const { data: prior } = await sb.from('meeting_emails').select('kind, recipient_person_id, about').eq('calendar_entry_id', meeting.entryId).in('status', ['queued', 'sending', 'sent', 'unknown']);
+  const priorRows = (prior ?? []) as { kind: EmailKind; recipient_person_id: number | null; about: { scouts?: number[]; group?: string } }[];
+  const already = (r: QueueRequest) =>
+    priorRows.some(
+      (p) =>
+        p.kind === r.kind &&
+        p.recipient_person_id === r.recipientId &&
+        (r.kind === 'teacher' ? p.about.group === r.group : (r.scoutIds ?? []).length ? (r.scoutIds ?? []).some((id) => (p.about.scouts ?? []).includes(id)) : !(p.about.scouts ?? []).length)
+    );
   const board = (await loadBoardScouts(sb)).filter((s) => !s.isTest);
   const active = new Set(board.map((s) => s.personId));
   const scoutIds = [...new Set(reqs.flatMap((r) => r.scoutIds ?? []))].filter((id) => active.has(id));
@@ -302,6 +315,10 @@ export async function buildQueue(sb: SupabaseClient, meeting: Pick<BoardMeeting,
   for (const r of reqs) {
     if (!r || !['plan', 'teacher', 'reminder'].includes(r.kind) || !Number.isInteger(r.recipientId)) return { ok: false, error: 'Malformed request' };
     const scouts: number[] = (r.scoutIds ?? []).filter((id: number) => Number.isInteger(id));
+    if (!r.resend && already(r)) {
+      refused.push('someone already emailed (tick the row again to resend)');
+      continue;
+    }
     if (r.kind === 'teacher') {
       const to = adults.to.get(r.recipientId);
       if (!to || !r.group || !groups.has(r.group)) {

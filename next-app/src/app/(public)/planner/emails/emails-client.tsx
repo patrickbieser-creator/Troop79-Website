@@ -41,6 +41,7 @@ function statusText(r: ScreenRow): string {
   if (r.state === 'queued' || r.state === 'sending') return 'Sending…';
   if (r.state === 'failed') return `Failed · ${r.failure ?? 'didn’t go out'}`;
   if (r.state === 'unknown') return 'Unknown · check before sending again';
+  if (r.state === 'retried') return 'Sent again';
   if (r.delivery === 'bounced') return 'Failed · bounced';
   const parts = [r.openedAt ? `Opened ${fmtDateTime(r.openedAt)}` : `Sent ${r.sentAt ? fmtDateTime(r.sentAt) : ''} · not opened`];
   if (r.answer) parts.push(r.answer);
@@ -52,6 +53,7 @@ function logResult(l: LogLine): string {
   if (l.status === 'queued' || l.status === 'sending') return 'Queued';
   if (l.status === 'failed') return `Failed · ${l.failure ?? ''}`;
   if (l.status === 'unknown') return 'Unknown · check before sending again';
+  if (l.status === 'retried') return `${l.failure ?? 'Didn’t go'} · sent again`;
   if (l.delivery === 'bounced' || l.delivery === 'complained') return `Failed · ${l.delivery}`;
   if (l.openedAt) return `Opened ${fmtDateTime(l.openedAt)}`;
   return l.delivery === 'delivered' ? 'Delivered' : 'Sent';
@@ -101,6 +103,8 @@ export function EmailsClient({ screen, day }: { screen: EmailScreen; day: string
         if (r.isScout && r.kind !== 'teacher') p.req.scoutIds = [...(p.req.scoutIds ?? []), r.personId];
         p.rows.push(r);
         p.req.override = p.rows.map((x) => overrides[x.id]).find(Boolean) ?? null;
+        // A row already emailed, ticked again, is a deliberate resend.
+        if (p.rows.some((x) => x.state !== 'new')) p.req.resend = true;
         byKey.set(key, p);
       }
     }

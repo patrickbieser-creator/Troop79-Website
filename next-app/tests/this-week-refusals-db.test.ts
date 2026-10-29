@@ -156,3 +156,11 @@ describe('the Emails screen is adults with the edit right only (Emails E3, Q9)',
     expect((await emailsSendNextAction({ entryId: meeting, batchId: 'x' })).ok).toBe(false);
   });
 });
+
+describe('Send again is adults with the edit right only (qa-lead E3)', () => {
+  it('ScoutEditor_IsRefused_WhenSendingAgain', async () => {
+    state.actor = { personId: ownScout, label: 'SPL', subjectKind: 'scout', capabilities: new Set(['meeting_planner.edit']) };
+    const { emailsRequeueAction } = await import('../src/app/(public)/planner/emails/actions');
+    expect((await emailsRequeueAction({ entryId: meeting, ids: [1] })).ok).toBe(false);
+  });
+});

@@ -16,7 +16,7 @@ import { plannerSeeder } from '@/lib/meeting-planner-seeder';
 import { loadPlannerLists } from '@/lib/people-lists';
 import { buildThisWeek, PLANNER_WEEKS } from '@/lib/this-week';
 import { loadThisWeekData } from '@/lib/this-week-db';
-import { queueEmails, requeueEmails, sendNextEmail, type SendStep } from '@/lib/meeting-emails';
+import { claimRetry, queueEmails, sendNextEmail, type SendStep } from '@/lib/meeting-emails';
 import { prepareEmail } from '@/lib/meeting-email-prepare';
 import { buildQueue, type QueueRequest } from '@/lib/meeting-email-screen';
 
@@ -68,12 +68,29 @@ export async function emailsSendNextAction(input: { entryId: number; batchId: st
   }
 }
 
-/** "Send again" for failed or unknown emails: a new batch, sent the same way. */
+/** "Send again" for failed or unknown emails: each claimed once ('retried'), then re-decided like a new Send
+ *  (recipients, address, plan: qa-lead E3 #3) and sent the same way. */
 export async function emailsRequeueAction(input: { entryId: number; ids: number[] }): Promise<QueueActionResult> {
   if (!Array.isArray(input?.ids) || !input.ids.every((n) => Number.isInteger(n)) || input.ids.length > 300) return { ok: false, error: 'Malformed request' };
   const s = await gate(input.entryId);
   if (!s.ok) return s;
-  const q = await requeueEmails(s.sb, { entryId: s.meeting.entryId, actorPersonId: s.actorPersonId, ids: input.ids });
-  if (!q.ok) return q;
-  return { ok: true, batchId: q.batchId, queued: q.queued, overflow: q.overflow.length, refused: [] };
+  try {
+    const rows = await claimRetry(s.sb, { entryId: s.meeting.entryId, ids: input.ids });
+    if (!rows.length) return { ok: false, error: 'Those were already sent again, or went through.' };
+    const lists = await loadPlannerLists();
+    const catalog = await loadAdvancementCatalog();
+    const data = await loadThisWeekData(s.sb, s.meeting, lists, catalog);
+    const reqs: QueueRequest[] = rows.flatMap((r) =>
+      r.recipient_person_id == null ? [] : [{ kind: r.kind, recipientId: r.recipient_person_id, scoutIds: r.about.scouts, group: r.about.group, override: r.body_md_override, resend: true }]
+    );
+    const built = await buildQueue(s.sb, s.meeting, buildThisWeek(data.input), lists, catalog, reqs);
+    if (!built.ok) return built;
+    if (!built.emails.length) return { ok: false, error: `None of those can be sent again: ${built.refused.join('; ')}.` };
+    const q = await queueEmails(s.sb, { entryId: s.meeting.entryId, actorPersonId: s.actorPersonId, emails: built.emails });
+    if (!q.ok) return q;
+    return { ok: true, batchId: q.batchId, queued: q.queued, overflow: q.overflow.length, refused: built.refused };
+  } catch (e) {
+    console.error('emails send again failed:', e);
+    return { ok: false, error: 'Couldn’t send those again. Try again.' };
+  }
 }

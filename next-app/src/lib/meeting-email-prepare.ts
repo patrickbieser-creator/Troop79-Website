@@ -60,27 +60,40 @@ export async function prepareEmail(sb: SupabaseClient, row: EmailRow, ctx: Prepa
     if (!key) throw new Error('No group on this email.');
     const words = await inviteWords(sb, ctx.meeting.entryId, key);
     if (!words) throw new Error('That group can’t be invited for.');
-    const made = await createInviteDigest(sb, { entryId: ctx.meeting.entryId, teach: [{ key, personIds: [who.id] }], pick: [], sentBy: null }, { words: new Map([[key, words]]) });
+    const made = await createInviteDigest(sb, { entryId: ctx.meeting.entryId, teach: [{ key, personIds: [who.id] }], pick: [], sentBy: row.queued_by_person_id ?? null }, { words: new Map([[key, words]]) });
     if (!made.ok) throw new Error(made.error);
     const r = made.recipients[0];
-    if (!r?.page) throw new Error(made.skipped[0]?.reason ?? 'They can’t be asked to teach this.');
-    const template = await templateFor(sb, INVITE_DIGEST_KIND, DEFAULT_INVITE_DIGEST);
-    const url = `${siteUrl()}/i/teach/${r.page.token}`;
-    const items = r.invites.map((i) => ({ kind: 'teach' as const, inviteeName: i.inviteeName, aboutRecipient: true, code: words.codeLabel, topic: words.label, minutes: minutesText(words.minutes), url, helped: made.helped?.[i.key] }));
-    const base = renderInviteDigest(override(template, row.body_md_override), { name: who.first, people: 'you', day }, items);
-    const { html, text } = renderMarkdownEmail({ md: base.md, postscript: TRACKING_LINE });
+    const minted = { pages: made.recipients.flatMap((x) => (x.page ? [x.page.pageId] : [])), invites: made.recipients.flatMap((x) => x.invites.map((i) => i.inviteId)) };
+    const undoTeach = async () => {
+      await deleteTeachPages(sb, minted.pages);
+      await deleteInvites(sb, minted.invites);
+    };
+    if (!r?.page) {
+      await undoTeach();
+      throw new Error(made.skipped[0]?.reason ?? 'They can’t be asked to teach this.');
+    }
+    let base: { subject: string; md: string };
+    let html: string;
+    let text: string;
+    try {
+      const template = await templateFor(sb, INVITE_DIGEST_KIND, DEFAULT_INVITE_DIGEST);
+      const url = `${siteUrl()}/i/teach/${r.page.token}`;
+      const items = r.invites.map((i) => ({ kind: 'teach' as const, inviteeName: i.inviteeName, aboutRecipient: true, code: words.codeLabel, topic: words.label, minutes: minutesText(words.minutes), url, helped: made.helped?.[i.key] }));
+      base = renderInviteDigest(override(template, row.body_md_override), { name: who.first, people: 'you', day }, items);
+      ({ html, text } = renderMarkdownEmail({ md: base.md, postscript: TRACKING_LINE }));
+    } catch (e) {
+      // Whatever was minted for an email that can't be built goes, like any email that didn't go out.
+      await undoTeach();
+      throw e;
+    }
     const pageId = r.page.pageId;
-    const inviteIds = r.invites.map((i) => i.inviteId);
     return {
       subject: base.subject,
       html,
       text,
       fromName: INVITE_SENDER_NAME,
       onSent: async () => void (await supersedeOlderTeachPages(sb, pageId)),
-      undo: async () => {
-        await deleteTeachPages(sb, [pageId]);
-        await deleteInvites(sb, inviteIds);
-      }
+      undo: undoTeach
     };
   }
 
@@ -104,9 +117,16 @@ export async function prepareEmail(sb: SupabaseClient, row: EmailRow, ctx: Prepa
     snapshotN: null,
     expiresAt: inviteExpiresAt(ctx.meeting.date)
   });
-  const base = `${siteUrl()}/i/plan/${page.token}`;
-  const actions = reminder ? [{ url: base, label: 'Answer now' }] : planButtons(scouts).map((b) => ({ url: b.answer ? `${base}?a=${b.answer}` : base, label: b.label }));
-  const { html, text } = renderMarkdownEmail({ md, actions, postscript: TRACKING_LINE });
+  let html: string;
+  let text: string;
+  try {
+    const base = `${siteUrl()}/i/plan/${page.token}`;
+    const actions = reminder ? [{ url: base, label: 'Answer now' }] : planButtons(scouts).map((b) => ({ url: b.answer ? `${base}?a=${b.answer}` : base, label: b.label }));
+    ({ html, text } = renderMarkdownEmail({ md, actions, postscript: TRACKING_LINE }));
+  } catch (e) {
+    await deletePlanPage(sb, page.id);
+    throw e;
+  }
   return {
     subject,
     html,

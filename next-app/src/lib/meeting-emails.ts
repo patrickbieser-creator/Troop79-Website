@@ -15,9 +15,9 @@
  *        it on its own (only a person, with Send again). A claim that goes stale (the page died mid-send) turns 'unknown' the same way.
  *   3. unfinishedSends: batches that still hold queued emails nobody is sending (the page closed partway). The screen
  *      shows "N emails didn't finish sending · Send them now"; there is no timer, so nothing sends without a person.
- *   4. requeueEmails: "Send again" for failed or unknown rows: new rows in a new batch; the old rows stay as the record.
- *      A new row is a new Idempotency-Key, so sending an 'unknown' one again CAN deliver twice: the screen says "Check
- *      before sending again". The key only guards retries of the same row.
+ *   4. claimRetry: "Send again" for failed or unknown rows: they turn 'retried' (once, whoever asks first) and the caller
+ *      queues re-decided copies. A new row is a new Idempotency-Key, so sending an 'unknown' one again CAN deliver
+ *      twice: the screen says "Check before sending again". The key only guards retries of the same row.
  */
 import { randomUUID } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -32,7 +32,7 @@ export const EMAIL_SEND_TIMEOUT_MS = 15_000;
 export const EMAIL_CLAIM_STALE_SECONDS = 120;
 
 export type EmailKind = 'plan' | 'teacher' | 'reminder';
-export type EmailStatus = 'queued' | 'sending' | 'sent' | 'failed' | 'unknown';
+export type EmailStatus = 'queued' | 'sending' | 'sent' | 'failed' | 'unknown' | 'retried';
 
 export interface EmailAbout {
   scouts?: number[];
@@ -63,6 +63,7 @@ export interface EmailRow {
   body_md_override: string | null;
   status: EmailStatus;
   failure: string | null;
+  queued_by_person_id?: number | null;
 }
 
 export type QueueResult = { ok: true; batchId: string; queued: number; overflow: QueueEmail[] } | { ok: false; error: string };
@@ -201,14 +202,15 @@ export async function unfinishedSends(sb: SupabaseClient, entryId: number, now: 
   return [...byBatch.entries()].filter(([, b]) => b.queued > 0 && b.last < cutoff).map(([batchId, b]) => ({ batchId, queued: b.queued }));
 }
 
-/** "Send again": copies of failed or unknown rows, queued in a new batch. The old rows stay as they were. */
-export async function requeueEmails(sb: SupabaseClient, input: { entryId: number; actorPersonId: number; ids: readonly number[] }): Promise<QueueResult> {
-  const { data, error } = await sb.from('meeting_emails').select('*').eq('calendar_entry_id', input.entryId).in('id', [...input.ids]).in('status', ['failed', 'unknown']);
-  if (error) return { ok: false, error: 'Couldn’t read those emails. Try again.' };
-  const rows = (data ?? []) as EmailRow[];
-  return queueEmails(sb, {
-    entryId: input.entryId,
-    actorPersonId: input.actorPersonId,
-    emails: rows.map((r) => ({ kind: r.kind, recipientPersonId: r.recipient_person_id, sentTo: r.sent_to, about: r.about, planSent: r.plan_sent, subject: r.subject, bodyMdOverride: r.body_md_override }))
-  });
+/**
+ * "Send again" (qa-lead E3 #1): the failed or unknown rows turn 'retried' in the one statement that reads them, so a
+ * second tab or a double press gets nothing back and can't send them twice. The caller re-decides each one (recipients,
+ * address, plan) and queues new rows; the old rows stay as the record.
+ */
+export async function claimRetry(sb: SupabaseClient, input: { entryId: number; ids: readonly number[] }): Promise<EmailRow[]> {
+  const ids = [...new Set(input.ids.filter((n) => Number.isInteger(n)))];
+  if (!ids.length) return [];
+  const { data, error } = await sb.from('meeting_emails').update({ status: 'retried' }).eq('calendar_entry_id', input.entryId).in('id', ids).in('status', ['failed', 'unknown']).select('*');
+  if (error) throw new Error('Couldn’t pick those emails. Try again.');
+  return (data ?? []) as EmailRow[];
 }
