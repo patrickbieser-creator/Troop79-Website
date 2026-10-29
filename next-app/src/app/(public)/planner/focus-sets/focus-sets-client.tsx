@@ -6,8 +6,10 @@
  *
  *   - Sets: label filter pills, one row per set (name, "N requirements · used Oct 11", labels).
  *   - Find requirements: the server search (every typed word against rank or badge, code, label and the requirement
- *     it sits under), All / Rank / Merit badge, 50 rows a page grouped by rank or badge. With nothing typed, the ranks
- *     and badges to browse. A tick adds a row to the active set's draft.
+ *     it sits under), 50 rows a page grouped by rank or badge. Pills (Patrick, 2026-10-29): All · Scout · Tenderfoot ·
+ *     Second Class · First Class · Merit badge. A rank pill shows that rank's requirements; Merit badge lists the badges,
+ *     and picking one adds a removable "First Aid ✕" pill (picking another replaces it). A tick adds a row to the
+ *     active set's draft.
  *   - The active set: "+ New set" at the top right (seed right only), then name, labels, what's in it, then Save
  *     changes / Discard changes (the save-button standard: greyed only when nothing changed; pressed while incomplete
  *     it marks the field and says why), Add to a meeting's plan, and Delete.
@@ -28,11 +30,8 @@ import { twAddFocusSetAction } from '../this-week-actions';
 import styles from '../planner.module.css';
 
 type Kind = 'all' | 'rank' | 'mb';
-const KINDS: [Kind, string][] = [
-  ['all', 'All'],
-  ['rank', 'Rank'],
-  ['mb', 'Merit badge']
-];
+/** The ranks a focus works on (the planner's groups): Star, Life and Eagle aren't offered here (Patrick, 2026-10-29). */
+const GROUP_RANKS = ['scout', 'tenderfoot', 'second-class', 'first-class'];
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 const EMPTY: SetDraft = { name: '', labels: [], items: [] };
 const toDraft = (s: FocusSetView | null): SetDraft => (s ? { name: s.name, labels: [...s.labels], items: [...s.items] } : EMPTY);
@@ -209,7 +208,7 @@ function ItemList({ items, onRemove }: { items: readonly FocusSetItem[]; onRemov
   );
 }
 
-/** The middle column: the server search, or the ranks and badges to browse. */
+/** The middle column: the server search, a rank's requirements, or the badges to browse. */
 function Finder({
   sources,
   editing,
@@ -224,8 +223,17 @@ function Finder({
   onAddAll: (rows: readonly FocusSetItem[]) => void;
 }) {
   const [q, setQ] = useState('');
-  const [kind, setKind] = useState<Kind>('all');
-  const [source, setSource] = useState<FocusSource | null>(null);
+  // The pill: All, one of the group ranks (by id), or Merit badge; with Merit badge, the badge picked from the list.
+  const [pill, setPill] = useState<string>('all');
+  const [badge, setBadge] = useState<FocusSource | null>(null);
+  const ranks = GROUP_RANKS.flatMap((id) => sources.filter((x) => x.kind === 'rank' && x.id === id));
+  const rank = ranks.find((r) => r.id === pill) ?? null;
+  const kind: Kind = pill === 'all' ? 'all' : pill === 'mb' ? 'mb' : 'rank';
+  const source = rank ?? (pill === 'mb' ? badge : null);
+  const choose = (next: string) => {
+    setPill(next);
+    setBadge(null);
+  };
   const [rows, setRows] = useState<FocusSearchRow[]>([]);
   const [counts, setCounts] = useState<ReadonlyMap<string, number>>(new Map());
   const [hasMore, setHasMore] = useState(false);
@@ -264,7 +272,7 @@ function Finder({
     setState('idle');
   }
 
-  const browse = sources.filter((s) => kind === 'all' || s.kind === kind);
+  const badges = sources.filter((x) => x.kind === 'mb');
   return (
     <section className={styles.fsCol} aria-labelledby="fs-find">
       <h2 id="fs-find" className={styles.fsColTitle}>
@@ -280,40 +288,19 @@ function Finder({
         onChange={(e) => setQ(e.target.value)}
       />
       <div className={styles.fsPills} role="group" aria-label="Show">
-        {KINDS.map(([k, label]) => (
-          <button key={k} type="button" className={kind === k ? styles.fsPillOn : styles.fsPill} aria-pressed={kind === k} onClick={() => setKind(k)}>
-            {label}
+        {[{ id: 'all', name: 'All' }, ...ranks, { id: 'mb', name: 'Merit badge' }].map((p) => (
+          <button key={p.id} type="button" className={pill === p.id ? styles.fsPillOn : styles.fsPill} aria-pressed={pill === p.id} onClick={() => choose(p.id)}>
+            {p.name}
           </button>
         ))}
-        {source ? (
-          <button type="button" className={styles.fsPillOn} onClick={() => setSource(null)} aria-label={`Show every rank and badge, not just ${source.name}`}>
-            {source.name} ✕
+        {pill === 'mb' && badge ? (
+          <button type="button" className={styles.fsPillOn} onClick={() => setBadge(null)} aria-label={`Show every merit badge, not just ${badge.name}`}>
+            {badge.name} ✕
           </button>
         ) : null}
       </div>
 
-      {!searching ? (
-        (['rank', 'mb'] as const).map((k) => {
-          const list = browse.filter((s) => s.kind === k);
-          return list.length ? (
-            <div key={k}>
-              <h3 className={styles.listLabel}>
-                {k === 'rank' ? 'Ranks' : 'Merit badges'} · {list.length}
-              </h3>
-              <ul className={k === 'rank' ? styles.fsTilesRank : styles.fsTiles}>
-                {list.map((s) => (
-                  <li key={s.id}>
-                    <button type="button" className={styles.fsTile} onClick={() => setSource(s)}>
-                      <span>{s.name}</span>
-                      <span className={styles.optMeta}>{s.n}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null;
-        })
-      ) : state === 'error' ? (
+      {!searching ? null : state === 'error' ? (
         <p className={styles.rowProblem} role="alert">
           The search didn’t work. Try again.
         </p>
@@ -360,6 +347,32 @@ function Finder({
           ) : null}
         </>
       )}
+
+      {/* The badges to pick from: under Merit badge (and All, with nothing typed). Picking one shows its requirements and
+          a removable pill; picking another replaces it. */}
+      {(pill === 'mb' || (pill === 'all' && !searching)) && badges.length ? (
+        <div>
+          <h3 className={styles.listLabel}>Merit badges · {badges.length}</h3>
+          <ul className={styles.fsTiles}>
+            {badges.map((b) => (
+              <li key={b.id}>
+                <button
+                  type="button"
+                  className={styles.fsTile}
+                  aria-pressed={badge?.id === b.id}
+                  onClick={() => {
+                    setPill('mb');
+                    setBadge(b);
+                  }}
+                >
+                  <span>{b.name}</span>
+                  <span className={styles.optMeta}>{b.n}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </section>
   );
 }

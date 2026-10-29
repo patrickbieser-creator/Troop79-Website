@@ -1013,8 +1013,7 @@
   color: var(--status-danger);
   cursor: pointer;
 }
-.fsTiles,
-.fsTilesRank {
+.fsTiles {
   display: grid;
   gap: var(--sp-2);
   margin: 0;
@@ -1023,9 +1022,6 @@
 }
 .fsTiles {
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-}
-.fsTilesRank {
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
 }
 .fsTile {
   display: flex;
