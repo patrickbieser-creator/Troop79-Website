@@ -18,7 +18,7 @@ interface Session {
   title: string;
   sub: string;
   tone: string;
-  teacher: TwTeacher | null;
+  teachers: TwTeacher[];
   people: TwPerson[];
 }
 
@@ -39,11 +39,11 @@ export function LiveView({ entryId, view, isToday, present }: { entryId: number;
       title: g.kind === 'badge' ? `${g.name} merit badge` : `${g.name} group`,
       sub: g.columns.map((c) => c.code).join(', '),
       tone: g.kind === 'badge' ? s['tone-mb'] : s[`tone-${g.refId}`],
-      teacher: g.teacher,
+      teachers: g.teachers,
       people: g.members.filter(coming)
     })),
-    ...(view.helpers.length ? [{ key: 'help', title: 'Helping teach', sub: 'Older scouts and anyone done with the focus', tone: s['tone-mb'], teacher: null, people: view.helpers.filter(coming) }] : []),
-    ...view.extras.map((x) => ({ key: x.key, title: x.title, sub: `From requests and offers${x.codeLabel ? ` · ${x.codeLabel}` : ''}`, tone: s['tone-extra'], teacher: x.teacher, people: x.scouts.filter(coming) }))
+    ...(view.helpers.length ? [{ key: 'help', title: 'Helping teach', sub: 'Older scouts and anyone done with the focus', tone: s['tone-mb'], teachers: [], people: view.helpers.filter(coming) }] : []),
+    ...view.extras.map((x) => ({ key: x.key, title: x.title, sub: `From requests and offers${x.codeLabel ? ` · ${x.codeLabel}` : ''}`, tone: s['tone-extra'], teachers: x.teachers, people: x.scouts.filter(coming) }))
   ];
   const canTap = !!p?.canEdit && isToday;
   const tap = (id: number) => {
@@ -90,13 +90,13 @@ export function LiveView({ entryId, view, isToday, present }: { entryId: number;
               </span>
             </div>
             <div className={s.groupBody}>
-              {x.teacher ? (
+              {x.teachers.length ? (
                 <div className={s.row}>
-                  <span className={s.rowLabel}>Teacher</span>
-                  {button(x.teacher)}
+                  <span className={s.rowLabel}>{x.teachers.length > 1 ? 'Teachers' : 'Teacher'}</span>
+                  {x.teachers.map(button)}
                 </div>
               ) : x.key === 'help' ? null : (
-                <span className={s.slotTextEmpty}>No teacher yet</span>
+                <span className={s.slotTextEmpty}>No teachers yet</span>
               )}
               <div className={s.chips}>{x.people.map(button)}</div>
               {x.people.length ? null : <span className={s.muted}>Nobody yet.</span>}

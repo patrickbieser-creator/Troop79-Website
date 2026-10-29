@@ -8,7 +8,7 @@
  */
 import Link from 'next/link';
 import { useState } from 'react';
-import type { ThisWeek, TwRow, TwSection } from '@/lib/this-week';
+import { joinNames, type ThisWeek, type TwRow, type TwSection } from '@/lib/this-week';
 import { usePlanner, RemindEveryone } from './planner-client';
 import { PlannerPoller } from './planner-poller';
 import { twAskTeacherAction, twRemoveRequirementAction, twSetRoleAction, twSetTeacherAction, type RoleInput } from './this-week-actions';
@@ -104,7 +104,7 @@ function PlanView({ entryId, view, sets, badges, canSeed }: { entryId: number; v
   const p = usePlanner();
   const w = useWrite();
   const [filter, setFilter] = useState<'all' | 'gaps' | 'noanswer'>('all');
-  const setTeacher = (key: string, personId: number | null) => w.run(() => twSetTeacherAction({ entryId, key, personId }));
+  const setTeacher = (key: string, personId: number | null, on: boolean) => w.run(() => twSetTeacherAction({ entryId, key, personId, on }));
   const ask = async (key: string, personId: number) => {
     const res = await twAskTeacherAction({ entryId, key, personId }).catch(() => null);
     return res?.ok ? (res.message ?? 'Asked by email.') : (res?.error ?? 'That didn’t send. Try again.');
@@ -178,7 +178,7 @@ function PlanView({ entryId, view, sets, badges, canSeed }: { entryId: number; v
                   ))}
                   {g.members.length ? null : <span className={s.muted}>Nobody needs these tonight.</span>}
                 </div>
-                <TeacherSlot slotKey={g.key} title={`the ${g.name} group`} teacher={g.teacher} candidates={g.candidates} everyone={view.everyone} onSet={setTeacher} onAsk={ask} />
+                <TeacherSlot slotKey={g.key} title={`the ${g.name} group`} teachers={g.teachers} candidates={g.candidates} everyone={view.everyone} onSet={setTeacher} onAsk={ask} />
               </div>
             </section>
           ))}
@@ -250,7 +250,7 @@ function PlanView({ entryId, view, sets, badges, canSeed }: { entryId: number; v
                   ))}
                   {g.members.length ? null : <span className={s.muted}>Nobody taking it yet.</span>}
                 </div>
-                <TeacherSlot slotKey={g.key} title={`${g.name}`} teacher={g.teacher} candidates={g.candidates} everyone={view.everyone} onSet={setTeacher} onAsk={ask} />
+                <TeacherSlot slotKey={g.key} title={`${g.name}`} teachers={g.teachers} candidates={g.candidates} everyone={view.everyone} onSet={setTeacher} onAsk={ask} />
               </div>
             </section>
           ))}
@@ -294,7 +294,7 @@ function PlanView({ entryId, view, sets, badges, canSeed }: { entryId: number; v
                   {x.scouts.length ? null : <span className={s.muted}>Nobody signed up yet.</span>}
                 </div>
                 <div className={s.row}>
-                  <TeacherSlot slotKey={x.key} title={x.title} teacher={x.teacher} candidates={x.candidates} everyone={view.everyone} onSet={setTeacher} onAsk={ask} />
+                  <TeacherSlot slotKey={x.key} title={x.title} teachers={x.teachers} candidates={x.candidates} everyone={view.everyone} onSet={setTeacher} onAsk={ask} />
                   {canSeed && x.origin === 'planner' ? (
                     <button type="button" className={s.quiet} disabled={w.busy} onClick={() => w.run(() => twRemoveRequirementAction({ entryId, key: x.key }))}>
                       Remove from tonight
@@ -380,6 +380,10 @@ function Checklist({
             already done
           </span>
           <span className={s.legendItem}>
+            <span className={s.checkPart} aria-hidden="true" />
+            partly done (merit badge)
+          </span>
+          <span className={s.legendItem}>
             <span className={s.legendGap} aria-hidden="true" />
             nothing assigned yet
           </span>
@@ -419,13 +423,13 @@ function Checklist({
                       <NameChip person={r} tone="rank" />
                     </td>
                     {sec.columns.map((col) => {
-                      // White = still to do (could work on it tonight); green = already done. The same reading as the
-                      // library's advancement views.
-                      const open = sec.key === r.groupKey ? r.open : sec.key === r.homeKey ? r.homeOpen : [];
-                      const isDone = !open.includes(col.key);
+                      // White = still to do (could work on it tonight); green = already done; half green = a badge
+                      // requirement partly done. The same reading as the library's advancement views.
+                      const mark = (sec.key === r.groupKey ? r.marks : sec.key === r.homeKey ? r.homeMarks : {})[col.key];
+                      const [cls, said] = mark === 'open' ? [s.check, 'still to do'] : mark === 'part' ? [s.checkPart, 'partly done'] : [s.checkDone, 'already done'];
                       return (
                         <td key={col.key} className={s.cell}>
-                          <span className={isDone ? s.checkDone : s.check} role="img" aria-label={`${col.code}: ${isDone ? 'already done' : 'still to do'}`} />
+                          <span className={cls} role="img" aria-label={`${col.code}: ${said}`} />
                         </td>
                       );
                     })}
@@ -462,7 +466,7 @@ function PlaceMenu({ row, view, onRole, busy }: { row: TwRow; view: ThisWeek; on
           {view.extras.map((x) => (
             <button key={x.key} type="button" className={s.menuBtn} disabled={busy} aria-current={row.requestKey === x.key ? 'true' : undefined} onClick={pick({ role: 'request', key: x.key }, close)}>
               {x.title}
-              <span className={s.menuNote}>{[x.codeLabel, x.teacher ? x.teacher.name : 'no teacher yet'].filter(Boolean).join(' · ')}</span>
+              <span className={s.menuNote}>{[x.codeLabel, x.teachers.length ? joinNames(x.teachers.map((t) => t.name)) : 'no teachers yet'].filter(Boolean).join(' · ')}</span>
             </button>
           ))}
           <div className={s.menuHead}>Or</div>

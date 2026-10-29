@@ -158,11 +158,15 @@
   position: relative;
   display: inline-block;
 }
+/* Fixed, and placed by the Popover from its trigger (placePanel): a menu inside the checklist's scroll box, or at the
+   foot of the window, is never clipped. Opens above the trigger when below is short; scrolls within itself if taller
+   than the window. */
 .pop {
-  position: absolute;
-  top: calc(100% + var(--sp-2));
+  position: fixed;
+  top: 0;
   left: 0;
   z-index: 30;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   width: min(600px, calc(100vw - 2 * var(--sp-4)));
@@ -174,10 +178,6 @@
 .popNarrow {
   composes: pop;
   width: min(340px, calc(100vw - 2 * var(--sp-4)));
-}
-.popRight {
-  left: auto;
-  right: 0;
 }
 .popHead {
   display: flex;
@@ -203,6 +203,10 @@
 .popItem:last-child {
   border-bottom: 0;
 }
+.popItem > .quiet {
+  flex: none;
+  white-space: nowrap;
+}
 .popMain {
   flex: 1;
   min-width: 0;
@@ -216,8 +220,35 @@
   color: var(--text-meta);
 }
 .popFoot {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-3);
   padding: var(--sp-3) var(--sp-4);
   border-top: 1px solid var(--border-light);
+}
+.popFoot > :last-child {
+  margin-left: auto;
+}
+/* A teacher list's tick box: the list picks several, so each name reads as a checkbox. */
+.pickOff {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-right: var(--sp-2);
+  vertical-align: -3px;
+  border: 1px solid var(--text-meta);
+  border-radius: var(--rad-sm);
+  background: var(--warm-white);
+  font-size: var(--fs-2xs);
+  line-height: 1;
+}
+.pickOn {
+  composes: pickOff;
+  border-color: var(--forest);
+  background: var(--forest);
+  color: var(--warm-white);
 }
 .popEmpty {
   padding: var(--sp-4);
@@ -689,6 +720,12 @@ button.chip:focus-visible {
   composes: check;
   border-color: var(--check-done);
   background: var(--check-done);
+}
+/* A badge requirement partly done: the box is split corner to corner (top right to bottom left), the lower half green. */
+.checkPart {
+  composes: check;
+  border-color: var(--check-done);
+  background: linear-gradient(to bottom right, var(--warm-white) 50%, var(--check-done) 50%);
 }
 .gapRow td {
   background: var(--gap-row-bg);

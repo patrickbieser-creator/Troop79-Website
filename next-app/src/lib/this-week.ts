@@ -4,7 +4,7 @@
  * loads (lib/this-week-db), this shapes, the client renders. Live at the meeting (Decision 10) reads the same model.
  */
 import type { AdvancementCatalog } from '@/lib/advancement-catalog';
-import { buildFocusPlan, isGroupKey, type FocusProgress, type FocusRow, type RowStatus, type ScoutRole } from '@/lib/focus-plan';
+import { buildFocusPlan, isGroupKey, type CellMark, type FocusProgress, type FocusRow, type RowStatus, type ScoutRole } from '@/lib/focus-plan';
 import { boardName, type BoardPick, type Intent } from '@/lib/meeting-board-shared';
 import { rankOfKey, topicWords } from '@/lib/meeting-board-picklist';
 import { assessTeacher, canTeachFocusGroup, teacherName, type TeachContext, type TeacherPerson } from '@/lib/meeting-board-teach';
@@ -67,12 +67,19 @@ export interface TwTeacher {
   formal: string;
 }
 
+/** Teachers' names as a phrase: 'Mr. Vest', 'Mr. Vest and Ms. Ruiz', 'A, B and C'; '' for none. */
+export function joinNames(names: readonly string[]): string {
+  return names.length < 3 ? names.join(' and ') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+}
+
 export interface TwColumn {
   key: string;
   code: string;
   label: string;
   /** Members of the group who still need it. */
   need: number;
+  /** A rank column's sub-requirements: the checklist shows one cell for each. */
+  subs: { key: string; code: string; label: string }[];
 }
 
 export interface TwGroup {
@@ -84,7 +91,8 @@ export interface TwGroup {
   subtitle: string;
   columns: TwColumn[];
   members: TwPerson[];
-  teacher: TwTeacher | null;
+  /** Who teaches it, by name (any number; none yet = an empty slot). */
+  teachers: TwTeacher[];
   /** Who could teach it: qualified first (counselors first for a badge), then Merit badge group scouts set to Teach. */
   candidates: TwTeacher[];
 }
@@ -96,6 +104,9 @@ export interface TwRow extends TwPerson {
   /** The home group (where the checklist lists a scout who sits in no group) and what is still open there. */
   homeKey: string | null;
   homeOpen: string[];
+  /** The checklist cells that aren't done ('open' white, 'part' half green), for the group and for the home group. */
+  marks: Record<string, CellMark>;
+  homeMarks: Record<string, CellMark>;
   status: RowStatus;
   allDone: boolean;
   /** What the row's last cell says: '', 'Teaching', 'First Aid merit badge', 'From requests and offers', … */
@@ -126,7 +137,7 @@ export interface TwExtra {
   codeLabel: string;
   /** How it got here. */
   origin: 'picked' | 'offered' | 'planner';
-  teacher: TwTeacher | null;
+  teachers: TwTeacher[];
   candidates: TwTeacher[];
   /** Scouts who picked it (not Can't make it) or were placed in it by hand. */
   scouts: TwPerson[];
@@ -226,14 +237,16 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
   });
   const pool = input.teachers;
   const poolBy = new Map(pool.map((p) => [p.personId, p]));
-  const signedUp = (key: string): TwTeacher | null => {
-    const t = input.topicTeachers.find((x) => x.key === key && !notComing(x.personId));
-    if (!t) return null;
-    const p = poolBy.get(t.personId);
-    if (p) return teacherOf(p);
-    const s = scoutBy.get(t.personId);
-    return s ? { personId: s.personId, name: boardName(s.name), kind: 'junior', intent: s.intent, note: null, formal: boardName(s.name) } : null;
-  };
+  const signedUp = (key: string): TwTeacher[] =>
+    input.topicTeachers
+      .filter((x) => x.key === key && !notComing(x.personId))
+      .flatMap((t): TwTeacher[] => {
+        const p = poolBy.get(t.personId);
+        if (p) return [teacherOf(p)];
+        const s = scoutBy.get(t.personId);
+        return s ? [{ personId: s.personId, name: boardName(s.name), kind: 'junior', intent: s.intent, note: null, formal: boardName(s.name) }] : [];
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
   const byAnswer = (a: TwTeacher, b: TwTeacher) => {
     const rank = (t: TwTeacher) => (t.intent === 'coming' ? 0 : t.intent == null || t.intent === 'undecided' ? 1 : 2);
     return rank(a) - rank(b) || a.name.localeCompare(b.name);
@@ -266,7 +279,7 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
       subtitle: g.kind === 'rank' ? `Working on ${g.name}` : 'Merit badge',
       columns,
       members: members.map((m) => person(scoutBy.get(m.personId)!)),
-      teacher: signedUp(g.key),
+      teachers: signedUp(g.key),
       candidates: [...qualified, ...teachingScouts.filter((t) => !seen.has(t.personId))]
     };
   });
@@ -293,7 +306,7 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
       .filter((p) => (key.startsWith('mb:') ? p.counselorFor.has(key.slice(3)) : !rankOfKey(key, catalog.ranks) ? [...p.counselorFor].some((m) => key.startsWith(`${m}-`)) : assessTeacher(p, key, input.ctx).qualified && p.skills.size > 0))
       .map((p) => teacherOf(p))
       .sort(byAnswer);
-    return { key, title: w?.label ?? key, codeLabel: w?.codeLabel ?? '', origin, teacher: signedUp(key), candidates, scouts: scouts.map(person) };
+    return { key, title: w?.label ?? key, codeLabel: w?.codeLabel ?? '', origin, teachers: signedUp(key), candidates, scouts: scouts.map(person) };
   });
   const extraTitle = new Map(extras.map((e) => [e.key, e.title]));
 
@@ -313,6 +326,8 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
     open: r.open,
     homeKey: r.homeKey,
     homeOpen: r.homeOpen,
+    marks: r.marks,
+    homeMarks: r.homeMarks,
     status: r.status,
     allDone: r.allDone,
     note: noteOf(r),
@@ -326,7 +341,7 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
   const sectionOf = (r: FocusRow) => r.groupKey ?? (r.counted ? (r.homeKey ?? 'none') : 'older');
   const sections: TwSection[] = groups.map((g) => {
     const rows = plan.rows.filter((r) => sectionOf(r) === g.key).map(toRow).sort(byName);
-    return { key: g.key, kind: g.kind, name: g.name, columns: g.columns.map(({ key, code, label }) => ({ key, code, label })), rows, gaps: rows.filter((r) => r.gap).length };
+    return { key: g.key, kind: g.kind, name: g.name, columns: g.columns.flatMap(({ key, code, label, subs }) => (subs.length ? subs : [{ key, code, label }])), rows, gaps: rows.filter((r) => r.gap).length };
   });
   const olderRows = plan.rows.filter((r) => sectionOf(r) === 'older').map(toRow).sort(byName);
   if (olderRows.length) sections.push({ key: 'older', kind: 'none', name: 'Not assigned & available', columns: [], rows: olderRows, gaps: 0 });
@@ -358,7 +373,7 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
       rankWork,
       nothing,
       pct: counted ? Math.round((rankWork / counted) * 100) : 0,
-      groupsWithoutTeacher: groups.filter((g) => !g.teacher && g.members.length > 0).length
+      groupsWithoutTeacher: groups.filter((g) => !g.teachers.length && g.members.length > 0).length
     },
     answers: { scouts: countAnswers(input.scouts.map((s) => s.intent)), adults: countAnswers(adults.map((a) => input.intents.get(a.personId) ?? null)) },
     adultsNoAnswer: adults

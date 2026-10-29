@@ -4,9 +4,9 @@
  * This week's small pieces (Plans/Meeting-Planner-III.md): the name chip, the teacher slot, the place menu, and the
  * shared write runner. Kept apart from this-week-client.tsx so each stays readable.
  */
-import { useState, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useDisclosure } from '@/app/_components/use-disclosure';
-import type { TwPerson, TwTeacher } from '@/lib/this-week';
+import { joinNames, type TwPerson, type TwTeacher } from '@/lib/this-week';
 import { usePlanner, SAVE_FAILED } from './planner-client';
 import type { TwResult } from './this-week-actions';
 import s from './this-week.module.css';
@@ -62,7 +62,28 @@ export function NameChip({ person, tone }: { person: TwPerson; tone: 'rank' | 'r
   );
 }
 
-/** A small disclosure: a trigger and a panel. */
+const EDGE = 8;
+const GAP = 8;
+
+/** Where a menu panel goes: below its trigger, above it when below is short, and inside the window whatever happens
+ *  (a panel taller than the window scrolls within itself). Left-aligned to the trigger, or right-aligned with `right`. */
+export function placePanel(
+  trigger: { top: number; bottom: number; left: number; right: number },
+  panel: { w: number; h: number },
+  view: { w: number; h: number },
+  right: boolean
+): { top: number; left: number; maxHeight: number } {
+  const maxHeight = view.h - 2 * EDGE;
+  const h = Math.min(panel.h, maxHeight);
+  const below = trigger.bottom + GAP;
+  const above = trigger.top - GAP - h;
+  const top = below + h <= view.h - EDGE ? below : above >= EDGE ? above : Math.min(Math.max(below, EDGE), view.h - EDGE - h);
+  const left = Math.min(Math.max(right ? trigger.right - panel.w : trigger.left, EDGE), view.w - EDGE - panel.w);
+  return { top, left, maxHeight };
+}
+
+/** A small disclosure: a trigger and a panel. The panel floats over the page (fixed, placed by placePanel), so one
+ *  opened inside the checklist's scroll box or at the foot of the window is never clipped or out of view. */
 export function Popover({
   label,
   trigger,
@@ -81,13 +102,35 @@ export function Popover({
   ariaLabel: string;
 }) {
   const { open, wrapRef, triggerRef, onBlur, toggle, close } = useDisclosure();
+  const panelRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (!open) return;
+    const place = () => {
+      const panel = panelRef.current;
+      const t = triggerRef.current?.getBoundingClientRect();
+      if (!panel || !t) return;
+      panel.style.maxHeight = '';
+      const at = placePanel(t, { w: panel.offsetWidth, h: panel.offsetHeight }, { w: window.innerWidth, h: window.innerHeight }, right);
+      panel.style.top = `${at.top}px`;
+      panel.style.left = `${at.left}px`;
+      panel.style.maxHeight = `${at.maxHeight}px`;
+    };
+    place();
+    // Follow the trigger while the page (or the checklist's scroll box) scrolls, or the window resizes.
+    window.addEventListener('scroll', place, true);
+    window.addEventListener('resize', place);
+    return () => {
+      window.removeEventListener('scroll', place, true);
+      window.removeEventListener('resize', place);
+    };
+  }, [open, right, triggerRef]);
   return (
     <div className={s.popWrap} ref={wrapRef} onBlur={onBlur}>
       <button type="button" ref={triggerRef} className={triggerClass} aria-expanded={open} onClick={toggle}>
         {trigger ? trigger(open) : label}
       </button>
       {open ? (
-        <div role="region" aria-label={ariaLabel} className={`${wide ? s.pop : s.popNarrow} ${right ? s.popRight : ''}`}>
+        <div ref={panelRef} role="region" aria-label={ariaLabel} className={wide ? s.pop : s.popNarrow}>
           {children(close)}
         </div>
       ) : null}
@@ -96,14 +139,15 @@ export function Popover({
 }
 
 /**
- * A group's or class's one teacher. Editors open a list: the qualified first (with "Counselor" / "Scout instructor"),
- * then "Someone else" (everyone who may teach), then Clear. Viewers see the name or "No teacher yet". An empty slot is
- * flagged, never blocking.
+ * A group's or class's teachers, any number. Editors open a list: anyone already teaching, then the qualified (with
+ * "Counselor" / "Scout instructor"), each a toggle that adds or takes off that one person, then "Someone else"
+ * (everyone who may teach), then Clear. The list stays open so a planner can pick several. Viewers see the names or
+ * "No teachers yet". An empty slot is flagged, never blocking.
  */
 export function TeacherSlot({
   slotKey,
   title,
-  teacher,
+  teachers,
   candidates,
   everyone,
   onSet,
@@ -111,55 +155,58 @@ export function TeacherSlot({
 }: {
   slotKey: string;
   title: string;
-  teacher: TwTeacher | null;
+  teachers: readonly TwTeacher[];
   candidates: readonly TwTeacher[];
   everyone: readonly TwTeacher[];
-  onSet: (key: string, personId: number | null) => Promise<boolean>;
+  /** Add (`on`) or take off one teacher; a null personId clears them all. */
+  onSet: (key: string, personId: number | null, on: boolean) => Promise<boolean>;
   /** Adult editors: email this person the teacher ask (the digest and its answer page). Returns what happened. */
   onAsk?: (key: string, personId: number) => Promise<string>;
 }) {
   const p = usePlanner();
   const [q, setQ] = useState('');
   const [asked, setAsked] = useState<Record<number, string>>({});
-  const text = teacher ? `Teacher: ${teacher.name}` : 'No teacher yet';
-  if (!p?.canEdit) return <span className={teacher ? s.slotText : s.slotTextEmpty}>{text}</span>;
-  const shown = new Set(candidates.map((c) => c.personId));
+  const names = joinNames(teachers.map((t) => t.name));
+  const text = !teachers.length ? 'No teachers yet' : `${teachers.length > 1 ? 'Teachers' : 'Teacher'}: ${names}`;
+  if (!p?.canEdit) return <span className={teachers.length ? s.slotText : s.slotTextEmpty}>{text}</span>;
+  const teaching = new Set(teachers.map((t) => t.personId));
+  const listed = [...teachers.filter((t) => !candidates.some((c) => c.personId === t.personId)), ...candidates];
+  const shown = new Set(listed.map((c) => c.personId));
   const term = q.trim().toLowerCase();
   const others = everyone.filter((e) => !shown.has(e.personId) && (!term || e.name.toLowerCase().includes(term))).slice(0, 30);
   const answer = (t: TwTeacher) => (t.intent ? INTENT_WORD[t.intent] : 'no answer yet');
   return (
-    <Popover label={`${text} ▾`} triggerClass={teacher ? s.slot : s.slotEmpty} ariaLabel={`Teacher for ${title}`}>
+    <Popover label={`${text} ▾`} triggerClass={teachers.length ? s.slot : s.slotEmpty} ariaLabel={`Teachers for ${title}`}>
       {(close) => (
         <>
-          <div className={s.menuHead}>Can teach {title}</div>
+          <div className={s.menuHead}>Can teach {title} · pick one or more</div>
           <ul className={s.popList}>
-            {candidates.length ? null : <li className={s.popEmpty}>Nobody’s skills match yet. Pick someone else below.</li>}
-            {candidates.map((c) => (
-              <li key={c.personId} className={s.popItem}>
-                <button
-                  type="button"
-                  className={s.menuBtn}
-                  aria-current={teacher?.personId === c.personId ? 'true' : undefined}
-                  onClick={async () => {
-                    if (await onSet(slotKey, c.personId)) close();
-                  }}
-                >
-                  {c.name}
-                  <span className={s.menuNote}>{[c.note, answer(c), asked[c.personId]].filter(Boolean).join(' · ')}</span>
-                </button>
-                {onAsk && p.canEmail && c.kind === 'adult' && teacher?.personId !== c.personId ? (
-                  <button
-                    type="button"
-                    className={s.quiet}
-                    aria-label={`Ask ${c.name} by email to teach ${title}`}
-                    disabled={!!asked[c.personId]}
-                    onClick={async () => setAsked({ ...asked, [c.personId]: await onAsk(slotKey, c.personId) })}
-                  >
-                    Ask by email
+            {listed.length ? null : <li className={s.popEmpty}>Nobody’s skills match yet. Pick someone else below.</li>}
+            {listed.map((c) => {
+              const on = teaching.has(c.personId);
+              return (
+                <li key={c.personId} className={s.popItem}>
+                  <button type="button" className={s.menuBtn} aria-pressed={on} onClick={() => void onSet(slotKey, c.personId, !on)}>
+                    <span className={on ? s.pickOn : s.pickOff} aria-hidden="true">
+                      {on ? '✓' : ''}
+                    </span>
+                    {c.name}
+                    <span className={s.menuNote}>{[c.note, answer(c), asked[c.personId]].filter(Boolean).join(' · ')}</span>
                   </button>
-                ) : null}
-              </li>
-            ))}
+                  {onAsk && p.canEmail && c.kind === 'adult' && !on ? (
+                    <button
+                      type="button"
+                      className={s.quiet}
+                      aria-label={`Ask ${c.name} by email to teach ${title}`}
+                      disabled={!!asked[c.personId]}
+                      onClick={async () => setAsked({ ...asked, [c.personId]: await onAsk(slotKey, c.personId) })}
+                    >
+                      Ask by email
+                    </button>
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
           <div className={s.popHead}>
             <label className={s.fieldLabel}>
@@ -176,7 +223,7 @@ export function TeacherSlot({
                     type="button"
                     className={s.menuBtn}
                     onClick={async () => {
-                      if (await onSet(slotKey, c.personId)) close();
+                      if (await onSet(slotKey, c.personId, true)) setQ('');
                     }}
                   >
                     {c.name}
@@ -186,19 +233,16 @@ export function TeacherSlot({
               ))}
             </ul>
           ) : null}
-          {teacher ? (
-            <div className={s.popFoot}>
-              <button
-                type="button"
-                className={s.quiet}
-                onClick={async () => {
-                  if (await onSet(slotKey, null)) close();
-                }}
-              >
-                Clear the teacher
+          <div className={s.popFoot}>
+            {teachers.length ? (
+              <button type="button" className={s.quiet} onClick={() => void onSet(slotKey, null, false)}>
+                {teachers.length > 1 ? 'Clear the teachers' : 'Clear the teacher'}
               </button>
-            </div>
-          ) : null}
+            ) : null}
+            <button type="button" className={s.quiet} onClick={close}>
+              Done
+            </button>
+          </div>
         </>
       )}
     </Popover>

@@ -94,11 +94,16 @@ export async function twSetRoleAction(input: { entryId: number; personId: number
 }
 
 /**
- * A group's or extra class's one teacher: `personId` teaches it and anyone else signed up for it comes off; null
- * clears the slot. A group's topic row is made on first use. The teach RPC re-checks who may teach.
+ * A group's or extra class's teachers (any number): `on` adds `personId`, off takes them off; a null `personId` clears
+ * every teacher. A group's topic row is made on first use. The teach RPC re-checks who may teach.
  */
-export async function twSetTeacherAction(input: { entryId: number; key: string; personId: number | null }): Promise<TwResult> {
-  if (typeof input?.key !== 'string' || !(GROUP_KEY.test(input.key) || REQUEST_KEY.test(input.key)) || (input.personId !== null && !Number.isInteger(input.personId))) {
+export async function twSetTeacherAction(input: { entryId: number; key: string; personId: number | null; on: boolean }): Promise<TwResult> {
+  if (
+    typeof input?.key !== 'string' ||
+    !(GROUP_KEY.test(input.key) || REQUEST_KEY.test(input.key)) ||
+    (input.personId !== null && !Number.isInteger(input.personId)) ||
+    typeof input.on !== 'boolean'
+  ) {
     return fail('Malformed request');
   }
   const s = await gate(input.entryId, 'edit');
@@ -115,12 +120,12 @@ export async function twSetTeacherAction(input: { entryId: number; key: string; 
     .eq('meeting_topics.topic_key', input.key);
   if (error) return fail('Couldn’t save that. Try again.');
   const current = ((rows ?? []) as { person_id: number }[]).map((r) => r.person_id);
-  if (input.personId != null && !current.includes(input.personId)) {
+  if (input.personId != null && input.on && !current.includes(input.personId)) {
     const res = await teachTopic(s.sb, { personId: input.personId, actorPersonId: s.actorPersonId, leader: true }, [s.meeting.entryId], { key: input.key }, null);
     if (!res.ok) return res;
   }
   for (const id of current) {
-    if (id === input.personId) continue;
+    if (input.personId != null && (id !== input.personId || input.on)) continue;
     const res = await unteachTopic(s.sb, { personId: id, actorPersonId: s.actorPersonId, leader: true }, s.meeting.entryId, input.key);
     if (!res.ok) return res;
   }

@@ -23,9 +23,9 @@ const view: ThisWeek = {
       refId: 'tenderfoot',
       name: 'Tenderfoot',
       subtitle: 'Working on Tenderfoot',
-      columns: [{ key: 'tenderfoot-7a', code: '7a', label: 'Flag', need: 2 }],
+      columns: [{ key: 'tenderfoot-7a', code: '7a', label: 'Flag', need: 2, subs: [] }],
       members: [p(1, 'Adi A'), p(2, 'Ben B', 'not_coming')],
-      teacher: null,
+      teachers: [],
       candidates: []
     }
   ],
@@ -59,7 +59,7 @@ describe('Live at the meeting', () => {
   it('Live_HelpingTeach_HasNoTeacherSlot', () => {
     render(<LiveView entryId={1} view={view} isToday present={[]} />);
     const card = screen.getByRole('heading', { name: 'Helping teach' }).closest('section')!;
-    expect(within(card).queryByText('No teacher yet')).toBeNull();
+    expect(within(card).queryByText('No teachers yet')).toBeNull();
   });
 
   it('Live_TapOnTheMeetingDay_ChecksTheScoutIn', async () => {

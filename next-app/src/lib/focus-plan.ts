@@ -80,7 +80,14 @@ export interface FocusColumn {
   /** The requirement's own code: '7a'. */
   code: string;
   label: string;
+  /** A rank column's sub-requirements (its leaves, '7a.1'…), each a checklist cell of its own: rank requirements are
+   *  taught and signed off a sub-requirement at a time. Empty for a leaf, and always for a badge, whose checklist stays
+   *  one cell per requirement (a part-done one is half green). */
+  subs: { key: string; code: string; label: string }[];
 }
+
+/** A checklist cell that isn't done: still to do, or (a badge requirement) partly done. Done cells are absent. */
+export type CellMark = 'open' | 'part';
 
 export interface FocusGroup {
   key: string;
@@ -125,6 +132,10 @@ export interface FocusRow {
   homeKey: string | null;
   /** Columns of the home group the scout hasn't finished: what the checklist shows when they sit in no group. */
   homeOpen: string[];
+  /** The group's checklist cells that aren't done, keyed by cell (a rank column's sub-requirements, else the column). */
+  marks: Record<string, CellMark>;
+  /** The same for the home group. */
+  homeMarks: Record<string, CellMark>;
   /** The options the family email marks "Suggested for <scout>": the group placement chose. */
   suggested: string[];
 }
@@ -228,7 +239,13 @@ export function buildFocusPlan(input: FocusInput): FocusPlan {
     badgeOrder.push(id);
   }
 
-  const column = (key: string, node: AnyNode): FocusColumn => ({ key, code: node.code, label: node.label });
+  // `subKey` (rank columns only) names a sub-requirement's catalog key; a badge column gets no subs.
+  const column = (key: string, node: AnyNode, subKey?: (n: AnyNode) => string): FocusColumn => {
+    const subs: FocusColumn['subs'] = [];
+    const leaves = (n: AnyNode) => (n.children.length ? (n.children as AnyNode[]).forEach(leaves) : subs.push({ key: subKey!(n), code: n.code, label: n.label }));
+    if (subKey && node.children.length) leaves(node);
+    return { key, code: node.code, label: node.label, subs };
+  };
   const groups: FocusGroup[] = [];
   for (const r of groupRanks) {
     const picked = rankPicked.get(r.id);
@@ -239,7 +256,7 @@ export function buildFocusPlan(input: FocusInput): FocusPlan {
       kind: 'rank',
       refId: r.id,
       name: r.display_name,
-      columns: topmostPicked(picked, idx).map((k) => column(k, idx.get(k)!.node)),
+      columns: topmostPicked(picked, idx).map((k) => column(k, idx.get(k)!.node, (n) => `${r.id}-${n.code}`)),
       members: []
     });
   }
@@ -271,6 +288,30 @@ export function buildFocusPlan(input: FocusInput): FocusPlan {
       })
       .map((c) => c.key);
 
+  // The checklist's cells that aren't done. A rank column's sub is done when signed off or when the column (or a
+  // requirement between them) is satisfied by its rule; a badge column with some leaves signed off is part-done.
+  const marksIn = (g: FocusGroup, p: FocusProgress): Record<string, CellMark> => {
+    const out: Record<string, CellMark> = {};
+    if (g.kind === 'badge' && p.awardedMbs?.has(g.refId)) return out;
+    for (const c of g.columns) {
+      if (g.kind === 'rank') {
+        const codes = p.rankCodes as Set<string>;
+        const walk = (n: RankNode) => {
+          if (rankNodeSatisfied(n, g.refId, codes)) return;
+          if (n.children.length && c.subs.length) n.children.forEach(walk);
+          else out[n.children.length ? c.key : `${g.refId}-${n.code}`] = 'open';
+        };
+        walk(rankIndex.get(g.refId)!.get(c.key)!.node);
+        continue;
+      }
+      const node = mbForest(g.refId).get(c.key)!.node;
+      if (mbNodeSatisfied(node, g.refId, p.mbCodes)) continue;
+      const anyDone = (n: MbNode): boolean => (n.children.length ? n.children.some(anyDone) : p.mbCodes.has(`${g.refId}-${n.code}`));
+      out[c.key] = node.children.length && anyDone(node) ? 'part' : 'open';
+    }
+    return out;
+  };
+
   const rows: FocusRow[] = input.scouts.map((s) => {
     const p = input.progress.get(s.scoutId) ?? empty;
     const held = s.currentRank != null ? rankSort.get(s.currentRank) : undefined;
@@ -278,7 +319,8 @@ export function buildFocusPlan(input: FocusInput): FocusPlan {
     const base = { personId: s.personId, scoutId: s.scoutId, name: s.name, currentRank: s.currentRank, intent: s.intent, counted };
     const withHome = <T extends object>(r: T) => {
       const home = homeKey ? groupByKey.get(homeKey) : undefined;
-      return { ...r, homeKey, homeOpen: home ? openIn(home, p) : [] };
+      const group = 'groupKey' in r && typeof r.groupKey === 'string' ? groupByKey.get(r.groupKey) : undefined;
+      return { ...r, homeKey, homeOpen: home ? openIn(home, p) : [], marks: group ? marksIn(group, p) : {}, homeMarks: home ? marksIn(home, p) : {} };
     };
 
     // Where placement alone would put the scout.

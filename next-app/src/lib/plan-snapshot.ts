@@ -4,7 +4,7 @@
  * classes from requests and offers) and each scout's suggested options. Its canonical JSON is hashed (by the caller,
  * server-side) to tell "the plan has changed since snapshot n".
  */
-import type { ThisWeek } from '@/lib/this-week';
+import { joinNames, type ThisWeek } from '@/lib/this-week';
 
 export interface SnapshotOption {
   key: string;
@@ -29,10 +29,10 @@ export function snapshotPayload(tw: ThisWeek): SnapshotPayload {
       key: g.key,
       title: g.kind === 'badge' ? `${g.name} merit badge` : `${g.name} group`,
       sub: g.columns.map((c) => c.code).join(', '),
-      teacher: g.teacher?.name ?? null,
+      teacher: joinNames(g.teachers.map((t) => t.name)) || null,
       items: g.columns.map((c) => `${c.code} · ${c.label}`)
     })),
-    ...tw.extras.map((x) => ({ key: x.key, title: x.title, sub: x.codeLabel, teacher: x.teacher?.name ?? null }))
+    ...tw.extras.map((x) => ({ key: x.key, title: x.title, sub: x.codeLabel, teacher: joinNames(x.teachers.map((t) => t.name)) || null }))
   ];
   const suggested: Record<string, string[]> = {};
   for (const sec of tw.sections) for (const r of sec.rows) if (r.suggested.length) suggested[String(r.personId)] = [...r.suggested];

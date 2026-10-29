@@ -43,7 +43,10 @@ const fa2 = mbReq('first-aid', '2');
 const fa2a = mbReq('first-aid', '2a', fa2);
 const ca1 = mbReq('camping', '1');
 const ca2 = mbReq('camping', '2');
-const MB_REQS = [fa1, fa2, fa2a, ca1, ca2];
+const ca3 = mbReq('camping', '3');
+const ca3a = mbReq('camping', '3a', ca3);
+const ca3b = mbReq('camping', '3b', ca3);
+const MB_REQS = [fa1, fa2, fa2a, ca1, ca2, ca3, ca3a, ca3b];
 const MBS = [
   { id: 'first-aid', name: 'First Aid', eagle: true },
   { id: 'camping', name: 'Camping', eagle: true }
@@ -212,6 +215,55 @@ describe('columns and checks', () => {
   it('Check_BadgeColumn_ReadsMeritBadgeLedgerCodes', () => {
     const s = scout('star');
     expect(rowOf(plan([s], ['first-aid-1', 'first-aid-2'], { done: { [s.scoutId]: done([], ['first-aid-2a']) } }), s).open).toEqual(['first-aid-1']);
+  });
+});
+
+describe('checklist cells: rank sub-requirements, part-done badge requirements', () => {
+  const FC7A = ['first-class-7a', 'first-class-7a.1', 'first-class-7a.2', 'first-class-7b'];
+
+  it('Grid_RankColumnWithSubRequirements_ListsEachSub', () => {
+    expect(plan([], FC7A).groups[0].columns[0].subs.map((c) => c.code)).toEqual(['7a.1', '7a.2']);
+  });
+
+  it('Grid_RankLeafColumn_HasNoSubs', () => {
+    expect(plan([], FC7A).groups[0].columns[1].subs).toEqual([]);
+  });
+
+  it('Grid_BadgeColumn_HasNoSubs_EvenWithSubRequirements', () => {
+    expect(plan([], ['camping-3']).groups[0].columns[0].subs).toEqual([]);
+  });
+
+  it('Marks_RankSub_OpenOnlyWhereNotSignedOff', () => {
+    const s = scout('second-class');
+    expect(rowOf(plan([s], FC7A, { done: { [s.scoutId]: done(['first-class-7a.1', 'first-class-7b']) } }), s).marks).toEqual({ 'first-class-7a.2': 'open' });
+  });
+
+  it('Marks_RankSub_DoneWhenParentSatisfiedByNOf', () => {
+    const s = scout('scout');
+    const p = plan([s], ['tenderfoot-4', 'tenderfoot-5'], { done: { [s.scoutId]: done(['tenderfoot-4b']) } });
+    expect(rowOf(p, s).marks).toEqual({ 'tenderfoot-5': 'open' });
+  });
+
+  it('Marks_BadgeRequirementPartlyDone_IsPart', () => {
+    const s = scout('star');
+    expect(rowOf(plan([s], ['camping-3'], { done: { [s.scoutId]: done([], ['camping-3a']) } }), s).marks).toEqual({ 'camping-3': 'part' });
+  });
+
+  it('Marks_BadgeRequirementUntouched_IsOpen', () => {
+    const s = scout('star');
+    expect(rowOf(plan([s], ['camping-3']), s).marks).toEqual({ 'camping-3': 'open' });
+  });
+
+  it('Marks_EarnedBadge_HasNothingOpen', () => {
+    const s = scout('star');
+    const roles = new Map<number, ScoutRole>([[s.personId, { role: 'group', key: badgeGroupKey('camping') }]]);
+    expect(rowOf(plan([s], ['camping-3'], { roles, done: { [s.scoutId]: done([], [], ['camping']) } }), s).marks).toEqual({});
+  });
+
+  it('Marks_ScoutInNoGroup_ReadsTheHomeGroup', () => {
+    const s = scout('second-class');
+    const roles = new Map<number, ScoutRole>([[s.personId, { role: 'teach' }]]);
+    expect(rowOf(plan([s], FC7A, { roles, done: { [s.scoutId]: done(['first-class-7a.2']) } }), s).homeMarks).toEqual({ 'first-class-7a.1': 'open', 'first-class-7b': 'open' });
   });
 });
 

@@ -80,7 +80,7 @@ describe('This week: rights', () => {
       a.twAddFocusSetAction({ entryId: meeting, setId }),
       a.twSetNightBadgeAction({ entryId: meeting, mbId: 'first-aid', on: true }),
       a.twSetRoleAction({ entryId: meeting, personId: scoutPerson, role: 'teach' }),
-      a.twSetTeacherAction({ entryId: meeting, key: 'fr:tenderfoot', personId: teacherA })
+      a.twSetTeacherAction({ entryId: meeting, key: 'fr:tenderfoot', personId: teacherA, on: true })
     ]);
     expect(results.map((r) => r.ok)).toEqual([false, false, false, false]);
   });
@@ -138,28 +138,36 @@ describe('This week: hand placement and teachers', () => {
     expect((await (await actions()).twSetRoleAction({ entryId: meeting, personId: teacherA, role: 'teach' })).ok).toBe(false);
   });
 
+  const teachersOf = async () => (await view()).groups.find((g) => g.key === 'fr:tenderfoot')!.teachers.map((t) => t.personId).sort((x, y) => x - y);
+
   it('GroupTeacher_MakesTheGroupTopic_AndShowsOnTheGroup', async () => {
     asEditor();
-    expect((await (await actions()).twSetTeacherAction({ entryId: meeting, key: 'fr:tenderfoot', personId: teacherA })).ok).toBe(true);
-    expect((await view()).groups.find((g) => g.key === 'fr:tenderfoot')?.teacher?.personId).toBe(teacherA);
+    expect((await (await actions()).twSetTeacherAction({ entryId: meeting, key: 'fr:tenderfoot', personId: teacherA, on: true })).ok).toBe(true);
+    expect(await teachersOf()).toEqual([teacherA]);
   });
 
-  it('GroupTeacher_ReplacesThePreviousTeacher_OneTeacherPerGroup', async () => {
+  it('GroupTeacher_ASecondTeacher_JoinsTheFirst', async () => {
     asEditor();
-    await (await actions()).twSetTeacherAction({ entryId: meeting, key: 'fr:tenderfoot', personId: teacherB });
-    const { data } = await sb.from('meeting_topic_teachers').select('person_id, meeting_topics!inner(topic_key)').eq('calendar_entry_id', meeting).eq('meeting_topics.topic_key', 'fr:tenderfoot');
-    expect(((data ?? []) as { person_id: number }[]).map((r) => r.person_id)).toEqual([teacherB]);
+    await (await actions()).twSetTeacherAction({ entryId: meeting, key: 'fr:tenderfoot', personId: teacherB, on: true });
+    expect(await teachersOf()).toEqual([teacherA, teacherB].sort((x, y) => x - y));
   });
 
-  it('GroupTeacher_Cleared_LeavesTheSlotEmpty', async () => {
+  it('GroupTeacher_TakenOff_LeavesTheOthers', async () => {
     asEditor();
-    await (await actions()).twSetTeacherAction({ entryId: meeting, key: 'fr:tenderfoot', personId: null });
-    expect((await view()).groups.find((g) => g.key === 'fr:tenderfoot')?.teacher).toBeNull();
+    await (await actions()).twSetTeacherAction({ entryId: meeting, key: 'fr:tenderfoot', personId: teacherA, on: false });
+    expect(await teachersOf()).toEqual([teacherB]);
+  });
+
+  it('GroupTeachers_Cleared_LeavesTheSlotEmpty', async () => {
+    asEditor();
+    await (await actions()).twSetTeacherAction({ entryId: meeting, key: 'fr:tenderfoot', personId: teacherA, on: true });
+    await (await actions()).twSetTeacherAction({ entryId: meeting, key: 'fr:tenderfoot', personId: null, on: false });
+    expect(await teachersOf()).toEqual([]);
   });
 
   it('TeacherForAClassNotOnThisMeeting_IsRefused', async () => {
     asEditor();
-    expect((await (await actions()).twSetTeacherAction({ entryId: meeting, key: 'tenderfoot-5', personId: teacherA })).ok).toBe(false);
+    expect((await (await actions()).twSetTeacherAction({ entryId: meeting, key: 'tenderfoot-5', personId: teacherA, on: true })).ok).toBe(false);
   });
 });
 
