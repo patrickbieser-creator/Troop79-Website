@@ -1063,6 +1063,14 @@
 button.fsResult {
   cursor: pointer;
 }
+/* The focus sets a rank requirement is in: one fixed-width column, so the names line up down the list. */
+.fsInSets {
+  flex: none;
+  width: 32%;
+  font: var(--fs-xs) / 1.4 var(--font-ui);
+  color: var(--text-meta);
+  text-align: left;
+}
 .fsResult .code,
 .fsItem .code {
   flex: none;

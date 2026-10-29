@@ -82,3 +82,29 @@ describe('Find requirements pills', () => {
     expect([pills().queryByRole('button', { name: /✕/ }), finder().getByRole('button', { name: /^First Aid/ })]).toEqual([null, expect.anything()]);
   });
 });
+
+describe('which focus sets hold a requirement (Patrick, 2026-10-29)', () => {
+  const sets = [
+    { id: 1, name: 'Knots night', createdBy: null, labels: [], items: [{ key: 'tenderfoot-3a', kind: 'rank' as const, sourceId: 'tenderfoot', sourceName: 'Tenderfoot', code: '3a', label: 'Knots' }], lastUsed: null, updatedAt: '2026-10-20T12:00:00Z' },
+    { id: 2, name: 'Camp skills', createdBy: null, labels: [], items: [{ key: 'tenderfoot-3a', kind: 'rank' as const, sourceId: 'tenderfoot', sourceName: 'Tenderfoot', code: '3a', label: 'Knots' }], lastUsed: null, updatedAt: '2026-10-20T12:00:00Z' }
+  ];
+  const rows = [
+    { key: 'tenderfoot-3a', kind: 'rank', sourceId: 'tenderfoot', sourceName: 'Tenderfoot', code: '3a', label: 'Knots', parent: null },
+    { key: 'tenderfoot-3b', kind: 'rank', sourceId: 'tenderfoot', sourceName: 'Tenderfoot', code: '3b', label: 'Lashing', parent: null }
+  ];
+
+  it('RankRequirement_ListsTheFocusSetsItIsIn', async () => {
+    search.mockResolvedValue({ ok: true, rows, hasMore: false });
+    render(<FocusSetsClient canSeed sets={sets} sources={SOURCES} meetings={[]} />);
+    await userEvent.setup().click(pills().getByRole('button', { name: 'Tenderfoot' }));
+    expect((await finder().findByText('Camp skills, Knots night')).textContent).toBe('Camp skills, Knots night');
+  });
+
+  it('RankRequirement_InNoSet_ShowsNoSetNames', async () => {
+    search.mockResolvedValue({ ok: true, rows, hasMore: false });
+    render(<FocusSetsClient canSeed sets={sets} sources={SOURCES} meetings={[]} />);
+    await userEvent.setup().click(pills().getByRole('button', { name: 'Tenderfoot' }));
+    const row = (await finder().findByText('Lashing')).closest('li')!;
+    expect(row.textContent).not.toContain('Knots night');
+  });
+});

@@ -68,6 +68,13 @@ export function FocusSetsClient({
 
   const allLabels = useMemo(() => [...new Set(sets.flatMap((s) => s.labels))].sort(), [sets]);
   const shown = labelFilter ? sets.filter((s) => s.labels.includes(labelFilter)) : sets;
+  // Which saved sets hold each requirement: the Finder's "In sets" column (Patrick, 2026-10-29).
+  const setsOf = useMemo(() => {
+    const m = new Map<string, string[]>();
+    for (const x of sets) for (const i of x.items) m.set(i.key, [...(m.get(i.key) ?? []), x.name]);
+    for (const [k, v] of m) m.set(k, [...new Set(v)].sort((a, b) => a.localeCompare(b)));
+    return m;
+  }, [sets]);
   const inDraft = new Set(draft.items.map((i) => i.key));
   const editing = canSeed && activeId != null;
   const toggleItem = (row: FocusSetItem) =>
@@ -122,7 +129,7 @@ export function FocusSetsClient({
         )}
       </section>
 
-      <Finder sources={sources} editing={editing} inDraft={inDraft} onToggle={toggleItem} onAddAll={addAll} />
+      <Finder sources={sources} editing={editing} inDraft={inDraft} onToggle={toggleItem} onAddAll={addAll} setsOf={setsOf} />
 
       <section className={styles.fsCol} aria-label="The set">
         {canSeed ? (
@@ -214,13 +221,16 @@ function Finder({
   editing,
   inDraft,
   onToggle,
-  onAddAll
+  onAddAll,
+  setsOf
 }: {
   sources: readonly FocusSource[];
   editing: boolean;
   inDraft: ReadonlySet<string>;
   onToggle: (row: FocusSetItem) => void;
   onAddAll: (rows: readonly FocusSetItem[]) => void;
+  /** The saved sets each requirement is in, by key. */
+  setsOf: ReadonlyMap<string, readonly string[]>;
 }) {
   const [q, setQ] = useState('');
   // The pill: All, one of the group ranks (by id), or Merit badge; with Merit badge, the badge picked from the list.
@@ -328,11 +338,11 @@ function Finder({
                         <span className={styles.check} aria-hidden="true">
                           {inDraft.has(r.key) ? '✓' : ''}
                         </span>
-                        <ResultText r={r} />
+                        <ResultText r={r} inSets={r.kind === 'rank' ? setsOf.get(r.key) : undefined} />
                       </button>
                     ) : (
                       <div className={styles.fsResult}>
-                        <ResultText r={r} />
+                        <ResultText r={r} inSets={r.kind === 'rank' ? setsOf.get(r.key) : undefined} />
                       </div>
                     )}
                   </li>
@@ -377,7 +387,8 @@ function Finder({
   );
 }
 
-function ResultText({ r }: { r: FocusSearchRow }) {
+/** A rank requirement's row ends in an "In sets" column, the same width on every row so the names line up. */
+function ResultText({ r, inSets }: { r: FocusSearchRow; inSets?: readonly string[] }) {
   return (
     <>
       <span className={styles.code}>{r.code}</span>
@@ -385,6 +396,7 @@ function ResultText({ r }: { r: FocusSearchRow }) {
         <span className={styles.fsItemLabel}>{r.label}</span>
         {r.parent ? <span className={styles.optMeta}>{r.parent}</span> : null}
       </span>
+      {r.kind === 'rank' ? <span className={styles.fsInSets}>{inSets?.length ? inSets.join(', ') : ''}</span> : null}
     </>
   );
 }
