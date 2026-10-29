@@ -75,8 +75,8 @@ export interface TwColumn {
   label: string;
   /** Members of the group who still need it. */
   need: number;
-  /** A rank column's sub-requirements: the checklist shows one cell for each. */
-  subs: { key: string; code: string; label: string }[];
+  /** A rank column's sub-requirements: the checklist shows one cell for each, the group card lists them on a click. */
+  subs: { key: string; code: string; label: string; need: number }[];
 }
 
 export interface TwGroup {
@@ -258,7 +258,11 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
 
   const groups: TwGroup[] = plan.groups.map((g) => {
     const members = g.members.map((id) => rowsBy.get(id)!).filter((r) => r);
-    const columns = g.columns.map((c) => ({ ...c, need: members.filter((m) => m.open.includes(c.key)).length }));
+    const columns = g.columns.map((c) => ({
+      ...c,
+      need: members.filter((m) => m.open.includes(c.key)).length,
+      subs: c.subs.map((x) => ({ ...x, need: members.filter((m) => m.marks[x.key] === 'open').length }))
+    }));
     let qualified: TwTeacher[];
     if (g.kind === 'badge') {
       const counselors = pool.filter((p) => p.kind === 'adult' && p.counselorFor.has(g.refId)).map((p) => teacherOf(p, 'Counselor'));

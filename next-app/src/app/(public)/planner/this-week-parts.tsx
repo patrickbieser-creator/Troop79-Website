@@ -6,12 +6,58 @@
  */
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useDisclosure } from '@/app/_components/use-disclosure';
-import { joinNames, type TwPerson, type TwTeacher } from '@/lib/this-week';
+import { joinNames, type TwColumn, type TwPerson, type TwTeacher } from '@/lib/this-week';
 import { usePlanner, SAVE_FAILED } from './planner-client';
 import type { TwResult } from './this-week-actions';
 import s from './this-week.module.css';
 
 const INTENT_WORD = { coming: 'coming', undecided: 'not sure', not_coming: 'can’t come' } as const;
+
+/**
+ * A group card's requirement row: code, label, how many in the group still need it. One with sub-requirements (4a →
+ * 4a.1…4a.8) is a toggle that lists them, each with its own count; closed by default so the card stays short.
+ */
+export function ReqItem({ col }: { col: TwColumn }) {
+  const [open, setOpen] = useState(false);
+  const line = (
+    <>
+      <span className={s.reqCode}>{col.code}</span>{' '}
+      <span className={s.reqLabel}>{col.label}</span>
+    </>
+  );
+  if (!col.subs.length) {
+    return (
+      <li className={s.req}>
+        {line}
+        <span className={s.reqNeed}>{col.need} need it</span>
+      </li>
+    );
+  }
+  return (
+    <li className={s.reqWrap}>
+      <div className={s.req}>
+        <button type="button" className={s.reqToggle} aria-expanded={open} onClick={() => setOpen(!open)}>
+          {line}
+          <span className={s.reqCaret} aria-hidden="true">
+            {open ? '▾' : '▸'}
+          </span>
+        </button>
+        <span className={s.reqNeed}>{col.need} need it</span>
+      </div>
+      {open ? (
+        <ul className={s.reqSubs}>
+          {col.subs.map((x) => (
+            <li key={x.key} className={s.req}>
+              <span className={s.reqCode}>{x.code}</span>
+              <span className={s.reqLabel}>{x.label}</span>
+              <span className={s.reqNeed}>{x.need} need it</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </li>
+  );
+}
 
 /** Run one write through the planner's sync (the poller waits, the page refreshes once it lands); returns the error. */
 export function useWrite() {

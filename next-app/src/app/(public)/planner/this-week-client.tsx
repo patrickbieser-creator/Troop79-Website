@@ -14,7 +14,7 @@ import { PlannerPoller } from './planner-poller';
 import { twAskTeacherAction, twRemoveRequirementAction, twSetRoleAction, twSetTeacherAction, type RoleInput } from './this-week-actions';
 import { FocusCard, type SetChoice } from './this-week-focus';
 import { LiveView } from './this-week-live';
-import { NameChip, Popover, TeacherSlot, useWrite } from './this-week-parts';
+import { NameChip, Popover, ReqItem, TeacherSlot, useWrite } from './this-week-parts';
 import { PublishBar, type SnapshotState } from './this-week-publish';
 import s from './this-week.module.css';
 
@@ -165,11 +165,7 @@ function PlanView({ entryId, view, sets, badges, canSeed }: { entryId: number; v
               <div className={s.groupBody}>
                 <ul className={s.reqs}>
                   {g.columns.map((col) => (
-                    <li key={col.key} className={s.req}>
-                      <span className={s.reqCode}>{col.code}</span>
-                      <span className={s.reqLabel}>{col.label}</span>
-                      <span className={s.reqNeed}>{col.need} need it</span>
-                    </li>
+                    <ReqItem key={col.key} col={col} />
                   ))}
                 </ul>
                 <div className={s.chips}>

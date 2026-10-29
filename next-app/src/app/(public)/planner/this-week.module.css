@@ -483,6 +483,47 @@ button.covStat:focus-visible {
   color: var(--text-meta);
   font-size: var(--fs-xs);
 }
+/* A requirement with sub-requirements: the code and label are a toggle that lists them (closed by default). */
+.reqToggle {
+  display: flex;
+  flex: 1;
+  gap: var(--sp-2);
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.reqToggle .reqLabel {
+  flex: 0 1 auto;
+}
+.reqToggle:hover .reqLabel {
+  text-decoration: underline;
+}
+.reqToggle:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+.reqCaret {
+  flex: none;
+  color: var(--text-meta);
+}
+.reqWrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.reqSubs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  margin: 0 0 var(--sp-1);
+  padding: 0 0 0 var(--sp-4);
+  list-style: none;
+}
 .chips {
   display: flex;
   flex-wrap: wrap;
