@@ -212,7 +212,7 @@ export default async function MeetingBoardPage({ searchParams }: { searchParams:
         <TeachBoard
           key={`${teacher.personId}:${teachView.intent ?? ''}`}
           entryId={meeting.entryId}
-          subject={{ personId: teacher.personId, firstName: firstNameOf(teacher.displayName), isSelf: teacherIsSelf }}
+          subject={{ personId: teacher.personId, firstName: firstNameOf(teacher.displayName), name: teacher.displayName, isSelf: teacherIsSelf }}
           initial={teachView}
           choices={offerChoices(teacher, catalog, upcoming)}
           onBehalf={onBehalf}

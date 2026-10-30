@@ -46,6 +46,8 @@ export interface FamilyOption {
 export interface FamilyScout {
   personId: number;
   firstName: string;
+  /** The full display name: the signed-in page heads a card with it; the email's link page keeps the first name. */
+  name: string;
   rankName: string;
   kind: FamilyScoutKind;
   intent: Intent | null;
@@ -121,8 +123,9 @@ function alsoFor(kind: FamilyScoutKind, row: TwRow | undefined, tw: ThisWeek, fi
     if (next) out.push({ key: next.key, label: `Work ahead: ${next.name}`, sub: `${next.columns.map((c) => c.code).join(', ')} with the ${next.name} group` });
   }
   if (kind === 'done' && ranks.length) out.push({ key: 'teach', label: 'Help teach', sub: `Show younger scouts what ${firstName} already knows` });
-  if (kind !== 'mb') {
-    for (const g of tw.groups.filter((x) => x.kind === 'badge')) out.push({ key: g.key, label: `${g.name} merit badge`, sub: 'Usually First Class and up · a leader will confirm' });
+  // A Merit badge group scout is offered the OTHER badges on Sunday; a younger scout every badge, with the caveat.
+  for (const g of tw.groups.filter((x) => x.kind === 'badge' && !(kind === 'mb' && x.key === row?.groupKey))) {
+    out.push({ key: g.key, label: `${g.name} merit badge`, sub: kind === 'mb' ? 'With a merit badge counselor' : 'Usually First Class and up · a leader will confirm' });
   }
   return out;
 }
@@ -167,6 +170,7 @@ export async function loadFamilyWeek(
     scouts.push({
       personId: scout.personId,
       firstName,
+      name: scout.name,
       rankName: scout.currentRank ? (rankName.get(scout.currentRank) ?? scout.currentRank) : 'New scout',
       kind,
       intent,
@@ -186,6 +190,8 @@ export type FamilyWrite = { ok: true } | { ok: false; error: string };
 
 export type FamilyOp =
   | { op: 'answer'; choice: FamilyChoice }
+  /** "Not sure yet": the undo for a nervous tap. Saved as undecided, which reads back as no answer. */
+  | { op: 'unsure' }
   /** on = false: take the planned requirement off; true: put it back. */
   | { op: 'item'; key: string; on: boolean }
   | { op: 'suggest'; key: string; on: boolean };
@@ -205,6 +211,12 @@ export async function familyWrite(
   const entry = w.meeting.entryId;
   const person = w.scoutPersonId;
   const writer = { entryId: entry, personId: person, actorPersonId: w.actorPersonId, leader: false };
+  if (op?.op === 'unsure') {
+    const res = await setMeetingIntent(sb, writer, 'undecided');
+    if (!res.ok) return res;
+    const { error } = await sb.from('meeting_scout_helpers').delete().eq('calendar_entry_id', entry).eq('person_id', person);
+    return error ? { ok: false, error: 'That didn’t save. Try again.' } : { ok: true };
+  }
   if (op?.op === 'answer') {
     if (!CHOICES.includes(op.choice)) return { ok: false, error: 'Malformed request' };
     if (op.choice === 'help') {

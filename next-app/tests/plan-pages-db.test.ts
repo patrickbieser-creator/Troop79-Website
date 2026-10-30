@@ -169,6 +169,19 @@ describe('family writes', () => {
     const { data } = await sb.from('meeting_intents').select('intent').eq('calendar_entry_id', meeting).eq('person_id', scout).single();
     expect((data as { intent: string }).intent).toBe('coming');
   });
+
+  it('NotSureYet_ClearsTheAnswer_AndTheHelperRow', async () => {
+    const catalog = await fetchAdvancementCatalog(sb as never);
+    const w = { meeting: { entryId: meeting, date: MEETING_DATE }, actorPersonId: parent, scoutPersonId: scout, catalog };
+    await familyWrite(sb, w, { op: 'answer', choice: 'ok' });
+    await sb.from('meeting_scout_helpers').insert({ calendar_entry_id: meeting, person_id: scout, group_key: 'fr:tenderfoot', set_by_person_id: parent });
+    await familyWrite(sb, w, { op: 'unsure' });
+    const [{ data }, { count }] = await Promise.all([
+      sb.from('meeting_intents').select('intent').eq('calendar_entry_id', meeting).eq('person_id', scout).single(),
+      sb.from('meeting_scout_helpers').select('person_id', { count: 'exact', head: true }).eq('calendar_entry_id', meeting).eq('person_id', scout)
+    ]);
+    expect([(data as { intent: string }).intent, count]).toEqual(['undecided', 0]);
+  });
 });
 
 /** Badges the scout hasn't earned: always on their own pick list, so always suggestable. */

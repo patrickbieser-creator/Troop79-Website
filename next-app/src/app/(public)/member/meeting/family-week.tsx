@@ -49,13 +49,27 @@ function choicesFor(s: FamilyScout, focus: string): ChoiceDef[] {
     list.push({ k: 'help', label: `Coming · help teach ${focus || 'the younger scouts'}`, sub: `With the ${s.helpGroup.name} group${who}` });
   }
   if (!list.length) list.push({ k: 'ok', label: 'Coming', sub: 'A leader will find something for Sunday' });
+  list.push({ k: 'change', label: 'Coming · something else', sub: 'Suggest another merit badge or a requirement' });
   return [...list, out];
 }
 
 /** The "plan looks good" choice for a card: what "Everyone's coming" and the email's "Yes, coming" answer. */
 const defaultChoice = (s: FamilyScout): FamilyChoice => (s.kind === 'mb' && s.group ? 'mb' : s.kind === 'mb' && s.helpGroup ? 'help' : 'ok');
 
-export function FamilyWeekView({ week, write, readOnly = false, initialAnswer = null }: { week: FamilyWeek; write: Write; readOnly?: boolean; initialAnswer?: FamilyChoice | null }) {
+export function FamilyWeekView({
+  week,
+  write,
+  readOnly = false,
+  initialAnswer = null,
+  fullNames = false
+}: {
+  week: FamilyWeek;
+  write: Write;
+  readOnly?: boolean;
+  initialAnswer?: FamilyChoice | null;
+  /** Head each card with the scout's full name: the signed-in page only. */
+  fullNames?: boolean;
+}) {
   const [answers, setAnswers] = useState<Record<number, FamilyChoice | null>>(() => Object.fromEntries(week.scouts.map((s) => [s.personId, s.choice])));
   const [pending, setPending] = useState<FamilyChoice | null>(initialAnswer && initialAnswer !== 'ok' && initialAnswer !== 'mb' ? initialAnswer : null);
   const [error, setError] = useState<string | null>(null);
@@ -64,9 +78,27 @@ export function FamilyWeekView({ week, write, readOnly = false, initialAnswer = 
   const applied = useRef(false);
   const focus = week.focus.join(' + ').toLowerCase();
 
+  const [unsure, setUnsure] = useState<Record<number, boolean>>(() => Object.fromEntries(week.scouts.map((s) => [s.personId, s.intent === 'undecided'])));
+  // "Not sure yet": the undo for a nervous tap. The card goes back to no answer (saved as undecided).
+  const clear = async (s: FamilyScout) => {
+    const prev = answers[s.personId] ?? null;
+    setAnswers((a) => ({ ...a, [s.personId]: null }));
+    setUnsure((u) => ({ ...u, [s.personId]: true }));
+    try {
+      const res = await write(s.personId, { op: 'unsure' });
+      if (res.ok) return;
+      setError(res.error);
+    } catch {
+      setError('That didn’t save. Check your connection and try again.');
+    }
+    setAnswers((a) => ({ ...a, [s.personId]: prev }));
+    setUnsure((u) => ({ ...u, [s.personId]: false }));
+  };
+
   const answer = async (s: FamilyScout, k: FamilyChoice): Promise<boolean> => {
     const prev = answers[s.personId] ?? null;
     setAnswers((a) => ({ ...a, [s.personId]: k }));
+    setUnsure((u) => ({ ...u, [s.personId]: false }));
     try {
       const res = await write(s.personId, { op: 'answer', choice: k });
       if (res.ok) return true;
@@ -125,6 +157,12 @@ export function FamilyWeekView({ week, write, readOnly = false, initialAnswer = 
           scout={s}
           focus={focus}
           choice={answers[s.personId] ?? null}
+          unsure={!!unsure[s.personId]}
+          onUnsure={() => {
+            setPending(null);
+            setError(null);
+            void clear(s);
+          }}
           pending={pending}
           onChoose={(k) => {
             setPending(null);
@@ -133,6 +171,7 @@ export function FamilyWeekView({ week, write, readOnly = false, initialAnswer = 
           }}
           write={write}
           readOnly={readOnly}
+          fullName={fullNames}
         />
       ))}
     </div>
@@ -143,18 +182,24 @@ function ScoutCard({
   scout,
   focus,
   choice,
+  unsure,
+  onUnsure,
   pending,
   onChoose,
   write,
-  readOnly
+  readOnly,
+  fullName
 }: {
   scout: FamilyScout;
   focus: string;
   choice: FamilyChoice | null;
+  unsure: boolean;
+  onUnsure: () => void;
   pending: FamilyChoice | null;
   onChoose: (k: FamilyChoice) => void;
   write: Write;
   readOnly: boolean;
+  fullName: boolean;
 }) {
   const [off, setOff] = useState<Set<string>>(() => new Set(scout.items.filter((i) => !i.on).map((i) => i.key)));
   const [suggested, setSuggested] = useState(scout.suggestions);
@@ -205,7 +250,7 @@ function ScoutCard({
 
   const badge =
     choice == null
-      ? { text: 'Needs an answer', cls: styles.badgeAsk }
+      ? { text: unsure ? 'Not sure yet' : 'Needs an answer', cls: styles.badgeAsk }
       : choice === 'out'
         ? { text: 'Not coming', cls: styles.badgeOut }
         : changes > 0
@@ -216,7 +261,7 @@ function ScoutCard({
   const extras = suggested.filter((x) => !alsoKeys.has(x.key));
   const term = q.trim().toLowerCase();
   const found = term ? scout.requestable.filter((r) => !isSuggested(r.key) && `${r.codeLabel} ${r.label}`.toLowerCase().includes(term)).slice(0, 5) : [];
-  const planTitle = scout.kind === 'mb' ? `${scout.firstName}’s options` : `${scout.firstName}’s plan`;
+  const planTitle = `${fullName ? scout.name : scout.firstName}’s ${scout.kind === 'mb' ? 'options' : 'plan'}`;
   const planSub = scout.kind === 'rank' ? `${scout.group?.name} group${scout.group?.teachers.length ? ` · with ${scout.group.teachers.join(' and ')}` : ''}` : scout.kind === 'mb' ? 'Merit badge group' : '';
   const hid = `fw-${scout.personId}`;
   const qid = `fwq-${scout.personId}`;
@@ -225,17 +270,13 @@ function ScoutCard({
     <section className={styles.card} aria-labelledby={hid}>
       <div className={styles.cardHead}>
         <h2 id={hid} className={styles.name}>
-          {scout.firstName}
+          {planTitle}
         </h2>
-        <span className={styles.rankLine}>{scout.rankName} rank</span>
+        {planSub ? <span className={styles.rankLine}>{planSub}</span> : null}
         <span className={`${styles.badge} ${badge.cls}`}>{badge.text}</span>
       </div>
 
       <div className={styles.plan}>
-        <div className={styles.planHead}>
-          <h3 className={styles.planTitle}>{planTitle}</h3>
-          {planSub ? <span className={styles.planSub}>{planSub}</span> : null}
-        </div>
         {scout.kind === 'rank' && !showEdit && choice !== 'out' ? (
           <ul className={styles.planList}>
             {scout.items
@@ -288,12 +329,26 @@ function ScoutCard({
             );
           })}
         </div>
-        <p className={styles.notSure}>Not sure yet? Leave it for now and answer when you know.</p>
+        {choice != null && !readOnly ? (
+          <button
+            type="button"
+            className={styles.unsure}
+            disabled={busy}
+            onClick={() => {
+              setEditing(false);
+              onUnsure();
+            }}
+          >
+            Not sure yet? Clear this answer
+          </button>
+        ) : (
+          <p className={styles.notSure}>{unsure ? 'Marked not sure yet. Answer when you know.' : 'Not sure yet? Leave it for now and answer when you know.'}</p>
+        )}
 
         {showEdit ? (
           <div className={styles.edit}>
             <div className={styles.editHead}>
-              <span className={styles.editTitle}>{scout.kind === 'done' ? `Suggest something for ${scout.firstName}` : `Change ${scout.firstName}’s plan`}</span>
+              <span className={styles.editTitle}>{scout.kind === 'rank' ? `Change ${scout.firstName}’s plan` : `Suggest something for ${scout.firstName}`}</span>
               <span role="status" className={styles.saved}>
                 {changes ? `✓ Saved · ${[off.size ? `${off.size} ${off.size === 1 ? 'change' : 'changes'}` : '', suggested.length ? `${suggested.length} ${suggested.length === 1 ? 'suggestion' : 'suggestions'}` : ''].filter(Boolean).join(', ')} sent to the planners` : ''}
               </span>

@@ -11,6 +11,7 @@ const { FamilyWeekView } = await import('../src/app/(public)/member/meeting/fami
 const scout = (o: Partial<FamilyScout>): FamilyScout => ({
   personId: 1,
   firstName: 'Lily',
+  name: 'Lily Bloom',
   rankName: 'Tenderfoot',
   kind: 'rank',
   intent: null,
@@ -61,6 +62,19 @@ describe('one tap per scout', () => {
     fireEvent.click(screen.getByRole('radio', { name: /but change the plan/ }));
     fireEvent.click(await screen.findByRole('checkbox', { name: /First aid for Second Class/ }));
     expect(await screen.findByText('Coming · changes sent')).toBeTruthy();
+  });
+
+  it('Family_NotSureYet_ClearsTheAnswer', async () => {
+    const write = writer();
+    render(<FamilyWeekView week={week([scout({ choice: 'ok', intent: 'coming' })])} write={write} />);
+    fireEvent.click(screen.getByRole('button', { name: /Not sure yet/ }));
+    await waitFor(() => expect(write).toHaveBeenCalledWith(1, { op: 'unsure' }));
+    expect([screen.getByText('Not sure yet', { selector: 'span' }) != null, screen.getAllByRole('radio').some((r) => r.getAttribute('aria-checked') === 'true')]).toEqual([true, false]);
+  });
+
+  it('Family_NoAnswerYet_HasNothingToClear', () => {
+    render(<FamilyWeekView week={week([scout({})])} write={writer()} />);
+    expect(screen.queryByRole('button', { name: /Not sure yet/ })).toBeNull();
   });
 
   it('Family_Unanswered_ReadsNeedsAnAnswer', () => {

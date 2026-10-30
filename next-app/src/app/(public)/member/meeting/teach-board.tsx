@@ -1,8 +1,9 @@
 'use client';
 
 /**
- * "Teach at a meeting" (Phase 2 of Plans/Meeting-Requests-And-Teaching-Offers.md; prototype
- * prototypes/meeting-board/meeting.html, teach section). For adults (leaders and parents alike) and Junior Leaders.
+ * "Teach at a meeting" (Phase 2 of Plans/Meeting-Requests-And-Teaching-Offers.md). For adults (leaders and parents
+ * alike) and Junior Leaders. Since Planner III it is one white card like a scout's (family-week.tsx; prototype
+ * prototypes/meeting-plan-III/Family.dc.html, "Can you teach?"): the person's name, a status badge, full-width choices.
  *
  *   - Adults answer Coming / Not sure yet ("We'll find something that fits": a leader puts them where they're needed) /
  *     Can't make it here. A Junior Leader answers once, in their scout section above, and this section follows it.
@@ -24,7 +25,7 @@ import { INTENT_LABEL, type Intent } from '@/lib/meeting-board-shared';
 import { minutesText } from '@/lib/meeting-board-picklist';
 import type { OfferChoices, TeachItem, TeachView, WantedItem } from '@/lib/meeting-board-supply';
 import type { MatchLine } from '@/lib/meeting-board-match';
-import { IntentControl, Saved } from './answer-control';
+import { Saved } from './answer-control';
 import {
   meetingPostOfferAction,
   meetingTeachAction,
@@ -36,12 +37,20 @@ import {
 } from './teach-actions';
 import { TopicParts } from './topic-parts';
 import styles from './meeting.module.css';
+import fw from './family-week.module.css';
 
 const FLASH_MS = 1800;
 
+const INTENTS: { k: Intent; label: string; sub: (who: string) => string }[] = [
+  { k: 'coming', label: INTENT_LABEL.coming, sub: () => 'Take on something below, or offer something' },
+  { k: 'undecided', label: INTENT_LABEL.undecided, sub: (who) => `A leader can put ${who} where help is needed` },
+  { k: 'not_coming', label: 'Can’t make it this week', sub: (who) => `We won’t plan on ${who} Sunday` }
+];
+
 export interface TeachBoardProps {
   entryId: number;
-  subject: { personId: number; firstName: string; isSelf: boolean };
+  /** name: the full display name, which heads the card (the page is signed-in only). */
+  subject: { personId: number; firstName: string; name?: string; isSelf: boolean };
   initial: TeachView;
   choices: OfferChoices;
   onBehalf: boolean;
@@ -158,25 +167,74 @@ export function TeachBoard(props: TeachBoardProps) {
     });
   }
 
+  // The same card as a scout's (family-week.tsx): a white card, the person's name, a status badge, and one radio
+  // group of full-width choices.
+  const shown: Intent | null = view.intent ?? (view.count > 0 ? 'coming' : null);
+  const qid = `${ids}-teach-q`;
   const intentBlock = junior || !view.canAdd ? null : (
-    <IntentControl
-      groupName={`${ids}-teach-intent`}
-      label={subject.isSelf ? 'Are you coming?' : `Is ${subject.firstName} coming?`}
-      value={view.intent}
-      implied={view.intent == null && view.count > 0}
-      options={['coming', 'undecided', 'not_coming']}
-      helper={view.intent === 'undecided' ? 'We’ll find something that fits.' : view.intent === 'not_coming' ? 'Got it. Thanks for letting us know.' : null}
-      saved={flash.intent > 0}
-      disabled={readOnly}
-      onChange={chooseIntent}
-    />
+    <div className={fw.ask}>
+      <div id={qid} className={fw.question}>
+        {subject.isSelf ? 'Are you coming Sunday to teach?' : `Is ${subject.firstName} coming Sunday to teach?`}
+        <Saved on={flash.intent > 0} />
+      </div>
+      <div role="radiogroup" aria-labelledby={qid} className={fw.choices}>
+        {INTENTS.map((o) => {
+          const on = shown === o.k;
+          return (
+            <button
+              key={o.k}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              aria-labelledby={`${ids}-${o.k}-label`}
+              aria-describedby={`${ids}-${o.k}-sub`}
+              disabled={readOnly || pending}
+              className={`${fw.choice} ${on ? (o.k === 'not_coming' ? fw.choiceOut : o.k === 'undecided' ? fw.choiceChange : fw.choiceOn) : ''}`}
+              onClick={() => chooseIntent(o.k)}
+            >
+              <span aria-hidden="true" className={on ? fw.dotOn : fw.dot}>
+                {on ? '✓' : ''}
+              </span>
+              <span className={fw.choiceText}>
+                <span id={`${ids}-${o.k}-label`} className={fw.choiceLabel}>
+                  {o.label}
+                </span>
+                <span id={`${ids}-${o.k}-sub`} className={fw.choiceSub}>
+                  {o.sub(subject.isSelf ? 'you' : subject.firstName)}
+                </span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      {view.intent === 'undecided' ? (
+        <p className={fw.notSure}>We&rsquo;ll find something that fits.</p>
+      ) : view.intent === 'not_coming' ? (
+        <p className={fw.notSure}>Got it. Thanks for letting us know.</p>
+      ) : shown == null ? (
+        <p className={fw.notSure}>Not sure yet? Choose Not sure yet and a leader will find you a spot.</p>
+      ) : null}
+    </div>
   );
 
+  const badge = junior
+    ? null
+    : shown == null
+      ? { text: 'Needs an answer', cls: fw.badgeAsk }
+      : shown === 'not_coming'
+        ? { text: 'Not coming', cls: fw.badgeOut }
+        : shown === 'undecided'
+          ? { text: 'Not sure yet', cls: fw.badgeChanged }
+          : { text: '✓ Coming', cls: fw.badgeComing };
   const head = (
-    <h2 className={styles.teachHead} id={`${ids}-teach`}>
-      {junior ? 'Help teach' : 'Teach at a meeting'}
-      {junior && <Badge tone="info">Junior Leader</Badge>}
-    </h2>
+    <div className={fw.cardHead}>
+      <h2 className={fw.name} id={`${ids}-teach`}>
+        {subject.name ?? subject.firstName}
+      </h2>
+      <span className={fw.rankLine}>{junior ? 'Helping teach Sunday' : 'Teaching Sunday'}</span>
+      {junior ? <Badge tone="info">Junior Leader</Badge> : null}
+      {badge ? <span className={`${fw.badge} ${badge.cls}`}>{badge.text}</span> : null}
+    </div>
   );
 
   const liveRegion = (
@@ -187,7 +245,7 @@ export function TeachBoard(props: TeachBoardProps) {
 
   if (view.canAdd && view.intent === 'not_coming') {
     return (
-      <section className={styles.teach} aria-labelledby={`${ids}-teach`}>
+      <section className={fw.teachCard} aria-labelledby={`${ids}-teach`}>
         {head}
         {intentBlock}
         {liveRegion}
@@ -197,8 +255,9 @@ export function TeachBoard(props: TeachBoardProps) {
 
   if (!view.canAdd) {
     return (
-      <section className={styles.teach} aria-labelledby={`${ids}-teach`}>
+      <section className={fw.teachCard} aria-labelledby={`${ids}-teach`}>
         {head}
+        <div className={fw.section}>
         <p className={styles.helper}>
           {subject.isSelf ? 'You’re' : `${subject.firstName} is`} not on the teaching list any more. Remove these, or ask a leader to sign{' '}
           {subject.isSelf ? 'you' : 'them'} up again.
@@ -222,6 +281,7 @@ export function TeachBoard(props: TeachBoardProps) {
             {problem}
           </p>
         )}
+        </div>
         {liveRegion}
       </section>
     );
@@ -262,68 +322,66 @@ export function TeachBoard(props: TeachBoardProps) {
   };
 
   return (
-    <section className={styles.teach} aria-labelledby={`${ids}-teach`}>
+    <section className={fw.teachCard} aria-labelledby={`${ids}-teach`}>
       {head}
-      {intentBlock}
 
-      {props.teaching && props.teaching.length > 0 && view.intent !== 'not_coming' && (
-        <div className={styles.assignCard}>
-          <p className={styles.assignHead}>
-            So far, {you.replace(/^You/, 'you')} teaching {props.teaching.map((l) => l.title).join(', then ')}
-          </p>
-          <ul className={styles.assignList}>
-            {props.teaching.map((l, i) => (
-              <li key={i}>
-                {l.block && <>{l.block} · </>}
-                <b>{l.title}</b>
-                <span className={styles.meta}>
-                  {' '}
-                  · {l.codeLabel}
-                  {l.minutes != null ? ` · ${minutesText(l.minutes)}` : ''} · {l.scouts.length ? `${plural(l.scouts.length, 'scout')}: ${l.scouts.join(', ')}` : 'no scouts placed yet'}
-                </span>
-                <TopicParts parts={l.parts} title={l.title} />
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      <div>
-        <h3 className={styles.groupHead}>
-          <span>
+      <div className={fw.plan}>
+        <div className={fw.planHead}>
+          <h3 className={fw.planTitle}>
             {you} teaching
             <Saved on={flash.teach > 0} />
-          </span>
-          <span className={styles.meta}>
-            {view.count}
-          </span>
-        </h3>
+          </h3>
+          <span className={fw.planSub}>{view.count ? plural(view.count, 'thing') : ''}</span>
+        </div>
+        {props.teaching && props.teaching.length > 0 && view.intent !== 'not_coming' && (
+          <div className={styles.assignCard}>
+            <p className={styles.assignHead}>
+              So far, {you.replace(/^You/, 'you')} teaching {props.teaching.map((l) => l.title).join(', then ')}
+            </p>
+            <ul className={styles.assignList}>
+              {props.teaching.map((l, i) => (
+                <li key={i}>
+                  {l.block && <>{l.block} · </>}
+                  <b>{l.title}</b>
+                  <span className={styles.meta}>
+                    {' '}
+                    · {l.codeLabel}
+                    {l.minutes != null ? ` · ${minutesText(l.minutes)}` : ''} · {l.scouts.length ? `${plural(l.scouts.length, 'scout')}: ${l.scouts.join(', ')}` : 'no scouts placed yet'}
+                  </span>
+                  <TopicParts parts={l.parts} title={l.title} />
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         {view.items.length ? (
-          view.items.map((item) => {
-            const bits = [item.sub, minutesText(item.minutes), item.scouts ? `${plural(item.scouts, 'scout')} so far: ${item.names.join(', ')}` : '0 scouts so far'];
-            if (item.note) bits.push(item.note);
-            if (item.alsoOn.length) bits.push(`also ${item.alsoOn.join(', ')}`);
-            return (
-              <div key={`${item.kind}:${item.key}`} className={styles.teachRow}>
-                <span className={styles.grow}>
-                  <b>{item.kind === 'offer' ? `${item.label} (any requirement)` : item.label}</b>
-                  <small>
-                    {item.kind === 'offer' ? 'Your offer · ' : ''}
-                    {bits.filter(Boolean).join(' · ')}
-                    {item.flags.length > 0 && <span className={styles.flag}> · {item.flags.join(' · ')}</span>}
-                  </small>
-                  <TopicParts parts={item.parts} title={item.label} />
-                </span>
-                {!readOnly && (
-                  <button type="button" className={styles.linkBtn} onClick={() => remove(item)} aria-label={`${item.kind === 'offer' ? 'Withdraw' : 'Remove'} ${item.label}`}>
-                    {item.kind === 'offer' ? 'Withdraw' : 'Remove'}
-                  </button>
-                )}
-              </div>
-            );
-          })
+          <div className={fw.rows}>
+            {view.items.map((item) => {
+              const bits = [item.sub, minutesText(item.minutes), item.scouts ? `${plural(item.scouts, 'scout')} so far: ${item.names.join(', ')}` : '0 scouts so far'];
+              if (item.note) bits.push(item.note);
+              if (item.alsoOn.length) bits.push(`also ${item.alsoOn.join(', ')}`);
+              return (
+                <div key={`${item.kind}:${item.key}`} className={styles.teachRow}>
+                  <span className={styles.grow}>
+                    <b>{item.kind === 'offer' ? `${item.label} (any requirement)` : item.label}</b>
+                    <small>
+                      {item.kind === 'offer' ? 'Your offer · ' : ''}
+                      {bits.filter(Boolean).join(' · ')}
+                      {item.flags.length > 0 && <span className={styles.flag}> · {item.flags.join(' · ')}</span>}
+                    </small>
+                    <TopicParts parts={item.parts} title={item.label} />
+                  </span>
+                  {!readOnly && (
+                    <button type="button" className={styles.linkBtn} onClick={() => remove(item)} aria-label={`${item.kind === 'offer' ? 'Withdraw' : 'Remove'} ${item.label}`}>
+                      {item.kind === 'offer' ? 'Withdraw' : 'Remove'}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         ) : (
-          <p className={styles.emptyLine}>Nothing yet. You&rsquo;ll teach one or two things.</p>
+          <p className={fw.empty}>Nothing yet. Take one or two things scouts are asking for below, or offer something.</p>
         )}
         {problem && !errKey && (
           <p className={styles.badNote} role="alert">
@@ -332,9 +390,11 @@ export function TeachBoard(props: TeachBoardProps) {
         )}
       </div>
 
+      {intentBlock}
+
       {!view.hasSkills && !junior && (
-        <div className={styles.notice}>
-          <p>
+        <div className={fw.section}>
+          <p className={fw.doneNote}>
             {subject.isSelf ? (
               <>
                 Tell us what you can teach first: <Link href="/member/teaching">What I can teach</Link>. Or choose Not sure yet and a leader will
@@ -347,56 +407,66 @@ export function TeachBoard(props: TeachBoardProps) {
         </div>
       )}
 
-      <div className={styles.group}>
-        <h3 className={styles.groupHead}>Scouts are asking for these</h3>
-        {mine.length ? mine.map(wantRow) : <p className={styles.emptyLine}>{view.wanted.length ? 'Nothing you can teach is waiting for a teacher.' : 'No picks yet.'}</p>}
+      <div className={fw.section}>
+        <div className={fw.planHead}>
+          <h3 className={fw.planTitle}>Scouts are asking for these</h3>
+          {mine.length ? <span className={fw.planSub}>{plural(mine.length, 'topic')}</span> : null}
+        </div>
+        {mine.length ? <div className={fw.rows}>{mine.map(wantRow)}</div> : <p className={fw.empty}>{view.wanted.length ? 'Nothing you can teach is waiting for a teacher.' : 'No picks yet.'}</p>}
+        {otherWanted.length > 0 && (
+          <details className={fw.more}>
+            <summary>
+              Other things scouts asked for <span className={fw.planSub}>· {otherWanted.length}</span>
+            </summary>
+            <p className={fw.notSure}>
+              Not in what {subject.isSelf ? 'you’ve' : `${subject.firstName} has`} said {subject.isSelf ? 'you' : 'they'} can teach. You can still take one.
+              {subject.isSelf && (
+                <>
+                  {' '}
+                  <Link href="/member/teaching">What I can teach</Link>
+                </>
+              )}
+            </p>
+            <div className={fw.rows}>{otherWanted.map(wantRow)}</div>
+          </details>
+        )}
       </div>
-      {otherWanted.length > 0 && (
-        <details className={styles.group}>
-          <summary>
-            Other things scouts asked for
-            <span className={styles.meta}>{otherWanted.length}</span>
-          </summary>
-          <p className={styles.helper}>
-            Not in what {subject.isSelf ? 'you’ve' : `${subject.firstName} has`} said {subject.isSelf ? 'you' : 'they'} can teach. You can still take one.
-            {subject.isSelf && (
-              <>
-                {' '}
-                <Link href="/member/teaching">What I can teach</Link>
-              </>
-            )}
-          </p>
-          {otherWanted.map(wantRow)}
-        </details>
-      )}
 
-      {!readOnly &&
-        (draft ? (
-          <OfferForm
-            ids={ids}
-            draft={draft}
-            choices={choices}
-            junior={junior}
-            errors={offerErr}
-            pending={pending}
-            onChange={(d) => setDraft(d)}
-            onSubmit={postOffer}
-            onCancel={() => {
-              setDraft(null);
-              setOfferErr({});
-            }}
-          />
-        ) : (
-          <p className={styles.group}>
-            <Button variant="secondary" onClick={openOffer}>
-              Offer something
-            </Button>
-          </p>
-        ))}
+      {!readOnly && (
+        <div className={fw.section}>
+          <div className={fw.planHead}>
+            <h3 className={fw.planTitle}>Offer something</h3>
+            <span className={fw.planSub}>A skill, a requirement, or something else, on one or more dates</span>
+          </div>
+          {draft ? (
+            <OfferForm
+              ids={ids}
+              draft={draft}
+              choices={choices}
+              junior={junior}
+              errors={offerErr}
+              pending={pending}
+              onChange={(d) => setDraft(d)}
+              onSubmit={postOffer}
+              onCancel={() => {
+                setDraft(null);
+                setOfferErr({});
+              }}
+            />
+          ) : (
+            <p className={fw.actionLine}>
+              <Button variant="secondary" onClick={openOffer}>
+                Offer something
+              </Button>
+            </p>
+          )}
+        </div>
+      )}
       {liveRegion}
     </section>
   );
 }
+
 
 const TYPES: { type: OfferType; label: string }[] = [
   { type: 'skill', label: 'A skill' },

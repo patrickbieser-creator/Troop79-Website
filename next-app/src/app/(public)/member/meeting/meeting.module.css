@@ -81,22 +81,11 @@
   margin-left: 0.3em;
 }
 
-.block {
-  margin: 0 0 var(--sp-5);
-}
-
 .fieldLabel {
   font-family: var(--font-ui);
   font-weight: 700;
   color: var(--text-head);
   margin-bottom: var(--sp-2);
-}
-
-.intentRow {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--sp-2);
 }
 
 .seg {
@@ -106,36 +95,6 @@
   border-radius: var(--rad-md);
   overflow: hidden;
   background: var(--warm-white);
-}
-.segOption {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  padding: 0 var(--sp-4);
-  font-family: var(--font-ui);
-  font-size: var(--fs-md);
-  font-weight: 600;
-  color: var(--navy);
-  cursor: pointer;
-}
-.segOption + .segOption {
-  border-left: 1px solid var(--border-mid);
-}
-.segOn {
-  background: var(--navy);
-  color: var(--warm-white);
-}
-.segInput {
-  position: absolute;
-  opacity: 0;
-  inset: 0;
-  margin: 0;
-  cursor: pointer;
-}
-.segOption:has(.segInput:focus-visible) {
-  outline: var(--focus-ring);
-  outline-offset: -3px;
 }
 
 .saved {
@@ -315,53 +274,6 @@
   min-height: 24px;
 }
 
-.group {
-  margin-top: var(--sp-5);
-}
-.groupHead {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: var(--sp-3);
-  font-family: var(--font-ui);
-  font-size: var(--fs-md);
-  font-weight: 700;
-  color: var(--text-head);
-  padding-bottom: var(--sp-1);
-  border-bottom: 1px solid var(--rule);
-  margin: 0 0 var(--sp-1);
-}
-details.group > summary {
-  list-style: none;
-  cursor: pointer;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--sp-3);
-  font-family: var(--font-ui);
-  font-size: var(--fs-md);
-  font-weight: 700;
-  color: var(--navy);
-  padding: var(--sp-2) 0;
-  border-bottom: 1px solid var(--rule);
-  min-height: 44px;
-}
-details.group > summary::-webkit-details-marker {
-  display: none;
-}
-details.group > summary::after {
-  content: '+';
-  font-weight: 400;
-  color: var(--text-meta);
-  font-size: var(--fs-xl);
-}
-details.group[open] > summary::after {
-  content: '\2013';
-}
-details.group > summary .meta {
-  margin-left: auto;
-}
-
 .picks {
   list-style: none;
   margin: 0;
@@ -532,19 +444,6 @@ details.group > summary .meta {
   margin-top: 2px;
 }
 
-.teach {
-  margin-top: var(--sp-8);
-}
-.teachHead {
-  display: flex;
-  align-items: baseline;
-  gap: var(--sp-3);
-  flex-wrap: wrap;
-  font-family: var(--font-display);
-  font-size: var(--fs-2xl);
-  color: var(--text-head);
-  margin: 0 0 var(--sp-4);
-}
 .teachRow {
   display: flex;
   gap: var(--sp-3);

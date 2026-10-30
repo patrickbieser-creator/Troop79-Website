@@ -6,5 +6,5 @@ import { FamilyWeekView } from './family-week';
 import { familyWriteAction } from './family-actions';
 
 export function FamilyWeekMember({ week, readOnly }: { week: FamilyWeek; readOnly: boolean }) {
-  return <FamilyWeekView week={week} readOnly={readOnly} write={(scoutId, op) => familyWriteAction({ entryId: week.entryId, scoutId, op })} />;
+  return <FamilyWeekView week={week} readOnly={readOnly} fullNames write={(scoutId, op) => familyWriteAction({ entryId: week.entryId, scoutId, op })} />;
 }
