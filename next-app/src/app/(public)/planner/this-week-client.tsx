@@ -9,6 +9,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { joinNames, type ThisWeek, type TwRow, type TwSection } from '@/lib/this-week';
+import { checklistKeeps, withoutCantCome, type ChecklistFilter } from '@/lib/this-week-shown';
 import { usePlanner } from './planner-client';
 import { PlannerPoller } from './planner-poller';
 import { twRemoveRequirementAction, twSetRoleAction, twSetTeacherAction, type RoleInput } from './this-week-actions';
@@ -107,7 +108,7 @@ export function ThisWeekView({
 
 function PlanView({
   entryId,
-  view,
+  view: full,
   sets,
   badges,
   canSeed,
@@ -124,12 +125,13 @@ function PlanView({
 }) {
   const p = usePlanner();
   const w = useWrite();
-  const [filter, setFilter] = useState<'all' | 'gaps' | 'noanswer'>('all');
+  const [filter, setFilter] = useState<ChecklistFilter>('all');
+  // A scout who can't come is off every card; the checklist's "Can't come" pill still lists them (lib/this-week-shown).
+  const view = withoutCantCome(full);
   const setTeacher = (key: string, personId: number | null, on: boolean) => w.run(() => twSetTeacherAction({ entryId, key, personId, on }));
   const setRole = (personId: number, role: RoleInput) => w.run(() => twSetRoleAction({ entryId, personId, ...role }));
   const { coverage: c, answers: a } = view;
   const badgeGroups = view.groups.filter((g) => g.kind === 'badge');
-  const noAnswer = view.sections.reduce((n, sec) => n + sec.rows.filter((r) => r.intent == null).length, 0);
 
   return (
     <>
@@ -325,7 +327,7 @@ function PlanView({
           ))}
         </div>
 
-        <Checklist view={view} filter={filter} setFilter={setFilter} noAnswer={noAnswer} onRole={setRole} busy={w.busy} />
+        <Checklist view={full} filter={filter} setFilter={setFilter} onRole={setRole} busy={w.busy} />
       </div>
     </>
   );
@@ -335,25 +337,27 @@ function Checklist({
   view,
   filter,
   setFilter,
-  noAnswer,
   onRole,
   busy
 }: {
   view: ThisWeek;
-  filter: 'all' | 'gaps' | 'noanswer';
-  setFilter: (f: 'all' | 'gaps' | 'noanswer') => void;
-  noAnswer: number;
+  filter: ChecklistFilter;
+  setFilter: (f: ChecklistFilter) => void;
   onRole: (personId: number, role: RoleInput) => Promise<boolean>;
   busy: boolean;
 }) {
   const [legend, setLegend] = useState(false);
-  const keep = (r: TwRow) => (filter === 'gaps' ? r.gap : filter === 'noanswer' ? r.intent == null : true);
-  const filters: { k: typeof filter; label: string }[] = [
+  const rows = view.sections.flatMap((sec) => sec.rows);
+  const count = (f: ChecklistFilter) => rows.filter((r) => checklistKeeps(f, r)).length;
+  const filters: { k: ChecklistFilter; label: string }[] = [
     { k: 'all', label: 'Everyone' },
-    { k: 'gaps', label: `Nothing assigned · ${view.coverage.nothing}` },
-    { k: 'noanswer', label: `No answer · ${noAnswer}` }
+    { k: 'gaps', label: `Nothing assigned · ${count('gaps')}` },
+    { k: 'noanswer', label: `No answer · ${count('noanswer')}` },
+    { k: 'cant', label: `Can’t come · ${count('cant')}` }
   ];
-  const sections = view.sections.map((sec) => ({ ...sec, rows: sec.rows.filter(keep) })).filter((sec) => sec.rows.length);
+  const sections = view.sections
+    .map((sec) => ({ ...sec, rows: sec.rows.filter((r) => checklistKeeps(filter, r)), gaps: sec.rows.filter((r) => checklistKeeps('gaps', r)).length }))
+    .filter((sec) => sec.rows.length);
   return (
     <section className={s.gridCard} aria-labelledby="grid-h">
       <div className={s.toolbar}>
@@ -408,7 +412,7 @@ function Checklist({
           </span>
         </div>
       ) : null}
-      {sections.length ? null : <p className={s.muted}>{filter === 'gaps' ? 'Every scout has something tonight.' : 'Nobody here.'}</p>}
+      {sections.length ? null : <p className={s.muted}>{filter === 'gaps' ? 'Every scout has something tonight.' : filter === 'cant' ? 'Nobody has said they can’t come.' : 'Nobody here.'}</p>}
       {sections.map((sec) => (
         <div key={sec.key} className={s.section}>
           <div className={`${s.sectionHead} ${toneOf(sec)}`}>
