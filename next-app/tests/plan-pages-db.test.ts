@@ -7,12 +7,10 @@ import { claimPlanPage, inspectPlanPage, mintPlanPage, revokePlanPages, supersed
 import { familyWrite, uncachedLists } from '../src/lib/family-week';
 import { SUGGESTION_CAP } from '../src/lib/family-week-shared';
 import { fetchAdvancementCatalog } from '../src/lib/advancement-catalog';
-import { publishPlan } from '../src/lib/plan-publish';
-import type { ThisWeek } from '../src/lib/this-week';
 
 /**
- * Meeting Planner III, the published plan's family link (/i/plan/<token>; qa-lead 2026-10-28) and Publish snapshot.
- * Real local database. Test-owned rows only: a 2085 meeting (its links, snapshots, picks and answers cascade with it).
+ * Meeting Planner III, the plan's family link (/i/plan/<token>; qa-lead 2026-10-28).
+ * Real local database. Test-owned rows only: a 2085 meeting (its links, picks and answers cascade with it).
  * A real parent and their scout are only read; their answers on the 2085 meeting go with it.
  */
 const sb = adminClient();
@@ -24,7 +22,7 @@ let epoch = 0;
 const MEETING_DATE = '2085-03-04';
 
 async function mint(opts: { expiresAt?: string; scouts?: number[] } = {}) {
-  return mintPlanPage(sb, { entryId: meeting, recipientId: parent, epoch, scoutIds: opts.scouts ?? [scout], snapshotN: 1, expiresAt: opts.expiresAt ?? inviteExpiresAt(MEETING_DATE) });
+  return mintPlanPage(sb, { entryId: meeting, recipientId: parent, epoch, scoutIds: opts.scouts ?? [scout], expiresAt: opts.expiresAt ?? inviteExpiresAt(MEETING_DATE) });
 }
 async function row(id: number) {
   const { data } = await sb.from('meeting_plan_pages').select('*').eq('id', id).single();
@@ -97,7 +95,7 @@ describe('the family link', () => {
 
   it('Claim_RefusesAScoutTheRecipientMayNoLongerAnswerFor', async () => {
     // The scout is on the link, but the recipient isn't (or is no longer) in their household: the household rule wins.
-    const page = await mintPlanPage(sb, { entryId: meeting, recipientId: parent, epoch, scoutIds: [scout, otherScout], snapshotN: 1, expiresAt: inviteExpiresAt(MEETING_DATE) });
+    const page = await mintPlanPage(sb, { entryId: meeting, recipientId: parent, epoch, scoutIds: [scout, otherScout], expiresAt: inviteExpiresAt(MEETING_DATE) });
     expect(await claimPlanPage(sb, page.token, otherScout)).toEqual({ ok: false, state: 'scope' });
   });
 
@@ -191,41 +189,3 @@ async function requestableKeys(catalog: Awaited<ReturnType<typeof fetchAdvanceme
   const done = new Set(((earned ?? []) as { mb_id: string }[]).map((r) => r.mb_id));
   return catalog.meritBadges.filter((m) => !done.has(m.id)).slice(from, from + n).map((m) => `mb:${m.id}`);
 }
-
-describe('publish', () => {
-  const view: ThisWeek = {
-    focus: [{ key: 'fg:0', setId: null, name: 'Test focus' }],
-    badges: [],
-    groups: [],
-    sections: [],
-    older: [],
-    extras: [],
-    helpers: [],
-    coverage: { counted: 0, rankWork: 0, nothing: 0, pct: 0, groupsWithoutTeacher: 0 },
-    answers: { scouts: { coming: 0, undecided: 0, notComing: 0, none: 0 }, adults: { coming: 0, undecided: 0, notComing: 0, none: 0 } },
-    adultsNoAnswer: [],
-    unplaced: [],
-    everyone: []
-  };
-
-  it('DoublePublish_AtOnce_LandsOneSnapshot', async () => {
-    const input = { meeting: { entryId: meeting, date: MEETING_DATE }, view, scouts: [{ personId: scout, name: 'Test Scout' }], actorPersonId: parent, everyone: false };
-    const results = await Promise.all([publishPlan(sb, input), publishPlan(sb, input)]);
-    const { count } = await sb.from('meeting_plan_snapshots').select('n', { count: 'exact', head: true }).eq('calendar_entry_id', meeting);
-    expect([results.filter((r) => r.ok).length, count]).toEqual([1, 1]);
-  });
-
-  it('Republish_WithNothingChanged_MakesNoNewSnapshot', async () => {
-    await publishPlan(sb, { meeting: { entryId: meeting, date: MEETING_DATE }, view, scouts: [{ personId: scout, name: 'Test Scout' }], actorPersonId: parent, everyone: false });
-    const { count } = await sb.from('meeting_plan_snapshots').select('n', { count: 'exact', head: true }).eq('calendar_entry_id', meeting);
-    expect(count).toBe(1);
-  });
-
-  it('Publish_WhoseEmailDidNotGoOut_LeavesNoLink', async () => {
-    // The suite never mails anyone (vitest.config strips the Resend key): every send is 'skipped', so no link stays.
-    const before = (await sb.from('meeting_plan_pages').select('id', { count: 'exact', head: true }).eq('calendar_entry_id', meeting).eq('snapshot_n', 2)).count;
-    await publishPlan(sb, { meeting: { entryId: meeting, date: MEETING_DATE }, view, scouts: [{ personId: scout, name: 'Test Scout' }], actorPersonId: parent, everyone: true });
-    const after = (await sb.from('meeting_plan_pages').select('id', { count: 'exact', head: true }).eq('calendar_entry_id', meeting).eq('snapshot_n', 2)).count;
-    expect([before, after]).toEqual([0, 0]);
-  });
-});

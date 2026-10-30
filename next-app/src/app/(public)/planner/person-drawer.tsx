@@ -18,7 +18,7 @@ import { INTENT_LABEL, type Intent } from '@/lib/meeting-board-shared';
 import type { DrawerOption, PersonDrawer } from '@/lib/meeting-planner-drawer';
 import { plannerOpenPersonAction, plannerSetAnswerAction, plannerTogglePickAction, plannerToggleTeachAction, type DrawerTick, type PlannerTickResult } from './actions';
 import { twSetRoleAction, type RoleInput } from './this-week-actions';
-import { RemindButton, SAVE_FAILED, usePlanner } from './planner-client';
+import { SAVE_FAILED, usePlanner } from './planner-client';
 import styles from './planner.module.css';
 
 const ANSWERS: { intent: Intent; label: string; cls: string }[] = [
@@ -197,7 +197,6 @@ export function PersonDrawerView({ personId, onClose }: { personId: number; onCl
             {problem.text}
           </p>
         ) : null}
-        {drawer.shown == null ? <RemindButton personId={personId} name={drawer.name} /> : null}
       </fieldset>
 
       {drawer.kind === 'scout' && drawer.place ? (

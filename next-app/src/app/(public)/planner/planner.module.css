@@ -763,62 +763,6 @@
   align-items: flex-start;
   gap: var(--sp-2);
 }
-.requestBtn {
-  min-height: 36px;
-  padding: 0 var(--sp-3);
-  border: 0;
-  border-radius: var(--rad-md);
-  background: var(--navy);
-  font: 600 var(--fs-sm) / 1 var(--font-ui);
-  color: var(--warm-white);
-  cursor: pointer;
-}
-.requestBtn:focus-visible,
-.quickBtn:focus-visible {
-  outline: var(--focus-ring);
-  outline-offset: 2px;
-}
-.remindRow {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--sp-2);
-  margin-top: var(--sp-3);
-}
-.remindRow > p {
-  margin: 0;
-}
-.remindAsk {
-  flex-basis: 100%;
-  font: var(--fs-sm) / 1.4 var(--font-ui);
-  color: var(--text-body);
-}
-.emailNote {
-  margin: 0;
-  padding: var(--sp-2) var(--sp-4);
-  border-bottom: 1px solid var(--border-light);
-  font: var(--fs-sm) / 1.4 var(--font-ui);
-  color: var(--text-meta);
-}
-.quick {
-  display: flex;
-  gap: var(--sp-2);
-  margin-bottom: var(--sp-3);
-}
-.quickBtn {
-  min-height: 36px;
-  padding: 0 var(--sp-3);
-  border: 1px solid var(--border-mid);
-  border-radius: var(--rad-md);
-  background: var(--warm-white);
-  font: 600 var(--fs-sm) / 1 var(--font-ui);
-  color: var(--text-head);
-  cursor: pointer;
-}
-.quickBtn:disabled {
-  color: var(--text-meta);
-  cursor: default;
-}
 .preview {
   margin-bottom: var(--sp-3);
   padding: var(--sp-2) var(--sp-3);

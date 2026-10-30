@@ -84,7 +84,7 @@ export async function claimPlanPage(sb: SupabaseClient, token: string, scoutPers
 /** A new link for one recipient. Returns the raw token (for the email only). */
 export async function mintPlanPage(
   sb: SupabaseClient,
-  input: { entryId: number; recipientId: number; epoch: number; scoutIds: readonly number[]; snapshotN: number | null; expiresAt: string }
+  input: { entryId: number; recipientId: number; epoch: number; scoutIds: readonly number[]; expiresAt: string }
 ): Promise<{ id: number; token: string }> {
   const token = randomPlanToken();
   const { data, error } = await sb
@@ -95,7 +95,6 @@ export async function mintPlanPage(
       recipient_epoch: input.epoch,
       token_hash: await hashSecret(token),
       scout_person_ids: [...new Set(input.scoutIds)],
-      snapshot_n: input.snapshotN,
       expires_at: input.expiresAt
     })
     .select('id')

@@ -114,7 +114,6 @@ export async function prepareEmail(sb: SupabaseClient, row: EmailRow, ctx: Prepa
     recipientId: who.id,
     epoch: who.epoch,
     scoutIds: row.about.scouts ?? [],
-    snapshotN: null,
     expiresAt: inviteExpiresAt(ctx.meeting.date)
   });
   let html: string;

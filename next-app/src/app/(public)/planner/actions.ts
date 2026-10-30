@@ -32,14 +32,11 @@ import {
   removeMeetingPick,
   setMeetingIntent
 } from '@/lib/meeting-board';
-import { assignForPicks, loadSupplyRows, loadTeacherPeople, teachContext, teachTopic, unteachTopic } from '@/lib/meeting-board-supply';
+import { assignForPicks, loadSupplyRows, loadTeacherPeople, teachTopic, unteachTopic } from '@/lib/meeting-board-supply';
 import { effectiveIntent, INTENTS, type Intent } from '@/lib/meeting-board-shared';
 import { BOR_LABEL, borCodeLabel, pickableKeys } from '@/lib/meeting-board-picklist';
 import { borKey } from '@/lib/rank-calculus';
-import { sendReminders, sendTeachInvites } from '@/lib/meeting-invites-send';
-import { REMINDER_SEND_CAP } from '@/lib/meeting-invites';
-import { loadPlannerPage } from '@/lib/meeting-planner-load';
-import { assessTeacher, FREEFORM_MAX, freeformTitle, teacherIntent } from '@/lib/meeting-board-teach';
+import { FREEFORM_MAX, freeformTitle, teacherIntent } from '@/lib/meeting-board-teach';
 import { plannerAccess } from '@/lib/meeting-planner-access';
 import { loadPersonDrawer, type PersonDrawer } from '@/lib/meeting-planner-drawer';
 import { loadPlannerLists } from '@/lib/people-lists';
@@ -227,71 +224,4 @@ export async function plannerOfferChoicesAction(): Promise<{ ok: true; choices: 
   );
   const badges = [...catalog.meritBadges].sort((a, b) => a.name.localeCompare(b.name)).map((m) => ({ key: `mb:${m.id}`, codeLabel: 'Merit badge', label: m.name }));
   return { ok: true, choices: [...reqs, ...badges] };
-}
-
-// ── P2b: email (adults only, Decision 5) ─────────────────────────────────────────────────────────────────────────────
-
-export type PlannerSendResult = { ok: true; sent: string[]; skipped: { name: string; reason: string }[]; stamp: string } | { ok: false; error: string };
-
-/** An editor who signed in as an adult: the SPL edits the board but never sends email. */
-async function adultEmailer(entryId: unknown) {
-  const e = await editor(entryId, 0);
-  if (!e.ok) return e;
-  if (!plannerAccess(await resolveAdminActor()).canEmail) return fail('Emails are sent by adults. Ask an adult leader to send this one.');
-  return e;
-}
-
-/** An adult emailer, about one topic on this meeting's board. */
-async function emailer(entryId: unknown, topicKey: unknown) {
-  const e = await adultEmailer(entryId);
-  if (!e.ok) return e;
-  if (typeof topicKey !== 'string' || !topicKey) return fail('Malformed request');
-  // Only about something on this meeting's board (asked for, offered or ready), never an arbitrary catalog key.
-  const { data: topic } = await e.sb.from('meeting_topics').select('id').eq('calendar_entry_id', e.meeting.entryId).eq('topic_key', topicKey).maybeSingle();
-  if (!topic) return fail('That isn’t on this meeting’s board.');
-  return { ...e, topicKey };
-}
-
-/** Send request: the Troop 79 Bugler asks one adult to teach a request (v1's teacher invite, T-5 P1). */
-export async function plannerSendRequestAction(input: { entryId: number; topicKey: string; personId: number }): Promise<PlannerSendResult> {
-  const e = await emailer(input?.entryId, input?.topicKey);
-  if (!e.ok) return e;
-  if (!Number.isInteger(input.personId)) return fail('Malformed request');
-  // Only to someone who could teach it (the board lists only them; qa-lead, 2026-10-21).
-  const catalog = await loadAdvancementCatalog();
-  const who = (await loadTeacherPeople(e.sb, [input.personId], e.meeting.date, catalog)).get(input.personId);
-  if (!who || who.eligible === false || !assessTeacher(who, e.topicKey, teachContext(catalog)).qualified) return fail('They aren’t someone who can teach that.');
-  const res = await sendTeachInvites(e.sb, { entryId: e.meeting.entryId, topicKey: e.topicKey, personIds: [input.personId], sentBy: e.actorPersonId });
-  if (!res.ok) return res;
-  revalidate();
-  return { ...res, stamp: await loadBoardStamp(e.sb, e.meeting.entryId) };
-}
-
-// ── P5b: reminders (adults only, Decision 5; Decision 11) ────────────────────────────────────────────────────────
-
-/**
- * Remind (one person, from their drawer) or Remind everyone (the Haven't answered card). Only people the board itself
- * lists under Haven't answered are reminded, whatever the page sent; sendReminders re-checks each answer, the 24-hour
- * dedupe and the caps.
- */
-export type PlannerRemindResult = { ok: true; sent: string[]; reminded: number[]; skipped: { name: string; reason: string }[]; stamp: string } | { ok: false; error: string };
-
-export async function plannerSendRemindersAction(input: { entryId: number; personIds: number[] }): Promise<PlannerRemindResult> {
-  const e = await adultEmailer(input?.entryId);
-  if (!e.ok) return e;
-  const ids = input.personIds;
-  if (!Array.isArray(ids) || !ids.length || !ids.every((id) => Number.isInteger(id))) return fail('Choose at least one person.');
-  const page = await loadPlannerPage(e.sb, e.meeting, await loadPlannerLists());
-  if (!page) return fail('That meeting isn’t available. Reload the page.');
-  const waiting = new Map([...page.board.haventAnswered.scouts, ...page.board.haventAnswered.adults].map((p) => [p.personId, p.name]));
-  // The cap applies to who is actually waiting, in the board's order; anyone past it is named, not dropped silently.
-  const wanted = new Set(ids);
-  const all = [...waiting.keys()].filter((id) => wanted.has(id));
-  if (!all.length) return fail(ids.length === 1 ? 'They’ve already answered.' : 'Everyone has already answered.');
-  const ask = all.slice(0, REMINDER_SEND_CAP);
-  const over = all.slice(REMINDER_SEND_CAP).map((id) => ({ name: waiting.get(id) ?? `Person ${id}`, reason: `over the ${REMINDER_SEND_CAP}-person limit for one send; reload and send again` }));
-  const res = await sendReminders(e.sb, { entryId: e.meeting.entryId, personIds: ask, sentBy: e.actorPersonId });
-  if (!res.ok) return res;
-  revalidate();
-  return { ...res, skipped: [...res.skipped, ...over], stamp: await loadBoardStamp(e.sb, e.meeting.entryId) };
 }

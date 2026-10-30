@@ -10,17 +10,15 @@
  * adopted each save's stamp, so without that refresh on close the board would stay stale.
  *
  * Viewers (no edit right) get plain names and no buttons: PersonName renders a span, the buttons render nothing.
- * P2b: Send request renders for adult editors only (canEmail); a scout editor (the SPL) sees AdultsSendEmails instead.
  * P3: a seed holder (canSeed) may leave an offer's teacher blank: Build a Plan's own add puts it on the plan (B4).
  * B4 (Build a Plan "Consolidation"): the seed drawer and the nudge drawer retired with the cards that opened them
  * (the Invite tab offers a class to families); the plan strip's PlanLink opens this meeting on /planner/build.
- * P5b: reminders, adult editors only: "Remind" in the person drawer and "Remind everyone…" on the Haven't answered
- * card. Who was reminded this visit is kept here, so the drawer and the card agree.
+ * Every email about a meeting is sent from the Emails screen (Emails E5 retired the drawer's Remind and Send request).
  */
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { plannerAssignAction, plannerSendRemindersAction, plannerSendRequestAction } from './actions';
+import { plannerAssignAction } from './actions';
 import { PersonDrawerView } from './person-drawer';
 import { OfferDrawer } from './offer-drawer';
 import styles from './planner.module.css';
@@ -55,13 +53,10 @@ interface Sync {
 interface PlannerCtx {
   entryId: number;
   canEdit: boolean;
-  /** An adult editor: may send requests and reminders. */
+  /** An adult editor: may send email (the Emails screen). */
   canEmail: boolean;
   /** The planning team (P3): may put an offering on the plan without a teacher. */
   canSeed: boolean;
-  /** People reminded this visit (P5b). */
-  reminded: ReadonlySet<number>;
-  markReminded: (personIds: readonly number[]) => void;
   adults: readonly PlannerAdult[];
   openPerson: (personId: number) => void;
   openOffer: (teacherId?: number | null, back?: number | null) => void;
@@ -93,7 +88,6 @@ export function PlannerProvider({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState<Open>(null);
-  const [reminded, setReminded] = useState<ReadonlySet<number>>(new Set());
   const stampRef = useRef(stamp);
   const pending = useRef(0);
   /** A deferred write landed: the board behind owes one refresh. */
@@ -153,14 +147,12 @@ export function PlannerProvider({
       canEdit,
       canEmail: canEdit && canEmail,
       canSeed,
-      reminded,
-      markReminded: (ids) => setReminded((r) => new Set([...r, ...ids])),
       adults,
       openPerson: (personId) => show({ mode: 'person', personId }),
       openOffer: (teacherId = null, back = null) => show({ mode: 'offer', teacherId, back }),
       sync
     }),
-    [entryId, canEdit, canEmail, canSeed, reminded, adults, sync, show]
+    [entryId, canEdit, canEmail, canSeed, adults, sync, show]
   );
 
   return (
@@ -228,130 +220,6 @@ export function AssignButton({ personId, name, topicKey, title }: { personId: nu
         </span>
       ) : null}
     </span>
-  );
-}
-
-/** Send request: the Troop 79 Bugler asks this adult to teach the request. Adult editors only. */
-export function SendRequestButton({ personId, name, topicKey, title, requested }: { personId: number; name: string; topicKey: string; title: string; requested: boolean }) {
-  const p = usePlanner();
-  const [state, setState] = useState<'idle' | 'sending' | 'sent' | string>(requested ? 'sent' : 'idle');
-  if (!p?.canEmail) return null;
-  if (state === 'sent') return <span className={styles.assigned}>✓ Request sent</span>;
-  const send = async () => {
-    setState('sending');
-    const res = await p.sync.run(() => plannerSendRequestAction({ entryId: p.entryId, topicKey, personId }));
-    if (!res.ok) setState(res.error);
-    else if (res.sent.length) setState('sent');
-    else setState(`Not sent: ${res.skipped.map((s) => s.reason).join(', ') || 'nobody to email'}.`);
-  };
-  return (
-    <span className={styles.assignWrap}>
-      <button type="button" className={styles.requestBtn} onClick={send} disabled={state === 'sending'} aria-label={`Send ${name} a request to teach ${title}`}>
-        {state === 'sending' ? 'Sending…' : 'Send request'}
-      </button>
-      {state !== 'idle' && state !== 'sending' ? (
-        <span className={styles.rowProblem} role="alert">
-          {state}
-        </span>
-      ) : null}
-    </span>
-  );
-}
-
-/** For a scout editor (the SPL): one line where the email buttons would be. */
-export function AdultsSendEmails() {
-  const p = usePlanner();
-  if (!p?.canEdit || p.canEmail) return null;
-  return <p className={styles.emailNote}>Requests are emailed by adults.</p>;
-}
-
-/** "Not sent: 2 reminded in the last 24 hours, Finn P (no parent with an email in their household)." */
-export function notSentText(skipped: readonly { name: string; reason: string }[]): string {
-  const by = new Map<string, string[]>();
-  for (const s of skipped) by.set(s.reason, [...(by.get(s.reason) ?? []), s.name]);
-  const parts = [...by].map(([reason, names]) => (names.length === 1 ? `${names[0]} (${reason})` : `${names.length} ${reason}`));
-  return parts.length ? `Not sent: ${parts.join(', ')}.` : '';
-}
-
-type RemindState = { phase: 'idle' | 'confirm' | 'sending' } | { phase: 'done'; sent: number; note: string } | { phase: 'problem'; text: string };
-
-/** Send reminders and say what happened: "✓ Reminded …", plus who wasn't sent to and why. */
-function useRemind(personIds: readonly number[]) {
-  const p = usePlanner();
-  const [state, setState] = useState<RemindState>({ phase: 'idle' });
-  // Two clicks in one frame both reach the handler before the disabled button renders; the ref lets only one send.
-  const inFlight = useRef(false);
-  const send = async () => {
-    if (!p || inFlight.current) return;
-    inFlight.current = true;
-    setState({ phase: 'sending' });
-    const res = await p.sync.run(() => plannerSendRemindersAction({ entryId: p.entryId, personIds: [...personIds] })).finally(() => {
-      inFlight.current = false;
-    });
-    if (!res.ok) return setState({ phase: 'problem', text: res.error });
-    if (!res.sent.length) return setState({ phase: 'problem', text: notSentText(res.skipped) || 'Nobody to remind.' });
-    p.markReminded(res.reminded);
-    setState({ phase: 'done', sent: res.sent.length, note: notSentText(res.skipped) });
-  };
-  return { p, state, setState, send };
-}
-
-/** "Remind" in the person drawer, for someone who hasn't answered. Adult editors only. */
-export function RemindButton({ personId, name }: { personId: number; name: string }) {
-  const { p, state, send } = useRemind([personId]);
-  if (!p?.canEmail) return null;
-  if (state.phase === 'done' || (state.phase === 'idle' && p.reminded.has(personId))) return <p className={styles.assigned}>✓ Reminded · just now</p>;
-  return (
-    <div className={styles.remindRow}>
-      <button type="button" className={styles.quickBtn} onClick={send} disabled={state.phase === 'sending'} aria-label={`Remind ${name}`}>
-        {state.phase === 'sending' ? 'Sending…' : 'Remind'}
-      </button>
-      {state.phase === 'problem' ? (
-        <p className={styles.rowProblem} role="alert">
-          {state.text}
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
-/** "Remind everyone…" on the Haven't answered card: one confirm, then one email per family or adult. Adult editors only. */
-export function RemindEveryone({ personIds }: { personIds: readonly number[] }) {
-  const { p, state, setState, send } = useRemind(personIds);
-  if (!p?.canEmail || !personIds.length) return null;
-  const n = personIds.length;
-  if (state.phase === 'done') {
-    return (
-      <div className={styles.remindRow}>
-        <p className={styles.assigned}>✓ Reminded {state.sent === 1 ? '1 person' : `${state.sent} people`} · just now</p>
-        {state.note ? <p className={styles.meta}>{state.note}</p> : null}
-      </div>
-    );
-  }
-  if (state.phase === 'confirm' || state.phase === 'sending') {
-    return (
-      <div className={styles.remindRow}>
-        <p className={styles.remindAsk}>Email a reminder about {n === 1 ? '1 person' : `${n} people`}? A scout’s goes to their parents.</p>
-        <button type="button" className={styles.requestBtn} onClick={send} disabled={state.phase === 'sending'}>
-          {state.phase === 'sending' ? 'Sending…' : 'Send reminders'}
-        </button>
-        <button type="button" className={styles.quickBtn} onClick={() => setState({ phase: 'idle' })} disabled={state.phase === 'sending'}>
-          Cancel
-        </button>
-      </div>
-    );
-  }
-  return (
-    <div className={styles.remindRow}>
-      <button type="button" className={styles.quickBtn} onClick={() => setState({ phase: 'confirm' })}>
-        Remind everyone…
-      </button>
-      {state.phase === 'problem' ? (
-        <p className={styles.rowProblem} role="alert">
-          {state.text}
-        </p>
-      ) : null}
-    </div>
   );
 }
 

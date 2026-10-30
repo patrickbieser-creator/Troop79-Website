@@ -3,9 +3,8 @@ import { adminClient } from './helpers/admin-client';
 import { TEST_PREFIX } from './helpers/signup-fixtures';
 
 /**
- * The refusals at the action entry points (qa-lead 2026-10-28): a scout editor (the SPL) never publishes or asks by
- * email; Ask by email only for a class on the plan; a family answers only for their own household's scouts and only
- * on an open troop meeting. Real local database; the actor, the session and "today" (2085-02-20) are mocked.
+ * The refusals at the action entry points (qa-lead 2026-10-28): a family answers only for their own household's scouts
+ * and only on an open troop meeting. (The SPL's email refusals live with the Emails screen's tests.) Real local database; the actor, the session and "today" (2085-02-20) are mocked.
  * Test-owned rows only: a 2085 meeting and a 2085 campout, deleted by id. Real people are only read.
  */
 const sb = adminClient();
@@ -65,27 +64,6 @@ afterAll(async () => {
   await sb.from('calendar_entries').delete().in('id', [meeting, campout]);
 });
 
-describe('email is adults only', () => {
-  it('ScoutEditor_IsRefused_WhenPublishing', async () => {
-    state.actor = { personId: ownScout, label: 'SPL', subjectKind: 'scout', capabilities: new Set(['meeting_planner.edit']) };
-    const { twPublishAction } = await import('../src/app/(public)/planner/this-week-publish-actions');
-    expect((await twPublishAction({ entryId: meeting, everyone: false })).ok).toBe(false);
-  });
-
-  it('ScoutEditor_IsRefused_WhenAskingByEmail', async () => {
-    state.actor = { personId: ownScout, label: 'SPL', subjectKind: 'scout', capabilities: new Set(['meeting_planner.edit']) };
-    const { twAskTeacherAction } = await import('../src/app/(public)/planner/this-week-actions');
-    expect((await twAskTeacherAction({ entryId: meeting, key: 'fr:tenderfoot', personId: adult })).ok).toBe(false);
-  });
-
-  it('AskByEmail_ForAClassNotOnThePlan_IsRefused', async () => {
-    state.actor = { personId: adult, label: 'Leader', subjectKind: 'adult', capabilities: new Set(['meeting_planner.edit']) };
-    const { twAskTeacherAction } = await import('../src/app/(public)/planner/this-week-actions');
-    const res = await twAskTeacherAction({ entryId: meeting, key: 'tenderfoot-5', personId: adult });
-    expect(res.ok ? 'sent' : res.error).toBe('That isn’t on this meeting’s plan.');
-  });
-});
-
 describe('a family answers only for their own scouts, on an open meeting', () => {
   it('Family_CannotAnswerForAnotherHouseholdsScout', async () => {
     state.session = { personId: parent, subjectKind: 'adult' };
@@ -110,7 +88,7 @@ describe('the email link answers only for the scouts it was minted for (Emails E
   async function link(scoutIds: number[]) {
     const { mintPlanPage } = await import('../src/lib/plan-pages');
     const { data } = await sb.from('people').select('session_epoch').eq('id', parent).single();
-    return mintPlanPage(sb, { entryId: meeting, recipientId: parent, epoch: (data as { session_epoch: number }).session_epoch, scoutIds, snapshotN: null, expiresAt: '2085-03-05T00:00:00Z' });
+    return mintPlanPage(sb, { entryId: meeting, recipientId: parent, epoch: (data as { session_epoch: number }).session_epoch, scoutIds, expiresAt: '2085-03-05T00:00:00Z' });
   }
 
   it('TokenPage_CannotWrite_AScoutOffTheLink', async () => {
