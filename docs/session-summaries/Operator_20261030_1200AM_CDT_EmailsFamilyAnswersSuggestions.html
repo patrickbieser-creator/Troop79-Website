@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session 70 — Emails, family answers and Suggestions</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #3d5a3e;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #f0eecd;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); vertical-align: top; }
+        tr:hover { background: var(--nw-sage); }
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+        code { font-family: 'Courier New', monospace; font-size: 0.85em; background: var(--nw-light-gray); padding: 0 0.3em; border-radius: 3px; }
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+        @media print { body { background: white; } header { padding: 1.5rem; } .container { padding: 1rem; } .stat { break-inside: avoid; } }
+        @media (max-width: 600px) { header h1 { font-size: 1.5rem; } .stats { flex-direction: column; } }
+    </style>
+<body>
+    <header>
+        <h1>Emails, family answers and Suggestions</h1>
+        <p class="subtitle">Session 70. Every meeting email now goes out from one Emails screen, one at a time and logged. Families answer the plan in one tap and can undo it. Planners can move or unassign a scout from the drawer, and Suggestions is back, leading with scouts ready for a Scoutmaster conference or board of review. Saved meeting plans are built and waiting to ship.</p>
+        <div class="meta">
+            <span>&#128197; October 29, 2026</span>
+            <span>&#129302; Operator (Opus 5.5)</span>
+            <span>&#128204; Troop79-Website</span>
+            <span>&#128640; v1.257.0 &rarr; v1.258.0</span>
+        </div>
+    </header>
+    <div class="container">
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">1</div><div class="label">Release (v1.258.0), 20 commits</div></div>
+            <div class="stat"><div class="number">4</div><div class="label">Migrations, in production</div></div>
+            <div class="stat"><div class="number">6</div><div class="label">Decisions (D-450&ndash;D-455)</div></div>
+            <div class="stat"><div class="number">7512</div><div class="label">Tests, all passing</div></div>
+        </div>
+        <h2>What Was Accomplished</h2>
+        <div class="callout callout-teal">
+            <strong>The outcome:</strong> a leader can see who got which email about a meeting, families confirm or change a plan in one tap, and the planner suggests who is ready for a review and who should sit it.
+        </div>
+        <h3>Families</h3>
+        <ul>
+            <li>Each scout&rsquo;s card shows the plan, ticked; one answer covers coming and the plan. Unticking applies at once; additions go to the planners as suggestions.</li>
+            <li>Cards are headed with the scout&rsquo;s full name and plan on the member page, and every card has &ldquo;Clear this answer&rdquo;.</li>
+            <li>The teaching section is a card of its own, with &ldquo;Scouts are asking for these&rdquo; as a separate card.</li>
+        </ul>
+        <h3>Emails</h3>
+        <ul>
+            <li>The Emails tab sends plan emails, teacher invites and reminders now, one at a time, each logged, with a Sent log and Send again. Rebuilt to match the Claude Design prototype.</li>
+            <li>Publish snapshot, Remind, Send request and Ask by email are retired, and their storage dropped.</li>
+        </ul>
+        <h3>Planner</h3>
+        <ul>
+            <li>The scout drawer shows where they are tonight, with Move, Help teach and Unassign.</li>
+            <li>Suggestions returns, leading with scouts ready for a Scoutmaster conference or board of review and who should sit each.</li>
+            <li>Has/Needs: a badge&rsquo;s first click shows who earned it. Find requirements: rank pills and an aligned In sets column. This week: date-only meeting buttons; attendance prompt can be dismissed.</li>
+            <li>Saved meeting plans (save the criteria, load to replace) built and reviewed on a branch; not shipped.</li>
+        </ul>
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Decision</th></tr></thead>
+            <tbody>
+                <tr><td>D-450</td><td>Families accept the plan in one tap; unticks apply at once, additions are suggestions; Clear this answer everywhere.</td></tr>
+                <tr><td>D-451</td><td>One Emails screen sends every meeting email, now, one at a time, logged; Publish, Remind and Ask retired.</td></tr>
+                <tr><td>D-452</td><td>The scout drawer is &ldquo;Tonight&rdquo;; Unassign hands the scout back to placement.</td></tr>
+                <tr><td>D-453</td><td>Suggestions leads with scouts ready for a conference or board of review, with Patrick&rsquo;s reviewer rules.</td></tr>
+                <tr><td>D-454</td><td>Has/Needs: a badge&rsquo;s first click splits who earned it.</td></tr>
+                <tr><td>D-455</td><td>Saved meeting plans keep criteria only; load replaces (pending ship).</td></tr>
+            </tbody>
+        </table>
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Ship saved meeting plans on Patrick&rsquo;s &ldquo;ship&rdquo;.</li>
+            <li>E4 open and delivery tracking once Patrick sets up the Resend webhook.</li>
+            <li>qa-lead on the review Add action; retire the test-only invite senders; align the admin &ldquo;Likely Ready&rdquo; list.</li>
+        </ul>
+        <h2>Files Changed</h2>
+        <table>
+            <thead><tr><th>Area</th><th>Files</th></tr></thead>
+            <tbody>
+                <tr><td>Families</td><td>(public)/member/meeting/ (family-week, teach-board, teach-actions), (public)/i/plan/, (public)/i/teach/</td></tr>
+                <tr><td>Planner</td><td>(public)/planner/emails/, suggestions/, has-needs/, focus-sets/, person-drawer.tsx, this-week-client.tsx, planner-tabs.tsx</td></tr>
+                <tr><td>Libraries</td><td>meeting-emails.ts, meeting-email-*.ts, family-week.ts, planner-place.ts, planner-reviews*.ts, planner-suggest*.ts, has-needs*.ts, this-week.ts; plan-publish and plan-snapshot removed</td></tr>
+                <tr><td>Database</td><td>20261231100000_planner_emails, 20261231200000_attendance_prompt_dismiss, 20261231300000_meeting_emails_retried, 20261231400000_retire_plan_snapshots</td></tr>
+                <tr><td>Tests</td><td>meeting-emails-db, emails-client, family-week-view, meeting-teach-board, planner-place, planner-reviews, suggestions-reviews-panel, has-needs, and more</td></tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
