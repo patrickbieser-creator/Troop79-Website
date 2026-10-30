@@ -9,7 +9,8 @@
  * actorCanProxyLibrary(): a scout holding the grant by mistake must never see
  * another family's household details or money.
  *
- * READ-ONLY, ALWAYS. A proxy viewer sees the chosen scout's FAMILY as that
+ * READ-ONLY, except /member/meeting (Patrick, 2026-10-30): there a proxy answers the family's cards as a leader write
+ * (family-actions viewScout, re-checked server-side). Everywhere else a proxy viewer sees the chosen scout's FAMILY as that
  * family would, but every page drops its forms and buttons that write
  * (profile editors, reimbursement submit/withdraw, passkeys, sign-out). The
  * server actions still act only on the SESSION's own household/person — none

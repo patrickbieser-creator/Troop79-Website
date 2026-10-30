@@ -511,6 +511,7 @@ py -m http.server 8000</pre>
           <li><span>Cards are headed with the first name (&ldquo;Lily&rsquo;s plan&rdquo;), and the line beside it shows the group only. The page opens with one line saying what&rsquo;s planned and that one tap answers it.</span></li>
           <li><span>Every item shows how long it takes, for example <strong>Second Class 6b - 15 min</strong>. No one class counts for more than one meeting&rsquo;s 60 minutes; a class that runs long is simply planned again the next week.</span></li>
           <li><span>A family with two or more cards can answer them all with <strong>All of these plans look good</strong>.</span></li>
+          <li><span>A leader viewing another family (the superuser &ldquo;view another scout&rdquo; switch) can now answer that family&rsquo;s cards on the meeting page, as the family would. Each answer is recorded as entered by the leader. A read-only view now says so instead of ignoring taps, and its choices look disabled.</span></li>
         </ul>
       </div>
       <div class="change-group">
@@ -518,7 +519,7 @@ py -m http.server 8000</pre>
         <ul class="change-list">
           <li><span><strong>Change my plan</strong> lists the planned items as checkboxes, then <strong>Also on Sunday</strong> and <strong>Request something not on the list</strong>, each with <strong>+ Request</strong>. A request joins the plan, ticked and tagged <strong>Requested</strong>; unticking it takes it back.</span></li>
           <li><span>A plan holds at most 4 things and 60 minutes. A counter shows both (&ldquo;3 of 4 things &middot; 30 of 60 min&rdquo;) and turns yellow when the plan is full. Anything that won&rsquo;t fit says why: <strong>Limit reached</strong>, or <strong>Needs 45 min &middot; 15 left</strong>.</span></li>
-          <li><span>A Merit badge group scout&rsquo;s badge is on their plan, and <strong>Help teach</strong> is one of the things they can add.</span></li>
+          <li><span>A Merit badge group scout&rsquo;s badge is on their plan, and <strong>Help teach</strong> is one of the things they can add. Unticking the badge moves them to the night&rsquo;s next badge they haven&rsquo;t earned (First Aid off, Citizenship in the Community on); the unticked badge stays listed so it can go back on.</span></li>
           <li><span><strong>Not sure yet? Clear Lily&rsquo;s answer</strong> clears only the answer; changes to the plan stay.</span></li>
         </ul>
       </div>
@@ -530,6 +531,8 @@ py -m http.server 8000</pre>
           <li><span>An adult with nothing assigned sees the open classes straight away, with only <strong>Can&rsquo;t make it this week</strong> under them. Taking a class answers the card.</span></li>
           <li><span><strong>Not sure yet</strong> gives back everything signed up on the page. Someone a planner put on a class is asked first whether to come off the plan for now, so a leader can find another adult.</span></li>
           <li><span>A Junior Leader answering for themself sees one card, the teaching one.</span></li>
+          <li><span><strong>Offer something</strong> starts on <strong>Something else</strong>, now the first choice, before a skill or a requirement.</span></li>
+          <li><span>On <strong>This week</strong>, a class a teacher offered shows the note they wrote with it (&ldquo;Mr. Bieser: I can teach bottle caps&rdquo;) under its title.</span></li>
         </ul>
       </div>
     </div>

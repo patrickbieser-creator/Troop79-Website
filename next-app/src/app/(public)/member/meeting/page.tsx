@@ -190,8 +190,8 @@ export default async function MeetingBoardPage({ searchParams }: { searchParams:
   }
 
   // Meeting Planner III (Decision 5): every scout of the household on one page, the published plan's options with
-  // their suggestions marked. A proxy (a leader viewing a family) sees it read-only; entering for someone is the
-  // planner's person drawer.
+  // their suggestions marked. A proxy (a leader viewing a family) answers as the family would (Patrick, 2026-10-30),
+  // as a leader write entered by them; a leader entering on behalf from the planner sees it read-only.
   // A Junior Leader answering for themself has one card, the teaching one (prototype: no second scout card).
   const juniorSelf = teacher?.kind === 'junior' && subjects.some((s) => s.personId === teacher.personId);
   const scoutIds = subjects.map((s) => s.personId).filter((id) => !(juniorSelf && id === teacher?.personId));
@@ -227,7 +227,7 @@ export default async function MeetingBoardPage({ searchParams }: { searchParams:
         ))}
       <PlanNotice planSet={planSet} pastClose={isPastSoftClose(meeting.date)} entryId={meeting.entryId} />
       {lede ? <p className={fw.lede}>{lede}</p> : null}
-      {week && week.scouts.length ? <FamilyWeekMember week={week} readOnly={proxy != null || onBehalf} lede={null} /> : null}
+      {week && week.scouts.length ? <FamilyWeekMember week={week} readOnly={onBehalf} lede={null} viewScout={proxy?.personId} /> : null}
       {teachView && teacherWeek && (
         <TeacherCard
           key={`${teacherWeek.personId}:${teacherWeek.intent ?? ''}`}

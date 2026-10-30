@@ -297,6 +297,11 @@ function PlanView({
                   <span className={s.groupSub}>
                     From requests and offers{x.codeLabel ? ` · ${x.codeLabel}` : ''} · {x.origin === 'offered' ? 'teacher offered' : x.origin === 'planner' ? 'added by a planner' : 'scouts asked'}
                   </span>
+                  {x.offerNotes.map((n, i) => (
+                    <span key={i} className={s.groupSub}>
+                      {n.name}: &ldquo;{n.note}&rdquo;
+                    </span>
+                  ))}
                 </div>
                 <span className={s.groupCount}>{plural(x.scouts.length, 'scout')}</span>
               </div>

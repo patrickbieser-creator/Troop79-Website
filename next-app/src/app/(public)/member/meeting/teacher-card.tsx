@@ -397,7 +397,7 @@ export function TeacherCard({ entryId, date, isSelf, initial, view: initialView,
                   className={fw.unsure}
                   onClick={() => {
                     setOfferErr({});
-                    setDraft({ type: choices.skills.length ? 'skill' : 'req', skillId: '', key: '', title: '', dates: choices.dates.some((d) => d.entryId === entryId) ? [entryId] : [], note: '' });
+                    setDraft({ type: 'ff', skillId: '', key: '', title: '', dates: choices.dates.some((d) => d.entryId === entryId) ? [entryId] : [], note: '' });
                   }}
                 >
                   Offer something

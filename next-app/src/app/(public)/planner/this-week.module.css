@@ -1064,3 +1064,7 @@ button.chip:focus-visible {
 .savedEdit .fieldLabel {
   max-width: 26rem;
 }
+/* An offer's note under its class card's title (Patrick, 2026-10-30): one line each. */
+.groupSub + .groupSub {
+  display: block;
+}

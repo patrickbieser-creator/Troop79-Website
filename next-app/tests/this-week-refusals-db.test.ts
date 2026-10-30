@@ -16,7 +16,7 @@ vi.mock('@/lib/supabase/server', async () => {
   const { adminClient: make } = await import('./helpers/admin-client');
   return { createAdminClient: () => make() };
 });
-vi.mock('@/lib/admin-actor', () => ({ resolveAdminActor: async () => state.actor }));
+vi.mock('@/lib/admin-actor', () => ({ resolveAdminActor: async () => state.actor, actorHas: (a: { capabilities: Set<string> } | null, c: string) => a?.capabilities.has(c) ?? false }));
 vi.mock('@/lib/family-access', () => ({ getIdentitySessionIfValid: async () => state.session }));
 vi.mock('@/lib/identity-session', async (orig) => ({ ...(await orig<typeof import('../src/lib/identity-session')>()), isEpochCurrent: async () => true }));
 vi.mock('next/headers', () => ({ headers: async () => new Headers({ 'x-forwarded-for': '203.0.113.79' }) }));
@@ -81,6 +81,40 @@ describe('a family answers only for their own scouts, on an open meeting', () =>
     state.session = { personId: parent, subjectKind: 'adult' };
     const { familyWriteAction } = await import('../src/app/(public)/member/meeting/family-actions');
     expect((await familyWriteAction({ entryId: campout, scoutId: ownScout, op: { op: 'answer', choice: 'ok' } })).ok).toBe(false);
+  });
+});
+
+describe('a leader in proxy view answers for the family they are viewing (Patrick 2026-10-30)', () => {
+  const proxyLeader = (caps: string[]) => {
+    state.session = { personId: adult, subjectKind: 'adult' };
+    state.actor = { personId: adult, label: 'Leader', subjectKind: 'adult', capabilities: new Set(caps) };
+  };
+
+  it('Proxy_LeaderAnswersForTheViewedFamilysScout_AsThemself', async () => {
+    proxyLeader(['library.proxy_view']);
+    const { familyWriteAction } = await import('../src/app/(public)/member/meeting/family-actions');
+    const r = await familyWriteAction({ entryId: meeting, scoutId: ownScout, viewScout: ownScout, op: { op: 'answer', choice: 'change' } });
+    const { data } = await sb.from('meeting_intents').select('intent, entered_by_person_id').eq('calendar_entry_id', meeting).eq('person_id', ownScout).single();
+    expect([r.ok, data]).toEqual([true, { intent: 'coming', entered_by_person_id: adult }]);
+  });
+
+  it('Proxy_CannotAnswerOutsideTheViewedFamily', async () => {
+    proxyLeader(['library.proxy_view']);
+    const { familyWriteAction } = await import('../src/app/(public)/member/meeting/family-actions');
+    expect((await familyWriteAction({ entryId: meeting, scoutId: otherScout, viewScout: ownScout, op: { op: 'answer', choice: 'ok' } })).ok).toBe(false);
+  });
+
+  it('Proxy_WithoutProxyRights_IsRefused', async () => {
+    proxyLeader([]);
+    const { familyWriteAction } = await import('../src/app/(public)/member/meeting/family-actions');
+    expect((await familyWriteAction({ entryId: meeting, scoutId: ownScout, viewScout: ownScout, op: { op: 'answer', choice: 'ok' } })).ok).toBe(false);
+  });
+
+  it('Proxy_ScoutSession_IsRefused', async () => {
+    proxyLeader(['library.proxy_view']);
+    state.actor!.subjectKind = 'scout';
+    const { familyWriteAction } = await import('../src/app/(public)/member/meeting/family-actions');
+    expect((await familyWriteAction({ entryId: meeting, scoutId: ownScout, viewScout: ownScout, op: { op: 'answer', choice: 'ok' } })).ok).toBe(false);
   });
 });
 

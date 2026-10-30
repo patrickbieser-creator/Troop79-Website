@@ -149,7 +149,7 @@ export async function loadThisWeekData(
       roles,
       teachers: [...teachers.values()].filter((p) => p.eligible !== false),
       intents,
-      topicTeachers: supply.topicTeachers.map((t) => ({ key: t.key, personId: t.personId })),
+      topicTeachers: supply.topicTeachers.map((t) => ({ key: t.key, personId: t.personId, note: t.note })),
       ...answers
     }
   };

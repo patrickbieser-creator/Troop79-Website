@@ -117,6 +117,11 @@ export function FamilyWeekView({
   return (
     <div className={styles.wrap}>
       {lede ? <p className={styles.lede}>{lede}</p> : null}
+      {readOnly ? (
+        <p className={styles.readOnly} role="note">
+          Leader view: you can see this family&rsquo;s answers. Only the family can change them.
+        </p>
+      ) : null}
       {week.scouts.length > 1 && open.length > 0 && !readOnly ? (
         <button type="button" className={styles.allSet} onClick={() => void allSet()}>
           <span className={styles.allSetMain}>✓ All of these plans look good</span>
@@ -367,8 +372,8 @@ function ScoutCard({
             {items.length || asked.length ? (
               <ul className={styles.planList}>
                 {items.map((i) => {
-                  const locked = !!i.fixed || (!i.on && !fits(i.min));
-                  const why = i.fixed ? '' : !i.on && locked ? (full ? ' · untick something to add this back' : ' · too long to fit · untick something to make room') : i.on ? '' : ' · taken off';
+                  const locked = !i.on && !fits(i.min);
+                  const why = locked ? (full ? ' · untick something to add this back' : ' · too long to fit · untick something to make room') : i.on ? '' : ' · taken off';
                   return (
                     <li key={i.key}>
                       <label className={i.on ? styles.itemOn : styles.item}>

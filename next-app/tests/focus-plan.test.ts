@@ -148,6 +148,12 @@ describe('older scouts', () => {
     expect(rowOf(plan([s], ['camping-1', 'first-aid-1']), s).groupKey).toBe(badgeGroupKey('camping'));
   });
 
+  it('OlderScout_FamilyUntickedTheBadge_GoesToTheNextBadge', () => {
+    const s = scout('star');
+    const exclusions = new Map([[s.personId, new Set([badgeGroupKey('camping')])]]);
+    expect(rowOf(plan([s], ['camping-1', 'first-aid-1'], { exclusions }), s).groupKey).toBe(badgeGroupKey('first-aid'));
+  });
+
   it('OlderScout_WhoEarnedTheBadge_IsNotPutInItsGroup', () => {
     const s = scout('star');
     const p = plan([s], ['first-aid-1', 'camping-1'], { done: { [s.scoutId]: done([], [], ['first-aid']) } });

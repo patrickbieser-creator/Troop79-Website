@@ -40,8 +40,8 @@ export interface ThisWeekInput {
   teachers: readonly TeacherPerson[];
   /** Explicit answers, adults and scouts alike, keyed by personId. */
   intents: ReadonlyMap<number, Intent>;
-  /** Teacher sign-ups on this meeting, lead first then sign-up order. */
-  topicTeachers: readonly { key: string; personId: number }[];
+  /** Teacher sign-ups on this meeting, lead first then sign-up order; `note` is what they wrote with an offer. */
+  topicTeachers: readonly { key: string; personId: number; note?: string | null }[];
   /** Freeform topics' titles. */
   titles: ReadonlyMap<string, string>;
   /** A family's unticks (Emails E2), column keys by personId: off the plan at once. */
@@ -153,6 +153,8 @@ export interface TwExtra {
   candidates: TwTeacher[];
   /** Scouts who picked it (not Can't make it) or were placed in it by hand; a placed scout also under what they picked. */
   scouts: TwPerson[];
+  /** What a teacher wrote with their offer ("I can teach bottle caps"), with who wrote it (Patrick, 2026-10-30). */
+  offerNotes: { name: string; note: string }[];
 }
 
 export interface AnswerCounts {
@@ -335,7 +337,14 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
       .filter((p) => (key.startsWith('mb:') ? p.counselorFor.has(key.slice(3)) : !rankOfKey(key, catalog.ranks) ? [...p.counselorFor].some((m) => key.startsWith(`${m}-`)) : assessTeacher(p, key, input.ctx).qualified && p.skills.size > 0))
       .map((p) => teacherOf(p))
       .sort(byAnswer);
-    return { key, title: w?.label ?? key, codeLabel: w?.codeLabel ?? '', origin, teachers: signedUp(key), candidates, scouts: scouts.map(person) };
+    const offerNotes = input.topicTeachers
+      .filter((t) => t.key === key && t.note && !notComing(t.personId))
+      .map((t) => {
+        const p = poolBy.get(t.personId);
+        const sc = scoutBy.get(t.personId);
+        return { name: p ? teacherName(p, 'admin') : sc ? boardName(sc.name) : 'Someone', note: t.note! };
+      });
+    return { key, title: w?.label ?? key, codeLabel: w?.codeLabel ?? '', origin, teachers: signedUp(key), candidates, scouts: scouts.map(person), offerNotes };
   });
   const extraTitle = new Map(extras.map((e) => [e.key, e.title]));
 

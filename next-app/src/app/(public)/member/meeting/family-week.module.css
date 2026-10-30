@@ -529,3 +529,16 @@
   background: var(--status-warning-bg);
   color: var(--bark);
 }
+/* A leader viewing a family (proxy): the page says it's read-only, and the choices look it. */
+.readOnly {
+  margin: 0;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--rad-md);
+  background: var(--status-info-bg);
+  font: 600 var(--fs-sm) / 1.5 var(--font-ui);
+  color: var(--navy);
+}
+.choice:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}

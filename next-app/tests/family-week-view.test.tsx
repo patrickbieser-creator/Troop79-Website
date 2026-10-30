@@ -117,6 +117,23 @@ describe('one card, three answers', () => {
   });
 });
 
+describe('a leader viewing a family', () => {
+  it('Leader_ReadOnlyView_SaysOnlyTheFamilyCanAnswer', () => {
+    render(<FamilyWeekView week={week([scout({})])} write={writer()} readOnly />);
+    expect(screen.getByText('Leader view: you can see this family’s answers. Only the family can change them.')).toBeTruthy();
+  });
+});
+
+describe('a Merit badge group scout', () => {
+  it('MeritBadgeScout_CanUntickTheirBadge', async () => {
+    const write = writer();
+    const items = [{ key: 'fr:mb:first-aid', code: 'Merit badge', label: 'First Aid merit badge', on: true, min: 45 }];
+    render(<FamilyWeekView week={week([changing({ kind: 'mb', items })])} write={write} />);
+    fireEvent.click(screen.getByRole('checkbox', { name: /First Aid merit badge/ }));
+    await waitFor(() => expect(write).toHaveBeenCalledWith(1, { op: 'item', key: 'fr:mb:first-aid', on: false }));
+  });
+});
+
 describe('requests', () => {
   it('Family_Request_SendsIt', async () => {
     const write = writer();

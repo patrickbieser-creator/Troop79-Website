@@ -345,8 +345,10 @@ export function buildFocusPlan(input: FocusInput): FocusPlan {
       else if (nextGroup && nextOpen.length) auto = { groupKey: nextGroup.key, open: nextOpen, status: 'rank-work', allDone: false };
       else auto = { groupKey: null, open: [], status: 'nothing', allDone: !!(ownGroup || nextGroup) };
     } else {
-      // The first of the night's badges this scout hasn't earned; none left (or none tonight) → they teach.
-      const badge = groups.find((g) => g.kind === 'badge' && !p.awardedMbs?.has(g.refId));
+      // The first of the night's badges this scout hasn't earned, and their family hasn't taken off the plan (the
+      // family page, Patrick 2026-10-30); none left (or none tonight) → they teach.
+      const off = input.exclusions?.get(s.personId);
+      const badge = groups.find((g) => g.kind === 'badge' && !p.awardedMbs?.has(g.refId) && !off?.has(g.key));
       auto = badge ? { groupKey: badge.key, open: openIn(badge, p), status: 'badge', allDone: false } : { groupKey: null, open: [], status: 'teach', allDone: false };
     }
     const suggested = auto.groupKey ? [auto.groupKey] : [];

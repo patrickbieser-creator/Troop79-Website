@@ -19,6 +19,19 @@ describe('loadThisWeekData', () => {
     expect([ids.length, new Set(ids).size]).toEqual([lists.pool.scouts.length, lists.pool.scouts.length]);
   });
 
+  it('ThisWeek_OfferedClass_ShowsTheTeachersNote', async () => {
+    const [catalog, lists, labels] = await Promise.all([fetchAdvancementCatalog(sb as never), fetchPeopleLists(sb), fetchMeetingLabels(sb)]);
+    const [meeting] = await loadUpcomingMeetings(sb, 1, '2026-01-01', labels);
+    const input = (await loadThisWeekData(sb, meeting, lists, catalog)).input;
+    const adult = input.teachers.find((t) => t.kind === 'adult' && input.intents.get(t.personId) !== 'not_coming')!;
+    const tw = buildThisWeek({
+      ...input,
+      topicTeachers: [...input.topicTeachers, { key: 'ff:vitest-note', personId: adult.personId, note: 'I can teach bottle caps' }],
+      titles: new Map([...input.titles, ['ff:vitest-note', 'Bottle caps']])
+    });
+    expect(tw.extras.find((x) => x.key === 'ff:vitest-note')?.offerNotes.map((n) => n.note)).toEqual(['I can teach bottle caps']);
+  });
+
   it('ThisWeek_ChecklistColumns_ExpandRankSubRequirements_AndEveryMarkHasACell', async () => {
     const [catalog, lists, labels] = await Promise.all([fetchAdvancementCatalog(sb as never), fetchPeopleLists(sb), fetchMeetingLabels(sb)]);
     const [meeting] = await loadUpcomingMeetings(sb, 1, '2026-01-01', labels);

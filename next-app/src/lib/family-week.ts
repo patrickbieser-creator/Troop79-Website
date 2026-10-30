@@ -41,8 +41,6 @@ export interface FamilyItem {
   on: boolean;
   /** Expected minutes (D4). */
   min: number;
-  /** The Merit badge group's badge: on the plan, not for the family to take off. */
-  fixed?: boolean;
 }
 
 export interface FamilyOption {
@@ -189,10 +187,14 @@ export async function loadFamilyWeek(
     const items: FamilyItem[] =
       kind === 'rank' && g
         ? g.columns.filter((c) => row!.open.includes(c.key)).map((c) => ({ key: c.key, code: `${g.name} ${c.code}`, label: c.label, on: !off.has(c.key), min: columnMinutes(c, catalog, row!.marks) }))
-        : kind === 'mb' && g?.kind === 'badge'
-          ? [{ key: g.key, code: 'Merit badge', label: `${g.name} merit badge`, on: true, min: MB_CLASS_MIN, fixed: true }]
+        : kind === 'mb'
+          ? // Their badge, then any badge of the night the family took off (unticked, so it can go back on). Taking one
+            // off moves the scout to the next badge they haven't earned (lib/focus-plan).
+            tw.groups
+              .filter((x) => x.kind === 'badge' && (x.key === g?.key || off.has(x.key)))
+              .map((x) => ({ key: x.key, code: 'Merit badge', label: `${x.name} merit badge`, on: x.key === g?.key, min: MB_CLASS_MIN }))
           : [];
-    const also = alsoFor(kind, row, tw, firstName, help, catalog);
+    const also = alsoFor(kind, row, tw, firstName, help, catalog).filter((o) => !items.some((i) => i.key === o.key));
     const pl = board.pickList;
     const next = pl.groups.find((x) => x.next)?.rows ?? [];
     const requestable = [...next, ...pl.working, ...pl.badges].map((r) => ({
@@ -254,13 +256,14 @@ export function scoutLoad(s: Pick<FamilyScout, 'items' | 'suggestions' | 'helpin
  */
 export async function familyWrite(
   sb: SupabaseClient,
-  w: { meeting: Pick<BoardMeeting, 'entryId' | 'date'>; actorPersonId: number; scoutPersonId: number; catalog: Catalog },
+  /** leader: a leader's write the caller verified (proxy view); the RPCs then skip the household rule. */
+  w: { meeting: Pick<BoardMeeting, 'entryId' | 'date'>; actorPersonId: number; scoutPersonId: number; catalog: Catalog; leader?: boolean },
   op: FamilyOp,
   deps: { lists?: Pick<PeopleLists, 'pool'> } = {}
 ): Promise<FamilyWrite> {
   const entry = w.meeting.entryId;
   const person = w.scoutPersonId;
-  const writer = { entryId: entry, personId: person, actorPersonId: w.actorPersonId, leader: false };
+  const writer = { entryId: entry, personId: person, actorPersonId: w.actorPersonId, leader: w.leader ?? false };
   // Not sure yet clears only the answer: the plan's edits stay saved.
   if (op?.op === 'unsure') return setMeetingIntent(sb, writer, 'undecided');
   if (op?.op === 'help') {
@@ -295,7 +298,7 @@ export async function familyWrite(
 
   if (op.op === 'item') {
     const s = (await loadFamilyWeek(sb, w.meeting, [person], w.catalog, w.actorPersonId, deps)).scouts[0];
-    const item = s?.items.find((i) => i.key === op.key && !i.fixed);
+    const item = s?.items.find((i) => i.key === op.key);
     if (op.on) {
       // Putting one back has to fit the plan's limits like any add.
       if (s && item && !item.on) {

@@ -20,10 +20,11 @@ export interface Draft {
   note: string;
 }
 
+/** Something else first (Patrick, 2026-10-30): most offers are a thing to teach, not a skill on file. */
 const TYPES: { type: OfferType; label: string }[] = [
+  { type: 'ff', label: 'Something else' },
   { type: 'skill', label: 'A skill' },
-  { type: 'req', label: 'A requirement' },
-  { type: 'ff', label: 'Something else' }
+  { type: 'req', label: 'A requirement' }
 ];
 
 export function OfferForm({
