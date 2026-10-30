@@ -77,7 +77,7 @@ export async function loadScoutRoles(sb: SupabaseClient, entryId: number): Promi
   if (error) throw new Error(error.message);
   const out = new Map<number, ScoutRole>();
   for (const r of (data ?? []) as { person_id: number; role: ScoutRole['role']; ref_key: string | null }[]) {
-    out.set(r.person_id, r.role === 'teach' ? { role: 'teach' } : { role: r.role, key: r.ref_key ?? '' });
+    out.set(r.person_id, r.role === 'teach' || r.role === 'none' ? { role: r.role } : { role: r.role, key: r.ref_key ?? '' });
   }
   return out;
 }

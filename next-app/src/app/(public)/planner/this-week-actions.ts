@@ -64,18 +64,19 @@ export async function twSetNightBadgeAction(input: { entryId: number; mbId: stri
   return done(s);
 }
 
-export type RoleInput = { role: 'teach' } | { role: 'group'; key: string } | { role: 'request'; key: string } | { role: null };
+export type RoleInput = { role: 'teach' } | { role: 'none' } | { role: 'group'; key: string } | { role: 'request'; key: string } | { role: null };
 
 /**
  * A planner's hand choice for one scout: Teach (help teach), a group (a gap fill, or an older scout's badge), a class
- * from requests and offers, or null to let placement decide again (Unassign: the family's "help teach" goes too).
+ * from requests and offers, none (Unassigned: no group tonight, and it sticks), or null to let placement decide again
+ * (the family's "help teach" goes too).
  */
 export async function twSetRoleAction(input: { entryId: number; personId: number } & RoleInput): Promise<TwResult> {
   if (!Number.isInteger(input?.personId)) return fail('Malformed request');
   const role = input.role;
   if (role === 'group' && !(typeof input.key === 'string' && GROUP_KEY.test(input.key))) return fail('Malformed request');
   if (role === 'request' && !(typeof input.key === 'string' && REQUEST_KEY.test(input.key) && !isGroupKey(input.key))) return fail('Malformed request');
-  if (role !== null && role !== 'teach' && role !== 'group' && role !== 'request') return fail('Malformed request');
+  if (role !== null && role !== 'teach' && role !== 'none' && role !== 'group' && role !== 'request') return fail('Malformed request');
   const s = await gate(input.entryId, 'edit');
   if (!s.ok) return s;
   const { data: scout, error: se } = await s.sb.from('scouts').select('id').eq('person_id', input.personId).eq('active', true).maybeSingle();
@@ -89,7 +90,7 @@ export async function twSetRoleAction(input: { entryId: number; personId: number
       ? await s.sb.from('meeting_scout_roles').delete().match(where)
       : await s.sb
           .from('meeting_scout_roles')
-          .upsert({ ...where, role, ref_key: role === 'teach' ? null : input.key, set_by_person_id: s.actorPersonId, set_at: new Date().toISOString() }, { onConflict: 'calendar_entry_id,person_id' });
+          .upsert({ ...where, role, ref_key: role === 'teach' || role === 'none' ? null : input.key, set_by_person_id: s.actorPersonId, set_at: new Date().toISOString() }, { onConflict: 'calendar_entry_id,person_id' });
   if (error) return fail('Couldn’t save that. Try again.');
   return done(s);
 }

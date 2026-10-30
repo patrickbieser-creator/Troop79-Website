@@ -126,6 +126,13 @@ describe('This week: hand placement and teachers', () => {
     expect([row.status, row.hand]).toEqual(['teach', true]);
   });
 
+  it('Editor_SetsUnassigned_AndTheRowSaysSo_WithoutAGap', async () => {
+    asEditor();
+    expect((await (await actions()).twSetRoleAction({ entryId: meeting, personId: scoutPerson, role: 'none' })).ok).toBe(true);
+    const row = (await view()).sections.flatMap((s) => s.rows).find((r) => r.personId === scoutPerson)!;
+    expect([row.status, row.groupKey, row.gap, row.note, row.hand]).toEqual(['unassigned', null, false, 'Unassigned', true]);
+  });
+
   it('Editor_LetsPlacementDecideAgain', async () => {
     asEditor();
     await (await actions()).twSetRoleAction({ entryId: meeting, personId: scoutPerson, role: null });

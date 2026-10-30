@@ -1,12 +1,13 @@
 /**
  * The person drawer's "Tonight" for a scout (Patrick, 2026-10-29): where This week has them, and where a planner can
- * put them instead: another group, Help teach, a class from requests and offers, or Unassign, which hands them back to
- * placement (no hand role, no family "help teach"). The same choices as a row's Place… menu. Pure; client-safe.
+ * put them instead: another group, Help teach, a class from requests and offers, Unassigned (no group tonight, and it
+ * sticks), or "let the planner place", which hands them back to placement (no hand role, no family "help teach"). The
+ * same choices as a row's Place… menu. Pure; client-safe.
  */
 import type { ThisWeek } from '@/lib/this-week';
 
 /** What twSetRoleAction takes (this-week-actions RoleInput), restated here so a client module can import it. */
-export type PlaceRole = { role: 'teach' } | { role: 'group'; key: string } | { role: 'request'; key: string };
+export type PlaceRole = { role: 'teach' } | { role: 'none' } | { role: 'group'; key: string } | { role: 'request'; key: string };
 
 export interface PlaceChoice {
   id: string;
@@ -34,11 +35,13 @@ export function placeChoices(view: ThisWeek, personId: number): PlaceChoices | n
       ? group
         ? `Helping teach the ${groupWords(group)}`
         : 'Helping teach'
-      : extra
-        ? extra.title
-        : group
-          ? groupWords(group)
-          : 'Nothing assigned yet';
+      : row.status === 'unassigned'
+        ? 'Unassigned'
+        : extra
+          ? extra.title
+          : group
+            ? groupWords(group)
+            : 'Nothing assigned yet';
   const helping = row.status === 'teach';
   const options: PlaceChoice[] = [
     ...view.groups.map((g) => ({
@@ -48,7 +51,8 @@ export function placeChoices(view: ThisWeek, personId: number): PlaceChoices | n
       current: !helping && row.groupKey === g.key
     })),
     ...view.extras.map((x) => ({ id: x.key, label: x.title, role: { role: 'request' as const, key: x.key }, current: row.requestKey === x.key })),
-    { id: 'teach', label: 'Help teach', role: { role: 'teach' }, current: helping && !group }
+    { id: 'teach', label: 'Help teach', role: { role: 'teach' }, current: helping && !group },
+    { id: 'none', label: 'Unassigned', role: { role: 'none' }, current: row.status === 'unassigned' }
   ];
   return { now, options, canUnassign: row.hand };
 }

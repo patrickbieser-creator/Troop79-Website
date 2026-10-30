@@ -497,6 +497,11 @@ function PlaceMenu({ row, view, onRole, busy }: { row: TwRow; view: ThisWeek; on
           <button type="button" className={s.menuBtn} disabled={busy} onClick={pick({ role: 'teach' }, close)}>
             Help teach
           </button>
+          {row.status === 'unassigned' ? null : (
+            <button type="button" className={s.menuBtn} disabled={busy} onClick={pick({ role: 'none' }, close)}>
+              Unassigned
+            </button>
+          )}
           {groups.map((g) => (
             <button key={g.key} type="button" className={s.menuBtn} disabled={busy} onClick={pick({ role: 'group', key: g.key }, close)}>
               Move to {g.kind === 'badge' ? `${g.name} merit badge` : `the ${g.name} group`}

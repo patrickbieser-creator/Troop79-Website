@@ -53,7 +53,9 @@ export type ScoutRole =
   /** Moved by hand into a rank or badge group (a gap fill, or an older scout's badge). */
   | { role: 'group'; key: string }
   /** Placed in a class from requests and offers; `key` is that topic. */
-  | { role: 'request'; key: string };
+  | { role: 'request'; key: string }
+  /** Unassigned (Patrick, 2026-10-30): in no group tonight, and placement doesn't put them back. */
+  | { role: 'none' };
 
 export interface FocusInput {
   ranks: readonly CatalogRank[];
@@ -112,8 +114,9 @@ export interface FocusGroup {
  * - `teach`, `request`: a planner's choice.
  * - `placed`: moved by hand into a rank group where nothing is open (a gap filled, not rank work).
  * - `nothing`: a counted scout with nothing assigned.
+ * - `unassigned`: a planner chose no group for them tonight (not a gap).
  */
-export type RowStatus = 'rank-work' | 'badge' | 'teach' | 'request' | 'placed' | 'nothing';
+export type RowStatus = 'rank-work' | 'badge' | 'teach' | 'request' | 'placed' | 'nothing' | 'unassigned';
 
 export interface FocusRow {
   personId: number;
@@ -357,6 +360,7 @@ export function buildFocusPlan(input: FocusInput): FocusPlan {
     const helping = input.helpers?.get(s.personId);
     const role: ScoutRole | undefined =
       input.roles?.get(s.personId) ?? (helping && groupByKey.has(helping) ? { role: 'group', key: helping } : undefined) ?? (pickedGroup ? { role: 'group', key: pickedGroup } : undefined);
+    if (role?.role === 'none') return withHome({ ...base, groupKey: null, open: [], status: 'unassigned', allDone: false, suggested });
     if (role?.role === 'teach') return withHome({ ...base, groupKey: null, open: [], status: 'teach', allDone: false, suggested });
     if (role?.role === 'request') return withHome({ ...base, groupKey: null, open: [], status: 'request', allDone: false, requestKey: role.key, suggested });
     if (role?.role === 'group') {

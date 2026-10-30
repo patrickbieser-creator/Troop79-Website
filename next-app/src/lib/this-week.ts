@@ -377,6 +377,7 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
     if (r.status === 'request') return `From requests and offers${r.requestKey && extraTitle.get(r.requestKey) ? ` · ${extraTitle.get(r.requestKey)}` : ''}`;
     if (r.status === 'badge') return `${groupBy.get(r.groupKey ?? '')?.name ?? ''} merit badge`;
     if (r.status === 'placed') return 'Placed by hand';
+    if (r.status === 'unassigned') return 'Unassigned';
     if (r.status === 'nothing') return r.allDone ? 'Nothing assigned · every offered requirement is done' : 'Nothing assigned';
     return '';
   };

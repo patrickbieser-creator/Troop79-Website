@@ -28,7 +28,8 @@ describe('placeChoices', () => {
       ['Tenderfoot group', false],
       ['Second Class group', true],
       ['First Aid merit badge', false],
-      ['Help teach', false]
+      ['Help teach', false],
+      ['Unassigned', false]
     ]);
   });
 
@@ -39,6 +40,11 @@ describe('placeChoices', () => {
 
   it('AutoPlaced_HasNothingToUnassign', () => {
     expect(placeChoices(week(row({ groupKey: 'fr:tenderfoot', status: 'rank-work', gap: false })), 7)!.canUnassign).toBe(false);
+  });
+
+  it('Unassigned_IsAChoice_MarkedWhenChosen', () => {
+    const c = placeChoices(week(row({ status: 'unassigned', gap: false, hand: true })), 7)!;
+    expect([c.now, c.options.find((o) => o.id === 'none')?.current, c.options.find((o) => o.id === 'none')?.role]).toEqual(['Unassigned', true, { role: 'none' }]);
   });
 
   it('Gap_ReadsNothingAssignedYet', () => {

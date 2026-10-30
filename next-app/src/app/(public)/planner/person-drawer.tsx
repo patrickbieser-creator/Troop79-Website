@@ -226,7 +226,7 @@ export function PersonDrawerView({ personId, onClose }: { personId: number; onCl
           </ul>
           {drawer.place.canUnassign ? (
             <button type="button" className={styles.quietAdd} disabled={answering} onClick={() => place({ role: null })}>
-              Unassign · let the planner place {drawer.name.split(' ')[0]}
+              Let the planner place {drawer.name.split(' ')[0]}
             </button>
           ) : null}
           {problem?.at === 'place' ? (

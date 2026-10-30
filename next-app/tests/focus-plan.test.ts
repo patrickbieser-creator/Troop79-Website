@@ -184,6 +184,13 @@ describe('older scouts', () => {
     expect([rowOf(plan([s], ['first-aid-1'], { roles }), s).status, rowOf(plan([s], ['first-aid-1'], { roles }), s).groupKey]).toEqual(['teach', null]);
   });
 
+  it('Scout_SetToNone_StaysInNoGroup_EvenWhenPlacementHasOne', () => {
+    const s = scout('scout');
+    const roles = new Map<number, ScoutRole>([[s.personId, { role: 'none' }]]);
+    const r = rowOf(plan([s], ['tenderfoot-5'], { roles }), s);
+    expect([r.status, r.groupKey]).toEqual(['unassigned', null]);
+  });
+
   it('OlderScout_CanTakeTheSecondBadge', () => {
     const s = scout('star');
     const roles = new Map<number, ScoutRole>([[s.personId, { role: 'group', key: badgeGroupKey('first-aid') }]]);
