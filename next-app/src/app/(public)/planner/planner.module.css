@@ -1015,6 +1015,10 @@ button.fsResult {
   color: var(--text-meta);
   text-align: left;
 }
+/* The requirement takes the room left, so "In sets" starts at the same place on every row. */
+.fsResult .optText {
+  flex: 1 1 auto;
+}
 .fsResult .code,
 .fsItem .code {
   flex: none;

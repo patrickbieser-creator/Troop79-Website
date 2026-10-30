@@ -151,7 +151,7 @@ export interface TwExtra {
   origin: 'picked' | 'offered' | 'planner';
   teachers: TwTeacher[];
   candidates: TwTeacher[];
-  /** Scouts who picked it (not Can't make it) or were placed in it by hand. */
+  /** Scouts who picked it (not Can't make it) or were placed in it by hand; a placed scout also under what they picked. */
   scouts: TwPerson[];
 }
 
@@ -326,7 +326,9 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
     const w = topicWords(key, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, input.titles, more);
     const scouts = input.scouts.filter((s) => {
       const r = rowsBy.get(s.personId);
-      if (r?.status === 'request') return r.requestKey === key;
+      // Placed in a class by hand: listed there, and under any other class they picked too (a scout's Scoutmaster
+      // conference and board of review, the same evening).
+      if (r?.status === 'request' && r.requestKey === key) return true;
       return s.intent !== 'not_coming' && (picks.get(s.personId) ?? []).includes(key);
     });
     const candidates = pool
