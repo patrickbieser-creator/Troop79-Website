@@ -65,7 +65,7 @@ function board(view: Partial<TeachView> = {}, over: Partial<Parameters<typeof Te
   return render(
     <TeachBoard
       entryId={1}
-      subject={{ personId: 9, firstName: 'Dan', isSelf: true }}
+      subject={{ personId: 9, firstName: 'Dan', name: 'Dan Vest', isSelf: true }}
       initial={{ ...VIEW, ...view }}
       choices={CHOICES}
       onBehalf={false}
@@ -169,6 +169,28 @@ describe('TeachBoard', () => {
     expect([screen.queryByRole('button', { name: 'Offer something' }), screen.queryByRole('radio', { name: 'Coming' })]).toEqual([null, null]);
     await userEvent.click(screen.getByRole('button', { name: 'Remove Knots' }));
     expect(calls.unteach.mock.calls[0][0]).toMatchObject({ key: 'tenderfoot-3a' });
+  });
+
+  it('Adult_ClearThisAnswer_ResetsToNoAnswer', async () => {
+    calls.intent.mockResolvedValue(ok({ intent: null }));
+    board({ intent: 'undecided' });
+    await userEvent.click(screen.getByRole('button', { name: /Clear this answer/ }));
+    expect([calls.intent.mock.calls[0][0].intent, await screen.findByText('Needs an answer')]).toEqual([null, expect.anything()]);
+  });
+
+  it('Adult_NoStoredAnswer_HasNothingToClear', () => {
+    board();
+    expect(screen.queryByRole('button', { name: /Clear this answer/ })).toBeNull();
+  });
+
+  it('ScoutsAskingFor_IsItsOwnCard', () => {
+    board();
+    expect(screen.getByRole('heading', { name: 'Scouts are asking for these' }).closest('section')).not.toBe(screen.getByRole('heading', { name: 'Dan Vest' }).closest('section'));
+  });
+
+  it('OfferSomething_IsOneLinkUnderTheTeachingList', () => {
+    board();
+    expect([screen.getAllByText('Offer something').length, screen.queryByRole('heading', { name: 'Offer something' })]).toEqual([1, null]);
   });
 
   it('NotComing_HidesTheTeachLists', () => {

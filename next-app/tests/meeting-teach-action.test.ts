@@ -158,6 +158,19 @@ describe('who may teach', () => {
     const r = await (await actions()).meetingTeacherIntentAction({ entryId: meeting1, personId: parent, intent: 'undecided' });
     expect([r.ok, r.ok && r.view.intent]).toEqual([true, 'undecided']);
   });
+
+  it('Adult_ClearsTheirAnswer_BackToNoAnswer', async () => {
+    asAdult(parent);
+    await (await actions()).meetingTeacherIntentAction({ entryId: meeting1, personId: parent, intent: 'not_coming' });
+    const r = await (await actions()).meetingTeacherIntentAction({ entryId: meeting1, personId: parent, intent: null });
+    expect([r.ok, r.ok && r.view.intent]).toEqual([true, null]);
+  });
+
+  it('Adult_CannotClearSomeoneElsesAnswer', async () => {
+    asAdult(parent);
+    const r = await (await actions()).meetingTeacherIntentAction({ entryId: meeting1, personId: other, intent: null });
+    expect(r.ok).toBe(false);
+  });
 });
 
 describe('the 2-cap through the actions', () => {

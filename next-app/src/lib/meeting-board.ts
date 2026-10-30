@@ -425,6 +425,13 @@ export async function setMeetingIntent(sb: SupabaseClient, w: Omit<BoardWriter, 
   return done(error);
 }
 
+/** "Clear this answer": back to no answer. The caller has already checked who may answer for this person (the RPC's
+ *  rule); a deleted row needs no lock, as there is nothing to merge. */
+export async function clearMeetingIntent(sb: SupabaseClient, w: Pick<BoardWriter, 'entryId' | 'personId'>): Promise<BoardWriteResult> {
+  const { error } = await sb.from('meeting_intents').delete().eq('calendar_entry_id', w.entryId).eq('person_id', w.personId);
+  return done(error);
+}
+
 export interface ScoutBoard {
   view: ScoutBoardView;
   pickList: PickListView;

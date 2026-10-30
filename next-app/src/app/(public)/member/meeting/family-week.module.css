@@ -491,3 +491,13 @@
   outline: none;
   box-shadow: var(--focus-ring);
 }
+/* Offer something sits under the teaching list, past a rule. */
+.offerLine {
+  padding-top: var(--sp-2);
+  border-top: 1px solid var(--border-light);
+}
+/* The Coming? question on a card with a list above it: its own ruled band. */
+.askRuled {
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--border-light);
+}

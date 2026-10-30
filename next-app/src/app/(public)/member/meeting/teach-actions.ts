@@ -21,7 +21,7 @@ import { NOT_A_TEACHER } from '@/lib/can-offer-to-teach';
 import { loadAdvancementCatalog } from '@/lib/advancement-catalog';
 import { INTENTS, type Intent } from '@/lib/meeting-board-shared';
 import { freeformTitle } from '@/lib/meeting-board-teach';
-import { loadBoardState, loadMeetingById, loadUpcomingMeetings, setMeetingIntent, type BoardWriteResult } from '@/lib/meeting-board';
+import { loadBoardState, loadMeetingById, loadUpcomingMeetings, clearMeetingIntent, setMeetingIntent, type BoardWriteResult } from '@/lib/meeting-board';
 import {
   emptyTeachView,
   loadTeachView,
@@ -109,9 +109,11 @@ export async function meetingWithdrawOfferAction(t: TeachTarget & { skillId: str
 }
 
 /** An adult's Coming / Not sure yet ("put me where I'm needed") / Can't make it. A Junior Leader answers as a scout. */
-export async function meetingTeacherIntentAction(t: TeachTarget & { intent: Intent }): Promise<TeachActionResult> {
+/** Coming / Not sure yet / Can't make it; null = "Clear this answer", back to no answer. */
+export async function meetingTeacherIntentAction(t: TeachTarget & { intent: Intent | null }): Promise<TeachActionResult> {
   const r = await resolve(t);
   if (!r.ok) return r;
+  if (t.intent === null) return r.refresh(await clearMeetingIntent(r.sb, { entryId: r.meeting.entryId, personId: t.personId }));
   if (!INTENTS.includes(t.intent)) return fail('Malformed request');
   return r.refresh(await setMeetingIntent(r.sb, { entryId: r.meeting.entryId, personId: t.personId, actorPersonId: r.writer.actorPersonId, leader: r.writer.leader }, t.intent));
 }

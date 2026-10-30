@@ -23,7 +23,7 @@ type Write = (scoutId: number, op: FamilyOp) => Promise<FamilyWrite>;
 interface ChoiceDef {
   k: FamilyChoice;
   label: string;
-  sub: string;
+  sub?: string;
 }
 
 function choicesFor(s: FamilyScout, focus: string): ChoiceDef[] {
@@ -49,7 +49,7 @@ function choicesFor(s: FamilyScout, focus: string): ChoiceDef[] {
     list.push({ k: 'help', label: `Coming · help teach ${focus || 'the younger scouts'}`, sub: `With the ${s.helpGroup.name} group${who}` });
   }
   if (!list.length) list.push({ k: 'ok', label: 'Coming', sub: 'A leader will find something for Sunday' });
-  list.push({ k: 'change', label: 'Coming · something else', sub: 'Suggest another merit badge or a requirement' });
+  list.push({ k: 'change', label: 'Coming · request a different merit badge or requirement' });
   return [...list, out];
 }
 
@@ -323,7 +323,7 @@ function ScoutCard({
                 </span>
                 <span className={styles.choiceText}>
                   <span className={styles.choiceLabel}>{o.label}</span>
-                  <span className={styles.choiceSub}>{waiting ? 'Tap to confirm' : o.sub}</span>
+                  {waiting || o.sub ? <span className={styles.choiceSub}>{waiting ? 'Tap to confirm' : o.sub}</span> : null}
                 </span>
               </button>
             );

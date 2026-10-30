@@ -120,9 +120,10 @@ export function TeachBoard(props: TeachBoardProps) {
     });
   }
 
-  function chooseIntent(next: Intent) {
+  /** null = "Clear this answer": back to no answer. */
+  function chooseIntent(next: Intent | null) {
     if (next === view.intent) return;
-    run(() => meetingTeacherIntentAction({ ...target, intent: next }), { what: 'intent', say: `Saved: ${INTENT_LABEL[next]}` });
+    run(() => meetingTeacherIntentAction({ ...target, intent: next }), { what: 'intent', say: next ? `Saved: ${INTENT_LABEL[next]}` : 'Answer cleared.' });
   }
 
   function commit(w: WantedItem) {
@@ -172,7 +173,7 @@ export function TeachBoard(props: TeachBoardProps) {
   const shown: Intent | null = view.intent ?? (view.count > 0 ? 'coming' : null);
   const qid = `${ids}-teach-q`;
   const intentBlock = junior || !view.canAdd ? null : (
-    <div className={fw.ask}>
+    <div className={`${fw.ask} ${fw.askRuled}`}>
       <div id={qid} className={fw.question}>
         {subject.isSelf ? 'Are you coming Sunday to teach?' : `Is ${subject.firstName} coming Sunday to teach?`}
         <Saved on={flash.intent > 0} />
@@ -211,8 +212,11 @@ export function TeachBoard(props: TeachBoardProps) {
         <p className={fw.notSure}>We&rsquo;ll find something that fits.</p>
       ) : view.intent === 'not_coming' ? (
         <p className={fw.notSure}>Got it. Thanks for letting us know.</p>
-      ) : shown == null ? (
-        <p className={fw.notSure}>Not sure yet? Choose Not sure yet and a leader will find you a spot.</p>
+      ) : null}
+      {view.intent != null && !readOnly ? (
+        <button type="button" className={fw.unsure} disabled={pending} onClick={() => chooseIntent(null)}>
+          Clear this answer
+        </button>
       ) : null}
     </div>
   );
@@ -322,151 +326,149 @@ export function TeachBoard(props: TeachBoardProps) {
   };
 
   return (
-    <section className={fw.teachCard} aria-labelledby={`${ids}-teach`}>
-      {head}
+    <>
+      <section className={fw.teachCard} aria-labelledby={`${ids}-teach`}>
+        {head}
 
-      <div className={fw.plan}>
-        <div className={fw.planHead}>
-          <h3 className={fw.planTitle}>
-            {you} teaching
-            <Saved on={flash.teach > 0} />
-          </h3>
-          <span className={fw.planSub}>{view.count ? plural(view.count, 'thing') : ''}</span>
-        </div>
-        {props.teaching && props.teaching.length > 0 && view.intent !== 'not_coming' && (
-          <div className={styles.assignCard}>
-            <p className={styles.assignHead}>
-              So far, {you.replace(/^You/, 'you')} teaching {props.teaching.map((l) => l.title).join(', then ')}
-            </p>
-            <ul className={styles.assignList}>
-              {props.teaching.map((l, i) => (
-                <li key={i}>
-                  {l.block && <>{l.block} · </>}
-                  <b>{l.title}</b>
-                  <span className={styles.meta}>
-                    {' '}
-                    · {l.codeLabel}
-                    {l.minutes != null ? ` · ${minutesText(l.minutes)}` : ''} · {l.scouts.length ? `${plural(l.scouts.length, 'scout')}: ${l.scouts.join(', ')}` : 'no scouts placed yet'}
-                  </span>
-                  <TopicParts parts={l.parts} title={l.title} />
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        {view.items.length ? (
-          <div className={fw.rows}>
-            {view.items.map((item) => {
-              const bits = [item.sub, minutesText(item.minutes), item.scouts ? `${plural(item.scouts, 'scout')} so far: ${item.names.join(', ')}` : '0 scouts so far'];
-              if (item.note) bits.push(item.note);
-              if (item.alsoOn.length) bits.push(`also ${item.alsoOn.join(', ')}`);
-              return (
-                <div key={`${item.kind}:${item.key}`} className={styles.teachRow}>
-                  <span className={styles.grow}>
-                    <b>{item.kind === 'offer' ? `${item.label} (any requirement)` : item.label}</b>
-                    <small>
-                      {item.kind === 'offer' ? 'Your offer · ' : ''}
-                      {bits.filter(Boolean).join(' · ')}
-                      {item.flags.length > 0 && <span className={styles.flag}> · {item.flags.join(' · ')}</span>}
-                    </small>
-                    <TopicParts parts={item.parts} title={item.label} />
-                  </span>
-                  {!readOnly && (
-                    <button type="button" className={styles.linkBtn} onClick={() => remove(item)} aria-label={`${item.kind === 'offer' ? 'Withdraw' : 'Remove'} ${item.label}`}>
-                      {item.kind === 'offer' ? 'Withdraw' : 'Remove'}
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <p className={fw.empty}>Nothing yet. Take one or two things scouts are asking for below, or offer something.</p>
-        )}
-        {problem && !errKey && (
-          <p className={styles.badNote} role="alert">
-            {problem}
-          </p>
-        )}
-      </div>
-
-      {intentBlock}
-
-      {!view.hasSkills && !junior && (
-        <div className={fw.section}>
-          <p className={fw.doneNote}>
-            {subject.isSelf ? (
-              <>
-                Tell us what you can teach first: <Link href="/member/teaching">What I can teach</Link>. Or choose Not sure yet and a leader will
-                find you a spot.
-              </>
-            ) : (
-              `${subject.firstName} hasn’t said what they can teach yet.`
-            )}
-          </p>
-        </div>
-      )}
-
-      <div className={fw.section}>
-        <div className={fw.planHead}>
-          <h3 className={fw.planTitle}>Scouts are asking for these</h3>
-          {mine.length ? <span className={fw.planSub}>{plural(mine.length, 'topic')}</span> : null}
-        </div>
-        {mine.length ? <div className={fw.rows}>{mine.map(wantRow)}</div> : <p className={fw.empty}>{view.wanted.length ? 'Nothing you can teach is waiting for a teacher.' : 'No picks yet.'}</p>}
-        {otherWanted.length > 0 && (
-          <details className={fw.more}>
-            <summary>
-              Other things scouts asked for <span className={fw.planSub}>· {otherWanted.length}</span>
-            </summary>
-            <p className={fw.notSure}>
-              Not in what {subject.isSelf ? 'you’ve' : `${subject.firstName} has`} said {subject.isSelf ? 'you' : 'they'} can teach. You can still take one.
-              {subject.isSelf && (
-                <>
-                  {' '}
-                  <Link href="/member/teaching">What I can teach</Link>
-                </>
-              )}
-            </p>
-            <div className={fw.rows}>{otherWanted.map(wantRow)}</div>
-          </details>
-        )}
-      </div>
-
-      {!readOnly && (
-        <div className={fw.section}>
+        <div className={fw.plan}>
           <div className={fw.planHead}>
-            <h3 className={fw.planTitle}>Offer something</h3>
-            <span className={fw.planSub}>A skill, a requirement, or something else, on one or more dates</span>
+            <h3 className={fw.planTitle}>
+              {you} teaching
+              <Saved on={flash.teach > 0} />
+            </h3>
+            <span className={fw.planSub}>{view.count ? plural(view.count, 'thing') : ''}</span>
           </div>
-          {draft ? (
-            <OfferForm
-              ids={ids}
-              draft={draft}
-              choices={choices}
-              junior={junior}
-              errors={offerErr}
-              pending={pending}
-              onChange={(d) => setDraft(d)}
-              onSubmit={postOffer}
-              onCancel={() => {
-                setDraft(null);
-                setOfferErr({});
-              }}
-            />
+          {props.teaching && props.teaching.length > 0 && view.intent !== 'not_coming' && (
+            <div className={styles.assignCard}>
+              <p className={styles.assignHead}>
+                So far, {you.replace(/^You/, 'you')} teaching {props.teaching.map((l) => l.title).join(', then ')}
+              </p>
+              <ul className={styles.assignList}>
+                {props.teaching.map((l, i) => (
+                  <li key={i}>
+                    {l.block && <>{l.block} · </>}
+                    <b>{l.title}</b>
+                    <span className={styles.meta}>
+                      {' '}
+                      · {l.codeLabel}
+                      {l.minutes != null ? ` · ${minutesText(l.minutes)}` : ''} · {l.scouts.length ? `${plural(l.scouts.length, 'scout')}: ${l.scouts.join(', ')}` : 'no scouts placed yet'}
+                    </span>
+                    <TopicParts parts={l.parts} title={l.title} />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {view.items.length ? (
+            <div className={fw.rows}>
+              {view.items.map((item) => {
+                const bits = [item.sub, minutesText(item.minutes), item.scouts ? `${plural(item.scouts, 'scout')} so far: ${item.names.join(', ')}` : '0 scouts so far'];
+                if (item.note) bits.push(item.note);
+                if (item.alsoOn.length) bits.push(`also ${item.alsoOn.join(', ')}`);
+                return (
+                  <div key={`${item.kind}:${item.key}`} className={styles.teachRow}>
+                    <span className={styles.grow}>
+                      <b>{item.kind === 'offer' ? `${item.label} (any requirement)` : item.label}</b>
+                      <small>
+                        {item.kind === 'offer' ? 'Your offer · ' : ''}
+                        {bits.filter(Boolean).join(' · ')}
+                        {item.flags.length > 0 && <span className={styles.flag}> · {item.flags.join(' · ')}</span>}
+                      </small>
+                      <TopicParts parts={item.parts} title={item.label} />
+                    </span>
+                    {!readOnly && (
+                      <button type="button" className={styles.linkBtn} onClick={() => remove(item)} aria-label={`${item.kind === 'offer' ? 'Withdraw' : 'Remove'} ${item.label}`}>
+                        {item.kind === 'offer' ? 'Withdraw' : 'Remove'}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           ) : (
-            <p className={fw.actionLine}>
-              <Button variant="secondary" onClick={openOffer}>
-                Offer something
-              </Button>
+            <p className={fw.empty}>Nothing yet.</p>
+          )}
+          {problem && !errKey && (
+            <p className={styles.badNote} role="alert">
+              {problem}
             </p>
           )}
+          {!readOnly && (
+            <div className={fw.offerLine}>
+              {draft ? (
+                <OfferForm
+                  ids={ids}
+                  draft={draft}
+                  choices={choices}
+                  junior={junior}
+                  errors={offerErr}
+                  pending={pending}
+                  onChange={(d) => setDraft(d)}
+                  onSubmit={postOffer}
+                  onCancel={() => {
+                    setDraft(null);
+                    setOfferErr({});
+                  }}
+                />
+              ) : (
+                <button type="button" className={fw.unsure} onClick={openOffer}>
+                  Offer something
+                </button>
+              )}
+            </div>
+          )}
         </div>
-      )}
-      {liveRegion}
-    </section>
+
+        {!view.hasSkills && !junior && (
+          <div className={fw.section}>
+            <p className={fw.doneNote}>
+              {subject.isSelf ? (
+                <>
+                  Tell us what you can teach first: <Link href="/member/teaching">What I can teach</Link>. Or choose Not sure yet and a leader will
+                  find you a spot.
+                </>
+              ) : (
+                `${subject.firstName} hasn’t said what they can teach yet.`
+              )}
+            </p>
+          </div>
+        )}
+
+        {intentBlock}
+        {liveRegion}
+      </section>
+
+      <section className={fw.teachCard} aria-labelledby={`${ids}-wanted`}>
+        <div className={fw.cardHead}>
+          <h2 className={fw.name} id={`${ids}-wanted`}>
+            Scouts are asking for these
+          </h2>
+          {mine.length ? <span className={fw.rankLine}>{plural(mine.length, 'topic')}</span> : null}
+        </div>
+        <div className={fw.plan}>
+          {mine.length ? <div className={fw.rows}>{mine.map(wantRow)}</div> : <p className={fw.empty}>{view.wanted.length ? 'Nothing you can teach is waiting for a teacher.' : 'No picks yet.'}</p>}
+          {otherWanted.length > 0 && (
+            <details className={fw.more}>
+              <summary>
+                Other things scouts asked for <span className={fw.planSub}>· {otherWanted.length}</span>
+              </summary>
+              <p className={fw.notSure}>
+                Not in what {subject.isSelf ? 'you’ve' : `${subject.firstName} has`} said {subject.isSelf ? 'you' : 'they'} can teach. You can still take one.
+                {subject.isSelf && (
+                  <>
+                    {' '}
+                    <Link href="/member/teaching">What I can teach</Link>
+                  </>
+                )}
+              </p>
+              <div className={fw.rows}>{otherWanted.map(wantRow)}</div>
+            </details>
+          )}
+        </div>
+      </section>
+    </>
   );
 }
-
 
 const TYPES: { type: OfferType; label: string }[] = [
   { type: 'skill', label: 'A skill' },
