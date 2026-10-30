@@ -42,14 +42,18 @@ import {
 } from '@/lib/meeting-board';
 import { isAgendaPublished, loadTeachBoard, loadTeachView, offerChoices, OFFER_DATES } from '@/lib/meeting-board-supply';
 import { loadFamilyWeek } from '@/lib/family-week';
-import { firstNameOf, isPastSoftClose, onBehalfAccess } from '@/lib/meeting-board-shared';
+import { familyLede } from '@/lib/family-week-shared';
+
+import { isPastSoftClose, onBehalfAccess } from '@/lib/meeting-board-shared';
 import { PageHeader } from '@/app/_components/page-header';
 import { PageShell } from '@/app/_components/page-shell';
 import { Button } from '@/app/_components/button';
 import { MemberProxyBanner } from '../member-proxy-banner';
 import memberStyles from '../member.module.css';
 import { FamilyWeekMember } from './family-week-member';
-import { TeachBoard } from './teach-board';
+import { TeacherCard } from './teacher-card';
+import { loadTeacherWeek } from '@/lib/teacher-week';
+import fw from './family-week.module.css';
 import { PlanNotice } from './plan-notice';
 import styles from './meeting.module.css';
 
@@ -188,12 +192,27 @@ export default async function MeetingBoardPage({ searchParams }: { searchParams:
   // Meeting Planner III (Decision 5): every scout of the household on one page, the published plan's options with
   // their suggestions marked. A proxy (a leader viewing a family) sees it read-only; entering for someone is the
   // planner's person drawer.
-  const week = subjects.length ? await loadFamilyWeek(sb, meeting, subjects.map((s) => s.personId), catalog, actorPersonId) : null;
+  // A Junior Leader answering for themself has one card, the teaching one (prototype: no second scout card).
+  const juniorSelf = teacher?.kind === 'junior' && subjects.some((s) => s.personId === teacher.personId);
+  const scoutIds = subjects.map((s) => s.personId).filter((id) => !(juniorSelf && id === teacher?.personId));
+  const week = scoutIds.length ? await loadFamilyWeek(sb, meeting, scoutIds, catalog, actorPersonId) : null;
+  const teacherWeek = showTeach ? await loadTeacherWeek(sb, meeting, catalog, teacher!.personId) : null;
   const planSet = await isAgendaPublished(sb, meeting.entryId);
   const upcoming = showTeach ? await loadUpcomingMeetings(sb, OFFER_DATES, meeting.date) : [];
   const teachView = showTeach ? await loadTeachView(sb, meeting, catalog, teacher!.personId, { board: everyone, upcoming, teach }) : null;
   const teacherIsSelf = !onBehalf && session?.personId === teacherId;
   const enteringFor = onBehalf ? (subjects[0]?.name ?? teacher?.displayName ?? '') : '';
+  const scoutNames = week?.scouts.map((s) => s.firstName) ?? [];
+  const teacherFirst = teacherWeek?.firstName ?? '';
+  const lede = onBehalf
+    ? null
+    : scoutNames.length
+      ? familyLede(teacherWeek && teacherIsSelf ? [...scoutNames, 'you'] : scoutNames, session?.subjectKind === 'scout' && !teacherWeek)
+      : teacherWeek?.junior
+        ? `Hi ${teacherFirst}, here’s what we have planned for you this Sunday. One tap tells us whether this works.`
+        : teacherWeek
+          ? `Hi ${teacherFirst}. Here’s what you’re teaching Sunday. One tap tells us whether the plan works.`
+          : null;
 
   return shell(
     <>
@@ -207,17 +226,19 @@ export default async function MeetingBoardPage({ searchParams }: { searchParams:
           </p>
         ))}
       <PlanNotice planSet={planSet} pastClose={isPastSoftClose(meeting.date)} entryId={meeting.entryId} />
-      {week && week.scouts.length ? <FamilyWeekMember week={week} readOnly={proxy != null || onBehalf} /> : null}
-      {teachView && teacher && (
-        <TeachBoard
-          key={`${teacher.personId}:${teachView.intent ?? ''}`}
+      {lede ? <p className={fw.lede}>{lede}</p> : null}
+      {week && week.scouts.length ? <FamilyWeekMember week={week} readOnly={proxy != null || onBehalf} lede={null} /> : null}
+      {teachView && teacherWeek && (
+        <TeacherCard
+          key={`${teacherWeek.personId}:${teacherWeek.intent ?? ''}`}
           entryId={meeting.entryId}
-          subject={{ personId: teacher.personId, firstName: firstNameOf(teacher.displayName), name: teacher.displayName, isSelf: teacherIsSelf }}
-          initial={teachView}
-          choices={offerChoices(teacher, catalog, upcoming)}
+          date={meeting.date}
+          isSelf={teacherIsSelf}
+          initial={teacherWeek}
+          view={teachView}
+          choices={offerChoices(teacher!, catalog, upcoming)}
           onBehalf={onBehalf}
           readOnly={onBehalfReadOnly}
-          teaching={[]}
         />
       )}
     </>

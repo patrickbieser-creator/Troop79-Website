@@ -501,3 +501,31 @@
   padding-top: var(--sp-4);
   border-top: 1px solid var(--border-light);
 }
+/* The page's opening line (Lora, the public lede). */
+.lede {
+  margin: 0;
+  font: var(--fs-md) / 1.6 var(--font-body);
+  color: var(--text-head);
+}
+/* A request on the plan's list. */
+.reqTag {
+  display: inline-block;
+  padding: 0 var(--sp-2);
+  border-radius: var(--rad-pill);
+  background: var(--status-warning-bg);
+  font: 700 var(--fs-xs) / 1.6 var(--font-ui);
+  color: var(--bark);
+}
+/* The plan's limits: "3 of 4 things · 30 of 60 min"; yellow when full. */
+.cap {
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--rad-md);
+  background: var(--status-success-bg);
+  font: var(--fs-sm) / 1.5 var(--font-ui);
+  color: var(--text-head);
+}
+.capFull {
+  composes: cap;
+  background: var(--status-warning-bg);
+  color: var(--bark);
+}

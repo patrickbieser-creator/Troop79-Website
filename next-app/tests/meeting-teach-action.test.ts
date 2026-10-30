@@ -363,3 +363,86 @@ describe('the board', () => {
     expect(rows.filter((r) => r.href.startsWith('/planner'))).toEqual([]);
   });
 });
+
+/** Family page F3/F4 (Plans/Meeting-Planner-III-Family.md): the Sunday limit and "Not sure yet". */
+describe('the Sunday teaching limit', () => {
+  /** Top-level requirements with no sub-requirements: 15 minutes each. */
+  const leafKeys = async (n: number) => {
+    const { data } = await sb.from('rank_requirements').select('id, rank_id, code, parent_id').eq('rank_id', 'second-class');
+    const rows = (data ?? []) as { id: number; rank_id: string; code: string; parent_id: number | null }[];
+    return rows.filter((r) => r.parent_id == null && !rows.some((k) => k.parent_id === r.id)).slice(0, n).map((r) => `${r.rank_id}-${r.code}`);
+  };
+
+  it('Teacher_CannotTake_FourthClass', async () => {
+    asAdult(parent);
+    const act = await actions();
+    const keys = await leafKeys(4);
+    for (const k of keys.slice(0, 3)) await act.meetingTeachAction({ entryId: meeting1, personId: parent, key: k });
+    const fourth = await act.meetingTeachAction({ entryId: meeting1, personId: parent, key: keys[3] });
+    expect(fourth.ok ? 'taken' : fourth.error).toBe('You’re at 3 classes, the most for one Sunday. Drop one to take this.');
+  });
+
+  it('Teacher_CannotTake_ClassPast60Minutes', async () => {
+    asAdult(parent);
+    const act = await actions();
+    // Tenderfoot 4a has eight parts: capped at one meeting, 60 minutes (D11).
+    await act.meetingTeachAction({ entryId: meeting1, personId: parent, key: 'tenderfoot-4a' });
+    const next = await act.meetingTeachAction({ entryId: meeting1, personId: parent, key: (await leafKeys(1))[0] });
+    expect(next.ok ? 'taken' : next.error).toBe('This would make 75 minutes. Teaching is capped at 60 minutes on a Sunday.');
+  });
+
+  it('Teacher_OfferForThisSunday_IsRefusedAtTheClassLimit', async () => {
+    asAdult(parent);
+    const act = await actions();
+    for (const k of await leafKeys(3)) await act.meetingTeachAction({ entryId: meeting1, personId: parent, key: k });
+    const r = await act.meetingPostOfferAction({ entryId: meeting1, personId: parent, what: { type: 'ff', title: 'Fire building' }, entryIds: [meeting1] });
+    expect(r.ok ? 'posted' : r.field).toBe('dates');
+  });
+});
+
+describe('Not sure yet on a teacher card', () => {
+  const leaderAssigns = async (key: string) => {
+    state.actor = { personId: other, subjectKind: 'adult', capabilities: new Set(['meeting_plan.use']) };
+    asAdult(other);
+    const r = await (await actions()).meetingTeachAction({ entryId: meeting1, personId: parent, key, onBehalf: true });
+    if (!r.ok) throw new Error(r.error);
+    state.actor = null;
+  };
+  const heldKeys = async () => {
+    const { data } = await sb.from('meeting_topic_teachers').select('meeting_topics(topic_key)').eq('calendar_entry_id', meeting1).eq('person_id', parent);
+    return ((data ?? []) as unknown as { meeting_topics: { topic_key: string } }[]).map((r) => r.meeting_topics.topic_key).sort();
+  };
+
+  it('Teacher_Clear_ReleasesOwnSignups_KeepsPreassigned', async () => {
+    await leaderAssigns(knotKey);
+    asAdult(parent);
+    const act = await actions();
+    const own = 'second-class-1a';
+    await act.meetingTeachAction({ entryId: meeting1, personId: parent, key: own });
+    await act.meetingTeacherClearAction({ entryId: meeting1, personId: parent, takeOff: false });
+    expect(await heldKeys()).toEqual([knotKey]);
+  });
+
+  it('Teacher_ClearTakeMeOff_ReleasesPreassigned', async () => {
+    await leaderAssigns(knotKey);
+    asAdult(parent);
+    await (await actions()).meetingTeacherClearAction({ entryId: meeting1, personId: parent, takeOff: true });
+    expect(await heldKeys()).toEqual([]);
+  });
+
+  it('Teacher_Clear_LeavesOtherMeetingsAlone', async () => {
+    asAdult(parent);
+    const act = await actions();
+    await act.meetingTeachAction({ entryId: meeting2, personId: parent, key: knotKey });
+    await act.meetingTeachAction({ entryId: meeting1, personId: parent, key: knotKey });
+    await act.meetingTeacherClearAction({ entryId: meeting1, personId: parent, takeOff: true });
+    const { count } = await sb.from('meeting_topic_teachers').select('person_id', { count: 'exact', head: true }).eq('calendar_entry_id', meeting2).eq('person_id', parent);
+    expect(count).toBe(1);
+  });
+
+  it('Teacher_Clear_SetsNotSureYet', async () => {
+    asAdult(parent);
+    const r = await (await actions()).meetingTeacherClearAction({ entryId: meeting1, personId: parent, takeOff: false });
+    expect(r.ok && r.week?.intent).toBe('undecided');
+  });
+});

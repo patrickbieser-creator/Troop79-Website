@@ -5,7 +5,7 @@ import { hashSecret } from '../src/lib/identity-challenge';
 import { inviteExpiresAt } from '../src/lib/meeting-invites';
 import { claimPlanPage, inspectPlanPage, mintPlanPage, revokePlanPages, supersedeOlderPlanPages } from '../src/lib/plan-pages';
 import { familyWrite, uncachedLists } from '../src/lib/family-week';
-import { SUGGESTION_CAP } from '../src/lib/family-week-shared';
+import { PLAN_MAX } from '../src/lib/family-week-shared';
 import { fetchAdvancementCatalog } from '../src/lib/advancement-catalog';
 
 /**
@@ -120,26 +120,27 @@ describe('the family link', () => {
 });
 
 describe('family writes', () => {
-  it('SuggestionsOverTheCap_AreRejectedServerSide', async () => {
+  it('FamilyWrite_RequestsAtOnce_CannotPassFourThings', async () => {
     const catalog = await fetchAdvancementCatalog(sb as never);
     await sb.from('meeting_scout_suggestions').delete().eq('calendar_entry_id', meeting).eq('person_id', scout);
-    const w = { meeting: { entryId: meeting, date: MEETING_DATE }, actorPersonId: parent, scoutPersonId: scout, catalog };
-    const keys = await requestableKeys(catalog, 0, SUGGESTION_CAP + 1);
     const lists = await uncachedLists(sb);
-    const results = [];
-    for (const key of keys) results.push((await familyWrite(sb, w, { op: 'suggest', key, on: true }, { lists })).ok);
-    expect(results).toEqual([...keys.slice(0, SUGGESTION_CAP).map(() => true), false]);
-  });
-
-  it('SuggestionsAtOnce_CannotPassTheCap', async () => {
-    const catalog = await fetchAdvancementCatalog(sb as never);
-    await sb.from('meeting_scout_suggestions').delete().eq('calendar_entry_id', meeting).eq('person_id', scout);
-    const keys = await requestableKeys(catalog, 6, SUGGESTION_CAP + 3);
-    const lists = await uncachedLists(sb);
+    const keys = await requestableKeys(catalog, 6, PLAN_MAX + 2);
     const w = { meeting: { entryId: meeting, date: MEETING_DATE }, actorPersonId: parent, scoutPersonId: scout, catalog };
     await Promise.all(keys.map((key) => familyWrite(sb, w, { op: 'suggest', key, on: true }, { lists })));
     const { count } = await sb.from('meeting_scout_suggestions').select('topic_key', { count: 'exact', head: true }).eq('calendar_entry_id', meeting).eq('person_id', scout);
-    expect(count).toBe(SUGGESTION_CAP);
+    expect(count! <= PLAN_MAX).toBe(true);
+  });
+
+  it('FamilyWrite_RefusesRequest_OverSixtyMinutes', async () => {
+    const catalog = await fetchAdvancementCatalog(sb as never);
+    await sb.from('meeting_scout_suggestions').delete().eq('calendar_entry_id', meeting).eq('person_id', scout);
+    const w = { meeting: { entryId: meeting, date: MEETING_DATE }, actorPersonId: parent, scoutPersonId: scout, catalog };
+    const lists = await uncachedLists(sb);
+    // Two whole badges: 45 minutes each.
+    const keys = await requestableKeys(catalog, 0, 2);
+    const results = [];
+    for (const key of keys) results.push(await familyWrite(sb, w, { op: 'suggest', key, on: true }, { lists }));
+    expect([results[0].ok, results[1].ok ? '' : (results[1] as { error: string }).error]).toEqual([true, expect.stringMatching(/^That needs 45 min, and .+ plan has 15 left\.$/)]);
   });
 
   it('Family_CannotSuggest_SomethingOffTheList', async () => {
@@ -168,7 +169,7 @@ describe('family writes', () => {
     expect((data as { intent: string }).intent).toBe('coming');
   });
 
-  it('NotSureYet_ClearsTheAnswer_AndTheHelperRow', async () => {
+  it('NotSureYet_ClearsTheAnswer_KeepsTheHelperRow', async () => {
     const catalog = await fetchAdvancementCatalog(sb as never);
     const w = { meeting: { entryId: meeting, date: MEETING_DATE }, actorPersonId: parent, scoutPersonId: scout, catalog };
     await familyWrite(sb, w, { op: 'answer', choice: 'ok' });
@@ -178,7 +179,7 @@ describe('family writes', () => {
       sb.from('meeting_intents').select('intent').eq('calendar_entry_id', meeting).eq('person_id', scout).single(),
       sb.from('meeting_scout_helpers').select('person_id', { count: 'exact', head: true }).eq('calendar_entry_id', meeting).eq('person_id', scout)
     ]);
-    expect([(data as { intent: string }).intent, count]).toEqual(['undecided', 0]);
+    expect([(data as { intent: string }).intent, count]).toEqual(['undecided', 1]);
   });
 });
 

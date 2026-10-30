@@ -11,7 +11,8 @@ import {
   type QueueEmail,
   type SendDeps
 } from '../src/lib/meeting-emails';
-import { SUGGESTION_CAP } from '../src/lib/family-week-shared';
+/** The RPC's own cap argument: the family page passes whatever room the plan has left. */
+const SUGGESTION_CAP = 5;
 
 /**
  * Meeting Planner III Emails, E1 (Plans/Meeting-Planner-III-Emails.md): the log and the one-at-a-time sender. Nothing

@@ -18,7 +18,7 @@ import { inspectPlanPage } from '@/lib/plan-pages';
 import { PageHeader } from '@/app/_components/page-header';
 import { PageShell } from '@/app/_components/page-shell';
 import { PlanPageClient } from './plan-page-client';
-import type { FamilyChoice } from '@/lib/family-week-shared';
+import { familyLede, type FamilyChoice } from '@/lib/family-week-shared';
 import styles from '../../../member/meeting/family-week.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -61,9 +61,9 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
     <>
       <PageHeader kicker="Troop Meeting" title={fmtDateFull(meeting.date)} />
       <PageShell width="narrow">
-        <PlanPageClient token={token.toLowerCase()} week={week} initialAnswer={initialAnswer} />
+        <PlanPageClient token={token.toLowerCase()} week={week} initialAnswer={initialAnswer} lede={familyLede(week.scouts.map((s) => s.firstName), page.recipientId === week.scouts[0]?.personId && week.scouts.length === 1)} />
         <footer className={styles.foot}>
-          <p>Plans can change before Sunday. If a scout&rsquo;s group or teacher changes, we&rsquo;ll email you.</p>
+          <p>Plans can change before Sunday. If a group or teacher changes, we&rsquo;ll email you.</p>
           <p>
             You opened this from an email link, so there&rsquo;s no sign-in. The link works until 6:00 PM on {fmtDateFull(meeting.date)}. This page is for {page.recipientName}; if that isn&rsquo;t you,
             please don&rsquo;t answer here. <Link href="/member/meeting">Sign in</Link> for more.

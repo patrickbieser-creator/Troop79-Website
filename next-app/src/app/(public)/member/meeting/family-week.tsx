@@ -1,85 +1,68 @@
 'use client';
 
 /**
- * This week for a family (Plans/Meeting-Planner-III-Emails.md, E2; prototypes/meeting-plan-III/Family.dc.html): the
- * plan is already set, so each scout's card shows it, then ONE radio group whose choices answer "coming?" and "the
- * plan?" together. "Change the plan" opens the edit area in the card: untick a planned requirement (applies at once),
- * or suggest something (a flag for the planners, up to SUGGESTION_CAP). Every tap saves; there is no Send button. A
- * household of two or more gets "Everyone's coming and the plans look good". Shared by /member/meeting (signed in) and
+ * This week for a family (Plans/Meeting-Planner-III-Family.md; prototypes/meeting-plan-III/Family.dc.html): the plan
+ * is already set, so each scout's card shows it, one line per item with its minutes, then the same three answers on
+ * every card: This plan looks good · Change my plan · Can't make it this week. "Change my plan" opens the edit area in
+ * the card: untick a planned item (applies at once), or request something (a flag for the planners). A request joins
+ * the checklist, ticked and tagged Requested; unticking it withdraws it. The plan holds at most PLAN_MAX things and
+ * PLAN_MAX_MIN minutes; anything that won't fit is disabled and says why. Every tap saves; there is no Send button. A
+ * household of two or more gets "All of these plans look good". Shared by /member/meeting (signed in) and
  * /i/plan/<token> (the email's link); the caller passes the write.
  *
- * The email's buttons arrive as `initialAnswer` (once, then the URL drops it): "Yes, coming" answers every unanswered
- * card; "Pick something else" opens the edit area; "Not this week" and "help teach" only preselect, and wait for a tap,
- * so a mail scanner that runs the page can never take a scout off the plan.
+ * The email's buttons arrive as `initialAnswer` (once, then the URL drops it): "Yes" answers every unanswered card;
+ * "Pick something else" (and an older email's "I'd like to teach") opens the edit area; "Not this week" only
+ * preselects, and waits for a tap, so a mail scanner that runs the page can never take a scout off the plan.
  */
 import { useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import type { FamilyOp, FamilyScout, FamilyWeek, FamilyWrite } from '@/lib/family-week';
-import { SUGGESTION_CAP, type FamilyChoice } from '@/lib/family-week-shared';
+import type { FamilyOp, FamilyOption, FamilyScout, FamilyWeek, FamilyWrite } from '@/lib/family-week';
+import { HELP_KEY, PLAN_MAX, PLAN_MAX_MIN, optionLine, planLoad, withMinutes, type FamilyChoice } from '@/lib/family-week-shared';
 import styles from './family-week.module.css';
 
 type Write = (scoutId: number, op: FamilyOp) => Promise<FamilyWrite>;
+type Answer = 'ok' | 'change' | 'out';
 
-interface ChoiceDef {
-  k: FamilyChoice;
-  label: string;
-  sub?: string;
+/** An older email's 'mb' reads as the plan looks good; its 'help' as change my plan. */
+const asAnswer = (c: FamilyChoice | null): Answer | null => (c == null ? null : c === 'mb' ? 'ok' : c === 'help' ? 'change' : c);
+
+function choicesFor(s: FamilyScout): { k: Answer; label: string; sub: string }[] {
+  const first = s.firstName;
+  return [
+    {
+      k: 'ok',
+      label: 'This plan looks good',
+      sub: s.kind === 'done' ? `A leader will pick something good for ${first}` : `We’ll plan on ${first} in the ${s.kind === 'mb' ? 'Merit badge' : (s.group?.name ?? '')} group`
+    },
+    { k: 'change', label: 'Change my plan', sub: s.kind === 'done' ? 'Request helping teach, a merit badge, or something else' : 'Untick something, or request something else' },
+    { k: 'out', label: 'Can’t make it this week', sub: `We’ll take ${first} off Sunday’s plan` }
+  ];
 }
-
-function choicesFor(s: FamilyScout, focus: string): ChoiceDef[] {
-  const out: ChoiceDef = { k: 'out', label: 'Can’t make it this week', sub: `We’ll take ${s.firstName} off Sunday’s plan` };
-  if (s.kind === 'rank') {
-    return [
-      { k: 'ok', label: 'Coming · this plan looks good', sub: `We’ll plan on ${s.firstName} in the ${s.group?.name ?? ''} group` },
-      { k: 'change', label: 'Coming · but change the plan', sub: 'Untick something, or suggest something else' },
-      out
-    ];
-  }
-  if (s.kind === 'done') {
-    return [
-      { k: 'ok', label: `Coming · a leader can pick for ${s.firstName}`, sub: `We’ll find something good for ${s.firstName}` },
-      { k: 'change', label: 'Coming · I’ll choose', sub: 'Suggest helping teach, a merit badge, or something else' },
-      out
-    ];
-  }
-  const list: ChoiceDef[] = [];
-  if (s.group) list.push({ k: 'mb', label: `Coming · ${s.group.name} merit badge`, sub: 'With a merit badge counselor' });
-  if (s.helpGroup) {
-    const who = s.helpGroup.teachers.length ? ` and ${s.helpGroup.teachers.join(' and ')}` : '';
-    list.push({ k: 'help', label: `Coming · help teach ${focus || 'the younger scouts'}`, sub: `With the ${s.helpGroup.name} group${who}` });
-  }
-  if (!list.length) list.push({ k: 'ok', label: 'Coming', sub: 'A leader will find something for Sunday' });
-  list.push({ k: 'change', label: 'Coming · request a different merit badge or requirement' });
-  return [...list, out];
-}
-
-/** The "plan looks good" choice for a card: what "Everyone's coming" and the email's "Yes, coming" answer. */
-const defaultChoice = (s: FamilyScout): FamilyChoice => (s.kind === 'mb' && s.group ? 'mb' : s.kind === 'mb' && s.helpGroup ? 'help' : 'ok');
 
 export function FamilyWeekView({
   week,
   write,
   readOnly = false,
   initialAnswer = null,
-  fullNames = false
+  lede = null
 }: {
   week: FamilyWeek;
   write: Write;
   readOnly?: boolean;
   initialAnswer?: FamilyChoice | null;
-  /** Head each card with the scout's full name: the signed-in page only. */
-  fullNames?: boolean;
+  /** The page's opening line (lib/family-week-shared familyLede); none on a page that writes its own. */
+  lede?: string | null;
 }) {
-  const [answers, setAnswers] = useState<Record<number, FamilyChoice | null>>(() => Object.fromEntries(week.scouts.map((s) => [s.personId, s.choice])));
-  const [pending, setPending] = useState<FamilyChoice | null>(initialAnswer && initialAnswer !== 'ok' && initialAnswer !== 'mb' ? initialAnswer : null);
+  const [answers, setAnswers] = useState<Record<number, Answer | null>>(() => Object.fromEntries(week.scouts.map((s) => [s.personId, asAnswer(s.choice)])));
+  const first = asAnswer(initialAnswer);
+  const [pending, setPending] = useState<Answer | null>(first && first !== 'ok' ? first : null);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const pathname = usePathname();
   const applied = useRef(false);
-  const focus = week.focus.join(' + ').toLowerCase();
 
   const [unsure, setUnsure] = useState<Record<number, boolean>>(() => Object.fromEntries(week.scouts.map((s) => [s.personId, s.intent === 'undecided'])));
-  // "Not sure yet": the undo for a nervous tap. The card goes back to no answer (saved as undecided).
+  // "Not sure yet": the undo for a nervous tap. The card goes back to no answer (saved as undecided); edits stay.
   const clear = async (s: FamilyScout) => {
     const prev = answers[s.personId] ?? null;
     setAnswers((a) => ({ ...a, [s.personId]: null }));
@@ -95,7 +78,7 @@ export function FamilyWeekView({
     setUnsure((u) => ({ ...u, [s.personId]: false }));
   };
 
-  const answer = async (s: FamilyScout, k: FamilyChoice): Promise<boolean> => {
+  const answer = async (s: FamilyScout, k: Answer): Promise<boolean> => {
     const prev = answers[s.personId] ?? null;
     setAnswers((a) => ({ ...a, [s.personId]: k }));
     setUnsure((u) => ({ ...u, [s.personId]: false }));
@@ -110,15 +93,15 @@ export function FamilyWeekView({
     return false;
   };
 
-  // The email's button, once: "Yes, coming" answers every unanswered card; then the URL forgets it, so a reload
-  // can't re-apply an old answer over a later change.
+  // The email's button, once: "Yes" answers every unanswered card; then the URL forgets it, so a reload can't
+  // re-apply an old answer over a later change.
   useEffect(() => {
     if (applied.current || !initialAnswer) return;
     applied.current = true;
-    if (!readOnly && (initialAnswer === 'ok' || initialAnswer === 'mb')) {
+    if (!readOnly && first === 'ok') {
       // After the effect (a write is a server round trip anyway), so the page's first render settles first.
       void Promise.resolve().then(() => {
-        for (const s of week.scouts) if (s.choice == null) void answer(s, defaultChoice(s));
+        for (const s of week.scouts) if (s.choice == null) void answer(s, 'ok');
       });
     }
     router.replace(pathname, { scroll: false });
@@ -128,17 +111,16 @@ export function FamilyWeekView({
   const open = week.scouts.filter((s) => answers[s.personId] == null);
   const allSet = async () => {
     setError(null);
-    for (const s of open) await answer(s, defaultChoice(s));
+    for (const s of open) await answer(s, 'ok');
   };
 
   return (
     <div className={styles.wrap}>
+      {lede ? <p className={styles.lede}>{lede}</p> : null}
       {week.scouts.length > 1 && open.length > 0 && !readOnly ? (
         <button type="button" className={styles.allSet} onClick={() => void allSet()}>
-          <span className={styles.allSetMain}>✓ Everyone&rsquo;s coming and the plans look good</span>
-          <span className={styles.allSetSub}>
-            Answers for {week.scouts.map((s) => s.firstName).join(' and ')} in one tap. You can still change any one below.
-          </span>
+          <span className={styles.allSetMain}>✓ All of these plans look good</span>
+          <span className={styles.allSetSub}>Answers for {week.scouts.map((s) => s.firstName).join(' and ')} in one tap. You can still change any card below.</span>
         </button>
       ) : null}
       {week.scouts.length > 0 && open.length === 0 ? (
@@ -155,7 +137,6 @@ export function FamilyWeekView({
         <ScoutCard
           key={s.personId}
           scout={s}
-          focus={focus}
           choice={answers[s.personId] ?? null}
           unsure={!!unsure[s.personId]}
           onUnsure={() => {
@@ -171,7 +152,6 @@ export function FamilyWeekView({
           }}
           write={write}
           readOnly={readOnly}
-          fullName={fullNames}
         />
       ))}
     </div>
@@ -180,36 +160,44 @@ export function FamilyWeekView({
 
 function ScoutCard({
   scout,
-  focus,
   choice,
   unsure,
   onUnsure,
   pending,
   onChoose,
   write,
-  readOnly,
-  fullName
+  readOnly
 }: {
   scout: FamilyScout;
-  focus: string;
-  choice: FamilyChoice | null;
+  choice: Answer | null;
   unsure: boolean;
   onUnsure: () => void;
-  pending: FamilyChoice | null;
-  onChoose: (k: FamilyChoice) => void;
+  pending: Answer | null;
+  onChoose: (k: Answer) => void;
   write: Write;
   readOnly: boolean;
-  fullName: boolean;
 }) {
+  const first = scout.firstName;
+  const helpOption = scout.also.find((o) => o.key === HELP_KEY) ?? null;
   const [off, setOff] = useState<Set<string>>(() => new Set(scout.items.filter((i) => !i.on).map((i) => i.key)));
-  const [suggested, setSuggested] = useState(scout.suggestions);
+  const [requested, setRequested] = useState<FamilyOption[]>(scout.suggestions);
+  const [helping, setHelping] = useState(scout.helping);
   const [editing, setEditing] = useState(pending === 'change');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState('');
-  const choices = choicesFor(scout, focus);
-  const changes = off.size + suggested.length;
+  const changes = off.size;
+  const requests = requested.length + (helping ? 1 : 0);
   const showEdit = !readOnly && (editing || choice === 'change') && choice !== 'out';
+
+  const items = scout.items.map((i) => ({ ...i, on: !off.has(i.key) }));
+  const asked = [...requested, ...(helping && helpOption ? [helpOption] : [])];
+  const load = planLoad(items, asked);
+  const full = load.things >= PLAN_MAX;
+  const minLeft = PLAN_MAX_MIN - load.minutes;
+  const fits = (min: number) => !full && min <= minLeft;
+  /** What a + Request button says: its verb, or why it can't. */
+  const requestMark = (min: number) => (full ? 'Limit reached' : min > minLeft ? `Needs ${min} min · ${Math.max(0, minLeft)} left` : '+ Request');
 
   const run = async (op: FamilyOp, apply: () => void, undo: () => void) => {
     setBusy(true);
@@ -235,15 +223,15 @@ function ScoutCard({
     else next.add(key);
     void run({ op: 'item', key, on }, () => setOff(next), () => setOff(prev));
   };
-  const toggleSuggest = (o: { key: string; label: string; sub: string }, on: boolean) => {
-    const prev = suggested;
-    if (on && prev.length >= SUGGESTION_CAP) {
-      setError(`Suggest up to ${SUGGESTION_CAP} things. Remove one first.`);
+  const toggleRequest = (o: FamilyOption, on: boolean) => {
+    if (o.key === HELP_KEY) {
+      void run({ op: 'help', on }, () => setHelping(on), () => setHelping(!on));
       return;
     }
-    void run({ op: 'suggest', key: o.key, on }, () => setSuggested(on ? [...prev, o] : prev.filter((x) => x.key !== o.key)), () => setSuggested(prev));
+    const prev = requested;
+    void run({ op: 'suggest', key: o.key, on }, () => setRequested(on ? [...prev, o] : prev.filter((x) => x.key !== o.key)), () => setRequested(prev));
   };
-  const choose = (k: FamilyChoice) => {
+  const choose = (k: Answer) => {
     setEditing(k === 'change');
     onChoose(k);
   };
@@ -252,60 +240,77 @@ function ScoutCard({
     choice == null
       ? { text: unsure ? 'Not sure yet' : 'Needs an answer', cls: styles.badgeAsk }
       : choice === 'out'
-        ? { text: 'Not coming', cls: styles.badgeOut }
-        : changes > 0
-          ? { text: 'Coming · changes sent', cls: styles.badgeChanged }
-          : { text: '✓ Coming', cls: styles.badgeComing };
-  const isSuggested = (key: string) => suggested.some((x) => x.key === key);
-  const alsoKeys = new Set(scout.also.map((o) => o.key));
-  const extras = suggested.filter((x) => !alsoKeys.has(x.key));
+        ? { text: 'Can’t make it', cls: styles.badgeOut }
+        : choice === 'change'
+          ? { text: '✓ Changes sent', cls: styles.badgeChanged }
+          : { text: '✓ Plan looks good', cls: styles.badgeComing };
+  const isAsked = (key: string) => asked.some((x) => x.key === key);
+  const alsoOpen = scout.also.filter((o) => !isAsked(o.key));
   const term = q.trim().toLowerCase();
-  const found = term ? scout.requestable.filter((r) => !isSuggested(r.key) && `${r.codeLabel} ${r.label}`.toLowerCase().includes(term)).slice(0, 5) : [];
-  const planTitle = `${fullName ? scout.name : scout.firstName}’s ${scout.kind === 'mb' ? 'options' : 'plan'}`;
-  const planSub = scout.kind === 'rank' ? `${scout.group?.name} group${scout.group?.teachers.length ? ` · with ${scout.group.teachers.join(' and ')}` : ''}` : scout.kind === 'mb' ? 'Merit badge group' : '';
+  const found = term ? scout.requestable.filter((r) => !isAsked(r.key) && `${r.codeLabel} ${r.label}`.toLowerCase().includes(term)).slice(0, 5) : [];
+  const groupLine = scout.kind === 'mb' ? 'Merit badge group' : scout.group ? `${scout.group.name} group` : '';
   const hid = `fw-${scout.personId}`;
   const qid = `fwq-${scout.personId}`;
+  const saved = [changes ? `${changes} ${changes === 1 ? 'change' : 'changes'}` : '', requests ? `${requests} ${requests === 1 ? 'request' : 'requests'}` : ''].filter(Boolean).join(', ');
+  const capText = full
+    ? `${first}’s plan is full: ${PLAN_MAX} things is the most for one meeting. Untick one to add something else.`
+    : minLeft <= 0
+      ? `${first}’s plan fills the whole ${PLAN_MAX_MIN}-minute meeting. Untick something to make room.`
+      : `${minLeft} min left`;
+  const lineOf = (i: { code: string; min: number }) => withMinutes(i.code, i.min);
 
   return (
     <section className={styles.card} aria-labelledby={hid}>
       <div className={styles.cardHead}>
         <h2 id={hid} className={styles.name}>
-          {planTitle}
+          {first}&rsquo;s plan
         </h2>
-        {planSub ? <span className={styles.rankLine}>{planSub}</span> : null}
+        {groupLine ? <span className={styles.rankLine}>{groupLine}</span> : null}
         <span className={`${styles.badge} ${badge.cls}`}>{badge.text}</span>
       </div>
 
       <div className={styles.plan}>
-        {scout.kind === 'rank' && !showEdit && choice !== 'out' ? (
+        {!showEdit && choice !== 'out' && (items.some((i) => i.on) || asked.length) ? (
           <ul className={styles.planList}>
-            {scout.items
-              .filter((i) => !off.has(i.key))
+            {items
+              .filter((i) => i.on)
               .map((i) => (
                 <li key={i.key} className={styles.planItem}>
                   <span aria-hidden="true" className={styles.tick}>
                     ✓
                   </span>
-                  <span>
-                    {i.label} <span className={styles.code}>· {i.code}</span>
+                  <span className={styles.itemText}>
+                    <span>{i.label}</span>
+                    <span className={styles.code}>{lineOf(i)}</span>
                   </span>
                 </li>
               ))}
+            {asked.map((x) => (
+              <li key={x.key} className={styles.planItem}>
+                <span aria-hidden="true" className={styles.tick}>
+                  ✓
+                </span>
+                <span className={styles.itemText}>
+                  <span>
+                    {x.label} <span className={styles.reqTag}>Requested</span>
+                  </span>
+                  <span className={styles.code}>{optionLine(x)}</span>
+                </span>
+              </li>
+            ))}
           </ul>
         ) : null}
-        {scout.kind === 'done' && choice !== 'out' ? (
-          <p className={styles.doneNote}>
-            Nice work: {scout.firstName} has finished every requirement on offer this week. A leader can pick something good, or you can suggest something.
-          </p>
+        {scout.kind === 'done' && !asked.length && choice !== 'out' ? (
+          <p className={styles.doneNote}>Nice work: {first} has finished every requirement on offer this week. A leader can pick something good, or you can request something.</p>
         ) : null}
       </div>
 
       <div className={styles.ask}>
         <div id={qid} className={styles.question}>
-          Is {scout.firstName} coming Sunday{scout.kind === 'mb' ? ', and what would they like to do?' : '?'}
+          How does {first}&rsquo;s plan look?
         </div>
         <div role="radiogroup" aria-labelledby={qid} className={styles.choices}>
-          {choices.map((o) => {
+          {choicesFor(scout).map((o) => {
             const on = choice === o.k;
             const waiting = !on && pending === o.k;
             return (
@@ -323,7 +328,7 @@ function ScoutCard({
                 </span>
                 <span className={styles.choiceText}>
                   <span className={styles.choiceLabel}>{o.label}</span>
-                  {waiting || o.sub ? <span className={styles.choiceSub}>{waiting ? 'Tap to confirm' : o.sub}</span> : null}
+                  <span className={styles.choiceSub}>{waiting ? 'Tap to confirm' : o.sub}</span>
                 </span>
               </button>
             );
@@ -339,7 +344,7 @@ function ScoutCard({
               onUnsure();
             }}
           >
-            Not sure yet? Clear this answer
+            Not sure yet? Clear {first}&rsquo;s answer
           </button>
         ) : (
           <p className={styles.notSure}>{unsure ? 'Marked not sure yet. Answer when you know.' : 'Not sure yet? Leave it for now and answer when you know.'}</p>
@@ -348,62 +353,69 @@ function ScoutCard({
         {showEdit ? (
           <div className={styles.edit}>
             <div className={styles.editHead}>
-              <span className={styles.editTitle}>{scout.kind === 'rank' ? `Change ${scout.firstName}’s plan` : `Suggest something for ${scout.firstName}`}</span>
+              <span className={styles.editTitle}>Change {first}&rsquo;s plan</span>
               <span role="status" className={styles.saved}>
-                {changes ? `✓ Saved · ${[off.size ? `${off.size} ${off.size === 1 ? 'change' : 'changes'}` : '', suggested.length ? `${suggested.length} ${suggested.length === 1 ? 'suggestion' : 'suggestions'}` : ''].filter(Boolean).join(', ')} sent to the planners` : ''}
+                {saved ? `✓ Saved · ${saved} sent to the planners` : ''}
               </span>
             </div>
-            {scout.items.length ? (
+            <div role="status" className={full || minLeft <= 0 ? styles.capFull : styles.cap}>
+              <strong>
+                {load.things} of {PLAN_MAX} things · {load.minutes} of {PLAN_MAX_MIN} min
+              </strong>{' '}
+              <span>{capText}</span>
+            </div>
+            {items.length || asked.length ? (
               <ul className={styles.planList}>
-                {scout.items.map((i) => {
-                  const on = !off.has(i.key);
+                {items.map((i) => {
+                  const locked = !!i.fixed || (!i.on && !fits(i.min));
+                  const why = i.fixed ? '' : !i.on && locked ? (full ? ' · untick something to add this back' : ' · too long to fit · untick something to make room') : i.on ? '' : ' · taken off';
                   return (
                     <li key={i.key}>
-                      <label className={on ? styles.itemOn : styles.item}>
-                        <input type="checkbox" checked={on} disabled={busy} onChange={(e) => toggleItem(i.key, e.target.checked)} />
+                      <label className={i.on ? styles.itemOn : styles.item}>
+                        <input type="checkbox" checked={i.on} disabled={busy || locked} onChange={(e) => toggleItem(i.key, e.target.checked)} />
                         <span className={styles.itemText}>
                           <span className={styles.itemLabel}>{i.label}</span>
                           <span className={styles.code}>
-                            {i.code}
-                            {on ? '' : ' · taken off'}
+                            {lineOf(i)}
+                            {why}
                           </span>
                         </span>
                       </label>
                     </li>
                   );
                 })}
+                {asked.map((x) => (
+                  <li key={x.key}>
+                    <label className={styles.itemOn}>
+                      <input type="checkbox" checked disabled={busy} onChange={() => toggleRequest(x, false)} />
+                      <span className={styles.itemText}>
+                        <span className={styles.itemLabel}>
+                          {x.label} <span className={styles.reqTag}>Requested</span>
+                        </span>
+                        <span className={styles.code}>{optionLine(x)}</span>
+                      </span>
+                    </label>
+                  </li>
+                ))}
               </ul>
             ) : null}
-            {scout.also.length ? (
+            {alsoOpen.length ? (
               <div className={styles.also}>
-                <div className={styles.alsoHead}>Also on Sunday · suggest one</div>
-                {scout.also.map((o) => {
-                  const on = isSuggested(o.key);
-                  return (
-                    <button key={o.key} type="button" aria-pressed={on} disabled={busy} className={on ? styles.alsoOn : styles.alsoBtn} onClick={() => toggleSuggest(o, !on)}>
-                      <span>
-                        <strong>{o.label}</strong>
-                        <br />
-                        <span className={styles.choiceSub}>{o.sub}</span>
-                      </span>
-                      <span className={styles.alsoMark}>{on ? '✓ Suggested' : '+ Suggest'}</span>
-                    </button>
-                  );
-                })}
+                <div className={styles.alsoHead}>Also on Sunday</div>
+                {alsoOpen.map((o) => (
+                  <button key={o.key} type="button" disabled={busy || !fits(o.min)} className={styles.alsoBtn} onClick={() => toggleRequest(o, true)}>
+                    <span>
+                      <strong>{o.label}</strong>
+                      <br />
+                      <span className={styles.choiceSub}>{optionLine(o)}</span>
+                    </span>
+                    <span className={styles.alsoMark}>{requestMark(o.min)}</span>
+                  </button>
+                ))}
               </div>
             ) : null}
-            {extras.map((x) => (
-              <div key={x.key} className={styles.extra}>
-                <span className={styles.extraLabel}>
-                  <strong>{x.label}</strong> <span className={styles.code}>· suggested</span>
-                </span>
-                <button type="button" className={styles.link} aria-label={`Remove ${x.label}`} disabled={busy} onClick={() => toggleSuggest(x, false)}>
-                  Remove
-                </button>
-              </div>
-            ))}
             <label className={styles.searchLabel}>
-              Suggest something not on the list
+              Request something not on the list
               <input className={styles.search} type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search: knots, swimming, 2c, cooking…" />
             </label>
             {found.length ? (
@@ -413,23 +425,23 @@ function ScoutCard({
                     <button
                       type="button"
                       className={styles.foundBtn}
-                      disabled={busy}
+                      disabled={busy || !fits(r.min)}
                       onClick={() => {
-                        toggleSuggest({ key: r.key, label: r.label, sub: r.codeLabel }, true);
+                        toggleRequest({ key: r.key, label: r.label, sub: '', code: r.codeLabel, min: r.min }, true);
                         setQ('');
                       }}
                     >
-                      <span className={styles.foundCode}>{r.codeLabel}</span>
+                      <span className={styles.foundCode}>{withMinutes(r.codeLabel, r.min)}</span>
                       <span className={styles.foundLabel}>{r.label}</span>
-                      <span className={styles.alsoMark}>+ Suggest</span>
+                      <span className={styles.alsoMark}>{requestMark(r.min)}</span>
                     </button>
                   </li>
                 ))}
               </ul>
             ) : null}
             <p className={styles.notSure}>
-              Each change saves as you make it. There&rsquo;s nothing else to press. Anything outside the plan goes to the planners as a suggestion (up to {SUGGESTION_CAP}). It isn&rsquo;t guaranteed, and a leader
-              will let you know before Sunday if it can&rsquo;t fit.
+              Each change saves as you make it. There&rsquo;s nothing else to press. Anything outside the plan goes to the planners as a request. It isn&rsquo;t guaranteed, and a leader will let you know
+              before Sunday if it can&rsquo;t fit.
             </p>
           </div>
         ) : null}

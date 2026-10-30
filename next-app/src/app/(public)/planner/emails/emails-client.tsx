@@ -17,7 +17,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { fmtDateTime } from '@/lib/format-date';
-import { SUGGESTION_CAP } from '@/lib/family-week-shared';
+import { PLAN_MAX, PLAN_MAX_MIN } from '@/lib/family-week-shared';
 import { peopleWords, planButtons, renderHouseholdEmail, TRACKING_LINE } from '@/lib/meeting-email-build';
 import { renderInviteDigest } from '@/lib/meeting-invite-email';
 import type { EmailScreen, LogLine, QueueRequest, ScreenRecipient, ScreenRow } from '@/lib/meeting-email-screen';
@@ -428,7 +428,9 @@ export function EmailsClient({ screen, day, backHref }: { screen: EmailScreen; d
             <li>Someone already emailed isn&rsquo;t emailed again unless you tick their row again on purpose.</li>
             <li>Brothers and sisters with the same parents get one email. Scouts 13 and older with a verified address get their own copy.</li>
             <li>Sending never changes the plan. Answers do: Can&rsquo;t make it takes a scout out of their group, a family&rsquo;s changes come off the plan, and a teacher&rsquo;s yes adds them to the group.</li>
-            <li>Families can suggest up to {SUGGESTION_CAP} things per scout. Suggestions only flag the scout for the planners.</li>
+            <li>
+              A scout&rsquo;s plan holds up to {PLAN_MAX} things and {PLAN_MAX_MIN} minutes. Requests only flag the scout for the planners.
+            </li>
             <li>Each family link works until 6:00 PM on the meeting day. Only the newest email&rsquo;s link works: sending again closes the older one.</li>
             <li>Troop 79 can see when an email is opened, and every email says so. Some phones open emails on their own, so Opened is a hint, not proof.</li>
           </ul>
