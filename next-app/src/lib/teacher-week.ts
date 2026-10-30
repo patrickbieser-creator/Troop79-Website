@@ -59,6 +59,8 @@ export interface TeacherWeek {
   firstName: string;
   junior: boolean;
   intent: Intent | null;
+  /** Their note with Can't make it this week (F3b); null without one. */
+  note: string | null;
   mine: MyClass[];
   other: MyOther[];
   /** Classes on the plan with no teacher yet, then the ones that have one. Neither lists this person's own. */
@@ -90,7 +92,7 @@ function classOf(g: TwGroup, catalog: Catalog, me: number | null): TeacherClass 
 export function buildTeacherWeek(
   tw: Pick<ThisWeek, 'groups'>,
   rows: { topicTeachers: readonly { key: string; personId: number; enteredByPersonId: number | null }[]; skillOffers: readonly { personId: number; skillId: string }[] },
-  me: { personId: number; name: string; junior: boolean; intent: Intent | null },
+  me: { personId: number; name: string; junior: boolean; intent: Intent | null; note?: string | null },
   catalog: Catalog,
   entryId: number,
   words: (key: string) => { label: string; codeLabel: string; minutes: number | null } | null
@@ -125,6 +127,7 @@ export function buildTeacherWeek(
     firstName: firstNameOf(me.name),
     junior: me.junior,
     intent: me.intent,
+    note: me.note ?? null,
     mine,
     other,
     needs: open.filter((x) => !x.g.teachers.length).map((x) => x.c),
@@ -142,11 +145,13 @@ export async function loadTeacherWeek(
   deps: { lists?: Pick<PeopleLists, 'pool'> } = {}
 ): Promise<TeacherWeek | null> {
   const lists = deps.lists ?? (await loadPlannerLists());
-  const [data, rows, people] = await Promise.all([
+  const [data, rows, people, noteRow] = await Promise.all([
     loadThisWeekData(sb, meeting, lists, catalog),
     loadSupplyRows(sb, [meeting.entryId]),
-    loadTeacherPeople(sb, [personId], meeting.date, catalog, { evenIfIneligible: true })
+    loadTeacherPeople(sb, [personId], meeting.date, catalog, { evenIfIneligible: true }),
+    sb.from('meeting_intents').select('note').eq('calendar_entry_id', meeting.entryId).eq('person_id', personId).maybeSingle()
   ]);
+  if (noteRow.error) throw new Error(noteRow.error.message);
   const me = people.get(personId);
   if (!me) return null;
   const tw = buildThisWeek(data.input);
@@ -156,7 +161,7 @@ export async function loadTeacherWeek(
     key.startsWith('skill:')
       ? { label: skillName.get(key.slice(6)) ?? key.slice(6), codeLabel: 'Any requirement', minutes: null }
       : topicWords(key, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, titles, { mbReqs: catalog.meritBadgeRequirements });
-  return buildTeacherWeek(tw, rows, { personId, name: me.displayName, junior: me.kind === 'junior', intent: data.input.intents.get(personId) ?? null }, catalog, meeting.entryId, words);
+  return buildTeacherWeek(tw, rows, { personId, name: me.displayName, junior: me.kind === 'junior', intent: data.input.intents.get(personId) ?? null, note: (noteRow.data as { note: string | null } | null)?.note ?? null }, catalog, meeting.entryId, words);
 }
 
 /** Minutes a key would add to someone's Sunday: a class of the night, else the catalog's time for it. */

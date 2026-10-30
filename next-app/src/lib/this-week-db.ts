@@ -88,6 +88,13 @@ export async function loadNightBadges(sb: SupabaseClient, entryId: number): Prom
   return ((data ?? []) as { mb_id: string }[]).map((r) => r.mb_id);
 }
 
+/** "Can't make it" notes left on the family page (F3b), by person. */
+async function loadIntentNotes(sb: SupabaseClient, entryId: number): Promise<Map<number, string>> {
+  const { data, error } = await sb.from('meeting_intents').select('person_id, note').eq('calendar_entry_id', entryId).eq('intent', 'not_coming').not('note', 'is', null);
+  if (error) throw new Error(error.message);
+  return new Map(((data ?? []) as { person_id: number; note: string }[]).map((r) => [r.person_id, r.note]));
+}
+
 /** A family's answers that change or flag the plan (Emails E2): unticks, helper answers and suggestions, by personId. */
 export async function loadFamilyAnswers(sb: SupabaseClient, entryId: number): Promise<Pick<ThisWeekInput, 'exclusions' | 'helpers' | 'suggestions' | 'teacherNotes'>> {
   const [x, h, g, n] = await Promise.all([
@@ -124,7 +131,7 @@ export async function loadThisWeekData(
 ): Promise<ThisWeekData> {
   const catalog = given ?? (await loadAdvancementCatalog());
   const scoutsIn = boardScoutsOf(lists);
-  const [scouts, progress, teachers, intents, supply, focus, roles, nightBadges, stamp, answers] = await Promise.all([
+  const [scouts, progress, teachers, intents, supply, focus, roles, nightBadges, stamp, answers, intentNotes] = await Promise.all([
     loadBoardState(sb, meeting, catalog, scoutsIn),
     loadLeafCodes(sb, scoutsIn.map((s) => s.scoutId)),
     loadTeacherPeople(sb, 'all', meeting.date, catalog, { pool: lists.pool }),
@@ -134,8 +141,11 @@ export async function loadThisWeekData(
     loadScoutRoles(sb, meeting.entryId),
     loadNightBadges(sb, meeting.entryId),
     loadBoardStamp(sb, meeting.entryId),
-    loadFamilyAnswers(sb, meeting.entryId)
+    loadFamilyAnswers(sb, meeting.entryId),
+    loadIntentNotes(sb, meeting.entryId)
   ]);
+  // A family-page "Can't make it" note shows under each group the person was down to teach (F3b).
+  const notesFromPage = supply.topicTeachers.flatMap((t) => (intentNotes.has(t.personId) ? [{ key: t.key, personId: t.personId, note: intentNotes.get(t.personId)! }] : []));
   return {
     catalog,
     stamp,
@@ -150,7 +160,8 @@ export async function loadThisWeekData(
       teachers: [...teachers.values()].filter((p) => p.eligible !== false),
       intents,
       topicTeachers: supply.topicTeachers.map((t) => ({ key: t.key, personId: t.personId, note: t.note })),
-      ...answers
+      ...answers,
+      teacherNotes: [...(answers.teacherNotes ?? []), ...notesFromPage]
     }
   };
 }

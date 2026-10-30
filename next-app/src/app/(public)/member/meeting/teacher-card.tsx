@@ -12,6 +12,7 @@
  *     takeable.
  *   - Someone with nothing assigned and no answer gets the class list open, with only Can't make it under it.
  *     Signing up answers the card; the next visit shows the standard card.
+ *   - Can't make it this week opens an optional note for the planners (F3b): 3 lines and 240 characters, its own Send.
  *   - "Not sure yet? Clear …'s answer" gives back everything signed up on this page. Pre-assigned to a class, it asks
  *     first whether to take them off the plan for now.
  */
@@ -22,11 +23,13 @@ import { classMinutes, TEACH_MAX_CLASSES, TEACH_MAX_MIN, teachRefusal, withMinut
 import type { OfferChoices, TeachView, WantedItem } from '@/lib/meeting-board-supply';
 import type { TeacherClass, TeacherWeek } from '@/lib/teacher-week';
 import { fmtDay } from '@/lib/format-date';
+import { DECLINE_NOTE_CHARS, DECLINE_NOTE_LINES } from '@/lib/decline-note';
 import {
   meetingPostOfferAction,
   meetingTeachAction,
   meetingTeacherClearAction,
   meetingTeacherIntentAction,
+  meetingTeacherNoteAction,
   meetingUnteachAction,
   meetingWithdrawOfferAction,
   type OfferWhat,
@@ -70,6 +73,7 @@ export function TeacherCard({ entryId, date, isSelf, initial, view: initialView,
   const [empty] = useState(() => !initial.mine.length && !initial.other.length && initial.intent == null);
   const [editing, setEditing] = useState(false);
   const [asking, setAsking] = useState(false);
+  const [note, setNote] = useState(initial.note ?? '');
   const [problem, setProblem] = useState<{ at: string | null; text: string } | null>(null);
   const [live, setLive] = useState('');
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -439,6 +443,35 @@ export function TeacherCard({ entryId, date, isSelf, initial, view: initialView,
           </div>
         ) : null}
 
+        {answer === 'out' && !readOnly ? (
+          <div className={fw.note}>
+            <label htmlFor={`${ids}-note`} className={fw.noteLabel}>
+              No problem. Anything you&rsquo;d like us to know?
+            </label>
+            <textarea
+              id={`${ids}-note`}
+              rows={DECLINE_NOTE_LINES}
+              maxLength={DECLINE_NOTE_CHARS}
+              className={fw.noteBox}
+              value={note}
+              onChange={(e) => setNote(e.target.value.split('\n').slice(0, DECLINE_NOTE_LINES).join('\n').slice(0, DECLINE_NOTE_CHARS))}
+            />
+            <span className={fw.noteCount}>
+              {DECLINE_NOTE_CHARS - note.length} characters left · up to {DECLINE_NOTE_LINES} lines
+            </span>
+            <div>
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={pending || note.trim() === (week.note ?? '')}
+                title={note.trim() === (week.note ?? '') ? 'No changes to send yet' : undefined}
+                onClick={() => run(() => meetingTeacherNoteAction({ ...target, note }), 'Note sent.')}
+              >
+                {note.trim() === (week.note ?? '') ? (week.note ? 'Sent' : 'Send') : week.note ? 'Send changes' : 'Send'}
+              </Button>
+            </div>
+          </div>
+        ) : null}
         {asking ? (
           <div className={fw.capFull} role="group" aria-labelledby={`${ids}-ask`}>
             <p id={`${ids}-ask`}>

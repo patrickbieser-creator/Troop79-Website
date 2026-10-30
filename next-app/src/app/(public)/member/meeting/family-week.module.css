@@ -542,3 +542,31 @@
   cursor: not-allowed;
   opacity: 0.6;
 }
+/* "Can't make it" note on a teacher's card (F3b): the same box as the email teach page's. */
+.note {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.noteLabel {
+  font: 600 var(--fs-sm) / 1.4 var(--font-ui);
+  color: var(--text-head);
+}
+.noteBox {
+  width: 100%;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-md);
+  background: var(--warm-white);
+  font: var(--fs-md) / 1.5 var(--font-ui);
+  color: var(--text-head);
+  resize: vertical;
+}
+.noteBox:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.noteCount {
+  font: var(--fs-xs) / 1.4 var(--font-ui);
+  color: var(--text-meta);
+}

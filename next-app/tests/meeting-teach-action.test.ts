@@ -446,3 +446,69 @@ describe('Not sure yet on a teacher card', () => {
     expect(r.ok && r.week?.intent).toBe('undecided');
   });
 });
+
+describe('Can’t make it note (F3b)', () => {
+  const noteOf = async () => {
+    const { data } = await sb.from('meeting_intents').select('note').eq('calendar_entry_id', meeting1).eq('person_id', parent).maybeSingle();
+    return (data as { note: string | null } | null)?.note ?? null;
+  };
+
+  it('Teacher_CantMakeIt_NoteIsSaved', async () => {
+    asAdult(parent);
+    const act = await actions();
+    await act.meetingTeacherIntentAction({ entryId: meeting1, personId: parent, intent: 'not_coming' });
+    await act.meetingTeacherNoteAction({ entryId: meeting1, personId: parent, note: 'Out of town. Nov 8 works.' });
+    expect(await noteOf()).toBe('Out of town. Nov 8 works.');
+  });
+
+  it('Teacher_Note_NeedsCantMakeItFirst', async () => {
+    asAdult(parent);
+    const act = await actions();
+    await act.meetingTeacherIntentAction({ entryId: meeting1, personId: parent, intent: 'coming' });
+    const r = await act.meetingTeacherNoteAction({ entryId: meeting1, personId: parent, note: 'Hi' });
+    expect(r.ok ? 'saved' : r.error).toBe('Choose Can’t make it this week first.');
+  });
+
+  it('Teacher_Note_IsCutTo3LinesAnd240Characters', async () => {
+    asAdult(parent);
+    const act = await actions();
+    await act.meetingTeacherIntentAction({ entryId: meeting1, personId: parent, intent: 'not_coming' });
+    await act.meetingTeacherNoteAction({ entryId: meeting1, personId: parent, note: `a\nb\nc\nd\n${'x'.repeat(300)}` });
+    expect(await noteOf()).toBe('a\nb\nc');
+  });
+
+  it('Teacher_NoteDropped_WhenTheAnswerChanges', async () => {
+    asAdult(parent);
+    const act = await actions();
+    await act.meetingTeacherIntentAction({ entryId: meeting1, personId: parent, intent: 'not_coming' });
+    await act.meetingTeacherNoteAction({ entryId: meeting1, personId: parent, note: 'Sick' });
+    await act.meetingTeacherIntentAction({ entryId: meeting1, personId: parent, intent: 'coming' });
+    expect(await noteOf()).toBeNull();
+  });
+
+  it('Teacher_Note_CannotBeWrittenForSomeoneElse', async () => {
+    asAdult(other);
+    const r = await (await actions()).meetingTeacherNoteAction({ entryId: meeting1, personId: parent, note: 'x' });
+    expect(r.ok).toBe(false);
+  });
+
+  it('Database_RefusesANoteOfFourLines', async () => {
+    asAdult(parent);
+    await (await actions()).meetingTeacherIntentAction({ entryId: meeting1, personId: parent, intent: 'not_coming' });
+    const { error } = await sb.from('meeting_intents').update({ note: 'a\nb\nc\nd' }).eq('calendar_entry_id', meeting1).eq('person_id', parent);
+    expect(error?.message).toMatch(/meeting_intents_note_check/);
+  });
+
+  it('Planner_SeesTheNote_UnderTheTeachersGroup', async () => {
+    asAdult(parent);
+    const act = await actions();
+    await act.meetingTeachAction({ entryId: meeting1, personId: parent, key: 'fr:tenderfoot' });
+    await act.meetingTeacherIntentAction({ entryId: meeting1, personId: parent, intent: 'not_coming' });
+    await act.meetingTeacherNoteAction({ entryId: meeting1, personId: parent, note: 'Sick' });
+    const { loadThisWeekData } = await import('../src/lib/this-week-db');
+    const { fetchPeopleLists } = await import('../src/lib/people-lists');
+    const { loadAdvancementCatalog } = await import('../src/lib/advancement-catalog');
+    const data = await loadThisWeekData(sb, { entryId: meeting1, date: '2093-03-01' }, await fetchPeopleLists(sb), await loadAdvancementCatalog());
+    expect(data.input.teacherNotes).toContainEqual({ key: 'fr:tenderfoot', personId: parent, note: 'Sick' });
+  });
+});

@@ -11,14 +11,15 @@ import type { MyClass, TeacherClass, TeacherWeek } from '../src/lib/teacher-week
  * The server actions are the mock boundary.
  */
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }) }));
-const calls = vi.hoisted(() => ({ teach: vi.fn(), unteach: vi.fn(), withdraw: vi.fn(), intent: vi.fn(), offer: vi.fn(), clear: vi.fn() }));
+const calls = vi.hoisted(() => ({ teach: vi.fn(), unteach: vi.fn(), withdraw: vi.fn(), intent: vi.fn(), offer: vi.fn(), clear: vi.fn(), note: vi.fn() }));
 vi.mock('../src/app/(public)/member/meeting/teach-actions', () => ({
   meetingTeachAction: calls.teach,
   meetingUnteachAction: calls.unteach,
   meetingWithdrawOfferAction: calls.withdraw,
   meetingTeacherIntentAction: calls.intent,
   meetingPostOfferAction: calls.offer,
-  meetingTeacherClearAction: calls.clear
+  meetingTeacherClearAction: calls.clear,
+  meetingTeacherNoteAction: calls.note
 }));
 const { TeacherCard } = await import('../src/app/(public)/member/meeting/teacher-card');
 
@@ -40,6 +41,7 @@ const WEEK: TeacherWeek = {
   firstName: 'Dan',
   junior: false,
   intent: null,
+  note: null,
   mine: [],
   other: [],
   needs: [cls('fr:second-class', 'Second Class group'), cls('fr:mb:first-aid', 'First Aid merit badge', { adultsOnly: true, min: 45 })],
@@ -166,5 +168,30 @@ describe('Not sure yet', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Not sure yet? Clear Dan’s answer' }));
     await userEvent.click(screen.getByRole('button', { name: 'Never mind, keep my answer' }));
     expect([calls.clear.mock.calls.length, screen.getByText('✓ Plan looks good') != null]).toEqual([0, true]);
+  });
+});
+
+describe('Can’t make it note', () => {
+  it('Teacher_CantMakeIt_OpensTheNote', async () => {
+    card(teaching);
+    await userEvent.click(screen.getByRole('radio', { name: /Can’t make it this week/ }));
+    expect(screen.getByLabelText('No problem. Anything you’d like us to know?')).toBeTruthy();
+  });
+
+  it('Teacher_Note_SendsWithItsOwnButton', async () => {
+    card({ ...teaching, intent: 'not_coming' });
+    await userEvent.type(screen.getByLabelText('No problem. Anything you’d like us to know?'), 'Sick');
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }));
+    expect(calls.note).toHaveBeenCalledWith({ entryId: 1, personId: 9, onBehalf: false, note: 'Sick' });
+  });
+
+  it('Teacher_Note_SendIsGreyedUntilItChanges', () => {
+    card({ ...teaching, intent: 'not_coming', note: 'Sick' });
+    expect((screen.getByRole('button', { name: 'Sent' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('Teacher_Note_CountsCharactersLeft', () => {
+    card({ ...teaching, intent: 'not_coming', note: 'Sick' });
+    expect(screen.getByText('236 characters left · up to 3 lines')).toBeTruthy();
   });
 });

@@ -39,6 +39,7 @@ import {
   type TeachWriter
 } from '@/lib/meeting-board-supply';
 import { teachRefusal } from '@/lib/family-week-shared';
+import { cleanDeclineNote } from '@/lib/decline-note';
 import { loadTeacherWeek, minutesOf, type TeacherWeek } from '@/lib/teacher-week';
 
 export type TeachActionResult = { ok: true; view: TeachView; week: TeacherWeek | null } | { ok: false; error: string; field?: 'what' | 'dates' };
@@ -193,4 +194,25 @@ export async function meetingTeacherClearAction(t: TeachTarget & { takeOff: bool
     if (!res.ok) return fail(res.error);
   }
   return r.refresh(await setMeetingIntent(r.sb, { entryId: r.meeting.entryId, personId: t.personId, actorPersonId: r.writer.actorPersonId, leader: r.writer.leader }, 'undecided'));
+}
+
+/**
+ * The optional note with "Can't make it this week" (F3b): what the person would like the planners to know, at most
+ * 3 lines and 240 characters (the database checks the same). Only on that answer: any other answer drops it (a trigger
+ * on meeting_intents). Blank clears it.
+ */
+export async function meetingTeacherNoteAction(t: TeachTarget & { note: string }): Promise<TeachActionResult> {
+  const r = await resolve(t, 'edit');
+  if (!r.ok) return r;
+  if (typeof t.note !== 'string' || t.note.length > 2000) return fail('Malformed request');
+  const { data, error } = await r.sb
+    .from('meeting_intents')
+    .update({ note: cleanDeclineNote(t.note) })
+    .eq('calendar_entry_id', r.meeting.entryId)
+    .eq('person_id', t.personId)
+    .eq('intent', 'not_coming')
+    .select('person_id');
+  if (error) return fail('That didn’t save. Try again.');
+  if (!data?.length) return fail('Choose Can’t make it this week first.');
+  return r.refresh({ ok: true });
 }

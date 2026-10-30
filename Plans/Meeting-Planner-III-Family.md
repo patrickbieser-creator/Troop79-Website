@@ -120,7 +120,7 @@ Status 2026-10-30: F1–F4 built (uncommitted to production, v1.259.0 block in c
    `SUGGESTION_CAP` is retired in favor of `PLAN_MAX = 4`, `PLAN_MAX_MIN = 60`.
 3. **F3 Adult card**: replace `teach-board.tsx`'s layout with the card pattern. Change my plan holds needs-teacher,
    help-teach, scouts-asking and offer. Add the load meter and server limit in `teach-actions` (D6, D8).
-   **F3b (open):** Can't make it gets its note. Needs a `meeting_intents.note` column (additive migration, on a
+   **F3b (built on feat/teacher-cant-make-it-note, waits for ship):** Can't make it gets its note. Needs a `meeting_intents.note` column (additive migration, on a
    branch until Patrick says ship), shown to planners with the group's decline notes.
 4. **F4 Mark and clear flows**: open-list first visit, Clear with the pre-assigned panel (D7).
 5. **F5 Adults on the email link** (`/i/plan/<token>`): needs a claim/scope change (a new RPC or migration) and a
@@ -129,7 +129,7 @@ Status 2026-10-30: F1–F4 built (uncommitted to production, v1.259.0 block in c
 
 ## Open Questions
 
-- [ ] F4 (default taken: no auto-restore): the README says answering again after "take me off" **puts the pre-assigned class back**. Doing that needs
+- [x] F4: no auto-restore (Patrick 2026-10-30: "if someone removes a class using take me off, they can start over for now"). The README says answering again after "take me off" **puts the pre-assigned class back**. Doing that needs
       a memory of the released class, which means a migration. Until then the card says "If a class is still open,
       you can pick it again" and doesn't restore it automatically. OK?
 - [ ] F5: should adult cards appear on the email link page at all, or is `/member/meeting` + `/i/teach` enough?
