@@ -47,6 +47,8 @@ import {
   type SuggestPerson
 } from '@/lib/planner-suggest';
 import { suggestAddAction } from './actions';
+import { ReviewsPanel } from './reviews-panel';
+import type { ReviewData } from '@/lib/planner-reviews-db';
 import { twSetTeacherAction } from '../this-week-actions';
 import { focusSaveSetAction } from '../focus-actions';
 import s from './suggestions.module.css';
@@ -75,7 +77,22 @@ function Chip({ p }: { p: SuggestPerson }) {
   );
 }
 
-export function SuggestionsView({ data, meetings, canSeed, canEdit, lookupsHref }: { data: SuggestionsData; meetings: SuggestMeeting[]; canSeed: boolean; canEdit: boolean; lookupsHref?: string }) {
+export function SuggestionsView({
+  data,
+  meetings,
+  canSeed,
+  canEdit,
+  lookupsHref,
+  reviews = null
+}: {
+  data: SuggestionsData;
+  meetings: SuggestMeeting[];
+  canSeed: boolean;
+  canEdit: boolean;
+  lookupsHref?: string;
+  /** The lead list: scouts ready for a Scoutmaster conference or board of review (null when it didn't load). */
+  reviews?: ReviewData | null;
+}) {
   const router = useRouter();
   const [at, setAt] = useState(meetings[0].entryId);
   const [lens, setLens] = useState<Lens>('sessions');
@@ -481,6 +498,7 @@ export function SuggestionsView({ data, meetings, canSeed, canEdit, lookupsHref 
             {problem}
           </p>
         ) : null}
+        {reviews ? <ReviewsPanel candidates={reviews.candidates} pool={reviews.pool} ranks={reviews.ranks} meeting={{ entryId: meeting.entryId, label: meeting.label, onPlan: meeting.onPlan }} canSeed={canSeed} /> : null}
         {lens === 'sessions' ? sessions : lens === 'scouts' ? scouts : teaching}
         <details className={s.fold}>
           <summary>

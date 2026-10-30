@@ -7,8 +7,9 @@
  * Teaching chip sets a teacher with the Edit right (adding it first needs Seed too). Every write is checked again on
  * the server.
  *
- * One cached engine read (two minutes, JSON-only) for the next meeting's date, and one plan read for the toolbar's
- * meetings (the next PLAN_MEETINGS open ones). The For switch, the view, the filters and the ticks are client state.
+ * One cached engine read (two minutes, JSON-only) for the next meeting's date, one plan read for the toolbar's
+ * meetings (the next PLAN_MEETINGS open ones), and the lead list's read (scouts ready for a Scoutmaster conference or
+ * board of review, lib/planner-reviews-db). The For switch, the view, the filters and the ticks are client state.
  */
 import { redirect } from 'next/navigation';
 import { unstable_cache } from 'next/cache';
@@ -20,6 +21,7 @@ import { plannerAccess } from '@/lib/meeting-planner-access';
 import { loadPlannerLists } from '@/lib/people-lists';
 import { PLAN_MEETINGS } from '@/lib/build-plan';
 import { loadPlanStates, loadSuggestionsData } from '@/lib/planner-suggest-db';
+import { loadReviewData } from '@/lib/planner-reviews-db';
 import { PageHeader } from '@/app/_components/page-header';
 import { PageShell } from '@/app/_components/page-shell';
 import { Notice } from '@/app/_components/notice';
@@ -78,7 +80,11 @@ export default async function SuggestionsPage() {
   }
 
   const first = meetings[0];
-  const [data, plans] = await Promise.all([suggestionsCached(first.date, first.title).catch(() => null), loadPlanStates(sb, meetings.map((m) => m.entryId)).catch(() => null)]);
+  const [data, plans, reviews] = await Promise.all([
+    suggestionsCached(first.date, first.title).catch(() => null),
+    loadPlanStates(sb, meetings.map((m) => m.entryId)).catch(() => null),
+    loadReviewData(sb).catch(() => null)
+  ]);
 
   return (
     <div className={styles.page}>
@@ -90,6 +96,7 @@ export default async function SuggestionsPage() {
           meetings={meetings.map((m) => ({ entryId: m.entryId, label: fmtDay(m.date), short: fmtDate(m.date, { year: false }), ...plans[m.entryId] }))}
           canSeed={access.canSeed}
           canEdit={access.canEdit}
+          reviews={reviews}
           lookupsHref={actor.capabilities.has('roster.manage') ? '/admin/advancement/lookups?card=adult-skills' : undefined}
         />
       ) : (

@@ -578,3 +578,60 @@ button.teachChip {
     grid-template-columns: 28px minmax(0, 1fr);
   }
 }
+
+/* The lead list: scouts ready for a Scoutmaster conference or board of review, and who sits each. */
+.reviews {
+  composes: panel;
+  padding: var(--sp-4);
+  margin-bottom: var(--sp-5);
+}
+.reviewsHead {
+  margin: 0 0 var(--sp-1);
+  font: 700 var(--fs-lg) / 1.3 var(--font-ui);
+  color: var(--text-head);
+}
+.reviewList {
+  margin: var(--sp-3) 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+.reviewRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3) 0;
+  border-top: 1px solid var(--border-light);
+}
+.reviewWho {
+  font: var(--fs-md) / 1.4 var(--font-ui);
+}
+.reviewNeed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  padding-left: var(--sp-3);
+}
+.reviewLabel {
+  min-width: 190px;
+  font: 600 var(--fs-sm) / 1.4 var(--font-ui);
+  color: var(--text-head);
+}
+.reviewSelect {
+  min-height: 40px;
+  padding: 0 var(--sp-2);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-md);
+  background: var(--warm-white);
+  font: 16px / 1.2 var(--font-ui);
+  color: var(--text-head);
+}
+.reviewActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+  padding-left: var(--sp-3);
+}
