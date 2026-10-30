@@ -37,7 +37,7 @@ describe('row level security', () => {
   });
 
   it('PlannerIIITables_AreCoveredByTheGuard', () => {
-    expect(['meeting_scout_roles', 'meeting_night_badges', 'meeting_plan_snapshots', 'meeting_plan_pages', 'meeting_live_presence', 'meeting_boards', 'focus_sets'].every((t) => plannerTables().includes(t))).toBe(true);
+    expect(['meeting_scout_roles', 'meeting_night_badges', 'meeting_emails', 'meeting_plan_pages', 'meeting_live_presence', 'meeting_boards', 'focus_sets'].every((t) => plannerTables().includes(t))).toBe(true);
   });
 
   it('PlannerTables_HaveNoPolicies', () => {
