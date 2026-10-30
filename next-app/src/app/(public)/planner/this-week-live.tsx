@@ -17,6 +17,8 @@ interface Session {
   key: string;
   title: string;
   sub: string;
+  /** What's taught, very short, in the card's corner. */
+  summary: string;
   tone: string;
   teachers: TwTeacher[];
   people: TwPerson[];
@@ -38,12 +40,13 @@ export function LiveView({ entryId, view, isToday, present }: { entryId: number;
       key: g.key,
       title: g.kind === 'badge' ? `${g.name} merit badge` : `${g.name} group`,
       sub: g.columns.map((c) => c.code).join(', '),
+      summary: g.summary,
       tone: g.kind === 'badge' ? s['tone-mb'] : s[`tone-${g.refId}`],
       teachers: g.teachers,
       people: g.members.filter(coming)
     })),
-    ...(view.helpers.length ? [{ key: 'help', title: 'Helping teach', sub: 'Older scouts and anyone done with the focus', tone: s['tone-mb'], teachers: [], people: view.helpers.filter(coming) }] : []),
-    ...view.extras.map((x) => ({ key: x.key, title: x.title, sub: `From requests and offers${x.codeLabel ? ` · ${x.codeLabel}` : ''}`, tone: s['tone-extra'], teachers: x.teachers, people: x.scouts.filter(coming) }))
+    ...(view.helpers.length ? [{ key: 'help', title: 'Helping teach', sub: 'Older scouts and anyone done with the focus', summary: '', tone: s['tone-mb'], teachers: [], people: view.helpers.filter(coming) }] : []),
+    ...view.extras.map((x) => ({ key: x.key, title: x.title, sub: `From requests and offers${x.codeLabel ? ` · ${x.codeLabel}` : ''}`, summary: '', tone: s['tone-extra'], teachers: x.teachers, people: x.scouts.filter(coming) }))
   ];
   const canTap = !!p?.canEdit && isToday;
   const tap = (id: number) => {
@@ -85,9 +88,7 @@ export function LiveView({ entryId, view, isToday, present }: { entryId: number;
                 </h2>
                 <span className={s.groupSub}>{x.sub}</span>
               </div>
-              <span className={s.groupCount}>
-                {x.people.filter((m) => here.has(m.personId)).length} of {x.people.length} here
-              </span>
+              {x.summary ? <span className={s.groupSummary}>{x.summary}</span> : null}
             </div>
             <div className={s.groupBody}>
               {x.teachers.length ? (

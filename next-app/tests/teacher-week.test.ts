@@ -11,6 +11,7 @@ const group = (key: string, o: Partial<TwGroup> = {}): TwGroup => ({
   refId: key.slice(3),
   name: key.slice(3),
   subtitle: '',
+  summary: '',
   columns: [{ key: `${key.slice(3)}-1`, code: '1', label: 'One', need: 1, subs: [] }],
   members: [],
   teachers: [],

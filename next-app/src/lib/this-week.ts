@@ -94,6 +94,8 @@ export interface TwGroup {
   name: string;
   /** 'Working on Tenderfoot' / 'Merit badge'. */
   subtitle: string;
+  /** What's taught, very short ('First Aid', 'Knots & Lashings · Woods Tools'); '' when nothing names it. */
+  summary: string;
   columns: TwColumn[];
   members: TwPerson[];
   /** Who teaches it, by name (any number; none yet = an empty slot). */
@@ -211,6 +213,20 @@ function topKeyOf(key: string, catalog: Catalog): string {
   return row ? `${row.mb_id}-${row.code}` : key;
 }
 
+/**
+ * A group's "what's taught", very short (Live's card corner, Patrick 2026-10-30): the names of the focus sets that
+ * cover any of its requirements, in focus order; a group no focus covers gets its requirements' skills instead.
+ */
+export function groupSummary(keys: readonly string[], focus: readonly { title: string; members: readonly string[] }[], catalog: Catalog & Partial<Pick<AdvancementCatalog, 'skills'>>): string {
+  const have = new Set(keys);
+  const named = focus.filter((f) => f.members.some((k) => have.has(k))).map((f) => f.title);
+  if (named.length) return [...new Set(named)].join(' · ');
+  const skillName = new Map((catalog.skills ?? []).map((s) => [s.id, s.name]));
+  const reqByKey = new Map(catalog.rankRequirements.map((r) => [`${r.rank_id}-${r.code}`, r]));
+  const skills = keys.map((k) => reqByKey.get(topKeyOf(k, catalog))?.skill_id).flatMap((id) => (id && skillName.has(id) ? [skillName.get(id)!] : []));
+  return [...new Set(skills)].join(' · ');
+}
+
 export function buildThisWeek(input: ThisWeekInput): ThisWeek {
   const { catalog } = input;
   const rankName = new Map(catalog.ranks.map((r) => [r.id, r.display_name]));
@@ -299,6 +315,7 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
       refId: g.refId,
       name: g.name,
       subtitle: g.kind === 'rank' ? `Working on ${g.name}` : 'Merit badge',
+      summary: groupSummary(columns.flatMap((c) => [c.key, ...c.subs.map((x) => x.key)]), input.focus, catalog),
       columns,
       members: members.map((m) => person(scoutBy.get(m.personId)!)),
       teachers: signedUp(g.key),

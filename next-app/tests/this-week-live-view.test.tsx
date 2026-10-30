@@ -23,6 +23,7 @@ const view: ThisWeek = {
       refId: 'tenderfoot',
       name: 'Tenderfoot',
       subtitle: 'Working on Tenderfoot',
+      summary: 'Citizenship',
       columns: [{ key: 'tenderfoot-7a', code: '7a', label: 'Flag', need: 2, subs: [] }],
       members: [p(1, 'Adi A'), p(2, 'Ben B', 'not_coming')],
       teachers: [],
@@ -50,6 +51,12 @@ describe('Live at the meeting', () => {
   it('Live_ShowsOneCardPerGroup_AndHelpingTeach', () => {
     render(<LiveView entryId={1} view={view} isToday present={[]} />);
     expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['Tenderfoot group', 'Helping teach']);
+  });
+
+  it('Live_CardCorner_SaysWhatIsTaught_NotACount', () => {
+    render(<LiveView entryId={1} view={view} isToday present={[]} />);
+    const card = screen.getByRole('heading', { name: 'Tenderfoot group' }).closest('section')!;
+    expect([within(card).queryByText('Citizenship') !== null, within(card).queryByText(/here$/) === null]).toEqual([true, true]);
   });
 
   it('Live_LeavesOutScoutsWhoCantCome', () => {
