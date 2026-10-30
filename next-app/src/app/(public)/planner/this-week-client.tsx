@@ -13,6 +13,7 @@ import { usePlanner } from './planner-client';
 import { PlannerPoller } from './planner-poller';
 import { twRemoveRequirementAction, twSetRoleAction, twSetTeacherAction, type RoleInput } from './this-week-actions';
 import { FocusCard, type SetChoice } from './this-week-focus';
+import type { SavedPlan } from '@/lib/saved-plans-shared';
 import { LiveView } from './this-week-live';
 import { NameChip, Popover, ReqItem, TeacherSlot, useWrite } from './this-week-parts';
 import s from './this-week.module.css';
@@ -40,7 +41,9 @@ export function ThisWeekView({
   stamp,
   canSeed,
   isToday,
-  live
+  live,
+  meetingDate,
+  savedPlans
 }: {
   entryId: number;
   dayLabel: string;
@@ -53,6 +56,10 @@ export function ThisWeekView({
   canSeed: boolean;
   isToday: boolean;
   live: { present: number[] };
+  /** 'YYYY-MM-DD'. */
+  meetingDate: string;
+  /** Saved meeting plans: seed holders only. */
+  savedPlans: readonly SavedPlan[];
 }) {
   const [mode, setMode] = useState<'plan' | 'live'>(isToday ? 'live' : 'plan');
   const focusName = [...view.focus.map((f) => f.name), ...view.badges.filter((b) => b.direct).map((b) => b.name)].join(' + ') || 'No focus yet';
@@ -92,13 +99,29 @@ export function ThisWeekView({
         </div>
       </header>
       <div className={s.wrap}>
-        {mode === 'plan' ? <PlanView entryId={entryId} view={view} sets={sets} badges={badges} canSeed={canSeed} /> : <LiveView entryId={entryId} view={view} isToday={isToday} present={live.present} />}
+        {mode === 'plan' ? <PlanView entryId={entryId} view={view} sets={sets} badges={badges} canSeed={canSeed} meetingDate={meetingDate} savedPlans={savedPlans} /> : <LiveView entryId={entryId} view={view} isToday={isToday} present={live.present} />}
       </div>
     </>
   );
 }
 
-function PlanView({ entryId, view, sets, badges, canSeed }: { entryId: number; view: ThisWeek; sets: readonly SetChoice[]; badges: readonly { id: string; name: string }[]; canSeed: boolean }) {
+function PlanView({
+  entryId,
+  view,
+  sets,
+  badges,
+  canSeed,
+  meetingDate,
+  savedPlans
+}: {
+  entryId: number;
+  view: ThisWeek;
+  sets: readonly SetChoice[];
+  badges: readonly { id: string; name: string }[];
+  canSeed: boolean;
+  meetingDate: string;
+  savedPlans: readonly SavedPlan[];
+}) {
   const p = usePlanner();
   const w = useWrite();
   const [filter, setFilter] = useState<'all' | 'gaps' | 'noanswer'>('all');
@@ -110,7 +133,7 @@ function PlanView({ entryId, view, sets, badges, canSeed }: { entryId: number; v
 
   return (
     <>
-      <FocusCard entryId={entryId} view={view} sets={sets} badges={badges} canSeed={canSeed} />
+      <FocusCard entryId={entryId} view={view} sets={sets} badges={badges} canSeed={canSeed} meetingDate={meetingDate} savedPlans={savedPlans} />
 
       <section className={s.coverage} aria-label="Coverage">
         <div className={s.covMain}>

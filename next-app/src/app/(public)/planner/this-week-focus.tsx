@@ -4,7 +4,7 @@
  * This week › "What do you want the focus to be?" (Plans/Meeting-Planner-III.md): the Focus set popover (search,
  * label pills, Add / ✓ Added), the picked sets as removable chips, the night's merit badges (from the focus, or added
  * directly with "+ Merit badge"), and "+ Add a focus set", the inline builder. Changing the focus is the planning
- * team's (seed); everyone else sees the chips.
+ * team's (seed); everyone else sees the chips. Top right: Save plan… and Load a saved plan… (this-week-saved.tsx).
  */
 import { useState } from 'react';
 import { fmtDate } from '@/lib/format-date';
@@ -12,6 +12,8 @@ import type { ThisWeek } from '@/lib/this-week';
 import { twAddFocusSetAction, twRemoveFocusAction, twSetNightBadgeAction } from './this-week-actions';
 import { Popover, useWrite } from './this-week-parts';
 import { FocusBuilder } from './this-week-builder';
+import { SavedPlans } from './this-week-saved';
+import type { SavedPlan } from '@/lib/saved-plans-shared';
 import s from './this-week.module.css';
 
 export interface SetChoice {
@@ -30,13 +32,19 @@ export function FocusCard({
   view,
   sets,
   badges,
-  canSeed
+  canSeed,
+  meetingDate,
+  savedPlans
 }: {
   entryId: number;
   view: ThisWeek;
   sets: readonly SetChoice[];
   badges: readonly { id: string; name: string }[];
   canSeed: boolean;
+  /** 'YYYY-MM-DD': a new saved plan's default date. */
+  meetingDate: string;
+  /** Seed holders only (empty otherwise). */
+  savedPlans: readonly SavedPlan[];
 }) {
   const w = useWrite();
   const [q, setQ] = useState('');
@@ -54,9 +62,12 @@ export function FocusCard({
 
   return (
     <section className={s.card} aria-labelledby="focus-h">
-      <h2 id="focus-h" className={s.cardTitle}>
-        What do you want the focus to be?
-      </h2>
+      <div className={s.cardHeadRow}>
+        <h2 id="focus-h" className={s.cardTitle}>
+          What do you want the focus to be?
+        </h2>
+        {canSeed ? <SavedPlans entryId={entryId} meetingDate={meetingDate} view={view} plans={savedPlans} badges={badges} /> : null}
+      </div>
       <div className={s.row}>
         {canSeed ? (
           <Popover label="Focus set ▾" triggerClass={s.slot} wide ariaLabel="Focus sets">

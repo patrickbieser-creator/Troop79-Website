@@ -304,3 +304,27 @@ describe('merge_people — Meeting Planner III Emails (E1)', () => {
     ]);
   });
 });
+
+describe('merge_people — saved meeting plans', () => {
+  const admin = adminClient();
+  let ids: number[] = [];
+  let plan = 0;
+
+  afterEach(async () => {
+    if (plan) await admin.from('meeting_saved_plans').delete().eq('id', plan);
+    if (ids.length) await admin.from('people').delete().in('id', ids);
+    plan = 0;
+    ids = [];
+  });
+
+  it('Merge_RepointsWhoSavedAPlan', async () => {
+    const { data: p } = await admin.from('people').insert([{ display_name: `${TEST_PREFIX} Merge Survivor SP` }, { display_name: `${TEST_PREFIX} Merge Loser SP` }]).select('id');
+    ids = ((p ?? []) as { id: number }[]).map((r) => r.id);
+    const [survivor, loser] = ids;
+    const { data: sp } = await admin.from('meeting_saved_plans').insert({ name: `${TEST_PREFIX} merge plan`, plan_date: '2086-05-05', criteria: { focus: [], singles: [], badges: [] }, created_by_person_id: loser }).select('id').single();
+    plan = (sp as { id: number }).id;
+    const { error } = await admin.rpc('merge_people', { p_survivor: survivor, p_loser: loser, p_decided_by: 'test:merge' });
+    const { data } = await admin.from('meeting_saved_plans').select('created_by_person_id').eq('id', plan).single();
+    expect([error, data]).toEqual([null, { created_by_person_id: survivor }]);
+  });
+});

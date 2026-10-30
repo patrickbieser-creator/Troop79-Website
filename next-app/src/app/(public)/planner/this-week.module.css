@@ -955,3 +955,112 @@ button.chip:focus-visible {
   font: var(--fs-xs) / 1.5 var(--font-ui);
   color: var(--text-meta);
 }
+
+/* ── saved meeting plans (the focus card's top right) ─────────────────────────────────────────────────────────── */
+.cardHeadRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+.savedActions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--sp-1);
+}
+.savedLink {
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--navy);
+  font: 600 var(--fs-sm) / 1.3 var(--font-ui);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.savedLink:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.savedPanel {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  border: 1px solid var(--border-light);
+  border-radius: var(--rad-md);
+  background: var(--cream);
+}
+.savedPrimary {
+  min-height: 40px;
+  padding: 0 var(--sp-4);
+  border: 1px solid var(--navy);
+  border-radius: var(--rad-md);
+  background: var(--navy);
+  color: var(--warm-white);
+  font: 700 var(--fs-sm) / 1 var(--font-ui);
+  cursor: pointer;
+}
+.savedPrimary:disabled {
+  border-color: var(--border-mid);
+  background: var(--border-light);
+  color: var(--text-meta);
+  cursor: default;
+}
+.savedPrimary:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.savedList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.savedItem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2) var(--sp-3);
+  padding: var(--sp-3);
+  border: 1px solid var(--border-light);
+  border-radius: var(--rad-md);
+  background: var(--warm-white);
+}
+.savedMain {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.savedName {
+  font: 700 var(--fs-sm) / 1.3 var(--font-ui);
+  color: var(--text-head);
+}
+.savedConfirm,
+.savedEdit {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.savedConfirm {
+  padding: var(--sp-3);
+  border-radius: var(--rad-md);
+  background: var(--status-warning-bg);
+}
+.savedConfirmText {
+  margin: 0;
+  font: var(--fs-sm) / 1.5 var(--font-ui);
+  color: var(--text-body);
+}
+.savedPanel .fieldLabel,
+.savedEdit .fieldLabel {
+  max-width: 26rem;
+}

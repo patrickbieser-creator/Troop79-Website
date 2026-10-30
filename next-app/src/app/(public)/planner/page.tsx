@@ -20,6 +20,7 @@ import { loadUpcomingMeetings } from '@/lib/meeting-board';
 import { plannerAccess } from '@/lib/meeting-planner-access';
 import { loadPlannerLists } from '@/lib/people-lists';
 import { loadFocusSets } from '@/lib/meeting-focus-db';
+import { listSavedPlans } from '@/lib/saved-plans';
 import { loadAdvancementCatalog } from '@/lib/advancement-catalog';
 import { pickMeeting } from '@/lib/build-plan';
 import { buildThisWeek, PLANNER_WEEKS } from '@/lib/this-week';
@@ -83,11 +84,13 @@ export default async function PlannerPage({ searchParams }: { searchParams: Prom
     );
   }
 
-  const [data, focusNames, sets, presence] = await Promise.all([
+  const [data, focusNames, sets, presence, savedPlans] = await Promise.all([
     loadThisWeekData(sb, meeting, lists),
     loadFocusNames(sb, meetings.map((m) => m.entryId)),
     loadAdvancementCatalog().then((c) => loadFocusSets(sb, c)),
-    sb.from('meeting_live_presence').select('person_id').eq('calendar_entry_id', meeting.entryId).eq('present', true)
+    sb.from('meeting_live_presence').select('person_id').eq('calendar_entry_id', meeting.entryId).eq('present', true),
+    // Saved meeting plans are the planning team's: nobody else's page reads them.
+    access.canSeed ? listSavedPlans(sb) : Promise.resolve([])
   ]);
   const view = buildThisWeek(data.input);
   const adults = view.everyone.filter((t) => t.kind === 'adult').map((t) => ({ personId: t.personId, name: t.name }));
@@ -110,6 +113,8 @@ export default async function PlannerPage({ searchParams }: { searchParams: Prom
           canSeed={access.canSeed}
           isToday={meeting.date === centralToday()}
           live={{ present: ((presence.data ?? []) as { person_id: number }[]).map((r) => r.person_id) }}
+          meetingDate={meeting.date}
+          savedPlans={savedPlans}
         />
       </div>
     </PlannerProvider>
