@@ -7,12 +7,17 @@
  * behind it, one write at a time per person; the 5-pick cap counts ticks still saving. A refusal is said in place,
  * under the control that caused it, and that control goes back to how it was. P5b: someone who hasn't answered gets "Remind" (adult
  * editors only), which emails them, or a scout's parents.
+ *
+ * Planner III (Patrick, 2026-10-29): a scout on This week gets "Tonight" in place of picks: where they are, Move to
+ * another group, Help teach, a class from requests and offers, or Unassign (back to the planner); and, when none
+ * fits, a way back to This week to add a focus set or requirement.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Drawer } from '@/app/_components/drawer';
 import { INTENT_LABEL, type Intent } from '@/lib/meeting-board-shared';
 import type { DrawerOption, PersonDrawer } from '@/lib/meeting-planner-drawer';
 import { plannerOpenPersonAction, plannerSetAnswerAction, plannerTogglePickAction, plannerToggleTeachAction, type DrawerTick, type PlannerTickResult } from './actions';
+import { twSetRoleAction, type RoleInput } from './this-week-actions';
 import { RemindButton, SAVE_FAILED, usePlanner } from './planner-client';
 import styles from './planner.module.css';
 
@@ -120,6 +125,17 @@ export function PersonDrawerView({ personId, onClose }: { personId: number; onCl
     if (res.ok) setConfirmed((d) => (d ? withTick(d, res.tick) : d));
     else setProblem({ at: 'answer', text: res.error });
   };
+  /** Tonight: one hand placement, then the drawer reads again (where they are now is This week's call). */
+  const place = async (role: RoleInput) => {
+    setAnswering(true);
+    setProblem(null);
+    const res = await serial(personId, () => run(() => twSetRoleAction({ entryId: p.entryId, personId, ...role }), { defer: true }));
+    if (res.ok) {
+      const again = await serial(personId, () => plannerOpenPersonAction({ entryId: p.entryId, personId }));
+      if (again.ok) setConfirmed(again.drawer);
+    } else setProblem({ at: 'place', text: res.error });
+    setAnswering(false);
+  };
   const saving = answering || ticks.length > 0;
   const option = (o: DrawerOption) => {
     const blocked = scout && full && !o.on;
@@ -184,37 +200,84 @@ export function PersonDrawerView({ personId, onClose }: { personId: number; onCl
         {drawer.shown == null ? <RemindButton personId={personId} name={drawer.name} /> : null}
       </fieldset>
 
-      {scout && drawer.shown === 'not_coming' && drawer.picked ? <p className={styles.drawerNote}>Picks are saved for a later meeting.</p> : null}
-
-      <h3 className={styles.drawerLabel}>
-        {scout ? (
-          <>
-            Picks · {drawer.picked} of {drawer.max} <span className={styles.optMeta}>They’ll work on one or two</span>
-          </>
-        ) : (
-          <>
-            Teaching · {drawer.teaching} <span className={styles.optMeta}>What they can teach is listed first</span>
-          </>
-        )}
-      </h3>
-      {board.length ? (
-        <ul className={styles.optList} aria-label="On this week’s board">
-          {board.map(option)}
-        </ul>
-      ) : (
-        <p className={styles.optMeta}>Nothing is on the board yet.</p>
-      )}
-      {more.length ? (
+      {drawer.kind === 'scout' && drawer.place ? (
         <>
-          <h3 className={styles.drawerLabel}>More from their rank</h3>
-          <ul className={styles.optList}>{more.map(option)}</ul>
+          <h3 className={styles.drawerLabel}>Tonight</h3>
+          <p className={styles.placeNow}>{drawer.place.now}</p>
+          <ul className={styles.optList} aria-label="Where they go tonight">
+            {drawer.place.options.map((o) => (
+              <li key={o.id}>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={o.current}
+                  className={o.current ? styles.optOn : styles.opt}
+                  disabled={answering}
+                  onClick={() => (o.current ? undefined : place(o.role))}
+                >
+                  <span className={styles.check} aria-hidden="true">
+                    {o.current ? '✓' : ''}
+                  </span>
+                  <span className={styles.optText}>
+                    <span className={styles.optTitle}>{o.label}</span>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          {drawer.place.canUnassign ? (
+            <button type="button" className={styles.quietAdd} disabled={answering} onClick={() => place({ role: null })}>
+              Unassign · let the planner place {drawer.name.split(' ')[0]}
+            </button>
+          ) : null}
+          {problem?.at === 'place' ? (
+            <p className={styles.rowProblem} role="alert">
+              {problem.text}
+            </p>
+          ) : null}
+          <p className={styles.placeHint}>
+            None of these fit?{' '}
+            <button type="button" className={styles.linkBtn} onClick={onClose}>
+              Back to This week
+            </button>{' '}
+            to add a focus set or requirement.
+          </p>
         </>
-      ) : null}
-      {!scout ? (
-        <button type="button" className={styles.quietAdd} onClick={() => p.openOffer(personId, personId)}>
-          + Offer something else
-        </button>
-      ) : null}
+      ) : (
+        <>
+          {scout && drawer.shown === 'not_coming' && drawer.picked ? <p className={styles.drawerNote}>Picks are saved for a later meeting.</p> : null}
+
+          <h3 className={styles.drawerLabel}>
+            {scout ? (
+              <>
+                Picks · {drawer.picked} of {drawer.max} <span className={styles.optMeta}>They’ll work on one or two</span>
+              </>
+            ) : (
+              <>
+                Teaching · {drawer.teaching} <span className={styles.optMeta}>What they can teach is listed first</span>
+              </>
+            )}
+          </h3>
+          {board.length ? (
+            <ul className={styles.optList} aria-label="On this week’s board">
+              {board.map(option)}
+            </ul>
+          ) : (
+            <p className={styles.optMeta}>Nothing is on the board yet.</p>
+          )}
+          {more.length ? (
+            <>
+              <h3 className={styles.drawerLabel}>More from their rank</h3>
+              <ul className={styles.optList}>{more.map(option)}</ul>
+            </>
+          ) : null}
+          {!scout ? (
+            <button type="button" className={styles.quietAdd} onClick={() => p.openOffer(personId, personId)}>
+              + Offer something else
+            </button>
+          ) : null}
+        </>
+      )}
     </Drawer>
   );
 }

@@ -133,6 +133,15 @@ describe('This week: hand placement and teachers', () => {
     expect(row.hand).toBe(false);
   });
 
+  it('Unassign_AlsoDropsAFamilysHelpTeach_AndHandsTheScoutBack', async () => {
+    asEditor();
+    await sb.from('meeting_scout_helpers').upsert({ calendar_entry_id: meeting, person_id: scoutPerson, group_key: 'fr:tenderfoot' });
+    await (await actions()).twSetRoleAction({ entryId: meeting, personId: scoutPerson, role: null });
+    const { count } = await sb.from('meeting_scout_helpers').select('person_id', { count: 'exact', head: true }).eq('calendar_entry_id', meeting).eq('person_id', scoutPerson);
+    const row = (await view()).sections.flatMap((s) => s.rows).find((r) => r.personId === scoutPerson)!;
+    expect([count, row.hand]).toEqual([0, false]);
+  });
+
   it('Role_ForSomeoneWhoIsNotAnActiveScout_IsRefused', async () => {
     asEditor();
     expect((await (await actions()).twSetRoleAction({ entryId: meeting, personId: teacherA, role: 'teach' })).ok).toBe(false);

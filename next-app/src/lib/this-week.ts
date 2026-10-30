@@ -123,7 +123,8 @@ export interface TwRow extends TwPerson {
   /** The extra class a 'request' row was placed in. */
   requestKey: string | null;
   suggested: string[];
-  /** A planner placed this scout by hand (meeting_scout_roles): "Let placement decide" undoes it. */
+  /** Placed by hand: a planner (meeting_scout_roles) or the family's "help teach" (meeting_scout_helpers). "Let
+   *  placement decide" / Unassign undoes both. */
   hand: boolean;
   /** What the family suggested, in words: a flag for the planners. */
   familySuggestions: string[];
@@ -366,7 +367,7 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
     gap: r.status === 'nothing',
     requestKey: r.requestKey ?? null,
     suggested: r.suggested,
-    hand: input.roles.has(r.personId),
+    hand: input.roles.has(r.personId) || !!input.helpers?.has(r.personId),
     familySuggestions: (input.suggestions?.get(r.personId) ?? []).map((k) => wordsOf(k)),
     familyUnticked: [...(input.exclusions?.get(r.personId) ?? [])].filter((k) => columnCode.has(k)).map((k) => columnCode.get(k)!)
   });

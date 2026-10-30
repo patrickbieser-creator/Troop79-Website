@@ -69,7 +69,7 @@ export type RoleInput = { role: 'teach' } | { role: 'group'; key: string } | { r
 
 /**
  * A planner's hand choice for one scout: Teach (help teach), a group (a gap fill, or an older scout's badge), a class
- * from requests and offers, or null to let placement decide again.
+ * from requests and offers, or null to let placement decide again (Unassign: the family's "help teach" goes too).
  */
 export async function twSetRoleAction(input: { entryId: number; personId: number } & RoleInput): Promise<TwResult> {
   if (!Number.isInteger(input?.personId)) return fail('Malformed request');
@@ -83,6 +83,8 @@ export async function twSetRoleAction(input: { entryId: number; personId: number
   if (se) return fail('Couldn’t save that. Try again.');
   if (!scout) return fail('That isn’t an active scout.');
   const where = { calendar_entry_id: s.meeting.entryId, person_id: input.personId };
+  const helpers = role === null ? await s.sb.from('meeting_scout_helpers').delete().match(where) : { error: null };
+  if (helpers.error) return fail('Couldn’t save that. Try again.');
   const { error } =
     role === null
       ? await s.sb.from('meeting_scout_roles').delete().match(where)

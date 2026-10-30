@@ -19,6 +19,9 @@ import { assessTeacher, teacherIntent, teacherName } from '@/lib/meeting-board-t
 import { boardName, effectiveIntent, MAX_PICKS, type Intent } from '@/lib/meeting-board-shared';
 import { allRows, nextRankOf, topicWords } from '@/lib/meeting-board-picklist';
 import { boardScoutsOf, type PeopleLists } from '@/lib/people-lists';
+import { buildThisWeek } from '@/lib/this-week';
+import { loadThisWeekData } from '@/lib/this-week-db';
+import { placeChoices, type PlaceChoices } from '@/lib/planner-place';
 
 export interface DrawerOption {
   key: string;
@@ -44,6 +47,9 @@ interface DrawerBase {
 
 export interface ScoutDrawer extends DrawerBase {
   kind: 'scout';
+  /** Planner III's "Tonight": where This week has them and where they can go. Null when they aren't on This week
+   *  (or the caller passed no lists). */
+  place: PlaceChoices | null;
   /** Picks for this meeting (not "later"). */
   picked: number;
   max: number;
@@ -115,6 +121,7 @@ export async function loadPersonDrawer(
     const next = sbBoard.pickList.groups.find((g) => g.next);
     const picks = sbBoard.picks.filter((p) => !p.later);
     const next2 = nextRankOf(scout.currentRank, catalog.ranks);
+    const place = lists ? placeChoices(buildThisWeek((await loadThisWeekData(sb, meeting, lists, catalog)).input), personId) : null;
     return {
       kind: 'scout',
       personId,
@@ -122,6 +129,7 @@ export async function loadPersonDrawer(
       sub: next2 ? `Working on ${rankName.get(next2) ?? next2}` : 'Scout',
       intent: scoutRow.intent,
       shown: effectiveIntent(scoutRow.intent, sbBoard.picks),
+      place,
       picked: picks.length,
       max: MAX_PICKS,
       options: drawerOptions({
