@@ -20,7 +20,8 @@ import s from './this-week.module.css';
 export interface WeekLink {
   entryId: number;
   dayLabel: string;
-  focus: string;
+  /** Has a focus: the button is the date alone; otherwise it says "Not planned yet". */
+  planned: boolean;
   current: boolean;
 }
 
@@ -39,7 +40,6 @@ export function ThisWeekView({
   stamp,
   canSeed,
   isToday,
-  notSent,
   live
 }: {
   entryId: number;
@@ -52,8 +52,6 @@ export function ThisWeekView({
   stamp: string;
   canSeed: boolean;
   isToday: boolean;
-  /** Scouts with a plan whose family hasn't been emailed for this meeting yet. */
-  notSent: number;
   live: { present: number[] };
 }) {
   const [mode, setMode] = useState<'plan' | 'live'>(isToday ? 'live' : 'plan');
@@ -83,7 +81,8 @@ export function ThisWeekView({
               {weeks.map((w) => (
                 <li key={w.entryId}>
                   <Link href={`/planner?meeting=${w.entryId}`} className={w.current ? s.weekOn : s.week} aria-current={w.current ? 'page' : undefined}>
-                    <span className={s.weekDate}>{w.dayLabel}</span> · {w.focus || 'Not planned yet'}
+                    <span className={s.weekDate}>{w.dayLabel}</span>
+                    {w.planned ? null : ' · Not planned yet'}
                   </Link>
                 </li>
               ))}
@@ -92,7 +91,6 @@ export function ThisWeekView({
           </div>
         </div>
       </header>
-      <EmailsLink entryId={entryId} notSent={notSent} />
       <div className={s.wrap}>
         {mode === 'plan' ? <PlanView entryId={entryId} view={view} sets={sets} badges={badges} canSeed={canSeed} /> : <LiveView entryId={entryId} view={view} isToday={isToday} present={live.present} />}
       </div>
@@ -511,15 +509,3 @@ export function DeclineNotes({ notes }: { notes: readonly { name: string; note: 
   );
 }
 
-/** Every email about the meeting lives on the Emails screen (Emails E3): adult editors only. */
-function EmailsLink({ entryId, notSent }: { entryId: number; notSent: number }) {
-  const p = usePlanner();
-  if (!p?.canEmail) return null;
-  return (
-    <div className={s.wrap}>
-      <Link href={`/planner/emails?meeting=${entryId}`} className={s.week}>
-        Emails{notSent ? ` (${notSent} not sent)` : ''}
-      </Link>
-    </div>
-  );
-}

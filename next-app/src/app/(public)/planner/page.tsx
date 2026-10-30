@@ -90,10 +90,6 @@ export default async function PlannerPage({ searchParams }: { searchParams: Prom
     sb.from('meeting_live_presence').select('person_id').eq('calendar_entry_id', meeting.entryId).eq('present', true)
   ]);
   const view = buildThisWeek(data.input);
-  // The Emails link's "(N not sent)": scouts on the plan whose family has no plan email for this meeting yet.
-  const { data: sent } = await sb.from('meeting_emails').select('about').eq('calendar_entry_id', meeting.entryId).eq('kind', 'plan').in('status', ['sent', 'queued', 'sending', 'unknown']);
-  const emailed = new Set(((sent ?? []) as { about: { scouts?: number[] } }[]).flatMap((r) => r.about.scouts ?? []));
-  const notSent = data.input.scouts.filter((x) => !emailed.has(x.personId)).length;
   const adults = view.everyone.filter((t) => t.kind === 'adult').map((t) => ({ personId: t.personId, name: t.name }));
 
   return (
@@ -106,14 +102,13 @@ export default async function PlannerPage({ searchParams }: { searchParams: Prom
           entryId={meeting.entryId}
           dayLabel={fmtDateFull(meeting.date)}
           title={meeting.title}
-          weeks={meetings.map((m) => ({ entryId: m.entryId, dayLabel: fmtDay(m.date), focus: (focusNames.get(m.entryId) ?? []).join(' + '), current: m.entryId === meeting.entryId }))}
+          weeks={meetings.map((m) => ({ entryId: m.entryId, dayLabel: fmtDay(m.date), planned: (focusNames.get(m.entryId) ?? []).length > 0, current: m.entryId === meeting.entryId }))}
           view={view}
           sets={sets.map((x) => ({ id: x.id, name: x.name, labels: x.labels, count: x.items.length, lastUsed: x.lastUsed, mbId: x.mbId ?? null }))}
           badges={data.catalog.meritBadges.map((m) => ({ id: m.id, name: m.name })).sort((a, b) => a.name.localeCompare(b.name))}
           stamp={data.stamp}
           canSeed={access.canSeed}
           isToday={meeting.date === centralToday()}
-          notSent={notSent}
           live={{ present: ((presence.data ?? []) as { person_id: number }[]).map((r) => r.person_id) }}
         />
       </div>
