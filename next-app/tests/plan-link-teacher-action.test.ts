@@ -116,6 +116,27 @@ describe('a teacher answers from the email link', () => {
     expect(r.ok).toBe(true);
   });
 
+  it('PlanLinkTeacher_ClearTakeMeOff_ReleasesOnlyTheirOwnRows', async () => {
+    const [mine, theirs] = await leafKeys(2);
+    const { token } = await link(adult);
+    const act = await actions();
+    await act.planPageTeachAction({ token, op: { op: 'teach', key: mine } });
+    const { token: otherToken } = await link(other);
+    await act.planPageTeachAction({ token: otherToken, op: { op: 'teach', key: theirs } });
+    await act.planPageTeachAction({ token, op: { op: 'clear', takeOff: true } });
+    const { data } = await sb.from('meeting_topic_teachers').select('person_id').eq('calendar_entry_id', meeting1);
+    expect((data ?? []).map((r) => (r as { person_id: number }).person_id)).toEqual([other]);
+  });
+
+  it('PlanLinkTeacher_NoteIsSavedForTheRecipient', async () => {
+    const { token } = await link(adult);
+    const act = await actions();
+    await act.planPageTeachAction({ token, op: { op: 'intent', intent: 'not_coming' } });
+    await act.planPageTeachAction({ token, op: { op: 'note', note: 'Out of town' } });
+    const { data } = await sb.from('meeting_intents').select('person_id, note').eq('calendar_entry_id', meeting1).not('note', 'is', null);
+    expect(data).toEqual([{ person_id: adult, note: 'Out of town' }]);
+  });
+
   it('PlanLinkTeacher_RespectsTeachLimits', async () => {
     const { token } = await link(adult);
     const act = await actions();

@@ -58,6 +58,12 @@ over-commit a scout past one meeting, and adults can sign up for more than they 
 - **Planner screens are not limited.** A leader assigning from This week, the drawer or Suggestions can put anyone over
   3 classes / 60 minutes on purpose.
 - **An offer on several dates is checked against this Sunday only.** The limit is per meeting on the page that shows it.
+- **F5: a forwarded email link acts as its recipient** until 6 PM Sunday (qa-lead 2026-10-30), teaching card included:
+  it can take or drop classes, release a planner-assigned class through Not sure yet → take me off, and say Can't
+  make it with a note. Kept on purpose: the design offers take-me-off on the email page, it sits behind a confirm a
+  mail scanner can't press (GET writes nothing), every write is counted, and Emails can revoke or supersede the link.
+- **F5: a link that is both full (200 writes) and out of scope now says "limit" before "scope"** (the shared
+  `_meeting_plan_page_open` helper counts first). The write still rolls back; only the refusal word differs.
 
 ## Acceptance Criteria
 

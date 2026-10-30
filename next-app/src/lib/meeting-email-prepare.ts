@@ -144,10 +144,22 @@ export async function prepareEmail(sb: SupabaseClient, row: EmailRow, ctx: Prepa
 }
 
 /** Whether the recipient may teach on the meeting date (an adult, or a Junior Leader): the link's teacher card. */
+/** The ranks, read once per client (one send's batch), not once per email (qa-lead 2026-10-30). */
+const ranksBy = new WeakMap<SupabaseClient, Promise<CatalogRank[]>>();
+function ranksOf(sb: SupabaseClient): Promise<CatalogRank[]> {
+  let p = ranksBy.get(sb);
+  if (!p) {
+    p = Promise.resolve(sb.from('ranks').select('id, display_name, sort_order')).then(({ data, error }) => {
+      if (error) throw new Error(error.message);
+      return (data ?? []) as CatalogRank[];
+    });
+    ranksBy.set(sb, p);
+  }
+  return p;
+}
+
 async function mayTeach(sb: SupabaseClient, personId: number, date: string): Promise<boolean> {
-  const { data, error } = await sb.from('ranks').select('id, display_name, sort_order');
-  if (error) throw new Error(error.message);
-  return (await loadTeacherPeople(sb, [personId], date, { ranks: (data ?? []) as CatalogRank[] })).has(personId);
+  return (await loadTeacherPeople(sb, [personId], date, { ranks: await ranksOf(sb) })).has(personId);
 }
 
 /** "Edit this email": the one-off wording replaces the template's body; the subject stays. */
