@@ -69,10 +69,15 @@ afterEach(() => {
 });
 
 describe('the Has/Needs tab (B7)', () => {
-  it('HasNeedsTab_IsLastTab', () => {
+  it('HasNeedsTab_IsFollowedBySuggestions_TheLastTab', () => {
     render(<PlannerTabs active="hasneeds" />);
     const tabs = screen.getAllByRole('tab');
-    expect([tabs.length, tabs[tabs.length - 1].textContent, tabs[tabs.length - 1].getAttribute('href')]).toEqual([3, 'Has/Needs', '/planner/has-needs']);
+    expect(tabs.map((t) => [t.textContent, t.getAttribute('href')])).toEqual([
+      ['This week', '/planner'],
+      ['Focus sets', '/planner/focus-sets'],
+      ['Has/Needs', '/planner/has-needs'],
+      ['Suggestions', '/planner/suggestions']
+    ]);
   });
 
   it('PlannerTabs_AdultEditor_SeesTheEmailsTab', () => {
