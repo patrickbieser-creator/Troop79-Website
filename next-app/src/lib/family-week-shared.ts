@@ -55,6 +55,13 @@ export function familyLede(firstNames: readonly string[], self: boolean): string
   return `Here’s what’s planned for ${names} Sunday. One tap per card tells us whether the plan works.`;
 }
 
+/** The lede over a teacher's card when it is the only card (no scouts on the page). */
+export function teacherLede(firstName: string, junior: boolean): string {
+  return junior
+    ? `Hi ${firstName}, here’s what we have planned for you this Sunday. One tap tells us whether this works.`
+    : `Hi ${firstName}. Here’s what you’re teaching Sunday. One tap tells us whether the plan works.`;
+}
+
 /** Teaching on one Sunday (Plans/Meeting-Planner-III-Family.md, D1): at most this many classes and minutes, for adults
  *  and Junior Leaders alike, so nobody signs up for more than they can deliver. Checked by teach-actions on every add. */
 export const TEACH_MAX_CLASSES = 3;

@@ -42,7 +42,7 @@ import {
 } from '@/lib/meeting-board';
 import { isAgendaPublished, loadTeachBoard, loadTeachView, offerChoices, OFFER_DATES } from '@/lib/meeting-board-supply';
 import { loadFamilyWeek } from '@/lib/family-week';
-import { familyLede } from '@/lib/family-week-shared';
+import { familyLede, teacherLede } from '@/lib/family-week-shared';
 
 import { isPastSoftClose, onBehalfAccess } from '@/lib/meeting-board-shared';
 import { PageHeader } from '@/app/_components/page-header';
@@ -51,7 +51,7 @@ import { Button } from '@/app/_components/button';
 import { MemberProxyBanner } from '../member-proxy-banner';
 import memberStyles from '../member.module.css';
 import { FamilyWeekMember } from './family-week-member';
-import { TeacherCard } from './teacher-card';
+import { TeacherCardMember } from './teacher-card-member';
 import { loadTeacherWeek } from '@/lib/teacher-week';
 import fw from './family-week.module.css';
 import { PlanNotice } from './plan-notice';
@@ -208,11 +208,9 @@ export default async function MeetingBoardPage({ searchParams }: { searchParams:
     ? null
     : scoutNames.length
       ? familyLede(teacherWeek && teacherIsSelf ? [...scoutNames, 'you'] : scoutNames, session?.subjectKind === 'scout' && !teacherWeek)
-      : teacherWeek?.junior
-        ? `Hi ${teacherFirst}, here’s what we have planned for you this Sunday. One tap tells us whether this works.`
-        : teacherWeek
-          ? `Hi ${teacherFirst}. Here’s what you’re teaching Sunday. One tap tells us whether the plan works.`
-          : null;
+      : teacherWeek
+        ? teacherLede(teacherFirst, teacherWeek.junior)
+        : null;
 
   return shell(
     <>
@@ -229,7 +227,7 @@ export default async function MeetingBoardPage({ searchParams }: { searchParams:
       {lede ? <p className={fw.lede}>{lede}</p> : null}
       {week && week.scouts.length ? <FamilyWeekMember week={week} readOnly={onBehalf} lede={null} viewScout={proxy?.personId} /> : null}
       {teachView && teacherWeek && (
-        <TeacherCard
+        <TeacherCardMember
           key={`${teacherWeek.personId}:${teacherWeek.intent ?? ''}`}
           entryId={meeting.entryId}
           date={meeting.date}

@@ -18,7 +18,8 @@ if (process.env.EMAIL_LIVE_TESTS !== '1') {
 // Mirrors tsconfig.json's "@/*" -> "./src/*" path — needed for any test that
 // imports a src/lib module by value (not just `import type`), since Vitest
 // doesn't read tsconfig paths on its own.
-const alias = { '@': path.resolve(__dirname, 'src') };
+// `server-only` is Next's own marker (no package here): a no-op stand-in under Vitest.
+const alias = { '@': path.resolve(__dirname, 'src'), 'server-only': path.resolve(__dirname, 'tests/helpers/server-only.ts') };
 
 /*
  * TWO PROJECTS, because the two kinds of test want opposite things.

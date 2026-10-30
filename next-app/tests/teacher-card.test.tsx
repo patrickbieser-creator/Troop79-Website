@@ -8,7 +8,8 @@ import type { MyClass, TeacherClass, TeacherWeek } from '../src/lib/teacher-week
  * The family page's teacher card (Plans/Meeting-Planner-III-Family.md, F3 + F4; prototypes/meeting-plan-III/
  * Family.dc.html): three answers like a scout's card, "{name}'s Sunday" with the 3-class / 60-minute limit, the open
  * class list for someone with nothing assigned, and "Not sure yet" asking first when a planner assigned the class.
- * The server actions are the mock boundary.
+ * The server actions are the mock boundary: the cards render through /member/meeting's wrapper (TeacherCardMember),
+ * which maps the card's writes onto them; the email link's own wiring is the last test (F5).
  */
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }) }));
 const calls = vi.hoisted(() => ({ teach: vi.fn(), unteach: vi.fn(), withdraw: vi.fn(), intent: vi.fn(), offer: vi.fn(), clear: vi.fn(), note: vi.fn() }));
@@ -22,6 +23,7 @@ vi.mock('../src/app/(public)/member/meeting/teach-actions', () => ({
   meetingTeacherNoteAction: calls.note
 }));
 const { TeacherCard } = await import('../src/app/(public)/member/meeting/teacher-card');
+const { TeacherCardMember } = await import('../src/app/(public)/member/meeting/teacher-card-member');
 
 const cls = (key: string, label: string, o: Partial<TeacherClass> = {}): TeacherClass => ({
   key,
@@ -56,7 +58,7 @@ const ok = (week: Partial<TeacherWeek> = {}) => ({ ok: true as const, view: VIEW
 function card(week: Partial<TeacherWeek> = {}, isSelf = true) {
   // Every write answers with this same card, so a tap doesn't swap in another person's.
   for (const f of Object.values(calls)) f.mockResolvedValue(ok(week));
-  return render(<TeacherCard entryId={1} date="2099-11-01" isSelf={isSelf} initial={{ ...WEEK, ...week }} view={VIEW} choices={CHOICES} onBehalf={false} readOnly={false} />);
+  return render(<TeacherCardMember entryId={1} date="2099-11-01" isSelf={isSelf} initial={{ ...WEEK, ...week }} view={VIEW} choices={CHOICES} onBehalf={false} readOnly={false} />);
 }
 const teaching = { mine: [mine('fr:second-class', 'Second Class group')], needs: [], intent: 'coming' as const, load: { classes: 1, minutes: 30 } };
 
@@ -193,5 +195,14 @@ describe('Can’t make it note', () => {
   it('Teacher_Note_CountsCharactersLeft', () => {
     card({ ...teaching, intent: 'not_coming', note: 'Sick' });
     expect(screen.getByText('236 characters left · up to 3 lines')).toBeTruthy();
+  });
+});
+
+describe('the card writes through what it is given (F5)', () => {
+  it('TeacherCard_WritesThroughInjectedWrite', async () => {
+    const write = vi.fn().mockResolvedValue(ok(teaching));
+    render(<TeacherCard entryId={1} date="2099-11-01" isSelf initial={{ ...WEEK, ...teaching, intent: null }} view={VIEW} choices={CHOICES} readOnly={false} write={write} />);
+    await userEvent.click(screen.getByRole('radio', { name: /This plan looks good/ }));
+    expect([write.mock.calls, Object.values(calls).some((f) => f.mock.calls.length)]).toEqual([[[{ op: 'intent', intent: 'coming' }]], false]);
   });
 });

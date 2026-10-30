@@ -3,7 +3,7 @@ import { adminClient } from './helpers/admin-client';
 import { TEST_PREFIX } from './helpers/signup-fixtures';
 import { hashSecret } from '../src/lib/identity-challenge';
 import { inviteExpiresAt } from '../src/lib/meeting-invites';
-import { claimPlanPage, inspectPlanPage, mintPlanPage, revokePlanPages, supersedeOlderPlanPages } from '../src/lib/plan-pages';
+import { claimPlanPage, claimPlanPageTeacher, inspectPlanPage, mintPlanPage, revokePlanPages, supersedeOlderPlanPages } from '../src/lib/plan-pages';
 import { familyWrite, uncachedLists } from '../src/lib/family-week';
 import { PLAN_MAX } from '../src/lib/family-week-shared';
 import { fetchAdvancementCatalog } from '../src/lib/advancement-catalog';
@@ -190,3 +190,44 @@ async function requestableKeys(catalog: Awaited<ReturnType<typeof fetchAdvanceme
   const done = new Set(((earned ?? []) as { mb_id: string }[]).map((r) => r.mb_id));
   return catalog.meritBadges.filter((m) => !done.has(m.id)).slice(from, from + n).map((m) => `mb:${m.id}`);
 }
+
+/** F5 (Plans/Meeting-Planner-III-Family.md): a link can also carry its recipient's teacher card. */
+describe('the teacher link', () => {
+  const teacherLink = (scouts: number[] = []) =>
+    mintPlanPage(sb, { entryId: meeting, recipientId: parent, epoch, scoutIds: scouts, expiresAt: inviteExpiresAt(MEETING_DATE), asTeacher: true });
+
+  it('ScoutOnlyLink_CannotWriteAsTeacher', async () => {
+    const page = await mint();
+    expect(await claimPlanPageTeacher(sb, page.token)).toEqual({ ok: false, state: 'scope' });
+  });
+
+  it('TeacherLink_ClaimsForItsRecipient', async () => {
+    const page = await teacherLink();
+    expect(await claimPlanPageTeacher(sb, page.token)).toEqual({ ok: true, pageId: page.id, entryId: meeting, recipientId: parent });
+  });
+
+  it('TeacherLink_WithNoScouts_IsAllowedOnlyWithAsTeacher', async () => {
+    const asTeacher = await teacherLink();
+    const scoutsOnly = await sb
+      .from('meeting_plan_pages')
+      .insert({ calendar_entry_id: meeting, recipient_person_id: parent, recipient_epoch: epoch, token_hash: 'e'.repeat(64), scout_person_ids: [], expires_at: inviteExpiresAt(MEETING_DATE) });
+    expect([(await inspectPlanPage(sb, asTeacher.token)).page?.asTeacher, scoutsOnly.error?.message]).toEqual([true, expect.stringMatching(/meeting_plan_pages_scout_person_ids_check/)]);
+  });
+
+  it('TeacherClaim_RefusesExpiredSupersededRevoked', async () => {
+    const expired = await mintPlanPage(sb, { entryId: meeting, recipientId: parent, epoch, scoutIds: [], expiresAt: '2001-01-01T00:00:00Z', asTeacher: true });
+    const old = await teacherLink();
+    const next = await teacherLink();
+    await supersedeOlderPlanPages(sb, { id: next.id, entryId: meeting, recipientId: parent });
+    const before = [(await claimPlanPageTeacher(sb, expired.token)).ok, (await claimPlanPageTeacher(sb, old.token)).ok];
+    await revokePlanPages(sb, meeting);
+    expect([...before, (await claimPlanPageTeacher(sb, next.token)).ok]).toEqual([false, false, false]);
+  });
+
+  it('TeacherAndScoutWrites_ShareTheWriteLimit', async () => {
+    const page = await teacherLink([scout]);
+    await sb.from('meeting_plan_pages').update({ write_count: 199 }).eq('id', page.id);
+    const scoutWrite = await claimPlanPage(sb, page.token, scout);
+    expect([scoutWrite.ok, await claimPlanPageTeacher(sb, page.token)]).toEqual([true, { ok: false, state: 'limit' }]);
+  });
+});

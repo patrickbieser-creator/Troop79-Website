@@ -15,6 +15,9 @@
  *   - Can't make it this week opens an optional note for the planners (F3b): 3 lines and 240 characters, its own Send.
  *   - "Not sure yet? Clear …'s answer" gives back everything signed up on this page. Pre-assigned to a class, it asks
  *     first whether to take them off the plan for now.
+ *
+ * Every save goes through `write` (F5): /member/meeting passes teach-actions (teacher-card-member.tsx), the email link
+ * /i/plan/<token> passes planPageTeachAction. The card never decides who it writes for.
  */
 import { useId, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
@@ -24,17 +27,7 @@ import type { OfferChoices, TeachView, WantedItem } from '@/lib/meeting-board-su
 import type { TeacherClass, TeacherWeek } from '@/lib/teacher-week';
 import { fmtDay } from '@/lib/format-date';
 import { DECLINE_NOTE_CHARS, DECLINE_NOTE_LINES } from '@/lib/decline-note';
-import {
-  meetingPostOfferAction,
-  meetingTeachAction,
-  meetingTeacherClearAction,
-  meetingTeacherIntentAction,
-  meetingTeacherNoteAction,
-  meetingUnteachAction,
-  meetingWithdrawOfferAction,
-  type OfferWhat,
-  type TeachActionResult
-} from './teach-actions';
+import type { OfferWhat, TeachActionResult, TeachOp } from '@/lib/teach-write';
 import { OfferForm, type Draft } from './offer-form';
 import styles from './meeting.module.css';
 import fw from './family-week.module.css';
@@ -49,8 +42,9 @@ export interface TeacherCardProps {
   /** The old teach section's data: what scouts asked for, and whether this person may still add. */
   view: TeachView;
   choices: OfferChoices;
-  onBehalf: boolean;
   readOnly: boolean;
+  /** One save, for this card's person on this meeting. */
+  write: (op: TeachOp) => Promise<TeachActionResult>;
 }
 
 const classes = (n: number) => `${n} ${n === 1 ? 'class' : 'classes'}`;
@@ -62,7 +56,7 @@ function answerOf(w: TeacherWeek): Answer | null {
   return [...w.mine, ...w.other].some((x) => !x.preassigned) ? 'change' : 'ok';
 }
 
-export function TeacherCard({ entryId, date, isSelf, initial, view: initialView, choices, onBehalf, readOnly }: TeacherCardProps) {
+export function TeacherCard({ entryId, date, isSelf, initial, view: initialView, choices, readOnly, write }: TeacherCardProps) {
   const router = useRouter();
   const ids = useId();
   const [week, setWeek] = useState(initial);
@@ -79,7 +73,6 @@ export function TeacherCard({ entryId, date, isSelf, initial, view: initialView,
   const [draft, setDraft] = useState<Draft | null>(null);
   const [offerErr, setOfferErr] = useState<{ what?: string; dates?: string }>({});
   const [pending, start] = useTransition();
-  const target = { entryId, personId: week.personId, onBehalf };
   const first = week.firstName;
   const you = isSelf ? 'you' : first;
   const who = isSelf ? 'You' : first;
@@ -109,23 +102,23 @@ export function TeacherCard({ entryId, date, isSelf, initial, view: initialView,
     const prev = answer;
     setAnswer(k);
     setUnsure(null);
-    run(() => meetingTeacherIntentAction({ ...target, intent: k === 'out' ? 'not_coming' : 'coming' }), 'Saved.', { onFail: () => (setAnswer(prev), false) });
+    run(() => write({ op: 'intent', intent: k === 'out' ? 'not_coming' : 'coming' }), 'Saved.', { onFail: () => (setAnswer(prev), false) });
   };
 
   /** Taking a class on answers the card (it implies coming). */
   const take = (key: string, label: string) =>
-    run(() => meetingTeachAction({ ...target, key }), `Saved. ${isSelf ? 'You’re' : `${first} is`} teaching ${label}.`, {
+    run(() => write({ op: 'teach', key }), `Saved. ${isSelf ? 'You’re' : `${first} is`} teaching ${label}.`, {
       at: key,
       onOk: () => {
         if (answer !== 'change') {
           setAnswer('change');
           setUnsure(null);
-          void meetingTeacherIntentAction({ ...target, intent: 'coming' });
+          void write({ op: 'intent', intent: 'coming' });
         }
       }
     });
   const drop = (kind: 'topic' | 'offer', key: string) =>
-    run(() => (kind === 'topic' ? meetingUnteachAction({ ...target, key }) : meetingWithdrawOfferAction({ ...target, skillId: key })), 'Saved. Removed.', { at: key });
+    run(() => write(kind === 'topic' ? { op: 'unteach', key } : { op: 'withdraw', skillId: key }), 'Saved. Removed.', { at: key });
 
   const clear = (takeOff: boolean) => {
     setAsking(false);
@@ -133,7 +126,7 @@ export function TeacherCard({ entryId, date, isSelf, initial, view: initialView,
     const prev = answer;
     setAnswer(null);
     setUnsure(takeOff ? 'off' : week.mine.some((m) => m.preassigned) || week.other.some((o) => o.preassigned) ? 'kept' : 'plain');
-    run(() => meetingTeacherClearAction({ ...target, takeOff }), 'Answer cleared.', { onFail: () => (setAnswer(prev), setUnsure(null), false) });
+    run(() => write({ op: 'clear', takeOff }), 'Answer cleared.', { onFail: () => (setAnswer(prev), setUnsure(null), false) });
   };
 
   function postOffer() {
@@ -146,7 +139,7 @@ export function TeacherCard({ entryId, date, isSelf, initial, view: initialView,
     setOfferErr(errs);
     if (errs.what || errs.dates) return;
     const what: OfferWhat = draft.type === 'skill' ? { type: 'skill', skillId: draft.skillId } : draft.type === 'req' ? { type: 'req', key: draft.key } : { type: 'ff', title: draft.title };
-    run(() => meetingPostOfferAction({ ...target, what, entryIds: draft.dates, note: draft.note }), 'Offer posted.', {
+    run(() => write({ op: 'offer', what, entryIds: draft.dates, note: draft.note }), 'Offer posted.', {
       onOk: () => setDraft(null),
       onFail: (r) => {
         if (!r.field) return false;
@@ -465,7 +458,7 @@ export function TeacherCard({ entryId, date, isSelf, initial, view: initialView,
                 size="sm"
                 disabled={pending || note.trim() === (week.note ?? '')}
                 title={note.trim() === (week.note ?? '') ? 'No changes to send yet' : undefined}
-                onClick={() => run(() => meetingTeacherNoteAction({ ...target, note }), 'Note sent.')}
+                onClick={() => run(() => write({ op: 'note', note }), 'Note sent.')}
               >
                 {note.trim() === (week.note ?? '') ? (week.note ? 'Sent' : 'Send') : week.note ? 'Send changes' : 'Send'}
               </Button>

@@ -98,7 +98,8 @@ export function renderTeachInvite(t: InviteTemplate, v: TeachInviteValues): { su
 export const REMINDER_KIND = 'meeting.reminder';
 
 /** P5b: to someone who hasn't answered "Coming Sunday?" (a scout's parents, the scout from 13, or an adult). The link
- *  to /member/meeting is the email's button, never a field. */
+ *  to the family link (/i/plan/<token>, a teacher-only one for an adult; /member/meeting for someone who may not teach)
+ *  is the email's button, never a field. */
 export const DEFAULT_REMINDER: InviteTemplate = {
   subject: 'Troop meeting on [day]: coming?',
   body: `Hi [name],

@@ -111,7 +111,7 @@ Unit (`tests/family-week-*.test.ts(x)`, `tests/teach-*.test.ts`):
 
 ## Implementation Steps
 
-Status 2026-10-30: F1–F4 built (uncommitted to production, v1.259.0 block in changelog). F3b and F5 open.
+Status 2026-10-30: F1–F4, F3b and F5 built (uncommitted to production, v1.259.0 block in changelog).
 
 1. **F1 Scout card (shared view)**: `lib/family-week` gives items minutes and codes, requests as plan items, Also
    with minutes, and choices `ok | change | out`. `family-week.tsx` gets the new copy, badges, ledes, footer, one-tap.
@@ -123,8 +123,18 @@ Status 2026-10-30: F1–F4 built (uncommitted to production, v1.259.0 block in c
    **F3b (built on feat/teacher-cant-make-it-note, waits for ship):** Can't make it gets its note. Needs a `meeting_intents.note` column (additive migration, on a
    branch until Patrick says ship), shown to planners with the group's decline notes.
 4. **F4 Mark and clear flows**: open-list first visit, Clear with the pre-assigned panel (D7).
-5. **F5 Adults on the email link** (`/i/plan/<token>`): needs a claim/scope change (a new RPC or migration) and a
-   qa-lead security pass. **Ask Patrick before building.** Until then, adults keep `/member/meeting` and `/i/teach`.
+5. **F5 Adults on the email link** (`/i/plan/<token>`): **built on feat/plan-link-teacher-cards, waits for ship
+   (DB-first migration `20261231700000_plan_page_teacher.sql`) and a qa-lead security pass.**
+   - `meeting_plan_pages.as_teacher`; a link may carry no scouts only when it is a teacher link.
+     `meeting_plan_page_claim_teacher` shares `_meeting_plan_page_open` (lock, open state, epoch, the 200-write count)
+     with `meeting_plan_page_claim` (unchanged signature and refusals).
+   - The write core moved to `lib/teach-write` (server-only, not a server action). `teach-actions` checks the session
+     and calls it; `planPageTeachAction` claims the link and calls it as the recipient, never a leader.
+   - **Offers from the link are for that Sunday only** (the form lists one date; the action refuses any other).
+   - **Adults without scouts get their Coming? reminder as a teacher link** (no scouts, as_teacher); someone who may
+     not teach keeps `/member/meeting`. Household plan/reminder links are as_teacher when the recipient may teach on
+     the date (loadTeacherPeople: every active adult, or a Junior Leader at their own address). `/i/teach` unchanged.
+   - The TeacherCard takes `write(op)`; `/member/meeting` wraps teach-actions (teacher-card-member.tsx).
 6. qa-lead pass, full gate, changelog, ship (code-only for F1–F4; no migration).
 
 ## Open Questions
@@ -132,7 +142,7 @@ Status 2026-10-30: F1–F4 built (uncommitted to production, v1.259.0 block in c
 - [x] F4: no auto-restore (Patrick 2026-10-30: "if someone removes a class using take me off, they can start over for now"). The README says answering again after "take me off" **puts the pre-assigned class back**. Doing that needs
       a memory of the released class, which means a migration. Until then the card says "If a class is still open,
       you can pick it again" and doesn't restore it automatically. OK?
-- [ ] F5: should adult cards appear on the email link page at all, or is `/member/meeting` + `/i/teach` enough?
+- [x] F5: adult cards appear on the email link page (Patrick approved the design 2026-10-30); `/i/teach` stays for teach asks.
 - [ ] Where does a signed-in adult's Can't make it note live? (`meeting_invites.decline_note` is per invite.)
       Answer in F3: reuse it when there's an invite, otherwise attach it to the intent.
 

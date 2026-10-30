@@ -126,3 +126,57 @@ describe('already emailed (qa-lead E3 #2)', () => {
     expect(r.ok).toBe(false);
   }, 60_000);
 });
+
+/** F5: a household email's link carries the recipient's teacher card when they may teach on the meeting date. */
+describe('the plan link for someone who teaches', () => {
+  const youth: number[] = [];
+  const asTeacherOf = async (html: string) => {
+    const token = /\/i\/plan\/([0-9a-f]{64})/.exec(html)?.[1];
+    if (!token) return null;
+    const { inspectPlanPage } = await import('../src/lib/plan-pages');
+    const page = (await inspectPlanPage(sb, token)).page;
+    return page ? { asTeacher: page.asTeacher, scouts: page.scoutIds } : null;
+  };
+  const base = (o: Partial<EmailRow>): EmailRow => ({
+    id: 1,
+    calendar_entry_id: meeting,
+    kind: 'plan',
+    batch_id: '00000000-0000-4000-8000-000000000019',
+    recipient_person_id: parent,
+    sent_to: parentEmail,
+    about: { scouts: [scout] },
+    plan_sent: { [String(scout)]: { name: 'Lily', kind: 'rank', group: 'fr:second-class', groupName: 'Second Class', teachers: [], items: [], helpName: null } },
+    subject: null,
+    body_md_override: null,
+    status: 'sending',
+    failure: null,
+    ...o
+  });
+
+  afterAll(async () => {
+    await sb.from('scouts').delete().in('person_id', youth);
+    await sb.from('people').delete().in('id', youth);
+  });
+
+  it('ParentWhoTeaches_PlanLinkHasAsTeacher', async () => {
+    const p = await prepareEmail(sb, base({}), { meeting: { entryId: meeting, date: DATE }, focus: 'First aid' });
+    expect(await asTeacherOf(p.html)).toEqual({ asTeacher: true, scouts: [scout] });
+  });
+
+  it('AdultReminder_MintsTeacherOnlyPlanLink', async () => {
+    const p = await prepareEmail(sb, base({ kind: 'reminder', about: { scouts: [] }, plan_sent: {} }), { meeting: { entryId: meeting, date: DATE }, focus: 'First aid' });
+    expect(await asTeacherOf(p.html)).toEqual({ asTeacher: true, scouts: [] });
+  });
+
+  // Every active adult may teach (loadTeacherPeople), so the recipient who can't is a scout who isn't a Junior Leader,
+  // emailed at their own address.
+  it('RecipientWhoCannotTeach_PlanLinkIsScoutsOnly', async () => {
+    const { data: who } = await sb.from('people').insert({ display_name: `${TEST_PREFIX} E3 Young`, first_name: `${TEST_PREFIX} E3`, last_name: 'Young' }).select('id').single();
+    const young = (who as { id: number }).id;
+    youth.push(young);
+    await sb.from('scouts').insert({ id: `vitest-e3-${young}`, first_name: `${TEST_PREFIX} E3`, last_name: 'Young', display_name: `${TEST_PREFIX} E3 Young`, person_id: young, active: true, current_rank: 'scout' });
+    const row = base({ recipient_person_id: young, about: { scouts: [young] }, plan_sent: { [String(young)]: { name: 'Young', kind: 'rank', group: 'fr:tenderfoot', groupName: 'Tenderfoot', teachers: [], items: [], helpName: null } } });
+    const p = await prepareEmail(sb, row, { meeting: { entryId: meeting, date: DATE }, focus: 'First aid' });
+    expect(await asTeacherOf(p.html)).toEqual({ asTeacher: false, scouts: [young] });
+  });
+});

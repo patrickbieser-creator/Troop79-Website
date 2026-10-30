@@ -5,8 +5,10 @@
  *
  *   - 'plan' / 'reminder' to a household: a NEW family link (/i/plan/<token>) for the row's scouts, the answer buttons
  *     as ?a= links on it. Kept only once the email went: then it supersedes the recipient's older links for this
- *     meeting; otherwise it is deleted.
- *   - 'reminder' to an adult (no scouts): the member meeting page, no token.
+ *     meeting; otherwise it is deleted. The link also carries the recipient's own teacher card (as_teacher, F5) when
+ *     they may teach on the meeting date (loadTeacherPeople: an adult, or a Junior Leader at their own address).
+ *   - 'reminder' to an adult (no scouts): a teacher-only link (no scouts, as_teacher), kept the same way; someone who
+ *     may not teach gets the member meeting page, no token.
  *   - 'teacher': one teach ask (createInviteDigest, the Ask by email path) for the row's group, answered on the
  *     teacher's /i/teach/<token> page. Kept only once the email went, as above.
  */
@@ -22,6 +24,8 @@ import { deleteTeachPages, supersedeOlderTeachPages } from '@/lib/meeting-teach-
 import { minutesText } from '@/lib/meeting-board-picklist';
 import { deletePlanPage, mintPlanPage, supersedeOlderPlanPages } from '@/lib/plan-pages';
 import { siteUrl } from '@/lib/site-url';
+import { loadTeacherPeople } from '@/lib/meeting-board-supply';
+import type { CatalogRank } from '@/lib/advancement-catalog';
 import { peopleWords, planButtons, renderHouseholdEmail, TRACKING_LINE, type ScoutPlanSent } from '@/lib/meeting-email-build';
 import type { EmailRow, Prepared } from '@/lib/meeting-emails';
 
@@ -103,8 +107,9 @@ export async function prepareEmail(sb: SupabaseClient, row: EmailRow, ctx: Prepa
   const toScout = scouts.length === 1 && row.about.scouts?.[0] === who.id;
   const { subject, md } = renderHouseholdEmail(template, { name: who.first, people: scouts.length ? peopleWords(scouts, toScout) : 'you', day, focus: ctx.focus || 'still being planned' }, scouts, row.body_md_override, { reminder });
 
-  // An adult's own "Coming?" reminder: the member meeting page, nothing minted.
-  if (!scouts.length) {
+  const asTeacher = await mayTeach(sb, who.id, ctx.meeting.date);
+  // An adult's own "Coming?" reminder who may not teach: the member meeting page, nothing minted.
+  if (!scouts.length && !asTeacher) {
     const { html, text } = renderMarkdownEmail({ md, actionUrl: `${siteUrl()}/member/meeting`, actionLabel: 'Answer now', postscript: TRACKING_LINE });
     return { subject, html, text, fromName: INVITE_SENDER_NAME };
   }
@@ -113,8 +118,10 @@ export async function prepareEmail(sb: SupabaseClient, row: EmailRow, ctx: Prepa
     entryId: ctx.meeting.entryId,
     recipientId: who.id,
     epoch: who.epoch,
-    scoutIds: row.about.scouts ?? [],
-    expiresAt: inviteExpiresAt(ctx.meeting.date)
+    // A reminder with no scouts carries none, even if the row named some.
+    scoutIds: scouts.length ? (row.about.scouts ?? []) : [],
+    expiresAt: inviteExpiresAt(ctx.meeting.date),
+    asTeacher
   });
   let html: string;
   let text: string;
@@ -134,6 +141,13 @@ export async function prepareEmail(sb: SupabaseClient, row: EmailRow, ctx: Prepa
     onSent: () => supersedeOlderPlanPages(sb, { id: page.id, entryId: ctx.meeting.entryId, recipientId: who.id }),
     undo: () => deletePlanPage(sb, page.id)
   };
+}
+
+/** Whether the recipient may teach on the meeting date (an adult, or a Junior Leader): the link's teacher card. */
+async function mayTeach(sb: SupabaseClient, personId: number, date: string): Promise<boolean> {
+  const { data, error } = await sb.from('ranks').select('id, display_name, sort_order');
+  if (error) throw new Error(error.message);
+  return (await loadTeacherPeople(sb, [personId], date, { ranks: (data ?? []) as CatalogRank[] })).has(personId);
 }
 
 /** "Edit this email": the one-off wording replaces the template's body; the subject stays. */
