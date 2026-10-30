@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { cleanPlanName, filterPlans, planBadges, planSummary, removedByLoad, type SavedPlan } from '../src/lib/saved-plans-shared';
+import { cleanPlanName, filterPlans, planBadges, planSummary, removedByLoad, validCriteria, type SavedPlan } from '../src/lib/saved-plans-shared';
 
 /**
  * Saved meeting plans (Patrick, 2026-10-29), the client-safe part: a name's rules, the load list's search, merit
@@ -78,5 +78,21 @@ describe('removedByLoad', () => {
     };
     const saved = plan(1, 'A', '2026-11-01', { focus: [{ setId: 1, title: 'First aid', items: ['a'] }], badges: [] }).criteria;
     expect(removedByLoad(current, saved)).toEqual(['Knots', 'First Aid merit badge', 'Swim']);
+  });
+});
+
+describe('validCriteria (qa-lead: write-side limits)', () => {
+  const ok = { focus: [{ setId: 1, title: 'First aid', items: ['tenderfoot-4a'] }], singles: ['first-class-1a'], badges: ['first-aid'] };
+
+  it('AcceptsWhatThePlannerMakes', () => {
+    expect(validCriteria(ok)).toBe(true);
+  });
+
+  it('RefusesTokenKeysBadIdsAndOversizedCriteria', () => {
+    expect([
+      validCriteria({ ...ok, singles: ['fg:12'] }),
+      validCriteria({ ...ok, badges: ['Not A Badge!'] }),
+      validCriteria({ ...ok, focus: [1, 2, 3].map((n) => ({ setId: n, title: 'x', items: Array.from({ length: 300 }, (_, i) => `tenderfoot-${'x'.repeat(100)}${i}`) })) })
+    ]).toEqual([false, false, false]);
   });
 });

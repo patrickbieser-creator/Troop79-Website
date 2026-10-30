@@ -4,7 +4,7 @@ import { TEST_PREFIX } from './helpers/signup-fixtures';
 import { fetchAdvancementCatalog } from '../src/lib/advancement-catalog';
 import { fetchPeopleLists } from '../src/lib/people-lists';
 import { loadThisWeekData } from '../src/lib/this-week-db';
-import { buildThisWeek } from '../src/lib/this-week';
+import { buildThisWeek, PLANNER_WEEKS } from '../src/lib/this-week';
 
 /**
  * Saved meeting plans (Patrick, 2026-10-29): a seed holder saves a meeting's criteria (focus sets, planner-added
@@ -35,13 +35,15 @@ const plans: number[] = [];
 const sets: number[] = [];
 const asSeeder = () => (state.actor = { personId: planner, subjectKind: 'adult', capabilities: new Set(['meeting_planner.seed', 'meeting_planner.edit']) });
 const asEditor = () => (state.actor = { personId: planner, subjectKind: 'adult', capabilities: new Set(['meeting_planner.edit']) });
+const asViewer = () => (state.actor = { personId: planner, subjectKind: 'adult', capabilities: new Set(['meeting_planner.view']) });
+const extraEntries: number[] = [];
 
 async function view(entryId: number, date: string) {
   const [catalog, lists] = await Promise.all([fetchAdvancementCatalog(sb as never), fetchPeopleLists(sb)]);
   return buildThisWeek((await loadThisWeekData(sb, { entryId, date }, lists, catalog)).input);
 }
-async function entry(date: string): Promise<number> {
-  const { data, error } = await sb.from('calendar_entries').insert({ entry_date: date, category: 'Troop Meeting', title: `Troop Meeting ${TEST_PREFIX} SP` }).select('id').single();
+async function entry(date: string, title = `Troop Meeting ${TEST_PREFIX} SP`): Promise<number> {
+  const { data, error } = await sb.from('calendar_entries').insert({ entry_date: date, category: 'Troop Meeting', title }).select('id').single();
   if (error) throw new Error(error.message);
   return data!.id as number;
 }
@@ -77,7 +79,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   if (plans.length) await sb.from('meeting_saved_plans').delete().in('id', plans);
-  for (const e of [from, to]) {
+  for (const e of [from, to, ...extraEntries]) {
     await sb.from('meeting_topics').delete().eq('calendar_entry_id', e);
     await sb.from('calendar_entries').delete().eq('id', e);
   }
@@ -140,6 +142,108 @@ describe('loading a plan', () => {
     sets.push(newSet);
     const v = await view(to, '2086-03-11');
     expect([newSet !== goneId, v.focus.map((f) => f.setId)]).toEqual([true, [newSet]]);
+  });
+});
+
+describe('refusals (qa-lead)', () => {
+  it('Viewer_IsRefused', async () => {
+    asViewer();
+    const a = await actions();
+    const r = await Promise.all([a.twSavePlanAction({ entryId: from, name: 'x', planDate: '2086-03-04' }), a.twLoadPlanAction({ entryId: to, planId: 1 })]);
+    expect(r.map((x) => x.ok)).toEqual([false, false]);
+  });
+
+  it('AMeetingOutsideTheOfferedWindow_IsRefused', async () => {
+    // Enough later meetings that the far one falls past the planner's window.
+    for (let i = 0; i < PLANNER_WEEKS; i++) extraEntries.push(await entry(`2086-04-${String(1 + i * 2).padStart(2, '0')}`));
+    const far = await entry('2086-06-03');
+    extraEntries.push(far);
+    asSeeder();
+    const r = await (await actions()).twSavePlanAction({ entryId: far, name: 'x', planDate: '2086-06-03' });
+    expect(r.ok ? 'saved' : r.error).toMatch(/next \d+ meetings only/);
+  });
+
+  it('APastMeeting_IsRefused', async () => {
+    const past = await entry('2086-01-07');
+    extraEntries.push(past);
+    asSeeder();
+    const r = await (await actions()).twLoadPlanAction({ entryId: past, planId: plans[0] });
+    expect(r.ok ? 'loaded' : r.error).toBe('That meeting has passed.');
+  });
+
+  it('AClosedMeeting_IsRefused', async () => {
+    const closed = await entry('2086-03-12', `No Troop Meeting ${TEST_PREFIX} SP`);
+    extraEntries.push(closed);
+    asSeeder();
+    const r = await (await actions()).twLoadPlanAction({ entryId: closed, planId: plans[0] });
+    expect(r.ok ? 'loaded' : r.error).toBe('That meeting isn’t taking sign-ups.');
+  });
+
+  it('LoadingAMissingPlan_SaysItIsGone', async () => {
+    asSeeder();
+    const r = await (await actions()).twLoadPlanAction({ entryId: to, planId: 2_000_000_000 });
+    expect(r.ok ? 'loaded' : r.error).toBe('That plan is gone.');
+  });
+
+  it('RenamingOrDeletingAMissingPlan_SaysItIsGone', async () => {
+    asSeeder();
+    const a = await actions();
+    const r = await Promise.all([a.twUpdatePlanAction({ entryId: from, planId: 2_000_000_000, name: 'y', planDate: '2086-03-04' }), a.twDeletePlanAction({ entryId: from, planId: 2_000_000_000 })]);
+    expect(r.map((x) => (x.ok ? 'ok' : x.error))).toEqual(['That plan is gone.', 'That plan is gone.']);
+  });
+});
+
+describe('a stale or big plan still loads (qa-lead)', () => {
+  it('BadKeyMissingBadgeAndMoreThan20Singles_LoadTheRest_AndNameWhatWasSkipped', async () => {
+    asSeeder();
+    const { data: reqs } = await sb.from('rank_requirements').select('rank_id, code').is('parent_id', null).in('rank_id', ['tenderfoot', 'second-class', 'first-class']).neq('code', 'BoR').order('rank_id').order('sort_order').limit(24);
+    const keys = ((reqs ?? []) as { rank_id: string; code: string }[]).filter((r) => r.code.toLowerCase() !== 'bor').map((r) => `${r.rank_id}-${r.code}`);
+    const { data: p } = await sb
+      .from('meeting_saved_plans')
+      .insert({ name: `${TEST_PREFIX} SP stale`, plan_date: '2086-03-04', criteria: { focus: [{ setId: 'not-a-number', title: `${TEST_PREFIX} SP odd`, items: ['tenderfoot-4a', 'tenderfoot-99z'] }], singles: [...keys, 'tenderfoot-99z'], badges: ['no-such-badge-zz'] } })
+      .select('id')
+      .single();
+    const planId = (p as { id: number }).id;
+    plans.push(planId);
+    const r = await (await actions()).twLoadPlanAction({ entryId: to, planId });
+    const { data: after } = await sb.from('meeting_saved_plans').select('criteria').eq('id', planId).single();
+    const made = (after as { criteria: { focus: { setId: unknown }[] } }).criteria.focus[0].setId;
+    if (typeof made === 'number') sets.push(made);
+    const v = await view(to, '2086-03-11');
+    const loaded = v.extras.filter((x) => x.origin === 'planner').length;
+    expect([r.ok, r.ok && r.skipped.includes('tenderfoot-99z'), r.ok && r.skipped.includes('merit badge no-such-badge-zz'), keys.length > 20, loaded >= 21, typeof made]).toEqual([true, true, true, true, true, 'number']);
+  });
+});
+
+describe('what a load leaves alone (qa-lead)', () => {
+  it('LoadingOntoOneMeeting_LeavesAnotherUntouched', async () => {
+    asSeeder();
+    const before = await view(from, '2086-03-04');
+    await (await actions()).twLoadPlanAction({ entryId: to, planId: plans[0] });
+    const after = await view(from, '2086-03-04');
+    expect([after.focus, after.badges, after.extras.map((x) => x.key)]).toEqual([before.focus, before.badges, before.extras.map((x) => x.key)]);
+  });
+
+  it('PicksAndTeachers_SurviveALoadThatRemovesTheirClass', async () => {
+    asSeeder();
+    // A plan with only a badge: loading it takes `from`'s focus set and added requirement off.
+    const { data: p } = await sb.from('meeting_saved_plans').insert({ name: `${TEST_PREFIX} SP badge only`, plan_date: '2086-03-04', criteria: { focus: [], singles: [], badges: ['first-aid'] } }).select('id').single();
+    const planId = (p as { id: number }).id;
+    plans.push(planId);
+    const { data: topics } = await sb.from('meeting_topics').select('id, topic_key').eq('calendar_entry_id', from).in('topic_key', [`fg:${setId}`, single]);
+    const byKey = new Map(((topics ?? []) as { id: number; topic_key: string }[]).map((t) => [t.topic_key, t.id]));
+    const { data: sc } = await sb.from('scouts').select('person_id').eq('active', true).not('person_id', 'is', null).order('person_id').limit(1).single();
+    const scoutPerson = (sc as { person_id: number }).person_id;
+    await sb.from('meeting_topic_picks').insert({ topic_id: byKey.get(`fg:${setId}`), calendar_entry_id: from, person_id: scoutPerson, priority: 1, first_asked_on: '2086-03-04' });
+    await sb.from('meeting_topic_teachers').insert({ topic_id: byKey.get(single), calendar_entry_id: from, person_id: planner, entered_by_person_id: planner });
+    expect((await (await actions()).twLoadPlanAction({ entryId: from, planId })).ok).toBe(true);
+    const [{ count: picks }, { count: teachers }] = await Promise.all([
+      sb.from('meeting_topic_picks').select('person_id', { count: 'exact', head: true }).eq('calendar_entry_id', from).eq('person_id', scoutPerson),
+      sb.from('meeting_topic_teachers').select('person_id', { count: 'exact', head: true }).eq('calendar_entry_id', from).eq('person_id', planner)
+    ]);
+    await sb.from('meeting_topic_picks').delete().eq('calendar_entry_id', from);
+    await sb.from('meeting_topic_teachers').delete().eq('calendar_entry_id', from);
+    expect([picks, teachers]).toEqual([1, 1]);
   });
 });
 

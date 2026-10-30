@@ -55,12 +55,21 @@ describe('SavedPlans', () => {
   });
 
   it('Load_Confirmed_LoadsThatPlan', async () => {
-    m.load.mockResolvedValue(OK);
+    m.load.mockResolvedValue({ ...OK, skipped: [] });
     tab();
     fireEvent.click(screen.getByRole('button', { name: 'Load a saved plan…' }));
     fireEvent.click(screen.getByRole('button', { name: 'Load' }));
     fireEvent.click(screen.getByRole('button', { name: 'Load and replace' }));
     await waitFor(() => expect(m.load).toHaveBeenCalledWith({ entryId: 9, planId: 7 }));
+  });
+
+  it('Load_OfAStalePlan_SaysWhatWasLeftOut', async () => {
+    m.load.mockResolvedValue({ ...OK, skipped: ['tenderfoot-99z', 'merit badge cooking'] });
+    tab();
+    fireEvent.click(screen.getByRole('button', { name: 'Load a saved plan…' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Load' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Load and replace' }));
+    expect((await screen.findByRole('status')).textContent).toContain('Left out, no longer in the catalog: tenderfoot-99z, merit badge cooking');
   });
 
   it('Delete_AsksFirst', async () => {

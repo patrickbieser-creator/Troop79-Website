@@ -4,7 +4,8 @@
  * Saved meeting plans (Patrick, 2026-10-29): save this meeting's criteria under a name and a date, load one onto this
  * meeting (replacing its focus, planner-added requirements and night badges), rename or re-date one, delete one. The
  * planning team's (seed), like every focus change; gated before the database is touched, on one of the meetings the
- * planner offers. Each returns the board's stamp, as This week's writes do.
+ * planner offers. Each returns the board's stamp, as This week's writes do. Any seed holder manages any saved plan (the
+ * team's list; a hard delete with no ownership check, by design).
  */
 import { revalidatePath } from 'next/cache';
 import { loadBoardStamp } from '@/lib/meeting-board';
@@ -37,12 +38,15 @@ export async function twSavePlanAction(input: { entryId: number; name: string; p
   return d.ok ? { ...d, id: res.id } : d;
 }
 
-export async function twLoadPlanAction(input: { entryId: number; planId: number }): Promise<SavedPlanResult> {
+/** `skipped`: what the saved plan held that no longer resolves (left out; everything else loaded). */
+export async function twLoadPlanAction(input: { entryId: number; planId: number }): Promise<({ skipped: string[] } & SavedPlanResult) | { ok: false; error: string }> {
   if (!Number.isInteger(input?.planId)) return fail('Malformed request');
   const s = await gate(input.entryId);
   if (!s.ok) return s;
   const res = await loadSavedPlan(s.sb, s.meeting.entryId, input.planId, s.actorPersonId);
-  return res.ok ? done(s) : res;
+  if (!res.ok) return res;
+  const d = await done(s);
+  return d.ok ? { ...d, skipped: res.skipped } : d;
 }
 
 export async function twUpdatePlanAction(input: { entryId: number; planId: number; name: string; planDate: string }): Promise<SavedPlanResult> {

@@ -24,6 +24,31 @@ export interface SavedPlan {
 }
 
 export const SAVED_PLAN_NAME_MAX = 80;
+/** The most saved plans the team keeps (qa-lead): a plain message asks for a delete past it. */
+export const SAVED_PLAN_CAP = 200;
+/** Criteria stay well under the table's 64 KB check. */
+export const SAVED_PLAN_BYTES = 60_000;
+
+/** The key shapes a plan holds, as the planner makes them: a requirement ('tenderfoot-4a', 'first-aid-2b') or an id. */
+const REQ_KEY = /^[a-z0-9][a-z0-9.-]{0,118}[a-z0-9]$/i;
+const MB_ID = /^[a-z0-9][a-z0-9-]{0,80}$/;
+
+/** Criteria safe to save: the right shapes, real keys only (no fg:/mb:/ff:/fr: tokens as items), and small enough. */
+export function validCriteria(c: SavedCriteria): boolean {
+  const okKey = (k: unknown) => typeof k === 'string' && REQ_KEY.test(k) && !/^(fg|mb|ff|fr):/.test(k);
+  return (
+    Array.isArray(c.focus) &&
+    c.focus.length <= 50 &&
+    c.focus.every((f) => (f.setId == null || Number.isInteger(f.setId)) && typeof f.title === 'string' && f.title.length <= 200 && Array.isArray(f.items) && f.items.length <= 300 && f.items.every(okKey)) &&
+    Array.isArray(c.singles) &&
+    c.singles.length <= 300 &&
+    c.singles.every(okKey) &&
+    Array.isArray(c.badges) &&
+    c.badges.length <= 100 &&
+    c.badges.every((b) => typeof b === 'string' && MB_ID.test(b)) &&
+    JSON.stringify(c).length < SAVED_PLAN_BYTES
+  );
+}
 
 /** A plan's name, tidied, or null when blank or too long. */
 export function cleanPlanName(raw: unknown): string | null {

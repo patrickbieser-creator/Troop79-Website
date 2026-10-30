@@ -104,6 +104,7 @@ function LoadList({ entryId, view, plans, badges, onDone }: { entryId: number; v
   const w = useWrite();
   const [f, setF] = useState<PlanFilter>({ q: '', mbId: null, sort: 'newest' });
   const [mode, setMode] = useState<Mode>(null);
+  const [leftOut, setLeftOut] = useState<{ name: string; items: string[] } | null>(null);
   const ids = useMemo(() => badges.map((b) => b.id), [badges]);
   const badgeName = useMemo(() => new Map(badges.map((b) => [b.id, b.name])), [badges]);
   const inPlans = useMemo(() => [...new Set(plans.flatMap((p) => planBadges(p.criteria, ids)))].sort((a, b) => (badgeName.get(a) ?? a).localeCompare(badgeName.get(b) ?? b)), [plans, ids, badgeName]);
@@ -117,6 +118,11 @@ function LoadList({ entryId, view, plans, badges, onDone }: { entryId: number; v
   }
   return (
     <div className={s.savedPanel} role="region" aria-label="Saved plans">
+      {leftOut ? (
+        <p className={s.savedConfirmText} role="status">
+          Loaded “{leftOut.name}”. Left out, no longer in the catalog: {leftOut.items.join(', ')}.
+        </p>
+      ) : null}
       <div className={s.row}>
         <label className={s.fieldLabel}>
           Find a plan
@@ -172,10 +178,17 @@ function LoadList({ entryId, view, plans, badges, onDone }: { entryId: number; v
                     yes="Load and replace"
                     busy={w.busy}
                     onYes={async () => {
-                      if (await w.run(() => twLoadPlanAction({ entryId, planId: p.id }))) {
-                        setMode(null);
-                        onDone();
-                      }
+                      let skipped: string[] = [];
+                      const ok = await w.run(async () => {
+                        const r = await twLoadPlanAction({ entryId, planId: p.id });
+                        if (r.ok) skipped = r.skipped;
+                        return r;
+                      });
+                      if (!ok) return;
+                      setMode(null);
+                      // A stale plan still loads; what it held that's gone is said, and the panel stays open to read it.
+                      if (skipped.length) setLeftOut({ name: p.name, items: skipped });
+                      else onDone();
                     }}
                     onNo={() => setMode(null)}
                   />
@@ -209,7 +222,7 @@ function loadText(p: SavedPlan, view: ThisWeek): string {
   const gone = removedByLoad(view, p.criteria);
   const head = `Replace this meeting’s focus with “${p.name}” (${planSummary(p.criteria)})?`;
   const goes = gone.length ? ` This takes off ${gone.join(', ')}.` : ' Nothing on this meeting is taken off.';
-  return `${head}${goes} Scouts’ answers stay. Teachers signed up for a group or class that goes are kept on file but won’t show until it comes back.`;
+  return `${head}${goes} Scouts’ answers stay. Teachers signed up for a group or class that goes are kept on file but won’t show until it comes back. Anything in the saved plan that’s no longer in the catalog is left out, and you’ll see what.`;
 }
 
 function Confirm({ text, yes, busy, onYes, onNo }: { text: string; yes: string; busy: boolean; onYes: () => void; onNo: () => void }) {

@@ -5,9 +5,11 @@
 --
 -- 1. meeting_saved_plans: name (1-80), plan_date, criteria jsonb {focus:[{setId,title,items}], singles:[], badges:[]}.
 -- 2. meeting_load_saved_plan(p_entry, p_plan, p_actor): REPLACES the meeting's focus, planner-added requirements and
---    night badges with the saved ones, in one transaction under the meeting's seed lock. What goes is unseeded the usual
---    way (a topic with picks or teachers stays, unseeded); a focus whose set is gone comes back as a new set
---    (meeting_new_mix) and the saved plan is pointed at it; a saved badge no longer in the catalog is skipped.
+--    night badges with the saved ones, in one transaction under the meeting's seed lock, and returns what it skipped.
+--    What goes is unseeded the usual way (a topic with picks or teachers stays, unseeded); a focus whose set is gone (or
+--    whose setId isn't a whole number) comes back as a new set (meeting_new_mix) and the saved plan points at it. A
+--    stale plan still loads (qa-lead): a requirement, focus item or badge no longer in the catalog is skipped and named;
+--    requirements seed one at a time, so meeting_seed_many's 20-at-a-time cap never stops a load.
 -- 3. merge_people: + meeting_saved_plans.created_by_person_id (20261231400000's body otherwise).
 --
 -- DEPLOY ORDER: DB-first (additive). Posture (D-051 / D-239): RLS on, no policies, nothing granted to anon or
@@ -18,7 +20,7 @@ create table if not exists public.meeting_saved_plans (
   id bigint generated always as identity primary key,
   name text not null check (char_length(btrim(name)) between 1 and 80),
   plan_date date not null,
-  criteria jsonb not null check (jsonb_typeof(criteria) = 'object'),
+  criteria jsonb not null check (jsonb_typeof(criteria) = 'object' and pg_column_size(criteria) < 65536),
   created_by_person_id bigint references public.people(id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -28,7 +30,7 @@ alter table public.meeting_saved_plans enable row level security;
 revoke all on public.meeting_saved_plans from anon, authenticated;
 
 -- ── 2. load one onto a meeting ────────────────────────────────────────────────────────────────────────────────────
-create or replace function public.meeting_load_saved_plan(p_entry bigint, p_plan bigint, p_actor bigint) returns void
+create or replace function public.meeting_load_saved_plan(p_entry bigint, p_plan bigint, p_actor bigint) returns text[]
 language plpgsql
 security invoker
 set search_path = public, pg_temp
@@ -41,22 +43,25 @@ declare
   v_title text;
   v_wanted text[] := '{}';
   v_badges text[];
-  v_singles jsonb;
+  v_singles text[];
+  v_skipped text[] := '{}';
   v_i bigint;
   v_new bigint;
+  k text;
   r record;
 begin
   perform public._meeting_seed_guard(p_entry);
   select criteria into c from meeting_saved_plans where id = p_plan;
   if c is null then raise exception 'That saved plan no longer exists.'; end if;
-  v_singles := coalesce(c->'singles', '[]'::jsonb);
-  v_badges := array(select jsonb_array_elements_text(coalesce(c->'badges', '[]'::jsonb)));
-  -- What stays: each saved focus whose set still exists, and each saved requirement.
-  for f in select * from jsonb_array_elements(coalesce(c->'focus', '[]'::jsonb)) loop
-    v_set := nullif(f->>'setId', '')::bigint;
+  v_singles := array(select e from jsonb_array_elements_text(case when jsonb_typeof(c->'singles') = 'array' then c->'singles' else '[]'::jsonb end) e);
+  v_badges := array(select e from jsonb_array_elements_text(case when jsonb_typeof(c->'badges') = 'array' then c->'badges' else '[]'::jsonb end) e);
+  -- What stays: each saved focus whose set still exists, and each saved requirement. A setId that isn't a whole number
+  -- counts as gone: the focus is made again from its items.
+  for f in select * from jsonb_array_elements(case when jsonb_typeof(c->'focus') = 'array' then c->'focus' else '[]'::jsonb end) loop
+    v_set := case when coalesce(f->>'setId', '') ~ '^\d{1,18}$' then (f->>'setId')::bigint end;
     if v_set is not null and exists (select 1 from focus_sets where id = v_set) then v_wanted := v_wanted || ('fg:' || v_set); end if;
   end loop;
-  v_wanted := v_wanted || array(select jsonb_array_elements_text(v_singles));
+  v_wanted := v_wanted || v_singles;
   -- Out with the rest of the focus and the planner-added requirements.
   for r in select topic_key from meeting_topics where calendar_entry_id = p_entry and seeded_at is not null and kind in ('focus_group', 'rank_req', 'mb_req') loop
     if not (r.topic_key = any(v_wanted)) then perform public.meeting_unseed_topic(p_entry, r.topic_key); end if;
@@ -65,13 +70,20 @@ begin
   insert into meeting_night_badges (calendar_entry_id, mb_id, added_by_person_id)
   select p_entry, b, p_actor from unnest(v_badges) b where exists (select 1 from merit_badges m where m.id = b)
   on conflict (calendar_entry_id, mb_id) do nothing;
+  v_skipped := v_skipped || array(select 'merit badge ' || b from unnest(v_badges) b where not exists (select 1 from merit_badges m where m.id = b));
   -- In with the saved focus: its own set when it still exists (with the saved items and title if they differ), else a
-  -- new set made from what was saved.
-  for f, v_i in select e, o from jsonb_array_elements(coalesce(c->'focus', '[]'::jsonb)) with ordinality x(e, o) loop
-    v_set := nullif(f->>'setId', '')::bigint;
+  -- new set made from what was saved. Items no longer in the catalog are left out and named; a focus with none left is
+  -- skipped and named.
+  for f, v_i in select e, o from jsonb_array_elements(case when jsonb_typeof(c->'focus') = 'array' then c->'focus' else '[]'::jsonb end) with ordinality x(e, o) loop
+    v_set := case when coalesce(f->>'setId', '') ~ '^\d{1,18}$' then (f->>'setId')::bigint end;
     v_title := coalesce(nullif(btrim(f->>'title'), ''), 'Focus');
-    v_items := array(select jsonb_array_elements_text(coalesce(f->'items', '[]'::jsonb)));
-    if cardinality(v_items) = 0 then continue; end if;
+    v_items := array(select e from jsonb_array_elements_text(case when jsonb_typeof(f->'items') = 'array' then f->'items' else '[]'::jsonb end) e);
+    v_skipped := v_skipped || array(select i from unnest(v_items) i where not public._focus_item_valid(i));
+    v_items := array(select i from unnest(v_items) i where public._focus_item_valid(i));
+    if cardinality(v_items) = 0 then
+      v_skipped := v_skipped || ('focus set ' || v_title);
+      continue;
+    end if;
     if v_set is not null and exists (select 1 from focus_sets where id = v_set) then
       perform public.meeting_seed_focus_set(p_entry, v_set, p_actor);
       if v_items is distinct from array(
@@ -87,7 +99,16 @@ begin
       update meeting_saved_plans set criteria = jsonb_set(criteria, array['focus', (v_i - 1)::text, 'setId'], to_jsonb(v_new)) where id = p_plan;
     end if;
   end loop;
-  if jsonb_array_length(v_singles) > 0 then perform public.meeting_seed_many(p_entry, v_singles, p_actor); end if;
+  -- The planner-added requirements, one at a time in a savepoint each: one that no longer resolves is skipped and
+  -- named, and the rest still load.
+  foreach k in array v_singles loop
+    begin
+      perform public.meeting_seed_many(p_entry, jsonb_build_array(k), p_actor);
+    exception when others then
+      v_skipped := v_skipped || k;
+    end;
+  end loop;
+  return v_skipped;
 end;
 $$;
 
