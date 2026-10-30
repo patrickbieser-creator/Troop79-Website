@@ -14,6 +14,9 @@
  * The selection lives in the URL (`?pick=<key>,<key>`, replaceState), so a view can be shared and comes back on load
  * and on back/forward. Everything is computed here from the page's one load (lib/has-needs splitScouts).
  *
+ * A badge's first click (Patrick, 2026-10-29) ticks the whole badge, so Has / Needs is who earned it, at once; ticking
+ * one of its requirements then refines it (the whole-badge tick gives way to the requirement).
+ *
  * The add hook (Patrick: yes): when exactly one requirement is the whole selection, a seed holder can add its
  * top-level requirement to one of the next meetings' plans through Build a Plan's own plannerAddOfferingAction (which
  * checks the seed right and the meeting again); "On plan" once it's there.
@@ -23,7 +26,8 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { Button } from '@/app/_components/button';
 import { EmptyState } from '@/app/_components/empty-state';
 import { mbKey, rankKey, splitScouts, type HasNeedsScout } from '@/lib/has-needs';
-import { flattenTree, leafLabels, offeringOf, parsePick, pickHref, PICK_CAP_TEXT, togglePick, type PickerBadge, type PickerRank, type PickerRow } from '@/lib/has-needs-picker';
+import { flattenTree, leafLabels, offeringOf, openBadge, parsePick, pickHref, PICK_CAP_TEXT, refineBadge, togglePick, type PickerBadge, type PickerRank, type PickerRow } from '@/lib/has-needs-picker';
+import { mbBadgeKey } from '@/lib/has-needs';
 import { twAddRequirementAction } from '../this-week-actions';
 import s from './has-needs.module.css';
 
@@ -68,9 +72,15 @@ export function HasNeedsView({
   };
   const [capped, setCapped] = useState(false);
   const toggle = (key: string) => {
-    const t = togglePick(checked, key);
+    const adding = !checked.includes(key);
+    const whole = adding ? (badges.find((b) => checked.includes(mbBadgeKey(b.id)) && key.startsWith(`mb:${b.id}-`)) ?? null) : null;
+    const t = togglePick(refineBadge(checked, key, whole), key);
     setCapped(t.capped);
     if (!t.capped) commit(t.next);
+  };
+  const open = (b: PickerBadge) => {
+    const next = openBadge(checked, b);
+    if (next.length !== checked.length) commit(next);
   };
 
   const [pane, setPane] = useState<'requirements' | 'results'>(checked.length ? 'results' : 'requirements');
@@ -134,7 +144,7 @@ export function HasNeedsView({
         </span>
       </div>
       <div className={s.layout} data-pane={pane}>
-        <Picker ranks={ranks} badges={badges} checked={checked} onToggle={toggle} />
+        <Picker ranks={ranks} badges={badges} checked={checked} onToggle={toggle} onOpenBadge={open} />
 
         <section className={s.results} aria-label="Results">
           <div className={s.resultsBar}>
@@ -258,7 +268,19 @@ export function HasNeedsView({
 }
 
 /** The picker: the four lower ranks, then the merit badges (a chip grid that drills into one badge's tree). */
-function Picker({ ranks, badges, checked, onToggle }: { ranks: PickerRank[]; badges: PickerBadge[]; checked: string[]; onToggle: (key: string) => void }) {
+function Picker({
+  ranks,
+  badges,
+  checked,
+  onToggle,
+  onOpenBadge
+}: {
+  ranks: PickerRank[];
+  badges: PickerBadge[];
+  checked: string[];
+  onToggle: (key: string) => void;
+  onOpenBadge: (b: PickerBadge) => void;
+}) {
   const [activeMb, setActiveMb] = useState<string | null>(null);
   const [q, setQ] = useState('');
   const on = new Set(checked);
@@ -310,7 +332,14 @@ function Picker({ ranks, badges, checked, onToggle }: { ranks: PickerRank[]; bad
               <ul className={s.badgeGrid}>
                 {visible.map((b) => (
                   <li key={b.id}>
-                    <button type="button" className={s.badgeChip} onClick={() => setActiveMb(b.id)}>
+                    <button
+                      type="button"
+                      className={s.badgeChip}
+                      onClick={() => {
+                        setActiveMb(b.id);
+                        onOpenBadge(b);
+                      }}
+                    >
                       <span>{b.name}</span>
                       {countByMb.get(b.id) ? <span className={s.badgeCount}>{countByMb.get(b.id)}</span> : null}
                     </button>

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { rankKey, mbKey, splitScouts, withAwardedBadgeLeaves, type HasNeedsScout } from '../src/lib/has-needs';
+import { rankKey, mbKey, mbBadgeKey, splitScouts, withAwardedBadgeLeaves, type HasNeedsScout } from '../src/lib/has-needs';
 
 /**
  * Has/Needs Tool — the pure split/credit logic, extracted for the merit-
@@ -86,14 +86,18 @@ describe('withAwardedBadgeLeaves — a blue-card award credits every leaf', () =
     expect(held.has(mbKey('cooking', '2b'))).toBe(true);
   });
 
+  it('AnAwardedBadge_AlsoHoldsTheWholeBadgeKey', () => {
+    expect(withAwardedBadgeLeaves([], ['first-aid'], new Map([['first-aid', ['1']]])).has(mbBadgeKey('first-aid'))).toBe(true);
+  });
+
   it('LeavesUnawardedBadgesUntouched_AndKeepsLedgerHeldKeys', () => {
     const held = withAwardedBadgeLeaves([rankKey('scout', '1a')], ['cooking'], leafCodesByMb);
     expect(held.has(rankKey('scout', '1a'))).toBe(true);
     expect(held.has(mbKey('archery', '1a'))).toBe(false);
   });
 
-  it('IgnoresAnAwardedBadgeWithNoLoadedRequirementTree', () => {
+  it('AnAwardedBadgeWithNoLoadedRequirementTree_HoldsOnlyTheWholeBadge', () => {
     const held = withAwardedBadgeLeaves([], ['textile'], leafCodesByMb);
-    expect(held.size).toBe(0);
+    expect([...held]).toEqual([mbBadgeKey('textile')]);
   });
 });

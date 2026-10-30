@@ -10,7 +10,7 @@
  *     `first-aid-9` for `first-aid-9b`), the board key Build a Plan seeds (meeting_seed_many takes top-level only).
  */
 import { optionalityLabel } from '@/lib/mb-helpers';
-import { mbKey, rankKey } from '@/lib/has-needs';
+import { mbBadgeKey, mbKey, rankKey } from '@/lib/has-needs';
 import { rankAbbrev } from '@/lib/rank-abbrev';
 
 export interface PickerNode {
@@ -77,8 +77,24 @@ export function flattenTree(tree: readonly PickerNode[], keyFor: (code: string) 
 export function leafLabels(ranks: readonly PickerRank[], badges: readonly PickerBadge[]): Map<string, string> {
   const out = new Map<string, string>();
   for (const r of ranks) for (const row of flattenTree(r.tree, (c) => rankKey(r.id, c))) if (row.isLeaf) out.set(row.key, `${r.name} ${row.code}`);
-  for (const b of badges) for (const row of flattenTree(b.tree, (c) => mbKey(b.id, c))) if (row.isLeaf) out.set(row.key, `${b.name} ${row.code}`);
+  for (const b of badges) {
+    out.set(mbBadgeKey(b.id), `${b.name} · earned`);
+    for (const row of flattenTree(b.tree, (c) => mbKey(b.id, c))) if (row.isLeaf) out.set(row.key, `${b.name} ${row.code}`);
+  }
   return out;
+}
+
+/** Opening a badge (Patrick, 2026-10-29): with nothing of it ticked yet, the whole badge is ticked, so the results
+ *  show who earned it at once. */
+export function openBadge(checked: readonly string[], badge: PickerBadge): string[] {
+  const leaves = new Set(flattenTree(badge.tree, (c) => mbKey(badge.id, c)).map((r) => r.key));
+  if (checked.some((k) => k === mbBadgeKey(badge.id) || leaves.has(k)) || checked.length >= PICK_MAX) return [...checked];
+  return [...checked, mbBadgeKey(badge.id)];
+}
+
+/** Ticking one of a badge's requirements refines "earned": the whole-badge tick gives way to the requirement. */
+export function refineBadge(checked: readonly string[], key: string, badge: PickerBadge | null): string[] {
+  return badge && key.startsWith(`mb:${badge.id}-`) ? checked.filter((k) => k !== mbBadgeKey(badge.id)) : [...checked];
 }
 
 /** The most keys the URL carries (a guard on a hand-edited link, far past any real selection). */

@@ -17,6 +17,9 @@
  *    every leaf of that badge even when no individual requirement was
  *    logged (fast-entry's blue-card "clean slate bypass"); folded silently
  *    into Has per Patrick, matching mb_progress semantics elsewhere.
+ * 4. THE WHOLE BADGE (Patrick, 2026-10-29) — an awarded badge also holds
+ *    `mb:<id>` (mbBadgeKey): the first click on a badge splits who earned
+ *    it, before any requirement is ticked.
  */
 
 export interface HasNeedsScout {
@@ -31,6 +34,8 @@ export interface HasNeedsScout {
 
 export const rankKey = (rankId: string, code: string): string => `rank:${rankId}-${code}`;
 export const mbKey = (mbId: string, code: string): string => `mb:${mbId}-${code}`;
+/** The whole badge, earned: no code, so it never matches a leaf's `mb:<id>-` prefix. */
+export const mbBadgeKey = (mbId: string): string => `mb:${mbId}`;
 
 export interface PartialEntry<S extends HasNeedsScout> {
   scout: S;
@@ -81,6 +86,7 @@ export function withAwardedBadgeLeaves(
 ): Set<string> {
   const out = new Set(heldKeys);
   for (const mbId of awardedMbIds) {
+    out.add(mbBadgeKey(mbId));
     for (const code of leafCodesByMb.get(mbId) ?? []) out.add(mbKey(mbId, code));
   }
   return out;

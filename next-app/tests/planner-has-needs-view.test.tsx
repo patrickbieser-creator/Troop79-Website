@@ -225,4 +225,19 @@ describe('the pick cap (B7 qa)', () => {
   it('TogglePick_AtTheCap_StillUnticks', () => {
     expect(togglePick(full, full[0]).next.length).toBe(PICK_MAX - 1);
   });
+
+  it('FirstClickOnABadge_SplitsWhoEarnedIt', () => {
+    renderTab({ scouts: [scout('a', 'Ann', ['mb:first-aid', 'mb:first-aid-9a', 'mb:first-aid-9b']), scout('b', 'Ben', ['mb:first-aid-9a']), scout('c', 'Cal', [])] });
+    fireEvent.click(screen.getByRole('button', { name: /First Aid/ }));
+    const names = (col: string) => within(screen.getByRole('region', { name: col })).queryAllByRole('listitem').map((li) => li.textContent?.split(' ')[0]);
+    expect([names('Has'), names('Needs')]).toEqual([['Ann'], ['Ben', 'Cal']]);
+  });
+
+  it('TickingARequirement_RefinesTheBadgeSplit', () => {
+    renderTab({ scouts: [scout('a', 'Ann', ['mb:first-aid', 'mb:first-aid-9a', 'mb:first-aid-9b']), scout('b', 'Ben', ['mb:first-aid-9a']), scout('c', 'Cal', [])] });
+    fireEvent.click(screen.getByRole('button', { name: /First Aid/ }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /9a/ }));
+    const names = (col: string) => within(screen.getByRole('region', { name: col })).queryAllByRole('listitem').map((li) => li.textContent?.split(' ')[0]);
+    expect([names('Has'), names('Needs'), window.location.search]).toEqual([['Ann', 'Ben'], ['Cal'], '?pick=mb:first-aid-9a']);
+  });
 });
