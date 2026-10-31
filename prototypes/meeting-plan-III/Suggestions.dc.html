@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Planner suggestions</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#f5f6f8}a{color:#1e3a4a}a:hover{color:#2a5068}button,input{font-family:inherit}button:disabled{opacity:.55;cursor:default}input:focus,button:focus-visible{outline:2px solid #1e3a4a;outline-offset:1px}summary{cursor:pointer}</style>
+</helmet>
+<div style="min-height:100vh;background:#f5f6f8;font-family:'Open Sans',Arial,sans-serif;color:#3a3f47">
+
+  <header style="background:#ffffff;border-bottom:1px solid #e2e4e8">
+    <div style="max-width:1400px;margin:0 auto;padding:18px 28px 0;box-sizing:border-box">
+      <div style="font-size:12px;font-weight:600;color:#6d7580">Meeting Planner</div>
+      <h1 style="margin:2px 0 0;font-size:24px;font-weight:700;color:#1a1d21">Suggestions</h1>
+      <p style="margin:4px 0 12px;font-size:14px;line-height:1.5;color:#3a3f47;max-width:780px">What scouts need next, worked out from the advancement ledger: who needs what, who can teach it, and what only a campout or a pool can cover. Add anything to a meeting's plan, or save a set of picks as a focus set.</p>
+      <nav aria-label="Meeting Planner" style="display:flex;gap:2px;overflow-x:auto">
+        <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="5">
+          <a href="{{ t.href }}" aria-current="{{ t.current }}" style="display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border-bottom:3px solid;font-size:14px;font-weight:700;text-decoration:none;white-space:nowrap;box-sizing:border-box;{{ t.st }}">{{ t.label }}</a>
+        </sc-for>
+      </nav>
+    </div>
+  </header>
+
+  <div style="position:sticky;top:0;z-index:10;background:#ffffff;border-bottom:1px solid #e2e4e8;box-shadow:0 2px 8px rgba(0,0,0,.05)">
+    <div style="max-width:1400px;margin:0 auto;padding:10px 28px;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;box-sizing:border-box">
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#6d7580">For
+        <span role="group" aria-label="Meeting" style="display:inline-flex;border:1px solid #cdd1d6;border-radius:3px;overflow:hidden">
+          <sc-for list="{{ meetings }}" as="m" hint-placeholder-count="4">
+            <button onClick="{{ m.pick }}" aria-pressed="{{ m.pressed }}" style="min-height:36px;padding:0 10px;border:0;border-right:1px solid #e2e4e8;font-size:13px;font-weight:600;cursor:pointer;{{ m.st }}">{{ m.label }}</button>
+          </sc-for>
+        </span>
+      </label>
+      <div role="tablist" aria-label="View" style="display:inline-flex;border:1px solid #1e3a4a;border-radius:3px;overflow:hidden">
+        <sc-for list="{{ lenses }}" as="l" hint-placeholder-count="3">
+          <button role="tab" aria-selected="{{ l.selected }}" onClick="{{ l.pick }}" style="min-height:40px;padding:0 16px;border:0;border-right:1px solid #1e3a4a;font-size:14px;font-weight:700;cursor:pointer;{{ l.st }}">{{ l.label }}</button>
+        </sc-for>
+      </div>
+      <div role="group" aria-label="Rank" style="display:flex;flex-wrap:wrap;gap:6px">
+        <sc-for list="{{ rankPills }}" as="r" hint-placeholder-count="6">
+          <button onClick="{{ r.pick }}" aria-pressed="{{ r.pressed }}" style="min-height:32px;padding:0 10px;border:1px solid;border-radius:999px;font-size:12.5px;font-weight:600;cursor:pointer;{{ r.st }}">{{ r.label }}</button>
+        </sc-for>
+      </div>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#1a1d21;cursor:pointer"><input type="checkbox" checked="{{ focusOnly }}" onChange="{{ toggleFocus }}" style="width:18px;height:18px">Only this week's focus ({{ focusName }})</label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#1a1d21;cursor:pointer"><input type="checkbox" checked="{{ showOnPlan }}" onChange="{{ toggleOnPlan }}" style="width:18px;height:18px">Show what's on the plan</label>
+    </div>
+    <sc-if value="{{ hasTicks }}" hint-placeholder-val="{{ false }}">
+      <div style="background:#eef1f5;border-top:1px solid #e2e4e8">
+        <div style="max-width:1400px;margin:0 auto;padding:8px 28px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;box-sizing:border-box">
+          <span style="font-size:14px;font-weight:700;color:#1a1d21">{{ tickSummary }}</span>
+          <button onClick="{{ addTicked }}" style="min-height:40px;padding:0 16px;border:1px solid #1e3a4a;border-radius:3px;background:#1e3a4a;color:#ffffff;font-size:14px;font-weight:700;cursor:pointer">{{ addLabel }}</button>
+          <button onClick="{{ toggleSaveSet }}" style="min-height:40px;padding:0 14px;border:1px solid #3d7a4a;border-radius:3px;background:#ffffff;color:#2e6038;font-size:14px;font-weight:700;cursor:pointer">Save as a focus set…</button>
+          <button onClick="{{ clearTicks }}" style="min-height:40px;padding:0 8px;border:0;background:transparent;color:#1e3a4a;font-size:13px;text-decoration:underline;cursor:pointer">Clear</button>
+          <sc-if value="{{ savingSet }}" hint-placeholder-val="{{ false }}">
+            <span style="display:inline-flex;gap:6px;align-items:center">
+              <input value="{{ setName }}" onChange="{{ onSetName }}" aria-label="Focus set name" placeholder="Name, e.g. Knots for new scouts" style="min-height:40px;width:260px;padding:0 10px;border:1px solid #cdd1d6;border-radius:3px;font-size:16px">
+              <button onClick="{{ saveSet }}" disabled="{{ setNameEmpty }}" style="min-height:40px;padding:0 14px;border:1px solid #3d7a4a;border-radius:3px;background:#3d7a4a;color:#ffffff;font-size:14px;font-weight:700;cursor:pointer">Save</button>
+            </span>
+          </sc-if>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+
+  <main style="max-width:1400px;margin:0 auto;padding:20px 28px 48px;display:flex;flex-direction:column;gap:16px;box-sizing:border-box">
+
+    <sc-if value="{{ hasFlash }}" hint-placeholder-val="{{ false }}">
+      <div role="status" style="background:#f0f6f1;border:1px solid #cfe2d3;border-radius:8px;padding:10px 16px;font-size:14px;font-weight:600;color:#2e6038;display:flex;gap:12px;align-items:center;flex-wrap:wrap">{{ flash }}<a href="This Week.dc.html" style="font-weight:700">Open This week</a></div>
+    </sc-if>
+
+    <!-- Group sessions -->
+    <sc-if value="{{ isSessions }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;gap:18px">
+        <p style="margin:0;font-size:13px;color:#6d7580">Requirements that two or more scouts in the same group need, most-needed first. Each card names the scouts, the best teacher and the other qualified ones.</p>
+        <sc-for list="{{ sessionGroups }}" as="g" hint-placeholder-count="3">
+          <section aria-label="{{ g.name }}">
+            <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:8px">
+              <h2 style="margin:0;font-size:14px;font-weight:700;border-radius:4px;padding:3px 10px;{{ g.st }}">{{ g.name }}</h2>
+              <span style="font-size:12.5px;color:#6d7580">{{ g.sub }}</span>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:12px">
+              <sc-for list="{{ g.cards }}" as="c" hint-placeholder-count="3">
+                <article style="background:#ffffff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.08);padding:12px 14px;display:flex;flex-direction:column;gap:8px;{{ c.cardSt }}">
+                  <div style="display:flex;gap:10px;align-items:flex-start">
+                    <sc-if value="{{ c.canTick }}" hint-placeholder-val="{{ true }}">
+                      <input type="checkbox" checked="{{ c.ticked }}" onChange="{{ c.tick }}" aria-label="{{ c.tickLabel }}" style="width:20px;height:20px;margin-top:2px;flex:none">
+                    </sc-if>
+                    <div style="flex:1;min-width:0">
+                      <div style="display:flex;gap:6px;align-items:baseline;flex-wrap:wrap">
+                        <span style="font-size:12.5px;font-weight:700;color:#1e3a4a">{{ c.code }}</span>
+                        <sc-if value="{{ c.inFocus }}" hint-placeholder-val="{{ false }}"><span style="font-size:11.5px;font-weight:700;color:#2e6038;background:#e3eee5;border-radius:999px;padding:1px 7px">In this week's focus</span></sc-if>
+                        <sc-if value="{{ c.eagle }}" hint-placeholder-val="{{ false }}"><span style="font-size:11.5px;font-weight:700;color:#6b4b0b;background:#f8f0dc;border-radius:999px;padding:1px 7px">Eagle required</span></sc-if>
+                      </div>
+                      <div style="font-size:15px;font-weight:700;color:#1a1d21">{{ c.title }}</div>
+                    </div>
+                    <span style="font-size:14px;font-weight:700;color:#1a1d21;white-space:nowrap;font-variant-numeric:tabular-nums">{{ c.need }}</span>
+                  </div>
+                  <div style="display:flex;flex-wrap:wrap;gap:4px">
+                    <sc-for list="{{ c.scouts }}" as="s" hint-placeholder-count="4">
+                      <span title="{{ s.rank }}" style="font-size:12.5px;font-weight:700;border-radius:4px;padding:2px 8px;{{ s.st }}">{{ s.name }}</span>
+                    </sc-for>
+                  </div>
+                  <div style="font-size:12.5px;line-height:1.45;color:#3a3f47"><strong style="color:#1a1d21">Best teacher:</strong> {{ c.best }}<br><span style="color:#6d7580">{{ c.others }}</span></div>
+                  <div style="display:flex;align-items:center;gap:8px;margin-top:2px">
+                    <sc-if value="{{ c.onPlan }}" hint-placeholder-val="{{ false }}">
+                      <span style="font-size:12.5px;font-weight:700;color:#2e6038;background:#f0f6f1;border-radius:4px;padding:3px 8px">✓ On {{ meetingShort }} plan · {{ c.groupName }} group</span>
+                    </sc-if>
+                    <sc-if value="{{ c.canTick }}" hint-placeholder-val="{{ true }}">
+                      <button onClick="{{ c.add }}" style="min-height:36px;padding:0 12px;border:1px solid #3d7a4a;border-radius:3px;background:#ffffff;color:#2e6038;font-size:13px;font-weight:700;cursor:pointer">+ Add to {{ meetingShort }}</button>
+                    </sc-if>
+                  </div>
+                </article>
+              </sc-for>
+            </div>
+          </section>
+        </sc-for>
+        <sc-if value="{{ noSessions }}" hint-placeholder-val="{{ false }}">
+          <div style="background:#ffffff;border-radius:8px;padding:16px;font-size:14px;color:#6d7580">No shared needs match these filters.</div>
+        </sc-if>
+
+        <details style="background:#ffffff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.08)">
+          <summary style="padding:12px 16px;font-size:14px;font-weight:700;color:#1a1d21">Solo needs · {{ soloCount }} things only one scout needs</summary>
+          <div style="padding:0 16px 12px;display:flex;flex-direction:column">
+            <sc-for list="{{ solo }}" as="s" hint-placeholder-count="4">
+              <div style="display:grid;grid-template-columns:28px 80px minmax(0,1fr) 170px auto;gap:10px;align-items:center;min-height:40px;border-top:1px solid #f0f1f3;font-size:13px">
+                <input type="checkbox" checked="{{ s.ticked }}" onChange="{{ s.tick }}" disabled="{{ s.onPlan }}" aria-label="{{ s.tickLabel }}" style="width:18px;height:18px">
+                <span style="font-weight:700;color:#1e3a4a">{{ s.code }}</span>
+                <span style="color:#1a1d21">{{ s.title }}</span>
+                <span><span title="{{ s.rank }}" style="font-size:12.5px;font-weight:700;border-radius:4px;padding:2px 8px;{{ s.nameSt }}">{{ s.scout }}</span></span>
+                <span style="font-size:12.5px;{{ s.stateSt }}">{{ s.state }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </details>
+      </div>
+    </sc-if>
+
+    <!-- By scout -->
+    <sc-if value="{{ isScouts }}" hint-placeholder-val="{{ false }}">
+      <section style="background:#ffffff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.08);overflow:hidden">
+        <div style="padding:10px 16px;border-bottom:1px solid #e2e4e8;font-size:13px;color:#6d7580">Every active scout and their next three things, shared needs first. Older scouts get merit badge requirements. A scout with nothing says why.</div>
+        <div style="overflow-x:auto">
+          <div style="min-width:860px">
+            <sc-for list="{{ scoutRows }}" as="r" hint-placeholder-count="10">
+              <div style="display:grid;grid-template-columns:190px 150px minmax(0,1fr);gap:12px;align-items:center;min-height:52px;padding:6px 16px;border-bottom:1px solid #f0f1f3">
+                <span><span title="{{ r.rank }}" style="display:inline-block;font-size:13.5px;font-weight:700;border-radius:4px;padding:3px 10px;{{ r.nameSt }}">{{ r.name }}</span></span>
+                <span style="font-size:12.5px;color:#6d7580">{{ r.group }}</span>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+                  <sc-for list="{{ r.items }}" as="i" hint-placeholder-count="3">
+                    <label style="display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:2px 10px 2px 8px;border:1px solid;border-radius:4px;font-size:13px;cursor:pointer;{{ i.st }}">
+                      <input type="checkbox" checked="{{ i.ticked }}" onChange="{{ i.tick }}" disabled="{{ i.onPlan }}" aria-label="{{ i.tickLabel }}" style="width:16px;height:16px">
+                      <strong style="color:#1e3a4a">{{ i.code }}</strong> {{ i.title }}<span style="font-size:11.5px;color:#6d7580">{{ i.tag }}</span>
+                    </label>
+                  </sc-for>
+                  <sc-if value="{{ r.none }}" hint-placeholder-val="{{ false }}">
+                    <span style="font-size:13px;font-weight:600;color:#86391a">{{ r.why }}</span>
+                  </sc-if>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </section>
+    </sc-if>
+
+    <!-- Teaching -->
+    <sc-if value="{{ isTeaching }}" hint-placeholder-val="{{ false }}">
+      <section style="background:#ffffff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.08);overflow:hidden">
+        <div style="padding:10px 16px;border-bottom:1px solid #e2e4e8;font-size:13px;color:#6d7580;display:flex;gap:12px;flex-wrap:wrap">Who can teach what this week, best fit first. Click a requirement to put it on the plan with that person teaching.<a href="#" style="margin-left:auto;font-weight:600">Edit teaching skills in Lookups</a></div>
+        <sc-for list="{{ teachRows }}" as="t" hint-placeholder-count="8">
+          <div style="display:grid;grid-template-columns:200px minmax(0,1fr);gap:12px;padding:10px 16px;border-bottom:1px solid #f0f1f3">
+            <div>
+              <div style="font-size:14px;font-weight:700;color:#1a1d21">{{ t.name }}</div>
+              <div style="font-size:12px;color:#6d7580">{{ t.role }}</div>
+              <div style="font-size:12px;color:#3a3f47;margin-top:2px">{{ t.skills }}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                <sc-for list="{{ t.chips }}" as="c" hint-placeholder-count="5">
+                  <button onClick="{{ c.pick }}" aria-expanded="{{ c.open }}" style="min-height:36px;padding:0 10px;border:1px solid;border-radius:4px;font-size:12.5px;cursor:pointer;{{ c.st }}"><strong>{{ c.code }}</strong> · {{ c.need }}{{ c.mark }}</button>
+                </sc-for>
+                <sc-if value="{{ t.noChips }}" hint-placeholder-val="{{ false }}"><span style="font-size:13px;color:#6d7580">Nothing scouts need right now matches these skills.</span></sc-if>
+              </div>
+              <sc-if value="{{ t.confirming }}" hint-placeholder-val="{{ false }}">
+                <div style="background:#eef1f5;border-radius:4px;padding:10px 12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13px">
+                  <span style="color:#1a1d21;flex:1 1 260px">{{ t.confirmText }}</span>
+                  <button onClick="{{ t.confirmAdd }}" style="min-height:36px;padding:0 12px;border:1px solid #1e3a4a;border-radius:3px;background:#1e3a4a;color:#ffffff;font-size:13px;font-weight:700;cursor:pointer">{{ t.confirmLabel }}</button>
+                  <button onClick="{{ t.cancel }}" style="min-height:36px;padding:0 10px;border:1px solid #cdd1d6;border-radius:3px;background:#ffffff;color:#1e3a4a;font-size:13px;font-weight:600;cursor:pointer">Cancel</button>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+        </sc-for>
+      </section>
+    </sc-if>
+
+    <details style="background:#ffffff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.08)">
+      <summary style="padding:12px 16px;font-size:14px;font-weight:700;color:#1a1d21">Needs another setting · {{ otherCount }} requirements a meeting can't cover</summary>
+      <div style="padding:0 16px 14px;display:flex;flex-direction:column;gap:12px">
+        <p style="margin:0;font-size:12.5px;color:#6d7580">For campouts, the pool and outings. Listed so they're not forgotten. These can't be added to a meeting.</p>
+        <sc-for list="{{ other }}" as="o" hint-placeholder-count="3">
+          <div>
+            <div style="font-size:13px;font-weight:700;color:#1a1d21;margin-bottom:4px">{{ o.cls }} · {{ o.n }}</div>
+            <sc-for list="{{ o.items }}" as="i" hint-placeholder-count="3">
+              <div style="display:grid;grid-template-columns:80px minmax(0,1fr);gap:10px;padding:6px 0;border-top:1px solid #f0f1f3;font-size:13px">
+                <span style="font-weight:700;color:#1e3a4a">{{ i.code }}</span>
+                <span><span style="color:#1a1d21">{{ i.title }}</span> <span style="color:#6d7580">· {{ i.who }}</span></span>
+              </div>
+            </sc-for>
+          </div>
+        </sc-for>
+      </div>
+    </details>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2000}}'>
+const ROSTER=[["Adi A","Scout","Hawks"],["Anjali S","Star","Eagles"],["Aubrey R","First Class","Eagles"],["Ben B","Scout","Hawks"],["Damian N","Second Class","Foxes"],["Eloise L","First Class","Eagles"],["Emory M","Second Class","Foxes"],["Finn P","Star","Eagles"],["Fiona K","Tenderfoot","Owls"],["Hadley B","Second Class","Foxes"],["Hazel S","Tenderfoot","Owls"],["Henry E","Life","Eagles"],["Isaac H","Second Class","Foxes"],["Jack P","Second Class","Wolves"],["Jameson K","Life","Eagles"],["Kevin P","Tenderfoot","Owls"],["Lee P","Second Class","Wolves"],["Lily P","Tenderfoot","Owls"],["Lucy L","Second Class","Wolves"],["Miren G","Tenderfoot","Owls"],["Oliver K","Second Class","Wolves"],["Oliver P","Second Class","Wolves"],["Oliver V","Second Class","Foxes"],["Oscar B","Scout","Hawks"],["Owen R","Star","Eagles"],["Piper K","Tenderfoot","Owls"],["Quinn B","Tenderfoot","Hawks"],["Robbie H","First Class","Eagles"],["Simon P","Tenderfoot","Owls"],["Solomon R","Second Class","Foxes"],["Todd M","First Class","Eagles"],["Veronica K","Star","Eagles"],["Violet B","New","Hawks"],["Winnie B","New","Hawks"]];
+const HELD={"New":-1,"Scout":0,"Tenderfoot":1,"Second Class":2,"First Class":3,"Star":4,"Life":5};
+const RANK_NAME=["Scout","Tenderfoot","Second Class","First Class"];
+const SHORT=["Scout","TF","2C","FC"];
+const RANK_COLORS={"New":{bg:"#ffffff",ink:"#3a3f47"},"Scout":{bg:"#eaf1f6",ink:"#274d69"},"Tenderfoot":{bg:"#d6efef",ink:"#186e72"},"Second Class":{bg:"#eef5eb",ink:"#2c5a27"},"First Class":{bg:"#f8f0dc",ink:"#6b4b0b"},"Star":{bg:"#ece0f0",ink:"#6b3f7a"},"Life":{bg:"#e6e6ea",ink:"#4a4a5a"},"Merit badge":{bg:"#f0eeea",ink:"#46413a"}};
+const rc=r=>"background:"+RANK_COLORS[r].bg+";color:"+RANK_COLORS[r].ink+(r==="New"?";box-shadow:inset 0 0 0 1px #9ba1aa":"");
+const GROUPS=["Scout","Tenderfoot","Second Class","First Class","Merit badge"];
+const COMPLETE=["Kevin P","Lucy L"];
+const CATL={
+  0:["1a|Scout Oath, Law, motto and slogan","1c|Sign, salute and handshake","1f|Pledge of Allegiance","2a|Troop leadership","3a|Patrol method","4a|Square knot, two half hitches, taut-line","4b|Care of rope","5|Pocket knife safety","6|Cyber Chip and abuse prevention"],
+  1:["1a|Pack for an overnight campout","1b|Camp in a tent you pitched","2a|Help prepare a campout meal","3a|Use the square knot","3b|Use two half hitches","3c|Use the taut-line hitch","3d|Knife, saw and ax care","4a|First aid for Tenderfoot","4b|Poisonous and hazardous plants","4c|Safety on campouts","4d|Make a first aid kit","5b|What to do if you're lost","5c|Rules of safe hiking","6b|30-day fitness plan","7a|Flag: display, raise, lower, fold","7b|1 hour of service","8|Teach the square knot (EDGE)"],
+  2:["1a|5 troop activities","1b|Explain Leave No Trace","2a|When to use a cooking fire","2b|Tinder, kindling and fuel","2c|Build a fire","2d|Backpacking stove safety","2e|Cook a hot breakfast on a campout","2f|Sheet bend and its use","2g|Bowline and its use","3a|Orient and read a map","3b|5-mile compass hike","3c|Hike hazards","3d|Find directions day and night","5b|Beginner swim test","5c|Water rescue","6a|First aid for Second Class","6b|Breathing, stroke, poison, bleeding","6c|Reduce injuries on campouts","6d|Emergencies at home and in the wild","6e|Car accident response","8a|Lead a flag ceremony","8b|Flag folding and respect","8e|2 more hours of service","9a|Three R's of personal safety"],
+  3:["1a|10 troop activities","2a|Plan meals for a campout","2e|Cook and supervise on a campout","3a|Discuss lashings","3b|Timber hitch and clove hitch","3c|Demonstrate three lashings","3d|Make a camp gadget","4a|1-mile orienteering course","4b|Geocache with a GPS","5a|Identify 10 native plants","5b|Weather forecast","6a|BSA swim test","6e|Line rescue","7a|First aid for First Class","7b|Transport an injured person","7c|Heart attack signs and CPR","7e|Home emergency plan","8a|30-day fitness","9a|Rights and duties, with an official","9b|Investigate an environmental issue","9d|3 more hours of service"]};
+const CAT={};[0,1,2,3].forEach(r=>{CAT[r]=CATL[r].map(s=>{const i=s.indexOf("|");return [s.slice(0,i),s.slice(i+1)];});});
+const OTHER={1:{"1b":"Campout","6b":"30 days at home","7b":"Service project"},2:{"1a":"Campouts and outings","2e":"Campout","3b":"Hike","5b":"Pool","5c":"Pool","8e":"Service project"},3:{"1a":"Campouts and outings","2e":"Campout","4a":"Outing","6a":"Pool","6e":"Pool","8a":"30 days at home","9d":"Service project"}};
+const FOCUS={1:["4a","4b","4c","4d"],2:["6a","6b","6c","6d","6e"],3:["7a","7b","7c","7d","7e","7f"]};
+const MB=[["First Aid 2","Explain how to prevent and treat","fa",true],["Citizenship in the Community 3","Attend a public meeting","flag",true],["Emergency Preparedness 1","Earn First Aid, then","fa",true],["Personal Management 1","Plan a major expense","",true],["Pioneering 3","Whip and fuse rope ends","knots",false],["Cooking 1","Food safety and allergies","meal",true]];
+const SKILLS={fa:{name:"First aid",codes:{1:["4a","4b","4c","4d"],2:["6a","6b","6c","6d","6e"],3:["7a","7b","7c","7e"]}},knots:{name:"Knots and lashings",codes:{0:["4a","4b"],1:["3a","3b","3c","8"],2:["2f","2g"],3:["3a","3b","3c","3d"]}},fire:{name:"Fire and stoves",codes:{2:["2a","2b","2c","2d"]}},compass:{name:"Map and compass",codes:{1:["5b","5c"],2:["3a","3c","3d"],3:["4b"]}},flag:{name:"Flag and citizenship",codes:{0:["1f"],1:["7a"],2:["8a","8b"],3:["9a","9b"]}},meal:{name:"Camp cooking",codes:{1:["2a"],3:["2a"]}},nature:{name:"Nature and weather",codes:{3:["5a","5b"]}},new:{name:"New scout basics",codes:{0:["1a","1c","2a","3a","5","6"]}}};
+const ADULTS=[["Jenna M",["fa","knots"]],["Dan V",["fa","compass"]],["Rachel D",["fa","knots","flag"]],["Mark F",["fa","knots","fire","meal"]],["Chris N",["fa","compass","fire"]],["Sara L",["knots"]],["Joe M",["fire","compass"]],["Patrick B",["compass","new"]],["Greg H",["nature"]]];
+const YOUTH=[["Anjali S","Star",["knots","new"]],["Henry E","Life",["fa","flag"]]];
+const COUNSELORS={"First Aid 2":"Karen O","Citizenship in the Community 3":"Rachel D","Emergency Preparedness 1":"Dan V","Personal Management 1":"Tom K","Pioneering 3":"Mark F","Cooking 1":"Mark F"};
+const hv=s=>{let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0)%100;};
+const pace=n=>18+hv(n+"pace")*0.6;
+const isDone=(n,rank,code,works)=>COMPLETE.includes(n)&&rank<=3?true:rank<works?true:rank===works?hv(n+rank+code)<pace(n):true;
+
+// The engine, in miniature: each scout's open meeting requirements at the rank they're working on.
+function engine(){
+  const scouts=ROSTER.map(([name,rank,patrol])=>{
+    const h=HELD[rank], works=h+1, group=GROUPS[Math.min(works,4)];
+    if(works>3){
+      const items=MB.filter(m=>hv(name+m[0])<45).slice(0,3).map(m=>({key:"mb:"+m[0],code:m[0],title:m[1],kind:"mb",eagle:m[3],skill:m[2],rank:4}));
+      return {name,rank,patrol,group,works,open:[],other:[],mb:items};
+    }
+    const all=CAT[works].filter(([c])=>!isDone(name,works,c,works));
+    const open=all.filter(([c])=>!(OTHER[works]||{})[c]).map(([c,t])=>({key:works+"|"+c,code:SHORT[works]+" "+c,title:t,kind:"rank",rank:works,c}));
+    const other=all.filter(([c])=>(OTHER[works]||{})[c]).map(([c,t])=>({key:works+"|"+c,code:SHORT[works]+" "+c,title:t,cls:OTHER[works][c],rank:works}));
+    return {name,rank,patrol,group,works,open,other,mb:[]};
+  });
+  const need={};
+  scouts.forEach(s=>[...s.open,...s.mb].forEach(i=>{(need[i.key]=need[i.key]||{item:i,scouts:[]}).scouts.push(s);}));
+  scouts.forEach(s=>{const pool=s.works>3?s.mb:s.open;s.next=pool.slice().sort((a,b)=>need[b.key].scouts.length-need[a.key].scouts.length).slice(0,3);});
+  return {scouts,need};
+}
+const ENG=engine();
+function teachersFor(item){
+  if(item.kind==="mb"){const c=COUNSELORS[item.code];return {best:c?c+" (counselor)":"No counselor on file",others:[]};}
+  const fits=sk=>sk.some(k=>((SKILLS[k].codes[item.rank])||[]).includes(item.c));
+  const adults=ADULTS.filter(a=>fits(a[1])).map(a=>a[0]);
+  const youth=item.rank<=2?YOUTH.filter(y=>fits(y[2])).map(y=>y[0]+" ("+y[1]+" scout)"):[];
+  const all=[...adults,...youth];
+  return {best:all[0]||"No one with this skill yet",others:all.slice(1)};
+}
+
+class Component extends DCLogic {
+  state={meeting:0,lens:"sessions",rank:"all",focusOnly:false,showOnPlan:true,ticks:{},added:{},flash:"",saving:false,setName:"",teachOpen:null,teachers:{}};
+  renderVals(){
+    const st=this.state;
+    const meetings=["Sun, Nov 1","Sun, Nov 8","Sun, Nov 15","Sun, Nov 22"];
+    const meetingShort=meetings[st.meeting].replace("Sun, ","");
+    const focusName=st.meeting===0?"First aid":st.meeting===1?"Knots and lashings":st.meeting===2?"Camping + Citizenship":"none yet";
+    const inFocus=i=>st.meeting===0&&i.kind==="rank"&&(FOCUS[i.rank]||[]).includes(i.c);
+    const onPlan=i=>inFocus(i)||!!st.added[st.meeting+"|"+i.key];
+    const rankOk=i=>st.rank==="all"||(st.rank==="mb"?i.kind==="mb":i.kind==="rank"&&RANK_NAME[i.rank]===st.rank);
+    const pass=i=>rankOk(i)&&(!st.focusOnly||inFocus(i))&&(st.showOnPlan||!onPlan(i));
+    const tickKey=i=>st.meeting+"|"+i.key;
+    const tickOf=i=>!!st.ticks[tickKey(i)];
+    const tick=i=>()=>this.setState({ticks:{...st.ticks,[tickKey(i)]:!tickOf(i)}});
+    const groupOfItem=i=>i.kind==="mb"?"Merit badge":GROUPS[i.rank];
+    const addItems=items=>{const a={...st.added};items.forEach(i=>{a[st.meeting+"|"+i.key]=true;});const t={...st.ticks};items.forEach(i=>delete t[tickKey(i)]);
+      const groups=[...new Set(items.map(groupOfItem))];
+      this.setState({added:a,ticks:t,flash:"✓ Added "+items.length+(items.length===1?" requirement":" requirements")+" to the "+meetings[st.meeting]+" plan: "+groups.join(", ")+(groups.length===1?" group":" groups")+". The checklist and Live update right away."});};
+    const itemsAll=Object.values(ENG.need).map(n=>n.item);
+
+    // Group sessions
+    const shared=Object.values(ENG.need).filter(n=>n.scouts.length>=2&&pass(n.item));
+    const sessionGroups=["Scout","Tenderfoot","Second Class","First Class","Merit badge"].map(gName=>{
+      const cards=shared.filter(n=>groupOfItem(n.item)===gName).sort((a,b)=>b.scouts.length-a.scouts.length).map(n=>{
+        const i=n.item,t=teachersFor(i),op=onPlan(i);
+        return {code:i.code,title:i.title,need:n.scouts.length+" need it",inFocus:inFocus(i),eagle:!!i.eagle,
+          scouts:n.scouts.map(s=>({name:s.name,rank:s.rank==="New"?"New scout":s.rank,st:rc(s.rank)})),
+          best:t.best,others:t.others.length?"Also: "+t.others.join(", "):"No one else listed",
+          onPlan:op,canTick:!op,ticked:tickOf(i),tick:tick(i),tickLabel:"Tick "+i.code,groupName:gName,
+          add:()=>addItems([i]),cardSt:op?"opacity:.8":""};
+      });
+      const label=gName==="Merit badge"?"Merit badge group":gName+" group";
+      return {name:label,st:"background:"+RANK_COLORS[gName].bg+";color:"+RANK_COLORS[gName].ink,sub:cards.length+(cards.length===1?" session":" sessions"),cards};
+    }).filter(g=>g.cards.length);
+
+    const soloList=Object.values(ENG.need).filter(n=>n.scouts.length===1&&pass(n.item)).map(n=>{const i=n.item,s=n.scouts[0],op=onPlan(i);
+      return {code:i.code,title:i.title,scout:s.name,rank:s.rank,nameSt:rc(s.rank),onPlan:op,ticked:tickOf(i),tick:tick(i),tickLabel:"Tick "+i.code+" for "+s.name,
+        state:op?"✓ On plan":"Only "+s.name.split(" ")[0]+" needs it",stateSt:op?"color:#2e6038;font-weight:700":"color:#6d7580"};});
+
+    // By scout
+    const scoutRows=ENG.scouts.filter(s=>st.rank==="all"||(st.rank==="mb"?s.works>3:RANK_NAME[s.works]===st.rank)).map(s=>{
+      const items=s.next.filter(i=>!st.focusOnly||inFocus(i)).map(i=>{const op=onPlan(i);return {code:i.code,title:i.title,tag:op?" · ✓ on plan":" · "+ENG.need[i.key].scouts.length+" need it",onPlan:op,ticked:tickOf(i)||op,tick:tick(i),tickLabel:"Tick "+i.code+" for "+s.name,
+        st:op?"background:#f0f6f1;border-color:#cfe2d3;color:#1a1d21":tickOf(i)?"background:#eef1f5;border-color:#1e3a4a;color:#1a1d21":"background:#ffffff;border-color:#cdd1d6;color:#1a1d21"};});
+      let why="";
+      if(!items.length) why=s.works>3?"No merit badge in progress or with a counselor":(s.other.length?"Everything left needs another setting: "+[...new Set(s.other.map(o=>o.cls))].join(", "):"Nothing left to suggest at a meeting");
+      return {name:s.name,rank:s.rank==="New"?"New scout":s.rank,nameSt:rc(s.rank),group:s.group+" group · "+s.patrol,items,none:!items.length,why};
+    });
+
+    // Teaching
+    const people=[...ADULTS.map(a=>({name:a[0],role:"Adult leader",sk:a[1],youth:false})),...YOUTH.map(y=>({name:y[0],role:y[1]+" scout · can teach Tenderfoot and Second Class",sk:y[2],youth:true}))];
+    const teachRows=people.map(p=>{
+      const chipsAll=Object.values(ENG.need).filter(n=>n.item.kind==="rank"&&(!p.youth||n.item.rank<=2)&&p.sk.some(k=>((SKILLS[k].codes[n.item.rank])||[]).includes(n.item.c))&&pass(n.item)).sort((a,b)=>b.scouts.length-a.scouts.length).slice(0,8);
+      const open=st.teachOpen&&st.teachOpen.p===p.name?chipsAll.find(n=>n.item.key===st.teachOpen.k):null;
+      return {name:p.name,role:p.role,skills:p.sk.map(k=>SKILLS[k].name).join(" · "),
+        chips:chipsAll.map(n=>{const i=n.item,op=onPlan(i),teaching=st.teachers[st.meeting+"|"+i.key]===p.name,isOpen=!!open&&open.item.key===i.key;
+          return {code:i.code,need:n.scouts.length+" need it",mark:teaching?" · ✓ teaching":op?" · on plan":"",open:isOpen?"true":"false",
+            st:teaching?"background:#1e3a4a;color:#ffffff;border-color:#1e3a4a":op?"background:#f0f6f1;color:#1a1d21;border-color:#cfe2d3":isOpen?"background:#eef1f5;color:#1a1d21;border-color:#1e3a4a":"background:#ffffff;color:#1a1d21;border-color:#cdd1d6",
+            pick:()=>this.setState({teachOpen:isOpen?null:{p:p.name,k:i.key}})};}),
+        noChips:chipsAll.length===0,confirming:!!open,
+        confirmText:open?(onPlan(open.item)?open.item.code+" "+open.item.title+" is on the "+meetingShort+" plan. Make "+p.name+" its teacher?":"Add "+open.item.code+" "+open.item.title+" to the "+meetingShort+" plan ("+groupOfItem(open.item)+" group), with "+p.name+" teaching?"):"",
+        confirmLabel:open?(onPlan(open.item)?"Make "+p.name.split(" ")[0]+" the teacher":"Add with "+p.name.split(" ")[0]+" teaching"):"",
+        confirmAdd:()=>{if(!open)return;const k=st.meeting+"|"+open.item.key;this.setState({added:{...st.added,[k]:true},teachers:{...st.teachers,[k]:p.name},teachOpen:null,flash:"✓ "+open.item.code+" is on the "+meetings[st.meeting]+" plan with "+p.name+" teaching."});},
+        cancel:()=>this.setState({teachOpen:null})};
+    });
+
+    // Needs another setting
+    const otherMap={};
+    ENG.scouts.forEach(s=>s.other.forEach(o=>{if(!rankOk({kind:"rank",rank:o.rank}))return;const c=(otherMap[o.cls]=otherMap[o.cls]||{});(c[o.key]=c[o.key]||{code:o.code,title:o.title,who:[]}).who.push(s.name);}));
+    const other=Object.keys(otherMap).sort().map(cls=>({cls,n:Object.keys(otherMap[cls]).length+(Object.keys(otherMap[cls]).length===1?" requirement":" requirements"),items:Object.values(otherMap[cls]).map(i=>({code:i.code,title:i.title,who:i.who.length+" need it: "+i.who.slice(0,5).join(", ")+(i.who.length>5?" +"+(i.who.length-5):"")}))}));
+
+    const tickedItems=itemsAll.filter(i=>tickOf(i));
+    const tabsDef=[["This week","This Week.dc.html"],["Emails","Emails.dc.html"],["Focus sets","#"],["Has/Needs","#"],["Suggestions","Suggestions.dc.html"]];
+    return {
+      tabs:tabsDef.map(([l,h])=>{const on=l==="Suggestions";return {label:l,href:h,current:on?"page":"false",st:on?"color:#1e3a4a;border-bottom-color:#1e3a4a":"color:#3a3f47;border-bottom-color:transparent"};}),
+      meetings:meetings.map((m,i)=>({label:m,pressed:st.meeting===i?"true":"false",st:st.meeting===i?"background:#1e3a4a;color:#ffffff":"background:#ffffff;color:#1e3a4a",pick:()=>this.setState({meeting:i,teachOpen:null,flash:""})})),
+      meetingShort,
+      lenses:[["sessions","Group sessions"],["scouts","By scout"],["teaching","Teaching"]].map(([k,l])=>({label:l,selected:st.lens===k?"true":"false",st:st.lens===k?"background:#1e3a4a;color:#ffffff":"background:#ffffff;color:#1e3a4a",pick:()=>this.setState({lens:k,teachOpen:null})})),
+      rankPills:[["all","All"],["Scout","Scout"],["Tenderfoot","Tenderfoot"],["Second Class","Second Class"],["First Class","First Class"],["mb","Merit badges"]].map(([k,l])=>{const on=st.rank===k;const col=RANK_COLORS[k==="mb"?"Merit badge":k];return {label:l,pressed:on?"true":"false",
+        st:on?"background:#1e3a4a;color:#ffffff;border-color:#1e3a4a":col?"background:"+col.bg+";color:"+col.ink+";border-color:transparent":"background:#ffffff;color:#1e3a4a;border-color:#cdd1d6",pick:()=>this.setState({rank:k})};}),
+      focusOnly:st.focusOnly,toggleFocus:()=>this.setState({focusOnly:!st.focusOnly}),focusName,
+      showOnPlan:st.showOnPlan,toggleOnPlan:()=>this.setState({showOnPlan:!st.showOnPlan}),
+      hasTicks:tickedItems.length>0,
+      tickSummary:tickedItems.length+" ticked",
+      addLabel:"Add "+tickedItems.length+" to the "+meetingShort+" plan",
+      addTicked:()=>addItems(tickedItems),
+      clearTicks:()=>this.setState({ticks:{},saving:false}),
+      toggleSaveSet:()=>this.setState({saving:!st.saving}),savingSet:st.saving,
+      setName:st.setName,onSetName:e=>this.setState({setName:e.target.value}),setNameEmpty:!st.setName.trim(),
+      saveSet:()=>this.setState({saving:false,flash:"✓ Saved \""+st.setName.trim()+"\" as a focus set with "+tickedItems.length+" requirements. It's in the Focus set list on This week.",setName:""}),
+      hasFlash:!!st.flash,flash:st.flash,
+      isSessions:st.lens==="sessions",isScouts:st.lens==="scouts",isTeaching:st.lens==="teaching",
+      sessionGroups,noSessions:sessionGroups.length===0,
+      solo:soloList,soloCount:soloList.length,
+      scoutRows,teachRows,
+      other,otherCount:other.reduce((a,o)=>a+parseInt(o.n),0)
+    };
+  }
+}
+</script>
+</body>
+</html>

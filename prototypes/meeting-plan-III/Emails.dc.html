@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Meeting emails</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#f5f6f8}a{color:#1e3a4a}a:hover{color:#2a5068}button,input,textarea{font-family:inherit}button:disabled{opacity:.55;cursor:default}input:focus,textarea:focus,button:focus-visible{outline:2px solid #1e3a4a;outline-offset:1px}</style>
+</helmet>
+<div style="min-height:100vh;background:#f5f6f8;font-family:'Open Sans',Arial,sans-serif;color:#3a3f47">
+
+  <header style="background:#ffffff;border-bottom:1px solid #e2e4e8">
+    <div style="max-width:1400px;margin:0 auto;padding:18px 28px 14px;display:flex;flex-wrap:wrap;align-items:center;gap:16px 24px;box-sizing:border-box">
+      <div style="flex:1 1 440px;min-width:0">
+        <div style="font-size:12px;font-weight:600;color:#6d7580"><a href="This Week.dc.html">Meeting plan</a> › Emails</div>
+        <h1 style="margin:2px 0 0;font-size:24px;font-weight:700;color:#1a1d21">Emails for Sunday, Nov 1</h1>
+        <p style="margin:4px 0 0;font-size:14px;line-height:1.5;color:#3a3f47;max-width:760px">Nothing goes out until you send it. Tick the emails you want, check the preview, then send. Every email is logged with who it went to and when.</p>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+        <span style="font-size:12px;color:#6d7580">From <strong style="color:#1a1d21">Troop 79 Bugler</strong> · replies go to leaders, not this address</span>
+        <a href="This Week.dc.html" style="display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border:1px solid #cdd1d6;border-radius:3px;background:#ffffff;color:#1e3a4a;font-size:14px;font-weight:600;text-decoration:none;box-sizing:border-box">← Back to the plan</a>
+      </div>
+    </div>
+    <div style="max-width:1400px;margin:0 auto;padding:0 28px;display:flex;flex-wrap:wrap;gap:4px;box-sizing:border-box" role="tablist" aria-label="Email kinds">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="4">
+        <button role="tab" aria-selected="{{ t.selected }}" onClick="{{ t.pick }}" style="min-height:44px;padding:0 16px;border:0;border-bottom:3px solid;background:transparent;font-size:14px;font-weight:700;cursor:pointer;{{ t.st }}">{{ t.label }} <span style="font-weight:600;color:#6d7580">{{ t.count }}</span></button>
+      </sc-for>
+    </div>
+  </header>
+
+  <main style="max-width:1400px;margin:0 auto;padding:20px 28px 48px;display:flex;flex-direction:column;gap:16px;box-sizing:border-box">
+
+    <section aria-label="Send" style="background:#ffffff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.08);padding:14px 18px;display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center">
+      <div style="display:flex;align-items:baseline;gap:8px">
+        <span style="font-size:22px;font-weight:700;color:#1a1d21;font-variant-numeric:tabular-nums">{{ selEmails }}</span>
+        <span style="font-size:14px;color:#3a3f47">{{ selSummary }}</span>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;color:#6d7580">
+        <span><strong style="color:#2e6038">{{ sentCount }}</strong> sent</span>
+        <span><strong style="color:#274d69">{{ openedCount }}</strong> opened</span>
+        <span><strong style="color:#274d69">{{ schedCount }}</strong> scheduled</span>
+        <span><strong style="color:#1a1d21">{{ notSentCount }}</strong> not sent yet</span>
+        <span><strong style="color:#86391a">{{ blockedCount }}</strong> can't send</span>
+      </div>
+      <div style="margin-left:auto;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+        <button onClick="{{ selectReady }}" style="min-height:40px;padding:0 12px;border:0;background:transparent;color:#1e3a4a;font-size:13px;font-weight:600;text-decoration:underline;cursor:pointer">Select all not sent yet</button>
+        <button onClick="{{ clearSel }}" style="min-height:40px;padding:0 12px;border:0;background:transparent;color:#1e3a4a;font-size:13px;font-weight:600;text-decoration:underline;cursor:pointer">Clear</button>
+        <button onClick="{{ review }}" disabled="{{ noSel }}" style="min-height:44px;padding:0 20px;border:1px solid #1e3a4a;border-radius:3px;background:#1e3a4a;color:#ffffff;font-size:14px;font-weight:700;cursor:pointer">{{ reviewLabel }}</button>
+      </div>
+    </section>
+
+    <sc-if value="{{ confirming }}" hint-placeholder-val="{{ false }}">
+      <section role="region" aria-labelledby="confirm-h" style="background:#eef1f5;border:1px solid #cdd1d6;border-radius:8px;padding:16px 18px;display:flex;flex-direction:column;gap:12px">
+        <h2 id="confirm-h" style="margin:0;font-size:16px;font-weight:700;color:#1a1d21">{{ confirmTitle }}</h2>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <sc-for list="{{ confirmTo }}" as="c" hint-placeholder-count="6">
+            <span style="font-size:13px;background:#ffffff;border:1px solid #e2e4e8;border-radius:999px;padding:3px 10px;color:#1a1d21">{{ c.name }}</span>
+          </sc-for>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center">
+          <span style="font-size:13px;font-weight:700;color:#1a1d21">When</span>
+          <div role="group" aria-label="When" style="display:inline-flex;border:1px solid #cdd1d6;border-radius:3px;overflow:hidden;background:#ffffff">
+            <sc-for list="{{ whenBtns }}" as="w" hint-placeholder-count="3">
+              <button onClick="{{ w.pick }}" aria-pressed="{{ w.pressed }}" style="min-height:40px;padding:0 14px;border:0;border-right:1px solid #e2e4e8;font-size:13px;font-weight:600;cursor:pointer;{{ w.st }}">{{ w.label }}</button>
+            </sc-for>
+          </div>
+          <span style="font-size:12.5px;color:#6d7580">Emails go out one at a time. Each one shows in the Sent log as it lands, or as failed with the reason.</span>
+        </div>
+        <div style="font-size:13px;color:#2c5a27;background:#f0f6f1;border-radius:4px;padding:8px 12px">{{ groupNote }}
+        </div>
+        <div style="display:flex;gap:8px">
+          <button onClick="{{ doSend }}" style="min-height:44px;padding:0 20px;border:1px solid #1e3a4a;border-radius:3px;background:#1e3a4a;color:#ffffff;font-size:14px;font-weight:700;cursor:pointer">{{ sendLabel }}</button>
+          <button onClick="{{ cancelSend }}" style="min-height:44px;padding:0 16px;border:1px solid #cdd1d6;border-radius:3px;background:#ffffff;color:#1e3a4a;font-size:14px;font-weight:600;cursor:pointer">Cancel</button>
+        </div>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{ hasFlash }}" hint-placeholder-val="{{ false }}">
+      <div role="status" style="background:#f0f6f1;border:1px solid #cfe2d3;border-radius:8px;padding:12px 18px;font-size:14px;font-weight:600;color:#2e6038">{{ flash }}</div>
+    </sc-if>
+
+    <sc-if value="{{ isList }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start">
+
+      <section aria-label="{{ tabName }}" style="flex:999 1 700px;min-width:0;background:#ffffff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.08);overflow:hidden">
+        <div style="padding:12px 16px;border-bottom:1px solid #e2e4e8;display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center">
+          <span style="font-size:13px;color:#3a3f47">{{ tabHint }}</span>
+          <div role="group" aria-label="Show" style="margin-left:auto;display:inline-flex;border:1px solid #cdd1d6;border-radius:3px;overflow:hidden">
+            <sc-for list="{{ filters }}" as="f" hint-placeholder-count="3">
+              <button onClick="{{ f.pick }}" aria-pressed="{{ f.pressed }}" style="min-height:36px;padding:0 12px;border:0;border-right:1px solid #e2e4e8;font-size:13px;font-weight:600;cursor:pointer;{{ f.st }}">{{ f.label }}</button>
+            </sc-for>
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <div style="min-width:760px">
+            <div style="display:grid;grid-template-columns:44px 170px minmax(0,1.3fr) minmax(0,1fr) 170px;gap:10px;padding:8px 16px;border-bottom:1px solid #e2e4e8;font-size:12px;font-weight:600;color:#6d7580">
+              <span></span><span>{{ colWho }}</span><span>{{ colWhat }}</span><span>Goes to</span><span>Status</span>
+            </div>
+            <sc-for list="{{ rows }}" as="r" hint-placeholder-count="10">
+              <div style="display:grid;grid-template-columns:44px 170px minmax(0,1.3fr) minmax(0,1fr) 170px;gap:10px;align-items:center;min-height:52px;padding:6px 16px;border-bottom:1px solid #f0f1f3;{{ r.rowSt }}">
+                <span style="display:flex;justify-content:center"><input type="checkbox" checked="{{ r.checked }}" disabled="{{ r.blocked }}" onChange="{{ r.toggle }}" aria-label="{{ r.checkLabel }}" style="width:20px;height:20px;cursor:pointer"></span>
+                <button onClick="{{ r.focus }}" aria-pressed="{{ r.focused }}" style="justify-self:start;border:0;background:transparent;padding:0;cursor:pointer;text-align:left"><span title="{{ r.rank }}" style="display:inline-block;font-size:13.5px;font-weight:700;border-radius:4px;padding:3px 10px;{{ r.nameSt }}">{{ r.name }}</span></button>
+                <span style="font-size:13px;color:#1a1d21;line-height:1.4">{{ r.what }}</span>
+                <span style="font-size:12.5px;color:#3a3f47;line-height:1.4">{{ r.to }}</span>
+                <span style="font-size:12.5px;font-weight:700;border-radius:4px;padding:3px 8px;justify-self:start;line-height:1.35;{{ r.statusSt }}">{{ r.status }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <sc-if value="{{ noRows }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:16px;font-size:14px;color:#6d7580">No one matches this filter.</div>
+        </sc-if>
+      </section>
+
+      <aside aria-label="Email preview" style="flex:1 1 420px;min-width:0;position:sticky;top:16px;display:flex;flex-direction:column;gap:12px">
+        <section style="background:#ffffff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.08);overflow:hidden">
+          <div style="padding:12px 16px;border-bottom:1px solid #e2e4e8;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+            <h2 style="margin:0;font-size:16px;font-weight:700;color:#1a1d21">Preview</h2>
+            <span style="font-size:13px;color:#6d7580">{{ pv.forWho }}</span>
+            <sc-if value="{{ pv.edited }}" hint-placeholder-val="{{ false }}">
+              <span style="margin-left:auto;font-size:12px;font-weight:700;color:#6b4b0b;background:#fdf3d6;border-radius:999px;padding:2px 8px">Edited for this email only</span>
+            </sc-if>
+          </div>
+          <div style="padding:12px 16px;border-bottom:1px solid #f0f1f3;display:flex;flex-direction:column;gap:6px">
+            <div style="font-size:12px;font-weight:600;color:#6d7580">To</div>
+            <sc-for list="{{ pv.recips }}" as="p" hint-placeholder-count="2">
+              <label style="display:flex;align-items:center;gap:10px;min-height:36px;font-size:13.5px;color:#1a1d21;cursor:pointer">
+                <input type="checkbox" checked="{{ p.on }}" onChange="{{ p.toggle }}" style="width:18px;height:18px">
+                <span style="font-weight:700">{{ p.name }}</span><span style="color:#6d7580">{{ p.role }}</span>
+              </label>
+            </sc-for>
+            <sc-if value="{{ pv.hasNote }}" hint-placeholder-val="{{ false }}">
+              <div style="font-size:12.5px;color:#274d69;background:#eaf1f6;border-radius:4px;padding:6px 10px">{{ pv.note }}</div>
+            </sc-if>
+          </div>
+          <div style="padding:14px 16px;background:#fafbfc;display:flex;flex-direction:column;gap:10px">
+            <div style="font-size:12px;color:#6d7580">Subject</div>
+            <div style="font-size:15px;font-weight:700;color:#1a1d21">{{ pv.subject }}</div>
+            <sc-if value="{{ pv.notEditing }}" hint-placeholder-val="{{ true }}">
+              <div style="background:#ffffff;border:1px solid #e2e4e8;border-radius:4px;padding:16px;font-size:14px;line-height:1.55;color:#1a1d21;white-space:pre-line">{{ pv.body }}</div>
+            </sc-if>
+            <sc-if value="{{ pv.editing }}" hint-placeholder-val="{{ false }}">
+              <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:#3a3f47">Message for this email only
+                <textarea value="{{ pv.body }}" onChange="{{ pv.onEdit }}" rows="10" style="padding:10px;border:1px solid #cdd1d6;border-radius:3px;font-size:16px;line-height:1.5;color:#1a1d21;resize:vertical"></textarea>
+              </label>
+            </sc-if>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              <sc-for list="{{ pv.buttons }}" as="b" hint-placeholder-count="2">
+                <span style="display:inline-flex;align-items:center;min-height:36px;padding:0 14px;border-radius:3px;font-size:13px;font-weight:700;{{ b.st }}">{{ b.label }}</span>
+              </sc-for>
+            </div>
+            <div style="font-size:12px;color:#6d7580">The answer buttons are added to every email automatically and can't be removed by an edit. Links work until 6:00 PM on Sun, Nov 1. Opens are tracked, and the email footer tells families so.</div>
+          </div>
+          <div style="padding:10px 16px;border-top:1px solid #e2e4e8;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+            <button onClick="{{ pv.toggleEdit }}" style="min-height:40px;padding:0 14px;border:1px solid #cdd1d6;border-radius:3px;background:#ffffff;color:#1e3a4a;font-size:13px;font-weight:700;cursor:pointer">{{ pv.editLabel }}</button>
+            <sc-if value="{{ pv.edited }}" hint-placeholder-val="{{ false }}">
+              <button onClick="{{ pv.undoEdit }}" style="min-height:40px;padding:0 10px;border:0;background:transparent;color:#1e3a4a;font-size:13px;text-decoration:underline;cursor:pointer">Use the standard wording</button>
+            </sc-if>
+            <a href="#" style="margin-left:auto;font-size:13px;font-weight:600">Edit the template for everyone</a>
+          </div>
+        </section>
+        <section style="background:#ffffff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.08);padding:12px 16px;display:flex;flex-direction:column;gap:6px">
+          <h3 style="margin:0;font-size:14px;font-weight:700;color:#1a1d21">History for {{ pv.who }}</h3>
+          <sc-for list="{{ pv.history }}" as="h" hint-placeholder-count="2">
+            <div style="display:grid;grid-template-columns:120px minmax(0,1fr);gap:8px;font-size:12.5px;line-height:1.4">
+              <span style="color:#6d7580">{{ h.when }}</span><span style="color:#1a1d21">{{ h.what }}</span>
+            </div>
+          </sc-for>
+          <sc-if value="{{ pv.noHistory }}" hint-placeholder-val="{{ false }}">
+            <div style="font-size:12.5px;color:#6d7580">No emails about this meeting yet.</div>
+          </sc-if>
+        </section>
+      </aside>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isLog }}" hint-placeholder-val="{{ false }}">
+      <section aria-label="Sent log" style="background:#ffffff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.08);overflow:hidden">
+        <div style="padding:12px 16px;border-bottom:1px solid #e2e4e8;font-size:13px;color:#3a3f47">Every email about this meeting: one line per person it went to, updated as it's delivered, opened and answered. Scheduled emails can be cancelled until they go.</div>
+        <div style="overflow-x:auto">
+          <table style="width:100%;min-width:900px;border-collapse:collapse;font-size:13px">
+            <thead>
+              <tr style="text-align:left;color:#6d7580;font-size:12px;border-bottom:1px solid #e2e4e8">
+                <th scope="col" style="padding:8px 16px;font-weight:600">When</th>
+                <th scope="col" style="padding:8px 12px;font-weight:600">To</th>
+                <th scope="col" style="padding:8px 12px;font-weight:600">About</th>
+                <th scope="col" style="padding:8px 12px;font-weight:600">Kind</th>
+                <th scope="col" style="padding:8px 12px;font-weight:600">Sent by</th>
+                <th scope="col" style="padding:8px 16px;font-weight:600">Result</th>
+              </tr>
+            </thead>
+            <tbody>
+              <sc-for list="{{ log }}" as="l" hint-placeholder-count="10">
+                <tr style="border-bottom:1px solid #f0f1f3">
+                  <td style="padding:8px 16px;white-space:nowrap;color:#3a3f47">{{ l.when }}</td>
+                  <td style="padding:8px 12px;font-weight:700;color:#1a1d21">{{ l.to }}</td>
+                  <td style="padding:8px 12px;color:#1a1d21">{{ l.about }}</td>
+                  <td style="padding:8px 12px;color:#3a3f47">{{ l.kind }}</td>
+                  <td style="padding:8px 12px;color:#3a3f47">{{ l.by }}</td>
+                  <td style="padding:8px 16px">
+                    <span style="font-size:12.5px;font-weight:700;border-radius:4px;padding:2px 8px;{{ l.st }}">{{ l.result }}</span>
+                    <sc-if value="{{ l.canCancel }}" hint-placeholder-val="{{ false }}">
+                      <button onClick="{{ l.cancel }}" style="min-height:32px;margin-left:6px;padding:0 8px;border:0;background:transparent;color:#8c2f2f;font-size:12.5px;text-decoration:underline;cursor:pointer">Cancel</button>
+                    </sc-if>
+                  </td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1700}}'>
+const ROSTER=[["Adi A","Scout"],["Anjali S","Star"],["Aubrey R","First Class"],["Ben B","Scout"],["Damian N","Second Class"],["Eloise L","First Class"],["Emory M","Second Class"],["Finn P","Star"],["Fiona K","Tenderfoot"],["Hadley B","Second Class"],["Hazel S","Tenderfoot"],["Henry E","Life"],["Isaac H","Second Class"],["Jack P","Second Class"],["Jameson K","Life"],["Kevin P","Tenderfoot"],["Lee P","Second Class"],["Lily P","Tenderfoot"],["Lucy L","Second Class"],["Miren G","Tenderfoot"],["Oliver K","Second Class"],["Oliver P","Second Class"],["Oliver V","Second Class"],["Oscar B","Scout"],["Owen R","Star"],["Piper K","Tenderfoot"],["Quinn B","Tenderfoot"],["Robbie H","First Class"],["Simon P","Tenderfoot"],["Solomon R","Second Class"],["Todd M","First Class"],["Veronica K","Star"],["Violet B","New"],["Winnie B","New"]];
+const HELD={"New":-1,"Scout":0,"Tenderfoot":1,"Second Class":2,"First Class":3,"Star":4,"Life":5};
+const RANK_COLORS={"New":{bg:"#ffffff",ink:"#3a3f47"},"Scout":{bg:"#eaf1f6",ink:"#274d69"},"Tenderfoot":{bg:"#d6efef",ink:"#186e72"},"Second Class":{bg:"#eef5eb",ink:"#2c5a27"},"First Class":{bg:"#f8f0dc",ink:"#6b4b0b"},"Star":{bg:"#ece0f0",ink:"#6b3f7a"},"Life":{bg:"#e6e6ea",ink:"#4a4a5a"}};
+const rc=r=>"background:"+RANK_COLORS[r].bg+";color:"+RANK_COLORS[r].ink+(r==="New"?";box-shadow:inset 0 0 0 1px #9ba1aa":"");
+const GROUPS=["Scout","Tenderfoot","Second Class","First Class","Merit badge"];
+const groupOf=r=>GROUPS[Math.min(HELD[r]+1,4)];
+const SHORT={"Scout":"Scout","Tenderfoot":"TF","Second Class":"2C","First Class":"FC"};
+const FA={"Tenderfoot":[["4a","First aid for Tenderfoot"],["4b","Poisonous and hazardous plants"],["4c","Safety on campouts"],["4d","Make a first aid kit"]],"Second Class":[["6a","First aid for Second Class"],["6b","Breathing, stroke, poison, bleeding"],["6c","Reduce injuries on campouts"],["6d","Emergencies at home and in the wild"],["6e","Car accident response"]],"First Class":[["7a","First aid for First Class"],["7b","Transport an injured person"],["7c","Heart attack signs and CPR"],["7d","Utility hazards at home"],["7e","Home emergency plan"],["7f","Getting safe drinking water"]]};
+const COMPLETE=["Kevin P","Lucy L"];
+const hv=s=>{let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0)%100;};
+const rsvpOf=n=>{const v=hv(n+"rsvp");return v<58?"Coming":v<72?"Not sure":v<82?"Can't come":"No answer";};
+const FIRST=["Jenna","Ken","Laura","Dan","Maria","Tom","Sara","Chris","Amy","Mark","Nina","Paul","Karen","Joe","Rachel","Steve","Beth","Raj"];
+const FAMILY={"Lily P":"lily-simon","Simon P":"lily-simon","Oliver K":"oliver-piper","Piper K":"oliver-piper"};
+const parentsOf=n=>{const key=FAMILY[n]||n, last=n.split(" ")[1], ps=[FIRST[hv(key+"p1")%18]+" "+last]; if(hv(key+"two")>30) ps.push(FIRST[(hv(key+"p2")+5)%18]+" "+last); return ps;};
+const noEmail=["Quinn B"];
+const ADULTS=[["Jenna M","Tenderfoot","yes"],["Dan V","Second Class","asked"],["Karen O","Second Class",""],["Rachel D","First Class","no"],["Chris N","First Class",""],["Ben W","First Class",""],["Mark F","Tenderfoot",""],["Steve R","Second Class",""]];
+const ADULT_REMIND=["Greg H","Laura P","Paul J","Dana K"];
+
+function fmtList(a){return a.length<=1?(a[0]||""):a.slice(0,-1).join(", ")+" and "+a[a.length-1];}
+
+function initState(){
+    const log=[
+      {id:1,when:"Tue, Oct 27 · 7:42 pm",to:"Jenna M",about:"Teach Tenderfoot first aid",kind:"Teacher invite",by:"Patrick B",result:"Said yes · Tue 8:15 pm",tone:"ok"},
+      {id:2,when:"Tue, Oct 27 · 7:42 pm",to:"Dan V",about:"Teach Second Class first aid",kind:"Teacher invite",by:"Patrick B",result:"Opened · Tue 9:02 pm · no answer yet",tone:"open"},
+      {id:3,when:"Tue, Oct 27 · 7:43 pm",to:"Rachel D",about:"Teach First Class first aid",kind:"Teacher invite",by:"Patrick B",result:"Said not this week",tone:"muted"}];
+    const sent={"t:Jenna M":"Tue 7:42 pm","t:Dan V":"Tue 7:42 pm","t:Rachel D":"Tue 7:43 pm"};
+    let id=4;
+    ROSTER.forEach(([n,r])=>{ if(hv(n+"sent")<28&&!noEmail.includes(n)&&!COMPLETE.includes(n)){
+      const ps=parentsOf(n); sent["s:"+n]="Wed 6:10 pm";
+      ps.forEach(p=>log.push({id:id++,when:"Wed, Oct 28 · 6:10 pm",to:p,about:n+" · "+(groupOf(r)==="Merit badge"?"First Aid merit badge":"First aid"),kind:"Scout invite",by:"Mindy S",result:hv(n+"ans")<50?"Answered yes · Wed 8:30 pm":hv(n+p+"op")<60?"Opened · Wed 7:05 pm · no answer yet":"Delivered · not opened",tone:hv(n+"ans")<50?"ok":hv(n+p+"op")<60?"open":"info"}));
+    }});
+    log.push({id:id++,when:"Wed, Oct 28 · 6:11 pm",to:"Laura B",about:"Quinn B · First aid",kind:"Scout invite",by:"Mindy S",result:"Failed · address bounced",tone:"bad"});
+      return {tab:"scouts",filter:"all",sel:{},focus:null,off:{},edits:{},editing:false,confirming:false,when:"now",sent,log,nextId:id,flash:"",batch:0};
+}
+
+class Component extends DCLogic {
+  state=initState();
+  rowsFor(tab){
+    const st=this.state;
+    if(tab==="scouts") return ROSTER.map(([n,r])=>{
+      const g=groupOf(r), key="s:"+n;
+      const reqs=g==="Merit badge"?null:(FA[g]||[]);
+      const open=COMPLETE.includes(n)?[]:(reqs||[]).filter(x=>hv(n+x[0])>=35);
+      const ps=parentsOf(n); const teen=hv(n+"age")<40&&HELD[r]>=1;
+      const recips=[...ps.map(p=>({name:p,role:"Parent"})),...(teen?[{name:n,role:"Scout · 13 or older"}]:[])];
+      let blocked="";
+      if(noEmail.includes(n)) blocked="Can't send · no parent email on file";
+      else if(g!=="Merit badge"&&!open.length) blocked="Can't send · nothing planned for them yet";
+      const what=g==="Merit badge"?"Merit badge group · First Aid merit badge or teach":g+" group · First aid · "+open.map(x=>SHORT[g]+" "+x[0]).join(", ");
+      const sib=Object.keys(FAMILY).filter(k=>k!==n&&FAMILY[k]===FAMILY[n]);
+      return {key,name:n,rank:r,group:g,kind:"Scout invite",what:blocked&&g!=="Merit badge"&&!open.length?"Nothing planned yet":what,open,reqs,recips,blocked,sib,rsvp:rsvpOf(n)};
+    });
+    if(tab==="teachers") return ADULTS.map(([n,g,s])=>({key:"t:"+n,name:n,rank:null,group:g,kind:"Teacher invite",what:"Teach "+g+" group · First aid ("+FA[g].map(x=>SHORT[g]+" "+x[0]).join(", ")+")",open:FA[g],recips:[{name:n,role:"Adult leader"}],blocked:s==="yes"?"":"",answered:s,sib:[]}))
+      .concat([["Anjali S","Star"],["Henry E","Life"]].map(([n,r])=>({key:"t:"+n,name:n,rank:r,group:"Tenderfoot",kind:"Teacher invite",what:"Help teach Tenderfoot group · First aid",open:FA["Tenderfoot"],recips:[...parentsOf(n).map(p=>({name:p,role:"Parent"})),{name:n,role:"Scout · 13 or older"}],blocked:"",sib:[]})));
+    return [...ROSTER.filter(([n])=>rsvpOf(n)==="No answer").map(([n,r])=>({key:"r:"+n,name:n,rank:r,group:groupOf(r),kind:"Reminder",what:"Coming Sunday? · no answer yet",recips:parentsOf(n).map(p=>({name:p,role:"Parent"})),blocked:noEmail.includes(n)?"Can't send · no parent email on file":"",sib:[]})),
+      ...ADULT_REMIND.map(n=>({key:"r:"+n,name:n,rank:null,group:"",kind:"Reminder",what:"Coming Sunday? · no answer yet",recips:[{name:n,role:"Adult leader"}],blocked:"",sib:[]}))];
+  }
+  emailFor(row){
+    const st=this.state;
+    const greet=fmtList(row.recips.filter(p=>!st.off[row.key+"|"+p.name]).map(p=>p.name.split(" ")[0]));
+    if(row.kind==="Scout invite"){
+      const who=fmtList([row.name,...row.sib]);
+      if(row.group==="Merit badge") return {subject:"First Aid merit badge is on for Sun, Nov 1",body:"Hi "+greet+",\n\nWe're running a First Aid merit badge session at the troop meeting on Sunday, Nov 1, and "+who+" can join it. If "+row.name.split(" ")[0]+" would rather help teach the younger scouts first aid, that counts too.\n\nAnswer with a button below. You don't need to sign in.\n\nTroop 79 can see when this email is opened.",buttons:["Yes, merit badge","I'd like to teach","Not this week"]};
+      return {subject:"First aid is on for Sun, Nov 1",body:"Hi "+greet+",\n\nThe troop meeting on Sunday, Nov 1 is a first aid night. "+who+" can work on:\n\n"+row.open.map(x=>"• "+SHORT[row.group]+" "+x[0]+": "+x[1]).join("\n")+"\n\nThey'll be with the "+row.group+" group. Answer with a button below. You don't need to sign in.\n\nQuestions? Reply to a leader, not to this email.\n\nTroop 79 can see when this email is opened.",buttons:["Yes, coming","Pick something else","Not this week"]};
+    }
+    if(row.kind==="Teacher invite") return {subject:"Can you teach first aid on Sun, Nov 1?",body:"Hi "+greet+",\n\nThe "+row.group+" group is working on first aid at the troop meeting on Sunday, Nov 1, and nobody is teaching it yet:\n\n"+row.open.map(x=>"• "+SHORT[row.group]+" "+x[0]+": "+x[1]).join("\n")+"\n\nCould you teach it? Use a button below. You don't need to sign in.\n\nThank you!\n\nTroop 79 can see when this email is opened.",buttons:["Yes, I can teach","Not this week"]};
+    return {subject:"Troop meeting on Sun, Nov 1: coming?",body:"Hi "+greet+",\n\nWe haven't had an answer for "+(row.rank?row.name:"you")+" for the troop meeting on Sunday, Nov 1. Coming, not sure, or can't make it: any answer helps us plan who teaches what.\n\nUse the button below to answer.\n\nTroop 79 can see when this email is opened.",buttons:["Answer now"]};
+  }
+  renderVals(){
+    const st=this.state;
+    const tabsDef=[["scouts","Scouts and families"],["teachers","Teachers"],["reminders","Coming? reminders"],["log","Sent log"]];
+    const isLog=st.tab==="log";
+    const all=isLog?[]:this.rowsFor(st.tab);
+    const statusOf=r=>{
+      const s=st.sent[r.key];
+      if(r.blocked) return {label:r.blocked,st:"background:#fdf0ef;color:#8c2f2f",k:"blocked"};
+      if(r.answered==="yes") return {label:"Said yes · Tue",st:"background:#f0f6f1;color:#2e6038",k:"sent"};
+      if(r.answered==="no") return {label:"Said not this week",st:"background:#f0f1f3;color:#4a4a5a",k:"sent"};
+      if(s&&s.startsWith("Scheduled")) return {label:s,st:"background:#eaf1f6;color:#274d69",k:"sched"};
+      if(s){
+        const ls=st.log.filter(l=>l.key===r.key||(l.about.startsWith(r.name+" ·")&&l.kind===r.kind)||(l.to===r.name&&l.kind===r.kind));
+        const ans=ls.find(l=>/^(Answered|Said)/.test(l.result)); if(ans) return {label:ans.result.split(" · ").slice(0,2).join(" · "),st:"background:#f0f6f1;color:#2e6038",k:"sent",opened:true};
+        const op=ls.find(l=>l.result.startsWith("Opened")); if(op) return {label:"Opened "+op.result.split(" · ")[1],st:"background:#eaf1f6;color:#274d69",k:"sent",opened:true};
+        return {label:"Sent "+s+" · not opened",st:"background:#f0f6f1;color:#2e6038",k:"sent"};
+      }
+      return {label:"Not sent yet",st:"background:#ffffff;color:#3a3f47;border:1px solid #cdd1d6",k:"new"};
+    };
+    const counts={sent:0,sched:0,new:0,blocked:0,opened:0};
+    all.forEach(r=>{const x=statusOf(r);counts[x.k]++;if(x.opened)counts.opened++;});
+    const fpass={all:()=>true,new:r=>statusOf(r).k==="new",sent:r=>["sent","sched"].includes(statusOf(r).k)}[st.filter];
+    const rows=all.filter(fpass).map(r=>{
+      const s=statusOf(r), on=!!st.sel[r.key];
+      const active=r.recips.filter(p=>!st.off[r.key+"|"+p.name]);
+      return {name:r.name,rank:r.rank||"Adult",nameSt:r.rank?rc(r.rank):"background:#ffffff;color:#1e3a4a;box-shadow:inset 0 0 0 1px #cdd1d6",
+        what:r.what,to:active.length?active.map(p=>p.name).join(", "):"No one ticked",
+        status:s.label,statusSt:s.st,checked:on,blocked:!!r.blocked,checkLabel:"Include the email about "+r.name,
+        rowSt:st.focus===r.key?"background:#eef1f5":(on?"background:#fafbfc":""),focused:st.focus===r.key?"true":"false",
+        toggle:()=>this.setState({sel:{...st.sel,[r.key]:!on},confirming:false,flash:""}),
+        focus:()=>this.setState({focus:r.key,editing:false})};
+    });
+
+    // selection across every tab, counted as distinct recipients (one email per person per kind)
+    const selRows=["scouts","teachers","reminders"].flatMap(t=>this.rowsFor(t)).filter(r=>st.sel[r.key]&&!r.blocked);
+    const emails={}; selRows.forEach(r=>r.recips.filter(p=>!st.off[r.key+"|"+p.name]).forEach(p=>{emails[r.kind+"|"+p.name]=p.name;}));
+    const nEmails=Object.keys(emails).length;
+    const scoutSel=selRows.filter(r=>r.kind==="Scout invite"); const nScouts=scoutSel.length;
+
+    const fRow=all.find(r=>r.key===st.focus)||all.find(r=>!r.blocked)||all[0];
+    let pv={forWho:"",who:"",recips:[],subject:"",body:"",buttons:[],history:[],noHistory:true,edited:false,editing:false,notEditing:true,hasNote:false,note:"",editLabel:"Edit this email",toggleEdit:()=>{},undoEdit:()=>{},onEdit:()=>{}};
+    if(fRow){
+      const e=this.emailFor(fRow); const k=fRow.key; const edited=k in st.edits;
+      const hist=st.log.filter(l=>l.about.startsWith(fRow.name)||l.to===fRow.name||fRow.recips.some(p=>p.name===l.to)).map(l=>({when:l.when.replace(", Oct",""),what:l.kind+" to "+l.to+" · "+l.result}));
+      pv={forWho:fRow.kind+" · "+fRow.name,who:fRow.name,
+        recips:fRow.recips.map(p=>{const off=!!st.off[k+"|"+p.name];return {name:p.name,role:p.role,on:!off,toggle:()=>this.setState({off:{...st.off,[k+"|"+p.name]:!off}})};}),
+        hasNote:fRow.sib.length>0,note:fRow.sib.length?"One email covers "+fmtList([fRow.name,...fRow.sib])+": same parents, so they get one message, not two.":"",
+        subject:e.subject,body:edited?st.edits[k]:e.body,
+        buttons:e.buttons.map((b,i)=>({label:b,st:i===0?"background:#3d7a4a;color:#ffffff":"background:#ffffff;color:#1e3a4a;border:1px solid #cdd1d6"})),
+        history:hist,noHistory:hist.length===0,edited,editing:st.editing,notEditing:!st.editing,
+        editLabel:st.editing?"Done editing":"Edit this email",
+        toggleEdit:()=>this.setState({editing:!st.editing,edits:(!st.editing&&!edited)?{...st.edits,[k]:e.body}:st.edits}),
+        undoEdit:()=>{const x={...st.edits};delete x[k];this.setState({edits:x,editing:false});},
+        onEdit:ev=>this.setState({edits:{...st.edits,[k]:ev.target.value}})};
+    }
+    const whenLabel={now:"Now",sat:"Sat 9:00 am",sun:"Sun 8:00 am"}[st.when];
+    const fb=(k,label)=>({label,pressed:st.filter===k?"true":"false",st:st.filter===k?"background:#1e3a4a;color:#ffffff":"background:#ffffff;color:#1e3a4a",pick:()=>this.setState({filter:k})});
+    const hints={scouts:"One invite per scout, to their parents and to the scout if they're 13 or older. Brothers and sisters share one email. The email tells them the group and requirements already on the plan.",teachers:"Adults and older scouts asked to teach a group. Only people with matching teaching skills are listed.",reminders:"People who haven't said whether they're coming Sunday."};
+    return {
+      tabs:tabsDef.map(([k,l])=>{const on=st.tab===k;const n=k==="log"?st.log.length:this.rowsFor(k).length;return {label:l,count:n,selected:on?"true":"false",st:on?"color:#1e3a4a;border-bottom-color:#1e3a4a":"color:#3a3f47;border-bottom-color:transparent",pick:()=>this.setState({tab:k,focus:null,editing:false,filter:"all"})};}),
+      isList:!isLog,isLog,tabName:(tabsDef.find(t=>t[0]===st.tab)||[])[1],tabHint:hints[st.tab]||"",
+      colWho:st.tab==="teachers"?"Teacher":st.tab==="reminders"?"Who":"Scout",colWhat:st.tab==="teachers"?"Asked to teach":st.tab==="reminders"?"About":"Invited to",
+      filters:[fb("all","Everyone"),fb("new","Not sent yet"),fb("sent","Sent")],
+      rows,noRows:rows.length===0,
+      sentCount:counts.sent,openedCount:counts.opened,schedCount:counts.sched,notSentCount:counts.new,blockedCount:counts.blocked,
+      selEmails:nEmails,selSummary:nEmails===1?"email selected":"emails selected · across all tabs",
+      noSel:nEmails===0,reviewLabel:nEmails?"Review and send "+nEmails+(nEmails===1?" email":" emails"):"Select emails to send",
+      selectReady:()=>{const s={...st.sel};all.forEach(r=>{if(statusOf(r).k==="new")s[r.key]=true;});this.setState({sel:s,flash:""});},
+      clearSel:()=>this.setState({sel:{},confirming:false}),
+      review:()=>this.setState({confirming:true,flash:""}),
+      confirming:st.confirming,
+      confirmTitle:(st.when==="now"?"Send ":"Schedule ")+nEmails+(nEmails===1?" email":" emails")+" to these people?",
+      confirmTo:Object.values(emails).map(n=>({name:n})),
+      whenBtns:[["now","Now"],["sat","Sat 9:00 am"],["sun","Sun 8:00 am"]].map(([k,l])=>({label:l,pressed:st.when===k?"true":"false",st:st.when===k?"background:#1e3a4a;color:#ffffff":"background:#ffffff;color:#1e3a4a",pick:()=>this.setState({when:k})})),
+      sendLabel:st.when==="now"?"Send "+nEmails+" now":"Schedule for "+whenLabel,
+      cancelSend:()=>this.setState({confirming:false}),
+      doSend:()=>{
+        let id=st.nextId; const log=[...st.log]; const sent={...st.sent};
+        const stamp=st.when==="now"?"Thu, Oct 29 · just now":"Scheduled · "+whenLabel;
+        selRows.forEach(r=>{ r.recips.filter(p=>!st.off[r.key+"|"+p.name]).forEach(p=>log.unshift({id:id++,key:r.key,when:stamp,to:p.name,about:r.name+" · "+r.what.split(" · ")[0],kind:r.kind,by:"Patrick B",result:st.when==="now"?"Delivered · not opened":"Scheduled",tone:st.when==="now"?"info":"sched"}));
+          sent[r.key]=st.when==="now"?"just now":"Scheduled "+whenLabel; });
+        this.setState({log,sent,nextId:id,sel:{},confirming:false,flash:(st.when==="now"?"✓ Sent ":"✓ Scheduled ")+nEmails+(nEmails===1?" email":" emails")+". Each email is in the Sent log."});
+      },
+      groupNote:"Sending doesn't change the plan. Answers do: \"Not this week\" takes a scout out of their group, \"Pick something else\" flags them for the planners, and a teacher's yes fills the group's teacher slot.",
+      hasFlash:!!st.flash,flash:st.flash,
+      pv,
+      log:st.log.map(l=>({when:l.when,to:l.to,about:l.about,kind:l.kind,by:l.by,result:l.result,
+        st:{ok:"background:#f0f6f1;color:#2e6038",info:"background:#ffffff;color:#3a3f47;border:1px solid #cdd1d6",open:"background:#eaf1f6;color:#274d69",muted:"background:#f0f1f3;color:#4a4a5a",bad:"background:#fdf0ef;color:#8c2f2f",sched:"background:#fdf3d6;color:#6b4b0b"}[l.tone],
+        canCancel:l.tone==="sched",cancel:()=>this.setState({log:st.log.map(x=>x.id===l.id?{...x,result:"Cancelled",tone:"muted"}:x)})}))
+    };
+  }
+}
+</script>
+</body>
+</html>

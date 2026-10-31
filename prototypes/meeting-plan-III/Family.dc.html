@@ -1,0 +1,603 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sunday's meeting for your family</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;600&amp;family=Open+Sans:wght@400;600;700&amp;family=Playfair+Display:wght@700&amp;display=swap" rel="stylesheet">
+<style>body{margin:0;background:#f4efe6}a{color:#1e3a4a}a:hover{color:#3d5a3e}button,input,textarea,select{font-family:inherit}button:disabled{opacity:.55;cursor:default}input:focus,textarea:focus,select:focus,button:focus-visible,a:focus-visible{outline:2px solid #3a6478;outline-offset:2px}</style>
+</helmet>
+<div style="min-height:100vh;background:#f4efe6;font-family:'Open Sans',Arial,sans-serif;color:#363636">
+
+  <div role="group" aria-label="Prototype scenarios" style="background:#fdf6e3;border-bottom:1px dashed #a98020">
+    <div style="max-width:680px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;align-items:center;gap:8px;box-sizing:border-box">
+      <span style="font-size:12px;font-weight:700;color:#6b500c;margin-right:4px">Prototype only · show the page for</span>
+      <sc-for list="{{ scenarios }}" as="sc" hint-placeholder-count="6">
+        <button onClick="{{ sc.pick }}" aria-pressed="{{ sc.pressed }}" style="min-height:36px;padding:0 12px;border:1px solid;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;{{ sc.st }}">{{ sc.label }}</button>
+      </sc-for>
+      <button onClick="{{ returnVisit }}" title="Show the page as it looks when the person comes back later" style="margin-left:auto;min-height:36px;padding:0 12px;border:1px dashed #a98020;border-radius:999px;background:transparent;color:#6b500c;font-size:13px;font-weight:700;cursor:pointer">{{ returnLabel }}</button>
+      <button onClick="{{ resetForm }}" style="min-height:36px;padding:0 12px;border:1px dashed #a98020;border-radius:999px;background:transparent;color:#6b500c;font-size:13px;font-weight:700;cursor:pointer">↺ Reset form</button>
+    </div>
+  </div>
+
+  <div style="background:#1e3a4a;color:#ffffff">
+    <div style="max-width:680px;margin:0 auto;padding:14px 16px;display:flex;align-items:center;gap:12px;box-sizing:border-box">
+      <span style="font-family:'Playfair Display',Georgia,serif;font-size:20px;font-weight:700">Troop 79</span>
+      <span style="margin-left:auto;font-size:13px;color:rgba(255,255,255,.85)">{{ viewerLine }}</span>
+    </div>
+  </div>
+
+  <main style="max-width:680px;margin:0 auto;padding:24px 16px 56px;display:flex;flex-direction:column;gap:20px;box-sizing:border-box">
+
+    <header style="display:flex;flex-direction:column;gap:6px">
+      <div style="font-size:13px;font-weight:600;color:#787060">Troop meeting</div>
+      <h1 style="margin:0;font-family:'Playfair Display',Georgia,serif;font-size:32px;line-height:1.15;font-weight:700;color:#1a1a1a">Sunday, Nov 1 · First aid night</h1>
+      <div style="font-size:14px;color:#363636">6:30–8:00 pm · [Meeting place]</div>
+      <p style="margin:6px 0 0;font-family:Lora,Georgia,serif;font-size:17px;line-height:1.55;color:#363636">{{ lede }}</p>
+    </header>
+
+    <sc-if value="{{ showAllSet }}" hint-placeholder-val="{{ true }}">
+      <button onClick="{{ allSet }}" style="display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-height:64px;padding:12px 16px;border:1px solid #3d5a3e;border-radius:4px;background:#3d5a3e;color:#ffffff;text-align:left;cursor:pointer">
+        <span style="font-size:17px;font-weight:700">{{ allSetLabel }}</span>
+        <span style="font-size:13px;color:rgba(255,255,255,.85)">{{ allSetSub }}</span>
+      </button>
+    </sc-if>
+    <sc-if value="{{ allDone }}" hint-placeholder-val="{{ false }}">
+      <div role="status" style="background:#eef2ee;border-radius:4px;padding:14px 16px;font-size:15px;font-weight:600;color:#3d5a3e">✓ You're all set for Sunday. You can change an answer here any time before the meeting.</div>
+    </sc-if>
+
+    <sc-for list="{{ cards }}" as="c" hint-placeholder-count="2">
+      <section aria-labelledby="{{ c.hid }}" style="background:#ffffff;border-radius:4px;box-shadow:0 1px 4px rgba(30,58,74,.08),0 2px 12px rgba(30,58,74,.06);overflow:hidden">
+        <div style="padding:18px 18px 14px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;border-bottom:1px solid #e4d9c4">
+          <h2 id="{{ c.hid }}" style="margin:0;font-family:'Playfair Display',Georgia,serif;font-size:26px;font-weight:700;color:#1a1a1a">{{ c.planTitle }}</h2>
+          <span style="font-size:13px;color:#787060">{{ c.planSub }}</span>
+          <span style="margin-left:auto;font-size:13px;font-weight:700;border-radius:999px;padding:3px 10px;{{ c.badgeSt }}">{{ c.badge }}</span>
+        </div>
+
+        <div style="padding:16px 18px 6px;display:flex;flex-direction:column;gap:10px">
+          <sc-if value="{{ c.showList }}" hint-placeholder-val="{{ true }}">
+            <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px">
+              <sc-for list="{{ c.items }}" as="i" hint-placeholder-count="3">
+                <li style="display:flex;gap:10px;align-items:baseline;font-size:15px;color:#1a1a1a;padding:4px 0"><span aria-hidden="true" style="color:#3d5a3e;font-weight:700">✓</span><span style="display:flex;flex-direction:column"><span>{{ i.label }}<sc-if value="{{ i.isReq }}" hint-placeholder-val="{{ false }}"> <span style="font-size:12px;font-weight:700;color:#6b500c;background:#fdf6e3;border-radius:999px;padding:1px 8px;margin-left:4px">Requested</span></sc-if> <span style="font-size:13px;color:#787060">· {{ i.meta }}</span></span></span></li>
+              </sc-for>
+              <sc-for list="{{ c.taken }}" as="i" hint-placeholder-count="1">
+                <li style="display:flex;gap:10px;align-items:baseline;font-size:15px;color:#1a1a1a;padding:4px 0"><span aria-hidden="true" style="color:#3d5a3e;font-weight:700">✓</span><span style="display:flex;flex-direction:column"><span>{{ i.label }} <span style="font-size:13px;color:#787060">· {{ i.meta }}</span></span></span></li>
+              </sc-for>
+            </ul>
+          </sc-if>
+          <sc-if value="{{ c.showLoadLine }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <div style="font-size:13px;color:#363636"><strong>Teaching load:</strong> {{ c.loadText }}</div>
+              <sc-if value="{{ c.hasNeedsNudge }}" hint-placeholder-val="{{ false }}">
+                <div style="font-size:14px;color:#6b500c;background:#fdf6e3;border-radius:4px;padding:8px 12px">{{ c.needsNudge }}</div>
+              </sc-if>
+            </div>
+          </sc-if>
+          <sc-if value="{{ c.isDone }}" hint-placeholder-val="{{ false }}">
+            <div style="background:#fdf6e3;border-radius:4px;padding:12px 14px;font-size:15px;line-height:1.5;color:#363636">{{ c.doneText }}</div>
+          </sc-if>
+        </div>
+
+        <div style="padding:10px 18px 14px;display:flex;flex-direction:column;gap:8px">
+          <sc-if value="{{ c.hasQuestion }}" hint-placeholder-val="{{ true }}"><div id="{{ c.qid }}" style="font-size:15px;font-weight:700;color:#1a1a1a">{{ c.question }}</div></sc-if>
+          <div role="radiogroup" aria-labelledby="{{ c.qid }}" style="display:flex;flex-direction:column;gap:8px">
+            <sc-for list="{{ c.choicesBefore }}" as="o" hint-placeholder-count="2">
+              <button role="radio" aria-checked="{{ o.checked }}" onClick="{{ o.pick }}" style="display:flex;align-items:center;gap:12px;min-height:60px;padding:10px 14px;border:2px solid;border-radius:4px;text-align:left;cursor:pointer;{{ o.st }}">
+                <span aria-hidden="true" style="flex:none;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;{{ o.dotSt }}">{{ o.dot }}</span>
+                <span style="display:flex;flex-direction:column;gap:2px">
+                  <span style="font-size:16px;font-weight:700">{{ o.label }}</span>
+                  <sc-if value="{{ o.hasSub }}" hint-placeholder-val="{{ true }}"><span style="font-size:13px;opacity:.85">{{ o.sub }}</span></sc-if>
+                </span>
+              </button>
+            </sc-for>
+
+            <sc-if value="{{ c.scoutPanel }}" hint-placeholder-val="{{ false }}">
+              <div style="background:#faf6ef;border:1px solid #e2d9cc;border-radius:4px;padding:14px;display:flex;flex-direction:column;gap:12px">
+                <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+                  <span style="font-size:15px;font-weight:700;color:#1a1a1a">{{ c.changeTitle }}</span>
+                  <span role="status" style="margin-left:auto;font-size:13px;font-weight:600;color:#3d5a3e">{{ c.saved }}</span>
+                </div>
+                <div role="status" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-radius:4px;padding:8px 12px;font-size:14px;{{ c.capSt }}">
+                  <strong style="font-variant-numeric:tabular-nums">{{ c.capCount }}</strong>
+                  <span>{{ c.capText }}</span>
+                </div>
+                <sc-if value="{{ c.hasItems }}" hint-placeholder-val="{{ true }}">
+                  <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px">
+                    <sc-for list="{{ c.items }}" as="i" hint-placeholder-count="3">
+                      <li>
+                        <label style="display:flex;align-items:flex-start;gap:12px;min-height:48px;padding:10px 12px;border-radius:4px;cursor:pointer;{{ i.st }}">
+                          <input type="checkbox" checked="{{ i.on }}" onChange="{{ i.toggle }}" disabled="{{ i.locked }}" style="width:20px;height:20px;margin-top:1px;flex:none">
+                          <span style="display:flex;flex-direction:column;gap:2px">
+                            <span style="font-size:15px;font-weight:600;color:#1a1a1a">{{ i.label }}<sc-if value="{{ i.isReq }}" hint-placeholder-val="{{ false }}"> <span style="font-size:12px;font-weight:700;color:#6b500c;background:#fdf6e3;border-radius:999px;padding:1px 8px;margin-left:4px">Requested</span></sc-if></span>
+                            <span style="font-size:13px;color:#787060">{{ i.sub }}</span>
+                          </span>
+                        </label>
+                      </li>
+                    </sc-for>
+                  </ul>
+                </sc-if>
+                <sc-if value="{{ c.hasAlso }}" hint-placeholder-val="{{ true }}">
+                  <div style="display:flex;flex-direction:column;gap:6px">
+                    <div style="font-size:13px;font-weight:700;color:#1a1a1a">Also on Sunday&nbsp;</div>
+                    <sc-for list="{{ c.alsoList }}" as="a" hint-placeholder-count="2">
+                      <button onClick="{{ a.pick }}" aria-pressed="{{ a.pressed }}" disabled="{{ a.disabled }}" style="display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:48px;padding:8px 12px;border:1px solid;border-radius:4px;text-align:left;cursor:pointer;font-size:14px;{{ a.st }}"><span><strong>{{ a.label }}</strong><br><span style="font-size:13px;opacity:.85">{{ a.sub }}</span></span><span style="font-weight:700;white-space:nowrap">{{ a.mark }}</span></button>
+                    </sc-for>
+                  </div>
+                </sc-if>
+                <label style="display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:700;color:#1a1a1a">Request something not on the list
+                  <input value="{{ c.q }}" onChange="{{ c.onQ }}" placeholder="Search: knots, swimming, 2c, cooking…" style="min-height:44px;padding:0 12px;border:1px solid #c8bfaf;border-radius:4px;font-size:16px;color:#1a1a1a;background:#ffffff">
+                </label>
+                <sc-for list="{{ c.found }}" as="f" hint-placeholder-count="3">
+                  <button onClick="{{ f.pick }}" disabled="{{ f.disabled }}" style="display:flex;gap:10px;align-items:center;min-height:44px;padding:6px 12px;border:1px solid #e2d9cc;border-radius:4px;background:#ffffff;text-align:left;cursor:pointer;font-size:14px;color:#1a1a1a"><span style="font-weight:700;color:#1e3a4a;min-width:120px">{{ f.code }}</span><span style="flex:1">{{ f.label }}</span><span style="font-weight:700;{{ f.markSt }}">{{ f.mark }}</span></button>
+                </sc-for>
+                <div style="font-size:13px;color:#787060">Each change saves as you make it. There's nothing else to press. Anything outside the plan goes to the planners as a request. It isn't guaranteed, and a leader will let you know before Sunday if it can't fit.</div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ c.teachPanel }}" hint-placeholder-val="{{ false }}">
+              <div style="background:#faf6ef;border:1px solid #e2d9cc;border-radius:4px;padding:14px;display:flex;flex-direction:column;gap:14px">
+                <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+                  <sc-if value="{{ c.isEmptyAdult }}" hint-placeholder-val="{{ false }}"><span style="font-family:Lora,Georgia,serif;font-size:17px;line-height:1.5;color:#1a1a1a">{{ c.emptyIntro }}</span></sc-if>
+                  <sc-if value="{{ c.notEmptyAdult }}" hint-placeholder-val="{{ true }}"><span style="font-size:15px;font-weight:700;color:#1a1a1a">{{ c.changeTitle }}</span></sc-if>
+                  <span role="status" style="margin-left:auto;font-size:13px;font-weight:600;color:#3d5a3e">{{ c.saved }}</span>
+                </div>
+                <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px">
+                  <sc-for list="{{ c.items }}" as="i" hint-placeholder-count="3">
+                    <li>
+                      <label style="display:flex;align-items:flex-start;gap:12px;min-height:48px;padding:10px 12px;border-radius:4px;cursor:pointer;{{ i.st }}">
+                        <input type="checkbox" checked="{{ i.on }}" onChange="{{ i.toggle }}" disabled="{{ i.locked }}" style="width:20px;height:20px;margin-top:1px;flex:none">
+                        <span style="display:flex;flex-direction:column;gap:2px">
+                          <span style="font-size:15px;font-weight:600;color:#1a1a1a">{{ i.label }}<sc-if value="{{ i.isReq }}" hint-placeholder-val="{{ false }}"> <span style="font-size:12px;font-weight:700;color:#6b500c;background:#fdf6e3;border-radius:999px;padding:1px 8px;margin-left:4px">Requested</span></sc-if></span>
+                          <span style="font-size:13px;color:#787060">{{ i.sub }}</span><sc-if value="{{ i.hasParts }}" hint-placeholder-val="{{ false }}"><span style="display:flex;flex-direction:column;gap:1px;margin-top:3px"><sc-for list="{{ i.parts }}" as="pt" hint-placeholder-count="3"><span style="font-size:13px;color:#363636">{{ pt.t }}</span></sc-for></span></sc-if>
+                        </span>
+                      </label>
+                    </li>
+                  </sc-for>
+                </ul>
+                <div role="status" style="display:flex;flex-direction:column;gap:8px;border-radius:4px;padding:10px 12px;{{ c.loadSt }}">
+                  <div style="display:flex;flex-wrap:wrap;gap:4px 14px;align-items:baseline;font-size:14px">
+                    <strong>{{ c.first }}'s Sunday</strong>
+                    <span style="font-variant-numeric:tabular-nums">{{ c.loadClasses }}</span>
+                    <span style="font-variant-numeric:tabular-nums">{{ c.loadMinutes }}</span>
+                  </div>
+                  <div aria-hidden="true" style="position:relative;height:8px;border-radius:4px;background:#e2d9cc"><div style="position:absolute;left:0;top:0;bottom:0;border-radius:4px;{{ c.loadBarSt }}"></div></div>
+                  <div style="font-size:13px">{{ c.loadNote }}</div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:6px">
+                  <div style="font-size:13px;font-weight:700;color:#1a1a1a">Classes that need a teacher · Sun, Nov 1</div>
+                  <sc-for list="{{ c.needClasses }}" as="w" hint-placeholder-count="3">
+                    <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid;border-radius:4px;{{ w.st }}">
+                      <span style="flex:1;display:flex;flex-direction:column;gap:2px;font-size:14px">
+                        <strong style="color:#1a1a1a">{{ w.label }} <span style="font-weight:600;color:#787060">· {{ w.minText }}</span></strong>
+                        <span style="font-size:13px;color:#787060">{{ w.meta }}</span>
+                        <sc-for list="{{ w.parts }}" as="pt" hint-placeholder-count="2"><span style="font-size:13px;color:#363636">{{ pt.t }}</span></sc-for>
+                        <sc-if value="{{ w.blocked }}" hint-placeholder-val="{{ false }}"><span style="font-size:12.5px;font-weight:600;color:#6b500c">{{ w.why }}</span></sc-if>
+                      </span>
+                      <sc-if value="{{ w.canTake }}" hint-placeholder-val="{{ true }}">
+                        <button onClick="{{ w.toggle }}" aria-pressed="{{ w.pressed }}" disabled="{{ w.blocked }}" style="min-height:44px;padding:0 12px;border:1px solid;border-radius:4px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;{{ w.btnSt }}">{{ w.btn }}</button>
+                      </sc-if>
+                      <sc-if value="{{ w.adultsOnly }}" hint-placeholder-val="{{ false }}"><span style="font-size:12.5px;font-weight:700;color:#787060">Adults only</span></sc-if>
+                    </div>
+                  </sc-for>
+                  <sc-if value="{{ c.noNeeds }}" hint-placeholder-val="{{ false }}"><span style="font-size:13px;color:#787060">Every class on Sunday's plan has a teacher.</span></sc-if>
+                </div>
+                <sc-if value="{{ c.isEmptyAdult }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;flex-direction:column;gap:6px">
+                    <div style="font-size:13px;font-weight:700;color:#1a1a1a">Classes with a teacher · help teach one</div>
+                    <sc-for list="{{ c.helpClasses }}" as="w" hint-placeholder-count="2">
+                      <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid;border-radius:4px;{{ w.st }}">
+                        <span style="flex:1;display:flex;flex-direction:column;gap:2px;font-size:14px">
+                          <strong style="color:#1a1a1a">{{ w.label }} <span style="font-weight:600;color:#787060">· {{ w.minText }}</span></strong>
+                          <span style="font-size:13px;color:#787060">{{ w.meta }}</span>
+                          <sc-for list="{{ w.parts }}" as="pt" hint-placeholder-count="2"><span style="font-size:13px;color:#363636">{{ pt.t }}</span></sc-for>
+                          <sc-if value="{{ w.blocked }}" hint-placeholder-val="{{ false }}"><span style="font-size:12.5px;font-weight:600;color:#6b500c">{{ w.why }}</span></sc-if>
+                        </span>
+                        <button onClick="{{ w.toggle }}" aria-pressed="{{ w.pressed }}" disabled="{{ w.blocked }}" style="min-height:44px;padding:0 12px;border:1px solid;border-radius:4px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;{{ w.btnSt }}">{{ w.btn }}</button>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ c.notEmptyAdult }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex;flex-direction:column;gap:6px">
+                  <div style="font-size:13px;font-weight:700;color:#1a1a1a">Scouts are asking for these · take one on</div>
+                  <sc-for list="{{ c.wanted }}" as="w" hint-placeholder-count="3">
+                    <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid;border-radius:4px;{{ w.st }}">
+                      <span style="flex:1;display:flex;flex-direction:column;gap:2px;font-size:14px">
+                        <strong style="color:#1a1a1a">{{ w.label }}</strong>
+                        <span style="font-size:13px;color:#787060">{{ w.meta }}</span>
+                        <span style="font-size:13px;color:#363636">{{ w.names }}</span>
+                        <sc-if value="{{ w.flagged }}" hint-placeholder-val="{{ false }}"><span style="font-size:12.5px;font-weight:600;color:#6b500c">{{ w.flag }}</span></sc-if>
+                        <sc-if value="{{ w.blocked }}" hint-placeholder-val="{{ false }}"><span style="font-size:12.5px;font-weight:600;color:#6b500c">{{ w.why }}</span></sc-if>
+                      </span>
+                      <sc-if value="{{ w.canTake }}" hint-placeholder-val="{{ true }}">
+                        <button onClick="{{ w.toggle }}" aria-pressed="{{ w.pressed }}" disabled="{{ w.blocked }}" style="min-height:44px;padding:0 12px;border:1px solid;border-radius:4px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;{{ w.btnSt }}">{{ w.btn }}</button>
+                      </sc-if>
+                      <sc-if value="{{ w.adultsOnly }}" hint-placeholder-val="{{ false }}"><span style="font-size:12.5px;font-weight:700;color:#787060">Adults only</span></sc-if>
+                    </div>
+                  </sc-for>
+                </div>
+                </sc-if>
+                <sc-for list="{{ c.offers }}" as="f" hint-placeholder-count="1">
+                  <div style="display:flex;align-items:center;gap:10px;padding:6px 12px;border:1px dashed #c8bfaf;border-radius:4px;font-size:14px;background:#ffffff">
+                    <span style="flex:1;color:#1a1a1a"><strong>{{ f.label }}</strong> <span style="color:#787060">· your offer · {{ f.dates }}</span></span>
+                    <button onClick="{{ f.withdraw }}" aria-label="{{ f.withdrawLabel }}" style="min-height:40px;padding:0 10px;border:0;background:transparent;color:#1e3a4a;text-decoration:underline;font-size:14px;cursor:pointer">Withdraw</button>
+                  </div>
+                </sc-for>
+                <sc-if value="{{ c.offerClosed }}" hint-placeholder-val="{{ true }}">
+                  <div style="border-top:1px solid #e4d9c4;padding-top:6px">
+                    <a href="#" onClick="{{ c.openOffer }}" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;font-weight:600;color:#1e3a4a;text-decoration:underline">Offer something</a>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ c.offerOpen }}" hint-placeholder-val="{{ false }}">
+                  <div role="group" aria-label="Offer something" style="border-top:1px solid #e4d9c4;padding-top:12px;display:flex;flex-direction:column;gap:10px">
+                    <div style="font-size:13px;font-weight:700;color:#1a1a1a">Offer something</div>
+                    <div role="radiogroup" aria-label="What you'd offer" style="display:inline-flex;border:1px solid #c8bfaf;border-radius:4px;overflow:hidden;align-self:flex-start">
+                      <sc-for list="{{ c.offerTypes }}" as="t" hint-placeholder-count="3">
+                        <button role="radio" aria-checked="{{ t.checked }}" onClick="{{ t.pick }}" style="min-height:40px;padding:0 12px;border:0;border-right:1px solid #e2d9cc;font-size:13px;font-weight:600;cursor:pointer;{{ t.st }}">{{ t.label }}</button>
+                      </sc-for>
+                    </div>
+                    <sc-if value="{{ c.offerIsText }}" hint-placeholder-val="{{ false }}">
+                      <label style="display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:700;color:#1a1a1a">What you'll teach
+                        <input value="{{ c.offerText }}" onChange="{{ c.onOfferText }}" style="min-height:44px;padding:0 12px;border-radius:4px;font-size:16px;background:#ffffff;{{ c.offerWhatSt }}">
+                      </label>
+                    </sc-if>
+                    <sc-if value="{{ c.offerIsPick }}" hint-placeholder-val="{{ true }}">
+                      <label style="display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:700;color:#1a1a1a">{{ c.offerPickLabel }}
+                        <select value="{{ c.offerPick }}" onChange="{{ c.onOfferPick }}" style="min-height:44px;padding:0 8px;border-radius:4px;font-size:16px;background:#ffffff;{{ c.offerWhatSt }}">
+                          <option value="">Choose…</option>
+                          <sc-for list="{{ c.offerOptions }}" as="op" hint-placeholder-count="3"><option value="{{ op.v }}">{{ op.v }}</option></sc-for>
+                        </select>
+                      </label>
+                    </sc-if>
+                    <fieldset style="border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:6px">
+                      <legend style="font-size:13px;font-weight:700;color:#1a1a1a;margin-bottom:4px">Dates</legend>
+                      <div style="display:flex;flex-wrap:wrap;gap:12px">
+                        <sc-for list="{{ c.offerDates }}" as="d" hint-placeholder-count="3">
+                          <label style="display:inline-flex;align-items:center;gap:6px;min-height:40px;font-size:14px;cursor:pointer"><input type="checkbox" checked="{{ d.on }}" onChange="{{ d.toggle }}" style="width:18px;height:18px">{{ d.label }}</label>
+                        </sc-for>
+                      </div>
+                    </fieldset>
+                    <label style="display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:700;color:#1a1a1a">Note <span style="font-weight:400;color:#787060">(optional)</span>
+                      <input value="{{ c.offerNote }}" onChange="{{ c.onOfferNote }}" style="min-height:44px;padding:0 12px;border:1px solid #c8bfaf;border-radius:4px;font-size:16px;background:#ffffff">
+                    </label>
+                    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                      <button onClick="{{ c.postOffer }}" style="min-height:44px;padding:0 18px;border:1px solid #1e3a4a;border-radius:4px;background:#1e3a4a;color:#ffffff;font-size:15px;font-weight:700;cursor:pointer">Post offer</button>
+                      <button onClick="{{ c.cancelOffer }}" style="min-height:44px;padding:0 10px;border:0;background:transparent;color:#1e3a4a;font-size:14px;text-decoration:underline;cursor:pointer">Cancel</button>
+                      <sc-if value="{{ c.offerHasErr }}" hint-placeholder-val="{{ false }}"><span role="alert" style="font-size:13px;font-weight:700;color:#8c3b3b">{{ c.offerErr }}</span></sc-if>
+                    </div>
+                  </div>
+                </sc-if>
+                <div style="font-size:13px;color:#787060">Each change saves as you make it. There's nothing else to press. Anything you take on or offer goes to the planners, and a leader will confirm before Sunday.</div>
+              </div>
+            </sc-if>
+
+            <sc-for list="{{ c.choicesAfter }}" as="o" hint-placeholder-count="1">
+              <button role="radio" aria-checked="{{ o.checked }}" onClick="{{ o.pick }}" style="display:flex;align-items:center;gap:12px;min-height:60px;padding:10px 14px;border:2px solid;border-radius:4px;text-align:left;cursor:pointer;{{ o.st }}">
+                <span aria-hidden="true" style="flex:none;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;{{ o.dotSt }}">{{ o.dot }}</span>
+                <span style="display:flex;flex-direction:column;gap:2px">
+                  <span style="font-size:16px;font-weight:700">{{ o.label }}</span>
+                  <sc-if value="{{ o.hasSub }}" hint-placeholder-val="{{ true }}"><span style="font-size:13px;opacity:.85">{{ o.sub }}</span></sc-if>
+                </span>
+              </button>
+            </sc-for>
+
+            <sc-if value="{{ c.showNote }}" hint-placeholder-val="{{ false }}">
+              <div style="background:#faf6ef;border:1px solid #e2d9cc;border-radius:4px;padding:12px 14px;display:flex;flex-direction:column;gap:8px">
+                <label for="{{ c.noteId }}" style="font-size:15px;font-weight:600;color:#1a1a1a">No problem. Anything you'd like us to know?</label>
+                <span style="font-size:13px;color:#787060">Optional. For example, another week that works, or another way you could help.</span>
+                <textarea id="{{ c.noteId }}" rows="3" maxlength="240" value="{{ c.note }}" onChange="{{ c.onNote }}" style="padding:10px 12px;border:1px solid #c8bfaf;border-radius:4px;font-size:16px;line-height:1.5;color:#1a1a1a;background:#ffffff;resize:none"></textarea>
+                <div style="display:flex;align-items:center;gap:10px">
+                  <span style="font-size:12px;color:#787060">{{ c.noteCount }}</span>
+                  <button onClick="{{ c.sendNote }}" disabled="{{ c.noteEmpty }}" style="margin-left:auto;min-height:44px;padding:0 18px;border:1px solid #1e3a4a;border-radius:4px;background:#1e3a4a;color:#ffffff;font-size:15px;font-weight:700;cursor:pointer">{{ c.noteSendLabel }}</button>
+                </div>
+              </div>
+            </sc-if>
+          </div>
+
+          <sc-if value="{{ c.isUnsure }}" hint-placeholder-val="{{ false }}">
+            <div role="status" style="font-size:14px;color:#363636;background:#e8eef2;border-radius:4px;padding:10px 12px">{{ c.unsureText }}</div>
+          </sc-if>
+          <sc-if value="{{ c.canClear }}" hint-placeholder-val="{{ false }}">
+            <div style="border-top:1px solid #e4d9c4;margin-top:6px;padding-top:6px">
+              <a href="#" onClick="{{ c.clear }}" aria-label="{{ c.clearLabel }}" style="display:inline-flex;align-items:center;min-height:44px;font-size:14px;font-weight:600;color:#1e3a4a;text-decoration:underline;cursor:pointer">Not sure yet? Clear this answer</a>
+            </div>
+          </sc-if>
+          <sc-if value="{{ c.askingClear }}" hint-placeholder-val="{{ false }}">
+            <div role="group" aria-labelledby="{{ c.askId }}" style="background:#fdf6e3;border:1px solid #e9d8a6;border-radius:4px;padding:14px;display:flex;flex-direction:column;gap:10px">
+              <div id="{{ c.askId }}" style="font-size:15px;font-weight:700;color:#1a1a1a">{{ c.askTitle }}</div>
+              <div style="font-size:14px;line-height:1.5;color:#363636">{{ c.askText }}</div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <button onClick="{{ c.clearAll }}" style="min-height:48px;padding:8px 14px;border:2px solid #1e3a4a;border-radius:4px;background:#1e3a4a;color:#ffffff;font-size:15px;font-weight:700;text-align:left;cursor:pointer">{{ c.askYes }}</button>
+                <button onClick="{{ c.clearKeep }}" style="min-height:48px;padding:8px 14px;border:2px solid #c8bfaf;border-radius:4px;background:#ffffff;color:#1e3a4a;font-size:15px;font-weight:700;text-align:left;cursor:pointer">{{ c.askNo }}</button>
+              </div>
+              <a href="#" onClick="{{ c.cancelClear }}" style="align-self:flex-start;display:inline-flex;align-items:center;min-height:40px;font-size:14px;color:#1e3a4a;text-decoration:underline">Never mind, keep my answer</a>
+            </div>
+          </sc-if>
+        </div>
+      </section>
+    </sc-for>
+
+    <footer style="display:flex;flex-direction:column;gap:6px;font-size:13px;line-height:1.5;color:#787060;padding-top:4px">
+      <div>Plans can change before Sunday. If a group or teacher changes, we'll email you.</div>
+      <div>You opened this from an email link, so there's no sign-in. The link works until 6:00 PM on Sunday, Nov 1. Questions? <a href="#">Email a leader</a>.</div>
+    </footer>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"viewer":{"editor":"enum","options":["Parent of two scouts","Parent of a scout who finished everything","Scout, Star rank","Parent who also teaches","Adult teacher","Junior Leader"],"default":"Parent of two scouts"},"$preview":{"width":760,"height":2400},"ledeFamily":{"editor":"text","default":"Here&#39;s what&#39;s planned for {scouts} Sunday. One tap per card tells us whether the plan works.","section":"Copy · use {name}, {group}, {scouts}, {first}"},"ledeScout":{"editor":"text","default":"Here&#39;s what&#39;s planned for you Sunday. One tap tells us whether the plan works.","section":"Copy · use {name}, {group}, {scouts}, {first}"},"ledeTeacher":{"editor":"text","default":"Hi {first}. Here&#39;s what you&#39;re teaching Sunday. One tap tells us whether the plan works.","section":"Copy · use {name}, {group}, {scouts}, {first}"},"allSetLabel":{"editor":"text","default":"✓ All of these plans look good","section":"Copy · use {name}, {group}, {scouts}, {first}"},"yesLabel":{"editor":"text","default":"This plan looks good","section":"Copy · use {name}, {group}, {scouts}, {first}"},"yesSub":{"editor":"text","default":"We&#39;ll plan on {name} in the {group} group","section":"Copy · use {name}, {group}, {scouts}, {first}"},"changeLabel":{"editor":"text","default":"Change my plan","section":"Copy · use {name}, {group}, {scouts}, {first}"},"changeSub":{"editor":"text","default":"Untick something, or request something else","section":"Copy · use {name}, {group}, {scouts}, {first}"},"outLabel":{"editor":"text","default":"Can&#39;t make it this week","section":"Copy · use {name}, {group}, {scouts}, {first}"},"outSub":{"editor":"text","default":"We&#39;ll take {name} off Sunday&#39;s plan","section":"Copy · use {name}, {group}, {scouts}, {first}"}}'>
+// Everyone gets the same card: a plan, one set of choices, the edit area under "Change my plan", and
+// "Not sure yet? Clear this answer" once there's an answer.
+const PEOPLE={
+  lily:{first:"Lily",kind:"rank",group:"Second Class",sub:"Second Class group · with Dan V",plan:[["Second Class 6a","First aid for Second Class"],["Second Class 6c","Reduce injuries on campouts"],["Second Class 6d","Emergencies at home and in the wild"]]},
+  simon:{first:"Simon",kind:"rank",group:"Second Class",sub:"Second Class group · with Dan V",plan:[["Second Class 6b","Breathing, stroke, poison, bleeding"],["Second Class 6e","Car accident response"]]},
+  kevin:{first:"Kevin",kind:"done",group:"Second Class",sub:"Second Class group",plan:[]},
+  finn:{first:"Finn",kind:"mb",group:"Merit badge",sub:"Merit badge group · with Karen O, counselor",plan:[["Merit badge","First Aid merit badge","with a merit badge counselor"]]},
+  anjali:{first:"Anjali",kind:"mb",group:"Merit badge",sub:"Merit badge group · with Karen O, counselor",plan:[["Merit badge","First Aid merit badge","with a merit badge counselor"]]},
+  patrick:{first:"Patrick",kind:"teach",group:"Tenderfoot",sub:"Teaching the Tenderfoot group · 7 scouts",plan:[["Tenderfoot 4a–4d","First aid for Tenderfoot","7 scouts",40,["4a · First aid for Tenderfoot","4b · Poisonous and hazardous plants","4c · Safety on campouts","4d · Make a first aid kit"]]]},
+  dan:{first:"Dan",kind:"teach",group:"Second Class",sub:"Teaching the Second Class group · 9 scouts",plan:[["Second Class 6a–6e","First aid for Second Class","9 scouts",45,["6a · First aid for Second Class","6b · Breathing, stroke, poison, bleeding","6c · Reduce injuries on campouts","6d · Emergencies at home and in the wild","6e · Car accident response"]]]},
+  mark:{first:"Mark",kind:"teach",group:"",sub:"No class yet",plan:[]},
+  henry:{first:"Henry",kind:"teach",jl:true,group:"Tenderfoot",sub:"Helping teach the Tenderfoot group · with Patrick B",plan:[["Tenderfoot 4b, 4d","First aid for Tenderfoot (helping)","7 scouts",20,["4b · Poisonous and hazardous plants","4d · Make a first aid kit"]]]}
+};
+const VIEWERS={
+  "Parent of two scouts":{line:"For Laura P · Lily and Simon",cards:["lily","simon"]},
+  "Parent of a scout who finished everything":{line:"For Amy P · Kevin",cards:["kevin"]},
+  "Scout, Star rank":{line:"For Finn P",cards:["finn"],self:"finn"},
+  "Parent who also teaches":{line:"For Patrick B · Anjali and you",cards:["anjali","patrick"],self:"patrick"},
+  "Adult teacher":{line:"For Dan V",cards:["dan"],self:"dan"},
+  "Adult with nothing assigned":{line:"For Mark F",cards:["mark"],self:"mark"},
+  "Junior Leader":{line:"For Henry E",cards:["henry"],self:"henry"}
+};
+const SCENARIO_LABELS=[["Parent of two scouts","Parent · two scouts"],["Parent of a scout who finished everything","Parent · scout finished everything"],["Scout, Star rank","Star scout"],["Parent who also teaches","Parent who teaches"],["Adult teacher","Adult teacher"],["Adult with nothing assigned","Adult · nothing assigned"],["Junior Leader","Junior Leader"]];
+// Expected minutes per requirement, from the class-duration lookup table.
+const CLASS_MIN={"Second Class 6a":10,"Second Class 6b":15,"Second Class 6c":10,"Second Class 6d":10,"Second Class 6e":10,"Merit badge":45,
+  "Tenderfoot 3d":20,"Second Class 2f":10,"Second Class 2g":10,"Second Class 3a":30,"Second Class 4":15,"Second Class 8c":15,"First Class 3b":10,"First Class 5b":15,
+  "Cooking MB":60,"Swimming MB":60,"Emergency Preparedness MB":45};
+const withMin=(code,min)=>{const m=min!=null?min:CLASS_MIN[code];return m?code+" - "+m+" min":code;};
+const ALSO={
+  rank:[{k:"fc",label:"Work ahead: First Class first aid",sub:"First Class 7a–7f - 30 min · with the First Class group",min:30},{k:"mb",label:"First Aid merit badge",sub:"Merit badge - 45 min · usually First Class and up · a leader will confirm",min:45}],
+  done:[{k:"teach",label:"Help teach first aid",sub:"15 min · show younger scouts what Kevin already knows",min:15},{k:"mb",label:"First Aid merit badge",sub:"Merit badge - 45 min · usually First Class and up · a leader will confirm",min:45}],
+  mb:[{k:"teach",label:"Help teach first aid",sub:"15 min · with the Tenderfoot group and Patrick B",min:15}]
+};
+const REQUESTABLE=[["Tenderfoot 3d","Knife, saw and ax care"],["Second Class 2f","Sheet bend and its use"],["Second Class 2g","Bowline and its use"],["Second Class 3a","Orient and read a map"],["Second Class 4","Signs of 10 wild animals"],["Second Class 8c","Budget to earn an item"],["First Class 3b","Timber hitch and clove hitch"],["First Class 5b","Weather forecast"],["Cooking MB","Merit badge: Cooking"],["Swimming MB","Merit badge: Swimming"],["Emergency Preparedness MB","Merit badge: Emergency Preparedness"]];
+const WANTED=[
+  {k:"tf3d",label:"Knife, saw and ax care",meta:"Tenderfoot 3d · 20 min · 3 scouts · asked 2 weeks",names:"Hazel S, Piper K, Quinn B",mine:true,min:20},
+  {k:"2c3a",label:"Orient and read a map",meta:"Second Class 3a · 30 min · 2 scouts · asked 1 week",names:"Damian N, Jack P",mine:true,min:30},
+  {k:"fc7c",label:"Heart attack signs and CPR",meta:"First Class 7c · 30 min · 2 scouts · asked 3 weeks",names:"Isaac H, Lee P",mine:false,adultsOnly:true,min:30}];
+// Classes on Sunday's plan that nobody is teaching yet. Minutes come from the class-duration lookup.
+const NEEDS=[
+  {k:"sc1",group:"Scout",label:"New scout basics",meta:"Scout group · 2 scouts",min:15,parts:["1a · Scout Oath, Law, motto and slogan","1b · Scout spirit","1c · Sign, salute and handshake"]},
+  {k:"2c2f",group:"Second Class",label:"Sheet bend and bowline",meta:"Second Class group · 4 scouts",min:20,parts:["2f · Sheet bend and its use","2g · Bowline and its use"]},
+  {k:"fc7",group:"First Class",label:"First aid for First Class",meta:"First Class group · 6 scouts",min:30,adultsOnly:true,parts:["7a · First aid for First Class","7b · Transport an injured person","7c · Heart attack signs and CPR"]},
+  {k:"mbfa",group:"Merit badge",label:"First Aid merit badge",meta:"Merit badge group · 4 scouts · registered counselors only",min:45,adultsOnly:true,parts:["Requirements 1–3 this week"]}];
+// No one teaches more than this on one Sunday, so nobody signs up for more than they can deliver.
+// Classes that already have a teacher; another adult can help teach them.
+const TAUGHT=[
+  {k:"tfFA",group:"Tenderfoot",label:"First aid for Tenderfoot",meta:"Tenderfoot group · 7 scouts · taught by Patrick B",min:40,parts:["4a · First aid for Tenderfoot","4b · Poisonous and hazardous plants","4c · Safety on campouts","4d · Make a first aid kit"]},
+  {k:"2cFA",group:"Second Class",label:"First aid for Second Class",meta:"Second Class group · 9 scouts · taught by Dan V",min:45,parts:["6a · First aid for Second Class","6b · Breathing, stroke, poison, bleeding","6c · Reduce injuries on campouts","6d · Emergencies at home and in the wild","6e · Car accident response"]}];
+const TEACH_MAX_CLASSES=3, TEACH_MAX_MIN=60;
+const OFFER_TYPES=[["skill","Skill"],["req","Requirement"],["ff","Something else"]];
+const OFFER_OPTIONS={skill:["First aid","Knots and lashings","Map and compass","Camp cooking"],req:["Tenderfoot 3d · Knife, saw and ax care","Second Class 2f · Sheet bend","Second Class 3a · Orient and read a map","First Class 3b · Timber hitch and clove hitch"]};
+const OFFER_DATES=["Sun, Nov 1","Sun, Nov 8","Sun, Nov 15"];
+const ON_GREEN="background:#eef2ee;color:#1a1a1a;border-color:#3d5a3e";
+const ON_NAVY="background:#e8eef2;color:#1a1a1a;border-color:#1e3a4a";
+const ON_GREY="background:#f4efe6;color:#1a1a1a;border-color:#787060";
+const OFF="background:#ffffff;color:#1a1a1a;border-color:#e2d9cc";
+const fill=(t,v)=>String(t).replace(/\{(\w+)\}/g,(m,k)=>v[k]!=null?v[k]:m);
+const COPY_DEFAULTS={ledeFamily:"Here's what's planned for {scouts} Sunday. One tap per card tells us whether the plan works.",ledeScout:"Here's what's planned for you Sunday. One tap tells us whether the plan works.",ledeJunior:"Hi {first}, here's what we have planned for you this Sunday. One tap tells us whether this works.",ledeTeacher:"Hi {first}. Here's what you're teaching Sunday. One tap tells us whether the plan works.",allSetLabel:"✓ All of these plans look good",yesLabel:"This plan looks good",yesSub:"We'll plan on {name} in the {group} group",changeLabel:"Change my plan",changeSub:"Untick something, or request something else",outLabel:"Can't make it this week",outSub:"We'll take {name} off Sunday's plan"};
+const plural=(n,w)=>n+" "+w+(n===1?"":(/s$/.test(w)?"es":"s"));
+// A scout's plan holds at most this many things for one meeting: planned items still ticked plus requests.
+const PLAN_MAX=4, SCOUT_MAX_MIN=60; // a scout plan: up to 4 things and no more minutes than one meeting
+
+class Component extends DCLogic {
+  state={s:{},view:null,returned:false};
+  copy(k){const v=this.props[k];return v!=null&&String(v).trim()?v:COPY_DEFAULTS[k];}
+  sc(id){return {answer:null,off:{},also:[],extras:[],q:"",take:{},offers:[],offer:null,offerErr:"",note:"",noteSent:false,...(this.state.s[id]||{})};}
+  upd(id,patch){this.setState({s:{...this.state.s,[id]:{...this.sc(id),...patch}}});}
+  renderVals(){
+    const st=this.state;
+    const vName=st.view||this.props.viewer||"Parent of two scouts";
+    const v=VIEWERS[vName]||VIEWERS["Parent of two scouts"];
+    const cards=v.cards.map(id=>{
+      const d=PEOPLE[id], s=this.sc(id), first=d.first, you=v.self===id, teach=d.kind==="teach";
+      const fv={name:you?"you":first,first,group:d.group,scouts:first};
+      const choice=(k,label,sub,on,opens)=>({k,label,sub,on,opens});
+      // The same three answers on every card; only the sub-lines differ.
+      const changeSub=teach?"Drop something, take on something scouts asked for, or offer something":d.kind==="done"?"Request helping teach, a merit badge, or something else":fill(this.copy("changeSub"),fv);
+      const yesSub=d.kind==="done"?"A leader will pick something good for "+first:(teach&&!d.plan.length)?"A leader will put "+(you?"you":first)+" where help is needed":fill(this.copy("yesSub"),fv);
+      const defs=[
+        choice("ok",fill(this.copy("yesLabel"),fv),yesSub,ON_GREEN),
+        choice("change",fill(this.copy("changeLabel"),fv),changeSub,ON_NAVY,true),
+        choice("out",fill(this.copy("outLabel"),fv),fill(this.copy("outSub"),fv),ON_GREY)];
+      const a=s.answer;
+      let badge="Needs an answer",badgeSt="background:#fdf6e3;color:#6b500c";
+      if(a==="unsure"){badge="Not sure yet";badgeSt="background:#e8eef2;color:#1e3a4a";}
+      else if(a==="out"){badge="Can't make it";badgeSt="background:#f4efe6;color:#787060";}
+      else if(a==="change"){badge="✓ Changes sent";badgeSt="background:#e8eef2;color:#1e3a4a";}
+      else if(a){badge="✓ Plan looks good";badgeSt="background:#eef2ee;color:#3d5a3e";}
+      const items=d.plan.map(([code,l,count,min,pl])=>{const on=!s.off[code];const m=teach?[code,count,min?min+" min":""].filter(Boolean).join(" · "):[withMin(code),count].filter(Boolean).join(" · ");return {label:l,meta:m,sub:m+(on?"":(teach?" · dropped":" · taken off")),on,min:teach?(min||0):(CLASS_MIN[code]||0),parts:(pl||[]).map(t=>({t})),hasParts:!!(pl&&pl.length),
+        st:on?"background:#eef2ee;border:1px solid #c9d8ca":"background:#ffffff;border:1px solid #e2d9cc",
+        toggle:()=>this.upd(id,{off:{...s.off,[code]:on}})};});
+      // Requests join the plan's checklist, ticked, tagged Requested; unticking one withdraws it.
+      (ALSO[d.kind]||[]).filter(o=>s.also.includes(o.k)).forEach(o=>items.push({label:o.label,meta:o.sub,sub:o.sub,on:true,isReq:true,min:o.min||0,
+        st:"background:#eef2ee;border:1px solid #c9d8ca",toggle:()=>this.upd(id,{also:s.also.filter(x=>x!==o.k)})}));
+      s.extras.forEach(x=>{const r=REQUESTABLE.find(q=>q[1]===x);const code=r?withMin(r[0]):"";items.push({label:x,meta:code,sub:code,on:true,isReq:true,min:r?(CLASS_MIN[r[0]]||0):0,
+        st:"background:#eef2ee;border:1px solid #c9d8ca",toggle:()=>this.upd(id,{extras:s.extras.filter(e=>e!==x)})});});
+      const nReq=items.filter(i=>i.isReq).length;
+      const nOn=items.filter(i=>i.on).length, full=!teach&&nOn>=PLAN_MAX;
+      // Minutes count too: a scout's plan can't run longer than one meeting.
+      const minOn=items.filter(i=>i.on).reduce((t,i)=>t+(i.min||0),0), minLeft=SCOUT_MAX_MIN-minOn;
+      const tooLong=m=>!teach&&m>minLeft, minFull=!teach&&minLeft<=0;
+      const reqMark=m=>full?"Limit reached":tooLong(m)?"Needs "+m+" min · "+Math.max(0,minLeft)+" left":"+ Request";
+      // At a limit, an unticked planned item can't be ticked again, and nothing that won't fit can be requested.
+      items.forEach(i=>{if(teach)return;i.locked=!i.on&&(full||tooLong(i.min));if(i.locked)i.sub=i.sub+(full?" · untick something to add this back":" · too long to fit · untick something to make room");});
+      const shownItems=items.filter(i=>i.on);
+      // Teaching load: classes on the plan still ticked, plus classes taken on, plus offers for this Sunday.
+      const need=s.need||{};
+      const help=s.help||{};
+      const takenNeeds=teach?NEEDS.filter(n=>need[n.k]):[], takenWanted=teach?WANTED.filter(w=>s.take[w.k]):[], takenHelp=teach?TAUGHT.filter(t=>help[t.k]):[];
+      const sundayOffers=teach?s.offers.filter(o=>o.dates.includes("Nov 1")).length:0;
+      const loadN=items.filter(i=>i.on).length+takenNeeds.length+takenWanted.length+takenHelp.length+sundayOffers;
+      const loadMin=items.filter(i=>i.on).reduce((x,i)=>x+i.min,0)+takenNeeds.reduce((x,n)=>x+n.min,0)+takenWanted.reduce((x,w)=>x+w.min,0)+takenHelp.reduce((x,t)=>x+t.min,0);
+      const fits=m=>loadN+1<=TEACH_MAX_CLASSES&&loadMin+m<=TEACH_MAX_MIN;
+      const whyNot=m=>loadN+1>TEACH_MAX_CLASSES?"You're at "+TEACH_MAX_CLASSES+" classes, the most for one Sunday. Drop one to take this.":"This would make "+(loadMin+m)+" minutes. Teaching is capped at "+TEACH_MAX_MIN+" minutes on a Sunday.";
+      if(teach) items.forEach(i=>{if(!i.on&&!fits(i.min)){i.locked=true;i.sub=i.sub+" · over your limit to add back";}});
+      // The line under the name is the group only: no teacher, no head count, no list of what's covered.
+      const gl=a=>{a=[...new Set(a.filter(Boolean))];return a.length?"the "+a.join(" and ")+" group"+(a.length>1?"s":""):"";};
+      const wantedGroup=w=>w.meta.split(" · ")[0].replace(/ \S+$/,"");
+      let groupLine;
+      if(!teach) groupLine=d.group+" group";
+      else {
+        // Teachers keep one variation: teaching vs helping teach. Still no co-teacher names or head counts.
+        const lead=gl([d.jl?"":d.group,...takenNeeds.map(n=>n.group),...takenWanted.map(wantedGroup)]), help2=gl([d.jl?d.group:"",...takenHelp.map(t=>t.group)]);
+        const parts=[lead&&"Teaching "+lead,help2&&(lead?"helping teach ":"Helping teach ")+help2].filter(Boolean);
+        groupLine=parts.length?parts.join(" · "):"Not teaching a group yet";
+      }
+      const taken=teach?[...takenNeeds.map(n=>({label:n.label,meta:n.meta.split(" · ")[0]+" · "+n.min+" min · taken on",parts:n.parts.map(t=>({t})),hasParts:true})),...takenWanted.map(w=>({label:w.label,meta:w.meta.split(" · ")[0]+" · "+w.min+" min · taken on",parts:[],hasParts:false})),...takenHelp.map(t=>({label:t.label,meta:t.meta.split(" · ")[0]+" · "+t.min+" min · helping "+t.meta.split("taught by ")[1],parts:t.parts.map(x=>({t:x})),hasParts:true}))]:[];
+      const atLimit=loadN>=TEACH_MAX_CLASSES||loadMin>=TEACH_MAX_MIN;
+      const openNeeds=teach?NEEDS.filter(n=>!need[n.k]&&n.group!==d.group).length:0;
+      const term=s.q.trim().toLowerCase();
+      const nOff=Object.values(s.off).filter(Boolean).length, nSug=s.also.length+s.extras.length, nTake=Object.values(s.take).filter(Boolean).length, nOffer=s.offers.length;
+      const parts=[];
+      if(nOff)parts.push(nOff+(teach?" dropped":(nOff===1?" change":" changes")));
+      const nTaken=nTake+Object.values(need).filter(Boolean).length+Object.values(s.help||{}).filter(Boolean).length;
+      if(nTaken)parts.push(nTaken+" taken on");
+      if(nOffer)parts.push(plural(nOffer,"offer"));
+      if(nSug)parts.push(plural(nSug,"request"));
+      const panelIdx=defs.findIndex(o=>o.opens);
+      const mk=o=>{const on=a===o.k;return {k:o.k,label:o.label,sub:o.sub,hasSub:!!o.sub,checked:on?"true":"false",dot:on?"✓":"",
+        st:on?o.on:OFF,dotSt:on?"background:#1e3a4a;color:#ffffff":"border:2px solid #c8bfaf",
+        pick:()=>this.upd(id,s.released?{answer:o.k,released:false,off:{}}:{answer:o.k})};};
+      // An adult with nothing yet skips the plan question: the class list is open, with only "Can't make it" below it.
+      const emptyAdult=teach&&!d.plan.length&&!(this.state.returned&&taken.length);
+      const ch=(emptyAdult?defs.filter(o=>o.k==="out"):defs).map(mk);
+      const cut=emptyAdult?0:(panelIdx<0?ch.length:panelIdx+1);
+      // Offer form
+      const of=s.offer;
+      const offerType=of?of.type:"skill";
+      const offerWhat=of?(offerType==="ff"?of.text:of.pick):"";
+      const setOffer=p=>this.upd(id,{offer:{...of,...p},offerErr:""});
+      const title=first+"'s plan";
+      return {hid:"card-"+id,qid:"q-"+id,noteId:"note-"+id,
+        planTitle:title,planSub:groupLine,isJl:!!d.jl,badge,badgeSt,
+        showList:(d.plan.length>0||nReq>0||taken.length>0)&&a!=="out"&&a!=="change",items,taken,
+        isDone:d.kind==="done"&&a!=="out"&&a!=="change",
+        doneText:teach?first+" doesn't have a class yet. Choose Change my plan to take on a class that needs a teacher, or pick This plan looks good and a leader will put "+first+" where help is needed.":"Nice work: Kevin has finished every first aid requirement for his rank and the next one. A leader can pick something good for him, or you can request something.",
+        hasItems:items.length>0,
+        question:"How does "+first+"'s plan look?",hasQuestion:!emptyAdult,
+        isEmptyAdult:emptyAdult,notEmptyAdult:!emptyAdult,
+        emptyIntro:"Hi "+first+", you're not signed up for anything yet. Can you help teach any of the items below?",
+        choicesBefore:ch.slice(0,cut),choicesAfter:ch.slice(cut),
+        scoutPanel:a==="change"&&!teach,teachPanel:teach&&(a==="change"||(emptyAdult&&a!=="out")),
+        changeTitle:"Change "+first+"'s plan",
+        saved:parts.length?"✓ Saved · "+parts.join(", ")+" sent to the planners":"",
+        hasAlso:(ALSO[d.kind]||[]).some(o=>!s.also.includes(o.k)),
+        alsoList:(ALSO[d.kind]||[]).filter(o=>!s.also.includes(o.k)).map(o=>{const on=s.also.includes(o.k);const no=full||tooLong(o.min||0);return {label:o.label,sub:o.sub,pressed:on?"true":"false",disabled:no,mark:on?"✓ Requested":reqMark(o.min||0),
+          st:on?"background:#eef2ee;color:#3d5a3e;border-color:#3d5a3e":"background:#ffffff;color:#1a1a1a;border-color:#c8bfaf",
+          pick:()=>this.upd(id,{also:on?s.also.filter(x=>x!==o.k):[...s.also,o.k]})};}),
+        
+        q:s.q,onQ:e=>this.upd(id,{q:e.target.value}),
+        found:term?REQUESTABLE.filter(r=>!s.extras.includes(r[1])&&(r[0]+" "+r[0].replace("Tenderfoot","TF").replace("Second Class","2C").replace("First Class","FC")+" "+r[1]).toLowerCase().includes(term)).slice(0,5).map(r=>{const m=CLASS_MIN[r[0]]||0,no=full||tooLong(m);return {code:withMin(r[0]),label:r[1],disabled:no,mark:reqMark(m),markSt:no?"color:#787060":"color:#3d5a3e",pick:()=>{if(no)return;this.upd(id,{extras:[...s.extras,r[1]],q:""});}};}):[],
+        wanted:WANTED.map(w=>{const on=!!s.take[w.k];const canTake=!(d.jl&&w.adultsOnly);const blocked=!on&&!fits(w.min);
+          return {label:w.label,meta:w.meta,names:w.names,flagged:false,flag:"Outside your teaching skills · you can still take it",canTake,adultsOnly:!canTake,blocked,why:blocked?whyNot(w.min):"",
+            pressed:on?"true":"false",btn:on?"✓ Teaching":"I'll teach this",
+            st:on?"background:#eef2ee;border-color:#3d5a3e":"background:#ffffff;border-color:#e2d9cc",
+            btnSt:on?"background:#3d5a3e;color:#ffffff;border-color:#3d5a3e":"background:#ffffff;color:#1e3a4a;border-color:#c8bfaf",
+            toggle:()=>this.upd(id,{take:{...s.take,[w.k]:!on}})};}),
+        needClasses:NEEDS.filter(n=>n.group!==d.group).map(n=>{const on=!!need[n.k];const canTake=!(d.jl&&n.adultsOnly);const blocked=!on&&!fits(n.min);
+          return {label:n.label,meta:n.meta,minText:n.min+" min",parts:n.parts.map(t=>({t})),canTake,adultsOnly:!canTake,blocked,why:blocked?whyNot(n.min):"",
+            pressed:on?"true":"false",btn:on?"✓ Teaching":"I'll teach this",
+            st:on?"background:#eef2ee;border-color:#3d5a3e":"background:#ffffff;border-color:#e2d9cc",
+            btnSt:on?"background:#3d5a3e;color:#ffffff;border-color:#3d5a3e":"background:#ffffff;color:#1e3a4a;border-color:#c8bfaf",
+            toggle:()=>{if(!on&&!fits(n.min))return;const nn={...need,[n.k]:!on};this.upd(id,{need:nn,...(emptyAdult?{answer:Object.values(nn).some(Boolean)||Object.values(help).some(Boolean)?"ok":null}:{})});}};}),
+        helpClasses:TAUGHT.map(t=>{const on=!!help[t.k];const blocked=!on&&!fits(t.min);
+          return {label:t.label,meta:t.meta,minText:t.min+" min",parts:t.parts.map(x=>({t:x})),blocked,why:blocked?whyNot(t.min):"",
+            pressed:on?"true":"false",btn:on?"✓ Helping":"I'll help teach",
+            st:on?"background:#eef2ee;border-color:#3d5a3e":"background:#ffffff;border-color:#e2d9cc",
+            btnSt:on?"background:#3d5a3e;color:#ffffff;border-color:#3d5a3e":"background:#ffffff;color:#1e3a4a;border-color:#c8bfaf",
+            toggle:()=>{if(!on&&!fits(t.min))return;const hh={...help,[t.k]:!on};this.upd(id,{help:hh,...(emptyAdult?{answer:Object.values(hh).some(Boolean)||Object.values(need).some(Boolean)?"ok":null}:{})});}};}),
+        noNeeds:NEEDS.filter(n=>n.group!==d.group).length===0,
+        loadClasses:loadN+" of "+TEACH_MAX_CLASSES+" classes",
+        loadMinutes:loadMin+" of "+TEACH_MAX_MIN+" minutes",
+        loadBarSt:"width:"+Math.min(100,Math.round(Math.max(loadMin/TEACH_MAX_MIN,loadN/TEACH_MAX_CLASSES)*100))+"%;background:"+(atLimit?"#a98020":"#3d5a3e"),
+        loadSt:atLimit?"background:#fdf6e3;color:#6b500c;border:1px solid #e9d8a6":"background:#ffffff;color:#363636;border:1px solid #e2d9cc",
+        loadNote:atLimit?first+"'s Sunday is full. To take on something else, drop a class first.":"Up to "+TEACH_MAX_CLASSES+" classes and "+TEACH_MAX_MIN+" minutes of teaching on a Sunday, so no one takes on more than they can deliver.",
+        showLoadLine:teach&&!emptyAdult&&a!=="out"&&a!=="change",
+        loadText:plural(loadN,"class")+" · "+loadMin+" of "+TEACH_MAX_MIN+" minutes",
+        hasNeedsNudge:teach&&openNeeds>0&&!atLimit&&(d.plan.length>0||taken.length>0),
+        needsNudge:plural(openNeeds,"class")+" on Sunday's plan still "+(openNeeds===1?"needs":"need")+" a teacher. Choose Change my plan to take one on.",
+        offers:s.offers.map((o,i)=>({label:o.what,dates:o.dates.join(", "),withdrawLabel:"Withdraw "+o.what,withdraw:()=>this.upd(id,{offers:s.offers.filter((x,j)=>j!==i)})})),
+        offerOpen:!!of,offerClosed:!of,
+        openOffer:e=>{if(e&&e.preventDefault)e.preventDefault();this.upd(id,{offer:{type:"skill",pick:"",text:"",dates:[0],note:""},offerErr:""});},
+        offerTypes:OFFER_TYPES.map(([k,l])=>{const on=offerType===k;return {label:l,checked:on?"true":"false",st:on?"background:#1e3a4a;color:#ffffff":"background:#ffffff;color:#1e3a4a",pick:()=>setOffer({type:k,pick:"",text:""})};}),
+        offerIsText:offerType==="ff",offerIsPick:offerType!=="ff",
+        offerPickLabel:offerType==="skill"?"Skill":"Requirement",
+        offerOptions:(OFFER_OPTIONS[offerType]||[]).map(x=>({v:x})),
+        offerPick:of?of.pick:"",onOfferPick:e=>setOffer({pick:e.target.value}),
+        offerText:of?of.text:"",onOfferText:e=>setOffer({text:e.target.value}),
+        offerWhatSt:s.offerErr&&!offerWhat?"border:2px solid #8c3b3b;background:#fbf0ee":"border:1px solid #c8bfaf",
+        offerDates:OFFER_DATES.map((dl,i)=>{const on=!!of&&of.dates.includes(i);return {label:dl,on,toggle:()=>setOffer({dates:on?of.dates.filter(x=>x!==i):[...of.dates,i]})};}),
+        offerNote:of?of.note:"",onOfferNote:e=>setOffer({note:e.target.value}),
+        postOffer:()=>{if(!of)return;const errs=[];if(!offerWhat.trim())errs.push(offerType==="skill"?"Choose a skill.":offerType==="req"?"Choose a requirement.":"Say what you'll teach.");if(!of.dates.length)errs.push("Pick at least one date.");if(of.dates.includes(0)&&loadN+1>TEACH_MAX_CLASSES)errs.push("You're at "+TEACH_MAX_CLASSES+" classes for Sun, Nov 1. Pick another date, or drop a class first.");
+          if(errs.length){this.upd(id,{offerErr:"Can't post yet: "+errs.join(" ")});return;}
+          this.upd(id,{offers:[...s.offers,{what:offerWhat,dates:of.dates.map(i=>OFFER_DATES[i].replace("Sun, ",""))}],offer:null,offerErr:""});},
+        cancelOffer:()=>this.upd(id,{offer:null,offerErr:""}),
+        offerHasErr:!!s.offerErr,offerErr:s.offerErr,
+        showNote:teach&&a==="out",
+        note:s.note,onNote:e=>{const v2=e.target.value.split("\n").slice(0,3).join("\n").slice(0,240);this.upd(id,{note:v2,noteSent:false});},
+        noteCount:(240-s.note.length)+" characters left · up to 3 lines",noteEmpty:!s.note.trim()||s.noteSent,noteSendLabel:s.noteSent?"✓ Sent":"Send",
+        sendNote:()=>this.upd(id,{noteSent:true}),
+        capCount:nOn+" of "+PLAN_MAX+" things · "+minOn+" of "+SCOUT_MAX_MIN+" min",
+        capText:full?first+"'s plan is full: "+PLAN_MAX+" things is the most for one meeting. Untick one to add something else."
+          :minFull?first+"'s plan fills the whole "+SCOUT_MAX_MIN+"-minute meeting. Untick one to add something else."
+          :"on "+first+"'s plan. Up to "+PLAN_MAX+" things and "+SCOUT_MAX_MIN+" minutes for one meeting, including requests. "+minLeft+" min left.",
+        capSt:full||minFull?"background:#fdf6e3;color:#6b500c;border:1px solid #e9d8a6":"background:#ffffff;color:#363636;border:1px solid #e2d9cc",
+        isUnsure:a==="unsure",
+        unsureText:teach?(s.released?"Not sure yet. We've taken "+(you?"you":first)+" off Sunday's plan for now, and "+(d.plan.length===1?"that class is":"those classes are")+" open for another adult. Come back as soon as "+(you?"you know":"they know")+" more. If a class is still open, "+(you?"you":first)+" can pick it again.":"Not sure yet. "+(d.plan.length?(you?"You're":first+" is")+" still on the plan for "+d.plan.map(x=>x[1]).join(" and ")+", and anything signed up for here is open again. Let us know as soon as you can.":"The classes signed up for here are open again for another adult to take. A leader can put "+(you?"you":first)+" where help is needed. Answer when you know.")):"Not sure yet. Answer above when you know, and anything you changed is still saved.",
+        canClear:!!a&&a!=="unsure"&&!s.asking,
+        clearLabel:"Not sure yet? Clear "+first+"'s answer",
+        // An adult clearing their answer also gives back every class they signed up for here (taken on, helping, offers).
+        clear:e=>{if(e&&e.preventDefault)e.preventDefault();
+          if(teach&&d.plan.length){this.upd(id,{asking:true});return;}
+          this.upd(id,teach?{answer:"unsure",need:{},help:{},take:{},offers:[],offer:null,offerErr:""}:{answer:"unsure"});},
+        askingClear:!!s.asking,askId:"ask-"+id,
+        askTitle:"Should we take "+(you?"you":first)+" off Sunday's plan for now?",
+        askText:(you?"You're":first+" is")+" down to teach "+d.plan.map(x=>x[1]).join(" and ")+". If we take "+(you?"you":first)+" off until "+(you?"you know":"they know")+", a leader can ask another adult to cover it. Come back to this page as soon as "+(you?"you know":"they know")+" more, and pick a class again if it's still open.",
+        askYes:"Yes, take "+(you?"me":first)+" off the plan for now",
+        askNo:"No, keep "+(you?"me":first)+" on the plan while "+(you?"I decide":"they decide"),
+        clearAll:()=>{const off={};d.plan.forEach(x=>{off[x[0]]=true;});this.upd(id,{asking:false,answer:"unsure",released:true,off,need:{},help:{},take:{},offers:[],offer:null,offerErr:""});},
+        clearKeep:()=>this.upd(id,{asking:false,answer:"unsure",released:false,off:{},need:{},help:{},take:{},offers:[],offer:null,offerErr:""}),
+        cancelClear:e=>{if(e&&e.preventDefault)e.preventDefault();this.upd(id,{asking:false});},
+        needs:!a||a==="unsure",id,kind:d.kind,first,you};
+    });
+    const open=cards.filter(c=>c.needs);
+    const names=cards.map(c=>c.you?"you":c.first);
+    const nm=names.length>1?names.slice(0,-1).join(", ")+" and "+names[names.length-1]:names[0];
+    const selfCard=cards.find(c=>c.you);
+    let lede;
+    if(cards.length===1&&selfCard&&selfCard.kind==="teach"&&!PEOPLE[selfCard.id].plan.length) lede="Here's what's planned for Sunday's meeting.";
+    else if(cards.length===1&&selfCard&&PEOPLE[selfCard.id].jl) lede=fill(this.copy("ledeJunior"),{first:selfCard.first,name:"you"});
+    else if(cards.length===1&&selfCard&&selfCard.kind==="teach") lede=fill(this.copy("ledeTeacher"),{first:selfCard.first,name:"you"});
+    else if(cards.length===1&&selfCard) lede=fill(this.copy("ledeScout"),{first:selfCard.first,name:"you"});
+    else lede=fill(this.copy("ledeFamily"),{scouts:cards.length>1?(selfCard?"your family":"your scouts"):cards[0].first,first:"",name:""});
+    return {
+      scenarios:SCENARIO_LABELS.map(([k,l])=>({label:l,pressed:vName===k?"true":"false",st:vName===k?"background:#1e3a4a;color:#ffffff;border-color:#1e3a4a":"background:#ffffff;color:#1e3a4a;border-color:#c8bfaf",pick:()=>this.setState({view:k,returned:false})})),
+      resetForm:()=>this.setState({s:{},returned:false}),
+      returnVisit:()=>this.setState({returned:true}),returnLabel:st.returned?"✓ Return visit":"↻ Return visit",
+      viewerLine:v.line,lede,
+      showAllSet:cards.length>1&&open.length>0,
+      allSetLabel:this.copy("allSetLabel"),
+      allSetSub:"Answers for "+nm+" in one tap. You can still change any card below.",
+      allSet:()=>{const s={...st.s};v.cards.forEach(id=>{const d=PEOPLE[id];s[id]={...this.sc(id),answer:"ok"};});this.setState({s});},
+      allDone:cards.length>0&&open.length===0,
+      cards
+    };
+  }
+}
+</script>
+</body>
+</html>
