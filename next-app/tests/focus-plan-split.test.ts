@@ -105,8 +105,8 @@ describe('split groups', () => {
     expect([g.label, g.section, g.sections, g.base]).toEqual(['Tenderfoot', 1, 1, TF]);
   });
 
-  it('Placement_PutsScoutInGroupWithMostOpenMinutes_WhenSplit', () => {
-    // Group 1 = 1 (15) + 3 (60); Group 2 = 2 (15).
+  it('Placement_PutsScoutInTheGroupTheyNeedMostOf_WhenSplit', () => {
+    // Group 1 = 1 (15) + 3 (60); Group 2 = 2 (15). Fit = the share of a group's minutes the scout still needs.
     const fresh = scout('scout');
     const ahead = scout('scout');
     const p = plan([fresh, ahead], TF_FOCUS, {
@@ -116,7 +116,7 @@ describe('split groups', () => {
     expect([rowOf(p, fresh).groupKey, rowOf(p, ahead).groupKey]).toEqual([TF, TF2]);
   });
 
-  it('Placement_PicksLowerGroup_WhenOpenMinutesTie', () => {
+  it('Placement_PicksLowerGroup_WhenFitTies', () => {
     const s = scout('scout');
     const p = plan([s], ['tenderfoot-1', 'tenderfoot-2'], { splits: split(TF, ['tenderfoot-1'], ['tenderfoot-2']) });
     expect(rowOf(p, s).groupKey).toBe(TF);
@@ -137,7 +137,14 @@ describe('split groups', () => {
     expect(colsOf(p, TF2)).toEqual(['tenderfoot-4a']);
   });
 
-  it('SharedColumn_CountsInBothGroups_ScoutPlacedByMostOpenMinutes', () => {
+  it('NewScout_NeedingEverything_GoesToGroup1_NotTheBiggerGroup', () => {
+    // Group 1 = 1 (15); Group 2 = 2 + 3 (75). Both fit 100%: the lower group, whatever the minutes.
+    const s = scout('scout');
+    const p = plan([s], TF_FOCUS, { splits: split(TF, ['tenderfoot-1'], ['tenderfoot-2', 'tenderfoot-3']) });
+    expect(rowOf(p, s).groupKey).toBe(TF);
+  });
+
+  it('SharedColumn_CountsInBothGroups_ScoutPlacedByFit', () => {
     const s = scout('scout');
     const p = plan([s], TF_FOCUS, {
       splits: split(TF, ['tenderfoot-1', 'tenderfoot-2'], ['tenderfoot-2', 'tenderfoot-3']),
@@ -170,14 +177,15 @@ describe('split groups', () => {
     const s = scout('scout');
     const p = plan([s], TF_FOCUS, {
       splits: split(TF, ['tenderfoot-1'], ['tenderfoot-2', 'tenderfoot-3']),
-      picks: new Map([[s.personId, [TF]]])
+      picks: new Map([[s.personId, [TF]]]),
+      done: { [s.scoutId]: done(['tenderfoot-1']) }
     });
     expect(rowOf(p, s).groupKey).toBe(TF2);
   });
 
   it('HandMove_ToAGroupThatNoLongerExists_FallsToBestSectionOfTheRank', () => {
     const s = scout('scout');
-    const p = plan([s], TF_FOCUS, { splits: split(TF, ['tenderfoot-1'], ['tenderfoot-2', 'tenderfoot-3']), roles: new Map([[s.personId, { role: 'group', key: TF3 }]]) });
+    const p = plan([s], TF_FOCUS, { splits: split(TF, ['tenderfoot-1'], ['tenderfoot-2', 'tenderfoot-3']), roles: new Map([[s.personId, { role: 'group', key: TF3 }]]), done: { [s.scoutId]: done(['tenderfoot-1']) } });
     expect(rowOf(p, s).groupKey).toBe(TF2);
   });
 

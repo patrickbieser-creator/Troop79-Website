@@ -408,15 +408,23 @@ export function buildFocusPlan(input: FocusInput): FocusPlan {
     const idx = g.kind === 'rank' ? rankIndex.get(g.refId)! : mbForest(g.refId);
     return Object.keys(marksIn(g, p)).reduce((t, k) => t + (idx.get(k) ? nodeMinutes(idx.get(k)!.node) : DEFAULT_TEACH_MINUTES), 0);
   };
-  /** The section of a base with the most open minutes for this scout (then the most open columns); ties to the lower. */
+  /**
+   * The section of a base this scout fits best: the largest share of the section's minutes still open for them; ties
+   * go to the lower group. A share, not a total, so a scout who needs everything lands in Group 1 rather than in
+   * whichever group has the most to teach, and one who has Group 1's work done moves on.
+   */
   const bestSection = (base: string, p: FocusProgress): FocusGroup | undefined => {
     const secs = sectionsOf.get(base);
     if (!secs || secs.length < 2) return secs?.[0];
+    const fit = (g: FocusGroup) => {
+      const all = openMinutes(g, empty);
+      return all ? openMinutes(g, p) / all : 0;
+    };
     let best = secs[0];
-    let score = [openMinutes(best, p), openIn(best, p).length];
+    let score = fit(best);
     for (const g of secs.slice(1)) {
-      const s = [openMinutes(g, p), openIn(g, p).length];
-      if (s[0] > score[0] || (s[0] === score[0] && s[1] > score[1])) [best, score] = [g, s];
+      const f = fit(g);
+      if (f > score) [best, score] = [g, f];
     }
     return best;
   };

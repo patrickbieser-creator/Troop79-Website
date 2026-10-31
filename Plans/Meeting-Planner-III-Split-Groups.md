@@ -53,7 +53,9 @@ can't give the moved scouts a different focus.
       (**Move to Group n** on the column's menu), or share it (**Also teach in Group n**). A column may sit in any number
       of the rank's groups; removing it from its last group is refused with a reason (it would leave the night).
 - [ ] No group size limit anywhere: a group of 20 stays allowed, split or not, and hand moves into a full group work.
-- [ ] Placement puts a scout in the split group with the most open minutes for them, ties going to the lower number.
+- [ ] Placement puts a scout in the split group they fit best: the largest share of that group's minutes they still
+      need (so a beginner who needs everything lands in Group 1, not in the group with the most to teach); ties go to
+      the lower number.
       A planner's hand move, a family pick and a help-teach answer all keep outranking placement, as they do today.
 - [ ] **Merge groups** on any split card brings the rank back to one group in one step, with an Undo. While merged,
       every hand move, pick, helper and teacher that pointed at Group 2 or 3 counts for the merged group. **Split** again
@@ -117,7 +119,7 @@ UI (dom):
    explicit action).
 3. **Placement (`buildFocusPlan`).** New input `splits` (active only). Rank groups become 1–3 sections; columns per section as
    above. A counted scout's own rank (or next rank, working ahead) resolves to the section with the most open minutes
-   (teach_minutes per column, the family page's numbers); ties go to the lower section. A column shared by two
+   (as a share of the section's minutes, see review item 4); ties go to the lower section. A column shared by two
    sections counts in both. No size cap enters placement (D2). Precedence is unchanged. While a rank is
    merged, an alias map reads `~2`/`~3` keys in roles, picks and helpers as `fr:<rankId>`. Still computed on every
    read, still pure.
@@ -176,8 +178,8 @@ All answered 2026-10-31 (Decisions above; tech-lead review below).
 3. **Claim rule:** a section owns a focus key if it lists the key **or an ancestor** of it (focus edits reshape columns).
    Loading a saved plan with no splits **merges** the meeting's splits (soft, so Split brings them back); a plan with
    splits replaces them.
-4. **Section choice by open minutes** (`teach_minutes ?? 15` over the scout's open cells, the family page's source), no
-   60-minute cap in the comparison; ties to the lower section.
+4. **Section choice by fit** (changed in S3 from "most open minutes", which sent beginners to the biggest group): the
+   share of a section's minutes (`teach_minutes ?? 15`) the scout still needs; ties to the lower section.
 5. **`FocusGroup.name` stays the rank or badge name** (code labels like "Tenderfoot 4a" use it); a new `label` carries
    "Tenderfoot Group 2". S5 moves display sites to `label`.
 6. **Work ahead steps by rank, not by array index** (`family-week` `alsoFor` uses `ranks[i+1]`, which would land on Group 2).
