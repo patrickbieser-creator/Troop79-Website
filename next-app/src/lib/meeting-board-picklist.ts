@@ -24,6 +24,7 @@ import { BOR_CODE, borKey, isBorKey, rankBorPickable, rankNodeSatisfied, rankTop
 import { planningState, topClasses } from '@/lib/requirement-class';
 import type { CatalogMeritBadge, CatalogMeritBadgeRequirement, CatalogRank, CatalogRankRequirement } from '@/lib/advancement-catalog';
 import { boardName, orderPicks, othersLabel, type BoardPick, type Intent } from '@/lib/meeting-board-shared';
+import { parseGroupKey } from '@/lib/focus-plan';
 
 export interface PickRow {
   key: string;
@@ -280,15 +281,16 @@ export function topicWords(
     const mb = mbs.find((m) => m.id === key.slice(3));
     return mb ? { label: mb.name, codeLabel: 'Merit badge', kind: 'mb', parts: [], minutes: null } : null;
   }
-  // Meeting Planner III: a group of the night ('fr:tenderfoot', 'fr:mb:first-aid').
-  if (key.startsWith('fr:mb:')) {
-    const mb = mbs.find((m) => m.id === key.slice(6));
-    return mb ? { label: `${mb.name} merit badge`, codeLabel: GROUP_LABEL, kind: 'focus', parts: [], minutes: null } : null;
+  // Meeting Planner III: a group of the night ('fr:tenderfoot', 'fr:mb:first-aid'), or one of a split's groups
+  // ('fr:tenderfoot~2' = "Tenderfoot Group 2").
+  const group = parseGroupKey(key);
+  if (group) {
+    const name = group.kind === 'badge' ? mbs.find((m) => m.id === group.refId)?.name : ranks.find((x) => x.id === group.refId)?.display_name;
+    if (!name) return null;
+    const label = group.section > 1 ? `${name} Group ${group.section}` : group.kind === 'badge' ? `${name} merit badge` : `${name} group`;
+    return { label, codeLabel: GROUP_LABEL, kind: 'focus', parts: [], minutes: null };
   }
-  if (key.startsWith('fr:')) {
-    const r = ranks.find((x) => x.id === key.slice(3));
-    return r ? { label: `${r.display_name} group`, codeLabel: GROUP_LABEL, kind: 'focus', parts: [], minutes: null } : null;
-  }
+  if (key.startsWith('fr:')) return null;
   const rank = rankOfKey(key, ranks);
   if (!rank) {
     // A top-level merit badge requirement ('first-aid-9'), seeded on a meeting (P3).

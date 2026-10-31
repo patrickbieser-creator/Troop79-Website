@@ -15,6 +15,10 @@ import { mbNodeSatisfied, rankNodeSatisfied } from '@/lib/rank-calculus';
 import type { CatalogMeritBadge, CatalogMeritBadgeRequirement, CatalogRank, CatalogRankRequirement } from '@/lib/advancement-catalog';
 import type { Intent } from '@/lib/meeting-board-shared';
 
+/** A requirement's minutes until a leader sets its time (meeting-board-picklist's DEFAULT_TEACH_MINUTES; not imported,
+ *  since that module imports this one). */
+const DEFAULT_TEACH_MINUTES = 15;
+
 /** The ranks with a group of their own. A scout holding First Class or above is in the Merit badge group. */
 export const GROUP_RANKS: readonly string[] = ['scout', 'tenderfoot', 'second-class', 'first-class'];
 
@@ -27,6 +31,40 @@ export const rankGroupKey = (rankId: string) => `${RANK_GROUP_PREFIX}${rankId}`;
 export const badgeGroupKey = (mbId: string) => `${BADGE_GROUP_PREFIX}${mbId}`;
 export const isBadgeGroupKey = (key: string) => key.startsWith(BADGE_GROUP_PREFIX);
 export const isGroupKey = (key: string) => key.startsWith(RANK_GROUP_PREFIX);
+
+/** The most groups one rank (or badge) can be split into (Plans/Meeting-Planner-III-Split-Groups.md). */
+export const MAX_SECTIONS = 3;
+const SECTION_SEP = '~';
+
+/** A split group's key: Group 1 is the base key itself ('fr:tenderfoot'), Group 2 'fr:tenderfoot~2'. */
+export const sectionGroupKey = (base: string, n: number) => (n === 1 ? base : `${base}${SECTION_SEP}${n}`);
+
+export interface ParsedGroupKey {
+  base: string;
+  section: number;
+  kind: 'rank' | 'badge';
+  refId: string;
+}
+
+/** The one parser for group keys: everything after 'fr:' / 'fr:mb:' is an id plus an optional '~2' / '~3'. Null for a
+ *  key that isn't a group, or names a section that can't exist ('~1', '~4'). */
+export function parseGroupKey(key: string): ParsedGroupKey | null {
+  if (!isGroupKey(key)) return null;
+  const at = key.lastIndexOf(SECTION_SEP);
+  const base = at < 0 ? key : key.slice(0, at);
+  const section = at < 0 ? 1 : Number(key.slice(at + 1));
+  if (!Number.isInteger(section) || section < 1 || section > MAX_SECTIONS || (at >= 0 && section === 1)) return null;
+  const badge = isBadgeGroupKey(base);
+  const refId = base.slice(badge ? BADGE_GROUP_PREFIX.length : RANK_GROUP_PREFIX.length);
+  return refId ? { base, section, kind: badge ? 'badge' : 'rank', refId } : null;
+}
+
+/** A merged rank reads its Group 2 and 3 keys as the one group (the soft merge): every group-key read goes through
+ *  this, so a hand move, pick, helper or teacher on '~2' counts for the merged group and comes back on Split. */
+export function canonicalGroupKey(key: string, mergedBases: ReadonlySet<string> | undefined): string {
+  const p = mergedBases?.size ? parseGroupKey(key) : null;
+  return p && p.section > 1 && mergedBases!.has(p.base) ? p.base : key;
+}
 
 export interface FocusScout {
   personId: number;
@@ -80,6 +118,12 @@ export interface FocusInput {
   /** A Merit badge group scout's "help teach" answer (Emails N4), the group key by personId: they sit in that group as
    *  a helper, the way a planner's move does. A planner's hand choice outranks it. */
   helpers?: ReadonlyMap<number, string>;
+  /** Split groups, keyed by the base group key: each section's listed requirement keys, index 0 = Group 1. A section
+   *  owns a focus key it lists, or one under a key it lists; a focus key no section lists goes to Group 1. A key may
+   *  sit in several sections. Fewer than 2 sections, or a merged base, is no split. */
+  splits?: ReadonlyMap<string, readonly (readonly string[])[]>;
+  /** Base keys whose split is merged: their '~2'/'~3' keys read as the base (canonicalGroupKey). */
+  mergedBases?: ReadonlySet<string>;
 }
 
 export interface FocusColumn {
@@ -102,7 +146,16 @@ export interface FocusGroup {
   kind: 'rank' | 'badge';
   /** The rank worked on, or the badge. */
   refId: string;
+  /** The rank's or badge's own name: code labels ("Tenderfoot 4a") are built on it. */
   name: string;
+  /** What the group is called on screen: the name, or "Tenderfoot Group 2" when the rank is split. */
+  label: string;
+  /** Group 1's key: the group's key when it isn't split. */
+  base: string;
+  /** 1-3; 1 when not split. */
+  section: number;
+  /** How many groups the rank (or badge) is split into; 1 when not split. */
+  sections: number;
   columns: FocusColumn[];
   /** personIds, in roster order. */
   members: number[];
@@ -255,35 +308,63 @@ export function buildFocusPlan(input: FocusInput): FocusPlan {
     if (subKey && node.children.length) leaves(node);
     return { key, code: node.code, label: node.label, subs };
   };
+  // A split base's sections, each owning the picked keys it lists or sits under; a key no section lists is Group 1's.
+  const merged = input.mergedBases;
+  const sectionsFor = <T extends AnyNode>(base: string, picked: ReadonlySet<string>, idx: ReturnType<typeof indexForest<T>>): Set<string>[] => {
+    const lists = merged?.has(base) ? undefined : input.splits?.get(base)?.slice(0, MAX_SECTIONS);
+    if (!lists || lists.length < 2) return [new Set(picked)];
+    const owned = lists.map(() => new Set<string>());
+    for (const key of picked) {
+      const line: string[] = [];
+      for (let k: string | null = key; k; k = idx.get(k)?.parent ?? null) line.push(k);
+      const hits = lists.map((l, i) => (line.some((k) => l.includes(k)) ? i : -1)).filter((i) => i >= 0);
+      for (const i of hits.length ? hits : [0]) owned[i].add(key);
+    }
+    return owned;
+  };
   const groups: FocusGroup[] = [];
+  const pushSections = (
+    base: string,
+    kind: FocusGroup['kind'],
+    refId: string,
+    name: string,
+    owned: Set<string>[],
+    columnsOf: (keys: ReadonlySet<string>) => FocusColumn[]
+  ) =>
+    owned.forEach((keys, i) =>
+      groups.push({
+        key: sectionGroupKey(base, i + 1),
+        kind,
+        refId,
+        name,
+        label: owned.length > 1 ? `${name} Group ${i + 1}` : name,
+        base,
+        section: i + 1,
+        sections: owned.length,
+        columns: columnsOf(keys),
+        members: []
+      })
+    );
   for (const r of groupRanks) {
     const picked = rankPicked.get(r.id);
     if (!picked?.size) continue;
     const idx = rankIndex.get(r.id)!;
-    groups.push({
-      key: rankGroupKey(r.id),
-      kind: 'rank',
-      refId: r.id,
-      name: r.display_name,
-      columns: topmostPicked(picked, idx).map((k) => column(k, idx.get(k)!.node, (n) => `${r.id}-${n.code}`)),
-      members: []
-    });
+    const base = rankGroupKey(r.id);
+    pushSections(base, 'rank', r.id, r.display_name, sectionsFor(base, picked, idx), (keys) =>
+      topmostPicked(keys, idx).map((k) => column(k, idx.get(k)!.node, (n) => `${r.id}-${n.code}`))
+    );
   }
   for (const mbId of badgeOrder) {
     const idx = mbForest(mbId);
-    const picked = badgePicked.get(mbId)!;
+    const base = badgeGroupKey(mbId);
     // A badge added with no focus items of its own offers its top-level requirements.
-    const keys = picked.size ? topmostPicked(picked, idx) : [...idx].filter(([, v]) => v.parent === null).map(([k]) => k);
-    groups.push({
-      key: badgeGroupKey(mbId),
-      kind: 'badge',
-      refId: mbId,
-      name: mbName.get(mbId) ?? mbId,
-      columns: keys.map((k) => column(k, idx.get(k)!.node)),
-      members: []
-    });
+    const given = badgePicked.get(mbId)!;
+    const picked = given.size ? given : new Set([...idx].filter(([, v]) => v.parent === null).map(([k]) => k));
+    pushSections(base, 'badge', mbId, mbName.get(mbId) ?? mbId, sectionsFor(base, picked, idx), (keys) => topmostPicked(keys, idx).map((k) => column(k, idx.get(k)!.node)));
   }
   const groupByKey = new Map(groups.map((g) => [g.key, g]));
+  const sectionsOf = new Map<string, FocusGroup[]>();
+  for (const g of groups) sectionsOf.set(g.base, [...(sectionsOf.get(g.base) ?? []), g]);
   const firstBadge = groups.find((g) => g.kind === 'badge') ?? null;
 
   const empty: FocusProgress = { rankCodes: new Set(), mbCodes: new Set() };
@@ -321,6 +402,37 @@ export function buildFocusPlan(input: FocusInput): FocusPlan {
     return out;
   };
 
+  // A cell's minutes: its own teach_minutes, or its leaves' (the family page's numbers, without its 60-minute cap).
+  const nodeMinutes = (n: AnyNode): number => (n.children.length ? (n.children as AnyNode[]).reduce((t, c) => t + nodeMinutes(c), 0) : (n.teach_minutes ?? DEFAULT_TEACH_MINUTES));
+  const openMinutes = (g: FocusGroup, p: FocusProgress): number => {
+    const idx = g.kind === 'rank' ? rankIndex.get(g.refId)! : mbForest(g.refId);
+    return Object.keys(marksIn(g, p)).reduce((t, k) => t + (idx.get(k) ? nodeMinutes(idx.get(k)!.node) : DEFAULT_TEACH_MINUTES), 0);
+  };
+  /** The section of a base with the most open minutes for this scout (then the most open columns); ties to the lower. */
+  const bestSection = (base: string, p: FocusProgress): FocusGroup | undefined => {
+    const secs = sectionsOf.get(base);
+    if (!secs || secs.length < 2) return secs?.[0];
+    let best = secs[0];
+    let score = [openMinutes(best, p), openIn(best, p).length];
+    for (const g of secs.slice(1)) {
+      const s = [openMinutes(g, p), openIn(g, p).length];
+      if (s[0] > score[0] || (s[0] === score[0] && s[1] > score[1])) [best, score] = [g, s];
+    }
+    return best;
+  };
+  // A hand move names its section exactly (a section that's gone falls to the best one left); a family's pick or a
+  // helper's group of a split base is placed by fit, since Group 1's key is the base key.
+  const resolveExact = (key: string, p: FocusProgress) => {
+    const k = canonicalGroupKey(key, merged);
+    return groupByKey.get(k) ?? (parseGroupKey(k) ? bestSection(parseGroupKey(k)!.base, p) : undefined);
+  };
+  const resolveByFit = (key: string, p: FocusProgress) => {
+    const k = canonicalGroupKey(key, merged);
+    const parsed = parseGroupKey(k);
+    if (parsed?.section === 1 && (sectionsOf.get(parsed.base)?.length ?? 0) > 1) return bestSection(parsed.base, p);
+    return resolveExact(key, p);
+  };
+
   const rows: FocusRow[] = input.scouts.map((s) => {
     const p = input.progress.get(s.scoutId) ?? empty;
     const held = s.currentRank != null ? rankSort.get(s.currentRank) : undefined;
@@ -337,11 +449,12 @@ export function buildFocusPlan(input: FocusInput): FocusPlan {
     let homeKey: string | null = firstBadge?.key ?? null;
     if (counted) {
       const own = groupRanks[held == null ? 0 : groupRanks.findIndex((r) => r.id === s.currentRank) + 1];
-      const ownGroup = own ? groupByKey.get(rankGroupKey(own.id)) : undefined;
+      // A split rank: the section with the most open for this scout, so "anything open" looks across all of them.
+      const ownGroup = own ? bestSection(rankGroupKey(own.id), p) : undefined;
       const ownOpen = ownGroup ? openIn(ownGroup, p) : [];
       // Working ahead: done with their own rank's part of the focus, so the next rank group, one step only.
       const next = own ? groupRanks[groupRanks.findIndex((r) => r.id === own.id) + 1] : undefined;
-      const nextGroup = next ? groupByKey.get(rankGroupKey(next.id)) : undefined;
+      const nextGroup = next ? bestSection(rankGroupKey(next.id), p) : undefined;
       const nextOpen = !ownOpen.length && nextGroup ? openIn(nextGroup, p) : [];
       homeKey = ownGroup?.key ?? nextGroup?.key ?? null;
       if (ownGroup && ownOpen.length) auto = { groupKey: ownGroup.key, open: ownOpen, status: 'rank-work', allDone: false };
@@ -351,15 +464,19 @@ export function buildFocusPlan(input: FocusInput): FocusPlan {
       // The first of the night's badges this scout hasn't earned, and their family hasn't taken off the plan (the
       // family page, Patrick 2026-10-30); none left (or none tonight) → they teach.
       const off = input.exclusions?.get(s.personId);
-      const badge = groups.find((g) => g.kind === 'badge' && !p.awardedMbs?.has(g.refId) && !off?.has(g.key));
+      const first = groups.find((g) => g.kind === 'badge' && g.section === 1 && !p.awardedMbs?.has(g.refId) && !off?.has(g.base));
+      const badge = first ? bestSection(first.base, p) : undefined;
       auto = badge ? { groupKey: badge.key, open: openIn(badge, p), status: 'badge', allDone: false } : { groupKey: null, open: [], status: 'teach', allDone: false };
     }
     const suggested = auto.groupKey ? [auto.groupKey] : [];
 
-    const pickedGroup = input.picks?.get(s.personId)?.find((k) => groupByKey.has(k));
+    const hand = input.roles?.get(s.personId);
     const helping = input.helpers?.get(s.personId);
+    const helpGroup = helping ? resolveByFit(helping, p) : undefined;
+    const pickedGroup = input.picks?.get(s.personId)?.map((k) => resolveByFit(k, p)).find((g) => g);
+    const fitted = helpGroup ?? pickedGroup;
     const role: ScoutRole | undefined =
-      input.roles?.get(s.personId) ?? (helping && groupByKey.has(helping) ? { role: 'group', key: helping } : undefined) ?? (pickedGroup ? { role: 'group', key: pickedGroup } : undefined);
+      hand?.role === 'group' ? { role: 'group', key: resolveExact(hand.key, p)?.key ?? hand.key } : (hand ?? (fitted ? { role: 'group', key: fitted.key } : undefined));
     if (role?.role === 'none') return withHome({ ...base, groupKey: null, open: [], status: 'unassigned', allDone: false, suggested });
     if (role?.role === 'teach') return withHome({ ...base, groupKey: null, open: [], status: 'teach', allDone: false, suggested });
     if (role?.role === 'request') return withHome({ ...base, groupKey: null, open: [], status: 'request', allDone: false, requestKey: role.key, suggested });
