@@ -61,7 +61,7 @@ export default async function EmailsPage({ searchParams }: { searchParams: Promi
   return (
     <div className={styles.page}>
       <PlannerTabs active="emails" canEmail />
-      <EmailsClient key={meeting.entryId} screen={screen} day={fmtDateFull(meeting.date)} backHref={`/planner?meeting=${meeting.entryId}`} />
+      <EmailsClient key={meeting.entryId} screen={screen} day={fmtDateFull(meeting.date)} />
     </div>
   );
 }

@@ -52,23 +52,23 @@ afterEach(() => cleanup());
 
 describe('Emails screen', () => {
   it('Leader_NothingTickedByDefault', () => {
-    render(<EmailsClient screen={data(siblings)} day="Sunday, Nov 1" backHref="/planner" />);
+    render(<EmailsClient screen={data(siblings)} day="Sunday, Nov 1" />);
     expect(screen.getAllByRole('checkbox', { name: /Include the email/ }).some((c) => (c as HTMLInputElement).checked)).toBe(false);
   });
 
   it('Selection_CountsEmailsNotRows', async () => {
-    render(<EmailsClient screen={data(siblings)} day="Sunday, Nov 1" backHref="/planner" />);
+    render(<EmailsClient screen={data(siblings)} day="Sunday, Nov 1" />);
     await userEvent.setup().click(screen.getByRole('button', { name: 'Select all not sent yet' }));
     expect(screen.getByRole('button', { name: /Review and send/ }).textContent).toBe('Review and send 1 email');
   });
 
   it('BlockedRow_CannotBeTicked', () => {
-    render(<EmailsClient screen={data([row({ blocked: 'no parent email on file', recipients: [] })])} day="Sunday, Nov 1" backHref="/planner" />);
+    render(<EmailsClient screen={data([row({ blocked: 'no parent email on file', recipients: [] })])} day="Sunday, Nov 1" />);
     expect((screen.getByRole('checkbox', { name: 'Include the email about Lily P' }) as HTMLInputElement).disabled).toBe(true);
   });
 
   it('Confirm_ListsEveryRecipient_AndTheCap', async () => {
-    render(<EmailsClient screen={data(siblings)} day="Sunday, Nov 1" backHref="/planner" />);
+    render(<EmailsClient screen={data(siblings)} day="Sunday, Nov 1" />);
     const u = userEvent.setup();
     await u.click(screen.getByRole('button', { name: 'Select all not sent yet' }));
     await u.click(screen.getByRole('button', { name: /Review and send/ }));
@@ -78,7 +78,7 @@ describe('Emails screen', () => {
 
   it('Send_QueuesWhatTheConfirmationListed', async () => {
     queue.mockResolvedValue({ ok: true, batchId: '00000000-0000-4000-8000-000000000001', queued: 1, overflow: 0, refused: [] });
-    render(<EmailsClient screen={data(siblings)} day="Sunday, Nov 1" backHref="/planner" />);
+    render(<EmailsClient screen={data(siblings)} day="Sunday, Nov 1" />);
     const u = userEvent.setup();
     await u.click(screen.getByRole('button', { name: 'Select all not sent yet' }));
     await u.click(screen.getByRole('button', { name: /Review and send/ }));
@@ -87,12 +87,12 @@ describe('Emails screen', () => {
   });
 
   it('HowThisWorks_NamesTheEnforcedLimits', () => {
-    render(<EmailsClient screen={data(siblings)} day="Sunday, Nov 1" backHref="/planner" />);
+    render(<EmailsClient screen={data(siblings)} day="Sunday, Nov 1" />);
     expect(screen.getByText(/at most 150 emails/)).toBeTruthy();
   });
 
   it('Preview_UntickedParent_IsLeftOut', async () => {
-    render(<EmailsClient screen={data([row({ recipients: [laura, { personId: 51, name: 'Tom P', email: 'tom@example.com', isScout: false }] })])} day="Sunday, Nov 1" backHref="/planner" />);
+    render(<EmailsClient screen={data([row({ recipients: [laura, { personId: 51, name: 'Tom P', email: 'tom@example.com', isScout: false }] })])} day="Sunday, Nov 1" />);
     const u = userEvent.setup();
     await u.click(screen.getByRole('checkbox', { name: 'Include the email about Lily P' }));
     await u.click(screen.getByRole('button', { name: 'Lily P' }));

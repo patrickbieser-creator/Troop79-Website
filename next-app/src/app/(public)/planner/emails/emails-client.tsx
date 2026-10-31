@@ -2,7 +2,7 @@
 
 /**
  * The Emails screen (Plans/Meeting-Planner-III-Emails.md, E3), laid out as prototypes/meeting-plan-III/Emails.dc.html:
- *   - A header band: "Meeting plan › Emails", the title, the lede, who emails come from, ← Back to the plan, and the
+ *   - A header band: the title, the lede, who emails come from (the planner tabs are the way back), and the
  *     tabs (Scouts and families · Teachers · Coming? reminders · Sent log) with their counts.
  *   - The send bar: how many EMAILS are selected across all tabs (siblings with the same parents share one), the
  *     tab's counts (sent · opened · not sent yet · can't send), Select all not sent yet, Clear, Review and send.
@@ -91,7 +91,7 @@ const plain = (md: string) =>
 const roleOf = (row: ScreenRow, r: ScreenRecipient) => (r.isScout ? 'Scout · 13 or older' : row.isScout ? 'Parent' : 'Adult leader');
 const listOf = (names: readonly string[]) => (names.length <= 1 ? (names[0] ?? '') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`);
 
-export function EmailsClient({ screen, day, backHref }: { screen: EmailScreen; day: string; backHref: string }) {
+export function EmailsClient({ screen, day }: { screen: EmailScreen; day: string }) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>('scouts');
   const [filter, setFilter] = useState<Filter>('all');
@@ -197,9 +197,6 @@ export function EmailsClient({ screen, day, backHref }: { screen: EmailScreen; d
       <header className={s.band}>
         <div className={s.bandTop}>
           <div className={s.bandText}>
-            <div className={s.crumb}>
-              <Link href={backHref}>Meeting plan</Link> › Emails
-            </div>
             <h1 className={s.title}>Emails for {day}</h1>
             <p className={s.lede}>Nothing goes out until you send it. Tick the emails you want, check the preview, then send. Every email is logged with who it went to and when.</p>
           </div>
@@ -207,9 +204,6 @@ export function EmailsClient({ screen, day, backHref }: { screen: EmailScreen; d
             <span className={s.from}>
               From <strong>Troop 79 Bugler</strong> · replies go to leaders, not this address
             </span>
-            <Link href={backHref} className={s.backBtn}>
-              ← Back to the plan
-            </Link>
           </div>
         </div>
         <div className={s.tabs} role="tablist" aria-label="Email kinds">

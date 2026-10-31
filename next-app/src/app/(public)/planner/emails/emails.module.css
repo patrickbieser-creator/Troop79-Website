@@ -20,23 +20,14 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--sp-4) var(--sp-5);
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: var(--sp-4) var(--sp-5) var(--sp-3);
+  padding: var(--sp-4) var(--sp-7) var(--sp-3);
 }
 .bandText {
   flex: 1 1 440px;
   min-width: 0;
 }
-.crumb {
-  font: 600 var(--fs-xs) / 1.4 var(--font-ui);
-  color: var(--text-meta);
-}
-.crumb a {
-  color: var(--navy);
-}
 .title {
-  margin: 2px 0 0;
+  margin: 0;
   font: 700 var(--fs-2xl) / 1.25 var(--font-ui);
   color: var(--text-head);
 }
@@ -59,29 +50,11 @@
 .from strong {
   color: var(--text-head);
 }
-.backBtn {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  padding: 0 var(--sp-4);
-  border: 1px solid var(--border-mid);
-  border-radius: var(--rad-sm);
-  background: var(--warm-white);
-  color: var(--navy);
-  font: 600 var(--fs-sm) / 1 var(--font-ui);
-  text-decoration: none;
-}
-.backBtn:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
 .tabs {
   display: flex;
   flex-wrap: wrap;
   gap: var(--sp-1);
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 0 var(--sp-5);
+  padding: 0 var(--sp-7);
 }
 .tab,
 .tabOn {
@@ -113,9 +86,7 @@
   flex-direction: column;
   gap: var(--sp-4);
   width: 100%;
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: var(--sp-4) var(--sp-5) var(--sp-8);
+  padding: var(--sp-4) var(--sp-7) var(--sp-8);
   box-sizing: border-box;
 }
 .card,
@@ -657,4 +628,14 @@
   cursor: pointer;
   font-weight: 600;
   color: var(--navy);
+}
+
+/* Flush left under the planner tabs like every planner screen: 28px in, 16px on a phone (planner.module.css .tabs). */
+@media (max-width: 640px) {
+  .bandTop,
+  .tabs,
+  .main {
+    padding-left: var(--sp-4);
+    padding-right: var(--sp-4);
+  }
 }
