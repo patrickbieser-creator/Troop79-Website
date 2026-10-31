@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session 71: Family page, email tracking and This week</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #3d5a3e;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #f0eecd;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); vertical-align: top; }
+        tr:hover { background: var(--nw-sage); }
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+        code { font-family: 'Courier New', monospace; font-size: 0.85em; background: var(--nw-light-gray); padding: 0 0.3em; border-radius: 3px; }
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+        @media print { body { background: white; } header { padding: 1.5rem; } .container { padding: 1rem; } .stat { break-inside: avoid; } }
+        @media (max-width: 600px) { header h1 { font-size: 1.5rem; } .stats { flex-direction: column; } }
+    </style>
+<body>
+    <header>
+        <h1>Family page, email tracking and This week</h1>
+        <p class="subtitle">Session 71. Every family card now asks the same three answers, with a 60-minute plan for scouts and a teaching limit for adults. Meeting emails record when they are delivered, opened or bounced. This week drops scouts who can't come, lets a planner set a scout Unassigned, and the live view says what each group is learning.</p>
+        <div class="meta">
+            <span>&#128197; October 30, 2026</span>
+            <span>&#129302; Operator (Opus 5.5)</span>
+            <span>&#128204; Troop79-Website</span>
+            <span>&#128640; v1.258.0 &rarr; v1.259.0</span>
+        </div>
+    </header>
+    <div class="container">
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">1</div><div class="label">Release (v1.259.0), 9 commits</div></div>
+            <div class="stat"><div class="number">3</div><div class="label">Migrations, in production</div></div>
+            <div class="stat"><div class="number">6</div><div class="label">Decisions (D-456&ndash;D-461)</div></div>
+            <div class="stat"><div class="number">7624</div><div class="label">Tests, all passing</div></div>
+        </div>
+        <h2>What Was Accomplished</h2>
+        <div class="callout callout-teal">
+            <strong>The outcome:</strong> families can't over-commit a scout or an adult past one meeting, leaders can see whether an email was opened, and This week shows only the scouts who are coming.
+        </div>
+        <h3>Families</h3>
+        <ul>
+            <li>One card per person with This plan looks good &middot; Change my plan &middot; Can&rsquo;t make it this week; every item shows its minutes.</li>
+            <li>Scouts: up to 4 things and 60 minutes. Adults and Junior Leaders: 3 classes and 60 minutes, the teach board inside their card.</li>
+            <li>A leader viewing another family can answer for it; a teacher can leave a note with Can&rsquo;t make it; teacher cards appear on the email link.</li>
+        </ul>
+        <h3>Emails</h3>
+        <ul>
+            <li>Resend webhook records delivered, opened (a click counts), and bounced; statuses only move forward. The Emails plan is complete.</li>
+        </ul>
+        <h3>Planner</h3>
+        <ul>
+            <li>Live meeting cards show what&rsquo;s taught instead of &ldquo;0 of 8 here&rdquo;.</li>
+            <li>Scouts who can&rsquo;t come leave This week&rsquo;s cards and checklist; a Can&rsquo;t come &middot; N pill lists them to undo.</li>
+            <li>Unassigned in Place&hellip; and Tonight keeps a scout out of every group, and sticks.</li>
+        </ul>
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Decision</th></tr></thead>
+            <tbody>
+                <tr><td>D-456</td><td>Family page: one card shape, 60-minute limits checked in server code.</td></tr>
+                <tr><td>D-457</td><td>Resend webhook: forward-only status; a missing or malformed secret answers 503.</td></tr>
+                <tr><td>D-458</td><td>This week hides scouts who can&rsquo;t come (display only).</td></tr>
+                <tr><td>D-459</td><td>Unassigned is a stored choice that sticks; Unassign hands back to placement.</td></tr>
+                <tr><td>D-460</td><td>Live cards name what&rsquo;s taught: focus titles, else skills.</td></tr>
+                <tr><td>D-461</td><td>No in-app removal for test people; Patrick cleans up by hand.</td></tr>
+            </tbody>
+        </table>
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Patrick: eyes-on in production; confirm a real Resend event lands; clean up the three test people.</li>
+            <li>Find out what the &ldquo;bug:&rdquo; message was about.</li>
+            <li>qa-lead on the review Add action; retire the test-only invite senders.</li>
+        </ul>
+        <h2>Files Changed</h2>
+        <table>
+            <thead><tr><th>Area</th><th>Files</th></tr></thead>
+            <tbody>
+                <tr><td>Families</td><td>(public)/member/meeting/, (public)/i/plan/, family-week.ts, teach-actions</td></tr>
+                <tr><td>Emails</td><td>api/resend/webhook/route.ts, lib/resend-webhook.ts</td></tr>
+                <tr><td>Planner</td><td>this-week.ts, this-week-shown.ts, this-week-live.tsx, this-week-client.tsx, focus-plan.ts, planner-place.ts, person-drawer.tsx</td></tr>
+                <tr><td>Database</td><td>20261231600000_meeting_intent_note, 20261231700000_plan_page_teacher, 20261231800000_scout_role_none</td></tr>
+                <tr><td>Tests</td><td>resend-webhook-route, resend-webhook-db, this-week-group-summary, this-week-cant-come, focus-plan, planner-place, this-week-actions-db, family-week, and more</td></tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

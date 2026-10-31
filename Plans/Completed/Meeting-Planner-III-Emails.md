@@ -1,6 +1,6 @@
 # Meeting Planner III: Emails screen
 
-**Status:** READY TO BUILD (2026-10-29). tech-lead reviewed it: ready with changes, all folded in. Every question is answered (see Answers at the end).
+**Status:** SHIPPED v1.258.0–v1.259.0 (E1–E3+E5 2026-10-29; E4 Resend webhook 2026-10-30, 89df19f2).
 **Priority:** High
 **Source:** `prototypes/meeting-plan-III/README.md` → "Screen: Emails" and "Screen: Family page", plus `Emails.dc.html` and `Family.dc.html`.
 

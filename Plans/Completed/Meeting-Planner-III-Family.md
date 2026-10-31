@@ -1,6 +1,6 @@
 # Meeting Planner III — Family page
 
-**Status:** Active
+**Status:** SHIPPED v1.259.0 (2026-10-30, main 7bab8e59). F1–F5 done; migrations 20261231600000 and 20261231700000 in production.
 **Parked:** 2026-10-30
 **Priority:** High
 
