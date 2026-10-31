@@ -52,6 +52,9 @@ export interface ThisWeekInput {
   suggestions?: ReadonlyMap<number, readonly string[]>;
   /** A teacher's note with "Not this week", by the topic (group) they were asked to teach. */
   teacherNotes?: readonly { key: string; personId: number; note: string }[];
+  /** Split groups (lib/group-splits-db): sections by base key, and the merged bases. */
+  splits?: ReadonlyMap<string, readonly (readonly string[])[]>;
+  mergedBases?: ReadonlySet<string>;
 }
 
 export interface TwPerson {
@@ -254,7 +257,9 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
     roles: input.roles,
     picks,
     exclusions: input.exclusions,
-    helpers: input.helpers
+    helpers: input.helpers,
+    splits: input.splits,
+    mergedBases: input.mergedBases
   });
 
   // Teachers.

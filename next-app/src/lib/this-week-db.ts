@@ -11,6 +11,7 @@ import { loadSupplyRows, loadTeacherPeople, teachContext } from '@/lib/meeting-b
 import { boardScoutsOf, type PlannerLists } from '@/lib/people-lists';
 import type { FocusProgress, ScoutRole } from '@/lib/focus-plan';
 import type { ThisWeekInput } from '@/lib/this-week';
+import { loadGroupSplits } from '@/lib/group-splits-db';
 
 /** Each scout's rank and merit badge requirement leaves on the ledger, and the badges they have earned (paginated: the
  *  ledger is far past 1000 rows). An earned badge counts as done even when its requirements were never logged one by
@@ -131,7 +132,7 @@ export async function loadThisWeekData(
 ): Promise<ThisWeekData> {
   const catalog = given ?? (await loadAdvancementCatalog());
   const scoutsIn = boardScoutsOf(lists);
-  const [scouts, progress, teachers, intents, supply, focus, roles, nightBadges, stamp, answers, intentNotes] = await Promise.all([
+  const [scouts, progress, teachers, intents, supply, focus, roles, nightBadges, stamp, answers, intentNotes, splits] = await Promise.all([
     loadBoardState(sb, meeting, catalog, scoutsIn),
     loadLeafCodes(sb, scoutsIn.map((s) => s.scoutId)),
     loadTeacherPeople(sb, 'all', meeting.date, catalog, { pool: lists.pool }),
@@ -142,7 +143,8 @@ export async function loadThisWeekData(
     loadNightBadges(sb, meeting.entryId),
     loadBoardStamp(sb, meeting.entryId),
     loadFamilyAnswers(sb, meeting.entryId),
-    loadIntentNotes(sb, meeting.entryId)
+    loadIntentNotes(sb, meeting.entryId),
+    loadGroupSplits(sb, meeting.entryId)
   ]);
   // A family-page "Can't make it" note shows under each group the person was down to teach (F3b).
   const notesFromPage = supply.topicTeachers.flatMap((t) => (intentNotes.has(t.personId) ? [{ key: t.key, personId: t.personId, note: intentNotes.get(t.personId)! }] : []));
@@ -161,7 +163,8 @@ export async function loadThisWeekData(
       intents,
       topicTeachers: supply.topicTeachers.map((t) => ({ key: t.key, personId: t.personId, note: t.note })),
       ...answers,
-      teacherNotes: [...(answers.teacherNotes ?? []), ...notesFromPage]
+      teacherNotes: [...(answers.teacherNotes ?? []), ...notesFromPage],
+      ...splits
     }
   };
 }

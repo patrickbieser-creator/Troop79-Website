@@ -18,7 +18,8 @@ import { seedFocusSet, seedMany, unseedTopic } from '@/lib/meeting-focus-db';
 import { teachTopic, unteachTopic } from '@/lib/meeting-board-supply';
 import { plannerSeeder } from '@/lib/meeting-planner-seeder';
 import { PLANNER_WEEKS } from '@/lib/this-week';
-import { isGroupKey } from '@/lib/focus-plan';
+import { isGroupKey, MAX_SECTIONS, parseGroupKey } from '@/lib/focus-plan';
+import { mergeGroup, splitGroup, unmergeGroup } from '@/lib/group-splits-db';
 
 export type TwResult = { ok: true; stamp: string } | { ok: false; error: string };
 const fail = (error: string): { ok: false; error: string } => ({ ok: false, error });
@@ -28,7 +29,7 @@ type Gate = Extract<Awaited<ReturnType<typeof gate>>, { ok: true }>;
 const done = async (s: Gate): Promise<TwResult> => ({ ok: true, stamp: await loadBoardStamp(s.sb, s.meeting.entryId) });
 
 const FG_KEY = /^fg:\d{1,18}$/;
-const GROUP_KEY = /^fr:(mb:)?[a-z0-9][a-z0-9-]{0,80}$/;
+const GROUP_KEY = /^fr:(mb:)?[a-z0-9][a-z0-9-]{0,80}(~[23])?$/;
 const MB_ID = /^[a-z0-9][a-z0-9-]{0,80}$/;
 /** A topic a scout can be placed in from requests and offers: a requirement, a badge or a freeform topic. */
 const REQUEST_KEY = /^((mb|ff):.{1,100}|[a-z0-9][a-z0-9.-]{0,118}[a-z0-9])$/i;
@@ -184,5 +185,51 @@ export async function twRemoveRequirementAction(input: { entryId: number; key: s
   const s = await gate(input.entryId, 'seed');
   if (!s.ok) return s;
   const res = await unseedTopic(s.sb, s.meeting.entryId, input.key);
+  return res.ok ? done(s) : res;
+}
+
+/** A rank group a planner may split (D7: the screen offers rank groups only), as its base key. */
+const splittable = (group: unknown): string | null => {
+  const p = typeof group === 'string' && GROUP_KEY.test(group) ? parseGroupKey(group) : null;
+  return p && p.kind === 'rank' ? p.base : null;
+};
+
+/** Split a rank group into 2-3 groups (Plans/Meeting-Planner-III-Split-Groups.md): each section's requirement keys,
+ *  Group 1 first. Replaces the split it had; also how a column moves or is shared between groups. */
+export async function twSplitGroupAction(input: { entryId: number; group: string; sections: string[][] }): Promise<TwResult> {
+  const base = splittable(input?.group);
+  const sections = input?.sections;
+  if (
+    !base ||
+    !Array.isArray(sections) ||
+    sections.length < 2 ||
+    sections.length > MAX_SECTIONS ||
+    !sections.every((l) => Array.isArray(l) && l.length <= 200 && l.every((k) => typeof k === 'string' && REQUEST_KEY.test(k) && !isGroupKey(k)))
+  ) {
+    return fail('Malformed request');
+  }
+  const s = await gate(input.entryId, 'seed');
+  if (!s.ok) return s;
+  const res = await splitGroup(s.sb, s.meeting.entryId, base, sections, s.actorPersonId);
+  return res.ok ? done(s) : res;
+}
+
+/** Merge a split group back into one (soft: Split again brings the groups back as they were). */
+export async function twMergeGroupAction(input: { entryId: number; group: string }): Promise<TwResult> {
+  const base = splittable(input?.group);
+  if (!base) return fail('Malformed request');
+  const s = await gate(input.entryId, 'seed');
+  if (!s.ok) return s;
+  const res = await mergeGroup(s.sb, s.meeting.entryId, base, s.actorPersonId);
+  return res.ok ? done(s) : res;
+}
+
+/** Split a merged group again, as it was. */
+export async function twUnmergeGroupAction(input: { entryId: number; group: string }): Promise<TwResult> {
+  const base = splittable(input?.group);
+  if (!base) return fail('Malformed request');
+  const s = await gate(input.entryId, 'seed');
+  if (!s.ok) return s;
+  const res = await unmergeGroup(s.sb, s.meeting.entryId, base, s.actorPersonId);
   return res.ok ? done(s) : res;
 }
