@@ -27,6 +27,7 @@ import { planChanged, planSentOf, type PlanSent } from '@/lib/meeting-email-buil
 import { EMAIL_SEND_CAP, unfinishedSends, type EmailKind, type EmailStatus, type QueueEmail, type UnfinishedSend } from '@/lib/meeting-emails';
 import { teacherCardOf, type TeacherCard } from '@/lib/teacher-email-card';
 import { canonicalGroupKey } from '@/lib/focus-plan';
+import { answerOf, emailWords, initialsOf, scoutAnswerWord, teacherAnswerWord, toHint } from '@/lib/meeting-email-log';
 import {
   DEFAULT_PLAN_PUBLISHED,
   DEFAULT_REMINDER,
@@ -82,13 +83,21 @@ export interface LogLine {
   at: string;
   to: string;
   toName: string;
-  about: string;
+  /** The To name's hover: 'Parent of Solomon R · melissa@…', copies (lib/meeting-email-log). */
+  toHint: string;
+  /** What the email was: 'Solomon R’s plan', 'Ask to teach First Class group'. */
+  email: string;
   by: string;
+  byInitials: string;
   status: EmailStatus;
   failure: string | null;
   sentAt: string | null;
   delivery: string | null;
+  deliveredAt: string | null;
   openedAt: string | null;
+  /** What they've answered: 'Coming', 'Plan looks good ✓', 'Not this week', 'No answer yet'. */
+  answer: string;
+  answered: boolean;
   /** People it covers (for a row's History). */
   people: number[];
 }
@@ -116,13 +125,14 @@ interface LogDb {
   kind: EmailKind;
   recipient_person_id: number | null;
   sent_to: string;
-  about: { scouts?: number[]; group?: string };
+  about: { scouts?: number[]; group?: string; cc?: string[] };
   plan_sent: PlanSent | null;
   status: EmailStatus;
   failure: string | null;
   queued_at: string;
   sent_at: string | null;
   delivery_status: string | null;
+  delivered_at: string | null;
   opened_at: string | null;
   queued_by_person_id: number | null;
 }
@@ -202,7 +212,7 @@ export async function loadEmailScreen(sb: SupabaseClient, meeting: Pick<BoardMee
   const adults = await adultRecipients(sb, teacherIds);
   // A scout planned on a card (a Junior Leader) is emailed at their own address.
   const juniors = await juniorAddresses(sb, groups.flatMap((g) => g.teachers.filter((t) => t.kind === 'junior').map((t) => t.personId)), meeting.date);
-  const allIds = [...scoutIds, ...[...recipients.values()].flat().map((r) => r.recipientId), ...teacherIds, ...[...juniors.values()].flatMap((j) => j.cc.map((c) => c.recipientId)), ...log.flatMap((l) => (l.queued_by_person_id ? [l.queued_by_person_id] : []))];
+  const allIds = [...scoutIds, ...[...recipients.values()].flat().map((r) => r.recipientId), ...teacherIds, ...[...juniors.values()].flatMap((j) => j.cc.map((c) => c.recipientId)), ...log.flatMap((l) => [l.queued_by_person_id, l.recipient_person_id, ...(l.about.scouts ?? [])].filter((id): id is number => id != null))];
   const who = await names(sb, allIds);
   const nameOf = (id: number) => (who.get(id) ? boardName(who.get(id)!.name) : 'Someone');
   const toScreen = (list: readonly MailRecipient[]): ScreenRecipient[] => list.map((r) => ({ personId: r.recipientId, name: nameOf(r.recipientId), email: r.sentTo, isScout: r.isScout }));
@@ -320,21 +330,43 @@ export async function loadEmailScreen(sb: SupabaseClient, meeting: Pick<BoardMee
     scouts: board.map((s) => scoutRow(s, 'plan')),
     teachers,
     reminders,
-    log: log.map((l) => ({
-      id: l.id,
-      kind: l.kind,
-      at: l.sent_at ?? l.queued_at,
-      to: l.sent_to,
-      toName: l.recipient_person_id ? nameOf(l.recipient_person_id) : l.sent_to,
-      about: l.kind === 'teacher' ? `Teach ${view.groups.find((g) => g.key === l.about.group)?.title ?? 'a group'}` : (l.about.scouts ?? []).map((id) => nameOf(id)).join(', ') || 'Coming Sunday?',
-      by: l.queued_by_person_id ? nameOf(l.queued_by_person_id) : '',
-      status: l.status,
-      failure: l.failure,
-      sentAt: l.sent_at,
-      delivery: l.delivery_status,
-      openedAt: l.opened_at,
-      people: [...(l.about.scouts ?? []), ...(l.recipient_person_id ? [l.recipient_person_id] : [])]
-    })),
+    log: log
+      .map((l): LogLine => {
+        const scouts = l.about.scouts ?? [];
+        const scoutNames = scouts.map((id) => nameOf(id));
+        const group = l.about.group ? view.groups.find((g) => g.key === canonicalGroupKey(l.about.group!, data.input.mergedBases)) : undefined;
+        const me = l.recipient_person_id;
+        const asTeacher = group?.teachers.find((t) => t.personId === me);
+        const answer =
+          l.kind === 'teacher'
+            ? answerOf([{ name: '', word: teacherAnswerWord({ state: asTeacher?.state, saidNo: !!group?.saidNo.some((n) => n.personId === me), intent: me ? intents.get(me) : null }) }])
+            : scouts.length
+              ? answerOf(scouts.map((id) => ({ name: nameOf(id), word: scoutAnswerWord(planStateOf.get(id), intents.get(id)) })))
+              : answerOf([{ name: '', word: scoutAnswerWord(undefined, me ? intents.get(me) : null) }]);
+        const by = l.queued_by_person_id ? nameOf(l.queued_by_person_id) : '';
+        return {
+          id: l.id,
+          kind: l.kind,
+          at: l.sent_at ?? l.queued_at,
+          to: l.sent_to,
+          toName: me ? nameOf(me) : l.sent_to,
+          toHint: toHint({ sentTo: l.sent_to, recipientIsScout: me != null && scouts.includes(me), scoutNames, cc: l.about.cc ?? [] }),
+          email: emailWords({ kind: l.kind, scoutNames, groupTitle: group?.title ?? null, planned: !!asTeacher }),
+          by,
+          byInitials: l.queued_by_person_id && who.get(l.queued_by_person_id) ? initialsOf(who.get(l.queued_by_person_id)!.name) : '',
+          status: l.status,
+          failure: l.failure,
+          sentAt: l.sent_at,
+          delivery: l.delivery_status,
+          deliveredAt: l.delivered_at,
+          openedAt: l.opened_at,
+          answer: answer.word,
+          answered: answer.answered,
+          people: [...scouts, ...(me ? [me] : [])]
+        };
+      })
+      // Newest first by when it went (a batch's lines interleave by queue time otherwise).
+      .sort((a, b) => b.at.localeCompare(a.at) || b.id - a.id),
     unfinished,
     plans,
     templates: { plan: templates[0], reminder: templates[1], teacher: templates[2], teacherPlanned: templates[3] },

@@ -601,6 +601,20 @@
   padding: var(--sp-2) var(--sp-3);
   border-bottom: 1px solid var(--rule);
   vertical-align: top;
+  /* One line per email (Patrick, 2026-11-01): the table scrolls sideways before a line wraps. */
+  white-space: nowrap;
+}
+.muted {
+  color: var(--text-meta);
+}
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-4);
+  font: var(--fs-xs) / 1.4 var(--font-ui);
+  color: var(--text-meta);
 }
 .log th:first-child,
 .log td:first-child {

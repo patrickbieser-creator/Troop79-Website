@@ -13,10 +13,10 @@
  * Nothing sends without a Send press (no schedule: Q5). Emails go out one at a time while the page is open; a send cut
  * short shows "N emails didn't finish sending · Send them now". "How this works" states every limit.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { fmtDateTime } from '@/lib/format-date';
+import { fmtClock, fmtDateTime, fmtDay, fmtWhen } from '@/lib/format-date';
 import { PLAN_MAX, PLAN_MAX_MIN } from '@/lib/family-week-shared';
 import { peopleWords, planButtons, renderHouseholdEmail, TRACKING_LINE } from '@/lib/meeting-email-build';
 import { renderTeacherEmail, TEACHER_EMAIL_BUTTON } from '@/lib/meeting-invite-email';
@@ -53,6 +53,8 @@ const COLUMNS: Record<Exclude<Tab, 'log'>, [string, string]> = {
   teachers: ['Teacher', 'Asked to teach'],
   reminders: ['Who', 'About']
 };
+/** How often the Sent log refreshes while it's open. */
+const LOG_REFRESH_MS = 30_000;
 const KIND_WORD = { plan: 'Scout invite', teacher: 'Teacher invite', reminder: 'Reminder' } as const;
 
 function status(r: ScreenRow): { label: string; tone: Tone; k: 'new' | 'sent' | 'blocked'; opened: boolean } {
@@ -75,8 +77,11 @@ function logResult(l: LogLine): { label: string; tone: Tone } {
   if (l.status === 'unknown') return { label: 'Unknown · check before sending again', tone: 'bad' };
   if (l.status === 'retried') return { label: 'Sent again', tone: 'muted' };
   if (l.delivery === 'bounced' || l.delivery === 'complained') return { label: `Failed · ${l.delivery === 'bounced' ? 'address bounced' : 'marked as spam'}`, tone: 'bad' };
-  if (l.openedAt) return { label: `Opened · ${fmtDateTime(l.openedAt)}`, tone: 'open' };
-  return { label: l.delivery === 'delivered' ? 'Delivered · not opened' : 'Sent · not opened', tone: 'info' };
+  const landed = l.delivery === 'delivered' ? `Delivered ${fmtClock(l.deliveredAt ?? l.sentAt)}` : `Sent ${fmtClock(l.sentAt)}`;
+  if (!l.openedAt) return { label: `${landed} · not opened`, tone: 'info' };
+  // The open's day only when it isn't the day it went.
+  const opened = fmtDay(l.openedAt) === fmtDay(l.sentAt ?? l.at) ? fmtClock(l.openedAt) : fmtWhen(l.openedAt);
+  return { label: `${landed} · Opened ${opened}`, tone: 'open' };
 }
 
 /** The preview reads as the email reads: bold marks dropped, a link shown as its words, and the template's own
@@ -104,6 +109,15 @@ export function EmailsClient({ screen, day }: { screen: EmailScreen; day: string
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number; failed: number } | null>(null);
+  // The Sent log keeps itself current (deliveries, opens, answers) while it's open: a refresh every 30 s, never during
+  // a send and never in a hidden tab (Patrick, 2026-11-01: "it's not being updated").
+  useEffect(() => {
+    if (tab !== 'log' || progress) return;
+    const t = setInterval(() => {
+      if (document.visibilityState === 'visible') router.refresh();
+    }, LOG_REFRESH_MS);
+    return () => clearInterval(t);
+  }, [tab, progress, router]);
   const [flash, setFlash] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -582,35 +596,79 @@ function Preview({
   );
 }
 
-function SentLog({ log, busy, onSendAgain }: { log: LogLine[]; busy: boolean; onSendAgain: (ids: number[]) => void }) {
+const LOG_PAGE = 100;
+type LogFilter = 'all' | 'unopened' | 'unanswered';
+const unopened = (l: LogLine) => l.status === 'sent' && !l.openedAt && l.delivery !== 'bounced' && l.delivery !== 'complained';
+
+/**
+ * The Sent log (Patrick, 2026-11-01): one compact line per email. When · the sender's initials | To (who they are and the
+ * address on hover) | what the email was | how it landed | what they've answered since. All · Not opened · No answer,
+ * and 100 lines a page.
+ */
+export function SentLog({ log, busy, onSendAgain }: { log: LogLine[]; busy: boolean; onSendAgain: (ids: number[]) => void }) {
+  const [filter, setFilter] = useState<LogFilter>('all');
+  const [page, setPage] = useState(0);
+  const keep = (l: LogLine) => (filter === 'unopened' ? unopened(l) : filter === 'unanswered' ? !l.answered : true);
+  const shown = log.filter(keep);
+  const pages = Math.max(1, Math.ceil(shown.length / LOG_PAGE));
+  const at = Math.min(page, pages - 1);
+  const slice = shown.slice(at * LOG_PAGE, (at + 1) * LOG_PAGE);
+  const choose = (f: LogFilter) => {
+    setFilter(f);
+    setPage(0);
+  };
   return (
     <section aria-label="Sent log" className={`${s.listCard} ${s.logCard}`}>
       <div className={s.listHead}>
-        <span className={s.hint}>Every email about this meeting: one line per person it went to, updated as it&rsquo;s delivered, opened and answered.</span>
+        <span className={s.hint}>Every email about this meeting, newest first. Hover a name for who they are and the address.</span>
+        <div role="group" aria-label="Show" className={s.seg}>
+          {(
+            [
+              ['all', 'All', log.length],
+              ['unopened', 'Not opened', log.filter(unopened).length],
+              ['unanswered', 'No answer', log.filter((l) => !l.answered).length]
+            ] as const
+          ).map(([k, label, n]) => (
+            <button key={k} type="button" aria-pressed={filter === k} className={filter === k ? s.segOn : s.segBtn} onClick={() => choose(k)}>
+              {label} {n}
+            </button>
+          ))}
+        </div>
       </div>
-      {log.length ? (
+      {shown.length ? (
         <div className={s.scroll}>
           <table className={s.log}>
             <thead>
               <tr>
                 <th scope="col">When</th>
                 <th scope="col">To</th>
-                <th scope="col">About</th>
-                <th scope="col">Kind</th>
-                <th scope="col">Sent by</th>
+                <th scope="col">Email</th>
                 <th scope="col">Result</th>
+                <th scope="col">Answer</th>
               </tr>
             </thead>
             <tbody>
-              {log.map((l) => {
+              {slice.map((l) => {
                 const r = logResult(l);
                 return (
                   <tr key={l.id}>
-                    <td className={s.nowrap}>{fmtDateTime(l.at)}</td>
-                    <td className={s.strong}>{l.toName}</td>
-                    <td>{l.about}</td>
-                    <td>{KIND_WORD[l.kind]}</td>
-                    <td>{l.by}</td>
+                    <td>
+                      {fmtWhen(l.at)}
+                      {l.byInitials ? (
+                        <>
+                          {' · '}
+                          <span className={s.muted} title={`Sent by ${l.by}`}>
+                            {l.byInitials}
+                          </span>
+                        </>
+                      ) : null}
+                    </td>
+                    <td>
+                      <span className={s.strong} title={l.toHint}>
+                        {l.toName}
+                      </span>
+                    </td>
+                    <td>{l.email}</td>
                     <td>
                       <span className={`${s.status} ${s[`tone-${r.tone}`]}`}>{r.label}</span>
                       {l.status === 'failed' || l.status === 'unknown' ? (
@@ -619,6 +677,7 @@ function SentLog({ log, busy, onSendAgain }: { log: LogLine[]; busy: boolean; on
                         </button>
                       ) : null}
                     </td>
+                    <td className={l.answered ? undefined : s.muted}>{l.answer}</td>
                   </tr>
                 );
               })}
@@ -626,8 +685,21 @@ function SentLog({ log, busy, onSendAgain }: { log: LogLine[]; busy: boolean; on
           </table>
         </div>
       ) : (
-        <div className={s.empty}>Nothing sent for this meeting yet.</div>
+        <div className={s.empty}>{log.length ? 'Nothing here with this filter.' : 'Nothing sent for this meeting yet.'}</div>
       )}
+      {shown.length > LOG_PAGE ? (
+        <div className={s.pager}>
+          <span>
+            {at * LOG_PAGE + 1}–{Math.min((at + 1) * LOG_PAGE, shown.length)} of {shown.length}
+          </span>
+          <button type="button" className={s.againBtn} aria-label="Previous page" disabled={at === 0} onClick={() => setPage(at - 1)}>
+            ‹ Previous
+          </button>
+          <button type="button" className={s.againBtn} aria-label="Next page" disabled={at >= pages - 1} onClick={() => setPage(at + 1)}>
+            Next ›
+          </button>
+        </div>
+      ) : null}
     </section>
   );
 }

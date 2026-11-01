@@ -113,6 +113,20 @@ describe('a plan email', () => {
   });
 });
 
+// The Sent log (Patrick, 2026-11-01): a line says what the email was, who it went to on hover, and the answer since.
+describe('the Sent log', () => {
+  it('APlanEmailsLine_ReadsAsTheScoutsPlan_ToTheirParent_WithTheAnswer', async () => {
+    const { loadEmailScreen } = await import('../src/lib/meeting-email-screen');
+    await sb.from('meeting_emails').insert({ calendar_entry_id: meeting, kind: 'plan', batch_id: '00000000-0000-4000-8000-0000000000ac', recipient_person_id: parent, sent_to: parentEmail, about: { scouts: [scout] }, status: 'sent', sent_at: new Date().toISOString() });
+    const [catalog, lists] = await Promise.all([fetchAdvancementCatalog(sb as never), fetchPeopleLists(sb)]);
+    const screen = await loadEmailScreen(sb, { entryId: meeting, date: DATE }, lists, catalog);
+    await sb.from('meeting_emails').delete().eq('calendar_entry_id', meeting);
+    const [l] = screen.log;
+    const name = screen.scouts.find((r) => r.personId === scout)!.name;
+    expect([l.email, l.toHint, l.answer, l.answered]).toEqual([`${name}’s plan`, `Parent of ${name} · ${parentEmail}`, 'No answer yet', false]);
+  }, 60_000);
+});
+
 describe('already emailed (qa-lead E3 #2)', () => {
   it('Queue_RefusesAFamilyAlreadyEmailed', async () => {
     await sb.from('meeting_emails').insert({ calendar_entry_id: meeting, kind: 'plan', batch_id: '00000000-0000-4000-8000-0000000000aa', recipient_person_id: parent, sent_to: parentEmail, about: { scouts: [scout] }, status: 'sent' });

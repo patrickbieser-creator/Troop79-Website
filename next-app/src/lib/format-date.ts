@@ -19,6 +19,7 @@
  *   fmtDateFull  'Sunday, July 12, 2026'   headings where the weekday matters
  *   fmtDay       'Sun, Jul 12'             dense day headings, deadlines, job boards
  *   fmtDateTime  'Jul 12, 2026, 3:04 PM'   any timestamp shown with its time
+ *   fmtClock     '3:04 pm'                 a time beside a day already shown (log lines)
  *   fmtMonthYear 'July 2026'               almanacs, "updated", "earned" badges
  *   fmtRange     'Jul 12–14, 2026'         multi-day events, report ranges
  * ISO 'YYYY-MM-DD' is for data (exports, URLs, picker values) — never for display.
@@ -103,6 +104,15 @@ export function fmtRange(start: DateInput, end: DateInput): string {
   if (ay === by && am === bm) return `${am} ${ad}–${bd}, ${ay}`;
   if (ay === by) return `${am} ${ad} – ${bm} ${bd}, ${ay}`;
   return `${fmtDate(start)} – ${fmtDate(end)}`;
+}
+
+/** The clock of an instant, Central: '9:00 am'. A log line's delivered / opened time beside its day. */
+export function fmtClock(input: DateInput): string {
+  const r = resolve(input);
+  if (!r) return '—';
+  const parts = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', timeZone: r.tz }).formatToParts(r.d);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '';
+  return `${get('hour')}:${get('minute')} ${get('dayPeriod').toLowerCase()}`;
 }
 
 /** The day + clock of an instant, Central: 'Sat 9:00 am' (`{long:true}` → 'Saturday 9:00 am').
