@@ -9,21 +9,10 @@ import type { AdvancementCatalog } from '@/lib/advancement-catalog';
 import type { PeopleLists } from '@/lib/people-lists';
 import { loadThisWeekData } from '@/lib/this-week-db';
 import { buildThisWeek, type ThisWeek, type ThisWeekInput } from '@/lib/this-week';
-import { teacherSnapOf, type TeacherAnswer, type TeacherSnap } from '@/lib/plan-states';
+import { teacherSnapOf, type TeacherSnap } from '@/lib/plan-states';
 import { canonicalGroupKey } from '@/lib/focus-plan';
 
-export interface TeacherAnswerRow extends TeacherAnswer {
-  personId: number;
-  key: string;
-}
-
-type Row = { person_id: number; group_key: string; answer: 'yes' | 'no'; note: string | null; answered_at: string; answered_plan: TeacherSnap | null };
-
-export async function loadTeacherAnswers(sb: SupabaseClient, entryId: number): Promise<TeacherAnswerRow[]> {
-  const { data, error } = await sb.from('meeting_teacher_answers').select('person_id, group_key, answer, note, answered_at, answered_plan').eq('calendar_entry_id', entryId);
-  if (error) throw new Error(error.message);
-  return ((data ?? []) as Row[]).map((r) => ({ personId: r.person_id, key: r.group_key, answer: r.answer, note: r.note, answeredAt: r.answered_at, plan: r.answered_plan }));
-}
+export { loadTeacherAnswers, type TeacherAnswerRow } from '@/lib/this-week-db';
 
 /** The card a key names on This week now: a group (merged keys read as one) or a class from requests and offers. */
 export function snapOfKey(view: Pick<ThisWeek, 'groups' | 'extras'>, key: string, merged?: ReadonlySet<string>): TeacherSnap | null {

@@ -25,6 +25,7 @@ const group = (key: string, o: Partial<TwGroup> = {}): TwGroup => ({
   teachers: [],
   candidates: [],
   declineNotes: [],
+  saidNo: [],
   ...o
 });
 const teacher = (personId: number) => ({ personId, name: `P${personId}`, kind: 'adult' as const, intent: null, note: null, formal: `Mr. ${personId}` });

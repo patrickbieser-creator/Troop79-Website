@@ -152,7 +152,7 @@ export async function loadTeacherPeople(
 }
 
 export interface SupplyRows {
-  topicTeachers: (TopicTeacherRow & { entryId: number; enteredByPersonId: number | null })[];
+  topicTeachers: (TopicTeacherRow & { entryId: number; enteredByPersonId: number | null; createdAt?: string })[];
   skillOffers: (SkillOfferRow & { entryId: number })[];
   /** Freeform topics on these boards, with their titles. */
   freeform: { entryId: number; key: string; title: string }[];
@@ -176,12 +176,12 @@ export async function loadSupplyRows(sb: SupabaseClient, entryIds: readonly numb
   ]);
   const err = t.error ?? o.error ?? f.error;
   if (err) throw new Error(err.message);
-  type TRow = { calendar_entry_id: number; person_id: number; note: string | null; entered_by_person_id: number | null; meeting_topics: { topic_key: string } | { topic_key: string }[] | null };
+  type TRow = { calendar_entry_id: number; person_id: number; note: string | null; entered_by_person_id: number | null; created_at: string; meeting_topics: { topic_key: string } | { topic_key: string }[] | null };
   const keyOf = (r: TRow) => (Array.isArray(r.meeting_topics) ? r.meeting_topics[0] : r.meeting_topics)?.topic_key ?? null;
   return {
     topicTeachers: ((t.data ?? []) as unknown as TRow[])
       .filter((r) => keyOf(r))
-      .map((r) => ({ entryId: r.calendar_entry_id, key: keyOf(r)!, personId: r.person_id, note: r.note, enteredByPersonId: r.entered_by_person_id })),
+      .map((r) => ({ entryId: r.calendar_entry_id, key: keyOf(r)!, personId: r.person_id, note: r.note, enteredByPersonId: r.entered_by_person_id, createdAt: r.created_at })),
     skillOffers: ((o.data ?? []) as { calendar_entry_id: number; person_id: number; skill_id: string; note: string | null }[]).map((r) => ({
       entryId: r.calendar_entry_id,
       personId: r.person_id,

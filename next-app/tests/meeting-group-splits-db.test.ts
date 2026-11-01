@@ -206,3 +206,22 @@ describe('older scouts who teach (Patrick, 2026-10-31: Oliver V)', () => {
     await t.twSetRoleAction({ entryId: entry, personId: older.personId, role: null });
   });
 });
+
+describe('planned, asked, confirmed on This week (Confirmations C3)', () => {
+  it('ATeacherOnACard_IsPlanned_ThenConfirmed_ThenSaidNoLeavesTheCardNeedingATeacher', async () => {
+    asSeeder();
+    const t = await tw();
+    await t.twMergeGroupAction({ entryId: entry, group: TF });
+    expect((await t.twSetTeacherAction({ entryId: entry, key: TF, personId: planner, on: true })).ok).toBe(true);
+    const stateOf = async () => (await view()).groups.find((g) => g.key === TF)!;
+    const planned = (await stateOf()).teachers.find((x) => x.personId === planner)?.state;
+    await sb.from('meeting_teacher_answers').upsert({ calendar_entry_id: entry, person_id: planner, group_key: TF, answer: 'yes', answered_at: new Date(Date.now() + 1000).toISOString(), answered_plan: null });
+    const confirmed = (await stateOf()).teachers.find((x) => x.personId === planner)?.state;
+    await t.twSetTeacherAction({ entryId: entry, key: TF, personId: planner, on: false });
+    await sb.from('meeting_teacher_answers').upsert({ calendar_entry_id: entry, person_id: planner, group_key: TF, answer: 'no', note: 'Out of town', answered_at: new Date(Date.now() + 2000).toISOString() });
+    const g = await stateOf();
+    expect([planned, confirmed, g.teachers.length, g.saidNo.map((n) => n.note)]).toEqual(['planned', 'confirmed', 0, ['Out of town']]);
+    await sb.from('meeting_teacher_answers').delete().eq('calendar_entry_id', entry);
+  });
+});
+

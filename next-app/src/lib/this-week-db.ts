@@ -12,6 +12,7 @@ import { boardScoutsOf, type PlannerLists } from '@/lib/people-lists';
 import type { FocusProgress, ScoutRole } from '@/lib/focus-plan';
 import type { ThisWeekInput } from '@/lib/this-week';
 import { loadGroupSplits } from '@/lib/group-splits-db';
+import type { TeacherAnswer, TeacherSnap } from '@/lib/plan-states';
 
 /** Each scout's rank and merit badge requirement leaves on the ledger, and the badges they have earned (paginated: the
  *  ledger is far past 1000 rows). An earned badge counts as done even when its requirements were never logged one by
@@ -73,6 +74,38 @@ export async function loadMeetingFocus(sb: SupabaseClient, entryId: number): Pro
   };
 }
 
+export interface TeacherAnswerRow extends TeacherAnswer {
+  personId: number;
+  key: string;
+}
+
+type Row = { person_id: number; group_key: string; answer: 'yes' | 'no'; note: string | null; answered_at: string; answered_plan: TeacherSnap | null };
+
+export async function loadTeacherAnswers(sb: SupabaseClient, entryId: number): Promise<TeacherAnswerRow[]> {
+  const { data, error } = await sb.from('meeting_teacher_answers').select('person_id, group_key, answer, note, answered_at, answered_plan').eq('calendar_entry_id', entryId);
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as Row[]).map((r) => ({ personId: r.person_id, key: r.group_key, answer: r.answer, note: r.note, answeredAt: r.answered_at, plan: r.answered_plan }));
+}
+
+/**
+ * When each person was asked about each card (Confirmations C1 "asked"): a sent teacher email (meeting_emails, its
+ * about.group) or a teach invite (meeting_invites kind teach), whichever path sent it.
+ */
+export async function loadTeacherAsks(sb: SupabaseClient, entryId: number): Promise<{ personId: number; group: string; at: string }[]> {
+  const [mails, invites] = await Promise.all([
+    sb.from('meeting_emails').select('recipient_person_id, about, sent_at').eq('calendar_entry_id', entryId).eq('kind', 'teacher').eq('status', 'sent'),
+    sb.from('meeting_invites').select('invitee_person_id, topic_key, sent_at').eq('calendar_entry_id', entryId).eq('kind', 'teach')
+  ]);
+  if (mails.error) throw new Error(mails.error.message);
+  if (invites.error) throw new Error(invites.error.message);
+  return [
+    ...((mails.data ?? []) as { recipient_person_id: number | null; about: { group?: string } | null; sent_at: string | null }[]).flatMap((m) =>
+      m.recipient_person_id != null && m.about?.group && m.sent_at ? [{ personId: m.recipient_person_id, group: m.about.group, at: m.sent_at }] : []
+    ),
+    ...((invites.data ?? []) as { invitee_person_id: number; topic_key: string; sent_at: string | null }[]).flatMap((i) => (i.sent_at ? [{ personId: i.invitee_person_id, group: i.topic_key, at: i.sent_at }] : []))
+  ];
+}
+
 export async function loadScoutRoles(sb: SupabaseClient, entryId: number): Promise<Map<number, ScoutRole>> {
   const { data, error } = await sb.from('meeting_scout_roles').select('person_id, role, ref_key').eq('calendar_entry_id', entryId);
   if (error) throw new Error(error.message);
@@ -132,7 +165,7 @@ export async function loadThisWeekData(
 ): Promise<ThisWeekData> {
   const catalog = given ?? (await loadAdvancementCatalog());
   const scoutsIn = boardScoutsOf(lists);
-  const [scouts, progress, teachers, intents, supply, focus, roles, nightBadges, stamp, answers, intentNotes, splits] = await Promise.all([
+  const [scouts, progress, teachers, intents, supply, focus, roles, nightBadges, stamp, answers, intentNotes, splits, teacherAnswers, teacherAsks] = await Promise.all([
     loadBoardState(sb, meeting, catalog, scoutsIn),
     loadLeafCodes(sb, scoutsIn.map((s) => s.scoutId)),
     loadTeacherPeople(sb, 'all', meeting.date, catalog, { pool: lists.pool }),
@@ -144,7 +177,9 @@ export async function loadThisWeekData(
     loadBoardStamp(sb, meeting.entryId),
     loadFamilyAnswers(sb, meeting.entryId),
     loadIntentNotes(sb, meeting.entryId),
-    loadGroupSplits(sb, meeting.entryId)
+    loadGroupSplits(sb, meeting.entryId),
+    loadTeacherAnswers(sb, meeting.entryId),
+    loadTeacherAsks(sb, meeting.entryId)
   ]);
   // A family-page "Can't make it" note shows under each group the person was down to teach (F3b).
   const notesFromPage = supply.topicTeachers.flatMap((t) => (intentNotes.has(t.personId) ? [{ key: t.key, personId: t.personId, note: intentNotes.get(t.personId)! }] : []));
@@ -161,7 +196,9 @@ export async function loadThisWeekData(
       roles,
       teachers: [...teachers.values()].filter((p) => p.eligible !== false),
       intents,
-      topicTeachers: supply.topicTeachers.map((t) => ({ key: t.key, personId: t.personId, note: t.note })),
+      topicTeachers: supply.topicTeachers.map((t) => ({ key: t.key, personId: t.personId, note: t.note, createdAt: t.createdAt })),
+      teacherAnswers,
+      teacherAsks,
       ...answers,
       teacherNotes: [...(answers.teacherNotes ?? []), ...notesFromPage],
       ...splits

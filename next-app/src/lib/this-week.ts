@@ -6,6 +6,7 @@
 import type { AdvancementCatalog } from '@/lib/advancement-catalog';
 import { buildFocusPlan, canonicalGroupKey, isGroupKey, type CellMark, type FocusInput, type FocusProgress, type FocusRow, type RowStatus, type ScoutRole } from '@/lib/focus-plan';
 import { splitOffer } from '@/lib/group-split-proposal';
+import { askedAtOf, teacherSnapOf, teacherState, type PlanState, type TeacherAnswer, type TeacherSnap } from '@/lib/plan-states';
 import { boardName, joinNames, type BoardPick, type Intent } from '@/lib/meeting-board-shared';
 import { rankOfKey, topicWords } from '@/lib/meeting-board-picklist';
 import { assessTeacher, canTeachFocusGroup, teacherName, type TeachContext, type TeacherPerson } from '@/lib/meeting-board-teach';
@@ -42,7 +43,10 @@ export interface ThisWeekInput {
   /** Explicit answers, adults and scouts alike, keyed by personId. */
   intents: ReadonlyMap<number, Intent>;
   /** Teacher sign-ups on this meeting, lead first then sign-up order; `note` is what they wrote with an offer. */
-  topicTeachers: readonly { key: string; personId: number; note?: string | null }[];
+  topicTeachers: readonly { key: string; personId: number; note?: string | null; createdAt?: string }[];
+  /** Confirmations: each teacher's answers (meeting_teacher_answers) and when they were asked about each card. */
+  teacherAnswers?: readonly (TeacherAnswer & { personId: number; key: string })[];
+  teacherAsks?: readonly { personId: number; group: string; at: string }[];
   /** Freeform topics' titles. */
   titles: ReadonlyMap<string, string>;
   /** A family's unticks (Emails E2), column keys by personId: off the plan at once. */
@@ -78,6 +82,8 @@ export interface TwTeacher {
   note: string | null;
   /** As families see them: adults formally ('Mr. Vest'), scouts first name + last initial. */
   formal: string;
+  /** On a card's teacher list (Confirmations): planned, asked, confirmed or changed since their yes. Absent in a pool. */
+  state?: PlanState;
 }
 
 export { joinNames };
@@ -124,6 +130,8 @@ export interface TwGroup {
   candidates: TwTeacher[];
   /** Notes from people who said "Not this week" to teaching it. */
   declineNotes: { name: string; note: string }[];
+  /** Confirmations C-D2: who said No to this card (now off it), with their note: the card needs a teacher. */
+  saidNo: { personId: number; name: string; note: string | null }[];
 }
 
 export interface TwRow extends TwPerson {
@@ -179,6 +187,8 @@ export interface TwExtra {
   scouts: TwPerson[];
   /** What a teacher wrote with their offer ("I can teach bottle caps"), with who wrote it (Patrick, 2026-10-30). */
   offerNotes: { name: string; note: string }[];
+  /** Confirmations C-D2: who said No to this class (now off it). */
+  saidNo: { personId: number; name: string; note: string | null }[];
 }
 
 export interface AnswerCounts {
@@ -300,16 +310,38 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
   const pool = input.teachers;
   const poolBy = new Map(pool.map((p) => [p.personId, p]));
   // A merged split's Group 2/3 teachers count for the one group (canonicalGroupKey), so a merge never loses one.
-  const signedUp = (key: string): TwTeacher[] =>
+  // Confirmations: each person's newest answer about a card (merged keys read as one).
+  const answerOf = (personId: number, key: string) =>
+    (input.teacherAnswers ?? [])
+      .filter((a) => a.personId === personId && canonicalGroupKey(a.key, input.mergedBases) === key)
+      .sort((a, b) => b.answeredAt.localeCompare(a.answeredAt))[0] ?? null;
+  const signedUp = (key: string, now: TeacherSnap): TwTeacher[] =>
     input.topicTeachers
       .filter((x, i, all) => canonicalGroupKey(x.key, input.mergedBases) === key && !notComing(x.personId) && all.findIndex((y) => y.personId === x.personId && canonicalGroupKey(y.key, input.mergedBases) === key) === i)
       .flatMap((t): TwTeacher[] => {
+        const state = teacherState({
+          onCard: true,
+          hiddenByIntent: false,
+          answer: answerOf(t.personId, key),
+          askedAt: askedAtOf(input.teacherAsks ?? [], { personId: t.personId, groupKey: key, merged: input.mergedBases }),
+          slotSince: t.createdAt ?? null,
+          now
+        });
         const p = poolBy.get(t.personId);
-        if (p) return [teacherOf(p)];
+        if (p) return [{ ...teacherOf(p), state }];
         const s = scoutBy.get(t.personId);
-        return s ? [{ personId: s.personId, name: boardName(s.name), kind: 'junior', intent: s.intent, note: null, formal: boardName(s.name) }] : [];
+        return s ? [{ personId: s.personId, name: boardName(s.name), kind: 'junior', intent: s.intent, note: null, formal: boardName(s.name), state }] : [];
       })
       .sort((a, b) => a.name.localeCompare(b.name));
+  /** Who said No to this card and is off it now (C-D2). */
+  const saidNoTo = (key: string, on: readonly TwTeacher[]) =>
+    (input.teacherAnswers ?? [])
+      .filter((a) => a.answer === 'no' && canonicalGroupKey(a.key, input.mergedBases) === key && !on.some((t) => t.personId === a.personId))
+      .map((a) => {
+        const p = poolBy.get(a.personId);
+        const s = scoutBy.get(a.personId);
+        return { personId: a.personId, name: p ? teacherName(p, 'admin') : s ? boardName(s.name) : 'Someone', note: a.note };
+      });
   const byAnswer = (a: TwTeacher, b: TwTeacher) => {
     const rank = (t: TwTeacher) => (t.intent === 'coming' ? 0 : t.intent == null || t.intent === 'undecided' ? 1 : 2);
     return rank(a) - rank(b) || a.name.localeCompare(b.name);
@@ -344,6 +376,7 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
       qualified = pool.filter((p) => canTeachFocusGroup(p, tops, input.ctx)).map((p) => teacherOf(p, p.kind === 'junior' ? `Scout instructor · ${rankName.get(p.currentRank ?? '') ?? ''}` : null)).sort(byAnswer);
     }
     const seen = new Set(qualified.map((t) => t.personId));
+    const onCard = signedUp(g.key, teacherSnapOf({ key: g.key, title: g.label, columns: g.columns }, input.mergedBases));
     return {
       key: g.key,
       kind: g.kind,
@@ -361,7 +394,8 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
       summary: groupSummary(columns.flatMap((c) => [c.key, ...c.subs.map((x) => x.key)]), input.focus, catalog),
       columns,
       members: members.map((m) => person(scoutBy.get(m.personId)!)),
-      teachers: signedUp(g.key),
+      teachers: onCard,
+      saidNo: saidNoTo(g.key, onCard),
       candidates: [...qualified, ...teachingScouts.filter((t) => !seen.has(t.personId))],
       declineNotes: (input.teacherNotes ?? [])
         .filter((n) => n.key === g.key)
@@ -404,7 +438,9 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
         const sc = scoutBy.get(t.personId);
         return { name: p ? teacherName(p, 'admin') : sc ? boardName(sc.name) : 'Someone', note: t.note! };
       });
-    return { key, title: w?.label ?? key, codeLabel: w?.codeLabel ?? '', origin, teachers: signedUp(key), candidates, scouts: scouts.map(person), offerNotes };
+    const now = { group: key, itemKeys: [key], title: w?.label ?? key };
+    const teachers = signedUp(key, now);
+    return { key, title: w?.label ?? key, codeLabel: w?.codeLabel ?? '', origin, teachers, saidNo: saidNoTo(key, teachers), candidates, scouts: scouts.map(person), offerNotes };
   });
   const extraTitle = new Map(extras.map((e) => [e.key, e.title]));
 

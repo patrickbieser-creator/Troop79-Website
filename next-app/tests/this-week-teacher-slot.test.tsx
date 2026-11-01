@@ -72,4 +72,10 @@ describe('TeacherSlot', () => {
     const [bo, ann] = await Promise.all([screen.findByRole('button', { name: /^Bo Ruiz/ }), screen.findByRole('button', { name: /^Ann Vest/ })]);
     expect([bo.textContent, ann.textContent?.includes('Tenderfoot')]).toEqual(['Bo Ruiz · Scout Group 2', false]);
   });
+
+  it('EachTeacher_WearsTheirState_InTheSlot', () => {
+    m.canEdit = false;
+    slot([{ ...A, state: 'confirmed' }, { ...B, state: 'asked' }]);
+    expect([screen.getByLabelText('Ann Vest, confirmed').textContent, screen.getByLabelText('Bo Ruiz, asked, no answer yet').textContent]).toEqual(['✓ Ann Vest', 'Bo Ruiz asked']);
+  });
 });

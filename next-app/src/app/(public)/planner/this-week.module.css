@@ -1298,3 +1298,52 @@ button.chip:focus-visible {
     gap: var(--sp-1);
   }
 }
+
+/* ── Planned, asked, confirmed (Confirmations C-D3) ──────────────────────────────────────────────────────────── */
+.stName {
+  display: inline-flex;
+  align-items: baseline;
+  padding: 0 var(--sp-2);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-pill);
+  background: var(--warm-white);
+  color: var(--text-head);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.stWord {
+  font-weight: 400;
+  font-size: var(--fs-xs);
+  color: var(--text-meta);
+}
+.st-planned {
+  border-style: solid;
+}
+.st-asked {
+  border-style: dashed;
+  border-color: var(--navy);
+}
+.st-confirmed {
+  border-color: var(--status-success);
+  background: var(--status-success);
+  color: var(--warm-white);
+}
+.st-changed {
+  border-color: var(--status-warning);
+  background: var(--status-warning-bg);
+}
+.st-said_no {
+  border-color: var(--status-danger);
+  background: var(--status-danger-bg);
+  color: var(--status-danger);
+}
+/* A card a No emptied: it needs a teacher, and says who said no. */
+.needsTeacher {
+  margin: 0;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--status-danger);
+  border-radius: var(--rad-md);
+  background: var(--status-danger-bg);
+  color: var(--status-danger);
+  font: 600 var(--fs-sm) / 1.4 var(--font-ui);
+}

@@ -36,7 +36,8 @@ const view: ThisWeek = {
       members: [p(1, 'Adi A'), p(2, 'Ben B', 'not_coming')],
       teachers: [],
       candidates: [],
-      declineNotes: []
+      declineNotes: [],
+      saidNo: []
     }
   ],
   sections: [],

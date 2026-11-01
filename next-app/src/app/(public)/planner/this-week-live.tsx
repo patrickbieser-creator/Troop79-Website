@@ -8,6 +8,7 @@
  */
 import { useOptimistic, useTransition } from 'react';
 import type { ThisWeek, TwPerson, TwTeacher } from '@/lib/this-week';
+import type { PlanState } from '@/lib/plan-states';
 import { usePlanner } from './planner-client';
 import { twSetPresentAction } from './this-week-actions';
 import { useWrite } from './this-week-parts';
@@ -57,11 +58,14 @@ export function LiveView({ entryId, view, isToday, present }: { entryId: number;
     });
   };
   // A teacher's button (`tone`: the card head's class) wears the head's colours; a scout's stays plain.
-  const button = (x: { personId: number; name: string }, tone?: string) => {
+  const button = (x: { personId: number; name: string; state?: PlanState }, tone?: string) => {
     const on = here.has(x.personId);
+    // A teacher who hasn't confirmed says so (Confirmations C-D3); a confirmed one needs no word.
+    const unsure = x.state && x.state !== 'confirmed' ? ` · ${x.state === 'asked' ? 'asked' : x.state === 'changed' ? 'changed' : 'planned'}` : '';
     return (
       <button key={x.personId} type="button" className={tone ? `${s.here} ${s.hereTeacher} ${tone}` : s.here} aria-pressed={on} disabled={!canTap} onClick={() => tap(x.personId)}>
         {on ? `✓ ${x.name}` : x.name}
+        {unsure ? <span className={s.stWord}>{unsure}</span> : null}
       </button>
     );
   };

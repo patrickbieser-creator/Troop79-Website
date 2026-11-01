@@ -7,6 +7,7 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useDisclosure } from '@/app/_components/use-disclosure';
 import { joinNames, type TwColumn, type TwPerson, type TwTeacher } from '@/lib/this-week';
+import type { PlanState } from '@/lib/plan-states';
 import { usePlanner, SAVE_FAILED } from './planner-client';
 import type { TwResult } from './this-week-actions';
 import s from './this-week.module.css';
@@ -198,6 +199,28 @@ export function Popover({
   );
 }
 
+/** What a state is called, in words (the chip's accessible name and title). */
+export const STATE_WORD: Record<PlanState, string> = {
+  planned: 'planned, not asked yet',
+  asked: 'asked, no answer yet',
+  confirmed: 'confirmed',
+  changed: 'said yes, plan changed since',
+  said_no: 'said no',
+  hidden: 'can’t make it'
+};
+
+/** A name wearing its planned / asked / confirmed state (Confirmations C-D3). No state: just the name. */
+export function StateName({ name, state }: { name: string; state?: PlanState }) {
+  if (!state) return <>{name}</>;
+  return (
+    <span className={`${s.stName} ${s[`st-${state}`] ?? ''}`} title={STATE_WORD[state]} aria-label={`${name}, ${STATE_WORD[state]}`}>
+      {state === 'confirmed' ? '✓ ' : null}
+      {name}
+      {state === 'asked' ? <span className={s.stWord}> asked</span> : state === 'changed' ? <span className={s.stWord}> changed</span> : null}
+    </span>
+  );
+}
+
 /**
  * A group's or class's teachers, any number. Editors open a list: anyone already teaching, then the qualified (with
  * "Counselor" / "Scout instructor"), each a toggle that adds or takes off that one person, then "Someone else"
@@ -231,7 +254,21 @@ export function TeacherSlot({
   const [asked, setAsked] = useState<Record<number, string>>({});
   const names = joinNames(teachers.map((t) => t.name));
   const text = !teachers.length ? 'No teachers yet' : `${teachers.length > 1 ? 'Teachers' : 'Teacher'}: ${names}`;
-  if (!p?.canEdit) return <span className={teachers.length ? s.slotText : s.slotTextEmpty}>{text}</span>;
+  // Each name wears its state (Confirmations C-D3): planned, asked, confirmed ✓, changed since their yes.
+  const label = !teachers.some((t) => t.state) ? (
+    text
+  ) : (
+    <>
+      {teachers.length > 1 ? 'Teachers' : 'Teacher'}:{' '}
+      {teachers.map((t, i) => (
+        <span key={t.personId}>
+          {i === 0 ? null : i === teachers.length - 1 ? ' and ' : ', '}
+          <StateName name={t.name} state={t.state} />
+        </span>
+      ))}
+    </>
+  );
+  if (!p?.canEdit) return <span className={teachers.length ? s.slotText : s.slotTextEmpty}>{label}</span>;
   const teaching = new Set(teachers.map((t) => t.personId));
   const listed = [...teachers.filter((t) => !candidates.some((c) => c.personId === t.personId)), ...candidates];
   const shown = new Set(listed.map((c) => c.personId));
@@ -248,7 +285,7 @@ export function TeacherSlot({
     return bits.length ? <span className={s.menuNoteInline}>{` · ${bits.join(' · ')}`}</span> : null;
   };
   return (
-    <Popover label={`${text} ▾`} triggerClass={teachers.length ? s.slot : s.slotEmpty} ariaLabel={`Teachers for ${title}`}>
+    <Popover label={<>{label} ▾</>} triggerClass={teachers.length ? s.slot : s.slotEmpty} ariaLabel={`Teachers for ${title}`}>
       {(close) => (
         <>
           <div className={s.menuHead}>Can teach {title} · pick one or more</div>

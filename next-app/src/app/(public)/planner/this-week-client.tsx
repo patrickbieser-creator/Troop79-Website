@@ -17,7 +17,8 @@ import { twRemoveRequirementAction, twSetRoleAction, twSetTeacherAction, twUnmer
 import { FocusCard, type SetChoice } from './this-week-focus';
 import type { SavedPlan } from '@/lib/saved-plans-shared';
 import { LiveView } from './this-week-live';
-import { NameChip, Popover, ReqItem, TeacherSlot, useWrite } from './this-week-parts';
+import { NameChip, Popover, ReqItem, StateName, TeacherSlot, useWrite } from './this-week-parts';
+import type { PlanState } from '@/lib/plan-states';
 import s from './this-week.module.css';
 
 export interface WeekLink {
@@ -274,6 +275,7 @@ function PlanView({
                   {g.members.length ? null : <span className={s.muted}>Nobody needs these tonight.</span>}
                 </div>
                 <TeacherSlot slotKey={g.key} title={`the ${g.title}`} teachers={g.teachers} candidates={g.candidates} everyone={view.everyone} onSet={setTeacher} teachingElsewhere={teachingElsewhere} />
+                <NeedsTeacher teachers={g.teachers} saidNo={g.saidNo} />
                 <DeclineNotes notes={g.declineNotes} />
               </div>
             </section>
@@ -347,6 +349,7 @@ function PlanView({
                   {g.members.length ? null : <span className={s.muted}>Nobody taking it yet.</span>}
                 </div>
                 <TeacherSlot slotKey={g.key} title={`${g.name}`} teachers={g.teachers} candidates={g.candidates} everyone={view.everyone} onSet={setTeacher} teachingElsewhere={teachingElsewhere} />
+                <NeedsTeacher teachers={g.teachers} saidNo={g.saidNo} />
                 <DeclineNotes notes={g.declineNotes} />
               </div>
             </section>
@@ -403,6 +406,7 @@ function PlanView({
                     </button>
                   ) : null}
                 </div>
+                <NeedsTeacher teachers={x.teachers} saidNo={x.saidNo} />
               </div>
             </section>
           ))}
@@ -433,12 +437,12 @@ export function AdultsCard({ view }: { view: Pick<ThisWeek, 'groups' | 'extras'>
     ...view.groups.map((g) => ({ key: g.key, id: `g-${g.key}`, title: shortTitle(g), tone: toneOf({ kind: g.kind, key: g.key }), teachers: g.teachers })),
     ...view.extras.map((x) => ({ key: x.key, id: `x-${x.key}`, title: x.title, tone: toneOf({ kind: 'none', key: x.key }), teachers: x.teachers }))
   ];
-  const by = new Map<number, { name: string; first: number; slots: string[] }>();
+  const by = new Map<number, { name: string; first: number; slots: { title: string; state?: PlanState }[] }>();
   slots.forEach((slot, i) => {
     for (const t of slot.teachers) {
       if (t.kind !== 'adult') continue;
       const a = by.get(t.personId) ?? { name: t.name, first: i, slots: [] };
-      a.slots.push(slot.title);
+      a.slots.push({ title: slot.title, state: t.state });
       by.set(t.personId, a);
     }
   });
@@ -466,7 +470,14 @@ export function AdultsCard({ view }: { view: Pick<ThisWeek, 'groups' | 'extras'>
           {adults.map(([id, a]) => (
             <li key={id} className={s.adultRow}>
               {chip(id, a.name)}
-              <span className={s.adultTeaches}>{a.slots.join(', ')}</span>
+              <span className={s.adultTeaches}>
+                {a.slots.map((x, j) => (
+                  <span key={j}>
+                    {j ? ', ' : null}
+                    <StateName name={x.title} state={x.state} />
+                  </span>
+                ))}
+              </span>
             </li>
           ))}
           {open.map((x) => (
@@ -690,6 +701,22 @@ export function FamilyFlags({ row }: { row: TwRow }) {
 }
 
 /** Notes from people who said "Not this week" to teaching a group. */
+/** Confirmations C-D2: a card a No emptied says it needs a teacher, and who said no (with their note). */
+export function NeedsTeacher({ teachers, saidNo }: { teachers: readonly unknown[]; saidNo: readonly { personId: number; name: string; note: string | null }[] }) {
+  if (teachers.length || !saidNo.length) return null;
+  return (
+    <p className={s.needsTeacher} role="status">
+      Needs a teacher ·{' '}
+      {saidNo.map((n, i) => (
+        <span key={n.personId}>
+          {i ? '; ' : null}
+          {n.name} said no{n.note ? `: “${n.note}”` : ''}
+        </span>
+      ))}
+    </p>
+  );
+}
+
 export function DeclineNotes({ notes }: { notes: readonly { name: string; note: string }[] }) {
   if (!notes.length) return null;
   return (
