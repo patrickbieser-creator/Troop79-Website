@@ -38,6 +38,17 @@ describe('SentLog', () => {
     expect(within(rows()[0]).getAllByRole('cell').map((c) => c.textContent)).toEqual(['Sun 11:28 am · PB', 'Parent 1', 'Scout 1’s plan', 'Delivered 11:28 am · Opened 11:40 am', 'Coming']);
   });
 
+  it('AYes_IsAGreenPill_NoAnswerStaysPlainText', () => {
+    render(<SentLog log={[line(1, { answer: 'Plan looks good ✓', answered: true }), line(2)]} busy={false} onSendAgain={vi.fn()} />);
+    const cls = (t: string) => screen.getByText(t).className;
+    expect([/tone-ok/.test(cls('Plan looks good ✓')), /tone-/.test(cls('No answer yet'))]).toEqual([true, false]);
+  });
+
+  it('MixedAnswers_AreAYellowPill', () => {
+    render(<SentLog log={[line(1, { answer: 'Fiona K: Coming · Jameson K: No answer yet', answered: true })]} busy={false} onSendAgain={vi.fn()} />);
+    expect(screen.getByText('Fiona K: Coming · Jameson K: No answer yet').className).toMatch(/tone-warn/);
+  });
+
   it('TheRecipient_HasTheRestOnHover', () => {
     render(<SentLog log={[line(1)]} busy={false} onSendAgain={vi.fn()} />);
     expect(screen.getByText('Parent 1').getAttribute('title')).toBe('Parent of Scout 1 · p1@example.com');

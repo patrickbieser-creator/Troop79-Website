@@ -21,6 +21,7 @@ import { PLAN_MAX, PLAN_MAX_MIN } from '@/lib/family-week-shared';
 import { peopleWords, planButtons, renderHouseholdEmail, TRACKING_LINE } from '@/lib/meeting-email-build';
 import { renderTeacherEmail, TEACHER_EMAIL_BUTTON } from '@/lib/meeting-invite-email';
 import type { EmailScreen, LogLine, QueueRequest, ScreenRecipient, ScreenRow } from '@/lib/meeting-email-screen';
+import { answerTone } from '@/lib/meeting-email-log';
 import { emailsQueueAction, emailsRequeueAction, emailsSendNextAction } from './actions';
 import s from './emails.module.css';
 
@@ -597,6 +598,8 @@ function Preview({
 }
 
 const LOG_PAGE = 100;
+/** The Answer column's pill, by answerTone: a yes green, mixed yellow, Not this week grey, the rest outlined. */
+const ANSWER_TONE = { yes: 'tone-ok', mixed: 'tone-warn', no: 'tone-muted', other: 'tone-info' } as const;
 type LogFilter = 'all' | 'unopened' | 'unanswered';
 const unopened = (l: LogLine) => l.status === 'sent' && !l.openedAt && l.delivery !== 'bounced' && l.delivery !== 'complained';
 
@@ -677,7 +680,9 @@ export function SentLog({ log, busy, onSendAgain }: { log: LogLine[]; busy: bool
                         </button>
                       ) : null}
                     </td>
-                    <td className={l.answered ? undefined : s.muted}>{l.answer}</td>
+                    <td>
+                      {answerTone(l.answer) ? <span className={`${s.status} ${s[ANSWER_TONE[answerTone(l.answer)!]]}`}>{l.answer}</span> : <span className={s.muted}>{l.answer}</span>}
+                    </td>
                   </tr>
                 );
               })}

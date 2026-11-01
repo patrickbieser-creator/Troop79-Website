@@ -412,6 +412,7 @@
 .tone-open { background: var(--status-info-bg); color: var(--navy); }
 .tone-muted { background: var(--rsvp-cant-bg); color: var(--rsvp-cant-ink); }
 .tone-bad { background: var(--status-danger-bg); color: var(--status-danger); }
+.tone-warn { background: var(--status-warning-bg); color: var(--status-warning); }
 .tone-new,
 .tone-info {
   background: var(--warm-white);

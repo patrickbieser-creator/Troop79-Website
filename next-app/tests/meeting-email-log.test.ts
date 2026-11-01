@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { answerOf, emailWords, initialsOf, scoutAnswerWord, teacherAnswerWord, toHint } from '../src/lib/meeting-email-log';
+import { answerOf, answerTone, emailWords, initialsOf, scoutAnswerWord, teacherAnswerWord, toHint } from '../src/lib/meeting-email-log';
 
 /** The Sent log's words (Patrick, 2026-11-01): one line per email, saying what it was, who it went to (more on hover),
  *  how it landed, and what they've answered since. */
@@ -77,5 +77,21 @@ describe('what they answered', () => {
 
   it('NoAnswerFromAnyone_IsNotAnswered', () => {
     expect(answerOf([{ name: 'Ben B', word: 'No answer yet' }]).answered).toBe(false);
+  });
+});
+
+// Patrick, 2026-11-01: those who answered stand out: a yes is green, mixed answers yellow; no answer stays plain.
+describe('how an answer looks', () => {
+  it('EachAnswer_HasItsTone', () => {
+    expect(['Plan looks good ✓', 'I’ll teach ✓', 'Coming', 'Not this week', 'Changed plan', 'Not sure', 'Fiona K: Coming · Jameson K: No answer yet', 'No answer yet'].map(answerTone)).toEqual([
+      'yes',
+      'yes',
+      'yes',
+      'no',
+      'other',
+      'other',
+      'mixed',
+      null
+    ]);
   });
 });

@@ -54,3 +54,15 @@ export function answerOf(each: readonly { name: string; word: string }[]): { wor
   if (each.every((e) => e.word === each[0].word)) return { word: each[0].word, answered };
   return { word: each.map((e) => `${e.name}: ${e.word}`).join(' · '), answered };
 }
+
+export type AnswerTone = 'yes' | 'no' | 'mixed' | 'other';
+
+/** How an answer looks on the Sent log (Patrick, 2026-11-01): a yes green, mixed answers yellow, Not this week grey,
+ *  anything else outlined; no answer stays plain text (null). */
+export function answerTone(word: string): AnswerTone | null {
+  if (word === NO_ANSWER) return null;
+  if (word.includes(': ')) return 'mixed';
+  if (word === 'Plan looks good ✓' || word === 'I’ll teach ✓' || word === 'Coming') return 'yes';
+  if (word === 'Not this week') return 'no';
+  return 'other';
+}
