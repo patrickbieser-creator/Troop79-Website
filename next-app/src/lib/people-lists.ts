@@ -20,6 +20,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 import type { JuniorLeaderOverride } from '@/lib/participant-class';
 import type { BoardScout } from '@/lib/meeting-board';
+import { setBoardNameBook } from '@/lib/meeting-board-shared';
 
 export const PEOPLE_LISTS_TAG = 'people-lists';
 export const MEETING_CATEGORIES_TAG = 'meeting-categories';
@@ -90,6 +91,8 @@ export async function fetchPeopleLists(sb: SupabaseClient): Promise<PeopleLists>
         fetchAllRows<{ person_id: number; mb_id: string }>((from, to) => sb.from('merit_badge_counselors').select('person_id, mb_id').in('person_id', ids).order('id').range(from, to))
       ])
     : [[], [], []];
+  // Two people who'd both be "Mike B" get more of their last name, everywhere a board name is shown.
+  setBoardNameBook(people.map((p) => p.display_name));
   return {
     pool: { adults: dir.map((d) => d.person_id), scouts, people, skills, counselors },
     leaderIds: dir.filter((d) => d.tab === 'leader').map((d) => d.person_id)
@@ -112,6 +115,8 @@ export const loadPlannerLists = cache(async (): Promise<PlannerLists> => {
   cachedPeople ??= unstable_cache(() => fetchPeopleLists(createAdminClient()), [PEOPLE_LISTS_TAG], { tags: [PEOPLE_LISTS_TAG], revalidate: 3600 });
   cachedLabels ??= unstable_cache(() => fetchMeetingLabels(createAdminClient()), [MEETING_CATEGORIES_TAG], { tags: [MEETING_CATEGORIES_TAG], revalidate: 3600 });
   const [people, meetingLabels] = await Promise.all([cachedPeople(), cachedLabels()]);
+  // The cache may skip fetchPeopleLists: the name book is set from it either way.
+  setBoardNameBook(people.pool.people.map((p) => p.display_name));
   return { ...people, meetingLabels };
 });
 

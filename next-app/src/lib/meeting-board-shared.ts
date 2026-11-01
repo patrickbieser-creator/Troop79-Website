@@ -34,10 +34,44 @@ export function isMeetingClosed(input: { categoryBehavior: string | null; title:
 }
 
 /** "Finn Parker" → "Finn P". A one-word name stays as it is. */
+const shortOf = (parts: readonly string[], letters: number) => `${parts[0]} ${parts[parts.length - 1].slice(0, letters).replace(/^./, (c) => c.toUpperCase())}`;
+const partsOf = (name: string) => name.trim().split(/\s+/).filter(Boolean);
+
+/** Full names whose "First L" collides with someone else's, and the longer short name each gets instead. */
+let nameBook = new Map<string, string>();
+
+/**
+ * The troop's names, so boardName can tell two "Mike B"s apart (Patrick, 2026-10-31): only when two different people
+ * would share a short name, each gets as many letters of the last name as it takes ("Mike Ba", "Mike Bl"; "Ann Blac",
+ * "Ann Blak"). Set from the planner's people list (lib/people-lists) on every load; with no book, "First L".
+ */
+export function setBoardNameBook(fullNames: readonly string[]): void {
+  const byShort = new Map<string, string[]>();
+  for (const n of new Set(fullNames.map((x) => x.trim().replace(/\s+/g, ' ')))) {
+    const parts = partsOf(n);
+    if (parts.length < 2) continue;
+    const k = shortOf(parts, 1).toLowerCase();
+    byShort.set(k, [...(byShort.get(k) ?? []), n]);
+  }
+  const book = new Map<string, string>();
+  for (const names of byShort.values()) {
+    if (names.length < 2) continue;
+    for (const n of names) {
+      const parts = partsOf(n);
+      const last = parts[parts.length - 1].toLowerCase();
+      const others = names.filter((o) => o !== n).map((o) => partsOf(o).at(-1)!.toLowerCase());
+      let letters = 2;
+      while (letters < last.length && others.some((o) => o.startsWith(last.slice(0, letters)))) letters++;
+      book.set(n, shortOf(parts, letters));
+    }
+  }
+  nameBook = book;
+}
+
 export function boardName(displayName: string): string {
-  const parts = displayName.trim().split(/\s+/).filter(Boolean);
+  const parts = partsOf(displayName);
   if (parts.length < 2) return parts[0] ?? '';
-  return `${parts[0]} ${parts[parts.length - 1][0].toUpperCase()}`;
+  return nameBook.get(parts.join(' ')) ?? shortOf(parts, 1);
 }
 
 export function firstNameOf(displayName: string): string {
