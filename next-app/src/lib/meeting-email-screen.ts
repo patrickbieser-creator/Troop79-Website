@@ -18,7 +18,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AdvancementCatalog } from '@/lib/advancement-catalog';
 import { loadBoardScouts, type BoardMeeting } from '@/lib/meeting-board';
 import { boardName } from '@/lib/meeting-board-shared';
-import { adultRecipients, loadScoutFamilies, scoutRecipientsMany, type MailRecipient } from '@/lib/meeting-invites-db';
+import { adultRecipients, loadScoutFamilies, scoutMayBeMailed, scoutRecipientsMany, type MailRecipient } from '@/lib/meeting-invites-db';
 import { loadFamilyWeek } from '@/lib/family-week';
 import type { PeopleLists } from '@/lib/people-lists';
 import { buildThisWeek, type ThisWeek, type TwGroup, type TwTeacher } from '@/lib/this-week';
@@ -148,18 +148,20 @@ export function askablePeople(g: Pick<TwGroup, 'key' | 'teachers' | 'candidates'
 }
 
 /**
- * A scout teacher's own address (lib/meeting-invites-db: a VERIFIED address of their own, at 13 and up: the rule every
- * email to a scout follows), by person id; `why` says what's missing when there's none.
+ * A scout teacher's own address, by person id; `why` says what's missing when there's none. Their own roster address,
+ * verified or not, at 13 and up (Patrick, 2026-11-01: a Catch-22 otherwise; a scout may not sign in until a teach email
+ * asks, and they already get the troop's Bugle there). Family emails keep the verified-address rule
+ * (scoutRecipientsMany).
  */
 async function juniorAddresses(sb: SupabaseClient, ids: readonly number[], date: string): Promise<Map<number, MailRecipient & { name: string }> & { why: Map<number, string> }> {
   const out = Object.assign(new Map<number, MailRecipient & { name: string }>(), { why: new Map<number, string>() });
   if (!ids.length) return out;
   const family = await loadScoutFamilies(sb, ids);
-  const lists = await scoutRecipientsMany(sb, family, ids, date);
   for (const id of ids) {
-    const own = (lists.get(id) ?? []).find((m) => m.isScout && m.recipientId === id);
-    if (own) out.set(id, { ...own, name: '' });
-    else out.why.set(id, family.person.get(id)?.primary_email?.trim() && !family.verifiedEmail.get(id) ? 'their own email isn’t verified yet' : 'no email of their own on file');
+    const self = family.person.get(id);
+    const own = self?.primary_email?.trim();
+    if (self?.active && own && scoutMayBeMailed(self.birthdate, date)) out.set(id, { recipientId: id, sentTo: own, epoch: self.session_epoch, isScout: true, name: '' });
+    else out.why.set(id, !own ? 'no email of their own on file' : !self?.birthdate ? 'no birthdate on file' : 'under 13: too young for an email of their own');
   }
   return out;
 }

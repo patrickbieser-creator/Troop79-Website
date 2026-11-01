@@ -270,11 +270,25 @@ describe('a scout planned to teach is emailed at their own address (Patrick, 202
     const [catalog, lists] = await Promise.all([fetchAdvancementCatalog(sb as never), fetchPeopleLists(sb)]);
     const screen = await loadEmailScreen(sb, { entryId: entry, date: '2087-03-02' }, lists, catalog);
     const rows = screen.teachers.filter((r) => r.group === TF);
-    // His roster address isn't verified in the mirror: the row says so, never falls back to asking every adult.
-    const { data: v } = await sb.from('person_emails').select('verified_at').eq('person_id', oliver).eq('is_primary', true).maybeSingle();
-    const verified = !!(v as { verified_at: string | null } | null)?.verified_at;
-    expect([rows.map((r) => r.personId), rows[0]?.blocked]).toEqual([[oliver], verified ? null : 'their own email isn’t verified yet']);
+    // Patrick, 2026-11-01: his own roster address, verified or not (a scout may not sign in until a teach email asks).
+    const { data: p } = await sb.from('people').select('primary_email').eq('id', oliver).single();
+    const own = (p as { primary_email: string }).primary_email;
+    expect([rows.map((r) => r.personId), rows[0]?.blocked, rows[0]?.recipients.map((x) => [x.personId, x.email, x.isScout])]).toEqual([[oliver], null, [[oliver, own, true]]]);
     await t.twSetTeacherAction({ entryId: entry, key: TF, personId: oliver, on: false });
+  });
+
+  it('AnOlderScoutWithNoEmailOfTheirOwn_IsBlocked_AndSaysSo', async () => {
+    asSeeder();
+    const t = await tw();
+    const { data: hz } = await sb.from('people').select('id, primary_email').eq('display_name', 'Hazel Stollenwerk').maybeSingle();
+    const hazel = hz as { id: number; primary_email: string | null } | null;
+    if (!hazel || hazel.primary_email) return; // the mirror's fact this test reads (no address of her own)
+    expect((await t.twSetTeacherAction({ entryId: entry, key: TF, personId: hazel.id, on: true })).ok).toBe(true);
+    const { loadEmailScreen } = await import('../src/lib/meeting-email-screen');
+    const [catalog, lists] = await Promise.all([fetchAdvancementCatalog(sb as never), fetchPeopleLists(sb)]);
+    const rows = (await loadEmailScreen(sb, { entryId: entry, date: '2087-03-02' }, lists, catalog)).teachers.filter((r) => r.group === TF && r.personId === hazel.id);
+    expect(rows.map((r) => r.blocked)).toEqual(['no email of their own on file']);
+    await t.twSetTeacherAction({ entryId: entry, key: TF, personId: hazel.id, on: false });
   });
 });
 
