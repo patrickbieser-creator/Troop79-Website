@@ -93,6 +93,7 @@ afterEach(async () => {
     await sb.from('meeting_topics').delete().eq('calendar_entry_id', e);
     await sb.from('meeting_pick_lists').delete().eq('calendar_entry_id', e);
     await sb.from('meeting_intents').delete().eq('calendar_entry_id', e);
+    await sb.from('meeting_teacher_answers').delete().eq('calendar_entry_id', e);
   }
   state.actor = null;
   state.page = 'real';
@@ -387,5 +388,66 @@ describe('teaching', () => {
     asEditor();
     const res = await (await actions()).plannerOfferChoicesAction();
     expect(res.ok && [res.choices.some((c) => c.key === keys[0]), res.choices.some((c) => c.key.startsWith('mb:'))]).toEqual([true, true]);
+  });
+});
+
+// Patrick, 2026-11-01: a teacher texts "I'll be there"; an editor records that answer for them in their drawer. It
+// reads as their yes everywhere (the card's ✓, the Sent log, their own card's default), says who entered it, and
+// their own later answer replaces it.
+describe('a teacher’s answer, entered for them', () => {
+  const KEY = 'ff:knife safety';
+  const offer = async () => (await actions()).plannerAddOfferAction({ entryId: meeting, personId: teacher, what: { title: 'Knife safety' } });
+  const answerRow = async () =>
+    (await sb.from('meeting_teacher_answers').select('answer, note, entered_by_person_id').eq('calendar_entry_id', meeting).eq('person_id', teacher).eq('group_key', KEY).maybeSingle()).data;
+  const asksOf = (res: { ok: boolean; drawer?: unknown }) => (res.ok && (res.drawer as { kind: string; asks?: unknown[] }).kind === 'adult' ? (res.drawer as { asks?: unknown[] }).asks : null);
+
+  it('TheirDrawer_ListsWhatTheyTeach_WithItsState', async () => {
+    asEditor();
+    await offer();
+    const res = await (await actions()).plannerOpenPersonAction({ entryId: meeting, personId: teacher });
+    expect(asksOf(res)).toEqual([{ key: KEY, title: 'Knife safety', state: 'planned', enteredBy: null }]);
+  });
+
+  it('TheySaidYes_IsTheirYes_EnteredByTheEditor_AndMarksThemComing', async () => {
+    asEditor();
+    await offer();
+    const res = await (await actions()).plannerTeacherAnswerAction({ entryId: meeting, personId: teacher, key: KEY, answer: 'yes' });
+    expect([asksOf(res), await answerRow(), (await intentOf(teacher))?.intent]).toEqual([
+      [{ key: KEY, title: 'Knife safety', state: 'confirmed', enteredBy: `${TEST_PREFIX} PLA Editor` }],
+      { answer: 'yes', note: null, entered_by_person_id: editorAdult },
+      'coming'
+    ]);
+  });
+
+  it('TheySaidNo_TakesThemOff_AndRecordsTheirNo', async () => {
+    asEditor();
+    await offer();
+    const res = await (await actions()).plannerTeacherAnswerAction({ entryId: meeting, personId: teacher, key: KEY, answer: 'no', note: ' Out of town ' });
+    expect([res.ok, (await teachingOf(teacher)).length, await answerRow()]).toEqual([true, 0, { answer: 'no', note: 'Out of town', entered_by_person_id: editorAdult }]);
+  });
+
+  it('TheirOwnLaterAnswer_ReplacesTheEnteredOne', async () => {
+    asEditor();
+    await offer();
+    await (await actions()).plannerTeacherAnswerAction({ entryId: meeting, personId: teacher, key: KEY, answer: 'yes' });
+    const { recordTeacherAnswers } = await import('../src/lib/teacher-answers-db');
+    const { loadPlannerLists } = await import('../src/lib/people-lists');
+    await recordTeacherAnswers(sb, { entryId: meeting, date: '2094-03-01' }, teacher, [{ key: KEY, answer: 'yes' }], await loadPlannerLists());
+    expect((await answerRow())?.entered_by_person_id).toBeNull();
+  });
+
+  it('AClassTheyArentOn_IsRefused_AndNothingIsSaved', async () => {
+    asEditor();
+    await offer();
+    const res = await (await actions()).plannerTeacherAnswerAction({ entryId: meeting, personId: teacher, key: 'ff:something else', answer: 'yes' });
+    expect([res.ok, await answerRow()]).toEqual([false, null]);
+  });
+
+  it('Viewer_IsRefused', async () => {
+    asEditor();
+    await offer();
+    asViewer();
+    const res = await (await actions()).plannerTeacherAnswerAction({ entryId: meeting, personId: teacher, key: KEY, answer: 'yes' });
+    expect([res.ok, await answerRow()]).toEqual([false, null]);
   });
 });

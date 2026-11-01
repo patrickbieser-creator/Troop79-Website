@@ -40,11 +40,10 @@ export function scoutAnswerWord(state: PlanState | undefined, intent: Intent | n
 }
 
 /** A teacher's answer about the group: their yes, a change, or Not this week (to the card, or to the whole night). */
-export function teacherAnswerWord(t: { state: PlanState | undefined; saidNo: boolean; intent: Intent | null | undefined }): string {
-  if (t.saidNo || t.intent === 'not_coming') return 'Not this week';
-  if (t.state === 'confirmed') return 'I’ll teach ✓';
-  if (t.state === 'changed') return 'Changed plan';
-  return NO_ANSWER;
+/** `by`: the initials of a planner who entered the answer for them ('I’ll teach ✓ · PB'). */
+export function teacherAnswerWord(t: { state: PlanState | undefined; saidNo: boolean; intent: Intent | null | undefined; by?: string | null }): string {
+  const word = t.saidNo || t.intent === 'not_coming' ? 'Not this week' : t.state === 'confirmed' ? 'I’ll teach ✓' : t.state === 'changed' ? 'Changed plan' : NO_ANSWER;
+  return t.by && word !== NO_ANSWER ? `${word} · ${t.by}` : word;
 }
 
 /** One line's answer from each person it covers: one word when they agree, else each by name. */
@@ -62,7 +61,9 @@ export type AnswerTone = 'yes' | 'no' | 'mixed' | 'other';
 export function answerTone(word: string): AnswerTone | null {
   if (word === NO_ANSWER) return null;
   if (word.includes(': ')) return 'mixed';
-  if (word === 'Plan looks good ✓' || word === 'I’ll teach ✓' || word === 'Coming') return 'yes';
-  if (word === 'Not this week') return 'no';
+  // An answer a planner entered reads as the answer ('I’ll teach ✓ · PB').
+  const base = word.split(' · ')[0];
+  if (base === 'Plan looks good ✓' || base === 'I’ll teach ✓' || base === 'Coming') return 'yes';
+  if (base === 'Not this week') return 'no';
   return 'other';
 }

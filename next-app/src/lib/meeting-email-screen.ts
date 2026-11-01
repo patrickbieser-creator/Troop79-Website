@@ -337,9 +337,11 @@ export async function loadEmailScreen(sb: SupabaseClient, meeting: Pick<BoardMee
         const group = l.about.group ? view.groups.find((g) => g.key === canonicalGroupKey(l.about.group!, data.input.mergedBases)) : undefined;
         const me = l.recipient_person_id;
         const asTeacher = group?.teachers.find((t) => t.personId === me);
+        const no = group?.saidNo.find((n) => n.personId === me);
+        const enteredBy = no ? no.enteredBy : asTeacher?.enteredBy;
         const answer =
           l.kind === 'teacher'
-            ? answerOf([{ name: '', word: teacherAnswerWord({ state: asTeacher?.state, saidNo: !!group?.saidNo.some((n) => n.personId === me), intent: me ? intents.get(me) : null }) }])
+            ? answerOf([{ name: '', word: teacherAnswerWord({ state: asTeacher?.state, saidNo: !!no, intent: me ? intents.get(me) : null, by: enteredBy ? initialsOf(enteredBy) : null }) }])
             : scouts.length
               ? answerOf(scouts.map((id) => ({ name: nameOf(id), word: scoutAnswerWord(planStateOf.get(id), intents.get(id)) })))
               : answerOf([{ name: '', word: scoutAnswerWord(undefined, me ? intents.get(me) : null) }]);

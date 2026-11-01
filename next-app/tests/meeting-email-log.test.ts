@@ -95,3 +95,18 @@ describe('how an answer looks', () => {
     ]);
   });
 });
+
+// Patrick, 2026-11-01: a leader can record a teacher's answer for them (a text, no time to click); the log says who.
+describe('an answer a leader entered for them', () => {
+  it('SaysWhoEnteredIt_AndKeepsItsTone', () => {
+    const words = [
+      teacherAnswerWord({ state: 'confirmed', saidNo: false, intent: null, by: 'PB' }),
+      teacherAnswerWord({ state: undefined, saidNo: true, intent: null, by: 'PB' }),
+      teacherAnswerWord({ state: 'confirmed', saidNo: false, intent: null, by: null })
+    ];
+    expect([words, words.map(answerTone)]).toEqual([
+      ['I’ll teach ✓ · PB', 'Not this week · PB', 'I’ll teach ✓'],
+      ['yes', 'no', 'yes']
+    ]);
+  });
+});

@@ -8,6 +8,7 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useDisclosure } from '@/app/_components/use-disclosure';
 import { joinNames, type TwColumn, type TwPerson, type TwTeacher } from '@/lib/this-week';
 import type { PlanState } from '@/lib/plan-states';
+import { initialsOf } from '@/lib/meeting-email-log';
 import { usePlanner, SAVE_FAILED } from './planner-client';
 import type { TwResult } from './this-week-actions';
 import s from './this-week.module.css';
@@ -212,11 +213,13 @@ export const STATE_WORD: Record<PlanState, string> = {
   hidden: 'can’t make it'
 };
 
-/** A name wearing its planned / asked / confirmed state (Confirmations C-D3). No state: just the name. */
-export function StateName({ name, state }: { name: string; state?: PlanState }) {
+/** A name wearing its planned / asked / confirmed state (Confirmations C-D3). No state: just the name. `by`: who entered
+ *  their answer for them, on hover ('confirmed (entered by PB)'). */
+export function StateName({ name, state, by }: { name: string; state?: PlanState; by?: string }) {
   if (!state) return <>{name}</>;
+  const said = by ? `${STATE_WORD[state]} (entered by ${initialsOf(by)})` : STATE_WORD[state];
   return (
-    <span className={`${s.stName} ${s[`st-${state}`] ?? ''}`} title={STATE_WORD[state]} aria-label={`${name}, ${STATE_WORD[state]}`}>
+    <span className={`${s.stName} ${s[`st-${state}`] ?? ''}`} title={said} aria-label={`${name}, ${said}`}>
       {state === 'confirmed' ? '✓ ' : null}
       {name}
       {state === 'asked' ? <span className={s.stWord}> asked</span> : state === 'changed' ? <span className={s.stWord}> changed</span> : null}
@@ -266,7 +269,7 @@ export function TeacherSlot({
       {teachers.map((t, i) => (
         <span key={t.personId}>
           {i === 0 ? null : i === teachers.length - 1 ? ' and ' : ', '}
-          <StateName name={t.name} state={t.state} />
+          <StateName name={t.name} state={t.state} by={t.enteredBy} />
         </span>
       ))}
     </>

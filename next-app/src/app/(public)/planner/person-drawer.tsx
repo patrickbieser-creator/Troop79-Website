@@ -16,7 +16,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Drawer } from '@/app/_components/drawer';
 import { INTENT_LABEL, type Intent } from '@/lib/meeting-board-shared';
 import type { DrawerOption, PersonDrawer } from '@/lib/meeting-planner-drawer';
-import { plannerOpenPersonAction, plannerSetAnswerAction, plannerTogglePickAction, plannerToggleTeachAction, type DrawerTick, type PlannerTickResult } from './actions';
+import { plannerOpenPersonAction, plannerSetAnswerAction, plannerTeacherAnswerAction, plannerTogglePickAction, plannerToggleTeachAction, type DrawerTick, type PlannerTickResult } from './actions';
+import { TheirTeachingAnswers } from './teacher-answer-for-them';
 import { twSetRoleAction, type RoleInput } from './this-week-actions';
 import { SAVE_FAILED, usePlanner } from './planner-client';
 import styles from './planner.module.css';
@@ -125,6 +126,16 @@ export function PersonDrawerView({ personId, onClose }: { personId: number; onCl
     if (res.ok) setConfirmed((d) => (d ? withTick(d, res.tick) : d));
     else setProblem({ at: 'answer', text: res.error });
   };
+  /** Will they teach? A planner enters their yes or no for them; the drawer comes back read again. */
+  const teacherAnswer = async (key: string, said: 'yes' | 'no', note: string | null) => {
+    setAnswering(true);
+    setProblem(null);
+    const res = await serial(personId, () => run(() => plannerTeacherAnswerAction({ entryId: p.entryId, personId, key, answer: said, note }), { defer: true }));
+    setAnswering(false);
+    if (res.ok) setConfirmed(res.drawer);
+    else setProblem({ at: 'asks', text: res.error });
+    return res.ok;
+  };
   /** Tonight: one hand placement, then the drawer reads again (where they are now is This week's call). */
   const place = async (role: RoleInput) => {
     setAnswering(true);
@@ -198,6 +209,13 @@ export function PersonDrawerView({ personId, onClose }: { personId: number; onCl
           </p>
         ) : null}
       </fieldset>
+
+      {drawer.kind === 'adult' ? <TheirTeachingAnswers asks={drawer.asks} busy={answering} onAnswer={teacherAnswer} /> : null}
+      {problem?.at === 'asks' ? (
+        <p className={styles.rowProblem} role="alert">
+          {problem.text}
+        </p>
+      ) : null}
 
       {drawer.kind === 'scout' && drawer.place ? (
         <>

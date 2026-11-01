@@ -79,3 +79,12 @@ describe('TeacherSlot', () => {
     expect([screen.getByLabelText('Ann Vest, confirmed').textContent, screen.getByLabelText('Bo Ruiz, asked, no answer yet').textContent]).toEqual(['✓ Ann Vest', 'Bo Ruiz asked']);
   });
 });
+
+// Patrick, 2026-11-01: an answer a planner entered for them says so on hover.
+describe('an answer entered for them', () => {
+  it('ConfirmedName_SaysWhoEnteredIt', () => {
+    m.canEdit = false;
+    slot([{ ...A, state: 'confirmed', enteredBy: 'Patrick Bieser' }]);
+    expect(screen.getByLabelText('Ann Vest, confirmed (entered by PB)')).toBeTruthy();
+  });
+});

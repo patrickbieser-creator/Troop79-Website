@@ -22,6 +22,7 @@ import { boardScoutsOf, type PeopleLists } from '@/lib/people-lists';
 import { buildThisWeek } from '@/lib/this-week';
 import { loadThisWeekData } from '@/lib/this-week-db';
 import { placeChoices, type PlaceChoices } from '@/lib/planner-place';
+import { teacherAsksOf, type DrawerAsk } from '@/lib/teacher-asks';
 
 export interface DrawerOption {
   key: string;
@@ -58,6 +59,8 @@ export interface ScoutDrawer extends DrawerBase {
 export interface AdultDrawer extends DrawerBase {
   kind: 'adult';
   teaching: number;
+  /** What they teach on This week and where each answer stands, so a planner can enter it for them (a text, a call). */
+  asks: DrawerAsk[];
 }
 
 export type PersonDrawer = ScoutDrawer | AdultDrawer;
@@ -147,6 +150,7 @@ export async function loadPersonDrawer(
   if (!p || p.eligible === false) return null;
   const mine = teach.supply.topicTeachers.filter((t) => t.personId === personId).map((t) => t.key);
   const intent = teach.intents.get(personId) ?? null;
+  const asks = lists && mine.length ? teacherAsksOf(buildThisWeek((await loadThisWeekData(sb, meeting, lists, catalog)).input), personId) : [];
   return {
     kind: 'adult',
     personId,
@@ -155,6 +159,7 @@ export async function loadPersonDrawer(
     intent,
     shown: teacherIntent(intent, mine.length),
     teaching: mine.length,
+    asks,
     options: drawerOptions({
       boardKeys,
       listKeys: [],

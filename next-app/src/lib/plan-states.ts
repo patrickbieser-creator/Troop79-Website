@@ -28,6 +28,8 @@ export interface TeacherAnswer {
   /** The card at the yes; null for a no. */
   plan: TeacherSnap | null;
   note: string | null;
+  /** Who entered it for them on the planner (a text, a call); null or absent when they answered themselves. */
+  enteredBy?: string | null;
 }
 
 export function teacherSnapOf(g: { key: string; title: string; columns: readonly { key: string }[] }, merged?: ReadonlySet<string>): TeacherSnap {

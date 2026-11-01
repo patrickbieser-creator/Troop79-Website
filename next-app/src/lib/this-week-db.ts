@@ -79,12 +79,32 @@ export interface TeacherAnswerRow extends TeacherAnswer {
   key: string;
 }
 
-type Row = { person_id: number; group_key: string; answer: 'yes' | 'no'; note: string | null; answered_at: string; answered_plan: TeacherSnap | null };
+type Row = {
+  person_id: number;
+  group_key: string;
+  answer: 'yes' | 'no';
+  note: string | null;
+  answered_at: string;
+  answered_plan: TeacherSnap | null;
+  entered: { display_name: string | null } | null;
+};
 
+/** Each answer, with the name of whoever entered it for them (a planner; null when they answered themselves). */
 export async function loadTeacherAnswers(sb: SupabaseClient, entryId: number): Promise<TeacherAnswerRow[]> {
-  const { data, error } = await sb.from('meeting_teacher_answers').select('person_id, group_key, answer, note, answered_at, answered_plan').eq('calendar_entry_id', entryId);
+  const { data, error } = await sb
+    .from('meeting_teacher_answers')
+    .select('person_id, group_key, answer, note, answered_at, answered_plan, entered:people!meeting_teacher_answers_entered_by_person_id_fkey(display_name)')
+    .eq('calendar_entry_id', entryId);
   if (error) throw new Error(error.message);
-  return ((data ?? []) as Row[]).map((r) => ({ personId: r.person_id, key: r.group_key, answer: r.answer, note: r.note, answeredAt: r.answered_at, plan: r.answered_plan }));
+  return ((data ?? []) as unknown as Row[]).map((r) => ({
+    personId: r.person_id,
+    key: r.group_key,
+    answer: r.answer,
+    note: r.note,
+    answeredAt: r.answered_at,
+    plan: r.answered_plan,
+    enteredBy: r.entered?.display_name ?? null
+  }));
 }
 
 /**

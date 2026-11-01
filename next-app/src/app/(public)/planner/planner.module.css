@@ -1182,3 +1182,35 @@ button.fsResult {
   min-height: 0;
   font-size: var(--fs-sm);
 }
+/* Will they teach? (an adult's drawer): each class, where their answer stands, and a planner's They said yes / no. */
+.askList {
+  display: grid;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ask {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border-light);
+  border-radius: var(--rad-md);
+}
+.askYes {
+  font: 600 var(--fs-sm) / 1.4 var(--font-ui);
+  color: var(--forest);
+}
+.askBtns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.askNo {
+  display: grid;
+  gap: var(--sp-2);
+  width: 100%;
+}

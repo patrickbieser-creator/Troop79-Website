@@ -21,23 +21,30 @@ export function snapOfKey(view: Pick<ThisWeek, 'groups' | 'extras'>, key: string
   return x ? { group: x.key, itemKeys: [x.key], title: x.title } : null;
 }
 
-async function viewOf(sb: SupabaseClient, meeting: { entryId: number; date: string }, lists: Pick<PeopleLists, 'pool'>, catalog?: AdvancementCatalog): Promise<{ view: ThisWeek; input: ThisWeekInput }> {
+export type BuiltWeek = { view: ThisWeek; input: ThisWeekInput };
+
+export async function viewOf(sb: SupabaseClient, meeting: { entryId: number; date: string }, lists: Pick<PeopleLists, 'pool'>, catalog?: AdvancementCatalog): Promise<BuiltWeek> {
   const data = await loadThisWeekData(sb, meeting, lists, catalog);
   return { view: buildThisWeek(data.input), input: data.input };
 }
 
-/** Records answers for one person (the family teacher card): a yes carries the card now; a no, an optional note. */
+/**
+ * Records answers for one person: a yes carries the card now; a no, an optional note. Their own answer (the family
+ * teacher card) has no `enteredBy`; a planner entering it for them (their drawer) names themself, and the person's own
+ * later answer replaces it. `week`: This week already built by the caller.
+ */
 export async function recordTeacherAnswers(
   sb: SupabaseClient,
   meeting: { entryId: number; date: string },
   personId: number,
   answers: readonly { key: string; answer: 'yes' | 'no'; note?: string | null }[],
   lists: Pick<PeopleLists, 'pool'>,
-  catalog?: AdvancementCatalog
+  catalog?: AdvancementCatalog,
+  opts: { enteredBy?: number | null; week?: BuiltWeek } = {}
 ): Promise<void> {
   if (!answers.length) return;
   const needView = answers.some((a) => a.answer === 'yes');
-  const v = needView ? await viewOf(sb, meeting, lists, catalog) : null;
+  const v = needView ? (opts.week ?? (await viewOf(sb, meeting, lists, catalog))) : null;
   const now = new Date().toISOString();
   // A yes is recorded only with the card it said yes to (qa-lead): no card found = nothing to confirm.
   const kept = answers.filter((a) => a.answer === 'no' || (v && snapOfKey(v.view, a.key, v.input.mergedBases)));
@@ -49,7 +56,8 @@ export async function recordTeacherAnswers(
     answer: a.answer,
     note: a.answer === 'no' ? (a.note ?? null) : null,
     answered_at: now,
-    answered_plan: a.answer === 'yes' && v ? snapOfKey(v.view, a.key, v.input.mergedBases) : null
+    answered_plan: a.answer === 'yes' && v ? snapOfKey(v.view, a.key, v.input.mergedBases) : null,
+    entered_by_person_id: opts.enteredBy ?? null
   }));
   const { error } = await sb.from('meeting_teacher_answers').upsert(rows, { onConflict: 'calendar_entry_id,person_id,group_key' });
   if (error) throw new Error(error.message);

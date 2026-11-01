@@ -41,6 +41,10 @@ import { plannerAccess } from '@/lib/meeting-planner-access';
 import { loadPersonDrawer, type PersonDrawer } from '@/lib/meeting-planner-drawer';
 import { loadPlannerLists } from '@/lib/people-lists';
 import { fitsGathering, topClasses } from '@/lib/requirement-class';
+import { recordTeacherAnswers, viewOf } from '@/lib/teacher-answers-db';
+import { teacherAsksOf } from '@/lib/teacher-asks';
+import { canonicalGroupKey } from '@/lib/focus-plan';
+import { cleanDeclineNote } from '@/lib/decline-note';
 
 export type PlannerDrawerResult = { ok: true; drawer: PersonDrawer; stamp: string } | { ok: false; error: string };
 /**
@@ -104,13 +108,50 @@ function revalidate() {
   revalidatePath('/member/meeting');
 }
 
+async function openDrawer(e: Editor): Promise<PlannerDrawerResult> {
+  const lists = await loadPlannerLists();
+  const [drawer, stamp] = await Promise.all([loadPersonDrawer(e.sb, e.meeting, e.personId, e.actorPersonId, lists), loadBoardStamp(e.sb, e.meeting.entryId)]);
+  return drawer ? { ok: true, drawer, stamp } : fail('That person isn’t on the board.');
+}
+
 /** Open someone's drawer: the one full read. Writes from it return only what changed (DrawerTick). */
 export async function plannerOpenPersonAction(input: { entryId: number; personId: number }): Promise<PlannerDrawerResult> {
   const e = await editor(input?.entryId, input?.personId);
   if (!e.ok) return e;
-  const lists = await loadPlannerLists();
-  const [drawer, stamp] = await Promise.all([loadPersonDrawer(e.sb, e.meeting, e.personId, e.actorPersonId, lists), loadBoardStamp(e.sb, e.meeting.entryId)]);
-  return drawer ? { ok: true, drawer, stamp } : fail('That person isn’t on the board.');
+  return openDrawer(e);
+}
+
+/**
+ * A teacher's answer, entered for them (Patrick, 2026-11-01: "they texted me they're coming, no time to click"): only
+ * about a card they teach on This week now. Yes is their yes to the card as it stands, and marks them Coming. No takes
+ * them off it (C-D2) with an optional note. Either is recorded as entered by the editor; their own later answer
+ * replaces it. Returns the drawer read again.
+ */
+export async function plannerTeacherAnswerAction(input: { entryId: number; personId: number; key: string; answer: 'yes' | 'no'; note?: string | null }): Promise<PlannerDrawerResult> {
+  const e = await editor(input?.entryId, input?.personId);
+  if (!e.ok) return e;
+  const note = input.note ?? null;
+  if (typeof input.key !== 'string' || !input.key || (input.answer !== 'yes' && input.answer !== 'no') || (note !== null && (typeof note !== 'string' || note.length > 2000))) {
+    return fail('Malformed request');
+  }
+  const [catalog, lists] = await Promise.all([loadAdvancementCatalog(), loadPlannerLists()]);
+  const week = await viewOf(e.sb, e.meeting, lists, catalog);
+  if (!teacherAsksOf(week.view, e.personId).some((a) => a.key === input.key)) return fail('They aren’t teaching that any more. Close this and look again.');
+  const w = { personId: e.personId, actorPersonId: e.actorPersonId, leader: true };
+  if (input.answer === 'yes') {
+    await recordTeacherAnswers(e.sb, e.meeting, e.personId, [{ key: input.key, answer: 'yes' }], lists, catalog, { enteredBy: e.actorPersonId, week });
+    const coming = await setMeetingIntent(e.sb, { entryId: e.meeting.entryId, ...w }, 'coming');
+    if (!coming.ok) return fail('Saved their yes, but couldn’t mark them Coming. Tap Coming above.');
+  } else {
+    // Every row that puts them on this card (a merged split's Group 2 row counts for the one group).
+    const rows = week.input.topicTeachers.filter((t) => t.personId === e.personId && canonicalGroupKey(t.key, week.input.mergedBases) === input.key);
+    for (const r of rows) {
+      const res = await unteachTopic(e.sb, w, e.meeting.entryId, r.key);
+      if (!res.ok) return res;
+    }
+    await recordTeacherAnswers(e.sb, e.meeting, e.personId, [{ key: input.key, answer: 'no', note: cleanDeclineNote(note ?? '') }], lists, catalog, { enteredBy: e.actorPersonId });
+  }
+  return openDrawer(e);
 }
 
 /** Coming / Not sure / Can't, for a scout or an adult. A stored answer is what the board shows. */

@@ -92,6 +92,8 @@ export interface TwTeacher {
   formal: string;
   /** On a card's teacher list (Confirmations): planned, asked, confirmed or changed since their yes. Absent in a pool. */
   state?: PlanState;
+  /** Who entered their standing answer for them on the planner (a text, a call). Absent when they answered themselves. */
+  enteredBy?: string;
 }
 
 export { joinNames };
@@ -165,7 +167,7 @@ export interface TwGroup {
   /** Notes from people who said "Not this week" to teaching it. */
   declineNotes: { name: string; note: string }[];
   /** Confirmations C-D2: who said No to this card (now off it), with their note: the card needs a teacher. */
-  saidNo: { personId: number; name: string; note: string | null }[];
+  saidNo: { personId: number; name: string; note: string | null; enteredBy?: string }[];
 }
 
 export interface TwRow extends TwPerson {
@@ -222,7 +224,7 @@ export interface TwExtra {
   /** What a teacher wrote with their offer ("I can teach bottle caps"), with who wrote it (Patrick, 2026-10-30). */
   offerNotes: { name: string; note: string }[];
   /** Confirmations C-D2: who said No to this class (now off it). */
-  saidNo: { personId: number; name: string; note: string | null }[];
+  saidNo: { personId: number; name: string; note: string | null; enteredBy?: string }[];
 }
 
 export interface AnswerCounts {
@@ -375,18 +377,21 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
     input.topicTeachers
       .filter((x, i, all) => canonicalGroupKey(x.key, input.mergedBases) === key && !notComing(x.personId) && all.findIndex((y) => y.personId === x.personId && canonicalGroupKey(y.key, input.mergedBases) === key) === i)
       .flatMap((t): TwTeacher[] => {
+        const answer = answerOf(t.personId, key);
         const state = teacherState({
           onCard: true,
           hiddenByIntent: false,
-          answer: answerOf(t.personId, key),
+          answer,
           askedAt: askedAtOf(input.teacherAsks ?? [], { personId: t.personId, groupKey: key, merged: input.mergedBases }),
           slotSince: t.createdAt ?? null,
           now
         });
+        // Who entered it counts only while that answer is what the state reads (a stale yes, re-asked, isn't theirs).
+        const by = answer?.enteredBy && (state === 'confirmed' || state === 'changed') ? { enteredBy: answer.enteredBy } : {};
         const p = poolBy.get(t.personId);
-        if (p) return [{ ...teacherOf(p), state }];
+        if (p) return [{ ...teacherOf(p), state, ...by }];
         const s = scoutBy.get(t.personId);
-        return s ? [{ personId: s.personId, name: boardName(s.name), kind: 'junior', intent: s.intent, note: null, formal: boardName(s.name), state }] : [];
+        return s ? [{ personId: s.personId, name: boardName(s.name), kind: 'junior', intent: s.intent, note: null, formal: boardName(s.name), state, ...by }] : [];
       })
       .sort((a, b) => a.name.localeCompare(b.name));
   /** Who said No to this card and is off it now (C-D2). */
@@ -396,7 +401,7 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
       .map((a) => {
         const p = poolBy.get(a.personId);
         const s = scoutBy.get(a.personId);
-        return { personId: a.personId, name: p ? teacherName(p, 'admin') : s ? boardName(s.name) : 'Someone', note: a.note };
+        return { personId: a.personId, name: p ? teacherName(p, 'admin') : s ? boardName(s.name) : 'Someone', note: a.note, ...(a.enteredBy ? { enteredBy: a.enteredBy } : {}) };
       });
   const byAnswer = (a: TwTeacher, b: TwTeacher) => {
     const rank = (t: TwTeacher) => (t.intent === 'coming' ? 0 : t.intent == null || t.intent === 'undecided' ? 1 : 2);

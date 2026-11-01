@@ -73,4 +73,23 @@ describe('answer tables', () => {
       ]
     ]);
   });
+
+  // A planner can enter a teacher's answer for them (Patrick, 2026-11-01): a merge keeps who entered it.
+  it('Merge_KeepsWhoEnteredAnAnswer_OnBothSides', async () => {
+    const [keep, dup, leaderKeep, leaderDup] = [await person('EKeep'), await person('EDup'), await person('LKeep'), await person('LDup')];
+    await sb.from('meeting_teacher_answers').insert([
+      { calendar_entry_id: entry, person_id: dup, group_key: 'fr:first_class', answer: 'yes', entered_by_person_id: leaderKeep },
+      { calendar_entry_id: entry, person_id: keep, group_key: 'fr:second_class', answer: 'yes', entered_by_person_id: leaderDup }
+    ]);
+    const merged = await sb.rpc('merge_people', { p_survivor: keep, p_loser: dup, p_decided_by: 'vitest' });
+    await sb.rpc('merge_people', { p_survivor: leaderKeep, p_loser: leaderDup, p_decided_by: 'vitest' });
+    const { data } = await sb.from('meeting_teacher_answers').select('person_id, group_key, entered_by_person_id').eq('calendar_entry_id', entry).in('person_id', [keep, dup]).order('group_key');
+    expect([merged.error, data]).toEqual([
+      null,
+      [
+        { person_id: keep, group_key: 'fr:first_class', entered_by_person_id: leaderKeep },
+        { person_id: keep, group_key: 'fr:second_class', entered_by_person_id: leaderKeep }
+      ]
+    ]);
+  });
 });
