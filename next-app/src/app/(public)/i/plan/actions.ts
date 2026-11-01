@@ -48,7 +48,7 @@ async function refused(sb: ReturnType<typeof createAdminClient>, ip: string | nu
   return claim.state === 'error' ? 'That didn’t save. Try again.' : CLOSED;
 }
 
-const TEACH_OPS = new Set<TeachOp['op']>(['teach', 'unteach', 'withdraw', 'intent', 'offer', 'clear', 'note']);
+const TEACH_OPS = new Set<TeachOp['op']>(['teach', 'unteach', 'withdraw', 'intent', 'offer', 'clear', 'note', 'confirm']);
 
 /** One teacher write on the link, as its recipient, on its meeting (F5). */
 export async function planPageTeachAction(input: { token: string; op: TeachOp }): Promise<TeachActionResult> {

@@ -9,6 +9,9 @@ import { inviteAnswerAudit } from '@/lib/meeting-invite-audit';
 import { recordInviteFailure, tooManyInviteFailures } from '@/lib/meeting-invites-db';
 import { answerTeachPage, saveDeclineNotes, type TeachAnswer } from '@/lib/meeting-teach-pages';
 import { boardName } from '@/lib/meeting-board-shared';
+import { fillYesPlans, setTeacherNoNote } from '@/lib/teacher-answers-db';
+import { loadPlannerLists } from '@/lib/people-lists';
+import { cleanDeclineNote } from '@/lib/decline-note';
 import {
   addInterestsFromPage,
   cleanPicks,
@@ -47,6 +50,21 @@ export async function answerTeachPageAction(formData: FormData): Promise<void> {
 
   const res = await answerTeachPage(sb, token, answers);
   if (res.ok && !(await saveDeclineNotes(sb, res.pageId, notes))) console.error(`teach page ${res.pageId}: a Not this week note didn’t save`);
+  // Confirmations C2: a yes carries the card as it is now; a No's note goes on the answer (the card says who said no).
+  if (res.ok) {
+    try {
+      const said = new Map(answers.map((a) => [a.inviteId, a.answer]));
+      const yesKeys = res.lines.filter((l) => l.key && said.get(l.inviteId) === 'yes' && (l.result === 'yes' || l.result === 'unchanged')).map((l) => l.key!);
+      const { data: entry } = await sb.from('calendar_entries').select('entry_date').eq('id', res.entryId).maybeSingle();
+      if (entry && yesKeys.length) await fillYesPlans(sb, { entryId: res.entryId, date: (entry as { entry_date: string }).entry_date }, res.recipientId, yesKeys, await loadPlannerLists());
+      for (const n of notes) {
+        const line = res.lines.find((l) => l.inviteId === n.inviteId && l.result === 'no' && l.key);
+        if (line) await setTeacherNoNote(sb, res.entryId, res.recipientId, line.key!, cleanDeclineNote(n.note));
+      }
+    } catch (e) {
+      console.error('teach page: an answer’s details didn’t save:', e);
+    }
+  }
   // The redirect lands on the same URL; without this the router cache shows the old answers.
   revalidatePath('/i/teach/[token]', 'page');
   if (!res.ok) {

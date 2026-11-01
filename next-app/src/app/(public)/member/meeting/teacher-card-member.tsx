@@ -8,6 +8,7 @@ import {
   meetingTeachAction,
   meetingTeacherClearAction,
   meetingTeacherIntentAction,
+  meetingTeacherConfirmAction,
   meetingTeacherNoteAction,
   meetingUnteachAction,
   meetingWithdrawOfferAction
@@ -31,6 +32,8 @@ export function TeacherCardMember({ onBehalf, ...props }: Omit<TeacherCardProps,
         return meetingTeacherClearAction({ ...t, takeOff: op.takeOff });
       case 'note':
         return meetingTeacherNoteAction({ ...t, note: op.note });
+      case 'confirm':
+        return meetingTeacherConfirmAction(t);
     }
   };
   return <TeacherCard {...props} write={write} />;

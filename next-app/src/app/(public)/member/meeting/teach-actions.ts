@@ -73,6 +73,11 @@ export async function meetingTeacherIntentAction(t: TeachTarget & { intent: Inte
   return write(t, { op: 'intent', intent: t?.intent });
 }
 
+/** "This plan looks good" (Confirmations C-D6): coming, and a yes to every card they're on. */
+export async function meetingTeacherConfirmAction(t: TeachTarget): Promise<TeachActionResult> {
+  return write(t, { op: 'confirm' });
+}
+
 /** "Offer something": a skill, a requirement, or something else, on one or more upcoming dates, with a note. */
 export async function meetingPostOfferAction(t: TeachTarget & { what: OfferWhat; entryIds: number[]; note?: string }): Promise<TeachActionResult> {
   return write(t, { op: 'offer', what: t?.what, entryIds: t?.entryIds, note: t?.note });

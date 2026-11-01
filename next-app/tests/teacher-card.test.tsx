@@ -12,7 +12,7 @@ import type { MyClass, TeacherClass, TeacherWeek } from '../src/lib/teacher-week
  * which maps the card's writes onto them; the email link's own wiring is the last test (F5).
  */
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }) }));
-const calls = vi.hoisted(() => ({ teach: vi.fn(), unteach: vi.fn(), withdraw: vi.fn(), intent: vi.fn(), offer: vi.fn(), clear: vi.fn(), note: vi.fn() }));
+const calls = vi.hoisted(() => ({ teach: vi.fn(), unteach: vi.fn(), withdraw: vi.fn(), intent: vi.fn(), offer: vi.fn(), clear: vi.fn(), note: vi.fn(), confirm: vi.fn() }));
 vi.mock('../src/app/(public)/member/meeting/teach-actions', () => ({
   meetingTeachAction: calls.teach,
   meetingUnteachAction: calls.unteach,
@@ -20,7 +20,8 @@ vi.mock('../src/app/(public)/member/meeting/teach-actions', () => ({
   meetingTeacherIntentAction: calls.intent,
   meetingPostOfferAction: calls.offer,
   meetingTeacherClearAction: calls.clear,
-  meetingTeacherNoteAction: calls.note
+  meetingTeacherNoteAction: calls.note,
+  meetingTeacherConfirmAction: calls.confirm
 }));
 const { TeacherCard } = await import('../src/app/(public)/member/meeting/teacher-card');
 const { TeacherCardMember } = await import('../src/app/(public)/member/meeting/teacher-card-member');
@@ -87,10 +88,11 @@ describe('the teacher card', () => {
     expect(container.textContent).not.toMatch(/coming/i);
   });
 
-  it('Teacher_LooksGood_SavesComing', async () => {
+  it('Teacher_LooksGood_ConfirmsEveryCard', async () => {
+    // Confirmations C-D6: "This plan looks good" is coming AND a yes to every card they're on.
     card({ ...teaching, intent: null });
     await userEvent.click(screen.getByRole('radio', { name: /This plan looks good/ }));
-    expect(calls.intent).toHaveBeenCalledWith({ entryId: 1, personId: 9, onBehalf: false, intent: 'coming' });
+    expect(calls.confirm).toHaveBeenCalledWith({ entryId: 1, personId: 9, onBehalf: false });
   });
 
   it('Teacher_ChangeMyPlan_ShowsTheLoadMeter', async () => {
@@ -203,6 +205,6 @@ describe('the card writes through what it is given (F5)', () => {
     const write = vi.fn().mockResolvedValue(ok(teaching));
     render(<TeacherCard entryId={1} date="2099-11-01" isSelf initial={{ ...WEEK, ...teaching, intent: null }} view={VIEW} choices={CHOICES} readOnly={false} write={write} />);
     await userEvent.click(screen.getByRole('radio', { name: /This plan looks good/ }));
-    expect([write.mock.calls, Object.values(calls).some((f) => f.mock.calls.length)]).toEqual([[[{ op: 'intent', intent: 'coming' }]], false]);
+    expect([write.mock.calls, Object.values(calls).some((f) => f.mock.calls.length)]).toEqual([[[{ op: 'confirm' }]], false]);
   });
 });

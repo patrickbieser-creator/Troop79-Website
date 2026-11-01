@@ -102,7 +102,8 @@ export function TeacherCard({ entryId, date, isSelf, initial, view: initialView,
     const prev = answer;
     setAnswer(k);
     setUnsure(null);
-    run(() => write({ op: 'intent', intent: k === 'out' ? 'not_coming' : 'coming' }), 'Saved.', { onFail: () => (setAnswer(prev), false) });
+    // "This plan looks good" is their yes to every card they're on (C-D6); Change and Can't make it set the answer only.
+    run(() => write(k === 'ok' ? { op: 'confirm' } : { op: 'intent', intent: k === 'out' ? 'not_coming' : 'coming' }), 'Saved.', { onFail: () => (setAnswer(prev), false) });
   };
 
   /** Taking a class on answers the card (it implies coming). */

@@ -38,6 +38,8 @@ import {
 import { teachRefusal } from '@/lib/family-week-shared';
 import { cleanDeclineNote } from '@/lib/decline-note';
 import { loadTeacherWeek, minutesOf, type TeacherWeek } from '@/lib/teacher-week';
+import { clearTeacherAnswers, recordTeacherAnswers } from '@/lib/teacher-answers-db';
+import { loadPlannerLists } from '@/lib/people-lists';
 
 export type TeachActionResult = { ok: true; view: TeachView; week: TeacherWeek | null } | { ok: false; error: string; field?: 'what' | 'dates' };
 
@@ -51,6 +53,8 @@ export type TeachOp =
   | { op: 'intent'; intent: Intent | null }
   | { op: 'offer'; what: OfferWhat; entryIds: number[]; note?: string }
   | { op: 'clear'; takeOff: boolean }
+  /** "This plan looks good" (Confirmations C-D6): coming, and a yes to every card they're on. */
+  | { op: 'confirm' }
   | { op: 'note'; note: string };
 
 export interface TeachContext {
@@ -86,6 +90,14 @@ export async function teachWrite(ctx: TeachContext, op: TeachOp): Promise<TeachA
     // Someone who no longer qualifies and just took back their last row has nothing left to show.
     return { ok: true, view: view ?? emptyTeachView(personId), week };
   };
+  /** Their answers (Confirmations C2); a failure is logged, never blocks the write it rides on. */
+  const answer = async (list: { key: string; answer: 'yes' | 'no' }[]) => {
+    try {
+      await recordTeacherAnswers(sb, meeting, personId, list, await loadPlannerLists(), catalog);
+    } catch (e) {
+      console.error('teacher answer didn’t save:', e);
+    }
+  };
   /** Why adding `key` (or `min` minutes) to this meeting doesn't fit this person's Sunday; null when it does. */
   const refusal = async (key: string | null, min?: number): Promise<string | null> => {
     const week = await loadTeacherWeek(sb, meeting, catalog, personId);
@@ -100,11 +112,25 @@ export async function teachWrite(ctx: TeachContext, op: TeachOp): Promise<TeachA
       if (typeof op.key !== 'string' || !op.key) return teachFail('Malformed request');
       const no = await refusal(op.key);
       if (no) return teachFail(no);
-      return refresh(await teachTopic(sb, writer, [meeting.entryId], { key: op.key }, null));
+      const res = await teachTopic(sb, writer, [meeting.entryId], { key: op.key }, null);
+      // A class they take on themselves is their yes to it (Confirmations C2).
+      if (res.ok) await answer([{ key: op.key, answer: 'yes' }]);
+      return refresh(res);
     }
-    case 'unteach':
+    case 'unteach': {
       if (typeof op.key !== 'string') return teachFail('Malformed request');
-      return refresh(await unteachTopic(sb, writer, meeting.entryId, op.key));
+      const res = await unteachTopic(sb, writer, meeting.entryId, op.key);
+      // Taking themselves off a card is their No (C-D2: the card then needs a teacher).
+      if (res.ok) await answer([{ key: op.key, answer: 'no' }]);
+      return refresh(res);
+    }
+    case 'confirm': {
+      const res = await setMeetingIntent(sb, { entryId: meeting.entryId, personId, actorPersonId: writer.actorPersonId, leader: writer.leader }, 'coming');
+      if (!res.ok) return res;
+      const rows = await loadSupplyRows(sb, [meeting.entryId]);
+      await answer(rows.topicTeachers.filter((x) => x.personId === personId).map((x) => ({ key: x.key, answer: 'yes' as const })));
+      return refresh(res);
+    }
     case 'withdraw':
       if (typeof op.skillId !== 'string') return teachFail('Malformed request');
       return refresh(await withdrawSkillOffer(sb, writer, meeting.entryId, op.skillId));
@@ -162,6 +188,7 @@ export async function teachWrite(ctx: TeachContext, op: TeachOp): Promise<TeachA
         const res = await withdrawSkillOffer(sb, writer, meeting.entryId, o.skillId);
         if (!res.ok) return teachFail(res.error);
       }
+      await clearTeacherAnswers(sb, meeting.entryId, personId);
       return refresh(await setMeetingIntent(sb, { entryId: meeting.entryId, personId, actorPersonId: writer.actorPersonId, leader: writer.leader }, 'undecided'));
     }
     // The optional note with "Can't make it this week" (F3b): at most 3 lines and 240 characters (the database checks

@@ -431,3 +431,29 @@ describe('Emails E2: a Not this week note', () => {
     expect((data as { decline_note: string | null }).decline_note).toBeNull();
   });
 });
+
+/** Confirmations C2 (Plans/Meeting-Planner-III-Confirmations.md): the teach page's answers are recorded; a No takes
+ *  the teacher off the card even when a planner put them there (C-D2). */
+describe('confirmations', () => {
+  const answerOf = async (key: string, who = teacher) =>
+    (await sb.from('meeting_teacher_answers').select('answer').eq('calendar_entry_id', meeting).eq('person_id', who).eq('group_key', key).maybeSingle()).data as { answer: string } | null;
+
+  it('Confirm_TeachPageYes_RecordsAYes', async () => {
+    const token = await sendTeach([keys[1]]);
+    const [line] = await lineIds(token);
+    await answerTeachPage(sb, token, [{ inviteId: line, answer: 'yes' }]);
+    expect(await answerOf(keys[1])).toEqual({ answer: 'yes' });
+  }, 60_000);
+
+  it('Confirm_TeachPageNo_TakesAPlannerPlacedTeacherOffTheCard', async () => {
+    await sb.from('meeting_teacher_answers').delete().eq('calendar_entry_id', meeting).eq('person_id', teacher);
+    const { error } = await sb.rpc('meeting_teach_topic', { p_entries: [meeting], p_person: teacher, p_actor: teacher, p_leader: true, p_topic_key: keys[2], p_title: null, p_note: null });
+    if (error) throw new Error(error.message);
+    const before = await teaching();
+    const token = await sendTeach([keys[2]]);
+    const [line] = await lineIds(token);
+    await answerTeachPage(sb, token, [{ inviteId: line, answer: 'no' }]);
+    expect([before > (await teaching()), await answerOf(keys[2])]).toEqual([true, { answer: 'no' }]);
+  }, 60_000);
+});
+
