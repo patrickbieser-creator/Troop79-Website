@@ -66,7 +66,7 @@ describe('the preview follows the name clicked', () => {
     // Nobody ticked in the preview's To: the greeting still names her.
     fireEvent.click(screen.getByRole('checkbox', { name: /Mindy Stollenwerk|Mindy S/, checked: true }));
     const text = screen.getByLabelText('Email preview').textContent ?? '';
-    expect([text.includes('Planned for you, Mindy.'), text.includes('Answer yes or no')]).toEqual([true, true]);
+    expect([text.includes('Planned for you, Mindy.'), text.includes('See my plan and answer')]).toEqual([true, true]);
   });
 });
 

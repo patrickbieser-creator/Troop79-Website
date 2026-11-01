@@ -1,9 +1,9 @@
 'use client';
 
 /**
- * Build a Plan B10c/B10d: "What else would you enjoy teaching, now or in the future?" One picker for both places it
- * appears: the teacher's answer page (/i/teach/<token>, token-scoped search and save, with "Also this Sunday") and
- * /member/teaching (signed in). Search the whole catalog, add requirements or whole merit badges, give each an optional
+ * Build a Plan B10c/B10d: "What else would you enjoy teaching, now or in the future?" on /member/teaching (signed in).
+ * (The teacher answer page that also carried it, with "Also this Sunday", is retired: Plans/Planner-Teacher-Email-To-
+ * Family-Card.md.) Search the whole catalog, add requirements or whole merit badges, give each an optional
  * short note, then "Save interests". It saves on its own, apart from any other form on the page. Notes are plain
  * text: React escapes them and nothing ever turns them into links.
  *
@@ -15,21 +15,20 @@ import { useEffect, useId, useRef, useState, useTransition } from 'react';
 import { Button } from '@/app/_components/button';
 import { Notice } from '@/app/_components/notice';
 import { SaveProblem, TextInput } from '@/app/_components/form';
-import { canTeachNow, interestShort, INTEREST_NOTE_MAX, INTEREST_NOW_CAP, INTEREST_SEARCH_MAX, INTEREST_SUBMIT_CAP, type InterestHit, type InterestPick } from '@/lib/teaching-interests-shared';
+import { interestShort, INTEREST_NOTE_MAX, INTEREST_SEARCH_MAX, INTEREST_SUBMIT_CAP, type InterestHit, type InterestPick } from '@/lib/teaching-interests-shared';
 import styles from './interest-picker.module.css';
 
 type SearchFn = (q: string) => Promise<{ ok: true; rows: InterestHit[] } | { ok: false; error: string }>;
-type SaveFn = (picks: InterestPick[], nowKeys: string[]) => Promise<{ ok: true; message: string } | { ok: false; error: string }>;
+type SaveFn = (picks: InterestPick[]) => Promise<{ ok: true; message: string } | { ok: false; error: string }>;
 
 interface Picked {
   hit: InterestHit;
   note: string;
-  now: boolean;
 }
 
 const NOTHING_PICKED = 'Add something first: search above, then press + Add.';
 
-export function InterestPicker({ search, save, allowNow, onSaved }: { search: SearchFn; save: SaveFn; allowNow: boolean; onSaved?: () => void }) {
+export function InterestPicker({ search, save, onSaved }: { search: SearchFn; save: SaveFn; onSaved?: () => void }) {
   const id = useId();
   const [q, setQ] = useState('');
   const [rows, setRows] = useState<InterestHit[] | null>(null);
@@ -43,7 +42,6 @@ export function InterestPicker({ search, save, allowNow, onSaved }: { search: Se
   const headingRef = useRef<HTMLHeadingElement | null>(null);
   /** After a Remove: the index whose Remove takes focus once the list re-renders. */
   const focusAt = useRef<number | null>(null);
-  const nowCount = picked.filter((p) => p.now).length;
   const full = picked.length >= INTEREST_SUBMIT_CAP;
   const blocked = problem === NOTHING_PICKED;
 
@@ -74,7 +72,7 @@ export function InterestPicker({ search, save, allowNow, onSaved }: { search: Se
   function add(hit: InterestHit) {
     setMessage(null);
     setProblem(null);
-    setPicked((p) => (p.some((x) => x.hit.key === hit.key) || p.length >= INTEREST_SUBMIT_CAP ? p : [...p, { hit, note: '', now: false }]));
+    setPicked((p) => (p.some((x) => x.hit.key === hit.key) || p.length >= INTEREST_SUBMIT_CAP ? p : [...p, { hit, note: '' }]));
   }
 
   function remove(key: string) {
@@ -96,10 +94,7 @@ export function InterestPicker({ search, save, allowNow, onSaved }: { search: Se
     }
     setProblem(null);
     startSave(async () => {
-      const res = await save(
-        picked.map((p) => ({ key: p.hit.key, note: p.note.trim() || null })),
-        allowNow ? picked.filter((p) => p.now).map((p) => p.hit.key) : []
-      );
+      const res = await save(picked.map((p) => ({ key: p.hit.key, note: p.note.trim() || null })));
       if (!res.ok) {
         setProblem(res.error);
         return;
@@ -164,7 +159,6 @@ export function InterestPicker({ search, save, allowNow, onSaved }: { search: Se
           <ul className={styles.picked} ref={listRef}>
             {picked.map((p) => {
               const label = interestShort(p.hit);
-              const nowOff = !p.now && nowCount >= INTEREST_NOW_CAP;
               return (
                 <li key={p.hit.key} className={styles.pick}>
                   <div className={styles.pickHead}>
@@ -184,12 +178,6 @@ export function InterestPicker({ search, save, allowNow, onSaved }: { search: Se
                       onChange={(e) => patch(p.hit.key, { note: e.target.value })}
                     />
                   </label>
-                  {allowNow && canTeachNow(p.hit.key) && (
-                    <label className={styles.now}>
-                      <input type="checkbox" checked={p.now} disabled={nowOff} onChange={(e) => patch(p.hit.key, { now: e.target.checked })} />
-                      <span>Also this Sunday{nowOff ? ` (up to ${INTEREST_NOW_CAP})` : ''}</span>
-                    </label>
-                  )}
                 </li>
               );
             })}

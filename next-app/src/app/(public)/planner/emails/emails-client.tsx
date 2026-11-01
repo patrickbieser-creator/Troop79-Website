@@ -19,7 +19,7 @@ import { useRouter } from 'next/navigation';
 import { fmtDateTime } from '@/lib/format-date';
 import { PLAN_MAX, PLAN_MAX_MIN } from '@/lib/family-week-shared';
 import { peopleWords, planButtons, renderHouseholdEmail, TRACKING_LINE } from '@/lib/meeting-email-build';
-import { renderInviteDigest } from '@/lib/meeting-invite-email';
+import { renderTeacherEmail, TEACHER_EMAIL_BUTTON } from '@/lib/meeting-invite-email';
 import type { EmailScreen, LogLine, QueueRequest, ScreenRecipient, ScreenRow } from '@/lib/meeting-email-screen';
 import { emailsQueueAction, emailsRequeueAction, emailsSendNextAction } from './actions';
 import s from './emails.module.css';
@@ -470,10 +470,11 @@ function Preview({
     // A planned teacher's email asks them to confirm (Confirmations C-D1); anyone else is asked whether they can.
     const base = row.planned ? screen.templates.teacherPlanned : screen.templates.teacher;
     const t = override != null ? { ...base, body: override } : base;
-    const r = renderInviteDigest(t, { name: greet, people: 'you', day }, [{ kind: 'teach', inviteeName: row.name, aboutRecipient: true, code: g?.codes ?? '', topic: g?.title ?? '', minutes: g?.minutes ?? '', url: '', scouts: g?.scouts ?? [], planned: row.planned }]);
+    // The same renderer the send uses (lib/meeting-email-prepare), so the preview is the email.
+    const r = renderTeacherEmail(t, { name: greet, day }, { title: g?.title ?? '', codes: g?.codes ?? '', minutes: g?.minutes ?? '', scouts: g?.scouts ?? [] }, { planned: !!row.planned });
     subject = r.subject;
     body = plain(r.md);
-    buttons = [row.planned ? 'Answer yes or no' : 'Choose what you’ll teach'];
+    buttons = [TEACHER_EMAIL_BUTTON];
   } else {
     const scouts = row.isScout ? (shares?.rows ?? [row]).map((r) => screen.plans[String(r.personId)]).filter(Boolean) : [];
     const t = row.kind === 'reminder' ? screen.templates.reminder : screen.templates.plan;

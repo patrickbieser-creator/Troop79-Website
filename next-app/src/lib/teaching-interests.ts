@@ -5,14 +5,11 @@
  * (the adult removes them on /member/teaching); the engine and matcher ignore them; the Invite tab shows only a
  * collapsed "New talent (n)" list (last 30 days, by adult).
  *
- * Server only, service role. The SQL holds the rules (catalog check, 15 per submit, 40 active, the page's caps); this
- * is its edge. From the answer page everything is TOKEN-scoped: the person is the page's recipient, never a parameter.
- * "Also this Sunday" signs the adult up through teachTopic (meeting_teach_topic) as themself, so Build shows
- * "Teacher offered"; at most 5 per submit, requirements only.
+ * Server only, service role. The SQL holds the rules (catalog check, 15 per submit, 40 active); this is its edge. The
+ * teacher answer page's token-scoped search and "Also this Sunday" are retired (Plans/Planner-Teacher-Email-To-Family-
+ * Card.md); interests are added signed in, on /member/teaching.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { hashSecret } from '@/lib/identity-challenge';
-import { teachTopic } from '@/lib/meeting-board-supply';
 
 export * from '@/lib/teaching-interests-shared';
 import { interestShort, INTEREST_NOTE_MAX, INTEREST_SEARCH_MAX, NEW_TALENT_DAYS, type InterestHit, type InterestKind, type InterestPick, type TalentGroup, canSeeNewTalent } from '@/lib/teaching-interests-shared';
@@ -39,52 +36,6 @@ export function cleanPicks(raw: unknown): InterestPick[] | null {
 /** The RPCs' own messages are written for people; anything else stays private. */
 const KNOWN = /^(Pick up to|That isn’t a requirement|You can keep up to|Offer up to|Only a requirement)/;
 const said = (message: string) => (KNOWN.test(message) ? message : 'That didn’t save. Please try again.');
-
-// ── the answer page (token-scoped) ───────────────────────────────────────────────────────────────────────────────
-
-const TOKEN = /^[0-9a-f]{64}$/i;
-
-export type PageSearchResult = { ok: true; rows: InterestHit[] } | { ok: false; state: 'unknown' | 'expired' | 'superseded' | 'void' | 'limit' | 'error' };
-
-/** One search from an answer page: counted against the page's 60; q ≤ 80; 20 rows. */
-export async function searchInterestsFromPage(sb: SupabaseClient, token: string, q: string): Promise<PageSearchResult> {
-  if (!TOKEN.test(token)) return { ok: false, state: 'unknown' };
-  const { data, error } = await sb.rpc('teaching_interest_search_page', { p_token_hash: await hashSecret(token.toLowerCase()), p_q: q.slice(0, INTEREST_SEARCH_MAX) });
-  if (error) return { ok: false, state: 'error' };
-  const res = data as { state: 'ok' | 'unknown' | 'expired' | 'superseded' | 'void' | 'limit'; rows?: HitRow[] };
-  if (res.state !== 'ok') return { ok: false, state: res.state };
-  return { ok: true, rows: (res.rows ?? []).map(toHit) };
-}
-
-export interface NowOutcome {
-  key: string;
-  ok: boolean;
-  error: string | null;
-}
-
-export type PageAddResult =
-  | { ok: true; pageId: number; entryId: number; recipientId: number; added: string[]; now: NowOutcome[] }
-  | { ok: false; state: 'unknown' | 'expired' | 'superseded' | 'void' | 'busy' | 'refused' | 'save'; error?: string };
-
-/** "Save interests" on an answer page: the interests, then each "Also this Sunday" through teachTopic as the adult. */
-export async function addInterestsFromPage(sb: SupabaseClient, token: string, picks: readonly InterestPick[], nowKeys: readonly string[]): Promise<PageAddResult> {
-  if (!TOKEN.test(token)) return { ok: false, state: 'unknown' };
-  const { data, error } = await sb.rpc('teaching_interest_add_from_page', {
-    p_token_hash: await hashSecret(token.toLowerCase()),
-    p_items: picks.map((p) => ({ key: p.key, note: p.note })),
-    p_now_keys: [...nowKeys]
-  });
-  if (error) return KNOWN.test(error.message) ? { ok: false, state: 'refused', error: error.message } : { ok: false, state: 'save' };
-  const res = data as { state: string; page_id?: number; entry?: number; recipient?: number; added?: string[]; now?: string[] };
-  if (res.state !== 'saved') return { ok: false, state: res.state as 'unknown' | 'expired' | 'superseded' | 'void' | 'busy' };
-  const w = { personId: res.recipient!, actorPersonId: res.recipient!, leader: false };
-  const now: NowOutcome[] = [];
-  for (const key of res.now ?? []) {
-    const r = await teachTopic(sb, w, [res.entry!], { key }, null);
-    now.push({ key, ok: r.ok, error: r.ok ? null : r.error });
-  }
-  return { ok: true, pageId: res.page_id!, entryId: res.entry!, recipientId: res.recipient!, added: res.added ?? [], now };
-}
 
 // ── signed in (/member/teaching) ─────────────────────────────────────────────────────────────────────────────────
 

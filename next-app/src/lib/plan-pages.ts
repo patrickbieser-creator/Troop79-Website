@@ -5,8 +5,9 @@
  *   - scope: the recipient's own scouts (fixed at mint), one meeting, intent + picks only; and, on a link minted
  *     as_teacher (F5), the recipient's own teacher card on that meeting (claimPlanPageTeacher). A teacher link may
  *     carry no scouts (an adult's Coming? reminder);
- *   - expires 6 PM Central on the meeting day; a republish supersedes the recipient's older links once the new email
- *     has gone out; a planner may revoke every link of a meeting;
+ *   - expires 6 PM Central on the meeting day; once the new email has gone out it supersedes the recipient's older
+ *     links that it COVERS (their scouts all on it, any teacher card kept) from earlier sends, so a family link and a
+ *     teacher link to one parent both stay open (tech-lead 2026-11-01); a planner may revoke every link of a meeting;
  *   - reading (inspectPlanPage) writes NOTHING, so a mail scanner's prefetch spends nothing; each write goes through
  *     meeting_plan_page_claim, which locks the page, refuses anything not open, re-checks the recipient's
  *     session_epoch and scope, and counts the write (at most 200);
@@ -123,14 +124,35 @@ export async function mintPlanPage(
 }
 
 /** After the new link's email went out: the recipient's older open links for that meeting point at it. */
-export async function supersedeOlderPlanPages(sb: SupabaseClient, page: { id: number; entryId: number; recipientId: number }): Promise<void> {
-  const { error } = await sb
+export async function supersedeOlderPlanPages(
+  sb: SupabaseClient,
+  page: {
+    id: number;
+    entryId: number;
+    recipientId: number;
+    /** The new link's scope: it closes only older links it covers (their scouts are all on it, and it keeps any teacher card). */
+    scoutIds: readonly number[];
+    asTeacher: boolean;
+    /** When the new link's email was queued: a link minted after that came from the same send, not an older one. */
+    queuedAt?: string | null;
+  }
+): Promise<void> {
+  let q = sb
     .from('meeting_plan_pages')
-    .update({ superseded_at: new Date().toISOString() })
+    .select('id, scout_person_ids, as_teacher')
     .eq('calendar_entry_id', page.entryId)
     .eq('recipient_person_id', page.recipientId)
     .lt('id', page.id)
     .is('superseded_at', null);
+  if (page.queuedAt) q = q.lt('created_at', page.queuedAt);
+  const { data, error: readErr } = await q;
+  if (readErr) throw new Error(readErr.message);
+  const has = new Set(page.scoutIds.map(Number));
+  const covered = ((data ?? []) as { id: number; scout_person_ids: (number | string)[]; as_teacher: boolean }[])
+    .filter((r) => (page.asTeacher || !r.as_teacher) && r.scout_person_ids.every((s) => has.has(Number(s))))
+    .map((r) => r.id);
+  if (!covered.length) return;
+  const { error } = await sb.from('meeting_plan_pages').update({ superseded_at: new Date().toISOString() }).in('id', covered).is('superseded_at', null);
   if (error) throw new Error(error.message);
 }
 

@@ -75,3 +75,57 @@ describe('a teacher’s Sunday', () => {
     expect(w.mine[0].label).toBe('A Group 2');
   });
 });
+
+/** "We asked about" (Plans/Planner-Teacher-Email-To-Family-Card.md): the groups a teacher email asked this person to
+ *  teach, read from the sent emails, never from a stored copy on the link. */
+describe('what a teacher was asked about', () => {
+  const ask = (group: string, at = '2085-03-01T12:00:00Z') => ({ personId: 9, group, at });
+  const no = (key: string, answeredAt = '2085-03-02T12:00:00Z', note: string | null = null) => ({ personId: 9, key, answer: 'no' as const, answeredAt, plan: null, note });
+  const buildAsked = (groups: TwGroup[], rows: { key: string; personId: number; enteredByPersonId: number | null }[], asks: ReturnType<typeof ask>[], answers: ReturnType<typeof no>[] = [], merged?: ReadonlySet<string>) =>
+    buildTeacherWeek({ groups }, { topicTeachers: rows, skillOffers: [] }, me, catalog, 1, () => null, merged, { asks, answers });
+
+  it('Asked_ListsTheEmailedGroup_AndTakesItOutOfNeeds', () => {
+    const w = buildAsked([group('fr:a'), group('fr:b')], [], [ask('fr:a')]);
+    expect([w.asked.map((c) => c.key), w.needs.map((c) => c.key)]).toEqual([['fr:a'], ['fr:b']]);
+  });
+
+  it('Asked_KeepsAGroupSomeoneElseHasTakenSince', () => {
+    const w = buildAsked([group('fr:a', { teachers: [teacher(5)] })], [{ key: 'fr:a', personId: 5, enteredByPersonId: 5 }], [ask('fr:a')]);
+    expect([w.asked.map((c) => c.key), w.taught.length]).toEqual([['fr:a'], 0]);
+  });
+
+  it('Asked_LeavesOutAGroupTheyNowTeach', () => {
+    const w = buildAsked([group('fr:a', { teachers: [teacher(9)] })], [{ key: 'fr:a', personId: 9, enteredByPersonId: 9 }], [ask('fr:a')]);
+    expect(w.asked).toEqual([]);
+  });
+
+  it('Asked_LeavesOutAGroupNoLongerOnThePlan', () => {
+    const w = buildAsked([group('fr:b')], [], [ask('fr:a')]);
+    expect(w.asked).toEqual([]);
+  });
+
+  it('Asked_ReadsAMergedSplitAsTheOneGroup', () => {
+    const w = buildAsked([group('fr:a')], [], [ask('fr:a~2')], [], new Set(['fr:a']));
+    expect(w.asked.map((c) => c.key)).toEqual(['fr:a']);
+  });
+
+  it('Asked_OnlyThisPersonsAsks', () => {
+    const w = buildAsked([group('fr:a')], [], [{ personId: 5, group: 'fr:a', at: '2085-03-01T12:00:00Z' }]);
+    expect(w.asked).toEqual([]);
+  });
+
+  it('Asked_SaysNo_WhenTheyAnsweredNoAfterTheAsk', () => {
+    const w = buildAsked([group('fr:a')], [], [ask('fr:a')], [no('fr:a', '2085-03-02T12:00:00Z', 'Out of town')]);
+    expect([w.asked[0].saidNo, w.asked[0].note]).toEqual([true, 'Out of town']);
+  });
+
+  it('Asked_AskedAgainAfterANo_IsOpenAgain', () => {
+    const w = buildAsked([group('fr:a')], [], [ask('fr:a', '2085-03-03T12:00:00Z')], [no('fr:a', '2085-03-02T12:00:00Z')]);
+    expect(w.asked[0].saidNo).toBe(false);
+  });
+
+  it('NoAsks_LeavesTheCardAsItWas', () => {
+    const w = build([group('fr:a')], []);
+    expect([w.asked, w.needs.map((c) => c.key)]).toEqual([[], ['fr:a']]);
+  });
+});

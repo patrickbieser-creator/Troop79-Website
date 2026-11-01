@@ -78,6 +78,7 @@ afterEach(async () => {
     await sb.from('meeting_intents').delete().eq('calendar_entry_id', e);
     await sb.from('meeting_plan_pages').delete().eq('calendar_entry_id', e);
     await sb.from('meeting_teacher_answers').delete().eq('calendar_entry_id', e);
+    await sb.from('meeting_emails').delete().eq('calendar_entry_id', e);
   }
   await sb.from('meeting_invite_failures').delete().eq('ip', IP);
 });
@@ -279,3 +280,73 @@ describe('a teacher answers on their card', () => {
   });
 });
 
+
+/** "We asked about" (Plans/Planner-Teacher-Email-To-Family-Card.md, Q1): an adult a teacher email asked about a group
+ *  they aren't on can say Not this week, with a note, from the link. Only a group they were asked about. */
+describe('an asked teacher says not this week', () => {
+  const GROUP = 'fr:mb:first-aid';
+  async function asked(personId: number) {
+    await sb.from('meeting_night_badges').insert({ calendar_entry_id: meeting1, mb_id: 'first-aid' });
+    const { error } = await sb.from('meeting_emails').insert({
+      calendar_entry_id: meeting1,
+      kind: 'teacher',
+      batch_id: crypto.randomUUID(),
+      recipient_person_id: personId,
+      sent_to: 'asked@example.com',
+      about: { group: GROUP },
+      status: 'sent',
+      sent_at: new Date().toISOString()
+    });
+    if (error) throw new Error(error.message);
+  }
+  const noRows = async () =>
+    ((await sb.from('meeting_teacher_answers').select('person_id, group_key, answer, note').eq('calendar_entry_id', meeting1)).data ?? []) as Record<string, unknown>[];
+
+  it('AskedAdult_SaysNotThisWeek_RecordsTheirNoWithTheNote', async () => {
+    await asked(adult);
+    const { token } = await link(adult);
+    const r = await (await actions()).planPageTeachAction({ token, op: { op: 'decline', key: GROUP, note: '  Out of town  ' } });
+    expect([r.ok, await noRows()]).toEqual([true, [{ person_id: adult, group_key: GROUP, answer: 'no', note: 'Out of town' }]]);
+  });
+
+  it('AskedAdult_CardShowsTheirNo', async () => {
+    await asked(adult);
+    const { token } = await link(adult);
+    const r = await (await actions()).planPageTeachAction({ token, op: { op: 'decline', key: GROUP, note: '' } });
+    const a = r.ok ? r.week?.asked.find((c) => c.key === GROUP) : null;
+    expect([a?.saidNo, a?.note]).toEqual([true, null]);
+  });
+
+  it('Decline_OfAGroupTheyWereNotAskedAbout_IsRefused', async () => {
+    await sb.from('meeting_night_badges').insert({ calendar_entry_id: meeting1, mb_id: 'first-aid' });
+    const { token } = await link(adult);
+    const r = await (await actions()).planPageTeachAction({ token, op: { op: 'decline', key: GROUP, note: '' } });
+    expect([r.ok, await noRows()]).toEqual([false, []]);
+  });
+
+  it('Decline_OfAnArbitraryKey_IsRefused', async () => {
+    await asked(adult);
+    const { token } = await link(adult);
+    const r = await (await actions()).planPageTeachAction({ token, op: { op: 'decline', key: 'fr:nope', note: '' } });
+    expect([r.ok, await noRows()]).toEqual([false, []]);
+  });
+
+  it('Decline_ByALeaderOnTheirBehalf_IsRefused', async () => {
+    await asked(adult);
+    const { teachWrite } = await import('../src/lib/teach-write');
+    const { loadMeetingById } = await import('../src/lib/meeting-board');
+    const { loadAdvancementCatalog } = await import('../src/lib/advancement-catalog');
+    const meeting = (await loadMeetingById(sb, meeting1))!;
+    const r = await teachWrite({ sb, meeting, catalog: await loadAdvancementCatalog(), personId: adult, actorPersonId: other, leader: true, who: 'first name' }, { op: 'decline', key: GROUP, note: '' });
+    expect([r.ok, await noRows()]).toEqual([false, []]);
+  });
+
+  it('TakingTheAskedGroupAfterANo_IsTheirYes', async () => {
+    await asked(adult);
+    const { token } = await link(adult);
+    const act = await actions();
+    await act.planPageTeachAction({ token, op: { op: 'decline', key: GROUP, note: '' } });
+    await act.planPageTeachAction({ token, op: { op: 'teach', key: GROUP } });
+    expect((await noRows()).map((a) => a.answer)).toEqual(['yes']);
+  });
+});

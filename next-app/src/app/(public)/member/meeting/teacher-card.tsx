@@ -13,6 +13,9 @@
  *   - Someone with nothing assigned and no answer gets the class list open, with only Can't make it under it.
  *     Signing up answers the card; the next visit shows the standard card.
  *   - Can't make it this week opens an optional note for the planners (F3b): 3 lines and 240 characters, its own Send.
+ *   - "We asked … to teach" (Plans/Planner-Teacher-Email-To-Family-Card.md): a group a teacher email asked them about
+ *     and they aren't on sits at the top, outside Change my plan: I'll teach this, or (only their own answer) Not this
+ *     week, after which it reads "You said not this week." with an optional note and can still be taken.
  *   - "Not sure yet? Clear …'s answer" gives back everything signed up on this page. Pre-assigned to a class, it asks
  *     first whether to take them off the plan for now.
  *
@@ -24,7 +27,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/app/_components/button';
 import { classMinutes, TEACH_MAX_CLASSES, TEACH_MAX_MIN, teachRefusal, theGroup, withMinutes } from '@/lib/family-week-shared';
 import type { OfferChoices, TeachView, WantedItem } from '@/lib/meeting-board-supply';
-import type { TeacherClass, TeacherWeek } from '@/lib/teacher-week';
+import type { AskedClass, TeacherClass, TeacherWeek } from '@/lib/teacher-week';
 import { fmtDay } from '@/lib/format-date';
 import { DECLINE_NOTE_CHARS, DECLINE_NOTE_LINES } from '@/lib/decline-note';
 import type { OfferWhat, TeachActionResult, TeachOp } from '@/lib/teach-write';
@@ -68,6 +71,8 @@ export function TeacherCard({ entryId, date, isSelf, initial, view: initialView,
   const [editing, setEditing] = useState(false);
   const [asking, setAsking] = useState(false);
   const [note, setNote] = useState(initial.note ?? '');
+  // The note with each asked group's No, by key (starts at what is saved).
+  const [noNotes, setNoNotes] = useState<Record<string, string>>(() => Object.fromEntries(initial.asked.map((c) => [c.key, c.note ?? ''])));
   const [problem, setProblem] = useState<{ at: string | null; text: string } | null>(null);
   const [live, setLive] = useState('');
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -210,6 +215,73 @@ export function TeacherCard({ entryId, date, isSelf, initial, view: initialView,
       </div>
     );
   };
+  const clipNote = (v: string) => v.split('\n').slice(0, DECLINE_NOTE_LINES).join('\n').slice(0, DECLINE_NOTE_CHARS);
+  const decline = (key: string, text: string) => run(() => write({ op: 'decline', key, note: text }), text ? 'Note sent.' : 'Saved. Not this week.', { at: key });
+  const askedRow = (c: AskedClass) => {
+    const no = why(c);
+    const verb = c.teachers.length ? 'I’ll help teach' : 'I’ll teach';
+    const draftNote = noNotes[c.key] ?? '';
+    const sent = draftNote.trim() === (c.note ?? '');
+    return (
+      <div key={c.key} className={styles.teachWrap}>
+        <div className={styles.teachRow}>
+          <span className={styles.grow}>
+            <b>
+              {c.label}
+              {c.adultsOnly ? <span className={fw.reqTag}> Adults only</span> : null}
+            </b>
+            <small>
+              {c.line}
+              {c.teachers.length ? ` · taught by ${c.teachers.join(' and ')}` : ''}
+            </small>
+            {c.parts.length ? <small>{c.parts.join(' · ')}</small> : null}
+            {c.saidNo ? <small>{isSelf ? 'You' : first} said not this week.</small> : null}
+            {no ? <small className={styles.flag}>{no}</small> : null}
+          </span>
+          {!readOnly && (
+            <>
+              <Button size="sm" variant="secondary" disabled={!!no || pending} aria-label={`${verb} ${c.label}`} onClick={() => take(c.key, c.label)}>
+                {verb} this
+              </Button>
+              {isSelf && !c.saidNo ? (
+                <button type="button" className={fw.unsure} disabled={pending} onClick={() => decline(c.key, '')}>
+                  Not this week
+                </button>
+              ) : null}
+            </>
+          )}
+        </div>
+        {c.saidNo && isSelf && !readOnly ? (
+          <div className={fw.note}>
+            <label htmlFor={`${ids}-no-${c.key}`} className={fw.noteLabel}>
+              No problem. Anything you&rsquo;d like us to know?
+            </label>
+            <textarea
+              id={`${ids}-no-${c.key}`}
+              rows={DECLINE_NOTE_LINES}
+              maxLength={DECLINE_NOTE_CHARS}
+              className={fw.noteBox}
+              value={draftNote}
+              onChange={(e) => setNoNotes((n) => ({ ...n, [c.key]: clipNote(e.target.value) }))}
+            />
+            <span className={fw.noteCount}>
+              {DECLINE_NOTE_CHARS - draftNote.length} characters left · up to {DECLINE_NOTE_LINES} lines
+            </span>
+            <div>
+              <Button variant="secondary" size="sm" disabled={pending || sent} title={sent ? 'No changes to send yet' : undefined} onClick={() => decline(c.key, draftNote)}>
+                {sent ? (c.note ? 'Sent' : 'Send') : c.note ? 'Send changes' : 'Send'}
+              </Button>
+            </div>
+          </div>
+        ) : null}
+        {problem?.at === c.key ? (
+          <p className={styles.badNote} role="alert">
+            {problem.text}
+          </p>
+        ) : null}
+      </div>
+    );
+  };
   const wantRow = (w: WantedItem) => {
     const min = classMinutes(w.minutes ?? 15);
     const no = w.refused ? 'Adults only' : teachRefusal(who, week.load, min);
@@ -257,6 +329,13 @@ export function TeacherCard({ entryId, date, isSelf, initial, view: initialView,
         <span className={fw.rankLine}>{groupLine || 'Not teaching a group yet'}</span>
         <span className={`${fw.badge} ${badge.cls}`}>{badge.text}</span>
       </div>
+
+      {week.asked.length && answer !== 'out' ? (
+        <div className={fw.also}>
+          <div className={fw.alsoHead}>We asked {you} to teach</div>
+          {week.asked.map(askedRow)}
+        </div>
+      ) : null}
 
       {plan.length && !showEdit && answer !== 'out' ? (
         <div className={fw.plan}>

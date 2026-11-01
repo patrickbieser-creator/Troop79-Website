@@ -12,7 +12,7 @@ import type { MyClass, TeacherClass, TeacherWeek } from '../src/lib/teacher-week
  * which maps the card's writes onto them; the email link's own wiring is the last test (F5).
  */
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }) }));
-const calls = vi.hoisted(() => ({ teach: vi.fn(), unteach: vi.fn(), withdraw: vi.fn(), intent: vi.fn(), offer: vi.fn(), clear: vi.fn(), note: vi.fn(), confirm: vi.fn() }));
+const calls = vi.hoisted(() => ({ teach: vi.fn(), unteach: vi.fn(), withdraw: vi.fn(), intent: vi.fn(), offer: vi.fn(), clear: vi.fn(), note: vi.fn(), confirm: vi.fn(), decline: vi.fn() }));
 vi.mock('../src/app/(public)/member/meeting/teach-actions', () => ({
   meetingTeachAction: calls.teach,
   meetingUnteachAction: calls.unteach,
@@ -21,7 +21,8 @@ vi.mock('../src/app/(public)/member/meeting/teach-actions', () => ({
   meetingPostOfferAction: calls.offer,
   meetingTeacherClearAction: calls.clear,
   meetingTeacherNoteAction: calls.note,
-  meetingTeacherConfirmAction: calls.confirm
+  meetingTeacherConfirmAction: calls.confirm,
+  meetingTeacherDeclineAction: calls.decline
 }));
 const { TeacherCard } = await import('../src/app/(public)/member/meeting/teacher-card');
 const { TeacherCardMember } = await import('../src/app/(public)/member/meeting/teacher-card-member');
@@ -47,6 +48,7 @@ const WEEK: TeacherWeek = {
   note: null,
   mine: [],
   other: [],
+  asked: [],
   needs: [cls('fr:second-class', 'Second Class group'), cls('fr:mb:first-aid', 'First Aid merit badge', { adultsOnly: true, min: 45 })],
   taught: [cls('fr:tenderfoot', 'Tenderfoot group', { teachers: ['Mr. B'] })],
   load: { classes: 0, minutes: 0 }
@@ -206,5 +208,55 @@ describe('the card writes through what it is given (F5)', () => {
     render(<TeacherCard entryId={1} date="2099-11-01" isSelf initial={{ ...WEEK, ...teaching, intent: null }} view={VIEW} choices={CHOICES} readOnly={false} write={write} />);
     await userEvent.click(screen.getByRole('radio', { name: /This plan looks good/ }));
     expect([write.mock.calls, Object.values(calls).some((f) => f.mock.calls.length)]).toEqual([[[{ op: 'confirm' }]], false]);
+  });
+});
+
+/** "We asked about" (Plans/Planner-Teacher-Email-To-Family-Card.md): the group a teacher email asked them about sits at
+ *  the top of the card, outside Change my plan, with I'll teach this and Not this week. */
+describe('a group they were asked about', () => {
+  const asked = (o: Partial<TeacherWeek['asked'][number]> = {}) => ({ ...cls('fr:scout~2', 'Scout Group 2'), saidNo: false, note: null, ...o });
+
+  it('AskedGroup_ShowsAtTheTop_WithoutChangeMyPlan', () => {
+    card({ asked: [asked()] });
+    expect([screen.getByText('We asked you to teach').textContent, screen.getByText('Scout Group 2').textContent]).toEqual(['We asked you to teach', 'Scout Group 2']);
+  });
+
+  it('AskedGroup_TeachThis_TakesIt', async () => {
+    card({ asked: [asked()], intent: 'coming' });
+    await userEvent.click(screen.getByRole('button', { name: 'I’ll teach Scout Group 2' }));
+    expect(calls.teach).toHaveBeenCalledWith({ entryId: 1, personId: 9, onBehalf: false, key: 'fr:scout~2' });
+  });
+
+  it('AskedGroup_NotThisWeek_SaysNo', async () => {
+    card({ asked: [asked()] });
+    await userEvent.click(screen.getByRole('button', { name: 'Not this week' }));
+    expect(calls.decline).toHaveBeenCalledWith({ entryId: 1, personId: 9, onBehalf: false, key: 'fr:scout~2', note: '' });
+  });
+
+  it('AskedGroup_AfterANo_ReadsSoAndOffersTheNote', () => {
+    card({ asked: [asked({ saidNo: true })] });
+    expect([screen.getByText('You said not this week.').textContent, !!screen.getByLabelText('No problem. Anything you’d like us to know?')]).toEqual(['You said not this week.', true]);
+  });
+
+  it('AskedGroup_NoNote_SendsWithTheDecline', async () => {
+    card({ asked: [asked({ saidNo: true })] });
+    await userEvent.type(screen.getByLabelText('No problem. Anything you’d like us to know?'), 'Out of town');
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }));
+    expect(calls.decline).toHaveBeenCalledWith({ entryId: 1, personId: 9, onBehalf: false, key: 'fr:scout~2', note: 'Out of town' });
+  });
+
+  it('AskedGroup_AfterANo_CanStillTakeIt', () => {
+    card({ asked: [asked({ saidNo: true })] });
+    expect(screen.getByRole('button', { name: 'I’ll teach Scout Group 2' })).toBeTruthy();
+  });
+
+  it('AskedGroup_SomeoneElseOnBehalf_HasNoNotThisWeek', () => {
+    card({ asked: [asked()] }, false);
+    expect([screen.getByText('We asked Dan to teach').textContent, screen.queryByRole('button', { name: 'Not this week' })]).toEqual(['We asked Dan to teach', null]);
+  });
+
+  it('AskedGroup_Hidden_WhenTheyCantMakeIt', () => {
+    card({ asked: [asked()], intent: 'not_coming' });
+    expect(screen.queryByText('We asked you to teach')).toBeNull();
   });
 });

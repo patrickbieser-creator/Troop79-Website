@@ -1,5 +1,12 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { adminClient } from './helpers/admin-client';
+
+// The teacher email reads the night's groups through the cached catalog and lists (unstable_cache needs a request).
+vi.mock('@/lib/supabase/server', async () => {
+  const { adminClient: make } = await import('./helpers/admin-client');
+  return { createAdminClient: () => make() };
+});
+vi.mock('next/cache', () => ({ revalidatePath: vi.fn(), updateTag: vi.fn(), revalidateTag: vi.fn(), unstable_cache: (fn: unknown) => fn }));
 import { TEST_PREFIX } from './helpers/signup-fixtures';
 import { fetchAdvancementCatalog } from '../src/lib/advancement-catalog';
 import { fetchPeopleLists } from '../src/lib/people-lists';
@@ -178,5 +185,83 @@ describe('the plan link for someone who teaches', () => {
     const row = base({ recipient_person_id: young, about: { scouts: [young] }, plan_sent: { [String(young)]: { name: 'Young', kind: 'rank', group: 'fr:tenderfoot', groupName: 'Tenderfoot', teachers: [], items: [], helpName: null } } });
     const p = await prepareEmail(sb, row, { meeting: { entryId: meeting, date: DATE }, focus: 'First aid' });
     expect(await asTeacherOf(p.html)).toEqual({ asTeacher: false, scouts: [young] });
+  });
+});
+
+/** The teacher email opens the family link's teacher card (Plans/Planner-Teacher-Email-To-Family-Card.md): a teacher-only
+ *  /i/plan link, no teach page and no teach invite; only for a group of the night, only to someone who may teach. */
+describe('a teacher email', () => {
+  const GROUP = 'fr:mb:first-aid';
+  const ctx = () => ({ meeting: { entryId: meeting, date: DATE }, focus: 'First aid' });
+  const teacherRow = (o: Partial<EmailRow> = {}): EmailRow => ({
+    id: 2,
+    calendar_entry_id: meeting,
+    kind: 'teacher',
+    batch_id: '00000000-0000-4000-8000-000000000020',
+    recipient_person_id: parent,
+    sent_to: parentEmail,
+    about: { group: GROUP },
+    plan_sent: null,
+    subject: null,
+    body_md_override: null,
+    status: 'sending',
+    failure: null,
+    ...o
+  });
+  const linkOf = async (html: string) => {
+    const token = /\/i\/plan\/([0-9a-f]{64})/.exec(html)?.[1];
+    if (!token) return null;
+    const { inspectPlanPage } = await import('../src/lib/plan-pages');
+    const page = (await inspectPlanPage(sb, token)).page;
+    return page ? { id: page.id, asTeacher: page.asTeacher, scouts: page.scoutIds } : null;
+  };
+
+  beforeAll(async () => {
+    await sb.from('meeting_night_badges').insert({ calendar_entry_id: meeting, mb_id: 'first-aid' });
+  });
+  afterAll(async () => {
+    await sb.from('meeting_night_badges').delete().eq('calendar_entry_id', meeting);
+  });
+
+  it('TeacherEmail_LinksToATeacherOnlyFamilyLink', async () => {
+    const p = await prepareEmail(sb, teacherRow(), ctx());
+    const link = await linkOf(p.html);
+    expect([link?.asTeacher, link?.scouts, p.html.includes('/i/teach/')]).toEqual([true, [], false]);
+  });
+
+  it('TeacherEmail_MintsNoTeachInvite', async () => {
+    await prepareEmail(sb, teacherRow(), ctx());
+    const { count } = await sb.from('meeting_invites').select('id', { count: 'exact', head: true }).eq('calendar_entry_id', meeting);
+    expect(count).toBe(0);
+  });
+
+  it('TeacherEmail_Undo_RemovesTheLink', async () => {
+    const p = await prepareEmail(sb, teacherRow(), ctx());
+    const link = await linkOf(p.html);
+    await p.undo?.();
+    const { count } = await sb.from('meeting_plan_pages').select('id', { count: 'exact', head: true }).eq('id', link!.id);
+    expect(count).toBe(0);
+  });
+
+  it('TeacherEmail_HasTheOneButton', async () => {
+    const { TEACHER_EMAIL_BUTTON } = await import('../src/lib/meeting-invite-email');
+    const p = await prepareEmail(sb, teacherRow(), ctx());
+    expect(p.text.includes(TEACHER_EMAIL_BUTTON.replace(' →', ''))).toBe(true);
+  });
+
+  it('TeacherEmail_ForAGroupNotOnThePlan_IsRefused', async () => {
+    await expect(prepareEmail(sb, teacherRow({ about: { group: 'fr:eagle' } }), ctx())).rejects.toThrow();
+  });
+
+  it('TeacherEmail_ToSomeoneWhoCannotTeach_IsRefused', async () => {
+    const { data: who } = await sb.from('people').insert({ display_name: `${TEST_PREFIX} E3 Kid`, first_name: `${TEST_PREFIX} E3`, last_name: 'Kid' }).select('id').single();
+    const kid = (who as { id: number }).id;
+    await sb.from('scouts').insert({ id: `vitest-e3t-${kid}`, first_name: `${TEST_PREFIX} E3`, last_name: 'Kid', display_name: `${TEST_PREFIX} E3 Kid`, person_id: kid, active: true, current_rank: 'scout' });
+    try {
+      await expect(prepareEmail(sb, teacherRow({ recipient_person_id: kid }), ctx())).rejects.toThrow('can’t teach');
+    } finally {
+      await sb.from('scouts').delete().eq('person_id', kid);
+      await sb.from('people').delete().eq('id', kid);
+    }
   });
 });

@@ -108,8 +108,39 @@ describe('the family link', () => {
   it('Republish_SupersedesThePreviousLink', async () => {
     const old = await mint();
     const next = await mint();
-    await supersedeOlderPlanPages(sb, { id: next.id, entryId: meeting, recipientId: parent });
+    await supersedeOlderPlanPages(sb, { id: next.id, entryId: meeting, recipientId: parent, scoutIds: [scout], asTeacher: false });
     expect([(await claimPlanPage(sb, old.token, scout)).ok, (await claimPlanPage(sb, next.token, scout)).ok]).toEqual([false, true]);
+  });
+
+  // A newer link closes only the older links it covers (tech-lead 2026-11-01): fewer scouts, or no teacher card, leaves them open.
+  it('NewerLinkWithFewerScouts_LeavesTheOlderOpen', async () => {
+    const both = await mint({ scouts: [scout, otherScout] });
+    const one = await mint({ scouts: [scout] });
+    await supersedeOlderPlanPages(sb, { id: one.id, entryId: meeting, recipientId: parent, scoutIds: [scout], asTeacher: false });
+    expect((await inspectPlanPage(sb, both.token)).page?.reason).toBe('open');
+  });
+
+  it('TeacherOnlyLink_LeavesTheFamilyLinkOpen', async () => {
+    const family = await mint({ scouts: [scout] });
+    const teach = await mintPlanPage(sb, { entryId: meeting, recipientId: parent, epoch, scoutIds: [], expiresAt: inviteExpiresAt(MEETING_DATE), asTeacher: true });
+    await supersedeOlderPlanPages(sb, { id: teach.id, entryId: meeting, recipientId: parent, scoutIds: [], asTeacher: true });
+    expect((await inspectPlanPage(sb, family.token)).page?.reason).toBe('open');
+  });
+
+  it('FamilyLinkWithoutTheTeacherCard_LeavesTheTeacherLinkOpen', async () => {
+    const teach = await mintPlanPage(sb, { entryId: meeting, recipientId: parent, epoch, scoutIds: [scout], expiresAt: inviteExpiresAt(MEETING_DATE), asTeacher: true });
+    const family = await mint({ scouts: [scout] });
+    await supersedeOlderPlanPages(sb, { id: family.id, entryId: meeting, recipientId: parent, scoutIds: [scout], asTeacher: false });
+    expect((await inspectPlanPage(sb, teach.token)).page?.reason).toBe('open');
+  });
+
+  it('SameBatchLinks_BothStayOpen', async () => {
+    // Both rows were queued together; the first link is minted after the second row was queued, so it isn't older news.
+    const queuedAt = new Date(Date.now() - 60_000).toISOString();
+    const first = await mint({ scouts: [scout] });
+    const second = await mint({ scouts: [scout] });
+    await supersedeOlderPlanPages(sb, { id: second.id, entryId: meeting, recipientId: parent, scoutIds: [scout], asTeacher: false, queuedAt });
+    expect((await inspectPlanPage(sb, first.token)).page?.reason).toBe('open');
   });
 
   it('Revoke_ClosesEveryOpenLinkOfTheMeeting', async () => {
@@ -218,7 +249,7 @@ describe('the teacher link', () => {
     const expired = await mintPlanPage(sb, { entryId: meeting, recipientId: parent, epoch, scoutIds: [], expiresAt: '2001-01-01T00:00:00Z', asTeacher: true });
     const old = await teacherLink();
     const next = await teacherLink();
-    await supersedeOlderPlanPages(sb, { id: next.id, entryId: meeting, recipientId: parent });
+    await supersedeOlderPlanPages(sb, { id: next.id, entryId: meeting, recipientId: parent, scoutIds: [], asTeacher: true });
     const before = [(await claimPlanPageTeacher(sb, expired.token)).ok, (await claimPlanPageTeacher(sb, old.token)).ok];
     await revokePlanPages(sb, meeting);
     expect([...before, (await claimPlanPageTeacher(sb, next.token)).ok]).toEqual([false, false, false]);

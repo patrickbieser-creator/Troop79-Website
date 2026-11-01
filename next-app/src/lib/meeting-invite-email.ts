@@ -4,8 +4,6 @@
  * link is never a merge field: it rides as the email's button, so a template can't drop or rewrite it.
  */
 import { fillTokens } from '@/lib/signup-confirmation';
-import { scoutsHelpedText, type ScoutsHelped } from '@/lib/meeting-invite-digest';
-import { shortCode } from '@/lib/rank-abbrev';
 
 export const TEACH_INVITE_KIND = 'meeting.invite.teacher';
 
@@ -127,25 +125,22 @@ export function renderReminder(t: InviteTemplate, v: ReminderValues): { subject:
 /** Where a teacher email's questions go (Patrick, 2026-10-31). */
 export const TROOP_REPLY_TO = 'bsatroop79bg@gmail.com';
 
-export const INVITE_DIGEST_KIND = 'meeting.invite_digest';
-
 /**
- * Build a Plan B3 (Plans/Build-A-Plan.md Decision 2): ONE email per recipient for a meeting, listing every invite for
- * them (teach asks and scout offers). Each scout offer keeps its own answer link; a teacher's asks share ONE button to
- * their answer page (B10b). The list rides below the body (never a template field), so no template can drop or rewrite
- * a link.
+ * The Emails screen's teacher emails (Plans/Planner-Teacher-Email-To-Family-Card.md): one group of the night per email,
+ * its one button the family link's teacher card (/i/plan/<token>). Two templates: asking someone who may teach a group
+ * with no teacher yet, and asking a planned teacher to confirm (Confirmations C-D1). The group's lines and the button ride
+ * below the body, never fields, so no template can drop or rewrite the link. The stored kind of the ask stays
+ * 'meeting.invite_digest' (its older name) so a saved copy keeps working.
  */
-export const DEFAULT_INVITE_DIGEST: InviteTemplate = {
-  subject: 'Troop meeting on [day]: invites for [people]',
+export const TEACHER_ASK_KIND = 'meeting.invite_digest';
+export const DEFAULT_TEACHER_ASK: InviteTemplate = {
+  subject: 'Troop meeting on [day]: can you teach?',
   body: `Hi [name],
 
-We're planning the troop meeting on [day] and would like to ask [people] about the classes below. Answer with the links under them. Yes on a class to work on makes it the first pick and marks them coming. You don't need to sign in.
+We're planning the troop meeting on [day] and the class below still needs a teacher. Could you teach it? Use the button below to say yes or not this week. You don't need to sign in.
 
 Questions? Reply to ${TROOP_REPLY_TO}.`
 };
-
-/** B10b: the one button under a digest's teach lines. */
-export const TEACH_PAGE_BUTTON = 'Choose what you’ll teach →';
 
 /** Confirmations C-D1: the email to a teacher planned on a card. Everything on the plan is a proposal until they say yes. */
 export const TEACHER_PLANNED_KIND = 'meeting.teacher_planned';
@@ -153,72 +148,39 @@ export const DEFAULT_TEACHER_PLANNED: InviteTemplate = {
   subject: 'Troop meeting on [day]: can you teach?',
   body: `Hi [name],
 
-We're planning the troop meeting on [day] and have you down to teach the class below. Nothing is final until you say so: please answer yes or no with the button.
+We're planning the troop meeting on [day] and have you down to teach the class below. Nothing is final until you say so. Use the button below to tell us whether it works, change it, or let us know you can't make it. You don't need to sign in.
 
 Questions? Reply to ${TROOP_REPLY_TO}.`
 };
-/** Its button: the page where they answer yes or no for each class they're planned on. */
-export const TEACHER_PLANNED_BUTTON = 'Answer yes or no →';
 
-export interface DigestValues {
-  name: string;
-  /** 'you', 'Anjali S', 'you and Anjali S'. */
-  people: string;
-  day: string;
-}
+/** The one button under either teacher email (Patrick, 2026-11-01): the email's action, never a link in the body. */
+export const TEACHER_EMAIL_BUTTON = 'See my plan and answer';
 
-export interface DigestItem {
-  kind: 'teach' | 'pick';
-  /** The scout a pick is for ('Anjali S'); the teacher's own name for a teach ask. */
-  inviteeName: string;
-  /** True when the invite is about the recipient themself (a teach ask, or a scout's own address). */
-  aboutRecipient: boolean;
-  code: string;
-  topic: string;
-  /** 'about 20 minutes' for a teach ask; '' when unknown. */
+/** A group of the night as a teacher email names it (lib/teacher-email-card). */
+export interface TeacherEmailGroup {
+  /** 'Scout Group 2'. */
+  title: string;
+  /** Its requirements: '4a, 4b, 5'. */
+  codes: string;
+  /** 'about 60 min'; '' when unknown. */
   minutes: string;
-  url: string;
-  /** B10a, a teach ask: the scouts it would help (scoutsHelped), snapshotted at send time. None = "no scouts yet". */
-  helped?: ScoutsHelped;
-  /** A group of the night (Patrick, 2026-10-31): the scouts placed in it, full names (a private email). Present = the
-   *  line reads "**Scout Group 2**: 4a, 4b, …" (`topic` the group, `code` its requirements) and "Scouts:" follows. */
-  scouts?: string[];
-  /** Confirmations C-D1: the recipient is planned on this card; the email asks them to confirm it. */
-  planned?: boolean;
+  /** The scouts placed in it, full names (a private email). */
+  scouts: readonly string[];
 }
 
 /**
- * The digest, with the invites listed under the body: teach asks first, then each scout's offers. A teach line (B10a)
- * reads "**Ten 3a** Square Knot use (about 20 min): 3 scouts (Finn P, Anjali S, Leo K)" with no link of its own; one
- * "Choose what you'll teach →" button follows the teach lines (B10b, the url of the teach items). The scout and
- * parent lines are unchanged.
+ * The teacher email: the body, then "You're planned to teach:" or "Can you teach?", the group's line
+ * ("- **Scout Group 2**: 4a, 4b (about 60 min)"), and "Scouts:" with one full name a line. The button
+ * (TEACHER_EMAIL_BUTTON) is the email's action, added by the sender.
  */
-export function renderInviteDigest(t: InviteTemplate, v: DigestValues, items: readonly DigestItem[]): { subject: string; md: string } {
-  const vals: Record<string, string> = { name: v.name, people: v.people, day: v.day };
-  const line = (i: DigestItem, label: string) => `- **${i.code}** ${i.topic}${i.minutes ? ` (${i.minutes})` : ''}: **[${label}](${i.url})**`;
-  // B10b: teach lines carry no link of their own; ONE button opens the page where every class is answered.
-  const teachLine = (i: DigestItem) =>
-    i.scouts
-      ? `- **${i.topic}**: ${i.code}${i.minutes ? ` (${i.minutes})` : ''}`
-      : `- **${shortCode(i.code)}** ${i.topic}${i.minutes ? ` (${i.minutes})` : ''}: ${scoutsHelpedText(i.helped ?? { count: 0, names: [], more: 0 })}`;
-  // A group's scouts, after the lines: one full name a line ("Scouts in Scout Group 2" when more than one group).
-  const scoutsBlock = (i: DigestItem, many: boolean) =>
-    `**${many ? `Scouts in ${i.topic}` : 'Scouts'}:**\n\n${i.scouts!.length ? i.scouts!.map((n) => `- ${n}`).join('\n') : 'None placed in this group yet.'}`;
-  const blocks: string[] = [];
-  const teach = items.filter((i) => i.kind === 'teach');
-  const grouped = teach.filter((i) => i.scouts);
-  if (teach.length) {
-    blocks.push(
-      [teach.every((i) => i.planned) ? '**You’re planned to teach:**' : '**Can you teach?**', teach.map(teachLine).join('\n'), ...grouped.map((i) => scoutsBlock(i, grouped.length > 1)), `**[${teach.every((i) => i.planned) ? TEACHER_PLANNED_BUTTON : TEACH_PAGE_BUTTON}](${teach[0].url})**`].join('\n\n')
-    );
-  }
-  const scouts = [...new Set(items.filter((i) => i.kind === 'pick').map((i) => i.inviteeName))];
-  for (const who of scouts) {
-    const mine = items.filter((i) => i.kind === 'pick' && i.inviteeName === who);
-    const own = mine[0]?.aboutRecipient;
-    blocks.push(`**${own ? 'For you' : `For ${who}`}**\n\n${mine.map((i) => line(i, own ? 'Answer' : `Answer for ${who}`)).join('\n')}`);
-  }
-  const md = `${fillTokens(t.body, vals)}\n\n${blocks.join('\n\n')}`.replace(/\n{3,}/g, '\n\n').trim();
+export function renderTeacherEmail(t: InviteTemplate, v: { name: string; day: string }, g: TeacherEmailGroup, o: { planned: boolean }): { subject: string; md: string } {
+  const vals: Record<string, string> = { name: v.name, day: v.day };
+  const block = [
+    o.planned ? '**You’re planned to teach:**' : '**Can you teach?**',
+    `- **${g.title}**: ${g.codes}${g.minutes ? ` (${g.minutes})` : ''}`,
+    `**Scouts:**\n\n${g.scouts.length ? g.scouts.map((n) => `- ${n}`).join('\n') : 'None placed in this group yet.'}`
+  ].join('\n\n');
+  const md = `${fillTokens(t.body, vals)}\n\n${block}`.replace(/\n{3,}/g, '\n\n').trim();
   return { subject: fillTokens(t.subject, vals).replace(/\s+/g, ' ').trim(), md };
 }
 

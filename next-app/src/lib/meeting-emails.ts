@@ -64,6 +64,8 @@ export interface EmailRow {
   status: EmailStatus;
   failure: string | null;
   queued_by_person_id?: number | null;
+  /** When the planner queued it (the send's own links are minted after this). */
+  queued_at?: string | null;
 }
 
 export type QueueResult = { ok: true; batchId: string; queued: number; overflow: QueueEmail[] } | { ok: false; error: string };

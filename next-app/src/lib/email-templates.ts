@@ -135,14 +135,22 @@ export const TEMPLATE_KINDS: TemplateKind[] = [
     ]
   },
   {
-    // Build a Plan B3 (Decision 2): one email per recipient listing every invite for them. Each invite's answer link
-    // is listed below the body, never a field.
+    // The Emails screen's teacher emails (Plans/Planner-Teacher-Email-To-Family-Card.md): the group, its scouts and the
+    // one button to the teacher card ride below the body, never fields. The ask keeps its older stored kind.
     kind: 'meeting.invite_digest',
-    label: 'Meeting — invites (one email per family)',
+    label: 'Meeting — ask an adult to teach a group',
     audience: 'family',
     fields: [
       { token: 'name', label: 'Their first name' },
-      { token: 'people', label: 'Who it’s about ("you", or the scouts)' },
+      { token: 'day', label: 'Meeting day' }
+    ]
+  },
+  {
+    kind: 'meeting.teacher_planned',
+    label: 'Meeting — ask a planned teacher to confirm',
+    audience: 'family',
+    fields: [
+      { token: 'name', label: 'Their first name' },
       { token: 'day', label: 'Meeting day' }
     ]
   }

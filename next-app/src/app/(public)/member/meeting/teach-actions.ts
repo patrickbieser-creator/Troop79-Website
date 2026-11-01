@@ -88,6 +88,11 @@ export async function meetingTeacherClearAction(t: TeachTarget & { takeOff: bool
   return write(t, { op: 'clear', takeOff: t?.takeOff });
 }
 
+/** "Not this week" to a group a teacher email asked them about; only their own (teach-write refuses a leader for them). */
+export async function meetingTeacherDeclineAction(t: TeachTarget & { key: string; note: string }): Promise<TeachActionResult> {
+  return write(t, { op: 'decline', key: t?.key, note: t?.note });
+}
+
 /** The optional note with "Can't make it this week" (F3b). */
 export async function meetingTeacherNoteAction(t: TeachTarget & { note: string }): Promise<TeachActionResult> {
   return write(t, { op: 'note', note: t?.note });

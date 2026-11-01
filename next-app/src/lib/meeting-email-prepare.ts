@@ -9,30 +9,27 @@
  *     they may teach on the meeting date (loadTeacherPeople: an adult, or a Junior Leader at their own address).
  *   - 'reminder' to an adult (no scouts): a teacher-only link (no scouts, as_teacher), kept the same way; someone who
  *     may not teach gets the member meeting page, no token.
- *   - 'teacher': one teach ask (createInviteDigest, the Ask by email path) for the row's group, answered on the
- *     teacher's /i/teach/<token> page. Kept only once the email went, as above.
+ *   - 'teacher': one group of the night (Plans/Planner-Teacher-Email-To-Family-Card.md): a teacher-only family link
+ *     (no scouts, as_teacher) opening their teacher card, where a planned teacher confirms or changes and an asked one
+ *     takes the group or says not this week. Only to someone who may teach on the date; kept the same way.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { renderMarkdownEmail } from '@/lib/email-markdown';
 import { fmtDateFull } from '@/lib/format-date';
 import {
-  DEFAULT_INVITE_DIGEST,
   DEFAULT_PLAN_PUBLISHED,
   DEFAULT_REMINDER,
+  DEFAULT_TEACHER_ASK,
   DEFAULT_TEACHER_PLANNED,
-  INVITE_DIGEST_KIND,
   PLAN_PUBLISHED_KIND,
   REMINDER_KIND,
+  TEACHER_ASK_KIND,
+  TEACHER_EMAIL_BUTTON,
   TEACHER_PLANNED_KIND,
-  renderInviteDigest,
+  renderTeacherEmail,
   type InviteTemplate
 } from '@/lib/meeting-invite-email';
 import { INVITE_SENDER_NAME, inviteExpiresAt } from '@/lib/meeting-invites';
-import { deleteInvites } from '@/lib/meeting-invites-db';
-import { inviteWords } from '@/lib/meeting-invites-send';
-import { createInviteDigest } from '@/lib/meeting-invite-digest-db';
-import { deleteTeachPages, supersedeOlderTeachPages } from '@/lib/meeting-teach-pages';
-import { minutesText } from '@/lib/meeting-board-picklist';
 import { deletePlanPage, mintPlanPage, supersedeOlderPlanPages } from '@/lib/plan-pages';
 import { siteUrl } from '@/lib/site-url';
 import { loadTeacherPeople } from '@/lib/meeting-board-supply';
@@ -86,50 +83,32 @@ export async function prepareEmail(sb: SupabaseClient, row: EmailRow, ctx: Prepa
   if (row.kind === 'teacher') {
     const key = row.about.group;
     if (!key) throw new Error('No group on this email.');
-    const words = await inviteWords(sb, ctx.meeting.entryId, key);
-    if (!words) throw new Error('That group can’t be invited for.');
-    const made = await createInviteDigest(sb, { entryId: ctx.meeting.entryId, teach: [{ key, personIds: [who.id] }], pick: [], sentBy: row.queued_by_person_id ?? null }, { words: new Map([[key, words]]) });
-    if (!made.ok) throw new Error(made.error);
-    const r = made.recipients[0];
-    const minted = { pages: made.recipients.flatMap((x) => (x.page ? [x.page.pageId] : [])), invites: made.recipients.flatMap((x) => x.invites.map((i) => i.inviteId)) };
-    const undoTeach = async () => {
-      await deleteTeachPages(sb, minted.pages);
-      await deleteInvites(sb, minted.invites);
-    };
-    if (!r?.page) {
-      await undoTeach();
-      throw new Error(made.skipped[0]?.reason ?? 'They can’t be asked to teach this.');
-    }
-    let base: { subject: string; md: string };
+    // A group of the night says which group, its requirements and its scouts (lib/teacher-email-card).
+    const card = await teacherCardFor(sb, ctx.meeting, key);
+    if (!card) throw new Error('That group isn’t on the plan any more.');
+    // The link opens their teacher card; someone who may not teach on the date would find nothing to answer.
+    if (!(await mayTeach(sb, who.id, ctx.meeting.date))) throw new Error('They can’t teach on this meeting.');
+    // A planned teacher is asked to confirm (Confirmations C-D1), in their own wording.
+    const planned = card.teacherIds.includes(who.id);
+    const template = planned ? await templateFor(sb, TEACHER_PLANNED_KIND, DEFAULT_TEACHER_PLANNED) : await templateFor(sb, TEACHER_ASK_KIND, DEFAULT_TEACHER_ASK);
+    const { subject, md } = renderTeacherEmail(override(template, row.body_md_override), { name: who.first, day }, card, { planned });
+    // A teacher-only family link: it never closes the recipient's family link (supersedeOlderPlanPages covers scope).
+    const page = await mintPlanPage(sb, { entryId: ctx.meeting.entryId, recipientId: who.id, epoch: who.epoch, scoutIds: [], expiresAt: inviteExpiresAt(ctx.meeting.date), asTeacher: true });
     let html: string;
     let text: string;
     try {
-      const url = `${siteUrl()}/i/teach/${r.page.token}`;
-      // A group of the night says which group, its requirements and its scouts (lib/teacher-email-card).
-      const card = await teacherCardFor(sb, ctx.meeting, key);
-      // A planned teacher is asked to confirm (Confirmations C-D1), in their own wording.
-      const planned = !!card?.teacherIds.includes(who.id);
-      const template = planned ? await templateFor(sb, TEACHER_PLANNED_KIND, DEFAULT_TEACHER_PLANNED) : await templateFor(sb, INVITE_DIGEST_KIND, DEFAULT_INVITE_DIGEST);
-      const items = r.invites.map((i) =>
-        card
-          ? { kind: 'teach' as const, inviteeName: i.inviteeName, aboutRecipient: true, code: card.codes, topic: card.title, minutes: card.minutes, url, scouts: card.scouts, planned: card.teacherIds.includes(who.id) }
-          : { kind: 'teach' as const, inviteeName: i.inviteeName, aboutRecipient: true, code: words.codeLabel, topic: words.label, minutes: minutesText(words.minutes), url, helped: made.helped?.[i.key] }
-      );
-      base = renderInviteDigest(override(template, row.body_md_override), { name: who.first, people: 'you', day }, items);
-      ({ html, text } = renderMarkdownEmail({ md: base.md, postscript: TRACKING_LINE }));
+      ({ html, text } = renderMarkdownEmail({ md, actions: [{ url: `${siteUrl()}/i/plan/${page.token}`, label: TEACHER_EMAIL_BUTTON }], postscript: TRACKING_LINE }));
     } catch (e) {
-      // Whatever was minted for an email that can't be built goes, like any email that didn't go out.
-      await undoTeach();
+      await deletePlanPage(sb, page.id);
       throw e;
     }
-    const pageId = r.page.pageId;
     return {
-      subject: base.subject,
+      subject,
       html,
       text,
       fromName: INVITE_SENDER_NAME,
-      onSent: async () => void (await supersedeOlderTeachPages(sb, pageId)),
-      undo: undoTeach
+      onSent: () => supersedeOlderPlanPages(sb, { id: page.id, entryId: ctx.meeting.entryId, recipientId: who.id, scoutIds: [], asTeacher: true, queuedAt: row.queued_at ?? null }),
+      undo: () => deletePlanPage(sb, page.id)
     };
   }
 
@@ -146,15 +125,9 @@ export async function prepareEmail(sb: SupabaseClient, row: EmailRow, ctx: Prepa
     return { subject, html, text, fromName: INVITE_SENDER_NAME };
   }
 
-  const page = await mintPlanPage(sb, {
-    entryId: ctx.meeting.entryId,
-    recipientId: who.id,
-    epoch: who.epoch,
-    // A reminder with no scouts carries none, even if the row named some.
-    scoutIds: scouts.length ? (row.about.scouts ?? []) : [],
-    expiresAt: inviteExpiresAt(ctx.meeting.date),
-    asTeacher
-  });
+  // A reminder with no scouts carries none, even if the row named some.
+  const scoutIds = scouts.length ? (row.about.scouts ?? []) : [];
+  const page = await mintPlanPage(sb, { entryId: ctx.meeting.entryId, recipientId: who.id, epoch: who.epoch, scoutIds, expiresAt: inviteExpiresAt(ctx.meeting.date), asTeacher });
   let html: string;
   let text: string;
   try {
@@ -170,7 +143,7 @@ export async function prepareEmail(sb: SupabaseClient, row: EmailRow, ctx: Prepa
     html,
     text,
     fromName: INVITE_SENDER_NAME,
-    onSent: () => supersedeOlderPlanPages(sb, { id: page.id, entryId: ctx.meeting.entryId, recipientId: who.id }),
+    onSent: () => supersedeOlderPlanPages(sb, { id: page.id, entryId: ctx.meeting.entryId, recipientId: who.id, scoutIds, asTeacher, queuedAt: row.queued_at ?? null }),
     undo: () => deletePlanPage(sb, page.id)
   };
 }

@@ -8,6 +8,8 @@
  *   - The Merit badge group's classes are adults only (D8).
  *   - Load = classes held (groups, other topics, skill offers on this meeting) and their minutes, against
  *     TEACH_MAX_CLASSES / TEACH_MAX_MIN.
+ *   - Asked (Plans/Planner-Teacher-Email-To-Family-Card.md): the groups a sent teacher email asked them about, read
+ *     from the emails (this-week-db loadTeacherAsks), never stored on a link. Not their own; out of needs/taught.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AdvancementCatalog } from '@/lib/advancement-catalog';
@@ -37,6 +39,12 @@ export interface TeacherClass {
   adultsOnly: boolean;
 }
 
+/** A group a teacher email asked them about: their No (with its note) stands until they're asked again. */
+export interface AskedClass extends TeacherClass {
+  saidNo: boolean;
+  note: string | null;
+}
+
 export interface MyClass extends TeacherClass {
   role: 'teach' | 'help';
   /** Put there by a planner, not signed up on this page. */
@@ -63,6 +71,8 @@ export interface TeacherWeek {
   note: string | null;
   mine: MyClass[];
   other: MyOther[];
+  /** Groups a teacher email asked them about, not theirs now (shown first; not repeated in needs/taught). */
+  asked: AskedClass[];
   /** Classes on the plan with no teacher yet, then the ones that have one. Neither lists this person's own. */
   needs: TeacherClass[];
   taught: TeacherClass[];
@@ -97,7 +107,9 @@ export function buildTeacherWeek(
   entryId: number,
   words: (key: string) => { label: string; codeLabel: string; minutes: number | null } | null,
   /** Merged split groups: a teacher of Group 2 or 3 teaches the one group (canonicalGroupKey). */
-  mergedBases?: ReadonlySet<string>
+  mergedBases?: ReadonlySet<string>,
+  /** The meeting's sent teacher emails and teacher answers (everyone's; this person's are picked out here). */
+  confirm: { asks: readonly { personId: number; group: string; at: string }[]; answers: readonly { personId: number; key: string; answer: 'yes' | 'no'; answeredAt: string; note: string | null }[] } = { asks: [], answers: [] }
 ): TeacherWeek {
   const groups = new Map(tw.groups.map((g) => [g.key, g]));
   const canon = (key: string) => canonicalGroupKey(key, mergedBases);
@@ -125,7 +137,26 @@ export function buildTeacherWeek(
     other.push({ kind: 'offer', key: o.skillId, label: words(`skill:${o.skillId}`)?.label ?? o.skillId, line: withMinutes('Any requirement', DEFAULT_TEACH_MINUTES), min: DEFAULT_TEACH_MINUTES, preassigned: false });
   }
   const mineKeys = new Set(mine.map((m) => m.key));
-  const open = tw.groups.filter((g) => !mineKeys.has(g.key)).map((g) => ({ g, c: classOf(g, catalog, me.personId) }));
+  // The newest ask per group (merged split keys read as the one group).
+  const askedAt = new Map<string, string>();
+  for (const a of confirm.asks) {
+    if (a.personId !== me.personId) continue;
+    const key = canon(a.group);
+    if (Date.parse(a.at) > Date.parse(askedAt.get(key) ?? '1970-01-01T00:00:00Z')) askedAt.set(key, a.at);
+  }
+  const lastNo = (key: string) =>
+    confirm.answers
+      .filter((a) => a.personId === me.personId && canon(a.key) === key)
+      .sort((a, b) => Date.parse(b.answeredAt) - Date.parse(a.answeredAt))[0];
+  const asked: AskedClass[] = tw.groups
+    .filter((g) => askedAt.has(g.key) && !mineKeys.has(g.key))
+    .map((g) => {
+      const a = lastNo(g.key);
+      const saidNo = a?.answer === 'no' && Date.parse(a.answeredAt) >= Date.parse(askedAt.get(g.key)!);
+      return { ...classOf(g, catalog, me.personId), saidNo, note: saidNo ? a!.note : null };
+    });
+  const askedKeys = new Set(asked.map((c) => c.key));
+  const open = tw.groups.filter((g) => !mineKeys.has(g.key) && !askedKeys.has(g.key)).map((g) => ({ g, c: classOf(g, catalog, me.personId) }));
   const held = [...mine, ...other];
   return {
     entryId,
@@ -136,6 +167,7 @@ export function buildTeacherWeek(
     note: me.note ?? null,
     mine,
     other,
+    asked,
     needs: open.filter((x) => !x.g.teachers.length).map((x) => x.c),
     taught: open.filter((x) => x.g.teachers.length).map((x) => x.c),
     load: { classes: held.length, minutes: held.reduce((n, x) => n + x.min, 0) }
@@ -167,12 +199,15 @@ export async function loadTeacherWeek(
     key.startsWith('skill:')
       ? { label: skillName.get(key.slice(6)) ?? key.slice(6), codeLabel: 'Any requirement', minutes: null }
       : topicWords(key, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, titles, { mbReqs: catalog.meritBadgeRequirements });
-  return buildTeacherWeek(tw, rows, { personId, name: me.displayName, junior: me.kind === 'junior', intent: data.input.intents.get(personId) ?? null, note: (noteRow.data as { note: string | null } | null)?.note ?? null }, catalog, meeting.entryId, words, data.input.mergedBases);
+  return buildTeacherWeek(tw, rows, { personId, name: me.displayName, junior: me.kind === 'junior', intent: data.input.intents.get(personId) ?? null, note: (noteRow.data as { note: string | null } | null)?.note ?? null }, catalog, meeting.entryId, words, data.input.mergedBases, {
+    asks: data.input.teacherAsks ?? [],
+    answers: data.input.teacherAnswers ?? []
+  });
 }
 
 /** Minutes a key would add to someone's Sunday: a class of the night, else the catalog's time for it. */
 export function minutesOf(week: TeacherWeek, key: string, catalog: Catalog): number {
-  const c = [...week.needs, ...week.taught].find((x) => x.key === key);
+  const c = [...week.asked, ...week.needs, ...week.taught].find((x) => x.key === key);
   if (c) return c.min;
   return classMinutes(topicWords(key, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, undefined, { mbReqs: catalog.meritBadgeRequirements })?.minutes ?? DEFAULT_TEACH_MINUTES);
 }

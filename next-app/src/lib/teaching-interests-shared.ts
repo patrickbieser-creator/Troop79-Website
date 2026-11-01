@@ -7,7 +7,6 @@ import { shortRequirement } from '@/lib/rank-abbrev';
 export const INTEREST_NOTE_MAX = 140;
 export const INTEREST_SUBMIT_CAP = 15;
 export const INTEREST_ACTIVE_CAP = 40;
-export const INTEREST_NOW_CAP = 5;
 export const INTEREST_SEARCH_MAX = 80;
 export const NEW_TALENT_DAYS = 30;
 
@@ -37,9 +36,6 @@ export function interestShort(h: Pick<InterestHit, 'kind' | 'sourceName' | 'code
 export function canSeeNewTalent(viewer: { canEdit: boolean; canEmail: boolean }): boolean {
   return viewer.canEdit && viewer.canEmail;
 }
-
-/** A whole badge can be recorded as an interest but never offered for this Sunday (it isn't one class). */
-export const canTeachNow = (key: string) => !key.startsWith('mb:');
 
 export interface TalentItem {
   id: number;

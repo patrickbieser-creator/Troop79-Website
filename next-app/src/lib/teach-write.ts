@@ -55,6 +55,8 @@ export type TeachOp =
   | { op: 'clear'; takeOff: boolean }
   /** "This plan looks good" (Confirmations C-D6): coming, and a yes to every card they're on. */
   | { op: 'confirm' }
+  /** "Not this week" to a group a teacher email asked them about (Plans/Planner-Teacher-Email-To-Family-Card.md). */
+  | { op: 'decline'; key: string; note: string }
   | { op: 'note'; note: string };
 
 export interface TeachContext {
@@ -92,7 +94,7 @@ export async function teachWrite(ctx: TeachContext, op: TeachOp): Promise<TeachA
   };
   /** Their answers (Confirmations C2); a failure is logged, never blocks the write it rides on. */
   // A leader writing on someone's behalf isn't that person answering (qa-lead): only their own writes record an answer.
-  const answer = async (list: { key: string; answer: 'yes' | 'no' }[]) => {
+  const answer = async (list: { key: string; answer: 'yes' | 'no'; note?: string | null }[]) => {
     if (ctx.actorPersonId !== personId) return;
     try {
       await recordTeacherAnswers(sb, meeting, personId, list, await loadPlannerLists(), catalog);
@@ -104,7 +106,7 @@ export async function teachWrite(ctx: TeachContext, op: TeachOp): Promise<TeachA
   const refusal = async (key: string | null, min?: number): Promise<string | null> => {
     const week = await loadTeacherWeek(sb, meeting, catalog, personId);
     if (!week || (key && (week.mine.some((m) => m.key === key) || week.other.some((o) => o.key === key)))) return null;
-    if (key && week.junior && [...week.needs, ...week.taught].some((c) => c.key === key && c.adultsOnly)) return 'Adults only: a registered counselor teaches the merit badge.';
+    if (key && week.junior && [...week.asked, ...week.needs, ...week.taught].some((c) => c.key === key && c.adultsOnly)) return 'Adults only: a registered counselor teaches the merit badge.';
     return teachRefusal(ctx.who === 'You' ? 'You' : week.firstName, week.load, min ?? (key ? minutesOf(week, key, catalog) : 0));
   };
 
@@ -132,6 +134,20 @@ export async function teachWrite(ctx: TeachContext, op: TeachOp): Promise<TeachA
       const rows = await loadSupplyRows(sb, [meeting.entryId]);
       await answer(rows.topicTeachers.filter((x) => x.personId === personId).map((x) => ({ key: x.key, answer: 'yes' as const })));
       return refresh(res);
+    }
+    // Only their own answer, only to a group they were asked about and aren't on (a link holder can't write a No for any
+    // key; tech-lead 2026-11-01). Taking the class later is their yes; the newest answer stands.
+    case 'decline': {
+      if (typeof op.key !== 'string' || !op.key || typeof op.note !== 'string' || op.note.length > 2000) return teachFail('Malformed request');
+      if (ctx.actorPersonId !== personId) return teachFail('Only they can say no to this.');
+      const week = await loadTeacherWeek(sb, meeting, catalog, personId);
+      if (!week?.asked.some((c) => c.key === op.key)) return teachFail('That class isn’t one you were asked about. Reload the page and try again.');
+      try {
+        await recordTeacherAnswers(sb, meeting, personId, [{ key: op.key, answer: 'no', note: cleanDeclineNote(op.note) }], await loadPlannerLists(), catalog);
+      } catch {
+        return teachFail('That didn’t save. Try again.');
+      }
+      return refresh({ ok: true });
     }
     case 'withdraw':
       if (typeof op.skillId !== 'string') return teachFail('Malformed request');

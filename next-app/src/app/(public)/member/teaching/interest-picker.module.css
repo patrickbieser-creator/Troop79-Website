@@ -60,17 +60,6 @@
   font-size: var(--fs-sm);
   color: var(--text-meta);
 }
-.now {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-2);
-  min-height: 44px;
-  cursor: pointer;
-}
-.now input {
-  width: 20px;
-  height: 20px;
-}
 .foot {
   display: flex;
   flex-wrap: wrap;

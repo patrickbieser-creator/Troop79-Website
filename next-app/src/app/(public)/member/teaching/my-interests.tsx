@@ -119,7 +119,6 @@ export function MyInterests({ items, readOnly }: { items: MyInterestRow[]; readO
       {problem && <SaveProblem reason={problem} />}
       {!readOnly && (
         <InterestPicker
-          allowNow={false}
           search={(q) => searchMyInterestsAction(q)}
           save={async (picks) => {
             const res = await addMyInterestsAction(picks);

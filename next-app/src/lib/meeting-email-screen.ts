@@ -26,14 +26,15 @@ import { loadThisWeekData } from '@/lib/this-week-db';
 import { planChanged, planSentOf, type PlanSent } from '@/lib/meeting-email-build';
 import { EMAIL_SEND_CAP, unfinishedSends, type EmailKind, type EmailStatus, type QueueEmail, type UnfinishedSend } from '@/lib/meeting-emails';
 import { teacherCardOf, type TeacherCard } from '@/lib/teacher-email-card';
+import { canonicalGroupKey } from '@/lib/focus-plan';
 import {
-  DEFAULT_INVITE_DIGEST,
   DEFAULT_PLAN_PUBLISHED,
   DEFAULT_REMINDER,
+  DEFAULT_TEACHER_ASK,
   DEFAULT_TEACHER_PLANNED,
-  INVITE_DIGEST_KIND,
   PLAN_PUBLISHED_KIND,
   REMINDER_KIND,
+  TEACHER_ASK_KIND,
   TEACHER_PLANNED_KIND,
   type InviteTemplate
 } from '@/lib/meeting-invite-email';
@@ -168,21 +169,22 @@ export async function loadEmailScreen(sb: SupabaseClient, meeting: Pick<BoardMee
   const view = buildThisWeek(data.input);
   const board = (await loadBoardScouts(sb)).filter((s) => !s.isTest);
   const scoutIds = board.map((s) => s.personId);
-  const [week, family, logRows, invites, unfinished, templates] = await Promise.all([
+  const [week, family, logRows, unfinished, templates] = await Promise.all([
     loadFamilyWeek(sb, meeting, scoutIds, catalog, null, { lists }),
     loadScoutFamilies(sb, scoutIds),
     sb.from('meeting_emails').select('*').eq('calendar_entry_id', meeting.entryId).order('queued_at', { ascending: false }),
-    sb.from('meeting_invites').select('topic_key, invitee_person_id, response').eq('calendar_entry_id', meeting.entryId).eq('kind', 'teach'),
     unfinishedSends(sb, meeting.entryId),
-    Promise.all([templateFor(sb, PLAN_PUBLISHED_KIND, DEFAULT_PLAN_PUBLISHED), templateFor(sb, REMINDER_KIND, DEFAULT_REMINDER), templateFor(sb, INVITE_DIGEST_KIND, DEFAULT_INVITE_DIGEST), templateFor(sb, TEACHER_PLANNED_KIND, DEFAULT_TEACHER_PLANNED)])
+    Promise.all([templateFor(sb, PLAN_PUBLISHED_KIND, DEFAULT_PLAN_PUBLISHED), templateFor(sb, REMINDER_KIND, DEFAULT_REMINDER), templateFor(sb, TEACHER_ASK_KIND, DEFAULT_TEACHER_ASK), templateFor(sb, TEACHER_PLANNED_KIND, DEFAULT_TEACHER_PLANNED)])
   ]);
   const recipients = await scoutRecipientsMany(sb, family, scoutIds, meeting.date);
   const log = (logRows.data ?? []) as LogDb[];
   const plans = planSentOf(week);
   const intents = data.input.intents;
 
-  // Teachers: every group's candidates and anyone already asked.
-  const asked = (invites.data ?? []) as { topic_key: string; invitee_person_id: number; response: string | null }[];
+  // Teachers: every group's candidates and anyone a sent teacher email already asked (merged split keys read as one).
+  const asked = log
+    .filter((l) => l.kind === 'teacher' && l.status === 'sent' && l.about.group && l.recipient_person_id != null)
+    .map((l) => ({ topic_key: canonicalGroupKey(l.about.group!, data.input.mergedBases), invitee_person_id: l.recipient_person_id! }));
   const groups = [...view.groups].sort((a, b) => Number(a.teachers.length > 0) - Number(b.teachers.length > 0));
   const teacherIds = [...new Set([...groups.flatMap((g) => [...g.candidates, ...g.teachers].filter((t) => t.kind === 'adult').map((t) => t.personId)), ...asked.map((a) => a.invitee_person_id), ...view.adultsNoAnswer.map((a) => a.personId)])];
   const adults = await adultRecipients(sb, teacherIds);
@@ -246,7 +248,6 @@ export async function loadEmailScreen(sb: SupabaseClient, meeting: Pick<BoardMee
     return people.map((t): ScreenRow => {
       const to = adults.to.get(t.personId) ?? juniors.get(t.personId);
       const last = newest((l) => l.kind === 'teacher' && l.about.group === g.key && l.recipient_person_id === t.personId);
-      const inv = asked.find((a) => a.topic_key === g.key && a.invitee_person_id === t.personId);
       const teaching = g.teachers.some((x) => x.personId === t.personId);
       return {
         id: `teacher:${g.key}:${t.personId}`,
@@ -268,7 +269,7 @@ export async function loadEmailScreen(sb: SupabaseClient, meeting: Pick<BoardMee
               ? 'Changed since yes'
               : t.state === 'planned'
                 ? null
-                : inv?.response === 'declined'
+                : g.saidNo.some((n) => n.personId === t.personId)
                   ? 'Said not this week'
                   : null,
         changed: false,

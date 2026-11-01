@@ -89,20 +89,16 @@ export async function loadTeacherAnswers(sb: SupabaseClient, entryId: number): P
 
 /**
  * When each person was asked about each card (Confirmations C1 "asked"): a sent teacher email (meeting_emails, its
- * about.group) or a teach invite (meeting_invites kind teach), whichever path sent it.
+ * about.group). The retired teach invites (meeting_invites kind teach) are read nowhere (Plans/Planner-Teacher-Email-To-
+ * Family-Card.md).
  */
 export async function loadTeacherAsks(sb: SupabaseClient, entryId: number): Promise<{ personId: number; group: string; at: string }[]> {
-  const [mails, invites] = await Promise.all([
-    sb.from('meeting_emails').select('recipient_person_id, about, sent_at').eq('calendar_entry_id', entryId).eq('kind', 'teacher').eq('status', 'sent'),
-    sb.from('meeting_invites').select('invitee_person_id, topic_key, sent_at').eq('calendar_entry_id', entryId).eq('kind', 'teach')
-  ]);
+  const mails = await sb.from('meeting_emails').select('recipient_person_id, about, sent_at').eq('calendar_entry_id', entryId).eq('kind', 'teacher').eq('status', 'sent');
   if (mails.error) throw new Error(mails.error.message);
-  if (invites.error) throw new Error(invites.error.message);
   return [
     ...((mails.data ?? []) as { recipient_person_id: number | null; about: { group?: string } | null; sent_at: string | null }[]).flatMap((m) =>
       m.recipient_person_id != null && m.about?.group && m.sent_at ? [{ personId: m.recipient_person_id, group: m.about.group, at: m.sent_at }] : []
-    ),
-    ...((invites.data ?? []) as { invitee_person_id: number; topic_key: string; sent_at: string | null }[]).flatMap((i) => (i.sent_at ? [{ personId: i.invitee_person_id, group: i.topic_key, at: i.sent_at }] : []))
+    )
   ];
 }
 
@@ -149,13 +145,12 @@ async function loadIntentNotes(sb: SupabaseClient, entryId: number): Promise<Map
 
 /** A family's answers that change or flag the plan (Emails E2): unticks, helper answers and suggestions, by personId. */
 export async function loadFamilyAnswers(sb: SupabaseClient, entryId: number): Promise<Pick<ThisWeekInput, 'exclusions' | 'helpers' | 'suggestions' | 'teacherNotes'>> {
-  const [x, h, g, n] = await Promise.all([
+  const [x, h, g] = await Promise.all([
     sb.from('meeting_scout_exclusions').select('person_id, topic_key').eq('calendar_entry_id', entryId),
     sb.from('meeting_scout_helpers').select('person_id, group_key').eq('calendar_entry_id', entryId),
-    sb.from('meeting_scout_suggestions').select('person_id, topic_key').eq('calendar_entry_id', entryId).order('created_at'),
-    sb.from('meeting_invites').select('topic_key, invitee_person_id, decline_note, responded_at').eq('calendar_entry_id', entryId).eq('kind', 'teach').eq('response', 'declined').not('decline_note', 'is', null).order('responded_at')
+    sb.from('meeting_scout_suggestions').select('person_id, topic_key').eq('calendar_entry_id', entryId).order('created_at')
   ]);
-  for (const r of [x, h, g, n]) if (r.error) throw new Error(r.error.message);
+  for (const r of [x, h, g]) if (r.error) throw new Error(r.error.message);
   const exclusions = new Map<number, Set<string>>();
   for (const r of (x.data ?? []) as { person_id: number; topic_key: string }[]) exclusions.set(r.person_id, (exclusions.get(r.person_id) ?? new Set()).add(r.topic_key));
   const suggestions = new Map<number, string[]>();
@@ -164,7 +159,8 @@ export async function loadFamilyAnswers(sb: SupabaseClient, entryId: number): Pr
     exclusions,
     helpers: new Map(((h.data ?? []) as { person_id: number; group_key: string }[]).map((r) => [r.person_id, r.group_key])),
     suggestions,
-    teacherNotes: ((n.data ?? []) as { topic_key: string; invitee_person_id: number; decline_note: string }[]).map((r) => ({ key: r.topic_key, personId: r.invitee_person_id, note: r.decline_note }))
+    // A teacher's No and its note live on their answer now (meeting_teacher_answers, the group's saidNo).
+    teacherNotes: []
   };
 }
 
