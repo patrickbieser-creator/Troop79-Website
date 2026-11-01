@@ -336,6 +336,11 @@
   font: var(--fs-xs) / 1.3 var(--font-ui);
   color: var(--text-meta);
 }
+/* The teacher list's one line a person: the note follows the name. */
+.menuNoteInline {
+  font: var(--fs-xs) / 1.3 var(--font-ui);
+  color: var(--text-meta);
+}
 
 /* ── coverage strip ──────────────────────────────────────────────────────────────────────────────────────────── */
 .coverage {

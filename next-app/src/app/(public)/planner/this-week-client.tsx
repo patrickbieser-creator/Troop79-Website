@@ -168,6 +168,11 @@ function PlanView({
   const setRole = (personId: number, role: RoleInput) => w.run(() => twSetRoleAction({ entryId, personId, ...role }));
   const { coverage: c, answers: a } = view;
   const badgeGroups = view.groups.filter((g) => g.kind === 'badge');
+  // Who already teaches what tonight, for the teacher lists' "teaching Scout Group 2".
+  const teachingElsewhere = new Map<number, { key: string; title: string }[]>();
+  for (const slot of [...view.groups, ...view.extras]) {
+    for (const t of slot.teachers) teachingElsewhere.set(t.personId, [...(teachingElsewhere.get(t.personId) ?? []), { key: slot.key, title: slot.title }]);
+  }
   // Split or merge… (D8): the panel's group, the Undo after a merge, and offers set aside on this device (D1).
   const [splitting, setSplitting] = useState<TwGroup | null>(null);
   const [merged, setMerged] = useState<string | null>(null);
@@ -263,7 +268,7 @@ function PlanView({
                   ))}
                   {g.members.length ? null : <span className={s.muted}>Nobody needs these tonight.</span>}
                 </div>
-                <TeacherSlot slotKey={g.key} title={`the ${g.title}`} teachers={g.teachers} candidates={g.candidates} everyone={view.everyone} onSet={setTeacher} />
+                <TeacherSlot slotKey={g.key} title={`the ${g.title}`} teachers={g.teachers} candidates={g.candidates} everyone={view.everyone} onSet={setTeacher} teachingElsewhere={teachingElsewhere} />
                 <DeclineNotes notes={g.declineNotes} />
               </div>
             </section>
@@ -336,7 +341,7 @@ function PlanView({
                   ))}
                   {g.members.length ? null : <span className={s.muted}>Nobody taking it yet.</span>}
                 </div>
-                <TeacherSlot slotKey={g.key} title={`${g.name}`} teachers={g.teachers} candidates={g.candidates} everyone={view.everyone} onSet={setTeacher} />
+                <TeacherSlot slotKey={g.key} title={`${g.name}`} teachers={g.teachers} candidates={g.candidates} everyone={view.everyone} onSet={setTeacher} teachingElsewhere={teachingElsewhere} />
                 <DeclineNotes notes={g.declineNotes} />
               </div>
             </section>
@@ -386,7 +391,7 @@ function PlanView({
                   {x.scouts.length ? null : <span className={s.muted}>Nobody signed up yet.</span>}
                 </div>
                 <div className={s.row}>
-                  <TeacherSlot slotKey={x.key} title={x.title} teachers={x.teachers} candidates={x.candidates} everyone={view.everyone} onSet={setTeacher} />
+                  <TeacherSlot slotKey={x.key} title={x.title} teachers={x.teachers} candidates={x.candidates} everyone={view.everyone} onSet={setTeacher} teachingElsewhere={teachingElsewhere} />
                   {canSeed && x.origin === 'planner' ? (
                     <button type="button" className={s.quiet} disabled={w.busy} onClick={() => w.run(() => twRemoveRequirementAction({ entryId, key: x.key }))}>
                       Remove from tonight

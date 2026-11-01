@@ -20,8 +20,8 @@ afterEach(() => {
   m.canEdit = true;
 });
 
-function slot(teachers: TwTeacher[], onSet = vi.fn(async () => true)) {
-  render(<TeacherSlot slotKey="fr:tenderfoot" title="the Tenderfoot group" teachers={teachers} candidates={[A, B]} everyone={[A, B]} onSet={onSet} />);
+function slot(teachers: TwTeacher[], onSet = vi.fn(async () => true), elsewhere?: ReadonlyMap<number, readonly { key: string; title: string }[]>) {
+  render(<TeacherSlot slotKey="fr:tenderfoot" title="the Tenderfoot group" teachers={teachers} candidates={[A, B]} everyone={[A, B]} onSet={onSet} teachingElsewhere={elsewhere} />);
   return onSet;
 }
 
@@ -57,5 +57,19 @@ describe('TeacherSlot', () => {
     screen.getByRole('button', { name: /No teachers yet/ }).click();
     (await screen.findByRole('button', { name: /^Ann Vest/ })).click();
     await vi.waitFor(() => expect(screen.getByRole('region', { name: 'Teachers for the Tenderfoot group' })).toBeTruthy());
+  });
+
+  it('List_ShowsNoComingOrNoAnswerLine', async () => {
+    slot([A]);
+    screen.getByRole('button', { name: /Teacher: Ann Vest/ }).click();
+    const list = await screen.findByRole('button', { name: /^Bo Ruiz/ });
+    expect(/coming|no answer/.test(list.textContent ?? '')).toBe(false);
+  });
+
+  it('SomeoneTeachingAnotherGroup_SaysWhichOnTheirLine', async () => {
+    slot([A], undefined, new Map([[2, [{ key: 'fr:scout~2', title: 'Scout Group 2' }]], [1, [{ key: 'fr:tenderfoot', title: 'Tenderfoot group' }]]]));
+    screen.getByRole('button', { name: /Teacher: Ann Vest/ }).click();
+    const [bo, ann] = await Promise.all([screen.findByRole('button', { name: /^Bo Ruiz/ }), screen.findByRole('button', { name: /^Ann Vest/ })]);
+    expect([bo.textContent, ann.textContent?.includes('teaching')]).toEqual(['Bo Ruiz · teaching Scout Group 2', false]);
   });
 });
