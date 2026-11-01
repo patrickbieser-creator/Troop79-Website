@@ -11,7 +11,6 @@
  *   hidden     an adult's "Can't make it" for the whole meeting: their cards are hidden, it isn't a No (review item 8)
  */
 import { canonicalGroupKey } from '@/lib/focus-plan';
-import { planChanged, type ScoutPlanSent } from '@/lib/meeting-email-build';
 import type { Intent } from '@/lib/meeting-board-shared';
 
 export type PlanState = 'planned' | 'asked' | 'confirmed' | 'changed' | 'said_no' | 'hidden';
@@ -73,15 +72,27 @@ export function askedAtOf(sent: readonly { personId: number; group: string; at: 
   return at;
 }
 
+/** What a family said yes to: the scout's group and the requirements placed on them there (a badge group: none). The
+ *  family page and This week both make it from the placement, so they always compare like with like. */
+export interface ScoutSnap {
+  group: string | null;
+  itemKeys: string[];
+}
+
+export const scoutSnapOf = (group: string | null, itemKeys: readonly string[]): ScoutSnap => ({ group, itemKeys: [...new Set(itemKeys)].sort() });
+
+export const scoutChanged = (at: ScoutSnap | null, now: ScoutSnap | null): boolean =>
+  !!at && !!now && (at.group !== now.group || at.itemKeys.join('|') !== now.itemKeys.join('|'));
+
 export interface ScoutAnswer {
   answeredAt: string;
-  /** The scout's plan at "This plan looks good" (ScoutPlanSent, the emails' shape). */
-  plan: ScoutPlanSent;
+  /** The scout's plan at "This plan looks good". */
+  plan: ScoutSnap | null;
 }
 
 /** A scout's plan: Can't make it is a no; "This plan looks good" confirms it until the plan changes (C-D5). */
-export function scoutState(a: { intent: Intent | null; answer: ScoutAnswer | null; askedAt: string | null; now: ScoutPlanSent | undefined }): PlanState {
+export function scoutState(a: { intent: Intent | null; answer: ScoutAnswer | null; askedAt: string | null; now: ScoutSnap | null }): PlanState {
   if (a.intent === 'not_coming') return 'said_no';
-  if (a.answer) return a.askedAt && a.askedAt > a.answer.answeredAt ? 'asked' : planChanged(a.answer.plan, a.now) ? 'changed' : 'confirmed';
+  if (a.answer) return a.askedAt && a.askedAt > a.answer.answeredAt ? 'asked' : scoutChanged(a.answer.plan, a.now) ? 'changed' : 'confirmed';
   return a.askedAt ? 'asked' : 'planned';
 }

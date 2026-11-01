@@ -24,6 +24,7 @@ import { loadThisWeekData } from '@/lib/this-week-db';
 import { firstNameOf, type Intent } from '@/lib/meeting-board-shared';
 import type { PickRow } from '@/lib/meeting-board-picklist';
 import { isGroupKey } from '@/lib/focus-plan';
+import { scoutSnapOf } from '@/lib/plan-states';
 import { classMinutes, HELP_KEY, HELP_TEACH_MIN, MB_CLASS_MIN, PLAN_MAX, planLoad, planRefusal, type FamilyChoice } from '@/lib/family-week-shared';
 import { DEFAULT_TEACH_MINUTES, itemPart } from '@/lib/meeting-board-picklist';
 import { sanitizeRpcError } from '@/lib/meeting-board-supply';
@@ -267,7 +268,12 @@ export async function familyWrite(
   const person = w.scoutPersonId;
   const writer = { entryId: entry, personId: person, actorPersonId: w.actorPersonId, leader: w.leader ?? false };
   // Not sure yet clears only the answer: the plan's edits stay saved.
-  if (op?.op === 'unsure') return setMeetingIntent(sb, writer, 'undecided');
+  if (op?.op === 'unsure') {
+    await clearScoutAnswer(sb, entry, person);
+    return setMeetingIntent(sb, writer, 'undecided');
+  }
+  // Any edit to the plan is a change: the yes no longer stands (C-D5).
+  if (op?.op === 'item' || op?.op === 'suggest' || op?.op === 'help') await clearScoutAnswer(sb, entry, person);
   if (op?.op === 'help') {
     if (typeof op.on !== 'boolean') return { ok: false, error: 'Malformed request' };
     if (!op.on) {
@@ -291,7 +297,11 @@ export async function familyWrite(
       return res.ok ? setMeetingIntent(sb, writer, 'coming') : res;
     }
     const res = await setMeetingIntent(sb, writer, op.choice === 'out' ? 'not_coming' : 'coming');
-    if (!res.ok || op.choice !== 'out') return res;
+    if (!res.ok) return res;
+    // Confirmations C-D5: "This plan looks good" (or a badge scout's yes) confirms the plan as it is now; Change and
+    // Can't make it take the confirmation back.
+    await (op.choice === 'ok' || op.choice === 'mb' ? confirmScoutPlan(sb, w, deps) : clearScoutAnswer(sb, entry, person));
+    if (op.choice !== 'out') return res;
     // A scout who can't come can't help teach.
     const { error } = await sb.from('meeting_scout_helpers').delete().eq('calendar_entry_id', entry).eq('person_id', person);
     return error ? { ok: false, error: 'That didn’t save. Try again.' } : { ok: true };
@@ -333,6 +343,30 @@ export async function familyWrite(
   const { error } = await sb.rpc('meeting_add_suggestion_capped', { p_entry: entry, p_person: person, p_actor: w.actorPersonId, p_topic_key: op.key, p_cap: cap });
   if (!error) return { ok: true };
   return { ok: false, error: /^Suggest up to/.test(error.message) ? planRefusal(s.firstName, { things: PLAN_MAX, minutes: 0 }, 0)! : sanitizeRpcError(error.message) };
+}
+
+/** A family's yes to the scout's plan as it is now (lib/plan-states scoutSnapOf: the group and the planned items). */
+async function confirmScoutPlan(
+  sb: SupabaseClient,
+  w: { meeting: Pick<BoardMeeting, 'entryId' | 'date'>; actorPersonId: number; scoutPersonId: number; catalog: Catalog },
+  deps: { lists?: Pick<PeopleLists, 'pool'> }
+): Promise<void> {
+  try {
+    const s = (await loadFamilyWeek(sb, w.meeting, [w.scoutPersonId], w.catalog, w.actorPersonId, deps)).scouts[0];
+    if (!s) return;
+    const plan = scoutSnapOf(s.group?.key ?? null, s.kind === 'rank' ? s.items.map((i) => i.key) : []);
+    const { error } = await sb
+      .from('meeting_scout_answers')
+      .upsert({ calendar_entry_id: w.meeting.entryId, person_id: w.scoutPersonId, answered_at: new Date().toISOString(), answered_plan: plan }, { onConflict: 'calendar_entry_id,person_id' });
+    if (error) throw new Error(error.message);
+  } catch (e) {
+    console.error('scout confirmation didn’t save:', e);
+  }
+}
+
+async function clearScoutAnswer(sb: SupabaseClient, entryId: number, personId: number): Promise<void> {
+  const { error } = await sb.from('meeting_scout_answers').delete().eq('calendar_entry_id', entryId).eq('person_id', personId);
+  if (error) console.error('scout confirmation didn’t clear:', error.message);
 }
 
 /** For a test or a script, outside a Next request: the planner's lists without the cross-request cache. */

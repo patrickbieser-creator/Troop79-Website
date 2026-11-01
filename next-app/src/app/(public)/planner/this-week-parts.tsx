@@ -89,22 +89,25 @@ export function useWrite() {
  */
 export function NameChip({ person, tone }: { person: TwPerson; tone: 'rank' | 'rsvp' }) {
   const p = usePlanner();
+  // A card's chip wears the family's answer to the plan (Confirmations C-D5): confirmed ✓, asked, changed since yes.
+  const st = tone === 'rsvp' && person.state && person.state !== 'planned' && person.state !== 'said_no' && person.state !== 'hidden' ? person.state : null;
   const cls =
     tone === 'rank'
       ? `${s.chip} ${s[`rank-${person.rank ?? 'new'}`] ?? ''}`
-      : `${s.chip} ${person.intent === 'coming' || person.intent === 'not_coming' ? s[`rsvp-${person.intent}`] : ''}`;
-  const said = tone === 'rank' ? person.rankName : person.intent ? INTENT_WORD[person.intent] : 'no answer yet';
+      : `${s.chip} ${st ? s[`chipSt-${st}`] : person.intent === 'coming' || person.intent === 'not_coming' ? s[`rsvp-${person.intent}`] : ''}`;
+  const said = tone === 'rank' ? person.rankName : st ? STATE_WORD[st] : person.intent ? INTENT_WORD[person.intent] : 'no answer yet';
   const label = `${person.name}, ${said}`;
+  const shown = st === 'confirmed' ? `✓ ${person.name}` : person.name;
   if (!p?.canEdit) {
     return (
       <span className={cls} title={said} aria-label={label}>
-        {person.name}
+        {shown}
       </span>
     );
   }
   return (
     <button type="button" className={cls} title={said} aria-label={label} onClick={() => p.openPerson(person.personId)}>
-      {person.name}
+      {shown}
     </button>
   );
 }

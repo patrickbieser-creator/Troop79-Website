@@ -7,7 +7,7 @@
 -- 1. meeting_teacher_answers: one per meeting, person and card (group key as written; read canonically). answer yes|no,
 --    their note (a no's reason), when, and answered_plan = the card at the yes ({group, itemKeys, title}).
 -- 2. meeting_scout_answers: a family's "This plan looks good" for one scout, with the scout's plan at that moment
---    (the emails' ScoutPlanSent shape), for "plan changed since they said yes".
+--    ({group, itemKeys}: lib/plan-states scoutSnapOf), for "plan changed since they said yes".
 -- 3. meeting_board_stamp: + both tables.
 -- 4. merge_people: + both tables (20261231900000's body otherwise).
 --

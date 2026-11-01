@@ -1347,3 +1347,17 @@ button.chip:focus-visible {
   color: var(--status-danger);
   font: 600 var(--fs-sm) / 1.4 var(--font-ui);
 }
+/* A scout's chip once the family answered the plan (Confirmations C-D5). */
+.chipSt-confirmed {
+  border-color: var(--status-success);
+  background: var(--status-success);
+  color: var(--warm-white);
+}
+.chipSt-changed {
+  border-color: var(--status-warning);
+  background: var(--status-warning-bg);
+}
+.chipSt-asked {
+  border-style: dashed;
+  border-color: var(--navy);
+}

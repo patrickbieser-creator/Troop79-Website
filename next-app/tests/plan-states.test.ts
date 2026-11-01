@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { askedAtOf, scoutState, teacherChanged, teacherSnapOf, teacherState, type TeacherAnswer } from '../src/lib/plan-states';
-import type { ScoutPlanSent } from '../src/lib/meeting-email-build';
+import { askedAtOf, scoutSnapOf, scoutState, teacherChanged, teacherSnapOf, teacherState, type TeacherAnswer } from '../src/lib/plan-states';
 
 /**
  * Planned, asked, confirmed (Plans/Meeting-Planner-III-Confirmations.md, C1): everything on the plan is a proposal until
@@ -84,7 +83,7 @@ describe('askedAtOf', () => {
 });
 
 describe('scoutState', () => {
-  const plan: ScoutPlanSent = { name: 'Lily', kind: 'rank', group: 'fr:scout~2', groupName: 'Scout', teachers: [], items: [{ key: 'scout-5', code: '5', label: 'x' }], helpName: null };
+  const plan = scoutSnapOf('fr:scout~2', ['scout-5']);
   const s = { intent: null, answer: null, askedAt: null, now: plan } as const;
 
   it('NotEmailed_IsPlanned_Emailed_IsAsked', () => {
@@ -93,7 +92,7 @@ describe('scoutState', () => {
 
   it('LooksGood_IsConfirmed_UntilThePlanChanges', () => {
     const answer = { answeredAt: '2026-10-30T13:00:00Z', plan };
-    expect([scoutState({ ...s, answer }), scoutState({ ...s, answer, now: { ...plan, items: [{ key: 'scout-6', code: '6', label: 'y' }] } })]).toEqual(['confirmed', 'changed']);
+    expect([scoutState({ ...s, answer }), scoutState({ ...s, answer, now: scoutSnapOf('fr:scout~2', ['scout-6']) })]).toEqual(['confirmed', 'changed']);
   });
 
   it('CantMakeIt_IsSaidNo', () => {

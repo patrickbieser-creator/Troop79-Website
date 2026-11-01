@@ -6,7 +6,7 @@
 import type { AdvancementCatalog } from '@/lib/advancement-catalog';
 import { buildFocusPlan, canonicalGroupKey, isGroupKey, type CellMark, type FocusInput, type FocusProgress, type FocusRow, type RowStatus, type ScoutRole } from '@/lib/focus-plan';
 import { splitOffer } from '@/lib/group-split-proposal';
-import { askedAtOf, teacherSnapOf, teacherState, type PlanState, type TeacherAnswer, type TeacherSnap } from '@/lib/plan-states';
+import { askedAtOf, scoutSnapOf, scoutState, teacherSnapOf, teacherState, type PlanState, type ScoutAnswer, type ScoutSnap, type TeacherAnswer, type TeacherSnap } from '@/lib/plan-states';
 import { boardName, joinNames, type BoardPick, type Intent } from '@/lib/meeting-board-shared';
 import { rankOfKey, topicWords } from '@/lib/meeting-board-picklist';
 import { assessTeacher, canTeachFocusGroup, teacherName, type TeachContext, type TeacherPerson } from '@/lib/meeting-board-teach';
@@ -47,6 +47,9 @@ export interface ThisWeekInput {
   /** Confirmations: each teacher's answers (meeting_teacher_answers) and when they were asked about each card. */
   teacherAnswers?: readonly (TeacherAnswer & { personId: number; key: string })[];
   teacherAsks?: readonly { personId: number; group: string; at: string }[];
+  /** A family's "This plan looks good", by scout, and when each scout's plan email went out. */
+  scoutAnswers?: ReadonlyMap<number, ScoutAnswer>;
+  scoutAsks?: ReadonlyMap<number, string>;
   /** Freeform topics' titles. */
   titles: ReadonlyMap<string, string>;
   /** A family's unticks (Emails E2), column keys by personId: off the plan at once. */
@@ -71,6 +74,8 @@ export interface TwPerson {
   /** Spelled out, for the chip's accessible name: 'New scout', 'Tenderfoot'. */
   rankName: string;
   intent: Intent | null;
+  /** A scout's plan (Confirmations C-D5): planned, asked, confirmed by the family, or changed since their yes. */
+  state?: PlanState;
 }
 
 export interface TwTeacher {
@@ -281,6 +286,13 @@ export function focusInputOf(input: ThisWeekInput): FocusInput {
   };
 }
 
+/**
+ * A scout's plan as the family page shows it (lib/family-week kindOf): the group, and on rank work the requirements open
+ * for them there; a badge group or nothing left to do, the group alone.
+ */
+export const scoutPlanOfRow = (r: Pick<FocusRow, 'counted' | 'groupKey' | 'open'>): ScoutSnap =>
+  scoutSnapOf(r.groupKey ?? null, r.counted && r.groupKey && r.open.length ? r.open : []);
+
 export function buildThisWeek(input: ThisWeekInput): ThisWeek {
   const { catalog } = input;
   const rankName = new Map(catalog.ranks.map((r) => [r.id, r.display_name]));
@@ -291,11 +303,24 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
     name: boardName(s.name),
     rank: s.currentRank,
     rankName: s.currentRank ? (rankName.get(s.currentRank) ?? s.currentRank) : NEW_SCOUT,
-    intent: s.intent
+    intent: s.intent,
+    state: scoutStateBy.get(s.personId)
   });
 
   const picks = new Map(input.scouts.map((s) => [s.personId, s.picks.filter((p) => !p.later).map((p) => p.key)]));
   const plan = buildFocusPlan(focusInputOf(input));
+  // Each scout's plan state (Confirmations C-D5): the snapshot is their group and the requirements open for them there.
+  const scoutStateBy = new Map(
+    plan.rows.map((r) => [
+      r.personId,
+      scoutState({
+        intent: input.scouts.find((x) => x.personId === r.personId)?.intent ?? null,
+        answer: input.scoutAnswers?.get(r.personId) ?? null,
+        askedAt: input.scoutAsks?.get(r.personId) ?? null,
+        now: scoutPlanOfRow(r)
+      })
+    ])
+  );
 
   // Teachers.
   const notComing = (id: number) => input.intents.get(id) === 'not_coming';

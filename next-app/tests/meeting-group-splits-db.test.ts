@@ -239,3 +239,22 @@ describe('the Emails screen asks planned teachers to confirm (Confirmations C4)'
   });
 });
 
+describe('a family confirms a scout plan (Confirmations C5)', () => {
+  it('LooksGood_ShowsTheScoutConfirmed_AndAnEditTakesItBack', async () => {
+    const { familyWrite } = await import('../src/lib/family-week');
+    const [catalog, lists] = await Promise.all([fetchAdvancementCatalog(sb as never), fetchPeopleLists(sb)]);
+    const meeting = { entryId: entry, date: '2087-03-02' };
+    const scout = rowsOf(await view()).find((r) => r.groupKey?.startsWith(TF) && r.open.length);
+    if (!scout) throw new Error('The local mirror has no scout with Tenderfoot work open');
+    const w = { meeting, actorPersonId: planner, scoutPersonId: scout.personId, catalog, leader: true };
+    expect((await familyWrite(sb, w, { op: 'answer', choice: 'ok' }, { lists })).ok).toBe(true);
+    const chipOf = async () => (await view()).groups.flatMap((g) => g.members).find((m) => m.personId === scout.personId)?.state;
+    const confirmed = await chipOf();
+    await familyWrite(sb, w, { op: 'item', key: scout.open[0], on: false }, { lists });
+    const afterEdit = (await sb.from('meeting_scout_answers').select('person_id').eq('calendar_entry_id', entry).eq('person_id', scout.personId)).data ?? [];
+    expect([confirmed, afterEdit.length]).toEqual(['confirmed', 0]);
+    await familyWrite(sb, w, { op: 'item', key: scout.open[0], on: true }, { lists });
+    await sb.from('meeting_intents').delete().eq('calendar_entry_id', entry).eq('person_id', scout.personId);
+  });
+});
+

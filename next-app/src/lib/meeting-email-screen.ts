@@ -176,6 +176,7 @@ export async function loadEmailScreen(sb: SupabaseClient, meeting: Pick<BoardMee
     return i === 'coming' ? 'Answered yes' : i === 'not_coming' ? 'Said not this week' : i === 'undecided' ? 'Not sure yet' : null;
   };
 
+  const planStateOf = new Map(view.sections.flatMap((sec) => sec.rows).map((r) => [r.personId, r.state]));
   const scoutRow = (s: (typeof board)[number], kind: 'plan' | 'reminder'): ScreenRow => {
     const fam = week.scouts.find((x) => x.personId === s.personId);
     const list = recipients.get(s.personId) ?? [];
@@ -202,7 +203,8 @@ export async function loadEmailScreen(sb: SupabaseClient, meeting: Pick<BoardMee
       recipients: toScreen(list),
       blocked: list.some((r) => !r.isScout) ? null : NO_PARENT,
       ...statusOf(last),
-      answer: intentWord(s.personId),
+      // Confirmations C-D5: the family's yes to the plan, or a plan that changed since.
+      answer: kind === 'plan' && planStateOf.get(s.personId) === 'changed' ? 'Changed since yes' : kind === 'plan' && planStateOf.get(s.personId) === 'confirmed' ? 'Answered yes' : intentWord(s.personId),
       changed: kind === 'plan' && !!last?.plan_sent && planChanged(last.plan_sent[String(s.personId)], plans[String(s.personId)])
     };
   };
