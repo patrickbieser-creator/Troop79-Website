@@ -63,13 +63,13 @@ export interface FamilyScout {
   /** The answer as saved; null = Needs an answer. */
   choice: FamilyChoice | null;
   /** The group placement put them in ('Second Class'), with its teachers as families see them. */
-  group: { key: string; name: string; teachers: string[] } | null;
+  group: { key: string; name: string; title: string; teachers: string[] } | null;
   /** The planned requirements of their group, ticked unless the family took one off. */
   items: FamilyItem[];
   /** A Merit badge group scout helping teach (a helper row). */
   helping: boolean;
   /** A Merit badge group scout: the group they'd help teach. */
-  helpGroup: { key: string; name: string; teachers: string[] } | null;
+  helpGroup: { key: string; name: string; title: string; teachers: string[] } | null;
   /** "Also on Sunday": work ahead, the night's badges, helping teach. */
   also: FamilyOption[];
   suggestions: FamilyOption[];
@@ -92,7 +92,8 @@ function helpGroupOf(tw: ThisWeek): TwGroup | null {
   return ranks.find((g) => !g.teachers.length) ?? ranks[0] ?? null;
 }
 
-const groupView = (g: TwGroup) => ({ key: g.key, name: g.name, teachers: g.teachers.map((t) => t.formal) });
+/** `title` is what the group is called ('Scout group', 'Scout Group 2'); `name` the rank's or badge's own. */
+const groupView = (g: TwGroup) => ({ key: g.key, name: g.name, title: g.title, teachers: g.teachers.map((t) => t.formal) });
 
 function kindOf(row: TwRow | undefined): FamilyScoutKind {
   if (!row || !row.counted) return 'mb';
@@ -150,7 +151,7 @@ export function alsoFor(kind: FamilyScoutKind, row: TwRow | undefined, tw: ThisW
   if (kind === 'done' && ranks.length) out.push({ key: 'teach', label: 'Help teach', sub: `show younger scouts what ${firstName} already knows`, min: HELP_TEACH_MIN });
   if (kind === 'mb' && help) {
     const who = help.teachers.length ? ` and ${help.teachers.map((t) => t.formal).join(' and ')}` : '';
-    out.push({ key: HELP_KEY, label: 'Help teach', sub: `with the ${help.name} group${who}`, min: HELP_TEACH_MIN });
+    out.push({ key: HELP_KEY, label: 'Help teach', sub: `with the ${help.title}${who}`, min: HELP_TEACH_MIN });
   }
   // A Merit badge group scout is offered the OTHER badges on Sunday; a younger scout every badge, with the caveat.
   for (const g of tw.groups.filter((x) => x.kind === 'badge' && !(kind === 'mb' && x.key === row?.groupKey))) {

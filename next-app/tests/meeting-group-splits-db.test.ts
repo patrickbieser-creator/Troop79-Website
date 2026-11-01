@@ -186,3 +186,23 @@ describe('split, merge, split again', () => {
     expect(await (await tw()).twUnmergeGroupAction({ entryId: entry, group: 'fr:scout' })).toEqual({ ok: false, error: 'That group has no split to bring back.' });
   });
 });
+
+describe('older scouts who teach (Patrick, 2026-10-31: Oliver V)', () => {
+  it('AnOlderScoutTeachingACard_IsNotNotAssignedAndAvailable_AndSaysWhatTheyTeach', async () => {
+    asSeeder();
+    const t = await tw();
+    // The meeting's own Tenderfoot card; any older scout (First Class and up) set to Teach, then signed up to teach it.
+    await t.twMergeGroupAction({ entryId: entry, group: TF });
+    const before = await view();
+    const older = rowsOf(before).find((r) => !r.counted);
+    if (!older) throw new Error('The local mirror has no First Class-and-up scout');
+    expect((await t.twSetRoleAction({ entryId: entry, personId: older.personId, role: 'teach' })).ok).toBe(true);
+    expect((await t.twSetTeacherAction({ entryId: entry, key: TF, personId: older.personId, on: true })).ok).toBe(true);
+    const v = await view();
+    const where = v.sections.find((sec) => sec.rows.some((r) => r.personId === older.personId))!;
+    const row = where.rows.find((r) => r.personId === older.personId)!;
+    expect([where.key, row.note]).toEqual(['teaching', 'Teaching the Tenderfoot group']);
+    await t.twSetTeacherAction({ entryId: entry, key: TF, personId: older.personId, on: false });
+    await t.twSetRoleAction({ entryId: entry, personId: older.personId, role: null });
+  });
+});

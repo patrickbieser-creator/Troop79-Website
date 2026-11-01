@@ -28,7 +28,7 @@ export default async function InvitePage({ params, searchParams }: { params: Pro
   const [catalog, own] = invite ? await Promise.all([loadAdvancementCatalog(), loadTopicWordsFor(sb, invite.entryId, invite.topicKey)]) : [null, null];
   const words =
     invite && catalog && own
-      ? topicWords(invite.topicKey, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, own.titles, { mbReqs: catalog.meritBadgeRequirements, members: own.members })
+      ? topicWords(invite.topicKey, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, own.titles, { mbReqs: catalog.meritBadgeRequirements, members: own.members, groups: own.groups })
       : null;
 
   return (

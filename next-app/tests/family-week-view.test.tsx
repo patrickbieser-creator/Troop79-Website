@@ -18,7 +18,7 @@ const scout = (o: Partial<FamilyScout>): FamilyScout => ({
   kind: 'rank',
   intent: null,
   choice: null,
-  group: { key: 'fr:second-class', name: 'Second Class', teachers: ['Mr. V'] },
+  group: { key: 'fr:second-class', name: 'Second Class', title: 'Second Class group', teachers: ['Mr. V'] },
   items: [
     { key: 'second-class-6a', code: 'Second Class 6a', label: 'First aid for Second Class', on: true, min: 10 },
     { key: 'second-class-6c', code: 'Second Class 6c', label: 'Reduce injuries on campouts', on: true, min: 10 }
@@ -55,6 +55,11 @@ describe('one card, three answers', () => {
   it('Family_CardTitle_IsFirstNameOnly', () => {
     render(<FamilyWeekView week={week([scout({})])} write={writer()} />);
     expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Lily’s plan');
+  });
+
+  it('Family_SplitGroup_ReadsSecondClassGroup2', () => {
+    render(<FamilyWeekView week={week([scout({ group: { key: 'fr:second-class~2', name: 'Second Class', title: 'Second Class Group 2', teachers: [] } })])} write={writer()} />);
+    expect(screen.getByText('Second Class Group 2')).toBeTruthy();
   });
 
   it('Family_GroupLine_ShowsTheGroupOnly', () => {

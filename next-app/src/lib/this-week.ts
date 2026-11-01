@@ -415,7 +415,17 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
   const columnCode = new Map(plan.groups.flatMap((g) => g.columns.map((c) => [c.key, c.code] as const)));
 
   // The checklist: one section per group, then the scouts tonight has no group for.
+  // What each scout is signed up to teach tonight (a card's teacher slot), by the card's title (Patrick, 2026-10-31: an
+  // older scout teaching the First Class group is not "Not assigned & available").
+  const slotTitle = new Map<string, string>([...groups.map((g) => [g.key, g.title] as const), ...extraTitle]);
+  const teaches = new Map<number, string[]>();
+  for (const t of input.topicTeachers) {
+    if (notComing(t.personId) || !scoutBy.has(t.personId)) continue;
+    const title = slotTitle.get(canonicalGroupKey(t.key, input.mergedBases));
+    if (title && !(teaches.get(t.personId) ?? []).includes(title)) teaches.set(t.personId, [...(teaches.get(t.personId) ?? []), title]);
+  }
   const noteOf = (r: FocusRow): string => {
+    if (r.status === 'teach' && !r.counted && teaches.has(r.personId)) return `Teaching the ${joinNames(teaches.get(r.personId)!)}`;
     if (r.status === 'teach') return r.counted ? 'Helps teach' : 'Teaching';
     if (r.status === 'request') return `From requests and offers${r.requestKey && extraTitle.get(r.requestKey) ? ` · ${extraTitle.get(r.requestKey)}` : ''}`;
     if (r.status === 'badge') return `${groupBy.get(r.groupKey ?? '')?.name ?? ''} merit badge`;
@@ -450,7 +460,10 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
     const rows = plan.rows.filter((r) => sectionOf(r) === g.key).map(toRow).sort(byName);
     return { key: g.key, kind: g.kind, name: g.name, title: g.title, columns: g.columns.flatMap(({ key, code, label, subs }) => (subs.length ? subs : [{ key, code, label }])), rows, gaps: rows.filter((r) => r.gap).length };
   });
-  const olderRows = plan.rows.filter((r) => sectionOf(r) === 'older').map(toRow).sort(byName);
+  const olderAll = plan.rows.filter((r) => sectionOf(r) === 'older');
+  const teachingRows = olderAll.filter((r) => teaches.has(r.personId)).map(toRow).sort(byName);
+  const olderRows = olderAll.filter((r) => !teaches.has(r.personId)).map(toRow).sort(byName);
+  if (teachingRows.length) sections.push({ key: 'teaching', kind: 'none', name: 'Teaching tonight', title: 'Teaching tonight', columns: [], rows: teachingRows, gaps: 0 });
   if (olderRows.length) sections.push({ key: 'older', kind: 'none', name: 'Not assigned & available', title: 'Not assigned & available', columns: [], rows: olderRows, gaps: 0 });
   const loose = plan.rows.filter((r) => sectionOf(r) === 'none').map(toRow).sort(byName);
   if (loose.length) sections.push({ key: 'none', kind: 'none', name: 'Not in a group', title: 'Not in a group', columns: [], rows: loose, gaps: loose.filter((r) => r.gap).length });

@@ -18,7 +18,7 @@ import { loadThisWeekData } from '@/lib/this-week-db';
 import { loadSupplyRows, loadTeacherPeople } from '@/lib/meeting-board-supply';
 import { firstNameOf, type Intent } from '@/lib/meeting-board-shared';
 import { DEFAULT_TEACH_MINUTES, topicWords } from '@/lib/meeting-board-picklist';
-import { isGroupKey } from '@/lib/focus-plan';
+import { canonicalGroupKey, isGroupKey } from '@/lib/focus-plan';
 import { groupMinutes } from '@/lib/family-week';
 import { classMinutes, withMinutes } from '@/lib/family-week-shared';
 
@@ -78,7 +78,7 @@ function classOf(g: TwGroup, catalog: Catalog, me: number | null): TeacherClass 
   const code = g.kind === 'rank' ? `${g.name} ${g.columns.map((c) => c.code).join(', ')}` : 'Merit badge';
   return {
     key: g.key,
-    label: g.kind === 'rank' ? `${g.name} group` : `${g.name} merit badge`,
+    label: g.title,
     line: `${withMinutes(code, min)} · ${scouts}`,
     min,
     scouts: g.members.length,
@@ -95,17 +95,23 @@ export function buildTeacherWeek(
   me: { personId: number; name: string; junior: boolean; intent: Intent | null; note?: string | null },
   catalog: Catalog,
   entryId: number,
-  words: (key: string) => { label: string; codeLabel: string; minutes: number | null } | null
+  words: (key: string) => { label: string; codeLabel: string; minutes: number | null } | null,
+  /** Merged split groups: a teacher of Group 2 or 3 teaches the one group (canonicalGroupKey). */
+  mergedBases?: ReadonlySet<string>
 ): TeacherWeek {
   const groups = new Map(tw.groups.map((g) => [g.key, g]));
+  const canon = (key: string) => canonicalGroupKey(key, mergedBases);
+  const seen = new Set<string>();
   const mineRows = rows.topicTeachers.filter((r) => r.personId === me.personId);
   const mine: MyClass[] = [];
   const other: MyOther[] = [];
   for (const r of mineRows) {
     const preassigned = r.enteredByPersonId != null && r.enteredByPersonId !== me.personId;
-    const g = groups.get(r.key);
+    const g = groups.get(canon(r.key));
     if (g) {
-      const first = rows.topicTeachers.find((x) => x.key === r.key);
+      if (seen.has(g.key)) continue;
+      seen.add(g.key);
+      const first = rows.topicTeachers.find((x) => canon(x.key) === g.key);
       mine.push({ ...classOf(g, catalog, me.personId), role: first?.personId === me.personId ? 'teach' : 'help', preassigned });
       continue;
     }
@@ -161,7 +167,7 @@ export async function loadTeacherWeek(
     key.startsWith('skill:')
       ? { label: skillName.get(key.slice(6)) ?? key.slice(6), codeLabel: 'Any requirement', minutes: null }
       : topicWords(key, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, titles, { mbReqs: catalog.meritBadgeRequirements });
-  return buildTeacherWeek(tw, rows, { personId, name: me.displayName, junior: me.kind === 'junior', intent: data.input.intents.get(personId) ?? null, note: (noteRow.data as { note: string | null } | null)?.note ?? null }, catalog, meeting.entryId, words);
+  return buildTeacherWeek(tw, rows, { personId, name: me.displayName, junior: me.kind === 'junior', intent: data.input.intents.get(personId) ?? null, note: (noteRow.data as { note: string | null } | null)?.note ?? null }, catalog, meeting.entryId, words, data.input.mergedBases);
 }
 
 /** Minutes a key would add to someone's Sunday: a class of the night, else the catalog's time for it. */

@@ -38,6 +38,13 @@ describe('household email', () => {
     expect(scoutBlock(lily)).toBe('**Lily**: the Second Class group with Mr. V\n- 6a · First aid\n- 6c · Reduce injuries');
   });
 
+  it('Email_SplitGroups_AreNamedAsOnThePlan', () => {
+    expect([
+      scoutBlock({ ...lily, group: 'fr:second-class~2', groupTitle: 'Second Class Group 2', teachers: [] }).split(String.fromCharCode(10))[0],
+      scoutBlock({ ...finn, helpTitle: 'Tenderfoot Group 1' })
+    ]).toEqual(['**Lily**: the Second Class Group 2', '**Finn**: the First Aid merit badge, or help teach the Tenderfoot Group 1']);
+  });
+
   it('Email_UsesTheOverride_WhenEdited', () => {
     expect(renderHouseholdEmail(T, { name: 'Laura', people: 'Lily', day: 'Sun', focus: 'First aid' }, [lily], 'Just for [name].').md.startsWith('Just for Laura.')).toBe(true);
   });

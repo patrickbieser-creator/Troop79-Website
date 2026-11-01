@@ -27,6 +27,9 @@ export interface ScoutPlanSent {
   items: { key: string; code: string; label: string; on?: boolean }[];
   /** A Merit badge group scout: the group they could help teach. */
   helpName: string | null;
+  /** What the group is called ('Scout group', 'Scout Group 2'); absent on plans sent before split groups. */
+  groupTitle?: string | null;
+  helpTitle?: string | null;
 }
 
 /** By person id (a JSON object key). */
@@ -42,7 +45,9 @@ export function planSentOf(week: Pick<FamilyWeek, 'scouts'>): PlanSent {
       groupName: s.group?.name ?? null,
       teachers: s.group?.teachers ?? [],
       items: s.items.map((i) => ({ key: i.key, code: i.code, label: i.label, on: i.on })),
-      helpName: s.helpGroup?.name ?? null
+      helpName: s.helpGroup?.name ?? null,
+      groupTitle: s.group?.title ?? null,
+      helpTitle: s.helpGroup?.title ?? null
     };
   }
   return out;
@@ -82,10 +87,10 @@ export function scoutBlock(s: ScoutPlanSent): string {
   const head = `**${s.name}**`;
   if (s.kind === 'rank') {
     const teacher = s.teachers.length ? ` with ${s.teachers.join(' and ')}` : '';
-    return [`${head}: the ${s.groupName} group${teacher}`, ...s.items.filter((i) => i.on !== false).map((i) => `- ${i.code} · ${i.label}`)].join('\n');
+    return [`${head}: the ${s.groupTitle ?? `${s.groupName} group`}${teacher}`, ...s.items.filter((i) => i.on !== false).map((i) => `- ${i.code} · ${i.label}`)].join('\n');
   }
   if (s.kind === 'done') return `${head} has finished everything on offer this week. A leader can pick something good, or you can suggest something.`;
-  const parts = [s.groupName ? `the ${s.groupName} merit badge` : null, s.helpName ? `help teach the ${s.helpName} group` : null].filter(Boolean);
+  const parts = [s.groupName ? `the ${s.groupName} merit badge` : null, s.helpName ? `help teach the ${s.helpTitle ?? `${s.helpName} group`}` : null].filter(Boolean);
   return `${head}: ${parts.length ? parts.join(', or ') : 'a leader will find something for Sunday'}`;
 }
 

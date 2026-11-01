@@ -15,7 +15,7 @@ import { focusPicks, loadFocusTopics, loadTopicWordsFor } from '@/lib/meeting-fo
 /** An invite's words: catalog keys from the catalog, a focus group or freeform topic from its row on this meeting. */
 export async function inviteWords(sb: SupabaseClient, entryId: number, key: string) {
   const [catalog, own] = await Promise.all([loadAdvancementCatalog(), loadTopicWordsFor(sb, entryId, key)]);
-  return topicWords(key, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, own.titles, { mbReqs: catalog.meritBadgeRequirements, members: own.members });
+  return topicWords(key, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, own.titles, { mbReqs: catalog.meritBadgeRequirements, members: own.members, groups: own.groups });
 }
 
 export interface ScoutCandidate {

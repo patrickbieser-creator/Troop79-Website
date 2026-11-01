@@ -14,6 +14,8 @@ import { fetchAllRows } from '@/lib/supabase/paginate';
 import { boardName } from '@/lib/meeting-board-shared';
 import { topicWords, type FocusPickIn } from '@/lib/meeting-board-picklist';
 import type { FocusSearchRow, FocusSetView, FocusSource } from '@/lib/meeting-focus';
+import { isGroupKey } from '@/lib/focus-plan';
+import { loadGroupSections } from '@/lib/group-splits-db';
 
 export interface FocusTopic {
   key: string;
@@ -78,8 +80,14 @@ export function focusWordsMore(topics: readonly FocusTopic[], catalog: Catalog) 
  * The titles and members topicWords needs for ONE key on a meeting (the invite senders and the /i/ page): a focus
  * group's or freeform topic's own meeting_topics row. A catalog key needs neither, so it costs no query. Build a Plan B0.
  */
-export async function loadTopicWordsFor(sb: SupabaseClient, entryId: number, key: string): Promise<{ titles: Map<string, string>; members: Map<string, string[]> }> {
+export async function loadTopicWordsFor(
+  sb: SupabaseClient,
+  entryId: number,
+  key: string
+): Promise<{ titles: Map<string, string>; members: Map<string, string[]>; groups?: Map<string, number> }> {
   const out = { titles: new Map<string, string>(), members: new Map<string, string[]>() };
+  // A group of the night: whether it's split now names it ("Scout Group 1"), not just its key.
+  if (isGroupKey(key)) return { ...out, groups: await loadGroupSections(sb, entryId) };
   if (!key.startsWith('fg:') && !key.startsWith('ff:')) return out;
   const { data, error } = await sb
     .from('meeting_topics')

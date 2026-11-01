@@ -32,7 +32,7 @@ function choicesFor(s: FamilyScout): { k: Answer; label: string; sub: string }[]
     {
       k: 'ok',
       label: 'This plan looks good',
-      sub: s.kind === 'done' ? `A leader will pick something good for ${first}` : `We’ll plan on ${first} in the ${s.kind === 'mb' ? 'Merit badge' : (s.group?.name ?? '')} group`
+      sub: s.kind === 'done' ? `A leader will pick something good for ${first}` : `We’ll plan on ${first} in the ${s.kind === 'mb' ? 'Merit badge group' : (s.group?.title ?? '')}`
     },
     { k: 'change', label: 'Change my plan', sub: s.kind === 'done' ? 'Request helping teach, a merit badge, or something else' : 'Untick something, or request something else' },
     { k: 'out', label: 'Can’t make it this week', sub: `We’ll take ${first} off Sunday’s plan` }
@@ -253,7 +253,7 @@ function ScoutCard({
   const alsoOpen = scout.also.filter((o) => !isAsked(o.key));
   const term = q.trim().toLowerCase();
   const found = term ? scout.requestable.filter((r) => !isAsked(r.key) && `${r.codeLabel} ${r.label}`.toLowerCase().includes(term)).slice(0, 5) : [];
-  const groupLine = scout.kind === 'mb' ? 'Merit badge group' : scout.group ? `${scout.group.name} group` : '';
+  const groupLine = scout.kind === 'mb' ? 'Merit badge group' : scout.group ? scout.group.title : '';
   const hid = `fw-${scout.personId}`;
   const qid = `fwq-${scout.personId}`;
   const saved = [changes ? `${changes} ${changes === 1 ? 'change' : 'changes'}` : '', requests ? `${requests} ${requests === 1 ? 'request' : 'requests'}` : ''].filter(Boolean).join(', ');

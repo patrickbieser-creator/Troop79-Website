@@ -43,6 +43,15 @@ export async function loadGroupSplits(sb: SupabaseClient, entryId: number): Prom
   return { splits, splitLevels, mergedBases };
 }
 
+/** How many groups each split base key on the meeting has right now (merged ones left out): topicWords' `groups`. */
+export async function loadGroupSections(sb: SupabaseClient, entryId: number): Promise<Map<string, number>> {
+  const { data, error } = await sb.from('meeting_group_splits').select('group_key').eq('calendar_entry_id', entryId).is('merged_at', null);
+  if (error) throw new Error(error.message);
+  const out = new Map<string, number>();
+  for (const r of (data ?? []) as { group_key: string }[]) out.set(r.group_key, (out.get(r.group_key) ?? 0) + 1);
+  return out;
+}
+
 export type SplitWrite = { ok: true } | { ok: false; error: string };
 
 /** The RPCs' own messages are written for people; anything else is not shown raw. */

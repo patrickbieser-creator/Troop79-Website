@@ -254,6 +254,9 @@ export interface TopicWordsMore {
   mbReqs?: readonly CatalogMeritBadgeRequirement[];
   /** A focus group's item keys, by its key ('fg:7'). */
   members?: ReadonlyMap<string, readonly string[]>;
+  /** Split groups on the meeting (lib/group-splits-db loadGroupSections): how many groups each base key is split into
+   *  right now, so 'fr:scout' reads "Scout Group 1" while split and "Scout group" once merged. */
+  groups?: ReadonlyMap<string, number>;
 }
 
 /** The tray's words for a key: 'First aid' / 'Tenderfoot 4a'. Null for a key the catalog no longer has (or a freeform
@@ -287,7 +290,8 @@ export function topicWords(
   if (group) {
     const name = group.kind === 'badge' ? mbs.find((m) => m.id === group.refId)?.name : ranks.find((x) => x.id === group.refId)?.display_name;
     if (!name) return null;
-    const label = group.section > 1 ? `${name} Group ${group.section}` : group.kind === 'badge' ? `${name} merit badge` : `${name} group`;
+    const split = (more?.groups?.get(group.base) ?? 0) > 1 || (!more?.groups && group.section > 1);
+    const label = split ? `${name} Group ${group.section}` : group.kind === 'badge' ? `${name} merit badge` : `${name} group`;
     return { label, codeLabel: GROUP_LABEL, kind: 'focus', parts: [], minutes: null };
   }
   if (key.startsWith('fr:')) return null;

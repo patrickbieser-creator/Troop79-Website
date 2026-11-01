@@ -86,6 +86,17 @@ describe('group keys', () => {
     expect([canonicalGroupKey(TF2, merged), canonicalGroupKey(TF2, new Set()), canonicalGroupKey('tenderfoot-4a', merged)]).toEqual([TF, TF2, 'tenderfoot-4a']);
   });
 
+  it('TopicWords_WithTheMeetingsSplits_NamesGroup1AndMergedGroups', () => {
+    const split = { groups: new Map([[TF, 2]]) };
+    const merged = { groups: new Map<string, number>() };
+    expect([
+      topicWords(TF, RANKS, RANK_REQS, MBS, undefined, split)?.label,
+      topicWords(TF2, RANKS, RANK_REQS, MBS, undefined, split)?.label,
+      topicWords(TF2, RANKS, RANK_REQS, MBS, undefined, merged)?.label,
+      topicWords(TF, RANKS, RANK_REQS, MBS, undefined, merged)?.label
+    ]).toEqual(['Tenderfoot Group 1', 'Tenderfoot Group 2', 'Tenderfoot group', 'Tenderfoot group']);
+  });
+
   it('TopicWords_NamesASectionTenderfootGroup2', () => {
     expect(topicWords(TF2, RANKS, RANK_REQS, MBS)?.label).toBe('Tenderfoot Group 2');
   });

@@ -29,8 +29,8 @@ const group = (key: string, o: Partial<TwGroup> = {}): TwGroup => ({
 });
 const teacher = (personId: number) => ({ personId, name: `P${personId}`, kind: 'adult' as const, intent: null, note: null, formal: `Mr. ${personId}` });
 const me = { personId: 9, name: 'Dan Vest', junior: false, intent: null };
-const build = (groups: TwGroup[], rows: { key: string; personId: number; enteredByPersonId: number | null }[]) =>
-  buildTeacherWeek({ groups }, { topicTeachers: rows, skillOffers: [] }, me, catalog, 1, () => null);
+const build = (groups: TwGroup[], rows: { key: string; personId: number; enteredByPersonId: number | null }[], merged?: ReadonlySet<string>) =>
+  buildTeacherWeek({ groups }, { topicTeachers: rows, skillOffers: [] }, me, catalog, 1, () => null, merged);
 
 describe('a teacher’s Sunday', () => {
   it('Teacher_FirstSignedUp_Teaches_LaterHelps', () => {
@@ -62,5 +62,15 @@ describe('a teacher’s Sunday', () => {
     const columns = Array.from({ length: 6 }, (_, i) => ({ key: `a-${i}`, code: `${i}`, label: `${i}`, need: 1, subs: [] }));
     const w = build([group('fr:a', { columns })], []);
     expect(w.needs[0].min).toBe(60);
+  });
+
+  it('TeacherOfAMergedGroup2_StillTeachesTheOneGroup', () => {
+    const w = build([group('fr:a')], [{ key: 'fr:a~2', personId: 9, enteredByPersonId: 9 }], new Set(['fr:a']));
+    expect(w.mine.map((m) => [m.key, m.role])).toEqual([['fr:a', 'teach']]);
+  });
+
+  it('SplitGroup_IsLabelledAsOnThePlan', () => {
+    const w = build([group('fr:a~2', { title: 'A Group 2' })], [{ key: 'fr:a~2', personId: 9, enteredByPersonId: 9 }]);
+    expect(w.mine[0].label).toBe('A Group 2');
   });
 });

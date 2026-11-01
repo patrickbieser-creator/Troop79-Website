@@ -63,7 +63,7 @@ export async function inviteAnswerAudit(
     const date = (entry.data as { entry_date: string } | null)?.entry_date;
     day = date ? fmtDate(date, { year: false }) : '';
     if (row && catalog && own) {
-      const words = topicWords(row.topic_key, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, own.titles, { mbReqs: catalog.meritBadgeRequirements, members: own.members });
+      const words = topicWords(row.topic_key, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, own.titles, { mbReqs: catalog.meritBadgeRequirements, members: own.members, groups: own.groups });
       topic = words ? (words.kind === 'ff' ? words.label : shortRequirement(words.codeLabel, words.label)) : row.topic_key;
     }
   } catch (e) {

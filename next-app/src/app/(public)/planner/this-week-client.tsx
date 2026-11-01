@@ -30,7 +30,7 @@ export interface WeekLink {
 
 const toneOf = (sec: Pick<TwSection, 'kind' | 'key'>) =>
   // A split group wears its rank's tone ('fr:tenderfoot~2' → tone-tenderfoot).
-  sec.kind === 'rank' ? s[`tone-${sec.key.slice(3).replace(/~[23]$/, '')}`] : sec.kind === 'badge' || sec.key === 'older' ? s['tone-mb'] : s['tone-extra'];
+  sec.kind === 'rank' ? s[`tone-${sec.key.slice(3).replace(/~[23]$/, '')}`] : sec.kind === 'badge' || sec.key === 'older' || sec.key === 'teaching' ? s['tone-mb'] : s['tone-extra'];
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 // "Not now" on a split offer (D1), remembered on this device per meeting; a private window forgets it on reload.
