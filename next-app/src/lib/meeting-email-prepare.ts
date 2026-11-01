@@ -88,6 +88,11 @@ export async function prepareEmail(sb: SupabaseClient, row: EmailRow, ctx: Prepa
     if (!card) throw new Error('That group isn’t on the plan any more.');
     // The link opens their teacher card; someone who may not teach on the date would find nothing to answer.
     if (!(await mayTeach(sb, who.id, ctx.meeting.date))) throw new Error('They can’t teach on this meeting.');
+    // Youth Protection (Patrick, 2026-11-01): a scout is never emailed one-on-one; buildQueue puts their parents on cc.
+    if (!row.about.cc?.length) {
+      const { data: scout } = await sb.from('scouts').select('person_id').eq('person_id', who.id).eq('active', true).maybeSingle();
+      if (scout) throw new Error('A scout’s teacher email copies a parent, and none is on it.');
+    }
     // A planned teacher is asked to confirm (Confirmations C-D1), in their own wording.
     const planned = card.teacherIds.includes(who.id);
     const template = planned ? await templateFor(sb, TEACHER_PLANNED_KIND, DEFAULT_TEACHER_PLANNED) : await templateFor(sb, TEACHER_ASK_KIND, DEFAULT_TEACHER_ASK);

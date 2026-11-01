@@ -386,7 +386,10 @@ export function EmailsClient({ screen, day }: { screen: EmailScreen; day: string
                           <span className={`${s.chip} ${r.isScout ? (s[`rank-${r.rank ?? 'new'}`] ?? '') : s.adult}`}>{r.name}</span>
                         </button>
                         <span className={s.what}>{r.about}</span>
-                        <span className={s.to}>{active.length ? active.map((x) => x.name).join(', ') : r.recipients.length ? 'No one ticked' : ''}</span>
+                        <span className={s.to}>
+                          {active.length ? active.map((x) => x.name).join(', ') : r.recipients.length ? 'No one ticked' : ''}
+                          {active.length && r.copies?.length ? ` · copies ${listOf(r.copies.map((c) => c.name))}` : ''}
+                        </span>
                         <span className={`${s.status} ${s[`tone-${st.tone}`]}`}>{st.label}</span>
                       </div>
                     );
@@ -506,6 +509,11 @@ function Preview({
               <span className={s.cardSub}>{roleOf(row, r)}</span>
             </label>
           ))}
+          {row.copies?.length ? (
+            <div className={s.cardSub}>
+              Copies {listOf(row.copies.map((c) => c.name))}: a scout is never emailed alone (Youth Protection).
+            </div>
+          ) : null}
           {shares ? <div className={s.sibNote}>One email covers {listOf(shares.rows.map((r) => r.name))}: same parents, so they get one message, not two.</div> : null}
         </div>
         <div className={s.mail}>

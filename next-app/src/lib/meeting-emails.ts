@@ -37,6 +37,8 @@ export type EmailStatus = 'queued' | 'sending' | 'sent' | 'failed' | 'unknown' |
 export interface EmailAbout {
   scouts?: number[];
   group?: string;
+  /** Copied on the email: a scout teacher's parents (Youth Protection, Patrick 2026-11-01). Set by buildQueue. */
+  cc?: string[];
 }
 
 export interface QueueEmail {
@@ -123,7 +125,7 @@ export interface Prepared {
   undo?: () => Promise<void>;
 }
 
-export type SendFn = (opts: { to: string; subject: string; html: string; text: string; fromName?: string; idempotencyKey: string; tags: { name: string; value: string }[] }) => Promise<SendOneResult | 'timeout'>;
+export type SendFn = (opts: { to: string; cc?: readonly string[]; subject: string; html: string; text: string; fromName?: string; idempotencyKey: string; tags: { name: string; value: string }[] }) => Promise<SendOneResult | 'timeout'>;
 
 export interface SendDeps {
   prepare: (row: EmailRow) => Promise<Prepared>;
@@ -169,6 +171,7 @@ export async function sendNextEmail(sb: SupabaseClient, input: { entryId: number
   }
   const res = await send({
     to: row.sent_to,
+    ...(row.about.cc?.length ? { cc: row.about.cc } : {}),
     subject: prepared.subject,
     html: prepared.html,
     text: prepared.text,

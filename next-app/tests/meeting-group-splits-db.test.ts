@@ -277,6 +277,37 @@ describe('a scout planned to teach is emailed at their own address (Patrick, 202
     await t.twSetTeacherAction({ entryId: entry, key: TF, personId: oliver, on: false });
   });
 
+  // Youth Protection (Patrick, 2026-11-01): no one-on-one email with a youth, so a scout's teacher email copies the
+  // parents the family email would go to.
+  it('AnOlderScoutsTeacherEmail_CopiesTheirParents', async () => {
+    asSeeder();
+    const t = await tw();
+    const { data: older } = await sb.from('people').select('id').eq('display_name', 'Oliver Vest').maybeSingle();
+    const oliver = (older as { id: number }).id;
+    expect((await t.twSetTeacherAction({ entryId: entry, key: TF, personId: oliver, on: true })).ok).toBe(true);
+    const { loadEmailScreen, buildQueue } = await import('../src/lib/meeting-email-screen');
+    const { loadScoutFamilies, scoutRecipientsMany } = await import('../src/lib/meeting-invites-db');
+    const parents = ((await scoutRecipientsMany(sb, await loadScoutFamilies(sb, [oliver]), [oliver], '2087-03-02')).get(oliver) ?? []).filter((r) => !r.isScout);
+    if (!parents.length) throw new Error('The local mirror has no parent address for Oliver Vest');
+    const [catalog, lists] = await Promise.all([fetchAdvancementCatalog(sb as never), fetchPeopleLists(sb)]);
+    const screen = await loadEmailScreen(sb, { entryId: entry, date: '2087-03-02' }, lists, catalog);
+    const row = screen.teachers.find((r) => r.group === TF && r.personId === oliver)!;
+    const q = await buildQueue(sb, { entryId: entry, date: '2087-03-02' }, await view(), lists, catalog, [{ kind: 'teacher', recipientId: oliver, group: TF }]);
+    const sorted = (xs: readonly string[]) => [...xs].sort();
+    expect([sorted((row.copies ?? []).map((c) => c.email)), q.ok && sorted(q.emails[0].about.cc ?? [])]).toEqual([sorted(parents.map((p) => p.sentTo)), sorted(parents.map((p) => p.sentTo))]);
+    await t.twSetTeacherAction({ entryId: entry, key: TF, personId: oliver, on: false });
+  });
+
+  it('AnAdultsTeacherEmail_CopiesNoOne', async () => {
+    const { buildQueue } = await import('../src/lib/meeting-email-screen');
+    const [catalog, lists] = await Promise.all([fetchAdvancementCatalog(sb as never), fetchPeopleLists(sb)]);
+    const v = await view();
+    const adult = v.groups.find((g) => g.key === TF)?.candidates.find((c) => c.kind === 'adult');
+    if (!adult) return; // the mirror's fact this test reads (an adult who could teach Tenderfoot)
+    const q = await buildQueue(sb, { entryId: entry, date: '2087-03-02' }, v, lists, catalog, [{ kind: 'teacher', recipientId: adult.personId, group: TF }]);
+    expect(q.ok && q.emails.map((e) => e.about.cc)).toEqual([undefined]);
+  });
+
   it('AnOlderScoutWithNoEmailOfTheirOwn_IsBlocked_AndSaysSo', async () => {
     asSeeder();
     const t = await tw();

@@ -92,6 +92,16 @@ export function applyRedirect(
   };
 }
 
+/** One email's To, Cc and subject. Under the dev relay the copies go too: the relay is the only address, and the
+ *  subject names everyone it was meant for, so a copy never reaches a real parent from a dev box. A copy of the To
+ *  address is dropped. */
+export function mailRecipients(to: string, cc: readonly string[], subject: string, redirectTo: string | undefined): { to: string[]; cc: string[]; subject: string } {
+  const main = to.trim().toLowerCase();
+  const copies = [...new Set(cc.map((c) => c.trim().toLowerCase()).filter((c) => c && c !== main))];
+  const r = applyRedirect([main, ...copies], subject, redirectTo);
+  return r.redirectedFrom ? { to: r.to, cc: [], subject: r.subject } : { to: [main], cc: copies, subject };
+}
+
 /** EMAIL_FROM with another display name: 'Troop 79 <news@x>' or 'news@x' → 'Troop 79 Bugler <news@x>'.
  *  The address never changes (it is the verified sending domain); only the name readers see. */
 export function fromWithName(from: string, name: string): string {
@@ -200,17 +210,19 @@ export async function sendOneEmail(opts: {
   replyTo?: string;
   idempotencyKey: string;
   tags?: { name: string; value: string }[];
+  /** Copies on the same email (a scout's teacher email copies their parents: Youth Protection). */
+  cc?: readonly string[];
 }): Promise<SendOneResult> {
   const intended = opts.to.trim().toLowerCase();
   if (!intended) return { status: 'skipped', detail: 'No deliverable address.' };
-  const { to, subject } = applyRedirect([intended], opts.subject, process.env.EMAIL_REDIRECT_TO);
+  const { to, cc, subject } = mailRecipients(intended, opts.cc ?? [], opts.subject, process.env.EMAIL_REDIRECT_TO);
   const resend = client();
   const configured = process.env.EMAIL_FROM;
   const from = configured && opts.fromName ? fromWithName(configured, opts.fromName) : configured;
   if (!resend || !from) return { status: 'skipped', detail: 'Email isn’t set up on this server.' };
   try {
     const { data, error } = await resend.emails.send(
-      { from, to, subject, html: opts.html, text: opts.text, replyTo: opts.replyTo || process.env.EMAIL_REPLY_TO || undefined, tags: opts.tags },
+      { from, to, ...(cc.length ? { cc } : {}), subject, html: opts.html, text: opts.text, replyTo: opts.replyTo || process.env.EMAIL_REPLY_TO || undefined, tags: opts.tags },
       { idempotencyKey: opts.idempotencyKey }
     );
     if (error) return { status: 'error', detail: error.message };

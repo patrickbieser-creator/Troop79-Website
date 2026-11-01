@@ -72,6 +72,8 @@ export interface ScreenRow {
   changed: boolean;
   /** A teacher row for someone planned on the card (Confirmations C-D1): the email asks them to confirm it. */
   planned?: boolean;
+  /** Copied on the email, not a choice: a scout teacher's parents (Youth Protection). */
+  copies?: ScreenRecipient[];
 }
 
 export interface LogLine {
@@ -152,16 +154,24 @@ export function askablePeople(g: Pick<TwGroup, 'key' | 'teachers' | 'candidates'
  * verified or not, at 13 and up (Patrick, 2026-11-01: a Catch-22 otherwise; a scout may not sign in until a teach email
  * asks, and they already get the troop's Bugle there). Family emails keep the verified-address rule
  * (scoutRecipientsMany).
+ *
+ * `cc` is who the email copies: the parents the family email would go to (scoutRecipientsMany's parents). Youth
+ * Protection (Patrick, 2026-11-01): no one-on-one email with a youth, so a scout with no parent address to copy isn't
+ * emailed either.
  */
-async function juniorAddresses(sb: SupabaseClient, ids: readonly number[], date: string): Promise<Map<number, MailRecipient & { name: string }> & { why: Map<number, string> }> {
-  const out = Object.assign(new Map<number, MailRecipient & { name: string }>(), { why: new Map<number, string>() });
+const ccOf = (to: MailRecipient & { cc?: MailRecipient[] }): MailRecipient[] => to.cc ?? [];
+export const NO_PARENT_TO_COPY = 'no parent’s email to copy (Youth Protection)';
+async function juniorAddresses(sb: SupabaseClient, ids: readonly number[], date: string): Promise<Map<number, MailRecipient & { name: string; cc: MailRecipient[] }> & { why: Map<number, string> }> {
+  const out = Object.assign(new Map<number, MailRecipient & { name: string; cc: MailRecipient[] }>(), { why: new Map<number, string>() });
   if (!ids.length) return out;
   const family = await loadScoutFamilies(sb, ids);
+  const families = await scoutRecipientsMany(sb, family, ids, date);
   for (const id of ids) {
     const self = family.person.get(id);
     const own = self?.primary_email?.trim();
-    if (self?.active && own && scoutMayBeMailed(self.birthdate, date)) out.set(id, { recipientId: id, sentTo: own, epoch: self.session_epoch, isScout: true, name: '' });
-    else out.why.set(id, !own ? 'no email of their own on file' : !self?.birthdate ? 'no birthdate on file' : 'under 13: too young for an email of their own');
+    const cc = (families.get(id) ?? []).filter((r) => !r.isScout);
+    if (self?.active && own && scoutMayBeMailed(self.birthdate, date) && cc.length) out.set(id, { recipientId: id, sentTo: own, epoch: self.session_epoch, isScout: true, name: '', cc });
+    else out.why.set(id, !own ? 'no email of their own on file' : !self?.birthdate ? 'no birthdate on file' : !scoutMayBeMailed(self.birthdate, date) ? 'under 13: too young for an email of their own' : NO_PARENT_TO_COPY);
   }
   return out;
 }
@@ -192,7 +202,7 @@ export async function loadEmailScreen(sb: SupabaseClient, meeting: Pick<BoardMee
   const adults = await adultRecipients(sb, teacherIds);
   // A scout planned on a card (a Junior Leader) is emailed at their own address.
   const juniors = await juniorAddresses(sb, groups.flatMap((g) => g.teachers.filter((t) => t.kind === 'junior').map((t) => t.personId)), meeting.date);
-  const allIds = [...scoutIds, ...[...recipients.values()].flat().map((r) => r.recipientId), ...teacherIds, ...log.flatMap((l) => (l.queued_by_person_id ? [l.queued_by_person_id] : []))];
+  const allIds = [...scoutIds, ...[...recipients.values()].flat().map((r) => r.recipientId), ...teacherIds, ...[...juniors.values()].flatMap((j) => j.cc.map((c) => c.recipientId)), ...log.flatMap((l) => (l.queued_by_person_id ? [l.queued_by_person_id] : []))];
   const who = await names(sb, allIds);
   const nameOf = (id: number) => (who.get(id) ? boardName(who.get(id)!.name) : 'Someone');
   const toScreen = (list: readonly MailRecipient[]): ScreenRecipient[] => list.map((r) => ({ personId: r.recipientId, name: nameOf(r.recipientId), email: r.sentTo, isScout: r.isScout }));
@@ -261,6 +271,7 @@ export async function loadEmailScreen(sb: SupabaseClient, meeting: Pick<BoardMee
         about: `${teaching ? 'Planned to teach' : 'Teach'} ${g.title} · ${g.columns.map((c) => c.code).join(', ')}${g.teachers.length ? '' : ' · No teacher yet'}`,
         group: g.key,
         recipients: to ? [{ personId: to.recipientId, name: to.name || t.name, email: to.sentTo, isScout: t.kind === 'junior' }] : [],
+        ...(to && ccOf(to).length ? { copies: ccOf(to).map((c) => ({ personId: c.recipientId, name: nameOf(c.recipientId), email: c.sentTo, isScout: false })) } : {}),
         // Everything on the plan is a proposal (Confirmations): a planned teacher is who gets the email, never blocked.
         blocked: to ? null : (adults.why.get(t.personId) ?? juniors.why.get(t.personId) ?? 'no email on file'),
         ...statusOf(last),
@@ -393,7 +404,8 @@ export async function buildQueue(sb: SupabaseClient, meeting: Pick<BoardMeeting,
         refused.push('a teacher who can’t be asked');
         continue;
       }
-      emails.push({ kind: 'teacher', recipientPersonId: to.recipientId, sentTo: to.sentTo, about: { group: r.group }, bodyMdOverride: clean(r.override) });
+      const cc = ccOf(to).map((c) => c.sentTo);
+      emails.push({ kind: 'teacher', recipientPersonId: to.recipientId, sentTo: to.sentTo, about: { group: r.group, ...(cc.length ? { cc } : {}) }, bodyMdOverride: clean(r.override) });
       continue;
     }
     if (!scouts.length) {

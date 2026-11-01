@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { applyRedirect, troopEmail } from '../src/lib/email';
+import { applyRedirect, mailRecipients, troopEmail } from '../src/lib/email';
 
 /**
  * The dev relay (lib/email.ts rule 5) is the guard that stands between a
@@ -80,5 +80,21 @@ describe('troopEmail', () => {
   it('falls back to the default when the override is blank rather than mailing nobody', () => {
     process.env.TROOP_NOTIFICATION_EMAIL = '';
     expect(troopEmail()).toBe('bsatroop79bg@gmail.com');
+  });
+});
+
+// Youth Protection (Patrick, 2026-11-01): a scout's teacher email copies their parents. Under the dev relay a copy
+// must never reach a real parent: the relay takes the To and the copies alike.
+describe('copies (Cc) under the dev relay', () => {
+  it('NoRelay_KeepsTheCopies', () => {
+    expect(mailRecipients('scout@example.com', ['mom@example.com'], 'Teach?', undefined)).toEqual({ to: ['scout@example.com'], cc: ['mom@example.com'], subject: 'Teach?' });
+  });
+
+  it('Relay_DropsTheCopies_AndNamesEveryoneInTheSubject', () => {
+    expect(mailRecipients('scout@example.com', ['mom@example.com'], 'Teach?', 'dev@example.com')).toEqual({ to: ['dev@example.com'], cc: [], subject: '[test→scout@example.com, mom@example.com] Teach?' });
+  });
+
+  it('ACopyOfTheToAddress_IsNotSentTwice', () => {
+    expect(mailRecipients('scout@example.com', ['Scout@example.com ', 'dad@example.com'], 'x', undefined).cc).toEqual(['dad@example.com']);
   });
 });

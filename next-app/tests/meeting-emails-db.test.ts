@@ -116,6 +116,13 @@ describe('send one at a time', () => {
     expect(sent[0].idempotencyKey).toBe(`meeting-email-${row.id}`);
   });
 
+  it('Sender_CopiesTheRowsCcAddresses', async () => {
+    const q = await queueEmails(sb, { entryId: meeting, actorPersonId: actor, emails: [{ kind: 'teacher', recipientPersonId: scoutA, sentTo: 'scout@example.com', about: { group: 'fr:scout', cc: ['mom@example.com'] } }] });
+    const { d } = deps();
+    await sendNextEmail(sb, { entryId: meeting, batchId: q.ok ? q.batchId : '' }, d);
+    expect(vi.mocked(d.send!).mock.calls[0][0].cc).toEqual(['mom@example.com']);
+  });
+
   it('Sender_RecordsTheResendId_WhenSent', async () => {
     const q = await queueEmails(sb, { entryId: meeting, actorPersonId: actor, emails: [plan('id@example.com', [scoutA])] });
     const { d } = deps();
