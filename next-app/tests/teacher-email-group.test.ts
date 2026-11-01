@@ -30,6 +30,10 @@ describe('teacher email for a group', () => {
     expect(md(item({ scouts: [] }))).toContain('**Scouts:**\n\nNone placed in this group yet.');
   });
 
+  it('APlannedTeacher_IsAskedToConfirm_NotAskedIfTheyCan', () => {
+    expect([md(item({ planned: true })).includes('**You’re planned to teach:**'), md(item({ planned: true })).includes('Can you teach?'), md(item()).includes('**Can you teach?**')]).toEqual([true, false, true]);
+  });
+
   it('Questions_GoToTheTroopsAddress', () => {
     expect(md(item())).toContain('Questions? Reply to bsatroop79bg@gmail.com.');
   });

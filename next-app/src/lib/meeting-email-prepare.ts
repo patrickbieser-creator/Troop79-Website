@@ -99,7 +99,7 @@ export async function prepareEmail(sb: SupabaseClient, row: EmailRow, ctx: Prepa
       const card = await teacherCardFor(sb, ctx.meeting, key);
       const items = r.invites.map((i) =>
         card
-          ? { kind: 'teach' as const, inviteeName: i.inviteeName, aboutRecipient: true, code: card.codes, topic: card.title, minutes: card.minutes, url, scouts: card.scouts }
+          ? { kind: 'teach' as const, inviteeName: i.inviteeName, aboutRecipient: true, code: card.codes, topic: card.title, minutes: card.minutes, url, scouts: card.scouts, planned: card.teacherIds.includes(who.id) }
           : { kind: 'teach' as const, inviteeName: i.inviteeName, aboutRecipient: true, code: words.codeLabel, topic: words.label, minutes: minutesText(words.minutes), url, helped: made.helped?.[i.key] }
       );
       base = renderInviteDigest(override(template, row.body_md_override), { name: who.first, people: 'you', day }, items);

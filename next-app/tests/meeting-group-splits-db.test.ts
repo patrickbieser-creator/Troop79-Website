@@ -225,3 +225,17 @@ describe('planned, asked, confirmed on This week (Confirmations C3)', () => {
   });
 });
 
+describe('the Emails screen asks planned teachers to confirm (Confirmations C4)', () => {
+  it('APlannedTeacher_IsARowToEmail_NeverAlreadyTeachingIt', async () => {
+    asSeeder();
+    const t = await tw();
+    expect((await t.twSetTeacherAction({ entryId: entry, key: TF, personId: planner, on: true })).ok).toBe(true);
+    const { loadEmailScreen } = await import('../src/lib/meeting-email-screen');
+    const [catalog, lists] = await Promise.all([fetchAdvancementCatalog(sb as never), fetchPeopleLists(sb)]);
+    const screen = await loadEmailScreen(sb, { entryId: entry, date: '2087-03-02' }, lists, catalog);
+    const row = screen.teachers.find((r) => r.group === TF && r.personId === planner)!;
+    expect([row.planned, row.blocked === 'already teaching it', row.about.startsWith('Planned to teach')]).toEqual([true, false, true]);
+    await t.twSetTeacherAction({ entryId: entry, key: TF, personId: planner, on: false });
+  });
+});
+

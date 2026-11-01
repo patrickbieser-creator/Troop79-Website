@@ -59,6 +59,7 @@ function status(r: ScreenRow): { label: string; tone: Tone; k: 'new' | 'sent' | 
   if (r.blocked) return { label: `Can’t send · ${r.blocked}`, tone: 'bad', k: 'blocked', opened: false };
   if (r.answer === 'Answered yes') return { label: 'Answered yes', tone: 'ok', k: 'sent', opened: true };
   if (r.answer === 'Said not this week') return { label: 'Said not this week', tone: 'muted', k: 'sent', opened: true };
+  if (r.answer === 'Changed since yes') return { label: 'Plan changed since they said yes', tone: 'bad', k: 'sent', opened: true };
   if (r.state === 'new') return { label: 'Not sent yet', tone: 'new', k: 'new', opened: false };
   if (r.state === 'queued' || r.state === 'sending') return { label: 'Sending…', tone: 'info', k: 'sent', opened: false };
   if (r.state === 'failed' || r.delivery === 'bounced') return { label: `Failed · ${r.delivery === 'bounced' ? 'address bounced' : (r.failure ?? 'didn’t go out')}`, tone: 'bad', k: 'sent', opened: false };
@@ -466,7 +467,7 @@ function Preview({
   if (row.kind === 'teacher') {
     const g = screen.groupWords[row.group ?? ''];
     const t = override != null ? { ...screen.templates.teacher, body: override } : screen.templates.teacher;
-    const r = renderInviteDigest(t, { name: greet, people: 'you', day }, [{ kind: 'teach', inviteeName: row.name, aboutRecipient: true, code: g?.codes ?? '', topic: g?.title ?? '', minutes: g?.minutes ?? '', url: '', scouts: g?.scouts ?? [] }]);
+    const r = renderInviteDigest(t, { name: greet, people: 'you', day }, [{ kind: 'teach', inviteeName: row.name, aboutRecipient: true, code: g?.codes ?? '', topic: g?.title ?? '', minutes: g?.minutes ?? '', url: '', scouts: g?.scouts ?? [], planned: row.planned }]);
     subject = r.subject;
     body = plain(r.md);
     buttons = ['Choose what you’ll teach'];

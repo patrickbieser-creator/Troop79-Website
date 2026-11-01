@@ -170,6 +170,8 @@ export interface DigestItem {
   /** A group of the night (Patrick, 2026-10-31): the scouts placed in it, full names (a private email). Present = the
    *  line reads "**Scout Group 2**: 4a, 4b, …" (`topic` the group, `code` its requirements) and "Scouts:" follows. */
   scouts?: string[];
+  /** Confirmations C-D1: the recipient is planned on this card; the email asks them to confirm it. */
+  planned?: boolean;
 }
 
 /**
@@ -194,7 +196,7 @@ export function renderInviteDigest(t: InviteTemplate, v: DigestValues, items: re
   const grouped = teach.filter((i) => i.scouts);
   if (teach.length) {
     blocks.push(
-      ['**Can you teach?**', teach.map(teachLine).join('\n'), ...grouped.map((i) => scoutsBlock(i, grouped.length > 1)), `**[${TEACH_PAGE_BUTTON}](${teach[0].url})**`].join('\n\n')
+      [teach.every((i) => i.planned) ? '**You’re planned to teach:**' : '**Can you teach?**', teach.map(teachLine).join('\n'), ...grouped.map((i) => scoutsBlock(i, grouped.length > 1)), `**[${TEACH_PAGE_BUTTON}](${teach[0].url})**`].join('\n\n')
     );
   }
   const scouts = [...new Set(items.filter((i) => i.kind === 'pick').map((i) => i.inviteeName))];

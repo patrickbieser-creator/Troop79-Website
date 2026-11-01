@@ -59,6 +59,8 @@ export interface ScreenRow {
   failure: string | null;
   answer: string | null;
   changed: boolean;
+  /** A teacher row for someone planned on the card (Confirmations C-D1): the email asks them to confirm it. */
+  planned?: boolean;
 }
 
 export interface LogLine {
@@ -221,13 +223,24 @@ export async function loadEmailScreen(sb: SupabaseClient, meeting: Pick<BoardMee
         name: t.name,
         rank: null,
         isScout: false,
-        about: `Teach ${g.title} · ${g.columns.map((c) => c.code).join(', ')}${g.teachers.length ? '' : ' · No teacher yet'}`,
+        about: `${teaching ? 'Planned to teach' : 'Teach'} ${g.title} · ${g.columns.map((c) => c.code).join(', ')}${g.teachers.length ? '' : ' · No teacher yet'}`,
         group: g.key,
         recipients: to ? [{ personId: to.recipientId, name: to.name, email: to.sentTo, isScout: false }] : [],
-        blocked: to ? (teaching ? 'already teaching it' : null) : (adults.why.get(t.personId) ?? 'no email on file'),
+        // Everything on the plan is a proposal (Confirmations): a planned teacher is who gets the email, never blocked.
+        blocked: to ? null : (adults.why.get(t.personId) ?? 'no email on file'),
         ...statusOf(last),
-        answer: inv?.response === 'accepted' ? 'Answered yes' : inv?.response === 'declined' ? 'Said not this week' : null,
-        changed: false
+        answer:
+          t.state === 'confirmed'
+            ? 'Answered yes'
+            : t.state === 'changed'
+              ? 'Changed since yes'
+              : t.state === 'planned'
+                ? null
+                : inv?.response === 'declined'
+                  ? 'Said not this week'
+                  : null,
+        changed: false,
+        planned: teaching
       };
     });
   });
