@@ -11,6 +11,7 @@
  *   - Every email's footer says the troop can see when it's opened.
  */
 import { theGroup, type FamilyChoice } from '@/lib/family-week-shared';
+import { isBadgeGroupKey } from '@/lib/focus-plan';
 import type { FamilyScoutKind, FamilyWeek } from '@/lib/family-week';
 import { fillTokens } from '@/lib/signup-confirmation';
 import type { InviteTemplate } from '@/lib/meeting-invite-email';
@@ -82,16 +83,25 @@ export function planButtons(scouts: readonly ScoutPlanSent[]): EmailButton[] {
   ];
 }
 
-/** One scout's lines under the email's wording. */
+/** A merit badge on the plan (Patrick, 2026-11-01): where a scout who has started it finds what's left. By the badge's
+ *  name, never a link: a link would pull the family off the email before they answer. */
+const libraryLine = (badge: string, name: string) => `Already started it? Look up ${badge} in the Troop Library to see which requirements ${name} still needs.`;
+
+/** One scout's lines under the email's wording. A merit badge is named, never listed requirement by requirement. */
 export function scoutBlock(s: ScoutPlanSent): string {
   const head = `**${s.name}**`;
+  if (s.kind === 'rank' && s.group && isBadgeGroupKey(s.group)) {
+    const teacher = s.teachers.length ? ` with ${s.teachers.join(' and ')}` : '';
+    return [`${head}: ${s.groupTitle ? theGroup(s.groupTitle) : `the ${s.groupName} merit badge`}${teacher}`, ...(s.groupName ? [libraryLine(s.groupName, s.name)] : [])].join('\n');
+  }
   if (s.kind === 'rank') {
     const teacher = s.teachers.length ? ` with ${s.teachers.join(' and ')}` : '';
     return [`${head}: ${s.groupTitle ? theGroup(s.groupTitle) : `the ${s.groupName} group`}${teacher}`, ...s.items.filter((i) => i.on !== false).map((i) => `- ${i.code} · ${i.label}`)].join('\n');
   }
   if (s.kind === 'done') return `${head} has finished everything on offer this week. A leader can pick something good, or you can suggest something.`;
   const parts = [s.groupName ? `the ${s.groupName} merit badge` : null, s.helpName ? `help teach ${s.helpTitle ? theGroup(s.helpTitle) : `the ${s.helpName} group`}` : null].filter(Boolean);
-  return `${head}: ${parts.length ? parts.join(', or ') : 'a leader will find something for Sunday'}`;
+  const line = `${head}: ${parts.length ? parts.join(', or ') : 'a leader will find something for Sunday'}`;
+  return s.groupName ? `${line}\n${libraryLine(s.groupName, s.name)}` : line;
 }
 
 export interface HouseholdValues {

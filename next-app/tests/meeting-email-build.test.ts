@@ -42,7 +42,40 @@ describe('household email', () => {
     expect([
       scoutBlock({ ...lily, group: 'fr:second-class~2', groupTitle: 'Second Class Group 2', teachers: [] }).split(String.fromCharCode(10))[0],
       scoutBlock({ ...finn, helpTitle: 'Tenderfoot Group 1' })
-    ]).toEqual(['**Lily**: Second Class Group 2', '**Finn**: the First Aid merit badge, or help teach Tenderfoot Group 1']);
+    ]).toEqual(['**Lily**: Second Class Group 2', `**Finn**: the First Aid merit badge, or help teach Tenderfoot Group 1\n${library('First Aid', 'Finn')}`]);
+  });
+
+  // Patrick, 2026-11-01: a merit badge on the plan is named, not listed requirement by requirement; a scout who has
+  // started it is pointed at the Troop Library by the badge's name, with no link (a link would pull them off the RSVP).
+  const library = (badge: string, name: string) => `Already started it? Look up ${badge} in the Troop Library to see which requirements ${name} still needs.`;
+  const damian: ScoutPlanSent = {
+    name: 'Damian',
+    kind: 'rank',
+    group: 'fr:mb:citizenship-community',
+    groupName: 'Citizenship in The Community',
+    groupTitle: 'Citizenship in The Community merit badge',
+    teachers: ['Mr. Porter'],
+    items: [
+      { key: 'mb:citizenship-community-1', code: 'Citizenship in The Community 1', label: 'Discuss citizenship' },
+      { key: 'mb:citizenship-community-2', code: 'Citizenship in The Community 2', label: 'Community mapping' }
+    ],
+    helpName: null
+  };
+
+  it('MeritBadgePlan_NamesTheBadge_NotItsRequirements', () => {
+    expect(scoutBlock(damian)).toBe(`**Damian**: the Citizenship in The Community merit badge with Mr. Porter\n${library('Citizenship in The Community', 'Damian')}`);
+  });
+
+  it('MeritBadgePlan_LibraryLine_HasNoLink', () => {
+    expect([scoutBlock(damian), scoutBlock(finn)].some((b) => b.includes('](') || /https?:/.test(b))).toBe(false);
+  });
+
+  it('MeritBadgeGroupNotChosenYet_HasNoLibraryLine', () => {
+    expect(scoutBlock({ ...finn, group: null, groupName: null, helpName: null })).toBe('**Finn**: a leader will find something for Sunday');
+  });
+
+  it('RankPlan_StillListsItsRequirements', () => {
+    expect(scoutBlock(lily).split('\n').filter((l) => l.startsWith('- ')).length).toBe(2);
   });
 
   it('Email_UsesTheOverride_WhenEdited', () => {
