@@ -47,6 +47,7 @@ const view: ThisWeek = {
   coverage: { counted: 2, rankWork: 2, nothing: 0, pct: 100, groupsWithoutTeacher: 1 },
   answers: { scouts: { coming: 2, undecided: 0, notComing: 1, none: 0 }, adults: { coming: 0, undecided: 0, notComing: 0, none: 0 } },
   adultsNoAnswer: [],
+  responses: { coming: { scouts: [], adults: [] }, undecided: { scouts: [], adults: [] }, not_coming: { scouts: [], adults: [] } },
   unplaced: [],
   everyone: []
 };

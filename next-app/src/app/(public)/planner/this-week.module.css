@@ -1288,6 +1288,16 @@ button.chip:focus-visible {
   align-items: center;
   gap: var(--sp-4);
 }
+/* Responses this week: one block per answer, coming on top. */
+.respGroup {
+  display: grid;
+  gap: var(--sp-2);
+}
+.respHead {
+  margin: 0;
+  font: 700 var(--fs-sm) / 1.3 var(--font-ui);
+  color: var(--text-head);
+}
 .adultTeaches {
   font: var(--fs-sm) / 1.4 var(--font-ui);
   color: var(--text-body);

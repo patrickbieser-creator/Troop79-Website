@@ -9,7 +9,7 @@
 import Link from 'next/link';
 import { useState, useSyncExternalStore } from 'react';
 import { SplitPanel } from './this-week-split';
-import { joinNames, type ThisWeek, type TwGroup, type TwRow, type TwSection } from '@/lib/this-week';
+import { joinNames, type ThisWeek, type TwGroup, type TwResponses, type TwRow, type TwSection } from '@/lib/this-week';
 import { checklistKeeps, withoutCantCome, type ChecklistFilter } from '@/lib/this-week-shown';
 import { usePlanner } from './planner-client';
 import { PlannerPoller } from './planner-poller';
@@ -415,6 +415,7 @@ function PlanView({
         <div className={s.col}>
           <Checklist view={full} filter={filter} setFilter={setFilter} onRole={setRole} busy={w.busy} />
           <AdultsCard view={view} />
+          <ResponsesCard responses={view.responses} />
         </div>
       </div>
     </>
@@ -432,7 +433,6 @@ const shortTitle = (slot: { title: string; kind?: string; name?: string }) => (s
  * you to the card. Junior Leaders are scouts: they're in the checklist.
  */
 export function AdultsCard({ view }: { view: Pick<ThisWeek, 'groups' | 'extras'> }) {
-  const p = usePlanner();
   const slots = [
     ...view.groups.map((g) => ({ key: g.key, id: `g-${g.key}`, title: shortTitle(g), tone: toneOf({ kind: g.kind, key: g.key }), teachers: g.teachers })),
     ...view.extras.map((x) => ({ key: x.key, id: `x-${x.key}`, title: x.title, tone: toneOf({ kind: 'none', key: x.key }), teachers: x.teachers }))
@@ -448,16 +448,7 @@ export function AdultsCard({ view }: { view: Pick<ThisWeek, 'groups' | 'extras'>
   });
   const adults = [...by.entries()].sort((x, y) => x[1].first - y[1].first || x[1].name.localeCompare(y[1].name));
   const open = slots.filter((x) => !x.teachers.length);
-  const chip = (id: number, name: string) =>
-    p?.canEdit ? (
-      <button type="button" className={`${s.chip} ${s.adultChip}`} aria-label={`${name}, adult`} onClick={() => p.openPerson(id)}>
-        {name}
-      </button>
-    ) : (
-      <span className={`${s.chip} ${s.adultChip}`} aria-label={`${name}, adult`}>
-        {name}
-      </span>
-    );
+  const chip = (id: number, name: string) => <AdultChip personId={id} name={name} />;
   return (
     <section className={s.gridCard} aria-labelledby="adults-h">
       <div className={s.toolbar}>
@@ -496,6 +487,62 @@ export function AdultsCard({ view }: { view: Pick<ThisWeek, 'groups' | 'extras'>
         </ul>
       ) : (
         <p className={s.muted}>Nothing planned yet.</p>
+      )}
+    </section>
+  );
+}
+
+/** An adult's name chip: an outline of its own (never read as a rank); editors open the person drawer. */
+function AdultChip({ personId, name }: { personId: number; name: string }) {
+  const p = usePlanner();
+  return p?.canEdit ? (
+    <button type="button" className={`${s.chip} ${s.adultChip}`} aria-label={`${name}, adult`} onClick={() => p.openPerson(personId)}>
+      {name}
+    </button>
+  ) : (
+    <span className={`${s.chip} ${s.adultChip}`} aria-label={`${name}, adult`}>
+      {name}
+    </span>
+  );
+}
+
+const RESPONSE_GROUPS = [
+  ['coming', 'Coming'],
+  ['undecided', 'Not sure'],
+  ['not_coming', 'Can’t come']
+] as const;
+
+/**
+ * Responses this week (Patrick, 2026-11-01): everyone who has answered, scouts and adults, coming on top, not sure in
+ * the middle, can't come at the bottom. Scouts first in each (their rank chips), then adults; an empty answer is left out.
+ */
+export function ResponsesCard({ responses }: { responses: TwResponses }) {
+  const groups = RESPONSE_GROUPS.map(([k, label]) => ({ k, label, ...responses[k], n: responses[k].scouts.length + responses[k].adults.length })).filter((g) => g.n);
+  return (
+    <section className={s.gridCard} aria-labelledby="responses-h">
+      <div className={s.toolbar}>
+        <h2 id="responses-h" className={s.cardTitle}>
+          Responses this week <span className={s.muted}>{groups.reduce((t, g) => t + g.n, 0)}</span>
+        </h2>
+      </div>
+      {groups.length ? (
+        groups.map((g) => (
+          <div key={g.k} role="group" aria-label={g.label} className={s.respGroup}>
+            <h3 className={s.respHead}>
+              {g.label} <span className={s.muted}>{g.n}</span>
+            </h3>
+            <div className={s.chips}>
+              {g.scouts.map((x) => (
+                <NameChip key={x.personId} person={x} tone="rank" />
+              ))}
+              {g.adults.map((x) => (
+                <AdultChip key={x.personId} personId={x.personId} name={x.name} />
+              ))}
+            </div>
+          </div>
+        ))
+      ) : (
+        <p className={s.muted}>No answers yet.</p>
       )}
     </section>
   );

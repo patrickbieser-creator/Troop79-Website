@@ -19,6 +19,19 @@ describe('loadThisWeekData', () => {
     expect([ids.length, new Set(ids).size]).toEqual([lists.pool.scouts.length, lists.pool.scouts.length]);
   });
 
+  // Responses this week (Patrick, 2026-11-01): every directory adult's answer, teacher or not.
+  it('ThisWeek_Responses_ListEveryDirectoryAdultsAnswer', async () => {
+    const [catalog, lists, labels] = await Promise.all([fetchAdvancementCatalog(sb as never), fetchPeopleLists(sb), fetchMeetingLabels(sb)]);
+    const [meeting] = await loadUpcomingMeetings(sb, 1, '2026-01-01', labels);
+    const input = (await loadThisWeekData(sb, meeting, lists, catalog)).input;
+    const adults = new Set(lists.pool.adults);
+    const expected = [...input.intents].filter(([id]) => adults.has(id) && !input.scouts.some((s) => s.personId === id)).map(([id, i]) => `${id}:${i}`).sort();
+    const r = buildThisWeek({ ...input, intents: new Map([...input.intents, ...[...adults].slice(0, 1).map((id) => [id, 'undecided'] as const)]) }).responses;
+    const shown = (['coming', 'undecided', 'not_coming'] as const).flatMap((k) => r[k].adults.map((a) => `${a.personId}:${k}`));
+    const withExtra = [...new Set([...expected.filter((e) => !e.startsWith(`${[...adults][0]}:`)), `${[...adults][0]}:undecided`])].sort();
+    expect(shown.sort()).toEqual(withExtra);
+  });
+
   it('ThisWeek_OfferedClass_ShowsTheTeachersNote', async () => {
     const [catalog, lists, labels] = await Promise.all([fetchAdvancementCatalog(sb as never), fetchPeopleLists(sb), fetchMeetingLabels(sb)]);
     const [meeting] = await loadUpcomingMeetings(sb, 1, '2026-01-01', labels);

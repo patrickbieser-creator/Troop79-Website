@@ -65,6 +65,8 @@ export interface ThisWeekInput {
   splits?: ReadonlyMap<string, readonly (readonly string[])[]>;
   splitLevels?: ReadonlyMap<string, readonly number[]>;
   mergedBases?: ReadonlySet<string>;
+  /** Directory adults' names, by personId (lib/people-lists pool): who an adult's answer on Responses this week is. */
+  adultNames?: ReadonlyMap<number, string>;
 }
 
 export interface TwPerson {
@@ -93,6 +95,32 @@ export interface TwTeacher {
 }
 
 export { joinNames };
+
+/** Who answered one way, scouts then adults (Responses this week). */
+export interface TwResponders {
+  scouts: TwPerson[];
+  adults: { personId: number; name: string }[];
+}
+export type TwResponses = Record<Intent, TwResponders>;
+
+/**
+ * Responses this week (Patrick, 2026-11-01): everyone who has answered, by their answer, each list by name. Scouts with
+ * no answer aren't listed (the summary counts them); an answer from someone in neither list (a visitor) is left out.
+ */
+export function responsesOf(scouts: readonly TwPerson[], intents: ReadonlyMap<number, Intent>, adultNames: ReadonlyMap<number, string>): TwResponses {
+  const out: TwResponses = { coming: { scouts: [], adults: [] }, undecided: { scouts: [], adults: [] }, not_coming: { scouts: [], adults: [] } };
+  const scoutIds = new Set(scouts.map((x) => x.personId));
+  for (const x of scouts) if (x.intent) out[x.intent].scouts.push(x);
+  for (const [id, intent] of intents) {
+    const name = adultNames.get(id);
+    if (!scoutIds.has(id) && name) out[intent].adults.push({ personId: id, name: boardName(name) });
+  }
+  for (const g of Object.values(out)) {
+    g.scouts.sort((a, b) => a.name.localeCompare(b.name));
+    g.adults.sort((a, b) => a.name.localeCompare(b.name));
+  }
+  return out;
+}
 
 export interface TwColumn {
   key: string;
@@ -219,6 +247,8 @@ export interface ThisWeek {
   answers: { scouts: AnswerCounts; adults: AnswerCounts };
   /** Adults who could teach tonight and haven't answered (Who's coming's "Haven't answered"). */
   adultsNoAnswer: TwTeacher[];
+  /** Everyone who has answered, by answer (Responses this week). */
+  responses: TwResponses;
   /** Focus items no group can hold (Star/Life/Eagle rank requirements, or gone from the catalog). */
   unplaced: string[];
   /** Everyone who may teach: the "someone else" list. */
@@ -562,6 +592,7 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
       groupsWithoutTeacher: groups.filter((g) => !g.teachers.length && g.members.length > 0).length
     },
     answers: { scouts: countAnswers(input.scouts.map((s) => s.intent)), adults: countAnswers(adults.map((a) => input.intents.get(a.personId) ?? null)) },
+    responses: responsesOf(input.scouts.map(person), input.intents, input.adultNames ?? new Map(adults.map((a) => [a.personId, a.displayName]))),
     adultsNoAnswer: adults
       .filter((a) => !input.intents.has(a.personId) && (a.skills.size > 0 || a.counselorFor.size > 0))
       .map((a) => teacherOf(a))

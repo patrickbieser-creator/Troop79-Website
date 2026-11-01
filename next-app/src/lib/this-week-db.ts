@@ -197,6 +197,7 @@ export async function loadThisWeekData(
     loadScoutAnswers(sb, meeting.entryId)
   ]);
   // A family-page "Can't make it" note shows under each group the person was down to teach (F3b).
+  const adultIds = new Set(lists.pool.adults);
   const notesFromPage = supply.topicTeachers.flatMap((t) => (intentNotes.has(t.personId) ? [{ key: t.key, personId: t.personId, note: intentNotes.get(t.personId)! }] : []));
   return {
     catalog,
@@ -217,7 +218,8 @@ export async function loadThisWeekData(
       ...scoutConfirm,
       ...answers,
       teacherNotes: [...(answers.teacherNotes ?? []), ...notesFromPage],
-      ...splits
+      ...splits,
+      adultNames: new Map(lists.pool.people.filter((p) => adultIds.has(p.id)).map((p) => [p.id, p.display_name]))
     }
   };
 }
