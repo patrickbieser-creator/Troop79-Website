@@ -8,7 +8,7 @@
  * adult up to teach or takes them off, assigns a teacher, and adds an offer. Every write goes through v1's writers
  * with leader = true and the editor as entered_by, so the RPCs keep their own rules (active scouts only, 5 picks, who
  * may teach, Junior Leaders and adults-only skills, closed and past boards).
- * P2b: Send request goes through v1's invite sender (lib/meeting-invites-send), adults only.
+ * P2b: Send request went through v1's invite sender (retired with the teacher answer page, 2026-11-01).
  * B4 (Build a Plan, one add path): seeding moved to build-actions (plannerAddOfferingAction, plannerAddFocusSetAction,
  * plannerRemoveOfferingAction); the nudge actions retired with the Offered card (the Invite tab offers a class).
  * P5b: reminders to people who haven't answered, adults only, through the same invite pipeline.

@@ -134,6 +134,22 @@ describe('the family link', () => {
     expect((await inspectPlanPage(sb, teach.token)).page?.reason).toBe('open');
   });
 
+  it('FamilyLinkWithTheTeacherCard_ClosesAnOlderTeacherOnlyLink', async () => {
+    const teach = await mintPlanPage(sb, { entryId: meeting, recipientId: parent, epoch, scoutIds: [], expiresAt: inviteExpiresAt(MEETING_DATE), asTeacher: true });
+    const both = await mintPlanPage(sb, { entryId: meeting, recipientId: parent, epoch, scoutIds: [scout], expiresAt: inviteExpiresAt(MEETING_DATE), asTeacher: true });
+    await supersedeOlderPlanPages(sb, { id: both.id, entryId: meeting, recipientId: parent, scoutIds: [scout], asTeacher: true });
+    expect((await inspectPlanPage(sb, teach.token)).page?.reason).toBe('superseded');
+  });
+
+  // Accepted trade-off (qa-lead 2026-11-01): a republish that drops a scout leaves the older link open until 6 PM; it
+  // only ever answers for the recipient's own scouts, which the claim re-checks on every write.
+  it('RepublishDroppingAScout_LeavesTheOlderLinkOpen', async () => {
+    const both = await mint({ scouts: [scout, otherScout] });
+    const one = await mint({ scouts: [otherScout] });
+    await supersedeOlderPlanPages(sb, { id: one.id, entryId: meeting, recipientId: parent, scoutIds: [otherScout], asTeacher: false });
+    expect((await inspectPlanPage(sb, both.token)).page?.reason).toBe('open');
+  });
+
   it('SameBatchLinks_BothStayOpen', async () => {
     // Both rows were queued together; the first link is minted after the second row was queued, so it isn't older news.
     const queuedAt = new Date(Date.now() - 60_000).toISOString();

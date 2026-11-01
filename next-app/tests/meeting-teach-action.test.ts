@@ -113,6 +113,24 @@ const teachBoardFor = async (entryId: number, include: number[] = []) => {
   return { catalog, meeting, rows, teach: await (await supply()).loadTeachBoard(sb, meeting, catalog, rows, include) };
 };
 
+/** The asked teacher's "Not this week" (Plans/Planner-Teacher-Email-To-Family-Card.md) through the member page's own
+ *  server action: only their own answer, only a group they were asked about (qa-lead 2026-11-01). */
+describe('not this week, signed in', () => {
+  const noRows = async () => ((await sb.from('meeting_teacher_answers').select('person_id').eq('calendar_entry_id', meeting1)).data ?? []).length;
+
+  it('Decline_ForSomeoneElse_IsRefused_AndRecordsNothing', async () => {
+    asAdult(parent);
+    const r = await (await actions()).meetingTeacherDeclineAction({ entryId: meeting1, personId: other, key: 'fr:tenderfoot', note: '', onBehalf: true });
+    expect([r.ok, await noRows()]).toEqual([false, 0]);
+  });
+
+  it('Decline_OfAGroupTheyWereNotAskedAbout_IsRefused', async () => {
+    asAdult(parent);
+    const r = await (await actions()).meetingTeacherDeclineAction({ entryId: meeting1, personId: parent, key: 'fr:tenderfoot', note: '' });
+    expect([r.ok, await noRows()]).toEqual([false, 0]);
+  });
+});
+
 describe('who may teach', () => {
   it('Parent_CanCommitToTeachTopic', async () => {
     asAdult(parent);

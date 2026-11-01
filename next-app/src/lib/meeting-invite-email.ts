@@ -5,8 +5,6 @@
  */
 import { fillTokens } from '@/lib/signup-confirmation';
 
-export const TEACH_INVITE_KIND = 'meeting.invite.teacher';
-
 export interface InviteTemplate {
   subject: string;
   body: string;
@@ -174,7 +172,8 @@ export interface TeacherEmailGroup {
  * (TEACHER_EMAIL_BUTTON) is the email's action, added by the sender.
  */
 export function renderTeacherEmail(t: InviteTemplate, v: { name: string; day: string }, g: TeacherEmailGroup, o: { planned: boolean }): { subject: string; md: string } {
-  const vals: Record<string, string> = { name: v.name, day: v.day };
+  // [people] is the older ask template's token: a saved copy of it still reads "you" (qa-lead 2026-11-01).
+  const vals: Record<string, string> = { name: v.name, day: v.day, people: 'you' };
   const block = [
     o.planned ? '**You’re planned to teach:**' : '**Can you teach?**',
     `- **${g.title}**: ${g.codes}${g.minutes ? ` (${g.minutes})` : ''}`,

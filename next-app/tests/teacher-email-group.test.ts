@@ -30,6 +30,10 @@ describe('teacher email for a group', () => {
     expect([md(group()), md(group(), true)].every((m) => m.includes('Questions? Reply to bsatroop79bg@gmail.com.'))).toBe(true);
   });
 
+  it('ASavedOlderAskTemplate_ReadsYou_ForPeople', () => {
+    expect(renderTeacherEmail({ subject: 'Invites for [people]', body: 'Hi [name], about [people].' }, { name: 'Pat', day: 'Sun' }, group(), { planned: false }).md.startsWith('Hi Pat, about you.')).toBe(true);
+  });
+
   it('Body_CarriesNoLinkOfItsOwn_TheButtonIsTheEmailsAction', () => {
     expect([md(group()), md(group(), true)].some((m) => m.includes(']('))).toBe(false);
   });
