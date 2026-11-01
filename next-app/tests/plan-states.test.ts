@@ -50,6 +50,12 @@ describe('teacherState', () => {
     expect(teacherState({ ...base, answer: yes('2026-10-30T13:00:00Z'), now: teacherSnapOf(card({ columns: [{ key: 'scout-3a' }] })) })).toBe('changed');
   });
 
+  // Patrick, 2026-11-01: a yes to the plan as it stands holds when they're emailed again ("I have answered several
+  // times"); only a changed plan reopens it.
+  it('EmailedAgainAfterAYes_ToTheSamePlan_StaysConfirmed', () => {
+    expect(teacherState({ ...base, answer: yes('2026-10-30T13:00:00Z'), askedAt: '2026-10-30T15:00:00Z' })).toBe('confirmed');
+  });
+
   it('AskedAgainAfterAChangedYes_IsAsked', () => {
     expect(teacherState({ ...base, answer: yes('2026-10-30T13:00:00Z'), askedAt: '2026-10-30T15:00:00Z', now: teacherSnapOf(card({ columns: [{ key: 'scout-3a' }] })) })).toBe('asked');
   });

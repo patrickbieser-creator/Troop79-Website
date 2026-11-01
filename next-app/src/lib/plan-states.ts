@@ -62,8 +62,11 @@ export function teacherState(a: {
   const answer = a.answer && (!a.slotSince || ms(a.answer.answeredAt) >= ms(a.slotSince)) ? a.answer : null;
   const since = later(a.slotSince, answer?.answeredAt);
   const asked = a.askedAt && (!since || ms(a.askedAt) > ms(since)) ? a.askedAt : null;
+  // A yes to the plan as it stands holds through a later email (Patrick, 2026-11-01: emailed again, still a yes); a
+  // yes to a plan that has since changed is reopened by a new ask.
+  if (answer?.answer === 'yes' && !teacherChanged(answer.plan, a.now)) return 'confirmed';
   if (asked) return 'asked';
-  if (answer?.answer === 'yes') return teacherChanged(answer.plan, a.now) ? 'changed' : 'confirmed';
+  if (answer?.answer === 'yes') return 'changed';
   return 'planned';
 }
 

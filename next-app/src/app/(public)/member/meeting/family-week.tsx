@@ -18,6 +18,7 @@ import { useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import type { FamilyOp, FamilyOption, FamilyScout, FamilyWeek, FamilyWrite } from '@/lib/family-week';
 import { HELP_KEY, PLAN_MAX, PLAN_MAX_MIN, optionLine, planLoad, theGroup, withMinutes, type FamilyChoice } from '@/lib/family-week-shared';
+import { useSaveToast } from '@/app/_components/save-toast';
 import styles from './family-week.module.css';
 
 type Write = (scoutId: number, op: FamilyOp) => Promise<FamilyWrite>;
@@ -53,6 +54,9 @@ export function FamilyWeekView({
   /** The page's opening line (lib/family-week-shared familyLede); none on a page that writes its own. */
   lede?: string | null;
 }) {
+  // Every save on the page says "Saving…", then "Saved. Nothing else to do." (Patrick, 2026-11-01).
+  const { track, toast } = useSaveToast();
+  const save: Write = (scoutId, op) => track(write(scoutId, op), (r) => r.ok);
   const [answers, setAnswers] = useState<Record<number, Answer | null>>(() => Object.fromEntries(week.scouts.map((s) => [s.personId, asAnswer(s.choice)])));
   const first = asAnswer(initialAnswer);
   const [pending, setPending] = useState<Answer | null>(first && first !== 'ok' ? first : null);
@@ -68,7 +72,7 @@ export function FamilyWeekView({
     setAnswers((a) => ({ ...a, [s.personId]: null }));
     setUnsure((u) => ({ ...u, [s.personId]: true }));
     try {
-      const res = await write(s.personId, { op: 'unsure' });
+      const res = await save(s.personId, { op: 'unsure' });
       if (res.ok) return;
       setError(res.error);
     } catch {
@@ -83,7 +87,7 @@ export function FamilyWeekView({
     setAnswers((a) => ({ ...a, [s.personId]: k }));
     setUnsure((u) => ({ ...u, [s.personId]: false }));
     try {
-      const res = await write(s.personId, { op: 'answer', choice: k });
+      const res = await save(s.personId, { op: 'answer', choice: k });
       if (res.ok) return true;
       setError(res.error);
     } catch {
@@ -155,10 +159,11 @@ export function FamilyWeekView({
             setError(null);
             void answer(s, k);
           }}
-          write={write}
+          write={save}
           readOnly={readOnly}
         />
       ))}
+      {toast}
     </div>
   );
 }

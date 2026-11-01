@@ -156,6 +156,32 @@ describe('Not sure yet', () => {
     expect(calls.clear).toHaveBeenCalledWith({ entryId: 1, personId: 9, onBehalf: false, takeOff: false });
   });
 
+  // Patrick, 2026-11-01: a planner who put themselves on a group and said yes opened their card on "Change my plan".
+  it('Teacher_WhoSaidYesToEveryGroup_OpensOnPlanLooksGood_WhoeverPutThemThere', () => {
+    card({ ...teaching, mine: [mine('fr:second-class', 'Second Class group', { preassigned: false, confirmed: true })] });
+    expect(screen.getByRole('radio', { name: /This plan looks good/ }).getAttribute('aria-checked')).toBe('true');
+  });
+
+  it('Teacher_WhoSignedUpThemselves_WithoutAYes_StillOpensOnChangeMyPlan', () => {
+    card({ ...teaching, mine: [mine('fr:second-class', 'Second Class group', { preassigned: false, confirmed: false })] });
+    expect(screen.getByRole('radio', { name: /Change my plan/ }).getAttribute('aria-checked')).toBe('true');
+  });
+
+  // Patrick, 2026-11-01: every save on the card says it's saving, then that nothing else is needed.
+  it('Teacher_TapAnAnswer_ShowsSaving_ThenSaved', async () => {
+    card(teaching);
+    await userEvent.click(screen.getByRole('radio', { name: /This plan looks good/ }));
+    expect(await screen.findByText('✓ Saved. Nothing else to do.')).toBeTruthy();
+  });
+
+  it('Teacher_AFailedSave_NeverSaysSaved', async () => {
+    card(teaching);
+    calls.confirm.mockResolvedValue({ ok: false, error: 'That link has closed.' });
+    await userEvent.click(screen.getByRole('radio', { name: /This plan looks good/ }));
+    await screen.findAllByText('That link has closed.');
+    expect(screen.queryByText('✓ Saved. Nothing else to do.')).toBeNull();
+  });
+
   it('Teacher_Preassigned_ClearAsksFirst', async () => {
     card({ ...teaching, mine: [mine('fr:second-class', 'Second Class group', { preassigned: true })] });
     await userEvent.click(screen.getByRole('button', { name: 'Not sure yet? Clear Dan’s answer' }));

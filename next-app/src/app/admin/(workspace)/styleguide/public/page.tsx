@@ -27,6 +27,7 @@ import { PageHeader, KickerSep } from '@/app/_components/page-header';
 import { Button } from '@/app/_components/button';
 import { Badge } from '@/app/_components/badge';
 import { Notice } from '@/app/_components/notice';
+import { SaveToast } from '@/app/_components/save-toast';
 import { EmptyState } from '@/app/_components/empty-state';
 import { SectionDivider } from '@/app/_components/section-divider';
 import { GoalBar } from '@/app/_components/goal-bar';
@@ -513,6 +514,14 @@ export default function PublicStyleguidePage() {
             <Notice tone="warning">Warning notice — khaki/bark family.</Notice>
             <div className={sg.specimenGap} />
             <Notice tone="info">Info notice — navy family.</Notice>
+          </div>
+
+          {/* Save toast (useSaveToast): over the page's foot while a tap saves, then a few seconds of "Saved" */}
+          <div className={sg.specimenBlock}>
+            <SaveToast phase="saving" inline /> <SaveToast phase="saved" inline />
+            <span className={sg.specimenInlineNote}>
+              useSaveToast — every save on the family and teacher cards; a failed save closes it and the form&rsquo;s error speaks
+            </span>
           </div>
 
           {/* List card (calm restyle R1) */}

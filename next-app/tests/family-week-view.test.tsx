@@ -249,3 +249,24 @@ describe('the email button', () => {
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/i/plan/x', { scroll: false }));
   });
 });
+
+// Patrick, 2026-11-01: a tap on an answer says it's saving, then that it's saved and nothing else is needed.
+describe('save feedback', () => {
+  it('Family_TapAnAnswer_ShowsSaving_ThenSaved', async () => {
+    let done: (v: { ok: true }) => void = () => {};
+    const write = vi.fn(() => new Promise<{ ok: true }>((r) => (done = r)));
+    render(<FamilyWeekView week={week([scout({})])} write={write as never} />);
+    fireEvent.click(screen.getByRole('radio', { name: /This plan looks good/ }));
+    const saving = screen.getByText('Saving…') != null;
+    done({ ok: true });
+    expect([saving, (await screen.findByText('✓ Saved. Nothing else to do.')) != null]).toEqual([true, true]);
+  });
+
+  it('Family_AFailedSave_NeverSaysSaved', async () => {
+    const write = vi.fn(() => Promise.resolve({ ok: false as const, error: 'That link has closed.' }));
+    render(<FamilyWeekView week={week([scout({})])} write={write as never} />);
+    fireEvent.click(screen.getByRole('radio', { name: /This plan looks good/ }));
+    await screen.findByRole('alert');
+    expect(screen.queryByText('✓ Saved. Nothing else to do.')).toBeNull();
+  });
+});

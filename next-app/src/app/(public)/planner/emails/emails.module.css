@@ -288,6 +288,8 @@
 }
 .seg {
   display: inline-flex;
+  /* Never shrinks (its overflow: hidden clipped "No answer"): the head wraps it onto its own line instead. */
+  flex: none;
   margin-left: auto;
   border: 1px solid var(--border-mid);
   border-radius: var(--rad-sm);

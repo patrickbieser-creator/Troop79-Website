@@ -49,6 +49,8 @@ export interface MyClass extends TeacherClass {
   role: 'teach' | 'help';
   /** Put there by a planner, not signed up on this page. */
   preassigned: boolean;
+  /** Their yes to this group stands (plan-states 'confirmed'), whoever put them there. */
+  confirmed?: boolean;
 }
 
 /** Something else this person holds on the meeting: a requirement or freeform topic, or a skill offer. */
@@ -124,7 +126,7 @@ export function buildTeacherWeek(
       if (seen.has(g.key)) continue;
       seen.add(g.key);
       const first = rows.topicTeachers.find((x) => canon(x.key) === g.key);
-      mine.push({ ...classOf(g, catalog, me.personId), role: first?.personId === me.personId ? 'teach' : 'help', preassigned });
+      mine.push({ ...classOf(g, catalog, me.personId), role: first?.personId === me.personId ? 'teach' : 'help', preassigned, confirmed: g.teachers.some((t) => t.personId === me.personId && t.state === 'confirmed') });
       continue;
     }
     // A group no longer on the plan holds nothing tonight.

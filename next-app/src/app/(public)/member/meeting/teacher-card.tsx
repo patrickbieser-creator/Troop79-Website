@@ -34,6 +34,7 @@ import type { OfferWhat, TeachActionResult, TeachOp } from '@/lib/teach-write';
 import { OfferForm, type Draft } from './offer-form';
 import styles from './meeting.module.css';
 import fw from './family-week.module.css';
+import { useSaveToast } from '@/app/_components/save-toast';
 
 type Answer = 'ok' | 'change' | 'out';
 
@@ -52,10 +53,13 @@ export interface TeacherCardProps {
 
 const classes = (n: number) => `${n} ${n === 1 ? 'class' : 'classes'}`;
 
-/** The answer as saved: coming with something signed up on this page reads as a change. */
+/** The answer as saved: a standing yes to every group they hold is "This plan looks good" (Patrick, 2026-11-01: a
+ *  planner who put themselves on a group and said yes opened on "Change my plan"); otherwise coming with something
+ *  signed up on this page reads as a change. */
 function answerOf(w: TeacherWeek): Answer | null {
   if (w.intent === 'not_coming') return 'out';
   if (w.intent !== 'coming') return null;
+  if (w.mine.length && w.mine.every((m) => m.confirmed) && w.other.every((x) => x.preassigned)) return 'ok';
   return [...w.mine, ...w.other].some((x) => !x.preassigned) ? 'change' : 'ok';
 }
 
@@ -78,6 +82,8 @@ export function TeacherCard({ entryId, date, isSelf, initial, view: initialView,
   const [draft, setDraft] = useState<Draft | null>(null);
   const [offerErr, setOfferErr] = useState<{ what?: string; dates?: string }>({});
   const [pending, start] = useTransition();
+  // Every save on the card says "Saving…", then "Saved. Nothing else to do." (Patrick, 2026-11-01).
+  const { track, toast } = useSaveToast();
   const first = week.firstName;
   const you = isSelf ? 'you' : first;
   const who = isSelf ? 'You' : first;
@@ -86,7 +92,7 @@ export function TeacherCard({ entryId, date, isSelf, initial, view: initialView,
     if (readOnly || pending) return;
     setProblem(null);
     start(async () => {
-      const res = await call();
+      const res = await track(call(), (r) => r.ok);
       if (!res.ok) {
         if (!opts.onFail?.(res)) setProblem({ at: opts.at ?? null, text: res.error });
         setLive(res.error);
@@ -119,7 +125,7 @@ export function TeacherCard({ entryId, date, isSelf, initial, view: initialView,
         if (answer !== 'change') {
           setAnswer('change');
           setUnsure(null);
-          void write({ op: 'intent', intent: 'coming' });
+          void track(write({ op: 'intent', intent: 'coming' }), (r) => r.ok);
         }
       }
     });
@@ -582,6 +588,7 @@ export function TeacherCard({ entryId, date, isSelf, initial, view: initialView,
           {pending ? '' : live}
         </p>
       </div>
+      {toast}
     </section>
   );
 }
