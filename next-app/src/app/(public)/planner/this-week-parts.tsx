@@ -176,9 +176,23 @@ export function Popover({
         {trigger ? trigger(open) : label}
       </button>
       {open ? (
-        <div ref={panelRef} role="region" aria-label={ariaLabel} className={wide ? s.pop : s.popNarrow}>
-          {children(close)}
-        </div>
+        <>
+          {/* A click anywhere off the menu only closes it (Patrick, 2026-10-31): this invisible layer takes that click, so
+              it never lands on a chip or button underneath. */}
+          <div
+            className={s.popBackdrop}
+            data-testid="pop-backdrop"
+            aria-hidden="true"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              close();
+            }}
+            onClick={close}
+          />
+          <div ref={panelRef} role="region" aria-label={ariaLabel} className={wide ? s.pop : s.popNarrow}>
+            {children(close)}
+          </div>
+        </>
       ) : null}
     </div>
   );

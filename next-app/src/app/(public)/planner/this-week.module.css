@@ -173,6 +173,13 @@
   background: var(--warm-white);
   box-shadow: var(--shadow-hover);
 }
+/* Under an open menu, over the page: a click off the menu closes it and goes no further. */
+.popBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 29;
+  background: transparent;
+}
 .popNarrow {
   composes: pop;
   width: min(340px, calc(100vw - 2 * var(--sp-4)));
