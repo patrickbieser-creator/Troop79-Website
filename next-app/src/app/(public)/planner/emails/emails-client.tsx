@@ -459,18 +459,21 @@ function Preview({
   setEditing: (v: boolean) => void;
 }) {
   const active = row.recipients.filter((r) => !left.includes(r.personId));
-  const greet = listOf(active.map((r) => screen.firstNames[r.personId] ?? r.name.split(' ')[0]));
+  // Nobody ticked still reads as the people it would go to: the preview is what each of them would get.
+  const greet = listOf((active.length ? active : row.recipients).map((r) => screen.firstNames[r.personId] ?? r.name.split(' ')[0]));
   const shares = planned.find((p) => p.rows.some((r) => r.id === row.id) && p.rows.length > 1);
   let subject = '';
   let body = '';
   let buttons: string[] = [];
   if (row.kind === 'teacher') {
     const g = screen.groupWords[row.group ?? ''];
-    const t = override != null ? { ...screen.templates.teacher, body: override } : screen.templates.teacher;
+    // A planned teacher's email asks them to confirm (Confirmations C-D1); anyone else is asked whether they can.
+    const base = row.planned ? screen.templates.teacherPlanned : screen.templates.teacher;
+    const t = override != null ? { ...base, body: override } : base;
     const r = renderInviteDigest(t, { name: greet, people: 'you', day }, [{ kind: 'teach', inviteeName: row.name, aboutRecipient: true, code: g?.codes ?? '', topic: g?.title ?? '', minutes: g?.minutes ?? '', url: '', scouts: g?.scouts ?? [], planned: row.planned }]);
     subject = r.subject;
     body = plain(r.md);
-    buttons = ['Choose what you’ll teach'];
+    buttons = [row.planned ? 'Answer yes or no' : 'Choose what you’ll teach'];
   } else {
     const scouts = row.isScout ? (shares?.rows ?? [row]).map((r) => screen.plans[String(r.personId)]).filter(Boolean) : [];
     const t = row.kind === 'reminder' ? screen.templates.reminder : screen.templates.plan;

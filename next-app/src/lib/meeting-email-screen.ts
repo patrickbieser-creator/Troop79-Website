@@ -26,7 +26,17 @@ import { loadThisWeekData } from '@/lib/this-week-db';
 import { planChanged, planSentOf, type PlanSent } from '@/lib/meeting-email-build';
 import { EMAIL_SEND_CAP, unfinishedSends, type EmailKind, type EmailStatus, type QueueEmail, type UnfinishedSend } from '@/lib/meeting-emails';
 import { teacherCardOf, type TeacherCard } from '@/lib/teacher-email-card';
-import { DEFAULT_INVITE_DIGEST, DEFAULT_PLAN_PUBLISHED, DEFAULT_REMINDER, INVITE_DIGEST_KIND, PLAN_PUBLISHED_KIND, REMINDER_KIND, type InviteTemplate } from '@/lib/meeting-invite-email';
+import {
+  DEFAULT_INVITE_DIGEST,
+  DEFAULT_PLAN_PUBLISHED,
+  DEFAULT_REMINDER,
+  DEFAULT_TEACHER_PLANNED,
+  INVITE_DIGEST_KIND,
+  PLAN_PUBLISHED_KIND,
+  REMINDER_KIND,
+  TEACHER_PLANNED_KIND,
+  type InviteTemplate
+} from '@/lib/meeting-invite-email';
 import { templateFor } from '@/lib/meeting-email-prepare';
 
 export interface ScreenRecipient {
@@ -90,7 +100,7 @@ export interface EmailScreen {
   unfinished: UnfinishedSend[];
   /** Each scout's plan now (for the preview). */
   plans: PlanSent;
-  templates: { plan: InviteTemplate; reminder: InviteTemplate; teacher: InviteTemplate };
+  templates: { plan: InviteTemplate; reminder: InviteTemplate; teacher: InviteTemplate; teacherPlanned: InviteTemplate };
   /** First names, by person id (the preview's greeting). */
   firstNames: Record<number, string>;
   /** The groups' words for a teacher preview (lib/teacher-email-card): title, requirements, minutes, scouts. */
@@ -130,9 +140,27 @@ async function names(sb: SupabaseClient, ids: readonly number[]): Promise<Map<nu
 export function askablePeople(g: Pick<TwGroup, 'key' | 'teachers' | 'candidates'>, all: readonly Pick<TwGroup, 'key' | 'teachers'>[], askedIds: readonly number[]): TwTeacher[] {
   const adults = (xs: readonly TwTeacher[]) => xs.filter((t) => t.kind === 'adult');
   const asked = new Set(askedIds);
-  if (adults(g.teachers).length) return adults(g.teachers);
+  // Whoever is planned on the card, an older scout included (Patrick, 2026-11-01: Oliver V on First Class).
+  if (g.teachers.length) return [...g.teachers];
   const busy = new Set(all.filter((o) => o.key !== g.key).flatMap((o) => o.teachers.map((t) => t.personId)));
   return [...new Map(adults(g.candidates).filter((t) => asked.has(t.personId) || !busy.has(t.personId)).map((t) => [t.personId, t])).values()];
+}
+
+/**
+ * A scout teacher's own address (lib/meeting-invites-db: a VERIFIED address of their own, at 13 and up: the rule every
+ * email to a scout follows), by person id; `why` says what's missing when there's none.
+ */
+async function juniorAddresses(sb: SupabaseClient, ids: readonly number[], date: string): Promise<Map<number, MailRecipient & { name: string }> & { why: Map<number, string> }> {
+  const out = Object.assign(new Map<number, MailRecipient & { name: string }>(), { why: new Map<number, string>() });
+  if (!ids.length) return out;
+  const family = await loadScoutFamilies(sb, ids);
+  const lists = await scoutRecipientsMany(sb, family, ids, date);
+  for (const id of ids) {
+    const own = (lists.get(id) ?? []).find((m) => m.isScout && m.recipientId === id);
+    if (own) out.set(id, { ...own, name: '' });
+    else out.why.set(id, family.person.get(id)?.primary_email?.trim() && !family.verifiedEmail.get(id) ? 'their own email isn’t verified yet' : 'no email of their own on file');
+  }
+  return out;
 }
 
 export async function loadEmailScreen(sb: SupabaseClient, meeting: Pick<BoardMeeting, 'entryId' | 'date'>, lists: Pick<PeopleLists, 'pool'>, catalog: AdvancementCatalog): Promise<EmailScreen> {
@@ -146,7 +174,7 @@ export async function loadEmailScreen(sb: SupabaseClient, meeting: Pick<BoardMee
     sb.from('meeting_emails').select('*').eq('calendar_entry_id', meeting.entryId).order('queued_at', { ascending: false }),
     sb.from('meeting_invites').select('topic_key, invitee_person_id, response').eq('calendar_entry_id', meeting.entryId).eq('kind', 'teach'),
     unfinishedSends(sb, meeting.entryId),
-    Promise.all([templateFor(sb, PLAN_PUBLISHED_KIND, DEFAULT_PLAN_PUBLISHED), templateFor(sb, REMINDER_KIND, DEFAULT_REMINDER), templateFor(sb, INVITE_DIGEST_KIND, DEFAULT_INVITE_DIGEST)])
+    Promise.all([templateFor(sb, PLAN_PUBLISHED_KIND, DEFAULT_PLAN_PUBLISHED), templateFor(sb, REMINDER_KIND, DEFAULT_REMINDER), templateFor(sb, INVITE_DIGEST_KIND, DEFAULT_INVITE_DIGEST), templateFor(sb, TEACHER_PLANNED_KIND, DEFAULT_TEACHER_PLANNED)])
   ]);
   const recipients = await scoutRecipientsMany(sb, family, scoutIds, meeting.date);
   const log = (logRows.data ?? []) as LogDb[];
@@ -158,6 +186,8 @@ export async function loadEmailScreen(sb: SupabaseClient, meeting: Pick<BoardMee
   const groups = [...view.groups].sort((a, b) => Number(a.teachers.length > 0) - Number(b.teachers.length > 0));
   const teacherIds = [...new Set([...groups.flatMap((g) => [...g.candidates, ...g.teachers].filter((t) => t.kind === 'adult').map((t) => t.personId)), ...asked.map((a) => a.invitee_person_id), ...view.adultsNoAnswer.map((a) => a.personId)])];
   const adults = await adultRecipients(sb, teacherIds);
+  // A scout planned on a card (a Junior Leader) is emailed at their own address.
+  const juniors = await juniorAddresses(sb, groups.flatMap((g) => g.teachers.filter((t) => t.kind === 'junior').map((t) => t.personId)), meeting.date);
   const allIds = [...scoutIds, ...[...recipients.values()].flat().map((r) => r.recipientId), ...teacherIds, ...log.flatMap((l) => (l.queued_by_person_id ? [l.queued_by_person_id] : []))];
   const who = await names(sb, allIds);
   const nameOf = (id: number) => (who.get(id) ? boardName(who.get(id)!.name) : 'Someone');
@@ -214,7 +244,7 @@ export async function loadEmailScreen(sb: SupabaseClient, meeting: Pick<BoardMee
     const people = askablePeople(g, groups, askedHere);
     for (const id of askedHere) if (!people.some((p) => p.personId === id)) people.push({ personId: id, name: nameOf(id), kind: 'adult', intent: null, note: null, formal: nameOf(id) });
     return people.map((t): ScreenRow => {
-      const to = adults.to.get(t.personId);
+      const to = adults.to.get(t.personId) ?? juniors.get(t.personId);
       const last = newest((l) => l.kind === 'teacher' && l.about.group === g.key && l.recipient_person_id === t.personId);
       const inv = asked.find((a) => a.topic_key === g.key && a.invitee_person_id === t.personId);
       const teaching = g.teachers.some((x) => x.personId === t.personId);
@@ -227,9 +257,9 @@ export async function loadEmailScreen(sb: SupabaseClient, meeting: Pick<BoardMee
         isScout: false,
         about: `${teaching ? 'Planned to teach' : 'Teach'} ${g.title} · ${g.columns.map((c) => c.code).join(', ')}${g.teachers.length ? '' : ' · No teacher yet'}`,
         group: g.key,
-        recipients: to ? [{ personId: to.recipientId, name: to.name, email: to.sentTo, isScout: false }] : [],
+        recipients: to ? [{ personId: to.recipientId, name: to.name || t.name, email: to.sentTo, isScout: t.kind === 'junior' }] : [],
         // Everything on the plan is a proposal (Confirmations): a planned teacher is who gets the email, never blocked.
-        blocked: to ? null : (adults.why.get(t.personId) ?? 'no email on file'),
+        blocked: to ? null : (adults.why.get(t.personId) ?? juniors.why.get(t.personId) ?? 'no email on file'),
         ...statusOf(last),
         answer:
           t.state === 'confirmed'
@@ -293,7 +323,7 @@ export async function loadEmailScreen(sb: SupabaseClient, meeting: Pick<BoardMee
     })),
     unfinished,
     plans,
-    templates: { plan: templates[0], reminder: templates[1], teacher: templates[2] },
+    templates: { plan: templates[0], reminder: templates[1], teacher: templates[2], teacherPlanned: templates[3] },
     firstNames: Object.fromEntries([...who].map(([id, n]) => [id, n.first])),
     groupWords: Object.fromEntries(view.groups.flatMap((g) => {
       const card = teacherCardOf(view, data.input, g.key, catalog);
@@ -354,7 +384,8 @@ export async function buildQueue(sb: SupabaseClient, meeting: Pick<BoardMeeting,
       continue;
     }
     if (r.kind === 'teacher') {
-      const to = adults.to.get(r.recipientId);
+      const planned = view.groups.find((g) => g.key === r.group)?.teachers.some((t) => t.kind === 'junior' && t.personId === r.recipientId);
+      const to = adults.to.get(r.recipientId) ?? (planned ? (await juniorAddresses(sb, [r.recipientId], meeting.date)).get(r.recipientId) : undefined);
       if (!to || !r.group || !groups.has(r.group)) {
         refused.push('a teacher who can’t be asked');
         continue;

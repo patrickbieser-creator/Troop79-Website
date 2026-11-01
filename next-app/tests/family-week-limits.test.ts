@@ -28,3 +28,10 @@ describe('the scout plan limit', () => {
     ]);
   });
 });
+
+describe('theGroup (Patrick, 2026-11-01)', () => {
+  it('ASplitGroupStandsOnItsOwn_AnyOtherTakesThe', async () => {
+    const { theGroup } = await import('../src/lib/family-week-shared');
+    expect([theGroup('Scout Group 2'), theGroup('Tenderfoot group'), theGroup('First Aid merit badge')]).toEqual(['Scout Group 2', 'the Tenderfoot group', 'the First Aid merit badge']);
+  });
+});

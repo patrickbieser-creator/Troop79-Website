@@ -6,6 +6,7 @@
 import type { AdvancementCatalog } from '@/lib/advancement-catalog';
 import { buildFocusPlan, canonicalGroupKey, isGroupKey, type CellMark, type FocusInput, type FocusProgress, type FocusRow, type RowStatus, type ScoutRole } from '@/lib/focus-plan';
 import { splitOffer } from '@/lib/group-split-proposal';
+import { theGroup } from '@/lib/family-week-shared';
 import { askedAtOf, scoutSnapOf, scoutState, teacherSnapOf, teacherState, type PlanState, type ScoutAnswer, type ScoutSnap, type TeacherAnswer, type TeacherSnap } from '@/lib/plan-states';
 import { boardName, joinNames, type BoardPick, type Intent } from '@/lib/meeting-board-shared';
 import { rankOfKey, topicWords } from '@/lib/meeting-board-picklist';
@@ -486,7 +487,7 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
     if (title && !(teaches.get(t.personId) ?? []).includes(title)) teaches.set(t.personId, [...(teaches.get(t.personId) ?? []), title]);
   }
   const noteOf = (r: FocusRow): string => {
-    if (r.status === 'teach' && !r.counted && teaches.has(r.personId)) return `Teaching the ${joinNames(teaches.get(r.personId)!)}`;
+    if (r.status === 'teach' && !r.counted && teaches.has(r.personId)) return `Teaching ${joinNames(teaches.get(r.personId)!.map(theGroup))}`;
     if (r.status === 'teach') return r.counted ? 'Helps teach' : 'Teaching';
     if (r.status === 'request') return `From requests and offers${r.requestKey && extraTitle.get(r.requestKey) ? ` · ${extraTitle.get(r.requestKey)}` : ''}`;
     if (r.status === 'badge') return `${groupBy.get(r.groupKey ?? '')?.name ?? ''} merit badge`;

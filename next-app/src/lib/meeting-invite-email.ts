@@ -147,6 +147,19 @@ Questions? Reply to ${TROOP_REPLY_TO}.`
 /** B10b: the one button under a digest's teach lines. */
 export const TEACH_PAGE_BUTTON = 'Choose what you’ll teach →';
 
+/** Confirmations C-D1: the email to a teacher planned on a card. Everything on the plan is a proposal until they say yes. */
+export const TEACHER_PLANNED_KIND = 'meeting.teacher_planned';
+export const DEFAULT_TEACHER_PLANNED: InviteTemplate = {
+  subject: 'Troop meeting on [day]: can you teach?',
+  body: `Hi [name],
+
+We're planning the troop meeting on [day] and have you down to teach the class below. Nothing is final until you say so: please answer yes or no with the button.
+
+Questions? Reply to ${TROOP_REPLY_TO}.`
+};
+/** Its button: the page where they answer yes or no for each class they're planned on. */
+export const TEACHER_PLANNED_BUTTON = 'Answer yes or no →';
+
 export interface DigestValues {
   name: string;
   /** 'you', 'Anjali S', 'you and Anjali S'. */
@@ -196,7 +209,7 @@ export function renderInviteDigest(t: InviteTemplate, v: DigestValues, items: re
   const grouped = teach.filter((i) => i.scouts);
   if (teach.length) {
     blocks.push(
-      [teach.every((i) => i.planned) ? '**You’re planned to teach:**' : '**Can you teach?**', teach.map(teachLine).join('\n'), ...grouped.map((i) => scoutsBlock(i, grouped.length > 1)), `**[${TEACH_PAGE_BUTTON}](${teach[0].url})**`].join('\n\n')
+      [teach.every((i) => i.planned) ? '**You’re planned to teach:**' : '**Can you teach?**', teach.map(teachLine).join('\n'), ...grouped.map((i) => scoutsBlock(i, grouped.length > 1)), `**[${teach.every((i) => i.planned) ? TEACHER_PLANNED_BUTTON : TEACH_PAGE_BUTTON}](${teach[0].url})**`].join('\n\n')
     );
   }
   const scouts = [...new Set(items.filter((i) => i.kind === 'pick').map((i) => i.inviteeName))];

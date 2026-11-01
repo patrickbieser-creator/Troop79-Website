@@ -258,3 +258,23 @@ describe('a family confirms a scout plan (Confirmations C5)', () => {
   });
 });
 
+describe('a scout planned to teach is emailed at their own address (Patrick, 2026-11-01: Oliver V)', () => {
+  it('AnOlderScoutOnACard_IsTheTeacherRow_NotEveryQualifiedAdult', async () => {
+    asSeeder();
+    const t = await tw();
+    const { data: older } = await sb.from('people').select('id').eq('display_name', 'Oliver Vest').maybeSingle();
+    if (!older) throw new Error('The local mirror has no Oliver Vest');
+    const oliver = (older as { id: number }).id;
+    expect((await t.twSetTeacherAction({ entryId: entry, key: TF, personId: oliver, on: true })).ok).toBe(true);
+    const { loadEmailScreen } = await import('../src/lib/meeting-email-screen');
+    const [catalog, lists] = await Promise.all([fetchAdvancementCatalog(sb as never), fetchPeopleLists(sb)]);
+    const screen = await loadEmailScreen(sb, { entryId: entry, date: '2087-03-02' }, lists, catalog);
+    const rows = screen.teachers.filter((r) => r.group === TF);
+    // His roster address isn't verified in the mirror: the row says so, never falls back to asking every adult.
+    const { data: v } = await sb.from('person_emails').select('verified_at').eq('person_id', oliver).eq('is_primary', true).maybeSingle();
+    const verified = !!(v as { verified_at: string | null } | null)?.verified_at;
+    expect([rows.map((r) => r.personId), rows[0]?.blocked]).toEqual([[oliver], verified ? null : 'their own email isn’t verified yet']);
+    await t.twSetTeacherAction({ entryId: entry, key: TF, personId: oliver, on: false });
+  });
+});
+

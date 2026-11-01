@@ -10,7 +10,7 @@
  *     Yes, merit badge / I'd like to teach / Not this week.
  *   - Every email's footer says the troop can see when it's opened.
  */
-import type { FamilyChoice } from '@/lib/family-week-shared';
+import { theGroup, type FamilyChoice } from '@/lib/family-week-shared';
 import type { FamilyScoutKind, FamilyWeek } from '@/lib/family-week';
 import { fillTokens } from '@/lib/signup-confirmation';
 import type { InviteTemplate } from '@/lib/meeting-invite-email';
@@ -87,10 +87,10 @@ export function scoutBlock(s: ScoutPlanSent): string {
   const head = `**${s.name}**`;
   if (s.kind === 'rank') {
     const teacher = s.teachers.length ? ` with ${s.teachers.join(' and ')}` : '';
-    return [`${head}: the ${s.groupTitle ?? `${s.groupName} group`}${teacher}`, ...s.items.filter((i) => i.on !== false).map((i) => `- ${i.code} · ${i.label}`)].join('\n');
+    return [`${head}: ${s.groupTitle ? theGroup(s.groupTitle) : `the ${s.groupName} group`}${teacher}`, ...s.items.filter((i) => i.on !== false).map((i) => `- ${i.code} · ${i.label}`)].join('\n');
   }
   if (s.kind === 'done') return `${head} has finished everything on offer this week. A leader can pick something good, or you can suggest something.`;
-  const parts = [s.groupName ? `the ${s.groupName} merit badge` : null, s.helpName ? `help teach the ${s.helpTitle ?? `${s.helpName} group`}` : null].filter(Boolean);
+  const parts = [s.groupName ? `the ${s.groupName} merit badge` : null, s.helpName ? `help teach ${s.helpTitle ? theGroup(s.helpTitle) : `the ${s.helpName} group`}` : null].filter(Boolean);
   return `${head}: ${parts.length ? parts.join(', or ') : 'a leader will find something for Sunday'}`;
 }
 

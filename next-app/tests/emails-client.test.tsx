@@ -41,7 +41,7 @@ const data = (scouts: ScreenRow[]): EmailScreen => ({
   log: [],
   unfinished: [],
   plans: {},
-  templates: { plan: T, reminder: T, teacher: T },
+  templates: { plan: T, reminder: T, teacher: T, teacherPlanned: T },
   firstNames: { 50: 'Laura' },
   groupWords: {},
   cap: 150

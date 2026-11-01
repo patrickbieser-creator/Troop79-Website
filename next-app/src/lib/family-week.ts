@@ -25,7 +25,7 @@ import { firstNameOf, type Intent } from '@/lib/meeting-board-shared';
 import type { PickRow } from '@/lib/meeting-board-picklist';
 import { isGroupKey } from '@/lib/focus-plan';
 import { scoutSnapOf } from '@/lib/plan-states';
-import { classMinutes, HELP_KEY, HELP_TEACH_MIN, MB_CLASS_MIN, PLAN_MAX, planLoad, planRefusal, type FamilyChoice } from '@/lib/family-week-shared';
+import { classMinutes, HELP_KEY, HELP_TEACH_MIN, MB_CLASS_MIN, PLAN_MAX, planLoad, planRefusal, theGroup, type FamilyChoice } from '@/lib/family-week-shared';
 import { DEFAULT_TEACH_MINUTES, itemPart } from '@/lib/meeting-board-picklist';
 import { sanitizeRpcError } from '@/lib/meeting-board-supply';
 
@@ -152,7 +152,7 @@ export function alsoFor(kind: FamilyScoutKind, row: TwRow | undefined, tw: ThisW
   if (kind === 'done' && ranks.length) out.push({ key: 'teach', label: 'Help teach', sub: `show younger scouts what ${firstName} already knows`, min: HELP_TEACH_MIN });
   if (kind === 'mb' && help) {
     const who = help.teachers.length ? ` and ${help.teachers.map((t) => t.formal).join(' and ')}` : '';
-    out.push({ key: HELP_KEY, label: 'Help teach', sub: `with the ${help.title}${who}`, min: HELP_TEACH_MIN });
+    out.push({ key: HELP_KEY, label: 'Help teach', sub: `with ${theGroup(help.title)}${who}`, min: HELP_TEACH_MIN });
   }
   // A Merit badge group scout is offered the OTHER badges on Sunday; a younger scout every badge, with the caveat.
   for (const g of tw.groups.filter((x) => x.kind === 'badge' && !(kind === 'mb' && x.key === row?.groupKey))) {

@@ -17,7 +17,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import type { FamilyOp, FamilyOption, FamilyScout, FamilyWeek, FamilyWrite } from '@/lib/family-week';
-import { HELP_KEY, PLAN_MAX, PLAN_MAX_MIN, optionLine, planLoad, withMinutes, type FamilyChoice } from '@/lib/family-week-shared';
+import { HELP_KEY, PLAN_MAX, PLAN_MAX_MIN, optionLine, planLoad, theGroup, withMinutes, type FamilyChoice } from '@/lib/family-week-shared';
 import styles from './family-week.module.css';
 
 type Write = (scoutId: number, op: FamilyOp) => Promise<FamilyWrite>;
@@ -32,7 +32,7 @@ function choicesFor(s: FamilyScout): { k: Answer; label: string; sub: string }[]
     {
       k: 'ok',
       label: 'This plan looks good',
-      sub: s.kind === 'done' ? `A leader will pick something good for ${first}` : `We’ll plan on ${first} in the ${s.kind === 'mb' ? 'Merit badge group' : (s.group?.title ?? '')}`
+      sub: s.kind === 'done' ? `A leader will pick something good for ${first}` : `We’ll plan on ${first} in ${s.kind === 'mb' ? 'the Merit badge group' : theGroup(s.group?.title ?? '')}`
     },
     { k: 'change', label: 'Change my plan', sub: s.kind === 'done' ? 'Request helping teach, a merit badge, or something else' : 'Untick something, or request something else' },
     { k: 'out', label: 'Can’t make it this week', sub: `We’ll take ${first} off Sunday’s plan` }

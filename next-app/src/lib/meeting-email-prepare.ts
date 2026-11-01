@@ -15,7 +15,18 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { renderMarkdownEmail } from '@/lib/email-markdown';
 import { fmtDateFull } from '@/lib/format-date';
-import { DEFAULT_INVITE_DIGEST, DEFAULT_PLAN_PUBLISHED, DEFAULT_REMINDER, INVITE_DIGEST_KIND, PLAN_PUBLISHED_KIND, REMINDER_KIND, renderInviteDigest, type InviteTemplate } from '@/lib/meeting-invite-email';
+import {
+  DEFAULT_INVITE_DIGEST,
+  DEFAULT_PLAN_PUBLISHED,
+  DEFAULT_REMINDER,
+  DEFAULT_TEACHER_PLANNED,
+  INVITE_DIGEST_KIND,
+  PLAN_PUBLISHED_KIND,
+  REMINDER_KIND,
+  TEACHER_PLANNED_KIND,
+  renderInviteDigest,
+  type InviteTemplate
+} from '@/lib/meeting-invite-email';
 import { INVITE_SENDER_NAME, inviteExpiresAt } from '@/lib/meeting-invites';
 import { deleteInvites } from '@/lib/meeting-invites-db';
 import { inviteWords } from '@/lib/meeting-invites-send';
@@ -93,10 +104,12 @@ export async function prepareEmail(sb: SupabaseClient, row: EmailRow, ctx: Prepa
     let html: string;
     let text: string;
     try {
-      const template = await templateFor(sb, INVITE_DIGEST_KIND, DEFAULT_INVITE_DIGEST);
       const url = `${siteUrl()}/i/teach/${r.page.token}`;
       // A group of the night says which group, its requirements and its scouts (lib/teacher-email-card).
       const card = await teacherCardFor(sb, ctx.meeting, key);
+      // A planned teacher is asked to confirm (Confirmations C-D1), in their own wording.
+      const planned = !!card?.teacherIds.includes(who.id);
+      const template = planned ? await templateFor(sb, TEACHER_PLANNED_KIND, DEFAULT_TEACHER_PLANNED) : await templateFor(sb, INVITE_DIGEST_KIND, DEFAULT_INVITE_DIGEST);
       const items = r.invites.map((i) =>
         card
           ? { kind: 'teach' as const, inviteeName: i.inviteeName, aboutRecipient: true, code: card.codes, topic: card.title, minutes: card.minutes, url, scouts: card.scouts, planned: card.teacherIds.includes(who.id) }

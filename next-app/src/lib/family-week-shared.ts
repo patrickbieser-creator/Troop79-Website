@@ -73,3 +73,6 @@ export function teachRefusal(who: string, load: { classes: number; minutes: numb
   if (load.minutes + min > TEACH_MAX_MIN) return `This would make ${load.minutes + min} minutes. Teaching is capped at ${TEACH_MAX_MIN} minutes on a Sunday.`;
   return null;
 }
+
+/** A group in a sentence (Patrick, 2026-11-01): 'the Tenderfoot group', but 'Scout Group 2' stands on its own. */
+export const theGroup = (title: string) => (/ Group \d$/.test(title) ? title : `the ${title}`);

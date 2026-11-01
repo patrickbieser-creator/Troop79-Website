@@ -22,7 +22,7 @@
 import { useId, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/app/_components/button';
-import { classMinutes, TEACH_MAX_CLASSES, TEACH_MAX_MIN, teachRefusal, withMinutes } from '@/lib/family-week-shared';
+import { classMinutes, TEACH_MAX_CLASSES, TEACH_MAX_MIN, teachRefusal, theGroup, withMinutes } from '@/lib/family-week-shared';
 import type { OfferChoices, TeachView, WantedItem } from '@/lib/meeting-board-supply';
 import type { TeacherClass, TeacherWeek } from '@/lib/teacher-week';
 import { fmtDay } from '@/lib/format-date';
@@ -153,8 +153,8 @@ export function TeacherCard({ entryId, date, isSelf, initial, view: initialView,
   const preassigned = [...week.mine, ...week.other].filter((x) => x.preassigned);
   const atLimit = week.load.classes >= TEACH_MAX_CLASSES || week.load.minutes >= TEACH_MAX_MIN;
   const why = (c: { key: string; min: number; adultsOnly?: boolean }) => (week.junior && c.adultsOnly ? 'Adults only' : teachRefusal(who, week.load, c.min));
-  const teaching = week.mine.filter((m) => m.role === 'teach').map((m) => `the ${m.label}`);
-  const helping = week.mine.filter((m) => m.role === 'help').map((m) => `the ${m.label}`);
+  const teaching = week.mine.filter((m) => m.role === 'teach').map((m) => theGroup(m.label));
+  const helping = week.mine.filter((m) => m.role === 'help').map((m) => theGroup(m.label));
   const groupLine = [teaching.length ? `Teaching ${teaching.join(' and ')}` : '', helping.length ? `${teaching.length ? 'helping' : 'Helping'} teach ${helping.join(' and ')}` : '']
     .filter(Boolean)
     .join(' · ');
@@ -174,7 +174,7 @@ export function TeacherCard({ entryId, date, isSelf, initial, view: initialView,
     unsure === 'off'
       ? `Not sure yet. We’ve taken ${you} off Sunday’s plan for now, and that class is open for another adult. Come back as soon as ${isSelf ? 'you know' : 'they know'} more. If a class is still open, you can pick it again.`
       : unsure === 'kept'
-        ? `Not sure yet. ${isSelf ? 'You’re' : `${first} is`} still on the plan for ${preassigned.map((p) => `the ${p.label}`).join(' and ')}.`
+        ? `Not sure yet. ${isSelf ? 'You’re' : `${first} is`} still on the plan for ${preassigned.map((p) => theGroup(p.label)).join(' and ')}.`
         : unsure
           ? 'Marked not sure yet. Answer when you know.'
           : 'Not sure yet? Leave it for now and answer when you know.';
@@ -241,7 +241,7 @@ export function TeacherCard({ entryId, date, isSelf, initial, view: initialView,
     {
       k: 'ok',
       label: 'This plan looks good',
-      sub: week.mine.length ? `We’ll plan on ${you} for ${week.mine.map((m) => `the ${m.label}`).join(' and ')}` : `A leader will put ${you} where help is needed`
+      sub: week.mine.length ? `We’ll plan on ${you} for ${week.mine.map((m) => theGroup(m.label)).join(' and ')}` : `A leader will put ${you} where help is needed`
     },
     { k: 'change', label: 'Change my plan', sub: 'Drop something, take on something scouts asked for, or offer something' },
     { k: 'out', label: 'Can’t make it this week', sub: `We’ll take ${you} off Sunday’s plan` }
@@ -472,7 +472,7 @@ export function TeacherCard({ entryId, date, isSelf, initial, view: initialView,
               <strong>Should we take {you} off Sunday&rsquo;s plan for now?</strong>
             </p>
             <p>
-              {isSelf ? 'You’re' : `${first} is`} down to teach {preassigned.map((p) => `the ${p.label}`).join(' and ')}. If we take {you} off until {isSelf ? 'you know' : 'they know'}, a leader
+              {isSelf ? 'You’re' : `${first} is`} down to teach {preassigned.map((p) => theGroup(p.label)).join(' and ')}. If we take {you} off until {isSelf ? 'you know' : 'they know'}, a leader
               can ask another adult to cover the class. Come back to this page as soon as {isSelf ? 'you know' : 'they know'} more.
             </p>
             <div className={fw.choices}>

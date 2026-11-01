@@ -42,7 +42,7 @@ describe('household email', () => {
     expect([
       scoutBlock({ ...lily, group: 'fr:second-class~2', groupTitle: 'Second Class Group 2', teachers: [] }).split(String.fromCharCode(10))[0],
       scoutBlock({ ...finn, helpTitle: 'Tenderfoot Group 1' })
-    ]).toEqual(['**Lily**: the Second Class Group 2', '**Finn**: the First Aid merit badge, or help teach the Tenderfoot Group 1']);
+    ]).toEqual(['**Lily**: the Second Class Group 2', '**Finn**: the First Aid merit badge, or help teach Tenderfoot Group 1']);
   });
 
   it('Email_UsesTheOverride_WhenEdited', () => {
