@@ -238,6 +238,33 @@ describe('split groups', () => {
     expect(p.groups.find((g) => g.key === TF2)!.members).toHaveLength(20);
   });
 
+  it('Level_PutsAScoutWhoHasDoneMore_InGroup2_EvenWhenGroup1FitsToo', () => {
+    // Group 2 is for scouts with 2+ Tenderfoot requirements done. Both groups' work is open for both scouts.
+    const [fresh, ahead] = [scout('scout'), scout('scout')];
+    const p = plan([fresh, ahead], ['tenderfoot-1', 'tenderfoot-2'], {
+      splits: split(TF, ['tenderfoot-1'], ['tenderfoot-2']),
+      splitLevels: new Map([[TF, [0, 2]]]),
+      done: { [ahead.scoutId]: done(['tenderfoot-4a', 'tenderfoot-4b']) }
+    });
+    expect([rowOf(p, fresh).groupKey, rowOf(p, ahead).groupKey, p.groups.map((g) => g.fromDone)]).toEqual([TF, TF2, [0, 2]]);
+  });
+
+  it('Level_FallsToBestFit_WhenNothingIsOpenAtTheScoutsLevel', () => {
+    const s = scout('scout');
+    const p = plan([s], ['tenderfoot-1', 'tenderfoot-2'], {
+      splits: split(TF, ['tenderfoot-1'], ['tenderfoot-2']),
+      splitLevels: new Map([[TF, [0, 2]]]),
+      done: { [s.scoutId]: done(['tenderfoot-2', 'tenderfoot-3']) }
+    });
+    expect(rowOf(p, s).groupKey).toBe(TF);
+  });
+
+  it('LevelsAllZero_UseFit', () => {
+    const s = scout('scout');
+    const p = plan([s], TF_FOCUS, { splits: split(TF, ['tenderfoot-1'], ['tenderfoot-2', 'tenderfoot-3']), splitLevels: new Map([[TF, [0, 0]]]), done: { [s.scoutId]: done(['tenderfoot-1']) } });
+    expect(rowOf(p, s).groupKey).toBe(TF2);
+  });
+
   it('ThreeSections_AllShow_InOrder', () => {
     const p = plan([], TF_FOCUS, { splits: split(TF, ['tenderfoot-1'], ['tenderfoot-2'], ['tenderfoot-3']) });
     expect(p.groups.map((g) => g.label)).toEqual(['Tenderfoot Group 1', 'Tenderfoot Group 2', 'Tenderfoot Group 3']);

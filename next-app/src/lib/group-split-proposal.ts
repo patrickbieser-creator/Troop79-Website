@@ -4,13 +4,15 @@
  * applies it.
  *
  *   1. Bands. The group's scouts, by how many of the rank's (or badge's) requirements they have done, cut into near-equal
- *      bands at the biggest jumps near each cut: fewer done → Group 1.
- *   2. Columns. Each of tonight's columns goes to every band at least half of whom still need it (D3: a column may be in
- *      several groups); one no band half-needs goes to the band that needs it most, else Group 1.
+ *      bands at the biggest jumps near each cut: fewer done → Group 1. Each band's fewest done is its group's level.
+ *   2. Columns. Each of tonight's columns goes to the one band that most needs it (ties to the lower group). Sharing a
+ *      column (D3) is a planner's choice, not the proposal's.
  *   3. Extras. Group 2 and 3 (and Group 1 only when it got nothing) take the requirements their band needs most that
- *      tonight's focus doesn't cover: meeting-class only, two or more scouts needing it, until about 60 minutes.
- *   4. Preview. The real placement (buildFocusPlan) with the proposed split: who it shows is who placement will put
- *      there, not the bands.
+ *      tonight's focus and the other groups don't cover: meeting-class only, two or more scouts needing it, until
+ *      about 60 minutes. A different focus for the scouts further along, even when tonight's is one requirement
+ *      everyone still needs.
+ *   4. Preview. The real placement (buildFocusPlan) with the proposed split and levels: who it shows is who placement
+ *      will put there, not the bands.
  */
 import { buildReqTree, type ReqNode } from '@/lib/mb-helpers';
 import { mbNodeSatisfied, rankNodeSatisfied, rankTopPlannable } from '@/lib/rank-calculus';
@@ -23,8 +25,6 @@ export const SPLIT_CAP = 8;
 /** Minutes a proposed group is filled to with extras (a meeting's teaching time, as the family page's budget). */
 export const SPLIT_TARGET_MIN = 60;
 const DEFAULT_TEACH_MINUTES = 15;
-/** A column goes to every band at least this share of whom still need it. */
-const SHARE_NEED = 0.5;
 
 export interface ProposedGroup {
   key: string;
@@ -40,6 +40,8 @@ export interface SplitProposal {
   base: string;
   /** Each group's requirement keys, Group 1 first: what meeting_split_group takes. */
   sections: string[][];
+  /** Each group's level (requirements done to start there), Group 1 = 0, rising. */
+  levels: number[];
   /** Requirements to put on the night first (planner-added), because a group was given them. */
   adds: string[];
   groups: ProposedGroup[];
@@ -125,10 +127,11 @@ export function proposeSplit(input: FocusInput, base: string, count: number): Sp
   const sections = bands.map(() => [] as string[]);
   for (const c of group.columns) {
     const share = bands.map((b) => b.filter((r) => r.open.includes(c.key)).length / b.length);
-    let to = share.flatMap((s, i) => (s >= SHARE_NEED ? [i] : []));
-    if (!to.length) to = [Math.max(0, share.indexOf(Math.max(...share)))];
-    for (const i of to) sections[i].push(c.key);
+    sections[Math.max(0, share.indexOf(Math.max(...share)))].push(c.key);
   }
+  // Levels: each band's fewest done, always rising (a band level with the one before starts one higher).
+  const levels: number[] = [];
+  bands.forEach((band, i) => levels.push(i ? Math.max(Math.min(...band.map(doneCount)), levels[i - 1] + 1) : 0));
 
   // 3. Extras: top-level requirements no focus key sits in or under, that a meeting can hold.
   const focus = new Set(input.focusKeys);
@@ -142,7 +145,7 @@ export function proposeSplit(input: FocusInput, base: string, count: number): Sp
     let budget = SPLIT_TARGET_MIN - minutesOf(sections[i]);
     const ranked = candidates
       .map((t) => ({ key: keyOf(t), need: band.filter((r) => needs(r, t)).length }))
-      .filter((x) => x.need >= 2 && !sections[i].includes(x.key))
+      .filter((x) => x.need >= 2 && !adds.has(x.key))
       .sort((a, b) => b.need - a.need || byKey.get(a.key)!.order - byKey.get(b.key)!.order);
     for (const x of ranked) {
       const m = minutesOf([x.key]);
@@ -158,10 +161,13 @@ export function proposeSplit(input: FocusInput, base: string, count: number): Sp
   const splits = new Map(input.splits ?? []);
   splits.set(base, ordered);
   const unmerged = new Set([...(input.mergedBases ?? [])].filter((k) => k !== base));
-  const real = buildFocusPlan({ ...input, focusKeys: [...input.focusKeys, ...adds], splits, mergedBases: unmerged });
+  const splitLevels = new Map(input.splitLevels ?? []);
+  splitLevels.set(base, levels);
+  const real = buildFocusPlan({ ...input, focusKeys: [...input.focusKeys, ...adds], splits, splitLevels, mergedBases: unmerged });
   return {
     base,
     sections: ordered,
+    levels,
     adds: inOrder(adds),
     groups: real.groups
       .filter((g) => g.base === base)

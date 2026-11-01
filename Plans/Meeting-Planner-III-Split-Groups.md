@@ -186,6 +186,12 @@ All answered 2026-10-31 (Decisions above; tech-lead review below).
 7. **A family pick or helper aimed at the base key re-places by section fit;** a hand move names an exact section.
    (Group 1's key is the base key, so a hand move to Group 1 is exact; a pick of Group 1 is re-placed.)
 8. **"Own rank has anything open" and `homeKey`** look across all of the rank's sections.
+10. **Levels (S3, found on real data 2026-10-31):** fit alone couldn't group scouts by progress. This week's Tenderfoot
+    group has one 120-minute focus (4a) all 11 need, so everyone fit Group 1. Each section now stores `from_done` (its
+    level: rank requirements done to start there). A scout goes to the highest section their count reaches when
+    something is open for them there, else by fit; all zero = by fit alone. The proposal sets the levels (each band's
+    fewest done, rising) and gives each column to ONE band (sharing stays a planner's choice), so Group 2 gets a focus
+    of its own. On real data: Tenderfoot Group 1 = 4 scouts on 4a, Group 2 = 7 scouts (4+ done) on 3d, 4b, 4c, 8.
 9. **S2:** the stamp counts `meeting_group_splits` (count + max(updated_at), `updated_at` set on every change incl.
    merge); `updated_by` FK on delete set null + index + a `merge_people` line; the constraint uses
    `topic_key in ('fr:'||rank_id, …||'~2', …||'~3')`, not a regex.

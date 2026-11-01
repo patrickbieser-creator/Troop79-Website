@@ -65,19 +65,31 @@ describe('the proposal', () => {
   });
 
   it('Proposal_Group2Focus_IsWhatBand2NeedsMost_UnderSixtyMinutes', () => {
-    // Group 2 shares 2 (both bands need it), then 5 (15) and 6 (30) fill it to 60; 9 would go over, 3 and 4 are done,
-    // 7 is leadership-only and 8 needs the outdoors.
+    // Tonight's columns stay with the band that needs them most (2 is a tie: Group 1). Group 2 gets a focus of its own:
+    // 5 (15), 6 (30) and 9 (15) fill it to 60; 3 and 4 are done, 7 is leadership-only and 8 needs the outdoors.
     const p = proposeSplit(base, TF, 2)!;
     expect([p.sections, p.adds, p.groups.map((g) => g.minutes)]).toEqual([
-      [['tenderfoot-1', 'tenderfoot-2'], ['tenderfoot-2', 'tenderfoot-5', 'tenderfoot-6']],
-      ['tenderfoot-5', 'tenderfoot-6'],
+      [['tenderfoot-1', 'tenderfoot-2'], ['tenderfoot-5', 'tenderfoot-6', 'tenderfoot-9']],
+      ['tenderfoot-5', 'tenderfoot-6', 'tenderfoot-9'],
       [30, 60]
     ]);
   });
 
+  it('Proposal_Levels_AreEachBandsFewestDone', () => {
+    expect(proposeSplit(base, TF, 2)!.levels).toEqual([0, 3]);
+  });
+
+  it('Proposal_GroupOfOneFocusEveryoneNeeds_StillGivesGroup2ADifferentFocus', () => {
+    // This week's real shape: one 120-minute requirement everyone still needs.
+    const [a, b] = [scouts(6), scouts(5)];
+    const one = input([[a, done()], [b, done('3', '4', '5')]], ['tenderfoot-1']);
+    const p = proposeSplit(one, TF, 2)!;
+    expect([p.sections[1].includes('tenderfoot-1'), p.groups.map((g) => g.members)]).toEqual([false, [ids(a), ids(b)]]);
+  });
+
   it('Proposal_PreviewEqualsPlacement', () => {
     const p = proposeSplit(base, TF, 2)!;
-    const real = buildFocusPlan({ ...base, focusKeys: [...base.focusKeys, ...p.adds], splits: new Map([[TF, p.sections]]) });
+    const real = buildFocusPlan({ ...base, focusKeys: [...base.focusKeys, ...p.adds], splits: new Map([[TF, p.sections]]), splitLevels: new Map([[TF, p.levels]]) });
     expect(p.groups.map((g) => [g.key, g.label, g.members])).toEqual(real.groups.filter((g) => g.base === TF).map((g) => [g.key, g.label, g.members]));
   });
 

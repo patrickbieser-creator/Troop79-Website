@@ -2,11 +2,14 @@
 --
 -- 1. meeting_group_splits: one row per section of a split group. group_key is the base ('fr:tenderfoot', and later
 --    'fr:mb:first-aid', D7), section 1-3, item_keys the requirement keys that section lists (a key may sit in several,
---    D3; a focus key no section lists is Group 1's, decided in lib/focus-plan). merged_at set on every row of a base =
+--    D3; a focus key no section lists is Group 1's, decided in lib/focus-plan), from_done the section's level (how many
+--    of the rank's requirements a scout has done to start there; Group 1 = 0; all 0 = placement by fit alone). merged_at
+--    set on every row of a base =
 --    the soft merge: the engine reads '~2'/'~3' keys as the base, and clearing it brings the split back as it was.
 -- 2. meeting_topics_one_reference: a group topic may be 'fr:<rank>~2' / '~3' (and 'fr:mb:<mb>~2' / '~3').
 -- 3. _meeting_topic_id: resolves a section key (the base id without the suffix); '~1', '~4' and the like are nothing.
--- 4. meeting_split_group(entry, group, sections jsonb, actor): sets the base's sections (2-3 arrays of keys), replacing
+-- 4. meeting_split_group(entry, group, sections jsonb, levels int[], actor): sets the base's sections (2-3 arrays of
+--    keys) and their levels (null = all 0), replacing
 --    any split it had and un-merging it; under the meeting's seed lock. Move / share a column = the same call with the
 --    sections changed. meeting_merge_group / meeting_unmerge_group set or clear merged_at.
 -- 5. meeting_board_stamp: + the splits (count, max(updated_at); every change sets updated_at, merge included).
@@ -22,6 +25,7 @@ create table if not exists public.meeting_group_splits (
   group_key text not null check (group_key ~ '^fr:(mb:)?[a-z0-9][a-z0-9-]{0,80}$'),
   section smallint not null check (section between 1 and 3),
   item_keys text[] not null default '{}' check (cardinality(item_keys) <= 200),
+  from_done smallint not null default 0 check (from_done between 0 and 500),
   merged_at timestamptz,
   updated_by_person_id bigint references public.people(id) on delete set null,
   updated_at timestamptz not null default now(),
@@ -145,7 +149,7 @@ $$;
 -- Set a group's sections: p_sections is a JSON array of 2-3 arrays of requirement keys (Group 1 first). Replaces the
 -- split the group had (merged or not) and leaves it un-merged. A key must name a requirement of that rank or badge;
 -- one that doesn't is refused, not skipped (the screen only offers real ones).
-create or replace function public.meeting_split_group(p_entry bigint, p_group text, p_sections jsonb, p_actor bigint) returns void
+create or replace function public.meeting_split_group(p_entry bigint, p_group text, p_sections jsonb, p_levels integer[], p_actor bigint) returns void
 language plpgsql
 security invoker
 set search_path = public, pg_temp
@@ -163,6 +167,12 @@ begin
   if jsonb_typeof(p_sections) is distinct from 'array' then raise exception 'Malformed request'; end if;
   v_n := jsonb_array_length(p_sections);
   if v_n not between 2 and 3 then raise exception 'A group splits into 2 or 3 groups.'; end if;
+  if p_levels is not null and (
+       cardinality(p_levels) <> v_n or p_levels[1] <> 0
+       or exists (select 1 from generate_subscripts(p_levels, 1) i where p_levels[i] is null or p_levels[i] not between 0 and 500
+                     or (i > 1 and p_levels[i] < p_levels[i - 1]))) then
+    raise exception 'Malformed request';
+  end if;
   v_mb := case when p_group like 'fr:mb:%' then substr(p_group, 7) end;
   v_prefix := coalesce(v_mb, substr(p_group, 4)) || '-';
   for v_i in 0 .. v_n - 1 loop
@@ -180,8 +190,8 @@ begin
     end loop;
   end loop;
   delete from meeting_group_splits where calendar_entry_id = p_entry and group_key = p_group;
-  insert into meeting_group_splits (calendar_entry_id, group_key, section, item_keys, merged_at, updated_by_person_id, updated_at)
-  select p_entry, p_group, (o)::smallint, array(select distinct x from jsonb_array_elements_text(e) x), null, p_actor, now()
+  insert into meeting_group_splits (calendar_entry_id, group_key, section, item_keys, from_done, merged_at, updated_by_person_id, updated_at)
+  select p_entry, p_group, (o)::smallint, array(select distinct x from jsonb_array_elements_text(e) x), coalesce(p_levels[o], 0), null, p_actor, now()
     from jsonb_array_elements(p_sections) with ordinality s(e, o);
 end;
 $$;
@@ -215,11 +225,11 @@ begin
 end;
 $$;
 revoke all on function public._meeting_split_base_ok(text) from public, anon, authenticated;
-revoke all on function public.meeting_split_group(bigint, text, jsonb, bigint) from public, anon, authenticated;
+revoke all on function public.meeting_split_group(bigint, text, jsonb, integer[], bigint) from public, anon, authenticated;
 revoke all on function public.meeting_merge_group(bigint, text, bigint) from public, anon, authenticated;
 revoke all on function public.meeting_unmerge_group(bigint, text, bigint) from public, anon, authenticated;
 grant execute on function public._meeting_split_base_ok(text) to service_role;
-grant execute on function public.meeting_split_group(bigint, text, jsonb, bigint) to service_role;
+grant execute on function public.meeting_split_group(bigint, text, jsonb, integer[], bigint) to service_role;
 grant execute on function public.meeting_merge_group(bigint, text, bigint) to service_role;
 grant execute on function public.meeting_unmerge_group(bigint, text, bigint) to service_role;
 

@@ -122,6 +122,10 @@ export interface FocusInput {
    *  owns a focus key it lists, or one under a key it lists; a focus key no section lists goes to Group 1. A key may
    *  sit in several sections. Fewer than 2 sections, or a merged base, is no split. */
   splits?: ReadonlyMap<string, readonly (readonly string[])[]>;
+  /** Each section's level, by base key: how many of the rank's (or badge's) requirements a scout must have done to
+   *  start there (Group 1 is 0). A scout goes to the highest section their count reaches if they have something open
+   *  there, else to the one they fit best. All zero (or absent) = by fit alone. */
+  splitLevels?: ReadonlyMap<string, readonly number[]>;
   /** Base keys whose split is merged: their '~2'/'~3' keys read as the base (canonicalGroupKey). */
   mergedBases?: ReadonlySet<string>;
 }
@@ -156,6 +160,8 @@ export interface FocusGroup {
   section: number;
   /** How many groups the rank (or badge) is split into; 1 when not split. */
   sections: number;
+  /** The section's level (requirements done to start here); 0 for Group 1 and when not split. */
+  fromDone: number;
   columns: FocusColumn[];
   /** personIds, in roster order. */
   members: number[];
@@ -341,6 +347,7 @@ export function buildFocusPlan(input: FocusInput): FocusPlan {
         base,
         section: i + 1,
         sections: owned.length,
+        fromDone: owned.length > 1 && i > 0 ? Math.max(0, input.splitLevels?.get(base)?.[i] ?? 0) : 0,
         columns: columnsOf(keys),
         members: []
       })
@@ -408,14 +415,22 @@ export function buildFocusPlan(input: FocusInput): FocusPlan {
     const idx = g.kind === 'rank' ? rankIndex.get(g.refId)! : mbForest(g.refId);
     return Object.keys(marksIn(g, p)).reduce((t, k) => t + (idx.get(k) ? nodeMinutes(idx.get(k)!.node) : DEFAULT_TEACH_MINUTES), 0);
   };
+  /** How many of a rank's (or badge's) requirements, at any level, the scout has signed off. */
+  const doneIn = (g: FocusGroup, p: FocusProgress) => [...(g.kind === 'rank' ? p.rankCodes : p.mbCodes)].filter((c) => c.startsWith(`${g.refId}-`)).length;
   /**
-   * The section of a base this scout fits best: the largest share of the section's minutes still open for them; ties
-   * go to the lower group. A share, not a total, so a scout who needs everything lands in Group 1 rather than in
-   * whichever group has the most to teach, and one who has Group 1's work done moves on.
+   * The section of a base for this scout. With levels: the highest section whose level their done count reaches, when
+   * something is open for them there. Otherwise the one they fit best: the largest share of the section's minutes still
+   * open for them, ties to the lower group. A share, not a total, so a scout who needs everything lands in Group 1
+   * rather than in whichever group has the most to teach, and one who has Group 1's work done moves on.
    */
   const bestSection = (base: string, p: FocusProgress): FocusGroup | undefined => {
     const secs = sectionsOf.get(base);
     if (!secs || secs.length < 2) return secs?.[0];
+    if (secs.some((g) => g.fromDone > 0)) {
+      const n = doneIn(secs[0], p);
+      const at = secs.filter((g) => g.fromDone <= n).at(-1) ?? secs[0];
+      if (openIn(at, p).length) return at;
+    }
     const fit = (g: FocusGroup) => {
       const all = openMinutes(g, empty);
       return all ? openMinutes(g, p) / all : 0;

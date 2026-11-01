@@ -195,22 +195,25 @@ const splittable = (group: unknown): string | null => {
 };
 
 /** Split a rank group into 2-3 groups (Plans/Meeting-Planner-III-Split-Groups.md): each section's requirement keys,
- *  Group 1 first. Replaces the split it had; also how a column moves or is shared between groups. */
-export async function twSplitGroupAction(input: { entryId: number; group: string; sections: string[][] }): Promise<TwResult> {
+ *  Group 1 first, and each one's level (requirements done to start there; omitted = by fit). Replaces the split it
+ *  had; also how a column moves or is shared between groups. */
+export async function twSplitGroupAction(input: { entryId: number; group: string; sections: string[][]; levels?: number[] }): Promise<TwResult> {
   const base = splittable(input?.group);
   const sections = input?.sections;
+  const levels = input?.levels ?? null;
   if (
     !base ||
     !Array.isArray(sections) ||
     sections.length < 2 ||
     sections.length > MAX_SECTIONS ||
-    !sections.every((l) => Array.isArray(l) && l.length <= 200 && l.every((k) => typeof k === 'string' && REQUEST_KEY.test(k) && !isGroupKey(k)))
+    !sections.every((l) => Array.isArray(l) && l.length <= 200 && l.every((k) => typeof k === 'string' && REQUEST_KEY.test(k) && !isGroupKey(k))) ||
+    (levels !== null && !(Array.isArray(levels) && levels.length === sections.length && levels.every((n) => Number.isInteger(n) && n >= 0 && n <= 500)))
   ) {
     return fail('Malformed request');
   }
   const s = await gate(input.entryId, 'seed');
   if (!s.ok) return s;
-  const res = await splitGroup(s.sb, s.meeting.entryId, base, sections, s.actorPersonId);
+  const res = await splitGroup(s.sb, s.meeting.entryId, base, sections, levels, s.actorPersonId);
   return res.ok ? done(s) : res;
 }
 

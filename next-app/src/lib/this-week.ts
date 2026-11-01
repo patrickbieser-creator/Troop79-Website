@@ -54,6 +54,7 @@ export interface ThisWeekInput {
   teacherNotes?: readonly { key: string; personId: number; note: string }[];
   /** Split groups (lib/group-splits-db): sections by base key, and the merged bases. */
   splits?: ReadonlyMap<string, readonly (readonly string[])[]>;
+  splitLevels?: ReadonlyMap<string, readonly number[]>;
   mergedBases?: ReadonlySet<string>;
 }
 
@@ -259,6 +260,7 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
     exclusions: input.exclusions,
     helpers: input.helpers,
     splits: input.splits,
+    splitLevels: input.splitLevels,
     mergedBases: input.mergedBases
   });
 

@@ -6,6 +6,7 @@ import { fetchPeopleLists } from '../src/lib/people-lists';
 import { loadThisWeekData } from '../src/lib/this-week-db';
 import { buildThisWeek } from '../src/lib/this-week';
 import { loadBoardStamp } from '../src/lib/meeting-board';
+import { loadGroupSplits } from '../src/lib/group-splits-db';
 
 /**
  * Split groups, S2 (Plans/Meeting-Planner-III-Split-Groups.md): a seed holder splits a rank group into 2-3 groups,
@@ -161,6 +162,23 @@ describe('split, merge, split again', () => {
     asSeeder();
     const r = await (await tw()).twSplitGroupAction({ entryId: entry, group: TF, sections: [['tenderfoot-4a'], ['tenderfoot-4b'], ['tenderfoot-4a']] });
     expect([r.ok, (await rows()).map((x) => x.section), await groupKeys()]).toEqual([true, [1, 2, 3], [TF, 'fr:tenderfoot~2', 'fr:tenderfoot~3']]);
+  });
+
+  it('Levels_AreSavedAndRead', async () => {
+    asSeeder();
+    const r = await (await tw()).twSplitGroupAction({ entryId: entry, group: TF, sections: [['tenderfoot-4a'], ['tenderfoot-4b']], levels: [0, 3] });
+    const { data } = await sb.from('meeting_group_splits').select('from_done').eq('calendar_entry_id', entry).eq('group_key', TF).order('section');
+    expect([r.ok, (data ?? []).map((x) => x.from_done), (await loadGroupSplits(sb, entry)).splitLevels.get(TF)]).toEqual([true, [0, 3], [0, 3]]);
+  });
+
+  it('Levels_ThatFall_OrDontStartAtZero_AreRefused', async () => {
+    asSeeder();
+    const t = await tw();
+    const r = await Promise.all([
+      t.twSplitGroupAction({ entryId: entry, group: TF, sections: [['tenderfoot-4a'], ['tenderfoot-4b'], []], levels: [0, 3, 2] }),
+      t.twSplitGroupAction({ entryId: entry, group: TF, sections: [['tenderfoot-4a'], ['tenderfoot-4b']], levels: [1, 3] })
+    ]);
+    expect(r.map((x) => x.ok)).toEqual([false, false]);
   });
 
   it('Unmerge_OfAGroupNeverSplit_IsRefusedInWords', async () => {
