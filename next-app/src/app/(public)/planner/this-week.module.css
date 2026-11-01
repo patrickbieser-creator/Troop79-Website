@@ -1078,3 +1078,143 @@ button.chip:focus-visible {
 .groupSub + .groupSub {
   display: block;
 }
+
+/* ── Split or merge… (Plans/Meeting-Planner-III-Split-Groups.md, S4) ─────────────────────────────────────────── */
+.splitBtn {
+  composes: quiet;
+}
+.groupHeadEnd {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.offer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-3);
+  margin: 0;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border-light);
+  border-radius: var(--rad-md);
+  background: var(--cream);
+  font: var(--fs-sm) / 1.4 var(--font-ui);
+  color: var(--text-body);
+}
+.splitNote {
+  margin: var(--sp-4) 0 0;
+  font: var(--fs-sm) / 1.5 var(--font-ui);
+  color: var(--text-body);
+}
+.splitGroups {
+  display: grid;
+  gap: var(--sp-3);
+  margin: var(--sp-4) 0;
+  padding: 0;
+  list-style: none;
+}
+.splitGroup {
+  display: grid;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  border: 1px solid var(--border-light);
+  border-radius: var(--rad-md);
+}
+.splitHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--sp-2);
+  font: var(--fs-sm) / 1.3 var(--font-ui);
+}
+.splitLevel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  font: var(--fs-sm) / 1.3 var(--font-ui);
+  color: var(--text-body);
+}
+.splitNames {
+  margin: 0;
+  font: var(--fs-xs) / 1.5 var(--font-ui);
+  color: var(--text-body);
+}
+.splitTable {
+  width: 100%;
+  border-collapse: collapse;
+  font: var(--fs-sm) / 1.35 var(--font-ui);
+}
+.splitTable th,
+.splitTable td {
+  padding: var(--sp-2);
+  border-bottom: 1px solid var(--border-light);
+  text-align: left;
+  vertical-align: top;
+}
+.splitTable td,
+.splitTable thead th + th {
+  width: 48px;
+  padding: 0;
+  text-align: center;
+}
+.splitTable tbody th {
+  font-weight: 400;
+}
+.splitTick {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  cursor: pointer;
+}
+.splitTick input {
+  width: 24px;
+  height: 24px;
+}
+.splitHint {
+  flex-basis: 100%;
+  font: var(--fs-xs) / 1.4 var(--font-ui);
+  color: var(--text-meta);
+}
+.splitTag {
+  display: block;
+  font: var(--fs-xs) / 1.4 var(--font-ui);
+  color: var(--text-meta);
+}
+/* Nothing to teach (problems marked in place): the group and its column. */
+.splitBad {
+  border-color: var(--status-danger);
+  box-shadow: 0 0 0 1px var(--status-danger);
+}
+.splitBadNote {
+  margin: 0;
+  font: 600 var(--fs-xs) / 1.4 var(--font-ui);
+  color: var(--status-danger);
+}
+.splitBadHead {
+  color: var(--status-danger);
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+.drawerCaption {
+  margin-bottom: var(--sp-2);
+  text-align: left;
+  font: 700 var(--fs-sm) / 1.3 var(--font-ui);
+  color: var(--text-head);
+}
+.splitCode {
+  font-weight: 700;
+}

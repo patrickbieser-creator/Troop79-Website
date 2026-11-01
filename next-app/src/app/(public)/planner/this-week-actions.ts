@@ -20,6 +20,9 @@ import { plannerSeeder } from '@/lib/meeting-planner-seeder';
 import { PLANNER_WEEKS } from '@/lib/this-week';
 import { isGroupKey, MAX_SECTIONS, parseGroupKey } from '@/lib/focus-plan';
 import { mergeGroup, splitGroup, unmergeGroup } from '@/lib/group-splits-db';
+import { proposeSplit, splitView, type SplitView } from '@/lib/group-split-proposal';
+import { loadThisWeekData } from '@/lib/this-week-db';
+import { focusInputOf } from '@/lib/this-week';
 
 export type TwResult = { ok: true; stamp: string } | { ok: false; error: string };
 const fail = (error: string): { ok: false; error: string } => ({ ok: false, error });
@@ -234,5 +237,62 @@ export async function twUnmergeGroupAction(input: { entryId: number; group: stri
   const s = await gate(input.entryId, 'seed');
   if (!s.ok) return s;
   const res = await unmergeGroup(s.sb, s.meeting.entryId, base, s.actorPersonId);
+  return res.ok ? done(s) : res;
+}
+
+const validLevels = (levels: unknown, n: number) => Array.isArray(levels) && levels.length === n && levels.every((x) => Number.isInteger(x) && x >= 0 && x <= 500);
+const validSections = (sections: unknown): sections is string[][] =>
+  Array.isArray(sections) &&
+  sections.length >= 2 &&
+  sections.length <= MAX_SECTIONS &&
+  sections.every((l) => Array.isArray(l) && l.length <= 200 && l.every((k) => typeof k === 'string' && REQUEST_KEY.test(k) && !isGroupKey(k)));
+
+/**
+ * The Split or merge… panel's preview (read-only; the seed right, as applying needs it): with `count`, the auto
+ * planner's proposal (S3); with `sections` and `levels`, the planner's own edit. Either way the groups shown are the
+ * real placement.
+ */
+export async function twPreviewSplitAction(
+  input: { entryId: number; group: string } & ({ count: number } | { sections: string[][]; levels: number[] })
+): Promise<{ ok: true; view: SplitView } | { ok: false; error: string }> {
+  const base = splittable(input?.group);
+  if (!base) return fail('Malformed request');
+  const byCount = 'count' in input;
+  if (byCount ? !(input.count === 2 || input.count === 3) : !(validSections(input.sections) && validLevels(input.levels, input.sections.length))) return fail('Malformed request');
+  const s = await gate(input.entryId, 'seed');
+  if (!s.ok) return s;
+  const data = await loadThisWeekData(s.sb, s.meeting, await loadPlannerLists());
+  const fi = focusInputOf(data.input);
+  let view: SplitView | null;
+  if (byCount) {
+    const p = proposeSplit(fi, base, input.count);
+    view = p ? splitView(fi, base, p.sections, p.levels) : null;
+  } else {
+    view = splitView(fi, base, input.sections, input.levels);
+  }
+  return view ? { ok: true, view } : fail(byCount ? 'Not enough scouts in that group to split it that way.' : 'That group isn’t on tonight’s plan.');
+}
+
+/** Apply a split from the panel: put its extra requirements on the night, then set the groups and levels. */
+export async function twApplySplitAction(input: { entryId: number; group: string; sections: string[][]; levels: number[]; adds: string[] }): Promise<TwResult> {
+  const base = splittable(input?.group);
+  const adds = input?.adds;
+  if (
+    !base ||
+    !validSections(input.sections) ||
+    !validLevels(input.levels, input.sections.length) ||
+    !Array.isArray(adds) ||
+    adds.length > 20 ||
+    !adds.every((k) => typeof k === 'string' && REQUEST_KEY.test(k) && !isGroupKey(k) && !k.startsWith('ff:'))
+  ) {
+    return fail('Malformed request');
+  }
+  const s = await gate(input.entryId, 'seed');
+  if (!s.ok) return s;
+  if (adds.length) {
+    const seeded = await seedMany(s.sb, s.meeting.entryId, adds, s.actorPersonId);
+    if (!seeded.ok) return seeded;
+  }
+  const res = await splitGroup(s.sb, s.meeting.entryId, base, input.sections, input.levels, s.actorPersonId);
   return res.ok ? done(s) : res;
 }

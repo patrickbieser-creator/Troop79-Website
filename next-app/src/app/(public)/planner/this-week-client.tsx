@@ -7,12 +7,13 @@
  * the plan on each load; the writes are this-week-actions.ts, and the page refreshes once a write lands.
  */
 import Link from 'next/link';
-import { useState } from 'react';
-import { joinNames, type ThisWeek, type TwRow, type TwSection } from '@/lib/this-week';
+import { useState, useSyncExternalStore } from 'react';
+import { SplitPanel } from './this-week-split';
+import { joinNames, type ThisWeek, type TwGroup, type TwRow, type TwSection } from '@/lib/this-week';
 import { checklistKeeps, withoutCantCome, type ChecklistFilter } from '@/lib/this-week-shown';
 import { usePlanner } from './planner-client';
 import { PlannerPoller } from './planner-poller';
-import { twRemoveRequirementAction, twSetRoleAction, twSetTeacherAction, type RoleInput } from './this-week-actions';
+import { twRemoveRequirementAction, twSetRoleAction, twSetTeacherAction, twUnmergeGroupAction, type RoleInput } from './this-week-actions';
 import { FocusCard, type SetChoice } from './this-week-focus';
 import type { SavedPlan } from '@/lib/saved-plans-shared';
 import { LiveView } from './this-week-live';
@@ -28,8 +29,43 @@ export interface WeekLink {
 }
 
 const toneOf = (sec: Pick<TwSection, 'kind' | 'key'>) =>
-  sec.kind === 'rank' ? s[`tone-${sec.key.slice(3)}`] : sec.kind === 'badge' || sec.key === 'older' ? s['tone-mb'] : s['tone-extra'];
+  // A split group wears its rank's tone ('fr:tenderfoot~2' → tone-tenderfoot).
+  sec.kind === 'rank' ? s[`tone-${sec.key.slice(3).replace(/~[23]$/, '')}`] : sec.kind === 'badge' || sec.key === 'older' ? s['tone-mb'] : s['tone-extra'];
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+// "Not now" on a split offer (D1), remembered on this device per meeting; a private window forgets it on reload.
+const OFFER_EVENT = 'planner-split-offer';
+const offerSub = (cb: () => void) => {
+  window.addEventListener('storage', cb);
+  window.addEventListener(OFFER_EVENT, cb);
+  return () => {
+    window.removeEventListener('storage', cb);
+    window.removeEventListener(OFFER_EVENT, cb);
+  };
+};
+function useHiddenOffers(entryId: number) {
+  const key = `planner.splitOffer.${entryId}`;
+  const [session, setSession] = useState<string[]>([]);
+  const read = () => {
+    try {
+      return localStorage.getItem(key) ?? '';
+    } catch {
+      return '';
+    }
+  };
+  const raw = useSyncExternalStore(offerSub, read, () => '');
+  const hidden = new Set([...raw.split(' ').filter(Boolean), ...session]);
+  const hide = (base: string) => {
+    setSession([...session, base]);
+    try {
+      localStorage.setItem(key, [...hidden, base].join(' '));
+      window.dispatchEvent(new Event(OFFER_EVENT));
+    } catch {
+      // Private window: set aside for this visit only.
+    }
+  };
+  return { hidden, hide };
+}
 
 export function ThisWeekView({
   entryId,
@@ -132,6 +168,10 @@ function PlanView({
   const setRole = (personId: number, role: RoleInput) => w.run(() => twSetRoleAction({ entryId, personId, ...role }));
   const { coverage: c, answers: a } = view;
   const badgeGroups = view.groups.filter((g) => g.kind === 'badge');
+  // Split or merge… (D8): the panel's group, the Undo after a merge, and offers set aside on this device (D1).
+  const [splitting, setSplitting] = useState<TwGroup | null>(null);
+  const [merged, setMerged] = useState<string | null>(null);
+  const offers = useHiddenOffers(entryId);
 
   return (
     <>
@@ -167,6 +207,8 @@ function PlanView({
         ) : null}
       </section>
 
+      {splitting ? <SplitPanel entryId={entryId} group={splitting} onClose={() => setSplitting(null)} onMerged={setMerged} /> : null}
+
       <div className={s.body}>
         <div className={s.col}>
           {view.groups.filter((g) => g.kind === 'rank').map((g) => (
@@ -174,13 +216,44 @@ function PlanView({
               <div className={`${s.groupHead} ${toneOf({ kind: 'rank', key: g.key })}`}>
                 <div>
                   <h2 id={`g-${g.key}`} className={s.groupName}>
-                    {g.name} group
+                    {g.title}
                   </h2>
                   <span className={s.groupSub}>{g.subtitle}</span>
                 </div>
-                <span className={s.groupCount}>{plural(g.members.length, 'scout')}</span>
+                <div className={s.groupHeadEnd}>
+                  <span className={s.groupCount}>{plural(g.members.length, 'scout')}</span>
+                  {canSeed ? (
+                    <button type="button" className={s.splitBtn} onClick={() => setSplitting(g)}>
+                      Split or merge…
+                    </button>
+                  ) : null}
+                </div>
               </div>
               <div className={s.groupBody}>
+                {merged === g.base ? (
+                  <p className={s.offer} role="status">
+                    Merged into one group.
+                    <button
+                      type="button"
+                      className={s.quiet}
+                      disabled={w.busy}
+                      onClick={async () => {
+                        if (await w.run(() => twUnmergeGroupAction({ entryId, group: g.base }))) setMerged(null);
+                      }}
+                    >
+                      Undo
+                    </button>
+                  </p>
+                ) : canSeed && g.offer && !offers.hidden.has(g.base) ? (
+                  <p className={s.offer}>
+                    <button type="button" className={s.quiet} onClick={() => setSplitting(g)}>
+                      Split into 2 groups…
+                    </button>
+                    <button type="button" className={s.quiet} onClick={() => offers.hide(g.base)}>
+                      Not now
+                    </button>
+                  </p>
+                ) : null}
                 <ul className={s.reqs}>
                   {g.columns.map((col) => (
                     <ReqItem key={col.key} col={col} />
@@ -192,7 +265,7 @@ function PlanView({
                   ))}
                   {g.members.length ? null : <span className={s.muted}>Nobody needs these tonight.</span>}
                 </div>
-                <TeacherSlot slotKey={g.key} title={`the ${g.name} group`} teachers={g.teachers} candidates={g.candidates} everyone={view.everyone} onSet={setTeacher} />
+                <TeacherSlot slotKey={g.key} title={`the ${g.title}`} teachers={g.teachers} candidates={g.candidates} everyone={view.everyone} onSet={setTeacher} />
                 <DeclineNotes notes={g.declineNotes} />
               </div>
             </section>
@@ -416,7 +489,7 @@ function Checklist({
       {sections.map((sec) => (
         <div key={sec.key} className={s.section}>
           <div className={`${s.sectionHead} ${toneOf(sec)}`}>
-            <h3 className={s.sectionName}>{sec.kind === 'badge' ? `${sec.name} merit badge` : sec.kind === 'rank' ? `${sec.name} group` : sec.name}</h3>
+            <h3 className={s.sectionName}>{sec.title}</h3>
             <span className={s.sectionSub}>
               {plural(sec.rows.length, 'scout')}
               {sec.gaps ? ` · ${sec.gaps} with nothing assigned` : ''}
@@ -504,7 +577,7 @@ function PlaceMenu({ row, view, onRole, busy }: { row: TwRow; view: ThisWeek; on
           )}
           {groups.map((g) => (
             <button key={g.key} type="button" className={s.menuBtn} disabled={busy} onClick={pick({ role: 'group', key: g.key }, close)}>
-              Move to {g.kind === 'badge' ? `${g.name} merit badge` : `the ${g.name} group`}
+              Move to {g.kind === 'badge' ? g.title : `the ${g.title}`}
             </button>
           ))}
           {row.hand ? (

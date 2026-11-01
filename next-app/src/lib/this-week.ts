@@ -4,7 +4,8 @@
  * loads (lib/this-week-db), this shapes, the client renders. Live at the meeting (Decision 10) reads the same model.
  */
 import type { AdvancementCatalog } from '@/lib/advancement-catalog';
-import { buildFocusPlan, isGroupKey, type CellMark, type FocusProgress, type FocusRow, type RowStatus, type ScoutRole } from '@/lib/focus-plan';
+import { buildFocusPlan, canonicalGroupKey, isGroupKey, type CellMark, type FocusInput, type FocusProgress, type FocusRow, type RowStatus, type ScoutRole } from '@/lib/focus-plan';
+import { splitOffer } from '@/lib/group-split-proposal';
 import { boardName, joinNames, type BoardPick, type Intent } from '@/lib/meeting-board-shared';
 import { rankOfKey, topicWords } from '@/lib/meeting-board-picklist';
 import { assessTeacher, canTeachFocusGroup, teacherName, type TeachContext, type TeacherPerson } from '@/lib/meeting-board-teach';
@@ -95,7 +96,22 @@ export interface TwGroup {
   key: string;
   kind: 'rank' | 'badge';
   refId: string;
+  /** The rank's or badge's own name ('Tenderfoot'): code labels build on it. */
   name: string;
+  /** What the card and checklist call it: 'Tenderfoot group', 'First Aid merit badge', 'Tenderfoot Group 2'. */
+  title: string;
+  /** Split groups (Plans/Meeting-Planner-III-Split-Groups.md): Group 1's key, this group's number, how many, and its
+   *  level (requirements done to start here; 0 for Group 1 and unsplit). */
+  base: string;
+  section: number;
+  sections: number;
+  fromDone: number;
+  /** Group 1 only: the split is merged (Split or merge… offers "Split again as it was"). */
+  merged: boolean;
+  /** Group 1 of an unsplit rank group over the offer size: "Split into 2 groups?" (D1, D2). */
+  offer: { placed: number } | null;
+  /** Group 1 only: the saved split (active or merged), so the panel opens on it and "Split again" restores it. */
+  stored: { sections: string[][]; levels: number[] } | null;
   /** 'Working on Tenderfoot' / 'Merit badge'. */
   subtitle: string;
   /** What's taught, very short ('First Aid', 'Knots & Lashings · Woods Tools'); '' when nothing names it. */
@@ -144,6 +160,8 @@ export interface TwSection {
   key: string;
   kind: 'rank' | 'badge' | 'none';
   name: string;
+  /** The heading: the group's title, or the name for the two loose lists. */
+  title: string;
   columns: { key: string; code: string; label: string }[];
   rows: TwRow[];
   gaps: number;
@@ -231,6 +249,28 @@ export function groupSummary(keys: readonly string[], focus: readonly { title: s
   return [...new Set(skills)].join(' · ');
 }
 
+/** The placement's input from This week's (also what the split preview runs on). */
+export function focusInputOf(input: ThisWeekInput): FocusInput {
+  const { catalog } = input;
+  return {
+    ranks: catalog.ranks,
+    rankReqs: catalog.rankRequirements,
+    meritBadges: catalog.meritBadges,
+    mbReqs: catalog.meritBadgeRequirements,
+    scouts: input.scouts.map((s) => ({ personId: s.personId, scoutId: s.scoutId, name: s.name, currentRank: s.currentRank, intent: s.intent })),
+    progress: input.progress,
+    focusKeys: input.focus.flatMap((f) => f.members),
+    badgeIds: input.nightBadges,
+    roles: input.roles,
+    picks: new Map(input.scouts.map((s) => [s.personId, s.picks.filter((p) => !p.later).map((p) => p.key)])),
+    exclusions: input.exclusions,
+    helpers: input.helpers,
+    splits: input.splits,
+    splitLevels: input.splitLevels,
+    mergedBases: input.mergedBases
+  };
+}
+
 export function buildThisWeek(input: ThisWeekInput): ThisWeek {
   const { catalog } = input;
   const rankName = new Map(catalog.ranks.map((r) => [r.id, r.display_name]));
@@ -244,25 +284,8 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
     intent: s.intent
   });
 
-  const focusKeys = input.focus.flatMap((f) => f.members);
   const picks = new Map(input.scouts.map((s) => [s.personId, s.picks.filter((p) => !p.later).map((p) => p.key)]));
-  const plan = buildFocusPlan({
-    ranks: catalog.ranks,
-    rankReqs: catalog.rankRequirements,
-    meritBadges: catalog.meritBadges,
-    mbReqs: catalog.meritBadgeRequirements,
-    scouts: input.scouts.map((s) => ({ personId: s.personId, scoutId: s.scoutId, name: s.name, currentRank: s.currentRank, intent: s.intent })),
-    progress: input.progress,
-    focusKeys,
-    badgeIds: input.nightBadges,
-    roles: input.roles,
-    picks,
-    exclusions: input.exclusions,
-    helpers: input.helpers,
-    splits: input.splits,
-    splitLevels: input.splitLevels,
-    mergedBases: input.mergedBases
-  });
+  const plan = buildFocusPlan(focusInputOf(input));
 
   // Teachers.
   const notComing = (id: number) => input.intents.get(id) === 'not_coming';
@@ -276,9 +299,10 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
   });
   const pool = input.teachers;
   const poolBy = new Map(pool.map((p) => [p.personId, p]));
+  // A merged split's Group 2/3 teachers count for the one group (canonicalGroupKey), so a merge never loses one.
   const signedUp = (key: string): TwTeacher[] =>
     input.topicTeachers
-      .filter((x) => x.key === key && !notComing(x.personId))
+      .filter((x, i, all) => canonicalGroupKey(x.key, input.mergedBases) === key && !notComing(x.personId) && all.findIndex((y) => y.personId === x.personId && canonicalGroupKey(y.key, input.mergedBases) === key) === i)
       .flatMap((t): TwTeacher[] => {
         const p = poolBy.get(t.personId);
         if (p) return [teacherOf(p)];
@@ -298,6 +322,10 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
       return { personId: r.personId, name: boardName(s.name), kind: 'junior' as const, intent: s.intent, note: `Scout instructor · ${rankName.get(s.currentRank ?? '') ?? ''}`, formal: boardName(s.name) };
     });
 
+  const offerOf = (base: string) => {
+    const o = splitOffer(focusInputOf(input), base);
+    return o ? { placed: o.placed } : null;
+  };
   const groups: TwGroup[] = plan.groups.map((g) => {
     const members = g.members.map((id) => rowsBy.get(id)!).filter((r) => r);
     // Can't make it takes a scout out of the group's work (Emails): their chip stays, greyed, but they need nothing.
@@ -321,7 +349,15 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
       kind: g.kind,
       refId: g.refId,
       name: g.name,
-      subtitle: g.kind === 'rank' ? `Working on ${g.name}` : 'Merit badge',
+      title: g.sections > 1 ? g.label : g.kind === 'rank' ? `${g.name} group` : `${g.name} merit badge`,
+      base: g.base,
+      section: g.section,
+      sections: g.sections,
+      fromDone: g.fromDone,
+      merged: g.section === 1 && !!input.mergedBases?.has(g.base),
+      offer: g.kind === 'rank' && g.sections === 1 && !input.mergedBases?.has(g.base) ? offerOf(g.base) : null,
+      stored: g.section === 1 && input.splits?.get(g.base) ? { sections: input.splits.get(g.base)!.map((x) => [...x]), levels: [...(input.splitLevels?.get(g.base) ?? [])] } : null,
+      subtitle: g.kind === 'rank' ? (g.fromDone ? `Working on ${g.name} · ${g.fromDone}+ requirements done` : `Working on ${g.name}`) : 'Merit badge',
       summary: groupSummary(columns.flatMap((c) => [c.key, ...c.subs.map((x) => x.key)]), input.focus, catalog),
       columns,
       members: members.map((m) => person(scoutBy.get(m.personId)!)),
@@ -412,12 +448,12 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
   const sectionOf = (r: FocusRow) => r.groupKey ?? (r.counted ? (r.homeKey ?? 'none') : 'older');
   const sections: TwSection[] = groups.map((g) => {
     const rows = plan.rows.filter((r) => sectionOf(r) === g.key).map(toRow).sort(byName);
-    return { key: g.key, kind: g.kind, name: g.name, columns: g.columns.flatMap(({ key, code, label, subs }) => (subs.length ? subs : [{ key, code, label }])), rows, gaps: rows.filter((r) => r.gap).length };
+    return { key: g.key, kind: g.kind, name: g.name, title: g.title, columns: g.columns.flatMap(({ key, code, label, subs }) => (subs.length ? subs : [{ key, code, label }])), rows, gaps: rows.filter((r) => r.gap).length };
   });
   const olderRows = plan.rows.filter((r) => sectionOf(r) === 'older').map(toRow).sort(byName);
-  if (olderRows.length) sections.push({ key: 'older', kind: 'none', name: 'Not assigned & available', columns: [], rows: olderRows, gaps: 0 });
+  if (olderRows.length) sections.push({ key: 'older', kind: 'none', name: 'Not assigned & available', title: 'Not assigned & available', columns: [], rows: olderRows, gaps: 0 });
   const loose = plan.rows.filter((r) => sectionOf(r) === 'none').map(toRow).sort(byName);
-  if (loose.length) sections.push({ key: 'none', kind: 'none', name: 'Not in a group', columns: [], rows: loose, gaps: loose.filter((r) => r.gap).length });
+  if (loose.length) sections.push({ key: 'none', kind: 'none', name: 'Not in a group', title: 'Not in a group', columns: [], rows: loose, gaps: loose.filter((r) => r.gap).length });
 
   const older = plan.rows
     .filter((r) => !r.counted)

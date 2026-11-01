@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildFocusPlan, rankGroupKey, type FocusInput, type FocusProgress, type FocusScout } from '../src/lib/focus-plan';
-import { proposeSplit, splitOffer } from '../src/lib/group-split-proposal';
+import { proposeSplit, splitOffer, splitView } from '../src/lib/group-split-proposal';
 import type { CatalogRankRequirement } from '../src/lib/advancement-catalog';
 
 /** The auto planner's split (Plans/Meeting-Planner-III-Split-Groups.md, S3): bands by requirements done, what each
@@ -20,6 +20,7 @@ function req(code: string, teach_minutes?: number, class_codes: string[] = []): 
 }
 const RANK_REQS = [req('1'), req('2'), req('3'), req('4'), req('5'), req('6', 30), req('7', undefined, ['L']), req('8', undefined, ['O']), req('9')];
 
+const SCOUT_REQS = Array.from({ length: 12 }, (_, i): CatalogRankRequirement => ({ ...req(String(i + 1)), rank_id: 'scout', label: `Scout ${i + 1}` }));
 const TF = rankGroupKey('tenderfoot');
 let pid = 500;
 const scouts = (n: number): FocusScout[] => Array.from({ length: n }, () => ({ personId: ++pid, scoutId: `S${pid}`, name: `Scout ${pid}`, currentRank: 'scout', intent: null }));
@@ -104,6 +105,26 @@ describe('the proposal', () => {
     expect(p.groups.map((g) => g.members)).toEqual([ids(a), ids(b), ids(c)]);
   });
 
+  it('Proposal_CutsAtTheBiggestJump_NotAtEqualSizes', () => {
+    // This week's Scout group: two nearly done (10 and 11 of 12) and seven at 0 or 4. Group 2 is the two.
+    const SC = rankGroupKey('scout');
+    const fresh = (n: number) => Array.from({ length: n }, (): FocusScout => ({ personId: ++pid, scoutId: `S${pid}`, name: `Scout ${pid}`, currentRank: null, intent: null }));
+    const sc = (...codes: number[]): FocusProgress => ({ rankCodes: new Set(codes.map((c) => `scout-${c}`)), mbCodes: new Set() });
+    const [none, some, near, nearer] = [fresh(2), fresh(5), fresh(1), fresh(1)];
+    const p = proposeSplit(
+      { ...input([[none, sc()], [some, sc(2, 3, 4, 5)], [near, sc(2, 3, 4, 5, 6, 7, 8, 9, 10, 11)], [nearer, sc(2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)]], ['scout-1']), rankReqs: [...RANK_REQS, ...SCOUT_REQS] },
+      SC,
+      2
+    )!;
+    expect([p.groups.map((g) => g.members.length), p.levels]).toEqual([[7, 2], [0, 10]]);
+  });
+
+  it('Proposal_KeepsAtLeastTwoScoutsInAGroup', () => {
+    const [many, one] = [scouts(8), scouts(1)];
+    const p = proposeSplit(input([[many, done()], [one, done('1', '3', '4', '5', '6', '9')]], ['tenderfoot-1', 'tenderfoot-2']), TF, 2)!;
+    expect(p.levels[1]).toBeLessThan(6);
+  });
+
   it('Proposal_ExtraNeedsTwoScouts', () => {
     const one = scouts(1);
     const p = proposeSplit(input([[scouts(6), done()], [scouts(5), done('1', '3', '4', '5', '6', '9')], [one, done('1', '3', '4')]], ['tenderfoot-1', 'tenderfoot-2']), TF, 2)!;
@@ -112,5 +133,27 @@ describe('the proposal', () => {
 
   it('Proposal_IsNull_WhenTheRankHasNoGroupTonight', () => {
     expect(proposeSplit(input([[scouts(12), done()]], ['second-class-1']), TF, 2)).toBeNull();
+  });
+});
+
+describe('the panel view', () => {
+  const fresh = scouts(6);
+  const ahead = scouts(6);
+  const base = input([[fresh, done()], [ahead, done('1', '3', '4')]], ['tenderfoot-1', 'tenderfoot-2']);
+
+  it('SplitView_OfTheProposal_ShowsTheSameGroups', () => {
+    const p = proposeSplit(base, TF, 2)!;
+    const v = splitView(base, TF, p.sections, p.levels)!;
+    expect([v.groups.map((g) => g.members.map((m) => m.personId)), v.adds, v.groups.map((g) => g.fromDone)]).toEqual([p.groups.map((g) => g.members), p.adds, [0, 3]]);
+  });
+
+  it('SplitView_OffersTonightsColumnsAndEveryListedKey_InCatalogOrder', () => {
+    const v = splitView(base, TF, [['tenderfoot-1'], ['tenderfoot-9']], [0, 0])!;
+    expect([v.options.map((o) => o.key), v.adds]).toEqual([['tenderfoot-1', 'tenderfoot-2', 'tenderfoot-9'], ['tenderfoot-9']]);
+  });
+
+  it('SplitView_LevelsChangeWhoGoesWhere', () => {
+    const v = splitView(base, TF, [['tenderfoot-1', 'tenderfoot-2'], ['tenderfoot-2']], [0, 3])!;
+    expect(v.groups.map((g) => g.members.length)).toEqual([6, 6]);
   });
 });

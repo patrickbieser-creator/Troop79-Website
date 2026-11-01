@@ -3,14 +3,16 @@
  * or 3, for the Split or merge… dialog and the "Split into 2 groups?" offer. Pure; nothing is written until a planner
  * applies it.
  *
- *   1. Bands. The group's scouts, by how many of the rank's (or badge's) requirements they have done, cut into near-equal
- *      bands at the biggest jumps near each cut: fewer done → Group 1. Each band's fewest done is its group's level.
+ *   1. Bands. The group's scouts, by how many of the rank's (or badge's) requirements they have done, cut at the biggest
+ *      jumps (at least 2 scouts a band): fewer done → Group 1. Each band's fewest done is its group's level.
  *   2. Columns. Each of tonight's columns goes to the one band that most needs it (ties to the lower group). Sharing a
  *      column (D3) is a planner's choice, not the proposal's.
  *   3. Extras. Group 2 and 3 (and Group 1 only when it got nothing) take the requirements their band needs most that
- *      tonight's focus and the other groups don't cover: meeting-class only, two or more scouts needing it, until
+ *      tonight's focus and the other groups don't cover: meeting-class only, two or more scouts needing it (one, in a
+ *      group of two), until
  *      about 60 minutes. A different focus for the scouts further along, even when tonight's is one requirement
- *      everyone still needs.
+ *      everyone still needs. A scout in Group 2 or 3 left with nothing open there brings the focus requirements they
+ *      still need into it (shared with Group 1).
  *   4. Preview. The real placement (buildFocusPlan) with the proposed split and levels: who it shows is who placement
  *      will put there, not the bands.
  */
@@ -54,25 +56,36 @@ type Node = ReqNode<Row>;
 
 const nodeMinutes = (n: Node): number => (n.children.length ? n.children.reduce((t, c) => t + nodeMinutes(c), 0) : (n.teach_minutes ?? DEFAULT_TEACH_MINUTES));
 
-/** Where to cut `n` sorted counts into `k` bands: near each equal-size cut, the biggest jump wins (closest on a tie). */
+/** The fewest scouts a proposed group gets. */
+const MIN_BAND = 2;
+
+/**
+ * Where to cut `n` sorted counts into `k` bands: at the biggest jumps in requirements done (Patrick, 2026-10-31: the two
+ * scouts nearly done with Scout are their own group, however few), each band keeping at least MIN_BAND scouts; on a tie
+ * the cut nearer an equal split. With no jump left to cut at, an equal split.
+ */
 function cutPoints(counts: readonly number[], k: number): number[] {
   const n = counts.length;
-  const w = Math.max(1, Math.floor(n / (4 * k)));
+  const min = Math.min(MIN_BAND, Math.floor(n / k));
+  const ideals = Array.from({ length: k - 1 }, (_, i) => Math.round(((i + 1) * n) / k));
+  const near = (pos: number) => Math.min(...ideals.map((x) => Math.abs(x - pos)));
   const cuts: number[] = [];
-  for (let i = 1; i < k; i++) {
-    const ideal = Math.round((i * n) / k);
-    let best = ideal;
-    let jump = -1;
-    for (let d = 0; d <= w; d++) {
-      for (const pos of d ? [ideal - d, ideal + d] : [ideal]) {
-        if (pos <= (cuts.at(-1) ?? 0) || pos >= n) continue;
-        const j = counts[pos] - counts[pos - 1];
-        if (j > jump) [best, jump] = [pos, j];
-      }
-    }
-    cuts.push(best);
+  const fits = (pos: number, set: number[]) => {
+    const all = [0, ...[...set, pos].sort((a, b) => a - b), n];
+    return all.slice(1).every((x, i) => x - all[i] >= min);
+  };
+  const ranked = Array.from({ length: n - 1 }, (_, i) => i + 1)
+    .filter((pos) => counts[pos] > counts[pos - 1])
+    .sort((a, b) => counts[b] - counts[b - 1] - (counts[a] - counts[a - 1]) || near(a) - near(b));
+  for (const pos of ranked) {
+    if (cuts.length === k - 1) break;
+    if (fits(pos, cuts)) cuts.push(pos);
   }
-  return cuts;
+  for (const pos of ideals) {
+    if (cuts.length === k - 1) break;
+    if (!cuts.includes(pos) && fits(pos, cuts)) cuts.push(pos);
+  }
+  return cuts.sort((a, b) => a - b);
 }
 
 export function proposeSplit(input: FocusInput, base: string, count: number): SplitProposal | null {
@@ -145,7 +158,7 @@ export function proposeSplit(input: FocusInput, base: string, count: number): Sp
     let budget = SPLIT_TARGET_MIN - minutesOf(sections[i]);
     const ranked = candidates
       .map((t) => ({ key: keyOf(t), need: band.filter((r) => needs(r, t)).length }))
-      .filter((x) => x.need >= 2 && !adds.has(x.key))
+      .filter((x) => x.need >= Math.min(2, band.length - 1) && x.need > 0 && !adds.has(x.key))
       .sort((a, b) => b.need - a.need || byKey.get(a.key)!.order - byKey.get(b.key)!.order);
     for (const x of ranked) {
       const m = minutesOf([x.key]);
@@ -153,6 +166,15 @@ export function proposeSplit(input: FocusInput, base: string, count: number): Sp
       sections[i].push(x.key);
       adds.add(x.key);
       budget -= m;
+    }
+  });
+  // Nobody in Group 2 or 3 is left with nothing there: a scout whose band's group has nothing open for them brings the
+  // focus requirements they still need with them (shared with Group 1, D3). Two nearly-done scouts finish together.
+  bands.forEach((band, i) => {
+    if (!i) return;
+    for (const r of band) {
+      const has = sections[i].some((k) => r.open.includes(k) || (byKey.has(k) && needs(r, byKey.get(k)!.node)));
+      if (!has) for (const k of r.open) if (!sections[i].includes(k)) sections[i].push(k);
     }
   });
   const ordered = sections.map((s) => inOrder(s));
@@ -185,4 +207,72 @@ export function splitOffer(input: FocusInput, base: string): SplitProposal | nul
   if (!p || p.placed <= SPLIT_CAP) return null;
   const same = p.sections.every((s) => s.length === p.sections[0].length && s.every((k) => p.sections[0].includes(k)));
   return same || p.groups.some((g) => !g.members.length) ? null : p;
+}
+
+/** What the Split or merge… panel shows for one split (proposed or edited): client-safe, names and words included. */
+export interface SplitView {
+  base: string;
+  /** The rank's (or badge's) name: 'Tenderfoot'. */
+  name: string;
+  sections: string[][];
+  levels: number[];
+  /** Requirements the split would put on the night first. */
+  adds: string[];
+  placed: number;
+  /** Every requirement the panel offers a tick for: tonight's columns and anything a group lists, in catalog order. */
+  options: { key: string; code: string; label: string; minutes: number }[];
+  groups: { label: string; fromDone: number; minutes: number; members: { personId: number; name: string }[] }[];
+}
+
+/** The panel's view of a split: what each group teaches and who placement would put there. Null when the group isn't
+ *  on tonight. Sections may list requirements tonight doesn't have yet: those are `adds`. */
+export function splitView(input: FocusInput, base: string, sections: readonly (readonly string[])[], levels: readonly number[]): SplitView | null {
+  const parsed = parseGroupKey(base);
+  if (!parsed || parsed.section !== 1 || sections.length < 2 || sections.length > MAX_SECTIONS) return null;
+  const now = buildFocusPlan({ ...input, mergedBases: new Set([...(input.mergedBases ?? []), base]) });
+  const group = now.groups.find((g) => g.key === base);
+  if (!group) return null;
+  const rows: Row[] =
+    parsed.kind === 'rank' ? input.rankReqs.filter((q) => q.rank_id === parsed.refId && q.code.toLowerCase() !== 'bor') : input.mbReqs.filter((q) => q.mb_id === parsed.refId);
+  const byKey = new Map<string, { node: Node; order: number; line: string[] }>();
+  let order = 0;
+  const walk = (n: Node, line: string[]) => {
+    const key = `${parsed.refId}-${n.code}`;
+    byKey.set(key, { node: n, order: order++, line });
+    for (const c of n.children) walk(c, [...line, key]);
+  };
+  for (const r of buildReqTree(rows) as Node[]) walk(r, []);
+  const minutesOf = (k: string) => (byKey.get(k) ? nodeMinutes(byKey.get(k)!.node) : DEFAULT_TEACH_MINUTES);
+  const listed = sections.flat().filter((k) => byKey.has(k));
+  const focus = new Set(input.focusKeys);
+  // On tonight already: the key, a key above it, or a key under it is in the focus.
+  const onTonight = (k: string) => focus.has(k) || byKey.get(k)!.line.some((a) => focus.has(a)) || [...focus].some((f) => byKey.get(f)?.line.includes(k));
+  const adds = [...new Set(listed.filter((k) => !onTonight(k)))];
+  const clean = sections.map((s) => [...new Set(s.filter((k) => byKey.has(k)))]);
+  const real = buildFocusPlan({
+    ...input,
+    focusKeys: [...input.focusKeys, ...adds],
+    splits: new Map([...(input.splits ?? []), [base, clean]]),
+    splitLevels: new Map([...(input.splitLevels ?? []), [base, [...levels]]]),
+    mergedBases: new Set([...(input.mergedBases ?? [])].filter((k) => k !== base))
+  });
+  const name = new Map(input.scouts.map((s) => [s.personId, s.name]));
+  const keys = [...new Set([...group.columns.map((c) => c.key), ...listed])].sort((a, b) => (byKey.get(a)?.order ?? 0) - (byKey.get(b)?.order ?? 0));
+  return {
+    base,
+    name: group.name,
+    sections: clean,
+    levels: [...levels],
+    adds,
+    placed: now.rows.filter((r) => r.groupKey === base).length,
+    options: keys.map((k) => ({ key: k, code: byKey.get(k)?.node.code ?? k, label: byKey.get(k)?.node.label ?? k, minutes: minutesOf(k) })),
+    groups: real.groups
+      .filter((g) => g.base === base)
+      .map((g) => ({
+        label: g.label,
+        fromDone: g.fromDone,
+        minutes: g.columns.reduce((t, c) => t + minutesOf(c.key), 0),
+        members: g.members.map((id) => ({ personId: id, name: name.get(id) ?? '' }))
+      }))
+  };
 }
