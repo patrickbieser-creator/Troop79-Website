@@ -11,16 +11,22 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { loadMeetingFocus, loadNightBadges } from '@/lib/this-week-db';
+import { loadGroupSplits } from '@/lib/group-splits-db';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 import { boardName } from '@/lib/meeting-board-shared';
 import { SAVED_PLAN_CAP, validCriteria, type SavedCriteria, type SavedPlan } from '@/lib/saved-plans-shared';
 
 export async function captureCriteria(sb: SupabaseClient, entryId: number): Promise<SavedCriteria> {
-  const [focus, badges] = await Promise.all([loadMeetingFocus(sb, entryId), loadNightBadges(sb, entryId)]);
+  const [focus, badges, split] = await Promise.all([loadMeetingFocus(sb, entryId), loadNightBadges(sb, entryId), loadGroupSplits(sb, entryId)]);
+  // Split groups (S6): the ones in force, not merged ones.
+  const splits = [...split.splits]
+    .filter(([group]) => !split.mergedBases.has(group))
+    .map(([group, sections]) => ({ group, sections, levels: split.splitLevels.get(group) ?? sections.map(() => 0) }));
   return {
     focus: focus.focus.map((f) => ({ setId: f.setId, title: f.title, items: [...f.members] })),
     singles: [...focus.seededSingles],
-    badges
+    badges,
+    ...(splits.length ? { splits } : {})
   };
 }
 
@@ -35,7 +41,7 @@ export async function listSavedPlans(sb: SupabaseClient): Promise<SavedPlan[]> {
     id: r.id,
     name: r.name,
     planDate: r.plan_date,
-    criteria: { focus: r.criteria.focus ?? [], singles: r.criteria.singles ?? [], badges: r.criteria.badges ?? [] },
+    criteria: { focus: r.criteria.focus ?? [], singles: r.criteria.singles ?? [], badges: r.criteria.badges ?? [], ...(r.criteria.splits ? { splits: r.criteria.splits } : {}) },
     updatedAt: r.updated_at,
     createdBy: one(r.people) ? boardName(one(r.people)!.display_name) : null
   }));

@@ -1,6 +1,6 @@
 # Meeting Planner III — Split a rank group into Group 1, 2, 3
 
-**Status:** Parked (decisions in 2026-10-31; tech-lead review before S1)
+**Status:** S1–S6 built (v1.260.0 live 2026-10-31 with S1–S4; S5–S6 shipping next). Follow-ups below.
 **Parked:** 2026-10-31
 **Priority:** High
 
@@ -203,3 +203,13 @@ All answered 2026-10-31 (Decisions above; tech-lead review below).
 - Placement precedence stays: hand roles > help-teach > family picks > placement. A split only changes what "placement"
   means within a rank.
 - No prototype yet. If Patrick wants one, the Split dialog and the side-by-side section cards are the screens to draw.
+
+## Follow-ups (2026-10-31, after S5–S6)
+
+- [ ] **D5 confirm count:** Merge doesn't yet say how many families were emailed about Group 2/3 (the Emails screen's
+      "plan changed since sent" already flags them after a merge).
+- [ ] **Suggestions' Teaching chip** puts a teacher on the rank's Group 1 card even when the requirement sits in Group 2
+      (`planner-suggest.ts` teacherTarget uses rankGroupKey); needs the group a focus key sits in.
+- [ ] **Tech-lead #7:** a grep-style test that fails when a group-key read bypasses `canonicalGroupKey`.
+- [ ] Merit badge groups: Split on badge cards (D7 groundwork is in; constraint and RPC already take `fr:mb:` keys).
+

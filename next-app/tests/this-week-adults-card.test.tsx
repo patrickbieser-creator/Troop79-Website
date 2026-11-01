@@ -67,3 +67,10 @@ describe('AdultsCard', () => {
     expect(screen.getByText('Nothing planned yet.')).toBeTruthy();
   });
 });
+
+describe('groupCount (D6)', () => {
+  it('SaysHowManySaidYes_OnlyOnceAnyoneHas', async () => {
+    const { groupCount } = await import('../src/app/(public)/planner/this-week-client');
+    expect([groupCount([{ intent: null }, { intent: 'undecided' }]), groupCount([{ intent: 'coming' }, { intent: null }, { intent: 'coming' }])]).toEqual(['2 scouts', '3 scouts · 2 said yes']);
+  });
+});

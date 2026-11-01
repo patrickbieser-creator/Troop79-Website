@@ -11,6 +11,9 @@ export interface SavedCriteria {
   singles: string[];
   /** The night's merit badges added directly (meeting_night_badges). */
   badges: string[];
+  /** Split groups (S6): each group's requirements and levels, Group 1 first. Absent = none (a plan saved before split
+   *  groups, or with none): loading it merges the meeting's splits. */
+  splits?: { group: string; sections: string[][]; levels: number[] }[];
 }
 
 export interface SavedPlan {
@@ -46,6 +49,21 @@ export function validCriteria(c: SavedCriteria): boolean {
     Array.isArray(c.badges) &&
     c.badges.length <= 100 &&
     c.badges.every((b) => typeof b === 'string' && MB_ID.test(b)) &&
+    (c.splits === undefined ||
+      (Array.isArray(c.splits) &&
+        c.splits.length <= 20 &&
+        c.splits.every(
+          (x) =>
+            typeof x.group === 'string' &&
+            /^fr:(mb:)?[a-z0-9][a-z0-9-]{0,80}$/.test(x.group) &&
+            Array.isArray(x.sections) &&
+            x.sections.length >= 2 &&
+            x.sections.length <= 3 &&
+            x.sections.every((l) => Array.isArray(l) && l.length <= 200 && l.every(okKey)) &&
+            Array.isArray(x.levels) &&
+            x.levels.length === x.sections.length &&
+            x.levels.every((n, i) => Number.isInteger(n) && n >= 0 && n <= 500 && (i === 0 ? n === 0 : n >= x.levels[i - 1]))
+        ))) &&
     JSON.stringify(c).length < SAVED_PLAN_BYTES
   );
 }

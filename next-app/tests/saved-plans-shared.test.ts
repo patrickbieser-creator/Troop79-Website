@@ -81,7 +81,23 @@ describe('removedByLoad', () => {
   });
 });
 
+const BASE = { focus: [{ setId: 1, title: 'First aid', items: ['tenderfoot-4a'] }], singles: [], badges: [] };
+
 describe('validCriteria (qa-lead: write-side limits)', () => {
+  it('Splits_OfARankGroup_WithTwoOrThreeGroupsAndRisingLevels_AreValid', () => {
+    expect(validCriteria({ ...BASE, splits: [{ group: 'fr:tenderfoot', sections: [['tenderfoot-4a'], ['tenderfoot-8']], levels: [0, 4] }] })).toBe(true);
+  });
+
+  it('Splits_ThatAreMalformed_AreRefused', () => {
+    const bad = [
+      { group: 'fr:tenderfoot~2', sections: [['tenderfoot-4a'], ['tenderfoot-8']], levels: [0, 4] },
+      { group: 'fr:tenderfoot', sections: [['tenderfoot-4a']], levels: [0] },
+      { group: 'fr:tenderfoot', sections: [['fr:scout'], ['tenderfoot-8']], levels: [0, 4] },
+      { group: 'fr:tenderfoot', sections: [['tenderfoot-4a'], ['tenderfoot-8']], levels: [0, -1] }
+    ];
+    expect(bad.map((x) => validCriteria({ ...BASE, splits: [x] }))).toEqual([false, false, false, false]);
+  });
+
   const ok = { focus: [{ setId: 1, title: 'First aid', items: ['tenderfoot-4a'] }], singles: ['first-class-1a'], badges: ['first-aid'] };
 
   it('AcceptsWhatThePlannerMakes', () => {

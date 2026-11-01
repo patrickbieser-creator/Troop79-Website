@@ -263,3 +263,38 @@ describe('editing and deleting a plan', () => {
     expect(count).toBe(0);
   });
 });
+
+describe('split groups (S6)', () => {
+  const TF = 'fr:tenderfoot';
+  const splitRows = async (entryId: number) => {
+    const { data } = await sb.from('meeting_group_splits').select('section, item_keys, from_done, merged_at').eq('calendar_entry_id', entryId).eq('group_key', TF).order('section');
+    return (data ?? []) as { section: number; item_keys: string[]; from_done: number; merged_at: string | null }[];
+  };
+
+  it('SavedPlan_RoundTripsSplits', async () => {
+    asSeeder();
+    const t = await tw();
+    expect((await t.twSplitGroupAction({ entryId: from, group: TF, sections: [['tenderfoot-4a'], ['tenderfoot-4b']], levels: [0, 3] })).ok).toBe(true);
+    const r = await save(`${TEST_PREFIX} SP split`);
+    const { data } = await sb.from('meeting_saved_plans').select('criteria').eq('id', r.ok ? r.id : 0).single();
+    expect((data as { criteria: { splits?: unknown } }).criteria.splits).toEqual([{ group: TF, sections: [['tenderfoot-4a'], ['tenderfoot-4b']], levels: [0, 3] }]);
+    expect((await (await actions()).twLoadPlanAction({ entryId: to, planId: r.ok ? r.id : 0 })).ok).toBe(true);
+    expect((await splitRows(to)).map((x) => [x.section, x.item_keys, x.from_done, x.merged_at])).toEqual([
+      [1, ['tenderfoot-4a'], 0, null],
+      [2, ['tenderfoot-4b'], 3, null]
+    ]);
+  });
+
+  it('SavedPlan_WithoutSplits_MergesTheMeetingsSplits', async () => {
+    asSeeder();
+    const { data: p } = await sb
+      .from('meeting_saved_plans')
+      .insert({ name: `${TEST_PREFIX} SP no splits`, plan_date: '2086-03-04', criteria: { focus: [{ setId, title: `${TEST_PREFIX} SP set`, items: ['tenderfoot-4a'] }], singles: [], badges: [] } })
+      .select('id')
+      .single();
+    plans.push((p as { id: number }).id);
+    expect((await (await actions()).twLoadPlanAction({ entryId: to, planId: (p as { id: number }).id })).ok).toBe(true);
+    const rows = await splitRows(to);
+    expect([rows.length, rows.every((x) => x.merged_at != null)]).toEqual([2, true]);
+  });
+});

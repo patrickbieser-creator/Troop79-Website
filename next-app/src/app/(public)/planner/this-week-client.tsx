@@ -32,6 +32,11 @@ const toneOf = (sec: Pick<TwSection, 'kind' | 'key'>) =>
   // A split group wears its rank's tone ('fr:tenderfoot~2' → tone-tenderfoot).
   sec.kind === 'rank' ? s[`tone-${sec.key.slice(3).replace(/~[23]$/, '')}`] : sec.kind === 'badge' || sec.key === 'older' || sec.key === 'teaching' ? s['tone-mb'] : s['tone-extra'];
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+/** A group card's count, and how many said yes once anyone has (D6: information only; most won't answer at first). */
+export const groupCount = (members: readonly { intent: string | null }[]) => {
+  const yes = members.filter((m) => m.intent === 'coming').length;
+  return `${plural(members.length, 'scout')}${yes ? ` · ${yes} said yes` : ''}`;
+};
 
 // "Not now" on a split offer (D1), remembered on this device per meeting; a private window forgets it on reload.
 const OFFER_EVENT = 'planner-split-offer';
@@ -230,7 +235,7 @@ function PlanView({
                     Sp/Mg
                   </button>
                 ) : null}
-                <span className={s.groupCount}>{plural(g.members.length, 'scout')}</span>
+                <span className={s.groupCount}>{groupCount(g.members)}</span>
               </div>
               <div className={s.groupBody}>
                 {merged === g.base ? (
@@ -332,7 +337,7 @@ function PlanView({
                   </h2>
                   <span className={s.groupSub}>{g.columns.map((col) => col.code).join(', ')}</span>
                 </div>
-                <span className={s.groupCount}>{plural(g.members.length, 'scout')}</span>
+                <span className={s.groupCount}>{groupCount(g.members)}</span>
               </div>
               <div className={s.groupBody}>
                 <div className={s.chips}>
