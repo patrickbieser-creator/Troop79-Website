@@ -67,6 +67,12 @@ describe('Live at the meeting', () => {
     expect([within(card).queryByText('Citizenship') !== null, within(card).queryByText(/here$/) === null]).toEqual([true, true]);
   });
 
+  it('Live_SplitGroups_AreNamedAsOnThePlan', () => {
+    const split = { ...view, groups: [{ ...view.groups[0], key: 'fr:tenderfoot~2', title: 'Tenderfoot Group 2', section: 2, sections: 2 }] };
+    render(<LiveView entryId={1} view={split} isToday present={[]} />);
+    expect(screen.getAllByRole('heading', { level: 2 })[0].textContent).toBe('Tenderfoot Group 2');
+  });
+
   it('Live_LeavesOutScoutsWhoCantCome', () => {
     render(<LiveView entryId={1} view={view} isToday present={[]} />);
     expect(screen.queryByRole('button', { name: /Ben B/ })).toBeNull();

@@ -238,7 +238,7 @@ export function TeacherSlot({
       {(close) => (
         <>
           <div className={s.menuHead}>Can teach {title} · pick one or more</div>
-          <ul className={s.popList}>
+          <ul className={`${s.popList} ${s.popListTight}`}>
             {listed.length ? null : <li className={s.popEmpty}>Nobody’s skills match yet. Pick someone else below.</li>}
             {listed.map((c) => {
               const on = teaching.has(c.personId);
@@ -273,7 +273,7 @@ export function TeacherSlot({
             </label>
           </div>
           {term ? (
-            <ul className={s.popList}>
+            <ul className={`${s.popList} ${s.popListTight}`}>
               {others.length ? null : <li className={s.popEmpty}>Nobody by that name.</li>}
               {others.map((c) => (
                 <li key={c.personId}>

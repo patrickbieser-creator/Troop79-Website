@@ -201,6 +201,18 @@
 .popItem:last-child {
   border-bottom: 0;
 }
+/* The teacher pick list: one tight line a person, so more people show at once (Patrick, 2026-10-31). */
+.popListTight {
+  max-height: 420px;
+}
+.popListTight .popItem {
+  padding: 0 var(--sp-2);
+  border-bottom: 0;
+}
+.popListTight .menuBtn {
+  min-height: 30px;
+  padding: 3px var(--sp-2);
+}
 .popItem > .quiet {
   flex: none;
   white-space: nowrap;
@@ -546,12 +558,12 @@ button.covStat:focus-visible {
 }
 
 /* Header tints, by the rank a group works toward (the Merit badge group is stone). */
-.tone-scout { background: var(--rank-scout-bg); color: var(--rank-scout-ink); }
-.tone-tenderfoot { background: var(--rank-tenderfoot-bg); color: var(--rank-tenderfoot-ink); }
-.tone-second-class { background: var(--rank-second-bg); color: var(--rank-second-ink); }
-.tone-first-class { background: var(--rank-first-bg); color: var(--rank-first-ink); }
-.tone-mb { background: var(--rank-mb-group-bg); color: var(--rank-mb-group-ink); }
-.tone-extra { background: var(--status-info-bg); color: var(--navy); }
+.tone-scout { background: var(--rank-scout-bg); color: var(--rank-scout-ink); --tone-bg: var(--rank-scout-bg); --tone-ink: var(--rank-scout-ink); }
+.tone-tenderfoot { background: var(--rank-tenderfoot-bg); color: var(--rank-tenderfoot-ink); --tone-bg: var(--rank-tenderfoot-bg); --tone-ink: var(--rank-tenderfoot-ink); }
+.tone-second-class { background: var(--rank-second-bg); color: var(--rank-second-ink); --tone-bg: var(--rank-second-bg); --tone-ink: var(--rank-second-ink); }
+.tone-first-class { background: var(--rank-first-bg); color: var(--rank-first-ink); --tone-bg: var(--rank-first-bg); --tone-ink: var(--rank-first-ink); }
+.tone-mb { background: var(--rank-mb-group-bg); color: var(--rank-mb-group-ink); --tone-bg: var(--rank-mb-group-bg); --tone-ink: var(--rank-mb-group-ink); }
+.tone-extra { background: var(--status-info-bg); color: var(--navy); --tone-bg: var(--status-info-bg); --tone-ink: var(--navy); }
 
 /* ── name chips ─────────────────────────────────────────────────────────────────────────────────────────────── */
 .chip {
@@ -909,6 +921,13 @@ button.chip:focus-visible {
   border-color: var(--forest);
   background: var(--forest);
   color: var(--warm-white);
+}
+/* Live: the teacher's button wears the card head's colours, the Sp/Mg pattern (a rounded outline in the head's ink). */
+.hereTeacher {
+  border-color: var(--tone-ink);
+  border-radius: var(--rad-pill);
+  background: var(--tone-bg);
+  color: var(--tone-ink);
 }
 .here:focus-visible {
   outline: none;

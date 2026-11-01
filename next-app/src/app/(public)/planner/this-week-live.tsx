@@ -38,7 +38,7 @@ export function LiveView({ entryId, view, isToday, present }: { entryId: number;
   const sessions: Session[] = [
     ...view.groups.map((g) => ({
       key: g.key,
-      title: g.kind === 'badge' ? `${g.name} merit badge` : `${g.name} group`,
+      title: g.title,
       sub: g.columns.map((c) => c.code).join(', '),
       summary: g.summary,
       tone: g.kind === 'badge' ? s['tone-mb'] : s[`tone-${g.refId}`],
@@ -56,10 +56,11 @@ export function LiveView({ entryId, view, isToday, present }: { entryId: number;
       await w.run(() => twSetPresentAction({ entryId, personId: id, present: on }));
     });
   };
-  const button = (x: { personId: number; name: string }) => {
+  // A teacher's button (`tone`: the card head's class) wears the head's colours; a scout's stays plain.
+  const button = (x: { personId: number; name: string }, tone?: string) => {
     const on = here.has(x.personId);
     return (
-      <button key={x.personId} type="button" className={s.here} aria-pressed={on} disabled={!canTap} onClick={() => tap(x.personId)}>
+      <button key={x.personId} type="button" className={tone ? `${s.here} ${s.hereTeacher} ${tone}` : s.here} aria-pressed={on} disabled={!canTap} onClick={() => tap(x.personId)}>
         {on ? `✓ ${x.name}` : x.name}
       </button>
     );
@@ -94,12 +95,12 @@ export function LiveView({ entryId, view, isToday, present }: { entryId: number;
               {x.teachers.length ? (
                 <div className={s.row}>
                   <span className={s.rowLabel}>{x.teachers.length > 1 ? 'Teachers' : 'Teacher'}</span>
-                  {x.teachers.map(button)}
+                  {x.teachers.map((t) => button(t, x.tone))}
                 </div>
               ) : x.key === 'help' ? null : (
                 <span className={s.slotTextEmpty}>No teachers yet</span>
               )}
-              <div className={s.chips}>{x.people.map(button)}</div>
+              <div className={s.chips}>{x.people.map((p) => button(p))}</div>
               {x.people.length ? null : <span className={s.muted}>Nobody yet.</span>}
             </div>
           </section>
@@ -113,7 +114,7 @@ export function LiveView({ entryId, view, isToday, present }: { entryId: number;
               <span className={s.groupCount}>{notPlaced.length}</span>
             </div>
             <div className={s.groupBody}>
-              <div className={s.chips}>{notPlaced.map(button)}</div>
+              <div className={s.chips}>{notPlaced.map((p) => button(p))}</div>
             </div>
           </section>
         ) : null}
