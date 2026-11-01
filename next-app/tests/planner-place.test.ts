@@ -6,7 +6,8 @@ import { placeChoices } from '../src/lib/planner-place';
  * The person drawer's "Tonight" (Patrick, 2026-10-29): for a scout on This week, where they are, the places they can
  * move to, Help teach, and Unassign (back to the planner) when someone put them there by hand. Pure.
  */
-const group = (key: string, name: string, kind: 'rank' | 'badge' = 'rank'): TwGroup => ({ key, name, kind } as unknown as TwGroup);
+const group = (key: string, name: string, kind: 'rank' | 'badge' = 'rank', title = kind === 'badge' ? `${name} merit badge` : `${name} group`): TwGroup =>
+  ({ key, name, kind, title } as unknown as TwGroup);
 const row = (o: Partial<TwRow>): TwRow =>
   ({ personId: 7, name: 'Anjali S', groupKey: null, status: 'nothing', gap: true, hand: false, requestKey: null, note: '', ...o } as unknown as TwRow);
 const week = (r: TwRow, extras: ThisWeek['extras'] = []): ThisWeek =>
@@ -36,6 +37,19 @@ describe('placeChoices', () => {
   it('ClassesFromRequests_AreChoicesToo', () => {
     const c = placeChoices(week(row({}), [{ key: 'mb:cooking-1', title: 'Cooking 1' } as ThisWeek['extras'][number]]), 7)!;
     expect(c.options.some((o) => o.label === 'Cooking 1' && o.role.role === 'request')).toBe(true);
+  });
+
+  it('SplitGroups_ReadScoutGroup1AndScoutGroup2', () => {
+    const r = row({ groupKey: 'fr:scout~2', status: 'rank-work', gap: false });
+    const v = { ...week(r), groups: [group('fr:scout', 'Scout', 'rank', 'Scout Group 1'), group('fr:scout~2', 'Scout', 'rank', 'Scout Group 2')] } as ThisWeek;
+    const c = placeChoices(v, 7)!;
+    expect([c.now, c.options.slice(0, 2).map((o) => [o.label, o.current])]).toEqual([
+      'Scout Group 2',
+      [
+        ['Scout Group 1', false],
+        ['Scout Group 2', true]
+      ]
+    ]);
   });
 
   it('AutoPlaced_HasNothingToUnassign', () => {

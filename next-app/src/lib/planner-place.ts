@@ -29,7 +29,8 @@ export function placeChoices(view: ThisWeek, personId: number): PlaceChoices | n
   if (!row) return null;
   const group = row.groupKey ? view.groups.find((g) => g.key === row.groupKey) : undefined;
   const extra = row.requestKey ? view.extras.find((x) => x.key === row.requestKey) : undefined;
-  const groupWords = (g: { name: string; kind: string }) => (g.kind === 'badge' ? `${g.name} merit badge` : `${g.name} group`);
+  // The group's own title: 'Tenderfoot group', 'First Aid merit badge', or a split's 'Scout Group 2'.
+  const groupWords = (g: { title: string }) => g.title;
   const now =
     row.status === 'teach'
       ? group
