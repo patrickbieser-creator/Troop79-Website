@@ -21,7 +21,7 @@ import { boardName } from '@/lib/meeting-board-shared';
 import { adultRecipients, loadScoutFamilies, scoutRecipientsMany, type MailRecipient } from '@/lib/meeting-invites-db';
 import { loadFamilyWeek } from '@/lib/family-week';
 import type { PeopleLists } from '@/lib/people-lists';
-import { buildThisWeek, type ThisWeek } from '@/lib/this-week';
+import { buildThisWeek, type ThisWeek, type TwGroup, type TwTeacher } from '@/lib/this-week';
 import { loadThisWeekData } from '@/lib/this-week-db';
 import { planChanged, planSentOf, type PlanSent } from '@/lib/meeting-email-build';
 import { EMAIL_SEND_CAP, unfinishedSends, type EmailKind, type EmailStatus, type QueueEmail, type UnfinishedSend } from '@/lib/meeting-emails';
@@ -120,6 +120,19 @@ async function names(sb: SupabaseClient, ids: readonly number[]): Promise<Map<nu
   return new Map(((data ?? []) as { id: number; display_name: string; nickname: string | null; first_name: string | null }[]).map((p) => [p.id, { name: p.display_name, first: p.nickname || p.first_name || p.display_name }]));
 }
 
+/**
+ * Who the Teachers tab lists for a group (Patrick, 2026-10-31): a group that has a teacher, only its teachers; one that
+ * hasn't, the qualified adults who teach nothing else tonight. Anyone already asked about this group stays (their answer
+ * and status show), whatever else holds.
+ */
+export function askablePeople(g: Pick<TwGroup, 'key' | 'teachers' | 'candidates'>, all: readonly Pick<TwGroup, 'key' | 'teachers'>[], askedIds: readonly number[]): TwTeacher[] {
+  const adults = (xs: readonly TwTeacher[]) => xs.filter((t) => t.kind === 'adult');
+  const asked = new Set(askedIds);
+  if (adults(g.teachers).length) return adults(g.teachers);
+  const busy = new Set(all.filter((o) => o.key !== g.key).flatMap((o) => o.teachers.map((t) => t.personId)));
+  return [...new Map(adults(g.candidates).filter((t) => asked.has(t.personId) || !busy.has(t.personId)).map((t) => [t.personId, t])).values()];
+}
+
 export async function loadEmailScreen(sb: SupabaseClient, meeting: Pick<BoardMeeting, 'entryId' | 'date'>, lists: Pick<PeopleLists, 'pool'>, catalog: AdvancementCatalog): Promise<EmailScreen> {
   const data = await loadThisWeekData(sb, meeting, lists, catalog);
   const view = buildThisWeek(data.input);
@@ -193,8 +206,9 @@ export async function loadEmailScreen(sb: SupabaseClient, meeting: Pick<BoardMee
   };
 
   const teachers: ScreenRow[] = groups.flatMap((g) => {
-    const people = [...new Map([...g.candidates.filter((t) => t.kind === 'adult'), ...g.teachers.filter((t) => t.kind === 'adult')].map((t) => [t.personId, t])).values()];
-    for (const a of asked.filter((x) => x.topic_key === g.key)) if (!people.some((p) => p.personId === a.invitee_person_id)) people.push({ personId: a.invitee_person_id, name: nameOf(a.invitee_person_id), kind: 'adult', intent: null, note: null, formal: nameOf(a.invitee_person_id) });
+    const askedHere = asked.filter((x) => x.topic_key === g.key).map((x) => x.invitee_person_id);
+    const people = askablePeople(g, groups, askedHere);
+    for (const id of askedHere) if (!people.some((p) => p.personId === id)) people.push({ personId: id, name: nameOf(id), kind: 'adult', intent: null, note: null, formal: nameOf(id) });
     return people.map((t): ScreenRow => {
       const to = adults.to.get(t.personId);
       const last = newest((l) => l.kind === 'teacher' && l.about.group === g.key && l.recipient_person_id === t.personId);
@@ -207,7 +221,7 @@ export async function loadEmailScreen(sb: SupabaseClient, meeting: Pick<BoardMee
         name: t.name,
         rank: null,
         isScout: false,
-        about: `Teach ${g.name}${g.kind === 'rank' ? ' group' : ''} · ${g.columns.map((c) => c.code).join(', ')}${g.teachers.length ? '' : ' · No teacher yet'}`,
+        about: `Teach ${g.title} · ${g.columns.map((c) => c.code).join(', ')}${g.teachers.length ? '' : ' · No teacher yet'}`,
         group: g.key,
         recipients: to ? [{ personId: to.recipientId, name: to.name, email: to.sentTo, isScout: false }] : [],
         blocked: to ? (teaching ? 'already teaching it' : null) : (adults.why.get(t.personId) ?? 'no email on file'),
@@ -253,7 +267,7 @@ export async function loadEmailScreen(sb: SupabaseClient, meeting: Pick<BoardMee
       at: l.sent_at ?? l.queued_at,
       to: l.sent_to,
       toName: l.recipient_person_id ? nameOf(l.recipient_person_id) : l.sent_to,
-      about: l.kind === 'teacher' ? `Teach ${view.groups.find((g) => g.key === l.about.group)?.name ?? 'a group'}` : (l.about.scouts ?? []).map((id) => nameOf(id)).join(', ') || 'Coming Sunday?',
+      about: l.kind === 'teacher' ? `Teach ${view.groups.find((g) => g.key === l.about.group)?.title ?? 'a group'}` : (l.about.scouts ?? []).map((id) => nameOf(id)).join(', ') || 'Coming Sunday?',
       by: l.queued_by_person_id ? nameOf(l.queued_by_person_id) : '',
       status: l.status,
       failure: l.failure,
