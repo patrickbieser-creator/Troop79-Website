@@ -584,7 +584,7 @@ function Preview({
 
 function SentLog({ log, busy, onSendAgain }: { log: LogLine[]; busy: boolean; onSendAgain: (ids: number[]) => void }) {
   return (
-    <section aria-label="Sent log" className={s.listCard}>
+    <section aria-label="Sent log" className={`${s.listCard} ${s.logCard}`}>
       <div className={s.listHead}>
         <span className={s.hint}>Every email about this meeting: one line per person it went to, updated as it&rsquo;s delivered, opened and answered.</span>
       </div>

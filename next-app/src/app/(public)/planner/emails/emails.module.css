@@ -268,6 +268,11 @@
   min-width: 0;
   overflow: hidden;
 }
+/* The Sent log stands alone in .main's column: no flex basis there, or 700px becomes a height and overflow: hidden
+   cut the log off after ~18 lines (Patrick, 2026-11-01). */
+.logCard {
+  flex: none;
+}
 .listHead {
   display: flex;
   flex-wrap: wrap;
