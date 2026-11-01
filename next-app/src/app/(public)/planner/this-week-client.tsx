@@ -413,25 +413,42 @@ function PlanView({
 }
 
 /** A group's or class's name where space is tight: a badge without "merit badge" ('First Aid'). */
-const shortTitle = (slot: { title: string; kind?: string; name?: string }) => (slot.kind === 'badge' && slot.name ? slot.name : slot.title);
+/** A group's or class's name where space is tight: a badge as 'First Aid MB' (Patrick, 2026-10-31). */
+const shortTitle = (slot: { title: string; kind?: string; name?: string }) => (slot.kind === 'badge' && slot.name ? `${slot.name} MB` : slot.title);
 
 /**
  * Adults teaching tonight (Patrick, 2026-10-31): each adult once, their name as a chip like the scouts' (an outline of
- * its own, so it never reads as a rank) and every group or class they teach, by short name ('Scout Group 2, First Aid').
- * Junior Leaders are scouts: they're in the checklist.
+ * its own, so it never reads as a rank) and every group or class they teach, by short name, in the order the cards
+ * stand on the screen. Then each card nobody teaches yet: a "No teachers yet" chip in that card's colours, which takes
+ * you to the card. Junior Leaders are scouts: they're in the checklist.
  */
 export function AdultsCard({ view }: { view: Pick<ThisWeek, 'groups' | 'extras'> }) {
   const p = usePlanner();
-  const by = new Map<number, { name: string; slots: string[] }>();
-  for (const slot of [...view.groups, ...view.extras]) {
+  const slots = [
+    ...view.groups.map((g) => ({ key: g.key, id: `g-${g.key}`, title: shortTitle(g), tone: toneOf({ kind: g.kind, key: g.key }), teachers: g.teachers })),
+    ...view.extras.map((x) => ({ key: x.key, id: `x-${x.key}`, title: x.title, tone: toneOf({ kind: 'none', key: x.key }), teachers: x.teachers }))
+  ];
+  const by = new Map<number, { name: string; first: number; slots: string[] }>();
+  slots.forEach((slot, i) => {
     for (const t of slot.teachers) {
       if (t.kind !== 'adult') continue;
-      const a = by.get(t.personId) ?? { name: t.name, slots: [] };
-      a.slots.push(shortTitle(slot));
+      const a = by.get(t.personId) ?? { name: t.name, first: i, slots: [] };
+      a.slots.push(slot.title);
       by.set(t.personId, a);
     }
-  }
-  const adults = [...by.entries()].sort((x, y) => x[1].name.localeCompare(y[1].name));
+  });
+  const adults = [...by.entries()].sort((x, y) => x[1].first - y[1].first || x[1].name.localeCompare(y[1].name));
+  const open = slots.filter((x) => !x.teachers.length);
+  const chip = (id: number, name: string) =>
+    p?.canEdit ? (
+      <button type="button" className={`${s.chip} ${s.adultChip}`} aria-label={`${name}, adult`} onClick={() => p.openPerson(id)}>
+        {name}
+      </button>
+    ) : (
+      <span className={`${s.chip} ${s.adultChip}`} aria-label={`${name}, adult`}>
+        {name}
+      </span>
+    );
   return (
     <section className={s.gridCard} aria-labelledby="adults-h">
       <div className={s.toolbar}>
@@ -439,25 +456,30 @@ export function AdultsCard({ view }: { view: Pick<ThisWeek, 'groups' | 'extras'>
           Adults <span className={s.muted}>{adults.length}</span>
         </h2>
       </div>
-      {adults.length ? (
+      {adults.length || open.length ? (
         <ul className={s.adultList}>
           {adults.map(([id, a]) => (
             <li key={id} className={s.adultRow}>
-              {p?.canEdit ? (
-                <button type="button" className={`${s.chip} ${s.adultChip}`} aria-label={`${a.name}, adult`} onClick={() => p.openPerson(id)}>
-                  {a.name}
-                </button>
-              ) : (
-                <span className={`${s.chip} ${s.adultChip}`} aria-label={`${a.name}, adult`}>
-                  {a.name}
-                </span>
-              )}
+              {chip(id, a.name)}
               <span className={s.adultTeaches}>{a.slots.join(', ')}</span>
+            </li>
+          ))}
+          {open.map((x) => (
+            <li key={x.key} className={s.adultRow}>
+              <button
+                type="button"
+                className={`${s.chip} ${s.noTeacherChip} ${x.tone}`}
+                aria-label={`No teachers yet for ${x.title}: go to its card`}
+                onClick={() => document.getElementById(x.id)?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+              >
+                No teachers yet
+              </button>
+              <span className={s.adultTeaches}>{x.title}</span>
             </li>
           ))}
         </ul>
       ) : (
-        <p className={s.muted}>No adults teaching yet. Pick teachers on the group cards.</p>
+        <p className={s.muted}>Nothing planned yet.</p>
       )}
     </section>
   );

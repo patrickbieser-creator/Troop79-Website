@@ -1261,6 +1261,13 @@ button.chip:focus-visible {
   color: var(--navy);
   border-color: var(--navy);
 }
+/* A card nobody teaches yet: its own head's colours (the tone class sets --tone-bg / --tone-ink). */
+.noTeacherChip {
+  border-color: var(--tone-ink);
+  background: var(--tone-bg);
+  color: var(--tone-ink);
+  cursor: pointer;
+}
 .adultList {
   display: grid;
   gap: var(--sp-2);

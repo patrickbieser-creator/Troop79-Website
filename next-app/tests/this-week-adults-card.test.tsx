@@ -19,13 +19,14 @@ const view = (groups: { key: string; title: string; teachers: TwTeacher[]; kind?
 afterEach(cleanup);
 
 describe('AdultsCard', () => {
-  it('EachAdult_Once_WithEverythingTheyTeach', () => {
+  it('Adults_InTheOrderOfTheCards_WithEverythingTheyTeach', () => {
     render(
       <AdultsCard
         view={view(
           [
             { key: 'fr:scout', title: 'Scout Group 1', teachers: [t(1, 'Patrick B')] },
-            { key: 'fr:scout~2', title: 'Scout Group 2', teachers: [t(1, 'Patrick B'), t(2, 'Dan B')] },
+            { key: 'fr:scout~2', title: 'Scout Group 2', teachers: [t(2, 'Dan B'), t(1, 'Patrick B')] },
+            { key: 'fr:mb:citizenship-community', title: 'Citizenship in the Community merit badge', kind: 'badge', name: 'Citizenship in the Community', teachers: [t(3, 'Amy Z')] },
             { key: 'fr:mb:first-aid', title: 'First Aid merit badge', kind: 'badge', name: 'First Aid', teachers: [t(2, 'Dan B')] }
           ],
           [{ key: 'ff:1', title: 'Knife safety', teachers: [t(2, 'Dan B'), t(9, 'Lee P', 'junior')] }]
@@ -33,7 +34,26 @@ describe('AdultsCard', () => {
       />
     );
     const rows = screen.getAllByRole('listitem').map((li) => li.textContent);
-    expect(rows).toEqual(['Dan BScout Group 2, First Aid, Knife safety', 'Patrick BScout Group 1, Scout Group 2']);
+    expect(rows).toEqual(['Patrick BScout Group 1, Scout Group 2', 'Dan BScout Group 2, First Aid MB, Knife safety', 'Amy ZCitizenship in the Community MB']);
+  });
+
+  it('ACardWithNoTeacher_IsListedLast_AsNoTeachersYet', () => {
+    render(
+      <AdultsCard
+        view={view(
+          [
+            { key: 'fr:scout', title: 'Scout Group 1', teachers: [] },
+            { key: 'fr:tenderfoot', title: 'Tenderfoot group', teachers: [t(1, 'Patrick B')] }
+          ],
+          [{ key: 'ff:1', title: 'Knife safety', teachers: [] }]
+        )}
+      />
+    );
+    const rows = screen.getAllByRole('listitem').map((li) => li.textContent);
+    expect([rows, screen.getByRole('button', { name: 'No teachers yet for Scout Group 1: go to its card' }) != null]).toEqual([
+      ['Patrick BTenderfoot group', 'No teachers yetScout Group 1', 'No teachers yetKnife safety'],
+      true
+    ]);
   });
 
   it('ClickingAnAdult_OpensTheirPanel', () => {
@@ -42,8 +62,8 @@ describe('AdultsCard', () => {
     expect(m.open).toHaveBeenCalledWith(4);
   });
 
-  it('NobodyYet_SaysSo', () => {
-    render(<AdultsCard view={view([{ key: 'fr:scout', title: 'Scout group', teachers: [] }])} />);
-    expect(screen.getByText('No adults teaching yet. Pick teachers on the group cards.')).toBeTruthy();
+  it('NothingPlanned_SaysSo', () => {
+    render(<AdultsCard view={view([])} />);
+    expect(screen.getByText('Nothing planned yet.')).toBeTruthy();
   });
 });
