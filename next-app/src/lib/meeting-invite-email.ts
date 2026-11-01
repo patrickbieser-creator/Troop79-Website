@@ -124,6 +124,9 @@ export function renderReminder(t: InviteTemplate, v: ReminderValues): { subject:
   return { subject: fillTokens(t.subject, vals).replace(/\s+/g, ' ').trim(), md };
 }
 
+/** Where a teacher email's questions go (Patrick, 2026-10-31). */
+export const TROOP_REPLY_TO = 'bsatroop79bg@gmail.com';
+
 export const INVITE_DIGEST_KIND = 'meeting.invite_digest';
 
 /**
@@ -138,7 +141,7 @@ export const DEFAULT_INVITE_DIGEST: InviteTemplate = {
 
 We're planning the troop meeting on [day] and would like to ask [people] about the classes below. Answer with the links under them. Yes on a class to work on makes it the first pick and marks them coming. You don't need to sign in.
 
-Questions? Reply to a leader, not to this email.`
+Questions? Reply to ${TROOP_REPLY_TO}.`
 };
 
 /** B10b: the one button under a digest's teach lines. */
@@ -164,6 +167,9 @@ export interface DigestItem {
   url: string;
   /** B10a, a teach ask: the scouts it would help (scoutsHelped), snapshotted at send time. None = "no scouts yet". */
   helped?: ScoutsHelped;
+  /** A group of the night (Patrick, 2026-10-31): the scouts placed in it, full names (a private email). Present = the
+   *  line reads "**Scout Group 2**: 4a, 4b, …" (`topic` the group, `code` its requirements) and "Scouts:" follows. */
+  scouts?: string[];
 }
 
 /**
@@ -177,10 +183,20 @@ export function renderInviteDigest(t: InviteTemplate, v: DigestValues, items: re
   const line = (i: DigestItem, label: string) => `- **${i.code}** ${i.topic}${i.minutes ? ` (${i.minutes})` : ''}: **[${label}](${i.url})**`;
   // B10b: teach lines carry no link of their own; ONE button opens the page where every class is answered.
   const teachLine = (i: DigestItem) =>
-    `- **${shortCode(i.code)}** ${i.topic}${i.minutes ? ` (${i.minutes})` : ''}: ${scoutsHelpedText(i.helped ?? { count: 0, names: [], more: 0 })}`;
+    i.scouts
+      ? `- **${i.topic}**: ${i.code}${i.minutes ? ` (${i.minutes})` : ''}`
+      : `- **${shortCode(i.code)}** ${i.topic}${i.minutes ? ` (${i.minutes})` : ''}: ${scoutsHelpedText(i.helped ?? { count: 0, names: [], more: 0 })}`;
+  // A group's scouts, after the lines: one full name a line ("Scouts in Scout Group 2" when more than one group).
+  const scoutsBlock = (i: DigestItem, many: boolean) =>
+    `**${many ? `Scouts in ${i.topic}` : 'Scouts'}:**\n\n${i.scouts!.length ? i.scouts!.map((n) => `- ${n}`).join('\n') : 'None placed in this group yet.'}`;
   const blocks: string[] = [];
   const teach = items.filter((i) => i.kind === 'teach');
-  if (teach.length) blocks.push(`**Can you teach?**\n\n${teach.map(teachLine).join('\n')}\n\n**[${TEACH_PAGE_BUTTON}](${teach[0].url})**`);
+  const grouped = teach.filter((i) => i.scouts);
+  if (teach.length) {
+    blocks.push(
+      ['**Can you teach?**', teach.map(teachLine).join('\n'), ...grouped.map((i) => scoutsBlock(i, grouped.length > 1)), `**[${TEACH_PAGE_BUTTON}](${teach[0].url})**`].join('\n\n')
+    );
+  }
   const scouts = [...new Set(items.filter((i) => i.kind === 'pick').map((i) => i.inviteeName))];
   for (const who of scouts) {
     const mine = items.filter((i) => i.kind === 'pick' && i.inviteeName === who);

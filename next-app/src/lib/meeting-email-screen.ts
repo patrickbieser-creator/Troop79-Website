@@ -25,6 +25,7 @@ import { buildThisWeek, type ThisWeek } from '@/lib/this-week';
 import { loadThisWeekData } from '@/lib/this-week-db';
 import { planChanged, planSentOf, type PlanSent } from '@/lib/meeting-email-build';
 import { EMAIL_SEND_CAP, unfinishedSends, type EmailKind, type EmailStatus, type QueueEmail, type UnfinishedSend } from '@/lib/meeting-emails';
+import { teacherCardOf, type TeacherCard } from '@/lib/teacher-email-card';
 import { DEFAULT_INVITE_DIGEST, DEFAULT_PLAN_PUBLISHED, DEFAULT_REMINDER, INVITE_DIGEST_KIND, PLAN_PUBLISHED_KIND, REMINDER_KIND, type InviteTemplate } from '@/lib/meeting-invite-email';
 import { templateFor } from '@/lib/meeting-email-prepare';
 
@@ -90,8 +91,8 @@ export interface EmailScreen {
   templates: { plan: InviteTemplate; reminder: InviteTemplate; teacher: InviteTemplate };
   /** First names, by person id (the preview's greeting). */
   firstNames: Record<number, string>;
-  /** The groups' words for a teacher preview: name and requirement codes. */
-  groupWords: Record<string, { name: string; codes: string }>;
+  /** The groups' words for a teacher preview (lib/teacher-email-card): title, requirements, minutes, scouts. */
+  groupWords: Record<string, TeacherCard>;
   cap: number;
 }
 
@@ -265,7 +266,10 @@ export async function loadEmailScreen(sb: SupabaseClient, meeting: Pick<BoardMee
     plans,
     templates: { plan: templates[0], reminder: templates[1], teacher: templates[2] },
     firstNames: Object.fromEntries([...who].map(([id, n]) => [id, n.first])),
-    groupWords: Object.fromEntries(view.groups.map((g) => [g.key, { name: g.name, codes: g.columns.map((c) => c.code).join(', ') }])),
+    groupWords: Object.fromEntries(view.groups.flatMap((g) => {
+      const card = teacherCardOf(view, data.input, g.key, catalog);
+      return card ? [[g.key, card]] : [];
+    })),
     cap: EMAIL_SEND_CAP
   };
 }

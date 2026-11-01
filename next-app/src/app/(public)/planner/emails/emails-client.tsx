@@ -466,7 +466,7 @@ function Preview({
   if (row.kind === 'teacher') {
     const g = screen.groupWords[row.group ?? ''];
     const t = override != null ? { ...screen.templates.teacher, body: override } : screen.templates.teacher;
-    const r = renderInviteDigest(t, { name: greet, people: 'you', day }, [{ kind: 'teach', inviteeName: row.name, aboutRecipient: true, code: g?.codes ?? '', topic: g?.name ?? '', minutes: '', url: '' }]);
+    const r = renderInviteDigest(t, { name: greet, people: 'you', day }, [{ kind: 'teach', inviteeName: row.name, aboutRecipient: true, code: g?.codes ?? '', topic: g?.title ?? '', minutes: g?.minutes ?? '', url: '', scouts: g?.scouts ?? [] }]);
     subject = r.subject;
     body = plain(r.md);
     buttons = ['Choose what you’ll teach'];

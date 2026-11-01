@@ -25,7 +25,12 @@ import { minutesText } from '@/lib/meeting-board-picklist';
 import { deletePlanPage, mintPlanPage, supersedeOlderPlanPages } from '@/lib/plan-pages';
 import { siteUrl } from '@/lib/site-url';
 import { loadTeacherPeople } from '@/lib/meeting-board-supply';
-import type { CatalogRank } from '@/lib/advancement-catalog';
+import { loadAdvancementCatalog, type CatalogRank } from '@/lib/advancement-catalog';
+import { isGroupKey } from '@/lib/focus-plan';
+import { loadPlannerLists } from '@/lib/people-lists';
+import { loadThisWeekData } from '@/lib/this-week-db';
+import { buildThisWeek } from '@/lib/this-week';
+import { teacherCardOf, type TeacherCard } from '@/lib/teacher-email-card';
 import { peopleWords, planButtons, renderHouseholdEmail, TRACKING_LINE, type ScoutPlanSent } from '@/lib/meeting-email-build';
 import type { EmailRow, Prepared } from '@/lib/meeting-emails';
 
@@ -52,6 +57,14 @@ async function recipientOf(sb: SupabaseClient, id: number | null): Promise<{ id:
 export function scoutsOf(row: Pick<EmailRow, 'about' | 'plan_sent'>): ScoutPlanSent[] {
   const plan = row.plan_sent ?? {};
   return (row.about.scouts ?? []).flatMap((id) => (plan[String(id)] ? [plan[String(id)]] : []));
+}
+
+/** A teacher email's group as This week has it now (null for a key that isn't a group of the night). */
+async function teacherCardFor(sb: SupabaseClient, meeting: { entryId: number; date: string }, key: string): Promise<TeacherCard | null> {
+  if (!isGroupKey(key)) return null;
+  const catalog = await loadAdvancementCatalog();
+  const data = await loadThisWeekData(sb, meeting, await loadPlannerLists(), catalog);
+  return teacherCardOf(buildThisWeek(data.input), data.input, key, catalog);
 }
 
 export async function prepareEmail(sb: SupabaseClient, row: EmailRow, ctx: PrepareContext): Promise<Prepared> {
@@ -82,7 +95,13 @@ export async function prepareEmail(sb: SupabaseClient, row: EmailRow, ctx: Prepa
     try {
       const template = await templateFor(sb, INVITE_DIGEST_KIND, DEFAULT_INVITE_DIGEST);
       const url = `${siteUrl()}/i/teach/${r.page.token}`;
-      const items = r.invites.map((i) => ({ kind: 'teach' as const, inviteeName: i.inviteeName, aboutRecipient: true, code: words.codeLabel, topic: words.label, minutes: minutesText(words.minutes), url, helped: made.helped?.[i.key] }));
+      // A group of the night says which group, its requirements and its scouts (lib/teacher-email-card).
+      const card = await teacherCardFor(sb, ctx.meeting, key);
+      const items = r.invites.map((i) =>
+        card
+          ? { kind: 'teach' as const, inviteeName: i.inviteeName, aboutRecipient: true, code: card.codes, topic: card.title, minutes: card.minutes, url, scouts: card.scouts }
+          : { kind: 'teach' as const, inviteeName: i.inviteeName, aboutRecipient: true, code: words.codeLabel, topic: words.label, minutes: minutesText(words.minutes), url, helped: made.helped?.[i.key] }
+      );
       base = renderInviteDigest(override(template, row.body_md_override), { name: who.first, people: 'you', day }, items);
       ({ html, text } = renderMarkdownEmail({ md: base.md, postscript: TRACKING_LINE }));
     } catch (e) {
