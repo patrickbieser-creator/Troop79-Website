@@ -1,6 +1,6 @@
 # Meeting Planner III — Split a rank group into Group 1, 2, 3
 
-**Status:** S1–S6 built (v1.260.0 live 2026-10-31 with S1–S4; S5–S6 shipping next). Follow-ups below.
+**Status:** SHIPPED v1.260.0 (2026-10-31/11-01, main 9aa9cc2f). S1–S6 done; follow-ups in BACKLOG (merge-confirm count, Suggestions teacher target, canonical-bypass test, MB Sp/Mg).
 **Parked:** 2026-10-31
 **Priority:** High
 

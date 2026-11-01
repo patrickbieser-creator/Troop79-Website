@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Split groups and confirmations</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #3d5a3e;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #f0eecd;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); vertical-align: top; }
+        tr:hover { background: var(--nw-sage); }
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+        code { font-family: 'Courier New', monospace; font-size: 0.85em; background: var(--nw-light-gray); padding: 0 0.3em; border-radius: 3px; }
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+        @media print { body { background: white; } header { padding: 1.5rem; } .container { padding: 1rem; } .stat { break-inside: avoid; } }
+        @media (max-width: 600px) { header h1 { font-size: 1.5rem; } .stats { flex-direction: column; } }
+    </style>
+<body>
+    <header>
+        <h1>Split groups and confirmations</h1>
+        <p class="subtitle">Session 72. A rank group can be split into Group 1, 2 and 3 with the auto planner&rsquo;s proposal, and merged back. Everything on the plan is now a proposal: teachers and families confirm, and the planner sees planned, asked and confirmed.</p>
+        <div class="meta">
+            <span>&#128197; October 31 &ndash; November 1, 2026</span>
+            <span>&#129302; Operator (Opus 5.5)</span>
+            <span>&#128204; Troop79-Website</span>
+            <span>&#128640; v1.259.0 &rarr; v1.260.0</span>
+        </div>
+    </header>
+    <div class="container">
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">2</div><div class="label">Releases (v1.259.1, v1.260.0), 27 commits</div></div>
+            <div class="stat"><div class="number">4</div><div class="label">Migrations, in production</div></div>
+            <div class="stat"><div class="number">6</div><div class="label">Decisions (D-462&ndash;D-467)</div></div>
+            <div class="stat"><div class="number">7795</div><div class="label">Tests, all passing</div></div>
+        </div>
+        <h2>What Was Accomplished</h2>
+        <div class="callout callout-teal">
+            <strong>The outcome:</strong> planners can give scouts who are further along a group of their own (Aubrey and Piper as Scout Group 2), and the plan no longer treats anyone as committed until they say yes.
+        </div>
+        <h3>Split groups</h3>
+        <ul>
+            <li>Sp/Mg on every rank card: split into 2 or 3 groups with a live preview, each group starting at a number of requirements done; merge with Undo, split again as it was.</li>
+            <li>The auto planner proposes the split from real progress, offered when a group has more than 8 scouts; saved plans keep splits.</li>
+            <li>&ldquo;Scout Group 2&rdquo; everywhere: cards, checklist, Tonight, Live, family page and emails, teacher invites and pages.</li>
+        </ul>
+        <h3>Planned, asked, confirmed</h3>
+        <ul>
+            <li>Teachers on cards show planned, asked, &#10003; confirmed or changed; a No takes them off the card, which then says Needs a teacher.</li>
+            <li>The Emails screen emails the planned teacher (a scout at a verified address of their own) a &ldquo;can you teach?&rdquo; email naming the group, its requirements and its scouts.</li>
+            <li>A family&rsquo;s &ldquo;This plan looks good&rdquo; confirms the scout (adults: every card they&rsquo;re on); later plan changes are flagged.</li>
+        </ul>
+        <h3>Planner</h3>
+        <ul>
+            <li>Full-width screens with no back links; an Adults card; a tight teacher list; Mike Ba / Mike Bl; click-off closes pull-downs; older scouts teaching listed under Teaching tonight.</li>
+        </ul>
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Decision</th></tr></thead>
+            <tbody>
+                <tr><td>D-462</td><td>Split a rank group into Group 1&ndash;3: sections, levels, soft merge, offered never automatic.</td></tr>
+                <tr><td>D-463</td><td>Saved plans keep split groups; a plan without them merges the meeting&rsquo;s.</td></tr>
+                <tr><td>D-464</td><td>Everything on the plan is a proposal: planned, asked, confirmed, changed; answers stored on their own.</td></tr>
+                <tr><td>D-465</td><td>Scouts are emailed only at a verified address of their own; a planned scout teacher included.</td></tr>
+                <tr><td>D-466</td><td>Teacher email: group and rank, requirements, scouts by full name; questions to the troop address.</td></tr>
+                <tr><td>D-467</td><td>Planner presentation conventions (full width, Adults card, short names, theGroup, board-name collisions).</td></tr>
+            </tbody>
+        </table>
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Patrick: eyes-on before sending emails, above all the Emails preview switching per name.</li>
+            <li>Oliver V signs in once to verify his email; trim Scout Group 2 (135 minutes).</li>
+            <li>Follow-ups: merge-confirm count, Suggestions teacher target, confirmations test gaps.</li>
+        </ul>
+        <h2>Files Changed</h2>
+        <table>
+            <thead><tr><th>Area</th><th>Files</th></tr></thead>
+            <tbody>
+                <tr><td>Planner engine</td><td>focus-plan.ts, group-split-proposal.ts, group-splits-db.ts, plan-states.ts, this-week.ts, this-week-db.ts</td></tr>
+                <tr><td>This week</td><td>this-week-client.tsx, this-week-split.tsx, this-week-parts.tsx, this-week-live.tsx, this-week-actions.ts, this-week.module.css</td></tr>
+                <tr><td>Emails and families</td><td>meeting-email-screen.ts, meeting-email-prepare.ts, meeting-invite-email.ts, teacher-email-card.ts, family-week.ts, teach-write.ts, teacher-answers-db.ts, member/meeting, i/teach, i/plan</td></tr>
+                <tr><td>Database</td><td>20261231900000_meeting_group_splits, 20261231950000_saved_plans_splits, 20261231970000_meeting_answers, 20261231980000_teach_answers</td></tr>
+                <tr><td>Tests</td><td>focus-plan-split, group-split-proposal, plan-states, meeting-group-splits-db, meeting-answers-db, this-week-split-panel, emails-preview-switch, and more</td></tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

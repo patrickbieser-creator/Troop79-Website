@@ -1,6 +1,6 @@
 # Meeting Planner III — Planned, asked, confirmed
 
-**Status:** Parked (Patrick's decisions in 2026-10-31; awaiting his read before C1)
+**Status:** SHIPPED v1.260.0 (2026-11-01, main 9aa9cc2f). C1–C5 + qa-lead fixes done; test gaps in BACKLOG.
 **Parked:** 2026-10-31
 **Priority:** High
 
