@@ -574,6 +574,7 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
   // Coverage counts the scouts who may come: Can't make it is out of it.
   const may = plan.rows.filter((r) => r.counted && r.intent !== 'not_coming');
   const counted = may.length;
+  const responses = responsesOf(input.scouts.map(person), input.intents, input.adultNames ?? new Map(adults.map((a) => [a.personId, a.displayName])));
   const rankWork = may.filter((r) => r.status === 'rank-work').length;
   const nothing = may.filter((r) => r.status === 'nothing').length;
   return {
@@ -591,8 +592,17 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
       pct: counted ? Math.round((rankWork / counted) * 100) : 0,
       groupsWithoutTeacher: groups.filter((g) => !g.teachers.length && g.members.length > 0).length
     },
-    answers: { scouts: countAnswers(input.scouts.map((s) => s.intent)), adults: countAnswers(adults.map((a) => input.intents.get(a.personId) ?? null)) },
-    responses: responsesOf(input.scouts.map(person), input.intents, input.adultNames ?? new Map(adults.map((a) => [a.personId, a.displayName]))),
+    answers: {
+      scouts: countAnswers(input.scouts.map((s) => s.intent)),
+      // The adults Responses this week lists (every directory adult who answered), so the two never disagree.
+      adults: {
+        coming: responses.coming.adults.length,
+        undecided: responses.undecided.adults.length,
+        notComing: responses.not_coming.adults.length,
+        none: adults.filter((a) => !input.intents.has(a.personId)).length
+      }
+    },
+    responses,
     adultsNoAnswer: adults
       .filter((a) => !input.intents.has(a.personId) && (a.skills.size > 0 || a.counselorFor.size > 0))
       .map((a) => teacherOf(a))

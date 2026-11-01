@@ -32,6 +32,18 @@ describe('loadThisWeekData', () => {
     expect(shown.sort()).toEqual(withExtra);
   });
 
+  // Patrick, 2026-11-01: the summary's adult counts are the card's adults.
+  it('ThisWeek_AdultAnswerCounts_MatchTheResponsesCard', async () => {
+    const [catalog, lists, labels] = await Promise.all([fetchAdvancementCatalog(sb as never), fetchPeopleLists(sb), fetchMeetingLabels(sb)]);
+    const [meeting] = await loadUpcomingMeetings(sb, 1, '2026-01-01', labels);
+    const input = (await loadThisWeekData(sb, meeting, lists, catalog)).input;
+    // An answer from a directory adult who isn't on the teacher list (no YPT, say) must count too.
+    const outsider = lists.pool.adults[0];
+    const tw = buildThisWeek({ ...input, teachers: input.teachers.filter((t) => t.personId !== outsider), intents: new Map([...input.intents, [outsider, 'coming']]) });
+    const a = tw.answers.adults;
+    expect([a.coming, a.undecided, a.notComing]).toEqual([tw.responses.coming.adults.length, tw.responses.undecided.adults.length, tw.responses.not_coming.adults.length]);
+  });
+
   it('ThisWeek_OfferedClass_ShowsTheTeachersNote', async () => {
     const [catalog, lists, labels] = await Promise.all([fetchAdvancementCatalog(sb as never), fetchPeopleLists(sb), fetchMeetingLabels(sb)]);
     const [meeting] = await loadUpcomingMeetings(sb, 1, '2026-01-01', labels);
