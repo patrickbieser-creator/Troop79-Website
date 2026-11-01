@@ -77,6 +77,7 @@ afterEach(async () => {
     await sb.from('meeting_teaching_offers').delete().eq('calendar_entry_id', e);
     await sb.from('meeting_intents').delete().eq('calendar_entry_id', e);
     await sb.from('meeting_plan_pages').delete().eq('calendar_entry_id', e);
+    await sb.from('meeting_teacher_answers').delete().eq('calendar_entry_id', e);
   }
   await sb.from('meeting_invite_failures').delete().eq('ip', IP);
 });
@@ -240,3 +241,41 @@ describe('the teach core is not reachable as a server action', () => {
     expect(bad).toEqual([]);
   });
 });
+
+/** Confirmations C2 (Plans/Meeting-Planner-III-Confirmations.md, qa-lead): what a teacher does on their card is their
+ *  answer: a class taken on is a yes, one dropped a No, This plan looks good a yes to every card, Clear clears them. */
+describe('a teacher answers on their card', () => {
+  const answers = async () =>
+    ((await sb.from('meeting_teacher_answers').select('group_key, answer').eq('calendar_entry_id', meeting1).eq('person_id', adult).order('group_key')).data ?? []) as { group_key: string; answer: string }[];
+
+  it('TakingAClassOn_IsTheirYes_DroppingIt_TheirNo', async () => {
+    const { token } = await link(adult);
+    const [key] = await leafKeys(1);
+    const act = await actions();
+    await act.planPageTeachAction({ token, op: { op: 'teach', key } });
+    const yes = await answers();
+    await act.planPageTeachAction({ token, op: { op: 'unteach', key } });
+    expect([yes, await answers()]).toEqual([[{ group_key: key, answer: 'yes' }], [{ group_key: key, answer: 'no' }]]);
+  });
+
+  it('LooksGood_ConfirmsEveryCardAPlannerPutThemOn', async () => {
+    const keys = await leafKeys(2);
+    for (const key of keys) {
+      const { error } = await sb.rpc('meeting_teach_topic', { p_entries: [meeting1], p_person: adult, p_actor: adult, p_leader: true, p_topic_key: key, p_title: null, p_note: null });
+      if (error) throw new Error(error.message);
+    }
+    const { token } = await link(adult);
+    expect((await (await actions()).planPageTeachAction({ token, op: { op: 'confirm' } })).ok).toBe(true);
+    expect((await answers()).map((a) => a.answer)).toEqual(['yes', 'yes']);
+  });
+
+  it('ClearThisAnswer_ClearsTheirAnswers', async () => {
+    const { token } = await link(adult);
+    const [key] = await leafKeys(1);
+    const act = await actions();
+    await act.planPageTeachAction({ token, op: { op: 'teach', key } });
+    await act.planPageTeachAction({ token, op: { op: 'clear', takeOff: true } });
+    expect(await answers()).toEqual([]);
+  });
+});
+

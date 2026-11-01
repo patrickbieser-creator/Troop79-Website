@@ -66,7 +66,10 @@ export async function recordTeacherAnswers(
   const needView = answers.some((a) => a.answer === 'yes');
   const v = needView ? await viewOf(sb, meeting, lists, catalog) : null;
   const now = new Date().toISOString();
-  const rows = answers.map((a) => ({
+  // A yes is recorded only with the card it said yes to (qa-lead): no card found = nothing to confirm.
+  const kept = answers.filter((a) => a.answer === 'no' || (v && snapOfKey(v.view, a.key, v.input.mergedBases)));
+  if (!kept.length) return;
+  const rows = kept.map((a) => ({
     calendar_entry_id: meeting.entryId,
     person_id: personId,
     group_key: a.key,

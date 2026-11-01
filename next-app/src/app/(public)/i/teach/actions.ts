@@ -56,7 +56,11 @@ export async function answerTeachPageAction(formData: FormData): Promise<void> {
       const said = new Map(answers.map((a) => [a.inviteId, a.answer]));
       const yesKeys = res.lines.filter((l) => l.key && said.get(l.inviteId) === 'yes' && (l.result === 'yes' || l.result === 'unchanged')).map((l) => l.key!);
       const { data: entry } = await sb.from('calendar_entries').select('entry_date').eq('id', res.entryId).maybeSingle();
-      if (entry && yesKeys.length) await fillYesPlans(sb, { entryId: res.entryId, date: (entry as { entry_date: string }).entry_date }, res.recipientId, yesKeys, await loadPlannerLists());
+      if (entry && yesKeys.length) {
+        const fill = async () => fillYesPlans(sb, { entryId: res.entryId, date: (entry as { entry_date: string }).entry_date }, res.recipientId, yesKeys, await loadPlannerLists());
+        // Once more on a failure (qa-lead): a yes without its snapshot can't tell when the card changes.
+        await fill().catch(fill);
+      }
       for (const n of notes) {
         const line = res.lines.find((l) => l.inviteId === n.inviteId && l.result === 'no' && l.key);
         if (line) await setTeacherNoNote(sb, res.entryId, res.recipientId, line.key!, cleanDeclineNote(n.note));

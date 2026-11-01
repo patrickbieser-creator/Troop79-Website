@@ -72,7 +72,7 @@ export interface TeachContext {
 
 export const teachFail = (error: string, field?: 'what' | 'dates'): { ok: false; error: string; field?: 'what' | 'dates' } => ({ ok: false, error, ...(field ? { field } : {}) });
 
-const ADDS = new Set<TeachOp['op']>(['teach', 'intent', 'offer']);
+const ADDS = new Set<TeachOp['op']>(['teach', 'intent', 'offer', 'confirm']);
 
 export async function teachWrite(ctx: TeachContext, op: TeachOp): Promise<TeachActionResult> {
   if (!op || typeof op !== 'object') return teachFail('Malformed request');
@@ -91,7 +91,9 @@ export async function teachWrite(ctx: TeachContext, op: TeachOp): Promise<TeachA
     return { ok: true, view: view ?? emptyTeachView(personId), week };
   };
   /** Their answers (Confirmations C2); a failure is logged, never blocks the write it rides on. */
+  // A leader writing on someone's behalf isn't that person answering (qa-lead): only their own writes record an answer.
   const answer = async (list: { key: string; answer: 'yes' | 'no' }[]) => {
+    if (ctx.actorPersonId !== personId) return;
     try {
       await recordTeacherAnswers(sb, meeting, personId, list, await loadPlannerLists(), catalog);
     } catch (e) {
@@ -188,8 +190,15 @@ export async function teachWrite(ctx: TeachContext, op: TeachOp): Promise<TeachA
         const res = await withdrawSkillOffer(sb, writer, meeting.entryId, o.skillId);
         if (!res.ok) return teachFail(res.error);
       }
-      await clearTeacherAnswers(sb, meeting.entryId, personId);
-      return refresh(await setMeetingIntent(sb, { entryId: meeting.entryId, personId, actorPersonId: writer.actorPersonId, leader: writer.leader }, 'undecided'));
+      const res = await setMeetingIntent(sb, { entryId: meeting.entryId, personId, actorPersonId: writer.actorPersonId, leader: writer.leader }, 'undecided');
+      if (res.ok) {
+        try {
+          await clearTeacherAnswers(sb, meeting.entryId, personId);
+        } catch (e) {
+          console.error('teacher answers didn’t clear:', e);
+        }
+      }
+      return refresh(res);
     }
     // The optional note with "Can't make it this week" (F3b): at most 3 lines and 240 characters (the database checks
     // the same). Only on that answer: any other answer drops it (a trigger on meeting_intents). Blank clears it.

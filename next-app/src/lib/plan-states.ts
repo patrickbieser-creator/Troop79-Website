@@ -40,7 +40,9 @@ export function teacherChanged(at: TeacherSnap | null, now: TeacherSnap): boolea
   return at.group !== now.group || at.itemKeys.join('|') !== now.itemKeys.join('|');
 }
 
-const later = (a: string | null | undefined, b: string | null | undefined) => (!a ? b ?? null : !b ? a : a > b ? a : b);
+/** Instants compared as instants, whatever the ISO format ('Z' or '+00:00'; qa-lead). */
+const ms = (t: string) => Date.parse(t);
+const later = (a: string | null | undefined, b: string | null | undefined) => (!a ? b ?? null : !b ? a : ms(a) > ms(b) ? a : b);
 
 export function teacherState(a: {
   /** A slot row puts them on this card now. */
@@ -57,8 +59,9 @@ export function teacherState(a: {
   if (a.hiddenByIntent) return 'hidden';
   if (!a.onCard) return a.answer?.answer === 'no' ? 'said_no' : 'planned';
   // An answer from before they were (re)placed on this card is about an earlier plan.
-  const answer = a.answer && (!a.slotSince || a.answer.answeredAt >= a.slotSince) ? a.answer : null;
-  const asked = a.askedAt && a.askedAt > (later(a.slotSince, answer?.answeredAt) ?? '') ? a.askedAt : null;
+  const answer = a.answer && (!a.slotSince || ms(a.answer.answeredAt) >= ms(a.slotSince)) ? a.answer : null;
+  const since = later(a.slotSince, answer?.answeredAt);
+  const asked = a.askedAt && (!since || ms(a.askedAt) > ms(since)) ? a.askedAt : null;
   if (asked) return 'asked';
   if (answer?.answer === 'yes') return teacherChanged(answer.plan, a.now) ? 'changed' : 'confirmed';
   return 'planned';
@@ -93,6 +96,6 @@ export interface ScoutAnswer {
 /** A scout's plan: Can't make it is a no; "This plan looks good" confirms it until the plan changes (C-D5). */
 export function scoutState(a: { intent: Intent | null; answer: ScoutAnswer | null; askedAt: string | null; now: ScoutSnap | null }): PlanState {
   if (a.intent === 'not_coming') return 'said_no';
-  if (a.answer) return a.askedAt && a.askedAt > a.answer.answeredAt ? 'asked' : scoutChanged(a.answer.plan, a.now) ? 'changed' : 'confirmed';
+  if (a.answer) return a.askedAt && ms(a.askedAt) > ms(a.answer.answeredAt) ? 'asked' : scoutChanged(a.answer.plan, a.now) ? 'changed' : 'confirmed';
   return a.askedAt ? 'asked' : 'planned';
 }

@@ -104,10 +104,12 @@ begin
         if a.answer = 'yes' then
           perform public.meeting_teach_topic(array[r.calendar_entry_id], r.invitee_person_id, r.invitee_person_id, false, r.topic_key, null, null);
         else
-          -- Confirmations C2 (C-D2): a No takes them off the card whoever put them there, a planner included. Removing
-          -- the slot row directly: the teach RPC's self-or-leader rule is about who acts, and this is their own answer.
-          delete from meeting_topic_teachers t using meeting_topics mt
-           where mt.id = t.topic_id and mt.calendar_entry_id = r.calendar_entry_id and mt.topic_key = r.topic_key and t.person_id = r.invitee_person_id;
+          -- Confirmations C2 (C-D2): a No takes them off the card whoever put them there, a planner included. Through
+          -- meeting_unteach_topic as a leader write (its guard, lock and freeform clean-up; qa-lead): it's their own answer.
+          if exists (select 1 from meeting_topic_teachers t join meeting_topics mt on mt.id = t.topic_id
+                      where mt.calendar_entry_id = r.calendar_entry_id and mt.topic_key = r.topic_key and t.person_id = r.invitee_person_id) then
+            perform public.meeting_unteach_topic(r.calendar_entry_id, r.invitee_person_id, r.invitee_person_id, true, r.topic_key);
+          end if;
         end if;
         perform public._meeting_teacher_answer(r.calendar_entry_id, r.invitee_person_id, r.topic_key, a.answer);
         update meeting_invites
