@@ -1312,6 +1312,8 @@ button.chip:focus-visible {
   white-space: nowrap;
 }
 .stWord {
+  /* The pill is inline-flex, which strips the leading space of ' asked' (it read 'Mindy Sasked'): keep it. */
+  white-space: pre;
   font-weight: 400;
   font-size: var(--fs-xs);
   color: var(--text-meta);
