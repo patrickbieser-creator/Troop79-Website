@@ -168,10 +168,10 @@ function PlanView({
   const setRole = (personId: number, role: RoleInput) => w.run(() => twSetRoleAction({ entryId, personId, ...role }));
   const { coverage: c, answers: a } = view;
   const badgeGroups = view.groups.filter((g) => g.kind === 'badge');
-  // Who already teaches what tonight, for the teacher lists' "teaching Scout Group 2".
+  // Who already teaches what tonight, by short name, for the teacher lists ("Scout Group 2, First Aid").
   const teachingElsewhere = new Map<number, { key: string; title: string }[]>();
   for (const slot of [...view.groups, ...view.extras]) {
-    for (const t of slot.teachers) teachingElsewhere.set(t.personId, [...(teachingElsewhere.get(t.personId) ?? []), { key: slot.key, title: slot.title }]);
+    for (const t of slot.teachers) teachingElsewhere.set(t.personId, [...(teachingElsewhere.get(t.personId) ?? []), { key: slot.key, title: shortTitle(slot) }]);
   }
   // Split or merge… (D8): the panel's group, the Undo after a merge, and offers set aside on this device (D1).
   const [splitting, setSplitting] = useState<TwGroup | null>(null);
@@ -403,9 +403,63 @@ function PlanView({
           ))}
         </div>
 
-        <Checklist view={full} filter={filter} setFilter={setFilter} onRole={setRole} busy={w.busy} />
+        <div className={s.col}>
+          <Checklist view={full} filter={filter} setFilter={setFilter} onRole={setRole} busy={w.busy} />
+          <AdultsCard view={view} />
+        </div>
       </div>
     </>
+  );
+}
+
+/** A group's or class's name where space is tight: a badge without "merit badge" ('First Aid'). */
+const shortTitle = (slot: { title: string; kind?: string; name?: string }) => (slot.kind === 'badge' && slot.name ? slot.name : slot.title);
+
+/**
+ * Adults teaching tonight (Patrick, 2026-10-31): each adult once, their name as a chip like the scouts' (an outline of
+ * its own, so it never reads as a rank) and every group or class they teach, by short name ('Scout Group 2, First Aid').
+ * Junior Leaders are scouts: they're in the checklist.
+ */
+export function AdultsCard({ view }: { view: Pick<ThisWeek, 'groups' | 'extras'> }) {
+  const p = usePlanner();
+  const by = new Map<number, { name: string; slots: string[] }>();
+  for (const slot of [...view.groups, ...view.extras]) {
+    for (const t of slot.teachers) {
+      if (t.kind !== 'adult') continue;
+      const a = by.get(t.personId) ?? { name: t.name, slots: [] };
+      a.slots.push(shortTitle(slot));
+      by.set(t.personId, a);
+    }
+  }
+  const adults = [...by.entries()].sort((x, y) => x[1].name.localeCompare(y[1].name));
+  return (
+    <section className={s.gridCard} aria-labelledby="adults-h">
+      <div className={s.toolbar}>
+        <h2 id="adults-h" className={s.cardTitle}>
+          Adults <span className={s.muted}>{adults.length}</span>
+        </h2>
+      </div>
+      {adults.length ? (
+        <ul className={s.adultList}>
+          {adults.map(([id, a]) => (
+            <li key={id} className={s.adultRow}>
+              {p?.canEdit ? (
+                <button type="button" className={`${s.chip} ${s.adultChip}`} aria-label={`${a.name}, adult`} onClick={() => p.openPerson(id)}>
+                  {a.name}
+                </button>
+              ) : (
+                <span className={`${s.chip} ${s.adultChip}`} aria-label={`${a.name}, adult`}>
+                  {a.name}
+                </span>
+              )}
+              <span className={s.adultTeaches}>{a.slots.join(', ')}</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className={s.muted}>No adults teaching yet. Pick teachers on the group cards.</p>
+      )}
+    </section>
   );
 }
 

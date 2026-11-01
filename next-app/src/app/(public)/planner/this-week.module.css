@@ -1234,3 +1234,34 @@ button.chip:focus-visible {
 .splitCode {
   font-weight: 700;
 }
+
+/* ── Adults teaching (Patrick, 2026-10-31) ───────────────────────────────────────────────────────────────────── */
+/* An adult's chip: the scouts' shape, a navy outline no rank wears. */
+.adultChip {
+  background: var(--warm-white);
+  color: var(--navy);
+  border-color: var(--navy);
+}
+.adultList {
+  display: grid;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.adultRow {
+  display: grid;
+  grid-template-columns: minmax(8rem, max-content) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--sp-4);
+}
+.adultTeaches {
+  font: var(--fs-sm) / 1.4 var(--font-ui);
+  color: var(--text-body);
+}
+@media (max-width: 640px) {
+  .adultRow {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--sp-1);
+  }
+}

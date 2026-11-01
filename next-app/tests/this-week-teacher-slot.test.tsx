@@ -70,6 +70,6 @@ describe('TeacherSlot', () => {
     slot([A], undefined, new Map([[2, [{ key: 'fr:scout~2', title: 'Scout Group 2' }]], [1, [{ key: 'fr:tenderfoot', title: 'Tenderfoot group' }]]]));
     screen.getByRole('button', { name: /Teacher: Ann Vest/ }).click();
     const [bo, ann] = await Promise.all([screen.findByRole('button', { name: /^Bo Ruiz/ }), screen.findByRole('button', { name: /^Ann Vest/ })]);
-    expect([bo.textContent, ann.textContent?.includes('teaching')]).toEqual(['Bo Ruiz · teaching Scout Group 2', false]);
+    expect([bo.textContent, ann.textContent?.includes('Tenderfoot')]).toEqual(['Bo Ruiz · Scout Group 2', false]);
   });
 });

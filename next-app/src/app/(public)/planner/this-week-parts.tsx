@@ -209,7 +209,7 @@ export function TeacherSlot({
   onSet: (key: string, personId: number | null, on: boolean) => Promise<boolean>;
   /** Adult editors: email this person the teacher ask (the digest and its answer page). Returns what happened. */
   onAsk?: (key: string, personId: number) => Promise<string>;
-  /** What each person already teaches tonight, by personId: named on their line ("teaching Scout Group 2"). */
+  /** What each person already teaches tonight, by personId: short names on their line ("Scout Group 2, First Aid"). */
   teachingElsewhere?: ReadonlyMap<number, readonly { key: string; title: string }[]>;
 }) {
   const p = usePlanner();
@@ -224,12 +224,13 @@ export function TeacherSlot({
   const term = q.trim().toLowerCase();
   const others = everyone.filter((e) => !shown.has(e.personId) && (!term || e.name.toLowerCase().includes(term))).slice(0, 30);
   // One line a person (Patrick, 2026-10-31): the name, then what's worth knowing while planning: a counselor or scout
-  // instructor, what else they teach tonight, an ask just sent. Their answer isn't shown: it isn't in yet when planning.
+  // instructor, what else they teach tonight (just its short name: 'Scout Group 2, First Aid'), an ask just sent. Their
+  // answer isn't shown: it isn't in yet when planning.
   const elsewhere = (id: number) =>
     (teachingElsewhere?.get(id) ?? []).filter((x) => x.key !== slotKey).map((x) => x.title);
   const line = (c: TwTeacher) => {
     const busy = elsewhere(c.personId);
-    const bits = [c.note, busy.length ? `teaching ${joinNames(busy)}` : null, asked[c.personId]].filter(Boolean);
+    const bits = [c.note, busy.length ? busy.join(', ') : null, asked[c.personId]].filter(Boolean);
     return bits.length ? <span className={s.menuNoteInline}>{` · ${bits.join(' · ')}`}</span> : null;
   };
   return (
