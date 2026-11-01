@@ -1080,15 +1080,11 @@ button.chip:focus-visible {
 }
 
 /* ── Split or merge… (Plans/Meeting-Planner-III-Split-Groups.md, S4) ─────────────────────────────────────────── */
+/* Sp/Mg sits in the middle of the group head, between the name and the count (Patrick, 2026-10-31). */
 .splitBtn {
   composes: quiet;
-}
-.groupHeadEnd {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  align-items: center;
-  gap: var(--sp-2);
+  align-self: center;
+  margin: 0 auto;
 }
 .offer {
   display: flex;

@@ -220,14 +220,12 @@ function PlanView({
                   </h2>
                   <span className={s.groupSub}>{g.subtitle}</span>
                 </div>
-                <div className={s.groupHeadEnd}>
-                  <span className={s.groupCount}>{plural(g.members.length, 'scout')}</span>
-                  {canSeed ? (
-                    <button type="button" className={s.splitBtn} onClick={() => setSplitting(g)}>
-                      Split or merge…
-                    </button>
-                  ) : null}
-                </div>
+                {canSeed ? (
+                  <button type="button" className={s.splitBtn} title="Split or merge…" aria-label={`Sp/Mg: split or merge the ${g.name} group`} onClick={() => setSplitting(g)}>
+                    Sp/Mg
+                  </button>
+                ) : null}
+                <span className={s.groupCount}>{plural(g.members.length, 'scout')}</span>
               </div>
               <div className={s.groupBody}>
                 {merged === g.base ? (
