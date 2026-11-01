@@ -138,12 +138,13 @@ export function columnMinutes(c: TwGroup['columns'][number], catalog: Catalog, m
 
 export const groupMinutes = (g: TwGroup, catalog: Catalog) => (g.kind === 'badge' ? MB_CLASS_MIN : classMinutes(g.columns.reduce((n, c) => n + columnMinutes(c, catalog), 0)));
 
-function alsoFor(kind: FamilyScoutKind, row: TwRow | undefined, tw: ThisWeek, firstName: string, help: TwGroup | null, catalog: Catalog): FamilyOption[] {
+export function alsoFor(kind: FamilyScoutKind, row: TwRow | undefined, tw: ThisWeek, firstName: string, help: TwGroup | null, catalog: Catalog): FamilyOption[] {
   const out: FamilyOption[] = [];
   const ranks = tw.groups.filter((g) => g.kind === 'rank');
   if (kind === 'rank' && row?.groupKey) {
+    // The next RANK's group (its Group 1 key, placed by fit when it's split), never this rank's Group 2.
     const i = ranks.findIndex((g) => g.key === row.groupKey);
-    const next = i >= 0 ? ranks[i + 1] : undefined;
+    const next = i >= 0 ? ranks.slice(i + 1).find((g) => g.refId !== ranks[i].refId) : undefined;
     if (next) out.push({ key: next.key, label: `Work ahead: ${next.name}`, sub: `with the ${next.name} group`, min: groupMinutes(next, catalog) });
   }
   if (kind === 'done' && ranks.length) out.push({ key: 'teach', label: 'Help teach', sub: `show younger scouts what ${firstName} already knows`, min: HELP_TEACH_MIN });

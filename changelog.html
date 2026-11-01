@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>October 31, 2026</strong> &nbsp;&middot;&nbsp; v1.259.1</p>
+      <p>Last updated: <strong>October 31, 2026</strong> &nbsp;&middot;&nbsp; v1.260.0</p>
     </div>
   </div>
 
@@ -494,6 +494,35 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.260.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.260.0</span>
+        <span class="release-date">October 31, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Meeting Planner: split a group into Group 1, 2 and 3</p>
+        <ul class="change-list">
+          <li><span>Every rank group on <strong>This week</strong> has a <strong>Sp/Mg</strong> (split or merge) button. It splits the group into 2 or 3 groups, each teaching its own requirements, and shows who would land where before anything is saved.</span></li>
+          <li><span>The planner suggests the split: scouts who are further along go together, and their group gets the requirements they still need, about an hour&rsquo;s worth. Each group starts at a number of requirements done, which a planner can change, along with what each group teaches.</span></li>
+          <li><span>A group with more than 8 scouts offers <strong>Split into 2 groups&hellip;</strong>; <strong>Not now</strong> sets the offer aside on that device. Group size is never a limit.</span></li>
+          <li><span><strong>Merge into one group</strong> puts everyone back, with an Undo; Sp/Mg can bring the groups back as they were. Every change can be undone, so planners can try out ideas.</span></li>
+          <li><span>Split groups read <strong>Scout Group 1</strong>, <strong>Scout Group 2</strong> on the cards, the checklist, a scout&rsquo;s Tonight panel and Live at the meeting.</span></li>
+        </ul>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Meeting Planner: teachers and adults</p>
+        <ul class="change-list">
+          <li><span>A new <strong>Adults</strong> card under the scout checklist lists each adult teaching, in the order of the cards, with what they teach, then each card that has <strong>No teachers yet</strong> in that card&rsquo;s colours.</span></li>
+          <li><span>The teacher pick list is one tight line a person, drops the &ldquo;coming / no answer yet&rdquo; line, and names what else they already teach tonight (&ldquo;Scout Group 2, First Aid MB&rdquo;).</span></li>
+          <li><span>On Live at the meeting, a teacher&rsquo;s button wears its card&rsquo;s colours.</span></li>
+          <li><span>Two people who would both be &ldquo;Mike B&rdquo; now read &ldquo;Mike Ba&rdquo; and &ldquo;Mike Bl&rdquo;.</span></li>
+          <li><span>A click off any planner pull-down closes it and does nothing else.</span></li>
+        </ul>
       </div>
     </div>
 
