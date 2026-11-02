@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session 73: Teacher answers, roster dates, date floor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #3d5a3e;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #f0eecd;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); vertical-align: top; }
+        tr:hover { background: var(--nw-sage); }
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+        code { font-family: 'Courier New', monospace; font-size: 0.85em; background: var(--nw-light-gray); padding: 0 0.3em; border-radius: 3px; }
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+        @media print { body { background: white; } header { padding: 1.5rem; } .container { padding: 1rem; } .stat { break-inside: avoid; } }
+        @media (max-width: 600px) { header h1 { font-size: 1.5rem; } .stats { flex-direction: column; } }
+    </style>
+<body>
+    <header>
+        <h1>Teacher answers, roster dates, and a date floor</h1>
+        <p class="subtitle">Session 73. Teacher emails open the family card, a teacher&rsquo;s yes holds, and a planner can record a texted answer for them. The roster shows when each person was created and when inactive scouts left, and no date before 1900 can be stored.</p>
+        <div class="meta">
+            <span>&#128197; November 1, 2026</span>
+            <span>&#129302; Operator (Opus 5.5)</span>
+            <span>&#128204; Troop79-Website</span>
+            <span>&#128640; v1.260.0 &rarr; v1.261.0</span>
+        </div>
+    </header>
+    <div class="container">
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">1</div><div class="label">Release (v1.261.0), 17 commits</div></div>
+            <div class="stat"><div class="number">4</div><div class="label">Migrations, in production</div></div>
+            <div class="stat"><div class="number">7</div><div class="label">Decisions (D-468&ndash;D-474)</div></div>
+            <div class="stat"><div class="number">7853</div><div class="label">Tests, all passing</div></div>
+        </div>
+        <h2>What Was Accomplished</h2>
+        <div class="callout callout-teal">
+            <strong>The outcome:</strong> every teacher answer now lands in one place, whether it comes from the email, the family page, or a text to Patrick, and the Sent log shows at a glance who has said yes.
+        </div>
+        <h3>Teacher emails and answers</h3>
+        <ul>
+            <li>The &ldquo;can you teach?&rdquo; email opens the teacher&rsquo;s family card; the old teach pages are gone. An adult asked about a group they aren&rsquo;t on answers under &ldquo;We asked you to teach&rdquo;.</li>
+            <li>A scout teacher is emailed at their own address with their parents copied (Youth Protection).</li>
+            <li>A yes holds through later emails; only a plan change asks again.</li>
+            <li>In an adult&rsquo;s drawer, &ldquo;Will they teach?&rdquo; records They said yes / They said no for them, marked &ldquo;entered by PB&rdquo;.</li>
+        </ul>
+        <h3>Planner screens</h3>
+        <ul>
+            <li>Responses this week card under Adults; a one-line-per-email Sent log with answer pills, filters, paging and a 30-second refresh; open tracking through links.troop-79.com.</li>
+            <li>Family-page saves show Saving&hellip; then &check; Saved.</li>
+        </ul>
+        <h3>Roster and dates</h3>
+        <ul>
+            <li>Sortable Created on every roster tab, and Created + Left on Inactive Scouts, derived from the ledger.</li>
+            <li>No year before 1900: every date field says so, and the database refuses it on all 226 date and timestamp columns.</li>
+            <li>Production typos fixed by hand: Oliver Vest&rsquo;s 8 Communication MB entries (year 0025 &rarr; 2025) and Jenna Scarpace&rsquo;s birthdate (0991 &rarr; 1991).</li>
+        </ul>
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Decision</th></tr></thead>
+            <tbody>
+                <tr><td>D-468</td><td>Teacher emails open the family card; teach pages retired and dropped.</td></tr>
+                <tr><td>D-469</td><td>A scout teacher&rsquo;s email goes to their own address, verified or not, with parents copied.</td></tr>
+                <tr><td>D-470</td><td>A teacher&rsquo;s yes holds through a later email; only a plan change re-asks.</td></tr>
+                <tr><td>D-471</td><td>A planner can record a teacher&rsquo;s answer for them, stored as entered by.</td></tr>
+                <tr><td>D-472</td><td>Responses card, Sent log design and answer pills, save toast.</td></tr>
+                <tr><td>D-473</td><td>Roster Created / Left are derived from the ledger, not recorded.</td></tr>
+                <tr><td>D-474</td><td>No date before 1900, at the field and as a CHECK on every date column.</td></tr>
+            </tbody>
+        </table>
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Patrick: eyes-on in production before sending meeting emails (Emails preview, Will they teach?, Sent log, roster columns, date message).</li>
+            <li>Delete the one tokenless test invite, then validate the invite token check.</li>
+            <li>Give the 8 bare date inputs the picker&rsquo;s message; confirm Rose Manning&rsquo;s 2020-01-01 dates.</li>
+        </ul>
+        <h2>Files Changed</h2>
+        <table>
+            <thead><tr><th>Area</th><th>Files</th></tr></thead>
+            <tbody>
+                <tr><td>Planner</td><td>planner/actions.ts, person-drawer.tsx, teacher-answer-for-them.tsx, this-week-parts.tsx, meeting-planner-drawer.ts, teacher-asks.ts, teacher-answers-db.ts, this-week.ts, this-week-db.ts</td></tr>
+                <tr><td>Emails and families</td><td>meeting-email-screen.ts, meeting-email-log.ts, meeting-invite-email.ts, family-week.ts, member/meeting, i/plan (i/teach removed)</td></tr>
+                <tr><td>Roster</td><td>roster/page.tsx, scouts-table.tsx, people-table.tsx, lib/roster-dates.ts</td></tr>
+                <tr><td>Dates</td><td>lib/date-entry.ts, date-picker-field.tsx, date-field.tsx, 8 bare date inputs (finance, money panel, prices)</td></tr>
+                <tr><td>Database</td><td>20261231990000_drop_teach_pages, 20261231995000_teacher_answer_entered_by, 20261231996000_scout_tenure, 20261231997000_dates_from_1900</td></tr>
+                <tr><td>Tests</td><td>teacher-answer-for-them, planner-actions, roster-dates, roster-grid-one-line, scout-tenure-db, date-year-floor, date-floor-db, and more</td></tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

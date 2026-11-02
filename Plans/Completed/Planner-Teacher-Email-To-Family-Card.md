@@ -1,6 +1,6 @@
 # Planner Teacher Email → the Family Card (retire /i/teach)
 
-**Status:** Active (answers in 2026-11-01)
+**Status:** SHIPPED v1.261.0 (2026-11-01, 23c9582c → 3dafddd3)
 **Parked:** 2026-11-01
 **Priority:** High (blocks sending this week's planner emails)
 
