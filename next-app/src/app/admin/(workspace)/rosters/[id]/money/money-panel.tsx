@@ -25,6 +25,7 @@ import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../../_compo
 import { Button } from '../../../../_components/button';
 import styles from '../../../events/events-admin.module.css';
 import { fmtDate } from '@/lib/format-date';
+import { EARLIEST_DATE } from '@/lib/date-entry';
 
 /*
  * The Money tab (Plans/Event-Logistics.md §C). Everything here is derived
@@ -495,7 +496,7 @@ export function MoneyPanel({
           </table>
         )}
         <div className={styles.addRow}>
-          <input type="date" aria-label="Expense date" value={xDate} onChange={(e) => setXDate(e.target.value)} />
+          <input type="date" min={EARLIEST_DATE} aria-label="Expense date" value={xDate} onChange={(e) => setXDate(e.target.value)} />
           <input
             type="number"
             min={0.01}
@@ -600,7 +601,7 @@ export function MoneyPanel({
             <option value="other">Other</option>
           </select>
           <input placeholder="Label (e.g. Deposit)" aria-label="Milestone label" value={mLabel} onChange={(e) => setMLabel(e.target.value)} />
-          <input type="date" aria-label="Milestone due date" value={mDue} onChange={(e) => setMDue(e.target.value)} />
+          <input type="date" min={EARLIEST_DATE} aria-label="Milestone due date" value={mDue} onChange={(e) => setMDue(e.target.value)} />
           {mKind === 'payment' && (
             <input
               type="number"

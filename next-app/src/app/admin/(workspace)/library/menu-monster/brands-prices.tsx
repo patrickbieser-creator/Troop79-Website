@@ -40,6 +40,7 @@ import { useArmed } from './use-armed';
 import { useAttempt, type FieldProblem } from './use-attempt';
 import lib from '../library.module.css';
 import styles from './menu-monster.module.css';
+import { EARLIEST_DATE } from '@/lib/date-entry';
 
 const NEW_BRAND = '__new';
 
@@ -377,7 +378,7 @@ function PackageEditor({ pkg, ing, brands, today, stores, onChanged }: { pkg: Pa
           </label>
           <input
             id={`${idp}-asof`}
-            type="date"
+            type="date" min={EARLIEST_DATE}
             max={today ?? undefined}
             className={lib.textInput}
             value={draft.asOf}
@@ -700,7 +701,7 @@ function AddBoughtForm({
           <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-asof`}>
             Price as of
           </label>
-          <input id={`${idp}-asof`} type="date" max={today ?? undefined} className={lib.textInput} value={asOf} onChange={(e) => setAsOf(e.target.value)} />
+          <input id={`${idp}-asof`} type="date" min={EARLIEST_DATE} max={today ?? undefined} className={lib.textInput} value={asOf} onChange={(e) => setAsOf(e.target.value)} />
         </div>
         <div>
           <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-note`}>

@@ -542,6 +542,13 @@ py -m http.server 8000</pre>
           <li><span>Inactive Scouts gets <strong>Created</strong> and <strong>Left</strong> after <strong>Reason</strong>, both sortable. <strong>Left</strong> is their last advancement or attendance entry, when they stopped coming.</span></li>
         </ul>
       </div>
+      <div class="change-group">
+        <p class="change-group-title">Dates: no year before 1900</p>
+        <ul class="change-list">
+          <li><span>Every date field refuses a year before 1900 and says so under the field: &ldquo;The year must be 1900 or later&rdquo;. Before, a typo like 0025 or 991 was saved as typed, which is how a merit badge ended up dated year 25 and a birthdate year 991. Both are fixed.</span></li>
+          <li><span>Behind the scenes, the database refuses such a date too, so a CSV import or any other way in can&rsquo;t slip one through.</span></li>
+        </ul>
+      </div>
     </div>
 
     <!-- RELEASE v1.260.0 -->

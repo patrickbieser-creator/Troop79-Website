@@ -57,6 +57,8 @@ import styles from './finance.module.css';
 import { fmtDate } from '@/lib/format-date';
 
 import { centralToday } from '@/lib/dates';
+import { EARLIEST_DATE } from '@/lib/date-entry';
+
 type FinanceModal = 'record' | 'transfer' | 'reconcile' | 'kinds';
 const MODAL_TITLES: Record<FinanceModal, string> = {
   record: 'Record a transaction',
@@ -651,7 +653,7 @@ export function RecordTransactionForm({
         <label className="adminLabel">
           Date
           <input
-            type="date"
+            type="date" min={EARLIEST_DATE}
             required
             value={f.occurredOn}
             onChange={(e) => setF((s) => ({ ...s, occurredOn: e.target.value }))}
@@ -790,7 +792,7 @@ function TransferForm({
       <form className={styles.formGrid} onSubmit={submit}>
         <label className="adminLabel">
           Date
-          <input type="date" required value={occurredOn} onChange={(e) => setOccurredOn(e.target.value)} />
+          <input type="date" min={EARLIEST_DATE} required value={occurredOn} onChange={(e) => setOccurredOn(e.target.value)} />
         </label>
         <label className="adminLabel">
           From
@@ -887,7 +889,7 @@ function ReconciliationPanel({
         </label>
         <label className="adminLabel">
           As of
-          <input type="date" required value={asOf} onChange={(e) => setAsOf(e.target.value)} />
+          <input type="date" min={EARLIEST_DATE} required value={asOf} onChange={(e) => setAsOf(e.target.value)} />
         </label>
         <label className="adminLabel">
           Statement balance

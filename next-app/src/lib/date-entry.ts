@@ -12,6 +12,15 @@
  * west of UTC.
  */
 
+/** No date anywhere in the app is before this year (Patrick, 2026-11-01: a ledger entry went in as year 0025 and a
+ *  birthdate as 0991). The fields refuse it and say so; the database refuses it too (migration 20261231997000). */
+export const EARLIEST_YEAR = 1900;
+/** EARLIEST_YEAR's first day, for a bare <input type="date" min>. */
+export const EARLIEST_DATE = `${EARLIEST_YEAR}-01-01`;
+const EARLIEST_ISO = EARLIEST_DATE;
+/** What a date field says when the typed year is before EARLIEST_YEAR. */
+export const TOO_EARLY_MSG = `The year must be ${EARLIEST_YEAR} or later`;
+
 const MONTH_NAMES = [
   'january',
   'february',
@@ -32,13 +41,14 @@ function daysInMonth(year: number, month1: number): number {
   return new Date(year, month1, 0).getDate();
 }
 
-/** Real calendar date → 'YYYY-MM-DD'; null for month 13, Feb 30, etc. */
+/** Real calendar date → 'YYYY-MM-DD'; null for month 13, Feb 30, etc. Any year 1–9999 builds, so a too-early
+ *  year can be told apart from gibberish; the callers apply EARLIEST_YEAR. */
 function build(year: number, month1: number, day: number): string | null {
   if (!Number.isInteger(year) || !Number.isInteger(month1) || !Number.isInteger(day)) return null;
-  if (year < 1000 || year > 9999) return null;
+  if (year < 1 || year > 9999) return null;
   if (month1 < 1 || month1 > 12) return null;
   if (day < 1 || day > daysInMonth(year, month1)) return null;
-  return `${year}-${String(month1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  return `${String(year).padStart(4, '0')}-${String(month1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
 /** Two-digit year → four, pivot 1950: 00–49 → 20xx, 50–99 → 19xx. Kids'
@@ -70,11 +80,11 @@ export function toISODate(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-/** Strict 'YYYY-MM-DD' AND a real calendar day. */
+/** Strict 'YYYY-MM-DD', a real calendar day, and no earlier than EARLIEST_YEAR. */
 export function isValidISODate(iso: string): boolean {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
   if (!m) return false;
-  return build(Number(m[1]), Number(m[2]), Number(m[3])) === iso;
+  return build(Number(m[1]), Number(m[2]), Number(m[3])) === iso && iso >= EARLIEST_ISO;
 }
 
 /** 'YYYY-MM-DD' → 'Jul 25, 2026' (fixed English short months — no Intl, so
@@ -100,6 +110,19 @@ export function formatDateDisplay(iso: string): string {
  * `today` is injectable for deterministic tests of the no-year forms.
  */
 export function parseTypedDate(text: string, today: Date = new Date()): string | null {
+  const iso = parseAnyYear(text, today);
+  return iso && iso >= EARLIEST_ISO ? iso : null;
+}
+
+/** True when the text is a real day whose year is before EARLIEST_YEAR, so a field can say "the year must be
+ *  1900 or later" rather than "unrecognized date". */
+export function typedDateTooEarly(text: string, today: Date = new Date()): boolean {
+  const iso = parseAnyYear(text, today);
+  return !!iso && iso < EARLIEST_ISO;
+}
+
+/** The grammar above, with no floor on the year. */
+function parseAnyYear(text: string, today: Date): string | null {
   const raw = text.trim().toLowerCase();
   if (!raw) return null;
 

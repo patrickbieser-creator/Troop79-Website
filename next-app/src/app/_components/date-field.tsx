@@ -30,7 +30,7 @@ import { useCallback, useContext, useEffect, useId, useLayoutEffect, useRef, use
 import { createPortal } from 'react-dom';
 import { DayPicker, getDefaultClassNames } from 'react-day-picker';
 import 'react-day-picker/style.css';
-import { formatDateDisplay, parseTypedDate, toISODate } from '@/lib/date-entry';
+import { formatDateDisplay, parseTypedDate, toISODate, typedDateTooEarly, TOO_EARLY_MSG } from '@/lib/date-entry';
 import { FieldContext } from './form';
 import s from './date-field.module.css';
 
@@ -102,6 +102,9 @@ export function DateField({
   const [open, setOpen] = useState(false);
   const [text, setText] = useState(() => formatDateDisplay(committed));
   const [invalid, setInvalid] = useState(false);
+  // Which problem the error names: a year before 1900, or text that isn't a date at all.
+  const [tooEarly, setTooEarly] = useState(false);
+  const problem = tooEarly ? TOO_EARLY_MSG : INVALID_MSG;
   const [mobile, setMobile] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const [portalTarget, setPortalTarget] = useState<Element | null>(null);
@@ -163,6 +166,7 @@ export function DateField({
     }
     const iso = parseTypedDate(text);
     if (!iso) {
+      setTooEarly(typedDateTooEarly(text));
       setInvalid(true);
       return false;
     }
@@ -276,7 +280,7 @@ export function DateField({
             >
               {invalid && (
                 <p id={errorId} className={s.popoverError} role="alert">
-                  {INVALID_MSG}
+                  {problem}
                 </p>
               )}
               <DayPicker
@@ -372,7 +376,7 @@ export function DateField({
           user is looking for it (found in browser verification 2026-08-21). */}
       {invalid && !open && (
         <span id={errorId} className={s.error} role="alert">
-          {INVALID_MSG}
+          {problem}
         </span>
       )}
       {popover}

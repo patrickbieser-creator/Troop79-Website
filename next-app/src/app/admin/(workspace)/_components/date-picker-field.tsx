@@ -7,6 +7,7 @@ import 'react-day-picker/style.css';
 import styles from './date-picker-field.module.css';
 
 import { fmtDate } from '@/lib/format-date';
+import { EARLIEST_YEAR, TOO_EARLY_MSG, typedDateTooEarly } from '@/lib/date-entry';
 /**
  * Shared admin date field: a text input showing the formatted date, backed
  * by a react-day-picker calendar popover. Replaces bare `<input type="date">`
@@ -125,6 +126,8 @@ export function DatePickerField({
   const [open, setOpen] = useState(false);
   const [text, setText] = useState(() => formatDisplay(value));
   const [invalid, setInvalid] = useState(false);
+  // Which problem the error names: a year before 1900, or text that isn't a date at all.
+  const [tooEarly, setTooEarly] = useState(false);
   const [mobile, setMobile] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const [portalTarget, setPortalTarget] = useState<Element | null>(null);
@@ -188,8 +191,13 @@ export function DatePickerField({
       if (value !== '') onChange('');
       return true;
     }
-    const parsed = parseTyped(text);
-    if (!parsed) {
+    // No date before 1900 (Patrick, 2026-11-01). Checked on the TEXT first: new Date() reads a year under 100 as
+    // 19xx, so '0025-11-08' would otherwise come back as 1925; the year check catches what Date.parse lets
+    // through ('9/25/991' is the year 991).
+    const parsed = typedDateTooEarly(text) ? null : parseTyped(text);
+    const early = typedDateTooEarly(text) || (parsed != null && parsed.getFullYear() < EARLIEST_YEAR);
+    if (!parsed || early) {
+      setTooEarly(early);
       setInvalid(true);
       return false;
     }
@@ -414,7 +422,7 @@ export function DatePickerField({
           {CALENDAR_ICON}
         </button>
       )}
-      {invalid && <span className={styles.error}>Unrecognized date — try YYYY-MM-DD</span>}
+      {invalid && <span className={styles.error}>{tooEarly ? TOO_EARLY_MSG : 'Unrecognized date — try YYYY-MM-DD'}</span>}
       {popover}
     </div>
   );

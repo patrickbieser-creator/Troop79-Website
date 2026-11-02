@@ -4,8 +4,8 @@ import { TEST_PREFIX } from './helpers/signup-fixtures';
 
 /**
  * scout_tenure (Patrick, 2026-11-01): a scout's first and last live ledger date, for the roster's Created and
- * Left columns. Deleted/archived rows and pre-2000 typos (production has entries dated year 0025) don't count;
- * meeting attendance does. Real local database; test-owned scout and ledger rows only.
+ * Left columns. Deleted/archived rows don't count; meeting attendance does. (A pre-2000 typo can no longer be
+ * stored at all: date-floor-db.test.ts.) Real local database; test-owned scout and ledger rows only.
  */
 const sb = adminClient();
 let personId = 0;
@@ -44,7 +44,6 @@ beforeAll(async () => {
     inactive_reason: 'dropped_out'
   });
   if (s.error) throw new Error(s.error.message);
-  await entry('0025-11-08'); // a typo year
   await entry('2019-03-01', { deleted_at: new Date().toISOString(), deleted_by: 'vitest', deleted_reason: 'test' });
   await entry('2022-09-15');
   await entry('2023-10-22', { kind: 'meeting_attendance', code: 'meeting' });
@@ -61,7 +60,7 @@ const tenure = async () =>
   (await sb.from('scout_tenure').select('first_activity_date, last_activity_date').eq('scout_id', scoutId).single()).data;
 
 describe('scout_tenure', () => {
-  it('FirstActivity_SkipsTyposAndDeletedRows', async () => {
+  it('FirstActivity_SkipsDeletedRows', async () => {
     expect((await tenure())?.first_activity_date).toBe('2022-09-15');
   });
 
