@@ -10,9 +10,10 @@
  * is the toolbar's "+ Add Adult" (adult-form.tsx), which is a create-once
  * dialog and not an editor.
  */
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { fmtDate } from '@/lib/format-date';
 import { ROLE_LABEL } from './[personId]/record-types';
 import { AdultForm } from './adult-form';
 import { AddButton } from '../../_components/add-button';
@@ -40,10 +41,12 @@ export interface HouseholdOption {
   label: string;
 }
 
-type PeopleColKey = 'name' | 'email' | 'phone' | 'bsa';
+type PeopleColKey = 'name' | 'email' | 'phone' | 'bsa' | 'created';
+
+type SortablePerson = DirectoryPerson & { _created: string | null };
 
 /** Module scope on purpose — see the note on useSortable. */
-function personValue(p: DirectoryPerson, key: PeopleColKey): unknown {
+function personValue(p: SortablePerson, key: PeopleColKey): unknown {
   switch (key) {
     case 'name':
       return p.display_name;
@@ -53,6 +56,8 @@ function personValue(p: DirectoryPerson, key: PeopleColKey): unknown {
       return p.primary_phone;
     case 'bsa':
       return p.bsa_member_id;
+    case 'created':
+      return p._created;
   }
 }
 
@@ -66,12 +71,15 @@ export function PeopleTable({
   people,
   households,
   householdByPerson,
-  householdMembers
+  householdMembers,
+  created
 }: {
   people: DirectoryPerson[];
   households: HouseholdOption[];
   householdByPerson: Record<number, number>;
   householdMembers: Record<number, string[]>;
+  /** people.id → the Created day, from lib/roster-dates (Patrick, 2026-11-01). */
+  created: Record<number, string>;
 }) {
   const router = useRouter();
   const [adding, setAdding] = useState(false);
@@ -79,8 +87,12 @@ export function PeopleTable({
   // null initial key: the server's display_name order IS the default; sorting
   // starts only when a header is clicked.
   // The name search moved above the tabs (RosterSearch, 2026-08-27).
-  const { sorted, sortKey, sortDir, toggle } = useSortable<DirectoryPerson, PeopleColKey>(
-    people,
+  const rows = useMemo(
+    () => people.map((p) => ({ ...p, _created: created[p.person_id] ?? null })),
+    [people, created]
+  );
+  const { sorted, sortKey, sortDir, toggle } = useSortable<SortablePerson, PeopleColKey>(
+    rows,
     personValue,
     null
   );
@@ -111,6 +123,7 @@ export function PeopleTable({
             <th>Roles</th>
             <th>Household</th>
             <SortHeader label="BSA ID" colKey="bsa" sortKey={sortKey} sortDir={sortDir} toggle={toggle} />
+            <SortHeader label="Created" colKey="created" sortKey={sortKey} sortDir={sortDir} toggle={toggle} />
             {/* Status is the LAST column on every roster grid (Patrick, 2026-08-27). */}
             <th>Status</th>
           </tr>
@@ -148,6 +161,7 @@ export function PeopleTable({
                   )}
                 </td>
                 <td className={styles.mono}>{p.bsa_member_id || <span className={styles.muted}>—</span>}</td>
+                <td>{p._created ? fmtDate(p._created) : <span className={styles.muted}>—</span>}</td>
                 <td>
                   {p.active ? (
                     <Badge variant="success" title="Offered in the family signup picker">

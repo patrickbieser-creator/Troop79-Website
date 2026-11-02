@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ageOn, gradeFromGradYear, gradeLabel, SWIM_CLASS_LABEL } from '@/lib/demographics';
 import { INACTIVE_REASON_LABEL } from '@/lib/supabase/types';
+import type { RosterDates } from '@/lib/roster-dates';
 import { ScoutForm, type ScoutRow } from './scout-form';
 import { SortHeader, useSortable } from '../../_components/use-sortable';
 import { TabStrip } from '../../_components/tab-strip';
@@ -41,7 +42,9 @@ type ColKey =
   | 'bsa'
   | 'health'
   | 'status'
-  | 'reason';
+  | 'reason'
+  | 'created'
+  | 'left';
 
 function fmtDate(iso: string | null): string {
   if (!iso) return '—';
@@ -55,7 +58,12 @@ function fmtDate(iso: string | null): string {
 
 /** The lookups the comparator needs, carried on the row so the sort function
  *  can live at module scope instead of being rebuilt each render. */
-type SortableScout = ScoutRow & { _today: string; _rankLabel: Record<string, string> };
+type SortableScout = ScoutRow & {
+  _today: string;
+  _rankLabel: Record<string, string>;
+  _created: string | null;
+  _left: string | null;
+};
 
 function scoutValue(s: SortableScout, key: ColKey): unknown {
   switch (key) {
@@ -88,6 +96,10 @@ function scoutValue(s: SortableScout, key: ColKey): unknown {
       return s.active ? 'Active' : 'Inactive';
     case 'reason':
       return s.inactive_reason ? INACTIVE_REASON_LABEL[s.inactive_reason] : null;
+    case 'created':
+      return s._created;
+    case 'left':
+      return s._left;
     default:
       return null;
   }
@@ -103,6 +115,8 @@ interface Props {
    *  which the page classifies, not this component — cannot be contradicted
    *  here by a bare `scouts.active` test. */
   only?: 'active' | 'inactive';
+  /** Created (by people.id) and Left (by scout id), derived in lib/roster-dates (Patrick, 2026-11-01). */
+  dates: RosterDates;
 }
 
 /** Where a scout's name goes: the record page, remembering the tab it came
@@ -113,7 +127,7 @@ export function scoutRecordHref(s: Pick<ScoutRow, 'person_id'>, tab: 'active' | 
   return `/admin/advancement/roster/${s.person_id}?from=${tab === 'inactive' ? 'inactive_scout' : 'active_scout'}`;
 }
 
-export function ScoutsTable({ scouts, ranks, rankLabel, today, only }: Props) {
+export function ScoutsTable({ scouts, ranks, rankLabel, today, only, dates }: Props) {
   // `only` must NOT seed state. A state initialiser runs once on mount, and
   // React keeps this component mounted when the page navigates between the
   // Active and Inactive roster tabs — so the internal tab stayed 'active'
@@ -142,8 +156,14 @@ export function ScoutsTable({ scouts, ranks, rankLabel, today, only }: Props) {
     () =>
       scouts
         .filter((s) => (tab === 'active' ? s.active : !s.active))
-        .map((s) => ({ ...s, _today: today, _rankLabel: rankLabel })),
-    [scouts, tab, today, rankLabel]
+        .map((s) => ({
+          ...s,
+          _today: today,
+          _rankLabel: rankLabel,
+          _created: (s.person_id != null ? dates.created[s.person_id] : undefined) ?? null,
+          _left: dates.left[s.id] ?? null
+        })),
+    [scouts, tab, today, rankLabel, dates]
   );
 
   // The name search moved above the tabs (RosterSearch, 2026-08-27).
@@ -196,16 +216,21 @@ export function ScoutsTable({ scouts, ranks, rankLabel, today, only }: Props) {
             {head('Swim', 'swim')}
             {head('BSA ID', 'bsa')}
             {head('Health Form', 'health')}
+            {/* Created sits after the health form on the Active tab and after the
+                Reason on the Inactive tab, with Left beside it (Patrick, 2026-11-01). */}
+            {tab === 'active' && head('Created', 'created')}
             {head('Status', 'status')}
             {/* One line per scout (Patrick, 2026-08-27): the reason is its own
                 column on the Inactive tab rather than a second line under Status. */}
             {tab === 'inactive' && head('Reason', 'reason')}
+            {tab === 'inactive' && head('Created', 'created')}
+            {tab === 'inactive' && head('Left', 'left')}
           </tr>
         </thead>
         <tbody>
           {sorted.length === 0 && (
             <tr>
-              <td colSpan={tab === 'inactive' ? 13 : 12} className={styles.muted}>
+              <td colSpan={tab === 'inactive' ? 15 : 13} className={styles.muted}>
                 {tab === 'active'
                   ? 'No active scouts.'
                   : 'No inactive scouts — nobody has been marked dropped, transferred, moved, or aged out.'}
@@ -242,6 +267,7 @@ export function ScoutsTable({ scouts, ranks, rankLabel, today, only }: Props) {
                 <td>{s.swim_class ? SWIM_CLASS_LABEL[s.swim_class] : dash}</td>
                 <td className={styles.mono}>{s.bsa_member_id ?? dash}</td>
                 <td>{s.health_form_date ? fmtDate(s.health_form_date) : dash}</td>
+                {tab === 'active' && <td>{s._created ? fmtDate(s._created) : dash}</td>}
                 <td>
                   <Badge variant={s.active ? 'success' : 'danger'}>
                     {s.active ? 'Active' : 'Inactive'}
@@ -250,6 +276,8 @@ export function ScoutsTable({ scouts, ranks, rankLabel, today, only }: Props) {
                 {tab === 'inactive' && (
                   <td>{s.inactive_reason ? INACTIVE_REASON_LABEL[s.inactive_reason] : dash}</td>
                 )}
+                {tab === 'inactive' && <td>{s._created ? fmtDate(s._created) : dash}</td>}
+                {tab === 'inactive' && <td>{s._left ? fmtDate(s._left) : dash}</td>}
                 {/* The trailing duplicate Edit button is gone (Section 2
                     stretched-link sweep, 2026-08-21) — the scout's name is
                     the single way into the record, as on Calendar/News. */}

@@ -27,6 +27,8 @@ import { centralToday } from "@/lib/dates";
 import type { Rank } from "@/lib/supabase/types";
 import { loadScoutRows } from "@/lib/scout-row";
 import { loadPersonDirectory, indexDirectory } from "@/lib/person-directory";
+import { rosterDates, type ScoutTenure } from "@/lib/roster-dates";
+import { fetchAllRows } from "@/lib/supabase/paginate";
 import { RosterActions } from "./roster-actions";
 import { TabStrip } from "../../_components/tab-strip";
 import { PageTitle } from "../../_components/page-title";
@@ -118,6 +120,8 @@ export default async function RosterPage({
     householdsRes,
     membersRes,
     guestPeopleRes,
+    tenureRows,
+    createdRows,
   ] = await Promise.all([
     // Shared cache()d loader (Plans/Performance-Review-2026-08-27.md #17) —
     // the signup roster and Money tab read the same view.
@@ -143,7 +147,20 @@ export default async function RosterPage({
       .is("merged_into_person_id", null)
       .eq("active", true)
       .order("display_name"),
+    // Created / Left columns (Patrick, 2026-11-01): one row per scout, and every
+    // person's record day — paginated, people grows past the 1000-row cap.
+    fetchAllRows<ScoutTenure>((from, to) =>
+      supabase
+        .from("scout_tenure")
+        .select("scout_id, first_activity_date, last_activity_date")
+        .order("scout_id")
+        .range(from, to),
+    ),
+    fetchAllRows<{ id: number; created_at: string | null }>((from, to) =>
+      supabase.from("people").select("id, created_at").order("id").range(from, to),
+    ),
   ]);
+  const dates = rosterDates({ people: createdRows, scouts: allScouts, tenure: tenureRows });
 
   // Guests tab rows: their latest entry's class + the most recent event they came to. The history rides in the
   // same select as an embed (was a 3-read serial chain on every tab); flattened and shaped by the pure helpers.
@@ -306,6 +323,7 @@ export default async function RosterPage({
             rankLabel={rankLabel}
             today={today}
             only={tab === "active_scout" ? "active" : "inactive"}
+            dates={dates}
           />
         ) : (
           <PeopleTable
@@ -313,6 +331,7 @@ export default async function RosterPage({
             households={households}
             householdByPerson={householdByPerson}
             householdMembers={householdMembers}
+            created={dates.created}
           />
         )}
       </RosterSearch>

@@ -10,6 +10,8 @@ import { PeopleTable, type DirectoryPerson } from '../src/app/admin/(workspace)/
  * ?from=<tab>`), not a dialog trigger. The `from` tab is what the record
  * page's Back link returns to.
  */
+const NO_DATES = { created: {}, left: {} };
+
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }) }));
 vi.mock('../src/app/admin/(workspace)/advancement/roster/scout-form', () => ({ ScoutForm: () => null }));
 vi.mock('../src/app/admin/(workspace)/advancement/roster/adult-form', () => ({ AdultForm: () => null }));
@@ -62,7 +64,7 @@ const adult = (over: Partial<DirectoryPerson>): DirectoryPerson => ({
 
 describe('Scouts grid — row click', () => {
   it('Leader_ClicksRosterRow_LandsOnRecordPage', () => {
-    render(<ScoutsTable scouts={[scout({})]} ranks={[]} rankLabel={{}} today="2026-09-07" only="active" />);
+    render(<ScoutsTable scouts={[scout({})]} ranks={[]} rankLabel={{}} today="2026-09-07" only="active" dates={NO_DATES} />);
     const link = screen.getByRole('link', { name: 'Avery Scout' });
     expect(link.getAttribute('href')).toBe('/admin/advancement/roster/501?from=active_scout');
   });
@@ -75,6 +77,7 @@ describe('Scouts grid — row click', () => {
         rankLabel={{}}
         today="2026-09-07"
         only="inactive"
+        dates={NO_DATES}
       />
     );
     expect(screen.getByRole('link', { name: 'Avery Scout' }).getAttribute('href')).toBe(
@@ -85,7 +88,7 @@ describe('Scouts grid — row click', () => {
   it('Leader_SeesPlainName_WhenNoPersonRecordIsLinked', () => {
     // Defensive: every scout created through createScout has a person, but a
     // row without one must not link to /roster/null.
-    render(<ScoutsTable scouts={[scout({ person_id: null })]} ranks={[]} rankLabel={{}} today="2026-09-07" only="active" />);
+    render(<ScoutsTable scouts={[scout({ person_id: null })]} ranks={[]} rankLabel={{}} today="2026-09-07" only="active" dates={NO_DATES} />);
     expect(screen.queryByRole('link', { name: 'Avery Scout' })).toBeNull();
     expect(screen.getByText('Avery Scout')).toBeTruthy();
   });
@@ -94,7 +97,7 @@ describe('Scouts grid — row click', () => {
 describe('Leaders / Adults grid — row click', () => {
   it('Leader_ClicksRosterRow_LandsOnRecordPage', () => {
     render(
-      <PeopleTable people={[adult({ tab: 'leader', roles: 'adult_leader' })]} households={[]} householdByPerson={{}} householdMembers={{}} />
+      <PeopleTable people={[adult({ tab: 'leader', roles: 'adult_leader' })]} households={[]} householdByPerson={{}} householdMembers={{}} created={{}} />
     );
     expect(screen.getByRole('link', { name: 'Becky Vest' }).getAttribute('href')).toBe(
       '/admin/advancement/roster/77?from=leader'
@@ -102,7 +105,7 @@ describe('Leaders / Adults grid — row click', () => {
   });
 
   it('Leader_ClicksAdultRow_FromParamFollowsTheRowsOwnTab', () => {
-    render(<PeopleTable people={[adult({})]} households={[]} householdByPerson={{}} householdMembers={{}} />);
+    render(<PeopleTable people={[adult({})]} households={[]} householdByPerson={{}} householdMembers={{}} created={{}} />);
     expect(screen.getByRole('link', { name: 'Becky Vest' }).getAttribute('href')).toBe(
       '/admin/advancement/roster/77?from=adult'
     );
@@ -111,7 +114,7 @@ describe('Leaders / Adults grid — row click', () => {
   it('Leader_SeesNoEditDialogTrigger_OnTheGrid', () => {
     // The PersonEditor dialog is retired: the only button left in the grid's
     // chrome is the toolbar's "+ Add Adult".
-    render(<PeopleTable people={[adult({})]} households={[]} householdByPerson={{}} householdMembers={{}} />);
+    render(<PeopleTable people={[adult({})]} households={[]} householdByPerson={{}} householdMembers={{}} created={{}} />);
     expect(screen.queryByRole('button', { name: 'Becky Vest' })).toBeNull();
     expect(screen.getByRole('button', { name: '+ Add Adult' })).toBeTruthy();
   });
