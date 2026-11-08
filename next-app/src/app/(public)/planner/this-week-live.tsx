@@ -37,7 +37,8 @@ export function LiveView({ entryId, view, isToday, present }: { entryId: number;
   });
   const coming = (x: TwPerson) => x.intent !== 'not_coming';
   const sessions: Session[] = [
-    ...view.groups.map((g) => ({
+    // A station isn't a session: every rotating scout visits it (station rotations); the plan view draws the rotation.
+    ...view.groups.filter((g) => g.kind !== 'station').map((g) => ({
       key: g.key,
       title: g.title,
       sub: g.columns.map((c) => c.code).join(', '),

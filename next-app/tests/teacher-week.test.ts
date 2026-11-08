@@ -144,3 +144,17 @@ describe('a station teacher', () => {
     expect(week().load.minutes).toBe(20);
   });
 });
+
+describe('a station on the teacher card (qa-lead)', () => {
+  const station = group('fg:27', { kind: 'station', name: 'Climbing MB - Safety', title: 'Climbing MB - Safety', minutes: 20 });
+  const me = { personId: 5, name: 'Paul R', junior: false, intent: null };
+  const week = () => buildTeacherWeek({ groups: [station] }, { topicTeachers: [{ key: 'fg:27', personId: 5, enteredByPersonId: 9 }], skillOffers: [] }, me, catalog, 1, () => null);
+
+  it('Station_IsAdultsOnly_LikeAMeritBadge', () => {
+    expect(week().mine[0].adultsOnly).toBe(true);
+  });
+
+  it('Station_LineSaysStation', () => {
+    expect(week().mine[0].line).toMatch(/^Station - 20 min/);
+  });
+});

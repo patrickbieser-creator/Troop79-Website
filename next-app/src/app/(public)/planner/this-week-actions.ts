@@ -114,6 +114,11 @@ export async function twSetAlsoAction(input: { entryId: number; personId: number
   if (!s.ok) return s;
   const ok = await activeScout(s, input.personId);
   if (!ok.ok) return ok;
+  if (input.on && !isGroupKey(key)) {
+    // A class must already be on this meeting (as twSetTeacherAction): an "also" never puts a new topic on the plan.
+    const { data: onPlan } = await s.sb.from('meeting_topics').select('id').eq('calendar_entry_id', s.meeting.entryId).eq('topic_key', key).maybeSingle();
+    if (!onPlan) return fail('That isn’t on this meeting’s plan.');
+  }
   const row = { calendar_entry_id: s.meeting.entryId, person_id: input.personId, topic_key: key };
   const { error } = input.on
     ? await s.sb.from('meeting_scout_also').upsert({ ...row, set_by_person_id: s.actorPersonId, set_at: new Date().toISOString() }, { onConflict: 'calendar_entry_id,person_id,topic_key' })

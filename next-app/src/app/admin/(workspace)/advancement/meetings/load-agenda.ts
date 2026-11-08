@@ -48,7 +48,7 @@ export function planCandidates(view: ThisWeek): MatchedCandidate[] {
   });
   const coming = (p: { intent: string | null }) => p.intent !== 'not_coming';
   return [
-    ...view.groups.map((g) =>
+    ...view.groups.filter((g) => g.kind !== 'station').map((g) =>
       card(
         g.key,
         g.kind === 'badge' ? `${g.name} merit badge` : `${g.name} group`,

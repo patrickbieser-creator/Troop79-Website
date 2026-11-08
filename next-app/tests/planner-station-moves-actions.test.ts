@@ -50,6 +50,9 @@ beforeAll(async () => {
   editor = await person('Editor');
   young = await scout('Young', null);
   other = await scout('Other', 'scout');
+  // A Scoutmaster conference on the plan (a class must be on this meeting to be an "also").
+  const { error: te } = await sb.from('meeting_topics').insert({ calendar_entry_id: meeting, topic_key: 'star-5', kind: 'rank_req', rank_id: 'star', req_code: '5' });
+  if (te) throw new Error(te.message);
 });
 
 const asEditor = () => (state.actor = { personId: editor, subjectKind: 'adult', capabilities: new Set(['meeting_planner.edit']) });
@@ -65,6 +68,7 @@ afterEach(async () => {
 });
 
 afterAll(async () => {
+  await sb.from('meeting_topics').delete().eq('calendar_entry_id', meeting);
   await sb.from('calendar_entries').delete().eq('id', meeting);
   await sb.from('scouts').delete().in('id', scoutIds);
   await sb.from('people').delete().in('id', people);
@@ -155,6 +159,12 @@ describe('also assignments', () => {
   it('Also_RefusesAMalformedKey', async () => {
     asEditor();
     expect(await (await tw()).twSetAlsoAction({ entryId: meeting, personId: other, key: 'fg:12', on: true })).toEqual({ ok: false, error: 'Malformed request' });
+  });
+
+  it('Also_RefusesAClassNotOnThisMeeting', async () => {
+    asEditor();
+    const res = await (await tw()).twSetAlsoAction({ entryId: meeting, personId: other, key: 'first-aid-3', on: true });
+    expect([res.ok ? 'ok' : res.error, await alsoOf(other)]).toEqual(['That isn’t on this meeting’s plan.', []]);
   });
 
   it('Viewer_IsRefused_WhenAddingAnAlso', async () => {

@@ -87,7 +87,7 @@ function classOf(g: TwGroup, catalog: Catalog, me: number | null): TeacherClass 
   const min = groupMinutes(g, catalog);
   const scouts = `${g.members.length} ${g.members.length === 1 ? 'scout' : 'scouts'}`;
   const parts = g.kind === 'rank' ? g.columns.flatMap((c) => (c.subs.length ? c.subs : [c]).map((s) => `${s.code} · ${s.label}`)) : [];
-  const code = g.kind === 'rank' ? `${g.name} ${g.columns.map((c) => c.code).join(', ')}` : 'Merit badge';
+  const code = g.kind === 'rank' ? `${g.name} ${g.columns.map((c) => c.code).join(', ')}` : g.kind === 'station' ? 'Station' : 'Merit badge';
   return {
     key: g.key,
     label: g.title,
@@ -96,7 +96,8 @@ function classOf(g: TwGroup, catalog: Catalog, me: number | null): TeacherClass 
     scouts: g.members.length,
     parts,
     teachers: g.teachers.filter((t) => t.personId !== me).map((t) => t.formal),
-    adultsOnly: g.kind === 'badge'
+    // A station is merit badge work (station rotations): adults teach it, as they do a badge group.
+    adultsOnly: g.kind === 'badge' || g.kind === 'station'
   };
 }
 
