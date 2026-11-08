@@ -12,7 +12,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { loadAdvancementCatalog } from '@/lib/advancement-catalog';
 import { plannerAccess } from '@/lib/meeting-planner-access';
 import { deleteFocusSet, loadFocusSets, saveFocusSet, searchCounts, searchRequirements } from '@/lib/meeting-focus-db';
-import { LABEL_MAX, normalizeLabel, type FocusSearchRow, type FocusSetView, type FocusSource } from '@/lib/meeting-focus';
+import { GOAL_MAX, GOAL_MIN, LABEL_MAX, normalizeLabel, type FocusSearchRow, type FocusSetView, type FocusSource } from '@/lib/meeting-focus';
 
 const fail = (error: string): { ok: false; error: string } => ({ ok: false, error });
 const KINDS = ['all', 'rank', 'mb'] as const;
@@ -59,7 +59,16 @@ async function keeper() {
 /** Create (id null) or save a set: name, labels, items in order. */
 /** `mbId` (Planner III): the set's paired merit badge, offered when the set is added to a night; null clears it,
  *  undefined leaves it as it is. */
-export async function focusSaveSetAction(input: { id: number | null; name: string; labels: string[]; items: string[]; mbId?: string | null }): Promise<{ ok: true; id: number } | { ok: false; error: string }> {
+/** `goalMinutes` (station rotations): the set's teaching time goal, a whole number of minutes 5–240; null clears it,
+ *  undefined leaves it as it is. */
+export async function focusSaveSetAction(input: {
+  id: number | null;
+  name: string;
+  labels: string[];
+  items: string[];
+  mbId?: string | null;
+  goalMinutes?: number | null;
+}): Promise<{ ok: true; id: number } | { ok: false; error: string }> {
   const k = await keeper();
   if (!k.ok) return k;
   if (
@@ -73,13 +82,19 @@ export async function focusSaveSetAction(input: { id: number | null; name: strin
   )
     return fail('Malformed request');
   if (!input.name.trim()) return fail('Give the set a name.');
+  const goal = input.goalMinutes;
+  if (goal != null && (typeof goal !== 'number' || !Number.isInteger(goal) || goal < GOAL_MIN || goal > GOAL_MAX))
+    return fail(`Give a time goal from ${GOAL_MIN} to ${GOAL_MAX} minutes.`);
   const labels = [...new Set(input.labels.map(normalizeLabel).filter(Boolean))];
   if (labels.some((l) => l.length > LABEL_MAX)) return fail(`Keep labels to ${LABEL_MAX} characters.`);
   const sb = createAdminClient();
   const res = await saveFocusSet(sb, k.personId, { id: input.id ?? null, name: input.name, labels, items: input.items });
-  if (res.ok && input.mbId !== undefined) {
-    const { error } = await sb.from('focus_sets').update({ merit_badge_id: input.mbId }).eq('id', res.id);
-    if (error) return fail('The set saved, but its merit badge didn’t. Try again.');
+  const extra: { merit_badge_id?: string | null; goal_minutes?: number | null } = {};
+  if (input.mbId !== undefined) extra.merit_badge_id = input.mbId;
+  if (goal !== undefined) extra.goal_minutes = goal;
+  if (res.ok && Object.keys(extra).length) {
+    const { error } = await sb.from('focus_sets').update(extra).eq('id', res.id);
+    if (error) return fail('The set saved, but its merit badge or time goal didn’t. Try again.');
   }
   if (res.ok) revalidatePath('/planner/focus-sets');
   return res;

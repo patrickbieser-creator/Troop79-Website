@@ -206,6 +206,61 @@ describe('focus sets', () => {
   });
 });
 
+// Station rotations step 1 (Plans/Planner-Station-Rotations.md): a set's teaching time goal, reused at every meeting.
+describe('focus set time goal', () => {
+  const goalOf = async (id: number) => {
+    const listed = await (await focus()).focusSetsAction();
+    return listed.ok ? listed.sets.find((s) => s.id === id)?.goalMinutes : 'unlisted';
+  };
+  const saveWith = async (extra: { goalMinutes?: number | null }, id: number | null = null) => {
+    const res = await (await focus()).focusSaveSetAction({ id, name: `${TEST_PREFIX} Goal`, labels: [], items: [rankKeys[0]], ...extra });
+    if (res.ok && id === null) sets.push(res.id);
+    return res;
+  };
+
+  it('Planner_CanSetFocusSetGoalMinutes_WhenSavingASet', async () => {
+    asSeeder();
+    const res = await saveWith({ goalMinutes: 25 });
+    expect(res.ok ? await goalOf(res.id) : res).toBe(25);
+  });
+
+  it('Planner_CanClearTheGoal_WithNull', async () => {
+    asSeeder();
+    const res = await saveWith({ goalMinutes: 25 });
+    if (!res.ok) throw new Error(res.error);
+    await saveWith({ goalMinutes: null }, res.id);
+    expect(await goalOf(res.id)).toBeNull();
+  });
+
+  it('SaveSet_WithoutGoal_LeavesItAsItIs', async () => {
+    asSeeder();
+    const res = await saveWith({ goalMinutes: 30 });
+    if (!res.ok) throw new Error(res.error);
+    await saveWith({}, res.id);
+    expect(await goalOf(res.id)).toBe(30);
+  });
+
+  it('SaveSet_RefusesAGoalOutOfRange', async () => {
+    asSeeder();
+    const res = await saveWith({ goalMinutes: 500 });
+    expect(res).toEqual({ ok: false, error: 'Give a time goal from 5 to 240 minutes.' });
+  });
+
+  it('SaveSet_RefusesAFractionalGoal', async () => {
+    asSeeder();
+    const res = await saveWith({ goalMinutes: 12.5 });
+    expect(res).toEqual({ ok: false, error: 'Give a time goal from 5 to 240 minutes.' });
+  });
+
+  it('GoalColumn_RefusesOutOfRange_InTheDatabase', async () => {
+    asSeeder();
+    const res = await saveWith({ goalMinutes: 25 });
+    if (!res.ok) throw new Error(res.error);
+    const { error } = await sb.from('focus_sets').update({ goal_minutes: 3 }).eq('id', res.id);
+    expect(error?.code).toBe('23514');
+  });
+});
+
 describe('seeding', () => {
   it('FocusSet_Seed_MakesOneFocusGroup_WithTheSetsItemsSnapshot', async () => {
     const set = await makeSet('First aid night', [mbKey, mbSubKey, rankKeys[0]]);

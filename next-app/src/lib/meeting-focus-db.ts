@@ -120,6 +120,7 @@ type SetRow = {
   created_by_person_id: number | null;
   updated_at: string;
   merit_badge_id: string | null;
+  goal_minutes: number | null;
   focus_set_labels: { label: string }[] | null;
   focus_set_items: { topic_key: string; position: number }[] | null;
 };
@@ -128,7 +129,7 @@ type SetRow = {
 export async function loadFocusSets(sb: SupabaseClient, catalog: Catalog): Promise<FocusSetView[]> {
   const [sets, used] = await Promise.all([
     fetchAllRows<SetRow>((from, to) =>
-      sb.from('focus_sets').select('id, name, created_by_person_id, updated_at, merit_badge_id, focus_set_labels(label), focus_set_items(topic_key, position)').order('id').range(from, to)
+      sb.from('focus_sets').select('id, name, created_by_person_id, updated_at, merit_badge_id, goal_minutes, focus_set_labels(label), focus_set_items(topic_key, position)').order('id').range(from, to)
     ),
     fetchAllRows<{ focus_set_id: number; seeded_at: string }>((from, to) =>
       sb.from('meeting_topics').select('focus_set_id, seeded_at').not('focus_set_id', 'is', null).not('seeded_at', 'is', null).order('id').range(from, to)
@@ -145,7 +146,8 @@ export async function loadFocusSets(sb: SupabaseClient, catalog: Catalog): Promi
       items: [...(s.focus_set_items ?? [])].sort((a, b) => a.position - b.position).map((i) => itemView(i.topic_key, catalog)),
       lastUsed: last.get(s.id) ?? null,
       updatedAt: s.updated_at,
-      mbId: s.merit_badge_id
+      mbId: s.merit_badge_id,
+      goalMinutes: s.goal_minutes
     }))
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || b.id - a.id);
 }

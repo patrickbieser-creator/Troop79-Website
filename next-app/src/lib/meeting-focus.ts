@@ -26,6 +26,8 @@ export interface FocusSetView {
   updatedAt: string;
   /** Planner III: the set's paired merit badge (offered when the set is added to a night), or null. */
   mbId?: string | null;
+  /** The teaching time goal in minutes (5–240), or null. A station night's round lasts the longest station goal. */
+  goalMinutes?: number | null;
 }
 
 export interface FocusSearchRow extends FocusSetItem {
@@ -44,6 +46,9 @@ export interface FocusSource {
 
 export const SET_NAME_MAX = 80;
 export const LABEL_MAX = 30;
+/** A focus set's teaching time goal, in whole minutes (the goal_minutes CHECK). */
+export const GOAL_MIN = 5;
+export const GOAL_MAX = 240;
 
 /** A label as stored: trimmed, inner whitespace collapsed, lower-case. */
 export function normalizeLabel(raw: string): string {
