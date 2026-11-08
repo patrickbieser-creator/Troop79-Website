@@ -9,7 +9,7 @@
 import Link from 'next/link';
 import { useState, useSyncExternalStore } from 'react';
 import { SplitPanel } from './this-week-split';
-import { joinNames, type ThisWeek, type TwGroup, type TwResponses, type TwRow, type TwSection } from '@/lib/this-week';
+import { joinNames, type ThisWeek, type TwGroup, type TwPerson, type TwResponses, type TwRow, type TwSection } from '@/lib/this-week';
 import { checklistKeeps, withoutCantCome, type ChecklistFilter } from '@/lib/this-week-shown';
 import { usePlanner } from './planner-client';
 import { PlannerPoller } from './planner-poller';
@@ -17,7 +17,8 @@ import { twRemoveRequirementAction, twSetRoleAction, twSetTeacherAction, twUnmer
 import { FocusCard, type SetChoice } from './this-week-focus';
 import type { SavedPlan } from '@/lib/saved-plans-shared';
 import { LiveView } from './this-week-live';
-import { StationsSection, StationsSwitch } from './this-week-stations';
+import { Doubles, StationsSection, StationsSwitch } from './this-week-stations';
+import st from './this-week-stations.module.css';
 import { NameChip, Popover, ReqItem, StateName, TeacherSlot, useWrite } from './this-week-parts';
 import type { PlanState } from '@/lib/plan-states';
 import s from './this-week.module.css';
@@ -192,7 +193,13 @@ function PlanView({
     <>
       <FocusCard entryId={entryId} view={view} sets={sets} badges={badges} canSeed={canSeed} meetingDate={meetingDate} savedPlans={savedPlans} />
 
-      {view.rotation ? <StationsSection entryId={entryId} rotation={view.rotation} canSeed={canSeed} /> : null}
+      {view.rotation ? <StationsSection entryId={entryId} rotation={view.rotation} canSeed={canSeed} everyone={view.everyone} doubles={view.doubles} /> : null}
+      {view.rotation?.on ? (
+        <div className={st.otherHead}>
+          <h2 className={s.cardTitle}>Other groups and conferences</h2>
+          <Doubles doubles={view.doubles} />
+        </div>
+      ) : null}
 
       <section className={s.coverage} aria-label="Coverage">
         <div className={s.covMain}>
@@ -280,6 +287,7 @@ function PlanView({
                   ))}
                   {g.members.length ? null : <span className={s.muted}>Nobody needs these tonight.</span>}
                 </div>
+                <AlsoHere people={g.alsoMembers} />
                 <TeacherSlot slotKey={g.key} title={`the ${g.title}`} teachers={g.teachers} candidates={g.candidates} everyone={view.everyone} onSet={setTeacher} teachingElsewhere={teachingElsewhere} />
                 <NeedsTeacher teachers={g.teachers} saidNo={g.saidNo} />
                 <DeclineNotes notes={g.declineNotes} />
@@ -352,8 +360,9 @@ function PlanView({
                   {g.members.map((m) => (
                     <NameChip key={m.personId} person={m} tone="rsvp" />
                   ))}
-                  {g.members.length ? null : <span className={s.muted}>Nobody taking it yet.</span>}
+                  {g.members.length || g.alsoMembers?.length ? null : <span className={s.muted}>Nobody taking it yet.</span>}
                 </div>
+                <AlsoHere people={g.alsoMembers} />
                 <TeacherSlot slotKey={g.key} title={`${g.name}`} teachers={g.teachers} candidates={g.candidates} everyone={view.everyone} onSet={setTeacher} teachingElsewhere={teachingElsewhere} />
                 <NeedsTeacher teachers={g.teachers} saidNo={g.saidNo} />
                 <DeclineNotes notes={g.declineNotes} />
@@ -402,8 +411,9 @@ function PlanView({
                   {x.scouts.map((m) => (
                     <NameChip key={m.personId} person={m} tone="rsvp" />
                   ))}
-                  {x.scouts.length ? null : <span className={s.muted}>Nobody signed up yet.</span>}
+                  {x.scouts.length || x.alsoScouts?.length ? null : <span className={s.muted}>Nobody signed up yet.</span>}
                 </div>
+                <AlsoHere people={x.alsoScouts} />
                 <div className={s.row}>
                   <TeacherSlot slotKey={x.key} title={x.title} teachers={x.teachers} candidates={x.candidates} everyone={view.everyone} onSet={setTeacher} teachingElsewhere={teachingElsewhere} />
                   {canSeed && x.origin === 'planner' ? (
@@ -680,6 +690,7 @@ function Checklist({
                     <td className={s.noteCol}>
                       <div className={s.noteCell}>
                         <span className={r.gap ? s.gapNote : undefined}>{r.note}</span>
+                        {r.also?.length ? <span className={s.muted}>Also in: {r.also.join(', ')}</span> : null}
                         <FamilyFlags row={r} />
                         <PlaceMenu row={r} view={view} onRole={onRole} busy={busy} />
                       </div>
@@ -783,3 +794,16 @@ export function DeclineNotes({ notes }: { notes: readonly { name: string; note: 
   );
 }
 
+
+/** Station rotations step 4: scouts whose primary place is elsewhere but who are also on this card. */
+function AlsoHere({ people }: { people?: readonly TwPerson[] }) {
+  if (!people?.length) return null;
+  return (
+    <div className={s.chips}>
+      <span className={s.muted}>Also here:</span>
+      {people.map((m) => (
+        <NameChip key={m.personId} person={m} tone="rsvp" />
+      ))}
+    </div>
+  );
+}

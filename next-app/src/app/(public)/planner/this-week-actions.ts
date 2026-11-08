@@ -176,7 +176,7 @@ export async function twSetRoleAction(input: { entryId: number; personId: number
 export async function twSetTeacherAction(input: { entryId: number; key: string; personId: number | null; on: boolean }): Promise<TwResult> {
   if (
     typeof input?.key !== 'string' ||
-    !(GROUP_KEY.test(input.key) || REQUEST_KEY.test(input.key)) ||
+    !(GROUP_KEY.test(input.key) || REQUEST_KEY.test(input.key) || FG_KEY.test(input.key)) ||
     (input.personId !== null && !Number.isInteger(input.personId)) ||
     typeof input.on !== 'boolean'
   ) {

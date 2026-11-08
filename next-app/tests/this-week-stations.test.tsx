@@ -135,3 +135,30 @@ describe('the switch', () => {
     expect(screen.queryByRole('radiogroup')).toBeNull();
   });
 });
+
+describe('step 4: hand moves, also, double-assigned', () => {
+  const withNotes: TwRotation = {
+    ...rotation,
+    groups: [{ number: 1, name: 'Group 1', seededFrom: 'Scout', members: [{ ...member(1, 'Ava M'), hand: true, also: ['Scoutmaster conference'] }] }, ...rotation.groups.slice(1)]
+  };
+
+  it('HandMove_WearsByHand', () => {
+    render(<StationsSection entryId={1} rotation={withNotes} canSeed />);
+    expect(screen.getByText('By hand')).toBeTruthy();
+  });
+
+  it('Also_ReadsAlsoIn', () => {
+    render(<StationsSection entryId={1} rotation={withNotes} canSeed />);
+    expect(screen.getByText('Also in: Scoutmaster conference')).toBeTruthy();
+  });
+
+  it('Doubles_ShowACount_AndListWhoAndWhere', () => {
+    render(<StationsSection entryId={1} rotation={withNotes} canSeed doubles={[{ personId: 1, name: 'Ava M', primary: 'Group 1', also: ['Scoutmaster conference'], keys: ['star-5'] }]} />);
+    expect([screen.getByText('1 double-assigned').tagName, screen.getByText('Group 1 + Scoutmaster conference').textContent]).toEqual(['SUMMARY', 'Group 1 + Scoutmaster conference']);
+  });
+
+  it('NoDoubles_NoCallout', () => {
+    render(<StationsSection entryId={1} rotation={rotation} canSeed doubles={[]} />);
+    expect(screen.queryByText(/double-assigned/)).toBeNull();
+  });
+});

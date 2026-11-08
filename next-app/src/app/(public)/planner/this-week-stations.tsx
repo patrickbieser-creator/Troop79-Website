@@ -3,13 +3,14 @@
 /**
  * Station rotations on This week (Plans/Planner-Station-Rotations.md; prototypes/station-rotations/this-week.html):
  * the Groups | Stations switch, the station order, the rotation grid and each rotation group's checklist. Teachers stay
- * put at a station all evening; Group 1..N come to them, one round each. Step 3 is read-only apart from the switch and
- * the order; moving scouts between groups and naming station teachers come with step 4.
+ * put at a station all evening; Group 1..N come to them, one round each. Scouts move between groups from the person
+ * drawer (step 4); a hand move wears "By hand", and an "also" assignment reads "Also in: …" (never enforced).
  */
 import type { ThisWeek } from '@/lib/this-week';
 import type { TwRotation, TwRotationGroup, TwRotationStation } from '@/lib/this-week-rotation';
-import { twOrderStationsAction, twSetStationsAction } from './this-week-actions';
-import { NameChip, useWrite } from './this-week-parts';
+import { twOrderStationsAction, twSetStationsAction, twSetTeacherAction } from './this-week-actions';
+import { NameChip, TeacherSlot, useWrite } from './this-week-parts';
+import type { TwTeacher } from '@/lib/this-week';
 import s from './this-week.module.css';
 import st from './this-week-stations.module.css';
 
@@ -47,7 +48,19 @@ export function StationsSwitch({ entryId, view, canSeed }: { entryId: number; vi
 }
 
 /** The Stations section: shown while the switch is on. */
-export function StationsSection({ entryId, rotation, canSeed }: { entryId: number; rotation: TwRotation; canSeed: boolean }) {
+export function StationsSection({
+  entryId,
+  rotation,
+  canSeed,
+  everyone = [],
+  doubles = []
+}: {
+  entryId: number;
+  rotation: TwRotation;
+  canSeed: boolean;
+  everyone?: readonly TwTeacher[];
+  doubles?: ThisWeek['doubles'];
+}) {
   if (!rotation.on) return null;
   return (
     <section className={st.wrap} aria-labelledby="stations-h">
@@ -56,6 +69,7 @@ export function StationsSection({ entryId, rotation, canSeed }: { entryId: numbe
           Stations
         </h2>
         <span className={s.muted}>Teachers stay put. Groups come to them.</span>
+        <Doubles doubles={doubles} />
       </div>
       {rotation.problem === 'empty' ? (
         <p className={st.problem} role="status">
@@ -67,7 +81,7 @@ export function StationsSection({ entryId, rotation, canSeed }: { entryId: numbe
         </p>
       ) : null}
       <div className={st.top}>
-        <StationOrder entryId={entryId} rotation={rotation} canSeed={canSeed} />
+        <StationOrder entryId={entryId} rotation={rotation} canSeed={canSeed} everyone={everyone} />
         {rotation.problem ? null : <RotationGrid rotation={rotation} />}
       </div>
       {rotation.problem ? null : rotation.groups.map((g) => <GroupChecklist key={g.number} group={g} stations={rotation.stations} />)}
@@ -75,8 +89,9 @@ export function StationsSection({ entryId, rotation, canSeed }: { entryId: numbe
   );
 }
 
-function StationOrder({ entryId, rotation, canSeed }: { entryId: number; rotation: TwRotation; canSeed: boolean }) {
+function StationOrder({ entryId, rotation, canSeed, everyone }: { entryId: number; rotation: TwRotation; canSeed: boolean; everyone: readonly TwTeacher[] }) {
   const w = useWrite();
+  const setTeacher = (key: string, personId: number | null, on: boolean) => w.run(() => twSetTeacherAction({ entryId, key, personId, on }));
   const keys = rotation.stations.map((x) => x.key);
   const move = (i: number, by: -1 | 1) => {
     const next = [...keys];
@@ -101,17 +116,21 @@ function StationOrder({ entryId, rotation, canSeed }: { entryId: number; rotatio
                 {x.cells.length ? `${plural(x.cells.length, 'requirement')} · ` : ''}
                 {x.goalMinutes ? `${x.goalMinutes} min` : 'No time goal yet'}
               </div>
-              <div className={st.teachers}>
-                {x.teachers.length ? (
-                  x.teachers.map((t) => (
-                    <span key={t.personId} className={s.chip}>
-                      {t.name}
-                    </span>
-                  ))
-                ) : (
-                  <span className={s.muted}>No teacher yet</span>
-                )}
-              </div>
+              {x.candidates ? (
+                <TeacherSlot slotKey={x.key} title={x.title} teachers={x.teachers as TwTeacher[]} candidates={x.candidates} everyone={everyone} onSet={setTeacher} />
+              ) : (
+                <div className={st.teachers}>
+                  {x.teachers.length ? (
+                    x.teachers.map((t) => (
+                      <span key={t.personId} className={s.chip}>
+                        {t.name}
+                      </span>
+                    ))
+                  ) : (
+                    <span className={s.muted}>No teacher yet</span>
+                  )}
+                </div>
+              )}
               {helpers.get(x.key)?.length ? <div className={s.muted}>Could help: {helpers.get(x.key)!.join(', ')}</div> : null}
             </div>
             {canSeed ? (
@@ -275,7 +294,11 @@ function GroupChecklist({ group, stations }: { group: TwRotationGroup; stations:
                     ))
                   )}
                   <td className={s.noteCol}>
-                    {m.helperAt.length ? <span className={st.helpTag}>Could help · {m.helperAt.map(title).join(', ')}</span> : null}
+                    <div className={st.notes}>
+                      {m.hand ? <span className={st.handTag}>By hand</span> : null}
+                      {m.helperAt.length ? <span className={st.helpTag}>Could help · {m.helperAt.map(title).join(', ')}</span> : null}
+                      {m.also?.length ? <span className={s.muted}>Also in: {m.also.join(', ')}</span> : null}
+                    </div>
                   </td>
                 </tr>
               );
@@ -284,5 +307,22 @@ function GroupChecklist({ group, stations }: { group: TwRotationGroup; stations:
         </table>
       </div>
     </section>
+  );
+}
+
+/** "2 double-assigned" (Patrick, 2026-11-08): quiet, never an error; a tap lists who and where. */
+export function Doubles({ doubles }: { doubles: ThisWeek['doubles'] }) {
+  if (!doubles.length) return null;
+  return (
+    <details className={st.doubles}>
+      <summary>{doubles.length} double-assigned</summary>
+      <ul className={st.doublesList}>
+        {doubles.map((d) => (
+          <li key={d.personId}>
+            <strong>{d.name}</strong> <span className={s.muted}>{[d.primary, ...d.also].join(' + ')}</span>
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }

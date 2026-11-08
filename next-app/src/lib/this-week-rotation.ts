@@ -9,6 +9,7 @@ import type { FocusProgress, ScoutRole } from '@/lib/focus-plan';
 import { buildStationRotation } from '@/lib/station-rotation';
 import type { MeetingRotation } from '@/lib/station-rotation-db';
 import type { TeacherPerson } from '@/lib/meeting-board-teach';
+import type { TwTeacher } from '@/lib/this-week';
 
 type Catalog = Pick<AdvancementCatalog, 'ranks' | 'meritBadges' | 'meritBadgeRequirements'>;
 
@@ -25,7 +26,12 @@ export interface TwRotationStation {
   goalMinutes: number | null;
   /** The checklist cells: the station's leaf requirements, in catalog order. */
   cells: { key: string; code: string; label: string }[];
-  teachers: { personId: number; name: string }[];
+  /** Who teaches it all evening, with their plan state (filled in by This week). */
+  teachers: (Pick<TwTeacher, 'personId' | 'name'> & Partial<TwTeacher>)[];
+  /** Who could teach it: the badge's counselors first (filled in by This week). */
+  candidates?: TwTeacher[];
+  /** Who said No to this station (now off it). */
+  saidNo?: { personId: number; name: string; note: string | null; enteredBy?: string }[];
 }
 
 export interface TwRotationMember extends TwRotationPerson {

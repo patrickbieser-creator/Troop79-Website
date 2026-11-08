@@ -179,6 +179,33 @@ describe('station order', () => {
   });
 });
 
+describe('station teachers (step 4)', () => {
+  const teachersOf = async (key: string) =>
+    (((await sb.from('meeting_topic_teachers').select('person_id, meeting_topics!inner(topic_key)').eq('calendar_entry_id', meeting).eq('meeting_topics.topic_key', key)).data ?? []) as { person_id: number }[]).map((r) => r.person_id);
+
+  it('Editor_NamesAStationsTeacher', async () => {
+    await seedThree();
+    asEditor();
+    const res = await (await tw()).twSetTeacherAction({ entryId: meeting, key: `fg:${safety}`, personId: seeder, on: true });
+    expect([res.ok ? 'ok' : res.error, await teachersOf(`fg:${safety}`)]).toEqual(['ok', [seeder]]);
+  });
+
+  it('Editor_TakesAStationsTeacherOff', async () => {
+    await seedThree();
+    asEditor();
+    const a = await tw();
+    await a.twSetTeacherAction({ entryId: meeting, key: `fg:${safety}`, personId: seeder, on: true });
+    await a.twSetTeacherAction({ entryId: meeting, key: `fg:${safety}`, personId: seeder, on: false });
+    expect(await teachersOf(`fg:${safety}`)).toEqual([]);
+  });
+
+  it('StationTeacher_RefusedForAFocusSetNotOnTheMeeting', async () => {
+    asEditor();
+    const res = await (await tw()).twSetTeacherAction({ entryId: meeting, key: `fg:${safety}`, personId: seeder, on: true });
+    expect(res.ok).toBe(false);
+  });
+});
+
 describe('the board stamp', () => {
   it('TurningStationsOn_ChangesTheStamp', async () => {
     await seedThree();

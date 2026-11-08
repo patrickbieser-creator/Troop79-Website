@@ -617,6 +617,18 @@ export function buildThisWeek(given: ThisWeekInput): ThisWeek {
   const responses = responsesOf(input.scouts.map(person), input.intents, input.adultNames ?? new Map(adults.map((a) => [a.personId, a.displayName])));
   const rankWork = may.filter((r) => r.status === 'rank-work').length;
   const nothing = may.filter((r) => r.status === 'nothing').length;
+  // Station rotations step 4: a station's teachers carry their plan state, like a group's; the badge's counselors first.
+  const rotation = rot.view
+    ? {
+        ...rot.view,
+        stations: rot.view.stations.map((st) => {
+          const onCard = signedUp(st.key, teacherSnapOf({ key: st.key, title: st.title, columns: st.cells }, input.mergedBases));
+          const counselors = rot.view!.badgeId ? pool.filter((p) => p.kind === 'adult' && p.counselorFor.has(rot.view!.badgeId!)).map((p) => teacherOf(p, 'Counselor')) : [];
+          const seen = new Set(counselors.map((t) => t.personId));
+          return { ...st, teachers: onCard, saidNo: saidNoTo(st.key, onCard), candidates: [...counselors.sort(byAnswer), ...pool.filter((p) => p.kind === 'adult' && !seen.has(p.personId)).map((p) => teacherOf(p)).sort(byAnswer)] };
+        })
+      }
+    : null;
   const out: ThisWeek = {
     focus: input.focus.map((f) => ({ key: f.key, setId: f.setId, name: f.title })),
     badges,
@@ -649,7 +661,7 @@ export function buildThisWeek(given: ThisWeekInput): ThisWeek {
       .sort((a, b) => a.name.localeCompare(b.name)),
     unplaced: plan.unplaced,
     everyone: pool.map((p) => teacherOf(p)).sort((a, b) => a.name.localeCompare(b.name)),
-    rotation: rot.view,
+    rotation,
     doubles: []
   };
   return withAlso(out, given.also, (key) => topicWords(key, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, input.titles, more)?.label ?? key, person);
