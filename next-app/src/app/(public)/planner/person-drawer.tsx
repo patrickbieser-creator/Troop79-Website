@@ -18,7 +18,8 @@ import { INTENT_LABEL, type Intent } from '@/lib/meeting-board-shared';
 import type { DrawerOption, PersonDrawer } from '@/lib/meeting-planner-drawer';
 import { plannerOpenPersonAction, plannerSetAnswerAction, plannerTeacherAnswerAction, plannerTogglePickAction, plannerToggleTeachAction, type DrawerTick, type PlannerTickResult } from './actions';
 import { TheirTeachingAnswers } from './teacher-answer-for-them';
-import { twSetRoleAction, type RoleInput } from './this-week-actions';
+import { twRotationMoveAction, twSetAlsoAction, twSetRoleAction, type RoleInput } from './this-week-actions';
+import type { PlaceRole } from '@/lib/planner-place';
 import { SAVE_FAILED, usePlanner } from './planner-client';
 import styles from './planner.module.css';
 
@@ -137,14 +138,27 @@ export function PersonDrawerView({ personId, onClose }: { personId: number; onCl
     return res.ok;
   };
   /** Tonight: one hand placement, then the drawer reads again (where they are now is This week's call). */
-  const place = async (role: RoleInput) => {
+  const place = async (role: RoleInput | PlaceRole) => {
     setAnswering(true);
     setProblem(null);
-    const res = await serial(personId, () => run(() => twSetRoleAction({ entryId: p.entryId, personId, ...role }), { defer: true }));
+    const res = await serial(personId, () =>
+      run(() => (role.role === 'rotate' ? twRotationMoveAction({ entryId: p.entryId, personId, group: role.group }) : twSetRoleAction({ entryId: p.entryId, personId, ...(role as RoleInput) })), { defer: true })
+    );
     if (res.ok) {
       const again = await serial(personId, () => plannerOpenPersonAction({ entryId: p.entryId, personId }));
       if (again.ok) setConfirmed(again.drawer);
     } else setProblem({ at: 'place', text: res.error });
+    setAnswering(false);
+  };
+  /** Station rotations step 4: an "also" on top of the primary place, then the drawer reads again. */
+  const setAlso = async (key: string, on: boolean) => {
+    setAnswering(true);
+    setProblem(null);
+    const res = await serial(personId, () => run(() => twSetAlsoAction({ entryId: p.entryId, personId, key, on }), { defer: true }));
+    if (res.ok) {
+      const again = await serial(personId, () => plannerOpenPersonAction({ entryId: p.entryId, personId }));
+      if (again.ok) setConfirmed(again.drawer);
+    } else setProblem({ at: 'also', text: res.error });
     setAnswering(false);
   };
   const saving = answering || ticks.length > 0;
@@ -243,14 +257,38 @@ export function PersonDrawerView({ personId, onClose }: { personId: number; onCl
             ))}
           </ul>
           {drawer.place.canUnassign ? (
-            <button type="button" className={styles.quietAdd} disabled={answering} onClick={() => place({ role: null })}>
-              Let the planner place {drawer.name.split(' ')[0]}
+            <button type="button" className={styles.quietAdd} disabled={answering} onClick={() => place(drawer.place!.unassignRole)}>
+              {drawer.place.unassignRole.role === 'rotate' ? 'Back to the draft' : `Let the planner place ${drawer.name.split(' ')[0]}`}
             </button>
           ) : null}
           {problem?.at === 'place' ? (
             <p className={styles.rowProblem} role="alert">
               {problem.text}
             </p>
+          ) : null}
+          {drawer.place.also.length ? (
+            <>
+              <h3 className={styles.drawerLabel}>Also tonight</h3>
+              <ul className={styles.optList} aria-label="Also tonight">
+                {drawer.place.also.map((a) => (
+                  <li key={a.key}>
+                    <button type="button" role="checkbox" aria-checked={a.on} className={a.on ? styles.optOn : styles.opt} disabled={answering} onClick={() => setAlso(a.key, !a.on)}>
+                      <span className={styles.check} aria-hidden="true">
+                        {a.on ? '✓' : ''}
+                      </span>
+                      <span className={styles.optText}>
+                        <span className={styles.optTitle}>{a.label}</span>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              {problem?.at === 'also' ? (
+                <p className={styles.rowProblem} role="alert">
+                  {problem.text}
+                </p>
+              ) : null}
+            </>
           ) : null}
           <p className={styles.placeHint}>
             None of these fit?{' '}

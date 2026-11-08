@@ -69,3 +69,57 @@ describe('placeChoices', () => {
     expect(placeChoices(week(row({})), 99)).toBeNull();
   });
 });
+
+// Station rotations step 4 (Plans/Planner-Station-Rotations.md): a scout in a rotation group, and "also" choices.
+describe('placeChoices on a Stations night', () => {
+  const rotation = (members: { personId: number; hand?: boolean }[][]) =>
+    ({
+      on: true,
+      problem: null,
+      groups: members.map((ms, i) => ({ number: i + 1, name: `Group ${i + 1}`, seededFrom: 'Scout', members: ms.map((m) => ({ name: 'Ava M', rank: null, rankName: 'New scout', done: [], helperAt: [], ...m })) }))
+    }) as unknown as ThisWeek['rotation'];
+  const stationsWeek = (r: TwRow | null, rot: ThisWeek['rotation'], doubles: ThisWeek['doubles'] = []): ThisWeek =>
+    ({ ...week(r ?? row({ personId: 99 })), rotation: rot, doubles } as ThisWeek);
+
+  it('RotationScout_ReadsTheirGroup', () => {
+    const c = placeChoices(stationsWeek(null, rotation([[{ personId: 7 }], []])), 7)!;
+    expect(c.now).toBe('Group 1 · Stations');
+  });
+
+  it('RotationScout_CanMoveToAnotherRotationGroup', () => {
+    const c = placeChoices(stationsWeek(null, rotation([[{ personId: 7 }], []])), 7)!;
+    expect(c.options.slice(0, 2).map((o) => [o.label, o.current, o.role])).toEqual([
+      ['Group 1 · Stations', true, { role: 'rotate', group: 1 }],
+      ['Group 2 · Stations', false, { role: 'rotate', group: 2 }]
+    ]);
+  });
+
+  it('RotationScout_CanMoveToAnOrdinaryGroup', () => {
+    const c = placeChoices(stationsWeek(null, rotation([[{ personId: 7 }]])), 7)!;
+    expect(c.options.some((o) => o.label === 'First Aid merit badge' && o.role.role === 'group')).toBe(true);
+  });
+
+  it('HandMovedRotationScout_CanGoBackToTheDraft', () => {
+    const c = placeChoices(stationsWeek(null, rotation([[{ personId: 7, hand: true }]])), 7)!;
+    expect([c.canUnassign, c.unassignRole]).toEqual([true, { role: 'rotate', group: null }]);
+  });
+
+  it('SectionScout_CanJoinTheRotation', () => {
+    const c = placeChoices(stationsWeek(row({ groupKey: 'mb:first-aid', status: 'badge', gap: false }), rotation([[{ personId: 1 }]])), 7)!;
+    expect(c.options[0]).toEqual({ id: 'rot:1', label: 'Group 1 · Stations', role: { role: 'rotate', group: 1 }, current: false });
+  });
+
+  it('Also_OffersEveryGroupAndClass_ButNotTheCurrentOne', () => {
+    const c = placeChoices(stationsWeek(row({ groupKey: 'fr:tenderfoot', status: 'rank-work', gap: false }), rotation([[{ personId: 1 }]]), [], ), 7)!;
+    expect(c.also.map((a) => a.key)).toEqual(['fr:second-class', 'mb:first-aid']);
+  });
+
+  it('Also_MarksWhatTheyreAlreadyIn', () => {
+    const c = placeChoices(stationsWeek(null, rotation([[{ personId: 7 }]]), [{ personId: 7, name: 'Ava M', primary: 'Group 1', also: ['First Aid merit badge'], keys: ['mb:first-aid'] }]), 7)!;
+    expect(c.also.find((a) => a.key === 'mb:first-aid')?.on).toBe(true);
+  });
+
+  it('NoRotation_StillOffersAlso', () => {
+    expect(placeChoices(week(row({ groupKey: 'fr:tenderfoot', status: 'rank-work', gap: false })), 7)!.also.map((a) => a.key)).toEqual(['fr:second-class', 'mb:first-aid']);
+  });
+});

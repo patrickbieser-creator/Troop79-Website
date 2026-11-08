@@ -274,7 +274,7 @@ export interface ThisWeek {
   /** Station rotations: null when the night has never used Stations. */
   rotation: TwRotation | null;
   /** Station rotations step 4: scouts in two places tonight (a primary place plus an "also"), flagged, never refused. */
-  doubles: { personId: number; name: string; primary: string; also: string[] }[];
+  doubles: { personId: number; name: string; primary: string; also: string[]; keys: string[] }[];
 }
 
 const NEW_SCOUT = 'New scout';
@@ -687,7 +687,7 @@ function withAlso(
     }
     if (inRotation) inRotation.m.also = titles;
     const primary = inRotation ? inRotation.g.name : inSection!.r.groupKey ? (groups.find((g) => g.key === inSection!.r.groupKey)?.title ?? inSection!.sec.title) : inSection!.sec.title;
-    doubles.push({ personId, name: who.name, primary, also: titles });
+    doubles.push({ personId, name: who.name, primary, also: titles, keys: [...keys] });
   }
   const sections = tw.sections.map((sec) => ({ ...sec, rows: sec.rows.map((r) => (also.has(r.personId) && rows.has(r.personId) ? { ...r, also: also.get(r.personId)!.map(title) } : r)) }));
   return { ...tw, groups, extras, sections, doubles: doubles.sort((a, b) => a.name.localeCompare(b.name)) };
