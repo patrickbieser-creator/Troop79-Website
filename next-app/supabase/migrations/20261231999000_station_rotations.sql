@@ -5,7 +5,7 @@
 -- 2. meeting_rotation_stations: the meeting's stations in order, each a seeded focus set topic ('fg:<setId>', the
 --    per-night snapshot of the set). A topic deleted with its set goes with it (cascade); unseeding drops it too (5).
 --    Named apart from the retired Build-a-Plan meeting_stations (dropped 20261210100000) on purpose.
--- 3. meeting_set_stations(entry, on): the switch, under the meeting's seed lock. Turning on with no stations yet
+-- 3. meeting_set_rotation(entry, on): the switch, under the meeting's seed lock. Turning on with no stations yet
 --    makes every seeded focus set a station, in the order they were added.
 -- 4. meeting_order_stations(entry, keys): replaces the station list with these focus set topics, in this order.
 -- 5. meeting_unseed_topic: drops the topic's station row first (20261229100000's body otherwise).
@@ -40,7 +40,7 @@ alter table public.meeting_rotation_stations enable row level security;
 revoke all on public.meeting_rotation_stations from anon, authenticated;
 
 -- ── 3. the switch ─────────────────────────────────────────────────────────────────────────────────────────────────
-create or replace function public.meeting_set_stations(p_entry bigint, p_on boolean) returns void
+create or replace function public.meeting_set_rotation(p_entry bigint, p_on boolean) returns void
 language plpgsql
 security invoker
 set search_path = public, pg_temp
@@ -119,10 +119,10 @@ begin
 end;
 $function$;
 
-revoke all on function public.meeting_set_stations(bigint, boolean) from public, anon, authenticated;
+revoke all on function public.meeting_set_rotation(bigint, boolean) from public, anon, authenticated;
 revoke all on function public.meeting_order_stations(bigint, text[]) from public, anon, authenticated;
 revoke all on function public.meeting_unseed_topic(bigint, text) from public, anon, authenticated;
-grant execute on function public.meeting_set_stations(bigint, boolean) to service_role;
+grant execute on function public.meeting_set_rotation(bigint, boolean) to service_role;
 grant execute on function public.meeting_order_stations(bigint, text[]) to service_role;
 grant execute on function public.meeting_unseed_topic(bigint, text) to service_role;
 

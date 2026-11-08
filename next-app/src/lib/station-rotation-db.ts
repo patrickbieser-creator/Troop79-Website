@@ -52,7 +52,7 @@ const result = ({ error }: { error: { message: string } | null }): StationWrite 
 
 /** Turn Stations on or off. On with no stations yet makes every focus set on the night a station. */
 export async function setStations(sb: SupabaseClient, entryId: number, on: boolean): Promise<StationWrite> {
-  return result(await sb.rpc('meeting_set_stations', { p_entry: entryId, p_on: on }));
+  return result(await sb.rpc('meeting_set_rotation', { p_entry: entryId, p_on: on }));
 }
 
 /** Replace the station list with these focus set topics, in this order. */
