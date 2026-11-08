@@ -109,8 +109,8 @@ single-badge nights will follow, with any number of stations (usually 3–4, som
 - **Schema (DB-first, additive):**
   - `focus_sets.goal_minutes smallint null check (goal_minutes between 5 and 240)`.
   - **`meeting_rotation_stations(calendar_entry_id, topic_id → meeting_topics on delete cascade, position, updated_at,
-    unique(entry, topic_id), unique(entry, position))`.** Rows existing = Stations on, and no rows = off. There is no
-    switch table. `topic_id` points at the meeting's `fg:<setId>` topic, which is already the per-night snapshot.
+    unique(entry, topic_id), unique(entry, position))`.**
+    `topic_id` points at the meeting's `fg:<setId>` topic, which is already the per-night snapshot.
     Don't name it `meeting_stations`: that was a retired Build-a-Plan table. Add it to `meeting_board_stamp` (count
     and max(updated_at)) or the poller won't refresh. `meeting_unseed_topic` treats a station like picks and
     teachers.
