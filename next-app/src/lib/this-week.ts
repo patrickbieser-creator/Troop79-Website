@@ -11,6 +11,8 @@ import { askedAtOf, scoutSnapOf, scoutState, teacherSnapOf, teacherState, type P
 import { boardName, joinNames, type BoardPick, type Intent } from '@/lib/meeting-board-shared';
 import { rankOfKey, topicWords } from '@/lib/meeting-board-picklist';
 import { assessTeacher, canTeachFocusGroup, teacherName, type TeachContext, type TeacherPerson } from '@/lib/meeting-board-teach';
+import type { MeetingRotation } from '@/lib/station-rotation-db';
+import { rotationOf, type TwRotation } from '@/lib/this-week-rotation';
 
 /** How many coming meetings the planner works on: This week's switcher and the Theme calendar (Planner III). */
 export const PLANNER_WEEKS = 8;
@@ -67,6 +69,10 @@ export interface ThisWeekInput {
   mergedBases?: ReadonlySet<string>;
   /** Directory adults' names, by personId (lib/people-lists pool): who an adult's answer on Responses this week is. */
   adultNames?: ReadonlyMap<number, string>;
+  /** Station rotations: the night's Stations switch and station order (lib/station-rotation-db); absent = never used. */
+  rotation?: MeetingRotation;
+  /** Set by buildThisWeek while a rotation runs: scouts in a rotation group, left out of the ordinary placement. */
+  rotating?: ReadonlySet<number>;
 }
 
 export interface TwPerson {
@@ -255,6 +261,8 @@ export interface ThisWeek {
   unplaced: string[];
   /** Everyone who may teach: the "someone else" list. */
   everyone: TwTeacher[];
+  /** Station rotations: null when the night has never used Stations. */
+  rotation: TwRotation | null;
 }
 
 const NEW_SCOUT = 'New scout';
@@ -305,7 +313,7 @@ export function focusInputOf(input: ThisWeekInput): FocusInput {
     rankReqs: catalog.rankRequirements,
     meritBadges: catalog.meritBadges,
     mbReqs: catalog.meritBadgeRequirements,
-    scouts: input.scouts.map((s) => ({ personId: s.personId, scoutId: s.scoutId, name: s.name, currentRank: s.currentRank, intent: s.intent })),
+    scouts: input.scouts.filter((s) => !input.rotating?.has(s.personId)).map((s) => ({ personId: s.personId, scoutId: s.scoutId, name: s.name, currentRank: s.currentRank, intent: s.intent })),
     progress: input.progress,
     focusKeys: input.focus.flatMap((f) => f.members),
     badgeIds: input.nightBadges,
@@ -326,7 +334,21 @@ export function focusInputOf(input: ThisWeekInput): FocusInput {
 export const scoutPlanOfRow = (r: Pick<FocusRow, 'counted' | 'groupKey' | 'open'>): ScoutSnap =>
   scoutSnapOf(r.groupKey ?? null, r.counted && r.groupKey && r.open.length ? r.open : []);
 
-export function buildThisWeek(input: ThisWeekInput): ThisWeek {
+export function buildThisWeek(given: ThisWeekInput): ThisWeek {
+  // Station rotations: while a rotation runs, its focus sets leave the ordinary groups and its scouts the placement.
+  const rot = rotationOf({
+    catalog: given.catalog,
+    rotation: given.rotation,
+    focus: given.focus,
+    scouts: given.scouts,
+    progress: given.progress,
+    roles: given.roles,
+    topicTeachers: given.topicTeachers,
+    teachers: given.teachers,
+    nameOf: boardName,
+    teacherNameOf: (p) => teacherName(p, 'admin')
+  });
+  const input: ThisWeekInput = rot.rotating.size || rot.stationKeys.size ? { ...given, focus: given.focus.filter((f) => !rot.stationKeys.has(f.key)), rotating: rot.rotating } : given;
   const { catalog } = input;
   const rankName = new Map(catalog.ranks.map((r) => [r.id, r.display_name]));
   const mbName = new Map(catalog.meritBadges.map((m) => [m.id, m.name]));
@@ -613,6 +635,7 @@ export function buildThisWeek(input: ThisWeekInput): ThisWeek {
       .map((a) => teacherOf(a))
       .sort((a, b) => a.name.localeCompare(b.name)),
     unplaced: plan.unplaced,
-    everyone: pool.map((p) => teacherOf(p)).sort((a, b) => a.name.localeCompare(b.name))
+    everyone: pool.map((p) => teacherOf(p)).sort((a, b) => a.name.localeCompare(b.name)),
+    rotation: rot.view
   };
 }

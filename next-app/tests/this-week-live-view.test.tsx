@@ -49,7 +49,8 @@ const view: ThisWeek = {
   adultsNoAnswer: [],
   responses: { coming: { scouts: [], adults: [] }, undecided: { scouts: [], adults: [] }, not_coming: { scouts: [], adults: [] } },
   unplaced: [],
-  everyone: []
+  everyone: [],
+  rotation: null
 };
 
 afterEach(() => {
