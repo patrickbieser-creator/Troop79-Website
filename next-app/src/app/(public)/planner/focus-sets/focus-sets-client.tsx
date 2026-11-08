@@ -24,7 +24,7 @@ import Link from 'next/link';
 import { Button } from '@/app/_components/button';
 import { Field, SaveProblem, SelectInput, TextInput } from '@/app/_components/form';
 import { fmtDate } from '@/lib/format-date';
-import { draftKey, draftProblem, groupItems, LABEL_MAX, normalizeLabel, type FocusSearchRow, type FocusSetItem, type FocusSetView, type FocusSource, type SetDraft } from '@/lib/meeting-focus';
+import { draftKey, draftProblem, GOAL_MAX, GOAL_MIN, goalMinutesOf, groupItems, LABEL_MAX, normalizeLabel, type FocusSearchRow, type FocusSetItem, type FocusSetView, type FocusSource, type SetDraft } from '@/lib/meeting-focus';
 import { focusCountsAction, focusDeleteSetAction, focusSaveSetAction, focusSearchAction } from '../focus-actions';
 import { twAddFocusSetAction } from '../this-week-actions';
 import styles from '../planner.module.css';
@@ -33,8 +33,8 @@ type Kind = 'all' | 'rank' | 'mb';
 /** The ranks a focus works on (the planner's groups): Star, Life and Eagle aren't offered here (Patrick, 2026-10-29). */
 const GROUP_RANKS = ['scout', 'tenderfoot', 'second-class', 'first-class'];
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
-const EMPTY: SetDraft = { name: '', labels: [], items: [] };
-const toDraft = (s: FocusSetView | null): SetDraft => (s ? { name: s.name, labels: [...s.labels], items: [...s.items] } : EMPTY);
+const EMPTY: SetDraft = { name: '', labels: [], items: [], goal: '' };
+const toDraft = (s: FocusSetView | null): SetDraft => (s ? { name: s.name, labels: [...s.labels], items: [...s.items], goal: s.goalMinutes == null ? '' : String(s.goalMinutes) } : EMPTY);
 
 export function FocusSetsClient({
   canSeed,
@@ -450,7 +450,7 @@ function SetEditor({
     if (blocked) return;
     setPhase('saving');
     setProblem(null);
-    const res = await focusSaveSetAction({ id, name: draft.name, labels: draft.labels, items: draft.items.map((i) => i.key) }).catch(() => ({ ok: false as const, error: 'That didn’t save. Check your connection and try again.' }));
+    const res = await focusSaveSetAction({ id, name: draft.name, labels: draft.labels, items: draft.items.map((i) => i.key), goalMinutes: goalMinutesOf(draft.goal) }).catch(() => ({ ok: false as const, error: 'That didn’t save. Check your connection and try again.' }));
     if (!res.ok) {
       setPhase('idle');
       setProblem(res.error);
@@ -481,6 +481,18 @@ function SetEditor({
     <>
       <Field label="Set name" problem={tried && blocked?.at === 'name' ? blocked.text : undefined}>
         <TextInput value={draft.name} maxLength={80} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} autoFocus={isNew} />
+      </Field>
+      <Field label="Time goal (minutes)" problem={tried && blocked?.at === 'goal' ? blocked.text : undefined}>
+        <TextInput
+          type="number"
+          inputMode="numeric"
+          min={GOAL_MIN}
+          max={GOAL_MAX}
+          step={1}
+          className={styles.fsGoal}
+          value={draft.goal ?? ''}
+          onChange={(e) => setDraft((d) => ({ ...d, goal: e.target.value }))}
+        />
       </Field>
 
       <h3 className={styles.listLabel}>Labels</h3>

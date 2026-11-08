@@ -1214,3 +1214,7 @@ button.fsResult {
   gap: var(--sp-2);
   width: 100%;
 }
+/* Station rotations: a focus set's time goal, a short number box. */
+.fsGoal {
+  max-width: 8rem;
+}

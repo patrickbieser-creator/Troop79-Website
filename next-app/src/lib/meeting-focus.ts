@@ -60,18 +60,29 @@ export interface SetDraft {
   name: string;
   labels: string[];
   items: FocusSetItem[];
+  /** The time goal as typed ('' = none): whole minutes, GOAL_MIN–GOAL_MAX. */
+  goal?: string;
+}
+
+/** A typed time goal as minutes: null for none, NaN when it isn't a whole number in range. */
+export function goalMinutesOf(goal: string | undefined): number | null {
+  const t = (goal ?? '').trim();
+  if (!t) return null;
+  const n = Number(t);
+  return /^\d+$/.test(t) && n >= GOAL_MIN && n <= GOAL_MAX ? n : NaN;
 }
 
 /** One string per draft, for the dirty gate (D-331: Save is greyed only when nothing changed). */
 export function draftKey(d: SetDraft): string {
-  return JSON.stringify([d.name.trim().replace(/\s+/g, ' '), [...d.labels].sort(), d.items.map((i) => i.key)]);
+  return JSON.stringify([d.name.trim().replace(/\s+/g, ' '), [...d.labels].sort(), d.items.map((i) => i.key), (d.goal ?? '').trim()]);
 }
 
 /** What stops a draft from saving, or null. */
-export function draftProblem(d: SetDraft): { at: 'name' | 'label'; text: string } | null {
+export function draftProblem(d: SetDraft): { at: 'name' | 'label' | 'goal'; text: string } | null {
   const name = d.name.trim();
   if (!name) return { at: 'name', text: 'Give the set a name.' };
   if (name.length > SET_NAME_MAX) return { at: 'name', text: `Keep the name to ${SET_NAME_MAX} characters.` };
+  if (Number.isNaN(goalMinutesOf(d.goal))) return { at: 'goal', text: `A time goal is ${GOAL_MIN} to ${GOAL_MAX} minutes.` };
   return null;
 }
 
