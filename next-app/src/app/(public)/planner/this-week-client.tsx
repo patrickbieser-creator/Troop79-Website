@@ -17,6 +17,7 @@ import { twRemoveRequirementAction, twSetRoleAction, twSetTeacherAction, twUnmer
 import { FocusCard, type SetChoice } from './this-week-focus';
 import type { SavedPlan } from '@/lib/saved-plans-shared';
 import { LiveView } from './this-week-live';
+import { StationsSection, StationsSwitch } from './this-week-stations';
 import { NameChip, Popover, ReqItem, StateName, TeacherSlot, useWrite } from './this-week-parts';
 import type { PlanState } from '@/lib/plan-states';
 import s from './this-week.module.css';
@@ -111,9 +112,12 @@ export function ThisWeekView({
       <header className={s.wrap}>
         <div>
           <p className={s.muted}>Meeting Planner · This week</p>
-          <h1 className={s.cardTitle}>
-            {dayLabel} · {focusName}
-          </h1>
+          <div className={s.row}>
+            <h1 className={s.cardTitle}>
+              {dayLabel} · {focusName}
+            </h1>
+            <StationsSwitch entryId={entryId} view={view} canSeed={canSeed} />
+          </div>
           <p className={s.cardSub}>{title}</p>
           <div className={s.headRow}>
             <div className={s.seg} role="radiogroup" aria-label="View">
@@ -187,6 +191,8 @@ function PlanView({
   return (
     <>
       <FocusCard entryId={entryId} view={view} sets={sets} badges={badges} canSeed={canSeed} meetingDate={meetingDate} savedPlans={savedPlans} />
+
+      {view.rotation ? <StationsSection entryId={entryId} rotation={view.rotation} canSeed={canSeed} /> : null}
 
       <section className={s.coverage} aria-label="Coverage">
         <div className={s.covMain}>
